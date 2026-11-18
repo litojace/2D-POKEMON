@@ -678,3 +678,15 @@ body:has(#menu > .room-screen) .chat-button[data-place="room"] {
     white-space: nowrap;
   }
 }
+
+/* Another player's own picture: a tap reports it (it asks first). */
+button.room-avatar.is-reportable {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+button.room-avatar.is-reportable:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}

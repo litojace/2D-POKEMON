@@ -25,6 +25,8 @@ import "./profile.css";
  */
 export interface ProfileHooks {
   data(): ProfileData;
+  /** Wear your own picture (a file from the device); resolves once worn. */
+  photo(file: File): Promise<void>;
   /** Wear a library avatar; resolves once data() shows it. */
   avatar(id: string): Promise<void>;
   /** Wear a title ("" for none); resolves once data() shows it. */
@@ -85,6 +87,21 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     view.avatarBusy = null;
     render();
     focusOn(`[data-profile-avatar="${id}"]`);
+  }
+  async function wearPhoto(file: File) {
+    if (view.avatarBusy !== null) return;
+    view.avatarBusy = "photo";
+    view.avatarStatus = "Making your picture…";
+    render();
+    try {
+      await hooks.photo(file);
+      view.avatarStatus = "Picture on. Other players see it now.";
+    } catch (error) {
+      view.avatarStatus =
+        error instanceof Error ? error.message : "That didn't work. Try again.";
+    }
+    view.avatarBusy = null;
+    render();
   }
   async function equip(id: string) {
     if (view.equipping !== null) return;
@@ -233,6 +250,10 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
       view.avatarStyle = d.profileAvatarStyle as ProfileView["avatarStyle"];
       render();
     } else if (d.profileAvatar) void wearAvatar(d.profileAvatar);
+    else if (d.profilePhoto !== undefined)
+      root()
+        .querySelector<HTMLInputElement>("[data-profile-photo-input]")
+        ?.click();
     else if (d.profileTitle !== undefined) void equip(d.profileTitle);
     else if (d.profileRename !== undefined) nameForm(true);
     else if (d.profileNameCancel !== undefined) nameForm(false);
@@ -333,6 +354,14 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
   compactQuery.addEventListener("change", onCompact);
   root().addEventListener("submit", onSubmit);
   root().addEventListener("keydown", onKey);
+  // A photo picked for your own picture.
+  root().addEventListener("change", (event) => {
+    const input = event.target as HTMLInputElement;
+    if (!input.matches("[data-profile-photo-input]")) return;
+    const file = input.files?.[0];
+    input.value = "";
+    if (file) void wearPhoto(file);
+  });
   focusOn('.pf-titles > [aria-pressed="true"]');
   return {
     refresh: render,

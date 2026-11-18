@@ -133,10 +133,14 @@ for (const size of [
         "galaxy-frame",
       );
       await page.locator(".fit-room .ui-close").click();
+      // The header is you, not your fighter (docs/hidden-picks.md,
+      // "Avatars"): picking another fighter keeps your avatar and frame.
       await page.evaluate(() => (window as any).__choosePortrait("auralynx"));
-      await expect(page.locator(".account-avatar")).toHaveAttribute(
-        "data-champion",
-        "auralynx",
+      await expect(
+        page.locator(".account-avatar img.portrait-avatar"),
+      ).toHaveAttribute("src", /ea-avatar-001\.webp/);
+      await expect(page.locator(".account-avatar [data-fighter]")).toHaveCount(
+        0,
       );
       await expect(headerFrame).toHaveAttribute(
         "data-portrait-frame",
@@ -302,10 +306,9 @@ for (const size of [
         await expect(
           ownFighter.locator('filter[id*="preview-palette-candy-colours"]'),
         ).toHaveCount(1);
+        // Colors dress the fighter, not your avatar in the header.
         await expect(
-          page.locator(
-            '.account-avatar filter[id*="preview-palette-candy-colours"]',
-          ),
+          page.locator(".account-avatar img.portrait-avatar"),
         ).toHaveCount(1);
         await page.click("#leave");
         // A raid exit returns to the boss list; close it to see the Lobby.

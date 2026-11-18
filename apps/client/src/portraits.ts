@@ -9,7 +9,11 @@ import {
 } from "../../../packages/shared/src/raid";
 import { LOOK_ITEMS } from "../../../packages/shared/src/shop";
 import { REWARD_ITEMS } from "../../../packages/shared/src/journey";
-import { avatarUrl, knownAvatar } from "../../../packages/shared/src/avatars";
+import {
+  avatarUrl,
+  knownAvatar,
+  photoIdOf,
+} from "../../../packages/shared/src/avatars";
 import "./portrait-frames.css";
 
 const frames = new Set(
@@ -74,9 +78,20 @@ export function framedAvatar(
   return framePortrait(portraitAvatar(p, scope), p.raidLook?.frame, stars);
 }
 
-/** A library avatar's picture (avatars.ts), filling a portrait disc. */
-export const avatarImage = (id: string | null | undefined) =>
-  `<img class="portrait-avatar" src="${avatarUrl(knownAvatar(id))}" alt="" draggable="false" decoding="async">`;
+/**
+ * An avatar's picture filling a portrait disc: a library one (avatars.ts,
+ * the client's own files) or a player's own picture (the game server's).
+ */
+export const avatarImage = (id: string | null | undefined) => {
+  const known = knownAvatar(id);
+  const src = photoIdOf(known)
+    ? new URL(
+        avatarUrl(known),
+        import.meta.env.VITE_SERVER_URL || location.origin,
+      ).href
+    : avatarUrl(known);
+  return `<img class="portrait-avatar" src="${src}" alt="" draggable="false" decoding="async">`;
+};
 
 /**
  * A player as themselves, not as a fighter: their avatar (the default until

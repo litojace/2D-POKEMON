@@ -54,6 +54,9 @@ function store(v: "ok" | "under") {
   }
 }
 
+/** This device said its player is under 13 (own pictures stay off). */
+export const saidUnderAge = () => stored() === "under";
+
 export const UNDER_AGE_MESSAGE =
   "Sorry, you can't make an Element Arena account. Thanks for your interest in the game!";
 

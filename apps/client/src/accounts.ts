@@ -1,11 +1,16 @@
-import { confirmAge } from "./age-gate";
+import { confirmAge, saidUnderAge } from "./age-gate";
 import { isNativeApp, PRIVACY_URL, signInWithAppleNatively } from "./native";
 import {
   nameAllowed,
   NAME_NOT_ALLOWED,
 } from "../../../packages/shared/src/name-filter";
 import { identityPortrait } from "./portraits";
-import { AVATAR_BY_ID } from "../../../packages/shared/src/avatars";
+import {
+  AVATAR_BY_ID,
+  isAvatar,
+  photoIdOf,
+} from "../../../packages/shared/src/avatars";
+import { preparePhoto } from "./avatar-photo";
 import type { FittingRoom } from "./screens/fitting-room";
 import type { FitMode, ShopSection } from "./screens/fitting-room-view";
 import type { JourneyScreen } from "./screens/journey";
@@ -473,14 +478,49 @@ export class AccountUI {
         avatar: unknown;
       };
       if (version !== this.generation) return;
-      this.avatar =
-        typeof avatar === "string" && AVATAR_BY_ID.has(avatar) ? avatar : null;
+      this.avatar = isAvatar(avatar) ? (avatar as string) : null;
       this.syncAvatar();
       this.profileScreen?.refresh();
       this.hooks.onChange();
     } catch {
       // The default shows.
     }
+  }
+  /**
+   * Your own picture (13 and over, with an account): the photo made small
+   * on this device (avatar-photo.ts), stored on the account, worn at once.
+   */
+  canUsePhoto() {
+    return !!this.account && !this.account.guest && !saidUnderAge();
+  }
+  async uploadPhoto(file: File) {
+    if (!this.canUsePhoto())
+      throw new Error("Make an account to use your own picture.");
+    const blob = await preparePhoto(file);
+    const origin = import.meta.env.VITE_SERVER_URL || location.origin;
+    const response = await fetch(new URL("/api/account/avatar-photo", origin), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.session?.access_token ?? ""}`,
+        "Content-Type": blob.type,
+      },
+      body: blob,
+    });
+    const reply = (await response.json().catch(() => ({}))) as {
+      avatar?: unknown;
+      error?: string;
+    };
+    if (!response.ok || !isAvatar(reply.avatar))
+      throw new Error(reply.error ?? "That picture couldn't be saved.");
+    this.avatar = reply.avatar as string;
+    this.syncAvatar();
+    this.hooks.onChange();
+  }
+  /** Report another player's picture (three reporters hide it). */
+  async reportPhoto(photoId: string) {
+    return (await this.api("/api/avatar-photo/report", { photo: photoId })) as {
+      hidden?: boolean;
+    };
   }
   /** Wear a library avatar: saved on the account, seen everywhere at once. */
   async chooseAvatar(id: string) {
@@ -1349,11 +1389,17 @@ export class AccountUI {
             email: this.session?.user.email ?? undefined,
             fighter: this.hooks.selectedCharacter?.() ?? "voltkit",
             avatar: this.avatar,
+            canUsePhoto: this.canUsePhoto(),
             look: this.raidLook,
             clears: this.raidClears,
             journey: this.economy?.journey,
             canDelete: !a.isAdmin,
           };
+        },
+        photo: async (file) => {
+          if (this.account?.id !== accountId)
+            throw new Error("Your session changed. Reopen your card.");
+          await this.uploadPhoto(file);
         },
         avatar: async (id) => {
           if (this.account?.id !== accountId)
@@ -1543,6 +1589,23 @@ export class AccountUI {
         return text;
       },
       block: (id, name) => this.block(id, name),
+      reportPhoto: async (photo, name) => {
+        const sure = await askConfirm({
+          kicker: "Report a picture",
+          title: `Report ${name}'s picture?`,
+          art: identityPortrait({ avatar: `photo:${photo}` }),
+          lines: [
+            [
+              "What happens",
+              "Our team looks at it. Pictures that break the rules are removed.",
+            ],
+          ],
+          confirm: "Report",
+        });
+        if (!sure) return "";
+        await this.reportPhoto(photo);
+        return "Thanks. The picture was reported.";
+      },
       unblock: (id) => this.unblock(id),
       message: (id, name) => this.hooks.messageFriend?.(id, name),
       inviteToParty: async (id) => ok(await this.hooks.inviteToParty?.(id)),
@@ -1858,7 +1921,11 @@ export class AccountUI {
                         .map(([k, v]) => `${escape(k)}: ${escape(String(v))}`)
                         .join(" · ")}</small>`
                     : ""
-                }${chatTarget(r.context) ? `<button type="button" class="secondary" data-chat-stop="${chatTarget(r.context)}">Stop their chat for 24 h</button>` : ""}<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
+                }${chatTarget(r.context) ? `<button type="button" class="secondary" data-chat-stop="${chatTarget(r.context)}">Stop their chat for 24 h</button>` : ""}${
+                  photoTarget(r.context)
+                    ? `<div class="admin-photo" data-admin-photo="${photoTarget(r.context)}"><span class="admin-photo-pic" aria-label="The reported picture">Loading…</span><button type="button" class="secondary" data-photo-keep="true">Keep picture</button><button type="button" class="danger-button" data-photo-keep="false">Remove picture</button></div>`
+                    : ""
+                }<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
             )
             .join("") ||
           `<p>No ${view.status === "all" ? "" : view.status + " "}reports.</p>`
@@ -1921,6 +1988,51 @@ export class AccountUI {
           });
         element("report-next").onclick = () =>
           void this.showAdmin({ reportOffset: view.reportOffset + 50 });
+        // A picture report: the picture itself, then keep it or remove it.
+        document
+          .querySelectorAll<HTMLElement>("[data-admin-photo]")
+          .forEach((box) => {
+            const photo = box.dataset.adminPhoto!;
+            const pic = box.querySelector<HTMLElement>(".admin-photo-pic")!;
+            void (
+              this.api(`/api/admin/avatar-photo/${photo}`) as Promise<{
+                src: string | null;
+                hidden: boolean;
+              }>
+            ).then(
+              ({ src, hidden }) => {
+                if (!src) {
+                  pic.textContent = "Already removed.";
+                  return;
+                }
+                const img = document.createElement("img");
+                img.src = src;
+                img.alt = "The reported picture";
+                pic.replaceChildren(img);
+                if (hidden) pic.dataset.hidden = "Hidden (3 reports)";
+              },
+              () => (pic.textContent = "Couldn't load it."),
+            );
+            box
+              .querySelectorAll<HTMLButtonElement>("[data-photo-keep]")
+              .forEach((button) => {
+                button.onclick = async () => {
+                  button.disabled = true;
+                  const keep = button.dataset.photoKeep === "true";
+                  try {
+                    await this.api("/api/admin/avatar-photo", { photo, keep });
+                    await this.showAdmin({
+                      message: keep
+                        ? "Picture kept and shown again."
+                        : "Picture removed. They can add one again in 7 days.",
+                    });
+                  } catch (error) {
+                    fail(error);
+                    button.disabled = false;
+                  }
+                };
+              });
+          });
         // A chat report: stop the reported player typing for a day.
         document
           .querySelectorAll<HTMLButtonElement>("[data-chat-stop]")
@@ -2156,6 +2268,11 @@ export class AccountUI {
 }
 
 /** The reported player of a chat report ("Name (uuid)" in its context). */
+/** A picture report's photo id (a UUID, or nothing). */
+function photoTarget(context: Record<string, string> | undefined) {
+  const id = context?.avatarPhoto;
+  return typeof id === "string" && photoIdOf(`photo:${id}`) ? id : "";
+}
 function chatTarget(context: Record<string, string> | undefined) {
   if (context?.source !== "chat") return null;
   return (

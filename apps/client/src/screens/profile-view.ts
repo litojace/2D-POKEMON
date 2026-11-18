@@ -39,6 +39,7 @@ import {
   AVATARS,
   AVATAR_STYLES,
   DEFAULT_AVATAR,
+  photoIdOf,
   type AvatarStyle,
 } from "../../../../packages/shared/src/avatars";
 import { avatarImage, identityPortrait } from "../portraits";
@@ -74,8 +75,11 @@ export interface ProfileData {
   email?: string;
   /** Your Lobby fighter (the card's colour). */
   fighter: CharacterId;
-  /** Your library avatar (null: the default), framed as you wear it. */
+  /** Your avatar (null: the default), framed as you wear it: a library
+   * id or your picture ("photo:<id>"). */
   avatar: string | null;
+  /** You may use your own picture (an account, 13 and over). */
+  canUsePhoto?: boolean;
   look?: RaidLoadout;
   clears?: Partial<Record<RaidBossId, number>>;
   journey?: Journey;
@@ -229,7 +233,19 @@ function avatarPicker(d: ProfileData, view: ProfileView) {
       return `<button type="button" class="pf-avatar${on ? " is-on" : ""}" aria-pressed="${on}" aria-label="${esc(a.name)}" title="${esc(a.name)}" data-profile-avatar="${a.id}"${view.avatarBusy !== null ? " disabled" : ""}${busy ? ' aria-busy="true"' : ""}>${avatarImage(a.id)}</button>`;
     })
     .join("");
-  return `${styles}<div class="pf-avatars" role="group" aria-labelledby="pf-avatar-h">${tiles}</div><p class="ui-note pf-status" role="status">${esc(view.avatarStatus)}</p>`;
+  return `${photoRow(d, view)}${styles}<div class="pf-avatars" role="group" aria-labelledby="pf-avatar-h">${tiles}</div><p class="ui-note pf-status pf-avatar-status" role="status">${esc(view.avatarStatus)}</p>`;
+}
+
+/**
+ * Your own picture: a photo from your device (up to 10 MB, made small on
+ * it), worn at once and seen by everyone, so the rules are said here.
+ */
+function photoRow(d: ProfileData, view: ProfileView) {
+  const mine = photoIdOf(d.avatar);
+  if (!d.canUsePhoto)
+    return `<p class="ui-note pf-photo-note">Make an account to use your own picture.</p>`;
+  const busy = view.avatarBusy === "photo";
+  return `<div class="pf-photo">${mine ? `<span class="pf-avatar is-on pf-photo-now" aria-label="Your picture, worn now">${avatarImage(d.avatar)}</span>` : ""}<span class="pf-photo-text"><b>Your own picture</b><small class="ui-note">A photo up to 10 MB. Everyone sees it; pictures that break the rules are removed.</small></span>${button(mine ? "Change photo" : "Use my photo", { size: "s", icon: "add-friend", disabled: view.avatarBusy !== null, attrs: { "data-profile-photo": true, "aria-busy": busy ? "true" : undefined } })}<input type="file" accept="image/*" hidden data-profile-photo-input aria-label="Choose a photo"></div>`;
 }
 
 /** The card other players see: your avatar, title, name and tags. */

@@ -691,3 +691,38 @@
     gap: 6px;
   }
 }
+/* Your own picture: worn now (if so), what it is, and the button. */
+.pf-photo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+}
+.pf-photo-now {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: block;
+}
+.pf-photo-text {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.pf-photo-note {
+  margin: 0 0 var(--sp-2);
+}
+@media (max-height: 500px) {
+  .pf-photo {
+    padding: 6px 8px;
+    gap: 8px;
+  }
+  .pf-photo-now {
+    width: 40px;
+    height: 40px;
+  }
+}

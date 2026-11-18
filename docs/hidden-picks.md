@@ -66,7 +66,7 @@ select in the UI only, and outside tools still read them.)
 ## Client
 
 - `screens/room-view.ts`: a PvP seat shows the player
-  (`identityPortrait`: frame and initial, until the avatar library lands)
+  (`identityPortrait`: their avatar in their frame)
   and their pick in a tile beside it. The tile is the fighter (dashed while
   they're looking at it, green once locked in), or "?" for another side's.
 - `screens/roster-view.ts`: your teammate's name on the fighter they're
@@ -135,10 +135,56 @@ tests are in `tests/integration/hidden-picks.test.ts`.
   is drawn like the element badge: a solid glyph on a tinted disc, a sky-blue
   bullseye or an ember sword. The picker's foot shows it beside the name.
 
+## Avatars
+
+A player is shown by their **avatar** in their frame wherever they are:
+the account header, the player card and its share picture, Friends, and
+PvP seats. It is never the fighter they play. Their fighter shows in
+battle, on the briefing, in the picker and on the Lobby's party stage
+(owner, 18 Nov: the stage shows off skins).
+
+- **The library** (`packages/shared/src/avatars.ts`): 52 avatars, the 18
+  champions and the 8 raid bosses in two styles, Soft 3D and Anime 2D.
+  They were made for the game (Nov 2026) as 256 px WebP files in
+  `apps/client/public/assets/avatars/`, about 12 KB each. All are free.
+  A new player has `ea-avatar-001` until they choose.
+- **Choosing:** the player card's **Avatar** tab shows one style at a
+  time; a tap wears an avatar and it is saved at once (`/api/account/avatar`).
+- **Storage:** `arena_profiles.avatar`, from migration
+  `20261119100000_player_avatars`. Friends get it from `arena_friends`;
+  a seat gets it from the fighter's appearance, which the server reads
+  with `arena_my_avatar`.
+- **Your own picture** (migration `20261119110000_avatar_photos`):
+  - A photo of up to 10 MB is cut to its middle square on the device and
+    sent as a 256 px WebP, or a JPEG on Safari, of 64 KB at most
+    (`apps/client/src/avatar-photo.ts`). The 10 MB photo itself never
+    leaves the device.
+  - The database checks the file's type and size and keeps one picture
+    per player. Each upload gets a new id.
+  - The avatar becomes `photo:<id>`, served by the game server at
+    `/api/avatar-photo/<id>` for 10 minutes of caching. A hidden or removed
+    picture serves the default avatar instead.
+  - **Who may use one:** players with an account (owner, 18 Nov). The
+    server refuses guests. The client also hides the button on a device
+    whose age check said under 13, although such a player can't make an
+    account anyway.
+  - **Everyone sees it** (owner, 18 Nov), so players can report it:
+    - Tap the picture on a room seat, or use **Report picture** in a
+      friend's options. Each player's report counts once.
+    - Every report reaches the admins (Admin, Reports).
+    - At three reporters the picture is **hidden** until an admin looks.
+    - The admin sees the picture and chooses **Keep picture** (shown
+      again, its reports cleared) or **Remove picture** (gone, and the
+      player can't add another for 7 days).
+  - Tests: `tests/integration/avatar-photos.test.ts` (SQL),
+    `avatar-photo-routes.test.ts` (HTTP) and
+    `tests/visual/avatars.spec.ts`.
+
 ## Not built yet
 
-- The avatar library: a seat, the player card and Friends will show the
-  chosen avatar instead of the initial. See the design page for the
-  picture spec.
 - A VS screen that flips the cards. The existing briefing already shows
   every fighter.
+- Avatars in more places: Ranks rows (the leaderboard sends no player id
+  or avatar yet), the Plaza player card, Farm and Bistro visitors, and the
+  party bar still show an initial or a fighter.
+- Reporting a picture from the Plaza card and from Ranks.

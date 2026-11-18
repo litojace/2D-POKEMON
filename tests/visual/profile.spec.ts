@@ -233,9 +233,11 @@ for (const size of SIZES)
       if (size.phone)
         await expect(panel.locator(".ui-panel-head .ui-tabs")).toBeVisible();
       else await expect(panel.locator("[data-ui-profile-tab]")).toHaveCount(0);
-      // The card: your fighter in your look, title, name, level, rank, mastery.
+      // The card: you (your avatar, not a fighter), title, name, level,
+      // rank, mastery.
       const card = panel.locator(".pf-card");
-      await expect(card.locator('[data-fighter="voltkit"]')).toHaveCount(1);
+      await expect(card.locator("img.portrait-avatar")).toHaveCount(1);
+      await expect(card.locator("[data-fighter]")).toHaveCount(0);
       await expect(card.locator(".pf-card-title")).toHaveText("Cragbreaker");
       await expect(card.locator(".pf-card-name")).toHaveText("tester");
       await expect(card.locator(".pf-card-tags")).toContainText("Lv 12");

@@ -294,7 +294,8 @@ import { watchNotchInsets } from "./notch-insets";
 import { watchScrollRows } from "./ui/scroll-rows";
 import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
-import { openHubPanelNow } from "./ui/hub-panel";
+import { askConfirm, openHubPanelNow } from "./ui/hub-panel";
+import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { createGuide } from "./getting-started-screen";
 import { createCoach } from "./battle-coach";
 import { playerLevel } from "../../../packages/shared/src/journey";
@@ -1436,6 +1437,10 @@ function roomData(watch: boolean): RoomData {
         // Mastery flair belongs to the pick: hidden with it.
         flair: p.flair && !p.veiled ? `★ ${p.flair}` : undefined,
         pick: pvp ? seatPick(p, scope) : undefined,
+        reportPhoto:
+          p.id !== myId && !watch
+            ? (photoIdOf(p.avatar) ?? undefined)
+            : undefined,
       };
     }),
     host: !watch && hostId === myId,
@@ -1585,6 +1590,30 @@ function renderRoom(watch: boolean) {
     }
   }
 }
+/** Report another player's picture, after asking (three reporters hide it). */
+async function reportPhoto(photo: string, name: string) {
+  const sure = await askConfirm({
+    kicker: "Report a picture",
+    title: `Report ${name}'s picture?`,
+    art: identityPortrait({ avatar: `photo:${photo}` }),
+    lines: [
+      [
+        "What happens",
+        "Our team looks at it. Pictures that break the rules are removed.",
+      ],
+    ],
+    confirm: "Report",
+  });
+  if (!sure) return;
+  try {
+    await accountsUI.reportPhoto(photo);
+    toast("Thanks. The picture was reported.");
+  } catch (error) {
+    toast(
+      error instanceof Error ? error.message : "That didn't work. Try again.",
+    );
+  }
+}
 /** The room's ⋯ menu (Settings, Invite, Leave) is open. */
 let roomMenuOpen = false;
 function setRoomMenu(open: boolean) {
@@ -1630,6 +1659,8 @@ function onRoomClick(event: MouseEvent) {
     else if (d.roomMenu === "stop-watching") void stopWatching();
     return;
   }
+  if (d.roomReportPhoto)
+    return void reportPhoto(d.roomReportPhoto, d.roomReportName ?? "");
   if (d.roomInvite !== undefined) void accountsUI.showFriends();
   else if (d.team !== undefined) void request("team", { team: Number(d.team) });
   else if (d.roomShuffle !== undefined) void request("shuffle");

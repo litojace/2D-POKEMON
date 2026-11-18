@@ -23,6 +23,7 @@ import type {
 } from "../../../../packages/shared/src/accounts";
 import type { RaidLoadout } from "../../../../packages/shared/src/raid";
 import { identityPortrait } from "../portraits";
+import { photoIdOf } from "../../../../packages/shared/src/avatars";
 import { serverNow } from "../server-clock";
 import {
   button,
@@ -397,6 +398,18 @@ function friendRow(f: Friend, d: FriendsData, view: FriendsView, now: number) {
           disabled: busy,
           attrs: { "data-friend-remove": f.id },
         }) +
+        // Their own picture (seen by everyone): report it.
+        (photoIdOf(f.avatar)
+          ? button("Report picture", {
+              size: "s",
+              disabled: busy,
+              attrs: {
+                "data-friend-report-photo": photoIdOf(f.avatar)!,
+                "data-friend-name": f.name,
+                "aria-label": `Report ${f.name}'s picture`,
+              },
+            })
+          : "") +
         blockButton(f, busy)
   }</div>`;
   return rowShell({
