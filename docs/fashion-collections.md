@@ -63,32 +63,33 @@ dash particle budget; skills only
 change color. These skins add no Mythical ornaments, Awakening stages,
 full-screen flashes, large auras, changed hitboxes or ability timings.
 
-## Epic signature effects
+## Legendary signature effects
 
-Each of the 54 new Epics (Abyssal Expedition, Dream Carnival, Nova Vanguard)
-has its own animated motif in `epic-signature-fx.ts`, tied to the champion and
-the collection, in place of the shared glint:
+Each of the 18 Legendary Nova Vanguard suits has its own animated motif in
+`epic-signature-fx.ts`, tied to its champion. The Abyssal Expedition and
+Dream Carnival Epics keep the small glint every Epic has: motifs moving round
+every fighter on a busy court read as clutter, so they stay a Legendary mark.
 
-| Champion | Abyssal | Carnival | Vanguard |
-| --- | --- | --- | --- |
-| Voltkit | Electric eel round the waist | Jester bells round the head | Pulse chevrons climbing above |
-| Cindrake | Thermal vent glow and heat shimmer | Fire poi at its sides | Solar halo behind the head |
-| Tidefin | Reef fish school | Pearl garland | Riptide crescent orbiting |
-| Auralynx | Cryo crystals, falling frost | Moon trapeze above | Prism hex panels |
-| Lumoth | Angler lure | Wing ribbons | Lumen beacon orbs |
-| Mystowl | Sonar pings | Big-top bunting | Living star chart |
-| Terradon | Anemone garden | Carousel bulbs | Hex bulwark ring |
-| Duskveil | Moon jelly | Marionette strings | Echo waves |
-| Coilemur | Live cable with current | Spinning hoop | Flux rings |
-| Pyranda | Rescue buoy | Silk fan | Medic cross |
-| Glacelle | Caustic light ripples | Snow-globe pirouette | Frost lattice |
-| Halcyra | Ocean current streaks | Aria notes | Gale vortex |
-| Sunbara | Harbour beacon | Parade balloons | Rising dawn |
-| Astrabun | Moon bubbles | Juggled mochi | Orbiting comet |
-| Wombolder | Headlamp | Drum-major baton | Quake pulse |
-| Shadopus | Nautilus spiral | Card fan | Oracle eye |
-| Pangrove | Kelp guard | Pinwheel | Briar circle |
-| Mossloth | Coral polyps | Dream Zs | Cloud cushions |
+| Champion | Nova Vanguard motif |
+| --- | --- |
+| Voltkit | Pulse chevrons climbing above |
+| Cindrake | Solar halo behind the head |
+| Tidefin | Riptide crescent orbiting |
+| Auralynx | Prism hex panels |
+| Lumoth | Lumen beacon orbs |
+| Mystowl | Living star chart |
+| Terradon | Hex bulwark ring |
+| Duskveil | Echo waves |
+| Coilemur | Flux rings |
+| Pyranda | Medic cross |
+| Glacelle | Frost lattice |
+| Halcyra | Gale vortex |
+| Sunbara | Rising dawn |
+| Astrabun | Orbiting comet |
+| Wombolder | Quake pulse |
+| Shadopus | Oracle eye |
+| Pangrove | Briar circle |
+| Mossloth | Cloud cushions |
 
 They draw on the rig's two Graphics layers, beside, behind, above the head or
 on the ground, never over the face. Sizes come from the rig's head top and
@@ -97,9 +98,10 @@ the battle's ambient budget (one or two fighters, you first; none on Low)
 they draw in full: at most 40 calls and a particle or two a second. Outside
 it, and on Low, a compact version: at most 20 calls and no particles. An
 ultimate swells the motif for 0.9 s and throws one burst of its own shape
-with a ground ring. Defeated fighters draw nothing. Older Epics and Rares
-are unchanged. `epic-signature-fx.test.ts` checks the budgets in every
-facing, that all 54 are distinct, the ultimate swell and the defeat case.
+with a ground ring. Defeated fighters draw nothing. Rares and Epics have no
+motif; Mythicals keep their own Awakening effects. `epic-signature-fx.test.ts`
+checks the budgets in every facing, that all 18 are distinct and no other skin has one, the ultimate
+swell and the defeat case.
 
 ## Legendary: Nova Vanguard
 
@@ -119,9 +121,9 @@ Expedition, Dream Carnival and Nova Vanguard (`SKIN_BUNDLES` in `shop.ts`).
 Like the Look sets, a set costs 80% of the skins you don't own yet (the
 database's `arena_item_price`); buying one grants each skin, and a complete
 Cyber Mecha set earns its frame as usual. Void Knight Mythicals are never
-bundled: each opens with its own champion's Mythic Trial. Sets show at the
-foot of the Shop's Skins tab, with the fighter you're looking at in each
-set's skin, and among the Today tab's Bundles.
+bundled: each opens with its own champion's Mythic Trial. Sets show in the
+Shop's Collections tab, under the Look sets, with the fighter you're trying
+on in each set's skin, and among the Today tab's Bundles.
 
 ## Shipping
 
