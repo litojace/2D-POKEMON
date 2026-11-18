@@ -158,10 +158,9 @@ function seat(s: RoomSeat) {
         ? CHARACTERS[s.pick.character].name
         : ""
     : CHARACTERS[s.character].name;
-  const sub = [fighter, s.host ? "Host" : "", s.flair ?? ""]
-    .filter(Boolean)
-    .join(" · ");
-  return `<div class="room-seat${s.me ? " is-me" : ""}${s.connected ? "" : " is-away"}${s.pick ? " has-pick" : ""}" data-room-seat="${esc(s.id)}"${s.me ? " data-me" : ""}><span class="room-avatar player-avatar"${s.pick ? "" : ` title="${esc(CHARACTERS[s.character].name)}"`}>${s.avatar}</span><span class="room-seat-text"><b>${esc(s.name)}${s.me ? ' <small class="ui-note">(you)</small>' : ""}</b><small class="ui-note room-seat-fighter">${esc(sub || "\u00a0")}</small></span>${s.pick ? `<span class="room-seat-side">${pickTile(s.pick, s)}${state}</span>` : state}</div>`;
+  // The host wears the Lobby's crown before their name, not a word.
+  const sub = [fighter, s.flair ?? ""].filter(Boolean).join(" · ");
+  return `<div class="room-seat${s.me ? " is-me" : ""}${s.connected ? "" : " is-away"}${s.pick ? " has-pick" : ""}" data-room-seat="${esc(s.id)}"${s.me ? " data-me" : ""}><span class="room-avatar player-avatar"${s.pick ? "" : ` title="${esc(CHARACTERS[s.character].name)}"`}>${s.avatar}</span><span class="room-seat-text"><b>${s.host ? '<i class="room-crown" role="img" aria-label="Host" title="Host">♛</i>' : ""}${esc(s.name)}${s.me ? ' <small class="ui-note">(you)</small>' : ""}</b><small class="ui-note room-seat-fighter">${esc(sub || "\u00a0")}</small></span>${s.pick ? `<span class="room-seat-side">${pickTile(s.pick, s)}${state}</span>` : state}</div>`;
 }
 function openSeat(
   label: string,

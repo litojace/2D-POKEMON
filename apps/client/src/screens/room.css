@@ -678,3 +678,10 @@ body:has(#menu > .room-screen) .chat-button[data-place="room"] {
     min-height: 36px;
   }
 }
+
+/* The room's host: the Lobby's crown (lobby.css .lobby-crown) before the name. */
+.room-crown {
+  margin-right: 4px;
+  font-style: normal;
+  color: var(--ui-accent);
+}
