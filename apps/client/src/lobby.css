@@ -162,6 +162,8 @@
    54 px and 36 px on phones), so a notice never covers the fighter. */
 .lobby-stage {
   --lobby-party-gap: clamp(10px, 1.5vw, 24px);
+  /* The party bar's height and the gap under it, when it shows. */
+  --lobby-bar-room: 0px;
   left: calc(var(--lobby-gutter) + var(--lobby-rail) + 16px);
   right: calc(var(--lobby-gutter-r) + var(--lobby-cards) + 16px);
   top: max(calc(var(--lobby-top) + 8px), calc(var(--safe-top, 0px) + 118px));
@@ -202,12 +204,32 @@
   row-gap: 8px;
 }
 .lobby-party > * {
+  /* The party bar lies over the top of the row (it isn't a line of its
+     own): the fighter's frame may reach under it by its empty top band,
+     the 28 of its 250 units above anything a creature draws (y -40 to -12
+     in fighter-selection.ts RIG_FRAME), so a fighter is never covered. */
   --fighter-size: max(
     120px,
-    min(100cqh, calc((100cqw - 2 * var(--lobby-party-gap)) / 1.72), 560px)
+    min(
+      100cqh,
+      calc((100cqh - var(--lobby-bar-room)) / 0.888),
+      calc((100cqw - 2 * var(--lobby-party-gap)) / 1.72),
+      560px
+    )
   );
-  /* A seat's width, and the size of what stands in it. */
-  --seat-w: calc(var(--fighter-size) * 0.36);
+  /* A seat's width, and the size of what stands in it: 36% of the fighter,
+     growing into the room left beside it (wide phones waste none) up to
+     45% of it, so the leader stays the big one and the Plaza still shows
+     around them. The right seat and the fourth seat above it always fit
+     the row's height together, under the party bar. */
+  --seat-w: clamp(
+    calc(var(--fighter-size) * 0.36),
+    calc((100cqw - var(--fighter-size)) / 2 - var(--lobby-party-gap) - 4px),
+    min(
+      calc(var(--fighter-size) * 0.45),
+      calc((100cqh - var(--lobby-bar-room) - 8px) / 2.05)
+    )
+  );
   --seat: var(--seat-w);
   /* The floor: the centre of the fighter's shadow, 6.93% of its size above
      the row's bottom (y 176 in the rig's -40…210 frame). */
@@ -637,7 +659,16 @@
 .lobby-crown {
   color: var(--ui-accent);
 }
+.lobby-stage:has(> .lobby-party-bar:not([hidden])) {
+  --lobby-bar-room: 46px;
+}
 .lobby-party-bar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1230,6 +1261,9 @@
   }
   .lobby-party-bar {
     font-size: calc(10px * var(--text-scale, 1));
+  }
+  .lobby-stage:has(> .lobby-party-bar:not([hidden])) {
+    --lobby-bar-room: 40px;
   }
   .lobby-nameplate {
     grid-template-columns: 32px 150px 32px;

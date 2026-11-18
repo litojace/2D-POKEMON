@@ -666,6 +666,90 @@ test("in a friend's party the leader stands in the middle, you beside them, and 
   }
 });
 
+for (const [width, height] of [
+  [568, 320],
+  [667, 375],
+  [844, 390],
+  [932, 430],
+] as const)
+  test(`the party stage grows into the room a ${width}x${height} phone has, leaving the Plaza around it`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width, height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      const me = "11111111-1111-4111-8111-111111111111",
+        lead = "44444444-4444-4444-8444-444444444444";
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__reply = () => ({ ok: false, error: "Room not found." });
+      });
+      // A member's stage at its widest: leader, you, a third, the fourth
+      // seat open, and Rejoin on the party bar.
+      await page.evaluate(
+        ([me, lead]) =>
+          (window as any).__sock.fire("party", {
+            code: "PARTY5",
+            leader: lead,
+            members: [
+              { id: lead, name: "Leader", character: "tidefin" },
+              { id: me, name: "tester", character: "voltkit" },
+              {
+                id: "66666666-6666-4666-8666-666666666666",
+                name: "Bo",
+                character: "lumoth",
+              },
+            ],
+            room: { code: "ROOM77", mode: "ffa" },
+          }),
+        [me, lead] as const,
+      );
+      await expect(page.locator("#lobby-rejoin")).toBeVisible();
+      const box = (s: string) =>
+        page.locator(s).evaluate((e) => {
+          const b = e.getBoundingClientRect();
+          return { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width };
+        });
+      const [bar, fighter, row, s0, s1, s2] = await Promise.all(
+        [
+          "#lobby-party-bar",
+          "#lobby-fighter",
+          ".lobby-party",
+          "#lobby-slot-0",
+          "#lobby-slot-1",
+          "#lobby-slot-2",
+        ].map(box),
+      );
+      const apart = (a: typeof bar, b: typeof bar) =>
+        a.r <= b.l + 1 || b.r <= a.l + 1 || a.b <= b.t + 1 || b.b <= a.t + 1;
+      // The seats grew past 36% of the fighter, but stay under 46% of it.
+      expect(s0.w).toBeGreaterThan(fighter.w * 0.36 + 2);
+      expect(s0.w).toBeLessThanOrEqual(fighter.w * 0.451);
+      // Nothing overlaps: the bar, the seats and the fighter beside them.
+      for (const seat of [s0, s1, s2]) {
+        expect(apart(seat, bar)).toBe(true);
+        expect(apart(seat, fighter)).toBe(true);
+        expect(seat.t).toBeGreaterThanOrEqual(row.t - 1);
+        expect(seat.l).toBeGreaterThanOrEqual(row.l - 1);
+        expect(seat.r).toBeLessThanOrEqual(row.r + 1);
+      }
+      // The bar covers only the fighter frame's empty top band (11.2%).
+      expect(bar.b).toBeLessThanOrEqual(fighter.t + fighter.w * 0.112 + 1);
+      expect(fighter.b).toBeLessThanOrEqual(row.b + 1);
+      // The Plaza still shows: the stage leaves room on both sides.
+      expect(s0.l - row.l + (row.r - s1.r)).toBeGreaterThan(0);
+      if (width === 844) await snap(page, info, "lobby-party-grown-844x390");
+      expect(errors.filter((e) => !/Room not found/.test(e))).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
 test("Invite a friend says In party and Invited for friends already asked", async ({
   browser,
 }) => {
