@@ -1593,12 +1593,24 @@ export function createArenaServer(
           return fail(cb, "Your friend is watching a match.");
         if (!socket.connected || getSession(socket.id))
           return fail(cb, "Try again.");
+        // Nobody joins a party with someone either of them blocked (the
+        // reason isn't told: a block stays private).
+        const current = parties.of(sender.id);
+        if (
+          (current?.members ?? [{ id: sender.id }]).some((m) =>
+            chat.blocks(m.id, targetId),
+          )
+        )
+          return fail(cb, "Your friend can't join this party.");
         const result = parties.invite(
           memberOf(parsed.data.character),
           targetId,
           Date.now(),
         );
         if (!result.ok) return fail(cb, result.error);
+        const lead = result.party.members.find(
+          (m) => m.id === result.party.leader,
+        );
         const invite = {
           id: randomUUID(),
           fromId: sender.id,
@@ -1606,6 +1618,8 @@ export function createArenaServer(
           code: result.party.code,
           mode: "party" as const,
           expiresAt: result.expiresAt,
+          // A member invited you: whose party it is.
+          ...(lead && lead.id !== sender.id ? { leader: lead.name } : {}),
         };
         for (const target of targets) target.emit("room-invite", invite);
         emitParty(result.party);
@@ -1676,6 +1690,25 @@ export function createArenaServer(
     socket.on("party-leave", (_data: unknown, cb: unknown) => {
       if (!account()) return fail(cb, "Please log in to play.");
       leaveParty(account()!.id);
+      reply(cb, { ok: true });
+    });
+    // The leader removes a member: they leave the party (not a room they
+    // sit in) and are told so.
+    socket.on("party-kick", (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(10)) return fail(cb, "Too many requests.");
+      const playerId = (data as { playerId?: unknown } | null)?.playerId;
+      if (typeof playerId !== "string") return fail(cb, "Choose a player.");
+      const result = parties.kick(account()!.id, playerId);
+      if (!result.ok) return fail(cb, result.error);
+      for (const s of accountSockets(playerId)) {
+        s.emit("party", null);
+        s.emit("party-kicked", { by: account()!.displayName });
+      }
+      if (result.disbanded) {
+        emitParty(result.disbanded, true);
+        chat.drop(`party:${result.disbanded.code}`);
+      } else emitParty(result.party);
       reply(cb, { ok: true });
     });
     socket.on("party-character", (data: unknown) => {
@@ -1840,6 +1873,14 @@ export function createArenaServer(
         const hostAccount = accountSockets(fromId)[0]?.data.account as
           Account | undefined;
         if (!hostFighter || !hostAccount) continue;
+        // Nobody joins a party with someone either of them blocked.
+        const theirs = parties.of(fromId);
+        if (
+          (theirs?.members ?? [{ id: fromId }]).some((m) =>
+            chat.blocks(m.id, me.id),
+          )
+        )
+          continue;
         const result = parties.link(
           {
             id: fromId,

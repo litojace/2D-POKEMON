@@ -400,6 +400,8 @@ export const roomInviteSchema = z
     /** "party": an invitation to a party on the Lobby; `code` is the party's. */
     mode: z.enum(["duel", "teams", "ffa", "raid", "party"]),
     expiresAt: z.number().finite(),
+    /** A member invited you: the name of the party's leader. */
+    leader: z.string().min(1).max(20).optional(),
   })
   .strict();
 export type RoomInvite = z.infer<typeof roomInviteSchema>;
@@ -450,6 +452,10 @@ export const partyStateSchema = z
       .optional(),
   })
   .nullable();
+/** The party leader removed you from the party. */
+export const partyKickedSchema = z
+  .object({ by: z.string().min(1).max(20) })
+  .strict();
 /** A friend turned down your party or room invitation. */
 export const inviteDeclinedSchema = z
   .object({ playerId: z.string().uuid(), name: z.string().min(1).max(20) })

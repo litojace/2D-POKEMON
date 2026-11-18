@@ -163,7 +163,11 @@ type Hooks = {
   /** Start a Spire climb (from your party's checkpoint, checked by the server). */
   startSpire?: (options: { solo?: boolean; returnTab?: SpireTab }) => void;
   /** Your Lobby party for the raid seats, and whether you can start. */
-  raidParty?: () => { party: RaidSeat[]; leader: boolean; inRoom: boolean };
+  raidParty?: () => {
+    party: RaidSeat[];
+    leader: boolean;
+    inRoom: boolean;
+  };
   /** Invite a friend to your Lobby party (the server answers). */
   inviteToParty?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /**

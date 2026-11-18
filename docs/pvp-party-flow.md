@@ -82,6 +82,16 @@ Stars): it is the lasting unit and rooms come and go under it.
   beside them, labelled "You" (a tap opens Fighters), and the arrows that
   step your own fighter wait. Only the leader sees the + Invite seats.
 
+- **Members invite too; the leader keeps control.** Any member can invite
+  their own friends (Friends, Invite a friend, the + seats on their
+  Lobby), and the invitation says whose party it is ("Bo invited you to
+  Kai's party"); a member's room invitation brings the friend into the
+  party too. The leader removes a member with **Kick**: a tap on their seat swaps the
+  name tag for the button, a tap on it confirms. The removed player is
+  told, stays in any room they sit in, and is not pulled into the party's
+  next room. Nobody joins a party with someone either of them blocked
+  (the invite is refused without saying why).
+
 No database migration: parties stay in the server's memory. Tests:
 `tests/multiplayer/party.test.ts` (drop and return, the party's room,
 room invitation → party, Decline) and `tests/visual/lobby.spec.ts`

@@ -151,9 +151,14 @@ it("quick chat works with typing paused; typed lines wait for the switch", async
 });
 
 it("a block stops chat both ways, read from the player's block list", async () => {
-  // The pal blocked the leader.
-  const f = await setup(true, ({ lead, pal }) => ({ [pal]: [lead] }));
+  // The pal blocks the leader once they are in a party together (a block
+  // made before keeps them out of one: party.test.ts). Their next
+  // connection reads the block list.
+  const f = await setup(true);
   await partyUp(f);
+  f.blocks.set(f.pal.token, [f.lead.account.id]);
+  const pal = await f.connect(f.pal.token);
+  await settle();
   expect(
     await request(f.a.s, "chat-send", {
       channel: "party",
@@ -162,14 +167,14 @@ it("a block stops chat both ways, read from the player's block list", async () =
   ).toEqual({ ok: true });
   await settle();
   expect(
-    await request(f.b.s, "chat-send", { channel: "party", text: "no" }),
+    await request(pal.s, "chat-send", { channel: "party", text: "no" }),
   ).toEqual({ ok: true });
   await settle();
   // Each still sees their own line; neither hears the other.
   expect(f.a.heard.map((l) => l.text)).toEqual(["can you hear"]);
-  expect(f.b.heard.map((l) => l.text)).toEqual(["no"]);
+  expect(pal.heard.map((l) => l.text)).toEqual(["no"]);
   expect(
-    (await request(f.b.s, "chat-history", { channel: "party" })).lines?.map(
+    (await request(pal.s, "chat-history", { channel: "party" })).lines?.map(
       (l) => l.text,
     ),
   ).toEqual(["no"]);
