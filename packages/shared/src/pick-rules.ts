@@ -36,7 +36,9 @@ export const uniquePerTeam = (mode: MatchMode | undefined) => mode === "teams";
  * The teammate who has already locked in `character`, if any (2v2 only).
  * `teamOf` is the room's own team rule.
  */
-export function pickTakenBy<P extends Pick<Fighter, "id" | "character" | "locked">>(
+export function pickTakenBy<
+  P extends Pick<Fighter, "id" | "character" | "locked">,
+>(
   mode: MatchMode | undefined,
   players: readonly P[],
   me: P,
@@ -59,7 +61,9 @@ export function pickTakenBy<P extends Pick<Fighter, "id" | "character" | "locked
  * shuffle): everyone but the first to lock it in. `order` is when each
  * player locked in (lower is earlier).
  */
-export function pickClashes<P extends Pick<Fighter, "id" | "character" | "locked">>(
+export function pickClashes<
+  P extends Pick<Fighter, "id" | "character" | "locked">,
+>(
   mode: MatchMode | undefined,
   players: readonly P[],
   teamOf: (p: P) => number,
@@ -94,6 +98,10 @@ export function veilPlayers<
     if (viewer !== undefined && (p.id === viewer || sameSide(viewer, p.id)))
       return p;
     const { browse: _browse, ...rest } = p;
-    return { ...rest, character: VEILED_CHARACTER, veiled: true } as unknown as P;
+    return {
+      ...rest,
+      character: VEILED_CHARACTER,
+      veiled: true,
+    } as unknown as P;
   });
 }

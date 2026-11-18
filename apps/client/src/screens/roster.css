@@ -732,3 +732,78 @@
     top: 22px;
   }
 }
+/* Your locked-in fighter in a room: gold, as the seat's Locked state. */
+.ui-tag.roster-locked {
+  background: color-mix(in srgb, var(--ui-warn) 20%, transparent);
+  color: var(--ui-warn);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--ui-warn) 55%, transparent);
+}
+
+/* -------------------------------------------- ranged or close, at a glance */
+.roster-card-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.roster-range-badge {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, currentColor 20%, var(--ui-bg-0));
+}
+.roster-range-badge svg {
+  width: 15px;
+  height: 15px;
+}
+.roster-range-badge.is-long {
+  color: #7cc8ff;
+}
+.roster-range-badge.is-close {
+  color: #ff8a5c;
+}
+.roster-foot-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.roster-foot-name .ui-h {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.roster-foot-name .roster-range-badge {
+  width: 20px;
+  height: 20px;
+}
+.roster-foot-name .roster-range-badge svg {
+  width: 12px;
+  height: 12px;
+}
+.roster-foot-range {
+  font-size: var(--fs-micro);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-dim);
+  white-space: nowrap;
+}
+@media (max-height: 500px) {
+  .roster-range-badge {
+    width: 18px;
+    height: 18px;
+  }
+  .roster-range-badge svg {
+    width: 12px;
+    height: 12px;
+  }
+  .roster-foot-range {
+    display: none;
+  }
+}

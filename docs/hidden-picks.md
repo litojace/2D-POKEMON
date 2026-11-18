@@ -10,13 +10,13 @@ Spire rooms keep picks open, because everyone there is on one side.
 
 ## Rules
 
-| In the lobby                                  | You | Teammate | Other side | Watcher |
-| --------------------------------------------- | --- | -------- | ---------- | ------- |
-| Name, title, frame                            | yes | yes      | yes        | yes     |
-| Fighter being looked at (not locked)          | yes | yes      | no         | no      |
-| Fighter locked in                             | yes | yes      | no         | no      |
-| Whether they have locked in or are ready      | yes | yes      | yes        | yes     |
-| Every fighter, from the briefing on           | yes | yes      | yes        | yes     |
+| In the lobby                             | You | Teammate | Other side | Watcher |
+| ---------------------------------------- | --- | -------- | ---------- | ------- |
+| Name, title, frame                       | yes | yes      | yes        | yes     |
+| Fighter being looked at (not locked)     | yes | yes      | no         | no      |
+| Fighter locked in                        | yes | yes      | no         | no      |
+| Whether they have locked in or are ready | yes | yes      | yes        | yes     |
+| Every fighter, from the briefing on      | yes | yes      | yes        | yes     |
 
 - **Locking in.** Coming into a room no longer locks your Lobby fighter in;
   it is only shown (`browse`). **Lock in** (`select`) or **Ready** locks it.

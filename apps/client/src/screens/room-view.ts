@@ -112,6 +112,21 @@ export const readyCount = (d: RoomData) =>
 /* ------------------------------------------------------------ pieces */
 
 /** PvP: the pick beside a seat: the fighter, or "?" for another side's. */
+/** A small padlock (Locked: picked, not yet ready). */
+const PADLOCK =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+/**
+ * A seat's state, one colour each, so it reads at a glance: Choosing
+ * (plain), Locked (gold, a padlock), Ready (solid green, a tick).
+ */
+function seatState(s: RoomSeat) {
+  if (!s.connected) return tag("Offline");
+  if (s.ready)
+    return `<span class="ui-tag room-state is-ready">${menuIcon("check")}Ready</span>`;
+  if (s.pick?.locked)
+    return `<span class="ui-tag room-state is-locked">${PADLOCK}Locked</span>`;
+  return `<span class="ui-tag room-state">Choosing</span>`;
+}
 function pickTile(p: NonNullable<RoomSeat["pick"]>, s: RoomSeat) {
   const name = p.character ? CHARACTERS[p.character].name : "";
   const label = p.hidden
@@ -119,27 +134,29 @@ function pickTile(p: NonNullable<RoomSeat["pick"]>, s: RoomSeat) {
     : name
       ? `${s.name} ${p.locked ? "locked in" : "is looking at"} ${name}`
       : `${s.name} hasn't picked yet`;
-  const inner = p.hidden
-    ? `<b aria-hidden="true">?</b>`
-    : (p.art ?? "");
-  const tick = p.locked
-    ? `<i class="room-pick-tick" aria-hidden="true">${menuIcon("check")}</i>`
-    : "";
-  return `<span class="room-pick${p.hidden ? " is-hidden" : ""}${p.locked ? " is-locked" : p.character ? " is-browsing" : " is-empty"}" role="img" aria-label="${esc(label)}" title="${esc(label)}">${inner}${tick}</span>`;
+  const inner = p.hidden ? `<b aria-hidden="true">?</b>` : (p.art ?? "");
+  // A hidden pick's gold edge and "?" say it all: no corner badge on top.
+  const tick =
+    p.locked && !p.hidden
+      ? `<i class="room-pick-tick" aria-hidden="true">${s.ready ? menuIcon("check") : PADLOCK}</i>`
+      : "";
+  return `<span class="room-pick${p.hidden ? " is-hidden" : ""}${p.locked ? " is-locked" : p.character ? " is-browsing" : " is-empty"}${s.ready ? " is-ready" : ""}" role="img" aria-label="${esc(label)}" title="${esc(label)}">${inner}${tick}</span>`;
 }
 function seat(s: RoomSeat) {
-  const state = !s.connected
-    ? tag("Offline")
-    : s.ready
-      ? `<span class="ui-tag is-ok">${menuIcon("check")}Ready</span>`
-      : s.pick?.locked
-        ? tag("Locked")
+  const state = s.pick
+    ? seatState(s)
+    : !s.connected
+      ? tag("Offline")
+      : s.ready
+        ? `<span class="ui-tag is-ok">${menuIcon("check")}Ready</span>`
         : tag("Choosing");
   // PvP: the pick is in its own tile (and may be hidden), never in words.
   const fighter = s.pick
-    ? s.pick.character && !s.pick.hidden
-      ? CHARACTERS[s.pick.character].name
-      : ""
+    ? s.pick.hidden
+      ? "Pick hidden"
+      : s.pick.character
+        ? CHARACTERS[s.pick.character].name
+        : ""
     : CHARACTERS[s.character].name;
   const sub = [fighter, s.host ? "Host" : "", s.flair ?? ""]
     .filter(Boolean)
@@ -169,7 +186,7 @@ function banner(d: RoomData) {
       : d.mode === "teams"
         ? "Starts when all four are ready"
         : "Everyone fights everyone · 3 or 4 players";
-  return `<div class="room-banner is-mode is-${d.mode}"><span class="room-banner-text"><span class="ui-kicker">${d.arcade ? `${esc(d.arcade.name)} · ` : "Private room · "}${firstTo(d.rounds)}</span><b class="room-banner-name">${MODE_NAMES[d.mode]}</b><small class="ui-note room-banner-line">${line}</small></span></div>`;
+  return `<div class="room-banner is-mode is-${d.mode}"><span class="room-banner-text"><span class="ui-kicker">${d.arcade ? `${esc(d.arcade.name)} · ` : ""}${firstTo(d.rounds)}</span><b class="room-banner-name">${MODE_NAMES[d.mode]}</b><small class="ui-note room-banner-line">${line}</small></span></div>`;
 }
 function head(title: string, note: string, extra = "") {
   return `<div class="room-head"><h3 class="ui-h">${esc(title)}</h3>${extra || `<small class="ui-note">${esc(note)}</small>`}</div>`;
@@ -278,7 +295,9 @@ function more(d: RoomData) {
   const items = [
     item("settings", "settings", "Settings"),
     item("help", "help", "How to play"),
-    ...(d.watch || full ? [] : [item("invite", "add-friend", "Invite friends")]),
+    ...(d.watch || full
+      ? []
+      : [item("invite", "add-friend", "Invite friends")]),
     d.watch
       ? item("stop-watching", "stop-watching", "Stop watching", true)
       : item("leave", "leave", "Leave the room", true),

@@ -220,6 +220,20 @@ function masteryRing(c: CharacterId, d: RosterData, size?: number) {
 }
 const rangeTag = (c: CharacterId) =>
   `<span class="ui-tag roster-range">${rangeName(c)}</span>`;
+/**
+ * Ranged or close, readable at a glance on every card (on phones the card
+ * has no room for the words): a crosshair in sky blue, or an upright sword
+ * in ember (upright and square: a slanted line in a circle reads as "no").
+ */
+const RANGE_ICONS = {
+  long: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/>',
+  close:
+    '<path d="M12 2.5 14 6v9h-4V6Z"/><path d="M7 15h10"/><path d="M12 15v5"/><path d="M10 21.5h4"/>',
+} as const;
+export const rangeBadge = (c: CharacterId) => {
+  const r = attackRange(c) === "long" ? "long" : "close";
+  return `<span class="roster-range-badge is-${r}" role="img" aria-label="${rangeName(c)}" title="${rangeName(c)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RANGE_ICONS[r]}</svg></span>`;
+};
 
 /** A card's fighter as the Wardrobe dresses it: its skin, else your Colors. */
 function cardArt(c: CharacterId, d: RosterData) {
@@ -246,8 +260,8 @@ function card(c: CharacterId, view: RosterView, d: RosterData) {
     : "";
   const foot = taken
     ? `${rangeTag(c)}${tag("Taken")}`
-    : `${rangeTag(c)}<span class="ui-note">${looks.have}/${looks.all} looks</span>${playing ? tag(d.room ? "Locked" : "Playing", "ok") : ""}`;
-  return `<button type="button" class="roster-card${taken ? " is-taken" : ""}" data-roster-card="${c}" aria-pressed="${c === view.focus}" aria-label="${esc(label)}" style="--el:${elVar(c)}"><span class="roster-card-top">${elementTag(f.element)}${badge}${masteryRing(c, d, 34)}</span><span class="roster-card-art">${cardArt(c, d)}</span><span class="roster-card-text"><b class="roster-card-name">${esc(f.name)}</b><small>${esc(f.role)}</small></span><span class="roster-card-foot">${foot}</span></button>`;
+    : `${rangeTag(c)}<span class="ui-note">${looks.have}/${looks.all} looks</span>${playing ? (d.room ? `<span class="ui-tag roster-locked">Locked</span>` : tag("Playing", "ok")) : ""}`;
+  return `<button type="button" class="roster-card${taken ? " is-taken" : ""}" data-roster-card="${c}" aria-pressed="${c === view.focus}" aria-label="${esc(label)}" style="--el:${elVar(c)}"><span class="roster-card-top"><span class="roster-card-tags">${elementTag(f.element)}${rangeBadge(c)}</span>${badge}${masteryRing(c, d, 34)}</span><span class="roster-card-art">${cardArt(c, d)}</span><span class="roster-card-text"><b class="roster-card-name">${esc(f.name)}</b><small>${esc(f.role)}</small></span><span class="roster-card-foot">${foot}</span></button>`;
 }
 
 function filters(view: RosterView) {
@@ -351,7 +365,7 @@ function gridMarkup(view: RosterView, d: RosterData) {
       ? "You play as"
       : "Picked";
   const foot = actionBar(
-    `${avatar(fighterAvatar(view.focus, "roster-foot", d.looks[view.focus]), { element: focus.element })}<span class="roster-foot-text"><small class="ui-note">${esc(status)}</small><b class="ui-h">${esc(focus.name)}</b></span>`,
+    `${avatar(fighterAvatar(view.focus, "roster-foot", d.looks[view.focus]), { element: focus.element })}<span class="roster-foot-text"><small class="ui-note">${esc(status)}</small><span class="roster-foot-name"><b class="ui-h">${esc(focus.name)}</b>${rangeBadge(view.focus)}<small class="roster-foot-range">${rangeName(view.focus)}</small></span></span>`,
     actions(
       button("Details", {
         disabled: none,

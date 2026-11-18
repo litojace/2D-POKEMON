@@ -266,11 +266,7 @@ import {
   leadProjectile,
 } from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
-import {
-  framedAvatar,
-  identityPortrait,
-  portraitAvatar,
-} from "./portraits";
+import { framedAvatar, identityPortrait, portraitAvatar } from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
 import "./ui/tokens.css";
 import "./style.css";

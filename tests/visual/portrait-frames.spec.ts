@@ -256,9 +256,9 @@ for (const size of [
         await expect(
           own.locator('[data-portrait-frame="conqueror"]'),
         ).toHaveAttribute("data-frame-stars", "4");
-        await expect(ownFighter.locator('[data-fighter="voltkit"]')).toHaveCount(
-          1,
-        );
+        await expect(
+          ownFighter.locator('[data-fighter="voltkit"]'),
+        ).toHaveCount(1);
         expect(await ownFighter.innerHTML()).toContain("voltkit-stormcrown");
         await expect(page.locator('#menu [data-frame-stars="5"]')).toHaveCount(
           1,
@@ -283,7 +283,9 @@ for (const size of [
         ).toHaveCount(kind === "pvp" ? 0 : 1);
         if (kind === "pvp")
           await expect(
-            page.locator('.room-seats [data-room-seat="p2"] .room-pick.is-hidden'),
+            page.locator(
+              '.room-seats [data-room-seat="p2"] .room-pick.is-hidden',
+            ),
           ).toHaveCount(1);
         await snap(
           page,

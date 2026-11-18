@@ -387,7 +387,11 @@ button.room-seat.is-open:focus-visible {
   font-size: calc(20px * var(--text-scale, 1));
   line-height: 1;
   color: var(--ui-accent);
-  background: radial-gradient(circle at 50% 35%, var(--ui-bg-3), var(--ui-bg-1));
+  background: radial-gradient(
+    circle at 50% 35%,
+    var(--ui-bg-3),
+    var(--ui-bg-1)
+  );
 }
 .room-seat-side {
   display: flex;
@@ -417,8 +421,15 @@ button.room-seat.is-open:focus-visible {
 .room-pick.is-browsing > svg {
   opacity: 0.6;
 }
+/* Locked is gold, Ready green: the tile's edge and corner badge follow
+   the seat's state tag. */
 .room-pick.is-locked {
+  border: 2px solid var(--ui-warn);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ui-warn) 40%, transparent);
+}
+.room-pick.is-locked.is-ready {
   border-color: var(--ui-ok);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ui-ok) 40%, transparent);
 }
 .room-pick.is-hidden {
   background: repeating-linear-gradient(
@@ -432,8 +443,10 @@ button.room-seat.is-open:focus-visible {
   font-size: calc(20px * var(--text-scale, 1));
 }
 .room-pick.is-hidden.is-locked {
-  border-color: var(--ui-accent-lo);
-  color: var(--ui-accent);
+  color: var(--ui-warn);
+}
+.room-pick.is-hidden.is-locked.is-ready {
+  color: var(--ui-ok);
 }
 .room-pick-tick {
   position: absolute;
@@ -444,17 +457,56 @@ button.room-seat.is-open:focus-visible {
   width: 14px;
   height: 14px;
   border-radius: 50%;
+  background: var(--ui-warn);
+  color: var(--ui-accent-ink);
+}
+.room-pick.is-ready .room-pick-tick {
   background: var(--ui-ok);
   color: var(--ui-ok-ink);
 }
 .room-pick-tick svg {
   width: 10px;
   height: 10px;
-  stroke-width: 4;
+  color: inherit;
+  opacity: 1;
+  stroke-width: 3.4;
 }
-.room-pick.is-hidden .room-pick-tick {
-  background: var(--ui-accent);
+/* A seat's state (room-view.ts seatState): one width, so the pick tiles
+   line up in a column whatever the word. */
+.room-state {
+  justify-content: center;
+  min-width: 86px;
+}
+/* The tag's icons take its text colour, thick enough to read at 12 px
+   (the shared .menu-option-icon would paint them gold and thin). */
+.room-seat .ui-tag svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  color: inherit;
+  opacity: 1;
+  stroke-width: 3;
+}
+.room-state.is-locked {
+  background: var(--ui-warn);
   color: var(--ui-accent-ink);
+}
+.room-state.is-ready {
+  background: var(--ui-ok);
+  color: var(--ui-ok-ink);
+}
+/* A narrower seats column (300 px): the state goes under the tile, so the
+   name keeps its room. */
+@media (max-width: 1300px) and (min-height: 501px) {
+  .room-seat-side {
+    flex-direction: column;
+    gap: 3px;
+    width: 86px;
+  }
+  .room-pick {
+    width: 34px;
+    height: 34px;
+  }
 }
 @media (max-height: 500px) {
   .room-seat-side {
@@ -470,9 +522,20 @@ button.room-seat.is-open:focus-visible {
     width: 11px;
     height: 11px;
   }
+  .room-seat-side {
+    width: 62px;
+  }
   .room-seat.has-pick .ui-tag {
     padding: 0 4px;
     line-height: 1.4;
+  }
+  .room-state {
+    min-width: 0;
+    width: 100%;
+  }
+  .room-seat .ui-tag svg {
+    width: 10px;
+    height: 10px;
   }
   .portrait-initial {
     font-size: calc(15px * var(--text-scale, 1));
@@ -498,14 +561,30 @@ body:has(#menu > .room-screen) .topbar {
 }
 body:has(#menu > .room-screen) .chat-button[data-place="room"] {
   --chat-size: var(--room-btn);
-  top: calc(var(--room-top) + var(--room-pad) + var(--room-btn-in));
+  /* The seats' 1 px border, then their padding, as the ⋯ button. */
+  top: calc(var(--room-top) + 1px + var(--room-pad) + var(--room-btn-in));
   left: calc(
-    max(14px, var(--safe-left, 0px)) + var(--room-pad) + var(--room-btn-in)
+    max(14px, var(--safe-left, 0px)) + 1px + var(--room-pad) +
+      var(--room-btn-in)
   );
 }
+/* The kicker sits between the two buttons, level with them; the name and
+   its line take the banner's whole width below. */
 .room-banner.is-mode .room-banner-text {
-  padding-inline: calc(var(--room-btn, 40px) + 2 * var(--room-btn-in, 8px));
+  align-content: start;
+  gap: 2px;
+  padding: var(--room-btn-in, 8px) 12px 8px;
 }
+.room-banner.is-mode .ui-kicker {
+  display: block;
+  height: var(--room-btn, 40px);
+  line-height: var(--room-btn, 40px);
+  padding-inline: calc(var(--room-btn, 40px) + var(--room-btn-in, 8px) - 8px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .room-more {
   position: absolute;
   top: calc(var(--room-pad, 12px) + var(--room-btn-in, 8px));
@@ -535,7 +614,10 @@ body:has(#menu > .room-screen) .chat-button[data-place="room"] {
 }
 .room-menu {
   position: absolute;
-  top: calc(var(--room-pad, 12px) + var(--room-btn-in, 8px) + var(--room-btn, 40px) + 6px);
+  top: calc(
+    var(--room-pad, 12px) + var(--room-btn-in, 8px) + var(--room-btn, 40px) +
+      6px
+  );
   right: var(--room-pad, 12px);
   z-index: 3;
   display: grid;
@@ -577,8 +659,20 @@ body:has(#menu > .room-screen) .chat-button[data-place="room"] {
   body:has(#menu > .room-screen) {
     --room-top: max(6px, calc(var(--safe-top, 0px) + 6px));
     --room-pad: 6px;
-    --room-btn: 40px;
+    /* 44 px touch targets, 2 px inside the banner's edges. */
+    --room-btn: 44px;
     --room-btn-in: 2px;
+  }
+  .room-banner.is-mode {
+    height: 48px;
+  }
+  /* One line (the kicker is hidden), centred between the buttons. */
+  .room-banner.is-mode .ui-kicker {
+    display: none;
+  }
+  .room-banner.is-mode .room-banner-text {
+    align-content: center;
+    padding: 0 calc(var(--room-btn) + 2 * var(--room-btn-in));
   }
   .room-menu-item {
     min-height: 36px;

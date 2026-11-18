@@ -882,7 +882,11 @@ export function createArenaServer(
       const owner = socket?.data.account as Account | undefined;
       const p = a.players.find((p) => p.id === session.id);
       if (socket && owner && !owner.guest && p)
-        void portraitChoice.save(owner.id, socket.data.accessToken, p.character);
+        void portraitChoice.save(
+          owner.id,
+          socket.data.accessToken,
+          p.character,
+        );
     }
   }
   /** The 2v2 teammate who already locked in this fighter, if any. */
