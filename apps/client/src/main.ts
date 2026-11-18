@@ -277,7 +277,12 @@ import "./journey-frames.css";
 import "./boss-frames.css";
 import "./mobile-panels.css";
 import "./match-badge.css";
-import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
+import {
+  FollowCamera,
+  screenToWorld,
+  outsideView,
+  type CameraView,
+} from "./follow-camera";
 import { updateNameplate, updateNameplateHealth } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
@@ -4995,6 +5000,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   private needsHydration = true;
   private followCamera = new FollowCamera();
   private enemyBearing = document.createElement("div");
+  /** The camera view of the last frame (the target button's on-screen test). */
+  private aimView: CameraView | undefined;
   /** Where each fighter's nameplate was drawn last frame (the arrow keeps
    * off the followed fighter's). */
   private plates = new Map<string, PlateBox>();
@@ -5211,7 +5218,39 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       );
       if (hit) targetLock.toggle(hit.id);
     });
+    // The target button by Dash: the next enemy on screen, then none.
+    touch.onTarget = () => {
+      if (state?.phase !== "playing" || !local) return;
+      targetLock.cycle(this.targetsOnScreen(local));
+      // Lit (or not) at once, not a frame later.
+      touch.setTarget(true, !!targetLock.id);
+    };
     this.scale.refresh();
+  }
+  /**
+   * The enemies the target button can pick: the ones a tap could lock (a
+   * raid's bodies, lanterns and bubbles, else living visible enemies) that
+   * stand on screen, nearest first. On screen as the off-screen arrow
+   * judges it (outsideView), from the camera view of the last frame: the
+   * camera's own worldView cut off fighters standing at the court's edge.
+   */
+  targetsOnScreen(me: Fighter) {
+    const view = this.aimView;
+    if (!state || !view) return [];
+    const all =
+      (raidTargets(state, me) as Targetable[] | undefined) ??
+      visibleEnemies(me, me);
+    return all
+      .filter(
+        (t) =>
+          !outsideView(t.x, t.y, this.scale.width, this.scale.height, view),
+      )
+      .sort(
+        (a, b) =>
+          Math.hypot(a.x - me.x, a.y - me.y) -
+          Math.hypot(b.x - me.x, b.y - me.y),
+      )
+      .map((t) => t.id);
   }
   /** The tap-to-target lock's lifetime: it ends when its target dies or
    * leaves (a defeated fighter, a popped copy or bubble, a relit lantern). */
@@ -5820,6 +5859,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.cameras.main
       .setZoom(view.zoomX * hitZoom, view.zoomY * hitZoom)
       .centerOn(view.x, view.y);
+    this.aimView = view;
     const aim = screenToWorld(
       this.input.activePointer.x,
       this.input.activePointer.y,
@@ -6054,6 +6094,17 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const boss = state.raid ? state.players.find((p) => p.raidBoss) : undefined;
     this.bossGraphics.setDepth(boss ? fighterDepth(boss.y) : 0);
     this.layersUsed.clear();
+    // The target button: on while an enemy stands on screen in play, lit
+    // while a lock holds.
+    if (touch.enabled)
+      touch.setTarget(
+        state.phase === "playing" &&
+          !!local &&
+          local.hp > 0 &&
+          !local.out &&
+          this.targetsOnScreen(local).length > 0,
+        !!targetLock.id,
+      );
     // A locked Gloomshade body (real or copy, alike), unlit lantern or
     // Tidewyrm bubble (phones).
     if (touch.enabled && targetLock.id && local) {

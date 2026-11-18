@@ -1332,6 +1332,8 @@ dialog input[type="range"] {
   overflow: hidden;
   touch-action: none;
   user-select: none;
+  /* No tap highlight box over a round button (a grey square on iPhone). */
+  -webkit-tap-highlight-color: transparent;
   pointer-events: auto;
   opacity: var(--hud-opacity, 0.85);
   transition:
@@ -1365,6 +1367,34 @@ dialog input[type="range"] {
 .touch-buttons button[data-action="dash"] {
   border-color: #b4bbcc;
   background: #172530d9;
+}
+/* The target button (touch-controls.ts), over Dash: steps through the
+   enemies on screen. Off (dimmed, as a cooling button) while none is on
+   screen; lit in the reticle's red while a lock holds. */
+.touch-buttons .touch-target {
+  border-color: #b4bbcc;
+  background: #172530d9;
+  color: #e8f0ff;
+}
+/* A tap leaves no focus ring: the lock's red ring says what it did. */
+.touch-buttons .touch-target:focus {
+  outline: none;
+}
+.touch-target-icon {
+  width: 62%;
+  height: 62%;
+  pointer-events: none;
+}
+.touch-buttons .touch-target.is-locked {
+  border-color: #ff5d6c;
+  color: #ffd0d5;
+  box-shadow:
+    inset 0 0 0 3px #ffffff07,
+    0 0 12px #ff5d6c66,
+    0 3px 8px #0004;
+}
+.touch-buttons .touch-target.is-locked .touch-target-icon {
+  filter: drop-shadow(0 0 4px #ff5d6c);
 }
 .touch-buttons .skill-icon {
   width: 68%;
