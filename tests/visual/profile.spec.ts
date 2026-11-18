@@ -229,6 +229,21 @@ for (const size of SIZES)
         await expect(
           panel.locator(`[data-profile-main][data-tab="${t}"]`),
         ).toBeVisible();
+        // The new tab slides in (ui/motion.ts): measure it once it has landed.
+        await expect
+          .poll(() =>
+            panel.evaluate(
+              (el) =>
+                el
+                  .getAnimations({ subtree: true })
+                  .filter(
+                    (a) =>
+                      a.playState === "running" &&
+                      a.effect?.getTiming().iterations !== Infinity,
+                  ).length,
+            ),
+          )
+          .toBe(0);
       };
       if (size.phone)
         await expect(panel.locator(".ui-panel-head .ui-tabs")).toBeVisible();
