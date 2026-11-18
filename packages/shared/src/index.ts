@@ -237,7 +237,10 @@ export const PASSIVES: Record<
 /** Plates a fighter has now (Pangrove starts every round with all of them). */
 export const platesOf = (p: { plates?: number }) => p.plates ?? PLATES.max;
 /** A seedling's growth stage now: 0 (sprout), 1 (bud) or 2 (bloom). */
-export function seedStage(zone: { born?: number; ability: Ability }, time: number) {
+export function seedStage(
+  zone: { born?: number; ability: Ability },
+  time: number,
+) {
   const seed = zone.ability.seed;
   if (!seed) return 0;
   return Math.min(
@@ -246,7 +249,12 @@ export function seedStage(zone: { born?: number; ability: Ability }, time: numbe
   );
 }
 /** Statuses that stop a fighter from moving and acting. */
-export const DISABLING_STATUSES: StatusKind[] = ["stun", "freeze", "sleep", "shell"];
+export const DISABLING_STATUSES: StatusKind[] = [
+  "stun",
+  "freeze",
+  "sleep",
+  "shell",
+];
 export type AbilityKind =
   /** Single projectile. */
   | "projectile"
@@ -773,7 +781,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         3,
         10,
         "Lock a stream of water onto the enemy nearest your aim (380 px). For up to 2.1 seconds it takes 3 damage every 0.3 seconds and Tidefin drinks half of it back, until it gets 430 px away or out of sight.",
-        { range: 380, radius: 60, duration: 2.1, knockback: 0, drain: 0.5, tether: { tick: 0.3, breakRange: 430 } },
+        {
+          range: 380,
+          radius: 60,
+          duration: 2.1,
+          knockback: 0,
+          drain: 0.5,
+          tether: { tick: 0.3, breakRange: 430 },
+        },
       ),
       ability(
         "undertow",
@@ -1252,7 +1267,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     element: "Fire",
     role: "Artillery",
     description:
-      "A shy red panda, the \"fire fox\", with a flame at the tip of its tail. Lobs burning chestnuts from the back line and curls up in its tail when caught.",
+      'A shy red panda, the "fire fox", with a flame at the tip of its tail. Lobs burning chestnuts from the back line and curls up in its tail when caught.',
     color: 0xff8a3d,
     health: 140,
     speed: 235,
@@ -1309,7 +1324,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         7,
         10,
         "Sweep up a curtain of embers 240 px wide across your aim for 3 seconds: enemy shots that touch it burn up, and enemies on it take 7 damage every half second and catch fire.",
-        { duration: 3, knockback: 0, status: "burn", statusDuration: 2, tickInterval: 0.5, screen: { length: 240, distance: 90 } },
+        {
+          duration: 3,
+          knockback: 0,
+          status: "burn",
+          statusDuration: 2,
+          tickInterval: 0.5,
+          screen: { length: 240, distance: 90 },
+        },
       ),
       ability(
         "chestnut-storm",
@@ -1446,7 +1468,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         12,
         8,
         "A heavy quill that pins its target on a leash for 1.4 seconds: it can't go more than 110 px from where it was hit.",
-        { speed: 1100, radius: 12, status: "leash", statusDuration: 1.4, leash: 110 },
+        {
+          speed: 1100,
+          radius: 12,
+          status: "leash",
+          statusDuration: 1.4,
+          leash: 110,
+        },
       ),
       ability(
         "focus-shot",
@@ -1682,7 +1710,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         8,
         14,
         "Thump the ground and glare: enemies within 240 px take 8 and are Taunted for 1.1 seconds (they must walk at you, but can still fight back). You're Braced for 1.5 seconds: nothing knocks you back or pulls you.",
-        { radius: 240, duration: 1.5, knockback: 0, status: "taunt", statusDuration: 1.1 },
+        {
+          radius: 240,
+          duration: 1.5,
+          knockback: 0,
+          status: "taunt",
+          statusDuration: 1.1,
+        },
       ),
       ability(
         "landslide",
@@ -1731,7 +1765,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         9,
         11,
         "Squirt a jet of ink in their eyes: Blinded for 0.7 seconds, their basic attacks miss.",
-        { speed: 950, range: 520, radius: 14, status: "blind", statusDuration: 0.7 },
+        {
+          speed: 950,
+          range: 520,
+          radius: 14,
+          status: "blind",
+          statusDuration: 0.7,
+        },
       ),
       ability(
         "ink-strike",
@@ -1801,7 +1841,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         14,
         8,
         "Shoot out a sticky tongue. The first enemy it reaches takes 14 damage and is slowed, and Pangrove zips to it; a wall pulls Pangrove to the wall.",
-        { range: 480, radius: 14, speed: 1300, knockback: 0, status: "slow", statusDuration: 1.2 },
+        {
+          range: 480,
+          radius: 14,
+          speed: 1300,
+          knockback: 0,
+          status: "slow",
+          statusDuration: 1.2,
+        },
       ),
       ability(
         "scale-shrapnel",
@@ -1810,7 +1857,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         6,
         9,
         "Shed your armour plates as a fan of blades: 3 blades, plus 3 for each plate you have. Every plate is spent and grows back later.",
-        { count: 3, fan: 1.2, speed: 760, range: 300, radius: 10, knockback: 15 },
+        {
+          count: 3,
+          fan: 1.2,
+          speed: 760,
+          range: 300,
+          radius: 10,
+          knockback: 15,
+        },
       ),
       ability(
         "curl-roll",
@@ -1819,7 +1873,12 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         10,
         11,
         "Curl into a ball you steer for up to 3.5 seconds (cast again to uncurl). Speed builds on straight lines; ramming an enemy deals 10 to 34 damage, the faster the harder. Curled, you take 30% less damage.",
-        { duration: 3.5, speed: 540, knockback: 140, roll: { bonus: 24, reduction: 0.7 } },
+        {
+          duration: 3.5,
+          speed: 540,
+          knockback: 140,
+          roll: { bonus: 24, reduction: 0.7 },
+        },
       ),
       ability(
         "pinball",
@@ -1896,7 +1955,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         0,
         12,
         "Swap places with the enemy or your own seedling nearest the aim (up to 600 px away). A swapped enemy is slowed for a second.",
-        { range: 600, radius: 120, knockback: 0, status: "slow", statusDuration: 1 },
+        {
+          range: 600,
+          radius: 120,
+          knockback: 0,
+          status: "slow",
+          statusDuration: 1,
+        },
       ),
       ability(
         "overgrowth",
@@ -1905,7 +1970,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         28,
         20,
         "Vines erupt around Mossloth: 28 damage and Rooted for 1.2 seconds. Every seedling you have blooms at full growth, and your moss grows full.",
-        { cast: 0.3, radius: 230, knockback: 0, status: "root", statusDuration: 1.2, bloom: true },
+        {
+          cast: 0.3,
+          radius: 230,
+          knockback: 0,
+          status: "root",
+          statusDuration: 1.2,
+          bloom: true,
+        },
       ),
     ],
   },
@@ -1922,7 +1994,14 @@ export const PRACTICE_GRID: Ability = {
     5,
     3,
     "A practice patch of electrified ground. Jump to avoid it.",
-    { radius: 130, duration: 4, ground: true, status: "slow", statusDuration: 0.7, range: 450 },
+    {
+      radius: 130,
+      duration: 4,
+      ground: true,
+      status: "slow",
+      statusDuration: 0.7,
+      range: 450,
+    },
   ),
   element: "Electric",
 };
@@ -2242,7 +2321,7 @@ export function basicInterval(
   const base = character.basic.interval ?? 0.3,
     f = modeFactor(character.id, mode, players);
   const interval =
-    f === 1 ? base : Math.round((base * 1000) / Math.sqrt(f) / 5) * 5 / 1000;
+    f === 1 ? base : (Math.round((base * 1000) / Math.sqrt(f) / 5) * 5) / 1000;
   return interval * (empowered ? STATUS_RULES.empowerInterval : 1);
 }
 export interface Vec {
@@ -2281,10 +2360,22 @@ export function exAbility(a: Ability): Ability {
     radius: a.radius * EX.radius,
     ...(a.heal ? { heal: Math.round(a.heal * EX.damage) } : {}),
     ...(a.turret
-      ? { turret: { ...a.turret, damage: Math.round(a.turret.damage * EX.damage), range: a.turret.range * EX.radius } }
+      ? {
+          turret: {
+            ...a.turret,
+            damage: Math.round(a.turret.damage * EX.damage),
+            range: a.turret.range * EX.radius,
+          },
+        }
       : {}),
     ...(a.pop
-      ? { pop: { ...a.pop, damage: Math.round(a.pop.damage * EX.damage), radius: a.pop.radius * EX.radius } }
+      ? {
+          pop: {
+            ...a.pop,
+            damage: Math.round(a.pop.damage * EX.damage),
+            radius: a.pop.radius * EX.radius,
+          },
+        }
       : {}),
   };
 }
@@ -2488,7 +2579,13 @@ export interface Fighter extends Vec {
   mossAt?: number;
   mossStill?: boolean;
   /** Curl & Roll: rolling until `until`, at `speed` px/s toward `heading`, building to `top`. */
-  roll?: { until: number; speed: number; heading: number; top: number; slot: number };
+  roll?: {
+    until: number;
+    speed: number;
+    heading: number;
+    top: number;
+    slot: number;
+  };
   /** Pinball: bounces left and the speed-up per bounce (the flight itself is the dash). */
   pinball?: { bounces: number; speedUp: number };
   /** Gill Siphon: the stream locked onto `target` until `until`; the next tick, and the skill slot. */
@@ -2518,7 +2615,10 @@ export interface Orb extends Vec {
   /** Healing (default) restores health; energy charges the ultimate meter. */
   kind?: "heal" | "energy";
 }
-/** Party rules the room host can switch on in the lobby. */
+/**
+ * Match rules an arcade week switches on (arcade.ts). Private rooms used
+ * to let the host pick them ("party rules"); that was removed (unused).
+ */
 export const MUTATORS = {
   turbo: {
     name: "Turbo",
@@ -2542,7 +2642,8 @@ export const MUTATORS = {
   },
   crown: {
     name: "Crown Hill",
-    description: "Hold the centre circle alone for 12 seconds to win the round.",
+    description:
+      "Hold the centre circle alone for 12 seconds to win the round.",
   },
   random: {
     name: "Fighter roulette",
@@ -2558,7 +2659,8 @@ export const MUTATORS = {
   },
   rush: {
     name: "Orb Rush",
-    description: "Grab gems and carry them to your goal; bank 5 to win the round. Big hits knock gems loose.",
+    description:
+      "Grab gems and carry them to your goal; bank 5 to win the round. Big hits knock gems loose.",
   },
 } as const;
 /** 2v2 team-up: partners fighting side by side both hit harder. */
@@ -2572,15 +2674,27 @@ export const ELEMENT_GIFTS: Record<
   string,
   { name: string; text: string; value: number }
 > = {
-  Electric: { name: "Static charge", text: "basic attacks come 12% faster", value: 0.88 },
+  Electric: {
+    name: "Static charge",
+    text: "basic attacks come 12% faster",
+    value: 0.88,
+  },
   Fire: { name: "Kindling", text: "+6% damage", value: 1.06 },
   Water: { name: "Tidewell", text: "heals 2 health a second", value: 2 },
   Aura: { name: "Aura ward", text: "takes 8% less damage", value: 0.92 },
   Light: { name: "Glow", text: "skills recharge 10% faster", value: 0.9 },
   Psychic: { name: "Focus", text: "ultimate charges 15% faster", value: 1.15 },
   Earth: { name: "Bedrock", text: "knocked back 40% less", value: 0.6 },
-  Shadow: { name: "Dusk edge", text: "+10% damage to slowed, burning or stunned foes", value: 1.1 },
-  Nature: { name: "Lifebloom", text: "heals 6% of the damage dealt", value: 0.06 },
+  Shadow: {
+    name: "Dusk edge",
+    text: "+10% damage to slowed, burning or stunned foes",
+    value: 1.1,
+  },
+  Nature: {
+    name: "Lifebloom",
+    text: "heals 6% of the damage dealt",
+    value: 0.06,
+  },
 };
 /** The gift a fighter's partner gives them (by the partner's element). */
 export function giftFrom(partnerCharacter: CharacterId) {
@@ -2810,7 +2924,10 @@ function compactFighter(p: Fighter) {
   // Never show an ultimate as ready before the server's meter is full.
   if (p.ult !== undefined) out.ult = Math.floor(p.ult * 100) / 100;
   // Clients only draw other fighters' aim (wind-up telegraphs).
-  out.lastInput = { aimX: fine(p.lastInput.aimX), aimY: fine(p.lastInput.aimY) };
+  out.lastInput = {
+    aimX: fine(p.lastInput.aimX),
+    aimY: fine(p.lastInput.aimY),
+  };
   return out as WireSnapshot["players"][number];
 }
 /**
@@ -3083,7 +3200,12 @@ export function holdInCage(p: Fighter, time: number) {
     p.vx = p.vy = 0;
   }
 }
-function stepMovement(p: Fighter, input: Input, dt: number, time: number): void {
+function stepMovement(
+  p: Fighter,
+  input: Input,
+  dt: number,
+  time: number,
+): void {
   let dir = normalize(input.dx, input.dy);
   p.angle = Math.atan2(input.aimY - p.y, input.aimX - p.x);
   // Confused (Mind Maze): every way it tries to walk is reversed.
@@ -3095,7 +3217,10 @@ function stepMovement(p: Fighter, input: Input, dt: number, time: number): void 
   );
   if (taunt) {
     const d = Math.hypot(taunt.tx! - p.x, taunt.ty! - p.y);
-    dir = d > RULES.radius * 2 ? { x: (taunt.tx! - p.x) / d, y: (taunt.ty! - p.y) / d } : { x: 0, y: 0 };
+    dir =
+      d > RULES.radius * 2
+        ? { x: (taunt.tx! - p.x) / d, y: (taunt.ty! - p.y) / d }
+        : { x: 0, y: 0 };
   }
   const leash = p.statuses.find(
     (s) => s.kind === "leash" && s.until > time && s.tx !== undefined,
@@ -3280,114 +3405,860 @@ const rite = (
   ...change,
 });
 export const RITES: Rite[] = [
-  rite("voltkit", "minor", "static-lance", "Quick Lance", "Static Lance cooldown 8s → 6.5s.", { set: { cooldown: 6.5 } }),
-  rite("voltkit", "minor", "ball-lightning", "Big Ball", "Ball Lightning's blast is 30% wider.", { mul: { explosion: 1.3 } }),
-  rite("voltkit", "minor", "static-glide", "Long Glide", "Static Glide lasts 2s instead of 1.4s.", { set: { duration: 2, statusDuration: 2 } }),
-  rite("voltkit", "minor", "spark-dart", "Hot Darts", "Spark Dart deals 7 damage instead of 6.", { set: { damage: 7 } }),
-  rite("voltkit", "major", "static-glide", "Tailwind", "Static Glide cooldown 12s → 8s.", { set: { cooldown: 8 } }),
-  rite("voltkit", "major", "ball-lightning", "Thunderhead", "Ball Lightning becomes three orbs of 14 damage with smaller blasts.", { set: { kind: "barrage", count: 3, damage: 14, explosion: 70 } }),
-  rite("cindrake", "minor", "crest-flare", "Long Breath", "Crest Flare lasts 1.6s instead of 1.2s.", { set: { duration: 1.6 } }),
-  rite("cindrake", "minor", "magma-bomb", "Wide Bomb", "Magma Bomb's blast is 30% wider.", { mul: { explosion: 1.3 } }),
-  rite("cindrake", "minor", "heat-cracks", "Deep Cracks", "Heat Cracks lasts 3.5s instead of 2.5s.", { set: { duration: 3.5 } }),
-  rite("cindrake", "minor", "cinder-snap", "Searing Snap", "Cinder Snap deals 18 damage instead of 15.", { set: { damage: 18 } }),
-  rite("cindrake", "major", "sunfire-pillar", "Solar Pillar", "Sunfire Pillar erupts instantly and is 25% wider.", { set: { cast: 0 }, mul: { radius: 1.25 } }),
-  rite("cindrake", "major", "heat-cracks", "Burning Cracks", "Heat Cracks sets enemies on fire.", { set: { status: "burn", statusDuration: 1.5 } }),
-  rite("tidefin", "minor", "gill-siphon", "Deep Siphon", "Gill Siphon lasts 3s instead of 2.1s.", { set: { duration: 3 } }),
-  rite("tidefin", "minor", "undertow", "Wide Undertow", "Undertow is 20% wider.", { mul: { radius: 1.2 } }),
-  rite("tidefin", "minor", "tide-double", "Slipstream", "Tide Double's speed burst lasts 3s instead of 2s.", { set: { statusDuration: 3 } }),
-  rite("tidefin", "minor", "tide-needle", "Long Needle", "Tide Needle flies 25% further.", { mul: { range: 1.25 } }),
-  rite("tidefin", "major", "undertow", "Maelstrom", "Undertow deals 5 per tick instead of 3 and lasts 4.5s.", { set: { damage: 5, duration: 4.5 } }),
-  rite("tidefin", "major", "gill-siphon", "Thirsty Gills", "Gill Siphon drinks back all the damage it deals instead of half.", { set: { drain: 1 } }),
-  rite("auralynx", "minor", "prism-shot", "Swift Prism", "Prism Shot flies 35% faster.", { mul: { speed: 1.35 } }),
-  rite("auralynx", "minor", "shatter-paw", "Long Paw", "Shatter Paw reaches 20% further.", { mul: { range: 1.2 } }),
-  rite("auralynx", "minor", "facet-guard", "Steady Guard", "Facet Guard lasts 2.2s instead of 1.6s.", { set: { duration: 2.2 } }),
-  rite("auralynx", "minor", "prism-jab", "Hard Jab", "Prism Jab deals 15 damage instead of 13.", { set: { damage: 15 } }),
-  rite("auralynx", "major", "prism-shot", "Prism Burst", "Prism Shot explodes on impact, hitting everyone nearby.", { set: { explosion: 90 } }),
-  rite("auralynx", "major", "crystal-cage", "Long Cage", "Crystal Cage stands for 4s instead of 2.5s and deals 18 instead of 10.", { set: { duration: 4, damage: 18 } }),
-  rite("lumoth", "minor", "wing-dust", "Dust Storm", "Wing Dust throws 7 motes of 7 damage instead of 5 of 8.", { set: { count: 7, damage: 7 } }),
-  rite("lumoth", "minor", "eyespot-flash", "Wide Wings", "Eyespot Flash reaches 20% further.", { mul: { radius: 1.2 } }),
-  rite("lumoth", "minor", "kindle", "Long Kindle", "Kindle lasts 6.5s instead of 5s.", { set: { duration: 6.5 } }),
-  rite("lumoth", "minor", "glint", "Bright Glint", "Glint deals 7 damage instead of 6.", { set: { damage: 7 } }),
-  rite("lumoth", "major", "radiant-flare", "Quick Flare", "Radiant Flare charges in 0.2s instead of 0.45s.", { set: { cast: 0.2 } }),
-  rite("lumoth", "major", "eyespot-flash", "Dazzle", "Eyespot Flash stuns for 0.9s instead of 0.5s.", { set: { statusDuration: 0.9 } }),
-  rite("mystowl", "minor", "third-eye-ray", "Far Sight", "Third-Eye Ray reaches 20% further.", { mul: { range: 1.2 } }),
-  rite("mystowl", "minor", "booming-hoot", "Loud Hoot", "Booming Hoot is 20% wider.", { mul: { radius: 1.2 } }),
-  rite("mystowl", "minor", "wing-cloak", "Long Cloak", "Wing Cloak lasts 4s instead of 3s.", { set: { duration: 4 } }),
-  rite("mystowl", "minor", "mind-dart", "Heavy Dart", "Mind Dart deals 10 damage instead of 8.", { set: { damage: 10 } }),
-  rite("mystowl", "major", "third-eye-ray", "Mind Lock", "Third-Eye Ray stuns for 0.5s instead of slowing.", { set: { status: "stun", statusDuration: 0.5 } }),
-  rite("mystowl", "major", "mind-maze", "Deep Maze", "Mind Maze is 35% wider.", { mul: { radius: 1.35 } }),
-  rite("terradon", "minor", "shell-bash", "Long Bash", "Shell Bash reaches 20% further.", { mul: { range: 1.2 } }),
-  rite("terradon", "minor", "shell-up", "Thick Moss", "Shell Up regrows 35 HP instead of 25.", { set: { heal: 7 } }),
-  rite("terradon", "minor", "mud-mire", "Deep Mud", "Mud Mire is 20% wider.", { mul: { radius: 1.2 } }),
-  rite("terradon", "minor", "boulder-swipe", "Heavy Swipe", "Boulder Swipe deals 18 damage instead of 15.", { set: { damage: 18 } }),
-  rite("terradon", "major", "tremor", "Quick Quake", "Tremor charges in 0.25s instead of 0.5s.", { set: { cast: 0.25 } }),
-  rite("terradon", "major", "mud-mire", "Sinking Mud", "Mud Mire also deals 4 damage per tick.", { set: { damage: 4 } }),
-  rite("duskveil", "minor", "shade-crawl", "Deep Crawl", "Shade Crawl deals 24 damage instead of 20.", { set: { damage: 24 } }),
-  rite("duskveil", "minor", "ghostfire", "Five Flames", "Ghostfire throws 5 flames instead of 3.", { set: { count: 5 } }),
-  rite("duskveil", "minor", "haunted-lantern", "Long Watch", "Haunted Lantern lasts 5.5s instead of 4s.", { set: { duration: 5.5 } }),
-  rite("duskveil", "minor", "lantern-wisp", "Bright Wisp", "Lantern Wisp deals 11 damage instead of 9.", { set: { damage: 11 } }),
-  rite("duskveil", "major", "haunted-lantern", "Bright Lantern", "Haunted Lantern shoots twice as often.", { mul: { tickInterval: 0.5 } }),
-  rite("duskveil", "major", "void-orb", "Burning Void", "Void Orb's blast is 30% wider and burns.", { mul: { explosion: 1.3 }, set: { status: "burn", statusDuration: 2 } }),
-  rite("coilemur", "minor", "magnet-lash", "Long Lash", "Magnet Lash reaches 20% further.", { mul: { range: 1.2 } }),
-  rite("coilemur", "minor", "static-clamp", "Tight Clamp", "Static Clamp deals 32 damage instead of 28.", { set: { damage: 32 } }),
-  rite("coilemur", "minor", "spark-trail", "Long Trail", "Spark Trail lasts 4.5s instead of 3.5s.", { set: { duration: 4.5 } }),
-  rite("coilemur", "minor", "coil-swipe", "Hot Coil", "Coil Swipe deals 14 damage instead of 12.", { set: { damage: 14 } }),
-  rite("coilemur", "major", "magnet-lash", "Quick Lash", "Magnet Lash cooldown 12s → 9s.", { set: { cooldown: 9 } }),
-  rite("coilemur", "major", "electromagnet", "Superconductor", "Electromagnet is 25% wider and pulls harder.", { mul: { radius: 1.25, knockback: 1.4 } }),
-  rite("pyranda", "minor", "chestnut-mortar", "Big Chestnut", "Chestnut Mortar's blast is 25% wider.", { mul: { radius: 1.25 } }),
-  rite("pyranda", "minor", "hot-coals", "Slow Burn", "Hot Coals last 5.5s instead of 4s.", { set: { duration: 5.5 } }),
-  rite("pyranda", "minor", "ember-curtain", "Long Curtain", "Ember Curtain stands for 4.5s instead of 3s.", { set: { duration: 4.5 } }),
-  rite("pyranda", "minor", "ember-lob", "Hot Lob", "Ember Lob deals 12 damage instead of 10.", { set: { damage: 12 } }),
-  rite("pyranda", "major", "chestnut-mortar", "Rapid Fire", "Chestnut Mortar cooldown 8s → 5.5s.", { set: { cooldown: 5.5 } }),
-  rite("pyranda", "major", "chestnut-storm", "Harvest Storm", "Chestnut Storm is 30% wider.", { mul: { radius: 1.3 } }),
-  rite("glacelle", "minor", "hailstone", "Big Hail", "Hailstone deals 22 damage instead of 18.", { set: { damage: 22 } }),
-  rite("glacelle", "minor", "frost-bloom", "Wide Bloom", "Frost Bloom is 20% wider.", { mul: { radius: 1.2 } }),
-  rite("glacelle", "minor", "frost-breath", "Long Breath", "Frost Breath lasts 1.4s instead of 1s.", { set: { duration: 1.4 } }),
-  rite("glacelle", "minor", "rime-shard", "Sharp Rime", "Rime Shard deals 9 damage instead of 8.", { set: { damage: 9 } }),
-  rite("glacelle", "major", "hailstone", "Flash Freeze", "Hailstone freezes for 0.5s instead of slowing.", { set: { status: "freeze", statusDuration: 0.5 } }),
-  rite("glacelle", "major", "whiteout", "Permafrost", "Whiteout lasts 3.6s and is 15% wider.", { set: { duration: 3.6 }, mul: { radius: 1.15 } }),
-  rite("halcyra", "minor", "pinning-quill", "Heavy Quill", "Pinning Quill pins for 2.2s instead of 1.4s.", { set: { statusDuration: 2.2 } }),
-  rite("halcyra", "minor", "focus-shot", "Steady Aim", "Focus Shot charges in 0.25s instead of 0.4s.", { set: { cast: 0.25 } }),
-  rite("halcyra", "minor", "halcyon-rewind", "Quick Rewind", "Halcyon Rewind cooldown 17s → 12s.", { set: { cooldown: 12 } }),
-  rite("halcyra", "minor", "aura-quill", "Keen Quill", "Aura Quill deals 9 damage instead of 8.", { set: { damage: 9 } }),
-  rite("halcyra", "major", "focus-shot", "Rapid Focus", "Focus Shot cooldown 12s → 8s.", { set: { cooldown: 8 } }),
-  rite("halcyra", "major", "skyline-lance", "Stunning Lance", "Skyline Lance also stuns for 0.6s.", { set: { status: "stun", statusDuration: 0.6 } }),
-  rite("sunbara", "minor", "warm-spring", "Deep Spring", "Warm Spring is 25% wider.", { mul: { radius: 1.25 } }),
-  rite("sunbara", "minor", "yuzu-toss", "Big Yuzu", "Yuzu Toss's burst is 30% wider.", { mul: { explosion: 1.3 } }),
-  rite("sunbara", "minor", "daybreak", "Wide Dawn", "Daybreak is 20% wider.", { mul: { radius: 1.2 } }),
-  rite("sunbara", "minor", "sunseed", "Bright Seed", "Sunseed deals 8 damage instead of 7.", { set: { damage: 8 } }),
-  rite("sunbara", "major", "warm-spring", "Hot Spring", "Warm Spring heals allies 6 per tick instead of 4.", { set: { heal: 6 } }),
-  rite("sunbara", "major", "sanctuary", "Long Summer", "Sanctuary lasts 5.5s instead of 4s.", { set: { duration: 5.5 } }),
-  rite("astrabun", "minor", "moon-hop", "Far Hop", "Moon Hop reaches 380 px instead of 300.", { set: { range: 380 } }),
-  rite("astrabun", "minor", "mochi-pound", "Sticky Mochi", "Mochi Pound stuns for 0.7s instead of 0.45s.", { set: { statusDuration: 0.7 } }),
-  rite("astrabun", "minor", "moon-gravity", "Light Moon", "Moon Gravity is 20% wider.", { mul: { radius: 1.2 } }),
-  rite("astrabun", "minor", "mallet-bop", "Big Bop", "Mallet Bop deals 16 damage instead of 14.", { set: { damage: 16 } }),
-  rite("astrabun", "major", "moon-hop", "Double Hop", "Moon Hop cooldown 8s → 5s.", { set: { cooldown: 5 } }),
-  rite("astrabun", "major", "full-moon", "Harvest Moon", "Full Moon lands instantly and is 20% wider.", { set: { cast: 0 }, mul: { radius: 1.2 } }),
-  rite("wombolder", "minor", "burrow-rush", "Long Burrow", "Burrow Rush travels 20% further.", { mul: { range: 1.2 } }),
-  rite("wombolder", "minor", "bush-boomerang", "Heavy Boomerang", "Bush Boomerang deals 14 damage a pass instead of 11.", { set: { damage: 14 } }),
-  rite("wombolder", "minor", "grudge-thump", "Long Grudge", "Grudge Thump taunts for 1.6s instead of 1.1s.", { set: { statusDuration: 1.6 } }),
-  rite("wombolder", "minor", "rump-bump", "Big Bump", "Rump Bump deals 18 damage instead of 16.", { set: { damage: 18 } }),
-  rite("wombolder", "major", "burrow-rush", "Quick Burrow", "Burrow Rush cooldown 9s → 6.5s.", { set: { cooldown: 6.5 } }),
-  rite("wombolder", "major", "landslide", "Avalanche", "Landslide's eruption is 35% wider.", { mul: { explosion: 1.35 } }),
-  rite("shadopus", "minor", "ink-jet", "Thick Ink", "Ink Jet blinds for 1.1s instead of 0.7s.", { set: { statusDuration: 1.1 } }),
-  rite("shadopus", "minor", "ink-strike", "Sharp Ink", "Ink Strike deals 28 damage instead of 24.", { set: { damage: 28 } }),
-  rite("shadopus", "minor", "ink-cloud", "Deep Ink", "Ink Cloud's stealth lasts 3.5s instead of 2.5s.", { set: { duration: 3.5 } }),
-  rite("shadopus", "minor", "tentacle-lash", "Long Arms", "Tentacle Lash reaches 20% further.", { mul: { range: 1.2 } }),
-  rite("shadopus", "major", "ink-cloud", "Vanishing Act", "Ink Cloud cooldown 15s → 10s.", { set: { cooldown: 10 } }),
-  rite("shadopus", "major", "kraken-grasp", "Leviathan", "Kraken Grasp reaches 25% further.", { mul: { range: 1.25 } }),
-  rite("pangrove", "minor", "tongue-grapple", "Long Tongue", "Tongue Grapple reaches 25% further.", { mul: { range: 1.25 } }),
-  rite("pangrove", "minor", "scale-shrapnel", "Sharp Plates", "Scale Shrapnel blades deal 7 damage instead of 6.", { set: { damage: 7 } }),
-  rite("pangrove", "minor", "curl-roll", "Long Roll", "Curl & Roll lasts up to 5s instead of 3.5s.", { set: { duration: 5 } }),
-  rite("pangrove", "minor", "scale-swipe", "Sharp Scales", "Scale Swipe deals 17 damage instead of 15.", { set: { damage: 17 } }),
-  rite("pangrove", "major", "curl-roll", "Spiked Ball", "Curl & Roll rams Root the enemy for 0.8s.", { set: { status: "root", statusDuration: 0.8 } }),
-  rite("pangrove", "major", "pinball", "Bank Shot", "Pinball ricochets off up to 6 walls instead of 4.", { set: { count: 6 } }),
-  rite("mossloth", "minor", "seedling", "Thicket", "Up to 4 seedlings at once instead of 3.", { set: { count: 4 } }),
-  rite("mossloth", "minor", "sloth-time", "Wide Bubble", "Sloth Time's bubble is 20% wider.", { mul: { radius: 1.2 } }),
-  rite("mossloth", "minor", "lazy-swap", "Lazier", "Lazy Swap cooldown 12s → 9s.", { set: { cooldown: 9 } }),
-  rite("mossloth", "minor", "seed-spit", "Hard Seed", "Seed Spit deals 10 damage instead of 9.", { set: { damage: 10 } }),
-  rite("mossloth", "major", "seedling", "Deep Roots", "Seedlings root 50% longer.", { mul: { statusDuration: 1.5 } }),
-  rite("mossloth", "major", "sloth-time", "Long Nap", "Sloth Time lasts 4.5s instead of 3s.", { set: { duration: 4.5 } }),
+  rite(
+    "voltkit",
+    "minor",
+    "static-lance",
+    "Quick Lance",
+    "Static Lance cooldown 8s → 6.5s.",
+    { set: { cooldown: 6.5 } },
+  ),
+  rite(
+    "voltkit",
+    "minor",
+    "ball-lightning",
+    "Big Ball",
+    "Ball Lightning's blast is 30% wider.",
+    { mul: { explosion: 1.3 } },
+  ),
+  rite(
+    "voltkit",
+    "minor",
+    "static-glide",
+    "Long Glide",
+    "Static Glide lasts 2s instead of 1.4s.",
+    { set: { duration: 2, statusDuration: 2 } },
+  ),
+  rite(
+    "voltkit",
+    "minor",
+    "spark-dart",
+    "Hot Darts",
+    "Spark Dart deals 7 damage instead of 6.",
+    { set: { damage: 7 } },
+  ),
+  rite(
+    "voltkit",
+    "major",
+    "static-glide",
+    "Tailwind",
+    "Static Glide cooldown 12s → 8s.",
+    { set: { cooldown: 8 } },
+  ),
+  rite(
+    "voltkit",
+    "major",
+    "ball-lightning",
+    "Thunderhead",
+    "Ball Lightning becomes three orbs of 14 damage with smaller blasts.",
+    { set: { kind: "barrage", count: 3, damage: 14, explosion: 70 } },
+  ),
+  rite(
+    "cindrake",
+    "minor",
+    "crest-flare",
+    "Long Breath",
+    "Crest Flare lasts 1.6s instead of 1.2s.",
+    { set: { duration: 1.6 } },
+  ),
+  rite(
+    "cindrake",
+    "minor",
+    "magma-bomb",
+    "Wide Bomb",
+    "Magma Bomb's blast is 30% wider.",
+    { mul: { explosion: 1.3 } },
+  ),
+  rite(
+    "cindrake",
+    "minor",
+    "heat-cracks",
+    "Deep Cracks",
+    "Heat Cracks lasts 3.5s instead of 2.5s.",
+    { set: { duration: 3.5 } },
+  ),
+  rite(
+    "cindrake",
+    "minor",
+    "cinder-snap",
+    "Searing Snap",
+    "Cinder Snap deals 18 damage instead of 15.",
+    { set: { damage: 18 } },
+  ),
+  rite(
+    "cindrake",
+    "major",
+    "sunfire-pillar",
+    "Solar Pillar",
+    "Sunfire Pillar erupts instantly and is 25% wider.",
+    { set: { cast: 0 }, mul: { radius: 1.25 } },
+  ),
+  rite(
+    "cindrake",
+    "major",
+    "heat-cracks",
+    "Burning Cracks",
+    "Heat Cracks sets enemies on fire.",
+    { set: { status: "burn", statusDuration: 1.5 } },
+  ),
+  rite(
+    "tidefin",
+    "minor",
+    "gill-siphon",
+    "Deep Siphon",
+    "Gill Siphon lasts 3s instead of 2.1s.",
+    { set: { duration: 3 } },
+  ),
+  rite(
+    "tidefin",
+    "minor",
+    "undertow",
+    "Wide Undertow",
+    "Undertow is 20% wider.",
+    { mul: { radius: 1.2 } },
+  ),
+  rite(
+    "tidefin",
+    "minor",
+    "tide-double",
+    "Slipstream",
+    "Tide Double's speed burst lasts 3s instead of 2s.",
+    { set: { statusDuration: 3 } },
+  ),
+  rite(
+    "tidefin",
+    "minor",
+    "tide-needle",
+    "Long Needle",
+    "Tide Needle flies 25% further.",
+    { mul: { range: 1.25 } },
+  ),
+  rite(
+    "tidefin",
+    "major",
+    "undertow",
+    "Maelstrom",
+    "Undertow deals 5 per tick instead of 3 and lasts 4.5s.",
+    { set: { damage: 5, duration: 4.5 } },
+  ),
+  rite(
+    "tidefin",
+    "major",
+    "gill-siphon",
+    "Thirsty Gills",
+    "Gill Siphon drinks back all the damage it deals instead of half.",
+    { set: { drain: 1 } },
+  ),
+  rite(
+    "auralynx",
+    "minor",
+    "prism-shot",
+    "Swift Prism",
+    "Prism Shot flies 35% faster.",
+    { mul: { speed: 1.35 } },
+  ),
+  rite(
+    "auralynx",
+    "minor",
+    "shatter-paw",
+    "Long Paw",
+    "Shatter Paw reaches 20% further.",
+    { mul: { range: 1.2 } },
+  ),
+  rite(
+    "auralynx",
+    "minor",
+    "facet-guard",
+    "Steady Guard",
+    "Facet Guard lasts 2.2s instead of 1.6s.",
+    { set: { duration: 2.2 } },
+  ),
+  rite(
+    "auralynx",
+    "minor",
+    "prism-jab",
+    "Hard Jab",
+    "Prism Jab deals 15 damage instead of 13.",
+    { set: { damage: 15 } },
+  ),
+  rite(
+    "auralynx",
+    "major",
+    "prism-shot",
+    "Prism Burst",
+    "Prism Shot explodes on impact, hitting everyone nearby.",
+    { set: { explosion: 90 } },
+  ),
+  rite(
+    "auralynx",
+    "major",
+    "crystal-cage",
+    "Long Cage",
+    "Crystal Cage stands for 4s instead of 2.5s and deals 18 instead of 10.",
+    { set: { duration: 4, damage: 18 } },
+  ),
+  rite(
+    "lumoth",
+    "minor",
+    "wing-dust",
+    "Dust Storm",
+    "Wing Dust throws 7 motes of 7 damage instead of 5 of 8.",
+    { set: { count: 7, damage: 7 } },
+  ),
+  rite(
+    "lumoth",
+    "minor",
+    "eyespot-flash",
+    "Wide Wings",
+    "Eyespot Flash reaches 20% further.",
+    { mul: { radius: 1.2 } },
+  ),
+  rite(
+    "lumoth",
+    "minor",
+    "kindle",
+    "Long Kindle",
+    "Kindle lasts 6.5s instead of 5s.",
+    { set: { duration: 6.5 } },
+  ),
+  rite(
+    "lumoth",
+    "minor",
+    "glint",
+    "Bright Glint",
+    "Glint deals 7 damage instead of 6.",
+    { set: { damage: 7 } },
+  ),
+  rite(
+    "lumoth",
+    "major",
+    "radiant-flare",
+    "Quick Flare",
+    "Radiant Flare charges in 0.2s instead of 0.45s.",
+    { set: { cast: 0.2 } },
+  ),
+  rite(
+    "lumoth",
+    "major",
+    "eyespot-flash",
+    "Dazzle",
+    "Eyespot Flash stuns for 0.9s instead of 0.5s.",
+    { set: { statusDuration: 0.9 } },
+  ),
+  rite(
+    "mystowl",
+    "minor",
+    "third-eye-ray",
+    "Far Sight",
+    "Third-Eye Ray reaches 20% further.",
+    { mul: { range: 1.2 } },
+  ),
+  rite(
+    "mystowl",
+    "minor",
+    "booming-hoot",
+    "Loud Hoot",
+    "Booming Hoot is 20% wider.",
+    { mul: { radius: 1.2 } },
+  ),
+  rite(
+    "mystowl",
+    "minor",
+    "wing-cloak",
+    "Long Cloak",
+    "Wing Cloak lasts 4s instead of 3s.",
+    { set: { duration: 4 } },
+  ),
+  rite(
+    "mystowl",
+    "minor",
+    "mind-dart",
+    "Heavy Dart",
+    "Mind Dart deals 10 damage instead of 8.",
+    { set: { damage: 10 } },
+  ),
+  rite(
+    "mystowl",
+    "major",
+    "third-eye-ray",
+    "Mind Lock",
+    "Third-Eye Ray stuns for 0.5s instead of slowing.",
+    { set: { status: "stun", statusDuration: 0.5 } },
+  ),
+  rite(
+    "mystowl",
+    "major",
+    "mind-maze",
+    "Deep Maze",
+    "Mind Maze is 35% wider.",
+    { mul: { radius: 1.35 } },
+  ),
+  rite(
+    "terradon",
+    "minor",
+    "shell-bash",
+    "Long Bash",
+    "Shell Bash reaches 20% further.",
+    { mul: { range: 1.2 } },
+  ),
+  rite(
+    "terradon",
+    "minor",
+    "shell-up",
+    "Thick Moss",
+    "Shell Up regrows 35 HP instead of 25.",
+    { set: { heal: 7 } },
+  ),
+  rite("terradon", "minor", "mud-mire", "Deep Mud", "Mud Mire is 20% wider.", {
+    mul: { radius: 1.2 },
+  }),
+  rite(
+    "terradon",
+    "minor",
+    "boulder-swipe",
+    "Heavy Swipe",
+    "Boulder Swipe deals 18 damage instead of 15.",
+    { set: { damage: 18 } },
+  ),
+  rite(
+    "terradon",
+    "major",
+    "tremor",
+    "Quick Quake",
+    "Tremor charges in 0.25s instead of 0.5s.",
+    { set: { cast: 0.25 } },
+  ),
+  rite(
+    "terradon",
+    "major",
+    "mud-mire",
+    "Sinking Mud",
+    "Mud Mire also deals 4 damage per tick.",
+    { set: { damage: 4 } },
+  ),
+  rite(
+    "duskveil",
+    "minor",
+    "shade-crawl",
+    "Deep Crawl",
+    "Shade Crawl deals 24 damage instead of 20.",
+    { set: { damage: 24 } },
+  ),
+  rite(
+    "duskveil",
+    "minor",
+    "ghostfire",
+    "Five Flames",
+    "Ghostfire throws 5 flames instead of 3.",
+    { set: { count: 5 } },
+  ),
+  rite(
+    "duskveil",
+    "minor",
+    "haunted-lantern",
+    "Long Watch",
+    "Haunted Lantern lasts 5.5s instead of 4s.",
+    { set: { duration: 5.5 } },
+  ),
+  rite(
+    "duskveil",
+    "minor",
+    "lantern-wisp",
+    "Bright Wisp",
+    "Lantern Wisp deals 11 damage instead of 9.",
+    { set: { damage: 11 } },
+  ),
+  rite(
+    "duskveil",
+    "major",
+    "haunted-lantern",
+    "Bright Lantern",
+    "Haunted Lantern shoots twice as often.",
+    { mul: { tickInterval: 0.5 } },
+  ),
+  rite(
+    "duskveil",
+    "major",
+    "void-orb",
+    "Burning Void",
+    "Void Orb's blast is 30% wider and burns.",
+    { mul: { explosion: 1.3 }, set: { status: "burn", statusDuration: 2 } },
+  ),
+  rite(
+    "coilemur",
+    "minor",
+    "magnet-lash",
+    "Long Lash",
+    "Magnet Lash reaches 20% further.",
+    { mul: { range: 1.2 } },
+  ),
+  rite(
+    "coilemur",
+    "minor",
+    "static-clamp",
+    "Tight Clamp",
+    "Static Clamp deals 32 damage instead of 28.",
+    { set: { damage: 32 } },
+  ),
+  rite(
+    "coilemur",
+    "minor",
+    "spark-trail",
+    "Long Trail",
+    "Spark Trail lasts 4.5s instead of 3.5s.",
+    { set: { duration: 4.5 } },
+  ),
+  rite(
+    "coilemur",
+    "minor",
+    "coil-swipe",
+    "Hot Coil",
+    "Coil Swipe deals 14 damage instead of 12.",
+    { set: { damage: 14 } },
+  ),
+  rite(
+    "coilemur",
+    "major",
+    "magnet-lash",
+    "Quick Lash",
+    "Magnet Lash cooldown 12s → 9s.",
+    { set: { cooldown: 9 } },
+  ),
+  rite(
+    "coilemur",
+    "major",
+    "electromagnet",
+    "Superconductor",
+    "Electromagnet is 25% wider and pulls harder.",
+    { mul: { radius: 1.25, knockback: 1.4 } },
+  ),
+  rite(
+    "pyranda",
+    "minor",
+    "chestnut-mortar",
+    "Big Chestnut",
+    "Chestnut Mortar's blast is 25% wider.",
+    { mul: { radius: 1.25 } },
+  ),
+  rite(
+    "pyranda",
+    "minor",
+    "hot-coals",
+    "Slow Burn",
+    "Hot Coals last 5.5s instead of 4s.",
+    { set: { duration: 5.5 } },
+  ),
+  rite(
+    "pyranda",
+    "minor",
+    "ember-curtain",
+    "Long Curtain",
+    "Ember Curtain stands for 4.5s instead of 3s.",
+    { set: { duration: 4.5 } },
+  ),
+  rite(
+    "pyranda",
+    "minor",
+    "ember-lob",
+    "Hot Lob",
+    "Ember Lob deals 12 damage instead of 10.",
+    { set: { damage: 12 } },
+  ),
+  rite(
+    "pyranda",
+    "major",
+    "chestnut-mortar",
+    "Rapid Fire",
+    "Chestnut Mortar cooldown 8s → 5.5s.",
+    { set: { cooldown: 5.5 } },
+  ),
+  rite(
+    "pyranda",
+    "major",
+    "chestnut-storm",
+    "Harvest Storm",
+    "Chestnut Storm is 30% wider.",
+    { mul: { radius: 1.3 } },
+  ),
+  rite(
+    "glacelle",
+    "minor",
+    "hailstone",
+    "Big Hail",
+    "Hailstone deals 22 damage instead of 18.",
+    { set: { damage: 22 } },
+  ),
+  rite(
+    "glacelle",
+    "minor",
+    "frost-bloom",
+    "Wide Bloom",
+    "Frost Bloom is 20% wider.",
+    { mul: { radius: 1.2 } },
+  ),
+  rite(
+    "glacelle",
+    "minor",
+    "frost-breath",
+    "Long Breath",
+    "Frost Breath lasts 1.4s instead of 1s.",
+    { set: { duration: 1.4 } },
+  ),
+  rite(
+    "glacelle",
+    "minor",
+    "rime-shard",
+    "Sharp Rime",
+    "Rime Shard deals 9 damage instead of 8.",
+    { set: { damage: 9 } },
+  ),
+  rite(
+    "glacelle",
+    "major",
+    "hailstone",
+    "Flash Freeze",
+    "Hailstone freezes for 0.5s instead of slowing.",
+    { set: { status: "freeze", statusDuration: 0.5 } },
+  ),
+  rite(
+    "glacelle",
+    "major",
+    "whiteout",
+    "Permafrost",
+    "Whiteout lasts 3.6s and is 15% wider.",
+    { set: { duration: 3.6 }, mul: { radius: 1.15 } },
+  ),
+  rite(
+    "halcyra",
+    "minor",
+    "pinning-quill",
+    "Heavy Quill",
+    "Pinning Quill pins for 2.2s instead of 1.4s.",
+    { set: { statusDuration: 2.2 } },
+  ),
+  rite(
+    "halcyra",
+    "minor",
+    "focus-shot",
+    "Steady Aim",
+    "Focus Shot charges in 0.25s instead of 0.4s.",
+    { set: { cast: 0.25 } },
+  ),
+  rite(
+    "halcyra",
+    "minor",
+    "halcyon-rewind",
+    "Quick Rewind",
+    "Halcyon Rewind cooldown 17s → 12s.",
+    { set: { cooldown: 12 } },
+  ),
+  rite(
+    "halcyra",
+    "minor",
+    "aura-quill",
+    "Keen Quill",
+    "Aura Quill deals 9 damage instead of 8.",
+    { set: { damage: 9 } },
+  ),
+  rite(
+    "halcyra",
+    "major",
+    "focus-shot",
+    "Rapid Focus",
+    "Focus Shot cooldown 12s → 8s.",
+    { set: { cooldown: 8 } },
+  ),
+  rite(
+    "halcyra",
+    "major",
+    "skyline-lance",
+    "Stunning Lance",
+    "Skyline Lance also stuns for 0.6s.",
+    { set: { status: "stun", statusDuration: 0.6 } },
+  ),
+  rite(
+    "sunbara",
+    "minor",
+    "warm-spring",
+    "Deep Spring",
+    "Warm Spring is 25% wider.",
+    { mul: { radius: 1.25 } },
+  ),
+  rite(
+    "sunbara",
+    "minor",
+    "yuzu-toss",
+    "Big Yuzu",
+    "Yuzu Toss's burst is 30% wider.",
+    { mul: { explosion: 1.3 } },
+  ),
+  rite("sunbara", "minor", "daybreak", "Wide Dawn", "Daybreak is 20% wider.", {
+    mul: { radius: 1.2 },
+  }),
+  rite(
+    "sunbara",
+    "minor",
+    "sunseed",
+    "Bright Seed",
+    "Sunseed deals 8 damage instead of 7.",
+    { set: { damage: 8 } },
+  ),
+  rite(
+    "sunbara",
+    "major",
+    "warm-spring",
+    "Hot Spring",
+    "Warm Spring heals allies 6 per tick instead of 4.",
+    { set: { heal: 6 } },
+  ),
+  rite(
+    "sunbara",
+    "major",
+    "sanctuary",
+    "Long Summer",
+    "Sanctuary lasts 5.5s instead of 4s.",
+    { set: { duration: 5.5 } },
+  ),
+  rite(
+    "astrabun",
+    "minor",
+    "moon-hop",
+    "Far Hop",
+    "Moon Hop reaches 380 px instead of 300.",
+    { set: { range: 380 } },
+  ),
+  rite(
+    "astrabun",
+    "minor",
+    "mochi-pound",
+    "Sticky Mochi",
+    "Mochi Pound stuns for 0.7s instead of 0.45s.",
+    { set: { statusDuration: 0.7 } },
+  ),
+  rite(
+    "astrabun",
+    "minor",
+    "moon-gravity",
+    "Light Moon",
+    "Moon Gravity is 20% wider.",
+    { mul: { radius: 1.2 } },
+  ),
+  rite(
+    "astrabun",
+    "minor",
+    "mallet-bop",
+    "Big Bop",
+    "Mallet Bop deals 16 damage instead of 14.",
+    { set: { damage: 16 } },
+  ),
+  rite(
+    "astrabun",
+    "major",
+    "moon-hop",
+    "Double Hop",
+    "Moon Hop cooldown 8s → 5s.",
+    { set: { cooldown: 5 } },
+  ),
+  rite(
+    "astrabun",
+    "major",
+    "full-moon",
+    "Harvest Moon",
+    "Full Moon lands instantly and is 20% wider.",
+    { set: { cast: 0 }, mul: { radius: 1.2 } },
+  ),
+  rite(
+    "wombolder",
+    "minor",
+    "burrow-rush",
+    "Long Burrow",
+    "Burrow Rush travels 20% further.",
+    { mul: { range: 1.2 } },
+  ),
+  rite(
+    "wombolder",
+    "minor",
+    "bush-boomerang",
+    "Heavy Boomerang",
+    "Bush Boomerang deals 14 damage a pass instead of 11.",
+    { set: { damage: 14 } },
+  ),
+  rite(
+    "wombolder",
+    "minor",
+    "grudge-thump",
+    "Long Grudge",
+    "Grudge Thump taunts for 1.6s instead of 1.1s.",
+    { set: { statusDuration: 1.6 } },
+  ),
+  rite(
+    "wombolder",
+    "minor",
+    "rump-bump",
+    "Big Bump",
+    "Rump Bump deals 18 damage instead of 16.",
+    { set: { damage: 18 } },
+  ),
+  rite(
+    "wombolder",
+    "major",
+    "burrow-rush",
+    "Quick Burrow",
+    "Burrow Rush cooldown 9s → 6.5s.",
+    { set: { cooldown: 6.5 } },
+  ),
+  rite(
+    "wombolder",
+    "major",
+    "landslide",
+    "Avalanche",
+    "Landslide's eruption is 35% wider.",
+    { mul: { explosion: 1.35 } },
+  ),
+  rite(
+    "shadopus",
+    "minor",
+    "ink-jet",
+    "Thick Ink",
+    "Ink Jet blinds for 1.1s instead of 0.7s.",
+    { set: { statusDuration: 1.1 } },
+  ),
+  rite(
+    "shadopus",
+    "minor",
+    "ink-strike",
+    "Sharp Ink",
+    "Ink Strike deals 28 damage instead of 24.",
+    { set: { damage: 28 } },
+  ),
+  rite(
+    "shadopus",
+    "minor",
+    "ink-cloud",
+    "Deep Ink",
+    "Ink Cloud's stealth lasts 3.5s instead of 2.5s.",
+    { set: { duration: 3.5 } },
+  ),
+  rite(
+    "shadopus",
+    "minor",
+    "tentacle-lash",
+    "Long Arms",
+    "Tentacle Lash reaches 20% further.",
+    { mul: { range: 1.2 } },
+  ),
+  rite(
+    "shadopus",
+    "major",
+    "ink-cloud",
+    "Vanishing Act",
+    "Ink Cloud cooldown 15s → 10s.",
+    { set: { cooldown: 10 } },
+  ),
+  rite(
+    "shadopus",
+    "major",
+    "kraken-grasp",
+    "Leviathan",
+    "Kraken Grasp reaches 25% further.",
+    { mul: { range: 1.25 } },
+  ),
+  rite(
+    "pangrove",
+    "minor",
+    "tongue-grapple",
+    "Long Tongue",
+    "Tongue Grapple reaches 25% further.",
+    { mul: { range: 1.25 } },
+  ),
+  rite(
+    "pangrove",
+    "minor",
+    "scale-shrapnel",
+    "Sharp Plates",
+    "Scale Shrapnel blades deal 7 damage instead of 6.",
+    { set: { damage: 7 } },
+  ),
+  rite(
+    "pangrove",
+    "minor",
+    "curl-roll",
+    "Long Roll",
+    "Curl & Roll lasts up to 5s instead of 3.5s.",
+    { set: { duration: 5 } },
+  ),
+  rite(
+    "pangrove",
+    "minor",
+    "scale-swipe",
+    "Sharp Scales",
+    "Scale Swipe deals 17 damage instead of 15.",
+    { set: { damage: 17 } },
+  ),
+  rite(
+    "pangrove",
+    "major",
+    "curl-roll",
+    "Spiked Ball",
+    "Curl & Roll rams Root the enemy for 0.8s.",
+    { set: { status: "root", statusDuration: 0.8 } },
+  ),
+  rite(
+    "pangrove",
+    "major",
+    "pinball",
+    "Bank Shot",
+    "Pinball ricochets off up to 6 walls instead of 4.",
+    { set: { count: 6 } },
+  ),
+  rite(
+    "mossloth",
+    "minor",
+    "seedling",
+    "Thicket",
+    "Up to 4 seedlings at once instead of 3.",
+    { set: { count: 4 } },
+  ),
+  rite(
+    "mossloth",
+    "minor",
+    "sloth-time",
+    "Wide Bubble",
+    "Sloth Time's bubble is 20% wider.",
+    { mul: { radius: 1.2 } },
+  ),
+  rite(
+    "mossloth",
+    "minor",
+    "lazy-swap",
+    "Lazier",
+    "Lazy Swap cooldown 12s → 9s.",
+    { set: { cooldown: 9 } },
+  ),
+  rite(
+    "mossloth",
+    "minor",
+    "seed-spit",
+    "Hard Seed",
+    "Seed Spit deals 10 damage instead of 9.",
+    { set: { damage: 10 } },
+  ),
+  rite(
+    "mossloth",
+    "major",
+    "seedling",
+    "Deep Roots",
+    "Seedlings root 50% longer.",
+    { mul: { statusDuration: 1.5 } },
+  ),
+  rite(
+    "mossloth",
+    "major",
+    "sloth-time",
+    "Long Nap",
+    "Sloth Time lasts 4.5s instead of 3s.",
+    { set: { duration: 4.5 } },
+  ),
 ];
 export const RITE_BY_ID: Record<string, Rite> = Object.fromEntries(
   RITES.map((r) => [r.id, r]),
@@ -3398,7 +4269,10 @@ export interface Kit {
 }
 const kitCache = new Map<string, Kit>();
 /** A fighter's abilities with their rites applied (cached; never mutate). */
-export function kitOf(character: CharacterId, rites: readonly string[] = []): Kit {
+export function kitOf(
+  character: CharacterId,
+  rites: readonly string[] = [],
+): Kit {
   const base = CHARACTERS[character];
   if (!rites.length) return base;
   const key = `${character}|${rites.join(",")}`;
@@ -3410,7 +4284,10 @@ export function kitOf(character: CharacterId, rites: readonly string[] = []): Ki
       const r = RITE_BY_ID[id];
       if (!r || r.fighter !== character || r.skill !== a.id) continue;
       out = { ...out, ...r.set };
-      for (const [k, m] of Object.entries(r.mul ?? {}) as [RiteNumber, number][])
+      for (const [k, m] of Object.entries(r.mul ?? {}) as [
+        RiteNumber,
+        number,
+      ][])
         out[k] = (out[k] ?? 0) * m;
     }
     return out;
@@ -3441,7 +4318,8 @@ export function riteOffer(
 ) {
   const pool = (tier: RiteTier) =>
     RITES.filter(
-      (r) => r.fighter === character && r.tier === tier && !owned.includes(r.id),
+      (r) =>
+        r.fighter === character && r.tier === tier && !owned.includes(r.id),
     );
   const shuffle = <T>(list: T[]) => {
     for (let i = list.length - 1; i > 0; i--) {
@@ -3453,10 +4331,10 @@ export function riteOffer(
   const hasMajor = owned.some((id) => RITE_BY_ID[id]?.tier === "major");
   const size = RITE_RULES.choices + extra;
   const majors =
-    round >= RITE_RULES.majorFromRound && !hasMajor ? shuffle(pool("major")) : [];
-  return [...majors, ...shuffle(pool("minor"))]
-    .slice(0, size)
-    .map((r) => r.id);
+    round >= RITE_RULES.majorFromRound && !hasMajor
+      ? shuffle(pool("major"))
+      : [];
+  return [...majors, ...shuffle(pool("minor"))].slice(0, size).map((r) => r.id);
 }
 
 /**
@@ -3577,17 +4455,42 @@ export const ARENAS: Record<ArenaId, ArenaDef> = {
     tip: "A shallow lagoon with four raised islands to stand on.",
     obstacles: [],
     hazards: [],
-  },  "lantern-yard": {
+  },
+  "lantern-yard": {
     id: "lantern-yard",
     name: "Lantern Yard",
     tip: "A moonlit courtyard lit by four lanterns.",
     obstacles: [],
     hazards: [],
   },
-  "conductor-ring": { id: "conductor-ring", name: "Conductor Ring", tip: "Balance both twins’ health, pair opposite signs, then finish them together.", obstacles: [], hazards: [] },
-  "sky-terrace": { id: "sky-terrace", name: "Sky Terrace", tip: "Light three braziers together to ground Lumiwick.", obstacles: [], hazards: [] },
-  "sun-atrium": { id: "sun-atrium", name: "Sun Atrium", tip: "Relay skylight through the mirror posts into the heart.", obstacles: [], hazards: [] },
-  "cloud-deck": { id: "cloud-deck", name: "Cloud Deck", tip: "Follow the Dreamer and step the four rune pads in order.", obstacles: [], hazards: [] },
+  "conductor-ring": {
+    id: "conductor-ring",
+    name: "Conductor Ring",
+    tip: "Balance both twins’ health, pair opposite signs, then finish them together.",
+    obstacles: [],
+    hazards: [],
+  },
+  "sky-terrace": {
+    id: "sky-terrace",
+    name: "Sky Terrace",
+    tip: "Light three braziers together to ground Lumiwick.",
+    obstacles: [],
+    hazards: [],
+  },
+  "sun-atrium": {
+    id: "sun-atrium",
+    name: "Sun Atrium",
+    tip: "Relay skylight through the mirror posts into the heart.",
+    obstacles: [],
+    hazards: [],
+  },
+  "cloud-deck": {
+    id: "cloud-deck",
+    name: "Cloud Deck",
+    tip: "Follow the Dreamer and step the four rune pads in order.",
+    obstacles: [],
+    hazards: [],
+  },
 };
 /** Matches rotate through every arena. */
 export const ARENA_ROTATION: ArenaId[] = [
@@ -3601,7 +4504,9 @@ const withCentre = new Map<ArenaId, Rect[]>();
 export function shiftingUp(arena: ArenaDef, t: number) {
   const s = arena.shifting;
   if (!s) return false;
-  return t < 0 || (((t % (s.up + s.down)) + s.up + s.down) % (s.up + s.down)) < s.up;
+  return (
+    t < 0 || ((t % (s.up + s.down)) + s.up + s.down) % (s.up + s.down) < s.up
+  );
 }
 /** Seconds until the shifting wall rises (0 if it is up). */
 export function shiftingRisesIn(arena: ArenaDef, t: number) {
@@ -3629,14 +4534,22 @@ export function hazardIn(h: Hazard, t: number) {
 }
 /** What a hazard hit looks like to the damage rules (status, jump to avoid). */
 export function hazardAbility(h: Hazard): Ability {
-  return ability(`hazard-${h.kind}`, h.kind === "vent" ? "Vent" : "Surge", "zone", h.damage, 0, "", {
-    ground: h.ground,
-    knockback: 0,
-    radius: h.radius,
-    ...(h.kind === "vent" && h.status
-      ? { status: h.status, statusDuration: h.statusDuration }
-      : {}),
-  });
+  return ability(
+    `hazard-${h.kind}`,
+    h.kind === "vent" ? "Vent" : "Surge",
+    "zone",
+    h.damage,
+    0,
+    "",
+    {
+      ground: h.ground,
+      knockback: 0,
+      radius: h.radius,
+      ...(h.kind === "vent" && h.status
+        ? { status: h.status, statusDuration: h.statusDuration }
+        : {}),
+    },
+  );
 }
 /** A fighter's dash cooldown (the server and client prediction both read it). */
 export const dashCooldownOf = (p: { dashCd?: number }) =>

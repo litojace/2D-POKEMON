@@ -433,19 +433,10 @@ it("accepts a refreshed login token for the same account only", async () => {
   // The connection still plays after the refresh.
   expect((await emit(socket, "create", { name: "Fresh" })).ok).toBe(true);
 });
-it("lets only the host change party rules, in the lobby", async () => {
-  const { one, two, arena } = await lobby();
-  expect((await emit(two, "mutators", { ids: ["turbo"] })).ok).toBe(false);
-  expect((await emit(one, "mutators", { ids: ["bogus"] })).ok).toBe(false);
-  expect((await emit(one, "ready")).ok).toBe(true);
-  const set = await emit(one, "mutators", { ids: ["turbo", "quick"] });
-  expect(set.ok).toBe(true);
-  expect([...arena.mutators].sort()).toEqual(["quick", "turbo"]);
-  // A rule change asks everyone to ready up again.
-  expect(arena.players.every((p) => !p.ready)).toBe(true);
-  expect(arena.roundsToWin).toBe(2);
-  expect((await emit(one, "mutators", { ids: [] })).ok).toBe(true);
+it("plays a private room by the standard rules (party rules were removed)", async () => {
+  const { arena } = await lobby();
   expect(arena.mutators.size).toBe(0);
+  expect(arena.roundsToWin).toBe(3);
 });
 it("a full room doesn't end the watch you already have", async () => {
   const a = await lobby();
