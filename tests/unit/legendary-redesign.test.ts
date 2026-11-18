@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { creatureSvg } from "../../apps/client/src/creature-design";
 import { creaturePalette } from "../../apps/client/src/creature-palette";
+import { DOMParser } from "@xmldom/xmldom";
 import { SKIN_ART } from "../../apps/client/src/skins/skin-art";
 import { DESIGNS } from "../../apps/client/src/skins/modern-designs";
 import { PIRATE_TINTS } from "../../apps/client/src/skins/modern-pirates";
@@ -134,5 +135,24 @@ describe("Sky Pirates and Nova Vanguard, redrawn per champion", () => {
           } as any),
           `${c} ${view}`,
         ).toContain('data-keep="beak"');
+    // The same art, as well-formed SVG (an image decodes only if it is).
+    for (const c of ["", "hero-squad", "sky-pirates", "nova-vanguard"])
+      for (const view of ["down", "left", "right", "up"] as const) {
+        const errors: string[] = [];
+        new DOMParser({
+          onError: (_l: string, m: string) => errors.push(m),
+        } as any).parseFromString(
+          creatureSvg(
+            "halcyra",
+            view,
+            undefined,
+            undefined,
+            "normal",
+            c ? ({ skin: `halcyra-${c}` } as any) : undefined,
+          ),
+          "image/svg+xml",
+        );
+        expect(errors, `${c || "default"} ${view}`).toEqual([]);
+      }
   });
 });
