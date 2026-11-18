@@ -6,11 +6,7 @@ import {
 import type { CharacterId } from "@arena/shared";
 import type { SkinArt, Palette } from "./skin-art";
 import { creaturePalette } from "../creature-palette";
-import {
-  CARNIVAL_CREATURES,
-  CARNIVAL_TEXTILES,
-  EPIC_REPLACED_PROPS,
-} from "./epic-materials";
+import { EPIC_REPLACED_PROPS } from "./epic-materials";
 
 const blend = (a: string, b: string, t: number) =>
   "#" +
@@ -80,7 +76,7 @@ const retint = (
     Math.max(0.04, Math.min(0.97, l + lift)),
   );
 };
-type Tint = {
+export type Tint = {
   hue: number;
   mix: number;
   sat: number;
@@ -106,7 +102,6 @@ const TINTS: Record<FashionCollection, Tint> = {
     sat: 0.62,
     lift: [0, -0.06, -0.02],
   },
-  "dream-carnival": { hue: 0, mix: 0, sat: 0, lift: [0, 0, 0] },
 };
 const tinted = (id: CharacterId, collection: FashionCollection): Palette => {
   const base = creaturePalette[id],
@@ -121,50 +116,44 @@ const tinted = (id: CharacterId, collection: FashionCollection): Palette => {
     accent: tone(base.accent, 0),
   };
 };
+/** A champion's palette moved toward a tint (Legendary collections use it). */
+export const tintPalette = (id: CharacterId, t: Tint): Palette => {
+  const base = creaturePalette[id];
+  const tone = (hex: string, lift: number) =>
+    retint(hex, t.hue, t.mix, t.sat, lift);
+  return {
+    light: tone(base.light, t.lift[0]),
+    mid: tone(base.mid, t.lift[1]),
+    dark: tone(base.dark, t.lift[2]),
+    glow: base.glow,
+    accent: tone(base.accent, 0),
+  };
+};
 const artFor = (
   champion: CharacterId,
   collection: FashionCollection,
 ): SkinArt => {
-  const accent = FASHION_ROSTER[champion][5];
-  if (collection === "abyssal-expedition" || collection === "dream-carnival") {
-    const deep = collection === "abyssal-expedition";
-    const festival = CARNIVAL_TEXTILES[champion][0];
-    const mid = CARNIVAL_CREATURES[champion][0];
+  const accent = FASHION_ROSTER[champion][4];
+  if (collection === "abyssal-expedition")
     return {
-      palette: deep
-        ? { ...tinted(champion, collection), glow: "#8ff5e6" }
-        : {
-            light: blend(mid, "#f0f9ef", 0.57),
-            mid,
-            dark: blend(mid, "#241d45", 0.68),
-            glow: CARNIVAL_CREATURES[champion][1],
-            accent: champion === "duskveil" ? "#1b2139" : festival,
-          },
+      palette: { ...tinted(champion, collection), glow: "#8ff5e6" },
       accessories: [`fashion-${collection}`],
       replaces: EPIC_REPLACED_PROPS.includes(champion)
         ? ["flame", "scarf"]
         : ["scarf"],
       pattern: {
-        kind: deep ? "bands" : "stars",
-        color: deep ? "#82bfbc" : "#ddc8a1",
-        opacity: deep ? 0.12 : 0.1,
+        kind: "bands",
+        color: "#82bfbc",
+        opacity: 0.12,
         parts: ["tail", "wings"],
       },
-      trail: {
-        kind: deep ? "bubble" : "confetti",
-        colors: deep
-          ? [0x72f2de, 0xf3ac59]
-          : [parseInt(festival.slice(1), 16), 0xffe6a0],
-      },
-      skill: deep ? 0x72dfd3 : parseInt(festival.slice(1), 16),
+      trail: { kind: "bubble", colors: [0x72f2de, 0xf3ac59] },
+      skill: 0x72dfd3,
       // The small glint every Epic has; moving signature motifs are kept
-      // for the Legendary Nova Vanguard suits.
+      // for the Legendary collections.
       detail: "glint",
-      weapon: deep
-        ? { handle: "#284454", head: "#79bfc5" }
-        : { handle: blend(festival, "#221833", 0.55), head: festival },
+      weapon: { handle: "#284454", head: "#79bfc5" },
     };
-  }
 
   const palette: Palette = {
     ...tinted(champion, collection),
@@ -207,7 +196,7 @@ const artFor = (
   }
 };
 
-/** All 90 looks use the production creature layers and effect budget. */
+/** All 72 looks use the production creature layers and effect budget. */
 export const FASHION_ART: Record<string, SkinArt> = Object.fromEntries(
   (Object.keys(FASHION_ROSTER) as CharacterId[]).flatMap((id) =>
     FASHION_COLLECTION_IDS.map((collection) => [

@@ -72,7 +72,7 @@ const finite = (commands: unknown[][]) =>
 describe("Legendary signature effects", () => {
   it("gives each Legendary skin its own signature, and Epics only the small glint", () => {
     const legendary = CHAMPION_SKINS.filter((s) => s.rarity === "legendary");
-    expect(legendary).toHaveLength(ids.length * 2);
+    expect(legendary).toHaveLength(ids.length * 4);
     for (const s of legendary) {
       expect(SKIN_ART[s.id].signature, s.id).toBe(s.id);
       expect(EPIC_SIGNATURES[s.id], s.id).toBeDefined();
@@ -86,18 +86,18 @@ describe("Legendary signature effects", () => {
           id,
         ).toContain(id);
     for (const s of CHAMPION_SKINS.filter((s) =>
-      ["abyssal-expedition", "dream-carnival"].includes(s.collection as string),
+      ["abyssal-expedition"].includes(s.collection as string),
     ))
       expect(SKIN_ART[s.id].detail, s.id).toBe("glint");
     const sigs = Object.values(EPIC_SIGNATURES);
-    expect(sigs).toHaveLength(36);
-    expect(new Set(sigs.map((s) => s.name)).size).toBe(36);
-    expect(new Set(sigs.map((s) => s.draw)).size).toBe(36);
+    expect(sigs).toHaveLength(72);
+    expect(new Set(sigs.map((s) => s.name)).size).toBe(72);
+    expect(new Set(sigs.map((s) => s.draw)).size).toBe(72);
   });
 
   it("gives the new Epics no landing or victory of their own", () => {
     for (const s of CHAMPION_SKINS.filter((s) =>
-      ["abyssal-expedition", "dream-carnival"].includes(s.collection as string),
+      ["abyssal-expedition"].includes(s.collection as string),
     ))
       for (const moment of ["greeting", "celebrating"] as const) {
         const f = frame(3000, false, Math.PI / 2, { [moment]: true });
@@ -161,16 +161,18 @@ describe("Legendary signature effects", () => {
         drawSkinFx(f.ctx, art, 1);
         return JSON.stringify(f.commands);
       };
+      // Popping in, held, then gone: the idle frame has none of the motif.
       expect(again(5450), id).not.toBe(fresh(5450));
-      expect(again(6000), id).toBe(fresh(6000));
+      expect(again(6500), id).not.toBe(fresh(6500));
+      expect(again(7000), id).toBe(fresh(7000));
     }
   });
 
   it("gives only the Legendary Nova Vanguard suits a hero landing and a victory", () => {
     for (const id of Object.keys(EPIC_SIGNATURES)) {
       const legendary = id.endsWith("-nova-vanguard");
-      // Sky Pirates land and win over several frames (tested below).
-      if (id.endsWith("-sky-pirates")) continue;
+      // Sky Pirates and Hồn Việt land and win over several frames (tested below).
+      if (id.endsWith("-sky-pirates") || id.endsWith("-hon-viet") || id.endsWith("-stars-stripes")) continue;
       const art = { ...SKIN_ART[id], trail: undefined };
       // Ambient off: no idle particles, so every emission is the moment's.
       const land = frame(3000, false, Math.PI / 2, { greeting: true });
@@ -196,7 +198,7 @@ describe("Legendary signature effects", () => {
           winCalls.every((p) => p.behind),
           id,
         ).toBe(true);
-        // The motif swells for the moment, then settles.
+        // The motif is summoned for the moment, then leaves.
         const again = (now: number) => {
           land.commands.length = 0;
           drawSkinFx({ ...land.ctx, now, greeting: false }, art, 1);
@@ -208,7 +210,7 @@ describe("Legendary signature effects", () => {
           return JSON.stringify(f.commands);
         };
         expect(again(3600), id).not.toBe(fresh(3600));
-        expect(again(4300), id).toBe(fresh(4300));
+        expect(again(5000), id).toBe(fresh(5000));
       } else {
         expect(land.emit, id).not.toHaveBeenCalled();
         expect(win.emit, id).not.toHaveBeenCalled();
@@ -252,6 +254,134 @@ describe("Legendary signature effects", () => {
           art,
           1,
         );
+        const later = frame(1000 + ms + 2000, false);
+        drawSkinFx(later.ctx, art, 1);
+        expect(JSON.stringify(f.commands), `${id} ${moment}`).toBe(
+          JSON.stringify(later.commands),
+        );
+      }
+    }
+  });
+
+  it("keeps the champion's motif off the idle frame: idle light lives on the suit", () => {
+    for (const id of Object.keys(EPIC_SIGNATURES)) {
+      const art = { ...SKIN_ART[id], trail: undefined };
+      for (const now of [0, 700, 2900]) {
+        const idle = frame(now, false);
+        drawSkinFx(idle.ctx, art, 1);
+        // Compact: a few calls for the emblem, seam pulse or brim glint.
+        expect(idle.commands.length, id).toBeLessThanOrEqual(12);
+        const summoned = frame(now + 400, false, Math.PI / 2, {});
+        const cast = frame(now, false, Math.PI / 2, { ultimate: true });
+        drawSkinFx(cast.ctx, art, 1);
+        cast.commands.length = 0;
+        drawSkinFx({ ...cast.ctx, now: now + 400, ultimate: false }, art, 1);
+        drawSkinFx(summoned.ctx, art, 1);
+        expect(cast.commands.length, id).toBeGreaterThan(
+          summoned.commands.length,
+        );
+      }
+    }
+  });
+
+  it("leaves its own trail while moving, with particles that slow and fade in", () => {
+    for (const id of Object.keys(EPIC_SIGNATURES)) {
+      const f = frame(1000, false, 0, { moving: true });
+      drawSkinFx(f.ctx, SKIN_ART[id], 1);
+      const calls = f.emit.mock.calls.map(([p]) => p);
+      expect(calls.length, id).toBeGreaterThan(0);
+      // Behind the feet, and only one kind of trail (the generic one is off).
+      expect(calls.some((p) => p.behind), id).toBe(true);
+      expect(calls.length, id).toBeLessThanOrEqual(3);
+      const still = frame(1000, false);
+      drawSkinFx(still.ctx, SKIN_ART[id], 1);
+      expect(still.emit, id).not.toHaveBeenCalled();
+    }
+  });
+
+  it("never draws a negative size while a motif pops in and out", () => {
+    const sizes: Record<string, number[]> = {
+      fillCircle: [2],
+      strokeCircle: [2],
+      arc: [2],
+      fillEllipse: [2, 3],
+      strokeEllipse: [2, 3],
+    };
+    for (const id of Object.keys(EPIC_SIGNATURES)) {
+      const art = { ...SKIN_ART[id], trail: undefined };
+      const cast = frame(1000, true, Math.PI / 2, { ultimate: true });
+      drawSkinFx(cast.ctx, art, 1);
+      for (let now = 1000; now < 3000; now += 40)
+        for (const ambient of [true, false]) {
+          cast.commands.length = 0;
+          drawSkinFx({ ...cast.ctx, now, ambient, ultimate: false }, art, 1);
+          for (const [k, ...args] of cast.commands)
+            for (const i of sizes[k as string] ?? [])
+              expect(args[i] as number, `${id} ${k as string} @${now}`).toBeGreaterThanOrEqual(0);
+          // Fading never pushes alpha out of range.
+          for (const [k, ...args] of cast.commands)
+            if (k === "fillStyle" || k === "lineStyle") {
+              const al = args[k === "fillStyle" ? 1 : 2] as number | undefined;
+              if (al !== undefined) expect(al, `${id} ${k as string}`).toBeLessThanOrEqual(1.0001);
+              if (al !== undefined) expect(al, `${id} ${k as string}`).toBeGreaterThanOrEqual(0);
+            }
+        }
+    }
+  });
+
+  it("lands Stars & Stripes on a Walk-of-Fame star and wins with fireworks, then clears", () => {
+    for (const id of Object.keys(EPIC_SIGNATURES).filter((k) => k.endsWith("-stars-stripes"))) {
+      const art = { ...SKIN_ART[id], trail: undefined };
+      for (const [moment, ms] of [
+        ["greeting", 1300],
+        ["celebrating", 1900],
+      ] as const) {
+        const f = frame(1000, false, Math.PI / 2, { [moment]: true });
+        drawSkinFx(f.ctx, art, 1);
+        f.commands.length = 0;
+        drawSkinFx({ ...f.ctx, now: 1000 + ms * 0.5, [moment]: false }, art, 1);
+        const mid = f.commands.length;
+        const idle = frame(1000 + ms * 0.5, false);
+        drawSkinFx(idle.ctx, art, 1);
+        expect(mid, `${id} ${moment}`).toBeGreaterThan(idle.commands.length);
+        expect(finite(f.commands), `${id} ${moment}`).toBe(true);
+        f.commands.length = 0;
+        drawSkinFx({ ...f.ctx, now: 1000 + ms + 2000, [moment]: false }, art, 1);
+        const later = frame(1000 + ms + 2000, false);
+        drawSkinFx(later.ctx, art, 1);
+        expect(JSON.stringify(f.commands), `${id} ${moment}`).toBe(JSON.stringify(later.commands));
+      }
+    }
+  });
+
+  it("lands Hồn Việt on a Đông Sơn drum and wins with rising lanterns, then clears", () => {
+    for (const id of Object.keys(EPIC_SIGNATURES).filter((k) =>
+      k.endsWith("-hon-viet"),
+    )) {
+      const art = { ...SKIN_ART[id], trail: undefined };
+      for (const [moment, ms] of [
+        ["greeting", 1200],
+        ["celebrating", 1800],
+      ] as const) {
+        const f = frame(1000, false, Math.PI / 2, { [moment]: true });
+        drawSkinFx(f.ctx, art, 1);
+        // The landing throws petals off the drum, behind the champion.
+        if (moment === "greeting") {
+          const petals = f.emit.mock.calls.map(([p]) => p);
+          expect(petals.length, id).toBeGreaterThanOrEqual(5);
+          expect(petals.every((p) => p.behind && p.shape === "leaf"), id).toBe(true);
+        }
+        // Midway the moment draws more than an idle frame.
+        f.commands.length = 0;
+        drawSkinFx({ ...f.ctx, now: 1000 + ms * 0.4, [moment]: false }, art, 1);
+        const mid = f.commands.length;
+        const idle = frame(1000 + ms * 0.4, false);
+        drawSkinFx(idle.ctx, art, 1);
+        expect(mid, `${id} ${moment}`).toBeGreaterThan(idle.commands.length);
+        expect(finite(f.commands), `${id} ${moment}`).toBe(true);
+        // Afterwards the frame matches an idle one.
+        f.commands.length = 0;
+        drawSkinFx({ ...f.ctx, now: 1000 + ms + 2000, [moment]: false }, art, 1);
         const later = frame(1000 + ms + 2000, false);
         drawSkinFx(later.ctx, art, 1);
         expect(JSON.stringify(f.commands), `${id} ${moment}`).toBe(

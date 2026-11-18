@@ -47,7 +47,39 @@ export interface FxParticle {
   glow?: boolean;
   /** Cosmetic sparks emitted behind the body stay behind as they rise. */
   behind?: boolean;
+  // ---- Over-life shaping (all optional; a particle without them moves in a
+  // straight line and fades evenly, as before).
+  /** Air resistance: the share of its speed lost per second (0..~6). */
+  drag?: number;
+  /** Size at the end of its life, as a multiple of `size` (smoke grows,
+   * sparks shrink). */
+  grow?: number;
+  /** Share of its life spent fading in, so it never pops into view. */
+  fadeIn?: number;
+  /** Colour at the end of its life (a ramp from `color`). */
+  to?: number;
+  /** Sideways drift in pixels, a slow sway like ash or dust in the air. */
+  sway?: number;
 }
+
+/** Advance one particle: drag, gravity and velocity. Shared by the rig and
+ * the cosmetic previews so both move particles the same way. */
+export function stepParticle(p: FxParticle & { age: number }, dt: number) {
+  p.age += dt;
+  if (p.drag) {
+    const keep = Math.max(0, 1 - p.drag * dt);
+    p.vx *= keep;
+    p.vy *= keep;
+  }
+  p.x += p.vx * dt;
+  p.y += p.vy * dt;
+  p.vy += (FX_GRAVITY[p.shape] ?? 0) * dt;
+}
+const lerpColor = (a: number, b: number, k: number) => {
+  const ch = (c: number, s: number) => (c >> s) & 255;
+  const mix = (s: number) => Math.round(ch(a, s) + (ch(b, s) - ch(a, s)) * k);
+  return (mix(16) << 16) | (mix(8) << 8) | mix(0);
+};
 export interface FxContext {
   /** Exact animated joint position of final accessory art coordinates. */
   mount?: (part: CreaturePart, x: number, y: number) => { x: number; y: number };
@@ -114,7 +146,8 @@ const pick = (colors: number[]) => colors[Math.floor(Math.random() * colors.leng
 
 /** Particles left behind while moving (a few) and dashing (a burst). */
 function trail(ctx: FxContext, art: SkinArt) {
-  if (!art.trail || ctx.defeated) return;
+  // Legendary skins draw their own movement trail (epic-signature-fx).
+  if (!art.trail || ctx.defeated || art.signature) return;
   const rate = ctx.dashing ? 40 : ctx.moving ? 6 : 0;
   if (!rate || !ctx.chance(rate, ctx.dt)) return;
   const back = ctx.angle + Math.PI;
@@ -699,9 +732,25 @@ export function drawFxParticle(
  */
 export function drawAnyParticle(
   g: Phaser.GameObjects.Graphics,
-  p: FxParticle & { age: number },
-  fade: number,
+  particle: FxParticle & { age: number },
+  linearFade: number,
 ) {
+  // Over-life shaping: size, colour ramp, a fade-in, an eased fade-out and
+  // a sway. Plain particles pass straight through.
+  let p = particle,
+    fade = linearFade;
+  if (p.grow !== undefined || p.to !== undefined || p.fadeIn || p.sway) {
+    const k = Math.min(1, p.age / p.life);
+    const inK = p.fadeIn ? Math.min(1, k / p.fadeIn) : 1;
+    // Ease the fade-out: full for most of its life, then gone smoothly.
+    fade = inK * (1 - k * k);
+    p = {
+      ...p,
+      size: p.size * (1 + ((p.grow ?? 1) - 1) * k),
+      color: p.to !== undefined ? lerpColor(p.color, p.to, k) : p.color,
+      x: p.sway ? p.x + Math.sin(p.age * 4 + p.size * 7) * p.sway : p.x,
+    };
+  }
   if (p.glow && p.shape !== "ring" && p.shape !== "beam" && p.shape !== "shock" && p.shape !== "ray")
     g.fillStyle(p.color, 0.16 * fade).fillCircle(p.x, p.y, p.size * 2.6);
   if (drawFxParticle(g, p, fade)) return;
