@@ -4,6 +4,7 @@ import type { Facing } from "../animation/controller";
 import type { Palette } from "./skin-art";
 import { fashionCut } from "./fashion-fits";
 import { cutBox, UNDER } from "./rare-fashion";
+import { DESIGNS } from "./modern-designs";
 
 /**
  * Modern collections (prototype): Neon Campus, Hero Squad, Starlight Idol,
@@ -137,6 +138,12 @@ export function modernOutfit(
   const hx = head.cx,
     ht = Math.max(head.top, 16);
   const ox = side * 4;
+  // A champion's own design in this collection, where one is drawn.
+  const design = DESIGNS[theme]?.[id];
+  if (design) {
+    design({ id, side, back, hx, ht, C, T, B, W, L, R, ink, put, path, line, circle, rect, lume, garment, star });
+    return out;
+  }
 
   switch (theme) {
     // ---- Neon Campus: blazer, shirt and tie, LED headphones.
