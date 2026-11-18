@@ -103,6 +103,26 @@ hidden, which gives the seats and the picker the space instead.
 - The visual harness veils the lobby the same way
   (`tests/visual/harness/rooms.ts`). The specs are `rooms`,
   `pvp-party-flow`, `portrait-frames`, `chat` and `fighter-prepaint`.
+- `tests/visual/room-alignment.spec.ts` measures every PvP mode at
+  1440×900, 1280×720, 844×390, 852×393 (Dynamic Island) and 568×320. It
+  checks that the pick tiles form one column and the state tags share one
+  width; that avatars and the pick/state block are centred on their row;
+  that the heads and seats are flush left; that chat and ⋯ are level in the
+  banner's corners; that the mode name is centred between them; and that no
+  text wraps or is cut. Breaking the state width or moving the chat button
+  3 px makes it fail.
+
+## Seats and cards at a glance
+
+- **Seat states:** Choosing (plain), **Locked** (solid gold, a padlock),
+  **Ready** (solid green, a tick). The pick tile's edge follows the state.
+- **The host** wears the Lobby's crown (♛) before their name. On phones,
+  "(you)" is kept for screen readers only, because your seat's gold edge
+  already marks you.
+- **Ranged or close** is shown on every fighter card's top-right corner,
+  where mastery used to be (owner, 18 Nov; mastery stays on the detail). It
+  is drawn like the element badge: a solid glyph on a tinted disc, a sky-blue
+  bullseye or an ember sword. The picker's foot shows it beside the name.
 
 ## Not built yet
 

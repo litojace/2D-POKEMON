@@ -223,17 +223,18 @@ const rangeTag = (c: CharacterId) =>
 /**
  * Ranged or close, readable at a glance on every card, in its top-right
  * corner (where mastery was: the owner, 18 Nov; mastery stays on the
- * fighter's detail). On phones the card has no room for the words: a crosshair in sky blue, or an upright sword
+ * fighter's detail), drawn as the element badge beside it is: a solid
+ * glyph on a tinted disc. On phones the card has no room for the words: a crosshair in sky blue, or an upright sword
  * in ember (upright and square: a slanted line in a circle reads as "no").
  */
 const RANGE_ICONS = {
-  long: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/>',
+  long: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/>',
   close:
-    '<path d="M12 2.5 14 6v9h-4V6Z"/><path d="M7 15h10"/><path d="M12 15v5"/><path d="M10 21.5h4"/>',
+    '<path d="M12 1.5 15 5.5V15H9V5.5Z" fill="currentColor"/><rect x="5.5" y="14.5" width="13" height="3" rx="1.5" fill="currentColor"/><rect x="10.7" y="17" width="2.6" height="3.6" fill="currentColor"/><circle cx="12" cy="21.4" r="1.6" fill="currentColor"/>',
 } as const;
 export const rangeBadge = (c: CharacterId) => {
   const r = attackRange(c) === "long" ? "long" : "close";
-  return `<span class="roster-range-badge is-${r}" role="img" aria-label="${rangeName(c)}" title="${rangeName(c)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RANGE_ICONS[r]}</svg></span>`;
+  return `<span class="roster-range-badge is-${r}" role="img" aria-label="${rangeName(c)}" title="${rangeName(c)}"><svg viewBox="0 0 24 24" aria-hidden="true">${RANGE_ICONS[r]}</svg></span>`;
 };
 
 /** A card's fighter as the Wardrobe dresses it: its skin, else your Colors. */

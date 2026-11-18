@@ -736,15 +736,15 @@
   display: inline-grid;
   place-items: center;
   flex: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: 1px solid currentColor;
-  background: color-mix(in srgb, currentColor 20%, var(--ui-bg-0));
+  width: 24px;
+  height: 24px;
+  border-radius: var(--rad-pill);
+  /* As .ui-element: the colour, tinted, behind a solid glyph. */
+  background: color-mix(in srgb, currentColor 22%, transparent);
 }
 .roster-range-badge svg {
-  width: 17px;
-  height: 17px;
+  width: 14px;
+  height: 14px;
 }
 .roster-range-badge.is-long {
   color: #7cc8ff;
@@ -782,12 +782,12 @@
 }
 @media (max-height: 500px) {
   .roster-range-badge {
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
   }
   .roster-range-badge svg {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
   }
   .roster-foot-range {
     display: none;
