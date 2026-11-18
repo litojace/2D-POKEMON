@@ -57,6 +57,7 @@ import {
   move,
   normalize,
   type Ability,
+  type AbilityKind,
   type CharacterId,
   type Fighter,
   type GameEvent,
@@ -90,6 +91,24 @@ const DRAIN_INTERVAL = 0.5;
 const SKILL_INPUT_BUFFER = 0.18;
 /** Seconds after a cast out of stealth in which its first hit gets the ambush bonus. */
 const AMBUSH_WINDOW = 0.8;
+/**
+ * Champion hits up close that Facet Guard only halves (it refracts the
+ * rest: shots, beams, areas, a raid boss's attacks).
+ */
+const UNREFRACTED: AbilityKind[] = [
+  "melee",
+  "pound",
+  "clamp",
+  "throw",
+  "cone",
+  "rush",
+  "roll",
+  "pinball",
+  "grapple",
+  "blink",
+  "nova",
+  "taunt",
+];
 /** A rush hits whoever it touches within this gap (px) between the two bodies. */
 const RUSH_CONTACT = 10;
 /** A pull leaves this gap (px) between the two bodies. */
@@ -958,7 +977,15 @@ export class Arena {
       const share = (ability?.drain ?? 0) + (this.gift(source, "Nature") ?? 0);
       if (share > 0) this.heal(source, dealt * share, ability?.id);
     }
-    if (counter && source && source !== target && source.hp > 0)
+    // Facet Guard refracts shots and beams; a strike up close is only halved.
+    // A raid boss's attacks (no champion ability) are refracted too.
+    if (
+      counter &&
+      source &&
+      source !== target &&
+      source.hp > 0 &&
+      !(ability && UNREFRACTED.includes(ability.kind))
+    )
       this.reflectDamage(source, target, amount);
     // Setup: mark the target for this fighter's payoff (or the guard for
     // Facet Guard, which primes the one who absorbed the hit).
@@ -1827,7 +1854,11 @@ export class Arena {
       this.status(p, "stealth", a.duration);
       this.status(p, "haste", a.statusDuration ?? 1.5);
     }
-    if (a.kind === "counter") this.status(p, "counter", a.duration);
+    if (a.kind === "counter") {
+      this.status(p, "counter", a.duration);
+      // Facet Guard: advance behind the guard.
+      if (a.status) this.status(p, a.status, a.statusDuration ?? a.duration);
+    }
     if (a.kind === "barrier") this.status(p, "shield", a.duration);
     if (a.kind === "buff") {
       // Kindle empowers; Static Glide grants haste instead.

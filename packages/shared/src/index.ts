@@ -820,7 +820,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A crystal-fisted lynx monk. Durable, patient and brutal against careless attacks.",
     color: 0x7f9cff,
-    health: 164,
+    health: 167,
     speed: 235,
     basic: basic(
       "prism-jab",
@@ -838,8 +838,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "projectile",
         22,
         8,
-        "Fling one of the orbiting crystal shards.",
-        { speed: 700, radius: 20 },
+        "Fling one of the orbiting crystal shards. It slows for a second, so you can close in.",
+        { speed: 700, radius: 20, status: "slow", statusDuration: 1 },
       ),
       ability(
         "shatter-paw",
@@ -862,8 +862,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "counter",
         0,
         15,
-        "For 1.6 seconds, the gauntlets' facets take half the damage and refract 20% back to the attacker.",
-        { duration: 1.6 },
+        "For 1.6 seconds, the gauntlets' facets take half the damage, refract 20% of shots, beams and blasts back to the attacker (strikes up close are only halved), and Auralynx advances 30% faster behind them.",
+        { duration: 1.6, status: "haste", statusDuration: 1.6 },
       ),
       ability(
         "crystal-cage",
@@ -3309,7 +3309,7 @@ export const RITES: Rite[] = [
   rite("tidefin", "major", "gill-siphon", "Thirsty Gills", "Gill Siphon drinks back all the damage it deals instead of half.", { set: { drain: 1 } }),
   rite("auralynx", "minor", "prism-shot", "Swift Prism", "Prism Shot flies 35% faster.", { mul: { speed: 1.35 } }),
   rite("auralynx", "minor", "shatter-paw", "Long Paw", "Shatter Paw reaches 20% further.", { mul: { range: 1.2 } }),
-  rite("auralynx", "minor", "facet-guard", "Steady Guard", "Facet Guard lasts 2.2s instead of 1.6s.", { set: { duration: 2.2 } }),
+  rite("auralynx", "minor", "facet-guard", "Steady Guard", "Facet Guard lasts 2.2s instead of 1.6s.", { set: { duration: 2.2, statusDuration: 2.2 } }),
   rite("auralynx", "minor", "prism-jab", "Hard Jab", "Prism Jab deals 15 damage instead of 13.", { set: { damage: 15 } }),
   rite("auralynx", "major", "prism-shot", "Prism Burst", "Prism Shot explodes on impact, hitting everyone nearby.", { set: { explosion: 90 } }),
   rite("auralynx", "major", "crystal-cage", "Long Cage", "Crystal Cage stands for 4s instead of 2.5s and deals 18 instead of 10.", { set: { duration: 4, damage: 18 } }),

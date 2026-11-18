@@ -43,7 +43,7 @@ it("pins roster health (champion balance overhaul) and movement speeds", () => {
     voltkit: [157, 270],
     cindrake: [151, 240],
     tidefin: [146, 285],
-    auralynx: [164, 235],
+    auralynx: [167, 235],
     lumoth: [143, 265],
     mystowl: [134, 255],
     terradon: [193, 222],

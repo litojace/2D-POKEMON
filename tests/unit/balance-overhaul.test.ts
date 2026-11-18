@@ -111,3 +111,22 @@ describe("Ink Cloud", () => {
     expect([them.x, them.y]).toEqual([800, Y]);
   });
 });
+
+describe("Facet Guard", () => {
+  it("refracts shots, only halves strikes up close, and hastes Auralynx", () => {
+    const hit = (by: CharacterId) => {
+      const a = arena("auralynx", by);
+      const [me, them] = a.players;
+      a.cast(me, skill("auralynx", "facet-guard"));
+      expect(a.has(me, "counter")).toBe(true);
+      expect(a.has(me, "haste")).toBe(true);
+      const before = them.hp;
+      a.damage(me, 20, "them", CHARACTERS[by].basic);
+      return before - them.hp;
+    };
+    // A shot (Voltkit's Spark Dart): 20% of it comes back.
+    expect(hit("voltkit")).toBeCloseTo(20 * STATUS_RULES.counterReflection);
+    // A strike (Cindrake's Cinder Snap): nothing comes back.
+    expect(hit("cindrake")).toBe(0);
+  });
+});

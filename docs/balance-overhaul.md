@@ -96,6 +96,54 @@ after release.
 2v2 and free-for-all factors (`TEAM_TUNING`, `FFA_TUNING`,
 `FFA_THREE_TUNING`) were not retuned in this pass.
 
+## Second pass: hard counters
+
+Measured first with 48 games a pair (`RR_ONLY`), on Hard. Before this pass,
+Auralynx won 85–96% against the melee divers (Coilemur, Astrabun,
+Wombolder) and lost 85–98% to kiters (Mossloth, Voltkit, Halcyra,
+Tidefin); Pyranda lost 92–96% to divers (Astrabun, Coilemur, Wombolder,
+Pangrove) and won 88–98% against ranged champions.
+
+**Auralynx** (shipped):
+
+- Facet Guard refracts only what is not a strike up close: shots, beams,
+  blasts and raid bosses' attacks come back at 20%, while melee strikes,
+  pounds, clamps, throws, cones, charges, rolls, grapples, blinks and novas
+  are only halved (`UNREFRACTED` in `simulation.ts`). Divers no longer lose
+  health for hitting it.
+- Facet Guard also gives 30% haste while it lasts: walk in behind the guard.
+- Prism Shot slows for 1 s, so Auralynx can catch a kiter.
+- Health 164 → 167. Normal handicap 0.285 → 0.3.
+
+Auralynx's matchups went from 2–98% to 17–83% (24 games a pair) or 21–90%
+(48 a pair), at 50–53% overall.
+
+**Pyranda** (tried, not shipped):
+
+| Try                                                                         | Pyranda overall | Against divers |
+| --------------------------------------------------------------------------- | --------------- | -------------- |
+| Ember Curtain knocks back (150) and a slower Mortar (0.6 s to land, 100 px) | 39.8%           | 0–8%           |
+| Plus Hot Coals hops Pyranda 200 px back and drops the coals where it stood  | 26.0%           | 2–8%           |
+| Ember Lob knockback 70, health 160                                          | 63.2%           | 13–19%         |
+| Ember Lob knockback 60, health 144                                          | 47.9%           | 8–33%          |
+| Ember Curtain 55 px out, knockback 180, health 150                          | 34.4%           | 0–4%           |
+
+Only a stronger basic-attack knockback worked, and the roster has a rule
+against it (`tests/unit/fighter-cards.test.ts`: a basic attack knocks back
+at most 20, 25 in melee, "so brawlers can close in and chain hits"). That
+choice is the owner's, so Pyranda is unchanged in this pass.
+
+The whole roster after this pass (seed 102000):
+
+| Difficulty | Lowest – highest | Spread (sd) | Hard-counter pairs |
+| ---------- | ---------------- | ----------- | ------------------ |
+| Hard       | 46.3% – 56.4%    | 2.5         | 26 (was 32–39)     |
+| Normal     | 40.9% – 55.9%    | 3.1         | 14 (was 7–13)      |
+
+Voltkit's Normal rate moves a lot between seeds (38–47%). Its Normal
+handicap also drives the bot raider in the Spire's zone 2 play-test, and
+0.17 instead of 0.18 made floor 19 easier than floor 11, so it stays at 0.18.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now
