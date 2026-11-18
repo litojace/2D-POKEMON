@@ -10,6 +10,8 @@ import "./modern-viet-legend";
 import "./modern-hero";
 import "./modern-campus";
 import "./modern-stars";
+import "./modern-pirates";
+import "./modern-vanguard";
 
 /**
  * Modern collections (prototype): Neon Campus, Hero Squad, Starlight Idol,
@@ -27,7 +29,7 @@ import "./modern-stars";
  *    `data-i` giving each light's place in the row;
  *  - twinkle: sparkles that glint at their own moments.
  */
-export type ModernTheme = "campus" | "hero" | "idol" | "viet" | "stars" | "vietlegend";
+export type ModernTheme = "campus" | "hero" | "idol" | "viet" | "stars" | "vietlegend" | "pirates" | "vanguard";
 
 /** Per-champion colours and the emblem drawn on its costume. */
 const LOOK: Record<CharacterId, { a: string; b: string; emblem: Emblem }> = {

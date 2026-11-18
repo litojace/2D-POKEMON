@@ -132,8 +132,17 @@ skin has one, that idle draws no motif, the summoned motif and its fade
 ## Legendary: Nova Vanguard
 
 Legendary sits between Epic (3,500) and Mythical (8,000) at 5,500 coins. Nova
-Vanguard is the Legendary set: on top of its signature effect, each suit has
-its own hero landing (a column of its light behind it, a ground ring, motes of
+Vanguard is a corps of eighteen heroes in one language (a suit with an
+armoured chest plate whose seams carry light, the hero's mark on it, a
+corps star on the belt, a spine of light from behind), each dressed for its
+post with its own gear (`modern-vanguard.ts`): a courier's antenna and
+satchel, a forger's hammer and sun core, a sentinel's hex shield and brow
+crystals, a medic's drone, a crown of sun rays, a sonar dome, a rain
+cloud... Each has a body colour of its own (`VANGUARD_TINTS`), and its
+glow (`VANGUARD_LOOK`) colours its trail, skills and signature. Crests that
+are part of the champion stay (Cindrake, Lumoth, Halcyra, Glacelle,
+Pangrove), and champions keep their own weapons. On top of its signature
+effect, each suit has its own hero landing (a column of its light behind it, a ground ring, motes of
 its motif) and victory (a fan of stars behind its head); both summon its
 motif. Epics have neither. Legendary has no Mythic Trial or Awakening.
 Migration `20261118100000_legendary_skins_and_skin_sets.sql` allows the
@@ -141,15 +150,17 @@ rarity and moves the 18 suits to it; owners keep theirs.
 
 ## Legendary: Sky Pirates
 
-The second Legendary collection (5,500 coins): a crew of sky-pirate
-captains (`pirate-fashion.ts`, `pirate-art.ts`). Each keeps the champion's
-own colours; the costume carries the theme. The silhouette is a tricorne,
-sized to the chibi head with its crown above it, a gold edge, a compass-rose
-emblem and a plume in the captain's colour, plus a gold-trimmed coat with a
-frilled shirt, double buttons, a red sash and buckle, and a cutlass at the
-hip. The hat replaces head-top props but keeps crests that are part of the
-champion (the same list Nova Vanguard keeps). From behind, the coat's back and
-tails sit on the scarf part, over shells and membranes.
+The second Legendary collection (5,500 coins): a crew where every champion
+holds its own post on the ship (`modern-pirates.ts`, `pirate-art.ts`), with
+its own hat, coat, gear and glowing pieces, and a body colour chosen for it
+(`PIRATE_TINTS`): a storm-grey corsair with a lit compass, a bicorne
+admiral worn athwart, a quartermaster with a glowing treasure map, a ghost
+whose torn hem glows, a kraken captain with bioluminescent spots, a
+lookout in a knit cap with a lantern, a bosun with a moon pin and whistle,
+a hammock pirate with string lights... Headwear has its real shape from
+every side: a tricorne in profile is as deep as the head, its point
+forward; the admiral's bicorne shows its end. Things worn on one side keep
+their side from behind, and things on the face never show from behind.
 
 Each captain has its own motif, summoned by its ultimate, and all of them land with an
 anchor that drops beside them and bites the ground, and win with a treasure
@@ -334,8 +345,10 @@ adds the skins and their set.
 
 ## Body colours
 
-Hồn Việt, Stars & Stripes, Hero Squad and Neon Campus each give every
-champion a body colour chosen for its figure (`collection-colours.ts`): a
+Every Legendary and modern Epic collection (Nova Vanguard, Sky Pirates,
+Hồn Việt, Stars & Stripes, Hero Squad and Neon Campus) gives every
+champion a body colour chosen for its figure (`collection-colours.ts`,
+`PIRATE_TINTS`, `VANGUARD_TINTS`): a
 gold Kim Quy, a lotus-pink Hoa Đăng, a candy-red hot-rod racer, a
 copper-green Lady Liberty, a magnet-red Magnetail, a velvet-red drama lead.
 `tintPalette` (`fashion-art.ts`) moves the champion's light, mid, dark and
