@@ -33,7 +33,8 @@ import { poly } from "./bistro-geom";
 
 type Ctx = CanvasRenderingContext2D;
 
-export type Goods = "flowers" | "bread" | "books" | "tea" | "toys" | "ice" | "fruit" | "cafe";
+export type Goods =
+  "flowers" | "bread" | "books" | "tea" | "toys" | "ice" | "fruit" | "cafe";
 export interface Look {
   wall: string;
   trim: string;
@@ -48,20 +49,93 @@ export interface Look {
 }
 /** The shops, in order down the street (data: add a look to add a shop). */
 export const LOOKS: readonly Look[] = [
-  { wall: "#f6d3dc", trim: "#3f7a4e", awning: ["#4f9a62", "#f4f1ea"], sign: "#2f5d3c", text: "FLOWERS", goods: "flowers", shutters: "#5f9a6e" },
-  { wall: "#e6b49a", trim: "#8a4b2a", awning: ["#d94a3a", "#fbf3e6"], sign: "#6b3a1e", text: "BAKERY", goods: "bread", brick: true },
-  { wall: "#c9d6e8", trim: "#2c3e66", awning: ["#2f4c86", "#e9eef6"], sign: "#1f2d4f", text: "BOOKS", goods: "books" },
-  { wall: "#dfe9d0", trim: "#5a7a3a", awning: ["#e2a33a", "#fff6e0"], sign: "#40562a", text: "TEA HOUSE", goods: "tea", shutters: "#b0703f" },
-  { wall: "#fde6b8", trim: "#b8452f", awning: ["#7b5ad1", "#fdf6ff"], sign: "#4b2f86", text: "TOYS", goods: "toys" },
-  { wall: "#d7f0ee", trim: "#2e8a86", awning: ["#ef7fa6", "#fff4f8"], sign: "#1f6663", text: "GELATO", goods: "ice" },
-  { wall: "#c98f72", trim: "#3d5a3a", awning: ["#3d8a4a", "#f6f1e0"], sign: "#2c4a2a", text: "GREENGROCER", goods: "fruit", brick: true },
-  { wall: "#efe3cf", trim: "#5a3a2a", awning: ["#5a3a2a", "#e9d8b8"], sign: "#3a2418", text: "CAFÉ", goods: "cafe", shutters: "#3d6a8a" },
+  {
+    wall: "#f6d3dc",
+    trim: "#3f7a4e",
+    awning: ["#4f9a62", "#f4f1ea"],
+    sign: "#2f5d3c",
+    text: "FLOWERS",
+    goods: "flowers",
+    shutters: "#5f9a6e",
+  },
+  {
+    wall: "#e6b49a",
+    trim: "#8a4b2a",
+    awning: ["#d94a3a", "#fbf3e6"],
+    sign: "#6b3a1e",
+    text: "BAKERY",
+    goods: "bread",
+    brick: true,
+  },
+  {
+    wall: "#c9d6e8",
+    trim: "#2c3e66",
+    awning: ["#2f4c86", "#e9eef6"],
+    sign: "#1f2d4f",
+    text: "BOOKS",
+    goods: "books",
+  },
+  {
+    wall: "#dfe9d0",
+    trim: "#5a7a3a",
+    awning: ["#e2a33a", "#fff6e0"],
+    sign: "#40562a",
+    text: "TEA HOUSE",
+    goods: "tea",
+    shutters: "#b0703f",
+  },
+  {
+    wall: "#fde6b8",
+    trim: "#b8452f",
+    awning: ["#7b5ad1", "#fdf6ff"],
+    sign: "#4b2f86",
+    text: "TOYS",
+    goods: "toys",
+  },
+  {
+    wall: "#d7f0ee",
+    trim: "#2e8a86",
+    awning: ["#ef7fa6", "#fff4f8"],
+    sign: "#1f6663",
+    text: "GELATO",
+    goods: "ice",
+  },
+  {
+    wall: "#c98f72",
+    trim: "#3d5a3a",
+    awning: ["#3d8a4a", "#f6f1e0"],
+    sign: "#2c4a2a",
+    text: "GREENGROCER",
+    goods: "fruit",
+    brick: true,
+  },
+  {
+    wall: "#efe3cf",
+    trim: "#5a3a2a",
+    awning: ["#5a3a2a", "#e9d8b8"],
+    sign: "#3a2418",
+    text: "CAFÉ",
+    goods: "cafe",
+    shutters: "#3d6a8a",
+  },
 ];
 /** Terraced houses and flats: wall, trim, roof, door. */
-const HOUSE_LOOKS: readonly { wall: string; trim: string; roof: string; door: string; brick?: boolean }[] = [
+const HOUSE_LOOKS: readonly {
+  wall: string;
+  trim: string;
+  roof: string;
+  door: string;
+  brick?: boolean;
+}[] = [
   { wall: "#f3dcc0", trim: "#fbf6ec", roof: "#b5523b", door: "#2f5d8a" },
   { wall: "#c7dbe6", trim: "#ffffff", roof: "#5a6478", door: "#c2322e" },
-  { wall: "#d6866a", trim: "#f6efe4", roof: "#7a3a2a", door: "#2f6a4a", brick: true },
+  {
+    wall: "#d6866a",
+    trim: "#f6efe4",
+    roof: "#7a3a2a",
+    door: "#2f6a4a",
+    brick: true,
+  },
   { wall: "#efe7a8", trim: "#ffffff", roof: "#a9553a", door: "#5a3a8a" },
   { wall: "#e8c4d0", trim: "#fdf8fa", roof: "#6e4a5a", door: "#3a6a7a" },
   { wall: "#d9e4c4", trim: "#ffffff", roof: "#8a5a3a", door: "#b8452f" },
@@ -170,7 +244,8 @@ export function buildings(): Building[] {
   return out;
 }
 /** How tall a building reaches, roof included (world px). */
-export const topOf = (b: Building) => b.h + (b.kind === "house" ? ROOF + 30 : 46);
+export const topOf = (b: Building) =>
+  b.h + (b.kind === "house" ? ROOF + 30 : 46);
 
 /* ───────────── facades ───────────── */
 
@@ -269,7 +344,13 @@ function windowAt(
   }
 }
 /** Brick courses or plaster speckle over a wall (local px). */
-function wallTexture(ctx: Ctx, W: number, h: number, brick: boolean, k: number) {
+function wallTexture(
+  ctx: Ctx,
+  W: number,
+  h: number,
+  brick: boolean,
+  k: number,
+) {
   if (brick) {
     ctx.fillStyle = "rgba(90,40,30,.13)";
     for (let y = 6, row = 0; y < h; y += 7, row++) {
@@ -278,12 +359,20 @@ function wallTexture(ctx: Ctx, W: number, h: number, brick: boolean, k: number) 
     }
   } else {
     for (let i = 0; i < W * h * 0.004; i++) {
-      ctx.fillStyle = hash(i + k) > 0.5 ? "rgba(255,255,255,.12)" : "rgba(0,0,0,.05)";
+      ctx.fillStyle =
+        hash(i + k) > 0.5 ? "rgba(255,255,255,.12)" : "rgba(0,0,0,.05)";
       ctx.fillRect(hash(i * 3 + k) * W, -hash(i * 7 + k) * h, 2, 2);
     }
   }
 }
-function drawGoods(ctx: Ctx, g: Goods, x: number, w: number, z: number, n: number) {
+function drawGoods(
+  ctx: Ctx,
+  g: Goods,
+  x: number,
+  w: number,
+  z: number,
+  n: number,
+) {
   // Local wall coordinates: the window spans x .. x + w from z up.
   const dk = (c: string) => shade(c, -0.35 * n);
   const shelf = (zz: number) => {
@@ -291,7 +380,8 @@ function drawGoods(ctx: Ctx, g: Goods, x: number, w: number, z: number, n: numbe
     ctx.fillRect(x + 2, -z - zz, w - 4, 3);
   };
   const row = (count: number, f: (cx: number, i: number) => void) => {
-    for (let i = 0; i < count; i++) f(x + 8 + (i * (w - 16)) / Math.max(1, count - 1), i);
+    for (let i = 0; i < count; i++)
+      f(x + 8 + (i * (w - 16)) / Math.max(1, count - 1), i);
   };
   if (g === "flowers") {
     const cols = ["#ff7aa8", "#ffd65b", "#ffffff", "#b49cff", "#ff9a5b"];
@@ -474,7 +564,8 @@ function drawShop(ctx: Ctx, b: Building, l: Light) {
       ctx.fill();
     }
     ctx.fillStyle = dim(look.trim);
-    for (let x = wx + ww / 3; x < wx + ww - 4; x += ww / 3) ctx.fillRect(x - 1.5, -wz - wh, 3, wh);
+    for (let x = wx + ww / 3; x < wx + ww - 4; x += ww / 3)
+      ctx.fillRect(x - 1.5, -wz - wh, 3, wh);
     ctx.fillRect(wx, -wz - wh * 0.78, ww, 2.5);
     ctx.fillStyle = dim(shade(look.trim, -0.15));
     ctx.fillRect(wx - 6, -wz, ww + 12, 6);
@@ -538,9 +629,16 @@ function drawShop(ctx: Ctx, b: Building, l: Light) {
           on: hash(b.k * 9 + f * 3 + i) > 0.35,
           trim: shade(look.wall, 0.55),
           shutters: look.shutters,
-          box: l.season === "spring" || l.season === "summer" ? (f + i + b.k) % 3 ? look.text : null : null,
+          box:
+            l.season === "spring" || l.season === "summer"
+              ? (f + i + b.k) % 3
+                ? look.text
+                : null
+              : null,
           snow,
-          curtain: ["#d94a3a", "#f2c14e", "#7b5ad1", "#4f9a62"][(b.k + f + i) % 4],
+          curtain: ["#d94a3a", "#f2c14e", "#7b5ad1", "#4f9a62"][
+            (b.k + f + i) % 4
+          ],
         });
       }
       // A little balcony on some.
@@ -577,7 +675,10 @@ function drawShop(ctx: Ctx, b: Building, l: Light) {
     ya = y0 + 0.1,
     yb = y1 - 0.1,
     k = 9;
-  const [c0, c1] = look.awning.map((c) => dim(snow ? shade(c, 0.55) : c)) as [string, string];
+  const [c0, c1] = look.awning.map((c) => dim(snow ? shade(c, 0.55) : c)) as [
+    string,
+    string,
+  ];
   for (let i = 0; i < k; i++) {
     const a = ya + ((yb - ya) * i) / k,
       bb = ya + ((yb - ya) * (i + 1)) / k;
@@ -601,14 +702,22 @@ function drawShop(ctx: Ctx, b: Building, l: Light) {
   }
   // The awning's end, facing us.
   ctx.fillStyle = shade(c0, -0.22);
-  poly(ctx, [up(iso(x1, yb), az0), up(iso(x1 + out, yb), az1), up(iso(x1 + out, yb), az1 - 7), up(iso(x1, yb), az0 - 5)]);
+  poly(ctx, [
+    up(iso(x1, yb), az0),
+    up(iso(x1 + out, yb), az1),
+    up(iso(x1 + out, yb), az1 - 7),
+    up(iso(x1, yb), az0 - 5),
+  ]);
   ctx.fill();
   // A hanging sign at the corner.
   const hs = up(iso(x1 + 0.35, y1 - 0.2), GF + 30);
   ctx.strokeStyle = dim("#3a3e48");
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(up(iso(x1, y1 - 0.2), GF + 34).x, up(iso(x1, y1 - 0.2), GF + 34).y);
+  ctx.moveTo(
+    up(iso(x1, y1 - 0.2), GF + 34).x,
+    up(iso(x1, y1 - 0.2), GF + 34).y,
+  );
   ctx.lineTo(hs.x + 8, hs.y - 2);
   ctx.stroke();
   ctx.fillStyle = dim(look.awning[0]);
@@ -663,7 +772,8 @@ function roofStuff(ctx: Ctx, b: Building, l: Light) {
     ctx.roundRect(c.x - 17, c.y - 56, 34, 32, 4);
     ctx.fill();
     ctx.fillStyle = dim("#7a5a3c");
-    for (let yy = c.y - 50; yy < c.y - 26; yy += 8) ctx.fillRect(c.x - 17, yy, 34, 2);
+    for (let yy = c.y - 50; yy < c.y - 26; yy += 8)
+      ctx.fillRect(c.x - 17, yy, 34, 2);
     ctx.fillStyle = snow ? dim("#f4f7fb") : dim("#6a4a30");
     ctx.beginPath();
     ctx.moveTo(c.x - 19, c.y - 56);
@@ -731,14 +841,21 @@ function drawBlock(ctx: Ctx, b: Building, l: Light) {
     const per = Math.max(2, Math.floor(W / 56));
     for (let f = 1; f < b.floors; f++)
       for (let i = 0; i < per; i++)
-        windowAt(ctx, ((i + 0.5) * W) / per - 13, GF + (f - 1) * UF + 18, 26, 44, {
-          n,
-          lit,
-          on: hash(b.k * 7 + f * 5 + i) > 0.45,
-          trim: "#f4efe6",
-          snow,
-          curtain: "#e8d8b8",
-        });
+        windowAt(
+          ctx,
+          ((i + 0.5) * W) / per - 13,
+          GF + (f - 1) * UF + 18,
+          26,
+          44,
+          {
+            n,
+            lit,
+            on: hash(b.k * 7 + f * 5 + i) > 0.45,
+            trim: "#f4efe6",
+            snow,
+            curtain: "#e8d8b8",
+          },
+        );
     ctx.fillStyle = dim(shade(wall, 0.35));
     ctx.fillRect(-2, -h, W + 4, 8);
   });
@@ -747,13 +864,20 @@ function drawBlock(ctx: Ctx, b: Building, l: Light) {
     const per = Math.max(2, Math.floor(D / 60));
     for (let f = 1; f < b.floors; f++)
       for (let i = 0; i < per; i++)
-        windowAt(ctx, ((i + 0.5) * D) / per - 11, GF + (f - 1) * UF + 18, 22, 44, {
-          n: n + 0.1,
-          lit,
-          on: hash(b.k * 3 + f * 11 + i) > 0.5,
-          trim: "#f4efe6",
-          snow,
-        });
+        windowAt(
+          ctx,
+          ((i + 0.5) * D) / per - 11,
+          GF + (f - 1) * UF + 18,
+          22,
+          44,
+          {
+            n: n + 0.1,
+            lit,
+            on: hash(b.k * 3 + f * 11 + i) > 0.5,
+            trim: "#f4efe6",
+            snow,
+          },
+        );
   });
   roofStuff(ctx, b, l);
 }
@@ -830,7 +954,10 @@ function drawHouse(ctx: Ctx, b: Building, l: Light) {
           on: hash(b.k * 5 + f * 3 + i) > 0.4,
           trim: look.trim,
           shutters: b.k % 2 ? shade(look.door, 0.1) : undefined,
-          box: (l.season === "spring" || l.season === "summer") && (i + f) % 2 ? "y" : null,
+          box:
+            (l.season === "spring" || l.season === "summer") && (i + f) % 2
+              ? "y"
+              : null,
           snow,
           curtain: ["#d94a3a", "#7b5ad1", "#4f9a62"][(b.k + i) % 3],
         });
@@ -868,19 +995,31 @@ function drawHouse(ctx: Ctx, b: Building, l: Light) {
   poly(ctx, slope);
   ctx.fill();
   // Tile courses.
-  ctx.strokeStyle = snow ? "rgba(150,170,200,.35)" : dim(shade(look.roof, -0.25));
+  ctx.strokeStyle = snow
+    ? "rgba(150,170,200,.35)"
+    : dim(shade(look.roof, -0.25));
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let f = 0.12; f < 1; f += 0.14) {
-    const a = up(iso(ex0, y1 + over + (ym - y1 - over) * f), h - 6 + (ROOF + 6) * f),
-      c = up(iso(ex1, y1 + over + (ym - y1 - over) * f), h - 6 + (ROOF + 6) * f);
+    const a = up(
+        iso(ex0, y1 + over + (ym - y1 - over) * f),
+        h - 6 + (ROOF + 6) * f,
+      ),
+      c = up(
+        iso(ex1, y1 + over + (ym - y1 - over) * f),
+        h - 6 + (ROOF + 6) * f,
+      );
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(c.x, c.y);
   }
   ctx.stroke();
   // The gable end: the wall's triangle and the roof's edge.
   ctx.fillStyle = dim(shade(look.wall, -0.16));
-  poly(ctx, [up(iso(x1, y1), h), up(iso(x1, y0), h), up(iso(x1, ym), h + ROOF - 4)]);
+  poly(ctx, [
+    up(iso(x1, y1), h),
+    up(iso(x1, y0), h),
+    up(iso(x1, ym), h + ROOF - 4),
+  ]);
   ctx.fill();
   ctx.fillStyle = shade(roof, -0.2);
   poly(ctx, [
@@ -892,7 +1031,12 @@ function drawHouse(ctx: Ctx, b: Building, l: Light) {
   ctx.fill();
   // The back slope's top edge shows as a ridge cap.
   ctx.fillStyle = shade(roof, -0.12);
-  poly(ctx, [up(iso(ex0, ym), h + ROOF), up(iso(ex1, ym), h + ROOF), up(iso(ex1, ym - 0.2), h + ROOF - 4), up(iso(ex0, ym - 0.2), h + ROOF - 4)]);
+  poly(ctx, [
+    up(iso(ex0, ym), h + ROOF),
+    up(iso(ex1, ym), h + ROOF),
+    up(iso(ex1, ym - 0.2), h + ROOF - 4),
+    up(iso(ex0, ym - 0.2), h + ROOF - 4),
+  ]);
   ctx.fill();
   // A chimney on the ridge, a dormer on some.
   const cx = x0 + (x1 - x0) * (b.k % 2 ? 0.25 : 0.75);
@@ -910,7 +1054,13 @@ function drawHouse(ctx: Ctx, b: Building, l: Light) {
       right: dim(shade(look.wall, -0.16)),
     });
     onWall(ctx, "x", dy + 0.1, dxm - 0.45, () => {
-      windowAt(ctx, 13, h + 26, 22, 22, { n, lit, on: hash(b.k + 3) > 0.5, trim: look.trim, snow });
+      windowAt(ctx, 13, h + 26, 22, 22, {
+        n,
+        lit,
+        on: hash(b.k + 3) > 0.5,
+        trim: look.trim,
+        snow,
+      });
     });
   }
 }
@@ -941,7 +1091,13 @@ function drawFlats(ctx: Ctx, b: Building, l: Light) {
     ctx.fillStyle = dim("#e8e4dc");
     ctx.fillRect(W / 2 - 30, -92, 60, 8);
     for (const sx of [0.16, 0.84])
-      windowAt(ctx, W * sx - 18, 24, 36, 50, { n, lit, on: hash(b.k + sx * 9) > 0.4, trim: "#f4efe6", snow });
+      windowAt(ctx, W * sx - 18, 24, 36, 50, {
+        n,
+        lit,
+        on: hash(b.k + sx * 9) > 0.4,
+        trim: "#f4efe6",
+        snow,
+      });
     const per = Math.max(3, Math.floor(W / 60));
     for (let f = 1; f < b.floors; f++) {
       const z = 100 + (f - 1) * HOUSE_UF + 16;
@@ -953,7 +1109,9 @@ function drawFlats(ctx: Ctx, b: Building, l: Light) {
           on: hash(b.k * 13 + f * 7 + i) > 0.45,
           trim: "#f4efe6",
           snow,
-          curtain: ["#d94a3a", "#f2c14e", "#4f9a62", "#3d8fd1"][(b.k + f + i) % 4],
+          curtain: ["#d94a3a", "#f2c14e", "#4f9a62", "#3d8fd1"][
+            (b.k + f + i) % 4
+          ],
         });
         // Balconies on alternate windows: a slab, railings, a plant.
         if ((i + f + b.k) % 2 === 0) {
@@ -981,13 +1139,20 @@ function drawFlats(ctx: Ctx, b: Building, l: Light) {
     const per = Math.max(2, Math.floor(D / 70));
     for (let f = 1; f < b.floors; f++)
       for (let i = 0; i < per; i++)
-        windowAt(ctx, ((i + 0.5) * D) / per - 11, 100 + (f - 1) * HOUSE_UF + 16, 22, 40, {
-          n: n + 0.1,
-          lit,
-          on: hash(b.k * 3 + f + i * 5) > 0.55,
-          trim: "#f4efe6",
-          snow,
-        });
+        windowAt(
+          ctx,
+          ((i + 0.5) * D) / per - 11,
+          100 + (f - 1) * HOUSE_UF + 16,
+          22,
+          40,
+          {
+            n: n + 0.1,
+            lit,
+            on: hash(b.k * 3 + f + i * 5) > 0.55,
+            trim: "#f4efe6",
+            snow,
+          },
+        );
   });
   roofStuff(ctx, b, l);
 }
@@ -1018,7 +1183,13 @@ export function buildingShadow(ctx: Ctx, b: Building, a: number) {
   ctx.fillStyle = `rgba(30,30,60,${a})`;
   ctx.beginPath();
   // The footprint and its shadow joined by the swept sides: one path, one fill.
-  for (const q of [pts, sh, [pts[0], pts[3], sh[3], sh[0]], [pts[2], pts[3], sh[3], sh[2]], [pts[1], pts[2], sh[2], sh[1]]]) {
+  for (const q of [
+    pts,
+    sh,
+    [pts[0], pts[3], sh[3], sh[0]],
+    [pts[2], pts[3], sh[3], sh[2]],
+    [pts[1], pts[2], sh[2], sh[1]],
+  ]) {
     ctx.moveTo(q[0].x, q[0].y);
     for (let i = 1; i < q.length; i++) ctx.lineTo(q[i].x, q[i].y);
     ctx.closePath();

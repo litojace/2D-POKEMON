@@ -47,7 +47,10 @@ export function cutWater(ctx: Ctx) {
   ctx.save();
   ctx.globalCompositeOperation = "destination-out";
   ctx.fillStyle = "#000";
-  for (const [x0, x1] of [[SPAN.x0, BRIDGE.x0], [BRIDGE.x1, SPAN.x1]]) {
+  for (const [x0, x1] of [
+    [SPAN.x0, BRIDGE.x0],
+    [BRIDGE.x1, SPAN.x1],
+  ]) {
     quad(ctx, x0, c.y0, x1, c.y1);
     ctx.fill();
   }
@@ -60,11 +63,23 @@ export function drawBanks(ctx: Ctx, l: Light) {
   const c = canal();
   const stone = lerpRgb([184, 174, 158], [62, 62, 76], n);
   const stoneDark = lerpRgb([140, 130, 118], [42, 42, 56], n);
-  const coping = lerpRgb(snow ? [240, 244, 250] : [222, 214, 198], [84, 84, 100], n);
-  for (const [x0, x1] of [[SPAN.x0, BRIDGE.x0], [BRIDGE.x1, SPAN.x1]]) {
+  const coping = lerpRgb(
+    snow ? [240, 244, 250] : [222, 214, 198],
+    [84, 84, 100],
+    n,
+  );
+  for (const [x0, x1] of [
+    [SPAN.x0, BRIDGE.x0],
+    [BRIDGE.x1, SPAN.x1],
+  ]) {
     // The far wall: stone courses, a wet line at the water.
     ctx.fillStyle = stoneDark;
-    poly(ctx, [iso(x0, c.y0), iso(x1, c.y0), up(iso(x1, c.y0), -WATER), up(iso(x0, c.y0), -WATER)]);
+    poly(ctx, [
+      iso(x0, c.y0),
+      iso(x1, c.y0),
+      up(iso(x1, c.y0), -WATER),
+      up(iso(x0, c.y0), -WATER),
+    ]);
     ctx.fill();
     ctx.strokeStyle = "rgba(0,0,0,.16)";
     ctx.lineWidth = 1;
@@ -83,7 +98,12 @@ export function drawBanks(ctx: Ctx, l: Light) {
     }
     ctx.stroke();
     ctx.fillStyle = "rgba(30,60,50,.35)";
-    poly(ctx, [up(iso(x0, c.y0), -WATER + 4), up(iso(x1, c.y0), -WATER + 4), up(iso(x1, c.y0), -WATER), up(iso(x0, c.y0), -WATER)]);
+    poly(ctx, [
+      up(iso(x0, c.y0), -WATER + 4),
+      up(iso(x1, c.y0), -WATER + 4),
+      up(iso(x1, c.y0), -WATER),
+      up(iso(x0, c.y0), -WATER),
+    ]);
     ctx.fill();
     // Copings along both banks.
     ctx.fillStyle = coping;
@@ -138,7 +158,8 @@ export function drawWater(ctx: Ctx, l: Light, low: boolean) {
     // The sky mirrored in the canal's own green-blue.
     const water = [62, 146, 168],
       deep = [38, 104, 132];
-    const mix = (a: number[], b: number[], f: number) => a.map((v, i) => v + (b[i] - v) * f);
+    const mix = (a: number[], b: number[], f: number) =>
+      a.map((v, i) => v + (b[i] - v) * f);
     const near = mix(water, rgb(skyBot), 0.35),
       far = mix(deep, rgb(skyTop), 0.25);
     const g = ctx.createLinearGradient(0, top, 0, bot);
@@ -147,13 +168,25 @@ export function drawWater(ctx: Ctx, l: Light, low: boolean) {
     ctx.fillStyle = g;
   }
   // Fill the whole stretch, sheared along the canal (iso): one quad.
-  poly(ctx, [down(iso(xa, c.y0)), down(iso(xb, c.y0)), down(iso(xb, c.y1)), down(iso(xa, c.y1))]);
+  poly(ctx, [
+    down(iso(xa, c.y0)),
+    down(iso(xb, c.y0)),
+    down(iso(xb, c.y1)),
+    down(iso(xa, c.y1)),
+  ]);
   ctx.fill();
   // The far wall's shadow on the water.
   const sh = ctx.createLinearGradient(0, 0, 0, 1);
   void sh;
-  ctx.fillStyle = frozen ? "rgba(60,80,110,.12)" : `rgba(10,30,40,${0.28 - n * 0.1})`;
-  poly(ctx, [down(iso(xa, c.y0)), down(iso(xb, c.y0)), down(iso(xb, c.y0 + 0.5)), down(iso(xa, c.y0 + 0.5))]);
+  ctx.fillStyle = frozen
+    ? "rgba(60,80,110,.12)"
+    : `rgba(10,30,40,${0.28 - n * 0.1})`;
+  poly(ctx, [
+    down(iso(xa, c.y0)),
+    down(iso(xb, c.y0)),
+    down(iso(xb, c.y0 + 0.5)),
+    down(iso(xa, c.y0 + 0.5)),
+  ]);
   ctx.fill();
   if (frozen) {
     // Cracks in the ice, and a glint sweeping slowly along.
@@ -189,7 +222,8 @@ export function drawWater(ctx: Ctx, l: Light, low: boolean) {
     const speed = 0.35 + r * 0.06;
     const step = low ? 1.9 : 1.3;
     const off = (t * speed + hash(r + 3) * step) % step;
-    ctx.strokeStyle = n > 0.5 ? "rgba(150,180,230,.22)" : `rgba(255,255,255,${0.42 - n * 0.2})`;
+    ctx.strokeStyle =
+      n > 0.5 ? "rgba(150,180,230,.22)" : `rgba(255,255,255,${0.42 - n * 0.2})`;
     ctx.lineWidth = 1.6;
     ctx.beginPath();
     for (let x = Math.floor(xa / step) * step + off; x < xb; x += step) {
@@ -208,11 +242,14 @@ export function drawWater(ctx: Ctx, l: Light, low: boolean) {
   ctx.lineCap = "butt";
   // Glints of the sun (or the moon) twinkling.
   if (!low) {
-    const sun = l.gold > 0.2 ? "255,214,150" : n > 0.5 ? "200,214,255" : "255,255,240";
+    const sun =
+      l.gold > 0.2 ? "255,214,150" : n > 0.5 ? "200,214,255" : "255,255,240";
     for (let i = Math.floor(xa * 1.5); i < xb * 1.5; i++) {
       const tw = Math.sin(t * 3 + i * 1.7);
       if (tw < 0.55) continue;
-      const p = down(iso(i / 1.5 + hash(i) * 0.5, vis0 + hash(i + 11) * (vis1 - vis0)));
+      const p = down(
+        iso(i / 1.5 + hash(i) * 0.5, vis0 + hash(i + 11) * (vis1 - vis0)),
+      );
       ctx.fillStyle = `rgba(${sun},${(tw - 0.55) * 1.6 * (1 - n * 0.5)})`;
       ctx.beginPath();
       ctx.moveTo(p.x, p.y - 2.5);
@@ -230,7 +267,12 @@ export function drawWater(ctx: Ctx, l: Light, low: boolean) {
       for (let k = 0; k < 6; k++) {
         const w = 10 - k * 1.2 + Math.sin(t * 4 + k * 1.3 + lx) * 3;
         ctx.fillStyle = `rgba(255,214,140,${(0.42 - k * 0.06) * n})`;
-        ctx.fillRect(p.x - w / 2 + Math.sin(t * 3 + k) * 2, p.y + 4 + k * 5, w, 2.4);
+        ctx.fillRect(
+          p.x - w / 2 + Math.sin(t * 3 + k) * 2,
+          p.y + 4 + k * 5,
+          w,
+          2.4,
+        );
       }
     }
   }
@@ -283,6 +325,11 @@ function drawBoat(ctx: Ctx, l: Light) {
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.moveTo(a.x + 6, a.y + WATER + bob - 8);
-  ctx.quadraticCurveTo((a.x + post.x) / 2, (a.y + post.y) / 2 + WATER, post.x, post.y - 6);
+  ctx.quadraticCurveTo(
+    (a.x + post.x) / 2,
+    (a.y + post.y) / 2 + WATER,
+    post.x,
+    post.y - 6,
+  );
   ctx.stroke();
 }

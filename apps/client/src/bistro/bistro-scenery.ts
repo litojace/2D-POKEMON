@@ -19,7 +19,15 @@
  *   6. ...then those in front of it; the weather, cloud shadows, birds.
  */
 import { DOOR } from "./bistro-model";
-import { R, ROOM, WALL_H, iso, shade, type Light, type Season } from "./bistro-art";
+import {
+  R,
+  ROOM,
+  WALL_H,
+  iso,
+  shade,
+  type Light,
+  type Season,
+} from "./bistro-art";
 import { poly } from "./bistro-geom";
 import {
   APRON,
@@ -64,7 +72,11 @@ import {
   trees,
   type Prop,
 } from "./bistro-props";
-import { carDrawable, carGlows as vehicleGlows, type Car } from "./bistro-vehicles";
+import {
+  carDrawable,
+  carGlows as vehicleGlows,
+  type Car,
+} from "./bistro-vehicles";
 import { depthSort, screenBox, type Drawable } from "./bistro-depth";
 import { cutWater, drawBanks, drawWater } from "./bistro-water";
 
@@ -76,15 +88,28 @@ export const SCENE_MARGIN = { x: 820, top: 260, bottom: 360 };
 
 /* ───────────── the ground ───────────── */
 
-export function seasonTint(c: number[], s: Season | undefined, k = 1): number[] {
+export function seasonTint(
+  c: number[],
+  s: Season | undefined,
+  k = 1,
+): number[] {
   const to =
-    s === "winter" ? [234, 240, 248] : s === "autumn" ? [200, 160, 92] : s === "spring" ? [150, 214, 130] : c;
+    s === "winter"
+      ? [234, 240, 248]
+      : s === "autumn"
+        ? [200, 160, 92]
+        : s === "spring"
+          ? [150, 214, 130]
+          : c;
   const f = (s === "winter" ? 0.72 : s === "autumn" ? 0.38 : 0.15) * k;
   return c.map((v, i) => Math.round(v + (to[i] - v) * f));
 }
 /** The grid cells a world rectangle covers. */
 function gridSpan(r: Rect) {
-  const g = (x: number, y: number) => ({ x: (x / 48 + y / 24) / 2, y: (y / 24 - x / 48) / 2 });
+  const g = (x: number, y: number) => ({
+    x: (x / 48 + y / 24) / 2,
+    y: (y / 24 - x / 48) / 2,
+  });
   const cs = [g(r.x0, r.y0), g(r.x1, r.y0), g(r.x0, r.y1), g(r.x1, r.y1)];
   return {
     x0: Math.floor(Math.min(...cs.map((c) => c.x))) - 1,
@@ -123,7 +148,9 @@ function paving(
     ctx.fillStyle = alt;
     for (let x = Math.floor(ax / step) * step; x < bx; x += step)
       for (let y = Math.floor(ay / step) * step; y < by; y += step)
-        if (hash(Math.round(x / step) * 92821 + Math.round(y / step) * 31) > 0.82) {
+        if (
+          hash(Math.round(x / step) * 92821 + Math.round(y / step) * 31) > 0.82
+        ) {
           quad(ctx, x, y, x + step, y + step);
           ctx.fill();
         }
@@ -157,7 +184,9 @@ function drawGround(ctx: Ctx, l: Light) {
   const vr = viewRect(ctx);
   const span = gridSpan(vr);
   // Grass (or snow) everywhere first.
-  const grass = snow ? [232, 238, 246] : seasonTint([110, 176, 90], season, 0.8);
+  const grass = snow
+    ? [232, 238, 246]
+    : seasonTint([110, 176, 90], season, 0.8);
   const grassDark = snow ? [70, 78, 106] : [34, 54, 44];
   ctx.fillStyle = lerpRgb(grass, grassDark, n);
   ctx.fillRect(vr.x0 - 10, vr.y0 - 10, vr.x1 - vr.x0 + 20, vr.y1 - vr.y0 + 20);
@@ -176,14 +205,22 @@ function drawGround(ctx: Ctx, l: Light) {
       const p = iso(gx + hash(gx + gy) * 3, gy + hash(gy - gx) * 3);
       const r = 50 + h * 70;
       const lighter = h > 0.78;
-      const col = snow ? (lighter ? "255,255,255" : "150,170,210") : lighter ? "200,236,150" : "40,96,40";
+      const col = snow
+        ? lighter
+          ? "255,255,255"
+          : "150,170,210"
+        : lighter
+          ? "200,236,150"
+          : "40,96,40";
       ctx.fillStyle = `rgba(${col},${0.1 * (1 - n * 0.6)})`;
       ctx.beginPath();
       ctx.ellipse(p.x, p.y, r, r * 0.5, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   // Tufts and flowers, a few per cell (the paving covers those under it).
-  const flowerShare = { spring: 0.3, summer: 0.18, autumn: 0.05, winter: 0 }[season];
+  const flowerShare = { spring: 0.3, summer: 0.18, autumn: 0.05, winter: 0 }[
+    season
+  ];
   const tuft = lerpRgb(seasonTint([66, 136, 56], season, 0.8), [24, 40, 30], n);
   ctx.fillStyle = tuft;
   ctx.globalAlpha = snow ? 0 : 0.75;
@@ -193,7 +230,7 @@ function drawGround(ctx: Ctx, l: Light) {
     for (let gy = span.y0; gy < span.y1; gy++)
       for (let k = 0; k < 3; k++) {
         const hh = hash(gx * 57.1 + gy * 13.3 + k * 7.7);
-        const p = iso(gx + hash(hh * 91) , gy + hash(hh * 37));
+        const p = iso(gx + hash(hh * 91), gy + hash(hh * 37));
         if (hash(hh * 11 + 3) < flowerShare) {
           flowers.push([
             p.x,
@@ -226,7 +263,9 @@ function drawGround(ctx: Ctx, l: Light) {
         if (hh < 0.4) continue;
         const p = iso(gx + hash(hh * 5), gy + hash(hh * 9));
         ctx.globalAlpha = 0.9 - n * 0.5;
-        ctx.fillStyle = ["#d9822b", "#c8442c", "#e8b23a", "#9a5a2a"][(gx + gy) & 3];
+        ctx.fillStyle = ["#d9822b", "#c8442c", "#e8b23a", "#9a5a2a"][
+          (gx + gy) & 3
+        ];
         ctx.beginPath();
         ctx.ellipse(p.x, p.y, 3, 1.6, hh * 3, 0, Math.PI * 2);
         ctx.fill();
@@ -242,15 +281,64 @@ function drawGround(ctx: Ctx, l: Light) {
     warmAlt = lerpRgb(slab([196, 160, 132]), [70, 58, 62], n),
     warmSeam = lerpRgb(slab([170, 136, 112]), [58, 48, 54], n);
   const gravel = lerpRgb(slab([212, 196, 160]), [76, 72, 80], n);
-  paving(ctx, BACKS - 7.5, -E, FRONTS, E, lerpRgb(slab([196, 190, 180]), [70, 70, 84], n), seam, 1);
+  paving(
+    ctx,
+    BACKS - 7.5,
+    -E,
+    FRONTS,
+    E,
+    lerpRgb(slab([196, 190, 180]), [70, 70, 84], n),
+    seam,
+    1,
+  );
   paving(ctx, FRONTS, -E, ROAD0, E, pave, seam, 0.75, paveAlt);
   paving(ctx, ROAD1, -E, WALK, E, pave, seam, 0.75, paveAlt);
-  paving(ctx, WALK, BACK.y1, C - 0.5 + APRON, Rw - 0.5 + APRON, pave, seam, 0.75, paveAlt);
-  paving(ctx, C - 0.5 + APRON, BACK.y1, C + E, BACK.y1 + 1.9, pave, seam, 0.75, paveAlt);
+  paving(
+    ctx,
+    WALK,
+    BACK.y1,
+    C - 0.5 + APRON,
+    Rw - 0.5 + APRON,
+    pave,
+    seam,
+    0.75,
+    paveAlt,
+  );
+  paving(
+    ctx,
+    C - 0.5 + APRON,
+    BACK.y1,
+    C + E,
+    BACK.y1 + 1.9,
+    pave,
+    seam,
+    0.75,
+    paveAlt,
+  );
   paving(ctx, ROAD1, HOUSES, C + E, BACK.y0, pave, seam, 0.75, paveAlt);
   // The promenade: warm brick in a herringbone-ish pattern, to the canal.
-  paving(ctx, WALK, Rw - 0.5 + APRON, C - 0.5 + APRON, c.y0 - 0.22, warm, warmSeam, 0.5, warmAlt);
-  paving(ctx, C - 0.5 + APRON, c.y0 - 2.2, C + E, c.y0 - 0.22, warm, warmSeam, 0.5, warmAlt);
+  paving(
+    ctx,
+    WALK,
+    Rw - 0.5 + APRON,
+    C - 0.5 + APRON,
+    c.y0 - 0.22,
+    warm,
+    warmSeam,
+    0.5,
+    warmAlt,
+  );
+  paving(
+    ctx,
+    C - 0.5 + APRON,
+    c.y0 - 2.2,
+    C + E,
+    c.y0 - 0.22,
+    warm,
+    warmSeam,
+    0.5,
+    warmAlt,
+  );
   // Gravel along the far bank, and the square's path.
   ctx.fillStyle = gravel;
   quad(ctx, WALK, c.y1 + 0.22, C + E, c.y1 + 2.1);
@@ -261,7 +349,10 @@ function drawGround(ctx: Ctx, l: Light) {
   ctx.fill();
   ctx.fillStyle = `rgba(120,100,70,${0.18 - n * 0.08})`;
   for (let i = 0; i < 400; i++) {
-    const p = iso(WALK + hash(i + 1) * (C + 30), c.y1 + 0.3 + hash(i + 2) * 1.7);
+    const p = iso(
+      WALK + hash(i + 1) * (C + 30),
+      c.y1 + 0.3 + hash(i + 2) * 1.7,
+    );
     ctx.fillRect(p.x, p.y, 2, 1.4);
   }
   // The square: a paved circle with rings, around the fountain.
@@ -281,7 +372,10 @@ function drawGround(ctx: Ctx, l: Light) {
   }
   ctx.beginPath();
   for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
-    ctx.moveTo(sc.x + Math.cos(a) * P.r * ex * 0.66, sc.y + Math.sin(a) * P.r * ey * 0.66);
+    ctx.moveTo(
+      sc.x + Math.cos(a) * P.r * ex * 0.66,
+      sc.y + Math.sin(a) * P.r * ey * 0.66,
+    );
     ctx.lineTo(sc.x + Math.cos(a) * P.r * ex, sc.y + Math.sin(a) * P.r * ey);
   }
   ctx.stroke();
@@ -304,7 +398,11 @@ function drawGround(ctx: Ctx, l: Light) {
     ctx.beginPath();
     ctx.ellipse(b.x, b.y, w + 4, w * 0.38 + 3, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = lerpRgb(snow ? [236, 240, 248] : [112, 76, 52], snow ? [76, 84, 112] : [44, 36, 40], n);
+    ctx.fillStyle = lerpRgb(
+      snow ? [236, 240, 248] : [112, 76, 52],
+      snow ? [76, 84, 112] : [44, 36, 40],
+      n,
+    );
     ctx.beginPath();
     ctx.ellipse(b.x, b.y, w, w * 0.38, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -483,7 +581,8 @@ function drawRoads(ctx: Ctx, l: Light, slab: (c: number[]) => number[]) {
 
 /* ───────────── the props, split once per room size ───────────── */
 
-let split: { key: string; all: Prop[]; baked: Prop[]; live: Prop[] } | null = null;
+let split: { key: string; all: Prop[]; baked: Prop[]; live: Prop[] } | null =
+  null;
 let specialOf: () => string = () => "";
 function propSplit() {
   const key = `${R.cols}x${R.rows}`;
@@ -517,7 +616,10 @@ export function roomOutline() {
     { x: l.x - 16, y: l.y - WALL_H - 22 },
   ];
 }
-function meetsPoly(a: { x: number; y: number }[], b: { x: number; y: number }[]) {
+function meetsPoly(
+  a: { x: number; y: number }[],
+  b: { x: number; y: number }[],
+) {
   for (const P of [a, b])
     for (let i = 0; i < P.length; i++) {
       const p = P[i],
@@ -549,7 +651,12 @@ export const bakedProps = () => propSplit().baked;
 /* ───────────── the baked street ───────────── */
 
 /** Everything that never moves, into the bake (its transform set, its rectangle `area`). */
-export function drawSceneryStatic(ctx: Ctx, l: Light, special: string, area?: Rect) {
+export function drawSceneryStatic(
+  ctx: Ctx,
+  l: Light,
+  special: string,
+  area?: Rect,
+) {
   specialOf = () => special;
   const vr = area ?? viewRect(ctx);
   drawGround(ctx, l);
@@ -558,7 +665,8 @@ export function drawSceneryStatic(ctx: Ctx, l: Light, special: string, area?: Re
   for (const p of baked)
     if (p.building) {
       const b = screenBox({ ...p, draw: () => {} });
-      if (meets(vr, b.x0 - 200, b.y0, b.x1 + 60, b.y1 + 200)) buildingShadow(ctx, p.building, 0.14 * (1 - l.night * 0.5));
+      if (meets(vr, b.x0 - 200, b.y0, b.x1 + 60, b.y1 + 200))
+        buildingShadow(ctx, p.building, 0.14 * (1 - l.night * 0.5));
     }
   cutWater(ctx);
   drawBanks(ctx, l);
@@ -657,7 +765,15 @@ export function drawSceneryTop(ctx: Ctx, l: Light, low: boolean) {
       const x = vr.x0 - 400 + ((hash(i) * W + l.t * (14 + i * 3)) % W),
         y = vr.y0 + hash(i + 9) * (vr.y1 - vr.y0);
       ctx.beginPath();
-      ctx.ellipse(x, y, 220 + hash(i + 3) * 120, 90 + hash(i + 4) * 40, 0, 0, Math.PI * 2);
+      ctx.ellipse(
+        x,
+        y,
+        220 + hash(i + 3) * 120,
+        90 + hash(i + 4) * 40,
+        0,
+        0,
+        Math.PI * 2,
+      );
       ctx.ellipse(x + 150, y + 30, 160, 70, 0, 0, Math.PI * 2);
       ctx.fill();
     }
@@ -665,7 +781,12 @@ export function drawSceneryTop(ctx: Ctx, l: Light, low: boolean) {
     for (let i = 0; i < 3; i++) {
       const span = vr.x1 - vr.x0 + 400;
       const x = vr.x0 - 200 + ((l.t * (40 + i * 9) + i * 300) % span),
-        y = vr.y0 + 80 + i * 40 + Math.sin(l.t * 0.7 + i) * 10 + (x - vr.x0) * 0.2;
+        y =
+          vr.y0 +
+          80 +
+          i * 40 +
+          Math.sin(l.t * 0.7 + i) * 10 +
+          (x - vr.x0) * 0.2;
       const flap = Math.sin(l.t * 9 + i * 2) * 4;
       ctx.strokeStyle = "rgba(40,50,70,.75)";
       ctx.lineWidth = 2;
@@ -697,7 +818,8 @@ export function drawRoofSign(ctx: Ctx, l: Light, t: number) {
   const lift = WALL_H + 10,
     h = 40;
   ctx.fillStyle = "#3a2a22";
-  for (const p of [a, b]) ctx.fillRect(p.x - 2 + (p === a ? 10 : -10), p.y - lift - 6, 4, 10);
+  for (const p of [a, b])
+    ctx.fillRect(p.x - 2 + (p === a ? 10 : -10), p.y - lift - 6, 4, 10);
   const q = [
     { x: a.x, y: a.y - lift },
     { x: b.x, y: b.y - lift },
@@ -714,9 +836,14 @@ export function drawRoofSign(ctx: Ctx, l: Light, t: number) {
   const u = { x: b.x - a.x, y: b.y - a.y };
   const len = Math.hypot(u.x, u.y);
   ctx.save();
-  ctx.setTransform(ctx.getTransform().multiply(new DOMMatrix([u.x / len, u.y / len, 0, 1, q[3].x, q[3].y])));
+  ctx.setTransform(
+    ctx
+      .getTransform()
+      .multiply(new DOMMatrix([u.x / len, u.y / len, 0, 1, q[3].x, q[3].y])),
+  );
   const glow = 0.6 + 0.4 * l.night;
-  const flick = l.night > 0.4 ? 0.92 + 0.08 * Math.sin(t * 13) * Math.sin(t * 3.1) : 1;
+  const flick =
+    l.night > 0.4 ? 0.92 + 0.08 * Math.sin(t * 13) * Math.sin(t * 3.1) : 1;
   ctx.textAlign = "center";
   ctx.font = "900 22px 'Barlow Condensed', sans-serif";
   if (l.night > 0.2) {

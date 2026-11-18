@@ -22,7 +22,10 @@ const pics = new Map<string, Pic>();
 let frame = 0;
 /** The scale step a picture is drawn at for this transform. */
 export const picScale = (ctx: Ctx) =>
-  Math.min(2.5, Math.pow(2, Math.round(Math.log2(ctx.getTransform().a) * 4) / 4));
+  Math.min(
+    2.5,
+    Math.pow(2, Math.round(Math.log2(ctx.getTransform().a) * 4) / 4),
+  );
 
 /**
  * Copy the picture `id` (drawn by `paint` in world units around the origin,
@@ -54,9 +57,23 @@ export function picture(
     const g = cv.getContext("2d")!;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, w, h);
-    g.setTransform(scale, 0, 0, scale, (-box.x0 + pad) * scale, (-box.y0 + pad) * scale);
+    g.setTransform(
+      scale,
+      0,
+      0,
+      scale,
+      (-box.x0 + pad) * scale,
+      (-box.y0 + pad) * scale,
+    );
     paint(g);
-    pic = { cv, key: k, x: box.x0 - pad, y: box.y0 - pad, s: scale, used: frame };
+    pic = {
+      cv,
+      key: k,
+      x: box.x0 - pad,
+      y: box.y0 - pad,
+      s: scale,
+      used: frame,
+    };
     pics.set(id, pic);
   }
   pic.used = frame;

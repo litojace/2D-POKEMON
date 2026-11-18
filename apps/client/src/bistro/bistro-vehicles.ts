@@ -32,14 +32,25 @@ export interface Car {
   col: string;
   kind: number;
 }
-export const CAR_SIZE: Record<number, { len: number; wid: number; h: number }> = {
-  0: { len: 2.5, wid: 1.3, h: 66 },
-  1: { len: 2.9, wid: 1.4, h: 92 },
-  2: { len: 2.5, wid: 1.3, h: 66 },
-  3: { len: 2.2, wid: 1.24, h: 62 },
-};
-export const carLen = (c: { kind: number }) => (CAR_SIZE[c.kind] ?? CAR_SIZE[0]).len;
-const COLOURS = ["#e2453a", "#3d8fd1", "#f4f1ea", "#4fb36b", "#8a5ad1", "#2d3340", "#ff9a5b", "#9fd4e8"];
+export const CAR_SIZE: Record<number, { len: number; wid: number; h: number }> =
+  {
+    0: { len: 2.5, wid: 1.3, h: 66 },
+    1: { len: 2.9, wid: 1.4, h: 92 },
+    2: { len: 2.5, wid: 1.3, h: 66 },
+    3: { len: 2.2, wid: 1.24, h: 62 },
+  };
+export const carLen = (c: { kind: number }) =>
+  (CAR_SIZE[c.kind] ?? CAR_SIZE[0]).len;
+const COLOURS = [
+  "#e2453a",
+  "#3d8fd1",
+  "#f4f1ea",
+  "#4fb36b",
+  "#8a5ad1",
+  "#2d3340",
+  "#ff9a5b",
+  "#9fd4e8",
+];
 
 /** Where a vehicle stands: its middle, the axis it lies along and which way it faces (+1/-1). */
 export interface Pose {
@@ -82,9 +93,13 @@ export function drawCar(
     Wd = S.wid * TILE;
   // The side and end faces toward the viewer.
   const side = (fn: () => void) =>
-    along === "y" ? onWall(ctx, "y", bx.x1, bx.y1, fn) : onWall(ctx, "x", bx.y1, bx.x0, fn);
+    along === "y"
+      ? onWall(ctx, "y", bx.x1, bx.y1, fn)
+      : onWall(ctx, "x", bx.y1, bx.x0, fn);
   const end = (fn: () => void) =>
-    along === "y" ? onWall(ctx, "x", bx.y1, bx.x0, fn) : onWall(ctx, "y", bx.x1, bx.y1, fn);
+    along === "y"
+      ? onWall(ctx, "x", bx.y1, bx.x0, fn)
+      : onWall(ctx, "y", bx.x1, bx.y1, fn);
   // Along the side, local x runs from the end at the higher coordinate
   // (along "y": y1 is on the left) for along y, and from x0 for along x.
   const frontAtRight = along === "y" ? p.dir < 0 : p.dir > 0;
@@ -167,9 +182,12 @@ export function drawCar(
     right: along === "y" ? glass : glassDark,
   });
   // Pillars and the door line on the side; a shine on the glass.
-  const cabL = along === "y" ? (cab.y1 - cab.y0) * TILE : (cab.x1 - cab.x0) * TILE;
+  const cabL =
+    along === "y" ? (cab.y1 - cab.y0) * TILE : (cab.x1 - cab.x0) * TILE;
   const cabSide = (fn: () => void) =>
-    along === "y" ? onWall(ctx, "y", cab.x1, cab.y1, fn) : onWall(ctx, "x", cab.y1, cab.x0, fn);
+    along === "y"
+      ? onWall(ctx, "y", cab.x1, cab.y1, fn)
+      : onWall(ctx, "x", cab.y1, cab.x0, fn);
   cabSide(() => {
     ctx.translate(0, -lift - lower);
     ctx.fillStyle = body;
@@ -232,7 +250,13 @@ function wheelsOnSide(ctx: Ctx, L: number, n: number) {
   }
 }
 /** Head or tail lights, the bumper and the plate on an end face (local px, width w). */
-function lights(ctx: Ctx, w: number, front: boolean, n: number, braking: boolean) {
+function lights(
+  ctx: Ctx,
+  w: number,
+  front: boolean,
+  n: number,
+  braking: boolean,
+) {
   ctx.fillStyle = "#2a2d34";
   ctx.fillRect(2, -9, w - 4, 7);
   ctx.fillStyle = "#f4f1e6";
@@ -259,7 +283,12 @@ export const carPose = (c: Car): Pose => ({
   along: "y",
   dir: Math.sign(c.v) || 1,
 });
-export function carDrawable(ctx: Ctx, c: Car, l: Light, braking: boolean): Drawable {
+export function carDrawable(
+  ctx: Ctx,
+  c: Car,
+  l: Light,
+  braking: boolean,
+): Drawable {
   const p = carPose(c);
   const S = CAR_SIZE[c.kind] ?? CAR_SIZE[0];
   return {
@@ -307,7 +336,13 @@ export function updateCars(
     zebra?: number | null;
   } = {},
 ): Car[] {
-  type Entry = { y: number; was: number; len: number; fixed?: boolean; set: (y: number) => void };
+  type Entry = {
+    y: number;
+    was: number;
+    len: number;
+    fixed?: boolean;
+    set: (y: number) => void;
+  };
   const bus = o.bus && o.bus.state !== "away" ? o.bus : null;
   for (const dir of [1, -1]) {
     const lane: Entry[] = [];
@@ -318,10 +353,21 @@ export function updateCars(
         lane.push({ y: c.y, was, len: carLen(c), set: (y) => (c.y = y) });
       }
     if (bus && dir < 0)
-      lane.push({ y: bus.y, was: bus.y, len: BUS_LEN, set: (y) => (bus.y = y) });
+      lane.push({
+        y: bus.y,
+        was: bus.y,
+        len: BUS_LEN,
+        set: (y) => (bus.y = y),
+      });
     // Someone on the zebra: a car that hasn't reached it waits (one already on it drives on).
     if (o.zebra != null)
-      lane.push({ y: o.zebra, was: o.zebra, len: 1.5, fixed: true, set: () => {} });
+      lane.push({
+        y: o.zebra,
+        was: o.zebra,
+        len: 1.5,
+        fixed: true,
+        set: () => {},
+      });
     // The front of the lane first.
     lane.sort((a, b) => (dir > 0 ? b.y - a.y : a.y - b.y));
     for (let i = 1; i < lane.length; i++) {
@@ -332,7 +378,10 @@ export function updateCars(
       if (dir > 0 ? me.y > ahead.y - gap : me.y < ahead.y + gap) {
         const to = dir > 0 ? ahead.y - gap : ahead.y + gap;
         // Never pushed back past where it was: it just stops.
-        me.y = dir > 0 ? Math.max(to, Math.min(me.was, me.y)) : Math.min(to, Math.max(me.was, me.y));
+        me.y =
+          dir > 0
+            ? Math.max(to, Math.min(me.was, me.y))
+            : Math.min(to, Math.max(me.was, me.y));
         me.set(me.y);
       }
     }
@@ -344,7 +393,9 @@ export function updateCars(
     const y = down ? ends.y0 : ends.y1;
     // Not on top of someone already coming in.
     const busy =
-      out.some((c) => Math.sign(c.v) === (down ? 1 : -1) && Math.abs(c.y - y) < 4) ||
+      out.some(
+        (c) => Math.sign(c.v) === (down ? 1 : -1) && Math.abs(c.y - y) < 4,
+      ) ||
       (!down && !!bus && Math.abs(bus.y - y) < 5);
     if (!busy) {
       const r = Math.random();
@@ -361,7 +412,10 @@ export function updateCars(
 /** Headlights at night (and the bus's). */
 export function carGlows(cars: Car[], bus?: Bus | null): Glow[] {
   const out: Glow[] = cars.map((car) => {
-    const p = iso(laneOf(car.v), car.y + Math.sign(car.v) * (carLen(car) / 2 + 0.9));
+    const p = iso(
+      laneOf(car.v),
+      car.y + Math.sign(car.v) * (carLen(car) / 2 + 0.9),
+    );
     return [p.x, p.y - 8, 70, "255,240,200", 0.35] as Glow;
   });
   if (bus && bus.state !== "away") {

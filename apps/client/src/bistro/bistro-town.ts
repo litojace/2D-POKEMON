@@ -22,7 +22,15 @@
  * season's weather. Only pictures: nothing here touches the game's rules.
  */
 import type { Facing } from "../animation/controller";
-import { R, iso, isoBox, shade, softShadow, type Light, type Season } from "./bistro-art";
+import {
+  R,
+  iso,
+  isoBox,
+  shade,
+  softShadow,
+  type Light,
+  type Season,
+} from "./bistro-art";
 import { DOOR } from "./bistro-model";
 import { poly } from "./bistro-geom";
 import { spot, type Drawable } from "./bistro-depth";
@@ -297,9 +305,21 @@ export function routes(): { w: number; pts: [number, number][] }[] {
       ],
     },
     // Down the near sidewalk, past the bus stop, over the bridge.
-    { w: 2, pts: [[NEAR, TOP], [NEAR, end]] },
+    {
+      w: 2,
+      pts: [
+        [NEAR, TOP],
+        [NEAR, end],
+      ],
+    },
     // Past the shops across the road.
-    { w: 2.5, pts: [[FAR_WALK, TOP], [FAR_WALK, end]] },
+    {
+      w: 2.5,
+      pts: [
+        [FAR_WALK, TOP],
+        [FAR_WALK, end],
+      ],
+    },
     // Across at the zebra, then around the front and up the side.
     {
       w: 1.6,
@@ -314,7 +334,14 @@ export function routes(): { w: number; pts: [number, number][] }[] {
       ],
     },
     // Along the houses behind, then down the near sidewalk.
-    { w: 1.5, pts: [[EAST(), HOUSE_LINE], [NEAR, HOUSE_LINE], [NEAR, end]] },
+    {
+      w: 1.5,
+      pts: [
+        [EAST(), HOUSE_LINE],
+        [NEAR, HOUSE_LINE],
+        [NEAR, end],
+      ],
+    },
     // Down the side, along the promenade, over the footbridge and along the far bank.
     {
       w: 1.5,
@@ -338,7 +365,14 @@ export function routes(): { w: number; pts: [number, number][] }[] {
       ],
     },
     // Along the far bank of the canal.
-    { w: 1, pts: [[NEAR, TOP], [NEAR, riverLine()], [EAST(), riverLine()]] },
+    {
+      w: 1,
+      pts: [
+        [NEAR, TOP],
+        [NEAR, riverLine()],
+        [EAST(), riverLine()],
+      ],
+    },
   ];
 }
 /** Bikes ride the quiet back street and the path along the far bank. */
@@ -906,7 +940,15 @@ function folkDrawable(
       const a = iso(f.x, f.y),
         b = iso(p.x, p.y);
       const d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-      drawBike(ctx, c.x, c.y - lift, (b.x - a.x) / d, (b.y - a.y) / d, f.walk, n);
+      drawBike(
+        ctx,
+        c.x,
+        c.y - lift,
+        (b.x - a.x) / d,
+        (b.y - a.y) / d,
+        f.walk,
+        n,
+      );
       paint(f.char, f.face, c.x, c.y, lift + 16, fade);
     } else {
       if (f.kind !== "sit") softShadow(ctx, c.x, c.y + 2 - lift, 18, 7, 0.26);
@@ -963,7 +1005,9 @@ export function townDrawables(
       out.push(spot(p.x, p.y, 0.12, 50, () => drawPigeon(ctx, p, l)));
   if (l.season !== "winter")
     for (const d of s.ducks)
-      out.push(spot(d.x, d.y, 0.25, 10, () => drawDuck(ctx, d, l), { z: -WATER }));
+      out.push(
+        spot(d.x, d.y, 0.25, 10, () => drawDuck(ctx, d, l), { z: -WATER }),
+      );
   return out;
 }
 
@@ -972,7 +1016,12 @@ export function townDrawables(
 export function busBox(b: Bus) {
   const lane = laneOf(-1),
     w = 0.82;
-  return { x0: lane - w, x1: lane + w, y0: b.y - BUS_LEN / 2, y1: b.y + BUS_LEN / 2 };
+  return {
+    x0: lane - w,
+    x1: lane + w,
+    y0: b.y - BUS_LEN / 2,
+    y1: b.y + BUS_LEN / 2,
+  };
 }
 function busDrawable(ctx: Ctx, b: Bus, l: Light): Drawable {
   const bx = busBox(b);
@@ -1034,7 +1083,9 @@ export function drawBus(ctx: Ctx, b: Bus, l: Light) {
   });
   const lit = n > 0.35;
   const glass = (k = 0) =>
-    lit ? `rgba(255,${226 - k * 10},160,1)` : shade(k ? "#8fbfd8" : "#a9d4ea", -0.4 * n);
+    lit
+      ? `rgba(255,${226 - k * 10},160,1)`
+      : shade(k ? "#8fbfd8" : "#a9d4ea", -0.4 * n);
   const L = BUS_LEN * TILE;
   // The curb side: a cream belt, a row of windows, two doors, the wheels.
   onWall(ctx, "y", x1, y1, () => {
@@ -1162,8 +1213,7 @@ export function drawShelter(ctx: Ctx, l: Light) {
     const p = iso(px, py);
     ctx.fillRect(p.x - 2, p.y - H, 4, H);
   }
-  const glassCol =
-    n > 0.4 ? "rgba(120,140,180,.32)" : "rgba(200,232,246,.42)";
+  const glassCol = n > 0.4 ? "rgba(120,140,180,.32)" : "rgba(200,232,246,.42)";
   // The side panel at the +y end (toward the camera).
   onWall(ctx, "x", y1 - 0.04, x0 + 0.06, () => {
     const w = (x1 - x0 - 0.12) * TILE;
