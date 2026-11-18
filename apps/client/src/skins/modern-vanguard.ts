@@ -20,23 +20,23 @@ const T = (hue: number, sat: number, lift = 0, mix = 0.85): Tint => ({ hue, mix,
 
 /** Body colours: each hero vivid in the colour of its power. */
 export const VANGUARD_TINTS: Record<CharacterId, Tint> = {
-  voltkit: T(46, 0.95, -0.02), // Pulse Courier: charged gold
-  cindrake: T(16, 0.85, 0.02), // Solar Forger: forge orange
-  tidefin: T(192, 0.72, 0.02), // Riptide Ranger: riptide aqua
-  auralynx: T(248, 0.58, 0.04), // Prism Sentinel: prism periwinkle
-  lumoth: T(44, 0.78, 0), // Lumen Warden: lamplight ivory
+  voltkit: T(60, 0.95), // Pulse Courier: charged gold
+  cindrake: T(10, 0.8, 0.12), // Solar Forger: forge orange
+  tidefin: T(200, 0.65), // Riptide Ranger: riptide aqua
+  auralynx: T(230, 0.5, 0.06), // Prism Sentinel: prism periwinkle
+  lumoth: T(44, 0.78), // Lumen Warden: lamplight ivory
   mystowl: T(268, 0.6, -0.02), // Night Cartographer: night violet
   terradon: T(95, 0.5, -0.02), // Bulwark Grove: moss green
-  duskveil: T(300, 0.55, 0), // Echo Beacon: signal magenta
-  coilemur: T(186, 0.5, 0.06), // Flux Runner: flux cyan
-  pyranda: T(10, 0.82, 0), // Cinder Medic: ember red
-  glacelle: T(196, 0.55, 0.04), // Frost Weaver: frost white-blue
+  duskveil: T(300, 0.55), // Echo Beacon: signal magenta
+  coilemur: T(180, 0.5, 0.06), // Flux Runner: flux cyan
+  pyranda: T(5, 0.95), // Cinder Medic: ember red
+  glacelle: T(210, 0.65, -0.25), // Frost Weaver: frost white-blue
   halcyra: T(214, 0.78, 0.02), // Gale Captain: open-sky blue
-  sunbara: T(38, 0.78, 0.06), // Dawn Defender: dawn gold
-  astrabun: T(222, 0.6, 0.02), // Comet Strider: comet ice blue
-  wombolder: T(26, 0.58, -0.04), // Quake Marshal: rust amber
+  sunbara: T(40, 0.95, 0.06), // Dawn Defender: dawn gold
+  astrabun: T(205, 0.95), // Comet Strider: comet ice blue
+  wombolder: T(25, 0.65, -0.06), // Quake Marshal: rust amber
   shadopus: T(172, 0.52, 0.02), // Deepwatch Oracle: deep-sea teal
-  pangrove: T(150, 0.58, -0.04), // Briar Bastion: briar jade
+  pangrove: T(155, 0.5, -0.06), // Briar Bastion: briar jade
   mossloth: T(206, 0.36, 0.1), // Cloud Keeper: sky pastel
 };
 

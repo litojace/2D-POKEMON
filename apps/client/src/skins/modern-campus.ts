@@ -72,18 +72,39 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
         k.lume("blink", k.rect(bx + 3.5, cy - 4, 3, 2, 0.5, "#fff6c9", "none", 0), 0, "#ffffff"));
     }
   },
-  // Drama Club: a velvet cape and a brooch of the two theatre masks, lit,
-  // with a beret.
+  // Drama Club Lead: a velvet costume with a gold hem and a brooch of the
+  // two theatre masks, and a big comedy mask held up on a gold stick, its
+  // rim lit like stage lights. The mask is held at its left: the viewer's
+  // right from the front, the viewer's left from behind, and out in front of
+  // the body in profile.
   duskveil(k) {
-    const velvet = "#5a1f3a";
+    const velvet = "#4a1f5a",
+      gold = "#f2c14e";
     const masks = (x: number, y: number) =>
       k.path(`M${x - 6} ${y - 4}q3 -2 6 0v4q-3 4 -6 0Z`, "#fff3c4", k.ink, 0.5) + k.path(`M${x} ${y - 2}q3 -2 6 0v4q-3 4 -6 0Z`, "#c9a3e7", k.ink, 0.5);
-    if (k.back) backPanel(k, velvet, k.line(`M${k.C - k.W} ${k.B - 3}H${k.C + k.W}`, "#e6c46a", 1.4));
+    if (k.back) backPanel(k, velvet, k.line(`M${k.C - k.W} ${k.B - 3}H${k.C + k.W}`, gold, 1.6));
     else {
       const c = cx(k);
-      k.put("body", torso(k, velvet, k.line(`M${k.L} ${k.B - 3}H${k.R}`, "#e6c46a", 1.4)) + k.lume("pulse", masks(c, k.T + 12), 0, "#ffd27a"));
+      k.put("body", torso(k, velvet, k.line(`M${k.L} ${k.B - 3}H${k.R}`, gold, 1.6)) + k.lume("pulse", masks(c, k.T + 12), 0, "#ffd27a"));
     }
-    k.put("flame", hatShape(k, 26, 10, k.ht + 22, "#2a2244", "#2a2244", 1.2));
+    // The comedy mask on its stick: a white face with gold rim, eye holes
+    // and a wide smile; facing us from the front and in profile, its back
+    // (plain gold) from behind.
+    const mx = k.back ? k.L - 12 : k.side ? k.C + k.side * 26 : k.R + 14,
+      my = k.T - 20;
+    const face = k.back
+      ? k.path(`M${mx - 12} ${my - 9}Q${mx} ${my - 15} ${mx + 12} ${my - 9}Q${mx + 13} ${my + 6} ${mx} ${my + 12}Q${mx - 13} ${my + 6} ${mx - 12} ${my - 9}Z`, "#b8862a")
+      : k.path(`M${mx - 12} ${my - 9}Q${mx} ${my - 15} ${mx + 12} ${my - 9}Q${mx + 13} ${my + 6} ${mx} ${my + 12}Q${mx - 13} ${my + 6} ${mx - 12} ${my - 9}Z`, "#fff6e0") +
+        k.path(`M${mx - 8} ${my - 3}q3 -4 6 0q-3 2 -6 0Z M${mx + 2} ${my - 3}q3 -4 6 0q-3 2 -6 0Z`, "#2a1f2e", "none") +
+        k.path(`M${mx - 7} ${my + 3}Q${mx} ${my + 11} ${mx + 7} ${my + 3}Q${mx} ${my + 6} ${mx - 7} ${my + 3}Z`, "#c8323a", k.ink, 0.5) +
+        k.circle(mx - 8, my + 2, 1.6, "#ff9ab0", "none", 0) + k.circle(mx + 8, my + 2, 1.6, "#ff9ab0", "none", 0);
+    const stick = k.line(`M${mx + (k.back ? 2 : -2)} ${my + 11}L${mx + (k.back ? 5 : -5)} ${my + (k.B - 14 - my) / 1.5}`, gold, 2.4);
+    const rim = k.lume("pulse", `<path d="M${mx - 12} ${my - 9}Q${mx} ${my - 15} ${mx + 12} ${my - 9}Q${mx + 13} ${my + 6} ${mx} ${my + 12}Q${mx - 13} ${my + 6} ${mx - 12} ${my - 9}Z" fill="none" stroke="${gold}" stroke-width="2"/>`, 1, "#ffd27a");
+    // A ribbon of marquee lights trails from the stick.
+    const bulbs = [0, 1, 2].map((i) => k.lume("chase", k.circle(mx + (k.back ? 4 : -4) + (i - 1) * 5, my + 16 + i * 4, 1.6, "#fff3a8", "none", 0), 2 + i, "#fff3a8")).join("");
+    // Drawn half again as large, so it reads at play size.
+    const big = (svg: string) => `<g transform="translate(${mx} ${my}) scale(1.5) translate(${-mx} ${-my})">${svg}</g>`;
+    k.put("flame", big(stick + face + rim + bulbs));
   },
   // Robotics Club: overalls with a tool belt, a robot badge whose eyes
   // blink, and an antenna headband with a light on top.

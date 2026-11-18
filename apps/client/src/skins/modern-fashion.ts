@@ -4,7 +4,7 @@ import type { Facing } from "../animation/controller";
 import type { Palette } from "./skin-art";
 import { fashionCut } from "./fashion-fits";
 import { cutBox, UNDER } from "./rare-fashion";
-import { DESIGNS } from "./modern-designs";
+import { DESIGNS, modernReplaces } from "./modern-designs";
 import "./modern-viet";
 import "./modern-viet-legend";
 import "./modern-hero";
@@ -149,6 +149,17 @@ export function modernOutfit(
   const design = DESIGNS[theme]?.[id];
   if (design) {
     design({ id, side, back, hx, ht, C, T, B, W, L, R, ink, put, path, line, circle, rect, lume, garment, star });
+    // Halcyra's long crystal beak lives on the head-top layer that these
+    // costumes take off with its crest: draw it back (down the face from the
+    // front, forward in profile), unless the design draws its own.
+    if (id === "halcyra" && !back && theme !== "pirates" && modernReplaces(theme, id).includes("flame")) {
+      const beak = side
+        ? path(`M${hx + side * 33} ${ht + 52}L${hx + side * 80} ${ht + 60}L${hx + side * 33} ${ht + 68}Z`, "#cfe6ff", ink, 1.1) +
+          line(`M${hx + side * 36} ${ht + 60}L${hx + side * 74} ${ht + 60}`, "#9fc0e8", 1)
+        : path(`M${hx - 6} ${ht + 61}Q${hx - 7} ${ht + 82} ${hx} ${ht + 102}Q${hx + 7} ${ht + 82} ${hx + 6} ${ht + 61}Z`, "#cfe6ff", ink, 1.1) +
+          line(`M${hx} ${ht + 64}V${ht + 96}`, "#9fc0e8", 1);
+      put("flame", beak);
+    }
     return out;
   }
 
