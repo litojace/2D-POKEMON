@@ -685,3 +685,15 @@ body:has(#menu > .room-screen) .chat-button[data-place="room"] {
   font-style: normal;
   color: var(--ui-accent);
 }
+/* Phones: your seat's gold edge says it's you; "(you)" is kept for screen
+   readers only, so a host's crown doesn't cut the name short. */
+@media (max-height: 500px) {
+  .room-seat.is-me .room-seat-text b > small {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
