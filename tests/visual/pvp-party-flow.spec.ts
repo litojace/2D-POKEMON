@@ -361,6 +361,22 @@ for (const size of [
       expect(
         inside(await box(page, "#spectate"), { x: 0, y: 0, ...size }),
       ).toBe(true);
+      // Drawn arrows, centred in their buttons and big enough to read (the
+      // ‹ › glyphs were tiny and off centre on phones), on a solid bar.
+      for (const step of ["-1", "1"]) {
+        const button = await box(page, `[data-spectate-step="${step}"]`);
+        const arrow = await box(page, `[data-spectate-step="${step}"] svg`);
+        expect(arrow.width).toBeGreaterThanOrEqual(18);
+        expect(
+          Math.abs(arrow.x + arrow.width / 2 - (button.x + button.width / 2)),
+        ).toBeLessThan(1.5);
+        expect(
+          Math.abs(arrow.y + arrow.height / 2 - (button.y + button.height / 2)),
+        ).toBeLessThan(1.5);
+      }
+      expect(
+        await spectator.evaluate((el) => getComputedStyle(el).backgroundColor),
+      ).toBe("rgb(12, 18, 34)");
       const watchingBox = await box(page, "#spectate");
       expect(watchingBox.y).toBeGreaterThan(size.height * 0.65);
       expect(watchingBox.x + watchingBox.width).toBeLessThanOrEqual(

@@ -128,12 +128,17 @@ test("the Shop and Wardrobe catalogue shows still effects; the stage plays them"
     const a = await stage.screenshot();
     await page.waitForTimeout(400);
     expect((await stage.screenshot()).equals(a)).toBe(false);
-    // A frame's tier edge, sparks and rays keep turning on the stage.
+    // A frame shines by rarity on the stage, but nothing turns or orbits
+    // round it (owner, 18 Nov 2026): the same still light as when worn.
     await page.click('.fit-room [data-ui-item="galaxy-frame"]');
     await expect(stage).toHaveClass(/is-item/);
-    expect(await running(page, ".fit-stage .shop-live-stage")).toEqual(
-      expect.arrayContaining(["tier-turn", "tier-orbit"]),
-    );
+    await expect(stage.locator(".tier-glow")).toBeVisible();
+    await expect(stage.locator(".tier-orbit, .tier-rays")).toHaveCount(0);
+    expect(
+      (await running(page, ".fit-stage .shop-live-stage")).filter((n) =>
+        n.startsWith("tier-"),
+      ),
+    ).toEqual([]);
     expect(await running(page, CATALOGUE)).toEqual([]);
 
     // The Wardrobe: the frames and effect tiles keep still there too.

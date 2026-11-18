@@ -297,22 +297,17 @@ function paintPad(
     });
   }
 }
-/** Polarity marks over each marked raider, with their countdown rings. */
 /**
- * Where a raider's Polarity medallion sits: the raid's, 100 px over them;
- * on the Spire and the Ascendant form, beside them at chest height, clear of
- * the name tag and health bar (on a phone the raid's spot sits under them).
+ * Where a raider's Polarity medallion sits, in every Storm Twins fight (the
+ * raid, the Ascendant form and the Spire): beside them at chest height, clear
+ * of the name tag and health bar. Over the head, a phone's name tag hid it.
  */
-export function polarityMarkAt(
-  r: Pick<NonNullable<Snapshot["raid"]>, "variant" | "spire">,
-  p: { x: number; y: number },
-) {
-  return r.spire || r.variant === "ascendant"
-    ? { x: p.x + POLARITY_BESIDE.x, y: p.y + POLARITY_BESIDE.y }
-    : { x: p.x, y: p.y - 100 };
+export function polarityMarkAt(p: { x: number; y: number }) {
+  return { x: p.x + POLARITY_BESIDE.x, y: p.y + POLARITY_BESIDE.y };
 }
-/** The Spire's and the Ascendant's medallion offset (world px). */
+/** The medallion's offset from its raider (world px). */
 export const POLARITY_BESIDE = { x: 54, y: -30 };
+/** Polarity marks by each marked raider, with their countdown rings. */
 function paintMarks(g: G, A: ReturnType<typeof ringAtlas>, state: Snapshot) {
   const r = state.raid!;
   // Polarity marks: a copper medallion by each marked raider (polarityMarkAt),
@@ -327,7 +322,7 @@ function paintMarks(g: G, A: ReturnType<typeof ringAtlas>, state: Snapshot) {
   for (const m of marks) {
     const p = state.players.find((p) => p.id === m.playerId)!;
     const color = m.cancelled ? 0x8de8cf : m.sign > 0 ? 0xffda85 : 0x8edfff,
-      { x, y } = polarityMarkAt(r, p);
+      { x, y } = polarityMarkAt(p);
     over.put(A, "markBase", x, y);
     over.put(
       A,

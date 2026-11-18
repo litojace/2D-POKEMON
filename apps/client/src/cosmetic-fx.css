@@ -88,27 +88,38 @@
   content: none !important;
 }
 
-/* ── Frames dress up by rarity (inspired by prestige borders) ──
-   .tier-fx sits just outside the frame's own artwork:
-   Rare       a polished edge with a light sheen sweeping round
-   Epic       a turning two-colour edge and a soft glow
-   Legendary  a golden turning edge, a breathing halo, orbiting sparks
-   Mythic     a prismatic edge that shifts colour, a strong halo, sparks
-              orbiting both ways
+/* ── Frames shine by rarity ──
+   Still light only (owner, 18 Nov 2026): nothing turns or orbits round a
+   frame, so a frame costs the same wherever it is drawn and the portrait in
+   the header, a lobby or a match looks like its Shop preview. Two layers,
+   both sized in % of the portrait so they scale with it:
+   .tier-glow  a soft halo behind the frame, brighter with rarity
+   .tier-fx    a thin glossy edge on the portrait's rim
+   Rare       a polished blue edge with a light sheen, a faint halo
+   Epic       a two-colour edge, a purple halo
+   Legendary  a golden edge, a warm halo
+   Mythic     a prismatic edge and a prismatic halo
    Common frames have no extra. */
-.raid-cosmetic-preview > .tier-fx {
+.raid-cosmetic-preview:has(> .tier-fx) {
+  isolation: isolate;
+}
+.raid-cosmetic-preview > :is(.tier-fx, .tier-glow) {
   position: absolute;
-  inset: -3px;
-  z-index: 2;
   border-radius: inherit;
   pointer-events: none;
 }
-.raid-cosmetic-preview[data-tier="common"] > .tier-fx {
+.raid-cosmetic-preview[data-tier="common"] > :is(.tier-fx, .tier-glow) {
   display: none;
 }
 /* The edge: a ring cut out of a gradient. */
+/* It lies just inside the portrait's rim, never over the frame's own ring
+   art (which starts at the rim and goes out), and its width follows the
+   portrait (% of the frame, within a few px): a 36 px header portrait and a
+   256 px Shop stage show the same frame with the same edge. */
 .raid-cosmetic-preview[data-tier] > .tier-fx {
-  padding: 2px;
+  inset: 0;
+  z-index: 2;
+  padding: clamp(1.5px, 3%, 6px);
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
@@ -119,33 +130,19 @@
 }
 .raid-cosmetic-preview[data-tier="rare"] > .tier-fx {
   background:
-    linear-gradient(115deg, transparent 35%, #ffffffd9 48%, transparent 60%) 0
+    linear-gradient(115deg, transparent 35%, #ffffffd9 48%, transparent 60%) 40%
       0 / 300% 100%,
     linear-gradient(135deg, #cfe6ff, #4fa8ff 45%, #a9d2ff 70%, #2f6fc0);
-  animation: tier-sheen 3.6s ease-in-out infinite;
 }
-@keyframes tier-sheen {
-  0%,
-  35% {
-    background-position:
-      120% 0,
-      0 0;
-  }
-  75%,
-  100% {
-    background-position:
-      -40% 0,
-      0 0;
-  }
-}
+/* The gradients' start angle. It used to turn; it stays put now, and the
+   frame art's own edges (boss, collection) still read it. */
 @property --tier-turn {
   syntax: "<angle>";
   inherits: false;
   initial-value: 0deg;
 }
 .raid-cosmetic-preview[data-tier="epic"] > .tier-fx {
-  inset: -4px;
-  padding: 3px;
+  padding: clamp(2px, 3.5%, 8px);
   background: conic-gradient(
     from var(--tier-turn),
     #b56bff,
@@ -154,12 +151,9 @@
     #e2a8ff,
     #b56bff
   );
-  box-shadow: 0 0 10px #b56bff88;
-  animation: tier-turn 5s linear infinite;
 }
 .raid-cosmetic-preview[data-tier="legendary"] > .tier-fx {
-  inset: -5px;
-  padding: 3px;
+  padding: clamp(2px, 4%, 9px);
   background: conic-gradient(
     from var(--tier-turn),
     #ffbf3c,
@@ -168,11 +162,9 @@
     #ffe08a,
     #ffbf3c
   );
-  animation: tier-turn 4s linear infinite;
 }
 .raid-cosmetic-preview[data-tier="mythic"] > .tier-fx {
-  inset: -6px;
-  padding: 4px;
+  padding: clamp(2.5px, 4.5%, 10px);
   background: conic-gradient(
     from var(--tier-turn),
     #ff4f7b,
@@ -182,68 +174,57 @@
     #b59bff,
     #ff4f7b
   );
-  animation: tier-turn 3s linear infinite;
 }
-@keyframes tier-turn {
-  to {
-    --tier-turn: 360deg;
-  }
+/* The halo: one still gradient behind the frame and its ornaments (no
+   blur, no filter, nothing animated). It starts under the portrait's rim
+   and fades out a third of a portrait beyond it. A frame with its own
+   palette (boss frames' --frame-glow) glows in its colours. */
+.raid-cosmetic-preview > .tier-glow {
+  --glow: var(--frame-glow, var(--tier, #4fa8ff));
+  inset: -34%;
+  border-radius: 50%;
+  z-index: -1;
+  background: radial-gradient(
+    circle closest-side,
+    color-mix(in srgb, var(--glow) var(--glow-strength), transparent) 58%,
+    color-mix(in srgb, var(--glow) calc(var(--glow-strength) / 2), transparent)
+      74%,
+    transparent 100%
+  );
 }
-/* Halo: a still glow on the edge layer (box-shadow below). Animating a
-   filter on the whole frame repainted the portrait every frame, which made
-   the orbiting sparks stutter on phones. */
-/* Orbiting sparks: a separate layer that turns round the frame. */
-.raid-cosmetic-preview > .tier-orbit {
-  display: none;
-  position: absolute;
-  inset: -16%;
-  will-change: transform;
-  /* Sparks pass in front of ornaments rather than being sliced by them. */
-  z-index: 7;
-  /* A circular background clip sliced the edge sparks into half discs. */
-  border-radius: 0;
-  overflow: visible;
-  pointer-events: none;
+.raid-cosmetic-preview[data-tier="rare"] > .tier-glow {
+  --glow-strength: 30%;
 }
-.raid-cosmetic-preview[data-tier="legendary"] > .tier-orbit,
-.raid-cosmetic-preview[data-tier="mythic"] > .tier-orbit {
-  display: block;
-  background:
-    radial-gradient(circle at 50% 8%, #fffbe8 0 2.4%, transparent 4%),
-    radial-gradient(
-      circle at 92% 50%,
-      var(--spark-b, #ffd76a) 0 1.8%,
-      transparent 3.2%
-    ),
-    radial-gradient(
-      circle at 20% 80%,
-      var(--spark-c, #fff4c4) 0 1.5%,
-      transparent 2.8%
-    );
-  animation: tier-orbit 4.5s linear infinite;
+.raid-cosmetic-preview[data-tier="epic"] > .tier-glow {
+  --glow-strength: 50%;
 }
-.raid-cosmetic-preview[data-tier="mythic"] > .tier-orbit {
-  --spark-b: #7fd8ff;
-  --spark-c: #ff8fb0;
-  background:
-    radial-gradient(circle at 50% 8%, #fffbe8 0 2.4%, transparent 4%),
-    radial-gradient(circle at 92% 50%, #7fd8ff 0 1.8%, transparent 3.2%),
-    radial-gradient(circle at 20% 80%, #ff8fb0 0 1.5%, transparent 2.8%),
-    radial-gradient(circle at 50% 92%, #8ff0b5 0 1.6%, transparent 3%),
-    radial-gradient(circle at 8% 40%, #b59bff 0 1.6%, transparent 3%);
-  animation-duration: 3s;
+.raid-cosmetic-preview[data-tier="legendary"] > .tier-glow {
+  --glow-strength: 70%;
 }
-@keyframes tier-orbit {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .raid-cosmetic-preview > .tier-fx,
-  .raid-cosmetic-preview:has(> .tier-fx),
-  .raid-cosmetic-preview > .tier-orbit {
-    animation: none !important;
-  }
+/* Mythic shines in every colour: a still prismatic wheel faded out from
+   the rim. */
+.raid-cosmetic-preview[data-tier="mythic"] > .tier-glow {
+  background: conic-gradient(
+    from var(--tier-turn),
+    #ff4f7bcc,
+    #ffd36bcc,
+    #8ff0b5cc,
+    #7fd8ffcc,
+    #b59bffcc,
+    #ff4f7bcc
+  );
+  -webkit-mask: radial-gradient(
+    circle closest-side,
+    #000 58%,
+    #0008 74%,
+    transparent 100%
+  );
+  mask: radial-gradient(
+    circle closest-side,
+    #000 58%,
+    #0008 74%,
+    transparent 100%
+  );
 }
 
 .tier-chip {
@@ -262,116 +243,6 @@
   background: linear-gradient(90deg, #ff4f7b33, #ffd36b33, #7fd8ff33);
 }
 
-/* ── Stronger frame tiers ──
-   Epic       thicker turning edge, purple glow, four gems turning slowly
-   Legendary  gold edge, breathing halo, slow golden light rays behind
-   Mythic     prismatic edge, prismatic rays turning, sparks both ways */
-.raid-cosmetic-preview:has(> .tier-fx) {
-  isolation: isolate;
-}
-.raid-cosmetic-preview[data-tier="rare"] > .tier-fx {
-  box-shadow: 0 0 8px #4fa8ff66;
-}
-.raid-cosmetic-preview[data-tier="epic"] > .tier-fx {
-  inset: -5px;
-  padding: 4px;
-  box-shadow:
-    0 0 12px #b56bffaa,
-    inset 0 0 6px #e2a8ff88;
-}
-.raid-cosmetic-preview[data-tier="epic"] > .tier-orbit {
-  display: block;
-  inset: -16%;
-  background:
-    radial-gradient(
-      circle at 50% 8%,
-      #f0d7ff 0 2.2%,
-      #b56bff 2.6%,
-      transparent 4%
-    ),
-    radial-gradient(
-      circle at 92% 50%,
-      #f0d7ff 0 2.2%,
-      #b56bff 2.6%,
-      transparent 4%
-    ),
-    radial-gradient(
-      circle at 50% 92%,
-      #f0d7ff 0 2.2%,
-      #b56bff 2.6%,
-      transparent 4%
-    ),
-    radial-gradient(
-      circle at 8% 50%,
-      #f0d7ff 0 2.2%,
-      #b56bff 2.6%,
-      transparent 4%
-    );
-  animation: tier-orbit 12s linear infinite;
-}
-.raid-cosmetic-preview[data-tier="legendary"] > .tier-fx {
-  inset: -6px;
-  padding: 4px;
-  box-shadow:
-    0 0 14px #ffbf3cbb,
-    inset 0 0 6px #fff4c499;
-}
-.raid-cosmetic-preview[data-tier="mythic"] > .tier-fx {
-  inset: -7px;
-  padding: 5px;
-  box-shadow:
-    0 0 16px #ff4f7bbb,
-    0 0 26px #7fd8ff66,
-    inset 0 0 8px #ffffff88;
-}
-/* Light rays turning behind the frame. */
-.raid-cosmetic-preview > .tier-rays {
-  display: none;
-  will-change: transform;
-  position: absolute;
-  inset: -18%;
-  z-index: -1;
-  border-radius: 50%;
-  pointer-events: none;
-  -webkit-mask: radial-gradient(
-    circle closest-side,
-    transparent 0 58%,
-    #000 62%,
-    transparent 100%
-  );
-  mask: radial-gradient(
-    circle closest-side,
-    transparent 0 58%,
-    #000 62%,
-    transparent 100%
-  );
-}
-.raid-cosmetic-preview[data-tier="legendary"] > .tier-rays {
-  display: block;
-  background: repeating-conic-gradient(
-    #ffd76a66 0 6deg,
-    transparent 6deg 22deg
-  );
-  animation: tier-orbit 14s linear infinite;
-}
-.raid-cosmetic-preview[data-tier="mythic"] > .tier-rays {
-  display: block;
-  background: repeating-conic-gradient(
-    #ff4f7b55 0 5deg,
-    transparent 5deg 15deg,
-    #7fd8ff55 15deg 20deg,
-    transparent 20deg 30deg,
-    #ffd36b55 30deg 35deg,
-    transparent 35deg 45deg
-  );
-  animation: tier-orbit 10s linear infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .raid-cosmetic-preview > .tier-rays {
-    animation: none !important;
-  }
-}
-
 /* A frame's own ornament (pearl, gem, planet, lantern, moon…) is part of
    the frame: it sits on top of the tier edge, not under it. */
 .raid-cosmetic-preview:has(> .tier-fx)::after {
@@ -379,11 +250,11 @@
 }
 
 /* ── Lists of items keep still ──
-   Dozens of tiles turning, orbiting and glowing at once cost phones' GPUs
-   too much. In the Shop and Wardrobe catalogue (the room but its stage),
-   the Raid Hub's reward cards, the Journey and the reward reveal
-   (STILL_TILES in cosmetic-fx-preview.ts, keep the two lists in step)
-   frames rest in their still pose, the one reduced motion shows, and effect
+   Dozens of tiles moving at once cost phones' GPUs too much. In the Shop
+   and Wardrobe catalogue (the room but its stage), the Raid Hub's reward
+   cards, the Journey and the reward reveal (STILL_TILES in
+   cosmetic-fx-preview.ts, keep the two lists in step) frames' ornaments
+   rest in their still pose, the one reduced motion shows, and effect
    canvases draw one chosen moment. What a player chooses plays for real:
    the Shop and Wardrobe stage, the Raid Hub card they opened, the Journey
    item they picked (LIVE_PICKS). */
@@ -415,22 +286,4 @@
   )
   *::after {
   animation: none !important;
-}
-/* Nothing turns, so no layer of its own for the sparks and rays. */
-:is(.fit-room > .ui-split-main, .rh-reward, .journey-room, #reward-reveal)
-  .raid-cosmetic-preview:not(
-    :is(.rh-reward[aria-expanded="true"], .journey-room [aria-pressed="true"]) *
-  )
-  > :is(.tier-orbit, .tier-rays) {
-  will-change: auto;
-}
-/* Rare's sheen, caught mid-sweep so the polished edge reads as Rare. */
-:is(.fit-room > .ui-split-main, .rh-reward, .journey-room, #reward-reveal)
-  .raid-cosmetic-preview[data-tier="rare"]:not(
-    :is(.rh-reward[aria-expanded="true"], .journey-room [aria-pressed="true"]) *
-  )
-  > .tier-fx {
-  background-position:
-    40% 0,
-    0 0;
 }

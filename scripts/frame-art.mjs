@@ -498,8 +498,11 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
   background-image: ${a.snowflake};
 }
 
-/* Both premium sets are Epic. Their rarity edge and gems take each set's
+/* Both premium sets are Epic. Their rarity edge and halo take each set's
    colours so the two frames never share the same purple trim. */
+.raid-cosmetic-preview[data-cosmetic="festival-frame"] {
+  --frame-glow: #ff5a3aaa;
+}
 .raid-cosmetic-preview[data-cosmetic="festival-frame"][data-tier="epic"]
   > .tier-fx {
   background: conic-gradient(
@@ -510,17 +513,9 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
     #c4161c,
     #ffd65b
   );
-  box-shadow:
-    0 0 12px #ff5a3aaa,
-    inset 0 0 6px #ffd65b88;
 }
-.raid-cosmetic-preview[data-cosmetic="festival-frame"][data-tier="epic"]
-  > .tier-orbit {
-  background:
-    radial-gradient(circle at 50% 8%, #fff1b8 0 2.2%, #ffb02e 2.6%, transparent 4%),
-    radial-gradient(circle at 92% 50%, #fff1b8 0 2.2%, #ff4a3a 2.6%, transparent 4%),
-    radial-gradient(circle at 50% 92%, #fff1b8 0 2.2%, #ffb02e 2.6%, transparent 4%),
-    radial-gradient(circle at 8% 50%, #fff1b8 0 2.2%, #ff4a3a 2.6%, transparent 4%);
+.raid-cosmetic-preview[data-cosmetic="winter-frame"] {
+  --frame-glow: #7fd0ffbb;
 }
 .raid-cosmetic-preview[data-cosmetic="winter-frame"][data-tier="epic"]
   > .tier-fx {
@@ -532,17 +527,6 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
     #3d9be0,
     #ffffff
   );
-  box-shadow:
-    0 0 12px #7fd0ffbb,
-    inset 0 0 6px #e6f6ff99;
-}
-.raid-cosmetic-preview[data-cosmetic="winter-frame"][data-tier="epic"]
-  > .tier-orbit {
-  background:
-    radial-gradient(circle at 50% 8%, #ffffff 0 2.2%, #7fd0ff 2.6%, transparent 4%),
-    radial-gradient(circle at 92% 50%, #ffffff 0 2.2%, #bfe8ff 2.6%, transparent 4%),
-    radial-gradient(circle at 50% 92%, #ffffff 0 2.2%, #7fd0ff 2.6%, transparent 4%),
-    radial-gradient(circle at 8% 50%, #ffffff 0 2.2%, #bfe8ff 2.6%, transparent 4%);
 }
 
 /* Void Knight (reward for all sixteen Void Knights): black steel with
@@ -558,6 +542,21 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
   transform: translateX(-50%);
   background-image: ${a.voidCrest};
 }
+.raid-cosmetic-preview[data-cosmetic="void-frame"] {
+  --frame-glow: #b48cffaa;
+}
+/* Mythic, but its halo stays in the knight's violet, not the rainbow. */
+.raid-cosmetic-preview[data-cosmetic="void-frame"][data-tier="mythic"]
+  > .tier-glow {
+  background: conic-gradient(
+    from var(--tier-turn),
+    #b48cffcc,
+    #5a3a9acc,
+    #efe6ffcc,
+    #5a3a9acc,
+    #b48cffcc
+  );
+}
 .raid-cosmetic-preview[data-cosmetic="void-frame"][data-tier="mythic"]
   > .tier-fx {
   background: conic-gradient(
@@ -568,9 +567,6 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
     #5a3a9a,
     #b48cff
   );
-  box-shadow:
-    0 0 14px #b48cffaa,
-    inset 0 0 6px #efe6ff66;
 }
 
 /* Cyber Mecha (reward for all sixteen Cyber Mechas): segmented chrome,
@@ -586,6 +582,9 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
   transform: translateX(-50%);
   background-image: ${a.mechaCrest};
 }
+.raid-cosmetic-preview[data-cosmetic="cyber-frame"] {
+  --frame-glow: #3ff0ffaa;
+}
 .raid-cosmetic-preview[data-cosmetic="cyber-frame"][data-tier="epic"]
   > .tier-fx {
   background: conic-gradient(
@@ -596,9 +595,6 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
     #8693a8,
     #3ff0ff
   );
-  box-shadow:
-    0 0 12px #3ff0ffaa,
-    inset 0 0 6px #dfe6f099;
 }
 
 /* Arcade (reward for all eight Arcade skins): neon tubes in magenta and
@@ -614,6 +610,9 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
   transform: translateX(-50%);
   background-image: ${a.joystick};
 }
+.raid-cosmetic-preview[data-cosmetic="arcade-frame"] {
+  --frame-glow: #ff4fd8aa;
+}
 .raid-cosmetic-preview[data-cosmetic="arcade-frame"][data-tier="epic"]
   > .tier-fx {
   background: conic-gradient(
@@ -624,12 +623,26 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
     #7a2bd6,
     #ff4fd8
   );
-  box-shadow:
-    0 0 12px #ff4fd8aa,
-    inset 0 0 6px #2ff3ff99;
 }
 `;
+// The gold accent is a design token (ui/tokens.css): write it as one, as
+// the stylesheet does. Art inside data URIs spells # as %23, so stays as is.
+const tokens = (text) =>
+  text
+    .replace(
+      /#ffd65b55/g,
+      "color-mix(in srgb, var(--ui-accent) 33.3%, transparent)",
+    )
+    .replace(
+      /#ffd65b88/g,
+      "color-mix(in srgb, var(--ui-accent) 53.3%, transparent)",
+    )
+    .replace(
+      /#ffd65b99/g,
+      "color-mix(in srgb, var(--ui-accent) 60%, transparent)",
+    )
+    .replace(/#ffd65b/g, "var(--ui-accent)");
 writeFileSync(
   new URL("../apps/client/src/collection-frames.css", import.meta.url),
-  css,
+  tokens(css),
 );

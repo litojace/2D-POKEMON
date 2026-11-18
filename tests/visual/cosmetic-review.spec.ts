@@ -56,44 +56,59 @@ window.fetch=async(input,init)=>{
   });
 }
 
-// Render the actual effect stylesheet alone so its particle shape can be
-// inspected independently of the portrait, ornament and scene underneath.
-test("orbit sparks remain round at different angles and frame tiers", async ({
+// Render the actual effect stylesheet alone: frames shine by rarity with
+// still light only (owner, 18 Nov 2026). Nothing moves, and the halo grows
+// brighter from Rare to Legendary, with Mythic in every colour.
+test("frame rarity light is still and brighter with rarity", async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 640, height: 640 });
   const effectCSS = await readFile("apps/client/src/cosmetic-fx.css", "utf8");
   await page.setContent(
-    `<style>${effectCSS}</style><style>body{margin:0;background:#000}.raid-cosmetic-preview{position:relative;display:block;width:200px;height:200px;margin:140px;overflow:visible}</style><div class="raid-cosmetic-preview" data-tier="legendary"><i class="tier-orbit" style="animation:none!important"></i></div>`,
+    `<style>${effectCSS}</style><style>body{margin:0;background:#000}.raid-cosmetic-preview{position:relative;display:block;width:200px;height:200px;margin:140px;overflow:visible;border-radius:50%}.disc{position:absolute;inset:0;border-radius:50%;background:#123;z-index:1}</style><div class="raid-cosmetic-preview" data-tier="common"><i class="disc"></i><i class="tier-glow"></i><i class="tier-fx"></i></div>`,
   );
-  const orbit = page.locator(".tier-orbit");
-  await expect(orbit).toBeVisible();
-  await expect
-    .poll(() => orbit.evaluate((el) => getComputedStyle(el).borderRadius))
-    .toBe("0px");
-  for (const tier of ["epic", "legendary", "mythic"]) {
-    await page
-      .locator("[data-tier]")
-      .evaluate((el, t) => el.setAttribute("data-tier", t), tier);
-    for (const angle of [0, 45]) {
-      await orbit.evaluate(
-        (el, a) => ((el as HTMLElement).style.transform = `rotate(${a}deg)`),
-        angle,
-      );
-      const directory = process.env.VISUAL_SHOTS;
-      if (directory) await mkdir(directory, { recursive: true });
-      const bytes = await orbit.screenshot({
-        animations: "disabled",
-        ...(directory
-          ? { path: `${directory}/orbit-${tier}-${angle}.png` }
-          : {}),
-      });
-      await info.attach(`orbit-${tier}-${angle}`, {
-        body: bytes,
-        contentType: "image/png",
-      });
-    }
+  const frame = page.locator(".raid-cosmetic-preview");
+  // Brightness of the halo a sixth of a portrait outside the rim.
+  const halo = async () => {
+    const shot = await page.screenshot({
+      clip: { x: 140 + 100 - 2, y: 140 - 34, width: 4, height: 4 },
+    });
+    return page.evaluate(async (b64) => {
+      const img = new Image();
+      img.src = `data:image/png;base64,${b64}`;
+      await img.decode();
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      const g = c.getContext("2d")!;
+      g.drawImage(img, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let sum = 0;
+      for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
+      return sum / (d.length / 4);
+    }, shot.toString("base64"));
+  };
+  expect(await halo()).toBe(0);
+  const seen: number[] = [];
+  for (const tier of ["rare", "epic", "legendary", "mythic"]) {
+    await frame.evaluate((el, t) => el.setAttribute("data-tier", t), tier);
+    await expect(page.locator(".tier-glow")).toBeVisible();
+    expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
+    seen.push(await halo());
+    const directory = process.env.VISUAL_SHOTS;
+    if (directory) await mkdir(directory, { recursive: true });
+    const bytes = await frame.screenshot({
+      ...(directory ? { path: `${directory}/frame-light-${tier}.png` } : {}),
+    });
+    await info.attach(`frame-light-${tier}`, {
+      body: bytes,
+      contentType: "image/png",
+    });
   }
+  expect(seen[0]).toBeGreaterThan(0);
+  expect(seen[1]).toBeGreaterThan(seen[0]);
+  expect(seen[2]).toBeGreaterThan(seen[1]);
+  expect(seen[3]).toBeGreaterThan(seen[0]);
 });
 
 for (const size of [
@@ -119,8 +134,8 @@ for (const size of [
         "#account-profile [data-portrait-frame=conqueror]",
       );
       await expect(header).toHaveAttribute("data-frame-stars", "4");
-      await expect(header.locator(".tier-rays")).toBeVisible();
-      await expect(header.locator(".tier-orbit")).toBeVisible();
+      await expect(header.locator(".tier-glow")).toBeVisible();
+      await expect(header.locator(".tier-orbit, .tier-rays")).toHaveCount(0);
       await snap(page, info, `real-frame-halo-${size.width}x${size.height}`);
       // The fitting room (UI remodel step 2).
       await page.evaluate(() => {
