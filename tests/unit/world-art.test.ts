@@ -11,6 +11,7 @@ import {
   SHOP_PREVIEW,
   SELECTION_PREVIEW,
   previewAuraScale,
+  battleAuraScale,
   SHOP_SHADOW,
   SHOP_GROUND_FLAT,
 } from "../../apps/client/src/shop-preview-layout";
@@ -53,6 +54,16 @@ describe("shared world art perspective", () => {
     expect(ellipses.length).toBeGreaterThan(0);
     for (const [, , width, height] of ellipses.filter((e) => e[2] > 20))
       expect(height / width).toBeCloseTo(SHOP_GROUND_FLAT);
+  });
+
+  it("sizes battle auras to the fighter as the Lobby does", () => {
+    // The Lobby's aura per unit of its rig's scale.
+    const lobby = previewAuraScale(SELECTION_PREVIEW) / SELECTION_PREVIEW.scale;
+    for (const rigScale of [0.7, 0.7 * 1.6, 0.5])
+      expect(battleAuraScale(rigScale) / rigScale).toBeCloseTo(lobby);
+    // An ordinary fighter (0.7): about 0.37 world units per aura unit, where
+    // battles drew 1 (about 2.7 times bigger next to the fighter).
+    expect(battleAuraScale(0.7)).toBeCloseTo(0.373, 2);
   });
 
   it("sizes fitting-room auras to the fighter as the Lobby does", () => {

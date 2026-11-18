@@ -29,7 +29,8 @@ import { setPerfSource } from "./perf-hud";
 
 /**
  * The Lobby: the one-screen hub after login (hub redesign phase 2). Your
- * fighter stands in the middle, party slots beside it, PLAY in the bottom
+ * fighter stands in the middle, party slots beside it (in a party the
+ * leader stands in the middle on everyone's screen, the others beside), PLAY in the bottom
  * right with the mode next to it, the menu rail on the left and a few cards
  * on the right. The walkable world is the Plaza tab; see hub-scene.ts.
  * Plain DOM over a blurred painting of the plaza: no canvas, light on phones.
@@ -145,6 +146,7 @@ export type LobbyAction =
   | "friends"
   | "invite"
   | "leave-party"
+  | "party-room"
   | "farm"
   | "guide"
   | "spire"
@@ -172,11 +174,28 @@ export interface LobbyPartyMember {
   skin?: { skin: string; stage: number } | null;
   /** Their equipped raid look: colours, aura, entrance, frame. */
   look?: RaidLoadout;
+  /** Your own seat (in someone else's party): a tap changes your fighter. */
+  you?: boolean;
+  /** Their account id (for Kick). */
+  id?: string;
+  /** You lead and may remove them: a tap on their seat offers Kick. */
+  kickable?: boolean;
+  /** Their connection dropped; the party keeps their place a while. */
+  away?: boolean;
 }
 export interface LobbyView {
   character: CharacterId;
+  /**
+   * Your party's leader when it isn't you: they stand in the middle, as on
+   * every member's screen, and you stand beside them (a `you` seat).
+   */
+  host?: LobbyPartyMember;
   /** The other members of your party (up to three), or none. */
   party: LobbyPartyMember[];
+  /** Your party's room is open and you're not in it: Rejoin shows. */
+  partyRoom?: boolean;
+  /** You lead a party of two or more: "♛ You" under your fighter. */
+  leading?: boolean;
   /** Party size including you (0: no party). */
   partySize: number;
   economy?: Economy;
@@ -196,6 +215,8 @@ export interface LobbyOptions {
   onPlay(mode: LobbyMode): void;
   /** Step to the previous (-1) or next (1) fighter. */
   onStep(direction: -1 | 1): void;
+  /** The leader confirmed Kick on a member's seat. */
+  onKick?(id: string): void;
   reduced: boolean;
 }
 export interface LobbyHandle {
@@ -226,10 +247,20 @@ const lookData = (look: RaidLoadout | undefined) =>
  * stand on a podium on the stage's floor, like your fighter.
  */
 export function slotMarkup(member: LobbyPartyMember | undefined, seat = 0) {
+  // An open seat: anyone in the party may invite a friend into it.
   if (!member)
     return `<button type="button" class="lobby-slot" data-lobby-action="invite" aria-label="Invite a friend to your party"><span aria-hidden="true">+</span><small>Invite</small></button><span class="lobby-podium is-open" aria-hidden="true"></span>`;
   const skin = member.skin ?? null;
-  return `<figure class="lobby-member" style="--element:${hex(CHARACTERS[member.character].color)}" aria-label="${escape(member.name)}${member.leader ? ", party leader" : ""}"><div class="lobby-member-art fighter-rig-stage" data-preview-champion="${member.character}" data-preview-item="${escape(skin?.skin ?? "")}" data-preview-stage="${skin?.stage ?? 1}" data-preview-look="${lookData(member.look)}" data-preview-action="idle">${fighterStageArt(member.character, `lobby-seat-${seat}`, skin, member.look ?? {})}</div><span class="lobby-podium" aria-hidden="true"></span><figcaption>${member.leader ? '<b class="lobby-crown" aria-hidden="true">♛</b>' : ""}${escape(member.name)}</figcaption></figure>`;
+  const label = `${member.you ? "You" : escape(member.name)}${member.leader ? ", party leader" : ""}${member.away ? ", reconnecting" : ""}`;
+  // Your own seat beside the leader: a tap opens Fighters to change it.
+  // A member's seat on the leader's stage: a tap offers Kick, a second
+  // tap on it removes them (lobby-screen.ts arms one seat at a time).
+  const tap = member.you
+    ? `<button type="button" class="lobby-member-tap" data-lobby-action="fighters" aria-label="Change your fighter" title="Change your fighter"></button>`
+    : member.kickable && member.id
+      ? `<button type="button" class="lobby-member-tap" data-lobby-member="${escape(member.id)}" aria-expanded="false" aria-label="${escape(member.name)}: party options"></button><button type="button" class="lobby-kick" data-lobby-kick="${escape(member.id)}" aria-label="Remove ${escape(member.name)} from the party">Kick</button>`
+      : "";
+  return `<figure class="lobby-member${member.you ? " is-you" : ""}${member.away ? " is-away" : ""}" style="--element:${hex(CHARACTERS[member.character].color)}" aria-label="${label}"><div class="lobby-member-art fighter-rig-stage" data-preview-champion="${member.character}" data-preview-item="${escape(skin?.skin ?? "")}" data-preview-stage="${skin?.stage ?? 1}" data-preview-look="${lookData(member.look)}" data-preview-action="idle">${fighterStageArt(member.character, `lobby-seat-${seat}`, skin, member.look ?? {})}</div><span class="lobby-podium" aria-hidden="true"></span>${tap}<figcaption>${member.leader ? '<b class="lobby-crown" aria-hidden="true">♛</b>' : ""}${member.you ? "You" : escape(member.name)}${member.away ? '<small class="lobby-away">· reconnecting</small>' : ""}</figcaption></figure>`;
 }
 /** The Journey card: season tier, the next cosmetic, today's Daily Spark. */
 export function journeyCard(j: Journey | undefined) {
@@ -290,7 +321,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       `<button type="button" data-lobby-action="${id}" title="${label}" aria-label="${label}">${menuIcon(icon)}<span>${label}</span><i class="lobby-badge" data-badge-for="${id}" hidden></i></button>`,
   ).join("")}</nav>
 <section class="lobby-stage" aria-label="Your fighter">
-  <div class="lobby-party-bar" id="lobby-party-bar" hidden><span id="lobby-party-size"></span><button type="button" data-lobby-action="leave-party">Leave party</button></div>
+  <div class="lobby-party-bar" id="lobby-party-bar" hidden><span id="lobby-party-size"></span><button type="button" class="lobby-rejoin" id="lobby-rejoin" data-lobby-action="party-room" hidden>Rejoin room</button><button type="button" data-lobby-action="leave-party">Leave party</button></div>
   <div class="lobby-party">
     <div class="lobby-slot-wrap" id="lobby-slot-0"></div>
     <figure class="lobby-fighter" id="lobby-fighter"><div class="lobby-fighter-art fighter-rig-stage" id="lobby-fighter-art" data-preview-look="%7B%7D" data-preview-action="idle"></div><span class="lobby-floor" aria-hidden="true"></span><button type="button" class="lobby-fighter-tap" id="lobby-fighter-tap" aria-label="Poke your fighter" title="Poke your fighter"></button><output class="lobby-emote-bubble" id="lobby-emote-bubble" hidden></output></figure>
@@ -299,7 +330,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   </div>
   <div class="lobby-nameplate">
     <button type="button" class="lobby-step" data-lobby-step="-1" aria-label="Previous fighter">‹</button>
-    <div class="lobby-name"><h2 id="lobby-fighter-name"></h2><span class="element-pill" id="lobby-fighter-element"></span></div>
+    <div class="lobby-name"><h2 id="lobby-fighter-name"></h2><span class="element-pill" id="lobby-fighter-element"></span><small class="lobby-host-name" id="lobby-host-name"></small></div>
     <button type="button" class="lobby-step" data-lobby-step="1" aria-label="Next fighter">›</button>
   </div>
 </section>
@@ -336,6 +367,19 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         ?.focus({ preventScroll: true });
   };
   let bubbleTimer: ReturnType<typeof setTimeout> | undefined;
+  let armTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Put away a seat's Kick. */
+  const disarm = () => {
+    clearTimeout(armTimer);
+    for (const figure of Array.from(
+      layer.querySelectorAll<HTMLElement>(".lobby-member.is-armed"),
+    )) {
+      figure.classList.remove("is-armed");
+      figure
+        .querySelector("[data-lobby-member]")
+        ?.setAttribute("aria-expanded", "false");
+    }
+  };
   /** The bubble over your fighter: a line it says. */
   const say = (text: string, ms: number) => {
     const bubble = $<HTMLOutputElement>("lobby-emote-bubble");
@@ -455,6 +499,26 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       modeToggle.focus({ preventScroll: true });
       return;
     }
+    // Kick, on the leader's stage: a tap on a member's seat shows it, a
+    // tap on Kick removes them; any other tap puts it away.
+    const kick = target.closest<HTMLElement>("[data-lobby-kick]");
+    if (kick) {
+      disarm();
+      return options.onKick?.(kick.dataset.lobbyKick!);
+    }
+    const seat = target.closest<HTMLElement>("[data-lobby-member]");
+    if (seat) {
+      const figure = seat.closest<HTMLElement>(".lobby-member")!;
+      const open = !figure.classList.contains("is-armed");
+      disarm();
+      if (open) {
+        figure.classList.add("is-armed");
+        seat.setAttribute("aria-expanded", "true");
+        armTimer = setTimeout(disarm, 4000);
+      }
+      return;
+    }
+    disarm();
     if (target.closest("#lobby-fighter-tap")) return poke();
     if (step) return options.onStep(step === "-1" ? -1 : 1);
     if (target.closest("#lobby-play")) return options.onPlay(mode);
@@ -630,26 +694,53 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   setPerfSource("lobby", perfSource);
   return {
     update(view) {
-      const skin = wornSkin(view.character);
-      const look = lookData(view.look);
-      const key = `${view.character}|${skin?.skin ?? ""}|${skin?.stage ?? 1}|${look}`;
+      // The middle of the stage: your fighter, or your party's leader.
+      const host = view.host;
+      const character = host?.character ?? view.character;
+      const skin = host ? (host.skin ?? null) : wornSkin(view.character);
+      const centreLook = host ? host.look : view.look;
+      const look = lookData(centreLook);
+      const key = `${host ? `host:${host.name}` : "me"}|${character}|${skin?.skin ?? ""}|${skin?.stage ?? 1}|${look}`;
+      // Only your own fighter steps through the roster from here. The
+      // arrows keep their place (not [hidden], which style.css takes out of
+      // the nameplate's grid, pulling the name off the fighter's axis).
+      for (const step of Array.from(
+        layer.querySelectorAll<HTMLButtonElement>(".lobby-step"),
+      )) {
+        step.classList.toggle("is-waiting", !!host);
+        step.disabled = !!host;
+        if (host) step.setAttribute("aria-hidden", "true");
+        else step.removeAttribute("aria-hidden");
+      }
+      // The leader's name takes the element pill's place (same height, so
+      // the stage doesn't move on a short phone).
+      // You lead: the same crown under your own fighter, "♛ You".
+      const crown = host ? host.name : view.leading ? "You" : "";
+      $("lobby-host-name").textContent = crown ? `♛ ${crown}` : "";
+      layer.querySelector(".lobby-name")!.classList.toggle("is-host", !!crown);
+      $("lobby-fighter").classList.toggle("is-host", !!host);
+      $("lobby-fighter").classList.toggle("is-away", !!host?.away);
+      $("lobby-fighter-tap").setAttribute(
+        "aria-label",
+        host ? `Poke ${host.name}'s fighter` : "Poke your fighter",
+      );
       if (key !== artKey) {
         artKey = key;
-        if (champion !== view.character) {
-          champion = view.character;
+        if (champion !== character) {
+          champion = character;
           lastQuip = undefined;
           taps = [];
         }
-        const fighter = CHARACTERS[view.character];
+        const fighter = CHARACTERS[character];
         const art = $("lobby-fighter-art");
         $("lobby-fighter").style.setProperty("--element", hex(fighter.color));
         art.innerHTML = fighterStageArt(
-          view.character,
+          character,
           "lobby",
-          undefined,
-          view.look ?? {},
+          host ? skin : undefined,
+          centreLook ?? {},
         );
-        art.dataset.previewChampion = view.character;
+        art.dataset.previewChampion = character;
         art.dataset.previewItem = skin?.skin ?? "";
         art.dataset.previewStage = String(skin?.stage ?? 1);
         art.dataset.previewLook = look;
@@ -682,6 +773,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       layer.dataset.graphics = lowGraphics() ? "low" : "auto";
       $("lobby-party-bar").hidden = view.partySize < 2;
       $("lobby-party-size").textContent = `Party · ${view.partySize}/4`;
+      $("lobby-rejoin").hidden = !view.partyRoom;
       // In place (ui/patch.ts): updates come often (friends online, the
       // economy) and the cards' pictures and progress bars stay as they are.
       // A new player's guide takes the Journey card's place until it's done
@@ -734,6 +826,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       for (const seat of seatRigs.splice(0)) seat?.();
       clearTimeout(bubbleTimer);
       clearTimeout(hopTimer);
+      clearTimeout(armTimer);
       coverWatch.disconnect();
       setPerfSource("lobby", undefined);
       document.removeEventListener("ea-graphics-change", syncGraphics);

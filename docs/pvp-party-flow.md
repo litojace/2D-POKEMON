@@ -47,6 +47,56 @@ neutral input packets after knockout and restoring controls next round. Existing
 raid viewport and trusted touch-recovery checks cover the shared layout/input
 paths. This does not claim a physical iOS/Android device-to-device playtest.
 
+## Parties that last (Nov 2026)
+
+Before, a party fell apart easily: the server dropped a member the moment
+their connection did (a locked phone, an app switch), a friend invited
+into a room was never in a party, and a member left in the old room missed
+the leader's next one. Each time the team had to leave and invite again,
+while the Lobby could still show the friend "in party". The party now
+works like a team in most team games (Valorant, League of Legends, Brawl
+Stars): it is the lasting unit and rooms come and go under it.
+
+- **A short drop keeps your place.** A member whose last connection closes
+  stays in the party for 60 s (`PARTY_AWAY_MS`, like the room's reconnect
+  grace), shown faded with "reconnecting". Back in time, they are in the
+  party again and their new tab is sent it straight away.
+- **The party knows its room.** The leader's open room is in the party
+  state (`room`). Members on the Lobby follow it at once; a member in
+  another room follows between matches (lobby or results, never during a
+  fight). A member who steps out of the party's room stays in the party
+  and gets **Rejoin room** on the party bar (PLAY does the same) instead of
+  being pulled back in. When the leader leaves the room, the party stays
+  together with no room until the leader opens the next one.
+- **A room invitation makes a party.** Joining a room through a friend's
+  invitation puts you in that friend's party, so going back to the Lobby
+  keeps you together. Joining by a code alone does not.
+- **Invite buttons tell the truth.** The party state lists its open
+  invitations, and the client remembers room invitations for their 90 s;
+  every Invite button (Friends, Invite a friend, Raids, the Plaza) says
+  **Invited** until the friend answers or it lapses, and **In party** /
+  **In your room** once they are with you. A Decline (party or room)
+  reaches the sender, whose button can then be used again.
+- **The leader stands in the middle.** On every member's Lobby the leader
+  is the big fighter in the middle with their name under it; you stand
+  beside them, labelled "You" (a tap opens Fighters), and the arrows that
+  step your own fighter wait. Only the leader sees the + Invite seats.
+
+- **Members invite too; the leader keeps control.** Any member can invite
+  their own friends (Friends, Invite a friend, the + seats on their
+  Lobby), and the invitation says whose party it is ("Bo invited you to
+  Kai's party"); a member's room invitation brings the friend into the
+  party too. The leader removes a member with **Kick**: a tap on their seat swaps the
+  name tag for the button, a tap on it confirms. The removed player is
+  told, stays in any room they sit in, and is not pulled into the party's
+  next room. Nobody joins a party with someone either of them blocked
+  (the invite is refused without saying why).
+
+No database migration: parties stay in the server's memory. Tests:
+`tests/multiplayer/party.test.ts` (drop and return, the party's room,
+room invitation → party, Decline) and `tests/visual/lobby.spec.ts`
+(member's stage, Rejoin, Invited / In party).
+
 ## PvP frame-time and jitter changes
 
 The 4-player profile identified repeated curve triangulation and redundant HUD

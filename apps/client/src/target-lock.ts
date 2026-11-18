@@ -54,6 +54,27 @@ export class TargetLock {
     }
     return best;
   }
+  /** The enemies the target button has locked since it last let go. */
+  private cycled = new Set<string>();
+  /**
+   * The target button (phones): the nearest enemy on screen it has not
+   * locked yet in this round, and once it has been through them all, none
+   * (automatic aiming) and a fresh round. One enemy: lock, let go.
+   * `onScreen` lists the ids nearest first; empty does nothing (the button
+   * is off then). It remembers whom it locked rather than stepping through
+   * the list by position: fighters move between taps, and a nearest-first
+   * order that swapped sent the button back to the one it had just locked.
+   */
+  cycle(onScreen: string[]) {
+    if (!onScreen.length) return;
+    // A lock set another way (a tap on the court) or dropped: a new round
+    // from it.
+    if (this.id === undefined) this.cycled.clear();
+    else this.cycled.add(this.id);
+    const next = onScreen.find((id) => !this.cycled.has(id));
+    this.id = next;
+    if (next === undefined) this.cycled.clear();
+  }
   /** Drop a lock whose enemy is no longer in the match. */
   keepIf(present: (id: string) => boolean) {
     if (this.id !== undefined && !present(this.id)) this.id = undefined;

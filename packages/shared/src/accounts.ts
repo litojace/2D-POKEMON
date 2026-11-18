@@ -136,9 +136,7 @@ export const equipTitleSchema = z
   .strict();
 /** Players change their own name once every 14 days (migration 066). */
 export const NAME_CHANGE_DAYS = 14;
-export const nameChangeSchema = z
-  .object({ name: z.string().max(60) })
-  .strict();
+export const nameChangeSchema = z.object({ name: z.string().max(60) }).strict();
 /** When you last changed your name and when you can next (server time). */
 export const nameStatusSchema = z.object({
   changedAt: z.string().nullable(),
@@ -152,8 +150,15 @@ export type NameStatus = z.infer<typeof nameStatusSchema>;
  * what's wrong before sending. The database still decides.
  */
 export function checkName(raw: string, current: string) {
-  if (/[\u0000-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u2028-\u202e\u2060-\u2064\ufeff]/.test(raw))
-    return { name: "", problem: "That name has characters that can't be shown." };
+  if (
+    /[\u0000-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u2028-\u202e\u2060-\u2064\ufeff]/.test(
+      raw,
+    )
+  )
+    return {
+      name: "",
+      problem: "That name has characters that can't be shown.",
+    };
   const name = raw.trim().replace(/ +/g, " ");
   if (name.length < 1 || [...name].length > 20)
     return { name, problem: "A name is 1 to 20 characters." };
@@ -395,6 +400,8 @@ export const roomInviteSchema = z
     /** "party": an invitation to a party on the Lobby; `code` is the party's. */
     mode: z.enum(["duel", "teams", "ffa", "raid", "party"]),
     expiresAt: z.number().finite(),
+    /** A member invited you: the name of the party's leader. */
+    leader: z.string().min(1).max(20).optional(),
   })
   .strict();
 export type RoomInvite = z.infer<typeof roomInviteSchema>;
@@ -422,12 +429,37 @@ export const partyStateSchema = z
           skin: championLookSchema.nullable().optional(),
           /** Their equipped raid look: colours, aura, entrance, frame. */
           look: publicLookSchema.optional(),
+          /** Their connection dropped: the party keeps their place a while. */
+          away: z.boolean().optional(),
         }),
       )
       .min(1)
       .max(4),
+    /** The room the leader has open: the party plays there. */
+    room: z
+      .object({
+        code: z.string().regex(/^[A-Z0-9]{6}$/),
+        mode: z.enum(["duel", "teams", "ffa", "raid"]),
+      })
+      .nullable()
+      .optional(),
+    /** Friends invited to this party who haven't answered yet. */
+    invites: z
+      .array(
+        z.object({ id: z.string().uuid(), expiresAt: z.number().finite() }),
+      )
+      .max(16)
+      .optional(),
   })
   .nullable();
+/** The party leader removed you from the party. */
+export const partyKickedSchema = z
+  .object({ by: z.string().min(1).max(20) })
+  .strict();
+/** A friend turned down your party or room invitation. */
+export const inviteDeclinedSchema = z
+  .object({ playerId: z.string().uuid(), name: z.string().min(1).max(20) })
+  .strict();
 export type PartyState = z.infer<typeof partyStateSchema>;
 export const partyRoomSchema = z
   .object({

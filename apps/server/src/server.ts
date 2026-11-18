@@ -70,7 +70,12 @@ import {
 } from "../../../packages/shared/src/connection.js";
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
 import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
-import { Parties, type Party, type PartyAppearance } from "./party.js";
+import {
+  PARTY_AWAY_MS,
+  Parties,
+  type Party,
+  type PartyAppearance,
+} from "./party.js";
 import { ChatReports, reportContext } from "./chat-moderation.js";
 import {
   CHAT_LIMITS,
@@ -183,6 +188,8 @@ export const BACKPRESSURE = { bytes: 16 * 1024, messages: 4 };
 export function createArenaServer(
   options: {
     reconnectMs?: number;
+    /** How long a party keeps a member whose connection dropped (party.ts). */
+    partyAwayMs?: number;
     /**
      * Typed chat lines on (quick chat is always on). Defaults to the
      * CHAT_FREE_TEXT environment switch ("on"); off until reporting ships
@@ -328,7 +335,16 @@ export function createArenaServer(
   const MAX_WATCHERS = 6;
   const roomInviteCooldowns = new Map<string, number>();
   const roomInvitesPending = new Set<string>();
+  /**
+   * Room invitations still open ("sender:friend" → room and expiry): the
+   * friend who joins that room through one joins the sender's party too, and
+   * a Decline reaches the sender (their button stops saying Invited).
+   */
+  const roomInvitesOut = new Map<string, { code: string; expiresAt: number }>();
   const parties = new Parties();
+  const partyAwayMs = options.partyAwayMs ?? PARTY_AWAY_MS;
+  /** Pending checks on members whose connection dropped. */
+  const partyAwayTimers = new Set<ReturnType<typeof setTimeout>>();
   /** Which farm each socket is on, for chat's Nearby channel (socket id → owner). */
   const farmHere = new Map<string, string>();
   /** In-game chat (docs/chat-plan.md): party and room channels. */
@@ -418,10 +434,19 @@ export function createArenaServer(
     leader: party.leader,
     members: party.members.map((m) => {
       const saved = parties.appearanceOf(m.id);
+      const away = parties.isAway(m.id) ? { away: true } : {};
       return saved
-        ? { ...m, skin: saved.looks[m.character] ?? null, look: saved.look }
-        : { ...m };
+        ? {
+            ...m,
+            skin: saved.looks[m.character] ?? null,
+            look: saved.look,
+            ...away,
+          }
+        : { ...m, ...away };
     }),
+    // The room the party plays in (the leader's), and who was invited.
+    room: party.room ?? null,
+    invites: parties.pending(party.code, Date.now()),
   });
   const emitParty = (party: Party, ended = false) => {
     for (const member of party.members)
@@ -1261,6 +1286,11 @@ export function createArenaServer(
   }
   function expire(session: Session) {
     const arena = rooms.get(session.code);
+    // The leader left the party's room: the party has no room until the next.
+    if (parties.of(session.accountId)?.room?.code === session.code) {
+      const party = parties.setRoom(session.accountId, undefined);
+      if (party) emitParty(party);
+    }
     sessions.delete(session.token);
     if (session.socketId) socketSessions.delete(session.socketId);
     if (!arena) return;
@@ -1497,6 +1527,9 @@ export function createArenaServer(
           mode: arena!.mode,
           expiresAt,
         };
+        for (const [id, out] of roomInvitesOut)
+          if (out.expiresAt <= Date.now()) roomInvitesOut.delete(id);
+        roomInvitesOut.set(key, { code: arena!.code, expiresAt });
         for (const target of targets) target.emit("room-invite", invite);
         reply(cb, { ok: true });
       } catch {
@@ -1504,6 +1537,21 @@ export function createArenaServer(
       } finally {
         roomInvitesPending.delete(key);
       }
+    });
+    // A room invitation turned down: the sender may invite again at once.
+    socket.on("room-invite-decline", (data: unknown, cb: unknown) => {
+      if (!account()) return fail(cb, "Please log in to play.");
+      const fromId = (data as { fromId?: unknown } | null)?.fromId;
+      const key = typeof fromId === "string" && `${fromId}:${account()!.id}`;
+      if (key && roomInvitesOut.delete(key)) {
+        roomInviteCooldowns.delete(key);
+        for (const s of accountSockets(fromId as string))
+          s.emit("invite-declined", {
+            playerId: account()!.id,
+            name: account()!.displayName,
+          });
+      }
+      reply(cb, { ok: true });
     });
     // Parties before a room: friends gather on the Lobby, then follow the
     // leader into the room their PLAY opens.
@@ -1545,12 +1593,24 @@ export function createArenaServer(
           return fail(cb, "Your friend is watching a match.");
         if (!socket.connected || getSession(socket.id))
           return fail(cb, "Try again.");
+        // Nobody joins a party with someone either of them blocked (the
+        // reason isn't told: a block stays private).
+        const current = parties.of(sender.id);
+        if (
+          (current?.members ?? [{ id: sender.id }]).some((m) =>
+            chat.blocks(m.id, targetId),
+          )
+        )
+          return fail(cb, "Your friend can't join this party.");
         const result = parties.invite(
           memberOf(parsed.data.character),
           targetId,
           Date.now(),
         );
         if (!result.ok) return fail(cb, result.error);
+        const lead = result.party.members.find(
+          (m) => m.id === result.party.leader,
+        );
         const invite = {
           id: randomUUID(),
           fromId: sender.id,
@@ -1558,6 +1618,8 @@ export function createArenaServer(
           code: result.party.code,
           mode: "party" as const,
           expiresAt: result.expiresAt,
+          // A member invited you: whose party it is.
+          ...(lead && lead.id !== sender.id ? { leader: lead.name } : {}),
         };
         for (const target of targets) target.emit("room-invite", invite);
         emitParty(result.party);
@@ -1595,7 +1657,18 @@ export function createArenaServer(
       const code = partyAcceptSchema.shape.code.safeParse(
         (data as { code?: unknown } | null)?.code,
       );
-      if (code.success) parties.decline(account()!.id, code.data);
+      const invite = code.success
+        ? parties.decline(account()!.id, code.data)
+        : undefined;
+      if (invite) {
+        for (const s of accountSockets(invite.fromId))
+          s.emit("invite-declined", {
+            playerId: account()!.id,
+            name: account()!.displayName,
+          });
+        const party = parties.of(invite.fromId);
+        if (party) emitParty(party);
+      }
       reply(cb, { ok: true });
     });
     const leaveParty = (accountId: string) => {
@@ -1607,9 +1680,35 @@ export function createArenaServer(
         chat.drop(`party:${result.disbanded.code}`);
       } else emitParty(result.party);
     };
+    /** Back online: your party shows you again, and this tab sees it. */
+    const rejoinParty = () => {
+      const id = account()?.id;
+      const back = id ? parties.back(id) : undefined;
+      if (back) emitParty(back.party);
+    };
+    rejoinParty();
     socket.on("party-leave", (_data: unknown, cb: unknown) => {
       if (!account()) return fail(cb, "Please log in to play.");
       leaveParty(account()!.id);
+      reply(cb, { ok: true });
+    });
+    // The leader removes a member: they leave the party (not a room they
+    // sit in) and are told so.
+    socket.on("party-kick", (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(10)) return fail(cb, "Too many requests.");
+      const playerId = (data as { playerId?: unknown } | null)?.playerId;
+      if (typeof playerId !== "string") return fail(cb, "Choose a player.");
+      const result = parties.kick(account()!.id, playerId);
+      if (!result.ok) return fail(cb, result.error);
+      for (const s of accountSockets(playerId)) {
+        s.emit("party", null);
+        s.emit("party-kicked", { by: account()!.displayName });
+      }
+      if (result.disbanded) {
+        emitParty(result.disbanded, true);
+        chat.drop(`party:${result.disbanded.code}`);
+      } else emitParty(result.party);
       reply(cb, { ok: true });
     });
     socket.on("party-character", (data: unknown) => {
@@ -1646,6 +1745,8 @@ export function createArenaServer(
         if (member.id !== me.id)
           for (const s of accountSockets(member.id))
             s.emit("party-room", { code: arena.code, mode: arena.mode });
+      if (parties.setRoom(me.id, { code: arena.code, mode: arena.mode }))
+        emitParty(party);
       reply(cb, { ok: true });
     });
     // The client hands over each refreshed login token (they expire hourly).
@@ -1665,7 +1766,10 @@ export function createArenaServer(
         socket.data.accessToken = token;
         socket.data.account = next;
         claimAccount(socket);
-        if (!current) void loadChatBlocks(socket);
+        if (!current) {
+          void loadChatBlocks(socket);
+          rejoinParty();
+        }
         if (!next.guest) void presenceHistory.touch(next.id, token as string);
         socket.data.expiredChecks = 0;
         reply(cb, { ok: true });
@@ -1746,7 +1850,67 @@ export function createArenaServer(
       if (arena.phase !== "lobby")
         return fail(cb, "This match has already started.");
       attach(arena, result.data.name, cb);
+      joinedByInvite(arena);
     });
+    /**
+     * Joined a room a friend invited you to: you join their party as well
+     * (party.ts link), so the two of you stay together back on the Lobby
+     * and follow the leader into the next room, as in most team games.
+     */
+    const joinedByInvite = (arena: Arena) => {
+      const me = account()!;
+      if (getSession(socket.id)?.code !== arena.code) return;
+      const now = Date.now();
+      for (const [key, out] of roomInvitesOut) {
+        const [fromId, toId] = key.split(":");
+        if (toId !== me.id) continue;
+        if (out.expiresAt <= now || out.code !== arena.code) continue;
+        roomInvitesOut.delete(key);
+        const host = [...sessions.values()].find(
+          (s) => s.accountId === fromId && s.code === arena.code,
+        );
+        const hostFighter = host && arena.players.find((p) => p.id === host.id);
+        const hostAccount = accountSockets(fromId)[0]?.data.account as
+          Account | undefined;
+        if (!hostFighter || !hostAccount) continue;
+        // Nobody joins a party with someone either of them blocked.
+        const theirs = parties.of(fromId);
+        if (
+          (theirs?.members ?? [{ id: fromId }]).some((m) =>
+            chat.blocks(m.id, me.id),
+          )
+        )
+          continue;
+        const result = parties.link(
+          {
+            id: fromId,
+            name: hostAccount.displayName,
+            character: hostFighter.character,
+          },
+          {
+            id: me.id,
+            name: me.displayName,
+            character:
+              arena.players.find((p) => p.id === getSession(socket.id)?.id)
+                ?.character ?? "voltkit",
+          },
+        );
+        if (!result.ok) continue;
+        if (result.disbanded) emitParty(result.disbanded, true);
+        else if (result.left) emitParty(result.left);
+        // An inviter who leads (a party made now, say): its room is this one.
+        if (result.party.leader === fromId)
+          parties.setRoom(fromId, { code: arena.code, mode: arena.mode });
+        emitParty(result.party);
+        void loadPartyAppearance(me.id, socket.data.accessToken);
+        if (!parties.appearanceOf(fromId))
+          void loadPartyAppearance(
+            fromId,
+            accountSockets(fromId)[0]!.data.accessToken,
+          );
+        break;
+      }
+    };
     socket.on("resume", async (data: unknown, cb: unknown) => {
       if (!requirePlayer(cb)) return;
       if (!allowed(15)) return fail(cb, "Too many requests.");
@@ -2914,7 +3078,22 @@ export function createArenaServer(
       if (who && !who.guest && !stillOnline)
         void presenceHistory.touch(who.id, socket.data.accessToken, true);
       if (who && !stillOnline) {
-        leaveParty(who.id);
+        // The party keeps your place for a while (a locked phone, a network
+        // change); still gone by then, it lets you go.
+        const party = parties.setAway(who.id, Date.now() + partyAwayMs);
+        if (party) {
+          emitParty(party);
+          const check = setTimeout(() => {
+            partyAwayTimers.delete(check);
+            if (
+              parties.lapsed(Date.now()).includes(who.id) &&
+              !accountSockets(who.id).some((s) => s.connected)
+            )
+              leaveParty(who.id);
+          }, partyAwayMs + 50);
+          check.unref?.();
+          partyAwayTimers.add(check);
+        }
         chat.forget(who.id);
         chatStops.delete(who.id);
         chatModes.delete(who.id);
@@ -3066,6 +3245,7 @@ export function createArenaServer(
     diagnostics,
     close: async () => {
       if (timer) clearInterval(timer);
+      for (const check of partyAwayTimers) clearTimeout(check);
       if (plazaTimer) clearInterval(plazaTimer);
       if (accountTimer) clearInterval(accountTimer);
       if (diagnosticsTimer) clearInterval(diagnosticsTimer);

@@ -30,6 +30,7 @@ import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
 import { battleCurves } from "./battle-curves";
 import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
+import { serverNow } from "./server-clock";
 import { PvpSpectator } from "./pvp-spectator";
 import {
   carryCurrent,
@@ -178,6 +179,7 @@ import {
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { fighterSkillColor, wornArt } from "./skins/skin-art";
 import { drawCollectionAura } from "./skins/collection-fx";
+import { battleAuraScale } from "./shop-preview-layout";
 import { colourPreview } from "./colour-preview";
 import { stadiumCrowd } from "./stadium";
 import { paintArenaFloor, scaledPainter } from "./arena-floor";
@@ -274,9 +276,15 @@ import "./cosmetic-review.css";
 import "./collection-frames.css";
 import "./journey-frames.css";
 import "./boss-frames.css";
+import "./signature-frames.css";
 import "./mobile-panels.css";
 import "./match-badge.css";
-import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
+import {
+  FollowCamera,
+  screenToWorld,
+  outsideView,
+  type CameraView,
+} from "./follow-camera";
 import { updateNameplate, updateNameplateHealth } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
@@ -336,6 +344,8 @@ import {
   matchReportReplySchema,
   partyRoomSchema,
   partyStateSchema,
+  inviteDeclinedSchema,
+  partyKickedSchema,
   type PartyState,
 } from "../../../packages/shared/src/accounts";
 import {
@@ -1812,15 +1822,119 @@ const roomInvites = new RoomInvites({
   canJoin: () => connected && !!accountsUI?.account && !myId,
   join: (code, mode) =>
     mode === "party" ? acceptParty(code) : joinByCode(code),
-  decline: (code) => void request("party-decline", { code }),
+  decline: (invite) =>
+    void (invite.mode === "party"
+      ? request("party-decline", { code: invite.code })
+      : request("room-invite-decline", { fromId: invite.fromId })),
 });
 /** Your party on the Lobby (hub redesign phase 2b), or null. */
 let party: PartyState = null;
 let partyRoomSent = "";
+/**
+ * Room invitations you sent (friend → until when). Party invitations come
+ * from the server's party state; both make every Invite button for that
+ * friend say Invited until they answer or it lapses (90 s, the server's).
+ */
+const roomInvitesSent = new Map<string, number>();
+const INVITE_OPEN_MS = 90_000;
+let invitesTimer: ReturnType<typeof setTimeout> | undefined;
+function invitedFriends(): ReadonlySet<string> {
+  const now = Date.now(),
+    server = serverNow();
+  const ids = new Set<string>();
+  for (const [id, until] of roomInvitesSent)
+    if (until > now) ids.add(id);
+    else roomInvitesSent.delete(id);
+  const members = new Set(party?.members.map((m) => m.id) ?? []);
+  for (const invite of party?.invites ?? [])
+    if (invite.expiresAt > server && !members.has(invite.id))
+      ids.add(invite.id);
+  for (const id of members) ids.delete(id);
+  return ids;
+}
+/** Redraw the Invite buttons now, and again when the next invite lapses. */
+function invitesChanged() {
+  clearTimeout(invitesTimer);
+  accountsUI?.refreshInvites();
+  syncPartyInviteDialog();
+  const now = Date.now(),
+    skew = now - serverNow();
+  const next = Math.min(
+    ...[...roomInvitesSent.values()],
+    ...(party?.invites ?? []).map((i) => i.expiresAt + skew),
+  );
+  if (Number.isFinite(next) && next > now)
+    invitesTimer = setTimeout(invitesChanged, next - now + 50);
+}
+function noteInviteSent(id: string, room: boolean) {
+  if (room) roomInvitesSent.set(id, Date.now() + INVITE_OPEN_MS);
+  invitesChanged();
+}
+/** A reply to an invite: sent, or already on its way (also Invited). */
+const inviteStands = (reply: { ok?: boolean; error?: string }) =>
+  !!reply.ok || /already sent/i.test(reply.error ?? "");
+/**
+ * Your party's room: the code you stepped out of (Rejoin on the Lobby
+ * brings you back; you aren't pulled in again) and the one this tab
+ * already followed the leader into.
+ */
+let partyRoomLeft = "";
+let partyRoomFollowed = "";
+let partyFollowing = false;
+/**
+ * Follow your party's leader into their room, as in most team games: from
+ * the Lobby straight away, and from another room between matches (never
+ * during a fight). A room you left yourself waits for Rejoin.
+ */
+async function followPartyRoom(
+  room = party?.room ?? null,
+  rejoin = false,
+): Promise<void> {
+  if (!room || !party || partyLeader() || watching || partyFollowing) return;
+  if (myId && state?.code === room.code) {
+    partyRoomFollowed = room.code;
+    return;
+  }
+  if (
+    !rejoin &&
+    (room.code === partyRoomFollowed || room.code === partyRoomLeft)
+  )
+    return;
+  if (!connected || !accountsUI?.account) return;
+  if (myId) {
+    if (
+      !state ||
+      state.practice ||
+      (state.phase !== "lobby" && state.phase !== "finished")
+    )
+      return;
+  }
+  partyRoomFollowed = room.code;
+  partyFollowing = true;
+  try {
+    toast("Following your party leader into their room…");
+    if (myId) await leave(false);
+    if (myId) return;
+    if (await joinByCode(room.code)) partyRoomLeft = "";
+  } finally {
+    partyFollowing = false;
+    syncHub();
+  }
+}
 let partyCharacterSent = "";
 /** Your saved look as the party last saw it (see syncParty). */
 let partyLookSeen: string | undefined;
 const partyLeader = () => !!party && party.leader === accountsUI?.account?.id;
+/** The leader removes a member (Kick on their seat). */
+async function kickFromParty(playerId: string) {
+  const name = party?.members.find((m) => m.id === playerId)?.name ?? "They";
+  const reply = await request("party-kick", { playerId });
+  toast(
+    reply.ok
+      ? `${name} was removed from the party.`
+      : (reply.error ?? "Couldn't remove them."),
+  );
+}
 async function acceptParty(code: string) {
   if (!accountsUI.ensurePlayer()) return false;
   if (myId) {
@@ -1836,23 +1950,53 @@ async function acceptParty(code: string) {
   setHubScene("lobby");
   return true;
 }
+/** What a friend's button says in Invite a friend: one per state. */
+function partyInviteButton(id: string) {
+  if (party?.members.some((m) => m.id === id))
+    return { label: iconLabel("check", "In party"), off: true };
+  if (invitedFriends().has(id))
+    return { label: iconLabel("check", "Invited"), off: true };
+  return { label: iconLabel("add-friend", "Invite"), off: false };
+}
+/** Keep an open Invite a friend in step with the party and its invites. */
+function syncPartyInviteDialog() {
+  document
+    .querySelectorAll<HTMLButtonElement>(
+      "#party-invite-list [data-party-invite]",
+    )
+    .forEach((button) => {
+      if (button.dataset.busy) return;
+      const state = partyInviteButton(button.dataset.partyInvite!);
+      if (button.innerHTML !== state.label) button.innerHTML = state.label;
+      button.disabled = state.off;
+    });
+}
 /** Invite a friend into your party: online friends, one tap each. */
 async function showPartyInvite() {
   if (!accountsUI.ensurePlayer()) return;
+  // Anyone in the party may invite (most team games let them).
+  const lead =
+    party && !partyLeader()
+      ? party.members.find((m) => m.id === party!.leader)?.name
+      : undefined;
   dialog(
-    `<div class="party-invite"><span class="eyebrow">Party</span><h2>Invite a friend</h2><p class="muted">Friends join you on the Lobby stage. When you press PLAY, they follow you into the room.</p><div id="party-invite-list"><p class="muted">Loading your friends…</p></div></div>`,
+    `<div class="party-invite"><span class="eyebrow">Party</span><h2>Invite a friend</h2><p class="muted">${lead ? `Friends join ${escape(lead)}'s party on the Lobby stage and follow your leader into each room.` : "Friends join you on the Lobby stage. When you press PLAY, they follow you into the room, and you stay a party after the match."}</p><div id="party-invite-list"><p class="muted">Loading your friends…</p></div></div>`,
   );
   try {
     const list = await accountsUI.nearbyFriends();
-    const online = list.friends.filter((f) => f.online);
+    const members = new Set(party?.members.map((m) => m.id) ?? []);
+    // Your party first, then friends online.
+    const online = list.friends
+      .filter((f) => f.online || members.has(f.id))
+      .sort((a, b) => Number(members.has(b.id)) - Number(members.has(a.id)));
     const box = document.getElementById("party-invite-list");
     if (!box) return;
     box.innerHTML = online.length
       ? `<ul class="party-invite-list">${online
-          .map(
-            (f) =>
-              `<li><span><b>${escape(f.name)}</b><small>Online</small></span><button type="button" class="secondary" data-party-invite="${f.id}">${iconLabel("add-friend", "Invite")}</button></li>`,
-          )
+          .map((f) => {
+            const state = partyInviteButton(f.id);
+            return `<li><span><b>${escape(f.name)}</b><small>${members.has(f.id) ? "In your party" : "Online"}</small></span><button type="button" class="secondary" data-party-invite="${f.id}"${state.off ? " disabled" : ""}>${state.label}</button></li>`;
+          })
           .join("")}</ul>`
       : `<p class="muted">None of your friends are online right now.</p><p><button type="button" class="secondary" id="party-open-friends">${iconLabel("friends", "Open Friends")}</button></p>`;
     document
@@ -1861,18 +2005,22 @@ async function showPartyInvite() {
     box.querySelectorAll<HTMLButtonElement>("[data-party-invite]").forEach(
       (button) =>
         (button.onclick = async () => {
+          const id = button.dataset.partyInvite!;
           button.disabled = true;
+          button.dataset.busy = "1";
           const reply = await request("party-invite", {
-            playerId: button.dataset.partyInvite,
+            playerId: id,
             character: selected,
           });
-          if (reply.ok) {
-            partyCharacterSent = selected;
+          delete button.dataset.busy;
+          if (reply.ok) partyCharacterSent = selected;
+          if (inviteStands(reply)) noteInviteSent(id, false);
+          if (!reply.ok) toast(reply.error ?? "Couldn't send this invitation.");
+          if (inviteStands(reply) && !invitedFriends().has(id)) {
+            // The party's own list arrives a moment later.
             button.innerHTML = iconLabel("check", "Invited");
-          } else {
-            button.disabled = false;
-            toast(reply.error ?? "Couldn't send this invitation.");
-          }
+            button.disabled = true;
+          } else syncPartyInviteDialog();
         }),
     );
   } catch {
@@ -1887,6 +2035,7 @@ function syncParty() {
     partyLookSeen = undefined;
     return;
   }
+  void followPartyRoom();
   if (!myId && partyCharacterSent !== selected) {
     partyCharacterSent = selected;
     socket.emit("party-character", { character: selected });
@@ -2314,6 +2463,7 @@ function syncPlaza(want: boolean, hub = want) {
         character: selected,
       });
       if (reply.ok) partyCharacterSent = selected;
+      if (inviteStands(reply)) noteInviteSent(playerId, false);
       toast(
         reply.ok
           ? "Party invitation sent."
@@ -2382,20 +2532,47 @@ async function refreshLobbyFriends() {
 }
 function lobbyView() {
   const me = accountsUI.account?.id;
+  const seat = (m: NonNullable<PartyState>["members"][number]) => ({
+    id: m.id,
+    kickable: partyLeader() && m.id !== me,
+    name: m.name,
+    character: (Object.hasOwn(CHARACTERS, m.character)
+      ? m.character
+      : "voltkit") as CharacterId,
+    leader: m.id === party!.leader,
+    skin: m.skin ?? null,
+    look: m.look ?? {},
+    ...(m.away ? { away: true } : {}),
+  });
+  // In someone else's party the leader stands in the middle, as on every
+  // member's screen, and you stand beside them (your seat first).
+  const lead =
+    party && party.members.length > 1 && party.leader !== me
+      ? party.members.find((m) => m.id === party!.leader)
+      : undefined;
+  const others = (party?.members ?? []).filter(
+    (m) => m.id !== me && m.id !== lead?.id,
+  );
+  const mine = {
+    name: accountsUI.account?.displayName ?? "You",
+    character: selected,
+    leader: false,
+    skin: accountsUI.economy?.looks?.[selected] ?? null,
+    look: accountsUI.raidLook ?? {},
+    you: true,
+  };
   return {
     character: selected,
-    party: (party?.members ?? [])
-      .filter((m) => m.id !== me)
-      .slice(0, 3)
-      .map((m) => ({
-        name: m.name,
-        character: (Object.hasOwn(CHARACTERS, m.character)
-          ? m.character
-          : "voltkit") as CharacterId,
-        leader: m.id === party!.leader,
-        skin: m.skin ?? null,
-        look: m.look ?? {},
-      })),
+    host: lead ? seat(lead) : undefined,
+    party: lead
+      ? [mine, ...others.map(seat)].slice(0, 3)
+      : others.slice(0, 3).map(seat),
+    leading: (party?.members.length ?? 0) > 1 && partyLeader(),
+    partyRoom:
+      !!party?.room &&
+      !partyLeader() &&
+      !myId &&
+      (party?.members.length ?? 0) > 1,
     partySize: party?.members.length ?? 0,
     look: accountsUI.raidLook ?? {},
     economy: accountsUI.economy ?? undefined,
@@ -2452,6 +2629,7 @@ function syncLobby(want: boolean) {
       onAction: lobbyAction,
       onPlay: (mode) => void lobbyPlay(mode),
       onStep: stepHomeFighter,
+      onKick: (id) => void kickFromParty(id),
     });
     void refreshLobbyFriends();
     lobbyFriendsTimer = setInterval(() => void refreshLobbyFriends(), 60000);
@@ -2718,6 +2896,7 @@ function lobbyAction(action: LobbyAction) {
   else if (action === "ranks") $("leaderboard").click();
   else if (action === "invite") void showPartyInvite();
   else if (action === "leave-party") void request("party-leave");
+  else if (action === "party-room") void followPartyRoom(undefined, true);
   else if (action === "farm") setHubScene("farm");
   else void accountsUI.showFriends();
 }
@@ -2729,6 +2908,8 @@ async function lobbyPlay(chosen: LobbyMode) {
   const size = party?.members.length ?? 0;
   const mode = partyLobbyMode(chosen, size);
   if (size > 1) {
+    if (!partyLeader() && party?.room)
+      return void followPartyRoom(undefined, true);
     if (!partyLeader())
       return toast(
         "Your party leader starts the game. Leave the party to play on your own.",
@@ -3094,6 +3275,7 @@ async function leave(returnToHub = true) {
           }
       : undefined
     : undefined;
+  const leftCode = state?.code;
   const reply = await request("leave", {
     token: sessionStorage.getItem("arena-token"),
   });
@@ -3101,6 +3283,10 @@ async function leave(returnToHub = true) {
     toast("Could not leave the room yet. Reconnect and try again.");
     return;
   }
+  // You stepped out of your party's room: you stay in the party, and the
+  // Lobby offers Rejoin instead of pulling you straight back in.
+  if (leftCode && party?.room?.code === leftCode && !partyLeader())
+    partyRoomLeft = leftCode;
   raidRoomReturn = undefined;
   sessionStorage.removeItem("arena-token");
   lobbySelection.reset();
@@ -3122,27 +3308,39 @@ async function leave(returnToHub = true) {
       returnToRaidHub.spire,
     );
 }
+/** The spectator bar's arrows: drawn, not the ‹ › glyphs, which some
+ * phones' fonts drew tiny and off centre in the big buttons. */
+const spectateArrow = (back: boolean) =>
+  `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${back ? "M15 5 8 12l7 7" : "M9 5l7 7-7 7"}"/></svg>`;
+/** What the bar last showed: rebuilt only when it changes, so a tap is
+ * never lost to a button replaced under the finger. */
+let spectateShown = "";
 function renderPvpSpectator() {
   const banner = $("spectate");
   const target = state && pvpSpectator.target(state, myId);
   banner.classList.toggle("pvp-spectator", !!target);
   banner.hidden = !target;
-  if (!state || !target) return;
+  if (!state || !target) {
+    spectateShown = "";
+    return;
+  }
   const candidates = pvpSpectator.candidates(state, myId);
   const alive = state.players.filter((p) => p.hp > 0 && !p.out).length;
-  const markup = `<button type="button" data-spectate-step="-1" aria-label="Watch previous survivor"${candidates.length < 2 ? " disabled" : ""}>‹</button><span class="spectator-copy"><small>Knocked out · ${alive} still fighting</small><b>Watching ${escape(target.name)}</b></span><button type="button" data-spectate-step="1" aria-label="Watch next survivor"${candidates.length < 2 ? " disabled" : ""}>›</button>`;
-  if (banner.innerHTML !== markup) {
-    banner.innerHTML = markup;
-    banner
-      .querySelectorAll<HTMLButtonElement>("[data-spectate-step]")
-      .forEach((button) => {
-        button.onclick = () => {
-          if (!state) return;
-          pvpSpectator.cycle(state, myId, Number(button.dataset.spectateStep));
-          renderPvpSpectator();
-        };
-      });
-  }
+  const off = candidates.length < 2 ? " disabled" : "";
+  const markup = `<button type="button" data-spectate-step="-1" aria-label="Watch previous survivor"${off}>${spectateArrow(true)}</button><span class="spectator-copy"><small>Knocked out · ${alive} still fighting</small><b>Watching ${escape(target.name)}</b></span><button type="button" data-spectate-step="1" aria-label="Watch next survivor"${off}>${spectateArrow(false)}</button>`;
+  if (spectateShown === markup && banner.querySelector(".spectator-copy"))
+    return;
+  spectateShown = markup;
+  banner.innerHTML = markup;
+  banner
+    .querySelectorAll<HTMLButtonElement>("[data-spectate-step]")
+    .forEach((button) => {
+      button.onclick = () => {
+        if (!state) return;
+        pvpSpectator.cycle(state, myId, Number(button.dataset.spectateStep));
+        renderPvpSpectator();
+      };
+    });
 }
 
 /** The first match's coach (battle-coach.ts), over the court. */
@@ -3908,12 +4106,39 @@ socket.on("party", (data: unknown) => {
   const parsed = partyStateSchema.safeParse(data);
   if (!parsed.success) return;
   const was = party?.members.length ?? 0;
+  const before = new Set(party?.members.map((m) => m.id) ?? []);
   party = parsed.data;
-  if (!party) partyRoomSent = "";
-  if (party && party.members.length > was && was > 0)
-    toast(`${party.members.at(-1)!.name} joined your party.`);
+  if (!party) {
+    partyRoomSent = partyRoomLeft = partyRoomFollowed = "";
+  } else {
+    // A friend who joined isn't "invited" any more.
+    for (const m of party.members) roomInvitesSent.delete(m.id);
+    // The leader opened a new room: you are no longer out of the last one.
+    if (party.room?.code !== partyRoomLeft && party.room) partyRoomLeft = "";
+    // The lead passed to you (the leader left): your room is the party's.
+    if (partyLeader()) partyRoomSent = "";
+  }
+  const joined = party?.members.find((m) => !before.has(m.id));
+  if (party && joined && was > 0 && joined.id !== accountsUI.account?.id)
+    toast(`${joined.name} joined your party.`);
   syncHub();
   accountsUI.refreshRaids();
+  invitesChanged();
+});
+socket.on("party-kicked", (data: unknown) => {
+  const parsed = partyKickedSchema.safeParse(data);
+  toast(
+    parsed.success
+      ? `${parsed.data.by} removed you from the party.`
+      : "You were removed from the party.",
+  );
+});
+socket.on("invite-declined", (data: unknown) => {
+  const parsed = inviteDeclinedSchema.safeParse(data);
+  if (!parsed.success) return;
+  roomInvitesSent.delete(parsed.data.playerId);
+  toast(`${parsed.data.name} declined your invitation.`);
+  invitesChanged();
 });
 // In-game chat (docs/chat-plan.md).
 socket.on("chat", (line: ChatLine) => {
@@ -3955,9 +4180,8 @@ socket.on("chat-config", (data: { freeText?: unknown } | null) => {
 });
 socket.on("party-room", (data: unknown) => {
   const parsed = partyRoomSchema.safeParse(data);
-  if (!parsed.success || myId || !party) return;
-  toast("Following your party leader into the room…");
-  void joinByCode(parsed.data.code);
+  if (!parsed.success || !party) return;
+  void followPartyRoom(parsed.data);
 });
 socket.on("friends-changed", () => {
   if (accountsUI.friendsOpen) void accountsUI.loadFriends();
@@ -4994,6 +5218,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   private needsHydration = true;
   private followCamera = new FollowCamera();
   private enemyBearing = document.createElement("div");
+  /** The camera view of the last frame (the target button's on-screen test). */
+  private aimView: CameraView | undefined;
   /** Where each fighter's nameplate was drawn last frame (the arrow keeps
    * off the followed fighter's). */
   private plates = new Map<string, PlateBox>();
@@ -5210,7 +5436,39 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       );
       if (hit) targetLock.toggle(hit.id);
     });
+    // The target button by Dash: the next enemy on screen, then none.
+    touch.onTarget = () => {
+      if (state?.phase !== "playing" || !local) return;
+      targetLock.cycle(this.targetsOnScreen(local));
+      // Lit (or not) at once, not a frame later.
+      touch.setTarget(true, !!targetLock.id);
+    };
     this.scale.refresh();
+  }
+  /**
+   * The enemies the target button can pick: the ones a tap could lock (a
+   * raid's bodies, lanterns and bubbles, else living visible enemies) that
+   * stand on screen, nearest first. On screen as the off-screen arrow
+   * judges it (outsideView), from the camera view of the last frame: the
+   * camera's own worldView cut off fighters standing at the court's edge.
+   */
+  targetsOnScreen(me: Fighter) {
+    const view = this.aimView;
+    if (!state || !view) return [];
+    const all =
+      (raidTargets(state, me) as Targetable[] | undefined) ??
+      visibleEnemies(me, me);
+    return all
+      .filter(
+        (t) =>
+          !outsideView(t.x, t.y, this.scale.width, this.scale.height, view),
+      )
+      .sort(
+        (a, b) =>
+          Math.hypot(a.x - me.x, a.y - me.y) -
+          Math.hypot(b.x - me.x, b.y - me.y),
+      )
+      .map((t) => t.id);
   }
   /** The tap-to-target lock's lifetime: it ends when its target dies or
    * leaves (a defeated fighter, a popped copy or bubble, a relit lantern). */
@@ -5819,6 +6077,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.cameras.main
       .setZoom(view.zoomX * hitZoom, view.zoomY * hitZoom)
       .centerOn(view.x, view.y);
+    this.aimView = view;
     const aim = screenToWorld(
       this.input.activePointer.x,
       this.input.activePointer.y,
@@ -6053,6 +6312,17 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const boss = state.raid ? state.players.find((p) => p.raidBoss) : undefined;
     this.bossGraphics.setDepth(boss ? fighterDepth(boss.y) : 0);
     this.layersUsed.clear();
+    // The target button: on while an enemy stands on screen in play, lit
+    // while a lock holds.
+    if (touch.enabled)
+      touch.setTarget(
+        state.phase === "playing" &&
+          !!local &&
+          local.hp > 0 &&
+          !local.out &&
+          this.targetsOnScreen(local).length > 0,
+        !!targetLock.id,
+      );
     // A locked Gloomshade body (real or copy, alike), unlit lantern or
     // Tidewyrm bubble (phones).
     if (touch.enabled && targetLock.id && local) {
@@ -6613,20 +6883,33 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             reducedMotion ? 0 : _time / 1000,
           );
         // After render (it clears the rig's layers): the aura's near items
-        // pass in front of the fighter, the rest go round behind.
-        if (p.raidLook?.aura)
+        // pass in front of the fighter, the rest go round behind. Sized to
+        // the fighter as in the Lobby, Shop and Wardrobe (battleAuraScale),
+        // a giant's too: drawn at the feet on scaled layers.
+        if (p.raidLook?.aura) {
+          const layers = rig.front ? [g, rig.front] : [g];
+          for (const layer of layers)
+            layer
+              .save()
+              .translateCanvas(x, feetY)
+              .scaleCanvas(
+                battleAuraScale(view.fighterX * 0.7 * giant),
+                battleAuraScale(view.fighterY * 0.7 * giant),
+              );
           // On the shadow's plane (48×18 at the feet): same flatness.
           drawCollectionAura(
             g,
             p.raidLook.aura,
-            x,
-            feetY,
+            0,
+            0,
             _time,
             reducedMotion,
             rig.front,
             18 / 48,
             0,
           );
+          for (const layer of layers) layer.restore();
+        }
       } else if (shown > 0) {
         // Its art is still loading (or failed): a plain stand-in in the
         // fighter's colour where the rig would stand, never missing textures.
@@ -7532,8 +7815,10 @@ accountsUI = new AccountUI({
       character: selected,
     });
     if (reply.ok) partyCharacterSent = selected;
+    if (inviteStands(reply)) noteInviteSent(playerId, false);
     return { ok: !!reply.ok, error: reply.error };
   },
+  invitedFriends,
   startAdventure: (mode) => void startAdventure(mode),
   joinRoom: (code) => void joinByCode(code),
   friendsRoom: () => ({
@@ -7546,7 +7831,11 @@ accountsUI = new AccountUI({
       !state.vsBot &&
       state.players.length < ((state.mode ?? "duel") === "duel" ? 2 : 4),
   }),
-  inviteFriend: (playerId) => request("room-invite", { playerId }),
+  inviteFriend: async (playerId) => {
+    const reply = await request("room-invite", { playerId });
+    if (inviteStands(reply)) noteInviteSent(playerId, true);
+    return reply;
+  },
   // In a private room Friends takes the picker's place; closing it brings
   // the picker back (UI remodel step 6).
   messageFriend: (id, name) => chat.openFriend(id, name),

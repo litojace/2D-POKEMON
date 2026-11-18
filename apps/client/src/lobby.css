@@ -162,6 +162,8 @@
    54 px and 36 px on phones), so a notice never covers the fighter. */
 .lobby-stage {
   --lobby-party-gap: clamp(10px, 1.5vw, 24px);
+  /* The party bar's height and the gap under it, when it shows. */
+  --lobby-bar-room: 0px;
   left: calc(var(--lobby-gutter) + var(--lobby-rail) + 16px);
   right: calc(var(--lobby-gutter-r) + var(--lobby-cards) + 16px);
   top: max(calc(var(--lobby-top) + 8px), calc(var(--safe-top, 0px) + 118px));
@@ -202,12 +204,32 @@
   row-gap: 8px;
 }
 .lobby-party > * {
+  /* The party bar lies over the top of the row (it isn't a line of its
+     own): the fighter's frame may reach under it by its empty top band,
+     the 28 of its 250 units above anything a creature draws (y -40 to -12
+     in fighter-selection.ts RIG_FRAME), so a fighter is never covered. */
   --fighter-size: max(
     120px,
-    min(100cqh, calc((100cqw - 2 * var(--lobby-party-gap)) / 1.72), 560px)
+    min(
+      100cqh,
+      calc((100cqh - var(--lobby-bar-room)) / 0.888),
+      calc((100cqw - 2 * var(--lobby-party-gap)) / 1.72),
+      560px
+    )
   );
-  /* A seat's width, and the size of what stands in it. */
-  --seat-w: calc(var(--fighter-size) * 0.36);
+  /* A seat's width, and the size of what stands in it: 36% of the fighter,
+     growing into the room left beside it (wide phones waste none) up to
+     45% of it, so the leader stays the big one and the Plaza still shows
+     around them. The right seat and the fourth seat above it always fit
+     the row's height together, under the party bar. */
+  --seat-w: clamp(
+    calc(var(--fighter-size) * 0.36),
+    calc((100cqw - var(--fighter-size)) / 2 - var(--lobby-party-gap) - 4px),
+    min(
+      calc(var(--fighter-size) * 0.45),
+      calc((100cqh - var(--lobby-bar-room) - 8px) / 2.05)
+    )
+  );
   --seat: var(--seat-w);
   /* The floor: the centre of the fighter's shadow, 6.93% of its size above
      the row's bottom (y 176 in the rig's -40…210 frame). */
@@ -637,7 +659,16 @@
 .lobby-crown {
   color: var(--ui-accent);
 }
+.lobby-stage:has(> .lobby-party-bar:not([hidden])) {
+  --lobby-bar-room: 46px;
+}
 .lobby-party-bar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -663,6 +694,116 @@
   font:
     700 calc(11px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
+}
+
+/* In someone else's party the leader stands in the middle (lobby-screen.ts):
+   the arrows step your own fighter only, so they wait; the leader's name
+   takes the element pill's place. */
+.lobby-step.is-waiting {
+  visibility: hidden;
+  pointer-events: none;
+}
+.lobby-host-name {
+  display: none;
+}
+.lobby-name.is-host .element-pill {
+  display: none;
+}
+.lobby-name.is-host .lobby-host-name {
+  display: inline-flex;
+  align-items: center;
+  max-width: 220px;
+  padding: 3px 10px;
+  overflow: hidden;
+  border: 1px solid var(--lobby-line);
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  color: var(--ui-accent);
+  font:
+    700 calc(12px * var(--text-scale, 1)) / 1.2 "DM Sans",
+    sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Your seat beside the leader: a tap opens Fighters. */
+.lobby-member-tap {
+  position: absolute;
+  inset: 8% 14% calc(var(--floor) * 0.4);
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 40%;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lobby-member-tap:focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+/* Kick on the leader's stage: a tap on a member's seat swaps its name tag
+   for the button (drawn 26 px, a finger's 44 px to tap). */
+.lobby-kick {
+  position: absolute;
+  left: 50%;
+  top: calc(100% - var(--floor) + var(--seat) * 0.09);
+  z-index: 3;
+  display: none;
+  height: 26px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-danger, #e5484d);
+  color: #fff;
+  font:
+    700 calc(11px * var(--text-scale, 1)) / 1 "DM Sans",
+    sans-serif;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.lobby-kick::after {
+  content: "";
+  position: absolute;
+  inset: -9px -6px;
+}
+.lobby-member.is-armed .lobby-kick {
+  display: inline-flex;
+  align-items: center;
+}
+.lobby-member.is-armed figcaption {
+  visibility: hidden;
+}
+.lobby-member.is-you figcaption {
+  color: var(--ui-accent);
+}
+/* A member reconnecting: their place is kept, drawn faded. */
+.lobby-member.is-away .lobby-member-art,
+.lobby-fighter.is-away .lobby-fighter-art {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+.lobby-away {
+  font-weight: 600;
+  opacity: 0.8;
+}
+/* The bar lies over the stage (no neighbour right under it): each button
+   answers a finger's height, 44 px, though it is drawn 26 px tall. */
+.lobby-party-bar button {
+  position: relative;
+}
+.lobby-party-bar button::after {
+  content: "";
+  position: absolute;
+  inset: -9px -3px;
+}
+.lobby-party-bar .lobby-rejoin {
+  background: var(--ui-accent);
+  color: #1b1405;
+}
+.lobby-party-bar .lobby-rejoin[hidden] {
+  display: none;
 }
 
 /* Cards on the right. */
@@ -1139,19 +1280,29 @@
     /* 12px under the player card (42px from max(10px, safe area)), clear
        of a frame's star row hanging below it. */
     --lobby-top: calc(var(--hub-card-h) + 22px + var(--hub-drop, 0px));
-    --lobby-rail: 36px;
+    /* Wide enough for a small label under each icon ("Missions"): the
+       stage beside it had room to spare (owner, 18 Nov). */
+    --lobby-rail: 56px;
     --lobby-rail-btn: 44px;
     --lobby-cards: 196px;
   }
   .lobby-rail {
     --rail-pad: 3px;
   }
+  .lobby-rail button {
+    gap: 1px;
+  }
   .lobby-rail svg {
     width: 18px;
     height: 18px;
   }
   .lobby-rail span {
-    display: none;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: calc(10px * var(--text-scale, 1));
+    letter-spacing: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .lobby-badge {
     top: -5px;
@@ -1162,6 +1313,9 @@
   }
   .lobby-party-bar {
     font-size: calc(10px * var(--text-scale, 1));
+  }
+  .lobby-stage:has(> .lobby-party-bar:not([hidden])) {
+    --lobby-bar-room: 40px;
   }
   .lobby-nameplate {
     grid-template-columns: 32px 150px 32px;
@@ -1246,6 +1400,10 @@
 @media (max-height: 340px) {
   .lobby-layer {
     --lobby-rail: 76px;
+  }
+  /* Two columns of 36 px: no room for the labels (aria-label names them). */
+  .lobby-rail span {
+    display: none;
   }
   .lobby-rail {
     display: grid;

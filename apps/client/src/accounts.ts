@@ -163,9 +163,18 @@ type Hooks = {
   /** Start a Spire climb (from your party's checkpoint, checked by the server). */
   startSpire?: (options: { solo?: boolean; returnTab?: SpireTab }) => void;
   /** Your Lobby party for the raid seats, and whether you can start. */
-  raidParty?: () => { party: RaidSeat[]; leader: boolean; inRoom: boolean };
+  raidParty?: () => {
+    party: RaidSeat[];
+    leader: boolean;
+    inRoom: boolean;
+  };
   /** Invite a friend to your Lobby party (the server answers). */
   inviteToParty?: (id: string) => Promise<{ ok: boolean; error?: string }>;
+  /**
+   * Friends with an invitation from you still open (party or room): every
+   * Invite button says Invited until they answer or it expires.
+   */
+  invitedFriends?: () => ReadonlySet<string>;
 };
 export class AccountUI {
   account: Account | null = null;
@@ -909,6 +918,7 @@ export class AccountUI {
               leader: room.leader,
               inRoom: room.inRoom,
               friends: this.raidFriends,
+              invited: [...(this.hooks.invitedFriends?.() ?? [])],
             };
           },
           start: (id, options) => this.hooks.startRaid?.(id, options),
@@ -955,6 +965,11 @@ export class AccountUI {
   /** Redraw the Raids panel (your party changed). */
   refreshRaids() {
     this.raidScreen?.refresh();
+  }
+  /** Invitations you sent changed: redraw every Invite button. */
+  refreshInvites() {
+    this.raidScreen?.refresh();
+    this.friendsScreen?.refresh();
   }
   /** Reload coins and missions (after a match, a raid or a purchase). */
   async loadEconomy() {
@@ -1442,6 +1457,7 @@ export class AccountUI {
           ...this.friendsData,
           blocked: this.blocked,
           canMessage: !!this.hooks.messageFriend,
+          invited: this.hooks.invitedFriends?.(),
           room,
           party: {
             size: Math.max(1, party?.party.length ?? 1),

@@ -62,6 +62,17 @@ export const SHOP_GROUND_FLAT = SHOP_SHADOW.height / SHOP_SHADOW.width;
  */
 export const AURA_ART_SCALE = (32 * 2 * 1.6) / 48 / 2;
 /**
+ * World units per aura unit in a battle, for a fighter drawn at `rigScale`
+ * (the rig root's scale): the Lobby's aura next to its fighter. A rig unit is
+ * two art units (the rig draws half-size art), so an aura unit is
+ * AURA_ART_SCALE / 2 rig units. Battles drew auras at 1 world unit each, about
+ * 2.7 times bigger next to the fighter than in the Lobby, Shop and Wardrobe
+ * (owner, 18 Nov 2026).
+ */
+export function battleAuraScale(rigScale: number) {
+  return (rigScale * AURA_ART_SCALE) / 2;
+}
+/**
  * Auras lie on the same plane as the shadow (SHOP_GROUND_FLAT), sized to the
  * fighter as in the Lobby (AURA_ART_SCALE), and the whole projected aura
  * stays inside the frame.

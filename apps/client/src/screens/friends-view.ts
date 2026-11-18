@@ -45,7 +45,7 @@ export interface FriendsParty {
   /** People in your Lobby party, you included (1 when alone). */
   size: number;
   ids: readonly string[];
-  /** You lead it (or have none): you can invite. */
+  /** You lead it (or have none). */
   leader: boolean;
 }
 export const PARTY_MAX = 4;
@@ -62,6 +62,8 @@ export interface FriendsData {
   blocked?: readonly { id: string; name: string }[];
   /** Friends can be messaged in the chat (its Friends tab). */
   canMessage?: boolean;
+  /** Friends with an invitation from you still open (from any screen). */
+  invited?: ReadonlySet<string>;
 }
 export interface FriendsView {
   tab: FriendsTab;
@@ -157,10 +159,9 @@ export const canInviteFriend = (f: Friend, room?: FriendsRoom) =>
     f.activity !== "match" &&
     f.activity !== "practice"
   );
-/** Into your Lobby party: you lead it, it has room, they are free. */
+/** Into your Lobby party (anyone in it may invite): it has room, they are free. */
 export const canInviteToParty = (f: Friend, party: FriendsParty) =>
   !!(
-    party.leader &&
     party.size < PARTY_MAX &&
     f.online &&
     !f.room &&
@@ -169,10 +170,13 @@ export const canInviteToParty = (f: Friend, party: FriendsParty) =>
     !party.ids.includes(f.id)
   );
 export type FriendAction =
-  "invite-room" | "invite" | "join" | "watch" | "party";
+  "invite-room" | "invite" | "join" | "watch" | "party" | "in-room";
 /** A friend's one action, the most useful first. */
 export function friendAction(f: Friend, d: FriendsData): FriendAction | null {
-  if (d.room) return canInviteFriend(f, d.room) ? "invite-room" : null;
+  if (d.room) {
+    if (d.room.code && f.online && f.room === d.room.code) return "in-room";
+    return canInviteFriend(f, d.room) ? "invite-room" : null;
+  }
   if (d.party.ids.includes(f.id)) return "party";
   if (canJoinFriend(f)) return "join";
   if (canWatchFriend(f)) return "watch";
@@ -327,6 +331,8 @@ function actionButton(a: FriendAction | null, f: Friend, view: FriendsView) {
       });
     case "party":
       return `<span class="fr-in-party">In party</span>`;
+    case "in-room":
+      return `<span class="fr-in-party">In your room</span>`;
     default:
       return "";
   }

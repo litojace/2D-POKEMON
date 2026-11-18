@@ -35,8 +35,8 @@ export class RoomInvites {
     private hooks: {
       accountId: () => string | undefined;
       canJoin: () => boolean;
-      /** A declined party invitation (room invitations just expire). */
-      decline?: (code: string) => void;
+      /** Declined: the sender's Invite button can be used again. */
+      decline?: (invite: RoomInvite) => void;
       join: (code: string, mode: RoomInvite["mode"]) => Promise<boolean>;
     },
   ) {
@@ -92,13 +92,13 @@ export class RoomInvites {
     this.root.hidden = false;
     const party = invite.mode === "party",
       joinLabel = party ? "Join party" : "Join room";
-    this.root.innerHTML = `<div class="room-invite-heading">${iconLabel("friends", party ? "Party invitation" : "Room invitation")}${this.queue.length > 1 ? `<small>${this.queue.length} waiting</small>` : ""}</div><p><b>${escape(invite.name)}</b> ${party ? "invited you to their party" : "invited you to play"}</p><span class="room-invite-mode">${party ? "Stand together in the Lobby, then play" : `${modeName[invite.mode]} · ${invite.code}`}</span><div class="room-invite-actions"><button type="button" class="quiet" data-invite-decline>Decline</button><button type="button" class="primary btn-primary" data-invite-join>${iconLabel("enter", joinLabel)}</button></div><small class="room-invite-status" role="status" aria-live="polite"></small>`;
+    this.root.innerHTML = `<div class="room-invite-heading">${iconLabel("friends", party ? "Party invitation" : "Room invitation")}${this.queue.length > 1 ? `<small>${this.queue.length} waiting</small>` : ""}</div><p><b>${escape(invite.name)}</b> ${party ? (invite.leader ? `invited you to <b>${escape(invite.leader)}</b>'s party` : "invited you to their party") : "invited you to play"}</p><span class="room-invite-mode">${party ? "Stand together in the Lobby, then play" : `${modeName[invite.mode]} · ${invite.code}`}</span><div class="room-invite-actions"><button type="button" class="quiet" data-invite-decline>Decline</button><button type="button" class="primary btn-primary" data-invite-join>${iconLabel("enter", joinLabel)}</button></div><small class="room-invite-status" role="status" aria-live="polite"></small>`;
     this.root.querySelector<HTMLButtonElement>(
       "[data-invite-decline]",
     )!.onclick = () => {
       if (this.joining) return;
       this.queue.shift();
-      if (party) this.hooks.decline?.(invite.code);
+      this.hooks.decline?.(invite);
       this.render();
     };
     this.root.querySelector<HTMLButtonElement>("[data-invite-join]")!.onclick =
