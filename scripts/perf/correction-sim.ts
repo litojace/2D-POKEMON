@@ -111,8 +111,6 @@ export function simulateCorrections(o: {
   noCarry?: boolean;
   /** The bot's level (the match reports' fights are mostly "hard"). */
   level?: BotDifficulty;
-  /** Replay every pending input as a step, ignoring Fighter.owed (before it). */
-  noOwed?: boolean;
   /** Uplink holds: chance per input and length (ms). */
   stallChance?: number;
   stallMs?: number;
@@ -162,7 +160,7 @@ export function simulateCorrections(o: {
     previous: Snapshot | undefined,
     local: Fighter | undefined,
     pending: Input[] = [],
-    owed = 0,
+    held = 0,
     seq = 0,
     cursor = 0,
     serverClock = 0,
@@ -203,9 +201,9 @@ export function simulateCorrections(o: {
       pendingSum += pending.length;
       local = structuredClone(server);
       if (!o.noCarry) carryCurrent(local, state.time);
-      owed = o.noOwed ? 0 : (server.owed ?? 0);
-      for (const [i, input] of serverSteps(pending, owed).entries())
-        predictFighter(local, input, state.time + (i + 1) / RULES.tick, false);
+      held = server.held ?? 0;
+      for (const { input, tick } of serverSteps(pending, held))
+        predictFighter(local, input, state.time + tick / RULES.tick, false);
       if (!before) continue;
       const px = Math.hypot(local.x - before.x, local.y - before.y);
       if (px <= 4) continue;
@@ -247,7 +245,7 @@ export function simulateCorrections(o: {
       up.send(now, input);
       pending.push(input);
       if (pending.length > 90) pending.shift();
-      const next = newestStep(pending, owed);
+      const next = newestStep(pending, held);
       if (next)
         predictFighter(
           local,
@@ -278,7 +276,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     noSkill: process.env.NO_SKILL === "1",
     noBasic: process.env.NO_BASIC === "1",
     noCarry: process.env.NO_CARRY === "1",
-    noOwed: process.env.NO_OWED === "1",
     level: (process.env.BOT_LEVEL as BotDifficulty | undefined) ?? "normal",
     fps: Number(process.env.FPS ?? 60),
     seed: Number(process.env.SEED ?? 11),

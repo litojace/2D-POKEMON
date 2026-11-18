@@ -9,12 +9,13 @@ import { performance } from "node:perf_hooks";
  * is not 30 a second: Node runs it about 30.1 times a second on an idle
  * machine (timers fire on whole milliseconds), and a busy or CPU-throttled
  * instance skips ticks it never makes up. Either way the input queue drifts
- * against the phone: a faster server runs dry and repeats your last input
- * (a step the phone did not predict), a slower one piles inputs up and
- * folds them into one tick (a step lost). Both read as "unexplained" jumps
- * of one step (~9 px) in the match reports: in scripts/perf/correction-sim.ts
- * a server at 30.1 Hz gives 4-10 a minute, at 29.5 Hz 13-15, at 30.0 none
- * (docs/network-performance.md, section 15).
+ * against the phone. A slower server piles inputs up and must fold some
+ * into one tick (a step lost: no client may step faster than the ticks),
+ * an "unexplained" jump of one step (~9 px) in the match reports: in
+ * scripts/perf/correction-sim.ts a server at 29.5 Hz gives 13-15 a minute,
+ * at 30.0 none (docs/network-performance.md, section 15). A faster one ran
+ * dry and repeated your last input; its spare ticks are held now
+ * (section 16).
  *
  * So the next tick is due a fixed period after the last one was due, not
  * after it ran, and a tick that came late (a garbage collection, a busy
@@ -56,6 +57,9 @@ export class TickClock {
   private stopped = false;
   /** When recent ticks ran (ms), for `hz()`. */
   private ran: number[] = [];
+  /** How late each recent tick ran (ms) and how long its step took. */
+  private lates: number[] = [];
+  private steps: number[] = [];
   private readonly period: number;
   constructor(
     private readonly step: () => void,
@@ -81,11 +85,42 @@ export class TickClock {
     if (now - this.due > TICK_CLOCK.maxCatchUp * this.period)
       // Suspended or stalled far beyond a hiccup: start afresh.
       this.due = now;
+    const late = now - this.due;
     this.due += this.period;
     this.note(now);
     // A throw ends the process, as it did under setInterval.
     this.step();
+    this.sample(late, this.timers.now() - now);
     this.schedule();
+  }
+  private sample(late: number, took: number) {
+    const keep = TICK_CLOCK.window * (1000 / this.period);
+    this.lates.push(late);
+    this.steps.push(took);
+    if (this.lates.length > keep)
+      this.lates.splice(0, this.lates.length - keep);
+    if (this.steps.length > keep)
+      this.steps.splice(0, this.steps.length - keep);
+  }
+  /**
+   * The last minute, for the match reports: the real rate (`hz()`), how
+   * late the 95th percentile tick ran (ms: a garbage collection, a busy or
+   * CPU-throttled instance) and how long the 95th percentile step took.
+   */
+  stats(): { serverHz?: number; tickLateP95?: number; tickMsP95?: number } {
+    const p95 = (v: number[]) => {
+      if (!v.length) return undefined;
+      const sorted = v.slice().sort((a, b) => a - b);
+      return Math.round(sorted[Math.floor(sorted.length * 0.95)] * 10) / 10;
+    };
+    const hz = this.hz(),
+      late = p95(this.lates),
+      took = p95(this.steps);
+    return {
+      ...(hz !== undefined ? { serverHz: hz } : {}),
+      ...(late !== undefined ? { tickLateP95: late } : {}),
+      ...(took !== undefined ? { tickMsP95: took } : {}),
+    };
   }
   private note(now: number) {
     this.ran.push(now);
