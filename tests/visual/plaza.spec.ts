@@ -731,6 +731,92 @@ test("a runner behind a hurdle is under it, in front of it over it", async ({
   expect(errors).toEqual([]);
 });
 
+// Zoom: the mouse wheel and + / − on a desktop, two fingers on a phone;
+// within limits (never past what is built or what the server shows), and
+// kept for the next visit.
+test("the Plaza zooms with the wheel, the keys and a pinch", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const zoomOf = (page: Page) =>
+    page.evaluate(() => (window as any).__plaza.view().z as number);
+  // Desktop: the wheel and the keys.
+  {
+    const ctx = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+    });
+    try {
+      const page = await ctx.newPage();
+      const errors = await openPlaza(page);
+      await page.evaluate(() => localStorage.removeItem("ea-plaza-zoom"));
+      await page.evaluate(() => (window as any).__plaza.setZoom(1));
+      expect(await zoomOf(page)).toBeCloseTo(1, 3);
+      await page.mouse.move(640, 400);
+      for (let i = 0; i < 6; i++) await page.mouse.wheel(0, -120);
+      await expect.poll(() => zoomOf(page)).toBeGreaterThan(1.3);
+      // Past the limit, it stops there.
+      for (let i = 0; i < 20; i++) await page.mouse.wheel(0, -120);
+      await expect.poll(() => zoomOf(page)).toBeCloseTo(1.5, 3);
+      await page.locator(".plaza-layer").focus();
+      for (let i = 0; i < 20; i++) await page.keyboard.press("-");
+      const range = await page.evaluate(() =>
+        (window as any).__plaza.zoomRange(),
+      );
+      expect(await zoomOf(page)).toBeCloseTo(range.min, 3);
+      const v = await page.evaluate(() => (window as any).__plaza.view());
+      expect(v.x1 - v.x0).toBeLessThanOrEqual(1500 + 0.5);
+      // Kept on this device.
+      expect(
+        Number(
+          await page.evaluate(() => localStorage.getItem("ea-plaza-zoom")),
+        ),
+      ).toBeCloseTo(range.min / range.base, 3);
+      expect(errors).toEqual([]);
+    } finally {
+      await ctx.close();
+    }
+  }
+  // Phone: a pinch on the playground.
+  {
+    const ctx = await browser.newContext({
+      viewport: { width: 844, height: 390 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await ctx.newPage();
+      const errors = await openPlaza(page);
+      await page.evaluate(() => (window as any).__plaza.setZoom(1));
+      expect(await zoomOf(page)).toBeCloseTo(0.66, 3);
+      await page.evaluate(() => {
+        const cv = document.querySelector("#pz-cv")!;
+        const at = (type: string, id: number, x: number) =>
+          cv.dispatchEvent(
+            new PointerEvent(type, {
+              pointerId: id,
+              pointerType: "touch",
+              clientX: x,
+              clientY: 200,
+              bubbles: true,
+            }),
+          );
+        at("pointerdown", 11, 500);
+        at("pointerdown", 12, 600);
+        at("pointermove", 11, 450);
+        at("pointermove", 12, 650);
+        at("pointerup", 11, 450);
+        at("pointerup", 12, 650);
+      });
+      // Fingers twice as far apart: twice the zoom, as far as it goes.
+      const r = await page.evaluate(() => (window as any).__plaza.zoomRange());
+      expect(await zoomOf(page)).toBeCloseTo(Math.min(r.max, 0.66 * 2), 3);
+      expect(errors).toEqual([]);
+    } finally {
+      await ctx.close();
+    }
+  }
+});
+
 // The world goes on past the Plaza's edge (plaza-surround*.ts): standing by
 // the north railing, the camera looks out over the river, whose water moves.
 test("past the north edge, the river flows", async ({ page }, info) => {

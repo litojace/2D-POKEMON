@@ -56,6 +56,32 @@ export function plazaZoom(nw: number, nh: number) {
     nh / (H + PLAZA_OUT.n + PLAZA_OUT.s),
   );
 }
+/**
+ * How far a player may zoom (pinch, wheel, + and −) on this screen. In: up
+ * to 1.8 times the usual, at most 1.5 (the ground is painted at one pixel a
+ * world px). Out: never past what is built, and never wider than the server
+ * shows other players (PLAZA.view), so a zoomed-out view never has empty
+ * ground where people should be.
+ */
+export function plazaZoomRange(nw: number, nh: number) {
+  const base = plazaZoom(nw, nh);
+  const built = Math.max(
+    nw / (W + PLAZA_OUT.w + PLAZA_OUT.e),
+    nh / (H + PLAZA_OUT.n + PLAZA_OUT.s),
+  );
+  const seen = Math.max(nw / PLAZA.view.w, nh / PLAZA.view.h);
+  return {
+    base,
+    min: Math.min(base, Math.max(built, seen)),
+    max: Math.max(base, Math.min(base * 1.8, 1.5)),
+  };
+}
+/** The zoom for a screen and a player's chosen factor (1 = the usual). */
+export function plazaZoomAt(nw: number, nh: number, factor: number) {
+  const r = plazaZoomRange(nw, nh);
+  const f = Number.isFinite(factor) && factor > 0 ? factor : 1;
+  return Math.max(r.min, Math.min(r.max, r.base * f));
+}
 /** Keep the camera's centre so the view stays inside what is built. */
 export function plazaCamClamp(
   x: number,

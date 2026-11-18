@@ -102,7 +102,8 @@ import {
   PLAZA_MARGIN,
   PLAZA_SCALE,
   plazaCamClamp,
-  plazaZoom,
+  plazaZoomAt,
+  plazaZoomRange,
 } from "./plaza-surround";
 import {
   RIVER_LAMPS,
@@ -826,7 +827,7 @@ export function openPlaza(options) {
     paintVerge(g);
   }
   /** The world past the Plaza's edges (plaza-surround*.ts). */
-  const around = new Surroundings(memoryConstrained() ? 0.5 : 0.75);
+  const around = new Surroundings(memoryConstrained() ? 0.6 : 1);
   function prep() {
     paintBg();
     around.paint();
@@ -1178,6 +1179,70 @@ export function openPlaza(options) {
       feed(n.id, `${who} hit the runway`);
   }
 
+  /* ---------- zoom: pinch, the wheel, + and − ---------- */
+  /** The player's zoom against the usual one (kept on this device). */
+  let zoomF = 1;
+  try {
+    zoomF = Number(localStorage.getItem("ea-plaza-zoom")) || 1;
+  } catch {
+    /* no storage */
+  }
+  function setZoom(f, keep = true) {
+    const r = plazaZoomRange(NW, NH);
+    Z = plazaZoomAt(NW, NH, f);
+    // What was asked for past a limit is not kept: a wider screen later
+    // starts from what was really shown.
+    zoomF = Z / r.base;
+    // Inside at once (the camera eases after this): zooming or resizing
+    // never shows past what is painted.
+    cam = plazaCamClamp(cam.x, cam.y, NW, NH, Z);
+    if (keep)
+      try {
+        localStorage.setItem("ea-plaza-zoom", String(zoomF));
+      } catch {
+        /* no storage */
+      }
+  }
+  const onWheel = (e) => {
+    e.preventDefault();
+    start();
+    setZoom(
+      zoomF * Math.exp(-Math.max(-120, Math.min(120, e.deltaY)) * 0.0015),
+    );
+  };
+  cv.addEventListener("wheel", onWheel, { passive: false });
+  /** Two fingers on the playground: pinch to zoom. */
+  const fingers = new Map();
+  let pinchFrom = 0,
+    pinchF = 1;
+  const spread = () => {
+    const [a, b] = [...fingers.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  cv.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "touch") return;
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (fingers.size === 2) {
+      pinchFrom = spread();
+      pinchF = zoomF;
+    }
+  });
+  const pinchMove = (e) => {
+    const f = fingers.get(e.pointerId);
+    if (!f) return;
+    f.x = e.clientX;
+    f.y = e.clientY;
+    if (fingers.size === 2 && pinchFrom > 20)
+      setZoom(pinchF * (spread() / pinchFrom));
+  };
+  const pinchEnd = (e) => {
+    fingers.delete(e.pointerId);
+    if (fingers.size < 2) pinchFrom = 0;
+  };
+  addEventListener("pointermove", pinchMove, true);
+  addEventListener("pointerup", pinchEnd, true);
+  addEventListener("pointercancel", pinchEnd, true);
+
   /* ---------- input ---------- */
   const keys = new Set();
   let joy = { x: 0, y: 0, id: null },
@@ -1214,6 +1279,11 @@ export function openPlaza(options) {
       return;
     }
     start();
+    // + and − (or =) zoom in and out.
+    if (k === "+" || k === "=" || k === "-" || k === "_") {
+      setZoom(zoomF * (k === "-" || k === "_" ? 1 / 1.15 : 1.15));
+      return;
+    }
     if (
       e.repeat &&
       ![
@@ -2593,7 +2663,34 @@ export function openPlaza(options) {
     );
     g.restore();
   }
-  function drawHurdle(g, [p0, p1]) {
+  /**
+   * A hurdle never moves: drawn once into its own picture (twice the
+   * resolution) and copied after, so its thin dashed bar doesn't shimmer
+   * as the camera glides a fraction of a pixel each frame.
+   */
+  const hurdlePics = new Map();
+  function drawHurdle(g, seg) {
+    const [p0, p1] = seg;
+    let pic = hurdlePics.get(seg);
+    if (!pic) {
+      const pad = 12,
+        k = 2,
+        x0 = Math.min(p0.x, p1.x) - pad,
+        y0 = Math.min(p0.y, p1.y) - PLAZA_SCALE.hurdle - pad,
+        x1 = Math.max(p0.x, p1.x) + pad,
+        y1 = Math.max(p0.y, p1.y) + pad;
+      const c = document.createElement("canvas");
+      c.width = Math.ceil((x1 - x0) * k);
+      c.height = Math.ceil((y1 - y0) * k);
+      const cg = c.getContext("2d");
+      cg.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+      paintHurdle(cg, seg);
+      pic = { c, x0, y0, w: x1 - x0, h: y1 - y0 };
+      hurdlePics.set(seg, pic);
+    }
+    g.drawImage(pic.c, pic.x0, pic.y0, pic.w, pic.h);
+  }
+  function paintHurdle(g, [p0, p1]) {
     g.strokeStyle = "rgba(0,0,0,.3)";
     g.lineWidth = 8;
     g.beginPath();
@@ -3633,7 +3730,6 @@ export function openPlaza(options) {
       g.fill();
     });
 
-    HSEG.forEach((s) => drawHurdle(g, s));
     drawPond(g, time);
     FX.filter((f) => f.ring || f.dust).forEach((f) => {
       const k = f.t / f.life;
@@ -4396,12 +4492,9 @@ export function openPlaza(options) {
     NW = nw;
     NH = nh;
     PS = ps;
-    // Never show more than is built: on a screen wider or taller than the
-    // Plaza and its surroundings (an ultrawide monitor) zoom in until it fills it.
-    Z = plazaZoom(nw, nh);
-    // Inside at once (the camera eases after this): a resize or the first
-    // frame never shows past what is painted.
-    cam = plazaCamClamp(cam.x, cam.y, nw, nh, Z);
+    // The player's zoom, within what this screen may show (never more than
+    // is built: an ultrawide monitor zooms in until it fills).
+    setZoom(zoomF, false);
     cv.width = Math.round(nw * ps);
     cv.height = Math.round(nh * ps);
     renderQuests();
@@ -4589,6 +4682,9 @@ export function openPlaza(options) {
       socket.off("plaza-state", onState);
       socket.off("plaza-treat", onTreat);
       socket.off("plaza-treats", onTreats);
+      removeEventListener("pointermove", pinchMove, true);
+      removeEventListener("pointerup", pinchEnd, true);
+      removeEventListener("pointercancel", pinchEnd, true);
       removeEventListener("pointermove", joyMove, true);
       removeEventListener("pointerup", joyEnd, true);
       removeEventListener("pointercancel", joyEnd, true);
@@ -4631,6 +4727,9 @@ export function openPlaza(options) {
         y1: cam.y + NH / 2 / Z,
         z: Z,
       }),
+      /** Tests: zoom to a factor of the usual (as a pinch or the wheel). */
+      setZoom: (f) => setZoom(f),
+      zoomRange: () => plazaZoomRange(NW, NH),
       /** Pixels in the surroundings' strips (tests). */
       surroundPixels: () => around.pixels,
       /** Tests: hold the time of day (0.42 = midday). */
