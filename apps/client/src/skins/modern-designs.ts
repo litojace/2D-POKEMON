@@ -201,12 +201,14 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
         const c = k.C + k.side * 3;
         k.put("body", torso(k, smock, k.path(`M${c - 9} ${k.T - 1}L${c} ${k.T + 8}L${c + 9} ${k.T - 1}`, "none", k.ink, 0.8) + k.rect(c - 7, k.B - 18, 14, 8, 2, "#ece6da", k.ink, 0.6) + dots(c)));
       }
-      // A beret tipped to one side, clear of the orange, and a brush behind the ear.
+      // A big beret tipped over the crown (in place of the orange), and a
+      // brush behind the ear.
       const s = k.side ? -k.side : -1;
-      const bx = k.hx + s * 30,
-        by = k.ht + 14;
-      k.put("flame", `<ellipse cx="${bx}" cy="${by}" rx="20" ry="9" fill="#c8323a" stroke="${k.ink}" stroke-width="1.1" transform="rotate(${s * 18} ${bx} ${by})"/>` +
-        k.circle(bx + s * 2, by - 9, 2.2, "#c8323a") +
+      const bx = k.hx + s * 12,
+        by = k.ht + 4;
+      k.put("flame", `<ellipse cx="${bx}" cy="${by}" rx="38" ry="15" fill="#c8323a" stroke="${k.ink}" stroke-width="1.2" transform="rotate(${s * 10} ${bx} ${by})"/>` +
+        k.line(`M${bx - 30} ${by + 6}Q${bx} ${by + 14} ${bx + 30} ${by + 6}`, "#a02028", 1.6) +
+        k.circle(bx - s * 4, by - 15, 2.6, "#c8323a") +
         (k.back ? "" : k.line(`M${k.hx - s * 46} ${k.ht + 30}L${k.hx - s * 58} ${k.ht + 8}`, "#d9a35a", 2.4) +
           k.lume("pulse", k.circle(k.hx - s * 58, k.ht + 7, 2.6, "#ff4fd8", k.ink, 0.5), 4, "#ff4fd8")));
     },
@@ -441,8 +443,11 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
           const a = (i / 10) * Math.PI * 2;
           return `<ellipse cx="${fx + Math.cos(a) * 6}" cy="${fy + Math.sin(a) * 6}" rx="3.6" ry="1.8" fill="#ffd84a" stroke="${k.ink}" stroke-width="0.4" transform="rotate(${(a * 180) / Math.PI} ${fx + Math.cos(a) * 6} ${fy + Math.sin(a) * 6})"/>`;
         }).join("") + k.circle(fx, fy, 3.6, "#7a4a24");
+      // The orange gives way to a big sunflower on the headband, its heart glowing.
       k.put("flame", k.line(`M${x - 46} ${y + 10}Q${x} ${y - 6} ${x + 46} ${y + 10}`, "#2b2f3d", 2) +
-        (k.side ? ant(-k.side, 1) : ant(-1, 1) + ant(1, 2)) + (k.back ? "" : flower(x + (k.side ? k.side * 26 : 34), y + 14)));
+        (k.side ? ant(-k.side, 1) : ant(-1, 1) + ant(1, 2)) +
+        `<g transform="translate(${x + (k.side ? k.side * 6 : 0)} ${y - 6}) scale(1.6) translate(${-(x + (k.side ? k.side * 6 : 0))} ${-(y - 6)})">${flower(x + (k.side ? k.side * 6 : 0), y - 6)}</g>` +
+        k.lume("pulse", k.circle(x + (k.side ? k.side * 6 : 0), y - 6, 4, "#ffb347", "none", 0), 3, "#ffb347"));
     },
   },
 
@@ -500,11 +505,17 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
         k.put("body", torso(k, brocade, k.line(`M${c + 2} ${k.T + 2}Q${c + 8} ${k.T + 5} ${c + 12} ${k.T + 11}`, gold, 1) + drum(c - (k.side ? 0 : 3), k.T + 18, 7.5)) +
           k.rect(c - 8, k.T - 4, 16, 6, 2, brocade, k.ink, 0.9));
       }
-      // The sword across the back: hilt over one shoulder, its blade lit.
-      const s = k.side ? -k.side : 1;
+      // The sword across the back: hilt over the left shoulder (clear of the
+      // shell's crystal on the right), its blade lit.
+      const s = k.side ? -k.side : -1;
       const hilt = (x: number, y: number) => k.line(`M${x} ${y}L${x + s * 7} ${y - 12}`, "#5a3a22", 3.2) + k.line(`M${x - 5} ${y + 2}L${x + 5} ${y - 2}`, gold, 2.2);
       if (k.back) k.put("scarf", k.lume("pulse", k.line(`M${k.C + 14} ${k.B}L${k.C - 20} ${k.T - 20}`, "#cfe8ff", 2.6), 1, "#cfe8ff") + hilt(k.C - 20, k.T - 20));
-      else k.put("body", hilt(k.C + s * 40, k.T - 22) + k.lume("pulse", k.line(`M${k.C + s * 40} ${k.T - 22}L${k.C + s * 34} ${k.T - 12}`, "#cfe8ff", 2.4), 1, "#cfe8ff"), true);
+      else {
+        // Hilt and a hand's width of blade show past the side of the head.
+        const hx0 = k.C + s * (k.side ? 30 : 54),
+          hy0 = k.T - 28;
+        k.put("body", k.lume("pulse", k.line(`M${hx0} ${hy0}L${hx0 - s * 9} ${hy0 + 16}`, "#cfe8ff", 2.6), 1, "#cfe8ff") + hilt(hx0, hy0), true);
+      }
       // Khăn đóng: a round wrapped turban, its folds in bands.
       const x = k.hx + k.side * 2,
         y = k.ht + 16;
@@ -629,8 +640,8 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
           // A shark-tooth necklace.
           k.line(`M${c - 10} ${k.T}Q${c} ${k.T + 8} ${c + 10} ${k.T}`, "#5a3a22", 0.8) + k.path(`M${c - 2} ${k.T + 4}L${c + 2} ${k.T + 4}L${c} ${k.T + 10}Z`, "#f7f4ee", k.ink, 0.5)));
       }
-      // The surfboard behind, its stripe lit.
-      const s = k.side ? -k.side : 1;
+      // The surfboard behind, its stripe lit, on the side away from the tail.
+      const s = k.side ? -k.side : -1;
       const board = (x: number, y: number) => `<ellipse cx="${x}" cy="${y}" rx="8" ry="30" fill="#f7f4ee" stroke="${k.ink}" stroke-width="1.1" transform="rotate(${s * 18} ${x} ${y})"/>` +
         k.lume("pulse", `<line x1="${x}" y1="${y - 26}" x2="${x}" y2="${y + 26}" stroke="${neon}" stroke-width="2.2" transform="rotate(${s * 18} ${x} ${y})"/>`, 0, neon);
       if (k.back) k.put("scarf", board(k.C, k.T + 4));
@@ -655,12 +666,16 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
           [0, 1, 2].map((i) => k.lume("twinkle", k.path(k.star(k.L + 5, k.T + 6 + i * 9, 2.2, 5), "#ffffff", "none"), i, "#ffffff")).join("")));
       }
       // A small top hat perched by the orange, a sparkler in its band.
-      const x = k.hx + (k.side ? -k.side * 24 : -30),
-        y = k.ht + 6;
-      k.put("flame", k.path(`M${x - 13} ${y}Q${x} ${y + 4} ${x + 13} ${y}Q${x} ${y - 4} ${x - 13} ${y}Z`, vest) +
-        k.rect(x - 8, y - 18, 16, 18, 2, "#f7f1e1") + [0, 1].map((i) => k.rect(x - 8, y - 15 + i * 7, 16, 3, 0, red, "none")).join("") + k.rect(x - 8, y - 4, 16, 3, 0, vest, "none") +
-        k.line(`M${x + 6} ${y - 4}L${x + 14} ${y - 24}`, "#8a8a96", 1) +
-        [0, 1, 2, 3].map((i) => k.lume("twinkle", k.path(k.star(x + 14 + [0, 4, -3, 2][i], y - 26 + [0, -3, -2, 3][i], 2.6, 4), "#fff3a8", "none"), i + 3, "#fff3a8")).join(""));
+      // A striped top hat on the crown (in place of the orange), tipped a
+      // little, with a sparkler in its band.
+      const x = k.hx + k.side * 3,
+        y = k.ht + 8;
+      k.put("flame", `<g transform="rotate(${k.side ? k.side * 6 : -8} ${x} ${y})">` +
+        k.path(`M${x - 30} ${y}Q${x} ${y + 8} ${x + 30} ${y}Q${x} ${y - 7} ${x - 30} ${y}Z`, vest) +
+        k.rect(x - 18, y - 34, 36, 33, 3, "#f7f1e1") + [0, 1, 2].map((i) => k.rect(x - 18, y - 30 + i * 9, 36, 4, 0, red, "none")).join("") +
+        k.rect(x - 18, y - 8, 36, 6, 0, vest, "none") + [0, 1, 2].map((i) => k.path(k.star(x - 10 + i * 10, y - 5, 1.8, 5), "#ffffff", "none")).join("") +
+        k.line(`M${x + 14} ${y - 8}L${x + 26} ${y - 40}`, "#8a8a96", 1.2) +
+        [0, 1, 2, 3].map((i) => k.lume("twinkle", k.path(k.star(x + 26 + [0, 5, -4, 3][i], y - 42 + [0, -4, -3, 4][i], 3, 4), "#fff3a8", "none"), i + 3, "#fff3a8")).join("") + "</g>");
       // Star sunglasses over the closed, smiling eyes.
       if (!k.back) {
         const { pts } = lenses(k);
@@ -670,3 +685,15 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     },
   },
 };
+
+/**
+ * Which of the champion's own pieces a design takes off: the neck piece
+ * always (the costume dresses the neck), and the head-top crest wherever a
+ * hat or headpiece sits there. A few designs build on the crest instead:
+ * Sunbara's orange becomes a solar core (Hero Squad) and a Tết quất
+ * (Hồn Việt), and Cindrake's and Pyranda's flames stay where no design is drawn.
+ */
+export function modernReplaces(theme: ModernTheme, id: CharacterId): CreaturePart[] {
+  const keepCrest = (id === "sunbara" && (theme === "hero" || theme === "viet")) || (!DESIGNS[theme]?.[id] && ["cindrake", "pyranda", "sunbara"].includes(id));
+  return keepCrest ? ["scarf"] : ["scarf", "flame"];
+}
