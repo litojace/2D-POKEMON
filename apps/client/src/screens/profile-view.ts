@@ -233,7 +233,7 @@ function avatarPicker(d: ProfileData, view: ProfileView) {
       return `<button type="button" class="pf-avatar${on ? " is-on" : ""}" aria-pressed="${on}" aria-label="${esc(a.name)}" title="${esc(a.name)}" data-profile-avatar="${a.id}"${view.avatarBusy !== null ? " disabled" : ""}${busy ? ' aria-busy="true"' : ""}>${avatarImage(a.id)}</button>`;
     })
     .join("");
-  return `${photoRow(d, view)}${styles}<div class="pf-avatars" role="group" aria-labelledby="pf-avatar-h">${tiles}</div><p class="ui-note pf-status pf-avatar-status" role="status">${esc(view.avatarStatus)}</p>`;
+  return `${photoRow(d, view)}${styles}<div class="pf-avatars" role="group" aria-labelledby="pf-avatar-h">${tiles}</div><p class="ui-note pf-avatar-status" role="status">${esc(view.avatarStatus)}</p>`;
 }
 
 /**
