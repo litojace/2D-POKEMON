@@ -27,6 +27,8 @@ import {
   drawCounterTile,
   drawDish,
   drawDoorAndBoard,
+  drawDoorLeaf,
+  doorLeafDepth,
   drawFestoon,
   drawFixture,
   drawGroundShadow,
@@ -4402,6 +4404,17 @@ export function openBistro(o: BistroOptions): BistroHandle {
     ctx.lineTo(l.x - 16, l.y - 190);
     ctx.closePath();
   };
+  const onFeet = (c: Customer) =>
+    c.state === "enter" || c.state === "leave" || c.state === "queue";
+  /** On the street side of the wall: seen only through the doorway. */
+  const outsideWall = (c: Customer) => c.gx < -0.35;
+  const drawGuestOnFeet = (c: Customer) =>
+    drawWalker(c, {
+      alpha: clamp(c.alpha, 0, 1),
+      hat: c.vip ? "vip" : undefined,
+      mood:
+        c.state === "leave" && !c.angry ? "happy" : c.angry ? "hurt" : "normal",
+    });
   /** Time spent per part of a frame (dev builds: tests and tuning). */
   const profile: Record<string, number> = {};
   const draw = () => {
@@ -4480,7 +4493,19 @@ export function openBistro(o: BistroOptions): BistroHandle {
       sh.height / shellScale,
     );
     drawWindows(ctx, L, low);
-    drawDoorAndBoard(ctx, doorOpen, DISH_BY_ID[special()].name, L, special());
+    // Guests still outside the wall show only through the doorway.
+    drawDoorAndBoard(
+      ctx,
+      doorOpen,
+      DISH_BY_ID[special()].name,
+      L,
+      special(),
+      () => {
+        if (editing) return;
+        for (const c of customers)
+          if (onFeet(c) && outsideWall(c)) drawGuestOnFeet(c);
+      },
+    );
     drawFestoon(ctx, L);
     drawRoofSign(ctx, L, T);
     // Sunbeams through the right wall's windows by day.
@@ -4658,21 +4683,13 @@ export function openBistro(o: BistroOptions): BistroHandle {
       list.push({ d: l.x + l.y - 0.05, f: () => drawLitter(l) });
     // People on their feet (none while decorating: the room as it is laid out).
     for (const c of editing ? [] : customers)
-      if (c.state === "enter" || c.state === "leave" || c.state === "queue")
-        list.push({
-          d: c.gx + c.gy + 0.3,
-          f: () =>
-            drawWalker(c, {
-              alpha: clamp(c.alpha, 0, 1),
-              hat: c.vip ? "vip" : undefined,
-              mood:
-                c.state === "leave" && !c.angry
-                  ? "happy"
-                  : c.angry
-                    ? "hurt"
-                    : "normal",
-            }),
-        });
+      if (onFeet(c) && !outsideWall(c))
+        list.push({ d: c.gx + c.gy + 0.3, f: () => drawGuestOnFeet(c) });
+    // The door's leaf: open, it stands in front of whoever walks through.
+    list.push({
+      d: doorLeafDepth(doorOpen) + 0.3,
+      f: () => drawDoorLeaf(ctx, doorOpen, L),
+    });
     for (const w of editing ? [] : waiters)
       list.push({
         d: w.gx + w.gy + 0.3,
