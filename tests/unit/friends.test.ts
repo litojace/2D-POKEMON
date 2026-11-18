@@ -101,11 +101,12 @@ describe("one action per friend", () => {
     expect(html).not.toContain('data-friend-join="ROOM01"');
     expect(html).not.toContain('data-friend-watch="STALE1"');
   });
-  it("invites free online friends to your party while you lead it and it has room", () => {
+  it("invites free online friends to your party while it has room, leader or member", () => {
     const party = { size: 1, ids: [], leader: true };
     const town = list.friends.find((f) => f.id === "town")!;
     expect(canInviteToParty(town, party)).toBe(true);
-    expect(canInviteToParty(town, { ...party, leader: false })).toBe(false);
+    // Members invite too (65699b3f: no leader setting any more).
+    expect(canInviteToParty(town, { ...party, leader: false })).toBe(true);
     expect(canInviteToParty(town, { ...party, size: 4 })).toBe(false);
     expect(
       canInviteToParty(town, { size: 2, ids: ["town", "me"], leader: true }),
