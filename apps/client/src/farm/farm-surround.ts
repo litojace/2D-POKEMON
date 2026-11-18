@@ -762,7 +762,8 @@ function drawPond(g: Ctx, l: WaterLook) {
   wg.addColorStop(1, s.near);
   g.fillStyle = wg;
   g.fill();
-  g.clip();
+  // No clip (costly on phones): the ground picture is drawn over the water
+  // and shows it only through its hole, so what spills past the edge hides.
   // The far bank's shade on the water.
   g.fillStyle = "rgba(10,40,60,.25)";
   ell(g, x, y - ry + 2, rx * 1.05, 16);
@@ -841,31 +842,33 @@ function drawPond(g: Ctx, l: WaterLook) {
   g.restore();
 }
 function drawBrook(g: Ctx, v: View, l: WaterLook) {
-  const xa = Math.max(BROOK.x0, Math.floor((v.x0 - 20) / 12) * 12),
+  const xa = Math.max(BROOK.x0, Math.floor((v.x0 - 20) / 32) * 32),
     xb = Math.min(BROOK.x1, v.x1 + 20);
   if (xb <= xa) return;
   const t = l.reduced ? 0 : l.t,
     s = sky(l),
     H = BROOK.half;
   g.save();
-  g.beginPath();
-  for (let x = xa; x <= xb + 12; x += 12) g.lineTo(x, brookY(x) - H - 2);
-  for (let x = xb + 12; x >= xa; x -= 12) g.lineTo(x, brookY(x) + H + 2);
-  g.closePath();
-  const mid = brookY((xa + xb) / 2);
+  // One rectangle over the brook's whole bend: the ground picture is drawn
+  // over it and shows the water only through its hole (few drawing calls:
+  // a phone's frame stays light).
+  const y0 = brookY(0) - H - 20,
+    y1 = brookY(0) + H + 20,
+    mid = (y0 + y1) / 2;
   const wg = g.createLinearGradient(0, mid - H, 0, mid + H);
   wg.addColorStop(0, s.far);
   wg.addColorStop(0.55, s.near);
   wg.addColorStop(1, s.far);
   g.fillStyle = wg;
-  g.fill();
-  g.clip();
-  // The far bank's shade.
-  g.fillStyle = "rgba(10,40,60,.22)";
-  g.beginPath();
-  for (let x = xa; x <= xb + 12; x += 12) g.lineTo(x, brookY(x) - H - 2);
-  for (let x = xb + 12; x >= xa; x -= 12) g.lineTo(x, brookY(x) - H + 8);
-  g.fill();
+  g.fillRect(xa, y0, xb - xa, y1 - y0);
+  if (!l.low) {
+    // The far bank's shade.
+    g.fillStyle = "rgba(10,40,60,.22)";
+    g.beginPath();
+    for (let x = xa; x <= xb + 32; x += 32) g.lineTo(x, brookY(x) - H - 2);
+    for (let x = xb + 32; x >= xa; x -= 32) g.lineTo(x, brookY(x) - H + 8);
+    g.fill();
+  }
   // Ripples drifting downstream (to the east), in rows across the brook.
   const rows = l.low ? 2 : 4;
   g.lineCap = "round";

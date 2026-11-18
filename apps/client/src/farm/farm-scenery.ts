@@ -488,7 +488,8 @@ function build(): Prop[] {
           `rn${i}`,
           x,
           brookY(x) - BROOK.half - 8,
-          0.9 + r() * 0.3,
+          // Low on the near bank: never over the farm's edge.
+          0.62 + r() * 0.18,
           1100 + i,
           "",
           r() < 0.5,
@@ -533,7 +534,9 @@ function build(): Prop[] {
     for (let k = 0, n = 0; k < 600 && n < 12; k++) {
       const far = r() < 0.5,
         x = WORLD.x0 + 30 + r() * (WORLD.x1 - WORLD.x0 - 60),
-        y = far ? 1250 + r() * 24 : 1116 + r() * 14;
+        // On the far bank: on the near one they would stand over the farm's
+        // edge (and be drawn live).
+        y = far ? 1250 + r() * 24 : 1252 + r() * 20;
       const before = out.length;
       if (r() < 0.65)
         add(
@@ -638,8 +641,13 @@ export const PROPS: Prop[] = build();
 
 /* ───────────── what moves, and what is drawn live ───────────── */
 
-/** Kinds that are always drawn live: they move (sway, rustle when tapped). */
-export const LIVE_KINDS: ReadonlySet<PropKind> = new Set(["tree", "bush"]);
+/**
+ * Kinds that are always drawn live: trees sway in the wind and shake when
+ * tapped. Bushes, reeds and the rest are baked unless they stand in front
+ * of something live: a phone's frame copies few pictures (each live
+ * picture is a texture the GPU keeps; past a few dozen, phones stall).
+ */
+export const LIVE_KINDS: ReadonlySet<PropKind> = new Set(["tree"]);
 
 /** The tractor's road: when it drives, where it is (world px), which way. */
 export const TRACTOR = {
