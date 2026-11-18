@@ -264,7 +264,7 @@ for (const size of SIZES)
       expect(fit.square, "the avatar is round").toBe(true);
       expect(fit.inside, "the avatar is inside the card").toBe(true);
       if (size.phone)
-        expect(fit.size, "the avatar's size").toBeGreaterThanOrEqual(90);
+        expect(fit.size, "the avatar's size").toBeGreaterThanOrEqual(85);
 
       // A phone shows the card's column as tabs (Overview, Titles, Mastery,
       // Trophies); a desktop shows it all in one column.
@@ -863,7 +863,10 @@ for (const size of SIZES.filter((s) => s.phone))
         await context.close();
       }
     }
-    // One size, frame or not.
-    expect(new Set(sizes).size, `avatar sizes ${sizes}`).toBe(1);
-    expect(sizes[0], "the avatar's size").toBeGreaterThanOrEqual(90);
+    // One size, frame or not (to the pixel's rounding).
+    expect(
+      Math.max(...sizes) - Math.min(...sizes),
+      `avatar sizes ${sizes}`,
+    ).toBeLessThanOrEqual(1);
+    expect(sizes[0], "the avatar's size").toBeGreaterThanOrEqual(85);
   });

@@ -751,7 +751,12 @@
     width: 100%;
     height: 100%;
     max-width: none;
-    padding: 6px;
+    /* The room kept for a frame is the margin: no padding on top of it. */
+    padding: 2px;
+  }
+  .pf-card-text {
+    gap: 2px;
+    padding: 2px 8px 7px;
   }
   /* Room for any frame, worn or not, so the avatar is one size either way
      and a frame never runs off the card or over the title: frames reach
