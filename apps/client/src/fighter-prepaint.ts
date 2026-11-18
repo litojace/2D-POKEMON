@@ -21,6 +21,7 @@ import type { CharacterId } from "@arena/shared";
 import { rigAssets, skinSuffix, type RigAsset } from "./animation/assets";
 import type { SkinLook } from "./creature-design";
 import { addCanvasTexture } from "./canvas-texture";
+import { idle, sizedSvg } from "./svg-raster";
 
 export interface WantedFighter {
   character: CharacterId;
@@ -87,20 +88,6 @@ export function holdFighterPrepaint() {
   generation++;
 }
 
-function idle(timeout: number) {
-  return new Promise<void>((resolve) => {
-    const w = window as Window & {
-      requestIdleCallback?: (
-        cb: () => void,
-        opts?: { timeout: number },
-      ) => number;
-    };
-    if (w.requestIdleCallback)
-      w.requestIdleCallback(() => resolve(), { timeout });
-    else setTimeout(resolve, 0);
-  });
-}
-
 function schedule() {
   const mine = generation;
   window.setTimeout(() => {
@@ -140,20 +127,6 @@ async function paintAll() {
     running = false;
   }
 }
-/** The SVG at the texture's size, as Phaser's SVGFile resizes it. */
-export function sizedSvg(text: string, width: number, height: number) {
-  const xml = new DOMParser().parseFromString(text, "text/xml");
-  const svg = xml.getElementsByTagName("svg")[0];
-  if (!svg) return text;
-  const w = parseFloat(svg.getAttribute("width") ?? "");
-  const h = parseFloat(svg.getAttribute("height") ?? "");
-  if (!svg.hasAttribute("viewBox") && w && h)
-    svg.setAttribute("viewBox", `0  0 ${w} ${h}`);
-  svg.setAttribute("width", `${width}px`);
-  svg.setAttribute("height", `${height}px`);
-  return new XMLSerializer().serializeToString(svg);
-}
-
 async function rasterize(a: RigAsset) {
   await idle(1500);
   const base64 = a.url.slice(a.url.indexOf(",") + 1);
