@@ -150,18 +150,20 @@
   color: #fff;
   font-weight: 700;
   font-size: calc(13px * var(--text-scale, 1));
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
-/* Today's quests: a compact list (desktop 208px wide, rows 0.26em apart,
-   3px bars); on phones, folded, the player card's twin right under it. */
+/* Today's quests: a list as wide as the player card on the other side
+   (--hub-card-w, 236px on desktop), its rows at 13px; on phones, folded,
+   the player card's twin right under it. */
 .plaza-layer .pz-quests {
   position: absolute;
   right: var(--hud-x-r);
   top: calc(var(--hud-row2) + var(--hud-clock-h) + var(--hud-gap));
   box-sizing: border-box;
-  width: 208px;
+  width: var(--hub-card-w, 236px);
   border-radius: 14px;
-  padding: 0.55em 0.75em;
+  padding: 0.65em 0.85em;
 }
 .plaza-layer .pz-quests h5 {
   margin: 0 0 0.3em;
@@ -188,9 +190,9 @@
   grid-template-columns: 1fr auto;
   gap: 0.12em 0.5em;
   align-items: center;
-  padding: 0.26em 0;
+  padding: 0.3em 0;
   border-top: 1px solid #ffffff14;
-  font-size: 0.82em;
+  font-size: 0.93em;
 }
 .plaza-layer .pz-q:first-of-type {
   border-top: 0;
@@ -727,8 +729,9 @@
 }
 .plaza-layer .pz-clock {
   box-sizing: border-box;
-  width: 4.9em;
+  width: 6.4em;
   justify-content: center;
+  gap: 0.45em;
   padding: 0.15em 0;
 }
 .plaza-layer .pz-timer {
@@ -818,7 +821,7 @@
 }
 .plaza-layer.phone .pz-clock {
   font-size: calc(11px * var(--text-scale, 1));
-  width: 5.2em;
+  width: 6.6em;
 }
 /* Phones: the quests go left, under the player card and exactly as wide
    (--hub-card-w, lobby.css); folded, as tall too (--hub-card-h). The clock
@@ -828,7 +831,7 @@
   right: auto;
   top: var(--hud-row2);
   width: var(--hub-card-w);
-  font-size: calc(11px * var(--text-scale, 1));
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-quests.min {
   display: flex;
@@ -841,7 +844,7 @@
   margin: 0;
 }
 .plaza-layer.phone .pz-q {
-  font-size: calc(10px * var(--text-scale, 1));
+  font-size: calc(11.5px * var(--text-scale, 1));
 }
 /* At the card's width a long quest wraps instead of losing its end. */
 .plaza-layer.phone .pz-q > span:first-child {
@@ -911,7 +914,7 @@
 }
 .plaza-layer.phone .pz-interact kbd,
 .plaza-layer.phone .pz-quests h5 span {
-  font-size: calc(11px * var(--text-scale, 1));
+  font-size: calc(12px * var(--text-scale, 1));
 }
 
 /* ---------- below the line: the Plaza inside the game ---------- */
@@ -940,7 +943,8 @@
     var(--hub-top, max(10px, var(--safe-top, 0px))) - var(--safe-top, 0px) +
       var(--hub-card-h, 52px) + var(--hud-gap)
   );
-  --hud-clock-h: 32px;
+  /* The clock's pill: room round its time (it was 32 px tall, cramped). */
+  --hud-clock-h: 40px;
   position: fixed;
   inset: 0;
   z-index: var(--z-hub);
@@ -955,7 +959,7 @@
 }
 .plaza-layer.phone {
   --hud-gap: 10px;
-  --hud-clock-h: 28px;
+  --hud-clock-h: 34px;
 }
 .plaza-layer .pz {
   position: absolute;

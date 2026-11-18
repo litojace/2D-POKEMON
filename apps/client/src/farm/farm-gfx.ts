@@ -679,6 +679,8 @@ const GFX = (() => {
       shutters = "#5fb3ff",
       depth = 30,
       flowers = true,
+      // The door's height cap (the Plaza sizes its doors to its fighters).
+      doorH = 52,
     } = o;
     return memo(`house:${JSON.stringify(o)}`, () =>
       sprite(
@@ -733,7 +735,7 @@ const GFX = (() => {
           }
           // door
           const dw = Math.min(34, w * 0.24),
-            dh = Math.min(52, hgt * 0.58),
+            dh = Math.min(doorH, hgt * 0.58),
             dx = windows === 2 ? -dw / 2 : x0 + w * 0.62 - dw / 2;
           g.beginPath();
           g.moveTo(dx, -12);

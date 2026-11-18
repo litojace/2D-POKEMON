@@ -75,6 +75,8 @@ export const battlePerfSchema = z
     fps: z.number().min(0).max(1000),
     /** 95th percentile frame time, ms. */
     frameP95: z.number().min(0).max(10_000),
+    /** 99th percentile frame time, ms (older clients omit it). */
+    frameP99: z.number().min(0).max(10_000).optional(),
     /** Share of the time in frames that missed 30 fps. */
     jank: z.number().min(0).max(1),
     /** Frames slower than 250 ms. */
@@ -127,6 +129,17 @@ export const battlePerfSchema = z
     /** The screen's refresh rate (Hz) as the battle measured it; battles
      * on screens of 100 Hz or more are held to about 60 fps (frame-cap.ts). */
     hz: z.number().int().min(1).max(1000).optional(),
+    /** The longest snapshot gap (ms) and the median correction (px). */
+    snapGapMax: z.number().min(0).max(60_000).optional(),
+    correctionP50: z.number().min(0).max(100_000).optional(),
+    /** Wi-Fi holds a minute (Fighter.held went above 0) and the most ticks held. */
+    holds: z.number().min(0).max(100_000).optional(),
+    holdMax: z.number().int().min(0).max(1_000).optional(),
+    /** Inputs sent a second of live play (the phone's input clock: 30). */
+    inputHz: z.number().min(0).max(1000).optional(),
+    /** Wi-Fi or mobile data, and its speed class, where the browser says. */
+    link: z.enum(["wifi", "cellular", "ethernet", "other"]).optional(),
+    linkSpeed: z.enum(["slow-2g", "2g", "3g", "4g"]).optional(),
   })
   .strict();
 export type BattlePerf = z.infer<typeof battlePerfSchema>;

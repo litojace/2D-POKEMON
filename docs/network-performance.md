@@ -499,6 +499,125 @@ every `:has()` rule would reach 5 elements; the rest are small. A new
 or whose anchor is `body` or a dialog can bring this back: check a battle
 trace (`UpdateLayoutTree` element counts) when adding one.
 
+### 15. The server's clock: exactly 30 ticks a second
+
+The 18 Nov 2026 reports (22 matches, mostly 3-player free-for-all, two
+iPhones and an Android phone on the same Wi-Fi, about 50 minutes each)
+showed a good network (ping 45-60 ms, 1% late snapshots) and full frame
+rate, yet 12-30 unexplained corrections a minute (median 17, about 9 px:
+one step) on every phone, a lead of 165-200 ms where the round trip
+explains about 120, and the unexplained rate again following the lead
+(correlation 0.70).
+
+Phones make exactly 30 inputs a second (the scene's accumulator on the
+frame clock) and the server steps one input per tick, so the two clocks
+must run at the same rate. The server ran `setInterval(step, 1000 / 30)`,
+which does not: measured on Node 22, 30.10 ticks a second idle (timers
+fire on whole milliseconds), and 28.6 with a 120 ms hold every 2 s (a
+garbage collection, or a 0.5 CPU instance throttled), because setInterval
+never makes up a late tick. A faster server runs the queue dry and repeats
+your last input, a step the phone never predicted; a slower one piles
+inputs up until the queue's depth cap or standing trim folds two into one
+tick, a step lost, and the pile is the extra lead. `correction-sim.ts`
+with `SERVER_HZ` (free-for-all against two Hard bots, `MODE=ffa BOTS=2`):
+
+| Server  | Lead       | Unexplained a minute                       |
+| ------- | ---------- | ------------------------------------------ |
+| 28.6 Hz | 153-162 ms | 28-32                                      |
+| 29.5 Hz | 132-149 ms | 13-15                                      |
+| 30.1 Hz | 103-111 ms | 6-10                                       |
+| 30.0 Hz | 117-124 ms | 0.5-8 (the rest: uplink holds, section 12) |
+
+`TickClock` (`apps/server/src/tick-clock.ts`) runs the combat loop at
+exactly 30 on average: each tick is due a fixed period after the last was
+due, a late one is made up straight away (after `setImmediate`, so the
+inputs that arrived during the hold are queued first), and more than 10
+behind it starts afresh. Measured on Node 22 with the same holds: 30.0
+ticks a second (setInterval: 28.6). `tests/unit/tick-clock.test.ts` holds
+it with timers that fire late and on whole milliseconds, as Node's do (it
+fails with a setInterval-style schedule).
+
+Each `arena-perf` line now also carries `serverHz`, the combat loop's
+real rate over the last minute, and the match reports flag one off 30 by
+more than 0.05.
+
+### 16. Held ticks: one step per input, whatever Wi-Fi does
+
+With the clock fixed (section 15), what was left of the unexplained jumps
+came from uplink holds (section 12): `correction-sim.ts` with 3% of inputs
+held 120 ms gave 8-10 a minute, every one at a snapshot during or just
+after a hold, and nearly all while the player turned. On a held tick the
+server ran your last input again, so it walked you on in the old direction
+while the phone had turned; folding the late inputs afterwards kept the
+step count but could not take those steps back.
+
+Now a tick that finds none of your inputs does not move you: it is held
+(`Arena.drainInputs`, `Fighter.held` in the snapshot). When the late inputs
+arrive, each takes its own step, in order, at its held tick's time (so a
+dash, a slow or an Undertow that ran out meanwhile is stepped as the phone
+saw it), before the tick's own step; inputs fill the oldest held ticks
+first. The phone steps every unanswered input once (`serverSteps`), the
+held ones at those ticks' times, so both sides take the same steps in the
+same directions. Knockbacks still move a held fighter (they move it
+directly). After `staleTicks` (half a second) of nothing, it is a pause:
+the debt is dropped and the fighter steps again, standing.
+
+A burst of more inputs than ticks steps only on credit: one step a tick
+is banked (at most `credit`, 17) and each step spends one, so no client
+moves faster than a step a tick on average, however many inputs it sends;
+beyond the credit, inputs are folded as before (and counted). A new queue
+starts with `startCredit` (5): a phone's first inputs arrive bunched, and
+the standing queue they leave used to be cut short by folding one, a step
+lost, every second until it drained. And at most `catchUp` (3) inputs
+past one are stepped a tick: a long hold is made up over a few ticks, so
+other players see a quick run (up to four steps a tick), not a teleport;
+a "lag switch" (holding inputs on purpose) buys that brief run at most. The phone replays whatever is still unanswered from each snapshot,
+so it agrees throughout. The queue now holds up to `cap` (20) inputs, a
+held half second and a burst: at 8, the end of a long hold overflowed and
+was folded on arrival.
+
+`correction-sim.ts` (120 s each; before → after):
+
+| Case                                        | Unexplained |
+| ------------------------------------------- | ----------- |
+| FFA, 2 Hard bots, 3% held 120 ms, jitter 20 | 19 → 0      |
+| FFA, 6% held 200 ms, jitter 40              | 63 → 0      |
+| Duel, Hard bot, 5% held 150 ms              | 25 → 0      |
+| FFA at 120 fps, 3% held                     | 22 → 0      |
+| Walking, 10% held 300 ms, jitter 40         | 344 → 0     |
+
+Lead is unchanged (120-186 ms by case, as before; 253 in the last), and "move" corrections
+fell too (a dash pressed during a hold now starts at its own step). A
+server running fast no longer matters (its spare ticks are held); one
+running slow still folds (there are more inputs than ticks), which is what
+`TickClock` prevents. Tests: `tests/unit/input-queue.test.ts` (a turn and a
+dash during a hold land exactly where on-time inputs would; a frozen phone
+keeps one step per input; a flood of three inputs a tick stays within the
+starting credit), `tests/unit/server-steps.test.ts`, and
+`tests/unit/correction-sim.test.ts` (no corrections walking over held
+Wi-Fi, none unexplained in a free-for-all). Each fails with the held tick
+or the late steps undone; the flood tests (and the spam test in
+`tests/multiplayer/network.test.ts`) fail without the credit and the
+catch-up limit.
+
+A phone still on an older build reads `owed`, which the server no longer
+sends, so it folds nothing and steps every unanswered input once: the same
+steps as the server. Only its dating of the held ones is off (it predicts
+them after the snapshot), which matters only when a dash or status ends
+during a hold.
+
+The match reports carry more to tell the next problem apart: from the
+phone, `inputHz` (its input clock, against `serverHz`), `holds` a minute
+and `holdMax` ticks (how often Wi-Fi held its inputs), `link`/`linkSpeed`
+(Wi-Fi or mobile data, where Android's browser says), `frameP99`,
+`snapGapMax` and `correctionP50`; from the server, `tickLateP95` and
+`tickMsP95` (how late its ticks ran and how long they took over the last
+minute), `arena` (the court), and this player's queue over the match:
+`heldTicks`, `lateSteps`, `extraSteps` (burst steps on credit), `folded`
+(steps lost) and `queueAvg`. The README flags a server rate off 30, ticks
+running 15 ms late or more, a phone input clock off 30, 5 or more folded
+inputs, and 10 or more holds a minute.
+
 ## Results
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The
