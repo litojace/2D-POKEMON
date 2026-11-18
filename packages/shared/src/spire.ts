@@ -5,7 +5,7 @@
  * database agree on: floors, the one tuning table, blessings, rewards,
  * progress and the snapshot's `raid.spire`.
  *
- * Zones 1 to 6 are built. One climb is one zone: a room is made for a
+ * Zones 1 to 7 are built: the whole Spire. One climb is one zone: a room is made for a
  * zone (its first floor is the start) and its boss floor ends the climb.
  * Zone 1: floors 1–9 on the Spire's court and the Ascendant Cragmuff on
  * floor 10. Zone 2: floors 11–19 (Water) and the Ascendant Tidelotl on
@@ -14,7 +14,9 @@
  * and the Ascendant Snoozaku on floor 40, on the Cloud Deck. Zone 5: floors
  * 41–49 (Light) and the Ascendant Prismell on floor 50, in the Sun Atrium.
  * Zone 6: floors 51–59 (Fire) and the Ascendant Lumiwick on floor 60, on
- * the Sky Terrace. Each boss is fought in the same room (the zone's
+ * the Sky Terrace. Zone 7, the last: floors 61–69 (Electric) and the
+ * Ascendant Storm Twins on floor 70, in the Conductor Ring, the Spire's
+ * summit (its clear conquers the whole Spire). Each boss is fought in the same room (the zone's
  * arena turns the Ascendant's rules on for that floor:
  * apps/server/src/spire.ts). Clearing zone 1's boss grants checkpoint 11
  * (`spireStartCheckpoint`, and the database's arena_record_spire_floor).
@@ -27,8 +29,8 @@ import type { RaidBossId } from "./raid-roster.js";
 export const SPIRE_SEASON = 0;
 /** Floors per zone; floor 10 of each is its boss, floor 5 its elite. */
 export const SPIRE_ZONE_FLOORS = 10;
-/** The highest floor that can be played today (zone 6's boss). */
-export const SPIRE_BUILT_TOP = 60;
+/** The highest floor that can be played (zone 7's boss: the Spire's summit). */
+export const SPIRE_BUILT_TOP = 70;
 /** Party size, like raids. */
 export const SPIRE_SEATS = 4;
 
@@ -60,7 +62,8 @@ export interface SpireZone {
     | "lantern-yard"
     | "cloud-deck"
     | "sun-atrium"
-    | "sky-terrace";
+    | "sky-terrace"
+    | "conductor-ring";
   /** Its Ascendant boss name (the boss floor). */
   ascendant: string;
   /** The Ascendant's new attacks (the boss floor's briefing and the Floors list). */
@@ -178,6 +181,26 @@ export const SPIRE_ZONES: Record<number, SpireZone> = {
     // champions are Fire, so the third is kin, as in zones 3 to 5.
     kin: ["cindrake", "pyranda", "lumoth"],
   },
+  7: {
+    id: 7,
+    name: "Conductor Ring",
+    element: "Electric",
+    boss: "storm-twins",
+    court: "conductor-ring",
+    ascendant: "Ascendant Storm Twins",
+    ascendantMoves: ["mirror-charge", "short-circuit"],
+    bossName: "the Storm Twins",
+    bossLead:
+      "Fizz and Crackle, evolved. Their raid's rules still hold (keep both health bars level and finish them together, jump the Link Beam, pair opposite signs when Polarity marks you), pushed further: a Mirror Charge only the opposite sign can discharge, so the party splits between the twins, a Short Circuit the party shares by standing on the beam together, combos and fewer openings.",
+    bossReads:
+      "Chain lightning lands where you usually dodge to, standing still to attack draws a Thunderclap, a Twin Rush may turn into a Link Beam (shown in full), and they hunt whoever kneels to revive.",
+    // Electric (Voltkit, Coilemur: Voltkit absorbs the twins' Chain
+    // Lightning and Coilemur's Electromagnet drags them together in their
+    // own raid) and their kin of the storm's mirror, Auralynx, whose Facet
+    // Guard reflects the twins' Link Beam back into them. Only two champions
+    // are Electric, so the third is kin, as in zones 3 to 6.
+    kin: ["voltkit", "coilemur", "auralynx"],
+  },
 };
 /** The first floor of each built zone: where a climb may start. */
 export const spireZoneStart = (zone: number) =>
@@ -252,6 +275,21 @@ export const SPIRE_ELITE_MECHANICS = {
     hint: "the captain locks a red lane through you and dives down it: step out of the lane before it goes",
     cue: "Ember Dive — step out of the red lane!",
   },
+  // The captain marks every raider + or − (as the twins' Polarity does,
+  // on the raid's warning clock): stand by a teammate of the opposite sign
+  // to cancel both marks; alone (or too far from any opposite sign to
+  // reach in time), step on the pad of the opposite sign. On the Spire
+  // every raider can answer their own mark at the slowest champion's
+  // speed, no pad is laid under a phone's touch controls or in a wall, a
+  // mark settles once, and no second one comes while one is live
+  // (apps/server/src/spire.ts: spirePolarityPlan).
+  polarity: {
+    attack: "polarity",
+    boss: "the Storm Twins",
+    name: "polarity",
+    hint: "everyone is marked + or −: stand by an opposite sign (alone, step on the opposite pad) before it discharges",
+    cue: "Polarity — find the opposite sign!",
+  },
 } as const satisfies Record<
   string,
   {
@@ -263,6 +301,12 @@ export const SPIRE_ELITE_MECHANICS = {
   }
 >;
 export type SpireEliteMechanic = keyof typeof SPIRE_ELITE_MECHANICS;
+/** A name's possessive: "Lumiwick's", "the Storm Twins'". */
+export const spirePossessive = (name: string) =>
+  /s$/.test(name) ? `${name}'` : `${name}'s`;
+/** What a captain borrowed: "Cragmuff's eruptions", "the Storm Twins' polarity". */
+export const spireBorrowed = (m: { boss: string; name: string }) =>
+  `${spirePossessive(m.boss)} ${m.name}`;
 /**
  * The court under a phone's touch controls (world px: x0, y0, x1, y1): the
  * joystick, dash, jump, the three skills, the ultimate and the attack
@@ -1216,6 +1260,155 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
     waves: [],
     boss: "emberwing",
   },
+  // Zone 7, the Conductor Ring, the Spire's summit zone: Electric-leaning
+  // (Voltkit, Coilemur) with their kin of the storm's mirror Auralynx,
+  // plus one off-element champion per floor, each a different one: Tidefin
+  // (Water), Pangrove (Nature: its curl shrugs off Polarity in the twins'
+  // raid), Glacelle (Water's frost), Duskveil (Shadow: its Void Orb drags a twin),
+  // Mystowl (Psychic), Wombolder (Earth: its brace stops a Twin Rush),
+  // Sunbara (Light) and Cindrake (Fire), the zone below's drake on the
+  // last stair.
+  61: {
+    floor: 61,
+    zone: 7,
+    kind: "wave",
+    name: "The Static Gate",
+    waves: [
+      [e("coilemur", "front"), e("voltkit", "caster")],
+      [e("tidefin", "skirmisher"), e("auralynx", "front")],
+      [e("coilemur", "front"), e("voltkit", "caster")],
+    ],
+  },
+  62: {
+    floor: 62,
+    zone: 7,
+    kind: "wave",
+    name: "Copper Steps",
+    waves: [
+      [e("voltkit", "caster"), e("coilemur", "skirmisher")],
+      [e("pangrove", "front"), e("auralynx", "skirmisher")],
+      [e("coilemur", "front"), e("voltkit", "caster")],
+    ],
+  },
+  63: {
+    floor: 63,
+    zone: 7,
+    kind: "wave",
+    name: "Conductor Rows",
+    waves: [
+      [e("coilemur", "front"), e("glacelle", "caster")],
+      [e("auralynx", "front"), e("voltkit", "caster")],
+      [
+        e("glacelle", "caster"),
+        e("coilemur", "front"),
+        e("auralynx", "skirmisher"),
+      ],
+    ],
+  },
+  64: {
+    floor: 64,
+    zone: 7,
+    kind: "wave",
+    name: "Hall of Arcs",
+    waves: [
+      [
+        e("coilemur", "front"),
+        e("voltkit", "caster"),
+        e("duskveil", "skirmisher"),
+      ],
+      [e("auralynx", "front"), e("coilemur", "skirmisher")],
+      [
+        e("duskveil", "skirmisher"),
+        e("voltkit", "caster"),
+        e("coilemur", "front"),
+      ],
+    ],
+  },
+  65: {
+    floor: 65,
+    zone: 7,
+    kind: "elite",
+    name: "The Polar Ring",
+    description: "Echo Captain Coilemur · reinforcements and polarity marks",
+    waves: [],
+    elite: {
+      captain: e("coilemur", "front"),
+      name: "Echo Captain Coilemur",
+      mechanic: "polarity",
+      escorts: [e("voltkit", "caster")],
+    },
+  },
+  66: {
+    floor: 66,
+    zone: 7,
+    kind: "wave",
+    name: "Thunderhead Terrace",
+    waves: [
+      [e("coilemur", "front"), e("mystowl", "caster")],
+      [e("voltkit", "caster"), e("auralynx", "skirmisher")],
+      [e("mystowl", "caster"), e("coilemur", "front"), e("voltkit", "caster")],
+    ],
+  },
+  67: {
+    floor: 67,
+    zone: 7,
+    kind: "wave",
+    name: "Lightning Run",
+    waves: [
+      [e("voltkit", "caster"), e("coilemur", "front"), e("wombolder", "front")],
+      [
+        e("auralynx", "skirmisher"),
+        e("coilemur", "skirmisher"),
+        e("voltkit", "caster"),
+      ],
+      [e("wombolder", "front"), e("auralynx", "front")],
+    ],
+  },
+  68: {
+    floor: 68,
+    zone: 7,
+    kind: "wave",
+    name: "Choir of Thunder",
+    waves: [
+      [e("coilemur", "front"), e("sunbara", "front"), e("voltkit", "caster")],
+      [
+        e("auralynx", "skirmisher"),
+        e("coilemur", "front"),
+        e("voltkit", "caster"),
+      ],
+      [e("sunbara", "front"), e("voltkit", "caster"), e("coilemur", "front")],
+    ],
+  },
+  69: {
+    floor: 69,
+    zone: 7,
+    kind: "wave",
+    name: "Stair of Storms",
+    waves: [
+      [
+        e("coilemur", "front"),
+        e("voltkit", "caster"),
+        e("cindrake", "skirmisher"),
+      ],
+      [
+        e("cindrake", "skirmisher"),
+        e("auralynx", "front"),
+        e("coilemur", "skirmisher"),
+      ],
+      [e("coilemur", "front"), e("auralynx", "front"), e("voltkit", "caster")],
+    ],
+  },
+  // The Ascendant Storm Twins, in the Conductor Ring, in the climb's own
+  // room: the Spire's summit.
+  70: {
+    floor: 70,
+    zone: 7,
+    kind: "boss",
+    name: "Ascendant Storm Twins",
+    description: "New attacks: Mirror Charge, Short Circuit",
+    waves: [],
+    boss: "storm-twins",
+  },
 };
 export const spireFloor = (floor: number): SpireFloor | undefined =>
   SPIRE_FLOORS[floor];
@@ -1382,6 +1575,26 @@ export const SPIRE_TUNING: Record<
   58: { difficulty: "normal", power: 0.66, armour: 4.1, limit: 180 },
   59: { difficulty: "normal", power: 0.67, armour: 2.85, limit: 180 },
   60: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
+  // Zone 7, the summit: a climb starts at 61 with no blessings, against
+  // Electric Echoes (a burst fox, a grappling lemur, a mirror lynx) and one
+  // off-element champion a floor. As in zones 3 to 6, each Echo hits a
+  // little harder floor by floor and its toughness follows its floor's
+  // line-up. Tuned with every wave fought, the last one too: armour searched
+  // on seeds 1–60 and 1–120, then checked on all 336. By simulation
+  // (tests/unit/spire-zone7.test.ts; a solo Normal bot raider, 336 seeds)
+  // floor 61 is cleared about two times in three (69%), then 67, 62, 57,
+  // 55 (the elite), 52, 46, 41 and 38% on floor 69. (Floor 62 sits on a
+  // cliff: 2.7 clears 60%, 3.0 74%.)
+  61: { difficulty: "normal", power: 0.66, armour: 5.8, limit: 180 },
+  62: { difficulty: "normal", power: 0.67, armour: 2.85, limit: 180 },
+  63: { difficulty: "normal", power: 0.68, armour: 6.6, limit: 180 },
+  64: { difficulty: "normal", power: 0.69, armour: 4.8, limit: 180 },
+  65: { difficulty: "normal", power: 0.7, armour: 0.6, limit: 240 },
+  66: { difficulty: "normal", power: 0.7, armour: 4.1, limit: 180 },
+  67: { difficulty: "normal", power: 0.71, armour: 2.7, limit: 180 },
+  68: { difficulty: "normal", power: 0.72, armour: 4.15, limit: 180 },
+  69: { difficulty: "normal", power: 0.73, armour: 2.2, limit: 180 },
+  70: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };
 /** Party scaling, and the cap on fighters on the court. */
 export const SPIRE_PARTY = {
@@ -1717,6 +1930,24 @@ export const SPIRE_REWARDS: SpireReward[] = [
     floor: 60,
     kind: "title",
     item: "Flamebreaker of the Spire",
+    amount: 0,
+  },
+  // Zone 7, the summit (migration 20261119090000_spire_zone7.sql).
+  { season: 0, floor: 61, kind: "coins", item: "coins", amount: 115 },
+  { season: 0, floor: 62, kind: "coins", item: "coins", amount: 115 },
+  { season: 0, floor: 63, kind: "coins", item: "coins", amount: 120 },
+  { season: 0, floor: 64, kind: "coins", item: "coins", amount: 120 },
+  { season: 0, floor: 65, kind: "coins", item: "coins", amount: 250 },
+  { season: 0, floor: 66, kind: "coins", item: "coins", amount: 125 },
+  { season: 0, floor: 67, kind: "coins", item: "coins", amount: 125 },
+  { season: 0, floor: 68, kind: "coins", item: "coins", amount: 130 },
+  { season: 0, floor: 69, kind: "coins", item: "coins", amount: 130 },
+  { season: 0, floor: 70, kind: "coins", item: "coins", amount: 500 },
+  {
+    season: 0,
+    floor: 70,
+    kind: "title",
+    item: "Stormbreaker of the Spire",
     amount: 0,
   },
 ];

@@ -6,6 +6,9 @@ import { defineConfig, devices } from "@playwright/test";
  * arena canvas filling its frame, dialogs fitting a phone) and attach a
  * screenshot of each screen to the report for a person to look over.
  */
+// VISUAL_PORT: another port for the harness, so two checkouts can run their
+// visual tests at once (each needs its own Vite server).
+const port = Number(process.env.VISUAL_PORT) || 4179;
 export default defineConfig({
   testDir: ".",
   testMatch: "*.spec.ts",
@@ -23,7 +26,7 @@ export default defineConfig({
   reporter: process.env.CI ? [["list"], ["blob", { outputDir: "../../blob-report" }]] : "list",
   outputDir: "../../test-results/visual",
   use: {
-    baseURL: "http://localhost:4179",
+    baseURL: `http://localhost:${port}`,
     ...devices["Desktop Chrome"],
     viewport: { width: 1440, height: 900 },
     launchOptions: {
@@ -36,7 +39,7 @@ export default defineConfig({
   webServer: {
     command: "npx vite --config tests/visual/vite.config.ts",
     cwd: "../..",
-    url: "http://localhost:4179",
+    url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

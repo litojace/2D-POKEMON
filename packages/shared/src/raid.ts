@@ -13,6 +13,7 @@ import {
   ASCENDANT_LUMIWICK_CHAPTERS,
   ASCENDANT_PRISMELL_CHAPTERS,
   ASCENDANT_SNOOZAKU_CHAPTERS,
+  ASCENDANT_STORM_TWINS_CHAPTERS,
   ASCENDANT_TIDELOTL_CHAPTERS,
   RAID_ASCENDANT_ATTACKS,
   RAID_ASCENDANT_TIER,
@@ -21,6 +22,7 @@ import {
   ascendantLumiwickPattern,
   ascendantPrismellPattern,
   ascendantSnoozakuPattern,
+  ascendantStormTwinsPattern,
   ascendantTidelotlPattern,
   type RaidVariant,
 } from "./raid-ascendant.js";
@@ -280,7 +282,10 @@ export type RaidAttack =
   | "umbral-prism"
   // Ascendant Lumiwick
   | "snuff-gale"
-  | "bound-wicks";
+  | "bound-wicks"
+  // Ascendant Storm Twins
+  | "mirror-charge"
+  | "short-circuit";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; summary: string }
@@ -574,6 +579,17 @@ export const RAID_ATTACKS: Record<
     tip: "A burning wick ties braziers together: they only catch while every bound ring has a raider in it. Light them together before the fuse burns out, or the wick snaps: a Backdraft bursts from each bound brazier and every flame goes out.",
     summary:
       "Stand in every bound ring at once. Step out if the fuse runs out.",
+  },
+  "mirror-charge": {
+    name: "Mirror Charge",
+    tip: "Fizz takes the + charge and Crackle the − charge, and every raider is marked + or −. Only hits from the opposite sign discharge a twin (the same sign is repelled). Discharge both twins before the charge runs out: split up, or a twin left charged overloads.",
+    summary:
+      "Hit the twin of the opposite sign. Discharge both before time runs out.",
+  },
+  "short-circuit": {
+    name: "Short Circuit",
+    tip: "The twins overcharge their link: a thick beam that cannot be jumped. Raiders standing on the beam when it fires share its shock between them; nobody on it, and the shock arcs across the whole court. Stand on it together.",
+    summary: "Stand on the overcharged beam together to share the shock.",
   },
   "umbral-prism": {
     name: "Umbral Prism",
@@ -919,6 +935,8 @@ export function raidPattern(
     return ascendantPrismellPattern(phase);
   if (variant === "ascendant" && boss === "emberwing")
     return ascendantLumiwickPattern(phase);
+  if (variant === "ascendant" && boss === "storm-twins")
+    return ascendantStormTwinsPattern(phase);
   if (boss === "tidewyrm") return tidewyrmPattern(phase, peril);
   if (boss === "gloomshade") return gloomshadePattern(phase, peril);
   if (boss === "somnara") return somnaraPattern(phase);
@@ -1376,7 +1394,9 @@ export const raidChapters = (
             ? ASCENDANT_PRISMELL_CHAPTERS
             : variant === "ascendant" && boss === "emberwing"
               ? ASCENDANT_LUMIWICK_CHAPTERS
-              : undefined) ??
+              : variant === "ascendant" && boss === "storm-twins"
+                ? ASCENDANT_STORM_TWINS_CHAPTERS
+                : undefined) ??
   RAID_BOSS_CHAPTERS[boss] ??
   RAID_CHAPTERS;
 /** Separate appearance slots; each is cosmetic only. */
@@ -2472,6 +2492,8 @@ export interface RaidWarning {
   gapAngle?: number;
   casterId?: string;
   beamPost?: number;
+  /** Ascendant Storm Twins' Mirror Charge: the overload ring round a twin left charged. */
+  overload?: boolean;
   /** Breaker Wall: centres of its calm lanes (across its travel), and their width. */
   gaps?: number[];
   gapWidth?: number;
@@ -2677,6 +2699,14 @@ export interface RaidState {
     cancelled: boolean;
   }[];
   polarityPad?: { x: number; y: number; sign: 1 | -1; until: number };
+  /**
+   * Ascendant Storm Twins' Mirror Charge, while it runs: each twin's charge
+   * (Fizz +, Crackle -) and the opposite-sign hits it still needs, every
+   * raider's sign, and (alone) when the raider's sign flips.
+   */
+  stormMirror?: import("./raid-storm-twins.js").StormMirror;
+  /** Ascendant Storm Twins' Short Circuit, the moment it fires (drawn briefly). */
+  stormShort?: import("./raid-storm-twins.js").StormShort;
   airborne?: boolean;
   braziers?: import("./raid-emberwing.js").RaidBrazier[];
   emberPatches?: import("./raid-emberwing.js").EmberPatch[];

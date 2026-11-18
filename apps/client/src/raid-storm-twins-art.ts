@@ -6,13 +6,15 @@ import type { Snapshot } from "@arena/shared";
 import {
   STORM_TWINS as S,
   stormBeamPoints,
+  stormTwinsPosts,
   type RaidWarning,
   type StormPoint,
 } from "../../../packages/shared/src/raid";
+import { drawAscendantStormTwinsWarning } from "./ascendant-storm-twins-art";
 import type { RaidBossCue } from "./raid-boss-motion";
 import type { LayerAt } from "./raid-layers";
 import { fxFor } from "./fx-engine";
-import { pieceAtlas, stageOn } from "./raid-piece-stage";
+import { pieceAtlas, stageOn, type PieceStage } from "./raid-piece-stage";
 import {
   BOLT_VARIANTS,
   FIELD,
@@ -58,7 +60,9 @@ export function drawConductorRing(
 ) {
   const r = state.raid!;
   // The posts stand up, so each sorts with the raiders (a layer each).
-  const posts = S.posts.map((p, i) => (at ? at(`post-${i}`, p.y + 17) : g));
+  const posts = stormTwinsPosts(r).map((p, i) =>
+    at ? at(`post-${i}`, p.y + 17) : g,
+  );
   const [a, b] = state.players.filter((p) => p.raidBoss);
   if (a && b && a.hp > 0 && b.hp > 0 && !r.stormBeam) {
     g.lineStyle(2, 0xa3dfff, 0.2).lineBetween(a.x, a.y, b.x, b.y);
@@ -105,11 +109,8 @@ function paintRing(
     (w) => w.kind === "link-beam" && w.beamPost !== undefined,
   );
   const warnP = warning ? progressOf(warning, state.time) : 0;
-  const states = postStates(
-    S.posts.length,
-    r.stormBeam?.post,
-    warning?.beamPost,
-  );
+  const spots = stormTwinsPosts(r);
+  const states = postStates(spots.length, r.stormBeam?.post, warning?.beamPost);
   // Three charge pulses running round the cyan filament.
   if (!low && !reduced)
     for (let i = 0; i < 3; i++) {
@@ -126,7 +127,7 @@ function paintRing(
         },
       );
     }
-  for (const [i, p] of S.posts.entries()) {
+  for (const [i, p] of spots.entries()) {
     floor.put(A, "postShadow", p.x + 5, p.y + 14, { sx: 1.2 });
     const st = states[i];
     if (st === "idle")
@@ -173,22 +174,7 @@ function paintRing(
         });
       }
   }
-  const pad = r.polarityPad;
-  if (pad) {
-    const plus = pad.sign > 0;
-    // Someone cancelling on it: the pad lights up.
-    const onIt = (r.polarities ?? []).some((m) => m.cancelled);
-    const s = S.polarity.padRadius / PAD.r;
-    floor.put(A, "padPlate", pad.x, pad.y, { sx: s });
-    floor.put(A, plus ? "padGlowPlus" : "padGlowMinus", pad.x, pad.y, {
-      add: true,
-      sx: s,
-      alpha: onIt || reduced ? 1 : 0.7 + 0.3 * Math.sin(t * 4),
-    });
-    floor.put(A, plus ? "padSignPlus" : "padSignMinus", pad.x, pad.y, {
-      sx: s,
-    });
-  }
+  paintPad(floor, A, state, t, reduced);
   if (r.stormBeam) {
     const pts = r.stormBeam.points;
     for (let i = 1; i < pts.length; i++) {
@@ -207,7 +193,7 @@ function paintRing(
     }
   }
   // The posts.
-  for (const [i, p] of S.posts.entries()) {
+  for (const [i, p] of spots.entries()) {
     const post = stageOn(layers[i], "arena-pieces:post-" + i);
     if (!post) continue;
     post.put(A, "post", p.x, p.y);
@@ -283,8 +269,54 @@ function paintRing(
       );
     }
   }
-  // Polarity marks: a copper medallion 100 px over each marked raider, over
-  // the raiders, with its countdown ring.
+  paintMarks(g, A, state);
+}
+/** The polarity pad (+/−), drawn at its exact rim (S.polarity.padRadius). */
+function paintPad(
+  floor: PieceStage,
+  A: ReturnType<typeof ringAtlas>,
+  state: Snapshot,
+  t: number,
+  reduced: boolean,
+) {
+  const r = state.raid!;
+  const pad = r.polarityPad;
+  if (pad) {
+    const plus = pad.sign > 0;
+    // Someone cancelling on it: the pad lights up.
+    const onIt = (r.polarities ?? []).some((m) => m.cancelled);
+    const s = S.polarity.padRadius / PAD.r;
+    floor.put(A, "padPlate", pad.x, pad.y, { sx: s });
+    floor.put(A, plus ? "padGlowPlus" : "padGlowMinus", pad.x, pad.y, {
+      add: true,
+      sx: s,
+      alpha: onIt || reduced ? 1 : 0.7 + 0.3 * Math.sin(t * 4),
+    });
+    floor.put(A, plus ? "padSignPlus" : "padSignMinus", pad.x, pad.y, {
+      sx: s,
+    });
+  }
+}
+/** Polarity marks over each marked raider, with their countdown rings. */
+/**
+ * Where a raider's Polarity medallion sits: the raid's, 100 px over them;
+ * on the Spire and the Ascendant form, beside them at chest height, clear of
+ * the name tag and health bar (on a phone the raid's spot sits under them).
+ */
+export function polarityMarkAt(
+  r: Pick<NonNullable<Snapshot["raid"]>, "variant" | "spire">,
+  p: { x: number; y: number },
+) {
+  return r.spire || r.variant === "ascendant"
+    ? { x: p.x + POLARITY_BESIDE.x, y: p.y + POLARITY_BESIDE.y }
+    : { x: p.x, y: p.y - 100 };
+}
+/** The Spire's and the Ascendant's medallion offset (world px). */
+export const POLARITY_BESIDE = { x: 54, y: -30 };
+function paintMarks(g: G, A: ReturnType<typeof ringAtlas>, state: Snapshot) {
+  const r = state.raid!;
+  // Polarity marks: a copper medallion by each marked raider (polarityMarkAt),
+  // over the raiders, with its countdown ring.
   const marks = (r.polarities ?? []).filter((m) => {
     const p = state.players.find((p) => p.id === m.playerId);
     return p && p.hp > 0;
@@ -295,12 +327,12 @@ function paintRing(
   for (const m of marks) {
     const p = state.players.find((p) => p.id === m.playerId)!;
     const color = m.cancelled ? 0x8de8cf : m.sign > 0 ? 0xffda85 : 0x8edfff,
-      y = p.y - 100;
-    over.put(A, "markBase", p.x, y);
+      { x, y } = polarityMarkAt(r, p);
+    over.put(A, "markBase", x, y);
     over.put(
       A,
       m.cancelled ? "markCheck" : m.sign > 0 ? "markPlus" : "markMinus",
-      p.x,
+      x,
       y,
     );
     if (!m.cancelled) {
@@ -310,15 +342,34 @@ function paintRing(
       over.lines
         .lineStyle(6.5, 0x060a16, 0.55)
         .beginPath()
-        .arc(p.x, y, 31, a0, a1, false)
+        .arc(x, y, 31, a0, a1, false)
         .strokePath();
       over.lines
         .lineStyle(4, color, 0.9)
         .beginPath()
-        .arc(p.x, y, 31, a0, a1, false)
+        .arc(x, y, 31, a0, a1, false)
         .strokePath();
     }
   }
+}
+/**
+ * Polarity alone, without the ring: its pad and the marks over the raiders,
+ * as the twins' raid draws them. The Spire's elite floor of zone 7 borrows
+ * Polarity on the Spire's own court (no posts, filament or twins).
+ */
+export function drawPolarityPieces(
+  g: G,
+  state: Snapshot,
+  reduced: boolean,
+  clock = state.time,
+) {
+  const r = state.raid!;
+  if (!r.polarityPad && !r.polarities?.length) return;
+  const floor = stageOn(g, "arena-pieces:ring-floor", g.depth - 0.001);
+  if (!floor) return;
+  const A = ringAtlas(g.scene);
+  paintPad(floor, A, state, reduced ? 2.37 : clock, reduced);
+  paintMarks(g, A, state);
 }
 /** Polarity marks draw over the raiders (their band is 2 to 2.09). */
 const MARK_DEPTH = 2.95;
@@ -341,7 +392,12 @@ export function drawStormWarning(g: G, state: Snapshot, w: RaidWarning) {
     ),
   );
   if (w.kind === "link-beam") {
-    const points = stormBeamPoints(w, { x: w.tx, y: w.ty }, w.beamPost);
+    const points = stormBeamPoints(
+      w,
+      { x: w.tx, y: w.ty },
+      w.beamPost,
+      stormTwinsPosts(state.raid!),
+    );
     for (let i = 1; i < points.length; i++) {
       g.lineStyle(
         S.link.width * 2,
@@ -396,6 +452,8 @@ export function drawStormWarning(g: G, state: Snapshot, w: RaidWarning) {
     if (chain) sign(g, w.x, w.y - 95, 1, 0xffe18b, 11);
     return true;
   }
+  if (w.kind === "mirror-charge" || w.kind === "short-circuit")
+    return drawAscendantStormTwinsWarning(g, state, w);
   return w.kind === "polarity";
 }
 interface Memory {

@@ -141,6 +141,7 @@ export function raidShapeOf(kind: RaidAttack): RaidShape {
       "link-beam",
       "prism-lance",
       "snuff-gale",
+      "short-circuit",
     ].includes(kind)
   )
     return "line";

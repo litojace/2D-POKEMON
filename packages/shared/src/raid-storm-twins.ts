@@ -12,6 +12,29 @@ export interface StormPoint {
   x: number;
   y: number;
 }
+/**
+ * Ascendant Storm Twins' Mirror Charge while it runs (RaidState.stormMirror):
+ * each twin's charge sign and the opposite-sign hits it still needs, each
+ * raider's sign (alone: it flips at `flipAt`).
+ */
+export interface StormMirror {
+  startedAt: number;
+  until: number;
+  /** Alone: the raider's sign flips here (both halves shown from the start). */
+  flipAt?: number;
+  signs: { playerId: string; sign: 1 | -1 }[];
+  twins: { id: string; sign: 1 | -1; need: number; hits: number }[];
+}
+/** Ascendant Storm Twins' Short Circuit as it fires (RaidState.stormShort). */
+export interface StormShort {
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  until: number;
+  /** Raiders who stood on it and shared the shock (none: it arced). */
+  sharers: string[];
+}
 export const STORM_TWINS = {
   health: { base: 1600, perExtraPlayer: 960, gilded: 1.12 },
   perilDamage: [1, 1, 1.25, 1.5],
@@ -93,11 +116,13 @@ export const stormSegmentDistance = (
     );
   return Math.hypot(p.x - a.x - dx * t, p.y - a.y - dy * t);
 };
+/** The beam from `a` to `b`, bent through copper post `post` of `posts`. */
 export const stormBeamPoints = (
   a: StormPoint,
   b: StormPoint,
   post?: number,
+  posts: readonly StormPoint[] = STORM_TWINS.posts,
 ): StormPoint[] =>
-  [a, ...(post === undefined ? [] : [STORM_TWINS.posts[post % 4]]), b].map(
+  [a, ...(post === undefined ? [] : [posts[post % posts.length]]), b].map(
     (p) => ({ x: p.x, y: p.y }),
   );

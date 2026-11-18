@@ -85,6 +85,43 @@ export class StormTwinsArena extends RaidArena {
   protected override bossHome() {
     return { x: 960, y: 380 };
   }
+  // -------------------------------------------- The court (layer hooks)
+  /** Where Fizz and Crackle step onto the court. */
+  protected twinSpawns(): readonly Point[] {
+    return [
+      { x: 960, y: 380 },
+      { x: 1150, y: 520 },
+    ];
+  }
+  /** The copper posts a Link Beam bends through. */
+  protected beamPosts(): readonly Point[] {
+    return S.posts;
+  }
+  /** The box Twin Rush lanes run to the edge of. */
+  protected rushBox(): { x0: number; y0: number; x1: number; y1: number } {
+    return S.rush.box;
+  }
+  /** The box the twins' Link Beam sweep stays in. */
+  protected driftBox(): { x0: number; y0: number; x1: number; y1: number } {
+    return { x0: 140, y0: 170, x1: 1460, y1: 730 };
+  }
+  /** The centre of the twins' orbit. */
+  protected orbitHome(): Point {
+    return S.home;
+  }
+  /** The orbit's size this chapter. */
+  protected orbitRadius(): number {
+    const r = this.raid;
+    return r.phase === 1 ? 120 : r.trait === "bickering" ? 320 : 260;
+  }
+  /** The solo escape pad: 190 px from `p` toward the middle of the ring. */
+  protected padSpot(p: Fighter): Point {
+    const d = normalize(800 - p.x || 1, 450 - p.y);
+    return {
+      x: Math.max(110, Math.min(1490, p.x + d.x * 190)),
+      y: Math.max(140, Math.min(760, p.y + d.y * 190)),
+    };
+  }
   override walls() {
     useObstacles([]);
     return [];
@@ -99,20 +136,27 @@ export class StormTwinsArena extends RaidArena {
     this.raid.twinRevivals = 0;
     this.clearAttacks();
   }
-  override start() {
-    super.start();
+  /**
+   * The twins step onto the court: the raid's boss becomes Fizz and Crackle
+   * joins it, each with half the health. (Here rather than in start(), so a
+   * Spire boss floor, which spawns its boss mid-climb, gets both twins.)
+   */
+  protected override spawnBoss() {
+    super.spawnBoss();
     const r = this.raid,
-      first = this.players.find((p) => p.raidBoss)!;
-    const hp = Math.round(r.maxHp / 2);
+      first = this.players.find((p) => p.raidBoss);
+    if (!first) return;
+    const hp = Math.round(r.maxHp / 2),
+      [one, two] = this.twinSpawns();
     r.maxHp = hp * 2;
-    Object.assign(first, { name: "Fizz", hp, x: 960, y: 380 });
+    Object.assign(first, { name: "Fizz", hp, x: one.x, y: one.y });
     const second = super.add("raid-crackle", "Crackle", "terradon");
     Object.assign(second, {
       raidBoss: true,
       team: 1,
       hp,
-      x: 1150,
-      y: 520,
+      x: two.x,
+      y: two.y,
       ready: true,
     });
     r.twins = [
@@ -130,10 +174,10 @@ export class StormTwinsArena extends RaidArena {
   override boss() {
     return this.players.find((p) => p.raidBoss && p.hp > 0) ?? super.boss();
   }
-  private twins() {
+  protected twins() {
     return this.players.filter((p) => p.raidBoss);
   }
-  private meta(p: Fighter) {
+  protected meta(p: Fighter) {
     return this.raid.twins?.find((t) => t.id === p.id);
   }
   protected override bossHealth() {
@@ -267,7 +311,7 @@ export class StormTwinsArena extends RaidArena {
       .filter((t) => t.hp > 0 && along(t) < Infinity)
       .sort((m, n) => along(m) - along(n));
   }
-  protected override finishMessage(won: boolean) {
+  protected override finishMessage(won: boolean): string {
     return won
       ? "Two hearts quiet. One storm conquered."
       : "The storm gathers again. Balance their health and pair opposite signs.";
@@ -293,7 +337,7 @@ export class StormTwinsArena extends RaidArena {
       t.exposedUntil = 0;
     }
   }
-  private actors() {
+  protected actors() {
     return this.twins().filter((p) => p.hp > 0 && !this.bossExposed(p));
   }
   protected override canStartAttack() {
@@ -340,11 +384,10 @@ export class StormTwinsArena extends RaidArena {
       }));
       // A lone survivor needs the solo escape route too.
       if (alive.length === 1) {
-        const p = alive[0],
-          d = normalize(800 - p.x || 1, 450 - p.y);
+        const spot = this.padSpot(alive[0]);
         r.polarityPad = {
-          x: Math.max(110, Math.min(1490, p.x + d.x * 190)),
-          y: Math.max(140, Math.min(760, p.y + d.y * 190)),
+          x: spot.x,
+          y: spot.y,
           sign: r.polarities[0].sign === 1 ? -1 : 1,
           until: this.time + S.polarity.seconds,
         };
@@ -359,7 +402,7 @@ export class StormTwinsArena extends RaidArena {
       if (group && post !== undefined) {
         // Bend the beam through the copper post nearest the group.
         const off = (i: number) => {
-          const pts = stormBeamPoints(a, b, i);
+          const pts = stormBeamPoints(a, b, i, this.beamPosts());
           return Math.min(
             stormSegmentDistance(group, pts[0], pts[1]),
             stormSegmentDistance(group, pts[1], pts[2]),
@@ -463,8 +506,8 @@ export class StormTwinsArena extends RaidArena {
    * Where each twin rushes: through a different raider each, where they are
    * heading, and on to the ring's edge.
    */
-  private rushEnds(actors: Fighter[], target: Fighter): Point[] {
-    const box = S.rush.box;
+  protected rushEnds(actors: Fighter[], target: Fighter): Point[] {
+    const box = this.rushBox();
     const alive = this.heroes().filter((p) => p.hp > 0),
       others = alive.filter((p) => p !== target),
       second = others.length ? this.chooseTarget("twin-rush", others) : target,
@@ -505,7 +548,7 @@ export class StormTwinsArena extends RaidArena {
       this.beamHits.clear();
       const [a, b] = this.twins();
       r.stormBeam = {
-        points: stormBeamPoints(a, b, w.beamPost),
+        points: stormBeamPoints(a, b, w.beamPost, this.beamPosts()),
         post: w.beamPost,
         until: this.time + S.link.seconds,
       };
@@ -698,7 +741,7 @@ export class StormTwinsArena extends RaidArena {
         r.stormBeam = undefined;
         this.beamHits.clear();
       } else {
-        beam.points = stormBeamPoints(a, b, beam.post);
+        beam.points = stormBeamPoints(a, b, beam.post, this.beamPosts());
         this.hitBy = "link-beam";
         for (const p of this.heroes())
           if (
@@ -762,16 +805,18 @@ export class StormTwinsArena extends RaidArena {
       ) {
         // Holds still: its rush starts where its lane is drawn.
       } else if (this.sweep) {
-        const speed = (r.phase === 1 ? 40 : 70) * dt;
-        p.x = Math.max(140, Math.min(1460, p.x + this.sweep.x * speed));
-        p.y = Math.max(170, Math.min(730, p.y + this.sweep.y * speed));
+        const speed = (r.phase === 1 ? 40 : 70) * dt,
+          box = this.driftBox();
+        p.x = Math.max(box.x0, Math.min(box.x1, p.x + this.sweep.x * speed));
+        p.y = Math.max(box.y0, Math.min(box.y1, p.y + this.sweep.y * speed));
       } else {
         const index = this.raid.twins!.findIndex((t) => t.id === p.id),
           angle =
             this.phaseElapsed * 0.19 + index * Math.PI + (index ? 0.25 : 0),
-          radius = r.phase === 1 ? 120 : r.trait === "bickering" ? 320 : 260;
-        const x = S.home.x + Math.cos(angle) * radius,
-          y = S.home.y + Math.sin(angle) * Math.min(170, radius * 0.6),
+          radius = this.orbitRadius(),
+          home = this.orbitHome();
+        const x = home.x + Math.cos(angle) * radius,
+          y = home.y + Math.sin(angle) * Math.min(170, radius * 0.6),
           d = normalize(x - p.x, y - p.y),
           step = Math.min(
             (r.phase === 1 ? 40 : 70) * dt,

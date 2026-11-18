@@ -6,6 +6,7 @@ import {
   SpireArena,
   SpireDreamArena,
   SpireEmberArena,
+  SpireStormArena,
   SpireGloomArena,
   SpireLightArena,
   SpireTideArena,
@@ -426,7 +427,7 @@ it("refuses a start floor that isn't a built zone's first floor", async () => {
   const { connect } = await setup(true, conqueror);
   const { socket } = await connect();
   for (const spireFloor of [
-    2, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 61, -1, 1.5,
+    2, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 71, -1, 1.5,
   ])
     expect(
       (
@@ -1215,4 +1216,210 @@ it("never opens floor 60 to a party whose only Lumiwick clear is someone else's 
   await emit(one.socket, "ready");
   await settle();
   expect(a.raid.spire).toMatchObject({ zone: 6, ceiling: 59 });
+});
+
+// ------------------------------------------------------------------ Zone 7
+const stormSeeker: SpireMember = {
+  checkpoint: 61,
+  clears: {
+    grumblecrag: 1,
+    tidewyrm: 1,
+    gloomshade: 1,
+    somnara: 1,
+    prismatail: 1,
+    emberwing: 1,
+    "storm-twins": 1,
+  },
+};
+
+it("climbs zone 7 from floor 61 to the Ascendant Storm Twins on floor 70 → the whole Spire conquered, in one room", async () => {
+  const { connect, recordRaid, recordActivity, spire } = await setup(
+    true,
+    stormSeeker,
+  );
+  const one = await connect(),
+    two = await connect();
+  const created = await emit(one.socket, "create", {
+    name: "One",
+    mode: "raid",
+    spire: 61,
+  });
+  expect(created.ok).toBe(true);
+  const joined = await emit(two.socket, "join", {
+    name: "Two",
+    code: created.code,
+  });
+  expect(joined.ok).toBe(true);
+  const a = server!.rooms.get(created.code!) as SpireStormArena;
+  expect(a).toBeInstanceOf(SpireStormArena);
+  expect(a.raid.boss).toBe("storm-twins");
+  const cache = new MetaCache();
+  const seen: Snapshot[] = [];
+  one.socket.on("state", (wire: WireSnapshot) =>
+    seen.push(unpackSnapshot(wire, cache)),
+  );
+  await emit(one.socket, "ready");
+  await emit(two.socket, "ready");
+  await settle();
+  expect(a.phase).toBe("briefing");
+  expect(a.raid.spire).toMatchObject({
+    zone: 7,
+    startFloor: 61,
+    floor: 61,
+    ceiling: 70,
+  });
+  // The wave floors: the Spire's court, never the twins' ring.
+  expect(a.arenaId).toBe("classic");
+  expect(a.raid.twins ?? []).toEqual([]);
+  for (const s of [one.socket, two.socket]) await emit(s, "instructions-ready");
+  const ids = [created.id!, joined.id!];
+  let ringOnWaves = false;
+  const step = async () => {
+    for (const p of a.heroes()) p.hp = Math.max(p.hp, 900);
+    if (a.phase === "playing" && a.raid.spire!.kind !== "boss")
+      for (const p of a.players) if (p.echo && p.hp > 0) p.hp = 0;
+    if (a.phase === "intermission")
+      for (const [i, s] of [one.socket, two.socket].entries()) {
+        const offer = a.raid.spire!.offers[ids[i]];
+        if (offer?.[0]) await emit(s, "rite", { id: offer[0] });
+      }
+    server!.step();
+    if (
+      a.raid.spire!.kind !== "boss" &&
+      ((a.raid.twins ?? []).length ||
+        a.players.some((p) => p.raidBoss) ||
+        a.raid.stormBeam ||
+        (a.raid.stormFields ?? []).length ||
+        (a.raid.stormRushes ?? []).length)
+    )
+      ringOnWaves = true;
+  };
+  for (let i = 0; i < 30 * 400 && a.raid.spire!.floor < 70; i++) await step();
+  for (let i = 0; i < 30 * 5 && a.phase !== "briefing"; i++) await step();
+  await settle();
+  expect(ringOnWaves).toBe(false);
+  expect(server!.rooms.get(created.code!)).toBe(a);
+  expect(a.raid.spire).toMatchObject({ floor: 70, kind: "boss", best: 69 });
+  expect(a.phase).toBe("briefing");
+  expect(a.raid.variant).toBe("ascendant");
+  expect(a.arenaId).toBe("conductor-ring");
+  expect(spire.floors.map((f) => f.floor)).toEqual([
+    61, 62, 63, 64, 65, 66, 67, 68, 69,
+  ]);
+  expect(spire.floors.every((f) => f.startFloor === 61)).toBe(true);
+  for (const s of [one.socket, two.socket]) await emit(s, "instructions-ready");
+  for (let i = 0; i < 30 * 30 && a.phase !== "playing"; i++) await step();
+  expect(a.phase).toBe("playing");
+  for (let i = 0; i < 30 * 20; i++) await step();
+  await settle();
+  // What the players saw: the twins' ring and both twins, by their names.
+  const last = seen.at(-1)!;
+  expect(last.arena).toBe("conductor-ring");
+  expect(last.raid?.spire).toMatchObject({ zone: 7, floor: 70 });
+  expect(last.raid?.name).toBe("Ascendant Storm Twins");
+  expect(last.raid?.twins?.map((t) => t.name)).toEqual(["Fizz", "Crackle"]);
+  expect(last.players.filter((p) => p.raidBoss).map((p) => p.name)).toEqual([
+    "Fizz",
+    "Crackle",
+  ]);
+  const stream = seen.flatMap((s) => s.events.map((e) => e.id));
+  for (let i = 1; i < stream.length; i++)
+    expect(stream[i]).toBeGreaterThan(stream[i - 1]);
+  // Beat both twins: saved as Spire floor 70 under both accounts, never a raid.
+  for (const p of a.players.filter((q) => q.raidBoss)) p.hp = 0;
+  for (let i = 0; i < 30 * (SPIRE_PARTY.cleared + 0.5); i++) await step();
+  await settle();
+  expect(a.phase).toBe("finished");
+  expect(a.raid.result).toBe("victory");
+  expect(a.raid.message).toBe("Zone 7 conquered — the Spire is yours.");
+  const seventy = spire.floors.at(-1)!;
+  expect(seventy).toMatchObject({ floor: 70, startFloor: 61, partySize: 2 });
+  expect(seventy.players.map((p) => p.accountId).sort()).toEqual(
+    [one.account.id, two.account.id].sort(),
+  );
+  expect(
+    a.raid.spire!.saves.at(-1)!.claims!.find((c) => c.playerId === ids[0]),
+  ).toMatchObject({ coins: 500, titles: ["Stormbreaker of the Spire"] });
+  expect(recordRaid).not.toHaveBeenCalled();
+  expect(recordActivity).not.toHaveBeenCalled();
+  expect(a.raid.rewardStatus).toBeUndefined();
+}, 120_000);
+
+it("won't start zone 7 for a party asking for floor 61 without the checkpoint", async () => {
+  const { connect, spire } = await setup();
+  const one = await connect(),
+    two = await connect();
+  // One has conquered zone 6; Two only zone 5.
+  spire.members[one.account.id] = stormSeeker;
+  spire.members[two.account.id] = flameSeeker;
+  const created = await emit(one.socket, "create", {
+    name: "One",
+    mode: "raid",
+    spire: 61,
+  });
+  expect(created.ok).toBe(true);
+  await emit(two.socket, "join", { name: "Two", code: created.code });
+  const a = server!.rooms.get(created.code!) as SpireStormArena;
+  await emit(one.socket, "ready");
+  await emit(two.socket, "ready");
+  await settle();
+  expect(a.phase).toBe("lobby");
+  expect(a.raid.spire!.problem).toMatch(/floor 61/);
+  expect(a.players.every((p) => !p.ready)).toBe(true);
+  expect(spire.floors).toEqual([]);
+});
+
+it("stops zone 7 at floor 69 unless every member has cleared the Storm Twins' raid", async () => {
+  const { connect, spire } = await setup();
+  const one = await connect(),
+    two = await connect();
+  spire.members[one.account.id] = stormSeeker;
+  // Two has conquered zone 6 but never cleared the twins' raid; its missing
+  // clears of the zones below never close zone 7's room.
+  spire.members[two.account.id] = {
+    checkpoint: 61,
+    clears: { grumblecrag: 1, emberwing: 1 },
+  };
+  const created = await emit(one.socket, "create", {
+    name: "One",
+    mode: "raid",
+    spire: 61,
+  });
+  await emit(two.socket, "join", { name: "Two", code: created.code });
+  const a = server!.rooms.get(created.code!) as SpireStormArena;
+  await emit(one.socket, "ready");
+  await emit(two.socket, "ready");
+  await settle();
+  expect(a.phase).toBe("briefing");
+  expect(a.raid.spire).toMatchObject({
+    zone: 7,
+    startFloor: 61,
+    ceiling: 69,
+  });
+});
+
+it("never opens floor 70 to a party whose only clears are the other bosses'", async () => {
+  const { connect, spire } = await setup();
+  const one = await connect();
+  // Every boss but the Storm Twins: zone 7's room asks for its own boss only.
+  spire.members[one.account.id] = {
+    checkpoint: 61,
+    clears: {
+      grumblecrag: 1,
+      tidewyrm: 1,
+      gloomshade: 1,
+      somnara: 1,
+      prismatail: 1,
+      emberwing: 1,
+    },
+  };
+  const created = await emit(one.socket, "create", {
+    name: "One",
+    mode: "raid",
+    spire: 61,
+  });
+  const a = server!.rooms.get(created.code!) as SpireStormArena;
+  await emit(one.socket, "ready");
+  await settle();
+  expect(a.raid.spire).toMatchObject({ zone: 7, ceiling: 69 });
 });

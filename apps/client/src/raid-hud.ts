@@ -141,7 +141,7 @@ export function raidHudView(state: Snapshot, me: Fighter): RaidHudView {
     // The Spire's boss floor: the raid's boss bar, the floor and its clock.
     ...(climb
       ? {
-          key: `spire|boss|${r.boss}`,
+          key: `spire|boss|${r.boss}|${twins.map((t) => t.id).join(",")}`,
           cue:
             climb.clearedAt !== undefined
               ? spireCue(state)

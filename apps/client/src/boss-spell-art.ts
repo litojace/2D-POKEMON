@@ -14,6 +14,10 @@ import {
 import { cloudDeckNightmares } from "./raid-somnara-art";
 import { drawPrismellAttacks } from "./prismell-attack-fx";
 import {
+  drawAscendantStormTwinsFx,
+  paintAscendantStormTwinsAura,
+} from "./ascendant-storm-twins-art";
+import {
   drawAscendantLumiwickFx,
   paintAscendantLumiwickAura,
 } from "./ascendant-lumiwick-art";
@@ -565,6 +569,29 @@ export function drawBossBattleEffects(
         });
       continue;
     }
+    // Ascendant Storm Twins: each twin's aura; Mirror Charge's sparks, the
+    // Short Circuit's beam and the overload rings (once, with the first).
+    if (r.boss === "storm-twins" && r.variant === "ascendant")
+      space(g, (fx, glow) => {
+        if (boss.hp > 0)
+          paintAscendantStormTwinsAura(
+            fx,
+            boss.x,
+            boss.y,
+            state.time,
+            r.phase,
+            index === 1,
+            reduced,
+          );
+        if (index === 0)
+          drawAscendantStormTwinsFx(
+            fx,
+            glow,
+            state,
+            life.action.casts,
+            lowGraphics(),
+          );
+      });
     // Tidelotl's attacks start from its mouth and land as painted water.
     if (r.boss === "tidewyrm")
       space(g, (fx, glow) =>

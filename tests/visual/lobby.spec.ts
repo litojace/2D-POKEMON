@@ -1068,3 +1068,54 @@ test("the Spire card stays away before the Spire opens, shows progress while a z
     await context.close();
   }
 });
+
+// The whole Spire conquered (floor 70, its summit): the card says so, and
+// still goes straight to the Spire (zone 7 climbs again from floor 61).
+for (const viewport of [
+  { width: 844, height: 390 },
+  { width: 667, height: 375 },
+])
+  test(`the Spire card celebrates the conquered Spire at ${viewport.width}x${viewport.height}`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport,
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      await withSpire(page, {
+        raids: SPIRE_OPEN.raids,
+        spire: {
+          ...SPIRE_OPEN.spire,
+          highestFloor: 70,
+          checkpoint: 61,
+          claimed: Array.from({ length: 70 }, (_, i) => i + 1),
+          clears: { grumblecrag: 1, "storm-twins": 1 },
+        },
+      });
+      const errors = await openLobby(page);
+      const card = page.locator("#lobby-spire-card");
+      await expect(card).toContainText("The Spire is yours");
+      await expect(card).toContainText("Climb from floor 61");
+      await expect(card).not.toHaveClass(/is-new/);
+      await page.waitForTimeout(100);
+      await snap(
+        page,
+        info,
+        `lobby-spire-conquered-${viewport.width}x${viewport.height}`,
+      );
+      await card.click();
+      await expect(page.locator(".rh-room")).toHaveAttribute(
+        "data-raid-mode",
+        "spire",
+      );
+      await expect(page.locator(".rh-room .sp-conquered")).toContainText(
+        "The Spire is yours!",
+      );
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
