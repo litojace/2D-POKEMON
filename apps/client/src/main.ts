@@ -2544,6 +2544,7 @@ function lobbyView() {
     party: lead
       ? [mine, ...others.map(seat)].slice(0, 3)
       : others.slice(0, 3).map(seat),
+    leading: (party?.members.length ?? 0) > 1 && partyLeader(),
     partyRoom:
       !!party?.room &&
       !partyLeader() &&

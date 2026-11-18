@@ -451,6 +451,10 @@ test("a party shows friends beside you, and a party invitation joins it", async 
     await expect(page.locator("#lobby-slot-0 .lobby-member")).toContainText(
       "Pal",
     );
+    // You lead: your crown under your fighter, in the element pill's place.
+    await expect(page.locator("#lobby-host-name")).toHaveText("♛ You");
+    await expect(page.locator("#lobby-host-name")).toBeVisible();
+    await expect(page.locator("#lobby-fighter-element")).toBeHidden();
     await expect(
       page.locator("#lobby-slot-1 [data-lobby-action=invite]"),
     ).toBeVisible();

@@ -190,6 +190,8 @@ export interface LobbyView {
   party: LobbyPartyMember[];
   /** Your party's room is open and you're not in it: Rejoin shows. */
   partyRoom?: boolean;
+  /** You lead a party of two or more: "♛ You" under your fighter. */
+  leading?: boolean;
   /** Party size including you (0: no party). */
   partySize: number;
   economy?: Economy;
@@ -679,8 +681,10 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       }
       // The leader's name takes the element pill's place (same height, so
       // the stage doesn't move on a short phone).
-      $("lobby-host-name").textContent = host ? `♛ ${host.name}` : "";
-      layer.querySelector(".lobby-name")!.classList.toggle("is-host", !!host);
+      // You lead: the same crown under your own fighter, "♛ You".
+      const crown = host ? host.name : view.leading ? "You" : "";
+      $("lobby-host-name").textContent = crown ? `♛ ${crown}` : "";
+      layer.querySelector(".lobby-name")!.classList.toggle("is-host", !!crown);
       $("lobby-fighter").classList.toggle("is-host", !!host);
       $("lobby-fighter").classList.toggle("is-away", !!host?.away);
       $("lobby-fighter-tap").setAttribute(
