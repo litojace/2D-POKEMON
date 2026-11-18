@@ -202,8 +202,16 @@
   font: inherit;
   text-align: left;
 }
+/* Your seat: a gold edge and a warm tint say it's you (no "(you)" in
+   words: it took the name's room, owner 18 Nov). */
 .room-seat.is-me {
-  border-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  border-color: var(--ui-accent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--ui-accent) 16%, transparent),
+    color-mix(in srgb, var(--ui-accent) 5%, transparent) 70%
+  );
+  box-shadow: inset 3px 0 0 var(--ui-accent);
 }
 .room-seat.is-away {
   opacity: 0.62;
@@ -385,10 +393,14 @@ button.room-seat.is-open:focus-visible {
 /* docs/hidden-picks.md: the seat is the player (frame and initial); the
    pick sits beside it, as far as you may see it: your own and your
    teammate's fighter, a "?" for another side's. */
+/* The pick above its state, in a column at the seat's right: the row grows
+   taller, not wider, so the name keeps the seat's width (owner, 18 Nov). */
 .room-seat-side {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  width: 86px;
 }
 .room-pick {
   position: relative;
@@ -472,29 +484,17 @@ button.room-seat.is-open:focus-visible {
   background: var(--ui-ok);
   color: var(--ui-ok-ink);
 }
-/* A narrower seats column (300 px): the state goes under the tile, so the
-   name keeps its room. */
-@media (max-width: 1300px) and (min-height: 501px) {
-  .room-seat-side {
-    flex-direction: column;
-    gap: 3px;
-    width: 86px;
-  }
-  .room-pick {
-    width: 34px;
-    height: 34px;
-  }
-}
 @media (max-height: 500px) {
   .room-seat-side {
-    flex-direction: column;
-    gap: 1px;
+    gap: 2px;
   }
+  /* 17 px: at 16 the display font's "?" sits 1.5 px off the middle
+     (room-alignment.spec.ts measures it). */
   .room-pick,
   .room-pick.is-hidden {
-    width: 26px;
-    height: 26px;
-    font-size: calc(15px * var(--text-scale, 1));
+    width: 30px;
+    height: 30px;
+    font-size: calc(17px * var(--text-scale, 1));
   }
   .room-seat-side {
     width: 62px;
@@ -694,17 +694,15 @@ body:has(#menu > .room-screen) .chat-button[data-place="room"] {
   font-style: normal;
   color: var(--ui-accent);
 }
-/* Phones: your seat's gold edge says it's you; "(you)" is kept for screen
-   readers only, so a host's crown doesn't cut the name short. */
-@media (max-height: 500px) {
-  .room-seat.is-me .room-seat-text b > small {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
+/* Your seat's gold says it's you: "(you)" is kept for screen readers
+   only, at every size, so the name has the room. */
+.room-seat.is-me .room-seat-text b > small {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Another player's own picture: a tap reports it (it asks first). */

@@ -1442,8 +1442,8 @@ function roomData(watch: boolean): RoomData {
         host: p.id === hostId,
         me: p.id === myId,
         team: mode === "teams" ? (teamOf(p) === 1 ? 1 : 0) : undefined,
-        // Mastery flair belongs to the pick: hidden with it.
-        flair: p.flair && !p.veiled ? `★ ${p.flair}` : undefined,
+        // No mastery flair in a room: the seat is the player and their
+        // pick (owner, 18 Nov: nobody reads it).
         pick: pvp ? seatPick(p, scope) : undefined,
         reportPhoto:
           p.id !== myId && !watch
