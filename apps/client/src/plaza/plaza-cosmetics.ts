@@ -34,7 +34,12 @@ const ART_W = Number(CREATURE_VIEWBOX.split(" ")[2]);
 /** Plaza px per art unit. */
 export const PLAZA_PX_PER_ART = PLAZA_SPRITE_PX / ART_W;
 /** Plaza px per aura unit: the game's one aura size (aura-size.ts). */
-export const PLAZA_AURA_SCALE = auraScale(PLAZA_PX_PER_ART);
+/**
+ * The Plaza shows fighters small (a crowd on a phone), so its auras are
+ * drawn this much bigger than the game's one size, to be seen.
+ */
+export const PLAZA_AURA_BOOST = 1;
+export const PLAZA_AURA_SCALE = auraScale(PLAZA_PX_PER_ART) * PLAZA_AURA_BOOST;
 /** The shadow's flatness (24 × 9 radii): the aura lies on the same plane. */
 export const PLAZA_AURA_FLAT = 18 / 48;
 /** Colors' scale (Plaza px per rig unit; a rig unit is two art units). */
