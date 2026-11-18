@@ -184,6 +184,67 @@ describe("match reports exported to GitHub", () => {
     );
   });
 
+  it("flags the clocks, the input queue and Wi-Fi holds", () => {
+    const base = { id: "x", at: "2026-11-18T05:00:00Z", kind: "arena-perf" };
+    // On time: nothing to say.
+    expect(
+      attention({
+        ...base,
+        serverHz: 30,
+        tickLateP95: 3,
+        inputHz: 30.02,
+        folded: 1,
+        holds: 2,
+      }),
+    ).toEqual([]);
+    const issues = attention({
+      ...base,
+      serverHz: 29.4,
+      tickLateP95: 40,
+      tickMsP95: 6,
+      inputHz: 29.1,
+      folded: 12,
+      holds: 14,
+      holdMax: 9,
+    }).join("\n");
+    expect(issues).toContain("the server ran 29.4 ticks a second, not 30");
+    expect(issues).toContain("ticks ran up to 40 ms late");
+    expect(issues).toContain("the phone sent 29.1 inputs a second, not 30");
+    expect(issues).toContain("12 of the player's inputs were folded");
+    expect(issues).toContain(
+      "held the phone's inputs 14 times a minute (up to 9 ticks)",
+    );
+  });
+
+  it("keeps the new technical numbers and nothing personal", () => {
+    const r = toReport(
+      entry(
+        'arena-perf {"fps":58.8,"frameP99":31,"serverHz":30,"tickLateP95":4.2,"tickMsP95":1.1,"arena":"tide-pools","heldTicks":12,"lateSteps":12,"extraSteps":1,"folded":0,"queueAvg":0.8,"holds":3.5,"holdMax":4,"inputHz":30.01,"snapGapMax":210,"correctionP50":9,"link":"wifi","linkSpeed":"4g","account":"x","room":"ABCD"}',
+      ),
+    );
+    expect(r).toMatchObject({
+      frameP99: 31,
+      serverHz: 30,
+      tickLateP95: 4.2,
+      tickMsP95: 1.1,
+      arena: "tide-pools",
+      heldTicks: 12,
+      lateSteps: 12,
+      extraSteps: 1,
+      folded: 0,
+      queueAvg: 0.8,
+      holds: 3.5,
+      holdMax: 4,
+      inputHz: 30.01,
+      snapGapMax: 210,
+      correctionP50: 9,
+      link: "wifi",
+      linkSpeed: "4g",
+    });
+    expect(r).not.toHaveProperty("account");
+    expect(r).not.toHaveProperty("room");
+  });
+
   it("spots a phone still running an old build", () => {
     // b was deployed at 02:00; a phone still on a reports after it.
     const rows = [

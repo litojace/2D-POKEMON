@@ -163,6 +163,43 @@ describe("network meter", () => {
       correctionsOther: 0,
       hitsFar: 0,
       hitGapMax: 0,
+      snapGapMax: 0,
+      correctionP50: 0,
+      holds: 0,
+      holdMax: 0,
+      inputHz: 0,
+    });
+  });
+
+  it("counts Wi-Fi holds, the input clock, the worst snapshot gap and a typical jump", async () => {
+    const { NetMeter } = await import("../../apps/client/src/battle-perf");
+    const m = new NetMeter();
+    // One minute of live play, 30 inputs a second.
+    for (let t = 0; t <= 60_000; t += 1000 / 15) m.snapshot(t, true);
+    for (let i = 0; i < 1800; i++) m.input();
+    m.snapshot(60_000 + 400, true); // one snapshot 400 ms late
+    // Two holds: 1-2-3 ticks, then 2; a hold is counted once.
+    for (const held of [0, 1, 2, 3, 0, 0, 2, 0]) m.held(held);
+    for (const px of [9, 9, 10, 30]) m.correction(px, "other");
+    const s = m.summary();
+    expect(s.holds).toBeCloseTo(2, 0);
+    expect(s.holdMax).toBe(3);
+    expect(s.inputHz).toBeCloseTo(30, 0);
+    expect(s.snapGapMax).toBe(400);
+    expect(s.correctionP50).toBe(10);
+  });
+
+  it("names the connection only where the browser says, coarsely", async () => {
+    const { connectionKind } =
+      await import("../../apps/client/src/battle-perf");
+    expect(connectionKind(undefined)).toEqual({});
+    expect(connectionKind({ type: "wifi", effectiveType: "4g" })).toEqual({
+      link: "wifi",
+      linkSpeed: "4g",
+    });
+    expect(connectionKind({ type: "cellular" })).toEqual({ link: "cellular" });
+    expect(connectionKind({ type: "wimax", effectiveType: "5g" })).toEqual({
+      link: "other",
     });
   });
 
@@ -238,8 +275,12 @@ describe("network meter", () => {
       app: true,
       build: "2f04ba3",
       errors: 0,
+      link: "wifi",
+      linkSpeed: "4g",
     };
     expect(battlePerfSchema.safeParse(full).success).toBe(true);
+    expect(full.frameP99).toBeGreaterThan(0);
+    expect(full).toHaveProperty("inputHz");
     // Unknown fields and odd builds are refused, as before.
     expect(battlePerfSchema.safeParse({ ...full, name: "Kai" }).success).toBe(
       false,

@@ -31,6 +31,8 @@ export interface PerfSummary {
   fps: number;
   /** The 95th percentile frame time (ms). */
   frameP95: number;
+  /** The 99th percentile frame time (ms): the worst hitches, not their share. */
+  frameP99: number;
   /** Share of the time spent in frames that missed 30 fps (0–1). */
   jank: number;
   /** Frames slower than 250 ms. */
@@ -72,7 +74,15 @@ export class BattlePerfMeter {
     }
     const total = steps.reduce((a, b) => a + b, 0);
     if (!steps.length || total <= 0)
-      return { seconds: 0, frames: 0, fps: 0, frameP95: 0, jank: 0, stalls: 0 };
+      return {
+        seconds: 0,
+        frames: 0,
+        fps: 0,
+        frameP95: 0,
+        frameP99: 0,
+        jank: 0,
+        stalls: 0,
+      };
     const sorted = steps.slice().sort((a, b) => a - b);
     const median = sorted[sorted.length >> 1];
     const jankTime = steps
@@ -84,6 +94,7 @@ export class BattlePerfMeter {
       frames: steps.length,
       fps: round(1000 / median),
       frameP95: round(sorted[Math.floor(sorted.length * 0.95)]),
+      frameP99: round(sorted[Math.floor(sorted.length * 0.99)]),
       jank: round(jankTime / total, 3),
       stalls: steps.filter((s) => s > PERF_STALL).length,
     };
@@ -154,6 +165,22 @@ export interface NetSummary {
   hitsFar: number;
   /** The largest such gap (px; 0 when none). */
   hitGapMax: number;
+  /** The longest gap between snapshots (ms). */
+  snapGapMax: number;
+  /** The median correction over 4 px (px; one step is about 9). */
+  correctionP50: number;
+  /**
+   * Holds a minute: times the server reported ticks held for your late
+   * inputs (Fighter.held went above 0: Wi-Fi held your packets), and the
+   * most ticks held at once.
+   */
+  holds: number;
+  holdMax: number;
+  /**
+   * Inputs this device sent a second of live play: its input clock, which
+   * must run at the server's 30 (`serverHz` in the same report).
+   */
+  inputHz: number;
 }
 /** A hit landing this far from where you were drawn looked like a miss (one fighter radius). */
 export const HIT_GAP_PX = 24;
@@ -172,6 +199,10 @@ export class NetMeter {
   private waits: number[] = [];
   private lastSnap: number | undefined;
   private liveMs = 0;
+  private holdCount = 0;
+  private holdMost = 0;
+  private wasHeld = false;
+  private inputs = 0;
   private push(list: number[], v: number) {
     if (list.length >= MAX_SAMPLES) list.splice(0, MAX_SAMPLES / 2);
     list.push(v);
@@ -189,6 +220,17 @@ export class NetMeter {
     if (gap <= 0 || gap > 2000) return;
     this.push(this.gaps, gap);
     this.liveMs += gap;
+  }
+  /** A live snapshot said `held` ticks wait for your late inputs. */
+  held(ticks: number) {
+    const n = Number.isFinite(ticks) && ticks > 0 ? ticks : 0;
+    if (n && !this.wasHeld) this.holdCount++;
+    this.wasHeld = n > 0;
+    this.holdMost = Math.max(this.holdMost, n);
+  }
+  /** An input went to the server during live play. */
+  input() {
+    this.inputs++;
   }
   correction(px: number, cause?: "hit" | "status" | "move" | "other") {
     if (px <= CORRECTION_PX) return;
@@ -233,6 +275,17 @@ export class NetMeter {
       correctionsOther: perMinute(this.causes.other),
       hitsFar: this.gaps2.filter((g) => g > HIT_GAP_PX).length,
       hitGapMax: Math.round(this.gaps2.length ? Math.max(...this.gaps2) : 0),
+      snapGapMax: Math.round(this.gaps.length ? Math.max(...this.gaps) : 0),
+      correctionP50: q(this.fixes, 0.5),
+      holds: perMinute(this.holdCount),
+      holdMax: this.holdMost,
+      inputHz:
+        this.liveMs > 0
+          ? Math.min(
+              1000,
+              Math.round((this.inputs / this.liveMs) * 100_000) / 100,
+            )
+          : 0,
     };
   }
   reset() {
@@ -244,6 +297,8 @@ export class NetMeter {
     this.gaps2 = [];
     this.lastSnap = undefined;
     this.liveMs = 0;
+    this.holdCount = this.holdMost = this.inputs = 0;
+    this.wasHeld = false;
   }
 }
 
@@ -313,4 +368,35 @@ export function loadPhases(
     ...(assets !== undefined ? { assets } : {}),
     ...(scene !== undefined ? { scene } : {}),
   };
+}
+
+/**
+ * The kind of connection, where the browser says (Android's Chrome; not
+ * Safari): Wi-Fi or mobile data, and its rough speed class. Nothing finer.
+ */
+export function connectionKind(
+  c = typeof navigator === "undefined"
+    ? undefined
+    : (
+        navigator as Navigator & {
+          connection?: { type?: string; effectiveType?: string };
+        }
+      ).connection,
+): {
+  link?: "wifi" | "cellular" | "ethernet" | "other";
+  linkSpeed?: "slow-2g" | "2g" | "3g" | "4g";
+} {
+  if (!c) return {};
+  const link =
+    c.type === "wifi" || c.type === "cellular" || c.type === "ethernet"
+      ? c.type
+      : c.type
+        ? "other"
+        : undefined;
+  const speed = c.effectiveType;
+  const linkSpeed =
+    speed === "slow-2g" || speed === "2g" || speed === "3g" || speed === "4g"
+      ? speed
+      : undefined;
+  return { ...(link ? { link } : {}), ...(linkSpeed ? { linkSpeed } : {}) };
 }

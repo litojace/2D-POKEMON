@@ -17,6 +17,7 @@ import {
   BUILD,
   NetMeter,
   PERF_MIN_SECONDS,
+  connectionKind,
   deviceKind,
   loadPhases,
   perfMode,
@@ -684,7 +685,7 @@ let state: Snapshot | undefined,
   local: Fighter | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
-/** Your late inputs the server will fold into one tick (Fighter.owed). */
+/** Ticks the server held for your late inputs (Fighter.held). */
 let owedSteps = 0;
 let raidRoomReturn:
   | { code: string; boss: RaidBossId; tab: RaidTab; spire?: SpireTab }
@@ -2376,7 +2377,12 @@ function syncPlaza(want: boolean, hub = want) {
   if (plaza) {
     plaza.show();
     if (look !== plazaLook)
-      plaza.look(selected, skin, accountsUI.raidLook?.skin ?? null);
+      plaza.look(
+        selected,
+        skin,
+        accountsUI.raidLook?.skin ?? null,
+        accountsUI.raidLook?.aura ?? null,
+      );
     plazaLook = look;
     return;
   }
@@ -2390,6 +2396,7 @@ function syncPlaza(want: boolean, hub = want) {
     character: selected,
     skin,
     colour: accountsUI.raidLook?.skin ?? null,
+    aura: accountsUI.raidLook?.aura ?? null,
     reduced: reducedMotion,
     low: plazaLow,
     art: (character, worn, flat, colour) => {
@@ -4293,15 +4300,16 @@ socket.on("state", (snapshot: WireSnapshot) => {
     me.hp > 0
       ? { x: local.x, y: local.y }
       : undefined;
-  // Late inputs the server will fold into one tick take no step of their
-  // own (serverSteps, Fighter.owed).
-  owedSteps = me.owed ?? 0;
+  // Every unanswered input is a step; late ones for ticks the server held
+  // step at those ticks' times (serverSteps, Fighter.held).
+  owedSteps = me.held ?? 0;
+  if (state.phase === "playing" && !document.hidden) netMeter.held(owedSteps);
   const steps = serverSteps(pending, owedSteps);
-  timeline.snapshot(steps.length, receivedAt);
+  timeline.snapshot(Math.max(0, pending.length - owedSteps), receivedAt);
   local = structuredClone(me);
   carryCurrent(local, state.time);
-  for (const [i, input] of steps.entries())
-    predict(local, input, state.time + (i + 1) / RULES.tick);
+  for (const { input, tick } of steps)
+    predict(local, input, state.time + tick / RULES.tick);
   if (predicted)
     netMeter.correction(
       Math.hypot(local.x - predicted.x, local.y - predicted.y),
@@ -6276,6 +6284,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       };
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
       socket.emit("input", input);
+      if (!document.hidden) netMeter.input();
       if (combatActive && coach.running) coach.note(input);
       // Show your own cast now (before this step's movement changes the
       // fighter), at the time this input is predicted to run.
@@ -7599,6 +7608,7 @@ function reportBattlePerf() {
     ...(lastPing !== undefined ? { ping: Math.round(lastPing) } : {}),
     ...(leadMs !== undefined ? { lead: leadMs } : {}),
     ...deviceKind(),
+    ...connectionKind(),
     build: BUILD,
     errors,
     ...(softwareRendering() ? { gpu: "software" as const } : {}),
