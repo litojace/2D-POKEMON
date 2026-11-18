@@ -32,7 +32,7 @@ import {
   type RaidBossId,
 } from "../../../../packages/shared/src/raid-roster";
 import type { RaidProgress } from "../../../../packages/shared/src/raid";
-import { fighterAvatar } from "../fighter-art";
+import { fighterPortrait } from "../fighter-art";
 import { fighterStageArt, RIG_FRAME } from "../fighter-selection";
 import { CREATURE_VIEWBOX } from "../creature-design";
 import { sortTitles, titleTreatment } from "../player-nameplate";
@@ -246,7 +246,7 @@ function masteryGrid(d: ProfileData) {
     const wins = d.progress?.fighters[id]?.wins ?? 0;
     const m = mastery(matches);
     const label = `${CHARACTERS[id].name}: ${m.tier?.name ?? "no"} mastery, ${matches} played, ${wins} won${m.next ? `, ${m.next.left} more for ${m.next.name}` : ""}`;
-    return `<li class="pf-mastery-chip${m.tier ? "" : " is-none"}" style="--el:${elVar(id)}" title="${esc(label)}" aria-label="${esc(label)}">${avatar(fighterAvatar(id, `pf-m-${id}`), { element: CHARACTERS[id].element, size: 36 })}${ring(m.progress, 100, `<b class="ui-num">${m.tier ? m.tier.name[0] : "–"}</b>`, { label: `${m.tier?.name ?? "No"} mastery`, color: m.tier?.color ?? "var(--ui-faint)", size: 26 })}</li>`;
+    return `<li class="pf-mastery-chip${m.tier ? "" : " is-none"}" style="--el:${elVar(id)}" title="${esc(label)}" aria-label="${esc(label)}">${avatar(fighterPortrait(id), { element: CHARACTERS[id].element, size: 36 })}${ring(m.progress, 100, `<b class="ui-num">${m.tier ? m.tier.name[0] : "–"}</b>`, { label: `${m.tier?.name ?? "No"} mastery`, color: m.tier?.color ?? "var(--ui-faint)", size: 26 })}</li>`;
   }).join("")}</ul>`;
 }
 
