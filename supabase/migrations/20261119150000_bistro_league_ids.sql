@@ -1,7 +1,7 @@
 -- The Bistro's weekly league and today's friend guests carry each player's
 -- id, so their rows show the player's avatar (docs/hidden-picks.md,
 -- "Avatars"; the client points them at /api/avatar/of/<id>).
--- Run after 20261119120000_avatars_everywhere.sql. Safe to run again.
+-- Run after 20261119140000_avatars_everywhere.sql. Safe to run again.
 --
 -- arena_bistro_state_base is 103's arena_bistro_state, renamed by 118
 -- (whose wrapper adds 'held'; 20261117100001 wraps that again, as

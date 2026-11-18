@@ -18,7 +18,7 @@ import {
   spireBlessingText,
 } from "../../../../packages/shared/src/spire";
 import { elementIcon } from "../element-icons";
-import { fighterAvatar } from "../fighter-art";
+import { fighterPortrait } from "../fighter-art";
 import { menuIcon } from "../menu-icons";
 import { SPIRE_COLOR, spireBlessingIcon } from "../spire-art";
 import spirePoster from "../art/spire/tower-portrait.webp";
@@ -59,8 +59,8 @@ export {
 export type { SpireTab, SpireData, SpireView } from "./spire-model";
 
 const lockIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>`;
-const chip = (c: CharacterId, scope: string, size = 26) =>
-  avatar(fighterAvatar(c, scope), { element: CHARACTERS[c].element, size });
+const chip = (c: CharacterId, size = 26) =>
+  avatar(fighterPortrait(c), { element: CHARACTERS[c].element, size });
 /** The Spire's tile: the last card of the boss list. */
 export function spireCard(d: SpireData) {
   const open = spireUnlocked(d);
@@ -95,7 +95,7 @@ function seats(d: SpireData) {
   return `<div class="rh-seats" role="group" aria-label="Climbing party">${list
     .map(
       (s, i) =>
-        `<div class="rh-seat${s.me ? " is-me" : ""}">${chip(s.character, `sp-seat-${i}`, 52)}<b>${esc(s.name)}</b><small class="ui-note">${s.me ? "You" : s.leader ? "Leader" : "In your party"}</small></div>`,
+        `<div class="rh-seat${s.me ? " is-me" : ""}">${chip(s.character, 52)}<b>${esc(s.name)}</b><small class="ui-note">${s.me ? "You" : s.leader ? "Leader" : "In your party"}</small></div>`,
     )
     .join(
       "",
@@ -119,7 +119,7 @@ function floorPreview(model: SpireModel) {
       : roster
           .map(
             (c) =>
-              `<span class="sp-enemy">${chip(c, `sp-preview-${f.floor}-${c}`, 24)}<span>${esc(CHARACTERS[c].name)}</span></span>`,
+              `<span class="sp-enemy">${chip(c, 24)}<span>${esc(CHARACTERS[c].name)}</span></span>`,
           )
           .join("");
   return `<article class="sp-preview is-${state.key}" aria-label="Floor ${f.floor} preview"><div class="sp-preview-heading"><div><small class="ui-kicker">${selected === next ? "Next uncleared" : "Floor preview"} · Floor ${f.floor}</small><h3 class="ui-h">${esc(f.name)}</h3></div>${tag(selected.kind)}</div><p class="ui-note">${esc(zone.name)} · ${esc(zone.element)} · ${esc(state.label)}</p><p class="ui-note sp-encounter-description${f.description ? " is-specific" : ""}">${esc(description)}</p><div class="sp-enemies">${enemies}</div><div class="sp-preview-reward"><small class="ui-note">${claimed ? "First-clear reward claimed" : "First-clear reward"}</small>${price(coins)}${title ? `<span class="ui-tag sp-preview-title">${esc(title)}</span>` : ""}</div></article>`;
@@ -219,7 +219,7 @@ function floorsTab(model: SpireModel) {
           const who =
             f.kind === "boss"
               ? `<small class="ui-note">${esc(f.name)} · ${esc(description)}</small>`
-              : `<span class="rh-tricks">${roster.map((c) => chip(c, `sp-f${f.floor}-${c}`, 24)).join("")}</span>`;
+              : `<span class="rh-tricks">${roster.map((c) => chip(c, 24)).join("")}</span>`;
           const reward = `<span class="sp-reward">${price(coins)}${title ? `<span class="ui-tag sp-title-tag">${menuIcon("leaderboard")}${esc(title)}</span>` : ""}</span>`;
           const mark =
             state.key === "done"

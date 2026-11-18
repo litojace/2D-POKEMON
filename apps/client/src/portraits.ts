@@ -1,5 +1,5 @@
 import type { Fighter } from "@arena/shared";
-import { fighterAvatar, scopeIds } from "./fighter-art";
+import { fighterAvatar, scopeIds, svgPicture } from "./fighter-art";
 import { wornArt } from "./skins/skin-art";
 import { colourPreview } from "./colour-preview";
 import {
@@ -59,14 +59,27 @@ export function portraitCosmetics(p: Portrait) {
     .filter(Boolean)
     .join(" ");
 }
-/** A player's portrait, in the champion skin they wear. */
-export function portraitAvatar(p: Portrait, scope: string) {
+/**
+ * A player's portrait, in the champion skin they wear. `picture`: as one
+ * shared picture rather than inline SVG (svgPicture), for lists of players.
+ */
+export function portraitAvatar(p: Portrait, scope: string, picture = false) {
   const skin = p.championLooks?.[p.character];
-  const art = fighterAvatar(p.character, scope, skin);
   // Use the same palette as the live rig; equipped champion skins take priority.
-  return !wornArt(p.character, skin) && p.raidLook?.skin
-    ? scopeIds(colourPreview(art, p.raidLook.skin), `${scope}-colors`)
-    : art;
+  const colours = !wornArt(p.character, skin) ? p.raidLook?.skin : null;
+  const inline = () => {
+    const art = fighterAvatar(p.character, scope, skin);
+    return colours
+      ? scopeIds(colourPreview(art, colours), `${scope}-colors`)
+      : art;
+  };
+  return picture
+    ? svgPicture(
+        `${p.character} ${JSON.stringify(skin ?? null)} ${colours ?? ""}`,
+        inline,
+        p.character,
+      )
+    : inline();
 }
 
 /** For identity widgets that do not already paint a frame on their container. */
@@ -74,8 +87,13 @@ export function framedAvatar(
   p: Portrait,
   scope: string,
   stars = frameStars(p.raidLook?.frame, p.raidClears),
+  picture = false,
 ) {
-  return framePortrait(portraitAvatar(p, scope), p.raidLook?.frame, stars);
+  return framePortrait(
+    portraitAvatar(p, scope, picture),
+    p.raidLook?.frame,
+    stars,
+  );
 }
 
 /**

@@ -1085,7 +1085,7 @@ describe("the long game (migration 100)", () => {
     expect(
       r.bistro.league.week.find((x: any) => x.me).points,
     ).toBeGreaterThanOrEqual(10);
-    // Each league row says who (migration 20261119130000): its avatar.
+    // Each league row says who (migration 20261119150000): its avatar.
     expect(r.bistro.league.week.find((x: any) => x.me).id).toBe(ana);
   });
   it("catering orders fill as you go (migration 102): put aside, kept from guests, paid when complete", async () => {

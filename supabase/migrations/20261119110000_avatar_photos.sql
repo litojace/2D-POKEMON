@@ -86,11 +86,14 @@ revoke all on function public.arena_set_avatar_photo(text, text) from public, an
 grant execute on function public.arena_set_avatar_photo(text, text) to authenticated;
 
 -- A picture by id, for the game server to serve (never a hidden one).
+-- plpgsql, not sql: its body isn't checked when created, so this file still
+-- runs again after 20261119120000 has dropped the image column.
 create or replace function public.arena_avatar_photo(p_id uuid) returns jsonb
-language sql security definer set search_path = '' stable as $$
- select jsonb_build_object('type', content_type, 'data', encode(image, 'base64'))
- from public.arena_avatar_photos where id = p_id and not hidden;
-$$;
+language plpgsql security definer set search_path = '' stable as $$
+begin
+ return (select jsonb_build_object('type', content_type, 'data', encode(image, 'base64'))
+ from public.arena_avatar_photos where id = p_id and not hidden);
+end; $$;
 revoke all on function public.arena_avatar_photo(uuid) from public, anon, authenticated;
 grant execute on function public.arena_avatar_photo(uuid) to service_role;
 

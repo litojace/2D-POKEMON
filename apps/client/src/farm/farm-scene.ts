@@ -130,6 +130,57 @@ import { PreviewPerf } from "../preview-perf";
 import { sceneLines, setPerfSource } from "../perf-hud";
 import { rumble } from "../game-feel";
 import { bubbleLines } from "../chat/bubble-text";
+import {
+  BARN,
+  BOARDP,
+  COLS,
+  DOGH,
+  FCX,
+  FH,
+  FR,
+  FW,
+  GAP,
+  HOUSE,
+  MILL,
+  OX,
+  OY,
+  PAST,
+  PATHS,
+  PH,
+  POND,
+  PW,
+  ROWS,
+  STALL,
+  WELL,
+  WH,
+  WORLD,
+  WW,
+  FARM_TREES,
+  isFelled,
+  trunks,
+} from "./farm-layout";
+import { along, depthSort, inView, spot } from "./farm-depth";
+import {
+  BROOK,
+  PROPS,
+  brookDuck,
+  splitProps,
+  tractorAt,
+  tractorBox,
+  zoomMin,
+  fitZoom,
+  propDrawable,
+} from "./farm-scenery";
+import {
+  cutWater,
+  drawBees,
+  drawProp,
+  drawTractor,
+  treeOf,
+  drawWater,
+  paintBridge,
+  paintSurround,
+} from "./farm-surround";
 
 const svgUrl = (s) =>
   "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
@@ -479,48 +530,19 @@ export function openFarm(options) {
   // screen's longer side so it always fills the screen (no bands).
   let VW = 1280,
     VH = 800;
-  const COLS = 10,
-    ROWS = 5,
-    PW = 96,
-    PH = 62,
-    GAP = 10,
-    OX = 360,
-    OY = 380,
-    WW = 1760,
-    WH = 1080;
-  const FW = COLS * PW + (COLS - 1) * GAP,
-    FH = ROWS * PH + (ROWS - 1) * GAP,
-    FCX = OX + FW / 2;
-  // The back row (home, mill, orders board, market, barn) stands 50 px
-  // behind the field's fence, so a lane runs in front of it: the barn's door
-  // and the market's counter no longer open onto the fence, and the lane
-  // from home to the barn shows instead of running under it.
-  // The pasture grew for 5 cows (20261117180000): its top from 420 up to
-  // the field's back rail (OY - 32) and its right side from 1720 out past
-  // the farm's edge to 1860. The trees that stood there were felled.
-  const PAST = { x0: 1480, x1: 1860, y0: OY - 32, y1: 664 },
-    // Where the farmhouse stood: the Bakery's place now (BAKERY), and
-    // where the paths to the Plaza and the barn start.
-    HOUSE = { x: 190, y: 292 },
-    MILL = { x: 470, y: 278 },
-    BOARDP = { x: 700, y: 282 },
-    STALL = { x: 930, y: 278 },
-    BARN = { x: 1250, y: 296 },
-    // The pasture's middle (its sign, its opening puff).
-    PCX = (PAST.x0 + PAST.x1) / 2,
-    WELL = { x: 150, y: 700 },
-    DOGH = { x: 1600, y: 810 },
-    POND = { x: 250, y: 990, rx: 150, ry: 56 };
-  const WX0 = -360,
-    WY0 = -180,
-    WX1 = WW + 360,
-    WY1 = WH + 200,
+  // Where everything stands (farm-layout.ts, shared with the scenery round
+  // the farm and the tests).
+  const PCX = (PAST.x0 + PAST.x1) / 2;
+  const WX0 = WORLD.x0,
+    WY0 = WORLD.y0,
+    WX1 = WORLD.x1,
+    WY1 = WORLD.y1,
     BW = WX1 - WX0,
     BH = WY1 - WY0;
   let Z = 0.86,
     cam = { x: OX + FW / 2, y: 520 },
     panning = null;
-  let ZMIN = Math.max(VW / BW, VH / BH);
+  let ZMIN = zoomMin(VW, VH);
   let ZMAX = 1.35,
     wasPhone = false;
   const keysF = new Set();
@@ -1411,83 +1433,22 @@ export function openFarm(options) {
     let x = Math.max(1, Math.floor(s) % 2147483646);
     return () => (x = (x * 16807) % 2147483647) / 2147483647;
   };
-  const MARGIN = [];
-  (() => {
-    const r = seeded(91),
-      kinds = [
-        "round",
-        "pine",
-        "mint",
-        "autumn",
-        "pine",
-        "apple",
-        "round",
-        "cherry",
-      ];
-    const inMargin = (x, y) =>
-      (x < -40 || x > WW + 40 || y < -10 || y > WH + 50) &&
-      !(y > -120 && y < -20) &&
-      Math.abs(x - FCX) > 90 &&
-      !(Math.abs(x - HOUSE.x) < 50 && y < 0);
-    for (let i = 0; i < 1600 && MARGIN.filter((m) => m.t).length < 52; i++) {
-      const x = WX0 + 30 + r() * (BW - 60),
-        y = WY0 + 70 + r() * (BH - 80);
-      if (
-        inMargin(x, y) &&
-        MARGIN.every((m) => Math.hypot(m.x - x, m.y - y) > 115)
-      )
-        MARGIN.push({
-          x,
-          y,
-          t: GFX.tree(
-            kinds[MARGIN.length % kinds.length],
-            200 + i,
-            0.75 + r() * 0.35,
-          ),
-          kind: kinds[MARGIN.length % kinds.length],
-          ph: r() * 6,
-          shake: 0,
-        });
-    }
-    for (let i = 0; i < 1600 && MARGIN.filter((m) => m.b).length < 34; i++) {
-      const x = WX0 + 20 + r() * (BW - 40),
-        y = WY0 + 40 + r() * (BH - 50);
-      if (
-        inMargin(x, y) &&
-        MARGIN.every((m) => Math.hypot(m.x - x, m.y - y) > 80)
-      )
-        MARGIN.push({
-          x,
-          y,
-          b:
-            r() < 0.7
-              ? GFX.bush(
-                  ["flower", "green", "rose", "mint"][i % 4],
-                  300 + i,
-                  56 + r() * 30,
-                )
-              : GFX.rock(400 + i, 30 + r() * 30),
-        });
-    }
-    // Trees just below the Chicken Coop were felled, so their crowns never
-    // hide its run, and the trees, bushes and rocks on the pasture's wider
-    // ground or with a crown over its fence (taken out after, so the rest
-    // stand where they did).
-    for (let k = MARGIN.length - 1; k >= 0; k--) {
-      const m = MARGIN[k];
-      if (
-        (m.t &&
-          m.x > COOP.x0 - 80 &&
-          m.x < COOP.x1 + 80 &&
-          m.y < COOP.y1 + 240) ||
-        (m.x > PAST.x0 - 60 &&
-          m.x < PAST.x1 + (m.t ? 90 : 50) &&
-          m.y > PAST.y0 - 30 &&
-          m.y < PAST.y1 + (m.t ? 130 : 40))
-      )
-        MARGIN.splice(k, 1);
-    }
-  })();
+  /* The land round the farm (farm-scenery.ts): what never stands in front
+     of anything live is baked into the ground (paintBg); the rest is drawn
+     live in depth order. MARGIN keeps the live ones (trees and bushes sway
+     and answer a tap). */
+  const SPLIT = splitProps(PROPS);
+  const MARGIN = SPLIT.live.map((p) => ({
+    x: p.x,
+    y: p.y,
+    p,
+    ...(p.kind === "tree"
+      ? { t: treeOf(p), kind: p.v, ph: p.seed, shake: 0 }
+      : p.kind === "bush"
+        ? { b: GFX.bush(p.v || "green", p.seed, Math.round(p.s)) }
+        : {}),
+  }));
+  const HIVES = PROPS.filter((p) => p.kind === "hive");
   const FDUCKS = [
     { k: "drake", a: 0, s: 0.25 },
     { k: "hen", a: 2.5, s: 0.2 },
@@ -1518,6 +1479,8 @@ export function openFarm(options) {
     decor: [
       ...F.decor.map((p) => decorBox(p.item, p.x, p.y)),
       ...(cur().coop ? [COOP_BOX] : []),
+      // The farm's trees: the dog walks round their trunks, not through.
+      ...trunks(),
     ],
     gateX: FCX,
     width: WW,
@@ -2065,67 +2028,10 @@ export function openFarm(options) {
        painted once for all of them (half resolution, then laid down at one
        strength), then every path's dirt, then every path's lighter middle,
        then pebbles. */
-    const PATHS = [
-      // the road along the top, and home's drive up to it
-      [
-        [
-          [WX0 - 20, -70],
-          [WX1 + 20, -60],
-        ],
-        70,
-      ],
-      [
-        [
-          [HOUSE.x, HOUSE.y + 10],
-          [HOUSE.x, -66],
-        ],
-        46,
-      ],
-      // the back row: home to the barn
-      [
-        [
-          [HOUSE.x + 60, HOUSE.y + 10],
-          [BARN.x - 40, BARN.y + 12],
-        ],
-        46,
-      ],
-      // up from the bottom of the farm to the field's gate
-      [
-        [
-          [FCX, WY1 + 30],
-          [FCX, OY + FH + 24],
-        ],
-        64,
-      ],
-      // the lane in front of the field: west and up to home
-      [
-        [
-          [FCX, OY + FH + 70],
-          [420, OY + FH + 70],
-          [260, 620],
-          [HOUSE.x, HOUSE.y + 10],
-        ],
-        54,
-      ],
-      // east to the doghouse
-      [
-        [
-          [FCX, OY + FH + 70],
-          [1460, OY + FH + 70],
-          [DOGH.x - 50, DOGH.y],
-        ],
-        54,
-      ],
-      // down from the lane's bend to the pond
-      [
-        [
-          [420, OY + FH + 70],
-          [372, 868],
-          [POND.x + 76, POND.y - 64],
-        ],
-        42,
-      ],
-    ];
+    // The land round the farm (farm-surround.ts): the neighbours' fields,
+    // the wood's floor, the brook's banks. The paths (farm-layout.ts) are
+    // painted over it.
+    paintSurround(g);
     /** A path's line with its corners rounded (radius up to `r`). */
     const pathLine = (c, pts, r = 70) => {
       c.moveTo(pts[0][0], pts[0][1]);
@@ -2224,11 +2130,13 @@ export function openFarm(options) {
     g.strokeStyle = "#b0864f";
     g.lineWidth = 3;
     g.stroke();
-    // pond
+    // pond: its shade, the holes the water shows through (drawWater, under
+    // the ground every frame), the stones round it, the brook's footbridge
     g.fillStyle = "rgba(40,60,40,.35)";
     g.beginPath();
     g.ellipse(POND.x, POND.y + 8, POND.rx + 22, POND.ry + 16, 0, 0, 7);
     g.fill();
+    cutWater(g);
     for (let i = 0; i < 40; i++) {
       const a = (i / 40) * Math.PI * 2,
         x = POND.x + Math.cos(a) * (POND.rx + 8),
@@ -2269,6 +2177,13 @@ export function openFarm(options) {
       g.lineTo(x + 4, y - 6);
       g.stroke();
     }
+    paintBridge(g);
+    // What stands round the farm and is never in front of anything live,
+    // baked once, farthest first (farm-scenery.ts: splitProps).
+    for (const d of depthSort(
+      SPLIT.baked.map((p) => propDrawable(p, () => drawProp(g, p))),
+    ))
+      d.draw();
   }
   // A fence post, painted once and stamped (~100 a frame).
   let postArt = null;
@@ -2303,7 +2218,6 @@ export function openFarm(options) {
   };
   // The back rail sits behind everything on the field; the side rails (one item per post) and the front rail
   // are depth-sorted with animals, so a dog in front of the fence is drawn in front of it, never under it.
-  const FR = { x0: OX - 36, x1: OX + FW + 36, y0: OY - 32, y1: OY + FH + 30 };
   function drawFence(g) {
     rail(g, FR.x0, FR.y0, FR.x1, FR.y0);
     for (let x = FR.x0; x <= FR.x1; x += 46) post(g, x, FR.y0);
@@ -2338,21 +2252,39 @@ export function openFarm(options) {
   function drawPastureFence(g, back) {
     const { x0, x1, y0, y1 } = PAST;
     if (back) {
+      // The back rail; the sides stand in the depth order, a piece per
+      // post (pastureSides), so a cow or the dog beside a nearer post is
+      // drawn behind it, never over it.
       rail(g, x0, y0, x1, y0);
       for (let x = x0; x <= x1; x += 41) post(g, x, y0);
-      rail(g, x0, y0, x0, y1);
-      rail(g, x1, y0, x1, y1);
-      for (let y = y0 + 42; y < y1; y += 42) {
-        post(g, x0, y);
-        post(g, x1, y);
-      }
     } else {
       rail(g, x0, y1, x1, y1);
       for (let x = x0; x <= x1; x += 41) post(g, x, y1);
     }
   }
 
-  /** The coop's run: its straw floor and back and side rails (ground layer). */
+  /** The pasture's sides: one piece (a rail and its near post) per post. */
+  function pastureSides(items) {
+    const { x0, x1, y0, y1 } = PAST;
+    for (const x of [x0, x1])
+      items.push(
+        ...along(x, y0, y1, 42, 34, (ya, yb) => {
+          rail(ctx, x, ya, x, yb);
+          if (yb < y1) post(ctx, x, yb);
+        }),
+      );
+  }
+  /** The run's right side, in two pieces round its middle post. */
+  function runSide(items) {
+    const { x1, y0, y1 } = RUN;
+    items.push(
+      ...along(x1, y0, y1, (y1 - y0) / 2, 34, (ya, yb) => {
+        rail(ctx, x1, ya, x1, yb);
+        if (yb < y1) post(ctx, x1, yb);
+      }),
+    );
+  }
+  /** The coop's run: its straw floor and back rail (ground layer). */
   function drawCoopGround(g) {
     const { x0, x1, y0, y1 } = RUN;
     GFX.blit(g, GFX.coopYard(x1 - x0, y1 - y0 - 6), x0, y0);
@@ -2364,8 +2296,6 @@ export function openFarm(options) {
       rail(g, x0, y0, x1, y0);
       for (let x = x0; x <= x1; x += 38) post(g, x, y0);
       post(g, x1, y0);
-      rail(g, x1, y0, x1, y1);
-      post(g, x1, (y0 + y1) / 2);
     } else {
       rail(g, x0, y1, x1, y1);
       for (let x = x0; x <= x1; x += 38) post(g, x, y1);
@@ -2564,55 +2494,37 @@ export function openFarm(options) {
   // Time of day follows the device clock, as in the Plaza (tests can set it).
   let todOverride = null,
     TOD = deviceTimeOfDay();
-  const TREES = [
-    [338, 230, "apple", 0.62],
-    [812, 190, "cherry", 0.6],
-    [44, 400, "pine", 0.85],
-    [1480, 340, "round", 0.7],
-    [1700, 330, "pine", 0.8],
-    [70, 210, "round", 0.7],
-    [640, 1050, "autumn", 0.7],
-    [1120, 1060, "round", 0.75],
-    [1450, 1040, "cherry", 0.65],
-    [1720, 1000, "pine", 0.8],
-    [40, 1060, "mint", 0.7],
-  ]
-    .map(([x, y, kind, sz], i) => ({
-      x,
-      y,
-      kind,
-      t: GFX.tree(kind, 50 + i, sz),
-      ph: i,
-      shake: 0,
-    }))
-    // The round tree below the lane and the cherry tree right of it were
-    // felled for the Chicken Coop, and the two above the pasture for its
-    // taller meadow (20261117180000), filtered after, so every other tree
-    // keeps its own look.
-    .filter(
-      (t) =>
-        !(
-          (t.x === 1120 && t.y === 1060) ||
-          (t.x === 1450 && t.y === 1040) ||
-          (t.x === 1480 && t.y === 340) ||
-          (t.x === 1700 && t.y === 330)
-        ),
-    );
+  // The farm's own trees (farm-layout.ts; the felled ones keep their
+  // place in the list, so every other tree keeps its own look).
+  const TREES = FARM_TREES.map(([x, y, kind, sz], i) => ({
+    x,
+    y,
+    kind,
+    t: GFX.tree(kind, 50 + i, sz),
+    ph: i,
+    shake: 0,
+  })).filter((t) => !isFelled(t.x, t.y));
   /** Squash-and-stretch after a tap (house, mill, barn…): 1 → 0. */
   const bounce = {};
   const squash = (k) => {
     const b = (typeof k === "string" ? bounce[k] : k.bump) || 0;
     return b > 0 ? Math.sin((1 - b) * Math.PI * 3) * b * 0.08 : 0;
   };
-  function blitB(key, spr, x, y) {
+  function blitB(key, spr, x, y, size = 1) {
     const k = squash(key);
-    if (!k) return GFX.blit(ctx, spr, x, y);
+    if (!k) return GFX.blit(ctx, spr, x, y, size);
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(1 + k, 1 - k);
-    GFX.blit(ctx, spr, 0, 0);
+    GFX.blit(ctx, spr, 0, 0, size);
     ctx.restore();
   }
+  /* One scale (farm-layout.ts): the windmill stands taller than the barn,
+     as windmills do (it was the smallest building on the back row), and
+     the doghouse is a doghouse, not a shed (it stood twice the dog's
+     height). */
+  const MILL_S = 1.15,
+    DOGH_S = 0.8;
   /* The wishing well twinkles: a shimmer on the water and stars that drift
      up out of it and fade, gold and busier while today's wish is waiting. */
   function drawWellSparkles(time) {
@@ -6226,6 +6138,24 @@ export function openFarm(options) {
     ctx.translate(VW / 2, VH / 2);
     ctx.scale(Z, Z);
     ctx.translate(-cam.x, -cam.y);
+    // The pond's and the brook's water, under the ground picture's holes.
+    const VIEW = {
+      x0: cam.x - VW / 2 / Z,
+      x1: cam.x + VW / 2 / Z,
+      y0: cam.y - VH / 2 / Z,
+      y1: cam.y + VH / 2 / Z,
+    };
+    {
+      const w = F.weather.cur;
+      drawWater(ctx, VIEW, {
+        t: time,
+        night: nightLevel(TOD),
+        golden: goldenLevel(TOD),
+        wet: w === "rain" || w === "storm",
+        low,
+        reduced,
+      });
+    }
     // Only the part of the baked ground that's on screen: drawing all of it
     // (four screens' worth, scaled) every frame made dragging stutter on
     // iPhones.
@@ -6270,14 +6200,14 @@ export function openFarm(options) {
         y: MILL.y,
         d: () => {
           const wm = GFX.windmillBody();
-          GFX.shadow(ctx, MILL.x + 20, MILL.y + 4, 60, 14);
-          blitB("mill", wm, MILL.x, MILL.y);
+          GFX.shadow(ctx, MILL.x + 20, MILL.y + 4, 60 * MILL_S, 14);
+          blitB("mill", wm, MILL.x, MILL.y, MILL_S);
           GFX.windmillSails(
             ctx,
-            MILL.x + wm.hub[0],
-            MILL.y + wm.hub[1],
+            MILL.x + wm.hub[0] * MILL_S,
+            MILL.y + wm.hub[1] * MILL_S,
             reduced ? 0 : millA,
-            0.82,
+            0.82 * MILL_S,
           );
         },
       },
@@ -6303,18 +6233,54 @@ export function openFarm(options) {
         },
       },
     );
-    MARGIN.forEach((m) =>
-      items.push({
-        y: m.y,
-        d: () => {
-          if (m.t) drawTreeS(m, time, 0.8);
-          else {
-            GFX.shadow(ctx, m.x + 6, m.y + 2, 30, 8);
-            blitB(m, m.b, m.x, m.y + 4);
-          }
-        },
-      }),
-    );
+    // The land round the farm: its live props (footprints, farm-scenery.ts),
+    // only those on screen.
+    const near = {
+      x0: VIEW.x0 - 20,
+      x1: VIEW.x1 + 20,
+      y0: VIEW.y0 - 20,
+      y1: VIEW.y1 + 40,
+    };
+    for (const m of MARGIN) {
+      const dw = propDrawable(m.p, () => {
+        if (m.t) drawTreeS(m, time, 0.8);
+        else if (m.b) {
+          GFX.shadow(ctx, m.x + 6, m.y + 2, 30, 8);
+          blitB(m, m.b, m.x, m.y + 4);
+        } else drawProp(ctx, m.p, time);
+      });
+      if (inView(dw, near)) items.push(dw);
+    }
+    // The tractor along the road, and the ducks on the brook.
+    {
+      const tr = tractorAt(time);
+      if (tr.on) {
+        const dw = {
+          ...tractorBox(tr.x, tr.y),
+          sw: 170,
+          draw: () => drawTractor(ctx, tr.x, tr.y, tr.face, time),
+        };
+        if (inView(dw, near)) items.push(dw);
+      }
+      // Low graphics has no ambient animals (as the pond's ducks).
+      for (let k = 0; k < (low ? 0 : 2); k++) {
+        const d = brookDuck(reduced ? 0 : time, k),
+          dw = spot(d.x, d.y, 22, 6, 32, () =>
+            GFX.duck(
+              ctx,
+              k ? "hen" : "drake",
+              "swim",
+              time + k,
+              d.x,
+              d.y,
+              0.95,
+              d.face,
+              true,
+            ),
+          );
+        if (inView(dw, near)) items.push(dw);
+      }
+    }
     drawPresent(items, time);
     items.push({
       y: -40,
@@ -6447,48 +6413,28 @@ export function openFarm(options) {
           1,
         ),
     });
-    items.push({
-      y: POND.y - POND.ry,
-      d: () => {
-        const { x, y, rx, ry } = POND;
-        const wg = ctx.createRadialGradient(x - 30, y - 20, 8, x, y, rx);
-        wg.addColorStop(0, "#7fe0f0");
-        wg.addColorStop(1, "#2a92c0");
-        ctx.fillStyle = wg;
-        ctx.beginPath();
-        ctx.ellipse(x, y, rx, ry, 0, 0, 7);
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,.3)";
-        ctx.lineWidth = 1.5;
-        for (let k = 0; k < 4; k++) {
-          ctx.beginPath();
-          ctx.ellipse(
-            x + Math.sin(time * 0.6 + k) * 30,
-            y + Math.cos(time * 0.5 + k * 2) * 12,
-            18 + k * 6,
-            4 + k,
-            0,
-            0,
-            7,
-          );
-          ctx.stroke();
-        }
-        // The ducks paddle round the pond (they hurry after a splash).
-        FDUCKS.forEach((d, k) => {
-          const r = 0.55 - k * 0.15;
+    // The ducks paddle round the pond (they hurry after a splash); its
+    // water is drawn under the ground (drawWater).
+    FDUCKS.forEach((d, k) => {
+      const { x, y, rx, ry } = POND,
+        r = 0.55 - k * 0.15,
+        dx = x + Math.cos(d.a) * rx * r,
+        dy = y + Math.sin(d.a) * ry * r;
+      items.push(
+        spot(dx, dy, 22, 6, 32, () =>
           GFX.duck(
             ctx,
             d.k,
             "swim",
             time + d.a,
-            x + Math.cos(d.a) * rx * r,
-            y + Math.sin(d.a) * ry * r,
+            dx,
+            dy,
             1.05,
             Math.sin(d.a) * Math.sign(d.s) < 0 ? 1 : -1,
             true,
-          );
-        });
-      },
+          ),
+        ),
+      );
     });
     if (s.pasture)
       for (let k = 0; k < Math.min(s.cows || 1, COWS.length); k++) {
@@ -6544,6 +6490,7 @@ export function openFarm(options) {
         },
       });
     items.push({ y: PAST.y1, d: () => drawPastureFence(ctx, false) });
+    pastureSides(items);
     items.push({ y: BAKERY.y, d: () => drawBakery(s, time) });
     // The Chicken Coop (20261117100000): the house, the hens in their run
     // and its front rail; before it's built, a sign on the empty grass.
@@ -6576,6 +6523,7 @@ export function openFarm(options) {
         });
       }
       items.push({ y: RUN.y1 + 1, d: () => drawRunFence(ctx, false) });
+      runSide(items);
     } else if (s.me)
       items.push({
         y: COOP.y1 - 14,
@@ -6597,8 +6545,8 @@ export function openFarm(options) {
     items.push({
       y: DOGH.y,
       d: () => {
-        GFX.shadow(ctx, DOGH.x + 10, DOGH.y + 2, 76, 14);
-        blitB("dogh", GFX.doghouse(), DOGH.x, DOGH.y);
+        GFX.shadow(ctx, DOGH.x + 8, DOGH.y + 2, 76 * DOGH_S, 12);
+        blitB("dogh", GFX.doghouse(), DOGH.x, DOGH.y, DOGH_S);
       },
     });
     hens.forEach((h) =>
@@ -6619,7 +6567,24 @@ export function openFarm(options) {
     );
     fenceItems(items);
     items.push(...feel.groundItems(ctx));
-    items.sort((a, b) => a.y - b.y).forEach((it) => it.d());
+    // In depth order (farm-depth.ts): by each thing's front edge; the older
+    // items give their foot's y, which is that edge.
+    depthSort(
+      items.map((it) =>
+        it.draw ? it : { x0: 0, x1: 0, y0: it.y, y1: it.y, h: 0, draw: it.d },
+      ),
+    ).forEach((it) => it.draw());
+    // Bees about the hives in the daytime.
+    if (
+      !low &&
+      !reduced &&
+      nightLevel(TOD) < 0.5 &&
+      HIVES.some(
+        (h) =>
+          h.x > near.x0 && h.x < near.x1 && h.y > near.y0 && h.y < near.y1 + 40,
+      )
+    )
+      drawBees(ctx, HIVES, time);
     if (s.coop && s.me) drawHenBubbles(time);
     FSMOKE.forEach((m) => {
       ctx.fillStyle = `rgba(240,240,245,${0.5 * (1 - m.t / m.life)})`;
@@ -8004,8 +7969,9 @@ export function openFarm(options) {
     return (
       head("Chicken Coop", `Hens ${F.hens.length}/${COOP.maxHens}`) +
       `<div class="sh-body"><p class="sh-note">Feed a hen ${COOP.feedQty} plain <b>${wheatName}</b> from your barn and she lays a <b>${EGG.name}</b> in ${fmtDur(COOP.laySeconds)}. Tap a hen on the farm, or tend them all here.</p>` +
-      `<div class="item"><span class="ic"><img src="${icon(EGG.id)}" alt=""></span><div><b>${eggs} egg${eggs === 1 ? "" : "s"} ready</b><small>Eggs go to your barn: sell them or deliver them on orders</small></div><div class="acts"><button type="button" class="btn-s green" data-coop-all="collect" ${eggs ? "" : "disabled"}>Collect</button></div></div>` +
+      // Feed, then collect, right above the hens laying: the round in order.
       `<div class="item"><span class="ic"><img src="${icon(COOP.feedCrop)}" alt=""></span><div><b>${hungry} hungry hen${hungry === 1 ? "" : "s"}</b><small>You have ${wheat} plain ${wheatName} · ${COOP.feedQty} per hen</small></div><div class="acts"><button type="button" class="btn-s" data-coop-all="feed" ${feedable ? "" : "disabled"}>Feed</button></div></div>` +
+      `<div class="item"><span class="ic"><img src="${icon(EGG.id)}" alt=""></span><div><b>${eggs} egg${eggs === 1 ? "" : "s"} ready</b><small>Eggs go to your barn: sell them or deliver them on orders</small></div><div class="acts"><button type="button" class="btn-s green" data-coop-all="collect" ${eggs ? "" : "disabled"}>Collect</button></div></div>` +
       `<div class="coop-hens">${hens}</div>` +
       `<div class="item"><span class="ic">${I("hen")}</span><div><b>Hens ${F.hens.length}/${COOP.maxHens}</b><small>${next == null ? "Your coop is full" : henLock ? `The next hen <b style="color:#ffd65b">unlocks at Lv ${nextLv}</b>` : "One more hen, one more egg each round"}</small></div><div class="acts">${next == null ? `<button type="button" class="btn-s green" disabled>Full</button>` : `<button type="button" class="btn-s" data-buyhen ${henLock || F.leaves < next ? "disabled" : ""}>${henLock ? `Lv ${nextLv}` : `${next.toLocaleString("en-US")} ${L}`}</button>`}</div></div></div>`
     );
@@ -9160,7 +9126,7 @@ export function openFarm(options) {
     if (b.dataset.z === "in") zoomAt(1.2);
     else if (b.dataset.z === "out") zoomAt(1 / 1.2);
     else {
-      Z = Math.max(ZMIN, Math.min(VW / (WW + 120), VH / (WH + 80)));
+      Z = Math.max(ZMIN, fitZoom(VW, VH));
       cam = { x: WW / 2, y: WH / 2 };
       clampCam();
     }
@@ -9325,7 +9291,7 @@ export function openFarm(options) {
       VW = 1280;
       VH = Math.round((1280 * nh) / nw);
     }
-    ZMIN = Math.max(VW / BW, VH / BH);
+    ZMIN = zoomMin(VW, VH);
     Z = Math.max(Z, ZMIN);
     clampCam();
     K = Math.min(nw / VW, nh / VH);
@@ -9575,7 +9541,7 @@ export function openFarm(options) {
       /** Whether the Supply Balloon is drawn (tests). */
       hasBalloon: () => !!balloon?.crates,
       /** Where the scenery around the farm stands (tests: it never moves). */
-      scenery: () => MARGIN.map((m) => [Math.round(m.x), Math.round(m.y)]),
+      scenery: () => PROPS.map((p) => [Math.round(p.x), Math.round(p.y)]),
       /** A world point that opens each place on the farm when tapped (tests). */
       place: (k) =>
         ({
@@ -9614,6 +9580,10 @@ export function openFarm(options) {
         const pr = plotRect(i);
         return { x: pr.x + PW / 2, y: pr.y + PH / 2 };
       },
+      /** Open a sheet (and a tab) as a tap would (tests). */
+      openSheet: (name, tab) => openSheet(name, tab),
+      /** The view (tests): its size, the zoom, how far out it may go, the fit. */
+      view: () => ({ VW, VH, Z, ZMIN, fit: fitZoom(VW, VH), cam: { ...cam } }),
       /** Zoom (tests): the farm's scale, and a way to set it. */
       zoom: (z) => {
         if (z) {

@@ -92,11 +92,14 @@ export function openJourney(
     const key = focusKey();
     const next = parse(journeyMarkup(view, hooks.data()));
     if (newTab) {
-      // Another tab is another layout: swap the panel's insides whole.
-      for (const a of Array.from(next.attributes))
-        root().setAttribute(a.name, a.value);
-      root().replaceChildren(...Array.from(next.cloneNode(true).childNodes));
-      q<HTMLElement>("[data-journey-region=body]")?.scrollTo({ top: 0 });
+      // Another tab is another layout: patched in loosely, so the head and
+      // the tab row stay the same elements (the hub panel glides the switch)
+      // and only the new tab is built. Its list starts at the top (read
+      // before the change, while the layout is still up to date).
+      const body = q<HTMLElement>("[data-journey-region=body]");
+      const scrolled = !!body && body.scrollTop > 0;
+      patch(root(), template, next, undefined, true);
+      if (scrolled && body.isConnected) body.scrollTop = 0;
       showRoadTier();
     } else patch(root(), template, next);
     template = next;

@@ -229,6 +229,21 @@ for (const size of SIZES)
         await expect(
           panel.locator(`[data-profile-main][data-tab="${t}"]`),
         ).toBeVisible();
+        // The new tab slides in (ui/motion.ts): measure it once it has landed.
+        await expect
+          .poll(() =>
+            panel.evaluate(
+              (el) =>
+                el
+                  .getAnimations({ subtree: true })
+                  .filter(
+                    (a) =>
+                      a.playState === "running" &&
+                      a.effect?.getTiming().iterations !== Infinity,
+                  ).length,
+            ),
+          )
+          .toBe(0);
       };
       if (size.phone)
         await expect(panel.locator(".ui-panel-head .ui-tabs")).toBeVisible();
@@ -263,6 +278,23 @@ for (const size of SIZES)
       );
       await tab("mastery");
       await expect(panel.locator(".pf-mastery-chip")).toHaveCount(18);
+      // Every fighter's portrait is one shared picture, not inline art
+      // (fighterPortrait): the grid stays light to open and switch to.
+      await expect(
+        panel.locator(".pf-mastery-chip .ui-avatar > img"),
+      ).toHaveCount(18);
+      await expect(
+        panel.locator(".pf-mastery-chip .ui-avatar > svg"),
+      ).toHaveCount(0);
+      await expect
+        .poll(() =>
+          panel
+            .locator(".pf-mastery-chip .ui-avatar > img")
+            .evaluateAll((imgs: HTMLImageElement[]) =>
+              imgs.every((i) => i.complete && i.naturalWidth > 0),
+            ),
+        )
+        .toBe(true);
       await tab("overview");
       await expect(panel.locator(".pf-mini")).toHaveCount(2);
       await tab("trophies");

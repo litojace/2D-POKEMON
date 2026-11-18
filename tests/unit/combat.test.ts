@@ -91,7 +91,7 @@ it("packs static ability definitions as IDs and restores the renderer snapshot",
   const wire = packSnapshot(a.snapshot());
   expect(wire.projectiles[0]).not.toHaveProperty("ability");
   expect(wire.projectiles[0].abilityId).toBe("static-lance");
-  expect(unpackSnapshot(wire).projectiles[0].ability.damage).toBe(18);
+  expect(unpackSnapshot(wire).projectiles[0].ability.damage).toBe(20);
 });
 it("snapshots rebuild lantern shots and the practice grid from their ids", () => {
   const a = duel(),

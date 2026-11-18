@@ -3592,3 +3592,28 @@ body.hub-bistro #account-profile {
   object-fit: cover;
   object-position: 50% 50%;
 }
+
+/* A sheet is as tall as what it holds (it used to reach the counter bar
+   whatever it held: Friends left 426px empty), up to the room there is,
+   where its list scrolls. On phones it is a column beside the menu, not a
+   band across the whole screen: the restaurant stays in sight. */
+.bistro-layer .bs-sheet {
+  bottom: auto;
+  max-height: calc(
+    100% - var(--hub-card-h, 52px) - var(--hub-drop, 0px) - 68px -
+      var(--bs-y-b) - 84px
+  );
+}
+.bistro-layer.phone .bs-sheet {
+  left: auto;
+  bottom: auto;
+  width: min(560px, calc(100% - var(--bs-x-l) - var(--bs-x-r) - 64px));
+  max-height: calc(
+    100% - var(--hub-card-h, 42px) - var(--hub-drop, 0px) - 10px -
+      max(8px, var(--safe-bottom, 0px))
+  );
+}
+/* Room under the header for close's 44 px target, clear of the tabs. */
+.bistro-layer.phone .bs-sheet header {
+  padding-bottom: 9px;
+}

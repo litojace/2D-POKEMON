@@ -9,7 +9,7 @@
  * The camera may look a little way past the edge (PLAZA_OUT), never past
  * what is painted (PLAZA_MARGIN), and the zoom only ever shows what is built.
  *
- * Everything out there is either baked into the ground pictures (drawn
+ * Everything out there is either baked into the ground picture (drawn
  * under everyone) or drawn live in depth order. Which one is decided here,
  * not by hand: a thing may be baked only if no one who can walk the Plaza
  * could ever stand behind it with their picture under its picture
@@ -55,6 +55,32 @@ export function plazaZoom(nw: number, nh: number) {
     nw / (W + PLAZA_OUT.w + PLAZA_OUT.e),
     nh / (H + PLAZA_OUT.n + PLAZA_OUT.s),
   );
+}
+/**
+ * How far a player may zoom (pinch, wheel, + and −) on this screen. In: up
+ * to 1.8 times the usual, at most 1.5 (the ground is painted at one pixel a
+ * world px). Out: never past what is built, and never wider than the server
+ * shows other players (PLAZA.view), so a zoomed-out view never has empty
+ * ground where people should be.
+ */
+export function plazaZoomRange(nw: number, nh: number) {
+  const base = plazaZoom(nw, nh);
+  const built = Math.max(
+    nw / (W + PLAZA_OUT.w + PLAZA_OUT.e),
+    nh / (H + PLAZA_OUT.n + PLAZA_OUT.s),
+  );
+  const seen = Math.max(nw / PLAZA.view.w, nh / PLAZA.view.h);
+  return {
+    base,
+    min: Math.min(base, Math.max(built, seen)),
+    max: Math.max(base, Math.min(base * 1.8, 1.5)),
+  };
+}
+/** The zoom for a screen and a player's chosen factor (1 = the usual). */
+export function plazaZoomAt(nw: number, nh: number, factor: number) {
+  const r = plazaZoomRange(nw, nh);
+  const f = Number.isFinite(factor) && factor > 0 ? factor : 1;
+  return Math.max(r.min, Math.min(r.max, r.base * f));
 }
 /** Keep the camera's centre so the view stays inside what is built. */
 export function plazaCamClamp(
@@ -297,14 +323,14 @@ export const COWS: readonly {
 export function millHub(p: SurroundProp) {
   return { x: p.x, y: p.y - 168 * p.s };
 }
-/** Props baked into the strips (never over a walker), and those drawn live. */
+/** Props baked into the meadow (never over a walker), and those drawn live. */
 export const BAKED = SURROUND.filter((p) => !coversMovers(propBox(p)));
 export const LIVE = SURROUND.filter((p) => coversMovers(propBox(p)));
 /** The far bank's lamps (lit at night, mirrored in the river). */
 export const RIVER_LAMPS = SURROUND.filter((p) => p.kind === "lamp");
 /**
  * What moves out there but is drawn under every walker (cows, the windmill's
- * sails) is drawn after the baked strips: nothing baked may stand in front
+ * sails) is drawn after the baked meadow: nothing baked may stand in front
  * of it (a tree in front of a cow would be drawn under the cow).
  */
 export function movingBoxes(): (PropBox & { name: string })[] {

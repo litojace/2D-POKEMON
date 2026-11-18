@@ -43,6 +43,11 @@ import {
 } from "../../../packages/shared/src/bistro.js";
 import { createClient } from "@supabase/supabase-js";
 import {
+  createAvatarPhotoStore,
+  type AvatarPhotoStore,
+  type PhotoClient,
+} from "./avatar-photos.js";
+import {
   buildFriendsBoard,
   buildRecentPlayers,
   RECENT_DAYS,
@@ -84,7 +89,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261119130000_bistro_league_ids.sql";
+export const LATEST_MIGRATION = "20261119150000_bistro_league_ids.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -120,11 +125,12 @@ export interface AccountProvider {
     args: Record<string, unknown>,
   ): Promise<unknown>;
   /**
-   * A player's picture by id, for anyone to see (migration
-   * 20261119110000; service role). Null when hidden, removed or unknown.
+   * Players' own pictures: files in the private Storage bucket
+   * avatar-photos, rows in arena_avatar_photos (migration 20261119120000;
+   * service role). Without it, pictures can't be added and show the default.
    */
-  avatarPhoto?(id: string): Promise<{ type: string; data: Buffer } | null>;
-  /** A player's avatar by account id (migration 20261119120000; service role). */
+  photos?: AvatarPhotoStore;
+  /** A player's avatar by account id (migration 20261119140000; service role). */
   avatarOf?(playerId: string): Promise<string | null>;
 }
 /** One kept message between friends, as the database returns it. */
@@ -335,23 +341,13 @@ export function createAccountProvider(): AccountProvider {
         return (r.data as PushDevice[] | null) ?? [];
       },
     },
+    photos: createAvatarPhotoStore(() => admin() as unknown as PhotoClient),
     async avatarOf(playerId) {
       try {
         const result = await admin().rpc("arena_avatar_of", {
           p_player: playerId,
         });
         return result.error ? null : ((result.data as string | null) ?? null);
-      } catch {
-        return null;
-      }
-    },
-    async avatarPhoto(id) {
-      try {
-        const result = await admin().rpc("arena_avatar_photo", { p_id: id });
-        const row = result.data as { type?: unknown; data?: unknown } | null;
-        if (result.error || !row || typeof row.data !== "string") return null;
-        if (row.type !== "image/webp" && row.type !== "image/jpeg") return null;
-        return { type: row.type, data: Buffer.from(row.data, "base64") };
       } catch {
         return null;
       }
@@ -604,15 +600,16 @@ export function installAccountRoutes(
       });
     }),
   );
-  // Your own picture (migration 20261119110000): the device cuts and
-  // shrinks the photo to a 256 px WebP or JPEG; this stores it.
+  // Your own picture (migrations 20261119110000 and 20261119120000): the
+  // device cuts and shrinks the photo to a 256 px WebP or JPEG; this puts
+  // it in the Storage bucket and the database takes it (or refuses).
   app.post(
     "/api/account/avatar-photo",
     express.raw({
       type: ["image/webp", "image/jpeg"],
       limit: PHOTO_MAX_BYTES + 1024,
     }),
-    route(false, async (req, res, token, account) => {
+    route(false, async (req, res, _token, account) => {
       const type = req.get("content-type")?.split(";")[0].trim();
       const body = req.body as unknown;
       if (
@@ -622,10 +619,9 @@ export function installAccountRoutes(
         (type !== "image/webp" && type !== "image/jpeg")
       )
         throw new AccountError(400, "Use a WebP or JPEG picture under 64 KB.");
-      const avatar = await provider.rpc(token, "arena_set_avatar_photo", {
-        p_image: body.toString("base64"),
-        p_type: type,
-      });
+      if (!provider.photos)
+        throw new AccountError(503, "Server storage is not configured.");
+      const avatar = await provider.photos.save(account.id, type, body);
       onPlayerChanged(account.id);
       res.json({ ok: true, avatar });
     }),
@@ -635,7 +631,7 @@ export function installAccountRoutes(
   app.get("/api/avatar-photo/:id", async (req, res, next) => {
     try {
       const id = photoIdOf(`photo:${req.params.id}`);
-      const photo = id ? await provider.avatarPhoto?.(id) : null;
+      const photo = id ? await provider.photos?.read(id) : null;
       res.setHeader("X-Content-Type-Options", "nosniff");
       res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
       if (!photo) {
@@ -775,7 +771,10 @@ export function installAccountRoutes(
           "Administrators cannot delete their own account here.",
         );
       const appleRevoked = await revokeAppleFor(account.id);
+      const photo = await provider.photos?.pathOf(account.id);
       await provider.rpc(token, "arena_delete_my_account", {});
+      // The picture's row went with the account; its file goes now.
+      if (photo) await provider.photos?.remove([photo]);
       onPlayerChanged(account.id);
       res.json({ ok: true, appleRevoked });
     }),
@@ -1849,9 +1848,11 @@ export function installAccountRoutes(
     "/api/admin/players/delete",
     route(true, async (req, res, token) => {
       const data = deletePlayerSchema.parse(req.body);
+      const photo = await provider.photos?.pathOf(data.id);
       await provider.rpc(token, "arena_admin_delete_player", {
         p_player_id: data.id,
       });
+      if (photo) await provider.photos?.remove([photo]);
       onPlayerChanged(data.id);
       res.json({ ok: true });
     }),
@@ -1918,13 +1919,19 @@ export function installAccountRoutes(
               p_photo: id,
             })
           : null
-      ) as { type?: string; data?: string; hidden?: boolean } | null;
+      ) as { type?: unknown; path?: unknown; hidden?: boolean } | null;
+      const file =
+        row &&
+        typeof row.path === "string" &&
+        (row.type === "image/webp" || row.type === "image/jpeg")
+          ? await provider.photos?.file(row.path, row.type)
+          : null;
       res.setHeader("Cache-Control", "no-store");
       res.json(
-        row?.data
+        file
           ? {
-              src: `data:${row.type};base64,${row.data}`,
-              hidden: !!row.hidden,
+              src: `data:${file.type};base64,${file.data.toString("base64")}`,
+              hidden: !!row?.hidden,
             }
           : { src: null, hidden: false },
       );
@@ -1937,12 +1944,15 @@ export function installAccountRoutes(
         .object({ photo: z.string().uuid(), keep: z.boolean() })
         .strict()
         .parse(req.body);
-      const owner = await provider.rpc(token, "arena_admin_avatar_photo", {
+      const result = (await provider.rpc(token, "arena_admin_avatar_photo", {
         p_photo: data.photo,
         p_keep: data.keep,
-      });
+      })) as { owner?: unknown; path?: unknown } | null;
+      // A removed picture's file goes from the bucket too.
+      if (typeof result?.path === "string")
+        await provider.photos?.remove([result.path]);
       // The owner's seat, Friends and card stop showing a removed picture.
-      if (typeof owner === "string") onPlayerChanged(owner);
+      if (typeof result?.owner === "string") onPlayerChanged(result.owner);
       res.json({ ok: true });
     }),
   );

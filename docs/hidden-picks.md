@@ -159,8 +159,12 @@ battle, on the briefing, in the picker and on the Lobby's party stage
     sent as a 256 px WebP, or a JPEG on Safari, of 64 KB at most
     (`apps/client/src/avatar-photo.ts`). The 10 MB photo itself never
     leaves the device.
-  - The database checks the file's type and size and keeps one picture
-    per player. Each upload gets a new id.
+  - The game server checks the file's type, size and first bytes, puts
+    it in the private Supabase Storage bucket `avatar-photos`
+    (`photos/<id>.webp|jpg`, migration `20261119120000_avatar_photo_storage`,
+    docs/avatar-photo-storage.md), and the database keeps one picture per
+    player (who, where, hidden). Each upload gets a new id; the old file
+    is deleted.
   - The avatar becomes `photo:<id>`, served by the game server at
     `/api/avatar-photo/<id>` for 10 minutes of caching. A hidden or removed
     picture serves the default avatar instead.
@@ -174,16 +178,17 @@ battle, on the briefing, in the picker and on the Lobby's party stage
     - Every report reaches the admins (Admin, Reports).
     - At three reporters the picture is **hidden** until an admin looks.
     - The admin sees the picture and chooses **Keep picture** (shown
-      again, its reports cleared) or **Remove picture** (gone, and the
-      player can't add another for 7 days).
+      again, its reports cleared) or **Remove picture** (gone, its file
+      deleted, and the player can't add another for 7 days).
   - Tests: `tests/integration/avatar-photos.test.ts` (SQL),
-    `avatar-photo-routes.test.ts` (HTTP) and
+    `avatar-photo-store.test.ts` (Storage), `avatar-photo-routes.test.ts`
+    (HTTP) and
     `tests/visual/avatars.spec.ts`.
 
 ## Everywhere else (Nov 2026)
 
 - **Ranks:** each row shows the player's avatar in a ring of their rank's
-  colour. Migration `20261119120000_avatars_everywhere` adds `id` and
+  colour. Migration `20261119140000_avatars_everywhere` adds `id` and
   `avatar` to `arena_leaderboard`'s rows. The Friends board and Recent
   players carry it too. A tap on another player's own picture reports it.
 - **Plaza:** the player card shows the avatar, which the server reads in
@@ -203,8 +208,3 @@ battle, on the briefing, in the picker and on the Lobby's party stage
   while the arena loads, then turns over to the fighter, yours first
   (`vsReveal` in `main.ts`, `.vs-flip` in `style.css`). With reduced
   motion the fighters show at once.
-
-## Not built yet
-
-- Supabase Storage for players' own pictures (they are kept in the
-  database now): a separate session sets it up.
