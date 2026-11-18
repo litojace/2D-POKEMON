@@ -832,7 +832,7 @@ describe("play-test (bot raiders vs the floors)", () => {
   it("floor 1 is cleared solo every time; floor 9 less often; and floors take longer", () => {
     const rate = (floor: number) => {
       const runs = [1, 2, 3, 4, 5, 6].map((s) =>
-        playFloor(floor, ["voltkit"], s),
+        playFloor(floor, ["halcyra"], s),
       );
       return {
         rate: runs.filter((r) => r.cleared).length / runs.length,
