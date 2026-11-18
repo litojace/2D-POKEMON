@@ -4,7 +4,10 @@ import { openHub, openPlayPanel, createRoom } from "./helpers";
 // In the menus and in a room, the fighters' rig layers are rasterized ahead
 // (fighter-prepaint.ts), so the battle hands them to WebGL instead of
 // loading 64 SVG files per fighter behind the loading screen. A rematch
-// reuses them, and a fighter nobody wants any more is dropped.
+// reuses them, and a fighter nobody wants any more is dropped. In a PvP
+// room another side's pick is hidden until the match starts
+// (docs/hidden-picks.md): it is loaded at the briefing, whose "I'm ready"
+// waits for it, so nothing loads mid-fight.
 
 /** Each battle's queued loader files and its rig textures, at create. */
 async function routeMain(page: Page) {
@@ -104,7 +107,7 @@ async function backToRoom(page: Page) {
   await expect(page.locator("#battle")).toBeHidden();
 }
 
-test("the room rasterizes its fighters ahead and the battle loads none of their files", async ({
+test("the room rasterizes the fighters it may see ahead; the briefing loads the hidden one", async ({
   page,
 }) => {
   test.setTimeout(240_000);
@@ -117,22 +120,28 @@ test("the room rasterizes its fighters ahead and the battle loads none of their 
   await openPlayPanel(page);
   await createRoom(page);
   const held = await prepaintModule(page);
-  await untilPainted(page, held, ["voltkit", "cindrake"]);
+  // Yours is painted ahead; your opponent's pick isn't known yet.
+  await untilPainted(page, held, ["voltkit"]);
+  expect(base(await held(), "cindrake")).toBe(0);
 
   const first = await battle(page, 1);
-  // No fighter layer was queued for the loader: each is a painted canvas.
-  expect(first.queued).toEqual([]);
+  // Only the hidden pick's layers were queued for the loader (at the
+  // briefing); yours is a painted canvas.
+  const theirs = (keys: string[]) =>
+    keys.length >= 64 && keys.every((k) => k.startsWith("rig-cindrake-"));
+  expect(theirs(first.queued)).toBe(true);
   expect(first.created.rig).toBeGreaterThanOrEqual(128);
-  expect(first.created.canvas).toBe(first.created.rig);
+  expect(first.created.canvas).toBe(first.created.rig - first.queued.length);
 
-  // A rematch: the same canvases serve the next battle, nothing is repainted.
+  // Back in the room: your canvases serve the next battle, nothing of yours
+  // is repainted.
   await backToRoom(page);
   const kept = await held();
   expect(base(kept, "voltkit")).toBe(64);
-  expect(base(kept, "cindrake")).toBe(64);
+  expect(base(kept, "cindrake")).toBe(0);
   const second = await battle(page, 2);
-  expect(second.queued).toEqual([]);
-  expect(second.created.canvas).toBe(second.created.rig);
+  expect(theirs(second.queued)).toBe(true);
+  expect(second.created.canvas).toBe(second.created.rig - second.queued.length);
 
   // Picking another fighter in the room: the one nobody uses is dropped.
   await backToRoom(page);
@@ -142,7 +151,8 @@ test("the room rasterizes its fighters ahead and the battle loads none of their 
     w.__push();
   });
   await page.evaluate(() => (window as any).__push());
-  await untilPainted(page, held, ["tidefin", "cindrake"]);
+  await untilPainted(page, held, ["tidefin"]);
   expect(base(await held(), "voltkit")).toBe(0);
+  expect(base(await held(), "cindrake")).toBe(0);
   expect(errors).toEqual([]);
 });

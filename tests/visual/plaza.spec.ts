@@ -731,6 +731,42 @@ test("a runner behind a hurdle is under it, in front of it over it", async ({
   expect(errors).toEqual([]);
 });
 
+// A click on the ground (desktop) shows where you're going, as in MOBAs:
+// a ring closing in with chevrons, then a small ring on the spot until you
+// get there.
+test("a click on the ground marks where you're going until you arrive", async ({
+  page,
+}, info) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openPlaza(page);
+  await teleport(page, 1350, 1090);
+  await page.waitForTimeout(800);
+  const spot = await page.evaluate(() =>
+    (window as any).__plaza.worldClient(1640, 1130),
+  );
+  await page.mouse.click(spot.x, spot.y);
+  const mark = await page.evaluate(() => (window as any).__plaza.clickMark());
+  expect(mark?.ok).toBe(true);
+  expect(Math.hypot(mark.x - 1640, mark.y - 1130)).toBeLessThan(30);
+  await page.waitForTimeout(150);
+  await snap(page, info, "plaza-click-mark");
+  // Gone once you're there.
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__plaza.clickMark()), {
+      timeout: 20_000,
+    })
+    .toBeNull();
+  const P = await page.evaluate(() => {
+    const p = (window as any).__plaza.P;
+    return { x: p.x, y: p.y };
+  });
+  // (Near it: on a busy machine the in-page server runs ahead of the
+  // drawn frames and you settle where it stopped you, a step or two on.)
+  expect(Math.hypot(P.x - 1640, P.y - 1130)).toBeLessThan(80);
+  expect(errors).toEqual([]);
+});
+
 // Zoom: the mouse wheel and + / − on a desktop, two fingers on a phone;
 // within limits (never past what is built or what the server shows), and
 // kept for the next visit.
@@ -846,18 +882,38 @@ test("past the north edge, the river flows", async ({ page }, info) => {
         ];
       };
       const out: number[][] = [];
-      for (let x = 520; x < 880; x += 12) out.push(px(x, -60));
+      // Across the river's rows of ripples, west of the first footbridge.
+      for (let y = -125; y < -15; y += 10)
+        for (let x = 520; x < 880; x += 24) out.push(px(x, y));
       return out;
     });
+  // One meadow: the Plaza's ground picture goes on past its edges (no
+  // second picture meeting it at a seam), with a hole where the river is.
+  const ground = (x: number, y: number) =>
+    page.evaluate(([x, y]) => (window as any).__plaza.groundAt(x, y), [x, y]);
+  for (const [x, y] of [
+    [-40, 800],
+    [2740, 800],
+    [1700, 1740],
+    [600, -200],
+  ]) {
+    const [r, g, , alpha] = await ground(x, y);
+    expect(alpha, `meadow at ${x},${y}`).toBe(255);
+    expect(g, `grass at ${x},${y}`).toBeGreaterThan(r);
+  }
+  expect((await ground(700, -60))[3], "the river's hole").toBe(0);
   const a = await water();
   // Water: bluer than it is red.
   expect(a.filter(([r, , b]) => b > r + 40).length).toBeGreaterThan(
     a.length * 0.6,
   );
-  await page.waitForTimeout(1200);
-  const b = await water();
   // Ripples drift: the same stretch of water is not the same a moment later.
-  expect(a.some((c, i) => c.join() !== b[i].join())).toBe(true);
+  const first = a.map((c) => c.join());
+  await expect
+    .poll(async () => (await water()).some((c, i) => c.join() !== first[i]), {
+      timeout: 10_000,
+    })
+    .toBe(true);
   await snap(page, info, "plaza-river");
   expect(errors).toEqual([]);
 });

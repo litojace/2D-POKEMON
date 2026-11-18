@@ -817,32 +817,14 @@ export function drawWindows(ctx: Ctx, l: Light, low: boolean) {
 }
 
 /** The door (open when someone passes) and the menu board on the left wall. */
-export function drawDoorAndBoard(
-  ctx: Ctx,
-  open: number,
-  special: string,
-  l: Light,
-  /** Today's special: drawn on the board, which glows to say so. */
-  dish?: DishId,
-) {
+/**
+ * The door's leaf. It swings in (toward +x) on its hinge at the doorway's
+ * near side, so open it stands inside the room in front of whoever walks
+ * through: drawn sorted with the people (doorLeafDepth), not under them.
+ */
+export function drawDoorLeaf(ctx: Ctx, open: number, l: Light) {
   const g0 = DOOR.y - 0.42,
     g1 = DOOR.y + 0.42;
-  const frame = quadOnWall("left", g0 - 0.08, g1 + 0.08, 0, 128);
-  ctx.fillStyle = "#5b3420";
-  poly(ctx, frame);
-  ctx.fill();
-  const hole = quadOnWall("left", g0, g1, 0, 120);
-  ctx.fillStyle = l.night > 0.5 ? "#1a1830" : "#9fd2ef";
-  poly(ctx, hole);
-  ctx.fill();
-  // Street outside: a hint of pavement and light.
-  ctx.save();
-  poly(ctx, hole);
-  ctx.clip();
-  ctx.fillStyle = l.night > 0.5 ? "#2c2a3c" : "#c7b9a0";
-  ctx.fillRect(hole[0].x - 40, hole[0].y - 26, 80, 40);
-  ctx.restore();
-  // The door leaf swings in (toward +x) as it opens.
   const swing = Math.min(1, Math.max(0, open));
   const hinge = leftWallPt(g1, 0);
   const closedEnd = leftWallPt(g0, 0);
@@ -889,6 +871,49 @@ export function drawDoorAndBoard(
   ctx.beginPath();
   ctx.arc(kn.x, kn.y - 56, 3.2, 0, Math.PI * 2);
   ctx.fill();
+}
+/** Where the leaf stands for sorting with people (grid x + y of its middle). */
+export function doorLeafDepth(open: number): number {
+  const swing = Math.min(1, Math.max(0, open));
+  const g0 = DOOR.y - 0.42,
+    g1 = DOOR.y + 0.42;
+  // Closed: in the wall between g0 and g1. Open: along y = g1, x from -0.5 to 0.34.
+  const mx = -0.5 + 0.42 * swing,
+    my = g1 - (g1 - g0) * 0.5 * (1 - swing);
+  return mx + my;
+}
+export function drawDoorAndBoard(
+  ctx: Ctx,
+  open: number,
+  special: string,
+  l: Light,
+  /** Today's special: drawn on the board, which glows to say so. */
+  dish?: DishId,
+  /**
+   * Whoever is still outside, on the street side of the wall: drawn here,
+   * seen only through the doorway (the wall hides the rest of them).
+   */
+  outside?: () => void,
+) {
+  void open;
+  const g0 = DOOR.y - 0.42,
+    g1 = DOOR.y + 0.42;
+  const frame = quadOnWall("left", g0 - 0.08, g1 + 0.08, 0, 128);
+  ctx.fillStyle = "#5b3420";
+  poly(ctx, frame);
+  ctx.fill();
+  const hole = quadOnWall("left", g0, g1, 0, 120);
+  ctx.fillStyle = l.night > 0.5 ? "#1a1830" : "#9fd2ef";
+  poly(ctx, hole);
+  ctx.fill();
+  // Street outside: a hint of pavement and light.
+  ctx.save();
+  poly(ctx, hole);
+  ctx.clip();
+  ctx.fillStyle = l.night > 0.5 ? "#2c2a3c" : "#c7b9a0";
+  ctx.fillRect(hole[0].x - 40, hole[0].y - 26, 80, 40);
+  outside?.();
+  ctx.restore();
   // Bell over the door.
   const bell = leftWallPt(DOOR.y, 132);
   ctx.fillStyle = "#e6b33c";

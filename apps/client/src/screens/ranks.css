@@ -487,3 +487,22 @@
     display: none;
   }
 }
+
+/* A row's avatar (docs/hidden-picks.md, "Avatars") inside its rank ring;
+   another player's own picture is a button that reports it. */
+.rk-avatar {
+  overflow: hidden;
+  padding: 0;
+}
+.rk-avatar > .portrait-avatar {
+  width: 100%;
+  height: 100%;
+}
+button.rk-avatar.is-reportable {
+  cursor: pointer;
+  color: inherit;
+}
+button.rk-avatar.is-reportable:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}

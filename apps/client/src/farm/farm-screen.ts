@@ -55,6 +55,11 @@ export interface FarmScreenOptions {
   order(slot: number, kind: "deliver" | "skip"): Promise<FarmOrderResult>;
   /** A fighter's picture (who placed an order). */
   art(character: string): string;
+  /**
+   * A player's avatar picture by account id (docs/hidden-picks.md,
+   * "Avatars"): lists of friends show who they are, not their fighter.
+   */
+  player?(accountId: string): string;
   /** Buy a crop's next mastery star (migration 043). */
   master(crop: string): Promise<{
     farm: FarmState;

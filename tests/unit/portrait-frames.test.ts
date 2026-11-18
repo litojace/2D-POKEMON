@@ -57,7 +57,7 @@ it("uses the worn champion skin inside a single circular frame", () => {
   expect(framed).toContain("voltkit-midnight");
   expect(framed.match(/data-portrait-frame=/g)).toHaveLength(1);
 });
-it("preserves saved frames on offline friend initials and on live champion avatars", () => {
+it("shows friends as their avatars, in their saved frames", () => {
   const html = friendsMarkup(friendsView(), {
     list: {
       code: "ABCDEF12",
@@ -69,6 +69,7 @@ it("preserves saved frames on offline friend initials and on live champion avata
           online: true,
           fighter: "auralynx",
           frame: "galaxy-frame",
+          avatar: "ea-avatar-030",
         },
       ],
       incoming: [],
@@ -80,7 +81,11 @@ it("preserves saved frames on offline friend initials and on live champion avata
   expect(html).toContain('data-portrait-frame="conqueror"');
   expect(html).toContain('data-portrait-frame="galaxy-frame"');
   expect(html).toContain("Mia");
-  expect(html).toContain("auralynx");
+  // Who they are, not what they last played (docs/hidden-picks.md).
+  expect(html).toContain("/assets/avatars/ea-avatar-030.webp");
+  // No avatar chosen yet: the default one.
+  expect(html).toContain("/assets/avatars/ea-avatar-001.webp");
+  expect(html).not.toContain('data-fighter="auralynx"');
 });
 
 it("applies equipped Colors consistently and isolates SVG filters per placement", () => {
@@ -119,7 +124,7 @@ it("uses earned frame stars from the same saved clear counts everywhere and boun
     'data-frame-stars="5"',
   );
 });
-it("shows the saved champion skin, awakening stage and evolved frame on offline friends", async () => {
+it("shows an offline friend's avatar in their evolved frame, never their fighter's skin", () => {
   const html = friendsMarkup(friendsView(), {
     recent: null,
     party: { size: 1, ids: [], leader: true },
@@ -141,13 +146,19 @@ it("shows the saved champion skin, awakening stage and evolved frame on offline 
       outgoing: [],
     },
   });
-  // Friends' portraits are shared pictures (svgPicture): read the art the
-  // picture shows.
-  const src = html.match(/<img class="fighter-portrait" src="([^"]+)"/)?.[1];
-  expect(src).toMatch(/^blob:/);
-  const art = await resolveObjectURL(src!)!.text();
-  expect(art).toContain("tidefin-moontide");
+  expect(html).not.toContain("tidefin-moontide");
+  expect(html).toContain("/assets/avatars/ea-avatar-001.webp");
   expect(html).toContain('data-frame-stars="4"');
-  // The worn champion skin wins over the all-fighter colours.
-  expect(art).not.toContain("preview-palette");
+});
+
+it("reads a friend wearing their own picture (a 42-letter avatar)", async () => {
+  const { friendsSchema } = await import("../../packages/shared/src/accounts");
+  const avatar = "photo:11111111-2222-4333-8444-555555555555";
+  const list = friendsSchema.parse({
+    code: "ABCDEF12",
+    friends: [{ id: "a", name: "Mia", avatar }],
+    incoming: [],
+    outgoing: [],
+  });
+  expect(list.friends[0].avatar).toBe(avatar);
 });

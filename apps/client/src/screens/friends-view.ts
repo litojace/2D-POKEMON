@@ -22,7 +22,8 @@ import type {
   RecentPlayer,
 } from "../../../../packages/shared/src/accounts";
 import type { RaidLoadout } from "../../../../packages/shared/src/raid";
-import { framePortrait, framedAvatar } from "../portraits";
+import { identityPortrait } from "../portraits";
+import { photoIdOf } from "../../../../packages/shared/src/avatars";
 import { serverNow } from "../server-clock";
 import {
   button,
@@ -218,27 +219,18 @@ function portrait(
     | "look"
     | "championLooks"
     | "raidClears"
+    | "avatar"
   >,
   status?: Presence,
 ) {
   const fighter = fighterOf(p.fighter);
-  const art = fighter
-    ? framedAvatar(
-        {
-          character: fighter,
-          raidLook: (p.look ?? { frame: p.frame }) as RaidLoadout,
-          championLooks: p.championLooks,
-          raidClears: p.raidClears,
-        },
-        `fr-${p.id.replace(/[^a-z0-9]/gi, "")}`,
-        undefined,
-        // One shared picture per look: a list of friends stays light.
-        true,
-      )
-    : framePortrait(
-        `<span class="fr-initial">${esc(Array.from(p.name.trim())[0]?.toUpperCase() ?? "?")}</span>`,
-        p.look?.frame ?? p.frame,
-      );
+  // A friend as themselves: their avatar in their frame (docs/hidden-picks.md,
+  // "Avatars"), not the fighter they last played.
+  const art = identityPortrait({
+    avatar: p.avatar,
+    raidLook: (p.look ?? { frame: p.frame }) as RaidLoadout,
+    raidClears: p.raidClears,
+  });
   return `<span class="fr-avatar"${fighter ? ` style="--el:var(--el-${CHARACTERS[fighter].element})"` : ""} aria-hidden="true">${art}${status ? `<i class="ui-status" style="--st:var(--st-${status})"></i>` : ""}</span>`;
 }
 function rowShell(o: {
@@ -406,6 +398,18 @@ function friendRow(f: Friend, d: FriendsData, view: FriendsView, now: number) {
           disabled: busy,
           attrs: { "data-friend-remove": f.id },
         }) +
+        // Their own picture (seen by everyone): report it.
+        (photoIdOf(f.avatar)
+          ? button("Report picture", {
+              size: "s",
+              disabled: busy,
+              attrs: {
+                "data-friend-report-photo": photoIdOf(f.avatar)!,
+                "data-friend-name": f.name,
+                "aria-label": `Report ${f.name}'s picture`,
+              },
+            })
+          : "") +
         blockButton(f, busy)
   }</div>`;
   return rowShell({

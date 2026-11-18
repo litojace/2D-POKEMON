@@ -5,6 +5,7 @@ import {
   type RaidProgress,
 } from "../../../packages/shared/src/raid.js";
 import type { AccountProvider } from "./accounts.js";
+import { isAvatar } from "../../../packages/shared/src/avatars.js";
 
 /** Room and battle snapshots use saved appearances, never client-supplied gear. */
 export class FighterAppearance {
@@ -21,9 +22,10 @@ export class FighterAppearance {
     this.pending.set(fighter, request);
     const read = (name: string) =>
       Promise.resolve().then(() => this.accounts.rpc(token, name, {}));
-    const [progress, skins] = await Promise.allSettled([
+    const [progress, skins, avatar] = await Promise.allSettled([
       read("arena_raid_progress"),
       read("arena_my_looks"),
+      read("arena_my_avatar"),
     ]);
     if (this.pending.get(fighter) !== request || !current()) return;
     this.pending.delete(fighter);
@@ -33,7 +35,16 @@ export class FighterAppearance {
     }
     if (skins.status === "fulfilled")
       fighter.championLooks = (skins.value ?? {}) as Fighter["championLooks"];
-    if (progress.status === "fulfilled" || skins.status === "fulfilled")
+    // The player's own avatar (who they are, whatever they play).
+    if (avatar.status === "fulfilled")
+      fighter.avatar = isAvatar(avatar.value)
+        ? (avatar.value as string)
+        : undefined;
+    if (
+      progress.status === "fulfilled" ||
+      skins.status === "fulfilled" ||
+      avatar.status === "fulfilled"
+    )
       changed();
   }
 }

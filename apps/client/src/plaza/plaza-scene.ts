@@ -11,6 +11,8 @@
  * line; the typed entry point is plaza-screen.ts.
  */
 import { CHAT_EMOTES } from "../../../../packages/shared/src/chat";
+import { photoIdOf } from "../../../../packages/shared/src/avatars";
+import { avatarSrc } from "../portraits";
 import { bubbleLines } from "../chat/bubble-text";
 /** A chat bubble's text is at most this wide; longer lines wrap. */
 const BUBBLE_TEXT_W = 150;
@@ -107,7 +109,7 @@ import {
 } from "./plaza-surround";
 import {
   RIVER_LAMPS,
-  Surroundings,
+  paintSurroundings,
   drawFarmLife,
   drawRiver,
   drawRiverLights,
@@ -283,17 +285,31 @@ export function openPlaza(options) {
     const id = setTimeout(run, 1000);
     return () => clearTimeout(id);
   };
-  bg.width = W;
-  bg.height = H;
+  /**
+   * One meadow: the Plaza's ground and the world around it (the river's
+   * banks, the woods, the farm: plaza-surround*.ts) are painted as one
+   * picture, PLAZA_MARGIN past each edge, so there is no seam where a
+   * separate picture would meet it. World (0, 0) is at (GM, GM) in it.
+   */
+  const GM = PLAZA_MARGIN,
+    GW = W + 2 * GM,
+    GH = H + 2 * GM;
+  bg.width = GW;
+  bg.height = GH;
   function paintBg() {
     const g = bg.getContext("2d");
+    g.setTransform(1, 0, 0, 1, GM, GM);
     seed = 11;
-    // grass: soft gradient, painterly dabs, tufts, clover, little flowers
+    // grass: soft gradient, painterly dabs, tufts, clover, little flowers,
+    // over the whole meadow at the same density everywhere
+    const more = (GW * GH) / (W * H),
+      gx = () => -GM + rnd() * GW,
+      gy = () => -GM + rnd() * GH;
     g.fillStyle = "#77c25b";
-    g.fillRect(0, 0, W, H);
-    for (let i = 0; i < 70; i++) {
-      const x = rnd() * W,
-        y = rnd() * H,
+    g.fillRect(-GM, -GM, GW, GH);
+    for (let i = 0; i < 70 * more; i++) {
+      const x = gx(),
+        y = gy(),
         r = 120 + rnd() * 320,
         gr = g.createRadialGradient(x, y, 0, x, y, r),
         c = rnd() < 0.5 ? "150,220,110" : "70,150,70";
@@ -303,17 +319,17 @@ export function openPlaza(options) {
       g.fillRect(x - r, y - r, r * 2, r * 2);
     }
     const greens = ["#6cb851", "#82cc63", "#5fae4a", "#8fd46e", "#71bd55"];
-    for (let i = 0; i < 26000; i++) {
-      const x = rnd() * W,
-        y = rnd() * H;
+    for (let i = 0; i < 26000 * more; i++) {
+      const x = gx(),
+        y = gy();
       g.fillStyle = greens[i % 5];
       g.beginPath();
       g.ellipse(x, y, 2.4 + rnd() * 2.6, 1.3 + rnd(), rnd() * 3, 0, 7);
       g.fill();
     }
-    for (let i = 0; i < 2200; i++) {
-      const x = rnd() * W,
-        y = rnd() * H;
+    for (let i = 0; i < 2200 * more; i++) {
+      const x = gx(),
+        y = gy();
       g.strokeStyle = rnd() < 0.5 ? "#4f9a3c" : "#a6e07e";
       g.lineWidth = 1.6;
       g.beginPath();
@@ -823,14 +839,14 @@ export function openPlaza(options) {
     g.fillRect(GATE.x + 72, GATE.y + 10, W - GATE.x - 72, 5);
     g.fillRect(0, GATE.y + 21, GATE.x - 72, 4);
     g.fillRect(GATE.x + 72, GATE.y + 21, W - GATE.x - 72, 4);
-    // The river bank's verge and railing along the north edge.
+    // The river bank's verge and railing along the north edge, and the
+    // world past the edges.
     paintVerge(g);
+    paintSurroundings(g);
+    g.setTransform(1, 0, 0, 1, 0, 0);
   }
-  /** The world past the Plaza's edges (plaza-surround*.ts). */
-  const around = new Surroundings(memoryConstrained() ? 0.6 : 1);
   function prep() {
     paintBg();
-    around.paint();
     ready = true;
   }
 
@@ -1442,17 +1458,109 @@ export function openPlaza(options) {
     if (who) return showCard(who);
     hideCard();
     // A click walks you there, round whatever is in the way (plaza-path.ts).
-    if (e.pointerType === "mouse") walkTo(w);
+    if (e.pointerType === "mouse") walkTo(w, true);
   });
   /** The rest of the way after `target`, and where it ends. */
   let route = [],
     routeEnd = null,
     replannedAt = 0;
-  function walkTo(w) {
+  function walkTo(w, click = false) {
     routeEnd = w;
     route = plazaPath(P, w);
+    const end = route[route.length - 1];
     target = route.shift() ?? null;
     replannedAt = performance.now();
+    // The click marker (as in MOBAs and ARPGs): where you're going, or a
+    // red cross where there is no way.
+    if (click)
+      clickMark = end
+        ? { x: end.x, y: end.y, t: 0, ok: true }
+        : { x: w.x, y: w.y, t: 0, ok: false };
+  }
+  /** The click marker: where a click sent you (drawn on the ground). */
+  let clickMark = null;
+  const MARK_BURST = 0.45;
+  function drawClickMark(g, time) {
+    const m = clickMark;
+    if (!m) return;
+    m.t = m.t ? m.t : time;
+    const age = time - m.t;
+    // Arrived (or walked off with the keys): the marker goes.
+    const going = m.ok && routeEnd && target;
+    if (age > MARK_BURST && !going) {
+      if (age > MARK_BURST + 0.25 || m.ok) clickMark = null;
+      if (!clickMark) return;
+    }
+    g.save();
+    g.translate(m.x, m.y);
+    g.scale(1, 0.42);
+    g.lineCap = "round";
+    if (!m.ok) {
+      // No way there: a red cross, fading.
+      const a = Math.max(0, 1 - age / (MARK_BURST + 0.25));
+      g.scale(1, 1 / 0.42);
+      g.strokeStyle = `rgba(20,8,12,${0.5 * a})`;
+      g.lineWidth = 7;
+      g.beginPath();
+      g.moveTo(-9, -6);
+      g.lineTo(9, 6);
+      g.moveTo(9, -6);
+      g.lineTo(-9, 6);
+      g.stroke();
+      g.strokeStyle = `rgba(255,90,100,${a})`;
+      g.lineWidth = 4;
+      g.stroke();
+      g.restore();
+      return;
+    }
+    const k = Math.min(1, age / MARK_BURST),
+      ease = 1 - (1 - k) ** 3;
+    // Gold with a dark edge and a white core, so it stands out on the
+    // grass, the stones and the track alike (pale blue sank into them).
+    const line = (a, w = 1) => {
+      g.strokeStyle = `rgba(28,18,8,${0.75 * a})`;
+      g.lineWidth = 8 * w;
+      g.stroke();
+      g.strokeStyle = `rgba(255,206,48,${a})`;
+      g.lineWidth = 4.5 * w;
+      g.stroke();
+      g.strokeStyle = `rgba(255,250,220,${0.9 * a})`;
+      g.lineWidth = 1.5 * w;
+      g.stroke();
+    };
+    if (k < 1 && !reduced) {
+      // The burst: a ring closing in and four chevrons pointing to the spot.
+      const r = 50 - 32 * ease,
+        a = 1 - k * 0.5;
+      g.beginPath();
+      g.arc(0, 0, r, 0, Math.PI * 2);
+      line(a);
+      for (let i = 0; i < 4; i++) {
+        g.save();
+        g.rotate((i * Math.PI) / 2 + Math.PI / 4);
+        g.translate(r + 14, 0);
+        g.beginPath();
+        g.moveTo(12, -12);
+        g.lineTo(0, 0);
+        g.lineTo(12, 12);
+        line(a);
+        g.restore();
+      }
+    }
+    // While you walk there: a ring pulsing on the spot, a dot in it.
+    const p = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(time * 6);
+    g.beginPath();
+    g.arc(0, 0, 15 + 3 * p, 0, Math.PI * 2);
+    line(0.8 + 0.2 * p, 0.85);
+    g.beginPath();
+    g.arc(0, 0, 5.5, 0, Math.PI * 2);
+    g.fillStyle = "rgba(28,18,8,.7)";
+    g.fill();
+    g.beginPath();
+    g.arc(0, 0, 3.8, 0, Math.PI * 2);
+    g.fillStyle = "#ffce30";
+    g.fill();
+    g.restore();
   }
   /** The player card: name, level, title; add friend, invite to party. */
   let cardFor = null;
@@ -1461,7 +1569,9 @@ export function openPlaza(options) {
     if (!p?.accountId) return;
     cardFor = p;
     const card = $("pz-card");
-    card.innerHTML = `<div class="pc-h"><img src="${b.img?.src ?? ""}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts"><button type="button" data-pc="friend">Add friend</button><button type="button" data-pc="party">Invite to party</button></div><div class="pc-acts pc-safety"><button type="button" data-pc="report">Report</button><button type="button" data-pc="block" class="pc-block">Block</button></div>`;
+    // Who they are: their avatar (docs/hidden-picks.md, "Avatars").
+    const photo = photoIdOf(p.avatar);
+    card.innerHTML = `<div class="pc-h"><img class="pc-avatar" src="${avatarSrc(p.avatar)}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts"><button type="button" data-pc="friend">Add friend</button><button type="button" data-pc="party">Invite to party</button></div><div class="pc-acts pc-safety">${photo ? '<button type="button" data-pc="report-photo">Report picture</button>' : ""}<button type="button" data-pc="report">Report</button><button type="button" data-pc="block" class="pc-block">Block</button></div>`;
     card.hidden = false;
   }
   function hideCard() {
@@ -1479,6 +1589,7 @@ export function openPlaza(options) {
         b.dataset.pc,
         cardFor.accountId,
         cardFor.name,
+        cardFor.avatar,
       ));
     } finally {
       b.disabled = false;
@@ -3700,17 +3811,18 @@ export function openPlaza(options) {
       vx1 = Math.min(W + PLAZA_MARGIN, Math.ceil(c1.x) + 2),
       vy1 = Math.min(H + PLAZA_MARGIN, Math.ceil(c1.y) + 2);
     {
-      // The Plaza's own ground, then the world around it (plaza-surround*):
-      // the river's water first, under the north strip's hole.
-      const bx0 = Math.max(0, vx0),
-        by0 = Math.max(0, vy0),
-        bx1 = Math.min(W, vx1),
-        by1 = Math.min(H, vy1);
+      // The river's water first, under the meadow's hole for it; then the
+      // meadow (the Plaza and the world around it, one picture).
+      if (vy0 < 0) drawRiver(g, time, night(), low, vx0, vy0, vx1);
+      const bx0 = Math.max(-GM, vx0),
+        by0 = Math.max(-GM, vy0),
+        bx1 = Math.min(W + GM, vx1),
+        by1 = Math.min(H + GM, vy1);
       if (bx1 > bx0 && by1 > by0)
         g.drawImage(
           bg,
-          bx0,
-          by0,
+          bx0 + GM,
+          by0 + GM,
           bx1 - bx0,
           by1 - by0,
           bx0,
@@ -3718,10 +3830,10 @@ export function openPlaza(options) {
           bx1 - bx0,
           by1 - by0,
         );
-      if (vy0 < 0) drawRiver(g, time, night(), low, vx0, vy0, vx1);
-      around.draw(g, vx0, vy0, vx1, vy1);
       drawFarmLife(g, time, reduced, vx0, vy1, vx1);
     }
+    // Where a click sent you, on the ground under everyone.
+    if (!photo) drawClickMark(g, time);
     // pad glow, runway spotlight
     PADS.forEach(([x, y]) => {
       g.fillStyle = `rgba(159,208,255,${0.18 + Math.sin(time * 3 + x) * 0.1})`;
@@ -4614,15 +4726,14 @@ export function openPlaza(options) {
       keys.clear();
       probe?.pause();
       layer.style.display = "none";
-      // Where memory is short (an iPhone), the painted ground (a 2700 × 1700
-      // canvas, 17.5 MB) is painted again on return instead of kept behind
+      // Where memory is short (an iPhone), the painted ground (a 3300 × 2300
+      // canvas, 30 MB, with the world around the Plaza) is painted again on return instead of kept behind
       // the Lobby, the Farm or the Bistro, as the Bistro does its room.
       // (Once the page is idle, not in the tap that switched tabs.)
       if (memoryConstrained())
         idleRelease = requestIdle(() => {
           if (!away) return;
           bg.width = bg.height = 0;
-          around.release();
         });
     },
     /** Back: drawn at once as you left it; the server's state follows. */
@@ -4632,16 +4743,13 @@ export function openPlaza(options) {
       idleRelease?.();
       idleRelease = undefined;
       if (!bg.width) {
-        bg.width = W;
-        bg.height = H;
+        bg.width = GW;
+        bg.height = GH;
         // (paintBg reseeds the scene's random numbers; the rest of the
         // scene's sequence carries on as if it had not run again.)
         const kept = seed;
         paintBg();
         seed = kept;
-      }
-      if (!around.strips.length) {
-        around.paint();
       }
       layer.style.display = "";
       running = true;
@@ -4702,7 +4810,7 @@ export function openPlaza(options) {
         return [
           ...bg
             .getContext("2d")
-            .getImageData(Math.round(x), Math.round(y), 1, 1).data,
+            .getImageData(Math.round(x) + GM, Math.round(y) + GM, 1, 1).data,
         ];
       },
       /** Where a world point is on the page (tests). */
@@ -4727,11 +4835,11 @@ export function openPlaza(options) {
         y1: cam.y + NH / 2 / Z,
         z: Z,
       }),
+      /** The click marker now (tests). */
+      clickMark: () => (clickMark ? { ...clickMark } : null),
       /** Tests: zoom to a factor of the usual (as a pinch or the wheel). */
       setZoom: (f) => setZoom(f),
       zoomRange: () => plazaZoomRange(NW, NH),
-      /** Pixels in the surroundings' strips (tests). */
-      surroundPixels: () => around.pixels,
       /** Tests: hold the time of day (0.42 = midday). */
       setTod(t) {
         tod = t;

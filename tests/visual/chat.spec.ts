@@ -5,6 +5,7 @@ import {
   snap,
   pickRoomMode,
   createRoom,
+  inside,
 } from "./helpers";
 import { fakeFarm } from "./farm-fake";
 import { fakeBistro } from "./bistro-fake";
@@ -327,7 +328,8 @@ for (const size of SIZES)
       );
       await expect(drawer).toBeHidden();
 
-      // A room: the button top left, clear of the seats.
+      // A room (no top bar): the button in the banner's top-left corner,
+      // clear of its title and of the ⋯ menu in the other corner.
       await page.evaluate(() =>
         (window as any).__room("pvp", { mode: "teams", phase: "lobby" }),
       );
@@ -344,17 +346,28 @@ for (const size of SIZES)
         "data-place",
         "room",
       );
-      const [btn, panel] = await Promise.all([
+      await expect(page.locator(".topbar")).toBeHidden();
+      const [btn, panel, more, title] = await Promise.all([
         box(page, "#chat-button"),
         box(page, ".room-screen .room-banner"),
+        box(page, ".room-screen .room-more"),
+        box(page, ".room-screen .room-banner-name"),
       ]);
-      expect(btn.y + btn.height).toBeLessThanOrEqual(panel.y);
+      expect(inside(btn, panel)).toBe(true);
+      expect(inside(more, panel)).toBe(true);
+      expect(btn.x + btn.width).toBeLessThanOrEqual(title.x);
+      expect(title.x + title.width).toBeLessThanOrEqual(more.x);
       expect(btn.x).toBeGreaterThanOrEqual(size.inset[0]);
       await page.click("#chat-button");
-      // The room, just joined, comes first.
-      await expect(drawer.locator('[data-chat-tab="room"]')).toHaveAttribute(
+      // A 2v2 room, just joined: your Team comes first (only your side
+      // reads it), Room beside it (docs/hidden-picks.md).
+      await expect(drawer.locator('[data-chat-tab="team"]')).toHaveAttribute(
         "aria-selected",
         "true",
+      );
+      await expect(drawer.locator('[data-chat-tab="room"]')).toBeVisible();
+      await expect(drawer.locator(".chat-empty")).toContainText(
+        "Only your team reads this",
       );
       await snap(page, info, `chat-room-${size.name}`);
       expect(errors).toEqual([]);

@@ -8,6 +8,8 @@ import {
   type SnapshotMeta,
 } from "./snapshot-meta.js";
 export * from "./snapshot-meta.js";
+export * from "./pick-rules.js";
+export * from "./avatars.js";
 export const RULES = {
   width: 1600,
   height: 900,
@@ -2406,14 +2408,14 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
  * gap between melee and ranged champions is wider than with four.
  */
 export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.842,
+  voltkit: 0.86,
   cindrake: 1.154,
   tidefin: 0.838,
   auralynx: 1.2,
   lumoth: 0.854,
   mystowl: 0.836,
   terradon: 1.061,
-  duskveil: 0.806,
+  duskveil: 0.85,
   coilemur: 1.252,
   pyranda: 0.858,
   glacelle: 0.879,
@@ -2422,7 +2424,7 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.19,
   wombolder: 1.18,
   shadopus: 1.168,
-  pangrove: 1.111,
+  pangrove: 1.07,
   mossloth: 0.972,
 };
 /**
@@ -2667,6 +2669,24 @@ export interface Fighter extends Vec {
   id: string;
   name: string;
   character: CharacterId;
+  /**
+   * PvP lobby: this player has locked in `character` (Lock in, or Ready).
+   * Until then `character` is only a default and the seat reads "Choosing".
+   */
+  locked?: boolean;
+  /**
+   * The player's avatar from the library (packages/shared/src/avatars.ts),
+   * their picture wherever they are; unset: the default.
+   */
+  avatar?: string;
+  /** PvP lobby: the fighter this player is looking at (teammates only). */
+  browse?: CharacterId;
+  /**
+   * PvP lobby: this player's pick is hidden from you (another side). The
+   * server sends no real `character` (or `browse`) for them until the match
+   * starts; `character` is a placeholder and must not be shown.
+   */
+  veiled?: boolean;
   connected: boolean;
   ready: boolean;
   hp: number;

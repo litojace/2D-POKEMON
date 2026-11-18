@@ -5,7 +5,8 @@
  * the Shop and the Wardrobe, battles, the Plaza) sizes it from AURA_SIZE
  * below, through the helpers here. Change AURA_SIZE and every one of them
  * follows. (Item thumbnails are the exception: there the aura fills its
- * tile, with no fighter to measure against.)
+ * tile, with no fighter to measure against. The Plaza, whose fighters are
+ * small, draws them a little bigger on top: PLAZA_AURA_BOOST.)
  *
  * Units. An aura is drawn in its own "aura units" (collection-fx.ts): its
  * ring is about 48 of them. A fighter's art (its SVG, creature-design.ts)

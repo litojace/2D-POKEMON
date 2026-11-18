@@ -1457,3 +1457,7 @@
 .plaza-layer.phone .pz-album-grid button.slot {
   border-width: 2px;
 }
+/* The card's avatar (docs/hidden-picks.md, "Avatars"): the whole circle. */
+.pc-h img.pc-avatar {
+  object-position: 50% 50%;
+}
