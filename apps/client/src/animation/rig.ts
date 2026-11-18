@@ -37,8 +37,8 @@ import { HOVERING, paletteFor, type SkinLook } from "../creature-design";
 import { hexToNumber, wornArt } from "../skins/skin-art";
 import { drawColorsFx } from "../skins/colors-fx";
 import {
-  FX_GRAVITY,
   drawAnyParticle,
+  stepParticle,
   drawSkinFx,
   type FxShape,
 } from "../skins/skin-fx";
@@ -1653,12 +1653,7 @@ export class FighterRig {
       );
     this.fxState = state;
     // ---- Update and draw particles.
-    for (const p of this.particles) {
-      p.age += dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vy += (FX_GRAVITY[p.shape] ?? 0) * dt;
-    }
+    for (const p of this.particles) stepParticle(p, dt);
     this.particles = this.particles.filter((p) => p.age < p.life);
     for (const p of this.particles)
       drawAnyParticle(p.behind ? this.under : g, p, 1 - p.age / p.life);

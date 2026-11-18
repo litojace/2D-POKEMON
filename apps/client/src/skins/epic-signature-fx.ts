@@ -7,17 +7,16 @@ import { WORLD_ART } from "../../../../packages/shared/src/world-art";
  * Signature effects for the Legendary skins: each Nova Vanguard suit and
  * each Sky Pirates captain has its own motif tied to its champion (Voltkit's
  * pulse chevrons or storm compass, Sunbara's rising dawn or shoulder parrot,
- * Mystowl's star chart or treasure map...), plus a landing and a victory:
- * Nova's hero landing and star fan, the pirates' anchor drop and treasure
- * chest. Epics keep the small glint every Epic has; motifs moving round
- * every fighter on the court read as clutter, so they stay a Legendary mark.
+ * Mystowl's star chart or treasure map...), summoned by its ultimate rather
+ * than worn all the time, plus idle light on the suit, a movement trail, and
+ * a landing and a victory: Nova's hero landing and star fan, the pirates'
+ * anchor drop and treasure chest. Epics keep the small glint every Epic has.
  *
  * Budget: every motif draws on the rig's two existing Graphics layers (no
  * scene objects). With `ambient` off (Low, or past the two-fighter battle
  * cap) it draws a compact version within 20 Graphics calls and emits
- * nothing; with it on, at most 40 calls and a few particles a second. An
- * ultimate swells the motif for under a second and throws one small burst
- * in its own shape. Nothing changes hitboxes, sizes or timing, and motifs
+ * no idle particles; with it on, at most 40 calls and a few particles a
+ * second. An ultimate also throws one small burst in its own shape. Nothing changes hitboxes, sizes or timing, and motifs
  * stay off the face: beside, behind, above the head or on the ground.
  */
 type G = Phaser.GameObjects.Graphics;
@@ -795,76 +794,113 @@ export const EPIC_SIGNATURES: Record<string, Signature> = Object.fromEntries(
   TABLES.flatMap(([suffix, table]) => Object.entries(table).map(([id, sig]) => [`${id}-${suffix}`, sig])),
 );
 
-const ULT_MS = 900;
-/** The Legendary hero landing and victory pose, swelling a little longer. */
-const MOMENT_MS = 1200;
-const ULTS = new WeakMap<object, { at: number; ms: number }>();
-/** The Legendary sets land and win in style. */
-const isLegendary = (skin: string) =>
-  skin.endsWith("-nova-vanguard") || skin.endsWith("-sky-pirates");
+/** How long a champion's own motif stays out once summoned. */
+const FLOURISH_MS = 1900;
+/** When each fighter's motif was last summoned (ultimate, landing, win). */
+const FLOURISHES = new WeakMap<object, number>();
 const isPirate = (skin: string) => skin.endsWith("-sky-pirates");
 /** A Sky Pirate's anchor landing and treasure victory, drawn over time. */
 const PIRATE_MOMENTS = new WeakMap<object, { land?: number; win?: number }>();
 const LAND_MS = 1100,
   WIN_MS = 1400;
+/**
+ * The same Graphics with every fill and line drawn at a fraction of its
+ * alpha, so a motif can fade in and out without each one knowing about it.
+ */
+function faded(g: G, a: number): G {
+  if (a >= 1) return g;
+  const p: G = new Proxy(g, {
+    get(t, k) {
+      const v = (t as any)[k];
+      if (typeof v !== "function") return v;
+      if (k === "fillStyle") return (c: number, al = 1) => (t.fillStyle(c, al * a), p);
+      if (k === "lineStyle") return (w: number, c: number, al = 1) => (t.lineStyle(w, c, al * a), p);
+      return (...args: unknown[]) => {
+        const r = v.apply(t, args);
+        return r === t ? p : r;
+      };
+    },
+  });
+  return p;
+}
+/** Ease out with a little overshoot: a pop that settles (0 → ~1.1 → 1). */
+const easeOutBack = (x: number) => {
+  const c1 = 1.70158,
+    c3 = c1 + 1;
+  return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+};
 
-/** Draw a signature for one frame. */
+/**
+ * Draw a Legendary skin's effects for one frame.
+ *
+ * Modelled on how premium skins work in League of Legends, Mobile Legends
+ * and Brawl Stars: the effects live on the costume and on what the fighter
+ * does, not on props circling it all the time.
+ *
+ *  - Idle: light that belongs to the suit itself (Nova's energy running
+ *    along its seams into a breathing emblem; a glint sweeping a pirate's
+ *    gold-edged brim and buckle) and, with the ambient budget, a few motes
+ *    drifting off it with air resistance.
+ *  - Moving: a trail at the feet (Nova's energy ripples and dash streaks;
+ *    the pirates' sea-spray puffs and gold dust), like Legend skin trails.
+ *  - Moments: the landing and victory of each collection, and the
+ *    champion's own motif summoned with a pop on its ultimate, landing and
+ *    victory, then gone.
+ */
 export function drawEpicSignature(ctx: FxContext, skin: string) {
   const sig = EPIC_SIGNATURES[skin];
   if (!sig || ctx.defeated) return;
   const { sc } = ctx;
   const ground = ctx.y + WORLD_ART.fighterFeet * sc;
-  if (isPirate(skin) && (ctx.greeting || ctx.celebrating)) {
+  const pirate = isPirate(skin);
+  // The motif answers the ultimate; Nova also shows it on landing and win
+  // (the pirates have their anchor and chest there instead).
+  if (ctx.ultimate || (!pirate && (ctx.greeting || ctx.celebrating))) FLOURISHES.set(ctx.g, ctx.now);
+  if (pirate && (ctx.greeting || ctx.celebrating)) {
     // Sky Pirates: an anchor drops and bites the ground, or a treasure chest
-    // bursts open behind the captain; drawn over the next frames below.
-    ULTS.set(ctx.g, { at: ctx.now, ms: MOMENT_MS });
+    // bursts open behind the captain; drawn over the next frames.
     let m = PIRATE_MOMENTS.get(ctx.g);
     if (!m) PIRATE_MOMENTS.set(ctx.g, (m = {}));
     if (ctx.greeting) m.land = ctx.now;
     else m.win = ctx.now;
-  } else if (isLegendary(skin) && (ctx.greeting || ctx.celebrating)) {
-    ULTS.set(ctx.g, { at: ctx.now, ms: MOMENT_MS });
-    if (ctx.greeting) {
-      // Hero landing: a column of the suit's light comes down on the spot,
-      // a ring rolls out over the ground, and motes of the motif scatter.
-      ctx.emit({ x: ctx.x, y: ground, vx: 0, vy: 0, life: 1, size: 11 * sc, color: sig.c, shape: "beam", glow: true, behind: true });
-      ctx.emit({ x: ctx.x, y: ground, vx: 0, vy: 0, life: 0.7, size: 12 * sc, color: sig.h, shape: "shock" });
-      for (let i = 0; i < (ctx.ambient ? 10 : 5); i++) {
-        const a = Math.PI + (i / 9) * Math.PI;
-        ctx.emit({ x: ctx.x, y: ground - 2 * sc, vx: Math.cos(a) * 120, vy: Math.sin(a) * 50, life: 0.6, size: 2.2 * sc, color: i % 2 ? sig.c : sig.h, shape: sig.burst, spin: (Math.random() - 0.5) * 8, behind: true });
-      }
-    } else {
-      // Victory: a fan of stars rises behind the hero, off its face.
-      for (let i = 0; i < (ctx.ambient ? 12 : 6); i++) {
-        const a = -Math.PI * (0.15 + (0.7 * i) / 11);
-        ctx.emit({ x: ctx.x, y: ctx.headY + 6 * sc, vx: Math.cos(a) * 90, vy: Math.sin(a) * 110, life: 1, size: 2.6 * sc, color: i % 2 ? sig.c : 0xfff3c4, shape: "star", glow: true, behind: true });
-      }
+  } else if (ctx.greeting) {
+    // Nova hero landing: a column of the suit's light behind it, a ring
+    // over the ground and motes that slow in the air as they rise.
+    ctx.emit({ x: ctx.x, y: ground, vx: 0, vy: 0, life: 1, size: 11 * sc, color: sig.c, shape: "beam", glow: true, behind: true, fadeIn: 0.12 });
+    ctx.emit({ x: ctx.x, y: ground, vx: 0, vy: 0, life: 0.7, size: 12 * sc, color: sig.h, shape: "shock" });
+    for (let i = 0; i < (ctx.ambient ? 10 : 5); i++) {
+      const a = Math.PI + (i / 9) * Math.PI;
+      ctx.emit({ x: ctx.x, y: ground - 2 * sc, vx: Math.cos(a) * 150, vy: Math.sin(a) * 70, life: 0.8, size: 2.4 * sc, color: sig.h, to: sig.c, shape: "dot", glow: true, behind: true, drag: 3, grow: 0.3 });
+    }
+  } else if (ctx.celebrating) {
+    // Nova victory: a fan of stars rises behind the hero, slowing as it goes.
+    for (let i = 0; i < (ctx.ambient ? 12 : 6); i++) {
+      const a = -Math.PI * (0.15 + (0.7 * i) / 11);
+      ctx.emit({ x: ctx.x, y: ctx.headY + 6 * sc, vx: Math.cos(a) * 130, vy: Math.sin(a) * 160, life: 1.1, size: 2.8 * sc, color: 0xfff3c4, to: sig.c, shape: "star", glow: true, behind: true, drag: 2.2, fadeIn: 0.1, grow: 0.5 });
     }
   }
   if (ctx.ultimate) {
-    ULTS.set(ctx.g, { at: ctx.now, ms: ULT_MS });
-    // One small burst in the motif's own shape, plus a ring on the ground.
-    const n = ctx.ambient ? 12 : 6;
+    // One burst in the motif's own shape, plus a ring on the ground.
+    const n = ctx.ambient ? 11 : 6;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * TAU + Math.random() * 0.3;
       ctx.emit({
         x: ctx.x,
         y: ctx.y - 14 * sc,
-        vx: Math.cos(a) * 110,
-        vy: Math.sin(a) * 70 - 30,
-        life: 0.7,
+        vx: Math.cos(a) * 150,
+        vy: Math.sin(a) * 100 - 30,
+        life: 0.8,
         size: 2.4 * sc,
         color: i % 2 ? sig.c : sig.h,
         shape: sig.burst,
         spin: (Math.random() - 0.5) * 10,
         behind: true,
+        drag: 2.5,
+        grow: 0.4,
       });
     }
     ctx.emit({ x: ctx.x, y: ground, vx: 0, vy: 0, life: 0.6, size: 10 * sc, color: sig.c, shape: "shock" });
   }
-  const swell = ULTS.get(ctx.g);
-  const since = swell ? ctx.now - swell.at : Infinity;
-  const boost = swell && since >= 0 && since < swell.ms ? 1 + 0.7 * Math.sin((since / swell.ms) * Math.PI) : 1;
   // The rig gives the feet line and the head top; a chibi champion's head is
   // a little over half its height, the chest just under it.
   const tall = Math.max(10, ground - ctx.headY);
@@ -889,19 +925,117 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
     fx: Math.cos(ctx.angle),
     fy: Math.sin(ctx.angle),
     full: ctx.ambient,
-    boost,
+    boost: 1,
     c: sig.c,
     h: sig.h,
   };
-  sig.draw(frame);
-  if (isPirate(skin)) pirateMoments(frame);
+  if (pirate) pirateSuit(frame);
+  else novaSuit(frame);
+  // The champion's own motif, summoned: it pops in with a little overshoot
+  // as it fades up, holds, then eases back as it fades out.
+  const since = ctx.now - (FLOURISHES.get(ctx.g) ?? -Infinity);
+  if (since >= 0 && since < FLOURISH_MS) {
+    const k = since / FLOURISH_MS;
+    const a = Math.min(1, k / 0.1, (1 - k) / 0.2);
+    frame.boost = k < 0.16 ? 0.6 + 0.4 * easeOutBack(k / 0.16) : 1 - 0.15 * Math.max(0, (k - 0.8) / 0.2);
+    frame.g = faded(ctx.g, a);
+    frame.under = faded(ctx.under, a);
+    sig.draw(frame);
+    frame.boost = 1;
+    frame.g = ctx.g;
+    frame.under = ctx.under;
+  }
+  if (pirate) pirateMoments(frame);
+}
+
+/** Nova Vanguard: energy running along the suit's seams into its emblem. */
+function novaSuit(f: Frame) {
+  const { ctx, s } = f;
+  const ex = f.x,
+    ey = f.body - 2 * s;
+  // The emblem breathes.
+  const b = wave(f.t / 1800);
+  f.g.fillStyle(f.c, 0.1 + 0.1 * b).fillCircle(ex, ey, 7 * s);
+  f.g.fillStyle(f.h, 0.45 + 0.35 * b).fillCircle(ex, ey, 1.8 * s);
+  // A pulse runs up one seam, through the emblem and down the other, with a
+  // short fading tail, every couple of seconds.
+  const seam = [
+    [-10, 11],
+    [-5, 2],
+    [0, -2],
+    [5, 2],
+    [10, 11],
+  ].map(([u, v]) => ({ x: ex + u * s, y: ey + v * s }));
+  const at = (q: number) => {
+    const p = Math.max(0, Math.min(0.9999, q)) * (seam.length - 1);
+    const i = Math.floor(p),
+      r = p - i;
+    return { x: seam[i].x + (seam[i + 1].x - seam[i].x) * r, y: seam[i].y + (seam[i + 1].y - seam[i].y) * r };
+  };
+  const k = (f.t / 2200) % 1;
+  if (k < 0.55) {
+    const head = k / 0.55;
+    for (let i = 0; i < (f.full ? 4 : 2); i++) {
+      const q = head - i * 0.06;
+      if (q < 0) continue;
+      const p = at(q);
+      dot(f.g, p.x, p.y, (1.6 - i * 0.3) * s, i ? f.c : f.h, 0.9 - i * 0.2);
+    }
+  }
+  // With the ambient budget, motes lift off the emblem and slow in the air.
+  if (f.full && ctx.chance(3, ctx.dt))
+    ctx.emit({ x: ex + (Math.random() - 0.5) * 6 * s, y: ey, vx: (Math.random() - 0.5) * 24, vy: -42 - Math.random() * 18, life: 1, size: 1.4 * s, color: f.h, to: f.c, shape: "dot", glow: true, drag: 1.6, grow: 0.3, fadeIn: 0.2, sway: 2 });
+  // Moving: energy ripples where the feet land; dashing: light streaks.
+  if (ctx.dashing ? ctx.chance(30, ctx.dt) : ctx.moving && ctx.chance(f.full ? 6 : 3, ctx.dt)) {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    ctx.emit({ x: f.x + side * 5 * s, y: f.ground, vx: 0, vy: 0, life: 0.5, size: 3 * ctx.sc, color: f.c, shape: "shock", behind: true });
+    if (ctx.dashing) {
+      const back = ctx.angle + Math.PI;
+      ctx.emit({ x: f.x, y: f.body, vx: Math.cos(back) * 160, vy: Math.sin(back) * 60, life: 0.3, size: 3 * ctx.sc, color: f.h, shape: "ray", glow: true, behind: true, drag: 3 });
+    }
+  }
+}
+
+/** Sky Pirates: gold catching the light, and sea spray at the feet. */
+function pirateSuit(f: Frame) {
+  const { ctx, s } = f;
+  // A glint sweeps along the tricorne's gold-edged brim now and then...
+  const k = (f.t / 2800) % 1;
+  if (k < 0.22) {
+    const u = k / 0.22;
+    const half = f.headR * 0.95;
+    const gx = f.headX - half + u * half * 2;
+    const gy = f.headY + 1 * s + Math.sin(u * Math.PI) * 3 * s;
+    const a = Math.sin(u * Math.PI);
+    f.g.fillStyle(0xfff3c4, 0.25 * a).fillCircle(gx, gy, 4 * s);
+    sparkle(f.g, gx, gy, (1.4 + 1.2 * a) * s, 0xffffff, a);
+  }
+  // The gold buckle always holds a little warm light...
+  f.g.fillStyle(0xffe08a, 0.3 + 0.2 * wave(f.t / 1600)).fillCircle(f.x + 1.5 * s, f.body + 4 * s, 1.6 * s);
+  // ...and flashes, a beat after the brim.
+  const kb = (f.t / 2800 + 0.5) % 1;
+  if (kb < 0.12) {
+    const a = Math.sin((kb / 0.12) * Math.PI);
+    sparkle(f.g, f.x + 1.5 * s, f.body + 4 * s, (1.2 + a) * s, 0xfff3c4, a);
+  }
+  // With the ambient budget, flecks of gold dust drift off the coat.
+  if (f.full && ctx.chance(2, ctx.dt))
+    ctx.emit({ x: f.x + (Math.random() - 0.5) * 22 * s, y: f.body + (Math.random() - 0.3) * 10 * s, vx: (Math.random() - 0.5) * 8, vy: 10 + Math.random() * 8, life: 1.4, size: 1.2 * s, color: 0xffe08a, to: 0xffb347, shape: "dot", fadeIn: 0.3, grow: 0.4, sway: 3 });
+  // Moving: sea-spray puffs that bloom and thin out, with gold dust.
+  if (ctx.dashing ? ctx.chance(30, ctx.dt) : ctx.moving && ctx.chance(f.full ? 7 : 3, ctx.dt)) {
+    const back = ctx.angle + Math.PI;
+    ctx.emit({ x: f.x + Math.cos(back) * 8 * s + (Math.random() - 0.5) * 10 * s, y: f.ground - 2 * s, vx: Math.cos(back) * 30 + (Math.random() - 0.5) * 20, vy: -14 - Math.random() * 10, life: 0.7, size: 1.5 * ctx.sc, color: 0xeef8ff, to: 0xbfe3f2, shape: "puff", behind: true, drag: 3, grow: 1.4, fadeIn: 0.15, sway: 1.5 });
+    if (Math.random() < 0.7)
+      ctx.emit({ x: f.x + (Math.random() - 0.5) * 12 * s, y: f.ground - 4 * s, vx: (Math.random() - 0.5) * 30, vy: -60 - Math.random() * 30, life: 0.6, size: 1.2 * ctx.sc, color: 0xfff3c4, to: 0xffb347, shape: "dot", glow: true, drag: 2.5, grow: 0.4 });
+  }
 }
 
 /**
- * The Sky Pirates' landing and victory. Landing: an anchor falls beside the
- * captain, bites the ground with a ring and a puff of dust, then fades.
- * Victory: a treasure chest behind them springs open and doubloons fly up,
- * off the face. Both stay within a step of the fighter.
+ * The Sky Pirates' landing and victory. Landing: an anchor falls (faster as
+ * it drops), bites the ground with a small rebound, a ring and a bloom of
+ * dust. Victory: a treasure chest behind the captain springs open with an
+ * overshoot, glows, and doubloons arc up and fall back. Both stay within a
+ * step of the fighter and off the face.
  */
 function pirateMoments(f: Frame) {
   const m = PIRATE_MOMENTS.get(f.ctx.g);
@@ -915,7 +1049,9 @@ function pirateMoments(f: Frame) {
       const side = f.fx > 0.3 ? -1 : 1;
       const ax = f.x + side * 30 * s;
       const drop = 0.25;
-      const ay = k < drop ? f.ground - 90 * s + (k / drop) * 90 * s : f.ground;
+      const fall = Math.min(1, k / drop);
+      const rebound = k > drop && k < drop + 0.14 ? Math.sin(((k - drop) / 0.14) * Math.PI) * 4 * s : 0;
+      const ay = f.ground - 90 * s * (1 - fall * fall) - rebound;
       const a = k > 0.75 ? (1 - k) / 0.25 : 1;
       const g = f.under;
       // The chain up out of sight, the shank, the stock and the flukes.
@@ -925,9 +1061,9 @@ function pirateMoments(f: Frame) {
       g.lineStyle(1.6 * s, 0xe6c46a, a).strokeCircle(ax, ay - 24 * s, 2.4 * s);
       if (k >= drop && k - (ctx.dt * 1000) / LAND_MS < drop) {
         ctx.emit({ x: ax, y: f.ground, vx: 0, vy: 0, life: 0.6, size: 10 * ctx.sc, color: 0xe6c46a, shape: "shock" });
-        for (let i = 0; i < (ctx.ambient ? 8 : 4); i++) {
-          const d = Math.PI + (i / 7) * Math.PI;
-          ctx.emit({ x: ax, y: f.ground - 2 * ctx.sc, vx: Math.cos(d) * 70, vy: Math.sin(d) * 40, life: 0.5, size: 2.6 * ctx.sc, color: 0xc9b48a, shape: "puff", behind: true });
+        for (let i = 0; i < (ctx.ambient ? 7 : 4); i++) {
+          const d = Math.PI + ((i + 0.5) / (ctx.ambient ? 7 : 4)) * Math.PI;
+          ctx.emit({ x: ax, y: f.ground - 2 * ctx.sc, vx: Math.cos(d) * 120, vy: Math.sin(d) * 40, life: 0.8, size: 1.6 * ctx.sc, color: 0xe8dcc4, to: 0xf8f4ec, shape: "puff", behind: true, drag: 4, grow: 1.3, fadeIn: 0.1, sway: 1.5 });
         }
       }
     }
@@ -940,21 +1076,22 @@ function pirateMoments(f: Frame) {
       const cx = f.x + side * 26 * s,
         cy = f.ground - 2 * s;
       const a = k > 0.8 ? (1 - k) / 0.2 : 1;
-      const open = Math.min(1, Math.max(0, (k - 0.15) / 0.15));
+      const raw = Math.min(1, Math.max(0, (k - 0.15) / 0.15));
+      const open = raw > 0 ? Math.min(1.15, easeOutBack(raw)) : 0;
       const w = 11 * s,
         hgt = 8 * s;
       const g = f.under;
       // Gold glow from inside, the box, its bands and the lid tipping back.
-      if (open > 0) g.fillStyle(0xffe08a, 0.35 * open * a).fillCircle(cx, cy - hgt, 12 * s);
+      if (open > 0) g.fillStyle(0xffe08a, 0.35 * Math.min(1, open) * a * (0.8 + 0.2 * Math.sin(ctx.now / 90))).fillCircle(cx, cy - hgt, 13 * s);
       g.fillStyle(0x7a4a24, a).fillRect(cx - w, cy - hgt, w * 2, hgt);
       g.lineStyle(1.2 * s, 0xe6c46a, a).strokeRect(cx - w, cy - hgt, w * 2, hgt).lineBetween(cx - w * 0.5, cy - hgt, cx - w * 0.5, cy).lineBetween(cx + w * 0.5, cy - hgt, cx + w * 0.5, cy);
       const lidY = cy - hgt - open * 8 * s;
-      g.fillStyle(0x8a5a2c, a).fillEllipse(cx, lidY, w * 2, (5 - open * 3) * s + 1);
-      g.lineStyle(1.2 * s, 0xe6c46a, a).strokeEllipse(cx, lidY, w * 2, (5 - open * 3) * s + 1);
-      if (open >= 1 && k - (ctx.dt * 1000) / WIN_MS < 0.3)
+      g.fillStyle(0x8a5a2c, a).fillEllipse(cx, lidY, w * 2, Math.max(1, (5 - open * 3) * s + 1));
+      g.lineStyle(1.2 * s, 0xe6c46a, a).strokeEllipse(cx, lidY, w * 2, Math.max(1, (5 - open * 3) * s + 1));
+      if (raw >= 1 && k - (ctx.dt * 1000) / WIN_MS < 0.3)
         for (let i = 0; i < (ctx.ambient ? 12 : 6); i++) {
           const d = -Math.PI * (0.2 + (0.6 * i) / 11);
-          ctx.emit({ x: cx, y: cy - hgt, vx: Math.cos(d) * 70, vy: Math.sin(d) * 150, life: 0.9, size: 2.6 * ctx.sc, color: i % 3 ? 0xffd65b : 0xfff3c4, shape: "coin", spin: 8, behind: true });
+          ctx.emit({ x: cx, y: cy - hgt, vx: Math.cos(d) * (60 + Math.random() * 40), vy: Math.sin(d) * (150 + Math.random() * 60), life: 1.1, size: 2.6 * ctx.sc, color: i % 3 ? 0xffd65b : 0xfff3c4, shape: "coin", spin: 8 + Math.random() * 6, behind: true, fadeIn: 0.08, drag: 0.6 });
         }
     }
   }

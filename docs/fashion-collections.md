@@ -65,16 +65,37 @@ full-screen flashes, large auras, changed hitboxes or ability timings.
 
 ## Legendary signature effects
 
-Each of the 18 Legendary Nova Vanguard suits has its own animated motif in
-`epic-signature-fx.ts`, tied to its champion. The Abyssal Expedition and
-Dream Carnival Epics keep the small glint every Epic has: motifs moving round
-every fighter on a busy court read as clutter, so they stay a Legendary mark.
+Modelled on premium skins in League of Legends, Mobile Legends and Brawl
+Stars: their effects live on the costume and on what the champion does
+(abilities, movement, landing, victory), not on props circling it all the
+time. Riot's VFX guidance puts readability first, so idle stays quiet.
+
+- **Idle: light on the suit.** Nova Vanguard: energy runs up a seam into
+  the chest emblem, which breathes. Sky Pirates: a glint sweeps the
+  tricorne's gold brim, and the buckle holds a warm light that flashes a beat
+  later. With the ambient budget, a few motes drift off (Nova's rise and
+  slow; the pirates' gold dust settles).
+- **Moving: its own trail at the feet.** Nova: energy ripples, light streaks
+  on a dash. Pirates: sea-spray puffs that bloom and thin out, and gold
+  dust. The generic skin trail is off for these skins, so there is only one.
+- **The champion's motif is summoned**, not worn: it pops in with a little
+  overshoot as it fades up, holds and eases out over 1.9 s. Both sets show it
+  on an ultimate; Nova also on its landing and victory (the pirates have
+  their anchor and chest there).
+- **Moments with weight.** Particles have drag, a size and colour ramp over
+  their life, a fade-in, an eased fade-out and a sway (`stepParticle` and
+  `drawAnyParticle` in `skin-fx.ts`). The anchor falls faster as it drops,
+  rebounds when it bites, and throws a bloom of dust; the chest lid springs
+  open past its rest and settles, glows, and doubloons arc up and fall back.
+
+The Abyssal Expedition and Dream Carnival Epics keep the small glint every
+Epic has.
 
 | Champion | Nova Vanguard motif |
 | --- | --- |
 | Voltkit | Pulse chevrons climbing above |
 | Cindrake | Solar halo behind the head |
-| Tidefin | Riptide crescent orbiting |
+| Tidefin | Riptide crescent |
 | Auralynx | Prism hex panels |
 | Lumoth | Lumen beacon orbs |
 | Mystowl | Living star chart |
@@ -85,7 +106,7 @@ every fighter on a busy court read as clutter, so they stay a Legendary mark.
 | Glacelle | Frost lattice |
 | Halcyra | Gale vortex |
 | Sunbara | Rising dawn |
-| Astrabun | Orbiting comet |
+| Astrabun | Comet |
 | Wombolder | Quake pulse |
 | Shadopus | Oracle eye |
 | Pangrove | Briar circle |
@@ -95,21 +116,22 @@ They draw on the rig's two Graphics layers, beside, behind, above the head or
 on the ground, never over the face. Sizes come from the rig's head top and
 shadow line, so they fit Shop previews and small battle fighters alike. With
 the battle's ambient budget (one or two fighters, you first; none on Low)
-they draw in full: at most 40 calls and a particle or two a second. Outside
-it, and on Low, a compact version: at most 20 calls and no particles. An
-ultimate swells the motif for 0.9 s and throws one burst of its own shape
-with a ground ring. Defeated fighters draw nothing. Rares and Epics have no
+they draw in full: at most 40 calls and a few particles a second. Outside
+it, and on Low, a compact version: at most 20 calls and no idle particles.
+An ultimate also throws one burst of the motif's own shape with a ground
+ring. Defeated fighters draw nothing. Rares and Epics have no
 motif; Mythicals keep their own Awakening effects. `epic-signature-fx.test.ts`
-checks the budgets in every facing, that all 18 are distinct and no other skin has one, the ultimate
-swell and the defeat case.
+checks the budgets in every facing, that all 36 are distinct and no other
+skin has one, that idle draws no motif, the summoned motif and its fade
+(never a negative size or alpha), the trail and the defeat case.
 
 ## Legendary: Nova Vanguard
 
 Legendary sits between Epic (3,500) and Mythical (8,000) at 5,500 coins. Nova
 Vanguard is the Legendary set: on top of its signature effect, each suit has
 its own hero landing (a column of its light behind it, a ground ring, motes of
-its motif) and victory (a fan of stars behind its head); both swell its motif
-for 1.2 s. Epics have neither. Legendary has no Mythic Trial or Awakening.
+its motif) and victory (a fan of stars behind its head); both summon its
+motif. Epics have neither. Legendary has no Mythic Trial or Awakening.
 Migration `20261118100000_legendary_skins_and_skin_sets.sql` allows the
 rarity and moves the 18 suits to it; owners keep theirs.
 
@@ -125,7 +147,7 @@ hip. The hat replaces head-top props but keeps crests that are part of the
 champion (the same list Nova Vanguard keeps). From behind, the coat's back and
 tails sit on the scarf part, over shells and membranes.
 
-Each captain has its own signature motif, and all of them land with an
+Each captain has its own motif, summoned by its ultimate, and all of them land with an
 anchor that drops beside them and bites the ground, and win with a treasure
 chest that springs open behind them, doubloons flying up off the face.
 
@@ -140,7 +162,7 @@ chest that springs open behind them, doubloons flying up off the face.
 | Terradon | Ironhull Captain | Swinging anchor |
 | Duskveil | Ghost Ship Wisp | Rippling ghost flag |
 | Coilemur | Rigging Runner | Rope lasso overhead |
-| Pyranda | Spice Raider | Orbiting doubloons |
+| Pyranda | Spice Raider | Doubloons |
 | Glacelle | Frost Privateer | Billowing sail |
 | Halcyra | Crow's Nest Ace | Seagull wingman |
 | Sunbara | Sunset Skipper | Shoulder parrot |

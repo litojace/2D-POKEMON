@@ -161,8 +161,10 @@ describe("Legendary signature effects", () => {
         drawSkinFx(f.ctx, art, 1);
         return JSON.stringify(f.commands);
       };
+      // Popping in, held, then gone: the idle frame has none of the motif.
       expect(again(5450), id).not.toBe(fresh(5450));
-      expect(again(6000), id).toBe(fresh(6000));
+      expect(again(6500), id).not.toBe(fresh(6500));
+      expect(again(7000), id).toBe(fresh(7000));
     }
   });
 
@@ -196,7 +198,7 @@ describe("Legendary signature effects", () => {
           winCalls.every((p) => p.behind),
           id,
         ).toBe(true);
-        // The motif swells for the moment, then settles.
+        // The motif is summoned for the moment, then leaves.
         const again = (now: number) => {
           land.commands.length = 0;
           drawSkinFx({ ...land.ctx, now, greeting: false }, art, 1);
@@ -208,7 +210,7 @@ describe("Legendary signature effects", () => {
           return JSON.stringify(f.commands);
         };
         expect(again(3600), id).not.toBe(fresh(3600));
-        expect(again(4300), id).toBe(fresh(4300));
+        expect(again(5000), id).toBe(fresh(5000));
       } else {
         expect(land.emit, id).not.toHaveBeenCalled();
         expect(win.emit, id).not.toHaveBeenCalled();
@@ -258,6 +260,72 @@ describe("Legendary signature effects", () => {
           JSON.stringify(later.commands),
         );
       }
+    }
+  });
+
+  it("keeps the champion's motif off the idle frame: idle light lives on the suit", () => {
+    for (const id of Object.keys(EPIC_SIGNATURES)) {
+      const art = { ...SKIN_ART[id], trail: undefined };
+      for (const now of [0, 700, 2900]) {
+        const idle = frame(now, false);
+        drawSkinFx(idle.ctx, art, 1);
+        // Compact: a few calls for the emblem, seam pulse or brim glint.
+        expect(idle.commands.length, id).toBeLessThanOrEqual(12);
+        const summoned = frame(now + 400, false, Math.PI / 2, {});
+        const cast = frame(now, false, Math.PI / 2, { ultimate: true });
+        drawSkinFx(cast.ctx, art, 1);
+        cast.commands.length = 0;
+        drawSkinFx({ ...cast.ctx, now: now + 400, ultimate: false }, art, 1);
+        drawSkinFx(summoned.ctx, art, 1);
+        expect(cast.commands.length, id).toBeGreaterThan(
+          summoned.commands.length,
+        );
+      }
+    }
+  });
+
+  it("leaves its own trail while moving, with particles that slow and fade in", () => {
+    for (const id of Object.keys(EPIC_SIGNATURES)) {
+      const f = frame(1000, false, 0, { moving: true });
+      drawSkinFx(f.ctx, SKIN_ART[id], 1);
+      const calls = f.emit.mock.calls.map(([p]) => p);
+      expect(calls.length, id).toBeGreaterThan(0);
+      // Behind the feet, and only one kind of trail (the generic one is off).
+      expect(calls.some((p) => p.behind), id).toBe(true);
+      expect(calls.length, id).toBeLessThanOrEqual(3);
+      const still = frame(1000, false);
+      drawSkinFx(still.ctx, SKIN_ART[id], 1);
+      expect(still.emit, id).not.toHaveBeenCalled();
+    }
+  });
+
+  it("never draws a negative size while a motif pops in and out", () => {
+    const sizes: Record<string, number[]> = {
+      fillCircle: [2],
+      strokeCircle: [2],
+      arc: [2],
+      fillEllipse: [2, 3],
+      strokeEllipse: [2, 3],
+    };
+    for (const id of Object.keys(EPIC_SIGNATURES)) {
+      const art = { ...SKIN_ART[id], trail: undefined };
+      const cast = frame(1000, true, Math.PI / 2, { ultimate: true });
+      drawSkinFx(cast.ctx, art, 1);
+      for (let now = 1000; now < 3000; now += 40)
+        for (const ambient of [true, false]) {
+          cast.commands.length = 0;
+          drawSkinFx({ ...cast.ctx, now, ambient, ultimate: false }, art, 1);
+          for (const [k, ...args] of cast.commands)
+            for (const i of sizes[k as string] ?? [])
+              expect(args[i] as number, `${id} ${k as string} @${now}`).toBeGreaterThanOrEqual(0);
+          // Fading never pushes alpha out of range.
+          for (const [k, ...args] of cast.commands)
+            if (k === "fillStyle" || k === "lineStyle") {
+              const al = args[k === "fillStyle" ? 1 : 2] as number | undefined;
+              if (al !== undefined) expect(al, `${id} ${k as string}`).toBeLessThanOrEqual(1.0001);
+              if (al !== undefined) expect(al, `${id} ${k as string}`).toBeGreaterThanOrEqual(0);
+            }
+        }
     }
   });
 
