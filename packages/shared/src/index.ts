@@ -9,6 +9,7 @@ import {
 } from "./snapshot-meta.js";
 export * from "./snapshot-meta.js";
 export * from "./pick-rules.js";
+export * from "./avatars.js";
 export const RULES = {
   width: 1600,
   height: 900,
@@ -2538,6 +2539,11 @@ export interface Fighter extends Vec {
    * Until then `character` is only a default and the seat reads "Choosing".
    */
   locked?: boolean;
+  /**
+   * The player's avatar from the library (packages/shared/src/avatars.ts),
+   * their picture wherever they are; unset: the default.
+   */
+  avatar?: string;
   /** PvP lobby: the fighter this player is looking at (teammates only). */
   browse?: CharacterId;
   /**

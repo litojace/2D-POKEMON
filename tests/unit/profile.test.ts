@@ -231,7 +231,7 @@ describe("the rest of the profile", () => {
     expect(page).not.toContain("pf-links");
     expect(page).toContain("Player · t@example.com");
   });
-  it("is four tabs on a phone, one shown at a time", () => {
+  it("is five tabs on a phone, one shown at a time", () => {
     const tabsOf = (page: string) =>
       [...page.matchAll(/data-ui-profile-tab="([a-z]+)"/g)].map((m) => m[1]);
     // A desktop: one column, no tabs.
@@ -240,6 +240,7 @@ describe("the rest of the profile", () => {
     const overview = html(phone);
     expect(tabsOf(overview)).toEqual([
       "overview",
+      "avatar",
       "titles",
       "mastery",
       "trophies",
@@ -255,6 +256,12 @@ describe("the rest of the profile", () => {
     expect(html(phone, { ...profileView(), tab: "titles" })).toContain(
       "pf-title-chip",
     );
+    // The avatar library: one style at a time, 26 each.
+    const avatars = html(phone, { ...profileView(), tab: "avatar" });
+    expect(avatars.match(/data-profile-avatar="/g)).toHaveLength(26);
+    expect(
+      html(phone, { ...profileView(), tab: "avatar", avatarStyle: "anime-2d" }),
+    ).toContain('data-profile-avatar="ea-avatar-052"');
   });
   it("asks a guest to save their account, and nobody else", () => {
     expect(html(data({ guest: true, role: "Guest" }))).toContain(

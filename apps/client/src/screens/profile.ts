@@ -25,6 +25,8 @@ import "./profile.css";
  */
 export interface ProfileHooks {
   data(): ProfileData;
+  /** Wear a library avatar; resolves once data() shows it. */
+  avatar(id: string): Promise<void>;
   /** Wear a title ("" for none); resolves once data() shows it. */
   equip(titleId: string): Promise<void>;
   /** Change your name; resolves with the name the server kept. */
@@ -68,6 +70,22 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
   const focusOn = (selector: string) =>
     root().querySelector<HTMLElement>(selector)?.focus({ preventScroll: true });
 
+  async function wearAvatar(id: string) {
+    if (view.avatarBusy !== null) return;
+    view.avatarBusy = id;
+    view.avatarStatus = "";
+    render();
+    try {
+      await hooks.avatar(id);
+      view.avatarStatus = "Avatar on. Other players see it now.";
+    } catch (error) {
+      view.avatarStatus =
+        error instanceof Error ? error.message : "That didn't work. Try again.";
+    }
+    view.avatarBusy = null;
+    render();
+    focusOn(`[data-profile-avatar="${id}"]`);
+  }
   async function equip(id: string) {
     if (view.equipping !== null) return;
     view.equipping = id;
@@ -211,7 +229,11 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
         .querySelector<HTMLElement>("[data-profile-main]")
         ?.scrollTo({ top: 0 });
       focusOn(`[data-ui-profile-tab="${view.tab}"]`);
-    } else if (d.profileTitle !== undefined) void equip(d.profileTitle);
+    } else if (d.profileAvatarStyle) {
+      view.avatarStyle = d.profileAvatarStyle as ProfileView["avatarStyle"];
+      render();
+    } else if (d.profileAvatar) void wearAvatar(d.profileAvatar);
+    else if (d.profileTitle !== undefined) void equip(d.profileTitle);
     else if (d.profileRename !== undefined) nameForm(true);
     else if (d.profileNameCancel !== undefined) nameForm(false);
     else if (d.profileDelete !== undefined) deleteForm(true);

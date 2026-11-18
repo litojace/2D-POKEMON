@@ -1720,6 +1720,8 @@ function identityOf(p: Fighter, character = p.character): Fighter {
     ? {
         ...p,
         character,
+        // Your avatar as you just chose it (peers get it from the server).
+        avatar: accountsUI.avatar ?? p.avatar,
         raidLook: accountsUI.raidLook ?? p.raidLook,
         championLooks: looksOf(p),
         raidClears:

@@ -377,22 +377,6 @@ button.room-seat.is-open:focus-visible {
 /* docs/hidden-picks.md: the seat is the player (frame and initial); the
    pick sits beside it, as far as you may see it: your own and your
    teammate's fighter, a "?" for another side's. */
-.portrait-initial {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: calc(20px * var(--text-scale, 1));
-  line-height: 1;
-  color: var(--ui-accent);
-  background: radial-gradient(
-    circle at 50% 35%,
-    var(--ui-bg-3),
-    var(--ui-bg-1)
-  );
-}
 .room-seat-side {
   display: flex;
   align-items: center;
@@ -536,9 +520,6 @@ button.room-seat.is-open:focus-visible {
   .room-seat .ui-tag svg {
     width: 10px;
     height: 10px;
-  }
-  .portrait-initial {
-    font-size: calc(15px * var(--text-scale, 1));
   }
 }
 

@@ -22,7 +22,7 @@ import type {
   RecentPlayer,
 } from "../../../../packages/shared/src/accounts";
 import type { RaidLoadout } from "../../../../packages/shared/src/raid";
-import { framePortrait, framedAvatar } from "../portraits";
+import { identityPortrait } from "../portraits";
 import { serverNow } from "../server-clock";
 import {
   button,
@@ -218,24 +218,18 @@ function portrait(
     | "look"
     | "championLooks"
     | "raidClears"
+    | "avatar"
   >,
   status?: Presence,
 ) {
   const fighter = fighterOf(p.fighter);
-  const art = fighter
-    ? framedAvatar(
-        {
-          character: fighter,
-          raidLook: (p.look ?? { frame: p.frame }) as RaidLoadout,
-          championLooks: p.championLooks,
-          raidClears: p.raidClears,
-        },
-        `fr-${p.id.replace(/[^a-z0-9]/gi, "")}`,
-      )
-    : framePortrait(
-        `<span class="fr-initial">${esc(Array.from(p.name.trim())[0]?.toUpperCase() ?? "?")}</span>`,
-        p.look?.frame ?? p.frame,
-      );
+  // A friend as themselves: their avatar in their frame (docs/hidden-picks.md,
+  // "Avatars"), not the fighter they last played.
+  const art = identityPortrait({
+    avatar: p.avatar,
+    raidLook: (p.look ?? { frame: p.frame }) as RaidLoadout,
+    raidClears: p.raidClears,
+  });
   return `<span class="fr-avatar"${fighter ? ` style="--el:var(--el-${CHARACTERS[fighter].element})"` : ""} aria-hidden="true">${art}${status ? `<i class="ui-status" style="--st:var(--st-${status})"></i>` : ""}</span>`;
 }
 function rowShell(o: {

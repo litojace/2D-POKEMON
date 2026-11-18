@@ -9,6 +9,7 @@ import {
 } from "../../../packages/shared/src/raid";
 import { LOOK_ITEMS } from "../../../packages/shared/src/shop";
 import { REWARD_ITEMS } from "../../../packages/shared/src/journey";
+import { avatarUrl, knownAvatar } from "../../../packages/shared/src/avatars";
 import "./portrait-frames.css";
 
 const frames = new Set(
@@ -73,18 +74,22 @@ export function framedAvatar(
   return framePortrait(portraitAvatar(p, scope), p.raidLook?.frame, stars);
 }
 
+/** A library avatar's picture (avatars.ts), filling a portrait disc. */
+export const avatarImage = (id: string | null | undefined) =>
+  `<img class="portrait-avatar" src="${avatarUrl(knownAvatar(id))}" alt="" draggable="false" decoding="async">`;
+
 /**
- * A player as themselves, not as a fighter: their frame around their
- * initial. Rooms show this where a portrait of the fighter would give a
- * hidden pick away (docs/hidden-picks.md). The avatar library will put a
- * picture in the disc instead of the initial.
+ * A player as themselves, not as a fighter: their avatar (the default until
+ * they choose one) in their frame. Seats, the player card and Friends show
+ * this, so a seat never gives a hidden pick away (docs/hidden-picks.md).
  */
 export function identityPortrait(
-  p: Pick<Fighter, "name" | "raidLook" | "raidClears">,
+  p: Pick<Fighter, "raidLook" | "raidClears"> & {
+    avatar?: string | null;
+  },
 ) {
-  const initial = Array.from(p.name.trim())[0]?.toUpperCase() ?? "?";
   return framePortrait(
-    `<span class="portrait-initial">${initial.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)}</span>`,
+    avatarImage(p.avatar),
     p.raidLook?.frame,
     frameStars(p.raidLook?.frame, p.raidClears),
   );

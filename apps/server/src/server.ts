@@ -735,6 +735,9 @@ export function createArenaServer(
   );
   app.use(
     (error: unknown, req: Request, res: Response, _next: NextFunction) => {
+      // A body over its route's limit (a picture, say): the player's to fix.
+      if ((error as { type?: unknown } | null)?.type === "entity.too.large")
+        return res.status(413).json({ error: "That's too large to send." });
       // A player sees only "Account service failed" or "Invalid request.";
       // the reason goes to the log, or nobody can tell why a screen failed.
       // So does every 5xx (a refusal by the rules, a 4xx, is the player's).

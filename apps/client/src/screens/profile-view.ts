@@ -31,10 +31,18 @@ import {
   RAID_BOSS_ORDER,
   type RaidBossId,
 } from "../../../../packages/shared/src/raid-roster";
-import type { RaidProgress } from "../../../../packages/shared/src/raid";
+import type {
+  RaidLoadout,
+  RaidProgress,
+} from "../../../../packages/shared/src/raid";
+import {
+  AVATARS,
+  AVATAR_STYLES,
+  DEFAULT_AVATAR,
+  type AvatarStyle,
+} from "../../../../packages/shared/src/avatars";
+import { avatarImage, identityPortrait } from "../portraits";
 import { fighterAvatar } from "../fighter-art";
-import { fighterStageArt, RIG_FRAME } from "../fighter-selection";
-import { CREATURE_VIEWBOX } from "../creature-design";
 import { sortTitles, titleTreatment } from "../player-nameplate";
 import { raidSplashImage } from "../raid-splash-art";
 import {
@@ -64,8 +72,12 @@ export interface ProfileData {
   /** "Administrator" / "Player" and the email, for the line under the tiles. */
   role: string;
   email?: string;
-  /** Your Lobby fighter: the card shows it in the look you wear. */
+  /** Your Lobby fighter (the card's colour). */
   fighter: CharacterId;
+  /** Your library avatar (null: the default), framed as you wear it. */
+  avatar: string | null;
+  look?: RaidLoadout;
+  clears?: Partial<Record<RaidBossId, number>>;
   journey?: Journey;
   /** null while loading; problem when it couldn't load. */
   progress: Progress | null;
@@ -100,10 +112,18 @@ export interface ProfileView {
   deleteMessage: string;
   /** The tab open on a phone. */
   tab: ProfileTab;
+  /** The avatar library's style shown. */
+  avatarStyle: AvatarStyle;
+  /** The avatar being saved, while the server answers. */
+  avatarBusy: string | null;
+  /** The last avatar answer. */
+  avatarStatus: string;
 }
-export type ProfileTab = "overview" | "titles" | "mastery" | "trophies";
+export type ProfileTab =
+  "overview" | "avatar" | "titles" | "mastery" | "trophies";
 const PROFILE_TABS: [ProfileTab, string][] = [
   ["overview", "Overview"],
+  ["avatar", "Avatar"],
   ["titles", "Titles"],
   ["mastery", "Mastery"],
   ["trophies", "Trophies"],
@@ -119,6 +139,9 @@ export const profileView = (): ProfileView => ({
   deleteBusy: false,
   deleteMessage: "",
   tab: "overview",
+  avatarStyle: "soft-3d",
+  avatarBusy: null,
+  avatarStatus: "",
 });
 
 /** What a player types to delete their account. */
@@ -190,16 +213,26 @@ export function rankLine(p: Progress | null) {
 /* ------------------------------------------------------------- pieces */
 
 /**
- * The card's fighter in the look you wear, framed on the creature itself
- * (the stage's frame leaves room for the live rig's motion, which a still
- * card doesn't need), so it fills the card.
+ * The avatar library: every avatar of one style (Soft 3D or Anime 2D), a
+ * tap wears it, saved at once (as titles are).
  */
-export const cardArt = (c: CharacterId, scope: string) =>
-  fighterStageArt(c, scope)
-    .split(`viewBox="${RIG_FRAME}"`)
-    .join(`viewBox="${CREATURE_VIEWBOX}"`);
+function avatarPicker(d: ProfileData, view: ProfileView) {
+  const current = d.avatar ?? DEFAULT_AVATAR;
+  const styles = `<div class="ui-seg pf-avatar-styles" role="group" aria-label="Avatar style">${AVATAR_STYLES.map(
+    (s) =>
+      `<button type="button" aria-pressed="${view.avatarStyle === s.id}" data-profile-avatar-style="${s.id}">${esc(s.name)}</button>`,
+  ).join("")}</div>`;
+  const tiles = AVATARS.filter((a) => a.style === view.avatarStyle)
+    .map((a) => {
+      const on = a.id === current;
+      const busy = view.avatarBusy === a.id;
+      return `<button type="button" class="pf-avatar${on ? " is-on" : ""}" aria-pressed="${on}" aria-label="${esc(a.name)}" title="${esc(a.name)}" data-profile-avatar="${a.id}"${view.avatarBusy !== null ? " disabled" : ""}${busy ? ' aria-busy="true"' : ""}>${avatarImage(a.id)}</button>`;
+    })
+    .join("");
+  return `${styles}<div class="pf-avatars" role="group" aria-labelledby="pf-avatar-h">${tiles}</div><p class="ui-note pf-status" role="status">${esc(view.avatarStatus)}</p>`;
+}
 
-/** The card other players see: your fighter, title, name and tags. */
+/** The card other players see: your avatar, title, name and tags. */
 export function playerCard(d: ProfileData) {
   const level = d.journey ? playerLevel(d.journey.xp).level : null;
   const rank = rankLine(d.progress);
@@ -211,7 +244,7 @@ export function playerCard(d: ProfileData) {
       : "",
     best ? tag(best.text) : "",
   ].join("");
-  return `<aside class="pf-card" style="--el:${elVar(d.fighter)}" aria-label="Your player card"><span class="pf-card-art" aria-hidden="true">${cardArt(d.fighter, "profile")}</span><span class="pf-card-text">${d.title ? `<small class="pf-card-title player-title title-${titleTreatment(d.title)}" style="--title-color:${safeColor(d.titleColor)};color:${safeColor(d.titleColor)}">${esc(d.title)}</small>` : ""}<b class="pf-card-name">${esc(d.name)}</b><span class="pf-card-tags">${tags}</span></span></aside>`;
+  return `<aside class="pf-card" style="--el:${elVar(d.fighter)}" aria-label="Your player card"><span class="pf-card-art pf-card-avatar" aria-hidden="true">${identityPortrait({ avatar: d.avatar, raidLook: d.look, raidClears: d.clears })}</span><span class="pf-card-text">${d.title ? `<small class="pf-card-title player-title title-${titleTreatment(d.title)}" style="--title-color:${safeColor(d.titleColor)};color:${safeColor(d.titleColor)}">${esc(d.title)}</small>` : ""}<b class="pf-card-name">${esc(d.name)}</b><span class="pf-card-tags">${tags}</span></span></aside>`;
 }
 
 function tiles(d: ProfileData) {
@@ -314,6 +347,7 @@ function main(d: ProfileData, view: ProfileView) {
   if (!d.progress && d.progressProblem)
     return `${tiles(d)}${emptyState("Your records aren't available", d.progressProblem, button("Try again", { size: "s", attrs: { "data-profile-retry": true } }))}${deleteRow(d, view)}`;
   const titles = `${section("Title", "Tap to wear it · saved at once", "pf-titles-h")}${titleChips(d, view)}`;
+  const avatars = `${section("Avatar", "Who you are, whatever fighter you play · saved at once", "pf-avatar-h")}${avatarPicker(d, view)}`;
   const mastery = `${section("Fighter mastery", "Badges for matches played", "pf-mastery-h")}${masteryGrid(d)}`;
   const trophy = `${section("Raid trophies", "Clears per boss", "pf-trophy-h")}${trophies(d)}${achievements(d)}`;
   const who = `<p class="ui-note pf-who">${esc(d.role)}${d.email ? ` · ${esc(d.email)}` : ""}</p>`;
@@ -322,11 +356,12 @@ function main(d: ProfileData, view: ProfileView) {
   if (d.compact)
     return {
       overview: `${overview}${summaries(d)}${who}${deleteRow(d, view)}`,
+      avatar: avatars,
       titles,
       mastery,
       trophies: trophy,
     }[view.tab];
-  return `${overview}${titles}${mastery}${summaries(d)}${trophy}${who}${deleteRow(d, view)}`;
+  return `${overview}${avatars}${titles}${mastery}${summaries(d)}${trophy}${who}${deleteRow(d, view)}`;
 }
 
 export function profileMarkup(view: ProfileView, d: ProfileData) {

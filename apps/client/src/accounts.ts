@@ -4,7 +4,8 @@ import {
   nameAllowed,
   NAME_NOT_ALLOWED,
 } from "../../../packages/shared/src/name-filter";
-import { framedAvatar } from "./portraits";
+import { identityPortrait } from "./portraits";
+import { AVATAR_BY_ID } from "../../../packages/shared/src/avatars";
 import type { FittingRoom } from "./screens/fitting-room";
 import type { FitMode, ShopSection } from "./screens/fitting-room-view";
 import type { JourneyScreen } from "./screens/journey";
@@ -187,6 +188,8 @@ export class AccountUI {
   /** Coins, owned items, missions (undefined until loaded or before migration 010). */
   economy: Economy | undefined = undefined;
   session: Session | null = null;
+  /** Your library avatar (avatars.ts); null: none chosen (the default). */
+  avatar: string | null = null;
   /** The fighter the account has saved (undefined until asked, null: none). */
   private savedFighter: string | null | undefined = undefined;
   /** Counts this device's picks, so a slow answer never undoes a new one. */
@@ -298,6 +301,7 @@ export class AccountUI {
       this.spireProgress = null;
       this.economy = undefined;
       this.savedFighter = undefined;
+      this.avatar = null;
       this.blocked = [];
       clearTimeout(this.fighterTimer);
     }
@@ -313,6 +317,7 @@ export class AccountUI {
         // A new login: start on the fighter this account last picked, on
         // whatever device (not awaited: the rest of the profile goes on).
         if (!samePlayer) void this.loadSavedFighter(version);
+        if (!samePlayer) void this.loadAvatar(version);
         if (!samePlayer) void this.loadBlocked(version);
         try {
           const progress = (await this.api("/api/raids")) as RaidProgress;
@@ -461,6 +466,31 @@ export class AccountUI {
     if (this.friendsScreen?.isOpen) await this.loadFriendList(account);
     this.friendsScreen?.refresh();
   }
+  /** Your avatar, from the account (optional until its migration runs). */
+  private async loadAvatar(version: number) {
+    try {
+      const { avatar } = (await this.api("/api/account/avatar")) as {
+        avatar: unknown;
+      };
+      if (version !== this.generation) return;
+      this.avatar =
+        typeof avatar === "string" && AVATAR_BY_ID.has(avatar) ? avatar : null;
+      this.syncAvatar();
+      this.profileScreen?.refresh();
+      this.hooks.onChange();
+    } catch {
+      // The default shows.
+    }
+  }
+  /** Wear a library avatar: saved on the account, seen everywhere at once. */
+  async chooseAvatar(id: string) {
+    if (!AVATAR_BY_ID.has(id))
+      throw new Error("Choose an avatar from the library.");
+    await this.api("/api/account/avatar", { avatar: id });
+    this.avatar = id;
+    this.syncAvatar();
+    this.hooks.onChange();
+  }
   private async loadSavedFighter(version: number) {
     const picks = this.fighterPicks;
     let fighter: unknown;
@@ -515,24 +545,19 @@ export class AccountUI {
       "#account-profile .account-avatar",
     );
     if (!avatar || !this.account) return;
-    const character = this.hooks.selectedCharacter?.() ?? "voltkit";
+    // You, as everyone sees you: your avatar in your frame, whatever
+    // fighter you play (docs/hidden-picks.md, "Avatars").
     const key = JSON.stringify([
-      character,
-      this.economy?.looks[character] ?? null,
-      this.raidLook ?? null,
+      this.avatar,
+      this.raidLook?.frame ?? null,
       frameStars(this.raidLook?.frame, this.raidClears),
     ]);
     if (avatar.dataset.avatarLook === key) return;
-    avatar.innerHTML = framedAvatar(
-      {
-        character,
-        raidLook: this.raidLook,
-        championLooks: this.economy?.looks,
-      },
-      "account-nav",
-      frameStars(this.raidLook?.frame, this.raidClears),
-    );
-    avatar.dataset.champion = character;
+    avatar.innerHTML = identityPortrait({
+      avatar: this.avatar,
+      raidLook: this.raidLook,
+      raidClears: this.raidClears,
+    });
     avatar.dataset.avatarLook = key;
   }
   renderNav() {
@@ -1323,9 +1348,17 @@ export class AccountUI {
             role: a.isAdmin ? "Administrator" : a.guest ? "Guest" : "Player",
             email: this.session?.user.email ?? undefined,
             fighter: this.hooks.selectedCharacter?.() ?? "voltkit",
+            avatar: this.avatar,
+            look: this.raidLook,
+            clears: this.raidClears,
             journey: this.economy?.journey,
             canDelete: !a.isAdmin,
           };
+        },
+        avatar: async (id) => {
+          if (this.account?.id !== accountId)
+            throw new Error("Your session changed. Reopen your card.");
+          await this.chooseAvatar(id);
         },
         equip: async (titleId) => {
           if (this.account?.id !== accountId)

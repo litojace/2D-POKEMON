@@ -28,6 +28,13 @@ import {
   type ActivityReceipt,
 } from "../../../packages/shared/src/shop.js";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey.js";
+import {
+  avatarSchema,
+  isAvatar,
+  photoIdOf,
+  DEFAULT_AVATAR,
+  PHOTO_MAX_BYTES,
+} from "../../../packages/shared/src/avatars.js";
 import { LEAF_TRADE } from "../../../packages/shared/src/farm.js";
 import {
   BISTRO_TRADE,
@@ -45,7 +52,12 @@ import {
   supabaseSocialStore,
   type SocialStore,
 } from "./social.js";
-import type { Express, Request, Response, NextFunction } from "express";
+import express, {
+  type Express,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import {
   accountSchema,
   suspendSchema,
@@ -72,7 +84,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261119090000_spire_zone7.sql";
+export const LATEST_MIGRATION = "20261119110000_avatar_photos.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -107,6 +119,11 @@ export interface AccountProvider {
     name: string,
     args: Record<string, unknown>,
   ): Promise<unknown>;
+  /**
+   * A player's picture by id, for anyone to see (migration
+   * 20261119110000; service role). Null when hidden, removed or unknown.
+   */
+  avatarPhoto?(id: string): Promise<{ type: string; data: Buffer } | null>;
 }
 /** One kept message between friends, as the database returns it. */
 export interface StoredFriendMessage {
@@ -315,6 +332,17 @@ export function createAccountProvider(): AccountProvider {
         if (r.error) throw new Error(r.error.message);
         return (r.data as PushDevice[] | null) ?? [];
       },
+    },
+    async avatarPhoto(id) {
+      try {
+        const result = await admin().rpc("arena_avatar_photo", { p_id: id });
+        const row = result.data as { type?: unknown; data?: unknown } | null;
+        if (result.error || !row || typeof row.data !== "string") return null;
+        if (row.type !== "image/webp" && row.type !== "image/jpeg") return null;
+        return { type: row.type, data: Buffer.from(row.data, "base64") };
+      } catch {
+        return null;
+      }
     },
     async chatStoppedUntil(accountId) {
       try {
@@ -549,6 +577,95 @@ export function installAccountRoutes(
       const { fighter } = savedFighterSchema.parse(req.body);
       await provider.rpc(token, "arena_save_fighter", { p_fighter: fighter });
       res.json({ ok: true });
+    }),
+  );
+  // Your avatar from the library (packages/shared/src/avatars.ts; migration
+  // 20261119100000). Null before the first choice: the client shows the
+  // default. A change reaches your seat in a room at once.
+  app.get(
+    "/api/account/avatar",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      const saved = await provider.rpc(token, "arena_my_avatar", {});
+      res.json({
+        avatar: isAvatar(saved) ? saved : null,
+      });
+    }),
+  );
+  // Your own picture (migration 20261119110000): the device cuts and
+  // shrinks the photo to a 256 px WebP or JPEG; this stores it.
+  app.post(
+    "/api/account/avatar-photo",
+    express.raw({
+      type: ["image/webp", "image/jpeg"],
+      limit: PHOTO_MAX_BYTES + 1024,
+    }),
+    route(false, async (req, res, token, account) => {
+      const type = req.get("content-type")?.split(";")[0].trim();
+      const body = req.body as unknown;
+      if (
+        !Buffer.isBuffer(body) ||
+        !body.length ||
+        body.length > PHOTO_MAX_BYTES ||
+        (type !== "image/webp" && type !== "image/jpeg")
+      )
+        throw new AccountError(400, "Use a WebP or JPEG picture under 64 KB.");
+      const avatar = await provider.rpc(token, "arena_set_avatar_photo", {
+        p_image: body.toString("base64"),
+        p_type: type,
+      });
+      onPlayerChanged(account.id);
+      res.json({ ok: true, avatar });
+    }),
+  );
+  // A picture, by id, for anyone (no account needed: it's on view
+  // everywhere). Hidden (reported) or removed: the default avatar.
+  app.get("/api/avatar-photo/:id", async (req, res, next) => {
+    try {
+      const id = photoIdOf(`photo:${req.params.id}`);
+      const photo = id ? await provider.avatarPhoto?.(id) : null;
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+      if (!photo) {
+        res.setHeader("Cache-Control", "public, max-age=300");
+        return res.redirect(302, `/assets/avatars/${DEFAULT_AVATAR}.webp`);
+      }
+      // Short: a picture an admin removes stops showing within minutes.
+      res.setHeader("Cache-Control", "public, max-age=600");
+      res.type(photo.type).send(photo.data);
+    } catch (error) {
+      next(error);
+    }
+  });
+  // Report a player's picture: the admins see it; at three reporters it is
+  // hidden until an admin looks.
+  app.post(
+    "/api/avatar-photo/report",
+    route(false, async (req, res, token) => {
+      const data = z
+        .object({
+          photo: z.string().uuid(),
+          message: z.string().max(300).optional(),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_report_avatar_photo", {
+        p_photo: data.photo,
+        p_message: data.message ?? "",
+      });
+      res.json({ ok: true, ...(result as object) });
+    }),
+  );
+  app.post(
+    "/api/account/avatar",
+    route(false, async (req, res, token, account) => {
+      const { avatar } = z
+        .object({ avatar: avatarSchema })
+        .strict()
+        .parse(req.body);
+      await provider.rpc(token, "arena_set_avatar", { p_avatar: avatar });
+      onPlayerChanged(account.id);
+      res.json({ ok: true, avatar });
     }),
   );
   // Your name: when you can next change it, and the change itself
@@ -1748,6 +1865,46 @@ export function installAccountRoutes(
         p_reason: data.reason ?? null,
       });
       onPlayerChanged(data.playerId);
+      res.json({ ok: true });
+    }),
+  );
+  // A reported picture: an admin sees it (hidden or not), then keeps it or
+  // removes it (migration 20261119110000).
+  app.get(
+    "/api/admin/avatar-photo/:id",
+    route(true, async (req, res, token) => {
+      const id = photoIdOf(`photo:${req.params.id}`);
+      const row = (
+        id
+          ? await provider.rpc(token, "arena_admin_avatar_photo_image", {
+              p_photo: id,
+            })
+          : null
+      ) as { type?: string; data?: string; hidden?: boolean } | null;
+      res.setHeader("Cache-Control", "no-store");
+      res.json(
+        row?.data
+          ? {
+              src: `data:${row.type};base64,${row.data}`,
+              hidden: !!row.hidden,
+            }
+          : { src: null, hidden: false },
+      );
+    }),
+  );
+  app.post(
+    "/api/admin/avatar-photo",
+    route(true, async (req, res, token) => {
+      const data = z
+        .object({ photo: z.string().uuid(), keep: z.boolean() })
+        .strict()
+        .parse(req.body);
+      const owner = await provider.rpc(token, "arena_admin_avatar_photo", {
+        p_photo: data.photo,
+        p_keep: data.keep,
+      });
+      // The owner's seat, Friends and card stop showing a removed picture.
+      if (typeof owner === "string") onPlayerChanged(owner);
       res.json({ ok: true });
     }),
   );
