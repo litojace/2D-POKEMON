@@ -825,7 +825,7 @@ describe("the elite's HUD line, on each zone's real elite floor", () => {
   ])("floor %i (zone %i) names %s", (floor, zone, borrowed) => {
     seeded(640 + floor);
     const a = createSpireArena("CUE" + floor, zone) as SpireEmberArena;
-    a.add("p0", "P0", "voltkit");
+    a.add("p0", "P0", "halcyra");
     a.configureSpire({ startFloor: floor, ceiling: floor + 4 });
     a.start();
     a.acknowledgeInstructions("p0");
@@ -996,7 +996,7 @@ describe("the boss floor (floor 60: the Ascendant Lumiwick, on the Sky Terrace)"
 function playFloor(floor: number, seed: number) {
   seeded(seed * 7919);
   const a = createSpireArena("SIM" + seed, 6);
-  a.add("p0", "P0", "voltkit");
+  a.add("p0", "P0", "halcyra");
   a.configureSpire({ startFloor: floor, ceiling: floor });
   a.start();
   const mine = (a.raid.spire!.blessings.p0 = {} as Record<string, number>);

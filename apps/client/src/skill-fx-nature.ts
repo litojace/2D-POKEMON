@@ -537,84 +537,6 @@ function slothCast(
     fx.glow(x, y - 20, 30, color, 0.35 * (1 - k));
   });
 }
-/** Overgrowth wind-up: vines gather in a ring of the real radius. */
-function overgrowthWindup(
-  g: G,
-  a: Ability,
-  x: number,
-  y: number,
-  _angle: number,
-  _ax: number,
-  _ay: number,
-  color: number,
-  k: number,
-  now: number,
-) {
-  const fx = fxFor(g.scene),
-    r = a.radius;
-  fx.floorSolid
-    .fillStyle(BARK_DARK, 0.15 + 0.2 * k)
-    .fillEllipse(x, y, r * 2, r * 2 * SQ);
-  fx.floor
-    .lineStyle(3, color, 0.4 + 0.5 * k)
-    .strokeEllipse(x, y, r * 2, r * 2 * SQ);
-  for (let i = 0; i < 9; i++) {
-    const ang = (i * TAU) / 9 + now / 900,
-      len = r * k * 0.7;
-    fx.floor
-      .lineStyle(2, LEAF_LIGHT, 0.6)
-      .lineBetween(
-        x + Math.cos(ang) * r,
-        y + Math.sin(ang) * r * SQ,
-        x + Math.cos(ang) * (r - len),
-        y + Math.sin(ang) * (r - len) * SQ,
-      );
-  }
-}
-/** Overgrowth: great vines erupt over the whole circle at once and settle. */
-function overgrowth(
-  scene: Phaser.Scene,
-  a: Ability,
-  x: number,
-  y: number,
-  _angle: number,
-  color: number,
-  shot: Shot,
-) {
-  const fx = fxFor(scene),
-    r = a.radius;
-  fx.ultimate(color, 700);
-  fx.shake(220, 0.008);
-  leaves(fx, x, y, 22, [80, 260]);
-  fx.decal({ kind: "crack", x, y: y + 4, r: r * 0.9, color: LEAF, life: 2.5 });
-  shot(fx.reduced ? 400 : 1100, (k) => {
-    const fade = k > 0.55 ? 1 - (k - 0.55) / 0.45 : 1;
-    for (let i = 0; i < 13; i++) {
-      const ang = hash(i * 5) * TAU,
-        d = r * Math.sqrt(hash(i * 11)) * 0.9;
-      rootUp(
-        fx,
-        x + Math.cos(ang) * d,
-        y + Math.sin(ang) * d * SQ,
-        48 + hash(i * 3) * 34,
-        (hash(i * 9) - 0.5) * 1.2,
-        9,
-        ease(Math.min(1, k * 5 - hash(i) * 0.5)),
-        fade,
-      );
-    }
-    fx.shockwave(
-      x,
-      y,
-      r * ease(Math.min(1, k * 2)),
-      Math.min(1, k * 1.5),
-      LEAF,
-      10,
-      SQ,
-    );
-    fx.glow(x, y, r * 0.8, color, 0.3 * fade, true);
-  });
-}
 /** Tongue Grapple: a pink puff at the mouth as the tongue shoots out. */
 function tongueCast(
   scene: Phaser.Scene,
@@ -879,7 +801,7 @@ export const natureKit: FxKit = {
     "scale-shrapnel": shrapnelBlade,
   },
   zone: { seedling: seedlingZone, "sloth-time": slothTime },
-  windup: { pinball: pinballWindup, overgrowth: overgrowthWindup },
+  windup: { pinball: pinballWindup },
   cast: {
     "scale-swipe": scaleSwipe,
     "tongue-grapple": tongueCast,
@@ -891,7 +813,7 @@ export const natureKit: FxKit = {
     "sloth-time": slothCast,
     "lazy-swap": (scene, a, x, y, _angle, color, shot) =>
       swapPoof(scene, a, x, y, color, shot),
-    overgrowth,
+    overgrowth: spitCast,
   },
   impact: {
     "seed-spit": seedImpact,

@@ -794,8 +794,7 @@ export class TidewyrmArena extends RaidArena {
         )
           continue;
         this.countedShots.add(pr.id);
-        // Cindrake's Magma Bomb pops it in one hit.
-        prison.hits += pr.ability.id === "magma-bomb" ? T.prison.hits : 1;
+        prison.hits += 1;
         // Coilemur's Magnet Lash yanks the prisoner out.
         if (pr.ability.id === "magnet-lash")
           yank = this.heroes().find((q) => q.id === pr.owner && q.hp > 0);
@@ -808,6 +807,19 @@ export class TidewyrmArena extends RaidArena {
         )
       )
         prison.hits = T.prison.hits;
+      // Cindrake's Magma Leap pops it in one go, landing beside it.
+      for (const e of this.events)
+        if (
+          e.kind === "burst" &&
+          e.abilityId === "magma-leap" &&
+          e.owner !== p.id &&
+          !this.countedShots.has(e.id) &&
+          Math.hypot(e.x - prison.x, e.y - prison.y) <
+            T.prison.radius + RULES.radius + 110
+        ) {
+          this.countedShots.add(e.id);
+          prison.hits = T.prison.hits;
+        }
       if (yank) {
         this.freeFromPrison(p.id, true);
         const d = normalize(p.x - yank.x || 1, p.y - yank.y);

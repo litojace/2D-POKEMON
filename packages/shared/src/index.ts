@@ -131,12 +131,18 @@ export type StatusKind =
   | "clamp"
   /** Caged (Crystal Cage): can't cross the ring of radius `amount` round (`tx`, `ty`); `inside` says which side it is on. */
   | "cage"
-  /** In a current (Undertow): drifts at (`tx`, `ty`) px/s on top of its own movement. */
+  /** Carried (Riptide Wave): drifts at (`tx`, `ty`) px/s on top of its own movement. */
   | "current"
+  /** Drawn to the light (Radiant Flare): drifts toward (`tx`, `ty`) at `amount` px/s. */
+  | "lure"
   /** Floating (Moon Gravity): low gravity, it slides and barely changes direction. */
   | "float"
   /** Confused (Mind Maze): its movement is reversed. */
   | "confuse"
+  /** Silenced (Hush): it can't cast skills (it can still move, dash and attack). */
+  | "silence"
+  /** Grounded (Sticky Mochi): it can't dash or jump. */
+  | "grounded"
   /** Combo setup: primed for the marker's payoff skill (`by` = the marker). */
   | "mark";
 /** Statuses that count as harmful (the Shadow team-up gift, bots' targeting). */
@@ -155,8 +161,11 @@ export const DEBUFFS: StatusKind[] = [
   "blind",
   "clamp",
   "current",
+  "lure",
   "float",
   "confuse",
+  "silence",
+  "grounded",
 ];
 export const STATUS_RULES = {
   stacking: "refresh" as const,
@@ -400,16 +409,57 @@ export type AbilityKind =
    */
   | "cage"
   /**
-   * The caster glows for `duration`: `count` rays `range` px long turn round
-   * it (a turn every `spin` seconds); an enemy a ray sweeps takes `damage`.
+   * Dash `range` px along the aim at `speed`, through enemies: each one the
+   * body passes takes the hit once. If any was hit, the cooldown drops to
+   * `surf.refund` seconds.
    */
-  | "lighthouse"
+  | "surf"
   /**
-   * A current `range` px long from the caster along the aim, `radius` px
-   * either side, for `duration`: enemies in it (not jumping) drift along it at
-   * `current.speed` px/s and take `damage` every `tickInterval`.
+   * A wall of water `radius` px either side of the aim rolls from the caster
+   * along it at `speed` for `range` px, over cover. Each enemy (not jumping)
+   * its front reaches takes the hit and is carried along for up to
+   * `wave.carry` seconds; carried into a wall, it takes `wallSlam` of the
+   * damage more and `status`.
    */
-  | "current"
+  | "wave"
+  /**
+   * `count` bolts, `tickInterval` apart: each marks the ground ahead of the
+   * enemy nearest the caster's aim (anywhere, if it isn't stealthed) and
+   * strikes there `tickDelay` later: everyone within `explosion` px takes
+   * `damage` and `status`.
+   */
+  | "storm"
+  /**
+   * A wraith (`radius`) that hunts the nearest enemy that isn't stealthed for
+   * `duration`, through walls, at `hunt.speed`: enemies it touches take
+   * `damage` every `tickInterval`, and one under `hunt.execute` of its full
+   * health is knocked out.
+   */
+  | "hunt"
+  /**
+   * A light at the aim (up to `range`) for `duration`: enemies within
+   * `radius` drift toward it at `lure.speed` px/s; then it bursts, and
+   * enemies within `explosion` take `damage` and `status`.
+   */
+  | "lure"
+  /**
+   * Leap toward the aim (up to `range` px) at `speed`, airborne on the way
+   * (ground attacks miss); landing, enemies within `explosion` take `damage`
+   * and `status`. Predicted on the client like a vault.
+   */
+  | "leap"
+  /**
+   * A barrage that creeps along the aim: `count` blasts of `explosion` px,
+   * the first `creep.start` px out and each `creep.step` px farther, landing
+   * `tickDelay` after they are marked and `creep.gap` seconds apart.
+   */
+  | "creep"
+  /**
+   * A garden at the aim (up to `range`, `radius` px) for `duration`: every
+   * `tickInterval` enemies on it take `damage` and are slowed; whoever is
+   * still on it at the end takes `garden.burst` and `status`.
+   */
+  | "garden"
   /**
    * For `duration` the caster leaves a trail behind it that lasts
    * `trail.fade` seconds: enemies touching it (`radius`) take `damage` and
@@ -519,10 +569,24 @@ export interface Ability {
   strikes?: number[];
   /** Pound: seconds to cast the next strike before the chain ends. */
   chainWindow?: number;
-  /** Lighthouse: seconds per turn of the rays. */
-  spin?: number;
-  /** Current: how fast enemies in it drift (px/s). */
-  current?: { speed: number };
+  /** Surf: the cooldown left after a dash that went through an enemy (s). */
+  surf?: { refund: number };
+  /** Wave: the longest an enemy is carried along (s). */
+  wave?: { carry: number };
+  /**
+   * Projectile: it flies through enemies, zapping the nearest one within
+   * `radius` in sight for `damage` every `tick` seconds, and explodes at the
+   * end of its flight.
+   */
+  aura?: { radius: number; tick: number; damage: number };
+  /** Hunt: how fast the wraith moves (px/s), and the health share it reaps. */
+  hunt?: { speed: number; execute: number };
+  /** Lure: how fast enemies are drawn toward the light (px/s). */
+  lure?: { speed: number };
+  /** Creep: the first blast's distance, the distance between blasts and the time between them. */
+  creep?: { start: number; step: number; gap: number };
+  /** Garden: the damage whoever is still on it at the end takes. */
+  garden?: { burst: number };
   /** Trail: how long each stretch of the trail lasts (s). */
   trail?: { fade: number };
   /** Steer: how fast the zone follows the caster's aim (px/s). */
@@ -648,10 +712,17 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "ball-lightning",
         "Ball Lightning",
         "projectile",
-        22,
+        12,
         10,
-        "A slow electric orb that bursts on impact, shocking nearby enemies. 30% more damage to enemies already slowed, stunned or otherwise hindered.",
-        { speed: 400, radius: 22, explosion: 100, bonusVsStatus: 1.3 },
+        "A slow electric orb that flies through enemies, zapping the nearest one within 150 px for 3 every 0.3 seconds, then bursts at the end of its flight for 12. 30% more damage to enemies already slowed, stunned or otherwise hindered.",
+        {
+          speed: 360,
+          range: 640,
+          radius: 22,
+          explosion: 100,
+          bonusVsStatus: 1.3,
+          aura: { radius: 150, tick: 0.3, damage: 3 },
+        },
       ),
       ability(
         "static-glide",
@@ -669,18 +740,23 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "overcharge",
-        "Overcharge",
-        "nova",
-        30,
+        "thunderstorm",
+        "Thunderstorm",
+        "storm",
+        16,
         20,
-        "After a short charge, a circular electrical explosion around Voltkit.",
+        "Call a storm over the whole court: three bolts fall on the enemy nearest your aim, wherever it is, 0.8 seconds apart. Each marks the ground where it is heading and strikes 0.55 seconds later: 16 damage and a short paralysis to anyone in its 95 px. Change direction to dodge them.",
         {
-          radius: 190,
-          cast: 0.35,
-          knockback: 120,
+          cast: 0.4,
+          count: 3,
+          tickInterval: 0.8,
+          tickDelay: 0.55,
+          explosion: 95,
+          duration: 2.4,
+          range: 0,
+          knockback: 0,
           status: "paralysis",
-          statusDuration: 1,
+          statusDuration: 0.5,
         },
       ),
     ],
@@ -724,16 +800,17 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "magma-bomb",
-        "Magma Bomb",
-        "projectile",
-        22,
-        12,
-        "An explosive fireball that burns enemies caught in the blast.",
+        "magma-leap",
+        "Magma Leap",
+        "leap",
+        16,
+        13,
+        "Leap up to 320 px toward your aim, over ground attacks, and land in an eruption: 16 damage and a burn to every enemy within 110 px.",
         {
-          speed: 620,
-          radius: 18,
+          range: 320,
+          speed: 900,
           explosion: 110,
+          knockback: 80,
           status: "burn",
           statusDuration: 2,
         },
@@ -813,20 +890,17 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "undertow",
-        "Undertow",
-        "current",
-        3,
+        "river-dash",
+        "River Dash",
+        "surf",
         12,
-        "A current 420 px long flows from Tidefin along your aim for 3.5 seconds: enemies in it are swept along at 200 px a second and take 3 every half second. Jump to get out of it.",
+        9,
+        "Shoot 300 px along your aim on a jet of water, straight through enemies: each one you pass takes 12 and is Soaked. Pass through anyone and the cooldown drops to 3 seconds: dash in, then dash out.",
         {
-          radius: 70,
-          duration: 3.5,
-          range: 420,
-          ground: true,
-          tickInterval: 0.5,
+          range: 300,
+          speed: 1000,
           knockback: 0,
-          current: { speed: 200 },
+          surf: { refund: 3 },
         },
       ),
       ability(
@@ -841,11 +915,22 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "riptide-wave",
         "Riptide Wave",
-        "charged",
-        26,
+        "wave",
+        24,
         20,
-        "A wide, powerful forward-moving wave with heavy knockback.",
-        { cast: 0.25, speed: 520, radius: 42, range: 800, knockback: 200 },
+        "After a short charge, a wall of water 380 px wide rolls from Tidefin along your aim across the whole court, over any wall. Enemies it reaches take 24 and are carried along for up to half a second; carried into a wall, they take 12 more and are stunned. Jump over it.",
+        {
+          cast: 0.35,
+          speed: 650,
+          radius: 190,
+          range: 1500,
+          ground: true,
+          knockback: 0,
+          wallSlam: 0.5,
+          status: "stun",
+          statusDuration: 0.6,
+          wave: { carry: 0.5 },
+        },
       ),
     ],
   },
@@ -921,7 +1006,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A fluffy moth that sheds glowing dust. Balanced at every range; Kindle turns pressure into a race.",
     color: 0x86f0c0,
-    health: 143,
+    health: 138,
     speed: 265,
     basic: basic(
       "glint",
@@ -969,18 +1054,20 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "radiant-flare",
         "Radiant Flare",
-        "lighthouse",
-        7,
+        "lure",
+        24,
         20,
-        "After a charge, Lumoth glows like a lighthouse for 2 seconds: three rays of light 260 px long turn round it, and every enemy a ray sweeps takes 7.",
+        "Shoot a flare up to 650 px away. It hangs like a little sun for 2 seconds and draws every enemy within 200 px toward it (190 px a second), then bursts: 24 damage and stunned for 0.6 seconds within 150 px. Dash out of the pull.",
         {
-          cast: 0.45,
+          cast: 0.35,
+          range: 650,
+          radius: 200,
           duration: 2,
-          count: 3,
-          range: 260,
-          radius: 18,
-          spin: 1.2,
+          explosion: 150,
           knockback: 0,
+          status: "stun",
+          statusDuration: 0.6,
+          lure: { speed: 190 },
         },
       ),
     ],
@@ -991,9 +1078,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     element: "Psychic",
     role: "High-power duelist",
     description:
-      "A floating three-eyed owl. Slow, heavy attacks; controls space with its third-eye ray, a booming hoot and its wing cloak.",
+      "A floating three-eyed owl. Slow, heavy attacks; controls space with its third-eye ray, a silencing hush and its wing cloak.",
     color: 0xff79d2,
-    health: 134,
+    health: 138,
     speed: 255,
     basic: basic(
       "mind-dart",
@@ -1015,13 +1102,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { range: 760, radius: 16, status: "slow", statusDuration: 0.6 },
       ),
       ability(
-        "booming-hoot",
-        "Booming Hoot",
+        "hush",
+        "Hush",
         "nova",
+        10,
         12,
-        12,
-        "A booming hoot that blasts nearby opponents far away.",
-        { radius: 180, knockback: 230 },
+        "A silent wingbeat: enemies within 200 px take 10, are pushed back and are Silenced for 1.2 seconds: no skills (they can still move, dash and attack).",
+        { radius: 200, knockback: 160, status: "silence", statusDuration: 1.2 },
       ),
       ability(
         "wing-cloak",
@@ -1132,7 +1219,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A hooded lantern wisp. Hangs its haunted lantern to hold ground, and strikes from the shadows at anything its ghostfire lights up.",
     color: 0x9c6bff,
-    health: 154,
+    health: 148,
     speed: 260,
     basic: basic(
       "lantern-wisp",
@@ -1148,10 +1235,16 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "shade-crawl",
         "Shade Crawl",
         "projectile",
-        21,
+        14,
         8,
-        "A fast shadow strike along the ground. Jump to avoid it.",
-        { speed: 1100, radius: 16, ground: true },
+        "Your shadow crawls out and binds the first enemy's shadow: 14 damage and Rooted for 0.4 seconds (it can still attack, but not move or dash). Sidestep it.",
+        {
+          speed: 900,
+          radius: 18,
+          knockback: 0,
+          status: "root",
+          statusDuration: 0.4,
+        },
       ),
       ability(
         "ghostfire",
@@ -1181,13 +1274,22 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "void-orb",
-        "Void Orb",
-        "charged",
-        34,
+        "wraith-hunt",
+        "Wraith Hunt",
+        "hunt",
+        5,
         20,
-        "After a short charge, a powerful ghost-energy orb that explodes.",
-        { cast: 0.35, speed: 560, radius: 26, explosion: 120 },
+        "A wraith leaves your lantern and hunts the nearest enemy you can see for 3 seconds, through walls, a little slower than anyone walks. Its touch deals 5 every half second, and reaps an enemy under 20% health: knocked out. Run from it.",
+        {
+          cast: 0.3,
+          radius: 50,
+          duration: 3,
+          range: 0,
+          tickDelay: 0.3,
+          tickInterval: 0.5,
+          knockback: 0,
+          hunt: { speed: 205, execute: 0.2 },
+        },
       ),
     ],
   },
@@ -1358,20 +1460,21 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "chestnut-storm",
         "Chestnut Storm",
-        "zone",
-        38,
+        "creep",
+        26,
         20,
-        "Rain burning chestnuts on a huge area far away, over any wall. It glows for almost a second before it lands.",
+        "A storm of burning chestnuts creeps along your aim, over any wall: five blasts 115 px wide, from 160 px out to 760 px, 0.15 seconds apart. Each is marked 0.6 seconds before it lands: 26 damage, a burn and a shove. Step out of the line.",
         {
-          radius: 180,
-          range: 820,
           cast: 0.3,
-          duration: 1,
-          tickDelay: 0.9,
-          tickInterval: 1,
-          knockback: 130,
+          count: 5,
+          explosion: 115,
+          tickDelay: 0.6,
+          duration: 0.7,
+          range: 760,
+          knockback: 60,
           status: "burn",
-          statusDuration: 3,
+          statusDuration: 2,
+          creep: { start: 160, step: 150, gap: 0.15 },
         },
       ),
     ],
@@ -1659,20 +1762,19 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "moon-gravity",
-        "Moon Gravity",
-        "zone",
-        4,
-        15,
-        "A patch of low moon gravity at the aim point for 2.5 seconds: enemies in it float, sliding about and barely able to turn, and take 4 every half second.",
+        "sticky-mochi",
+        "Sticky Mochi",
+        "projectile",
+        8,
+        13,
+        "Fling a ball of sticky mochi: the first enemy hit takes 8 and is Grounded for 0.9 seconds: it can't dash or jump. Nowhere to hop away to.",
         {
-          radius: 130,
-          range: 450,
-          duration: 2.5,
-          tickInterval: 0.5,
+          speed: 820,
+          range: 560,
+          radius: 16,
           knockback: 0,
-          status: "float",
-          statusDuration: 0.8,
+          status: "grounded",
+          statusDuration: 0.9,
         },
       ),
       ability(
@@ -1994,17 +2096,22 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "overgrowth",
         "Overgrowth",
-        "nova",
-        30,
+        "garden",
+        5,
         20,
-        "Vines erupt around Mossloth: 30 damage and Rooted for 1.2 seconds. Every seedling you have blooms at full growth, and your moss grows full.",
+        "A wild garden bursts up at your aim (up to 560 px, 230 px wide) for 2.5 seconds: enemies on it take 5 every half second and are slowed, and whoever is still on it at the end takes 26 and is Rooted for 1.2 seconds. Every seedling you have blooms, and your moss grows full.",
         {
           cast: 0.3,
+          range: 560,
           radius: 230,
+          duration: 2.5,
+          tickDelay: 0.3,
+          tickInterval: 0.5,
           knockback: 0,
           status: "root",
           statusDuration: 1.2,
           bloom: true,
+          garden: { burst: 26 },
         },
       ),
     ],
@@ -2063,11 +2170,11 @@ export interface Combo {
 export const COMBOS: Record<CharacterId, Combo> = {
   tidefin: {
     name: "Soaked",
-    setup: "undertow",
+    setup: "river-dash",
     payoff: "riptide-wave",
     window: 3,
     damage: 1.3,
-    text: "Undertow soaks enemies. Riptide Wave deals 30% more to Soaked targets.",
+    text: "River Dash soaks enemies it goes through. Riptide Wave deals 30% more to Soaked targets.",
   },
   voltkit: {
     name: "Charged",
@@ -2083,20 +2190,20 @@ export const COMBOS: Record<CharacterId, Combo> = {
   cindrake: {
     name: "Scorched",
     setup: "crest-flare",
-    payoff: "magma-bomb",
+    payoff: "magma-leap",
     window: 3,
     damage: 1.35,
     status: "burn",
     statusDuration: 4,
-    text: "Crest Flare scorches. Magma Bomb deals 35% more to Scorched targets and burns twice as long.",
+    text: "Crest Flare scorches. Magma Leap lands 35% harder on Scorched targets and burns twice as long.",
   },
   mystowl: {
     name: "Dazed",
-    setup: "booming-hoot",
+    setup: "hush",
     payoff: "mind-maze",
     window: 3,
     damage: 1.4,
-    text: "Booming Hoot dazes. Mind Maze deals 40% more to Dazed targets.",
+    text: "Hush dazes. Mind Maze deals 40% more to Dazed targets.",
   },
   terradon: {
     name: "Mired",
@@ -2114,7 +2221,7 @@ export const COMBOS: Record<CharacterId, Combo> = {
     window: 5,
     self: true,
     radius: 1.25,
-    text: "Radiant Flare cast while Kindled has 25% longer rays.",
+    text: "Radiant Flare cast while Kindled draws in and bursts 25% wider.",
   },
   auralynx: {
     name: "Primed",
@@ -2134,7 +2241,9 @@ export const COMBOS: Record<CharacterId, Combo> = {
     payoff: "shade-crawl",
     window: 3,
     damage: 1.25,
-    text: "Ghostfire lights enemies up. Shade Crawl deals 25% more to Lit targets.",
+    status: "root",
+    statusDuration: 0.9,
+    text: "Ghostfire lights enemies up. Shade Crawl deals 25% more to Lit targets and roots them for 0.9 seconds.",
   },
   coilemur: {
     name: "Magnetised",
@@ -2655,6 +2764,8 @@ export interface Projectile extends Vec {
   back?: boolean;
   /** Boomerang: who it has hit on this pass. */
   hit?: string[];
+  /** Ball Lightning (`aura`): when it can zap again. */
+  nextZap?: number;
 }
 /** An orb on the court, waiting to be picked up. */
 export interface Orb extends Vec {
@@ -2833,7 +2944,7 @@ export interface Zone extends Vec {
   color: number;
   /** When it was placed (seedlings grow from then). */
   born?: number;
-  /** Screen: which way the curtain runs (radians). Lighthouse: where the first ray points. Current: which way it flows. */
+  /** Screen: which way the curtain runs (radians). Wave: which way it rolls. */
   angle?: number;
   /** Trail: where the caster has been (oldest first) and when. */
   points?: { x: number; y: number; t: number }[];
@@ -3194,8 +3305,10 @@ export function move(
     if (!blocked(body.x, body.y + dy / steps, r)) body.y += dy / steps;
   }
 }
-/** Undertow: how long a fighter keeps drifting after the lane last held it (s). */
+/** How long a fighter keeps drifting after a wave or a flare last held it (s). */
 export const CURRENT_HOLD = 0.15;
+/** Radiant Flare draws a fighter no nearer its centre than this (px). */
+export const LURE_CORE = 8;
 export function advanceMovement(
   p: Fighter,
   input: Input,
@@ -3203,12 +3316,24 @@ export function advanceMovement(
   time: number,
 ): void {
   stepMovement(p, input, dt, time);
-  // Undertow: a current carries it along (jumping clears it).
+  // Riptide Wave: a current carries it along (jumping clears it).
   const current = p.statuses.find(
     (s) => s.kind === "current" && s.until > time && s.tx !== undefined,
   );
   if (current && p.jumpUntil <= time && p.hp > 0)
     move(p, current.tx! * dt, current.ty! * dt);
+  // Radiant Flare: drawn toward the light (worked out here from its centre,
+  // so the client's prediction follows the pull exactly).
+  const lure = p.statuses.find(
+    (s) => s.kind === "lure" && s.until > time && s.tx !== undefined,
+  );
+  if (lure && p.hp > 0) {
+    const dx = lure.tx! - p.x,
+      dy = lure.ty! - p.y,
+      d = Math.hypot(dx, dy),
+      step = Math.min((lure.amount ?? 0) * dt, d - LURE_CORE);
+    if (step > 0) move(p, (dx / d) * step, (dy / d) * step);
+  }
   holdInCage(p, time);
 }
 /**
@@ -3509,8 +3634,8 @@ export const RITES: Rite[] = [
     "major",
     "ball-lightning",
     "Thunderhead",
-    "Ball Lightning becomes three orbs of 14 damage with smaller blasts.",
-    { set: { kind: "barrage", count: 3, damage: 14, explosion: 70 } },
+    "Ball Lightning becomes three orbs of 10 damage with smaller blasts.",
+    { set: { kind: "barrage", count: 3, damage: 10, explosion: 70 } },
   ),
   rite(
     "cindrake",
@@ -3523,9 +3648,9 @@ export const RITES: Rite[] = [
   rite(
     "cindrake",
     "minor",
-    "magma-bomb",
-    "Wide Bomb",
-    "Magma Bomb's blast is 30% wider.",
+    "magma-leap",
+    "Wide Eruption",
+    "Magma Leap's eruption is 30% wider.",
     { mul: { explosion: 1.3 } },
   ),
   rite(
@@ -3571,10 +3696,10 @@ export const RITES: Rite[] = [
   rite(
     "tidefin",
     "minor",
-    "undertow",
-    "Wide Undertow",
-    "Undertow is 20% wider.",
-    { mul: { radius: 1.2 } },
+    "river-dash",
+    "Long Dash",
+    "River Dash goes 25% farther.",
+    { mul: { range: 1.25 } },
   ),
   rite(
     "tidefin",
@@ -3595,10 +3720,10 @@ export const RITES: Rite[] = [
   rite(
     "tidefin",
     "major",
-    "undertow",
-    "Maelstrom",
-    "Undertow deals 5 per tick instead of 3 and lasts 4.5s.",
-    { set: { damage: 5, duration: 4.5 } },
+    "river-dash",
+    "Whitewater",
+    "River Dash throws the enemies it goes through aside (a strong knockback) and deals 16 instead of 12.",
+    { set: { damage: 16, knockback: 110 } },
   ),
   rite(
     "tidefin",
@@ -3693,8 +3818,8 @@ export const RITES: Rite[] = [
     "major",
     "radiant-flare",
     "Quick Flare",
-    "Radiant Flare charges in 0.2s instead of 0.45s.",
-    { set: { cast: 0.2 } },
+    "Radiant Flare charges in 0.15s instead of 0.35s.",
+    { set: { cast: 0.15 } },
   ),
   rite(
     "lumoth",
@@ -3712,14 +3837,9 @@ export const RITES: Rite[] = [
     "Third-Eye Ray reaches 20% further.",
     { mul: { range: 1.2 } },
   ),
-  rite(
-    "mystowl",
-    "minor",
-    "booming-hoot",
-    "Loud Hoot",
-    "Booming Hoot is 20% wider.",
-    { mul: { radius: 1.2 } },
-  ),
+  rite("mystowl", "minor", "hush", "Deep Hush", "Hush is 20% wider.", {
+    mul: { radius: 1.2 },
+  }),
   rite(
     "mystowl",
     "minor",
@@ -3800,8 +3920,8 @@ export const RITES: Rite[] = [
     "minor",
     "shade-crawl",
     "Deep Crawl",
-    "Shade Crawl deals 24 damage instead of 21.",
-    { set: { damage: 24 } },
+    "Shade Crawl roots for 0.7 seconds instead of 0.4.",
+    { set: { statusDuration: 0.7 } },
   ),
   rite(
     "duskveil",
@@ -3838,10 +3958,10 @@ export const RITES: Rite[] = [
   rite(
     "duskveil",
     "major",
-    "void-orb",
-    "Burning Void",
-    "Void Orb's blast is 30% wider and burns.",
-    { mul: { explosion: 1.3 }, set: { status: "burn", statusDuration: 2 } },
+    "wraith-hunt",
+    "Long Hunt",
+    "The wraith hunts for 4.5 seconds instead of 3.",
+    { set: { duration: 4.5 } },
   ),
   rite(
     "coilemur",
@@ -3936,8 +4056,8 @@ export const RITES: Rite[] = [
     "major",
     "chestnut-storm",
     "Harvest Storm",
-    "Chestnut Storm is 30% wider.",
-    { mul: { radius: 1.3 } },
+    "Chestnut Storm's blasts are 30% wider.",
+    { mul: { explosion: 1.3 } },
   ),
   rite(
     "glacelle",
@@ -4097,10 +4217,10 @@ export const RITES: Rite[] = [
   rite(
     "astrabun",
     "minor",
-    "moon-gravity",
-    "Light Moon",
-    "Moon Gravity is 20% wider.",
-    { mul: { radius: 1.2 } },
+    "sticky-mochi",
+    "Gooey Mochi",
+    "Sticky Mochi grounds for 1.5 seconds instead of 0.9.",
+    { set: { statusDuration: 1.5 } },
   ),
   rite(
     "astrabun",

@@ -1047,8 +1047,8 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Your wing cloak shelters nearby allies from Glare.",
     },
     duskveil: {
-      skill: "Void Orb",
-      text: "A Void Orb on a lance lane swallows that segment.",
+      skill: "Wraith Hunt",
+      text: "Your wraith swallows a Prism Lance segment it floats over.",
     },
     glacelle: {
       skill: "Frost Bloom",
@@ -1069,8 +1069,8 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Your heat lights any brazier it touches, including while you move.",
     },
     tidefin: {
-      skill: "Undertow",
-      text: "Your current puts out fire patches and dive trails all along it.",
+      skill: "River Dash",
+      text: "The jet of water you ride puts out fire patches and dive trails all along the dash.",
     },
     auralynx: {
       skill: "Facet Guard",
@@ -1098,7 +1098,7 @@ export const RAID_BOSS_PERKS: Partial<
     },
     mossloth: {
       skill: "Overgrowth",
-      text: "Its vines smother fire patches and dive trails all around you.",
+      text: "Its garden smothers fire patches and dive trails where it grows.",
     },
   },
   "storm-twins": {
@@ -1115,8 +1115,8 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Your closed shell blocks Polarity damage.",
     },
     duskveil: {
-      skill: "Void Orb",
-      text: "A hit pulls that twin toward its partner, shortening the Link Beam.",
+      skill: "Wraith Hunt",
+      text: "The wraith's touch pulls that twin toward its partner, shortening the Link Beam.",
     },
     coilemur: {
       skill: "Electromagnet",
@@ -1142,8 +1142,8 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Hits on a stranded Tidelotl add extra stagger (water conducts).",
     },
     cindrake: {
-      skill: "Magma Bomb",
-      text: "Pops a Bubble Prison in one hit.",
+      skill: "Magma Leap",
+      text: "Landing beside a Bubble Prison pops it in one go.",
     },
     tidefin: {
       skill: "Tide Double",
@@ -1159,7 +1159,7 @@ export const RAID_BOSS_PERKS: Partial<
     },
     pyranda: {
       skill: "Chestnut Storm",
-      text: "Pops every bubble where it lands, Bubble Prisons included.",
+      text: "Pops every bubble where its blasts land, Bubble Prisons included.",
     },
     glacelle: {
       skill: "Frost Bloom",

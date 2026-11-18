@@ -44,10 +44,10 @@ it("pins roster health (champion balance overhaul) and movement speeds", () => {
     cindrake: [151, 240],
     tidefin: [146, 285],
     auralynx: [170, 235],
-    lumoth: [143, 265],
-    mystowl: [134, 255],
+    lumoth: [138, 265],
+    mystowl: [138, 255],
     terradon: [193, 222],
-    duskveil: [154, 260],
+    duskveil: [148, 260],
     coilemur: [144, 250],
     pyranda: [150, 235],
     glacelle: [158, 255],
@@ -129,7 +129,7 @@ it("loads original art and valid public metadata for every fighter and direction
     `${Math.round((CHARACTERS.terradon.basic.interval ?? 0) * 1000)} ms between attacks`,
   );
   expect(detail).not.toContain("PLACEHOLDER");
-  expect(rosterDetail("voltkit", { tab: "skills" })).toContain("Overcharge");
+  expect(rosterDetail("voltkit", { tab: "skills" })).toContain("Thunderstorm");
 });
 it("validates frame, sheet and atlas imports, frame keys, rates and local paths", () => {
   const animations = Object.fromEntries(

@@ -10,6 +10,7 @@ import {
   move,
   normalize,
   inputSchema,
+  type GameEvent,
 } from "../../packages/shared/src/index.js";
 const duel = () => {
   const a = new Arena("ABC123");
@@ -199,14 +200,12 @@ describe("authoritative simulation", () => {
         if (c.skills[i].kind === "clone") expect(p.clone).toBeDefined();
         const kind = c.skills[i].kind;
         // A buff or rest can name its own status (Static Glide: haste; Shell Up: shell).
-        const own =
-          (kind === "buff" || kind === "rest") && c.skills[i].status;
+        const own = (kind === "buff" || kind === "rest") && c.skills[i].status;
         if (kind in selfStatus)
           expect(
             p.statuses.some(
               (s) =>
-                s.kind ===
-                (own || selfStatus[kind as keyof typeof selfStatus]),
+                s.kind === (own || selfStatus[kind as keyof typeof selfStatus]),
             ),
           ).toBe(true);
       }
@@ -250,22 +249,39 @@ describe("projectile impact events", () => {
     const ability = [c.basic, ...c.skills].find((s) => s.id === abilityId)!;
     q.x = p.x + 160;
     q.y = p.y;
-    a.projectiles.push({ id: 9001, owner: p.id, x: p.x + 30, y: p.y, vx: ability.speed, vy: 0, remaining: 600, ability, color: c.color });
+    a.projectiles.push({
+      id: 9001,
+      owner: p.id,
+      x: p.x + 30,
+      y: p.y,
+      vx: ability.speed,
+      vy: 0,
+      remaining: 600,
+      ability,
+      color: c.color,
+    });
     a.events = [];
-    for (let i = 0; i < 20 && a.projectiles.some((pr) => pr.id === 9001); i++) a.tick();
+    for (let i = 0; i < 20 && a.projectiles.some((pr) => pr.id === 9001); i++)
+      a.tick();
     return a.events;
   };
   it("sends an impact at the contact point when a projectile hits a fighter", () => {
     const a = duel();
     const events = land(a, "spark-dart");
-    const impact = events.find((e) => e.kind === "impact" && e.abilityId === "spark-dart");
-    const hit = events.find((e) => e.kind === "hit" && e.abilityId === "spark-dart");
+    const impact = events.find(
+      (e) => e.kind === "impact" && e.abilityId === "spark-dart",
+    );
+    const hit = events.find(
+      (e) => e.kind === "hit" && e.abilityId === "spark-dart",
+    );
     expect(hit).toBeTruthy();
     expect(impact).toBeTruthy();
     // Touching: fighter edge + projectile edge, within one swept step.
-    expect(Math.abs(impact!.x - a.players[1].x)).toBeLessThan(RULES.radius + CHARACTERS.voltkit.basic.radius + 12);
+    expect(Math.abs(impact!.x - a.players[1].x)).toBeLessThan(
+      RULES.radius + CHARACTERS.voltkit.basic.radius + 12,
+    );
   });
-  it("still sends Riptide Wave's impact when it lands as Tidefin's combo", () => {
+  it("lands Riptide Wave as Tidefin's combo on a Soaked enemy", () => {
     const a = new Arena("ABC123");
     a.add("one", "One", "tidefin");
     a.add("two", "Two", "cindrake");
@@ -273,10 +289,21 @@ describe("projectile impact events", () => {
     a.phase = "playing";
     a.deadline = 180;
     const [p, q] = a.players;
-    a.status(q, "mark", 3, p.id); // Soaked by Eddy
-    const events = land(a, "riptide-wave");
-    const hit = events.find((e) => e.kind === "hit" && e.abilityId === "riptide-wave");
+    a.status(q, "mark", 3, p.id); // Soaked by River Dash
+    Object.assign(q, { x: p.x + 300, y: p.y });
+    p.angle = Math.atan2(q.y - p.y, q.x - p.x);
+    a.cast(
+      p,
+      CHARACTERS.tidefin.skills.find((s) => s.id === "riptide-wave")!,
+    );
+    const events: GameEvent[] = [];
+    for (let i = 0; i < 40; i++) {
+      a.tick();
+      events.push(...a.events.filter((e) => !events.includes(e)));
+    }
+    const hit = events.find(
+      (e) => e.kind === "hit" && e.abilityId === "riptide-wave",
+    );
     expect(hit?.combo).toBe("Soaked");
-    expect(events.some((e) => e.kind === "impact" && e.abilityId === "riptide-wave")).toBe(true);
   });
 });

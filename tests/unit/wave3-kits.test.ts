@@ -10,7 +10,8 @@ import {
 } from "../../packages/shared/src/index.js";
 
 // Wave 3 of making every kit its own: three of the four slow zones and two of
-// the zone ultimates that were a delayed blast at the aim.
+// the zone ultimates that were a delayed blast at the aim. (Undertow has since
+// become River Dash: tests/unit/revolution-kits.test.ts.)
 
 const arena = (me: CharacterId, them: CharacterId = "terradon") => {
   const a = new Arena("WAVE3", "duel");
@@ -33,67 +34,6 @@ const skill = (c: CharacterId, id: string) =>
   CHARACTERS[c].skills.find((k) => k.id === id)!;
 /** Open ground on the classic arena's top row. */
 const Y = 150;
-
-describe("Undertow (Tidefin)", () => {
-  it("sweeps an enemy standing in it along the aim, and hurts it", () => {
-    const a = arena("tidefin");
-    const [me, them] = a.players;
-    place(me, 300, Y, 900, Y);
-    place(them, 400, Y);
-    const hp = them.hp;
-    a.cast(me, skill("tidefin", "undertow"));
-    seconds(a, 1);
-    // Carried toward +x though it stands still.
-    expect(them.x).toBeGreaterThan(530);
-    expect(hp - them.hp).toBeGreaterThanOrEqual(
-      skill("tidefin", "undertow").damage,
-    );
-  });
-  it("lets a jumping enemy over it", () => {
-    const a = arena("tidefin");
-    const [me, them] = a.players;
-    place(me, 300, Y, 900, Y);
-    place(them, 400, Y);
-    them.jumpUntil = a.time + 5;
-    a.cast(me, skill("tidefin", "undertow"));
-    seconds(a, 0.5);
-    expect(them.x).toBeCloseTo(400, 0);
-  });
-});
-
-describe("Moon Gravity (Astrabun)", () => {
-  it("makes enemies float: they barely change direction", () => {
-    const run = (float: boolean) => {
-      const a = arena("astrabun", "voltkit");
-      const them = a.players[1];
-      place(them, 600, Y + 200);
-      if (float)
-        them.statuses.push({
-          kind: "float",
-          until: a.time + 5,
-          nextTick: a.time + 5,
-        });
-      // Running right, it turns left: how far left does it get in 0.3 s?
-      Object.assign(them, { vx: 250 });
-      const left = { ...blankInput(), dx: -1, aimX: 0, aimY: Y + 200 };
-      for (let i = 0; i < Math.round(RULES.tick * 0.3); i++)
-        advanceMovement(them, left, 1 / RULES.tick, a.time);
-      return them.vx;
-    };
-    expect(run(false)).toBeLessThan(-150);
-    // Floating, it is still drifting the old way, or only just stopped.
-    expect(run(true)).toBeGreaterThan(-40);
-  });
-  it("comes from the zone", () => {
-    const a = arena("astrabun");
-    const [me, them] = a.players;
-    place(me, 300, Y, 500, Y);
-    place(them, 500, Y);
-    a.cast(me, skill("astrabun", "moon-gravity"));
-    seconds(a, 0.6);
-    expect(a.has(them, "float")).toBe(true);
-  });
-});
 
 describe("Spark Trail (Coilemur)", () => {
   it("hurts and paralyses enemies who touch where Coilemur walked", () => {

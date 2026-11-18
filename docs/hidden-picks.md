@@ -203,8 +203,23 @@ battle, on the briefing, in the picker and on the Lobby's party stage
 - **Party:** the Lobby's party bar shows each member's avatar, with the
   leader ringed in gold; the server reads it in `loadPartyAppearance`.
   The stage still shows fighters, to show off skins (owner, 18 Nov).
-- **The reveal:** on a PvP briefing (bots included) each card starts
-  face down, with a "?", the player's avatar and their name. It waits
-  while the arena loads, then turns over to the fighter, yours first
-  (`vsReveal` in `main.ts`, `.vs-flip` in `style.css`). With reduced
+- **The Reveal:** a PvP match's briefing (bots included) is a whole-screen
+  loading screen, "The Reveal" (owner, 18 Nov). Its kicker names the mode
+  and the arena (1v1 Duel, 1v1 vs Bot, 2v2 Teams, Free-for-all · N
+  players). Each player has a card: the fighter, its name, its element and
+  role (two lines kept on every card, so the rows sit level), and the
+  player's name only (no avatar or frame here: the owner's choice). Yours
+  is ringed in gold with a "You" tag. 1v1 and 2v2 face off across a VS,
+  your side on the left over blue, theirs on the right over red; a
+  free-for-all is one row over violet. Each card starts face down (a "?"
+  and the player's name), waits while the arena loads, then turns over,
+  yours first (`vsReveal` in `main.ts`, `.vs-flip` in `style.css`). Below:
+  the goal, the arena's tip if it has something to dodge, and the keys on a
+  computer; at the foot, how far the arena has loaded (`arenaProgress`:
+  the engine, then each fighter) and "I'm ready". Sizes follow the screen
+  (`.match-reveal`, a size container), so a phone held sideways (667×375
+  and up) shows every card and "I'm ready" without scrolling
+  (`tests/visual/reveal.spec.ts`, every mode at four sizes). With reduced
   motion the fighters show at once.
+  No chat button on the Reveal, neither the room's nor quick chat: it is a
+  few seconds' loading screen (owner, 18 Nov; `syncChat` in `main.ts`).
