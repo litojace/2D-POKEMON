@@ -58,6 +58,7 @@ import {
   type Fighter,
   type Reply,
   picksHidden,
+  isAvatar,
   pickTakenBy,
   pickClashes,
   veilPlayers,
@@ -438,6 +439,7 @@ export function createArenaServer(
             ...m,
             skin: saved.looks[m.character] ?? null,
             look: saved.look,
+            avatar: saved.avatar ?? null,
             ...away,
           }
         : { ...m, ...away };
@@ -459,9 +461,10 @@ export function createArenaServer(
     partyAppearanceLoads.set(accountId, request);
     const read = (name: string) =>
       Promise.resolve().then(() => accounts.rpc(token, name, {}));
-    const [skins, progress] = await Promise.allSettled([
+    const [skins, progress, avatar] = await Promise.allSettled([
       read("arena_my_looks"),
       read("arena_raid_progress"),
+      read("arena_my_avatar"),
     ]);
     if (partyAppearanceLoads.get(accountId) !== request) return;
     partyAppearanceLoads.delete(accountId);
@@ -487,6 +490,12 @@ export function createArenaServer(
         progress.status === "fulfilled"
           ? raidLookOf(progress.value as RaidProgress | null)
           : (before?.look ?? {}),
+      avatar:
+        avatar.status === "fulfilled"
+          ? isAvatar(avatar.value)
+            ? (avatar.value as string)
+            : null
+          : (before?.avatar ?? null),
     });
     if (party) emitParty(party);
   };
@@ -564,6 +573,9 @@ export function createArenaServer(
           });
         void plazaAppearance.refresh(socket.id, socket.data.accessToken, true);
       }
+      // A new avatar (or look) reaches the party's members.
+      if (parties.of(account.id))
+        void loadPartyAppearance(account.id, socket.data.accessToken);
       socket.emit("account-changed");
     } catch (error) {
       if (!ownsConnection(socket)) return;

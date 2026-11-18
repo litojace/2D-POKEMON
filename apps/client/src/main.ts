@@ -266,7 +266,13 @@ import {
   leadProjectile,
 } from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
-import { framedAvatar, identityPortrait, portraitAvatar } from "./portraits";
+import {
+  avatarImage,
+  avatarOfPlayer,
+  framedAvatar,
+  identityPortrait,
+  portraitAvatar,
+} from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
 import "./ui/tokens.css";
 import "./style.css";
@@ -1614,6 +1620,43 @@ async function reportPhoto(photo: string, name: string) {
     );
   }
 }
+/**
+ * The briefing's reveal: when it started, for the match on show. The
+ * overlay's markup is set again whenever it changes (someone is ready, the
+ * arena has loaded), so each card's flip carries a delay counted from the
+ * reveal's start: a card drawn again goes on from where it was, never
+ * turns back over. Delays move in 200 ms steps (the markup changes that
+ * often, only while cards are turning); once all have turned, no flip.
+ * While the arena loads the cards wait face down ("wait"): the reveal
+ * starts when "I'm ready" lights up, when the phone is free to animate.
+ */
+let vsRevealKey = "";
+let vsRevealAt = 0;
+const VS_FLIP_FIRST = 450,
+  VS_FLIP_STEP = 380,
+  VS_FLIP_MS = 700;
+function vsReveal(
+  s: Snapshot,
+  loading: boolean,
+): ((i: number) => number | "wait") | undefined {
+  if (
+    s.raid ||
+    s.practice ||
+    matchMedia("(prefers-reduced-motion: reduce)").matches
+  )
+    return undefined;
+  const key = `${s.code}:${s.players.map((p) => `${p.id}=${p.character}`).join(",")}`;
+  if (key !== vsRevealKey && loading) return () => "wait";
+  if (key !== vsRevealKey) {
+    vsRevealKey = key;
+    vsRevealAt = performance.now();
+  }
+  const elapsed = Math.floor((performance.now() - vsRevealAt) / 200) * 200;
+  const last =
+    VS_FLIP_FIRST + (s.players.length - 1) * VS_FLIP_STEP + VS_FLIP_MS;
+  if (elapsed > last) return undefined;
+  return (i: number) => VS_FLIP_FIRST + i * VS_FLIP_STEP - elapsed;
+}
 /** The room's ⋯ menu (Settings, Invite, Leave) is open. */
 let roomMenuOpen = false;
 function setRoomMenu(open: boolean) {
@@ -2582,7 +2625,12 @@ function syncPlaza(want: boolean, hub = want) {
         if (!r.ok && r.error) toast(r.error);
       }),
     myAccountId: () => accountsUI.account?.id,
-    onPlayer: async (action, playerId, name) => {
+    onPlayer: async (action, playerId, name, avatar) => {
+      if (action === "report-photo") {
+        const photo = photoIdOf(avatar);
+        if (photo) await reportPhoto(photo, name);
+        return true;
+      }
       if (action === "friend") {
         await accountsUI.friendRequest({ playerId });
         return;
@@ -2722,6 +2770,12 @@ function lobbyView() {
       !myId &&
       (party?.members.length ?? 0) > 1,
     partySize: party?.members.length ?? 0,
+    // Who is in the party, as themselves (their avatars), on its bar.
+    partyFaces: (party?.members ?? []).map((m) => ({
+      name: m.name,
+      avatar: m.id === me ? accountsUI.avatar : (m.avatar ?? null),
+      leader: m.id === party!.leader,
+    })),
     look: accountsUI.raidLook ?? {},
     economy: accountsUI.economy ?? undefined,
     friendRequests: lobbyFriends.requests,
@@ -2982,6 +3036,7 @@ function syncFarm(want: boolean, hub = want) {
         friend,
         actions,
       })) as FarmVisitResult,
+    player: (id) => avatarOfPlayer(id),
     art: (character) =>
       "data:image/svg+xml;charset=utf-8," +
       encodeURIComponent(
@@ -3968,8 +4023,18 @@ function renderBattle() {
         const art = fighterArt(p.character, undefined, skin);
         return palette ? colourPreview(art, palette) : art;
       };
-      const card = (p: Fighter) =>
-        `<div class="vs-fighter${p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}">${scopeIds(vsArt(p), `vs${state!.players.indexOf(p)}`)}<b>${escape(p.name)}${p.id === myId ? " <small>(you)</small>" : ""}</b><span>${CHARACTERS[p.character].name} · ${CHARACTERS[p.character].element}</span></div>`;
+      // The reveal (docs/hidden-picks.md): in PvP the picks were hidden, so
+      // each card starts face down (a "?", the player's avatar and name)
+      // and turns over to show the fighter, yours first.
+      const flips = vsReveal(state, arenaLoading(state));
+      let order = 0;
+      const card = (p: Fighter) => {
+        const delay = flips?.(order++);
+        const flip = delay !== undefined;
+        const waiting = delay === "wait";
+        const who = identityOf(p);
+        return `<div class="vs-fighter${p.id === myId ? " me" : ""}${flip ? " vs-flip" : ""}${waiting ? " is-waiting" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}${flip && !waiting ? `;--flip-delay:${delay}ms` : ""}">${scopeIds(vsArt(p), `vs${state!.players.indexOf(p)}`)}<b><i class="vs-avatar" aria-hidden="true">${avatarImage(who.avatar)}</i>${escape(p.name)}${p.id === myId ? " <small>(you)</small>" : ""}</b><span>${CHARACTERS[p.character].name} · ${CHARACTERS[p.character].element}</span>${flip ? `<div class="vs-back" aria-hidden="true"><strong class="vs-q">?</strong><i class="vs-avatar">${avatarImage(who.avatar)}</i><small>${escape(p.name)}</small></div>` : ""}</div>`;
+      };
       const mine = (p: Fighter) => teamOf(p) === teamOf(me);
       const side = (list: Fighter[]) =>
         list.sort((a, b) => Number(b.id === myId) - Number(a.id === myId));
@@ -7922,6 +7987,7 @@ function syncBattleLoop() {
 }
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
+  reportPhoto: (photo, name) => reportPhoto(photo, name),
   chooseFighter: (id) => {
     if (id === selected) return;
     selected = id;

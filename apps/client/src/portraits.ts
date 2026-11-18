@@ -82,16 +82,19 @@ export function framedAvatar(
  * An avatar's picture filling a portrait disc: a library one (avatars.ts,
  * the client's own files) or a player's own picture (the game server's).
  */
-export const avatarImage = (id: string | null | undefined) => {
+export const avatarImage = (id: string | null | undefined) =>
+  `<img class="portrait-avatar" src="${avatarSrc(id)}" alt="" draggable="false" decoding="async">`;
+
+/** The address of an avatar's picture (a photo comes from the game server). */
+export function avatarSrc(id: string | null | undefined) {
   const known = knownAvatar(id);
-  const src = photoIdOf(known)
-    ? new URL(
-        avatarUrl(known),
-        import.meta.env.VITE_SERVER_URL || location.origin,
-      ).href
-    : avatarUrl(known);
-  return `<img class="portrait-avatar" src="${src}" alt="" draggable="false" decoding="async">`;
-};
+  return photoIdOf(known) ? serverUrl(avatarUrl(known)) : avatarUrl(known);
+}
+/** Any player's avatar picture by account id (the server redirects to it). */
+export const avatarOfPlayer = (accountId: string) =>
+  serverUrl(`/api/avatar/of/${encodeURIComponent(accountId)}`);
+const serverUrl = (path: string) =>
+  new URL(path, import.meta.env.VITE_SERVER_URL || location.origin).href;
 
 /**
  * A player as themselves, not as a fighter: their avatar (the default until

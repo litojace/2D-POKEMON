@@ -129,7 +129,9 @@ for (const size of SIZES)
       await panel.locator('[data-profile-avatar-style="anime-2d"]').click();
       await expect(tiles).toHaveCount(26);
       await panel.locator('[data-profile-avatar="ea-avatar-040"]').click();
-      await expect(panel.locator(".pf-avatar-status")).toContainText("Avatar on");
+      await expect(panel.locator(".pf-avatar-status")).toContainText(
+        "Avatar on",
+      );
       expect(await page.evaluate(() => (window as any).__avatarSaves)).toEqual([
         "ea-avatar-040",
       ]);
@@ -161,14 +163,18 @@ for (const size of SIZES)
         mimeType: "image/png",
         buffer: Buffer.alloc(10 * 1024 * 1024 + 1, 1),
       });
-      await expect(panel.locator(".pf-avatar-status")).toContainText("over 10 MB");
+      await expect(panel.locator(".pf-avatar-status")).toContainText(
+        "over 10 MB",
+      );
       // …a photo is cut square and made small before it leaves the device.
       await input.setInputFiles({
         name: "me.png",
         mimeType: "image/png",
         buffer: png(1600, 1000, [40, 160, 220]),
       });
-      await expect(panel.locator(".pf-avatar-status")).toContainText("Picture on");
+      await expect(panel.locator(".pf-avatar-status")).toContainText(
+        "Picture on",
+      );
       const [upload] = await page.evaluate(
         () => (window as any).__photoUploads,
       );
@@ -242,5 +248,55 @@ test("a tap on another player's picture in a room reports it, after asking", asy
   await expect
     .poll(() => page.evaluate(() => (window as any).__photoReports))
     .toEqual([{ photo: PHOTO }]);
+  expect(errors).toEqual([]);
+});
+
+test("the briefing reveals each pick, card by card", async ({ page }, info) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  const errors = await openLobby(page);
+  await page.evaluate(() =>
+    (window as any).__room("pvp", { mode: "teams", phase: "lobby" }),
+  );
+  await openPlayPanel(page);
+  await pickRoomMode(page, "teams");
+  await createRoom(page);
+  await expect
+    .poll(async () => {
+      await page.evaluate(() => (window as any).__push());
+      return page.locator(".room-screen .roster-room").count();
+    })
+    .toBe(1);
+  // The match starts: every pick is sent, and the cards turn over.
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__snap.phase = "briefing";
+    w.__push();
+  });
+  const cards = page.locator(".briefing-versus .vs-fighter");
+  await expect(cards).toHaveCount(4);
+  await expect(page.locator(".vs-flip .vs-back")).toHaveCount(4);
+  // Each card names its player under their avatar, face down at first
+  // (while the arena loads, then turning over).
+  await expect(page.locator(".vs-back small").first()).toHaveText("tester");
+  await expect(page.locator(".vs-back").first()).toBeVisible();
+  // (Taken at once: snap() would wait for the cards to finish turning.)
+  if (process.env.VISUAL_SHOTS)
+    await page.screenshot({
+      path: `${process.env.VISUAL_SHOTS}/avatars-reveal-start-844x390.png`,
+    });
+  // Snapshots keep coming: a card drawn again never turns back over, and
+  // once all have turned the cards are plain.
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => (window as any).__push());
+        return page.locator(".vs-flip").count();
+      },
+      { timeout: 10_000, intervals: [250] },
+    )
+    .toBe(0);
+  await expect(cards.locator("svg[data-fighter]")).toHaveCount(4);
+  await expect(cards.locator(".vs-avatar img")).toHaveCount(4);
+  await snap(page, info, "avatars-reveal-done-844x390");
   expect(errors).toEqual([]);
 });

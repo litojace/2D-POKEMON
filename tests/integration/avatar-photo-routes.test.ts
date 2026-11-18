@@ -112,3 +112,24 @@ it("sends a report with the reporter's own token", async () => {
     args: { p_photo: ID, p_message: "" },
   });
 });
+
+it("points any player's id at their avatar's picture", async () => {
+  const avatars = new Map<string, string | null>([
+    ["aaaaaaaa-0000-4000-8000-000000000001", "ea-avatar-033"],
+    ["aaaaaaaa-0000-4000-8000-000000000002", `photo:${ID}`],
+    ["aaaaaaaa-0000-4000-8000-000000000003", null],
+  ]);
+  accounts.provider.avatarOf = async (id) => avatars.get(id) ?? null;
+  const where = async (id: string) =>
+    (
+      await fetch(`${url}/api/avatar/of/${id}`, { redirect: "manual" })
+    ).headers.get("location");
+  expect(await where("aaaaaaaa-0000-4000-8000-000000000001")).toBe(
+    "/assets/avatars/ea-avatar-033.webp",
+  );
+  expect(await where("aaaaaaaa-0000-4000-8000-000000000002")).toBe(
+    `/api/avatar-photo/${ID}`,
+  );
+  for (const id of ["aaaaaaaa-0000-4000-8000-000000000003", "nope"])
+    expect(await where(id)).toBe("/assets/avatars/ea-avatar-001.webp");
+});

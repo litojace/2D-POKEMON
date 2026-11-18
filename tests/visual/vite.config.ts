@@ -28,6 +28,35 @@ export default defineConfig({
     "import.meta.env.VITE_SERVER_URL": JSON.stringify(""),
     "import.meta.env.VITE_SITE_URL": JSON.stringify(""),
   },
-  server: { port: Number(process.env.VISUAL_PORT) || 4179, strictPort: true, fs: { allow: [here("../..")] } },
+  server: {
+    port: Number(process.env.VISUAL_PORT) || 4179,
+    strictPort: true,
+    fs: { allow: [here("../..")] },
+  },
   logLevel: "warn",
+  plugins: [
+    {
+      // Pictures the game server serves by id (docs/hidden-picks.md,
+      // "Avatars"): any player's avatar is the default one here, and a
+      // player's own picture is a plain pink disc. Tests that care route
+      // these themselves (page.route wins over this).
+      name: "fake-avatar-pictures",
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          const url = req.url ?? "";
+          if (url.startsWith("/api/avatar/of/")) {
+            res.statusCode = 302;
+            res.setHeader("Location", "/assets/avatars/ea-avatar-001.webp");
+            return res.end();
+          }
+          if (url.startsWith("/api/avatar-photo/")) {
+            res.statusCode = 302;
+            res.setHeader("Location", "/assets/avatars/ea-avatar-014.webp");
+            return res.end();
+          }
+          next();
+        });
+      },
+    },
+  ],
 });

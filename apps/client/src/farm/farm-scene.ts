@@ -443,6 +443,10 @@ const FARM_HTML = `<div class="fm" id="fm">
  */
 const LEFT = new Map();
 export function openFarm(options) {
+  // A friend in a list: their avatar (docs/hidden-picks.md, "Avatars"), or
+  // their fighter where the game has no player hook (tests, previews).
+  const who = (id, fighter) =>
+    id && options.player ? options.player(id) : options.art(fighter);
   const layer = document.createElement("div");
   layer.className = "farm-layer";
   layer.tabIndex = -1;
@@ -4126,7 +4130,7 @@ export function openFarm(options) {
     }
     el.hidden = false;
     const t = tour?.find((x) => x.id === V.id);
-    el.innerHTML = `<img src="${options.art(V.fighter)}" alt=""><div><b>${esc(V.name)}'s Farm</b><small>${V.dog ? `${I("dog")} ${DOG[V.dog]?.name ?? "A dog"} is on guard. Sneaking may get you caught` : "No guard dog"}</small></div>${options.like ? `<button type="button" data-like="${esc(V.id)}" ${t?.liked ? "disabled" : ""}>${t?.liked ? "Liked" : "❤ Like"}</button>` : ""}<button type="button" data-home>← My farm</button>`;
+    el.innerHTML = `<img class="who-avatar" src="${who(V.id, V.fighter)}" alt=""><div><b>${esc(V.name)}'s Farm</b><small>${V.dog ? `${I("dog")} ${DOG[V.dog]?.name ?? "A dog"} is on guard. Sneaking may get you caught` : "No guard dog"}</small></div>${options.like ? `<button type="button" data-like="${esc(V.id)}" ${t?.liked ? "disabled" : ""}>${t?.liked ? "Liked" : "❤ Like"}</button>` : ""}<button type="button" data-home>← My farm</button>`;
   }
   async function visitFriend(id) {
     try {
@@ -4431,7 +4435,7 @@ export function openFarm(options) {
     const rows = stall.paper.map((p) => {
       const c = CROP[p.crop],
         locked = c && c.lv > F.lv;
-      return `<div class="fr"><img src="${options.art(p.fighter)}" alt=""><div><b>${p.qty} ${esc(c?.n ?? p.crop)}${p.mutation ? ` · ${esc(p.mutation)}` : ""}</b><small><img class="mini" src="${icon(p.crop)}" alt=""> ${esc(p.name)}'s stall · the Market pays ${p.market}${locked ? ` · <b style="color:#ffd65b">you grow it at Lv ${c.lv}</b>` : ""}</small></div><button type="button" class="btn-s gold" data-sbuy="${esc(p.seller)}:${p.slot}" ${F.leaves < p.price || stall.boughtToday >= stall.buyCap ? "disabled" : ""}>${p.price} ${L}</button></div>`;
+      return `<div class="fr"><img class="who-avatar" src="${who(p.seller, p.fighter)}" alt=""><div><b>${p.qty} ${esc(c?.n ?? p.crop)}${p.mutation ? ` · ${esc(p.mutation)}` : ""}</b><small><img class="mini" src="${icon(p.crop)}" alt=""> ${esc(p.name)}'s stall · the Market pays ${p.market}${locked ? ` · <b style="color:#ffd65b">you grow it at Lv ${c.lv}</b>` : ""}</small></div><button type="button" class="btn-s gold" data-sbuy="${esc(p.seller)}:${p.slot}" ${F.leaves < p.price || stall.boughtToday >= stall.buyCap ? "disabled" : ""}>${p.price} ${L}</button></div>`;
     });
     return `<p class="sh-note">Your friends' shelves. Buy crops you can't grow yet for orders and balloons. Bought today: ${stall.boughtToday}/${stall.buyCap}.</p>${rows.join("") || `<p class="sh-note">Your friends' shelves are empty right now.</p>`}`;
   }
@@ -4739,7 +4743,7 @@ export function openFarm(options) {
       return `<div class="sh-body"><p class="sh-note">Loading your friends' requests…</p></div>`;
     const rows = helpList.requests.map((h) => {
       const c = CROP[h.crop];
-      return `<div class="fr"><img src="${options.art(h.fighter)}" alt=""><div><b>${esc(h.name)} needs ${h.qty} ${esc(c?.n ?? h.crop)}</b><small>You have ${h.have} · pays ${h.reward} ${L} + a Helper Star</small></div><button type="button" class="btn-s green" data-hfill="${esc(h.friend)}:${h.slot}" ${h.have >= h.qty ? "" : "disabled"}>Fill</button></div>`;
+      return `<div class="fr"><img class="who-avatar" src="${who(h.friend, h.fighter)}" alt=""><div><b>${esc(h.name)} needs ${h.qty} ${esc(c?.n ?? h.crop)}</b><small>You have ${h.have} · pays ${h.reward} ${L} + a Helper Star</small></div><button type="button" class="btn-s green" data-hfill="${esc(h.friend)}:${h.slot}" ${h.have >= h.qty ? "" : "disabled"}>Fill</button></div>`;
     });
     return `<div class="sh-body"><p class="sh-note">Crates your friends asked for on their Supply Balloons. Helper leaves today: ${helpList.helperLeavesToday}/${helpList.helperCap} · Helper Stars: ${helpList.helperStars}.</p>${rows.join("") || `<p class="sh-note">No requests right now. When a friend asks for a crate, it shows here.</p>`}</div>`;
   }
@@ -7871,7 +7875,7 @@ export function openFarm(options) {
       return `<div class="sh-body"><p class="sh-note">Loading your friends…</p></div>`;
     const rows = gifts.friends.map((f) => {
       const next = FARM_BONDS[f.bond + 1];
-      return `<div class="fr"><img src="${options.art(f.fighter)}" alt=""><div><b>${esc(f.name)} · Lv ${f.level}</b><small>${hearts(f.bond)} <b>${FARM_BONDS[f.bond].name}</b> · ${f.days} friendship day${f.days === 1 ? "" : "s"}${next ? ` · ${next.days - f.days} more to ${next.name}` : ""}</small></div><div class="acts">${f.waiting ? `<button type="button" class="btn-s green" data-gift-open="${esc(f.id)}">Open${f.waiting > 1 ? ` (${f.waiting})` : ""}</button>` : ""}<button type="button" class="btn-s${f.sent ? " ghost" : ""}" data-gift-send="${esc(f.id)}" ${f.sent ? "disabled" : ""}>${f.sent ? "Sent" : "Send seeds"}</button></div></div>`;
+      return `<div class="fr"><img class="who-avatar" src="${who(f.id, f.fighter)}" alt=""><div><b>${esc(f.name)} · Lv ${f.level}</b><small>${hearts(f.bond)} <b>${FARM_BONDS[f.bond].name}</b> · ${f.days} friendship day${f.days === 1 ? "" : "s"}${next ? ` · ${next.days - f.days} more to ${next.name}` : ""}</small></div><div class="acts">${f.waiting ? `<button type="button" class="btn-s green" data-gift-open="${esc(f.id)}">Open${f.waiting > 1 ? ` (${f.waiting})` : ""}</button>` : ""}<button type="button" class="btn-s${f.sent ? " ghost" : ""}" data-gift-send="${esc(f.id)}" ${f.sent ? "disabled" : ""}>${f.sent ? "Sent" : "Send seeds"}</button></div></div>`;
     });
     return `<div class="sh-body"><p class="sh-note">Send each friend a <b>seed parcel</b> once a day; parcels keep for 7 days. Every day a parcel between you is opened is a <b>friendship day</b>: ${FARM_BONDS.slice(
       1,
@@ -8317,7 +8321,7 @@ export function openFarm(options) {
               ? friendsList
                   .map(
                     (f) =>
-                      `<div class="fr"><img src="${options.art(f.fighter)}" alt=""><div><b>${esc(f.name)} · Lv ${f.level}${likesOf(f.id)}</b><small>${f.bugs ? `<span class="bd">${I("bug")} ${f.bugs} bug${f.bugs === 1 ? "" : "s"}</span> · ` : ""}${f.ripe ? `<span class="bd">${I("wheat")} ${f.ripe} ripe</span> · ` : ""}${f.dog ? `${I("dog")} ${DOG[f.dog]?.name ?? "Guard dog"}` : "No guard dog"}</small></div><button type="button" class="btn-s" data-visit="${esc(f.id)}"${V?.id === f.id ? " disabled" : ""}>${V?.id === f.id ? "Here" : "Visit"}</button></div>`,
+                      `<div class="fr"><img class="who-avatar" src="${who(f.id, f.fighter)}" alt=""><div><b>${esc(f.name)} · Lv ${f.level}${likesOf(f.id)}</b><small>${f.bugs ? `<span class="bd">${I("bug")} ${f.bugs} bug${f.bugs === 1 ? "" : "s"}</span> · ` : ""}${f.ripe ? `<span class="bd">${I("wheat")} ${f.ripe} ripe</span> · ` : ""}${f.dog ? `${I("dog")} ${DOG[f.dog]?.name ?? "Guard dog"}` : "No guard dog"}</small></div><button type="button" class="btn-s" data-visit="${esc(f.id)}"${V?.id === f.id ? " disabled" : ""}>${V?.id === f.id ? "Here" : "Visit"}</button></div>`,
                   )
                   .join("")
               : `<p class="sh-note">None of your friends has a farm yet. Add friends from the Lobby, or invite them from the Invite tab.</p>`) +

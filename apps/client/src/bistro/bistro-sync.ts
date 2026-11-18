@@ -122,6 +122,8 @@ type BistroDo =
   | { a: "trade"; lots: number }
   | { a: "sync" };
 export interface FriendGuest {
+  /** Their account (migration 20261119130000): their avatar. */
+  id?: string;
   name: string;
   fighter: string;
   dish: DishId;
@@ -148,7 +150,14 @@ export interface BistroExtras {
   orders: CateringOrder[];
   /** This week's league (you and your friends) and last week's place. */
   league: {
-    week: { name: string; fighter: string; points: number; me: boolean }[];
+    week: {
+      /** Their account (migration 20261119130000): their avatar. */
+      id?: string;
+      name: string;
+      fighter: string;
+      points: number;
+      me: boolean;
+    }[];
     last: { rank: number; points: number; claimed: boolean } | null;
   };
 }

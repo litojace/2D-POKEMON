@@ -11,6 +11,8 @@
  * line; the typed entry point is plaza-screen.ts.
  */
 import { CHAT_EMOTES } from "../../../../packages/shared/src/chat";
+import { photoIdOf } from "../../../../packages/shared/src/avatars";
+import { avatarSrc } from "../portraits";
 import { bubbleLines } from "../chat/bubble-text";
 /** A chat bubble's text is at most this wide; longer lines wrap. */
 const BUBBLE_TEXT_W = 150;
@@ -1391,7 +1393,9 @@ export function openPlaza(options) {
     if (!p?.accountId) return;
     cardFor = p;
     const card = $("pz-card");
-    card.innerHTML = `<div class="pc-h"><img src="${b.img?.src ?? ""}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts"><button type="button" data-pc="friend">Add friend</button><button type="button" data-pc="party">Invite to party</button></div><div class="pc-acts pc-safety"><button type="button" data-pc="report">Report</button><button type="button" data-pc="block" class="pc-block">Block</button></div>`;
+    // Who they are: their avatar (docs/hidden-picks.md, "Avatars").
+    const photo = photoIdOf(p.avatar);
+    card.innerHTML = `<div class="pc-h"><img class="pc-avatar" src="${avatarSrc(p.avatar)}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts"><button type="button" data-pc="friend">Add friend</button><button type="button" data-pc="party">Invite to party</button></div><div class="pc-acts pc-safety">${photo ? '<button type="button" data-pc="report-photo">Report picture</button>' : ""}<button type="button" data-pc="report">Report</button><button type="button" data-pc="block" class="pc-block">Block</button></div>`;
     card.hidden = false;
   }
   function hideCard() {
@@ -1409,6 +1413,7 @@ export function openPlaza(options) {
         b.dataset.pc,
         cardFor.accountId,
         cardFor.name,
+        cardFor.avatar,
       ));
     } finally {
       b.disabled = false;

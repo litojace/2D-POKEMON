@@ -20,6 +20,8 @@ export interface RanksHooks {
   /** Load (or reload) a board; resolves once data() has it. */
   load(scope: RanksScope): Promise<void>;
   friends(): void;
+  /** Report another player's own picture (asks first). */
+  reportPhoto?(photo: string, name: string): void;
   onClose?(): void;
 }
 export interface RanksScreen {
@@ -64,6 +66,8 @@ export function openRanks(hooks: RanksHooks): RanksScreen {
     const d = t.dataset;
     if (d.uiScope) pick(d.uiScope as RanksScope);
     else if (d.ranksRetry !== undefined) void load(view.scope);
+    else if (d.ranksReportPhoto)
+      hooks.reportPhoto?.(d.ranksReportPhoto, d.ranksReportName ?? "");
     else if (d.ranksFriends !== undefined) {
       panel.close();
       hooks.friends();
