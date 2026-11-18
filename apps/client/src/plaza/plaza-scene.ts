@@ -89,6 +89,8 @@ import { fadeIn } from "../ui/motion";
 import { setInner } from "../ui/patch";
 import { memoryConstrained, sceneDensity } from "../render-budget";
 import { FrameCap } from "../frame-cap";
+import { PreviewPerf } from "../preview-perf";
+import { sceneLines, setPerfSource } from "../perf-hud";
 
 const esc = (s) =>
   String(s).replace(
@@ -3882,17 +3884,23 @@ export function openPlaza(options) {
   let lastDraw = 0;
   // A 120 Hz phone: about 60 frames a second, as everywhere (frame-cap.ts).
   const cap = new FrameCap();
+  // The frame-rate read-out's lines while the Plaza shows (perf-hud.ts).
+  const drawn = new PreviewPerf();
+  setPerfSource("plaza", () =>
+    running ? sceneLines("plaza", drawn, cv, probe) : undefined,
+  );
   function step(now) {
     raf = requestAnimationFrame(step);
     if (low ? now - lastDraw < 30 : !cap.draw(now)) return;
     lastDraw = now;
+    drawn.draw(now, 0);
     if (probe) {
       if (covered() || document.hidden) probe.pause();
       else {
         const verdict = probe.frame(performance.now());
         if (verdict === "low") {
+          rememberAutoLow(`Plaza ran at ${Math.round(probe.lastFps)} fps`);
           probe = undefined;
-          rememberAutoLow();
           goLow();
         } else if (verdict === "ok")
           // Keep watching: a busier Plaza later can still be too much.
@@ -4253,6 +4261,7 @@ export function openPlaza(options) {
       P.img = imageFor(character, skin ?? null, colour ?? null);
     },
     close() {
+      setPerfSource("plaza", undefined);
       running = false;
       cancelAnimationFrame(raf);
       clearInterval(chatter);

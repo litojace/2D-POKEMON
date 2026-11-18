@@ -1,8 +1,8 @@
 import {
   autoChoosesLow,
+  autoLowWhy,
   graphicsSetting,
   lowGraphics,
-  rememberAutoLow,
   setGraphicsSetting,
   type GraphicsSetting,
 } from "./graphics-quality";
@@ -4285,7 +4285,7 @@ function graphicsNote(setting: GraphicsSetting) {
   if (setting === "low")
     return "A lighter Plaza and Farm at 30 fps for older phones: no animals or night glow, lighter rain. Battles keep every attack, telegraph and skill but draw fewer decorative sparks.";
   return autoChoosesLow()
-    ? `Auto picked <b>Low</b> for the Plaza and Farm on this device (${softwareRendering() ? "it draws without a graphics card" : "they ran slowly"}). Battles adapt on their own. Pick High to try it again.`
+    ? `Auto picked <b>Low</b> for the Plaza and Farm on this device (${softwareRendering() ? "it draws without a graphics card" : autoLowWhy() ? `the ${escape(autoLowWhy())}` : "they ran slowly"}). Battles adapt on their own. Pick High to try it again.`
     : "Starts on High. The Plaza and Farm switch to Low if they run slowly; battles trim decorative sparks only while frames stay slow.";
 }
 /** Five taps on Graphics' title within 3 s: the frame-rate line over every
@@ -4315,6 +4315,8 @@ function bindGraphicsCard() {
       const value = b.dataset.graphics as GraphicsSetting;
       setGraphicsSetting(value);
       syncUiEffects();
+      // The Lobby's fighters follow at once (lobby-screen.ts).
+      document.dispatchEvent(new Event("ea-graphics-change"));
       // Picking Auto again measures battles afresh too.
       if (value === "auto") battleQuality.reset(resetBattleQuality);
       for (const other of Array.from(
@@ -5026,14 +5028,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !menuOpen &&
       !settingsOpen &&
       !$<HTMLDialogElement>("dialog").open;
-    if (live) {
-      // Auto had to bring the battle down to Low: this device is slow, so
-      // the Lobby, Plaza and Farm start Low too from now on (no blurred
-      // glass over moving art, a still Lobby fighter), as when the Plaza
-      // finds it slow itself. Picking Auto again in Settings forgets it.
-      if (battleQuality.frame(now) === "low" && graphicsSetting() === "auto")
-        rememberAutoLow();
-    } else battleQuality.pause();
+    // A slow battle trims only its own decorations (battle-quality.ts). It
+    // used to switch the Lobby, Plaza and Farm to Low for good as well, so a
+    // heavy raid on an iPad Pro 13" M4 left it on Low everywhere (owner,
+    // 17 Nov 2026); the Plaza and the Farm measure themselves.
+    if (live) battleQuality.frame(now);
+    else battleQuality.pause();
     battlePerf.frame(now, live);
     const knobs = battleQuality.knobs();
     const fx = fxFor(this);
@@ -6341,12 +6341,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         );
     }
     // Ambient costume effects for at most two living fighters (you first).
-    // Mythical signature ornaments still animate outside this budget.
+    // Mythical ornaments and the compact Epic signatures still animate
+    // outside this budget.
     const ambient = new Set(
       [...state.players]
         .filter((q) => {
           const art = wornArt(q.character, q.championLooks?.[q.character]);
-          return q.hp > 0 && (art?.mythic || art?.vanguard);
+          return q.hp > 0 && (art?.mythic || art?.signature);
         })
         .sort((a, b) => Number(b.id === myId) - Number(a.id === myId))
         .slice(0, battleQuality.knobs().mythicAmbient)

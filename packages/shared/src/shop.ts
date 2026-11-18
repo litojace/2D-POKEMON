@@ -7,12 +7,19 @@
 import type { CharacterId } from "./index.js";
 import type { RaidSlot } from "./raid.js";
 
-export type Rarity = "common" | "rare" | "epic" | "mythical";
-export const RARITIES: Rarity[] = ["common", "rare", "epic", "mythical"];
+export type Rarity = "common" | "rare" | "epic" | "legendary" | "mythical";
+export const RARITIES: Rarity[] = [
+  "common",
+  "rare",
+  "epic",
+  "legendary",
+  "mythical",
+];
 export const RARITY_NAMES: Record<Rarity, string> = {
   common: "Common",
   rare: "Rare",
   epic: "Epic",
+  legendary: "Legendary",
   mythical: "Mythical",
 };
 /** Champion skin prices by rarity. */
@@ -20,6 +27,8 @@ export const SKIN_PRICES: Record<Rarity, number> = {
   common: 500,
   rare: 1500,
   epic: 3500,
+  /** Above Epic: full original costumes with their own entrance and victory. */
+  legendary: 5500,
   mythical: 8000,
 };
 /** Mythicals: wins with the champion before you can buy, and to awaken. */
@@ -253,9 +262,10 @@ export const VANGUARD_SKINS: ChampionSkin[] = (
   id: `${champion}-nova-vanguard`,
   champion,
   name: VANGUARD_NAMES[champion],
-  rarity: "epic",
+  rarity: "legendary",
   collection: "nova-vanguard",
-  description: "Original hero equipment and a subtle personal energy effect",
+  description:
+    "Original hero suit and equipment, a signature effect, and its own hero landing and victory",
 }));
 
 export type Collection =
@@ -1325,6 +1335,40 @@ export const SHOP_BUNDLES: ShopBundle[] = LOOK_SETS.map(([collection]) => ({
   discount: 0.2,
 }));
 
+/**
+ * Full-roster skin sets: the collections that dress all 18 champions in one
+ * design at one rarity. The Void Knight Mythicals are never bundled: each
+ * opens with its own champion's Mythic Trial, and a set would skip it.
+ */
+export const SKIN_SET_COLLECTIONS = [
+  "wayfarer",
+  "moonlit-tea",
+  "astral-court",
+  "cyber",
+  "abyssal-expedition",
+  "dream-carnival",
+  "nova-vanguard",
+] as const satisfies readonly Collection[];
+export const SKIN_BUNDLES: ShopBundle[] = SKIN_SET_COLLECTIONS.map(
+  (collection) => ({
+    id: `${collection}-skins`,
+    collection,
+    name: `${COLLECTION_NAMES[collection]} skins`,
+    items: CHAMPION_SKINS.filter((s) => s.collection === collection).map(
+      (s) => s.id,
+    ),
+    discount: 0.2,
+  }),
+);
+/** Every set the Shop sells: Look sets and full-roster skin sets. */
+export const ALL_BUNDLES: ShopBundle[] = [...SHOP_BUNDLES, ...SKIN_BUNDLES];
+export const BUNDLE_BY_ID = Object.fromEntries(
+  ALL_BUNDLES.map((b) => [b.id, b]),
+) as Record<string, ShopBundle>;
+/** A skin set: every piece is a champion skin. */
+export const isSkinBundle = (id: string) =>
+  SKIN_BUNDLES.some((b) => b.id === id);
+
 export const skinPrice = (s: ChampionSkin) => SKIN_PRICES[s.rarity];
 export const CHAMPION_SKIN_BY_ID = Object.fromEntries(
   CHAMPION_SKINS.map((s) => [s.id, s]),
@@ -1637,6 +1681,12 @@ export interface Economy {
   };
 }
 
+/** An item's list price, before any discount (0 for an unknown id). */
+export const itemListPrice = (id: string) =>
+  CHAMPION_SKIN_BY_ID[id]
+    ? skinPrice(CHAMPION_SKIN_BY_ID[id])
+    : (LOOK_ITEM_BY_ID[id]?.price ?? 0);
+
 /**
  * What an item costs this player (mirrors arena_item_price in migration 010):
  * null once owned; a set costs 80% of the pieces not yet owned; today's deal
@@ -1648,12 +1698,12 @@ export function shopPrice(
   deal: string | null,
 ) {
   const round10 = (n: number) => Math.round(n / 10) * 10;
-  const bundle = SHOP_BUNDLES.find((b) => b.id === id);
+  const bundle = BUNDLE_BY_ID[id];
   if (bundle) {
     const left = bundle.items.filter((i) => !owned.includes(i));
     if (!left.length) return null;
     return round10(
-      left.reduce((sum, i) => sum + LOOK_ITEM_BY_ID[i].price, 0) *
+      left.reduce((sum, i) => sum + itemListPrice(i), 0) *
         (1 - bundle.discount),
     );
   }

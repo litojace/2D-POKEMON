@@ -125,6 +125,9 @@ export interface SkinArt {
   mythic?: Mythic;
   /** Individual, budgeted Nova Vanguard idle ornament. */
   vanguard?: CharacterId;
+  /** A new-collection Epic's own signature effect (epic-signature-fx.ts),
+   * keyed by skin id; it replaces `detail` and the Vanguard ornament. */
+  signature?: string;
   /**
    * Outfits: the champion's own pieces on these parts (goggles, crest,
    * kerchief...) come off, and the skin's armour takes their place.

@@ -507,21 +507,54 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         // The still artwork stays when the renderer can't load.
       });
   };
+  /** Why your fighter is still artwork, for the frame-rate read-out. */
+  let stillWhy = "";
   const mountRig = () => {
-    if (rig || rigLoading || closed || lowGraphics()) return;
+    if (rig || rigLoading || closed) return;
+    if (lowGraphics()) {
+      stillWhy = "Low graphics";
+      return;
+    }
     rigLoading = true;
+    stillWhy = "loading";
     void import("./shop-preview")
       .then(({ mountShopPreview }) => {
         rigLoading = false;
-        if (closed || rig) return;
+        if (closed || rig || lowGraphics()) return;
         rig = mountShopPreview($("lobby-fighter"), "selection");
         rig.suspend(layer.classList.contains("is-covered"));
       })
-      .catch(() => {
-        // The still artwork stays when the renderer can't load.
+      .catch((error: unknown) => {
+        // The still artwork stays when the renderer can't load (the
+        // read-out says why).
         rigLoading = false;
+        stillWhy = `failed: ${error instanceof Error ? error.message : String(error)}`;
       });
   };
+  /**
+   * Graphics changed (Settings, or Auto settling on Low after a slow Plaza or
+   * Farm): the fighters follow at once. They were only set up when the
+   * Lobby opened or the fighter changed, so a Lobby opened on Low stayed
+   * still artwork after picking High (owner, iPad Pro 13" M4, 17 Nov 2026).
+   */
+  const syncGraphics = () => {
+    if (closed) return;
+    if (lowGraphics()) {
+      rig?.();
+      rig = undefined;
+      stillWhy = "Low graphics";
+      for (const [i, seat] of seatRigs.entries()) {
+        seat?.();
+        seatRigs[i] = undefined;
+      }
+      return;
+    }
+    if (!rig) mountRig();
+    for (let i = 0; i < 3; i++)
+      if (!seatRigs[i] && seatKeys[i] && seatKeys[i] !== "null")
+        mountSeatRig(i);
+  };
+  document.addEventListener("ea-graphics-change", syncGraphics);
   /**
    * The cards' column ends 8px above the mode button. Where the cards don't
    * all fit (short phones, a safe area, the Spire card shown), the least
@@ -584,15 +617,17 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   // The frame-rate read-out (perf-hud.ts): your fighter's frames, our own
   // drawing time (median and slowest) and its canvas, while the Lobby shows.
   const perfSource = () => {
-    if (!rig || layer.classList.contains("is-covered")) return undefined;
+    if (layer.classList.contains("is-covered")) return undefined;
+    if (!rig) return `fighter: still art (${stillWhy || "no live rig"})`;
     const p = rig.perf();
+    if (p.failed) return `fighter: still art (${p.failed})`;
     return (
       `fighter ${p.fps} fps  late ${Math.round(p.late * 100)}%\n` +
       `ours ${p.stepMs} ms (max ${p.stepMaxMs})\n` +
       `canvas ${p.canvas} @${p.resolution}x tex ${p.textures}x`
     );
   };
-  setPerfSource(perfSource);
+  setPerfSource("lobby", perfSource);
   return {
     update(view) {
       const skin = wornSkin(view.character);
@@ -637,6 +672,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         $(`lobby-slot-${i}`).innerHTML = slotMarkup(member, i);
         if (member) mountSeatRig(i);
       }
+      // Graphics may have changed since (Auto settling on Low elsewhere).
+      syncGraphics();
       // One seat on each side keeps the stage even; the third seat (above
       // the right one) appears once both are taken. The server still allows
       // four players, and Friends can invite at any time.
@@ -698,7 +735,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       clearTimeout(bubbleTimer);
       clearTimeout(hopTimer);
       coverWatch.disconnect();
-      setPerfSource(undefined);
+      setPerfSource("lobby", undefined);
+      document.removeEventListener("ea-graphics-change", syncGraphics);
       cancelAnimationFrame(fitFrame);
       removeEventListener("resize", fitSoon);
       layer.removeEventListener("keydown", onKey);

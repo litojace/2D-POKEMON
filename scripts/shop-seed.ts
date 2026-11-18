@@ -9,6 +9,7 @@ import {
   LOOK_ITEMS,
   MISSIONS,
   SHOP_BUNDLES,
+  SKIN_BUNDLES,
   skinPrice,
 } from "../packages/shared/src/shop.ts";
 
@@ -23,17 +24,15 @@ const items = [
     (i) =>
       `  (${q(i.id)}, 'look', null, ${q(i.slot)}, ${q(i.name)}, ${q(i.rarity)}, ${q(i.collection)}, ${i.price}, null)`,
   ),
-  ...SHOP_BUNDLES.map(
+  ...[...SHOP_BUNDLES, ...SKIN_BUNDLES].map(
     (b) =>
       `  (${q(b.id)}, 'bundle', null, null, ${q(b.name)}, null, ${q(b.collection)}, 0, array[${b.items.map(q).join(", ")}])`,
   ),
 ];
-export const shopItemsSql = (
-  `insert into public.arena_shop_items(id, kind, champion, slot, name, rarity, collection, price, items) values\n${items.join(",\n")}\non conflict (id) do update set kind = excluded.kind, champion = excluded.champion, slot = excluded.slot,\n  name = excluded.name, rarity = excluded.rarity, collection = excluded.collection, price = excluded.price, items = excluded.items;`
-);
-export const missionsSql = (
-  `insert into public.arena_missions(id, tier, text, metric, target, coins, champions, solo) values\n${MISSIONS.map(
-    (m) =>
-      `  (${q(m.id)}, ${q(m.tier)}, ${q(m.text)}, ${q(m.metric)}, ${m.target}, ${m.coins}, ${m.champions ? `array[${m.champions.map(q).join(", ")}]` : "null"}, ${m.solo})`,
-  ).join(",\n")}\non conflict (id) do update set tier = excluded.tier, text = excluded.text, metric = excluded.metric,\n  target = excluded.target, coins = excluded.coins, champions = excluded.champions, solo = excluded.solo;`
-);
+export const shopItemsSql = `insert into public.arena_shop_items(id, kind, champion, slot, name, rarity, collection, price, items) values\n${items.join(",\n")}\non conflict (id) do update set kind = excluded.kind, champion = excluded.champion, slot = excluded.slot,\n  name = excluded.name, rarity = excluded.rarity, collection = excluded.collection, price = excluded.price, items = excluded.items;`;
+export const missionsSql = `insert into public.arena_missions(id, tier, text, metric, target, coins, champions, solo) values\n${MISSIONS.map(
+  (m) =>
+    `  (${q(m.id)}, ${q(m.tier)}, ${q(m.text)}, ${q(m.metric)}, ${m.target}, ${m.coins}, ${m.champions ? `array[${m.champions.map(q).join(", ")}]` : "null"}, ${m.solo})`,
+).join(
+  ",\n",
+)}\non conflict (id) do update set tier = excluded.tier, text = excluded.text, metric = excluded.metric,\n  target = excluded.target, coins = excluded.coins, champions = excluded.champions, solo = excluded.solo;`;

@@ -43,10 +43,14 @@ const SHOP_TIER: Record<Rarity, CosmeticTier> = {
   common: "common",
   rare: "rare",
   epic: "epic",
+  legendary: "legendary",
   mythical: "mythic",
 };
 
-export function cosmeticTier(id: string | null | undefined, stars = 0): CosmeticTier {
+export function cosmeticTier(
+  id: string | null | undefined,
+  stars = 0,
+): CosmeticTier {
   if (!id) return "common";
   const shop = LOOK_ITEM_BY_ID[id];
   if (shop) return SHOP_TIER[shop.rarity];

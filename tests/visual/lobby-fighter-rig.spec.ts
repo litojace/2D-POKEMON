@@ -310,3 +310,35 @@ test("Low graphics keeps the Lobby fighter and friends as still artwork", async 
   await expect(page.locator(art)).not.toHaveClass(/is-ready/);
   expect(errors).toEqual([]);
 });
+
+// A Lobby opened on Low stayed still artwork after Settings → High until the
+// fighter changed (owner, iPad Pro 13" M4, 17 Nov 2026): the fighters now
+// follow the setting at once, and the frame-rate read-out says why a
+// fighter is still.
+test("the Lobby fighter follows Settings → Graphics at once", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    localStorage.setItem("ea-graphics", "low");
+    localStorage.setItem("ea-perf", "1");
+  });
+  const errors = await openLobby(page);
+  const read = page.locator(".perf-hud pre");
+  await expect(read).toContainText("fighter: still art (Low graphics)");
+  await expect(page.locator(`${art} > canvas`)).toHaveCount(0);
+  const pick = async (value: "high" | "low") => {
+    await page.evaluate(() => document.getElementById("settings")!.click());
+    await page.locator(`#dialog [data-graphics="${value}"]`).click();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#dialog")).not.toBeVisible();
+  };
+  await pick("high");
+  await expect(page.locator(art)).toHaveClass(/is-ready/, { timeout: 30_000 });
+  await expect(read).toContainText(/fighter \d+ fps/);
+  await pick("low");
+  await expect(page.locator(`${art} > canvas`)).toHaveCount(0);
+  await expect(page.locator(art)).not.toHaveClass(/is-ready/);
+  await expect(read).toContainText("fighter: still art (Low graphics)");
+  expect(errors).toEqual([]);
+});

@@ -78,11 +78,13 @@ test("five taps on Graphics show the frame-rate table over every screen", async 
   await page.locator(".fit-room .ui-close").first().click();
   await expect(page.locator(".fit-room")).toHaveCount(0);
 
-  // On the Plaza too.
+  // On the Plaza too, with its own frames, canvas and Auto's measuring.
   await page.click('#hub-scenes [data-hub-scene="plaza"]');
   await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
   await expect(line).toBeVisible();
-  await expect(text).toContainText(/^page (\d+|\?) Hz\ndpr/);
+  await expect(text).toContainText(
+    /^page (\d+|\?) Hz\nplaza \d+ fps · \d+x\d+\nauto (measuring|\d+ fps|off)/,
+  );
   await snap(page, info, "perf-hud-plaza");
   await page.click('#hub-scenes [data-hub-scene="lobby"]');
   await expect(art).toHaveClass(/is-ready/, { timeout: 30_000 });

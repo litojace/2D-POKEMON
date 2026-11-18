@@ -126,6 +126,8 @@ import { fadeIn } from "../ui/motion";
 import { setInner } from "../ui/patch";
 import { memoryConstrained, sceneDensity } from "../render-budget";
 import { FrameCap } from "../frame-cap";
+import { PreviewPerf } from "../preview-perf";
+import { sceneLines, setPerfSource } from "../perf-hud";
 import { rumble } from "../game-feel";
 import { bubbleLines } from "../chat/bubble-text";
 
@@ -7154,19 +7156,25 @@ export function openFarm(options) {
     lastDraw = 0;
   // A 120 Hz phone: about 60 frames a second, as everywhere (frame-cap.ts).
   const cap = new FrameCap();
+  // The frame-rate read-out's lines while the Farm shows (perf-hud.ts).
+  const drawn = new PreviewPerf();
+  setPerfSource("farm", () =>
+    running ? sceneLines("farm", drawn, cv, probe) : undefined,
+  );
   let pendingT = 0,
     pendingAsked = 0;
   function step(now) {
     raf = requestAnimationFrame(step);
     if (low ? now - lastDraw < 30 : !cap.draw(now)) return;
     lastDraw = now;
+    drawn.draw(now, 0);
     if (probe) {
       if (document.hidden || covered()) probe.pause();
       else {
         const verdict = probe.frame(performance.now());
         if (verdict === "low") {
+          rememberAutoLow(`Farm ran at ${Math.round(probe.lastFps)} fps`);
           probe = undefined;
-          rememberAutoLow();
           goLow();
         } else if (verdict === "ok")
           // Keep watching: a busier farm later can still be too much.
@@ -9459,6 +9467,7 @@ export function openFarm(options) {
       layer.focus({ preventScroll: true });
     },
     close() {
+      setPerfSource("farm", undefined);
       removeEventListener("pointermove", carryMove, true);
       removeEventListener("pointerup", carryEnd, true);
       removeEventListener("pointercancel", carryEnd, true);
