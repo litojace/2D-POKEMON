@@ -67,8 +67,16 @@ test("profiles a four-player PvP snapshot/render stream", async ({
         frames: [],
       };
       let seq = 0,
-        cursor = 0;
-      w.__simulation = setInterval(() => {
+        cursor = 0,
+        ticked = 0;
+      const from = performance.now();
+      // The server ticks 30 times a second whatever this page is doing, as
+      // the real one does (tick-clock.ts): on a starved main thread (this
+      // test machine's software GPU kept it 100% busy, so the interval ran
+      // about 4 times a second and pushed 2 snapshots a second) each call
+      // makes up the ticks that came due, at most 10, like a phone that
+      // receives the queued snapshots after a slow frame.
+      const tick = () => {
         a.players.forEach((p, i) => {
           p.hp = CHARACTERS[p.character].health;
           p.ult = 100;
@@ -96,6 +104,14 @@ test("profiles a four-player PvP snapshot/render stream", async ({
         w.__perf.bytes.push(
           new TextEncoder().encode(JSON.stringify(w.__snap)).length,
         );
+      };
+      w.__simulation = setInterval(() => {
+        const due = Math.floor(((performance.now() - from) * 30) / 1000);
+        if (due - ticked > 10) ticked = due - 10;
+        while (ticked < due) {
+          ticked++;
+          tick();
+        }
       }, 1000 / 30);
       const scene = w.__perfGame.scene.getScene("arena"),
         update = scene.sys.sceneUpdate.bind(scene);

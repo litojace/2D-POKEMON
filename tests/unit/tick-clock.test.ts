@@ -112,6 +112,24 @@ describe("the combat loop's clock", () => {
     expect(most).toBeLessThanOrEqual(TICK_CLOCK.maxCatchUp);
   });
 
+  it("reports how late its ticks ran, for the match reports", () => {
+    const calm = nodeLikeTimers(1);
+    const a = new TickClock(() => {}, 30, calm.timers);
+    calm.runFor(30_000);
+    a.stop();
+    const busy = nodeLikeTimers(1, 10, 60);
+    const b = new TickClock(() => {}, 30, busy.timers);
+    busy.runFor(30_000);
+    b.stop();
+    // Timers fire up to 3 ms late on whole milliseconds; every tenth also
+    // waits 60 ms more (two ticks), and the ticks behind it run late too.
+    expect(a.stats().tickLateP95).toBeLessThan(4);
+    expect(b.stats().tickLateP95).toBeGreaterThan(20);
+    expect(a.stats().serverHz).toBeCloseTo(30, 1);
+    expect(b.stats().serverHz).toBeCloseTo(30, 1);
+    expect(a.stats().tickMsP95).toBe(0);
+  });
+
   it("stops", () => {
     const { timers, runFor } = nodeLikeTimers();
     let ticks = 0;
@@ -124,7 +142,7 @@ describe("the combat loop's clock", () => {
   });
 
   // Why it matters: phones send exactly 30 inputs a second.
-  it("a server off 30 Hz makes your fighter jump for no reason", () => {
+  it("a server slower than 30 Hz makes your fighter jump for no reason", () => {
     const other = (serverHz: number) =>
       simulateCorrections({
         seconds: 60,
@@ -134,8 +152,11 @@ describe("the combat loop's clock", () => {
         serverHz,
       }).corrections.filter((c) => c.cause === "other").length;
     expect(other(30)).toBe(0);
-    // About 30.1 is what setInterval gave; a throttled instance runs slow.
-    expect(other(30.3)).toBeGreaterThan(0);
+    // A throttled instance under setInterval ran slow: more inputs than
+    // ticks, so some must be folded (the step credit stops a client moving
+    // faster than a step a tick). A fast one is harmless now: its spare
+    // ticks are held (Arena.drainInputs).
     expect(other(29.7)).toBeGreaterThan(0);
+    expect(other(30.3)).toBe(0);
   });
 });
