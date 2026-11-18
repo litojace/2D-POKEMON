@@ -71,6 +71,7 @@ export const KEEP = {
     "os",
     "app",
     "hz",
+    "serverHz",
   ],
   "arena-disconnect": [
     "reason",
@@ -280,6 +281,10 @@ export function attention(r, newest) {
   if (typeof r.hitsFar === "number" && r.hitsFar > 0)
     out.push(
       `${r.hitsFar} hit(s) landed while you were drawn over 24 px away (largest ${r.hitGapMax} px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.`,
+    );
+  if (typeof r.serverHz === "number" && Math.abs(r.serverHz - 30) > 0.05)
+    out.push(
+      `the server ran ${r.serverHz} ticks a second, not 30: phones step 30 inputs a second, so every drifted tick is a jump. See apps/server/src/tick-clock.ts and run the server with ARENA_DIAGNOSTICS=60.`,
     );
   if (typeof r.errors === "number" && r.errors > 0)
     out.push(
