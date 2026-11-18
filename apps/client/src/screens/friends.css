@@ -338,7 +338,9 @@
   .fr-opts > .ui-btn > svg {
     width: 13px;
     height: 13px;
-    margin-left: 0;
+    /* The 18 px icon's -3 px optical nudge (ui/components.css), scaled:
+       every icon + label sits within 1 px of centre (ranks-friends.spec). */
+    margin-left: -1.5px;
   }
   /* The two longer labels grow past 76 px rather than cut their words
      (the options row wraps; a recent player's row has the room). */
