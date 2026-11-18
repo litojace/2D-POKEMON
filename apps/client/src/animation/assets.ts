@@ -67,8 +67,24 @@ const definitions: Record<Part, { bounds: number[]; pivot: number[] }> = {
   scarf: { bounds: [35, 90, 150, 84], pivot: [100, 118] },
   flame: { bounds: [30, -2, 140, 110], pivot: [100, 65] },
 };
+/**
+ * Costumes reach past the champion's own outline (a surfboard on the back,
+ * a lantern on a pole, a cape's hem, a hat's brim): with one on, these parts
+ * crop a wider box (art units, before proportions) so nothing is cut off.
+ */
+const COSTUME_BOUNDS: Partial<Record<Part, number[]>> = {
+  body: [0, 0, 200, 190],
+  scarf: [0, -20, 200, 210],
+  wings: [0, -60, 200, 250],
+  flame: [0, -14, 200, 204],
+  armR: [0, 50, 200, 140],
+};
+const COSTUMES = /^(modern-|vanguard$|sky-pirates$)/;
+const wearsCostume = (look: SkinLook | null) =>
+  !!look &&
+  (SKIN_ART[look.skin]?.accessories ?? []).some((a) => COSTUMES.test(a));
 /** A part's crop box once its proportion transform is applied. */
-function box(id: CharacterId, part: Part, dir: Facing) {
+function box(id: CharacterId, part: Part, dir: Facing, costume = false) {
   const profile = dir === "left" || dir === "right";
   // Side headbands trail behind the gills; keep their ribbons in the crop.
   const [sourceX, y, w, h] =
@@ -77,10 +93,24 @@ function box(id: CharacterId, part: Part, dir: Facing) {
   const x = dir === "left" && part === "armR" ? 200 - sourceX - w : sourceX;
   const [x0, y0] = proportioned(part, x, y),
     [x1, y1] = proportioned(part, x + w, y + h);
-  const extra =
+  const own =
     dir !== "down"
       ? profilePartBounds(id, dir, part)
       : frontPartBounds(id, part);
+  const wide = costume ? COSTUME_BOUNDS[part] : undefined;
+  const extra =
+    own && wide
+      ? (() => {
+          const ux = Math.min(own[0], wide[0]),
+            uy = Math.min(own[1], wide[1]);
+          return [
+            ux,
+            uy,
+            Math.max(own[0] + own[2], wide[0] + wide[2]) - ux,
+            Math.max(own[1] + own[3], wide[1] + wide[3]) - uy,
+          ];
+        })()
+      : (own ?? wide);
   const [ex0, ey0] = extra ? proportioned(part, extra[0], extra[1]) : [x0, y0];
   const [ex1, ey1] = extra
     ? proportioned(part, extra[0] + extra[2], extra[1] + extra[3])
@@ -144,7 +174,7 @@ function asset(
 ): RigAsset {
   const suffix = skinSuffix(id, look);
   const { pivot: defaultPivot } = definitions[part];
-  const b = box(id, part, dir);
+  const b = box(id, part, dir, wearsCostume(look));
   const joint =
     dir === "down"
       ? defaultPivot
@@ -184,7 +214,8 @@ export interface LumeLayer {
 }
 /** Light layers by the part texture they sit on. */
 export const lumeLayers = new Map<string, LumeLayer[]>();
-const LUME = /<g class="lume" data-lume="(pulse|blink|chase|twinkle)" data-i="(\d+)"/g;
+const LUME =
+  /<g class="lume" data-lume="(pulse|blink|chase|twinkle)" data-i="(\d+)"/g;
 const LUME_STYLE =
   `<defs><filter id="lume-glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.6" result="b"/>` +
   `<feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>` +
@@ -209,7 +240,12 @@ function lumeAssets(base: RigAsset, svg: string): RigAsset[] {
     const open = marked.indexOf(">", marked.indexOf("<svg")) + 1;
     const only = marked.slice(0, open) + LUME_STYLE + marked.slice(open);
     artWidths.set(l.key, base.width);
-    return { ...base, key: l.key, url: "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(only))) };
+    return {
+      ...base,
+      key: l.key,
+      url:
+        "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(only))),
+    };
   });
 }
 const DIRS: Facing[] = ["up", "down", "left", "right"];
