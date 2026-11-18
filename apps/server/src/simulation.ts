@@ -2428,7 +2428,7 @@ export class Arena {
         if (
           enemy.hp <= 0 ||
           Math.hypot(enemy.x - p.x, enemy.y - p.y) >=
-            this.hitRadius(enemy) + this.hitRadius(p) + 6 ||
+            this.hitRadius(enemy) + this.hitRadius(p) + ROLL.ramReach ||
           this.time < (hits.get(enemy.id) ?? -Infinity) + ROLL.rehit
         )
           continue;
@@ -2440,9 +2440,9 @@ export class Arena {
         this.event("burst", enemy, CHARACTERS[p.character].color, undefined, p.id, a.id);
         this.damage(enemy, a.damage + (a.roll?.bonus ?? 0) * momentum, p.id, a);
         if (!p.roll) break;
-        // Bounce off the one it rammed.
-        p.roll.heading = Math.atan2(p.y - enemy.y, p.x - enemy.x);
-        p.roll.speed *= 0.5;
+        // Roll on through the one it rammed (it doesn't bounce back), so the
+        // ball can swing round for another pass.
+        p.roll.speed *= ROLL.ramKeep;
       }
     }
   }

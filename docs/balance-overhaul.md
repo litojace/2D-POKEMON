@@ -118,7 +118,7 @@ Pangrove) and won 88–98% against ranged champions.
 Auralynx's matchups went from 2–98% to 17–83% (24 games a pair) or 21–90%
 (48 a pair), at 50–53% overall.
 
-**Pyranda** (tried, not shipped):
+**Pyranda** (the tries, before the owner's call below):
 
 | Try                                                                         | Pyranda overall | Against divers |
 | --------------------------------------------------------------------------- | --------------- | -------------- |
@@ -131,7 +131,7 @@ Auralynx's matchups went from 2–98% to 17–83% (24 games a pair) or 21–90%
 Only a stronger basic-attack knockback worked, and the roster has a rule
 against it (`tests/unit/fighter-cards.test.ts`: a basic attack knocks back
 at most 20, 25 in melee, "so brawlers can close in and chain hits"). That
-choice is the owner's, so Pyranda is unchanged in this pass.
+choice was the owner's: see the third pass.
 
 The whole roster after this pass (seed 102000):
 
@@ -143,6 +143,46 @@ The whole roster after this pass (seed 102000):
 Voltkit's Normal rate moves a lot between seeds (38–47%). Its Normal
 handicap also drives the bot raider in the Spire's zone 2 play-test, and
 0.17 instead of 0.18 made floor 19 easier than floor 11, so it stays at 0.18.
+
+## Third pass: Pangrove's roll, Pyranda's Ember Lob
+
+The owner found Curl & Roll too hard to steer onto an enemy. At full speed
+(540 px/s) the ball turned 3.4 rad/s, a 160 px turning circle; every radian
+turned cost 35% of its speed; a ram bounced it straight back at half speed,
+and coming round again took most of a second; and a ram only counted with
+the two bodies 6 px apart. Changes (`ROLL` in `packages/shared/src/index.ts`,
+`stepRolls` in `simulation.ts`):
+
+- It turns at 7 rad/s when slow, down to 3.4 at full speed (`turnSlow`), like
+  a kart: tight after a ram, wide when it has built speed.
+- Turning costs 20% of the speed per radian (was 35%).
+- A ram rolls on through the enemy at 70% of its speed (`ramKeep`) instead
+  of bouncing back at half, so it can swing round for another pass.
+- A ram counts within 16 px between the bodies (was 6).
+- Steering stays in `advanceMovement`, so the client still predicts it.
+  There is no homing toward enemies, which prediction couldn't follow.
+
+Rolling got much easier for bots: Pangrove went to 66.5%. To compensate,
+rams deal 7 to 20 (was 10 to 34), the cooldown is 12 s (was 11), and health
+is back to 164.
+
+Pyranda (the owner chose the knockback): Ember Lob knocks back 65, the one
+exception to the light-knockback rule (`tests/unit/fighter-cards.test.ts`).
+Ember Curtain knocks back 150. Chestnut Mortar lands after 0.6 s (was 0.45)
+in a 100 px circle (was 110): a ranged champion can now get out of it in
+time. Health 146, Normal handicap 0.39 → 0.37. Voltkit fell to 42% on both
+difficulties after this, so Static Lance goes from 18 to 20 (Spire zone 2's
+play-test still passes).
+
+| Champion | Before this pass (Hard / Normal) | After (Hard / Normal)           | Worst matchups after (Hard)           |
+| -------- | -------------------------------- | ------------------------------- | ------------------------------------- |
+| Pangrove | 52.0% / 47.3%                    | 51.2% / 45.8%                   | 17–21%                                |
+| Pyranda  | 47.3% / 50.5% (0% vs 3 divers)   | 48.8% / 47.8%                   | 8–13% (Pangrove, Wombolder, Astrabun) |
+| Voltkit  | 46.8% / 40.9%                    | 49.5% / 46.7% (48 games a pair) | 10–23%                                |
+
+Whole roster after the pass (seed 105000, before the Static Lance change):
+Hard 42.4% – 55.1%, spread 3.4, 23 hard-counter pairs; Normal 42.2% – 55.9%,
+spread 3.4, 9 pairs.
 
 ## Also fixed
 

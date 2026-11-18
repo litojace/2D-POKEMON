@@ -119,7 +119,7 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
       terradon: 0.31,
       duskveil: 0.27,
       coilemur: 0.34,
-      pyranda: 0.39,
+      pyranda: 0.37,
       glacelle: 0.26,
       halcyra: 0.175,
       sunbara: 0.225,

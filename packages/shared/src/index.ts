@@ -209,16 +209,25 @@ export const MOSS = {
   reduction: 0.05,
   regen: 0.6,
 };
-/** Curl & Roll steering: time to build speed, turn rate, momentum lost turning and on walls. */
+/**
+ * Curl & Roll steering: time to build speed, turn rate (radians a second:
+ * `turnSlow` at walking speed down to `turn` at full speed, like a kart),
+ * momentum lost turning and on walls.
+ */
 export const ROLL = {
   build: 0.45,
   start: 0.9,
   turn: 3.4,
-  turnLoss: 0.35,
+  turnSlow: 7,
+  turnLoss: 0.2,
   wallLoss: 0.55,
   coast: 1.5,
   /** Ramming the same enemy again waits this long. */
   rehit: 0.6,
+  /** A ram rolls on through the enemy, keeping this share of its speed. */
+  ramKeep: 0.7,
+  /** How close (px between the two bodies) counts as a ram. */
+  ramReach: 16,
 };
 /** The passives, as players read them (the roster's overview, the tutorial). */
 export const PASSIVES: Record<
@@ -609,7 +618,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "static-lance",
         "Static Lance",
         "projectile",
-        18,
+        20,
         8,
         "A powerful electric bolt toward your aim. Briefly paralyzes.",
         { speed: 1050, radius: 12, status: "paralysis", statusDuration: 0.6 },
@@ -1254,7 +1263,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A shy red panda, the \"fire fox\", with a flame at the tip of its tail. Lobs burning chestnuts from the back line and curls up in its tail when caught.",
     color: 0xff8a3d,
-    health: 150,
+    health: 146,
     speed: 235,
     basic: basic(
       "ember-lob",
@@ -1262,8 +1271,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "projectile",
       10,
       440,
-      "A long-range ember flicked from its tail.",
-      { speed: 760, range: 760, radius: 12 },
+      "A long-range ember flicked from its tail. It knocks enemies back, keeping brawlers off Pyranda.",
+      { speed: 760, range: 760, radius: 12, knockback: 65 },
     ),
     skills: [
       ability(
@@ -1272,12 +1281,12 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "zone",
         24,
         8,
-        "Lob a burning chestnut over walls to the aim point. It lands 0.45 seconds later and burns.",
+        "Lob a burning chestnut over walls to the aim point. It lands 0.6 seconds later and burns.",
         {
-          radius: 110,
+          radius: 100,
           range: 720,
-          duration: 0.5,
-          tickDelay: 0.45,
+          duration: 0.65,
+          tickDelay: 0.6,
           tickInterval: 1,
           knockback: 70,
           status: "burn",
@@ -1308,8 +1317,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "screen",
         7,
         10,
-        "Sweep up a curtain of embers 240 px wide across your aim for 3 seconds: enemy shots that touch it burn up, and enemies on it take 7 damage every half second and catch fire.",
-        { duration: 3, knockback: 0, status: "burn", statusDuration: 2, tickInterval: 0.5, screen: { length: 240, distance: 90 } },
+        "Sweep up a curtain of embers 240 px wide across your aim for 3 seconds: enemy shots that touch it burn up, and enemies on it take 7 damage every half second, catch fire and are knocked back.",
+        { duration: 3, knockback: 150, status: "burn", statusDuration: 2, tickInterval: 0.5, screen: { length: 240, distance: 90 } },
       ),
       ability(
         "chestnut-storm",
@@ -1781,7 +1790,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A pangolin whose scales are living leaves. Three armour plates soak up hits; it grapples in with its tongue, curls into a ball you steer, and sheds its plates as blades.",
     color: 0x7fcf6a,
-    health: 168,
+    health: 164,
     speed: 245,
     passive: "plates",
     basic: basic(
@@ -1816,10 +1825,10 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "curl-roll",
         "Curl & Roll",
         "roll",
-        10,
-        11,
-        "Curl into a ball you steer for up to 3.5 seconds (cast again to uncurl). Speed builds on straight lines; ramming an enemy deals 10 to 34 damage, the faster the harder. Curled, you take 30% less damage.",
-        { duration: 3.5, speed: 540, knockback: 140, roll: { bonus: 24, reduction: 0.7 } },
+        7,
+        12,
+        "Curl into a ball you steer for up to 3.5 seconds (cast again to uncurl). It turns tightly when slow and widely at speed; speed builds on straight lines. Ramming an enemy deals 7 to 20 damage, the faster the harder, and you roll on through for another pass. Curled, you take 30% less damage.",
+        { duration: 3.5, speed: 540, knockback: 140, roll: { bonus: 13, reduction: 0.7 } },
       ),
       ability(
         "pinball",
@@ -3155,7 +3164,10 @@ function stepMovement(p: Fighter, input: Input, dt: number, time: number): void 
         Math.sin(want - roll.heading),
         Math.cos(want - roll.heading),
       );
-      const turn = Math.max(-ROLL.turn * dt, Math.min(ROLL.turn * dt, diff));
+      // Tight turns when slow (after a ram, say), wide ones at full speed.
+      const fast = Math.max(0, Math.min(1, roll.speed / Math.max(1, roll.top)));
+      const rate = ROLL.turnSlow + (ROLL.turn - ROLL.turnSlow) * fast;
+      const turn = Math.max(-rate * dt, Math.min(rate * dt, diff));
       roll.heading += turn;
       roll.speed *= 1 - Math.abs(turn) * ROLL.turnLoss;
       roll.speed += (roll.top - roll.speed) * (1 - Math.exp(-dt / ROLL.build));

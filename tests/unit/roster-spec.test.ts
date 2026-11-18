@@ -220,7 +220,7 @@ const ROSTER: Record<
     skills: [
       ["Tongue Grapple", 8],
       ["Scale Shrapnel", 9],
-      ["Curl & Roll", 11],
+      ["Curl & Roll", 12],
       ["Pinball", 20],
     ],
   },
