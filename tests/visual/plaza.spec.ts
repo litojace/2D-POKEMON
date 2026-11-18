@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { asRgb, openPlaza, snap } from "./helpers";
+import { PLAZA_HURDLE_SEGMENTS } from "../../packages/shared/src/plaza";
 
 // Hub redesign phase 3: the new Plaza. The harness runs the real PlazaWorld
 // in the page (harness/plaza-sim.ts) in place of the game server.
@@ -689,6 +690,87 @@ test("the dash track's lane is whole (no wedge cut out of it)", async ({
   const elsewhere = await lane([-0.1, -0.2, -0.3], 0.1);
   expect(elsewhere.every(isLane)).toBe(true);
   expect(wedge.filter((c) => !isLane(c))).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+// Long things are drawn in depth order by their footprints
+// (plaza-depth.ts): a runner just behind a hurdle laid at a slant across the
+// lane is drawn under it, just in front of it over it. (Sorting by one
+// number each drew the hurdles under everyone.)
+test("a runner behind a hurdle is under it, in front of it over it", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const errors = await openPlaza(page);
+  const [p0, p1] = PLAZA_HURDLE_SEGMENTS[0];
+  const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+  const placeOf = async (dy: number) => {
+    await teleport(page, mid.x, mid.y + dy);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          ([x, y]) => {
+            const P = (window as any).__plaza.P;
+            return Math.hypot(P.x - x, P.y - y);
+          },
+          [mid.x, mid.y + dy],
+        ),
+      )
+      .toBeLessThan(4);
+    await page.waitForTimeout(300);
+    return page.evaluate(() => {
+      const o: string[] = (window as any).__plaza.drawOrder();
+      return o.indexOf("me") - o.indexOf("hurdle-0");
+    });
+  };
+  await page.evaluate(() => (window as any).__plaza.drawOrder());
+  expect(await placeOf(-14), "behind: drawn first").toBeLessThan(0);
+  expect(await placeOf(14), "in front: drawn last").toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});
+
+// The world goes on past the Plaza's edge (plaza-surround*.ts): standing by
+// the north railing, the camera looks out over the river, whose water moves.
+test("past the north edge, the river flows", async ({ page }, info) => {
+  test.setTimeout(90_000);
+  const errors = await openPlaza(page);
+  await teleport(page, 700, 120);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__plaza.view().y0), {
+      timeout: 20_000,
+    })
+    .toBeLessThan(-150);
+  const water = () =>
+    page.evaluate(() => {
+      const p = (window as any).__plaza,
+        cv = document.querySelector("#pz-cv") as HTMLCanvasElement,
+        r = cv.getBoundingClientRect(),
+        g = cv.getContext("2d")!;
+      const px = (x: number, y: number) => {
+        const c = p.worldClient(x, y);
+        return [
+          ...g.getImageData(
+            Math.round(((c.x - r.left) / r.width) * cv.width),
+            Math.round(((c.y - r.top) / r.height) * cv.height),
+            1,
+            1,
+          ).data,
+        ];
+      };
+      const out: number[][] = [];
+      for (let x = 520; x < 880; x += 12) out.push(px(x, -60));
+      return out;
+    });
+  const a = await water();
+  // Water: bluer than it is red.
+  expect(a.filter(([r, , b]) => b > r + 40).length).toBeGreaterThan(
+    a.length * 0.6,
+  );
+  await page.waitForTimeout(1200);
+  const b = await water();
+  // Ripples drift: the same stretch of water is not the same a moment later.
+  expect(a.some((c, i) => c.join() !== b[i].join())).toBe(true);
+  await snap(page, info, "plaza-river");
   expect(errors).toEqual([]);
 });
 

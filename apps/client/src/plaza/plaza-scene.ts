@@ -91,6 +91,22 @@ import { memoryConstrained, sceneDensity } from "../render-budget";
 import { FrameCap } from "../frame-cap";
 import { PreviewPerf } from "../preview-perf";
 import { sceneLines, setPerfSource } from "../perf-hud";
+import { depthSort, slices, spot } from "./plaza-depth";
+import {
+  PLAZA_MARGIN,
+  PLAZA_SCALE,
+  plazaCamClamp,
+  plazaZoom,
+} from "./plaza-surround";
+import {
+  RIVER_LAMPS,
+  Surroundings,
+  drawFarmLife,
+  drawRiver,
+  drawRiverLights,
+  liveDrawables,
+  paintVerge,
+} from "./plaza-surround-art";
 
 const esc = (s) =>
   String(s).replace(
@@ -217,7 +233,15 @@ export function openPlaza(options) {
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
   /* ---------- scenery sprites (positions from the shared layout) ---------- */
-  const HOUSES = PLAZA_HOUSES.map((h) => ({ ...h, spr: GFX.house(h.o) }));
+  // Houses sized to the fighters: a door about as tall as one (PLAZA_SCALE).
+  const HOUSES = PLAZA_HOUSES.map((h) => ({
+    ...h,
+    spr: GFX.house({
+      ...h.o,
+      hgt: PLAZA_SCALE.houseWall,
+      doorH: PLAZA_SCALE.houseDoor,
+    }),
+  }));
   const TREES = PLAZA_TREES.map((t, i) => ({
     x: t.x,
     y: t.y,
@@ -792,9 +816,14 @@ export function openPlaza(options) {
     g.fillRect(GATE.x + 72, GATE.y + 10, W - GATE.x - 72, 5);
     g.fillRect(0, GATE.y + 21, GATE.x - 72, 4);
     g.fillRect(GATE.x + 72, GATE.y + 21, W - GATE.x - 72, 4);
+    // The river bank's verge and railing along the north edge.
+    paintVerge(g);
   }
+  /** The world past the Plaza's edges (plaza-surround*.ts). */
+  const around = new Surroundings(memoryConstrained() ? 0.5 : 0.75);
   function prep() {
     paintBg();
+    around.paint();
     ready = true;
   }
 
@@ -2111,14 +2140,17 @@ export function openPlaza(options) {
     L(FOUNT.x, FOUNT.y - 10, 230, 0.3, 0.7);
     for (const h of HOUSES)
       for (const [wx, wy, ww, wh] of h.spr.win ?? [])
-        L(h.x + wx + ww / 2, h.y + wy + wh, 100, 0.4, 0.8);
+        L(h.x + (wx + ww / 2) * HK, h.y + (wy + wh) * HK, 100, 0.4, 0.8);
+    for (const l of RIVER_LAMPS) L(l.x, l.y - 6, 150, 0.48, 0.6);
     for (const o of ev.orbs) L(o.x, o.y - 10, 90, 0.5, 0.8);
     nightLight.end(g);
   }
   function drawLamp(g, l) {
     GFX.shadow(g, l.x + 6, l.y + 2, 18, 6);
-    GFX.blit(g, GFX.lamp(), l.x, l.y + 4);
+    GFX.blit(g, GFX.lamp(), l.x, l.y + 4, PLAZA_SCALE.lamp);
   }
+  /** A lamp's head above its foot (the lamp sprite, scaled). */
+  const LAMP_HEAD = 78 * PLAZA_SCALE.lamp;
   function drawFountain(g, time) {
     const { x, y } = FOUNT;
     // basin wall (front) + rim + water
@@ -2376,42 +2408,69 @@ export function openPlaza(options) {
       });
     });
   }
-  function drawGoal(g, x, left) {
+  /**
+   * A goal runs away from the viewer (along y), so it is drawn in slices
+   * (plaza-depth.ts): someone in its mouth stands between its far post and
+   * its near one, the crossbar passing in front of or behind them.
+   */
+  const GOAL_SLICES = 6;
+  function goalDrawables(g, x, left) {
     const y0 = PITCH.gy0,
       y1 = PITCH.gy1,
       d = left ? -46 : 46,
-      hgt = 60;
-    g.strokeStyle = "rgba(255,255,255,.55)";
-    g.lineWidth = 1;
-    for (let k = 0; k <= 6; k++) {
-      const yy = y0 + ((y1 - y0) * k) / 6;
-      g.beginPath();
-      g.moveTo(x, yy - hgt);
-      g.lineTo(x + d, yy - hgt * 0.6);
-      g.lineTo(x + d, yy);
-      g.stroke();
-    }
-    for (let k = 0; k <= 4; k++) {
-      const hh = (hgt * k) / 4;
-      g.beginPath();
-      g.moveTo(x, y0 - hh);
-      g.lineTo(x, y1 - hh);
-      g.stroke();
-    }
-    g.strokeStyle = "#fff";
-    g.lineWidth = 5;
-    g.beginPath();
-    g.moveTo(x, y1);
-    g.lineTo(x, y1 - hgt);
-    g.lineTo(x, y0 - hgt);
-    g.lineTo(x, y0);
-    g.stroke();
-    g.strokeStyle = left ? "#5ab0ff" : "#ff5d6c";
-    g.lineWidth = 6;
-    g.beginPath();
-    g.moveTo(x, y0 - hgt);
-    g.lineTo(x, y1 - hgt);
-    g.stroke();
+      hgt = PLAZA_SCALE.goal;
+    return slices(
+      Math.min(x, x + d),
+      Math.max(x, x + d),
+      y0,
+      y1,
+      GOAL_SLICES,
+      hgt,
+      (ya, yb, i) => {
+        g.strokeStyle = "rgba(255,255,255,.55)";
+        g.lineWidth = 1;
+        g.beginPath();
+        // The net's rib at this slice's far edge (and the last one's near edge).
+        for (const yy of i === GOAL_SLICES - 1 ? [ya, yb] : [ya]) {
+          g.moveTo(x, yy - hgt);
+          g.lineTo(x + d, yy - hgt * 0.6);
+          g.lineTo(x + d, yy);
+        }
+        // The net's long strands along this slice, at the back and the top.
+        for (let k = 0; k <= 4; k++) {
+          const hh = (hgt * k) / 4;
+          g.moveTo(x, ya - hh);
+          g.lineTo(x, yb - hh);
+        }
+        g.moveTo(x + d, ya - hgt * 0.6);
+        g.lineTo(x + d, yb - hgt * 0.6);
+        g.moveTo(x + d, ya);
+        g.lineTo(x + d, yb);
+        g.stroke();
+        g.strokeStyle = "#fff";
+        g.lineWidth = 5;
+        g.lineCap = "round";
+        g.beginPath();
+        if (i === 0) {
+          g.moveTo(x, y0);
+          g.lineTo(x, y0 - hgt);
+        }
+        if (i === GOAL_SLICES - 1) {
+          g.moveTo(x, y1);
+          g.lineTo(x, y1 - hgt);
+        }
+        g.stroke();
+        g.lineCap = "butt";
+        // The crossbar, in the team's colour.
+        g.strokeStyle = left ? "#5ab0ff" : "#ff5d6c";
+        g.lineWidth = 6;
+        g.beginPath();
+        g.moveTo(x, ya - hgt);
+        g.lineTo(x, yb - hgt);
+        g.stroke();
+      },
+      { name: left ? "goal-left" : "goal-right" },
+    );
   }
   function drawFlood(g, f, n) {
     g.fillStyle = "rgba(0,0,0,.25)";
@@ -2447,20 +2506,40 @@ export function openPlaza(options) {
     g.fillStyle = "#ff5d6c";
     g.fillText(score[1], x + 50, y - 24);
   }
-  function drawGantry(g) {
+  /**
+   * The lap gantry spans the lane from its outer edge to its inner one, so
+   * it is drawn as parts with their own footprints: the far post, the beam
+   * in slices, the sign, the near post. A runner passing under it stands
+   * between them.
+   */
+  function gantryDrawables(g) {
     const x = TRACK.cx,
       ya = TRACK.cy - TRACK.ro[1] - 4,
-      yb = TRACK.cy - TRACK.ri[1] + 4;
-    g.fillStyle = "#2a2f42";
-    g.fillRect(x - 6, ya - 150, 12, 152);
-    g.fillRect(x - 6, yb - 150, 12, 152);
-    g.fillStyle = "#11131d";
-    g.beginPath();
-    g.moveTo(x - 10, ya - 170);
-    g.lineTo(x + 10, ya - 170);
-    g.lineTo(x + 10, yb - 140);
-    g.lineTo(x - 10, yb - 140);
-    g.fill();
+      yb = TRACK.cy - TRACK.ri[1] + 4,
+      post = (y) => () => {
+        g.fillStyle = "#2a2f42";
+        g.fillRect(x - 6, y - 150, 12, 152);
+      };
+    return [
+      spot(x, ya, 6, 152, post(ya), { name: "gantry-post" }),
+      spot(x, yb, 6, 152, post(yb), { name: "gantry-post" }),
+      ...slices(x - 10, x + 10, ya, yb, 5, 175, (y0, y1) => {
+        g.fillStyle = "#11131d";
+        g.fillRect(x - 10, y0 - 170, 20, y1 - y0 + 1);
+      }),
+      {
+        x0: x - 6,
+        x1: x + 6,
+        y0: (ya + yb) / 2,
+        y1: (ya + yb) / 2,
+        h: 190,
+        sw: 96,
+        name: "gantry-sign",
+        draw: () => drawGantrySign(g, x, ya, yb),
+      },
+    ];
+  }
+  function drawGantrySign(g, x, ya, yb) {
     g.save();
     g.translate(x, (ya + yb) / 2 - 160);
     g.fillStyle = "#0b0d16";
@@ -2488,20 +2567,21 @@ export function openPlaza(options) {
     g.moveTo(p0.x, p0.y + 4);
     g.lineTo(p1.x, p1.y + 4);
     g.stroke();
+    const hb = PLAZA_SCALE.hurdle;
     g.fillStyle = "#e6e6ee";
-    [p0, p1].forEach((p) => g.fillRect(p.x - 3, p.y - 24, 6, 26));
+    [p0, p1].forEach((p) => g.fillRect(p.x - 3, p.y - hb - 2, 6, hb + 4));
     g.lineCap = "butt";
     g.strokeStyle = "#fff";
     g.lineWidth = 9;
     g.beginPath();
-    g.moveTo(p0.x, p0.y - 22);
-    g.lineTo(p1.x, p1.y - 22);
+    g.moveTo(p0.x, p0.y - hb);
+    g.lineTo(p1.x, p1.y - hb);
     g.stroke();
     g.strokeStyle = "#ef4f61";
     g.setLineDash([14, 14]);
     g.beginPath();
-    g.moveTo(p0.x, p0.y - 22);
-    g.lineTo(p1.x, p1.y - 22);
+    g.moveTo(p0.x, p0.y - hb);
+    g.lineTo(p1.x, p1.y - hb);
     g.stroke();
     g.setLineDash([]);
   }
@@ -2588,8 +2668,6 @@ export function openPlaza(options) {
     // The two bushes stand together west of the arch, clear of its posts,
     // the tripod, the stage and the lane in front (they used to sit on both
     // posts' feet, half hiding them).
-    GFX.blit(g, GFX.bush("flower", 31, 70), x - 160, y - 50);
-    GFX.blit(g, GFX.bush("rose", 32, 70), x - 235, y - 30);
     const post = (px) => {
       const gg = g.createLinearGradient(px - 6, 0, px + 6, 0);
       gg.addColorStop(0, "#fffaf0");
@@ -2641,7 +2719,6 @@ export function openPlaza(options) {
   }
   function drawCafe(g) {
     GFX.blit(g, GFX.foodTruck(), CAFE.x, CAFE.y + 4);
-    GFX.blit(g, GFX.bench(), CAFE.x - 170, CAFE.y + 70);
   }
   function drawBoard(g) {
     GFX.shadow(g, BOARD.x + 8, BOARD.y + 2, 70, 14);
@@ -2691,17 +2768,16 @@ export function openPlaza(options) {
     g.font = "800 22px 'Barlow Condensed', sans-serif";
     g.textAlign = "center";
     g.fillText("THE FARM", x, y - 181);
-    GFX.blit(g, GFX.mailbox(), x + 120, y + 2);
-    GFX.blit(g, GFX.hay(), x - 140, y + 4);
   }
+  const HK = PLAZA_SCALE.house;
   function drawHouse(g, h, n) {
-    GFX.shadow(g, h.x + 30, h.y + 4, 110, 22);
-    GFX.blit(g, h.spr, h.x, h.y);
+    GFX.shadow(g, h.x + 30 * HK, h.y + 4, 110 * HK, 22 * HK);
+    GFX.blit(g, h.spr, h.x, h.y, HK);
     if (n > 0.05 && h.spr.win)
       h.spr.win.forEach(([wx, wy, ww, wh]) => {
         g.fillStyle = `rgba(255,214,120,${0.85 * n})`;
         g.beginPath();
-        g.roundRect(h.x + wx, h.y + wy, ww, wh, 3);
+        g.roundRect(h.x + wx * HK, h.y + wy * HK, ww * HK, wh * HK, 3 * HK);
         g.fill();
       });
   }
@@ -3484,22 +3560,33 @@ export function openPlaza(options) {
     const inv = g.getTransform().inverse(),
       c0 = inv.transformPoint({ x: 0, y: 0 }),
       c1 = inv.transformPoint({ x: g.canvas.width, y: g.canvas.height }),
-      vx0 = Math.max(0, Math.floor(c0.x) - 2),
-      vy0 = Math.max(0, Math.floor(c0.y) - 2),
-      vx1 = Math.min(W, Math.ceil(c1.x) + 2),
-      vy1 = Math.min(H, Math.ceil(c1.y) + 2);
-    if (vx1 > vx0 && vy1 > vy0)
-      g.drawImage(
-        bg,
-        vx0,
-        vy0,
-        vx1 - vx0,
-        vy1 - vy0,
-        vx0,
-        vy0,
-        vx1 - vx0,
-        vy1 - vy0,
-      );
+      vx0 = Math.max(-PLAZA_MARGIN, Math.floor(c0.x) - 2),
+      vy0 = Math.max(-PLAZA_MARGIN, Math.floor(c0.y) - 2),
+      vx1 = Math.min(W + PLAZA_MARGIN, Math.ceil(c1.x) + 2),
+      vy1 = Math.min(H + PLAZA_MARGIN, Math.ceil(c1.y) + 2);
+    {
+      // The Plaza's own ground, then the world around it (plaza-surround*):
+      // the river's water first, under the north strip's hole.
+      const bx0 = Math.max(0, vx0),
+        by0 = Math.max(0, vy0),
+        bx1 = Math.min(W, vx1),
+        by1 = Math.min(H, vy1);
+      if (bx1 > bx0 && by1 > by0)
+        g.drawImage(
+          bg,
+          bx0,
+          by0,
+          bx1 - bx0,
+          by1 - by0,
+          bx0,
+          by0,
+          bx1 - bx0,
+          by1 - by0,
+        );
+      if (vy0 < 0) drawRiver(g, time, night(), low, vx0, vy0, vx1);
+      around.draw(g, vx0, vy0, vx1, vy1);
+      drawFarmLife(g, time, reduced, vx0, vy1, vx1);
+    }
     // pad glow, runway spotlight
     PADS.forEach(([x, y]) => {
       g.fillStyle = `rgba(159,208,255,${0.18 + Math.sin(time * 3 + x) * 0.1})`;
@@ -3540,41 +3627,62 @@ export function openPlaza(options) {
       g.ellipse(o.x, o.y, 12 * (1 - o.z / 500), 5, 0, 0, 7);
       g.fill();
     });
+    // Everything standing, each with its footprint on the ground, drawn in
+    // depth order (plaza-depth.ts): long things (hurdles, goals, the
+    // gantry, the food truck) behind or in front of each walker where they
+    // actually meet, not by one number each.
     const items = [
-      ...TREES.map((o) => ({
-        x: o.x,
-        y: o.y,
-        d: () => GFX.drawTree(g, o.t, o.x, o.y, time, o.ph),
-      })),
-      ...BUSHES.map((o) => ({
-        x: o.x,
-        y: o.y,
-        d: () => {
-          GFX.shadow(g, o.x + 6, o.y + 2, 36, 9);
-          GFX.blit(g, o.spr, o.x, o.y + 4);
-        },
-      })),
-      ...ROCKS.map((o) => ({
-        x: o.x,
-        y: o.y,
-        d: () => {
-          GFX.shadow(g, o.x + 4, o.y + 2, 24, 6);
-          GFX.blit(g, o.spr, o.x, o.y + 4);
-        },
-      })),
-      ...LAMPS.map((o) => ({ x: o.x, y: o.y, d: () => drawLamp(g, o) })),
-      ...BEDS.map((o) => ({
-        x: o.x,
-        y: o.y,
-        d: () => {
-          GFX.shadow(g, o.x + 6, o.y + 4, 70, 12);
-          GFX.blit(g, o.spr, o.x, o.y + 6);
-        },
-      })),
+      ...TREES.map((o) => {
+        const crown = o.t.pine ? o.t.pine.w / 2 : o.t.canopy.w / 2;
+        return spot(
+          o.x,
+          o.y,
+          18,
+          o.t.pine ? o.t.pine.ay : o.t.h + o.t.canopy.ay,
+          () => GFX.drawTree(g, o.t, o.x, o.y, time, o.ph),
+          { sw: crown, name: "tree" },
+        );
+      }),
+      ...BUSHES.map((o) =>
+        spot(
+          o.x,
+          o.y,
+          26,
+          60,
+          () => {
+            GFX.shadow(g, o.x + 6, o.y + 2, 36, 9);
+            GFX.blit(g, o.spr, o.x, o.y + 4);
+          },
+          { sw: o.spr.w / 2, name: "bush" },
+        ),
+      ),
+      ...ROCKS.map((o) =>
+        spot(
+          o.x,
+          o.y,
+          16,
+          34,
+          () => {
+            GFX.shadow(g, o.x + 4, o.y + 2, 24, 6);
+            GFX.blit(g, o.spr, o.x, o.y + 4);
+          },
+          { sw: o.spr.w / 2, name: "rock" },
+        ),
+      ),
+      ...LAMPS.map((o) =>
+        spot(o.x, o.y, 9, 110 * PLAZA_SCALE.lamp, () => drawLamp(g, o), {
+          sw: 24,
+          name: "lamp",
+        }),
+      ),
       ...BENCHES.map((o) => ({
-        x: o.x,
-        y: o.y,
-        d: () => {
+        x0: o.x - 42,
+        x1: o.x + 42,
+        y0: o.y - 14,
+        y1: o.y,
+        h: 60,
+        name: "bench",
+        draw: () => {
           GFX.shadow(g, o.x + 4, o.y + 2, 46, 8);
           GFX.blit(g, GFX.bench(), o.x, o.y + 4);
           if (o === CAT.b)
@@ -3590,50 +3698,67 @@ export function openPlaza(options) {
         },
       })),
       ...HOUSES.map((h) => ({
-        x: h.x,
-        y: h.y,
-        d: () => drawHouse(g, h, night()),
+        x0: h.x - 94,
+        x1: h.x + 132,
+        y0: h.y - 50,
+        y1: h.y,
+        h: 290,
+        name: "house",
+        draw: () => drawHouse(g, h, night()),
       })),
-      ...HENS.map((h) => ({
-        x: h.x,
-        y: h.y,
-        d: () => GFX.chicken(g, h.k, h.st, time + h.t0, h.x, h.y, 1.15, h.face),
-      })),
-      ...PIGEONS.map((b) => ({
-        x: b.x,
-        y: b.y,
-        d: () => {
-          if (b.z > 2) {
-            GFX.shadow(g, b.x, b.y, 10, 3, 0.2);
-            GFX.bird(
-              g,
-              b.kind,
-              "fly",
-              time + b.x,
-              b.x,
-              b.y - b.z,
-              1.05,
-              b.face,
-            );
-          } else
-            GFX.bird(
-              g,
-              b.kind,
-              b.st,
-              time + b.x * 0.01,
-              b.x,
-              b.y,
-              1.05,
-              b.face,
-            );
-        },
-      })),
+      ...HENS.map((h) =>
+        spot(
+          h.x,
+          h.y,
+          10,
+          40,
+          () => GFX.chicken(g, h.k, h.st, time + h.t0, h.x, h.y, 1.15, h.face),
+          { name: "hen" },
+        ),
+      ),
+      ...PIGEONS.map((b) =>
+        spot(
+          b.x,
+          b.y,
+          8,
+          26,
+          () => {
+            if (b.z > 2) {
+              GFX.shadow(g, b.x, b.y, 10, 3, 0.2);
+              GFX.bird(
+                g,
+                b.kind,
+                "fly",
+                time + b.x,
+                b.x,
+                b.y - b.z,
+                1.05,
+                b.face,
+              );
+            } else
+              GFX.bird(
+                g,
+                b.kind,
+                b.st,
+                time + b.x * 0.01,
+                b.x,
+                b.y,
+                1.05,
+                b.face,
+              );
+          },
+          { z: b.z > 2 ? b.z : 0, name: "pigeon" },
+        ),
+      ),
       ...(low
         ? []
         : [
-            {
-              y: PET.y,
-              d: () => {
+            spot(
+              PET.x,
+              PET.y,
+              14,
+              50,
+              () => {
                 GFX.dog(
                   g,
                   PET.breed,
@@ -3649,78 +3774,222 @@ export function openPlaza(options) {
                   },
                 );
               },
-            },
+              { name: "pet" },
+            ),
           ]),
-      ...FLOOD.map((o) => ({
-        x: o.x,
-        y: o.y,
-        d: () => drawFlood(g, o, night()),
-      })),
-      { y: FOUNT.y, d: () => drawFountain(g, time) },
-      { y: LED.y1, d: () => drawLED(g, time) },
+      ...FLOOD.map((o) =>
+        spot(o.x, o.y, 6, 256, () => drawFlood(g, o, night()), {
+          sw: 28,
+          name: "flood",
+        }),
+      ),
+      {
+        x0: FOUNT.x - 126,
+        x1: FOUNT.x + 126,
+        y0: FOUNT.y - 60,
+        y1: FOUNT.y + 60,
+        h: 200,
+        name: "fountain",
+        draw: () => drawFountain(g, time),
+      },
+      {
+        x0: LED.x0,
+        x1: LED.x1,
+        y0: LED.y1 - 20,
+        y1: LED.y1,
+        h: 340,
+        name: "led",
+        draw: () => drawLED(g, time),
+      },
       // The spotlights hang from the truss in front of the screen and shine
       // down on the stage: drawn after the screen, before anyone standing
       // on the stage. Always drawn: the camera may see only the beams' end.
-      { y: LED.y1 + 0.5, always: true, d: () => drawSpotlights(g, time) },
-      { y: PITCH.y0 - 40, d: () => drawScoreboard(g) },
       {
-        y: (PITCH.gy0 + PITCH.gy1) / 2,
-        d: () => {
-          drawGoal(g, PITCH.x0, true);
-          drawGoal(g, PITCH.x1, false);
-        },
+        x0: LED.x0,
+        x1: LED.x1,
+        y0: LED.y1 + 0.5,
+        y1: LED.y1 + 0.5,
+        h: 340,
+        always: true,
+        name: "spotlights",
+        draw: () => drawSpotlights(g, time),
       },
-      { y: TRACK.cy - TRACK.ri[1], d: () => drawGantry(g) },
-      { y: LEADER.y, d: () => drawLeader(g) },
-      { y: PHOTO.y, d: () => drawPhoto(g, time) },
-      { y: PLAZA_PHOTO_CAMERA.y, d: () => drawCamera(g) },
-      { y: CAFE.y, d: () => drawCafe(g) },
-      { y: BOARD.y, d: () => drawBoard(g) },
-      { y: GATE.y, d: () => drawGate(g) },
-      { y: ball.y, d: () => drawBall(g) },
-      ...ev.orbs.map((o) => ({
-        y: o.y,
-        d: () => {
-          const y = o.y - 22 - o.z + Math.sin(time * 5 + o.x) * 3,
-            gr = g.createRadialGradient(o.x, y, 2, o.x, y, 28);
-          gr.addColorStop(0, "#fff");
-          gr.addColorStop(0.3, o.c);
-          gr.addColorStop(1, o.c + "00");
-          g.fillStyle = gr;
-          g.beginPath();
-          g.arc(o.x, y, 28, 0, 7);
-          g.fill();
-          g.fillStyle = "#fff";
-          g.beginPath();
-          g.arc(o.x, y, 7, 0, 7);
-          g.fill();
-          if (o.z > 0) {
-            g.strokeStyle = o.c + "88";
-            g.lineWidth = 4;
+      spot(
+        (PITCH.x0 + PITCH.x1) / 2,
+        PITCH.y0 - 10,
+        6,
+        150,
+        () => drawScoreboard(g),
+        { sw: 120, name: "scoreboard" },
+      ),
+      ...goalDrawables(g, PITCH.x0, true),
+      ...goalDrawables(g, PITCH.x1, false),
+      ...HSEG.map(([p0, p1], i) => ({
+        x0: p0.x,
+        y0: p0.y,
+        x1: p1.x,
+        y1: p1.y,
+        line: true,
+        h: PLAZA_SCALE.hurdle + 8,
+        name: `hurdle-${i}`,
+        draw: () => drawHurdle(g, [p0, p1]),
+      })),
+      ...gantryDrawables(g),
+      {
+        x0: LEADER.x - 90,
+        x1: LEADER.x + 90,
+        y0: LEADER.y - 4,
+        y1: LEADER.y,
+        h: 252,
+        name: "leader",
+        draw: () => drawLeader(g),
+      },
+      {
+        x0: PHOTO.x - 86,
+        x1: PHOTO.x + 86,
+        y0: PHOTO.y - 4,
+        y1: PHOTO.y,
+        h: 262,
+        name: "photo-arch",
+        draw: () => drawPhoto(g, time),
+      },
+      // The arch's two bushes, each standing on its own spot.
+      spot(
+        PHOTO.x - 160,
+        PHOTO.y - 50,
+        30,
+        60,
+        () =>
+          GFX.blit(g, GFX.bush("flower", 31, 70), PHOTO.x - 160, PHOTO.y - 50),
+        { sw: 43, name: "bush" },
+      ),
+      spot(
+        PHOTO.x - 235,
+        PHOTO.y - 30,
+        30,
+        60,
+        () =>
+          GFX.blit(g, GFX.bush("rose", 32, 70), PHOTO.x - 235, PHOTO.y - 30),
+        { sw: 43, name: "bush" },
+      ),
+      spot(
+        PLAZA_PHOTO_CAMERA.x,
+        PLAZA_PHOTO_CAMERA.y,
+        14,
+        80,
+        () => drawCamera(g),
+        { name: "camera" },
+      ),
+      // The food truck is long: its footprint runs its whole length.
+      {
+        x0: CAFE.x - 130,
+        x1: CAFE.x + 130,
+        y0: CAFE.y - 50,
+        y1: CAFE.y,
+        h: 190,
+        name: "cafe",
+        draw: () => drawCafe(g),
+      },
+      {
+        x0: CAFE.x - 212,
+        x1: CAFE.x - 128,
+        y0: CAFE.y + 56,
+        y1: CAFE.y + 70,
+        h: 60,
+        name: "bench",
+        draw: () => GFX.blit(g, GFX.bench(), CAFE.x - 170, CAFE.y + 70),
+      },
+      {
+        x0: BOARD.x - 70,
+        x1: BOARD.x + 70,
+        y0: BOARD.y - 6,
+        y1: BOARD.y,
+        h: 170,
+        name: "board",
+        draw: () => drawBoard(g),
+      },
+      {
+        x0: GATE.x - 80,
+        x1: GATE.x + 80,
+        y0: GATE.y - 4,
+        y1: GATE.y,
+        h: 210,
+        name: "gate",
+        draw: () => drawGate(g),
+      },
+      spot(
+        GATE.x + 120,
+        GATE.y + 2,
+        16,
+        60,
+        () => GFX.blit(g, GFX.mailbox(), GATE.x + 120, GATE.y + 2),
+        { name: "mailbox" },
+      ),
+      spot(
+        GATE.x - 140,
+        GATE.y + 4,
+        34,
+        46,
+        () => GFX.blit(g, GFX.hay(), GATE.x - 140, GATE.y + 4),
+        { name: "hay" },
+      ),
+      spot(ball.x, ball.y, ball.r || 14, 40, () => drawBall(g), {
+        z: ball.z || 0,
+        name: "ball",
+      }),
+      ...ev.orbs.map((o) =>
+        spot(
+          o.x,
+          o.y,
+          12,
+          60,
+          () => {
+            const y = o.y - 22 - o.z + Math.sin(time * 5 + o.x) * 3,
+              gr = g.createRadialGradient(o.x, y, 2, o.x, y, 28);
+            gr.addColorStop(0, "#fff");
+            gr.addColorStop(0.3, o.c);
+            gr.addColorStop(1, o.c + "00");
+            g.fillStyle = gr;
             g.beginPath();
-            g.moveTo(o.x, y - 10);
-            g.lineTo(o.x, y - 60);
-            g.stroke();
-          }
-        },
-      })),
-      ...BODIES().map((b) => ({
-        x: b.x,
-        y: b.y,
-        d: () => drawBody(g, b, time, photo),
-      })),
+            g.arc(o.x, y, 28, 0, 7);
+            g.fill();
+            g.fillStyle = "#fff";
+            g.beginPath();
+            g.arc(o.x, y, 7, 0, 7);
+            g.fill();
+            if (o.z > 0) {
+              g.strokeStyle = o.c + "88";
+              g.lineWidth = 4;
+              g.beginPath();
+              g.moveTo(o.x, y - 10);
+              g.lineTo(o.x, y - 60);
+              g.stroke();
+            }
+          },
+          { z: o.z, sw: 28, name: "orb" },
+        ),
+      ),
+      ...liveDrawables(g, time, vx0, vx1),
+      ...BODIES().map((b) =>
+        spot(b.x, b.y, 12, 84, () => drawBody(g, b, time, photo), {
+          z: b.z || 0,
+          sw: 44,
+          name: b === P ? "me" : "body",
+        }),
+      ),
     ];
-    // Things stand on their y and reach up to ~340 px (houses, floodlights).
-    items
-      .filter(
-        (i) =>
-          i.always ||
-          (i.y > vy0 - 40 &&
-            i.y < vy1 + 340 &&
-            (i.x == null || (i.x > vx0 - 260 && i.x < vx1 + 260))),
-      )
-      .sort((a, b) => a.y - b.y)
-      .forEach((i) => i.d());
+    // Only what can reach the view (things reach up to ~340 px).
+    const shown = items.filter(
+      (i) =>
+        i.always ||
+        (Math.max(i.y0, i.y1) > vy0 - 40 &&
+          Math.min(i.y0, i.y1) < vy1 + 360 &&
+          Math.max(i.x0, i.x1) + (i.sw ?? 0) > vx0 - 40 &&
+          Math.min(i.x0, i.x1) - (i.sw ?? 0) < vx1 + 40),
+    );
+    const sorted = depthSort(shown);
+    if (debugOrder) debugOrder = sorted.map((i) => i.name ?? "?");
+    for (const i of sorted) i.draw();
     BUTTER.forEach((b) => GFX.butterfly(g, time + b.ph, b.x, b.y, b.c, 1.3));
     SMOKE.forEach((m) => {
       g.fillStyle = `rgba(240,240,245,${0.45 * (1 - m.t / m.life)})`;
@@ -3815,7 +4084,7 @@ export function openPlaza(options) {
         g.fill();
       };
       LAMPS.forEach((l) => {
-        glow(l.x, l.y - 78, 90, "255,214,140", 0.55 * n);
+        glow(l.x, l.y - LAMP_HEAD, 90, "255,214,140", 0.55 * n);
         glow(l.x, l.y, 110, "255,200,120", (low ? 0.18 : 0.08) * n);
       });
       FLOOD.forEach((f) => glow(f.x, f.y - 240, 120, "255,250,220", 0.5 * n));
@@ -3829,6 +4098,9 @@ export function openPlaza(options) {
       glow((LED.x0 + LED.x1) / 2, LED.y1, 340, "200,120,255", 0.22 * n);
       glow(CAFE.x, CAFE.y - 120, 160, "255,200,140", 0.35 * n);
       glow(FOUNT.x, FOUNT.y - 40, 170, "120,220,255", 0.22 * n);
+      for (const l of RIVER_LAMPS)
+        glow(l.x, l.y - LAMP_HEAD, 90, "255,214,140", 0.55 * n);
+      if (!low && vy0 < 0) drawRiverLights(g, time, n, vx0, vx1);
       for (let i = 0; i < 40; i++) {
         const t = TREES[i % TREES.length];
         const x = t.x + Math.sin(time * 0.7 + i * 3.1) * 70,
@@ -3882,6 +4154,8 @@ export function openPlaza(options) {
   // events (the Orb Shower).
   const DASH_EVERY = PLAZA.dashEvery;
   let lastDraw = 0;
+  /** The last frame's drawing order, once a test asks for it. */
+  let debugOrder = false;
   // A 120 Hz phone: about 60 frames a second, as everywhere (frame-cap.ts).
   const cap = new FrameCap();
   // The frame-rate read-out's lines while the Plaza shows (perf-hud.ts).
@@ -4035,17 +4309,11 @@ export function openPlaza(options) {
         dcd.style.setProperty("--cd", cd);
       }
       const lead = { x: P.vx * 0.25, y: P.vy * 0.2 };
-      cam.x +=
-        (Math.max(NW / 2 / Z, Math.min(W - NW / 2 / Z, P.x + lead.x)) - cam.x) *
-        Math.min(1, dt * 5);
-      cam.y +=
-        (Math.max(
-          NH / 2 / Z,
-          // Stops at the map's bottom edge: no empty strip below it.
-          Math.min(H - NH / 2 / Z, P.y - 40 + lead.y),
-        ) -
-          cam.y) *
-        Math.min(1, dt * 5);
+      // Follows you a little past the Plaza's edges, onto the river, the
+      // woods and the farm, never past what is painted (plaza-surround.ts).
+      const want = plazaCamClamp(P.x + lead.x, P.y - 40 + lead.y, NW, NH, Z);
+      cam.x += (want.x - cam.x) * Math.min(1, dt * 5);
+      cam.y += (want.y - cam.y) * Math.min(1, dt * 5);
       {
         const nt = night() > 0.5,
           ck = $("pz-clock");
@@ -4090,13 +4358,12 @@ export function openPlaza(options) {
     NW = nw;
     NH = nh;
     PS = ps;
-    // Never show more than the map: on a screen wider or taller than the
-    // Plaza (an ultrawide monitor, a big window) zoom in until it fills it.
-    Z = Math.max(nw < 1000 ? 0.66 : 1, nw / W, nh / H);
-    // Inside the map at once (the camera eases after this): a resize or the
-    // first frame never shows a strip past the edge.
-    cam.x = Math.max(nw / 2 / Z, Math.min(W - nw / 2 / Z, cam.x));
-    cam.y = Math.max(nh / 2 / Z, Math.min(H - nh / 2 / Z, cam.y));
+    // Never show more than is built: on a screen wider or taller than the
+    // Plaza and its surroundings (an ultrawide monitor) zoom in until it fills it.
+    Z = plazaZoom(nw, nh);
+    // Inside at once (the camera eases after this): a resize or the first
+    // frame never shows past what is painted.
+    cam = plazaCamClamp(cam.x, cam.y, nw, nh, Z);
     cv.width = Math.round(nw * ps);
     cv.height = Math.round(nh * ps);
     renderQuests();
@@ -4222,7 +4489,9 @@ export function openPlaza(options) {
       // (Once the page is idle, not in the tap that switched tabs.)
       if (memoryConstrained())
         idleRelease = requestIdle(() => {
-          if (away) bg.width = bg.height = 0;
+          if (!away) return;
+          bg.width = bg.height = 0;
+          around.release();
         });
     },
     /** Back: drawn at once as you left it; the server's state follows. */
@@ -4239,6 +4508,9 @@ export function openPlaza(options) {
         const kept = seed;
         paintBg();
         seed = kept;
+      }
+      if (!around.strips.length) {
+        around.paint();
       }
       layer.style.display = "";
       running = true;
@@ -4304,6 +4576,22 @@ export function openPlaza(options) {
           y: r.top + (((y - cam.y) * Z + NH / 2) / NH) * r.height,
         };
       },
+      /** The order things were last drawn in (tests; starts recording). */
+      drawOrder() {
+        const o = debugOrder === false ? [] : debugOrder;
+        debugOrder = debugOrder || [];
+        return o;
+      },
+      /** The view in world px, and the zoom (tests). */
+      view: () => ({
+        x0: cam.x - NW / 2 / Z,
+        y0: cam.y - NH / 2 / Z,
+        x1: cam.x + NW / 2 / Z,
+        y1: cam.y + NH / 2 / Z,
+        z: Z,
+      }),
+      /** Pixels in the surroundings' strips (tests). */
+      surroundPixels: () => around.pixels,
       /** Tests: hold the time of day (0.42 = midday). */
       setTod(t) {
         tod = t;
