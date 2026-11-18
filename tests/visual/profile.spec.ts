@@ -264,7 +264,7 @@ for (const size of SIZES)
       expect(fit.square, "the avatar is round").toBe(true);
       expect(fit.inside, "the avatar is inside the card").toBe(true);
       if (size.phone)
-        expect(fit.size, "the avatar's size").toBeGreaterThanOrEqual(130);
+        expect(fit.size, "the avatar's size").toBeGreaterThanOrEqual(90);
 
       // A phone shows the card's column as tabs (Overview, Titles, Mastery,
       // Trophies); a desktop shows it all in one column.
@@ -789,14 +789,23 @@ test("a locked name says when; a refusal says why", async ({ browser }) => {
   }
 });
 
-// Wearing a frame: its art reaches 20% beyond the portrait on each side
-// (the planet frame ran off an iPhone 17 Pro Max's card and over the
-// title, owner 19 Nov). All of it stays on the card, above the title.
+// Wearing a frame: the card keeps room for any frame (frame-reach.spec.ts),
+// so the avatar is one size with or without one, and the frame stays on the
+// card and above the title (the planet frame ran off an iPhone 17 Pro Max's
+// card, owner 19 Nov). The frames that reach furthest: above (conductor),
+// below (festival), and the owner's (galaxy).
 for (const size of SIZES.filter((s) => s.phone))
-  for (const frame of ["galaxy-frame", "prism-frame"])
-    test(`a framed avatar fits the card at ${size.name}: ${frame}`, async ({
-      browser,
-    }, info) => {
+  test(`a framed avatar fits the card at ${size.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(150_000);
+    const sizes: number[] = [];
+    for (const frame of [
+      undefined,
+      "galaxy-frame",
+      "conductor-frame",
+      "festival-frame",
+    ]) {
       const context = await browser.newContext({
         viewport: { width: size.width, height: size.height },
         isMobile: true,
@@ -805,33 +814,56 @@ for (const size of SIZES.filter((s) => s.phone))
       try {
         const page = await context.newPage();
         const { errors, panel } = await open(page, size, { frame });
-        await expect(
-          panel.locator(`.pf-card-avatar > [data-portrait-frame="${frame}"]`),
-        ).toHaveCount(1);
+        if (frame)
+          await expect(
+            panel.locator(`.pf-card-avatar > [data-portrait-frame="${frame}"]`),
+          ).toHaveCount(1);
         const room = await panel.evaluate((p) => {
           const card = p.querySelector(".pf-card")!.getBoundingClientRect();
           const f = p
-            .querySelector(".pf-card-avatar > .portrait-frame")!
+            .querySelector(".pf-card-avatar > *")!
             .getBoundingClientRect();
           const text = p
             .querySelector(".pf-card-text > *")!
             .getBoundingClientRect();
-          const m = f.width * 0.2;
+          // The room frames may take (frame-reach.spec.ts).
+          const w = f.width;
           return {
             inside:
-              f.left - m >= card.left - 0.5 &&
-              f.right + m <= card.right + 0.5 &&
-              f.top - m >= card.top - 0.5,
-            aboveTitle: f.bottom + m <= text.top + 1,
-            size: Math.round(f.width),
+              f.left - w * 0.2 >= card.left - 0.5 &&
+              f.right + w * 0.2 <= card.right + 0.5 &&
+              f.top - w * 0.34 >= card.top - 0.5,
+            aboveTitle: f.bottom + w * 0.37 <= text.top + 1,
+            size: Math.round(w),
           };
         });
-        expect(room.inside, "inside the card").toBe(true);
-        expect(room.aboveTitle, "above the title").toBe(true);
-        expect(room.size, "its portrait").toBeGreaterThanOrEqual(90);
-        await snap(page, info, `profile-frame-${frame}-${size.name}`);
+        expect(room.inside, `${frame}: inside the card`).toBe(true);
+        expect(room.aboveTitle, `${frame}: above the title`).toBe(true);
+        sizes.push(room.size);
+        if (!frame) {
+          // Delete account: in the column's bottom right corner.
+          const corner = await panel.evaluate((p) => {
+            const main = p
+              .querySelector("[data-profile-main]")!
+              .getBoundingClientRect();
+            const del = p
+              .querySelector("[data-profile-delete]")!
+              .getBoundingClientRect();
+            return {
+              right: Math.round(main.right - del.right),
+              bottom: Math.round(main.bottom - del.bottom),
+            };
+          });
+          expect(corner.right, "Delete at the right").toBeLessThanOrEqual(8);
+          expect(corner.bottom, "Delete at the bottom").toBeLessThanOrEqual(12);
+        }
+        await snap(page, info, `profile-frame-${frame ?? "none"}-${size.name}`);
         expect(errors).toEqual([]);
       } finally {
         await context.close();
       }
-    });
+    }
+    // One size, frame or not.
+    expect(new Set(sizes).size, `avatar sizes ${sizes}`).toBe(1);
+    expect(sizes[0], "the avatar's size").toBeGreaterThanOrEqual(90);
+  });

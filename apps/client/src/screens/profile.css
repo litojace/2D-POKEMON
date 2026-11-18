@@ -753,16 +753,15 @@
     max-width: none;
     padding: 6px;
   }
+  /* Room for any frame, worn or not, so the avatar is one size either way
+     and a frame never runs off the card or over the title: frames reach
+     20% of the portrait beyond each side, at most 34% above it and 37%
+     below (measured from every frame: tests/visual/frame-reach.spec.ts,
+     which fails if a new one reaches further). */
   .pf-card-avatar > :is(.portrait-frame, .portrait-disc, img, svg) {
-    width: min(100cqw, 100cqh);
-    height: min(100cqw, 100cqh);
-  }
-  /* A frame draws its ring and ornaments 20% beyond the portrait on each
-     side (its art spans 140%: portrait-frames.css, signature-frames.css),
-     so the portrait is 70% of the room and the whole frame fits. */
-  .pf-card-avatar > .portrait-frame {
-    width: calc(min(100cqw, 100cqh) * 0.7);
-    height: calc(min(100cqw, 100cqh) * 0.7);
+    --pf-portrait: min(100cqw / 1.4, 100cqh / 1.71);
+    width: var(--pf-portrait);
+    height: var(--pf-portrait);
   }
   .pf-tile {
     min-height: 0;
@@ -816,8 +815,17 @@
   .pf-mini-row > .ui-note {
     white-space: normal;
   }
-  /* Who you are and Delete account: one line. */
+  /* Overview: who you are and Delete account sit at the bottom of the
+     column, Delete in the corner (owner, 19 Nov). */
+  .pf-main:has(> .pf-account) {
+    display: flex;
+    flex-direction: column;
+  }
+  .pf-main:has(> .pf-account) > * {
+    flex: none;
+  }
   .pf-account {
+    margin-top: auto;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
