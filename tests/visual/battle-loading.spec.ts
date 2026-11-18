@@ -40,7 +40,11 @@ test("the briefing holds I'm ready until the arena has loaded, and loads only th
     )
     .toBe(1);
   // The briefing appears at once, but "I'm ready" waits for the arena.
-  await expect(ready).toHaveText("Loading the arena…");
+  await expect(ready).toHaveText("Loading…");
+  // The Reveal's bar says so, and how far it has come.
+  await expect(page.locator(".rv-load span")).toContainText(
+    "Loading the arena",
+  );
   await expect(ready).toBeDisabled();
   await expect
     .poll(
@@ -131,7 +135,11 @@ test("a briefing that comes before Phaser has loaded holds I'm ready too, and co
   expect(asked).toBeGreaterThan(0);
   await page.waitForTimeout(1500);
   await page.evaluate(() => (window as any).__push());
-  await expect(ready).toHaveText("Loading the arena…");
+  await expect(ready).toHaveText("Loading…");
+  // The Reveal's bar says so, and how far it has come.
+  await expect(page.locator(".rv-load span")).toContainText(
+    "Loading the arena",
+  );
   await expect(ready).toBeDisabled();
   release();
   await expect

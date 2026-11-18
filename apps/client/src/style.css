@@ -16160,6 +16160,32 @@ body.battle-active #arena-overlay:has(> .match-reveal) {
   }
 }
 
+/* Chat, as in the room (room.css): the same button, in the top-left corner,
+   level with the kicker, inside the Reveal's padding (the overlay is the
+   whole screen, so the screen's height picks the same steps as the
+   container queries above). Over the Reveal, as its drawer is. */
+body:has(#arena-overlay > .match-reveal) .chat-button[data-place="room"] {
+  z-index: calc(var(--z-modal) + 1);
+  top: max(20px, var(--safe-top, 0px));
+  left: max(32px, var(--safe-left, 0px));
+}
+@media (max-height: 640px) {
+  body:has(#arena-overlay > .match-reveal) .chat-button[data-place="room"] {
+    top: max(12px, var(--safe-top, 0px));
+  }
+}
+@media (max-height: 460px) {
+  body:has(#arena-overlay > .match-reveal) .chat-button[data-place="room"] {
+    top: max(8px, var(--safe-top, 0px));
+    left: max(16px, var(--safe-left, 0px));
+  }
+}
+@media (max-width: 700px) {
+  body:has(#arena-overlay > .match-reveal) .chat-button[data-place="room"] {
+    left: max(12px, var(--safe-left, 0px));
+  }
+}
+
 /* The flip: face down, then each card turns over. */
 .vs-flip {
   perspective: 700px;

@@ -259,3 +259,23 @@ it("team chat: none in a 1v1, and a team change clears what was said", async () 
   const after = await emit(blue1, "chat-history", { channel: "team" });
   expect(JSON.stringify(after)).not.toMatch(/secret plan/);
 });
+
+it("the Reveal keeps the room's chat: typed lines until the fight starts", async () => {
+  const {
+    players: [a, b],
+    arena,
+  } = await room("duel", 2);
+  await emit(a, "ready");
+  await emit(b, "ready");
+  await settle();
+  expect(arena.phase).toBe("briefing");
+  const ears = heard(b);
+  const said = await emit(a, "chat-send", { channel: "room", text: "gl hf" });
+  expect(said.ok).toBe(true);
+  await settle();
+  expect(ears.map((l) => l.text)).toContain("gl hf");
+  // Once the fight is on, typing waits for the end (quick chat only).
+  arena.phase = "playing";
+  const typed = await emit(b, "chat-send", { channel: "room", text: "oops" });
+  expect(typed.ok).toBe(false);
+});

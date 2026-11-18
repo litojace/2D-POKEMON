@@ -2512,8 +2512,13 @@ let farmChatOwner: string | null = null;
 /** The chat button's place and channels (chat/chat-ui.ts). */
 function syncChat(hub: boolean) {
   const inRoom = !!myId && !!state;
+  // A PvP briefing (the Reveal) keeps the room's chat, as the server does
+  // (chatInBattle): the players are still talking it over.
   const fighting =
-    inRoom && state!.phase !== "lobby" && state!.phase !== "finished";
+    inRoom &&
+    state!.phase !== "lobby" &&
+    state!.phase !== "finished" &&
+    !(state!.phase === "briefing" && !state!.raid);
   const place: ChatPlace = hub
     ? "hub"
     : inRoom && !fighting && !state!.practice
