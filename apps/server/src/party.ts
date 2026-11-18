@@ -10,6 +10,12 @@ import type { ChampionLook } from "../../../packages/shared/src/shop.js";
 export const PARTY_SIZE = 4;
 export const PARTY_INVITE_MS = 90_000;
 export const PARTY_INVITE_COOLDOWN_MS = 30_000;
+/**
+ * A member whose connection dropped keeps their place this long (a phone
+ * locked, an app switch, a network change) before the party lets them go,
+ * like the room's own reconnect grace.
+ */
+export const PARTY_AWAY_MS = 60_000;
 export interface PartyMember {
   id: string;
   name: string;
@@ -29,7 +35,13 @@ export interface Party {
   code: string;
   leader: string;
   members: PartyMember[];
+  /**
+   * The private room the leader has open, which the party plays in: members
+   * on the Lobby follow it, and one who stepped out can rejoin it.
+   */
+  room?: { code: string; mode: PartyRoomMode };
 }
+export type PartyRoomMode = "duel" | "teams" | "ffa" | "raid";
 interface Invite {
   code: string;
   fromId: string;
@@ -46,6 +58,8 @@ export class Parties {
   private invites = new Map<string, Invite>();
   private cooldowns = new Map<string, number>();
   private appearances = new Map<string, PartyAppearance>();
+  /** Members whose connection dropped, and when their place lapses. */
+  private away = new Map<string, number>();
 
   of(accountId: string) {
     const code = this.byAccount.get(accountId);
@@ -68,6 +82,78 @@ export class Parties {
         this.invites.delete(key);
     for (const [key, until] of this.cooldowns)
       if (until <= now) this.cooldowns.delete(key);
+  }
+  /** Invitations this party has out (who, and until when). */
+  pending(code: string, now: number) {
+    const out: { id: string; expiresAt: number }[] = [];
+    for (const invite of this.invites.values())
+      if (invite.code === code && invite.expiresAt > now)
+        out.push({ id: invite.toId, expiresAt: invite.expiresAt });
+    return out;
+  }
+  /** Whether this member's connection dropped (their place is kept). */
+  isAway(accountId: string) {
+    return this.away.has(accountId);
+  }
+  /** A member went offline: keep their place until `until`. */
+  setAway(accountId: string, until: number) {
+    const party = this.of(accountId);
+    if (!party) return undefined;
+    this.away.set(accountId, until);
+    return party;
+  }
+  /** A member is back online: returns their party when it had them away. */
+  back(accountId: string) {
+    const party = this.of(accountId);
+    if (!party) return undefined;
+    const was = this.away.delete(accountId);
+    return { party, was };
+  }
+  /** Members whose kept place has lapsed (still away at `now`). */
+  lapsed(now: number) {
+    return [...this.away].filter(([, until]) => until <= now).map(([id]) => id);
+  }
+  /**
+   * Put `member` in the party `host` is in (or one `host` leads, created
+   * now): the friend who accepted a room invitation plays on with whoever
+   * invited them, so going back to the Lobby keeps the team together.
+   */
+  link(
+    host: PartyMember,
+    member: PartyMember,
+  ): Result<{ party: Party; left?: Party; disbanded?: Party }> | Failure {
+    if (host.id === member.id) return { ok: false, error: "Invite a friend." };
+    let party = this.of(host.id);
+    if (party?.members.some((m) => m.id === member.id))
+      return { ok: true, party };
+    if (party && party.members.length >= PARTY_SIZE)
+      return { ok: false, error: "That party is full." };
+    const previous = this.leave(member.id);
+    party = this.of(host.id);
+    if (!party) {
+      party = { code: this.newCode(), leader: host.id, members: [{ ...host }] };
+      this.parties.set(party.code, party);
+      this.byAccount.set(host.id, party.code);
+    }
+    party.members.push({ ...member });
+    this.byAccount.set(member.id, party.code);
+    this.invites.delete(`${party.code}:${member.id}`);
+    return {
+      ok: true,
+      party,
+      left: previous?.party,
+      disbanded: previous?.disbanded,
+    };
+  }
+  /** The leader opened a room (or closed it: `undefined`). */
+  setRoom(accountId: string, room: Party["room"]) {
+    const party = this.of(accountId);
+    if (!party || party.leader !== accountId) return undefined;
+    if (party.room?.code === room?.code && party.room?.mode === room?.mode)
+      return undefined;
+    if (room) party.room = room;
+    else delete party.room;
+    return party;
   }
   /**
    * Invite `toId` to the sender's party, creating it with the sender as
@@ -153,12 +239,19 @@ export class Parties {
     party.members = party.members.filter((m) => m.id !== accountId);
     this.byAccount.delete(accountId);
     this.appearances.delete(accountId);
-    if (party.leader === accountId && party.members[0])
-      party.leader = party.members[0].id;
+    this.away.delete(accountId);
+    if (party.leader === accountId && party.members[0]) {
+      // The next member online leads; the old leader's room is not theirs.
+      party.leader = (
+        party.members.find((m) => !this.away.has(m.id)) ?? party.members[0]
+      ).id;
+      delete party.room;
+    }
     if (party.members.length <= 1) {
       for (const m of party.members) {
         this.byAccount.delete(m.id);
         this.appearances.delete(m.id);
+        this.away.delete(m.id);
       }
       this.parties.delete(party.code);
       for (const [key, invite] of this.invites)

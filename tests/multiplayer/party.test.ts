@@ -24,7 +24,7 @@ const request = (s: Socket, event: string, data: unknown = {}) =>
   new Promise<Reply>((resolve) => s.emit(event, data, resolve));
 const settle = () => new Promise((r) => setTimeout(r, 20));
 
-async function setup() {
+async function setup(options: { partyAwayMs?: number } = {}) {
   const accounts = fakeAccounts(),
     lead = accounts.add(false),
     pal = accounts.add(false),
@@ -47,7 +47,11 @@ async function setup() {
       outgoing: [],
     };
   };
-  server = createArenaServer({ accounts: accounts.provider, autoTick: false });
+  server = createArenaServer({
+    accounts: accounts.provider,
+    autoTick: false,
+    partyAwayMs: options.partyAwayMs ?? 60,
+  });
   await new Promise<void>((r) => server!.http.listen(0, "127.0.0.1", r));
   const url = `http://127.0.0.1:${(server.http.address() as { port: number }).port}`;
   const connect = async (token: string) => {
@@ -57,20 +61,25 @@ async function setup() {
       reconnection: false,
     });
     sockets.push(s);
+    // Listening before the connection opens, as the game does: the party
+    // comes straight away to a returning member.
+    const parties: PartyState[] = [],
+      invites: RoomInvite[] = [],
+      follows: unknown[] = [],
+      declined: unknown[] = [];
+    s.on("party", (d) => parties.push(partyStateSchema.parse(d)));
+    s.on("room-invite", (d) => invites.push(roomInviteSchema.parse(d)));
+    s.on("party-room", (d) => follows.push(d));
+    s.on("invite-declined", (d) => declined.push(d));
     await new Promise<void>((r, reject) => {
       s.once("connect", r);
       s.once("connect_error", reject);
     });
-    const parties: PartyState[] = [],
-      invites: RoomInvite[] = [],
-      follows: unknown[] = [];
-    s.on("party", (d) => parties.push(partyStateSchema.parse(d)));
-    s.on("room-invite", (d) => invites.push(roomInviteSchema.parse(d)));
-    s.on("party-room", (d) => follows.push(d));
-    return { s, parties, invites, follows };
+    return { s, parties, invites, follows, declined };
   };
   return {
     accounts,
+    connect,
     lead,
     pal,
     third,
@@ -319,8 +328,138 @@ it("passes the lead on, ends a party of one, and drops members who go offline", 
     expect(f.b.parties.at(-1)!.members).toHaveLength(2);
   });
   f.c.s.disconnect();
-  // Only the new leader is left: the party ends.
+  // Gone offline: their place is kept a moment (shown as away)...
+  await vi.waitFor(() =>
+    expect(
+      f.b.parties.at(-1)!.members.find((m) => m.id === f.third.account.id)
+        ?.away,
+    ).toBe(true),
+  );
+  // ...then, still gone, only the new leader is left: the party ends.
   await vi.waitFor(() => expect(f.b.parties.at(-1)).toBeNull());
+});
+
+async function pairUp(f: Awaited<ReturnType<typeof setup>>) {
+  await request(f.a.s, "party-invite", {
+    playerId: f.pal.account.id,
+    character: "voltkit",
+  });
+  await settle();
+  await request(f.b.s, "party-accept", {
+    code: f.b.invites.at(-1)!.code,
+    character: "tidefin",
+  });
+  await settle();
+}
+
+it("keeps a member's place through a short drop and shows them the party again", async () => {
+  const f = await setup({ partyAwayMs: 5_000 });
+  await pairUp(f);
+  f.b.s.disconnect();
+  await vi.waitFor(() =>
+    expect(
+      f.a.parties.at(-1)!.members.find((m) => m.id === f.pal.account.id),
+    ).toMatchObject({ away: true }),
+  );
+  // Back (a phone unlocked): still in the party, and the new tab sees it.
+  const again = await f.connect(f.pal.token);
+  await vi.waitFor(() => {
+    expect(again.parties.at(-1)?.members.map((m) => m.id)).toEqual([
+      f.lead.account.id,
+      f.pal.account.id,
+    ]);
+    expect(
+      f.a.parties.at(-1)!.members.find((m) => m.id === f.pal.account.id)?.away,
+    ).toBeUndefined();
+  });
+});
+
+it("keeps the party's room: follow it, step out, and stay a party", async () => {
+  const f = await setup();
+  await pairUp(f);
+  const room = await request(f.a.s, "create", { name: "Lead", mode: "duel" });
+  expect((await request(f.a.s, "party-room")).ok).toBe(true);
+  await vi.waitFor(() =>
+    expect(f.b.parties.at(-1)?.room).toEqual({ code: room.code, mode: "duel" }),
+  );
+  const joined = await request(f.b.s, "join", { name: "Pal", code: room.code });
+  expect(joined.ok).toBe(true);
+  // The member steps out to the Lobby: still a party, and its room is open.
+  expect((await request(f.b.s, "leave", {})).ok).toBe(true);
+  await settle();
+  expect(f.b.parties.at(-1)?.members).toHaveLength(2);
+  expect(f.b.parties.at(-1)?.room?.code).toBe(room.code);
+  // The leader leaves too: still a party, with no room until the next one.
+  expect((await request(f.a.s, "leave", {})).ok).toBe(true);
+  await vi.waitFor(() => {
+    expect(f.b.parties.at(-1)?.members).toHaveLength(2);
+    expect(f.b.parties.at(-1)?.room ?? null).toBeNull();
+  });
+});
+
+it("makes a party of a room invitation, so the friends stay together after it", async () => {
+  const f = await setup();
+  const room = await request(f.a.s, "create", { name: "Lead", mode: "duel" });
+  expect(room.ok).toBe(true);
+  expect(
+    (await request(f.a.s, "room-invite", { playerId: f.pal.account.id })).ok,
+  ).toBe(true);
+  await settle();
+  expect(f.b.invites.at(-1)).toMatchObject({ code: room.code, mode: "duel" });
+  expect(
+    (await request(f.b.s, "join", { name: "Pal", code: room.code })).ok,
+  ).toBe(true);
+  await vi.waitFor(() => {
+    const party = f.b.parties.at(-1)!;
+    expect(party.leader).toBe(f.lead.account.id);
+    expect(party.members.map((m) => m.id)).toEqual([
+      f.lead.account.id,
+      f.pal.account.id,
+    ]);
+    expect(party.room?.code).toBe(room.code);
+  });
+  // Joining by the code alone (no invitation) makes no party.
+  const other = await request(f.c.s, "create", { name: "Third", mode: "duel" });
+  expect(
+    (await request(f.x.s, "join", { name: "X", code: other.code })).ok,
+  ).toBe(true);
+  await settle();
+  expect(f.x.parties).toEqual([]);
+});
+
+it("tells the sender about a Decline and lists the party's open invitations", async () => {
+  const f = await setup();
+  await request(f.a.s, "party-invite", {
+    playerId: f.pal.account.id,
+    character: "voltkit",
+  });
+  await vi.waitFor(() =>
+    expect(f.a.parties.at(-1)?.invites?.map((i) => i.id)).toEqual([
+      f.pal.account.id,
+    ]),
+  );
+  await request(f.b.s, "party-decline", { code: f.b.invites.at(-1)!.code });
+  await vi.waitFor(() => {
+    expect(f.a.declined.at(-1)).toMatchObject({ playerId: f.pal.account.id });
+    expect(f.a.parties.at(-1)?.invites).toEqual([]);
+  });
+  // A room invitation's Decline reaches the sender too, who may invite again.
+  await request(f.a.s, "party-leave");
+  await settle();
+  await request(f.a.s, "create", { name: "Lead", mode: "duel" });
+  expect(
+    (await request(f.a.s, "room-invite", { playerId: f.third.account.id })).ok,
+  ).toBe(true);
+  await settle();
+  await request(f.c.s, "room-invite-decline", { fromId: f.lead.account.id });
+  await vi.waitFor(() =>
+    expect(f.a.declined.at(-1)).toMatchObject({
+      playerId: f.third.account.id,
+    }),
+  );
+  expect(
+    (await request(f.a.s, "room-invite", { playerId: f.third.account.id })).ok,
+  ).toBe(true);
 });
 
 it("caps a party at four and lets an invitation expire", () => {

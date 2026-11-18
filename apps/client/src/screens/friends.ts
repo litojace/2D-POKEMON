@@ -68,7 +68,11 @@ export function openFriends(hooks: FriendsHooks): FriendsScreen {
     if (closed) return;
     const now = Date.now();
     for (const [id, until] of invited) if (until <= now) invited.delete(id);
-    view.invited = new Set(invited.keys());
+    // Invited here a moment ago, or from any other screen (still open).
+    view.invited = new Set([
+      ...invited.keys(),
+      ...(hooks.data().invited ?? []),
+    ]);
     // The list box keeps its scroll even when its rows are rebuilt.
     const box = q<HTMLElement>("[data-friends-list]");
     const top = box?.scrollTop ?? 0;
