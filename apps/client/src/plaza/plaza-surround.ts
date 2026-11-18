@@ -275,8 +275,8 @@ function build(): SurroundProp[] {
     [180, 1900, 0],
     [330, 1950, 1],
     [1220, 1960, 2],
-    [2240, 1990, 3],
-    [2560, 1985, 4],
+    [1480, 1990, 3],
+    [2780, 1990, 4],
   ] as const)
     out.push({ kind: "tree", x, y, s: 0.95, v: 300 + k });
   return out;
@@ -302,3 +302,41 @@ export const BAKED = SURROUND.filter((p) => !coversMovers(propBox(p)));
 export const LIVE = SURROUND.filter((p) => coversMovers(propBox(p)));
 /** The far bank's lamps (lit at night, mirrored in the river). */
 export const RIVER_LAMPS = SURROUND.filter((p) => p.kind === "lamp");
+/**
+ * What moves out there but is drawn under every walker (cows, the windmill's
+ * sails) is drawn after the baked strips: nothing baked may stand in front
+ * of it (a tree in front of a cow would be drawn under the cow).
+ */
+export function movingBoxes(): (PropBox & { name: string })[] {
+  return [
+    ...COWS.map((c) => ({
+      name: `cow ${c.x},${c.y}`,
+      x0: c.x - 50,
+      x1: c.x + 50,
+      top: c.y - 80,
+      foot: c.y,
+    })),
+    ...SURROUND.filter((p) => p.kind === "mill").map((p) => {
+      const h = millHub(p),
+        r = 92 * 0.9 * p.s;
+      return {
+        name: "sails",
+        x0: h.x - r,
+        x1: h.x + r,
+        top: h.y - r,
+        foot: p.y,
+      };
+    }),
+  ];
+}
+/** A baked prop that stands in front of `b` and covers part of it. */
+export function bakedInFront(b: PropBox) {
+  return BAKED.find((p) => {
+    const q = propBox(p);
+    return (
+      q.foot > b.foot &&
+      Math.min(q.x1, b.x1) - Math.max(q.x0, b.x0) > 2 &&
+      Math.min(q.foot, b.foot) - Math.max(q.top, b.top) > 2
+    );
+  });
+}
