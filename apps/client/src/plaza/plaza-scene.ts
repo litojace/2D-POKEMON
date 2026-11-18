@@ -1513,48 +1513,50 @@ export function openPlaza(options) {
     }
     const k = Math.min(1, age / MARK_BURST),
       ease = 1 - (1 - k) ** 3;
+    // Gold with a dark edge and a white core, so it stands out on the
+    // grass, the stones and the track alike (pale blue sank into them).
+    const line = (a, w = 1) => {
+      g.strokeStyle = `rgba(28,18,8,${0.75 * a})`;
+      g.lineWidth = 8 * w;
+      g.stroke();
+      g.strokeStyle = `rgba(255,206,48,${a})`;
+      g.lineWidth = 4.5 * w;
+      g.stroke();
+      g.strokeStyle = `rgba(255,250,220,${0.9 * a})`;
+      g.lineWidth = 1.5 * w;
+      g.stroke();
+    };
     if (k < 1 && !reduced) {
       // The burst: a ring closing in and four chevrons pointing to the spot.
-      const r = 46 - 30 * ease,
-        a = 1 - k * 0.6;
-      g.strokeStyle = `rgba(10,30,40,${0.45 * a})`;
-      g.lineWidth = 6;
+      const r = 50 - 32 * ease,
+        a = 1 - k * 0.5;
       g.beginPath();
       g.arc(0, 0, r, 0, Math.PI * 2);
-      g.stroke();
-      g.strokeStyle = `rgba(140,240,255,${a})`;
-      g.lineWidth = 3;
-      g.stroke();
+      line(a);
       for (let i = 0; i < 4; i++) {
         g.save();
         g.rotate((i * Math.PI) / 2 + Math.PI / 4);
-        g.translate(r + 12, 0);
+        g.translate(r + 14, 0);
         g.beginPath();
-        g.moveTo(10, -10);
+        g.moveTo(12, -12);
         g.lineTo(0, 0);
-        g.lineTo(10, 10);
-        g.strokeStyle = `rgba(10,30,40,${0.45 * a})`;
-        g.lineWidth = 6;
-        g.stroke();
-        g.strokeStyle = `rgba(140,240,255,${a})`;
-        g.lineWidth = 3;
-        g.stroke();
+        g.lineTo(12, 12);
+        line(a);
         g.restore();
       }
     }
-    // While you walk there: a small ring pulsing on the spot.
+    // While you walk there: a ring pulsing on the spot, a dot in it.
     const p = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(time * 6);
     g.beginPath();
-    g.arc(0, 0, 14 + 3 * p, 0, Math.PI * 2);
-    g.strokeStyle = "rgba(10,30,40,.4)";
-    g.lineWidth = 6;
-    g.stroke();
-    g.strokeStyle = `rgba(140,240,255,${0.65 + 0.35 * p})`;
-    g.lineWidth = 3.5;
-    g.stroke();
-    g.fillStyle = "rgba(140,240,255,.45)";
+    g.arc(0, 0, 15 + 3 * p, 0, Math.PI * 2);
+    line(0.8 + 0.2 * p, 0.85);
     g.beginPath();
-    g.arc(0, 0, 5, 0, Math.PI * 2);
+    g.arc(0, 0, 5.5, 0, Math.PI * 2);
+    g.fillStyle = "rgba(28,18,8,.7)";
+    g.fill();
+    g.beginPath();
+    g.arc(0, 0, 3.8, 0, Math.PI * 2);
+    g.fillStyle = "#ffce30";
     g.fill();
     g.restore();
   }
