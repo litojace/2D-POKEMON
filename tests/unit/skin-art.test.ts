@@ -268,9 +268,30 @@ describe("champion skin art", () => {
         const skinned = all.filter((a) => !a.key.includes("~lume-"));
         for (const l of all.filter((a) => a.key.includes("~lume-")))
           expect(shape(l), l.key).toEqual(
-            shape(skinned.find((a) => a.key === l.key.replace(/~lume-.*$/, ""))!),
+            shape(
+              skinned.find((a) => a.key === l.key.replace(/~lume-.*$/, ""))!,
+            ),
           );
-        expect(skinned.map(shape), `${s.id} stage ${stage}`).toEqual(base);
+        // Same pivots and placement. A costume may crop a wider box than
+        // the champion's own outline (so a surfboard or a torch on a pole
+        // isn't cut off), but only transparent margin is added: the box
+        // still holds the default one, with the pivot at the same point.
+        expect(skinned.length, `${s.id} stage ${stage}`).toBe(base.length);
+        skinned.map(shape).forEach((k, i) => {
+          const b = base[i];
+          const where = `${skinned[i].key} stage ${stage}`;
+          expect([k[4], k[5]], where).toEqual([b[4], b[5]]);
+          const left = (v: number[]) => -v[2] * v[0],
+            top = (v: number[]) => -v[3] * v[1];
+          expect(left(k), where).toBeLessThanOrEqual(left(b) + 0.01);
+          expect(top(k), where).toBeLessThanOrEqual(top(b) + 0.01);
+          expect(left(k) + k[0], where).toBeGreaterThanOrEqual(
+            left(b) + b[0] - 0.01,
+          );
+          expect(top(k) + k[1], where).toBeGreaterThanOrEqual(
+            top(b) + b[1] - 0.01,
+          );
+        });
         expect(new Set(skinned.map((a) => a.key)).size).toBe(skinned.length);
         expect(skinned.every((a) => a.key.includes(`~${s.id}`))).toBe(true);
       }
