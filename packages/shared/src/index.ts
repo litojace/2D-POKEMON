@@ -135,7 +135,7 @@ export type StatusKind =
   | "current"
   /** Drawn to the light (Radiant Flare): drifts toward (`tx`, `ty`) at `amount` px/s. */
   | "lure"
-  /** Floating (Moon Gravity): low gravity, it slides and barely changes direction. */
+  /** Sliding (Black Ice): almost no grip, it slides and barely changes direction. */
   | "float"
   /** Confused (Mind Maze): its movement is reversed. */
   | "confuse"
@@ -190,7 +190,7 @@ export const STATUS_RULES = {
   shellReduction: 0.55,
   /** Sloth Time: speed multiplier inside the bubble (movement and enemy shots). */
   warpMultiplier: 0.35,
-  /** Moon Gravity: how much grip a floating fighter keeps (its acceleration multiplier). */
+  /** Black Ice: how much grip a sliding fighter keeps (its acceleration multiplier). */
   floatGrip: 0.12,
 };
 /**
@@ -1500,18 +1500,21 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     ),
     skills: [
       ability(
-        "hailstone",
-        "Hailstone",
-        "projectile",
-        18,
-        8,
-        "A heavy hailstone that slows for a second. It shatters on enemies already slowed or frozen for 35% more damage.",
+        "black-ice",
+        "Black Ice",
+        "zone",
+        3,
+        13,
+        "Glaze the ground at the aim (up to 600 px, 120 px wide) with black ice for 2 seconds: enemies on it slide about with almost no grip, and take 3 every half second.",
         {
-          speed: 900,
-          radius: 16,
-          status: "slow",
-          statusDuration: 1,
-          bonusVsStatus: 1.35,
+          radius: 120,
+          range: 600,
+          cast: 0.15,
+          duration: 2,
+          tickInterval: 0.5,
+          knockback: 0,
+          status: "float",
+          statusDuration: 0.7,
         },
       ),
       ability(
@@ -2265,13 +2268,13 @@ export const COMBOS: Record<CharacterId, Combo> = {
   },
   glacelle: {
     name: "Chilled",
-    setup: "hailstone",
+    setup: "black-ice",
     payoff: "frost-bloom",
     window: 3,
     damage: 1.3,
     status: "freeze",
     statusDuration: 1.3,
-    text: "Hailstone chills. Frost Bloom hits Chilled targets 30% harder and freezes them longer.",
+    text: "Black Ice chills. Frost Bloom hits Chilled targets 30% harder and freezes them longer.",
   },
   halcyra: {
     name: "Pinned",
@@ -3482,7 +3485,7 @@ function stepMovement(
     p.vx = p.dashX;
     p.vy = p.dashY;
   } else {
-    // Floating (Moon Gravity): almost no grip, so it slides and turns slowly.
+    // Sliding (Black Ice): almost no grip, so it slides and turns slowly.
     const grip = p.statuses.some((s) => s.kind === "float" && s.until > time)
       ? STATUS_RULES.floatGrip
       : 1;
@@ -4062,10 +4065,10 @@ export const RITES: Rite[] = [
   rite(
     "glacelle",
     "minor",
-    "hailstone",
-    "Big Hail",
-    "Hailstone deals 22 damage instead of 18.",
-    { set: { damage: 22 } },
+    "black-ice",
+    "Wide Ice",
+    "Black Ice is 25% wider.",
+    { mul: { radius: 1.25 } },
   ),
   rite(
     "glacelle",
@@ -4094,10 +4097,10 @@ export const RITES: Rite[] = [
   rite(
     "glacelle",
     "major",
-    "hailstone",
-    "Flash Freeze",
-    "Hailstone freezes for 0.5s instead of slowing.",
-    { set: { status: "freeze", statusDuration: 0.5 } },
+    "black-ice",
+    "Glacier",
+    "Black Ice lasts 3.5s instead of 2s.",
+    { set: { duration: 3.5 } },
   ),
   rite(
     "glacelle",

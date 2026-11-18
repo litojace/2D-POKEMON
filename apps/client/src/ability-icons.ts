@@ -213,7 +213,7 @@ const rosterIconSources: Record<string, string> = {
   "Ember Curtain": "Prism Guard",
   "Chestnut Storm": "Solar Bloom",
   "Rime Shard": "Ice Lance",
-  Hailstone: "Frost Flake",
+  "Black Ice": "Frost Flake",
   "Frost Bloom": "Cold Front",
   "Frost Breath": "Snow Drift",
   Whiteout: "Crystal Blizzard",
