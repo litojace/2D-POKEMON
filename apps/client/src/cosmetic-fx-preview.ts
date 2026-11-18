@@ -411,8 +411,9 @@ function attach(el: HTMLElement) {
   el.dataset.tier = cosmeticTier(id, stars);
   const slot = slotOf(id);
   if (slot === "frame" && !el.querySelector(":scope > .tier-fx"))
-    // Rays behind, the edge, then sparks orbiting in front.
-    for (const name of ["tier-rays", "tier-fx", "tier-orbit"]) {
+    // A still halo behind, then the glossy edge (cosmetic-fx.css): frames
+    // shine by rarity, nothing orbits (owner, 18 Nov 2026).
+    for (const name of ["tier-glow", "tier-fx"]) {
       const fx = document.createElement("i");
       fx.className = name;
       fx.setAttribute("aria-hidden", "true");
@@ -502,7 +503,7 @@ export function watchCosmeticPreviews(root: HTMLElement = document.body) {
           // A reused thumbnail switched item: rebuild its effect.
           if (el.dataset.fxReady !== el.dataset.cosmetic) {
             el.querySelectorAll(
-              ":scope > .fx-live, :scope > .tier-fx, :scope > .tier-orbit, :scope > .tier-rays",
+              ":scope > .fx-live, :scope > .tier-fx, :scope > .tier-glow",
             ).forEach((n) => n.remove());
             const live = lives.get(el);
             if (live) release(live);

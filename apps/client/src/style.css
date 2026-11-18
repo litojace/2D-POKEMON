@@ -9457,6 +9457,62 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   background: radial-gradient(ellipse at 50% 80%, #d2b0ff55, transparent 65%);
   box-shadow: 0 0 14px #ffb5da44;
 }
+/* The four season frames are all Epic: their rarity edge and halo take each
+   season's colours (cosmetic-fx.css reads --frame-glow), so they never share
+   the same purple trim. */
+.raid-cosmetic-preview[data-cosmetic="season-aurora-frame"] {
+  --frame-glow: #9ff3d8bb;
+  --season-edge: conic-gradient(
+    from var(--tier-turn),
+    #9ff3d8,
+    #ffffff,
+    #b6a0ff,
+    #4fc9a8,
+    #9ff3d8
+  );
+}
+.raid-cosmetic-preview[data-cosmetic="season-ember-frame"] {
+  --frame-glow: #ffb980bb;
+  --season-edge: conic-gradient(
+    from var(--tier-turn),
+    #ffb980,
+    #fff1c4,
+    #ff7a3a,
+    #ffe39d,
+    #ffb980
+  );
+}
+.raid-cosmetic-preview[data-cosmetic="season-tide-frame"] {
+  --frame-glow: #86deffbb;
+  --season-edge: conic-gradient(
+    from var(--tier-turn),
+    #86deff,
+    #ffffff,
+    #b9f5e9,
+    #3aa6d6,
+    #86deff
+  );
+}
+.raid-cosmetic-preview[data-cosmetic="season-astral-frame"] {
+  --frame-glow: #d2b0ffbb;
+  --season-edge: conic-gradient(
+    from var(--tier-turn),
+    #d2b0ff,
+    #fff0fa,
+    #ffb5da,
+    #8a5fd6,
+    #d2b0ff
+  );
+}
+.raid-cosmetic-preview:is(
+    [data-cosmetic="season-aurora-frame"],
+    [data-cosmetic="season-ember-frame"],
+    [data-cosmetic="season-tide-frame"],
+    [data-cosmetic="season-astral-frame"]
+  )[data-tier]
+  > .tier-fx {
+  background: var(--season-edge);
+}
 .raid-cosmetic-preview[data-cosmetic="season-astral-colors"] > svg,
 :is(
     .raid-party-avatar,
@@ -13587,21 +13643,46 @@ body.battle-active.court-view #game canvas {
   white-space: normal;
   background: #111b32f5;
 }
+/* Solid, as other text in a battle (tokens.css --glass-opaque): see-through
+   glass let the court's tiles show behind the names as a box. The battle
+   glass in ui/aero.css paints --aero-tint-solid, so set that here. */
+.spectate-banner.pvp-spectator {
+  --aero-tint-solid: var(--glass-opaque);
+}
 .spectate-banner.pvp-spectator button {
+  display: grid;
+  place-items: center;
   flex: 0 0 44px;
   width: 44px;
+  height: 44px;
   min-height: 44px;
   padding: 0;
+  border: 0;
   border-radius: 10px;
   background: #273651;
   color: #ffe390;
-  font: 700 calc(26px * var(--text-scale, 1))/1 var(--display);
+  touch-action: manipulation;
+}
+.spectate-banner.pvp-spectator button svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.spectate-banner.pvp-spectator button:not(:disabled):active {
+  background: #34476a;
 }
 .spectate-banner.pvp-spectator button:disabled {
   opacity: 0.3;
 }
 .spectator-copy {
   display: grid;
+  flex: 1 1 auto;
   gap: 2px;
   min-width: 0;
   max-width: 240px;
