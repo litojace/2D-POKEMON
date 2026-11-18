@@ -574,15 +574,10 @@ export function AscendantLumiwickRules<B extends EmberClass>(Base: B) {
       // An open heart never dives in under a phone's touch controls (where
       // it would sit until it glided out): the lane ends short of them,
       // pulled back along itself toward where it starts.
-      if (r.exposedUntil > this.time || r.permanentGround)
-        for (
-          let i = 0;
-          i < 30 && lumiUnderControls(lane.tx, lane.ty, A.heartClear);
-          i++
-        ) {
-          lane.tx += (lane.x - lane.tx) * 0.1;
-          lane.ty += (lane.y - lane.ty) * 0.1;
-        }
+      if (r.exposedUntil > this.time || r.permanentGround) {
+        this.lumiShortened.add(lane);
+        this.keepLaneClear(lane);
+      }
       // A dive on its own may be a feint (shown in full when it turns).
       const others = [...before].some((w) => LUMI_SPATIAL.has(w.kind));
       if (this.smart() && !lane.teach && !others && this.lumiFeintRoll()) {
@@ -593,6 +588,48 @@ export function AscendantLumiwickRules<B extends EmberClass>(Base: B) {
           lane,
         });
       }
+    }
+    /** Dive lanes already kept short of the controls. */
+    protected lumiShortened = new WeakSet<RaidWarning>();
+    /**
+     * Pull a dive lane's end back along itself until the whole lane is
+     * clear of the controls (the heart neither stops nor passes under them).
+     */
+    protected keepLaneClear(lane: RaidWarning) {
+      const crosses = () => {
+        const len = Math.hypot(lane.tx - lane.x, lane.ty - lane.y),
+          n = Math.max(1, Math.ceil(len / 20));
+        for (let k = 1; k <= n; k++)
+          if (
+            lumiUnderControls(
+              lane.x + ((lane.tx - lane.x) * k) / n,
+              lane.y + ((lane.ty - lane.y) * k) / n,
+              A.heartClear,
+            )
+          )
+            return true;
+        return false;
+      };
+      for (let i = 0; i < 30 && crosses(); i++) {
+        lane.tx += (lane.x - lane.tx) * 0.1;
+        lane.ty += (lane.y - lane.ty) * 0.1;
+      }
+    }
+    /**
+     * An open heart under a phone's controls glides out before the next
+     * attack (a gale would hold it there while it is drawn).
+     */
+    protected override canStartAttack() {
+      const boss = this.boss(),
+        r = this.raid;
+      if (
+        this.lumiAscendant() &&
+        boss &&
+        (r.exposedUntil > this.time || !!r.permanentGround) &&
+        lumiUnderControls(boss.x, boss.y, A.heartClear)
+      )
+        return false;
+      return super.canStartAttack();
     }
     /** Is this dive a feint? A seeded roll per chapter. */
     protected lumiFeintRoll() {
@@ -1005,6 +1042,19 @@ export function AscendantLumiwickRules<B extends EmberClass>(Base: B) {
     protected override bossStep(dt: number, boss: Fighter) {
       if (!this.lumiAscendant()) return super.bossStep(dt, boss);
       const r = this.raid;
+      // A dive's return pass (planned as the first pass ends) keeps short of
+      // the controls too, like any dive while the heart is open.
+      if (r.exposedUntil > this.time || r.permanentGround)
+        for (const lane of r.warnings)
+          if (
+            lane.kind === "dive-bomb" &&
+            !this.lumiShortened.has(lane) &&
+            // Never once it has locked (it doesn't move after that).
+            (lane.lockAt === undefined || this.time < lane.lockAt)
+          ) {
+            this.lumiShortened.add(lane);
+            this.keepLaneClear(lane);
+          }
       if (!this.charging) {
         if (r.warnings.some((w) => w.kind === "snuff-gale")) return;
         const open = r.exposedUntil > this.time || !!r.permanentGround;

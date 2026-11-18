@@ -31,78 +31,6 @@ const onceAt = () => {
   };
 };
 
-// ───────────── Voltkit · Overcharge: sky strikes, crackling floor ─────────────
-const overcharge: CastFn = (scene, a, x, y, _angle, color, shot) => {
-  const fx = fxFor(scene),
-    r = a.radius,
-    once = onceAt();
-  fx.ultimate(color);
-  const strikes = Array.from({ length: 5 }, (_, i) => {
-    const ang = (i * TAU) / 5 + hash(x + i) * 0.6;
-    return {
-      x: x + Math.cos(ang) * r * 0.82,
-      y: y + Math.sin(ang) * r * 0.82 * SQ,
-      at: 0.08 + i * 0.07,
-    };
-  });
-  shot(fx.reduced ? 300 : 1100, (k) => {
-    for (const [i, s] of strikes.entries()) {
-      const kk = (k - s.at) / 0.14;
-      if (kk < 0 || kk > 1) continue;
-      once(i, () => {
-        fx.burst({
-          x: s.x,
-          y: s.y,
-          count: 14,
-          kind: "spark",
-          color: [color, WHITE],
-          speed: [80, 260],
-          up: [120, 340],
-          life: [0.3, 0.6],
-          size: [1, 1.8],
-          grav: 1000,
-        });
-        fx.decal({ kind: "scorch", x: s.x, y: s.y, r: 22, color, life: 3.5 });
-        fx.shake(90, 0.004);
-      });
-      fx.bolt(s.x + 30, s.y - 560, s.x, s.y, WHITE, {
-        width: 4 * (1 - kk) + 1,
-        jag: 0.1,
-        branches: 2,
-        seed: i * 7 + Math.floor(k * 30),
-      });
-      fx.glow(s.x, s.y, 60 * (1 - kk), color, 0.9 * (1 - kk));
-      fx.glow(s.x, s.y, 40, color, 0.6 * (1 - kk), true);
-    }
-    // The floor stays live: arcs skitter around the rim before dying out.
-    const live = Math.max(0, 1 - Math.max(0, k - 0.45) / 0.55);
-    if (k > 0.3 && live > 0) {
-      const seed = Math.floor(k * 40);
-      for (let i = 0; i < 3; i++) {
-        const a0 = hash(seed + i) * TAU,
-          a1 = a0 + 0.5 + hash(seed - i) * 0.8;
-        fx.bolt(
-          x + Math.cos(a0) * r * 0.9,
-          y + Math.sin(a0) * r * 0.9 * SQ,
-          x + Math.cos(a1) * r * 0.9,
-          y + Math.sin(a1) * r * 0.9 * SQ,
-          color,
-          {
-            width: 1.6,
-            jag: 0.3,
-            seed: seed + i * 5,
-            alpha: live,
-            onFloor: true,
-          },
-        );
-      }
-      fx.floor
-        .lineStyle(3, color, 0.5 * live)
-        .strokeEllipse(x, y, r * 1.8, r * 1.8 * SQ);
-    }
-  });
-};
-
 // ───────────── Cindrake · Sunfire Pillar: sun sigil, sunbeam, molten pool ─────────────
 const sunfire: ZoneFn = (g, z, progress, now) => {
   const fx = fxFor(g.scene),
@@ -148,7 +76,7 @@ const sunfire: ZoneFn = (g, z, progress, now) => {
   if (k < 0.3) {
     const b = 1 - k / 0.3;
     fx.glow(z.x, z.y - 320, r * 0.5, 0xfff4c8, 0.95 * b, false, 7);
-    fx.glow(z.x, z.y - 10, r * 1.4, WHITE, 0.6 * b);
+    fx.glow(z.x, z.y - 10, r * 1.15, WHITE, 0.7 * b);
   }
   // Heat shimmer rings lifting off the molten ground.
   for (let i = 0; i < 3; i++) {
@@ -186,61 +114,6 @@ const cage: CastFn = (scene, a, x, y, _angle, color) => {
       drag: 2,
     });
   }
-};
-
-// ───────────── Lumoth · Radiant Flare: a small sun rises, then lights up ─────────────
-const flareWindup: WindupFn = (g, _a, x, y, _angle, _ax, _ay, color, k) => {
-  const fx = fxFor(g.scene),
-    sy = y - 30 - ease(k) * 60,
-    rr = 8 + k * 18;
-  fx.glow(x, sy, rr * 4, color, 0.5 + k * 0.4);
-  fx.solid.fillStyle(0x4a3a18, 0.3).fillCircle(x, sy, rr * 1.1);
-  fx.solid.fillStyle(0xffd76a, 1).fillCircle(x, sy, rr);
-  fx.solid
-    .fillStyle(0xfff6d6, 1)
-    .fillCircle(x - rr * 0.2, sy - rr * 0.2, rr * 0.6);
-  // Corona spikes slowly turning.
-  for (let i = 0; i < 8; i++) {
-    const ang = (i * TAU) / 8 + k * 2;
-    fx.g
-      .lineStyle(2, 0xffd76a, 0.8)
-      .lineBetween(
-        x + Math.cos(ang) * rr * 1.25,
-        sy + Math.sin(ang) * rr * 1.25,
-        x + Math.cos(ang) * rr * 1.8,
-        sy + Math.sin(ang) * rr * 1.8,
-      );
-  }
-};
-const radiant: CastFn = (scene, a, x, y, _angle, color, shot) => {
-  const fx = fxFor(scene),
-    sy = y - 90;
-  fx.ultimate(0xffd76a, 850);
-  // Starlight falls slowly over the whole blast area.
-  fx.burst({
-    x,
-    y,
-    z: 160,
-    count: 40,
-    kind: "mote",
-    color: [0xffd76a, 0xfff6d6, color],
-    speed: [20, a.range * 0.9],
-    up: [-30, 10],
-    life: [1, 1.6],
-    size: [1.2, 2.4],
-    grav: 60,
-    drag: 1.2,
-  });
-  shot(fx.reduced ? 260 : 800, (k) => {
-    const b = Math.max(0, 1 - k / 0.35);
-    // The sun bursts: a white disc expanding and an anamorphic streak.
-    fx.glow(x, sy, 40 + ease(Math.min(1, k * 3)) * 120, WHITE, 0.9 * b);
-    fx.glow(x, sy, a.range * 1.6, 0xffd76a, 0.55 * b, false, 0.05);
-    fx.glow(x, sy, a.range * 0.9, WHITE, 0.7 * b, false, 0.03);
-    fx.g
-      .lineStyle(3, 0xfff6d6, 0.8 * b)
-      .strokeCircle(x, sy, 30 + ease(k) * 140);
-  });
 };
 
 // ───────────── Mystowl · Mind Maze: the great eye, weightless debris ─────────────
@@ -468,47 +341,6 @@ const tremor: CastFn = (scene, a, x, y, _angle, _color, shot) => {
   });
 };
 
-// ───────────── Duskveil · Void Orb: the lights go out, tendrils lash out ─────────────
-const voidOrb: ImpactFn = (scene, a, x, y, color, shot) => {
-  const fx = fxFor(scene),
-    blast = a.explosion ?? 120;
-  fx.ultimate(0x150b26, 1000, true);
-  fx.decal({ kind: "wet", x, y, r: blast * 0.8, color: 0x150b26, life: 4.5 });
-  const tendrils = Array.from({ length: 7 }, (_, i) => ({
-    ang: (i * TAU) / 7 + hash(x + i) * 0.5,
-    curl: (hash(i * 3) - 0.5) * 1.6,
-    len: blast * (0.9 + hash(i) * 0.5),
-  }));
-  shot(fx.reduced ? 300 : 1000, (k) => {
-    if (k < 0.3) return; // the orb's own implosion plays first
-    const kk = (k - 0.3) / 0.7,
-      reach = ease(Math.min(1, kk * 2.2)),
-      fade = kk > 0.6 ? 1 - (kk - 0.6) / 0.4 : 1;
-    for (const t of tendrils) {
-      const pts: { x: number; y: number }[] = [];
-      for (let i = 0; i <= 10; i++) {
-        const s = i / 10,
-          bend = t.curl * s * s + Math.sin(kk * 12 + s * 5 + t.ang) * 0.15 * s,
-          d = t.len * reach * s;
-        pts.push({
-          x: x + Math.cos(t.ang + bend) * d,
-          y: y + Math.sin(t.ang + bend) * d * SQ,
-        });
-      }
-      // Tapered: draw from thick root to thin tip.
-      for (let i = 0; i < pts.length - 1; i++) {
-        const w = 12 * (1 - i / pts.length);
-        fx.floorSolid
-          .lineStyle(w + 3, 0x05020c, 0.75 * fade)
-          .lineBetween(pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y);
-        fx.floor
-          .lineStyle(Math.max(1, w * 0.3), color, 0.7 * fade)
-          .lineBetween(pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y);
-      }
-    }
-  });
-};
-
 // ───────────── Second pass: the physical side of every older ultimate ─────────────
 // Each set piece above gets what it would really throw about: debris that
 // falls and bounces, smoke and dust that roll and settle, marks left on the
@@ -567,44 +399,6 @@ const dustRing = (
     }),
   );
 
-/** Overcharge: fulgurite scorches, spark showers off the rim, ozone rising. */
-const overchargePhysics: CastFn = (scene, a, x, y) => {
-  const fx = fxFor(scene),
-    r = a.radius;
-  fx.decal({ kind: "scorch", x, y, r: r * 0.6, color: 0x9fe8ff, life: 4 });
-  ring(6, (aa) => {
-    const px = x + Math.cos(aa) * r * 0.8,
-      py = y + Math.sin(aa) * r * 0.8 * SQ;
-    fx.burst({
-      x: px,
-      y: py,
-      z: 10,
-      count: 8,
-      kind: "spark",
-      color: [WHITE, 0xfff6c2, 0x9fe8ff],
-      speed: [80, 260],
-      up: [150, 380],
-      life: [0.4, 0.8],
-      size: [0.9, 1.7],
-      grav: 1100,
-      bounce: 0.45,
-    });
-  });
-  fx.burst({
-    x,
-    y,
-    z: 20,
-    count: 10,
-    kind: "smoke",
-    color: [0x6a7488, 0x9aa4b8],
-    speed: [20, 80],
-    up: [40, 90],
-    life: [1, 1.6],
-    size: [14, 22],
-    grav: -20,
-    drag: 1.2,
-  });
-};
 /** Electromagnet: filings and grit dragged in from the rim, sparks at the core. */
 const electromagnetPhysics: ZoneFn = (g, z, progress) => {
   const fx = fxFor(g.scene),
@@ -646,77 +440,6 @@ const electromagnetPhysics: ZoneFn = (g, z, progress) => {
       bounce: 0.4,
     }),
   );
-};
-/** Riptide Wave: the wall of water throws spray and foam and soaks the floor. */
-const riptidePhysics: ProjectileFn = (g, pr) => {
-  const fx = fxFor(g.scene),
-    dir = Math.atan2(pr.vy, pr.vx),
-    r = pr.ability.radius;
-  fx.trail(`rw-spray${pr.id}`, 0.03, () => {
-    for (const side of [-1, 1])
-      fx.burst({
-        x: pr.x - Math.sin(dir) * r * side,
-        y: pr.y + Math.cos(dir) * r * side,
-        z: 20,
-        count: 2,
-        kind: "drop",
-        color: [0x6fd3ff, 0xf2fdff, 0x3fa9e0],
-        angle: dir + side * 1.2,
-        spread: 0.5,
-        speed: [80, 220],
-        up: [200, 420],
-        life: [0.45, 0.8],
-        size: [1.6, 3],
-        grav: 1150,
-        bounce: 0.1,
-      });
-    fx.burst({
-      x: pr.x,
-      y: pr.y,
-      z: 30,
-      count: 1,
-      kind: "smoke",
-      color: [0xf2fdff, 0xd6f3ff],
-      angle: dir + Math.PI,
-      spread: 0.4,
-      speed: [40, 90],
-      up: [20, 60],
-      life: [0.5, 0.8],
-      size: [14, 22],
-      drag: 1.6,
-    });
-  });
-  fx.trail(`rw-wet${pr.id}`, 0.12, () =>
-    fx.decal({
-      kind: "wet",
-      x: pr.x,
-      y: pr.y,
-      r: r * 0.9,
-      color: 0x3fa9e0,
-      life: 2.5,
-    }),
-  );
-};
-const riptideCrash: ImpactFn = (scene, a, x, y) => {
-  const fx = fxFor(scene),
-    r = Math.max(a.explosion ?? 0, a.radius * 2);
-  fx.decal({ kind: "wet", x, y, r: r * 1.2, color: 0x3fa9e0, life: 3.5 });
-  fx.burst({
-    x,
-    y,
-    z: 10,
-    count: 34,
-    kind: "drop",
-    color: [0x6fd3ff, 0xf2fdff, 0x3fa9e0],
-    speed: [80, 320],
-    up: [220, 520],
-    life: [0.6, 1],
-    size: [1.8, 3.4],
-    grav: 1150,
-    bounce: 0.1,
-  });
-  dustRing(fx, x, y, r, [0xf2fdff, 0xd6f3ff]);
-  fx.shake(200, 0.006);
 };
 /** Whiteout: snow driving sideways, ice chips, frost on the floor. */
 const whiteoutPhysics: ZoneFn = (g, z, progress) => {
@@ -778,10 +501,12 @@ const stormPhysics: ZoneFn = (g, z, progress) => {
   const fx = fxFor(g.scene),
     a = z.ability,
     r = z.radius,
-    strikeAt = (a.tickDelay ?? 0.35) / a.duration;
+    strikeAt = (a.tickDelay ?? 0.35) / a.duration,
+    // A creeping storm's five blasts each throw a little.
+    creep = !!a.creep;
   if (progress < strikeAt) return;
   fx.trail(`cs-land${z.id}`, 999, () => {
-    ring(7, (aa, i) => {
+    ring(creep ? 3 : 7, (aa, i) => {
       const d = r * (0.25 + hash(i * 3 + z.id) * 0.6),
         px = z.x + Math.cos(aa + i) * d,
         py = z.y + Math.sin(aa + i) * d * SQ;
@@ -789,7 +514,7 @@ const stormPhysics: ZoneFn = (g, z, progress) => {
         x: px,
         y: py,
         z: 8,
-        count: 6,
+        count: creep ? 3 : 6,
         kind: "debris",
         color: [0x7a4a24, 0x4a2c14, 0xc98b4a],
         speed: [60, 200],
@@ -803,7 +528,7 @@ const stormPhysics: ZoneFn = (g, z, progress) => {
         x: px,
         y: py,
         z: 10,
-        count: 5,
+        count: creep ? 3 : 5,
         kind: "flame",
         color: [0xff8a3d, 0xffd76a],
         speed: [20, 80],
@@ -815,7 +540,7 @@ const stormPhysics: ZoneFn = (g, z, progress) => {
     });
     fx.shake(260, 0.008);
   });
-  fx.trail(`cs-smoke${z.id}`, 0.1, () => {
+  fx.trail(`cs-smoke${z.id}`, creep ? 0.3 : 0.1, () => {
     const aa = Math.random() * TAU,
       d = Math.random() * r * 0.8;
     fx.burst({
@@ -897,48 +622,6 @@ const landslidePhysics: ImpactFn = (scene, a, x, y) => {
     drag: 1.2,
   });
   dustRing(fx, x, y, r);
-};
-/** Void Orb: it drinks the light around it, then bursts and stains the floor. */
-const voidPhysics: ProjectileFn = (g, pr) => {
-  const fx = fxFor(g.scene),
-    r = pr.ability.radius;
-  fx.trail(`vo-suck${pr.id}`, 0.03, () => {
-    const aa = Math.random() * TAU;
-    fx.burst({
-      x: pr.x + Math.cos(aa) * r * 3,
-      y: pr.y + Math.sin(aa) * r * 3,
-      z: 16,
-      count: 1,
-      kind: "mote",
-      color: [0xb59bff, 0x7dffe1, 0x150b26],
-      angle: aa + Math.PI,
-      spread: 0.1,
-      speed: [r * 4, r * 6],
-      life: [0.2, 0.3],
-      size: [1, 2],
-      drag: 0.5,
-    });
-  });
-};
-const voidStain: ImpactFn = (scene, a, x, y) => {
-  const fx = fxFor(scene),
-    r = a.explosion ?? 110;
-  fx.decal({ kind: "wet", x, y, r: r * 0.9, color: 0x150b26, life: 4 });
-  rocks(fx, x, y, 14, [80, r * 1.4], [2, 4], [0x3a2470, 0x150b26, 0x6b5a48]);
-  fx.burst({
-    x,
-    y,
-    z: 10,
-    count: 12,
-    kind: "smoke",
-    color: [0x2a1450, 0x3a2470],
-    speed: [30, r],
-    up: [20, 70],
-    life: [0.9, 1.4],
-    size: [14, 24],
-    grav: -12,
-    drag: 1.6,
-  });
 };
 /** Skyline Lance: the shock along the lane kicks up dust and grit and scars it. */
 const lancePhysics: BeamFn = (scene, _a, x, y, tx, ty) => {
@@ -1031,44 +714,6 @@ const pinballPhysics: ImpactFn = (scene, _a, x, y) => {
   });
   rocks(fx, x, y, 6, [60, 160], [1.6, 3]);
 };
-/** Overgrowth: soil heaves, leaves and petals burst out, pollen hangs in the air. */
-const overgrowthPhysics: CastFn = (scene, a, x, y) => {
-  const fx = fxFor(scene),
-    r = a.radius;
-  fx.decal({ kind: "crack", x, y, r: r * 0.6, color: 0x3e7a3a, life: 4 });
-  rocks(fx, x, y, 12, [60, r], [2, 3.6], [0x5a4330, 0x8a7a64]);
-  ring(10, (aa) =>
-    fx.burst({
-      x: x + Math.cos(aa) * r * 0.6,
-      y: y + Math.sin(aa) * r * 0.6 * SQ,
-      z: 10,
-      count: 3,
-      kind: "debris",
-      color: [0x9be07a, 0x6fbf5a, 0xffb0c8, 0xfff6a0],
-      speed: [20, 80],
-      up: [80, 180],
-      life: [1, 1.6],
-      size: [2.2, 3.4],
-      grav: 200,
-      drag: 2.4,
-    }),
-  );
-  fx.burst({
-    x,
-    y,
-    z: 30,
-    count: 14,
-    kind: "mote",
-    color: [0xfff6a0, 0xe9f5c8],
-    speed: [20, r * 0.6],
-    up: [20, 60],
-    life: [1.4, 2.2],
-    size: [1, 2],
-    grav: -10,
-    drag: 1.4,
-  });
-};
-
 export function withUltimates(kit: Required<FxKit>): Required<FxKit> {
   const cast = { ...kit.cast },
     zone = { ...kit.zone },
@@ -1076,30 +721,20 @@ export function withUltimates(kit: Required<FxKit>): Required<FxKit> {
     impact = { ...kit.impact },
     beam = { ...kit.beam },
     projectile = { ...kit.projectile };
-  cast.overcharge = then(kit.cast.overcharge, overcharge);
   cast["crystal-cage"] = then(kit.cast["crystal-cage"], cage);
-  cast["radiant-flare"] = then(kit.cast["radiant-flare"], radiant);
   cast.tremor = then(kit.cast.tremor, tremor);
   zone["sunfire-pillar"] = then(kit.zone["sunfire-pillar"], sunfire);
   zone["mind-maze"] = then(kit.zone["mind-maze"], thought);
-  windup["radiant-flare"] = then(kit.windup["radiant-flare"], flareWindup);
-  impact["void-orb"] = then(kit.impact["void-orb"], voidOrb);
   // The physical side of every older ultimate.
-  cast.overcharge = then(cast.overcharge, overchargePhysics);
   zone.electromagnet = then(zone.electromagnet, electromagnetPhysics);
-  projectile["riptide-wave"] = then(projectile["riptide-wave"], riptidePhysics);
-  impact["riptide-wave"] = then(impact["riptide-wave"], riptideCrash);
   zone.whiteout = then(zone.whiteout, whiteoutPhysics);
   zone["chestnut-storm"] = then(zone["chestnut-storm"], stormPhysics);
   cast.tremor = then(cast.tremor, tremorPhysics);
   cast.landslide = then(cast.landslide, landslideDig);
   impact.landslide = then(impact.landslide, landslidePhysics);
-  projectile["void-orb"] = then(projectile["void-orb"], voidPhysics);
-  impact["void-orb"] = then(impact["void-orb"], voidStain);
   beam["skyline-lance"] = then(beam["skyline-lance"], lancePhysics);
   zone.sanctuary = then(zone.sanctuary, sanctuaryPhysics);
   impact["full-moon"] = then(impact["full-moon"], fullMoonPhysics);
   impact.pinball = then(impact.pinball, pinballPhysics);
-  cast.overgrowth = then(cast.overgrowth, overgrowthPhysics);
   return { ...kit, cast, zone, windup, impact, beam, projectile };
 }

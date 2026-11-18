@@ -173,161 +173,6 @@ function hauntedLantern(g: G, z: Zone, progress: number, now: number) {
   if (a > 0.2) ghostFlame(fx, lx, ly + 1, 5 * flick, -Math.PI / 2, now, z.id);
   fx.trail(`z${z.id}`, 0.18, () => ghostMotes(fx, lx, ly, 1));
 }
-function voidOrb(g: G, pr: Projectile, now: number) {
-  const fx = fxFor(g.scene),
-    r = pr.ability.radius,
-    x = pr.x,
-    y = pr.y - 8;
-  fx.solid
-    .fillStyle(0x000000, 0.25)
-    .fillEllipse(pr.x, pr.y + 16, r * 2.2, r * 0.8);
-  // Event horizon: a black core rimmed by bent violet light.
-  fx.glow(x, y, r * 2.6, pr.color, 0.5);
-  for (let i = 0; i < 3; i++) {
-    const a = -now / 160 + (i * TAU) / 3;
-    fx.g
-      .lineStyle(3, VIOLET, 0.85)
-      .beginPath()
-      .arc(x, y, r * 1.35, a, a + 1.4)
-      .strokePath();
-  }
-  fx.soft(x, y, r * 1.5, SHADE, 0.9);
-  fx.solid.fillStyle(0x05020c, 1).fillCircle(x, y, r * 0.95);
-  fx.solid.lineStyle(2, pr.color, 0.9).strokeCircle(x, y, r * 0.95);
-  // Motes spiralling into it.
-  fx.trail(`p${pr.id}`, 0.03, () => {
-    const a = Math.random() * TAU,
-      d = r * 2.6;
-    fx.burst({
-      x: x + Math.cos(a) * d,
-      y: pr.y + Math.sin(a) * d * 0.8,
-      z: 8,
-      count: 1,
-      kind: "mote",
-      color: [VIOLET, PALE],
-      angle: a + Math.PI - 0.5,
-      spread: 0.1,
-      speed: [d * 3, d * 3.5],
-      life: [0.25, 0.32],
-      size: [1, 1.6],
-      drag: 0.4,
-    });
-  });
-}
-
-// ───────────── Void Orb wind-up and burst ─────────────
-function voidWindup(
-  g: G,
-  a: Ability,
-  x: number,
-  y: number,
-  angle: number,
-  _ax: number,
-  _ay: number,
-  color: number,
-  k: number,
-  now: number,
-) {
-  const fx = fxFor(g.scene),
-    cx = x + Math.cos(angle) * 30,
-    cy = y - 18 + Math.sin(angle) * 30,
-    r = a.radius * (0.3 + k * 0.7);
-  // The real lane the orb will travel, as wide as its hit radius.
-  const len = Math.min(a.range ?? 600, 420);
-  g.lineStyle(a.radius * 2, SHADE, 0.08 + k * 0.1).lineBetween(
-    x,
-    y - 10,
-    x + Math.cos(angle) * len,
-    y - 10 + Math.sin(angle) * len,
-  );
-  fx.soft(cx, cy, r * 2, SHADE, 0.5 + k * 0.4);
-  fx.solid.fillStyle(0x05020c, 0.9).fillCircle(cx, cy, r * 0.8);
-  fx.g
-    .lineStyle(2, VIOLET, 0.6 + k * 0.4)
-    .strokeCircle(cx, cy, r * (1 + Math.sin(now / 40) * 0.05));
-  fx.trail(`vw${Math.round(x)}`, 0.025, () => {
-    const t = Math.random() * TAU,
-      d = 70;
-    fx.burst({
-      x: cx + Math.cos(t) * d,
-      y: cy + 18 + Math.sin(t) * d,
-      z: 18,
-      count: 1,
-      kind: "mote",
-      color: [VIOLET, color],
-      angle: t + Math.PI,
-      spread: 0.05,
-      speed: [d * 3.4, d * 3.8],
-      life: [0.25, 0.28],
-      size: [1, 1.6],
-      drag: 0.3,
-    });
-  });
-}
-function voidBurst(
-  scene: Phaser.Scene,
-  a: Ability,
-  x: number,
-  y: number,
-  color: number,
-  shot: Shot,
-) {
-  const fx = fxFor(scene),
-    blast = a.explosion ?? 120;
-  fx.decal({ kind: "scorch", x, y, r: blast * 0.6, color: VIOLET, life: 4 });
-  fx.shake(200, 0.005);
-  shot(fx.reduced ? 260 : 700, (k) => {
-    // Implode first (everything pulled to the centre), then burst.
-    if (k < 0.3) {
-      const kk = k / 0.3;
-      fx.soft(x, y - 8, blast * (1 - kk * 0.7), SHADE, 0.75);
-      fx.g
-        .lineStyle(4, VIOLET, 0.9)
-        .strokeEllipse(x, y, blast * 2 * (1 - kk), blast * 2 * 0.82 * (1 - kk));
-      fx.trail(`vi${Math.round(x)}`, 0.02, () => {
-        const t = Math.random() * TAU;
-        fx.burst({
-          x: x + Math.cos(t) * blast,
-          y: y + Math.sin(t) * blast * 0.82,
-          z: 8,
-          count: 2,
-          kind: "mote",
-          color: [VIOLET, PALE],
-          angle: t + Math.PI,
-          spread: 0.05,
-          speed: [blast * 3, blast * 3.4],
-          life: [0.25, 0.3],
-          size: [1.2, 2],
-          drag: 0.2,
-        });
-      });
-      return;
-    }
-    const kk = (k - 0.3) / 0.7;
-    fx.trail(`vb${Math.round(x)}`, 999, () => {
-      wisps(fx, x, y, 14, [120, 320]);
-      fx.burst({
-        x,
-        y,
-        z: 10,
-        count: 30,
-        kind: "spark",
-        color: [VIOLET, color, PALE],
-        speed: [160, 480],
-        up: [80, 320],
-        life: [0.35, 0.7],
-        size: [1.2, 2],
-        grav: 900,
-      });
-    });
-    fx.soft(x, y - 8, blast * 0.9 * (1 - kk), SHADE, 0.55 * (1 - kk));
-    fx.glow(x, y - 8, blast * 1.1, color, 0.6 * (1 - kk));
-    fx.glow(x, y - 8, blast * 0.4, PALE, Math.max(0, 1 - kk * 3));
-    fx.shockwave(x, y, blast * ease(Math.min(1, kk * 1.6)), kk, VIOLET, 12);
-    fx.shockwave(x, y, blast * 0.65 * ease(Math.min(1, kk * 2)), kk, color, 6);
-  });
-}
-
 // ───────────── Casts, impacts, hits ─────────────
 function shadowCast(
   scene: Phaser.Scene,
@@ -925,11 +770,10 @@ export const shadowKit: FxKit = {
     "shade-crawl": shadeCrawl,
     // The lantern's shots are small wisps.
     "haunted-lantern-shot": lanternWisp,
-    "void-orb": voidOrb,
     "ink-jet": inkJet,
   },
   zone: { "haunted-lantern": hauntedLantern },
-  windup: { "void-orb": voidWindup, "kraken-grasp": graspWindup },
+  windup: { "kraken-grasp": graspWindup },
   cast: {
     "tentacle-lash": lash,
     "ink-jet": inkCast,
@@ -942,7 +786,6 @@ export const shadowKit: FxKit = {
     "haunted-lantern": shadowCast,
   },
   impact: {
-    "void-orb": voidBurst,
     "ink-jet": inkSplat,
     "kraken-grasp": krakenLand,
     "haunted-lantern-shot": wispImpact,

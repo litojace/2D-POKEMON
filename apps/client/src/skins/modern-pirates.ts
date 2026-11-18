@@ -500,12 +500,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
       : k.side
         ? k.line(`M${x - k.side * 30} ${y - 6}Q${x} ${y - 13} ${x + k.side * 22} ${y - 8}`, "#3a2418", 3) + k.circle(x + k.side * 20, y - 8, 7.5, "#b8823a", k.ink, 0.9) + k.lume("pulse", k.circle(x + k.side * 20, y - 8, 5, lens, "none", 0), 0, lens)
         : k.line(`M${x - 38} ${y - 6}Q${x} ${y - 14} ${x + 38} ${y - 6}`, "#3a2418", 3) + [-13, 13].map((dx) => k.circle(x + dx, y - 9, 8, "#b8823a", k.ink, 0.9) + k.lume("pulse", k.circle(x + dx, y - 9, 5.4, lens, "none", 0), 0, lens)).join("") + k.line(`M${x - 5} ${y - 10}H${x + 5}`, "#b8823a", 2);
-    // Its beak lives on the head-top layer the cap takes off, so the
-    // design draws it back: down the face from the front, forward in profile.
-    const beak = k.back ? "" : k.side
-      ? profile(k, k.hx, k.path(`M${k.hx + 33} ${k.ht + 52}L${k.hx + 80} ${k.ht + 60}L${k.hx + 33} ${k.ht + 68}Z`, "#cfe6ff", k.ink, 1.1) + k.line(`M${k.hx + 36} ${k.ht + 60}L${k.hx + 74} ${k.ht + 60}`, "#9fc0e8", 1))
-      : k.path(`M${k.hx - 6} ${k.ht + 61}Q${k.hx - 7} ${k.ht + 82} ${k.hx} ${k.ht + 102}Q${k.hx + 7} ${k.ht + 82} ${k.hx + 6} ${k.ht + 61}Z`, "#cfe6ff", k.ink, 1.1) + k.line(`M${k.hx} ${k.ht + 64}V${k.ht + 96}`, "#9fc0e8", 1);
-    k.put("flame", flaps + dome(k, y, 38, 26, leather) + k.line(`M${x} ${y - 34}V${y - 2}`, "#5a321a", 1.2) + goggles + beak);
+    k.put("flame", flaps + dome(k, y, 38, 26, leather) + k.line(`M${x} ${y - 34}V${y - 2}`, "#5a321a", 1.2) + goggles);
   },
   // Moonsail Bosun: a white sailor's cap tipped over one ear with a moon
   // pin, a sailor shirt with a square navy collar and red neckerchief, and a
@@ -643,21 +638,21 @@ const T = (hue: number, sat: number, lift = 0, mix = 0.85): Tint => ({ hue, mix,
 export const PIRATE_TINTS: Record<CharacterId, Tint> = {
   voltkit: T(215, 0.3), // Storm Corsair: storm slate
   cindrake: T(355, 0.75, -0.08), // Cinder Buccaneer: ember crimson
-  tidefin: T(170, 0.55, 0.02), // Tide Admiral: sea foam
-  auralynx: T(255, 0.5, -0.04), // Prism Navigator: twilight indigo
-  lumoth: T(48, 0.7, 0.04), // Lantern Lookout: lantern gold
+  tidefin: T(165, 0.5), // Tide Admiral: sea foam
+  auralynx: T(255, 0.5, -0.12), // Prism Navigator: twilight indigo
+  lumoth: T(45, 0.65, 0.12), // Lantern Lookout: lantern gold
   mystowl: T(35, 0.45, 0.04), // Chart Quartermaster: old parchment
   terradon: T(210, 0.06, -0.1), // Ironhull Captain: gunmetal
   duskveil: T(150, 0.55, 0.02), // Ghost Ship Wisp: ghost green
   coilemur: T(55, 0.3, 0.08), // Rigging Runner: sailcloth
   pyranda: T(20, 0.55, -0.12), // Spice Raider: cinnamon
-  glacelle: T(190, 0.2, 0.14), // Frost Privateer: hoarfrost
+  glacelle: T(190, 0.2, -0.25), // Frost Privateer: hoarfrost
   halcyra: T(232, 0.2, -0.18), // Crow's Nest Ace: crow black
   sunbara: T(18, 0.75, 0.04), // Sunset Skipper: sunset coral
-  astrabun: T(300, 0.5, 0.08), // Moonsail Bosun: moonlit orchid
+  astrabun: T(300, 0.5, -0.12), // Moonsail Bosun: moonlit orchid
   wombolder: T(140, 0.25, -0.04), // Anchor Warden: sea moss
-  shadopus: T(188, 0.6, -0.08), // Kraken Captain: deep-sea teal
-  pangrove: T(80, 0.8, 0.06), // Jungle Corsair: jungle lime
+  shadopus: T(190, 0.65, -0.06), // Kraken Captain: deep-sea teal
+  pangrove: T(75, 0.8, 0.06), // Jungle Corsair: jungle lime
   mossloth: T(335, 0.3, 0.06), // Hammock Pirate: sleepy rose
 };
 

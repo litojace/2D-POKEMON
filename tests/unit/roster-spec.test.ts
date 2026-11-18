@@ -29,7 +29,7 @@ const ROSTER: Record<
       ["Static Lance", 8],
       ["Ball Lightning", 10],
       ["Static Glide", 12],
-      ["Overcharge", 20],
+      ["Thunderstorm", 20],
     ],
   },
   cindrake: {
@@ -39,7 +39,7 @@ const ROSTER: Record<
     basic: ["Cinder Snap", 455],
     skills: [
       ["Crest Flare", 8],
-      ["Magma Bomb", 12],
+      ["Magma Leap", 13],
       ["Heat Cracks", 15],
       ["Sunfire Pillar", 20],
     ],
@@ -51,7 +51,7 @@ const ROSTER: Record<
     basic: ["Tide Needle", 240],
     skills: [
       ["Gill Siphon", 10],
-      ["Undertow", 12],
+      ["River Dash", 9],
       ["Tide Double", 15],
       ["Riptide Wave", 20],
     ],
@@ -87,7 +87,7 @@ const ROSTER: Record<
     basic: ["Mind Dart", 390],
     skills: [
       ["Third-Eye Ray", 8],
-      ["Booming Hoot", 12],
+      ["Hush", 12],
       ["Wing Cloak", 15],
       ["Mind Maze", 20],
     ],
@@ -113,7 +113,7 @@ const ROSTER: Record<
       ["Shade Crawl", 8],
       ["Ghostfire", 12],
       ["Haunted Lantern", 15],
-      ["Void Orb", 20],
+      ["Wraith Hunt", 20],
     ],
   },
   coilemur: {
@@ -184,7 +184,7 @@ const ROSTER: Record<
     skills: [
       ["Moon Hop", 7],
       ["Mochi Pound", 12],
-      ["Moon Gravity", 15],
+      ["Sticky Mochi", 13],
       ["Full Moon", 20],
     ],
   },

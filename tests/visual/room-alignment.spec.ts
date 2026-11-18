@@ -177,6 +177,103 @@ for (const size of SIZES)
           .toBe(1);
         await page.waitForTimeout(500);
         expect(misaligned(await measure(page))).toEqual([]);
+        // The picker's buttons: an icon beside each label (Details, Lock
+        // in, Ready), and no label cut, even on a phone's 104 px buttons.
+        const foot = await page.evaluate(() =>
+          [
+            ...document.querySelectorAll<HTMLElement>(
+              ".roster-room .ui-panel-foot .ui-btn",
+            ),
+          ].map((b) => {
+            const label = b.querySelector("span")!;
+            const svg = b.querySelector("svg");
+            const br = b.getBoundingClientRect(),
+              lr = label.getBoundingClientRect();
+            return {
+              text: label.textContent,
+              icon: !!svg && getComputedStyle(svg).display !== "none",
+              cut:
+                label.scrollWidth > label.clientWidth + 1 ||
+                lr.left < br.left + 4 ||
+                lr.right > br.right - 4,
+            };
+          }),
+        );
+        expect(foot.map((b) => [b.text, b.icon, b.cut])).toEqual([
+          ["Details", true, false],
+          ["Lock in", true, false],
+          ["Ready", true, false],
+        ]);
+        // The banner's chat and ⋯ buttons belong to it: no disc or rim of
+        // their own until hovered (owner, 19 Nov), and alike.
+        const look = await page.evaluate(() =>
+          ["#chat-button", ".room-more"].map((q) => {
+            const c = getComputedStyle(document.querySelector(q)!);
+            return [c.backgroundColor, c.borderTopColor, c.color];
+          }),
+        );
+        expect(look[0]).toEqual(look[1]);
+        expect(look[0].slice(0, 2)).toEqual([
+          "rgba(0, 0, 0, 0)",
+          "rgba(0, 0, 0, 0)",
+        ]);
+        // A hidden pick's "?" sits in its tile's middle (it sat 3 px low
+        // on phones): its ink, from the tile drawn with and without it.
+        const tile = page.locator(".room-seats .room-pick.is-hidden").first();
+        const shot = async () => (await tile.screenshot()).toString("base64");
+        const withQ = await shot();
+        await tile
+          .locator("b")
+          .evaluate((e) => ((e as HTMLElement).style.visibility = "hidden"));
+        const without = await shot();
+        await tile
+          .locator("b")
+          .evaluate((e) => ((e as HTMLElement).style.visibility = ""));
+        const off = await page.evaluate(
+          async ([a, b]) => {
+            const read = async (src: string) => {
+              const img = new Image();
+              img.src = `data:image/png;base64,${src}`;
+              await img.decode();
+              const c = document.createElement("canvas");
+              c.width = img.width;
+              c.height = img.height;
+              const x = c.getContext("2d")!;
+              x.drawImage(img, 0, 0);
+              return x.getImageData(0, 0, c.width, c.height);
+            };
+            const A = await read(a),
+              B = await read(b);
+            let l = 1e9,
+              r = -1,
+              t = 1e9,
+              bt = -1;
+            for (let y = 0; y < A.height; y++)
+              for (let x = 0; x < A.width; x++) {
+                const i = (y * A.width + x) * 4;
+                const d =
+                  Math.abs(A.data[i] - B.data[i]) +
+                  Math.abs(A.data[i + 1] - B.data[i + 1]) +
+                  Math.abs(A.data[i + 2] - B.data[i + 2]);
+                if (d > 60) {
+                  l = Math.min(l, x);
+                  r = Math.max(r, x);
+                  t = Math.min(t, y);
+                  bt = Math.max(bt, y);
+                }
+              }
+            return {
+              dx: (l + r + 1) / 2 - A.width / 2,
+              dy: (t + bt + 1) / 2 - A.height / 2,
+            };
+          },
+          [withQ, without] as const,
+        );
+        // A phone's 26 px tile, drawn here at 1x, rounds to a whole pixel
+        // (0.25 px off at a phone's own 2x); it sat 3 px low before.
+        const slack = size.phone ? 1 : 0.5;
+        expect(Math.abs(off.dx)).toBeLessThanOrEqual(slack);
+        expect(Math.abs(off.dy)).toBeLessThanOrEqual(slack);
         // One padlock per locked seat: on its state tag, none on the
         // fighter's picture (it showed twice on desktop, owner 18 Nov).
         const PADLOCK = 'path[d="M8 11V8a4 4 0 0 1 8 0v3"]';

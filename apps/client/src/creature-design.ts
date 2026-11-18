@@ -7,6 +7,7 @@ import {
   PROFILE_FACE_PARTS,
 } from "./creature-profile";
 import { championMaterials } from "./champion-materials";
+import { styleHalcyraBeak } from "./skins/halcyra-beaks";
 import {
   creaturePalette,
   type Palette as CreaturePalette,
@@ -828,7 +829,9 @@ export function creatureLayers(
     layers.ears = `${path("M70 62Q60 46 70 34Q78 48 84 52Q82 36 94 26Q98 44 104 50Q110 34 124 32Q118 50 126 60Z", body)}${line("M76 54Q78 46 76 40M96 46Q98 38 96 32M114 50Q118 42 120 36", p.light, 1.6, 0.6)}`;
     layers.head = `${e(100, 88, 41, 33, face)}${path("M60 98Q64 112 78 116Q70 106 72 98Z", "#ffffff", ' stroke="none"')}${path("M140 98Q136 112 122 116Q130 106 128 98Z", "#ffffff", ' stroke="none"')}${highlight(70, 72, 24)}`;
     layers.eyes = frontEyes(p.glow, 8.5, 10.5);
-    layers.flame = `${path("M92 100L108 100L100 136Z", jewel)}${line("M100 102V132", "#ffffff", 1.6, 0.8)}${path("M92 100Q100 96 108 100Q100 104 92 100Z", p.dark, ' opacity=".5" stroke="none"')}${path("M100 62L105 69L100 76L95 69Z", jewel)}<circle cx="100" cy="69" r="9" fill="${shine}" stroke="none" opacity=".6"/><circle cx="121" cy="93" r="17" fill="none" stroke="${p.glow}" stroke-width="2.6"/><circle cx="121" cy="93" r="17" fill="none" stroke="#ffffff" stroke-width="1" opacity=".7" stroke-dasharray="6 30"/>${stroke("M137 98Q144 104 140 111", p.glow, 1.6)}`;
+    // The beak keeps its own crystal under any skin colour.
+    const own = creaturePalette.halcyra;
+    layers.flame = `<g data-keep="beak"><defs><linearGradient id="${prefix}-beak" x2=".8" y2="1"><stop stop-color="#ffffff"/><stop offset=".3" stop-color="${own.glow}"/><stop offset="1" stop-color="${own.mid}"/></linearGradient></defs>${path("M92 100L108 100L100 136Z", `url(#${prefix}-beak)`)}${line("M100 102V132", "#ffffff", 1.6, 0.8)}${path("M92 100Q100 96 108 100Q100 104 92 100Z", own.dark, ' opacity=".5" stroke="none"')}</g><g data-swap="1">${path("M100 62L105 69L100 76L95 69Z", jewel)}<circle cx="100" cy="69" r="9" fill="${shine}" stroke="none" opacity=".6"/><circle cx="121" cy="93" r="17" fill="none" stroke="${p.glow}" stroke-width="2.6"/><circle cx="121" cy="93" r="17" fill="none" stroke="#ffffff" stroke-width="1" opacity=".7" stroke-dasharray="6 30"/>${stroke("M137 98Q144 104 140 111", p.glow, 1.6)}</g>`;
     layers.body = `${e(100, 138, 29, 28)}${e(100, 144, 19, 20, `url(#${prefix}-chest)`)}${highlight(80, 124, 16)}`;
     const wing = (dir: number) => {
       const x = (v: number) => 100 + dir * v;
@@ -1129,8 +1132,19 @@ function dressLayers(
   layers: Record<CreaturePart, string>,
   flat: boolean,
 ) {
-  // The champion's own pieces a Mythical swaps for its armour.
-  for (const part of art.replaces ?? []) layers[part] = "";
+  // The champion's own pieces a Mythical swaps for its armour. Anatomy that
+  // shares a layer with a swappable piece (Halcyra's beak, on the head-top
+  // layer with its forehead gem and visor) is marked data-keep, the
+  // swappable pieces beside it data-swap.
+  // Only the pieces marked data-swap go; the rest stays where it was drawn
+  // (its own transforms and mirroring), and goes back on top of the
+  // costume at the end, as the beak sits in front of collars and badges.
+  const kept: [CreaturePart, string][] = [];
+  for (const part of art.replaces ?? []) {
+    if (layers[part].includes("data-keep"))
+      kept.push([part, layers[part].replace(/<g data-swap="1">[\s\S]*?<\/g>/g, "")]);
+    layers[part] = "";
+  }
   // A skin's re-forged weapon: Astrabun's mallet handle and head.
   if (art.weapon)
     for (const part of ["armR", "armL"] as const)
@@ -1169,6 +1183,14 @@ function dressLayers(
   if (art.mythic)
     for (const [part, svg] of awakeningSvg(art.mythic, stage, id, dir, p))
       layers[part] += `<g class="skin-awakening">${svg}</g>`;
+  for (const [part, keep] of kept) layers[part] += keep;
+  // Halcyra's beak, made for the skin's figure (skins/halcyra-beaks.ts).
+  if (id === "halcyra")
+    layers.flame = styleHalcyraBeak(
+      layers.flame,
+      look.skin,
+      dir === "down" ? "front" : dir === "up" ? null : "profile",
+    );
 }
 export function creatureSvg(
   id: CharacterId,

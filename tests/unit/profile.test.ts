@@ -381,7 +381,7 @@ describe("deleting your account", () => {
       deleteMessage: "Deleting your account…",
     });
     expect(busy).toMatch(
-      /class="ui-btn is-s is-danger" disabled aria-busy="true"><span>Delete forever/,
+      /class="ui-btn is-s is-danger" disabled aria-busy="true"><svg[^]*?<\/svg><span>Delete forever/,
     );
     expect(busy).toContain("Deleting your account…");
   });

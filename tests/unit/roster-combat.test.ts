@@ -82,8 +82,10 @@ describe("special skills", () => {
   it("every skill casts once; cooldowns (or the empty meter) block repeats", () => {
     for (const id of FIGHTER_IDS)
       for (let i = 0; i < 4; i++) {
-        // Mochi Pound chains three strikes (its own test, wave2-kits).
-        if (CHARACTERS[id].skills[i].kind === "pound") continue;
+        // Mochi Pound chains three strikes (its own test, wave2-kits); River
+        // Dash refunds its cooldown when it goes through someone, as it does
+        // here (revolution-kits).
+        if (["pound", "surf"].includes(CHARACTERS[id].skills[i].kind)) continue;
         const { arena, p } = duel(id);
         if (i === ULT_SLOT) p.ult = RULES.ultMax;
         arena.submit(p, input({ skill: i }));
@@ -131,7 +133,8 @@ describe("special skills", () => {
         const { arena, p, q } = duel(id);
         if (i === ULT_SLOT) p.ult = RULES.ultMax;
         arena.submit(p, input({ skill: i }));
-        for (let k = 0; k < 60; k++) arena.tick();
+        // Radiant Flare bursts 2.35 s after it is pressed.
+        for (let k = 0; k < 80; k++) arena.tick();
         expect(q.hp, a.name).toBeLessThan(CHARACTERS.terradon.health);
         expect(p.stats.dealt, a.name).toBeGreaterThan(0);
       }
@@ -237,11 +240,11 @@ describe("special skills", () => {
     wall.arena.cast(wall.p, CHARACTERS.mystowl.skills[0]);
     expect(wall.q.hp).toBe(CHARACTERS.terradon.health);
   });
-  it("jumping avoids grounded skills such as Tremor and Shade Crawl", () => {
+  it("jumping avoids grounded skills such as Tremor and Riptide Wave", () => {
     const { arena, p, q } = duel("terradon", "voltkit");
     q.jumpUntil = 99;
     arena.cast(p, CHARACTERS.terradon.skills[3]);
-    arena.damage(q, 20, p.id, CHARACTERS.duskveil.skills[0]);
+    arena.damage(q, 20, p.id, CHARACTERS.tidefin.skills[3]);
     expect(q.hp).toBe(CHARACTERS.voltkit.health);
   });
   it("Heat Cracks follows Cindrake", () => {

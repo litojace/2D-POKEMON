@@ -125,14 +125,29 @@ describe("battle effects", () => {
                                       a.id in effectKit.impact
                                     : [
                                           "cage",
-                                          "lighthouse",
-                                          "current",
                                           "trail",
                                           "steer",
+                                          // The revolution's: a wall of water, a storm's
+                                          // bolts, a wraith and a hanging flare (cast and
+                                          // the zone they leave).
+                                          "wave",
+                                          "storm",
+                                          "hunt",
+                                          "lure",
+                                          // Wave B: a creeping storm, a garden.
+                                          "creep",
+                                          "garden",
                                         ].includes(a.kind)
                                       ? a.id in effectKit.cast &&
                                         a.id in effectKit.zone
-                                      : false;
+                                      : // River Dash: a jet of water under the dash.
+                                        a.kind === "surf"
+                                        ? a.id in effectKit.cast
+                                        : // Magma Leap: takeoff, and the eruption where it lands.
+                                          a.kind === "leap"
+                                          ? a.id in effectKit.cast &&
+                                            a.id in effectKit.impact
+                                          : false;
       if (!has) missing.push(`${a.id} (${a.kind})`);
       if ((a.cast ?? 0) > 0 && !(a.id in effectKit.windup))
         missing.push(`${a.id} wind-up`);
@@ -142,6 +157,14 @@ describe("battle effects", () => {
         !(a.id in effectKit.impact)
       )
         missing.push(`${a.id} impact`);
+      // Ball Lightning's zaps are beams; a wave's slam, a wraith's reaping and
+      // a flare's burst are impacts.
+      if (a.aura && !(a.id in effectKit.beam)) missing.push(`${a.id} zap`);
+      if (
+        ["wave", "hunt", "lure"].includes(a.kind) &&
+        !(a.id in effectKit.impact)
+      )
+        missing.push(`${a.id} burst`);
     }
     for (const c of Object.values(CHARACTERS))
       if (!(c.element.toLowerCase() in effectKit.hit))

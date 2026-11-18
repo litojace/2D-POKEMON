@@ -573,6 +573,7 @@ function stageMarkup(view: FitView, d: FitData) {
   const compare =
     !frameView && (outfit.skin || (palette && hasColourPalette(palette)))
       ? button("Hold to compare", {
+          icon: "swap",
           size: "s",
           attrs: {
             "data-preview-compare": "hold",
@@ -810,7 +811,11 @@ const noMatch = () =>
   emptyState(
     "Nothing matches",
     "Try another fighter, or clear the filters.",
-    button("Clear filters", { size: "s", attrs: { "data-fit-reset": true } }),
+    button("Clear filters", {
+      icon: "cancel",
+      size: "s",
+      attrs: { "data-fit-reset": true },
+    }),
   );
 function skinsBody(view: FitView, d: FitData) {
   // A fighter with no skins in the Shop yet (the newest champions).
@@ -819,6 +824,7 @@ function skinsBody(view: FitView, d: FitData) {
       "No skins yet",
       `${CHARACTERS[view.champion].name} has no skins in the Shop yet. Colors and effects in Collections fit every fighter.`,
       button("Collections", {
+        icon: "sparkle",
         size: "s",
         attrs: { "data-ui-section": "collections" },
       }),
@@ -1121,7 +1127,9 @@ function shopFoot(view: FitView, d: FitData) {
     );
     return actionBar(
       `${info}${status}`,
-      p ? buyActions(id, p) : actions(button("Complete", { disabled: true })),
+      p
+        ? buyActions(id, p)
+        : actions(button("Complete", { icon: "check", disabled: true })),
     );
   }
   const item = fitItem(id)!;
@@ -1139,7 +1147,10 @@ function shopFoot(view: FitView, d: FitData) {
       `${art}${footText(name, worn ? "Equipped" : "In your collection", top)}${status}`,
       actions(
         worn
-          ? button("Take off", { attrs: { "data-fit-unequip": id } })
+          ? button("Take off", {
+              icon: "cancel",
+              attrs: { "data-fit-unequip": id },
+            })
           : button("Equip", {
               kind: "ok",
               icon: "check",
@@ -1159,6 +1170,7 @@ function shopFoot(view: FitView, d: FitData) {
       `${art}${footText(name, `Mythic Trial: ${trialWins(e, c)}/${MYTHIC_TRIAL_WINS} wins as ${esc(CHARACTERS[c].name)}`, top)}${status}`,
       actions(
         button(`Play as ${CHARACTERS[c].name}`, {
+          icon: "enter",
           attrs: { "data-fit-play-as": c },
         }),
       ),
@@ -1187,7 +1199,10 @@ function buyActions(id: string, p: NonNullable<ReturnType<typeof purchase>>) {
   });
   return p.short
     ? actions(
-        button("Earn coins", { attrs: { "data-fit-missions": true } }),
+        button("Earn coins", {
+          icon: "missions",
+          attrs: { "data-fit-missions": true },
+        }),
         buy,
       )
     : actions(buy);
@@ -1217,6 +1232,7 @@ function wardrobeFoot(view: FitView, d: FitData) {
     `${art}${footText(`${fighter} · ${changes.length ? `${changes.length} change${changes.length === 1 ? "" : "s"}` : "no changes"}`, esc(note))}${status}`,
     actions(
       button("Revert", {
+        icon: "again",
         disabled: !Object.keys(view.tryOn).length,
         attrs: { "data-fit-revert": true },
       }),
@@ -1248,7 +1264,11 @@ export function fittingRoomParts(view: FitView, d: FitData): FitParts {
           "The Shop isn't available",
           d.problem ||
             "Log in to earn coins from raids, missions and matches, then spend them here.",
-          button("Try again", { size: "s", attrs: { "data-fit-retry": true } }),
+          button("Try again", {
+            icon: "again",
+            size: "s",
+            attrs: { "data-fit-retry": true },
+          }),
         );
   else if (view.mode === "wardrobe") body = wardrobeBody(view, d);
   else

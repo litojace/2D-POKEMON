@@ -167,6 +167,7 @@ export function guideMarkup(v: GuideView) {
     const action = done
       ? tag("Done", "ok")
       : button("Go", {
+          icon: "enter",
           size: "s",
           kind: next ? "primary" : "default",
           attrs: {
@@ -184,9 +185,13 @@ export function guideMarkup(v: GuideView) {
     `<small class="ui-note">${v.count} of ${GUIDE_STEPS.length} done${v.active ? "" : " · hidden from the Lobby"}</small>`,
     actions(
       v.active
-        ? button("Hide guide", { attrs: { "data-guide-hide": true } })
+        ? button("Hide guide", {
+            icon: "cancel",
+            attrs: { "data-guide-hide": true },
+          })
         : v.next
           ? button("Show on the Lobby", {
+              icon: "home",
               attrs: { "data-guide-show": true },
             })
           : "",

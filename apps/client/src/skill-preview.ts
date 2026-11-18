@@ -96,10 +96,69 @@ export function previewShape(
       );
       break;
     }
-    case "current":
-      // The current's lane, from the caster along the aim.
+    case "surf":
+      // River Dash: its whole length, as wide as the body it carries.
+      shape.polygons.push(
+        lane(from, angle, ability.range, (RULES.radius + 10) * 2),
+      );
+      break;
+    case "wave":
+      // Riptide Wave: the wall of water's full width, across the court.
       shape.polygons.push(lane(from, angle, ability.range, ability.radius * 2));
       break;
+    case "leap": {
+      // Magma Leap: where it lands (the aim, up to its reach), its path and
+      // the eruption there.
+      const d = Math.min(
+        ability.range,
+        Math.hypot(aim.x - from.x, aim.y - from.y),
+      );
+      const land = {
+        x: from.x + Math.cos(angle) * d,
+        y: from.y + Math.sin(angle) * d,
+      };
+      if (d > 1) shape.polygons.push(lane(from, angle, d, 10));
+      shape.discs.push({ ...land, r: (ability.explosion ?? 0) + RULES.radius });
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      break;
+    }
+    case "creep": {
+      // Chestnut Storm: every blast along the aim.
+      const c = ability.creep ?? { start: 160, step: 150, gap: 0.2 };
+      for (let i = 0; i < (ability.count ?? 5); i++) {
+        const d = c.start + c.step * i;
+        shape.discs.push({
+          x: from.x + Math.cos(angle) * d,
+          y: from.y + Math.sin(angle) * d,
+          r: ability.explosion ?? 105,
+        });
+      }
+      break;
+    }
+    case "garden": {
+      // Overgrowth: the garden at the aim (short of a wall).
+      const at = blinkLanding(
+        from,
+        angle,
+        Math.min(ability.range, Math.hypot(aim.x - from.x, aim.y - from.y)),
+      );
+      shape.discs.push({ ...at, r: ability.radius });
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      break;
+    }
+    case "lure": {
+      // Radiant Flare: where the flare hangs (short of a wall), how far it
+      // pulls, and the burst.
+      const at = blinkLanding(
+        from,
+        angle,
+        Math.min(ability.range, Math.hypot(aim.x - from.x, aim.y - from.y)),
+      );
+      shape.discs.push({ ...at, r: ability.explosion ?? ability.radius });
+      shape.rings.push({ ...at, r: ability.radius });
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      break;
+    }
     case "trail":
       // Laid where the caster walks: just its width round the caster.
       shape.discs.push({
@@ -190,10 +249,6 @@ export function previewShape(
     case "cage":
       // The ring the crystal rises on.
       shape.rings.push({ x: from.x, y: from.y, r: ability.radius });
-      break;
-    case "lighthouse":
-      // How far the rays reach as they turn.
-      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
       break;
     case "taunt":
       // Everyone this close is taunted.

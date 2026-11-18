@@ -32,6 +32,8 @@ import {
 const TRICKS = {
   /** How far each Electromagnet tick drags a twin toward Coilemur (px). */
   magnetPull: 45,
+  /** Duskveil's wraith: each touch drags a twin this far toward its partner. */
+  wraithPull: 40,
   /** Wombolder, Braced by Grudge Thump, stopping a Twin Rush. */
   blockStagger: 15,
 };
@@ -242,12 +244,12 @@ export class StormTwinsArena extends RaidArena {
       p.y += d.y * pull;
     }
     if (!p.raidBoss || p.hp >= before) return;
-    if (ability?.id === "void-orb" && p.hp > 0) {
+    if (ability?.id === "wraith-hunt" && p.hp > 0) {
       const other = this.twins().find((t) => t !== p && t.hp > 0);
       if (other) {
         const dist = Math.hypot(other.x - p.x, other.y - p.y),
           d = normalize(other.x - p.x, other.y - p.y),
-          pull = Math.min(140, Math.max(0, dist - 180));
+          pull = Math.min(TRICKS.wraithPull, Math.max(0, dist - 180));
         p.x += d.x * pull;
         p.y += d.y * pull;
       }

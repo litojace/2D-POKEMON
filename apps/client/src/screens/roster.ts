@@ -15,6 +15,7 @@ import {
   type RosterTab,
   type RosterView,
 } from "./roster-view";
+import { watchPictures } from "../skin-thumbnails";
 import "./roster.css";
 
 /**
@@ -118,6 +119,8 @@ export function openRoster(
         ".shop-live-stage, .raid-cosmetic-preview, .fighter-rig-stage",
       );
     template = next;
+    // The Original look is inline SVG, painted once when it has shown.
+    watchPictures(root());
     if (view.focus !== browsed) {
       browsed = view.focus;
       hooks.browse?.(view.focus);

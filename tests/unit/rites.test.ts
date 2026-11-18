@@ -55,7 +55,7 @@ describe("rites", () => {
   });
   it("applies changes without touching the shared roster", () => {
     const kit = kitOf("cindrake", [
-      "cindrake-wide-bomb",
+      "cindrake-wide-eruption",
       "cindrake-searing-snap",
     ]);
     expect(kit.skills[1].explosion).toBeCloseTo(110 * 1.3);
@@ -119,10 +119,12 @@ describe("rites", () => {
   });
   it("cast uses the rite version: cooldowns and the client's view agree", () => {
     const { arena, p } = duel();
-    p.rites = ["cindrake-wide-bomb"];
-    arena.cast(p, arena.kit(p).skills[1]);
+    // A zone rite (Deep Cracks): the client reads the zone's rite version.
+    p.rites = ["cindrake-deep-cracks"];
+    arena.cast(p, arena.kit(p).skills[2]);
     const wire = unpackSnapshot(packSnapshot(arena.snapshot()));
-    expect(wire.projectiles[0].ability.explosion).toBeCloseTo(110 * 1.3);
+    expect(wire.zones[0].ability.duration).toBeCloseTo(3.5);
+    expect(CHARACTERS.cindrake.skills[2].duration).toBe(2.5);
     // A cooldown rite: Halcyon Rewind 17s → 12s.
     const hal = new Arena("RITES2");
     hal.add("one", "One", "cindrake");

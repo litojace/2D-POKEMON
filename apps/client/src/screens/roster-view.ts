@@ -38,6 +38,7 @@ import {
 } from "../fighter-selection";
 import { stageLight } from "../stage-light";
 import { itemPicture } from "../shop-ui";
+import { originalLook } from "../skin-thumbnails";
 import {
   actionBar,
   actions,
@@ -314,7 +315,9 @@ function roomButtons(c: CharacterId, d: RosterData) {
         : "Lock in";
   return [
     button(word, {
-      icon: locked ? "check" : undefined,
+      // A padlock to lock in (the seat's Locked tag shows the same one),
+      // a tick once it is.
+      icon: locked ? "check" : r.saving || taken ? undefined : "lock",
       disabled: locked || taken || r.saving || r.ready,
       attrs: {
         "data-roster-select": c,
@@ -370,6 +373,7 @@ function gridMarkup(view: RosterView, d: RosterData) {
     `${avatar(fighterAvatar(view.focus, "roster-foot", d.looks[view.focus]), { element: focus.element })}<span class="roster-foot-text"><small class="ui-note">${esc(status)}</small><span class="roster-foot-name"><b class="ui-h">${esc(focus.name)}</b>${rangeBadge(view.focus)}<small class="roster-foot-range">${rangeName(view.focus)}</small></span></span>`,
     actions(
       button("Details", {
+        icon: "info",
         disabled: none,
         attrs: { "data-roster-details": view.focus },
       }),
@@ -378,6 +382,7 @@ function gridMarkup(view: RosterView, d: RosterData) {
         : [
             button(lock ? "Lock in" : chosen ? "Playing" : "Select", {
               kind: "primary",
+              icon: lock ? "lock" : "check",
               disabled: none || (!lock && chosen),
               attrs: { "data-roster-select": view.focus },
             }),
@@ -458,7 +463,7 @@ function skinsTab(view: RosterView, d: RosterData) {
     on: boolean,
   ) =>
     `<span class="roster-look${have ? "" : " is-unowned"}"><span class="roster-look-art">${art}</span><b>${esc(name)}</b><small class="${on ? "is-on" : ""}">${on ? "Wearing" : have ? "Owned" : "In the Shop"}</small></span>`;
-  return `<p class="ui-note">${looksOwned(c, d.owned).have} of ${skins.length + 1} looks owned. Try them all on in the Shop and Wardrobe.</p><div class="roster-looks">${tile("original", "Original look", fighterAvatar(c, `roster-look-${c}`), true, !worn)}${skins.map((s) => tile(s.id, s.name, itemPicture(s.id, c, `roster-look-${s.id}`), d.owned.includes(s.id), worn === s.id)).join("")}</div>`;
+  return `<p class="ui-note">${looksOwned(c, d.owned).have} of ${skins.length + 1} looks owned. Try them all on in the Shop and Wardrobe.</p><div class="roster-looks">${tile("original", "Original look", originalLook(c, "roster-look-original"), true, !worn)}${skins.map((s) => tile(s.id, s.name, itemPicture(s.id, c, `roster-look-${s.id}`), d.owned.includes(s.id), worn === s.id)).join("")}</div>`;
 }
 function detailMarkup(view: RosterView, d: RosterData) {
   const c = view.focus;
@@ -489,9 +494,13 @@ function detailMarkup(view: RosterView, d: RosterData) {
     d.room
       ? actions(...roomButtons(c, d))
       : actions(
-          button("Try skins", { attrs: { "data-roster-skins": c } }),
+          button("Try skins", {
+            icon: "wardrobe",
+            attrs: { "data-roster-skins": c },
+          }),
           button(lock ? "Lock in" : chosen ? "Playing" : "Select", {
             kind: "primary",
+            icon: lock ? "lock" : "check",
             disabled: !lock && chosen,
             attrs: { "data-roster-select": c },
           }),

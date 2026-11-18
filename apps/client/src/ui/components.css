@@ -1119,6 +1119,11 @@
   width: 92%;
   height: 92%;
 }
+/* A skin thumbnail (skin-thumbnails.ts) is drawn where its SVG's own fit
+   puts the drawing, whether it shows the SVG or its bitmap. */
+.skin-thumb {
+  object-fit: contain;
+}
 .ui-tile-name {
   font-family: var(--font-display);
   font-weight: 700;

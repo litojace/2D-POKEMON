@@ -367,9 +367,17 @@ button.room-seat.is-open:focus-visible {
   .teamup-note {
     display: none;
   }
-  /* A 104 px button: the label alone, centred. */
+  /* A 104 px button: a smaller icon beside the label still fits
+     (room-alignment.spec.ts checks no label is cut). */
+  .roster-room.is-room .ui-panel-foot .ui-btn {
+    gap: 5px;
+  }
   .roster-room.is-room .ui-panel-foot .ui-btn > svg {
-    display: none;
+    width: 15px;
+    height: 15px;
+    /* The 18 px icon's -3 px optical nudge (ui/components.css) is too
+       much for this one: icon + label sit centred without it. */
+    margin-left: 0;
   }
 }
 
@@ -426,6 +434,14 @@ button.room-seat.is-open:focus-visible {
   font-weight: 800;
   font-size: calc(20px * var(--text-scale, 1));
 }
+/* The "?" sits in the tile's middle: a one-line box as tall as the font,
+   so the font's uneven space above and below doesn't push it down. */
+.room-pick.is-hidden > b {
+  display: block;
+  line-height: 1;
+  /* The display font's "?" sits a little low in its box (measured). */
+  transform: translateY(-0.04em);
+}
 .room-pick.is-hidden.is-locked {
   color: var(--ui-warn);
 }
@@ -474,7 +490,8 @@ button.room-seat.is-open:focus-visible {
     flex-direction: column;
     gap: 1px;
   }
-  .room-pick {
+  .room-pick,
+  .room-pick.is-hidden {
     width: 26px;
     height: 26px;
     font-size: calc(15px * var(--text-scale, 1));
@@ -565,6 +582,44 @@ body:has(#menu > .room-screen) .chat-button[data-place="room"] {
 .room-more[aria-expanded="true"] {
   border-color: var(--ui-accent);
   color: var(--ui-accent);
+}
+/* The banner's two corner buttons (chat, ⋯) belong to the banner: no dark
+   disc of their own, just the gold icon on its gradient, as in an app's
+   title bar. A soft fill and the gold rim come up on hover, focus or while
+   their drawer or menu is open. Both stay 40–44 px to tap. */
+:root body:has(#menu > .room-screen) .chat-button[data-place="room"],
+.room-more {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ui-accent);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+:root
+  body:has(#menu > .room-screen)
+  .chat-button[data-place="room"]:is(
+    :hover,
+    :focus-visible,
+    [aria-expanded="true"]
+  ),
+.room-more:is(:hover, :focus-visible, [aria-expanded="true"]) {
+  border-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--ui-text) 8%, transparent);
+  color: var(--ui-accent);
+}
+/* With no disc round it, the unread count sits on the chat icon's own top
+   right corner (the 22 px icon is centred in the button). */
+:root
+  body:has(#menu > .room-screen)
+  .chat-button[data-place="room"]
+  .chat-unread {
+  top: calc(50% - 19px);
+  right: auto;
+  left: calc(50% + 3px);
 }
 .room-menu {
   position: absolute;

@@ -52,6 +52,19 @@ const paths = {
   admin: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/>',
   save: '<path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M7 3v5h8V3M7 21v-7h10v7"/>',
   check: '<path d="m5 12 5 5 9-10"/>',
+  /** A padlock: Lock in, and a room seat's Locked tag. */
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  /** A circle struck through: Block. */
+  block: '<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>',
+  /** A bin: Remove, Delete. */
+  trash:
+    '<path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  /** A pencil: Change name. */
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/>',
+  /** A paper plane: Send. */
+  send: '<path d="M21 3 3 10.5l7 2.5 2.5 7Z"/><path d="m10 13 4.5-4.5"/>',
+  /** An "i" in a circle: a fighter's Details. */
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 11v6"/><path d="M12 7.5h.01"/>',
   cancel: '<path d="M6 6l12 12M18 6 6 18"/>',
   install:
     '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 7v7M9 11l3 3 3-3M11 18h2"/>',

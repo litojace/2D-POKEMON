@@ -412,12 +412,14 @@ describe("Overgrowth", () => {
     expect(a.zones).toHaveLength(1);
     const hp = them.hp;
     a.cast(me, skill("mossloth", "overgrowth"));
-    // Out of the vines' reach, but on the seedling: its full bloom.
+    // On the seedling: its full bloom, before the garden does anything.
     expect(hp - them.hp).toBe(skill("mossloth", "seedling").damage);
     expect(a.has(them, "root")).toBe(true);
     expect(me.moss).toBe(MOSS.max);
     a.tick();
-    expect(a.zones).toHaveLength(0);
+    expect(a.zones.filter((z) => z.ability.kind === "seedling")).toHaveLength(
+      0,
+    );
   });
 });
 

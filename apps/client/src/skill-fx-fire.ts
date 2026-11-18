@@ -175,13 +175,18 @@ function emberGust(
     true,
   );
   fx.glow(mx, my - 12, 34, HOT, 0.7 + Math.sin(now / 40) * 0.15);
-  fx.trail(`gust${color}`, 0.016, () => {
+  // Three flames every 0.06 s, not four every frame: at 60 fps the old
+  // stream kept some 100 flame bodies (and their glows) alive, more smoke
+  // cover than all of another kit's skills together on a fast phone (a slow
+  // one could not emit that often, so the budget test only saw it on CI).
+  // The smoke at the end of the cone is the signature layer's.
+  fx.trail(`gust${color}`, 0.06, () => {
     const life = 0.42;
     fx.burst({
       x: mx,
       y: my,
       z: 12,
-      count: 4,
+      count: 3,
       kind: "flame",
       color,
       angle,
@@ -189,96 +194,21 @@ function emberGust(
       speed: [(a.range / life) * 0.75, (a.range / life) * 1.05],
       up: [0, 40],
       life: [life * 0.8, life * 1.1],
-      size: [9, 15],
+      size: [7, 11],
       drag: 0.9,
     });
-    if (Math.random() < 0.35)
-      embers(
-        fx,
-        mx + Math.cos(angle) * a.range * 0.8,
-        my + Math.sin(angle) * a.range * 0.8,
-        1,
-        color,
-        60,
-      );
-    if (Math.random() < 0.2)
-      smoke(
-        fx,
-        mx + Math.cos(angle) * a.range,
-        my + Math.sin(angle) * a.range,
-        1,
-      );
+    embers(
+      fx,
+      mx + Math.cos(angle) * a.range * 0.8,
+      my + Math.sin(angle) * a.range * 0.8,
+      1,
+      color,
+      60,
+    );
   });
 }
 
-// ───────────── Magma Bomb ─────────────
-function magmaBomb(g: G, pr: Projectile, now: number) {
-  const fx = fxFor(g.scene),
-    r = pr.ability.radius,
-    c = pr.color,
-    hover = 16 + Math.sin(now / 120 + pr.id) * 2,
-    x = pr.x,
-    y = pr.y - hover,
-    spin = now / 160 + pr.id;
-  fx.solid
-    .fillStyle(0x000000, 0.25)
-    .fillEllipse(pr.x, pr.y + 6, r * 2, r * 0.8);
-  fx.glow(pr.x, pr.y + 6, r * 3, c, 0.4, true);
-  fx.glow(x, y, r * 3.4, c, 0.45);
-  // Crusted rock with molten seams that pulse.
-  const pts = Array.from({ length: 8 }, (_, i) => {
-    const a = spin + (i * TAU) / 8,
-      rr = r * (0.88 + hash(pr.id + i) * 0.2);
-    return { x: x + Math.cos(a) * rr, y: y + Math.sin(a) * rr };
-  });
-  fx.solid.fillStyle(CRUST, 1).fillPoints(pts, true);
-  fx.solid
-    .fillStyle(0x6b3220, 1)
-    .fillCircle(x - r * 0.25, y - r * 0.25, r * 0.45);
-  const pulse = 0.7 + Math.sin(now / 90) * 0.3;
-  fx.g.lineStyle(3, GOLD, pulse);
-  for (let i = 0; i < 3; i++) {
-    const a = spin + i * 2.1;
-    fx.g.lineBetween(
-      x + Math.cos(a) * r * 0.1,
-      y + Math.sin(a) * r * 0.1,
-      x + Math.cos(a + 0.4) * r * 0.85,
-      y + Math.sin(a + 0.4) * r * 0.85,
-    );
-  }
-  fx.g.lineStyle(2, c, 0.8).strokePoints(pts, true);
-  fx.trail(`mb${pr.id}`, 0.03, () => {
-    smoke(fx, pr.x, pr.y, 1, [6, 10]);
-    fx.burst({
-      x: pr.x,
-      y: pr.y,
-      z: hover,
-      count: 1,
-      kind: "flame",
-      color: c,
-      speed: [0, 20],
-      up: [0, 30],
-      life: [0.25, 0.4],
-      size: [4, 7],
-      drag: 2,
-    });
-    if (Math.random() < 0.4)
-      fx.burst({
-        x: pr.x,
-        y: pr.y,
-        z: hover - r * 0.6,
-        count: 1,
-        kind: "drop",
-        color: GOLD,
-        speed: [5, 20],
-        up: [-20, 10],
-        life: [0.4, 0.6],
-        size: [1.6, 2.4],
-        grav: 900,
-        bounce: 0.1,
-      });
-  });
-}
+// ───────────── Magma Leap: the eruption where it lands ─────────────
 function magmaImpact(
   scene: Phaser.Scene,
   a: Ability,
@@ -331,7 +261,7 @@ function magmaImpact(
     bounce: 0.15,
   });
   embers(fx, x, y, 18, color, 120);
-  smoke(fx, x, y, 10, [14, 24]);
+  smoke(fx, x, y, 5, [12, 20]);
   fx.decal({ kind: "scorch", x, y, r: blast * 0.6, color, life: 5 });
   fx.shake(150, 0.004);
   shot(fx.reduced ? 220 : 520, (k) => {
@@ -376,7 +306,7 @@ function blazeWhirl(g: G, z: Zone, progress: number, now: number) {
       .fillTriangle(px - 3, py, px + 3, py, px + lean * 0.5, py - h * 0.38);
     fx.glow(px, py - h * 0.3, 18, c, 0.3 * fade);
   }
-  fx.trail(`bw${z.id}`, 0.03, () => {
+  fx.trail(`bw${z.id}`, 0.05, () => {
     const a = Math.random() * TAU;
     fx.burst({
       x: z.x + Math.cos(a) * r,
@@ -401,7 +331,7 @@ function blazeWhirl(g: G, z: Zone, progress: number, now: number) {
       c,
       50,
     );
-    if (Math.random() < 0.3)
+    if (Math.random() < 0.2)
       smoke(fx, z.x + Math.cos(a) * r, z.y + Math.sin(a) * r * sq, 1);
   });
 }
@@ -480,19 +410,27 @@ function sunfirePillar(g: G, z: Zone, progress: number, now: number) {
   }
   const k = (progress - strikeAt) / (1 - strikeAt),
     fade = k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1,
-    top = z.y - 640;
+    // The column rises 640 px, but stops a little above the top of the
+    // view: segments drawn off screen still cost sprites, and on a phone
+    // (the follow camera shows ~370 px above the fighter) that was a third
+    // of the column.
+    viewTop = g.scene.cameras?.main?.worldView?.y,
+    top = Math.min(
+      z.y - 160,
+      Math.max(z.y - 640, Number.isFinite(viewTop) ? viewTop - 40 : -Infinity),
+    );
   fx.trail(`sps${z.id}`, 999, () => {
     fx.burst({
       x: z.x,
       y: z.y,
       z: 8,
-      count: 40,
+      count: 14,
       kind: "flame",
       color: c,
       speed: [r * 1.4, r * 3],
       up: [30, 160],
       life: [0.3, 0.6],
-      size: [8, 14],
+      size: [7, 12],
       drag: 3.5,
     });
     fx.burst({
@@ -508,7 +446,7 @@ function sunfirePillar(g: G, z: Zone, progress: number, now: number) {
       size: [3, 5],
       grav: 1100,
     });
-    smoke(fx, z.x, z.y, 8, [16, 26]);
+    smoke(fx, z.x, z.y, 4, [12, 20]);
     fx.decal({
       kind: "scorch",
       x: z.x,
@@ -554,10 +492,7 @@ function sunfirePillar(g: G, z: Zone, progress: number, now: number) {
       bounce: 0.3,
     });
   });
-  fx.trail(`sp-smoke${z.id}`, 0.12, () =>
-    smoke(fx, z.x, z.y - 40, 2, [14, 24]),
-  );
-  fx.glow(z.x, z.y, r * 1.6, c, 0.35 * fade, true);
+  fx.trail(`sp-smoke${z.id}`, 0.3, () => smoke(fx, z.x, z.y - 40, 1, [10, 16]));
   const w =
     r * (0.75 + Math.sin(now / 50) * 0.04) * (k < 0.08 ? 0.5 + k / 0.16 : 1);
   // The column: solid fire body with a hot core, soft at the edges.
@@ -570,40 +505,34 @@ function sunfirePillar(g: G, z: Zone, progress: number, now: number) {
       seg = (z.y - top) / 5,
       wob = Math.sin(now / 90 + i * 1.7) * w * 0.08;
     // The sprite fades well inside its edge, so radius ≈ 2× the visible width.
+    // One flame body a segment, overlapping its neighbours a little (a
+    // second, inner one, wider bodies and more overlap tripled the soft
+    // cover the effect budget counts: older phones pay it per pixel).
     fx.soft(
       z.x + wob,
       cy,
-      w * 2.1 * flick,
+      w * 1.4 * flick,
       c,
       0.95 * fade,
-      (seg * 1.6) / (w * 2.1),
+      (seg * 1.2) / (w * 1.4),
     );
-    fx.soft(z.x + wob, cy, w * 1.4, 0xffa53a, fade, (seg * 1.6) / (w * 1.4));
     fx.glow(
       z.x + wob,
       cy,
-      w * 0.8,
+      w * 0.6,
       GOLD,
-      0.75 * fade,
-      false,
-      (seg * 1.6) / (w * 0.8),
-    );
-    fx.glow(
-      z.x + wob,
-      cy,
-      w * 0.35,
-      HOT,
       0.8 * fade,
       false,
-      (seg * 1.6) / (w * 0.35),
+      (seg * 1.2) / (w * 0.6),
     );
+    fx.glow(z.x + wob, cy, w * 0.28, HOT, 0.85 * fade, false, seg / (w * 0.28));
   }
   void h;
   void mid;
   fx.soft(z.x, z.y - 10, w * 1.5, c, 0.85 * fade, 0.7);
   fx.glow(z.x, z.y - 10, w * 0.9, GOLD, 0.6 * fade, false, 0.7);
-  fx.glow(z.x, z.y, r * 1.6, c, 0.6 * fade, true);
-  if (k < 0.12) fx.glow(z.x, z.y - 60, r * 1.6, GOLD, 0.8 * (1 - k / 0.12));
+  fx.glow(z.x, z.y, r * 1.3, c, 0.6 * fade, true);
+  // (The strike's flash is the ultimate layer's, skill-fx-ultimates.ts.)
   fx.shockwave(
     z.x,
     z.y,
@@ -612,13 +541,13 @@ function sunfirePillar(g: G, z: Zone, progress: number, now: number) {
     GOLD,
     10,
   );
-  fx.trail(`spf${z.id}`, 0.025, () => {
+  fx.trail(`spf${z.id}`, 0.05, () => {
     const a2 = Math.random() * TAU;
     fx.burst({
       x: z.x + Math.cos(a2) * w,
       y: z.y + Math.sin(a2) * w * sq,
       z: 4,
-      count: 2,
+      count: 1,
       kind: "flame",
       color: c,
       speed: [20, 60],
@@ -917,6 +846,7 @@ function chestnutBurst(
   r: number,
   color: number,
   power: number,
+  glows = true,
 ) {
   const fx = fxFor(scene);
   fx.burst({
@@ -946,10 +876,13 @@ function chestnutBurst(
     grav: 1100,
     bounce: 0.3,
   });
-  embers(fx, x, y, Math.round(10 * power), color, 110);
-  smoke(fx, x, y, Math.round(5 * power), [12, 20]);
+  // The small chestnuts of a creeping storm only flame and throw shell.
+  if (glows) embers(fx, x, y, Math.round(10 * power), color, 110);
+  if (glows) smoke(fx, x, y, Math.round(5 * power), [12, 20]);
   fx.decal({ kind: "scorch", x, y, r: r * 0.65, color, life: 4 });
   shotOn(scene)(fx.reduced ? 200 : 480, (k) => {
+    if (!glows)
+      return fx.shockwave(x, y, r * ease(Math.min(1, k * 2)), k, GOLD, 6);
     fx.glow(x, y - 14, r * 0.7, HOT, 0.7 * Math.max(0, 1 - k / 0.15));
     fx.glow(x, y - 14, r, color, 0.55 * (1 - k));
     fx.glow(x, y, r * 1.2, color, 0.45 * (1 - k), true);
@@ -966,6 +899,8 @@ function landingMark(
   color: number,
   k: number,
   now: number,
+  /** The glow under the mark, as a share of its full size. */
+  glow = 1,
 ) {
   fx.floorSolid
     .fillStyle(color, 0.08 + k * 0.14)
@@ -985,7 +920,7 @@ function landingMark(
         y + Math.sin(a) * r * 1.02 * SQ,
       );
   }
-  fx.glow(x, y, r * (0.4 + k * 0.6), color, 0.2 + k * 0.35, true);
+  fx.glow(x, y, r * (0.4 + k * 0.6) * glow, color, 0.2 + k * 0.35, true);
 }
 /** A chestnut on its way down to (x, y), `k` 0 → 1 until it lands. */
 function falling(
@@ -1248,51 +1183,16 @@ function curtainCast(
 }
 
 // ───────────── Chestnut Storm (ultimate) ─────────────
-function stormTarget(
-  a: Ability,
-  x: number,
-  y: number,
-  angle: number,
-  ax: number,
-  ay: number,
-) {
-  const d = Math.min(a.range, Math.hypot(ax - x, ay - y));
-  return { x: x + Math.cos(angle) * d, y: y + Math.sin(angle) * d };
-}
-function chestnutStormWindup(
-  g: G,
-  a: Ability,
-  x: number,
-  y: number,
-  angle: number,
-  aimX: number,
-  aimY: number,
-  color: number,
-  k: number,
-  now: number,
-) {
-  const fx = fxFor(g.scene),
-    t = stormTarget(a, x, y, angle, aimX, aimY),
-    r = a.radius;
-  // At the target: the real area, filling as the volley is readied.
-  landingMark(fx, t.x, t.y, r, color, k * 0.4, now);
-  // At Pyranda: the tail flame flares and the nuts heat up.
-  const tx = x - Math.cos(angle) * 18,
-    ty = y - 26;
-  fx.glow(tx, ty, 26 + k * 40, color, 0.5 + k * 0.4);
-  fx.glow(tx, ty, 10 + k * 10, HOT, 0.6 + k * 0.4);
-  for (let i = 0; i < 5; i++) {
-    const a0 = now / 300 + (i * TAU) / 5;
-    chestnut(fx, tx + Math.cos(a0) * 22, ty - 10 + Math.sin(a0) * 8, 5, a0, k);
-  }
-}
 function chestnutStorm(g: G, z: Zone, progress: number, now: number) {
   const fx = fxFor(g.scene),
     a = z.ability,
     r = z.radius,
     c = z.color,
     land = Math.min(0.95, (a.tickDelay ?? 0.9) / Math.max(0.01, a.duration)),
-    drops = Array.from({ length: 9 }, (_, i) => {
+    // A creeping storm lands five blasts a moment apart, four or five on
+    // screen at once: each is a handful of chestnuts, not the whole storm.
+    creep = !!a.creep,
+    drops = Array.from({ length: creep ? 4 : 9 }, (_, i) => {
       const ang = i ? (i * TAU) / 8 + hash(z.id + i) * 0.5 : 0,
         d = i ? r * (0.45 + hash(z.id * 3 + i) * 0.4) : 0;
       return { x: z.x + Math.cos(ang) * d, y: z.y + Math.sin(ang) * d * SQ };
@@ -1300,11 +1200,13 @@ function chestnutStorm(g: G, z: Zone, progress: number, now: number) {
   if (progress < land) {
     const k = progress / land;
     // It glows for almost a second: the whole real area, heating up.
-    landingMark(fx, z.x, z.y, r, c, k, now);
+    // Five marks glow at once in a creeping storm: each glows smaller (its
+    // rings still show the true area).
+    landingMark(fx, z.x, z.y, r, c, k, now, creep ? 0.6 : 1);
     fx.floor
       .lineStyle(6, c, 0.25 + k * 0.3)
       .strokeEllipse(z.x, z.y, r * 2, r * 2 * SQ);
-    fx.trail(`csh${z.id}`, 0.05, () => {
+    fx.trail(`csh${z.id}`, creep ? 0.14 : 0.05, () => {
       const ang = Math.random() * TAU,
         d = Math.sqrt(Math.random()) * r;
       embers(
@@ -1333,10 +1235,12 @@ function chestnutStorm(g: G, z: Zone, progress: number, now: number) {
         p.y,
         i ? r * 0.38 : r * 0.55,
         c,
-        i ? 0.45 : 1,
+        creep ? (i ? 0.3 : 0.6) : i ? 0.45 : 1,
+        !creep || !i,
       ),
     );
     fx.decal({ kind: "molten", x: z.x, y: z.y, r: r * 0.5, color: c, life: 4 });
+    if (creep) return;
     shotOn(g.scene)(fx.reduced ? 260 : 820, (k) => {
       fx.glow(z.x, z.y - 30, r * 1.1, HOT, 0.6 * Math.max(0, 1 - k / 0.12));
       fx.glow(z.x, z.y, r * 1.3, c, 0.6 * (1 - k), true);
@@ -1357,7 +1261,7 @@ function chestnutStorm(g: G, z: Zone, progress: number, now: number) {
 }
 
 export const fireKit: FxKit = {
-  projectile: { "magma-bomb": magmaBomb, "ember-lob": emberLob },
+  projectile: { "ember-lob": emberLob },
   zone: {
     "heat-cracks": blazeWhirl,
     "sunfire-pillar": sunfirePillar,
@@ -1368,12 +1272,11 @@ export const fireKit: FxKit = {
   },
   windup: {
     "sunfire-pillar": sunfireWindup,
-    "chestnut-storm": chestnutStormWindup,
   },
   channel: { "crest-flare": emberGust },
   cast: {
     "cinder-snap": cinderSnap,
-    "magma-bomb": magmaCast,
+    "magma-leap": magmaCast,
     "ember-lob": magmaCast,
     "chestnut-mortar": chestnutLob,
     "hot-coals": chestnutLob,
@@ -1381,6 +1284,6 @@ export const fireKit: FxKit = {
     "ember-curtain": curtainCast,
     "sunfire-pillar": magmaCast,
   },
-  impact: { "magma-bomb": magmaImpact, "ember-lob": emberLobImpact },
+  impact: { "magma-leap": magmaImpact, "ember-lob": emberLobImpact },
   hit: { fire: fireHit },
 };

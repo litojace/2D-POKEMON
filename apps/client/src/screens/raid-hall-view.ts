@@ -531,6 +531,7 @@ function bossMarkup(view: RaidView, d: RaidData) {
       : `<small class="ui-note rh-foot-note is-reason" role="status">${esc(s.reason)}</small>`,
     actions(
       button("Start raid", {
+        icon: "battle",
         kind: "primary",
         disabled: !s.ok,
         attrs: { "data-raid-start": s.play },

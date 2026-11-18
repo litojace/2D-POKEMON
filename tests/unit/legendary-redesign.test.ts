@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { creatureSvg } from "../../apps/client/src/creature-design";
+import { creaturePalette } from "../../apps/client/src/creature-palette";
+import { DOMParser } from "@xmldom/xmldom";
+import { HALCYRA_BEAKS } from "../../apps/client/src/skins/halcyra-beaks";
 import { SKIN_ART } from "../../apps/client/src/skins/skin-art";
 import { DESIGNS } from "../../apps/client/src/skins/modern-designs";
 import { PIRATE_TINTS } from "../../apps/client/src/skins/modern-pirates";
@@ -71,5 +74,117 @@ describe("Sky Pirates and Nova Vanguard, redrawn per champion", () => {
       expect(SKIN_ART[`${id}-nova-vanguard`].replaces, id).not.toContain(
         "flame",
       );
+  });
+
+  it("never gives one champion two look-alike body colours across collections", () => {
+    // Perceptual distance (CIE76 ΔE): under about 10 two colours read as
+    // the same; 24 keeps every pair clearly apart.
+    const lab = (hex: string) => {
+      const [r, g, b] = [1, 3, 5]
+        .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map((c) => (c > 0.04045 ? ((c + 0.055) / 1.055) ** 2.4 : c / 12.92));
+      const x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047,
+        y = r * 0.2126 + g * 0.7152 + b * 0.0722,
+        z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+      const f = (t: number) =>
+        t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116;
+      return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+    };
+    const de = (a: string, b: string) => {
+      const [p, q] = [lab(a), lab(b)];
+      return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+    };
+    const collections = [
+      "hon-viet",
+      "stars-stripes",
+      "hero-squad",
+      "neon-campus",
+      "sky-pirates",
+      "nova-vanguard",
+    ];
+    const close: string[] = [];
+    for (const id of ids) {
+      const mids = [
+        ["default", creaturePalette[id].mid],
+        ...collections.map((c) => [c, SKIN_ART[`${id}-${c}`].palette.mid!]),
+      ];
+      for (let i = 0; i < mids.length; i++)
+        for (let j = i + 1; j < mids.length; j++) {
+          const d = de(mids[i][1], mids[j][1]);
+          if (d < 24)
+            close.push(
+              `${id}: ${mids[i][0]} ~ ${mids[j][0]} (ΔE ${d.toFixed(1)})`,
+            );
+        }
+    }
+    expect(close).toEqual([]);
+  });
+
+  it("keeps Halcyra's own beak under every costume that takes its head-top layer", () => {
+    for (const c of [
+      "hon-viet",
+      "stars-stripes",
+      "hero-squad",
+      "neon-campus",
+      "sky-pirates",
+      "nova-vanguard",
+    ])
+      for (const view of ["down", "left", "right"] as const)
+        expect(
+          creatureSvg("halcyra", view, undefined, undefined, "normal", {
+            skin: `halcyra-${c}`,
+          } as any),
+          `${c} ${view}`,
+        ).toContain('data-keep="beak"');
+    // The same art, as well-formed SVG (an image decodes only if it is).
+    for (const c of ["", "hero-squad", "sky-pirates", "nova-vanguard"])
+      for (const view of ["down", "left", "right", "up"] as const) {
+        const errors: string[] = [];
+        new DOMParser({
+          onError: (_l: string, m: string) => errors.push(m),
+        } as any).parseFromString(
+          creatureSvg(
+            "halcyra",
+            view,
+            undefined,
+            undefined,
+            "normal",
+            c ? ({ skin: `halcyra-${c}` } as any) : undefined,
+          ),
+          "image/svg+xml",
+        );
+        expect(errors, `${c || "default"} ${view}`).toEqual([]);
+      }
+  });
+
+  it("gives Halcyra a beak of its own in each collection, in every view", () => {
+    const collections = [
+      "hon-viet",
+      "stars-stripes",
+      "hero-squad",
+      "neon-campus",
+      "sky-pirates",
+      "nova-vanguard",
+    ];
+    const looks = collections.map((c) => HALCYRA_BEAKS[`halcyra-${c}`]);
+    expect(looks.every(Boolean)).toBe(true);
+    expect(new Set(looks.map((l) => l.colors.join())).size).toBe(
+      collections.length,
+    );
+    for (const c of collections)
+      for (const view of ["down", "left", "right"] as const) {
+        const svg = creatureSvg(
+          "halcyra",
+          view,
+          undefined,
+          undefined,
+          "normal",
+          { skin: `halcyra-${c}` } as any,
+        );
+        const beak = svg.slice(svg.indexOf('data-keep="beak"'));
+        expect(beak, `${c} ${view}`).toContain(
+          `stop-color="${HALCYRA_BEAKS[`halcyra-${c}`].colors[1]}"`,
+        );
+      }
   });
 });
