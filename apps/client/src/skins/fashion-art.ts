@@ -76,7 +76,7 @@ const retint = (
     Math.max(0.04, Math.min(0.97, l + lift)),
   );
 };
-type Tint = {
+export type Tint = {
   hue: number;
   mix: number;
   sat: number;
@@ -106,6 +106,19 @@ const TINTS: Record<FashionCollection, Tint> = {
 const tinted = (id: CharacterId, collection: FashionCollection): Palette => {
   const base = creaturePalette[id],
     t = TINTS[collection];
+  const tone = (hex: string, lift: number) =>
+    retint(hex, t.hue, t.mix, t.sat, lift);
+  return {
+    light: tone(base.light, t.lift[0]),
+    mid: tone(base.mid, t.lift[1]),
+    dark: tone(base.dark, t.lift[2]),
+    glow: base.glow,
+    accent: tone(base.accent, 0),
+  };
+};
+/** A champion's palette moved toward a tint (Legendary collections use it). */
+export const tintPalette = (id: CharacterId, t: Tint): Palette => {
+  const base = creaturePalette[id];
   const tone = (hex: string, lift: number) =>
     retint(hex, t.hue, t.mix, t.sat, lift);
   return {
