@@ -197,7 +197,9 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
       k.put("body", k.path(`M${px - 4} ${k.T + 9}h8l-1.4 6h-5.2Z`, "#b85a3a", k.ink, 0.5) + k.line(`M${px} ${k.T + 9}v-4`, "#3f8a4f", 1) +
         k.lume("pulse", k.path(`M${px} ${k.T + 5}q-4 -1 -4 -4q3 0 4 4Z M${px} ${k.T + 5}q4 -1 4 -4q-3 0 -4 4Z`, "#b6ff4f", k.ink, 0.4), 0, "#b6ff4f"));
     }
-    k.put("flame", hatShape(k, 30, 14, k.ht + 18, "#e8c88a", "#e8c88a", 1.7) + k.line(`M${k.hx + k.side * 2 - 18} ${k.ht + 14}Q${k.hx} ${k.ht + 11} ${k.hx + k.side * 2 + 18} ${k.ht + 14}`, "#c8323a", 2));
+    // The straw hat sits up on the crown, clear of the brows.
+    const hy = k.ht + 4;
+    k.put("flame", hatShape(k, 30, 16, hy, "#e8c88a", "#e8c88a", 1.7) + k.line(`M${k.hx + k.side * 2 - 18} ${hy - 4}Q${k.hx} ${hy - 7} ${k.hx + k.side * 2 + 18} ${hy - 4}`, "#c8323a", 2));
   },
   // Mystery Club: a checked deerstalker and a magnifying glass on a cord
   // whose lens catches the light.
