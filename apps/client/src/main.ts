@@ -215,10 +215,8 @@ import {
   rushGoals,
   EX,
   MUTATORS,
-  MUTATOR_IDS,
   MUTATOR_RULES,
   roundsNeeded,
-  type MutatorId,
   RULES,
   STATUS_RULES,
   ULT_SLOT,
@@ -1404,7 +1402,6 @@ function roomData(watch: boolean): RoomData {
   const players = s.players.filter((p) => isRaider(p));
   const hostId = players[0]?.id;
   const me = players.find((p) => p.id === myId);
-  const on = new Set(s.mutators ?? []);
   return {
     mode,
     watch,
@@ -1433,12 +1430,6 @@ function roomData(watch: boolean): RoomData {
       };
     }),
     host: !watch && hostId === myId,
-    rules: MUTATOR_IDS.map((m) => ({
-      id: m,
-      name: MUTATORS[m].name,
-      text: MUTATORS[m].description,
-      on: on.has(m),
-    })),
     arcade: s.arcade
       ? {
           name: ARCADE_EVENTS[s.arcade.id].name,
@@ -1526,7 +1517,7 @@ function renderRoom(watch: boolean) {
     }
   }
 }
-/** Clicks on the seats column: invite, teams, shuffle, party rules. */
+/** Clicks on the seats column: invite, teams, shuffle. */
 function onRoomClick(event: MouseEvent) {
   const t = (event.target as Element).closest<HTMLElement>("button");
   if (!t || t.closest(".ui-panel-host") || (t as HTMLButtonElement).disabled)
@@ -1536,13 +1527,7 @@ function onRoomClick(event: MouseEvent) {
   if (d.roomInvite !== undefined) void accountsUI.showFriends();
   else if (d.team !== undefined) void request("team", { team: Number(d.team) });
   else if (d.roomShuffle !== undefined) void request("shuffle");
-  else if (d.mutator) {
-    const on = new Set(state?.mutators ?? []);
-    const id = d.mutator as MutatorId;
-    if (on.has(id)) on.delete(id);
-    else on.add(id);
-    void request("mutators", { ids: [...on] });
-  } else if (t.id === "stop-watching") void stopWatching();
+  else if (t.id === "stop-watching") void stopWatching();
 }
 /** Redraw the room's seats and picker in place. */
 function refreshRoom() {
@@ -2088,20 +2073,20 @@ async function stopWatching(notice?: string) {
   if (notice) toast(notice);
 }
 /** The side panel while watching a room's lobby. */
-/** Turbo party rule: skills recharge faster (for the cooldown displays). */
+/** Turbo (an arcade week's rule): skills recharge faster (cooldown displays). */
 function cooldownScale() {
   return state?.mutators?.includes("turbo") ? MUTATOR_RULES.turboCooldown : 1;
 }
-/** "two" / "three": round wins needed under this room's party rules. */
+/** "two" / "three": round wins needed under this room's rules (arcade). */
 function roundWord() {
   const n = roundsNeeded(state?.mutators);
   return ["zero", "one", "two", "three", "four"][n] ?? String(n);
 }
-/** Party rules on the briefing card, if any. */
+/** An arcade week's rules on the briefing card, if any. */
 function partyRulesNote() {
   const on = state?.mutators ?? [];
   return on.length
-    ? `<p class="party-note"><b>Party rules:</b> ${on.map((m) => escape(MUTATORS[m].name)).join(" · ")}</p>`
+    ? `<p class="party-note"><b>Event rules:</b> ${on.map((m) => escape(MUTATORS[m].name)).join(" · ")}</p>`
     : "";
 }
 type BotLevel = "easy" | "normal" | "hard";

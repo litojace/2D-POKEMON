@@ -119,7 +119,6 @@ it("keeps private weekly rules fixed for both players and separate from regular 
     arcade: weekly.id,
   });
   await emit(peer, "join", { name: "Peer", code: r.code });
-  expect((await emit(host, "mutators", { ids: [] })).ok).toBe(false);
   await emit(host, "ready");
   await emit(peer, "ready");
   const a = server!.rooms.get(r.code!) as ArcadeArena;
