@@ -241,6 +241,8 @@ it("keeps every champion skin equippable through its separate champion slot", as
     "20261118140000_hon_viet.sql",
     // Hero Squad (Epic).
     "20261118160000_hero_squad.sql",
+    // Dream Carnival retired.
+    "20261118170000_retire_dream_carnival.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   await login(admin);

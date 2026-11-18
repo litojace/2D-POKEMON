@@ -10,7 +10,6 @@ Six collections add 108 champion skins: three Rare and three Epic for each of th
 | Moonlit Tea | Rare / 1,500 | A wrapped kimono with long furisode sleeves, a wide obi whose butterfly bow fills the back, a kanzashi hairpin with dangling blossoms; a short petal dash trail |
 | Astral Court | Rare / 1,500 | A long gold-trimmed velvet robe, a starry scalloped shoulder mantle with gold epaulettes, a floating star circlet; a short star trail, no idle effect |
 | Abyssal Expedition | Epic / 3,500 | Independent pressure-suit construction, glass helmets, gauges, tanks and individual dive equipment; a small glass glint and bubble dash trail |
-| Dream Carnival | Epic / 3,500 | Independent stagewear, masks, personal headpieces and ruffs; a small glint and confetti dash trail |
 | Nova Vanguard | Legendary / 5,500 | Original hero suits, individual emblems and joint-mounted equipment; a signature effect, its own hero landing and victory, and a short movement trail |
 | Hero Squad | Epic / 3,500 | An original hero per champion with its own powers on show; a glowing chest emblem, lit gear, a star dash trail |
 | Hồn Việt | Legendary / 5,500 | A figure of Vietnamese heritage per champion in full costume with props of its story; glowing embroidery and lanterns, a drum landing, a lantern victory, a motif per champion and a petal trail |
@@ -52,10 +51,12 @@ Epic equipment replaces conflicting default props, including Voltkit's goggles,
 Tidefin's bandana and Sunbara's head ornament and towel. Cindrake has one
 integrated crest per outfit. Epic collars and ruffs sit on the body behind the
 head, so they do not cover beaks or faces. Organic ears, cheek fur and Halcyra's
-beak remain intact. Carnival uses individually authored body colors distinct from the defaults,
-paired with one cheerful costume hue and restrained gold trim. Costume
-panels shade that same hue; gems share gold, avoiding extra rainbow accents.
-Duskveil retains a dark void face.
+beak remain intact.
+
+Dream Carnival, the other Epic collection of that release, was retired on
+18 Nov 2026 (migration `20261118170000_retire_dream_carnival.sql`): its
+skins and set left the Shop, and anyone who had bought one got its price
+back. Its drawing code in `epic-fashion.ts` is no longer reached.
 
 ## Animation and performance
 
@@ -90,8 +91,7 @@ time. Riot's VFX guidance puts readability first, so idle stays quiet.
   rebounds when it bites, and throws a bloom of dust; the chest lid springs
   open past its rest and settles, glows, and doubloons arc up and fall back.
 
-The Abyssal Expedition and Dream Carnival Epics keep the small glint every
-Epic has.
+The Abyssal Expedition Epics keep the small glint every Epic has.
 
 | Champion | Nova Vanguard motif |
 | --- | --- |
@@ -280,10 +280,9 @@ the timings.
 
 ## Full-roster skin sets
 
-Ten sets, one per collection that dresses all 18 champions in one theme at
+Nine sets, one per collection that dresses all 18 champions in one theme at
 one rarity: Wayfarer, Moonlit Tea, Astral Court, Cyber Mecha, Abyssal
-Expedition, Dream Carnival, Nova Vanguard, Sky Pirates, Hồn Việt and Hero
-Squad (`SKIN_BUNDLES` in
+Expedition, Nova Vanguard, Sky Pirates, Hồn Việt and Hero Squad (`SKIN_BUNDLES` in
 `shop.ts`).
 Like the Look sets, a set costs 80% of the skins you don't own yet (the
 database's `arena_item_price`); buying one grants each skin, and a complete

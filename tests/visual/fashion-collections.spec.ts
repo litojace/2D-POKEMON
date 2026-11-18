@@ -33,7 +33,7 @@ for (const size of [
         ["cindrake", "moonlit-tea"],
         ["auralynx", "astral-court"],
         ["tidefin", "abyssal-expedition"],
-        ["terradon", "dream-carnival"],
+        ["terradon", "hon-viet"],
         ["auralynx", "nova-vanguard"],
       ]) {
         await page.click(`.fit-room [data-fit-fighter="${champion}"]`);

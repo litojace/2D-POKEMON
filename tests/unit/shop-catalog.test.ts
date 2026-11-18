@@ -172,7 +172,7 @@ describe("shop catalog", () => {
       expect(missionMigration, m.metric).toContain(`'${m.metric}'`);
   });
 
-  it("has 17 skins for every champion: 3 Common, 5 Rare, 5 Epic, 3 Legendary, 1 Mythical", () => {
+  it("has 16 skins for every champion: 3 Common, 5 Rare, 4 Epic, 3 Legendary, 1 Mythical", () => {
     for (const id of Object.keys(CHARACTERS)) {
       const mine = CHAMPION_SKINS.filter((s) => s.champion === id);
       const count = (r: string) => mine.filter((s) => s.rarity === r).length;
@@ -186,9 +186,9 @@ describe("shop catalog", () => {
           count("mythical"),
         ],
         id,
-      ).toEqual([17, 3, 5, 5, 3, 1]);
+      ).toEqual([16, 3, 5, 4, 3, 1]);
     }
-    expect(CHAMPION_SKINS).toHaveLength(17 * Object.keys(CHARACTERS).length);
+    expect(CHAMPION_SKINS).toHaveLength(16 * Object.keys(CHARACTERS).length);
     // Each champion has one Cyber Mecha Epic.
     for (const id of Object.keys(CHARACTERS))
       expect(
@@ -231,7 +231,7 @@ describe("shop catalog", () => {
 
   it("sells full-roster skin sets: one design, one rarity, every champion, never a Mythical", () => {
     const champions = Object.keys(CHARACTERS).sort();
-    expect(SKIN_BUNDLES).toHaveLength(10);
+    expect(SKIN_BUNDLES).toHaveLength(9);
     for (const b of SKIN_BUNDLES) {
       const skins = b.items.map((id) =>
         CHAMPION_SKINS.find((s) => s.id === id)!,

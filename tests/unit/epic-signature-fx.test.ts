@@ -86,7 +86,7 @@ describe("Legendary signature effects", () => {
           id,
         ).toContain(id);
     for (const s of CHAMPION_SKINS.filter((s) =>
-      ["abyssal-expedition", "dream-carnival"].includes(s.collection as string),
+      ["abyssal-expedition"].includes(s.collection as string),
     ))
       expect(SKIN_ART[s.id].detail, s.id).toBe("glint");
     const sigs = Object.values(EPIC_SIGNATURES);
@@ -97,7 +97,7 @@ describe("Legendary signature effects", () => {
 
   it("gives the new Epics no landing or victory of their own", () => {
     for (const s of CHAMPION_SKINS.filter((s) =>
-      ["abyssal-expedition", "dream-carnival"].includes(s.collection as string),
+      ["abyssal-expedition"].includes(s.collection as string),
     ))
       for (const moment of ["greeting", "celebrating"] as const) {
         const f = frame(3000, false, Math.PI / 2, { [moment]: true });

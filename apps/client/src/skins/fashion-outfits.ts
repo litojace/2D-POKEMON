@@ -17,7 +17,7 @@ export function fashionOutfit(
   p: Palette,
   head: { cx: number; top: number },
 ): [CreaturePart, string][] {
-  if (collection === "abyssal-expedition" || collection === "dream-carnival")
+  if (collection === "abyssal-expedition")
     return epicFashion(id, dir, collection, p, head);
   // Each Rare collection has its own construction (rare-fashion.ts).
   return rareFashion(collection, id, dir, p, head, fashionCut(id, dir, collection)).map(({ part, svg, under }) => [part, (under ? UNDER : "") + svg]);

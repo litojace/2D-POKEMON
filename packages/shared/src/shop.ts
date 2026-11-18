@@ -59,12 +59,6 @@ export const FASHION_COLLECTIONS = {
     description:
       "Pressure suits, glass visors and individual deep-sea equipment",
   },
-  "dream-carnival": {
-    name: "Dream Carnival",
-    rarity: "epic",
-    description:
-      "Sculpted stagewear, personal masks and playful carnival headpieces",
-  },
 } as const;
 export type FashionCollection = keyof typeof FASHION_COLLECTIONS;
 export const FASHION_COLLECTION_IDS = Object.keys(
@@ -78,7 +72,6 @@ export const FASHION_ROSTER = {
     "Yuzu Tea",
     "Storm Astronomer",
     "Arc Diver",
-    "Harlequin Spark",
     "#e9b654",
   ],
   cindrake: [
@@ -86,7 +79,6 @@ export const FASHION_ROSTER = {
     "Hibiscus Tea",
     "Solar Regent",
     "Thermal Vent",
-    "Crimson Fire Dancer",
     "#e77862",
   ],
   tidefin: [
@@ -94,7 +86,6 @@ export const FASHION_ROSTER = {
     "Seafoam Tea",
     "Tidal Astrologer",
     "Reef Submariner",
-    "Pearl Masquerade",
     "#60c7c2",
   ],
   auralynx: [
@@ -102,7 +93,6 @@ export const FASHION_ROSTER = {
     "Lavender Tea",
     "Lunar Paladin",
     "Cryo Naut",
-    "Moonlight Acrobat",
     "#b6a3ef",
   ],
   lumoth: [
@@ -110,7 +100,6 @@ export const FASHION_ROSTER = {
     "Jasmine Tea",
     "Aurora Envoy",
     "Abyssal Lantern",
-    "Ribbonwing Revue",
     "#a6d9a6",
   ],
   mystowl: [
@@ -118,7 +107,6 @@ export const FASHION_ROSTER = {
     "Plum Blossom Tea",
     "Star Archivist",
     "Sonar Owl",
-    "Velvet Ringmaster",
     "#d49ac7",
   ],
   terradon: [
@@ -126,7 +114,6 @@ export const FASHION_ROSTER = {
     "Matcha Tea",
     "World Atlas",
     "Reef Bastion",
-    "Carousel Keeper",
     "#a7be73",
   ],
   duskveil: [
@@ -134,7 +121,6 @@ export const FASHION_ROSTER = {
     "Black Sesame Tea",
     "Eclipse Magister",
     "Diving Bell Wisp",
-    "Midnight Marionette",
     "#9f91d3",
   ],
   coilemur: [
@@ -142,7 +128,6 @@ export const FASHION_ROSTER = {
     "Honey Citrus Tea",
     "Comet Acrobat",
     "Cable Runner",
-    "Hoop Trickster",
     "#eac25e",
   ],
   pyranda: [
@@ -150,7 +135,6 @@ export const FASHION_ROSTER = {
     "Cinnamon Tea",
     "Ember Constellation",
     "Coral Rescuer",
-    "Scarlet Fan Dancer",
     "#de9570",
   ],
   glacelle: [
@@ -158,7 +142,6 @@ export const FASHION_ROSTER = {
     "Blue Peony Tea",
     "Polar Oracle",
     "Bathyal Bell",
-    "Glassbell Ballerina",
     "#99cae8",
   ],
   halcyra: [
@@ -166,7 +149,6 @@ export const FASHION_ROSTER = {
     "Lotus Tea",
     "Celestial Falconer",
     "Current Pilot",
-    "Opera Skydancer",
     "#79c7d8",
   ],
   sunbara: [
@@ -174,7 +156,6 @@ export const FASHION_ROSTER = {
     "Osmanthus Tea",
     "Dawn Consul",
     "Buoy Captain",
-    "Honey Parade",
     "#e8c080",
   ],
   astrabun: [
@@ -182,7 +163,6 @@ export const FASHION_ROSTER = {
     "Sakura Mochi Tea",
     "Moon Princess",
     "Lunar Aquanaut",
-    "Mochi Harlequin",
     "#e5abc9",
   ],
   wombolder: [
@@ -190,7 +170,6 @@ export const FASHION_ROSTER = {
     "Roasted Chestnut Tea",
     "Meteor Sentinel",
     "Trench Miner",
-    "Grand Drum Major",
     "#b7a385",
   ],
   shadopus: [
@@ -198,7 +177,6 @@ export const FASHION_ROSTER = {
     "Indigo Tea",
     "Nebula Illusionist",
     "Nautilus Captain",
-    "Eightfold Jester",
     "#ab91cc",
   ],
   pangrove: [
@@ -206,7 +184,6 @@ export const FASHION_ROSTER = {
     "Bamboo Tea",
     "Verdant Zodiac",
     "Kelp Bulwark",
-    "Verdant Masquerader",
     "#8ec59b",
   ],
   mossloth: [
@@ -214,12 +191,11 @@ export const FASHION_ROSTER = {
     "Chrysanthemum Tea",
     "Dreaming Equinox",
     "Coral Keeper",
-    "Dreamtime Jester",
     "#bac294",
   ],
 } as const satisfies Record<
   CharacterId,
-  readonly [string, string, string, string, string, string]
+  readonly [string, string, string, string, string]
 >;
 
 export const FASHION_SKINS: ChampionSkin[] = (
@@ -1407,7 +1383,6 @@ export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
   "moonlit-tea": 0,
   "astral-court": 0,
   "abyssal-expedition": 1,
-  "dream-carnival": 1,
   candy: 0,
   garden: 0,
   retro: 0,
@@ -1466,7 +1441,6 @@ export const SKIN_SET_COLLECTIONS = [
   "astral-court",
   "cyber",
   "abyssal-expedition",
-  "dream-carnival",
   "nova-vanguard",
   "sky-pirates",
   "hon-viet",
