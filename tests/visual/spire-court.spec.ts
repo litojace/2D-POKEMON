@@ -2033,7 +2033,12 @@ test("zone 4: Snoozaku's Cloud Deck kept to floor 40, painted on floor 39, nothi
       });
       if (cleared) break;
     }
-    await page.waitForTimeout(1500);
+    // While they are open, the next floor's court is painted: waited for
+    // as on floor 29 (a fixed 1.5 s was too short for CI's runner, which
+    // had not drawn a frame on the cleared floor yet, 19 Nov).
+    await expect
+      .poll(async () => (await scene()).floors, { timeout: 30_000 })
+      .toContain("arena-floor-spire-summit-deck:art");
     const ready = (await scene()).floors;
     floorNow = 40;
     await page.evaluate(() => (window as any).__spireStep(3));
@@ -2779,7 +2784,12 @@ test("zone 5: Prismell's Sun Atrium kept to floor 50, painted on floor 49, nothi
       });
       if (cleared) break;
     }
-    await page.waitForTimeout(1500);
+    // While they are open, the next floor's court is painted: waited for
+    // as on floor 29 (a fixed 1.5 s was too short for CI's runner, which
+    // had not drawn a frame on the cleared floor yet, 19 Nov).
+    await expect
+      .poll(async () => (await scene()).floors, { timeout: 30_000 })
+      .toContain("arena-floor-spire-summit-atrium:art");
     const ready = (await scene()).floors;
     floorNow = 50;
     await page.evaluate(() => (window as any).__spireStep(3));
@@ -3482,7 +3492,12 @@ test("zone 6: Lumiwick's Sky Terrace kept to floor 60, painted on floor 59, noth
       });
       if (cleared) break;
     }
-    await page.waitForTimeout(1500);
+    // While they are open, the next floor's court is painted: waited for
+    // as on floor 29 (a fixed 1.5 s was too short for CI's runner, which
+    // had not drawn a frame on the cleared floor yet, 19 Nov).
+    await expect
+      .poll(async () => (await scene()).floors, { timeout: 30_000 })
+      .toContain("arena-floor-spire-summit-terrace:art");
     const ready = (await scene()).floors;
     floorNow = 60;
     await page.evaluate(() => (window as any).__spireStep(3));
@@ -4197,7 +4212,12 @@ for (const size of [
         });
         if (cleared) break;
       }
-      await page.waitForTimeout(1500);
+      // While they are open, the next floor's court is painted: waited for
+      // as on floor 29 (a fixed 1.5 s was too short for CI's runner, which
+      // had not drawn a frame on the cleared floor yet, 19 Nov).
+      await expect
+        .poll(async () => (await scene()).floors, { timeout: 30_000 })
+        .toContain("arena-floor-spire-summit-ring:art");
       const ready = (await scene()).floors;
       await shot7(page, `z7-real-floor-69-cleared-${size.name}`);
       floorNow = 70;
