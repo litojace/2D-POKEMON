@@ -124,7 +124,20 @@ and `RAID_DAZE_BY` is unchanged. In raids only a level with `raidDazeBy`
 Checked on line-ups the tuning never played (`FRESH_BASE=7000`,
 `tune-teams.ts 1 1000 --fresh`, 1,000 matches per difficulty):
 
-TEAMS_TABLE_PLACEHOLDER
+| Mode                  | Fair  | Old bots      | New bots, old factors | New bots, retuned |
+| --------------------- | ----- | ------------- | --------------------- | ----------------- |
+| 2v2                   | 50%   | 45.2% – 53.0% | 41.0% – 61.1%         | 44.0% – 54.8%     |
+| 4-player free-for-all | 25%   | 22.4% – 29.8% | 17.9% – 31.5%         | 21.1% – 28.4%     |
+| 3-player free-for-all | 33.3% | -             | 27.9% – 39.5%         | (not retuned)     |
+
+Focus fire moved 2v2 the most (Auralynx, Terradon and Wombolder gained ten
+points, Tidefin, Lumoth and Halcyra lost five to ten). `TEAM_TUNING` was
+retuned with four rounds of 1,000 fresh line-ups per difficulty
+(`FRESH_BASE` 5010–5040, one round per call) and the last three rounds'
+factors averaged; `FFA_TUNING` with three rounds, starting from the check's
+suggestion. Three-player free-for-all stayed inside its earlier range
+(27.5% – 40.5%), so `FFA_THREE_TUNING` is unchanged. (The 2v2 "new bots,
+old factors" check ran before the expert's counterplay was added.)
 
 ## Tools
 
