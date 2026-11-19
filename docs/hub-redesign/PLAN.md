@@ -1,5 +1,9 @@
 # Hub redesign: implementation plan and decisions
 
+> **The Farm, the Bistro and Gold Leaves were removed in Nov 2026**
+> (migration `20261119170000_remove_farm_bistro_leaves`). Those parts of
+> this plan are kept as history; they no longer describe the game.
+
 The design handoff (README, NUMBERS, prototype) is in this folder via pull
 request #5. This file records what the owner decided before implementation
 started, and the order of work. Update it when a decision changes.

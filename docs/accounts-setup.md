@@ -102,7 +102,7 @@ To hide it again, remove the variable (or set it to anything but `on`) and redep
 
 Players delete their own account from their player card: **Delete account** at the bottom, then type `DELETE`. Guests can too. It needs [migration 109](../supabase/migrations/109_delete_my_account.sql) (after 108). The App Store requires it for any app where people make accounts (App Review Guideline 5.1.1(v)).
 
-- The login and everything the player owns go at once: profile, records, titles, coins, skins, farm, bistro, friends, preferences. Matches and raids they played stay for the other players, with the deleted player shown as "Deleted player" and no account id. Reports they sent stay for the admins without their name.
+- The login and everything the player owns go at once: profile, records, titles, coins, skins, friends, preferences. Matches and raids they played stay for the other players, with the deleted player shown as "Deleted player" and no account id. Reports they sent stay for the admins without their name.
 - Their open games drop them: the game server checks the login again straight away, and the client signs out.
 - Administrators can't delete themselves here (their audit entries point at them, and it would lock the dashboard). Remove an admin from `arena_admins` in SQL first.
 - **Sign in with Apple:** Apple also asks apps to revoke the player's Apple tokens when the account is deleted. Supabase doesn't keep the Apple token needed for that, so the game server keeps its own when a player signs in with Apple in the iPhone app ([migration 111](../supabase/migrations/111_apple_tokens.sql)), and revokes it before deleting the account; see [the iPhone app](ios-app.md#account-deletion-and-apple). Players who only signed in with Apple on the website have no kept token: the deletion still goes through (as Apple asks), and the game tells them how to remove Element Arena under **Sign in with Apple** in their Apple Account settings.
@@ -116,7 +116,7 @@ Players see each other's names and meet strangers in the Plaza, so the App Store
 
 **Blocking.** Tap someone in the Plaza for **Block** (and **Report**), or use **Block** on a Recent player or in a friend's options (Friends sheet). Blocking asks first, then:
 
-- ends the friendship and any friend requests both ways, so farm and bistro visits, room invites and party invites stop too (those are for friends);
+- ends the friendship and any friend requests both ways, so room invites and party invites stop too (those are for friends);
 - drops their future friend requests without telling them; you're asked to unblock before sending one yourself;
 - hides them from your Plaza (you don't see them, can't tap them, and don't see their emotes).
 
@@ -186,33 +186,9 @@ Run [065_ratings_safe_updates.sql](../supabase/migrations/065_ratings_safe_updat
 
 Run [066_display_name_changes.sql](../supabase/migrations/066_display_name_changes.sql) after 065. Players get _Change name_ on their player card: the first change at any time, then once every 14 days on the database's clock. It adds `arena_profiles.name_changed_at` and two functions (`arena_name_status`, `arena_change_name`); an admin's rename (Admin → Players) doesn't count against the 14 days.
 
-### The Element Bistro
+### The Farm, the Bistro and Gold Leaves (removed)
 
-Run [068_bistro.sql](../supabase/migrations/068_bistro.sql) after 066 (it does not need 067). The final query should return three **true** columns. It adds the Bistro tab's restaurant on the server: the dish and furniture catalog (`arena_bistro_dishes`, `arena_bistro_kinds`, matching `packages/shared/src/bistro.ts`), each player's bistro (coins, level, rating, styles, upgrades, furniture, stoves, counter and staff), `arena_bistro()` (opens it at the server's time and works the time away: cooks cook and, after 60 s or more away, guests come for up to the shift's length) and `arena_bistro_act(request, actions)` for every change, with a request id so a retried request never applies twice. Sales from the client need a serving on the counter and are limited by the seats; prices, today's special and rush hours are the server's. Bistro coins are separate from coins and Gold Leaves: 100 trade for 20 Gold Leaves, up to 600 leaves a Pacific day after [the trade-cap migration](../supabase/migrations/20261116150001_raise_currency_trade_caps.sql) (300 before it). Friends can visit (`arena_bistro_friends`, `arena_bistro_friend`), eat there once a day (the owner earns the dish's price and a 50% tip) and like it once a week (`arena_bistro_friend_act`). No new secrets are needed.
-
-Then run [070_bistro_popularity.sql](../supabase/migrations/070_bistro_popularity.sql) (after 068). The final query should return two **true** columns. It adds the Bistro's popularity (0–50, from the rating, the decor, this week's likes and today's friends' meals: it sets how often guests come) and the floor plan's walks (`arena_bistro_walks`: steps from the door and from the counter to every seat), so the time away serves guests at the pace the floor plan allows. The rules match `packages/shared/src/bistro.ts`; see [docs/bistro-gdd.md](bistro-gdd.md).
-
-Then run [073_bistro_staff.sql](../supabase/migrations/073_bistro_staff.sql) (after 070; it does not need 071 or 072). The final query should return two **true** columns. It adds the staff's energy (worn down by work, back with a staff meal or the rest after a shift), janitors and the litter they sweep, the Staff Corner, and friends hired as staff (`friend_id`, with a daily XP payday in `arena_bistro_paydays`).
-
-Then run [074_bistro_dishes.sql](../supabase/migrations/074_bistro_dishes.sql) (after 073). The final query should return two **true** columns. It adds dish levels (`arena_bistro_dish_lv`), the ingredient pantry (`arena_bistro_pantry`), the Market (four ingredients every four hours, 5 of each a Pacific day) and bringing plain crops from the Farm's barn into the pantry (three for one, 30 a day).
-
-Then run [100_bistro_long_term.sql](../supabase/migrations/100_bistro_long_term.sql) (after 074). The final query should return two **true** columns. It slows guests while you are away after two and four hours, adds six dishes (levels 10 to 26, 14 in all), two more expansions (up to 21 × 14) and staff levels up to 10, catering orders (`arena_bistro_orders`), regulars (`arena_bistro_regulars`, `arena_bistro_regular_steps`), the weekly friend league (`arena_bistro_week`, `arena_bistro_league_claims`), event tokens and decor, and branches with stars (`stars` on `arena_bistros`).
-
-Then run [101_bistro_cooks_in_step.sql](../supabase/migrations/101_bistro_cooks_in_step.sql) (after 100). The final query should return **true**. While you play, the server now gives the cooks their turn at the time of each request (as the game shows them), not at the request before, so a pot a cook has just started isn't taken back by the next answer.
-
-Then run [102_bistro_orders_aside.sql](../supabase/migrations/102_bistro_orders_aside.sql) (after 101). The final query should return **true**. Catering orders fill as you go: delivering puts aside what the order still needs from the counter (guests can't eat it, `filled` on `arena_bistro_orders`), and it pays when complete; a skipped or expired order gives back what was put aside.
-
-Then run [103_bistro_stove_shop.sql](../supabase/migrations/103_bistro_stove_shop.sql) (after 102). The final query should return **true**. Stoves are bought in the Shop (Clay Stove, Steel Range +15% from level 8, Dragon Oven +30% from level 16; `arena_bistro_stove_store`) and placed on the kitchen's back wall (`x` and `model` on `arena_bistro_stoves`). The kitchen gains a column with each room expansion (4 stove spots at first, 9 at the biggest); furniture standing in an expanded room's kitchen goes into storage.
-
-Then run [104_bistro_economy_items.sql](../supabase/migrations/104_bistro_economy_items.sql) (after 103). The final query should return **true**. It rebalances the Bistro's prices and XP curve and adds 24 items with perks: `seat`, `tip`, `patience`, `speed`, `vip` and `rest` columns on `arena_bistro_kinds`, `arena_bistro_perk()`, seats by role, a tip perk on sales and the waiters' speed perk while away.
-
-Then run [105_bistro_all_recipes.sql](../supabase/migrations/105_bistro_all_recipes.sql) (after 104). The final query should return **true**. It gives the six dishes of migration 100 their recipes in `arena_bistro_recipe()`: without them a level-up of those dishes changed nothing while the game showed it.
-
-Then run [106_bistro_fast_catch_up.sql](../supabase/migrations/106_bistro_fast_catch_up.sql) (after 105). The final query should return **true**. It works out the time away in one-minute steps and serves a step's guests at once, so a big bistro left for a full shift catches up in a few seconds: before, it could take longer than the 8 seconds a player's request may run, and that bistro could not open again.
-
-Then run [107_bistro_cook_times.sql](../supabase/migrations/107_bistro_cook_times.sql) (after 106). The final query should return **true**. A cook's next batch starts the moment the last one is done, on the server as on the screen (before, the server started it only at the next request, so each answer set the batch back to the start); an action may carry when it was done (`at`), and a recent one runs at that time; the cooks look again after each action.
-
-Then run [118_bistro_held_orders.sql](../supabase/migrations/118_bistro_held_orders.sql) (after 117). The final query should return **true**. A guest's order now leaves the counter on the server when it is made (`hold`), not when the guest pays: before, the server's counter still held it for a meal, and refused a dish from a stove ("The counter is full") while the counter on screen had room. `arena_bistros.held` keeps those servings; `unhold` puts one back; `serve` with `held: true` pays with it.
+The Elemental Farm ([037](../supabase/migrations/037_farm.sql) and the `*farm*` migrations after it), the Element Bistro ([068](../supabase/migrations/068_bistro.sql) and the `*bistro*` migrations after it) and Gold Leaves ([036](../supabase/migrations/036_gold_leaves.sql)) were removed in Nov 2026. Their migrations still run in name order on a new database, then [20261119170000_remove_farm_bistro_leaves.sql](../supabase/migrations/20261119170000_remove_farm_bistro_leaves.sql) drops their tables and functions. It first turns every Gold Leaf balance into shop coins once, at the old rate (`floor(balance × 5 / 100)`, coin ledger reason `leaf-retire`); Bistro coins are deleted with the Bistro, without conversion. Earned farm titles stay with their owners.
 
 ### Unlimited coins for admin testing
 

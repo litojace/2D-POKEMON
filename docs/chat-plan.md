@@ -12,7 +12,7 @@ phase.
 | ------- | ----------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------- | ---------------------------- |
 | party   | The Lobby party (up to 4), wherever its members are               | Accounts, chat set to "free" | Yes                                                                     | Server memory, last 50 lines |
 | room    | A private room (1v1, 2v2, FFA, raid), from joining to the results | Before and after the battle  | Yes; in a battle teammates see phrases and calls, opponents only emotes | Server memory                |
-| place   | Everyone in the same Plaza copy; everyone on a Farm               | No (strangers)               | Yes, as bubbles over heads                                              | Server memory                |
+| place   | Everyone in the same Plaza copy                                   | No (strangers)               | Yes, as bubbles over heads                                              | Server memory                |
 
 No world or global chat, no guild chat, no voice. Guests use quick chat
 only. A player's chat setting is free, quick (quick chat only) or off.
@@ -22,7 +22,8 @@ only. A player's chat setting is free, quick (quick chat only) or off.
 `packages/shared/src/chat.ts` holds the catalogue. Clients send an id
 (`gg`, `wave`), never text, so quick lines need no filter.
 
-- Emotes (10): the Plaza's and the Farm's together.
+- Emotes (10): the Plaza's and the Farm's together (the Farm was removed
+  in Nov 2026; the emotes stay).
 - Phrases: Hi!, GG, Thanks!, Well played!, Nice!, Oops, Ready!, Let's go!,
   One more?, Wait for me, BRB.
 - Calls, in a battle, for teammates: Attack!, Fall back, Help me, On my way,
@@ -54,8 +55,9 @@ second, and the same line not again within 30 s.
 
 ## Phone layout
 
-The chat button sits in the hub header (Lobby, Plaza, Farm, Bistro), 12 px
-right of the profile chip. The gap there is 64 px at 667×375, 92 px at
+The chat button sits in the hub header (Lobby, Plaza), 12 px
+right of the profile chip. With the four tabs of mid-Nov 2026 (Farm and
+Bistro included), the gap there was 64 px at 667×375, 92 px at
 844×390, 84 px at 852×393 and 124 px at 932×430. The chat opens as a drawer
 from the left, `min(360px, 46vw)` wide. In a battle there is no drawer: a
 quick-chat button sits top left, opposite the settings button.
@@ -80,7 +82,8 @@ quick-chat button sits top left, opposite the settings button.
 1. Shared catalogue and filter (this file, `chat.ts`, `chat-filter.ts`).
 2. Server: `ChatHub` for party and room channels.
 3. Client: the chat button and drawer.
-4. Quick chat on the Plaza and the Farm; their emote buttons go.
+4. Quick chat on the Plaza and the Farm (since removed); their emote
+   buttons go.
 5. Quick chat in battles; the raid's team-signals button goes.
 6. Reporting, auto-mute, chat bans, the chat setting, migration (not
    applied until the owner says so), privacy and support pages.

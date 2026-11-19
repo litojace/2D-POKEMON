@@ -44,8 +44,8 @@ import {
 /**
  * The new Plaza (hub redesign phase 3): who is where, the pitch bots, the
  * ball, the Orb Shower, lap times and runway cheers. Pure state (no sockets),
- * so it can be tested directly; server.ts wires it to connections and pays
- * Gold Leaves for what `step` reports.
+ * so it can be tested directly; server.ts wires it to connections, and
+ * the database records quests (paid in coins) for what `step` reports.
  */
 interface Visitor {
   key: string;
@@ -318,7 +318,7 @@ export class PlazaWorld {
       if (v.accountId === accountId) this.leave(k, now);
     let plaza = 1;
     while (this.population(plaza) >= PLAZA.capacity) plaza++;
-    // Back within a few minutes (a look at the Lobby or the Bistro, a match):
+    // Back within a few minutes (a look at the Lobby, a match):
     // you stand where you left; otherwise by the fountain.
     const back = this.lastSpot.get(accountId);
     this.lastSpot.delete(accountId);
@@ -545,7 +545,7 @@ export class PlazaWorld {
     const v = this.visitors.get(key);
     return !!v && plazaSpotAt(v.body.x, v.body.y, 40)?.id === spot;
   }
-  /** Volt Boba, after the leaves were paid. */
+  /** Volt Boba (free): the speed boost. */
   boost(key: string) {
     const v = this.visitors.get(key);
     if (!v) return false;

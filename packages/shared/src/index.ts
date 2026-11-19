@@ -3221,8 +3221,6 @@ export interface Reply {
   me?: number;
   /** Plaza joins: which Plaza copy (with `me`). */
   plaza?: number;
-  /** Gold Leaves left after a Plaza purchase. */
-  leaves?: number;
   /** A Plaza treat: which one was thrown (PLAZA_TREATS), and how many are left. */
   treat?: string;
   treats?: number;

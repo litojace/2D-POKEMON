@@ -3059,18 +3059,18 @@ export function createArenaServer(
       if (!token || bobaPending) return fail(cb, "One moment…");
       bobaPending = true;
       try {
-        // A fresh id per purchase: a retry of this request can't charge twice.
-        const paid = (await accounts.rpc(token, "arena_plaza_boba", {
+        // Free since 20261119170000_remove_farm_bistro_leaves; the database
+        // still checks the player.
+        const ok = (await accounts.rpc(token, "arena_plaza_boba", {
           p_ref: randomUUID(),
-        })) as { ok?: boolean; leaves?: number } | null;
-        if (!paid?.ok)
+        })) as { ok?: boolean } | null;
+        if (!ok?.ok)
           return reply(cb, {
             ok: false,
-            error: "Not enough Gold Leaves.",
-            leaves: paid?.leaves,
+            error: "Volt Boba is closed right now.",
           });
         plaza.boost(socket.id);
-        reply(cb, { ok: true, leaves: paid.leaves });
+        reply(cb, { ok: true });
       } catch (error) {
         fail(
           cb,

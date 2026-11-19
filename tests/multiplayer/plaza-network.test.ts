@@ -40,17 +40,15 @@ const setup = async () => {
     records: PlazaRecord[] = [],
     bobaRefs: string[] = [],
     treatRefs: string[] = [];
-  let leaves = 25,
-    treats = 3;
+  let treats = 3;
   accounts.provider.rpc = async (_token, name, args) => {
     if (name === "arena_journey") return { xp: 900 };
     if (name === "arena_my_looks")
       return { voltkit: { skin: "galaxy-voltkit", stage: 1 } };
+    // Volt Boba is free: the database only checks the player.
     if (name === "arena_plaza_boba") {
       bobaRefs.push(String(args.p_ref));
-      if (leaves < 10) return { ok: false, leaves };
-      leaves -= 10;
-      return { ok: true, leaves };
+      return { ok: true };
     }
     // Treats: the database counts today's free allowance down.
     if (name === "arena_plaza_treats") return treats;
@@ -69,7 +67,7 @@ const setup = async () => {
   };
   accounts.provider.recordPlaza = async (event) => {
     records.push(event);
-    return { leaves, orbsToday: 0 } as unknown as PlazaProgress;
+    return { orbsToday: 0 } as unknown as PlazaProgress;
   };
   server = createArenaServer({ accounts: accounts.provider, autoTick: false });
   await new Promise<void>((r) => server!.http.listen(0, "127.0.0.1", r));
@@ -166,7 +164,7 @@ it("lets signed-in players walk the Plaza together and see each other", async ()
   );
 });
 
-it("checks the Photo Spot and the boba truck by the server's position, and charges boba once", async () => {
+it("checks the Photo Spot and the boba truck by the server's position, and asks for boba once", async () => {
   const { connect, ticks, records, bobaRefs } = await setup();
   const ann = await connect();
   await emit(ann.socket, "plaza-join", { character: "voltkit" });
@@ -188,10 +186,9 @@ it("checks the Photo Spot and the boba truck by the server's position, and charg
   teleport(ann.socket, cafe.x, cafe.y);
   expect(await emit(ann.socket, "plaza-act", { spot: "cafe" })).toEqual({
     ok: true,
-    leaves: 15,
   });
   expect(server!.plaza.boosted(ann.socket.id!)).toBe(true);
-  // Still boosted: no second charge.
+  // Still boosted: no second boba.
   expect((await emit(ann.socket, "plaza-act", { spot: "cafe" })).ok).toBe(
     false,
   );
