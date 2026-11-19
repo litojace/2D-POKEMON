@@ -35,14 +35,28 @@ export const PLAZA = {
   emoteSeconds: 2.6,
   /** Volt Boba: Gold Leaves, speed and how long. */
   boba: { leaves: 10, speed: 1.3, seconds: 30 },
-  /** Treats (migration 049): at most one throw this often (seconds). */
+  /** Treats: at most one throw this often (seconds). */
   treatSeconds: 1.5,
+  /** Free treats a Pacific day (migration 20261119170000_remove_farm). */
+  treatsDaily: 10,
 } as const;
+/** The treats, thrown in this order through the day (the database's list). */
+export const PLAZA_TREATS = [
+  { id: "candy", name: "a candy", color: "#ff6fae" },
+  { id: "cupcake", name: "a cupcake", color: "#ffb3d1" },
+  { id: "donut", name: "a donut", color: "#ffb04a" },
+  { id: "lollipop", name: "a lollipop", color: "#8fd7ff" },
+  { id: "cookie", name: "a cookie", color: "#d9a066" },
+] as const;
+export type PlazaTreatId = (typeof PLAZA_TREATS)[number]["id"];
+export const PLAZA_TREAT_BY_ID: Record<string, (typeof PLAZA_TREATS)[number]> =
+  Object.fromEntries(PLAZA_TREATS.map((t) => [t.id, t]));
 /** A treat thrown in the Plaza, sent to everyone in that Plaza copy. */
 export interface PlazaTreat {
   /** The thrower's walker id. */
   id: number;
-  crop: string;
+  /** Which treat (PLAZA_TREATS). */
+  treat: string;
   x: number;
   y: number;
 }
@@ -1056,14 +1070,6 @@ export const PLAZA_SPOTS = [
     r: 110,
     label: "Leaderboard",
     icon: "trophy",
-  },
-  {
-    id: "gate",
-    x: PLAZA_GATE.x,
-    y: PLAZA_GATE.y - 40,
-    r: 110,
-    label: "Enter the Farm",
-    icon: "wheat",
   },
 ] as const;
 export type PlazaSpotId = (typeof PLAZA_SPOTS)[number]["id"];

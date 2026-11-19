@@ -225,28 +225,15 @@ it("Nearby on the Plaza: quick chat only, to everyone in the copy, with the Plaz
   expect(plazaWorld.visitors.get(f.a.s.id!)?.emote).toBe(1); // 👋 is first
 });
 
-it("Nearby on a farm: your own or a friend's, never a stranger's", async () => {
+it("Nearby is only the Plaza now: there is no farm channel", async () => {
   const f = await setup();
-  expect(
-    (await request(f.a.s, "chat-farm", { owner: f.lead.account.id })).ok,
-  ).toBe(true);
-  expect(
-    (await request(f.b.s, "chat-farm", { owner: f.lead.account.id })).ok,
-  ).toBe(true);
-  expect(
-    await request(f.x.s, "chat-farm", { owner: f.lead.account.id }),
-  ).toEqual({ ok: false, error: "Only friends can visit." });
-  expect(
-    await request(f.b.s, "chat-send", { channel: "place", quick: "party" }),
-  ).toEqual({ ok: true });
-  await settle();
-  expect(f.a.heard.map((l) => l.quick)).toEqual(["party"]);
-  expect(f.x.heard).toEqual([]);
-  // Leaving the farm leaves its chat.
-  await request(f.b.s, "chat-farm", { owner: null });
+  // Away from the Plaza, Nearby has no one to reach (the Farm's channel,
+  // chat-farm, went with the Farm in 20261119170000_remove_farm).
   expect(
     (await request(f.b.s, "chat-send", { channel: "place", quick: "wave" })).ok,
   ).toBe(false);
+  await settle();
+  expect(f.a.heard).toEqual([]);
 });
 
 it("a report carries the lines the server kept, never ones the reporter makes up", async () => {

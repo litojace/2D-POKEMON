@@ -3223,8 +3223,8 @@ export interface Reply {
   plaza?: number;
   /** Gold Leaves left after a Plaza purchase. */
   leaves?: number;
-  /** A Plaza treat: the crop thrown, and the treats you have left. */
-  crop?: string;
+  /** A Plaza treat: which one was thrown (PLAZA_TREATS), and how many are left. */
+  treat?: string;
   treats?: number;
   /** A message to a friend: kept (read later), or only shown live. */
   kept?: boolean;

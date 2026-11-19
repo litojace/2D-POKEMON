@@ -318,7 +318,7 @@ export class PlazaWorld {
       if (v.accountId === accountId) this.leave(k, now);
     let plaza = 1;
     while (this.population(plaza) >= PLAZA.capacity) plaza++;
-    // Back within a few minutes (a look at the Lobby or the Farm, a match):
+    // Back within a few minutes (a look at the Lobby or the Bistro, a match):
     // you stand where you left; otherwise by the fountain.
     const back = this.lastSpot.get(accountId);
     this.lastSpot.delete(accountId);
@@ -530,12 +530,12 @@ export class PlazaWorld {
     return true;
   }
   /** A treat leaves `key`'s hands: where, for everyone in that Plaza copy. */
-  treat(key: string, crop: string): PlazaTreat | undefined {
+  treat(key: string, treat: string): PlazaTreat | undefined {
     const v = this.visitors.get(key);
     if (!v) return undefined;
     return {
       id: v.profile.id,
-      crop,
+      treat,
       x: Math.round(v.body.x),
       y: Math.round(v.body.y),
     };

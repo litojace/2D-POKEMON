@@ -52,18 +52,18 @@ const setup = async () => {
       leaves -= 10;
       return { ok: true, leaves };
     }
-    // Treats (migration 049): the database takes a regular crop from the barn.
+    // Treats: the database counts today's free allowance down.
     if (name === "arena_plaza_treats") return treats;
     if (name === "arena_plaza_treat") {
       treatRefs.push(String(args.p_ref));
       if (treats < 1)
         return {
           ok: false,
-          error: "No crops to throw yet. Harvest some on the Farm.",
+          error: "No treats left today. More tomorrow!",
           left: 0,
         };
       treats--;
-      return { ok: true, crop: "wheat", left: treats };
+      return { ok: true, treat: "candy", left: treats };
     }
     return {};
   };
@@ -219,7 +219,7 @@ it("takes you out of the Plaza when you open a room", async () => {
   ).toBe(false);
 });
 
-it("throws a treat from your barn for everyone in your Plaza, one at a time", async () => {
+it("throws one of today's free treats for everyone in your Plaza, one at a time", async () => {
   const { connect, treatRefs } = await setup();
   const ann = await connect(),
     ben = await connect();
@@ -236,12 +236,12 @@ it("throws a treat from your barn for everyone in your Plaza, one at a time", as
   teleport(ann.socket, PLAZA_SPAWN.x, PLAZA_SPAWN.y);
   expect(await emit(ann.socket, "plaza-treat")).toEqual({
     ok: true,
-    crop: "wheat",
+    treat: "candy",
     treats: 2,
   });
   await settle();
   // Everyone in that Plaza sees it, where the server has the thrower.
-  const thrown = { id: joined.me, crop: "wheat", ...PLAZA_SPAWN };
+  const thrown = { id: joined.me, treat: "candy", ...PLAZA_SPAWN };
   expect(ann.seen.treats).toEqual([thrown]);
   expect(ben.seen.treats).toEqual([thrown]);
   // Too soon: refused before the database is asked.
@@ -257,14 +257,14 @@ it("throws a treat from your barn for everyone in your Plaza, one at a time", as
   await pause();
   expect((await emit(ann.socket, "plaza-treat")).treats).toBe(0);
   await pause();
-  // Out of crops: the database says so, and nobody sees a throw.
+  // None left today: the database says so, and nobody sees a throw.
   expect(await emit(ann.socket, "plaza-treat")).toEqual({
     ok: false,
-    error: "No crops to throw yet. Harvest some on the Farm.",
+    error: "No treats left today. More tomorrow!",
     treats: 0,
   });
   await settle();
   expect(ben.seen.treats).toHaveLength(3);
-  // A fresh id per throw: a retried request can't take two crops.
+  // A fresh id per throw: a retried request can't take two treats.
   expect(new Set(treatRefs).size).toBe(4);
 }, 15000);

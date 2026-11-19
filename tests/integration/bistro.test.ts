@@ -12,7 +12,6 @@ import {
   SHIFT_PRICES,
   STOVE_BY_MODEL,
   EXPAND_STEPS,
-  FARM_TO_BISTRO,
   staffUpgradePrice,
   cookMs,
   defaultState,
@@ -747,7 +746,7 @@ describe("staff energy, janitors and friends (migration 073)", () => {
   });
 });
 
-describe("dish levels, ingredients, the Market and the Farm (migration 074)", () => {
+describe("dish levels, ingredients and the Market (migration 074)", () => {
   it("the Market sells the same four ingredients at the same prices", async () => {
     const { marketOffers, BASE_INGREDIENTS } =
       await import("../../packages/shared/src/bistro");
@@ -858,7 +857,7 @@ describe("dish levels, ingredients, the Market and the Farm (migration 074)", ()
       1,
     );
   });
-  it("buys at the Market (5 of each a day), brings Farm crops (3 for 1, 30 a day), and level-ups give ingredients", async () => {
+  it("buys at the Market (5 of each a day), takes no Farm crops, and level-ups give ingredients", async () => {
     const { marketOffers, levelIngredients } =
       await import("../../packages/shared/src/bistro");
     await setCoins(cal, 50000, 12);
@@ -892,48 +891,12 @@ describe("dish levels, ingredients, the Market and the Farm (migration 074)", ()
     ].find((x) => !marketOffers(Number(now)).some((o) => o.id === x))!;
     r = await act(cal, [{ a: "market", id: missing, qty: 1 }]);
     expect(r.results[0].error).toBe("That's not at the Market right now.");
-    // The Farm: 7 plain wheat (and a golden one) make 2 flour.
-    await sql(
-      "insert into public.arena_farm_barn(player_id, crop, mutation, qty) values ($1, 'wheat', '', 7), ($1, 'wheat', 'gold', 4) on conflict (player_id, crop, mutation) do update set qty = excluded.qty",
-      [cal],
-    );
-    expect((await open(cal)).farmCrops).toMatchObject({ wheat: 7 });
-    r = await act(cal, [
-      { a: "farm", id: "wheat", qty: 3 },
-      { a: "farm", id: "wheat", qty: 2 },
-      { a: "farm", id: "carrot", qty: 1 },
-    ]);
-    expect(r.results.map((x: any) => x.ok)).toEqual([false, true, false]);
-    expect(r.results[0].error).toBe("You need 9 in the Farm's barn.");
-    // (Plus the 5 bought above when the Market's first offer is flour: it
-    // changes every four hours.)
-    expect(r.bistro.pantry.flour).toBe(2 + (offer.id === "flour" ? 5 : 0));
-    expect(r.bistro.farmSent).toBe(2);
-    const barn = await sql(
-      "select mutation, qty from public.arena_farm_barn where player_id = $1 and crop = 'wheat' order by mutation",
-      [cal],
-    );
-    expect(barn).toEqual([
-      { mutation: "", qty: 1 },
-      { mutation: "gold", qty: 4 },
-    ]);
-    // Sunny Eggs from the coop (20261117100001): three make one Eggs, like
-    // the other farm goods, within the same daily 30.
-    expect(FARM_TO_BISTRO.egg).toBe("egg");
-    await sql(
-      "insert into public.arena_farm_barn(player_id, crop, mutation, qty) values ($1, 'egg', '', 4) on conflict (player_id, crop, mutation) do update set qty = excluded.qty",
-      [cal],
-    );
-    expect((await open(cal)).farmCrops).toMatchObject({ wheat: 1, egg: 4 });
-    const eggsBefore = r.bistro.pantry.egg ?? 0;
-    r = await act(cal, [
-      { a: "farm", id: "egg", qty: 2 },
-      { a: "farm", id: "egg", qty: 1 },
-    ]);
-    expect(r.results.map((x: any) => x.ok)).toEqual([false, true]);
-    expect(r.bistro.pantry.egg).toBe(eggsBefore + 1);
-    expect(r.bistro.farmSent).toBe(3);
-    expect((await open(cal)).farmCrops.egg).toBe(1);
+    // The Farm is gone (20261119170000_remove_farm): no farm action, and
+    // no farm fields in the state.
+    r = await act(cal, [{ a: "farm", id: "wheat", qty: 1 }]);
+    expect(r.results[0].error).toBe("Unknown action.");
+    expect(r.bistro).not.toHaveProperty("farmSent");
+    expect(r.bistro).not.toHaveProperty("farmCrops");
     // A level-up: three ingredients.
     await sql("delete from public.arena_bistro_pantry where player_id = $1", [
       cal,

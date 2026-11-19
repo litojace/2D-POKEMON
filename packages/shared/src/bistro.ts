@@ -273,8 +273,7 @@ export const isDish = (v: unknown): v is DishId =>
    Each dish has its own level, 1 to 10: cooking it builds mastery, and a
    level-up takes mastery, ingredients and coins. A level raises its price
    12% and adds a serving every three levels. Ingredients come from the
-   Market, from the Farm's barn, from meals at friends' bistros, and with
-   each bistro level. Gourmet points add up the dishes' levels. */
+   Market, from meals at friends' bistros, and with each bistro level. Gourmet points add up the dishes' levels. */
 export type Ingredient =
   | "rice"
   | "flour"
@@ -422,18 +421,6 @@ export function marketOffers(now: number): { id: Ingredient; price: number }[] {
 /** When the Market changes next (ms). */
 export const marketNext = (now: number) =>
   (Math.floor(now / MARKET_PERIOD_MS) + 1) * MARKET_PERIOD_MS;
-/* The Farm's barn: three plain crops (or milk, or eggs from the coop) make
-   one ingredient, up to 30 a Pacific day; never back the other way. */
-export const FARM_TO_BISTRO: Record<string, Ingredient> = {
-  wheat: "flour",
-  mint: "herbs",
-  pepper: "chili",
-  lotus: "beans",
-  milk: "milk",
-  egg: "egg",
-};
-export const FARM_PER_INGREDIENT = 3;
-export const FARM_DAILY = 30;
 /** Buy at the Market: `bought` is how many of it you bought today. */
 export function buyIngredient(
   s: BistroState,
@@ -455,28 +442,6 @@ export function buyIngredient(
   addIngredient(s, id, qty);
   return { ok: true };
 }
-/** Farm crops into the pantry: `have` plain ones in the barn, `sent` today. */
-export function fromFarm(
-  s: BistroState,
-  crop: string,
-  qty: number,
-  have: number,
-  sent: number,
-): Result {
-  const ing = Object.hasOwn(FARM_TO_BISTRO, crop) ? FARM_TO_BISTRO[crop] : null;
-  if (!ing) return fail("That doesn't go in the bistro.");
-  if (!Number.isInteger(qty) || qty < 1 || qty > FARM_DAILY)
-    return fail("Choose how many to bring.");
-  if (sent + qty > FARM_DAILY)
-    return fail(`At most ${FARM_DAILY} ingredients a day from the Farm.`);
-  if (have < qty * FARM_PER_INGREDIENT)
-    return fail(`You need ${qty * FARM_PER_INGREDIENT} in the Farm's barn.`);
-  if ((s.pantry[ing] ?? 0) + qty > PANTRY_MAX)
-    return fail("Your pantry can't hold more of that.");
-  addIngredient(s, ing, qty);
-  return { ok: true };
-}
-
 /** The last part of the bar where a tap cooks it to perfection. */
 export const PERFECT_FROM = 0.78;
 export const PERFECT_TO = 0.96;
