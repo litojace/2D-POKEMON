@@ -33,6 +33,8 @@ for (const size of SIZES) {
   test(`the Plaza fills a ${size.width}x${size.height} screen at every edge of the map`, async ({
     browser,
   }, info) => {
+    // Slow frames on CI: each corner waits for drawn frames, not seconds.
+    test.setTimeout(180_000);
     const ctx = await context(browser, size);
     try {
       const page = await ctx.newPage();
@@ -74,12 +76,19 @@ for (const size of SIZES) {
           .toBeLessThan(200);
         // The camera eases, and this CPU-drawn browser may manage only a few
         // frames a second at these sizes: wait until the map's corners have
-        // held still for four readings in a row (2 s), then measure.
+        // held still for four readings in a row, with frames drawn between
+        // them. Still readings with no frame between say nothing: CI's
+        // runner drew 4 frames in all at 1440x900 and the camera, half-way
+        // to the corner, read "still" for 2 s ("the woods west", 19 Nov).
         let last = "",
-          same = 0;
+          same = 0,
+          frames = -1;
         await expect
           .poll(
             async () => {
+              const drawn = await page.evaluate(
+                () => (window as any).__fillFrames as number,
+              );
               const now = JSON.stringify(
                 await page.evaluate(
                   ([w, h, o]) => {
@@ -95,8 +104,11 @@ for (const size of SIZES) {
                   [PLAZA.w, PLAZA.h, OUT] as const,
                 ),
               );
-              same = now === last ? same + 1 : 0;
+              if (now !== last) same = 0;
+              else if (drawn >= frames + 2) same++;
+              else return false;
               last = now;
+              frames = drawn;
               return same >= 3;
             },
             { timeout: 30_000, intervals: [500] },
