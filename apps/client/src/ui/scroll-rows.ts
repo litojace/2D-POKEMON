@@ -27,8 +27,6 @@ export const ROWS = [
   ".admin-tabs",
   ".journey-road",
   ".sp-route",
-  ".bs-store",
-  ".sh-tabs",
 ].join(",");
 
 const room = (row: HTMLElement) => row.scrollWidth - row.clientWidth;

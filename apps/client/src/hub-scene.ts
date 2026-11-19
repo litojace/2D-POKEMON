@@ -29,8 +29,7 @@ export function saveHubScene(scene: HubScene) {
 /** The segmented scene switch for the top bar. */
 export function sceneSwitchMarkup(scene: HubScene) {
   return HUB_SCENES.map(
-      (s) =>
-        `<button type="button" data-hub-scene="${s.id}" aria-pressed="${s.id === scene}">${s.label}</button>`,
-    )
-    .join("");
+    (s) =>
+      `<button type="button" data-hub-scene="${s.id}" aria-pressed="${s.id === scene}">${s.label}</button>`,
+  ).join("");
 }

@@ -1,10 +1,10 @@
 import { expect, test, type Browser } from "@playwright/test";
-import { openLobby, openPlaza, snap } from "./helpers";
+import { openPlaza, snap } from "./helpers";
 
-// The Plaza and the Farm fill the screen on any shape: an ultrawide monitor,
+// The Plaza fills the screen on any shape: an ultrawide monitor,
 // a tall window, a desktop, a phone. When the map is smaller than the view,
 // the scene zooms in rather than showing empty space past the map's edge.
-// The Plaza's world goes on past its edge (the river, the woods, the farm:
+// The Plaza's world goes on past its edge (the river, the woods, the fields:
 // plaza-surround.ts): at a corner the camera looks a little way out there,
 // never past what is built.
 const SIZES = [
@@ -17,8 +17,6 @@ const SIZES = [
 const PLAZA = { w: 2700, h: 1700 };
 // How far past each edge the Plaza's camera may look (PLAZA_OUT).
 const OUT = { n: 240, s: 220, w: 200, e: 200 };
-// The farm's board (farm-scene.ts WX0..WX1, WY0..WY1).
-const FARM = { x0: -360, y0: -180, x1: 2120, y1: 1280 };
 
 async function context(browser: Browser, size: (typeof SIZES)[number]) {
   const phone = size.width < 1000;
@@ -108,70 +106,9 @@ for (const size of SIZES) {
         if (x < PLAZA.w / 2) expect(mx0, "the woods west").toBeGreaterThan(0);
         else expect(mx1, "the woods east").toBeLessThan(size.width);
         if (y < PLAZA.h / 2) expect(my0, "the river north").toBeGreaterThan(0);
-        else expect(my1, "the farm south").toBeLessThan(size.height);
+        else expect(my1, "the fields south").toBeLessThan(size.height);
       }
       await snap(page, info, `plaza-fill-${size.name}`);
-      expect(errors).toEqual([]);
-    } finally {
-      await ctx.close();
-    }
-  });
-
-  test(`the Farm fills a ${size.width}x${size.height} screen at every edge of the board`, async ({
-    browser,
-  }, info) => {
-    const ctx = await context(browser, size);
-    try {
-      const page = await ctx.newPage();
-      const errors = await openLobby(page);
-      await page.click('#hub-scenes [data-hub-scene="farm"]');
-      await expect(page.locator(".farm-layer #fm-cv")).toBeVisible();
-      await page.waitForTimeout(600);
-      // The canvas covers the whole screen.
-      const cv = await page
-        .locator(".farm-layer #fm-cv")
-        .evaluate((el) => el.getBoundingClientRect().toJSON());
-      expect(cv.x).toBeLessThanOrEqual(0);
-      expect(cv.y).toBeLessThanOrEqual(0);
-      expect(cv.x + cv.width).toBeGreaterThanOrEqual(size.width);
-      expect(cv.y + cv.height).toBeGreaterThanOrEqual(size.height);
-      // Push the camera to each corner: the board still reaches every edge.
-      for (const [x, y] of [
-        [-1e4, -1e4],
-        [1e4, -1e4],
-        [-1e4, 1e4],
-        [1e4, 1e4],
-      ]) {
-        const [ax, ay, bx, by] = await page.evaluate(
-          ([x, y, b]) => {
-            const f = (window as any).__farm;
-            f.look(x, y);
-            const a = f.worldClient(b.x0, b.y0),
-              c = f.worldClient(b.x1, b.y1);
-            return [a.x, a.y, c.x, c.y];
-          },
-          [x, y, FARM] as const,
-        );
-        expect(ax, `board left edge, camera ${x},${y}`).toBeLessThanOrEqual(
-          0.5,
-        );
-        expect(ay, `board top edge, camera ${x},${y}`).toBeLessThanOrEqual(0.5);
-        expect(bx, `board right edge, camera ${x},${y}`).toBeGreaterThanOrEqual(
-          size.width - 0.5,
-        );
-        expect(
-          by,
-          `board bottom edge, camera ${x},${y}`,
-        ).toBeGreaterThanOrEqual(size.height - 0.5);
-      }
-      // Back to the whole-farm view for the picture.
-      await page.evaluate(() =>
-        (
-          document.querySelector('#fm-zoom [data-z="fit"]') as HTMLElement
-        ).click(),
-      );
-      await page.waitForTimeout(400);
-      await snap(page, info, `farm-fill-${size.name}`);
       expect(errors).toEqual([]);
     } finally {
       await ctx.close();

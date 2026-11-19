@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { openLobby } from "./helpers";
 import { exposeAccount } from "./shop-server";
 
-// A long press on a phone is a game action (hold to harvest or plant many on
-// the Farm), never the phone's text selection or Copy menu (owner, 6 Nov
+// A long press on a phone is a game action (hold to compare in the Shop),
+// never the phone's text selection or Copy menu (owner, 6 Nov
 // 2026); on a computer a drag or a right click selects and opens nothing
 // either (7 Nov). Fields you type in keep both.
 // (iOS's -webkit-touch-callout isn't in Chromium; tests/unit/touch-hold.test.ts
@@ -67,13 +67,16 @@ test("a long press on a phone selects nothing and opens no menu", async ({
       expect(await selectable(page, selector), selector).toBe("none");
     expect(await menuCancelled(page, "#lobby-play", "touch")).toBe(true);
     expect(await menuCancelled(page, "#lobby-play", "held")).toBe(true);
-    // The Farm, where holding a plot harvests or plants many.
-    await page.click('#hub-scenes [data-hub-scene="farm"]');
-    await expect(page.locator(".farm-layer #fm-cv")).toBeVisible();
-    for (const selector of [".farm-layer #fm-cv", ".farm-layer", "#fm-badge"])
+    // The Plaza, where you hold the stick to walk.
+    await page.evaluate(() => localStorage.setItem("ea-plaza-help", "1"));
+    await page.click('#hub-scenes [data-hub-scene="plaza"]');
+    await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
+    for (const selector of [".plaza-layer #pz-cv", ".plaza-layer"])
       expect(await selectable(page, selector), selector).toBe("none");
-    expect(await menuCancelled(page, ".farm-layer #fm-cv", "touch")).toBe(true);
-    expect(await menuCancelled(page, ".farm-layer #fm-cv", "held")).toBe(true);
+    expect(await menuCancelled(page, ".plaza-layer #pz-cv", "touch")).toBe(
+      true,
+    );
+    expect(await menuCancelled(page, ".plaza-layer #pz-cv", "held")).toBe(true);
     // A field you type in keeps selection and its menu (paste a code).
     await page.evaluate(() => {
       const input = document.createElement("input");

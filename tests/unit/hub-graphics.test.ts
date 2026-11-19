@@ -16,9 +16,7 @@ function page(low: string[]) {
         },
       },
       querySelector: (selector: string) => {
-        expect(selector).toBe(
-          '.plaza-layer[data-graphics="low"]',
-        );
+        expect(selector).toBe('.plaza-layer[data-graphics="low"]');
         return low.length ? {} : null;
       },
     } as unknown as Document,

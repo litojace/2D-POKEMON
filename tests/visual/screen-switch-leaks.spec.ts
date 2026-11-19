@@ -1,9 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby } from "./helpers";
-import { fakeFarm } from "./farm-fake";
-import { fakeBistro } from "./bistro-fake";
 
-// Switching Lobby → Plaza → Farm → Bistro for a while must not pile anything
+// Switching Lobby → Plaza for a while must not pile anything
 // up: each screen stops and lets go of what it started when it is left.
 // An iPhone (440 × 956, dpr 3) went slower the longer it was played, until
 // Auto chose Low for good (owner, 19 Nov 2026). The Plaza made and kept a new
@@ -150,8 +148,6 @@ async function go(page: Page, scene: string) {
   const shown = {
     lobby: "#lobby-play",
     plaza: ".plaza-layer #pz-cv",
-    farm: "#fm-rail",
-    bistro: ".bistro-layer .bs-cv",
   }[scene]!;
   await expect(page.locator(shown)).toBeVisible({ timeout: 30_000 });
   await page.waitForTimeout(300);
@@ -167,17 +163,15 @@ async function held(page: Page, ms = 1500): Promise<Held> {
   return page.evaluate(() => (window as any).__held.read());
 }
 
-test("switching Lobby, Plaza, Farm and Bistro many times piles nothing up", async ({
+test("switching Lobby and Plaza many times piles nothing up", async ({
   page,
 }, info) => {
   test.setTimeout(300_000);
   await page.addInitScript(track);
   const errors = await openLobby(page);
-  await fakeFarm(page);
-  await fakeBistro(page);
   await page.evaluate(() => localStorage.setItem("ea-plaza-help", "1"));
   const round = async () => {
-    for (const s of ["plaza", "farm", "bistro", "lobby"]) await go(page, s);
+    for (const s of ["plaza", "lobby"]) await go(page, s);
   };
   // Two rounds first: every screen opened, its caches warm.
   await round();
@@ -201,7 +195,7 @@ test("switching Lobby, Plaza, Farm and Bistro many times piles nothing up", asyn
   expect(after.intervals).toBe(before.intervals);
   expect(after.listeners).toBe(before.listeners);
   expect(after.contexts).toBe(before.contexts);
-  // Kept pictures are capped caches (the Bistro's sprites, the fighters'
+  // Kept pictures are capped caches (the fighters'
   // layers painted in quiet moments): small ones fill over the rounds
   // (about 1.3 Mpx in 8), never a pile. (With every hurdle picture kept,
   // about 2.8 Mpx a round.)

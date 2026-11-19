@@ -8,8 +8,6 @@ import {
   pickRoomMode,
   createRoom,
 } from "./helpers";
-import { fakeFarm } from "./farm-fake";
-import { fakeBistro } from "./bistro-fake";
 
 /**
  * Phones in landscape, screen by screen (mobile UI audit, Nov 2026):
@@ -83,8 +81,8 @@ async function problems(page: Page, inset: number[]) {
 }
 
 /**
- * The hub's chat button over an open screen (a Lobby panel or sheet, the
- * Farm's or the Bistro's sheet): on a 568x320 phone it sat under the player
+ * The hub's chat button over an open screen (a Lobby panel or sheet): on a
+ * 568x320 phone it sat under the player
  * card, on the Friends sheet's "FRIENDS" tab (owner's report, Nov 2026).
  * It is placed a frame after the screen opens (scene-switch-place.ts).
  */
@@ -97,7 +95,7 @@ async function chatOverScreen(page: Page) {
     if (!b.width) return [];
     return Array.from(
       document.querySelectorAll<HTMLElement>(
-        ".ui-panel-host:not([data-ui-leaving]) > .ui-panel, #fm-sheet, #bs-sheet",
+        ".ui-panel-host:not([data-ui-leaving]) > .ui-panel",
       ),
     )
       .filter((e) => {
@@ -453,16 +451,6 @@ test("phone fit at 568x320: the chat button keeps off every hub screen", async (
         report[`${screen}, closed`] = await chatOverScreen(page);
       }
     }
-    // The Farm's and the Bistro's sheets.
-    await fakeFarm(page);
-    await fakeBistro(page);
-    await page.evaluate(() => localStorage.setItem("ea-plaza-help", "1"));
-    await page.click('#hub-scenes [data-hub-scene="farm"]');
-    await expect(page.locator("#fm-rail")).toBeVisible({ timeout: 30_000 });
-    await page.locator('#fm-rail [data-sheet="shop"]').click({ force: true });
-    await expect(page.locator("#fm-sheet")).toBeVisible();
-    await settle(page);
-    report["farm shop"] = await chatOverScreen(page);
     expect(Object.entries(report).filter(([, p]) => p.length)).toEqual([]);
   } finally {
     await context.close();
@@ -496,9 +484,7 @@ for (const size of SIZES) {
       }
     });
 
-    test("the room, the Plaza, the Farm and the Bistro", async ({
-      browser,
-    }, info) => {
+    test("the room and the Plaza", async ({ browser }, info) => {
       test.setTimeout(300_000);
       const { context, page } = await phone(browser, size);
       try {
@@ -530,31 +516,11 @@ for (const size of SIZES) {
 
         await page.goto("/");
         await openHub(page);
-        await fakeFarm(page);
-        await fakeBistro(page);
         await page.evaluate(() => localStorage.setItem("ea-plaza-help", "1"));
         await page.click('#hub-scenes [data-hub-scene="plaza"]');
         await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
         report.plaza = await problems(page, size.inset);
-
-        await page.click('#hub-scenes [data-hub-scene="farm"]');
-        await expect(page.locator("#fm-rail")).toBeVisible({ timeout: 30_000 });
-        report.farm = await problems(page, size.inset);
-        // (The rail can still be gliding in on a busy machine.)
-        await page
-          .locator('#fm-rail [data-sheet="shop"]')
-          .click({ force: true });
-        await expect(page.locator("#fm-sheet")).toBeVisible();
-        report["farm shop"] = await problems(page, size.inset);
-        await page.keyboard.press("Escape");
-
-        await page.click('#hub-scenes [data-hub-scene="bistro"]');
-        await expect(page.locator(".bistro-layer .bs-cv")).toBeVisible();
-        await page.waitForFunction(
-          () => (window as any).__bistro?.sync().ready,
-        );
-        report.bistro = await problems(page, size.inset);
-        await snap(page, info, `phone-fit-bistro-${size.name}`);
+        await snap(page, info, `phone-fit-plaza-${size.name}`);
         expect(Object.entries(report).filter(([, p]) => p.length)).toEqual([]);
         expect(errors).toEqual([]);
       } finally {

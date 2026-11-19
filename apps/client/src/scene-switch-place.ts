@@ -113,9 +113,6 @@ const HUD_BLOCKS = [
   ".pz-quests",
   "#pz-banner:not(:empty)",
   "#pz-event:not([hidden])",
-  "#bs-chips",
-  "#bs-bar",
-  "#bs-wallet",
 ].join(",");
 const safeBottom = () =>
   parseFloat(

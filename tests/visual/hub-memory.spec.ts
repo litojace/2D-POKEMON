@@ -63,8 +63,7 @@ async function liveCanvases(page: Page, closed = false) {
   // shipped game has none, and they would keep a closed world alive.
   if (closed)
     await page.evaluate(() => {
-      for (const k of ["__plaza"])
-        delete (window as any)[k];
+      for (const k of ["__plaza"]) delete (window as any)[k];
     });
   const cdp = await page.context().newCDPSession(page);
   for (let i = 0; i < 3; i++) await cdp.send("HeapProfiler.collectGarbage");

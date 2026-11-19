@@ -33,11 +33,7 @@ describe("Getting started", () => {
     expect(v.active).toBe(true);
     expect(v.next).toBe("bot");
     expect(v.count).toBe(0);
-    expect(GUIDE_STEPS.map((s) => s.id)).toEqual([
-      "bot",
-      "raid",
-      "wear",
-    ]);
+    expect(GUIDE_STEPS.map((s) => s.id)).toEqual(["bot", "raid", "wear"]);
   });
   it("leaves an older account alone, and waits for the account to load", () => {
     expect(
