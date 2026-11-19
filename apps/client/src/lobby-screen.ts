@@ -73,7 +73,7 @@ export const LOBBY_MODES: readonly {
   {
     id: "quick",
     label: "Quick Match",
-    hint: "1v1 · a real player, or a bot if no one is free",
+    hint: "1v1 · a player, or a bot",
     icon: "battle",
   },
   {
