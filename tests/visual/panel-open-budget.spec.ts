@@ -285,17 +285,23 @@ async function measure(
   if (o.changed)
     await page.evaluate(() => (window as any).__sock.fire("economy-changed"));
   // The page's steady frame now: where its frames are long one after
-  // another (long frames over 80% of the last second), their median;
+  // another (long frames over 70% of a second), their median;
   // otherwise 0, and the limit is as it was.
   const steady = await page.evaluate(async () => {
     const c = (window as any).__count;
     c.pre = [] as [number, number][];
     const from = performance.now();
     await new Promise((r) => setTimeout(r, 1000));
-    const pre = (c.pre as [number, number][]).filter(([t]) => t >= from);
+    const to = performance.now();
+    // Long-frame entries reach the observer a while after their frame on a
+    // busy page (CI read 0 here while every frame was 240-260 ms long).
+    await new Promise((r) => setTimeout(r, 600));
+    const pre = (c.pre as [number, number][]).filter(
+      ([t]) => t >= from && t < to,
+    );
     c.pre = undefined;
     const busy = pre.reduce((n, [, d]) => n + d, 0);
-    if (busy < 800) return 0;
+    if (busy < 0.7 * (to - from)) return 0;
     const d = pre.map(([, d]) => d).sort((a, b) => a - b);
     return Math.round(d[d.length >> 1]);
   });
