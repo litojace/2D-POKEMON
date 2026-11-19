@@ -888,7 +888,18 @@ export class BotBrain {
           const ranged =
             CHARACTERS[enemy.character].basic.kind !== "melee" &&
             CHARACTERS[enemy.character].basic.kind !== "cone";
-          if (s.threatened || (ranged && s.dist > 220 && s.sight)) score = 18;
+          // It also burns a tongue off: raise it before a grappler latches on.
+          const grapples = arena
+            .kit(enemy)
+            .skills.some(
+              (k, n) => k.kind === "grapple" && t >= enemy.cooldowns[n] - 1,
+            );
+          if (
+            s.threatened ||
+            (ranged && s.dist > 220 && s.sight) ||
+            (grapples && s.sight && s.dist > 170 && s.dist < 500)
+          )
+            score = 18;
           break;
         }
         case "taunt":

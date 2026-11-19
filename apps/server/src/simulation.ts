@@ -1633,7 +1633,8 @@ export class Arena {
       let x = p.x + dx * a.range,
         y = p.y + dy * a.range,
         struck: Fighter | undefined,
-        wall = false;
+        wall = false,
+        burnt = false;
       for (let travelled = 0; travelled < a.range; travelled += 8) {
         if (contact && travelled >= reach) {
           x = contact.x;
@@ -1643,6 +1644,11 @@ export class Arena {
         }
         x = p.x + dx * travelled;
         y = p.y + dy * travelled;
+        // An enemy's Ember Curtain burns the tongue off, as it burns shots.
+        if (this.curtainAt(p.id, { x, y }, a.radius)) {
+          burnt = true;
+          break;
+        }
         const decoy = enemies.find(
           (e) =>
             e.clone &&
@@ -1671,6 +1677,7 @@ export class Arena {
         abilityId: a.id,
       });
       if (this.events.length > 80) this.events.shift();
+      if (burnt) this.event("impact", { x, y }, color, undefined, p.id, a.id);
       let goal: { x: number; y: number } | undefined,
         gap = 0;
       if (struck) {
@@ -2982,12 +2989,20 @@ export class Arena {
   }
   /** Does a curtain against this shot's owner stand where the shot is? */
   private screened(pr: Projectile) {
+    return this.curtainAt(pr.owner, pr, pr.ability.radius);
+  }
+  /** Does a curtain against `owner` stand at this point (a shot or a tongue)? */
+  private curtainAt(
+    owner: string,
+    at: { x: number; y: number },
+    radius: number,
+  ) {
     return this.zones.some(
       (z) =>
         z.ability.kind === "screen" &&
         z.until > this.time &&
-        this.rivals(z.owner, pr.owner) &&
-        this.onScreen(z, pr, pr.ability.radius),
+        this.rivals(z.owner, owner) &&
+        this.onScreen(z, at, radius),
     );
   }
   /**
