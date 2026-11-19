@@ -124,6 +124,39 @@ describe("Auto's frame-rate probe", () => {
     // Frames resume after a long gap: the gap itself is not a slow frame.
     expect(run(p, 60, 5, 30_000)).toBe("ok");
   });
+  it("does not blame a smooth phone for coming back to a screen often", () => {
+    // A 60 fps phone switching Lobby → Plaza → Farm → Bistro (owner's iPhone,
+    // 19 Nov 2026): each return repaints the scene (its ground, let go while
+    // away) in one long frame, and the screen goes again a second or so
+    // later. Those returns used to add up across visits into "slow" windows
+    // (47 fps) until Auto chose Low for good.
+    let p = new FrameRateProbe();
+    expect(run(p, 60, 7)).toBe("ok");
+    p = new FrameRateProbe(0); // as the Plaza and the Farm keep watching
+    let t = 10_000;
+    for (let visit = 0; visit < 40; visit++) {
+      p.pause(); // the screen was left (hide)
+      t += 3000;
+      p.frame(t);
+      t += 350; // the return's long frame
+      const verdict = run(p, 60, 1.2, t);
+      expect(verdict).not.toBe("low");
+      if (verdict === "ok") p = new FrameRateProbe(0);
+      t += 1200;
+    }
+    // A slow device still gets Low, once it stays on a screen a while.
+    const slow = new FrameRateProbe(0);
+    t = 0;
+    for (let visit = 0; visit < 5; visit++) {
+      slow.pause();
+      t += 3000;
+      slow.frame(t);
+      t += 350;
+      run(slow, 30, 6, t);
+      t += 6000;
+    }
+    expect(slow.verdict).toBe("low");
+  });
   it("answers once", () => {
     const p = new FrameRateProbe();
     expect(run(p, 20, 16)).toBe("low");

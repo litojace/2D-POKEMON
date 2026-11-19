@@ -9336,6 +9336,8 @@ export function openFarm(options) {
     } catch {}
     keysF.clear();
     cancelAnimationFrame(raf);
+    // Auto measures afresh when the Farm shows again (graphics-quality.ts).
+    probe?.pause();
     $("fm-tip").hidden = true;
     $("fm-pop").hidden = true;
   }

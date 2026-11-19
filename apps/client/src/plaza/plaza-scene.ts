@@ -2778,12 +2778,18 @@ export function openPlaza(options) {
   /**
    * A hurdle never moves: drawn once into its own picture (twice the
    * resolution) and copied after, so its thin dashed bar doesn't shimmer
-   * as the camera glides a fraction of a pixel each frame.
+   * as the camera glides a fraction of a pixel each frame. Kept by the
+   * hurdle's number (one picture each): keyed by its [p0, p1] pair, the
+   * depth order's fresh pair every frame never matched, and each frame made
+   * and kept a new picture per hurdle in view (two a frame where you
+   * start on an iPhone, about 120 a second at 60 fps, never let go;
+   * 19 Nov 2026).
    */
   const hurdlePics = new Map();
-  function drawHurdle(g, seg) {
+  function drawHurdle(g, i) {
+    const seg = HSEG[i];
     const [p0, p1] = seg;
-    let pic = hurdlePics.get(seg);
+    let pic = hurdlePics.get(i);
     if (!pic) {
       const pad = 12,
         k = 2,
@@ -2798,7 +2804,7 @@ export function openPlaza(options) {
       cg.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
       paintHurdle(cg, seg);
       pic = { c, x0, y0, w: x1 - x0, h: y1 - y0 };
-      hurdlePics.set(seg, pic);
+      hurdlePics.set(i, pic);
     }
     g.drawImage(pic.c, pic.x0, pic.y0, pic.w, pic.h);
   }
@@ -4079,7 +4085,7 @@ export function openPlaza(options) {
         line: true,
         h: PLAZA_SCALE.hurdle + 8,
         name: `hurdle-${i}`,
-        draw: () => drawHurdle(g, [p0, p1]),
+        draw: () => drawHurdle(g, i),
       })),
       ...gantryDrawables(g),
       {
