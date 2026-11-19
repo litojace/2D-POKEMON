@@ -1,14 +1,14 @@
 /**
- * Plaza and Farm graphics quality: Settings → Graphics offers Auto, High and
+ * Plaza graphics quality: Settings → Graphics offers Auto, High and
  * Low.
  *
- * High is the living Plaza and Farm (animals, night glow, full weather) at
+ * High is the living Plaza (animals, night glow, every light) at
  * up to 2× resolution. Low is lighter for older phones: no ambient animals,
  * butterflies or night glow, lighter rain, a 1× canvas and 30 frames a
  * second. Battles keep every attack and only trim decorative sparks
  * (battle-quality.ts).
  *
- * Auto starts High and watches the Plaza's or the Farm's real frame rate
+ * Auto starts High and watches the Plaza's real frame rate
  * while you play, four seconds at a time; a device that stays under about 50
  * frames a second for three of those in a row switches to Low and is
  * remembered, with where and how slow (autoLowWhy, shown in Settings and the
@@ -18,8 +18,8 @@
  * hand overrides Auto. A slow battle only trims its own decorations
  * (battle-quality.ts).
  *
- * One slow window used to be enough, and a slow battle switched the Lobby,
- * Plaza and Farm too, so an iPad Pro 13" M4 kept landing on Low (owner,
+ * One slow window used to be enough, and a slow battle switched the Lobby
+ * and the Plaza (and the hub's other scenes then) too, so an iPad Pro 13" M4 kept landing on Low (owner,
  * 17 Nov 2026) with nothing saying why.
  */
 import { softwareRendering } from "./gpu-check";
@@ -80,7 +80,7 @@ export function rememberAutoLow(why = "") {
 export function autoLowWhy() {
   return read(AUTO_KEY) === "low" ? (read(AUTO_WHY_KEY) ?? "") : "";
 }
-/** The Plaza and the Farm should be drawn at Low quality right now. */
+/** The Plaza should be drawn at Low quality right now. */
 export function lowGraphics(setting = graphicsSetting()) {
   return setting === "low" || (setting === "auto" && autoChoosesLow());
 }
@@ -92,7 +92,7 @@ export const AUTO_MIN_FPS = 50;
 export const AUTO_SLOW_WINDOWS = 3;
 
 /**
- * Measures the Plaza's or the Farm's frame rate for Auto. Feed it the time
+ * Measures the Plaza's frame rate for Auto. Feed it the time
  * of every frame (ms). Loading and the first moments are skipped; gaps over
  * a second (a panel open, the tab in the background) are not counted against
  * the device. It measures four seconds of counted frames at a time
@@ -103,11 +103,11 @@ export const AUTO_SLOW_WINDOWS = 3;
  *
  * A pause (the screen left, a panel over it) also drops the window it was
  * counting, and the first second after it is not counted: coming back to
- * the Plaza or the Farm repaints its ground (let go while away on an
+ * the Plaza repaints its ground (let go while away on an
  * iPhone) in one long frame, and the screen switch moves the page. Those
  * returns used to add up across visits: a phone drawing 60 frames a
- * second that hops between the Lobby, Plaza, Farm and Bistro could measure
- * under 50 and go Low for good (an iPhone: "Farm ran at 47 fps", owner,
+ * second that hops between the hub's scenes could measure under 50 and go
+ * Low for good (an iPhone said it "ran at 47 fps", owner,
  * 19 Nov 2026).
  */
 export class FrameRateProbe {

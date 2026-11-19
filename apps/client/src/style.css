@@ -3556,7 +3556,7 @@ html:has(body.battle-active:not(.touch-mode)) {
   overflow: hidden;
   overscroll-behavior: none;
 }
-/* The hub (Lobby, Plaza, Farm, Bistro and their panels) is one fixed screen
+/* The hub (Lobby, Plaza and their panels) is one fixed screen
    too (its body is overflow: hidden): no rubber-band on the window either,
    so iPhone and iPad Safari have less reason to lift the page (screen-pin.ts
    puts it back when they do). Panels scroll inside themselves. */
@@ -3880,8 +3880,7 @@ html.zoom-locked #game * {
   touch-action: none !important;
 }
 /* Not a page to copy (owner, 6–7 Nov 2026): a long press on a phone is a
-   game action (hold to harvest or plant many on the Farm, hold to compare in
-   the Shop), and a drag with the mouse on a computer selects nothing. No
+   game action (hold to compare in the Shop), and a drag with the mouse on a computer selects nothing. No
    text selection, no Copy / Save image callout, no dragging pictures out
    (touch-hold.ts cancels the menus). Fields you type in keep selection,
    and admins can copy from the Admin panel (owner, 7 Nov 2026). */
@@ -11838,7 +11837,7 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
   text-align: left;
 }
 
-/* ── The top bar as a game HUD in the hub (Lobby, Plaza, Farm) and in a
+/* ── The top bar as a game HUD in the hub (Lobby, Plaza) and in a
    room's lobby, so every screen past the front door shares one game frame ──
    The site header becomes floating glass pieces over the scene: your player
    card (portrait, name, level, XP, title) on the left, the scene switch in
@@ -15681,7 +15680,7 @@ body.battle-active:not(.touch-mode)
     font-size: max(16px, 1em) !important;
   }
 }
-/* A hub world (Farm, Plaza, Bistro) whose code is still loading, or failed to
+/* A hub world (the Plaza) whose code is still loading, or failed to
    load: the same layer the world opens in, so the top bar stays above it. */
 .hub-world-wait {
   position: fixed;

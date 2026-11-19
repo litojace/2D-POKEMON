@@ -11,10 +11,10 @@ import {
 
 /**
  * The frame-rate read-out (five taps on Settings → Graphics' title): a small
- * table beside the rail, over every screen (the Lobby, the Plaza, the Farm,
- * the Bistro, the Shop, a battle), for a player to screenshot. It shows the
+ * table beside the rail, over every screen (the Lobby, the Plaza, the Shop,
+ * a battle), for a player to screenshot. It shows the
  * whole page's frame rate, what the screen underneath adds
- * (`setPerfSource`: the Lobby's fighter, the Plaza's and the Farm's frames
+ * (`setPerfSource`: the Lobby's fighter, the Plaza's frames
  * and Auto's measuring), the device, and why Auto chose Low if it did. Touches go through
  * it, except its × button, which turns it off. Battles also have their own
  * read-out (perf-overlay.ts).
@@ -38,7 +38,7 @@ export function setPerfSource(
 }
 
 /**
- * A walkable scene's lines (the Plaza, the Farm): the frames it drew, its
+ * A walkable scene's lines (the Plaza): the frames it drew, its
  * canvas, and Auto's measuring ("auto 57 fps", "slow 1/3" while it counts
  * slow windows towards Low; "auto off" when High or Low was picked, or once
  * the scene is Low).

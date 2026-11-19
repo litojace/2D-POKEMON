@@ -19,7 +19,6 @@ import {
   openPlayPanel,
   pushUntilBattle,
 } from "../../tests/visual/helpers";
-import { fakeFarm } from "../../tests/visual/farm-fake";
 
 export const OUT = "app-store-screenshots";
 /** The raid shot's boss, the attack it is winding up, and how far in. */
@@ -43,7 +42,7 @@ export const DEVICES = [
   { name: "iphone-large", viewport: { width: 956, height: 440 } },
 ] as const;
 const INSET = { left: 62, right: 62, bottom: 20, top: 0 };
-/** A time zone where it is now about midday (the Farm lights by the clock). */
+/** A time zone where it is now about midday (the Plaza lights by the clock). */
 function middayZone() {
   let offset = (12 - new Date().getUTCHours() + 24) % 24;
   if (offset > 12) offset -= 24;
@@ -257,7 +256,7 @@ export const SCENES: Scene[] = [
   {
     // 2v2: four fighters, two teams.
     name: "teams",
-    caption: "2v2 teams and free-for-all",
+    caption: "2v2 team battles",
     async capture(page) {
       await openHub(page);
       await phone(page);
@@ -310,44 +309,65 @@ export const SCENES: Scene[] = [
     },
   },
   {
+    // Free-for-all: four fighters, everyone against everyone.
+    name: "ffa",
+    caption: "Four-way free-for-all",
+    async capture(page) {
+      await openHub(page);
+      await phone(page);
+      await startMatch(page, ["pvp", { mode: "ffa", phase: "playing" }]);
+      await page.evaluate(async () => {
+        const w = window as any;
+        const m = await import("/rooms.ts");
+        const a = new m.Arena("PVP123", "ffa");
+        a.serial = (w.__arena?.serial ?? 0) + 5000;
+        a.arenaId = "ember-forge";
+        a.add("me", "Blaze", "pyranda");
+        a.add("p2", "Zap", "coilemur");
+        a.add("p3", "Ink", "shadopus");
+        a.add("p4", "Sunny", "sunbara");
+        a.start();
+        a.phase = "playing";
+        const ps = a.players;
+        const spots = [
+          [620, 540],
+          [880, 560],
+          [660, 400],
+          [900, 420],
+        ];
+        for (const [i, p] of ps.entries()) [p.x, p.y] = spots[i];
+        const full = ps.map((p: any) => p.hp);
+        w.__arena = a;
+        w.__shot = {
+          a,
+          m,
+          tick: 0,
+          keep() {
+            a.deadline = a.time + 58;
+            const share = [0.75, 0.4, 0.55, 0.65];
+            for (const [i, p] of ps.entries())
+              p.hp = Math.max(p.hp, full[i] * share[i]);
+          },
+          inputs(p: any, i: number, tick: number) {
+            // Each fighter aims at the next one round the ring.
+            const foe = ps[(i + 1) % ps.length];
+            const skill = tick === 1 + 2 * i ? (i % 2) + 1 : -1;
+            return { aimX: foe.x, aimY: foe.y, skill };
+          },
+        };
+      });
+      await play(page, 90);
+      await page.evaluate(() => ((window as any).__shot.tick = 0));
+      await play(page, 12);
+    },
+  },
+  {
     // The Plaza at midday.
     name: "plaza",
     caption: "Hang out in the Plaza",
     async capture(page) {
       await openPlaza(page);
       await phone(page);
-      await page.waitForTimeout(2500);
-    },
-  },
-  {
-    // The Farm, crops growing.
-    name: "farm",
-    caption: "Grow your own farm",
-    async capture(page) {
-      await openLobby(page);
-      await fakeFarm(page);
-      await page.evaluate(() => {
-        const farm = (window as any).__fakeFarm;
-        const at = (s: number) => new Date(Date.now() + s * 1000).toISOString();
-        farm.weather = { now: "sun", next: "rainbow", until: at(5000) };
-        const crops = ["wheat", "carrot", "pepper", "mint", "voltberry"];
-        for (const plot of farm.plots) plot.owned = true;
-        farm.landBought = 35;
-        for (const [k, plot] of farm.plots.entries()) {
-          const progress = [1, 0.85, 0.6, 1, 0.35][k % 5];
-          Object.assign(plot, {
-            crop: crops[(k + Math.floor(k / 5)) % 5],
-            progress,
-            ripeAt: at(progress >= 1 ? -60 : 1800 * (1 - progress)),
-            wet: k % 3 === 0,
-            pests: 0,
-            mutation: k === 7 ? "gold" : null,
-          });
-        }
-      });
-      await phone(page);
-      await page.click('#hub-scenes [data-hub-scene="farm"]');
-      await expect(page.locator(".farm-layer #fm-cv")).toBeVisible();
       await page.waitForTimeout(2500);
     },
   },

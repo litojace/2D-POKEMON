@@ -355,7 +355,7 @@ function deleteRow(d: ProfileData, view: ProfileView) {
   if (!d.canDelete) return "";
   const what = d.guest
     ? "Your guest pass, records, titles and everything you've earned are removed for good."
-    : "Your login, records, titles, coins, skins, farm, bistro and friends are removed for good. Matches and raids you played stay for the other players, under \u201cDeleted player\u201d.";
+    : "Your login, records, titles, coins, skins and friends are removed for good. Matches and raids you played stay for the other players, under \u201cDeleted player\u201d.";
   const form = `<form class="pf-delete-form" data-profile-delete-form${view.deleting ? "" : " hidden"}><p class="ui-note">${esc(what)} This can't be undone.</p><label class="pf-delete-label"><span>Type <b>${DELETE_WORD}</b> to confirm</span><input name="confirm" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Type ${DELETE_WORD} to confirm"${view.deleteBusy ? " disabled" : ""}></label><span class="pf-delete-actions">${button("Cancel", { icon: "cancel", size: "s", disabled: view.deleteBusy, attrs: { "data-profile-delete-cancel": true } })}<button type="submit" class="ui-btn is-s is-danger"${view.deleteBusy ? ' disabled aria-busy="true"' : ""}>${menuIcon("trash")}<span>Delete forever</span></button></span></form>`;
   return `${section("Delete account", "Remove your account and its data", "pf-delete-h")}<div class="pf-delete" aria-labelledby="pf-delete-h">${view.deleting ? "" : button("Delete account", { icon: "trash", size: "s", kind: "danger", attrs: { "data-profile-delete": true } })}${form}<p class="ui-note pf-delete-message" role="status">${esc(view.deleteMessage)}</p></div>`;
 }

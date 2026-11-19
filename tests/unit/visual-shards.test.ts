@@ -58,28 +58,28 @@ describe("visual shards", () => {
     const report = {
       suites: [
         {
-          title: "farm.spec.ts",
-          file: "farm.spec.ts",
-          specs: [{ title: "top", file: "farm.spec.ts" }],
+          title: "plaza.spec.ts",
+          file: "plaza.spec.ts",
+          specs: [{ title: "top", file: "plaza.spec.ts" }],
           suites: [
             {
               title: "on a phone",
-              file: "farm.spec.ts",
-              specs: [{ title: "inner", file: "farm.spec.ts" }],
+              file: "plaza.spec.ts",
+              specs: [{ title: "inner", file: "plaza.spec.ts" }],
             },
           ],
         },
       ],
     };
     expect(collectTests(report).map((t) => testKey(t.file, t.titles))).toEqual([
-      "farm.spec.ts › top",
-      "farm.spec.ts › on a phone › inner",
+      "plaza.spec.ts › top",
+      "plaza.spec.ts › on a phone › inner",
     ]);
   });
 
   it("the durations reporter keys tests as the list does and keeps a retry's passing time", () => {
-    const key = durationKey(["", "", "farm.spec.ts", "on a phone", "inner"]);
-    expect(key).toBe("farm.spec.ts › on a phone › inner");
+    const key = durationKey(["", "", "plaza.spec.ts", "on a phone", "inner"]);
+    expect(key).toBe("plaza.spec.ts › on a phone › inner");
     const times: Record<string, number> = {};
     const passed = new Set<string>();
     recordDuration(times, passed, "b", { status: "failed", duration: 9000 });

@@ -12,14 +12,14 @@
  * it as they should. Cows and the windmill's sails move, so they are drawn
  * every frame too, under everyone (they never reach a walker's picture).
  */
-import { GFX as GFX0 } from "../farm/farm-gfx";
+import { GFX as GFX0 } from "../hub-art/gfx";
 import { PLAZA } from "../../../../packages/shared/src/plaza";
 import {
   BAKED,
   COWS,
   LIVE,
   RIVER_LAMPS,
-  FARM,
+  FIELDS,
   PLAZA_MARGIN,
   PLAZA_SCALE,
   RIVER,
@@ -30,7 +30,7 @@ import {
 } from "./plaza-surround";
 import { spot, type Drawable } from "./plaza-depth";
 
-// The farm art is ported, untyped drawing code.
+// The hub art is ported, untyped drawing code.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const GFX: any = GFX0;
 type Ctx = CanvasRenderingContext2D;
@@ -226,21 +226,21 @@ export function paintVerge(g: Ctx) {
       g.fill();
     }
 }
-/** The farmland south of the gate. */
-function paintFarm(g: Ctx, r: () => number) {
+/** The fields south of the gate. */
+function paintFields(g: Ctx, r: () => number) {
   const y0 = H,
     y1 = H + M;
   // A hedge line right past the Plaza's garden strip.
   g.fillStyle = "#3f8f3a";
   for (let x = -M; x < W + M; x += 22) {
-    if (x > FARM.road.x0 - 10 && x < FARM.road.x1 + 10) continue;
+    if (x > FIELDS.road.x0 - 10 && x < FIELDS.road.x1 + 10) continue;
     g.beginPath();
     g.arc(x, y0 + 8, 13, 0, 7);
     g.fill();
   }
   g.fillStyle = "#5fb34c";
   for (let x = -M + 6; x < W + M; x += 22) {
-    if (x > FARM.road.x0 - 10 && x < FARM.road.x1 + 10) continue;
+    if (x > FIELDS.road.x0 - 10 && x < FIELDS.road.x1 + 10) continue;
     g.beginPath();
     g.arc(x, y0 + 4, 7, 0, 7);
     g.fill();
@@ -248,8 +248,8 @@ function paintFarm(g: Ctx, r: () => number) {
   // Fields in rows: soil, and what grows in each.
   const fields: [number, number, string, string][] = [
     [-M + 20, 420, "#e8c25a", "#c79a32"],
-    [880, FARM.road.x0 - 30, "#7cc95a", "#4f9a3c"],
-    [FARM.road.x1 + 30, 1580, "#ffb04a", "#5fae4a"],
+    [880, FIELDS.road.x0 - 30, "#7cc95a", "#4f9a3c"],
+    [FIELDS.road.x1 + 30, 1580, "#ffb04a", "#5fae4a"],
     [1760, 2140, "#d8e86a", "#8fbf3a"],
   ];
   for (const [a, b, crop, leaf] of fields) {
@@ -268,23 +268,23 @@ function paintFarm(g: Ctx, r: () => number) {
       }
     }
   }
-  // The farm road from the gate, wheel ruts and verges.
+  // The country road from the gate, wheel ruts and verges.
   g.fillStyle = "#c9a774";
-  g.fillRect(FARM.road.x0, y0, FARM.road.x1 - FARM.road.x0, y1 - y0);
+  g.fillRect(FIELDS.road.x0, y0, FIELDS.road.x1 - FIELDS.road.x0, y1 - y0);
   g.fillStyle = "rgba(120,80,40,.25)";
-  g.fillRect(FARM.road.x0 + 22, y0, 10, y1 - y0);
-  g.fillRect(FARM.road.x1 - 32, y0, 10, y1 - y0);
+  g.fillRect(FIELDS.road.x0 + 22, y0, 10, y1 - y0);
+  g.fillRect(FIELDS.road.x1 - 32, y0, 10, y1 - y0);
   for (let i = 0; i < 140; i++) {
     g.fillStyle = r() < 0.5 ? "rgba(255,255,255,.18)" : "rgba(90,60,30,.18)";
     g.fillRect(
-      FARM.road.x0 + r() * (FARM.road.x1 - FARM.road.x0),
+      FIELDS.road.x0 + r() * (FIELDS.road.x1 - FIELDS.road.x0),
       y0 + r() * (y1 - y0),
       3,
       2,
     );
   }
   // The paddock's fence.
-  const P = FARM.paddock;
+  const P = FIELDS.paddock;
   g.strokeStyle = "#8a5a30";
   g.lineWidth = 3;
   g.beginPath();
@@ -345,7 +345,7 @@ function paintWoods(g: Ctx, side: -1 | 1, r: () => number) {
  * Paint the world around the Plaza into the meadow (the Plaza's own ground
  * picture, which reaches PLAZA_MARGIN past each edge and is already grass
  * everywhere): the river's banks with a hole for its water, the
- * footbridges, the woods' shade, the farm, then every prop that is never
+ * footbridges, the woods' shade, the fields, then every prop that is never
  * drawn over a walker. `g` draws in world coordinates.
  */
 export function paintSurroundings(g: Ctx) {
@@ -361,7 +361,7 @@ export function paintSurroundings(g: Ctx) {
   for (const b of RIVER.bridges) paintBridge(g, b);
   paintWoods(g, -1, r);
   paintWoods(g, 1, r);
-  paintFarm(g, r);
+  paintFields(g, r);
   for (const p of [...BAKED].sort((a, b) => a.y - b.y)) drawProp(g, p);
 }
 
@@ -501,7 +501,7 @@ export function drawRiverLights(
   }
 }
 /** Cows and the windmill's sails: moving, never over a walker. */
-export function drawFarmLife(
+export function drawFieldLife(
   g: Ctx,
   t: number,
   reduced: boolean,

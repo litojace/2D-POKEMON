@@ -11,7 +11,7 @@ import {
   type GuideFacts,
 } from "../../apps/client/src/getting-started";
 
-// Getting started: a new player's first five steps on the Lobby.
+// Getting started: a new player's first three steps on the Lobby.
 const store = new Map<string, string>();
 (globalThis as { localStorage?: unknown }).localStorage = {
   getItem: (k: string) => store.get(k) ?? null,
@@ -33,13 +33,7 @@ describe("Getting started", () => {
     expect(v.active).toBe(true);
     expect(v.next).toBe("bot");
     expect(v.count).toBe(0);
-    expect(GUIDE_STEPS.map((s) => s.id)).toEqual([
-      "bot",
-      "raid",
-      "wear",
-      "farm",
-      "bistro",
-    ]);
+    expect(GUIDE_STEPS.map((s) => s.id)).toEqual(["bot", "raid", "wear"]);
   });
   it("leaves an older account alone, and waits for the account to load", () => {
     expect(
@@ -61,13 +55,13 @@ describe("Getting started", () => {
       { done: { bot: true } },
       facts({ cragmuffClears: 1, wearing: true }),
     );
-    expect(guideView(save).next).toBe("farm");
+    expect(guideView(save).next).toBeNull();
     // Taking the item off later doesn't undo the step.
     save = settleGuide(save, facts({ cragmuffClears: 1, wearing: false }));
     expect(guideView(save).done.wear).toBe(true);
   });
   it("steps can be done in any order; the next is the first not done", () => {
-    const v = guideView({ done: { farm: true, bot: true }, started: true });
+    const v = guideView({ done: { wear: true, bot: true }, started: true });
     expect(v.next).toBe("raid");
     expect(v.count).toBe(2);
   });
@@ -97,18 +91,21 @@ describe("Getting started", () => {
     expect(loadGuide("c")).toEqual({ done: {} });
     store.set(
       "arena-guide:d",
-      JSON.stringify({ done: { bot: true, hack: true, farm: "yes" } }),
+      // An unknown key, a step that is gone (the Farm) and a wrong value.
+      JSON.stringify({
+        done: { bot: true, hack: true, farm: true, raid: "yes" },
+      }),
     );
     expect(loadGuide("d").done).toEqual({ bot: true });
   });
   it("shows the next step on the card, and every step in the sheet", () => {
     const v = guideView({ done: { bot: true }, started: true });
     const card = guideCard(v);
-    expect(card).toContain("Getting started · 1 of 5");
+    expect(card).toContain("Getting started · 1 of 3");
     expect(card).toContain("Defeat Cragmuff");
     const sheet = guideMarkup(v);
     for (const s of GUIDE_STEPS) expect(sheet).toContain(s.title);
-    expect(sheet.match(/data-guide-go="/g)).toHaveLength(4);
+    expect(sheet.match(/data-guide-go="/g)).toHaveLength(2);
     expect(sheet).toContain('data-guide-go="raid"');
     expect(sheet).not.toContain('data-guide-go="bot"');
     expect(sheet).toContain("data-guide-hide");

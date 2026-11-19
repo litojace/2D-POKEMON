@@ -56,7 +56,8 @@ What changed after this run:
 - **Getting started** (`apps/client/src/getting-started.ts`): an account
   at level 5 or below sees five steps on the Lobby, in the Journey card's
   place: play a match against a bot, defeat Cragmuff, wear the first
-  reward, visit the Farm, open the Bistro. Each has a Go button; the guide
+  reward, visit the Farm, open the Bistro (those two steps went with the
+  Farm and the Bistro in Nov 2026). Each has a Go button; the guide
   can be hidden, and the Menu's _Getting started_ brings it back. Steps the
   server knows (a Cragmuff clear, something worn) come from the account;
   the others are remembered per account in the browser.

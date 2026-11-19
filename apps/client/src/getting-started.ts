@@ -1,13 +1,13 @@
 /**
- * Getting started: a short guide for a new player's first minutes. Five
+ * Getting started: a short guide for a new player's first minutes. Three
  * steps, in the order that gets them to a fun moment and something to keep
- * fast: a match against a bot, the first boss, wearing what it gave them,
- * then the Farm and the Bistro.
+ * fast: a match against a bot, the first boss, and wearing what it gave
+ * them.
  *
  * It shows on the Lobby (in the Journey card's place) for a new account,
  * until every step is done or the player hides it; the Menu brings it back.
  * Steps the server already knows about (a Cragmuff clear, something worn)
- * come from the account; the rest (a bot match finished, a scene visited)
+ * come from the account; the rest (a bot match finished)
  * are remembered per account in this browser, like seen rewards.
  *
  * Markup and rules only; main.ts wires the actions.
@@ -16,7 +16,7 @@ import { esc, panel, button, tag, actionBar, actions } from "./ui/components";
 import { menuIcon, type IconName } from "./menu-icons";
 import "./getting-started.css";
 
-export type GuideStep = "bot" | "raid" | "wear" | "farm" | "bistro";
+export type GuideStep = "bot" | "raid" | "wear";
 export const GUIDE_STEPS: {
   id: GuideStep;
   title: string;
@@ -40,18 +40,6 @@ export const GUIDE_STEPS: {
     title: "Wear your first reward",
     hint: "Cragmuff gives you an entrance. Put it on in the Wardrobe.",
     icon: "wardrobe",
-  },
-  {
-    id: "farm",
-    title: "Visit your Farm",
-    hint: "Plant crops. They keep growing while you play or rest.",
-    icon: "home",
-  },
-  {
-    id: "bistro",
-    title: "Open your Bistro",
-    hint: "Cook for guests who drop by, and earn coins.",
-    icon: "coin",
   },
 ];
 

@@ -2,7 +2,7 @@ import { expect, type Page, type TestInfo } from "@playwright/test";
 
 /**
  * Load the client signed in and wait for the hub. The hub opens on the Lobby
- * (the screen after login); the Plaza and the Farm are its other tabs.
+ * (the screen after login); the Plaza is its other tab.
  */
 export async function openHub(page: Page) {
   const errors: string[] = [];

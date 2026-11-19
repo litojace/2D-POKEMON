@@ -125,14 +125,14 @@ describe("Auto's frame-rate probe", () => {
     expect(run(p, 60, 5, 30_000)).toBe("ok");
   });
   it("does not blame a smooth phone for coming back to a screen often", () => {
-    // A 60 fps phone switching Lobby → Plaza → Farm → Bistro (owner's iPhone,
+    // A 60 fps phone switching between the hub's scenes (owner's iPhone,
     // 19 Nov 2026): each return repaints the scene (its ground, let go while
     // away) in one long frame, and the screen goes again a second or so
     // later. Those returns used to add up across visits into "slow" windows
     // (47 fps) until Auto chose Low for good.
     let p = new FrameRateProbe();
     expect(run(p, 60, 7)).toBe("ok");
-    p = new FrameRateProbe(0); // as the Plaza and the Farm keep watching
+    p = new FrameRateProbe(0); // as the Plaza keeps watching
     let t = 10_000;
     for (let visit = 0; visit < 40; visit++) {
       p.pause(); // the screen was left (hide)

@@ -10,7 +10,8 @@ export function matchSummary(
   arena: Arena,
   accountOf: (fighterId: string) => string | null,
 ): MatchSummary {
-  if (arena.mode === "raid") throw new Error("Raids never enter the PvP match ledger.");
+  if (arena.mode === "raid")
+    throw new Error("Raids never enter the PvP match ledger.");
   const bot = [...arena.bots.values()][0]?.difficulty ?? null;
   return {
     v: 1,
@@ -52,6 +53,7 @@ export class MatchLedger {
   }
   prune() {
     const now = Date.now();
-    for (const [id, e] of this.entries) if (e.expires < now) this.entries.delete(id);
+    for (const [id, e] of this.entries)
+      if (e.expires < now) this.entries.delete(id);
   }
 }

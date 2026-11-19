@@ -17,7 +17,7 @@ import {
 import {
   BAKED,
   COWS,
-  FARM,
+  FIELDS,
   LANDMARKS,
   LIVE,
   MOVER_BOX,
@@ -169,8 +169,8 @@ describe("Plaza surroundings", () => {
       );
     for (const c of COWS) {
       expect(onWalkable(c.x, c.y, 40)).toBe(false);
-      expect(c.x).toBeGreaterThan(FARM.paddock.x0);
-      expect(c.x).toBeLessThan(FARM.paddock.x1);
+      expect(c.x).toBeGreaterThan(FIELDS.paddock.x0);
+      expect(c.x).toBeLessThan(FIELDS.paddock.x1);
     }
     // Nothing the server collides with lies out there (the rules are unchanged).
     for (const o of PLAZA_OBSTACLES) expect(o.y).toBeLessThan(H);
@@ -192,7 +192,7 @@ describe("Plaza surroundings", () => {
     expect(
       coversMovers(propBox({ kind: "tree", x: -40, y: 900, s: 1, v: 0 })),
     ).toBe(true);
-    // A barn far into the farm never does; nor does the far bank.
+    // A barn far into the fields never does; nor does the far bank.
     expect(
       coversMovers(propBox({ kind: "barn", x: 700, y: 1935, s: 1, v: 0 })),
     ).toBe(false);
@@ -201,7 +201,7 @@ describe("Plaza surroundings", () => {
         propBox({ kind: "tree", x: 900, y: RIVER.y0 - 30, s: 1.2, v: 0 }),
       ),
     ).toBe(false);
-    // Through the farm gate you walk 30 px further south.
+    // Through the south gate you walk 30 px further south.
     const g = PLAZA_REACH.y1(1350);
     expect(coversMovers({ x0: 1340, x1: 1360, top: g + 4, foot: g + 40 })).toBe(
       true,

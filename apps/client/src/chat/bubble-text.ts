@@ -1,5 +1,5 @@
 /**
- * Chat bubbles drawn on a canvas (the Plaza, the Farm): the lines a bubble
+ * Chat bubbles drawn on a canvas (the Plaza): the lines a bubble
  * holds, so its text never runs past its edges. Words wrap at `maxWidth`; a
  * word wider than that is cut where it fits; past `maxLines` the last line
  * ends with "…". The bubble is then sized from the widest line.

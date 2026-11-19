@@ -9,7 +9,7 @@
  * Who may type:
  * - party, room and friend: players with an account (not guests) whose chat
  *   setting is "free", outside a battle;
- * - place (the Plaza, a Farm): quick chat only, as these are strangers;
+ * - place (the Plaza): quick chat only, as these are strangers;
  * - in a battle: quick chat only; opponents see emotes, not phrases.
  */
 

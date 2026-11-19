@@ -1,5 +1,9 @@
 # One glass look, and a phone pass before the App Store (16 Nov 2026)
 
+> **The Farm, the Bistro and Gold Leaves were removed in Nov 2026**
+> (migration `20261119190000_remove_farm_bistro_leaves`). Those parts of
+> this file are kept as history; they no longer describe the game.
+
 The owner's request: before release, review every panel, tab and text for
 phones (the game was built for desktop first), and use the Lobby's
 see-through "aero" glass everywhere, defined in **one place** so that one

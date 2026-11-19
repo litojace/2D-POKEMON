@@ -25,7 +25,6 @@ const HEADER = [
   "#account-profile",
   "#hub-scenes",
   "#account-coins > *",
-  "#account-leaves > *",
   ".header-menu > summary",
 ];
 const overlap = (a: Rect, b: Rect) =>

@@ -34,7 +34,7 @@ export function rememberHomeFighter(id: CharacterId) {
 }
 /**
  * What #menu holds in the hub: the Play panel that slides over the Lobby,
- * Plaza or Farm. (Fighters is a hub screen, screens/roster.ts.)
+ * Plaza. (Fighters is a hub screen, screens/roster.ts.)
  */
 export function homeShell(controls: string) {
   return `<div class="home-screen"><button type="button" class="home-panel-scrim" data-home-close aria-label="Close panel" tabindex="-1" hidden></button><section id="home-play-panel" class="home-drawer home-play-drawer" role="dialog" aria-modal="true" aria-labelledby="home-play-title" tabindex="-1" hidden><header class="home-drawer-head"><div><span class="eyebrow">JOIN OR WATCH</span><h2 id="home-play-title">A friend's room</h2></div><button type="button" class="home-panel-close btn-secondary" data-home-close aria-label="Close play options">×</button></header><div class="home-drawer-scroll"><aside class="room-panel card">${controls}</aside></div></section></div>`;

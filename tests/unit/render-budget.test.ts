@@ -39,7 +39,7 @@ it("gives memory back eagerly on iOS and on phones with little memory", () => {
   expect(memoryConstrained(false, undefined)).toBe(false);
 });
 
-it("keeps the Plaza and Farm canvases within the pixel budget on iOS", () => {
+it("keeps the Plaza canvas within the pixel budget on iOS", () => {
   // An iPhone draws at most 1.5x, as in battle (fewer pixels each frame).
   expect(sceneDensity(844, 390, 3, true)).toBe(1.5);
   expect(sceneDensity(844, 390, 1, true)).toBe(1);

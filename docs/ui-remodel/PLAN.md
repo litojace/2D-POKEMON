@@ -1,5 +1,9 @@
 # UI remodel: every screen outside matches
 
+> **The Farm, the Bistro and Gold Leaves were removed in Nov 2026**
+> (migration `20261119190000_remove_farm_bistro_leaves`). Those parts of
+> this plan are kept as history; they no longer describe the game.
+
 Phase 0 of the request on 3 Nov 2026: remodel every screen reached from the
 Lobby (`apps/client/src/lobby-screen.ts`, `LobbyAction`) so the game reads as
 one product, in line with the hub redesign proposal. **No game code has

@@ -35,7 +35,7 @@ export function memoryConstrained(
  * Air 4 and later, iPad 10th generation, every iPad Pro 11", 12.9" and 13".
  * They all have 4 GB of memory or more (an iPad Pro M4 8–16 GB), so they
  * draw as sharp as a desktop. The smaller budgets below were made for
- * iPhones and older iPads (2–3 GB); on a 13" iPad they drew the Bistro at
+ * iPhones and older iPads (2–3 GB); on a 13" iPad they drew the hub's scenes at
  * about 1.2 pixels per point on a 2× screen, which looked soft (owner, iPad
  * Pro 13" M4, 11 Nov 2026). The screen's size is the device's, whatever the
  * window: Split View and Stage Manager don't change it. Graphics Auto still
@@ -62,7 +62,7 @@ export function rendererDensity(
   const cap = ios && !large ? 1.5 : 2;
   return Math.max(1, Math.min(cap, Number.isFinite(dpr) ? dpr : 1));
 }
-/** Most pixels a full-screen 2D scene canvas (the Plaza, the Farm) may have on
+/** Most pixels a full-screen 2D scene canvas (the Plaza) may have on
  *  an iPhone or iPad: an iPad-sized window at 2x would be 4 million, 16 MB
  *  plus its GPU copy, kept while the scene waits behind the Lobby. */
 export const SCENE_PIXEL_BUDGET = 2_000_000;
@@ -72,7 +72,7 @@ export const LARGE_IPAD_PIXEL_BUDGET = 6_000_000;
  * A 2D scene canvas's pixels per CSS pixel for a width × height window: the
  * screen's density, at most 2, and on iPhones and smaller iPads at most 1.5,
  * as the battle canvas (rendererDensity): Safari fills fewer pixels each
- * frame, so dragging the Farm or the Plaza stays smooth. There it also stays
+ * frame, so dragging the Plaza stays smooth. There it also stays
  * within SCENE_PIXEL_BUDGET (an iPad-sized window draws a little softer); a
  * large iPad draws up to 2× within LARGE_IPAD_PIXEL_BUDGET. Never below 1.
  */
