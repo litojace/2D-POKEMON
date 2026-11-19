@@ -980,33 +980,29 @@ test("Invite a friend says In party and Invited for friends already asked", asyn
   });
   try {
     const page = await context.newPage();
-    const errors = await openLobby(page);
     const me = "11111111-1111-4111-8111-111111111111",
       pal = "33333333-3333-4333-8333-333333333333",
       asked = "77777777-7777-4777-8777-777777777777",
       free = "88888888-8888-4888-8888-888888888888";
-    await page.evaluate(
+    // From the first load (the harness's own stub, fake-api.ts): the Lobby
+    // reads the friends list as it opens and keeps that copy for a while
+    // (fetchCopy), so a stub put in later isn't asked.
+    await page.addInitScript(
       (ids) => {
-        const fetch = window.fetch.bind(window);
-        window.fetch = async (input, init) =>
-          String(input).includes("/api/friends")
-            ? new Response(
-                JSON.stringify({
-                  code: "ABCDEF12",
-                  friends: ids.map((id, i) => ({
-                    id,
-                    name: ["Pal", "Asked", "Free"][i],
-                    online: true,
-                  })),
-                  incoming: [],
-                  outgoing: [],
-                }),
-                { headers: { "Content-Type": "application/json" } },
-              )
-            : fetch(input, init);
+        (window as any).__friends = {
+          code: "ABCDEF12",
+          friends: ids.map((id, i) => ({
+            id,
+            name: ["Pal", "Asked", "Free"][i],
+            online: true,
+          })),
+          incoming: [],
+          outgoing: [],
+        };
       },
       [pal, asked, free],
     );
+    const errors = await openLobby(page);
     await page.evaluate(
       ([me, pal, asked]) =>
         (window as any).__sock.fire("party", {
