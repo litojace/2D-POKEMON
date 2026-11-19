@@ -782,7 +782,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A stout magma newt with a living flame crest. Layers burns and hits hardest up close.",
     color: 0xff7a4f,
-    health: 151,
+    health: 148,
     speed: 240,
     basic: basic(
       "cinder-snap",
@@ -1019,7 +1019,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A fluffy moth that sheds glowing dust. Balanced at every range; Kindle turns pressure into a race.",
     color: 0x86f0c0,
-    health: 138,
+    health: 141,
     speed: 265,
     basic: basic(
       "glint",
@@ -1109,7 +1109,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "third-eye-ray",
         "Third-Eye Ray",
         "beam",
-        17,
+        15,
         8,
         "An instant beam from the third-eye gem toward your aim. Walls block it. Slows.",
         { range: 760, radius: 16, status: "slow", statusDuration: 0.6 },
@@ -1138,7 +1138,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "zone",
         24,
         20,
-        "A psychic maze closes over the aim point (150 px): enemies caught take 24 and are Confused for 2.2 seconds, their movement reversed.",
+        "A psychic maze closes over the aim point (150 px): enemies caught take 24 and are Confused for 2 seconds, their movement reversed.",
         {
           radius: 150,
           range: 600,
@@ -1148,7 +1148,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           tickInterval: 1,
           knockback: 0,
           status: "confuse",
-          statusDuration: 2.2,
+          statusDuration: 2,
         },
       ),
     ],
@@ -1161,7 +1161,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sleepy boulder tortoise. Huge health pool, crushing swings and a shell to hide in; make them come to you.",
     color: 0xc79a5b,
-    health: 193,
+    health: 196,
     speed: 222,
     basic: basic(
       "boulder-swipe",
@@ -1314,7 +1314,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A ring-tailed lemur whose striped tail is a living electromagnet. Yanks runners in, then won't let go.",
     color: 0xf2c94c,
-    health: 144,
+    health: 148,
     speed: 250,
     basic: basic(
       "coil-swipe",
@@ -1331,7 +1331,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Magnet Lash",
         "projectile",
         14,
-        12,
+        11,
         "Wind up for a quarter second, then crack your magnet tail toward the aim. The first enemy hit is dragged right up to you.",
         {
           cast: 0.25,
@@ -1406,7 +1406,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       'A shy red panda, the "fire fox", with a flame at the tip of its tail. Lobs burning chestnuts from the back line and curls up in its tail when caught.',
     color: 0xff8a3d,
-    health: 150,
+    health: 152,
     speed: 235,
     basic: basic(
       "ember-lob",
@@ -1596,7 +1596,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A kingfisher who focuses aura through a crystal beak. The longest reach in the arena, and the frailest body.",
     color: 0x6f8dff,
-    health: 138,
+    health: 141,
     speed: 260,
     basic: basic(
       "aura-quill",
@@ -1739,7 +1739,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A moon rabbit with a mochi mallet. Hops through space to land right on top of you.",
     color: 0xd78bff,
-    health: 134,
+    health: 132,
     speed: 262,
     basic: basic(
       "mallet-bop",
@@ -1892,7 +1892,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A midnight octopus that vanishes in its own ink. Fragile, fast, and gone before you turn around.",
     color: 0x7b5cff,
-    health: 129,
+    health: 132,
     speed: 278,
     basic: basic(
       "tentacle-lash",
@@ -2056,7 +2056,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A three-toed sloth with a moss garden on its back. Moss grows while it stands still; it plants seeds that grow, slows time itself, and lazily swaps places.",
     color: 0x9bd36a,
-    health: 180,
+    health: 185,
     speed: 240,
     passive: "moss",
     basic: basic(
@@ -2383,23 +2383,23 @@ for (const combo of Object.values(COMBOS)) combo.text = inMeters(combo.text);
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 1.07,
-  cindrake: 0.961,
+  cindrake: 0.98,
   tidefin: 1.106,
   auralynx: 0.88,
-  lumoth: 1.061,
+  lumoth: 1.038,
   mystowl: 0.984,
-  terradon: 0.912,
+  terradon: 0.898,
   duskveil: 1.06,
-  coilemur: 0.953,
-  pyranda: 1.001,
+  coilemur: 0.927,
+  pyranda: 0.988,
   glacelle: 0.972,
-  halcyra: 1.049,
+  halcyra: 1.027,
   sunbara: 1.045,
-  astrabun: 0.967,
+  astrabun: 0.982,
   wombolder: 0.913,
-  shadopus: 1.035,
+  shadopus: 1.011,
   pangrove: 0.904,
-  mossloth: 1.045,
+  mossloth: 1.017,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -2411,23 +2411,23 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
  */
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.873,
-  cindrake: 1.141,
+  cindrake: 1.164,
   tidefin: 0.862,
   auralynx: 1.043,
-  lumoth: 0.923,
+  lumoth: 0.903,
   mystowl: 0.828,
-  terradon: 0.971,
+  terradon: 0.956,
   duskveil: 0.865,
-  coilemur: 1.227,
-  pyranda: 0.829,
+  coilemur: 1.194,
+  pyranda: 0.818,
   glacelle: 0.91,
-  halcyra: 0.832,
+  halcyra: 0.814,
   sunbara: 0.88,
-  astrabun: 1.125,
+  astrabun: 1.142,
   wombolder: 1.099,
-  shadopus: 1.157,
+  shadopus: 1.131,
   pangrove: 1.034,
-  mossloth: 0.909,
+  mossloth: 0.884,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
@@ -2436,23 +2436,23 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
  */
 export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.86,
-  cindrake: 1.12,
+  cindrake: 1.143,
   tidefin: 0.861,
   auralynx: 1.17,
-  lumoth: 0.842,
+  lumoth: 0.824,
   mystowl: 0.832,
-  terradon: 1.086,
+  terradon: 1.069,
   duskveil: 0.826,
-  coilemur: 1.233,
-  pyranda: 0.838,
+  coilemur: 1.2,
+  pyranda: 0.827,
   glacelle: 0.91,
-  halcyra: 0.791,
+  halcyra: 0.774,
   sunbara: 0.878,
-  astrabun: 1.192,
+  astrabun: 1.21,
   wombolder: 1.185,
-  shadopus: 1.178,
+  shadopus: 1.151,
   pangrove: 1.06,
-  mossloth: 0.98,
+  mossloth: 0.954,
 };
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
