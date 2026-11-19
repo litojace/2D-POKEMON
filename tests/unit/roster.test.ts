@@ -267,7 +267,13 @@ describe("the roster dresses fighters as the Wardrobe does", () => {
     const grid = rosterMarkup(rosterView("voltkit"), data({ look }));
     const card = (c: string) =>
       grid.match(new RegExp(`data-roster-card="${c}"[\\s\\S]*?</button>`))![0];
-    expect(card("voltkit")).not.toContain("preview-palette");
-    expect(card("tidefin")).toContain("preview-palette-candy-colours");
+    // A card's art is one picture (svgBackdrop) named after its dressing;
+    // inline where pictures can't be made.
+    const tinted = (c: string) =>
+      /preview-palette-candy-colours|data-picture="[^"]* candy-colours"/.test(
+        card(c),
+      );
+    expect(tinted("voltkit")).toBe(false);
+    expect(tinted("tidefin")).toBe(true);
   });
 });

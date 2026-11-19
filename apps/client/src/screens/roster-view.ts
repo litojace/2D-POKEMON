@@ -29,7 +29,12 @@ import {
 import { abilityIcon } from "../ability-icons";
 import { elementIcon } from "../element-icons";
 import { colourPreview } from "../colour-preview";
-import { fighterArt, fighterAvatar, scopeIds } from "../fighter-art";
+import {
+  fighterArt,
+  fighterAvatar,
+  scopeIds,
+  svgBackdrop,
+} from "../fighter-art";
 import {
   attackRange,
   fighterStageArt,
@@ -242,9 +247,26 @@ export const rangeBadge = (c: CharacterId) => {
 function cardArt(c: CharacterId, d: RosterData) {
   const skin = d.looks[c];
   const palette = !skin && d.look?.skin ? d.look.skin : "";
-  const svg = fighterArt(c, undefined, skin);
-  return palette ? scopeIds(colourPreview(svg, palette), `card-${c}`) : svg;
+  const art = () => {
+    const svg = fighterArt(c, undefined, skin);
+    return palette ? colourPreview(svg, palette) : svg;
+  };
+  // One picture per fighter and look, drawn once (svgBackdrop): inline, the
+  // grid's 18 fighters were 3,500 SVG elements (masks, gradients) built,
+  // styled and laid out on every open, three quarters of a second on a 4×
+  // slowed CPU (Nov 2026). The page's rule hiding the Cragstone reward's
+  // cracks goes with the picture.
+  return svgBackdrop(
+    `roster-card ${c} ${skin ? JSON.stringify(skin) : ""} ${palette}`,
+    () => art().replace(/<svg [^>]*>/, (open) => open + CARD_PAGE_RULES),
+    c,
+    () => {
+      const svg = art();
+      return palette ? scopeIds(svg, `card-${c}`) : svg;
+    },
+  );
 }
+const CARD_PAGE_RULES = "<style>.crag-cracks{display:none}</style>";
 /** The teammate who locked in this fighter (it is theirs), if any. */
 export const takenBy = (c: CharacterId, d: RosterData) => {
   const mate = d.room?.mates?.[c];

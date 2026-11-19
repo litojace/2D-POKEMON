@@ -36,10 +36,36 @@ const room = (row: HTMLElement) => row.scrollWidth - row.clientWidth;
 
 /** Mark the edges of `row` that have more past them. */
 export function fadeRow(row: HTMLElement) {
-  const max = room(row);
+  fadeRows([row]);
+}
+/**
+ * Mark many rows' edges: all measured first, then all marked, so a mark
+ * never makes the browser restyle and lay out again before the next row is
+ * measured. A screen opening measured its rows one by one, in the middle of
+ * opening, which laid the new screen out there and then (Nov 2026).
+ */
+function fadeRows(rows: Iterable<HTMLElement>) {
+  const seen = [...rows]
+    .filter((row) => row.isConnected)
+    .map((row) => [row, room(row), row.scrollLeft] as const);
   // toggle() with the state it already has changes nothing (no mutation).
-  row.classList.toggle("has-more-left", max > 1 && row.scrollLeft > 1);
-  row.classList.toggle("has-more-right", max > 1 && row.scrollLeft < max - 1);
+  for (const [row, max, left] of seen) {
+    row.classList.toggle("has-more-left", max > 1 && left > 1);
+    row.classList.toggle("has-more-right", max > 1 && left < max - 1);
+  }
+}
+/** Rows to mark in the next frame, together. */
+const dirty = new Set<HTMLElement>();
+let dirtyFrame = 0;
+function fadeSoon(row: HTMLElement) {
+  dirty.add(row);
+  if (dirtyFrame) return;
+  dirtyFrame = requestAnimationFrame(() => {
+    dirtyFrame = 0;
+    const rows = [...dirty];
+    dirty.clear();
+    fadeRows(rows);
+  });
 }
 
 interface Wired {
@@ -49,11 +75,7 @@ const wired = new Map<HTMLElement, Wired>();
 
 /** One row: its fades, wheel and mouse drag. */
 function wire(row: HTMLElement): Wired {
-  let frame = 0;
-  const fade = () => {
-    cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(() => fadeRow(row));
-  };
+  const fade = () => fadeSoon(row);
   const onWheel = (event: WheelEvent) => {
     if (event.ctrlKey) return;
     if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
@@ -136,10 +158,9 @@ function wire(row: HTMLElement): Wired {
     attributeFilter: ["class"],
   });
   watchPictures();
-  fadeRow(row);
   return {
     stop() {
-      cancelAnimationFrame(frame);
+      dirty.delete(row);
       sizes.disconnect();
       changes.disconnect();
       nearby.disconnect();
@@ -160,9 +181,16 @@ export function scanRows(root: ParentNode = document) {
       w.stop();
       wired.delete(row);
     }
+  const added: HTMLElement[] = [];
   root.querySelectorAll<HTMLElement>(ROWS).forEach((row) => {
-    if (!wired.has(row)) wired.set(row, wire(row));
+    if (wired.has(row)) return;
+    wired.set(row, wire(row));
+    added.push(row);
   });
+  // Their edges before this frame is drawn, measured together once the
+  // screen that brought them has made its changes (measured at once, the
+  // new screen was laid out in the middle of opening, then again).
+  for (const row of added) fadeSoon(row);
 }
 
 export function watchScrollRows() {
