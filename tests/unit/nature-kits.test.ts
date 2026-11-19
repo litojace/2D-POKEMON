@@ -108,6 +108,26 @@ describe("Tongue Grapple", () => {
     ticks(a, 15);
     expect(me.x).toBeGreaterThan(780);
   });
+  it("burns off on an enemy Pyranda's Ember Curtain: no hit, no zip", () => {
+    for (const curtain of [true, false]) {
+      const a = arena("pangrove", "pyranda");
+      const [me, them] = a.players;
+      place(me, 300, Y, 700, Y);
+      place(them, 700, Y, 300, Y);
+      // The curtain stands 90 px in front of Pyranda, across the tongue's path.
+      if (curtain) a.cast(them, skill("pyranda", "ember-curtain"));
+      const hp = them.hp;
+      a.cast(me, skill("pangrove", "tongue-grapple"));
+      ticks(a, 15);
+      if (curtain) {
+        expect(them.hp).toBe(hp);
+        expect(me.x).toBeLessThan(320);
+      } else {
+        expect(them.hp).toBeLessThan(hp);
+        expect(me.x).toBeGreaterThan(600);
+      }
+    }
+  });
 });
 
 describe("Scale Shrapnel", () => {

@@ -416,3 +416,39 @@ to walk under its target): 53% → 82% on Hard, and the win rate climbs 4
 points by 1.5 s. Escapes barely change. A person timing the immune window
 against a big hit would gain more than a bot does, so Tunnel stays at 1 s;
 the Deep Tunnel rite (1.4 s) is the way to a longer one.
+
+### Matchups: Pyranda and Auralynx
+
+The owner asked for Pangrove's two most lopsided duels to be evened out.
+Each lever was measured on 192 duels of the pair (Hard, four seeds).
+
+**Pyranda** (Pangrove won 92%). Pyranda keeps brawlers off with knockback
+(Ember Lob up close, Ember Curtain), and Tongue Grapple zips Pangrove straight
+back in: with no grapple Pangrove won 75%. Pangrove's own levers barely moved
+it (Tunnel's speed, the grapple's range or cooldown: 90%–96%); a shorter
+Scale Swipe (120 px) did (73%) but sank every other ranged matchup (Lumoth
+4%). Now **Ember Curtain burns off a grappling tongue** as it burns shots
+(no hit, no zip; the cooldown is spent), and the Pyranda bot raises its
+curtain when a grappler with the tongue ready is 170–500 px away: 79% on the
+pair's 192 duels, 83% and 90% in the two 48-game round robins (96% and 90%
+before). Only Pangrove has a grapple, so nothing else moves.
+
+**Auralynx** (Pangrove won 13.5%) is a damage race Pangrove loses: it deals
+about 7% more a minute but has 140 health against 170, and Shatter Paw
+(28 damage) decides it (Pangrove wins 59% if Shatter Paw deals nothing, 26% if
+it deals 14). Nothing tried on Pangrove's side helped without breaking other
+matchups: Leaf Storm taking 15–30% less damage lifted it to 27%–31% but
+Pangrove's overall Hard rate to 59%–65%, and the health or damage cuts that
+paid for it took Lumoth down to 15%; no stun during the storm, plates that
+ignore hits under 15, a harder storm shove and Tunnel regrowing every plate
+changed nothing. Brawler bots that keep a shorter-reach brawler at the end
+of their reach (Scale Swipe reaches 150 px, Prism Jab 130) lifted it to
+18%–21%, but that changes every melee pairing and needs a roster-wide
+measurement first. So the Auralynx duel stays where it is for now.
+
+After the change (48 games a pair):
+
+| Seed   | Hard  | Normal | Pyranda (Hard / Normal) | Auralynx (Hard / Normal) |
+| ------ | ----- | ------ | ----------------------- | ------------------------ |
+| 170000 | 51.0% | 50.1%  | 83% / 67%               | 21% / 42%                |
+| 180000 | 50.2% | 50.2%  | 90% / 60%               | 10% / 52%                |
