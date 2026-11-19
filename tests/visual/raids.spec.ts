@@ -590,7 +590,7 @@ test("phones the size of an iPhone SE keep the boss page's actions in reach", as
     // The HUD at this width is the Lobby's (its own spec); the panel's rules hold.
     expect(
       (await layoutProblems(page, { phone: true })).filter(
-        (p) => !/^(scenes|coins|leaves|profile|settings)\b/.test(p),
+        (p) => !/^(scenes|coins|profile|settings)\b/.test(p),
       ),
     ).toEqual([]);
     expect(errors).toEqual([]);

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { ADMIN, EDITABLE, blocksMenu } from "../../apps/client/src/touch-hold";
 
 // The game is not a page to copy from: a long press on a phone (hold to
-// harvest on the Farm) or a drag or right click on a computer selects
+// compare in the Shop) or a drag or right click on a computer selects
 // nothing and opens no menu (owner, 6–7 Nov 2026).
 const field = {
   closest: (s: string) => (s.split(", ").includes("input") ? {} : null),

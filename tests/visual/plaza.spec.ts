@@ -20,7 +20,6 @@ async function hudBoxes(page: Page) {
       ["profile", "#account-profile"],
       ["scenes", "#hub-scenes"],
       ["coins", "#account-coins > *"],
-      ["leaves", "#account-leaves > *"],
       ["menu", ".header-menu > summary"],
       ["event", "#pz-event"],
       ["clock", "#pz-clock"],
@@ -162,7 +161,7 @@ for (const viewport of [
   });
 }
 
-test("you walk where the server says, and Volt Boba costs 10 leaves", async ({
+test("you walk where the server says, and Volt Boba is free", async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -210,19 +209,20 @@ test("you walk where the server says, and Volt Boba costs 10 leaves", async ({
       { timeout: 15_000, intervals: [500] },
     )
     .toBe(true);
-  // Volt Boba: walk up to the truck, pay, run faster.
+  // Volt Boba: walk up to the truck, run faster (free).
   await teleport(page, 1745, 520);
   await expect(page.locator("#pz-interact")).toContainText("Volt Boba", {
     timeout: 10_000,
   });
   await page.click("#pz-interact");
+  await expect(page.locator("#pz-interact")).not.toContainText("leaves");
   await expect(page.locator("#toast")).toContainText("30% faster");
-  await expect(page.locator("#account-leaves")).toContainText("1,224");
   expect((await server()).boost).toBeGreaterThan(25);
-  // Still boosted: no second charge.
+  // Still boosted: the truck says so.
   await page.click("#pz-interact");
   await expect(page.locator("#toast")).toContainText("still active");
-  await expect(page.locator("#account-leaves")).toContainText("1,224");
+  // No Gold Leaves anywhere (retired): no wallet pill beside the coins.
+  await expect(page.locator("#account-leaves")).toHaveCount(0);
   await snap(page, info, "plaza-boba");
   expect(errors).toEqual([]);
 });
@@ -248,17 +248,19 @@ test("the Photo Spot takes a polaroid, and quests update from the server", async
   await snap(page, info, "plaza-photo");
   await photo.locator('[data-ph="close"]').click();
   await expect(photo).toBeHidden();
-  // The server pays a finished quest: the panel and the wallet follow.
+  // The server pays a finished quest in coins: the panel says so, and the
+  // coin pill follows the account's refreshed balance.
+  await expect(page.locator("#account-coins")).toContainText("2,340");
   await page.evaluate(() => {
     const w = window as any;
+    w.__economyPatch = { balance: 2342 };
     const p = structuredClone(w.__plazaProgress);
     p.quests.lap = { n: 1, done: true };
-    p.leaves = 1274;
     w.__sock.fire("plaza-progress", p);
   });
   await expect(page.locator("#pz-quests h5")).toContainText("2/5");
-  await expect(page.locator("#toast")).toContainText("+40 Gold Leaves");
-  await expect(page.locator("#account-leaves")).toContainText("1,274");
+  await expect(page.locator("#toast")).toContainText("+2 coins");
+  await expect(page.locator("#account-coins")).toContainText("2,342");
   expect(errors).toEqual([]);
 });
 
@@ -489,16 +491,16 @@ test("block a player from their card: asked first, gone from the Plaza, unblocke
   expect(errors).toEqual([]);
 });
 
-test("a treat from your barn bursts for everyone, and T throws one too", async ({
+test("a daily treat bursts for everyone, and T throws one too", async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const errors = await openPlaza(page);
-  // The server sends your count (regular crops in the barn) after joining.
+  // The server sends your count (treats left today) after joining.
   await expect(page.locator("#pz-treats")).toHaveText("3");
   await page.click("#pz-treat");
   await expect(page.locator("#toast")).toContainText(
-    "Tossed Breeze Wheat to everyone!",
+    "Tossed a cupcake to everyone!",
   );
   await expect(page.locator("#pz-treats")).toHaveText("2");
   // The burst is drawn where the server has you.

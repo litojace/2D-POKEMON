@@ -52,7 +52,7 @@ for (const size of [
       await newPlayer(page);
       const errors = await openHub(page);
       await expect(card(page)).toHaveAttribute("data-lobby-action", "guide");
-      await expect(card(page)).toContainText("Getting started · 0 of 5");
+      await expect(card(page)).toContainText("Getting started · 0 of 3");
       await expect(card(page)).toContainText("Play your first match");
       // The guide fits where the Journey card was: on screen, clear of PLAY.
       const play = (await page.locator(".lobby-play").boundingBox())!;
@@ -66,11 +66,11 @@ for (const size of [
       }
       await snap(page, info, `guide-card-${size.width}x${size.height}`);
 
-      // The sheet: five steps, the first to act on.
+      // The sheet: three steps, the first to act on.
       await card(page).click();
       const sheet = page.locator("[data-guide]");
       await expect(sheet).toBeVisible();
-      await expect(sheet.locator(".guide-step")).toHaveCount(5);
+      await expect(sheet.locator(".guide-step")).toHaveCount(3);
       await expect(sheet.locator(".guide-step.is-next")).toContainText(
         "Play your first match",
       );
@@ -94,24 +94,6 @@ for (const size of [
       );
       await page.locator(".rh-room .ui-close").click();
 
-      // Visiting the Farm counts, and says so (the harness's own "offline"
-      // toasts come and go too: keep every one shown).
-      await page.evaluate(() => {
-        const w = window as any,
-          toast = document.getElementById("toast")!;
-        w.__toasts = [];
-        new MutationObserver(() => w.__toasts.push(toast.textContent)).observe(
-          toast,
-          { childList: true, characterData: true, subtree: true },
-        );
-      });
-      await page.click('#hub-scenes [data-hub-scene="farm"]');
-      await expect
-        .poll(() => page.evaluate(() => (window as any).__toasts))
-        .toContain("Getting started · 1 of 5 done");
-      await page.click('#hub-scenes [data-hub-scene="lobby"]');
-      await expect(card(page)).toContainText("1 of 5");
-
       // Hide: the Journey card is back.
       await card(page).click();
       await page.locator("[data-guide-hide]").click();
@@ -124,11 +106,11 @@ for (const size of [
       await page.waitForFunction(() => !!(window as any).__sock);
       await page.evaluate(() => (window as any).__sock.fire("connect"));
       await expect(card(page)).toHaveAttribute("data-lobby-action", "journey");
-      // ...and the Menu brings it back, with the Farm still done.
+      // ...and the Menu brings it back, nothing done yet.
       await page.click("#header-menu > summary");
       await page.click("#guide-open");
       await expect(page.locator("[data-guide]")).toBeVisible();
-      await expect(page.locator(".guide-step.is-done")).toHaveCount(1);
+      await expect(page.locator(".guide-step.is-done")).toHaveCount(0);
       await expect(card(page)).toHaveAttribute("data-lobby-action", "guide");
       expect(errors).toEqual([]);
     } finally {

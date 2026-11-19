@@ -33,9 +33,8 @@ w.__plazaProgress = {
     { name: "Nova", ms: 6120 },
     { name: "tester", ms: 7420, me: true },
   ],
-  leaves: 1234,
 };
-/** Regular crops in the barn: treats to throw (migration 049). */
+/** Treats left today (PLAZA.treatsDaily a day): treats to throw. */
 w.__plazaTreats = 3;
 w.__plazaTreatsThrown = [] as string[];
 const handle = (ev: string, data: any) => {
@@ -58,14 +57,14 @@ const handle = (ev: string, data: any) => {
     if (w.__plazaTreats < 1)
       return {
         ok: false,
-        error: "No crops to throw yet. Harvest some on the Farm.",
+        error: "No treats left today. More tomorrow!",
         treats: 0,
       };
     w.__plazaTreats--;
-    w.__plazaTreatsThrown.push("wheat");
-    const thrown = world.treat(ME, "wheat");
+    w.__plazaTreatsThrown.push("cupcake");
+    const thrown = world.treat(ME, "cupcake");
     setTimeout(() => w.__sock?.fire("plaza-treat", thrown), 0);
-    return { ok: true, crop: "wheat", treats: w.__plazaTreats };
+    return { ok: true, treat: "cupcake", treats: w.__plazaTreats };
   }
   if (ev === "plaza-look") {
     world.updateProfile(ME, { character: data.character });
@@ -104,8 +103,7 @@ const handle = (ev: string, data: any) => {
       if (!world.at(ME, "cafe"))
         return { ok: false, error: "Walk up to the Volt Boba truck first." };
       world.boost(ME);
-      w.__plazaProgress.leaves -= PLAZA.boba.leaves;
-      return { ok: true, leaves: w.__plazaProgress.leaves };
+      return { ok: true };
     }
     return { ok: world.at(ME, data.spot) };
   }

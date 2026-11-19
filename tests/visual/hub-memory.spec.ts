@@ -5,14 +5,11 @@ import {
   pushUntilBattle,
   createRoom,
 } from "./helpers";
-import { fakeFarm } from "./farm-fake";
-import { fakeBistro } from "./bistro-fake";
 
 // An older iPhone (2–3 GB) ends a page that holds too much memory: a white
 // screen, then a reload. Canvases are the hub's biggest holdings, so on an
-// iPhone the Plaza's and the Farm's painted grounds (30 and 13.8 MB; the
-// Plaza's with the world around it) are
-// let go while they wait behind another tab and painted again on return,
+// iPhone the Plaza's painted ground (30 MB, with the world around it) is
+// let go while it waits behind another tab and painted again on return,
 // and a raid gives its canvases and WebGL context back once it closes.
 test.use({
   viewport: { width: 667, height: 375 },
@@ -66,7 +63,7 @@ async function liveCanvases(page: Page, closed = false) {
   // shipped game has none, and they would keep a closed world alive.
   if (closed)
     await page.evaluate(() => {
-      for (const k of ["__plaza", "__farm", "__bistro", "__bistroArt"])
+      for (const k of ["__plaza"])
         delete (window as any)[k];
     });
   const cdp = await page.context().newCDPSession(page);
@@ -77,28 +74,24 @@ async function liveCanvases(page: Page, closed = false) {
 const big = (sizes: number[][]) =>
   sizes.filter(([w, h]) => w * h >= 2_000_000).map(([w, h]) => `${w}x${h}`);
 
-test("an iPhone lets the hidden Plaza's and Farm's grounds go, and a raid's canvases", async ({
+test("an iPhone lets the hidden Plaza's ground go, and a raid's canvases", async ({
   page,
 }) => {
   test.setTimeout(300_000);
   await page.addInitScript(trackCanvases);
   const errors = await openLobby(page);
-  await fakeFarm(page);
-  await fakeBistro(page);
   await page.evaluate(() => localStorage.setItem("ea-plaza-help", "1"));
   await page.click('#hub-scenes [data-hub-scene="plaza"]');
   await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
-  await page.click('#hub-scenes [data-hub-scene="farm"]');
-  await expect(page.locator("#fm-rail")).toBeVisible({ timeout: 30_000 });
-  // On the Farm: its ground is kept, the hidden Plaza's goes once idle.
   await expect
-    .poll(async () => big(await liveCanvases(page)), { timeout: 20_000 })
-    .toEqual(["2480x1460"]);
-  await page.click('#hub-scenes [data-hub-scene="bistro"]');
-  await expect(page.locator(".bistro-layer .bs-cv")).toBeVisible();
+    .poll(() =>
+      page.evaluate(() => (window as any).__plaza.groundAt(1350, 300)[3]),
+    )
+    .toBe(255);
+  expect(big(await liveCanvases(page))).toEqual(["3300x2300"]);
   await page.click('#hub-scenes [data-hub-scene="lobby"]');
   await expect(page.locator("#lobby-play")).toBeVisible();
-  // Behind the Lobby neither ground is kept (both scenes are, paused).
+  // Behind the Lobby its ground is not kept (the scene is, paused).
   await expect
     .poll(async () => big(await liveCanvases(page)), { timeout: 20_000 })
     .toEqual([]);
@@ -111,11 +104,6 @@ test("an iPhone lets the hidden Plaza's and Farm's grounds go, and a raid's canv
     )
     .toBe(255);
   expect(big(await liveCanvases(page))).toEqual(["3300x2300"]);
-  await page.click('#hub-scenes [data-hub-scene="farm"]');
-  await expect(page.locator("#fm-rail")).toBeVisible();
-  await expect
-    .poll(async () => big(await liveCanvases(page)), { timeout: 20_000 })
-    .toEqual(["2480x1460"]);
 
   // A raid: its floor, boss and map canvases and its WebGL context are let
   // go once it closes.
