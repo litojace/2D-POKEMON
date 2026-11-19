@@ -9,6 +9,7 @@ import {
 import {
   depthSort,
   order,
+  screenBox,
   slices,
   spot,
   type Drawable,
@@ -112,6 +113,38 @@ describe("Plaza depth: footprints, not one number each", () => {
     expect(names(depthSort([body(1630, 425), truck]))).toEqual([
       "body",
       "truck",
+    ]);
+  });
+
+  it("the lap gantry stands at the lane's far edge: under runners on the line, over those beyond", () => {
+    // As plaza-scene.ts builds it: one picture, its near post reaching
+    // down past its footprint to the lane's inner edge.
+    const x = PLAZA_TRACK.cx,
+      ya = PLAZA_TRACK.cy - PLAZA_TRACK.ro[1] - 4,
+      yb = PLAZA_TRACK.cy - PLAZA_TRACK.ri[1] + 4;
+    const gantry: Drawable = {
+      x0: x - 10,
+      x1: x + 10,
+      y0: ya - 2,
+      y1: ya,
+      h: 172,
+      sw: 96,
+      below: yb - ya + 2,
+      draw: noop,
+      name: "gantry",
+    };
+    // Its box on screen runs from the beam's top to the near post's foot.
+    const box = screenBox(gantry);
+    expect(box.y0).toBe(ya - 2 - 172);
+    expect(box.y1).toBeGreaterThanOrEqual(yb + 2);
+    for (let y = ya + 6; y <= yb - 6; y += 10)
+      expect(
+        names(depthSort([body(x, y, "me"), gantry])),
+        `on the line at ${y}`,
+      ).toEqual(["gantry", "me"]);
+    expect(names(depthSort([gantry, body(x, ya - 20, "me")]))).toEqual([
+      "me",
+      "gantry",
     ]);
   });
 

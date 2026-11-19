@@ -1,6 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { asRgb, openPlaza, snap } from "./helpers";
-import { PLAZA_HURDLE_SEGMENTS } from "../../packages/shared/src/plaza";
+import {
+  PLAZA_HURDLE_SEGMENTS,
+  PLAZA_TRACK,
+} from "../../packages/shared/src/plaza";
 
 // Hub redesign phase 3: the new Plaza. The harness runs the real PlazaWorld
 // in the page (harness/plaza-sim.ts) in place of the game server.
@@ -729,6 +732,83 @@ test("a runner behind a hurdle is under it, in front of it over it", async ({
   expect(await placeOf(-14), "behind: drawn first").toBeLessThan(0);
   expect(await placeOf(14), "in front: drawn last").toBeGreaterThan(0);
   expect(errors).toEqual([]);
+});
+
+// The lap gantry spans the lane along the view's depth, so in this
+// front-and-above view its beam, posts and sign stack into one column.
+// Drawn part by part in depth order, the beam's near slices and the near
+// post striped a runner on the line (name tag included) and the sign
+// itself. Now the gantry is one picture standing at the lane's far edge:
+// a runner anywhere on the line is drawn over all of it, one beyond the
+// far edge under it. Phone landscape, as on the owner's iPhone.
+test("a runner on the start line is drawn over the whole gantry", async ({
+  browser,
+}, info) => {
+  test.setTimeout(120_000);
+  const ctx = await browser.newContext({
+    viewport: { width: 956, height: 440 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await ctx.newPage();
+    const errors = await openPlaza(page);
+    const T = PLAZA_TRACK,
+      x = T.cx,
+      ya = T.cy - T.ro[1],
+      yb = T.cy - T.ri[1];
+    // Where "me" and each part of the gantry come in the drawing order
+    // (earlier is under).
+    const placeAt = async (y: number) => {
+      await teleport(page, x, y);
+      await expect
+        .poll(() =>
+          page.evaluate(
+            ([x, y]) => {
+              const P = (window as any).__plaza.P;
+              return Math.hypot(P.x - x, P.y - y);
+            },
+            [x, y],
+          ),
+        )
+        .toBeLessThan(4);
+      await page.waitForTimeout(300);
+      return page.evaluate(() => {
+        const o: string[] = (window as any).__plaza.drawOrder();
+        const me = o.indexOf("me");
+        const parts = o.flatMap((n, i) => (n.startsWith("gantry") ? [i] : []));
+        return { me, parts };
+      });
+    };
+    await page.evaluate(() => (window as any).__plaza.drawOrder());
+    for (const [k, y] of [
+      ["far edge", ya + 10],
+      ["middle", (ya + yb) / 2],
+      ["near edge", yb - 10],
+    ] as const) {
+      const { me, parts } = await placeAt(y);
+      await snap(page, info, `plaza-gantry-${k.replace(" ", "-")}`);
+      expect(me, k).toBeGreaterThanOrEqual(0);
+      expect(parts.length, k).toBeGreaterThan(0);
+      expect
+        .soft(
+          parts.filter((i) => i > me).length,
+          `on the line (${k}): no part of the gantry over the runner`,
+        )
+        .toBe(0);
+    }
+    // Beyond the far edge, on the grass: the gantry stands in front.
+    const behind = await placeAt(ya - 30);
+    await snap(page, info, "plaza-gantry-beyond");
+    expect(
+      behind.parts.filter((i) => i < behind.me).length,
+      "beyond the far edge: the whole gantry over the runner",
+    ).toBe(0);
+    expect(errors).toEqual([]);
+  } finally {
+    await ctx.close();
+  }
 });
 
 // A click on the ground (desktop) shows where you're going, as in MOBAs:
