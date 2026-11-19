@@ -2,7 +2,7 @@ import { framedAvatar } from "./portraits";
 import { ascendantPrismellCue } from "./ascendant-prismell-art";
 import { ascendantLumiwickCue } from "./ascendant-lumiwick-art";
 import { ascendantStormTwinsCue } from "./ascendant-storm-twins-art";
-import { CHARACTERS, type Snapshot } from "@arena/shared";
+import { CHARACTERS, meters, type Snapshot } from "@arena/shared";
 import {
   raidChapters,
   DREAM_RUNE_NAMES,
@@ -69,7 +69,7 @@ export function raidCue(state: Snapshot, myId: string) {
     if (w?.kind === "link-beam" || r.stormBeam)
       return "Link Beam — jump across the bright ribbon; watch the copper bends!";
     if (w?.kind === "chain-lightning")
-      return "Chain Lightning — spread out, 200px apart!";
+      return `Chain Lightning — spread out, ${meters(200)} apart!`;
     if (w?.kind === "twin-rush")
       return "Twin Rush — leave both crossing lanes!";
     if (w?.kind === "thunderclap")
