@@ -19,26 +19,29 @@ export function parse(html: string) {
   return box.firstElementChild as HTMLElement;
 }
 
-/** What a child is, to find it again when its siblings change (`loose`). */
+/** What a child is, to find it again when its siblings change. */
 const kind = (n: Node) =>
   n instanceof Element
     ? `${n.tagName} ${n.getAttribute("class") ?? ""}`
     : `#${n.nodeType}`;
 
 /**
- * `loose`: where a list of children grew or shrank, keep the children that
- * are still there (same tag and class, in the same order) and patch them,
- * rather than rebuilding the whole list. For another tab of a screen: its
- * head, tab row and stage stay the same elements, and only what differs is
- * built. (Removing the focused tab, the one just tapped, would make the
- * browser restyle the whole old screen first: a quarter second on a phone.)
+ * Where a list of children grew or shrank, the children that are still there
+ * (same tag and class, in the same order) are kept and patched, and only what
+ * differs is built. For another tab of a screen: its head, tab row and stage
+ * stay the same elements. (Removing the focused tab, the one just tapped,
+ * would make the browser restyle the whole old screen first: a quarter
+ * second on a phone.) And a row scrolled sideways keeps its place when
+ * something beside it comes or goes: the Shop's fighter row went back to the
+ * first fighter when the next one picked had no collection line, or no skins
+ * (owner, 19 Nov 2026). This used to be opt-in (`loose`) for the hub's tabs;
+ * every screen rebuilt the whole box otherwise.
  */
 export function patch(
   live: Node,
   previous: Node,
   next: Node,
   replaceWhole = REPLACE_WHOLE,
-  loose = false,
 ) {
   if (previous.isEqualNode(next)) return;
   if (
@@ -74,11 +77,6 @@ export function patch(
     return;
   }
   if (before.length !== after.length) {
-    if (!loose) {
-      while (live.firstChild) live.removeChild(live.firstChild);
-      for (const node of after) live.appendChild(node.cloneNode(true));
-      return;
-    }
     // Each new child takes the first old one of its kind after the last
     // taken (so the kept ones never move), or is built.
     let from = 0;
@@ -96,11 +94,11 @@ export function patch(
       const i = taken[j];
       if (i < 0)
         live.insertBefore(node.cloneNode(true), live.childNodes[j] ?? null);
-      else patch(children[i], before[i], node, replaceWhole, true);
+      else patch(children[i], before[i], node, replaceWhole);
     });
   } else
     for (let i = 0; i < after.length; i++)
-      patch(children[i], before[i], after[i], replaceWhole, loose);
+      patch(children[i], before[i], after[i], replaceWhole);
   if (live instanceof HTMLSelectElement && next instanceof HTMLSelectElement)
     live.value = next.value;
 }

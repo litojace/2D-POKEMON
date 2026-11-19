@@ -221,6 +221,26 @@ test("Lock in, Ready and Leave go to the room's calls", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("Lock in works on the fighter you came with from the Lobby", async ({
+  page,
+}) => {
+  const errors = await openHub(page);
+  await enterRoom(page, "duel");
+  const picker = page.locator(".room-screen .roster-room");
+  // Voltkit came with you (the Lobby's fighter), not yet locked in.
+  await expect(page.locator(".room-seats [data-me] .room-state")).toContainText(
+    "Choosing",
+  );
+  await picker.locator('[data-roster-card="voltkit"]').click();
+  const lock = picker.locator('[data-roster-select="voltkit"]');
+  await expect(lock).toBeEnabled();
+  await lock.click();
+  await expect(lock).toContainText("Locked in");
+  await expect(lock).toBeDisabled();
+  expect(await events(page, "select")).toEqual(["voltkit"]);
+  expect(errors).toEqual([]);
+});
+
 test("a free-for-all room's open seats invite friends", async ({ page }) => {
   const errors = await openHub(page);
   await enterRoom(page, "ffa");

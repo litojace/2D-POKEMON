@@ -109,7 +109,7 @@ export function openRaids(
       // before the change, while the layout is still up to date.)
       const body = q<HTMLElement>("[data-raid-region=body]");
       const scrolled = !!body && body.scrollTop > 0;
-      patch(root(), template, next, undefined, true);
+      patch(root(), template, next);
       if (scrolled && body.isConnected) body.scrollTop = 0;
     } else if (swap || next.dataset.raidMode !== template.dataset.raidMode) {
       for (const animation of navigation) animation.cancel();
