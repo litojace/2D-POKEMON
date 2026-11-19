@@ -84,7 +84,7 @@ const paths = {
 } as const;
 export type IconName = keyof typeof paths;
 export function menuIcon(name: IconName) {
-  return `<svg class="menu-option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${paths[name]}</svg>`;
+  return `<svg class="menu-option-icon" data-icon="${name}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${paths[name]}</svg>`;
 }
 /**
  * A small icon placed before a button's label. It takes the button's text

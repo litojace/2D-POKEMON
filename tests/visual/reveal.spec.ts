@@ -52,6 +52,31 @@ for (const size of SIZES)
             return page.locator(".room-screen .roster-room").count();
           })
           .toBe(1);
+        // Watch the Reveal every frame: once in, it stays in. (When the arena
+        // finished loading it popped in again, the whole screen blinking out,
+        // and a measure taken then caught it mid-pop: CI, 19 Nov.)
+        await page.evaluate(() => {
+          const w = window as any;
+          w.__revealShown = false;
+          w.__revealBlinks = [] as string[];
+          const tick = () => {
+            const c = document.querySelector<HTMLElement>(
+              "#arena-overlay .match-reveal",
+            );
+            if (c) {
+              const o = Number(getComputedStyle(c).opacity);
+              const r = c.getBoundingClientRect();
+              const whole = o === 1 && Math.abs(r.width - innerWidth) < 0.5;
+              if (whole) w.__revealShown = true;
+              else if (w.__revealShown && w.__revealBlinks.length < 5)
+                w.__revealBlinks.push(
+                  `${c.querySelector(".rv-load span")?.textContent}: opacity ${o.toFixed(2)}, ${r.width.toFixed(1)} wide`,
+                );
+            }
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
         // The match starts: every pick is sent; the cards start face down.
         await page.evaluate(() => {
           const w = window as any;
@@ -102,6 +127,17 @@ for (const size of SIZES)
         // A loading screen: no chat button on it, neither kind.
         await expect(page.locator("#chat-button")).toBeHidden();
         await expect(page.locator("#battle-chat")).toBeHidden();
+        // A frame or two after loading ends, for the sampler to see one.
+        await page.evaluate(
+          () =>
+            new Promise((r) =>
+              requestAnimationFrame(() => requestAnimationFrame(r)),
+            ),
+        );
+        expect(
+          await page.evaluate(() => (window as any).__revealBlinks),
+          "the Reveal popped in again",
+        ).toEqual([]);
         const problems = await page.evaluate(() => {
           const out: string[] = [];
           const R = (e: Element) => e.getBoundingClientRect();

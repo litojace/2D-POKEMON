@@ -4,6 +4,7 @@ import {
   openPlayPanel,
   pickRoomMode,
   createRoom,
+  settle,
   snap,
 } from "./helpers";
 import { ISLAND, setInsets, layoutProblems } from "./ui-measure";
@@ -82,11 +83,38 @@ function measure(page: Page) {
             ),
           ]
             .filter(visible)
-            .filter(
-              (e) =>
-                (e as HTMLElement).scrollWidth >
-                (e as HTMLElement).clientWidth + 1,
-            )
+            .filter((e) => {
+              const el = e as HTMLElement;
+              if (el.scrollWidth > el.clientWidth + 1) return true;
+              // A centred label (the state tag) runs out on both sides, and
+              // scrollWidth counts only the right one: "CHOOSING" was 11 px
+              // wider than its tag's room and read as 1 px over. Its text
+              // against the room inside the padding sees all of it.
+              const cs = getComputedStyle(el);
+              const room =
+                el.clientWidth -
+                parseFloat(cs.paddingLeft) -
+                parseFloat(cs.paddingRight);
+              // What is drawn: its text and icons, not a screen-reader-only
+              // "(you)" (1 px, clipped).
+              let left = Infinity,
+                right = -Infinity;
+              for (const n of el.childNodes) {
+                let r: DOMRect;
+                if (n.nodeType === Node.TEXT_NODE) {
+                  const range = document.createRange();
+                  range.selectNodeContents(n);
+                  r = range.getBoundingClientRect();
+                } else if (n instanceof Element) r = n.getBoundingClientRect();
+                else continue;
+                if (r.width <= 1) continue;
+                left = Math.min(left, r.left);
+                right = Math.max(right, r.right);
+              }
+              // Letter-spacing's gap after the last letter is not ink.
+              const text = right - left - (parseFloat(cs.letterSpacing) || 0);
+              return el.clientWidth > 0 && text > room + 0.5;
+            })
             .map((e) => e.textContent ?? ""),
         }),
       ),
@@ -205,7 +233,10 @@ for (const size of SIZES)
           ["Ready", true, false],
         ]);
         // The banner's chat and ⋯ buttons belong to it: no disc or rim of
-        // their own until hovered (owner, 19 Nov), and alike.
+        // their own until hovered (owner, 19 Nov), and alike. Read once
+        // the chat button's disc has faded out (0.15 s from the Lobby's
+        // look; a slow runner read it 0.4 % of the way from there).
+        await settle(page);
         const look = await page.evaluate(() =>
           ["#chat-button", ".room-more"].map((q) => {
             const c = getComputedStyle(document.querySelector(q)!);

@@ -4193,12 +4193,18 @@ function renderBattle() {
     }
     const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
     // Preserve the pressed button and native scrolling between snapshots.
+    // The arena finishing loading starts the Reveal's scroll afresh, but it
+    // is the same panel: it must not pop in again (it blinked out, the whole
+    // screen, the moment "Arena and every fighter loaded" showed).
+    const panelKey = actions
+      ? `${state.code}:${state.matchId ?? ""}:${state.phase}`
+      : undefined;
     setOverlayMarkup(
       overlay,
       markup,
-      actions
-        ? `${state.code}:${state.matchId ?? ""}:${state.phase}${state.phase === "briefing" && arenaLoading(state) ? ":loading" : ""}`
-        : undefined,
+      panelKey &&
+        `${panelKey}${state.phase === "briefing" && arenaLoading(state) ? ":loading" : ""}`,
+      panelKey,
     );
     fillLiveSeconds(
       overlay,
