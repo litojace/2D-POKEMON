@@ -65,7 +65,8 @@ describe("AI bot", () => {
     const games = 16;
     for (let i = 0; i < games; i++) {
       const f = fighters[i % fighters.length],
-        g = fighters[(i + 2 + Math.floor(i / fighters.length)) % fighters.length];
+        g =
+          fighters[(i + 2 + Math.floor(i / fighters.length)) % fighters.length];
       if (botVsBot("hard", "easy", f, g, 20 + i).winner === "A") hardWins++;
       if (botVsBot("easy", "normal", f, g, 40 + i).winner === "B") normalWins++;
     }

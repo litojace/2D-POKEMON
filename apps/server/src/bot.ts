@@ -67,9 +67,11 @@ interface Profile {
    */
   seeShots?: boolean;
   /**
-   * Chance each second to lose focus for that second: no moving, attacking
-   * or skills (it still sees what is coming). Unlike `rest`, which only holds
-   * the basic attack, this slows every kind of champion down alike.
+   * Chance each second to lose focus for that second. In PvP it is a lapse:
+   * it keeps walking (and out of hazards) but attacks, casts and dodges
+   * nothing. In raids it stands still as well, as the raids were tuned
+   * with. Unlike `rest`, which only holds the basic attack, this slows every
+   * kind of champion down alike.
    */
   daze?: number;
   /** Per-champion daze (overrides `daze` for that champion). */
@@ -627,9 +629,11 @@ export class BotBrain {
     // and holds everything, as the raids were tuned with. Elsewhere it is a
     // lapse of attention, the way a person's is: it keeps moving and keeps
     // out of hazards, but attacks, casts and dodges nothing.
-    const daze = pvp
-      ? (this.profile.dazeBy?.[me.character] ?? this.profile.daze)
-      : this.profile.raidDazeBy?.[me.character];
+    // (A champion newer than raidDazeBy takes its PvP share in raids too.)
+    const daze =
+      (pvp ? undefined : this.profile.raidDazeBy?.[me.character]) ??
+      this.profile.dazeBy?.[me.character] ??
+      this.profile.daze;
     if (daze) {
       if (t >= this.nextDaze) {
         this.nextDaze = t + 1;

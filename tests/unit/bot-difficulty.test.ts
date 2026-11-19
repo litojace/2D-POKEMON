@@ -87,9 +87,12 @@ describe("bot difficulty", () => {
     for (let i = 0; i < 10; i++) {
       arena.time += 1 / RULES.tick;
       const input = b.think(arena, p);
-      expect([input.basic, input.skill ?? -1, input.dash, input.jump]).toEqual(
-        [false, -1, false, false],
-      );
+      expect([input.basic, input.skill ?? -1, input.dash, input.jump]).toEqual([
+        false,
+        -1,
+        false,
+        false,
+      ]);
       if (input.dx || input.dy) moved++;
     }
     expect(moved).toBe(10);
