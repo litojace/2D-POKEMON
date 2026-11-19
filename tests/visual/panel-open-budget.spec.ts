@@ -167,11 +167,24 @@ function instrument() {
     return el;
   } as typeof Document.prototype.createElement;
   (c as any).lastLong = 0;
+  // The last long frames and what ran in them, for a failure to name.
+  (c as any).longs = [] as string[];
   try {
     new PerformanceObserver((l) => {
       for (const e of l.getEntries()) {
         if (c.on) c.frames.push(e.duration);
         (c as any).lastLong = e.startTime + e.duration;
+        const scripts = ((e as any).scripts ?? []).slice(0, 3).map(
+          (s: any) =>
+            `${s.invoker} ${String(s.sourceURL ?? "")
+              .split("/")
+              .pop()}:${s.sourceFunctionName ?? ""} ${Math.round(s.duration)}`,
+        );
+        const longs = (c as any).longs as string[];
+        longs.push(
+          `${Math.round(e.startTime)} +${Math.round(e.duration)} ms [${scripts.join(", ")}]`,
+        );
+        if (longs.length > 30) longs.shift();
       }
     }).observe({ type: "long-animation-frame" });
   } catch {
@@ -224,16 +237,34 @@ const quiet = async (page: Page) => {
   await expect
     .poll(() => Date.now() - pictures.last, { timeout: 120_000 })
     .toBeGreaterThan(1500);
-  await page.waitForFunction(
-    () => performance.now() - (window as any).__count.lastLong > 1500,
-    undefined,
-    { timeout: 60_000, polling: 250 },
-  );
+  await page
+    .waitForFunction(
+      () => performance.now() - (window as any).__count.lastLong > 1500,
+      undefined,
+      { timeout: 60_000, polling: 250 },
+    )
+    .catch(async (e) => {
+      const longs = await page.evaluate(() => (window as any).__count.longs);
+      throw new Error(
+        `no 1.5 s without a long frame; the last ones:\n${longs.join("\n")}\n${e}`,
+      );
+    });
 };
 /** When the page last loaded a picture. */
 const pictures = { last: 0 };
-async function measure(page: Page, cdp: CDPSession, panel: Panel) {
+async function measure(
+  page: Page,
+  cdp: CDPSession,
+  panel: Panel,
+  o: { changed?: boolean } = {},
+) {
   await quiet(page);
+  // The server says records changed just before this open, not before the
+  // wait: the Lobby's own friends check could ask again meanwhile, and the
+  // open then showed that fresh copy without asking ("friends: asks for
+  // /api/friends after a change", when the wait took a few seconds).
+  if (o.changed)
+    await page.evaluate(() => (window as any).__sock.fire("economy-changed"));
   await page.evaluate(() => {
     const c = (window as any).__count;
     Object.assign(c, {
@@ -336,9 +367,7 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
     for (const panel of PANELS) {
       // The server says records changed (after a match, a raid, a
       // purchase): the next open asks for them again…
-      await page.evaluate(() => (window as any).__sock.fire("economy-changed"));
-      await page.waitForTimeout(300);
-      const first = await measure(page, cdp, panel);
+      const first = await measure(page, cdp, panel, { changed: true });
       for (const path of panel.asks)
         expect(
           first.asks,
