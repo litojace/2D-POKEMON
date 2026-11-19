@@ -187,7 +187,8 @@ export function crackLines(key: string, width: number, height: number) {
 }
 
 const prefixes = Object.fromEntries(SKINS.map((s) => [s, `${s}:`])) as Record<Skin, string>;
-const originalOf = (key: string) => {
+/** The rig texture a restyled layer (`galaxy-colours:…`) was made from. */
+export const originalOf = (key: string) => {
   for (const prefix of Object.values(prefixes))
     if (key.startsWith(prefix)) return key.slice(prefix.length);
   return key;
