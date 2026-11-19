@@ -119,7 +119,8 @@ interface Profile {
   kite?: number;
   /**
    * PvP only: below this share of its health, and behind on health, it
-   * plays safe: more spacing, healing orbs first, no orb runs past the enemy.
+   * plays safe: a shooter keeps more distance, and it goes further for a
+   * healing orb and leaves energy orbs alone.
    */
   retreat?: number;
   /**
