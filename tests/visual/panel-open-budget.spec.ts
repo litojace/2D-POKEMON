@@ -167,13 +167,23 @@ function instrument() {
     return el;
   } as typeof Document.prototype.createElement;
   (c as any).lastLong = 0;
-  // The last long frames and what ran in them, for a failure to name.
+  // The last long frames and what ran in them, for a failure to name
+  // (and the ones of a measured open, for its longest-frame check).
   (c as any).longs = [] as string[];
   try {
     new PerformanceObserver((l) => {
       for (const e of l.getEntries()) {
         if (c.on) c.frames.push(e.duration);
-        (c as any).lastLong = e.startTime + e.duration;
+        // Busy: a long frame with work of the page's own in it. On CI's
+        // runner every Lobby frame took 180-190 ms with no script at all
+        // (its steady drawing there, PR #237, 19 Nov), so "no long frame
+        // for 1.5 s" never came; here those frames stay under 50 ms.
+        const own = ((e as any).scripts ?? []).reduce(
+          (n: number, s: any) => n + (s.duration ?? 0),
+          0,
+        );
+        if (own >= 30 || !("scripts" in e))
+          (c as any).lastLong = e.startTime + e.duration;
         const scripts = ((e as any).scripts ?? []).slice(0, 3).map(
           (s: any) =>
             `${s.invoker} ${String(s.sourceURL ?? "")
@@ -185,6 +195,7 @@ function instrument() {
           `${Math.round(e.startTime)} +${Math.round(e.duration)} ms [${scripts.join(", ")}]`,
         );
         if (longs.length > 30) longs.shift();
+        if (c.on) ((c as any).openLongs ??= []).push(longs[longs.length - 1]);
       }
     }).observe({ type: "long-animation-frame" });
   } catch {
@@ -230,7 +241,8 @@ const closePanel = (page: Page) =>
 
 /**
  * Wait until nothing else keeps the page busy (fighter textures painted in
- * quiet moments, the Lobby redrawing after news): 1.5 s without a long frame.
+ * quiet moments, the Lobby redrawing after news): 1.5 s without a long
+ * frame that ran 30 ms of script or more.
  */
 const quiet = async (page: Page) => {
   // Nor pictures loading (fighter textures painted ahead decode one by one).
@@ -274,6 +286,7 @@ async function measure(
       reads: 0,
       made: new WeakSet(),
       frames: [],
+      openLongs: [],
     });
     c.openedAt = performance.now();
     c.on = true;
@@ -296,6 +309,7 @@ async function measure(
         document.querySelectorAll(".ui-panel:not([data-ui-leaving]) canvas"),
       ).filter((el) => c.made.has(el) && !el.closest(stills)).length,
       worst: Math.round(Math.max(0, ...(c.frames as number[]))),
+      longs: (c.openLongs ?? []) as string[],
     };
   }, TILE_STILLS);
   await expect(page.locator(".ui-panel:not([data-ui-leaving])")).toBeVisible();
@@ -408,7 +422,7 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
       ).toBeLessThanOrEqual(MAX_LAYOUT_READS);
       expect(
         again.worst,
-        `${panel.name}: longest frame on a repeat open (ms)`,
+        `${panel.name}: longest frame on a repeat open (ms): ${again.longs.join("; ")}`,
       ).toBeLessThanOrEqual(LONG_FRAME_MS);
     }
     console.log(JSON.stringify(results));
