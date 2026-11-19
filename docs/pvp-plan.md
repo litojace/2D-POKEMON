@@ -14,16 +14,16 @@ in total (12 of them guests).
 ## 1. Summary: the biggest problems
 
 1. **There is no way to find a stranger to fight (liquidity).** Every PvP
-   mode is a *private room* reached by a six-character code or a friend's
+   mode is a _private room_ reached by a six-character code or a friend's
    invite (`lobby-screen.ts:72-87`, hints "Private room · best of five";
    `server.ts:1879-1952` `create`/`join`). The server has no queue, no
    public room list and no bot backfill. The only stand-in bot is in raids,
    for a raider who dropped (`raid.ts:2097-2104`). A lone player who picks
-   *1v1 Duel* gets a room that says "Waiting for your opponent"
+   _1v1 Duel_ gets a room that says "Waiting for your opponent"
    (`screens/room-view.ts:266`) and waits **indefinitely**: nothing times
    out, offers a bot, or tells anyone else the room exists. With 4 people
    playing PvP in 30 days, the honest answer to "how long would a lone
-   player wait?" is *forever, unless they bring a friend*. That is why 78% of
+   player wait?" is _forever, unless they bring a friend_. That is why 78% of
    play is against bots. The data fits liquidity as the main cause. It does
    not rule out combat feel (§6).
 2. **The App Store wave arrives with nobody to call back.** Push
@@ -59,14 +59,14 @@ in total (12 of them guests).
      "did they play a second match" are not measurable today.
 6. **The first match is short, but the guide points away from PvP.**
    - Measured at 956×440, dpr 3, touch (`tests/visual/pvp-first-match.spec.ts`):
-     1. *Play as a guest*: 1 tap. It sits under a full email sign-up form.
+     1. _Play as a guest_: 1 tap. It sits under a full email sign-up form.
      2. The age question: 2 answers + Continue.
      3. **PLAY: 1 tap**, which asks the server for an **Easy** bot (asserted).
-     4. *I'm ready* on the briefing.
+     4. _I'm ready_ on the briefing.
    - That is **about 6 taps and no typing** to a live match. The coach then
      teaches stick, attack, skill and dash in touch words. Every touch button
      is 56–98 px (skills 64–68, Basic 98) and on screen.
-   - The problem is what comes after: *Getting started* lists five steps
+   - The problem is what comes after: _Getting started_ lists five steps
      (bot match, Cragmuff, wear a reward, **visit the Farm, open the
      Bistro**, `docs/player-funnel.md`). Two of them point at features being
      deleted, and none points at a second PvP match or a real opponent.
@@ -89,8 +89,7 @@ in total (12 of them guests).
    - The Lobby's ‹ › arrows step through `CHARACTERS` and wrap
      (`main.ts:3157-3165`). From Voltkit, ‹ gives **Mossloth** and › gives
      Cindrake, then Tidefin.
-   - The bot round robin (§5) puts all 18 champions within a few points of
-     50%. So under-picked champions are under-*seen*, not weak.
+   - The bot round robin (§4) puts all 18 champions at 45.8–55.0%. So under-picked champions are under-_seen_, not weak.
    - All 18 champions are free (`characterSchema` is a plain enum,
      `index.ts:2556-2592`).
 
@@ -101,7 +100,7 @@ Effort: S ≈ 1–2 days, M ≈ 3–5 days, L ≈ 1–2 weeks, for one session p
 ### 1. Quick Match with an honest bot fallback (M) — **build this first**
 
 - **Problem.** The lone player has no PvP path at all (problem 1).
-- **Change.** Add a *Quick Match* (1v1):
+- **Change.** Add a _Quick Match_ (1v1):
   - The server keeps an in-memory queue. Two queued players are paired at
     once.
   - After **N seconds** (start at 20, set by an environment variable), the
@@ -183,7 +182,7 @@ Effort: S ≈ 1–2 days, M ≈ 3–5 days, L ≈ 1–2 weeks, for one session p
     the bots' ceiling (`bot.ts:167-180`).
   - **Small capped coins for Quick Match fallback bot wins only.** For
     example, 5 coins for a win, sharing the existing 10-a-day PvP cap. This
-    pays the player who *tried* to find a person without making bot farming
+    pays the player who _tried_ to find a person without making bot farming
     better than PvP. It needs a **new** migration: never edit 025, and
     follow CLAUDE.md's migration rules.
   - Keep bot matches out of rating.
@@ -206,7 +205,7 @@ Effort: S ≈ 1–2 days, M ≈ 3–5 days, L ≈ 1–2 weeks, for one session p
 - **Problem.** 2v2 had 0 matches and FFA 19. The modes invite players to
   wait alone (problem 4).
 - **Change.**
-  - Show *2v2 Teams* and *Free-for-all* in the mode menu only to a party big
+  - Show _2v2 Teams_ and _Free-for-all_ in the mode menu only to a party big
     enough to fill them (`partyLobbyMode` already knows party size).
   - Later, let a host fill empty seats with bots: the balance tools already
     run 2v2 and FFA bot line-ups (`scripts/balance/teams-worker.ts`,
@@ -229,6 +228,7 @@ Effort: S ≈ 1–2 days, M ≈ 3–5 days, L ≈ 1–2 weeks, for one session p
 
   Also make guest play the primary button on the 956×440 sign-in screen;
   the email form can be one tap away.
+
 - **Impact.** It raises the second-match rate. The 16 Nov funnel shows
   guests are where players drop: 9 of 11 never finished a match, and none
   came back.
@@ -308,7 +308,7 @@ class QuickQueue {
   right now — fight a sparring bot?" with a 5 s auto-accept. On accept,
   call the same code as `bot-match`.
   - First extract it into `startBotMatch(socket, {name, character,
-    difficulty})` so both paths share it.
+difficulty})` so both paths share it.
   - Tag the arena `fromQueue = true` for logging and item 4.
 - Read `QUICK_MATCH_FALLBACK_MS` from the environment (default 20000).
   Record it in `render.yaml` with no secret.
@@ -377,7 +377,36 @@ types.
 Run on `main` (`npx tsx scripts/balance/tune.ts 1 40`: 40 games per pairing,
 Hard and Normal bots, factors left alone):
 
-_Running at the time of this commit; the table follows in the next commit._
+| Champion  | Average |  Hard | Normal | Picks (30 days) |
+| --------- | ------: | ----: | -----: | --------------: |
+| Cindrake  |   55.0% | 57.5% |  52.6% |              17 |
+| Pangrove  |   53.5% | 55.9% |  51.2% |              ≈3 |
+| Astrabun  |   53.3% | 53.4% |  53.1% |              ≈3 |
+| Tidefin   |   52.2% | 52.9% |  51.5% |              24 |
+| Auralynx  |   51.0% | 51.6% |  50.3% |              ≈3 |
+| Mossloth  |   50.8% | 51.0% |  50.6% |              30 |
+| Terradon  |   50.3% | 50.6% |  50.0% |              ≈3 |
+| Sunbara   |   50.0% | 48.1% |  51.8% |              ≈3 |
+| Glacelle  |   49.8% | 51.3% |  48.4% |              ≈3 |
+| Shadopus  |   49.8% | 50.7% |  48.8% |              ≈3 |
+| Mystowl   |   49.6% | 47.9% |  51.3% |              13 |
+| Halcyra   |   49.2% | 47.5% |  50.9% |              ≈3 |
+| Duskveil  |   49.1% | 47.8% |  50.4% |              ≈3 |
+| Lumoth    |   48.5% | 47.1% |  50.0% |              ≈3 |
+| Coilemur  |   47.6% | 45.1% |  50.1% |              ≈3 |
+| Wombolder |   47.6% | 47.4% |  47.8% |              ≈3 |
+| Pyranda   |   46.9% | 47.5% |  46.3% |              23 |
+| Voltkit   |   45.8% | 46.6% |  44.9% |              18 |
+
+The spread is 45.8–55.0% (12,240 matches; `docs/balance-overhaul.md`
+puts seed noise near ±2.5 points). Picks don't track bot strength: the most
+winning kit in bot hands (Cindrake) is picked less than Mossloth and
+Tidefin, and the two weakest (Pyranda, Voltkit) are the third and fourth
+most picked. The ≈3 means the twelve less-picked champions share about 38
+picks; the per-champion split wasn't in the data. Voltkit, everyone's
+default fighter, is the weakest in bot hands, which is worth a look once
+real-player win rates exist (item 2): a new player starts on the kit least
+likely to win, and is coached against a random bot champion.
 
 These numbers measure how well the **bot** plays each kit, not how strong
 the kit is for a person. `docs/balance-overhaul.md:91-94` lists what bots
