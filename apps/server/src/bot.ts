@@ -52,19 +52,13 @@ export interface ExpertFlags {
   lookAway: boolean;
   /** Jumps over enemy seedlings (or steps round them) instead of walking on. */
   jumpSeeds: boolean;
-  /** Holds fire and backs off while the enemy's Facet Guard is up. */
-  respectGuard: boolean;
   /** Plans a way out of marked blasts (mortars, creeping marks, bolts, flares). */
   dodgeMarks: boolean;
-  /** Opens with its combo setup when the payoff is ready; cashes in the mark. */
-  combos: boolean;
 }
 export const EXPERT_FLAGS: (keyof ExpertFlags)[] = [
   "lookAway",
   "jumpSeeds",
-  "respectGuard",
   "dodgeMarks",
-  "combos",
 ];
 interface Profile {
   /** Seconds between seeing the opponent move and reacting to it. */
@@ -224,9 +218,7 @@ export const EXPERT_PROFILE: Profile = {
   expert: {
     lookAway: true,
     jumpSeeds: true,
-    respectGuard: true,
     dodgeMarks: true,
-    combos: true,
   },
 };
 /** Every profile a BotBrain can use, the expert's included (balance scripts). */
@@ -417,8 +409,6 @@ export function waypoint(
     : null;
 }
 type Seen = { t: number; x: number; y: number; vx: number; vy: number };
-/** Skills that hit nothing (still cast while holding fire at a guard). */
-const HARMLESS = new Set(["barrier", "clone", "rewind", "rest", "buff"]);
 export class BotBrain {
   readonly profile: Profile;
   private random: () => number;
@@ -814,19 +804,6 @@ export class BotBrain {
           dy = (rx / d) * side;
         }
       }
-    // Expert: Facet Guard refracts shots and primes Shatter Paw: back off
-    // and hold fire until it ends.
-    const guarded = !!ex?.respectGuard && arena.has(enemy, "counter");
-    if (guarded && !escaping && dist < 320) {
-      const d = dist || 1,
-        ax = (me.x - target.x) / d,
-        ay = (me.y - target.y) / d,
-        bx = ax + -ay * this.strafe * 0.6,
-        by = ay + ax * this.strafe * 0.6,
-        bl = Math.hypot(bx, by) || 1;
-      dx = bx / bl;
-      dy = by / bl;
-    }
     // Brawlers close the gap with a dash.
     if (
       melee &&
@@ -946,16 +923,10 @@ export class BotBrain {
         input.skill = me.burrow.slot;
       return input;
     }
-    const wanted = arena.kit(me).skills[this.wantSkill];
-    if (
-      this.wantSkill >= 0 &&
-      skillReady(me, this.wantSkill, t) &&
-      !(guarded && wanted && !HARMLESS.has(wanted.kind))
-    ) {
+    if (this.wantSkill >= 0 && skillReady(me, this.wantSkill, t)) {
       input.skill = this.wantSkill;
       this.wantSkill = -1;
     } else if (
-      !guarded &&
       sight &&
       !this.restingAt(t) &&
       dist <= basic.range * 0.95 + (melee ? RULES.radius : 0)
@@ -966,8 +937,8 @@ export class BotBrain {
   /**
    * Expert: a way out of the marked blasts about to land on it. It sees a
    * mark a moment after it appears (like a player) and tries sixteen
-   * directions (and its current one), walking or, if no walk clears them
-   * in time, dashing. Undefined when the current way is already safe.
+   * directions, walking or, if no walk clears them in time, dashing.
+   * Undefined when the way it is already going is safe.
    */
   private dodgeMarks(
     arena: Arena,
@@ -1133,7 +1104,6 @@ export class BotBrain {
     },
   ) {
     const t = arena.time;
-    const ex = this.profile.expert;
     if (me.charge || me.channel || t < me.recoveryUntil) return -1;
     // Nothing reaches an opponent underground (Tunnel): wait for it.
     if (arena.burrowed(enemy)) return -1;
@@ -1360,36 +1330,17 @@ export class BotBrain {
             score = 30;
           break;
       }
-      const combo = COMBOS[me.character];
-      const marked = combo.anyDebuff
-        ? enemy.statuses.some((x) => x.until > t && DEBUFFS.includes(x.kind))
-        : hasMark(combo.self ? me : enemy, me.id, t);
-      // Expert: a combo that marks its target opens with the setup when the
-      // payoff is ready to follow it. Self combos are left alone: their
-      // setups (Static Glide, Moon Hop, Tongue Grapple, Kindle) are also
-      // escapes or gap closers, and forcing them made those champions
-      // weaker. So did holding the payoff back for the setup, and spending
-      // the ultimate on any debuff (measured: docs/balance-overhaul.md).
-      if (
-        ex?.combos &&
-        !combo.self &&
-        !combo.anyDebuff &&
-        a.id === combo.setup &&
-        !marked
-      ) {
-        const payoff = skills.findIndex((k) => k.id === combo.payoff);
-        if (payoff >= 0 && skillReady(me, payoff, t)) score *= 1.5;
-      }
       if (!score) return;
       if (OFFENSIVE.has(a.kind) && a.bonusVsStatus && s.enemyDisabled)
         score *= a.bonusVsStatus;
       // Clever bots cash in their signature combo while the mark lasts.
+      const combo = COMBOS[me.character];
       if (
         this.profile.smartUltimate &&
         a.id === combo.payoff &&
-        (ex?.combos ? marked : hasMark(combo.self ? me : enemy, me.id, t))
+        hasMark(combo.self ? me : enemy, me.id, t)
       )
-        score *= ex?.combos ? 2.5 : 1.6;
+        score *= 1.6;
       // The ultimate (last slot): clever bots save it for a finish or an opening.
       if (i === skills.length - 1 && this.profile.smartUltimate) {
         const opening =

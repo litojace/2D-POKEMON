@@ -99,19 +99,6 @@ describe("expert bot", () => {
     expect(aimOff(think(a, "expert"), me, foe)).toBeLessThan(0.3);
   });
 
-  it("holds fire and backs off while Facet Guard is up", () => {
-    const { a, me, foe } = duel("pyranda", "auralynx", 600, 800);
-    busy(me, a.time);
-    a.status(foe, "counter", 1);
-    const input = think(a, "expert");
-    expect(input.basic).toBe(false);
-    expect(input.dx).toBeLessThan(0);
-    expect(think(a, "hard").basic).toBe(true);
-    // Once the guard is down it shoots again.
-    foe.statuses = [];
-    expect(think(a, "expert").basic).toBe(true);
-  });
-
   it("dashes out of a mark it cannot walk out of in time", () => {
     const { a, me, foe } = duel("voltkit", "pyranda", 800, 200);
     busy(me, a.time);
@@ -149,7 +136,7 @@ describe("expert bot", () => {
     a.zones.push({
       id: 901,
       owner: foe.id,
-      x: me.x + 70,
+      x: me.x + 100,
       y: me.y,
       radius: seed.radius,
       until: a.time + 10,
@@ -159,30 +146,26 @@ describe("expert bot", () => {
       born: a.time - 3,
     });
     const reach = (seed.seed?.trigger ?? 30) + RULES.radius;
-    for (let s = 1; s <= 8; s++) {
-      const input = think(a, "expert", s);
-      const l = Math.hypot(input.dx, input.dy) || 1,
-        ux = input.dx / l,
-        uy = input.dy / l;
-      const rx = 70,
-        along = rx * ux,
-        miss = Math.abs(rx * uy);
-      // Hops it, or its way passes clear of it.
-      expect(input.jump || along <= 0 || miss >= reach).toBe(true);
-    }
-  });
-
-  it("sets up its combo before the payoff", () => {
-    const { a, me } = duel("glacelle", "terradon", 600, 900);
-    busy(me, a.time);
-    me.cooldowns[0] = me.cooldowns[1] = 0; // Black Ice, Frost Bloom
-    const pick = (level: "hard" | "expert") => {
-      for (let s = 1; s < 20; s++) {
-        const input = think(a, level, s);
-        if (input.skill !== undefined && input.skill >= 0) return input.skill;
-      }
+    // Its plan is to walk straight at the opponent, over the seed.
+    const walking = (level: "hard" | "expert", jumpAt = 0) => {
+      me.jumpAt = jumpAt;
+      const brain = new BotBrain("A", level, 5);
+      Object.assign(brain, { plan: { dx: 1, dy: 0 }, nextThink: a.time + 9 });
+      return brain.think(a, me);
     };
-    expect(pick("expert")).toBe(0);
-    expect(pick("hard")).toBe(1);
+    // Hard walks on.
+    const hard = walking("hard");
+    expect(hard.dx).toBeGreaterThan(0.9);
+    expect(hard.jump).toBe(false);
+    // The expert steps round it (it is too slow to clear it in one hop from
+    // here)...
+    const expert = walking("expert");
+    expect(expert.jump).toBe(false);
+    expect(Math.abs(100 * expert.dy)).toBeGreaterThan(reach * 0.9);
+    // ...and from the edge, it hops it.
+    me.x += 30;
+    expect(walking("expert").jump).toBe(true);
+    // With its jump spent, it steps round instead.
+    expect(walking("expert", a.time + 1).jump).toBe(false);
   });
 });
