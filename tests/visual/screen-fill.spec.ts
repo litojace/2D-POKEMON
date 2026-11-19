@@ -37,6 +37,16 @@ for (const size of SIZES) {
     try {
       const page = await ctx.newPage();
       const errors = await openPlaza(page);
+      // Frames drawn, for a failure to say whether the scene was moving.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__fillFrames = 0;
+        const t = () => {
+          w.__fillFrames++;
+          requestAnimationFrame(t);
+        };
+        requestAnimationFrame(t);
+      });
       // Walk (teleport) to each corner: the camera follows to the map's edge.
       const corners: [number, number][] = [
         [60, 130],
@@ -95,6 +105,16 @@ for (const size of SIZES) {
         const [ax, ay, bx, by, mx0, my0, mx1, my1] = JSON.parse(
           last,
         ) as number[];
+        // Where you stand, the scene's state and its frames so far.
+        const at = await page.evaluate(
+          ([x, y]) => {
+            const w = window as any,
+              P = w.__plaza.P,
+              layer = document.querySelector<HTMLElement>(".plaza-layer");
+            return `at ${x},${y}: you at ${Math.round(P.x)},${Math.round(P.y)}, ${layer?.dataset.graphics ?? "?"} graphics, frozen ${layer?.dataset.frozen ?? "?"}, ${w.__fillFrames} frames`;
+          },
+          [x, y],
+        );
         // Never past what is built...
         expect(ax, `built left edge at ${x},${y}`).toBeLessThanOrEqual(0);
         expect(ay, `built top edge at ${x},${y}`).toBeLessThanOrEqual(0);
@@ -105,10 +125,12 @@ for (const size of SIZES) {
           size.height,
         );
         // ...but out past the Plaza's own edge by the corner you stand at.
-        if (x < PLAZA.w / 2) expect(mx0, "the woods west").toBeGreaterThan(0);
-        else expect(mx1, "the woods east").toBeLessThan(size.width);
-        if (y < PLAZA.h / 2) expect(my0, "the river north").toBeGreaterThan(0);
-        else expect(my1, "the farm south").toBeLessThan(size.height);
+        if (x < PLAZA.w / 2)
+          expect(mx0, `the woods west ${at}`).toBeGreaterThan(0);
+        else expect(mx1, `the woods east ${at}`).toBeLessThan(size.width);
+        if (y < PLAZA.h / 2)
+          expect(my0, `the river north ${at}`).toBeGreaterThan(0);
+        else expect(my1, `the farm south ${at}`).toBeLessThan(size.height);
       }
       await snap(page, info, `plaza-fill-${size.name}`);
       expect(errors).toEqual([]);

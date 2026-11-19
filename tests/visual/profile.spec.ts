@@ -819,9 +819,14 @@ for (const size of SIZES.filter((s) => s.phone))
             panel.locator(`.pf-card-avatar > [data-portrait-frame="${frame}"]`),
           ).toHaveCount(1);
         // Measured once the card has settled: its fonts and rank loaded
-        // (the name block's height sets the avatar's room).
+        // (the name block's height sets the avatar's room), and the panel
+        // landed (ui/motion.ts: it grows in from 98.5 %, and the avatar with
+        // it: 110 px for a 112 px avatar mid-way). Two equal reads 150 ms
+        // apart don't prove that on a runner whose frames stall (CI, 19 Nov:
+        // "avatar sizes 110,112,112,110").
         await page.evaluate(() => document.fonts.ready);
         await expect(panel.locator(".pf-card .pf-rank-tag")).toBeVisible();
+        await settled(page, ".profile-panel");
         await expect
           .poll(
             async () => {
