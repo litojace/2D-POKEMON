@@ -36,6 +36,36 @@ import type { Arena } from "./simulation.js";
  */
 export const BOT_DIFFICULTIES = ["easy", "normal", "hard"] as const;
 export type BotDifficulty = (typeof BOT_DIFFICULTIES)[number];
+/**
+ * The levels a BotBrain can play at: the player-facing difficulties plus
+ * "expert", which only the balance scripts use (scripts/balance). Players
+ * can never pick it: rooms take a BotDifficulty (BOT_DIFFICULTIES, checked
+ * by the server's schema), and an expert brain reports itself as Hard.
+ */
+export type BotLevel = BotDifficulty | "expert";
+/**
+ * Counterplay a decent player knows, each switchable for measuring what it
+ * changes (docs/balance-overhaul.md, "An expert bot for measuring").
+ */
+export interface ExpertFlags {
+  /** Looks away from a ready Eyespot Flash (gaze) in reach between attacks. */
+  lookAway: boolean;
+  /** Jumps over enemy seedlings (or steps round them) instead of walking on. */
+  jumpSeeds: boolean;
+  /** Holds fire and backs off while the enemy's Facet Guard is up. */
+  respectGuard: boolean;
+  /** Plans a way out of marked blasts (mortars, creeping marks, bolts, flares). */
+  dodgeMarks: boolean;
+  /** Opens with its combo setup when the payoff is ready; cashes in the mark. */
+  combos: boolean;
+}
+export const EXPERT_FLAGS: (keyof ExpertFlags)[] = [
+  "lookAway",
+  "jumpSeeds",
+  "respectGuard",
+  "dodgeMarks",
+  "combos",
+];
 interface Profile {
   /** Seconds between seeing the opponent move and reacting to it. */
   reaction: number;
@@ -79,6 +109,8 @@ interface Profile {
    * champions keep the daze the raids were tuned with (see RAID_DAZE_BY).
    */
   raidDazeBy?: Partial<Record<CharacterId, number>>;
+  /** The expert's counterplay (balance measurement only). */
+  expert?: ExpertFlags;
 }
 /**
  * The skill revolution (docs/skill-revolution.md) recalibrated the duel daze
@@ -183,6 +215,25 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     seeShots: true,
   },
 };
+/**
+ * The expert bot, for balance measurement only (never offered to players):
+ * Hard's reactions, aim and handicaps, plus the counterplay in ExpertFlags.
+ */
+export const EXPERT_PROFILE: Profile = {
+  ...BOT_PROFILES.hard,
+  expert: {
+    lookAway: true,
+    jumpSeeds: true,
+    respectGuard: true,
+    dodgeMarks: true,
+    combos: true,
+  },
+};
+/** Every profile a BotBrain can use, the expert's included (balance scripts). */
+export const BALANCE_PROFILES: Record<BotLevel, Profile> = {
+  ...BOT_PROFILES,
+  expert: EXPERT_PROFILE,
+};
 export const BOT_LABELS: Record<BotDifficulty, string> = {
   easy: "Easy",
   normal: "Normal",
@@ -222,6 +273,10 @@ const OFFENSIVE = new Set([
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
 type Point = { x: number; y: number };
+/** Seconds before its next attack that the expert turns back to face a gazer. */
+const LOOK_BACK = 0.15;
+/** Seconds the expert takes to see a new mark on the ground (it isn't instant). */
+const MARK_REACTION = 0.15;
 /**
  * Zones worth keeping out of: an opponent's, unless it only heals its own
  * side. A teammate's zone (2v2) never hurts, and a healing spring helps.
@@ -237,6 +292,45 @@ export function hostileZone(arena: Arena, me: Fighter, z: Zone) {
   if (a.kind === "cage" || a.kind === "wave" || a.kind === "storm")
     return false;
   return !a.heal || a.damage > 0 || !!a.status || !!a.knockback || !!a.turret;
+}
+/**
+ * A blast marked on the ground before it lands once (Chestnut Mortar,
+ * Chestnut Storm's creeping marks, Thunderstorm's bolts, Radiant Flare's
+ * burst): where, how wide and when. Lingering zones are not marks.
+ */
+export function markOf(z: Zone) {
+  const a = z.ability;
+  if (a.kind === "lure")
+    return Number.isFinite(z.nextTick)
+      ? { r: a.explosion ?? 140, at: z.nextTick, pull: a.lure?.speed ?? 150 }
+      : undefined;
+  if (a.kind !== "zone" || a.heal) return;
+  return z.until - z.nextTick <= 0.15 &&
+    z.nextTick - (z.born ?? z.nextTick) >= 0.3
+    ? { r: z.radius, at: z.nextTick, pull: 0 }
+    : undefined;
+}
+/** Does a way of `len` px cross an enemy seedling's trigger? */
+function seedOnWay(
+  arena: Arena,
+  me: Fighter,
+  ux: number,
+  uy: number,
+  len: number,
+) {
+  return arena.zones.some((z) => {
+    if (
+      z.ability.kind !== "seedling" ||
+      z.until <= arena.time ||
+      !arena.rivals(z.owner, me.id)
+    )
+      return false;
+    const r = (z.ability.seed?.trigger ?? 30) + RULES.radius + 8,
+      rx = z.x - me.x,
+      ry = z.y - me.y,
+      along = rx * ux + ry * uy;
+    return Math.abs(rx * uy - ry * ux) < r && along > -r && along < len + r;
+  });
 }
 /** The circle a bot keeps out of. */
 function zoneArea(z: Zone) {
@@ -323,6 +417,8 @@ export function waypoint(
     : null;
 }
 type Seen = { t: number; x: number; y: number; vx: number; vy: number };
+/** Skills that hit nothing (still cast while holding fire at a guard). */
+const HARMLESS = new Set(["barrier", "clone", "rewind", "rest", "buff"]);
 export class BotBrain {
   readonly profile: Profile;
   private random: () => number;
@@ -342,12 +438,15 @@ export class BotBrain {
   private cloneDecision?: { until: number; fooled: boolean };
   /** The enemy it is fighting (2v2 and free-for-all have several). */
   private targetId?: string;
+  /** The player-facing difficulty (an expert brain plays rites as Hard). */
+  readonly difficulty: BotDifficulty;
   constructor(
     readonly id: string,
-    readonly difficulty: BotDifficulty,
+    level: BotLevel,
     seed = 1,
   ) {
-    this.profile = BOT_PROFILES[difficulty];
+    this.profile = BALANCE_PROFILES[level];
+    this.difficulty = level === "expert" ? "hard" : level;
     this.random = rng(seed);
   }
   /** Forget per-round memory (positions, judged shots) at a new round. */
@@ -430,6 +529,7 @@ export class BotBrain {
       vx: 0,
       vy: 0,
     };
+    const ex = this.profile.expert;
     // A decoy may fool it (decided once per clone).
     let target = { x: view.x, y: view.y, vx: view.vx, vy: view.vy };
     if (enemy.clone) {
@@ -616,6 +716,9 @@ export class BotBrain {
     for (const zone of arena.zones)
       if (
         hostileZone(arena, me, zone) &&
+        // The expert jumps seedlings and plans its way out of marks (below).
+        !(ex?.jumpSeeds && zone.ability.kind === "seedling") &&
+        !(ex?.dodgeMarks && markOf(zone)) &&
         Math.hypot(zoneArea(zone).x - me.x, zoneArea(zone).y - me.y) <
           zoneArea(zone).radius + RULES.radius
       ) {
@@ -666,10 +769,70 @@ export class BotBrain {
         dy = (me.y - enemy.y) / d;
       }
     }
+    // Expert: out of marked blasts before they land.
+    if (ex?.dodgeMarks) {
+      const way = this.dodgeMarks(arena, me, { dx, dy });
+      if (way) {
+        escaping = true;
+        dx = way.dx;
+        dy = way.dy;
+        if (way.dash && t >= me.dashAt) input.dash = true;
+      }
+    }
+    // Expert: hop over enemy seedlings in its way (or step round them).
+    if (ex?.jumpSeeds && !arena.has(me, "root"))
+      for (const z of arena.zones) {
+        if (
+          z.ability.kind !== "seedling" ||
+          z.until <= t ||
+          !arena.rivals(z.owner, me.id) ||
+          t < me.jumpUntil
+        )
+          continue;
+        const reach = (z.ability.seed?.trigger ?? 30) + RULES.radius,
+          r = reach + 8,
+          step = character.speed * 0.25;
+        // Where its way enters and leaves the seed's reach, if it does.
+        const rx = z.x - me.x,
+          ry = z.y - me.y,
+          along = rx * dx + ry * dy,
+          miss = Math.abs(rx * dy - ry * dx);
+        if (miss >= r || along <= 0 || (!dx && !dy)) continue;
+        if (along - Math.sqrt(r * r - miss * miss) > step) continue;
+        // Jump at the edge, so it lands past the far side.
+        const half = miss < reach ? Math.sqrt(reach * reach - miss * miss) : 0;
+        if (
+          t >= me.jumpAt &&
+          along + half < character.speed * RULES.jumpDuration
+        ) {
+          if (along - half < 20) input.jump = true;
+        } else {
+          // Round it, on the side it is already passing.
+          const side = rx * dy - ry * dx > 0 ? 1 : -1,
+            d = Math.hypot(rx, ry) || 1;
+          dx = (-ry / d) * side;
+          dy = (rx / d) * side;
+        }
+      }
+    // Expert: Facet Guard refracts shots and primes Shatter Paw: back off
+    // and hold fire until it ends.
+    const guarded = !!ex?.respectGuard && arena.has(enemy, "counter");
+    if (guarded && !escaping && dist < 320) {
+      const d = dist || 1,
+        ax = (me.x - target.x) / d,
+        ay = (me.y - target.y) / d,
+        bx = ax + -ay * this.strafe * 0.6,
+        by = ay + ax * this.strafe * 0.6,
+        bl = Math.hypot(bx, by) || 1;
+      dx = bx / bl;
+      dy = by / bl;
+    }
     // Brawlers close the gap with a dash.
     if (
       melee &&
       !threat?.big &&
+      // Expert: not while getting out of a mark.
+      !(ex && escaping) &&
       sight &&
       dist > 120 &&
       dist < 290 &&
@@ -698,6 +861,23 @@ export class BotBrain {
       hpRatio > 0.25
     )
       dx = dy = 0;
+    // Expert: a dash across an enemy seedling: hop it as well, or (when
+    // only closing in) don't dash.
+    if (ex?.jumpSeeds && input.dash && t >= me.dashAt) {
+      const l = Math.hypot(dx, dy) || 1;
+      if (
+        seedOnWay(
+          arena,
+          me,
+          dx / l,
+          dy / l,
+          RULES.dashSpeed * RULES.dashDuration + 40,
+        )
+      ) {
+        if (t >= me.jumpAt && t >= me.jumpUntil) input.jump = true;
+        else if (!escaping && !threat && !fleeWindup) input.dash = false;
+      }
+    }
     input.dx = clamp(dx, -1, 1);
     input.dy = clamp(dy, -1, 1);
     // ---- Aim: lead moving targets with projectiles, plus human-like spread.
@@ -721,6 +901,36 @@ export class BotBrain {
       ax = me.x + (ax - me.x) * 0.45;
       ay = me.y + (ay - me.y) * 0.45;
     }
+    // Expert: a ready Eyespot Flash in reach: look away between attacks,
+    // turning back just before each one (holding fire costs more than the
+    // stun saves: measured, see docs/balance-overhaul.md).
+    if (ex?.lookAway) {
+      const g = arena.kit(enemy).skills.findIndex((k) => k.kind === "gaze");
+      const gaze = g >= 0 ? arena.kit(enemy).skills[g] : undefined;
+      if (
+        gaze &&
+        skillReady(enemy, g, t) &&
+        !enemyDisabled &&
+        dist < gaze.radius + RULES.radius + 40
+      ) {
+        const casting =
+          this.wantSkill >= 0 && skillReady(me, this.wantSkill, t);
+        if (!casting && me.basicAt - t > LOOK_BACK) {
+          // Turned well past the flash's cone, to the side that keeps the
+          // aim point on the court (a clamped point would turn it back).
+          const base = Math.atan2(target.y - me.y, target.x - me.x),
+            turn = (gaze.gaze ?? 0.6) + 0.5,
+            inside = (side: number) => {
+              const x = me.x + Math.cos(base + turn * side) * 80,
+                y = me.y + Math.sin(base + turn * side) * 80;
+              return x >= 0 && x <= RULES.width && y >= 0 && y <= RULES.height;
+            },
+            side = inside(this.strafe) ? this.strafe : -this.strafe;
+          ax = me.x + Math.cos(base + turn * side) * 80;
+          ay = me.y + Math.sin(base + turn * side) * 80;
+        }
+      }
+    }
     input.aimX = clamp(ax, 0, RULES.width);
     input.aimY = clamp(ay, 0, RULES.height);
     // ---- Attack.
@@ -736,16 +946,91 @@ export class BotBrain {
         input.skill = me.burrow.slot;
       return input;
     }
-    if (this.wantSkill >= 0 && skillReady(me, this.wantSkill, t)) {
+    const wanted = arena.kit(me).skills[this.wantSkill];
+    if (
+      this.wantSkill >= 0 &&
+      skillReady(me, this.wantSkill, t) &&
+      !(guarded && wanted && !HARMLESS.has(wanted.kind))
+    ) {
       input.skill = this.wantSkill;
       this.wantSkill = -1;
     } else if (
+      !guarded &&
       sight &&
       !this.restingAt(t) &&
       dist <= basic.range * 0.95 + (melee ? RULES.radius : 0)
     )
       input.basic = true;
     return input;
+  }
+  /**
+   * Expert: a way out of the marked blasts about to land on it. It sees a
+   * mark a moment after it appears (like a player) and tries sixteen
+   * directions (and its current one), walking or, if no walk clears them
+   * in time, dashing. Undefined when the current way is already safe.
+   */
+  private dodgeMarks(
+    arena: Arena,
+    me: Fighter,
+    now: { dx: number; dy: number },
+  ): { dx: number; dy: number; dash: boolean } | undefined {
+    const t = arena.time;
+    const marks: { x: number; y: number; r: number; in: number }[] = [];
+    let pull = 0;
+    for (const z of arena.zones) {
+      if (!arena.rivals(z.owner, me.id)) continue;
+      const m = markOf(z);
+      if (!m || t - (z.born ?? 0) < MARK_REACTION) continue;
+      const left = m.at - t;
+      if (left <= 0 || left > 1.2) continue;
+      marks.push({ x: z.x, y: z.y, r: m.r + RULES.radius + 6, in: left });
+      if (
+        m.pull &&
+        Math.hypot(z.x - me.x, z.y - me.y) < z.radius + RULES.radius
+      )
+        pull = Math.max(pull, m.pull);
+    }
+    if (!marks.length || arena.has(me, "root")) return;
+    const speed =
+      CHARACTERS[me.character].speed * (arena.has(me, "slow") ? 0.55 : 0.92) -
+      pull;
+    // How a way fares: marks it ends up inside, and its closest call.
+    const judge = (ux: number, uy: number, burst: number) => {
+      let hits = 0,
+        margin = 60;
+      for (const m of marks) {
+        const go = burst + Math.max(0, speed) * Math.max(0, m.in - 0.05);
+        const x = clamp(me.x + ux * go, 0, RULES.width),
+          y = clamp(me.y + uy * go, 0, RULES.height);
+        const d = Math.hypot(x - m.x, y - m.y) - m.r;
+        if (d < 0) hits++;
+        margin = Math.min(margin, d);
+      }
+      return { hits, margin };
+    };
+    const current = judge(now.dx, now.dy, 0);
+    if (!current.hits) return;
+    let best: { dx: number; dy: number; score: number } | undefined;
+    let bestDash: typeof best;
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2,
+        ux = Math.cos(a),
+        uy = Math.sin(a);
+      if (blocked(me.x + ux * 40, me.y + uy * 40, RULES.radius)) continue;
+      const lean = ux * now.dx + uy * now.dy;
+      const walk = judge(ux, uy, 0);
+      const score = -walk.hits * 100 + walk.margin + lean * 20;
+      if (!best || score > best.score) best = { dx: ux, dy: uy, score };
+      const dash = judge(ux, uy, RULES.dashSpeed * RULES.dashDuration);
+      const dashScore = -dash.hits * 100 + dash.margin + lean * 20;
+      if (!bestDash || dashScore > bestDash.score)
+        bestDash = { dx: ux, dy: uy, score: dashScore };
+    }
+    if (!best) return;
+    // A walk that clears every mark; else a dash if that does better.
+    if (best.score > -50 || !bestDash || bestDash.score <= best.score)
+      return { dx: best.dx, dy: best.dy, dash: false };
+    return { dx: bestDash.dx, dy: bestDash.dy, dash: true };
   }
   /** Re-rolled once a second: a resting bot holds its basic attack. */
   private restingAt(t: number) {
@@ -848,6 +1133,7 @@ export class BotBrain {
     },
   ) {
     const t = arena.time;
+    const ex = this.profile.expert;
     if (me.charge || me.channel || t < me.recoveryUntil) return -1;
     // Nothing reaches an opponent underground (Tunnel): wait for it.
     if (arena.burrowed(enemy)) return -1;
@@ -1074,17 +1360,36 @@ export class BotBrain {
             score = 30;
           break;
       }
+      const combo = COMBOS[me.character];
+      const marked = combo.anyDebuff
+        ? enemy.statuses.some((x) => x.until > t && DEBUFFS.includes(x.kind))
+        : hasMark(combo.self ? me : enemy, me.id, t);
+      // Expert: a combo that marks its target opens with the setup when the
+      // payoff is ready to follow it. Self combos are left alone: their
+      // setups (Static Glide, Moon Hop, Tongue Grapple, Kindle) are also
+      // escapes or gap closers, and forcing them made those champions
+      // weaker. So did holding the payoff back for the setup, and spending
+      // the ultimate on any debuff (measured: docs/balance-overhaul.md).
+      if (
+        ex?.combos &&
+        !combo.self &&
+        !combo.anyDebuff &&
+        a.id === combo.setup &&
+        !marked
+      ) {
+        const payoff = skills.findIndex((k) => k.id === combo.payoff);
+        if (payoff >= 0 && skillReady(me, payoff, t)) score *= 1.5;
+      }
       if (!score) return;
       if (OFFENSIVE.has(a.kind) && a.bonusVsStatus && s.enemyDisabled)
         score *= a.bonusVsStatus;
       // Clever bots cash in their signature combo while the mark lasts.
-      const combo = COMBOS[me.character];
       if (
         this.profile.smartUltimate &&
         a.id === combo.payoff &&
-        hasMark(combo.self ? me : enemy, me.id, t)
+        (ex?.combos ? marked : hasMark(combo.self ? me : enemy, me.id, t))
       )
-        score *= 1.6;
+        score *= ex?.combos ? 2.5 : 1.6;
       // The ultimate (last slot): clever bots save it for a finish or an opening.
       if (i === skills.length - 1 && this.profile.smartUltimate) {
         const opening =
