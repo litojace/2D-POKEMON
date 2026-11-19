@@ -39,8 +39,11 @@ const busy = (p: Fighter, t: number) => {
   p.cooldowns = p.cooldowns.map(() => t + 99);
   p.ult = 0;
 };
-const think = (a: Arena, level: "hard" | "expert", seed = 5) =>
-  new BotBrain("A", level, seed).think(a, a.players[0]);
+const think = (
+  a: Arena,
+  level: "easy" | "normal" | "hard" | "expert",
+  seed = 5,
+) => new BotBrain("A", level, seed).think(a, a.players[0]);
 /** How far (radians) the aim is from the opponent. */
 const aimOff = (input: Input, me: Fighter, foe: Fighter) => {
   const to = Math.atan2(foe.y - me.y, foe.x - me.x),
@@ -59,8 +62,26 @@ describe("expert bot", () => {
       "normal",
     ]);
     expect(Object.keys(BOT_LABELS).sort()).toEqual(["easy", "hard", "normal"]);
-    for (const level of BOT_DIFFICULTIES)
-      expect(BOT_PROFILES[level].expert).toBeUndefined();
+    // The player levels carry some of the expert's counterplay (PvP only,
+    // docs/smarter-bots.md): Hard all of it, Normal the seedlings and the
+    // marks, Easy the marks. The expert has everything.
+    expect(BOT_PROFILES.hard.expert).toEqual({
+      lookAway: true,
+      jumpSeeds: true,
+      dodgeMarks: true,
+    });
+    expect(BOT_PROFILES.normal.expert).toEqual({
+      lookAway: false,
+      jumpSeeds: true,
+      dodgeMarks: true,
+    });
+    expect(BOT_PROFILES.easy.expert).toEqual({
+      lookAway: false,
+      jumpSeeds: false,
+      dodgeMarks: true,
+    });
+    for (const flag of EXPERT_FLAGS)
+      expect(BALANCE_PROFILES.expert.expert?.[flag], flag).toBe(true);
     // An expert brain reports itself (and picks rites) as Hard.
     const brain = new BotBrain("A", "expert", 1);
     expect(brain.difficulty).toBe("hard");
@@ -102,8 +123,13 @@ describe("expert bot", () => {
     busy(me, a.time);
     me.basicAt = a.time + 1;
     expect(aimOff(think(a, "expert"), me, foe)).toBeGreaterThan(0.6);
-    // Hard stares at it.
+    // Hard looks away too; Normal (without lookAway) stares at it.
+    expect(aimOff(think(a, "hard"), me, foe)).toBeGreaterThan(0.6);
+    expect(aimOff(think(a, "normal"), me, foe)).toBeLessThan(0.3);
+    // Raids (stand-ins, Spire Echoes) play as tuned: Hard stares there.
+    a.mode = "raid";
     expect(aimOff(think(a, "hard"), me, foe)).toBeLessThan(0.3);
+    a.mode = "duel";
     // It turns back to strike.
     me.basicAt = a.time;
     expect(aimOff(think(a, "expert"), me, foe)).toBeLessThan(0.3);
@@ -161,16 +187,18 @@ describe("expert bot", () => {
     });
     const reach = (seed.seed?.trigger ?? 30) + RULES.radius;
     // Its plan is to walk straight at the opponent, over the seed.
-    const walking = (level: "hard" | "expert", jumpAt = 0) => {
+    const walking = (level: "easy" | "normal" | "expert", jumpAt = 0) => {
       me.jumpAt = jumpAt;
       const brain = new BotBrain("A", level, 5);
       Object.assign(brain, { plan: { dx: 1, dy: 0 }, nextThink: a.time + 9 });
       return brain.think(a, me);
     };
-    // Hard walks on.
-    const hard = walking("hard");
-    expect(hard.dx).toBeGreaterThan(0.9);
-    expect(hard.jump).toBe(false);
+    // Easy (without jumpSeeds) walks on.
+    const easy = walking("easy");
+    expect(easy.dx).toBeGreaterThan(0.9);
+    expect(easy.jump).toBe(false);
+    // Normal steps round it as the expert does.
+    expect(Math.abs(100 * walking("normal").dy)).toBeGreaterThan(reach * 0.9);
     // The expert steps round it (it is too slow to clear it in one hop from
     // here)...
     const expert = walking("expert");

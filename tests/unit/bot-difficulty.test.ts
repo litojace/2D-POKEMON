@@ -10,6 +10,7 @@ import { Arena } from "../../apps/server/src/simulation";
 import {
   BOT_PROFILES,
   BotBrain,
+  EASY_DAZE_GAP,
   RAID_DAZE_BY,
 } from "../../apps/server/src/bot";
 
@@ -78,6 +79,14 @@ describe("bot difficulty", () => {
     // Not dazed: the same spot gets a swing.
     const awake = brain("A", { raidDazeBy: {}, dazeBy: {}, rest: 0 });
     expect(awake.think(arena, p).basic).toBe(true);
+    // Easy (Spire Echoes on the early floors) is never dazed in a raid,
+    // whatever its PvP lapses: a level without raidDazeBy keeps none.
+    const echo = brain(
+      "A",
+      { dazeBy: { cindrake: 1 }, rest: 0, raidDazeBy: undefined },
+      BOT_PROFILES.easy,
+    );
+    expect(echo.think(arena, p).basic).toBe(true);
   });
 
   it("elsewhere a dazed second is a lapse: it keeps moving but attacks nothing", () => {
@@ -108,19 +117,23 @@ describe("bot difficulty", () => {
     expect(other.think(arena, p).basic).toBe(true);
   });
 
-  it("calibrates Normal for every champion; Easy and Hard are never dazed", () => {
+  it("calibrates Normal for every champion; Easy lapses less; Hard never", () => {
     const by = BOT_PROFILES.normal.dazeBy ?? {};
     const [n, h] = [BOT_PROFILES.normal, BOT_PROFILES.hard];
     for (const id of FIGHTER_IDS) {
       expect(by[id], id).toBeGreaterThanOrEqual(0);
       expect(by[id], id).toBeLessThanOrEqual(0.7);
     }
-    // Easy is never dazed either: it is weaker for being slower, looser and
-    // more hesitant than Normal, not for switching off.
-    for (const level of ["easy", "hard"] as const) {
-      expect(BOT_PROFILES[level].daze ?? 0, level).toBe(0);
-      expect(BOT_PROFILES[level].dazeBy, level).toBeUndefined();
-    }
+    // Hard is never dazed. Easy lapses 0.25 less than Normal (so only with
+    // brawlers): it is weaker for being slower and looser, not switched off.
+    expect(BOT_PROFILES.hard.daze ?? 0).toBe(0);
+    expect(BOT_PROFILES.hard.dazeBy).toBeUndefined();
+    const easy = BOT_PROFILES.easy.dazeBy ?? {};
+    for (const id of FIGHTER_IDS)
+      expect(easy[id] ?? 0, id).toBeCloseTo(
+        Math.max(0, (by[id] ?? 0) - EASY_DAZE_GAP),
+        3,
+      );
     const e = BOT_PROFILES.easy;
     expect(e.reaction).toBeGreaterThan(n.reaction);
     expect(e.aimError).toBeGreaterThan(n.aimError);

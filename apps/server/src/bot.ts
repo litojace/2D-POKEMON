@@ -221,10 +221,18 @@ const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
   pangrove: 0.355,
   mossloth: 0.31,
 };
+/**
+ * Easy lapses 0.25 less of its seconds than Normal does on the same
+ * champion, so only where Normal's share is high (brawlers such as
+ * Cindrake and Pangrove, whose Easy bots otherwise beat their Normal ones:
+ * Easy's slow reactions and loose aim cost a brawler little).
+ */
+export const EASY_DAZE_GAP = 0.25;
 export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
   // Easy plays like a beginner: it sees and decides late, aims loosely,
-  // rarely dodges, uses few skills and saves nothing. In PvP it is never
-  // dazed: it is weaker than Normal by being slower, not by switching off.
+  // rarely dodges, uses few skills and saves nothing. It is weaker than
+  // Normal mostly by being slower; it lapses only with the brawlers (see
+  // EASY_DAZE_GAP), and like Normal it keeps moving when it does.
   easy: {
     reaction: 0.5,
     aimError: 0.27,
@@ -243,6 +251,11 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     // blasts, and it notices them late (its reaction time).
     expert: { lookAway: false, jumpSeeds: false, dodgeMarks: true },
     markReaction: 0.9,
+    dazeBy: Object.fromEntries(
+      Object.entries(NORMAL_DAZE_BY)
+        .map(([id, d]) => [id, +Math.max(0, d - EASY_DAZE_GAP).toFixed(3)])
+        .filter(([, d]) => (d as number) > 0),
+    ),
   },
   // Normal is Hard with slower reactions, more pauses and looser aim, and a
   // per-champion share of lapsed seconds (dazeBy). Every weakness a bot can
@@ -751,11 +764,13 @@ export class BotBrain {
     // and holds everything, as the raids were tuned with. Elsewhere it is a
     // lapse of attention, the way a person's is: it keeps moving and keeps
     // out of hazards, but attacks, casts and dodges nothing.
-    // (A champion newer than raidDazeBy takes its PvP share in raids too.)
-    const daze =
-      (pvp ? undefined : this.profile.raidDazeBy?.[me.character]) ??
-      this.profile.dazeBy?.[me.character] ??
-      this.profile.daze;
+    // In raids only a level with raidDazeBy (Normal) is dazed; a champion
+    // newer than its raidDazeBy takes its PvP share there too.
+    const raidDaze = this.profile.raidDazeBy;
+    const daze = pvp
+      ? (this.profile.dazeBy?.[me.character] ?? this.profile.daze)
+      : raidDaze &&
+        (raidDaze[me.character] ?? this.profile.dazeBy?.[me.character]);
     if (daze) {
       if (t >= this.nextDaze) {
         this.nextDaze = t + 1;
