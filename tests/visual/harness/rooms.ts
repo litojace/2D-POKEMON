@@ -307,6 +307,9 @@ w.__room = (
         me.locked = true;
         delete me.browse;
       }
+      // As the server: cancelling Ready unlocks the pick (PvP).
+      if (!me.ready && w.__snap.mode && w.__snap.mode !== "raid")
+        me.locked = false;
       queueMicrotask(() => w.__push());
       return { ok: true };
     }

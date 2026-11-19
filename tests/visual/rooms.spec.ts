@@ -238,6 +238,18 @@ test("Lock in works on the fighter you came with from the Lobby", async ({
   await expect(lock).toContainText("Locked in");
   await expect(lock).toBeDisabled();
   expect(await events(page, "select")).toEqual(["voltkit"]);
+  // Ready, then cancel it: unlocked again (Choosing), Lock in is back.
+  await page.click("#ready");
+  await expect(page.locator("#ready")).toContainText("Cancel ready");
+  await page.click("#ready");
+  await expect(page.locator("#ready")).not.toContainText("Cancel");
+  await expect(page.locator(".room-seats [data-me] .room-state")).toContainText(
+    "Choosing",
+  );
+  await expect(lock).toBeEnabled();
+  await lock.click();
+  await expect(lock).toContainText("Locked in");
+  expect(await events(page, "select")).toEqual(["voltkit", "voltkit"]);
   expect(errors).toEqual([]);
 });
 

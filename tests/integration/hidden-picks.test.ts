@@ -180,6 +180,31 @@ it("2v2: after a team change, the later lock on a shared fighter gives way", asy
   expect(moved.ready).toBe(false);
 });
 
+it("cancelling Ready unlocks your pick (the seat reads Choosing again)", async () => {
+  const {
+    players: [a, b, c],
+    ids: [aId],
+    arena,
+  } = await room("ffa", 3);
+  const me = () => arena.players.find((p) => p.id === aId)!;
+  // Lock in, then Ready, then cancel Ready: not ready, not locked.
+  expect((await emit(a, "select", "cindrake")).ok).toBe(true);
+  expect((await emit(a, "ready")).ok).toBe(true);
+  expect(me()).toMatchObject({ ready: true, locked: true });
+  expect((await emit(a, "ready")).ok).toBe(true);
+  expect(me()).toMatchObject({ ready: false, locked: false });
+  expect(me().character).toBe("cindrake");
+  await settle();
+  expect(seat(a, aId)).toMatchObject({ locked: false });
+  expect(seat(b, aId)).toMatchObject({ locked: false, veiled: true });
+  // Ready on its own locks the fighter on show again, and cancelling unlocks.
+  expect((await emit(a, "ready")).ok).toBe(true);
+  expect(me()).toMatchObject({ ready: true, locked: true });
+  expect((await emit(a, "ready")).ok).toBe(true);
+  expect(me().locked).toBe(false);
+  expect(c).toBeDefined();
+});
+
 it("free-for-all: every other fighter's pick is hidden", async () => {
   const {
     players: [a, b, c],
