@@ -202,10 +202,13 @@ for (const [g, group] of GROUPS.entries())
                 tick + 8,
                 Math.floor((w.__clock - start) / (1000 / 30)) + 1,
               );
-            let cast = w.__pending;
-            w.__pending = -2;
+            // A cast waits for a tick: in effect time an interval may run
+            // none (the clock moves only with frames), and a cast taken then
+            // was lost.
             while (tick < due) {
               tick++;
+              const cast = w.__pending;
+              w.__pending = -2;
               me.hp = Math.max(me.hp, 500);
               dummy.hp = Math.max(dummy.hp, 500);
               // The ultimate is the last skill slot, cast with a full meter
@@ -218,7 +221,6 @@ for (const [g, group] of GROUPS.entries())
                 aimY: dummy.y,
                 skill: cast >= 0 ? cast : cast === -1 ? m.ULT_SLOT : -1,
               });
-              cast = -2;
               // The dummy stands still and casts nothing.
               a.submit(dummy, { ...m.blankInput(), seq: dummy.ack + 1 });
               a.tick();
