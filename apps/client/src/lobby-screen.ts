@@ -37,6 +37,7 @@ import { setPerfSource } from "./perf-hud";
  * Plain DOM over a blurred painting of the plaza: no canvas, light on phones.
  */
 export type LobbyMode =
+  | "quick"
   | "duel"
   | "teams"
   | "ffa"
@@ -69,6 +70,12 @@ export const LOBBY_MODES: readonly {
   /** A bot match's level: the label ends in it, coloured. */
   ai?: AiLevel;
 }[] = [
+  {
+    id: "quick",
+    label: "Quick Match",
+    hint: "1v1 · a player, or a bot",
+    icon: "battle",
+  },
   {
     id: "duel",
     label: "1v1 Duel",
@@ -133,12 +140,13 @@ export function chosenLobbyMode(): LobbyMode | null {
   return null;
 }
 /**
- * What PLAY starts: the mode picked last, or, for a new player, a match
- * against an Easy bot. A 1v1 Duel is a private room that waits for a
- * second player: a first tap shouldn't leave a newcomer waiting alone.
+ * What PLAY starts: the mode picked last; for a new player, a coached match
+ * against an Easy bot first, then Quick Match (a real player when one is
+ * searching, else a labelled bot). A 1v1 Duel is a private room that waits
+ * for a second player: PLAY never leaves anyone waiting alone by default.
  */
-export function savedLobbyMode(): LobbyMode {
-  return chosenLobbyMode() ?? "bot-easy";
+export function savedLobbyMode(firstMatchDone = false): LobbyMode {
+  return chosenLobbyMode() ?? (firstMatchDone ? "quick" : "bot-easy");
 }
 /**
  * A party can't play a bot match: when nobody picked a mode, PLAY gives it
@@ -146,7 +154,8 @@ export function savedLobbyMode(): LobbyMode {
  */
 export function partyLobbyMode(mode: LobbyMode, size: number): LobbyMode {
   if (size < 2 || chosenLobbyMode()) return mode;
-  if (!mode.startsWith("bot-") && mode !== "practice") return mode;
+  if (!mode.startsWith("bot-") && mode !== "practice" && mode !== "quick")
+    return mode;
   return size === 2 ? "duel" : size === 3 ? "ffa" : "teams";
 }
 function saveLobbyMode(mode: LobbyMode) {
@@ -157,6 +166,24 @@ function saveLobbyMode(mode: LobbyMode) {
   }
 }
 
+/**
+ * Whether the mode menu lists a mode for this party (docs/pvp-plan.md,
+ * item 5). Rooms nobody can fill are left out: 2v2 needs a party of four,
+ * Free-for-all three; Quick Match is for one player. The mode PLAY has now
+ * always shows, so nobody loses a choice they made.
+ */
+export function modeListed(
+  mode: LobbyMode,
+  partySize: number,
+  current: LobbyMode,
+): boolean {
+  if (mode === current) return true;
+  const size = Math.max(1, partySize);
+  if (mode === "teams") return size >= 4;
+  if (mode === "ffa") return size >= 3;
+  if (mode === "quick") return size < 2;
+  return true;
+}
 export type LobbyAction =
   | "fighters"
   | "wardrobe"
@@ -241,6 +268,8 @@ export interface LobbyOptions {
   /** The leader confirmed Kick on a member's seat. */
   onKick?(id: string): void;
   reduced: boolean;
+  /** The coached first bot match is done: PLAY defaults to Quick Match. */
+  firstMatchDone?: boolean;
 }
 export interface LobbyHandle {
   update(view: LobbyView): void;
@@ -330,7 +359,19 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     },
     { passive: true },
   );
-  let mode = savedLobbyMode();
+  let mode = savedLobbyMode(options.firstMatchDone);
+  let partySize = 0;
+  /** Show only the modes this party can play (modeListed). */
+  const listModes = () =>
+    layer
+      .querySelectorAll<HTMLElement>("#lobby-mode-menu [data-lobby-mode]")
+      .forEach((b) => {
+        b.hidden = !modeListed(
+          b.dataset.lobbyMode as LobbyMode,
+          partySize,
+          mode,
+        );
+      });
   /** Fighter + worn skin + stage now drawn on the stage. */
   let artKey: string | undefined;
   // The selected fighter moves with the same live rig as the Fighters roster
@@ -721,6 +762,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   setPerfSource("lobby", perfSource);
   return {
     update(view) {
+      partySize = view.partySize;
+      listModes();
       // The middle of the stage: your fighter, or your party's leader.
       const host = view.host;
       const character = host?.character ?? view.character;

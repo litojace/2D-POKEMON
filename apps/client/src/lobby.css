@@ -1210,6 +1210,9 @@
 .lobby-layer:has(.lobby-mode-menu:not([hidden])) .lobby-cards {
   visibility: hidden;
 }
+.lobby-mode-menu button[hidden] {
+  display: none;
+}
 .lobby-mode-menu button {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);

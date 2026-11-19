@@ -1781,6 +1781,8 @@ export interface ActivityPlayer {
   /** At least one other human, and no bots. */
   vsPeople: boolean;
   botLevel: string | null;
+  /** Quick Match made the room: two searchers, or the fallback bot. */
+  quick?: "human" | "bot" | null;
   mode: string;
   knockedOut: boolean;
   skillUses: number;

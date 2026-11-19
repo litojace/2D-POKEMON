@@ -278,6 +278,8 @@ import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { askConfirm, openHubPanelNow } from "./ui/hub-panel";
 import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { createGuide } from "./getting-started-screen";
+import { openQuickSearch, type QuickSearchHandle } from "./quick-match";
+import { recordBotResult, suggestedBotLevel } from "./bot-ladder";
 import { createCoach } from "./battle-coach";
 import { playerLevel } from "../../../packages/shared/src/journey";
 import { openRoster, type RosterScreen } from "./screens/roster";
@@ -2782,6 +2784,10 @@ function syncLobby(want: boolean) {
       onPlay: (mode) => void lobbyPlay(mode),
       onStep: stepHomeFighter,
       onKick: (id) => void kickFromParty(id),
+      firstMatchDone: (() => {
+        const g = guide.view();
+        return !(g.active && !g.done.bot);
+      })(),
     });
     void refreshLobbyFriends();
     lobbyFriendsTimer = setInterval(() => void refreshLobbyFriends(), 60000);
@@ -2841,6 +2847,55 @@ function lobbyAction(action: LobbyAction) {
   else if (action === "party-room") void followPartyRoom(undefined, true);
   else void accountsUI.showFriends();
 }
+/** Quick Match's search sheet, while searching (quick-match.ts). */
+let quickSearch: QuickSearchHandle | undefined;
+/**
+ * Quick Match (docs/pvp-plan.md, item 1): queue; meet a searching player
+ * now or later ("quick-found"), or take a labelled bot after the wait.
+ */
+async function quickMatch() {
+  if (quickSearch?.open) return;
+  const name =
+    document.querySelector<HTMLInputElement>("#name")?.value.trim() ||
+    accountsUI.account?.displayName ||
+    "Trainer";
+  const character = selected;
+  let paired = false;
+  const enter = async (reply: Reply) => {
+    paired ||= reply.ok;
+    quickSearch?.close();
+    quickSearch = undefined;
+    if (!reply.ok) return;
+    identity(reply);
+    await request("browse", selected);
+  };
+  const reply = await request("quick-join", { name, character });
+  if (!reply.ok) return;
+  if (!reply.queued) return void enter(reply);
+  socket.off("quick-found");
+  socket.once("quick-found", (found: Reply) => void enter(found));
+  quickSearch = openQuickSearch({
+    online: reply.online ?? 0,
+    onCancel: () => {
+      socket.off("quick-found");
+      quickSearch = undefined;
+      void request("quick-leave", {}, true);
+    },
+    onBot: async () => {
+      quickSearch = undefined;
+      const room = await request(
+        "bot-match",
+        { name, character, difficulty: suggestedBotLevel(), quick: true },
+        true,
+      );
+      // Paired with a player at the same moment: that room wins.
+      if (room.ok) {
+        socket.off("quick-found");
+        identity(room);
+      } else if (!paired) toast(room.error ?? "Try again.");
+    },
+  });
+}
 /** PLAY: the remembered mode, through the same controls as the Play panel. */
 async function lobbyPlay(chosen: LobbyMode) {
   audio.unlock();
@@ -2855,7 +2910,7 @@ async function lobbyPlay(chosen: LobbyMode) {
       return toast(
         "Your party leader starts the game. Leave the party to play on your own.",
       );
-    if (mode.startsWith("bot-") || mode === "practice")
+    if (mode.startsWith("bot-") || mode === "practice" || mode === "quick")
       return toast(
         "With a party, choose a room: 1v1, 2v2, Free-for-all or Boss Raid.",
       );
@@ -2865,6 +2920,7 @@ async function lobbyPlay(chosen: LobbyMode) {
       );
   }
   if (mode === "raid") return void accountsUI.showRaids();
+  if (mode === "quick") return void quickMatch();
   if (mode === "practice") return document.getElementById("practice")?.click();
   if (mode.startsWith("bot-")) {
     document
@@ -3911,7 +3967,14 @@ function renderBattle() {
         details +=
           '<p class="arcade-rating-note">Weekly arcade · XP and mission progress · PvP rating stays separate.</p>';
       // A finished match against a bot: Getting started's first step.
-      if (state.vsBot) guide.mark("bot");
+      if (state.vsBot) {
+        guide.mark("bot");
+        recordBotResult(
+          state.matchId ?? `${state.code}:${state.time}`,
+          state.vsBot,
+          won,
+        );
+      }
       actions = `<div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
     const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;

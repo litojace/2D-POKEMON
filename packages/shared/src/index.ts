@@ -12,6 +12,13 @@ import { inMeters } from "./units.js";
 export * from "./units.js";
 export * from "./pick-rules.js";
 export * from "./avatars.js";
+/**
+ * Quick Match (docs/pvp-plan.md): how long a lone player searches before
+ * the client offers a sparring bot, and how long that offer waits before it
+ * starts the bot match by itself.
+ */
+export const QUICK_MATCH_FALLBACK_MS = 20_000;
+export const QUICK_MATCH_OFFER_MS = 6_000;
 export const RULES = {
   width: 1600,
   height: 900,
@@ -3234,6 +3241,10 @@ export interface Reply {
   treats?: number;
   /** A message to a friend: kept (read later), or only shown live. */
   kept?: boolean;
+  /** Quick Match: waiting in the queue (no opponent yet). */
+  queued?: boolean;
+  /** Quick Match: other players connected right now (not counting you). */
+  online?: number;
 }
 export const normalize = (x: number, y: number): Vec => {
   const length = Math.hypot(x, y);
