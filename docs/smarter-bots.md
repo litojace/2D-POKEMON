@@ -3,8 +3,8 @@
 Players said the bots were too dumb. A Normal bot stood still for whole
 seconds (its `dazeBy` handicap), an Easy or Normal bot stopped dead while it
 "hesitated", and every level walked into corners, left a fight it was
-winning to pick up an orb, and fired slow skill shots with the basic
-attack's lead. The aim of this change: each level plays like a person of
+winning to pick up an orb, fired slow skill shots with the basic attack's
+lead, and in 2v2 each bot fought whoever was nearest. The aim of this change: each level plays like a person of
 that level. A weaker bot is slower to react, aims more loosely and uses
 fewer skills; it does not do stupid things.
 
@@ -16,23 +16,38 @@ before (positions, health and damage of every fighter compared).
 
 ## What each level does now
 
-| Behaviour                                                                 | Easy | Normal | Hard |
-| ------------------------------------------------------------------------- | ---- | ------ | ---- |
-| Never stands still in a daze: a lapse keeps it moving and out of hazards  | yes  | yes    | yes  |
-| Hesitating lets a skill chance go by instead of freezing on the spot      | yes  | yes    | -    |
-| A shooter facing a brawler keeps out of the corners (`kite`)              | 0.25 | 0.6    | 1    |
-| Low and behind on health: a shooter backs off, everyone goes for healing  | 20%  | 30%    | 35%  |
-| Never leaves an opponent it is about to finish to pick up an orb          | yes  | yes    | yes  |
-| Brawlers dash in once the opponent's dash is spent (3× keener)            | yes  | yes    | yes  |
-| Skill shots lead by their own speed (capped at 0.45 s)                    | yes  | yes    | yes  |
-| Saves its ultimate for an opening (`pvpSmartUltimate`)                    | -    | yes    | yes  |
-| 2v2: joins its teammate's target; FFA: finishes the nearly beaten one and picks on fighters already brawling (`focus`) | - | yes | yes |
-| Share of seconds lapsed (`dazeBy`)                                        | none | 0.20–0.46 by champion | none |
+| Behaviour                                                                                                              | Easy                  | Normal                | Hard  |
+| ---------------------------------------------------------------------------------------------------------------------- | --------------------- | --------------------- | ----- |
+| A lapse (see below) keeps it moving and out of hazards; it never freezes                                               | yes                   | yes                   | -     |
+| Hesitating lets a skill chance go by instead of freezing on the spot                                                   | yes                   | yes                   | -     |
+| A shooter facing a brawler keeps out of the corners (`kite`)                                                           | 0.25                  | 0.6                   | 1     |
+| Low and behind on health: a shooter backs off, everyone goes for healing                                               | < 20%                 | < 30%                 | < 35% |
+| Never leaves an opponent it is about to finish to pick up an orb                                                       | yes                   | yes                   | yes   |
+| Brawlers dash in once the opponent's dash is spent (3× keener)                                                         | yes                   | yes                   | yes   |
+| Skill shots lead by their own speed (at most 0.45 s ahead)                                                             | yes                   | yes                   | yes   |
+| Saves its ultimate for an opening (`pvpSmartUltimate`)                                                                 | -                     | yes                   | yes   |
+| 2v2: joins its teammate's target; FFA: finishes the nearly beaten one and picks on fighters already brawling (`focus`) | -                     | yes                   | yes   |
+| Plans its way out of marked blasts (`dodgeMarks`), after `markReaction`                                                | 0.9 s                 | 0.75 s                | 0.6 s |
+| Hops or steps round enemy seedlings (`jumpSeeds`)                                                                      | -                     | yes                   | yes   |
+| Looks away from a ready Eyespot Flash between attacks (`lookAway`)                                                     | -                     | -                     | yes   |
+| Share of seconds lapsed (`dazeBy`)                                                                                     | brawlers only, ≤ 0.21 | 0.20–0.46 by champion | none  |
 
-Easy has no daze at all now: it is weaker than Normal through its slower
-reactions (0.5 s), looser aim, rare dodges and fewer skills. Before, Easy
-had no daze but Normal stood still for up to 47% of its seconds, so Easy
-Pyranda beat Normal Pyranda 85% of the time.
+The last four rows are the expert balance bot's counterplay
+(`ExpertFlags`, PR #236), reused as it is: each level has some of it, in
+PvP only. The expert reads a mark 0.15 s after it appears; a player level
+takes its `markReaction`, and until then walks out of the mark as bots
+always did. An instant read took Hard Pyranda (a kit of marks) to 41%, and
+0.5 s to 44%; at 0.6 s it is at 51%.
+
+**Lapses instead of dazes.** Normal's per-champion handicap (`dazeBy`) used
+to freeze it for whole seconds. Now a dazed second is a lapse of attention:
+it keeps walking (and out of hazards), but attacks, casts and dodges
+nothing. A lapse costs a bot less than standing still did, so the shares
+were recalibrated. Easy lapses 0.25 less than Normal on the same champion
+(`EASY_DAZE_GAP`), so only with brawlers (Cindrake 0.21, Duskveil 0.11,
+Pangrove 0.11, Coilemur 0.11, Wombolder 0.09, Shadopus 0.08, Mossloth 0.06,
+the rest 0.04 or less). Before, Easy had no daze and Normal froze for up
+to 47% of its seconds, so Easy Pyranda beat Normal Pyranda 85% of the time.
 
 ### Tried and left out
 
@@ -46,51 +61,63 @@ Leading slow skill shots fully (Ball Lightning at 360 px/s) missed bots
 that change direction: Hard Voltkit fell to 43–45%. Capping the lead at
 0.45 s brings it back to 49–51%.
 
+An Easy with no lapse at all lost to Normal with Pangrove (55%) and only
+just beat it with Cindrake and Wombolder (73%): slow reactions and loose
+aim cost a brawler little.
+
 ## The difficulty curve
 
 Mirror duels (`scripts/balance/difficulty-mirror.ts 40 <strong> <weak>`):
 every champion against itself, 40 duels each, 720 in all, sides swapped.
 
-| Pairing         | Before | After  |
-| --------------- | ------ | ------ |
-| Hard vs Normal  | 99.6%  | 99.3%  |
-| Normal vs Easy  | 71.5%  | 87.3%  |
-| Hard vs Easy    | 100%   | 99.7%  |
+| Pairing        | Before | After |
+| -------------- | ------ | ----- |
+| Hard vs Normal | 99.6%  | 99.3% |
+| Normal vs Easy | 71.5%  | 91.7% |
+| Hard vs Easy   | 100%   | 100%  |
 
 Before, Easy beat Normal with Pyranda (85%), Pangrove (62%) and Cindrake
-(57%). After, Normal wins with every champion, from Pangrove 55% and
-Cindrake and Wombolder 73% up to Sunbara 100%.
+(57%). After, Normal wins with every champion: Pangrove 68%, Coilemur 75%,
+Duskveil, Wombolder and Shadopus 88%, the rest 90–100%.
 
-New bots against the old ones, same champion on both sides
-(900 duels for Hard, 350 for the others):
+The new bots against the old ones (the code before this change), the same
+champion on both sides, two seeds of 10 duels per champion:
 
-| Pairing                 | New wins |
-| ----------------------- | -------- |
-| New Hard vs old Hard    | 50%      |
-| New Normal vs old Normal| 67%      |
-| New Easy vs old Easy    | 66%      |
+| Pairing                  | New wins       |
+| ------------------------ | -------------- |
+| New Hard vs old Hard     | 47.8% (of 360) |
+| New Normal vs old Normal | 68.6% (of 351) |
+| New Easy vs old Easy     | 56.4% (of 348) |
 
-Hard plays smarter rather than stronger in a mirror duel: its new habits
-(corners, focus fire, orb timing) count against brawlers and in 2v2 and
-free-for-all. The expert balance bot's behaviours (`claude/expert-balance-bot`)
-are the next step for Hard.
+Normal and Easy are stronger than before through playing better, not
+through fewer handicaps. Hard plays smarter but no stronger in a mirror
+duel (47.8% is within the noise of 50%): its new habits pay off against
+particular kits (marks, seedlings, the gaze, brawlers in corners) and in
+2v2 and free-for-all, and Hard's duel balance leaves no room to make it
+stronger across the board (see "Tried and left out").
 
 ## Champion balance
 
 Bot round robins (`scripts/balance/round-robin.ts`, every pair, 24 games),
-two seeds (5000 and 200000), 7,344 duels per level:
+two seeds (5000 and 200000), 7,344 duels per level ("before" is the code
+before this change, just before the Pangrove rework, #235):
 
-| Level  | Before (two seeds) | After         |
-| ------ | ------------------ | ------------- |
-| Hard   | 46.0% – 56.5%      | 45.7% – 55.0% |
-| Normal | 45.8% – 55.1%      | 44.0% – 54.0% |
+| Level  | Before        | After         |
+| ------ | ------------- | ------------- |
+| Hard   | 46.0% – 56.5% | 46.0% – 53.3% |
+| Normal | 45.7% – 53.8% | 45.2% – 54.4% |
+| Easy   | 16.1% – 89.1% | 23.9% – 71.8% |
 
-Normal's `dazeBy` was recalibrated (secant steps toward each champion's
-Hard rate, clipped to 46–54%, then averaged over the last three steps).
-The lapse costs a bot less than standing still did, so most shares are
-about the same or a little higher. Raids keep the old values: Normal's
-`raidDazeBy` is `RAID_DAZE_BY` over Normal's duel daze from before this
-change (`NORMAL_DAZE_BEFORE_SMART_BOTS`), and `RAID_DAZE_BY` is unchanged.
+Normal's `dazeBy` was recalibrated: secant steps toward each champion's
+Hard rate (clipped to 46–54%), the last three averaged, then small steps
+for Glacelle, Auralynx, Sunbara and Coilemur. Easy was never calibrated per
+champion and still is not: Easy brawlers beat Easy shooters (Cindrake 72%,
+Mystowl 24%), less than before (89% and 16%).
+
+Raids keep the old values: Normal's `raidDazeBy` is `RAID_DAZE_BY` over
+Normal's duel daze from before this change (`NORMAL_DAZE_BEFORE_SMART_BOTS`),
+and `RAID_DAZE_BY` is unchanged. In raids only a level with `raidDazeBy`
+(Normal) is dazed, so Easy Echoes never are.
 
 ## 2v2 and free-for-all
 
