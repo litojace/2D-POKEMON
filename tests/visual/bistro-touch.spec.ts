@@ -24,6 +24,16 @@ const B = (page: Page, js: string) =>
 async function touchProblems(page: Page, where: string) {
   await settled(page, ".bistro-layer");
   const out = await page.evaluate(() => {
+    // Sizes as laid out, not a moment of a bump: coins still flying land
+    // after settled() on a slow runner and the wallet pops to 1.25× (CI,
+    // 19 Nov: "Bistro coins: open the Bank is 55 px tall"). Finished here,
+    // in the same task as the measuring, nothing can start in between.
+    for (const a of document.getAnimations())
+      if (
+        a.effect?.getTiming().iterations !== Infinity &&
+        a.playState === "running"
+      )
+        a.finish();
     const out: string[] = [];
     const shown = (e: Element) => {
       const r = e.getBoundingClientRect();

@@ -496,12 +496,18 @@ button.room-seat.is-open:focus-visible {
     height: 30px;
     font-size: calc(17px * var(--text-scale, 1));
   }
+  /* Room for the longest state, "CHOOSING" (61 px at 11 px with the
+     tighter spacing below): at 62 px with the tag's 0.06em it was 11 px
+     too wide and ran out of its tag on both sides, and "LOCKED" with its
+     icon by 7 (room-alignment.spec.ts measures the text, not just its
+     right edge). */
   .room-seat-side {
-    width: 62px;
+    width: 72px;
   }
   .room-seat.has-pick .ui-tag {
     padding: 0 4px;
     line-height: 1.4;
+    letter-spacing: 0.02em;
   }
   .room-state {
     min-width: 0;
