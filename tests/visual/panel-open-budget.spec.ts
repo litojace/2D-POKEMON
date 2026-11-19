@@ -316,18 +316,22 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
     // Code the hub loads once in quiet moments after it opens (the other
     // worlds, the screens' own code): loaded before measuring, so a load
     // doesn't land in a measured open by chance.
-    const loaded = (names: string[]) =>
-      expect
-        .poll(() => names.every((n) => requested.some((u) => u.includes(n))), {
-          timeout: 60_000,
-        })
-        .toBe(true);
-    await loaded(["farm-screen", "plaza-screen", "bistro-scene"]);
-    await loaded([
-      "screens/raid-hall",
-      "screens/fitting-room",
-      "screens/journey",
-    ]).catch(() => undefined);
+    // (Worlds the game no longer has never load: waited for 30 s at most.)
+    await expect
+      .poll(
+        () =>
+          [
+            "plaza-screen",
+            "farm-screen",
+            "bistro-scene",
+            "screens/raid-hall",
+            "screens/fitting-room",
+            "screens/journey",
+          ].every((n) => requested.some((u) => u.includes(n))),
+        { timeout: 30_000 },
+      )
+      .toBe(true)
+      .catch(() => undefined);
     const cdp = await context.newCDPSession(page);
     await cdp.send("Performance.enable");
     const results: Record<string, unknown> = {};
