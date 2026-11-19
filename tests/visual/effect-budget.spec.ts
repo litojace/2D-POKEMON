@@ -24,6 +24,14 @@ import { openHub, openPlayPanel, pushUntilBattle, createRoom } from "./helpers";
  * so in the pull request and raise the limit below on purpose.
  * EFFECT_BUDGET_MEASURE=1 prints every champion's numbers instead.
  *
+ * Casts are spaced in effect time (the frame steps Phaser gives the
+ * effects), not wall-clock time: under 5 fps Phaser slows game time, so on
+ * a slow runner effects outlive their place and the next cast's peak
+ * counted the last one's too. On CI (about 6 fps) Pyranda's ultimate read
+ * 530 particles and 1.01 smoke (19 Nov 2026), on this container 271 and
+ * 0.54, and 693 and 0.90 with the CPU slowed 4×; spaced in effect time,
+ * 4× slower reads as this container does.
+ *
  * A trail (fx.trail) emits at most once a frame, so a slow machine (this
  * container renders at about 12 fps) sees less of a fast trail than a phone
  * at 60 fps. When a kit is near a limit, measure it with fx.trail emitting
@@ -54,6 +62,15 @@ const CASTS = ["skill 1", "skill 2", "skill 3", "skill 4", "ultimate"];
 const CAST_GAP = 1800;
 /** After the last cast, until its effects have played out. */
 const TAIL = 2500;
+
+/** Wait until the effects have run `ms` of their own time (see above). */
+async function effectWait(page: Page, ms: number) {
+  const end = await page.evaluate((ms) => (window as any).__clock + ms, ms);
+  await page.waitForFunction((end) => (window as any).__clock >= end, end, {
+    polling: 50,
+    timeout: 60_000 + ms * 20,
+  });
+}
 
 async function instrument(page: Page) {
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
@@ -92,7 +109,7 @@ for (const [g, group] of GROUPS.entries())
     browser,
   }) => {
     test.setTimeout(
-      60_000 + group.length * (CASTS.length * CAST_GAP + TAIL + 2500) * 2,
+      60_000 + group.length * (CASTS.length * CAST_GAP + TAIL + 2500) * 4,
     );
     const context = await browser.newContext({
       viewport: { width: 844, height: 390 },
@@ -123,8 +140,11 @@ for (const [g, group] of GROUPS.entries())
         const game = w.__perfGame;
         w.__peaks = {};
         w.__cast = "";
+        // Effect time: what the frames step the effects by (ms).
+        w.__clock = 0;
         const step = game.loop.callback;
         game.loop.callback = (time: number, delta: number) => {
+          w.__clock += delta;
           step(time, delta);
           if (!w.__cast || !w.__arenaPerf) return;
           const s = w.__arenaPerf.fx();
@@ -171,8 +191,8 @@ for (const [g, group] of GROUPS.entries())
           w.__arena = a;
           w.__pending = -2;
           let tick = 0;
-          const start = performance.now();
-          // The arena keeps real time: a slow machine runs the ticks it
+          const start = w.__clock;
+          // The arena keeps effect time: a slow machine runs the ticks it
           // missed (an interval that only fires a few times a second would
           // stretch every cast, and a later cast would land in an earlier
           // one's channel and be refused, so it was never measured).
@@ -180,7 +200,7 @@ for (const [g, group] of GROUPS.entries())
             const before = tick,
               due = Math.min(
                 tick + 8,
-                Math.floor((performance.now() - start) / (1000 / 30)) + 1,
+                Math.floor((w.__clock - start) / (1000 / 30)) + 1,
               );
             let cast = w.__pending;
             w.__pending = -2;
@@ -209,8 +229,9 @@ for (const [g, group] of GROUPS.entries())
             w.__push();
           }, 1000 / 30);
         }, champion);
-        // The new fighter's art loads first (not measured).
-        await page.waitForTimeout(2500);
+        // The new fighter's art loads first (not measured), and the arena
+        // runs its first ticks.
+        await effectWait(page, 2500);
         for (const [i, cast] of CASTS.entries()) {
           await page.evaluate(
             ([champion, label, slot]) => {
@@ -221,10 +242,10 @@ for (const [g, group] of GROUPS.entries())
             },
             [champion, `${champion} ${cast}`, i < 4 ? i : -1] as const,
           );
-          await page.waitForTimeout(CAST_GAP);
+          await effectWait(page, CAST_GAP);
         }
         // The last effects finish, still counted for this champion.
-        await page.waitForTimeout(TAIL);
+        await effectWait(page, TAIL);
         await page.evaluate(() => ((window as any).__cast = ""));
         Object.assign(
           results,
