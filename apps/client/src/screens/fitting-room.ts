@@ -38,6 +38,48 @@ import {
 import "./fitting-room.css";
 
 /**
+ * The last closed Shop's live fighter, asleep, for the next open. Booting
+ * it (a renderer, the fighter's textures decoded again) on every open was
+ * 26 canvases and a third of a second on a 4× slowed CPU (Nov 2026); the
+ * next Shop takes it over and moves its canvas into its own stage. Dropped
+ * after PARKED_MS, when a battle starts, or when the app goes to the
+ * background, so it never holds memory for long.
+ */
+let parked:
+  | { preview: ShopPreviewHandle; timer: number; watch: MutationObserver }
+  | undefined;
+export const PARKED_MS = 60_000;
+function park(preview: ShopPreviewHandle) {
+  unpark()?.();
+  preview.suspend(true);
+  const watch = new MutationObserver(() => {
+    if (document.body.classList.contains("battle-active")) unpark()?.();
+  });
+  watch.observe(document.body, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+  parked = {
+    preview,
+    timer: window.setTimeout(() => unpark()?.(), PARKED_MS),
+    watch,
+  };
+}
+/** Take the parked preview (still asleep), if any. */
+function unpark() {
+  if (!parked) return undefined;
+  clearTimeout(parked.timer);
+  parked.watch.disconnect();
+  const { preview } = parked;
+  parked = undefined;
+  return preview;
+}
+if (typeof document !== "undefined")
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) unpark()?.();
+  });
+
+/**
  * The fitting room's behaviour (UI remodel step 2). Markup comes from
  * fitting-room-view.ts. The screen opens inside the Lobby (openHubPanel),
  * keeps one live fighter renderer on its stage (a still one on Low
@@ -266,6 +308,15 @@ export function openFittingRoom(
     const stage = stageEl();
     const host = stage.querySelector(".shop-live-stage");
     if (low) return;
+    if (!preview && !importing) {
+      // The last Shop's live fighter, if it's still asleep nearby.
+      const kept = unpark();
+      if (kept) {
+        preview = kept;
+        preview.suspend(false);
+        previewHost = null;
+      }
+    }
     if (preview) {
       if (host !== previewHost) {
         preview.update(stage);
@@ -679,7 +730,15 @@ export function openFittingRoom(
       compactQuery.removeEventListener("change", onCompact);
       stageSize.disconnect();
       clearInterval(clock);
-      preview?.();
+      // Kept asleep for the next Shop while the Lobby stays (not when the
+      // Lobby itself is leaving: a match, the Plaza).
+      if (
+        preview &&
+        !low &&
+        document.querySelector(".lobby-layer")?.isConnected
+      )
+        park(preview);
+      else preview?.();
       preview = undefined;
       syncRail();
       hooks.onClose?.();

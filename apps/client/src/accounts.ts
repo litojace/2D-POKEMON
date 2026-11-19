@@ -11,6 +11,7 @@ import {
   photoIdOf,
 } from "../../../packages/shared/src/avatars";
 import { preparePhoto } from "./avatar-photo";
+import { idle } from "./svg-raster";
 import type { FittingRoom } from "./screens/fitting-room";
 import type { FitMode, ShopSection } from "./screens/fitting-room-view";
 import type { JourneyScreen } from "./screens/journey";
@@ -110,6 +111,18 @@ const APPLE_SIGN_IN = import.meta.env.VITE_APPLE_SIGN_IN === "on";
 /** Apple's logo for its sign-in button (Apple's button guidelines). */
 const APPLE_LOGO =
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>';
+/**
+ * How long a screen reuses the server's copy it was last shown (ms). Every
+ * open re-asking (records, raids, ranks, your name…) was a blank-then-filled
+ * screen and a second redraw when the answers came: the hitch players saw on
+ * each open (Nov 2026). Whatever changes these copies forgets them sooner
+ * (see `copies`).
+ */
+export const COPY_MAX_AGE_MS = 30_000;
+/** Friends are who's online right now: asked again sooner. */
+export const FRIENDS_MAX_AGE_MS = 10_000;
+/** Between screens' code loaded ahead (preloadScreens), and before the first. */
+const PRELOAD_GAP_MS = 4000;
 const storageKey = "parena-auth";
 const storage = {
   getItem: (key: string) =>
@@ -286,6 +299,9 @@ export class AccountUI {
       return;
     }
     const version = ++this.generation;
+    // A fresh load of the profile (a login, the server saying the account
+    // changed, after an equip…) asks the server for everything again.
+    this.forgetCopies();
     // Reloading the same player (after a purchase, an equip, a title change…)
     // keeps what's on screen until the fresh copy arrives. Clearing it first
     // made an open Shop say "Log in" and ask a signed-in player to sign in.
@@ -300,6 +316,13 @@ export class AccountUI {
       this.fittingRoom?.close();
       this.fittingRoom = undefined;
       this.fitProgress = null;
+      // Nor any other screen's last copy (each kept it for the next open).
+      this.forgetCopies();
+      this.raidProgress = null;
+      this.raidFriends = null;
+      this.profileData = { progress: null, raids: null, nameStatus: null };
+      this.ranksData = { board: null, friends: null };
+      this.friendsData = { list: null, recent: null };
       this.account = null;
       this.raidLook = undefined;
       this.raidClears = {};
@@ -325,8 +348,10 @@ export class AccountUI {
         if (!samePlayer) void this.loadAvatar(version);
         if (!samePlayer) void this.loadBlocked(version);
         try {
-          const progress = (await this.api("/api/raids")) as RaidProgress;
+          const progress = (await this.fetchCopy("/api/raids")) as RaidProgress;
           if (version !== this.generation) return;
+          // Raids open with it at once (and ask again only once it's old).
+          this.raidProgress = progress;
           this.raidLook = raidLookOf(progress);
           noteSeenRewards(account.id, progress);
           this.raidClears = bossClears(progress);
@@ -335,14 +360,14 @@ export class AccountUI {
         }
         // The Spire's climb, for the Lobby's Spire card (spire-nudge.ts).
         try {
-          const climb = (await this.api("/api/spire")) as SpireProgress;
+          const climb = (await this.fetchCopy("/api/spire")) as SpireProgress;
           if (version !== this.generation) return;
           if (climb) this.spireProgress = climb;
         } catch {
           /* Before the Spire's migration: no climb, no card. */
         }
         try {
-          const economy = (await this.api("/api/economy")) as Economy;
+          const economy = (await this.fetchCopy("/api/economy")) as Economy;
           if (version !== this.generation) return;
           this.economy = economy;
         } catch {
@@ -371,11 +396,72 @@ export class AccountUI {
     }
     this.renderNav();
     this.hooks.onChange();
+    if (this.account) this.preloadScreens();
+  }
+  private preloaded = false;
+  /**
+   * The Raids, Shop and Journey code and styles load on demand, not with the
+   * game (it starts sooner). Loaded in quiet moments after sign-in, the
+   * first open of each is as quick as the next: on a 4× slowed CPU the first
+   * Raids open took about twice as long as the next (Nov 2026).
+   */
+  private preloadScreens() {
+    if (this.preloaded) return;
+    this.preloaded = true;
+    const loads: (() => Promise<unknown>)[] = [
+      () => import("./screens/raid-hall"),
+      () => import("./screens/fitting-room"),
+      () => import("./screens/journey"),
+    ];
+    const next = () => {
+      const load = loads.shift();
+      if (!load) return;
+      window.setTimeout(() => {
+        // Not while a battle runs (it would compete): later.
+        if (document.body.classList.contains("battle-active")) {
+          loads.unshift(load);
+          return next();
+        }
+        void idle(2000)
+          .then(load)
+          .catch(() => undefined)
+          .finally(next);
+      }, PRELOAD_GAP_MS);
+    };
+    next();
   }
   async refresh() {
     await this.setSession(this.session, true);
   }
+  /**
+   * The server's copies screens were shown, by account and path, with when
+   * each was asked for (the request itself while it's on its way, so two
+   * screens asking at once share it). Forgotten whenever they may have
+   * changed: a request that changes something (any POST), the server saying
+   * records changed (economy-changed → loadEconomy), another player.
+   */
+  private copies = new Map<string, { at: number; value: Promise<unknown> }>();
+  /** GET `path`, or the copy asked for less than `maxAge` ms ago. */
+  fetchCopy(path: string, maxAge = COPY_MAX_AGE_MS): Promise<unknown> {
+    const key = `${this.account?.id ?? ""} ${path}`;
+    const now = performance.now();
+    const kept = this.copies.get(key);
+    if (kept && now - kept.at < maxAge) return kept.value;
+    const value = this.api(path);
+    this.copies.set(key, { at: now, value });
+    // A failure isn't kept: the next open asks again.
+    value.catch(() => {
+      if (this.copies.get(key)?.value === value) this.copies.delete(key);
+    });
+    return value;
+  }
+  /** The next screen asks the server again (its copies may be old). */
+  forgetCopies() {
+    this.copies.clear();
+  }
   async api(path: string, body?: unknown): Promise<unknown> {
+    // Something changes on the server: every copy may be old now.
+    if (body !== undefined) this.forgetCopies();
     const origin = import.meta.env.VITE_SERVER_URL || location.origin;
     const sentAt = Date.now();
     const response = await fetch(new URL(path, origin), {
@@ -947,9 +1033,10 @@ export class AccountUI {
       if (spire) this.raidScreen.showSpire(spire);
       else this.raidScreen.show(boss, tab);
     } else {
+      // It opens with the last copies (friends too), then asks again only
+      // what is old.
       this.raidLoading = !this.raidProgress;
       this.raidProblem = "";
-      this.raidFriends = null;
       this.raidScreen = openRaids(
         {
           data: () => {
@@ -989,10 +1076,17 @@ export class AccountUI {
     }
     const screen = this.raidScreen;
     if (screen.view.mode === "spire") this.noteSpireSeen();
+    const shown = [
+      this.raidProgress,
+      this.raidFriends,
+      this.spireProgress,
+      this.raidProblem,
+      this.raidLoading,
+    ];
     const [raids, friends, climb] = await Promise.allSettled([
-      this.api("/api/raids") as Promise<RaidProgress>,
+      this.fetchCopy("/api/raids") as Promise<RaidProgress>,
       this.nearbyFriends(),
-      this.api("/api/spire") as Promise<SpireProgress>,
+      this.fetchCopy("/api/spire") as Promise<SpireProgress>,
     ]);
     // The Spire's records (before its migration runs: none, still playable).
     if (climb.status === "fulfilled" && climb.value)
@@ -1000,20 +1094,35 @@ export class AccountUI {
     if (this.account?.id !== accountId || !screen.isOpen) return;
     if (screen.view.mode === "spire") this.noteSpireSeen();
     if (raids.status === "fulfilled") {
-      this.raidProgress = raids.value;
+      if (raids.value !== this.raidProgress) {
+        this.raidProgress = raids.value;
+        this.raidLook = raidLookOf(raids.value);
+        this.raidClears = bossClears(raids.value);
+        this.hooks.onChange();
+      }
       this.raidProblem = "";
-      this.raidLook = raidLookOf(raids.value);
-      this.raidClears = bossClears(raids.value);
-      this.hooks.onChange();
     } else if (!this.raidProgress)
       this.raidProblem =
         raids.reason instanceof Error
           ? raids.reason.message
           : "Raid records are not available yet.";
-    this.raidFriends =
-      friends.status === "fulfilled" ? friends.value.friends : [];
+    // The same list as last time stays the same array (no redraw).
+    if (friends.status === "rejected") this.raidFriends ??= [];
+    else if (
+      !this.raidFriends ||
+      JSON.stringify(friends.value.friends) !== JSON.stringify(this.raidFriends)
+    )
+      this.raidFriends = friends.value.friends;
     this.raidLoading = false;
-    screen.refresh();
+    // The copies it opened with were still fresh: nothing to redraw.
+    const now = [
+      this.raidProgress,
+      this.raidFriends,
+      this.spireProgress,
+      this.raidProblem,
+      this.raidLoading,
+    ];
+    if (now.some((v, i) => v !== shown[i])) screen.refresh();
   }
   /** Redraw the Raids panel (your party changed). */
   refreshRaids() {
@@ -1028,8 +1137,10 @@ export class AccountUI {
   async loadEconomy() {
     if (!this.account) return;
     const version = this.generation;
+    // A match, a raid or a purchase changed records, ranks and raids too.
+    this.forgetCopies();
     try {
-      const economy = (await this.api("/api/economy")) as Economy;
+      const economy = (await this.fetchCopy("/api/economy")) as Economy;
       if (version !== this.generation) return;
       this.economy = economy;
       this.renderNav();
@@ -1105,9 +1216,10 @@ export class AccountUI {
   private async loadFittingRoom() {
     const request = ++this.fitRequest;
     const accountId = this.account?.id;
+    const shown = [this.economy, this.fitProgress, this.fitLoading];
     const [economy, raids] = await Promise.allSettled([
-      this.api("/api/economy"),
-      this.api("/api/raids"),
+      this.fetchCopy("/api/economy"),
+      this.fetchCopy("/api/raids"),
     ]);
     // A newer load, another player or a closed screen: leave it.
     if (
@@ -1129,6 +1241,14 @@ export class AccountUI {
         : raids.status === "rejected"
           ? "Your raid rewards could not load. Close and reopen to try again."
           : "";
+    // Opened again on the copies it already showed: nothing to redraw.
+    if (
+      !this.fitProblem &&
+      [this.economy, this.fitProgress, this.fitLoading].every(
+        (v, i) => v === shown[i],
+      )
+    )
+      return;
     this.renderNav();
     this.syncAvatar();
     this.fittingRoom.refresh();
@@ -1261,9 +1381,12 @@ export class AccountUI {
       );
     }
     const screen = this.journeyScreen;
+    const shown = this.economy;
     try {
-      const economy = (await this.api("/api/economy")) as Economy;
+      const economy = (await this.fetchCopy("/api/economy")) as Economy;
       if (this.account?.id !== accountId || !screen.isOpen) return;
+      // Opened again on the copy it already shows: nothing to redraw.
+      if (economy === shown && !this.journeyLoading) return;
       this.economy = economy;
       this.journeyProblem = "";
       this.renderNav();
@@ -1327,9 +1450,12 @@ export class AccountUI {
       });
     }
     const screen = this.missionsScreen;
+    const shown = this.economy;
     try {
-      const economy = (await this.api("/api/economy")) as Economy;
+      const economy = (await this.fetchCopy("/api/economy")) as Economy;
       if (this.account?.id !== accountId || !screen.isOpen) return;
+      // Opened again on the copy it already shows: nothing to redraw.
+      if (economy === shown && !this.missionsLoading) return;
       this.economy = economy;
       this.missionsProblem = "";
       this.renderNav();
@@ -1358,10 +1484,11 @@ export class AccountUI {
     this.toLobbyScreen();
     const accountId = this.account.id;
     if (!this.profileScreen?.isOpen) {
+      // It opens on the records it showed last (another player's are
+      // forgotten at sign-in), then asks again only what is old.
       this.profileData = {
-        progress: null,
-        raids: this.raidProgress ?? null,
-        nameStatus: null,
+        ...this.profileData,
+        raids: this.profileData.raids ?? this.raidProgress ?? null,
       };
       this.profileScreen = openProfile({
         data: () => {
@@ -1454,14 +1581,26 @@ export class AccountUI {
     }
     await this.loadProfile(accountId);
   }
+  /** The raw answers the card was last drawn from (the same: no redraw). */
+  private profileShown: unknown[] = [];
   private async loadProfile(accountId: string) {
     const screen = this.profileScreen;
     const [progress, raids, name] = await Promise.allSettled([
-      this.api("/api/progress"),
-      this.api("/api/raids") as Promise<RaidProgress>,
-      this.api("/api/account/name"),
+      this.fetchCopy("/api/progress"),
+      this.fetchCopy("/api/raids") as Promise<RaidProgress>,
+      this.fetchCopy("/api/account/name"),
     ]);
     if (this.account?.id !== accountId) return;
+    const answers = [progress, raids, name].map((r) =>
+      r.status === "fulfilled" ? r.value : r.reason,
+    );
+    // Opened again on copies it already drew: nothing to redraw.
+    if (
+      this.profileData.progress &&
+      answers.every((v, i) => v === this.profileShown[i])
+    )
+      return;
+    this.profileShown = answers;
     if (progress.status === "fulfilled")
       this.profileData = {
         ...this.profileData,
@@ -1510,7 +1649,8 @@ export class AccountUI {
       await this.friendsScreen.reload();
       return;
     }
-    this.friendsData = { list: null, recent: null };
+    // It opens on the list it showed last (Recent loads again when picked).
+    this.friendsData = { ...this.friendsData, recent: null };
     const fresh = () => this.account?.id === accountId;
     const ok = (reply: { ok: boolean; error?: string } | undefined) =>
       reply ?? { ok: false, error: "Invites are unavailable here." };
@@ -1607,12 +1747,22 @@ export class AccountUI {
         this.hooks.onFriendsClosed?.();
       },
     });
-    await this.friendsScreen.reload();
+    const screen = this.friendsScreen;
+    const shown = this.friendsData;
+    await this.loadFriendList(accountId, FRIENDS_MAX_AGE_MS);
+    // The list it opened with was still fresh: nothing to redraw.
+    if (this.friendsData !== shown && screen.isOpen) screen.refresh();
   }
-  private async loadFriendList(accountId: string) {
+  /** The server's answer `friendsData.list` was read from. */
+  private friendsListRaw: unknown;
+  /** Load your friends (or reuse a copy younger than `maxAge` ms). */
+  private async loadFriendList(accountId: string, maxAge = 0) {
     try {
-      const list = friendsSchema.parse(await this.api("/api/friends"));
+      const raw = await this.fetchCopy("/api/friends", maxAge);
       if (this.account?.id !== accountId) return;
+      if (raw === this.friendsListRaw && !this.friendsData.problem) return;
+      this.friendsListRaw = raw;
+      const list = friendsSchema.parse(raw);
       this.friendsData = { ...this.friendsData, list, problem: "" };
     } catch (error) {
       if (this.account?.id !== accountId) return;
@@ -1642,8 +1792,11 @@ export class AccountUI {
       };
     await this.loadFriendList(accountId);
   }
+  /** Your friends (the copy asked for in the last few seconds, if any). */
   async nearbyFriends() {
-    return friendsSchema.parse(await this.api("/api/friends"));
+    return friendsSchema.parse(
+      await this.fetchCopy("/api/friends", FRIENDS_MAX_AGE_MS),
+    );
   }
   /** Send a friend request by code or player id; resolves with what happened. */
   private async sendFriendRequest(body: { code?: string; playerId?: string }) {
@@ -1697,6 +1850,8 @@ export class AccountUI {
   /** The open Ranks panel, if any (UI remodel step 6). */
   private ranksScreen?: RanksScreen;
   private ranksData: Omit<RanksData, "me"> = { board: null, friends: null };
+  /** The server's answer `ranksData.board` was read from. */
+  private ranksBoardRaw: unknown;
   /**
    * Ranks: your rank and the leaderboard, a panel inside the Lobby. The
    * Friends board loads the first time it is picked.
@@ -1706,7 +1861,7 @@ export class AccountUI {
     this.toLobbyScreen();
     const accountId = this.account?.id;
     if (!this.ranksScreen?.isOpen) {
-      this.ranksData = { board: null, friends: null };
+      // It opens on the boards it showed last, then asks again once old.
       this.ranksScreen = openRanks({
         data: () => ({
           ...this.ranksData,
@@ -1722,18 +1877,24 @@ export class AccountUI {
         onClose: () => (this.ranksScreen = undefined),
       });
     }
+    const shown = this.ranksData;
     await this.loadRanks("everyone", accountId);
-    this.ranksScreen?.refresh();
+    // Opened again on the board it already shows: nothing to redraw.
+    if (this.ranksData !== shown) this.ranksScreen?.refresh();
   }
   private async loadRanks(scope: "everyone" | "friends", accountId?: string) {
     const fresh = () => this.account?.id === accountId;
     if (scope === "everyone") {
-      this.ranksData = { ...this.ranksData, problem: "" };
+      if (this.ranksData.problem)
+        this.ranksData = { ...this.ranksData, problem: "" };
       try {
-        const board = leaderboardSchema.parse(
-          await this.api("/api/leaderboard"),
-        );
-        if (fresh()) this.ranksData = { ...this.ranksData, board };
+        const raw = await this.fetchCopy("/api/leaderboard");
+        // The copy the board was drawn from: keep the same data.
+        if (fresh() && raw !== this.ranksBoardRaw) {
+          this.ranksBoardRaw = raw;
+          const board = leaderboardSchema.parse(raw);
+          this.ranksData = { ...this.ranksData, board };
+        }
       } catch (error) {
         if (fresh())
           this.ranksData = {

@@ -2356,6 +2356,13 @@ export function createArenaServer(
           lockPick(a, p);
         }
         p.ready = !p.ready;
+        // Cancelling Ready unlocks the pick too (the seat reads Choosing
+        // again; in 2v2 the fighter is free for your teammate). Owner,
+        // 19 Nov 2026: a cancelled Ready that stayed Locked read as stuck.
+        if (!p.ready && picksHidden(a) && p.locked) {
+          p.locked = false;
+          a.lockOrder.delete(p.id);
+        }
         const half = a.size / 2;
         if (
           a.players.length >= a.minPlayers &&
