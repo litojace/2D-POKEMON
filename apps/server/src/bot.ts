@@ -211,10 +211,20 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
 };
 /**
  * The expert bot, for balance measurement only (never offered to players):
- * Hard's reactions, aim and handicaps, plus the counterplay in ExpertFlags.
+ * Hard made sharper where it pays (measured with difficulty-gap.ts, each
+ * setting alone against Hard: reaction +18 points, dodge +9, no rests +7,
+ * aim +4, quicker decisions +2; leading shots fully and engaging more made
+ * it weaker), plus the counterplay in ExpertFlags. Together it beats Hard
+ * in about 92% of duels, whichever champion it plays. A 0.1 s reaction is
+ * a top player's; going further would measure a machine, not players.
  */
 export const EXPERT_PROFILE: Profile = {
   ...BOT_PROFILES.hard,
+  reaction: 0.1,
+  aimError: 0.08,
+  dodge: 0.9,
+  think: 0.08,
+  rest: 0,
   expert: {
     lookAway: true,
     jumpSeeds: true,

@@ -77,12 +77,26 @@ describe("expert bot", () => {
     ).not.toThrow();
   });
 
-  it("keeps Hard's reactions and aim", () => {
+  it("is at least as sharp as Hard in every setting", () => {
     const { expert, ...rest } = BALANCE_PROFILES.expert;
-    expect(rest).toEqual(BOT_PROFILES.hard);
+    const hard = BOT_PROFILES.hard;
+    expect(rest.reaction).toBeLessThan(hard.reaction);
+    expect(rest.aimError).toBeLessThan(hard.aimError);
+    expect(rest.dodge).toBeGreaterThan(hard.dodge);
+    expect(rest.think).toBeLessThanOrEqual(hard.think);
+    expect(rest.rest).toBeLessThanOrEqual(hard.rest);
+    for (const k of [
+      "lead",
+      "skillUse",
+      "hesitate",
+      "engage",
+      "fooledByClone",
+      "smartUltimate",
+      "seeShots",
+    ] as const)
+      expect(rest[k]).toBe(hard[k]);
     expect(Object.keys(expert!).sort()).toEqual([...EXPERT_FLAGS].sort());
   });
-
   it("looks away from a ready Eyespot Flash between attacks", () => {
     const { a, me, foe } = duel("cindrake", "lumoth", 600, 760);
     busy(me, a.time);

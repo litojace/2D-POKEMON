@@ -299,9 +299,9 @@ kits changed).
 The bot win rates above come from bots that miss some counterplay any
 decent player knows, so some lopsided matchups could be the bots' fault
 rather than the champions'. `expert` is a bot level for measuring only
-(`EXPERT_PROFILE` in `apps/server/src/bot.ts`): Hard's reaction time, aim
-error and every other setting, plus the behaviours below, each behind a
-flag (`ExpertFlags`). Players can't reach it: rooms still take a
+(`EXPERT_PROFILE` in `apps/server/src/bot.ts`): the behaviours below, each
+behind a flag (`ExpertFlags`), first on Hard's reaction time, aim and other
+settings, then (last subsection) on sharper ones. Players can't reach it: rooms still take a
 `BotDifficulty` (`BOT_DIFFICULTIES`, the server's schema and the client's
 pickers are unchanged) and an expert brain reports itself, and picks rites,
 as Hard. Easy, Normal and Hard replay match for match as before, so raids,
@@ -358,7 +358,7 @@ A short look-ahead (cloning the arena to try actions) was not built: the
 three behaviours already account for the matchups suspected of being bot
 artefacts, and the round robin stays as fast as Hard's.
 
-### Expert against Hard
+### Expert against Hard (counterplay only, Hard's reactions and aim)
 
 Both 48 games a pair, seed 5000, 7,344 matches, every match finished, with
 Ember Curtain burning off Tongue Grapple (#235; it only changes Pyranda
@@ -428,3 +428,70 @@ wider spread on Expert is expected; what matters is who moved and why.
   (0.8 s) would soften those 80–94% matchups.
 - Measure each change on Expert and on Hard: Hard is what Normal's
   `dazeBy`, `RAID_DAZE_BY` and the Spire were calibrated against.
+
+### A sharper expert
+
+The counterplay alone left the expert level with Hard head to head (50.7%
+of 1,224 duels, `difficulty-gap.ts 8 expert hard`). Asked for the smartest
+bot, each setting was then sharpened alone against Hard (612 duels each):
+
+| Setting             | Hard → tried  | Expert beats Hard |
+| ------------------- | ------------- | ----------------: |
+| Reaction            | 0.25 → 0.15 s |             68.5% |
+| Dodge chance        | 0.55 → 0.8    |             59.5% |
+| Rest (holding fire) | 0.05 → 0      |             57.4% |
+| Aim error           | 0.14 → 0.08   |             54.2% |
+| Decisions           | 0.12 → 0.08 s |             52.5% |
+| Skill use           | 0.9 → 1       |             50.3% |
+| Fooled by clones    | 0.2 → 0.05    |             50.0% |
+| Engage dashes       | 0.2 → 0.35    |             47.4% |
+| Leading shots       | 0.85 → 1      |             45.3% |
+
+The expert now has reaction 0.1 s, dodge 0.9, no rests, aim error 0.08 and
+0.08 s decisions (leading and engaging stay at Hard's, as more of either
+made it weaker). It beats Hard in **93.0% of 1,224 duels**, and in at least
+82% with any champion (Cindrake 82%, the lowest). A 0.1 s reaction is a top
+player's; anything quicker would measure a machine.
+
+The counterplay still moves the right way with the sharper mechanics (48
+games a pair): `lookAway` Lumoth 48.7% → 43.3%, `dodgeMarks` Pyranda 57.6% →
+46.8%; `jumpSeeds` now changes little (Mossloth 80.1% → 79.0%), as sharper
+bots already keep off seedlings most of the time.
+
+Balance at this skill is very different (48 games a pair, seed 5000, every
+match finished):
+
+| Champion  |  Hard | Counterplay only | Sharp expert |
+| --------- | ----: | ---------------: | -----------: |
+| Mossloth  | 51.0% |            46.7% |        79.0% |
+| Mystowl   | 51.1% |            57.4% |        69.7% |
+| Halcyra   | 48.2% |            52.7% |        59.7% |
+| Auralynx  | 51.3% |            46.8% |        58.5% |
+| Sunbara   | 47.9% |            52.1% |        57.4% |
+| Glacelle  | 49.8% |            52.3% |        57.2% |
+| Wombolder | 47.4% |            46.2% |        54.9% |
+| Terradon  | 48.7% |            45.5% |        52.1% |
+| Duskveil  | 49.1% |            54.9% |        47.1% |
+| Astrabun  | 54.2% |            53.3% |        47.1% |
+| Pyranda   | 48.2% |            38.4% |        46.8% |
+| Shadopus  | 48.0% |            48.7% |        44.7% |
+| Pangrove  | 50.7% |            49.9% |        44.5% |
+| Lumoth    | 50.6% |            43.3% |        43.3% |
+| Voltkit   | 47.7% |            56.3% |        42.2% |
+| Coilemur  | 46.3% |            46.6% |        41.5% |
+| Tidefin   | 54.3% |            54.5% |        27.5% |
+| Cindrake  | 55.5% |            54.7% |        27.0% |
+
+Spread (sd) 12.6, and 52 pairs won 80% or more (26 on Hard). Champions that
+kite and punish from range (Mossloth, Mystowl, Halcyra) gain the most from
+good aim and dodging; brawlers that have to walk in (Cindrake, Tidefin) lose
+the most: Mossloth now beats Cindrake 98% and Coilemur 96%.
+
+This is how the roster would sit among very good players, not among most
+players, so it is not a target to tune to on its own. Use it with Hard
+(`tune.ts --levels expert,hard`) when a change should hold at the top as
+well. A champion out of line on both expert tables is the clearest case
+for a change: Mystowl is high on both (57%, 70%), Lumoth and Coilemur low
+on both. The proposals above were made on the counterplay-only table:
+with the sharp expert Pyranda is 46.8%, so its buff should be small, and
+Voltkit (42%) should not be cut.
