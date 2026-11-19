@@ -12591,6 +12591,11 @@ dialog .auth-panel {
 .native-app #install-app {
   display: none;
 }
+/* Nor a full-screen button: it is always full screen. Beats the battle
+   dock's display: flex (.battle-active.touch-mode .battle-dock …). */
+html.native-app #mobile-fullscreen {
+  display: none !important;
+}
 /* Sign in with Apple: Apple's white button on the dark panel (its button
    guidelines: black, white or white with an outline; logo and title). */
 .auth-apple {

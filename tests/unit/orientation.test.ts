@@ -1,4 +1,10 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// The iPhone app (Capacitor) is a switch the tests flip.
+const native = vi.hoisted(() => ({ on: false }));
+vi.mock("../../apps/client/src/native", () => ({
+  isNativeApp: () => native.on,
+}));
 import {
   canLockLandscape,
   fullscreenLandscape,
@@ -52,6 +58,7 @@ function browser(env: Env) {
   return calls;
 }
 afterEach(() => {
+  native.on = false;
   for (const [k, d] of saved)
     if (d) Object.defineProperty(globalThis, k, d);
     else delete (globalThis as unknown as Record<string, unknown>)[k];
@@ -96,5 +103,14 @@ describe("landscape lock", () => {
     expect(await fullscreenLandscape()).toBe(false);
     browser({});
     expect(await fullscreenLandscape()).toBe(false);
+  });
+});
+
+describe("the iPhone app", () => {
+  it("never asks the web view for full screen (iOS showed its banner and an X)", async () => {
+    native.on = true;
+    const calls = browser({ requestFullscreen: ok, lock: ok });
+    await fullscreenLandscape();
+    expect(calls).not.toContain("fullscreen");
   });
 });

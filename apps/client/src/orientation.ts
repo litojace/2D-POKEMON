@@ -5,6 +5,8 @@
  * installed app (Android Chrome, Edge, Samsung Internet). iPhone and iPad
  * Safari do not support it at all, so callers fall back to the rotate hint.
  */
+import { isNativeApp } from "./native";
+
 type Lockable = ScreenOrientation & {
   lock?: (orientation: string) => Promise<void>;
 };
@@ -12,6 +14,10 @@ type Lockable = ScreenOrientation & {
 export function isInstalled(): boolean {
   const nav = navigator as Navigator & { standalone?: boolean };
   return (
+    // The iPhone app is already full screen and landscape-only: asking the
+    // web view for full screen showed iOS's "capacitor://localhost is in full
+    // screen" banner and an X over the game (owner, 19 Nov 2026).
+    isNativeApp() ||
     matchMedia("(display-mode: standalone)").matches ||
     matchMedia("(display-mode: fullscreen)").matches ||
     nav.standalone === true
