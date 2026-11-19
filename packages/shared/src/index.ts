@@ -4170,7 +4170,7 @@ export const RITES: Rite[] = [
     "minor",
     "moon-hop",
     "Far Hop",
-    "Moon Hop reaches 380 px instead of 300.",
+    "Moon Hop reaches 380 px instead of 300 px.",
     { set: { range: 380 } },
   ),
   rite(
@@ -4346,7 +4346,7 @@ export const RITES: Rite[] = [
     "major",
     "tunnel",
     "Upheaval",
-    "Coming up from Tunnel reaches 150 px instead of 110.",
+    "Coming up from Tunnel reaches 150 px instead of 110 px.",
     { set: { radius: 150 } },
   ),
   rite(

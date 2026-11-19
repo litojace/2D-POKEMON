@@ -31,3 +31,9 @@ it("leaves no px in any text a player reads about a champion or a raid", () => {
   ];
   for (const t of texts) expect(t).not.toMatch(/\d\s?px\b/);
 });
+
+it("gives both sides of a distance change a unit (no '3 m instead of 110')", () => {
+  for (const r of RITES)
+    if (/\d m instead of/.test(r.text))
+      expect(r.text, r.name).toMatch(/\d m instead of \d+(\.\d+)? m\b/);
+});
