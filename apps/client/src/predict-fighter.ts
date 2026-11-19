@@ -1,7 +1,6 @@
 import {
   CHARACTERS,
   CURRENT_HOLD,
-  ROLL,
   ULT_SLOT,
   advanceMovement,
   blinkLanding,
@@ -20,7 +19,7 @@ import { canCastSkill } from "./cast-prediction";
 /**
  * Movement skills move you on the server, so they are predicted too (else
  * the fighter would snap a round trip later): a blink teleports, a rush
- * (or a River Dash) starts its charge, a roll curls up and a pinball launches, exactly as
+ * (or a River Dash) starts its charge, a tunnel digs in (and speeds up), exactly as
  * Arena.cast does. Their hits stay the server's.
  */
 const moves = (a: Ability | undefined) =>
@@ -28,8 +27,7 @@ const moves = (a: Ability | undefined) =>
   a?.kind === "rush" ||
   a?.kind === "surf" ||
   a?.kind === "leap" ||
-  a?.kind === "roll" ||
-  a?.kind === "pinball" ||
+  a?.kind === "tunnel" ||
   !!a?.lunge;
 function castMove(
   p: Fighter,
@@ -38,23 +36,8 @@ function castMove(
   time: number,
   slot: number,
 ) {
-  if (a.kind === "roll") {
-    p.roll = {
-      until: time + a.duration,
-      speed: CHARACTERS[p.character].speed * ROLL.start,
-      heading: p.angle,
-      top: a.speed,
-      slot,
-    };
-    return;
-  }
-  if (a.kind === "pinball") {
-    p.roll = undefined;
-    p.dashX = Math.cos(p.angle) * a.speed;
-    p.dashY = Math.sin(p.angle) * a.speed;
-    p.dashUntil = time + a.duration;
-    p.recoveryUntil = Math.max(p.recoveryUntil, p.dashUntil);
-    p.pinball = { bounces: a.count ?? 4, speedUp: a.pinball?.speedUp ?? 1.1 };
+  if (a.kind === "tunnel") {
+    p.burrow = { until: time + a.duration, slot, haste: a.tunnel?.haste ?? 1 };
     return;
   }
   if (a.kind === "leap") {
@@ -171,13 +154,13 @@ export function predictFighter(
     }
     return;
   }
-  // Rooted (or curled-up) fighters can't dash (Arena.tick ignores the input).
+  // Rooted (or underground) fighters can't dash (Arena.tick ignores the input).
   // Grounded (Sticky Mochi) fighters can't dash either.
   const rooted = p.statuses.some(
     (s) => (s.kind === "root" || s.kind === "grounded") && s.until > time,
   );
-  if (p.roll && time >= p.roll.until) p.roll = undefined;
-  if (input.dash && !rooted && !p.roll && time >= p.dashAt) {
+  if (p.burrow && time >= p.burrow.until) p.burrow = undefined;
+  if (input.dash && !rooted && !p.burrow && time >= p.dashAt) {
     const d = normalize(input.dx, input.dy);
     p.dashX = (d.x || d.y ? d.x : Math.cos(p.angle)) * RULES.dashSpeed;
     p.dashY = (d.x || d.y ? d.y : Math.sin(p.angle)) * RULES.dashSpeed;
@@ -195,13 +178,15 @@ export function predictFighter(
     }
   }
   const slot = input.skill;
-  // Casting Curl & Roll again uncurls.
-  if (p.roll && slot === p.roll.slot) {
-    p.roll = undefined;
+  // Casting Tunnel again surfaces.
+  if (p.burrow && slot === p.burrow.slot) {
+    p.burrow = undefined;
     return;
   }
-  // Curled up, only the ultimate (Pinball) goes.
-  if (p.roll && slot !== ULT_SLOT) return;
+  // Underground, only the ultimate (Leaf Storm) goes, and it surfaces first.
+  if (p.burrow && slot !== ULT_SLOT) return;
+  if (p.burrow && slot === ULT_SLOT && canCastSkill(p, slot, time))
+    p.burrow = undefined;
   const a = slot >= 0 ? kit.skills[slot] : undefined;
   if (!a || !moves(a) || !canCastSkill(p, slot, time)) return;
   if (slot === ULT_SLOT) p.ult = 0;

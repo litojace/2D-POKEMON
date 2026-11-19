@@ -1,7 +1,7 @@
 /**
  * The game is not a page to copy from (owner, 6–7 Nov 2026). A long press
- * on a phone is a game action (hold to harvest or plant many on the Farm,
- * hold to compare in the Shop), and on a computer a drag or a right click
+ * on a phone is a game action (hold to compare in the
+ * Shop), and on a computer a drag or a right click
  * shouldn't select text or open the browser's menu. The stylesheet stops
  * text selection, iOS's callout and image dragging (style.css, "Not a page
  * to copy"); this cancels the context menu (a right click, or Android's

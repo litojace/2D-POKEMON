@@ -30,10 +30,11 @@ rules: [Screenshot specifications](https://developer.apple.com/help/app-store-co
 2. **Real-time creature duels**: Pyranda against Glacelle in Tide Pools,
    both mid-cast (fire against ice, like the app icon).
 3. **18 creatures, 9 elements**: the Fighters roster.
-4. **2v2 teams and free-for-all**: a 2v2 in Shifting Ruins, Pyranda's
-   ultimate landing.
-5. **Hang out in the Plaza**: the Plaza at midday.
-6. **Grow your own farm**: a sunny farm, every plot growing.
+4. **2v2 team battles**: a 2v2 in Shifting Ruins, Pyranda's ultimate
+   landing.
+5. **Four-way free-for-all**: Pyranda, Coilemur, Shadopus and Sunbara in
+   Ember Forge, everyone against everyone.
+6. **Hang out in the Plaza**: the Plaza at midday.
 
 ## How they are made
 
@@ -46,7 +47,7 @@ and the safe-area insets around the Dynamic Island. Each capture is then
 framed under its caption in the game's Barlow Condensed.
 
 To change a shot, edit its scene in `SCENES` (its caption sits beside it).
-`SCENES=duel,farm` renders only those; `RAID_BOSS` and `RAID_ATTACK` try
+`SCENES=duel,ffa` renders only those; `RAID_BOSS` and `RAID_ATTACK` try
 another boss.
 
 App Review Guideline 2.3.3 asks that screenshots "show the app in use";

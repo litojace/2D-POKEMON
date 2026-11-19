@@ -5,7 +5,7 @@
  * world y − height). Sorting by one number per thing (its foot's y) breaks
  * for long things: a hurdle laid at a slant across the lane, a goal or a
  * gantry running away from the viewer, a food truck several metres long.
- * As in Element Bistro (bistro-depth.ts, after Shaun Lebron's
+ * After Shaun Lebron's
  * IsometricBlocks), each thing has a footprint on the ground: a box, or a
  * thin line (a hurdle). Two things whose pictures overlap on screen are put
  * in order by their footprints where they meet along x (the one wholly

@@ -924,14 +924,14 @@ export class FighterRig {
     if (pose.shell)
       for (const [part, image] of this.images)
         if (part !== "wings") image.setVisible(false);
-    // Curled into a ball (Curl & Roll, Pinball): only the ball of leaf plates.
-    if (pose.ball)
+    // Underground (Tunnel): only its mound of dirt shows.
+    if (pose.mound)
       for (const image of this.images.values()) image.setVisible(false);
     this.syncWash(pose.wash);
     this.syncGlow(now, pose.ambient !== false, reduced);
     this.effects.clear();
     this.under.clear();
-    if (pose.ball) this.drawBall(pose.ball, x, y, alpha, reduced);
+    if (pose.mound) this.drawMound(pose.mound, x, y, alpha, reduced);
     if (!this.suffix && pose.look?.skin === "starlit-skin") {
       for (let i = 0; i < 5; i++) {
         const sx = x + ((i % 3) - 1) * 14 * this.baseX,
@@ -1400,64 +1400,67 @@ export class FighterRig {
   }
 
   /**
-   * Pangrove curled up: a ball of overlapping leaf plates resting on the
-   * ground, its rows of plates turning over as it rolls toward `heading`.
+   * Pangrove underground (Tunnel): a mound of churned soil on the ground,
+   * leaf-plate tips poking out of its crest, with clods turning over as it
+   * moves toward `heading`. Everyone sees it: it is how the opponent knows
+   * where Pangrove is.
    */
-  private drawBall(
-    ball: { spin: number; heading: number },
+  private drawMound(
+    mound: { churn: number; heading: number },
     x: number,
     y: number,
     alpha: number,
     reduced: boolean,
   ) {
     const g = this.effects,
-      R = 26 * (this.baseX / 0.7),
+      R = 30 * (this.baseX / 0.7),
       cx = x,
-      cy = y + FEET * this.baseY - R * 0.95,
-      spin = reduced ? 0 : ball.spin,
-      hx = Math.cos(ball.heading),
-      hy = Math.sin(ball.heading) * 0.8;
-    g.fillStyle(0x1f4626, alpha).fillCircle(cx, cy, R + 2);
-    g.fillStyle(0x3f8f4a, alpha).fillCircle(cx, cy, R);
-    // Rows of plates running round the ball, front rows drawn last.
-    const rows = [...Array(6).keys()]
-      .map((i) => spin + (i * Math.PI * 2) / 6)
-      .sort((a, b) => Math.cos(a) - Math.cos(b));
-    for (const phase of rows) {
-      const facing = Math.cos(phase);
-      if (facing < -0.15) continue;
-      const along = Math.sin(phase) * R * 0.72,
-        size = R * (0.32 + 0.22 * (facing + 1) * 0.5);
-      for (const across of [-0.5, 0, 0.5]) {
-        const px = cx + hx * along - hy * across * R * 1.1,
-          py = cy + hy * along + hx * across * R * 0.9;
-        if (Math.hypot(px - cx, py - cy) > R - size * 0.3) continue;
-        const rot = ball.heading,
-          c = Math.cos(rot),
-          s = Math.sin(rot),
-          w = size * 0.5,
-          h = size * 0.38;
-        const pts = [
-          { x: px + c * w, y: py + s * w },
-          { x: px - s * h, y: py + c * h },
-          { x: px - c * w * 0.6, y: py - s * w * 0.6 },
-          { x: px + s * h, y: py - c * h },
-        ];
-        const lit = 0.55 + 0.45 * (facing + 1) * 0.5;
-        g.fillStyle(lit > 0.85 ? 0xc7e88a : 0x7fcf6a, alpha).fillPoints(
-          pts,
-          true,
-        );
-        g.lineStyle(1.2, 0x1f4626, 0.8 * alpha).strokePoints(pts, true);
-      }
-    }
-    // A sheen on top.
-    g.fillStyle(0xffffff, 0.18 * alpha).fillEllipse(
-      cx - R * 0.3,
-      cy - R * 0.4,
-      R * 0.7,
-      R * 0.35,
+      cy = y + FEET * this.baseY - R * 0.35,
+      churn = reduced ? 0 : mound.churn;
+    // A soft shadow, then the mound itself (lit from above).
+    g.fillStyle(0x000000, 0.22 * alpha).fillEllipse(
+      cx,
+      cy + R * 0.3,
+      R * 2.5,
+      R * 0.9,
     );
+    g.fillStyle(0x3d2814, alpha).fillEllipse(cx, cy, R * 2.3, R * 1.15);
+    g.fillStyle(0x7a5532, alpha).fillEllipse(cx, cy - R * 0.12, R * 2, R * 0.9);
+    g.fillStyle(0xa57a4a, alpha).fillEllipse(
+      cx - R * 0.2,
+      cy - R * 0.3,
+      R * 1.1,
+      R * 0.4,
+    );
+    // Clods turning over as it digs along.
+    for (let i = 0; i < 6; i++) {
+      const t = churn + (i * Math.PI * 2) / 6,
+        px = cx + Math.cos(t) * R * 0.75,
+        py = cy - R * 0.1 + Math.sin(t) * R * 0.28;
+      if (Math.sin(t) < -0.2) continue;
+      g.fillStyle(i % 2 ? 0x5a3b1e : 0x8c6338, alpha).fillCircle(
+        px,
+        py,
+        R * 0.13,
+      );
+    }
+    // Leaf-plate tips along the crest: the only part of Pangrove that shows.
+    const hx = Math.cos(mound.heading);
+    for (const k of [-0.45, 0, 0.45]) {
+      const px = cx + k * R * 0.9,
+        py = cy - R * 0.45 - (k === 0 ? 4 : 0),
+        lean = hx * 0.3,
+        w = R * 0.2,
+        h = R * 0.42;
+      g.fillStyle(k === 0 ? 0xc7e88a : 0x7fcf6a, alpha).fillTriangle(
+        px - w,
+        py + h * 0.4,
+        px + w,
+        py + h * 0.4,
+        px + lean * h,
+        py - h * 0.6,
+      );
+    }
   }
   private drawEffects(
     pose: AnimationPose,

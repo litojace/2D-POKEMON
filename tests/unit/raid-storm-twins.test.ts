@@ -337,22 +337,15 @@ describe("Polarity fairness and champion tricks", () => {
     expect(a.heroes()[0].hp).toBe(CHARACTERS.terradon.health);
     expect(a.raid.contributions!.p0.pillars).toBe(0);
   });
-  it("Pangrove curled into a ball (Curl & Roll) takes no Polarity damage", () => {
-    for (const curled of [true, false]) {
+  it("Pangrove underground (Tunnel) takes no Polarity damage", () => {
+    for (const dug of [true, false]) {
       const a = setup(1, 3, 1, ["pangrove"]);
       attack(a, "polarity");
-      // A ball at a standstill, curled for the whole attack.
-      if (curled)
-        a.heroes()[0].roll = {
-          until: a.time + 5,
-          speed: 0,
-          heading: 0,
-          top: 540,
-          slot: 2,
-        };
+      // Underground for the whole attack.
+      if (dug) a.heroes()[0].burrow = { until: a.time + 5, slot: 2, haste: 1 };
       run(a, 4.1);
       const lost = CHARACTERS.pangrove.health - a.heroes()[0].hp;
-      if (curled) expect(lost).toBe(0);
+      if (dug) expect(lost).toBe(0);
       else expect(lost).toBeGreaterThan(0);
     }
   });

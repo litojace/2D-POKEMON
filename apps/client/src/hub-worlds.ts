@@ -1,5 +1,5 @@
 /**
- * The hub's optional worlds (Farm, Plaza, Bistro) load on demand: each is a
+ * The hub's optional world (the Plaza) loads on demand: it is a
  * large scene the game doesn't need to start, so its code is a separate file
  * fetched the first time it is wanted (or a while after the hub opened, see
  * `warm`), then kept for the rest of the session. Loading never opens
@@ -12,21 +12,15 @@
  * a world whose code failed to load stays failed until the page reloads,
  * which is also what a deploy needs (the new version's files).
  */
-import type * as FarmModule from "./farm/farm-screen";
 import type * as PlazaModule from "./plaza/plaza-screen";
-import type * as BistroModule from "./bistro/bistro-scene";
 
-export type World = "farm" | "plaza" | "bistro";
+export type World = "plaza";
 export interface WorldModules {
-  farm: typeof FarmModule;
   plaza: typeof PlazaModule;
-  bistro: typeof BistroModule;
 }
 type Importers = { [W in World]: () => Promise<WorldModules[W]> };
 const IMPORTERS: Importers = {
-  farm: () => import("./farm/farm-screen"),
   plaza: () => import("./plaza/plaza-screen"),
-  bistro: () => import("./bistro/bistro-scene"),
 };
 /** How long the hub is open before the other worlds' code is fetched. */
 export const WARM_DELAY_MS = 5_000;
@@ -136,7 +130,7 @@ export function worldLoader(
       return undefined;
     },
     failed: (world) => failures.has(world),
-    warm(worlds = ["farm", "bistro", "plaza"]) {
+    warm(worlds = ["plaza"]) {
       if (warming) return;
       const queue = worlds.filter((w) => !modules[w] && !failures.has(w));
       if (!queue.length) return;

@@ -145,9 +145,9 @@
   --icon-btn-line: var(--ui-line-2);
   /* Layers, bottom to top: the one list of what sits over what. */
   --z-panel: 40; /* a screen inside the Lobby (over its stage) */
-  --z-hub: 60; /* the Lobby, Plaza, Farm and Bistro layers */
+  --z-hub: 60; /* the Lobby and Plaza layers */
   --z-hud: 70; /* the top bar */
-  --z-hud-top: 71; /* the Lobby / Plaza / Farm switch */
+  --z-hud-top: 71; /* the Lobby / Plaza switch */
   --z-chat-button: 72;
   --z-drawer-scrim: 80;
   --z-drawer: 81; /* the Play drawer */

@@ -40,36 +40,34 @@ const setup = async () => {
     records: PlazaRecord[] = [],
     bobaRefs: string[] = [],
     treatRefs: string[] = [];
-  let leaves = 25,
-    treats = 3;
+  let treats = 3;
   accounts.provider.rpc = async (_token, name, args) => {
     if (name === "arena_journey") return { xp: 900 };
     if (name === "arena_my_looks")
       return { voltkit: { skin: "galaxy-voltkit", stage: 1 } };
+    // Volt Boba is free: the database only checks the player.
     if (name === "arena_plaza_boba") {
       bobaRefs.push(String(args.p_ref));
-      if (leaves < 10) return { ok: false, leaves };
-      leaves -= 10;
-      return { ok: true, leaves };
+      return { ok: true };
     }
-    // Treats (migration 049): the database takes a regular crop from the barn.
+    // Treats: the database counts today's free allowance down.
     if (name === "arena_plaza_treats") return treats;
     if (name === "arena_plaza_treat") {
       treatRefs.push(String(args.p_ref));
       if (treats < 1)
         return {
           ok: false,
-          error: "No crops to throw yet. Harvest some on the Farm.",
+          error: "No treats left today. More tomorrow!",
           left: 0,
         };
       treats--;
-      return { ok: true, crop: "wheat", left: treats };
+      return { ok: true, treat: "candy", left: treats };
     }
     return {};
   };
   accounts.provider.recordPlaza = async (event) => {
     records.push(event);
-    return { leaves, orbsToday: 0 } as unknown as PlazaProgress;
+    return { orbsToday: 0 } as unknown as PlazaProgress;
   };
   server = createArenaServer({ accounts: accounts.provider, autoTick: false });
   await new Promise<void>((r) => server!.http.listen(0, "127.0.0.1", r));
@@ -166,7 +164,7 @@ it("lets signed-in players walk the Plaza together and see each other", async ()
   );
 });
 
-it("checks the Photo Spot and the boba truck by the server's position, and charges boba once", async () => {
+it("checks the Photo Spot and the boba truck by the server's position, and asks for boba once", async () => {
   const { connect, ticks, records, bobaRefs } = await setup();
   const ann = await connect();
   await emit(ann.socket, "plaza-join", { character: "voltkit" });
@@ -188,10 +186,9 @@ it("checks the Photo Spot and the boba truck by the server's position, and charg
   teleport(ann.socket, cafe.x, cafe.y);
   expect(await emit(ann.socket, "plaza-act", { spot: "cafe" })).toEqual({
     ok: true,
-    leaves: 15,
   });
   expect(server!.plaza.boosted(ann.socket.id!)).toBe(true);
-  // Still boosted: no second charge.
+  // Still boosted: no second boba.
   expect((await emit(ann.socket, "plaza-act", { spot: "cafe" })).ok).toBe(
     false,
   );
@@ -219,7 +216,7 @@ it("takes you out of the Plaza when you open a room", async () => {
   ).toBe(false);
 });
 
-it("throws a treat from your barn for everyone in your Plaza, one at a time", async () => {
+it("throws one of today's free treats for everyone in your Plaza, one at a time", async () => {
   const { connect, treatRefs } = await setup();
   const ann = await connect(),
     ben = await connect();
@@ -236,12 +233,12 @@ it("throws a treat from your barn for everyone in your Plaza, one at a time", as
   teleport(ann.socket, PLAZA_SPAWN.x, PLAZA_SPAWN.y);
   expect(await emit(ann.socket, "plaza-treat")).toEqual({
     ok: true,
-    crop: "wheat",
+    treat: "candy",
     treats: 2,
   });
   await settle();
   // Everyone in that Plaza sees it, where the server has the thrower.
-  const thrown = { id: joined.me, crop: "wheat", ...PLAZA_SPAWN };
+  const thrown = { id: joined.me, treat: "candy", ...PLAZA_SPAWN };
   expect(ann.seen.treats).toEqual([thrown]);
   expect(ben.seen.treats).toEqual([thrown]);
   // Too soon: refused before the database is asked.
@@ -257,14 +254,14 @@ it("throws a treat from your barn for everyone in your Plaza, one at a time", as
   await pause();
   expect((await emit(ann.socket, "plaza-treat")).treats).toBe(0);
   await pause();
-  // Out of crops: the database says so, and nobody sees a throw.
+  // None left today: the database says so, and nobody sees a throw.
   expect(await emit(ann.socket, "plaza-treat")).toEqual({
     ok: false,
-    error: "No crops to throw yet. Harvest some on the Farm.",
+    error: "No treats left today. More tomorrow!",
     treats: 0,
   });
   await settle();
   expect(ben.seen.treats).toHaveLength(3);
-  // A fresh id per throw: a retried request can't take two crops.
+  // A fresh id per throw: a retried request can't take two treats.
   expect(new Set(treatRefs).size).toBe(4);
 }, 15000);

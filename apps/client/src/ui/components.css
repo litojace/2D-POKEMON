@@ -370,7 +370,7 @@
   }
 }
 
-/* Low graphics (Settings → Graphics, as in the Plaza and Farm): no blur
+/* Low graphics (Settings → Graphics, as in the Plaza): no blur
    behind panels and no motion inside them. ui/hub-panel.ts sets the
    attribute. Screens appear at once in every setting: nothing waits on an
    animation to become visible. */
@@ -1375,7 +1375,7 @@ body[data-hub-scene="lobby"] #toast {
   }
 }
 /* With a screen open, the toast sits on the HUD row above it, as mobile
-   games show notices: over the Lobby / Plaza / Farm switch for a moment,
+   games show notices: over the Lobby / Plaza switch for a moment,
    never over the screen's own list. (It used to sit above the action bar,
    which on a phone is the middle of the list: rows went unreadable while it
    showed.) It never takes taps, so the switch underneath still works. */

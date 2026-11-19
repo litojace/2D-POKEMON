@@ -1027,8 +1027,8 @@ export const RAID_PERKS: Partial<
     text: "Charge Cragmuff into a pillar for 25 extra stagger.",
   },
   pangrove: {
-    skill: "Curl & Roll",
-    text: "Curled up (rolling, or as a Pinball), Rock Volley glances off you.",
+    skill: "Tunnel",
+    text: "Underground (Tunnel), Rock Volley sails over you.",
   },
 };
 /** Champion tricks per boss (docs/raid-roster-design.md §6). */
@@ -1136,8 +1136,8 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Braced, you stop Twin Rush completely and add 15 stagger to that twin.",
     },
     pangrove: {
-      skill: "Curl & Roll",
-      text: "Curled up (rolling, or as a Pinball), Polarity can't touch you.",
+      skill: "Tunnel",
+      text: "Underground (Tunnel), Polarity can't touch you.",
     },
   },
   grumblecrag: RAID_PERKS,

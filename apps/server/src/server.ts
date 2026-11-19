@@ -352,8 +352,6 @@ export function createArenaServer(
   const partyAwayMs = options.partyAwayMs ?? PARTY_AWAY_MS;
   /** Pending checks on members whose connection dropped. */
   const partyAwayTimers = new Set<ReturnType<typeof setTimeout>>();
-  /** Which farm each socket is on, for chat's Nearby channel (socket id → owner). */
-  const farmHere = new Map<string, string>();
   /** In-game chat (docs/chat-plan.md): party and room channels. */
   /** Reports from chat, and the pause after several (chat-moderation.ts). */
   const chatReports = new ChatReports();
@@ -745,7 +743,7 @@ export function createArenaServer(
       const session = getSession(socket.id);
       const arena = session ? rooms.get(session.code) : undefined;
       const me = arena?.players.find((p) => p.id === session!.id);
-      const others = me && arena ? arena.enemiesOf(me) : [];
+      const others = me && arena ? arena.enemiesOf(me, true) : [];
       const other = others.length
         ? { name: others.map((o) => o.name).join(" & ") }
         : undefined;
@@ -2822,53 +2820,9 @@ export function createArenaServer(
               .mates(socket.id)
               .map((m) => chatMember(m.accountId, m.name)),
           };
-        // A farm: everyone who said they are on it (checked when they did).
-        const owner = farmHere.get(socket.id);
-        if (owner) {
-          const members = new Map<string, ChatMember>();
-          for (const [id, o] of farmHere) {
-            const who = io.sockets.sockets.get(id)?.data.account as
-              Account | undefined;
-            if (o === owner && who)
-              members.set(who.id, chatMember(who.id, who.displayName));
-          }
-          return {
-            channel,
-            key: `place:farm:${owner}`,
-            inBattle: false,
-            members: [...members.values()],
-          };
-        }
       }
       return null;
     };
-    socket.on("chat-farm", async (data: unknown, cb: unknown) => {
-      if (!allowed(10) || !requirePlayer(cb)) return;
-      const owner = (data as { owner?: unknown } | null)?.owner;
-      if (owner === null || owner === undefined) {
-        farmHere.delete(socket.id);
-        return reply(cb, { ok: true });
-      }
-      if (typeof owner !== "string" || !/^[0-9a-f-]{36}$/i.test(owner))
-        return fail(cb, "Choose a farm.");
-      const me = account()!;
-      // Your own farm, or a friend's (as the farm's own visits).
-      if (owner !== me.id) {
-        try {
-          const list = (await accounts.rpc(
-            socket.data.accessToken,
-            "arena_friends",
-            {},
-          )) as { friends?: { id?: unknown }[] } | null;
-          if (!list?.friends?.some((f) => f?.id === owner))
-            return fail(cb, "Only friends can visit.");
-        } catch {
-          return fail(cb, "Couldn't check that farm. Try again.");
-        }
-      }
-      farmHere.set(socket.id, owner);
-      reply(cb, { ok: true });
-    });
     socket.on("chat-send", async (data: unknown, cb: unknown) => {
       if (!allowed(10) || !requirePlayer(cb)) return;
       const input = (data ?? {}) as {
@@ -3179,7 +3133,7 @@ export function createArenaServer(
           : { ok: false, error: "Wait a moment between emotes." },
       );
     });
-    // Treats (migration 049): regular crops from your barn, thrown for everyone.
+    // Treats: a free handful a Pacific day (PLAZA.treatsDaily), thrown for everyone.
     const sendTreats = async (token: string) => {
       try {
         const n = await accounts.rpc(token, "arena_plaza_treats", {});
@@ -3200,24 +3154,24 @@ export function createArenaServer(
         return fail(cb, "Wait a moment between treats.");
       treatPending = true;
       try {
-        // A fresh id per throw: a retry of this request can't take two crops.
+        // A fresh id per throw: a retry of this request can't take two treats.
         const r = (await accounts.rpc(token, "arena_plaza_treat", {
           p_ref: randomUUID(),
         })) as {
           ok?: boolean;
-          crop?: string;
+          treat?: string;
           left?: number;
           error?: string;
         } | null;
-        if (!r?.ok || !r.crop)
+        if (!r?.ok || !r.treat)
           return reply(cb, {
             ok: false,
-            error: r?.error ?? "No crops to throw yet.",
+            error: r?.error ?? "No treats left today.",
             treats: r?.left ?? 0,
           });
-        const thrown = plaza.treat(socket.id, r.crop);
+        const thrown = plaza.treat(socket.id, r.treat);
         if (thrown) toPlaza(copy, "plaza-treat", thrown);
-        reply(cb, { ok: true, crop: r.crop, treats: r.left ?? 0 });
+        reply(cb, { ok: true, treat: r.treat, treats: r.left ?? 0 });
       } catch (error) {
         fail(
           cb,
@@ -3250,18 +3204,18 @@ export function createArenaServer(
       if (!token || bobaPending) return fail(cb, "One moment…");
       bobaPending = true;
       try {
-        // A fresh id per purchase: a retry of this request can't charge twice.
-        const paid = (await accounts.rpc(token, "arena_plaza_boba", {
+        // Free since 20261119190000_remove_farm_bistro_leaves; the database
+        // still checks the player.
+        const ok = (await accounts.rpc(token, "arena_plaza_boba", {
           p_ref: randomUUID(),
-        })) as { ok?: boolean; leaves?: number } | null;
-        if (!paid?.ok)
+        })) as { ok?: boolean } | null;
+        if (!ok?.ok)
           return reply(cb, {
             ok: false,
-            error: "Not enough Gold Leaves.",
-            leaves: paid?.leaves,
+            error: "Volt Boba is closed right now.",
           });
         plaza.boost(socket.id);
-        reply(cb, { ok: true, leaves: paid.leaves });
+        reply(cb, { ok: true });
       } catch (error) {
         fail(
           cb,
@@ -3400,7 +3354,6 @@ export function createArenaServer(
         chatFriends.delete(who.id);
       }
       plaza.leave(socket.id);
-      farmHere.delete(socket.id);
       laggingSockets.delete(socket.id);
       stopWatching();
       const s = getSession(socket.id);

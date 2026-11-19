@@ -8,8 +8,6 @@ import {
 } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import { fingerWorks, scrollSweep } from "./scroll-sweep";
-import { CROPS } from "../../packages/shared/src/farm";
-import { fakeFarm } from "./farm-fake";
 
 // Every panel across the game: when its content is longer than the panel,
 // a finger can scroll to the end of it, and nothing is cut off by a box
@@ -272,75 +270,19 @@ const HUB_SCREENS: Screen[] = [
   },
 ];
 
-/** The Farm's sheets, from its right rail. */
-const FARM_SHEETS = ["shop", "friends", "decor", "book"].map(
-  (sheet): Screen => ({
-    name: `farm ${sheet}`,
-    root: "#fm-sheet",
-    open: async (page) => {
-      // Stay on the Farm between its sheets (closeAll closes the sheet).
-      if (!(await page.locator("#fm-rail").isVisible()))
-        await page.click('#hub-scenes [data-hub-scene="farm"]');
-      await expect(page.locator("#fm-rail")).toBeVisible({ timeout: 30_000 });
-      await page.locator(`#fm-rail [data-sheet="${sheet}"]`).click();
-      await expect(page.locator("#fm-sheet")).toBeVisible();
-    },
-  }),
-);
-
-/** The Farm's seed tray (tap an empty plot), with every seed in the bag:
- * more cards than it shows at once, and a finger lands on a card. */
-const TOP_LEVEL = Math.max(...CROPS.map((c) => c.level));
-const SEED_TRAY: Screen = {
-  name: "farm seed tray",
-  root: "#fm-pop",
-  open: async (page) => {
-    // The farm fake answers the farm's reads (the sheets above sweep a farm
-    // that never loads, and its plots take no tap): every seed, at the top
-    // level so none is greyed out. The farm reads it as it opens.
-    await fakeFarm(page);
-    await page.evaluate(
-      ([ids, lv]) => {
-        Object.assign((window as any).__fakeFarm, {
-          level: lv,
-          seeds: Object.fromEntries(ids.map((id) => [id, 5])),
-        });
-      },
-      [CROPS.map((c) => c.id), TOP_LEVEL] as const,
-    );
-    if (await page.locator("#fm-rail").isVisible())
-      await page.click('#hub-scenes [data-hub-scene="lobby"]');
-    await expect(page.locator("#lobby-play")).toBeVisible();
-    await page.click('#hub-scenes [data-hub-scene="farm"]');
-    await page.waitForFunction(() => (window as any).__farm?.F?.loaded, null, {
-      timeout: 30_000,
-    });
-    const p = await page.evaluate(() => {
-      const f = (window as any).__farm,
-        i = f.F.plots.findIndex((q: any) => !q.locked && !q.crop),
-        at = f.plotWorld(i);
-      f.look(at.x, at.y);
-      return f.plotClient(i);
-    });
-    await settle(page, 400);
-    await page.touchscreen.tap(p.x, p.y);
-    await expect(page.locator("#fm-pop.seedpick")).toBeVisible();
-  },
-};
-
 type Report = Record<
   string,
   { problems: string[]; cuts: string[]; seen: string[] }
 >;
 
-/** Close whatever is open (a dialog, a hub panel, a Farm sheet, a menu)
+/** Close whatever is open (a dialog, a hub panel, a menu)
  * and stand on the Lobby. */
 async function closeAll(page: Page) {
   const open = () =>
     page.evaluate(
       () =>
         !!document.querySelector(
-          "dialog[open], .ui-panel-host .ui-panel, #fm-sheet:not([hidden]), #lobby-mode-menu:not([hidden]), #home-play-panel:not([hidden])",
+          "dialog[open], .ui-panel-host .ui-panel, #lobby-mode-menu:not([hidden]), #home-play-panel:not([hidden])",
         ),
     );
   for (let i = 0; i < 5 && (await open()); i++) {
@@ -359,8 +301,6 @@ async function closeAll(page: Page) {
   if (await close.count()) await close.first().click();
   if (await page.locator("#lobby-mode-menu:not([hidden])").count())
     await page.click("#lobby-mode");
-  // On the Farm with its sheet closed: stay (its sheets open from its rail).
-  if (await page.locator("#fm-rail").isVisible()) return;
   if (!(await page.locator("#lobby-play").isVisible()))
     await page
       .click('#hub-scenes [data-hub-scene="lobby"]', { timeout: 3000 })
@@ -398,8 +338,6 @@ const GROUPS: Record<string, Screen[]> = {
   "hub panels": HUB_SCREENS.filter((s) => s.root === HUB && !SOCIAL(s)),
   "social panels": HUB_SCREENS.filter((s) => s.root === HUB && SOCIAL(s)),
   "dialogs and menus": HUB_SCREENS.filter((s) => s.root !== HUB),
-  // The seed tray last: it stays open until the farm closes.
-  "farm sheets": [...FARM_SHEETS, SEED_TRAY],
 };
 
 async function start(

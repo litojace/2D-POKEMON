@@ -26,16 +26,13 @@ parallel, in the background.
 npx vitest run tests/unit tests/integration
 ```
 
-Run only the files you touched while working (`npx vitest run tests/integration/bistro.test.ts`).
-`tests/integration/farm.test.ts > can be run again without changing any farm`
-can fail when the machine is busy (a timing check); if it fails, run that file
-alone before treating it as a real failure.
+Run only the files you touched while working (`npx vitest run tests/integration/friends.test.ts`).
 
 **2. Visual tests: pick the specs for the change.** Find them by the DOM ids,
 classes or screen names you changed:
 
 ```bash
-grep -l "bs-sheet\|fm-sheet" tests/visual/*.spec.ts
+grep -l "pz-card\|pz-treats" tests/visual/*.spec.ts
 ```
 
 Then run those with:
@@ -54,7 +51,7 @@ Then run those with:
   `spire` matches every spec.
 
 ```bash
-PW_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome npx playwright test --config tests/visual/playwright.config.ts tests/visual/bistro.spec.ts tests/visual/farm.spec.ts --trace off --workers=2 --reporter=line
+PW_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome npx playwright test --config tests/visual/playwright.config.ts tests/visual/lobby.spec.ts tests/visual/plaza.spec.ts --trace off --workers=2 --reporter=line
 ```
 
 **3. Keep `panel-scroll.spec.ts` apart.** It sweeps every panel at four

@@ -1,10 +1,5 @@
 import type Phaser from "phaser";
-import {
-  blinkLanding,
-  type Ability,
-  type Projectile,
-  type Zone,
-} from "@arena/shared";
+import { type Ability, type Projectile, type Zone } from "@arena/shared";
 import { fxFor, type Fx } from "./fx-engine";
 import {
   TAU,
@@ -261,23 +256,85 @@ function bladeImpact(
     fx.glow(x, y, a.radius * 2.4 * (1 - k * 0.4), color, 0.5 * (1 - k)),
   );
 }
-/** Curl & Roll rams someone, or Pinball strikes: a thump, leaves and a ring. */
-function ballImpact(
+/** Soil thrown up by Tunnel: clods and grit. */
+const SOIL = 0x7a5532;
+const SOIL_DARK = 0x3d2814;
+const clods = (
+  fx: Fx,
+  x: number,
+  y: number,
+  n: number,
+  speed: [number, number],
+) =>
+  fx.burst({
+    x,
+    y,
+    z: 6,
+    count: n,
+    kind: "debris",
+    color: [SOIL, SOIL_DARK, 0xa57a4a],
+    speed,
+    up: [120, 300],
+    life: [0.45, 0.85],
+    size: [2.2, 4],
+    grav: 900,
+    bounce: 0.2,
+  });
+/**
+ * Tunnel surfaces: the ground bursts open over its real reach, clods and
+ * leaf plates fly and a ring runs out to the edge of the fling.
+ */
+function tunnelUp(
   scene: Phaser.Scene,
-  _a: Ability,
+  a: Ability,
   x: number,
   y: number,
   color: number,
   shot: Shot,
 ) {
   const fx = fxFor(scene),
-    R = 56;
-  fx.shake(120, 0.005);
-  leaves(fx, x, y, 12, [70, 220]);
-  fx.decal({ kind: "crack", x, y: y + 4, r: R * 0.7, color: LEAF, life: 1.6 });
+    R = a.radius;
+  fx.shake(140, 0.006);
+  clods(fx, x, y, 14, [80, 260]);
+  leaves(fx, x, y, 6, [60, 180]);
+  fx.decal({ kind: "crack", x, y: y + 4, r: R * 0.6, color: SOIL, life: 1.8 });
   shot(fx.reduced ? 220 : 420, (k) => {
-    fx.shockwave(x, y + 6, R * ease(Math.min(1, k * 1.6)), k, LEAF, 8, SQ);
-    fx.glow(x, y, R * (1 - k * 0.4), color, 0.45 * (1 - k));
+    fx.shockwave(x, y + 6, R * ease(Math.min(1, k * 1.5)), k, SOIL, 9, SQ);
+    fx.glow(x, y, R * 0.6 * (1 - k * 0.4), color, 0.35 * (1 - k));
+  });
+}
+/**
+ * Leaf Storm bursts at its end: every blade flies outward over the real
+ * burst reach, in a ring of leaves.
+ */
+function stormBurst(
+  scene: Phaser.Scene,
+  a: Ability,
+  x: number,
+  y: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    R = a.explosion ?? 300;
+  fx.shake(160, 0.006);
+  leaves(fx, x, y, fx.reduced ? 8 : 16, [220, 420]);
+  shot(fx.reduced ? 260 : 480, (k) => {
+    fx.shockwave(x, y + 6, R * ease(k), k, LEAF, 10, SQ);
+    for (let i = 0; i < 8; i++) {
+      const ang = (i * TAU) / 8,
+        d = 40 + (R - 40) * ease(k);
+      leaf(
+        fx.solid,
+        x + Math.cos(ang) * d,
+        y - 12 + Math.sin(ang) * d * SQ,
+        22,
+        ang,
+        i % 2 ? LEAF : LEAF_LIGHT,
+        0.95 * (1 - k),
+      );
+    }
+    fx.glow(x, y - 12, 60 * (1 - k * 0.5), color, 0.4 * (1 - k));
   });
 }
 /**
@@ -420,10 +477,28 @@ function shrapnelCast(
     fx.glow(x, y - 16, 40 * (1 - k * 0.5), color, 0.5 * (1 - k));
   });
 }
-/** Curl & Roll: the leaf scales fold shut round Pangrove in a swirl of leaves. */
-function curlCast(
+/** Tunnel: Pangrove noses into the ground in a spray of soil. */
+function tunnelCast(
   scene: Phaser.Scene,
   _a: Ability,
+  x: number,
+  y: number,
+  _angle: number,
+  _color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene);
+  clods(fx, x, y, 10, [50, 160]);
+  shot(fx.reduced ? 160 : 300, (k) => {
+    fx.floor
+      .fillStyle(SOIL_DARK, 0.5 * (1 - k))
+      .fillEllipse(x, y + 10, 50 * (1 - k * 0.3), 50 * SQ * (1 - k * 0.3));
+  });
+}
+/** Leaf Storm: the ultimate wash, and the plates lift off in a swirl. */
+function stormCast(
+  scene: Phaser.Scene,
+  a: Ability,
   x: number,
   y: number,
   _angle: number,
@@ -432,91 +507,24 @@ function curlCast(
   at?: Follow,
 ) {
   const fx = fxFor(scene);
-  leaves(fx, x, y - 10, 8, [40, 120]);
-  shot(fx.reduced ? 200 : 380, (k) => {
-    const p = at?.() ?? { x, y },
-      fold = ease(Math.min(1, k * 2)),
-      fade = 1 - k;
-    for (let i = 0; i < 8; i++) {
-      const ang = (i * TAU) / 8 + k * 4,
-        d = 58 - 30 * fold;
+  fx.ultimate(color, 600);
+  leaves(fx, x, y - 10, 10, [60, 180]);
+  shot(fx.reduced ? 200 : 360, (k) => {
+    const p = at?.() ?? { x, y };
+    for (let i = 0; i < 6; i++) {
+      const ang = (i * TAU) / 6 + k * 5,
+        d = 20 + (a.radius - 20) * ease(k);
       leaf(
         fx.solid,
         p.x + Math.cos(ang) * d,
-        p.y - 14 + Math.sin(ang) * d * 0.85,
-        16,
+        p.y - 14 + Math.sin(ang) * d * SQ,
+        18,
         ang + Math.PI / 2,
         i % 2 ? LEAF : LEAF_DEEP,
-        0.9 * fade,
+        0.9 * (1 - k),
       );
     }
-    fx.glow(p.x, p.y - 14, 50, color, 0.3 * fade);
   });
-}
-/** Pinball launches: the ultimate wash and a spray of leaves behind it. */
-function pinballCast(
-  scene: Phaser.Scene,
-  _a: Ability,
-  x: number,
-  y: number,
-  angle: number,
-  color: number,
-  shot: Shot,
-) {
-  const fx = fxFor(scene);
-  fx.ultimate(color, 600);
-  leaves(fx, x, y, 12, [80, 240], { angle: angle + Math.PI, spread: 0.7 });
-  shot(fx.reduced ? 160 : 300, (k) =>
-    fx.shockwave(x, y + 6, 70 * ease(k), k, LEAF, 8, SQ),
-  );
-}
-/**
- * Pinball wind-up: Pangrove tucks in while its first stretch (to the first
- * wall in the way) lights up on the ground.
- */
-function pinballWindup(
-  g: G,
-  _a: Ability,
-  x: number,
-  y: number,
-  angle: number,
-  _ax: number,
-  _ay: number,
-  color: number,
-  k: number,
-  now: number,
-) {
-  const fx = fxFor(g.scene),
-    end = blinkLanding({ x, y }, angle, 1700),
-    w = 26;
-  const px = -Math.sin(angle) * w,
-    py = Math.cos(angle) * w;
-  fx.floor.fillStyle(color, 0.08 + k * 0.14).fillPoints(
-    [
-      { x: x + px, y: y + py },
-      { x: end.x + px, y: end.y + py },
-      { x: end.x - px, y: end.y - py },
-      { x: x - px, y: y - py },
-    ],
-    true,
-  );
-  fx.floor.lineStyle(2, color, 0.4 + k * 0.4).lineBetween(x, y, end.x, end.y);
-  // Where it will bounce.
-  fx.floor
-    .lineStyle(3, LEAF_LIGHT, 0.4 + k * 0.5)
-    .strokeEllipse(end.x, end.y, 40, 40 * SQ);
-  for (let i = 0; i < 8; i++) {
-    const ang = (i * TAU) / 8 + now / 140;
-    leaf(
-      fx.solid,
-      x + Math.cos(ang) * (44 - k * 14),
-      y - 14 + Math.sin(ang) * (36 - k * 10),
-      14,
-      ang + Math.PI / 2,
-      LEAF,
-      0.4 + k * 0.5,
-    );
-  }
 }
 /** Sloth Time: a lazy chime ring at Mossloth as the bubble forms at the aim. */
 function slothCast(
@@ -788,11 +796,70 @@ export function plateFx(
     grav: 700,
   });
 }
-/** Pinball bounces off a wall: leaves fly and the camera thumps. */
-export function bounceFx(scene: Phaser.Scene, x: number, y: number) {
-  const fx = fxFor(scene);
-  fx.shake(80, 0.003);
-  leaves(fx, x, y, 8, [60, 180]);
+/**
+ * Leaf Storm in progress, drawn each frame while the server holds it: the
+ * blades where they really are (each a stream of leaves from Pangrove out to
+ * its tip, the spoke that hits), and the storm's reach on the ground, which
+ * brightens as the final burst nears.
+ */
+export function drawLeafStorm(
+  scene: Phaser.Scene,
+  id: string,
+  x: number,
+  y: number,
+  blades: { x: number; y: number; angle: number }[],
+  a: Ability,
+  left: number,
+  reduced: boolean,
+) {
+  const fx = fxFor(scene),
+    reach = a.radius + (a.cyclone?.blade ?? 26),
+    soon = Math.max(0, 1 - left / 0.6);
+  fx.floor
+    .fillStyle(LEAF, 0.06 + 0.06 * soon)
+    .fillEllipse(x, y + 8, reach * 2, reach * 2 * SQ);
+  // The burst coming: its edge, kept full size on every graphics level.
+  fx.essential(() =>
+    fx.floor
+      .lineStyle(2 + 2 * soon, soon > 0 ? LEAF_LIGHT : LEAF, 0.35 + 0.45 * soon)
+      .strokeEllipse(x, y + 8, reach * 2, reach * 2 * SQ),
+  );
+  for (const b of blades) {
+    const dx = b.x - x,
+      dy = b.y - y;
+    // A swoosh trailing each blade round its circle.
+    fx.solid.lineStyle(6, LEAF_LIGHT, 0.35).strokePoints(
+      [0, 1, 2, 3, 4, 5, 6].map((i) => {
+        const t = b.angle - (0.55 * i) / 6;
+        return {
+          x: x + Math.cos(t) * a.radius * 0.92,
+          y: y - 14 + Math.sin(t) * a.radius * 0.92 * SQ,
+        };
+      }),
+    );
+    for (const [t, len, color] of [
+      [0.3, 18, LEAF_DEEP],
+      [0.5, 24, LEAF],
+      [0.7, 30, LEAF],
+      [0.88, 36, LEAF_LIGHT],
+      [1.05, 44, LEAF_LIGHT],
+    ] as const) {
+      const lx = x + dx * t,
+        ly = y - 14 + dy * t * SQ;
+      leaf(fx.solid, lx, ly, len + 4, b.angle + Math.PI / 2, LEAF_DEEP, 0.9);
+      leaf(fx.solid, lx, ly, len, b.angle + Math.PI / 2, color, 0.95);
+    }
+  }
+  if (reduced) return;
+  // A few torn leaves fly off the blade tips.
+  fx.trail(`leaf-storm-${id}`, 0.12, () => {
+    const b = blades[Math.floor(Math.random() * blades.length)];
+    if (b)
+      leaves(fx, b.x, b.y, 1, [60, 140], {
+        angle: b.angle + Math.PI / 2,
+        spread: 0.5,
+      });
+  });
 }
 
 export const natureKit: FxKit = {
@@ -801,13 +868,12 @@ export const natureKit: FxKit = {
     "scale-shrapnel": shrapnelBlade,
   },
   zone: { seedling: seedlingZone, "sloth-time": slothTime },
-  windup: { pinball: pinballWindup },
   cast: {
     "scale-swipe": scaleSwipe,
     "tongue-grapple": tongueCast,
     "scale-shrapnel": shrapnelCast,
-    "curl-roll": curlCast,
-    pinball: pinballCast,
+    tunnel: tunnelCast,
+    "leaf-storm": stormCast,
     "seed-spit": spitCast,
     seedling: spitCast,
     "sloth-time": slothCast,
@@ -818,8 +884,8 @@ export const natureKit: FxKit = {
   impact: {
     "seed-spit": seedImpact,
     "scale-shrapnel": bladeImpact,
-    "curl-roll": ballImpact,
-    pinball: ballImpact,
+    tunnel: tunnelUp,
+    "leaf-storm": stormBurst,
     seedling: seedBurst,
     "lazy-swap": swapPoof,
   },

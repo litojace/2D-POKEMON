@@ -1855,14 +1855,6 @@ export interface Economy {
   streak: number;
   /** Coins earned today, by source (for the caps). */
   today: { raidClears: number; pvpMatches: number };
-  /** Gold Leaves (migration 036): balance and today's trade for coins. */
-  leaves?: {
-    balance: number;
-    tradedToday: number;
-    tradeCap: number;
-    tradeLeaves: number;
-    tradeCoins: number;
-  };
 }
 
 /** An item's list price, before any discount (0 for an unknown id). */

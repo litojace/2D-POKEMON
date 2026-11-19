@@ -8,26 +8,26 @@ rush like Wombolder's, fans of shots and slow zones like half the roster), so
 both were rebuilt around new mechanics, borrowing proven ideas from other
 games but none of their characters.
 
-| Champion | Role            | Creature                                        | What no one else does                                                                                        |
-| -------- | --------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Pangrove | Armoured roller | Pangolin with living leaf scales and a sprout   | **Armour plates** it spends as blades; a **ball you steer**; a **grappling tongue**; a **pinball** off walls |
-| Mossloth | Time gardener   | Three-toed sloth with a moss garden on its back | **Moss** that grows while it stands still; **seeds that grow**; a **time bubble**; **swapping places**       |
+| Champion | Role              | Creature                                        | What no one else does                                                                                                           |
+| -------- | ----------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Pangrove | Armoured burrower | Pangolin with living leaf scales and a sprout   | **Armour plates** it spends as blades; **tunnels** where nothing can hit it; a **grappling tongue**; a **storm of leaf blades** |
+| Mossloth | Time gardener     | Three-toed sloth with a moss garden on its back | **Moss** that grows while it stands still; **seeds that grow**; a **time bubble**; **swapping places**                          |
 
 ## Kits
 
 Numbers are in `CHARACTERS` (`packages/shared/src/index.ts`); the tables
 below are the shipped values.
 
-**Pangrove** (melee) — health 164, speed 245
+**Pangrove** (melee) — health 140, speed 245
 
-| Slot     | Move           | What it does                                                                                                                                                                                                                  | Idea from                                      |
-| -------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| Passive  | Armour Plates  | Three leaf plates. A hit of 10 or more breaks one and only 40% of it gets through; after 2.5 s without taking damage they grow back, one every 2 s                                                                            | armour charges in hero shooters                |
-| Basic    | Scale Swipe    | 15 damage every 450 ms, 150 px                                                                                                                                                                                                |                                                |
-| 1 (8 s)  | Tongue Grapple | The tongue shoots 480 px: the first enemy it reaches takes 14 and is slowed 1.2 s, and Pangrove zips to it (following it if it moves); a wall pulls Pangrove to the wall                                                      | grappling hooks (Zelda, hero shooters)         |
-| 2 (9 s)  | Scale Shrapnel | A 69° fan of blades (6 damage each): 3, plus 3 for each plate it has. Every plate is spent                                                                                                                                    | spending defence for offence                   |
-| 3 (11 s) | Curl & Roll    | A ball you steer for up to 3.5 s (cast again to uncurl). Speed builds on straight lines toward 540 px/s; turning and walls cost momentum; a ram deals 10 to 34 (the faster the harder) and bounces off. 30% less damage taken | rolling-ball heroes in MOBAs and hero shooters |
-| Ultimate | Pinball        | After a 0.2 s tuck, launch at 950 px/s and ricochet off up to 4 walls, 12% faster after each; every enemy on each stretch takes 22. Half damage taken meanwhile                                                               | pinball and bank shots                         |
+| Slot     | Move           | What it does                                                                                                                                                                                                                               | Idea from                                                    |
+| -------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| Passive  | Armour Plates  | Three leaf plates. A hit of 10 or more breaks one and only 40% of it gets through; after 2.5 s without taking damage they grow back, one every 2 s                                                                                         | armour charges in hero shooters                              |
+| Basic    | Scale Swipe    | 15 damage every 450 ms, 150 px                                                                                                                                                                                                             |                                                              |
+| 1 (8 s)  | Tongue Grapple | The tongue shoots 480 px: the first enemy it reaches takes 14 and is slowed 1.2 s, and Pangrove zips to it (following it if it moves); a wall pulls Pangrove to the wall                                                                   | grappling hooks (Zelda, hero shooters)                       |
+| 2 (9 s)  | Scale Shrapnel | A 69° fan of blades (6 damage each): 3, plus 3 for each plate it has. Every plate is spent                                                                                                                                                 | spending defence for offence                                 |
+| 3 (14 s) | Tunnel         | Underground for up to 1 s, 10% faster (cast again to come up). Nothing can hit it or give it a status, and it can't attack; its mound of dirt shows where it is. Coming up deals 12 within 110 px, flings enemies away and regrows a plate | Rek'Sai's Burrow (League), Sand King's Burrowstrike (Dota 2) |
+| Ultimate | Leaf Storm     | 3 blades circle 150 px out for 2.5 s; Pangrove walks at full speed and is Braced. A blade sweeps from Pangrove to its tip: 4 damage, a short slow and a shove, at most once every 0.35 s. Then it bursts for 20 within 300 px              | Garen's Judgment (League), Bladestorm (Warcraft III)         |
 
 Combo **Latched**: Tongue Grapple latches Pangrove on; Scale Shrapnel within
 2.5 s deals 35% more.
@@ -47,27 +47,27 @@ Combo **Timelocked**: a seedling set off by an enemy with any harmful status
 (in Sloth Time, slowed by a swap, rooted by another seedling) deals 40% more.
 
 Each has six rites (four minor, two major) in `RITES`: Pangrove's majors are
-Spiked Ball (rams root for 0.8 s) and Bank Shot (6 bounces); Mossloth's are
+Upheaval (Tunnel comes up over 150 px) and Gale Force (4 blades); Mossloth's are
 Deep Roots (seedlings root 50% longer) and Long Nap (Sloth Time 4.5 s).
 
 ## Mechanics
 
 Engine changes are in `packages/shared/src/index.ts` (kinds, statuses,
-`PLATES`, `MOSS`, `ROLL`, and the movement in `advanceMovement`),
+`PLATES`, `MOSS`, and the movement in `advanceMovement`),
 `apps/server/src/simulation.ts` and `apps/server/src/bot.ts`; tests in
 `tests/unit/nature-kits.test.ts`.
 
-| Mechanic    | Where                          | How it works                                                                                                                                                                                                                                                     |
-| ----------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Plates      | `PLATES`, `Fighter.plates`     | Applied last in `Arena.damage`, to hits from an ability (burn ticks and the ring don't break plates). Any damage delays regrowth.                                                                                                                                |
-| Moss        | `MOSS`, `Fighter.moss`         | "Still" is under 25 px/s, not dashing or rolling. Reduction applies in `Arena.damage`; the regeneration runs each tick.                                                                                                                                          |
-| Roll        | kind `roll`, `Fighter.roll`    | Steering, speed build-up, turn and wall losses run in the shared `advanceMovement`, so the client predicts your roll. No attacks or dash while curled; casting it again uncurls (allowed on cooldown); the ultimate launches straight out of it. A stun ends it. |
-| Pinball     | kind `pinball`                 | The flight is a dash; wall bounces (and the speed-up) run in `advanceMovement`, so they are predicted too. The server hits each enemy once per stretch between walls. A root or stun ends it.                                                                    |
-| Grapple     | kind `grapple`                 | The tongue is traced like a beam; the zip is a dash steered each tick toward its goal (an enemy is followed) and stopped dead just short of it.                                                                                                                  |
-| Shrapnel    | kind `shrapnel`                | `count × (1 + plates)` projectiles spread evenly over `fan` radians.                                                                                                                                                                                             |
-| Seedlings   | kind `seedling`, `Zone.born`   | `seedStage` (shared) gives the stage from when it was planted, for the server and the client's drawing. A jumping enemy doesn't set it off.                                                                                                                      |
-| Time bubble | kind `timewarp`, status `warp` | Enemies inside get `warp` (0.35× movement, dashes and rolls, in `advanceMovement`); enemy projectiles inside move 0.35× as far each tick.                                                                                                                        |
-| Swap        | kind `swap`                    | Picks the enemy or own seedling nearest the aim within `radius`; swaps positions (a seedling moves to where Mossloth stood).                                                                                                                                     |
+| Mechanic    | Where                             | How it works                                                                                                                                                                                                                                                                                         |
+| ----------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Plates      | `PLATES`, `Fighter.plates`        | Applied last in `Arena.damage`, to hits from an ability (burn ticks and the ring don't break plates). Any damage delays regrowth.                                                                                                                                                                    |
+| Moss        | `MOSS`, `Fighter.moss`            | "Still" is under 25 px/s, not dashing. Reduction applies in `Arena.damage`; the regeneration runs each tick.                                                                                                                                                                                         |
+| Tunnel      | kind `tunnel`, `Fighter.burrow`   | The speed-up runs in the shared `advanceMovement`, so the client predicts it. `Arena.burrowed` takes it out of `enemiesOf` (nothing targets it) and `Arena.damage` and `Arena.status` ignore it. No attacks or dash underground; casting it again surfaces (`Arena.unburrow`), as does the ultimate. |
+| Cyclone     | kind `cyclone`, `Fighter.cyclone` | `cycloneBlades` (shared) places the blades for the server and the client's drawing. The server hits an enemy on a blade's spoke at most once every `tickInterval`, and bursts when it ends (`Arena.endCyclone`).                                                                                     |
+| Grapple     | kind `grapple`                    | The tongue is traced like a beam; the zip is a dash steered each tick toward its goal (an enemy is followed) and stopped dead just short of it.                                                                                                                                                      |
+| Shrapnel    | kind `shrapnel`                   | `count × (1 + plates)` projectiles spread evenly over `fan` radians.                                                                                                                                                                                                                                 |
+| Seedlings   | kind `seedling`, `Zone.born`      | `seedStage` (shared) gives the stage from when it was planted, for the server and the client's drawing. A jumping enemy doesn't set it off.                                                                                                                                                          |
+| Time bubble | kind `timewarp`, status `warp`    | Enemies inside get `warp` (0.35× movement, dashes and rolls, in `advanceMovement`); enemy projectiles inside move 0.35× as far each tick.                                                                                                                                                            |
+| Swap        | kind `swap`                       | Picks the enemy or own seedling nearest the aim within `radius`; swaps positions (a seedling moves to where Mossloth stood).                                                                                                                                                                         |
 
 Bots: they use every new skill. The Mossloth bot plants itself and fires
 when nothing threatens it and it isn't standing in a hostile zone (so its moss
@@ -77,19 +77,21 @@ bubbles count as hostile ground for other bots, which path around them.
 
 ## Everything else
 
-- **Art**: the curled-up ball pose (`AnimationPose.ball`: the rig hides and
-  a ball of leaf plates spins as it travels), new battle effects
+- **Art**: the tunnelling mound (`AnimationPose.mound`: the rig hides and
+  a mound of soil churns as it travels, leaf tips at its crest), the Leaf
+  Storm's blades (`drawLeafStorm`, drawn each frame), new battle effects
   (`skill-fx-nature.ts`), eight illustrated skill icons (`skill-art.ts`), aim
   previews for the new kinds (`skill-preview.ts`), plate and moss pips under
   each fighter, and each passive explained on the roster's overview.
-- **Raid tricks** (three each, `RAID_BOSS_PERKS`): curled up, Pangrove shrugs
-  off Grumblecrag's Rock Volley and the Storm Twins' Polarity; its Tongue
+- **Raid tricks** (three each, `RAID_BOSS_PERKS`): underground (Tunnel), Pangrove
+  is out of reach of Grumblecrag's Rock Volley and the Storm Twins'
+  Polarity; its Tongue
   Grapple staggers a stranded Tidewyrm. A Mossloth seedling going off keeps a
   stranded Tidewyrm there 1 s longer, Overgrowth smothers Emberwing's fires,
   and allies in Sloth Time stay awake against Somnara. See
   [raid-roster-design.md](raid-roster-design.md) §6.
-- **Shop, farm and database**: unchanged by the rebuild (eight skins each,
-  Pangrove farms with Night Stalker and Mossloth with Early Sun; migrations
+- **Shop and database**: unchanged by the rebuild (eight skins each;
+  their farm perks went with the Farm in Nov 2026; migrations
   [070](../supabase/migrations/070_eighteen_champions.sql) and
   [071](../supabase/migrations/071_nature_void_knights_and_cyber.sql)). No new
   migration: the kits live in code.

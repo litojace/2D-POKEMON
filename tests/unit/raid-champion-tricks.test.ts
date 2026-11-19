@@ -147,13 +147,13 @@ describe("Grumblecrag tricks", () => {
     expect(open.slam).toBe(false);
     expect(pinned.stagger - open.stagger).toBeGreaterThan(25);
   });
-  it("Pangrove curled up (Curl & Roll) lets Rock Volley glance off", () => {
-    for (const curled of [true, false]) {
+  it("Pangrove underground (Tunnel) lets Rock Volley sail over", () => {
+    for (const dug of [true, false]) {
       const a = arena("grumblecrag", ["pangrove"]);
       const p = hero(a, 0),
         boss = a.boss()!;
       Object.assign(p, { x: 1000, y: 450 });
-      if (curled) a.cast(p, skill("pangrove", "curl-roll"));
+      if (dug) a.cast(p, skill("pangrove", "tunnel"));
       const hp = p.hp;
       (a as any).resolveWarning(
         {
@@ -170,7 +170,7 @@ describe("Grumblecrag tricks", () => {
         } as RaidWarning,
         boss,
       );
-      if (curled) expect(p.hp).toBe(hp);
+      if (dug) expect(p.hp).toBe(hp);
       else expect(p.hp).toBeLessThan(hp);
     }
   });

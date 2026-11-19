@@ -249,14 +249,14 @@ export const CHAMPION_QUIPS: Record<CharacterId, readonly Quip[]> = {
     q("skill3", "Kraken grasp! Gotcha!"),
   ],
   pangrove: [
-    q("skill2", "Curl and roll! Wheee!"),
+    q("skill2", "Dig, dig, dig... SURPRISE!"),
     q("hurt", "Ow! Ha, my scales are leaves!"),
     q("victory", "Three plates of pure armour."),
     q("skill0", "Tongue grapple! Thlurp!"),
-    q("wave", "Want to see me roll? I roll."),
+    q("wave", "Want to see me dig? I dig."),
     q("basic", "Leaf me alone! Just kidding."),
-    q("jump", "Rolling into battle!"),
-    q("skill3", "Pinball time! Bounce!"),
+    q("jump", "Leafing into battle!"),
+    q("skill3", "Leaf Storm! Mind the blades!"),
   ],
   mossloth: [
     q("wave", "Heyyy... nice... to... meet... you."),

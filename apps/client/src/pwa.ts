@@ -81,7 +81,7 @@ export function setupPWA(
     if (!banner.hidden) {
       message.textContent = idle()
         ? "Updating to the latest arena version…"
-        : "Update downloaded · applies after closing menus and returning to the Lobby, Plaza or Farm.";
+        : "Update downloaded · applies after closing menus and returning to the Lobby or the Plaza.";
     }
     void automatic.sync();
   };

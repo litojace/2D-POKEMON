@@ -7,7 +7,7 @@ import { cosmeticPicture } from "./cosmetic-picture";
 import { skinThumbnail, thumbSlot } from "./skin-thumbnails";
 
 /**
- * Coin amounts, the coin and Gold Leaves pills, the daily countdown and item
+ * Coin amounts, the coin pill, the daily countdown and item
  * pictures: small pieces the HUD, Missions, Journey and the fitting room
  * (screens/fitting-room-view.ts) share.
  */
@@ -26,10 +26,6 @@ export function coinChip(
   compact = false,
 ) {
   return `<span class="coin-chip pill"${id ? ` id="${id}"` : ""}>${unlimited ? '<span class="sr-only">Unlimited </span>' : ""}${buttonIcon("coin")}<b${unlimited ? ' aria-hidden="true" title="Unlimited coins · Purchases don’t spend coins"' : ""}>${unlimited ? "∞" : balance == null ? "—" : compact ? compactCoins(balance) : coins(balance)}</b><span class="sr-only"> coins</span></span>`;
-}
-/** The Gold Leaves pill (hub redesign): the same box as the coin chip. */
-export function leafChip(balance: number) {
-  return `<span class="coin-chip pill leaf-chip"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19C5 10 10 5 20 4c0 10-5 15-15 15z" fill="#7fd65a" stroke="#3f8a2e" stroke-width="1.3" stroke-linejoin="round"/><path d="M5 19 14 10" stroke="#3f8a2e" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg><b>${compactCoins(balance)}</b><span class="sr-only"> Gold Leaves</span></span>`;
 }
 /**
  * "7 h 24 min" until the next Pacific midnight, when Today's Picks (and

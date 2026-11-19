@@ -20,15 +20,12 @@
     :is(
       #hub-scenes > button,
       #account-coins > *,
-      #account-leaves > *,
       #account-profile,
       .header-menu > summary,
       .lobby-step,
       #lobby-mode,
       .home-panel-close,
       .plaza-layer .pz-quests h5 button,
-      .farm-layer .sh-head .x,
-      .farm-layer .acts .btn-s,
       .fit-fighter,
       .ui-seg > button,
       .pf-title-chip,
@@ -54,22 +51,10 @@
   :root body .auth-legal a {
     display: inline-block;
   }
-  /* The Bistro's wallet and Popularity chip: a finger tall themselves (an
-     invisible hit area round them would count as their content overflowing,
-     tests/visual/bistro-layout.spec.ts). The wallet stays centred on the
-     menu button beside it (bistro-scene.ts sets its top and height). */
-  :root body .bistro-layer.phone .bs-wallet {
-    min-height: 44px;
-    margin-top: calc(min(var(--bs-wallet-h, 44px) - 44px, 0px) / 2);
-  }
-  :root body .bistro-layer.phone button.bs-chip {
-    height: 44px;
-  }
   :root
     body
     :is(
       #account-coins > *,
-      #account-leaves > *,
       #account-profile,
       .header-menu > summary,
       .lobby-step,
@@ -77,9 +62,6 @@
       .home-panel-close,
       .plaza-layer .pz-quests h5 button,
       .plaza-layer .pz-clock,
-      .farm-layer .sh-head .x,
-      .farm-layer .acts .btn-s,
-      .farm-layer .fm-orb,
       .fit-fighter,
       .ui-seg > button,
       .pf-title-chip,
@@ -209,10 +191,6 @@
       .fit-slot b,
       .journey-ring-text small,
       .journey-tier em,
-      .bistro-layer .bs-rail button span,
-      .bistro-layer #bs-board-btn span,
-      .bistro-layer .bs-badge .xpbar span,
-      .farm-layer .fm-badge .xpbar span,
       .room-seat .ui-tag,
       .rh-card-top .ui-tag,
       .lobby-card-kicker,
@@ -255,8 +233,7 @@
    view under 320 px tall (the keyboard up, a split screen) keeps 34 px tabs:
    the 10 px matter more to a boss page's list there (raid-splash at 844x280). */
 @media (max-height: 500px) and (min-height: 320px) {
-  :root body .ui-tabs > button,
-  :root body .farm-layer.phone .fm-sheet .sh-tabs button {
+  :root body .ui-tabs > button {
     min-height: 44px;
   }
 }

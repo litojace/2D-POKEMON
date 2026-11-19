@@ -69,8 +69,8 @@ export interface AnimationPose {
   greet?: boolean;
   /** Shell Up: pulled into the shell, so only the shell shows. */
   shell?: boolean;
-  /** Curled into a ball (Curl & Roll, Pinball): how far it has spun, and where it rolls. */
-  ball?: { spin: number; heading: number };
+  /** Underground (Tunnel): how far its mound has churned, and where it heads. */
+  mound?: { churn: number; heading: number };
   /** A tint over the whole fighter (Spire Echoes), and the one it flashes when hit. */
   tint?: number;
   hurtTint?: number;

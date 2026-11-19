@@ -105,7 +105,9 @@ export const RAID_DAZE_BY: Partial<Record<CharacterId, number>> = {
   mystowl: 0.155,
   wombolder: 0.355,
   shadopus: 0.28,
-  pangrove: 0.405,
+  // 0.405 before the Pangrove rework (Tunnel, Leaf Storm): 0.38 keeps
+  // zone 1's floor 9 as hard as it was (11 clears in 48 against 12).
+  pangrove: 0.38,
   terradon: 0.31,
   auralynx: 0.33,
   coilemur: 0.34,
@@ -649,6 +651,21 @@ export class BotBrain {
       if (d < zone.radius + 50 && this.profile.dodge > 0.3 && t >= me.dashAt)
         input.dash = true;
     }
+    // A Leaf Storm: get out past the blades (decided once per storm).
+    if (enemy.cyclone && arena.time < enemy.cyclone.until) {
+      const storm = kitOf(enemy.character, enemy.rites).skills[
+        enemy.cyclone.slot
+      ];
+      const d = Math.hypot(me.x - enemy.x, me.y - enemy.y) || 1;
+      const key = -1e9 - enemy.cyclone.at;
+      if (!this.judged.has(key))
+        this.judged.set(key, this.random() < this.profile.dodge);
+      if (storm && this.judged.get(key) && d < storm.radius + 90) {
+        escaping = true;
+        dx = (me.x - enemy.x) / d;
+        dy = (me.y - enemy.y) / d;
+      }
+    }
     // Brawlers close the gap with a dash.
     if (
       melee &&
@@ -707,6 +724,18 @@ export class BotBrain {
     input.aimX = clamp(ax, 0, RULES.width);
     input.aimY = clamp(ay, 0, RULES.height);
     // ---- Attack.
+    // Underground (Tunnel): head for the opponent and burst up beside it.
+    if (me.burrow && t < me.burrow.until) {
+      const dig = arena.kit(me).skills[me.burrow.slot];
+      const d = Math.hypot(enemy.x - me.x, enemy.y - me.y) || 1;
+      if (hpRatio > 0.3 || d < 200) {
+        input.dx = (enemy.x - me.x) / d;
+        input.dy = (enemy.y - me.y) / d;
+      }
+      if (dig && d < dig.radius * 0.6 + RULES.radius)
+        input.skill = me.burrow.slot;
+      return input;
+    }
     if (this.wantSkill >= 0 && skillReady(me, this.wantSkill, t)) {
       input.skill = this.wantSkill;
       this.wantSkill = -1;
@@ -820,6 +849,8 @@ export class BotBrain {
   ) {
     const t = arena.time;
     if (me.charge || me.channel || t < me.recoveryUntil) return -1;
+    // Nothing reaches an opponent underground (Tunnel): wait for it.
+    if (arena.burrowed(enemy)) return -1;
     const skills = arena.kit(me).skills;
     let best = -1,
       bestScore = 0;
@@ -945,14 +976,16 @@ export class BotBrain {
             score = a.damage * (a.count ?? 3) * (1 + plates) * 0.35;
           break;
         }
-        case "roll":
-          // Curl up and steer in for a ram from a distance (a rooted ball goes nowhere).
-          if (s.sight && s.dist > 160 && reach(650) && !arena.has(me, "root"))
-            score = 20;
+        case "tunnel":
+          // Dig out of trouble, or tunnel in from mid range to burst up
+          // under the opponent (a rooted digger goes nowhere).
+          if (arena.has(me, "root")) break;
+          if (s.threatened && s.hpRatio < 0.75) score = 19;
+          else if (s.dist > 170 && reach(380)) score = 17;
           break;
-        case "pinball":
-          if (s.sight && reach(700) && !arena.has(me, "root"))
-            score = a.damage * 2;
+        case "cyclone":
+          // Leaf Storm: whip the blades up with the opponent inside the ring.
+          if (reach(a.radius + 40)) score = a.damage * 6;
           break;
         case "seedling": {
           // Keep a few seedlings growing between itself and the opponent.

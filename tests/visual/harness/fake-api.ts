@@ -52,13 +52,6 @@ const API: Record<string, unknown> = {
     rerolled: false,
     streak: 1,
     today: { raidClears: 0, pvpMatches: 0 },
-    leaves: {
-      balance: 1234,
-      tradedToday: 0,
-      tradeCap: 60,
-      tradeLeaves: 100,
-      tradeCoins: 5,
-    },
   },
   "/api/progress": {
     matches: 31,

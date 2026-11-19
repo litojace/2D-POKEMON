@@ -7,7 +7,7 @@
      glass gets its deeper solid tint), smaller soft shadows, and no
      decorative loops: the Lobby fighter's idle bob, PLAY's sweep and glow,
      cosmetic rarity sheens, orbits and rays, frame ornaments, the startup
-     sigil's float, the Bistro's bobbing staff and the Farm's level rays.
+     sigil's float.
      Loops that say something (an order ready, a loading spinner) stay.
    - Reduced motion: the same loops stop; the look is otherwise kept.
 
@@ -42,8 +42,7 @@
     .room-invite-notice,
     #toast,
     .plaza-layer .polaroid,
-    .plaza-layer .pz-album-panel,
-    .farm-layer .deed
+    .plaza-layer .pz-album-panel
   ) {
   box-shadow: 0 6px 16px #0009;
 }
@@ -59,10 +58,7 @@
     .server-startup-art,
     .server-startup-aura,
     .server-startup-orbit,
-    .server-startup-art > i,
-    .bistro-layer .bs-away-staff img,
-    .bistro-layer .bs-dish.special,
-    .farm-layer .lvcard .rays
+    .server-startup-art > i
   ) {
   animation: none !important;
 }
@@ -82,10 +78,7 @@
       .server-startup-art,
       .server-startup-aura,
       .server-startup-orbit,
-      .server-startup-art > i,
-      .bistro-layer .bs-away-staff img,
-      .bistro-layer .bs-dish.special,
-      .farm-layer .lvcard .rays
+      .server-startup-art > i
     ) {
     animation: none !important;
   }

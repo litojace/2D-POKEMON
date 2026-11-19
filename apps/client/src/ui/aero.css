@@ -4,7 +4,7 @@
    Valorant's lobby rework (nothing decorative that doesn't help you read):
    a deep ink tint with the scene blurred behind it, one 1px warm-gold rim,
    no gloss, bevel, glow or drop shadow. Hover and focus brighten the rim to
-   the game's gold. The coin and leaf pills keep their gold and green rims.
+   the game's gold. The coin pill keeps its gold rim.
 
    ONE PLACE: the colours, thicknesses and blur are the --glass-* and
    --fill-* tokens in ui/tokens.css. This file only says which surfaces are
@@ -17,7 +17,7 @@
    for dialogs, menus and toasts that sit over everything.
 
    Blur over the Lobby is cheap: its backdrop is a still painting. The
-   Plaza and the Farm draw a canvas that changes every frame, so every
+   Plaza draws a canvas that changes every frame, so every
    blurred panel over them is blurred again every frame. They keep the
    blur at High graphics and drop it at Low (chosen in Settings, or picked
    automatically when the frame rate can't keep up), with a deeper tint.
@@ -47,7 +47,7 @@
 :root
   body.hub-active
   :is(#account-profile, #account-admin, .header-menu > summary),
-:root body.hub-active :is(#account-coins, #account-leaves) > *,
+:root body.hub-active #account-coins > *,
 :root .hub-scenes,
 .lobby-layer
   :is(
@@ -57,14 +57,13 @@
     .lobby-party-bar,
     .lobby-mode-menu
   ),
-.plaza-layer :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)),
-.farm-layer .glass {
+.plaza-layer :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)) {
   background-color: var(--aero-tint);
   -webkit-backdrop-filter: var(--aero-blur);
   backdrop-filter: var(--aero-blur);
   box-shadow: none;
 }
-/* The warm-gold hairline (not on the coin and leaf pills). */
+/* The warm-gold hairline (not on the coin pill). */
 :root
   body.hub-active
   :is(#account-profile, #account-admin, .header-menu > summary),
@@ -77,8 +76,7 @@
     .lobby-party-bar,
     .lobby-mode-menu
   ),
-.plaza-layer :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)),
-.farm-layer .glass {
+.plaza-layer :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)) {
   border-color: var(--aero-rim);
 }
 /* Hover and keyboard focus: the rim lights up gold. */
@@ -135,12 +133,11 @@
   border-color: var(--aero-rim-on);
 }
 
-/* Low graphics on the Plaza or the Farm: no blur over the moving canvas.
-   hub-graphics-low is on <body> while either is at Low (hub-graphics.ts);
+/* Low graphics on the Plaza: no blur over the moving canvas.
+   hub-graphics-low is on <body> while it is at Low (hub-graphics.ts);
    doubled to keep the specificity the :has() selector it replaces had. */
 .plaza-layer[data-graphics="low"]
   :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)),
-.farm-layer[data-graphics="low"] .glass,
 :root
   body.hub-graphics-low.hub-graphics-low
   :is(
@@ -150,10 +147,7 @@
     .hub-scenes,
     .chat-button
   ),
-:root
-  body.hub-graphics-low.hub-graphics-low
-  :is(#account-coins, #account-leaves)
-  > * {
+:root body.hub-graphics-low.hub-graphics-low #account-coins > * {
   background-color: var(--aero-tint-solid);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
