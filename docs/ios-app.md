@@ -34,7 +34,11 @@ in iPhone mode. Supporting iPad means testing its window sizes first.
   "turn your phone sideways" cover the website needs (Safari can't lock
   rotation; an app can).
 - **No service worker, update banner or "Want fullscreen?"**: the App Store
-  delivers updates.
+  delivers updates. The app never asks the web view for full screen either
+  (`isInstalled()` in `orientation.ts` counts the app as installed, and the
+  battle's full-screen button is hidden): Capacitor turns on WebKit's element
+  full screen, and a match start used to show iOS's "capacitor://localhost is
+  in full screen" banner and an X over the game.
 - **Edge swipes need a second swipe.** In a match, a thumb near an edge
   shouldn't leave the game: the first swipe from an edge goes to the game,
   and a second opens Home, the app switcher or Control Center
@@ -46,6 +50,12 @@ in iPhone mode. Supporting iPad means testing its window sizes first.
   it on with `plugins.SystemBars.hidden`, so leave that option out of
   `capacitor.config.ts`; the status bar is hidden by Info.plist and
   `StatusBar.hide()` instead.
+- **No zoom anywhere.** Two quick taps in the Plaza zoomed the whole game
+  in (owner, 19 Nov 2026): the website locks zoom only in touch battles, and
+  Capacitor turns off pinch but not WebKit's double-tap zoom. The app keeps
+  the viewport at `maximum-scale=1, user-scalable=no` for good
+  (`lockAppZoom` in `zoom-guard.ts`); iOS's own Zoom accessibility setting
+  still works.
 - **The screen never locks while the game is open** (`SceneDelegate`):
   briefings, waiting and watching can go a while without a touch, and a
   locked phone drops its game connection.

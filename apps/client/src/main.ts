@@ -326,7 +326,7 @@ import {
 import { PAD_LABELS, firstPad, readPad, type PadAction } from "./gamepad";
 import { drawPreview, previewShape } from "./skill-preview";
 import { controlsCapturing, showControlsScreen } from "./controls-screen";
-import { watchBattleZoom } from "./zoom-guard";
+import { lockAppZoom, watchBattleZoom } from "./zoom-guard";
 import { guardTouchHold } from "./touch-hold";
 import { KO_FEEL, hitFeel, hitStrength, rumble } from "./game-feel";
 import { captureInvite, clearInvite, pendingInvite } from "./invite";
@@ -846,6 +846,8 @@ battleHudSize.observe($("hud"));
 battleHudSize.observe($("abilities"));
 // Touch battles lock zoom (pinch and double tap); menus keep it for accessibility.
 watchBattleZoom();
+// The iPhone app never zooms: a double tap in the Plaza zoomed the game in.
+if (isNativeApp()) lockAppZoom();
 guardTouchHold();
 const homeNavigation = setupHomeNavigation($("menu"), () => showSettings());
 $("home-settings").onclick = () => showSettings();
