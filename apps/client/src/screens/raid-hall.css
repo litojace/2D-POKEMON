@@ -83,8 +83,10 @@
 .rh-card[data-raid-card="emberwing"] {
   --card-zoom: 1.08;
 }
+/* Snoozaku: a little bigger and lower, level with the other bosses (owner,
+   19 Nov); it grows from its top edge (transform-origin below). */
 .rh-card[data-raid-card="somnara"] {
-  --card-zoom: 1.08;
+  --card-zoom: 1.18;
 }
 .rh-card[data-raid-card="somnara"] .rh-card-art {
   container-type: size;
