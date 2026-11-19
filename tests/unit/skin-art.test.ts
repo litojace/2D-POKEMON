@@ -296,7 +296,9 @@ describe("champion skin art", () => {
         expect(skinned.every((a) => a.key.includes(`~${s.id}`))).toBe(true);
       }
     }
-  });
+    // Every skin's every layer: about 6 s alone, past the default 10 s when
+    // CI runs the whole suite at once.
+  }, 30_000);
 });
 
 describe("collection pieces", () => {
