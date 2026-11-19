@@ -20,6 +20,15 @@ describe("PLAY's mode", () => {
     expect(chosenLobbyMode()).toBeNull();
     expect(savedLobbyMode()).toBe("bot-easy");
   });
+  it("after the coached first bot match, PLAY defaults to Quick Match", () => {
+    expect(savedLobbyMode(true)).toBe("quick");
+    store.set("arena-lobby-mode", "bot-hard");
+    expect(savedLobbyMode(true)).toBe("bot-hard");
+  });
+  it("a party never gets Quick Match: it gets the room that fits it", () => {
+    expect(partyLobbyMode("quick", 1)).toBe("quick");
+    expect(partyLobbyMode("quick", 2)).toBe("duel");
+  });
   it("keeps the mode a player picked, and ignores an unknown one", () => {
     store.set("arena-lobby-mode", "teams");
     expect(savedLobbyMode()).toBe("teams");

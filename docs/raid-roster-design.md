@@ -911,6 +911,7 @@ the Raid of the Day rotates through the bosses that are built.
 | Raid of the Day, first clear today             | +50                                         |
 | First raid reward of a new kind (title, skin…) | +25                                         |
 | PvP match                                      | 15 for a win, 6 for a loss                  |
+| Quick Match sparring bot (nobody free), win    | 5                                           |
 
 ### 10.3 Limits
 
@@ -921,6 +922,10 @@ the Raid of the Day rotates through the bosses that are built.
 - **Bots:**
   - Bot matches pay only through missions that ask for them (e.g. "Beat a
     Hard bot").
+  - One exception (docs/pvp-plan.md, item 4): a player who searched for a
+    real opponent in Quick Match, found nobody and beat the sparring bot
+    gets 5 coins for the win. It counts toward the same 10 paid PvP
+    matches a day, so it never pays more than playing people.
   - Practice pays nothing.
 - **Mostly-idle matches** (under 20 s of active play) pay nothing.
 
