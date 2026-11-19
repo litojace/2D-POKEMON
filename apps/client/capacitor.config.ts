@@ -20,6 +20,12 @@ const config: CapacitorConfig = {
     scrollEnabled: false,
     backgroundColor: "#0b1020",
   },
+  plugins: {
+    // Capacitor's built-in SystemBars plugin: hides the status bar and lets
+    // the home bar fade out until a touch near it (CAPBridgeViewController's
+    // prefersHomeIndicatorAutoHidden reads this; the app can't override it).
+    SystemBars: { hidden: true },
+  },
 };
 
 export default config;
