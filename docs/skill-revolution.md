@@ -290,3 +290,109 @@ both), and Halcyra's numbers still go through the Spire's floors first.
 
 Not covered here: the 2v2 and FFA tuning factors (`TEAM_TUNING`,
 `FFA_TUNING`) were set before the new kits and should be measured again.
+
+## Pangrove rework: Tunnel and Leaf Storm
+
+The owner found Pangrove's curl-up skills weak: Curl & Roll (a ball you
+steer) and Pinball (a ricochet off walls) did little that players noticed.
+Both are replaced. Ideas come from other games' mechanics, never their
+characters, names or art:
+
+| Slot     | Was                                                       | Now                                                                                                                                                                                                                                                                                                                                                | Borrowed from                                                                         |
+| -------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 3        | **Curl & Roll** (12 s): a ball you steer, 30% less damage | **Tunnel** (14 s): underground for up to 1 s, 10% faster. Nothing can hit it (no damage, status or knockback; enemy skills don't see it) and it can't attack, but its mound of dirt shows everyone where it is. Casting it again, or time running out, brings it up: 12 damage within 110 px, enemies flung 140 px, and an armour plate grows back | Rek'Sai's Burrow (League), Sand King's Burrowstrike (Dota 2), real pangolins' burrows |
+| Ultimate | **Pinball**: ricochet off up to 4 walls, 22 a stretch     | **Leaf Storm**: for 2.5 s three blades of leaf plates circle 150 px out (5.2 radians a second). Pangrove walks at full speed and is Braced. Each blade sweeps from Pangrove out to its tip: 4 damage, a 0.4 s slow and a 30 px shove, at most once every 0.35 s. At the end the storm bursts: 20 damage within 300 px                              | Garen's Judgment (League), Bladestorm (Warcraft III), spinning brawlers (Brawl Stars) |
+
+Unique mechanics ([unique-kits.md](unique-kits.md)): no other champion goes
+untargetable (Shadopus's stealth is broken by any hit and can still be hit;
+Halcyra's rewind and Astrabun's blinks are instant), and nothing else in the
+game orbits blades round its caster (Lumoth's turning rays went in wave A;
+Auralynx's crystal shards are only decoration). Counterplay: the mound is
+always visible, so step away from where it will come up; the storm's reach
+is drawn on the ground and its edge brightens before the burst, so walk out
+of it.
+
+Pairs: Tongue Grapple pulls Pangrove in, Leaf Storm can be cast straight
+out of a tunnel (it surfaces first), and coming up regrows a plate for
+Scale Shrapnel. Rites: Deep Tunnel (1.4 s), Upheaval (comes up over 150 px,
+major) and Gale Force (4 blades, major) replace Long Roll, Spiked Ball and
+Bank Shot.
+
+### What the bots showed
+
+The first version (Tunnel stunning 0.4 s and dealing 16, a storm of 6-damage
+blades that hit only on a ring 150 px out, no basic attacks during it)
+won 95% on Hard. Curl & Roll and Pinball had kept Pangrove from attacking
+for about 30 seconds of every minute; Tunnel and the storm don't, and Scale
+Swipe went from 42 casts a minute to 64. Taking skills away one at a time
+(32 games a pair, Hard, an in-between version):
+
+| Pangrove has                     | Hard  |
+| -------------------------------- | ----- |
+| neither (only Grapple, Shrapnel) | 25.7% |
+| Leaf Storm only                  | 49.6% |
+| Tunnel only                      | 66.5% |
+| both                             | 86.4% |
+
+The surfacing stun was most of Tunnel's weight: a 0.3 s stun alone was
+worth about 25 points (it cancels wind-ups and opens the ultimate), so
+coming up now flings enemies away instead (no stun, and the push takes them
+out of Pangrove's own reach). Blades that hit only on their ring let melee
+champions stand in the eye: Pangrove won 6% against Auralynx that way (16 games). Each blade now sweeps
+its whole spoke. With Pangrove unable to attack during the storm it was worth
+less than nothing (66% without it against 52% with it), so basic attacks
+carry on. Then Pangrove's base stats, tuned for a kit that spent half its
+time curled up, came down: health 164 → 140.
+
+### Results
+
+Bot duels against all seventeen others, 48 games a pair (816 duels per
+row; one standard deviation is about 1.8 points):
+
+| Kit                  | Seed   | Hard  | Normal | Hard: lowest / highest matchups                   |
+| -------------------- | ------ | ----- | ------ | ------------------------------------------------- |
+| Curl & Roll, Pinball | 170000 | 52.9% | 49.9%  | Terradon 27, Cindrake 27 / Pyranda 88, Halcyra 79 |
+| Tunnel, Leaf Storm   | 170000 | 51.7% | 50.4%  | Auralynx 21, Mystowl 27 / Glacelle 83, Pyranda 96 |
+| Tunnel, Leaf Storm   | 180000 | 50.2% | 51.0%  | Auralynx 10, Lumoth 15 / Glacelle 85, Pyranda 90  |
+
+Normal's spread is narrower (27%–73% on both seeds), so its handicap
+(`dazeBy` 0.393) stays. The matchups spread wider than before at both ends:
+Auralynx's Facet Guard halves both Leaf Storm and Scale Swipe, and Lumoth's
+Eyespot Flash and Glint wear a 140-health Pangrove down; Pyranda and Glacelle
+can't kite a target they can't hit. Pyranda was already Pangrove's easiest
+matchup (88%).
+
+Per skill (`skill-usage.ts`, seed 170000, Hard; 16 games a pair before, 32
+after), before → after:
+
+| Skill                | Lands     | Damage a cast | Share of damage |
+| -------------------- | --------- | ------------- | --------------- |
+| Curl & Roll → Tunnel | 59% → 54% | 12.1 → 6.3    | 9% → 5%         |
+| Pinball → Leaf Storm | 68% → 97% | 18.1 → 20.0   | 10% → 10%       |
+| Scale Shrapnel       | 75% → 75% | 16.2 → 17.0   | 15% → 15%       |
+
+Tunnel's damage is small on purpose: its job is the escape and the way in,
+and an enemy flung away. Leaf Storm lands almost every cast and deals the
+most of any cast in the kit.
+
+**Spire.** Pangrove is an Echo on zone 1's floors 2-4 and 6-9 and on floors
+32 and 62. Floors 1-4 and 6 play Easy Echoes (no daze), the rest Normal.
+With the raid daze it had (0.405), zone 1's floor 9 cleared 9 times in 48
+(Halcyra solo) against 12 before; `RAID_DAZE_BY.pangrove` is now 0.38: 11 in
+48 on floor 9, and floor 7 35 against 34. Floor 3 (Easy Echoes, 48 seeds)
+went from 17 to 13 clears, about 1.3 standard deviations: left as it is.
+
+**2v2 and free-for-all** (`tune-teams.ts --only pangrove`, two rounds of
+1,000 fresh line-ups per difficulty, then a check on unused line-ups,
+`FRESH_BASE=7000`):
+
+| Mode                  | Fair  | Tuning rounds | Check         | Factor        |
+| --------------------- | ----- | ------------- | ------------- | ------------- |
+| 2v2                   | 50%   | 49.3%, 48.4%  | 46.3% (0.948) | 0.948 → 0.965 |
+| 4-player free-for-all | 25%   | 20.2%, 28.6%  | 24.3%         | 0.984 (same)  |
+| 3-player free-for-all | 33.3% | 29.3%, 30.3%  | 34.9% (1.06)  | 1.02 → 1.06   |
+
+**Effect budget** (`tests/visual/effect-budget.spec.ts`): Pangrove's heaviest
+frame is 0.02 screens of glow and 0.08 of smoke (limits 0.6 and 1). The
+blades are solid leaves drawn each frame (no glow), and the storm's edge is
+drawn inside `fx.essential`, so Low graphics keep the warning.

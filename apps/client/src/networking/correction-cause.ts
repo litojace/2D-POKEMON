@@ -92,7 +92,7 @@ export function correctionCause(
     };
   const moving =
     me.dashUntil > time - 0.07 ||
-    !!me.roll ||
+    !!me.burrow ||
     !!me.charge ||
     fresh.some(
       (e) => e.owner === me.id && (e.kind === "dash" || e.kind === "cast"),

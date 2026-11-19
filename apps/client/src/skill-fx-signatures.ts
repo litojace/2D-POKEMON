@@ -1020,23 +1020,6 @@ const slothTime: ZoneFn = (g, z) => {
     });
   });
 };
-const curlRollGo: CastFn = (scene, _a, x, y, angle) => {
-  const fx = fxFor(scene);
-  // It tucks and pushes off: grass and dust kicked out behind.
-  leaves(fx, x, y, 5, [60, 140], { angle: angle + Math.PI, spread: 0.7 });
-  dust(fx, x, y, 3, [30, 80], { angle: angle + Math.PI, spread: 0.8 });
-};
-const curlRollHit: ImpactFn = (scene, _a, x, y) => {
-  const fx = fxFor(scene);
-  // An armoured ball slams home: dust, a chipped scale, a dent.
-  ring(8, (t) =>
-    dust(fx, x + Math.cos(t) * 10, y + Math.sin(t) * 6, 1, [50, 100], {
-      angle: t,
-      spread: 0.2,
-    }),
-  );
-  chunks(fx, x, y, 4, [0x8fae5a, 0x5a7a3a, 0xc9d89a], [60, 150], [1.2, 2.2]);
-};
 const scaleTrail = shed(0.06, (fx, x, y, back) =>
   fx.burst({
     x,
@@ -1463,7 +1446,6 @@ const SIGNATURES: Record<string, Sig> = {
   "seed-spit": { projectile: seedSpitTrail, impact: seedCrack },
   seedling: { zone: seedlingGrow, impact: seedlingPop },
   "sloth-time": { zone: slothTime },
-  "curl-roll": { cast: curlRollGo, impact: curlRollHit },
   "scale-shrapnel": {
     projectile: scaleTrail,
     impact: scaleClink,

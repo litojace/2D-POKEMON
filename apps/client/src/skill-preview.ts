@@ -274,20 +274,22 @@ export function previewShape(
         sector(from, angle, ability.range, (ability.fan ?? 1.2) / 2),
       );
       break;
-    case "pinball": {
-      // The first stretch, to the first wall it will bounce off.
-      const wall = blinkLanding(from, angle, RULES.width * 2);
-      shape.polygons.push(
-        lane(
-          from,
-          angle,
-          Math.hypot(wall.x - from.x, wall.y - from.y),
-          (RULES.radius + 8) * 2,
-        ),
-      );
-      shape.discs.push({ ...wall, r: SELF_RING });
+    case "tunnel":
+      // Where it comes up (round itself, where it surfaces) and how far it flings.
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.radius + RULES.radius,
+      });
       break;
-    }
+    case "cyclone":
+      // The storm's reach: the blades' circle (plus a blade), round itself.
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.radius + (ability.cyclone?.blade ?? 26) + RULES.radius,
+      });
+      break;
     case "seedling":
     case "timewarp":
     case "swap": {

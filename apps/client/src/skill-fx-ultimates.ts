@@ -695,25 +695,6 @@ const fullMoonPhysics: ImpactFn = (scene, a, x, y) => {
   dustRing(fx, x, y, r, [0xfff3cf, 0xe8dcc0]);
   fx.shake(240, 0.008);
 };
-/** Pinball: every ram sends scale-leaves and grit flying. */
-const pinballPhysics: ImpactFn = (scene, _a, x, y) => {
-  const fx = fxFor(scene);
-  fx.burst({
-    x,
-    y,
-    z: 16,
-    count: 8,
-    kind: "debris",
-    color: [0x9be07a, 0x6fbf5a, 0x3e7a3a],
-    speed: [80, 220],
-    up: [100, 240],
-    life: [0.8, 1.2],
-    size: [2.2, 3.4],
-    grav: 400,
-    drag: 2,
-  });
-  rocks(fx, x, y, 6, [60, 160], [1.6, 3]);
-};
 export function withUltimates(kit: Required<FxKit>): Required<FxKit> {
   const cast = { ...kit.cast },
     zone = { ...kit.zone },
@@ -735,6 +716,5 @@ export function withUltimates(kit: Required<FxKit>): Required<FxKit> {
   beam["skyline-lance"] = then(beam["skyline-lance"], lancePhysics);
   zone.sanctuary = then(zone.sanctuary, sanctuaryPhysics);
   impact["full-moon"] = then(impact["full-moon"], fullMoonPhysics);
-  impact.pinball = then(impact.pinball, pinballPhysics);
   return { ...kit, cast, zone, windup, impact, beam, projectile };
 }

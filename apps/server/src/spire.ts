@@ -1982,7 +1982,7 @@ export class SpireStormArena extends SpireRules(
       const p = at(m);
       if (!p) continue;
       if (p.character === "terradon" && this.has(p, "shell")) continue;
-      if (this.curled(p)) continue;
+      if (this.tunnelled(p)) continue;
       const crowded = marks.some(
         (n) =>
           n !== m &&

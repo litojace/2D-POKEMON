@@ -15,8 +15,8 @@ import {
   type Fighter,
 } from "../../packages/shared/src/index.js";
 
-// Pangrove (armour plates, Tongue Grapple, Scale Shrapnel, Curl & Roll,
-// Pinball) and Mossloth (moss, Seedling, Sloth Time, Lazy Swap,
+// Pangrove (armour plates, Tongue Grapple, Scale Shrapnel, Tunnel,
+// Leaf Storm) and Mossloth (moss, Seedling, Sloth Time, Lazy Swap,
 // Overgrowth): the mechanics no other champion has.
 
 const arena = (me: CharacterId, them: CharacterId = "voltkit") => {
@@ -139,110 +139,129 @@ describe("Scale Shrapnel", () => {
   });
 });
 
-describe("Curl & Roll", () => {
-  const roll = (a: Arena, me: Fighter) => {
-    a.cast(me, skill("pangrove", "curl-roll"));
-    me.lastInput = { ...me.lastInput, dx: 1, dy: 0 };
-  };
-  it("builds speed on a straight line toward its top speed", () => {
-    const a = arena("pangrove");
-    const [me, them] = a.players;
-    place(them, 1500, 850);
-    place(me, 200, Y);
-    roll(a, me);
-    ticks(a, 6);
-    const early = Math.hypot(me.vx, me.vy);
-    ticks(a, 24);
-    const later = Math.hypot(me.vx, me.vy);
-    expect(later).toBeGreaterThan(early * 1.4);
-    expect(later).toBeGreaterThan(CHARACTERS.pangrove.speed * 1.7);
-    expect(later).toBeLessThanOrEqual(skill("pangrove", "curl-roll").speed + 1);
-  });
-  it("rams harder at speed, then rolls on through", () => {
-    const ram = (from: number) => {
-      const a = arena("pangrove");
-      const [me, them] = a.players;
-      place(them, 900, Y);
-      place(me, from, Y);
-      roll(a, me);
-      const hp = them.hp;
-      for (let i = 0; i < 120 && them.hp === hp; i++) a.tick();
-      return {
-        dealt: hp - them.hp,
-        heading: me.roll!.heading,
-        speed: me.roll!.speed,
-      };
-    };
-    const slow = ram(840),
-      fast = ram(300);
-    expect(slow.dealt).toBeGreaterThanOrEqual(
-      skill("pangrove", "curl-roll").damage,
-    );
-    expect(fast.dealt).toBeGreaterThan(slow.dealt + 8);
-    // It rolls on the way it was going (no bounce back), slowed a little,
-    // so it can swing round for another pass.
-    expect(Math.cos(fast.heading)).toBeGreaterThan(0.9);
-    expect(fast.speed).toBeGreaterThan(CHARACTERS.pangrove.speed);
-  });
-  it("takes 30% less damage curled, can't attack, and uncurls when cast again", () => {
+describe("Tunnel", () => {
+  const dig = (a: Arena, me: Fighter) =>
+    a.cast(me, skill("pangrove", "tunnel"));
+  it("goes underground: nothing hits it, no status lands, and it can't attack", () => {
     const a = arena("pangrove");
     const [me, them] = a.players;
     place(them, 1500, 850);
     place(me, 300, Y);
-    me.plates = 0;
-    roll(a, me);
+    dig(a, me);
+    expect(a.burrowed(me)).toBe(true);
     const hp = me.hp;
-    a.damage(me, 20, "them");
-    expect(hp - me.hp).toBeCloseTo(14);
+    a.damage(me, 30, "them", skill("voltkit", "ball-lightning"));
+    a.status(me, "stun", 1, "them");
+    expect(me.hp).toBe(hp);
+    expect(a.has(me, "stun")).toBe(false);
+    // Enemies' skills don't see it (they look for targets with enemiesOf).
+    expect(a.enemiesOf(them)).not.toContain(me);
+    expect(a.enemiesOf(them, true)).toContain(me);
     me.lastInput = { ...me.lastInput, basic: true };
     const basics = me.basicAt;
     a.tick();
     expect(me.basicAt).toBe(basics);
-    expect(me.roll).toBeDefined();
-    a.submit(me, { ...me.lastInput, seq: 99, skill: 2 });
-    a.tick();
-    expect(me.roll).toBeUndefined();
   });
-  it("bounces off walls instead of sliding along them", () => {
+  it("moves faster underground", () => {
+    const run = (tunnel: boolean) => {
+      const a = arena("pangrove");
+      const [me, them] = a.players;
+      place(them, 1500, 850);
+      place(me, 300, Y);
+      if (tunnel) dig(a, me);
+      me.lastInput = { ...me.lastInput, dx: 1, dy: 0 };
+      ticks(a, 20);
+      return me.x;
+    };
+    const haste = skill("pangrove", "tunnel").tunnel!.haste;
+    expect(run(true) - 300).toBeGreaterThan(
+      (run(false) - 300) * (haste - 0.05),
+    );
+  });
+  it("comes up when cast again (on cooldown), hitting and flinging enemies close by and growing a plate", () => {
     const a = arena("pangrove");
     const [me, them] = a.players;
-    place(them, 1500, 850);
-    place(me, 1500, Y);
-    roll(a, me);
-    // Let go of the stick, so steering doesn't turn it back to the wall.
-    me.lastInput = { ...me.lastInput, dx: 0, dy: 0 };
-    ticks(a, 20);
-    expect(Math.cos(me.roll!.heading)).toBeLessThan(0);
+    place(me, 300, Y);
+    place(them, 380, Y);
+    me.plates = 1;
+    // (No natural regrowth meanwhile.)
+    me.plateAt = a.time + 99;
+    dig(a, me);
+    me.cooldowns[2] = a.time + 10;
+    const hp = them.hp,
+      x = them.x;
+    a.submit(me, { ...me.lastInput, seq: 99, skill: 2 });
+    a.tick();
+    expect(me.burrow).toBeUndefined();
+    expect(hp - them.hp).toBeCloseTo(skill("pangrove", "tunnel").damage, 0);
+    expect(them.x).toBeGreaterThan(x + 60);
+    expect(platesOf(me)).toBe(2);
+  });
+  it("comes up by itself when time runs out; an enemy out of reach is untouched", () => {
+    const a = arena("pangrove");
+    const [me, them] = a.players;
+    place(me, 300, Y);
+    place(them, 800, Y);
+    dig(a, me);
+    const hp = them.hp;
+    ticks(a, Math.ceil(RULES.tick * skill("pangrove", "tunnel").duration) + 2);
+    expect(me.burrow).toBeUndefined();
+    expect(a.burrowed(me)).toBe(false);
+    expect(them.hp).toBe(hp);
+  });
+  it("lets an enemy's shot fly through its mound", () => {
+    const a = arena("pangrove", "voltkit");
+    const [me, them] = a.players;
+    place(me, 600, Y);
+    place(them, 300, Y, 600, Y);
+    dig(a, me);
+    a.cast(them, skill("voltkit", "static-lance"));
+    const hp = me.hp;
+    ticks(a, 8);
+    expect(me.hp).toBe(hp);
   });
 });
 
-describe("Pinball", () => {
-  it("ricochets off walls, faster each time, and ends when out of bounces", () => {
+describe("Leaf Storm", () => {
+  const storm = () => skill("pangrove", "leaf-storm");
+  it("braces Pangrove and sweeps enemies on a blade's spoke, at most once a pass", () => {
     const a = arena("pangrove");
     const [me, them] = a.players;
-    place(them, 1500, 850);
-    place(me, 300, Y, 0, Y);
-    a.cast(me, skill("pangrove", "pinball"));
-    const speed0 = Math.hypot(me.dashX, me.dashY);
-    ticks(a, 20);
-    expect(me.pinball!.bounces).toBe(3);
-    expect(Math.hypot(me.dashX, me.dashY)).toBeCloseTo(speed0 * 1.12);
-    ticks(a, RULES.tick * 3);
-    expect(me.pinball).toBeUndefined();
-    expect(me.recoveryUntil).toBeLessThanOrEqual(a.time + 0.2);
-  });
-  it("hits an enemy once per stretch, and a root stops it", () => {
-    const a = arena("pangrove");
-    const [me, them] = a.players;
-    place(me, 300, Y, 1500, Y);
-    place(them, 700, Y);
-    a.cast(me, skill("pangrove", "pinball"));
+    place(me, 600, 450);
+    place(them, 690, 450);
+    a.cast(me, storm());
+    expect(a.has(me, "brace")).toBe(true);
     const hp = them.hp;
-    ticks(a, 12);
-    expect(hp - them.hp).toBe(skill("pangrove", "pinball").damage);
-    a.status(me, "root", 1);
-    a.tick();
-    expect(me.pinball).toBeUndefined();
+    // Stand still: a blade passes about every 0.4 s.
+    them.lastInput = { ...them.lastInput, dx: 0, dy: 0 };
+    ticks(a, RULES.tick);
+    const hits = Math.round((hp - them.hp) / storm().damage);
+    expect(hits).toBeGreaterThanOrEqual(1);
+    expect(hits).toBeLessThanOrEqual(Math.ceil(1 / storm().tickInterval!));
+    expect(a.has(them, "slow")).toBe(true);
+  });
+  it("leaves an enemy outside its reach alone until the burst", () => {
+    const a = arena("pangrove");
+    const [me, them] = a.players;
+    place(me, 500, 450);
+    place(them, 760, 450);
+    a.cast(me, storm());
+    const hp = them.hp;
+    ticks(a, Math.floor(RULES.tick * storm().duration) - 2);
+    expect(them.hp).toBe(hp);
+    ticks(a, 4);
+    expect(me.cyclone).toBeUndefined();
+    expect(hp - them.hp).toBeCloseTo(storm().cyclone!.burst, 0);
+  });
+  it("bursts straight up out of a tunnel", () => {
+    const a = arena("pangrove");
+    const [me, them] = a.players;
+    place(me, 300, Y);
+    place(them, 1500, 850);
+    a.cast(me, skill("pangrove", "tunnel"));
+    a.cast(me, storm());
+    expect(me.burrow).toBeUndefined();
+    expect(me.cyclone).toBeDefined();
   });
 });
 
@@ -473,26 +492,5 @@ describe("in raids", () => {
     a.tick();
     expect(a.has(boss, "warp")).toBe(false);
     expect(a.has(boss, "slow")).toBe(true);
-  });
-});
-
-describe("Curl & Roll steering", () => {
-  it("turns tighter when slow than at full speed", () => {
-    const turned = (fast: boolean) => {
-      const a = arena("pangrove");
-      const [me, them] = a.players;
-      place(them, 1500, 850);
-      place(me, 800, Y, 900, Y);
-      a.cast(
-        me,
-        CHARACTERS.pangrove.skills.find((k) => k.id === "curl-roll")!,
-      );
-      me.roll!.speed = fast ? me.roll!.top : CHARACTERS.pangrove.speed * 0.5;
-      me.lastInput = { ...me.lastInput, dx: 0, dy: 1 };
-      const from = me.roll!.heading;
-      a.tick();
-      return Math.abs(me.roll!.heading - from);
-    };
-    expect(turned(false)).toBeGreaterThan(turned(true) * 1.5);
   });
 });

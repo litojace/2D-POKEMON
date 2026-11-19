@@ -659,11 +659,10 @@ the Raid Hub's guide and the raid briefing read them from there.
 
 **Pangrove** (3)
 
-- **Grumblecrag:** curled into a ball (Curl & Roll, or flying as a Pinball),
-  Rock Volley glances off it.
+- **Grumblecrag:** underground (Tunnel), Rock Volley sails over it.
 - **Tidewyrm:** Tongue Grapple on a stranded boss adds +15 stagger (like
   Static Lance).
-- **Storm Twins:** curled into a ball, Polarity can't touch it (like
+- **Storm Twins:** underground (Tunnel), Polarity can't touch it (like
   Terradon's closed shell).
 
 **Mossloth** (3)
@@ -677,7 +676,7 @@ the Raid Hub's guide and the raid briefing read them from there.
 
 Grumblecrag, Tidewyrm and Emberwing have nine champion tricks; Gloomshade,
 Storm Twins and Somnara have eight, Prismatail seven. Only Auralynx's Facet
-Guard reflects Rock Volley; Pangrove curled into a ball lets it glance off
+Guard reflects Rock Volley; Pangrove underground lets it sail over
 (Wombolder's Grudge Thump braces it instead, and has its own trick on the
 Storm Twins). Rooted on a boss works like a stun: 3 stagger, no root.
 
