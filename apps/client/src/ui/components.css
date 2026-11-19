@@ -740,6 +740,11 @@
 .ui-btn > svg:first-child {
   margin-left: -3px;
 }
+/* The crossed swords reach out to 3/24 (their stroke to ~2/24), not 5/24:
+   -3 px pulled Start raid's icon and label 0.8 px left of the middle. */
+.ui-btn > svg[data-icon="battle"]:first-child {
+  margin-left: -1.5px;
+}
 .ui-btn > span {
   margin-right: -0.05em;
 }

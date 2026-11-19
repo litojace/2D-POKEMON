@@ -33,10 +33,22 @@ for (const size of SIZES) {
   test(`the Plaza fills a ${size.width}x${size.height} screen at every edge of the map`, async ({
     browser,
   }, info) => {
+    // Slow frames on CI: each corner waits for drawn frames, not seconds.
+    test.setTimeout(180_000);
     const ctx = await context(browser, size);
     try {
       const page = await ctx.newPage();
       const errors = await openPlaza(page);
+      // Frames drawn, for a failure to say whether the scene was moving.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__fillFrames = 0;
+        const t = () => {
+          w.__fillFrames++;
+          requestAnimationFrame(t);
+        };
+        requestAnimationFrame(t);
+      });
       // Walk (teleport) to each corner: the camera follows to the map's edge.
       const corners: [number, number][] = [
         [60, 130],
@@ -64,12 +76,19 @@ for (const size of SIZES) {
           .toBeLessThan(200);
         // The camera eases, and this CPU-drawn browser may manage only a few
         // frames a second at these sizes: wait until the map's corners have
-        // held still for four readings in a row (2 s), then measure.
+        // held still for four readings in a row, with frames drawn between
+        // them. Still readings with no frame between say nothing: CI's
+        // runner drew 4 frames in all at 1440x900 and the camera, half-way
+        // to the corner, read "still" for 2 s ("the woods west", 19 Nov).
         let last = "",
-          same = 0;
+          same = 0,
+          frames = -1;
         await expect
           .poll(
             async () => {
+              const drawn = await page.evaluate(
+                () => (window as any).__fillFrames as number,
+              );
               const now = JSON.stringify(
                 await page.evaluate(
                   ([w, h, o]) => {
@@ -85,8 +104,11 @@ for (const size of SIZES) {
                   [PLAZA.w, PLAZA.h, OUT] as const,
                 ),
               );
-              same = now === last ? same + 1 : 0;
+              if (now !== last) same = 0;
+              else if (drawn >= frames + 2) same++;
+              else return false;
               last = now;
+              frames = drawn;
               return same >= 3;
             },
             { timeout: 30_000, intervals: [500] },
@@ -95,6 +117,16 @@ for (const size of SIZES) {
         const [ax, ay, bx, by, mx0, my0, mx1, my1] = JSON.parse(
           last,
         ) as number[];
+        // Where you stand, the scene's state and its frames so far.
+        const at = await page.evaluate(
+          ([x, y]) => {
+            const w = window as any,
+              P = w.__plaza.P,
+              layer = document.querySelector<HTMLElement>(".plaza-layer");
+            return `at ${x},${y}: you at ${Math.round(P.x)},${Math.round(P.y)}, ${layer?.dataset.graphics ?? "?"} graphics, frozen ${layer?.dataset.frozen ?? "?"}, ${w.__fillFrames} frames`;
+          },
+          [x, y],
+        );
         // Never past what is built...
         expect(ax, `built left edge at ${x},${y}`).toBeLessThanOrEqual(0);
         expect(ay, `built top edge at ${x},${y}`).toBeLessThanOrEqual(0);
@@ -105,10 +137,12 @@ for (const size of SIZES) {
           size.height,
         );
         // ...but out past the Plaza's own edge by the corner you stand at.
-        if (x < PLAZA.w / 2) expect(mx0, "the woods west").toBeGreaterThan(0);
-        else expect(mx1, "the woods east").toBeLessThan(size.width);
-        if (y < PLAZA.h / 2) expect(my0, "the river north").toBeGreaterThan(0);
-        else expect(my1, "the farm south").toBeLessThan(size.height);
+        if (x < PLAZA.w / 2)
+          expect(mx0, `the woods west ${at}`).toBeGreaterThan(0);
+        else expect(mx1, `the woods east ${at}`).toBeLessThan(size.width);
+        if (y < PLAZA.h / 2)
+          expect(my0, `the river north ${at}`).toBeGreaterThan(0);
+        else expect(my1, `the farm south ${at}`).toBeLessThan(size.height);
       }
       await snap(page, info, `plaza-fill-${size.name}`);
       expect(errors).toEqual([]);

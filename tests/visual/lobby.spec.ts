@@ -400,14 +400,17 @@ test("PLAY creates a private room in the chosen mode", async ({ browser }) => {
       };
     });
     await page.click("#lobby-mode");
-    await page.click('[data-lobby-mode="teams"]');
+    // On your own, rooms you can't fill aren't listed (modeListed).
+    await expect(page.locator('[data-lobby-mode="teams"]')).toBeHidden();
+    await expect(page.locator('[data-lobby-mode="ffa"]')).toBeHidden();
+    await page.click('[data-lobby-mode="duel"]');
     await page.click("#lobby-play");
     await expect(page.locator(".lobby-layer")).toHaveCount(0);
     await expect(page.locator("body")).toHaveClass(/lobby-active/);
     const create = await page.evaluate(() =>
       (window as any).__requests.find(([ev]: [string]) => ev === "create"),
     );
-    expect(create?.[1]).toMatchObject({ mode: "teams" });
+    expect(create?.[1]).toMatchObject({ mode: "duel" });
     expect(errors).toEqual([]);
   } finally {
     await context.close();
@@ -1515,6 +1518,8 @@ test("the Spire card stays away before the Spire opens, shows progress while a z
       const w = window as any;
       w.__raids = r.raids;
       w.__spire = { ...r.spire, highestFloor: 3, claimed: [1, 2, 3] };
+      // As the server says after a climb or a raid: records changed.
+      w.__sock.fire("economy-changed");
     }, SPIRE_OPEN);
     await page.click('.lobby-rail [data-lobby-action="raids"]');
     const room = page.locator(".rh-room");
@@ -1530,6 +1535,7 @@ test("the Spire card stays away before the Spire opens, shows progress while a z
     await page.evaluate((r) => {
       const w = window as any;
       w.__spire = r.spire;
+      w.__sock.fire("economy-changed");
     }, SPIRE_OPEN);
     await page.click('.lobby-rail [data-lobby-action="raids"]');
     await expect(room).toHaveAttribute("data-raid-mode", "hall");

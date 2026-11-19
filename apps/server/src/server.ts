@@ -95,6 +95,7 @@ import {
 } from "./chat.js";
 import { PlazaAppearance } from "./plaza-appearance.js";
 import { MatchLedger, matchSummary } from "./match-summary.js";
+import { QuickQueue, type QueueEntry, type QueueLeave } from "./matchmaking.js";
 import {
   BotBrain,
   BOT_DIFFICULTIES,
@@ -106,7 +107,12 @@ const botMatchSchema = identitySchema
     character: characterSchema,
     difficulty: z.enum(BOT_DIFFICULTIES),
     arcade: z.enum(ARCADE_IDS as [ArcadeId, ...ArcadeId[]]).optional(),
+    /** Quick Match found nobody and the player took the sparring bot. */
+    quick: z.literal(true).optional(),
   })
+  .strict();
+const quickSchema = identitySchema
+  .extend({ character: characterSchema })
   .strict();
 const createSchema = identitySchema
   .extend({
@@ -145,6 +151,8 @@ const BOT_NAMES = [
   "Echo",
   "Taro",
 ];
+/** Six-character room codes: no 0/O or 1/I, so a code read aloud works. */
+const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const BOT_COLORS = { easy: "#65d38a", normal: "#7ff3ff", hard: "#ff697f" };
 import {
   createAccountProvider,
@@ -355,6 +363,55 @@ export function createArenaServer(
   const chatModes = new Map<string, ChatMode>();
   /** Each online account's friends (id → name), for friends' messages. */
   const chatFriends = new Map<string, Map<string, string>>();
+  /**
+   * Quick Match (matchmaking.ts): who is searching, and how each searching
+   * socket is told it was paired (set by that socket's connection).
+   */
+  const quickQueue = new QuickQueue<
+    QueueEntry & { name: string; matched: (arena: Arena) => void }
+  >((a, b) => !chat.blocks(a, b));
+  /** Rooms Quick Match made: "human" (two searchers) or "bot" (fallback). */
+  const quickRooms = new WeakMap<Arena, "human" | "bot">();
+  /** Players connected with an account, for "N online" while searching. */
+  const onlineCount = () =>
+    new Set(
+      [...io.sockets.sockets.values()]
+        .map((s) => (s.data.account as Account | undefined)?.id)
+        .filter(Boolean),
+    ).size;
+  /**
+   * One line per finished match (docs/pvp-plan.md, item 2): who fought whom
+   * with what, who won, how long it took and whether Quick Match made it.
+   * No names or accounts: the match tag joins it to the arena-perf lines.
+   */
+  const logMatch = (arena: Arena) => {
+    const humans = arena.players.filter((p) => !arena.bots.has(p.id));
+    connectionLog("arena-match", {
+      tag: arena.matchTag,
+      mode: arena.mode,
+      arcade: arena.arcade?.id ?? null,
+      humans: humans.length,
+      bots: arena.bots.size,
+      botLevel: [...arena.bots.values()][0]?.difficulty ?? null,
+      quick: quickRooms.get(arena) ?? null,
+      fighters: arena.players.map((p) => ({
+        character: p.character,
+        team: arena.teamOf(p),
+        bot: arena.bots.has(p.id),
+      })),
+      winnerTeam: arena.winnerTeam,
+      rounds: arena.roundLog.length,
+      seconds: Math.round(arena.playTime),
+      arena: arena.arenaId,
+    });
+  };
+  const logQueue = (entry: QueueEntry, outcome: "human" | QueueLeave) =>
+    connectionLog("arena-queue", {
+      outcome,
+      waitMs: Date.now() - entry.since,
+      online: onlineCount(),
+      queued: quickQueue.size,
+    });
   const chat = new ChatHub({
     // Typed lines are on unless CHAT_FREE_TEXT=off (a switch to pause them).
     freeText: () =>
@@ -1183,6 +1240,7 @@ export function createArenaServer(
     ) {
       const matchId: string = randomUUID();
       arena.matchId = matchId;
+      logMatch(arena);
       const owners = fighterAccounts.get(arena);
       if (!arena.arcade)
         ledger.add(
@@ -1210,6 +1268,7 @@ export function createArenaServer(
                 : arena.winner === p.id,
             vsPeople,
             botLevel,
+            quick: quickRooms.get(arena) ?? null,
             mode: arena.mode,
             knockedOut: (p.stats.knocked ?? 0) > 0,
             skillUses: p.stats.skills,
@@ -1485,6 +1544,7 @@ export function createArenaServer(
       cb: unknown,
       publish = true,
     ) => {
+      leaveQuick("cancel");
       const id = randomBytes(12).toString("hex"),
         token = randomBytes(32).toString("hex");
       arena.add(id, name);
@@ -1520,6 +1580,12 @@ export function createArenaServer(
       joinChannel(socket, arena);
       reply(cb, { ok: true, id, token, code: arena.code });
       if (publish) broadcast(arena);
+    };
+    /** Stop searching for a Quick Match, logging why. */
+    const leaveQuick = (why: QueueLeave) => {
+      const entry = quickQueue.leave(socket.id);
+      if (entry) logQueue(entry, why);
+      return !!entry;
     };
     const releaseDisconnected = () => {
       const owned = [...sessions.values()].filter(
@@ -1894,12 +1960,11 @@ export function createArenaServer(
         );
       if (rooms.size >= 500)
         return fail(cb, "The arena is busy. Please try again later.");
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
       let code: string;
       do {
         code = Array.from(
           { length: 6 },
-          () => chars[randomInt(chars.length)],
+          () => ROOM_CODE_CHARS[randomInt(ROOM_CODE_CHARS.length)],
         ).join("");
       } while (rooms.has(code));
       const weekly = arcadeWeek(pacificDate());
@@ -2146,6 +2211,10 @@ export function createArenaServer(
         : new Arena(code);
       a.rotateArenas = true;
       rooms.set(code, a);
+      if (result.data.quick) {
+        leaveQuick("bot");
+        quickRooms.set(a, "bot");
+      }
       attach(a, result.data.name, cb, false);
       a.players[0].character = result.data.character;
       const difficulty: BotDifficulty = result.data.difficulty,
@@ -2165,6 +2234,75 @@ export function createArenaServer(
       a.bots.set(botId, new BotBrain(botId, difficulty, randomInt(1, 2 ** 31)));
       a.start();
       broadcast(a);
+    });
+    /**
+     * Quick Match: queue for a 1v1 against whoever else is searching. The
+     * reply says whether you met someone now (a room, as "create" replies)
+     * or are queued; a later pairing arrives as "quick-found" with the same
+     * fields. The client offers a labelled bot after QUICK_MATCH_FALLBACK_MS.
+     */
+    socket.on("quick-join", (data: unknown, cb: unknown) => {
+      stopWatching();
+      if (!requirePlayer(cb)) return;
+      if (!allowed(15)) return fail(cb, "Too many requests.");
+      const result = quickSchema.safeParse(data);
+      if (!result.success)
+        return fail(cb, "Choose a valid character and display name.");
+      if (getSession(socket.id))
+        return fail(cb, "Leave your current room first.");
+      releaseDisconnected();
+      if ([...sessions.values()].some((s) => s.accountId === account()!.id))
+        return fail(cb, "This account already has a room.");
+      if ((parties.of(account()!.id)?.members.length ?? 0) > 1)
+        return fail(
+          cb,
+          "With a party, choose a room: 1v1, 2v2 or Free-for-all.",
+        );
+      if (rooms.size >= 500)
+        return fail(cb, "The arena is busy. Please try again later.");
+      const name = result.data.name;
+      const character = result.data.character;
+      // Joins this socket to a room Quick Match made, as if it had created
+      // or joined it, with its pick shown to itself only (a PvP lobby).
+      const enter = (arena: Arena, done: (r: Reply) => void) => {
+        attach(arena, name, done);
+        const me = arena.players.at(-1)!;
+        if (picksHidden(arena)) me.browse = character;
+        else me.character = character;
+      };
+      const entry = {
+        socketId: socket.id,
+        accountId: account()!.id,
+        since: Date.now(),
+        name,
+        matched: (arena: Arena) =>
+          enter(arena, (r) => socket.emit("quick-found", r)),
+      };
+      const other = quickQueue.join(entry);
+      if (!other) {
+        reply(cb, { ok: true, queued: true, online: onlineCount() - 1 });
+        return;
+      }
+      logQueue(other, "human");
+      logQueue(entry, "human");
+      let code: string;
+      do {
+        code = Array.from(
+          { length: 6 },
+          () => ROOM_CODE_CHARS[randomInt(ROOM_CODE_CHARS.length)],
+        ).join("");
+      } while (rooms.has(code));
+      const arena = new Arena(code, "duel");
+      arena.rotateArenas = true;
+      rooms.set(code, arena);
+      quickRooms.set(arena, "human");
+      other.matched(arena);
+      enter(arena, (r) => reply(cb, r));
+      broadcast(arena);
+    });
+    socket.on("quick-leave", (_data: unknown, cb: unknown) => {
+      leaveQuick("cancel");
+      reply(cb, { ok: true });
     });
     const withPracticeRoom = async (
       cb: unknown,
@@ -3203,6 +3341,7 @@ export function createArenaServer(
       }),
     );
     socket.on("disconnect", (reason: string) => {
+      leaveQuick("disconnect");
       // Record why a player in a room dropped: the opponent only sees
       // "Opponent disconnected", and Socket.IO's reason says whether the
       // connection closed, errored, went quiet (ping timeout) or was kicked.

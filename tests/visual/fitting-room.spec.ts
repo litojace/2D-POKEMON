@@ -457,6 +457,8 @@ test("a late answer can't reopen a closed Shop over another screen", async ({
   await page.evaluate(() => {
     const w = window as any;
     w.__shop.delay = true;
+    // Its copies are old (as after a match): the Shop must ask the server.
+    w.__account.forgetCopies();
     w.__pendingShop = w.__account.showShop();
   });
   await page.waitForFunction(() => !!(window as any).__shop.release);
@@ -476,10 +478,16 @@ test("a late answer can't reopen a closed Shop over another screen", async ({
 test("a slow first load can't undo a purchase that finished before it", async ({
   page,
 }) => {
+  await exposeAccount(page);
   await shopServer(page, { balance: 2340, cost: 1200 });
   const errors = await openLobby(page);
   // The Shop's own load of your coins hangs (it was read before the buy).
-  await page.evaluate(() => ((window as any).__shop.delay = true));
+  // Its copies are old (as after a match): it must ask the server.
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__shop.delay = true;
+    w.__account.forgetCopies();
+  });
   await page.click('.lobby-rail [data-lobby-action="shop"]');
   await page.waitForFunction(() => !!(window as any).__shop.release);
   await page.click(".fit-deal");

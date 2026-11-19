@@ -181,8 +181,14 @@ export function watchSceneSwitch(nav: HTMLElement) {
     if (!frame) frame = requestAnimationFrame(place);
   };
   addEventListener("resize", schedule);
-  // A hub screen opening or closing changes what the button must avoid.
-  document.addEventListener(PANEL_EVENT, schedule);
+  // A hub screen opening or closing changes what the chat button must
+  // avoid, only where it sits under the card (nothing else here depends on
+  // the screens). Measured on every open, it laid out each new screen in
+  // the middle of its first frame (Nov 2026).
+  document.addEventListener(PANEL_EVENT, () => {
+    if (document.getElementById("chat-button")?.dataset.row === "below")
+      schedule();
+  });
   const sizes = new ResizeObserver(schedule);
   const watchAll = () => {
     for (const s of [
