@@ -11,7 +11,6 @@ import {
   type ChatContext,
 } from "../../packages/shared/src/chat";
 import { PLAZA_EMOTES } from "../../packages/shared/src/plaza";
-import { FARM_EMOTES } from "../../packages/shared/src/farm";
 
 // The quick-chat catalogue and who may say what (packages/shared/src/chat.ts).
 const at = (c: Partial<ChatContext>): ChatContext => ({
@@ -31,9 +30,9 @@ describe("the catalogue", () => {
     ];
     expect(new Set(ids).size).toBe(ids.length);
   });
-  it("keeps every Plaza and Farm emote (GG as a phrase)", () => {
+  it("keeps every Plaza emote (GG as a phrase)", () => {
     const emoji = Object.values(CHAT_EMOTES) as string[];
-    for (const e of [...PLAZA_EMOTES, ...Object.values(FARM_EMOTES)])
+    for (const e of PLAZA_EMOTES)
       if (e === "GG") expect(quickText("gg")).toBe("GG");
       else expect(emoji, e).toContain(e);
   });

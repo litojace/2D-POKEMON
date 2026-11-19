@@ -1,6 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, openPlaza, snap } from "./helpers";
-import { fakeBistro } from "./bistro-fake";
 import { setInsets } from "./ui-measure";
 
 // An iPad Pro 13" home-screen app held sideways (1376×1032): iPadOS keeps
@@ -16,11 +15,7 @@ const HEADER = [
   "#account-profile",
   "#hub-scenes",
   "#account-coins > *",
-  "#account-leaves > *",
   ".header-menu > summary",
-  // The Bistro's and the Farm's badges take the player card's place.
-  ".bs-badge",
-  ".fm-badge",
 ];
 
 /** Header boxes, and every placed box in the scene that runs into one (or into the bar). */
@@ -111,10 +106,6 @@ for (const bar of [32, 0])
       await page.click('#hub-scenes [data-hub-scene="plaza"]');
       await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
       await check("plaza", ".plaza-layer");
-      await fakeBistro(page);
-      await page.click('#hub-scenes [data-hub-scene="bistro"]');
-      await page.waitForFunction(() => (window as any).__bistro?.sync().ready);
-      await check("bistro", ".bistro-layer");
       expect(errors).toEqual([]);
     } finally {
       await context.close();

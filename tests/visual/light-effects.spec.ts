@@ -1,6 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby } from "./helpers";
-import { fakeBistro } from "./bistro-fake";
 
 // Lighter menus on weak devices (ui/light-effects.css): at Low graphics the
 // hub has no backdrop blur and no decorative loops; with reduced motion the
@@ -86,11 +85,11 @@ test("Low graphics: the hub has no blur and no decorative loops", async ({
       loops: [],
     });
     await page.keyboard.press("Escape");
-    await fakeBistro(page);
-    await page.click('#hub-scenes [data-hub-scene="bistro"]');
-    await expect(page.locator(".bistro-layer .bs-cv")).toBeVisible();
+    await page.evaluate(() => localStorage.setItem("ea-plaza-help", "1"));
+    await page.click('#hub-scenes [data-hub-scene="plaza"]');
+    await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
     await page.waitForTimeout(800);
-    expect((await effects(page)).blurred, "the Bistro").toEqual([]);
+    expect((await effects(page)).blurred, "the Plaza").toEqual([]);
     // Choosing High in Settings brings the look back at once.
     await page.evaluate(() => document.getElementById("settings")!.click());
     await page.click('#dialog [data-graphics="high"]');

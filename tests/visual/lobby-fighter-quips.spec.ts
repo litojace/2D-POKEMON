@@ -90,7 +90,6 @@ async function bubbleFits(page: Page) {
       ".lobby-play",
       "#account-profile",
       "#account-coins > *",
-      "#account-leaves > *",
     ]
       .map((sel) => [sel, box(sel)] as const)
       .filter(
@@ -340,7 +339,7 @@ test("the bubble sits above each fighter's head, under the top bar", async ({
         let limit = 6;
         for (const e of Array.from(
           document.querySelectorAll(
-            ".hub-scenes, #account-profile, #account-coins, #account-leaves, #home-settings",
+            ".hub-scenes, #account-profile, #account-coins, #home-settings",
           ),
         )) {
           const r = e.getBoundingClientRect();

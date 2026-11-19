@@ -5,18 +5,18 @@ import { fakeAccounts } from "../helpers/accounts";
 
 // A failed database call: the rules' refusals stay the player's (400/403, no
 // log); a failure of the database itself is a 503 to retry, and goes to the
-// log. A bistro once timed out on every load (PostgREST's 500, SQLSTATE 57014)
+// log. A page (the Bistro, since removed) once timed out on every load (PostgREST's 500, SQLSTATE 57014)
 // and the API answered 400 and logged nothing.
 it("tells the database's failures from the rules' refusals", () => {
   const timeout = rpcError(
-    "arena_bistro",
+    "arena_plaza",
     { code: "57014", message: "canceling statement due to statement timeout" },
     500,
   );
   expect(timeout.status).toBe(503);
   expect(timeout.message).toMatch(/try again/);
   expect(timeout.detail).toBe(
-    "arena_bistro: 57014 · canceling statement due to statement timeout",
+    "arena_plaza: 57014 · canceling statement due to statement timeout",
   );
   for (const [code, status] of [
     ["08006", 503],
@@ -39,7 +39,7 @@ it("tells the database's failures from the rules' refusals", () => {
   expect(missing.message).toMatch(/needs an update \(missing arena_new\)/);
   // The rules: a plpgsql raise (P0001) is the player's, with its message.
   const refused = rpcError(
-    "arena_bistro_act",
+    "arena_plaza_treat",
     { code: "P0001", message: "Login required" },
     400,
   );
@@ -57,14 +57,14 @@ let server: ReturnType<typeof createArenaServer>,
 beforeEach(async () => {
   accounts = fakeAccounts();
   accounts.provider.rpc = async (_token, name) => {
-    if (name === "arena_bistro")
+    if (name === "arena_plaza")
       throw new AccountError(
         503,
         "The server is busy right now. Please try again in a moment.",
-        "arena_bistro: 57014 · canceling statement",
+        "arena_plaza: 57014 · canceling statement",
       );
-    if (name === "arena_bistro_friends")
-      throw new AccountError(400, "Not friends");
+    if (name === "arena_name_status")
+      throw new AccountError(400, "Not allowed");
     throw new Error(`unexpected ${name}`);
   };
   server = createArenaServer({ accounts: accounts.provider, autoTick: false });
@@ -85,16 +85,16 @@ it("logs every 5xx with its reason, and no refusal", async () => {
   const { token } = accounts.add(false);
   const get = (path: string) =>
     fetch(`${url}${path}`, { headers: { Authorization: `Bearer ${token}` } });
-  const busy = await get("/api/bistro");
+  const busy = await get("/api/plaza");
   expect(busy.status).toBe(503);
   expect(await busy.json()).toEqual({
     error: "The server is busy right now. Please try again in a moment.",
   });
   expect(log).toHaveBeenCalledWith(
-    "[api] GET /api/bistro failed (503):",
-    "arena_bistro: 57014 · canceling statement",
+    "[api] GET /api/plaza failed (503):",
+    "arena_plaza: 57014 · canceling statement",
   );
   log.mockClear();
-  expect((await get("/api/bistro/friends")).status).toBe(400);
+  expect((await get("/api/account/name")).status).toBe(400);
   expect(log).not.toHaveBeenCalled();
 });

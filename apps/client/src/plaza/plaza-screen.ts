@@ -31,9 +31,9 @@ export interface PlazaScreenOptions {
   fighterName(character: string): string;
   playerName(): string;
   loadProgress(): Promise<PlazaProgress>;
-  goFarm(): void;
   toast(message: string): void;
-  onLeaves(balance: number): void;
+  /** A Plaza quest paid coins (on the server): refresh the balance. */
+  onCoins?(): void;
   /**
    * A player you tapped: add as a friend, invite to your party, block (it
    * asks first) or report. Resolves true when the card should close.
@@ -107,10 +107,7 @@ export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
     if (tellServer && !away) options.socket.emit("plaza-leave", {}, () => {});
     scene.close();
     document.body.classList.remove("hub-plaza");
-    if (
-      !document.querySelector(".lobby-layer") &&
-      !document.querySelector(".farm-layer")
-    )
+    if (!document.querySelector(".lobby-layer"))
       document.body.classList.remove("hub-screen");
     options.onClose(failed);
   };
@@ -149,10 +146,7 @@ export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
       options.socket.emit("plaza-leave", {}, () => {});
       scene.hide();
       document.body.classList.remove("hub-plaza");
-      if (
-        !document.querySelector(".lobby-layer") &&
-        !document.querySelector(".farm-layer:not([style*='display: none'])")
-      )
+      if (!document.querySelector(".lobby-layer"))
         document.body.classList.remove("hub-screen");
     },
     show() {
@@ -166,5 +160,5 @@ export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
     close: () => finish(false, true),
   };
 }
-/** The Farm's and the Plaza's shared sprite cache (released before a battle). */
-export { GFX as hubGfx } from "../farm/farm-gfx";
+/** The Plaza's sprite cache (released before a battle). */
+export { GFX as hubGfx } from "../hub-art/gfx";

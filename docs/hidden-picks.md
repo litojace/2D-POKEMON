@@ -199,12 +199,6 @@ battle, on the briefing, in the picker and on the Lobby's party stage
 - **Plaza:** the player card shows the avatar, which the server reads in
   `PlazaAppearance`. A player with their own picture also gets **Report
   picture**. Players walking in the Plaza are still their fighters.
-- **Farm and Bistro:** lists of friends (a visit's header, stalls, help
-  requests, gifts, neighbours, friends' bistros, hiring a friend) show
-  each friend's avatar through `/api/avatar/of/<id>`. The server
-  redirects that address to the picture (`arena_avatar_of`, service
-  role), so a list that knows only who needs no avatar data of its own.
-  Friends standing at the farm's gate are still their fighters.
 - **Party:** the Lobby's party bar shows each member's avatar, with the
   leader ringed in gold; the server reads it in `loadPartyAppearance`.
   The stage still shows fighters, to show off skins (owner, 18 Nov).

@@ -16,9 +16,7 @@ function page(low: string[]) {
         },
       },
       querySelector: (selector: string) => {
-        expect(selector).toBe(
-          ':is(.plaza-layer, .farm-layer)[data-graphics="low"]',
-        );
+        expect(selector).toBe('.plaza-layer[data-graphics="low"]');
         return low.length ? {} : null;
       },
     } as unknown as Document,
@@ -26,7 +24,7 @@ function page(low: string[]) {
 }
 
 describe("hub graphics class", () => {
-  it("marks the body while the Plaza or the Farm is at Low", () => {
+  it("marks the body while the Plaza is at Low", () => {
     const low = page(["plaza"]);
     syncHubGraphics(low.doc);
     expect(low.classes.has("hub-graphics-low")).toBe(true);
@@ -53,7 +51,7 @@ describe("selectors kept off :has()", () => {
   it.each([
     ".prefs-grid:has(",
     "dialog:has(.admin-tabs)",
-    'body:has(:is(.plaza-layer, .farm-layer)[data-graphics="low"])',
+    'body:has(.plaza-layer[data-graphics="low"])',
   ])("%s", (selector) => {
     expect(all).not.toContain(selector);
   });

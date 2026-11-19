@@ -147,7 +147,7 @@ it("leaves a page that cannot scroll untouched (iPad home-screen hub shifted up)
   expect(scrollTo).not.toHaveBeenCalled();
 });
 
-it("leaves the hub untouched even when iOS measures it taller than the screen (Farm lifted)", () => {
+it("leaves the hub untouched even when iOS measures it taller than the screen (a hub scene lifted)", () => {
   const win = window as unknown as { scrollX: number; scrollY: number };
   win.scrollX = 0;
   win.scrollY = 0;

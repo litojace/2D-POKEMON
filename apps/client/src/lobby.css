@@ -8,7 +8,7 @@
   --lobby-top: calc(var(--hub-card-h) + 32px + var(--hub-drop, 0px));
   /* The header's frame (style.css: max(14px, safe area) at the sides), so
      the rail and the cards line up under the player card and the gear;
-     the bottom keeps the same margin. The Plaza and the Farm use it too. */
+     the bottom keeps the same margin. The Plaza uses it too. */
   --lobby-gutter: max(14px, var(--safe-left, 0px));
   --lobby-gutter-r: max(14px, var(--safe-right, 0px));
   --lobby-bottom: max(14px, var(--safe-bottom, 0px));
@@ -81,8 +81,8 @@
    tall even on the shortest phone; they shrink only on a shorter window,
    never below 28px. */
 .lobby-rail {
-  /* One glass capsule holding the six buttons, as the Lobby / Plaza / Farm
-     switch holds its four (owner, 16 Nov: six separate tiles didn't match
+  /* One glass capsule holding the six buttons, as the Lobby / Plaza
+     switch holds its tabs (owner, 16 Nov: six separate tiles didn't match
      the rest of the HUD). It is as tall as its buttons, never taller than
      the room between the header and the bottom edge, where they shrink. */
   --rail-pad: 4px;
@@ -1269,8 +1269,7 @@
   }
 }
 /* Phones: two cards beside the fighter, Journey and today's missions (the
-   Raids and Farm cards are gone: the rail, the scene switch and the leaf
-   pill already open those). */
+   Raids card is gone: the rail already opens it). */
 @media (max-height: 500px) {
   .lobby-friends-card {
     display: none !important;
@@ -1487,12 +1486,10 @@
   background: var(--ui-accent);
   color: var(--ui-accent-ink);
 }
-/* The player card's box and rows. The farm's badge (farm/farm.css) uses
-   the same numbers, so the two cards match: same size, and their bars and
-   text rows at the same heights. Three rows in the same box: the name and
+/* The player card's box and rows. Three rows in the same box: the name and
    level, the title you wear in small letters, then the XP bar (desktop
    18 + 2 + 10 + 2 + 5 = 37px of the 38px inside; phones 15 + 1 + 9 + 2 + 5
-   = 32px of 32px). The rows under the header (Lobby, Plaza, Farm) are
+   = 32px of 32px). The rows under the header (Lobby, Plaza) are
    placed from --hub-card-h. */
 :root {
   /* The header row's top edge: 10px from the top of the screen, or 12px
@@ -1507,7 +1504,7 @@
   );
   --hub-drop: calc(var(--hub-top) - 10px);
   /* The same, for rows inside a box that already keeps out of the safe
-     area (the Farm's HUD): 0, or 2px under a bar. */
+     area: 0, or 2px under a bar. */
   --hub-drop-in: calc(var(--hub-top) - var(--safe-top, 0px) - 10px);
   --hub-card-w: 236px;
   --hub-card-h: 52px;
@@ -1553,7 +1550,7 @@
   height: var(--hub-card-art);
 }
 /* A boss frame's star row: on the card's bottom edge, under the frame's
-   bottom ornament, and clear of the farm badge 4px below the card. */
+   bottom ornament. */
 body.hub-active #account-profile .portrait-frame .frame-stars {
   bottom: -20%;
 }
@@ -1589,41 +1586,10 @@ body.hub-active .nav-title {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-body.hub-active #account-coins > *,
-body.hub-active #account-leaves > * {
+body.hub-active #account-coins > * {
   justify-content: center;
   width: 132px;
   font-variant-numeric: tabular-nums;
-}
-/* The Gold Leaves pill sits beside the coins, the same size, green-rimmed. */
-#account-leaves {
-  order: 1;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-}
-#account-leaves .coin-chip {
-  gap: 5px;
-}
-#account-leaves .coin-chip b {
-  font-size: calc(16px * var(--text-scale, 1));
-  line-height: 1.2;
-}
-#account-leaves .coin-chip .button-icon {
-  width: 15px;
-  height: 15px;
-}
-#account-leaves > * {
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid rgba(127, 214, 90, 0.5);
-  border-radius: 999px;
-  background: rgba(14, 26, 49, 0.82);
-  backdrop-filter: blur(6px);
-}
-body:not(.hub-active) #account-leaves {
-  display: none;
 }
 @media (max-height: 500px) {
   .hub-scenes {
@@ -1635,8 +1601,7 @@ body:not(.hub-active) #account-leaves {
     height: 32px;
     font-size: calc(13px * var(--text-scale, 1));
   }
-  /* Phones: a little smaller, so the farm badge fits under the card with
-     a gap and still keeps clear of the plots. */
+  /* Phones: a little smaller. */
   :root {
     --hub-card-w: 172px;
     --hub-card-h: 42px;
@@ -1659,12 +1624,8 @@ body:not(.hub-active) #account-leaves {
     padding-bottom: 1px;
     font-size: calc(10px * var(--text-scale, 1));
   }
-  body.hub-active #account-coins > *,
-  body.hub-active #account-leaves > * {
+  body.hub-active #account-coins > * {
     width: 96px;
-  }
-  #account-leaves > * {
-    min-height: 34px;
   }
 }
 @media (max-width: 760px) {
@@ -1674,29 +1635,25 @@ body:not(.hub-active) #account-leaves {
   :root {
     --hub-card-w: 152px;
   }
-  body.hub-active #account-coins > *,
-  body.hub-active #account-leaves > * {
+  body.hub-active #account-coins > * {
     width: 88px;
   }
-  #account-coins .coin-chip b,
-  #account-leaves .coin-chip b {
+  #account-coins .coin-chip b {
     font-size: calc(14px * var(--text-scale, 1));
   }
 }
 /* The narrowest phones (iPhone SE, 640–700 px Android): the scene switch
-   and the two pills ran into each other (5 px over the coins at 667 px).
+   and the pills ran into each other (5 px over the coins at 667 px).
    Slimmer tabs and pills leave at least 12 px between them down to 640. */
 @media (max-width: 700px) {
   .hub-scenes button {
     width: 56px;
   }
-  body.hub-active #account-coins > *,
-  body.hub-active #account-leaves > * {
+  body.hub-active #account-coins > * {
     width: 76px;
     padding: 0 8px;
   }
-  #account-coins .coin-chip b,
-  #account-leaves .coin-chip b {
+  #account-coins .coin-chip b {
     font-size: calc(13px * var(--text-scale, 1));
   }
 }
@@ -1800,8 +1757,8 @@ body:not(.hub-active) #account-leaves {
   animation-play-state: paused !important;
 }
 
-/* Four hub scenes (Lobby, Plaza, Farm, Bistro): narrower buttons where the
-   switch would otherwise reach the coin pills. */
+/* Narrower scene buttons where the switch would otherwise reach the coin
+   pill. */
 @media (max-width: 1100px) and (min-height: 501px) {
   .hub-scenes button {
     width: 80px;

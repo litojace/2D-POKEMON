@@ -316,14 +316,12 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
     // Code the hub loads once in quiet moments after it opens (the other
     // worlds, the screens' own code): loaded before measuring, so a load
     // doesn't land in a measured open by chance.
-    // (Worlds the game no longer has never load: waited for 30 s at most.)
+    // (Waited for 30 s at most, in case one isn't loaded ahead.)
     await expect
       .poll(
         () =>
           [
             "plaza-screen",
-            "farm-screen",
-            "bistro-scene",
             "screens/raid-hall",
             "screens/fitting-room",
             "screens/journey",

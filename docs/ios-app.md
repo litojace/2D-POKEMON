@@ -59,8 +59,7 @@ in iPhone mode. Supporting iPad means testing its window sizes first.
 - **The screen never locks while the game is open** (`SceneDelegate`):
   briefings, waiting and watching can go a while without a touch, and a
   locked phone drops its game connection.
-- **Haptics:** hits and the farm's long press tap the Taptic Engine
-  (`@capacitor/haptics`). iPhones have no web vibration, so the website
+- **Haptics:** hits tap the Taptic Engine (`@capacitor/haptics`). iPhones have no web vibration, so the website
   can't do this on iPhone.
 - **Coming back from the background reconnects at once.** iOS pauses an app
   soon after you switch away, which drops its game connection.

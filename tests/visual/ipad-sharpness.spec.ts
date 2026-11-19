@@ -5,12 +5,12 @@ import {
   pushUntilBattle,
   startPractice,
 } from "./helpers";
-import { fakeBistro } from "./bistro-fake";
 
 // A large iPad (long side 1180 pt or more, 4 GB or more) draws the hub's
 // scenes and battles at its screen's 2x, as a desktop does; iPhones and
 // smaller iPads keep the smaller budgets (render-budget.ts). On an iPad Pro
-// 13" the Bistro was drawn at about 1.2x and looked soft (owner, 11 Nov 2026).
+// 13" the hub's scenes were drawn at about 1.2x and looked soft (owner, 11 Nov
+// 2026).
 const IPAD =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15";
 const DEVICES = [
@@ -51,12 +51,6 @@ for (const d of DEVICES)
           const c = document.querySelector(sel) as HTMLCanvasElement;
           return c.width / c.getBoundingClientRect().width;
         }, sel);
-      await fakeBistro(page);
-      await page.click('#hub-scenes [data-hub-scene="bistro"]');
-      await page.waitForFunction(() => (window as any).__bistro?.sync().ready);
-      await expect
-        .poll(() => density(".bistro-layer .bs-cv"))
-        .toBeCloseTo(d.scene, 1);
       await page.click('#hub-scenes [data-hub-scene="plaza"]');
       await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
       await expect

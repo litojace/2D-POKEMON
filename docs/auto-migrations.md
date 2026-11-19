@@ -65,7 +65,7 @@ when CI is busy.
   newest file. Files run in name order.
 - Safe to run again: `create … if not exists`, `create or replace`,
   `on conflict`, renames guarded with `to_regprocedure` / `to_regclass` (see
-  `20261116120000_farm_free_decor.sql`). The check runs each new file twice.
+  `028_retire_raid_modes.sql`). The check runs each new file twice.
 - Wrap changes in `begin; … commit;` so a failure leaves nothing half done.
 - Don't edit a migration that already ran: add a new one. A changed file
   doesn't run again (the record is by file name).

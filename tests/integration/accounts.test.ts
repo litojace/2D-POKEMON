@@ -1149,265 +1149,33 @@ it("accepts all six daily mission slots and rejects invalid reroll requests befo
   expect(slots).toHaveLength(6);
 });
 
-it("passes farm actions and leaf trades to the database only when the request is well formed", async () => {
+it("has no Farm, Bistro or Gold Leaves routes any more", async () => {
   const player = accounts.add(false);
-  const calls: [string, Record<string, unknown>][] = [];
-  accounts.provider.rpc = async (_token, name, args) => {
-    calls.push([name, args]);
-    return name === "arena_farm_act"
-      ? { farm: {}, results: [{ ok: true }] }
-      : { coins: 0 };
+  const calls: string[] = [];
+  accounts.provider.rpc = async (_token, name) => {
+    calls.push(name);
+    return {};
   };
-  const send = (path: string, body?: unknown, token = player.token) =>
+  const send = (path: string, body?: unknown) =>
     fetch(`${url}${path}`, {
       method: body === undefined ? "GET" : "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${player.token}`,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-  const request = "6f1c2b9e-3a4d-4c5e-8f60-718293a4b5c6";
-  expect((await send("/api/farm")).status).toBe(200);
-  expect(
-    (
-      await send("/api/farm/act", {
-        request,
-        actions: [
-          { a: "plant", plot: 0, crop: "wheat" },
-          { a: "sell", crop: "wheat", mutation: "", qty: 3 },
-          { a: "upgrade-barn" },
-          { a: "catch", plot: 2, tool: "net" },
-          { a: "harvest", plot: 3, tool: "sickle" },
-          { a: "buy-tool", tool: "sprinkler" },
-          { a: "hire-dog", dog: "gold", days: 3 },
-          { a: "shoo", plot: 4 },
-          { a: "farmer", id: "lumoth" },
-          { a: "perk" },
-          { a: "decor-place", item: "lamp", x: 100, y: 900, flip: true },
-          { a: "decor-move", piece: 7, x: 110, y: 900 },
-          { a: "decor-store", piece: 7 },
-          { a: "buy-pasture" },
-          { a: "milk" },
-          { a: "sell-milk", qty: 2 },
-          { a: "buy-bakery" },
-          { a: "buy-bake-slot" },
-          { a: "bake", recipe: "carrotcake" },
-          { a: "bake-collect", slot: 4 },
-          { a: "bake-rush", slot: 1 },
-          { a: "sell-good", good: "bread", qty: 3 },
-          { a: "buy-coop" },
-          { a: "buy-hen" },
-          { a: "feed-hen", hen: 0 },
-          { a: "collect-egg", hen: 8 },
-          { a: "sell-eggs", qty: 3 },
-          { a: "buy-cow" },
-          { a: "milk", cow: 2 },
-        ],
-      })
-    ).status,
-  ).toBe(200);
-  expect((await send("/api/leaves/trade", { lots: 2 })).status).toBe(200);
-  expect((await send("/api/leaves/trade", { lots: 12 })).status).toBe(200);
-  expect(calls).toEqual([
-    ["arena_farm", {}],
-    [
-      "arena_farm_act",
-      {
-        p_request: request,
-        p_actions: [
-          { a: "plant", plot: 0, crop: "wheat" },
-          { a: "sell", crop: "wheat", mutation: "", qty: 3 },
-          { a: "upgrade-barn" },
-          { a: "catch", plot: 2, tool: "net" },
-          { a: "harvest", plot: 3, tool: "sickle" },
-          { a: "buy-tool", tool: "sprinkler" },
-          { a: "hire-dog", dog: "gold", days: 3 },
-          { a: "shoo", plot: 4 },
-          { a: "farmer", id: "lumoth" },
-          { a: "perk" },
-          { a: "decor-place", item: "lamp", x: 100, y: 900, flip: true },
-          { a: "decor-move", piece: 7, x: 110, y: 900 },
-          { a: "decor-store", piece: 7 },
-          { a: "buy-pasture" },
-          { a: "milk" },
-          { a: "sell-milk", qty: 2 },
-          { a: "buy-bakery" },
-          { a: "buy-bake-slot" },
-          { a: "bake", recipe: "carrotcake" },
-          { a: "bake-collect", slot: 4 },
-          { a: "bake-rush", slot: 1 },
-          { a: "sell-good", good: "bread", qty: 3 },
-          { a: "buy-coop" },
-          { a: "buy-hen" },
-          { a: "feed-hen", hen: 0 },
-          { a: "collect-egg", hen: 8 },
-          { a: "sell-eggs", qty: 3 },
-          { a: "buy-cow" },
-          { a: "milk", cow: 2 },
-        ],
-      },
-    ],
-    ["arena_trade_leaves", { p_lots: 2 }],
-    ["arena_trade_leaves", { p_lots: 12 }],
-  ]);
-  // The client can't pick a time, a price or a balance, or send junk.
-  for (const body of [
-    { request: "not-a-uuid", actions: [{ a: "harvest", plot: 1 }] },
-    { request, actions: [] },
-    { request, actions: [{ a: "harvest", plot: 50 }] },
-    { request, actions: [{ a: "harvest", plot: 1, now: "2030-01-01" }] },
-    { request, actions: [{ a: "sell", crop: "wheat", qty: 1, price: 999 }] },
-    { request, actions: [{ a: "teleport" }] },
-    { request, actions: [{ a: "buy-tool", tool: "tractor" }] },
-    { request, actions: [{ a: "hire-dog", dog: "wolf", days: 1 }] },
-    { request, actions: [{ a: "hire-dog", dog: "gold", days: 2 }] },
-    { request, actions: [{ a: "farmer", id: "notachampion" }] },
-    { request, actions: [{ a: "decor", slot: 1, item: "lamp" }] },
-    {
-      request,
-      actions: [{ a: "decor-place", item: "Lamp;drop", x: 100, y: 900 }],
-    },
-    {
-      request,
-      actions: [{ a: "decor-place", item: "lamp", x: 100.5, y: 900 }],
-    },
-    {
-      request,
-      actions: [{ a: "decor-place", item: "lamp", x: 99999, y: 900 }],
-    },
-    { request, actions: [{ a: "decor-move", piece: -1, x: 100, y: 900 }] },
-    {
-      request,
-      actions: [{ a: "decor-move", piece: 7, x: 100, y: 900, flip: "yes" }],
-    },
-    { request, actions: [{ a: "catch", plot: 1, area: 9 }] },
-    // The Bakery: no times, prices or bad ids from the client.
-    { request, actions: [{ a: "bake", recipe: "Bread;drop" }] },
-    { request, actions: [{ a: "bake", recipe: "bread", readyAt: "2020" }] },
-    { request, actions: [{ a: "bake-collect", slot: 5 }] },
-    { request, actions: [{ a: "bake-collect", slot: 1.5 }] },
-    { request, actions: [{ a: "bake-collect", slot: "1" }] },
-    { request, actions: [{ a: "sell-good", good: "bread", qty: 1, price: 9 }] },
-    { request, actions: [{ a: "buy-bake-slot", slots: 5 }] },
-    { request, actions: [{ a: "bake-rush", slot: 0, cost: 1 }] },
-    { request, actions: [{ a: "bake-rush", slot: -1 }] },
-    { request, actions: [{ a: "feed-hen", hen: 9 }] },
-    { request, actions: [{ a: "milk", cow: 5 }] },
-    { request, actions: [{ a: "collect-egg", hen: 1.5 }] },
-    { request, actions: [{ a: "feed-hen", hen: 0, eggAt: "2030-01-01" }] },
-    { request, actions: [{ a: "plant", plot: 1, crop: "Wheat;drop" }] },
-    { request, actions: [{ a: "harvest", plot: 1 }], leaves: 1e9 },
-    {
-      request,
-      actions: Array.from({ length: 61 }, () => ({ a: "water", plot: 1 })),
-    },
-  ])
-    expect((await send("/api/farm/act", body)).status).toBe(400);
-  for (const body of [
-    { lots: 0 },
-    { lots: 13 },
-    { lots: 1.5 },
-    {},
-    { lots: 1, coins: 5 },
-  ])
-    expect((await send("/api/leaves/trade", body)).status).toBe(400);
-  // Orders: a slot 0–2 and deliver/skip, nothing else.
-  expect(
-    (await send("/api/farm/order", { request, slot: 1, kind: "skip" })).status,
-  ).toBe(200);
-  for (const body of [
-    { request, slot: 3, kind: "skip" },
-    { request, slot: 1, kind: "steal" },
-    { request, slot: 1, kind: "deliver", leaves: 999 },
-    { request: "x", slot: 1, kind: "skip" },
-  ])
-    expect((await send("/api/farm/order", body)).status).toBe(400);
-  for (const body of [
-    { request, crop: "Wheat" },
-    { request, crop: "wheat", stars: 5 },
-    { request: "x", crop: "wheat" },
-  ])
-    expect((await send("/api/farm/master", body)).status).toBe(400);
-  expect(calls.pop()).toEqual([
-    "arena_farm_order",
-    { p_request: request, p_slot: 1, p_kind: "skip" },
-  ]);
-  // Friends' farms (migration 047): an id, and only help, sneak or prank.
-  const friend = "0b0e4c6a-1d2f-4a3b-9c8d-7e6f5a4b3c2d";
-  expect((await send("/api/farm/friends")).status).toBe(200);
-  expect((await send(`/api/farm/visit/${friend}`)).status).toBe(200);
-  expect((await send("/api/farm/visit/not-an-id")).status).toBe(400);
-  expect(
-    (
-      await send("/api/farm/visit/act", {
-        request,
-        friend,
-        actions: [
-          { a: "sneak", plot: 3 },
-          { a: "prank", plot: 4 },
-        ],
-      })
-    ).status,
-  ).toBe(200);
-  for (const body of [
-    { request, friend: "x", actions: [{ a: "water", plot: 1 }] },
-    { request, friend, actions: [{ a: "harvest", plot: 1 }] },
-    { request, friend, actions: [{ a: "sneak", plot: 50 }] },
-    { request, friend, actions: [{ a: "sneak", plot: 1, qty: 9 }] },
-    {
-      request,
-      friend,
-      actions: Array.from({ length: 31 }, () => ({ a: "water", plot: 1 })),
-    },
-  ])
-    expect((await send("/api/farm/visit/act", body)).status).toBe(400);
-  expect(calls.splice(-3)).toEqual([
-    ["arena_farm_friends", {}],
-    ["arena_farm_friend", { p_friend: friend }],
-    [
-      "arena_farm_friend_act",
-      {
-        p_request: request,
-        p_friend: friend,
-        p_actions: [
-          { a: "sneak", plot: 3 },
-          { a: "prank", plot: 4 },
-        ],
-      },
-    ],
-  ]);
-  expect((await send("/api/farm", undefined, "invalid")).status).toBe(401);
-  expect(
-    (
-      await send(
-        "/api/farm/act",
-        { request, actions: [{ a: "upgrade-barn" }] },
-        "invalid",
-      )
-    ).status,
-  ).toBe(401);
-  expect(calls).toHaveLength(4);
-  // Every champion in the roster can be your farmer, the newest ten too.
-  for (const id of [
-    "pangrove",
-    "mossloth",
-    "coilemur",
-    "pyranda",
-    "glacelle",
-    "halcyra",
-    "sunbara",
-    "astrabun",
-    "wombolder",
-    "shadopus",
-  ])
-    expect(
-      (
-        await send("/api/farm/act", {
-          request: crypto.randomUUID(),
-          actions: [{ a: "farmer", id }],
-        })
-      ).status,
-      id,
-    ).toBe(200);
+  // Removed in 20261119190000_remove_farm_bistro_leaves: they reach nothing.
+  for (const [path, body] of [
+    ["/api/farm", undefined],
+    ["/api/farm/act", { request: crypto.randomUUID(), actions: [] }],
+    ["/api/farm/friends", undefined],
+    ["/api/farm/invite", { code: "0123ABCD" }],
+    ["/api/bistro", undefined],
+    ["/api/bistro/act", { request: crypto.randomUUID(), actions: [] }],
+    ["/api/bistro/friends", undefined],
+    ["/api/leaves/trade", { lots: 2 }],
+  ] as const)
+    expect((await send(path, body)).status, path).toBe(404);
+  expect(calls).toEqual([]);
 });

@@ -459,14 +459,14 @@ battles at 61–107 fps with frameP95 19–33 ms: fast frames mixed with slow
 ones.
 
 `frame-cap.ts` holds the battle (wrapping Phaser's step from `postBoot`),
-the Plaza, the Farm and the Bistro to about 60 fps on screens of 100 Hz or
+the Plaza to about 60 fps on screens of 100 Hz or
 more, on every system (iPhones with ProMotion too, where the browser runs
 pages at 120). It learns the refresh from the frames themselves and draws
 once about 1/60 s has passed since the last frame drawn: every other
 refresh at 120 Hz, never two skipped in a row, and a late frame at once.
 Skipped frames' time goes to the next frame drawn, so the game's clocks
 (inputs, animation) keep real time. A 90 Hz screen is left alone: a cap
-there means 45 fps or an uneven 60. Low in the Plaza, Farm and Bistro keeps
+there means 45 fps or an uneven 60. Low in the Plaza keeps
 its 30 fps. Reports now carry the screen's refresh rate (`hz`), shown
 under Device, so a capped 120 Hz phone can be told from a 60 Hz one. It is
 left out when the measure cannot be a screen's (below 30 or above 250 Hz):

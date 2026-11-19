@@ -5,7 +5,7 @@
  * an edge you stood at the side of the screen, and the last strip of the
  * map was bare grass. As town builders do it (Hay Day, Township), the world
  * goes on past where you can walk: a river with a far bank to the north,
- * woods west and east, the farm's fields, barn and windmill to the south.
+ * woods west and east, fields, a barn and a windmill to the south.
  * The camera may look a little way past the edge (PLAZA_OUT), never past
  * what is painted (PLAZA_MARGIN), and the zoom only ever shows what is built.
  *
@@ -106,7 +106,7 @@ export const PLAZA_REACH = {
   x0: 30,
   x1: W - 30,
   y0: 110,
-  /** The farthest south at x: through the farm gate a little further. */
+  /** The farthest south at x: through the south gate a little further. */
   y1: (x: number) =>
     Math.abs(x - PLAZA_GATE.x) <= 62 ? PLAZA_GATE.y + 30 : PLAZA_GATE.y,
 };
@@ -229,8 +229,8 @@ function rand(seed: number) {
 }
 /** The river along the north edge (ground y), and its two footbridges. */
 export const RIVER = { y0: -150, y1: -8, bridges: [960, 1760] } as const;
-/** The farm road south from the gate, and the cows' paddock. */
-export const FARM = {
+/** The country road south from the gate, and the cows' paddock. */
+export const FIELDS = {
   road: { x0: PLAZA_GATE.x - 52, x1: PLAZA_GATE.x + 52 },
   paddock: { x0: 2180, x1: 2640, y0: 1760, y1: 1930 },
 } as const;
@@ -286,7 +286,7 @@ function build(): SurroundProp[] {
       }
     }
   }
-  // South: the farm the gate leads to.
+  // South: the fields south of the gate.
   out.push(
     { kind: "barn", x: 720, y: 1935, s: 1, v: 0 },
     { kind: "mill", x: 1980, y: 1965, s: 1, v: 0 },

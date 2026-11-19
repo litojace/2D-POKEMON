@@ -33,16 +33,30 @@ export const PLAZA = {
   /** Tripping over a hurdle you didn't jump. */
   stunSeconds: 0.45,
   emoteSeconds: 2.6,
-  /** Volt Boba: Gold Leaves, speed and how long. */
-  boba: { leaves: 10, speed: 1.3, seconds: 30 },
-  /** Treats (migration 049): at most one throw this often (seconds). */
+  /** Volt Boba (free): speed and how long. */
+  boba: { speed: 1.3, seconds: 30 },
+  /** Treats: at most one throw this often (seconds). */
   treatSeconds: 1.5,
+  /** Free treats a Pacific day (migration 20261119190000_remove_farm_bistro_leaves). */
+  treatsDaily: 10,
 } as const;
+/** The treats, thrown in this order through the day (the database's list). */
+export const PLAZA_TREATS = [
+  { id: "candy", name: "a candy", color: "#ff6fae" },
+  { id: "cupcake", name: "a cupcake", color: "#ffb3d1" },
+  { id: "donut", name: "a donut", color: "#ffb04a" },
+  { id: "lollipop", name: "a lollipop", color: "#8fd7ff" },
+  { id: "cookie", name: "a cookie", color: "#d9a066" },
+] as const;
+export type PlazaTreatId = (typeof PLAZA_TREATS)[number]["id"];
+export const PLAZA_TREAT_BY_ID: Record<string, (typeof PLAZA_TREATS)[number]> =
+  Object.fromEntries(PLAZA_TREATS.map((t) => [t.id, t]));
 /** A treat thrown in the Plaza, sent to everyone in that Plaza copy. */
 export interface PlazaTreat {
   /** The thrower's walker id. */
   id: number;
-  crop: string;
+  /** Which treat (PLAZA_TREATS). */
+  treat: string;
   x: number;
   y: number;
 }
@@ -986,8 +1000,7 @@ export const ORB_SHOWER = {
   gravity: 600,
   catchHeight: 40,
   catchRadius: 34,
-  /** Gold Leaves per orb, and the most orbs that pay per shower and per Pacific day. */
-  leaves: 2,
+  /** The most orbs that count per shower and per Pacific day (toward the orbs quest). */
   perShower: 10,
   perDay: 50,
 } as const;
@@ -1009,13 +1022,14 @@ export function orbHeight(ms: number) {
   return Math.max(0, ORB_SHOWER.height - 0.5 * ORB_SHOWER.gravity * t * t);
 }
 
-/* ---------- Plaza today: daily quests paid in Gold Leaves ---------- */
+/* ---------- Plaza today: daily quests paid in shop coins (the database's
+   arena_plaza_quests(), migration 20261119190000_remove_farm_bistro_leaves) ---------- */
 export const PLAZA_QUESTS = [
-  { id: "goal", text: "Score a goal on the pitch", max: 1, leaves: 30 },
-  { id: "lap", text: "Run a lap in under 30 s", max: 1, leaves: 40 },
-  { id: "cheers", text: "15 cheers on the runway", max: 15, leaves: 30 },
-  { id: "orbs", text: "Catch 10 falling orbs", max: 10, leaves: 25 },
-  { id: "photo", text: "Use the Photo Spot", max: 1, leaves: 15 },
+  { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 2 },
+  { id: "lap", text: "Run a lap in under 30 s", max: 1, coins: 2 },
+  { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 2 },
+  { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 1 },
+  { id: "photo", text: "Use the Photo Spot", max: 1, coins: 1 },
 ] as const;
 export type PlazaQuestId = (typeof PLAZA_QUESTS)[number]["id"];
 /** A lap under this time completes the lap quest. */
@@ -1038,7 +1052,7 @@ export const PLAZA_SPOTS = [
     x: PLAZA_CAFE.x,
     y: PLAZA_CAFE.y + 40,
     r: 110,
-    label: "Volt Boba · 10",
+    label: "Volt Boba",
     icon: "boba",
   },
   {
@@ -1056,14 +1070,6 @@ export const PLAZA_SPOTS = [
     r: 110,
     label: "Leaderboard",
     icon: "trophy",
-  },
-  {
-    id: "gate",
-    x: PLAZA_GATE.x,
-    y: PLAZA_GATE.y - 40,
-    r: 110,
-    label: "Enter the Farm",
-    icon: "wheat",
   },
 ] as const;
 export type PlazaSpotId = (typeof PLAZA_SPOTS)[number]["id"];
@@ -1246,11 +1252,10 @@ export interface PlazaOrbs {
 export interface PlazaProgress {
   day: string;
   quests: Record<PlazaQuestId, { n: number; done: boolean }>;
-  /** Orbs that paid today and in this shower. */
+  /** Orbs that counted today. */
   orbsToday: number;
   bestLapMs: number | null;
   board: { name: string; ms: number; me?: boolean }[];
-  leaves: number;
 }
 /** Things everyone in a Plaza copy hears about (the feed). */
 export type PlazaNews =

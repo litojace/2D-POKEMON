@@ -196,7 +196,6 @@ export type LobbyAction =
   | "invite"
   | "leave-party"
   | "party-room"
-  | "farm"
   | "guide"
   | "spire"
   | "more-play";
@@ -377,7 +376,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   let artKey: string | undefined;
   // The selected fighter moves with the same live rig as the Fighters roster
   // (shop-preview.ts, "selection" framing) over its still artwork. Low
-  // graphics keeps the still artwork, as in the Plaza and the Farm.
+  // graphics keeps the still artwork, as in the Plaza.
   let rig: ShopPreviewHandle | undefined;
   let rigLoading = false;
   let closed = false;
@@ -420,7 +419,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   <button type="button" class="lobby-play-button" id="lobby-play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8a1.1 1.1 0 0 0 1.7.93l10-6.4a1.1 1.1 0 0 0 0-1.86l-10-6.4A1.1 1.1 0 0 0 8 5.6z"/></svg><span>PLAY</span></button>
 </div>`;
   document.body.append(layer);
-  // Each hub scene (Lobby, Plaza, Farm) fades in as you switch to it.
+  // Each hub scene (Lobby, Plaza) fades in as you switch to it.
   fadeIn([layer], 260);
   document.body.classList.add("hub-screen");
   const $ = <T extends HTMLElement>(id: string) =>
@@ -495,7 +494,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       ) || 0) + 6;
     for (const e of Array.from(
       document.querySelectorAll(
-        ".hub-scenes, #account-profile, #account-coins, #account-leaves, #home-settings, .lobby-party-bar:not([hidden])",
+        ".hub-scenes, #account-profile, #account-coins, #home-settings, .lobby-party-bar:not([hidden])",
       ),
     )) {
       const r = e.getBoundingClientRect();
@@ -665,8 +664,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       });
   };
   /**
-   * Graphics changed (Settings, or Auto settling on Low after a slow Plaza or
-   * Farm): the fighters follow at once. They were only set up when the
+   * Graphics changed (Settings, or Auto settling on Low after a slow
+   * Plaza): the fighters follow at once. They were only set up when the
    * Lobby opened or the fighter changed, so a Lobby opened on Low stayed
    * still artwork after picking High (owner, iPad Pro 13" M4, 17 Nov 2026).
    */
@@ -914,8 +913,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       removeEventListener("resize", fitSoon);
       layer.removeEventListener("keydown", onKey);
       layer.remove();
-      if (!document.querySelector(".farm-layer"))
-        document.body.classList.remove("hub-screen");
+      document.body.classList.remove("hub-screen");
     },
   };
 }

@@ -7,14 +7,11 @@ import {
   createRoom,
   inside,
 } from "./helpers";
-import { fakeFarm } from "./farm-fake";
-import { fakeBistro } from "./bistro-fake";
 
 /**
  * In-game chat on phones (chat/chat-ui.ts, docs/chat-plan.md):
  *
- * - the chat button sits 12 px right of the player card (or the Farm's and
- *   the Bistro's badge) on every hub scene, clear of the scene switch, at
+ * - the chat button sits 12 px right of the player card on every hub scene, clear of the scene switch, at
  *   the four landscape sizes;
  * - the drawer opens from the left and leaves PLAY free; lines, quick chips
  *   and the typing box work, and a typed line never becomes markup;
@@ -53,7 +50,7 @@ const box = async (page: Page, selector: string) =>
   (await page.locator(selector).first().boundingBox())!;
 
 /** The button beside the card, the switch clear of both. */
-/** Switch hub scene (a script click: the Farm can keep the page busy). */
+/** Switch hub scene (a script click: a scene opening can keep the page busy). */
 const scene = (page: Page, name: string) =>
   page.evaluate(
     (n) =>
@@ -100,14 +97,10 @@ test("chat on a 568x320 phone: no room beside the card, so the button sits under
   });
   try {
     await openHub(page);
-    await fakeFarm(page);
-    await fakeBistro(page);
     await page.evaluate(() => localStorage.setItem("ea-plaza-help", "1"));
     for (const [name, card] of [
       ["lobby", "#account-profile"],
       ["plaza", "#account-profile"],
-      ["farm", "#fm-badge"],
-      ["bistro", "#bs-badge"],
     ]) {
       await scene(page, name);
       await expect(page.locator(card)).toBeVisible({ timeout: 30_000 });
@@ -123,7 +116,6 @@ test("chat on a 568x320 phone: no room beside the card, so the button sits under
               card,
               "#hub-scenes",
               "#account-coins",
-              "#account-leaves",
               "#home-settings",
             ]
               .map((s) => [s, r(s)] as const)
@@ -215,18 +207,10 @@ for (const size of SIZES)
         };
       });
       await checkButton(page, "#account-profile");
-      await fakeFarm(page);
-      await fakeBistro(page);
       await page.evaluate(() => localStorage.setItem("ea-plaza-help", "1"));
       await scene(page, "plaza");
       await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
       await checkButton(page, "#account-profile");
-      await scene(page, "farm");
-      await expect(page.locator("#fm-badge")).toBeVisible({ timeout: 30_000 });
-      await checkButton(page, "#fm-badge");
-      await scene(page, "bistro");
-      await expect(page.locator(".bistro-layer .bs-cv")).toBeVisible();
-      await checkButton(page, "#bs-badge");
       await scene(page, "lobby");
       await expect(page.locator("#lobby-play")).toBeVisible();
 

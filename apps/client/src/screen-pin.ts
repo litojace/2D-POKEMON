@@ -1,8 +1,8 @@
 import { isScrollLocked } from "./scroll-lock";
 
 /**
- * Keep a fixed-screen page (the hub: Lobby, Plaza, Farm, Bistro and their
- * panels; a battle) at the top of the window.
+ * Keep a fixed-screen page (the hub: Lobby, Plaza and their panels; a
+ * battle) at the top of the window.
  *
  * Those screens are exactly the window and never scroll, but iPhone and
  * iPad Safari still move the page: the on-screen keyboard lifts it to show

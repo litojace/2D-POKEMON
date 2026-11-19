@@ -122,7 +122,6 @@ export async function layoutProblems(
       add("profile", "#account-profile");
       add("scenes", "#hub-scenes");
       add("coins", "#account-coins > *");
-      add("leaves", "#account-leaves > *");
       add("settings", "#home-settings");
       add("menu", ".header-menu > summary");
       add("rail", ".lobby-rail");

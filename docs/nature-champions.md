@@ -90,8 +90,8 @@ bubbles count as hostile ground for other bots, which path around them.
   stranded Tidewyrm there 1 s longer, Overgrowth smothers Emberwing's fires,
   and allies in Sloth Time stay awake against Somnara. See
   [raid-roster-design.md](raid-roster-design.md) §6.
-- **Shop, farm and database**: unchanged by the rebuild (eight skins each,
-  Pangrove farms with Night Stalker and Mossloth with Early Sun; migrations
+- **Shop and database**: unchanged by the rebuild (eight skins each;
+  their farm perks went with the Farm in Nov 2026; migrations
   [070](../supabase/migrations/070_eighteen_champions.sql) and
   [071](../supabase/migrations/071_nature_void_knights_and_cyber.sql)). No new
   migration: the kits live in code.

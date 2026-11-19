@@ -33,7 +33,6 @@ async function boxes(page: Page) {
     add("profile", document.querySelector("#account-profile"));
     add("scenes", document.querySelector("#hub-scenes"));
     add("coins", document.querySelector("#account-coins > *"));
-    add("leaves", document.querySelector("#account-leaves > *"));
     add("menu", document.querySelector(".header-menu > summary"));
     add("rail", document.querySelector(".lobby-rail"));
     add("party", document.querySelector(".lobby-party"));
@@ -82,9 +81,11 @@ for (const viewport of VIEWPORTS) {
       await expect(
         page.locator('#hub-scenes [data-hub-scene="lobby"]'),
       ).toHaveAttribute("aria-pressed", "true");
+      // Lobby and Plaza only (the Farm and the Bistro are gone).
+      await expect(page.locator("#hub-scenes [data-hub-scene]")).toHaveCount(2);
       await expect(
         page.locator('#hub-scenes [data-hub-scene="farm"]'),
-      ).toHaveCount(1);
+      ).toHaveCount(0);
       await snap(page, info, `lobby-${viewport.width}x${viewport.height}`);
 
       // Nothing overlaps and everything stays on screen.
@@ -169,7 +170,6 @@ for (const viewport of VIEWPORTS) {
             JSON.stringify({
               ...body,
               balance: 9999999,
-              leaves: { ...body.leaves, balance: 9999999 },
               journey: { ...body.journey, xp: 431625 },
             }),
             { headers: { "Content-Type": "application/json" } },
@@ -182,7 +182,6 @@ for (const viewport of VIEWPORTS) {
         "aria-label",
         /9,999,999/,
       );
-      await expect(page.locator("#account-leaves")).toContainText("10M");
       await expect(page.locator("#account-profile .nav-level")).toHaveText(
         "Lv 100",
       );
@@ -980,33 +979,29 @@ test("Invite a friend says In party and Invited for friends already asked", asyn
   });
   try {
     const page = await context.newPage();
-    const errors = await openLobby(page);
     const me = "11111111-1111-4111-8111-111111111111",
       pal = "33333333-3333-4333-8333-333333333333",
       asked = "77777777-7777-4777-8777-777777777777",
       free = "88888888-8888-4888-8888-888888888888";
-    await page.evaluate(
+    // From the first load (the harness's own stub, fake-api.ts): the Lobby
+    // reads the friends list as it opens and keeps that copy for a while
+    // (fetchCopy), so a stub put in later isn't asked.
+    await page.addInitScript(
       (ids) => {
-        const fetch = window.fetch.bind(window);
-        window.fetch = async (input, init) =>
-          String(input).includes("/api/friends")
-            ? new Response(
-                JSON.stringify({
-                  code: "ABCDEF12",
-                  friends: ids.map((id, i) => ({
-                    id,
-                    name: ["Pal", "Asked", "Free"][i],
-                    online: true,
-                  })),
-                  incoming: [],
-                  outgoing: [],
-                }),
-                { headers: { "Content-Type": "application/json" } },
-              )
-            : fetch(input, init);
+        (window as any).__friends = {
+          code: "ABCDEF12",
+          friends: ids.map((id, i) => ({
+            id,
+            name: ["Pal", "Asked", "Free"][i],
+            online: true,
+          })),
+          incoming: [],
+          outgoing: [],
+        };
       },
       [pal, asked, free],
     );
+    const errors = await openLobby(page);
     await page.evaluate(
       ([me, pal, asked]) =>
         (window as any).__sock.fire("party", {

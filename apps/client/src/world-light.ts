@@ -1,5 +1,5 @@
 /**
- * Light for the hub's 2D worlds (Plaza, Farm): a night light map that keeps
+ * Light for the hub's 2D worlds (the Plaza): a night light map that keeps
  * the true colours under lamps instead of washing them out.
  *
  * It draws into an offscreen canvas at half the screen's resolution (the

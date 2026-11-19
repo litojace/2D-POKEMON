@@ -658,11 +658,6 @@
   height: 1.35em;
   vertical-align: 0;
 }
-.plaza-layer .pz-interact .ico.leaf {
-  width: 1.05em;
-  height: 1.05em;
-  margin-left: -0.25em;
-}
 .plaza-layer .pz-interact span {
   line-height: 1;
 }
@@ -763,10 +758,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
-}
-.plaza-layer .pz-interact > span .ico.leaf {
-  margin-left: 0.15em;
-  vertical-align: -0.17em;
 }
 .plaza-layer .pz-interact kbd {
   flex: none;
@@ -986,7 +977,7 @@
   flex: none;
   overflow: visible;
 }
-.plaza-layer .ico.leaf {
+.plaza-layer .ico.coin {
   width: 1.05em;
   height: 1.05em;
   vertical-align: -0.17em;

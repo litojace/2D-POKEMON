@@ -18,7 +18,7 @@ import { iconLabel } from "../menu-icons";
 /** A chat bubble's text is at most this wide; longer lines wrap. */
 const BUBBLE_TEXT_W = 150;
 import { syncHubGraphics } from "../hub-graphics";
-import { goldenLevel } from "../farm/farm-feel";
+import { goldenLevel } from "../hub-art/day-light";
 import { NightLight } from "../world-light";
 import {
   ORB_SHOWER,
@@ -38,6 +38,7 @@ import {
   PLAZA_LEADER,
   PLAZA_LED,
   PLAZA_PADS,
+  PLAZA_TREAT_BY_ID,
   PLAZA_PATHS,
   PLAZA_PHOTO,
   PLAZA_PHOTO_CAMERA,
@@ -66,14 +67,12 @@ import {
   segmentDistance,
   trackPolar,
 } from "../../../../packages/shared/src/plaza";
-import { CROP_BY_ID } from "../../../../packages/shared/src/farm";
-import { GFX } from "../farm/farm-gfx";
+import { GFX } from "../hub-art/gfx";
 import {
-  farmIcon as I,
-  LEAF_ICON as L,
-  farmIconImage as ICON_IMG,
+  hubIcon as I,
+  hubIconImage as ICON_IMG,
   textWithIcon,
-} from "../farm/farm-icons";
+} from "../hub-art/icons";
 import {
   FrameRateProbe,
   graphicsSetting,
@@ -111,7 +110,7 @@ import {
 import {
   RIVER_LAMPS,
   paintSurroundings,
-  drawFarmLife,
+  drawFieldLife,
   drawRiver,
   drawRiverLights,
   liveDrawables,
@@ -145,7 +144,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     <div class="pz-joy" id="pz-joy"><div class="ring" id="pz-ring"><div class="knob" id="pz-knob"></div></div></div>
     <div class="pz-left">
       <button type="button" class="pz-round" id="pz-wheel-btn" aria-label="Quick chat">${I("smile")}<small>Chat</small></button>
-      <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat (T)">${I("berry")}<small id="pz-treats">0</small></button>
+      <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat (T)">${I("gift")}<small id="pz-treats">0</small></button>
       <button type="button" class="pz-round" id="pz-album-btn" aria-label="Photo album">${I("album")}<small>Album</small></button>
     </div>
     <div class="pz-wheel" id="pz-wheel" hidden>
@@ -176,7 +175,7 @@ export function openPlaza(options) {
   layer.tabIndex = -1;
   layer.innerHTML = PLAZA_HTML;
   document.body.append(layer);
-  // Each hub scene (Lobby, Plaza, Farm) fades in as you switch to it.
+  // Each hub scene (Lobby, Plaza) fades in as you switch to it.
   fadeIn([layer], 260);
   const screen = layer;
   const $ = (id) => layer.querySelector(`#${id}`);
@@ -288,7 +287,7 @@ export function openPlaza(options) {
   };
   /**
    * One meadow: the Plaza's ground and the world around it (the river's
-   * banks, the woods, the farm: plaza-surround*.ts) are painted as one
+   * banks, the woods, the fields: plaza-surround*.ts) are painted as one
    * picture, PLAZA_MARGIN past each edge, so there is no seam where a
    * separate picture would meet it. World (0, 0) is at (GM, GM) in it.
    */
@@ -1081,8 +1080,8 @@ export function openPlaza(options) {
           (progress?.orbsToday ?? 0) < ORB_SHOWER.perDay
         )
           FX.push({
-            text: `+${ORB_SHOWER.leaves}`,
-            leaf: 1,
+            text: "+1",
+            icon: "orb",
             x: orb.x,
             y: orb.y - 40,
             t: 0,
@@ -1108,7 +1107,7 @@ export function openPlaza(options) {
         (x) => {
           const n = q?.[x.id]?.n ?? 0,
             paid = q?.[x.id]?.done;
-          return `<div class="pz-q${paid ? " done" : ""}"><span>${x.text}</span><span class="rw">${paid ? "✓" : `+${x.leaves} ${L}`}</span><span class="bar"><i style="width:${(Math.min(n, x.max) / x.max) * 100}%"></i></span></div>`;
+          return `<div class="pz-q${paid ? " done" : ""}"><span>${x.text}</span><span class="rw">${paid ? "✓" : `+${x.coins} ${I("coin", "coin")}`}</span><span class="bar"><i style="width:${(Math.min(n, x.max) / x.max) * 100}%"></i></span></div>`;
         },
       ).join("")}`,
     );
@@ -1123,16 +1122,19 @@ export function openPlaza(options) {
     if (!p?.quests) return;
     const before = progress;
     progress = p;
+    let paid = false;
     if (before)
       for (const x of PLAZA_QUESTS)
         if (p.quests[x.id]?.done && !before.quests[x.id]?.done) {
           feed(
             null,
-            `Quest complete: <b>${esc(x.text)}</b> · +${x.leaves} ${L}`,
+            `Quest complete: <b>${esc(x.text)}</b> · +${x.coins} ${I("coin", "coin")}`,
           );
-          pzToast(`+${x.leaves} Gold Leaves`);
+          pzToast(`+${x.coins} coins`);
+          paid = true;
         }
-    if (typeof p.leaves === "number") options.onLeaves(p.leaves);
+    // Quests pay coins on the server: the top bar's balance follows.
+    if (paid) options.onCoins?.();
     renderQuests();
   }
   socket.on("plaza-progress", setProgress);
@@ -1725,9 +1727,8 @@ export function openPlaza(options) {
       x: CAFE.x,
       y: CAFE.y + 40,
       r: 110,
-      label: `Volt Boba · ${PLAZA.boba.leaves}`,
+      label: "Volt Boba · free",
       icon: "boba",
-      leaf: true,
       act: buyTea,
     },
     {
@@ -1762,21 +1763,12 @@ export function openPlaza(options) {
         );
       },
     },
-    {
-      id: "gate",
-      x: GATE.x,
-      y: GATE.y - 40,
-      r: 110,
-      label: "Enter the Farm",
-      icon: "wheat",
-      act: () => options.goFarm(),
-    },
   ];
   let near = null;
   function interact() {
     if (near) near.act();
   }
-  /* treats (migration 049): a regular crop from your barn, tossed for everyone */
+  /* treats: a free daily allowance (PLAZA.treatsDaily), tossed for everyone */
   let treats = 0,
     treatBusy = false;
   function setTreats(n) {
@@ -1785,8 +1777,7 @@ export function openPlaza(options) {
   }
   function throwTreat() {
     if (treatBusy) return;
-    if (treats < 1)
-      return pzToast("No crops to throw yet. Harvest some on the Farm.");
+    if (treats < 1) return pzToast("No treats left today. More tomorrow!");
     treatBusy = true;
     socket.timeout(5000).emit("plaza-treat", {}, (err, r) => {
       treatBusy = false;
@@ -1794,13 +1785,23 @@ export function openPlaza(options) {
       if (typeof r?.treats === "number") setTreats(r.treats);
       if (!r?.ok)
         return pzToast(r?.error ?? "Treats can't be thrown right now.");
-      pzToast(`Tossed ${CROP_BY_ID[r.crop]?.name ?? "a treat"} to everyone!`);
+      pzToast(
+        `Tossed ${PLAZA_TREAT_BY_ID[r.treat]?.name ?? "a treat"} to everyone!`,
+      );
     });
   }
   // Everyone in this Plaza sees a treat burst where it was thrown.
   const onTreat = (t) => {
     if (!t || typeof t.x !== "number") return;
-    burst(t.x, t.y, 70, "●", 18, CROP_BY_ID[t.crop]?.color ?? "#ff6fae", 1.2);
+    burst(
+      t.x,
+      t.y,
+      70,
+      "●",
+      18,
+      PLAZA_TREAT_BY_ID[t.treat]?.color ?? "#ff6fae",
+      1.2,
+    );
   };
   const onTreats = (t) => setTreats(t?.n ?? 0);
   socket.on("plaza-treat", onTreat);
@@ -1813,7 +1814,6 @@ export function openPlaza(options) {
     socket.timeout(5000).emit("plaza-act", { spot: "cafe" }, (err, r) => {
       bobaBusy = false;
       if (err) return pzToast("Volt Boba didn't answer. Try again.");
-      if (typeof r?.leaves === "number") options.onLeaves(r.leaves);
       if (!r?.ok) return pzToast(r?.error ?? "Volt Boba is closed right now.");
       P.boost = PLAZA.boba.seconds;
       burst(P.x, P.y, 60, "⚡", 10, "#ffd84a");
@@ -2308,7 +2308,7 @@ export function openPlaza(options) {
     setClass(el, "pz-event");
     setHtml(
       el,
-      `<span class="ic">${I("orb")}</span><span>Orb Shower · <b>${Math.max(0, Math.ceil((s.endsAt - now) / 1000))}s</b> left</span><small>+${ORB_SHOWER.leaves} ${L} per orb</small>`,
+      `<span class="ic">${I("orb")}</span><span>Orb Shower · <b>${Math.max(0, Math.ceil((s.endsAt - now) / 1000))}s</b> left</span><small>catch them for today's quest</small>`,
     );
     for (const o of orbs.values()) {
       const z = orbHeight(now - o.at);
@@ -3024,7 +3024,7 @@ export function openPlaza(options) {
     g.fillStyle = "#fff4d6";
     g.font = "800 22px 'Barlow Condensed', sans-serif";
     g.textAlign = "center";
-    g.fillText("THE FARM", x, y - 181);
+    g.fillText("THE FIELDS", x, y - 181);
   }
   const HK = PLAZA_SCALE.house;
   function drawHouse(g, h, n) {
@@ -3617,7 +3617,7 @@ export function openPlaza(options) {
      LED strings on wires: the square's ring between its lamps (as before),
      a garland on the stage truss and lights wound round its legs, festoons
      from the square out along the south and east paths, and bulbs on the
-     Photo Spot and Farm gate arches and along the stage's edge. At night
+     Photo Spot and south gate arches and along the stage's edge. At night
      each bulb glows with a pre-painted halo (one image draw a bulb) and
      twinkles; Low graphics keeps the bulbs and drops the halos, and
      reduced motion holds them steady. */
@@ -3721,7 +3721,7 @@ export function openPlaza(options) {
     const [E1, E2] = LAMPS.slice(12, 14);
     swag(top(LAMPS[7]), top(E1), { sag: 16 });
     swag(top(LAMPS[0]), top(E2), { sag: 16 });
-    // Arches: between the Photo Spot's flowers and the Farm gate's balls.
+    // Arches: between the Photo Spot's flowers and the south gate's balls.
     for (let i = 0; i < 14; i++) {
       const a = Math.PI + ((i + 0.5) / 14) * Math.PI;
       SPARKS.push({
@@ -3846,7 +3846,7 @@ export function openPlaza(options) {
           bx1 - bx0,
           by1 - by0,
         );
-      drawFarmLife(g, time, reduced, vx0, vy1, vx1);
+      drawFieldLife(g, time, reduced, vx0, vy1, vx1);
     }
     // Where a click sent you, on the ground under everyone.
     if (!photo) drawClickMark(g, time);
@@ -4276,8 +4276,8 @@ export function openPlaza(options) {
         g.strokeStyle = "#0b1020";
         g.strokeStyle = "#0b1020";
         g.fillStyle = "#ffd65b";
-        if (f.leaf)
-          textWithIcon(g, f.text, "leaf", f.x, f.y - k * 50 - 8, 24, true);
+        if (f.icon)
+          textWithIcon(g, f.text, f.icon, f.x, f.y - k * 50 - 8, 24, true);
         else {
           g.strokeText(f.text, f.x, f.y - k * 50);
           g.fillText(f.text, f.x, f.y - k * 50);
@@ -4304,7 +4304,7 @@ export function openPlaza(options) {
     }
     // day / night grading and lights
     const n = night();
-    // Golden hour, as on the Farm: the late sun warms the whole square.
+    // Golden hour: the late sun warms the whole square.
     const gold = low ? 0 : goldenLevel(tod) * (1 - n);
     if (gold > 0.01) {
       g.save();
@@ -4554,7 +4554,7 @@ export function openPlaza(options) {
       if (near) {
         if (ib.dataset.id !== near.id) {
           ib.dataset.id = near.id;
-          ib.innerHTML = `${I(near.icon)}<span>${near.label}${near.leaf ? L : ""}</span><kbd>E</kbd>`;
+          ib.innerHTML = `${I(near.icon)}<span>${near.label}</span><kbd>E</kbd>`;
         }
         ib.hidden = false;
       } else {
@@ -4572,7 +4572,7 @@ export function openPlaza(options) {
       }
       const lead = { x: P.vx * 0.25, y: P.vy * 0.2 };
       // Follows you a little past the Plaza's edges, onto the river, the
-      // woods and the farm, never past what is painted (plaza-surround.ts).
+      // woods and the fields, never past what is painted (plaza-surround.ts).
       const want = plazaCamClamp(P.x + lead.x, P.y - 40 + lead.y, NW, NH, Z);
       cam.x += (want.x - cam.x) * Math.min(1, dt * 5);
       cam.y += (want.y - cam.y) * Math.min(1, dt * 5);
@@ -4731,7 +4731,7 @@ export function openPlaza(options) {
 
   let away = false;
   return {
-    /** Behind the Lobby or the Farm: stop drawing and walking, kept as it is
+    /** Behind the Lobby: stop drawing and walking, kept as it is
      *  (the screen leaves the Plaza on the server meanwhile). */
     hide() {
       if (away) return;
@@ -4744,7 +4744,7 @@ export function openPlaza(options) {
       layer.style.display = "none";
       // Where memory is short (an iPhone), the painted ground (a 3300 × 2300
       // canvas, 30 MB, with the world around the Plaza) is painted again on return instead of kept behind
-      // the Lobby, the Farm or the Bistro, as the Bistro does its room.
+      // the Lobby.
       // (Once the page is idle, not in the tap that switched tabs.)
       if (memoryConstrained())
         idleRelease = requestIdle(() => {

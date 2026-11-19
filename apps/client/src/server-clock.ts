@@ -3,8 +3,7 @@
  * the server's time (`X-Server-Time`, apps/server/src/api-cors.ts); the hub's
  * countdowns (new daily picks and missions, the Daily Spark, weekly goals)
  * use serverNow() so a wrong device clock can't move them. Until the first
- * answer arrives it is the device clock. The farm keeps its own offset from
- * its `now` field, the same way.
+ * answer arrives it is the device clock.
  */
 let offset = 0;
 let known = false;
@@ -36,8 +35,8 @@ export function resetServerClock() {
 }
 
 /**
- * A server's clock from the times in its answers (the Bistro's and the
- * Farm's `now`, stamped while the request runs). Each answer bounds the
+ * A server's clock from the times in its answers (a `now` field, stamped
+ * while the request runs). Each answer bounds the
  * offset (server minus this device): at least `now - got` (the stamp came
  * before the answer arrived), at most `now - sent` (and after it was sent).
  * The clock goes by the tightest lower bound so far, so it doesn't jump with
