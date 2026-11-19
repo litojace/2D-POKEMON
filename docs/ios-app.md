@@ -90,7 +90,9 @@ for the website first (App ID, Services ID, key, Supabase provider). Then:
    `com.litojace.elementarena.web,com.litojace.elementarena`. Tokens from
    the app are issued to the bundle ID, and Supabase refuses ones for a
    client it doesn't list.
-3. **Database.** Run migrations 109, 110 and 111 in Supabase's SQL Editor.
+3. **Database.** Nothing to do: migrations 109, 110 and 111 already ran on
+   production (they are in `supabase/applied-baseline.txt`), and later ones
+   run on their own with each push to `main` ([auto-migrations.md](auto-migrations.md)).
 4. **Game server (Render, web service).** Add:
    - `APPLE_TEAM_ID`: your Team ID;
    - `APPLE_KEY_ID`: the Key ID of your Sign in with Apple key;
@@ -132,7 +134,10 @@ iOS 26 SDK) and Node 22.
 4. `npm run ios:open` opens Xcode. In the **App** target, **Signing &
    Capabilities**: pick your Team, check that **Sign in with Apple** is
    listed (it comes from `App.entitlements`), and let Xcode manage signing.
-5. Plug in an iPhone and press **Run**. Check: sign up, log in, guest play,
+5. Plug in an iPhone, unlock it and tap **Trust**. The first time, turn on
+   **Settings → Privacy & Security → Developer Mode** on the iPhone (it
+   restarts). Choose the iPhone in Xcode's device menu and press **Run**.
+   Check: sign up, log in, guest play,
    Sign in with Apple, a bot match, a two-phone match, the Plaza, switching
    away and back mid-match, and deleting an account made with Apple.
 
@@ -143,6 +148,10 @@ iOS 26 SDK) and Node 22.
 2. In Xcode, set the version (Marketing Version) and build number, choose
    **Any iOS Device**, then **Product → Archive → Distribute App → App
    Store Connect**. The build shows up in TestFlight after processing.
+   The project starts at version 1.0, build 1, which is right for the first
+   upload. Every later upload needs a higher build number (App target →
+   **General** → Identity), even for the same version: App Store Connect
+   refuses a build number it has seen.
 3. Fill in the listing:
    - **Privacy:** the privacy policy URL, `https://parena.litojace.com/privacy.html` (`apps/client/public/privacy.html`; the game links to it from the menu and the sign-in panel), and the privacy
      answers: email address and user ID (accounts), gameplay content
@@ -167,7 +176,15 @@ iOS 26 SDK) and Node 22.
    - **App Review notes:** a demo account (email and password), and that
      _Battle an AI bot_ plays a full match alone. The game server must be
      awake and healthy while Apple reviews.
-   - Screenshots from a 6.9-inch iPhone, in landscape.
+   - **Support URL:** `https://parena.litojace.com/support.html`
+     (`apps/client/public/support.html`). App Store Connect requires one.
+   - **Pricing:** Free. The app has no in-app purchases: selling coins was
+     looked at and put off until there are more players
+     ([iap-research.md](iap-research.md)). Free apps need no Paid Apps
+     Agreement, tax or banking forms.
+   - Screenshots in landscape, made by the script in
+     [app-store-screenshots.md](app-store-screenshots.md). App Store Connect
+     shows which iPhone sizes it requires.
 4. Submit for review.
 
 ## Account deletion and Apple
