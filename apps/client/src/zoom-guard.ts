@@ -87,8 +87,8 @@ export function setZoomLock(on: boolean) {
 }
 
 /**
- * The iPhone app is a game everywhere, not a page: its Plaza, Farm and Bistro
- * have touch controls too, and two quick taps there zoomed the whole game in
+ * The iPhone app is a game everywhere, not a page: its Plaza has touch
+ * controls too, and two quick taps there zoomed the whole game in
  * (owner, 19 Nov 2026). Capacitor only turns off pinch (its scroll-view
  * delegate), not WebKit's double-tap zoom, so the app keeps the viewport at
  * maximum-scale=1, user-scalable=no for good (a WKWebView honours it, unlike

@@ -1,5 +1,5 @@
 /**
- * Where the hub's scene switch (Lobby, Plaza, Farm, Bistro) sits in the top
+ * Where the hub's scene switch (Lobby, Plaza) sits in the top
  * bar. It is centred on the screen when it fits there; on narrow phones the
  * screen's middle runs into the coin pills (the player card on the left is
  * narrower than the pills on the right), so it moves to the middle of the
@@ -51,12 +51,12 @@ const TIGHT_TAB = 40;
 /**
  * Under the player card, for screens too narrow for the chat button beside
  * it: right under the card's right end, or else right of what sits under
- * the card (the Plaza's quests, the Bistro's Popularity). The first spot
+ * the card (the Plaza's quests). The first spot
  * whose middle and corners show only the scene behind is taken.
  */
 function chatBelowCard(card: DOMRect, size: DOMRect, chat: HTMLElement) {
   // Under the card's right end, or right of what sits under the card (the
-  // Plaza's quests, the Bistro's Popularity); 8 px under it, or 2 px where
+  // Plaza's quests); 8 px under it, or 2 px where
   // the screen is too short for that (the Lobby's stage starts close under
   // the card on a 320 px tall phone); last, the bottom left corner.
   const spots = [CHAT_GAP, 2].flatMap((gap) => [
@@ -131,14 +131,8 @@ export function watchSceneSwitch(nav: HTMLElement) {
     frame = 0;
     if (nav.hidden) return;
     const card = document.querySelector("#account-profile");
-    // The first thing right of the card: the coins, the leaves or the gear.
-    const pills = [
-      "#account-coins",
-      "#account-leaves",
-      "#home-settings",
-      // The Bistro shows its own coins instead.
-      "#bs-wallet",
-    ]
+    // The first thing right of the card: the coins or the gear.
+    const pills = ["#account-coins", "#home-settings"]
       .map((s) => document.querySelector(s)?.getBoundingClientRect())
       .filter((r): r is DOMRect => !!r && r.width > 0);
     const cardBox = card?.getBoundingClientRect();
@@ -189,7 +183,6 @@ export function watchSceneSwitch(nav: HTMLElement) {
       "#account-nav",
       "#account-profile",
       "#account-coins",
-      "#account-leaves",
       "#home-settings",
       "#chat-button",
     ]) {

@@ -235,7 +235,7 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
   );
   if (leavingHost) host.insertBefore(wrap, leavingHost);
   else host.append(wrap);
-  // The Lobby leaves the page (Plaza, Farm, a match): its screen closes too,
+  // The Lobby leaves the page (the Plaza, a match): its screen closes too,
   // so nothing keeps listening or drawing out of sight.
   const gone =
     host !== document.body && host.parentNode

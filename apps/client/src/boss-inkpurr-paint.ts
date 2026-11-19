@@ -7,8 +7,8 @@ import { INK_TRIMS } from "./boss-inkpurr-trims";
  * here runs per frame: boss-inkpurr-rig.ts draws all of it once into one
  * atlas at scene creation (buildInkAtlas) and then only places images.
  *
- * Plain canvas drawing code without types, like the farm painters
- * (farm-gfx.ts); the typed API is boss-inkpurr.ts.
+ * Plain canvas drawing code without types, like the hub painters
+ * (hub-art/gfx.ts); the typed API is boss-inkpurr.ts.
  *
  * Rig units: x = its left, y = up, z = forward; a view is a yaw about y with
  * a fixed 14 degree camera pitch. Screen = (x, -y).

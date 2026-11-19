@@ -77,38 +77,11 @@ import {
   aiLevelMark,
   type AiLevel,
 } from "./lobby-screen";
-// The Farm, the Bistro and the Plaza load when first wanted (hub-worlds.ts).
-// Their styles stay in the main stylesheet, in the same place as before.
-import type { FarmScreen, FarmScreenOptions } from "./farm/farm-screen";
-import { forgetFarms, prefetchFarm } from "./farm/farm-cache";
-import "./farm/farm.css";
-import type { BistroFriend, BistroHandle } from "./bistro/bistro-scene";
-import { clearKeptBistros } from "./bistro/bistro-kept";
-import "./bistro/bistro.css";
+// The Plaza loads when first wanted (hub-worlds.ts).
 import { worldLoader, type World } from "./hub-worlds";
-import type {
-  FarmActResult,
-  FarmHere,
-  FarmLikeResult,
-  FarmTourEntry,
-  FarmStall,
-  FarmStallResult,
-  FarmBalloon,
-  FarmBalloonResult,
-  FarmHelpList,
-  FarmHelpResult,
-  FarmGiftResult,
-  FarmGiftsState,
-  FarmFriend,
-  FarmOrderResult,
-  FarmState,
-  FarmVisit,
-  FarmVisitResult,
-} from "../../../packages/shared/src/farm";
 import {
   saveHubScene,
   savedHubScene,
-  sceneAvailable,
   sceneSwitchMarkup,
   type HubScene,
 } from "./hub-scene";
@@ -330,12 +303,6 @@ import { lockAppZoom, watchBattleZoom } from "./zoom-guard";
 import { guardTouchHold } from "./touch-hold";
 import { KO_FEEL, hitFeel, hitStrength, rumble } from "./game-feel";
 import { captureInvite, clearInvite, pendingInvite } from "./invite";
-import {
-  captureFarmInvite,
-  clearFarmInvite,
-  farmInviteUrl,
-  pendingFarmInvite,
-} from "./farm/farm-invite";
 import { lockScrollWhileOpen, setScrollLock } from "./scroll-lock";
 import { watchMenuMotion } from "./menu-motion";
 import {
@@ -1355,27 +1322,6 @@ void setupNativeShell(() => {
 watchCosmeticPreviews();
 // Remember a room from an invite link (?room=ABC123) before the first render.
 if (captureInvite()) inviteHinted = false;
-// A farm invite (?farm=CODE) waits until the new player is signed in.
-captureFarmInvite();
-let farmInviteSent = false;
-/** Claim a farm invite once the player is signed in (migration 057). */
-function claimFarmInvite() {
-  const code = pendingFarmInvite();
-  if (!code || farmInviteSent || !accountsUI?.account) return;
-  farmInviteSent = true;
-  clearFarmInvite();
-  void accountsUI
-    .api("/api/farm/invite", { code })
-    .then((r) => {
-      const res = r as { ok?: boolean; inviter?: string; error?: string };
-      if (res.ok)
-        toast(
-          `You and ${res.inviter} are now friends. Reach farm level 10 and you both get rewards!`,
-        );
-      else if (res.error) toast(res.error);
-    })
-    .catch(() => {});
-}
 let savingRoomPick = "";
 let lockAttempt = 0;
 /**
@@ -2403,9 +2349,7 @@ function renderGate() {
 }
 
 const WORLD_NAMES: Record<World, string> = {
-  farm: "Farm",
   plaza: "Plaza",
-  bistro: "Bistro",
 };
 // Light or full menus from the first screen on (ui/ui-effects.ts).
 syncUiEffects();
@@ -2476,7 +2420,7 @@ let plazaLow = false;
 let plazaRetry: ReturnType<typeof setTimeout> | undefined;
 let wantedPlazaClosed = false;
 /**
- * The hub (Lobby, Plaza, Farm): open whenever a signed-in, connected player
+ * The hub (Lobby, Plaza): open whenever a signed-in, connected player
  * is not in a room (and not about to resume or join one); closed otherwise.
  */
 function syncHub() {
@@ -2496,8 +2440,6 @@ function syncHub() {
   syncParty();
   syncLobby(hub && hubScene === "lobby");
   worldWait = null;
-  syncFarm(hub && hubScene === "farm", hub);
-  syncBistro(hub && hubScene === "bistro", hub);
   syncPlaza(hub && hubScene === "plaza", hub);
   renderWorldWait();
   // While the hub is idle, fetch the other worlds' code so they open at once
@@ -2513,8 +2455,6 @@ function syncHub() {
   if (hub) document.body.classList.add("hub-screen");
   syncChat(hub);
 }
-/** The farm whose Nearby chat this page is in (chat-farm). */
-let farmChatOwner: string | null = null;
 /** The chat button's place and channels (chat/chat-ui.ts). */
 function syncChat(hub: boolean) {
   const inRoom = !!myId && !!state;
@@ -2545,9 +2485,8 @@ function syncChat(hub: boolean) {
     room: inRoom && !state!.practice,
     // A 2v2 room's own side (docs/hidden-picks.md).
     team: inRoom && !state!.practice && state!.mode === "teams",
-    // Nearby: the Plaza's copy, or the farm you are on.
-    place:
-      hub && (hubScene === "plaza" || (hubScene === "farm" && !!farmChatOwner)),
+    // Nearby: the Plaza's copy.
+    place: hub && hubScene === "plaza",
     // Friends: anyone signed in with an account (guests have no friends).
     friend: !!accountsUI?.account && !accountsUI.account.guest,
   });
@@ -2570,7 +2509,7 @@ function syncChat(hub: boolean) {
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
 function syncPlaza(want: boolean, hub = want) {
   if (!want) {
-    // Behind the Lobby or the Farm the Plaza waits, drawn and kept (you are
+    // Behind the Lobby the Plaza waits, drawn and kept (you are
     // off it on the server, which keeps your spot); out of the hub it closes.
     if (plaza && hub) plaza.hide();
     else if (plaza) {
@@ -2626,7 +2565,6 @@ function syncPlaza(want: boolean, hub = want) {
     playerName: () => accountsUI.account?.displayName ?? "You",
     loadProgress: async () =>
       (await accountsUI.api("/api/plaza")) as PlazaProgress,
-    goFarm: () => setHubScene("farm"),
     isBlocked: (accountId) => accountsUI.isBlocked(accountId),
     // Emotes go through chat's Nearby channel (docs/chat-plan.md).
     quickChat: (quick: ChatQuick) =>
@@ -2676,7 +2614,7 @@ function syncPlaza(want: boolean, hub = want) {
       );
     },
     toast,
-    onLeaves: (balance) => accountsUI.setLeaves(balance),
+    onCoins: () => void accountsUI.loadEconomy(),
     onClose: (failed) => {
       plaza = undefined;
       if (wantedPlazaClosed) return;
@@ -2695,7 +2633,7 @@ function syncPlaza(want: boolean, hub = want) {
 async function showRaidBestiary() {
   await accountsUI.showRaids(state?.raid?.boss);
 }
-/** The hub's scenes (Lobby, Plaza, later Farm), switched from the top bar. */
+/** The hub's scenes (Lobby, Plaza), switched from the top bar. */
 let hubScene: HubScene = savedHubScene();
 let lobby: LobbyHandle | undefined;
 let lobbyFriends: { requests: number; online: number | null } = {
@@ -2716,9 +2654,8 @@ function syncHubScenes(hub: boolean) {
 }
 let placeSceneSwitch: (() => void) | undefined;
 function setHubScene(scene: HubScene) {
-  if (!sceneAvailable(scene) || scene === hubScene) return;
+  if (scene === hubScene) return;
   hubScene = scene;
-  if (scene === "farm" || scene === "bistro") guide.mark(scene);
   saveHubScene(scene);
   homeNavigation.close();
   syncHub();
@@ -2819,8 +2756,7 @@ const guide = createGuide({
   go: (step) => {
     if (step === "bot") void lobbyPlay("bot-easy");
     else if (step === "raid") void accountsUI.showRaids("grumblecrag", "party");
-    else if (step === "wear") void accountsUI.showWardrobe();
-    else setHubScene(step);
+    else void accountsUI.showWardrobe();
   },
   changed: () => syncLobby(!!lobby),
   toast: (text) => toast(text),
@@ -2846,217 +2782,6 @@ function syncLobby(want: boolean) {
     lobbyFriendsTimer = setInterval(() => void refreshLobbyFriends(), 60000);
   }
   lobby.update(lobbyView());
-}
-/** The Bistro (migration 068): the server's restaurant, next to the Farm. */
-let bistro: BistroHandle | undefined;
-let bistroOwner: string | undefined;
-function syncBistro(want: boolean, hub = want) {
-  // Another player now (or logged out): that bistro is not theirs.
-  if (bistro && bistroOwner !== accountsUI?.account?.id) {
-    bistro.close();
-    bistro = undefined;
-  }
-  if (!want) {
-    if (bistro) {
-      // Behind another hub tab the bistro waits, paused, as it is (guests,
-      // plates, coins); out of the hub (a match) it closes.
-      if (hub) bistro.hide();
-      else {
-        bistro.close();
-        bistro = undefined;
-      }
-      document.body.classList.remove("hub-bistro");
-      if (!document.querySelector(".lobby-layer"))
-        document.body.classList.remove("hub-screen");
-    }
-    return;
-  }
-  if (bistro) {
-    document.body.classList.add("hub-screen", "hub-bistro");
-    bistro.show();
-    return;
-  }
-  const code = worldCode("bistro");
-  if (!code) return;
-  document.body.classList.add("hub-screen", "hub-bistro");
-  bistroOwner = accountsUI.account?.id;
-  bistro = code.openBistro({
-    owner: bistroOwner,
-    api: {
-      load: () => accountsUI.api("/api/bistro"),
-      act: (request, actions) =>
-        accountsUI.api("/api/bistro/act", { request, actions }),
-      friends: async () =>
-        (await accountsUI.api("/api/bistro/friends")) as BistroFriend[],
-      visit: (id) =>
-        accountsUI.api(`/api/bistro/visit/${encodeURIComponent(id)}`),
-      visitAct: (friend, kind) =>
-        accountsUI.api("/api/bistro/visit/act", {
-          request: crypto.randomUUID(),
-          friend,
-          kind,
-        }),
-    },
-    onLeaves: (balance) => accountsUI.setLeaves(balance),
-    playerName: () => accountsUI.account?.displayName ?? "Your",
-    character: () => selected,
-    toast,
-    sound: (cue, step) => audio.farm(cue, step),
-    reduced: reducedMotion,
-    low: lowGraphics(),
-  });
-}
-/** The Farm scene (hub redesign phase 4): server state, server time. */
-let farmScreen: FarmScreen | undefined;
-let farmLow = false;
-let farmOwner: string | undefined;
-const farmLoad = async () => (await accountsUI.api("/api/farm")) as FarmState;
-function syncFarm(want: boolean, hub = want) {
-  const owner = accountsUI?.account?.id;
-  // Another player now (or logged out): that farm is not theirs.
-  if (farmScreen && farmOwner !== owner) {
-    farmScreen.close();
-    farmScreen = undefined;
-  }
-  if (!want) {
-    // Behind the Lobby or the Plaza the farm waits, paused, as it is; out of
-    // the hub (a match) it closes, so the battle has the device to itself.
-    if (hub) farmScreen?.hide();
-    else {
-      farmScreen?.close();
-      farmScreen = undefined;
-    }
-    // In the hub, the farm loads in the background (once) so it opens ready.
-    if (hub && owner) prefetchFarm(owner, farmLoad);
-    return;
-  }
-  if (farmScreen) {
-    farmScreen.show();
-    return;
-  }
-  const code = worldCode("farm");
-  if (!code) return;
-  farmOwner = owner;
-  farmLow = lowGraphics();
-  farmScreen = code.openFarmScreen({
-    owner,
-    reduced: reducedMotion,
-    low: farmLow,
-    sound: (cue, step) => audio.farm(cue, step),
-    gifts: async () =>
-      (await accountsUI.api("/api/farm/gifts")) as FarmGiftsState,
-    giftSend: async (friend) =>
-      (await accountsUI.api("/api/farm/gifts/send", {
-        friend,
-      })) as FarmGiftResult,
-    giftOpen: async (friend) =>
-      (await accountsUI.api("/api/farm/gifts/open", {
-        friend,
-      })) as FarmGiftResult,
-    inviteLink: (code) => farmInviteUrl(location.origin, code),
-    here: async (owner, emote) => {
-      // In chat's Nearby channel for this farm (once per farm).
-      const farm = owner ?? accountsUI.account?.id ?? null;
-      if (farm && farm !== farmChatOwner) {
-        farmChatOwner = farm;
-        void request("chat-farm", { owner: farm }).then((r) => {
-          if (!r.ok && farmChatOwner === farm) farmChatOwner = null;
-          syncHub();
-        });
-      }
-      return (await accountsUI.api("/api/farm/here", {
-        ...(owner ? { owner } : {}),
-        ...(emote ? { emote } : {}),
-      })) as FarmHere;
-    },
-    gone: async () => {
-      if (farmChatOwner) {
-        farmChatOwner = null;
-        void request("chat-farm", { owner: null });
-        syncHub();
-      }
-      await accountsUI.api("/api/farm/gone", {});
-    },
-    tour: async () =>
-      (await accountsUI.api("/api/farm/tour")) as FarmTourEntry[],
-    like: async (owner) =>
-      (await accountsUI.api("/api/farm/like", { owner })) as FarmLikeResult,
-    stall: async () => (await accountsUI.api("/api/farm/stall")) as FarmStall,
-    stallAct: async (action) =>
-      (await accountsUI.api("/api/farm/stall", {
-        request: crypto.randomUUID(),
-        ...action,
-      })) as FarmStallResult,
-    balloon: async () =>
-      (await accountsUI.api("/api/farm/balloon")) as FarmBalloon,
-    balloonAct: async (kind, slot) =>
-      (await accountsUI.api("/api/farm/balloon", {
-        request: crypto.randomUUID(),
-        kind,
-        ...(slot === undefined ? {} : { slot }),
-      })) as FarmBalloonResult,
-    help: async () => (await accountsUI.api("/api/farm/help")) as FarmHelpList,
-    helpFill: async (friend, slot) =>
-      (await accountsUI.api("/api/farm/help", {
-        request: crypto.randomUUID(),
-        friend,
-        slot,
-      })) as FarmHelpResult,
-    rainSound: (level) => audio.farmRainSound(level),
-    load: farmLoad,
-    act: async (actions) =>
-      (await accountsUI.api("/api/farm/act", {
-        request: crypto.randomUUID(),
-        actions,
-      })) as FarmActResult,
-    trade: async (lots) => {
-      await accountsUI.api("/api/leaves/trade", { lots });
-      await accountsUI.loadEconomy();
-    },
-    toast,
-    playerName: () => accountsUI.account?.displayName ?? "Your",
-    character: () => selected,
-    economy: () => accountsUI.economy ?? undefined,
-    onLeaves: (balance) => accountsUI.setLeaves(balance),
-    master: async (crop) =>
-      (await accountsUI.api("/api/farm/master", {
-        request: crypto.randomUUID(),
-        crop,
-      })) as Awaited<ReturnType<FarmScreenOptions["master"]>>,
-    wish: async () =>
-      (await accountsUI.api("/api/farm/wish", {})) as Awaited<
-        ReturnType<FarmScreenOptions["wish"]>
-      >,
-    order: async (slot, kind) =>
-      (await accountsUI.api("/api/farm/order", {
-        request: crypto.randomUUID(),
-        slot,
-        kind,
-      })) as FarmOrderResult,
-    friends: async () =>
-      (await accountsUI.api("/api/farm/friends")) as FarmFriend[],
-    visit: async (id) =>
-      (await accountsUI.api(
-        `/api/farm/visit/${encodeURIComponent(id)}`,
-      )) as FarmVisit,
-    visitAct: async (friend, actions) =>
-      (await accountsUI.api("/api/farm/visit/act", {
-        request: crypto.randomUUID(),
-        friend,
-        actions,
-      })) as FarmVisitResult,
-    player: (id) => avatarOfPlayer(id),
-    art: (character) =>
-      "data:image/svg+xml;charset=utf-8," +
-      encodeURIComponent(
-        fighterAvatar(
-          (Object.hasOwn(CHARACTERS, character)
-            ? character
-            : "voltkit") as CharacterId,
-          `order-${character}`,
-        ),
-      ),
-  });
 }
 /** The roster (UI remodel step 3): every fighter, and a fighter's detail. */
 let rosterScreen: RosterScreen | undefined;
@@ -3109,7 +2834,6 @@ function lobbyAction(action: LobbyAction) {
   else if (action === "invite") void showPartyInvite();
   else if (action === "leave-party") void request("party-leave");
   else if (action === "party-room") void followPartyRoom(undefined, true);
-  else if (action === "farm") setHubScene("farm");
   else void accountsUI.showFriends();
 }
 /** PLAY: the remembered mode, through the same controls as the Play panel. */
@@ -3392,7 +3116,6 @@ function renderMenu(revealSelection = false) {
     $("join").onclick = () => void play("join");
     $("watch").onclick = () =>
       void watchRoom($<HTMLInputElement>("code").value);
-    claimFarmInvite();
     // Opened from an invite link: join as soon as we're signed in and online.
     const invite = pendingInvite();
     if (invite) {
@@ -4415,7 +4138,7 @@ socket.on("chat", (line: ChatLine) => {
   if (hubScene === "plaza") {
     if (!(line.quick && (PLAZA_EMOTES as readonly string[]).includes(text)))
       plaza?.say(line.from.id, text);
-  } else if (hubScene === "farm") farmScreen?.say(line.from.id, text);
+  }
 });
 socket.on("chat-config", (data: { freeText?: unknown } | null) => {
   chat.setFreeText(data?.freeText === true);
@@ -4744,7 +4467,7 @@ function leaveButton() {
   }
   return `<button id="exit-room" class="secondary btn-secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave match</span><small>Counts as a forfeit</small></button>`;
 }
-/** Settings → Graphics: Auto, High or Low for the Plaza and the Farm (graphics-quality.ts). */
+/** Settings → Graphics: Auto, High or Low for the Plaza (graphics-quality.ts). */
 function graphicsCard() {
   const setting = graphicsSetting();
   const option = (value: GraphicsSetting, label: string) =>
@@ -4756,12 +4479,12 @@ const GPU_OFF_NOTE =
   '<p class="prefs-gpu-off" role="note"><b>This browser is not using the graphics card</b>, so the game is drawn by the processor and can lag on any setting. In Edge: Settings → System and performance → turn on “Use graphics acceleration when available”, then restart Edge (in Chrome: Settings → System). If it is already on, the computer’s graphics driver may need an update.</p>';
 function graphicsNote(setting: GraphicsSetting) {
   if (setting === "high")
-    return "The living Plaza and Farm: animals, night glow and full weather, sharp on high-resolution screens.";
+    return "The living Plaza: animals, night glow and every light, sharp on high-resolution screens.";
   if (setting === "low")
-    return "A lighter Plaza and Farm at 30 fps for older phones: no animals or night glow, lighter rain. Battles keep every attack, telegraph and skill but draw fewer decorative sparks.";
+    return "A lighter Plaza at 30 fps for older phones: no animals or night glow. Battles keep every attack, telegraph and skill but draw fewer decorative sparks.";
   return autoChoosesLow()
-    ? `Auto picked <b>Low</b> for the Plaza and Farm on this device (${softwareRendering() ? "it draws without a graphics card" : autoLowWhy() ? `the ${escape(autoLowWhy())}` : "they ran slowly"}). Battles adapt on their own. Pick High to try it again.`
-    : "Starts on High. The Plaza and Farm switch to Low if they run slowly; battles trim decorative sparks only while frames stay slow.";
+    ? `Auto picked <b>Low</b> for the Plaza on this device (${softwareRendering() ? "it draws without a graphics card" : autoLowWhy() ? `the ${escape(autoLowWhy())}` : "it ran slowly"}). Battles adapt on their own. Pick High to try it again.`
+    : "Starts on High. The Plaza switches to Low if it runs slowly; battles trim decorative sparks only while frames stay slow.";
 }
 /** Five taps on Graphics' title within 3 s: the frame-rate line over every
  *  screen and the battle read-out, on this device (perf-hud.ts,
@@ -4805,12 +4528,6 @@ function bindGraphicsCard() {
         wantedPlazaClosed = true;
         plaza.close();
         wantedPlazaClosed = false;
-        syncHub();
-      }
-      // So does the Farm.
-      if (farmScreen && farmLow !== lowGraphics()) {
-        farmScreen.close();
-        farmScreen = undefined;
         syncHub();
       }
     };
@@ -4901,7 +4618,7 @@ function bindDisplayCard() {
 /** Who and what made the game (opened from Settings, with a way back). */
 function showCredits() {
   dialog(
-    `<div class="credits-screen"><button type="button" class="quiet" id="credits-back">${iconLabel("back", "Settings")}</button><h2>Credits</h2><div class="credits-hero"><span class="credits-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="credits-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#credits-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div><b>Element Arena</b><small>Real-time creature duels from Elemental Plaza.</small></div></div><div class="credits-grid"><section class="prefs-card"><h3>${menuIcon("user")}Creatures &amp; world</h3><p>Eight original creatures, each an articulated shaded-vector rig with front, back and side views, plus the Plaza, the Farm and the coliseum.</p></section><section class="prefs-card"><h3>${menuIcon("sound")}Music</h3><p>Original music played on instrument recordings from the <a href="https://github.com/sgossner/VCSL" target="_blank" rel="noopener noreferrer">Versilian Community Sample Library</a> and <a href="https://github.com/sgossner/VSCO-2-CE" target="_blank" rel="noopener noreferrer">VSCO 2 Community Edition</a> (CC0 public domain).</p></section><section class="prefs-card"><h3>${menuIcon("keyboard")}Built with</h3><ul class="credits-tags">${["Phaser", "Socket.IO", "Express", "TypeScript", "Vite", "Supabase"].map((t) => `<li>${t}</li>`).join("")}</ul></section></div></div>`,
+    `<div class="credits-screen"><button type="button" class="quiet" id="credits-back">${iconLabel("back", "Settings")}</button><h2>Credits</h2><div class="credits-hero"><span class="credits-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="credits-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#credits-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div><b>Element Arena</b><small>Real-time creature duels from Elemental Plaza.</small></div></div><div class="credits-grid"><section class="prefs-card"><h3>${menuIcon("user")}Creatures &amp; world</h3><p>Eight original creatures, each an articulated shaded-vector rig with front, back and side views, plus the Plaza and the coliseum.</p></section><section class="prefs-card"><h3>${menuIcon("sound")}Music</h3><p>Original music played on instrument recordings from the <a href="https://github.com/sgossner/VCSL" target="_blank" rel="noopener noreferrer">Versilian Community Sample Library</a> and <a href="https://github.com/sgossner/VSCO-2-CE" target="_blank" rel="noopener noreferrer">VSCO 2 Community Edition</a> (CC0 public domain).</p></section><section class="prefs-card"><h3>${menuIcon("keyboard")}Built with</h3><ul class="credits-tags">${["Phaser", "Socket.IO", "Express", "TypeScript", "Vite", "Supabase"].map((t) => `<li>${t}</li>`).join("")}</ul></section></div></div>`,
   );
   $("credits-back").onclick = showSettings;
 }
@@ -4972,7 +4689,7 @@ $("guide-open").onclick = () => {
 };
 $("help").onclick = () =>
   dialog(
-    `<div class="help-screen"><div class="eyebrow">How to play</div><h2>Welcome to Elemental Plaza.</h2><p>Press <b>PLAY</b> in the Lobby to start a match. Switch between the Lobby, the Plaza and your Farm at the top of the screen. In battle, win three rounds to take the match.</p><div class="eyebrow help-battle-eyebrow">In battle</div><div class="help-layout"><section class="help-controls" aria-label="Game controls">${controlsList(true)}</section>${illustratedHelp()}</div></div>`,
+    `<div class="help-screen"><div class="eyebrow">How to play</div><h2>Welcome to Elemental Plaza.</h2><p>Press <b>PLAY</b> in the Lobby to start a match. Switch between the Lobby and the Plaza at the top of the screen. In battle, win three rounds to take the match.</p><div class="eyebrow help-battle-eyebrow">In battle</div><div class="help-layout"><section class="help-controls" aria-label="Game controls">${controlsList(true)}</section>${illustratedHelp()}</div></div>`,
   );
 $<HTMLDialogElement>("dialog").addEventListener("close", () => {
   settingsOpen = false;
@@ -5514,9 +5231,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !settingsOpen &&
       !$<HTMLDialogElement>("dialog").open;
     // A slow battle trims only its own decorations (battle-quality.ts). It
-    // used to switch the Lobby, Plaza and Farm to Low for good as well, so a
+    // used to switch the Lobby and the Plaza to Low for good as well, so a
     // heavy raid on an iPad Pro 13" M4 left it on Low everywhere (owner,
-    // 17 Nov 2026); the Plaza and the Farm measure themselves.
+    // 17 Nov 2026); the Plaza measures itself.
     if (live) battleQuality.frame(now);
     else battleQuality.pause();
     battlePerf.frame(now, live);
@@ -7929,17 +7646,13 @@ function reportBattleLoad(fighters: number) {
 }
 /**
  * Opening a battle on an iPhone (or a phone with little memory): forget the
- * Plaza's, the Farm's and the Bistro's baked sprites first. The scenes are closed by now,
- * and the cache (~45 MB of canvases once the Farm and the Plaza were visited) would otherwise
- * sit beside the battle's floor and textures until iOS ends the page.
+ * Plaza's baked sprites first. The scene is closed by now, and the cache
+ * (~45 MB of canvases once the Plaza was visited) would otherwise sit beside the battle's floor and textures until iOS ends the page.
  */
 function releaseHubArt() {
   if (!memoryConstrained()) return;
-  // The sprite cache is shared by the Farm and the Plaza; if neither has
-  // loaded this session it holds nothing.
-  (worlds.loaded("farm") ?? worlds.loaded("plaza"))?.hubGfx.release();
-  // The Bistro's creature, furniture and dish drawings (it is closed too).
-  worlds.loaded("bistro")?.releaseBistroArt();
+  // If the Plaza has not loaded this session the cache holds nothing.
+  worlds.loaded("plaza")?.hubGfx.release();
 }
 function ensureBattleRenderer() {
   if (gameInstance || $("game").clientWidth < 1 || $("game").clientHeight < 1)
@@ -8069,7 +7782,6 @@ accountsUI = new AccountUI({
     syncHub();
   },
   toLobby: () => setHubScene("lobby"),
-  openFarm: () => setHubScene("farm"),
   openDialog: dialog,
   startRaid: (boss, options) => void startRaid(boss, options),
   startSpire: (options) => void startSpire(options),
@@ -8138,14 +7850,6 @@ accountsUI = new AccountUI({
   notify: toast,
   beforeSignOut: async () => {
     roomInvites.clear();
-    // The farm kept in this browser is this player's: forget it.
-    forgetFarms();
-    clearKeptBistros();
-    worlds.loaded("bistro")?.forgetBistros();
-    bistro?.close();
-    bistro = undefined;
-    farmScreen?.close();
-    farmScreen = undefined;
     if (plaza) {
       wantedPlazaClosed = true;
       plaza.close();

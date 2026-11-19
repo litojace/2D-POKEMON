@@ -1,7 +1,6 @@
 /**
  * Rows that scroll sideways, everywhere in the game: chip and tab rows, the
- * raid gallery on phones, quick chat, the Journey road, the Spire's route,
- * the Bistro's store, the Farm shop's tabs…
+ * raid gallery on phones, quick chat, the Journey road, the Spire's route…
  *
  * One behaviour for all of them, wired once for the whole page
  * (watchScrollRows, from main.ts):

@@ -38,8 +38,8 @@ function legacyAuthPages(): Plugin {
  * The scripts the game page loads to start: its entry and everything that
  * entry imports statically (Phaser, the libraries). Recorded while bundling
  * so the service worker precaches exactly these, and the Lobby panels that
- * load on first use (PRECACHED_PANELS); scripts loaded later (the Farm,
- * Plaza and Bistro, the shop preview) are cached when first used.
+ * load on first use (PRECACHED_PANELS); scripts loaded later (the Plaza,
+ * the shop preview) are cached when first used.
  */
 const startupScripts = new Set<string>();
 /** Panels split out of the startup bundle, precached all the same. */
@@ -93,7 +93,7 @@ const PRECACHED_ART =
  * to start (startup scripts, styles, fonts, icons, the offline page), the
  * artwork above, and the unhashed public files (fighter layers, music,
  * backgrounds), which need its revision checks to stay current. Hashed
- * scripts loaded later (the Farm, Plaza and Bistro, the shop preview) and the
+ * scripts loaded later (the Plaza, the shop preview) and the
  * other raid art (splash pictures, thumbnails, portraits, illustrated arenas)
  * are cached by the service worker when first used instead (sw.ts).
  */
