@@ -244,7 +244,9 @@ function room(kind: "practice" | "raid" | "pvp" | "spire", o: RoomOptions) {
     a.start();
     a.phase = o.phase ?? "lobby";
     // The others have picked; you have just come in (Lock in is yours).
-    for (const p of a.players) p.locked = p.id !== "me";
+    // Yours is unset, as the server leaves it (never false until a 2v2
+    // clash): Lock in on the fighter you came with did nothing once.
+    for (const p of a.players) if (p.id !== "me") p.locked = true;
     if (o.arena) a.arenaId = o.arena;
     if (o.pos)
       [a.players[0].x, a.players[0].y, a.players[1].x, a.players[1].y] = o.pos;
@@ -305,6 +307,9 @@ w.__room = (
         me.locked = true;
         delete me.browse;
       }
+      // As the server: cancelling Ready unlocks the pick (PvP).
+      if (!me.ready && w.__snap.mode && w.__snap.mode !== "raid")
+        me.locked = false;
       queueMicrotask(() => w.__push());
       return { ok: true };
     }

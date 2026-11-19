@@ -1728,7 +1728,12 @@ async function lockIn(choice: CharacterId) {
   if (!state || !me) return false;
   audio.unlock();
   const roomCode = state.code;
-  if (choice === selected && me.character === choice && me.locked !== false) {
+  // Already the server's pick: nothing to send. In a PvP room only once it
+  // is locked: joining with the Lobby's fighter leaves `locked` unset, and
+  // Lock in on that fighter used to do nothing (owner, 19 Nov 2026). A raid
+  // room has no locking (unset): its pick is the pick.
+  const already = state.raid ? me.locked !== false : me.locked === true;
+  if (choice === selected && me.character === choice && already) {
     refreshRoom();
     return true;
   }
