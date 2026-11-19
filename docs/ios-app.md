@@ -37,8 +37,15 @@ in iPhone mode. Supporting iPad means testing its window sizes first.
   delivers updates.
 - **Edge swipes need a second swipe.** In a match, a thumb near an edge
   shouldn't leave the game: the first swipe from an edge goes to the game,
-  and a second opens Home, the app switcher or Control Center. The home bar
-  fades out until you touch near it (`ArenaViewController`).
+  and a second opens Home, the app switcher or Control Center
+  (`ArenaViewController`'s `preferredScreenEdgesDeferringSystemGestures`).
+  The home bar stays on screen: when it auto-hides
+  (`prefersHomeIndicatorAutoHidden`), iOS drops the deferral for the bottom
+  edge and any touch brings the bar back, so one swipe up during a match went
+  straight Home. Capacitor's SystemBars plugin owns that property and turns
+  it on with `plugins.SystemBars.hidden`, so leave that option out of
+  `capacitor.config.ts`; the status bar is hidden by Info.plist and
+  `StatusBar.hide()` instead.
 - **The screen never locks while the game is open** (`SceneDelegate`):
   briefings, waiting and watching can go a while without a touch, and a
   locked phone drops its game connection.

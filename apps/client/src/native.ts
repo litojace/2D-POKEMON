@@ -14,7 +14,7 @@
  * - hits and long presses tap the Taptic Engine (iPhones have no web
  *   vibration), and the screen never locks while the game is open
  *   (SceneDelegate.swift); edge swipes need a second swipe to leave the
- *   game, and the home bar fades out (ArenaViewController).
+ *   game (ArenaViewController).
  */
 import { Capacitor, registerPlugin } from "@capacitor/core";
 

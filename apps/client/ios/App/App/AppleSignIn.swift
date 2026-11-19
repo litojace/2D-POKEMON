@@ -18,15 +18,16 @@ class ArenaViewController: CAPBridgeViewController {
         .all
     }
 
-    // The home bar fades out while nobody touches near it. Capacitor 8 owns
-    // `prefersHomeIndicatorAutoHidden` (a public, not open, override in its
-    // SystemBars plugin), so it can't be overridden here: it is turned on with
-    // `plugins.SystemBars.hidden` in capacitor.config.ts instead.
+    // The home bar stays on screen: `prefersHomeIndicatorAutoHidden` must
+    // stay false (the default). With the home bar auto-hidden, one swipe from
+    // the bottom went straight Home on an iPhone: the deferral above is dropped
+    // for that edge (docs/ios-app.md). Capacitor 8 owns that property (its
+    // SystemBars plugin returns `plugins.SystemBars.hidden`), so leave that
+    // option out of capacitor.config.ts.
 
     override open func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
-        setNeedsUpdateOfHomeIndicatorAutoHidden()
     }
 }
 
