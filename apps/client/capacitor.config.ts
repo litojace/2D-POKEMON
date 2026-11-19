@@ -20,6 +20,10 @@ const config: CapacitorConfig = {
     scrollEnabled: false,
     backgroundColor: "#0b1020",
   },
+  // No `plugins.SystemBars.hidden`: besides the status bar (Info.plist and
+  // native.ts already hide it), it auto-hides the home bar, and with the home
+  // bar auto-hidden iOS drops ArenaViewController's edge-swipe deferral, so
+  // one swipe from the bottom goes Home (docs/ios-app.md).
 };
 
 export default config;

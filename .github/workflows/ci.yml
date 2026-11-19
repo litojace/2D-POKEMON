@@ -12,7 +12,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest became 26.04 (Nov 2026), where Playwright 1.56
+    # cannot install Chromium ("does not support chromium on ubuntu26.04").
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,7 +41,9 @@ jobs:
     # and manual runs, not again for the same commit on work.
     if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     name: visual (${{ matrix.shard }} of 18)
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest became 26.04 (Nov 2026), where Playwright 1.56
+    # cannot install Chromium ("does not support chromium on ubuntu26.04").
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -68,7 +72,9 @@ jobs:
     # One HTML report from every shard (screenshots for a person to look over).
     needs: visual
     if: ${{ !cancelled() && (github.event_name != 'push' || github.ref == 'refs/heads/main') }}
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest became 26.04 (Nov 2026), where Playwright 1.56
+    # cannot install Chromium ("does not support chromium on ubuntu26.04").
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

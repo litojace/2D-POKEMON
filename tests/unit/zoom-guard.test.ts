@@ -4,8 +4,38 @@ import {
   INTERACTIVE,
   LOCKED_VIEWPORT_EXTRA,
   blocksDoubleTap,
+  lockAppZoom,
   lockedViewport,
 } from "../../apps/client/src/zoom-guard";
+
+describe("iPhone app zoom lock", () => {
+  it("locks the viewport for good and cancels double taps and pinch gestures", () => {
+    const meta = {
+      content: "width=device-width,initial-scale=1,viewport-fit=cover",
+    };
+    const added: [string, AddEventListenerOptions | undefined][] = [];
+    lockAppZoom({
+      querySelector: (() => meta) as unknown as Document["querySelector"],
+      addEventListener: ((
+        type: string,
+        _l: unknown,
+        o?: AddEventListenerOptions,
+      ) => added.push([type, o])) as unknown as Document["addEventListener"],
+    });
+    expect(meta.content).toBe(
+      `width=device-width,initial-scale=1,viewport-fit=cover,${LOCKED_VIEWPORT_EXTRA}`,
+    );
+    expect(added.map(([t]) => t).sort()).toEqual(
+      ["dblclick", "gesturechange", "gestureend", "gesturestart"].sort(),
+    );
+    // Not passive, or preventDefault would be ignored.
+    expect(added.every(([, o]) => o?.passive === false)).toBe(true);
+  });
+  it("main.ts turns it on only in the app", () => {
+    const main = readFileSync("apps/client/src/main.ts", "utf8");
+    expect(main).toMatch(/if \(isNativeApp\(\)\) lockAppZoom\(\);/);
+  });
+});
 
 describe("battle zoom lock", () => {
   it("locks the viewport while keeping the page's own settings", () => {

@@ -100,12 +100,24 @@ export const AUTO_SLOW_WINDOWS = 3;
  * answers "low" only after AUTO_SLOW_WINDOWS slow windows in a row (about 12
  * seconds of slow play), so a moment of heavy loading, a hot spell or a busy
  * Orb Shower does not decide for good. It answers once.
+ *
+ * A pause (the screen left, a panel over it) also drops the window it was
+ * counting, and the first second after it is not counted: coming back to
+ * the Plaza or the Farm repaints its ground (let go while away on an
+ * iPhone) in one long frame, and the screen switch moves the page. Those
+ * returns used to add up across visits: a phone drawing 60 frames a
+ * second that hops between the Lobby, Plaza, Farm and Bistro could measure
+ * under 50 and go Low for good (an iPhone: "Farm ran at 47 fps", owner,
+ * 19 Nov 2026).
  */
 export class FrameRateProbe {
   private last: number | undefined;
   private started: number | undefined;
   private counted = 0;
   private frames = 0;
+  /** Paused since the last frame: the next one starts the settling time. */
+  private paused = false;
+  private resumed: number | undefined;
   /** Slow windows in a row so far. */
   slow = 0;
   /** The frame rate of the last window measured (0 before the first). */
@@ -115,17 +127,32 @@ export class FrameRateProbe {
     private warmup = 2000,
     private window = 4000,
     private strikes = AUTO_SLOW_WINDOWS,
+    /** Not counted after a pause (ms). */
+    private settle = 1000,
   ) {}
-  /** A pause (panel open, scene asleep): the next frame starts a new interval. */
+  /** A pause (the screen left, a panel open, scene asleep): the window being
+   *  counted is dropped, and counting starts again `settle` ms after the
+   *  next frame. Slow windows already counted stay. */
   pause() {
     this.last = undefined;
+    this.counted = this.frames = 0;
+    this.paused = true;
   }
   frame(now: number) {
     if (this.verdict) return this.verdict;
     this.started ??= now;
+    if (this.paused) {
+      this.paused = false;
+      this.resumed = now;
+    }
     const last = this.last;
     this.last = now;
-    if (now - this.started < this.warmup || last === undefined) return;
+    if (
+      now - this.started < this.warmup ||
+      (this.resumed !== undefined && now - this.resumed < this.settle) ||
+      last === undefined
+    )
+      return;
     const step = now - last;
     // Longer than a second is a stall or a pause, not the device's pace
     // (a panel or hidden tab also calls pause()).

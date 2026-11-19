@@ -162,6 +162,14 @@ export function rigAnchorsFor(id: CharacterId, dir: Facing) {
  * FighterRig's images and `cosmeticLayer`.
  */
 export const artWidths = new Map<string, number>();
+/**
+ * Each rig texture's pivot as a fraction of its crop (Phaser's origin), by
+ * key. A costume crops some parts in a wider box than the champion's own
+ * (COSTUME_BOUNDS), so the same pivot sits at another fraction of it: the
+ * rig sets this whenever a part changes texture (rig.ts), or the part would
+ * keep the default crop's fractions and be drawn tens of units off its joint.
+ */
+export const artOrigins = new Map<string, readonly [number, number]>();
 /** The drawing behind the asset just made (for its light layers). */
 let lastSvg = "";
 function asset(
@@ -185,6 +193,9 @@ function asset(
       ? moodKey(id, dir, mood, suffix)
       : rigKey(id, dir, part, suffix);
   artWidths.set(key, b[2]);
+  const originX = (q[0] - b[0]) / b[2],
+    originY = (q[1] - b[1]) / b[3];
+  artOrigins.set(key, [originX, originY]);
   const svg = render(part, b.join(" "));
   lastSvg = svg;
   return {
@@ -192,8 +203,8 @@ function asset(
     url: "data:image/svg+xml;base64," + btoa(svg),
     width: b[2],
     height: b[3],
-    originX: (q[0] - b[0]) / b[2],
-    originY: (q[1] - b[1]) / b[3],
+    originX,
+    originY,
     x: (q[0] - 100) * 0.5,
     y: (q[1] - 130) * 0.5,
   };
@@ -240,6 +251,7 @@ function lumeAssets(base: RigAsset, svg: string): RigAsset[] {
     const open = marked.indexOf(">", marked.indexOf("<svg")) + 1;
     const only = marked.slice(0, open) + LUME_STYLE + marked.slice(open);
     artWidths.set(l.key, base.width);
+    artOrigins.set(l.key, [base.originX, base.originY]);
     return {
       ...base,
       key: l.key,
