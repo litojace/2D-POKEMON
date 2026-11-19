@@ -8,15 +8,16 @@
  *   npx tsx scripts/balance/difficulty-gap.ts <games> [strong=hard] [weak=normal] [shard shards out.json]
  *
  * Use it to check that a bot change keeps Hard as much stronger than Normal
- * as before. BOT_OVERRIDE works as in round-robin.ts.
+ * as before, or how far the balance-only "expert" is above Hard.
+ * BOT_OVERRIDE works as in round-robin.ts.
  */
 import { writeFileSync } from "node:fs";
 import { FIGHTER_IDS } from "../../packages/shared/src/index.ts";
 import { Arena } from "../../apps/server/src/simulation.ts";
 import {
-  BOT_PROFILES,
+  BALANCE_PROFILES,
   BotBrain,
-  type BotDifficulty,
+  type BotLevel,
 } from "../../apps/server/src/bot.ts";
 
 const [games, strong = "hard", weak = "normal", shard, shards, out] =
@@ -24,7 +25,7 @@ const [games, strong = "hard", weak = "normal", shard, shards, out] =
 for (const [d, o] of Object.entries(
   JSON.parse(process.env.BOT_OVERRIDE ?? "{}") as Record<string, object>,
 ))
-  Object.assign(BOT_PROFILES[d as BotDifficulty], o);
+  Object.assign(BALANCE_PROFILES[d as BotLevel], o);
 // [strong champion, weak champion, strong won, rounds strong, rounds weak]
 const rows: [string, string, boolean, number, number][] = [];
 let k = 0;
@@ -44,13 +45,13 @@ for (let i = 0; i < FIGHTER_IDS.length; i++)
       arena.add("B", "B", b);
       arena.bots.set(
         "A",
-        new BotBrain("A", (strongFirst ? strong : weak) as BotDifficulty, seed),
+        new BotBrain("A", (strongFirst ? strong : weak) as BotLevel, seed),
       );
       arena.bots.set(
         "B",
         new BotBrain(
           "B",
-          (strongFirst ? weak : strong) as BotDifficulty,
+          (strongFirst ? weak : strong) as BotLevel,
           seed * 7 + 3,
         ),
       );

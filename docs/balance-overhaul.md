@@ -293,3 +293,205 @@ itself (`raid-ascendant-lumiwick.ts`). Before, an open heart could land there
 and sit for about half a second while it glided out
 (`tests/unit/raid-ascendant-lumiwick.test.ts`, 2 raiders, once the raiders'
 kits changed).
+
+## An expert bot for measuring
+
+The bot win rates above come from bots that miss some counterplay any
+decent player knows, so some lopsided matchups could be the bots' fault
+rather than the champions'. `expert` is a bot level for measuring only
+(`EXPERT_PROFILE` in `apps/server/src/bot.ts`): the behaviours below, each
+behind a flag (`ExpertFlags`), first on Hard's reaction time, aim and other
+settings, then (last subsection) on sharper ones. Players can't reach it: rooms still take a
+`BotDifficulty` (`BOT_DIFFICULTIES`, the server's schema and the client's
+pickers are unchanged) and an expert brain reports itself, and picks rites,
+as Hard. Easy, Normal and Hard replay match for match as before, so raids,
+the Spire and their play-tests are untouched.
+
+```bash
+npx tsx scripts/balance/round-robin.ts - <shard> <shards> <games> expert <out.json>
+EXPERT_OFF=lookAway,jumpSeeds npx tsx scripts/balance/round-robin.ts ...   # ablation
+npx tsx scripts/balance/tune.ts 1 24 --levels expert,hard                  # tune.ts too
+```
+
+### Behaviours kept
+
+Each was measured with the flag off and on (48 games a pair, seed 5000,
+the champion's 17 pairings, everything else on; before #235, which only
+moves Pyranda against Pangrove):
+
+| Flag         | What the expert does                                                                                                                                                                              | Measured                                                                                                                                                |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lookAway`   | While Lumoth's Eyespot Flash is ready and in reach, it faces away between attacks and turns back 0.15 s before each one.                                                                          | Lumoth 45.8% → 43.3% (vs Terradon 67% → 56%, Coilemur 54% → 38%).                                                                                       |
+| `jumpSeeds`  | Hops an enemy seedling in its way from the near edge, or steps round it when the hop can't clear it; a dash that would cross one jumps too, or doesn't happen.                                    | Mossloth 56.1% → 46.7% (vs Cindrake 54% → 25%, Coilemur 75% → 42%, Astrabun 50% → 33%, Terradon 94% → 85%; Auralynx the other way, 85% → 96%).          |
+| `dodgeMarks` | Sees a mark 0.15 s after it appears (mortar, Chestnut Storm's creeping marks, Thunderstorm's bolts, Radiant Flare's burst), tries 16 directions and walks out, or dashes when a walk is too slow. | Pyranda 51.3% → 38.0% (vs Voltkit 83% → 52%, Sunbara 77% → 42%, Duskveil 75% → 38%, Halcyra 63% → 27%). Lumoth 52.0% → 43.3% (its flare). Voltkit +4.8. |
+
+### Behaviours dropped
+
+The goal was closer to players, not just different, so a behaviour that
+changed nothing, or made the champion using it weaker, was dropped:
+
+- **Holding fire under Facet Guard** made Auralynx stronger, not weaker:
+  45.8% with it off, 58.5% when opponents held fire and backed off, 58.2%
+  when they held only the shots the guard refracts. Shooting into the guard
+  still deals half damage for 20% back; holding fire for 1.6 s deals none.
+  Against divers it helped a little (Coilemur 94% → 88%) but not overall.
+- **Lumoth flashing only a target seen facing it** made Lumoth weaker
+  (96% → 83% against Pangrove): the flash still hurts a target looking away.
+- **Looking away in spells while holding fire** (the first version of
+  `lookAway`) made Lumoth stronger (Cindrake 59% → 98%).
+- **Saving escapes (Tunnel, Shell Up, Facet Guard, Static Glide, the dash)
+  for the enemy's ultimate**, held or only used when it comes: within the
+  noise for everyone (24 games a pair, ±4) except Auralynx, 5.6 points
+  weaker when it held Facet Guard back.
+- **Guessing a stealthed Shadopus's position** from its last heading:
+  Shadopus 38.6% → 37.9% over its pairings.
+- **Playing combos on purpose.** Casting the setup out of its reach (a bug
+  in the first version) sent Cindrake to 75%: a Crest Flare lit while
+  closing in is very strong, worth knowing. Holding the payoff for the
+  setup and spending the ultimate on any debuff made the champions doing it
+  weaker (Astrabun −6.5 and −4.5 points, Terradon −4.6). Self combos (Static
+  Glide, Moon Hop: also escapes) made Voltkit −4.9 and Astrabun −6.9. Only
+  setups that mark the target, when the payoff is ready: no change (±2,
+  Wombolder +3).
+
+A short look-ahead (cloning the arena to try actions) was not built: the
+three behaviours already account for the matchups suspected of being bot
+artefacts, and the round robin stays as fast as Hard's.
+
+### Expert against Hard (counterplay only, Hard's reactions and aim)
+
+Both 48 games a pair, seed 5000, 7,344 matches, every match finished, with
+Ember Curtain burning off Tongue Grapple (#235; it only changes Pyranda
+against Pangrove, which was played again for both tables). A champion's
+rate moves about ±1.8 points between seeds, a pair's about ±7.
+
+| Champion  |  Hard | Expert | Change |
+| --------- | ----: | -----: | -----: |
+| Mystowl   | 51.1% |  57.4% |   +6.3 |
+| Voltkit   | 47.7% |  56.3% |   +8.6 |
+| Duskveil  | 49.1% |  54.9% |   +5.8 |
+| Cindrake  | 55.5% |  54.7% |   −0.9 |
+| Tidefin   | 54.3% |  54.5% |   +0.2 |
+| Astrabun  | 54.2% |  53.3% |   −0.9 |
+| Halcyra   | 48.2% |  52.7% |   +4.5 |
+| Glacelle  | 49.8% |  52.3% |   +2.6 |
+| Sunbara   | 47.9% |  52.1% |   +4.2 |
+| Pangrove  | 50.7% |  49.9% |   −0.9 |
+| Shadopus  | 48.0% |  48.7% |   +0.6 |
+| Auralynx  | 51.3% |  46.8% |   −4.5 |
+| Mossloth  | 51.0% |  46.7% |   −4.3 |
+| Coilemur  | 46.3% |  46.6% |   +0.2 |
+| Wombolder | 47.4% |  46.2% |   −1.2 |
+| Terradon  | 48.7% |  45.5% |   −3.2 |
+| Lumoth    | 50.6% |  43.3% |   −7.4 |
+| Pyranda   | 48.2% |  38.4% |   −9.8 |
+
+Spread (sd) 2.5 on Hard, 4.9 on Expert; pairs one side wins 80% or more of:
+26 on Hard, 25 on Expert. Hard is what the champions were tuned on, so a
+wider spread on Expert is expected; what matters is who moved and why.
+
+**Bot artefacts** (gone or much smaller once the bots play the counterplay):
+
+- Pyranda over ranged champions: Voltkit 83% → 52%, Sunbara 77% → 42%,
+  Duskveil 75% → 38%, Mystowl 67% → 42%, Halcyra 63% → 27%. Most of
+  Voltkit's, Duskveil's, Sunbara's and Halcyra's rise is this one matchup.
+- Mossloth over melee: Cindrake, Coilemur and Astrabun now beat it.
+
+**Real** (they stay with the expert):
+
+- Pyranda is weak: 38%, and 15% against Pangrove (23% on Hard). The
+  "90–96% against Pangrove, Voltkit and Lumoth" seen earlier is out of date:
+  on `main` Pyranda wins 23%, 83% and 75% of those on Hard, and 15%, 52%
+  and 79% on Expert.
+- Lumoth over melee: Cindrake 94%, Pangrove 77%, even with looking away.
+  Lumoth's 43% comes from its Radiant Flare being walked out of, not from
+  the flash.
+- Auralynx over divers: Coilemur 94%, Astrabun 90%, Pangrove 81%,
+  Wombolder 81%. Not because bots hit into Facet Guard (above).
+- Mossloth over Auralynx (96%) and Terradon (85%): Seed Spit kiting (about
+  875 of its damage a match against Terradon, against 62 from seedlings),
+  not seedlings walked onto.
+
+**Proposals (not applied; for the owner to decide):**
+
+- Pyranda: a buff that doesn't come back in its marks, which are now
+  dodged, e.g. strength factor ×1.08 (health and Ember Lob rate), then
+  check Pangrove (15%) separately.
+- Lumoth: move power from the melee matchup to the flare, e.g. Radiant
+  Flare's pull a little stronger and Eyespot Flash's stun a little shorter
+  (0.5 → 0.4 s), so it is less of a hard counter to melee and less weak
+  against the rest.
+- Voltkit (56%) and Mystowl (57%) are a little high; Voltkit's gain is
+  mostly the Pyranda matchup, so recheck it after a Pyranda change before
+  touching Voltkit.
+- Auralynx against divers: a shorter Shatter Paw stun when primed
+  (0.8 s) would soften those 80–94% matchups.
+- Measure each change on Expert and on Hard: Hard is what Normal's
+  `dazeBy`, `RAID_DAZE_BY` and the Spire were calibrated against.
+
+### A sharper expert
+
+The counterplay alone left the expert level with Hard head to head (50.7%
+of 1,224 duels, `difficulty-gap.ts 8 expert hard`). Asked for the smartest
+bot, each setting was then sharpened alone against Hard (612 duels each):
+
+| Setting             | Hard → tried  | Expert beats Hard |
+| ------------------- | ------------- | ----------------: |
+| Reaction            | 0.25 → 0.15 s |             68.5% |
+| Dodge chance        | 0.55 → 0.8    |             59.5% |
+| Rest (holding fire) | 0.05 → 0      |             57.4% |
+| Aim error           | 0.14 → 0.08   |             54.2% |
+| Decisions           | 0.12 → 0.08 s |             52.5% |
+| Skill use           | 0.9 → 1       |             50.3% |
+| Fooled by clones    | 0.2 → 0.05    |             50.0% |
+| Engage dashes       | 0.2 → 0.35    |             47.4% |
+| Leading shots       | 0.85 → 1      |             45.3% |
+
+The expert now has reaction 0.1 s, dodge 0.9, no rests, aim error 0.08 and
+0.08 s decisions (leading and engaging stay at Hard's, as more of either
+made it weaker). It beats Hard in **93.0% of 1,224 duels**, and in at least
+82% with any champion (Cindrake 82%, the lowest). A 0.1 s reaction is a top
+player's; anything quicker would measure a machine.
+
+The counterplay still moves the right way with the sharper mechanics (48
+games a pair): `lookAway` Lumoth 48.7% → 43.3%, `dodgeMarks` Pyranda 57.6% →
+46.8%; `jumpSeeds` now changes little (Mossloth 80.1% → 79.0%), as sharper
+bots already keep off seedlings most of the time.
+
+Balance at this skill is very different (48 games a pair, seed 5000, every
+match finished):
+
+| Champion  |  Hard | Counterplay only | Sharp expert |
+| --------- | ----: | ---------------: | -----------: |
+| Mossloth  | 51.0% |            46.7% |        79.0% |
+| Mystowl   | 51.1% |            57.4% |        69.7% |
+| Halcyra   | 48.2% |            52.7% |        59.7% |
+| Auralynx  | 51.3% |            46.8% |        58.5% |
+| Sunbara   | 47.9% |            52.1% |        57.4% |
+| Glacelle  | 49.8% |            52.3% |        57.2% |
+| Wombolder | 47.4% |            46.2% |        54.9% |
+| Terradon  | 48.7% |            45.5% |        52.1% |
+| Duskveil  | 49.1% |            54.9% |        47.1% |
+| Astrabun  | 54.2% |            53.3% |        47.1% |
+| Pyranda   | 48.2% |            38.4% |        46.8% |
+| Shadopus  | 48.0% |            48.7% |        44.7% |
+| Pangrove  | 50.7% |            49.9% |        44.5% |
+| Lumoth    | 50.6% |            43.3% |        43.3% |
+| Voltkit   | 47.7% |            56.3% |        42.2% |
+| Coilemur  | 46.3% |            46.6% |        41.5% |
+| Tidefin   | 54.3% |            54.5% |        27.5% |
+| Cindrake  | 55.5% |            54.7% |        27.0% |
+
+Spread (sd) 12.6, and 52 pairs won 80% or more (26 on Hard). Champions that
+kite and punish from range (Mossloth, Mystowl, Halcyra) gain the most from
+good aim and dodging; brawlers that have to walk in (Cindrake, Tidefin) lose
+the most: Mossloth now beats Cindrake 98% and Coilemur 96%.
+
+This is how the roster would sit among very good players, not among most
+players, so it is not a target to tune to on its own. Use it with Hard
+(`tune.ts --levels expert,hard`) when a change should hold at the top as
+well. A champion out of line on both expert tables is the clearest case
+for a change: Mystowl is high on both (57%, 70%), Lumoth and Coilemur low
+on both. The proposals above were made on the counterplay-only table:
+with the sharp expert Pyranda is 46.8%, so its buff should be small, and
+Voltkit (42%) should not be cut.

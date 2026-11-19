@@ -2,21 +2,27 @@
  * One shard of a bot round robin on the real server Arena: every pair of
  * champions plays `games` matches (sides alternate), one result row per match.
  *
- *   npx tsx scripts/balance/round-robin.ts <factors.json|-> <shard> <shards> <games> <hard|normal|easy> <out.json>
+ *   npx tsx scripts/balance/round-robin.ts <factors.json|-> <shard> <shards> <games> <expert|hard|normal|easy> <out.json>
  *
  * factors.json maps champion id to a strength factor (health × f, basic
  * interval ÷ √f, rounded to 5 ms); "-" means none. BOT_OVERRIDE (JSON, e.g.
  * {"hard":{"rest":0.34}}) overrides bot profile settings for the run;
  * RR_SEED (default 5000) picks another set of seeded matches; RR_ONLY
  * (comma-separated ids) plays only the pairings that include one of them.
+ *
+ * "expert" is the balance-only bot (EXPERT_PROFILE in apps/server/src/bot.ts:
+ * Hard plus the counterplay a decent player knows). EXPERT_OFF
+ * (comma-separated ExpertFlags, e.g. lookAway,jumpSeeds) switches some of
+ * its behaviours off, to measure what each one changes.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { FIGHTER_IDS } from "../../packages/shared/src/index.ts";
 import { Arena } from "../../apps/server/src/simulation.ts";
 import {
-  BOT_PROFILES,
+  BALANCE_PROFILES,
   BotBrain,
-  type BotDifficulty,
+  EXPERT_FLAGS,
+  type BotLevel,
 } from "../../apps/server/src/bot.ts";
 import { applyFactors } from "./factors.ts";
 
@@ -25,7 +31,7 @@ const [file, shard, shards, games, diff, out] = [
   +process.argv[3],
   +process.argv[4],
   +process.argv[5],
-  process.argv[6] as BotDifficulty,
+  process.argv[6] as BotLevel,
   process.argv[7],
 ];
 
@@ -34,7 +40,14 @@ const [file, shard, shards, games, diff, out] = [
 for (const [d, o] of Object.entries(
   JSON.parse(process.env.BOT_OVERRIDE ?? "{}") as Record<string, object>,
 ))
-  Object.assign(BOT_PROFILES[d as BotDifficulty], o);
+  Object.assign(BALANCE_PROFILES[d as BotLevel], o);
+if (!(diff in BALANCE_PROFILES)) throw new Error(`unknown bot level ${diff}`);
+for (const flag of process.env.EXPERT_OFF?.split(",").filter(Boolean) ?? []) {
+  if (!EXPERT_FLAGS.includes(flag as never))
+    throw new Error(`unknown expert flag ${flag}`);
+  BALANCE_PROFILES.expert.expert![flag as (typeof EXPERT_FLAGS)[number]] =
+    false;
+}
 
 const ids: string[] = [...FIGHTER_IDS];
 applyFactors(file === "-" ? {} : JSON.parse(readFileSync(file, "utf8")));
