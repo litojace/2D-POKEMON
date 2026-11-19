@@ -1460,7 +1460,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "screen",
         7,
         10,
-        "Sweep up a curtain of embers 240 px wide across your aim for 3 seconds: enemy shots that touch it burn up, and enemies on it take 7 damage every half second, catch fire and are knocked back.",
+        "Sweep up a curtain of embers 240 px wide across your aim for 3 seconds: enemy shots (and grappling tongues) that touch it burn up, and enemies on it take 7 damage every half second, catch fire and are knocked back.",
         {
           duration: 3,
           knockback: 150,
