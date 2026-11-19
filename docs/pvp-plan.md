@@ -485,3 +485,38 @@ logs:
   on Mossloth's and Pyranda's picks can't be dated.
 - **Whether the pick counts are per human or per fighter.** The 163-match
   totals don't say.
+
+## 7. Implementation status (branch `claude/pvp-audit`, 19 Nov 2026)
+
+The owner asked for the items to be built in order on this branch. Nothing
+is merged to `main`: a push to `main` applies the new migration to the
+production database (CLAUDE.md), so the owner reviews and merges.
+
+| Item                                         | Status                                                                                                                                                                                                           | Where                                                                                                                                                                                                                                       |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Quick Match + honest bot fallback         | **Built**                                                                                                                                                                                                        | `apps/server/src/matchmaking.ts`, `quick-join` / `quick-leave` in `server.ts`, `apps/client/src/quick-match.ts` (+ `.css`), `quick` in `LOBBY_MODES`; PLAY defaults to it once the coached first bot match is done                          |
+| 2. `arena-match` and `arena-queue` log lines | **Built**                                                                                                                                                                                                        | `logMatch` / `logQueue` in `server.ts` (no names or accounts)                                                                                                                                                                               |
+| 3. Native push                               | **Not started**: it needs an Apple APNs key, the push entitlement and `@capacitor/push-notifications` in the iOS project, which only the owner can set up                                                        | —                                                                                                                                                                                                                                           |
+| 4. Adaptive sparring bot + capped coins      | **Built**                                                                                                                                                                                                        | `apps/client/src/bot-ladder.ts` (two wins up, two losses down, per device); migration `20261119170000_quick_match_bot_coins.sql` (5 coins for a won Quick Match bot, inside the 10-a-day PvP cap); `docs/raid-roster-design.md` §10 updated |
+| 5. Hide rooms nobody can fill                | **Built**                                                                                                                                                                                                        | `modeListed` in `lobby-screen.ts`: 2v2 from a party of 4, Free-for-all from 3, Quick Match solo only; the current mode always shows                                                                                                         |
+| 6. PvP-first Getting started                 | **Deferred**: `getting-started.ts` is being rewritten on `claude/remove-farm` (its Farm and Bistro steps go); doing it here would conflict                                                                       | —                                                                                                                                                                                                                                           |
+| 7. Vary the default fighter                  | **Deferred**: the evidence is weak (about 11 players), and dozens of visual tests assume Voltkit is the default; worth doing once `arena-match` gives real pick and win data                                     | —                                                                                                                                                                                                                                           |
+| 8. Phone truth                               | **Partly**: 956×440 added to `mobile-combat-layout.spec.ts`; `pvp-first-match.spec.ts` checks the first match there. Reading production `arena-perf` lines and an iPhone-to-iPhone playtest still need the owner | —                                                                                                                                                                                                                                           |
+
+Tests added: `tests/unit/matchmaking.test.ts`, `tests/unit/bot-ladder.test.ts`,
+new cases in `tests/unit/lobby-mode.test.ts`,
+`tests/integration/quick-match.test.ts` (two sockets pair; bot fallback is
+labelled and logged; cancel and disconnect leave the queue; the database
+receipt carries `quick: "bot"`), `tests/integration/quick-match-coins.test.ts`
+(5 coins once per match, nothing for menu bots or losses, shared cap; it
+fails with the migration removed), `tests/visual/quick-match.spec.ts`
+(956×440 and 844×390 touch: the sheet fits, buttons ≥ 44 px, Cancel, Keep
+searching, and the offer starts a labelled bot by itself).
+
+Before merging, check:
+
+- `QUICK_MATCH_FALLBACK_MS` (20 s) and `QUICK_MATCH_OFFER_MS` (6 s) in
+  `packages/shared/src/index.ts`.
+- The 5-coin reward: a design change to §10, which said bots pay only
+  through missions.
+- One real two-phone Quick Match on the deployed server.
