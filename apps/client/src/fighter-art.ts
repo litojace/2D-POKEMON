@@ -143,7 +143,9 @@ export function svgBackdrop(
     };
     backdrops.set(key, kept);
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${kept.viewBox}" role="img" data-fighter="${id}" aria-label="${CHARACTERS[id].name}" style="background:url(${kept.url}) 50% 50% / contain no-repeat"></svg>`;
+  // Which picture it shows (what the art is dressed in), for tests and tools.
+  const picture = key.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${kept.viewBox}" role="img" data-fighter="${id}" data-picture="${picture}" aria-label="${CHARACTERS[id].name}" style="background:url(${kept.url}) 50% 50% / contain no-repeat"></svg>`;
 }
 const backdrops = new Map<string, { url: string; viewBox: string }>();
 /** fighterAvatar's portrait as a picture (svgPicture). */
