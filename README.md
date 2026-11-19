@@ -1,9 +1,11 @@
 # Match reports
 
-Newest report: 2026-11-18 14:07 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
+Newest report: 2026-11-19 00:57 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
 
 ## Needs attention
 
+- **2026-11-19 00:57**, tidefin against sunbara (bot, easy) (match `vrajjw`):
+  - 12 hit(s) landed while you were drawn over 24 px away (largest 137 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
 - **2026-11-18 14:07**, wombolder against voltkit (bot, easy) (match `464s0w`):
   - 5.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 31 wombolder voltkit`.
   - 12 hit(s) landed while you were drawn over 24 px away (largest 106 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
@@ -153,14 +155,12 @@ Newest report: 2026-11-18 14:07 UTC. From the game server's log (`scripts/perf/e
 - **2026-11-18 01:47**, shadopus against astrabun, cindrake (match `iil2c6`):
   - 29.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 26 shadopus astrabun`.
   - 92 hit(s) landed while you were drawn over 24 px away (largest 133 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-18 01:47**, astrabun against shadopus, cindrake (match `iil2c6`):
-  - 14.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 astrabun shadopus`.
-  - 69 hit(s) landed while you were drawn over 24 px away (largest 331 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
 
 ## Latest matches
 
 | Time (UTC) | Match | Mode | You | Against | Ping (slowest 5%) | Lead | Late updates | Jumps | Hits off-screen | Skill confirm | FPS | Stutter | Graphics | Device | Build |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-19 00:57 | `vrajjw` | duel vs bot | tidefin | sunbara (bot, easy) | 45 ms 🟢 (46) | 193 ms | 0.2% | 33.6/min (max 70 px), ⚠️ 2.8 unexplained | ⚠️ 12 (max 137 px) | 75 ms | 58.8 | 0.1% | high (auto) | ios app, 4 cores, 59 Hz | 9a70a33 |
 | 2026-11-18 14:07 | `464s0w` | duel vs bot | wombolder | voltkit (bot, easy) | 61 ms 🟢 (67) | 201 ms | 0.0% | 40.1/min (max 186 px), ⚠️ 5.7 unexplained | ⚠️ 12 (max 106 px) | 106 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | 931f84f |
 | 2026-11-18 02:55 | `i5vb16` | duel | coilemur | pyranda | 44 ms 🟢 (45) | 178 ms | 0.4% | 56.4/min (max 90 px), ⚠️ 13.1 unexplained | ⚠️ 31 (max 56 px) | 120 ms | 59.9 | 0.6% | high (auto) | android, 8 cores, 8 GB, 120 Hz | a65a754 |
 | 2026-11-18 02:55 | `i5vb16` | duel | pyranda | coilemur | 45 ms 🟢 (47) | 168 ms | 0.0% | 40.7/min (max 248 px), ⚠️ 17.1 unexplained | ⚠️ 8 (max 45 px) | 61 ms | 58.8 | 0.1% | low (auto) | ios app, 4 cores, 59 Hz | a65a754 |
@@ -210,12 +210,12 @@ Newest report: 2026-11-18 14:07 UTC. From the game server's log (`scripts/perf/e
 | 2026-11-18 02:02 | `r10v1o` | ffa | shadopus | cindrake, mossloth | 51 ms 🟢 (85) | 170 ms | 0.6% | 40.9/min (max 599 px), ⚠️ 12.4 unexplained | ⚠️ 69 (max 599 px) | 77 ms | 59.9 | 1.0% | medium (auto) | android, 8 cores, 8 GB, 60 Hz | ebd7a37 |
 | 2026-11-18 01:47 | `iil2c6` | ffa | cindrake | shadopus, astrabun | 56 ms 🟢 (79) | 201 ms | 1.0% | 51.1/min (max 317 px), ⚠️ 28.9 unexplained | ⚠️ 25 (max 334 px) | 93 ms | 58.8 | 0.4% | medium (auto) | ios app, 4 cores, 56 Hz | cafb042 |
 | 2026-11-18 01:47 | `iil2c6` | ffa | shadopus | astrabun, cindrake | 51 ms 🟢 (75) | 202 ms | 1.4% | 52.4/min (max 150 px), ⚠️ 29.8 unexplained | ⚠️ 92 (max 133 px) | 98 ms | 59.9 | 1.3% | high (auto) | android, 8 cores, 8 GB, 120 Hz | cafb042 |
-| 2026-11-18 01:47 | `iil2c6` | ffa | astrabun | shadopus, cindrake | 48 ms 🟢 (53) | 169 ms | 0.5% | 30.5/min (max 380 px), ⚠️ 14.3 unexplained | ⚠️ 69 (max 331 px) | 81 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | cafb042 |
 
 ## By day
 
 | Day (UTC) | Reports | Needs attention | Ping, median | Ping, worst 10% | Lead, median | Jumps/min, median | Skill confirm, median | FPS, median | Stutter, median | Dropped connections |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-19 | 1 | 1 | 45 ms | 45 ms | 193 ms | 33.6 | 75 ms | 58.8 | 0.1% | 1 transport close |
 | 2026-11-18 | 65 | 65 | 48 ms | 56 ms | 174 ms | 44.1 | 79 ms | 58.8 | 0.4% | 3 transport close |
 | 2026-11-17 | 10 | 10 | 64 ms | 91 ms | 204 ms | 74.2 | 112 ms | 58.8 | 0.1% | 4 transport close, 1 server namespace disconnect |
 | 2026-11-16 | 11 | 11 | 67 ms | 68 ms | 201 ms | 41.9 | 89 ms | 59.9 | 0.7% | 1 ping timeout |
