@@ -2378,27 +2378,28 @@ for (const combo of Object.values(COMBOS)) combo.text = inMeters(combo.text);
  * (rounded to 5 ms). Duels and raids use the champions' own numbers;
  * free-for-all has FFA_TUNING. Tuned with scripts/balance/tune-teams.ts; since
  * the bot fixes (bots pick their own target, Normal no longer flips
- * champions) every factor is within 10% of 1.
+ * champions) every factor is within 12% of 1. Retuned for the smarter bots
+ * (2v2 focus fire, docs/smarter-bots.md).
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 1.032,
-  cindrake: 0.986,
-  tidefin: 1.026,
-  auralynx: 0.983,
-  lumoth: 0.984,
-  mystowl: 0.972,
-  terradon: 0.96,
-  duskveil: 1.023,
-  coilemur: 0.968,
-  pyranda: 0.981,
-  glacelle: 0.952,
-  halcyra: 1.005,
-  sunbara: 0.96,
-  astrabun: 1.019,
-  wombolder: 1.012,
-  shadopus: 1.044,
-  pangrove: 0.965,
-  mossloth: 1.062,
+  voltkit: 1.07,
+  cindrake: 0.961,
+  tidefin: 1.106,
+  auralynx: 0.88,
+  lumoth: 1.061,
+  mystowl: 0.984,
+  terradon: 0.912,
+  duskveil: 1.06,
+  coilemur: 0.953,
+  pyranda: 1.001,
+  glacelle: 0.972,
+  halcyra: 1.049,
+  sunbara: 1.045,
+  astrabun: 0.967,
+  wombolder: 0.913,
+  shadopus: 1.035,
+  pangrove: 0.904,
+  mossloth: 1.045,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -2409,24 +2410,24 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
  * with scripts/balance/tune-teams.ts --mode ffa on four-player matches.
  */
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.898,
-  cindrake: 1.1,
-  tidefin: 0.877,
-  auralynx: 1.04,
-  lumoth: 0.901,
-  mystowl: 0.855,
-  terradon: 1.011,
-  duskveil: 0.896,
-  coilemur: 1.173,
-  pyranda: 0.886,
-  glacelle: 0.967,
-  halcyra: 0.865,
-  sunbara: 0.9,
-  astrabun: 1.05,
-  wombolder: 1.056,
-  shadopus: 1.051,
-  pangrove: 0.984,
-  mossloth: 0.94,
+  voltkit: 0.873,
+  cindrake: 1.141,
+  tidefin: 0.862,
+  auralynx: 1.043,
+  lumoth: 0.923,
+  mystowl: 0.828,
+  terradon: 0.971,
+  duskveil: 0.865,
+  coilemur: 1.227,
+  pyranda: 0.829,
+  glacelle: 0.91,
+  halcyra: 0.832,
+  sunbara: 0.88,
+  astrabun: 1.125,
+  wombolder: 1.099,
+  shadopus: 1.157,
+  pangrove: 1.034,
+  mossloth: 0.909,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on

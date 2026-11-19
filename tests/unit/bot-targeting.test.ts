@@ -58,6 +58,37 @@ describe("bot targeting", () => {
     expect(targetOf(brain)).toBe("p1");
   });
 
+  it("in 2v2 joins its teammate's target (Normal and Hard; Easy fights alone)", () => {
+    const a = new Arena("T2", "teams");
+    CHAMPS.forEach((c, i) => a.add(`p${i}`, `P${i}`, c));
+    a.start();
+    a.phase = "playing";
+    a.deadline = 999;
+    // p0 and p2 against p1 and p3. p1 is a little nearer to p0 than p3 is,
+    // but p2 (a bot) is already fighting p3.
+    const at: [number, number][] = [
+      [600, 840],
+      [900, 840],
+      [1300, 840],
+      [1020, 840],
+    ];
+    a.players.forEach((p, i) =>
+      Object.assign(p, { x: at[i][0], y: at[i][1], vx: 0, vy: 0, team: i % 2 }),
+    );
+    const mate = new BotBrain("p2", "hard", 4);
+    a.bots.set("p2", mate);
+    mate.think(a, a.players[2]);
+    expect(mate.target).toBe("p3");
+    for (const level of ["normal", "hard"] as const) {
+      const brain = new BotBrain("p0", level, 5);
+      brain.think(a, a.players[0]);
+      expect(brain.target, level).toBe("p3");
+    }
+    const easy = new BotBrain("p0", "easy", 5);
+    easy.think(a, a.players[0]);
+    expect(easy.target).toBe("p1");
+  });
+
   it("no longer hands free-for-alls to whoever joined last", () => {
     // Seeded bot free-for-alls: before the fix seat 0 never won (everyone
     // went for the first fighter to join) and the last seat won ~60-78%.
