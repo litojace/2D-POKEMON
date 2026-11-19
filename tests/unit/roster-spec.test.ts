@@ -215,13 +215,13 @@ const ROSTER: Record<
   pangrove: {
     name: "Pangrove",
     element: "Nature",
-    role: "Armoured roller",
+    role: "Armoured burrower",
     basic: ["Scale Swipe", 450],
     skills: [
       ["Tongue Grapple", 8],
       ["Scale Shrapnel", 9],
-      ["Curl & Roll", 12],
-      ["Pinball", 20],
+      ["Tunnel", 14],
+      ["Leaf Storm", 20],
     ],
   },
   mossloth: {

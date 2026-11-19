@@ -2945,63 +2945,59 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         N.accent[2],
       ),
   },
-  "Curl & Roll": {
+  Tunnel: {
     el: "nature",
     draw: () =>
-      // Curled into a ball of leaf plates, rolling fast; dust behind it.
-      `<path d="M0 104 H128 V128 H0Z" fill="${N.bg[2]}"/><path d="M0 104 H128" stroke="${N.accent[0]}" stroke-width="2"/>` +
-      `<g fill="${N.accent[1]}" opacity=".35"><circle cx="18" cy="98" r="9"/><circle cx="32" cy="102" r="6"/><circle cx="8" cy="90" r="5"/></g>` +
-      `<g stroke="${N.accent[2]}" stroke-width="2.6" stroke-linecap="round" opacity=".55"><path d="M4 56 H34"/><path d="M10 72 H36"/><path d="M2 86 H28"/></g>` +
-      halo("nature", 76, 66, 48) +
-      `<circle cx="76" cy="66" r="36" fill="#3f8f4a" stroke="#1f4626" stroke-width="2"/>` +
-      [
-        [76, 38, 10],
-        [54, 50, -40],
-        [98, 50, 60],
-        [50, 74, -100],
-        [102, 76, 110],
-        [64, 94, -160],
-        [90, 94, 160],
-        [76, 64, 20],
-      ]
-        .map(([x, y, r], i) =>
-          leaf(x, y, i < 7 ? 1.4 : 1.2, r, i % 2 ? "#7fcf6a" : "#c7e88a"),
-        )
-        .join("") +
-      `<path d="M76 26 A40 40 0 0 1 116 66" fill="none" stroke="${N.hot}" stroke-width="3" stroke-linecap="round" opacity=".7"/>` +
+      // A mound of soil running across the ground, leaf tips at its crest,
+      // and the ground bursting open where it comes up.
+      `<path d="M0 84 H128 V128 H0Z" fill="${N.bg[2]}"/><path d="M0 84 H128" stroke="${N.accent[0]}" stroke-width="2"/>` +
+      `<path d="M6 100 Q24 92 40 100 Q56 108 70 98" fill="none" stroke="#7a5532" stroke-width="5" stroke-linecap="round" stroke-dasharray="2 9" opacity=".8"/>` +
+      `<ellipse cx="36" cy="98" rx="20" ry="9" fill="#7a5532" stroke="#3d2814" stroke-width="2"/>` +
+      `<g fill="#7fcf6a" stroke="#1f4626" stroke-width="1.4"><path d="M28 92 L32 80 L36 92Z"/><path d="M36 91 L40 77 L44 91Z" fill="#c7e88a"/></g>` +
+      halo("nature", 92, 70, 34) +
+      `<g fill="#7a5532" stroke="#3d2814" stroke-width="1.6"><circle cx="78" cy="56" r="5"/><circle cx="106" cy="50" r="6"/><circle cx="92" cy="40" r="4"/><circle cx="116" cy="70" r="4"/><circle cx="70" cy="74" r="4"/></g>` +
+      `<path d="M72 92 L80 76 L88 88 L94 70 L100 88 L108 78 L114 92Z" fill="#3d2814"/>` +
+      leaf(92, 58, 1.4, -90, "#c7e88a") +
+      leaf(80, 66, 1.1, -130, "#7fcf6a") +
+      leaf(104, 66, 1.1, -50, "#7fcf6a") +
       sparks(
         [
-          [118, 22, 1.4],
-          [44, 18, 1.2],
-          [118, 112, 1.3],
+          [118, 30, 1.4],
+          [64, 36, 1.2],
+          [120, 104, 1.2],
         ],
         N.accent[2],
       ),
   },
-  Pinball: {
+  "Leaf Storm": {
     el: "nature",
     draw: () =>
-      // A ball of leaf plates ricocheting between two walls, faster each time.
-      `<path d="M2 8 H14 V120 H2Z M114 8 H126 V120 H114Z" fill="${N.bg[2]}" stroke="${N.accent[0]}" stroke-width="2"/>` +
-      glow("M24 108 L104 76 L24 44 L92 16", N.hot, 3, N.accent[1]) +
-      [
-        [104, 76],
-        [24, 44],
-      ]
-        .map(
-          ([x, y]) =>
-            `<circle cx="${x}" cy="${y}" r="7" fill="none" stroke="${N.accent[2]}" stroke-width="2.4"/>`,
-        )
+      // Three blades of leaves whirling round a centre, the storm's edge round them.
+      halo("nature", 64, 64, 52) +
+      `<circle cx="64" cy="64" r="50" fill="none" stroke="${N.accent[1]}" stroke-width="2.4" stroke-dasharray="6 6" opacity=".7"/>` +
+      `<g fill="none" stroke="${N.hot}" stroke-width="3" stroke-linecap="round" opacity=".6"><path d="M64 64 Q84 40 108 50"/><path d="M64 64 Q60 96 34 104"/><path d="M64 64 Q40 44 30 20"/></g>` +
+      [0, 120, 240]
+        .map((deg) => {
+          const r = (deg * Math.PI) / 180;
+          return [0.45, 0.75, 1]
+            .map((t, i) =>
+              leaf(
+                64 + Math.cos(r) * 44 * t,
+                64 + Math.sin(r) * 44 * t,
+                0.8 + i * 0.35,
+                deg + 90,
+                i === 2 ? "#c7e88a" : i ? "#7fcf6a" : "#3f8f4a",
+              ),
+            )
+            .join("");
+        })
         .join("") +
-      halo("nature", 88, 22, 22) +
-      `<circle cx="88" cy="22" r="16" fill="#3f8f4a" stroke="#1f4626" stroke-width="2"/>` +
-      leaf(84, 16, 1, -30, "#c7e88a") +
-      leaf(94, 26, 1, 150, "#7fcf6a") +
+      `<circle cx="64" cy="64" r="11" fill="#3f8f4a" stroke="#1f4626" stroke-width="2"/>` +
       sparks(
         [
-          [104, 76, 2],
-          [24, 44, 2],
-          [60, 110, 1.3],
+          [116, 16, 1.4],
+          [14, 112, 1.3],
+          [116, 112, 1.2],
         ],
         N.accent[2],
       ),

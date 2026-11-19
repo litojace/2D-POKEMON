@@ -56,7 +56,7 @@ it("pins roster health (champion balance overhaul) and movement speeds", () => {
     astrabun: [134, 262],
     wombolder: [173, 232],
     shadopus: [129, 278],
-    pangrove: [164, 245],
+    pangrove: [140, 245],
     mossloth: [180, 240],
   };
   for (const [id, stats] of Object.entries(baseline)) {

@@ -229,26 +229,6 @@ export const MOSS = {
   reduction: 0.05,
   regen: 0.6,
 };
-/**
- * Curl & Roll steering: time to build speed, turn rate (radians a second:
- * `turnSlow` at walking speed down to `turn` at full speed, like a kart),
- * momentum lost turning and on walls.
- */
-export const ROLL = {
-  build: 0.45,
-  start: 0.9,
-  turn: 3.4,
-  turnSlow: 7,
-  turnLoss: 0.2,
-  wallLoss: 0.55,
-  coast: 1.5,
-  /** Ramming the same enemy again waits this long. */
-  rehit: 0.6,
-  /** A ram rolls on through the enemy, keeping this share of its speed. */
-  ramKeep: 0.7,
-  /** How close (px between the two bodies) counts as a ram. */
-  ramReach: 16,
-};
 /** The passives, as players read them (the roster's overview, the tutorial). */
 export const PASSIVES: Record<
   NonNullable<Character["passive"]>,
@@ -256,13 +236,31 @@ export const PASSIVES: Record<
 > = {
   plates: {
     name: "Armour Plates",
-    text: `Three leaf plates on your back. A hit of ${PLATES.minHit} damage or more breaks one, and only ${Math.round(PLATES.block * 100)}% of it gets through. After ${PLATES.regrowDelay} seconds without taking damage they grow back, one every ${PLATES.regrowEvery} seconds. Scale Shrapnel spends them.`,
+    text: `Three leaf plates on your back. A hit of ${PLATES.minHit} damage or more breaks one, and only ${Math.round(PLATES.block * 100)}% of it gets through. After ${PLATES.regrowDelay} seconds without taking damage they grow back, one every ${PLATES.regrowEvery} seconds. Scale Shrapnel spends them; coming up from Tunnel grows one back.`,
   },
   moss: {
     name: "Moss",
     text: `Standing still grows moss: a stack every ${MOSS.growEvery} seconds, up to ${MOSS.max}. Each stack takes ${Math.round(MOSS.reduction * 100)}% off damage and heals ${MOSS.regen} health a second; moving sheds it. Overgrowth grows it full.`,
   },
 };
+/** Leaf Storm: where each of a storm's blades is now (none without a storm). */
+export function cycloneBlades(
+  p: { x: number; y: number; cyclone?: { at: number } },
+  a: Pick<Ability, "count" | "radius" | "speed">,
+  time: number,
+) {
+  if (!p.cyclone) return [];
+  const n = a.count ?? 3,
+    spin = (time - p.cyclone.at) * a.speed;
+  return Array.from({ length: n }, (_, i) => {
+    const t = spin + (i * Math.PI * 2) / n;
+    return {
+      x: p.x + Math.cos(t) * a.radius,
+      y: p.y + Math.sin(t) * a.radius,
+      angle: t,
+    };
+  });
+}
 /** Plates a fighter has now (Pangrove starts every round with all of them). */
 export const platesOf = (p: { plates?: number }) => p.plates ?? PLATES.max;
 /** A seedling's growth stage now: 0 (sprout), 1 (bud) or 2 (bloom). */
@@ -337,17 +335,23 @@ export type AbilityKind =
    */
   | "shrapnel"
   /**
-   * Curl into a ball for up to `duration` seconds, steered like a vehicle:
-   * speed builds toward `speed` px/s on straight lines, turning and walls
-   * cost momentum, and enemies rammed take `damage` plus up to `roll.bonus`
-   * at full speed. Casting it again uncurls.
+   * Dig underground for up to `duration` seconds, moving `tunnel.haste`
+   * times faster: nothing can hit the caster (no damage, statuses or
+   * knockback) and it can't attack, but its mound shows where it is.
+   * Casting it again (or running out of time) surfaces: enemies within
+   * `radius` take `damage` and `status`, and `tunnel.plates` armour plates
+   * grow back.
    */
-  | "roll"
+  | "tunnel"
   /**
-   * Launch at `speed` and ricochet off up to `count` walls (faster after each),
-   * hitting every enemy on each stretch once for `damage`.
+   * For `duration` seconds `count` blades circle the caster `radius` px out,
+   * turning `speed` radians a second: an enemy a blade sweeps (within
+   * `cyclone.blade` px of its spoke, from the caster out to the blade)
+   * takes `damage` and `status`, at most once every
+   * `tickInterval`. The caster is Braced meanwhile. At the end the storm
+   * bursts: enemies within `explosion` take `cyclone.burst`.
    */
-  | "pinball"
+  | "cyclone"
   /**
    * Plant a seed at the aim that grows for `seed.grow` seconds a stage; the
    * first enemy to step on it sets it off (more damage and a longer root at
@@ -542,10 +546,10 @@ export interface Ability {
   drain?: number;
   /** Shrapnel: the fan's width in radians. */
   fan?: number;
-  /** Roll: extra ram damage at full speed, and the damage taken while curled. */
-  roll?: { bonus: number; reduction: number };
-  /** Pinball: speed multiplier after each bounce, and the damage taken meanwhile. */
-  pinball?: { speedUp: number; reduction: number };
+  /** Tunnel: speed multiplier underground, and armour plates regrown on surfacing. */
+  tunnel?: { haste: number; plates: number };
+  /** Cyclone: each blade's reach (px) and the final burst's damage. */
+  cyclone?: { blade: number; burst: number };
   /**
    * Seedling: seconds per growth stage, the share of `damage` and
    * `statusDuration` at each stage, and how close an enemy sets it off (px).
@@ -1959,11 +1963,11 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     id: "pangrove",
     name: "Pangrove",
     element: "Nature",
-    role: "Armoured roller",
+    role: "Armoured burrower",
     description:
-      "A pangolin whose scales are living leaves. Three armour plates soak up hits; it grapples in with its tongue, curls into a ball you steer, and sheds its plates as blades.",
+      "A pangolin whose scales are living leaves. Three armour plates soak up hits; it grapples in with its tongue, tunnels under the court to burst up beneath you, sheds its plates as blades, and whips them into a storm.",
     color: 0x7fcf6a,
-    health: 164,
+    health: 140,
     speed: 245,
     passive: "plates",
     basic: basic(
@@ -2009,33 +2013,37 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "curl-roll",
-        "Curl & Roll",
-        "roll",
-        7,
+        "tunnel",
+        "Tunnel",
+        "tunnel",
         12,
-        "Curl into a ball you steer for up to 3.5 seconds (cast again to uncurl). It turns tightly when slow and widely at speed; speed builds on straight lines. Ramming an enemy deals 7 to 20 damage, the faster the harder, and you roll on through for another pass. Curled, you take 30% less damage.",
+        14,
+        "Dig underground for up to 1 second (cast again to come up sooner). Nothing can hit you down there and you can't attack, but everyone sees your mound of dirt. Coming up deals 12 damage to enemies within 110 px and flings them away, and an armour plate grows back.",
         {
-          duration: 3.5,
-          speed: 540,
+          duration: 1,
+          radius: 110,
           knockback: 140,
-          roll: { bonus: 13, reduction: 0.7 },
+          tunnel: { haste: 1.1, plates: 1 },
         },
       ),
       ability(
-        "pinball",
-        "Pinball",
-        "pinball",
-        22,
+        "leaf-storm",
+        "Leaf Storm",
+        "cyclone",
+        4,
         20,
-        "Curl up and launch: ricochet off up to 4 walls, faster after each, hitting every enemy on each stretch for 22 damage. You take half damage meanwhile.",
+        "Your leaf plates lift into a storm of 3 blades circling 150 px out for 2.5 seconds. You walk at full speed and can't be knocked back. Each blade sweeps from you out to its tip: an enemy it passes takes 4 damage, is slowed and shoved outward. At the end the storm bursts for 20 damage within 300 px.",
         {
-          cast: 0.2,
-          speed: 950,
-          count: 4,
-          duration: 3,
-          knockback: 150,
-          pinball: { speedUp: 1.12, reduction: 0.5 },
+          duration: 2.5,
+          radius: 150,
+          count: 3,
+          speed: 5.2,
+          explosion: 300,
+          knockback: 30,
+          status: "slow",
+          statusDuration: 0.4,
+          tickInterval: 0.35,
+          cyclone: { blade: 26, burst: 20 },
         },
       ),
     ],
@@ -2389,7 +2397,7 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.019,
   wombolder: 1.012,
   shadopus: 1.044,
-  pangrove: 0.948,
+  pangrove: 0.965,
   mossloth: 1.062,
 };
 /**
@@ -2442,7 +2450,7 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.192,
   wombolder: 1.185,
   shadopus: 1.178,
-  pangrove: 1.02,
+  pangrove: 1.06,
   mossloth: 0.98,
 };
 /**
@@ -2752,16 +2760,10 @@ export interface Fighter extends Vec {
   moss?: number;
   mossAt?: number;
   mossStill?: boolean;
-  /** Curl & Roll: rolling until `until`, at `speed` px/s toward `heading`, building to `top`. */
-  roll?: {
-    until: number;
-    speed: number;
-    heading: number;
-    top: number;
-    slot: number;
-  };
-  /** Pinball: bounces left and the speed-up per bounce (the flight itself is the dash). */
-  pinball?: { bounces: number; speedUp: number };
+  /** Tunnel: underground until `until` (`slot` is the skill: casting it again surfaces). */
+  burrow?: { until: number; slot: number; haste: number };
+  /** Leaf Storm: blades circling from `at` until `until` (`slot` is the skill). */
+  cyclone?: { at: number; until: number; slot: number };
   /** Gill Siphon: the stream locked onto `target` until `until`; the next tick, and the skill slot. */
   tether?: { target: string; until: number; nextTick: number; skill: number };
   /** Mochi Pound: the strike it is on, the slot, until when the next can follow, and the cooldown's end. */
@@ -3437,65 +3439,8 @@ function stepMovement(
         warp = STATUS_RULES.warpMultiplier;
     }
   modifier *= warp;
-  if (p.pinball && time < p.dashUntil && modifier > 0) {
-    // Pinball: fly at the dash velocity and bounce off walls, faster each time.
-    const r = RULES.radius;
-    const nx = p.x + p.dashX * warp * dt,
-      ny = p.y + p.dashY * warp * dt;
-    const hitX = blocked(nx, p.y, r),
-      hitY = blocked(p.x, ny, r);
-    if (hitX || hitY) {
-      if (p.pinball.bounces <= 0) {
-        // Out of bounces: the next wall ends the flight.
-        p.dashUntil = time;
-        p.vx = p.vy = 0;
-        return;
-      }
-      p.pinball.bounces--;
-      if (hitX) p.dashX = -p.dashX;
-      if (hitY) p.dashY = -p.dashY;
-      p.dashX *= p.pinball.speedUp;
-      p.dashY *= p.pinball.speedUp;
-    }
-    p.vx = p.dashX * warp;
-    p.vy = p.dashY * warp;
-    move(p, p.vx * dt, p.vy * dt);
-    return;
-  }
-  if (p.roll && time < p.roll.until && time >= p.dashUntil) {
-    // Curl & Roll: steer a ball. Speed builds toward `top` on a straight
-    // line; turning and walls cost momentum.
-    const roll = p.roll;
-    if (dir.x || dir.y) {
-      const want = Math.atan2(dir.y, dir.x);
-      const diff = Math.atan2(
-        Math.sin(want - roll.heading),
-        Math.cos(want - roll.heading),
-      );
-      // Tight turns when slow (after a ram, say), wide ones at full speed.
-      const fast = Math.max(0, Math.min(1, roll.speed / Math.max(1, roll.top)));
-      const rate = ROLL.turnSlow + (ROLL.turn - ROLL.turnSlow) * fast;
-      const turn = Math.max(-rate * dt, Math.min(rate * dt, diff));
-      roll.heading += turn;
-      roll.speed *= 1 - Math.abs(turn) * ROLL.turnLoss;
-      roll.speed += (roll.top - roll.speed) * (1 - Math.exp(-dt / ROLL.build));
-    } else roll.speed *= Math.exp(-ROLL.coast * dt);
-    const speed = roll.speed * modifier * speedScale;
-    const r = RULES.radius;
-    if (blocked(p.x + Math.cos(roll.heading) * speed * dt, p.y, r)) {
-      roll.heading = Math.PI - roll.heading;
-      roll.speed *= ROLL.wallLoss;
-    }
-    if (blocked(p.x, p.y + Math.sin(roll.heading) * speed * dt, r)) {
-      roll.heading = -roll.heading;
-      roll.speed *= ROLL.wallLoss;
-    }
-    const v = roll.speed * modifier * speedScale;
-    p.vx = Math.cos(roll.heading) * v;
-    p.vy = Math.sin(roll.heading) * v;
-    move(p, p.vx * dt, p.vy * dt);
-    return;
-  }
+  // Tunnel: faster underground.
+  if (p.burrow && time < p.burrow.until) modifier *= p.burrow.haste;
   if (time < p.dashUntil) {
     // Dashes and charges are not slowed by Sloth Time: dashing is how you
     // get out of the bubble.
@@ -4223,7 +4168,7 @@ export const RITES: Rite[] = [
     "minor",
     "moon-hop",
     "Far Hop",
-    "Moon Hop reaches 380 px instead of 300.",
+    "Moon Hop reaches 380 px instead of 300 px.",
     { set: { range: 380 } },
   ),
   rite(
@@ -4381,10 +4326,10 @@ export const RITES: Rite[] = [
   rite(
     "pangrove",
     "minor",
-    "curl-roll",
-    "Long Roll",
-    "Curl & Roll lasts up to 5s instead of 3.5s.",
-    { set: { duration: 5 } },
+    "tunnel",
+    "Deep Tunnel",
+    "Tunnel lasts up to 1.4s instead of 1s.",
+    { set: { duration: 1.4 } },
   ),
   rite(
     "pangrove",
@@ -4397,18 +4342,18 @@ export const RITES: Rite[] = [
   rite(
     "pangrove",
     "major",
-    "curl-roll",
-    "Spiked Ball",
-    "Curl & Roll rams Root the enemy for 0.8s.",
-    { set: { status: "root", statusDuration: 0.8 } },
+    "tunnel",
+    "Upheaval",
+    "Coming up from Tunnel reaches 150 px instead of 110 px.",
+    { set: { radius: 150 } },
   ),
   rite(
     "pangrove",
     "major",
-    "pinball",
-    "Bank Shot",
-    "Pinball ricochets off up to 6 walls instead of 4.",
-    { set: { count: 6 } },
+    "leaf-storm",
+    "Gale Force",
+    "Leaf Storm whirls 4 blades instead of 3.",
+    { set: { count: 4 } },
   ),
   rite(
     "mossloth",

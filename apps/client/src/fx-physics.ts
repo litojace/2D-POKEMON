@@ -48,7 +48,7 @@ const BESPOKE = new Set([
   "skyline-lance",
   "sanctuary",
   "full-moon",
-  "pinball",
+  "leaf-storm",
   "overgrowth",
 ]);
 
