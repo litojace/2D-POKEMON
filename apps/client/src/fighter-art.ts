@@ -120,6 +120,32 @@ export function svgPicture(
   }
   return `<img class="fighter-portrait" src="${url}" alt="${CHARACTERS[id].name}" data-fighter="${id}" draggable="false" decoding="async">`;
 }
+/**
+ * Like svgPicture, but keeping the art's own `<svg>` box (its viewBox, so it
+ * lays out exactly as the inline art does), emptied, with the picture as its
+ * background. For art whose box CSS sizes as inline SVG.
+ */
+export function svgBackdrop(
+  key: string,
+  svg: () => string,
+  id: CharacterId,
+  inline: () => string = svg,
+) {
+  if (typeof Blob === "undefined" || typeof URL.createObjectURL !== "function")
+    return inline();
+  let kept = backdrops.get(key);
+  if (!kept) {
+    const markup = svg();
+    kept = {
+      url: URL.createObjectURL(new Blob([markup], { type: "image/svg+xml" })),
+      viewBox:
+        markup.match(/<svg [^>]*viewBox="([^"]*)"/)?.[1] ?? "0 0 200 200",
+    };
+    backdrops.set(key, kept);
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${kept.viewBox}" role="img" data-fighter="${id}" aria-label="${CHARACTERS[id].name}" style="background:url(${kept.url}) 50% 50% / contain no-repeat"></svg>`;
+}
+const backdrops = new Map<string, { url: string; viewBox: string }>();
 /** fighterAvatar's portrait as a picture (svgPicture). */
 export function fighterPortrait(id: CharacterId, look?: SkinLook | null) {
   return svgPicture(

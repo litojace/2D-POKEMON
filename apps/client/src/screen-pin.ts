@@ -86,8 +86,12 @@ export function watchScreenPin() {
   if (typeof window === "undefined") return;
   window.addEventListener("scroll", () => pinSoon(), { passive: true });
   // The keyboard closing: it animates away, and Safari settles the page
-  // after it, so look again a little later too.
-  document.addEventListener("focusout", () => {
+  // after it, so look again a little later too. Only a field the keyboard
+  // was open for: a tap moving focus between buttons (every screen opening
+  // takes it) closes no keyboard, and each look lays out the page, twice in
+  // the middle of a screen sliding in (Nov 2026).
+  document.addEventListener("focusout", (event) => {
+    if (!typingIn(event.target as Element | null)) return;
     pinSoon(120);
     setTimeout(pinNow, 600);
   });
