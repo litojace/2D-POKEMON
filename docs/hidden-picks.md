@@ -19,8 +19,8 @@ Spire rooms keep picks open, because everyone there is on one side.
 | Every fighter, from the briefing on      | yes | yes      | yes        | yes     |
 
 - **Locking in.** Coming into a room no longer locks your Lobby fighter in;
-  it is only shown (`browse`). **Lock in** (`select`) or **Ready** locks it.
-  The seat reads Choosing, Locked or Ready.
+  it is only shown (`browse`). **Lock in** (`select`) or **Ready** locks it;
+  cancelling Ready unlocks it again. The seat reads Choosing, Locked or Ready.
 - **One fighter per 2v2 team.** The first teammate to lock in a fighter
   keeps it. For the other teammate the card is greyed out and marked
   **Taken**, Lock in reads "Taken", and the server refuses it ("Rae already

@@ -3,7 +3,7 @@ import {
   groundHeight,
   WORLD_ART,
 } from "../../../../packages/shared/src/world-art";
-import { cosmeticLayer, type Skin } from "./cosmetics";
+import { cosmeticLayer, originalOf, type Skin } from "./cosmetics";
 import {
   profilePartOrder,
   profileEmissionPoint,
@@ -31,6 +31,7 @@ import {
   rigPoint,
   skinSuffix,
   lumeLayers,
+  artOrigins,
   type LumeKind,
   type Part,
   type RigAsset,
@@ -52,7 +53,14 @@ import {
 /** Skinned texture sets already requested, per scene (loaded on first sight). */
 const requested = new WeakMap<Phaser.Scene, Map<string, string[]>>();
 
-/** A rig image is its art's size (and so is its origin), whatever its raster. */
+/**
+ * A rig image is its art's size (and so is its origin), whatever its raster,
+ * and takes its texture's own pivot whenever the texture changes: a costume
+ * crops some parts in a wider box (assets.ts COSTUME_BOUNDS), where the same
+ * joint is another fraction of the texture. Keeping the default crop's
+ * fractions drew Tide Admiral's bicorne 26 rig px above its head and its
+ * coat as far below the body (owner's iPhone report, Shop preview).
+ */
 function sizeByResolution(image: Phaser.GameObjects.Image) {
   image.setSizeToFrame = function (frame?: Phaser.Textures.Frame | boolean) {
     const f = (
@@ -62,6 +70,9 @@ function sizeByResolution(image: Phaser.GameObjects.Image) {
     f.source.resolution = r;
     this.width = f.realWidth / r;
     this.height = f.realHeight / r;
+    const origin = artOrigins.get(originalOf(f.texture.key));
+    // After the size: the display origin is measured in it.
+    if (origin) this.setOrigin(origin[0], origin[1]);
     return this;
   };
   // (Test doubles of Phaser have no frames to size.)
@@ -313,10 +324,10 @@ export class FighterRig {
         const asset = this.assets.find(
           (a) => a.key === rigKey(this.character, dir, part),
         )!;
-        image
-          .setTexture(rigKey(this.character, dir, part, this.suffix))
-          .setOrigin(asset.originX, asset.originY)
-          .setPosition(asset.x, asset.y);
+        const key = rigKey(this.character, dir, part, this.suffix);
+        // The worn texture's own pivot: a costume's crop can be wider.
+        const [ox, oy] = artOrigins.get(key) ?? [asset.originX, asset.originY];
+        image.setTexture(key).setOrigin(ox, oy).setPosition(asset.x, asset.y);
       }
     }
     const rigAnchors = rigAnchorsFor(this.character, dir);
@@ -1019,7 +1030,9 @@ export class FighterRig {
           this.glows ??= new Map();
           let twin = this.glows.get(l.key);
           if (!twin) {
-            twin = sizeByResolution(this.scene.add.image(0, 0, l.key)).setBlendMode("ADD");
+            twin = sizeByResolution(
+              this.scene.add.image(0, 0, l.key),
+            ).setBlendMode("ADD");
             this.glows.set(l.key, twin);
             this.root.add(twin);
           }
@@ -1032,10 +1045,15 @@ export class FighterRig {
             .setRotation(image.rotation)
             .setFlip(image.flipX, image.flipY)
             .setVisible(image.visible)
-            .setAlpha(image.alpha * (reduced ? 0.5 : lumeStrength(l.kind, l.phase, now / 1000)));
+            .setAlpha(
+              image.alpha *
+                (reduced ? 0.5 : lumeStrength(l.kind, l.phase, now / 1000)),
+            );
         }
       }
-    if (this.glows) for (const [key, twin] of this.glows) if (!shown.has(key)) twin.setVisible(false);
+    if (this.glows)
+      for (const [key, twin] of this.glows)
+        if (!shown.has(key)) twin.setVisible(false);
   }
 
   /** A burst of bouncing pebbles from the top of the victory rock pile. */
@@ -1797,7 +1815,9 @@ export function lumeStrength(kind: LumeKind, phase: number, t: number) {
       return (t + phase * 0.5) % 1 < 0.3 ? 1 : 0.1;
     case "chase":
       // Even and odd lights take turns, like marquee bulbs.
-      return 0.15 + 0.85 * (0.5 + 0.5 * Math.cos(TAU * (t / 1.2 - phase * 0.5)));
+      return (
+        0.15 + 0.85 * (0.5 + 0.5 * Math.cos(TAU * (t / 1.2 - phase * 0.5)))
+      );
     case "twinkle":
       return Math.max(0, Math.cos(TAU * (t / 2.6 - phase * 0.5))) ** 8;
   }

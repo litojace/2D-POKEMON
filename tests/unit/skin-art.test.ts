@@ -14,7 +14,11 @@ import {
   paletteFor,
 } from "../../apps/client/src/creature-design";
 import { PYRANDA_BASE } from "../../apps/client/src/champion-markings";
-import { rigAssets, skinSuffix } from "../../apps/client/src/animation/assets";
+import {
+  artOrigins,
+  rigAssets,
+  skinSuffix,
+} from "../../apps/client/src/animation/assets";
 import { SKINS } from "../../apps/client/src/animation/cosmetics";
 import {
   drawCollectionAura,
@@ -250,6 +254,26 @@ describe("champion skin art", () => {
     ).toBe("~voltkit-stormcrown~3");
   });
 
+  it("records each texture's own pivot, so a costume part stays on its joint", () => {
+    // The rig sets a part's origin from artOrigins whenever its texture
+    // changes (rig.ts sizeByResolution). A costume's wider crop puts the same
+    // joint at another fraction of the texture: keeping the default part's
+    // fractions lifted Tide Admiral's hat off its head in the Shop preview.
+    for (const id of ["tidefin-sky-pirates", "voltkit-nova-vanguard"]) {
+      const champion = id.split("-")[0] as CharacterId;
+      const base = rigAssets(champion);
+      const worn = rigAssets(champion, { skin: id, stage: 1 });
+      let moved = 0;
+      for (const a of [...base, ...worn]) {
+        expect(artOrigins.get(a.key), a.key).toEqual([a.originX, a.originY]);
+        const plain = base.find((b) => b.key === a.key.split("~")[0])!;
+        if (a.originY !== plain.originY) moved++;
+      }
+      // The costume really does crop some parts wider (the case this guards).
+      expect(moved, id).toBeGreaterThan(0);
+    }
+  });
+
   it("never changes a fighter's size, pivots or placement (fairness)", () => {
     for (const s of CHAMPION_SKINS) {
       const shape = (a: ReturnType<typeof rigAssets>[number]) => [
@@ -296,7 +320,9 @@ describe("champion skin art", () => {
         expect(skinned.every((a) => a.key.includes(`~${s.id}`))).toBe(true);
       }
     }
-  });
+    // Every skin's every layer: about 6 s alone, past the default 10 s when
+    // CI runs the whole suite at once.
+  }, 30_000);
 });
 
 describe("collection pieces", () => {

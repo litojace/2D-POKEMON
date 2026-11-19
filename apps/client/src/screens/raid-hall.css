@@ -83,8 +83,10 @@
 .rh-card[data-raid-card="emberwing"] {
   --card-zoom: 1.08;
 }
+/* Snoozaku: a little bigger and lower, level with the other bosses (owner,
+   19 Nov); it grows from its top edge (transform-origin below). */
 .rh-card[data-raid-card="somnara"] {
-  --card-zoom: 1.08;
+  --card-zoom: 1.18;
 }
 .rh-card[data-raid-card="somnara"] .rh-card-art {
   container-type: size;
@@ -108,6 +110,42 @@
 }
 .rh-card[data-raid-card="storm-twins"] .rh-card-art img {
   object-position: 50% 45%;
+}
+/* The bosses that stood high on their card, with an empty foot under them
+   (owner, 19 Nov; Snoozaku and the Storm Twins already fill theirs): the
+   picture grows from its top edge, so the boss is a little bigger and
+   lower, the top stays covered and the foot fills. */
+.rh-card:is(
+  [data-raid-card="grumblecrag"],
+  [data-raid-card="tidewyrm"],
+  [data-raid-card="gloomshade"],
+  [data-raid-card="prismatail"],
+  [data-raid-card="emberwing"]
+) {
+  --card-zoom: 1.2;
+}
+.rh-card:is(
+    [data-raid-card="grumblecrag"],
+    [data-raid-card="tidewyrm"],
+    [data-raid-card="gloomshade"],
+    [data-raid-card="prismatail"],
+    [data-raid-card="emberwing"]
+  )
+  .rh-card-art
+  img {
+  transform-origin: 50% 0%;
+}
+/* Cragmuff's horns reach the card's sides: a lighter zoom. Prismell's face
+   is at the picture's right: it grows from the top right corner, so the
+   face and antennae stay in. */
+.rh-card[data-raid-card="grumblecrag"] {
+  --card-zoom: 1.14;
+}
+.rh-card[data-raid-card="prismatail"] {
+  --card-zoom: 1.16;
+}
+.rh-card[data-raid-card="prismatail"] .rh-card-art img {
+  transform-origin: 100% 0%;
 }
 .rh-card:hover .rh-card-art img {
   transform: scale(calc(var(--card-zoom) * 1.03));
