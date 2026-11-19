@@ -12,7 +12,10 @@
  * farther, at smaller y, goes first), and the whole list is then put in
  * topological order. Footprints that overlap (someone in a goal's mouth)
  * fall back to their middles. A long thing that people can stand inside
- * (a gantry's beam, a goal) is drawn as slices, each its own footprint.
+ * (a goal) is drawn as slices, each its own footprint. The lap gantry is
+ * the exception: overhead and running along the view's depth, its slices
+ * striped the runners under it, so it is one picture at the lane's far
+ * edge, its near post reaching down past its footprint (`below`).
  */
 
 export interface Drawable {
@@ -29,6 +32,12 @@ export interface Drawable {
   z?: number;
   /** Half width on screen when wider than the footprint (a crown, a sign). */
   sw?: number;
+  /**
+   * How far the picture reaches below its footprint (world px): a part
+   * nearer the viewer drawn at a farther thing's depth (the gantry's near
+   * post, drawn with its far edge).
+   */
+  below?: number;
   /** Drawn even when its foot is off screen (beams reaching in). */
   always?: boolean;
   /** For tests and the debug order. */
@@ -59,7 +68,7 @@ export function screenBox(d: Drawable): ScreenBox {
     x0 = Math.min(x0, mid - d.sw);
     x1 = Math.max(x1, mid + d.sw);
   }
-  return { x0, x1, y0: b.y0 - z - d.h, y1: b.y1 - z + 4 };
+  return { x0, x1, y0: b.y0 - z - d.h, y1: b.y1 - z + 4 + (d.below ?? 0) };
 }
 /** The footprint's ground y over [xa, xb] (where two things meet). */
 function yRange(d: Drawable, xa: number, xb: number): [number, number] {

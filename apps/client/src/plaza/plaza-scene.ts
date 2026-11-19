@@ -2722,37 +2722,46 @@ export function openPlaza(options) {
     g.fillText(score[1], x + 50, y - 24);
   }
   /**
-   * The lap gantry spans the lane from its outer edge to its inner one, so
-   * it is drawn as parts with their own footprints: the far post, the beam
-   * in slices, the sign, the near post. A runner passing under it stands
-   * between them.
+   * The lap gantry spans the lane from its outer edge to its inner one,
+   * along the view's depth, so in this front-and-above view its posts,
+   * beam and sign stack into one column over the start line. Drawn part by
+   * part in depth order, the beam's near half and the near post striped
+   * whoever stood on the line, name tag and all, and the beam cut through
+   * its own sign. It is one picture instead, standing at the lane's far
+   * edge: a runner anywhere on the line, or in front of it, is drawn over
+   * it; someone beyond the far edge, under it. The sign is painted last,
+   * so nothing of the gantry crosses it. `below` lets its box on screen
+   * reach the near post's foot; `always`, because its foot (the far edge)
+   * can be above the view while the near post is in it.
    */
   function gantryDrawables(g) {
     const x = TRACK.cx,
       ya = TRACK.cy - TRACK.ro[1] - 4,
-      yb = TRACK.cy - TRACK.ri[1] + 4,
-      post = (y) => () => {
-        g.fillStyle = "#2a2f42";
-        g.fillRect(x - 6, y - 150, 12, 152);
-      };
+      yb = TRACK.cy - TRACK.ri[1] + 4;
     return [
-      spot(x, ya, 6, 152, post(ya), { name: "gantry-post" }),
-      spot(x, yb, 6, 152, post(yb), { name: "gantry-post" }),
-      ...slices(x - 10, x + 10, ya, yb, 5, 175, (y0, y1) => {
-        g.fillStyle = "#11131d";
-        g.fillRect(x - 10, y0 - 170, 20, y1 - y0 + 1);
-      }),
       {
-        x0: x - 6,
-        x1: x + 6,
-        y0: (ya + yb) / 2,
-        y1: (ya + yb) / 2,
-        h: 190,
+        x0: x - 10,
+        x1: x + 10,
+        y0: ya - 2,
+        y1: ya,
+        h: 172,
         sw: 96,
-        name: "gantry-sign",
-        draw: () => drawGantrySign(g, x, ya, yb),
+        below: yb - ya + 2,
+        always: true,
+        name: "gantry",
+        draw: () => drawGantry(g, x, ya, yb),
       },
     ];
+  }
+  function drawGantry(g, x, ya, yb) {
+    g.fillStyle = "#2a2f42";
+    g.fillRect(x - 6, ya - 150, 12, 152);
+    // The beam, seen from above: a strip from its far end to its near one.
+    g.fillStyle = "#11131d";
+    g.fillRect(x - 10, ya - 170, 20, yb - ya + 1);
+    g.fillStyle = "#2a2f42";
+    g.fillRect(x - 6, yb - 150, 12, 152);
+    drawGantrySign(g, x, ya, yb);
   }
   function drawGantrySign(g, x, ya, yb) {
     g.save();
