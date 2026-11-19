@@ -37,7 +37,7 @@ export const PLAZA = {
   boba: { speed: 1.3, seconds: 30 },
   /** Treats: at most one throw this often (seconds). */
   treatSeconds: 1.5,
-  /** Free treats a Pacific day (migration 20261119170000_remove_farm_bistro_leaves). */
+  /** Free treats a Pacific day (migration 20261119190000_remove_farm_bistro_leaves). */
   treatsDaily: 10,
 } as const;
 /** The treats, thrown in this order through the day (the database's list). */
@@ -1023,7 +1023,7 @@ export function orbHeight(ms: number) {
 }
 
 /* ---------- Plaza today: daily quests paid in shop coins (the database's
-   arena_plaza_quests(), migration 20261119170000_remove_farm_bistro_leaves) ---------- */
+   arena_plaza_quests(), migration 20261119190000_remove_farm_bistro_leaves) ---------- */
 export const PLAZA_QUESTS = [
   { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 2 },
   { id: "lap", text: "Run a lap in under 30 s", max: 1, coins: 2 },

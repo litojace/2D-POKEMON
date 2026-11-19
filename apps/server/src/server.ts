@@ -3204,7 +3204,7 @@ export function createArenaServer(
       if (!token || bobaPending) return fail(cb, "One moment…");
       bobaPending = true;
       try {
-        // Free since 20261119170000_remove_farm_bistro_leaves; the database
+        // Free since 20261119190000_remove_farm_bistro_leaves; the database
         // still checks the player.
         const ok = (await accounts.rpc(token, "arena_plaza_boba", {
           p_ref: randomUUID(),

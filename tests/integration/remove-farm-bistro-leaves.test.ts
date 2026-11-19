@@ -8,13 +8,13 @@ import {
   PLAZA_TREATS,
 } from "../../packages/shared/src/plaza";
 
-// Migration 20261119170000_remove_farm_bistro_leaves: the Farm, the Bistro
+// Migration 20261119190000_remove_farm_bistro_leaves: the Farm, the Bistro
 // and Gold Leaves go for good. Every leaf balance is paid out once in shop
 // coins (100 leaves -> 5 coins) before the leaf tables are dropped. The
 // database is filled the way production was (farms, Bistros, leaf wallets
 // with history, Plaza quests done today) before the migration runs, as it
 // will on production.
-const MIGRATION = "20261119170000_remove_farm_bistro_leaves.sql";
+const MIGRATION = "20261119190000_remove_farm_bistro_leaves.sql";
 let db: PGlite;
 let files: string[] = [];
 let at = -1;

@@ -188,7 +188,7 @@ Run [066_display_name_changes.sql](../supabase/migrations/066_display_name_chang
 
 ### The Farm, the Bistro and Gold Leaves (removed)
 
-The Elemental Farm ([037](../supabase/migrations/037_farm.sql) and the `*farm*` migrations after it), the Element Bistro ([068](../supabase/migrations/068_bistro.sql) and the `*bistro*` migrations after it) and Gold Leaves ([036](../supabase/migrations/036_gold_leaves.sql)) were removed in Nov 2026. Their migrations still run in name order on a new database, then [20261119170000_remove_farm_bistro_leaves.sql](../supabase/migrations/20261119170000_remove_farm_bistro_leaves.sql) drops their tables and functions. It first turns every Gold Leaf balance into shop coins once, at the old rate (`floor(balance × 5 / 100)`, coin ledger reason `leaf-retire`); Bistro coins are deleted with the Bistro, without conversion. Earned farm titles stay with their owners.
+The Elemental Farm ([037](../supabase/migrations/037_farm.sql) and the `*farm*` migrations after it), the Element Bistro ([068](../supabase/migrations/068_bistro.sql) and the `*bistro*` migrations after it) and Gold Leaves ([036](../supabase/migrations/036_gold_leaves.sql)) were removed in Nov 2026. Their migrations still run in name order on a new database, then [20261119190000_remove_farm_bistro_leaves.sql](../supabase/migrations/20261119190000_remove_farm_bistro_leaves.sql) drops their tables and functions. It first turns every Gold Leaf balance into shop coins once, at the old rate (`floor(balance × 5 / 100)`, coin ledger reason `leaf-retire`); Bistro coins are deleted with the Bistro, without conversion. Earned farm titles stay with their owners.
 
 ### Unlimited coins for admin testing
 

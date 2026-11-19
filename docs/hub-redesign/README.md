@@ -1,7 +1,7 @@
 # Hub redesign: Lobby, Plaza and Elemental Farm (handoff)
 
 > **The Farm, the Bistro and Gold Leaves were removed in Nov 2026**
-> (migration `20261119170000_remove_farm_bistro_leaves`). Those parts of
+> (migration `20261119190000_remove_farm_bistro_leaves`). Those parts of
 > this folder are kept as history; they no longer describe the game.
 
 This folder handed a finished design prototype over to the real implementation.

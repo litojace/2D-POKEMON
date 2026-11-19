@@ -228,7 +228,7 @@ it("Nearby on the Plaza: quick chat only, to everyone in the copy, with the Plaz
 it("Nearby is only the Plaza now: there is no farm channel", async () => {
   const f = await setup();
   // Away from the Plaza, Nearby has no one to reach (the Farm's channel,
-  // chat-farm, went with the Farm in 20261119170000_remove_farm_bistro_leaves).
+  // chat-farm, went with the Farm in 20261119190000_remove_farm_bistro_leaves).
   expect(
     (await request(f.b.s, "chat-send", { channel: "place", quick: "wave" })).ok,
   ).toBe(false);

@@ -1,7 +1,7 @@
 # Economy model
 
 > **The Farm, the Bistro and Gold Leaves were removed in Nov 2026**
-> (migration `20261119170000_remove_farm_bistro_leaves`). Those parts of
+> (migration `20261119190000_remove_farm_bistro_leaves`). Those parts of
 > this model are kept as history; they no longer describe the game.
 
 These are Python models behind the XP, coin and Gold Leaf numbers in the prototype. Run them from this folder with `python3 <file>`.

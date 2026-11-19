@@ -4,7 +4,7 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { ORB_SHOWER, PLAZA_QUESTS } from "../../packages/shared/src/plaza";
 
 // Migration 038: Plaza today quests, the Orb Shower, TOP DASH and Volt Boba.
-// Since 20261119170000_remove_farm_bistro_leaves the quests pay shop coins,
+// Since 20261119190000_remove_farm_bistro_leaves the quests pay shop coins,
 // orbs pay nothing themselves (they count toward the orbs quest) and Volt
 // Boba is free.
 let db: PGlite;

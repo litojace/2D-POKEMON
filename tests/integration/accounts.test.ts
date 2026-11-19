@@ -1165,7 +1165,7 @@ it("has no Farm, Bistro or Gold Leaves routes any more", async () => {
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-  // Removed in 20261119170000_remove_farm_bistro_leaves: they reach nothing.
+  // Removed in 20261119190000_remove_farm_bistro_leaves: they reach nothing.
   for (const [path, body] of [
     ["/api/farm", undefined],
     ["/api/farm/act", { request: crypto.randomUUID(), actions: [] }],
