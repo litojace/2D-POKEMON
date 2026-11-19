@@ -1318,7 +1318,7 @@ export class Arena {
   }
   /**
    * Tunnel ends (cast again, out of time, or another skill): Pangrove bursts
-   * up. Enemies close by take the hit and its stun, and plates grow back.
+   * up. Enemies close by take the hit and are flung away, and a plate grows back.
    */
   unburrow(p: Fighter) {
     const burrow = p.burrow;
@@ -1344,7 +1344,7 @@ export class Arena {
       this.event("burst", p, 0x9be37a, p.plates, p.id, "plate-grow");
     }
   }
-  /** Leaf Storm ends: the blades burst outward (unless `quiet`: knocked out). */
+  /** Leaf Storm ends: the blades burst outward (not when Pangrove is down). */
   endCyclone(p: Fighter) {
     const storm = p.cyclone;
     if (!storm) return;
