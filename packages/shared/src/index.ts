@@ -8,6 +8,8 @@ import {
   type SnapshotMeta,
 } from "./snapshot-meta.js";
 export * from "./snapshot-meta.js";
+import { inMeters } from "./units.js";
+export * from "./units.js";
 export * from "./pick-rules.js";
 export * from "./avatars.js";
 /**
@@ -2352,9 +2354,15 @@ export function hasMark(p: Fighter, by: string, time: number) {
     (s) => s.kind === "mark" && s.by === by && s.until > time,
   );
 }
-for (const character of Object.values(CHARACTERS))
-  for (const skill of [character.basic, ...character.skills])
+for (const character of Object.values(CHARACTERS)) {
+  // Descriptions are written in court pixels; players read meters.
+  character.description = inMeters(character.description);
+  for (const skill of [character.basic, ...character.skills]) {
     skill.element = character.element;
+    skill.description = inMeters(skill.description);
+  }
+}
+for (const combo of Object.values(COMBOS)) combo.text = inMeters(combo.text);
 /** Seconds between basic attacks, including Kindle. */
 /**
  * 2v2 tuning, for the team mode only: a strength factor per champion in the
@@ -3599,7 +3607,7 @@ const rite = (
   tier,
   skill,
   name,
-  text,
+  text: inMeters(text),
   ...change,
 });
 export const RITES: Rite[] = [

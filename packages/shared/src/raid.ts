@@ -7,6 +7,7 @@ export * from "./raid-prismatail.js";
 import { somnaraPattern, type DreamRune } from "./raid-somnara.js";
 export * from "./raid-somnara.js";
 import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
+import { inMeters } from "./units.js";
 import {
   ASCENDANT_CRAGMUFF_CHAPTERS,
   ASCENDANT_INKPURR_CHAPTERS,
@@ -368,7 +369,9 @@ export const RAID_ATTACKS: Record<
   },
   "chain-lightning": {
     name: "Chain Lightning",
-    tip: "Spread more than 200px apart. The strike jumps up to three raiders. Voltkit absorbs it for 15 ultimate charge; Grounded prevents it jumping from you.",
+    tip: inMeters(
+      "Spread more than 200px apart. The strike jumps up to three raiders. Voltkit absorbs it for 15 ultimate charge; Grounded prevents it jumping from you.",
+    ),
     summary: "A marked raider starts a chain. Spread out so it cannot jump.",
   },
   "static-field": {
@@ -383,7 +386,9 @@ export const RAID_ATTACKS: Record<
   },
   polarity: {
     name: "Polarity",
-    tip: "Stand within 125px of an opposite sign before the 4-second timer ends. Same signs together take double damage. Solo: enter your opposite-sign floor pad. Terradon\u2019s Shell Up blocks the blast.",
+    tip: inMeters(
+      "Stand within 125px of an opposite sign before the 4-second timer ends. Same signs together take double damage. Solo: enter your opposite-sign floor pad. Terradon\u2019s Shell Up blocks the blast.",
+    ),
     summary: "Pair with an opposite sign. Solo: reach the matching floor pad.",
   },
   thunderclap: {
@@ -1255,8 +1260,9 @@ export const RAID_BOSS_CHAPTERS: Partial<
     {
       name: "Dawn",
       objective: "Carry skylight through mirrors into the shielded heart.",
-      detail:
+      detail: inMeters(
         "Stand within the skylight ring to take the beam. Light travels up to 300px between raiders and mirror posts, and 260px into the heart. Hit a mirror to turn its arrow 45°. A chain held for 1.2 seconds (1 second solo) shatters the shield for 5 seconds. Carrying light burns 6 health per second, and lances seek whoever carries it. When the heart closes, the mirrors that carried the light flash, then turn.",
+      ),
     },
     {
       name: "High Noon",
@@ -2257,7 +2263,7 @@ export const RAID_TRAITS = {
   },
   dazzling: {
     name: "Dazzling",
-    text: "More Glare, but relay range grows by 60px.",
+    text: inMeters("More Glare, but relay range grows by 60px."),
   },
   overcast: {
     name: "Overcast",
@@ -2338,7 +2344,9 @@ export const RAID_RITES = {
   },
   polished: {
     name: "Polished",
-    text: "Carry sunlight without burning. Your relay range grows by 60px.",
+    text: inMeters(
+      "Carry sunlight without burning. Your relay range grows by 60px.",
+    ),
     icon: "Facet Guard",
   },
   lucid: {

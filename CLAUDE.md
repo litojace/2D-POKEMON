@@ -47,7 +47,7 @@ Then run those with:
 - `--workers=2`: twice as fast with 4 CPUs. Keep the timing and frame-rate
   specs on one worker, by themselves: `battle-performance`, `pvp-performance`,
   `roster-smooth`, `graphics-quality`, `ui-motion`, `touch-recovery`,
-  `cosmetic-displays`.
+  `cosmetic-displays`, `panel-open-budget`.
 - `-g "<part of a test title>"` while iterating on one test.
 - Name spec files by path (`tests/visual/spire.spec.ts`). A bare word is a
   pattern on the whole path, so in a checkout like `/tmp/wt-spire` the word

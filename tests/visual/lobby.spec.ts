@@ -1518,6 +1518,8 @@ test("the Spire card stays away before the Spire opens, shows progress while a z
       const w = window as any;
       w.__raids = r.raids;
       w.__spire = { ...r.spire, highestFloor: 3, claimed: [1, 2, 3] };
+      // As the server says after a climb or a raid: records changed.
+      w.__sock.fire("economy-changed");
     }, SPIRE_OPEN);
     await page.click('.lobby-rail [data-lobby-action="raids"]');
     const room = page.locator(".rh-room");
@@ -1533,6 +1535,7 @@ test("the Spire card stays away before the Spire opens, shows progress while a z
     await page.evaluate((r) => {
       const w = window as any;
       w.__spire = r.spire;
+      w.__sock.fire("economy-changed");
     }, SPIRE_OPEN);
     await page.click('.lobby-rail [data-lobby-action="raids"]');
     await expect(room).toHaveAttribute("data-raid-mode", "hall");
