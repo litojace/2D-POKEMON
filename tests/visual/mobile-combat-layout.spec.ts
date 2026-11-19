@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { openHub, pushUntilBattle, snap, openPlayPanel, createRoom } from "./helpers";
 
-for (const size of [{width:844,height:390},{width:932,height:430},{width:844,height:280}]) {
+for (const size of [{width:844,height:390},{width:932,height:430},{width:956,height:440},{width:844,height:280}]) {
   test(`approved mobile combat arc fits ${size.width}x${size.height}`, async ({browser},info) => {
     const context = await browser.newContext({viewport:size,isMobile:true,hasTouch:true,deviceScaleFactor:2});
     try {

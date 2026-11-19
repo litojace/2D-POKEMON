@@ -166,6 +166,24 @@ function saveLobbyMode(mode: LobbyMode) {
   }
 }
 
+/**
+ * Whether the mode menu lists a mode for this party (docs/pvp-plan.md,
+ * item 5). Rooms nobody can fill are left out: 2v2 needs a party of four,
+ * Free-for-all three; Quick Match is for one player. The mode PLAY has now
+ * always shows, so nobody loses a choice they made.
+ */
+export function modeListed(
+  mode: LobbyMode,
+  partySize: number,
+  current: LobbyMode,
+): boolean {
+  if (mode === current) return true;
+  const size = Math.max(1, partySize);
+  if (mode === "teams") return size >= 4;
+  if (mode === "ffa") return size >= 3;
+  if (mode === "quick") return size < 2;
+  return true;
+}
 export type LobbyAction =
   | "fighters"
   | "wardrobe"
@@ -343,6 +361,18 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     { passive: true },
   );
   let mode = savedLobbyMode(options.firstMatchDone);
+  let partySize = 0;
+  /** Show only the modes this party can play (modeListed). */
+  const listModes = () =>
+    layer
+      .querySelectorAll<HTMLElement>("#lobby-mode-menu [data-lobby-mode]")
+      .forEach((b) => {
+        b.hidden = !modeListed(
+          b.dataset.lobbyMode as LobbyMode,
+          partySize,
+          mode,
+        );
+      });
   /** Fighter + worn skin + stage now drawn on the stage. */
   let artKey: string | undefined;
   // The selected fighter moves with the same live rig as the Fighters roster
@@ -733,6 +763,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   setPerfSource("lobby", perfSource);
   return {
     update(view) {
+      partySize = view.partySize;
+      listModes();
       // The middle of the stage: your fighter, or your party's leader.
       const host = view.host;
       const character = host?.character ?? view.character;

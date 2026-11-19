@@ -1268,6 +1268,7 @@ export function createArenaServer(
                 : arena.winner === p.id,
             vsPeople,
             botLevel,
+            quick: quickRooms.get(arena) ?? null,
             mode: arena.mode,
             knockedOut: (p.stats.knocked ?? 0) > 0,
             skillUses: p.stats.skills,

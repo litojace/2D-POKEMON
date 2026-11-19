@@ -10,7 +10,8 @@ let server: ReturnType<typeof createArenaServer>,
   accounts: ReturnType<typeof fakeAccounts>,
   url: string,
   clients: Socket[],
-  logs: { event: string; details: Record<string, unknown> }[];
+  logs: { event: string; details: Record<string, unknown> }[],
+  receipts: any[];
 const emit = (socket: Socket, event: string, data: unknown = {}) =>
   new Promise<Reply>((resolve, reject) =>
     socket
@@ -38,6 +39,8 @@ beforeEach(async () => {
   accounts = fakeAccounts();
   clients = [];
   logs = [];
+  receipts = [];
+  accounts.provider.recordActivity = async (r) => void receipts.push(r);
   server = createArenaServer({
     accounts: accounts.provider,
     autoTick: false,
@@ -118,6 +121,10 @@ it("a lone player who takes the sparring bot gets a labelled bot, logged as a qu
     quick: "bot",
   });
   expect(JSON.stringify(lines[0].details)).not.toContain("Player");
+  // The database is told it was Quick Match's bot (coins, migration
+  // 20261119170000).
+  await expect.poll(() => receipts.length).toBe(1);
+  expect(receipts[0].players[0]).toMatchObject({ quick: "bot", won: true });
 });
 
 it("cancelling or disconnecting leaves the queue, so nobody is paired with a ghost", async () => {
