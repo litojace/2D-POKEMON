@@ -91,7 +91,8 @@ describe("battle effects", () => {
                   ["blink", "rush"].includes(a.kind)
                   ? a.id in effectKit.cast && a.id in effectKit.impact
                   : // Nature's own kinds: a tongue (beam), a fan of blades, a ball that
-                    // rams (roll, pinball), a swap's landing, and the seedling's and
+                    // digs in and bursts up (tunnel), a storm that bursts at its end
+                    // (cyclone), a swap's landing, and the seedling's and
                     // Sloth Time's ground.
                     a.kind === "grapple"
                     ? a.id in effectKit.beam && a.id in effectKit.cast
@@ -99,7 +100,7 @@ describe("battle effects", () => {
                       ? a.id in effectKit.projectile &&
                         a.id in effectKit.impact &&
                         a.id in effectKit.cast
-                      : ["roll", "pinball", "swap"].includes(a.kind)
+                      : ["tunnel", "cyclone", "swap"].includes(a.kind)
                         ? a.id in effectKit.cast && a.id in effectKit.impact
                         : ["seedling", "timewarp", "screen"].includes(a.kind)
                           ? a.id in effectKit.zone && a.id in effectKit.cast

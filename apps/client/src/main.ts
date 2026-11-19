@@ -239,6 +239,7 @@ import {
   RITE_BY_ID,
   RITE_RULES,
   kitOf,
+  cycloneBlades,
   skillReady,
   normalize,
   unpackSnapshot,
@@ -260,7 +261,7 @@ import {
   platesOf,
 } from "../../../packages/shared/src/index";
 import { AudioManager } from "./audio";
-import { bounceFx, plateFx } from "./skill-fx-nature";
+import { drawLeafStorm, plateFx } from "./skill-fx-nature";
 import { drawSiphon } from "./skill-fx-water";
 import { InterpolationBuffer } from "./networking/interpolation";
 import {
@@ -491,16 +492,15 @@ const leadSeen = { sum: 0, frames: 0 };
 let lastPing: number | undefined;
 /** Static Glide in progress, per fighter: when it started (server time). */
 const gliding = new Map<string, { until: number; start: number }>();
-/** Curled-up balls: how far each has spun (it rolls as far as it travels). */
-const ballSpins = new Map<string, { spin: number; at: number }>();
-function ballSpin(id: string, speed: number, heading: number) {
+/** Tunnelling mounds: how far each has churned (it churns as far as it travels). */
+const moundChurns = new Map<string, { churn: number; at: number }>();
+function moundChurn(id: string, speed: number, heading: number) {
   const now = performance.now(),
-    last = ballSpins.get(id);
+    last = moundChurns.get(id);
   const dt = last ? Math.min(0.1, (now - last.at) / 1000) : 0;
-  // A ball about 30 px across turns once per ~95 px rolled.
-  const spin = (last?.spin ?? 0) + (speed * dt) / 15;
-  ballSpins.set(id, { spin, at: now });
-  return { spin, heading };
+  const churn = (last?.churn ?? 0) + (speed * dt) / 18 + dt * 3;
+  moundChurns.set(id, { churn, at: now });
+  return { churn, heading };
 }
 /** Adapts optional battle decoration to the device (Settings → Graphics). */
 const battleQuality = new BattleQualityGovernor();
@@ -5822,9 +5822,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const c = CHARACTERS[local.character];
     const free = !!state.practice?.unlimitedCooldowns;
     // The server takes a skill over a basic in the same step.
-    // Casting Curl & Roll again while rolling uncurls (the server allows it on cooldown).
-    if (input.skill >= 0 && local.roll && input.skill === local.roll.slot) {
-      // Nothing to flash: the server will uncurl.
+    // Casting Tunnel again underground surfaces (the server allows it on cooldown).
+    if (input.skill >= 0 && local.burrow && input.skill === local.burrow.slot) {
+      // Nothing to flash: the server will surface.
     } else if (input.skill >= 0) {
       const windUp = c.skills[input.skill].cast;
       // A wind-up skill shows its charging pose now (as the server's charge
@@ -6034,7 +6034,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         event.color,
         reducedMotion,
       );
-    // A blink's landing, a rush's contact, a roll's or pinball's ram, a
+    // A blink's landing, a rush's contact, a tunnel surfacing, a storm bursting, a
     // seedling going off and a swap's landing play the move's impact effect.
     if (
       ability &&
@@ -6042,8 +6042,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       [
         "blink",
         "rush",
-        "roll",
-        "pinball",
+        "tunnel",
+        "cyclone",
         "seedling",
         "swap",
         "rewind",
@@ -6077,12 +6077,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       playCast(this, shown, event.x, event.y, 0, event.color, reducedMotion);
     }
     if (event.kind === "hazard") this.hazardBurst(event);
-    // Pangrove's plates break and grow back; a pinball bounces off a wall.
+    // Pangrove's plates break and grow back.
     if (event.kind === "burst" && !reducedMotion) {
       if (event.abilityId === "plate-break" || event.abilityId === "plate-grow")
         plateFx(this, event.x, event.y, event.abilityId === "plate-grow");
-      else if (event.abilityId === "pinball-bounce")
-        bounceFx(this, event.x, event.y);
     }
     if (event.combo && (event.kind === "burst" || event.kind === "hit"))
       this.comboText(event);
@@ -7045,15 +7043,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         shell: serverPlayer.statuses.some(
           (s) => s.kind === "shell" && s.until > serverTime,
         ),
-        // Curled into a ball (Curl & Roll, Pinball): it spins as it travels.
-        ball:
-          (serverPlayer.roll && serverPlayer.roll.until > serverTime) ||
-          (serverPlayer.pinball && serverPlayer.dashUntil > serverTime)
-            ? ballSpin(
-                p.id,
-                Math.hypot(p.vx, p.vy),
-                serverPlayer.roll?.heading ?? Math.atan2(p.vy, p.vx),
-              )
+        // Underground (Tunnel): only its mound of dirt shows, churning as it goes.
+        mound:
+          serverPlayer.burrow && serverPlayer.burrow.until > serverTime
+            ? moundChurn(p.id, Math.hypot(p.vx, p.vy), Math.atan2(p.vy, p.vx))
             : undefined,
         charging: !!serverPlayer.charge,
         ultReady:
@@ -7414,6 +7407,31 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           y - 60 - jump,
           4,
         );
+      }
+      // Leaf Storm: the blades circling it (down with it while it tunnels).
+      if (
+        serverPlayer.cyclone &&
+        serverPlayer.cyclone.until > serverTime &&
+        !(serverPlayer.burrow && serverPlayer.burrow.until > serverTime)
+      ) {
+        const storm = kitOf(p.character, p.rites).skills[
+          serverPlayer.cyclone.slot
+        ];
+        if (storm)
+          drawLeafStorm(
+            this,
+            p.id,
+            x,
+            y - jump,
+            cycloneBlades(
+              { x, y: y - jump, cyclone: serverPlayer.cyclone },
+              storm,
+              serverTime,
+            ),
+            storm,
+            serverPlayer.cyclone.until - serverTime,
+            reducedMotion,
+          );
       }
       // Gill Siphon: the stream to the enemy it holds.
       if (serverPlayer.tether) {

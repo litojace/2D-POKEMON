@@ -663,8 +663,8 @@ export class StormTwinsArena extends RaidArena {
       const p = alive.find((p) => p.id === m.playerId);
       if (!p) continue;
       if (p.character === "terradon" && this.has(p, "shell")) continue;
-      // Pangrove curled into a ball: Polarity can't reach under the plates.
-      if (this.curled(p)) continue;
+      // Pangrove underground: Polarity can't reach it.
+      if (this.tunnelled(p)) continue;
       const mismatch = marks.some(
         (n) =>
           n !== m &&

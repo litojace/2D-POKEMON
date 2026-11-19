@@ -42,11 +42,9 @@ it("gives every rite its skill's own icon and an effect badge", () => {
   expect(riteEffect(RITES.find((r) => r.name === "Superconductor")!)).toBe(
     "area",
   );
-  // The Nature champions': a ram that roots, more bounces, longer roots and naps.
-  expect(riteEffect(RITES.find((r) => r.name === "Spiked Ball")!)).toBe(
-    "status",
-  );
-  expect(riteEffect(RITES.find((r) => r.name === "Bank Shot")!)).toBe("count");
+  // The Nature champions': a wider eruption, more blades, longer roots and naps.
+  expect(riteEffect(RITES.find((r) => r.name === "Upheaval")!)).toBe("area");
+  expect(riteEffect(RITES.find((r) => r.name === "Gale Force")!)).toBe("count");
   expect(riteEffect(RITES.find((r) => r.name === "Deep Roots")!)).toBe(
     "duration",
   );

@@ -745,7 +745,7 @@ export function createArenaServer(
       const session = getSession(socket.id);
       const arena = session ? rooms.get(session.code) : undefined;
       const me = arena?.players.find((p) => p.id === session!.id);
-      const others = me && arena ? arena.enemiesOf(me) : [];
+      const others = me && arena ? arena.enemiesOf(me, true) : [];
       const other = others.length
         ? { name: others.map((o) => o.name).join(" & ") }
         : undefined;

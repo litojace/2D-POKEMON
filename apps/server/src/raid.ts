@@ -605,13 +605,9 @@ export class RaidArena extends Arena {
         this.heroes().some((p) => p.id === z.owner),
     );
   }
-  /** Pangrove curled into a ball (Curl & Roll, or flying as a Pinball)? */
-  protected curled(p: Fighter) {
-    return (
-      p.character === "pangrove" &&
-      ((!!p.roll && p.roll.until > this.time) ||
-        (!!p.pinball && this.time < p.dashUntil))
-    );
+  /** Pangrove underground (Tunnel)? */
+  protected tunnelled(p: Fighter) {
+    return p.character === "pangrove" && this.burrowed(p);
   }
   /** Is a raider standing in a Warm Spring (or another of these zones)? */
   protected inSpring(p: Fighter, ...ids: string[]) {
@@ -1839,9 +1835,9 @@ export class RaidArena extends Arena {
               this.event("hit", boss, 0xc9f4ff, 0, p.id);
               continue;
             }
-            if (this.curled(p)) {
-              // Pangrove curled into a ball: the stones glance off its plates.
-              r.message = `The volley glances off ${p.name}'s scales!`;
+            if (this.tunnelled(p)) {
+              // Pangrove underground: the stones fly over its mound.
+              r.message = `The volley sails over ${p.name}'s burrow!`;
               this.event("hit", p, 0x7fcf6a, 0, boss.id);
               continue;
             }

@@ -72,7 +72,7 @@ import {
   type Zone,
   MOSS,
   PLATES,
-  ROLL,
+  cycloneBlades,
   platesOf,
   seedStage,
 } from "../../../packages/shared/src/index.js";
@@ -104,8 +104,8 @@ const UNREFRACTED: AbilityKind[] = [
   "throw",
   "cone",
   "rush",
-  "roll",
-  "pinball",
+  "tunnel",
+  "cyclone",
   "grapple",
   "blink",
   "nova",
@@ -216,8 +216,8 @@ export class Arena {
   private rushes = new Map<string, { until: number; ability: Ability }>();
   /** Armed ambush bonuses (cast out of stealth), by fighter id. */
   private ambushes = new Map<string, { mult: number; until: number }>();
-  /** Curl & Roll: when each roller last rammed each enemy (by id). */
-  private rollHits = new Map<string, Map<string, number>>();
+  /** Leaf Storm: when each storm's blades last swept each enemy (by id). */
+  private cycloneHits = new Map<string, Map<string, number>>();
   /** Tongue Grapple zips: toward an enemy (followed) or a point, stopping `gap` short. */
   private zips = new Map<
     string,
@@ -246,11 +246,6 @@ export class Arena {
   private leaps = new Map<string, { until: number; ability: Ability }>();
   /** Riptide Wave: when each enemy a wave reached stops being carried (`zone:fighter`). */
   private carried = new Map<string, number>();
-  /** Pinball flights: the enemies hit on the current stretch, and bounces left then. */
-  private pinballs = new Map<
-    string,
-    { ability: Ability; hit: Set<string>; bounces: number }
-  >();
   protected clearBufferedSkills(id?: string) {
     if (id === undefined) this.bufferedSkills.clear();
     else this.bufferedSkills.delete(id);
@@ -396,12 +391,23 @@ export class Arena {
     if (this.mode === "ffa") return p.team ?? this.players.indexOf(p);
     return p.team ?? (this.players.indexOf(p) % 2 === 0 ? 0 : 1);
   }
-  /** Everyone on the other team who is still in the match. */
-  enemiesOf(p: Fighter) {
+  /**
+   * Everyone on the other team who is still in the match and can be hit
+   * (not underground: Tunnel); with `all`, the ones underground too.
+   */
+  enemiesOf(p: Fighter, all = false) {
     const team = this.teamOf(p);
     return this.players.filter(
-      (o) => o !== p && this.teamOf(o) !== team && !o.out,
+      (o) =>
+        o !== p &&
+        this.teamOf(o) !== team &&
+        !o.out &&
+        (all || !this.burrowed(o)),
     );
+  }
+  /** Underground (Tunnel): nothing can hit it, nor give it a status. */
+  burrowed(p: Fighter) {
+    return !!p.burrow && this.time < p.burrow.until;
   }
   /** Enemies of whoever owns a projectile or zone (by id). */
   enemiesOfOwner(owner: string) {
@@ -572,8 +578,7 @@ export class Arena {
     this.clearInputQueue();
     this.rushes.clear();
     this.ambushes.clear();
-    this.rollHits.clear();
-    this.pinballs.clear();
+    this.cycloneHits.clear();
     this.zips.clear();
     this.trail.clear();
     this.rayHits.clear();
@@ -633,8 +638,8 @@ export class Arena {
         charge: undefined,
         channel: undefined,
         clone: undefined,
-        roll: undefined,
-        pinball: undefined,
+        burrow: undefined,
+        cyclone: undefined,
         tether: undefined,
         grab: undefined,
         pound: undefined,
@@ -663,15 +668,14 @@ export class Arena {
     this.clearBufferedSkills(p.id);
     this.rushes.delete(p.id);
     this.ambushes.delete(p.id);
-    this.rollHits.delete(p.id);
-    this.pinballs.delete(p.id);
+    this.cycloneHits.delete(p.id);
     this.zips.delete(p.id);
     this.trail.delete(p.id);
     p.tether = undefined;
     p.grab = undefined;
     p.pound = undefined;
-    p.roll = undefined;
-    p.pinball = undefined;
+    p.burrow = undefined;
+    p.cyclone = undefined;
     p.vx = p.vy = 0;
     p.dashUntil = p.jumpUntil = 0;
     p.charge = undefined;
@@ -881,8 +885,8 @@ export class Arena {
       // while its current animation recovers, or refresh its expiry.
       this.clearBufferedSkills(p.id);
       const free = !!this.practice?.unlimitedCooldowns && p === this.players[0];
-      // Casting Curl & Roll again while rolling uncurls (it's on cooldown then).
-      const uncurl = !!p.roll && input.skill === p.roll.slot;
+      // Casting Tunnel again underground surfaces (it's on cooldown then).
+      const uncurl = !!p.burrow && input.skill === p.burrow.slot;
       if (
         input.skill < SKILL_SLOTS &&
         p.hp > 0 &&
@@ -908,6 +912,8 @@ export class Arena {
     };
   }
   status(p: Fighter, kind: StatusKind, duration: number, by?: string) {
+    // Underground, harmful statuses (and combo marks) can't reach it.
+    if (this.burrowed(p) && (DEBUFFS.includes(kind) || kind === "mark")) return;
     if (["stun", "freeze", "paralysis"].includes(kind)) {
       if (this.time < p.immuneUntil) return;
       p.immuneUntil = this.time + duration + STATUS_RULES.crowdControlImmunity;
@@ -1000,6 +1006,8 @@ export class Arena {
     this.walls();
     if (target.hp <= 0 || this.phase !== "playing") return;
     if (ability?.ground && target.jumpUntil > this.time) return;
+    // Underground (Tunnel): nothing hits it.
+    if (this.burrowed(target)) return;
     const source = this.players.find((p) => p.id === owner);
     // Blinded (Ink Jet): a basic attack misses.
     if (
@@ -1082,11 +1090,6 @@ export class Arena {
     if (this.has(target, "shield")) dealt *= STATUS_RULES.shieldReduction;
     if (this.has(target, "sleep")) dealt *= STATUS_RULES.sleepVulnerability;
     if (this.has(target, "shell")) dealt *= STATUS_RULES.shellReduction;
-    // Curled up (Curl & Roll, Pinball): the ball takes less.
-    if (target.roll && this.time < target.roll.until)
-      dealt *= this.skillOfKind(target, "roll")?.roll?.reduction ?? 1;
-    if (target.pinball && this.time < target.dashUntil)
-      dealt *= this.skillOfKind(target, "pinball")?.pinball?.reduction ?? 1;
     // Moss: each stack takes a little off.
     if (CHARACTERS[target.character].passive === "moss")
       dealt *= 1 - MOSS.reduction * (target.moss ?? 0);
@@ -1313,20 +1316,63 @@ export class Arena {
       pb = this.players.find((q) => q.id === b);
     return !pa || !pb || this.teamOf(pa) !== this.teamOf(pb);
   }
-  /** Curl & Roll ends: back on its feet. */
-  endRoll(p: Fighter) {
-    if (!p.roll) return;
-    p.roll = undefined;
-    this.rollHits.delete(p.id);
-    this.event("land", p, CHARACTERS[p.character].color, undefined, p.id);
+  /**
+   * Tunnel ends (cast again, out of time, or another skill): Pangrove bursts
+   * up. Enemies close by take the hit and are flung away, and a plate grows back.
+   */
+  unburrow(p: Fighter) {
+    const burrow = p.burrow;
+    if (!burrow) return;
+    p.burrow = undefined;
+    if (p.hp <= 0 || p.out) return;
+    const a = this.kit(p).skills[burrow.slot];
+    if (!a) return;
+    this.event("burst", p, CHARACTERS[p.character].color, a.radius, p.id, a.id);
+    for (const enemy of this.enemiesOf(p))
+      if (
+        enemy.hp > 0 &&
+        Math.hypot(enemy.x - p.x, enemy.y - p.y) <
+          a.radius + this.hitRadius(enemy)
+      )
+        this.damage(enemy, a.damage, p.id, a);
+    if (
+      CHARACTERS[p.character].passive === "plates" &&
+      platesOf(p) < PLATES.max &&
+      a.tunnel?.plates
+    ) {
+      p.plates = Math.min(PLATES.max, platesOf(p) + a.tunnel.plates);
+      this.event("burst", p, 0x9be37a, p.plates, p.id, "plate-grow");
+    }
   }
-  /** Pinball ends (out of bounces or time, or stopped): it can act again. */
-  endPinball(p: Fighter) {
-    this.pinballs.delete(p.id);
-    if (!p.pinball) return;
-    p.pinball = undefined;
-    p.dashUntil = Math.min(p.dashUntil, this.time);
-    p.recoveryUntil = Math.min(p.recoveryUntil, this.time + 0.15);
+  /** Leaf Storm ends: the blades burst outward (not when Pangrove is down). */
+  endCyclone(p: Fighter) {
+    const storm = p.cyclone;
+    if (!storm) return;
+    p.cyclone = undefined;
+    this.cycloneHits.delete(p.id);
+    const a = this.kit(p).skills[storm.slot];
+    if (!a || p.hp <= 0 || p.out) return;
+    const burst: Ability = {
+      ...a,
+      damage: a.cyclone?.burst ?? a.damage,
+      status: undefined,
+      knockback: 90,
+    };
+    this.event(
+      "burst",
+      p,
+      CHARACTERS[p.character].color,
+      a.explosion ?? 300,
+      p.id,
+      a.id,
+    );
+    for (const enemy of this.enemiesOf(p))
+      if (
+        enemy.hp > 0 &&
+        Math.hypot(enemy.x - p.x, enemy.y - p.y) <
+          (a.explosion ?? 300) + this.hitRadius(enemy)
+      )
+        this.damage(enemy, burst.damage, p.id, burst);
   }
   /**
    * A seedling goes off: everyone near it takes its hit (scaled by how far it
@@ -1353,6 +1399,8 @@ export class Arena {
   cast(p: Fighter, a: Ability, ex = false) {
     if (p.hp <= 0 || p.out) return;
     this.walls();
+    // Another skill from underground (the ultimate) surfaces first.
+    if (p.burrow && a.kind !== "tunnel") this.unburrow(p);
     // Acting reveals a stealthed fighter; a veil with `ambush` makes the hit
     // this cast produces count extra.
     if (this.has(p, "stealth")) {
@@ -1655,34 +1703,19 @@ export class Arena {
         this.stepZip(p, 1 / RULES.tick);
       }
     }
-    if (a.kind === "roll") {
+    if (a.kind === "tunnel") {
       const slot = this.kit(p).skills.findIndex((k) => k.id === a.id);
-      p.roll = {
+      p.burrow = {
         until: this.time + a.duration,
-        speed: CHARACTERS[p.character].speed * ROLL.start,
-        heading: angle,
-        top: a.speed,
         slot,
+        haste: a.tunnel?.haste ?? 1,
       };
-      this.rollHits.delete(p.id);
     }
-    if (a.kind === "pinball") {
-      // A launch from a roll stops the roll.
-      if (p.roll) this.endRoll(p);
-      p.dashX = Math.cos(angle) * a.speed;
-      p.dashY = Math.sin(angle) * a.speed;
-      p.dashUntil = this.time + a.duration;
-      p.recoveryUntil = Math.max(p.recoveryUntil, p.dashUntil);
-      p.pinball = {
-        bounces: a.count ?? 4,
-        speedUp: a.pinball?.speedUp ?? 1.1,
-      };
-      this.rushes.delete(p.id);
-      this.pinballs.set(p.id, {
-        ability: a,
-        hit: new Set(),
-        bounces: p.pinball.bounces,
-      });
+    if (a.kind === "cyclone") {
+      const slot = this.kit(p).skills.findIndex((k) => k.id === a.id);
+      p.cyclone = { at: this.time, until: this.time + a.duration, slot };
+      this.cycloneHits.set(p.id, new Map());
+      this.status(p, "brace", a.duration);
     }
     if (
       (a.kind === "seedling" || a.kind === "timewarp") &&
@@ -1776,7 +1809,6 @@ export class Arena {
           f.vx = f.vy = 0;
           f.dashUntil = Math.min(f.dashUntil, this.time);
           this.rushes.delete(f.id);
-          if (f.pinball) this.endPinball(f);
           if (a.status) this.status(f, a.status, a.statusDuration ?? 1, p.id);
           this.event("burst", f, color, undefined, p.id, a.id);
           Object.assign(this.events[this.events.length - 1], {
@@ -3047,9 +3079,7 @@ export class Arena {
       }
     } else if (passive === "moss") {
       const still =
-        Math.hypot(p.vx, p.vy) < MOSS.stillSpeed &&
-        this.time >= p.dashUntil &&
-        !p.roll;
+        Math.hypot(p.vx, p.vy) < MOSS.stillSpeed && this.time >= p.dashUntil;
       const moss = p.moss ?? 0;
       if (still !== p.mossStill) {
         p.mossStill = still;
@@ -3074,88 +3104,53 @@ export class Arena {
     }
   }
   /**
-   * Curl & Roll: an enemy the ball runs into is rammed (harder the faster it
-   * goes) and the ball bounces off it.
+   * Leaf Storm: is this enemy on a blade's spoke (the stream of leaves from
+   * Pangrove out to the blade, `cyclone.blade` px wide either side)?
    */
-  private stepRolls() {
+  private sweptBy(
+    p: Fighter,
+    blade: { x: number; y: number },
+    enemy: Fighter,
+    a: Ability,
+  ) {
+    const reach = (a.cyclone?.blade ?? 30) + this.hitRadius(enemy);
+    const bx = blade.x - p.x,
+      by = blade.y - p.y,
+      len = Math.hypot(bx, by) || 1;
+    const ex = enemy.x - p.x,
+      ey = enemy.y - p.y;
+    const along = Math.max(0, Math.min(len, (ex * bx + ey * by) / len));
+    return Math.hypot(ex - (bx / len) * along, ey - (by / len) * along) < reach;
+  }
+  /**
+   * Leaf Storm: each blade circling the caster sweeps the enemies on its
+   * spoke (each at most once every `tickInterval`); the storm bursts when
+   * it ends.
+   */
+  private stepCyclones() {
     for (const p of this.players) {
-      if (!p.roll || p.hp <= 0 || p.out) continue;
-      const a = this.kit(p).skills[p.roll.slot];
-      if (!a) continue;
-      const hits = this.rollHits.get(p.id) ?? new Map<string, number>();
-      this.rollHits.set(p.id, hits);
-      const base = CHARACTERS[p.character].speed;
+      if (!p.cyclone || p.hp <= 0 || p.out) continue;
+      if (this.time >= p.cyclone.until) {
+        this.endCyclone(p);
+        continue;
+      }
+      const a = this.kit(p).skills[p.cyclone.slot];
+      // Underground, the blades go down with it.
+      if (!a || this.burrowed(p)) continue;
+      const hits = this.cycloneHits.get(p.id) ?? new Map<string, number>();
+      this.cycloneHits.set(p.id, hits);
+      const blades = cycloneBlades(p, a, this.time);
       for (const enemy of this.enemiesOf(p)) {
         if (
           enemy.hp <= 0 ||
-          Math.hypot(enemy.x - p.x, enemy.y - p.y) >=
-            this.hitRadius(enemy) + this.hitRadius(p) + ROLL.ramReach ||
-          this.time < (hits.get(enemy.id) ?? -Infinity) + ROLL.rehit
+          this.time <
+            (hits.get(enemy.id) ?? -Infinity) + (a.tickInterval ?? 0.35)
         )
           continue;
-        const momentum = Math.max(
-          0,
-          Math.min(1, (p.roll.speed - base) / Math.max(1, p.roll.top - base)),
-        );
+        if (!blades.some((b) => this.sweptBy(p, b, enemy, a))) continue;
         hits.set(enemy.id, this.time);
-        this.event(
-          "burst",
-          enemy,
-          CHARACTERS[p.character].color,
-          undefined,
-          p.id,
-          a.id,
-        );
-        this.damage(enemy, a.damage + (a.roll?.bonus ?? 0) * momentum, p.id, a);
-        if (!p.roll) break;
-        // Roll on through the one it rammed (it doesn't bounce back), so the
-        // ball can swing round for another pass.
-        p.roll.speed *= ROLL.ramKeep;
+        this.damage(enemy, a.damage, p.id, a);
       }
-    }
-  }
-  /**
-   * Pinball flights: each enemy on a stretch between walls is hit once; a
-   * bounce (counted down by advanceMovement) starts a new stretch.
-   */
-  private stepPinballs() {
-    for (const [id, flight] of this.pinballs) {
-      const p = this.players.find((q) => q.id === id);
-      if (!p || p.hp <= 0 || p.out || !p.pinball || this.time >= p.dashUntil) {
-        if (p) this.endPinball(p);
-        else this.pinballs.delete(id);
-        continue;
-      }
-      if (p.pinball.bounces !== flight.bounces) {
-        flight.bounces = p.pinball.bounces;
-        flight.hit.clear();
-        this.event(
-          "burst",
-          p,
-          CHARACTERS[p.character].color,
-          undefined,
-          p.id,
-          "pinball-bounce",
-        );
-      }
-      for (const enemy of this.enemiesOf(p))
-        if (
-          enemy.hp > 0 &&
-          !flight.hit.has(enemy.id) &&
-          Math.hypot(enemy.x - p.x, enemy.y - p.y) <
-            this.hitRadius(enemy) + this.hitRadius(p) + 8
-        ) {
-          flight.hit.add(enemy.id);
-          this.event(
-            "burst",
-            enemy,
-            CHARACTERS[p.character].color,
-            undefined,
-            p.id,
-            flight.ability.id,
-          );
-          this.damage(enemy, flight.ability.damage, p.id, flight.ability);
-        }
     }
   }
   /**
@@ -3363,10 +3358,9 @@ export class Arena {
           this.leaps.delete(p.id)
         )
           p.dashUntil = Math.min(p.dashUntil, this.time);
-        this.endRoll(p);
-        this.endPinball(p);
+        this.unburrow(p);
       }
-      // Rooted: no dashing, and a charge (or a pinball) stops where it is.
+      // Rooted: no dashing, and a charge stops where it is.
       const rooted = this.has(p, "root");
       if (
         rooted &&
@@ -3377,8 +3371,7 @@ export class Arena {
         p.dashUntil = Math.min(p.dashUntil, this.time);
       // Grounded (Sticky Mochi): no dashing or jumping either.
       const noDash = rooted || this.has(p, "grounded");
-      if (rooted) this.endPinball(p);
-      if (p.roll && this.time >= p.roll.until) this.endRoll(p);
+      if (p.burrow && this.time >= p.burrow.until) this.unburrow(p);
       // Late inputs for held ticks: a step each, at the held tick's time,
       // as the phone predicted them (drainInputs). A dash pressed in one
       // starts at its own step.
@@ -3390,7 +3383,7 @@ export class Arena {
             s.input.dash &&
             !disabled &&
             !noDash &&
-            !p.roll &&
+            !p.burrow &&
             s.time >= p.dashAt
           ) {
             this.startDash(p, s.input, s.time, freeCooldowns);
@@ -3403,7 +3396,7 @@ export class Arena {
         input.dash &&
         !disabled &&
         !noDash &&
-        !p.roll &&
+        !p.burrow &&
         this.time >= p.dashAt
       )
         this.startDash(p, input, this.time, freeCooldowns);
@@ -3467,12 +3460,12 @@ export class Arena {
         input.skill = buffered.slot;
         input.ex = buffered.ex;
       }
-      if (p.roll) {
-        // Curled up: no attacks; casting the roll again uncurls, and the
-        // ultimate (Pinball) launches straight out of it.
-        if (input.skill === p.roll.slot) {
+      if (p.burrow) {
+        // Underground: no attacks; casting Tunnel again surfaces, and the
+        // ultimate (Leaf Storm) bursts straight up out of it.
+        if (input.skill === p.burrow.slot) {
           this.clearBufferedSkills(p.id);
-          this.endRoll(p);
+          this.unburrow(p);
           input.skill = -1;
         } else if (input.skill !== ULT_SLOT) input.skill = -1;
         input.basic = false;
@@ -3569,8 +3562,7 @@ export class Arena {
     this.stepRushes();
     this.stepSurfs();
     this.stepLeaps();
-    this.stepRolls();
-    this.stepPinballs();
+    this.stepCyclones();
     // Time bubbles slow the shots of whoever they work against.
     const bubbles = this.zones.filter(
       (z) => z.ability.kind === "timewarp" && z.until > this.time,
@@ -3814,8 +3806,8 @@ export class Arena {
           p.clone = undefined;
           p.charge = undefined;
           p.channel = undefined;
-          p.roll = undefined;
-          p.pinball = undefined;
+          p.burrow = undefined;
+          p.cyclone = undefined;
           p.plates = undefined;
           p.moss = 0;
           p.dashUntil = p.jumpUntil = 0;
