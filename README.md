@@ -1,9 +1,11 @@
 # Match reports
 
-Newest report: 2026-11-19 08:17 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
+Newest report: 2026-11-19 19:42 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
 
 ## Needs attention
 
+- **2026-11-19 19:42**, pangrove against pyranda (bot, normal) (match `p1sadw`):
+  - 13 hit(s) landed while you were drawn over 24 px away (largest 130 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
 - **2026-11-19 08:17**, halcyra against shadopus (bot, hard) (match `4rzbbv`):
   - 19.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 28 halcyra shadopus`.
   - 21 hit(s) landed while you were drawn over 24 px away (largest 394 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
@@ -153,14 +155,12 @@ Newest report: 2026-11-19 08:17 UTC. From the game server's log (`scripts/perf/e
 - **2026-11-18 02:10**, wombolder against mossloth, tidefin (match `k5x2go`):
   - 10.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 28 wombolder mossloth`.
   - 47 hit(s) landed while you were drawn over 24 px away (largest 155 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-18 02:10**, tidefin against mossloth, wombolder (match `k5x2go`):
-  - 10.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 tidefin mossloth`.
-  - 24 hit(s) landed while you were drawn over 24 px away (largest 46 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
 
 ## Latest matches
 
 | Time (UTC) | Match | Mode | You | Against | Ping (slowest 5%) | Lead | Late updates | Jumps | Hits off-screen | Skill confirm | FPS | Stutter | Graphics | Device | Build |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-19 19:42 | `p1sadw` | duel vs bot | pangrove | pyranda (bot, normal) | 49 ms 🟢 (93) | 157 ms | 0.0% | 36.7/min (max 125 px), ⚠️ 2.5 unexplained | ⚠️ 13 (max 130 px) | 64 ms | 58.8 | 0.1% | high (auto) | ios app, 4 cores, 59 Hz | 1b160fb |
 | 2026-11-19 08:17 | `4rzbbv` | duel vs bot | halcyra | shadopus (bot, hard) | 55 ms 🟢 (59) | 189 ms | 0.0% | 62.1/min (max 666 px), ⚠️ 19.7 unexplained | ⚠️ 21 (max 394 px) | 83 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 13e4685 |
 | 2026-11-19 08:15 | `pk3w7q` | duel vs bot | mossloth | shadopus (bot, hard) | 57 ms 🟢 (62) | 189 ms | 0.0% | 62.4/min (max 276 px), ⚠️ 16 unexplained | ⚠️ 20 (max 211 px) | 78 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 13e4685 |
 | 2026-11-19 08:14 | `5hmibd` | duel vs bot | mossloth | shadopus (bot, hard) | 56 ms 🟢 (74) | 185 ms | 0.0% | 54.7/min (max 324 px), ⚠️ 16.8 unexplained | ⚠️ 14 (max 273 px) | 85 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 13e4685 |
@@ -210,13 +210,12 @@ Newest report: 2026-11-19 08:17 UTC. From the game server's log (`scripts/perf/e
 | 2026-11-18 02:13 | `93bjir` | ffa | pyranda | mossloth, pyranda | 55 ms 🟢 (81) | 167 ms | 1.9% | 37.7/min (max 260 px), ⚠️ 13.1 unexplained | ⚠️ 23 (max 59 px) | 120 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | ebd7a37 |
 | 2026-11-18 02:10 | `k5x2go` | ffa | mossloth | wombolder, tidefin | 47 ms 🟢 (74) | 184 ms | 0.9% | 48.6/min (max 496 px), ⚠️ 18.7 unexplained | ⚠️ 36 (max 126 px) | 78 ms | 59.9 | 0.9% | medium (auto) | android, 8 cores, 8 GB, 120 Hz | ebd7a37 |
 | 2026-11-18 02:10 | `k5x2go` | ffa | wombolder | mossloth, tidefin | 56 ms 🟢 (111) | 169 ms | 1.3% | 62.9/min (max 173 px), ⚠️ 10.1 unexplained | ⚠️ 47 (max 155 px) | 75 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | ebd7a37 |
-| 2026-11-18 02:10 | `k5x2go` | ffa | tidefin | mossloth, wombolder | 46 ms 🟢 (61) | 170 ms | 0.9% | 37.8/min (max 497 px), ⚠️ 10.1 unexplained | ⚠️ 24 (max 46 px) | 70 ms | 58.8 | 0.0% | low (auto) | ios app, 4 cores, 59 Hz | ebd7a37 |
 
 ## By day
 
 | Day (UTC) | Reports | Needs attention | Ping, median | Ping, worst 10% | Lead, median | Jumps/min, median | Skill confirm, median | FPS, median | Stutter, median | Dropped connections |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2026-11-19 | 9 | 9 | 56 ms | 62 ms | 189 ms | 43.8 | 88 ms | 58.8 | 0.1% | 1 transport close |
+| 2026-11-19 | 10 | 10 | 55 ms | 57 ms | 185 ms | 36.7 | 85 ms | 58.8 | 0.1% | 1 transport close |
 | 2026-11-18 | 65 | 65 | 48 ms | 56 ms | 174 ms | 44.1 | 79 ms | 58.8 | 0.4% | 3 transport close |
 | 2026-11-17 | 10 | 10 | 64 ms | 91 ms | 204 ms | 74.2 | 112 ms | 58.8 | 0.1% | 4 transport close, 1 server namespace disconnect |
 | 2026-11-16 | 11 | 11 | 67 ms | 68 ms | 201 ms | 41.9 | 89 ms | 59.9 | 0.7% | 1 ping timeout |
