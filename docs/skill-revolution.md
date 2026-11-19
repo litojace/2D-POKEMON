@@ -396,3 +396,23 @@ went from 17 to 13 clears, about 1.3 standard deviations: left as it is.
 frame is 0.02 screens of glow and 0.08 of smoke (limits 0.6 and 1). The
 blades are solid leaves drawn each frame (no glow), and the storm's edge is
 drawn inside `fx.essential`, so Low graphics keep the warning.
+
+### How long underground?
+
+The same duels (seed 170000, 48 games a pair, `RR_ONLY=pangrove`) with only
+Tunnel's length changed. "Escapes" are casts under half health; "survived"
+means Pangrove was still standing 3 s later (or the round ended first).
+"Landed" is the share of surfacings that hit someone.
+
+| Underground | Hard  | Hard: worst / best       | Normal | Normal: worst / best   | Escapes survived (Hard / Normal) | Eruptions landed (Hard / Normal) |
+| ----------- | ----- | ------------------------ | ------ | ---------------------- | -------------------------------- | -------------------------------- |
+| 1.0 s       | 51.7% | Auralynx 21 / Pyranda 96 | 50.4%  | Lumoth 27 / Pyranda 71 | 60% of 134 / 73% of 928          | 53% / 64%                        |
+| 1.2 s       | 51.5% | Auralynx 19 / Pyranda 96 | 54.0%  | Lumoth 35 / Pyranda 85 | 66% of 149 / 73% of 932          | 62% / 66%                        |
+| 1.5 s       | 55.3% | Auralynx 17 / Pyranda 96 | 53.9%  | Lumoth 25 / Pyranda 85 | 62% of 169 / 75% of 969          | 74% / 68%                        |
+| 2.0 s       | 55.9% | Auralynx 21 / Pyranda 98 | 55.3%  | Lumoth 38 / Pyranda 69 | 65% of 181 / 76% of 949          | 82% / 72%                        |
+
+A longer tunnel mostly makes the eruption land more often (the bot has time
+to walk under its target): 53% → 82% on Hard, and the win rate climbs 4
+points by 1.5 s. Escapes barely change. A person timing the immune window
+against a big hit would gain more than a bot does, so Tunnel stays at 1 s;
+the Deep Tunnel rite (1.4 s) is the way to a longer one.
