@@ -316,7 +316,8 @@ npx tsx scripts/balance/tune.ts 1 24 --levels expert,hard                  # tun
 ### Behaviours kept
 
 Each was measured with the flag off and on (48 games a pair, seed 5000,
-the champion's 17 pairings, everything else on):
+the champion's 17 pairings, everything else on; before #235, which only
+moves Pyranda against Pangrove):
 
 | Flag         | What the expert does                                                                                                                                                                              | Measured                                                                                                                                                |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -359,8 +360,10 @@ artefacts, and the round robin stays as fast as Hard's.
 
 ### Expert against Hard
 
-Both 48 games a pair, seed 5000, 7,344 matches, every match finished. A
-champion's rate moves about ±1.8 points between seeds, a pair's about ±7.
+Both 48 games a pair, seed 5000, 7,344 matches, every match finished, with
+Ember Curtain burning off Tongue Grapple (#235; it only changes Pyranda
+against Pangrove, which was played again for both tables). A champion's
+rate moves about ±1.8 points between seeds, a pair's about ±7.
 
 | Champion  |  Hard | Expert | Change |
 | --------- | ----: | -----: | -----: |
@@ -373,7 +376,7 @@ champion's rate moves about ±1.8 points between seeds, a pair's about ±7.
 | Halcyra   | 48.2% |  52.7% |   +4.5 |
 | Glacelle  | 49.8% |  52.3% |   +2.6 |
 | Sunbara   | 47.9% |  52.1% |   +4.2 |
-| Pangrove  | 52.1% |  50.2% |   −1.8 |
+| Pangrove  | 50.7% |  49.9% |   −0.9 |
 | Shadopus  | 48.0% |  48.7% |   +0.6 |
 | Auralynx  | 51.3% |  46.8% |   −4.5 |
 | Mossloth  | 51.0% |  46.7% |   −4.3 |
@@ -381,10 +384,10 @@ champion's rate moves about ±1.8 points between seeds, a pair's about ±7.
 | Wombolder | 47.4% |  46.2% |   −1.2 |
 | Terradon  | 48.7% |  45.5% |   −3.2 |
 | Lumoth    | 50.6% |  43.3% |   −7.4 |
-| Pyranda   | 46.8% |  38.0% |   −8.8 |
+| Pyranda   | 48.2% |  38.4% |   −9.8 |
 
-Spread (sd) 2.6 on Hard, 5.0 on Expert; pairs one side wins 80% or more of:
-27 on Hard, 25 on Expert. Hard is what the champions were tuned on, so a
+Spread (sd) 2.5 on Hard, 4.9 on Expert; pairs one side wins 80% or more of:
+26 on Hard, 25 on Expert. Hard is what the champions were tuned on, so a
 wider spread on Expert is expected; what matters is who moved and why.
 
 **Bot artefacts** (gone or much smaller once the bots play the counterplay):
@@ -396,10 +399,10 @@ wider spread on Expert is expected; what matters is who moved and why.
 
 **Real** (they stay with the expert):
 
-- Pyranda is weak: 38%, and 8% against Pangrove (0% on Hard). The
-  "90–96% against Pangrove, Voltkit and Lumoth" seen earlier is out of date
-  since the Pangrove rework (#233): on `main` it is 0%, 83% and 75% on Hard,
-  and 8%, 52% and 79% on Expert.
+- Pyranda is weak: 38%, and 15% against Pangrove (23% on Hard). The
+  "90–96% against Pangrove, Voltkit and Lumoth" seen earlier is out of date:
+  on `main` Pyranda wins 23%, 83% and 75% of those on Hard, and 15%, 52%
+  and 79% on Expert.
 - Lumoth over melee: Cindrake 94%, Pangrove 77%, even with looking away.
   Lumoth's 43% comes from its Radiant Flare being walked out of, not from
   the flash.
@@ -413,7 +416,7 @@ wider spread on Expert is expected; what matters is who moved and why.
 
 - Pyranda: a buff that doesn't come back in its marks, which are now
   dodged, e.g. strength factor ×1.08 (health and Ember Lob rate), then
-  check Pangrove (8%) separately.
+  check Pangrove (15%) separately.
 - Lumoth: move power from the melee matchup to the flare, e.g. Radiant
   Flare's pull a little stronger and Eyespot Flash's stun a little shorter
   (0.5 → 0.4 s), so it is less of a hard counter to melee and less weak
