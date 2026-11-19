@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { asRgb, openLobby, snap } from "./helpers";
 import { fakeFarm } from "./farm-fake";
+import { CROPS } from "../../packages/shared/src/farm";
+
+const ALL_CROPS = CROPS.map((c) => c.id);
+const TOP_LEVEL = Math.max(...CROPS.map((c) => c.level));
 
 type Box = { name: string; x: number; y: number; w: number; h: number };
 /** Open Shop, Friends, Decor or the Almanac from the right rail. */
@@ -2083,6 +2087,120 @@ test("on a phone, pick a seed and drag it to sow, and drag the sickle to harvest
     ]);
     await expect.poll(() => sent("harvest")).toEqual([0, 3, 4]);
     await expect(page.locator("#fm-sickle")).toBeHidden();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("on an iPhone, a full seed tray scrolls under a finger on its seeds, and a seed picked below the fold still sows", async ({
+  browser,
+}, info) => {
+  // The owner's iPhone in landscape (956x440); every seed in the bag, more
+  // than the tray shows at once (owner, 19 Nov 2026: it wouldn't scroll).
+  const context = await browser.newContext({
+    viewport: { width: 956, height: 440 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    // At the top level: every seed can be grown, none greyed out.
+    await page.evaluate(
+      ([ids, lv]) => {
+        const f = (window as any).__fakeFarm;
+        f.level = lv;
+        f.seeds = Object.fromEntries(ids.map((id) => [id, 5]));
+      },
+      [ALL_CROPS, TOP_LEVEL] as const,
+    );
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+    await page.waitForTimeout(400);
+    const plot = (i: number) =>
+      page.evaluate((i) => (window as any).__farm.plotClient(i), i);
+    const cdp = await context.newCDPSession(page);
+    const swipe = async (pts: { x: number; y: number }[]) => {
+      const at = (p: { x: number; y: number }) => [
+        { x: Math.round(p.x), y: Math.round(p.y) },
+      ];
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: at(pts[0]),
+      });
+      for (let k = 1; k < pts.length; k++)
+        for (let s = 1; s <= 10; s++) {
+          const a = pts[k - 1],
+            b = pts[k];
+          await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: at({
+              x: a.x + ((b.x - a.x) * s) / 10,
+              y: a.y + ((b.y - a.y) * s) / 10,
+            }),
+          });
+        }
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: [],
+      });
+      await page.waitForTimeout(300);
+    };
+    const p11 = await plot(11);
+    await page.touchscreen.tap(p11.x, p11.y);
+    const tray = page.locator("#fm-pop.seedpick");
+    await expect(tray).toBeVisible();
+    await expect(tray.locator("[data-pseed]")).toHaveCount(ALL_CROPS.length);
+    const room = await tray.evaluate((t) => ({
+      more: t.scrollHeight - t.clientHeight,
+      box: t.getBoundingClientRect().toJSON(),
+    }));
+    expect(room.more, "more seeds than the tray shows").toBeGreaterThan(40);
+    // The tray fits on the screen.
+    expect(room.box.bottom).toBeLessThanOrEqual(440);
+    await snap(page, info, "farm-seed-tray-full-956x440");
+    // A swipe up that starts on a seed card scrolls the tray, and picks
+    // nothing.
+    const top = () => tray.evaluate((t) => t.scrollTop);
+    const first = (await tray.locator("[data-pseed]").nth(10).boundingBox())!;
+    const from = {
+      x: first.x + first.width / 2,
+      y: first.y + first.height / 2,
+    };
+    await swipe([from, { x: from.x, y: from.y - 120 }]);
+    expect(await top(), "the tray scrolled").toBeGreaterThan(20);
+    await expect(tray).toBeVisible();
+    await expect(page.locator("#fm-seed")).toBeHidden();
+    // Swiped to the end, the last seed is in sight.
+    for (let k = 0; k < 4 && (await top()) < room.more - 2; k++)
+      await swipe([from, { x: from.x, y: from.y - 120 }]);
+    expect(await top()).toBeGreaterThanOrEqual(room.more - 2);
+    const last = tray.locator("[data-pseed]").last();
+    const lb = (await last.boundingBox())!;
+    expect(lb.y + lb.height).toBeLessThanOrEqual(room.box.bottom + 1);
+    // A tap on it picks it, and its seed is dragged across the row.
+    const id = await last.getAttribute("data-pseed");
+    await last.tap();
+    await expect(tray).toBeHidden();
+    const bub = (await page.locator("#fm-seed [data-seedbub]").boundingBox())!;
+    await swipe([
+      { x: bub.x + bub.width / 2, y: bub.y + bub.height / 2 },
+      await plot(12),
+      await plot(13),
+    ]);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (window as any).__farmRequests
+            .flatMap((r: any) => r.actions ?? [])
+            .filter((x: any) => x.a === "plant")
+            .map((x: any) => `${x.plot}:${x.crop}`)
+            .sort(),
+        ),
+      )
+      .toEqual([`11:${id}`, `12:${id}`, `13:${id}`]);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

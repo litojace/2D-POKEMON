@@ -498,11 +498,17 @@
   width: 300px;
   animation: popin 0.18s var(--ease-out);
 }
-/* Planting and harvesting by hand: seeds in the tray and the sickle are
-   pressed and dragged across the field (no scrolling or zooming meanwhile),
-   and what you carry rides just above your finger. */
+/* Planting and harvesting by hand: the seed bubble (#fm-seed) and the sickle
+   are pressed and dragged across the field (no scrolling or zooming
+   meanwhile), and what you carry rides just above your finger. The seed
+   tray's cards are only tapped (a tap opens the bubble), and they fill the
+   tray: a finger on them scrolls it up and down, or with more seeds than fit
+   the ones below were out of reach on a phone (owner, 19 Nov 2026). */
 .farm-layer .fm-pop.seedpick [data-pseed] {
-  touch-action: none;
+  touch-action: pan-y;
+}
+.farm-layer .fm-pop.seedpick {
+  overscroll-behavior: contain;
 }
 .farm-layer .fm-sickle {
   position: absolute;
@@ -2581,6 +2587,9 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
 }
 .farm-layer.phone .fm-pop.seedpick {
   top: 56px !important;
+  /* 326px, or less on a short phone (667x375): its foot stays 8px above
+     the screen's bottom, so the last row isn't cut off. */
+  max-height: min(326px, calc(100% - 64px));
 }
 .farm-layer.phone.narrow .fm-weather {
   left: 170px;
