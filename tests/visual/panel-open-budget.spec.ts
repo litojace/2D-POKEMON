@@ -13,11 +13,17 @@ import { openHub } from "./helpers";
  *   change makes the browser lay the page out again then and there), and
  *   it is laid out only a few times;
  * - no canvas is made again for the screen (the Roster's portraits);
- * - and on a 4× slowed CPU no frame takes longer than LONG_FRAME_MS.
+ * - and on a 4× slowed CPU no frame takes longer than LONG_FRAME_MS (more
+ *   than the page's steady frame, where every frame was already long).
  *
  * A phone held sideways (956×440, an iPhone's landscape screen), touch.
  * Mostly counted, not timed: this machine draws on the CPU. The timed limit
  * is loose; what it guards against took two to three times as long.
+ * On CI's runner every Lobby frame at 4× was a long one, 250-380 ms, before
+ * anything opened (here they are not long at all), and the Profile's repeat
+ * open had frames of 522-627 ms: its own work well within the limit, the
+ * frame as a whole not (PR #237, 19 Nov). Where the page's frames are long
+ * one after another, the limit counts from their median.
  */
 const LONG_FRAME_MS = 450;
 /** Layouts in the 1.5 s after a tap (the open, its entrance, settling). */
@@ -174,6 +180,7 @@ function instrument() {
     new PerformanceObserver((l) => {
       for (const e of l.getEntries()) {
         if (c.on) c.frames.push(e.duration);
+        (c as any).pre?.push([e.startTime, e.duration]);
         // Busy: a long frame with work of the page's own in it. On CI's
         // runner every Lobby frame took 180-190 ms with no script at all
         // (its steady drawing there, PR #237, 19 Nov), so "no long frame
@@ -277,6 +284,21 @@ async function measure(
   // /api/friends after a change", when the wait took a few seconds).
   if (o.changed)
     await page.evaluate(() => (window as any).__sock.fire("economy-changed"));
+  // The page's steady frame now: where its frames are long one after
+  // another (long frames over 80% of the last second), their median;
+  // otherwise 0, and the limit is as it was.
+  const steady = await page.evaluate(async () => {
+    const c = (window as any).__count;
+    c.pre = [] as [number, number][];
+    const from = performance.now();
+    await new Promise((r) => setTimeout(r, 1000));
+    const pre = (c.pre as [number, number][]).filter(([t]) => t >= from);
+    c.pre = undefined;
+    const busy = pre.reduce((n, [, d]) => n + d, 0);
+    if (busy < 800) return 0;
+    const d = pre.map(([, d]) => d).sort((a, b) => a - b);
+    return Math.round(d[d.length >> 1]);
+  });
   await page.evaluate(() => {
     const c = (window as any).__count;
     Object.assign(c, {
@@ -318,7 +340,7 @@ async function measure(
     page.locator(".ui-panel-host:not([data-ui-leaving])"),
   ).toHaveCount(0);
   await page.waitForTimeout(800);
-  return { ...counted, laidOut };
+  return { ...counted, laidOut, steady };
 }
 
 test("a screen opened again shows what it had: no new requests, no rebuild, no long frame", async ({
@@ -421,8 +443,8 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
         `${panel.name}: layout reads on a repeat open`,
       ).toBeLessThanOrEqual(MAX_LAYOUT_READS);
       expect(
-        again.worst,
-        `${panel.name}: longest frame on a repeat open (ms): ${again.longs.join("; ")}`,
+        again.worst - again.steady,
+        `${panel.name}: longest frame on a repeat open (ms) over the steady ${again.steady} ms: ${again.longs.join("; ")}`,
       ).toBeLessThanOrEqual(LONG_FRAME_MS);
     }
     console.log(JSON.stringify(results));
