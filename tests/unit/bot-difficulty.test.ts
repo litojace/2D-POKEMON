@@ -7,7 +7,11 @@ import {
   type Fighter,
 } from "@arena/shared";
 import { Arena } from "../../apps/server/src/simulation";
-import { BOT_PROFILES, BotBrain } from "../../apps/server/src/bot";
+import {
+  BOT_PROFILES,
+  BotBrain,
+  RAID_DAZE_BY,
+} from "../../apps/server/src/bot";
 
 /** A duel mid-round on open ground (y = 820), placed by hand. */
 function duel(a: string, ax: number, b: string, bx: number) {
@@ -56,9 +60,11 @@ describe("bot difficulty", () => {
     }
   });
 
-  it("does nothing at all in a dazed second", () => {
+  it("in raids, does nothing at all in a dazed second", () => {
     const { arena, p } = duel("cindrake", 600, "voltkit", 700);
-    const b = brain("A", { daze: 1, dazeBy: {} });
+    // Raid mode (stand-ins, Spire Echoes) keeps the old daze, from raidDazeBy.
+    arena.mode = "raid";
+    const b = brain("A", { raidDazeBy: { cindrake: 1 }, dazeBy: {} });
     for (let i = 0; i < 10; i++) {
       arena.time += 1 / RULES.tick;
       const input = b.think(arena, p);
@@ -70,6 +76,23 @@ describe("bot difficulty", () => {
       ]);
     }
     // Not dazed: the same spot gets a swing.
+    const awake = brain("A", { raidDazeBy: {}, dazeBy: {}, rest: 0 });
+    expect(awake.think(arena, p).basic).toBe(true);
+  });
+
+  it("elsewhere a dazed second is a lapse: it keeps moving but attacks nothing", () => {
+    const { arena, p } = duel("cindrake", 600, "voltkit", 700);
+    const b = brain("A", { daze: 1, dazeBy: {}, skillUse: 1 });
+    let moved = 0;
+    for (let i = 0; i < 10; i++) {
+      arena.time += 1 / RULES.tick;
+      const input = b.think(arena, p);
+      expect([input.basic, input.skill ?? -1, input.dash, input.jump]).toEqual(
+        [false, -1, false, false],
+      );
+      if (input.dx || input.dy) moved++;
+    }
+    expect(moved).toBe(10);
     const awake = brain("A", { daze: 0, dazeBy: {}, rest: 0 });
     expect(awake.think(arena, p).basic).toBe(true);
   });
@@ -82,19 +105,40 @@ describe("bot difficulty", () => {
     expect(other.think(arena, p).basic).toBe(true);
   });
 
-  it("calibrates Normal for every champion; Hard is never dazed", () => {
+  it("calibrates Normal for every champion; Easy and Hard are never dazed", () => {
     const by = BOT_PROFILES.normal.dazeBy ?? {};
+    const [n, h] = [BOT_PROFILES.normal, BOT_PROFILES.hard];
     for (const id of FIGHTER_IDS) {
       expect(by[id], id).toBeGreaterThanOrEqual(0);
       expect(by[id], id).toBeLessThanOrEqual(0.7);
     }
-    expect(BOT_PROFILES.hard.daze ?? 0).toBe(0);
-    expect(BOT_PROFILES.hard.dazeBy).toBeUndefined();
+    // Easy is never dazed either: it is weaker for being slower, looser and
+    // more hesitant than Normal, not for switching off.
+    for (const level of ["easy", "hard"] as const) {
+      expect(BOT_PROFILES[level].daze ?? 0, level).toBe(0);
+      expect(BOT_PROFILES[level].dazeBy, level).toBeUndefined();
+    }
+    const e = BOT_PROFILES.easy;
+    expect(e.reaction).toBeGreaterThan(n.reaction);
+    expect(e.aimError).toBeGreaterThan(n.aimError);
+    expect(e.skillUse).toBeLessThan(n.skillUse);
+    expect(e.dodge).toBeLessThan(n.dodge);
     // Hard still reacts, aims and decides faster than Normal.
-    const [n, h] = [BOT_PROFILES.normal, BOT_PROFILES.hard];
     expect(h.reaction).toBeLessThan(n.reaction);
     expect(h.aimError).toBeLessThan(n.aimError);
     expect(h.think).toBeLessThan(n.think);
     expect(h.dodge).toBeGreaterThan(n.dodge);
+  });
+
+  it("leaves raids on the daze they were tuned with", () => {
+    const raid = BOT_PROFILES.normal.raidDazeBy ?? {};
+    // RAID_DAZE_BY first, then Normal's duel daze from before the smarter
+    // bots (Duskveil and Mossloth were never in RAID_DAZE_BY).
+    for (const [id, d] of Object.entries(RAID_DAZE_BY))
+      expect(raid[id as keyof typeof raid], id).toBe(d);
+    expect(raid.duskveil).toBe(0.27);
+    expect(raid.mossloth).toBe(0.475);
+    expect(BOT_PROFILES.easy.raidDazeBy).toBeUndefined();
+    expect(BOT_PROFILES.hard.raidDazeBy).toBeUndefined();
   });
 });
