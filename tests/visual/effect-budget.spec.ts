@@ -287,3 +287,194 @@ for (const [g, group] of GROUPS.entries())
       await context.close();
     }
   });
+
+/**
+ * Four-player free-for-all: the per-champion limits above judge one kit
+ * at a time, but in a free-for-all four kits go off together, and on
+ * 18 Nov 2026 the only battles that still stuttered on a phone were
+ * four-player ones (arena-perf reports). The four heaviest kits measured
+ * on 19 Nov 2026 (glow cover and count, particles) each cast the same
+ * skill on the same tick, ultimates last, aimed across one another so the
+ * effects overlap, and the heaviest frame counts.
+ *
+ * When a new or reworked kit measures heavier than one of these in the
+ * per-champion test, put it in their place.
+ */
+const SQUAD: CharacterId[] = ["pyranda", "cindrake", "mystowl", "sunbara"];
+/**
+ * About twice the heaviest seen on 20 Nov 2026, casts spaced in effect
+ * time: glow 1.03 to 1.23 screens (1.23 with the CPU slowed 4x), smoke 0.87
+ * to 1.15, particles 382 to 583. Twice that is past the engine's hard cap
+ * of 700 particles, so the cap is the particle limit.
+ */
+const FFA_LIMITS = {
+  glowCover: 2.6,
+  softCover: 2.9,
+  particles: 700,
+};
+
+test("four heavy kits at once stay within the free-for-all budget", async ({
+  browser,
+}) => {
+  test.setTimeout(60_000 + (CASTS.length * CAST_GAP + TAIL + 4000) * 4);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await instrument(page);
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem("ea-graphics", "high");
+      } catch {}
+    });
+    const errors = await openHub(page);
+    await page.evaluate(() =>
+      (window as any).__room("pvp", { mode: "ffa", phase: "playing" }),
+    );
+    await openPlayPanel(page);
+    await createRoom(page);
+    await pushUntilBattle(page);
+    await page.evaluate(() => {
+      const w = window as any;
+      const game = w.__perfGame;
+      w.__peak = { glowCover: 0, softCover: 0, particles: 0, glows: 0 };
+      w.__peaks = {};
+      w.__cast = "";
+      // Effect time, as in the per-champion test above.
+      w.__clock = 0;
+      const step = game.loop.callback;
+      game.loop.callback = (time: number, delta: number) => {
+        w.__clock += delta;
+        step(time, delta);
+        if (!w.__cast || !w.__arenaPerf) return;
+        const s = w.__arenaPerf.fx();
+        for (const p of [
+          w.__peak,
+          (w.__peaks[w.__cast] ??= {
+            glowCover: 0,
+            softCover: 0,
+            particles: 0,
+            glows: 0,
+          }),
+        ]) {
+          p.glowCover = Math.max(p.glowCover, s.glowCover);
+          p.softCover = Math.max(p.softCover, s.softCover);
+          p.particles = Math.max(p.particles, s.particles);
+          p.glows = Math.max(p.glows, s.glows);
+        }
+      };
+    });
+    await page.evaluate(async (squad) => {
+      const w = window as any;
+      clearInterval(w.__fight);
+      const m = await import("/rooms.ts");
+      const a = new m.Arena("PVP123", "ffa");
+      a.serial = w.__arena?.serial ?? 0;
+      squad.forEach((c, i) =>
+        a.add(i ? `p${i + 1}` : "me", `Player ${i + 1}`, c),
+      );
+      a.start();
+      a.phase = "playing";
+      a.deadline = a.time + 1e6;
+      // A tight square in the middle of the court; each aims at the
+      // opposite corner, so every effect crosses the middle.
+      const spots = [
+        [650, 350],
+        [900, 350],
+        [900, 550],
+        [650, 550],
+      ];
+      a.players.forEach((p: any, i: number) => {
+        [p.x, p.y] = spots[i];
+      });
+      w.__arena = a;
+      w.__pending = -2;
+      let tick = 0;
+      // The arena keeps effect time, and a cast waits for a tick (see the
+      // per-champion test).
+      const start = w.__clock;
+      w.__fight = setInterval(() => {
+        const before = tick,
+          due = Math.min(
+            tick + 8,
+            Math.floor((w.__clock - start) / (1000 / 30)) + 1,
+          );
+        while (tick < due) {
+          tick++;
+          const cast = w.__pending;
+          w.__pending = -2;
+          a.players.forEach((p: any, i: number) => {
+            p.hp = Math.max(p.hp, 500);
+            // Nobody's skill may be refused by another's stun or silence:
+            // every kit's effect must be seen.
+            p.statuses = [];
+            if (cast === -1) p.ult = 100;
+            const [x, y] = spots[(i + 2) % 4];
+            a.submit(p, {
+              ...m.blankInput(),
+              seq: p.ack + 1,
+              aimX: x,
+              aimY: y,
+              skill: cast >= 0 ? cast : cast === -1 ? m.ULT_SLOT : -1,
+            });
+          });
+          a.tick();
+        }
+        if (Math.floor(tick / 2) === Math.floor(before / 2)) return;
+        w.__snap = m.packSnapshot(a.snapshot());
+        w.__push();
+      }, 1000 / 30);
+    }, SQUAD);
+    // The four fighters' art loads first (not measured), and the arena runs
+    // its first ticks.
+    await effectWait(page, 4000);
+    for (const [i, cast] of CASTS.entries()) {
+      await page.evaluate(
+        ([label, slot]) => {
+          const w = window as any;
+          w.__cast = label;
+          w.__pending = slot;
+        },
+        [cast, i < 4 ? i : -1] as const,
+      );
+      await effectWait(page, CAST_GAP);
+    }
+    await effectWait(page, TAIL);
+    const { peak, peaks } = await page.evaluate(() => {
+      const w = window as any;
+      w.__cast = "";
+      clearInterval(w.__fight);
+      return {
+        peak: w.__peak as Peak,
+        peaks: w.__peaks as Record<string, Peak>,
+      };
+    });
+    const row = (label: string, p: Peak) =>
+      `${label.padEnd(22)} glow ${p.glowCover.toFixed(2).padStart(6)} scr (${String(p.glows).padStart(3)})  smoke ${p.softCover.toFixed(2).padStart(6)} scr  particles ${String(p.particles).padStart(4)}`;
+    console.log(
+      `EFFECT_BUDGET ffa ${SQUAD.join(" + ")}\n${[
+        row("all four", peak),
+        ...Object.entries(peaks).map(([k, p]) => row(`all four ${k}`, p)),
+      ].join("\n")}`,
+    );
+    if (!MEASURE)
+      expect(
+        (Object.keys(FFA_LIMITS) as (keyof typeof FFA_LIMITS)[])
+          .filter((k) => peak[k] > FFA_LIMITS[k])
+          .map(
+            (k) =>
+              `${k} ${Number(peak[k]).toFixed(2)} is over the limit ${FFA_LIMITS[k]}`,
+          ),
+        "four kits together heavier than the free-for-all budget",
+      ).toEqual([]);
+    // The casts were seen: more than any one kit draws alone.
+    expect(peak.particles).toBeGreaterThan(LIMITS.particles / 2);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
