@@ -51,7 +51,7 @@ describe("Live Wire (Coilemur)", () => {
     seconds(a, 1.05);
     expect(hp - them.hp).toBe(wire.damage * 2);
     expect(me.tether).toBeDefined();
-    // It runs: past 300 px the wire yanks it back and paralyses it.
+    // It runs: past 250 px the wire yanks it back and paralyses it.
     const before = them.hp;
     place(them, 300 + 360, Y);
     a.tick();

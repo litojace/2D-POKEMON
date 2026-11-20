@@ -1331,7 +1331,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A ring-tailed lemur whose striped tail is a living electromagnet. Yanks runners in, then won't let go.",
     color: 0xf2c94c,
-    health: 148,
+    health: 150,
     speed: 250,
     basic: basic(
       "coil-swipe",
@@ -1380,9 +1380,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "live-wire",
         "Live Wire",
         "tether",
-        2,
-        13,
-        "After a quarter-second wind-up, Coilemur runs 30% faster for 2.5 seconds and lashes a live wire onto the enemy nearest your aim (380 px). While it holds, the enemy takes 2 every half second, and if it gets more than 300 px away the wire yanks it back toward Coilemur: 6 damage and paralysed for half a second, and the wire snaps. Walls cut the wire. No more running away.",
+        3,
+        11,
+        "After a quarter-second wind-up, Coilemur runs 30% faster for 3.5 seconds and lashes a live wire onto the enemy nearest your aim (380 px). While it holds (2.5 seconds), the enemy takes 3 every half second, and if it gets more than 250 px away the wire yanks it back toward Coilemur: 6 damage and paralysed for half a second, and the wire snaps. Walls cut the wire. No more running away.",
         {
           range: 380,
           radius: 60,
@@ -1392,10 +1392,10 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           tether: {
             tick: 0.5,
             breakRange: 9999,
-            haste: 2.5,
+            haste: 3.5,
             yank: {
-              at: 300,
-              pull: 260,
+              at: 250,
+              pull: 220,
               damage: 6,
               status: "paralysis",
               statusDuration: 0.5,

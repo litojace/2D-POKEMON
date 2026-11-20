@@ -124,7 +124,7 @@ const ROSTER: Record<
     skills: [
       ["Magnet Lash", 11],
       ["Static Clamp", 12],
-      ["Live Wire", 13],
+      ["Live Wire", 11],
       ["Electromagnet", 20],
     ],
   },
