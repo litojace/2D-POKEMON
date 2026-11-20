@@ -228,11 +228,16 @@ for (const size of SIZES)
       });
       expect(clash, "the toast covers").toEqual([]);
       // Pictures decoded before the screenshot (this machine draws slowly).
+      // Not a lazy one the browser hasn't fetched (out of view in a row):
+      // its decode() waits for a load that never starts, and the test hung
+      // until its timeout.
       await page.evaluate(() =>
         Promise.all(
           Array.from(
             document.querySelectorAll<HTMLImageElement>(".ui-panel img"),
-          ).map((i) => i.decode().catch(() => {})),
+          )
+            .filter((i) => i.loading !== "lazy" || i.complete)
+            .map((i) => i.decode().catch(() => {})),
         ),
       );
       await snap(page, info, `ui-panel-${size.name}`);
