@@ -6,4 +6,6 @@ import type { Style } from "./bot.js";
  * again after a champion is added or changed. A champion missing here plays
  * by the rules as written.
  */
-export const EXPERT_STYLE: Partial<Record<CharacterId, Style>> = {};
+export const EXPERT_STYLE: Partial<Record<CharacterId, Style>> = {
+  voltkit: { sight: 1.211, floor: 1.661 },
+};
