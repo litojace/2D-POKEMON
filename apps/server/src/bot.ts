@@ -204,8 +204,8 @@ const NORMAL_DAZE_BEFORE_SMART_BOTS: Partial<Record<CharacterId, number>> = {
  */
 const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
   voltkit: 0.285,
-  cindrake: 0.46,
-  tidefin: 0.27,
+  cindrake: 0.49,
+  tidefin: 0.29,
   auralynx: 0.203,
   lumoth: 0.242,
   mystowl: 0.224,
@@ -220,7 +220,7 @@ const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
   wombolder: 0.335,
   shadopus: 0.33,
   pangrove: 0.355,
-  mossloth: 0.31,
+  mossloth: 0.29,
 };
 /**
  * Easy lapses 0.25 less of its seconds than Normal does on the same
