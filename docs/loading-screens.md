@@ -91,7 +91,8 @@ after another and the saved fighter and avatar were not waited for at all.
    ([loading-art-prompts.md](loading-art-prompts.md)). With one, the curtain
    takes its painting layout: the painting fills the screen and the title,
    the tip (mid-column, so its length never moves the bar) and the bar stand
-   in a column on the right over a darker band. Every painting has the same
+   in a column on the right over a darker band; there the tip is a caption
+   with a gold line on its left, not a box (owner's choice, 20 Nov). Every painting has the same
    chance, never twice in a row. The next start's painting is chosen and
    downloaded once the game is up (`ea-next-art`), so it is on the device
    before that curtain needs it; a first start shows the starfield. The

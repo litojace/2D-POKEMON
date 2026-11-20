@@ -516,11 +516,19 @@
 .server-startup.has-art .server-startup-art {
   display: none;
 }
+/* Over a painting the tip is a caption, not a box (owner's choice, 20 Nov):
+   a gold line on its left and a shade fading out behind the text. The dark
+   band already gives it contrast (at least 13:1 on a bright painting). */
 .server-startup.has-art .server-startup-tip {
   min-height: 0;
   margin: 0;
   max-height: 100%;
   overflow: hidden;
+  border: 0;
+  border-left: 3px solid #ffe08a;
+  border-radius: 0 10px 10px 0;
+  background: linear-gradient(90deg, #030a18cc, #030a1866 70%, #030a1800);
+  text-shadow: 0 1px 3px #000;
 }
 @media (prefers-reduced-motion: reduce) {
   .server-startup-painting {
