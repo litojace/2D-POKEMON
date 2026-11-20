@@ -601,11 +601,6 @@ body.raid-rites-open
   #arena-overlay#arena-overlay.is-rites .raid-choice-timer > .live-number {
     font-size: 40px;
   }
-  #arena-overlay#arena-overlay.is-rites .raid-rite-heading {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
   #arena-overlay#arena-overlay.is-rites .raid-rite-trigger {
     display: none;
   }

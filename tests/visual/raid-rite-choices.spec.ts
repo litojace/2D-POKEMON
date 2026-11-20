@@ -143,10 +143,64 @@ for (const size of [
           ),
           "figures covering their picture",
         ).toEqual([]);
-        for (const id of offers) {
-          const selector = `[data-raid-rite="${id}"]`;
-          const button = await box(page, selector),
-            content = await box(page, selector + " .raid-rite-copy");
+        // Every tile measured in one pass, then checked here: a round trip
+        // per part and figure (about 15 a tile) ran past the time limit at
+        // 1440x900 on software rendering.
+        // Very short screens keep the one-line description in Rite details.
+        const partNames = [
+          ".raid-rite-icon",
+          "b",
+          ...(size.height > 350 ? [".raid-rite-trigger"] : []),
+          ".raid-rite-buff-stat",
+        ];
+        const tiles = await page.evaluate(
+          ([offers, partNames]) => {
+            const rect = (e: Element) => {
+              const r = e.getBoundingClientRect();
+              return { x: r.x, y: r.y, width: r.width, height: r.height };
+            };
+            return offers.map((id) => {
+              const button = document.querySelector(
+                `[data-raid-rite="${id}"]`,
+              )!;
+              const svg = button.querySelector("svg") as SVGGraphicsElement;
+              const ink = svg.getBBox();
+              return {
+                id,
+                button: rect(button),
+                content: rect(button.querySelector(".raid-rite-copy")!),
+                parts: partNames.map((p) => rect(button.querySelector(p)!)),
+                emblem: rect(button.querySelector(".raid-rite-icon--buff")!),
+                stats: [...button.querySelectorAll(".raid-rite-buff-stat")].map(
+                  (stat) => {
+                    const value = stat.querySelector(".raid-rite-buff-value")!,
+                      unit = stat.querySelector(".raid-rite-buff-unit")!;
+                    return {
+                      box: rect(stat),
+                      labels: [value, unit].map((l) => ({
+                        text: l.textContent,
+                        box: rect(l),
+                      })),
+                      valueSize: parseFloat(getComputedStyle(value).fontSize),
+                      unitSize: parseFloat(getComputedStyle(unit).fontSize),
+                      value: value.textContent,
+                    };
+                  },
+                ),
+                picture: svg.getAttribute("data-rite-picture"),
+                ink: {
+                  x: ink.x,
+                  y: ink.y,
+                  right: ink.x + ink.width,
+                  bottom: ink.y + ink.height,
+                },
+              };
+            });
+          },
+          [offers, partNames] as const,
+        );
+        for (const t of tiles) {
+          const { id, button, content, emblem } = t;
           expect(inside(button, card)).toBe(true);
           expect(inside(content, button)).toBe(true);
           expect(
@@ -159,63 +213,26 @@ for (const size of [
               content.y + content.height / 2 - button.y - button.height / 2,
             ),
           ).toBeLessThanOrEqual(2);
-          // Very short screens keep the one-line description in Rite details.
-          for (const part of [
-            ".raid-rite-icon",
-            "b",
-            ...(size.height > 350 ? [".raid-rite-trigger"] : []),
-            ".raid-rite-buff-stat",
-          ]) {
-            expect(inside(await box(page, selector + " " + part), button)).toBe(
-              true,
-            );
-          }
-          const emblem = await box(page, selector + " .raid-rite-icon--buff");
-          for (const stat of await page
-            .locator(selector + " .raid-rite-buff-stat")
-            .all()) {
-            const statBox = await stat.boundingBox();
-            expect(statBox && inside(statBox, emblem)).toBe(true);
-            const value = stat.locator(".raid-rite-buff-value"),
-              unit = stat.locator(".raid-rite-buff-unit");
-            for (const label of [value, unit]) {
-              const labelBox = await label.boundingBox();
+          for (const [i, part] of t.parts.entries())
+            expect(inside(part, button), `${id} ${partNames[i]}`).toBe(true);
+          for (const stat of t.stats) {
+            expect(inside(stat.box, emblem)).toBe(true);
+            for (const label of stat.labels)
               expect(
-                labelBox && inside(labelBox, emblem),
-                `${id}: ${await label.textContent()} must stay in its emblem`,
+                inside(label.box, emblem),
+                `${id}: ${label.text} must stay in its emblem`,
               ).toBe(true);
-            }
-            expect(
-              await value.evaluate((e) =>
-                parseFloat(getComputedStyle(e).fontSize),
-              ),
-            ).toBeGreaterThanOrEqual(size.height > 350 ? 22 : 20);
-            expect(
-              await unit.evaluate((e) =>
-                parseFloat(getComputedStyle(e).fontSize),
-              ),
-            ).toBeGreaterThanOrEqual(10);
+            expect(stat.valueSize).toBeGreaterThanOrEqual(
+              size.height > 350 ? 22 : 20,
+            );
+            expect(stat.unitSize).toBeGreaterThanOrEqual(10);
           }
-          expect(
-            await page
-              .locator(selector + " .raid-rite-buff-value")
-              .allTextContents(),
-          ).toEqual(buffValues[id]);
-          const svg = page.locator(selector + " svg");
-          await expect(svg).toHaveAttribute("data-rite-picture", id);
-          const ink = await svg.evaluate((e: SVGGraphicsElement) => {
-            const r = e.getBBox();
-            return {
-              x: r.x,
-              y: r.y,
-              right: r.x + r.width,
-              bottom: r.y + r.height,
-            };
-          });
-          expect(ink.x).toBeGreaterThanOrEqual(1);
-          expect(ink.y).toBeGreaterThanOrEqual(1);
-          expect(ink.right).toBeLessThanOrEqual(159);
-          expect(ink.bottom).toBeLessThanOrEqual(115);
+          expect(t.stats.map((s) => s.value)).toEqual(buffValues[id]);
+          expect(t.picture).toBe(id);
+          expect(t.ink.x).toBeGreaterThanOrEqual(1);
+          expect(t.ink.y).toBeGreaterThanOrEqual(1);
+          expect(t.ink.right).toBeLessThanOrEqual(159);
+          expect(t.ink.bottom).toBeLessThanOrEqual(115);
         }
         await expect(
           page.locator("[data-raid-rite] .raid-rite-effect"),
