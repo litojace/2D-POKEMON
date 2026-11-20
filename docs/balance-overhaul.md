@@ -555,3 +555,106 @@ for a change: Mystowl is high on both (57%, 70%), Lumoth and Coilemur low
 on both. The proposals above were made on the counterplay-only table:
 with the sharp expert Pyranda is 46.8%, so its buff should be small, and
 Voltkit (42%) should not be cut.
+
+### Look-ahead: using and dodging mechanics the rules don't know
+
+The expert's rules only cast a skill whose kind has a case in `chooseSkill`
+and only dodge what they were written for, so a new champion with a new
+mechanic would be measured with that mechanic never used. The look-ahead
+(`apps/server/src/bot-lookahead.ts`, `ExpertFlags.lookAhead`, expert only)
+closes that gap by trying actions instead of knowing them:
+
+- **When:** at most every 0.25 s, when a skill is ready with the enemy
+  within 900 px, or when a shot, an enemy zone or a wind-up threatens it.
+  Not in raids, and not while the enemy is stealthed (the copy would give
+  its position away).
+- **How:** `cloneArena` copies the match (the same state, its own random
+  numbers, nothing shared; a copy plays tick for tick like the match).
+  Each candidate is played ahead on its own copy. The enemy is assumed to
+  go on doing what it is doing: walking the same way, attacking, aiming at
+  the bot. Marks the bot hasn't had time to notice (0.15 s) are left out of
+  the copies, so it reacts no faster than its rules.
+- **Skills (1.4 s ahead, long enough for blasts that land late):** the
+  rules' choice, holding that skill back, or each other ready skill.
+  The ultimate is considered too, at a price.
+- **Ways out (0.8 s ahead, when threatened):** that choice as it stands,
+  eight ways to walk, and a dash and a jump along the best walk.
+- **Score:** the share of health the enemy lost minus its own, plus 0.15
+  for each second the enemy spends disabled (minus its own), ±1 for a
+  knockout, and a small cost for the cooldown spent (0.08 for the
+  ultimate).
+
+The enemy merely being close is not a threat: counted as one, brawlers
+spent fights stepping back from every swing (Cindrake 38% with the
+look-ahead against the rules alone).
+
+**Against the rules alone** (`scripts/balance/lookahead-gap.ts 4`, 612
+duels, champions and sides swapped): the look-ahead side wins **77.6%**,
+with every champion above half (Mossloth 97%, Tidefin and Pangrove 56%).
+Matches take about six times as long to simulate, so round robins with
+the expert are slower.
+
+**New mechanics.** `scripts/balance/new-mechanic.ts` hides one skill kind
+from the rules (`Profile.unknownKinds`), as if it were new, and plays the
+champion against the 17 others (4 games each, opponents on rules only).
+Casts a match:
+
+| Skill (kind hidden)              | Rules know it | New to the rules | New + look-ahead |
+| -------------------------------- | ------------: | ---------------: | ---------------: |
+| Eyespot Flash (Lumoth, gaze)     |           2.9 |                0 |              5.5 |
+| Seedling (Mossloth)              |          19.7 |                0 |             14.5 |
+| Tunnel (Pangrove)                |           4.0 |                0 |              3.9 |
+| Leaf Storm (Pangrove's ultimate) |           2.8 |                0 |              2.1 |
+| Chestnut Storm (Pyranda's ult.)  |           3.6 |                0 |              3.1 |
+| Facet Guard (Auralynx, counter)  |           4.6 |                0 |              5.5 |
+| Frost Bloom (Glacelle, zone)     |           7.3 |                0 |              7.6 |
+| Riptide Wave (Tidefin, wave)     |           3.2 |                0 |              2.9 |
+
+With the kind hidden the rules never cast it, as a new mechanic would be
+today; the look-ahead casts each about as often as the rules that know it.
+(Its win rates there also carry its other gains, so they are not shown.)
+Dodging works the same way: with `dodgeMarks` off, opponents of Pyranda were
+hit by 23% of its mortars and Chestnut Storm marks; with the look-ahead and
+still no dodge rule, by 13%, fewer than the 17% of the hand-written rule.
+
+What it does not cover: payoffs later than 1.4 s (a trap left for later, a
+setup cashed in seconds after), a mechanic whose worth is not health or a
+disabling status (a buff to allies, vision), and an enemy that changes what
+it is doing. For those, rules are still worth writing; `new-mechanic.ts`
+shows whether they are needed.
+
+**Balance with it** (24 games a pair, `main` with #240, every match
+finished):
+
+| Champion  |  Hard | Expert, rules only | Expert + look-ahead |
+| --------- | ----: | -----------------: | ------------------: |
+| Auralynx  | 55.9% |              60.0% |               84.1% |
+| Mossloth  | 52.2% |              79.7% |               82.4% |
+| Astrabun  | 47.3% |              43.1% |               71.3% |
+| Coilemur  | 53.4% |              47.1% |               67.2% |
+| Cindrake  | 45.3% |              26.5% |               66.9% |
+| Pangrove  | 50.5% |              43.1% |               64.2% |
+| Shadopus  | 51.5% |              53.7% |               61.3% |
+| Wombolder | 51.5% |              59.6% |               60.5% |
+| Terradon  | 50.7% |              55.9% |               56.9% |
+| Lumoth    | 46.8% |              46.6% |               53.4% |
+| Voltkit   | 52.7% |              40.9% |               44.4% |
+| Tidefin   | 49.3% |              21.3% |               38.5% |
+| Sunbara   | 45.8% |              52.2% |               36.5% |
+| Halcyra   | 51.5% |              60.5% |               34.1% |
+| Mystowl   | 46.1% |              60.5% |               31.4% |
+| Glacelle  | 46.8% |              51.0% |               27.5% |
+| Duskveil  | 51.0% |              47.8% |               10.0% |
+| Pyranda   | 51.7% |              50.5% |                9.6% |
+
+Spread (sd) 2.9, 12.7 and 21.6; pairs won 80% or more: 30, 53 and 84 of 153. When both sides dodge nearly everything, champions whose damage
+waits for a mistake (Pyranda's marks, long shots, Duskveil) lose most of
+it, and immediate damage and guards (Auralynx, brawlers) win. Each
+champion still does better with the look-ahead than without it (Pyranda's
+look-ahead beats the rules alone 85%): the table is the matchups between
+two near-perfect dodgers, a level above any player.
+
+So this table is not for tuning champions. Use the look-ahead to check
+that a new champion's mechanics are used and answered (`new-mechanic.ts`).
+Measure balance on Hard and on the expert without it
+(`EXPERT_OFF=lookAhead`), as before.
