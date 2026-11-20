@@ -1314,7 +1314,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A ring-tailed lemur whose striped tail is a living electromagnet. Yanks runners in, then won't let go.",
     color: 0xf2c94c,
-    health: 148,
+    health: 145,
     speed: 250,
     basic: basic(
       "coil-swipe",
@@ -1363,18 +1363,18 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "spark-trail",
         "Spark Trail",
         "trail",
-        6,
+        8,
         15,
-        "For 3.5 seconds Coilemur runs 30% faster and leaves a crackling trail behind it that lasts 2 seconds: enemies who touch it take 6 and are paralysed for a moment. Run rings round them.",
+        "For 3.5 seconds Coilemur runs 30% faster and leaves a crackling trail behind it that lasts 3 seconds: enemies who touch it take 8 and are paralysed for half a second (each at most every 0.7 seconds). Run rings round them.",
         {
-          radius: 28,
+          radius: 45,
           duration: 3.5,
           range: 0,
-          tickInterval: 0.4,
+          tickInterval: 0.7,
           knockback: 0,
           status: "paralysis",
-          statusDuration: 0.4,
-          trail: { fade: 2 },
+          statusDuration: 0.5,
+          trail: { fade: 3 },
         },
       ),
       ability(
