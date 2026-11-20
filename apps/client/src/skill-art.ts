@@ -1808,6 +1808,35 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         E.accent[2],
       ),
   },
+  "Live Wire": {
+    el: "electric",
+    draw: () =>
+      // A taut, crackling wire from Coilemur's magnet tail to a held target.
+      floorGlow("electric", 64, 84, 60, 22) +
+      `<path d="M20 92 L108 40" stroke="#0d1430" stroke-width="9" stroke-linecap="round" opacity=".5"/>` +
+      `<path d="M20 92 L108 40" stroke="${E.accent[2]}" stroke-width="4" stroke-linecap="round"/>` +
+      glow(
+        bolt(
+          [
+            [20, 92],
+            [42, 74],
+            [58, 70],
+            [76, 58],
+            [92, 52],
+            [108, 40],
+          ],
+          4,
+          9,
+        ),
+        "#fff",
+        2,
+        E.accent[1],
+      ) +
+      halo("electric", 20, 92, 14) +
+      halo("electric", 108, 40, 18) +
+      `<circle cx="108" cy="40" r="10" fill="none" stroke="#fff" stroke-width="2.2" stroke-dasharray="4 3" opacity=".9"/>`,
+  },
+
   Electromagnet: {
     el: "electric",
     draw: () =>

@@ -389,7 +389,7 @@ export type AbilityKind =
    * Lock a stream onto the enemy nearest the aim within `range`: every
    * `tether.tick` seconds it takes `damage` (the caster drains `drain` of it)
    * for up to `duration`, until it gets `tether.breakRange` px away or out
-   * of sight.
+   * of sight (or, with `tether.yank`, is yanked back: Live Wire).
    */
   | "tether"
   /**
@@ -565,8 +565,23 @@ export interface Ability {
   boomerang?: boolean;
   /** Rewind: how far back (seconds), the share of health lost since it gives back, and the most. */
   rewind?: { seconds: number; heal: number; max: number };
-  /** Tether: seconds between ticks, and how far the target can get before it snaps. */
-  tether?: { tick: number; breakRange: number };
+  /**
+   * Tether: seconds between ticks, and how far the target can get before it
+   * snaps. With `yank` (Live Wire) it never snaps for range: a target that
+   * gets more than `yank.at` px away is pulled `yank.pull` px back toward
+   * the caster, takes `yank.damage` and `yank.status`, and the wire ends.
+   */
+  tether?: {
+    tick: number;
+    breakRange: number;
+    yank?: {
+      at: number;
+      pull: number;
+      damage: number;
+      status: StatusKind;
+      statusDuration: number;
+    };
+  };
   /** Leash (status "leash"): how far from where it was hit the target can go (px). */
   leash?: number;
   /** Gaze: how closely (radians) an enemy must be aiming at the caster to be caught. */
@@ -1314,7 +1329,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A ring-tailed lemur whose striped tail is a living electromagnet. Yanks runners in, then won't let go.",
     color: 0xf2c94c,
-    health: 145,
+    health: 148,
     speed: 250,
     basic: basic(
       "coil-swipe",
@@ -1360,21 +1375,29 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "spark-trail",
-        "Spark Trail",
-        "trail",
-        8,
-        15,
-        "For 3.5 seconds Coilemur runs 30% faster and leaves a crackling trail behind it that lasts 3 seconds: enemies who touch it take 8 and are paralysed for half a second (each at most every 0.7 seconds). Run rings round them.",
+        "live-wire",
+        "Live Wire",
+        "tether",
+        2,
+        13,
+        "After a quarter-second wind-up, lash a live wire onto the enemy nearest your aim (380 px). For 2.5 seconds it takes 2 every half second, and if it gets more than 300 px away the wire yanks it back toward Coilemur: 6 damage and paralysed for half a second, and the wire snaps. Walls cut the wire. No more running away.",
         {
-          radius: 45,
-          duration: 3.5,
-          range: 0,
-          tickInterval: 0.7,
+          range: 380,
+          radius: 60,
+          duration: 2.5,
+          cast: 0.25,
           knockback: 0,
-          status: "paralysis",
-          statusDuration: 0.5,
-          trail: { fade: 3 },
+          tether: {
+            tick: 0.5,
+            breakRange: 9999,
+            yank: {
+              at: 300,
+              pull: 260,
+              damage: 6,
+              status: "paralysis",
+              statusDuration: 0.5,
+            },
+          },
         },
       ),
       ability(
@@ -2136,6 +2159,31 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
     ],
   },
+};
+/**
+ * Spark Trail, Coilemur's skill until Live Wire replaced it (Nov 2026). The
+ * Spire's Static Wake blessing still lays its crackling trail.
+ */
+export const SPARK_TRAIL: Ability = {
+  ...ability(
+    "spark-trail",
+    "Spark Trail",
+    "trail",
+    6,
+    15,
+    "For 3.5 seconds Coilemur runs 30% faster and leaves a crackling trail behind it that lasts 2 seconds: enemies who touch it take 6 and are paralysed for a moment.",
+    {
+      radius: 28,
+      duration: 3.5,
+      range: 0,
+      tickInterval: 0.4,
+      knockback: 0,
+      status: "paralysis",
+      statusDuration: 0.4,
+      trail: { fade: 2 },
+    },
+  ),
+  element: "Electric",
 };
 /**
  * Free practice: the target drops this electrified ground patch every few
@@ -3948,10 +3996,10 @@ export const RITES: Rite[] = [
   rite(
     "coilemur",
     "minor",
-    "spark-trail",
-    "Long Trail",
-    "Spark Trail lasts 4.5s instead of 3.5s.",
-    { set: { duration: 4.5 } },
+    "live-wire",
+    "Long Wire",
+    "Live Wire holds for 3.5s instead of 2.5s.",
+    { set: { duration: 3.5 } },
   ),
   rite(
     "coilemur",

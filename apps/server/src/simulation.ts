@@ -2492,6 +2492,8 @@ export class Arena {
   /**
    * Gill Siphon: while the stream holds (in reach, in sight, the caster not
    * stunned), the target takes a tick of damage and the caster drinks its share.
+   * Live Wire (`tether.yank`): a target that gets too far is yanked back
+   * toward the caster, hurt and paralysed, and the wire snaps.
    */
   private stepTether(p: Fighter, disabled: boolean) {
     const t = p.tether!;
@@ -2511,6 +2513,23 @@ export class Arena {
       !this.lineClear(p, target)
     ) {
       p.tether = undefined;
+      return;
+    }
+    const yank = a.tether?.yank;
+    if (
+      yank &&
+      Math.hypot(target.x - p.x, target.y - p.y) >
+        yank.at + this.hitRadius(target)
+    ) {
+      p.tether = undefined;
+      this.event("burst", target, CHARACTERS[p.character].color, 0, p.id, a.id);
+      this.damage(target, yank.damage, p.id, {
+        ...a,
+        damage: yank.damage,
+        knockback: -yank.pull,
+        status: yank.status,
+        statusDuration: yank.statusDuration,
+      });
       return;
     }
     if (this.time >= t.nextTick) {

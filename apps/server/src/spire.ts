@@ -41,6 +41,7 @@
 import {
   CHARACTERS,
   RULES,
+  SPARK_TRAIL,
   blocked,
   maxHealth,
   useObstacles,
@@ -703,12 +704,8 @@ export function SpireRules<B extends RaidClass>(Base: B) {
     /** Static Wake: a dash lays a short crackling trail (Spark Trail's own). */
     private layWake(p: Fighter, damage: number) {
       if (this.zones.length >= RULES.maxZones) return;
-      const spark = CHARACTERS.coilemur.skills.find(
-        (a) => a.id === "spark-trail",
-      );
-      if (!spark) return;
       const a: Ability = {
-        ...spark,
+        ...SPARK_TRAIL,
         damage,
         status: undefined,
         statusDuration: undefined,
