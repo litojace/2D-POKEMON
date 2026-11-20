@@ -184,6 +184,26 @@ export interface NetSummary {
 }
 /** A hit landing this far from where you were drawn looked like a miss (one fighter radius). */
 export const HIT_GAP_PX = 24;
+/**
+ * How far from (x, y) your fighter was drawn at time `at` (ms): the drawn
+ * sample nearest that time, if one is within 100 ms. `at` must be the frame
+ * that showed the server's moment of the hit: the snapshot's arrival minus
+ * the un-eased lead (LocalTimeline.estimate). The eased lead picked a frame
+ * 66-99 ms too early and counted most hits on a moving fighter as far
+ * (scripts/perf/correction-sim.ts, 20 Nov 2026).
+ */
+export function drawnGap(
+  drawn: readonly { t: number; x: number; y: number }[],
+  at: number,
+  x: number,
+  y: number,
+): number | undefined {
+  let best: (typeof drawn)[number] | undefined;
+  for (const d of drawn)
+    if (!best || Math.abs(d.t - at) < Math.abs(best.t - at)) best = d;
+  if (best && Math.abs(best.t - at) < 100)
+    return Math.hypot(best.x - x, best.y - y);
+}
 /** A snapshot gap longer than this is late (the server sends one every 67 ms). */
 export const SNAP_LATE = 120;
 /** A correction smaller than this is not noticeable. */
