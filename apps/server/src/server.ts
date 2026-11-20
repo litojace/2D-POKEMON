@@ -3107,17 +3107,28 @@ export function createArenaServer(
     });
     socket.on("plaza-input", (data: unknown) => {
       if (!allowed(40)) return;
-      const d = data as { dx?: unknown; dy?: unknown } | null;
-      plaza.input(socket.id, d?.dx, d?.dy);
+      const d = data as {
+        dx?: unknown;
+        dy?: unknown;
+        s?: unknown;
+        t?: unknown;
+      } | null;
+      plaza.input(socket.id, d?.dx, d?.dy, { s: d?.s, t: d?.t });
     });
-    socket.on("plaza-jump", () => {
+    socket.on("plaza-jump", (data: unknown) => {
       if (!allowed(10)) return;
-      plaza.jump(socket.id);
+      const d = data as { s?: unknown; t?: unknown } | null;
+      plaza.jump(socket.id, { s: d?.s, t: d?.t });
     });
     socket.on("plaza-dash", (data: unknown) => {
       if (!allowed(10)) return;
-      const d = data as { dx?: unknown; dy?: unknown } | null;
-      plaza.dash(socket.id, d?.dx, d?.dy);
+      const d = data as {
+        dx?: unknown;
+        dy?: unknown;
+        s?: unknown;
+        t?: unknown;
+      } | null;
+      plaza.dash(socket.id, d?.dx, d?.dy, { s: d?.s, t: d?.t });
     });
     socket.on("plaza-emote", (data: unknown, cb: unknown) => {
       if (!allowed(10)) return;

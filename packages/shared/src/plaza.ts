@@ -150,11 +150,43 @@ export function segmentDistance(
 ) {
   const vx = b.x - a.x,
     vy = b.y - a.y,
-    t = Math.max(
-      0,
-      Math.min(1, ((x - a.x) * vx + (y - a.y) * vy) / (vx * vx + vy * vy)),
-    );
+    l2 = vx * vx + vy * vy,
+    // A segment of no length is a point (a step that didn't move).
+    t = l2
+      ? Math.max(0, Math.min(1, ((x - a.x) * vx + (y - a.y) * vy) / l2))
+      : 0;
   return Math.hypot(x - a.x - vx * t, y - a.y - vy * t);
+}
+/** How close the path from (ox, oy) to (x, y) comes to the segment a–b. */
+export function pathDistance(
+  ox: number,
+  oy: number,
+  x: number,
+  y: number,
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+) {
+  const cross = (
+    px: number,
+    py: number,
+    qx: number,
+    qy: number,
+    rx: number,
+    ry: number,
+  ) => (qx - px) * (ry - py) - (qy - py) * (rx - px);
+  const d1 = cross(a.x, a.y, b.x, b.y, ox, oy),
+    d2 = cross(a.x, a.y, b.x, b.y, x, y),
+    d3 = cross(ox, oy, x, y, a.x, a.y),
+    d4 = cross(ox, oy, x, y, b.x, b.y);
+  if (d1 * d2 < 0 && d3 * d4 < 0) return 0;
+  const o = { x: ox, y: oy },
+    p = { x, y };
+  return Math.min(
+    segmentDistance(ox, oy, a, b),
+    segmentDistance(x, y, a, b),
+    segmentDistance(a.x, a.y, o, p),
+    segmentDistance(b.x, b.y, o, p),
+  );
 }
 interface Box {
   x0: number;
@@ -739,8 +771,15 @@ export function plazaJump(
  * last stick can be a step or two old, and a dash that leaves at another
  * angle lands the server's copy of you far from where you see yourself.
  */
-export function plazaDash(b: PlazaBody, dir?: { x: number; y: number }) {
-  if (b.dashCd > 0 || b.stun > 0) return false;
+export function plazaDash(
+  b: PlazaBody,
+  dir?: { x: number; y: number },
+  /** Seconds of cooldown or stumbling still left that are let off (the
+   * server's: the browser already dashed). */
+  slack = 0,
+) {
+  if (b.dashCd > slack || b.stun > slack) return false;
+  b.stun = 0;
   if (dir && Math.hypot(dir.x, dir.y) > 0.05) {
     b.lastX = dir.x;
     b.lastY = dir.y;
@@ -786,16 +825,25 @@ export function plazaStep(
   if (b.dashCd > 0) b.dashCd = Math.max(0, b.dashCd - dt);
   if (b.boost > 0) b.boost = Math.max(0, b.boost - dt);
   if (b.stun > 0) {
-    b.stun = Math.max(0, b.stun - dt);
-    b.speed = b.vx = b.vy = 0;
-    return events;
+    // Stumbling: stand still, and move only for what's left of the step
+    // once it ends (the same at 20 steps a second as at 60 frames).
+    if (b.stun >= dt) {
+      b.stun -= dt;
+      b.speed = b.vx = b.vy = 0;
+      return events;
+    }
+    dt -= b.stun;
+    b.stun = 0;
   }
   let vx: number, vy: number;
   const speed = PLAZA.speed * (b.boost > 0 ? PLAZA.boba.speed : 1);
   if (b.dash > 0) {
+    // Dash for what's left of it and walk the rest of the step, so a dash
+    // goes as far at the server's 20 steps a second as at 60 frames.
+    const f = dt > 0 ? Math.min(1, b.dash / dt) : 1;
     b.dash = Math.max(0, b.dash - dt);
-    vx = b.dashX * PLAZA.dashSpeed;
-    vy = b.dashY * PLAZA.dashSpeed;
+    vx = b.dashX * PLAZA.dashSpeed * f + dir.x * speed * (1 - f);
+    vy = b.dashY * PLAZA.dashSpeed * f + dir.y * speed * (1 - f);
   } else {
     vx = dir.x * speed;
     vy = dir.y * speed;
@@ -806,7 +854,8 @@ export function plazaStep(
   }
   if (Math.abs(vx) > 5) b.face = vx > 0 ? 1 : -1;
   const ox = b.x,
-    oy = b.y;
+    oy = b.y,
+    oAir = b.air;
   b.x += vx * dt;
   b.y += vy * dt;
   plazaCollide(b);
@@ -831,13 +880,26 @@ export function plazaStep(
       )
         events.bounced = i;
     });
-  const hd = Math.min(
-    ...PLAZA_HURDLE_SEGMENTS.map(([p0, p1]) =>
-      segmentDistance(b.x, b.y, p0, p1),
-    ),
-  );
-  if (hd < 12 && b.z < 16 && !b.stumbled) {
-    b.stun = PLAZA.stunSeconds;
+  // The whole way this step went, not just where it ended: a dash covers
+  // 34 px in one of the server's steps and would hop a hurdle the browser,
+  // at 60 frames, trips on.
+  let hd = Infinity,
+    hit: (typeof PLAZA_HURDLE_SEGMENTS)[number] | undefined;
+  for (const h of PLAZA_HURDLE_SEGMENTS) {
+    const d = pathDistance(ox, oy, b.x, b.y, h[0], h[1]);
+    if (d < hd) {
+      hd = d;
+      hit = h;
+    }
+  }
+  const trip =
+    hd < 12 && !b.stumbled ? hurdleTrip(b, hit!, ox, oy, oAir, dt) : undefined;
+  if (trip !== undefined) {
+    // Fall where and when you reached the hurdle, not a whole step past it:
+    // the rest of the step counts as stumbling.
+    b.x = ox + (b.x - ox) * trip;
+    b.y = oy + (b.y - oy) * trip;
+    b.stun = PLAZA.stunSeconds - (1 - trip) * dt;
     b.stumbled = true;
     b.dash = 0;
     events.tripped = true;
@@ -846,58 +908,73 @@ export function plazaStep(
   return events;
 }
 
+/**
+ * When in this step (0..1) the body trips over hurdle `h`, or undefined if it
+ * clears it: the first moment it is both within 12 px of the hurdle and
+ * lower than 16 px. Worked out exactly rather than at the step's end, so the
+ * server's 20 steps a second and the browser's 60 frames trip (or clear)
+ * alike, even on a late jump.
+ */
+function hurdleTrip(
+  b: PlazaBody,
+  [p0, p1]: (typeof PLAZA_HURDLE_SEGMENTS)[number],
+  ox: number,
+  oy: number,
+  oAir: number,
+  dt: number,
+) {
+  const len = Math.hypot(p1.x - p0.x, p1.y - p0.y),
+    side = (px: number, py: number) =>
+      ((p1.x - p0.x) * (py - p0.y) - (p1.y - p0.y) * (px - p0.x)) / len,
+    s0 = side(ox, oy),
+    s1 = side(b.x, b.y);
+  // The part of the step within 12 px of the hurdle's line.
+  let r0 = 0,
+    r1 = 1;
+  if (s1 !== s0) {
+    const ra = (-12 - s0) / (s1 - s0),
+      rb = (12 - s0) / (s1 - s0);
+    r0 = Math.max(0, Math.min(ra, rb));
+    r1 = Math.min(1, Math.max(ra, rb));
+  } else if (Math.abs(s0) >= 12) return undefined;
+  if (r0 > r1) return undefined;
+  const height = (r: number) => {
+    if (!oAir) return 0;
+    const a = oAir + r * dt;
+    return a >= b.airDur ? 0 : Math.sin((Math.PI * a) / b.airDur) * b.airH;
+  };
+  if (height(r0) < 16) return r0;
+  // High when you got there: you trip only if you come down below 16 px
+  // before you're past it.
+  const down = b.airDur * (1 - Math.asin(16 / b.airH) / Math.PI),
+    r = (down - oAir) / dt;
+  return r <= r1 ? Math.max(r0, r) : undefined;
+}
+
 /* ---------- the dash track's lap timer ---------- */
 /** Laps run clockwise from the start line at the top of the track. */
 export const PLAZA_LAP_START = -Math.PI / 2;
 /**
- * How the lap timer forgives the server's copy of you for drifting off the
- * lane. The server moves you from your stick, a network trip late, so on a
- * bend (above all after a dash, which leaves in a straight line) its copy can
- * be a few dozen pixels outside the lane while your screen shows you inside.
- * The outer side forgives more: running wide only makes a lap longer, while
- * cutting inside would make it shorter. Within the slack it's still the
- * lane; a little further out, the lap survives `graceMs`; past `outerOff` px
- * outside or `innerOff` px into the infield it ends at once (so the grace
- * can't cut across the infield).
+ * How far past the painted edges of the red lane still counts as on it (px,
+ * from your centre): further out, your whole body (PLAZA.radius) is on the
+ * grass and the lap ends at once. The server plays your inputs at the
+ * moments you pressed them (apps/server/src/plaza.ts, timed inputs), so its
+ * copy of you runs where your screen shows you, without the slack and grace
+ * the lap timer once needed.
  */
-export const PLAZA_LAP_LANE = {
-  /** A lap starts only this close to the painted lane. */
-  startSlack: 24,
-  outerSlack: 80,
-  innerSlack: 48,
-  graceMs: 800,
-  outerOff: 200,
-  innerOff: 110,
-} as const;
-/** Where a point is for the lap timer: close enough to start a lap, in the
- * lane (with slack), near it, or off. */
-export function lapZone(
-  x: number,
-  y: number,
-): "start" | "lane" | "near" | "off" {
+export const PLAZA_LAP_LANE = { slack: 20 } as const;
+/** On the red lane, for the lap timer (with PLAZA_LAP_LANE's slack). */
+export function inLapLane(x: number, y: number) {
   const { cx, cy, ro, ri } = PLAZA_TRACK,
-    L = PLAZA_LAP_LANE,
+    k = PLAZA_LAP_LANE.slack,
     e = (a: number, b: number) => ((x - cx) / a) ** 2 + ((y - cy) / b) ** 2;
-  if (
-    e(ro[0] + L.startSlack, ro[1] + L.startSlack) <= 1 &&
-    e(ri[0] - L.startSlack, ri[1] - L.startSlack) >= 1
-  )
-    return "start";
-  if (
-    e(ro[0] + L.outerOff, ro[1] + L.outerOff) > 1 ||
-    e(ri[0] - L.innerOff, ri[1] - L.innerOff) < 1
-  )
-    return "off";
-  return e(ro[0] + L.outerSlack, ro[1] + L.outerSlack) <= 1 &&
-    e(ri[0] - L.innerSlack, ri[1] - L.innerSlack) >= 1
-    ? "lane"
-    : "near";
+  return e(ro[0] + k, ro[1] + k) <= 1 && e(ri[0] - k, ri[1] - k) >= 1;
 }
 /**
  * Times a lap from server positions. A lap starts when you cross the start
- * line clockwise inside the lane, and ends when you've gone all the way round
- * (2π clockwise) without leaving the lane (see PLAZA_LAP_LANE for how much
- * drift it forgives). Crossing is checked between steps, so a fast dash
+ * line clockwise on the lane, and ends when you've gone all the way round
+ * (2π clockwise) without leaving it: off the lane (inLapLane), the lap is
+ * cancelled at once. Crossing is checked between steps, so a fast dash
  * can't skip a line.
  */
 export class LapTimer {
@@ -905,8 +982,6 @@ export class LapTimer {
   private travelled: number | null = null;
   private last: number | null = null;
   private startedAt = 0;
-  /** When a running lap last left the lane (null: in it). */
-  private outSince: number | null = null;
   get running() {
     return this.travelled !== null;
   }
@@ -921,11 +996,9 @@ export class LapTimer {
   }
   reset() {
     this.travelled = null;
-    this.outSince = null;
   }
   private cancel(): { cancelled: true } {
     this.travelled = null;
-    this.outSince = null;
     return { cancelled: true };
   }
   /** Feed a position; returns a finished lap's time (ms) or "start" / "cancel". */
@@ -934,13 +1007,12 @@ export class LapTimer {
     y: number,
     now: number,
   ): { started?: true; cancelled?: true; lapMs?: number } {
-    const zone = lapZone(x, y),
+    const lane = inLapLane(x, y),
       a = trackPolar(x, y).a,
       prev = this.last;
+    this.last = lane ? a : null;
     if (this.travelled === null) {
-      // Not running: only the lane itself can start a lap.
-      this.last = zone === "start" ? a : null;
-      if (zone !== "start" || prev === null) return {};
+      if (!lane || prev === null) return {};
       // Start line: from just before −π/2 to at or past it, clockwise.
       const d = wrap(a - prev),
         before = wrap(prev - PLAZA_LAP_START),
@@ -948,23 +1020,11 @@ export class LapTimer {
       if (d > 0 && before < 0 && after >= 0 && after - before < Math.PI) {
         this.travelled = after;
         this.startedAt = now;
-        this.outSince = null;
         return { started: true };
       }
       return {};
     }
-    if (zone === "start" || zone === "lane") this.outSince = null;
-    else if (zone === "off") {
-      this.last = null;
-      return this.cancel();
-    } else {
-      this.outSince ??= now;
-      if (now - this.outSince > PLAZA_LAP_LANE.graceMs) {
-        this.last = null;
-        return this.cancel();
-      }
-    }
-    this.last = a;
+    if (!lane) return this.cancel();
     if (prev === null) return {};
     this.travelled += wrap(a - prev);
     if (this.travelled >= Math.PI * 2) {
@@ -1237,6 +1297,13 @@ export interface PlazaState {
   claps: number;
   /** Your lap: started at (server ms) and progress 0..1, when running. */
   lap?: [number, number];
+  /**
+   * The newest stick, jump or dash number (`s`) the browser sent that the server
+   * has applied, and for how many ms of steps it has moved you since: your
+   * position here matches where the browser had you that long after sending
+   * it (apps/client/src/plaza/plaza-predict.ts).
+   */
+  ack?: [number, number];
 }
 /** Orbs as they appear and go: [id, x, y, appearedAt (server ms)]. */
 export type PlazaOrb = [number, number, number, number];

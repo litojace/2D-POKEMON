@@ -23,9 +23,38 @@ async function tapAlongRow(page: Page) {
   const names = await row
     .locator(".fit-fighter")
     .evaluateAll((bs) => bs.map((b) => b.getAttribute("data-fit-fighter")!));
+  // What happened to the row, for a failure: on CI the first tap once found
+  // it at 8 (the picked fighter just brought into view), never here.
+  await row.evaluate((r) => {
+    const w = window as any;
+    const t0 = performance.now();
+    const log: string[] = (w.__rowLog = []);
+    const at = () => Math.round(performance.now() - t0);
+    w.__row = r;
+    r.addEventListener("scroll", () =>
+      log.push(`${at()} scroll ${Math.round(r.scrollLeft)}`),
+    );
+    new MutationObserver((records) => {
+      for (const m of records)
+        for (const n of Array.from(m.removedNodes))
+          if (n === r || n.contains(r))
+            log.push(
+              `${at()} row removed with ${n === r ? "itself" : (n as Element).className || n.nodeName}`,
+            );
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   const seen: string[] = [];
   // The last few, twice over: every kind of page lands on another.
   for (const name of [...names.slice(-5), ...names.slice(-5)]) {
+    await page.evaluate((name) => {
+      const w = window as any;
+      const now = document.querySelector<HTMLElement>(
+        ".fit-room .fit-fighters",
+      );
+      w.__rowLog.push(
+        `tap ${name}: row ${now === w.__row ? "same" : "new"} at ${Math.round(now?.scrollLeft ?? -1)}`,
+      );
+    }, name);
     await row.locator(`[data-fit-fighter="${name}"]`).tap();
     await expect(row.locator(`[data-fit-fighter="${name}"]`)).toHaveAttribute(
       "aria-pressed",
@@ -38,7 +67,12 @@ async function tapAlongRow(page: Page) {
         .evaluate((r) => Math.round(r.scrollLeft))}`,
     );
   }
-  expect(seen).toEqual(seen.map((s) => `${s.split(" ")[0]} ${end}`));
+  expect(
+    seen,
+    (await page.evaluate(() => (window as any).__rowLog as string[])).join(
+      "; ",
+    ),
+  ).toEqual(seen.map((s) => `${s.split(" ")[0]} ${end}`));
 }
 
 test("the Shop's and the Wardrobe's fighter rows stay where you scrolled them", async ({

@@ -53,6 +53,7 @@ import {
   PLAZA_TRACK,
   PLAZA_TREES,
   PLAZA_WALK,
+  inLapLane,
   inPitch,
   inSquare,
   onRunway,
@@ -60,6 +61,7 @@ import {
   orbShower,
   plazaBody,
   plazaClear,
+  plazaCollide,
   plazaDash,
   plazaJump,
   plazaStep,
@@ -95,6 +97,7 @@ import { PreviewPerf } from "../preview-perf";
 import { sceneLines, setPerfSource } from "../perf-hud";
 import { depthSort, slices, spot } from "./plaza-depth";
 import { plazaPath } from "./plaza-path";
+import { PlazaPrediction } from "./plaza-predict";
 import {
   PLAZA_SPRITE_PX,
   drawWornBehind,
@@ -912,6 +915,16 @@ export function openPlaza(options) {
   const BODIES = () => [P, ...others.values()];
   /** The server's latest position for you, to correct the prediction. */
   let srv = null;
+  /** Your sticks, jumps and dashes go out numbered and timed on this clock
+   * (ms of steps run), and the server's position is compared with where
+   * you were that long after (plaza-predict.ts). */
+  const predict = new PlazaPrediction();
+  let stepClock = 0;
+  /** Number and time the next stick, jump or dash: from where the next step starts. */
+  const stamp = () => {
+    const t = Math.round(stepClock);
+    return { s: predict.send(t), t };
+  };
   /** Server clock: Date.now() + offset. */
   let offset = 0;
   const serverNow = () => Date.now() + offset;
@@ -1659,7 +1672,7 @@ export function openPlaza(options) {
 
   /* ---------- actions: predicted here, decided by the server ---------- */
   function jump() {
-    if (plazaJump(P)) socket.emit("plaza-jump");
+    if (plazaJump(P)) socket.emit("plaza-jump", stamp());
   }
   function dash() {
     // Send the way you dashed: the server's last stick can be a step old.
@@ -1667,6 +1680,7 @@ export function openPlaza(options) {
       socket.emit("plaza-dash", {
         dx: Math.round(P.dashX * 1000) / 1000,
         dy: Math.round(P.dashY * 1000) / 1000,
+        ...stamp(),
       });
   }
   let emoteAt = 0;
@@ -1830,7 +1844,7 @@ export function openPlaza(options) {
     target = null;
     joyReset();
     if (sent.x || sent.y) {
-      socket.emit("plaza-input", { dx: 0, dy: 0 });
+      socket.emit("plaza-input", { dx: 0, dy: 0, ...stamp() });
       sent = { x: 0, y: 0 };
       sentAt = performance.now();
     }
@@ -2123,7 +2137,9 @@ export function openPlaza(options) {
     const m = Math.hypot(x, y);
     return m > 1 ? { x: x / m, y: y / m } : { x, y };
   }
-  /** Send the stick when it changes (at most every 50 ms), and once a second while moving. */
+  /** Send the stick when it changes (at most every 50 ms), and once a second
+   *  while moving. You walk with the stick as sent, so the server, playing
+   *  the same sticks at the same moments, walks you the same way. */
   let sent = { x: 0, y: 0 },
     sentAt = 0;
   function sendInput(dir, now) {
@@ -2131,7 +2147,7 @@ export function openPlaza(options) {
       y = Math.round(dir.y * 100) / 100,
       changed = x !== sent.x || y !== sent.y;
     if ((changed && now - sentAt >= 50) || ((x || y) && now - sentAt >= 1000)) {
-      socket.emit("plaza-input", { dx: x, dy: y });
+      socket.emit("plaza-input", { dx: x, dy: y, ...stamp() });
       sent = { x, y };
       sentAt = now;
     }
@@ -2200,6 +2216,16 @@ export function openPlaza(options) {
     for (const [id, x, y, z, face, flags, emoteIdx, speed] of s.walkers) {
       if (id === s.me) {
         srv = { x, y, flags };
+        if (s.ack) {
+          const r = predict.server(srv, s.ack, P);
+          // Too far to ease (a new spot on joining, a lost stream): go there.
+          if (r.snap) {
+            predict.shift(x - P.x, y - P.y);
+            P.x = x;
+            P.y = y;
+          }
+        }
+        srv.acked = !!s.ack;
         if (!(flags & PLAZA_FLAG.boost)) P.boost = 0;
         continue;
       }
@@ -2244,7 +2270,10 @@ export function openPlaza(options) {
     for (const id of others.keys()) if (!seen.has(id)) others.delete(id);
   }
   let lapState = null,
-    lapShown = null;
+    lapShown = null,
+    /** The lap (its start time) you ran off the lane in: gone from the
+     * screen at once, before the server's word arrives a trip later. */
+    lapLeft = null;
   function updateRun() {
     const el = $("pz-timer"),
       best = bestLap();
@@ -2256,7 +2285,8 @@ export function openPlaza(options) {
       );
       return;
     }
-    if (!lapState) {
+    if (lapState && !inLapLane(P.x, P.y)) lapLeft = lapState[0];
+    if (!lapState || lapState[0] === lapLeft) {
       el.hidden = true;
       return;
     }
@@ -4471,7 +4501,8 @@ export function openPlaza(options) {
       sendInput(dir, now);
       const ox = P.x,
         oy = P.y;
-      const ev2 = plazaStep(P, dir, dt);
+      const ev2 = plazaStep(P, sent, dt);
+      stepClock += dt * 1000;
       if (ev2.bounced !== undefined)
         FX.push({
           ring: 1,
@@ -4490,7 +4521,17 @@ export function openPlaza(options) {
         target && P.speed < PLAZA.speed * 0.5 && P.dash <= 0
           ? (P.stuckT || 0) + dt
           : Math.max(0, (P.stuckT || 0) - dt * 0.5);
-      if (srv) {
+      if (srv?.acked) {
+        // Ease in what the server disagreed on (plaza-predict.ts).
+        const bx = P.x,
+          by = P.y,
+          c = predict.ease(dt);
+        P.x += c.x;
+        P.y += c.y;
+        plazaCollide(P);
+        predict.shift(P.x - bx, P.y - by);
+      } else if (srv) {
+        // A server without numbered inputs: the old gentle pull.
         const err = Math.hypot(srv.x - P.x, srv.y - P.y),
           moving = Math.hypot(dir.x, dir.y) > 0.05 || P.dash > 0;
         if (err > 160) {
@@ -4502,6 +4543,7 @@ export function openPlaza(options) {
           P.y += (srv.y - P.y) * k;
         }
       }
+      predict.record(stepClock, P.x, P.y);
       P.sp = P.speed;
       P.buff = P.boost;
       if (P.dash > 0 && Math.random() < 0.8)
