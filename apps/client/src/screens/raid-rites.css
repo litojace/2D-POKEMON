@@ -518,6 +518,99 @@ body.raid-rites-open
   border-bottom: 1px solid #ffffff1a;
 }
 
+/* ---- From the old raid card (style.css), which this screen replaced:
+   the Rite details toggle, the list reset, the team list and the figures'
+   equal widths. Only this screen draws these parts now. ---- */
+#arena-overlay#arena-overlay.is-rites .raid-rite-more {
+  min-width: 0;
+}
+#arena-overlay#arena-overlay.is-rites
+  .raid-rite-more:not([open])
+  .rite-details-open,
+#arena-overlay#arena-overlay.is-rites
+  .raid-rite-more[open]
+  .rite-details-closed,
+#arena-overlay#arena-overlay.is-rites
+  .raid-rite-more:not([open])
+  .raid-rite-reference {
+  display: none;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-more > summary {
+  justify-content: center;
+}
+#arena-overlay#arena-overlay.is-rites
+  .raid-rite-more
+  > summary::-webkit-details-marker {
+  display: none;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-more > summary > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-more > summary:focus-visible,
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference {
+  box-shadow: 0 8px 28px #0005;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference > ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference li {
+  display: grid;
+}
+#arena-overlay#arena-overlay.is-rites .raid-team-builds {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+#arena-overlay#arena-overlay.is-rites .raid-team-builds > div {
+  grid-template-columns: minmax(70px, 1fr) minmax(0, 3fr);
+  align-items: baseline;
+}
+#arena-overlay#arena-overlay.is-rites .raid-team-builds b {
+  overflow: hidden;
+  color: #e7eef9;
+  font-size: calc(11px * var(--text-scale, 1));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#arena-overlay#arena-overlay.is-rites .raid-team-builds span {
+  color: #a9c0d7;
+  font-size: calc(10px * var(--text-scale, 1));
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-heading {
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  max-width: 100%;
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  #arena-overlay#arena-overlay.is-rites .raid-rite-heading {
+    width: 100%;
+  }
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-stats {
+  justify-content: center;
+}
+/* Two figures share their row equally. */
+#arena-overlay#arena-overlay.is-rites .raid-rite-buff-stat {
+  flex: 1 1 0%;
+  align-items: center;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-buff-value {
+  letter-spacing: -0.5px;
+}
+
 /* ---- Sizes. Tall screens get the biggest tiles and the chapter tip;
    phones held sideways keep everything but the full effect (it stays in
    Rite details); the shortest lay each tile out in a row. Figures stay at

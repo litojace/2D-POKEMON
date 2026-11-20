@@ -5604,30 +5604,6 @@ body.battle-raid:not(.touch-mode) #battle {
 }
 
 /* Color and an effect illustration make each raid upgrade recognizable. */
-.raid-rite-shelter {
-  --rite-color: #83e8cf;
-  --rite-rgb: 131, 232, 207;
-}
-.raid-rite-sharing {
-  --rite-color: #ffd86b;
-  --rite-rgb: 255, 216, 107;
-}
-.raid-rite-core {
-  --rite-color: #ffb17d;
-  --rite-rgb: 255, 177, 125;
-}
-.raid-rite-rescue {
-  --rite-color: #91d5ff;
-  --rite-rgb: 145, 213, 255;
-}
-.raid-rite-courage {
-  --rite-color: #ffa0b6;
-  --rite-rgb: 255, 160, 182;
-}
-.raid-rite-mending {
-  --rite-color: #b2f598;
-  --rite-rgb: 178, 245, 152;
-}
 .raid-rite-options > button {
   grid-template-columns: 64px minmax(0, 1fr);
   min-height: 94px;
@@ -6402,33 +6378,6 @@ body.lobby-active::before {
   color: #c0d0e4;
   margin: 12px 0;
 }
-.raid-team-builds {
-  display: grid;
-  gap: 6px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid #7b9aba33;
-  text-align: left;
-}
-.raid-team-builds > div {
-  display: grid;
-  grid-template-columns: minmax(70px, 1fr) minmax(0, 3fr);
-  gap: 12px;
-  align-items: baseline;
-}
-.raid-team-builds b {
-  font-size: calc(11px * var(--text-scale, 1));
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #e7eef9;
-}
-.raid-team-builds span {
-  font-size: calc(10px * var(--text-scale, 1));
-  line-height: 1.5;
-  color: #a9c0d7;
-  overflow-wrap: anywhere;
-}
 .raid-party-bars .is-targeted {
   color: #ffe099;
 }
@@ -6627,11 +6576,6 @@ body.lobby-active::before {
 .raid-team-summary > summary:focus-visible {
   outline: 2px solid #ffe099;
   outline-offset: 2px;
-}
-.raid-team-summary .raid-team-builds {
-  margin: 0;
-  padding: 0 0 8px;
-  border: 0;
 }
 @media (min-width: 560px) {
   .raid-draft .raid-rite-options {
@@ -11296,9 +11240,6 @@ body.battle-active .ability.ult-ready,
   min-height: 28px;
   padding: 5px 0;
 }
-#arena-overlay .raid-draft .raid-team-builds {
-  text-align: left;
-}
 #arena-overlay .raid-draft .raid-rite-options > p {
   display: grid;
   place-content: center;
@@ -11309,43 +11250,6 @@ body.battle-active .ability.ult-ready,
   border-radius: 18px;
   background: var(--bg-1);
   font: 600 calc(24px * var(--text-scale, 1))/1.3 var(--display);
-}
-/* The icon and its enclosing card use the same existing rite colour. */
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-shelter {
-  --rite-color: #83e8cf;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-sharing {
-  --rite-color: #ffd86b;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-core {
-  --rite-color: #ffb17d;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-rescue {
-  --rite-color: #91d5ff;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-courage {
-  --rite-color: #ffa0b6;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-mending {
-  --rite-color: #b2f598;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-grounded {
-  --rite-color: #9fdfff;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-fireproof {
-  --rite-color: #ffbd83;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-polished {
-  --rite-color: #ffe2a0;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-lucid {
-  --rite-color: #c9a3ff;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-footing {
-  --rite-color: #7fe9ff;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-lamplighter {
-  --rite-color: var(--ui-accent);
 }
 
 @media (orientation: landscape) and (max-height: 600px) {
@@ -13205,34 +13109,13 @@ body.battle-active.court-view #game canvas {
   min-height: 0;
   gap: 12px;
 }
-.raid-rite-heading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  max-width: 100%;
-  gap: 20px;
-}
-#arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-  min-width: 0;
-  grid-column: auto;
-  text-align: center;
-}
 #arena-overlay .raid-draft .panel-actions .raid-rite-copy > small {
   grid-column: auto;
   align-self: center;
   margin: 0;
   text-align: center;
 }
-.raid-rite-heading > .raid-rite-icon {
-  flex: 0 0 auto;
-}
 @media (orientation: landscape) and (max-height: 600px) {
-  .raid-rite-heading {
-    flex-direction: row;
-    gap: 9px;
-  }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 8px;
   }
@@ -13412,15 +13295,6 @@ body.battle-active.court-view #game canvas {
   width: 128px;
   height: 96px;
 }
-.raid-rite-heading {
-  gap: 14px;
-}
-#arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-  color: var(--text-dim);
-  font:
-    500 calc(13px * var(--text-scale, 1))/1.3 "DM Sans",
-    sans-serif;
-}
 #arena-overlay .raid-draft .raid-rite-intro {
   position: static;
   display: grid;
@@ -13437,100 +13311,6 @@ body.battle-active.court-view #game canvas {
   text-align: left;
   font-size: calc(12px * var(--text-scale, 1));
 }
-.raid-rite-more {
-  position: static;
-  justify-self: end;
-  min-width: 0;
-}
-.raid-rite-more > summary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--bg-1);
-  color: var(--text);
-  font:
-    600 calc(12px * var(--text-scale, 1))/1.2 "DM Sans",
-    sans-serif;
-  list-style: none;
-  cursor: pointer;
-}
-.raid-rite-more > summary::-webkit-details-marker {
-  display: none;
-}
-.raid-rite-more > summary > svg {
-  width: 18px;
-  height: 18px;
-  flex: none;
-}
-.raid-rite-more > summary:focus-visible,
-.raid-rite-reference:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -3px;
-}
-.raid-rite-more:not([open]) .rite-details-open,
-.raid-rite-more[open] .rite-details-closed,
-.raid-rite-more:not([open]) .raid-rite-reference {
-  display: none;
-}
-.raid-rite-more[open] > summary {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.raid-rite-reference {
-  position: absolute;
-  inset: 0 0 calc(44px + var(--rite-footer-gap));
-  z-index: 5;
-  min-height: 0;
-  overflow: auto;
-  padding: 18px 22px;
-  border: 1px solid color-mix(in srgb, var(--ui-accent) 40%, transparent);
-  border-radius: 16px;
-  background: #142039;
-  box-shadow: 0 8px 28px #0005;
-  text-align: left;
-  touch-action: pan-y;
-  overscroll-behavior: contain;
-}
-#arena-overlay .raid-draft .raid-rite-reference > h3 {
-  margin: 0 0 12px;
-  font: 700 calc(23px * var(--text-scale, 1))/1.2 var(--display);
-}
-.raid-rite-reference > ul {
-  display: grid;
-  gap: 12px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.raid-rite-reference li {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 14px;
-  align-items: center;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
-}
-#arena-overlay .raid-draft .panel-actions .raid-rite-reference .raid-rite-icon,
-#arena-overlay .raid-draft .raid-rite-reference .raid-rite-icon > svg {
-  width: 64px;
-  height: 48px;
-}
-#arena-overlay .raid-draft .raid-rite-reference h4 {
-  margin: 0 0 5px;
-  font: 700 calc(20px * var(--text-scale, 1))/1.2 var(--display);
-}
-#arena-overlay .raid-draft .raid-rite-reference p {
-  margin: 0;
-  color: var(--text-dim);
-  font:
-    400 calc(14px * var(--text-scale, 1))/1.5 "DM Sans",
-    sans-serif;
-}
 @media (orientation: landscape) and (max-height: 600px) {
   #arena-overlay .raid-draft > .panel-actions {
     --rite-footer-gap: 10px;
@@ -13543,23 +13323,8 @@ body.battle-active.court-view #game canvas {
     width: 104px;
     height: 78px;
   }
-  .raid-rite-heading {
-    gap: 8px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    font-size: calc(22px * var(--text-scale, 1));
-  }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 6px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-    font-size: calc(12px * var(--text-scale, 1));
-  }
-  .raid-rite-reference {
-    padding: 12px 16px;
-  }
-  #arena-overlay .raid-draft .raid-rite-reference p {
-    font-size: calc(12px * var(--text-scale, 1));
   }
 }
 @media (orientation: landscape) and (max-height: 350px) {
@@ -13574,113 +13339,20 @@ body.battle-active.court-view #game canvas {
     width: 64px;
     height: 48px;
   }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    font-size: calc(19px * var(--text-scale, 1));
-  }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 3px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-    font-size: calc(11px * var(--text-scale, 1));
   }
   #arena-overlay .raid-draft .raid-rite-intro > span:first-child {
     font-size: calc(10px * var(--text-scale, 1));
   }
-  .raid-rite-reference {
-    padding: 10px 12px;
-  }
-  .raid-rite-reference > ul {
-    gap: 9px;
-  }
 }
 
-/* Buff figures belong to the illustrated payoff (shield, core, heart, etc.).
-   HTML figures stay crisp and readable instead of shrinking with SVG text. */
-#arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-  position: relative;
-  display: block;
-  width: 200px;
-  height: 145px;
-  overflow: visible;
-}
-#arena-overlay .raid-draft .raid-rite-icon--buff > svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-.raid-rite-icon--buff .raid-rite-buff-stat {
-  position: absolute;
-  top: 43%;
-  left: 46%;
-  width: 49.5%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  color: #f2f7ff;
-  text-align: center;
-  white-space: nowrap;
-  text-shadow:
-    0 1px 4px #10182e,
-    0 0 8px #10182e;
-}
-.raid-rite-buff-value {
-  font:
-    800 calc(29px * var(--text-scale, 1))/1.05 "DM Sans",
-    sans-serif;
-  letter-spacing: -1px;
-  font-variant-numeric: tabular-nums;
-}
-.raid-rite-buff-unit {
-  font:
-    600 calc(11px * var(--text-scale, 1))/1.3 "DM Sans",
-    sans-serif;
-  color: var(--rite-color);
-}
-.raid-rite-icon--dual .raid-rite-buff-stat {
-  top: 56%;
-  left: 55%;
-  width: 40%;
-}
-.raid-rite-icon--dual .raid-rite-buff-stat--second {
-  left: 5%;
-}
 @media (orientation: landscape) and (max-height: 600px) {
-  .raid-rite-heading {
-    flex-direction: column;
-    gap: 5px;
-    width: 100%;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-    width: 160px;
-    height: 116px;
-  }
-  .raid-rite-buff-value {
-    font-size: calc(24px * var(--text-scale, 1));
-  }
-  .raid-rite-buff-unit {
-    font-size: calc(10px * var(--text-scale, 1));
-  }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 6px;
   }
 }
 @media (orientation: landscape) and (max-height: 350px) {
-  .raid-rite-heading {
-    flex-direction: row;
-    gap: 6px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-    width: 132px;
-    height: 96px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    max-width: 9ch;
-    font-size: calc(19px * var(--text-scale, 1));
-  }
-  .raid-rite-buff-value {
-    font-size: calc(22px * var(--text-scale, 1));
-  }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 2px;
   }
@@ -14473,88 +14145,6 @@ body.battle-active:not(.touch-mode).battle-raid
   right: calc((100% - var(--desktop-arena-width, 100%)) / 2 + 8px);
   left: auto;
   transform: none;
-}
-#arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: min(200px, 100%);
-  height: auto;
-  gap: 8px;
-}
-#arena-overlay .raid-draft .raid-rite-icon--buff > svg {
-  width: 128px;
-  height: 96px;
-  filter: drop-shadow(0 3px 8px #0005);
-}
-.raid-rite-stats {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-}
-.raid-rite-icon--buff .raid-rite-buff-stat {
-  position: static;
-  width: auto;
-  flex: 1;
-  min-width: 0;
-  padding: 6px 4px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--rite-color), transparent 65%);
-  background: #0c182dcc;
-  white-space: normal;
-}
-.raid-rite-buff-value {
-  font-size: calc(24px * var(--text-scale, 1));
-  letter-spacing: -0.5px;
-}
-.raid-rite-buff-unit {
-  font-size: calc(10px * var(--text-scale, 1));
-}
-#arena-overlay .raid-draft .raid-rite-heading {
-  align-items: center;
-  justify-content: center;
-}
-@media (orientation: landscape) and (max-height: 450px) {
-  #arena-overlay .raid-draft .raid-rite-icon--buff > svg {
-    width: 96px;
-    height: 72px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-    gap: 4px;
-  }
-  .raid-rite-buff-value {
-    font-size: calc(20px * var(--text-scale, 1));
-  }
-}
-@media (orientation: landscape) and (max-height: 450px) {
-  .raid-rite-buff-value {
-    font-size: calc(22px * var(--text-scale, 1));
-  }
-}
-@media (orientation: landscape) and (max-height: 350px) {
-  #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-    display: grid;
-    grid-template-columns: 52px minmax(0, 1fr);
-    width: 138px;
-    gap: 4px;
-  }
-  #arena-overlay .raid-draft .raid-rite-icon--buff > svg {
-    width: 52px;
-    height: 48px;
-  }
-  .raid-rite-stats {
-    flex-direction: column;
-    gap: 2px;
-  }
-  .raid-rite-icon--buff .raid-rite-buff-stat {
-    padding: 2px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    max-width: 7ch;
-    font-size: calc(18px * var(--text-scale, 1));
-  }
 }
 
 /* Keep the boss health and name together, with the cue and Peril in the center. */
@@ -15419,55 +15009,6 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
   width: 100%;
   gap: 6px;
 }
-body #arena-overlay .raid-draft .panel-actions .raid-rite-heading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-}
-body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  height: auto;
-  gap: 6px;
-  background: none;
-}
-body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff > svg {
-  width: 96px;
-  height: 72px;
-}
-body #arena-overlay .raid-draft .panel-actions .raid-rite-stats {
-  justify-content: center;
-  gap: 6px;
-  width: auto;
-  max-width: 100%;
-}
-body
-  #arena-overlay
-  .raid-draft
-  .panel-actions
-  .raid-rite-icon--buff
-  .raid-rite-buff-stat {
-  flex: 0 1 auto;
-  min-width: 76px;
-  padding: 4px 8px;
-}
-body #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-  max-width: none;
-  font-size: calc(22px * var(--text-scale, 1));
-  line-height: 1.1;
-}
-body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-  font-size: calc(12px * var(--text-scale, 1));
-  line-height: 1.3;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* Landscape phones and short windows (up to 700px tall, where six full
    cards no longer fit above the timer): art and chips side by side. */
@@ -15479,38 +15020,8 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
     padding: 7px 8px 6px;
     border-radius: 12px;
   }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-copy,
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-heading {
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 2px;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-    flex-direction: row;
-    justify-content: center;
-    gap: 6px;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff > svg {
-    flex: none;
-    width: 52px;
-    height: 39px;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-stats {
-    flex-direction: row;
-    gap: 4px;
-  }
-  body
-    #arena-overlay
-    .raid-draft
-    .panel-actions
-    .raid-rite-icon--buff
-    .raid-rite-buff-stat {
-    min-width: 0;
-    padding: 2px 6px;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    font-size: calc(17px * var(--text-scale, 1));
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-    font-size: calc(11px * var(--text-scale, 1));
   }
 }
 /* Portrait phones: two columns. */
@@ -15528,21 +15039,8 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
 }
 /* Very short screens: the one-line description lives in Rite details. */
 @media (orientation: landscape) and (max-height: 350px) {
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-    display: none;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    font-size: calc(15px * var(--text-scale, 1));
-  }
   body #arena-overlay .raid-draft .panel-actions .raid-rite-options > button {
     padding: 4px 6px;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff > svg {
-    width: 44px;
-    height: 33px;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-buff-value {
-    font-size: calc(20px * var(--text-scale, 1));
   }
   /* Teammates' picks show once you have chosen; its whole strip goes. */
   body #arena-overlay .raid-draft > .panel-scroll {
