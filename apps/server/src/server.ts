@@ -3144,12 +3144,6 @@ export function createArenaServer(
           : { ok: false, error: "Wait a moment between emotes." },
       );
     });
-    // Sitting on a bench or the fountain's rim: timed like a jump.
-    socket.on("plaza-sit", (data: unknown) => {
-      if (!allowed(10)) return;
-      const d = data as { seat?: unknown; s?: unknown; t?: unknown } | null;
-      plaza.sit(socket.id, d?.seat, { s: d?.s, t: d?.t });
-    });
     // Pair emotes (a high five…): asked from a player's card, answered by
     // them. Requests between blocked players are never delivered.
     const pairBlocked = (a: string, b: string) => chat.blocks(a, b);

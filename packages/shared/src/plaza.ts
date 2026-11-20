@@ -1138,55 +1138,6 @@ export function plazaSpotAt(x: number, y: number, slack = 0) {
   return PLAZA_SPOTS.find((s) => Math.hypot(x - s.x, y - s.y) < s.r + slack);
 }
 
-/* ---------- seats: the benches and the fountain's rim ---------- */
-/** Sitting: how near a seat the Sit button shows (px), and the server's
- * extra slack for lag. */
-export const PLAZA_SEAT = { reach: 70, slack: 30 } as const;
-/**
- * A seat: `x`, `y` is where the sitter's feet stand, just clear of the bench
- * or the basin (so a sitter's step never pushes them off); `lift` raises the
- * drawn fighter onto the seat; `face` is the way they look while sitting.
- */
-export interface PlazaSeat {
-  x: number;
-  y: number;
-  lift: number;
-  face: 1 | -1;
-}
-/** Two seats on each bench (facing each other), six round the fountain's front rim (facing out). */
-export const PLAZA_SEATS: readonly PlazaSeat[] = [
-  ...PLAZA_BENCHES.flatMap((b) =>
-    ([-20, 20] as const).map((dx) => ({
-      x: b.x + dx,
-      y: b.y + 14,
-      lift: 30,
-      face: (dx < 0 ? 1 : -1) as 1 | -1,
-    })),
-  ),
-  ...[0, 36, 72, 108, 144, 180].map((deg) => {
-    const a = (deg * Math.PI) / 180;
-    return {
-      x: Math.round(PLAZA_FOUNTAIN.x + Math.cos(a) * 130),
-      y: Math.round(PLAZA_FOUNTAIN.y + 26 + Math.sin(a) * 86),
-      lift: 22,
-      face: (Math.cos(a) < -0.01 ? -1 : 1) as 1 | -1,
-    };
-  }),
-];
-/** The nearest seat within reach of (x, y) (plus `slack`), or -1. */
-export function plazaSeatAt(x: number, y: number, slack = 0) {
-  let best = -1,
-    bd = PLAZA_SEAT.reach + slack;
-  PLAZA_SEATS.forEach((s, i) => {
-    const d = Math.hypot(x - s.x, y - s.y);
-    if (d <= bd) {
-      bd = d;
-      best = i;
-    }
-  });
-  return best;
-}
-
 /* ---------- pair emotes ---------- */
 /**
  * Emotes two players share, asked for from a player's card. In snapshots a
@@ -1358,10 +1309,8 @@ export const PLAZA_FLAG = {
   stun: 2,
   boost: 4,
   bot: 8,
-  /** Sitting on a seat (PLAZA_SEATS). */
-  sit: 16,
   /** The emote is a pair emote (PLAZA_PAIR_EMOTES). */
-  pair: 32,
+  pair: 16,
 } as const;
 /** One body: [id, x, y, z, face, flags, emote (1-based, 0 = none), speed]. */
 export type PlazaWalker = [

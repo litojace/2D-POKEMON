@@ -135,7 +135,6 @@ w.__emit = (ev: string, data: any) => {
   if (ev === "plaza-input") world.input(ME, data.dx, data.dy, timing);
   else if (ev === "plaza-jump") world.jump(ME, timing);
   else if (ev === "plaza-dash") world.dash(ME, data?.dx, data?.dy, timing);
-  else if (ev === "plaza-sit") world.sit(ME, data?.seat, timing);
   else before.emit?.(ev, data);
 };
 let ticks = 0;

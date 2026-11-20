@@ -6,14 +6,7 @@ import {
   PLAZA_FLAG,
   PLAZA_PAIR,
   PLAZA_PAIR_EMOTES,
-  PLAZA_PADS,
-  PLAZA_SEAT,
-  PLAZA_SEATS,
-  plazaBody,
-  plazaCollide,
   plazaPairOf,
-  plazaSeatAt,
-  plazaStep,
 } from "../../packages/shared/src/plaza";
 
 const profile = (name: string) => ({
@@ -57,29 +50,7 @@ const two = () => {
   return world;
 };
 
-describe("Plaza seats (shared)", () => {
-  it("puts every seat on open ground, off the pads, apart from the others", () => {
-    expect(PLAZA_SEATS.length).toBeGreaterThanOrEqual(8);
-    PLAZA_SEATS.forEach((s, i) => {
-      // Movement never pushes a sitter off: the spot is clear of every obstacle.
-      const c = plazaCollide({ x: s.x, y: s.y });
-      expect(Math.hypot(c.x - s.x, c.y - s.y)).toBeLessThan(0.01);
-      // Standing still there for a second goes nowhere (no pad throws you).
-      const b = plazaBody(s.x, s.y);
-      for (let t = 0; t < 1; t += DT) plazaStep(b, { x: 0, y: 0 }, DT);
-      expect(b.air).toBe(0);
-      expect(Math.hypot(b.x - s.x, b.y - s.y)).toBeLessThan(0.01);
-      for (const [px, py] of PLAZA_PADS)
-        expect(Math.hypot(s.x - px, s.y - py)).toBeGreaterThan(80);
-      PLAZA_SEATS.forEach((o, j) => {
-        if (j !== i)
-          expect(Math.hypot(o.x - s.x, o.y - s.y)).toBeGreaterThan(30);
-      });
-      expect(plazaSeatAt(s.x, s.y)).toBe(i);
-      expect(plazaSeatAt(s.x + 10, s.y - 10)).toBe(i);
-    });
-    expect(plazaSeatAt(1350, 1300)).toBe(-1);
-  });
+describe("pair emotes (shared)", () => {
   it("keeps the snapshot flags apart and maps each pair emote both ways", () => {
     const bits = Object.values(PLAZA_FLAG);
     expect(new Set(bits).size).toBe(bits.length);
@@ -97,94 +68,6 @@ describe("Plaza seats (shared)", () => {
       expect(plazaPairOf(index, 0)).toBeUndefined();
     }
     expect(plazaPairOf(0, PLAZA_FLAG.pair)).toBeUndefined();
-  });
-});
-
-describe("sitting in the Plaza (server)", () => {
-  it("sits you on a free seat in reach, snapped to it, and shows it to others", () => {
-    const world = two();
-    const s = PLAZA_SEATS[0];
-    place(world, "a", s.x + 30, s.y + 30);
-    place(world, "b", s.x + 60, s.y + 40);
-    expect(world.sit("a", 0)).toBe(true);
-    expect(world.seatOf("a")).toBe(0);
-    const b = world.bodyOf("a")!;
-    expect([b.x, b.y, b.face]).toEqual([s.x, s.y, s.face]);
-    run(world, 1, QUIET);
-    expect(world.seatOf("a")).toBe(0);
-    const w = walker(world, "b", "a");
-    expect(w[5] & PLAZA_FLAG.sit).toBeTruthy();
-    expect([w[1], w[2]]).toEqual([s.x, s.y]);
-    expect(walker(world, "a", "b")[5] & PLAZA_FLAG.sit).toBe(0);
-  });
-  it("refuses a seat out of reach, taken, mid-jump or unknown", () => {
-    const world = two();
-    const s = PLAZA_SEATS[2];
-    place(world, "a", s.x, s.y + PLAZA_SEAT.reach + PLAZA_SEAT.slack + 5);
-    expect(world.sit("a", 2)).toBe(false);
-    expect(world.seatOf("a")).toBe(-1);
-    // One body per seat.
-    place(world, "a", s.x, s.y + 20);
-    place(world, "b", s.x + 20, s.y + 20);
-    expect(world.sit("a", 2)).toBe(true);
-    expect(world.sit("b", 2)).toBe(false);
-    expect(world.seatOf("b")).toBe(-1);
-    // In the air.
-    const t = PLAZA_SEATS[3];
-    place(world, "b", t.x, t.y + 20);
-    world.jump("b");
-    expect(world.sit("b", 3)).toBe(false);
-    // Junk.
-    for (const junk of [99, 1.5, "0", null, -2])
-      expect(world.sit("b", junk)).toBe(false);
-  });
-  it("stands you up when you move, jump, dash or press Stand up, and frees the seat when you leave", () => {
-    const world = two();
-    const s = PLAZA_SEATS[1];
-    const sitDown = () => {
-      place(world, "a", s.x, s.y + 10);
-      world.bodyOf("a")!.air = 0;
-      world.bodyOf("a")!.dashCd = 0;
-      expect(world.sit("a", 1)).toBe(true);
-    };
-    sitDown();
-    world.input("a", 0, 0);
-    expect(world.seatOf("a")).toBe(1);
-    world.input("a", 1, 0);
-    expect(world.seatOf("a")).toBe(-1);
-    world.input("a", 0, 0);
-    sitDown();
-    world.jump("a");
-    expect(world.seatOf("a")).toBe(-1);
-    run(world, 1, QUIET);
-    sitDown();
-    world.dash("a", 1, 0);
-    expect(world.seatOf("a")).toBe(-1);
-    run(world, 1, QUIET);
-    sitDown();
-    expect(world.sit("a", -1)).toBe(true);
-    expect(world.seatOf("a")).toBe(-1);
-    sitDown();
-    world.leave("a", QUIET);
-    place(world, "b", s.x, s.y + 10);
-    expect(world.sit("b", 1)).toBe(true);
-  });
-  it("plays a timed sit in order: a walk sent before it doesn't stand you up after", () => {
-    const world = two();
-    const s = PLAZA_SEATS[0];
-    place(world, "a", s.x - 20, s.y + 20);
-    // Walk 100 ms toward the seat, stop, sit: as the browser sent them.
-    world.input("a", 1, 0, { s: 1, t: 0 });
-    world.input("a", 0, 0, { s: 2, t: 100 });
-    world.sit("a", 0, { s: 3, t: 120 });
-    run(world, 0.5, QUIET);
-    expect(world.seatOf("a")).toBe(0);
-    const b = world.bodyOf("a")!;
-    expect([b.x, b.y]).toEqual([s.x, s.y]);
-    // Then a new stick stands you up.
-    world.input("a", 0, 1, { s: 4, t: 600 });
-    run(world, 0.5, QUIET + 500);
-    expect(world.seatOf("a")).toBe(-1);
   });
 });
 

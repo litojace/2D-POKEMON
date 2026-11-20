@@ -1,13 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openPlaza, snap } from "./helpers";
-import {
-  PLAZA_EMOTES,
-  PLAZA_FLAG,
-  PLAZA_SEATS,
-} from "../../packages/shared/src/plaza";
+import { PLAZA_EMOTES, PLAZA_FLAG } from "../../packages/shared/src/plaza";
 
-// Pair emotes from a player's card and sitting on the benches and the
-// fountain's rim, on the narrowest phone in landscape. The harness runs the
+// Pair emotes from a player's card, and the action button on a touch
+// screen, on the narrowest phone in landscape. The harness runs the
 // real PlazaWorld in the page (harness/plaza-sim.ts) for the game server.
 const PHONE = { width: 667, height: 375 };
 
@@ -48,15 +44,6 @@ async function addRin(page: Page) {
     )
     .toBe(true);
 }
-const server = (page: Page) =>
-  page.evaluate(() => {
-    const w = (window as any).__plazaWorld;
-    return {
-      seat: w.seatOf("local") as number,
-      body: { ...w.bodyOf("local") },
-    };
-  });
-
 test("pair emotes: ask from a player's card and accept a request, on a small phone", async ({
   page,
 }, info) => {
@@ -142,10 +129,9 @@ test("pair emotes: ask from a player's card and accept a request, on a small pho
   expect(errors).toEqual([]);
 });
 
-test("sit on a bench and the fountain's rim; moving stands you up (a touch phone)", async ({
+test("the action button on a touch phone: no E key, as wide as its label", async ({
   browser,
 }, info) => {
-  // A real touch phone: no keyboard hints, and the joystick.
   const context = await browser.newContext({
     viewport: PHONE,
     isMobile: true,
@@ -155,95 +141,29 @@ test("sit on a bench and the fountain's rim; moving stands you up (a touch phone
   try {
     const errors = await openPlaza(page);
     await expect(page.locator(".plaza-layer")).toHaveClass(/coarse/);
-    const sitAt = async (i: number) => {
-      const s = PLAZA_SEATS[i];
-      await page.evaluate(
-        ([x, y]) => (window as any).__plazaPosition(x, y),
-        [s.x, s.y + 40],
-      );
-      // Your screen follows the teleport a frame or two later.
-      await expect
-        .poll(
-          () =>
-            page.evaluate(
-              ([x, y]) => {
-                const P = (window as any).__plaza.P;
-                return Math.hypot(P.x - x, P.y - y);
-              },
-              [s.x, s.y + 40],
-            ),
-          { timeout: 15_000 },
-        )
-        .toBeLessThan(10);
-      const act = page.locator("#pz-interact");
-      await expect(act).toBeVisible({ timeout: 15_000 });
-      await expect(act).toContainText("Sit");
-      await act.click();
-      await expect
-        .poll(async () => (await server(page)).seat, { timeout: 15_000 })
-        .toBe(i);
-      const srv = await server(page);
-      expect([srv.body.x, srv.body.y]).toEqual([s.x, s.y]);
-      await expect(act).toContainText("Stand up");
-      await onScreen(page, "#pz-interact");
-      // Drawn raised onto the seat.
-      expect(await page.evaluate(() => (window as any).__plaza.P.sitLift)).toBe(
-        s.lift,
-      );
-    };
-    // A bench.
-    await sitAt(0);
-    // No keyboard keys on a touch screen (E, Shift, Space), and the green
-    // button is as wide as "Stand up", not a fixed 13em.
+    // By the Volt Boba truck.
+    await page.evaluate(() => (window as any).__plazaPosition(1745, 520));
+    const act = page.locator("#pz-interact");
+    await expect(act).toBeVisible({ timeout: 15_000 });
+    await expect(act).toContainText("Volt Boba");
+    await onScreen(page, "#pz-interact");
+    // No keyboard keys on a touch screen (E, Shift, Space).
     for (const key of ["#pz-interact kbd", "#pz-dash small", "#pz-jump small"])
       await expect(page.locator(key)).toBeHidden();
-    const act = await page.locator("#pz-interact").evaluate((el) => {
-      const label = el.querySelector("span")!.getBoundingClientRect(),
-        box = el.getBoundingClientRect();
+    // As wide as its label: no empty space after it, and none of it cut
+    // short (on phones it isn't Dash's 64px either).
+    const box = await act.evaluate((el) => {
+      const span = el.querySelector("span")!,
+        label = span.getBoundingClientRect(),
+        r = el.getBoundingClientRect();
       return {
-        w: box.width,
-        spare: box.right - label.right,
-        // The whole label shows: not cut short with "…".
-        cut: el.querySelector("span")!.scrollWidth > Math.ceil(label.width),
+        spare: r.right - label.right,
+        cut: span.scrollWidth > Math.ceil(label.width),
       };
     });
-    expect(act.w).toBeLessThan(13 * 12);
-    expect(act.spare, "no empty space after the label").toBeLessThan(20);
-    expect(act.cut, "the label isn't cut short").toBe(false);
-    await page.waitForTimeout(400);
-    await snap(page, info, "plaza-sit-bench-667x375");
-    // Walking stands you up, on the server too.
-    await page.locator(".plaza-layer").focus();
-    await page.keyboard.down("d");
-    await expect
-      .poll(async () => (await server(page)).seat, { timeout: 15_000 })
-      .toBe(-1);
-    await page.keyboard.up("d");
-    // Let the walk finish on the server (its timed inputs play out) before
-    // the next teleport, or the last steps carry you past the spot.
-    await expect
-      .poll(() =>
-        page.evaluate(() => {
-          const v = (window as any).__plazaWorld.visitors.get("local");
-          return v.queue.length === 0 && v.dir.x === 0 && v.body.speed === 0;
-        }),
-      )
-      .toBe(true);
-    expect(await page.evaluate(() => (window as any).__plaza.P.sitLift)).toBe(
-      0,
-    );
-    // The fountain's rim (the seat in front), then Stand up.
-    const rim = PLAZA_SEATS.findIndex(
-      (s, i) => i >= 8 && Math.abs(s.x - 1350) < 50,
-    );
-    expect(rim).toBeGreaterThan(0);
-    await sitAt(rim);
-    await page.waitForTimeout(400);
-    await snap(page, info, "plaza-sit-fountain-667x375");
-    await page.locator("#pz-interact").click();
-    await expect
-      .poll(async () => (await server(page)).seat, { timeout: 15_000 })
-      .toBe(-1);
+    expect(box.spare, "no empty space after the label").toBeLessThan(20);
+    expect(box.cut, "the label isn't cut short").toBe(false);
+    await snap(page, info, "plaza-action-touch-667x375");
     expect(errors).toEqual([]);
   } finally {
     await context.close();

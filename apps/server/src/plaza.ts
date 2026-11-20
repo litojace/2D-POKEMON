@@ -12,8 +12,6 @@ import {
   PLAZA_PAIR_EMOTES,
   PLAZA_PHOTO,
   PLAZA_PITCH,
-  PLAZA_SEAT,
-  PLAZA_SEATS,
   PLAZA_SPAWN,
   PLAZA_SQUARE,
   inPitch,
@@ -73,8 +71,6 @@ interface Visitor {
   lastEmote: number;
   /** The emote is a pair emote (PLAZA_FLAG.pair). */
   pair: boolean;
-  /** The seat sat on (PLAZA_SEATS index), or -1. */
-  seat: number;
   /** A pair request waiting for this visitor's answer. */
   invite: { from: string; kind: number; until: number } | null;
   /** When this visitor last asked someone for a pair emote (ms). */
@@ -115,8 +111,7 @@ export interface PlazaTiming {
   t?: unknown;
 }
 interface PlazaInput {
-  /** A sit carries the seat (PLAZA_SEATS index) in `x`. */
-  kind: "stick" | "jump" | "dash" | "sit";
+  kind: "stick" | "jump" | "dash";
   x: number;
   y: number;
   seq: number;
@@ -407,7 +402,6 @@ export class PlazaWorld {
       emoteUntil: 0,
       lastEmote: -Infinity,
       pair: false,
-      seat: -1,
       invite: null,
       lastAsk: -Infinity,
       lastTreat: -Infinity,
@@ -566,25 +560,6 @@ export class PlazaWorld {
     return this.receive(key, { kind: "dash", ...plazaStick(dx, dy) }, timing);
   }
   /**
-   * Sit on seat `seat` (PLAZA_SEATS; -1 stands up). Timed like a jump, so you sit on the
-   * server at the moment you sat on your screen; checked when it plays: on
-   * the ground, within reach and nobody else on it. Any later stick, jump or
-   * dash stands you up.
-   */
-  sit(key: string, seat: unknown, timing?: PlazaTiming) {
-    if (
-      typeof seat !== "number" ||
-      !Number.isInteger(seat) ||
-      (seat !== -1 && !PLAZA_SEATS[seat])
-    )
-      return false;
-    return this.receive(key, { kind: "sit", x: seat, y: 0 }, timing);
-  }
-  /** The seat someone sits on (PLAZA_SEATS index), or -1. */
-  seatOf(key: string) {
-    return this.visitors.get(key)?.seat ?? -1;
-  }
-  /**
    * A stick, jump or dash from the browser. Untimed (no `t`), it applies at
    * once. Timed, it waits for its moment: the browser's time `t` plus the
    * visitor's lead, so the server plays your inputs as far apart as you
@@ -625,38 +600,12 @@ export class PlazaWorld {
     return true;
   }
   private apply(v: Visitor, m: Pick<PlazaInput, "kind" | "x" | "y">) {
-    if (m.kind === "sit") {
-      // Seat -1: stand up (the Stand up button).
-      if (m.x < 0) v.seat = -1;
-      return m.x < 0 || this.trySit(v, m.x);
-    }
-    // Moving, jumping or dashing stands you up.
-    if (v.seat >= 0 && (m.kind !== "stick" || m.x || m.y)) v.seat = -1;
     if (m.kind === "stick") {
       v.dir = { x: m.x, y: m.y };
       return true;
     }
     if (m.kind === "jump") return plazaJump(v.body);
     return plazaDash(v.body, m, PLAZA_DASH_SLACK);
-  }
-  private trySit(v: Visitor, index: number) {
-    const seat = PLAZA_SEATS[index],
-      b = v.body;
-    if (!seat || b.air || b.dash > 0 || b.stun > 0) return false;
-    if (
-      Math.hypot(b.x - seat.x, b.y - seat.y) >
-      PLAZA_SEAT.reach + PLAZA_SEAT.slack
-    )
-      return false;
-    for (const o of this.visitors.values())
-      if (o !== v && o.plaza === v.plaza && o.seat === index) return false;
-    v.seat = index;
-    v.dir = { x: 0, y: 0 };
-    b.x = seat.x;
-    b.y = seat.y;
-    b.face = seat.face;
-    b.vx = b.vy = b.speed = 0;
-    return true;
   }
   /** Move a visitor from `from` to `end` (ms), playing their timed inputs on time. */
   private stepVisitor(v: Visitor, from: number, end: number, dt: number) {
@@ -1305,8 +1254,7 @@ export class PlazaWorld {
           v.version,
           v.emote,
           false,
-          (v.seat >= 0 ? PLAZA_FLAG.sit : 0) |
-            (v.pair && v.emote ? PLAZA_FLAG.pair : 0),
+          v.pair && v.emote ? PLAZA_FLAG.pair : 0,
         );
     for (const b of c.bots) if (see(b.body)) add(b.body, b.profile, 1, 0, true);
     for (const f of c.folk)

@@ -40,7 +40,6 @@ import {
   PLAZA_PADS,
   PLAZA_PAIR,
   PLAZA_PAIR_EMOTES,
-  PLAZA_SEATS,
   PLAZA_TREAT_BY_ID,
   PLAZA_PATHS,
   PLAZA_PHOTO,
@@ -68,7 +67,6 @@ import {
   plazaDash,
   plazaJump,
   plazaPairOf,
-  plazaSeatAt,
   plazaStep,
   trackPoint,
   segmentDistance,
@@ -1684,20 +1682,16 @@ export function openPlaza(options) {
 
   /* ---------- actions: predicted here, decided by the server ---------- */
   function jump() {
-    if (plazaJump(P)) {
-      standUp();
-      socket.emit("plaza-jump", stamp());
-    }
+    if (plazaJump(P)) socket.emit("plaza-jump", stamp());
   }
   function dash() {
     // Send the way you dashed: the server's last stick can be a step old.
-    if (!plazaDash(P)) return;
-    standUp();
-    socket.emit("plaza-dash", {
-      dx: Math.round(P.dashX * 1000) / 1000,
-      dy: Math.round(P.dashY * 1000) / 1000,
-      ...stamp(),
-    });
+    if (plazaDash(P))
+      socket.emit("plaza-dash", {
+        dx: Math.round(P.dashX * 1000) / 1000,
+        dy: Math.round(P.dashY * 1000) / 1000,
+        ...stamp(),
+      });
   }
   let emoteAt = 0;
   function emote(e) {
@@ -1797,34 +1791,6 @@ export function openPlaza(options) {
   socket.on("plaza-pair-ask", onPairAsk);
   socket.on("plaza-pair", onPair);
   socket.on("plaza-pair-no", onPairNo);
-  /* ---------- sitting (benches and the fountain's rim) ---------- */
-  /** Someone else is on seat `i` already. */
-  const seatTaken = (i) => {
-    const s = PLAZA_SEATS[i];
-    for (const b of others.values())
-      if (b.sitLift && Math.hypot(b.tx - s.x, b.ty - s.y) < 8) return true;
-    return false;
-  };
-  /** Sit on seat `i`: at once here, and timed like a jump on the server. */
-  function sit(i) {
-    const s = PLAZA_SEATS[i];
-    if (!s || P.air || P.dash > 0 || P.stun > 0) return;
-    if (seatTaken(i)) return pzToast("Someone's sitting there.");
-    standStill();
-    P.x = s.x;
-    P.y = s.y;
-    P.vx = P.vy = P.speed = P.sp = 0;
-    P.face = s.face;
-    P.seat = i;
-    P.sitLift = s.lift;
-    const st = stamp();
-    P.sitSeq = st.s;
-    socket.emit("plaza-sit", { seat: i, ...st });
-  }
-  function standUp() {
-    P.seat = null;
-    P.sitLift = 0;
-  }
   function burst(x, y, z, glyph, n = 12, color, spd = 1) {
     if (reduced) n = Math.ceil(n / 3);
     for (let i = 0; i < n; i++) {
@@ -1898,31 +1864,6 @@ export function openPlaza(options) {
     },
   ];
   let near = null;
-  /** Sit (beside a free seat) or Stand up (while sitting): the action button. */
-  const SIT = {
-      id: "seat",
-      label: "Sit",
-      icon: "seat",
-      seat: -1,
-      act: () => sit(SIT.seat),
-    },
-    STAND = {
-      id: "stand",
-      label: "Stand up",
-      icon: "seat",
-      act: () => {
-        standUp();
-        socket.emit("plaza-sit", { seat: -1, ...stamp() });
-      },
-    };
-  function seatAction() {
-    if (P.seat != null) return STAND;
-    if (P.air) return null;
-    const i = plazaSeatAt(P.x, P.y);
-    if (i < 0 || seatTaken(i)) return null;
-    SIT.seat = i;
-    return SIT;
-  }
   function interact() {
     if (near) near.act();
   }
@@ -2371,15 +2312,6 @@ export function openPlaza(options) {
         }
         srv.acked = !!s.ack;
         if (!(flags & PLAZA_FLAG.boost)) P.boost = 0;
-        // The server has played your sit and you aren't on the seat: it
-        // was taken, or out of reach there.
-        if (
-          P.seat != null &&
-          s.ack &&
-          s.ack[0] >= P.sitSeq &&
-          !(flags & PLAZA_FLAG.sit)
-        )
-          standUp();
         continue;
       }
       const p = profiles.get(id);
@@ -2415,12 +2347,6 @@ export function openPlaza(options) {
       b.dash = flags & PLAZA_FLAG.dash ? 1 : 0;
       b.stun = flags & PLAZA_FLAG.stun ? 1 : 0;
       b.buff = flags & PLAZA_FLAG.boost ? 1 : 0;
-      // Sitting: raised onto the seat they're on (PLAZA_SEATS).
-      if (!!(flags & PLAZA_FLAG.sit) !== !!b.sitLift)
-        b.sitLift =
-          flags & PLAZA_FLAG.sit
-            ? (PLAZA_SEATS[plazaSeatAt(x, y, 8)]?.lift ?? 0.01)
-            : 0;
       const pair = plazaPairOf(emoteIdx, flags),
         ek = pair ? -emoteIdx : emoteIdx;
       if (ek !== b.emoteIdx) {
@@ -3274,7 +3200,7 @@ export function openPlaza(options) {
     g.lineWidth = 3.5;
     g.strokeStyle = "rgba(11,16,32,.85)";
     g.fillStyle = b.me ? "#ffd65b" : b.bot ? "#aebbe0" : "#fff";
-    const ny = b.y - b.z - (b.sitLift || 0) * 0.8 - s * 0.92 - 6;
+    const ny = b.y - b.z - s * 0.92 - 6;
     g.strokeText(b.name, b.x, ny);
     g.fillText(b.name, b.x, ny);
     if (b.emoteT > 0) {
@@ -3337,11 +3263,6 @@ export function openPlaza(options) {
       sq = Math.sin(time * 18) * 0.06;
     }
     if (b.stun > 0) rot = Math.sin(time * 30) * 0.12;
-    if (b.sitLift) {
-      // Sitting: up on the seat, a little squat, barely breathing.
-      bob = b.sitLift + Math.sin(time * 1.6 + b.x) * 0.6;
-      sq = 0.1;
-    }
     if (b.pairT > 0 && b.pairKind !== "dance") {
       // A high five or a hug: lean in toward the other (`face`), and a
       // high five hops on the slap.
@@ -4675,7 +4596,6 @@ export function openPlaza(options) {
         dir = { x: 0, y: 0 };
       }
       sendInput(dir, now);
-      if (P.seat != null && (sent.x || sent.y)) standUp();
       const ox = P.x,
         oy = P.y;
       const ev2 = plazaStep(P, sent, dt);
@@ -4767,11 +4687,8 @@ export function openPlaza(options) {
       for (let i = FX.length - 1; i >= 0; i--)
         if (FX[i].t > FX[i].life) FX.splice(i, 1);
       if (!low) updateAnimals(dt);
-      // Sitting, Stand up comes first; otherwise a spot, then a free seat.
       near =
-        (P.seat != null ? STAND : null) ||
         SPOTS.find((s) => Math.hypot(P.x - s.x, (P.y - s.y) * 1.3) < s.r) ||
-        seatAction() ||
         null;
       const ib = $("pz-interact");
       if (near) {
