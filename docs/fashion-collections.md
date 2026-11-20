@@ -384,6 +384,39 @@ marks an Epic never has, so its price shows on the fighter itself:
   red knot, Stars & Stripes' star medal on a ribbon; its gem glints.
   `CLASP_SKIP` lists any costume whose own collar piece it would crowd.
 
+## Legendary headwear and props
+
+Every Legendary's own headwear and signature prop is worked up past its
+Epic-level drawing, from its own story, in one file per collection
+(`legend-details-pirates.ts`, `-vanguard.ts`, `-vietlegend.ts`,
+`-stars.ts`): a design per champion that `legendDetails`
+(`legend-details.ts`) draws after the costume's own, on the same parts and
+from the costume's own coordinates, in all four views. A few pieces too
+small to carry detail were redrawn larger in the costume files themselves
+(the Neon Diner's cap and sundae, the noir fedora, the magician's top hat,
+the pitcher's glove, Liberty's torch; Nova's satchel, hammer, jets, drone
+and cloud). Some examples:
+
+- Sky Pirates: Storm Corsair's ostrich plume and filigreed bolt cockade,
+  its compass's engraved bezel and chain; a tentacle wrapped round the
+  Kraken Captain's brim with lit suckers; ice shards behind the Frost
+  Privateer's tricorne; a real bosun's call for the Moonsail Bosun.
+- Nova Vanguard: a segmented antenna mast with a caged beacon; forge
+  goggles and a rune-lit hammer with a sun core; a faceted hex shield; a
+  sonar bell; a rain cloud with a silver lining and a rainbow.
+- Hồn Việt: an ông Địa mask over the Trung Thu lantern bearer; Thánh
+  Gióng's iron band with a Đông Sơn star; a Huế poem hat for Hoa Đăng;
+  Chim Lạc's plumes and drum patterns; a checked khăn rằn; H'Mông
+  cross-stitch, silver coins and a khóa bạc; the scroll mounted in silk.
+- Stars & Stripes: the Sheriff's tooled band and silver conchos; Liberty's
+  gilded torch cage and lit crown windows; a satin top hat with a peeking
+  card; a backwards snapback for the Times Square DJ.
+
+Small prop details (chains, seals, inlay, a press card) read in the Shop
+more than at battle size; plumes, crests, masks, badges and redrawn props
+read in play. `costume-fit.spec.ts` keeps all of it inside the rig's crops
+and off the eyes.
+
 ## Body colours
 
 Every Legendary and modern Epic collection (Nova Vanguard, Sky Pirates,
