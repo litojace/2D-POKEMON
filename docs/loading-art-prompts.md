@@ -2,35 +2,67 @@
 
 The owner's brief (20 Nov): the startup curtain's background is a
 hand-painted picture, made in ChatGPT, of champions wearing **Legendary and
-Mythical skins from the Shop** fighting in the game's PvP modes; the tip
-stands on the right. Every start shows one of them at random, each with the
-same chance (never the same one twice in a row). How the curtain uses them:
-[loading-screens.md](loading-screens.md).
+Mythical skins from the Shop** fighting in the game's PvP modes. The title
+with its gold star sits at the top, a short text tip and a loading bar
+across the whole width at the bottom. Every start shows one painting at
+random, each with the same chance (never the same one twice in a row). How
+the curtain uses them: [loading-screens.md](loading-screens.md).
 
 The scenes (which champions, which skins, which mode) are listed in
 `apps/client/src/loading-art.ts` (`LOADING_SCENES`); the table below is the
 same list. A scene starts showing once its painting is imported.
 
+## The skin references
+
+`docs/loading-art-references/<skin id>.png`: every skin the scenes use,
+drawn by the game itself on a transparent background (about 30 KB each).
+They keep each skin exactly as players buy it. When the scenes change, make
+them again:
+
+```bash
+PW_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome node scripts/loading-art/export-references.mjs /tmp/loading-art-references
+python3 scripts/loading-art/shrink-references.py /tmp/loading-art-references
+```
+
+(`PW_CHROMIUM` only where Playwright's own Chromium isn't installed.)
+
+## Message for ChatGPT (it can read this repository)
+
+ChatGPT's GitHub connector reads code, Markdown and text from the
+repositories it is allowed (OpenAI's help: code, README files and other
+documentation). It is not documented to open pictures, nor to read a branch
+other than the default one, so: merge this page to `main` first, and attach
+the reference pictures of each scene yourself (download them from
+`docs/loading-art-references/` on GitHub) even if it says it can see them.
+Paste this to start:
+
+```text
+Read docs/loading-art-prompts.md in my GitHub repository
+litojace/2D-POKEMON (branch main). It is the brief for the loading-screen
+paintings of my game Element Arena: the style block, the composition rules
+and one line per scene. Follow the style block for every picture.
+
+We will make one painting at a time. For each, I attach the skin reference
+pictures listed in that scene's row (from docs/loading-art-references/);
+draw each creature exactly like its reference: same outfit, colours and
+props. Start with the scene duel-storm-vs-forge. Output 1536 x 1024.
+```
+
+Then for each next scene: "Next: <scene id>", with its references attached.
+
 ## How to make them
 
-1. Make the reference pictures, one per skin, drawn by the game itself:
-
-   ```bash
-   PW_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome node scripts/loading-art/export-references.mjs loading-art-references
-   ```
-
-   (`PW_CHROMIUM` only where Playwright's own Chromium isn't installed.)
-
-2. Start a new chat in ChatGPT and paste the **style block** once.
-3. For each scene: attach the reference pictures of its skins (listed in its
-   row) and paste its line. The references keep every skin exactly as players
-   buy it; the line sets the fight.
-4. Look at it against the references before keeping it: same outfit, same
+1. Start a new chat in ChatGPT: paste the message above, or the **style
+   block** below if it can't read the repository.
+2. For each scene: attach the reference pictures of its skins (listed in its
+   row) and paste its line (or name the scene, when it reads this page).
+3. Look at it against the references before keeping it: same outfit, same
    colours, same props, same character. A skin drawn differently from the
    one in the Shop misleads buyers, so ask again ("the Storm Revenant's crown
-   and gorget must match the reference") rather than keep a near miss.
-5. Download it as `<scene id>.png` (`duel-storm-vs-forge.png` ...).
-6. Import them:
+   and gorget must match the reference") rather than keep a near miss. Check
+   the composition too: nobody's face in the top 15% or the bottom 30%.
+4. Download it as `<scene id>.png` (`duel-storm-vs-forge.png` ...).
+5. Import them:
 
    ```bash
    python3 scripts/import-loading-art.py <folder> --check
@@ -48,7 +80,7 @@ rest (import them, open the game, set
 `localStorage["ea-next-art"] = "<scene id>"` in the console and reload): it
 is cheaper to fix the style block than eight paintings.
 
-## Style block (paste once, at the start)
+## Style block
 
 ```text
 You are painting loading-screen artwork for a mobile game, Element Arena:
@@ -61,11 +93,12 @@ follows these rules exactly:
   eyes, clean shapes, their exact colours, outfits and props.
 - Each creature wears exactly the outfit in its reference picture: do not
   add, remove or change pieces, colours, symbols or props.
-- Landscape, 1536 x 1024. The action fills the LEFT 60% of the picture; the
-  RIGHT 40% is calmer and darker (sky, arena wall, shadow) because the
-  game's tips are shown there. Keep every creature, face and important
-  effect inside the middle band (not in the top or bottom 15%), because phone
-  screens cut the top and bottom.
+- Landscape, 1536 x 1024. The game puts its title at the top and a line of
+  text with a loading bar across the whole bottom, and phone screens cut
+  the top and bottom of the picture. So every creature, face and important
+  effect sits in the middle band, between 18% and 68% of the height. The
+  top 15% is calm sky or arena wall; the bottom 30% is calm, darker arena
+  floor with no faces or key action.
 - The setting is the game's arena: an elemental coliseum court of carved
   stone with glowing element runes, seen from slightly above.
 - Elemental skill effects (lightning, fire, water, light, shadow, earth,
@@ -77,8 +110,8 @@ follows these rules exactly:
 
 ## Scenes
 
-Attach the references named in each row (from the folder made in step 1),
-then paste the line.
+Attach the references named in each row (from
+`docs/loading-art-references/`), then paste the line.
 
 | Scene id              | Mode         | References to attach                                                                                                 |
 | --------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------- |
@@ -99,7 +132,7 @@ Revenant" (black steel crackling with violet lightning, a crown of bolts),
 leaps in from the left hurling a violet lightning bolt. Cindrake, a fire
 dragon in its Mythical skin "Hellforge" (black-iron horns, a crest of black
 hellfire), answers with a wave of black-and-orange fire. The two attacks
-clash in the middle of the left side in a burst of sparks.
+clash at the centre in a burst of sparks.
 ```
 
 **duel-corsairs**
@@ -175,5 +208,5 @@ middle of the arena, attacks flying in every direction.
 ## Adding a scene
 
 Add it to `LOADING_SCENES` (Legendary or Mythical skins only, from
-`CHAMPION_SKINS`; the unit test checks), add its row and line here, export
-the references again, make and import the painting.
+`CHAMPION_SKINS`; the unit test checks), add its row and line here, make
+the references again (above), make and import the painting.

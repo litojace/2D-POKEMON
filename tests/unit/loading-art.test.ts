@@ -55,6 +55,16 @@ describe("loading art", () => {
       }
     }
   });
+  it("every skin in the brief has its reference picture", () => {
+    // docs/loading-art-prompts.md: made with export-references.mjs and
+    // shrink-references.py, attached in ChatGPT for each scene.
+    for (const scene of LOADING_SCENES)
+      for (const f of scene.fighters)
+        expect(
+          existsSync(`docs/loading-art-references/${f.skin}.png`),
+          f.skin,
+        ).toBe(true);
+  });
   it("every painting in the game belongs to a scene", () => {
     const files = existsSync(ART_DIR) ? readdirSync(ART_DIR) : [];
     for (const file of files) {
