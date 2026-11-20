@@ -7,7 +7,8 @@ import {
   type GraphicsSetting,
 } from "./graphics-quality";
 import { softwareRendering } from "./gpu-check";
-import { raidCameraView } from "./raid-camera";
+import { RaidCamera, raidWantsCourt } from "./raid-camera";
+import { AllyBearings } from "./ally-bearings";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
 import { capGameFrames, screenHz, type FrameCap } from "./frame-cap";
 /** The battle's frame cap: it also knows the screen's refresh (reports). */
@@ -5288,6 +5289,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   private animationLive = false;
   private needsHydration = true;
   private followCamera = new FollowCamera();
+  private raidCamera = new RaidCamera();
+  private allyBearings = new AllyBearings(
+    () => document.getElementById("game")?.parentElement ?? null,
+  );
   private enemyBearing = document.createElement("div");
   /** The camera view of the last frame (the target button's on-screen test). */
   private aimView: CameraView | undefined;
@@ -5369,7 +5374,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.animationLive = !this.needsHydration && previous?.code === next.code;
     this.needsHydration = false;
     const reset = !this.animationLive || previous?.round !== next.round;
-    if (reset) this.followCamera = new FollowCamera();
+    if (reset) {
+      this.followCamera = new FollowCamera();
+      this.raidCamera = new RaidCamera();
+    }
     const alive = new Set(
       next.players.flatMap((p) => [
         p.id,
@@ -5486,6 +5494,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       this.perfOverlay?.remove();
       this.perfOverlay = undefined;
       this.enemyBearing.remove();
+      this.allyBearings.clear();
       for (const label of this.labels.values()) label.remove();
       this.labels.clear();
     };
@@ -6107,9 +6116,45 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const presented = follow
       ? (this.positions.get(follow.id) ?? follow)
       : undefined;
-    // Raid camera fits all mechanics; only PvP/practice follows a fighter.
+    // Raids: the whole court on desktop; landscape phones follow the raider
+    // (or, downed, stay on them) and pull out for court-wide mechanics.
+    const raidFollow =
+      !!state?.raid && touch.enabled && innerWidth > innerHeight;
+    const raidFocus =
+      state?.raid && me && state.raid.downed[me.id]
+        ? (this.positions.get(me.id) ?? me)
+        : presented;
+    const raidBoss =
+      state?.raid && raidFocus
+        ? state.players
+            .filter((p) => p.raidBoss && p.hp > 0 && !p.out)
+            .sort(
+              (a, b) =>
+                Math.hypot(a.x - raidFocus.x, a.y - raidFocus.y) -
+                Math.hypot(b.x - raidFocus.x, b.y - raidFocus.y),
+            )[0]
+        : undefined;
     const view = state?.raid
-      ? raidCameraView(this.scale.width, this.scale.height, raidCameraHudBottom)
+      ? this.raidCamera.update(
+          this.scale.width,
+          this.scale.height,
+          raidCameraHudBottom,
+          raidFollow,
+          state.phase === "playing" && raidFocus
+            ? {
+                x: raidFocus.x,
+                y: raidFocus.y,
+                vx: (follow ?? me)?.vx ?? 0,
+                vy: (follow ?? me)?.vy ?? 0,
+              }
+            : undefined,
+          raidBoss ? (this.positions.get(raidBoss.id) ?? raidBoss) : undefined,
+          raidWantsCourt(state.raid, state.time),
+          `${state.code}:${state.round ?? 0}:${myId ?? ""}`,
+          delta,
+          feelNow / 1000,
+          reducedMotion,
+        )
       : this.followCamera.update(
           this.scale.width,
           this.scale.height,
@@ -6163,6 +6208,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.enemyBearing.hidden =
       !follow ||
       !opponent ||
+      // A downed raider's phone camera stays on them, not on the partner.
+      (raidFollow && raidFocus !== presented) ||
       !outsideView(
         opponent.x,
         opponent.y,
@@ -6170,10 +6217,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         this.scale.height,
         view,
       );
-    // PvP: an arrow circling the fighter you follow, in the nearest
-    // off-screen opponent's colour (owner, 7 Nov 2026: no chip at the top,
-    // where the score badge is). Raids keep the named chip.
-    const orbit = !state?.raid;
+    // PvP and phone raids: an arrow circling the fighter you follow, in the
+    // nearest off-screen opponent's colour (owner, 7 Nov 2026: no chip at
+    // the top, where the score badge is; on phones the raid HUD is there).
+    // Desktop raids show the whole court, so their named chip rarely shows.
+    const orbit = !state?.raid || raidFollow;
     this.enemyBearing.classList.toggle("is-orbit", orbit);
     if (opponent && presented && !this.enemyBearing.hidden) {
       this.enemyBearing.querySelector("strong")!.textContent =
@@ -6218,6 +6266,46 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         `#${CHARACTERS[opponent.character].color.toString(16).padStart(6, "0")}`,
       );
     }
+    this.allyBearings.update(
+      raidFollow && me && state?.phase === "playing"
+        ? state.players
+            .filter(
+              (p) =>
+                p.id !== me.id &&
+                !p.raidBoss &&
+                !p.out &&
+                teamOf(p) === myTeam &&
+                (p.hp > 0 || !!state!.raid!.downed[p.id]) &&
+                outsideView(
+                  p.x,
+                  p.y,
+                  this.scale.width,
+                  this.scale.height,
+                  view,
+                ),
+            )
+            .map((p) => {
+              const at = this.positions.get(p.id) ?? p,
+                css = this.scale.zoom;
+              return {
+                id: p.id,
+                x: ((at.x - view.x) * view.zoomX + this.scale.width / 2) * css,
+                y:
+                  ((at.y - BEARING_LIFT - view.y) * view.zoomY +
+                    this.scale.height / 2) *
+                  css,
+                color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
+                downed: !!state!.raid!.downed[p.id],
+              };
+            })
+        : [],
+      {
+        left: 18,
+        top: raidCameraHudBottom * this.scale.zoom + 18,
+        right: this.scale.width * this.scale.zoom - 18,
+        bottom: this.scale.height * this.scale.zoom - 18,
+      },
+    );
     for (const [id, label] of this.labels)
       if (!state?.players.some((p) => p.id === id)) {
         label.remove();
