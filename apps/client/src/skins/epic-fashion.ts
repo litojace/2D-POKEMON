@@ -1,4 +1,5 @@
 import { CARNIVAL_TEXTILES } from "./epic-materials";
+import { ABYSSAL_TEAM } from "./collection-colours";
 import type { CharacterId } from "@arena/shared";
 import type { CreaturePart } from "../creature-design";
 import type { Facing } from "../animation/controller";
@@ -181,7 +182,9 @@ export function epicFashion(
   const metal = deep ? "#91b7bf" : "#f0c86a",
     cloth = deep ? "#294553" : CARNIVAL_TEXTILES[id][0],
     cream = deep ? "#c4e4df" : "#fff1d6";
-  const accent = deep ? "#bd9c72" : CARNIVAL_TEXTILES[id][0];
+  // A diver's team colour (collection-colours.ts) on its stripes, tank
+  // bands and gauge pips.
+  const accent = deep ? ABYSSAL_TEAM[id].team : CARNIVAL_TEXTILES[id][0];
   const path = (d: string, fill = cloth, stroke = ink, sw = 1.1) =>
     `<path d="${d}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"/>`;
   const line = (d: string, color = metal, sw = 1.2) =>
