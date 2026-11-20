@@ -1012,7 +1012,7 @@
   background: radial-gradient(circle at 35% 30%, #efe8ff, #b69cff 45%, #8a63f5);
   box-shadow:
     0 0 0 1.5px rgba(11, 16, 32, 0.9),
-    0 0 6px rgba(170, 120, 255, 0.6);
+    0 0 10px 3px rgba(185, 135, 255, 0.95);
 }
 /* Something new: a halo pings out three times when the dot appears, then
    it rests with its glow. Transform and opacity only (no repaint). */
@@ -1021,19 +1021,20 @@
   position: absolute;
   inset: -2px;
   border-radius: inherit;
-  box-shadow: 0 0 5px 2px rgba(180, 140, 255, 0.8);
+  border: 2px solid rgba(214, 192, 255, 0.95);
+  box-shadow: 0 0 8px 3px rgba(180, 130, 255, 0.9);
   opacity: 0;
   pointer-events: none;
   animation: lobby-badge-ping 1.4s ease-out 0.3s 3;
 }
 @keyframes lobby-badge-ping {
   0% {
-    opacity: 0.9;
+    opacity: 1;
     transform: scale(0.8);
   }
   100% {
     opacity: 0;
-    transform: scale(1.9);
+    transform: scale(2.4);
   }
 }
 @media (prefers-reduced-motion: reduce) {
