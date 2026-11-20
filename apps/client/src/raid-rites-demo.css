@@ -33,7 +33,9 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
   padding: var(--pad-t) var(--pad-r) var(--pad-b) var(--pad-l);
   color: #fff;
   text-align: center;
-  text-shadow: 0 2px 10px #000c;
+  text-shadow:
+    0 1px 2px #000,
+    0 0 10px #000c;
   animation: rites-in 220ms ease-out both;
 }
 @keyframes rites-in {
@@ -86,6 +88,9 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
 #arena-overlay#arena-overlay.is-rites .rites-objective {
   max-width: 62ch;
   margin: 0 auto;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #07122599;
   color: #eaf1ff;
   font:
     600 calc(12px * var(--text-scale, 1)) / 1.4 "DM Sans",
@@ -140,6 +145,8 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
 #arena-overlay#arena-overlay.is-rites .raid-rite-options > button {
   position: relative;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: none;
   margin: 0;
   width: 100%;
   min-width: 0;
@@ -147,7 +154,7 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
   padding: 8px;
   border: 0;
   border-radius: 14px;
-  background: transparent;
+  background: #0712258c;
   box-shadow: none;
   color: #fff;
   font: inherit;
@@ -196,8 +203,12 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
   letter-spacing: 0.03em;
   text-transform: uppercase;
   text-align: inherit;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 #arena-overlay#arena-overlay.is-rites .raid-rite-trigger {
+  overflow-wrap: normal;
+  word-break: normal;
   min-height: 0;
   margin: 0;
   color: #eaf1ff;
@@ -438,11 +449,9 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
   align-content: center;
   border-bottom: 3px solid rgba(var(--rite-rgb), 0.85);
   border-radius: 14px 14px 4px 4px;
-  background: linear-gradient(
-    to top,
-    rgba(var(--rite-rgb), 0.14),
-    transparent 70%
-  );
+  background:
+    linear-gradient(to top, rgba(var(--rite-rgb), 0.2), transparent 70%),
+    #07122599;
   text-align: center;
 }
 #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-heading {
@@ -468,7 +477,7 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
     max-height: 520px;
   }
 }
-@media (max-height: 420px) {
+@media (max-height: 599px) {
   #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-options {
     gap: 6px 10px;
   }
@@ -555,11 +564,13 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
   padding: 8px 6px 10px;
   border-top: 3px solid var(--rite-color);
   border-radius: 6px 6px 14px 14px;
-  background: linear-gradient(
-    to bottom,
-    rgba(var(--rite-rgb), 0.22),
-    rgba(var(--rite-rgb), 0.06) 70%
-  );
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(var(--rite-rgb), 0.22),
+      rgba(var(--rite-rgb), 0.06) 70%
+    ),
+    #07122599;
   text-align: center;
 }
 #arena-overlay#arena-overlay.is-rites[data-look="b"] .raid-rite-heading {
@@ -587,7 +598,7 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
     font-size: calc(13px * var(--text-scale, 1));
   }
 }
-@media (max-height: 420px) {
+@media (max-height: 599px) {
   #arena-overlay#arena-overlay.is-rites[data-look="b"] .rites-objective {
     display: none;
   }
@@ -597,7 +608,7 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
     padding: 6px 4px 8px;
   }
   #arena-overlay#arena-overlay.is-rites[data-look="b"] .raid-rite-heading > b {
-    font-size: calc(17px * var(--text-scale, 1));
+    font-size: calc(15px * var(--text-scale, 1));
   }
   #arena-overlay#arena-overlay.is-rites[data-look="b"] .raid-rite-trigger {
     font-size: calc(11px * var(--text-scale, 1));
@@ -674,11 +685,13 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
   padding: 6px 10px 6px 6px;
   border-left: 3px solid var(--rite-color);
   border-radius: 4px 14px 14px 4px;
-  background: linear-gradient(
-    to right,
-    rgba(var(--rite-rgb), 0.2),
-    rgba(var(--rite-rgb), 0.04)
-  );
+  background:
+    linear-gradient(
+      to right,
+      rgba(var(--rite-rgb), 0.2),
+      rgba(var(--rite-rgb), 0.04)
+    ),
+    #07122599;
   text-align: left;
 }
 #arena-overlay#arena-overlay.is-rites[data-look="c"] .raid-rite-copy,
@@ -724,7 +737,7 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
     font-size: calc(14px * var(--text-scale, 1));
   }
 }
-@media (max-height: 420px) {
+@media (max-height: 599px) {
   #arena-overlay#arena-overlay.is-rites[data-look="c"] .rites-objective {
     display: none;
   }
@@ -739,4 +752,10 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
   #arena-overlay#arena-overlay.is-rites[data-look="c"] .raid-rite-trigger {
     font-size: calc(11px * var(--text-scale, 1));
   }
+}
+
+/* While the rites show, the battle controls and the HUD step aside (the
+   card covered them too): the arena and the fighters stay in view. */
+body.raid-rites-open :is(#battle > :not(.arena-stage), #battle-chat) {
+  visibility: hidden;
 }

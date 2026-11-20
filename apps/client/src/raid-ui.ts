@@ -173,6 +173,7 @@ export function renderRaidUI(
 
   if (state.phase === "playing") {
     overlay.classList.remove("is-rites");
+    document.body.classList.remove("raid-rites-open");
     delete overlay.dataset.look;
     setOverlayMarkup(overlay, "");
     overlay.style.pointerEvents = "none";
@@ -300,6 +301,7 @@ export function renderRaidUI(
   // A rites prototype: the whole screen, no card (raid-rites-demo.css).
   const ritesLook = state.phase === "intermission" && !spire ? RITES_LOOK : "";
   overlay.classList.toggle("is-rites", !!ritesLook);
+  document.body.classList.toggle("raid-rites-open", !!ritesLook);
   if (ritesLook) overlay.dataset.look = ritesLook;
   else delete overlay.dataset.look;
   const replaced = setOverlayMarkup(
