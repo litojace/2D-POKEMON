@@ -38,7 +38,7 @@ export function setupPWA(
   takeover.setAttribute("aria-modal", "true");
   takeover.setAttribute("aria-labelledby", "pwa-takeover-title");
   takeover.innerHTML =
-    '<div class="pwa-takeover-inner"><div class="eyebrow">Update ready</div><h2 id="pwa-takeover-title">New version</h2><p>Updating takes a few seconds. Your coins and progress stay.</p><div class="pwa-takeover-actions"><button type="button" class="primary" id="pwa-takeover-now">Update now</button><button type="button" class="pwa-takeover-later" id="pwa-takeover-later">Later</button></div></div>';
+    '<div class="pwa-takeover-inner"><div class="eyebrow">Update ready</div><h2 id="pwa-takeover-title">New version</h2><p>Updating takes a few seconds. Your coins and progress stay.</p><div class="pwa-takeover-actions"><button type="button" class="primary" id="pwa-takeover-now">Update now</button><button type="button" class="secondary pwa-takeover-later" id="pwa-takeover-later">Later</button></div></div>';
   document.body.append(takeover);
 
   const peers = () => {

@@ -270,6 +270,20 @@ for (const [width, height] of [
         expect(
           (await page.locator(id).boundingBox())!.height,
         ).toBeGreaterThanOrEqual(44);
+      // Both answers are the game's pill buttons (Later was once square).
+      const radius = (id: string) =>
+        page
+          .locator(id)
+          .evaluate((e) => parseFloat(getComputedStyle(e).borderTopLeftRadius));
+      expect(await radius("#pwa-takeover-later")).toBe(
+        await radius("#pwa-takeover-now"),
+      );
+      expect(await radius("#pwa-takeover-later")).toBeGreaterThanOrEqual(22);
+      const size = (id: string) =>
+        page.locator(id).evaluate((e) => getComputedStyle(e).fontSize);
+      expect(await size("#pwa-takeover-later")).toBe(
+        await size("#pwa-takeover-now"),
+      );
       await page.locator("#pwa-takeover-later").tap();
       await expect(page.locator("#pwa-takeover")).toBeHidden();
       // The banner, after the snooze: beside PLAY, not over it.

@@ -1762,18 +1762,16 @@ body.battle-active.touch-mode {
   gap: 12px;
   margin-top: clamp(10px, 4vh, 24px);
 }
-.pwa-takeover-actions button {
+#pwa-takeover .pwa-takeover-actions button {
   min-height: 48px;
   padding: 12px 26px;
-  font-size: calc(14px * var(--text-scale, 1));
+  font-size: calc(16px * var(--text-scale, 1));
 }
-/* Solid, so the hub's labels never show through it. */
-.pwa-takeover-later {
-  border-radius: 6px;
+/* The game's pill (.secondary), but solid, so the hub's labels never show
+   through it. */
+#pwa-takeover .pwa-takeover-later,
+#pwa-takeover .pwa-takeover-later:hover:not(:disabled) {
   background: #1d3050;
-  color: #edf3ff;
-  border: 1px solid #8baee555;
-  font-weight: 700;
 }
 @media (prefers-reduced-motion: reduce) {
   #pwa-takeover {
