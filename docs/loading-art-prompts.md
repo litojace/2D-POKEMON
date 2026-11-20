@@ -133,13 +133,16 @@ Attach the references named in each row (from
 Calm scenes (no mode, so any tip shows), the owner's choice of 20 Nov,
 made in ChatGPT without a line from this page:
 
-| Scene id             | Shows                                                                          |
-| -------------------- | ------------------------------------------------------------------------------ |
-| `rest-hoi-an`        | Mossloth "Ông Đồ" and Lumoth "Đèn Lồng Hội An" by a lantern-lit Hội An canal   |
-| `rest-vanguard-hill` | Terradon "Bulwark Grove" and Glacelle "Frost Weaver" on a hill above a valley  |
-| `rest-moonlit-ruins` | Lumoth "Fallen Lightbringer" and Duskveil "Crimson Sovereign" in moonlit ruins |
-| `rest-sky-harbour`   | Sunbara "Sunset Skipper" and Astrabun "Moonsail Bosun" on a sky-island pier    |
-| `rest-aurora`        | Halcyra "Nightfeather" and Auralynx "Spectral Warden" under an aurora          |
+| Scene id             | Shows                                                                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rest-hoi-an`        | Mossloth "Ông Đồ" and Lumoth "Đèn Lồng Hội An" by a lantern-lit Hội An canal                                                                                               |
+| `rest-vanguard-hill` | Terradon "Bulwark Grove" and Glacelle "Frost Weaver" on a hill above a valley                                                                                              |
+| `rest-moonlit-ruins` | Lumoth "Fallen Lightbringer" and Duskveil "Crimson Sovereign" in moonlit ruins                                                                                             |
+| `rest-sky-harbour`   | Sunbara "Sunset Skipper" and Astrabun "Moonsail Bosun" on a sky-island pier                                                                                                |
+| `rest-aurora`        | Halcyra "Nightfeather" and Auralynx "Spectral Warden" under an aurora                                                                                                      |
+| `rest-ring-toss`     | Voltkit "Storm Corsair" and Astrabun "Moonsail Bosun" at a seaside fair's ring toss                                                                                        |
+| `rest-market`        | Mossloth "Ông Đồ", Sunbara "Sunset Skipper" and Lumoth "Đèn Lồng Hội An" at a fruit stall (on a 568x320 phone the tip covers Sunbara's legs: redraw smaller if it matters) |
+| `rest-picnic`        | Terradon "Bulwark Grove" and Glacelle "Frost Weaver" picnicking, flying a kite                                                                                             |
 
 **duel-storm-vs-forge**
 

@@ -63,6 +63,28 @@ export const LOADING_SCENES: LoadingScene[] = [
     ],
   },
   {
+    id: "rest-ring-toss",
+    fighters: [
+      { champion: "voltkit", skin: "voltkit-sky-pirates" },
+      { champion: "astrabun", skin: "astrabun-sky-pirates" },
+    ],
+  },
+  {
+    id: "rest-market",
+    fighters: [
+      { champion: "mossloth", skin: "mossloth-hon-viet" },
+      { champion: "sunbara", skin: "sunbara-sky-pirates" },
+      { champion: "lumoth", skin: "lumoth-hon-viet" },
+    ],
+  },
+  {
+    id: "rest-picnic",
+    fighters: [
+      { champion: "terradon", skin: "terradon-nova-vanguard" },
+      { champion: "glacelle", skin: "glacelle-nova-vanguard" },
+    ],
+  },
+  {
     id: "duel-storm-vs-forge",
     mode: "duel",
     fighters: [
