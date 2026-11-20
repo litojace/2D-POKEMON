@@ -15490,35 +15490,73 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-countdown:not(:empty) {
    relay's far mirrors stand) stays clear (owner, 20 Nov 2026). They sit in
    the joystick's column; a court-wide frame keeps the relay right of them
    (measureRaidControls). Comes last so it wins over the per-height rules
-   above that share it with the Storm Twins' targets. Screens under 310px
-   tall leave no room between the chat button and the joystick, so they keep
-   those rules (beside the skill buttons). */
-@media (min-height: 310px) {
+   above that share it with the Storm Twins' targets. Screens under 360px
+   tall (360px with a full party's list over the chat button) leave no room
+   between the chat button and the joystick, so they keep those rules
+   (beside the skill buttons). */
+@media (min-height: 360px) {
   body.battle-active.touch-mode.battle-raid #raid-prism-controls:not([hidden]) {
     position: fixed;
     /* Under the chat button (chat/chat.css: 24px + 88px from the safe top,
        as --desktop-raid-hud-height is set only inside the battle box, not on
-       the body the button sits in), its 44px, and a 6px gap. */
-    top: calc(var(--safe-top, 0px) + 162px);
+       the body the button sits in), its 44px, and a 6px gap. When the
+       party's health list steps the button down (58px + 24px a row, on
+       the body's --raid-party-rows), the pair steps down with it. */
+    top: max(
+      calc(var(--safe-top, 0px) + 162px),
+      calc(var(--safe-top, 0px) + 108px + var(--raid-party-rows, 0) * 24px)
+    );
     right: auto;
     bottom: auto;
     left: max(12px, calc(var(--safe-left, 0px) + 4px));
     transform: none;
     flex-direction: column;
-    width: 112px;
-    gap: 4px;
+    align-items: flex-start;
+    width: auto;
+    gap: 3px;
   }
+  /* Compact (owner, 20 Nov 2026): small type in a snug box, so the pair
+     takes little of the court; still a comfortable 26px to tap. */
   body.battle-active.touch-mode.battle-raid #raid-prism-controls > button {
     flex: none;
-    width: 100%;
-    height: 30px;
-    min-height: 30px;
+    width: auto;
+    height: 26px;
+    min-height: 26px;
+    padding: 2px 8px;
+    gap: 4px;
+    border-radius: 7px;
+    font-size: calc(10px * var(--text-scale, 1));
     justify-content: flex-start;
   }
+  body.battle-active.touch-mode.battle-raid #raid-prism-controls button span {
+    font-size: calc(12px * var(--text-scale, 1));
+  }
 }
-@media (orientation: landscape) and (min-height: 310px) and (max-height: 350px) {
-  body.battle-active.touch-mode.battle-raid #raid-prism-controls > button {
-    height: 28px;
-    min-height: 28px;
+
+/* The raid clock on phones: the game's glass (ui/aero.css tokens), blurred
+   like the quick-chat button rather than a solid box (owner, 20 Nov 2026).
+   Battles otherwise stay blur-free (aero.css: the court changes every
+   frame); a 44 x 20 px pill is as little to blur as that 44 px button. At
+   Low graphics (light-effects.css) the tokens turn it near solid with no
+   blur. The time's <b> drops aero.css's solid battle fill: that rule's
+   :is() counts "#hud.hud-badge #phase-label" (two ids) on top of #battle,
+   so this needs three (#app #battle #raid-hud) to win. */
+@media (orientation: landscape) {
+  :root body.battle-active.touch-mode.battle-raid #raid-hud .raid-elapsed {
+    border: 1px solid var(--aero-rim);
+    border-radius: 7px;
+    background: var(--aero-tint);
+    -webkit-backdrop-filter: var(--aero-blur);
+    backdrop-filter: var(--aero-blur);
+  }
+  :root
+    body.battle-active.touch-mode.battle-raid
+    #app
+    #battle
+    #raid-hud
+    .raid-elapsed
+    b {
+    border: 0;
+    background: none;
   }
 }

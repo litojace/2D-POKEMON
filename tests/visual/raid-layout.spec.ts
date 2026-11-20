@@ -305,7 +305,7 @@ for (const size of [
                   );
                 const chat = await box(page, "#battle-chat"),
                   joystick = await box(page, ".touch-pad .joystick");
-                if (size.height >= 310) {
+                if (size.height >= 360) {
                   expect(controls.y + controls.height).toBeLessThanOrEqual(
                     joystick.y,
                   );
