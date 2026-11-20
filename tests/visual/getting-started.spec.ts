@@ -1,10 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, snap } from "./helpers";
+import { openHub, skipTour, snap } from "./helpers";
 
 // Getting started (getting-started.ts): a new account's Lobby shows the
 // guide in the Journey card's place; the sheet lists the steps; Go does a
 // step; Hide puts the Journey back; the Menu brings the guide back.
 async function newPlayer(page: Page) {
+  await skipTour(page);
   await page.addInitScript(() => {
     const w = window as any;
     w.__economyPatch = {

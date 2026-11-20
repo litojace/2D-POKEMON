@@ -1,0 +1,153 @@
+/* The Lobby tour (hub-tour.ts): a dimmed screen with a spotlight on one
+   part, and a bubble beside it. Positions come from the script as
+   transforms; sizes stay small enough for a 700x390 landscape phone. */
+.hub-tour {
+  position: fixed;
+  inset: 0;
+  /* Over the hub's header (z-index 80-90), under the notch strip (1000). */
+  z-index: 95;
+  /* With no target, the whole screen dims. */
+  background: #050813b8;
+  touch-action: none;
+}
+.hub-tour.has-target {
+  background: transparent;
+}
+.tour-hole {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: none;
+  border-radius: var(--rad-md);
+  box-shadow:
+    0 0 0 2px var(--ui-accent),
+    0 0 0 200vmax #050813b8;
+  transition:
+    transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+}
+.has-target .tour-hole {
+  display: block;
+}
+.tour-bubble {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  width: min(300px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 60%, transparent);
+  border-radius: var(--rad-lg);
+  background: var(--ui-bg-1);
+  box-shadow: 0 12px 32px #0009;
+  color: var(--ui-text);
+  font-family: var(--font-body);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.is-reduced .tour-hole,
+.is-reduced .tour-bubble {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-hole,
+  .tour-bubble {
+    transition: none;
+  }
+}
+.tour-bubble-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -4px -6px 2px 0;
+}
+.tour-count {
+  color: var(--ui-accent);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.tour-title {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+.tour-text {
+  margin: 0;
+  color: var(--ui-dim);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+}
+.tour-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.tour-dots {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+.tour-dots i {
+  width: 10px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ui-line-2);
+}
+.tour-dots i.is-done {
+  background: var(--ui-dim);
+}
+.tour-dots i.is-now {
+  width: 18px;
+  background: var(--ui-accent);
+}
+.tour-bubble button {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--rad-pill);
+  font: 700 var(--fs-body) / 1 var(--font-body);
+  cursor: pointer;
+}
+.tour-bubble .tour-skip {
+  min-height: 36px;
+  /* The tap area stays 44px tall around the smaller pill. */
+  margin: -4px 0;
+  padding: 0 12px;
+  border: 1px solid var(--ui-line-2);
+  background: transparent;
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+.tour-back {
+  border: 1px solid var(--ui-line-2);
+  background: var(--ui-bg-2);
+  color: var(--ui-text);
+}
+.tour-next {
+  border: 0;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
+}
+.tour-bubble button:focus-visible {
+  outline: 2px solid var(--ui-text);
+  outline-offset: 2px;
+}
+/* Short landscape phones: tighter, so the bubble fits beside its target. */
+@media (max-height: 430px) {
+  .tour-bubble {
+    width: min(270px, calc(100vw - 32px));
+    padding: 10px 12px;
+  }
+  .tour-text {
+    font-size: var(--fs-small);
+  }
+  .tour-foot {
+    margin-top: 8px;
+  }
+}
