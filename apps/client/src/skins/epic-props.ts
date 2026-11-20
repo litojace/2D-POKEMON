@@ -531,14 +531,14 @@ const CAMPUS: Details = {
     held(k, (x, y, f) => {
       const tin = "#3fa05a",
         band = "#2a7040",
-        rose = x + f * 22;
+        rose = x + f * 17;
       return (
         // The arched handle behind the body, with a wrapped grip.
         k.path(`M${x - f * 8} ${y - 6}Q${x - f * 2} ${y - 22} ${x + f * 8} ${y - 8}`, "none", k.ink, 4.4) +
         k.path(`M${x - f * 8} ${y - 6}Q${x - f * 2} ${y - 22} ${x + f * 8} ${y - 8}`, "none", band, 2.8) +
         k.line(`M${x - f * 4} ${y - 15}l${f * 2} -1.6M${x - f * 1} ${y - 16.4}l${f * 2} -0.6M${x + f * 2} ${y - 16.2}l${f * 2} 0.6`, "#9fd8a8", 0.9) +
         // The spout and its brace.
-        k.path(`M${x + f * 7} ${y + 4}L${x + f * 20} ${y - 7}L${x + f * 22} ${y - 5}L${x + f * 9} ${y + 8}Z`, tin, k.ink, 0.9) +
+        k.path(`M${x + f * 7} ${y + 4}L${x + f * 15} ${y - 7}L${x + f * 17} ${y - 5}L${x + f * 9} ${y + 8}Z`, tin, k.ink, 0.9) +
         k.line(`M${x + f * 8} ${y - 2}L${x + f * 13} ${y + 1}`, band, 1.2) +
         // The rose: a flared head with its holes.
         k.path(`M${rose - f * 2} ${y - 9}L${rose + f * 4} ${y - 13}L${rose + f * 7} ${y - 5}L${rose + f * 1} ${y - 3}Z`, "#c8ccd6", k.ink, 0.9) +
@@ -554,7 +554,9 @@ const CAMPUS: Details = {
         k.line(`M${x - 2.4} ${y + 3.4}L${x + 1.6} ${y - 0.4}`, "#2a7040", 0.6) +
         `<ellipse cx="${x - f * 3}" cy="${y - 9.6}" rx="4" ry="1.6" fill="#1e3a28" stroke="${k.ink}" stroke-width=".7"/>` +
         // The spray: drops falling from the rose.
-        k.lume("twinkle", [[9, -2, 1.5], [12, 3, 1.3], [8, 6, 1.1], [14, -6, 1.2]].map(([dx, dy, r]) => k.path(`M${rose + f * dx} ${y + dy - r * 1.6}q${r} ${r * 1.4} 0 ${r * 2.4}q${-r} ${-r} 0 ${-r * 2.4}Z`, "#9fe8ff", k.ink, 0.4)).join(""), 3, "#9fe8ff")
+        // Kept within the arm's reach of the crop: the old can's drops went
+        // no further out than these.
+        k.lume("twinkle", [[7, -1, 1.5], [9, 4, 1.3], [5, 7, 1.1], [9.5, -4.5, 1.2]].map(([dx, dy, r]) => k.path(`M${rose + f * dx} ${y + dy - r * 1.6}q${r} ${r * 1.4} 0 ${r * 2.4}q${-r} ${-r} 0 ${-r * 2.4}Z`, "#9fe8ff", k.ink, 0.4)).join(""), 3, "#9fe8ff")
       );
     });
   },
