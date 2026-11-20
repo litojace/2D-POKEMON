@@ -183,6 +183,9 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "confetti", colors: [0xff4f6a, 0x3a7bd5, 0xffd65b, 0x4fd68a] },
   },
   "voltkit-neon-arcade": {
+    // Its costume (modern-kit.ts).
+    accessories: ["modern-kit"],
+    replaces: ["scarf"],
     palette: { light: "#ffd6ff", mid: "#7a2bd6", dark: "#1a0b3d", glow: "#ff4fd8", accent: "#2ff3ff" },
     pattern: { kind: "grid", color: "#2ff3ff", opacity: 0.55 },
     trail: { kind: "pixel", colors: [0xff4fd8, 0x2ff3ff] },
@@ -265,6 +268,9 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "coin", colors: [0xffd65b, 0xffb02e] },
   },
   "tidefin-glacier": {
+    // Its costume (modern-kit.ts).
+    accessories: ["modern-kit"],
+    replaces: ["scarf", "flame"],
     palette: { light: "#ffffff", mid: "#bfeaff", dark: "#2a5a7a", glow: "#e6fbff", accent: "#7fd0ff" },
     pattern: { kind: "facets", color: "#ffffff", opacity: 0.7 },
     trail: { kind: "snow", colors: [0xffffff, 0xbfeaff] },
@@ -304,6 +310,9 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "dust", colors: [0xffd65b, 0xb8ffd8] },
   },
   "auralynx-stained-glass": {
+    // Its costume (modern-kit.ts).
+    accessories: ["modern-kit"],
+    replaces: ["scarf", "flame"],
     palette: { light: "#ffffff", mid: "#6a8aff", dark: "#1a1a3a", glow: "#ffd65b", accent: "#ff4f6a" },
     pattern: { kind: "panels", color: "#1a1a3a", opacity: 0.75, parts: ["body", "tail", "ears", "armL", "armR", "legL", "legR", "wings"] },
     trail: { kind: "star", colors: [0xffd65b, 0xff4f6a, 0x6a8aff, 0x4fd68a] },
@@ -343,6 +352,9 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "ember", colors: [0xffd65b, 0xff8a4f] },
   },
   "lumoth-aurora": {
+    // Its costume (modern-kit.ts).
+    accessories: ["modern-kit"],
+    replaces: ["scarf", "flame"],
     palette: { light: "#e6fff8", mid: "#4fd6b8", dark: "#13304a", glow: "#b88aff", accent: "#7ff3c8" },
     pattern: { kind: "bands", color: "#b88aff", opacity: 0.45, parts: ["wings"] },
     trail: { kind: "dust", colors: [0x7fffd0, 0xb88aff] },
@@ -382,6 +394,9 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "bubble", colors: [0x8fff6a, 0xc8ffb0] },
   },
   "mystowl-clockwork": {
+    // Its costume (modern-kit.ts).
+    accessories: ["modern-kit"],
+    replaces: ["scarf", "flame"],
     palette: { light: "#fff0c8", mid: "#c8963a", dark: "#3a2a12", glow: "#9ff7ff", accent: "#fff0c8" },
     pattern: { kind: "gears", color: "#6a4a1a", opacity: 0.55 },
     trail: { kind: "ember", colors: [0xffd65b, 0xc8963a] },
@@ -426,6 +441,9 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "snow", colors: [0xffffff, 0xdfeaf5] },
   },
   "terradon-geode": {
+    // Its costume (modern-kit.ts).
+    accessories: ["modern-kit"],
+    replaces: ["scarf"],
     palette: { light: "#e6d8ff", mid: "#8a7a9a", dark: "#2a1f3a", glow: "#c86bff", accent: "#6a4a8a" },
     pattern: { kind: "cracks", color: "#d48aff", opacity: 1 },
     trail: { kind: "star", colors: [0xc86bff, 0xe6d8ff] },
@@ -465,6 +483,9 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "ember", colors: [0xff4f4f, 0xffd65b] },
   },
   "duskveil-candlelight": {
+    // Its costume (modern-kit.ts).
+    accessories: ["modern-kit"],
+    replaces: ["scarf"],
     palette: { light: "#fff6e6", mid: "#f0e6d6", dark: "#5a4a3a", glow: "#ffd65b", accent: "#4a3420" },
     pattern: { kind: "drips", color: "#fffaf0", opacity: 0.95, parts: ["head"] },
     trail: { kind: "ember", colors: [0xffd65b, 0xfff3b0] },
@@ -505,6 +526,9 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "snow", colors: [0xffffff, 0xcfe6ff] },
   },
   "coilemur-tesla-coil": {
+    // Its costume (modern-kit.ts).
+    accessories: ["modern-kit"],
+    replaces: ["scarf"],
     palette: { light: "#d8dee8", mid: "#4a5262", dark: "#10141c", glow: "#4ff8ff", accent: "#d8823a" },
     pattern: { kind: "circuit", color: "#4ff8ff", opacity: 1 },
     trail: { kind: "dust", colors: [0x4ff8ff, 0xffffff] },
@@ -545,6 +569,9 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "spice", colors: [0xff4f2a, 0xffa23a, 0x8a1a0a] },
   },
   "pyranda-fireside-knit": {
+    // Its costume (modern-kit.ts).
+    accessories: ["modern-kit"],
+    replaces: ["scarf", "flame"],
     palette: { light: "#ffe6c8", mid: "#c0502a", dark: "#3e1a10", glow: "#ffb44d", accent: "#fff0dc" },
     pattern: { kind: "knit", color: "#f6e0b8", opacity: 0.7, parts: ["body", "armL", "armR"] },
     trail: { kind: "ember", colors: [0xffb44d, 0xff7a2a] },
@@ -584,6 +611,9 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "snow", colors: [0xffffff, 0xc8d8ff] },
   },
   "glacelle-deep-glow": {
+    // Its costume (modern-kit.ts).
+    accessories: ["modern-kit"],
+    replaces: ["scarf"],
     palette: { light: "#6a6aa8", mid: "#1a1a4a", dark: "#06061a", glow: "#ff5fd8", accent: "#4ffff0" },
     pattern: { kind: "glowdots", color: "#ff5fd8", opacity: 0.9 },
     trail: { kind: "bubble", colors: [0xff5fd8, 0x4ffff0] },
@@ -625,6 +655,9 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "snow", colors: [0xffffff, 0xe0ecff] },
   },
   "halcyra-paper-crane": {
+    // Its costume (modern-kit.ts).
+    accessories: ["modern-kit"],
+    replaces: ["scarf", "flame"],
     palette: { light: "#ffffff", mid: "#f2ece0", dark: "#3a3440", glow: "#ff4f5a", accent: "#e0262f" },
     pattern: { kind: "facets", color: "#8a8070", opacity: 0.8 },
     trail: { kind: "page", colors: [0xffffff, 0xffe0e0] },

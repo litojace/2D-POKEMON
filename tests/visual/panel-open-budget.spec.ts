@@ -14,8 +14,7 @@ import { openHub } from "./helpers";
  *   it is laid out only a few times;
  * - no canvas is made again for the screen (the Roster's portraits);
  * - and on a 4× slowed CPU no frame takes longer than LONG_FRAME_MS (more
- *   than the page's steady frame, where every frame was already long; the
- *   Shop has its own limit, see PANELS).
+ *   than the page's steady frame, where every frame was already long).
  *
  * A phone held sideways (956×440, an iPhone's landscape screen), touch.
  * Mostly counted, not timed: this machine draws on the CPU. The timed limit
@@ -54,8 +53,6 @@ interface Panel {
   asks: string[];
   /** What else it shows from the server (comes with the news itself). */
   shows?: string[];
-  /** Its own longest-frame limit, where it is not LONG_FRAME_MS. */
-  longFrame?: number;
 }
 const rail = (action: string) => (page: Page) =>
   page.evaluate(
@@ -90,12 +87,12 @@ const PANELS: Panel[] = [
     open: rail("shop"),
     asks: ["/api/raids"],
     shows: ["/api/economy"],
-    // The Shop builds its whole screen again on every open (about 1,500
-    // elements) and takes its live fighter back into it: one frame of
-    // 470–630 ms at 4× here, measured by start time (Nov 2026; the other
-    // screens 80–270 ms). The owner's call (PR #237): its own limit for
-    // now, to be brought down by making the Shop's repeat open cheaper.
-    longFrame: 700,
+    // The Shop built its whole screen again on every open (about 1,500
+    // elements) and took its live fighter back into it: 305-420 ms over
+    // the steady frame on CI, 530-580 ms here, under its own 700 ms limit
+    // (PR #237). It keeps its screen between opens now (ui/hub-panel.ts
+    // park; 0-300 ms here) and is held to LONG_FRAME_MS like the rest
+    // (issue #244, 20 Nov 2026).
   },
   {
     name: "missions",
@@ -487,7 +484,7 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
       expect(
         again.worst - again.steady,
         `${panel.name}: longest frame on a repeat open (ms) over the steady ${again.steady} ms, ${again.openAt - first.closedAt} ms after the first closed: ${again.longs.join("; ")}`,
-      ).toBeLessThanOrEqual(panel.longFrame ?? LONG_FRAME_MS);
+      ).toBeLessThanOrEqual(LONG_FRAME_MS);
     }
     console.log(JSON.stringify(results));
     expect(errors).toEqual([]);
