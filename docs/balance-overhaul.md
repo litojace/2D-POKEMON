@@ -881,7 +881,10 @@ hands put only Voltkit outside (31.6%), the next one to look at. Every
 expert table earlier in this file, the sixth pass's included, used the
 fast hands.
 
-GAP_LINE
+**Still well above Hard.** The full expert (look-ahead on) against Hard,
+every pair, 4 games a pair (`difficulty-gap.ts 4 expert hard`): it wins
+89.1% of 612 duels and Hard takes 19.3% of rounds (with the fast hands
+96.2% and 10.9%).
 
 **Trained again for these hands** (`train-expert.ts --rounds 4 --mutants 6
 --games 8`, from scratch, a few hours on four processes, on the roster
