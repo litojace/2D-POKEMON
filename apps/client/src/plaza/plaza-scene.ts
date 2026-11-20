@@ -57,6 +57,8 @@ import {
   PLAZA_TRACK,
   PLAZA_TREES,
   PLAZA_WALK,
+  atFountain,
+  wishTarget,
   inLapLane,
   inPitch,
   inSquare,
@@ -103,6 +105,7 @@ import { depthSort, slices, spot } from "./plaza-depth";
 import { plazaPath } from "./plaza-path";
 import { PlazaPrediction } from "./plaza-predict";
 import { FISH_SPOT, catchCard, createFishing, fishBook } from "./plaza-fishing";
+import { PlazaFireworks } from "./plaza-fireworks";
 import {
   PLAZA_SPRITE_PX,
   drawWornBehind,
@@ -152,7 +155,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     <div class="pz-joy" id="pz-joy"><div class="ring" id="pz-ring"><div class="knob" id="pz-knob"></div></div></div>
     <div class="pz-left">
       <button type="button" class="pz-round" id="pz-wheel-btn" aria-label="Quick chat">${I("smile")}<small>Chat</small></button>
-      <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat (T)">${I("gift")}<small id="pz-treats">0</small></button>
+      <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat (T)">${I("gift")}<small id="pz-treats">0</small><b class="pz-wishn" id="pz-wishn" hidden></b></button>
       <button type="button" class="pz-round" id="pz-album-btn" aria-label="Photo album">${I("album")}<small>Album</small></button>
       <button type="button" class="pz-round" id="pz-fish-btn" aria-label="Fish book">${I("fish")}<small>Fish</small></button>
     </div>
@@ -1035,6 +1038,14 @@ export function openPlaza(options) {
   };
   const SMOKE = [];
   let sized = false;
+  /* the wishing fountain (PLAZA_WISH): this copy's meter and its fireworks */
+  const wish = { n: 0, target: 0 };
+  /** Players in this copy (the state's count), for an empty meter's goal. */
+  let population = 1;
+  const fireworks = new PlazaFireworks();
+  fireworks.setLevel(low, reduced);
+  /** The fireworks' own drawing time (ms), for the frame-rate test. */
+  const fwCost = { frames: 0, ms: 0, max: 0 };
   /** Low graphics: the ambient animals go; the people, ball and orbs stay. */
   function goLow() {
     low = true;
@@ -1043,6 +1054,7 @@ export function openPlaza(options) {
     for (const list of [DUCKS, FISH, HENS, PIGEONS, BUTTER, SMOKE])
       list.length = 0;
     flock = null;
+    fireworks.setLevel(true, reduced);
     // Redraw at 1x (before the first resize, that sizes it anyway).
     if (sized) resize();
   }
@@ -1213,7 +1225,10 @@ export function openPlaza(options) {
   socket.on("plaza-news", onNews);
   function onNews(n) {
     const who = n.id === meId ? "You" : `<b>${esc(n.name)}</b>`;
-    if (n.kind === "goal") {
+    if (n.kind === "wish") {
+      // A feed line, no banner: the banner would hide the fireworks.
+      feed(null, "The Plaza's wish came true!");
+    } else if (n.kind === "goal") {
       FX.push({ text: "GOAL!", x: ball.x, y: ball.y - 50, t: 0, life: 1.5 });
       burst(
         ball.x,
@@ -1903,14 +1918,24 @@ export function openPlaza(options) {
       if (typeof r?.treats === "number") setTreats(r.treats);
       if (!r?.ok)
         return pzToast(r?.error ?? "Treats can't be thrown right now.");
+      const what = PLAZA_TREAT_BY_ID[r.treat]?.name ?? "a treat";
       pzToast(
-        `Tossed ${PLAZA_TREAT_BY_ID[r.treat]?.name ?? "a treat"} to everyone!`,
+        r.wish
+          ? `You made a wish with ${what}!`
+          : `Tossed ${what} to everyone!`,
       );
     });
   }
   // Everyone in this Plaza sees a treat burst where it was thrown.
   const onTreat = (t) => {
     if (!t || typeof t.x !== "number") return;
+    const color = PLAZA_TREAT_BY_ID[t.treat]?.color ?? "#ff6fae";
+    if (t.wish) {
+      // Into the fountain: a splash and a ring on the water.
+      burst(FOUNT.x, FOUNT.y - 10, 30, "✦", 10, color, 0.6);
+      FX.push({ ring: 1, x: FOUNT.x, y: FOUNT.y, t: 0, life: 0.6, c: color });
+      return;
+    }
     burst(
       t.x,
       t.y,
@@ -1924,6 +1949,66 @@ export function openPlaza(options) {
   const onTreats = (t) => setTreats(t?.n ?? 0);
   socket.on("plaza-treat", onTreat);
   socket.on("plaza-treats", onTreats);
+  // The copy's wish meter; a full one brings the fireworks (server time).
+  const onWish = (w) => {
+    if (!w || typeof w.n !== "number") return;
+    wish.n = Math.max(0, w.n | 0);
+    wish.target = Math.max(0, w.target | 0);
+    if (w.show && typeof w.show.at === "number")
+      fireworks.start(w.show.at, w.show.seed | 0, serverNow());
+  };
+  const onWishPaid = (p) => {
+    if (!p?.paid) return;
+    pzToast(`Your wish came true: +${p.coins} coins`);
+    options.onCoins?.();
+  };
+  socket.on("plaza-wish", onWish);
+  socket.on("plaza-wish-paid", onWishPaid);
+  /** Wishes to fill the meter: the fill's own, or what this copy would need. */
+  const wishGoal = () => wish.target || wishTarget(population);
+  /** The meter over the fountain, while it has wishes or you're nearby. On a
+   * phone the top HUD covers that spot: the treat button's badge shows it. */
+  function drawWishMeter(g) {
+    if (layer.classList.contains("phone")) return;
+    if (!wish.n && Math.hypot(P.x - FOUNT.x, P.y - FOUNT.y) > 480) return;
+    const goal = wishGoal(),
+      k = Math.min(1, wish.n / goal),
+      w = 132,
+      h = 24,
+      x = FOUNT.x - w / 2,
+      // Just over the basin: on screen for someone at the fountain on the
+      // smallest phone (the statue's top is cut off there).
+      y = FOUNT.y - 150;
+    g.save();
+    g.globalAlpha = 0.92;
+    g.fillStyle = "#0b1020d9";
+    g.beginPath();
+    g.roundRect(x, y, w, h, h / 2);
+    g.fill();
+    if (k > 0) {
+      g.fillStyle = "#ff8fc4";
+      g.beginPath();
+      g.roundRect(
+        x + 3,
+        y + 3,
+        Math.max(h - 6, (w - 6) * k),
+        h - 6,
+        (h - 6) / 2,
+      );
+      g.fill();
+    }
+    g.globalAlpha = 1;
+    g.font = "800 15px 'Barlow Condensed', sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.lineWidth = 3;
+    g.strokeStyle = "#0b1020";
+    const label = `✦ WISHES ${wish.n}/${goal}`;
+    g.strokeText(label, FOUNT.x, y + h / 2 + 1);
+    g.fillStyle = "#fff";
+    g.fillText(label, FOUNT.x, y + h / 2 + 1);
+    g.restore();
+  }
   let bobaBusy = false;
   function buyTea() {
     if (P.boost > 0) return pzToast("Your boba boost is still active");
@@ -2288,6 +2373,7 @@ export function openPlaza(options) {
   function onState(s) {
     meId = s.me;
     offset = s.now - Date.now();
+    population = s.population | 0;
     score = s.score;
     if (s.claps > claps && runwayOn)
       for (let i = 0; i < Math.min(4, s.claps - claps); i++) {
@@ -4720,6 +4806,33 @@ export function openPlaza(options) {
       }
       const dcd = $("pz-dash");
       dcd.classList.toggle("cd", P.dashCd > 0);
+      {
+        // At the fountain the treat button makes a wish (PLAZA_WISH).
+        const tb = $("pz-treat"),
+          well = atFountain(P.x, P.y);
+        if (tb.__wish !== well) {
+          tb.__wish = well;
+          tb.classList.toggle("wish", well);
+          tb.setAttribute(
+            "aria-label",
+            well ? "Make a wish (T)" : "Throw a treat (T)",
+          );
+        }
+        // The copy's meter as a ring round it, wherever you are.
+        const fill = wish.n ? `${wish.n}/${wishGoal()}` : "";
+        if (tb.__fill !== fill) {
+          tb.__fill = fill;
+          tb.classList.toggle("wishing", !!fill);
+          tb.style.setProperty(
+            "--wish",
+            String(Math.min(1, wish.n / wishGoal())),
+          );
+          tb.title = fill ? `Wishes ${fill}` : "";
+          const badge = $("pz-wishn");
+          badge.hidden = !fill;
+          badge.textContent = fill;
+        }
+      }
       const cd = String(
         Math.round(Math.max(0, (1 - P.dashCd / DASH_EVERY) * 100)),
       );
@@ -4751,6 +4864,21 @@ export function openPlaza(options) {
     ctx.scale(Z, Z);
     ctx.translate(-cam.x, -cam.y);
     drawWorld(ctx, T);
+    drawWishMeter(ctx);
+    if (fireworks.active(serverNow())) {
+      const t0 = performance.now();
+      fireworks.step(serverNow(), dt, {
+        x0: cam.x - NW / 2 / Z,
+        y0: cam.y - NH / 2 / Z,
+        x1: cam.x + NW / 2 / Z,
+        y1: cam.y + NH / 2 / Z,
+      });
+      fireworks.draw(ctx, serverNow(), Z, NW, NH);
+      const ms = performance.now() - t0;
+      fwCost.frames++;
+      fwCost.ms += ms;
+      fwCost.max = Math.max(fwCost.max, ms);
+    }
     ctx.restore();
     const vg = ctx.createRadialGradient(
       NW / 2,
@@ -4965,6 +5093,8 @@ export function openPlaza(options) {
       socket.off("plaza-treats", onTreats);
       socket.off("plaza-fish", onFish);
       clearTimeout(catchTimer);
+      socket.off("plaza-wish", onWish);
+      socket.off("plaza-wish-paid", onWishPaid);
       removeEventListener("pointermove", pinchMove, true);
       removeEventListener("pointerup", pinchEnd, true);
       removeEventListener("pointercancel", pinchEnd, true);
@@ -5032,6 +5162,15 @@ export function openPlaza(options) {
       },
       /** Treat particles flying now (tests). */
       treatFx: () => FX.filter((f) => f.g === "●").length,
+      /** The wish meter and the fireworks' counts (tests). */
+      wish: () => ({ ...wish, goal: wishGoal() }),
+      fireworks: () => ({
+        active: fireworks.active(serverNow()),
+        stats: { ...fireworks.stats },
+        peak: { ...fireworks.peak },
+        cost: { ...fwCost },
+        box: fireworks.bounds(),
+      }),
       SPOTS,
       /** Fishing's line now: null, "cast", "wait" or "bite" (tests). */
       get fishing() {
