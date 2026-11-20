@@ -2092,7 +2092,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       9,
       300,
       "Spit a hard seed.",
-      { speed: 750, range: 640, radius: 10 },
+      { speed: 780, range: 640, radius: 10 },
     ),
     skills: [
       ability(
