@@ -68,6 +68,7 @@ import {
   type BlockedPlayer,
 } from "../../../packages/shared/src/accounts";
 import { askConfirm } from "./ui/hub-panel";
+import { guestWarning } from "./guest-warning";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { renderOnline } from "./admin-online";
 import { openProfile, type ProfileScreen } from "./screens/profile";
@@ -921,9 +922,7 @@ export class AccountUI {
         }
         await this.setSession(data.session);
         element<HTMLDialogElement>("dialog").close();
-        this.hooks.notify(
-          "You're playing as a guest. Save your account from your profile any time to keep your progress.",
-        );
+        await this.warnNewGuest();
       };
     form.onsubmit = async (event) => {
       event.preventDefault();
@@ -1809,6 +1808,22 @@ export class AccountUI {
       open: (other) => void this.showFriendCard(other, fromFriends),
       onClose: () => (this.friendCard = undefined),
     });
+  }
+  /**
+   * A new guest pass, said plainly once, when it's made: everything plays,
+   * but it lives on this device only and can't be recovered once lost
+   * (logging out, clearing the app's data, a new phone). Save my account
+   * opens the player card, whose first block saves it with an email.
+   */
+  private async warnNewGuest() {
+    if (!this.account?.guest) return;
+    const save = await askConfirm(guestWarning());
+    if (!save || !this.account?.guest) return;
+    await this.showProfile();
+    // Straight to the email box (its form is the card's first block).
+    document
+      .querySelector<HTMLInputElement>("[data-profile-save] input")
+      ?.focus({ preventScroll: false });
   }
   /** The server's answer `friendsData.list` was read from. */
   private friendsListRaw: unknown;
