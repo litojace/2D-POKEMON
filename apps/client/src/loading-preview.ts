@@ -40,7 +40,7 @@ const hex = `#${champion.color.toString(16).padStart(6, "0")}`;
 const title = `<h1 class="lp-title" aria-label="Element Arena"><span>ELEMENT</span><span>ARENA</span></h1>`;
 const bar = (status: string) =>
   `<div class="lp-bar"><div class="server-startup-progress" style="--startup-progress:${progress}"><i></i></div><small>${status}</small></div>`;
-const tipText = tip.text;
+const tipText = tip.text.replace(/(\d) (s\b)/g, "$1\u00a0$2");
 
 /** The arena from above, large and moving: where and when the orbs appear. */
 function arenaMap() {
@@ -75,6 +75,24 @@ styles.e = `<section class="lp lp-b lp-e" style="--bg:url('${starfield}');--el:$
 // f: the Lobby to come: its blurred Plaza, your fighter where the Lobby will
 // stand it, the tip where its cards will be, the bar where PLAY will be.
 styles.f = `<section class="lp lp-f" style="--el:${hex}"><div class="lp-f-art"></div>${title}<div class="lp-f-fighter">${fighterArt}${nameplate}</div><div class="lp-f-side">${tipCard(true)}${bar("Loading your profile…")}</div></section>`;
+/*
+ * h-k: the painting layouts with a full-width bar and the gold star crest by
+ * the title (the owner, 20 Nov), the tip short and text only:
+ * h brand top right, tip mid right; i brand top left, tip above the bar on
+ * the left; j brand top centre, tip above the bar in the middle; k brand top
+ * right, tip above the bar on the right.
+ */
+const painting =
+  query.get("art") ?? "/assets/backgrounds/elemental-horizon.webp";
+const crest = `<svg class="lp-crest" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lp-crest-gold" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#lp-crest-gold)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg>`;
+for (const v of ["h", "i", "j", "k"])
+  styles[v] =
+    `<section class="lp-x lp-x-${v}" style="--painting:url('${painting}')">` +
+    `<header class="lp-x-brand">${crest}<h1 class="lp-title" aria-label="Element Arena"><span>ELEMENT</span><span>ARENA</span></h1></header>` +
+    `<div class="lp-x-tip"><b>TIP</b> ${tipText}</div>` +
+    `<footer class="lp-x-foot"><div class="lp-x-line"><span>Opening the arena…</span><small>Loading your profile…</small></div><div class="server-startup-progress" style="--startup-progress:${progress}"><i></i></div></footer>` +
+    `</section>`;
+
 // refs: every skin the painting brief uses, one per box, for
 // scripts/loading-art/export-references.mjs to save as reference pictures.
 if (style === "refs") {

@@ -134,6 +134,8 @@ export function tipMarkup(tip: LoadingTip) {
   const text = tip.text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    // A number keeps its unit on the same line ("36 s", not "36" / "s").
+    .replace(/(\d) (s\b)/g, "$1\u00a0$2");
   return `<span class="server-startup-tip-text"><b>TIP</b> ${text}</span>`;
 }
