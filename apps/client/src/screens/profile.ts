@@ -11,11 +11,14 @@ import {
 } from "./profile-view";
 import { esc } from "../ui/components";
 import { sharePlayerCard } from "./profile-card";
+import { historyController, type HistoryQuery } from "./match-history";
+import type { MatchHistory } from "../../../../packages/shared/src/accounts";
 import {
   checkName,
   NAME_CHANGE_DAYS,
 } from "../../../../packages/shared/src/accounts";
 import "./profile.css";
+import "./match-history.css";
 
 /**
  * The player card's behaviour (UI remodel step 7). Markup comes from
@@ -42,6 +45,11 @@ export interface ProfileHooks {
   ranks(): void;
   journey(): void;
   raids(boss?: RaidBossId): void;
+  /** A page of your match history (docs/match-history.md). */
+  history?(q: HistoryQuery): Promise<MatchHistory>;
+  /** Whether a player's card can be opened (a friend), and opening it. */
+  isFriend?(id: string): boolean;
+  friendCard?(id: string, name: string): void;
   onClose?(): void;
 }
 export interface ProfileScreen {
@@ -61,7 +69,22 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
   // A phone held sideways shows the card's column as tabs; turning a
   // tablet or resizing a window across the line redraws it.
   const compactQuery = matchMedia("(max-height: 500px)");
-  const data = () => ({ ...hooks.data(), compact: compactQuery.matches });
+  const history = hooks.history
+    ? historyController(
+        hooks.history,
+        () => render(),
+        (id, name) => {
+          panel.close();
+          hooks.friendCard?.(id, name);
+        },
+      )
+    : null;
+  const data = () => ({
+    ...hooks.data(),
+    compact: compactQuery.matches,
+    history: history?.state,
+    canOpen: hooks.friendCard ? hooks.isFriend : undefined,
+  });
   const onCompact = () => render();
   function render() {
     if (closed) return;
@@ -240,6 +263,7 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     const t = (event.target as Element).closest<HTMLButtonElement>("button");
     if (!t || !root().contains(t) || t.disabled) return;
     const d = t.dataset;
+    if (history?.click(t)) return;
     if (d.uiProfileTab) {
       view.tab = d.uiProfileTab as ProfileTab;
       render();
@@ -364,6 +388,7 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     if (file) void wearPhoto(file);
   });
   focusOn('.pf-titles > [aria-pressed="true"]');
+  history?.ensure();
   return {
     refresh: render,
     close: () => panel.close(),

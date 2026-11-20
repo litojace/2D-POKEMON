@@ -52,6 +52,7 @@ import {
   supabaseSocialStore,
   type SocialStore,
 } from "./social.js";
+import { buildMatchHistory, type MatchHistoryPage } from "./match-history.js";
 import express, {
   type Express,
   type Request,
@@ -78,13 +79,28 @@ import {
   friendRespondSchema,
   friendRemoveSchema,
   ratingSchema,
+  MATCH_HISTORY_KINDS,
+  MATCH_HISTORY_PAGE,
   type Friend,
   type Account,
   type MatchSummary,
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261119160000_avatar_library_77.sql";
+export const LATEST_MIGRATION = "20261120140000_match_history.sql";
+/** A page of match history: whose, from where, and which matches. */
+const matchHistoryQuerySchema = z
+  .object({
+    player: z.string().uuid().optional(),
+    at: z
+      .string()
+      .max(40)
+      .refine((s) => !Number.isNaN(Date.parse(s)))
+      .optional(),
+    id: z.string().min(8).max(64).optional(),
+    kind: z.enum(MATCH_HISTORY_KINDS).optional(),
+  })
+  .strict();
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -1183,6 +1199,25 @@ export function installAccountRoutes(
           rating,
         }),
       );
+    }),
+  );
+  // Match history (docs/match-history.md): yours, or a friend's (the
+  // database refuses anyone else), a page at a time.
+  app.get(
+    "/api/matches/history",
+    route(false, async (req, res, token, account) => {
+      res.setHeader("Cache-Control", "no-store");
+      const q = matchHistoryQuerySchema.safeParse(req.query);
+      if (!q.success) throw new AccountError(400, "Invalid page.");
+      const player = q.data.player ?? account.id;
+      const page = (await provider.rpc(token, "arena_match_history", {
+        p_player: player,
+        p_before_at: q.data.at ?? null,
+        p_before_id: q.data.at ? (q.data.id ?? null) : null,
+        p_limit: MATCH_HISTORY_PAGE,
+        p_kind: q.data.kind ?? "all",
+      })) as MatchHistoryPage;
+      res.json(buildMatchHistory(page, player));
     }),
   );
   // Friends › Recent: the players in your latest matches (step 6).
