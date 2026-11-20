@@ -198,8 +198,9 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
     const x = k.hx + k.side * 2,
       y = k.ht + 22;
     const w = k.side ? 46 : 52;
-    k.put("flame", k.path(`M${x - w} ${y + 6}Q${x - w} ${k.ht - 14} ${x} ${k.ht - 14}Q${x + w} ${k.ht - 14} ${x + w} ${y + 6}Q${x} ${y - 4} ${x - w} ${y + 6}Z`, "#c8c8d0") +
-      k.line(`M${x} ${k.ht - 14}V${y - 2}`, RED, 4) + k.line(`M${x - 4} ${k.ht - 13}V${y - 2}M${x + 4} ${k.ht - 13}V${y - 2}`, CREAM, 1));
+    // Worn up on the head, clear of the eyes.
+    k.put("flame", `<g transform="translate(0 -12)">` + k.path(`M${x - w} ${y + 6}Q${x - w} ${k.ht - 14} ${x} ${k.ht - 14}Q${x + w} ${k.ht - 14} ${x + w} ${y + 6}Q${x} ${y - 4} ${x - w} ${y + 6}Z`, "#c8c8d0") +
+      k.line(`M${x} ${k.ht - 14}V${y - 2}`, RED, 4) + k.line(`M${x - 4} ${k.ht - 13}V${y - 2}M${x + 4} ${k.ht - 13}V${y - 2}`, CREAM, 1) + "</g>");
   },
   // Times Square DJ: a bomber jacket, a gold chain with a glowing star
   // pendant and headphones round the neck lit in a run.
