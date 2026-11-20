@@ -8,8 +8,12 @@ import {
   PLAZA_FLAG,
   PLAZA_GATE,
   PLAZA_HURDLES,
+  PLAZA_PAIR,
+  PLAZA_PAIR_EMOTES,
   PLAZA_PHOTO,
   PLAZA_PITCH,
+  PLAZA_SEAT,
+  PLAZA_SEATS,
   PLAZA_SPAWN,
   PLAZA_SQUARE,
   inPitch,
@@ -35,6 +39,8 @@ import {
   type PlazaTreat,
   type PlazaOrb,
   type PlazaOrbs,
+  type PlazaPairAsk,
+  type PlazaPairStart,
   type PlazaProfile,
   type PlazaSpotId,
   type PlazaState,
@@ -65,6 +71,14 @@ interface Visitor {
   emote: number;
   emoteUntil: number;
   lastEmote: number;
+  /** The emote is a pair emote (PLAZA_FLAG.pair). */
+  pair: boolean;
+  /** The seat sat on (PLAZA_SEATS index), or -1. */
+  seat: number;
+  /** A pair request waiting for this visitor's answer. */
+  invite: { from: string; kind: number; until: number } | null;
+  /** When this visitor last asked someone for a pair emote (ms). */
+  lastAsk: number;
   /** When this visitor last threw a treat (ms). */
   lastTreat: number;
   lap: LapTimer;
@@ -101,7 +115,8 @@ export interface PlazaTiming {
   t?: unknown;
 }
 interface PlazaInput {
-  kind: "stick" | "jump" | "dash";
+  /** A sit carries the seat (PLAZA_SEATS index) in `x`. */
+  kind: "stick" | "jump" | "dash" | "sit";
   x: number;
   y: number;
   seq: number;
@@ -391,6 +406,10 @@ export class PlazaWorld {
       emote: 0,
       emoteUntil: 0,
       lastEmote: -Infinity,
+      pair: false,
+      seat: -1,
+      invite: null,
+      lastAsk: -Infinity,
       lastTreat: -Infinity,
       lap: new LapTimer(),
       cheerIn: PLAZA_CHEER_SECONDS,
@@ -547,6 +566,25 @@ export class PlazaWorld {
     return this.receive(key, { kind: "dash", ...plazaStick(dx, dy) }, timing);
   }
   /**
+   * Sit on seat `seat` (PLAZA_SEATS; -1 stands up). Timed like a jump, so you sit on the
+   * server at the moment you sat on your screen; checked when it plays: on
+   * the ground, within reach and nobody else on it. Any later stick, jump or
+   * dash stands you up.
+   */
+  sit(key: string, seat: unknown, timing?: PlazaTiming) {
+    if (
+      typeof seat !== "number" ||
+      !Number.isInteger(seat) ||
+      (seat !== -1 && !PLAZA_SEATS[seat])
+    )
+      return false;
+    return this.receive(key, { kind: "sit", x: seat, y: 0 }, timing);
+  }
+  /** The seat someone sits on (PLAZA_SEATS index), or -1. */
+  seatOf(key: string) {
+    return this.visitors.get(key)?.seat ?? -1;
+  }
+  /**
    * A stick, jump or dash from the browser. Untimed (no `t`), it applies at
    * once. Timed, it waits for its moment: the browser's time `t` plus the
    * visitor's lead, so the server plays your inputs as far apart as you
@@ -587,12 +625,38 @@ export class PlazaWorld {
     return true;
   }
   private apply(v: Visitor, m: Pick<PlazaInput, "kind" | "x" | "y">) {
+    if (m.kind === "sit") {
+      // Seat -1: stand up (the Stand up button).
+      if (m.x < 0) v.seat = -1;
+      return m.x < 0 || this.trySit(v, m.x);
+    }
+    // Moving, jumping or dashing stands you up.
+    if (v.seat >= 0 && (m.kind !== "stick" || m.x || m.y)) v.seat = -1;
     if (m.kind === "stick") {
       v.dir = { x: m.x, y: m.y };
       return true;
     }
     if (m.kind === "jump") return plazaJump(v.body);
     return plazaDash(v.body, m, PLAZA_DASH_SLACK);
+  }
+  private trySit(v: Visitor, index: number) {
+    const seat = PLAZA_SEATS[index],
+      b = v.body;
+    if (!seat || b.air || b.dash > 0 || b.stun > 0) return false;
+    if (
+      Math.hypot(b.x - seat.x, b.y - seat.y) >
+      PLAZA_SEAT.reach + PLAZA_SEAT.slack
+    )
+      return false;
+    for (const o of this.visitors.values())
+      if (o !== v && o.plaza === v.plaza && o.seat === index) return false;
+    v.seat = index;
+    v.dir = { x: 0, y: 0 };
+    b.x = seat.x;
+    b.y = seat.y;
+    b.face = seat.face;
+    b.vx = b.vy = b.speed = 0;
+    return true;
   }
   /** Move a visitor from `from` to `end` (ms), playing their timed inputs on time. */
   private stepVisitor(v: Visitor, from: number, end: number, dt: number) {
@@ -633,6 +697,7 @@ export class PlazaWorld {
     if (!v || index < 0 || now - v.lastEmote < 1000) return false;
     v.lastEmote = now;
     v.emote = index + 1;
+    v.pair = false;
     v.emoteUntil = now + PLAZA.emoteSeconds * 1000;
     // Cheering someone on the runway counts for them.
     if (["❤️", "🔥", "👏"].includes(kind as string))
@@ -647,6 +712,111 @@ export class PlazaWorld {
           other.claps++;
         }
     return true;
+  }
+  /**
+   * Ask another player (walker id `to`) for a pair emote (`kind`, a
+   * PLAZA_PAIR_EMOTES id). Players only, never yourself, near enough, at
+   * most one request every PLAZA_PAIR.askEvery seconds, and one open request
+   * per player at a time. `blocked` (account ids) says if either blocked the
+   * other: then the request is never delivered, and the asker hears only
+   * that they can't be asked.
+   */
+  pairAsk(
+    key: string,
+    to: unknown,
+    kind: unknown,
+    now: number,
+    blocked: (a: string, b: string) => boolean = () => false,
+  ):
+    { ok: true; to: string; ask: PlazaPairAsk } | { ok: false; error: string } {
+    const v = this.visitors.get(key);
+    if (!v) return { ok: false, error: "Not in the Plaza." };
+    const index = PLAZA_PAIR_EMOTES.findIndex((p) => p.id === kind);
+    if (index < 0) return { ok: false, error: "Pick a pair emote." };
+    if (to === v.profile.id)
+      return { ok: false, error: "Ask someone else for that one." };
+    const t = [...this.visitors.values()].find(
+      (o) => o.plaza === v.plaza && o.profile.id === to,
+    );
+    if (!t || t === v || blocked(v.accountId, t.accountId))
+      return { ok: false, error: "They can't be asked right now." };
+    if (now - v.lastAsk < PLAZA_PAIR.askEvery * 1000)
+      return { ok: false, error: "Wait a moment before asking again." };
+    if (Math.hypot(t.body.x - v.body.x, t.body.y - v.body.y) > PLAZA_PAIR.reach)
+      return { ok: false, error: "Walk a little closer first." };
+    if (t.invite && t.invite.until > now && t.invite.from !== key)
+      return { ok: false, error: "They're answering someone else." };
+    v.lastAsk = now;
+    t.invite = {
+      from: key,
+      kind: index,
+      until: now + PLAZA_PAIR.askSeconds * 1000,
+    };
+    return {
+      ok: true,
+      to: t.key,
+      ask: {
+        from: v.profile.id,
+        name: v.profile.name,
+        kind: PLAZA_PAIR_EMOTES[index].id,
+        ms: PLAZA_PAIR.askSeconds * 1000,
+      },
+    };
+  }
+  /**
+   * Answer the request from walker `from`. Yes plays the pair emote for both,
+   * facing each other, for PLAZA_PAIR.playSeconds, if the request is still
+   * open, the asker still here and near and neither blocked the other.
+   */
+  pairAnswer(
+    key: string,
+    from: unknown,
+    yes: boolean,
+    now: number,
+    blocked: (a: string, b: string) => boolean = () => false,
+  ):
+    | { ok: true; declined: true; asker: string }
+    | {
+        ok: true;
+        declined?: false;
+        keys: [string, string];
+        start: PlazaPairStart;
+      }
+    | { ok: false; error: string } {
+    const v = this.visitors.get(key);
+    if (!v) return { ok: false, error: "Not in the Plaza." };
+    const inv = v.invite,
+      a = inv && this.visitors.get(inv.from);
+    if (!inv || inv.until <= now || !a || a.profile.id !== from) {
+      if (inv && inv.until <= now) v.invite = null;
+      return { ok: false, error: "That request has ended." };
+    }
+    v.invite = null;
+    if (a.plaza !== v.plaza || blocked(a.accountId, v.accountId))
+      return { ok: false, error: "That request has ended." };
+    if (!yes) return { ok: true, declined: true, asker: a.key };
+    if (
+      Math.hypot(a.body.x - v.body.x, a.body.y - v.body.y) >
+      PLAZA_PAIR.reach + PLAZA_PAIR.slack
+    )
+      return { ok: false, error: "You've moved too far apart." };
+    const pair = PLAZA_PAIR_EMOTES[inv.kind],
+      emote = emoteIndex(pair.emote);
+    for (const [p, o] of [
+      [a, v],
+      [v, a],
+    ]) {
+      p.emote = emote;
+      p.pair = true;
+      p.emoteUntil = now + PLAZA_PAIR.playSeconds * 1000;
+      p.lastEmote = now;
+      p.body.face = o.body.x >= p.body.x ? 1 : -1;
+    }
+    return {
+      ok: true,
+      keys: [a.key, v.key],
+      start: { kind: pair.id, a: a.profile.id, b: v.profile.id },
+    };
   }
   /** At most one treat every PLAZA.treatSeconds; true claims the slot. */
   treatReady(key: string, now: number) {
@@ -702,7 +872,10 @@ export class PlazaWorld {
     const events: PlazaEvent[] = [];
     for (const v of this.visitors.values()) {
       this.stepVisitor(v, from, now, dt);
-      if (v.emote && now >= v.emoteUntil) v.emote = 0;
+      if (v.emote && now >= v.emoteUntil) {
+        v.emote = 0;
+        v.pair = false;
+      }
       const lap = v.lap.update(v.body.x, v.body.y, now);
       if (lap.lapMs !== undefined && lap.lapMs >= 1000) {
         events.push({ type: "lap", key: v.key, ms: lap.lapMs });
@@ -1101,12 +1274,14 @@ export class PlazaWorld {
       version: number,
       emote: number,
       bot: boolean,
+      extra = 0,
     ) => {
       const flags =
         (body.dash > 0 ? PLAZA_FLAG.dash : 0) |
         (body.stun > 0 ? PLAZA_FLAG.stun : 0) |
         (body.boost > 0 ? PLAZA_FLAG.boost : 0) |
-        (bot ? PLAZA_FLAG.bot : 0);
+        (bot ? PLAZA_FLAG.bot : 0) |
+        extra;
       walkers.push([
         profile.id,
         Math.round(body.x),
@@ -1124,7 +1299,15 @@ export class PlazaWorld {
     };
     for (const v of this.visitors.values())
       if (v.plaza === me.plaza && (v === me || see(v.body)))
-        add(v.body, v.profile, v.version, v.emote, false);
+        add(
+          v.body,
+          v.profile,
+          v.version,
+          v.emote,
+          false,
+          (v.seat >= 0 ? PLAZA_FLAG.sit : 0) |
+            (v.pair && v.emote ? PLAZA_FLAG.pair : 0),
+        );
     for (const b of c.bots) if (see(b.body)) add(b.body, b.profile, 1, 0, true);
     for (const f of c.folk)
       if (see(f.body)) add(f.body, f.profile, 1, f.emote, true);

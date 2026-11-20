@@ -3144,6 +3144,49 @@ export function createArenaServer(
           : { ok: false, error: "Wait a moment between emotes." },
       );
     });
+    // Sitting on a bench or the fountain's rim: timed like a jump.
+    socket.on("plaza-sit", (data: unknown) => {
+      if (!allowed(10)) return;
+      const d = data as { seat?: unknown; s?: unknown; t?: unknown } | null;
+      plaza.sit(socket.id, d?.seat, { s: d?.s, t: d?.t });
+    });
+    // Pair emotes (a high five…): asked from a player's card, answered by
+    // them. Requests between blocked players are never delivered.
+    const pairBlocked = (a: string, b: string) => chat.blocks(a, b);
+    socket.on("plaza-pair-ask", (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      const d = data as { to?: unknown; kind?: unknown } | null;
+      const r = plaza.pairAsk(
+        socket.id,
+        d?.to,
+        d?.kind,
+        Date.now(),
+        pairBlocked,
+      );
+      if (!r.ok) return fail(cb, r.error);
+      io.sockets.sockets.get(r.to)?.emit("plaza-pair-ask", r.ask);
+      reply(cb, { ok: true });
+    });
+    socket.on("plaza-pair-answer", (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      const d = data as { from?: unknown; yes?: unknown } | null;
+      const r = plaza.pairAnswer(
+        socket.id,
+        d?.from,
+        d?.yes === true,
+        Date.now(),
+        pairBlocked,
+      );
+      if (!r.ok) return fail(cb, r.error);
+      if (r.declined)
+        io.sockets.sockets
+          .get(r.asker)
+          ?.emit("plaza-pair-no", { name: plaza.profileOf(socket.id)?.name });
+      else
+        for (const key of r.keys)
+          io.sockets.sockets.get(key)?.emit("plaza-pair", r.start);
+      reply(cb, { ok: true });
+    });
     // Treats: a free handful a Pacific day (PLAZA.treatsDaily), thrown for everyone.
     const sendTreats = async (token: string) => {
       try {

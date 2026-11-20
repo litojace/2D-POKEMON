@@ -74,6 +74,20 @@ const handle = (ev: string, data: any) => {
     world.leave(ME);
     return { ok: true };
   }
+  // Pair emotes (server.ts): a request goes to the other player's socket,
+  // kept here for tests; a yes starts it for both.
+  if (ev === "plaza-pair-ask") {
+    const r = world.pairAsk(ME, data?.to, data?.kind, Date.now());
+    if (!r.ok) return r;
+    (w.__plazaPairAsks ??= []).push({ to: r.to, ...r.ask });
+    return { ok: true };
+  }
+  if (ev === "plaza-pair-answer") {
+    const r = world.pairAnswer(ME, data?.from, data?.yes === true, Date.now());
+    if (!r.ok) return r;
+    if (!r.declined) setTimeout(() => w.__sock?.fire("plaza-pair", r.start));
+    return { ok: true };
+  }
   if (ev === "plaza-emote")
     return { ok: world.emote(ME, data.emote, Date.now()) };
   // Chat's Nearby channel (server.ts): a quick line, and the Plaza's own
@@ -121,6 +135,7 @@ w.__emit = (ev: string, data: any) => {
   if (ev === "plaza-input") world.input(ME, data.dx, data.dy, timing);
   else if (ev === "plaza-jump") world.jump(ME, timing);
   else if (ev === "plaza-dash") world.dash(ME, data?.dx, data?.dy, timing);
+  else if (ev === "plaza-sit") world.sit(ME, data?.seat, timing);
   else before.emit?.(ev, data);
 };
 let ticks = 0;
