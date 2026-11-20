@@ -130,10 +130,19 @@
   letter-spacing: 0.02em;
   color: #c9d6ee;
 }
+/* The badge sits on the icon's top-right corner, not the button's: the
+   button is the rail's whole width, so its corner left a count floating
+   far from the icon it belongs to (owner, 20 Nov). */
+.lobby-rail-icon {
+  position: relative;
+  display: block;
+  line-height: 0;
+  font-style: normal;
+}
 .lobby-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -10px;
+  left: calc(100% - 6px);
   display: grid;
   place-items: center;
   min-width: 20px;
@@ -990,8 +999,8 @@
   width: 12px;
   height: 12px;
   padding: 0;
-  top: -3px;
-  right: -3px;
+  top: -4px;
+  left: calc(100% - 4px);
   background: #a78bff;
 }
 .lobby-spark {
@@ -1307,8 +1316,8 @@
     white-space: nowrap;
   }
   .lobby-badge {
-    top: -5px;
-    right: -5px;
+    top: -9px;
+    left: calc(100% - 5px);
     min-width: 16px;
     height: 16px;
     font-size: calc(9px * var(--text-scale, 1));
