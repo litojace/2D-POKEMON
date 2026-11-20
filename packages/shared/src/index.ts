@@ -574,6 +574,8 @@ export interface Ability {
   tether?: {
     tick: number;
     breakRange: number;
+    /** Seconds the caster runs faster from the cast (Live Wire: to chase). */
+    haste?: number;
     yank?: {
       at: number;
       pull: number;
@@ -1380,7 +1382,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "tether",
         2,
         13,
-        "After a quarter-second wind-up, lash a live wire onto the enemy nearest your aim (380 px). For 2.5 seconds it takes 2 every half second, and if it gets more than 300 px away the wire yanks it back toward Coilemur: 6 damage and paralysed for half a second, and the wire snaps. Walls cut the wire. No more running away.",
+        "After a quarter-second wind-up, Coilemur runs 30% faster for 2.5 seconds and lashes a live wire onto the enemy nearest your aim (380 px). While it holds, the enemy takes 2 every half second, and if it gets more than 300 px away the wire yanks it back toward Coilemur: 6 damage and paralysed for half a second, and the wire snaps. Walls cut the wire. No more running away.",
         {
           range: 380,
           radius: 60,
@@ -1390,6 +1392,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           tether: {
             tick: 0.5,
             breakRange: 9999,
+            haste: 2.5,
             yank: {
               at: 300,
               pull: 260,

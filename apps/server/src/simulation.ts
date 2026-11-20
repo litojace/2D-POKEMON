@@ -1889,6 +1889,8 @@ export class Arena {
       }
     }
     if (a.kind === "tether") {
+      // Live Wire: Coilemur runs faster to chase, wire or no wire.
+      if (a.tether?.haste) this.status(p, "haste", a.tether.haste);
       // The enemy nearest the aim, within reach and in sight.
       const aim = { x: p.lastInput.aimX, y: p.lastInput.aimY };
       const target = enemies
@@ -1913,8 +1915,9 @@ export class Arena {
           nextTick: this.time + (a.tether?.tick ?? 0.25),
           skill: slot,
         };
-      else if (slot >= 0 && slot !== ULT_SLOT)
-        // Nobody in reach: most of the cooldown comes back.
+      else if (slot >= 0 && slot !== ULT_SLOT && !a.tether?.haste)
+        // Nobody in reach: most of the cooldown comes back (not for Live
+        // Wire, whose speed burst would come back with it).
         p.cooldowns[slot] = Math.min(p.cooldowns[slot], this.time + 1.5);
     }
     if (a.kind === "gaze") {

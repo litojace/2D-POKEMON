@@ -44,6 +44,8 @@ describe("Live Wire (Coilemur)", () => {
     place(them, 520, Y);
     a.cast(me, wire);
     expect(me.tether?.target).toBe("them");
+    // Coilemur runs faster to chase.
+    expect(a.has(me, "haste")).toBe(true);
     // Close by: it only stings, every half second.
     const hp = them.hp;
     seconds(a, 1.05);
@@ -66,8 +68,12 @@ describe("Live Wire (Coilemur)", () => {
     const wire = skill("coilemur", "live-wire");
     place(me, 300, Y, 1400, 850);
     place(them, 1400, 850);
+    const slot = CHARACTERS.coilemur.skills.indexOf(wire);
+    me.cooldowns[slot] = a.time + wire.cooldown;
     a.cast(me, wire);
     expect(me.tether).toBeUndefined();
+    // No wire, no refund: the speed burst can't be had again at once.
+    expect(me.cooldowns[slot]).toBeCloseTo(a.time + wire.cooldown);
   });
 });
 
