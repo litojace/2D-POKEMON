@@ -47,6 +47,7 @@ describe("loading art", () => {
       if (scene.mode === "teams") expect(size, scene.id).toBe(4);
       if (scene.mode === "ffa")
         expect(size, scene.id).toBeGreaterThanOrEqual(3);
+      if (!scene.mode) expect(size, scene.id).toBeGreaterThanOrEqual(1);
       for (const f of scene.fighters) {
         const skin = CHAMPION_SKINS.find((s) => s.id === f.skin);
         expect(skin, f.skin).toBeTruthy();

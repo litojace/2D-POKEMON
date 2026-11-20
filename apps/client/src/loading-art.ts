@@ -3,7 +3,7 @@ import type { CharacterId } from "@arena/shared";
 /**
  * Paintings behind the startup curtain (docs/loading-screens.md,
  * docs/loading-art-prompts.md): champions in Legendary and Mythical skins
- * from the Shop fighting in the game's PvP modes. The scenes are the brief
+ * from the Shop, fighting in the game's PvP modes or resting between them. The scenes are the brief
  * the paintings are made from; a scene is shown once its picture is in
  * src/art/loading-art/startup-art-<id>.webp (scripts/import-loading-art.py),
  * so the list never points at a painting that isn't there. Named startup-*,
@@ -13,7 +13,11 @@ import type { CharacterId } from "@arena/shared";
 export type PvpMode = "duel" | "teams" | "ffa";
 export type LoadingScene = {
   id: string;
-  mode: PvpMode;
+  /**
+   * The PvP mode it shows (its tips suit it); none for a calm scene, such
+   * as champions resting between matches (the owner, 20 Nov): any tip.
+   */
+  mode?: PvpMode;
   /** Who is in it, each in a Legendary or Mythical skin from the Shop. */
   fighters: { champion: CharacterId; skin: string }[];
   /** Where the fight is (object-position), kept clear of the tip's column. */
@@ -22,6 +26,21 @@ export type LoadingScene = {
 export type LoadingArt = LoadingScene & { src: string };
 
 export const LOADING_SCENES: LoadingScene[] = [
+  // Calm scenes, made first (20 Nov).
+  {
+    id: "rest-hoi-an",
+    fighters: [
+      { champion: "mossloth", skin: "mossloth-hon-viet" },
+      { champion: "lumoth", skin: "lumoth-hon-viet" },
+    ],
+  },
+  {
+    id: "rest-vanguard-hill",
+    fighters: [
+      { champion: "terradon", skin: "terradon-nova-vanguard" },
+      { champion: "glacelle", skin: "glacelle-nova-vanguard" },
+    ],
+  },
   {
     id: "duel-storm-vs-forge",
     mode: "duel",

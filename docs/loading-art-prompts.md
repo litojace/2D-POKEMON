@@ -2,7 +2,8 @@
 
 The owner's brief (20 Nov): the startup curtain's background is a
 hand-painted picture, made in ChatGPT, of champions wearing **Legendary and
-Mythical skins from the Shop** fighting in the game's PvP modes. The title
+Mythical skins from the Shop** fighting in the game's PvP modes (or, in a
+few calm scenes, resting between matches). The title
 with its gold star sits at the top, a short text tip and a loading bar
 across the whole width at the bottom. Every start shows one painting at
 random, each with the same chance (never the same one twice in a row). How
@@ -128,6 +129,14 @@ Attach the references named in each row (from
 | `teams-stars-stripes` | 2v2          | `voltkit-stars-stripes.png`, `cindrake-stars-stripes.png`, `shadopus-stars-stripes.png`, `pyranda-stars-stripes.png` |
 | `ffa-mythicals`       | Free-for-all | `duskveil-eclipse.png`, `halcyra-starfletch.png`, `auralynx-celestial-sage.png`, `terradon-world-shell.png`          |
 | `ffa-sky-pirates`     | Free-for-all | `astrabun-sky-pirates.png`, `sunbara-sky-pirates.png`, `wombolder-sky-pirates.png`                                   |
+
+Calm scenes (no mode, so any tip shows), the owner's choice of 20 Nov,
+made in ChatGPT without a line from this page:
+
+| Scene id             | Shows                                                                         |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `rest-hoi-an`        | Mossloth "Ông Đồ" and Lumoth "Đèn Lồng Hội An" by a lantern-lit Hội An canal  |
+| `rest-vanguard-hill` | Terradon "Bulwark Grove" and Glacelle "Frost Weaver" on a hill above a valley |
 
 **duel-storm-vs-forge**
 
