@@ -2125,7 +2125,7 @@ async function showPartyInvite() {
       ? party.members.find((m) => m.id === party!.leader)?.name
       : undefined;
   dialog(
-    `<div class="party-invite"><span class="eyebrow">Party</span><h2>Invite a friend</h2><p class="muted">${lead ? `Friends join ${escape(lead)}'s party on the Lobby stage and follow your leader into each room.` : "Friends join you on the Lobby stage. When you press PLAY, they follow you into the room, and you stay a party after the match."}</p><div id="party-invite-list"><p class="muted">Loading your friends…</p></div></div>`,
+    `<div class="party-invite"><h2>Invite a friend</h2><p class="muted party-invite-lead">${lead ? `Friends join ${escape(lead)}'s party and follow your leader into each room.` : "Friends join you on the Lobby stage and follow you into matches."}</p><div id="party-invite-list"><p class="muted">Loading your friends…</p></div></div>`,
   );
   try {
     const list = await accountsUI.nearbyFriends();
@@ -2143,7 +2143,7 @@ async function showPartyInvite() {
             return `<li><span><b>${escape(f.name)}</b><small>${members.has(f.id) ? "In your party" : "Online"}</small></span><button type="button" class="secondary" data-party-invite="${f.id}"${state.off ? " disabled" : ""}>${state.label}</button></li>`;
           })
           .join("")}</ul>`
-      : `<p class="muted">None of your friends are online right now.</p><p><button type="button" class="secondary" id="party-open-friends">${iconLabel("friends", "Open Friends")}</button></p>`;
+      : `<p class="party-invite-empty"><span class="muted">No friends online right now.</span><button type="button" class="secondary" id="party-open-friends">${iconLabel("friends", "Friends")}</button></p>`;
     document
       .getElementById("party-open-friends")
       ?.addEventListener("click", () => void accountsUI.showFriends());

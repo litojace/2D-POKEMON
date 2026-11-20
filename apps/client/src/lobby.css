@@ -1783,11 +1783,35 @@ body.hub-active #account-coins > * {
   }
 }
 
-/* Party invitation picker (Lobby → Invite). */
+/* Party invitation picker (Lobby → Invite): a short list, so a narrow
+   card on every screen (a landscape phone otherwise widens dialogs to
+   1000px, style.css). */
+dialog:has(.party-invite) {
+  width: min(440px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
+}
+.party-invite .party-invite-lead {
+  margin: 0;
+  font-size: calc(13px * var(--text-scale, 1));
+  line-height: 1.35;
+}
+.party-invite-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 0 0;
+}
+.party-invite-empty button {
+  flex: none;
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+  padding: 6px 14px;
+}
 .party-invite-list {
   display: grid;
-  gap: 8px;
-  margin: 12px 0 0;
+  gap: 6px;
+  margin: 10px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -1795,16 +1819,17 @@ body.hub-active #account-coins > * {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 10px 8px 14px;
+  gap: 10px;
+  padding: 4px 4px 4px 12px;
   border: 1px solid rgba(139, 174, 229, 0.25);
   border-radius: 12px;
   background: rgba(14, 26, 49, 0.6);
 }
 .party-invite-list li > span {
   display: grid;
-  gap: 2px;
+  gap: 0;
   min-width: 0;
+  line-height: 1.2;
 }
 .party-invite-list b {
   overflow: hidden;
@@ -1813,6 +1838,14 @@ body.hub-active #account-coins > * {
 }
 .party-invite-list small {
   color: var(--ui-ok);
+  font-size: calc(12px * var(--text-scale, 1));
+}
+.party-invite-list li button {
+  flex: none;
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+  padding: 6px 14px;
 }
 
 /* Behind a dialog, a full-screen drawer or a hub panel the Lobby holds
