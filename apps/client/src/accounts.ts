@@ -1585,10 +1585,10 @@ export class AccountUI {
         onClose: () => (this.profileScreen = undefined),
       });
       // Which players in your matches are friends (their names open cards).
-      if (!this.account.guest)
-        void this.loadFriendList(accountId, FRIENDS_MAX_AGE_MS).then(() =>
-          this.profileScreen?.refresh(),
-        );
+      // (Guests can have friends too.)
+      void this.loadFriendList(accountId, FRIENDS_MAX_AGE_MS).then(() =>
+        this.profileScreen?.refresh(),
+      );
     }
     await this.loadProfile(accountId);
   }
