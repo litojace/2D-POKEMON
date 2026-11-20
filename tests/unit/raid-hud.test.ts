@@ -15,6 +15,7 @@ class Part {
   classes = new Set<string>();
   #text = "";
   #width = "";
+  #props = new Map<string, string>();
   constructor(readonly dataset: Record<string, string>) {}
   get textContent() {
     return this.#text;
@@ -31,6 +32,13 @@ class Part {
       },
       set width(v: string) {
         part.#width = v;
+        part.writes++;
+      },
+      getPropertyValue(name: string) {
+        return part.#props.get(name) ?? "";
+      },
+      setProperty(name: string, v: string) {
+        part.#props.set(name, v);
         part.writes++;
       },
     };
@@ -145,10 +153,8 @@ describe("raid boss HUD", () => {
     expect(hud.builds).toBe(1);
     expect(hud.part("mark0").classes.has("is-passed")).toBe(true);
     expect(hud.part("mark1").classes.has("is-passed")).toBe(true);
-    expect(hud.part("title").textContent).toBe(
-      "✦ GILDED CRAGMUFF · EXPOSED",
-    );
-    expect(hud.part("stagger").style.width).toBe("100%");
+    expect(hud.part("title").textContent).toBe("✦ GILDED CRAGMUFF · EXPOSED");
+    expect(hud.part("stagger").style.getPropertyValue("--fill")).toBe("100");
     expect(hud.part("stagger-label").textContent).toBe(
       "STAGGER · CORE EXPOSED",
     );
@@ -165,6 +171,13 @@ describe("raid boss HUD", () => {
     expect(hud.innerHTML).toContain("Crackle health");
     expect(hud.part("t0-fill").style.width).toBe("100%");
     expect(hud.part("t1-track").attrs.get("aria-valuenow")).toBe("100");
+    // Each twin's stagger meter takes its share as --fill (0–100).
+    expect(
+      Number(hud.part("t0-stagger").style.getPropertyValue("--fill")),
+    ).toBeGreaterThanOrEqual(0);
+    expect(hud.part("t0-stagger").style.getPropertyValue("--fill")).not.toBe(
+      "",
+    );
     // A twin goes down: its bar shows the revive countdown in place.
     const second = twins.players.find((p) => p.id === twins.raid.twins![1].id)!;
     second.hp = 0;

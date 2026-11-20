@@ -3470,7 +3470,7 @@ function renderBattle() {
     const timerWrap =
       '<div class="timer-wrap"><span id="round-label"></span><strong id="timer">03:00</strong><span id="phase-label"></span></div>';
     const card = (p: Fighter, i: number) =>
-      `<div class="health-card ${i >= split ? "right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small><div class="hud-ultimate" title="Ultimate charge"><span>ULT <b id="ult-text-${i}"></b></span><div class="hud-ultimate-track" role="meter" aria-label="${escape(p.name)} ultimate charge" aria-valuemin="0" aria-valuemax="100"><i id="ult-meter-${i}"></i></div></div></div>`;
+      `<div class="health-card ${i >= split ? "right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"><i></i></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small><div class="hud-ultimate" title="Ultimate charge"><span>ULT <b id="ult-text-${i}"></b></span><div class="hud-ultimate-track" role="meter" aria-label="${escape(p.name)} ultimate charge" aria-valuemin="0" aria-valuemax="100"><i id="ult-meter-${i}"></i></div></div></div>`;
     const cards = hudOrder.map(card);
     // The badge holds each side in a group of the same width, so the clock
     // sits in the middle whatever the names' lengths.
@@ -3492,10 +3492,12 @@ function renderBattle() {
   hudOrder.forEach((p, i) => {
     // 2v2 has its own health per champion (TEAM_TUNING).
     const full = maxHealth(p.character, state!.mode, state!.players.length);
+    // Bars take their share as --fill (0–100), drawn with a transform
+    // (style.css): a snapshot moves them with no layout.
     setHudStyle(
       $(`health-${i}`),
-      "width",
-      `${(100 * Math.max(0, p.hp)) / full}%`,
+      "--fill",
+      String(Math.min(100, (100 * Math.max(0, p.hp)) / full)),
     );
     setHudText(
       $(`health-text-${i}`),
@@ -3525,7 +3527,7 @@ function renderBattle() {
       $(`ult-text-${i}`),
       charge >= 100 ? "READY" : `${Math.floor(charge)}%`,
     );
-    setHudStyle($(`ult-meter-${i}`), "width", `${charge}%`);
+    setHudStyle($(`ult-meter-${i}`), "--fill", String(charge));
     setHudAttribute(
       $(`ult-meter-${i}`).parentElement!,
       "aria-valuenow",
@@ -3682,7 +3684,11 @@ function renderBattle() {
                 ? `${charge}% · EX`
                 : `${charge}%`,
         );
-        setHudStyle($(`fill-${i}`), "height", `${ready ? 0 : 100 - charge}%`);
+        setHudStyle(
+          $(`fill-${i}`),
+          "--fill",
+          String(ready ? 0 : Math.max(0, 100 - charge)),
+        );
         setHudStyle(
           $(`ability-${i}`),
           "--cooldown",
@@ -3711,8 +3717,8 @@ function renderBattle() {
       );
       setHudStyle(
         $(`fill-${i}`),
-        "height",
-        `${(100 * left) / (a.cooldown * cooldownScale())}%`,
+        "--fill",
+        String(Math.min(100, (100 * left) / (a.cooldown * cooldownScale()))),
       );
       setHudStyle(
         $(`ability-${i}`),
