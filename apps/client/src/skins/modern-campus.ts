@@ -1,5 +1,5 @@
 import type { CharacterId } from "@arena/shared";
-import { DESIGNS, backPanel, hatShape, onPole, torso, type Design, type Kit } from "./modern-designs";
+import { DESIGNS, backPanel, hatShape, headStrap, onPole, torso, type Design, type Kit } from "./modern-designs";
 
 /**
  * Neon Campus for the rest of the roster: every champion belongs to its own
@@ -32,11 +32,12 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
         k.path(`M${px - 1.6} ${k.T + 6}h3.2v4l3 6q0 2 -2 2h-5q-2 0 -2 -2l3 -6Z`, "#e8f8ff", k.ink, 0.6) +
         k.lume("pulse", k.path(`M${px - 3.4} ${k.T + 15}l1.8 -3.6h3.2l1.8 3.6q0 1 -1 1h-4.8q-1 0 -1 -1Z`, "#7dff8a", "none") + k.circle(px + 0.5, k.T + 9, 0.9, "#b6ff4f", "none", 0), 0, "#7dff8a"));
     }
-    if (!k.back) {
-      const y = k.ht + 20;
+    const y = k.ht + 20;
+    const strap = headStrap(k, y, "#2a2a36", 2.4, `M${k.hx - 44} ${y + 6}Q${k.hx} ${y - 6} ${k.hx + 44} ${y + 6}`);
+    if (k.back) k.put("flame", strap);
+    else {
       const xs = k.side ? [k.hx + k.side * 16] : [k.hx - 16, k.hx + 16];
-      k.put("flame", k.line(`M${k.hx - 44} ${y + 6}Q${k.hx} ${y - 6} ${k.hx + 44} ${y + 6}`, "#2a2a36", 2.4) +
-        xs.map((x) => k.circle(x, y, 8, "#bfe8ff55", "#2a2a36", 2)).join(""));
+      k.put("flame", strap + xs.map((x) => k.circle(x, y, 8, "#bfe8ff55", "#2a2a36", 2)).join(""));
     }
   },
   // Student Council President: a crisp blazer, an armband and a glowing

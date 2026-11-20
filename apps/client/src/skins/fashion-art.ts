@@ -7,6 +7,7 @@ import type { CharacterId } from "@arena/shared";
 import type { SkinArt, Palette } from "./skin-art";
 import { creaturePalette } from "../creature-palette";
 import { EPIC_REPLACED_PROPS } from "./epic-materials";
+import { ABYSSAL_TEAM } from "./collection-colours";
 
 const blend = (a: string, b: string, t: number) =>
   "#" +
@@ -162,7 +163,11 @@ const artFor = (
   const accent = FASHION_ROSTER[champion][4];
   if (collection === "abyssal-expedition")
     return {
-      palette: { ...tinted(champion, collection), glow: "#8ff5e6" },
+      // Each diver's own sea (collection-colours.ts), on the shared tint.
+      palette: {
+        ...tintPalette(champion, { ...TINTS[collection], hue: ABYSSAL_TEAM[champion].hue }),
+        glow: "#8ff5e6",
+      },
       accessories: [`fashion-${collection}`],
       replaces: EPIC_REPLACED_PROPS.includes(champion)
         ? ["flame", "scarf"]
@@ -173,7 +178,7 @@ const artFor = (
         opacity: 0.12,
         parts: ["tail", "wings"],
       },
-      trail: { kind: "bubble", colors: [0x72f2de, 0xf3ac59] },
+      trail: { kind: "bubble", colors: [0x72f2de, color(ABYSSAL_TEAM[champion].team)] },
       skill: 0x72dfd3,
       // The small glint every Epic has; moving signature motifs are kept
       // for the Legendary collections.
