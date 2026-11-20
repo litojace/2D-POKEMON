@@ -188,6 +188,12 @@ for (const size of [
                   },
                 ),
                 picture: svg.getAttribute("data-rite-picture"),
+                // The tile's tint and the name's colour come from the rite.
+                look: [
+                  getComputedStyle(button).backgroundImage.includes("gradient"),
+                  getComputedStyle(button.querySelector("b")!).color,
+                  getComputedStyle(button).getPropertyValue("--rite-color"),
+                ],
                 ink: {
                   x: ink.x,
                   y: ink.y,
@@ -229,6 +235,19 @@ for (const size of [
           }
           expect(t.stats.map((s) => s.value)).toEqual(buffValues[id]);
           expect(t.picture).toBe(id);
+          // Every rite has its colour (six of the twelve once lost theirs
+          // outside the old card: no tint, white names).
+          const [tinted, nameColor, riteColor] = t.look as [
+            boolean,
+            string,
+            string,
+          ];
+          expect(tinted, `${id} tile tint`).toBe(true);
+          expect(riteColor.trim(), `${id} colour`).toMatch(/^#[0-9a-f]{6}$/i);
+          const hex = riteColor.trim().slice(1);
+          expect(nameColor, `${id} name colour`).toBe(
+            `rgb(${[0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ")})`,
+          );
           expect(t.ink.x).toBeGreaterThanOrEqual(1);
           expect(t.ink.y).toBeGreaterThanOrEqual(1);
           expect(t.ink.right).toBeLessThanOrEqual(159);

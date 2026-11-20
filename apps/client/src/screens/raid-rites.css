@@ -9,6 +9,9 @@
    writes .rites-screen. The Spire's blessings keep the match card
    (.raid-draft, style.css).
 
+   Each rite's colour comes from its art data (raid-rite-art.ts), set on
+   its button as --rite-color: one source for all twelve rites.
+
    Every rule starts #arena-overlay#arena-overlay.is-rites so it wins over
    the rite card's layered rules in style.css without !important. No
    backdrop blur: older phones pay for it per pixel. */
@@ -206,10 +209,15 @@ body.raid-rites-open
   min-height: 48px;
   padding: 10px 12px;
   border: 0;
-  border-bottom: 3px solid rgba(var(--rite-rgb), 0.85);
+  border-bottom: 3px solid
+    color-mix(in srgb, var(--rite-color) 85%, transparent);
   border-radius: 14px 14px 6px 6px;
   background:
-    linear-gradient(to top, rgba(var(--rite-rgb), 0.2), transparent 70%),
+    linear-gradient(
+      to top,
+      color-mix(in srgb, var(--rite-color) 20%, transparent),
+      transparent 70%
+    ),
     #071225e0;
   box-shadow: none;
   color: #fff;
@@ -227,13 +235,15 @@ body.raid-rites-open
   > button:focus-visible:not(:disabled) {
   outline: 2px solid #ffe17b;
   outline-offset: 2px;
-  box-shadow: inset 0 0 0 2px rgba(var(--rite-rgb), 0.85);
+  box-shadow: inset 0 0 0 2px
+    color-mix(in srgb, var(--rite-color) 85%, transparent);
 }
 @media (hover: hover) {
   #arena-overlay#arena-overlay.is-rites
     .raid-rite-options
     > button:hover:not(:disabled) {
-    box-shadow: inset 0 0 0 2px rgba(var(--rite-rgb), 0.85);
+    box-shadow: inset 0 0 0 2px
+      color-mix(in srgb, var(--rite-color) 85%, transparent);
   }
 }
 #arena-overlay#arena-overlay.is-rites
@@ -318,7 +328,7 @@ body.raid-rites-open
   border-radius: 50%;
   background: radial-gradient(
     closest-side,
-    rgba(var(--rite-rgb), 0.35),
+    color-mix(in srgb, var(--rite-color) 35%, transparent),
     transparent
   );
   filter: drop-shadow(0 2px 6px #000a);
@@ -343,7 +353,8 @@ body.raid-rites-open
   border: 0;
   border-radius: 8px;
   background: #050c1cd9;
-  box-shadow: inset 0 0 0 1px rgba(var(--rite-rgb), 0.5);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--rite-color) 50%, transparent);
   line-height: 1;
   text-shadow: none;
 }
