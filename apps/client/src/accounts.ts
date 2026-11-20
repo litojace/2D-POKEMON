@@ -689,7 +689,7 @@ export class AccountUI {
       element("account-logout").onclick = async () => {
         if (this.account?.guest && !this.confirmedGuestLogout) {
           this.hooks.openDialog(
-            `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
+            `<div class="dialog-compact"><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div></div>`,
           );
           element("guest-save").onclick = () => void this.showProfile();
           element("guest-leave").onclick = () => {
@@ -2416,7 +2416,7 @@ export class AccountUI {
       });
     } catch (error) {
       this.hooks.openDialog(
-        `<h2>Admin tools unavailable</h2><p>${escape(error instanceof Error ? error.message : "Unable to load administration.")}</p>`,
+        `<div class="dialog-compact"><h2>Admin tools unavailable</h2><p>${escape(error instanceof Error ? error.message : "Unable to load administration.")}</p></div>`,
       );
     }
   }

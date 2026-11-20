@@ -2125,7 +2125,7 @@ async function showPartyInvite() {
       ? party.members.find((m) => m.id === party!.leader)?.name
       : undefined;
   dialog(
-    `<div class="party-invite"><h2>Invite a friend</h2><p class="muted party-invite-lead">${lead ? `Friends join ${escape(lead)}'s party and follow your leader into each room.` : "Friends join you on the Lobby stage and follow you into matches."}</p><div id="party-invite-list"><p class="muted">Loading your friends…</p></div></div>`,
+    `<div class="party-invite dialog-compact"><h2>Invite a friend</h2><p class="muted party-invite-lead">${lead ? `Friends join ${escape(lead)}'s party and follow your leader into each room.` : "Friends join you on the Lobby stage and follow you into matches."}</p><div id="party-invite-list"><p class="muted">Loading your friends…</p></div></div>`,
   );
   try {
     const list = await accountsUI.nearbyFriends();

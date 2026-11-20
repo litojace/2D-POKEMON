@@ -1783,12 +1783,8 @@ body.hub-active #account-coins > * {
   }
 }
 
-/* Party invitation picker (Lobby → Invite): a short list, so a narrow
-   card on every screen (a landscape phone otherwise widens dialogs to
-   1000px, style.css). */
-dialog:has(.party-invite) {
-  width: min(440px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
-}
+/* Party invitation picker (Lobby → Invite): a short list, so a compact
+   dialog (.dialog-compact, style.css). */
 .party-invite .party-invite-lead {
   margin: 0;
   font-size: calc(13px * var(--text-scale, 1));

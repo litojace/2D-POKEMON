@@ -8618,6 +8618,14 @@ dialog:is(:has(.admin-tabs), :has(#admin-message)) {
   }
 }
 
+/* Short dialogs (a confirmation, a short list) stay a narrow card on every
+   screen: a landscape phone otherwise widens every dialog to 1000px, and a
+   few lines of text stretched across it leave most of the card empty. Wrap
+   the dialog's content in .dialog-compact to opt in. */
+dialog:has(.dialog-compact) {
+  width: min(440px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
+}
+
 /* All menu screens keep navigation and screen actions outside the scroller. */
 dialog[open].framed-dialog {
   display: grid;
