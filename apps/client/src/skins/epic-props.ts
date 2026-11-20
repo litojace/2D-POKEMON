@@ -35,7 +35,9 @@ function onBack(k: Kit, draw: (x: number, y: number, v: View) => string, spread 
   // shows beside the body, below the head, so it is set low and spread.
   // A piece that spreads out beside the body (wings, boosters) is drawn
   // over its edge, or the arms would hide it; others sit behind.
-  else if (k.side) k.put("body", draw(k.C - k.side * k.W * 0.9, k.T + 14, "side"), !spread);
+  // In profile it sits out past the line of the back, drawn over the
+  // body's edge, or the body and tail would hide it.
+  else if (k.side) k.put("body", draw(k.C - k.side * (k.W + 9), k.T + 22, "side"));
   else k.put("body", draw(k.C, k.T + 14, "front"), !spread);
 }
 function slung(k: Kit, shaft: string, sw: number, head: (x: number, y: number, a: number) => string, over = false) {
@@ -153,19 +155,18 @@ const HERO: Details = {
         k.lume("pulse", k.path(`M${bx - 4} ${y + 9}Q${bx} ${y + 22} ${bx + 4} ${y + 9}Z`, "#ffb347", "none", 0), 3 + i, "#ffb347")).join("");
     }, true);
   },
-  // Frost Sentinel: wings of ice shards fanning behind its shoulders.
+  // Frost Sentinel: a kite shield of deep ice, a snowflake lit in its face.
   glacelle(k) {
-    onBack(k, (x, y, v) => {
-      const sides = v === "side" ? [-1] : [-1, 1];
-      // From the front they fan up from beside the arms, clear of the head.
-      const by = v === "front" ? y - 2 : y;
-      return sides.map((s) => [0, 1, 2].map((i) => {
-        const bx = x + s * (v === "side" ? 4 : v === "front" ? k.W + 8 : k.W - 6);
-        const h = 46 - i * 8;
-        return `<g transform="rotate(${s * ((v === "front" ? 18 : 28) + i * 22)} ${bx} ${by})">` + k.path(shard(bx, by, 6.5 - i * 0.8, h), i ? "#c8eeff" : "#8fd8ff", k.ink, 1.2) +
-          k.line(`M${bx} ${by - 3}L${bx} ${by - h + 6}`, "#ffffff", 1.1) + `</g>`;
-      }).join("") + k.lume("twinkle", k.path(k.star(x + s * (k.W + 16), y - 22, 2.2, 4, 0.3), "#ffffff", "none", 0), s > 0 ? 4 : 3, "#ffffff")).join("");
-    }, true);
+    held(k, (x, y) => {
+      const flake = [0, 60, 120].map((a) => {
+        const c = Math.cos((a * Math.PI) / 180) * 7,
+          sn = Math.sin((a * Math.PI) / 180) * 7;
+        return `M${x - c} ${y - 1 - sn}L${x + c} ${y - 1 + sn}`;
+      }).join("");
+      return k.path(`M${x - 13} ${y - 15}Q${x} ${y - 19} ${x + 13} ${y - 15}L${x + 11} ${y + 4}L${x} ${y + 20}L${x - 11} ${y + 4}Z`, "#2c6fb0", k.ink, 1.3) +
+        k.path(`M${x - 9} ${y - 12}Q${x} ${y - 15} ${x + 9} ${y - 12}L${x + 8} ${y + 3}L${x} ${y + 15}L${x - 8} ${y + 3}Z`, "#bfe8ff", "#7fc0e8", 0.8) +
+        k.lume("pulse", k.line(flake, "#ffffff", 1.8), 3, "#9fe8ff");
+    });
   },
   // Skysight: a long red scarf streaming out in the wind.
   halcyra(k) {
