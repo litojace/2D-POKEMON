@@ -131,7 +131,7 @@ export function tailorBack(k: Kit, svg: string) {
     // Fold lines falling from the yoke to the hem.
     [-1, 1].map((s) => `<path d="M${c + s * w * 0.22} ${y0 + h * 0.34}Q${c + s * w * 0.28} ${y0 + h * 0.7} ${c + s * w * 0.3} ${y1}" fill="none" stroke="#000000" stroke-opacity=".16" stroke-width="1.6"/>`).join("") +
     // Topstitching just inside the edge.
-    `<path d="${m[1]}" fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width="3.2" stroke-dasharray="1.8 1.5"/>` +
+    `<path d="${m[1]}" fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width="3" stroke-dasharray="1.8 1.5"/>` +
     `<path d="${m[1]}" fill="none" stroke="#000000" stroke-opacity=".25" stroke-width="6.4"/></g>`;
   const at = (m.index ?? 0) + m[0].length;
   return svg.slice(0, at) + overlay + svg.slice(at);
@@ -159,6 +159,20 @@ export function onPole(k: Kit, item: (x: number, y: number) => string) {
       y = k.T - 46;
     k.put("body", k.line(`M${k.C + s * 12} ${k.B - 6}L${x - s * 2} ${y + 9}`, "#7a5a3a", 2.2) + item(x, y), true);
   }
+}
+/**
+ * A goggle or lens strap round the head at height y: `front` across the
+ * brow from the front; in profile from the near lens back over the skull,
+ * ending at the head's edge rather than past it; across the back of the head
+ * from behind, with a small buckle.
+ */
+export function headStrap(k: Kit, y: number, color: string, sw: number, front: string) {
+  const d = k.back
+    ? `M${k.hx - 44} ${y + 6}Q${k.hx} ${y + 12} ${k.hx + 44} ${y + 6}`
+    : k.side
+      ? `M${k.hx + k.side * 8} ${y - 2}Q${k.hx - k.side * 14} ${y - 6} ${k.hx - k.side * 30} ${y + 8}`
+      : front;
+  return k.line(d, color, sw) + (k.back ? k.rect(k.hx - 3.5, y + 6.5, 7, 5, 1.2, "#8a8f9c", k.ink, 0.6) : "");
 }
 /** A brimmed hat crown + brim, front or side. */
 export function hatShape(k: Kit, w: number, h: number, y: number, crown: string, brim: string, brimW = 1.25) {

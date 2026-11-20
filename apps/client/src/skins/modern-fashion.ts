@@ -14,6 +14,8 @@ import "./modern-stars";
 import "./modern-pirates";
 import "./modern-vanguard";
 import "./modern-kit";
+// Epic signature props, drawn after the Hero Squad and Neon Campus designs.
+import "./epic-props";
 // Legendary headwear and props, drawn over their costumes (after them).
 import "./legend-details-pirates";
 import "./legend-details-vanguard";

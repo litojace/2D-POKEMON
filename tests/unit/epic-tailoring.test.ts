@@ -5,6 +5,7 @@ import { SKIN_ART } from "../../apps/client/src/skins/skin-art";
 import { creatureLayers } from "../../apps/client/src/creature-design";
 import { ABYSSAL_TEAM } from "../../apps/client/src/skins/collection-colours";
 import type { Facing } from "../../apps/client/src/animation/controller";
+import { EPIC_PROPS } from "../../apps/client/src/skins/epic-props";
 
 const ids = Object.keys(CHARACTERS) as CharacterId[];
 const dirs: Facing[] = ["down", "left", "right", "up"];
@@ -36,6 +37,25 @@ describe("Epic skins (3,500 coins)", () => {
         if (!svg.includes("epic-cloth-v") || !svg.includes('stroke-dasharray="1.8 1.5"')) miss.push(`${s.id} ${dir}`);
       }
     expect(miss).toEqual([]);
+  });
+
+  it("give every Hero Squad and Neon Campus skin a signature prop of its own", () => {
+    for (const [theme, table] of Object.entries(EPIC_PROPS)) {
+      expect(Object.keys(table).sort(), theme).toEqual([...ids].sort());
+      expect(new Set(Object.values(table)).size, theme).toBe(ids.length);
+    }
+    // Each draws a piece in every view, through the shared kit.
+    const calls = (fn: (k: any) => void, side: number, back: boolean) => {
+      const parts: string[] = [];
+      const svg = () => "<g/>";
+      fn({ id: "voltkit", side, back, hx: 100, ht: 44, C: 100, T: 121, B: 164, W: 25, L: 75, R: 125, ink: "#000", epic: true,
+        put: (part: string) => parts.push(part), path: svg, line: svg, circle: svg, rect: svg, lume: svg, garment: svg, star: () => "M0 0Z" });
+      return parts;
+    };
+    for (const [theme, table] of Object.entries(EPIC_PROPS))
+      for (const [id, fn] of Object.entries(table))
+        for (const [side, back] of [[0, false], [-1, false], [1, false], [0, true]] as const)
+          expect(calls(fn as (k: any) => void, side, back).length, `${theme} ${id} ${side} ${back}`).toBeGreaterThan(0);
   });
 
   it("keep Legendary's marks off Epics: no gold rim, no clasp, no aura or motif", () => {

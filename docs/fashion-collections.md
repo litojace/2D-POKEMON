@@ -398,6 +398,37 @@ the gold rim and clasp, a two-tone body, a summoned motif).
 | Glacelle | Deep Glow | A frilled jelly collar and a bell cape trailing tendrils, dotted with twinkling lights; a jellyfish hairpin |
 | Halcyra | Paper Crane | A crimson origami tabard with a paper obi and a crane folded on its back; a paper crane at the side of the head |
 
+- **A signature prop per Hero Squad and Neon Campus skin** (`epic-props.ts`),
+  big enough to read at battle size and changing the outline, its lit part
+  in lume. The chibi head hides the shoulders from the front, so pieces sit
+  at the hand (`held`), spread beside the body below the head (`onBack`),
+  or on a shaft across the back with the head beside the face (`slung`):
+
+| Champion | Hero Squad prop | Neon Campus prop |
+| --- | --- | --- |
+| Voltkit | Lightning-bolt fins off the visor | An RGB gaming backpack, lit straps |
+| Cindrake | A molten greatsword on the back | A great bubbling flask |
+| Tidefin | A golden trident, prongs lit | A striped swim ring round the waist |
+| Auralynx | Prism crystals rising off the back | The school banner on a staff |
+| Lumoth | A lantern staff | A big camera with a long lens, flash blinking |
+| Mystowl | A seer's staff with a crescent and star | A stack of books |
+| Terradon | A stone tower shield with lava cracks | The game ball |
+| Duskveil | Tattered night wings off the cape | A stage-red velvet cape with tassels |
+| Coilemur | A horseshoe magnet on the back, sparking | A robot buddy clipped at its side |
+| Pyranda | Twin chestnut boosters, nozzles burning | A strawberry layer cake, candle lit |
+| Glacelle | Wings of ice shards | Its choir robe flaring into a bell |
+| Halcyra | A long red scarf streaming in the wind | A longbow on the back |
+| Sunbara | Tongues of fire at the cape's hem | A paint palette and brush, paint glowing |
+| Astrabun | Its mallet head a full moon | A brass telescope on the back |
+| Wombolder | A giant spanner on the back | A watering can |
+| Shadopus | A katana on the back | A giant magnifying glass |
+| Pangrove | Two great lit-veined leaves off the back | Drumsticks crossed on the back |
+| Mossloth | A great clock on the back, hands lit | A big striped pillow |
+
+Goggle and lens straps (Chestnut Comet, Lab Prodigy, Skysight) run round the
+head in every view (`headStrap`): in profile they stop at the head's edge,
+and from behind they cross the back of the head.
+
 Pieces sit on the body, scarf (back) and head-top parts in all four views and
 stay clear of the eyes (`costume-fit.spec.ts`). Cyber Mecha and the other
 seven champions' Epics, which already wore a costume piece, are unchanged.
