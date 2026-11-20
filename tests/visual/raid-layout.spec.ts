@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   box,
   inside,
+  settle,
   openHub,
   pushUntilBattle,
   snap,
@@ -119,6 +120,10 @@ for (const size of [
   test(`raid choices are centred and the mobile court clears the HUD at ${size.width}x${size.height}`, async ({
     browser,
   }, info) => {
+    // Seven bosses, then the rites: on software rendering (about 14 fps
+    // on a desktop-size canvas) the desktop sizes took 1.5 to 1.9 minutes,
+    // over the 90 s default (CI's machines take 20 to 30 s).
+    test.setTimeout(180_000);
     const mobile = size.width < 1200;
     const context = await browser.newContext({
       viewport: size,
@@ -437,18 +442,43 @@ for (const size of [
           w.__push();
         }, offers);
         await expect(page.locator("[data-raid-rite]")).toHaveCount(6);
-        await page.locator(".raid-draft").evaluate(async (el) => {
+        await page.locator(".rites-screen").evaluate(async (el) => {
           await Promise.all(
             el.getAnimations().map((a) => a.finished.catch(() => {})),
           );
         });
-        for (const id of offers) {
-          const button = await box(page, `[data-raid-rite="${id}"]`);
-          const content = await box(
-            page,
-            `[data-raid-rite="${id}"] .raid-rite-copy`,
-          );
-          expect(inside(content, button)).toBe(true);
+        await settle(page);
+        // Every tile measured in one pass: one round trip per tile part
+        // took longer than the test's time on software rendering.
+        // Very short screens keep the description in Rite details.
+        const parts = [
+          ".raid-rite-copy",
+          ".raid-rite-icon",
+          "b",
+          ...(size.height > 350 ? ["small"] : []),
+        ];
+        const tiles = await page.evaluate(
+          ([offers, parts]) =>
+            offers.map((id) => {
+              const button = document.querySelector(
+                `[data-raid-rite="${id}"]`,
+              )!;
+              const rect = (e: Element) => {
+                const r = e.getBoundingClientRect();
+                return { x: r.x, y: r.y, width: r.width, height: r.height };
+              };
+              return {
+                id,
+                button: rect(button),
+                parts: parts.map((part) => rect(button.querySelector(part)!)),
+              };
+            }),
+          [offers, parts] as const,
+        );
+        for (const { id, button, parts: boxes } of tiles) {
+          const [content] = boxes;
+          for (const [i, part] of boxes.entries())
+            expect(inside(part, button), `${id} ${parts[i]}`).toBe(true);
           expect(
             Math.abs(
               content.x + content.width / 2 - (button.x + button.width / 2),
@@ -459,19 +489,6 @@ for (const size of [
               content.y + content.height / 2 - (button.y + button.height / 2),
             ),
           ).toBeLessThanOrEqual(2);
-          // Very short screens keep the description in Rite details.
-          for (const child of [
-            ".raid-rite-icon",
-            "b",
-            ...(size.height > 350 ? ["small"] : []),
-          ]) {
-            expect(
-              inside(
-                await box(page, `[data-raid-rite="${id}"] ${child}`),
-                button,
-              ),
-            ).toBe(true);
-          }
         }
         if (offers[0] === "shelter")
           await snap(
