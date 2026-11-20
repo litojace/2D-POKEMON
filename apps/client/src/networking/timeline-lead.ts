@@ -43,13 +43,24 @@ export class LocalTimeline {
     if (!Number.isFinite(this.receivedAt)) return 0;
     return Math.min(LEAD.max, Math.max(0, (now - this.receivedAt) / 1000));
   }
-  /** Seconds past the last snapshot's time at which your fighter is drawn. */
-  lead(now: number) {
+  /**
+   * The lead as the newest snapshot says it is, not eased: its unanswered
+   * inputs plus its age. `lead` is smoothed for drawing, so the moment a
+   * snapshot lands it still carries the previous one's age (up to one
+   * snapshot interval, 67 ms, too far). Measuring against a past frame
+   * (a hit on you, battle-perf hitsFar) needs this one.
+   */
+  estimate(now: number) {
     if (!Number.isFinite(this.receivedAt)) return 0;
-    const target = Math.min(
+    return Math.min(
       LEAD.max,
       this.base + Math.max(0, (now - this.receivedAt) / 1000),
     );
+  }
+  /** Seconds past the last snapshot's time at which your fighter is drawn. */
+  lead(now: number) {
+    if (!Number.isFinite(this.receivedAt)) return 0;
+    const target = this.estimate(now);
     if (!Number.isFinite(this.lastNow) || now < this.lastNow)
       this.shown = target;
     else {
