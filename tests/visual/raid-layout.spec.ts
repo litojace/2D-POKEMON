@@ -68,7 +68,10 @@ async function heroTo(page: Page, x: number, y: number) {
     [x, y],
   );
 }
-/** Mark (or clear) a court-wide warning: High Tide's islands may be anywhere. */
+/**
+ * Mark (or clear) a court-wide warning: a High Tide marked over the whole
+ * court, so the camera's frame (what the moment needs) is the whole court.
+ */
 async function courtWarning(page: Page, on: boolean) {
   await page.evaluate((on) => {
     const w = window as any,
@@ -84,7 +87,7 @@ async function courtWarning(page: Page, on: boolean) {
             y: 450,
             tx: 800,
             ty: 450,
-            radius: 120,
+            radius: 950,
           },
         ]
       : [];
@@ -352,7 +355,8 @@ for (const size of [
         // Desktop fits the whole court: a raider running to a corner
         // doesn't move it. Phones follow the raider there, closer up.
         await heroTo(page, 1500, 800);
-        // Prismatail's light relay (mirrors) keeps the whole court on phones too.
+        // Prismatail's light relay (mirrors) is one court-wide puzzle: phones
+        // frame its skylight, mirrors, heart and raiders, no closer.
         const relay = await page.evaluate(
           () => !!(window as any).__snap.raid.mirrors?.length,
         );
@@ -363,6 +367,25 @@ for (const size of [
           await expect
             .poll(async () => (await cameraSignature(page))[0] / overviewZoom)
             .toBeGreaterThan(1.4);
+        } else if (mobile) {
+          await expect.poll(() => heroOnScreen(page)).toBe(true);
+          await expect
+            .poll(() =>
+              page.evaluate(() => {
+                const w = window as any,
+                  r =
+                    w.__raidLayoutGame.scene.getScene("arena").cameras.main
+                      .worldView;
+                return w.__snap.raid.mirrors.every(
+                  (m: any) =>
+                    m.x > r.x && m.x < r.right && m.y > r.y && m.y < r.bottom,
+                );
+              }),
+            )
+            .toBe(true);
+          expect((await cameraSignature(page))[0]).toBeGreaterThanOrEqual(
+            overviewZoom - 1e-6,
+          );
         } else await expect.poll(() => cameraSignature(page)).toEqual(camera);
         if (boss === "prismatail") {
           // Review screenshots show the loaded floor art and the boss's vector rig.
