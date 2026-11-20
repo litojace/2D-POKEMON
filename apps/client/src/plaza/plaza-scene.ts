@@ -1770,7 +1770,11 @@ export function openPlaza(options) {
       .timeout(5000)
       .emit("plaza-pair-answer", { from: askFrom, yes }, (err, r) => {
         if (yes && (err || !r?.ok))
-          pzToast(err ? "That didn't go through." : r?.error);
+          pzToast(
+            err
+              ? "That didn't go through."
+              : (r?.error ?? "That request has ended."),
+          );
       });
     hideAsk();
     screen.focus({ preventScroll: true });
@@ -1789,8 +1793,7 @@ export function openPlaza(options) {
     if (a) startPair(a, pair);
     if (b) startPair(b, pair);
   };
-  const onPairNo = (m) =>
-    pzToast(`${m?.name ? esc(m.name) : "They"} said maybe later.`);
+  const onPairNo = (m) => pzToast(`${m?.name || "They"} said maybe later.`);
   socket.on("plaza-pair-ask", onPairAsk);
   socket.on("plaza-pair", onPair);
   socket.on("plaza-pair-no", onPairNo);
@@ -4764,7 +4767,9 @@ export function openPlaza(options) {
       for (let i = FX.length - 1; i >= 0; i--)
         if (FX[i].t > FX[i].life) FX.splice(i, 1);
       if (!low) updateAnimals(dt);
+      // Sitting, Stand up comes first; otherwise a spot, then a free seat.
       near =
+        (P.seat != null ? STAND : null) ||
         SPOTS.find((s) => Math.hypot(P.x - s.x, (P.y - s.y) * 1.3) < s.r) ||
         seatAction() ||
         null;
