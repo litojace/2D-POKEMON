@@ -192,6 +192,22 @@ for (const size of SIZES.slice(0, 2))
           return box.scrollWidth - box.clientWidth;
         });
         expect(wide).toBeLessThanOrEqual(1);
+        // Go buttons line up: cards in one row put theirs at the same height.
+        const rows = await dialog.evaluate((d) => {
+          const byRow = new Map<number, number[]>();
+          for (const card of Array.from(d.querySelectorAll(".htp-card"))) {
+            const go = card.querySelector(".htp-go");
+            if (!go) continue;
+            const top = Math.round(card.getBoundingClientRect().top);
+            byRow.set(top, [
+              ...(byRow.get(top) ?? []),
+              go.getBoundingClientRect().bottom,
+            ]);
+          }
+          return Array.from(byRow.values());
+        });
+        for (const row of rows)
+          expect(Math.max(...row) - Math.min(...row)).toBeLessThanOrEqual(1);
         await snap(page, info, `htp-${topic}-${size.width}x${size.height}`);
       }
       // A phone sees the touch buttons first, not keyboard keys.

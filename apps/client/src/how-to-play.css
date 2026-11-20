@@ -60,7 +60,9 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 10px;
-  align-items: start;
+  /* Cards in a row share one height; the text column fills it, so every
+     Go button sits on the card's bottom edge, level across the row. */
+  align-items: stretch;
   min-width: 0;
   padding: 12px;
   border: 1px solid var(--ui-line);
@@ -69,16 +71,24 @@
 }
 .htp-card.has-art {
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
   padding: 0;
   overflow: hidden;
 }
 .htp-card.has-art .htp-card-text {
   padding: 0 12px 12px;
 }
+.htp-card-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
 .htp-card .guide-scene {
   height: 112px;
 }
 .htp-icon {
+  align-self: start;
   display: grid;
   place-items: center;
   width: 40px;
@@ -99,7 +109,7 @@
   letter-spacing: 0.02em;
 }
 .htp-card p {
-  margin: 0;
+  margin: 0 0 8px;
   color: var(--ui-dim);
   font-size: var(--fs-small);
   line-height: 1.45;
@@ -109,7 +119,8 @@
   align-items: center;
   gap: 6px;
   min-height: 36px;
-  margin-top: 8px;
+  /* Pushed to the bottom of the card (see .htp-card). */
+  margin-top: auto;
   padding: 0 12px;
   border: 1px solid color-mix(in srgb, var(--ui-accent) 55%, transparent);
   border-radius: var(--rad-pill);
@@ -210,6 +221,12 @@
 }
 /* Short landscape phones: smaller pictures so a row of cards fits. */
 @media (max-height: 430px) {
+  .htp-card-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+  }
   .htp-card .guide-scene {
     height: 92px;
   }
