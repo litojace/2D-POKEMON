@@ -413,6 +413,21 @@ branch (section 10) now also show the round trip p50/p95, late snapshots,
 corrections a minute (and the largest) and the wait from a skill press to
 its confirmation.
 
+**`hitsFar` read most hits as far until 20 Nov 2026.** Every PvP match
+that day reported about 20 hits a minute that "landed while you were drawn
+over 24 px away", some 300–500 px. `correction-sim.ts` now also measures
+each hit on you the way the phone does and against the truth (the frame
+that first showed the input the server ran on the hit's tick). The phone
+looked back by `LocalTimeline.lead`, which is eased for drawing: the moment
+a snapshot lands it still carries the previous snapshot's age, so it picked
+a frame 66–99 ms too early, and a fighter walking at speed had moved more
+than 24 px by then. Over 120 s against a Hard Coilemur that read 130 of 356
+hits as far; really 3 were. `measureHitGap` (main.ts) now looks back by
+`LocalTimeline.estimate`, the snapshot's own lead (`drawnGap` in
+battle-perf.ts), and reads 2. `tests/unit/correction-sim.test.ts` holds it
+(it fails with the eased lead). Reports from builds before this change
+overcount `hitsFar` and `hitGapMax`; read them only against each other.
+
 ### 12. Late inputs: the "unexplained" jumps in Hard-bot fights
 
 On 11–13 Nov 2026 the reports' Android phone (10 cores, 8 GB, Wi-Fi,

@@ -52,6 +52,8 @@ import {
   correctionCause,
   type CorrectionReason,
 } from "../../apps/client/src/networking/correction-cause.js";
+import { LocalTimeline } from "../../apps/client/src/networking/timeline-lead.js";
+import { HIT_GAP_PX, drawnGap } from "../../apps/client/src/battle-perf.js";
 
 function rng(seed: number) {
   return () => {
@@ -96,6 +98,17 @@ class Link<T> {
 export interface Correction extends CorrectionReason {
   px: number;
 }
+/**
+ * A hit on you, measured as the phone measures it (battle-perf hitsFar:
+ * drawnGap at the snapshot's arrival minus the lead) and as it really was:
+ * `aligned` is how far you were drawn, on the frame that first showed the
+ * input the server ran on the hit's tick, from where the server hit you.
+ */
+export interface HitGap {
+  gap: number;
+  aligned: number;
+  abilityId?: string;
+}
 
 export function simulateCorrections(o: {
   seconds?: number;
@@ -127,6 +140,12 @@ export function simulateCorrections(o: {
   arena?: ArenaId;
   /** How often the server really ticks (Node's setInterval: about 30.1). */
   serverHz?: number;
+  /**
+   * Which lead the hit gap is measured with: the snapshot's own
+   * ("estimate", what the game uses) or the eased one drawn ("lead", the
+   * reading before 20 Nov 2026).
+   */
+  hitLead?: "estimate" | "lead";
 }) {
   const seconds = o.seconds ?? 120;
   const random = rng(o.seed ?? 11);
@@ -175,6 +194,16 @@ export function simulateCorrections(o: {
   const corrections: Correction[] = [];
   let snapshots = 0,
     pendingSum = 0;
+  // The hit-gap reading (main.ts measureHitGap): your fighter as drawn
+  // (eased onto the prediction like the scene does), the lead, and, as the
+  // truth, the input the server had run when each hit on you landed.
+  const timeline = new LocalTimeline();
+  const drawnSelf: { t: number; x: number; y: number }[] = [];
+  let drawn: { x: number; y: number } | undefined;
+  const shown = new Map<number, { x: number; y: number }>();
+  const hitAck = new Map<number, number>();
+  const hits: HitGap[] = [];
+  let serverEvent = 0;
   const frameMs = 1000 / (o.fps ?? 60);
   for (let now = 0; now < seconds * 1000; now += frameMs) {
     const serverMs = 1000 / (o.serverHz ?? RULES.tick);
@@ -188,6 +217,11 @@ export function simulateCorrections(o: {
       for (const f of others) f.hp = 100_000;
       if (o.fullUlt) bot.ult = RULES.ultMax;
       arena.tick();
+      for (const e of arena.events)
+        if (e.id > serverEvent) {
+          serverEvent = e.id;
+          if (e.kind === "hit" && e.target === "me") hitAck.set(e.id, me.ack);
+        }
       if (++ticks % Math.round(RULES.tick / RULES.snapshot) === 0) {
         const s = arena.snapshot();
         s.events = s.events.filter((e) => e.id > cursor);
@@ -206,8 +240,22 @@ export function simulateCorrections(o: {
       local = structuredClone(server);
       if (!o.noCarry) carryCurrent(local, state.time);
       held = server.held ?? 0;
+      timeline.snapshot(Math.max(0, pending.length - held), now);
       for (const { input, tick } of serverSteps(pending, held))
         predictFighter(local, input, state.time + tick / RULES.tick, false);
+      for (const e of state.events) {
+        if (e.kind !== "hit" || e.target !== "me") continue;
+        const lead =
+          o.hitLead === "lead" ? timeline.lead(now) : timeline.estimate(now);
+        const gap = drawnGap(drawnSelf, now - lead * 1000, e.x, e.y);
+        const saw = shown.get(hitAck.get(e.id) ?? -1);
+        if (gap !== undefined && saw)
+          hits.push({
+            gap,
+            aligned: Math.hypot(saw.x - e.x, saw.y - e.y),
+            abilityId: e.abilityId,
+          });
+      }
       if (!before) continue;
       const px = Math.hypot(local.x - before.x, local.y - before.y);
       if (px <= 4) continue;
@@ -258,6 +306,15 @@ export function simulateCorrections(o: {
           false,
         );
     }
+    // The scene eases your drawn fighter onto the prediction (main.ts).
+    drawn ??= { x: local.x, y: local.y };
+    const ease = 1 - Math.exp(-frameMs / 30);
+    drawn.x += (local.x - drawn.x) * ease;
+    drawn.y += (local.y - drawn.y) * ease;
+    drawnSelf.push({ t: now, x: drawn.x, y: drawn.y });
+    if (drawnSelf.length > 150) drawnSelf.splice(0, 30);
+    if (!shown.has(seq)) shown.set(seq, { x: drawn.x, y: drawn.y });
+    timeline.lead(now);
   }
   // As the match reports' lead: pending inputs at a snapshot, plus the
   // snapshot's age on average (half a snapshot interval).
@@ -266,12 +323,12 @@ export function simulateCorrections(o: {
         ((pendingSum / snapshots) * 1000) / RULES.tick + 500 / RULES.snapshot,
       )
     : 0;
-  return { seconds, snapshots, corrections, lead };
+  return { seconds, snapshots, corrections, lead, hits };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const [secs, lat, mine, theirs] = process.argv.slice(2);
-  const { seconds, snapshots, corrections, lead } = simulateCorrections({
+  const { seconds, snapshots, corrections, lead, hits } = simulateCorrections({
     seconds: Number(secs ?? 120),
     latency: Number(lat ?? 33),
     me: (mine as CharacterId) ?? "tidefin",
@@ -290,6 +347,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     bots: Number(process.env.BOTS ?? 1),
     arena: (process.env.ARENA as ArenaId | undefined) || undefined,
     serverHz: Number(process.env.SERVER_HZ ?? RULES.tick),
+    hitLead: process.env.HIT_LEAD === "lead" ? "lead" : "estimate",
   });
   const by = new Map<string, Correction[]>();
   for (const c of corrections) {
@@ -306,4 +364,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       `${String(list.length).padStart(5)}  median ${px[Math.floor(px.length / 2)].toFixed(0)} px, max ${px.at(-1)!.toFixed(0)} px  ${key}`,
     );
   }
+  const far = (k: "gap" | "aligned") =>
+    hits.filter((h) => h[k] > HIT_GAP_PX).length;
+  console.log(
+    `${hits.length} hits on you: ${far("gap")} far as the phone measures (hitsFar), ${far("aligned")} really drawn over ${HIT_GAP_PX} px away`,
+  );
 }
