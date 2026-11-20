@@ -7,7 +7,7 @@ import {
   type GraphicsSetting,
 } from "./graphics-quality";
 import { softwareRendering } from "./gpu-check";
-import { RaidCamera, raidWantsCourt } from "./raid-camera";
+import { RaidCamera, raidFrame } from "./raid-camera";
 import { AllyBearings } from "./ally-bearings";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
 import { capGameFrames, screenHz, type FrameCap } from "./frame-cap";
@@ -6080,7 +6080,15 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
               }
             : undefined,
           raidBoss ? (this.positions.get(raidBoss.id) ?? raidBoss) : undefined,
-          raidWantsCourt(state.raid, state.time),
+          raidFrame(
+            state.raid,
+            state.time,
+            state.players
+              .filter(
+                (p) => !p.out && (p.hp > 0 || !!state!.raid!.downed[p.id]),
+              )
+              .map((p) => this.positions.get(p.id) ?? p),
+          ),
           `${state.code}:${state.round ?? 0}:${myId ?? ""}`,
           delta,
           feelNow / 1000,
