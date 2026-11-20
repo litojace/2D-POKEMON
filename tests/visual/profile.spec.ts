@@ -757,6 +757,17 @@ test("a locked name says when; a refusal says why", async ({ browser }) => {
         days: 14,
       };
     }, serverTime);
+    // The account, to forget its 30 s copies below (accounts.ts fetchCopy).
+    await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
+      const response = await route.fetch();
+      const body = await response.text();
+      const marker = 'window.dispatchEvent(new Event("arena:ready"));';
+      expect(body).toContain(marker);
+      await route.fulfill({
+        response,
+        body: body.replace(marker, "window.__account=accountsUI;" + marker),
+      });
+    });
     const { errors, panel } = await open(page, SIZES[3]);
     await expect(panel.locator("[data-profile-rename]")).toBeDisabled();
     await expect(
@@ -768,6 +779,10 @@ test("a locked name says when; a refusal says why", async ({ browser }) => {
       const w = window as any;
       w.__nameStatus = null;
       w.__refuseName = true;
+      // The Profile reopens on copies up to 30 s old; this one must be asked
+      // again. (Before the startup curtain a late fighter save, a POST,
+      // happened to clear them mid-test.)
+      w.__account.forgetCopies();
     });
     await page.keyboard.press("Escape");
     // Gone (its close glides out) before it opens again with the new answer.

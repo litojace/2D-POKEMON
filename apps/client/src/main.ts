@@ -250,6 +250,7 @@ import {
   portraitAvatar,
 } from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
+import { startStartupCurtain } from "./startup-curtain";
 import "./ui/tokens.css";
 import "./style.css";
 import "./ui/components.css";
@@ -3047,7 +3048,13 @@ function renderMenu(revealSelection = false) {
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
   // Everyone plays from the shared hub, so the game needs an account.
   // No hub without an account or a connection: the welcome screen instead.
-  if (!isRoom && !watchingRoom && (!accountsUI?.account || !connected))
+  // Nor before the whole profile is in (skins, saved fighter, avatar): the
+  // hub opens complete instead of changing in front of the player.
+  if (
+    !isRoom &&
+    !watchingRoom &&
+    (!accountsUI?.account || !accountsUI.checked || !connected)
+  )
     return renderGate();
   document.body.classList.remove("gate-active");
   syncHub();
@@ -7878,6 +7885,19 @@ function syncBattleLoop() {
   } else if (gameInstance.isRunning && !gameInstance.loop.running)
     gameInstance.loop.wake();
 }
+// The startup curtain (docs/loading-screens.md): one loading screen from
+// the first frame until the first screen is complete underneath.
+startStartupCurtain(() => {
+  if (screen.startsWith("gate:")) {
+    const status = screen.split(":")[1];
+    if (status === "loading")
+      return accountsUI?.account ? "profile" : "account";
+    return status === "connecting" ? "connecting" : "gate";
+  }
+  if (screen || document.body.classList.contains("battle-active"))
+    return "scene";
+  return "account";
+});
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
   reportPhoto: (photo, name) => reportPhoto(photo, name),

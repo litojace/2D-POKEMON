@@ -24,6 +24,12 @@
 .server-startup::before {
   z-index: -2;
   background: var(--startup-backdrop) center / cover no-repeat;
+  /* Faded in once downloaded, never drawn in strips (server-connection.ts). */
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+.server-startup.has-backdrop::before {
+  opacity: 1;
 }
 .server-startup::after {
   z-index: -1;
@@ -113,6 +119,11 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+.server-startup.has-sigil .server-startup-art > img {
+  opacity: 1;
 }
 .server-startup-aura {
   position: absolute;
@@ -398,5 +409,20 @@
   .server-startup *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+/* The startup curtain fades away over the finished first screen, which takes
+   taps as soon as the fade starts (server-connection.ts). */
+.server-startup {
+  transition: opacity 300ms ease-out;
+}
+.server-startup.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .server-startup,
+  .server-startup::before {
+    transition: none;
   }
 }

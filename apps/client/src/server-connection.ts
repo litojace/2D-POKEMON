@@ -19,6 +19,17 @@ let progressTimer: ReturnType<typeof setInterval> | undefined;
 let dismiss: ReturnType<typeof setTimeout> | undefined;
 let activeMs = 0;
 let lastTick = performance.now();
+/**
+ * The startup curtain (loading-curtain notes in docs/loading-screens.md):
+ * from the first frame this panel covers the game until the first screen is
+ * complete (profile, skins, fighter, connection, artwork), so a player never
+ * watches the hub fill in. While held, a healthy server no longer removes it:
+ * the game's own steps advance the bar and releaseStartupCurtain() ends it.
+ */
+let held: { floor: number; message: string } | undefined;
+/** The bar never moves backwards while the curtain is held. */
+let shownProgress = 0;
+let leaving: ReturnType<typeof setTimeout> | undefined;
 
 function updateProgress() {
   const now = performance.now();
@@ -29,23 +40,42 @@ function updateProgress() {
   if (!meter) return;
   // Pace the estimate across the typical one-minute cold start. Hold at 92%
   // if it takes longer; only a successful health response may complete it.
-  const amount =
-    currentStatus === "ready"
+  // Held for startup, the server is only the first third of the bar: the
+  // profile, the connection and the artwork fill the rest (curtainStep).
+  const server = held ? 0.3 : 0.92;
+  const amount = !held
+    ? currentStatus === "ready"
       ? 1
-      : 0.08 + 0.84 * Math.min(activeMs / 60_000, 1);
+      : 0.08 + 0.84 * Math.min(activeMs / 60_000, 1)
+    : Math.max(
+        shownProgress,
+        held.floor,
+        currentStatus === "ready"
+          ? server
+          : 0.04 + (server - 0.04) * Math.min(activeMs / 60_000, 1),
+      );
+  if (held) shownProgress = amount;
   meter.style.setProperty("--startup-progress", String(amount));
   meter.setAttribute(
     "aria-valuetext",
-    currentStatus === "ready"
-      ? "Connected"
-      : currentStatus === "offline"
-        ? "Waiting for your connection"
-        : currentStatus === "failed"
-          ? "Connection paused. Try again."
-          : "Waiting for the game server",
+    held && currentStatus === "ready"
+      ? held.message
+      : currentStatus === "ready"
+        ? "Connected"
+        : currentStatus === "offline"
+          ? "Waiting for your connection"
+          : currentStatus === "failed"
+            ? "Connection paused. Try again."
+            : "Waiting for the game server",
   );
-  if (currentStatus === "ready") meter.setAttribute("aria-valuenow", "100");
-  else meter.removeAttribute("aria-valuenow");
+  // Waiting on the server is open-ended (no value); once it answers, the
+  // startup steps are a real percentage, and only the release reaches 100.
+  if (currentStatus !== "ready") meter.removeAttribute("aria-valuenow");
+  else
+    meter.setAttribute(
+      "aria-valuenow",
+      held ? String(Math.round(amount * 100)) : "100",
+    );
 }
 
 function syncProgressTimer() {
@@ -69,6 +99,8 @@ function showStatus(status: StartupStatus) {
     clearTimeout(reveal);
     reveal = undefined;
     syncProgressTimer();
+    // Held for startup: the game's own steps continue on the same bar.
+    if (held) return renderStatus();
     if (panel) {
       panel.dataset.status = status;
       panel.querySelector("p")!.textContent = "Connected. Entering the arena…";
@@ -92,7 +124,7 @@ function showStatus(status: StartupStatus) {
 
 function renderStatus() {
   const status = currentStatus;
-  if (status === "ready") return;
+  if (status === "ready" && !held) return;
   if (!panel) {
     panel = document.createElement("section");
     panel.id = "server-startup";
@@ -101,6 +133,7 @@ function renderStatus() {
     panel.style.setProperty("--startup-backdrop", `url("${starfield}")`);
     panel.innerHTML = `<div class="server-startup-card"><header class="server-startup-brand"><h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span>${orbits}<img src="${sigil}" width="960" height="960" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"></p><button type="button" hidden>Try again</button></div></div>`;
     const emblem = panel.querySelector("img")!;
+    const shell = panel;
     emblem.addEventListener(
       "error",
       () => {
@@ -108,10 +141,23 @@ function renderStatus() {
       },
       { once: true },
     );
+    // The crest and the starfield fade in once decoded instead of popping
+    // in (or painting in strips) over the first frames.
+    void emblem
+      .decode()
+      .then(() => shell.classList.add("has-sigil"))
+      .catch(() => {});
+    const backdrop = new Image();
+    backdrop.src = starfield;
+    void backdrop
+      .decode()
+      .then(() => shell.classList.add("has-backdrop"))
+      .catch(() => shell.classList.add("has-backdrop"));
     panel.querySelector("button")!.onclick = () => retry?.();
     document.body.append(panel);
   }
   const copy = {
+    ready: held?.message ?? "",
     connecting: "Connecting to the game server…",
     waiting:
       "The server is waking up. You’ll enter automatically when it’s ready.",
@@ -122,9 +168,68 @@ function renderStatus() {
   const message = panel.querySelector("p")!;
   if (message.textContent !== copy[status]) message.textContent = copy[status];
   panel.querySelector("button")!.hidden = status !== "failed";
-  panel.dataset.status = status;
+  // "loading": the server answered and the game is still getting ready (the
+  // bar keeps its sheen, unlike a finished "ready").
+  panel.dataset.status = held && status === "ready" ? "loading" : status;
   updateProgress();
   syncProgressTimer();
+}
+
+/**
+ * Cover the game from its first frame until releaseStartupCurtain(). Call
+ * once, at startup, before anything is shown.
+ */
+export function holdStartupCurtain(message = "Connecting to the game server…") {
+  held = { floor: 0.04, message };
+  shownProgress = 0;
+  clearTimeout(reveal);
+  reveal = undefined;
+  renderStatus();
+  panel?.setAttribute("aria-busy", "true");
+}
+/** A startup step is done: the bar moves to at least `floor` (0–1). */
+export function curtainStep(floor: number, message: string) {
+  if (!held) return;
+  held = { floor: Math.max(held.floor, floor), message };
+  if (currentStatus === "ready") renderStatus();
+  else updateProgress();
+}
+/** The game server has answered (the last health check succeeded). */
+export function serverReady() {
+  return currentStatus === "ready";
+}
+/** Whether the startup curtain still covers the game. */
+export function curtainHeld() {
+  return !!held;
+}
+/**
+ * The first screen is complete: fill the bar, then fade the curtain out.
+ * A server still waking up, offline or failed keeps its own panel and
+ * retry button (the server's status decides, as before the curtain).
+ */
+export function releaseStartupCurtain() {
+  if (!held) return;
+  held = undefined;
+  if (currentStatus !== "ready" || !panel) return void syncProgressTimer();
+  const leavingPanel = panel;
+  panel.dataset.status = "ready";
+  panel.removeAttribute("aria-busy");
+  panel.querySelector("p")!.textContent = "Entering the arena…";
+  updateProgress();
+  syncProgressTimer();
+  // A later wait for the server (after an hour asleep, say) gets a panel
+  // of its own rather than this fading one.
+  panel = undefined;
+  clearTimeout(leaving);
+  // A short beat at full, then a quick fade: the game is already drawn
+  // underneath, and it takes taps as soon as the fade starts.
+  leaving = setTimeout(() => {
+    leavingPanel.classList.add("is-leaving");
+    leaving = setTimeout(() => {
+      leavingPanel.remove();
+      leaving = undefined;
+    }, 320);
+  }, 180);
 }
 
 const startup = new ServerStartup(

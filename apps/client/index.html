@@ -44,12 +44,33 @@
           16px/1.5 system-ui,
           sans-serif;
       }
+      /* While the game's code downloads this shell matches the startup
+         curtain that follows it (server-connection.css): the same title and
+         line, so opening the game reads as one loading screen. */
       #app-boot h1 {
         margin: 0;
+        color: #f2f5ff;
+        font:
+          600 clamp(27px, 7.2vh, 60px) / 0.96 "Barlow Condensed",
+          Impact,
+          system-ui,
+          sans-serif;
+        letter-spacing: 0.17em;
+        padding-left: 0.17em;
+        text-transform: uppercase;
+      }
+      #app-boot h1 span {
+        display: block;
+      }
+      /* A failed load is a message, not a title. */
+      #app-boot:has(button:not([hidden])) h1 {
         color: #ffe08a;
         font:
           700 28px/1.2 system-ui,
           sans-serif;
+        letter-spacing: 0;
+        padding-left: 0;
+        text-transform: none;
       }
       #app-boot p {
         margin: 0;
@@ -120,7 +141,9 @@
           if (ready) return;
           const shell = document.getElementById("app-boot");
           if (!shell) return;
-          shell.querySelector("h1").textContent = "The arena couldn't load";
+          const title = shell.querySelector("h1");
+          title.removeAttribute("aria-label");
+          title.textContent = "The arena couldn't load";
           shell.querySelector("p").textContent =
             "Reload to reconnect. Your account and progress are kept.";
           shell.querySelector("button").hidden = false;
@@ -193,8 +216,8 @@
   </head>
   <body>
     <section id="app-boot" role="status" aria-live="polite">
-      <h1>Entering the arena…</h1>
-      <p>Loading your game.</p>
+      <h1 aria-label="Element Arena"><span>Element</span><span>Arena</span></h1>
+      <p>Opening the arena…</p>
       <button type="button" hidden>Reload game</button>
     </section>
     <div id="app"></div>

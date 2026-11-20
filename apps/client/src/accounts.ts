@@ -123,6 +123,11 @@ export const COPY_MAX_AGE_MS = 30_000;
 export const FRIENDS_MAX_AGE_MS = 10_000;
 /** Between screens' code loaded ahead (preloadScreens), and before the first. */
 const PRELOAD_GAP_MS = 4000;
+/**
+ * How long a login waits for the saved fighter and avatar before showing the
+ * hub anyway (they then arrive a moment later, as before).
+ */
+const PROFILE_EXTRAS_MS = 4000;
 const storageKey = "parena-auth";
 const storage = {
   getItem: (key: string) =>
@@ -343,36 +348,51 @@ export class AccountUI {
         if (version !== this.generation) return;
         this.account = account;
         // A new login: start on the fighter this account last picked, on
-        // whatever device (not awaited: the rest of the profile goes on).
-        if (!samePlayer) void this.loadSavedFighter(version);
-        if (!samePlayer) void this.loadAvatar(version);
-        if (!samePlayer) void this.loadBlocked(version);
-        try {
-          const progress = (await this.fetchCopy("/api/raids")) as RaidProgress;
-          if (version !== this.generation) return;
-          // Raids open with it at once (and ask again only once it's old).
-          this.raidProgress = progress;
-          this.raidLook = raidLookOf(progress);
-          noteSeenRewards(account.id, progress);
-          this.raidClears = bossClears(progress);
-        } catch {
-          /* Raid storage is optional until migration 007 is installed. */
+        // whatever device, wearing their avatar. Both are part of the first
+        // screen (waited for below, briefly), so it never opens on the
+        // default fighter and swaps a moment later.
+        const extras = samePlayer
+          ? []
+          : [
+              this.loadSavedFighter(version),
+              this.loadAvatar(version),
+              this.loadBlocked(version),
+            ];
+        // Raids, the Spire and the Shop are separate records: asked for
+        // together, the profile (and the skins it wears) arrives in one
+        // round trip instead of three in a row.
+        const [raids, spire, economy] = await Promise.allSettled([
+          this.fetchCopy("/api/raids"),
+          this.fetchCopy("/api/spire"),
+          this.fetchCopy("/api/economy"),
+        ]);
+        if (version !== this.generation) return;
+        // Raid storage is optional until migration 007 is installed.
+        if (raids.status === "fulfilled") {
+          try {
+            const progress = raids.value as RaidProgress;
+            // Raids open with it at once (and ask again only once it's old).
+            this.raidProgress = progress;
+            this.raidLook = raidLookOf(progress);
+            noteSeenRewards(account.id, progress);
+            this.raidClears = bossClears(progress);
+          } catch {
+            /* An older server's record: no raid look. */
+          }
         }
         // The Spire's climb, for the Lobby's Spire card (spire-nudge.ts).
-        try {
-          const climb = (await this.fetchCopy("/api/spire")) as SpireProgress;
-          if (version !== this.generation) return;
-          if (climb) this.spireProgress = climb;
-        } catch {
-          /* Before the Spire's migration: no climb, no card. */
-        }
-        try {
-          const economy = (await this.fetchCopy("/api/economy")) as Economy;
-          if (version !== this.generation) return;
-          this.economy = economy;
-        } catch {
-          /* The Shop needs migration 010. */
-        }
+        // Before the Spire's migration: no climb, no card.
+        if (spire.status === "fulfilled" && spire.value)
+          this.spireProgress = spire.value as SpireProgress;
+        // The Shop needs migration 010.
+        if (economy.status === "fulfilled")
+          this.economy = economy.value as Economy;
+        if (extras.length)
+          await Promise.race([
+            Promise.allSettled(extras),
+            new Promise((resolve) => setTimeout(resolve, PROFILE_EXTRAS_MS)),
+          ]);
+        if (version !== this.generation) return;
         // An open Shop or Missions screen shows the fresh copy.
         this.fittingRoom?.refresh();
         this.missionsScreen?.refresh();
