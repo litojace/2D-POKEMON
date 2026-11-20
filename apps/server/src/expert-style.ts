@@ -16,4 +16,7 @@ export const EXPERT_STYLE: Partial<Record<CharacterId, Style>> = {
   mystowl: {"floor":0,"range":0.866},
   terradon: {"slots":[0.881,1,1,1],"sight":0.617,"engage":0.226},
   duskveil: {"slots":[1,1.264,1,1],"retreat":0.414},
+  glacelle: {"slots":[1.112,1,1,1],"circle":0.961,"engage":0.318},
+  halcyra: {"slots":[1,0.418,1,1]},
+  mossloth: {"slots":[1,0.977,1,1],"circle":0.884,"sight":0.977},
 };
