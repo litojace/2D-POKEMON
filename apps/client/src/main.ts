@@ -3416,13 +3416,13 @@ function renderBattle() {
     : isFfa()
       ? [me, ...state.players.filter((p) => p !== me)]
       : state.raid?.spire
-        ? // A climb's Echoes come and go: the cards are the climbers'.
+        ? // A climb's Echoes come and go: the names are the climbers'.
           state.players.filter((p) => !p.echo)
         : state.players;
-  // PvP shows one score badge (names, rounds, the clock): health is over
-  // each fighter, and no one sees an opponent's ultimate (owner, 7 Nov
-  // 2026). Raids and Practice keep the full cards.
-  const badge = !state.raid && !state.practice;
+  // One score badge (names, rounds, the clock) for PvP and Practice alike:
+  // health is over each fighter, and no one sees an opponent's ultimate
+  // (owner, 7 Nov 2026). Raids hide it for their own boss HUD.
+  const badge = !state.raid;
   const key = `battle:${me.character}:${!!state.practice}:${badge}:${state.mode ?? "duel"}:${hudOrder.map((p) => p.id + p.character).join(",")}`;
   if (screen !== key) {
     screen = key;
@@ -3472,15 +3472,14 @@ function renderBattle() {
     $("hud").classList.toggle("hud-ffa", isFfa());
     const timerWrap =
       '<div class="timer-wrap"><span id="round-label"></span><strong id="timer">03:00</strong><span id="phase-label"></span></div>';
-    const card = (p: Fighter, i: number) =>
-      `<div class="health-card ${i >= split ? "right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small><div class="hud-ultimate" title="Ultimate charge"><span>ULT <b id="ult-text-${i}"></b></span><div class="hud-ultimate-track" role="meter" aria-label="${escape(p.name)} ultimate charge" aria-valuemin="0" aria-valuemax="100"><i id="ult-meter-${i}"></i></div></div></div>`;
-    const cards = hudOrder.map(card);
+    // Each fighter's name and score (empty where the mode keeps none).
+    const fighter = (p: Fighter, i: number) =>
+      `<div class="hud-fighter${i >= split ? " right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><b>${escape(p.name)}</b><strong id="score-${i}"></strong></div>`;
+    const fighters = hudOrder.map(fighter);
     // The badge holds each side in a group of the same width, so the clock
     // sits in the middle whatever the names' lengths.
-    $("hud").innerHTML = badge
-      ? `<div class="hud-side">${cards.slice(0, split).join("")}</div>${timerWrap}<div class="hud-side right">${cards.slice(split).join("")}</div>`
-      : cards.map((c, i) => (i === split ? timerWrap : "") + c).join("") +
-        (cards.length <= split ? timerWrap : "");
+    $("hud").innerHTML =
+      `<div class="hud-side">${fighters.slice(0, split).join("")}</div>${timerWrap}<div class="hud-side right">${fighters.slice(split).join("")}</div>`;
     battleHudSize.disconnect();
     battleHudSize.observe($("hud"));
     battleHudSize.observe($("phase-label"));
@@ -3492,92 +3491,19 @@ function renderBattle() {
   }
   document.body.classList.toggle("pvp-badge", badge);
   $("hud").classList.toggle("hud-badge", badge);
-  hudOrder.forEach((p, i) => {
-    // 2v2 has its own health per champion (TEAM_TUNING).
-    const full = maxHealth(p.character, state!.mode, state!.players.length);
-    setHudStyle(
-      $(`health-${i}`),
-      "width",
-      `${(100 * Math.max(0, p.hp)) / full}%`,
-    );
-    setHudText(
-      $(`health-text-${i}`),
-      p.out ? "LEFT THE MATCH" : `${Math.ceil(Math.max(0, p.hp))} / ${full} HP`,
-    );
+  // Rounds won; Practice keeps no score.
+  hudOrder.forEach((p, i) =>
     setHudText(
       $(`score-${i}`),
       state!.practice
-        ? p.id === myId
-          ? "TRAINER"
-          : "TARGET"
-        : badge
-          ? String(
-              isTeams()
-                ? (state!.teamScores?.[teamOf(p)] ?? 0)
-                : (state!.scores[p.id] ?? 0),
-            )
-          : isTeams()
-            ? `${state!.teamScores?.[teamOf(p)] ?? 0} / ${roundsNeeded(state!.mutators)}`
-            : `${state!.scores[p.id]} / ${roundsNeeded(state!.mutators)}`,
-    );
-    const charge = Math.min(
-      100,
-      Math.max(0, (100 * (p.ult ?? 0)) / RULES.ultMax),
-    );
-    setHudText(
-      $(`ult-text-${i}`),
-      charge >= 100 ? "READY" : `${Math.floor(charge)}%`,
-    );
-    setHudStyle($(`ult-meter-${i}`), "width", `${charge}%`);
-    setHudAttribute(
-      $(`ult-meter-${i}`).parentElement!,
-      "aria-valuenow",
-      String(Math.floor(charge)),
-    );
-    $(`ult-meter-${i}`)
-      .closest(".hud-ultimate")
-      ?.classList.toggle("is-ready", charge >= 100);
-    setHudText(
-      $(`status-${i}`),
-      p.statuses
-        .map((s) =>
-          s.kind === "sleep"
-            ? `SLEEP +${Math.round((STATUS_RULES.sleepVulnerability - 1) * 100)}% DMG`
-            : s.kind === "shell"
-              ? `SHELL −${Math.round((1 - STATUS_RULES.shellReduction) * 100)}% DMG`
-              : s.kind === "mark"
-                ? comboOf(s.by).toUpperCase()
-                : s.kind === "warp"
-                  ? "TIME SLOWED"
-                  : s.kind === "leash"
-                    ? "PINNED"
-                    : s.kind === "blind"
-                      ? "BLINDED"
-                      : s.kind === "taunt"
-                        ? "TAUNTED"
-                        : s.kind === "brace"
-                          ? "BRACED"
-                          : s.kind === "clamp"
-                            ? "CHARGED"
-                            : s.kind === "cage"
-                              ? "CAGED"
-                              : s.kind === "current"
-                                ? "SWEPT AWAY"
-                                : s.kind === "lure"
-                                  ? "DRAWN TO THE LIGHT"
-                                  : s.kind === "silence"
-                                    ? "SILENCED"
-                                    : s.kind === "grounded"
-                                      ? "GROUNDED"
-                                      : s.kind === "float"
-                                        ? "SLIDING"
-                                        : s.kind === "confuse"
-                                          ? "CONFUSED"
-                                          : s.kind.toUpperCase(),
-        )
-        .join(" · "),
-    );
-  });
+        ? ""
+        : String(
+            isTeams()
+              ? (state!.teamScores?.[teamOf(p)] ?? 0)
+              : (state!.scores[p.id] ?? 0),
+          ),
+    ),
+  );
   // Blinded by Ink Jet: ink splashes over your view while it lasts.
   document.body.classList.toggle(
     "is-blinded",
@@ -3597,9 +3523,7 @@ function renderBattle() {
     $("round-label"),
     state.practice
       ? "FREE PRACTICE"
-      : badge
-        ? `R${state.round} · BO${roundsNeeded(state.mutators) * 2 - 1}`
-        : `ROUND ${state.round} · BEST OF ${roundsNeeded(state.mutators) * 2 - 1}`,
+      : `R${state.round} · BO${roundsNeeded(state.mutators) * 2 - 1}`,
   );
   setHudText(
     $("network"),
@@ -3619,7 +3543,8 @@ function renderBattle() {
   const phaseText =
     state.phase === "playing"
       ? state.practice
-        ? "TEST YOUR SKILLS"
+        ? // No ring or rule to tell: the badge stays one line.
+          `LIVE · ${ARENAS[state.arena ?? "classic"].name.toUpperCase()}`
         : state.banked
           ? rushLabel(me)
           : state.crown
@@ -7581,11 +7506,6 @@ function drawArenaLive(
     );
     g.lineStyle(2, 0xffffff, 0.35 + 0.4 * k).strokeCircle(h.x, h.y, h.radius);
   }
-}
-/** Name of the combo whose mark `by` places (their fighter's combo). */
-function comboOf(by?: string) {
-  const marker = state?.players.find((p) => p.id === by);
-  return marker ? COMBOS[marker.character].name : "Marked";
 }
 /** A small spinning target: "this fighter is primed for a combo". */
 function drawComboMark(
