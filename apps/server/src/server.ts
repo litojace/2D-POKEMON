@@ -64,6 +64,7 @@ import {
   veilPlayers,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
+import { DRAIN_MESSAGE, busyRoom, trackWrites, waitForDrain } from "./drain.js";
 /** Every champion's basic attack: spammed, so it never forces a snapshot. */
 const BASIC_IDS = new Set(Object.values(CHARACTERS).map((c) => c.basic.id));
 import {
@@ -242,7 +243,17 @@ export function createArenaServer(
     options.diagnostics ?? diagnosticsEvery > 0,
   );
   const app = express();
-  const accounts = options.accounts ?? createAccountProvider();
+  /** Saves still on their way to the database (drain waits for them). */
+  const inflight = new Set<Promise<unknown>>();
+  const accounts = trackWrites(
+    options.accounts ?? createAccountProvider(),
+    inflight,
+  );
+  /**
+   * A deploy is replacing this server (drain, below): matches already running
+   * play on to the end, and no new ones start here.
+   */
+  let draining = false;
   /** Notifications of friends' messages to players who are away (push.ts). */
   const pushSender =
     options.push === undefined
@@ -1505,6 +1516,7 @@ export function createArenaServer(
   }
   io.on("connection", (socket) => {
     claimAccount(socket);
+    if (draining) socket.emit("server-update", { draining: true });
     void loadChatBlocks(socket);
     // Whether typed lines are on, so the chat box shows the right state.
     socket.emit("chat-config", { freeText: chat.freeText });
@@ -1542,6 +1554,11 @@ export function createArenaServer(
     };
     const fail = (cb: unknown, error: string) =>
       reply(cb, { ok: false, error });
+    /** Refuses a new match while a deploy replaces this server. */
+    const updating = (cb: unknown) => {
+      if (draining) fail(cb, DRAIN_MESSAGE);
+      return draining;
+    };
     const attach = (
       arena: Arena,
       name: string,
@@ -1956,6 +1973,7 @@ export function createArenaServer(
         return fail(cb, "Use a display name of 1–20 characters.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
       releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(
@@ -2004,6 +2022,7 @@ export function createArenaServer(
         return fail(cb, "Enter your name and a six-character room code.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
       releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(cb, "This account already has a room.");
@@ -2167,6 +2186,7 @@ export function createArenaServer(
         return fail(cb, "Choose a valid character and display name.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
       releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(cb, "This account already has a room.");
@@ -2195,6 +2215,7 @@ export function createArenaServer(
         return fail(cb, "Choose a fighter, a display name and a difficulty.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
       releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(cb, "This account already has a room.");
@@ -2254,6 +2275,7 @@ export function createArenaServer(
         return fail(cb, "Choose a valid character and display name.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
       releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(cb, "This account already has a room.");
@@ -2490,6 +2512,7 @@ export function createArenaServer(
         if (a.phase !== "lobby")
           return fail(cb, "The match has already started.");
         const p = a.players.find((p) => p.id === id)!;
+        if (!p.ready && updating(cb)) return;
         // Ready locks in the fighter on show (a pick that was never locked).
         if (!p.ready && picksHidden(a) && !p.locked) {
           const pick = p.browse ?? p.character;
@@ -2633,6 +2656,7 @@ export function createArenaServer(
     );
     socket.on("rematch", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
+        if (updating(cb)) return;
         if (a instanceof RaidArena) {
           if (
             a.phase !== "finished" ||
@@ -3574,6 +3598,26 @@ export function createArenaServer(
     plaza,
     plazaStep,
     diagnostics,
+    /** Whether a deploy is replacing this server (drain). */
+    get draining() {
+      return draining;
+    },
+    /**
+     * A deploy is replacing this server (SIGTERM, index.ts): tell every
+     * player, refuse new matches, and wait until the matches already running
+     * have ended and their rewards are saved, or until `deadline` (epoch ms).
+     */
+    drain: async (deadline: number, every?: number) => {
+      if (!draining) {
+        draining = true;
+        io.emit("server-update", { draining: true });
+      }
+      const busy = () => [...rooms.values()].filter(busyRoom).length;
+      connectionLog("arena-drain", { busy: busy(), saving: inflight.size });
+      const result = await waitForDrain({ busy, inflight, deadline, every });
+      connectionLog("arena-drain-done", result);
+      return result;
+    },
     close: async () => {
       timer?.stop();
       for (const check of partyAwayTimers) clearTimeout(check);

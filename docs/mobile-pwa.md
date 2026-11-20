@@ -38,14 +38,22 @@ The manifest requests standalone landscape display, with a `fullscreen` display 
 
 No API responses, authentication tokens, Socket.IO traffic, match snapshots, or dynamic state are cached by the service worker. Existing Supabase/session storage behavior is unchanged. Preview HTML files are development-only and are not included in the production build.
 
-A new worker waits for user approval. The update control stays unavailable during briefing, countdown, play, intermission, or a disconnect pause. Same-origin tab heartbeats also prevent updates while another tab reports an active match. Worker activation never automatically reloads a match: reloading is a separate guarded action outside the match. Tab heartbeats expire after two minutes to recover from crashed tabs. If storage is unavailable, current-tab protection still applies.
+A new worker waits for the player to agree (`pwa.ts`, `pwa-auto-update.ts`). The browser checks for one every minute and whenever the game comes back to the front. Once one is downloaded:
+
+- **In a match, or with a menu open:** a quiet note only ("Update ready · you can install it after closing menus…"). Nothing activates or reloads. Briefing, countdown, play, intermission, a disconnect pause and the results screen all count as a match.
+- **In the Lobby or the Plaza, nothing open:** a prompt with **Update now** and **Later**. Update now activates the worker and reloads (a few seconds). Later hides the prompt for 10 minutes (`UPDATE_SNOOZE_MS`), then it asks again.
+- **Another tab:** same-origin tab heartbeats hold the prompt back while another tab reports an active match. If another tab already applied the update, this tab still asks before reloading. Heartbeats expire after two minutes, so a crashed tab cannot block updates. Without storage, the current tab is still protected.
+
+On landscape phones the prompt is one compact row beside PLAY, so PLAY and Quick Match stay reachable. `tests/visual/shop-stability.spec.ts` checks this at 667×375, 844×390 and 932×430.
+
+When the server announces a deploy (`server-update`, [server updates](server-updates.md)), the client checks for the new version at once, so the prompt is ready when the match ends. The iPhone app updates through the App Store: it has no worker and no prompt, but still shows the server's notice.
 
 ## Deployment
 
 1. Use Node 22+ and `npm ci --include=dev`.
 2. Run `npm run build`, `npm run typecheck`, and `npm test`.
 3. Deploy the complete `apps/client/dist` directory with the existing server; run `npm run start`. The current Render configuration already uses this build/start flow.
-4. Keep the existing Supabase variables and callback URLs configured for the HTTPS domain. Keep one server instance under the existing room architecture.
+4. Keep the existing Supabase variables and callback URLs configured for the HTTPS domain. Keep one server instance under the existing room architecture. Deploys let matches in progress finish first; see [server updates](server-updates.md).
 5. Serve `/sw.js`, `/manifest.webmanifest`, HTML, and icons from that same origin. Express sets `no-cache` for the worker, manifest, and entry HTML and the manifest MIME type. If Cloudflare rules cache everything, exclude these files, `/api/*`, and `/socket.io/*`; purge previously cached entry HTML once after deployment.
 6. Confirm the manifest and icons load, install on each target device, play a match, and test a second deployment's update flow after the match.
 

@@ -24,7 +24,7 @@ npm run build
 npm start
 ```
 
-One Express service serves the frontend and Socket.IO on port 3001. Set `ARENA_DIAGNOSTICS=60` to log tick, event-loop, CPU, memory and bandwidth measurements once a minute; see [networking and battle performance](docs/network-performance.md) for the protocol, the load/latency scripts and measured capacity. Deploy both together; rooms are in memory. Existing room sessions do not survive a server restart. Two players need distinct accounts.
+One Express service serves the frontend and Socket.IO on port 3001. Set `ARENA_DIAGNOSTICS=60` to log tick, event-loop, CPU, memory and bandwidth measurements once a minute; see [networking and battle performance](docs/network-performance.md) for the protocol, the load/latency scripts and measured capacity. Deploy both together; rooms are in memory. A deploy lets matches in progress finish on the old server, up to about five minutes, before it stops (see [server updates](docs/server-updates.md)). Rooms still waiting in a lobby do not survive the restart. Two players need distinct accounts.
 
 ## Play
 
