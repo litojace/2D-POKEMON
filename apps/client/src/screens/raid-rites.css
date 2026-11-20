@@ -326,6 +326,9 @@ body.raid-rites-open
 #arena-overlay#arena-overlay.is-rites .raid-rite-stats {
   position: static;
   display: flex;
+  /* Two figures side by side (the card stacks them). */
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 6px;
   margin: 0;
   transform: none;
