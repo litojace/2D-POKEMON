@@ -823,6 +823,10 @@ column is exactly the "Expert, rules only" column above. The trained
 expert plays Mossloth and Mystowl better, so they are stronger than the
 untrained expert showed: worth knowing when tuning them.
 
+(Those styles and both tables are for the expert with a 0.1 s reaction,
+before the sixth pass and Live Wire. The expert now has a good player's
+hands, and was trained again: see the next section.)
+
 **After adding or changing a champion:** delete
 `balance-out/train-expert.json` (or pass a new `--state`), run
 `npx tsx scripts/balance/train-expert.ts` (add `--only <ids>` to train
@@ -835,3 +839,66 @@ and that no style plays exactly as the rules.
 What it cannot learn: anything the rules have no number for. A new kind of
 skill is still the look-ahead's job (or a new rule); the trainer only tunes
 how the existing rules play each champion.
+
+### A good player's hands
+
+The expert reacted in 0.1 s and aimed within 0.08 rad: a top player at
+best, and more than anyone manages on a phone. Those hands mostly measured
+how well a bot lands quick shots. It now reacts in 0.2 s and aims within
+0.12 (`EXPERT_PROFILE` in `apps/server/src/bot.ts`); its dodging,
+counterplay and look-ahead are unchanged.
+
+Expert without look-ahead, the current roster (after the sixth pass and
+Live Wire), 24 games a pair, the same seeds in all three columns:
+
+| Champion  | 0.1 s, 0.08 | 0.2 s, 0.12 | and the learned style |
+| --------- | ----------: | ----------: | --------------------: |
+| Mossloth  |       67.4% |       59.3% |                 59.8% |
+| Mystowl   |       62.7% |       49.8% |                 48.5% |
+| Halcyra   |       60.5% |       50.2% |                 53.4% |
+| Wombolder |       58.8% |       55.1% |                 55.4% |
+| Auralynx  |       57.6% |       53.7% |                 54.9% |
+| Terradon  |       57.6% |       53.2% |                 54.4% |
+| Sunbara   |       52.5% |       42.9% |                 43.1% |
+| Shadopus  |       50.5% |       58.1% |                 55.1% |
+| Glacelle  |       50.0% |       52.5% |                 52.2% |
+| Lumoth    |       49.3% |       43.9% |                 45.3% |
+| Pyranda   |       49.0% |       41.2% |                 41.4% |
+| Duskveil  |       45.6% |       42.4% |                 41.9% |
+| Coilemur  |       44.1% |       51.7% |                 51.5% |
+| Astrabun  |       42.4% |       56.4% |                 54.7% |
+| Pangrove  |       42.4% |       56.4% |                 55.6% |
+| Tidefin   |       39.2% |       41.9% |                 42.4% |
+| Voltkit   |       39.0% |       31.6% |                 31.6% |
+| Cindrake  |       31.4% |       59.8% |                 58.6% |
+
+Spread (sd) 9.2, 7.5 and 7.3 points. Champions that win by landing many
+quick shots from range fall (Mystowl −13, Halcyra −10, Mossloth −8) and
+those that have to walk in rise (Cindrake +28, Astrabun and Pangrove +14).
+Against the owner's band for skilled players (expert within about 35% -
+65%), the fast hands put Mossloth and Cindrake outside; a good player's
+hands put only Voltkit outside (31.6%), the next one to look at. Every
+expert table earlier in this file, the sixth pass's included, used the
+fast hands.
+
+GAP_LINE
+
+**Trained again for these hands** (`train-expert.ts --rounds 4 --mutants 6
+--games 8`, from scratch, a few hours on four processes, on the roster
+before the sixth pass). After the final check only one style was kept:
+Halcyra casts Focus Shot less (weight 0.42) and Pinning Quill more (1.29),
+kites less and skips weaker casts (`floor` 0.59). It won +9.1, +7.9 and
++10.2 points on the three check sets, and again +9.4, +7.6 and +7.3 on the
+current roster. The 17 others won nothing that held up on fresh games, so
+they play by the rules. In the round robin only games with Halcyra change
+(171 of 3,672): it gains 3.2 points, most of it from Shadopus, which beat
+it 22 of 24 times and now 10.
+
+**Mossloth and Mystowl.** The sixth pass already took Mossloth to 42.0% on
+Hard, the bottom of the owner's band (42% - 58%), and with a good player's
+hands it is 59.3% for experts, inside 35% - 65%. A further nerf was tried
+before that pass (Seed Spit 750 px/s instead of 780: Hard −2.6, expert
+−3.5) and is not shipped, since it would take Hard below the band. Mystowl
+is about 50% on Hard and 49.8% for experts: nothing to change. Hard,
+Normal and Easy never read the expert's hands or styles, so their numbers
+are those of the sixth pass and Live Wire.
