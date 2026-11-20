@@ -157,6 +157,51 @@ export const LOADING_SCENES: LoadingScene[] = [
       { champion: "wombolder", skin: "wombolder-sky-pirates" },
     ],
   },
+  // Ultimates in the game's arenas (the owner's second set, 20 Nov).
+  {
+    id: "ffa-shifting-ruins",
+    mode: "ffa",
+    // Shown from higher up: Astrabun (top right) clear of the title, Auralynx of the tip.
+    focus: "50% 20%",
+    fighters: [
+      { champion: "coilemur", skin: "coilemur-hon-viet" },
+      { champion: "pyranda", skin: "pyranda-hon-viet" },
+      { champion: "auralynx", skin: "auralynx-nova-vanguard" },
+      { champion: "astrabun", skin: "astrabun-nova-vanguard" },
+    ],
+  },
+  {
+    id: "ffa-ember-forge",
+    mode: "ffa",
+    // Shown from higher up: Duskveil (top right) clear of the title.
+    focus: "50% 0%",
+    fighters: [
+      { champion: "cindrake", skin: "cindrake-stars-stripes" },
+      { champion: "wombolder", skin: "wombolder-sky-pirates" },
+      { champion: "tidefin", skin: "tidefin-hon-viet" },
+      { champion: "duskveil", skin: "duskveil-eclipse" },
+    ],
+  },
+  {
+    id: "ffa-tide-pools",
+    mode: "ffa",
+    // Shown from higher up: Halcyra (top right) clear of the title.
+    focus: "50% 0%",
+    fighters: [
+      { champion: "glacelle", skin: "glacelle-stars-stripes" },
+      { champion: "shadopus", skin: "shadopus-sky-pirates" },
+      { champion: "pangrove", skin: "pangrove-nova-vanguard" },
+      { champion: "halcyra", skin: "halcyra-stars-stripes" },
+    ],
+  },
+  {
+    id: "duel-skyline-lance",
+    mode: "duel",
+    fighters: [
+      { champion: "halcyra", skin: "halcyra-stars-stripes" },
+      { champion: "coilemur", skin: "coilemur-sky-pirates" },
+    ],
+  },
 ];
 
 const pictures = import.meta.glob<string>(

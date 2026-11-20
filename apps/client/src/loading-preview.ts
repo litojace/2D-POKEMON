@@ -14,6 +14,7 @@ import { CHARACTERS, ORB_SPOTS, RULES, type CharacterId } from "@arena/shared";
 import { fighterStageArt, setWornSkins } from "./fighter-selection";
 import { LOADING_TIPS, tipMarkup, type LoadingTip } from "./loading-tips";
 import { LOADING_SCENES } from "./loading-art";
+import { CHAMPION_SKINS } from "../../../packages/shared/src/shop";
 import starfield from "./art/startup-starfield.webp";
 import {
   curtainStep,
@@ -122,6 +123,25 @@ if (style === "refs") {
     .map(
       ([id, champion]) =>
         `<figure data-ref="${id}">${fighterStageArt(champion, `ref-${id}`, { skin: id, stage: 1 })}</figure>`,
+    )
+    .join("")}</div>`;
+}
+// roster: every champion in its default look, to tell who is in a painting;
+// &c=<champion>,... instead shows those champions' Legendary and Mythical
+// Shop skins (to tell which skin a painting shows).
+if (style === "roster") {
+  const only = query.get("c")?.split(",");
+  const looks: [CharacterId, string | undefined][] = only
+    ? CHAMPION_SKINS.filter(
+        (s) =>
+          only.includes(s.champion) &&
+          (s.rarity === "legendary" || s.rarity === "mythical"),
+      ).map((s) => [s.champion as CharacterId, s.id])
+    : (Object.keys(CHARACTERS) as CharacterId[]).map((id) => [id, undefined]);
+  styles.roster = `<div class="lp-refs">${looks
+    .map(
+      ([id, skin]) =>
+        `<figure data-ref="${skin ?? id}">${fighterStageArt(id, `roster-${skin ?? id}`, skin ? { skin, stage: 1 } : undefined)}<figcaption>${skin ?? id}</figcaption></figure>`,
     )
     .join("")}</div>`;
 }

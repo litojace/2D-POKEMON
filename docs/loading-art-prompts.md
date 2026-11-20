@@ -144,6 +144,19 @@ made in ChatGPT without a line from this page:
 | `rest-market`        | Mossloth "Ông Đồ", Sunbara "Sunset Skipper" and Lumoth "Đèn Lồng Hội An" at a fruit stall (on a 568x320 phone the tip covers Sunbara's legs: redraw smaller if it matters) |
 | `rest-picnic`        | Terradon "Bulwark Grove" and Glacelle "Frost Weaver" picnicking, flying a kite                                                                                             |
 
+Ultimates in the game's arenas, the owner's second set (20 Nov), also made
+without a line from this page (the 1536x1024 originals were imported, and
+the calm scenes above re-imported from theirs). The FFA ones show a fourth
+fighter at the top right, so they are shown from higher up (`focus`) to keep
+it clear of the title:
+
+| Scene id             | Mode         | Shows                                                                                                                              |
+| -------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `ffa-shifting-ruins` | Free-for-all | Coilemur "Nghệ Nhân Đàn Bầu" casting Electromagnet on Pyranda "Hạt Dẻ Phố Cổ", Auralynx "Prism Sentinel", Astrabun "Comet Strider" |
+| `ffa-ember-forge`    | Free-for-all | Cindrake "Hot-Rod Racer"'s Sunfire Pillar, Wombolder "Anchor Warden", Tidefin "Hoa Đăng", Duskveil "Crimson Sovereign"             |
+| `ffa-tide-pools`     | Free-for-all | Glacelle "Aurora Alaska"'s Whiteout, Shadopus "Kraken Captain", Pangrove "Briar Bastion", Halcyra "Barnstormer"                    |
+| `duel-skyline-lance` | 1v1          | Halcyra "Barnstormer"'s Skyline Lance at Coilemur "Rigging Runner"                                                                 |
+
 **duel-storm-vs-forge**
 
 ```text
