@@ -296,16 +296,17 @@ const DETAILS: Details = {
     k.put("flame", ridges + engrave + rubies, false);
     if (burst) k.put("flame", burst + k.lume("pulse", k.circle(gx, gy + 2, 4.6, "#ff9a3a", "#b8862a", 1) + k.circle(gx, gy + 2, 2, "#fff3b0", "none", 0), 8, VANGUARD_LOOK.sunbara.glow));
   },
-  // Comet Strider: a star band over the brow, lit along its length,
-  // studded with gold stars and holding its comet clip.
+  // Comet Strider: a star band high on the forehead, lit along its length
+  // and studded with gold stars. It stops short of the comet clip on its
+  // left, so the clip's star stands on its own, clear of the eyes.
   astrabun(k) {
     const L = VANGUARD_LOOK.astrabun;
-    const y = k.ht + 22;
+    const y = k.ht + 9;
     const studs = (pts: number[][]) => pts.map(([x, yy], i) => k.lume("twinkle", k.path(k.star(x, yy, 3.2, 5), "#ffe9a8", k.ink, 0.5), 2 + i, L.glow)).join("");
     const band = (d: string) => k.line(d, "#2a3a6a", 4) + k.lume("chase", k.line(d, "#9fd8ff", 1.3), 1, "#9fd8ff");
     if (k.back) k.put("flame", band(`M${k.hx - 34} ${y + 6}Q${k.hx} ${y - 6} ${k.hx + 34} ${y + 6}`));
-    else if (k.side) k.put("flame", prof(k, k.hx, band(`M${k.hx - 28} ${y + 6}Q${k.hx} ${y - 5} ${k.hx + 22} ${y}`) + studs([[k.hx + 4, y - 1.2], [k.hx + 16, y - 0.8]])));
-    else k.put("flame", band(`M${k.hx - 34} ${y + 6}Q${k.hx} ${y - 6} ${k.hx + 30} ${y + 4}`) + studs([[k.hx - 20, y - 0.2], [k.hx - 4, y - 2.6], [k.hx + 12, y - 2.2]]));
+    else if (k.side) k.put("flame", prof(k, k.hx, band(`M${k.hx - 28} ${y + 6}Q${k.hx} ${y - 5} ${k.hx + 16} ${y + 1}`) + studs([[k.hx - 8, y - 0.6], [k.hx + 6, y - 1]])));
+    else k.put("flame", band(`M${k.hx - 32} ${y + 6}Q${k.hx} ${y - 6} ${k.hx + 18} ${y + 1}`) + studs([[k.hx - 18, y - 0.4], [k.hx - 4, y - 2.6], [k.hx + 9, y - 2]]));
   },
   // Quake Marshal: a gold braid and buttons across the cap, wings round its
   // star badge and a button on top; rivets and a gold edge on its
