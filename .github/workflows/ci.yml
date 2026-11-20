@@ -7,13 +7,14 @@ on:
     paths-ignore: ["docs/**", "**/*.md"]
   workflow_dispatch:
 # A newer push to the same branch replaces a run still in progress, except
-# on main: each commit there gets its own group and always runs to the end,
-# so main has a full result per commit even when merges come faster than a
-# run (about 1-1.5 h with 18 visual shards). A shared group with
-# cancel-in-progress: false would not do: GitHub keeps one pending run per
-# group and cancels the older pending one.
+# on main: a main run always runs to the end, so main gets a full result even
+# when merges come faster than a run (about 1-1.5 h with 18 visual shards).
+# Main keeps one group, so at most one run is going and one is waiting there;
+# a newer merge replaces only the waiting one (the waiting run is the latest
+# commit and covers the ones it replaced). One group per commit was tried and
+# queued six full runs at once on a busy morning, more than the runners clear.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   verify:
