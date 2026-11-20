@@ -34,6 +34,10 @@ w.__plazaProgress = {
     { name: "tester", ms: 7420, me: true },
   ],
 };
+/** A wish at the fountain from someone in this copy (tests fill the meter). */
+w.__plazaWish = () => {
+  for (const e of world.wish(ME, Date.now())) fire(e);
+};
 /** Treats left today (PLAZA.treatsDaily a day): treats to throw. */
 w.__plazaTreats = 3;
 w.__plazaTreatsThrown = [] as string[];
@@ -62,9 +66,22 @@ const handle = (ev: string, data: any) => {
       };
     w.__plazaTreats--;
     w.__plazaTreatsThrown.push("cupcake");
-    const thrown = world.treat(ME, "cupcake");
-    setTimeout(() => w.__sock?.fire("plaza-treat", thrown), 0);
-    return { ok: true, treat: "cupcake", treats: w.__plazaTreats };
+    // At the fountain a treat is a wish (server.ts does the same).
+    const wishing = world.atFountain(ME),
+      thrown = world.treat(ME, "cupcake");
+    setTimeout(() => {
+      w.__sock?.fire(
+        "plaza-treat",
+        wishing ? { ...thrown, wish: true } : thrown,
+      );
+      if (wishing) for (const e of world.wish(ME, Date.now())) fire(e);
+    }, 0);
+    return {
+      ok: true,
+      treat: "cupcake",
+      treats: w.__plazaTreats,
+      ...(wishing ? { wish: true } : {}),
+    };
   }
   if (ev === "plaza-look") {
     world.updateProfile(ME, { character: data.character });
@@ -123,11 +140,15 @@ w.__emit = (ev: string, data: any) => {
   else if (ev === "plaza-dash") world.dash(ME, data?.dx, data?.dy, timing);
   else before.emit?.(ev, data);
 };
+/** What server.ts sends for a Plaza event (rewards are the database's). */
+function fire(e: ReturnType<PlazaWorld["step"]>[number]) {
+  if (e.type === "news") w.__sock?.fire("plaza-news", e.news);
+  else if (e.type === "orbs") w.__sock?.fire("plaza-orbs", e.orbs);
+  else if (e.type === "wish") w.__sock?.fire("plaza-wish", e.wish);
+}
 let ticks = 0;
 setInterval(() => {
-  for (const e of world.step(1 / PLAZA.tick, Date.now()))
-    if (e.type === "news") w.__sock?.fire("plaza-news", e.news);
-    else if (e.type === "orbs") w.__sock?.fire("plaza-orbs", e.orbs);
+  for (const e of world.step(1 / PLAZA.tick, Date.now())) fire(e);
   if (++ticks % 2) return;
   const v = w.__sock && world.view(ME);
   if (!v) return;
