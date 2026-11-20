@@ -181,7 +181,10 @@ for (const size of SIZES)
       expect(await calls(page)).toEqual([]);
       // Escape again leaves to the Lobby.
       await page.keyboard.press("Escape");
-      await expect(room).toHaveCount(0);
+      // (A closed Shop stays in the page, hidden, for its next open: ui/hub-panel.ts park.)
+      await expect(
+        page.locator(".fit-room:not([data-ui-leaving])"),
+      ).toHaveCount(0);
       expect(errors).toEqual([]);
     } finally {
       await context.close();
@@ -360,7 +363,7 @@ test("keyboard: tabs and grids move with the arrows, Escape leaves to the Lobby"
   await page.keyboard.up(" ");
   await expect(compare).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.press("Escape");
-  await expect(page.locator(".fit-room")).toHaveCount(0);
+  await expect(page.locator(".fit-room:not([data-ui-leaving])")).toHaveCount(0);
   await expect(rail).toBeFocused();
   expect(errors).toEqual([]);
 });
@@ -443,7 +446,7 @@ test("opening another screen from the rail replaces the fitting room", async ({
   );
   await expect(page.locator(".fit-room")).toHaveCount(1);
   await page.click('.lobby-rail [data-lobby-action="missions"]');
-  await expect(page.locator(".fit-room")).toHaveCount(0);
+  await expect(page.locator(".fit-room:not([data-ui-leaving])")).toHaveCount(0);
   await expect(page.locator(".missions-sheet")).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -471,7 +474,7 @@ test("a late answer can't reopen a closed Shop over another screen", async ({
     await w.__pendingShop;
   });
   await expect(page.locator(".friends-sheet")).toBeVisible();
-  await expect(page.locator(".fit-room")).toHaveCount(0);
+  await expect(page.locator(".fit-room:not([data-ui-leaving])")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -533,7 +536,7 @@ test("the open screen's rail icon lights up, and a second tap on it closes the s
   await page.click('.fit-room [data-ui-mode="wardrobe"]');
   await expect(shop).toHaveAttribute("aria-current", "page");
   await shop.click();
-  await expect(page.locator(".fit-room")).toHaveCount(0);
+  await expect(page.locator(".fit-room:not([data-ui-leaving])")).toHaveCount(0);
   await expect(shop).not.toHaveAttribute("aria-current", "page");
   // A sheet too.
   const missions = page.locator('.lobby-rail [data-lobby-action="missions"]');

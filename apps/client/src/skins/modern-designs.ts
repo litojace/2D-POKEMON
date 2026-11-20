@@ -29,6 +29,8 @@ export interface Kit {
   lume: (kind: "pulse" | "blink" | "chase" | "twinkle", svg: string, i?: number, color?: string) => string;
   garment: (svg: string) => string;
   star: (x: number, y: number, r: number, n: number, inner?: number) => string;
+  /** An Epic collection's costume: tailored cloth (see `tailorFront`). */
+  epic?: boolean;
 }
 
 /** Eye areas (both eyes, front; the near eye, side), measured from the art. */
@@ -53,9 +55,98 @@ function lenses(k: Kit) {
 }
 
 // ---- Shared shapes.
-export const torso = (k: Kit, color: string, extra = "") => k.garment(k.rect(k.L - 2, k.T - 2, k.R - k.L + 4, k.B - k.T + 6, 0, color, "none") + extra);
+export const torso = (k: Kit, color: string, extra = "") =>
+  k.garment(k.rect(k.L - 2, k.T - 2, k.R - k.L + 4, k.B - k.T + 6, 0, color, "none") + (k.epic ? tailorFront(k) : "") + extra);
+
+// ---- Epic tailoring. An Epic costume reads as cut cloth rather than a flat
+// sticker: light on the shoulders, shade at the hem and the sides, seams and
+// stitching. It is drawn in the garment's own colours (white and black at a
+// low opacity), never in metal or a second body hue: the gold rim, clasp and
+// two-tone body stay Legendary's.
+/** The light (top) and shade (bottom, sides) gradients the tailoring uses. */
+export const CLOTH_DEFS =
+  `<defs><linearGradient id="epic-cloth-v" x1="0" y1="0" x2="0" y2="1">` +
+  `<stop offset="0" stop-color="#ffffff" stop-opacity=".32"/><stop offset=".32" stop-color="#ffffff" stop-opacity="0"/>` +
+  `<stop offset=".62" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity=".36"/></linearGradient>` +
+  `<linearGradient id="epic-cloth-h" x1="0" y1="0" x2="1" y2="0">` +
+  `<stop offset="0" stop-color="#000000" stop-opacity=".26"/><stop offset=".24" stop-color="#000000" stop-opacity="0"/>` +
+  `<stop offset=".76" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity=".26"/></linearGradient></defs>`;
+/** Shading, seams and a stitched hem over a front or profile garment's
+ * base cloth (inside its clip, under the design's own pieces). */
+export function tailorFront(k: Kit) {
+  const box = `x="${k.L - 3}" y="${k.T - 3}" width="${k.R - k.L + 6}" height="${k.B - k.T + 8}"`;
+  const seam = (d: string) => `<path d="${d}" fill="none" stroke="#000000" stroke-opacity=".3" stroke-width=".9" stroke-linecap="round"/>`;
+  const seams = k.side
+    ? // The side seam, toward the back of the profile.
+      seam(`M${k.C - k.side * k.W * 0.35} ${k.T + 2}Q${k.C - k.side * k.W * 0.45} ${(k.T + k.B) / 2} ${k.C - k.side * k.W * 0.38} ${k.B + 2}`)
+    : // Princess seams from the shoulders to the hem.
+      [-1, 1].map((s) => seam(`M${k.C + s * k.W * 0.62} ${k.T}Q${k.C + s * k.W * 0.42} ${(k.T + k.B) / 2} ${k.C + s * k.W * 0.5} ${k.B + 2}`)).join("");
+  return (
+    CLOTH_DEFS +
+    `<rect ${box} fill="url(#epic-cloth-v)"/><rect ${box} fill="url(#epic-cloth-h)"/>` +
+    seams +
+    // A stitched hem and its fold line.
+    `<path d="M${k.L - 2} ${k.B - 4.5}H${k.R + 2}" stroke="#000000" stroke-opacity=".22" stroke-width="1"/>` +
+    `<path d="M${k.L} ${k.B - 2.4}H${k.R}" stroke="#ffffff" stroke-opacity=".55" stroke-width=".8" stroke-dasharray="1.8 1.5"/>`
+  );
+}
+/** The box of an SVG path's points. Paths here use absolute commands; H and
+ * V break the x y pairing, so only the M/L/Q/C/T points are read. */
+function pathBox(d: string) {
+  const xs: number[] = [],
+    ys: number[] = [];
+  for (const m of d.matchAll(/[MLQCT]\s*([-\d.\s,]+)/g)) {
+    const v = (m[1].match(/-?\d*\.?\d+/g) ?? []).map(Number);
+    for (let i = 0; i + 1 < v.length; i += 2) xs.push(v[i]), ys.push(v[i + 1]);
+  }
+  if (!xs.length) return null;
+  return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+}
+let clothIds = 0;
+/**
+ * The back of an Epic costume: its panel or cape (the first filled shape
+ * of the back piece, if it is wide enough to be one) gains the same light
+ * and shade, a yoke seam across the shoulders, a centre back seam and
+ * topstitching round its edge, so it reads as a garment from behind too.
+ */
+export function tailorBack(k: Kit, svg: string) {
+  // Opaque cloth only: a see-through piece (a jelly bell) is not sewn.
+  const m = svg.match(/<path d="([^"]+)" fill="(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})"[^>]*\/>/);
+  if (!m) return svg;
+  const box = pathBox(m[1]);
+  if (!box || box.x1 - box.x0 < k.W * 1.4 || box.y1 - box.y0 < (k.B - k.T) * 0.7) return svg;
+  const id = `epic-back-${k.id}-${clothIds++}`;
+  const { x0, x1, y0, y1 } = box,
+    c = (x0 + x1) / 2,
+    w = x1 - x0,
+    h = y1 - y0;
+  const overlay =
+    CLOTH_DEFS +
+    `<defs><clipPath id="${id}"><path d="${m[1]}"/></clipPath></defs><g clip-path="url(#${id})">` +
+    `<path d="${m[1]}" fill="url(#epic-cloth-v)"/><path d="${m[1]}" fill="url(#epic-cloth-h)"/>` +
+    // A yoke across the shoulders and a centre back seam below it.
+    `<path d="M${x0} ${y0 + h * 0.2}Q${c} ${y0 + h * 0.28} ${x1} ${y0 + h * 0.2}" fill="none" stroke="#000000" stroke-opacity=".3" stroke-width="1"/>` +
+    `<path d="M${x0} ${y0 + h * 0.2 + 1.6}Q${c} ${y0 + h * 0.28 + 1.6} ${x1} ${y0 + h * 0.2 + 1.6}" fill="none" stroke="#ffffff" stroke-opacity=".4" stroke-width=".7" stroke-dasharray="1.8 1.5"/>` +
+    `<path d="M${c} ${y0 + h * 0.26}V${y1}" stroke="#000000" stroke-opacity=".24" stroke-width=".9"/>` +
+    // Fold lines falling from the yoke to the hem.
+    [-1, 1].map((s) => `<path d="M${c + s * w * 0.22} ${y0 + h * 0.34}Q${c + s * w * 0.28} ${y0 + h * 0.7} ${c + s * w * 0.3} ${y1}" fill="none" stroke="#000000" stroke-opacity=".16" stroke-width="1.6"/>`).join("") +
+    // Topstitching just inside the edge.
+    `<path d="${m[1]}" fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width="3" stroke-dasharray="1.8 1.5"/>` +
+    `<path d="${m[1]}" fill="none" stroke="#000000" stroke-opacity=".25" stroke-width="6.4"/></g>`;
+  const at = (m.index ?? 0) + m[0].length;
+  return svg.slice(0, at) + overlay + svg.slice(at);
+}
 export const backPanel = (k: Kit, color: string, extra = "", hem = 2) =>
-  k.put("scarf", k.path(`M${k.C - k.W - 1} ${k.T + 1}Q${k.C} ${k.T - 4} ${k.C + k.W + 1} ${k.T + 1}L${k.C + k.W + 2} ${k.B + hem}L${k.C - k.W - 2} ${k.B + hem}Z`, color) + extra);
+  k.put(
+    "scarf",
+    k.epic
+      ? // Tailored: sloped shoulders, a hem that curves and a collar.
+        k.path(`M${k.C - k.W - 2} ${k.T + 5}Q${k.C - k.W + 2} ${k.T - 2} ${k.C - k.W * 0.45} ${k.T - 2}Q${k.C} ${k.T - 5} ${k.C + k.W * 0.45} ${k.T - 2}Q${k.C + k.W - 2} ${k.T - 2} ${k.C + k.W + 2} ${k.T + 5}L${k.C + k.W + 3} ${k.B + hem - 1}Q${k.C} ${k.B + hem + 4} ${k.C - k.W - 3} ${k.B + hem - 1}Z`, color) +
+          `<path d="M${k.C - k.W * 0.5} ${k.T - 2}Q${k.C} ${k.T - 6} ${k.C + k.W * 0.5} ${k.T - 2}L${k.C + k.W * 0.42} ${k.T + 3}Q${k.C} ${k.T + 0.5} ${k.C - k.W * 0.42} ${k.T + 3}Z" fill="${color}" stroke="${k.ink}" stroke-width=".9" stroke-linejoin="round"/>` +
+          `<path d="M${k.C - k.W * 0.5} ${k.T - 2}Q${k.C} ${k.T - 6} ${k.C + k.W * 0.5} ${k.T - 2}L${k.C + k.W * 0.42} ${k.T + 3}Q${k.C} ${k.T + 0.5} ${k.C - k.W * 0.42} ${k.T + 3}Z" fill="#000000" fill-opacity=".28" stroke="none"/>` +
+          extra
+      : k.path(`M${k.C - k.W - 1} ${k.T + 1}Q${k.C} ${k.T - 4} ${k.C + k.W + 1} ${k.T + 1}L${k.C + k.W + 2} ${k.B + hem}L${k.C - k.W - 2} ${k.B + hem}Z`, color) + extra,
+  );
 /** Something carried on a pole slung across the back, shown above a shoulder. */
 export function onPole(k: Kit, item: (x: number, y: number) => string) {
   const s = k.side ? -k.side : 1;
@@ -68,6 +159,20 @@ export function onPole(k: Kit, item: (x: number, y: number) => string) {
       y = k.T - 46;
     k.put("body", k.line(`M${k.C + s * 12} ${k.B - 6}L${x - s * 2} ${y + 9}`, "#7a5a3a", 2.2) + item(x, y), true);
   }
+}
+/**
+ * A goggle or lens strap round the head at height y: `front` across the
+ * brow from the front; in profile from the near lens back over the skull,
+ * ending at the head's edge rather than past it; across the back of the head
+ * from behind, with a small buckle.
+ */
+export function headStrap(k: Kit, y: number, color: string, sw: number, front: string) {
+  const d = k.back
+    ? `M${k.hx - 44} ${y + 6}Q${k.hx} ${y + 12} ${k.hx + 44} ${y + 6}`
+    : k.side
+      ? `M${k.hx + k.side * 8} ${y - 2}Q${k.hx - k.side * 14} ${y - 6} ${k.hx - k.side * 30} ${y + 8}`
+      : front;
+  return k.line(d, color, sw) + (k.back ? k.rect(k.hx - 3.5, y + 6.5, 7, 5, 1.2, "#8a8f9c", k.ink, 0.6) : "");
 }
 /** A brimmed hat crown + brim, front or side. */
 export function hatShape(k: Kit, w: number, h: number, y: number, crown: string, brim: string, brimW = 1.25) {

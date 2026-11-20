@@ -9,6 +9,19 @@ export function fillLiveCountdown(root: HTMLElement, seconds: number) {
     if (slot.textContent !== text) slot.textContent = text;
   });
 }
+/** The seconds left as one big number and its unit (the raid's rites). */
+export const LIVE_NUMBER =
+  '<b class="live-number"></b> <span class="live-unit"></span>';
+export function fillLiveNumber(root: HTMLElement, seconds: number) {
+  const n = Math.max(0, Math.ceil(seconds));
+  const unit = n === 1 ? "second" : "seconds";
+  root.querySelectorAll<HTMLElement>(".live-number").forEach((slot) => {
+    if (slot.textContent !== String(n)) slot.textContent = String(n);
+  });
+  root.querySelectorAll<HTMLElement>(".live-unit").forEach((slot) => {
+    if (slot.textContent !== unit) slot.textContent = unit;
+  });
+}
 export function fillLiveSeconds(root: HTMLElement, seconds: number) {
   const n = Math.max(0, Math.ceil(seconds));
   const text = `${n} second${n === 1 ? "" : "s"}`;
@@ -17,18 +30,21 @@ export function fillLiveSeconds(root: HTMLElement, seconds: number) {
   });
 }
 /**
- * The overlay card pops in (style.css, `ea-pop`). Writing new markup makes a
+ * The overlay card pops in (style.css, `ea-pop`; the raid's rites screen
+ * fades in, `rites-in`, screens/raid-rites.css). Writing new markup makes a
  * new card, which would replay the pop on every snapshot that changes the
  * same panel (a rite picked, a player getting ready). When the panel is the
  * same one, the new card's pop carries on from where the old one was, or
  * stays finished.
  */
+const ENTRY_ANIMATIONS = ["ea-pop", "rites-in"];
 function popOf(card: Element | null | undefined) {
   return card
     ?.getAnimations?.()
     .find(
       (a): a is CSSAnimation =>
-        "animationName" in a && (a as CSSAnimation).animationName === "ea-pop",
+        "animationName" in a &&
+        ENTRY_ANIMATIONS.includes((a as CSSAnimation).animationName),
     );
 }
 export function setOverlayMarkup(

@@ -82,6 +82,15 @@
 .ui-panel-host > .ui-panel {
   pointer-events: auto;
 }
+/* A screen kept for its next open (ui/hub-panel.ts park): out of the
+   page's drawing, styles and layout, so other screens don't pay for it.
+   (Not visibility: hidden: its 1,500 elements were then styled and laid
+   out with every other screen, about 70 ms more for Missions and Friends
+   at 4x CPU. Not content-visibility: Safari on iPhone has left such insides
+   blank, tests/unit/no-content-visibility.test.ts.) */
+.ui-panel-host[data-ui-parked] {
+  display: none !important;
+}
 /* Lobby parts under a full panel (ui/hub-panel.ts) aren't drawn. */
 [data-ui-covered] {
   visibility: hidden;

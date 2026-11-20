@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   box,
   inside,
+  settle,
   openHub,
   pushUntilBattle,
   snap,
@@ -68,7 +69,10 @@ async function heroTo(page: Page, x: number, y: number) {
     [x, y],
   );
 }
-/** Mark (or clear) a court-wide warning: High Tide's islands may be anywhere. */
+/**
+ * Mark (or clear) a court-wide warning: a High Tide marked over the whole
+ * court, so the camera's frame (what the moment needs) is the whole court.
+ */
 async function courtWarning(page: Page, on: boolean) {
   await page.evaluate((on) => {
     const w = window as any,
@@ -84,7 +88,7 @@ async function courtWarning(page: Page, on: boolean) {
             y: 450,
             tx: 800,
             ty: 450,
-            radius: 120,
+            radius: 950,
           },
         ]
       : [];
@@ -119,6 +123,10 @@ for (const size of [
   test(`raid choices are centred and the mobile court clears the HUD at ${size.width}x${size.height}`, async ({
     browser,
   }, info) => {
+    // Seven bosses, then the rites: on software rendering (about 14 fps
+    // on a desktop-size canvas) the desktop sizes took 1.5 to 1.9 minutes,
+    // over the 90 s default (CI's machines take 20 to 30 s).
+    test.setTimeout(180_000);
     const mobile = size.width < 1200;
     const context = await browser.newContext({
       viewport: size,
@@ -352,7 +360,8 @@ for (const size of [
         // Desktop fits the whole court: a raider running to a corner
         // doesn't move it. Phones follow the raider there, closer up.
         await heroTo(page, 1500, 800);
-        // Prismatail's light relay (mirrors) keeps the whole court on phones too.
+        // Prismatail's light relay (mirrors) is one court-wide puzzle: phones
+        // frame its skylight, mirrors, heart and raiders, no closer.
         const relay = await page.evaluate(
           () => !!(window as any).__snap.raid.mirrors?.length,
         );
@@ -363,6 +372,25 @@ for (const size of [
           await expect
             .poll(async () => (await cameraSignature(page))[0] / overviewZoom)
             .toBeGreaterThan(1.4);
+        } else if (mobile) {
+          await expect.poll(() => heroOnScreen(page)).toBe(true);
+          await expect
+            .poll(() =>
+              page.evaluate(() => {
+                const w = window as any,
+                  r =
+                    w.__raidLayoutGame.scene.getScene("arena").cameras.main
+                      .worldView;
+                return w.__snap.raid.mirrors.every(
+                  (m: any) =>
+                    m.x > r.x && m.x < r.right && m.y > r.y && m.y < r.bottom,
+                );
+              }),
+            )
+            .toBe(true);
+          expect((await cameraSignature(page))[0]).toBeGreaterThanOrEqual(
+            overviewZoom - 1e-6,
+          );
         } else await expect.poll(() => cameraSignature(page)).toEqual(camera);
         if (boss === "prismatail") {
           // Review screenshots show the loaded floor art and the boss's vector rig.
@@ -437,18 +465,43 @@ for (const size of [
           w.__push();
         }, offers);
         await expect(page.locator("[data-raid-rite]")).toHaveCount(6);
-        await page.locator(".raid-draft").evaluate(async (el) => {
+        await page.locator(".rites-screen").evaluate(async (el) => {
           await Promise.all(
             el.getAnimations().map((a) => a.finished.catch(() => {})),
           );
         });
-        for (const id of offers) {
-          const button = await box(page, `[data-raid-rite="${id}"]`);
-          const content = await box(
-            page,
-            `[data-raid-rite="${id}"] .raid-rite-copy`,
-          );
-          expect(inside(content, button)).toBe(true);
+        await settle(page);
+        // Every tile measured in one pass: one round trip per tile part
+        // took longer than the test's time on software rendering.
+        // Very short screens keep the description in Rite details.
+        const parts = [
+          ".raid-rite-copy",
+          ".raid-rite-icon",
+          "b",
+          ...(size.height > 350 ? ["small"] : []),
+        ];
+        const tiles = await page.evaluate(
+          ([offers, parts]) =>
+            offers.map((id) => {
+              const button = document.querySelector(
+                `[data-raid-rite="${id}"]`,
+              )!;
+              const rect = (e: Element) => {
+                const r = e.getBoundingClientRect();
+                return { x: r.x, y: r.y, width: r.width, height: r.height };
+              };
+              return {
+                id,
+                button: rect(button),
+                parts: parts.map((part) => rect(button.querySelector(part)!)),
+              };
+            }),
+          [offers, parts] as const,
+        );
+        for (const { id, button, parts: boxes } of tiles) {
+          const [content] = boxes;
+          for (const [i, part] of boxes.entries())
+            expect(inside(part, button), `${id} ${parts[i]}`).toBe(true);
           expect(
             Math.abs(
               content.x + content.width / 2 - (button.x + button.width / 2),
@@ -459,19 +512,6 @@ for (const size of [
               content.y + content.height / 2 - (button.y + button.height / 2),
             ),
           ).toBeLessThanOrEqual(2);
-          // Very short screens keep the description in Rite details.
-          for (const child of [
-            ".raid-rite-icon",
-            "b",
-            ...(size.height > 350 ? ["small"] : []),
-          ]) {
-            expect(
-              inside(
-                await box(page, `[data-raid-rite="${id}"] ${child}`),
-                button,
-              ),
-            ).toBe(true);
-          }
         }
         if (offers[0] === "shelter")
           await snap(

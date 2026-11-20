@@ -170,6 +170,11 @@ const buffs: Record<
   },
 };
 
+/** The rite's colour: its tile, name and picture on the rites screen. */
+export function raidRiteColor(id: RaidRite) {
+  return pictures[id].color;
+}
+
 export function raidRiteBuffTrigger(id: RaidRite) {
   return buffs[id].trigger;
 }
