@@ -4,7 +4,7 @@ import type { Facing } from "../animation/controller";
 import type { Palette } from "./skin-art";
 import { fashionCut } from "./fashion-fits";
 import { cutBox, UNDER } from "./rare-fashion";
-import { DESIGNS, type Kit } from "./modern-designs";
+import { DESIGNS, tailorBack, type Kit } from "./modern-designs";
 import { VANGUARD_LOOK } from "./modern-vanguard";
 import "./modern-viet";
 import "./modern-viet-legend";
@@ -13,6 +13,7 @@ import "./modern-campus";
 import "./modern-stars";
 import "./modern-pirates";
 import "./modern-vanguard";
+import "./modern-kit";
 // Legendary headwear and props, drawn over their costumes (after them).
 import "./legend-details-pirates";
 import "./legend-details-vanguard";
@@ -35,7 +36,9 @@ import "./legend-details-stars";
  *    `data-i` giving each light's place in the row;
  *  - twinkle: sparkles that glint at their own moments.
  */
-export type ModernTheme = "campus" | "hero" | "idol" | "viet" | "stars" | "vietlegend" | "pirates" | "vanguard";
+export type ModernTheme = "campus" | "hero" | "idol" | "viet" | "stars" | "vietlegend" | "pirates" | "vanguard" | "kit";
+/** The Epic collections among them, whose cloth is tailored. */
+const EPIC_THEMES = new Set<ModernTheme>(["campus", "hero", "kit"]);
 
 /**
  * The Legendary finish: every garment of a Legendary costume is edged in
@@ -175,8 +178,17 @@ export function modernOutfit(
     C = (L + R) / 2;
   const ink = p.dark;
   const out: [CreaturePart, string][] = [];
-  const put = (part: CreaturePart, svg: string, under = false) =>
+  // Epic collections tailor their cloth (modern-designs.ts): the back's
+  // panel or cape, the first wide piece put on the back's scarf part.
+  const epic = EPIC_THEMES.has(theme);
+  let tailored = !epic || !back;
+  const put = (part: CreaturePart, svg: string, under = false) => {
+    if (!tailored && part === "scarf") {
+      const t = tailorBack(kit, svg);
+      if (t !== svg) (tailored = true), (svg = t);
+    }
     out.push([part, (under ? UNDER : "") + `<g class="fashion-modern modern-${theme}" data-champion="${id}" data-view="${dir}">${svg}</g>`]);
+  };
   const path = (d: string, fill: string, stroke = ink, sw = 1.1) =>
     `<path d="${d}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"/>`;
   const line = (d: string, color: string, sw = 1.1) => path(d, "none", color, sw);
@@ -196,7 +208,11 @@ export function modernOutfit(
   const edge = trim
     ? onCut(path(cut, "none", trim.bevel, 5)) +
       (trim.glow ? lume("pulse", onCut(path(cut, "none", trim.band, 3.2)), 1, trim.band) : onCut(path(cut, "none", trim.band, 3.2)))
-    : "";
+    : epic
+      ? // Epic: topstitching in the cloth's own light, inside a shaded edge.
+        onCut(`<path d="${cut}" fill="none" stroke="#000000" stroke-opacity=".22" stroke-width="5"/>`) +
+        onCut(`<path d="${cut}" fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width="3" stroke-dasharray="1.8 1.5"/>`)
+      : "";
   const garment = (svg: string) =>
     `<defs><clipPath id="${clipId}"><path d="${cut}" transform="translate(${bx} 0)"/></clipPath></defs><g clip-path="url(#${clipId})">${svg}${edge}</g>` +
     onCut(path(cut, "none", ink, 1.2));
@@ -205,8 +221,9 @@ export function modernOutfit(
   const ox = side * 4;
   // A champion's own design in this collection, where one is drawn.
   const design = DESIGNS[theme]?.[id];
+  const kit: Kit = { id, side, back, hx, ht, C, T, B, W, L, R, ink, put, path, line, circle, rect, lume, garment, star, epic };
   if (design) {
-    design({ id, side, back, hx, ht, C, T, B, W, L, R, ink, put, path, line, circle, rect, lume, garment, star });
+    design(kit);
     if (trim && !back && !CLASP_SKIP.has(`${theme}:${id}`)) {
       const [x, y] = [C + side * 5, T + 5];
       put("body", `<g transform="translate(${x} ${y}) scale(1.25) translate(${-x} ${-y})">${legendClasp(theme, x, y, trim.band, ink, { path, circle, rect, lume })}</g>`);
