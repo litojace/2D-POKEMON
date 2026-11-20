@@ -61,6 +61,13 @@ interface Parked {
 }
 let parked: Parked | undefined;
 export const PARKED_MS = 60_000;
+/**
+ * Shops open now. A Shop opened again while the last one is still leaving
+ * builds its own screen; the one leaving must not be parked after that,
+ * or it stays in the page, hidden, beside the open one (CI, 20 Nov 2026:
+ * the old frame was found next to the new one).
+ */
+let openShops = 0;
 /** Drop what a parked Shop holds (its renderer, its screen). */
 const drop = (p: Omit<Parked, "timer" | "watch"> | undefined) => {
   p?.preview?.();
@@ -763,11 +770,13 @@ export function openFittingRoom(
     ["keydown", onKey],
     ["keyup", onKeyUp],
   ] as const;
+  openShops++;
   panel = openHubPanel(html, {
     rail: "shop",
     reuse: keptRoot ? kept?.wrap : undefined,
     onClose: () => {
       closed = true;
+      openShops--;
       compactQuery.removeEventListener("change", onCompact);
       stageSize.disconnect();
       clearInterval(clock);
@@ -785,11 +794,14 @@ export function openFittingRoom(
     },
     // Once it has left: the screen too, with what it was drawn from (the
     // fighter was parked above, at once). Not if what was parked has gone
-    // since (a battle started), nor once the Lobby is leaving.
+    // since (a battle started), nor once the Lobby is leaving, nor once
+    // another Shop has opened.
     park: (wrap) => {
       if (!document.querySelector(".lobby-layer")?.isConnected) return false;
       if (document.body.classList.contains("battle-active")) return false;
       if (parked && parked.wrap) return false;
+      // Another Shop opened while this one was leaving: it has a screen.
+      if (openShops > 0) return false;
       const fighter = unpark();
       park({
         ...fighter,
