@@ -99,7 +99,7 @@ import { sceneLines, setPerfSource } from "../perf-hud";
 import { depthSort, slices, spot } from "./plaza-depth";
 import { plazaPath } from "./plaza-path";
 import { PlazaPrediction } from "./plaza-predict";
-import { FISH_SPOT, createFishing, fishBook } from "./plaza-fishing";
+import { FISH_SPOT, catchCard, createFishing, fishBook } from "./plaza-fishing";
 import {
   PLAZA_SPRITE_PX,
   drawWornBehind,
@@ -170,6 +170,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
       </section>
       <div class="pz-album-view" id="pz-album-view" hidden></div>
     </div>
+    <div class="pz-catch" id="pz-catch" aria-live="polite" hidden></div>
     <div class="pz-fishbook" id="pz-fishbook" role="dialog" aria-modal="true" aria-label="Fish book" hidden>
       <section class="pz-fishbook-panel">
         <header><b>${I("fish")}<span>Fish book</span></b><span class="pz-fishbook-count" id="pz-fishbook-count" aria-live="polite"></span><button type="button" class="x" data-fb="close" aria-label="Close the Fish book">✕</button></header>
@@ -1803,6 +1804,7 @@ export function openPlaza(options) {
     },
   ];
   // Fishing at the pond (plaza-fishing.ts): the server picks the bite and the fish.
+  let catchTimer = 0;
   const fishing = createFishing({
     socket,
     toast: pzToast,
@@ -1818,14 +1820,12 @@ export function openPlaza(options) {
           10,
           f.color,
         );
-      FX.push({
-        text: f.name,
-        x: P.x,
-        y: P.y - 100,
-        t: 0,
-        life: 1.4,
-        small: 1,
-      });
+      // The fish itself, drawn in full, for a moment over the Plaza.
+      const card = $("pz-catch");
+      card.innerHTML = catchCard(f);
+      card.hidden = false;
+      clearTimeout(catchTimer);
+      catchTimer = setTimeout(() => (card.hidden = true), 2600);
     },
   });
   SPOTS.push({
@@ -4938,6 +4938,7 @@ export function openPlaza(options) {
       socket.off("plaza-treat", onTreat);
       socket.off("plaza-treats", onTreats);
       socket.off("plaza-fish", onFish);
+      clearTimeout(catchTimer);
       removeEventListener("pointermove", pinchMove, true);
       removeEventListener("pointerup", pinchEnd, true);
       removeEventListener("pointercancel", pinchEnd, true);

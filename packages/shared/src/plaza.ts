@@ -1196,7 +1196,28 @@ export interface PlazaFish {
   /** Body and fin colours (the Fish book and the catch). */
   color: string;
   fin: string;
+  /** How it is drawn: its body (PLAZA_FISH_SHAPES) and its markings. */
+  shape: PlazaFishShape;
+  mark: PlazaFishMark;
 }
+/** Body shapes the browser knows how to draw (plaza-fish-art.ts). */
+export const PLAZA_FISH_SHAPES = [
+  "minnow",
+  "guppy",
+  "carp",
+  "perch",
+  "eel",
+  "koi",
+  "catfish",
+  "betta",
+  "angel",
+  "lantern",
+  "sturgeon",
+] as const;
+export type PlazaFishShape = (typeof PLAZA_FISH_SHAPES)[number];
+/** Markings over the body. */
+export type PlazaFishMark =
+  "lateral" | "bars" | "spots" | "scales" | "zigzag" | "sparkle";
 /**
  * The pond's fish, in Fish book order. Add a fish here and it bites, shows
  * in the book and is recorded: the database only checks the id's shape.
@@ -1210,6 +1231,8 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     rarity: "common",
     color: "#ff7a45",
     fin: "#ffd65b",
+    shape: "minnow",
+    mark: "lateral",
   },
   {
     id: "tide-guppy",
@@ -1218,6 +1241,8 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     rarity: "common",
     color: "#4fb3ff",
     fin: "#bfe8ff",
+    shape: "guppy",
+    mark: "spots",
   },
   {
     id: "pebble-carp",
@@ -1226,6 +1251,8 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     rarity: "common",
     color: "#b08a5a",
     fin: "#e3c99a",
+    shape: "carp",
+    mark: "scales",
   },
   {
     id: "reed-perch",
@@ -1234,6 +1261,8 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     rarity: "common",
     color: "#6fbf4a",
     fin: "#d4f59a",
+    shape: "perch",
+    mark: "bars",
   },
   {
     id: "zap-eel",
@@ -1242,6 +1271,8 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     rarity: "uncommon",
     color: "#ffd84a",
     fin: "#fff3a8",
+    shape: "eel",
+    mark: "zigzag",
   },
   {
     id: "sunscale-koi",
@@ -1251,6 +1282,8 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     time: "day",
     color: "#fff1c2",
     fin: "#ff9f43",
+    shape: "koi",
+    mark: "spots",
   },
   {
     id: "gloom-catfish",
@@ -1260,6 +1293,8 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     time: "night",
     color: "#5a4a7a",
     fin: "#a48bd6",
+    shape: "catfish",
+    mark: "spots",
   },
   {
     id: "mindfin-betta",
@@ -1268,6 +1303,8 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     rarity: "rare",
     color: "#ff6fae",
     fin: "#c47dff",
+    shape: "betta",
+    mark: "scales",
   },
   {
     id: "aura-angelfish",
@@ -1276,6 +1313,8 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     rarity: "rare",
     color: "#7fe7ff",
     fin: "#e8fbff",
+    shape: "angel",
+    mark: "bars",
   },
   {
     id: "moon-lanternfish",
@@ -1285,6 +1324,8 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     time: "night",
     color: "#2f3a6a",
     fin: "#ffe58f",
+    shape: "lantern",
+    mark: "sparkle",
   },
   {
     id: "starlight-sturgeon",
@@ -1294,6 +1335,8 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     time: "night",
     color: "#1e2a5a",
     fin: "#fff6c8",
+    shape: "sturgeon",
+    mark: "sparkle",
   },
 ];
 export const PLAZA_FISH_BY_ID: Record<string, PlazaFish> = Object.fromEntries(

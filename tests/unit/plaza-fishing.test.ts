@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { PlazaWorld } from "../../apps/server/src/plaza";
+import { fishArt } from "../../apps/client/src/plaza/plaza-fish-art";
 import {
   PLAZA,
   PLAZA_FISH,
   PLAZA_FISH_BY_ID,
   PLAZA_FISH_RARITY,
+  PLAZA_FISH_SHAPES,
   PLAZA_FISHING,
   PLAZA_POND,
   PLAZA_QUESTS,
@@ -69,6 +71,25 @@ describe("the fish table", () => {
     expect(plazaFishFor(false).some((f) => f.time === "night")).toBe(false);
     expect(plazaFishFor(true).some((f) => f.time === "day")).toBe(false);
     expect(plazaFishFor(true)).toEqual(expect.arrayContaining(night));
+  });
+
+  it("draws every fish in its own shape, with ids unique on the page", () => {
+    const shapes = new Set<string>();
+    const ids: string[] = [];
+    for (const f of PLAZA_FISH) {
+      expect(PLAZA_FISH_SHAPES, f.id).toContain(f.shape);
+      shapes.add(f.shape);
+      for (const known of [true, false]) {
+        const svg = fishArt(f, known);
+        expect(svg).toMatch(/^<svg viewBox="0 0 64 40"[^]*<\/svg>$/);
+        expect(svg).not.toMatch(/NaN|undefined/);
+        ids.push(...[...svg.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
+        // Not caught yet: a shadow, never its colours.
+        if (!known) expect(svg).not.toContain(f.color);
+      }
+    }
+    expect(shapes.size).toBe(PLAZA_FISH.length);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("picks by rarity weight, from the fish that bite at that time", () => {

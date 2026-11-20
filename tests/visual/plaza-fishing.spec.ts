@@ -58,7 +58,15 @@ for (const size of [
       await expect.poll(() => fishing(page), { intervals: [50] }).toBe("bite");
       // Forced: the gold button pulses, and Playwright waits for a still one.
       await page.click("#pz-interact", { force: true });
-      await expect(toast(page)).toContainText("You caught a");
+      // The catch card: the fish drawn in full, its name and rarity.
+      const card = page.locator("#pz-catch");
+      await expect(card).toBeVisible();
+      await expect(card).toContainText("You caught");
+      await expect(card.locator("svg")).toHaveCount(1);
+      await snap(page, info, `fishing-catch-${name}`);
+      const c = await box(page, "#pz-catch");
+      expect(c.l).toBeGreaterThanOrEqual(size.inset?.left ?? 0);
+      expect(c.r).toBeLessThanOrEqual(size.width - (size.inset?.right ?? 0));
       await expect.poll(() => fishing(page)).toBeNull();
       await expect
         .poll(() =>

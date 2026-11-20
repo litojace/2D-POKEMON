@@ -17,6 +17,7 @@ import {
   type PlazaFish,
   type PlazaFishNote,
 } from "../../../../packages/shared/src/plaza";
+import { fishArt } from "./plaza-fish-art";
 
 export const FISH_SPOT = PLAZA_SPOTS.find((s) => s.id === "fish")!;
 /** The bobber's flight from the rod to the water (s). */
@@ -68,10 +69,8 @@ export function createFishing(deps: FishingDeps) {
       if (err) return deps.toast("The reel slipped. Cast again.");
       const fish = r?.ok ? PLAZA_FISH_BY_ID[r.fish] : undefined;
       if (!fish) return deps.toast(r?.error ?? "The fish got away.");
+      // The catch card says it (the fish, its name and rarity): no toast.
       deps.caught(fish);
-      deps.toast(
-        `You caught a ${fish.name}! · ${PLAZA_FISH_RARITY[fish.rarity].name}`,
-      );
     });
   }
   return {
@@ -237,15 +236,6 @@ function drawDock(g: CanvasRenderingContext2D) {
   g.stroke();
 }
 
-/** A small fish drawing for the book: its colours if caught, a shadow if not. */
-export function fishSvg(f: PlazaFish, known: boolean) {
-  const body = known ? f.color : "#2a3352",
-    fin = known ? f.fin : "#232a45",
-    eye = known
-      ? '<circle cx="30" cy="13" r="2.2" fill="#0b1020"/><circle cx="30.6" cy="12.4" r=".7" fill="#fff"/>'
-      : "";
-  return `<svg viewBox="0 0 44 26" aria-hidden="true"><path d="M8 13 1 4v18z" fill="${fin}"/><ellipse cx="22" cy="13" rx="15" ry="9" fill="${body}"/><path d="M17 5q5-5 11 0z" fill="${fin}"/>${eye}</svg>`;
-}
 const esc = (s: string) =>
   s.replace(
     /[&<>"']/g,
@@ -263,7 +253,12 @@ export function fishBook(book: Record<string, number> | undefined) {
       r = PLAZA_FISH_RARITY[f.rarity],
       when =
         f.time === "night" ? "Night only" : f.time === "day" ? "Day only" : "";
-    return `<li class="pz-fish${known ? "" : " unknown"}" data-fish="${f.id}" style="--rar:${r.color}">${fishSvg(f, known)}<b>${known ? esc(f.name) : "???"}</b><small><span class="rar">${r.name}</span>${known ? ` · ${esc(f.element)}` : ""}</small><small>${!known ? when || "Not caught yet" : book![f.id] ? `Caught ×${book![f.id]}` : "Caught"}</small></li>`;
+    return `<li class="pz-fish${known ? "" : " unknown"}" data-fish="${f.id}" style="--rar:${r.color}">${fishArt(f, known)}<b>${known ? esc(f.name) : "???"}</b><small><span class="rar">${r.name}</span>${known ? ` · ${esc(f.element)}` : ""}</small><small>${!known ? when || "Not caught yet" : book![f.id] ? `Caught ×${book![f.id]}` : "Caught"}</small></li>`;
   }).join("");
   return { caught, total: PLAZA_FISH.length, html: cards };
+}
+/** The card that pops up with a catch: the fish, its name and rarity. */
+export function catchCard(f: PlazaFish) {
+  const r = PLAZA_FISH_RARITY[f.rarity];
+  return `<div class="pz-catch-card" style="--rar:${r.color}">${fishArt(f, true)}<div><small>You caught</small><b>${esc(f.name)}</b><span><i>${r.name}</i> · ${esc(f.element)}</span></div></div>`;
 }
