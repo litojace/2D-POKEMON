@@ -78,19 +78,30 @@ const HERO: Details = {
   // Prism Fist: a cluster of great prism crystals rising off its back.
   auralynx(k) {
     onBack(k, (x, y, v) => {
-      const w = v === "side" ? 0.6 : v === "front" ? 2.1 : 1;
-      const lean = v === "front" ? 14 : 6;
+      if (v === "front")
+        // From the front, a cluster rises beside each arm, clear of the chest.
+        return [-1, 1].map((s) => {
+          const bx = x + s * (k.W + 12),
+            by = y + 10;
+          return [[0, 30, s * 4, 6], [s * 7, 20, s * 10, 4.5], [-s * 5, 18, -s * 2, 4]].map(([dx, h, lean, hw], i) =>
+            k.path(shard(bx + dx, by, hw, h, lean), i ? "#8ab4ff" : "#c8b0ff", k.ink, 1.1)).join("") +
+            k.lume("pulse", k.line(`M${bx} ${by - 4}L${bx + s * 4} ${by - 27}`, "#ffffff", 1.3), s > 0 ? 4 : 3, "#bfe8ff");
+        }).join("");
+      const w = v === "side" ? 0.6 : 1;
+      const lean = 6;
       return [[-16 * w, 22, -lean, 7], [16 * w, 22, lean, 7], [0, 32, 0, 8]].map(([dx, h, lean, hw], i) =>
-        k.path(shard(x + dx, y + 2, hw, h + 14, lean), i === 2 ? "#e6f6ff" : "#bfe8ff", k.ink, 1) +
+        k.path(shard(x + dx, y + 2, hw, h + 14, lean), i === 2 ? "#c8b0ff" : "#8ab4ff", k.ink, 1) +
         k.lume("pulse", k.line(`M${x + dx} ${y - 2}L${x + dx + lean} ${y - h - 6}`, "#ffffff", 1.2), 3 + i, "#bfe8ff")).join("");
     }, true);
   },
-  // Lumina: a lantern staff, its lantern alight.
+  // Lumina: a lantern staff, its lantern alight with a cold white flame
+  // in a dark iron frame, so it shows on its golden body.
   lumoth(k) {
-    slung(k, "#c8a46a", 2.2, (x, y) =>
-      k.line(`M${x} ${y}V${y - 4}`, "#5a4a3a", 1.4) + k.path(`M${x - 8} ${y - 4}H${x + 8}L${x + 6} ${y - 7}H${x - 6}Z`, "#5a4a3a", k.ink, 0.8) +
-      k.rect(x - 7, y - 3, 14, 18, 3, "#fff3b0", k.ink, 1) + k.lume("pulse", k.rect(x - 5, y - 1, 10, 14, 2, "#ffe066", "none", 0), 3, "#ffe066") +
-      k.line(`M${x} ${y - 3}V${y + 15}`, "#5a4a3a", 1) + k.path(`M${x - 8} ${y + 15}H${x + 8}L${x + 5} ${y + 19}H${x - 5}Z`, "#5a4a3a", k.ink, 0.8));
+    const iron = "#2e2a3a";
+    slung(k, iron, 2.4, (x, y) => sc(x, y, 1.3,
+      k.line(`M${x} ${y}V${y - 4}`, iron, 1.6) + k.path(`M${x - 9} ${y - 4}H${x + 9}L${x + 6} ${y - 8}H${x - 6}Z`, iron, k.ink, 0.8) +
+      k.rect(x - 8, y - 3, 16, 19, 3, "#e8fbff", iron, 1.6) + k.lume("pulse", k.rect(x - 5.5, y - 0.5, 11, 14, 2, "#7ff0ff", "none", 0) + k.path(`M${x} ${y + 1}q4 5 0 10q-4 -5 0 -10Z`, "#ffffff", "none", 0), 3, "#7ff0ff") +
+      k.line(`M${x} ${y - 3}V${y + 16}`, iron, 1.2) + k.path(`M${x - 9} ${y + 16}H${x + 9}L${x + 6} ${y + 20}H${x - 6}Z`, iron, k.ink, 0.8)));
   },
   // Third Eye: a seer's staff crowned with a crescent and a star.
   mystowl(k) {
@@ -146,9 +157,13 @@ const HERO: Details = {
   glacelle(k) {
     onBack(k, (x, y, v) => {
       const sides = v === "side" ? [-1] : [-1, 1];
+      // From the front they fan up from beside the arms, clear of the head.
+      const by = v === "front" ? y - 2 : y;
       return sides.map((s) => [0, 1, 2].map((i) => {
-        const bx = x + s * (v === "side" ? 4 : v === "front" ? k.W - 2 : k.W - 6);
-        return `<g transform="rotate(${s * ((v === "front" ? 42 : 28) + i * 22)} ${bx} ${y})">` + k.path(shard(bx, y, 4.5 - i * 0.6, 34 - i * 6), i ? "#d8f2ff" : "#bfe8ff", k.ink, 0.9) + `</g>`;
+        const bx = x + s * (v === "side" ? 4 : v === "front" ? k.W + 8 : k.W - 6);
+        const h = 46 - i * 8;
+        return `<g transform="rotate(${s * ((v === "front" ? 18 : 28) + i * 22)} ${bx} ${by})">` + k.path(shard(bx, by, 6.5 - i * 0.8, h), i ? "#c8eeff" : "#8fd8ff", k.ink, 1.2) +
+          k.line(`M${bx} ${by - 3}L${bx} ${by - h + 6}`, "#ffffff", 1.1) + `</g>`;
       }).join("") + k.lume("twinkle", k.path(k.star(x + s * (k.W + 16), y - 22, 2.2, 4, 0.3), "#ffffff", "none", 0), s > 0 ? 4 : 3, "#ffffff")).join("");
     }, true);
   },
@@ -199,9 +214,10 @@ const HERO: Details = {
     onBack(k, (x, y, v) => {
       const sides = v === "side" ? [-1] : [-1, 1];
       return sides.map((s) => {
-        const bx = x + s * (v === "side" ? 2 : v === "front" ? k.W + 2 : 6);
-        const a = s * (v === "back" ? 38 : 50);
-        return leafD(bx, y + 4, 46, a) + ` fill="#4caf50" stroke="${k.ink}" stroke-width="1.1"/>` +
+        // From the front each leaf rises beside an arm, clear of the chest.
+        const bx = x + s * (v === "side" ? 2 : v === "front" ? k.W + 9 : 6);
+        const a = s * (v === "back" ? 38 : v === "front" ? 30 : 50);
+        return leafD(bx, y + 4, 46, a) + ` fill="#3f9a45" stroke="${k.ink}" stroke-width="1.2"/>` +
           k.lume("pulse", `<path d="M${bx} ${y + 4}V${y - 38}" transform="rotate(${a} ${bx} ${y + 4})" stroke="#c8ff6a" stroke-width="1.3" fill="none"/>`, s > 0 ? 4 : 3, "#c8ff6a");
       }).join("");
     }, true);
@@ -230,6 +246,10 @@ const CAMPUS: Details = {
       k.put("body", xs.map((x, i) => k.line(`M${x} ${k.T}V${k.B - 4}`, k.ink, 4.6) + k.line(`M${x} ${k.T}V${k.B - 4}`, "#2b2f3d", 3) +
         [0, 1, 2].map((j) => k.lume("chase", k.circle(x, k.T + 6 + j * 8, 1.1, ["#ff4fd8", "#59f0ff", "#7dff8a"][j], "none", 0), 3 + j + i, "#59f0ff")).join("")).join(""));
     }
+    // From the front its side pockets show beside the body, lit too.
+    if (!k.back && !k.side)
+      k.put("body", [-1, 1].map((s) => k.rect(k.C + s * (k.W + 12) - 5.5, k.T + 2, 11, 24, 3, "#2b2f3d", k.ink, 1.1) +
+        k.lume("chase", k.rect(k.C + s * (k.W + 12) - 1.4, k.T + 6, 2.8, 16, 1.2, s > 0 ? "#59f0ff" : "#ff4fd8", "none", 0), s > 0 ? 7 : 6, s > 0 ? "#59f0ff" : "#ff4fd8")).join(""));
     onBack(k, (x, y, v) => {
       const w = v === "side" ? 9 : v === "front" ? k.W + 6 : 17;
       return k.rect(x - w, y - 22, 2 * w, 34, 6, "#2b2f3d", k.ink, 1.1) + k.rect(x - w + 4, y - 4, 2 * w - 8, 12, 3, "#3d4256", k.ink, 0.8) +

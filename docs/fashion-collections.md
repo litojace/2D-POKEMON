@@ -406,11 +406,11 @@ the gold rim and clasp, a two-tone body, a summoned motif).
 
 | Champion | Hero Squad prop | Neon Campus prop |
 | --- | --- | --- |
-| Voltkit | Lightning-bolt fins off the visor | An RGB gaming backpack, lit straps |
+| Voltkit | Lightning-bolt fins off the visor | An RGB gaming backpack, lit straps and side pockets |
 | Cindrake | A molten greatsword on the back | A great bubbling flask |
 | Tidefin | A golden trident, prongs lit | A striped swim ring round the waist |
-| Auralynx | Prism crystals rising off the back | The school banner on a staff |
-| Lumoth | A lantern staff | A big camera with a long lens, flash blinking |
+| Auralynx | Prism crystals rising off the back, beside the arms from the front | The school banner on a staff |
+| Lumoth | A lantern staff, a cold white flame in an iron frame | A big camera with a long lens, flash blinking |
 | Mystowl | A seer's staff with a crescent and star | A stack of books |
 | Terradon | A stone tower shield with lava cracks | The game ball |
 | Duskveil | Tattered night wings off the cape | A stage-red velvet cape with tassels |
