@@ -311,10 +311,13 @@ export function curtainHeld() {
  * retry button (the server's status decides, as before the curtain).
  */
 let releasing = false;
-export function releaseStartupCurtain() {
-  if (!held || releasing) return;
-  // The status on screen (and one waiting for its turn) has its time first.
-  const wait = currentStatus === "ready" && panel ? statusSettleMs() : 0;
+export function releaseStartupCurtain(now = false) {
+  if (!held || (releasing && !now)) return;
+  // The status on screen (and one waiting for its turn) has its time first,
+  // unless the screen underneath waits for the player (`now`: the front
+  // door), where a reading pause only keeps them from it.
+  const wait =
+    !now && currentStatus === "ready" && panel ? statusSettleMs() : 0;
   if (wait > 0) {
     releasing = true;
     setTimeout(() => {

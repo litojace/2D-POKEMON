@@ -140,9 +140,9 @@ export function startStartupCurtain(
   let settling: StartupStage | undefined;
   let readySince: number | undefined;
   /** Everything is in: lift the curtain. */
-  const finish = () => {
+  const finish = (now = false) => {
     clearInterval(poll);
-    releaseStartupCurtain();
+    releaseStartupCurtain(now);
     // The game is up: choose the next start's painting and download it in a
     // quiet moment, so it is on the device before that curtain needs it.
     setTimeout(() => prepareNextArt(art?.id), 3000);
@@ -164,7 +164,9 @@ export function startStartupCurtain(
     )
       return finish();
     const now = stage();
-    if (now === "gate") return finish();
+    // A front-door screen waits for the player: lift without the reading
+    // pause (the status needn't be read to sign in).
+    if (now === "gate") return finish(true);
     if (now === "scene" || now === "provisional") {
       sceneSince ??= performance.now();
       curtainStep(0.88, "Preparing your fighter…");
