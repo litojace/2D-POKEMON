@@ -1497,7 +1497,9 @@ export class BotBrain {
           // Live Wire: wire a target that keeps its distance (it can't run
           // off any more); one already up close needs it less.
           if (a.tether?.yank) {
-            if (s.sight && reach(a.range * 0.95))
+            // Well inside its reach: the wind-up gives the target time to
+            // step out, and a wire that finds nobody is wasted.
+            if (s.sight && reach(a.range * 0.8))
               score = s.dist > 140 ? 22 : 10;
           }
           // Gill Siphon: lock on while the target is in reach.
