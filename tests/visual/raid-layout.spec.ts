@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   box,
   inside,
+  settle,
   openHub,
   pushUntilBattle,
   snap,
@@ -54,6 +55,53 @@ async function floorHudGap(page: Page) {
   });
   return game.y + floorTop - hud.y - hud.height;
 }
+/** Move "me" in the fake snapshot (the server's word on where it stands). */
+async function heroTo(page: Page, x: number, y: number) {
+  await page.evaluate(
+    ([x, y]) => {
+      const w = window as any;
+      const hero = w.__snap.players.find((p: any) => p.id === "me");
+      hero.x = x;
+      hero.y = y;
+      w.__snap.time += 1;
+      w.__push();
+    },
+    [x, y],
+  );
+}
+/** Mark (or clear) a court-wide warning: High Tide's islands may be anywhere. */
+async function courtWarning(page: Page, on: boolean) {
+  await page.evaluate((on) => {
+    const w = window as any,
+      s = w.__snap;
+    s.raid.warnings = on
+      ? [
+          {
+            id: 777,
+            kind: "hightide",
+            startedAt: s.time,
+            at: s.time + 3,
+            x: 800,
+            y: 450,
+            tx: 800,
+            ty: 450,
+            radius: 120,
+          },
+        ]
+      : [];
+    w.__push();
+  }, on);
+}
+async function heroOnScreen(page: Page) {
+  return page.evaluate(() => {
+    const w = window as any,
+      r = w.__raidLayoutGame.scene.getScene("arena").cameras.main.worldView,
+      hero = w.__snap.players.find((p: any) => p.id === "me");
+    return (
+      hero.x > r.x && hero.x < r.right && hero.y > r.y && hero.y < r.bottom
+    );
+  });
+}
 async function cameraSignature(page: Page) {
   return page.evaluate(() => {
     const c = (window as any).__raidLayoutGame.scene.getScene("arena").cameras
@@ -72,6 +120,10 @@ for (const size of [
   test(`raid choices are centred and the mobile court clears the HUD at ${size.width}x${size.height}`, async ({
     browser,
   }, info) => {
+    // Seven bosses, then the rites: on software rendering (about 14 fps
+    // on a desktop-size canvas) the desktop sizes took 1.5 to 1.9 minutes,
+    // over the 90 s default (CI's machines take 20 to 30 s).
+    test.setTimeout(180_000);
     const mobile = size.width < 1200;
     const context = await browser.newContext({
       viewport: size,
@@ -106,6 +158,8 @@ for (const size of [
       await createRoom(page);
       await pushUntilBattle(page);
 
+      /** The whole-court zoom, read while a court-wide warning shows. */
+      let overviewZoom = 1;
       for (const boss of [
         "grumblecrag",
         "tidewyrm",
@@ -172,6 +226,9 @@ for (const size of [
             await expect(
               page.locator("#raid-hud > .raid-boss-health"),
             ).toBeHidden();
+          // Phones follow the raider: at the court's top edge, that edge
+          // still sits below the HUD.
+          if (mobile) await heroTo(page, 800, 20);
           await expect.poll(() => floorHudGap(page)).toBeGreaterThanOrEqual(5);
           const clock = await box(page, ".raid-elapsed"),
             gear = await box(page, "#battle-menu");
@@ -179,8 +236,9 @@ for (const size of [
           expect(
             Math.abs(clock.x + clock.width / 2 - gear.x - gear.width / 2),
           ).toBeLessThanOrEqual(2);
-          // All four arena corners remain visible, even for the three bosses
-          // that previously used the tight fighter-follow camera.
+          // All four arena corners are visible: always on desktop; on phones
+          // while a court-wide mechanic is marked.
+          if (mobile) await courtWarning(page, true);
           await expect
             .poll(() =>
               page.evaluate(() => {
@@ -197,6 +255,10 @@ for (const size of [
               }),
             )
             .toBe(true);
+          if (mobile) {
+            overviewZoom = (await cameraSignature(page))[0];
+            await courtWarning(page, false);
+          }
           for (const selector of [
             "#raid-prism-controls",
             "#raid-dream-panel",
@@ -282,18 +344,31 @@ for (const size of [
             await snap(page, info, `raid-wide-${size.width}x${size.height}`);
         }
         await expect.poll(() => floorHudGap(page)).toBeGreaterThanOrEqual(5);
+        if (boss === "somnara")
+          await page.evaluate(() => {
+            const w = window as any;
+            delete w.__snap.raid.dream;
+            delete w.__snap.raidDream;
+            w.__push();
+          });
+        await heroTo(page, 300, 300);
+        await expect.poll(() => heroOnScreen(page)).toBe(true);
         const camera = await cameraSignature(page);
-        // The raid camera fits the whole court: a raider running to a
-        // corner doesn't move it.
-        await page.evaluate(() => {
-          const w = window as any;
-          const hero = w.__snap.players.find((p: any) => p.id === "me");
-          hero.x = 1500;
-          hero.y = 800;
-          w.__snap.time += 1;
-          w.__push();
-        });
-        await expect.poll(() => cameraSignature(page)).toEqual(camera);
+        // Desktop fits the whole court: a raider running to a corner
+        // doesn't move it. Phones follow the raider there, closer up.
+        await heroTo(page, 1500, 800);
+        // Prismatail's light relay (mirrors) keeps the whole court on phones too.
+        const relay = await page.evaluate(
+          () => !!(window as any).__snap.raid.mirrors?.length,
+        );
+        if (mobile && !relay) {
+          await expect.poll(() => cameraSignature(page)).not.toEqual(camera);
+          await expect.poll(() => heroOnScreen(page)).toBe(true);
+          // Fighters at least 1.4× the size the whole-court view drew them.
+          await expect
+            .poll(async () => (await cameraSignature(page))[0] / overviewZoom)
+            .toBeGreaterThan(1.4);
+        } else await expect.poll(() => cameraSignature(page)).toEqual(camera);
         if (boss === "prismatail") {
           // Review screenshots show the loaded floor art and the boss's vector rig.
           await expect
@@ -327,6 +402,8 @@ for (const size of [
           w.__push();
         });
         await expect(page.locator(".raid-party-bars")).toHaveCount(0);
+        // The follow camera at the court's top edge.
+        await heroTo(page, 800, 20);
         await expect.poll(() => floorHudGap(page)).toBeGreaterThanOrEqual(5);
         // Resizing the canvas clears its drawing buffer. Capture after Phaser
         // has painted the new solo layout, rather than that transient clear.
@@ -365,18 +442,43 @@ for (const size of [
           w.__push();
         }, offers);
         await expect(page.locator("[data-raid-rite]")).toHaveCount(6);
-        await page.locator(".raid-draft").evaluate(async (el) => {
+        await page.locator(".rites-screen").evaluate(async (el) => {
           await Promise.all(
             el.getAnimations().map((a) => a.finished.catch(() => {})),
           );
         });
-        for (const id of offers) {
-          const button = await box(page, `[data-raid-rite="${id}"]`);
-          const content = await box(
-            page,
-            `[data-raid-rite="${id}"] .raid-rite-copy`,
-          );
-          expect(inside(content, button)).toBe(true);
+        await settle(page);
+        // Every tile measured in one pass: one round trip per tile part
+        // took longer than the test's time on software rendering.
+        // Very short screens keep the description in Rite details.
+        const parts = [
+          ".raid-rite-copy",
+          ".raid-rite-icon",
+          "b",
+          ...(size.height > 350 ? ["small"] : []),
+        ];
+        const tiles = await page.evaluate(
+          ([offers, parts]) =>
+            offers.map((id) => {
+              const button = document.querySelector(
+                `[data-raid-rite="${id}"]`,
+              )!;
+              const rect = (e: Element) => {
+                const r = e.getBoundingClientRect();
+                return { x: r.x, y: r.y, width: r.width, height: r.height };
+              };
+              return {
+                id,
+                button: rect(button),
+                parts: parts.map((part) => rect(button.querySelector(part)!)),
+              };
+            }),
+          [offers, parts] as const,
+        );
+        for (const { id, button, parts: boxes } of tiles) {
+          const [content] = boxes;
+          for (const [i, part] of boxes.entries())
+            expect(inside(part, button), `${id} ${parts[i]}`).toBe(true);
           expect(
             Math.abs(
               content.x + content.width / 2 - (button.x + button.width / 2),
@@ -387,19 +489,6 @@ for (const size of [
               content.y + content.height / 2 - (button.y + button.height / 2),
             ),
           ).toBeLessThanOrEqual(2);
-          // Very short screens keep the description in Rite details.
-          for (const child of [
-            ".raid-rite-icon",
-            "b",
-            ...(size.height > 350 ? ["small"] : []),
-          ]) {
-            expect(
-              inside(
-                await box(page, `[data-raid-rite="${id}"] ${child}`),
-                button,
-              ),
-            ).toBe(true);
-          }
         }
         if (offers[0] === "shelter")
           await snap(
@@ -415,6 +504,8 @@ for (const size of [
           w.__snap.phase = "playing";
           w.__push();
         });
+        // The whole court (a court-wide mechanic) refits to the new size.
+        await courtWarning(page, true);
         for (const height of [280, 390]) {
           await page.setViewportSize({ width: size.width, height });
           await expect.poll(() => floorHudGap(page)).toBeGreaterThanOrEqual(5);

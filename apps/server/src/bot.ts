@@ -20,6 +20,7 @@ import {
   farMultiplier,
   platesOf,
   type Ability,
+  type AbilityKind,
   type CharacterId,
   type StatusKind,
   type Fighter,
@@ -368,16 +369,19 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
  * Hard made sharper where it pays (measured with difficulty-gap.ts, each
  * setting alone against Hard: reaction +18 points, dodge +9, no rests +7,
  * aim +4, quicker decisions +2; leading shots fully and engaging more made
- * it weaker), plus the counterplay in ExpertFlags. Together it beats Hard
- * in about 92% of duels, whichever champion it plays. A 0.1 s reaction is
- * a top player's; going further would measure a machine, not players.
+ * it weaker), plus the counterplay in ExpertFlags. Its reaction and aim
+ * are a good player's, not a machine's: at 0.1 s and 0.08 rad it landed so
+ * many quick shots that kiters ruled the table (Mossloth 67%, Mystowl 63%)
+ * and brawlers sank (Cindrake 31%); at 0.2 s and 0.12 those are 59%, 50%
+ * and 60%, and it still beats Hard in 89% of duels (docs/balance-overhaul.md,
+ * "A good player's hands").
  */
 export const EXPERT_PROFILE: Profile = {
   ...BOT_PROFILES.hard,
   // It reads marks in MARK_REACTION, not in Hard's markReaction.
   markReaction: undefined,
-  reaction: 0.1,
-  aimError: 0.08,
+  reaction: 0.2,
+  aimError: 0.12,
   dodge: 0.9,
   think: 0.08,
   rest: 0,
@@ -430,6 +434,61 @@ const OFFENSIVE = new Set([
   "rush",
   "blink",
 ]);
+/**
+ * Every skill kind `chooseSkill` has a `case` for. A kind missing here (and
+ * there) scores 0, so bots would never cast it: tests/unit/bot-skill-kinds
+ * checks every champion's kit, with and without rites, against this list.
+ * The `default` of that switch fails the typecheck if a kind listed here has
+ * no `case`, so add both together.
+ */
+const BOT_SKILL_KIND_LIST = [
+  "projectile",
+  "charged",
+  "barrage",
+  "beam",
+  "rush",
+  "blink",
+  "veil",
+  "screen",
+  "taunt",
+  "rewind",
+  "tether",
+  "gaze",
+  "clamp",
+  "throw",
+  "pound",
+  "cage",
+  "surf",
+  "wave",
+  "storm",
+  "hunt",
+  "leap",
+  "creep",
+  "garden",
+  "lure",
+  "trail",
+  "steer",
+  "grapple",
+  "shrapnel",
+  "tunnel",
+  "cyclone",
+  "seedling",
+  "timewarp",
+  "swap",
+  "melee",
+  "cone",
+  "nova",
+  "zone",
+  "counter",
+  "barrier",
+  "clone",
+  "buff",
+  "rest",
+] as const satisfies readonly AbilityKind[];
+type BotSkillKind = (typeof BOT_SKILL_KIND_LIST)[number];
+export const BOT_SKILL_KINDS: ReadonlySet<AbilityKind> = new Set(
+  BOT_SKILL_KIND_LIST,
+);
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
 type Point = { x: number; y: number };
@@ -1551,8 +1610,7 @@ export class BotBrain {
           if (a.tether?.yank) {
             // Well inside its reach: the wind-up gives the target time to
             // step out, and a wire that finds nobody is wasted.
-            if (s.sight && reach(a.range * 0.8))
-              score = s.dist > 140 ? 22 : 10;
+            if (s.sight && reach(a.range * 0.8)) score = s.dist > 140 ? 22 : 10;
           }
           // Gill Siphon: lock on while the target is in reach.
           else if (s.sight && reach(a.range * 0.95))
@@ -1727,6 +1785,12 @@ export class BotBrain {
           } else if (s.hpRatio < 0.45 && s.dist > 430 && !s.threatened)
             score = 30;
           break;
+        default: {
+          // Only kinds without a `case` reach here: none of them may be in
+          // BOT_SKILL_KINDS (a typecheck error names the one missing a case).
+          const unhandled: Exclude<AbilityKind, BotSkillKind> = a.kind;
+          void unhandled;
+        }
       }
       if (!score) return;
       if (OFFENSIVE.has(a.kind) && a.bonusVsStatus && s.enemyDisabled)

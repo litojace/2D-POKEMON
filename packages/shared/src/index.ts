@@ -775,7 +775,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "storm",
         16,
         20,
-        "Call a storm over the whole court: three bolts fall on the enemy nearest your aim, wherever it is, 0.8 seconds apart. Each marks the ground where it is heading and strikes 0.55 seconds later: 16 damage and a short paralysis to anyone in its 95 px. Change direction to dodge them.",
+        "Call a storm over the whole court: three bolts fall on the enemy nearest your aim, wherever it is, 0.8 seconds apart. Each marks the ground where it is heading and strikes 0.55 seconds later: 16 damage and a short paralysis to anyone in its 95 px.",
         {
           cast: 0.4,
           count: 3,
@@ -948,7 +948,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "wave",
         24,
         20,
-        "After a short charge, a wall of water 380 px wide rolls from Tidefin along your aim across the whole court, over any wall. Enemies it reaches take 24 and are carried along for up to half a second; carried into a wall, they take 12 more and are stunned. Jump over it.",
+        "After a short charge, a wall of water 380 px wide rolls from Tidefin along your aim across the whole court, over any wall. Enemies it reaches take 24 and are carried along for up to half a second; carried into a wall, they take 12 more and are stunned.",
         {
           cast: 0.35,
           speed: 650,
@@ -1063,7 +1063,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "gaze",
         8,
         12,
-        "Flash the big eyespots on your wings: enemies within 220 px take 8, and those looking at Lumoth (aiming at it) are stunned for 0.5 seconds. Look away to dodge it.",
+        "Flash the big eyespots on your wings: enemies within 220 px take 8, and those looking at Lumoth (aiming at it) are stunned for 0.5 seconds.",
         {
           radius: 220,
           gaze: 0.5,
@@ -1087,7 +1087,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "lure",
         24,
         20,
-        "Shoot a flare up to 650 px away. It hangs like a little sun for 2 seconds and draws every enemy within 200 px toward it (190 px a second), then bursts: 24 damage and stunned for 0.6 seconds within 150 px. Dash out of the pull.",
+        "Shoot a flare up to 650 px away. It hangs like a little sun for 2 seconds and draws every enemy within 200 px toward it (190 px a second), then bursts: 24 damage and stunned for 0.6 seconds within 150 px.",
         {
           cast: 0.35,
           range: 650,
@@ -1236,7 +1236,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "nova",
         36,
         20,
-        "Slam the ground for a large shockwave. Jump to avoid it.",
+        "Slam the ground for a large shockwave.",
         { radius: 230, cast: 0.5, ground: true, knockback: 140 },
       ),
     ],
@@ -1267,7 +1267,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "projectile",
         14,
         8,
-        "Your shadow crawls out and binds the first enemy's shadow: 14 damage and Rooted for 0.4 seconds (it can still attack, but not move or dash). Sidestep it.",
+        "Your shadow crawls out and binds the first enemy's shadow: 14 damage and Rooted for 0.4 seconds (it can still attack, but not move or dash).",
         {
           speed: 900,
           radius: 18,
@@ -1309,7 +1309,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "hunt",
         5,
         20,
-        "A wraith leaves your lantern and hunts the nearest enemy you can see for 3 seconds, through walls, a little slower than anyone walks. Its touch deals 5 every half second, and reaps an enemy under 20% health: knocked out. Run from it.",
+        "A wraith leaves your lantern and hunts the nearest enemy you can see for 3 seconds, through walls. Its touch deals 5 every half second, and reaps an enemy under 20% health: knocked out.",
         {
           cast: 0.3,
           radius: 50,
@@ -1468,7 +1468,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "zone",
         6,
         12,
-        "Scatter a patch of hot coals for 4 seconds. Burns anyone standing in it. Jump to avoid it.",
+        "Scatter a patch of hot coals for 4 seconds. Burns anyone standing in it.",
         {
           radius: 120,
           range: 600,
@@ -1502,7 +1502,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "creep",
         26,
         20,
-        "A storm of burning chestnuts creeps along your aim, over any wall: five blasts 115 px wide, from 160 px out to 760 px, 0.15 seconds apart. Each is marked 0.6 seconds before it lands: 26 damage, a burn and a shove. Step out of the line.",
+        "A storm of burning chestnuts creeps along your aim, over any wall: five blasts 115 px wide, from 160 px out to 760 px, 0.15 seconds apart. Each is marked 0.6 seconds before it lands: 26 damage, a burn and a shove.",
         {
           cast: 0.3,
           count: 5,
@@ -2101,7 +2101,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "seedling",
         28,
         5,
-        "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 10, 18 or 28 damage and a 0.4, 0.6 or 1 second root. Up to 3 at once; jump over them.",
+        "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 10, 18 or 28 damage and a 0.4, 0.6 or 1 second root. Up to 3 at once.",
         {
           range: 520,
           radius: 70,
@@ -2121,7 +2121,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "timewarp",
         0,
         9,
-        "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed. Dashing isn't slowed: dash out of the bubble and you are free at once.",
+        "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed.",
         { range: 520, radius: 165, duration: 3, knockback: 0, warp: 0.35 },
       ),
       ability(

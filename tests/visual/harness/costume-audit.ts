@@ -25,7 +25,7 @@ const championOf = (skin: string) =>
   )!;
 
 const PARTS =
-  /-(body|armL|armR|scarf|flame|head|legL|legR|wings|tail)(~[^~]*)?$/;
+  /-(body|armL|armR|scarf|flame|hat|head|legL|legR|wings|tail)(~[^~]*)?$/;
 /** Each crop play draws, default and costume, as images to check. */
 export function cropArt(skins = costumeSkins()) {
   const out: { key: string; url: string; skin: string | null }[] = [];
@@ -57,8 +57,8 @@ export function eyeArt(skins = costumeSkins()) {
       const order = dir === "down" ? [] : profilePartOrder(dir, id);
       const over: CreaturePart[] =
         dir === "down"
-          ? ["flame", "scarf"]
-          : [...order.slice(order.indexOf("eyes") + 1), "scarf"];
+          ? ["flame", "hat", "scarf"]
+          : [...new Set([...order.slice(order.indexOf("eyes") + 1), "hat", "scarf"])] as CreaturePart[];
       return {
         skin,
         dir,

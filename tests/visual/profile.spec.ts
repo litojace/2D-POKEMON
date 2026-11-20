@@ -764,7 +764,8 @@ test("a locked name says when; a refusal says why", async ({ browser }) => {
     ).toContainText(/You can change it again in (10 d 0 h|9 d 23 h)/);
     expect(await layoutProblems(page, { phone: true })).toEqual([]);
     expect(errors).toEqual([]);
-    // If the server refuses anyway (another device changed it), its reason
+    // Once the lock has run out (by the server's clock) the button is back;
+    // if the server refuses anyway (another device changed it), its reason
     // shows. A fresh page: opened again within 30 s, the Profile shows the
     // copy it had (COPY_MAX_AGE_MS), and only a POST forgets that copy. (This
     // used to reopen the same page and pass only when the Lobby's fighter
@@ -774,7 +775,13 @@ test("a locked name says when; a refusal says why", async ({ browser }) => {
     await again.addInitScript((now) => {
       const w = window as any;
       w.__serverTime = now;
-      w.__nameStatus = null;
+      // Changed 14 days and an hour ago: the lock ran out an hour ago.
+      w.__nameStatus = {
+        changedAt: new Date(now - 14 * 86400e3 - 3600e3).toISOString(),
+        nextAt: new Date(now - 3600e3).toISOString(),
+        now: new Date(now).toISOString(),
+        days: 14,
+      };
       w.__refuseName = true;
     }, serverTime);
     const refused = await open(again, SIZES[3]);

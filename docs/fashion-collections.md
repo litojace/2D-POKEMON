@@ -73,13 +73,27 @@ full-screen flashes, large auras, changed hitboxes or ability timings.
 Modelled on premium skins in League of Legends, Mobile Legends and Brawl
 Stars: their effects live on the costume and on what the champion does
 (abilities, movement, landing, victory), not on props circling it all the
-time. Riot's VFX guidance puts readability first, so idle stays quiet.
+time. Riot's VFX guidance puts readability first, so idle stays quiet on the
+champion itself; the tier shows at the feet (the aura below).
 
 - **Idle: light on the suit.** Nova Vanguard: energy runs up a seam into
   the chest emblem, which breathes. Sky Pirates: a glint sweeps the
   tricorne's gold brim, and the buckle holds a warm light that flashes a beat
   later. With the ambient budget, a few motes drift off (Nova's rise and
   slow; the pirates' gold dust settles).
+- **A Legendary aura at rest**, so the tier reads from across the court
+  and a 5,500-coin skin never looks like a 3,500 Epic (`legendaryAura` in
+  `epic-signature-fx.ts`). On every graphics level: a pool of the skin's
+  light under the feet, a rim in Legendary gold (`TIER_COLORS.legendary`)
+  and a comet of light running round it. With the ambient budget: a second
+  comet, four marks of the collection turning slowly on the rim (Nova's hex
+  pips in the suit's glow, the pirates' gold compass points, Hồn Việt's
+  drum suns, Stars & Stripes' red and blue stars), a soft light behind the
+  shoulders and two glints rising beside the body, off the face. While the
+  ultimate's motif is out it steps back to the pool and rim. It stays below
+  a Mythical's Stage II rune circle and Stage III seal: one thin rim, no
+  orbiting shards. Idle frames now draw at most 19 calls compact and 36
+  full (budgets 20 and 40).
 - **Moving: its own trail at the feet.** Nova: energy ripples, light streaks
   on a dash. Pirates: sea-spray puffs that bloom and thin out, and gold
   dust. The generic skin trail is off for these skins, so there is only one.
@@ -218,12 +232,13 @@ colours below).
 | Pangrove | Đầm Sen Đồng Tháp | Pink áo bà ba, a lotus leaf worn as a hat with a glowing bud |
 | Mossloth | Ông Đồ | Black áo the, round spectacles, a calligraphy scroll whose ink glows |
 
-As a Legendary each costume also wears a gold-embroidered silk sash whose
-stitches light in a run, and some champions trade their own prop for one of
-their story (`modern-viet-legend.ts`): Astrabun's mallet becomes a Trung Thu
+As a Legendary some champions trade their own prop for one of their story (`modern-viet-legend.ts`): Astrabun's mallet becomes a Trung Thu
 rabbit lantern on a bamboo rod (its head repainted, a lantern drawn over it),
 Sunbara's yuzu a crown of hoa mai, Tidefin holds a lotus lamp, and Terradon's
-shell turns to Kim Quy's gold.
+shell turns to Kim Quy's gold. (Every costume once also wore the same
+gold sash across the chest; it read as one bar on all eighteen and hid
+their own embroidery, so it was taken off on 20 Nov 2026: the Legendary
+finish and each figure's own headwear and props mark the tier instead.)
 
 The glowing pieces are marked `lume` and light up in play (see Glowing costume
 pieces below). The signature effects (`epic-signature-fx.ts`, table `viet`):
@@ -342,6 +357,106 @@ something that lights up (`modern-designs.ts` for five of them,
 
 A short confetti trail on a dash. Migration `20261118180000_neon_campus.sql`
 adds the skins and their set.
+
+## The Legendary finish
+
+On top of each collection's own costume, every Legendary carries three
+marks an Epic never has, so its price shows on the fighter itself:
+
+- **A two-tone body** (`legendPalette` in `fashion-art.ts`, hues in
+  `legend-colours.ts`). The body keeps its figure's colour; its light
+  markings (ear insides, masks, wing undersides, tail stripes, bellies)
+  take a second hue chosen for the figure: a gold Kim Quy with jade
+  markings, a night-indigo Đèn Kéo Quân with lantern orange, a periwinkle
+  Space Ranger with mission orange. Light markings are near white on most
+  champions, where no hue shows, so they come down to at most 0.8
+  lightness, never within 0.1 of the body. Champions whose face is drawn
+  in that colour (Voltkit, Coilemur, Mossloth, Pangrove, Wombolder) keep it
+  at 0.88 with half the colour, so a face never looks unwell. `accent` and
+  `dark` keep their lightness (Mystowl's and Duskveil's faces use accent).
+- **Metal-edged garments** (`legendTrim` in `modern-fashion.ts`): every
+  garment drawn through the kit's `garment` (and `torso`) gets a band along
+  the inside of its edge with a darker bevel, gold for the Sky Pirates,
+  Hồn Việt and Stars & Stripes, the suit's own light for Nova Vanguard
+  (breathing with its pulse layer).
+- **A clasp at the collar** (`legendClasp`), front and side views, under the
+  chin, a step below a Mythical's rune gorget: Nova's hex gem in its light,
+  the pirates' doubloon set with a ruby, Hồn Việt's jade ngọc bội with a
+  red knot, Stars & Stripes' star medal on a ribbon; its gem glints.
+  `CLASP_SKIP` lists any costume whose own collar piece it would crowd.
+
+## Legendary headwear and props
+
+Every Legendary's own headwear and signature prop is worked up past its
+Epic-level drawing, from its own story, in one file per collection
+(`legend-details-pirates.ts`, `-vanguard.ts`, `-vietlegend.ts`,
+`-stars.ts`): a design per champion that `legendDetails`
+(`legend-details.ts`) draws after the costume's own, on the same parts and
+from the costume's own coordinates, in all four views. A few pieces too
+small to carry detail were redrawn larger in the costume files themselves
+(the Neon Diner's cap and sundae, the noir fedora, the magician's top hat,
+the pitcher's glove, Liberty's torch; Nova's satchel, hammer, jets, drone
+and cloud). Some examples:
+
+- Sky Pirates: Storm Corsair's ostrich plume and filigreed bolt cockade,
+  its compass's engraved bezel and chain; a tentacle wrapped round the
+  Kraken Captain's brim with lit suckers; ice shards behind the Frost
+  Privateer's tricorne; a real bosun's call for the Moonsail Bosun.
+- Nova Vanguard: a segmented antenna mast with a caged beacon; forge
+  goggles and a rune-lit hammer with a sun core; a faceted hex shield; a
+  sonar bell; a rain cloud with a silver lining and a rainbow.
+- Hồn Việt: an ông Địa mask over the Trung Thu lantern bearer; Thánh
+  Gióng's iron band with a Đông Sơn star; a Huế poem hat for Hoa Đăng;
+  Chim Lạc's plumes and drum patterns; a checked khăn rằn; H'Mông
+  cross-stitch, silver coins and a khóa bạc; the scroll mounted in silk.
+- Stars & Stripes: the Sheriff's tooled band and silver conchos; Liberty's
+  gilded torch cage and lit crown windows; a satin top hat with a peeking
+  card; a backwards snapback for the Times Square DJ.
+
+Astrabun's mallet is re-forged for each Legendary, as Hồn Việt first did
+with its rabbit lantern: Nova's Comet Strider holds a comet staff (a silver
+shaft, a night-blue orb with a glowing star and a streaming tail), the
+Moonsail Bosun a little mast flying a moonsail with a gold crescent, and
+the Stage Magician its magic wand (a black wand, a white tip, a gold star
+in a burst of sparkle; the little wand it carried on its back is gone).
+Each recolours the handle and head through `SkinArt.weapon` and draws over
+the head at `malletHead` (`legend-details.ts`), so it swings with the arm.
+
+The other champions who hold or carry something get theirs re-forged the
+same way where a collection's figure calls for it. The champion's own art
+marks the piece `data-held` (front and profile), and `SkinArt.heldOff`
+takes it off so the design can hand over its own (`bladeLine`,
+`CHESTNUT`, `lanternSpot` in `legend-details.ts`):
+
+| Champion | Nova Vanguard | Sky Pirates | Hồn Việt | Stars & Stripes |
+| --- | --- | --- | --- | --- |
+| Tidefin (fin-blade) | a riptide blade of hard light | a cutlass with a gold basket hilt | the lotus lamp (drawn over it) | none: its surfboard is what it carries |
+| Pyranda (chestnut, front) | an ember flask with a medic's cross | a round bomb with a lit fuse | its own chestnut (the figure is a chestnut seller) | a fastball on fire |
+| Duskveil (lantern body; its glow stays) | a signal beacon in a hex cage | a brass ship's lantern, ghost-green flame | a red silk lồng đèn | an art-deco lamp in black and chrome |
+
+The other champions hold nothing but their own paws, claws, wings or
+tentacles, so there is nothing of theirs to re-forge.
+
+Small prop details (chains, seals, inlay, a press card) read in the Shop
+more than at battle size; plumes, crests, masks, badges and redrawn props
+read in play. `costume-fit.spec.ts` keeps all of it inside the rig's crops
+and off the eyes.
+
+## Headwear over an animated crest
+
+Cindrake's flame flickers in the rig (its whole head-top layer scales in
+and out, and swells on attacks), Terradon's sapling sways and Sunbara's
+yuzu rocks. A costume's pieces on that layer used to move with the crest:
+a pirate bandana pulsing with the flame, a lantern at the hip swinging with
+it. For these champions (`ANIMATED_CRESTS` in `creature-design.ts`) a
+skin's pieces on the head-top layer go on a `hat` layer instead, which
+rides the head rigidly (no flicker, sway, spring or attack swell) and is
+drawn over the face in profile. A piece that is the crest itself (the flame
+the Cinder Buccaneer redraws, the ring round Solar Flare's orange) is
+marked `data-crest` and stays on the crest's layer, animating with it.
+Only these three champions load a hat texture (`partsFor` in
+`animation/assets.ts`). Hip pieces never go on a head layer: the Cinder
+Buccaneer's lantern rides the torso on the scarf layer.
 
 ## Body colours
 

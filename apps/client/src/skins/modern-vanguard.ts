@@ -133,8 +133,8 @@ export const VANGUARD_DESIGNS_NEW: Record<CharacterId, Design> = {
   voltkit(k) {
     const L = VANGUARD_LOOK.voltkit;
     armour(k, L, (x, y, s) => k.lume("chase", k.path(`M${x - 7 * s} ${y - 3 * s}L${x} ${y + 2 * s}L${x + 7 * s} ${y - 3 * s}M${x - 7 * s} ${y + 3 * s}L${x} ${y + 8 * s}L${x + 7 * s} ${y + 3 * s}`, "none", L.glow, 2.2 * s), 2, L.glow));
-    const sx = k.back ? k.L - 6 : k.side ? k.C - k.side * 8 : k.R + 6,
-      sy = k.side ? k.B + 4 : k.B - 4;
+    const sx = k.back ? k.L - 9 : k.side ? k.C - k.side * 8 : k.R + 9,
+      sy = k.side ? k.B + 4 : k.B + 1;
     const fl = k.back ? -1 : k.side ? -k.side : 1;
     k.put(k.side ? "flame" : "body", k.rect(sx - 10, sy - 9, 20, 16, 3, "#2a5664", k.ink, 1) + k.rect(sx - 10, sy - 9, 20, 6, 3, "#356a7a", k.ink, 0.8) +
       k.lume("pulse", k.line(`M${sx - 7 * fl} ${sy + 2}h${3 * fl}l${2 * fl} -4l${2 * fl} 7l${2 * fl} -3h${4 * fl}`, L.glow, 1.4), 3, L.glow));
@@ -147,8 +147,8 @@ export const VANGUARD_DESIGNS_NEW: Record<CharacterId, Design> = {
       k.lume("blink", k.circle(ax + tip, ay - 35, 3, "#ff5a6a", k.ink, 0.5), 0, "#ff5a6a"));
   },
   // Solar Forger: a round plate with a sun core whose rays light in turn,
-  // and a forge hammer slung across the back, its head white-hot over the
-  // right shoulder. Its own flame crest stays.
+  // and a forge hammer slung across the back, its rune-lit head with a
+  // burning sun core over the right shoulder. Its own flame crest stays.
   cindrake(k) {
     const L = VANGUARD_LOOK.cindrake;
     armour(k, L, (x, y, s) => core(k, x, y, s, "#3a2a1c", L.glow) +
@@ -156,9 +156,27 @@ export const VANGUARD_DESIGNS_NEW: Record<CharacterId, Design> = {
         const a = (i / 8) * Math.PI * 2;
         return k.lume("chase", k.line(`M${x + Math.cos(a) * 8.5 * s} ${y + Math.sin(a) * 8.5 * s}L${x + Math.cos(a) * 11.5 * s} ${y + Math.sin(a) * 11.5 * s}`, L.glow, 1.6 * s), i + 3, L.glow);
       }).join(""));
-    const hammer = (x: number, y: number, rot: number) => `<g transform="rotate(${rot} ${x} ${y}) translate(${x} ${y}) scale(1.3) translate(${-x} ${-y})">` +
-      k.rect(x - 1.8, y - 4, 3.6, 34, 1.5, "#5a3a22") +
-      k.lume("pulse", k.rect(x - 11, y - 12, 22, 12, 2.5, "#ff8a3a", k.ink, 1) + k.rect(x - 8, y - 9, 16, 6, 1.5, "#ffe08a", "none"), 0, "#ffb347") + "</g>";
+    // The hammer: a wrapped haft with gold bands and a pommel, an iron head
+    // with steel striking faces, forge runes lit along it and a sun core
+    // burning at its heart.
+    const hammer = (x: number, y: number, rot: number) => {
+      const hy = y - 6.5;
+      const runes = [-1, 1].map((s) => k.lume("chase", k.line(`M${x + s * 7.6} ${hy - 3.6}V${hy + 3.6}M${x + s * 7.6} ${hy - 1}l${s * 1.8} -1.8M${x + s * 7.6} ${hy + 1.4}l${-s * 1.8} 1.6`, "#ffb347", 1), s > 0 ? 1 : 0, "#ffb347")).join("");
+      const rays = Array.from({ length: 8 }, (_, i) => {
+        const a = (i / 8) * Math.PI * 2;
+        return `M${(x + Math.cos(a) * 4.2).toFixed(2)} ${(hy + Math.sin(a) * 4.2).toFixed(2)}L${(x + Math.cos(a) * 5.8).toFixed(2)} ${(hy + Math.sin(a) * 5.8).toFixed(2)}`;
+      }).join("");
+      return `<g transform="rotate(${rot} ${x} ${y}) translate(${x} ${y}) scale(1.35) translate(${-x} ${-y})">` +
+        k.rect(x - 1.9, y - 4, 3.8, 34, 1.5, "#5a3a22") +
+        k.line(`M${x - 1.9} ${y + 18}l3.8 -2.4M${x - 1.9} ${y + 21.5}l3.8 -2.4M${x - 1.9} ${y + 25}l3.8 -2.4`, "#2e1c10", 0.8) +
+        k.rect(x - 2.6, y + 1, 5.2, 2.4, 0.8, "#f2c14e", "#8a6420", 0.6) + k.rect(x - 2.6, y + 13.5, 5.2, 2.2, 0.8, "#f2c14e", "#8a6420", 0.6) +
+        k.circle(x, y + 31, 2.8, "#f2c14e", "#8a6420", 0.7) +
+        k.rect(x - 12.5, y - 13.5, 25, 14, 2.2, "#454b58", k.ink, 1.1) +
+        k.rect(x - 12.5, y - 13.5, 4, 14, 1.6, "#aab2c0", k.ink, 0.8) + k.rect(x + 8.5, y - 13.5, 4, 14, 1.6, "#aab2c0", k.ink, 0.8) +
+        k.line(`M${x - 8} ${y - 12.3}H${x + 8}`, "#6a7282", 1) + runes +
+        k.circle(x, hy, 5.2, "#2a1c14", "#f2c14e", 1) +
+        k.lume("pulse", k.circle(x, hy, 3.4, "#ffcf5a", "none", 0) + k.circle(x, hy, 1.6, "#fff6d0", "none", 0) + k.line(rays, "#ffcf5a", 0.9), 0, "#ffcf5a") + "</g>";
+    };
     if (k.back) k.put("scarf", hammer(k.C + 30, k.T - 4, 36));
     else k.put("body", k.side ? hammer(k.C - k.side * 30, k.T - 4, -k.side * 36) : hammer(k.C - 44, k.T - 4, -36), true);
   },
@@ -168,9 +186,18 @@ export const VANGUARD_DESIGNS_NEW: Record<CharacterId, Design> = {
     const L = VANGUARD_LOOK.tidefin;
     armour(k, L, (x, y, s) => k.lume("chase", k.path(`M${x - 9 * s} ${y + 2 * s}q${3 * s} ${-6 * s} ${6 * s} 0t${6 * s} 0t${6 * s} 0`, "none", "#1f6fb0", 2.4 * s), 2, L.glow) + core(k, x, y + 8 * s, 0.5 * s, "#173a6a", L.glow, 3));
     // Hydro-jets: two nozzles behind the shoulders, each with a glowing ring.
-    const jet = (x: number, y: number, i: number) => k.rect(x - 5, y - 12, 10, 18, 3, "#2a4a7a", k.ink, 0.9) + k.lume("pulse", `<ellipse cx="${x}" cy="${y + 7}" rx="5.5" ry="2.6" fill="${L.glow}" stroke="#ffffff" stroke-width="0.8"/>`, 4 + i, L.glow);
+    // Each jet: a domed tank with a steel band, a fin on its outer side, a
+    // flared nozzle ringed with water and a few drops spraying from it.
+    const jet = (x: number, y: number, i: number, out = i ? 1 : -1) =>
+      k.path(`M${x + out * 4} ${y - 9}L${x + out * 9} ${y - 3}L${x + out * 9} ${y + 3}L${x + out * 4} ${y + 1}Z`, "#5fb8e0", k.ink, 0.8) +
+      k.path(`M${x - 5} ${y + 4}V${y - 8}Q${x - 5} ${y - 14} ${x} ${y - 14}Q${x + 5} ${y - 14} ${x + 5} ${y - 8}V${y + 4}Z`, "#2a4a7a", k.ink, 0.9) +
+      k.line(`M${x - 2.6} ${y - 11}Q${x - 3.4} ${y - 6} ${x - 3} ${y}`, "#ffffff66", 1.4) +
+      k.rect(x - 5.6, y - 5, 11.2, 2.8, 1, "#c9d4e0", k.ink, 0.6) +
+      k.path(`M${x - 4} ${y + 4}L${x - 6.5} ${y + 8}H${x + 6.5}L${x + 4} ${y + 4}Z`, "#8a9ab0", k.ink, 0.8) +
+      k.lume("pulse", `<ellipse cx="${x}" cy="${y + 8}" rx="6" ry="2.4" fill="${L.glow}" stroke="#ffffff" stroke-width="0.8"/>`, 4 + i, L.glow) +
+      [-3, 0, 3].map((u, j) => k.lume("chase", k.circle(x + u * 1.2, y + 12 + Math.abs(u) * 0.6 + j * 0.8, 1.2, "#bff8ff", "none", 0), 6 + j, L.glow)).join("");
     if (k.back) k.put("scarf", jet(k.C - 13, k.T + 6, 0) + jet(k.C + 13, k.T + 6, 1));
-    else if (k.side) k.put("body", jet(k.C - k.side * 16, k.T + 2, 0), true);
+    else if (k.side) k.put("body", jet(k.C - k.side * 16, k.T + 2, 0, -k.side), true);
     else k.put("body", jet(k.C - 30, k.T - 2, 0) + jet(k.C + 30, k.T - 2, 1), true);
     // A visor band across the forehead, clear of the eyes; from behind the band only.
     const y = k.ht + 14;
@@ -289,10 +316,12 @@ export const VANGUARD_DESIGNS_NEW: Record<CharacterId, Design> = {
     else k.put("flame", k.line(`M${k.hx - 38} ${by + 6}Q${k.hx} ${by - 4} ${k.hx + 38} ${by + 6}`, "#f4f8f8", 4.4) + k.lume("pulse", plus(k.hx, by - 1, 4.4), 4, L.glow));
     const dx = k.back ? k.C - 52 : k.side ? k.hx - k.side * 40 : k.hx + 62,
       dy = k.ht + 2;
-    k.put(k.back ? "scarf" : "flame", k.line(`M${dx - 14} ${dy - 6}H${dx + 14}`, "#5a6a7a", 1.8) +
+    // Drawn a third larger than its outline, so it reads at battle size.
+    const zoom = `<g transform="translate(${dx} ${dy}) scale(1.3) translate(${-dx} ${-dy})">`;
+    k.put(k.back ? "scarf" : "flame", zoom + k.line(`M${dx - 14} ${dy - 6}H${dx + 14}`, "#5a6a7a", 1.8) +
       `<ellipse cx="${dx - 14}" cy="${dy - 7}" rx="6" ry="1.5" fill="#c9d4e0aa"/><ellipse cx="${dx + 14}" cy="${dy - 7}" rx="6" ry="1.5" fill="#c9d4e0aa"/>` +
       `<ellipse cx="${dx}" cy="${dy}" rx="10" ry="8" fill="#f4f6f8" stroke="${k.ink}" stroke-width="1"/>` +
-      k.lume("pulse", plus(dx, dy, 3.6), 3, L.glow) + k.lume("blink", k.circle(dx, dy + 8, 1.8, "#ff5a6a", "none", 0), 0, "#ff5a6a"));
+      k.lume("pulse", plus(dx, dy, 3.6), 3, L.glow) + k.lume("blink", k.circle(dx, dy + 8, 1.8, "#ff5a6a", "none", 0), 0, "#ff5a6a") + "</g>");
   },
   // Frost Weaver: a crystalline mantle over the shoulders whose points
   // glint, and a snowflake core on the plate. Its own crest stays.
@@ -422,20 +451,28 @@ export const VANGUARD_DESIGNS_NEW: Record<CharacterId, Design> = {
     else k.put("scarf", thorns(k.C - 18, k.T + 3, 3) + thorns(k.C + 18, k.T + 3, 3));
   },
   // Cloud Keeper: a soft round plate with a raindrop that glows, and a
-  // little rain cloud of its own floating by its shoulder, its drops lit
-  // in a run.
+  // little rain cloud of its own floating by its shoulder, a rainbow
+  // peeking from under it and its drops lit in a run.
   mossloth(k) {
     const L = VANGUARD_LOOK.mossloth;
     armour(k, L, (x, y, s) => k.lume("pulse", k.path(`M${x} ${y - 7 * s}Q${x + 6 * s} ${y + 1 * s} ${x} ${y + 6 * s}Q${x - 6 * s} ${y + 1 * s} ${x} ${y - 7 * s}Z`, L.glow, k.ink, 0.6), 2, L.glow));
+    // The cloud: puffs merged into one outline, a shaded underside with a
+    // silver lining of light, a rainbow peeking out behind and drops lit
+    // in a run.
+    const puffs = [[-15, 3, 9], [-6, -4, 11], [6, -6, 12], [16, 1, 9], [0, 5, 10], [-10, 6, 8], [10, 6, 8]];
     const cloud = (x: number, y: number, z: number) => `<g transform="translate(${x} ${y}) scale(${z}) translate(${-x} ${-y})">` +
-      [[-14, 2, 10], [0, -4, 13], [14, 2, 10], [0, 6, 11]].map(([u, v, r]) => `<circle cx="${x + u}" cy="${y + v}" r="${r}" fill="#f4f8ff" stroke="${k.ink}" stroke-width="1"/>`).join("") +
-      `<rect x="${x - 22}" y="${y + 2}" width="44" height="10" fill="#f4f8ff"/>` +
-      [-10, -2, 6, 14].map((u, i) => k.lume("chase", k.path(`M${x + u - 4} ${y + 16}q2 4 0 7q-2 -3 0 -7Z`, L.glow, "none"), 3 + i, L.glow)).join("") + "</g>";
+      ["#ff8a9a", "#ffe08a", "#8fd8ff"].map((c, i) => `<path d="M${x + 3 + i * 3} ${y + 21}A${13 - i * 3} ${13 - i * 3} 0 0 1 ${x + 29 - i * 3} ${y + 21}" fill="none" stroke="${c}" stroke-width="3"/>`).join("") +
+      puffs.map(([u, v, r]) => `<circle cx="${x + u}" cy="${y + v}" r="${r}" fill="${k.ink}" stroke="${k.ink}" stroke-width="2.2"/>`).join("") +
+      puffs.map(([u, v, r]) => `<circle cx="${x + u}" cy="${y + v}" r="${r}" fill="#f4f8ff"/>`).join("") +
+      `<ellipse cx="${x}" cy="${y + 8.5}" rx="17" ry="4.2" fill="#d6e4f6"/>` +
+      k.line(`M${x - 8} ${y - 10}Q${x - 4} ${y - 14} ${x + 2} ${y - 13}M${x - 21} ${y}Q${x - 19} ${y - 4} ${x - 15} ${y - 5}`, "#ffffff", 1.6) +
+      k.lume("pulse", k.line(`M${x - 17} ${y + 12.6}Q${x} ${y + 16.4} ${x + 17} ${y + 12.6}`, L.glow, 1.6), 2, L.glow) +
+      [-16, -9, -2, 5].map((u, i) => k.lume("chase", k.path(`M${u + x} ${y + 18 + (i % 2) * 3}q2.8 4.6 0 7.4q-2.8 -2.8 0 -7.4Z`, L.glow, k.ink, 0.5), 3 + i, L.glow)).join("") + "</g>";
     // Its cloud floats by its left shoulder: viewer's right from the front,
     // left from behind, behind the head in profile.
-    if (k.back) k.put("flame", cloud(k.C - 50, k.ht + 4, 0.7));
-    else if (k.side) k.put("flame", cloud(k.hx - k.side * 42, k.ht + 2, 0.7));
-    else k.put("flame", cloud(k.hx + 60, k.ht + 4, 0.7));
+    if (k.back) k.put("flame", cloud(k.C - 58, k.ht + 2, 1.05));
+    else if (k.side) k.put("flame", cloud(k.hx - k.side * 48, k.ht, 1.05));
+    else k.put("flame", cloud(k.hx + 66, k.ht + 2, 1.05));
   },
 };
 

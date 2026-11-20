@@ -530,6 +530,8 @@ const stormPhysics: ZoneFn = (g, z, progress) => {
         z: 10,
         count: creep ? 3 : 5,
         kind: "flame",
+        dotCore: true,
+        shareGlow: 2,
         color: [0xff8a3d, 0xffd76a],
         speed: [20, 80],
         up: [40, 120],

@@ -1,6 +1,23 @@
 import { expect, test } from "@playwright/test";
 import { CHAMPION_SKINS } from "../../packages/shared/src/shop";
 import { FIGHTER_IDS } from "../../packages/shared/src/index";
+/**
+ * A prop that stands up from the near paw (Astrabun's mallet) is painted on
+ * that arm: raised overhead, it would hang upside down onto the belly.
+ * Greetings and victories keep that arm near the angle that holds it up.
+ */
+function expectPropUpright(r: any, what: string) {
+  if (!r.propArm) return;
+  const side = r.dir === "left" || r.dir === "right";
+  const hold = side ? r.propArm.side : r.propArm.front;
+  // Side drawings are mirrored: the left view's rotations are negated.
+  const arm = r.points.find((p: any) => p.part === "armR").rotation;
+  const local = r.dir === "left" ? -arm : arm;
+  expect(
+    Math.abs(local - hold),
+    `${r.id} ${r.dir} ${what}: the upright prop stays up`,
+  ).toBeLessThanOrEqual(r.propArm.swing + 1e-6);
+}
 const SKINNED = {
   rare: new Set(
     CHAMPION_SKINS.filter((s) => s.rarity === "rare").map((s) => s.champion),
@@ -98,6 +115,8 @@ for (const canvas of [false, true])
             ).toBeLessThan(0);
           }
           for (const [i, r] of rows.entries()) {
+            if (state === "victory" || state === "wave")
+              expectPropUpright(r, `${state} ${phase}`);
             expect(r.finite, `${r.id} ${state}`).toBe(true);
             expect(r.visible).toBe(true);
             expect(r.whole).toBe(false);
@@ -136,7 +155,11 @@ for (const canvas of [false, true])
                 r.rootY,
                 `${r.id} glides above the ground in every direction`,
               ).toBeLessThan(r.anchorY - 3);
-            expect(r.parts).toHaveLength(13);
+            // Champions with an animated crest (ANIMATED_CRESTS in
+            // creature-design.ts) also draw a hat layer for skin headwear.
+            expect(r.parts).toHaveLength(
+              ["cindrake", "terradon", "sunbara"].includes(r.id) ? 14 : 13,
+            );
             moved ||=
               JSON.stringify(r.points) !== JSON.stringify(rest[i].points);
             for (const point of r.points)
@@ -145,6 +168,21 @@ for (const canvas of [false, true])
         }
       }
       expect(moved, "individual articulated parts follow the poses").toBe(true);
+      // Rockslide Flex (a Victory reward) raises both arms for everyone else.
+      for (const phase of [0.5, 0.75, 0.95]) {
+        await page.evaluate(
+          (phase) =>
+            (window as any).review.pose(
+              "victory",
+              false,
+              phase,
+              "rockslide-flex",
+            ),
+          phase,
+        );
+        for (const r of await audit())
+          expectPropUpright(r, `rockslide-flex ${phase}`);
+      }
       for (const kind of ["rare", "mythical", "original"]) {
         await page.evaluate(async (kind) => {
           await (window as any).review.appearance(kind);

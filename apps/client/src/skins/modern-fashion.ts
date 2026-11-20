@@ -4,7 +4,8 @@ import type { Facing } from "../animation/controller";
 import type { Palette } from "./skin-art";
 import { fashionCut } from "./fashion-fits";
 import { cutBox, UNDER } from "./rare-fashion";
-import { DESIGNS } from "./modern-designs";
+import { DESIGNS, type Kit } from "./modern-designs";
+import { VANGUARD_LOOK } from "./modern-vanguard";
 import "./modern-viet";
 import "./modern-viet-legend";
 import "./modern-hero";
@@ -12,6 +13,11 @@ import "./modern-campus";
 import "./modern-stars";
 import "./modern-pirates";
 import "./modern-vanguard";
+// Legendary headwear and props, drawn over their costumes (after them).
+import "./legend-details-pirates";
+import "./legend-details-vanguard";
+import "./legend-details-vietlegend";
+import "./legend-details-stars";
 
 /**
  * Modern collections (prototype): Neon Campus, Hero Squad, Starlight Idol,
@@ -30,6 +36,51 @@ import "./modern-vanguard";
  *  - twinkle: sparkles that glint at their own moments.
  */
 export type ModernTheme = "campus" | "hero" | "idol" | "viet" | "stars" | "vietlegend" | "pirates" | "vanguard";
+
+/**
+ * The Legendary finish: every garment of a Legendary costume is edged in
+ * metal, a bright band with a darker bevel inside it, so the costume reads
+ * as tailored where an Epic's is plain cloth. Gold for the Sky Pirates,
+ * Hồn Việt and Stars & Stripes; Nova Vanguard's edge is its suit's light,
+ * breathing with the rest of its glow (a lume layer the suit already has).
+ */
+const LEGEND_GOLD = "#f2c14e",
+  LEGEND_BEVEL = "#8a6a2a";
+const legendTrim = (theme: ModernTheme, id: CharacterId): { band: string; bevel: string; glow: boolean } | null =>
+  theme === "vanguard"
+    ? { band: VANGUARD_LOOK[id].glow, bevel: VANGUARD_LOOK[id].suit, glow: true }
+    : theme === "pirates" || theme === "vietlegend" || theme === "stars"
+      ? { band: LEGEND_GOLD, bevel: LEGEND_BEVEL, glow: false }
+      : null;
+
+/**
+ * The Legendary clasp at the collar, under the chin, every collection its
+ * own (a step below a Mythical's rune gorget): Nova's hex gem in the
+ * suit's light, the pirates' gold doubloon set with a ruby, Hồn Việt's
+ * jade ngọc bội in gold with a red knot, Stars & Stripes' gold star medal
+ * on a red, white and blue ribbon. Its gem glints (a lume twinkle).
+ */
+type ClaspKit = Pick<Kit, "path" | "circle" | "rect" | "lume">;
+function legendClasp(theme: ModernTheme, x: number, y: number, glow: string, ink: string, k: ClaspKit) {
+  const glint = (gx: number, gy: number, c: string) => k.lume("twinkle", k.path(star(gx, gy, 1.6, 4, 0.3), "#ffffff", "none", 0), 7, c);
+  switch (theme) {
+    case "vanguard":
+      return k.path(star(x, y, 4.2, 6, 1), "#2a2f3d", ink, 0.7) + k.lume("pulse", k.path(star(x, y, 2.9, 6, 1), glow, "none", 0), 1, glow) + glint(x - 1, y - 1.2, glow);
+    case "pirates":
+      return k.circle(x, y, 4, LEGEND_GOLD, LEGEND_BEVEL, 0.8) + k.circle(x, y, 2.8, "none", LEGEND_BEVEL, 0.5) + k.circle(x, y, 1.6, "#c8202e", "none", 0) + glint(x - 0.8, y - 0.8, "#ff8a8a");
+    case "vietlegend":
+      return k.path(`M${x - 1} ${y + 3.6}l-1.2 4M${x + 1} ${y + 3.6}l1.2 4`, "none", "#c8202e", 1.1) +
+        k.circle(x, y, 4, "#5fb88a", LEGEND_BEVEL, 0.9) + k.circle(x, y, 1.3, LEGEND_GOLD, "none", 0) + glint(x - 1.4, y - 1.4, "#c8ffe0");
+    case "stars":
+      return k.rect(x - 4, y - 5.5, 8, 3.2, 0.6, "#c8323a", ink, 0.5) + k.rect(x - 1.3, y - 5.5, 2.6, 3.2, 0, "#f7f1e1", "none", 0) +
+        k.path(star(x, y + 1.4, 4.2, 5), LEGEND_GOLD, LEGEND_BEVEL, 0.7) + glint(x, y + 0.6, "#fff3c4");
+    default:
+      return "";
+  }
+}
+/** Costumes whose own piece already sits at the collar (a bow tie, a stand
+ * collar, a medal): the clasp would only crowd it. */
+const CLASP_SKIP = new Set<string>([]);
 
 /** Per-champion colours and the emblem drawn on its costume. */
 const LOOK: Record<CharacterId, { a: string; b: string; emblem: Emblem }> = {
@@ -139,9 +190,16 @@ export function modernOutfit(
   const emblem = (e: Emblem, x: number, y: number, r: number, color: string, sw = 0.6) =>
     LINE_EMBLEMS.includes(e) ? line(emblemPath(e, x, y, r), color, 1.6) : path(emblemPath(e, x, y, r), color, ink, sw);
   const clipId = `modern-${theme}-${id}-${dir}`;
+  const trim = legendTrim(theme, id);
+  const onCut = (svg: string) => svg.replace("<path", `<path transform="translate(${bx} 0)"`);
+  // Clipped to the garment, so only the inner half of each stroke shows.
+  const edge = trim
+    ? onCut(path(cut, "none", trim.bevel, 5)) +
+      (trim.glow ? lume("pulse", onCut(path(cut, "none", trim.band, 3.2)), 1, trim.band) : onCut(path(cut, "none", trim.band, 3.2)))
+    : "";
   const garment = (svg: string) =>
-    `<defs><clipPath id="${clipId}"><path d="${cut}" transform="translate(${bx} 0)"/></clipPath></defs><g clip-path="url(#${clipId})">${svg}</g>` +
-    path(cut, "none", ink, 1.2).replace("<path", `<path transform="translate(${bx} 0)"`);
+    `<defs><clipPath id="${clipId}"><path d="${cut}" transform="translate(${bx} 0)"/></clipPath></defs><g clip-path="url(#${clipId})">${svg}${edge}</g>` +
+    onCut(path(cut, "none", ink, 1.2));
   const hx = head.cx,
     ht = Math.max(head.top, 16);
   const ox = side * 4;
@@ -149,6 +207,10 @@ export function modernOutfit(
   const design = DESIGNS[theme]?.[id];
   if (design) {
     design({ id, side, back, hx, ht, C, T, B, W, L, R, ink, put, path, line, circle, rect, lume, garment, star });
+    if (trim && !back && !CLASP_SKIP.has(`${theme}:${id}`)) {
+      const [x, y] = [C + side * 5, T + 5];
+      put("body", `<g transform="translate(${x} ${y}) scale(1.25) translate(${-x} ${-y})">${legendClasp(theme, x, y, trim.band, ink, { path, circle, rect, lume })}</g>`);
+    }
     return out;
   }
 

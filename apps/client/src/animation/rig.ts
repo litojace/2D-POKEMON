@@ -25,6 +25,7 @@ import { loadRigTextures, textureResolution } from "./rig-textures";
 import {
   moodKey,
   parts,
+  partsFor,
   rigAnchorsFor,
   rigKey,
   rigAssets,
@@ -104,6 +105,18 @@ const LANTERN: Spring = { drag: 1 / 240, stiff: 32, damp: 3.2 };
 const FEET = WORLD_ART.fighterFeet;
 /** Rockslide Flex victory: how high the rock pile lifts the fighter (rig units). */
 const ROCK_PILE = 24;
+/**
+ * Near-paw props that stand upright from the paw, above the shoulder:
+ * Astrabun's mallet (and each skin's re-forged mallet or wand). The prop is
+ * painted on the arm, so raising that arm overhead turns it upside down onto
+ * the body. Greetings and victories hold that arm (armR, before the side
+ * mirror) near the angle where the prop stands up (radians; front and back
+ * views, and side views, where it rests over the shoulder), within `swing`;
+ * the free paw does the big moves.
+ */
+export const UPRIGHT_PROP_ARM: Partial<
+  Record<CharacterId, { front: number; side: number; swing: number }>
+> = { astrabun: { front: -0.35, side: 0.35, swing: 0.4 } };
 const MAX_PARTICLES = 48;
 
 type ParticleShape = FxShape;
@@ -178,7 +191,7 @@ export class FighterRig {
     this.root = scene.add.container(0, 0).setDepth(2);
     this.effects = battleCurves(scene.add.graphics()).setDepth(3);
     this.under = battleCurves(scene.add.graphics()).setDepth(1.9);
-    for (const part of parts) {
+    for (const part of partsFor(character)) {
       const asset = assets.find(
         (a) => a.key === rigKey(character, "down", part),
       )!;
@@ -315,8 +328,9 @@ export class FighterRig {
     const dir = facing(pose.angle);
     if (dir !== this.dir) {
       this.dir = dir;
-      const order =
-        dir === "down" ? parts : profilePartOrder(dir, this.character);
+      const order = (
+        dir === "down" ? parts : profilePartOrder(dir, this.character)
+      ).filter((part) => this.images.has(part));
       order.forEach((part, index) =>
         this.root.moveTo(this.images.get(part)!, index),
       );
@@ -766,7 +780,10 @@ export class FighterRig {
       if (t > 0.4 && t < 2.6) {
         const pump = Math.sin((t - 0.4) * 7);
         armL.rotation = 2.45 + pump * 0.18;
-        armR.rotation = -2.45 - pump * 0.18;
+        // An upright prop is pumped beside the head instead (UPRIGHT_PROP_ARM).
+        const held = this.propHold();
+        armR.rotation =
+          held === undefined ? -2.45 - pump * 0.18 : held - pump * 0.25;
         body.rotation = 0;
         head.rotation = -0.06;
         sy *= 1 + Math.max(0, pump) * 0.03;
@@ -776,6 +793,15 @@ export class FighterRig {
         Math.floor((Math.max(0, v - 0.4) * 7) / Math.PI);
       if (lastPileT < 0.35 && t >= 0.35) this.pebbles(x, y, 16);
       else if (t < 2.6 && pumps(t) > pumps(lastPileT)) this.pebbles(x, y, 3);
+    }
+    // An upright prop stays upright: its arm never swings overhead.
+    const prop = this.propHold();
+    if (prop !== undefined && (state === "wave" || state === "victory")) {
+      const swing = UPRIGHT_PROP_ARM[this.character]!.swing;
+      armR.rotation = Math.max(
+        prop - swing,
+        Math.min(prop + swing, armR.rotation),
+      );
     }
     // Side drawings are mirrored; their local limb poses must mirror too.
     // World-space lean, lunge and wind already use the aiming direction.
@@ -878,6 +904,13 @@ export class FighterRig {
     flame.rotation = rigidHeadwear
       ? head.rotation
       : flame.rotation + head.rotation;
+    // A skin's headwear over an animated crest rides the head rigidly: no
+    // flicker, sway, spring or attack swell (creature-design ANIMATED_CRESTS).
+    this.images
+      .get("hat")
+      ?.setPosition(ears.x, ears.y)
+      .setRotation(head.rotation)
+      .setScale(0.5);
     if (reduced) {
       // Poses only: no bobbing, lunging or squashing.
       offsetX = 0;
@@ -1126,6 +1159,13 @@ export class FighterRig {
     );
   }
 
+  /** The arm angle that keeps an upright prop standing (UPRIGHT_PROP_ARM). */
+  private propHold() {
+    const prop = UPRIGHT_PROP_ARM[this.character];
+    if (!prop) return undefined;
+    return this.dir === "left" || this.dir === "right" ? prop.side : prop.front;
+  }
+
   /** Each champion's own greeting at the start of a round. */
   private wave(
     t: number,
@@ -1227,7 +1267,7 @@ export class FighterRig {
         break;
       case "astrabun":
         // Mallet up, ears perked.
-        p.armR.rotation = -0.8;
+        p.armR.rotation = this.propHold()! - 0.3;
         p.ears.rotation = Math.sin(t * 10) * 0.08;
         move(0, -Math.max(0, Math.sin(t * 8)) * 4);
         break;
@@ -1364,8 +1404,11 @@ export class FighterRig {
         p.body.setScale(0.52, 0.49);
         break;
       case "astrabun":
-        // Mallet spun overhead between hops.
-        p.armR.rotation = -2.6 + Math.sin(t * 14) * 0.5;
+        // Free paw waved high between hops, the mallet shaken upright (the
+        // mallet is painted on the near paw: overhead it would hang upside
+        // down onto the belly; see UPRIGHT_PROP_ARM).
+        p.armL.rotation = 2.4 + Math.sin(t * 14) * 0.3;
+        p.armR.rotation = this.propHold()! + Math.sin(t * 14) * 0.25;
         move(0, -Math.max(0, Math.sin(t * 9)) * 9);
         break;
       case "wombolder":

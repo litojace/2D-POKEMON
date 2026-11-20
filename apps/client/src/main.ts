@@ -7,7 +7,8 @@ import {
   type GraphicsSetting,
 } from "./graphics-quality";
 import { softwareRendering } from "./gpu-check";
-import { raidCameraView } from "./raid-camera";
+import { RaidCamera, raidWantsCourt } from "./raid-camera";
+import { AllyBearings } from "./ally-bearings";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
 import { capGameFrames, screenHz, type FrameCap } from "./frame-cap";
 /** The battle's frame cap: it also knows the screen's refresh (reports). */
@@ -3439,13 +3440,13 @@ function renderBattle() {
     : isFfa()
       ? [me, ...state.players.filter((p) => p !== me)]
       : state.raid?.spire
-        ? // A climb's Echoes come and go: the cards are the climbers'.
+        ? // A climb's Echoes come and go: the names are the climbers'.
           state.players.filter((p) => !p.echo)
         : state.players;
-  // PvP shows one score badge (names, rounds, the clock): health is over
-  // each fighter, and no one sees an opponent's ultimate (owner, 7 Nov
-  // 2026). Raids and Practice keep the full cards.
-  const badge = !state.raid && !state.practice;
+  // One score badge (names, rounds, the clock) for PvP and Practice alike:
+  // health is over each fighter, and no one sees an opponent's ultimate
+  // (owner, 7 Nov 2026). Raids hide it for their own boss HUD.
+  const badge = !state.raid;
   const key = `battle:${me.character}:${!!state.practice}:${badge}:${state.mode ?? "duel"}:${hudOrder.map((p) => p.id + p.character).join(",")}`;
   if (screen !== key) {
     screen = key;
@@ -3495,15 +3496,14 @@ function renderBattle() {
     $("hud").classList.toggle("hud-ffa", isFfa());
     const timerWrap =
       '<div class="timer-wrap"><span id="round-label"></span><strong id="timer">03:00</strong><span id="phase-label"></span></div>';
-    const card = (p: Fighter, i: number) =>
-      `<div class="health-card ${i >= split ? "right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small><div class="hud-ultimate" title="Ultimate charge"><span>ULT <b id="ult-text-${i}"></b></span><div class="hud-ultimate-track" role="meter" aria-label="${escape(p.name)} ultimate charge" aria-valuemin="0" aria-valuemax="100"><i id="ult-meter-${i}"></i></div></div></div>`;
-    const cards = hudOrder.map(card);
+    // Each fighter's name and score (empty where the mode keeps none).
+    const fighter = (p: Fighter, i: number) =>
+      `<div class="hud-fighter${i >= split ? " right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><b>${escape(p.name)}</b><strong id="score-${i}"></strong></div>`;
+    const fighters = hudOrder.map(fighter);
     // The badge holds each side in a group of the same width, so the clock
     // sits in the middle whatever the names' lengths.
-    $("hud").innerHTML = badge
-      ? `<div class="hud-side">${cards.slice(0, split).join("")}</div>${timerWrap}<div class="hud-side right">${cards.slice(split).join("")}</div>`
-      : cards.map((c, i) => (i === split ? timerWrap : "") + c).join("") +
-        (cards.length <= split ? timerWrap : "");
+    $("hud").innerHTML =
+      `<div class="hud-side">${fighters.slice(0, split).join("")}</div>${timerWrap}<div class="hud-side right">${fighters.slice(split).join("")}</div>`;
     battleHudSize.disconnect();
     battleHudSize.observe($("hud"));
     battleHudSize.observe($("phase-label"));
@@ -3515,92 +3515,19 @@ function renderBattle() {
   }
   document.body.classList.toggle("pvp-badge", badge);
   $("hud").classList.toggle("hud-badge", badge);
-  hudOrder.forEach((p, i) => {
-    // 2v2 has its own health per champion (TEAM_TUNING).
-    const full = maxHealth(p.character, state!.mode, state!.players.length);
-    setHudStyle(
-      $(`health-${i}`),
-      "width",
-      `${(100 * Math.max(0, p.hp)) / full}%`,
-    );
-    setHudText(
-      $(`health-text-${i}`),
-      p.out ? "LEFT THE MATCH" : `${Math.ceil(Math.max(0, p.hp))} / ${full} HP`,
-    );
+  // Rounds won; Practice keeps no score.
+  hudOrder.forEach((p, i) =>
     setHudText(
       $(`score-${i}`),
       state!.practice
-        ? p.id === myId
-          ? "TRAINER"
-          : "TARGET"
-        : badge
-          ? String(
-              isTeams()
-                ? (state!.teamScores?.[teamOf(p)] ?? 0)
-                : (state!.scores[p.id] ?? 0),
-            )
-          : isTeams()
-            ? `${state!.teamScores?.[teamOf(p)] ?? 0} / ${roundsNeeded(state!.mutators)}`
-            : `${state!.scores[p.id]} / ${roundsNeeded(state!.mutators)}`,
-    );
-    const charge = Math.min(
-      100,
-      Math.max(0, (100 * (p.ult ?? 0)) / RULES.ultMax),
-    );
-    setHudText(
-      $(`ult-text-${i}`),
-      charge >= 100 ? "READY" : `${Math.floor(charge)}%`,
-    );
-    setHudStyle($(`ult-meter-${i}`), "width", `${charge}%`);
-    setHudAttribute(
-      $(`ult-meter-${i}`).parentElement!,
-      "aria-valuenow",
-      String(Math.floor(charge)),
-    );
-    $(`ult-meter-${i}`)
-      .closest(".hud-ultimate")
-      ?.classList.toggle("is-ready", charge >= 100);
-    setHudText(
-      $(`status-${i}`),
-      p.statuses
-        .map((s) =>
-          s.kind === "sleep"
-            ? `SLEEP +${Math.round((STATUS_RULES.sleepVulnerability - 1) * 100)}% DMG`
-            : s.kind === "shell"
-              ? `SHELL −${Math.round((1 - STATUS_RULES.shellReduction) * 100)}% DMG`
-              : s.kind === "mark"
-                ? comboOf(s.by).toUpperCase()
-                : s.kind === "warp"
-                  ? "TIME SLOWED"
-                  : s.kind === "leash"
-                    ? "PINNED"
-                    : s.kind === "blind"
-                      ? "BLINDED"
-                      : s.kind === "taunt"
-                        ? "TAUNTED"
-                        : s.kind === "brace"
-                          ? "BRACED"
-                          : s.kind === "clamp"
-                            ? "CHARGED"
-                            : s.kind === "cage"
-                              ? "CAGED"
-                              : s.kind === "current"
-                                ? "SWEPT AWAY"
-                                : s.kind === "lure"
-                                  ? "DRAWN TO THE LIGHT"
-                                  : s.kind === "silence"
-                                    ? "SILENCED"
-                                    : s.kind === "grounded"
-                                      ? "GROUNDED"
-                                      : s.kind === "float"
-                                        ? "SLIDING"
-                                        : s.kind === "confuse"
-                                          ? "CONFUSED"
-                                          : s.kind.toUpperCase(),
-        )
-        .join(" · "),
-    );
-  });
+        ? ""
+        : String(
+            isTeams()
+              ? (state!.teamScores?.[teamOf(p)] ?? 0)
+              : (state!.scores[p.id] ?? 0),
+          ),
+    ),
+  );
   // Blinded by Ink Jet: ink splashes over your view while it lasts.
   document.body.classList.toggle(
     "is-blinded",
@@ -3620,9 +3547,7 @@ function renderBattle() {
     $("round-label"),
     state.practice
       ? "FREE PRACTICE"
-      : badge
-        ? `R${state.round} · BO${roundsNeeded(state.mutators) * 2 - 1}`
-        : `ROUND ${state.round} · BEST OF ${roundsNeeded(state.mutators) * 2 - 1}`,
+      : `R${state.round} · BO${roundsNeeded(state.mutators) * 2 - 1}`,
   );
   setHudText(
     $("network"),
@@ -3642,7 +3567,8 @@ function renderBattle() {
   const phaseText =
     state.phase === "playing"
       ? state.practice
-        ? "TEST YOUR SKILLS"
+        ? // No ring or rule to tell: the badge stays one line.
+          `LIVE · ${ARENAS[state.arena ?? "classic"].name.toUpperCase()}`
         : state.banked
           ? rushLabel(me)
           : state.crown
@@ -5343,6 +5269,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   private animationLive = false;
   private needsHydration = true;
   private followCamera = new FollowCamera();
+  private raidCamera = new RaidCamera();
+  private allyBearings = new AllyBearings(
+    () => document.getElementById("game")?.parentElement ?? null,
+  );
   private enemyBearing = document.createElement("div");
   /** The camera view of the last frame (the target button's on-screen test). */
   private aimView: CameraView | undefined;
@@ -5424,7 +5354,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.animationLive = !this.needsHydration && previous?.code === next.code;
     this.needsHydration = false;
     const reset = !this.animationLive || previous?.round !== next.round;
-    if (reset) this.followCamera = new FollowCamera();
+    if (reset) {
+      this.followCamera = new FollowCamera();
+      this.raidCamera = new RaidCamera();
+    }
     const alive = new Set(
       next.players.flatMap((p) => [
         p.id,
@@ -5541,6 +5474,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       this.perfOverlay?.remove();
       this.perfOverlay = undefined;
       this.enemyBearing.remove();
+      this.allyBearings.clear();
       for (const label of this.labels.values()) label.remove();
       this.labels.clear();
     };
@@ -6162,9 +6096,51 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const presented = follow
       ? (this.positions.get(follow.id) ?? follow)
       : undefined;
-    // Raid camera fits all mechanics; only PvP/practice follows a fighter.
+    // Raids: the whole court on desktop; landscape phones follow the raider
+    // (or, downed, stay on them) and pull out for court-wide mechanics.
+    // Phones only (the CSS's landscape phone breakpoint): a tablet already
+    // shows the whole court large enough.
+    const raidFollow =
+      !!state?.raid &&
+      touch.enabled &&
+      innerWidth > innerHeight &&
+      innerHeight <= 600 &&
+      !controlPrefs().raidCourt;
+    const raidFocus =
+      state?.raid && me && state.raid.downed[me.id]
+        ? (this.positions.get(me.id) ?? me)
+        : presented;
+    const raidBoss =
+      state?.raid && raidFocus
+        ? state.players
+            .filter((p) => p.raidBoss && p.hp > 0 && !p.out)
+            .sort(
+              (a, b) =>
+                Math.hypot(a.x - raidFocus.x, a.y - raidFocus.y) -
+                Math.hypot(b.x - raidFocus.x, b.y - raidFocus.y),
+            )[0]
+        : undefined;
     const view = state?.raid
-      ? raidCameraView(this.scale.width, this.scale.height, raidCameraHudBottom)
+      ? this.raidCamera.update(
+          this.scale.width,
+          this.scale.height,
+          raidCameraHudBottom,
+          raidFollow,
+          state.phase === "playing" && raidFocus
+            ? {
+                x: raidFocus.x,
+                y: raidFocus.y,
+                vx: (follow ?? me)?.vx ?? 0,
+                vy: (follow ?? me)?.vy ?? 0,
+              }
+            : undefined,
+          raidBoss ? (this.positions.get(raidBoss.id) ?? raidBoss) : undefined,
+          raidWantsCourt(state.raid, state.time),
+          `${state.code}:${state.round ?? 0}:${myId ?? ""}`,
+          delta,
+          feelNow / 1000,
+          reducedMotion,
+        )
       : this.followCamera.update(
           this.scale.width,
           this.scale.height,
@@ -6218,6 +6194,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.enemyBearing.hidden =
       !follow ||
       !opponent ||
+      // A downed raider's phone camera stays on them, not on the partner.
+      (raidFollow && raidFocus !== presented) ||
       !outsideView(
         opponent.x,
         opponent.y,
@@ -6225,10 +6203,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         this.scale.height,
         view,
       );
-    // PvP: an arrow circling the fighter you follow, in the nearest
-    // off-screen opponent's colour (owner, 7 Nov 2026: no chip at the top,
-    // where the score badge is). Raids keep the named chip.
-    const orbit = !state?.raid;
+    // PvP and phone raids: an arrow circling the fighter you follow, in the
+    // nearest off-screen opponent's colour (owner, 7 Nov 2026: no chip at
+    // the top, where the score badge is; on phones the raid HUD is there).
+    // Desktop raids show the whole court, so their named chip rarely shows.
+    const orbit = !state?.raid || raidFollow;
     this.enemyBearing.classList.toggle("is-orbit", orbit);
     if (opponent && presented && !this.enemyBearing.hidden) {
       this.enemyBearing.querySelector("strong")!.textContent =
@@ -6273,6 +6252,46 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         `#${CHARACTERS[opponent.character].color.toString(16).padStart(6, "0")}`,
       );
     }
+    this.allyBearings.update(
+      raidFollow && me && state?.phase === "playing"
+        ? state.players
+            .filter(
+              (p) =>
+                p.id !== me.id &&
+                !p.raidBoss &&
+                !p.out &&
+                teamOf(p) === myTeam &&
+                (p.hp > 0 || !!state!.raid!.downed[p.id]) &&
+                outsideView(
+                  p.x,
+                  p.y,
+                  this.scale.width,
+                  this.scale.height,
+                  view,
+                ),
+            )
+            .map((p) => {
+              const at = this.positions.get(p.id) ?? p,
+                css = this.scale.zoom;
+              return {
+                id: p.id,
+                x: ((at.x - view.x) * view.zoomX + this.scale.width / 2) * css,
+                y:
+                  ((at.y - BEARING_LIFT - view.y) * view.zoomY +
+                    this.scale.height / 2) *
+                  css,
+                color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
+                downed: !!state!.raid!.downed[p.id],
+              };
+            })
+        : [],
+      {
+        left: 18,
+        top: raidCameraHudBottom * this.scale.zoom + 18,
+        right: this.scale.width * this.scale.zoom - 18,
+        bottom: this.scale.height * this.scale.zoom - 18,
+      },
+    );
     for (const [id, label] of this.labels)
       if (!state?.players.some((p) => p.id === id)) {
         label.remove();
@@ -7636,11 +7655,6 @@ function drawArenaLive(
     );
     g.lineStyle(2, 0xffffff, 0.35 + 0.4 * k).strokeCircle(h.x, h.y, h.radius);
   }
-}
-/** Name of the combo whose mark `by` places (their fighter's combo). */
-function comboOf(by?: string) {
-  const marker = state?.players.find((p) => p.id === by);
-  return marker ? COMBOS[marker.character].name : "Marked";
 }
 /** A small spinning target: "this fighter is primed for a combo". */
 function drawComboMark(

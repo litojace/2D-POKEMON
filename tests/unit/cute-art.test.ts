@@ -7,7 +7,8 @@ import {
   creatureSvg,
   proportioned,
 } from "../../apps/client/src/creature-design";
-import { rigAnchors, rigAssets } from "../../apps/client/src/animation/assets";
+import { partsFor, rigAnchors, rigAssets } from "../../apps/client/src/animation/assets";
+import { ANIMATED_CRESTS } from "../../apps/client/src/creature-design";
 import { rosterDetail, rosterGrid } from "./roster-markup";
 describe("cute proportions", () => {
   it("grows the face and shrinks the body while keeping the feet planted", () => {
@@ -53,8 +54,10 @@ describe("cute proportions", () => {
   it("crops every part with finite boxes that contain the scaled eyes and head", () => {
     for (const id of FIGHTER_IDS) {
       const assets = rigAssets(id);
-      // 52 complete parts + 12 face expressions; no flattened frames.
-      expect(assets).toHaveLength(64);
+      // 13 complete parts in 4 facings + 12 face expressions; no flattened
+      // frames. Champions with an animated crest add a hat layer (4 more).
+      expect(assets).toHaveLength(partsFor(id).length * 4 + 12);
+      expect(partsFor(id).length).toBe(ANIMATED_CRESTS.has(id) ? 14 : 13);
       for (const a of assets) {
         expect(a.width, a.key).toBeGreaterThan(0);
         expect(a.height, a.key).toBeGreaterThan(0);

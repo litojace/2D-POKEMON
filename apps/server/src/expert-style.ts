@@ -7,6 +7,5 @@ import type { Style } from "./bot.js";
  * by the rules as written.
  */
 export const EXPERT_STYLE: Partial<Record<CharacterId, Style>> = {
-  mossloth: { slots: [1, 1, 2.299, 1], range: 0.735 },
-  mystowl: { slots: [1, 0.721, 1, 1], retreat: 0.317, range: 0.691 },
+  halcyra: { slots: [1.285, 0.418, 1, 1], kite: 0.862, floor: 0.589 },
 };

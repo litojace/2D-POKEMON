@@ -6,10 +6,11 @@ it("preserves raid choices during countdown and teammate picks, but redraws chan
   let writes = 0,
     html = "";
   const timer = { textContent: "" };
+  const unit = { textContent: "" };
   const overlay = {
     style: {},
     dataset: {},
-    classList: { remove: () => {} },
+    classList: { remove: () => {}, toggle: () => {} },
     get innerHTML() {
       return html;
     },
@@ -19,7 +20,11 @@ it("preserves raid choices during countdown and teammate picks, but redraws chan
     },
     querySelector: () => null,
     querySelectorAll: (selector: string) =>
-      selector === ".live-seconds" ? [timer] : [],
+      selector === ".live-number"
+        ? [timer]
+        : selector === ".live-unit"
+          ? [unit]
+          : [],
   };
   const hud = {
     innerHTML: "",
@@ -42,7 +47,8 @@ it("preserves raid choices during countdown and teammate picks, but redraws chan
   render(15);
   const initial = html;
   for (let seconds = 14; seconds >= 1; seconds--) render(seconds);
-  expect(timer.textContent).toBe("1 second");
+  // The seconds as one big number and its unit, written in place.
+  expect([timer.textContent, unit.textContent]).toEqual(["1", "second"]);
   expect(html).toBe(initial);
   expect(writes).toBe(1);
   expect(html).toContain("data-raid-rite");
@@ -75,7 +81,7 @@ it.each(["finished", "briefing", "intermission"])(
     const overlay = {
       style: {},
       dataset: {},
-      classList: { remove: () => {} },
+      classList: { remove: () => {}, toggle: () => {} },
       get innerHTML() {
         return html;
       },
@@ -86,13 +92,15 @@ it.each(["finished", "briefing", "intermission"])(
       querySelector: (selector: string) =>
         !html
           ? null
-          : selector === ".raid-overlay, .rc-card"
+          : selector === ".raid-overlay, .rc-card, .rites-screen"
             ? card
             : // The briefing and results scroll their shared panel body
-              // (.rc-body); the rites keep the match card's .panel-scroll.
+              // (.rc-body); the rites screen scrolls its tiles (only with a
+              // large text size).
               selector === ".rc-body" && phase !== "intermission"
               ? scroller
-              : selector === ".panel-scroll" && phase === "intermission"
+              : selector === ".rites-screen > .raid-rite-options" &&
+                  phase === "intermission"
                 ? scroller
                 : null,
       querySelectorAll: () => [],
