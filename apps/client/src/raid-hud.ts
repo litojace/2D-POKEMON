@@ -247,6 +247,8 @@ function write(
   m.written.set(id, value);
   if (property === "text") el.textContent = value;
   else if (property === "width") el.style.width = value;
+  // A meter's share (0–100) for its transform (style.css): no layout.
+  else if (property === "fill") el.style.setProperty("--fill", value);
   else if (property === "passed") el.classList.toggle("is-passed", !!value);
   else el.setAttribute(property, value);
 }
@@ -293,7 +295,7 @@ export function paintRaidHud(hud: HTMLElement, view: RaidHudView): boolean {
     write(m, `t${i}-trail`, "width", `${t.trail}%`);
     write(m, `t${i}-fill`, "width", `${t.percent}%`);
     write(m, `t${i}-pct`, "text", `${Math.ceil(t.percent)}%`);
-    write(m, `t${i}-stagger`, "width", `${t.stagger}%`);
+    write(m, `t${i}-stagger`, "fill", `${t.stagger}`);
   });
   const rounded = Math.round(view.health);
   write(m, "health", "aria-valuenow", `${rounded}`);
@@ -316,7 +318,7 @@ export function paintRaidHud(hud: HTMLElement, view: RaidHudView): boolean {
   for (let i = 0; i < (view.spire?.waves ?? 1) - 1; i++)
     write(m, `wave${i}`, "passed", (view.spire?.wave ?? 1) > i + 1 ? "1" : "");
   write(m, "pct", "text", view.spire?.label ?? `${Math.ceil(view.health)}%`);
-  write(m, "stagger", "width", `${view.stagger}%`);
+  write(m, "stagger", "fill", `${view.stagger}`);
   write(m, "stagger-label", "text", view.staggerLabel);
   write(m, "cue", "text", view.cue);
   write(m, "cue", "title", view.cue);
