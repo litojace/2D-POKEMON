@@ -3077,6 +3077,8 @@ export function createArenaServer(
       reply(cb, { ok: true, plaza: visitor.plaza, me: visitor.profile.id });
       const orbs = plaza.orbsFor(socket.id);
       if (orbs) socket.emit("plaza-orbs", orbs);
+      const wish = plaza.wishFor(socket.id);
+      if (wish) socket.emit("plaza-wish", wish);
       const token = socket.data.accessToken as string | undefined;
       if (token) void plazaAppearance.refresh(socket.id, token, true);
       if (token) void sendTreats(token);
@@ -3200,6 +3202,8 @@ export function createArenaServer(
       if (!token || treatPending) return fail(cb, "One moment…");
       if (!plaza.treatReady(socket.id, Date.now()))
         return fail(cb, "Wait a moment between treats.");
+      // Thrown at the fountain: a wish (where they stood when they threw).
+      const wishing = plaza.atFountain(socket.id);
       treatPending = true;
       try {
         // A fresh id per throw: a retry of this request can't take two treats.
@@ -3218,8 +3222,20 @@ export function createArenaServer(
             treats: r?.left ?? 0,
           });
         const thrown = plaza.treat(socket.id, r.treat);
-        if (thrown) toPlaza(copy, "plaza-treat", thrown);
-        reply(cb, { ok: true, treat: r.treat, treats: r.left ?? 0 });
+        if (thrown)
+          toPlaza(
+            copy,
+            "plaza-treat",
+            wishing ? { ...thrown, wish: true } : thrown,
+          );
+        reply(cb, {
+          ok: true,
+          treat: r.treat,
+          treats: r.left ?? 0,
+          ...(wishing ? { wish: true } : {}),
+        });
+        if (wishing)
+          for (const e of plaza.wish(socket.id, Date.now())) plazaEvent(e);
       } catch (error) {
         fail(
           cb,
@@ -3470,6 +3486,24 @@ export function createArenaServer(
       });
     plazaQueue.set(player, run);
   };
+  /** A full wish meter: pay each wisher once (the fill's ref) within the
+   * daily cap, in their Plaza queue, and tell them if they're still here. */
+  const payWish = (player: string, ref: string) => {
+    if (!accounts.recordWish) return;
+    const run = (plazaQueue.get(player) ?? Promise.resolve())
+      .then(() => accounts.recordWish!(player, ref))
+      .then((pay) => {
+        if (!pay?.paid) return;
+        for (const key of plaza.keys())
+          if (plaza.accountOf(key) === player)
+            io.sockets.sockets.get(key)?.emit("plaza-wish-paid", pay);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (plazaQueue.get(player) === run) plazaQueue.delete(player);
+      });
+    plazaQueue.set(player, run);
+  };
   const toPlaza = (copy: number, event: string, data: unknown) => {
     for (const key of plaza.keys())
       if (plaza.plazaOf(key) === copy)
@@ -3482,6 +3516,9 @@ export function createArenaServer(
     else if (e.type === "cheers")
       recordPlaza(e.key, { kind: "cheers", n: e.n });
     else if (e.type === "news") toPlaza(e.plaza, "plaza-news", e.news);
+    else if (e.type === "wish") toPlaza(e.plaza, "plaza-wish", e.wish);
+    else if (e.type === "wished")
+      for (const player of e.accounts) payWish(player, e.ref);
     else toPlaza(e.plaza, "plaza-orbs", e.orbs);
   };
   /** Move everyone in the Plaza, run the pitch and the orbs, send each player what is near. */

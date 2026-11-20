@@ -120,7 +120,10 @@ for (const size of [
       ).toBeGreaterThan(0);
       // Closing releases every effect it started.
       await page.locator(".fit-room .ui-close").click();
-      await expect(page.locator(".fit-room")).toHaveCount(0);
+      // (A closed Shop stays in the page, hidden, for its next open: ui/hub-panel.ts park.)
+      await expect(
+        page.locator(".fit-room:not([data-ui-leaving])"),
+      ).toHaveCount(0);
       await expect
         .poll(() =>
           page.evaluate(
