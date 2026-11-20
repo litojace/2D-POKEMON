@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, snap } from "./helpers";
+import { exposeAccount } from "./shop-server";
 import {
   boxCentred,
   centred,
@@ -757,6 +758,7 @@ test("a locked name says when; a refusal says why", async ({ browser }) => {
         days: 14,
       };
     }, serverTime);
+    await exposeAccount(page);
     const { errors, panel } = await open(page, SIZES[3]);
     await expect(panel.locator("[data-profile-rename]")).toBeDisabled();
     await expect(
@@ -768,6 +770,11 @@ test("a locked name says when; a refusal says why", async ({ browser }) => {
       const w = window as any;
       w.__nameStatus = null;
       w.__refuseName = true;
+      // A card opened again within 30 s shows the copy it had (no request),
+      // so this answer only arrives once that copy is old: say it is (as
+      // after a match). Otherwise the test passed only when the saved
+      // fighter's POST happened to clear the copies between the two opens.
+      w.__account.forgetCopies();
     });
     await page.keyboard.press("Escape");
     // Gone (its close glides out) before it opens again with the new answer.
