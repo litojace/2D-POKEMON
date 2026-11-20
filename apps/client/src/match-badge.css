@@ -220,3 +220,65 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
   border-top: 9px solid transparent;
   border-bottom: 9px solid transparent;
 }
+
+/* Raid allies off a phone's follow camera (ally-bearings.ts): an arrow at
+   the screen's edge in their colour; a downed ally's pulses red with "!". */
+.ally-bearing {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  z-index: 22;
+  pointer-events: none;
+}
+.ally-bearing span {
+  position: absolute;
+  left: -11px;
+  top: -11px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 0 3px var(--ally-color, #fff))
+    drop-shadow(0 1px 1px #000c);
+}
+.ally-bearing span::before {
+  content: "";
+  margin-left: 3px;
+  border-left: 12px solid var(--ally-color, #fff);
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+}
+.ally-bearing b {
+  display: none;
+}
+.ally-bearing.is-downed span::before {
+  border-left-color: #ff5a5a;
+}
+.ally-bearing.is-downed b {
+  position: absolute;
+  left: -7px;
+  top: -8px;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ff5a5a;
+  color: #fff;
+  font:
+    800 11px/1 system-ui,
+    sans-serif;
+  animation: ally-down-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes ally-down-pulse {
+  to {
+    transform: scale(1.25);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ally-bearing.is-downed b {
+    animation: none;
+  }
+}

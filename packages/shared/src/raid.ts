@@ -289,7 +289,17 @@ export type RaidAttack =
   | "short-circuit";
 export const RAID_ATTACKS: Record<
   RaidAttack,
-  { name: string; tip: string; summary: string }
+  {
+    name: string;
+    tip: string;
+    summary: string;
+    /**
+     * "court": the answer may lie anywhere on the court (islands, pads, a
+     * pillar's shadow, the marked raider), so a phone's follow camera pulls
+     * out to the whole court while it is marked (apps/client/src/raid-camera.ts).
+     */
+    view?: "court";
+  }
 > = {
   "prism-lance": {
     name: "Prism Lance",
@@ -298,6 +308,7 @@ export const RAID_ATTACKS: Record<
   },
   "fan-display": {
     name: "Fan Display",
+    view: "court",
     tip: "The numbered color on the crest is the only cone that fires. Leave that cone.",
     summary:
       "Six numbered cones appear; only the crest\u2019s matching color fires.",
@@ -320,6 +331,7 @@ export const RAID_ATTACKS: Record<
   },
   "light-relay": {
     name: "Light Relay",
+    view: "court",
     tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. Hold a connected chain for 1.2 seconds (solo 1 second, 2 in the final phase); in the final phase teams need both paths within 3 seconds. Mirrors that carried the light flash and turn after each exposure.",
     summary:
       "Connect skylight \u2192 raider \u2192 mirrors \u2192 heart. Hit a mirror to turn its arrow.",
@@ -358,6 +370,7 @@ export const RAID_ATTACKS: Record<
   },
   "brazier-lighting": {
     name: "Brazier Lighting",
+    view: "court",
     tip: "Stand inside a brazier ring for 2 seconds. Light all three together to ground Lumiwick. Solo flames last 11 seconds. Fireproof halves the lighting time.",
     summary:
       "Run the triangle and light all three braziers before the first goes out.",
@@ -386,6 +399,7 @@ export const RAID_ATTACKS: Record<
   },
   polarity: {
     name: "Polarity",
+    view: "court",
     tip: inMeters(
       "Stand within 125px of an opposite sign before the 4-second timer ends. Same signs together take double damage. Solo: enter your opposite-sign floor pad. Terradon\u2019s Shell Up blocks the blast.",
     ),
@@ -439,6 +453,7 @@ export const RAID_ATTACKS: Record<
   },
   breaker: {
     name: "Breaker Wall",
+    view: "court",
     tip: "A towering wave sweeps the whole court: it can't be jumped. Stand in a lane of calm water (the bracketed gaps) or on an island as it passes.",
     summary:
       "A wall of water with calm lanes. Stand in a lane or on an island.",
@@ -450,6 +465,7 @@ export const RAID_ATTACKS: Record<
   },
   nightfall: {
     name: "Nightfall",
+    view: "court",
     tip: "The dark swallows the yard: only lit lanterns and the glowing pools of moonlight are safe. Walk into one before the dark closes. It can't be jumped, and it adds a curse.",
     summary: "The yard goes dark. Stand in a moonlit pool or lantern light.",
   },
@@ -461,17 +477,20 @@ export const RAID_ATTACKS: Record<
   },
   share: {
     name: "Shared Meteor",
+    view: "court",
     tip: "Gather on the marked raider so the meteor's damage is split. Alone, step out of the circle once it locks.",
     summary: "A meteor marks you. Alone, leave the circle after it locks.",
   },
   dive: {
     name: "Dive & Surface",
+    view: "court",
     tip: "When the ripple follows you, lead it onto an island, then step off before it locks. It surfaces stranded on dry land.",
     summary:
       "A ripple follows you, then locks. Lead it onto an island and step off.",
   },
   wave: {
     name: "Tidal Wave",
+    view: "court",
     tip: "A low wave (chapter 1) can be jumped. A high wave can't: be standing on an island when it passes.",
     summary:
       "A wave sweeps the arena. Jump a low one; stand on an island for a high one.",
@@ -483,6 +502,7 @@ export const RAID_ATTACKS: Record<
   },
   hightide: {
     name: "High Tide",
+    view: "court",
     tip: "Get onto an island before the water rises. Two fit on an island; a third gets pushed off.",
     summary: "The floor floods for a few seconds. Stand on an island.",
   },
@@ -519,6 +539,7 @@ export const RAID_ATTACKS: Record<
   },
   split: {
     name: "Mirror Split",
+    view: "court",
     tip: "Only the real Inkpurr casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you.",
     summary: "It splits into copies. Find the one with a shadow in the light.",
   },
@@ -544,60 +565,71 @@ export const RAID_ATTACKS: Record<
   },
   "falling-stars": {
     name: "Falling Stars",
+    view: "court",
     tip: "Remember the constellation and stand between the marked stars before they land.",
     summary: "A constellation flashes; stars land on each marked point.",
   },
   "whale-song": {
     name: "Thunder Snore",
+    view: "court",
     tip: "Stay inside the moving teal Quiet Zone until the snore ends. Everyone fits, but it is small.",
     summary: "Follow the moving Quiet Zone for four seconds.",
   },
   "dream-sequence": {
     name: "Dream Sequence",
+    view: "court",
     tip: "The Dreamer sees the runes privately. Call them with 1–4 or the rune buttons, then enter the matching pads in order. Leave a pad before entering it again. A backwards arrow means read right to left.",
     summary:
       "Read your private sequence and step on the pads in order. Solo gives you 14 seconds.",
   },
   "twin-dream": {
     name: "Twin Dream",
+    view: "court",
     tip: "Two Dreamers share one dream: each sees only their own runes (the other's show as ?). Take turns calling, then step the pads in order. Alone, the dream fades after a glimpse: remember it.",
     summary: "Two Dreamers each see half the runes. Call in turn.",
   },
   "dream-tide": {
     name: "Dream Tide",
+    view: "court",
     tip: "Sleep floods the deck. Only one rune pad stays awake, and only the marked raider sees which: they call it, everyone runs onto that pad. It can't be jumped.",
     summary: "Listen for the call. Stand on the one pad that stays awake.",
   },
   eclipse: {
     name: "Eclipse",
+    view: "court",
     tip: "A dark moon covers the skylight: sunfall strikes its window, so step out of the circle. The light opens at the window marked in gold: rebuild the relay from there.",
     summary:
       "The skylight moves. Leave the sunfall; relay from the new window.",
   },
   "snuff-gale": {
     name: "Snuffing Gale",
+    view: "court",
     tip: "Lumiwick blows a cold gale down the lane through a brazier: if nobody stands in that brazier's ring, its flame goes out. Anyone standing in a brazier's ring is sheltered; anyone else in the lane is hit and blown along it.",
     summary: "Hold the flame: stand in the brazier's ring, or leave the lane.",
   },
   "bound-wicks": {
     name: "Bound Wicks",
+    view: "court",
     tip: "A burning wick ties braziers together: they only catch while every bound ring has a raider in it. Light them together before the fuse burns out, or the wick snaps: a Backdraft bursts from each bound brazier and every flame goes out.",
     summary:
       "Stand in every bound ring at once. Step out if the fuse runs out.",
   },
   "mirror-charge": {
     name: "Mirror Charge",
+    view: "court",
     tip: "Fizz takes the + charge and Crackle the − charge, and every raider is marked + or −. Only hits from the opposite sign discharge a twin (the same sign is repelled). Discharge both twins before the charge runs out: split up, or a twin left charged overloads.",
     summary:
       "Hit the twin of the opposite sign. Discharge both before time runs out.",
   },
   "short-circuit": {
     name: "Short Circuit",
+    view: "court",
     tip: "The twins overcharge their link: a thick beam that cannot be jumped. Raiders standing on the beam when it fires share its shock between them; nobody on it, and the shock arcs across the whole court. Stand on it together.",
     summary: "Stand on the overcharged beam together to share the shock.",
   },
   "umbral-prism": {
     name: "Umbral Prism",
+    view: "court",
     tip: "A dark prism on a raider blocks the light through them. A teammate or a mirror must shine the beam on them from a step away (alone: stand in the skylight's reach) before its timer runs out, or it shatters and the relay's hold is lost.",
     summary: "Hand the light to the marked raider before the prism shatters.",
   },
