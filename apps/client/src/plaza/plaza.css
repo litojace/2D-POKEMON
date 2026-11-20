@@ -744,9 +744,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* As wide as its label (Sit, Volt Boba…), up to 14em; longer ones end in "…". */
 .plaza-layer .pz-interact {
   box-sizing: border-box;
-  width: 14em;
+  width: auto;
+  max-width: 14em;
   padding: 0 0.5em 0 1em;
   justify-content: flex-start;
 }
@@ -782,7 +784,7 @@
   justify-content: flex-end;
 }
 .plaza-layer.phone .pz-interact {
-  width: 13em;
+  max-width: 13em;
   height: 3.2em;
   border-radius: 999px;
   padding: 0 0.45em 0 0.9em;
@@ -870,7 +872,9 @@
   font-size: calc(10px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-interact {
-  width: 13em;
+  /* Not Dash's and Jump's 64px (.pz-act): as wide as its label. */
+  width: auto;
+  max-width: 13em;
   height: 42px;
   font-size: calc(12px * var(--text-scale, 1));
   align-self: center;
@@ -906,6 +910,17 @@
 .plaza-layer.phone .pz-interact kbd,
 .plaza-layer.phone .pz-quests h5 span {
   font-size: calc(12px * var(--text-scale, 1));
+}
+/* Touch screens have no E key to press: the action's name alone, padded
+   evenly (like Dash and Jump without Shift and Space). */
+.plaza-layer.coarse .pz-interact kbd {
+  display: none;
+}
+.plaza-layer.coarse .pz-interact {
+  padding-right: 1em;
+}
+.plaza-layer.coarse.phone .pz-interact {
+  padding-right: 0.9em;
 }
 
 /* ---------- below the line: the Plaza inside the game ---------- */

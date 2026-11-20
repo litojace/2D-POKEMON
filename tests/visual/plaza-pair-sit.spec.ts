@@ -142,70 +142,110 @@ test("pair emotes: ask from a player's card and accept a request, on a small pho
   expect(errors).toEqual([]);
 });
 
-test("sit on a bench and the fountain's rim; moving stands you up", async ({
-  page,
+test("sit on a bench and the fountain's rim; moving stands you up (a touch phone)", async ({
+  browser,
 }, info) => {
-  await page.setViewportSize(PHONE);
-  const errors = await openPlaza(page);
-  const sitAt = async (i: number) => {
-    const s = PLAZA_SEATS[i];
-    await page.evaluate(
-      ([x, y]) => (window as any).__plazaPosition(x, y),
-      [s.x, s.y + 40],
-    );
-    // Your screen follows the teleport a frame or two later.
-    await expect
-      .poll(
-        () =>
-          page.evaluate(
-            ([x, y]) => {
-              const P = (window as any).__plaza.P;
-              return Math.hypot(P.x - x, P.y - y);
-            },
-            [s.x, s.y + 40],
-          ),
-        { timeout: 15_000 },
-      )
-      .toBeLessThan(10);
-    const act = page.locator("#pz-interact");
-    await expect(act).toBeVisible({ timeout: 15_000 });
-    await expect(act).toContainText("Sit");
-    await act.click();
+  // A real touch phone: no keyboard hints, and the joystick.
+  const context = await browser.newContext({
+    viewport: PHONE,
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  try {
+    const errors = await openPlaza(page);
+    await expect(page.locator(".plaza-layer")).toHaveClass(/coarse/);
+    const sitAt = async (i: number) => {
+      const s = PLAZA_SEATS[i];
+      await page.evaluate(
+        ([x, y]) => (window as any).__plazaPosition(x, y),
+        [s.x, s.y + 40],
+      );
+      // Your screen follows the teleport a frame or two later.
+      await expect
+        .poll(
+          () =>
+            page.evaluate(
+              ([x, y]) => {
+                const P = (window as any).__plaza.P;
+                return Math.hypot(P.x - x, P.y - y);
+              },
+              [s.x, s.y + 40],
+            ),
+          { timeout: 15_000 },
+        )
+        .toBeLessThan(10);
+      const act = page.locator("#pz-interact");
+      await expect(act).toBeVisible({ timeout: 15_000 });
+      await expect(act).toContainText("Sit");
+      await act.click();
+      await expect
+        .poll(async () => (await server(page)).seat, { timeout: 15_000 })
+        .toBe(i);
+      const srv = await server(page);
+      expect([srv.body.x, srv.body.y]).toEqual([s.x, s.y]);
+      await expect(act).toContainText("Stand up");
+      await onScreen(page, "#pz-interact");
+      // Drawn raised onto the seat.
+      expect(await page.evaluate(() => (window as any).__plaza.P.sitLift)).toBe(
+        s.lift,
+      );
+    };
+    // A bench.
+    await sitAt(0);
+    // No keyboard keys on a touch screen (E, Shift, Space), and the green
+    // button is as wide as "Stand up", not a fixed 13em.
+    for (const key of ["#pz-interact kbd", "#pz-dash small", "#pz-jump small"])
+      await expect(page.locator(key)).toBeHidden();
+    const act = await page.locator("#pz-interact").evaluate((el) => {
+      const label = el.querySelector("span")!.getBoundingClientRect(),
+        box = el.getBoundingClientRect();
+      return {
+        w: box.width,
+        spare: box.right - label.right,
+        // The whole label shows: not cut short with "…".
+        cut: el.querySelector("span")!.scrollWidth > Math.ceil(label.width),
+      };
+    });
+    expect(act.w).toBeLessThan(13 * 12);
+    expect(act.spare, "no empty space after the label").toBeLessThan(20);
+    expect(act.cut, "the label isn't cut short").toBe(false);
+    await page.waitForTimeout(400);
+    await snap(page, info, "plaza-sit-bench-667x375");
+    // Walking stands you up, on the server too.
+    await page.locator(".plaza-layer").focus();
+    await page.keyboard.down("d");
     await expect
       .poll(async () => (await server(page)).seat, { timeout: 15_000 })
-      .toBe(i);
-    const srv = await server(page);
-    expect([srv.body.x, srv.body.y]).toEqual([s.x, s.y]);
-    await expect(act).toContainText("Stand up");
-    await onScreen(page, "#pz-interact");
-    // Drawn raised onto the seat.
+      .toBe(-1);
+    await page.keyboard.up("d");
+    // Let the walk finish on the server (its timed inputs play out) before
+    // the next teleport, or the last steps carry you past the spot.
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const v = (window as any).__plazaWorld.visitors.get("local");
+          return v.queue.length === 0 && v.dir.x === 0 && v.body.speed === 0;
+        }),
+      )
+      .toBe(true);
     expect(await page.evaluate(() => (window as any).__plaza.P.sitLift)).toBe(
-      s.lift,
+      0,
     );
-  };
-  // A bench.
-  await sitAt(0);
-  await page.waitForTimeout(400);
-  await snap(page, info, "plaza-sit-bench-667x375");
-  // Walking stands you up, on the server too.
-  await page.locator(".plaza-layer").focus();
-  await page.keyboard.down("d");
-  await expect
-    .poll(async () => (await server(page)).seat, { timeout: 15_000 })
-    .toBe(-1);
-  await page.keyboard.up("d");
-  expect(await page.evaluate(() => (window as any).__plaza.P.sitLift)).toBe(0);
-  // The fountain's rim (the seat in front), then Stand up.
-  const rim = PLAZA_SEATS.findIndex(
-    (s, i) => i >= 8 && Math.abs(s.x - 1350) < 50,
-  );
-  expect(rim).toBeGreaterThan(0);
-  await sitAt(rim);
-  await page.waitForTimeout(400);
-  await snap(page, info, "plaza-sit-fountain-667x375");
-  await page.locator("#pz-interact").click();
-  await expect
-    .poll(async () => (await server(page)).seat, { timeout: 15_000 })
-    .toBe(-1);
-  expect(errors).toEqual([]);
+    // The fountain's rim (the seat in front), then Stand up.
+    const rim = PLAZA_SEATS.findIndex(
+      (s, i) => i >= 8 && Math.abs(s.x - 1350) < 50,
+    );
+    expect(rim).toBeGreaterThan(0);
+    await sitAt(rim);
+    await page.waitForTimeout(400);
+    await snap(page, info, "plaza-sit-fountain-667x375");
+    await page.locator("#pz-interact").click();
+    await expect
+      .poll(async () => (await server(page)).seat, { timeout: 15_000 })
+      .toBe(-1);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
 });
