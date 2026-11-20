@@ -210,12 +210,12 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
     const hazard = [0, 1, 2, 3, 4, 5].map((i) => k.lume("chase", k.path(`M${k.L + i * (k.R - k.L) / 6} ${k.B - 6}l4 -5h3l-4 5Z`, yellow, "none"), i, yellow)).join("");
     if (k.back) backPanel(k, "#4a4a5a", hazard);
     else suit(k, "#4a4a5a", yellow, boulder, hazard);
-    // The helmet and its lamp.
+    // The helmet and its lamp, up on the head, clear of the eyes.
     const x = k.hx + k.side * 2,
-      y = k.ht + 16;
+      y = k.ht + 9;
     const w = k.side ? 42 : 48;
-    k.put("flame", k.path(`M${x - w} ${y + 2}Q${x - w} ${k.ht - 12} ${x} ${k.ht - 12}Q${x + w} ${k.ht - 12} ${x + w} ${y + 2}Q${x} ${y - 4} ${x - w} ${y + 2}Z`, yellow) +
-      k.line(`M${x} ${k.ht - 12}V${y - 4}`, "#e0b830", 3) + k.path(`M${x - w - 4} ${y + 3}Q${x} ${y - 4} ${x + w + 4} ${y + 3}L${x + w + 2} ${y + 7}Q${x} ${y} ${x - w - 2} ${y + 7}Z`, "#e0b830") +
+    k.put("flame", k.path(`M${x - w} ${y + 2}Q${x - w} ${k.ht - 19} ${x} ${k.ht - 19}Q${x + w} ${k.ht - 19} ${x + w} ${y + 2}Q${x} ${y - 4} ${x - w} ${y + 2}Z`, yellow) +
+      k.line(`M${x} ${k.ht - 19}V${y - 4}`, "#e0b830", 3) + k.path(`M${x - w - 4} ${y + 3}Q${x} ${y - 4} ${x + w + 4} ${y + 3}L${x + w + 2} ${y + 7}Q${x} ${y} ${x - w - 2} ${y + 7}Z`, "#e0b830") +
       (k.back ? "" : k.circle(x + k.side * 14, y - 8, 5, "#2a2a36") + k.lume("pulse", k.circle(x + k.side * 14, y - 8, 3.4, "#fff6c9", "none", 0), 1, "#fff6c9")));
   },
   // Inkshade: a stealth suit with an ink-drop emblem, a ninja headband whose
