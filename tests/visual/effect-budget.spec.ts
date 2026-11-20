@@ -302,11 +302,10 @@ for (const [g, group] of GROUPS.entries())
  */
 const SQUAD: CharacterId[] = ["pyranda", "cindrake", "mystowl", "sunbara"];
 /**
- * About twice the heaviest of four runs on 20 Nov 2026: glow 1.50 screens
- * (0.69 to 1.50: which frame a run catches varies, as above), smoke 1.44.
- * Particles reached 692 to 696 every run: the engine's hard cap (700)
- * already trims them when four heavy kits go off together, so that is the
- * limit, and a kit that needs more only loses particles, not frames.
+ * About twice the heaviest seen on 20 Nov 2026, casts spaced in effect
+ * time: glow 1.03 to 1.23 screens (1.23 with the CPU slowed 4x), smoke 0.87
+ * to 1.15, particles 382 to 583. Twice that is past the engine's hard cap
+ * of 700 particles, so the cap is the particle limit.
  */
 const FFA_LIMITS = {
   glowCover: 2.6,
@@ -317,7 +316,7 @@ const FFA_LIMITS = {
 test("four heavy kits at once stay within the free-for-all budget", async ({
   browser,
 }) => {
-  test.setTimeout(60_000 + (CASTS.length * CAST_GAP + TAIL + 4000) * 3);
+  test.setTimeout(60_000 + (CASTS.length * CAST_GAP + TAIL + 4000) * 4);
   const context = await browser.newContext({
     viewport: { width: 844, height: 390 },
     deviceScaleFactor: 2,
@@ -345,8 +344,11 @@ test("four heavy kits at once stay within the free-for-all budget", async ({
       w.__peak = { glowCover: 0, softCover: 0, particles: 0, glows: 0 };
       w.__peaks = {};
       w.__cast = "";
+      // Effect time, as in the per-champion test above.
+      w.__clock = 0;
       const step = game.loop.callback;
       game.loop.callback = (time: number, delta: number) => {
+        w.__clock += delta;
         step(time, delta);
         if (!w.__cast || !w.__arenaPerf) return;
         const s = w.__arenaPerf.fx();
@@ -392,17 +394,19 @@ test("four heavy kits at once stay within the free-for-all budget", async ({
       w.__arena = a;
       w.__pending = -2;
       let tick = 0;
-      const start = performance.now();
+      // The arena keeps effect time, and a cast waits for a tick (see the
+      // per-champion test).
+      const start = w.__clock;
       w.__fight = setInterval(() => {
         const before = tick,
           due = Math.min(
             tick + 8,
-            Math.floor((performance.now() - start) / (1000 / 30)) + 1,
+            Math.floor((w.__clock - start) / (1000 / 30)) + 1,
           );
-        let cast = w.__pending;
-        w.__pending = -2;
         while (tick < due) {
           tick++;
+          const cast = w.__pending;
+          w.__pending = -2;
           a.players.forEach((p: any, i: number) => {
             p.hp = Math.max(p.hp, 500);
             // Nobody's skill may be refused by another's stun or silence:
@@ -418,7 +422,6 @@ test("four heavy kits at once stay within the free-for-all budget", async ({
               skill: cast >= 0 ? cast : cast === -1 ? m.ULT_SLOT : -1,
             });
           });
-          cast = -2;
           a.tick();
         }
         if (Math.floor(tick / 2) === Math.floor(before / 2)) return;
@@ -426,8 +429,9 @@ test("four heavy kits at once stay within the free-for-all budget", async ({
         w.__push();
       }, 1000 / 30);
     }, SQUAD);
-    // The four fighters' art loads first (not measured).
-    await page.waitForTimeout(4000);
+    // The four fighters' art loads first (not measured), and the arena runs
+    // its first ticks.
+    await effectWait(page, 4000);
     for (const [i, cast] of CASTS.entries()) {
       await page.evaluate(
         ([label, slot]) => {
@@ -437,9 +441,9 @@ test("four heavy kits at once stay within the free-for-all budget", async ({
         },
         [cast, i < 4 ? i : -1] as const,
       );
-      await page.waitForTimeout(CAST_GAP);
+      await effectWait(page, CAST_GAP);
     }
-    await page.waitForTimeout(TAIL);
+    await effectWait(page, TAIL);
     const { peak, peaks } = await page.evaluate(() => {
       const w = window as any;
       w.__cast = "";
