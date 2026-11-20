@@ -2,7 +2,10 @@
 import Phaser from "phaser";
 import { CHARACTERS, FIGHTER_IDS, type CharacterId } from "@arena/shared";
 import { CHAMPION_SKINS } from "../../../packages/shared/src/shop";
-import { FighterRig } from "../../../apps/client/src/animation/rig";
+import {
+  FighterRig,
+  UPRIGHT_PROP_ARM,
+} from "../../../apps/client/src/animation/rig";
 import {
   rigAssets,
   rigKey,
@@ -102,7 +105,8 @@ export function reviewChampions(canvas = false, group?: number) {
         );
       game.step(clock + elapsed, 0);
     },
-    pose(state = "idle", reduced = false, phase = 250 / 900) {
+    /** `victory` wears a Victory reward (e.g. "rockslide-flex"). */
+    pose(state = "idle", reduced = false, phase = 250 / 900, victory?: string) {
       clock += 1200;
       for (const r of rigs) {
         r.rig.controller.reset();
@@ -121,6 +125,7 @@ export function reviewChampions(canvas = false, group?: number) {
             dash: state === "dash",
             jump: state === "jump",
             skin: looks.get(r.id) ?? null,
+            look: victory ? ({ victory } as any) : undefined,
           },
           r.x,
           r.y,
@@ -161,6 +166,8 @@ export function reviewChampions(canvas = false, group?: number) {
         return {
           id: r.id,
           dir: (r.rig as any).dir,
+          /** Where an upright prop's arm is held in greetings and victories. */
+          propArm: UPRIGHT_PROP_ARM[r.id] ?? null,
           anchorY: r.y,
           rootY: r.rig.root.y,
           finite: images.every(([, v]) =>
