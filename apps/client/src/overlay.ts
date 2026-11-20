@@ -30,18 +30,21 @@ export function fillLiveSeconds(root: HTMLElement, seconds: number) {
   });
 }
 /**
- * The overlay card pops in (style.css, `ea-pop`). Writing new markup makes a
+ * The overlay card pops in (style.css, `ea-pop`; the raid's rites screen
+ * fades in, `rites-in`, screens/raid-rites.css). Writing new markup makes a
  * new card, which would replay the pop on every snapshot that changes the
  * same panel (a rite picked, a player getting ready). When the panel is the
  * same one, the new card's pop carries on from where the old one was, or
  * stays finished.
  */
+const ENTRY_ANIMATIONS = ["ea-pop", "rites-in"];
 function popOf(card: Element | null | undefined) {
   return card
     ?.getAnimations?.()
     .find(
       (a): a is CSSAnimation =>
-        "animationName" in a && (a as CSSAnimation).animationName === "ea-pop",
+        "animationName" in a &&
+        ENTRY_ANIMATIONS.includes((a as CSSAnimation).animationName),
     );
 }
 export function setOverlayMarkup(
