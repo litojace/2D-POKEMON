@@ -177,18 +177,45 @@ for (const size of SIZES)
       // Row 1 is painted where it stands (no stale band over it: switching
       // tabs once left the old tab's picture there in Chromium).
       const row1 = await box(page, '[data-spire-floor="1"]');
-      // (The whole screen, as a player sees it: a clipped shot repaints.)
-      const shot = decodePng(await page.screenshot({ animations: "disabled" }));
-      let bright = 0,
-        all = 0;
-      for (let y = Math.ceil(row1.y); y < row1.y + row1.height; y++)
-        for (let x = Math.ceil(row1.x); x < row1.x + row1.width; x++) {
-          const i = (y * shot.width + x) * 4;
-          all++;
-          if (shot.data[i] + shot.data[i + 1] + shot.data[i + 2] > 450)
-            bright++;
-        }
-      expect(bright / all).toBeGreaterThan(0.004);
+      // The tab's slide-in done first. A stale band stays where it was left,
+      // so the shot is taken again for a few seconds: on CI's runner (slow
+      // software drawing) the first shot came before the new tab had been
+      // drawn at all, row 1 blank, 4 runs in 4 (20 Nov 2026), never here.
+      await page
+        .waitForFunction(
+          () =>
+            !document
+              .getAnimations()
+              .some(
+                (a) =>
+                  a.playState === "running" &&
+                  Number.isFinite(
+                    a.effect?.getComputedTiming().endTime ?? Infinity,
+                  ),
+              ),
+          undefined,
+          { timeout: 10_000, polling: 100 },
+        )
+        .catch(() => undefined);
+      const rowBright = async () => {
+        // (The whole screen, as a player sees it: a clipped shot repaints.)
+        const shot = decodePng(
+          await page.screenshot({ animations: "disabled" }),
+        );
+        let bright = 0,
+          all = 0;
+        for (let y = Math.ceil(row1.y); y < row1.y + row1.height; y++)
+          for (let x = Math.ceil(row1.x); x < row1.x + row1.width; x++) {
+            const i = (y * shot.width + x) * 4;
+            all++;
+            if (shot.data[i] + shot.data[i + 1] + shot.data[i + 2] > 450)
+              bright++;
+          }
+        return bright / all;
+      };
+      await expect
+        .poll(rowBright, { timeout: 10_000, message: "row 1 is painted" })
+        .toBeGreaterThan(0.004);
       await snap(page, info, `spire-page-floors-${size.name}`);
       await room.locator('[data-ui-spire-tab="blessings"]').click();
       await expect(room.locator("[data-spire-blessing-info]")).toHaveCount(10);

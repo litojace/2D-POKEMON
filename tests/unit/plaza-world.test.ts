@@ -214,6 +214,25 @@ describe("the Plaza world", () => {
     );
   });
 
+  it("has the townsfolk on the track clear every hurdle", () => {
+    const world = new PlazaWorld(() => 0.5);
+    world.join("s1", "acc-1", profile("Ann"), QUIET);
+    const c = (world as any).copies.get(1);
+    let now = QUIET,
+      trips = 0;
+    const down = new Map();
+    for (let t = 0; t < 180; t += DT) {
+      now += DT * 1000;
+      world.step(DT, now);
+      for (const f of c.folk) {
+        if (f.body.stun > 0 && !down.get(f)) trips++;
+        down.set(f, f.body.stun > 0);
+      }
+    }
+    expect(c.folk.some((f: any) => f.ai === "track")).toBe(true);
+    expect(trips).toBe(0);
+  });
+
   it("moves at the server's speed and ignores junk input", () => {
     const world = new PlazaWorld();
     world.join("s1", "acc-1", profile("Ann"), QUIET);

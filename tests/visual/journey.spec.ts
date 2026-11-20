@@ -44,26 +44,46 @@ const journey = {
   unlocked: [],
 };
 
+// Installed before the page loads. The Lobby fetches /api/economy at the
+// end of its first load, after openLobby() returns, and keeps that copy for
+// 30 s (accounts.ts fetchCopy); a wrapper put in afterwards missed it when
+// that fetch came first, and the Journey showed the plain account (level 12,
+// 20 tiers; 4 of the 11 tests here). The harness's fake API assigns
+// window.fetch as it loads (harness/fake-api.ts), so the wrapper goes around
+// whatever is assigned.
 async function withJourney(page: Page, owned: string[] = []) {
-  await page.evaluate(
+  await page.addInitScript(
     ({ j, owned, serverTime }) => {
       (window as any).__serverTime = serverTime;
-      const fetch = window.fetch.bind(window);
-      window.fetch = async (input, init) => {
-        const response = await fetch(input, init);
-        const url = String(input instanceof Request ? input.url : input);
-        if (!url.includes("/api/economy")) return response;
-        const body = await response.json();
-        return new Response(
-          JSON.stringify({
-            ...body,
-            owned: [...body.owned, ...owned],
-            journey: j,
-          }),
-          // Keep the server's clock header (X-Server-Time).
-          { headers: response.headers },
-        );
-      };
+      const wrap =
+        (fetch: typeof window.fetch): typeof window.fetch =>
+        async (input, init) => {
+          const response = await fetch(input, init);
+          const url = String(input instanceof Request ? input.url : input);
+          if (!url.includes("/api/economy")) return response;
+          const body = await response.json();
+          return new Response(
+            JSON.stringify({
+              ...body,
+              owned: [...body.owned, ...owned],
+              journey: j,
+            }),
+            // Keep the server's clock header (X-Server-Time).
+            { headers: response.headers },
+          );
+        };
+      const native = window.fetch;
+      let current = wrap(native.bind(window));
+      let installed = false;
+      Object.defineProperty(window, "fetch", {
+        configurable: true,
+        // The harness reads the browser's own fetch, then puts its fake in.
+        get: () => (installed ? current : native),
+        set: (f: typeof window.fetch) => {
+          installed = true;
+          current = wrap(f);
+        },
+      });
     },
     { j: journey, owned, serverTime: SERVER_TIME },
   );
@@ -81,10 +101,10 @@ for (const size of SIZES)
     });
     try {
       const page = await context.newPage();
+      await withJourney(page);
       const errors = await openLobby(page);
       const inset = size.island ? ISLAND : undefined;
       if (inset) await setInsets(page, inset);
-      await withJourney(page);
       await page.click("#lobby-journey-card");
       const room = page.locator(".journey-room");
       await expect(room).toHaveAttribute("data-journey-tab", "season");
@@ -257,8 +277,8 @@ for (const size of SIZES)
 test("Journey rewards equip through the shared appearance route", async ({
   page,
 }) => {
-  const errors = await openLobby(page);
   await withJourney(page, ["prism-frame"]);
+  const errors = await openLobby(page);
   await page.evaluate(() => {
     const w = window as any;
     w.__equips = [];
@@ -318,8 +338,8 @@ test("Journey rewards equip through the shared appearance route", async ({
 });
 
 test("the Journey works from the keyboard", async ({ page }) => {
-  const errors = await openLobby(page);
   await withJourney(page);
+  const errors = await openLobby(page);
   await page.focus("#lobby-journey-card");
   await page.keyboard.press("Enter");
   await expect(page.locator(".journey-room")).toBeFocused();
@@ -363,8 +383,8 @@ test("the Journey with reduced motion and Low graphics", async ({
   try {
     const page = await context.newPage();
     await page.addInitScript(() => localStorage.setItem("ea-graphics", "low"));
-    const errors = await openLobby(page);
     await withJourney(page);
+    const errors = await openLobby(page);
     await page.click("#lobby-journey-card");
     const room = page.locator(".journey-room");
     await expect(room).toHaveAttribute("data-graphics", "low");
@@ -397,9 +417,9 @@ for (const size of [SIZES[0], SIZES[3]])
     });
     try {
       const page = await context.newPage();
+      await withJourney(page);
       const errors = await openLobby(page);
       if (size.island) await setInsets(page, ISLAND);
-      await withJourney(page);
       await page.click("#lobby-journey-card");
       // The Journey's data has arrived (the 30-tier season road).
       await expect(page.locator(".journey-room .journey-tier")).toHaveCount(30);

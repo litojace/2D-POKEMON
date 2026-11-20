@@ -32,7 +32,7 @@ for (const size of SIZES) {
     browser,
   }, info) => {
     // Slow frames on CI: each corner waits for drawn frames, not seconds.
-    test.setTimeout(180_000);
+    test.setTimeout(480_000);
     const ctx = await context(browser, size);
     try {
       const page = await ctx.newPage();
@@ -78,6 +78,11 @@ for (const size of SIZES) {
         // them. Still readings with no frame between say nothing: CI's
         // runner drew 4 frames in all at 1440x900 and the camera, half-way
         // to the corner, read "still" for 2 s ("the woods west", 19 Nov).
+        // The camera closes at most a quarter of the way a frame (its step
+        // is capped at 0.05 s), so a corner across the map takes about 50
+        // frames whatever the frame rate: at 3440x1440 here 3 s, 15 s with
+        // the CPU slowed 3x and 27 s at 6x, past the 30 s CI's runner gave
+        // it (19 Nov). So the wait is long; frames, not time, decide.
         let last = "",
           same = 0,
           frames = -1;
@@ -109,7 +114,7 @@ for (const size of SIZES) {
               frames = drawn;
               return same >= 3;
             },
-            { timeout: 30_000, intervals: [500] },
+            { timeout: 90_000, intervals: [500] },
           )
           .toBe(true);
         const [ax, ay, bx, by, mx0, my0, mx1, my1] = JSON.parse(
