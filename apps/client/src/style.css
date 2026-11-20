@@ -15484,3 +15484,41 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-countdown:not(:empty) {
   font-weight: 700;
   text-shadow: 0 2px 10px #000e;
 }
+
+/* Prismatail's Turn mirror / Look away on phones: stacked under the chat
+   button, above the joystick, so the top-right corner (where allies and the
+   relay's far mirrors stand) stays clear (owner, 20 Nov 2026). They sit in
+   the joystick's column; a court-wide frame keeps the relay right of them
+   (measureRaidControls). Comes last so it wins over the per-height rules
+   above that share it with the Storm Twins' targets. Screens under 310px
+   tall leave no room between the chat button and the joystick, so they keep
+   those rules (beside the skill buttons). */
+@media (min-height: 310px) {
+  body.battle-active.touch-mode.battle-raid #raid-prism-controls:not([hidden]) {
+    position: fixed;
+    /* Under the chat button (chat/chat.css: 24px + 88px from the safe top,
+       as --desktop-raid-hud-height is set only inside the battle box, not on
+       the body the button sits in), its 44px, and a 6px gap. */
+    top: calc(var(--safe-top, 0px) + 162px);
+    right: auto;
+    bottom: auto;
+    left: max(12px, calc(var(--safe-left, 0px) + 4px));
+    transform: none;
+    flex-direction: column;
+    width: 112px;
+    gap: 4px;
+  }
+  body.battle-active.touch-mode.battle-raid #raid-prism-controls > button {
+    flex: none;
+    width: 100%;
+    height: 30px;
+    min-height: 30px;
+    justify-content: flex-start;
+  }
+}
+@media (orientation: landscape) and (min-height: 310px) and (max-height: 350px) {
+  body.battle-active.touch-mode.battle-raid #raid-prism-controls > button {
+    height: 28px;
+    min-height: 28px;
+  }
+}

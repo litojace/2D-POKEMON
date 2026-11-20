@@ -379,3 +379,31 @@ describe("underControls", () => {
     expect(underControls(100, 1700, { left: 0, right: 0 })).toBe(false);
   });
 });
+
+describe("a left mechanic panel", () => {
+  it("keeps a court-wide frame to the right of it", () => {
+    // Prismatail's relay framed; its buttons stacked on the left to 15% in.
+    const frame = { x0: 280, y0: 230, x1: 1220, y1: 670 };
+    const sides = { left: W * 0.15, right: W * 0.28, panel: W * 0.15 };
+    const cam = new RaidCamera();
+    let view = raidCameraView(W, H, HUD);
+    for (let i = 0; i < 300; i++)
+      view = cam.update(
+        W,
+        H,
+        HUD,
+        true,
+        { x: 700, y: 500, vx: 0, vy: 0 },
+        undefined,
+        frame,
+        "k",
+        16,
+        i * 0.016,
+        false,
+        sides,
+      );
+    const sx = (x: number) => (x - view.x) * view.zoomX + W / 2;
+    expect(sx(frame.x0)).toBeGreaterThanOrEqual(sides.panel - 0.5);
+    expect(sx(frame.x1)).toBeLessThanOrEqual(W + 0.5);
+  });
+});

@@ -292,18 +292,43 @@ for (const size of [
                   `${boss}: ${selector} overlaps another control`,
                 ).toBe(false);
               }
-              if (selector === "#raid-prism-controls") {
+              if (selector === "#raid-prism-controls" && mobile) {
+                // Phones: Turn mirror over Look away, under the chat button
+                // and above the joystick (owner, 20 Nov 2026), clear of both.
                 const buttons = await panel
                   .locator("button")
                   .evaluateAll((items) =>
-                    items.map((item) => item.getBoundingClientRect().y),
+                    items.map((item) => {
+                      const r = item.getBoundingClientRect();
+                      return { x: r.x, y: r.y, bottom: r.bottom };
+                    }),
                   );
-                expect(Math.abs(buttons[0] - buttons[1])).toBeLessThanOrEqual(
-                  1,
-                );
-                expect(
-                  size.width - controls.x - controls.width,
-                ).toBeLessThanOrEqual(size.height <= 350 ? 54 : 8);
+                const chat = await box(page, "#battle-chat"),
+                  joystick = await box(page, ".touch-pad .joystick");
+                if (size.height >= 310) {
+                  expect(controls.y + controls.height).toBeLessThanOrEqual(
+                    joystick.y,
+                  );
+                  expect(
+                    Math.abs(buttons[0].x - buttons[1].x),
+                  ).toBeLessThanOrEqual(1);
+                  expect(buttons[1].y).toBeGreaterThanOrEqual(
+                    buttons[0].bottom,
+                  );
+                  expect(controls.y).toBeGreaterThanOrEqual(
+                    chat.y + chat.height,
+                  );
+                  expect(Math.abs(controls.x - chat.x)).toBeLessThanOrEqual(2);
+                } else {
+                  // Too short to stack under the chat button: beside the
+                  // skill buttons, on one row, as before.
+                  expect(
+                    Math.abs(buttons[0].y - buttons[1].y),
+                  ).toBeLessThanOrEqual(1);
+                  expect(
+                    size.width - controls.x - controls.width,
+                  ).toBeLessThanOrEqual(54);
+                }
               }
               expect(controls.x).toBeGreaterThanOrEqual(0);
               expect(controls.x + controls.width).toBeLessThanOrEqual(

@@ -678,7 +678,15 @@ function measureRaidControls(): ControlSides {
   const buttons = Array.from(
     document.querySelectorAll<HTMLElement>(".touch-buttons button"),
   ).filter((b) => b.offsetWidth);
+  // Prismatail's Turn mirror / Look away, stacked on the left over the
+  // joystick (style.css): a court-wide frame keeps the relay right of them.
+  const panel = document.getElementById("raid-prism-controls");
+  const box = panel && !panel.hidden ? panel.getBoundingClientRect() : null;
   return {
+    panel:
+      box && box.width && box.left < frame.left + frame.width / 2
+        ? Math.max(0, box.right - frame.left) * dpr
+        : 0,
     left: joystick?.offsetWidth
       ? Math.max(0, joystick.getBoundingClientRect().right - frame.left) * dpr
       : 0,
@@ -5255,6 +5263,17 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   private needsHydration = true;
   private followCamera = new FollowCamera();
   private raidCamera = new RaidCamera();
+  private prismPanelShown = false;
+  /** The touch controls' reach, measured again when Prismatail's panel shows
+   * or hides (a .hidden read: no layout). */
+  private raidSides() {
+    const shown = !document.getElementById("raid-prism-controls")?.hidden;
+    if (shown !== this.prismPanelShown) {
+      this.prismPanelShown = shown;
+      raidControlSides = undefined;
+    }
+    return (raidControlSides ??= measureRaidControls());
+  }
   private allyBearings = new AllyBearings(
     () => document.getElementById("game")?.parentElement ?? null,
   );
@@ -6133,7 +6152,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           delta,
           feelNow / 1000,
           reducedMotion,
-          raidFollow ? (raidControlSides ??= measureRaidControls()) : undefined,
+          raidFollow ? this.raidSides() : undefined,
         )
       : this.followCamera.update(
           this.scale.width,
