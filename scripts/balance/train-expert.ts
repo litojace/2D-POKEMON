@@ -15,7 +15,9 @@
  * style (a few of its numbers moved at random), plays the current style and
  * every variation against all other champions (who play their current
  * styles), and keeps the best variation only if it also wins more on a
- * second, unseen set of games: one lucky set must not decide. Every step is
+ * second, unseen set of games and by at least MARGIN points over both sets:
+ * one lucky set must not decide. Only the numbers that mean something for
+ * the champion move (a shooter has no brawler's reach). Every step is
  * saved to the state file, and an accepted style is written to
  * expert-style.ts at once, so a restarted container loses nothing: run the
  * same command again and it carries on.
@@ -30,6 +32,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
+  CHARACTERS,
   FIGHTER_IDS,
   type CharacterId,
 } from "../../packages/shared/src/index.ts";
@@ -113,6 +116,8 @@ const rounds = +opt("--rounds", "4"),
   stateFile = opt("--state", "balance-out/train-expert.json");
 const champions = only.length ? only : [...FIGHTER_IDS];
 const STYLE_FILE = "apps/server/src/expert-style.ts";
+/** Points a variation must win by, on average over both game sets, to be kept. */
+const MARGIN = 3;
 
 type State = {
   table: Table;
@@ -161,14 +166,23 @@ const random = () => {
 const gauss = () =>
   Math.sqrt(-2 * Math.log(random() || 1e-9)) * Math.cos(2 * Math.PI * random());
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
+/** The numbers that mean something for this champion (a shooter has no reach). */
+function keysFor(champion: CharacterId) {
+  const basic = CHARACTERS[champion].basic.kind,
+    melee = basic === "melee" || basic === "cone";
+  return STYLE_KEYS.filter((k) =>
+    melee ? k !== "range" && k !== "kite" : k !== "reach" && k !== "closeIn",
+  );
+}
 /** Move two or three of the style's numbers (or a skill's weight). */
-function mutate(style: Style): Style {
+function mutate(style: Style, champion: CharacterId): Style {
   const next: Style = { ...style, slots: style.slots && [...style.slots] };
+  const keys = keysFor(champion);
   const moves = 2 + (random() < 0.5 ? 1 : 0);
   for (let m = 0; m < moves; m++) {
-    const pick = Math.floor(random() * (STYLE_KEYS.length + 4));
-    if (pick >= STYLE_KEYS.length) {
-      const slot = pick - STYLE_KEYS.length;
+    const pick = Math.floor(random() * (keys.length + 4));
+    if (pick >= keys.length) {
+      const slot = pick - keys.length;
       const slots = next.slots ?? [1, 1, 1, 1];
       slots[slot] = round3(
         Math.max(
@@ -179,7 +193,7 @@ function mutate(style: Style): Style {
       next.slots = slots;
       continue;
     }
-    const key = STYLE_KEYS[pick];
+    const key = keys[pick];
     const [lo, hi] = LIMITS[key],
       now = next[key] ?? DEFAULTS[key];
     const moved =
@@ -268,7 +282,7 @@ for (; state.round < rounds; state.round++, state.next = 0) {
   for (; state.next < champions.length; state.next++) {
     const champion = champions[state.next];
     const current = state.table[champion] ?? {};
-    const variants = [...Array(mutants)].map(() => mutate(current));
+    const variants = [...Array(mutants)].map(() => mutate(current, champion));
     const seed = 900000 + state.round * 10007 + state.next * 101;
     const first = await evaluate(champion, [current, ...variants], seed);
     let best = 1;
@@ -282,7 +296,12 @@ for (; state.round < rounds; state.round++, state.next = 0) {
         seed + 500000,
       );
       line += `, rechecked ${again.toFixed(1)}% vs ${check.toFixed(1)}%`;
-      if (check > again) {
+      // Better on the unseen games too, and clearly better over both sets
+      // (a game set's noise is about ±5 points).
+      if (
+        check > again &&
+        first[best] + check - first[0] - again >= 2 * MARGIN
+      ) {
         state.table[champion] = variants[best - 1];
         writeStyles();
         line += ` -> kept ${JSON.stringify(variants[best - 1])}`;
