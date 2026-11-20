@@ -43,9 +43,12 @@ export function setupPWA(
     }
     return peerMatchActive(records, Date.now());
   };
-  // A dialog, or a hub screen opened inside the Lobby (ui/hub-panel.ts).
+  // A dialog, or a hub screen opened inside the Lobby (ui/hub-panel.ts);
+  // not one parked for its next open (the Shop, closed but kept).
   const menuOpen = () =>
-    !!document.querySelector("dialog[open], .ui-panel-host");
+    !!document.querySelector(
+      "dialog[open], .ui-panel-host:not([data-ui-parked])",
+    );
   const idle = () =>
     safeToUpdate(getPhase(), menuOpen()) &&
     !peers() &&
