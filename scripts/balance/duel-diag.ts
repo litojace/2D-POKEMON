@@ -7,6 +7,9 @@
  *
  *   npx tsx scripts/balance/duel-diag.ts <gamesPerPair> [champion ...] [--json out.json]
  *
+ * DIAG_LEVELS (default "hard,normal") picks the bot levels to compare;
+ * "expert,hard" shows what changes among very good players.
+ *
  * With champions named, only their pairings are played (against all 15
  * others). Read-only: it wraps Arena.cast / Arena.damage to count, nothing
  * else changes.
@@ -21,7 +24,7 @@ import {
   type Fighter,
 } from "../../packages/shared/src/index.ts";
 import { Arena } from "../../apps/server/src/simulation.ts";
-import { BotBrain, type BotDifficulty } from "../../apps/server/src/bot.ts";
+import { BotBrain, type BotLevel } from "../../apps/server/src/bot.ts";
 
 const args = process.argv.slice(2);
 const jsonAt = args.indexOf("--json");
@@ -59,7 +62,10 @@ const blank = (): Tally => ({
 const out: Record<string, Record<string, Tally>> = {};
 const dt = 1 / RULES.tick;
 
-for (const difficulty of ["hard", "normal"] as BotDifficulty[]) {
+const levels = (process.env.DIAG_LEVELS ?? "hard,normal").split(
+  ",",
+) as BotLevel[];
+for (const difficulty of levels) {
   let k = 0;
   for (let i = 0; i < FIGHTER_IDS.length; i++)
     for (let j = i + 1; j < FIGHTER_IDS.length; j++, k++) {
@@ -146,7 +152,7 @@ for (const difficulty of ["hard", "normal"] as BotDifficulty[]) {
 const ids = only.length ? only : [...FIGHTER_IDS];
 for (const id of ids) {
   console.log(`\n${id}`);
-  for (const d of ["hard", "normal"]) {
+  for (const d of levels) {
     const s = out[id][d];
     console.log(
       `  ${d.padEnd(6)} win ${((100 * s.wins) / s.games).toFixed(1)}% (${s.games})  dealt/s ${(s.dealt / s.seconds).toFixed(2)}  taken/s ${(s.taken / s.seconds).toFixed(2)}  gap ${(s.gap / s.seconds).toFixed(0)}  in reach ${((100 * s.reach) / s.seconds).toFixed(0)}%`,
