@@ -9,6 +9,7 @@ import {
   settle,
   createRoom,
 } from "./helpers";
+import { ISLAND, setInsets } from "./ui-measure";
 
 const buffValues: Record<string, string[]> = {
   shelter: ["−25%"],
@@ -93,12 +94,55 @@ for (const size of [
           w.__push();
         }, offers);
         await expect(page.locator("[data-raid-rite]")).toHaveCount(6);
-        await page.locator(".raid-draft").evaluate(async (e) => {
+        await page.locator(".rites-screen").evaluate(async (e) => {
           await Promise.all(
             e.getAnimations().map((a) => a.finished.catch(() => {})),
           );
         });
-        const card = await box(page, ".raid-draft");
+        const card = await box(page, ".rites-screen");
+        // The tiles sit between the heading and the links, and nothing in a
+        // tile spills out of it (nor the grid scroll) at the normal text size.
+        const head = await box(page, ".rites-head"),
+          foot = await box(page, ".rites-foot"),
+          grid = await box(page, ".raid-rite-options");
+        expect(grid.y).toBeGreaterThanOrEqual(head.y + head.height - 1);
+        expect(grid.y + grid.height).toBeLessThanOrEqual(foot.y + 1);
+        expect(
+          await page
+            .locator(".raid-rite-options")
+            .evaluate((e) => [
+              e.scrollHeight - e.clientHeight,
+              ...[...e.children].map((b) => b.scrollHeight - b.clientHeight),
+            ]),
+        ).toEqual([0, 0, 0, 0, 0, 0, 0]);
+        // The figures sit beside each rite's picture, never on it (owner).
+        // One pass for all six: a round trip per figure is too slow here.
+        expect(
+          await page.evaluate(() =>
+            [...document.querySelectorAll(".raid-rite-icon--buff")].flatMap(
+              (emblem) => {
+                const art = emblem
+                  .querySelector("svg")!
+                  .getBoundingClientRect();
+                return [...emblem.querySelectorAll(".raid-rite-buff-stat")]
+                  .map((stat) => stat.getBoundingClientRect())
+                  .filter(
+                    (b) =>
+                      b.left < art.right - 1 &&
+                      b.right > art.left + 1 &&
+                      b.top < art.bottom - 1 &&
+                      b.bottom > art.top + 1,
+                  )
+                  .map(() =>
+                    emblem
+                      .closest("[data-raid-rite]")!
+                      .getAttribute("data-raid-rite"),
+                  );
+              },
+            ),
+          ),
+          "figures covering their picture",
+        ).toEqual([]);
         for (const id of offers) {
           const selector = `[data-raid-rite="${id}"]`;
           const button = await box(page, selector),
@@ -344,29 +388,34 @@ for (const size of [
       // moved the cards while it ran).
       const popping = () =>
         page
-          .locator(".raid-draft")
+          .locator(".rites-screen")
           .evaluate(
             (e) =>
               e.getAnimations().filter((a) => a.playState === "running").length,
           );
       await show(offer, []);
       await expect(cards).toHaveCount(6);
-      await expect(page.locator(".raid-draft")).toBeVisible();
+      await expect(page.locator(".rites-screen")).toBeVisible();
       // Measure where the panel ends up once it has popped in (this page
       // draws no frames between steps, so its pop wouldn't finish by itself).
       await settle(page);
       const before = await places();
-      // The six cards end above the chapter tip and timer row: a fixed-height
-      // panel used to let them overflow onto it on desktop screens.
-      if (!mobile) {
-        const cardsEnd = await page
-          .locator(".raid-draft > .panel-actions")
-          .evaluate((e) => e.getBoundingClientRect().bottom);
-        const tipStart = await page
-          .locator(".raid-draft > .panel-scroll")
-          .evaluate((e) => e.getBoundingClientRect().top);
-        expect(cardsEnd).toBeLessThanOrEqual(tipStart + 1);
-      }
+      // The six tiles end above the links (Rite details, Team rites) and
+      // start below the heading, the chapter tip included on tall screens.
+      const tilesTop = await page
+        .locator(".raid-rite-options")
+        .evaluate((e) => e.getBoundingClientRect().top);
+      const tilesEnd = await page
+        .locator(".raid-rite-options")
+        .evaluate((e) => e.getBoundingClientRect().bottom);
+      const headEnd = await page
+        .locator(".rites-head")
+        .evaluate((e) => e.getBoundingClientRect().bottom);
+      const linksStart = await page
+        .locator(".rites-foot")
+        .evaluate((e) => e.getBoundingClientRect().top);
+      expect(tilesTop).toBeGreaterThanOrEqual(headEnd - 1);
+      expect(tilesEnd).toBeLessThanOrEqual(linksStart + 1);
       // First pick: Core leaves the offers but keeps its card and place.
       await show(
         offer.filter((id) => id !== "core"),
@@ -399,6 +448,118 @@ for (const size of [
       expect(await popping()).toBe(0);
       expect(await places()).toEqual(before);
       await snap(page, info, `rite-locked-${size.width}x${size.height}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+// The rites in the style of the battle countdown (owner, Nov 2026): the
+// whole screen edge to edge past the notch, under the countdown's navy
+// shade, even across the screen (its middle used to show the court bright),
+// with the seconds as one big number and no card. On the owner's iPhone
+// held sideways (956x440 with the Dynamic Island's insets) and a small phone.
+for (const size of [
+  { width: 956, height: 440, island: true },
+  { width: 667, height: 375, island: false },
+])
+  test(`the rites fill the whole screen like the countdown at ${size.width}x${size.height}${size.island ? " with the Dynamic Island" : ""}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openHub(page);
+      await page.evaluate(() =>
+        (window as any).__room("raid", { boss: "prismatail" }),
+      );
+      await openPlayPanel(page);
+      await createRoom(page);
+      await pushUntilBattle(page);
+      if (size.island) await setInsets(page, ISLAND);
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__snap.phase = "intermission";
+        w.__snap.remaining = 12;
+        w.__snap.raid.offers.me = [
+          "shelter",
+          "sharing",
+          "core",
+          "rescue",
+          "courage",
+          "mending",
+        ];
+        w.__push();
+      });
+      await expect(page.locator("[data-raid-rite]")).toHaveCount(6);
+      await settle(page);
+      const overlay = page.locator("#arena-overlay");
+      await expect(overlay).toHaveClass(/\bis-rites\b/);
+      const look = await page.evaluate(() => {
+        const ov = document.getElementById("arena-overlay")!;
+        const r = ov.getBoundingClientRect();
+        const screen = getComputedStyle(ov.querySelector(".rites-screen")!);
+        const number = ov.querySelector(".raid-choice-timer .live-number")!;
+        return {
+          rect: [r.left, r.top, r.width, r.height].map(Math.round),
+          shade: getComputedStyle(ov).backgroundColor,
+          card: [screen.backgroundColor, screen.borderTopWidth],
+          number: [
+            number.textContent,
+            parseFloat(getComputedStyle(number).fontSize),
+          ],
+          // The HUD and the battle controls step aside.
+          hidden: ["#raid-hud", "#mobile-controls", "#battle-chat"].map((s) => {
+            const e = document.querySelector(s);
+            return !e || getComputedStyle(e).visibility === "hidden";
+          }),
+        };
+      });
+      expect(look.rect).toEqual([0, 0, size.width, size.height]);
+      // The countdown's navy, the same strength everywhere (a plain colour,
+      // not its gradient that is lighter in the middle).
+      expect(look.shade).toBe("rgba(7, 18, 37, 0.65)");
+      expect(look.card).toEqual(["rgba(0, 0, 0, 0)", "0px"]);
+      expect(look.number[0]).toBe("12");
+      expect(look.number[1]).toBeGreaterThanOrEqual(40);
+      expect(look.hidden).toEqual([true, true, true]);
+      // Every tile is a comfortable touch target, fully on screen and clear
+      // of the notch's insets.
+      const inset = size.island
+        ? ISLAND
+        : { left: 0, right: 0, top: 0, bottom: 0 };
+      for (const tile of await page.locator("[data-raid-rite]").all()) {
+        const b = (await tile.boundingBox())!;
+        expect(b.height).toBeGreaterThanOrEqual(44);
+        expect(b.width).toBeGreaterThanOrEqual(44);
+        expect(b.x).toBeGreaterThanOrEqual(inset.left);
+        expect(b.x + b.width).toBeLessThanOrEqual(size.width - inset.right);
+        expect(b.y + b.height).toBeLessThanOrEqual(size.height - inset.bottom);
+      }
+      await snap(page, info, `rites-whole-screen-${size.width}x${size.height}`);
+      // Rite details: the six in columns, not long lines across the screen.
+      await page.locator(".raid-rite-more > summary").click();
+      const rows = await page
+        .locator(".raid-rite-reference li")
+        .evaluateAll(
+          (items) =>
+            new Set(items.map((i) => Math.round(i.getBoundingClientRect().y)))
+              .size,
+        );
+      expect(rows).toBeLessThanOrEqual(3);
+      // The fight: the screen goes and the controls come back.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__snap.phase = "playing";
+        w.__push();
+      });
+      await expect(overlay).not.toHaveClass(/\bis-rites\b/);
+      await expect(page.locator("body")).not.toHaveClass(/\braid-rites-open\b/);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

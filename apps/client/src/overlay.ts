@@ -9,6 +9,19 @@ export function fillLiveCountdown(root: HTMLElement, seconds: number) {
     if (slot.textContent !== text) slot.textContent = text;
   });
 }
+/** The seconds left as one big number and its unit (the raid's rites). */
+export const LIVE_NUMBER =
+  '<b class="live-number"></b> <span class="live-unit"></span>';
+export function fillLiveNumber(root: HTMLElement, seconds: number) {
+  const n = Math.max(0, Math.ceil(seconds));
+  const unit = n === 1 ? "second" : "seconds";
+  root.querySelectorAll<HTMLElement>(".live-number").forEach((slot) => {
+    if (slot.textContent !== String(n)) slot.textContent = String(n);
+  });
+  root.querySelectorAll<HTMLElement>(".live-unit").forEach((slot) => {
+    if (slot.textContent !== unit) slot.textContent = unit;
+  });
+}
 export function fillLiveSeconds(root: HTMLElement, seconds: number) {
   const n = Math.max(0, Math.ceil(seconds));
   const text = `${n} second${n === 1 ? "" : "s"}`;

@@ -28,7 +28,7 @@ import {
 import { iconLabel, menuIcon } from "./menu-icons";
 import { actions as uiActions, button as uiButton } from "./ui/components";
 import "./screens/raid-cards.css";
-import "./raid-rites-demo.css";
+import "./screens/raid-rites.css";
 import { raidContributions, raidGoals } from "./raid-presentation";
 import { paintRaidHud, raidHudView } from "./raid-hud";
 import type Phaser from "phaser";
@@ -81,8 +81,10 @@ import {
   setOverlayMarkup,
   LIVE_SECONDS,
   LIVE_COUNTDOWN,
+  LIVE_NUMBER,
   fillLiveSeconds,
   fillLiveCountdown,
+  fillLiveNumber,
 } from "./overlay";
 const escape = (s: string) =>
   s.replace(
@@ -103,21 +105,6 @@ export function raidLookList(look: RaidLoadout | null | undefined) {
     .join(" ");
 }
 export { portraitAvatar, portraitCosmetics } from "./portraits";
-/**
- * Rites screen prototypes (raid-rites-demo.css), for the owner to compare:
- * ?rites=a|b|c, or localStorage "ea-rites-demo". Empty: the current card.
- */
-const RITES_LOOK = (() => {
-  try {
-    const look =
-      new URLSearchParams(location.search).get("rites") ??
-      localStorage.getItem("ea-rites-demo") ??
-      "";
-    return /^[abc]$/.test(look) ? look : "";
-  } catch {
-    return "";
-  }
-})();
 /** The result whose saved progress was already fetched, per overlay. */
 const resultProgress = new WeakMap<HTMLElement, string>();
 export function renderRaidUI(
@@ -174,7 +161,6 @@ export function renderRaidUI(
   if (state.phase === "playing") {
     overlay.classList.remove("is-rites");
     document.body.classList.remove("raid-rites-open");
-    delete overlay.dataset.look;
     setOverlayMarkup(overlay, "");
     overlay.style.pointerEvents = "none";
     const banner = document.getElementById("spectate")!;
@@ -198,15 +184,6 @@ export function renderRaidUI(
     const waiting = state.instructionsReady.includes(me.id);
     body = `<div class="rc-body" tabindex="0" role="region" aria-label="Raid instructions">${raidBriefingGuide(r.boss, me.character, r.partySize === 1)}<details class="rc-extra" id="raid-briefing-extra"><summary>Your fighter, team &amp; modifiers</summary><p><b>${escape(RAID_TRAITS[r.trait].name)}</b> · ${escape(RAID_TRAITS[r.trait].text)}</p>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}</details></div>`;
     actions = `<p class="ui-note rc-meta">Three phases · one shared fight · ${r.partySize === 1 ? (soloRevives(r.boss, r.variant) ? "Solo · one self-revive" : "Solo") : "Team · stand beside fallen allies to revive"}</p>${r.partySize === 1 && !soloRevives(r.boss, r.variant) ? `<p class="raid-solo-warning" role="note">${SOLO_NO_REVIVE}</p>` : ""}${uiActions(uiButton(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : "I’m ready — start raid" } }))}`;
-  } else if (state.phase === "intermission") {
-    // Rites are chosen once, before the fight (RAID_RITE_PICKS each).
-    const picked = Math.min(RAID_RITE_PICKS, (r.rites[me.id] ?? []).length);
-    title = `Choose ${RAID_RITE_PICKS} rites · ${picked}/${RAID_RITE_PICKS}`;
-    body = `<p class="raid-phase-objective">${raidChapters(r.boss, r.variant)[r.phase - 1].detail}</p><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
-    const offers = r.offers[me.id] ?? [];
-    const mine = r.rites[me.id] ?? [];
-    const order = riteDisplayOrder(offers, mine);
-    actions = `<div class="raid-rite-intro">${offers.length ? "<span>Grow stronger each chapter</span>" : '<span class="raid-rite-locked">Rites locked in · waiting for the team</span>'}<span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span>${raidRiteDetails(order)}</div><div class="raid-rite-options">${raidRiteChoices(order, mine, !offers.length)}</div>`;
   } else if (state.phase === "countdown") {
     title = LIVE_COUNTDOWN;
     body = `<p>${raidChapters(r.boss, r.variant)[r.phase - 1].objective}</p>`;
@@ -279,7 +256,7 @@ export function renderRaidUI(
       state.activityEligible?.includes(me.id) ?? true,
     );
   const previousCard = overlay.querySelector<HTMLElement>(
-    ".raid-overlay, .rc-card",
+    ".raid-overlay, .rc-card, .rites-screen",
   );
   const guideExpanded =
     overlay.querySelector<HTMLDetailsElement>("#raid-briefing-extra")?.open ??
@@ -287,6 +264,7 @@ export function renderRaidUI(
   const previousScroller =
     overlay.querySelector<HTMLElement>(".rc-body") ??
     overlay.querySelector<HTMLElement>(".panel-scroll") ??
+    overlay.querySelector<HTMLElement>(".rites-screen > .raid-rite-options") ??
     previousCard;
   const scrollTop =
     overlay.dataset.raidPhase === state.phase
@@ -298,15 +276,14 @@ export function renderRaidUI(
   // buttons (UI remodel step 5); the rites, countdown and pause keep the
   // match's own card.
   const shared = state.phase === "briefing" || state.phase === "finished";
-  // A rites prototype: the whole screen, no card (raid-rites-demo.css).
-  const ritesLook = state.phase === "intermission" && !spire ? RITES_LOOK : "";
-  overlay.classList.toggle("is-rites", !!ritesLook);
-  document.body.classList.toggle("raid-rites-open", !!ritesLook);
-  if (ritesLook) overlay.dataset.look = ritesLook;
-  else delete overlay.dataset.look;
+  // The rites take the whole screen, as the countdown does
+  // (screens/raid-rites.css); the Spire's blessings keep the match card.
+  const rites = state.phase === "intermission" && !spire;
+  overlay.classList.toggle("is-rites", rites);
+  document.body.classList.toggle("raid-rites-open", rites);
   const replaced = setOverlayMarkup(
     overlay,
-    ritesLook
+    rites
       ? ritesScreen(state, me, kicker)
       : shared
         ? `<div class="ui rc-card ${state.phase === "finished" ? "is-results" : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">${escape(kicker)}</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
@@ -316,11 +293,14 @@ export function renderRaidUI(
     `raid:${state.phase}`,
   );
   overlay.dataset.raidPhase = state.phase;
-  const card = overlay.querySelector<HTMLElement>(".raid-overlay, .rc-card");
+  const card = overlay.querySelector<HTMLElement>(
+    ".raid-overlay, .rc-card, .rites-screen",
+  );
   // Leave native touch scrolling alone while snapshots keep the same DOM.
   const scroller =
     overlay.querySelector<HTMLElement>(".rc-body") ??
     overlay.querySelector<HTMLElement>(".panel-scroll") ??
+    overlay.querySelector<HTMLElement>(".rites-screen > .raid-rite-options") ??
     card;
   if (replaced && guideExpanded) {
     const extra = overlay.querySelector<HTMLDetailsElement>(
@@ -347,8 +327,8 @@ export function renderRaidUI(
         .join(""),
     );
   fillLiveSeconds(overlay, state.remaining);
-  if (state.phase === "countdown" || ritesLook)
-    fillLiveCountdown(overlay, state.remaining);
+  if (state.phase === "countdown") fillLiveCountdown(overlay, state.remaining);
+  if (rites) fillLiveNumber(overlay, state.remaining);
   overlay
     .querySelector(".raid-choice-timer")
     ?.classList.toggle("is-urgent", state.remaining <= 5);
@@ -365,8 +345,9 @@ export function renderRaidUI(
   if (lobby) lobby.onclick = () => void request("lobby");
 }
 /**
- * A rites prototype's markup: the same rites, buttons, details and team list
- * as the card, laid out over the whole screen (raid-rites-demo.css).
+ * The rites choice over the whole screen (screens/raid-rites.css): the
+ * title with a pip per pick, the seconds as one big number, six rite tiles,
+ * and the rite details and the team's rites as links under them.
  */
 function ritesScreen(state: Snapshot, me: Fighter, kicker: string) {
   const r = state.raid!;
@@ -378,7 +359,7 @@ function ritesScreen(state: Snapshot, me: Fighter, kicker: string) {
     { length: RAID_RITE_PICKS },
     (_, i) => `<i${i < picked ? ' class="on"' : ""}></i>`,
   ).join("");
-  return `<div class="rites-screen" role="dialog" aria-label="Choose ${RAID_RITE_PICKS} rites, ${picked} of ${RAID_RITE_PICKS} chosen"><header class="rites-head"><div class="rites-lead"><span class="rites-kicker">${escape(kicker)} · Chapter ${r.phase}</span><h2 class="rites-title">Choose ${RAID_RITE_PICKS} rites <span class="rites-pips" aria-hidden="true">${pips}</span></h2><p class="rites-objective">${raidChapters(r.boss, r.variant)[r.phase - 1].detail}</p></div><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><b>${LIVE_COUNTDOWN}</b><span>seconds</span></span></header><div class="raid-rite-options">${raidRiteChoices(order, mine, !offers.length, true)}</div><footer class="rites-foot">${offers.length ? "" : "<span>Rites locked in · waiting for the team</span>"}${raidRiteDetails(order)}<details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details></footer></div>`;
+  return `<div class="rites-screen" role="dialog" aria-label="Choose ${RAID_RITE_PICKS} rites, ${picked} of ${RAID_RITE_PICKS} chosen"><header class="rites-head"><div class="rites-lead"><span class="rites-kicker">${escape(kicker)} · Chapter ${r.phase}</span><h2 class="rites-title">Choose ${RAID_RITE_PICKS} rites <span class="rites-pips" aria-hidden="true">${pips}</span></h2><p class="rites-objective">${raidChapters(r.boss, r.variant)[r.phase - 1].detail}</p></div><span class="raid-choice-timer" role="timer" aria-label="Time left to choose">${LIVE_NUMBER}</span></header><div class="raid-rite-options">${raidRiteChoices(order, mine, !offers.length)}</div><footer class="rites-foot">${offers.length ? "" : '<span class="raid-rite-locked">Rites locked in · waiting for the team</span>'}${raidRiteDetails(order)}<details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details></footer></div>`;
 }
 /** A small magma vent on the floor (a triangle in a dark notch). */
 function drawVent(
