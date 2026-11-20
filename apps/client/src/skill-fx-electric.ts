@@ -906,6 +906,76 @@ function magnetLashImpact(
 }
 
 /**
+ * Live Wire: the crackling wire from Coilemur's tail to the enemy it holds,
+ * drawn each frame while the server holds the tether. `strain` (0..1) is how
+ * close the enemy is to the yank: the wire pulls taut and burns brighter, so
+ * the one held can see when to stop running.
+ */
+export function drawLiveWire(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  tx: number,
+  ty: number,
+  now: number,
+  color: number,
+  strain: number,
+) {
+  const fx = fxFor(scene),
+    k = Math.max(0, Math.min(1, strain)),
+    sx = x,
+    sy = y - 16,
+    ex = tx,
+    ey = ty - 18,
+    // A slack wire sags; a taut one runs straight.
+    sag = Math.min(46, Math.hypot(ex - sx, ey - sy) * 0.12) * (1 - k),
+    mx = (sx + ex) / 2,
+    my = (sy + ey) / 2 + sag;
+  // The wire itself (a dark core so it reads on any floor) in two spans.
+  fx.solid.lineStyle(5, 0x0d1430, 0.45).lineBetween(sx, sy, mx, my);
+  fx.solid.lineStyle(5, 0x0d1430, 0.45).lineBetween(mx, my, ex, ey);
+  fx.solid.lineStyle(2, color, 0.9).lineBetween(sx, sy, mx, my);
+  fx.solid.lineStyle(2, color, 0.9).lineBetween(mx, my, ex, ey);
+  // Current crackling along it: livelier as it strains.
+  const seed = Math.floor(now / (90 - 50 * k));
+  fx.bolt(sx, sy, mx, my, BLUE, {
+    width: 1.4 + 1.6 * k,
+    jag: 0.3,
+    branches: 0,
+    seed,
+    alpha: 0.6 + 0.4 * k,
+  });
+  fx.bolt(mx, my, ex, ey, BLUE, {
+    width: 1.4 + 1.6 * k,
+    jag: 0.3,
+    branches: 0,
+    seed: seed + 7,
+    alpha: 0.6 + 0.4 * k,
+  });
+  fx.glow(ex, ey, 14 + 12 * k, k > 0.8 ? WHITE : PALE, 0.35 + 0.4 * k);
+  fx.glow(sx, sy, 10, PALE, 0.35);
+  // Sparks spit off a taut wire.
+  if (k > 0.6)
+    fx.trail(`lw-spark${Math.round(sx)}-${Math.round(ex)}`, 0.08, () => {
+      const t = Math.random();
+      fx.burst({
+        x: sx + (ex - sx) * t,
+        y: sy + (ey - sy) * t,
+        z: 10,
+        count: 1,
+        kind: "spark",
+        color: [WHITE, BLUE, PALE],
+        speed: [40, 120],
+        up: [60, 160],
+        life: [0.2, 0.4],
+        size: [0.8, 1.3],
+        grav: 1050,
+        bounce: 0.3,
+      });
+    });
+}
+
+/**
  * Spark Trail: a crackling line along where Coilemur has been, brightest
  * where it was laid last and fading as each stretch runs out.
  */
@@ -1116,6 +1186,8 @@ export const electricKit: FxKit = {
   },
   windup: {
     "magnet-lash": magnetLashWindup,
+    // Live Wire winds up on the same magnet tail.
+    "live-wire": magnetLashWindup,
   },
   cast: {
     "spark-dart": electricCast,
@@ -1125,6 +1197,7 @@ export const electricKit: FxKit = {
     "coil-swipe": coilSwipe,
     "static-clamp": staticClamp,
     "spark-trail": electricCast,
+    "live-wire": electricCast,
   },
   impact: {
     "ball-lightning": ballLightningImpact,
@@ -1132,6 +1205,8 @@ export const electricKit: FxKit = {
     "static-lance": fizzle,
     "magnet-lash": magnetLashImpact,
     "static-clamp": clampBurst,
+    // The yank: the wire snaps the target back toward Coilemur.
+    "live-wire": magnetLashImpact,
   },
   beam: { "static-clamp": clampArc },
   hit: { electric: electricHit },

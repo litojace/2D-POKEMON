@@ -126,12 +126,18 @@ for (const quality of ["high", "low"] as const)
       );
       const errors = await openHub(page);
       // A dressed four-player match, in its briefing from the first snapshot.
+      // The four kits with the most glow light (effect-budget.spec.ts: each
+      // one's heaviest cast 0.36-0.47 screens), so the fight is as crowded
+      // as Low's glow budget is for. Voltkit, Cindrake, Tidefin and Lumoth
+      // peaked at 1.38 screens on 10 Nov 2026 but only 0.63-0.75 after the
+      // skill revolution (19 Nov, here and on CI): under the 0.75 budget, so
+      // it never had to engage. These peak at about 1.0 on High.
       await page.evaluate(async () => {
         const w = window as any;
         w.__room("pvp", { mode: "ffa", phase: "briefing" });
         const m = await import("/rooms.ts");
         const a = new m.Arena("PVP123", "ffa");
-        ["voltkit", "cindrake", "tidefin", "lumoth"].forEach((c, i) =>
+        ["pyranda", "sunbara", "mystowl", "coilemur"].forEach((c, i) =>
           a.add(i ? `p${i + 1}` : "me", `Player ${i + 1}`, c),
         );
         a.players.forEach((p: any, i: number) => m.dressUp(p, i));
@@ -221,8 +227,14 @@ for (const quality of ["high", "low"] as const)
               aimX: target.x,
               aimY: target.y,
               basic: true,
+              // Every 4 s all four ultimates at once (the crowded moment);
+              // otherwise one skill a second each, in turn.
               skill:
-                (tick + i * 11) % 30 === 0 ? ((tick / 30 + i) | 0) % 4 : -1,
+                tick % 120 === 60
+                  ? m.ULT_SLOT
+                  : (tick + i * 11) % 30 === 0
+                    ? ((tick / 30 + i) | 0) % 4
+                    : -1,
             });
           });
           a.tick();

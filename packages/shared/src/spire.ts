@@ -1475,7 +1475,7 @@ export const SPIRE_TUNING: Record<
   6: { difficulty: "easy", power: 0.55, armour: 1.49, limit: 180 },
   7: { difficulty: "normal", power: 0.4, armour: 1.49, limit: 180 },
   8: { difficulty: "normal", power: 0.45, armour: 1.4, limit: 180 },
-  9: { difficulty: "normal", power: 0.5, armour: 1.35, limit: 180 },
+  9: { difficulty: "normal", power: 0.5, armour: 1.4, limit: 180 },
   // The boss floor: the raid's own time limit (no extra wave for big parties).
   10: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // (The rates below were measured with a Voltkit raider. Since the skill
@@ -1495,7 +1495,7 @@ export const SPIRE_TUNING: Record<
   13: { difficulty: "normal", power: 0.46, armour: 2.48, limit: 180 },
   14: { difficulty: "normal", power: 0.47, armour: 1.68, limit: 180 },
   15: { difficulty: "normal", power: 0.55, armour: 0.58, limit: 240 },
-  16: { difficulty: "normal", power: 0.48, armour: 1.56, limit: 180 },
+  16: { difficulty: "normal", power: 0.48, armour: 1.66, limit: 180 },
   17: { difficulty: "normal", power: 0.49, armour: 1.5, limit: 180 },
   18: { difficulty: "normal", power: 0.5, armour: 1.74, limit: 180 },
   19: { difficulty: "normal", power: 0.52, armour: 1.85, limit: 180 },
@@ -1591,13 +1591,13 @@ export const SPIRE_TUNING: Record<
   // cliff: 2.7 clears 60%, 3.0 74%.)
   61: { difficulty: "normal", power: 0.66, armour: 5.63, limit: 180 },
   62: { difficulty: "normal", power: 0.67, armour: 2.85, limit: 180 },
-  63: { difficulty: "normal", power: 0.68, armour: 6.6, limit: 180 },
+  63: { difficulty: "normal", power: 0.68, armour: 6.8, limit: 180 },
   64: { difficulty: "normal", power: 0.69, armour: 4.8, limit: 180 },
-  65: { difficulty: "normal", power: 0.7, armour: 0.6, limit: 240 },
-  66: { difficulty: "normal", power: 0.7, armour: 4.1, limit: 180 },
+  65: { difficulty: "normal", power: 0.7, armour: 0.64, limit: 240 },
+  66: { difficulty: "normal", power: 0.7, armour: 4.35, limit: 180 },
   67: { difficulty: "normal", power: 0.71, armour: 2.7, limit: 180 },
   68: { difficulty: "normal", power: 0.72, armour: 4.15, limit: 180 },
-  69: { difficulty: "normal", power: 0.73, armour: 2.2, limit: 180 },
+  69: { difficulty: "normal", power: 0.73, armour: 2.35, limit: 180 },
   70: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };
 /** Party scaling, and the cap on fighters on the court. */

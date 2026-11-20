@@ -827,6 +827,18 @@ test("a click on the ground marks where you're going until you arrive", async ({
   const spot = await page.evaluate(() =>
     (window as any).__plaza.worldClient(1640, 1130),
   );
+  // The longest gap between drawn frames while you walk (see below).
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__walkGap = 0;
+    let last = performance.now();
+    const t = (now: number) => {
+      w.__walkGap = Math.max(w.__walkGap, now - last);
+      last = now;
+      if (w.__walkGap >= 0) requestAnimationFrame(t);
+    };
+    requestAnimationFrame(t);
+  });
   await page.mouse.click(spot.x, spot.y);
   const mark = await page.evaluate(() => (window as any).__plaza.clickMark());
   expect(mark?.ok).toBe(true);
@@ -839,13 +851,23 @@ test("a click on the ground marks where you're going until you arrive", async ({
       timeout: 20_000,
     })
     .toBeNull();
-  const P = await page.evaluate(() => {
-    const p = (window as any).__plaza.P;
-    return { x: p.x, y: p.y };
+  const { P, gap } = await page.evaluate(() => {
+    const w = window as any,
+      p = w.__plaza.P,
+      gap = w.__walkGap / 1000;
+    w.__walkGap = -1;
+    return { P: { x: p.x, y: p.y }, gap };
   });
   // (Near it: on a busy machine the in-page server runs ahead of the
-  // drawn frames and you settle where it stopped you, a step or two on.)
-  expect(Math.hypot(P.x - 1640, P.y - 1130)).toBeLessThan(80);
+  // drawn frames and you settle where it stopped you, a step or two on:
+  // you stop on the frame after you arrive, so the server walks on at
+  // PLAZA.speed, 240 px/s, for up to the longest frame gap. CI's runner
+  // stopped 151-187 px on, PR #237, 19 Nov: gaps of half a second or more.)
+  const near = Math.max(80, 40 + 240 * gap);
+  expect(
+    Math.hypot(P.x - 1640, P.y - 1130),
+    `distance from the spot (longest frame gap ${Math.round(gap * 1000)} ms)`,
+  ).toBeLessThan(near);
   expect(errors).toEqual([]);
 });
 

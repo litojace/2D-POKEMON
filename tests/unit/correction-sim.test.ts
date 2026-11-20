@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { simulateCorrections } from "../../scripts/perf/correction-sim";
+import { HIT_GAP_PX } from "../../apps/client/src/battle-perf";
 
 // The real server, bot and client prediction over a 67 ms round trip.
 describe("your fighter's corrections", () => {
@@ -72,5 +73,34 @@ describe("your fighter's corrections", () => {
     });
     expect(corrections.length).toBeGreaterThan(0);
     expect(corrections.filter((c) => c.cause === "other")).toEqual([]);
+  });
+});
+
+// battle-perf hitsFar: "I dodged but still got hit". The phone compared the
+// hit with where it drew you one eased lead earlier; that lead still carried
+// the previous snapshot's age, so it looked 66-99 ms too far back and most
+// hits on a moving fighter read as far (match reports, 20 Nov 2026: about
+// 20 a minute in every PvP match).
+describe("hits on you as the match report counts them", () => {
+  it("are far only when you really were drawn far away", () => {
+    for (const [me, bot] of [
+      ["mystowl", "coilemur"],
+      ["astrabun", "shadopus"],
+    ] as const) {
+      const { hits } = simulateCorrections({
+        seconds: 40,
+        latency: 25,
+        me,
+        bot,
+        level: "hard",
+      });
+      const far = (k: "gap" | "aligned") =>
+        hits.filter((h) => h[k] > HIT_GAP_PX).length;
+      expect(hits.length).toBeGreaterThan(40);
+      // Measured: 0-4 far either way over 120 s; the eased lead read
+      // 90-130 of the same hits as far.
+      expect(far("gap")).toBeLessThanOrEqual(far("aligned") + 3);
+      expect(far("gap")).toBeLessThan(hits.length / 20);
+    }
   });
 });

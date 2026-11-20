@@ -35,25 +35,45 @@ const skill = (c: CharacterId, id: string) =>
 /** Open ground on the classic arena's top row. */
 const Y = 150;
 
-describe("Spark Trail (Coilemur)", () => {
-  it("hurts and paralyses enemies who touch where Coilemur walked", () => {
+describe("Live Wire (Coilemur)", () => {
+  it("holds an enemy: a few sparks while close, a yank back if it runs", () => {
     const a = arena("coilemur");
     const [me, them] = a.players;
-    place(me, 300, Y, 900, Y);
-    place(them, 1400, 850);
-    a.cast(me, skill("coilemur", "spark-trail"));
-    me.lastInput = { ...me.lastInput, dx: 1 };
-    seconds(a, 1);
-    // The trail now runs behind it; step the enemy onto it.
-    me.lastInput = { ...me.lastInput, dx: 0 };
-    place(them, 400, Y);
+    const wire = skill("coilemur", "live-wire");
+    place(me, 300, Y, 500, Y);
+    place(them, 520, Y);
+    a.cast(me, wire);
+    expect(me.tether?.target).toBe("them");
+    // Coilemur runs faster to chase.
+    expect(a.has(me, "haste")).toBe(true);
+    // Close by: it only stings, every half second.
     const hp = them.hp;
+    seconds(a, 1.05);
+    expect(hp - them.hp).toBe(wire.damage * 2);
+    expect(me.tether).toBeDefined();
+    // It runs: past 250 px the wire yanks it back and paralyses it.
+    const before = them.hp;
+    place(them, 300 + 360, Y);
     a.tick();
-    expect(hp - them.hp).toBe(skill("coilemur", "spark-trail").damage);
+    expect(me.tether).toBeUndefined();
+    expect(before - them.hp).toBe(wire.tether!.yank!.damage);
     expect(a.has(them, "paralysis")).toBe(true);
-    // It fades: long after, nothing is left.
-    seconds(a, 5);
-    expect(a.zones.filter((z) => z.ability.kind === "trail")).toHaveLength(0);
+    seconds(a, 0.5);
+    expect(them.x).toBeLessThan(300 + 360 - 150);
+  });
+
+  it("is cut by a wall between them, and finds nobody out of reach", () => {
+    const a = arena("coilemur");
+    const [me, them] = a.players;
+    const wire = skill("coilemur", "live-wire");
+    place(me, 300, Y, 1400, 850);
+    place(them, 1400, 850);
+    const slot = CHARACTERS.coilemur.skills.indexOf(wire);
+    me.cooldowns[slot] = a.time + wire.cooldown;
+    a.cast(me, wire);
+    expect(me.tether).toBeUndefined();
+    // No wire, no refund: the speed burst can't be had again at once.
+    expect(me.cooldowns[slot]).toBeCloseTo(a.time + wire.cooldown);
   });
 });
 
