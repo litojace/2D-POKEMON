@@ -1469,7 +1469,7 @@ export const SPIRE_TUNING: Record<
 > = {
   1: { difficulty: "easy", power: 0.4, armour: 1.5, limit: 180 },
   2: { difficulty: "easy", power: 0.45, armour: 1.35, limit: 180 },
-  3: { difficulty: "easy", power: 0.5, armour: 1.69, limit: 180 },
+  3: { difficulty: "easy", power: 0.5, armour: 1.65, limit: 180 },
   4: { difficulty: "easy", power: 0.45, armour: 2.04, limit: 180 },
   5: { difficulty: "normal", power: 0.4, armour: 0.7, limit: 240 },
   6: { difficulty: "easy", power: 0.55, armour: 1.49, limit: 180 },
@@ -1493,10 +1493,10 @@ export const SPIRE_TUNING: Record<
   11: { difficulty: "normal", power: 0.44, armour: 2.04, limit: 180 },
   12: { difficulty: "normal", power: 0.45, armour: 1.81, limit: 180 },
   13: { difficulty: "normal", power: 0.46, armour: 2.48, limit: 180 },
-  14: { difficulty: "normal", power: 0.47, armour: 1.62, limit: 180 },
+  14: { difficulty: "normal", power: 0.47, armour: 1.68, limit: 180 },
   15: { difficulty: "normal", power: 0.55, armour: 0.58, limit: 240 },
   16: { difficulty: "normal", power: 0.48, armour: 1.56, limit: 180 },
-  17: { difficulty: "normal", power: 0.49, armour: 1.53, limit: 180 },
+  17: { difficulty: "normal", power: 0.49, armour: 1.5, limit: 180 },
   18: { difficulty: "normal", power: 0.5, armour: 1.74, limit: 180 },
   19: { difficulty: "normal", power: 0.52, armour: 1.85, limit: 180 },
   20: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
@@ -1577,7 +1577,7 @@ export const SPIRE_TUNING: Record<
   56: { difficulty: "normal", power: 0.64, armour: 3.85, limit: 180 },
   57: { difficulty: "normal", power: 0.65, armour: 2.95, limit: 180 },
   58: { difficulty: "normal", power: 0.66, armour: 4.1, limit: 180 },
-  59: { difficulty: "normal", power: 0.67, armour: 2.85, limit: 180 },
+  59: { difficulty: "normal", power: 0.67, armour: 2.92, limit: 180 },
   60: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 7, the summit: a climb starts at 61 with no blessings, against
   // Electric Echoes (a burst fox, a grappling lemur, a mirror lynx) and one
@@ -1589,7 +1589,7 @@ export const SPIRE_TUNING: Record<
   // floor 61 is cleared about two times in three (69%), then 67, 62, 57,
   // 55 (the elite), 52, 46, 41 and 38% on floor 69. (Floor 62 sits on a
   // cliff: 2.7 clears 60%, 3.0 74%.)
-  61: { difficulty: "normal", power: 0.66, armour: 5.8, limit: 180 },
+  61: { difficulty: "normal", power: 0.66, armour: 5.63, limit: 180 },
   62: { difficulty: "normal", power: 0.67, armour: 2.85, limit: 180 },
   63: { difficulty: "normal", power: 0.68, armour: 6.6, limit: 180 },
   64: { difficulty: "normal", power: 0.69, armour: 4.8, limit: 180 },
