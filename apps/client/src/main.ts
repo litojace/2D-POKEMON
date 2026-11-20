@@ -7,7 +7,7 @@ import {
   type GraphicsSetting,
 } from "./graphics-quality";
 import { softwareRendering } from "./gpu-check";
-import { RaidCamera, raidFrame } from "./raid-camera";
+import { RaidCamera, raidFrame, type ControlSides } from "./raid-camera";
 import { AllyBearings } from "./ally-bearings";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
 import { capGameFrames, screenHz, type FrameCap } from "./frame-cap";
@@ -662,6 +662,30 @@ let replacedAccount = sessionStorage.getItem("arena-session-replaced");
 let gameInstance: Phaser.Game | undefined;
 let battleResizeObserver: ResizeObserver | undefined;
 let raidCameraHudBottom = 0;
+/** Phones: how far the joystick and the skill buttons reach in from each side
+ * of the arena (game px). Measured once on the first raid frame after the
+ * battle is laid out (fitRenderer clears it), never every frame. */
+let raidControlSides: ControlSides | undefined;
+function measureRaidControls(): ControlSides {
+  const frame = $("game").parentElement!.getBoundingClientRect(),
+    dpr = renderScale();
+  const joystick = document.querySelector<HTMLElement>(".touch-pad .joystick");
+  const buttons = Array.from(
+    document.querySelectorAll<HTMLElement>(".touch-buttons button"),
+  ).filter((b) => b.offsetWidth);
+  return {
+    left: joystick?.offsetWidth
+      ? Math.max(0, joystick.getBoundingClientRect().right - frame.left) * dpr
+      : 0,
+    right: buttons.length
+      ? Math.max(
+          0,
+          frame.right -
+            Math.min(...buttons.map((b) => b.getBoundingClientRect().left)),
+        ) * dpr
+      : 0,
+  };
+}
 let state: Snapshot | undefined,
   myId = "",
   selected: CharacterId = lastHomeFighter(),
@@ -6093,6 +6117,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           delta,
           feelNow / 1000,
           reducedMotion,
+          raidFollow ? (raidControlSides ??= measureRaidControls()) : undefined,
         )
       : this.followCamera.update(
           this.scale.width,
@@ -6233,7 +6258,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
                   ((at.y - BEARING_LIFT - view.y) * view.zoomY +
                     this.scale.height / 2) *
                   css,
-                color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
                 downed: !!state!.raid!.downed[p.id],
               };
             })
@@ -7678,6 +7702,7 @@ function fitRenderer() {
       ? Math.max(0, raidHud.getBoundingClientRect().bottom - frame.top + 6) *
         dpr
       : 0;
+  raidControlSides = undefined;
   $("battle").style.setProperty("--desktop-arena-width", `${frame.width}px`);
   $("battle").style.setProperty(
     "--desktop-arena-top",

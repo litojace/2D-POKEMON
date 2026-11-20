@@ -307,3 +307,64 @@ describe("raidFrame: court-wide moments frame what they need", () => {
     expect(f.y1).toBeGreaterThanOrEqual(890 - 0.5);
   });
 });
+
+describe("clear of the touch controls", () => {
+  // The joystick reaches 30% in from the left, the skill buttons 30% from the right.
+  const SIDES = { left: W * 0.3, right: W * 0.3 };
+  const settle = (
+    cam: RaidCamera,
+    raider: { x: number; y: number },
+    boss: { x: number; y: number } | undefined,
+    frame?: { x0: number; y0: number; x1: number; y1: number },
+  ) => {
+    let view = raidCameraView(W, H, HUD);
+    for (let i = 0; i < 300; i++)
+      view = cam.update(
+        W,
+        H,
+        HUD,
+        true,
+        { ...raider, vx: 0, vy: 0 },
+        boss,
+        frame,
+        "k",
+        16,
+        i * 0.016,
+        false,
+        SIDES,
+      );
+    return view;
+  };
+  const screenX = (view: ReturnType<typeof raidCameraView>, x: number) =>
+    (x - view.x) * view.zoomX + W / 2;
+  it("keeps your raider between the joystick and the buttons, even at a wall", () => {
+    for (const x of [20, 300, 800, 1300, 1580]) {
+      const view = settle(new RaidCamera(), { x, y: 600 }, undefined);
+      const sx = screenX(view, x);
+      expect(sx).toBeGreaterThanOrEqual(SIDES.left - 0.5);
+      expect(sx).toBeLessThanOrEqual(W - SIDES.right + 0.5);
+    }
+  });
+  it("keeps the boss clear too when both fit", () => {
+    const view = settle(
+      new RaidCamera(),
+      { x: 600, y: 500 },
+      { x: 1000, y: 450 },
+    );
+    const bx = screenX(view, 1000);
+    // With a fighter's half-width (55 world px) to spare.
+    expect(bx).toBeLessThanOrEqual(W - SIDES.right - 55 * view.zoomX + 0.5);
+    expect(screenX(view, 600)).toBeGreaterThanOrEqual(SIDES.left - 0.5);
+  });
+  it("frames a court-wide moment with your raider clear of the controls", () => {
+    const frame = { x0: 280, y0: 230, x1: 1220, y1: 670 };
+    const overview = raidCameraView(W, H, HUD);
+    const view = settle(new RaidCamera(), { x: 330, y: 600 }, undefined, frame);
+    const sx = screenX(view, 330);
+    expect(sx).toBeGreaterThanOrEqual(SIDES.left - 0.5);
+    // The whole frame still shows, and never further out than the whole court.
+    expect(screenX(view, frame.x0)).toBeGreaterThanOrEqual(-0.5);
+    expect(screenX(view, frame.x1)).toBeLessThanOrEqual(W + 0.5);
+    expect(view.zoomX).toBeGreaterThanOrEqual(overview.zoomX - 1e-9);
+  });
+});
