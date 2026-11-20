@@ -47,7 +47,10 @@
   transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .is-reduced .tour-hole,
-.is-reduced .tour-bubble {
+.is-reduced .tour-bubble,
+/* The first step appears in place (no flight in from the corner). */
+.is-first .tour-hole,
+.is-first .tour-bubble {
   transition: none;
 }
 @media (prefers-reduced-motion: reduce) {

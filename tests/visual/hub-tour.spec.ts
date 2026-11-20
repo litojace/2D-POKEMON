@@ -53,16 +53,34 @@ for (const size of SIZES)
       await expect(tour(page)).toBeVisible({ timeout: 15_000 });
       let steps = 0;
       while (await tour(page).count()) {
-        // Let the spotlight and bubble settle on the step.
-        await page.waitForTimeout(400);
+        // Let the spotlight and bubble settle on the step: their glide from
+        // the last step ends (on a busy CI machine it can start late).
+        await expect
+          .poll(() =>
+            page.evaluate(
+              () =>
+                document
+                  .querySelector(".hub-tour")
+                  ?.getAnimations({ subtree: true }).length ?? 0,
+            ),
+          )
+          .toBe(0);
         const bubble = (await page.locator(".tour-bubble").boundingBox())!;
         const hole = (await page.locator(".tour-hole").boundingBox())!;
+        // What CI needs to say if this step goes wrong.
+        const where = JSON.stringify({
+          step: steps,
+          title: await page.locator(".tour-title").textContent(),
+          side: await page.locator(".tour-bubble").getAttribute("data-side"),
+          bubble,
+          hole,
+        });
         // Inside the screen, clear of the part it points at.
         expect(bubble.x).toBeGreaterThanOrEqual(0);
         expect(bubble.y).toBeGreaterThanOrEqual(0);
         expect(bubble.x + bubble.width).toBeLessThanOrEqual(size.width);
         expect(bubble.y + bubble.height).toBeLessThanOrEqual(size.height);
-        expect(overlaps(bubble, hole)).toBe(false);
+        expect(overlaps(bubble, hole), where).toBe(false);
         // Skip and Next are always there, big enough to tap, and on top.
         for (const b of ["skip", "next"]) {
           const el = page.locator(`[data-tour=${b}]`);

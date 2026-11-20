@@ -97,14 +97,22 @@ describe("Lobby tour", () => {
     expect(gear.y).toBeGreaterThanOrEqual(52);
   });
 
-  it("falls back to the middle when nothing fits or there is no target", () => {
-    const huge = placeBubble(
-      { x: 0, y: 0, w: 844, h: 390 },
+  it("with no side that fits, takes the roomiest side, inside the screen", () => {
+    // A target too wide for a side and too tall for above or below.
+    const wide = placeBubble(
+      { x: 150, y: 60, w: 560, h: 260 },
       bubble,
       view,
       none,
     );
-    expect(huge.side).toBe("center");
+    expect(["left", "right", "above", "below"]).toContain(wide.side);
+    expect(wide.x).toBeGreaterThanOrEqual(8);
+    expect(wide.y).toBeGreaterThanOrEqual(8);
+    expect(wide.x + bubble.w).toBeLessThanOrEqual(view.w - 8);
+    expect(wide.y + bubble.h).toBeLessThanOrEqual(view.h - 8);
+  });
+
+  it("sits in the middle when there is no target", () => {
     const centered = placeBubble(null, bubble, view, none);
     expect(centered).toEqual({
       side: "center",

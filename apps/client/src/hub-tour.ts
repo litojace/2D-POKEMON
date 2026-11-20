@@ -44,7 +44,9 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "fighter",
-    targets: [".lobby-nameplate", "#lobby-fighter"],
+    // The nameplate, not the whole fighter: a target that big leaves no side
+    // for the bubble on a phone.
+    targets: [".lobby-nameplate"],
     title: "Your fighter",
     text: "The arrows switch fighter. Each one has its own basic attack, three skills and an ultimate.",
   },
@@ -117,7 +119,8 @@ const EDGE = 8;
 /**
  * Where the bubble goes beside a target: the side with the most room that
  * fits it, kept inside the safe area. With no side that fits (a big target
- * on a small phone), it sits in the middle of the screen.
+ * on a small phone), the side with the most room, pushed inside the screen.
+ * With no target at all, the middle of the screen.
  */
 export function placeBubble(
   target: Rect | null,
@@ -143,29 +146,32 @@ export function placeBubble(
     right: view.w - safe.right - EDGE - (target.x + target.w + GAP),
     left: target.x - GAP - safe.left - EDGE,
   };
-  const fits: [Side, number][] = (
+  const sides: [Side, number][] = (
     [
       ["right", room.right - bubble.w],
       ["left", room.left - bubble.w],
       ["below", room.below - bubble.h],
       ["above", room.above - bubble.h],
     ] as [Side, number][]
-  ).filter(([, spare]) => spare >= 0);
-  if (!fits.length) return center;
+  ).sort((a, b) => b[1] - a[1]);
+  const fits = sides.filter(([, spare]) => spare >= 0);
   // Something in the header (a button up top) gets its bubble below it;
   // otherwise the most spare room wins: on a landscape phone, usually a side.
+  // When nothing fits, the roomiest side still beats covering the middle.
   const high = target.y + target.h < view.h * 0.25;
   const below = fits.find(([s]) => s === "below");
-  const [side] = high && below ? below : fits.sort((a, b) => b[1] - a[1])[0];
+  const [side] = high && below ? below : (fits[0] ?? sides[0]);
   const midX = target.x + target.w / 2 - bubble.w / 2,
     midY = target.y + target.h / 2 - bubble.h / 2;
-  if (side === "below")
-    return { side, x: clamp(midX, minX, maxX), y: target.y + target.h + GAP };
-  if (side === "above")
-    return { side, x: clamp(midX, minX, maxX), y: target.y - GAP - bubble.h };
-  if (side === "right")
-    return { side, x: target.x + target.w + GAP, y: clamp(midY, minY, maxY) };
-  return { side, x: target.x - GAP - bubble.w, y: clamp(midY, minY, maxY) };
+  const at =
+    side === "below"
+      ? { x: midX, y: target.y + target.h + GAP }
+      : side === "above"
+        ? { x: midX, y: target.y - GAP - bubble.h }
+        : side === "right"
+          ? { x: target.x + target.w + GAP, y: midY }
+          : { x: target.x - GAP - bubble.w, y: midY };
+  return { side, x: clamp(at.x, minX, maxX), y: clamp(at.y, minY, maxY) };
 }
 
 /* ------------------------------------------------------------- markup */
@@ -191,15 +197,17 @@ const visibleRect = (el: Element | null): Rect | null => {
   if (r.left >= innerWidth || r.top >= innerHeight) return null;
   return { x: r.left, y: r.top, w: r.width, h: r.height };
 };
-const findTarget = (step: TourStep) => {
+/** The step's target on screen: the element and where it is. */
+const targetOf = (step: TourStep) => {
   for (const s of step.targets) {
     for (const el of Array.from(document.querySelectorAll(s))) {
       const rect = visibleRect(el);
-      if (rect) return rect;
+      if (rect) return { el, rect };
     }
   }
   return null;
 };
+const findTarget = (step: TourStep) => targetOf(step)?.rect ?? null;
 /** The safe-area insets as pixels (ui/tokens.css --safe-*). */
 function safeInsets(): Insets {
   const probe = document.createElement("div");
@@ -231,7 +239,7 @@ export interface TourOptions {
 export function runTour(o: TourOptions): TourHandle {
   const steps = TOUR_STEPS;
   const root = document.createElement("div");
-  root.className = "hub-tour";
+  root.className = "hub-tour is-first";
   root.dataset.tour = "";
   if (o.reduced) root.classList.add("is-reduced");
   root.innerHTML = `<div class="tour-hole" aria-hidden="true"></div><section class="tour-bubble" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-text"></section>`;
@@ -243,9 +251,19 @@ export function runTour(o: TourOptions): TourHandle {
     reached = 0,
     safe = safeInsets();
 
+  /** What the spotlight is on: watched, so a size change re-places it. */
+  let watched: Element | undefined;
+  const sizes = new ResizeObserver(() => onResize());
+  sizes.observe(bubble);
   const place = () => {
     const step = steps[index];
-    const target = findTarget(step);
+    const found = targetOf(step);
+    if (found?.el !== watched) {
+      if (watched) sizes.unobserve(watched);
+      watched = found?.el;
+      if (watched) sizes.observe(watched);
+    }
+    const target = found?.rect ?? null;
     const pad = 6;
     const spot = target && {
       x: target.x - pad,
@@ -267,6 +285,11 @@ export function runTour(o: TourOptions): TourHandle {
     );
     bubble.dataset.side = at.side;
     bubble.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`;
+    // The first spot appears in place; later ones glide from the last.
+    if (root.classList.contains("is-first")) {
+      void root.offsetWidth;
+      root.classList.remove("is-first");
+    }
   };
   /** Show step `to`, passing over steps with nothing on screen. */
   const show = (to: number, dir: 1 | -1) => {
@@ -341,6 +364,7 @@ export function runTour(o: TourOptions): TourHandle {
     if (!open) return;
     open = false;
     cancelAnimationFrame(resizeFrame);
+    sizes.disconnect();
     root.removeEventListener("click", onClick);
     document.removeEventListener("keydown", onKey, true);
     removeEventListener("resize", onResize);
