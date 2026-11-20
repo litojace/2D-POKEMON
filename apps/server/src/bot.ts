@@ -224,7 +224,7 @@ const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
   mystowl: 0.224,
   terradon: 0.265,
   duskveil: 0.361,
-  coilemur: 0.357,
+  coilemur: 0.31,
   pyranda: 0.281,
   glacelle: 0.232,
   halcyra: 0.268,
