@@ -232,12 +232,13 @@ colours below).
 | Pangrove | Đầm Sen Đồng Tháp | Pink áo bà ba, a lotus leaf worn as a hat with a glowing bud |
 | Mossloth | Ông Đồ | Black áo the, round spectacles, a calligraphy scroll whose ink glows |
 
-As a Legendary each costume also wears a gold-embroidered silk sash whose
-stitches light in a run, and some champions trade their own prop for one of
-their story (`modern-viet-legend.ts`): Astrabun's mallet becomes a Trung Thu
+As a Legendary some champions trade their own prop for one of their story (`modern-viet-legend.ts`): Astrabun's mallet becomes a Trung Thu
 rabbit lantern on a bamboo rod (its head repainted, a lantern drawn over it),
 Sunbara's yuzu a crown of hoa mai, Tidefin holds a lotus lamp, and Terradon's
-shell turns to Kim Quy's gold.
+shell turns to Kim Quy's gold. (Every costume once also wore the same
+gold sash across the chest; it read as one bar on all eighteen and hid
+their own embroidery, so it was taken off on 20 Nov 2026: the Legendary
+finish and each figure's own headwear and props mark the tier instead.)
 
 The glowing pieces are marked `lume` and light up in play (see Glowing costume
 pieces below). The signature effects (`epic-signature-fx.ts`, table `viet`):

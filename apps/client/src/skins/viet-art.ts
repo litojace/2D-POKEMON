@@ -13,7 +13,7 @@ import "./modern-viet-legend";
  * Hồn Việt (Legendary): each champion wears a body colour chosen
  * for its figure (collection-colours.ts); its costume and
  * accessories carry the theme (modern-designs.ts, modern-viet.ts), with the
- * Legendary sash and prop swaps (modern-viet-legend.ts): Astrabun's mallet
+ * Legendary prop swaps (modern-viet-legend.ts): Astrabun's mallet
  * becomes a rabbit lantern, Sunbara's yuzu a crown of hoa mai, Tidefin holds
  * a lotus lamp, Terradon's shell turns to Kim Quy's gold. Glowing pieces
  * light up in play (lume layers), and the signature effects add the drum

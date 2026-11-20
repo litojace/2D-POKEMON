@@ -92,31 +92,11 @@ export const VIET_LEGEND: Partial<Record<CharacterId, Design>> = {
   },
 };
 
-/**
- * The Legendary mark every Hồn Việt champion wears over its costume: a
- * gold-embroidered silk sash across the chest, its stitches lit in a run.
- */
-function sash(k: Kit) {
-  const stitches = (x0: number, y0: number, x1: number, y1: number) =>
-    [0, 1, 2, 3, 4].map((i) => {
-      const u = (i + 0.5) / 5;
-      return k.lume("chase", k.circle(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, 0.9, "#fff3c4", "none", 0), i, GOLD);
-    }).join("");
-  if (k.back) {
-    k.put("scarf", k.line(`M${k.C - k.W} ${k.T + 2}L${k.C + k.W} ${k.B - 6}`, GOLD, 3.4) + stitches(k.C - k.W, k.T + 2, k.C + k.W, k.B - 6));
-    return;
-  }
-  const s = k.side || 1;
-  const x0 = k.C - s * (k.W + 1),
-    x1 = k.C + s * (k.W - 2);
-  k.put("body", k.line(`M${x0} ${k.T + 1}L${x1} ${k.B - 8}`, GOLD, 3.4) + k.line(`M${x0} ${k.T + 1}L${x1} ${k.B - 8}`, GOLD_DARK, 0.6) + stitches(x0, k.T + 1, x1, k.B - 8));
-}
 const ROSTER: CharacterId[] = ["voltkit", "cindrake", "tidefin", "auralynx", "lumoth", "mystowl", "terradon", "duskveil", "coilemur", "pyranda", "glacelle", "halcyra", "sunbara", "astrabun", "wombolder", "shadopus", "pangrove", "mossloth"];
 for (const id of ROSTER) {
   const own = VIET_LEGEND[id];
   (DESIGNS.vietlegend ??= {})[id] = (k) => {
     if (own) own(k);
     else epic(id, k);
-    sash(k);
   };
 }
