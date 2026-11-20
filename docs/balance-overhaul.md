@@ -338,6 +338,71 @@ or more 23 to 21.
   check's noise (about ±3 points a champion).
 - The Spire and raid tests pass unchanged.
 
+## Sixth pass: for skilled players
+
+The owner's players are skilled, so this pass looks at the expert bot as
+well as Hard. Among experts the roster spreads far wider (three seeds,
+11,016 duels each): Hard 47.5% - 53.2% (sd 1.8), expert 20.8% - 77.9%
+(sd 13.2). Shooters that keep their distance gain (Mossloth 78%, Halcyra
+65%, Mystowl 64%), champions that have to walk in lose (Tidefin 21%,
+Cindrake 25%): against an expert Mossloth, Terradon spends 10% of the fight
+in reach, against a Hard one 19%.
+
+The target the owner chose: Hard within about 42% - 58% and expert within
+about 35% - 65%, leaving the rest of the roster alone.
+
+**What moves the two levels apart.** Each champion's basic interval,
+health and every skill's cooldown were changed one at a time (12 games a
+pair, two seeds, both levels; 108 levers). In logit units no lever leans
+more than about 0.5 towards either level, while the gaps are 1.0 - 1.3.
+Almost every buff helps Hard more than the expert, including new mechanics
+tried for this: a slow on Cindrake's basic hit, bigger Tide Needles, less
+moss regeneration, and a "Regrowth" passive for Tidefin (heal after 2.5 s
+unhurt: +14 on Hard, +7 on expert). Health is the one lever that leans
+towards experts for some champions (Voltkit, Cindrake, Mossloth, Halcyra).
+So numbers can trade one level's balance for the other's but cannot close
+a champion's gap, and kit changes of the kind tried move it little.
+
+Changes:
+
+- **Mossloth**: health 148 (was 185), Seed Spit every 300 ms (was 345),
+  Sloth Time every 9 s (was 12).
+- **Tidefin**: River Dash deals 20 (was 12; the Whitewater rite 26 instead
+  of 16), Tide Needle radius 6 (was 8).
+- **Cindrake**: health 158 (was 148), Cinder Snap every 500 ms (was 455).
+- **Normal handicaps**: Cindrake 0.49 (0.46), Tidefin 0.29 (0.27),
+  Mossloth 0.29 (0.31).
+- **2v2 and free-for-all**: the three champions' factors from the check on
+  unused line-ups. (Scaling them by old/new health first also scaled the
+  basic interval, and Mossloth reached 74% in 2v2.)
+- **Spire**: every floor with one of the three as an Echo was compared with
+  `main` (a solo Normal Halcyra, as the play-tests). Floors 3, 14, 17, 39,
+  59 and 61 moved by more than the noise on seeds 1-72 and their armour was
+  set so each clears as often as before: 3 1.65 (1.69), 14 1.68 (1.62),
+  17 1.50 (1.53), 39 1.55 (1.63), 59 2.92 (2.85), 61 5.63 (5.8). Clears
+  out of 72, main / now: 30 / 34, 44 / 42, 46 / 47, 27 / 26, 34 / 30,
+  43 / 44. Halcyra, the play-tests' raider, is unchanged.
+
+Results (seeds 310000 - 330000, 24 games a pair, 11,016 duels a level;
+the expert here is the one before its look-ahead, #243):
+
+| Level  | Before                  | After                   |
+| ------ | ----------------------- | ----------------------- |
+| Hard   | 47.5% - 53.2% (sd 1.8)  | 42.0% - 56.7% (sd 3.3)  |
+| Expert | 20.8% - 77.9% (sd 13.2) | 29.7% - 67.1% (sd 10.4) |
+| Normal | 46.7% - 52.7% (#240)    | 45.7% - 56.0%           |
+
+| Champion | Hard before → after | Expert before → after |
+| -------- | ------------------: | --------------------: |
+| Mossloth |       51.7% → 42.0% |         77.9% → 67.1% |
+| Tidefin  |       47.5% → 56.7% |         20.8% → 29.7% |
+| Cindrake |       48.7% → 55.3% |         25.0% → 32.3% |
+
+The three still sit at the edges: each has a gap of about 25 points
+between the levels that no change tried here closes. 2v2 and free-for-all
+on unused line-ups (`FRESH_BASE=7000`): 2v2 44.5% - 55.5%, 4-player
+20.9% - 29.0%, 3-player 28.8% - 42.0% (Halcyra, unchanged).
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now
@@ -555,3 +620,106 @@ for a change: Mystowl is high on both (57%, 70%), Lumoth and Coilemur low
 on both. The proposals above were made on the counterplay-only table:
 with the sharp expert Pyranda is 46.8%, so its buff should be small, and
 Voltkit (42%) should not be cut.
+
+### Look-ahead: using and dodging mechanics the rules don't know
+
+The expert's rules only cast a skill whose kind has a case in `chooseSkill`
+and only dodge what they were written for, so a new champion with a new
+mechanic would be measured with that mechanic never used. The look-ahead
+(`apps/server/src/bot-lookahead.ts`, `ExpertFlags.lookAhead`, expert only)
+closes that gap by trying actions instead of knowing them:
+
+- **When:** at most every 0.25 s, when a skill is ready with the enemy
+  within 900 px, or when a shot, an enemy zone or a wind-up threatens it.
+  Not in raids, and not while the enemy is stealthed (the copy would give
+  its position away).
+- **How:** `cloneArena` copies the match (the same state, its own random
+  numbers, nothing shared; a copy plays tick for tick like the match).
+  Each candidate is played ahead on its own copy. The enemy is assumed to
+  go on doing what it is doing: walking the same way, attacking, aiming at
+  the bot. Marks the bot hasn't had time to notice (0.15 s) are left out of
+  the copies, so it reacts no faster than its rules.
+- **Skills (1.4 s ahead, long enough for blasts that land late):** the
+  rules' choice, holding that skill back, or each other ready skill.
+  The ultimate is considered too, at a price.
+- **Ways out (0.8 s ahead, when threatened):** that choice as it stands,
+  eight ways to walk, and a dash and a jump along the best walk.
+- **Score:** the share of health the enemy lost minus its own, plus 0.15
+  for each second the enemy spends disabled (minus its own), ±1 for a
+  knockout, and a small cost for the cooldown spent (0.08 for the
+  ultimate).
+
+The enemy merely being close is not a threat: counted as one, brawlers
+spent fights stepping back from every swing (Cindrake 38% with the
+look-ahead against the rules alone).
+
+**Against the rules alone** (`scripts/balance/lookahead-gap.ts 4`, 612
+duels, champions and sides swapped): the look-ahead side wins **77.6%**,
+with every champion above half (Mossloth 97%, Tidefin and Pangrove 56%).
+Matches take about six times as long to simulate, so round robins with
+the expert are slower.
+
+**New mechanics.** `scripts/balance/new-mechanic.ts` hides one skill kind
+from the rules (`Profile.unknownKinds`), as if it were new, and plays the
+champion against the 17 others (4 games each, opponents on rules only).
+Casts a match:
+
+| Skill (kind hidden)              | Rules know it | New to the rules | New + look-ahead |
+| -------------------------------- | ------------: | ---------------: | ---------------: |
+| Eyespot Flash (Lumoth, gaze)     |           2.9 |                0 |              5.5 |
+| Seedling (Mossloth)              |          19.7 |                0 |             14.5 |
+| Tunnel (Pangrove)                |           4.0 |                0 |              3.9 |
+| Leaf Storm (Pangrove's ultimate) |           2.8 |                0 |              2.1 |
+| Chestnut Storm (Pyranda's ult.)  |           3.6 |                0 |              3.1 |
+| Facet Guard (Auralynx, counter)  |           4.6 |                0 |              5.5 |
+| Frost Bloom (Glacelle, zone)     |           7.3 |                0 |              7.6 |
+| Riptide Wave (Tidefin, wave)     |           3.2 |                0 |              2.9 |
+
+With the kind hidden the rules never cast it, as a new mechanic would be
+today; the look-ahead casts each about as often as the rules that know it.
+(Its win rates there also carry its other gains, so they are not shown.)
+Dodging works the same way: with `dodgeMarks` off, opponents of Pyranda were
+hit by 23% of its mortars and Chestnut Storm marks; with the look-ahead and
+still no dodge rule, by 13%, fewer than the 17% of the hand-written rule.
+
+What it does not cover: payoffs later than 1.4 s (a trap left for later, a
+setup cashed in seconds after), a mechanic whose worth is not health or a
+disabling status (a buff to allies, vision), and an enemy that changes what
+it is doing. For those, rules are still worth writing; `new-mechanic.ts`
+shows whether they are needed.
+
+**Balance with it** (24 games a pair, `main` with #240, every match
+finished):
+
+| Champion  |  Hard | Expert, rules only | Expert + look-ahead |
+| --------- | ----: | -----------------: | ------------------: |
+| Auralynx  | 55.9% |              60.0% |               84.1% |
+| Mossloth  | 52.2% |              79.7% |               82.4% |
+| Astrabun  | 47.3% |              43.1% |               71.3% |
+| Coilemur  | 53.4% |              47.1% |               67.2% |
+| Cindrake  | 45.3% |              26.5% |               66.9% |
+| Pangrove  | 50.5% |              43.1% |               64.2% |
+| Shadopus  | 51.5% |              53.7% |               61.3% |
+| Wombolder | 51.5% |              59.6% |               60.5% |
+| Terradon  | 50.7% |              55.9% |               56.9% |
+| Lumoth    | 46.8% |              46.6% |               53.4% |
+| Voltkit   | 52.7% |              40.9% |               44.4% |
+| Tidefin   | 49.3% |              21.3% |               38.5% |
+| Sunbara   | 45.8% |              52.2% |               36.5% |
+| Halcyra   | 51.5% |              60.5% |               34.1% |
+| Mystowl   | 46.1% |              60.5% |               31.4% |
+| Glacelle  | 46.8% |              51.0% |               27.5% |
+| Duskveil  | 51.0% |              47.8% |               10.0% |
+| Pyranda   | 51.7% |              50.5% |                9.6% |
+
+Spread (sd) 2.9, 12.7 and 21.6; pairs won 80% or more: 30, 53 and 84 of 153. When both sides dodge nearly everything, champions whose damage
+waits for a mistake (Pyranda's marks, long shots, Duskveil) lose most of
+it, and immediate damage and guards (Auralynx, brawlers) win. Each
+champion still does better with the look-ahead than without it (Pyranda's
+look-ahead beats the rules alone 85%): the table is the matchups between
+two near-perfect dodgers, a level above any player.
+
+So this table is not for tuning champions. Use the look-ahead to check
+that a new champion's mechanics are used and answered (`new-mechanic.ts`).
+Measure balance on Hard and on the expert without it
+(`EXPERT_OFF=lookAhead`), as before.

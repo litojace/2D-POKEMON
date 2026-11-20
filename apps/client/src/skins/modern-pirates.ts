@@ -490,9 +490,10 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
     const d = k.back ? 1 : k.side ? k.side : -1;
     const sx = k.back ? k.R + 14 : k.side ? k.C + k.side * 8 : k.L - 14;
     k.put("flame", spyglass(k, sx, k.B - 4, d, "#bfe8ff", 2));
-    // The cap: a leather dome with flaps over the sides of the head.
+    // The cap: a leather dome with flaps over the sides of the head, worn
+    // up, clear of the eyes.
     const x = k.hx + k.side * 2,
-      y = k.ht + 22;
+      y = k.ht + 16;
     const flaps = k.side
       ? k.path(`M${x - k.side * 20} ${y - 2}Q${x - k.side * 6} ${y - 2} ${x - k.side * 8} ${y + 14}Q${x - k.side * 16} ${y + 18} ${x - k.side * 22} ${y + 10}Z`, leather)
       : [-1, 1].map((s) => k.path(`M${x + s * 30} ${y - 2}Q${x + s * 42} ${y} ${x + s * 42} ${y + 14}Q${x + s * 38} ${y + 20} ${x + s * 32} ${y + 14}Z`, leather)).join("");
@@ -558,9 +559,10 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
       if (k.side) k.put("body", anchor(k.C - k.side * 34, k.T - 8, k.C - k.side * 14, k.B + 6));
       else k.put("body", anchor(k.hx - 56, k.T - 20, k.C - 10, k.B + 4), true);
     }
-    // The sou'wester: a rounded crown and a brim that runs long at the back.
+    // The sou'wester: a rounded crown and a brim that runs long at the back,
+    // up on the head, clear of the eyes.
     const x = k.hx + k.side * 2,
-      y = k.ht + 17;
+      y = k.ht + 7;
     const brim = k.side
       ? k.path(`M${x + k.side * 34} ${y - 2}Q${x} ${y + 4} ${x - k.side * 50} ${y + 12}Q${x - k.side * 44} ${y + 4} ${x} ${y - 4}Q${x + k.side * 24} ${y - 6} ${x + k.side * 34} ${y - 2}Z`, oil)
       : `<ellipse cx="${x}" cy="${y}" rx="${k.back ? 54 : 50}" ry="${k.back ? 10 : 7}" fill="${oil}" stroke="${k.ink}" stroke-width="1.1"/>`;
