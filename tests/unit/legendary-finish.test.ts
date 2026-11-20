@@ -4,6 +4,7 @@ import { SKIN_ART } from "../../apps/client/src/skins/skin-art";
 import { modernOutfit } from "../../apps/client/src/skins/modern-fashion";
 import { LEGEND_SECOND } from "../../apps/client/src/skins/legend-colours";
 import { creaturePalette } from "../../apps/client/src/creature-palette";
+import { creatureLayers } from "../../apps/client/src/creature-design";
 
 const ids = Object.keys(CHARACTERS) as CharacterId[];
 const LEGENDARY = ["nova-vanguard", "sky-pirates", "hon-viet", "stars-stripes"] as const;
@@ -60,5 +61,29 @@ describe("the Legendary finish", () => {
         expect(svg, `${id}-${c}`).not.toContain('stroke-width="3.2"');
         expect(svg, `${id}-${c}`).not.toContain("scale(1.25)");
       }
+  });
+
+  it("takes off a held piece only where a skin re-forges it (SkinArt.heldOff)", () => {
+    const all = (layers: Record<string, string>) => Object.values(layers).join("");
+    const OFF: [string, string][] = [
+      ["tidefin", "nova-vanguard"], ["tidefin", "sky-pirates"], ["tidefin", "stars-stripes"],
+      ["pyranda", "nova-vanguard"], ["pyranda", "sky-pirates"], ["pyranda", "stars-stripes"],
+      ["duskveil", "nova-vanguard"], ["duskveil", "sky-pirates"], ["duskveil", "hon-viet"], ["duskveil", "stars-stripes"],
+    ];
+    for (const id of ["tidefin", "pyranda", "duskveil"] as CharacterId[]) {
+      // The champion's own art marks the piece, front and profile.
+      for (const dir of ["down", "right"] as const) {
+        if (id === "pyranda" && dir === "right") continue; // held from the front only
+        expect(all(creatureLayers(id, dir).layers), `${id} ${dir}`).toContain('data-held="1"');
+      }
+      for (const c of LEGENDARY) {
+        const off = OFF.some(([i, cc]) => i === id && cc === c);
+        expect(!!SKIN_ART[`${id}-${c}`].heldOff, `${id}-${c}`).toBe(off);
+        const worn = all(creatureLayers(id, "down", "normal", { skin: `${id}-${c}`, stage: 1 }).layers);
+        expect(worn.includes('data-held="1"'), `${id}-${c}`).toBe(!off);
+      }
+    }
+    // Duskveil keeps its lantern's glow under whatever replaces the body.
+    expect(all(creatureLayers("duskveil", "down", "normal", { skin: "duskveil-sky-pirates", stage: 1 }).layers)).toContain('r="17"');
   });
 });

@@ -1,5 +1,5 @@
 import type { Kit } from "./modern-designs";
-import { legendDetails, malletHead, type Details } from "./legend-details";
+import { legendDetails, malletHead, lanternSpot, bladeLine, CHESTNUT, type Details } from "./legend-details";
 // Registers the costumes these details are drawn over.
 import { VANGUARD_LOOK } from "./modern-vanguard";
 
@@ -385,6 +385,55 @@ DETAILS.astrabun = (k) => {
     k.circle(x, y, 19, "#1c2850", k.ink, 1.1) + k.circle(x, y, 15.5, "none", "#9fd8ff", 1.2) +
     k.lume("pulse", k.path(k.star(x, y, 13, 5, 0.46), "#ffe9a8", k.ink, 0.8) + k.path(k.star(x, y, 6, 5, 0.46), "#ffffff", "none", 0), 4, "#ffe9a8") +
     k.circle(x - 9, y - 9, 2, "#ffffff", "none", 0));
+};
+
+/**
+ * Held pieces re-forged for the suits (their own taken off, SkinArt.heldOff
+ * in vanguard-art.ts): Riptide Ranger's fin-blade becomes a riptide blade of
+ * hard light, the Cinder Medic's chestnut an ember flask, and the Echo
+ * Beacon's lantern a signal beacon in a hex cage.
+ */
+const ownRiptide = DETAILS.tidefin;
+DETAILS.tidefin = (k) => {
+  ownRiptide?.(k);
+  if (k.back) return;
+  const { hx, hy, tx, ty } = bladeLine(k);
+  const len = Math.hypot(tx - hx, ty - hy),
+    ux = (tx - hx) / len,
+    uy = (ty - hy) / len,
+    nx = -uy,
+    ny = ux;
+  /** A point along the blade (t from the hilt) and across it (w). */
+  const P = (t: number, w = 0) => `${(hx + ux * t + nx * w).toFixed(1)} ${(hy + uy * t + ny * w).toFixed(1)}`;
+  const L = VANGUARD_LOOK.tidefin;
+  k.put("armR", k.path(`M${P(-6, -2.4)}L${P(6, -2.4)}L${P(6, 2.4)}L${P(-6, 2.4)}Z`, "#2a3a5a", k.ink, 0.8) +
+    k.path(`M${P(6, -7)}L${P(9, -7)}L${P(9, 7)}L${P(6, 7)}Z`, "#c8d4e4", k.ink, 0.8) +
+    k.lume("pulse", k.path(`M${P(9, -5)}Q${P(len * 0.5, -9)} ${P(len + 4, -1)}Q${P(len * 0.6, 3)} ${P(9, 5)}Z`, "#7fe9ff", k.ink, 0.9) +
+      k.line(`M${P(12, -1)}Q${P(len * 0.5, -3)} ${P(len - 2, -1)}`, "#ffffff", 1.4), 2, L.glow) +
+    k.circle(Number(P(7.5).split(" ")[0]), Number(P(7.5).split(" ")[1]), 1.6, L.glow, "none", 0));
+};
+const ownMedic = DETAILS.pyranda;
+DETAILS.pyranda = (k) => {
+  ownMedic?.(k);
+  if (k.back || k.side) return;
+  const { x, y } = CHESTNUT;
+  k.put("armR", k.circle(x, y + 2, 9.5, "#e8f4f8", k.ink, 0.9) +
+    k.lume("pulse", k.path(`M${x - 8.6} ${y + 2}Q${x} ${y + 6} ${x + 8.6} ${y + 2}A9 9 0 0 1 ${x - 8.6} ${y + 2}Z`, "#7dffb0", "none", 0) + k.circle(x, y + 5, 2.4, "#ffcf5a", "none", 0), 2, "#7dffb0") +
+    k.rect(x - 3.4, y - 13, 6.8, 7, 1, "#e8f4f8", k.ink, 0.8) + k.rect(x - 4.2, y - 16, 8.4, 3.6, 1, "#a8743c", k.ink, 0.7) +
+    k.path(`M${x - 1.2} ${y - 4}h2.4v2.2h2.2v2.4h-2.2v2.2h-2.4v-2.2h-2.2v-2.4h2.2Z`, "#e8322a", "none", 0) +
+    k.circle(x - 4, y - 1, 1.6, "#ffffff", "none", 0));
+};
+const ownBeacon = DETAILS.duskveil;
+DETAILS.duskveil = (k) => {
+  ownBeacon?.(k);
+  const { x, y } = lanternSpot(k);
+  const L = VANGUARD_LOOK.duskveil;
+  const hex = (r: number) => Array.from({ length: 6 }, (_, i) => { const a = (i / 6) * Math.PI * 2 + Math.PI / 6; return `${(x + Math.cos(a) * r).toFixed(1)} ${(y + Math.sin(a) * r * 1.2).toFixed(1)}`; }).join("L");
+  k.put("tail", k.rect(x - 4, y - 18, 8, 4, 1, "#3a4258", k.ink, 0.7) +
+    k.path(`M${hex(10)}Z`, "#1c1a33", k.ink, 1) +
+    k.lume("pulse", k.path(`M${hex(6.5)}Z`, L.glow, "none", 0) + k.circle(x, y, 2.4, "#ffffff", "none", 0), 2, L.glow) +
+    k.line(`M${x - 10} ${y - 6}L${x + 10} ${y + 6}M${x + 10} ${y - 6}L${x - 10} ${y + 6}`, "#5a6278", 0.9) +
+    k.rect(x - 3, y + 11, 6, 3, 1, "#3a4258", k.ink, 0.6));
 };
 
 legendDetails("vanguard", DETAILS);

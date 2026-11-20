@@ -1,5 +1,5 @@
 import type { Kit } from "./modern-designs";
-import { legendDetails, type Details } from "./legend-details";
+import { legendDetails, lanternSpot, type Details } from "./legend-details";
 // Registers the costumes these details are drawn over.
 import "./modern-viet-legend";
 
@@ -736,6 +736,23 @@ const DETAILS: Details = {
     }).join("");
     k.put("flame", rims + arm + cords + hinges.map((hx) => k.circle(hx, ly - 1, 1.4, GOLD, GOLD_DARK, 0.4)).join(""));
   },
+};
+
+/**
+ * Đèn Kéo Quân's own lantern on its crook becomes a red silk lồng đèn (its
+ * own taken off, SkinArt.heldOff in viet-art.ts): ribs of bamboo, gold caps
+ * and a red tassel, its glow showing through the silk.
+ */
+const ownLongDen = DETAILS.duskveil;
+DETAILS.duskveil = (k) => {
+  ownLongDen?.(k);
+  const { x, y } = lanternSpot(k);
+  k.put("tail", k.rect(x - 4.5, y - 15, 9, 3.4, 1, "#f2c14e", "#a8823a", 0.6) +
+    k.lume("pulse", `<ellipse cx="${x}" cy="${y}" rx="10.5" ry="12" fill="#e8322a" stroke="${k.ink}" stroke-width="0.9"/>`, 2, "#ffb347") +
+    [-0.55, 0, 0.55].map((u) => k.line(`M${x + u * 10.5} ${y - 11.5}Q${x + u * 15} ${y} ${x + u * 10.5} ${y + 11.5}`, "#a81c1c", 0.8)).join("") +
+    k.circle(x, y, 3, "#ffd27a", "none", 0) +
+    k.rect(x - 4.5, y + 11.6, 9, 3.4, 1, "#f2c14e", "#a8823a", 0.6) +
+    k.line(`M${x - 1.6} ${y + 15}l-0.8 7M${x} ${y + 15}v8M${x + 1.6} ${y + 15}l0.8 7`, "#e8322a", 1.1));
 };
 
 legendDetails("vietlegend", DETAILS);

@@ -1,4 +1,4 @@
-import { legendDetails, malletHead, type Details } from "./legend-details";
+import { legendDetails, malletHead, lanternSpot, CHESTNUT, type Details } from "./legend-details";
 import { onPole, type Kit } from "./modern-designs";
 // Registers the costumes these details are drawn over.
 import "./modern-stars";
@@ -780,6 +780,34 @@ DETAILS.astrabun = (k) => {
     k.circle(x, y, 18, "#2a2a36", k.ink, 1) +
     k.lume("twinkle", k.line(rays, "#fff3a8", 1.6), 5, "#ffffff") +
     k.lume("pulse", k.path(k.star(x, y, 17, 5, 0.45), "#f2c14e", "#a8823a", 1) + k.path(k.star(x, y, 8, 5, 0.45), "#fff3c4", "none", 0), 6, "#fff3a8"));
+};
+
+/**
+ * Held pieces re-forged for the figures (their own taken off,
+ * SkinArt.heldOff in stars-art.ts): the Ace Pitcher's chestnut becomes a
+ * fastball on fire, and Film Noir's lantern an art-deco lamp in black and
+ * chrome with a warm bulb. The Malibu Surfer's fin-blade just comes off: its
+ * surfboard is what it carries.
+ */
+const ownFastball = DETAILS.pyranda;
+DETAILS.pyranda = (k) => {
+  ownFastball?.(k);
+  if (k.back || k.side) return;
+  const { x, y } = CHESTNUT;
+  k.put("armR", k.lume("pulse", k.path(`M${x - 7} ${y - 4}Q${x - 6} ${y - 18} ${x + 1} ${y - 24}Q${x} ${y - 14} ${x + 6} ${y - 18}Q${x + 9} ${y - 10} ${x + 7} ${y - 4}Z`, "#ffb347", "#e8501a", 0.7), 3, "#ffb347") +
+    k.circle(x, y + 1, 9.5, "#fbf8f0", k.ink, 1) +
+    k.path(`M${x - 6} ${y - 6}Q${x - 2} ${y + 1} ${x - 6} ${y + 8}M${x + 6} ${y - 6}Q${x + 2} ${y + 1} ${x + 6} ${y + 8}`, "none", "#d8323a", 1.1) +
+    [-3, 0, 3].map((d) => k.line(`M${x - 5.6 + 0.4} ${y + 1 + d}h-1.8M${x + 5.6 - 0.4} ${y + 1 + d}h1.8`, "#d8323a", 0.8)).join(""));
+};
+const ownNoirLamp = DETAILS.duskveil;
+DETAILS.duskveil = (k) => {
+  ownNoirLamp?.(k);
+  const { x, y } = lanternSpot(k);
+  k.put("tail", k.path(`M${x - 9} ${y - 9}L${x - 4} ${y - 15}H${x + 4}L${x + 9} ${y - 9}Z`, "#1c1c22", k.ink, 0.9) + k.rect(x - 1.6, y - 19, 3.2, 4, 0.6, "#c8ccd6", k.ink, 0.5) +
+    k.path(`M${x - 8} ${y - 9}H${x + 8}L${x + 6} ${y + 9}H${x - 6}Z`, "#fff1c8", k.ink, 0.9) +
+    k.lume("pulse", k.circle(x, y, 4.4, "#ffc86a", "none", 0) + k.circle(x - 1, y - 1, 1.6, "#ffffff", "none", 0), 2, "#ffd27a") +
+    k.line(`M${x - 3} ${y - 9}L${x - 2} ${y + 9}M${x + 3} ${y - 9}L${x + 2} ${y + 9}`, "#c8ccd6", 1) +
+    k.path(`M${x - 7} ${y + 9}H${x + 7}L${x + 4} ${y + 14}H${x - 4}Z`, "#1c1c22", k.ink, 0.8));
 };
 
 legendDetails("stars", DETAILS);

@@ -294,10 +294,13 @@ export function creatureProfile(
         `url(#${prefix}-shine)`,
         ' class="lantern-glow" stroke="none"',
       ) +
+      // The lantern's body, marked as held (SkinArt.heldOff); its glow stays.
+      '<g data-held="1">' +
       path("M173 110H189L186 132H176Z", p.accent) +
       e(181, 121, 4.5, 7, p.glow) +
       e(180, 122, 1.8, 3.5, "#ffffff", ' stroke="none"') +
-      line("M172 109h18M174 133h14", p.dark, 2.8)
+      line("M172 109h18M174 133h14", p.dark, 2.8) +
+      "</g>"
     );
   };
 
@@ -522,8 +525,11 @@ export function creatureProfile(
       ) + (back ? "" : path("M113 152Q130 158 135 171L118 161Z", p.accent));
     if (!back)
       profiles.armR =
+        // The fin-blade, marked as held (SkinArt.heldOff).
+        '<g data-held="1">' +
         path("M103 151Q92 127 99 107Q116 118 113 149Z", jewel) +
         line("M105 147l-5-31", "#ffffff", 1.5, 0.7) +
+        "</g>" +
         arm(111) +
         path("M100 150h22v6H100Z", "#ffe7c2");
   }

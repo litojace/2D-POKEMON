@@ -30,6 +30,8 @@ export const VIET_ART: Record<string, SkinArt> = Object.fromEntries(
       trail: { kind: "petal", colors: [0xf2c14e, 0xe8322a] },
       skill: 0xf2c14e,
       signature: `${id}-hon-viet`,
+      // Takes off the held piece its design re-forges (legend-details).
+      ...(id === "duskveil" ? { heldOff: true } : {}),
       // Astrabun's mallet becomes a rabbit lantern on a bamboo rod.
       ...(id === "astrabun"
         ? { weapon: { handle: "#3f8a4f", head: "#e8322a" } }

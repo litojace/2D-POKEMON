@@ -422,6 +422,21 @@ in a burst of sparkle; the little wand it carried on its back is gone).
 Each recolours the handle and head through `SkinArt.weapon` and draws over
 the head at `malletHead` (`legend-details.ts`), so it swings with the arm.
 
+The other champions who hold or carry something get theirs re-forged the
+same way where a collection's figure calls for it. The champion's own art
+marks the piece `data-held` (front and profile), and `SkinArt.heldOff`
+takes it off so the design can hand over its own (`bladeLine`,
+`CHESTNUT`, `lanternSpot` in `legend-details.ts`):
+
+| Champion | Nova Vanguard | Sky Pirates | Hồn Việt | Stars & Stripes |
+| --- | --- | --- | --- | --- |
+| Tidefin (fin-blade) | a riptide blade of hard light | a cutlass with a gold basket hilt | the lotus lamp (drawn over it) | none: its surfboard is what it carries |
+| Pyranda (chestnut, front) | an ember flask with a medic's cross | a round bomb with a lit fuse | its own chestnut (the figure is a chestnut seller) | a fastball on fire |
+| Duskveil (lantern body; its glow stays) | a signal beacon in a hex cage | a brass ship's lantern, ghost-green flame | a red silk lồng đèn | an art-deco lamp in black and chrome |
+
+The other champions hold nothing but their own paws, claws, wings or
+tentacles, so there is nothing of theirs to re-forge.
+
 Small prop details (chains, seals, inlay, a press card) read in the Shop
 more than at battle size; plumes, crests, masks, badges and redrawn props
 read in play. `costume-fit.spec.ts` keeps all of it inside the rig's crops

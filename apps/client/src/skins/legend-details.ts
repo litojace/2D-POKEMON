@@ -32,3 +32,26 @@ export function malletHead(k: { back: boolean; side: number }) {
   const spot = k.back ? [143, 99] : k.side ? [54, 106] : [150.7, 101.5];
   return { x: k.side < 0 ? 200 - spot[0] : spot[0], y: spot[1] };
 }
+
+/**
+ * Where Duskveil's lantern hangs from its crook on the tail part (final
+ * units; the tail is turned round in the right-facing view). Its glow stays
+ * there when a skin takes the lantern's body off (SkinArt.heldOff).
+ */
+export function lanternSpot(k: { side: number }) {
+  return { x: k.side > 0 ? 31.5 : 168.5, y: 126 };
+}
+/**
+ * Tidefin's fin-blade, held point-up in the right hand: its hilt and tip on
+ * the arm part (front, and profile drawn for the right-facing view and
+ * mirrored for the left). Not seen from behind.
+ */
+export function bladeLine(k: { back: boolean; side: number }) {
+  if (k.side) {
+    const m = (x: number) => (k.side < 0 ? 200 - x : x);
+    return { hx: m(107), hy: 152, tx: m(99), ty: 106 };
+  }
+  return { hx: 134, hy: 153, tx: 151, ty: 92 };
+}
+/** Pyranda's chestnut, in its right hand from the front. */
+export const CHESTNUT = { x: 143, y: 127 };

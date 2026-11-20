@@ -1,4 +1,4 @@
-import { legendDetails, malletHead, type Details } from "./legend-details";
+import { legendDetails, malletHead, lanternSpot, bladeLine, CHESTNUT, type Details } from "./legend-details";
 import type { Kit } from "./modern-designs";
 // Registers the costumes these details are drawn over.
 import "./modern-pirates";
@@ -879,6 +879,56 @@ DETAILS.astrabun = (k) => {
     k.path(`M${x - 19} ${top + 1}Q${x - 19 + 7 * d} ${y - 6} ${x - 19} ${foot}H${x + 19}Q${x + 19 + 7 * d} ${y - 6} ${x + 19} ${top + 1}Z`, "#f4ecd8", k.ink, 1) +
     k.line(`M${x - 19} ${top + 10}Q${x} ${top + 13} ${x + 19} ${top + 10}M${x - 19} ${foot - 9}Q${x} ${foot - 6} ${x + 19} ${foot - 9}`, "#d8ccb0", 0.8) +
     k.lume("pulse", k.path(`M${x + 4} ${y - 9}A9.5 9.5 0 1 0 ${x + 4} ${y + 10}A7.4 7.4 0 1 1 ${x + 4} ${y - 9}Z`, GOLD, GOLD_DARK, 0.7), 4, "#fff3b0"));
+};
+
+/**
+ * Held pieces re-forged for the crew (their own taken off, SkinArt.heldOff
+ * in pirate-art.ts): the Tide Admiral's fin-blade becomes a cutlass with a
+ * gold basket hilt, the Spice Raider's chestnut a round bomb with a lit
+ * fuse, and the Ghost Ship Wisp's lantern a brass ship's lantern with a
+ * ghost-green flame.
+ */
+const ownCutlass = DETAILS.tidefin;
+DETAILS.tidefin = (k) => {
+  ownCutlass?.(k);
+  if (k.back) return;
+  const { hx, hy, tx, ty } = bladeLine(k);
+  const len = Math.hypot(tx - hx, ty - hy),
+    ux = (tx - hx) / len,
+    uy = (ty - hy) / len,
+    nx = -uy,
+    ny = ux;
+  /** A point along the blade (t from the hilt) and across it (w). */
+  const P = (t: number, w = 0) => `${(hx + ux * t + nx * w).toFixed(1)} ${(hy + uy * t + ny * w).toFixed(1)}`;
+  const curve = 6 * (k.side < 0 ? -1 : 1);
+  k.put("armR", k.path(`M${P(-7, -2.2)}L${P(5, -2.2)}L${P(5, 2.2)}L${P(-7, 2.2)}Z`, "#24345e", k.ink, 0.8) +
+    k.circle(Number(P(-8).split(" ")[0]), Number(P(-8).split(" ")[1]), 2.4, GOLD, GOLD_DARK, 0.6) +
+    k.path(`M${P(5, -7)}Q${P(-2, -9)} ${P(-7, -3)}`, "none", GOLD, 2.2) +
+    k.path(`M${P(4, -6)}L${P(7, -6)}L${P(7, 6)}L${P(4, 6)}Z`, GOLD, GOLD_DARK, 0.7) +
+    k.path(`M${P(7, -3)}Q${P(len * 0.55, -3 + curve)} ${P(len + 3, curve * 0.8)}Q${P(len * 0.5, 3 + curve)} ${P(7, 3)}Z`, "#dfe6ee", k.ink, 0.9) +
+    k.line(`M${P(9, -0.6)}Q${P(len * 0.5, -0.6 + curve * 0.8)} ${P(len - 4, curve * 0.6)}`, "#9aa6b4", 0.9) +
+    k.lume("twinkle", k.path(k.star(Number(P(len * 0.6, curve * 0.5).split(" ")[0]), Number(P(len * 0.6, curve * 0.5).split(" ")[1]), 2, 4, 0.3), "#ffffff", "none", 0), 6, "#ffffff"));
+};
+const ownBomb = DETAILS.pyranda;
+DETAILS.pyranda = (k) => {
+  ownBomb?.(k);
+  if (k.back || k.side) return;
+  const { x, y } = CHESTNUT;
+  k.put("armR", k.circle(x, y + 1, 10, "#2a2a32", k.ink, 1) + k.path(`M${x - 9.6} ${y + 1}Q${x} ${y + 5} ${x + 9.6} ${y + 1}`, "none", GOLD, 1.6) +
+    k.circle(x + 0.5, y + 3.6, 1.6, "#c8202e", "none", 0) + k.circle(x - 4, y - 3, 2, "#ffffff", "none", 0) +
+    k.rect(x - 2.6, y - 12, 5.2, 4, 1, "#5a5a66", k.ink, 0.6) +
+    k.path(`M${x} ${y - 12}Q${x + 3} ${y - 16} ${x + 1} ${y - 19}`, "none", "#c8a070", 1.2) +
+    k.lume("pulse", k.path(k.star(x + 1, y - 20, 3.4, 6, 0.4), "#ffd27a", "#ff8a2a", 0.5), 3, "#ffb347"));
+};
+const ownShipLantern = DETAILS.duskveil;
+DETAILS.duskveil = (k) => {
+  ownShipLantern?.(k);
+  const { x, y } = lanternSpot(k);
+  k.put("tail", k.circle(x, y - 17, 2.6, "none", GOLD_DARK, 1.2) + k.path(`M${x - 7} ${y - 11}L${x} ${y - 16}L${x + 7} ${y - 11}Z`, "#b8823a", k.ink, 0.8) +
+    k.rect(x - 7, y - 11, 14, 21, 2, "#bfffe0", k.ink, 0.9) +
+    k.lume("pulse", k.path(`M${x} ${y - 7}Q${x + 4.4} ${y} ${x} ${y + 6}Q${x - 4.4} ${y} ${x} ${y - 7}Z`, "#5dffc0", "none", 0) + k.path(`M${x} ${y - 2}Q${x + 1.8} ${y + 1.4} ${x} ${y + 4}Q${x - 1.8} ${y + 1.4} ${x} ${y - 2}Z`, "#ffffff", "none", 0), 2, "#5dffc0") +
+    k.line(`M${x - 3.5} ${y - 11}V${y + 10}M${x + 3.5} ${y - 11}V${y + 10}`, "#b8823a", 1.1) +
+    k.rect(x - 8.5, y + 9, 17, 4, 1.2, "#b8823a", k.ink, 0.8));
 };
 
 legendDetails("pirates", DETAILS);

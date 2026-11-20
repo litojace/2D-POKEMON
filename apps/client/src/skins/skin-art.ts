@@ -148,6 +148,12 @@ export interface SkinArt {
    * palette's glow either way.
    */
   weapon?: { handle: string; head: string };
+  /**
+   * Takes off the piece the champion holds or carries (Tidefin's fin-blade,
+   * Pyranda's chestnut, Duskveil's lantern body: marked data-held in its
+   * art), so the skin's own design hands it something else in its place.
+   */
+  heldOff?: boolean;
 }
 
 const hex = (c: string) => Number.parseInt(c.slice(1), 16);
