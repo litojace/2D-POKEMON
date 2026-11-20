@@ -210,6 +210,31 @@ coat exactly as in its reference, scramble for a treasure chest in the
 middle of the arena, attacks flying in every direction.
 ```
 
+## Asking for a redraw
+
+When a painting's skins are right but its composition isn't (the owner's
+choice, 20 Nov: the tip always stays bottom right, so a painting with
+someone there is redrawn), attach the painting with the same references
+and paste, naming what is wrong:
+
+```text
+Redraw this same painting, same scene, style, outfits, colours, light and
+arena, only zoomed out and recomposed for the game's loading screen
+(1536 x 1024):
+- Make the creatures about 30% smaller.
+- Every creature (ears, hats and tails included) and every important
+  effect between y = 205 and y = 595 px (20% to 58% of the height).
+- The bottom-right quarter (x > 768, y > 512) is empty arena floor: move
+  <who is there> up and to the left.
+- The top 15% (y < 155) is calm sky or arena wall; the bottom 40%
+  (y > 615) is calm, darker floor.
+Keep each creature exactly like its reference picture.
+```
+
+The first painting, `duel-corsairs` (Voltkit and Tidefin), was taken out
+on 20 Nov for this: Tidefin stood in the bottom-right quarter, under the
+tip.
+
 ## Adding a scene
 
 Add it to `LOADING_SCENES` (Legendary or Mythical skins only, from
