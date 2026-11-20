@@ -10,7 +10,7 @@
  * (the same for every zone, so later zones only bring a new look), plus the
  * stairs to the next floor at the left edge, behind where the raiders stand.
  */
-import type { Rect } from "./index.js";
+import { ORB_SPOTS, type Rect, type Vec } from "./index.js";
 import type { SpireFloorKind, SpireRole } from "./spire.js";
 
 export type SpireCourtLayoutId =
@@ -20,6 +20,12 @@ export interface SpireCourtLayout {
   name: string;
   /** The cover: blocks that stop fighters and shots (solid footprints). */
   blocks: readonly Rect[];
+  /**
+   * Where the healing and energy orbs appear, when a block stands on the
+   * arena's usual spots (`ORB_SPOTS`, the middle of the top and bottom
+   * edges): an orb under a stone can't be seen or picked up.
+   */
+  orbs?: readonly Vec[];
 }
 /** The stairs up (solid: a flight of steps and the arch at its top). */
 export const SPIRE_STAIRS: Rect = { x: 0, y: 372, w: 104, h: 156 };
@@ -50,6 +56,12 @@ export const SPIRE_COURT_LAYOUTS: Record<SpireCourtLayoutId, SpireCourtLayout> =
         block(740, 132, 72, 100),
         block(740, 668, 72, 100),
       ],
+      // The top and bottom gates stand on the usual spots: the orbs lie
+      // on the raiders' side of them.
+      orbs: [
+        { x: 650, y: 190 },
+        { x: 650, y: 710 },
+      ],
     },
     // Floor 2, 7: two long walls either side of the ring.
     walls: {
@@ -68,6 +80,12 @@ export const SPIRE_COURT_LAYOUTS: Record<SpireCourtLayoutId, SpireCourtLayout> =
         block(744, 664, 70, 96),
         block(1060, 236, 70, 96),
         block(1060, 568, 70, 96),
+      ],
+      // The top and bottom outcrops stand on the usual spots: the orbs lie
+      // halfway between them and the outcrops nearer the stairs.
+      orbs: [
+        { x: 650, y: 190 },
+        { x: 650, y: 710 },
       ],
     },
     // Floor 4 ("Pillar Hall"), 9: four tall pylons.
@@ -132,6 +150,18 @@ export function spireCourtWalls(
     WALLS.set(layout.id, list);
   }
   return list;
+}
+/**
+ * Where the orbs appear on a floor's court (its layout's spots, else the
+ * arena's usual ones). Undefined on a boss floor: its raid's own spots apply.
+ */
+export function spireCourtOrbSpots(
+  spire: { floor: number; kind: SpireFloorKind } | undefined,
+): readonly Vec[] | undefined {
+  if (!spire) return undefined;
+  const layout = spireCourtLayout(spire.floor, spire.kind);
+  if (!layout) return undefined;
+  return layout.orbs ?? ORB_SPOTS;
 }
 /** Where the raiders stand at the start of each floor (by seat), by the stairs. */
 export function spireRaiderSpawn(seat: number) {

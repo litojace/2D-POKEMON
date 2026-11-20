@@ -64,6 +64,7 @@ import {
   type Input,
   type MatchMode,
   type Orb,
+  type Vec,
   type Phase,
   type Team,
   type Projectile,
@@ -3987,15 +3988,18 @@ export class Arena {
     }
     p.gems = (p.gems ?? 0) - n;
   }
+  /** Where orbs appear (a court with its own cover may move them off it). */
+  orbSpots(): readonly Vec[] {
+    return ORB_SPOTS;
+  }
   /** Spawn healing orbs on schedule; the first fighter to touch one heals. */
   stepOrbs() {
     if (this.time >= this.nextOrb) {
       this.nextOrb += this.orbInterval;
       // Duel: one orb, alternating spots. 2v2: one at each spot.
+      const all = this.orbSpots();
       const spots =
-        this.mode !== "duel"
-          ? ORB_SPOTS
-          : [ORB_SPOTS[this.orbTurn++ % ORB_SPOTS.length]];
+        this.mode !== "duel" ? all : [all[this.orbTurn++ % all.length]];
       // Healing and energy orbs take turns (first one heals).
       const kind = this.orbWave++ % 2 === 0 ? "heal" : "energy";
       for (const spot of spots)
