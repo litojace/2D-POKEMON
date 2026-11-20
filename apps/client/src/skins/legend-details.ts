@@ -37,6 +37,22 @@ export function malletHead(k: { back: boolean; side: number }) {
 }
 
 /**
+ * A piece held the way Astrabun holds its mallet, drawn in the mallet's own
+ * frame so it follows the paw in every view: `draw(x)` draws it upright with
+ * its foot in the paw at (x, 155) and its top near y 74 (the mallet's
+ * handle runs from (x, 155) to (x + 6, 96), its head round (x + 7, 90)).
+ * Front x is 151 and behind it is 140; in profile the mallet leans over the
+ * shoulder (turned 35 degrees round the paw), and the right-facing view is
+ * the left one mirrored. Take the mallet off with SkinArt.heldOff.
+ */
+export function inMalletFrame(k: { back: boolean; side: number }, draw: (x: number) => string) {
+  if (k.back) return draw(140);
+  if (!k.side) return draw(151);
+  const lean = `<g transform="rotate(35 112 154)">${draw(112)}</g>`;
+  return k.side > 0 ? `<g transform="matrix(-1 0 0 1 200 0)">${lean}</g>` : lean;
+}
+
+/**
  * Where Duskveil's lantern hangs from its crook on the tail part (final
  * units; the tail is turned round in the right-facing view). Its glow stays
  * there when a skin takes the lantern's body off (SkinArt.heldOff).

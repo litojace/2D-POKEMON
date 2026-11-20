@@ -1,4 +1,4 @@
-import { addDetails, malletHead, type Details } from "./legend-details";
+import { addDetails, inMalletFrame, type Details } from "./legend-details";
 import type { Kit } from "./modern-designs";
 
 /**
@@ -223,11 +223,17 @@ const HERO: Details = {
     if (k.back) k.put("scarf", flames(k.C - k.W - 6, k.C + k.W + 6, k.B + 2));
     else k.put("body", k.side ? flames(k.C - k.side * 2 - 14, k.C - k.side * 2 + 14, k.B) : flames(k.C - k.W - 14, k.C - k.W + 6, k.B) + flames(k.C + k.W - 6, k.C + k.W + 14, k.B), true);
   },
-  // Moon Blink: its mallet head becomes a full moon, its craters lit.
+  // Moon Blink: the mallet comes off (SkinArt.heldOff in hero-art.ts) and
+  // the paw holds a moon staff drawn along the mallet's line
+  // (inMalletFrame): a silver shaft bound in blue, a crescent cradle and a
+  // full moon with its craters, its rim lit.
   astrabun(k) {
-    const { x, y } = malletHead(k);
-    k.put("armR", k.circle(x, y, 17, "#e8ecff", k.ink, 1.2) + k.circle(x - 6, y - 4, 4, "#c8d0f0", "none", 0) + k.circle(x + 6, y + 5, 3, "#c8d0f0", "none", 0) + k.circle(x + 5, y - 7, 2, "#c8d0f0", "none", 0) +
-      k.lume("pulse", `<circle cx="${x}" cy="${y}" r="15" fill="none" stroke="#fff6c9" stroke-width="1.6"/>`, 3, "#fff6c9"));
+    k.put("armR", inMalletFrame(k, (x) => `<g transform="rotate(6 ${x} 155)">` +
+      k.rect(x - 2, 104, 4, 52, 1.6, "#c8d0e6", k.ink, 0.9) +
+      k.line(`M${x - 2} 138l4 2M${x - 2} 142l4 2M${x - 2} 146l4 2`, "#3b4f9a", 1) +
+      k.path(`M${x - 12} 94Q${x - 10} 108 ${x} 109Q${x + 10} 108 ${x + 12} 94Q${x + 6} 104 ${x} 104Q${x - 6} 104 ${x - 12} 94Z`, "#c8d0e6", k.ink, 0.9) +
+      k.circle(x, 88, 13, "#e8ecff", k.ink, 1.2) + k.circle(x - 4.6, 84.6, 3.2, "#c8d0f0", "none", 0) + k.circle(x + 5, 92, 2.4, "#c8d0f0", "none", 0) + k.circle(x + 4, 82, 1.6, "#c8d0f0", "none", 0) +
+      k.lume("pulse", `<circle cx="${x}" cy="88" r="11.4" fill="none" stroke="#fff6c9" stroke-width="1.6"/>`, 3, "#fff6c9") + `</g>`));
   },
   // Bulldozer: a giant adjustable spanner slung across its back: a jaw
   // with its worm screw, a hanging hole, a ridged rubber grip and a hazard
@@ -497,24 +503,25 @@ const CAMPUS: Details = {
       k.path(`M${x + f * 14.4} ${y - 12.4}l${f * 3.6} 2.2l${f * 1} -1.6l${-f * 3.6} -2.2Z`, "#c8ccd6", k.ink, 0.5) +
       k.path(`M${x + f * 15.6} ${y - 14.6}q${f * 1} -4 ${f * 4} -5q${f * 0.4} 3.4 ${-f * 2} 6.4Z`, "#ff4f6a", k.ink, 0.5));
   },
-  // Stargazer: its mallet becomes a brass telescope on a stand (the
-  // handle, recoloured in campus-art.ts), tilted up at the sky, its lens
-  // glinting. It replaces the telescope the club kit carried on a pole, so
-  // the champion holds one piece, not three.
+  // Stargazer: the mallet comes off (SkinArt.heldOff in campus-art.ts) and
+  // the paw holds a brass telescope in its place, drawn along the mallet's
+  // own line (inMalletFrame) so it turns with the paw and points at the sky
+  // in every view: an eyepiece at the paw, a focuser, a navy tube banded in
+  // brass with a little finder scope, a dew shield and a lens that glints.
   astrabun(k) {
-    const { x, y } = malletHead(k);
-    // Which way the lens points: up and out, away from the body in every
-    // view (the profile arms are drawn turned the other way round).
-    const f = k.side ? -k.side : 1;
-    const brass = "#c89048";
-    k.put("armR", `<g transform="rotate(${-32 * f} ${x} ${y})">` +
-      k.rect(x - 17, y - 3.5, 7, 7, 1.5, "#8a5a2a", k.ink, 0.9) +
-      k.path(`M${x - 11} ${y - 5}L${x + 12} ${y - 7}V${y + 7}L${x - 11} ${y + 5}Z`, brass, k.ink, 1.1) +
-      k.line(`M${x - 2} ${y - 5.8}V${y + 5.8}M${x + 6} ${y - 6.5}V${y + 6.5}`, "#8a5a2a", 1.2) +
-      k.rect(x + 11, y - 9, 6, 18, 2, "#e0b060", k.ink, 1) +
-      k.circle(x + 17.5, y, 6.5, "#2a3a7a", k.ink, 1) +
-      k.lume("twinkle", k.path(k.star(x + 16.5, y - 2, 3, 4, 0.3), "#ffffff", "none", 0), 3, "#bfe8ff") +
-      `</g>` + k.circle(x, y + 2, 3, "#3a3f5a", k.ink, 0.8));
+    const brass = "#c89048",
+      navy = "#2a3a7a";
+    k.put("armR", inMalletFrame(k, (x) => `<g transform="rotate(6 ${x} 155)">` +
+      k.rect(x - 2.2, 140, 4.4, 13, 1, "#3a3f4a", k.ink, 0.8) +
+      k.rect(x - 4, 130, 8, 10, 1.4, brass, k.ink, 0.9) + k.line(`M${x + 4} 133h2.4v4h-2.4`, "#8a5a2a", 1) +
+      k.path(`M${x - 5} 131L${x - 8} 88H${x + 8}L${x + 5} 131Z`, navy, k.ink, 1.1) +
+      k.rect(x - 6.6, 116, 13.2, 3, 1, brass, k.ink, 0.6) + k.rect(x - 7.6, 98, 15.2, 3, 1, brass, k.ink, 0.6) +
+      k.line(`M${x - 5.4} 126L${x - 7.2} 92`, "#5a6aa8", 1.2) +
+      k.rect(x + 8, 104, 4, 12, 1.2, "#3a3f4a", k.ink, 0.6) + k.line(`M${x + 6} 108h2M${x + 6} 113h2`, brass, 1) + k.circle(x + 10, 104, 1.6, "#9fd8ff", k.ink, 0.4) +
+      k.rect(x - 9.6, 76, 19.2, 13, 2, brass, k.ink, 1) + k.line(`M${x - 9.6} 80h19.2`, "#8a5a2a", 0.8) +
+      `<ellipse cx="${x}" cy="76" rx="9" ry="2.8" fill="#24305e" stroke="${k.ink}" stroke-width=".9"/>` +
+      `<ellipse cx="${x - 2.4}" cy="75.6" rx="3" ry="1" fill="#9fd8ff" opacity=".8"/>` +
+      k.lume("twinkle", k.path(k.star(x + 3, 73.6, 3.2, 4, 0.3), "#ffffff", "none", 0), 3, "#bfe8ff") + `</g>`));
   },
   // Garden Club Keeper: a tin watering can, its rim and base banded and
   // riveted, a leaf label, a filler cap, an arched handle with a grip, a
