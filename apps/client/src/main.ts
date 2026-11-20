@@ -7,7 +7,12 @@ import {
   type GraphicsSetting,
 } from "./graphics-quality";
 import { softwareRendering } from "./gpu-check";
-import { RaidCamera, raidFrame, type ControlSides } from "./raid-camera";
+import {
+  RaidCamera,
+  raidFrame,
+  underControls,
+  type ControlSides,
+} from "./raid-camera";
 import { AllyBearings } from "./ally-bearings";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
 import { capGameFrames, screenHz, type FrameCap } from "./frame-cap";
@@ -6174,13 +6179,24 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !opponent ||
       // A downed raider's phone camera stays on them, not on the partner.
       (raidFollow && raidFocus !== presented) ||
-      !outsideView(
+      (!outsideView(
         opponent.x,
         opponent.y,
         this.scale.width,
         this.scale.height,
         view,
-      );
+      ) &&
+        // On a phone raid, a boss under the skill buttons or the joystick
+        // counts as off screen too: the arrow says where it is.
+        !(
+          raidFollow &&
+          raidControlSides &&
+          underControls(
+            (opponent.x - view.x) * view.zoomX + this.scale.width / 2,
+            this.scale.width,
+            raidControlSides,
+          )
+        ));
     // PvP and phone raids: an arrow circling the fighter you follow, in the
     // nearest off-screen opponent's colour (owner, 7 Nov 2026: no chip at
     // the top, where the score badge is; on phones the raid HUD is there).
@@ -6265,7 +6281,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       {
         left: 18,
         top: raidCameraHudBottom * this.scale.zoom + 18,
-        right: this.scale.width * this.scale.zoom - 18,
+        // Right-side arrows sit by the skill buttons, never under them or
+        // over the clock in the corner.
+        right:
+          (this.scale.width - (raidControlSides?.right ?? 0)) *
+            this.scale.zoom -
+          18,
         bottom: this.scale.height * this.scale.zoom - 18,
       },
     );

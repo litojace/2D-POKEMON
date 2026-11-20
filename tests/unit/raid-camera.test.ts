@@ -368,3 +368,14 @@ describe("clear of the touch controls", () => {
     expect(view.zoomX).toBeGreaterThanOrEqual(overview.zoomX - 1e-9);
   });
 });
+
+describe("underControls", () => {
+  it("is true in the joystick's and the buttons' columns only", async () => {
+    const { underControls } = await import("../../apps/client/src/raid-camera");
+    const sides = { left: 300, right: 500 };
+    expect(underControls(100, 1700, sides)).toBe(true);
+    expect(underControls(800, 1700, sides)).toBe(false);
+    expect(underControls(1300, 1700, sides)).toBe(true);
+    expect(underControls(100, 1700, { left: 0, right: 0 })).toBe(false);
+  });
+});

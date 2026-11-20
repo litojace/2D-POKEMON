@@ -192,6 +192,13 @@ function clearBand(
     p + (width / 2 - sides.left - pad) / zoom,
   ];
 }
+/** Is this screen x (game px) under the joystick's or the skill buttons' column? */
+export function underControls(x: number, width: number, sides: ControlSides) {
+  return (
+    (sides.left > 0 && x < sides.left) ||
+    (sides.right > 0 && x > width - sides.right)
+  );
+}
 /** The court's edges may scroll past the screen's edges this far (screen px), so a raider at a wall can still stand clear of the controls. */
 function apronFor(sides: ControlSides, zoom: number): ControlSides {
   const pad = CONTROL_PAD * zoom;

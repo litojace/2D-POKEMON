@@ -48,6 +48,9 @@ On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview)
   edge for that, showing the dim scenery round it. The boss is kept clear too
   when both fit. A court-wide frame keeps your raider clear as well, zooming out
   only as far as that needs.
+  When the boss still ends up under the buttons or the joystick, it gets the
+  off-screen arrow, and right-side ally arrows sit by the buttons (never under
+  them or over the clock).
 - Players who prefer the overview tick **Whole court in raids** in Settings →
   Controls (phones only; `raidCourt` in the saved controls). The Ascendant
   specs that read the whole arena against the HUD and touch controls choose it.
