@@ -27,7 +27,8 @@ On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview)
   braziers, the Quiet Zone, the polarity pad, lanterns and moonlight), padded
   for a fighter's art and name and keeping 7% of the screen clear at each side
   for the controls. When those span the court it is the whole court; sweeps
-  (Breaker, Tidal Wave) always are. The zoom stays between the whole court's
+  (Breaker, Tidal Wave) and dreams (their rune pads are laid out clear of the
+  dream panel in the whole-court view) always are. The zoom stays between the whole court's
   and the follow camera's. Which moments are court-wide is
   data, not per-boss code: `view: "court"` on the attack in `RAID_ATTACKS`
   (`packages/shared/src/raid.ts`), any warning at least 400 px across, and

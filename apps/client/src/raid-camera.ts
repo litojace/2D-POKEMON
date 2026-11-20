@@ -3,7 +3,6 @@ import {
   type RaidState,
 } from "../../../packages/shared/src/raid";
 import { PRISMATAIL } from "../../../packages/shared/src/raid-prismatail";
-import { somnaraPads } from "../../../packages/shared/src/raid-somnara";
 import type { CameraView } from "./follow-camera";
 
 /** Fit the entire raid below its HUD, uniformly and without following a raider. */
@@ -128,8 +127,9 @@ export function raidFrame(
     kinds.has("dream-sequence") ||
     kinds.has("twin-dream") ||
     kinds.has("dream-tide");
-  if (dreaming)
-    for (const pad of somnaraPads(raid.variant)) add(pad.x, pad.y, FRAME_PAD);
+  // A dream's rune pads sit where the dream panel leaves them clear of the
+  // whole-court view: keep that view while a dream runs.
+  if (dreaming) return whole;
   if (raid.quietZone && raid.quietZone.until > now)
     add(raid.quietZone.x, raid.quietZone.y, raid.quietZone.radius + FRAME_PAD);
   if (raid.polarityPad && raid.polarityPad.until > now)
