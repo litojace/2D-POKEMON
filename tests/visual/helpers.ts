@@ -28,11 +28,6 @@ export async function openHub(page: Page) {
     // loaded late (boss-prepaint.ts) went missing.
     performance.setResourceTimingBufferSize(5000);
   });
-  // The harness serves every client module unbundled, one request each, so a
-  // page load passes the browser's default 250 resource-timing entries; the
-  // specs that find a module's URL there (boss-prepaint, fighter-prepaint)
-  // then miss whichever loaded last. Room for all of them.
-  await page.addInitScript(() => performance.setResourceTimingBufferSize(5000));
   await page.goto("/");
   await page.waitForFunction(() => !!(window as any).__sock);
   // The client listens for "connect" once its account has loaded.
