@@ -245,9 +245,10 @@ Keep each creature exactly like its reference picture.
 
 The first painting, `duel-corsairs` (Voltkit and Tidefin), was redrawn
 this way on 20 Nov: Tidefin stood in the bottom-right quarter, under the
-tip. The redraw in use came at 1260 x 840 only and was scaled up to 1536 x 1024
-by hand to pass the import check, so it is softer than the others: swap
-in ChatGPT's original download (1536 x 1024) when it is at hand.
+tip. The redraw (ChatGPT's 1536 x 1024 original) has a lot of floor, so its
+scene shows it from higher up (`focus: "50% 20%"` in `LOADING_SCENES`): a
+scene's `focus` picks the part of the painting a wide phone screen keeps.
+It can't add anything on a 4:3 iPad, whose screen shows the whole height.
 
 ## Adding a scene
 

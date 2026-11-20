@@ -73,6 +73,8 @@ export const LOADING_SCENES: LoadingScene[] = [
   {
     id: "duel-corsairs",
     mode: "duel",
+    // Painted with a lot of floor: shown from higher up.
+    focus: "50% 20%",
     fighters: [
       { champion: "voltkit", skin: "voltkit-sky-pirates" },
       { champion: "tidefin", skin: "tidefin-sky-pirates" },
