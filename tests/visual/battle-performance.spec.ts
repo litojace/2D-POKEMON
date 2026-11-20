@@ -359,7 +359,10 @@ test("keeps memory steady across repeated battles, Lobby, Shop and Wardrobe", as
       ).toHaveCount(1);
       await page.waitForTimeout(800);
       await page.locator(".fit-room .ui-close").click();
-      await expect(page.locator(".fit-room")).toHaveCount(0);
+      // (A closed Shop stays in the page, hidden, for its next open: ui/hub-panel.ts park.)
+      await expect(
+        page.locator(".fit-room:not([data-ui-leaving])"),
+      ).toHaveCount(0);
       await page.waitForTimeout(500);
       samples.push({ cycle, ...(await heap(context, page)) });
     }
