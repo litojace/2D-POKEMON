@@ -11,6 +11,11 @@ export async function openHub(page: Page) {
   // always pick Low: pin High unless a test asks for Auto (__graphicsAuto)
   // or picked a quality itself.
   await page.addInitScript(() => {
+    // The dev server serves every source file on its own, and the browser
+    // keeps only 250 resource entries by default: specs that find a module's
+    // URL there (boss-prepaint, fighter-prepaint) lost the ones loaded after
+    // the 250th once startup grew a few modules.
+    performance.setResourceTimingBufferSize(5000);
     try {
       if (
         !(window as any).__graphicsAuto &&
