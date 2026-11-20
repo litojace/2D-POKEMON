@@ -1,6 +1,7 @@
 import type { CharacterId } from "@arena/shared";
 import type { SkinArt, Palette } from "./skin-art";
-import { tintPalette } from "./fashion-art";
+import { legendPalette } from "./fashion-art";
+import { LEGEND_SECOND } from "./legend-colours";
 import { VANGUARD_LOOK, VANGUARD_TINTS } from "./modern-vanguard";
 
 export interface HeroPreview {
@@ -202,7 +203,7 @@ export const VANGUARD_ART: Record<string, SkinArt> = Object.fromEntries(
     return [
       `${id}-nova-vanguard`,
       {
-        palette: tintPalette(id, VANGUARD_TINTS[id]),
+        palette: legendPalette(id, VANGUARD_TINTS[id], LEGEND_SECOND["nova-vanguard"][id]),
         accessories: ["modern-vanguard"],
         replaces: vanguardReplaces(id),
         trail: {

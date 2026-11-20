@@ -357,6 +357,33 @@ something that lights up (`modern-designs.ts` for five of them,
 A short confetti trail on a dash. Migration `20261118180000_neon_campus.sql`
 adds the skins and their set.
 
+## The Legendary finish
+
+On top of each collection's own costume, every Legendary carries three
+marks an Epic never has, so its price shows on the fighter itself:
+
+- **A two-tone body** (`legendPalette` in `fashion-art.ts`, hues in
+  `legend-colours.ts`). The body keeps its figure's colour; its light
+  markings (ear insides, masks, wing undersides, tail stripes, bellies)
+  take a second hue chosen for the figure: a gold Kim Quy with jade
+  markings, a night-indigo Đèn Kéo Quân with lantern orange, a periwinkle
+  Space Ranger with mission orange. Light markings are near white on most
+  champions, where no hue shows, so they come down to at most 0.8
+  lightness, never within 0.1 of the body. Champions whose face is drawn
+  in that colour (Voltkit, Coilemur, Mossloth, Pangrove, Wombolder) keep it
+  at 0.88 with half the colour, so a face never looks unwell. `accent` and
+  `dark` keep their lightness (Mystowl's and Duskveil's faces use accent).
+- **Metal-edged garments** (`legendTrim` in `modern-fashion.ts`): every
+  garment drawn through the kit's `garment` (and `torso`) gets a band along
+  the inside of its edge with a darker bevel, gold for the Sky Pirates,
+  Hồn Việt and Stars & Stripes, the suit's own light for Nova Vanguard
+  (breathing with its pulse layer).
+- **A clasp at the collar** (`legendClasp`), front and side views, under the
+  chin, a step below a Mythical's rune gorget: Nova's hex gem in its light,
+  the pirates' doubloon set with a ruby, Hồn Việt's jade ngọc bội with a
+  red knot, Stars & Stripes' star medal on a ribbon; its gem glints.
+  `CLASP_SKIP` lists any costume whose own collar piece it would crowd.
+
 ## Body colours
 
 Every Legendary and modern Epic collection (Nova Vanguard, Sky Pirates,

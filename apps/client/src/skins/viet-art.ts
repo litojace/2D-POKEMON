@@ -2,7 +2,8 @@ import type { CharacterId } from "@arena/shared";
 import { HON_VIET_NAMES } from "../../../../packages/shared/src/shop";
 import type { SkinArt } from "./skin-art";
 import { modernReplaces } from "./modern-designs";
-import { tintPalette } from "./fashion-art";
+import { legendPalette } from "./fashion-art";
+import { LEGEND_SECOND } from "./legend-colours";
 import { VIET_TINTS } from "./collection-colours";
 // Registers the Hồn Việt designs, which modernReplaces looks up.
 import "./modern-viet";
@@ -23,7 +24,7 @@ export const VIET_ART: Record<string, SkinArt> = Object.fromEntries(
   (Object.keys(HON_VIET_NAMES) as CharacterId[]).map((id) => [
     `${id}-hon-viet`,
     {
-      palette: tintPalette(id, VIET_TINTS[id]),
+      palette: legendPalette(id, VIET_TINTS[id], LEGEND_SECOND["hon-viet"][id]),
       accessories: ["modern-vietlegend"],
       replaces: modernReplaces("vietlegend", id),
       trail: { kind: "petal", colors: [0xf2c14e, 0xe8322a] },

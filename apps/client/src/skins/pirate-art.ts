@@ -3,7 +3,8 @@ import { SKY_PIRATE_NAMES } from "../../../../packages/shared/src/shop";
 import type { SkinArt } from "./skin-art";
 import { PIRATE_STYLE } from "./pirate-fashion";
 import { modernReplaces } from "./modern-designs";
-import { tintPalette } from "./fashion-art";
+import { legendPalette } from "./fashion-art";
+import { LEGEND_SECOND } from "./legend-colours";
 import { PIRATE_TINTS } from "./modern-pirates";
 
 /**
@@ -18,7 +19,7 @@ export const PIRATE_ART: Record<string, SkinArt> = Object.fromEntries(
     return [
       `${id}-sky-pirates`,
       {
-        palette: tintPalette(id, PIRATE_TINTS[id]),
+        palette: legendPalette(id, PIRATE_TINTS[id], LEGEND_SECOND["sky-pirates"][id]),
         accessories: ["modern-pirates"],
         replaces: modernReplaces("pirates", id),
         trail: { kind: "coin", colors: [0xffd65b, plume] },

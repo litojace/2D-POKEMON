@@ -129,6 +129,32 @@ export const tintPalette = (id: CharacterId, t: Tint): Palette => {
     accent: tone(base.accent, 0),
   };
 };
+/** A second hue for a palette's light markings (ear insides, masks, wing
+ * undersides, stripes, bellies): `hue` and the saturation to take. */
+export type Second = { hue: number; sat: number; soft?: boolean };
+/**
+ * A Legendary's two-tone body: the body (mid and dark) moves toward the
+ * figure's hue as `tintPalette` does, and its light markings toward a
+ * second hue chosen to set it off, so a Legendary reads in two colours
+ * where an Epic reads in one. Light markings are near white on most
+ * champions (lightness 0.83 to 1), where no hue shows, so they come down to
+ * at most 0.8, never closer than 0.1 to the body, and stay the lightest
+ * colour: they read as the same markings, now in colour. The body, dark
+ * and `accent` keep their lightness; `accent` stays with the body, as some
+ * champions draw their face with it (Mystowl, Duskveil).
+ */
+export const legendPalette = (id: CharacterId, t: Tint, second: Second): Palette => {
+  const base = creaturePalette[id];
+  const body = tintPalette(id, t);
+  const own = toHsl(base.light)[2] + t.lift[0];
+  // `soft`: champions whose face is drawn in the light colour (Coilemur's
+  // mask, Mossloth's face) keep it pale, with half the colour.
+  const target = Math.min(own, Math.max(toHsl(body.mid)[2] + 0.1, second.soft ? 0.88 : 0.8));
+  return {
+    ...body,
+    light: retint(base.light, second.hue, t.mix, second.soft ? second.sat / 2 : second.sat, target - toHsl(base.light)[2]),
+  };
+};
 const artFor = (
   champion: CharacterId,
   collection: FashionCollection,
