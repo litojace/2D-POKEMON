@@ -3,6 +3,7 @@ import { PlazaWorld } from "../../../apps/server/src/plaza";
 import {
   PLAZA,
   PLAZA_EMOTES,
+  PLAZA_FISH,
   PLAZA_FISHING,
   PLAZA_QUESTS,
 } from "../../../packages/shared/src/plaza";
@@ -119,6 +120,8 @@ const handle = (ev: string, data: any) => {
         q.n = Math.min(3, q.n + 1);
         q.done = q.n >= 3;
       } else p.fishBook[r.fish] ??= 0;
+      // The whole book: the title (arena_plaza_record).
+      p.fishTitle = PLAZA_FISH.every((f) => p.fishBook[f.id] !== undefined);
       setTimeout(() => w.__sock?.fire("plaza-progress", structuredClone(p)));
     }
     return r;

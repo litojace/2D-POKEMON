@@ -47,6 +47,9 @@ import {
   PLAZA_POND,
   PLAZA_QUESTS,
   PLAZA_ROCKS,
+  PLAZA_FISH,
+  PLAZA_FISH_RARITY,
+  PLAZA_FISH_TITLE,
   PLAZA_FISHING,
   PLAZA_SPAWN,
   PLAZA_SQUARE,
@@ -1157,6 +1160,25 @@ export function openPlaza(options) {
           pzToast(`+${x.coins} coins`);
           paid = true;
         }
+    // Fishing: a first catch pays coins once; the whole book earns a title.
+    if (before) {
+      for (const f of PLAZA_FISH)
+        if (
+          p.fishBook?.[f.id] !== undefined &&
+          before.fishBook?.[f.id] === undefined
+        ) {
+          const c = PLAZA_FISH_RARITY[f.rarity].firstCoins;
+          feed(
+            null,
+            `First catch: <b>${esc(f.name)}</b> · +${c} ${I("coin", "coin")}`,
+          );
+          paid = true;
+        }
+      if (p.fishTitle && !before.fishTitle) {
+        feed(null, `Title earned: <b>${esc(PLAZA_FISH_TITLE.name)}</b>`);
+        pzToast(`Fish book complete! Title earned: ${PLAZA_FISH_TITLE.name}`);
+      }
+    }
     // Quests pay coins on the server: the top bar's balance follows.
     if (paid) options.onCoins?.();
     renderQuests();
@@ -1822,7 +1844,8 @@ export function openPlaza(options) {
         );
       // The fish itself, drawn in full, for a moment over the Plaza.
       const card = $("pz-catch");
-      card.innerHTML = catchCard(f);
+      // New to the book: its first-catch coins (the server pays them).
+      card.innerHTML = catchCard(f, progress?.fishBook?.[f.id] === undefined);
       card.hidden = false;
       clearTimeout(catchTimer);
       catchTimer = setTimeout(() => (card.hidden = true), 2600);
@@ -1841,8 +1864,11 @@ export function openPlaza(options) {
     const b = fishBook(progress?.fishBook);
     $("pz-fishbook-count").textContent = `${b.caught} / ${b.total}`;
     setInner($("pz-fishbook-list"), b.html);
-    $("pz-fishbook-note").textContent =
-      `Today: ${Math.min(progress?.fishToday ?? 0, PLAZA_FISHING.perDay)} / ${PLAZA_FISHING.perDay} catches count · cast at the pond`;
+    $("pz-fishbook-note").textContent = `${
+      progress?.fishTitle
+        ? `Title earned: ${PLAZA_FISH_TITLE.name} ✓`
+        : `Catch all ${b.total} for the title ${PLAZA_FISH_TITLE.name}`
+    } · today ${Math.min(progress?.fishToday ?? 0, PLAZA_FISHING.perDay)} / ${PLAZA_FISHING.perDay} count`;
   }
   function showFishBook() {
     toggleWheel(false);

@@ -253,12 +253,13 @@ export function fishBook(book: Record<string, number> | undefined) {
       r = PLAZA_FISH_RARITY[f.rarity],
       when =
         f.time === "night" ? "Night only" : f.time === "day" ? "Day only" : "";
-    return `<li class="pz-fish${known ? "" : " unknown"}" data-fish="${f.id}" style="--rar:${r.color}">${fishArt(f, known)}<b>${known ? esc(f.name) : "???"}</b><small><span class="rar">${r.name}</span>${known ? ` · ${esc(f.element)}` : ""}</small><small>${!known ? when || "Not caught yet" : book![f.id] ? `Caught ×${book![f.id]}` : "Caught"}</small></li>`;
+    return `<li class="pz-fish${known ? "" : " unknown"}" data-fish="${f.id}" style="--rar:${r.color}">${fishArt(f, known)}<b>${known ? esc(f.name) : "???"}</b><small><span class="rar">${r.name}</span>${known ? ` · ${esc(f.element)}` : ""}</small><small>${!known ? when || "Not caught yet" : book![f.id] ? `Caught ×${book![f.id]}` : "Caught"}</small>${known ? "" : `<small class="first">1st catch +${r.firstCoins} coins</small>`}</li>`;
   }).join("");
   return { caught, total: PLAZA_FISH.length, html: cards };
 }
-/** The card that pops up with a catch: the fish, its name and rarity. */
-export function catchCard(f: PlazaFish) {
+/** The card that pops up with a catch: the fish, its name and rarity, and
+ * its first-catch coins when it is new to the book. */
+export function catchCard(f: PlazaFish, first = false) {
   const r = PLAZA_FISH_RARITY[f.rarity];
-  return `<div class="pz-catch-card" style="--rar:${r.color}">${fishArt(f, true)}<div><small>You caught</small><b>${esc(f.name)}</b><span><i>${r.name}</i> · ${esc(f.element)}</span></div></div>`;
+  return `<div class="pz-catch-card" style="--rar:${r.color}">${fishArt(f, true)}<div><small>${first ? "First catch!" : "You caught"}</small><b>${esc(f.name)}</b><span><i>${r.name}</i> · ${esc(f.element)}${first ? ` · <em>+${r.firstCoins} coins</em>` : ""}</span></div></div>`;
 }

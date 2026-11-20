@@ -72,7 +72,13 @@ import {
   connectionReportSchema,
 } from "../../../packages/shared/src/connection.js";
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
-import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
+import {
+  PLAZA,
+  PLAZA_FISH,
+  PLAZA_FISH_BY_ID,
+  PLAZA_FISH_RARITY,
+  type PlazaRecord,
+} from "../../../packages/shared/src/plaza.js";
 import {
   PARTY_AWAY_MS,
   Parties,
@@ -3249,7 +3255,15 @@ export function createArenaServer(
       if (d?.act === "cast") return reply(cb, plaza.cast(socket.id, now, d.tz));
       if (d?.act !== "reel") return fail(cb, "Nothing to do here.");
       const r = plaza.reel(socket.id, now);
-      if (r.ok) recordPlaza(socket.id, { kind: "fish", ref: r.fish });
+      if (r.ok)
+        recordPlaza(socket.id, {
+          kind: "fish",
+          ref: r.fish,
+          coins:
+            PLAZA_FISH_RARITY[PLAZA_FISH_BY_ID[r.fish]?.rarity]?.firstCoins ??
+            0,
+          bookSize: PLAZA_FISH.length,
+        });
       reply(cb, r);
     });
     socket.on("plaza-leave", (_data: unknown, cb: unknown) => {

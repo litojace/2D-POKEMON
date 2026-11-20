@@ -1178,11 +1178,21 @@ export const PLAZA_FISHING = {
   },
 } as const;
 /** How common each rarity is (relative weight per fish) and its colour. */
+/** `firstCoins`: shop coins for the first catch of each fish of that
+ * rarity, once per player (the database caps one at PLAZA_FISH_FIRST_MAX). */
 export const PLAZA_FISH_RARITY = {
-  common: { name: "Common", weight: 30, color: "#b9c4d6" },
-  uncommon: { name: "Uncommon", weight: 14, color: "#6fdc8c" },
-  rare: { name: "Rare", weight: 5, color: "#5fb3ff" },
-  legendary: { name: "Legendary", weight: 1, color: "#ffc83d" },
+  common: { name: "Common", weight: 30, color: "#b9c4d6", firstCoins: 5 },
+  uncommon: { name: "Uncommon", weight: 14, color: "#6fdc8c", firstCoins: 10 },
+  rare: { name: "Rare", weight: 5, color: "#5fb3ff", firstCoins: 25 },
+  legendary: { name: "Legendary", weight: 1, color: "#ffc83d", firstCoins: 50 },
+} as const;
+/** The most a first catch pays (migration 20261120180000_plaza_fishing). */
+export const PLAZA_FISH_FIRST_MAX = 50;
+/** The title for catching every fish in the Fish book (the same migration). */
+export const PLAZA_FISH_TITLE = {
+  name: "Master Angler",
+  description: "Catch every fish in the Plaza pond's Fish book.",
+  color: "#5fb3ff",
 } as const;
 export type PlazaFishRarity = keyof typeof PLAZA_FISH_RARITY;
 export interface PlazaFish {
@@ -1562,6 +1572,8 @@ export interface PlazaProgress {
   fishToday?: number;
   /** The Fish book: counted catches of each fish ever caught, by id. */
   fishBook?: Record<string, number>;
+  /** Has the Fish book's title (PLAZA_FISH_TITLE). */
+  fishTitle?: boolean;
   bestLapMs: number | null;
   board: { name: string; ms: number; me?: boolean }[];
 }
@@ -1580,4 +1592,8 @@ export interface PlazaRecord {
   ms?: number;
   /** Cheers so far today. */
   n?: number;
+  /** Fish: coins for a first catch of this fish (paid once), and how many
+   * fish the book holds (catching them all earns PLAZA_FISH_TITLE). */
+  coins?: number;
+  bookSize?: number;
 }

@@ -1711,3 +1711,15 @@
     animation: none;
   }
 }
+.plaza-layer .pz-fish small.first,
+.plaza-layer .pz-catch-card em {
+  color: #ffd65b;
+  font-style: normal;
+  font-weight: 700;
+}
+.plaza-layer .pz-fish small.first {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

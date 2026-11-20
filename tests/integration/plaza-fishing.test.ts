@@ -3,6 +3,9 @@ import { readFile, readdir } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import {
   PLAZA_FISH,
+  PLAZA_FISH_FIRST_MAX,
+  PLAZA_FISH_RARITY,
+  PLAZA_FISH_TITLE,
   PLAZA_FISHING,
   PLAZA_QUESTS,
 } from "../../packages/shared/src/plaza";
@@ -121,6 +124,108 @@ it(`counts at most ${PLAZA_FISHING.perDay} catches a day; a new fish past the ca
   p = await record({ player: other, kind: "fish", ref: "starlight-sturgeon" });
   expect(p.fishToday).toBe(1);
   expect(p.fishBook["starlight-sturgeon"]).toBe(1);
+});
+
+const ledger = async (id: string, reason: string) => {
+  await db.exec("reset role");
+  return (
+    await db.query<{ n: number; s: number }>(
+      "select count(*)::int n, coalesce(sum(amount),0)::int s from public.arena_coin_ledger where player_id=$1 and reason=$2",
+      [id, reason],
+    )
+  ).rows[0];
+};
+/** What the game server sends for a catch (server.ts). */
+const caught = (player: string, ref: string) =>
+  record({
+    player,
+    kind: "fish",
+    ref,
+    coins:
+      PLAZA_FISH_RARITY[PLAZA_FISH.find((f) => f.id === ref)!.rarity]
+        .firstCoins,
+    bookSize: PLAZA_FISH.length,
+  });
+
+it("pays each fish's first catch once, by rarity, capped", async () => {
+  const who = banned.replace("393", "394");
+  await db.exec(
+    `reset role;insert into auth.users values('${who}','{"display_name":"First"}')`,
+  );
+  await login(who);
+  await db.query("select public.arena_me()");
+  const legendary = PLAZA_FISH.find((f) => f.rarity === "legendary")!;
+  const common = PLAZA_FISH.find((f) => f.rarity === "common")!;
+  const c0 = await coins(who);
+  await caught(who, common.id);
+  await caught(who, common.id);
+  await caught(who, legendary.id);
+  expect(await ledger(who, "plaza-fish-first")).toEqual({
+    n: 2,
+    s:
+      PLAZA_FISH_RARITY.common.firstCoins +
+      PLAZA_FISH_RARITY.legendary.firstCoins,
+  });
+  // Three catches also finish the day's fish quest.
+  expect(await coins(who)).toBe(
+    c0 +
+      PLAZA_FISH_RARITY.common.firstCoins +
+      PLAZA_FISH_RARITY.legendary.firstCoins +
+      fishQuest.coins,
+  );
+  // A bad amount is capped, never negative; a missing one pays nothing.
+  await record({ player: who, kind: "fish", ref: "zap-eel", coins: 9999 });
+  await record({ player: who, kind: "fish", ref: "tide-guppy", coins: -50 });
+  await record({ player: who, kind: "fish", ref: "reed-perch" });
+  expect((await ledger(who, "plaza-fish-first")).s).toBe(
+    PLAZA_FISH_RARITY.common.firstCoins +
+      PLAZA_FISH_RARITY.legendary.firstCoins +
+      PLAZA_FISH_FIRST_MAX,
+  );
+  for (const r of Object.values(PLAZA_FISH_RARITY))
+    expect(r.firstCoins).toBeLessThanOrEqual(PLAZA_FISH_FIRST_MAX);
+});
+
+it(`gives the title "${PLAZA_FISH_TITLE.name}" for every fish in the book, once`, async () => {
+  const who = banned.replace("393", "395");
+  await db.exec(
+    `reset role;insert into auth.users values('${who}','{"display_name":"Angler 2"}')`,
+  );
+  await login(who);
+  await db.query("select public.arena_me()");
+  await db.exec("reset role");
+  const title = (
+    await db.query<any>(
+      "select name, description, color, active from public.arena_titles where name = $1",
+      [PLAZA_FISH_TITLE.name],
+    )
+  ).rows;
+  expect(title).toEqual([{ ...PLAZA_FISH_TITLE, active: true }]);
+  let p;
+  for (const f of PLAZA_FISH.slice(0, -1)) p = await caught(who, f.id);
+  expect(p.fishTitle).toBe(false);
+  // A tiny book size never hands it out.
+  p = await record({
+    player: who,
+    kind: "fish",
+    ref: "tide-guppy",
+    bookSize: 2,
+  });
+  expect(p.fishTitle).toBe(false);
+  p = await caught(who, PLAZA_FISH.at(-1)!.id);
+  expect(p.fishTitle).toBe(true);
+  p = await caught(who, PLAZA_FISH[0].id);
+  expect(p.fishTitle).toBe(true);
+  await db.exec("reset role");
+  const held = (
+    await db.query<{ n: number }>(
+      "select count(*)::int n from public.arena_player_titles pt join public.arena_titles t on t.id = pt.title_id where pt.player_id = $1 and t.name = $2",
+      [who, PLAZA_FISH_TITLE.name],
+    )
+  ).rows[0].n;
+  expect(held).toBe(1);
+  expect((await progress(who)).fishTitle).toBe(true);
+  expect((await progress(other)).fishTitle).toBe(false);
 });
 
 it("rejects bad fish, ignores suspended players, and only the game server records", async () => {

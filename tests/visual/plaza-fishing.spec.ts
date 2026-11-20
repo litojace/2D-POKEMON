@@ -61,7 +61,10 @@ for (const size of [
       // The catch card: the fish drawn in full, its name and rarity.
       const card = page.locator("#pz-catch");
       await expect(card).toBeVisible();
-      await expect(card).toContainText("You caught");
+      // New to the book: its first-catch coins, and the feed says so.
+      await expect(card).toContainText("First catch!");
+      await expect(card).toContainText(/\+\d+ coins/);
+      await expect(page.locator("#pz-feed")).toContainText("First catch:");
       await expect(card.locator("svg")).toHaveCount(1);
       await snap(page, info, `fishing-catch-${name}`);
       const c = await box(page, "#pz-catch");
@@ -87,7 +90,13 @@ for (const size of [
         PLAZA_FISH.length - 1,
       );
       await expect(page.locator("#pz-fishbook-note")).toContainText(
-        "Today: 1 / 30",
+        "today 1 / 30",
+      );
+      await expect(page.locator("#pz-fishbook-note")).toContainText(
+        "Master Angler",
+      );
+      await expect(page.locator(".pz-fish.unknown small.first")).toHaveCount(
+        PLAZA_FISH.length - 1,
       );
       const panel = await box(page, ".pz-fishbook-panel");
       expect(panel.l).toBeGreaterThanOrEqual(size.inset?.left ?? 0);
@@ -168,9 +177,27 @@ test("a tap before the bite loses the fish, and walking off reels the line in", 
   );
   await expect(toast(page)).toContainText("walked away");
   await expect.poll(() => fishing(page)).toBeNull();
+  // The whole book filled: the server's progress brings the title.
+  await page.evaluate(
+    (ids) => {
+      const w = window as any;
+      const p = structuredClone(w.__plazaProgress);
+      p.fishBook = Object.fromEntries(ids.map((id: string) => [id, 1]));
+      p.fishTitle = true;
+      w.__sock.fire("plaza-progress", p);
+    },
+    PLAZA_FISH.map((f) => f.id),
+  );
+  await expect(toast(page)).toContainText("Title earned: Master Angler");
   // Escape closes the Fish book on a keyboard.
   await page.click("#pz-fish-btn");
   await expect(page.locator("#pz-fishbook")).toBeVisible();
+  await expect(page.locator("#pz-fishbook-count")).toHaveText(
+    `${PLAZA_FISH.length} / ${PLAZA_FISH.length}`,
+  );
+  await expect(page.locator("#pz-fishbook-note")).toContainText(
+    "Title earned: Master Angler",
+  );
   await page.keyboard.press("Escape");
   await expect(page.locator("#pz-fishbook")).toBeHidden();
   expect(errors).toEqual([]);

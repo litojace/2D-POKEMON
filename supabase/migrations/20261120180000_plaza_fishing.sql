@@ -10,6 +10,13 @@
 --  * The Fish book: every fish a player has caught, with how many counted
 --    (arena_plaza_state's 'fishBook'), and today's counted catches
 --    ('fishToday').
+--  * First catches: the first time a player catches each fish pays shop
+--    coins by its rarity (PLAZA_FISH_RARITY.firstCoins, sent by the game
+--    server as 'coins', at most 50), once per player and fish (coin ledger
+--    reason 'plaza-fish-first', ref = the fish id).
+--  * Catching every fish in the book (the game server sends 'bookSize', the
+--    shared list's length) earns the title "Master Angler"
+--    (PLAZA_FISH_TITLE); arena_plaza_state's 'fishTitle' says if you have it.
 -- The fish list itself lives in the shared code; the database checks only the
 -- shape of an id, so new fish need no migration.
 -- Safe to run again: add column / create table if not exists, and create or
@@ -28,6 +35,12 @@ create table if not exists public.arena_plaza_fish_book (
 );
 alter table public.arena_plaza_fish_book enable row level security;
 revoke all on public.arena_plaza_fish_book from public, anon, authenticated;
+
+-- The Fish book's title (the same words as PLAZA_FISH_TITLE). An admin's
+-- later edit of it is kept.
+insert into public.arena_titles(name, description, color, active)
+select 'Master Angler', 'Catch every fish in the Plaza pond''s Fish book.', '#5fb3ff', true
+where not exists (select 1 from public.arena_titles where name = 'Master Angler');
 
 -- The quests, with "Catch 3 fish" last (the order of PLAZA_QUESTS).
 create or replace function public.arena_plaza_quests() returns table(id text, needed integer, coins integer)
@@ -53,6 +66,8 @@ begin
     'fishToday', coalesce(t.fish, 0),
     'fishBook', coalesce((select jsonb_object_agg(b.fish, b.caught) from public.arena_plaza_fish_book b
       where b.player_id = pid), '{}'::jsonb),
+    'fishTitle', exists (select 1 from public.arena_player_titles pt
+      join public.arena_titles ti on ti.id = pt.title_id where pt.player_id = pid and ti.name = 'Master Angler'),
     'bestLapMs', (select best_ms from public.arena_plaza_laps where player_id = pid and week = w),
     'board', coalesce((select jsonb_agg(jsonb_build_object('name', b.display_name, 'ms', b.best_ms, 'me', b.player_id = pid) order by b.best_ms, b.set_at)
       from (select l.player_id, l.best_ms, l.set_at, p.display_name from public.arena_plaza_laps l
@@ -66,6 +81,7 @@ language plpgsql security definer set search_path = public as $$
 declare
   pid uuid; k text = p->>'kind'; v_ref text = p->>'ref'; d date = public.arena_today();
   ms integer; n integer; t public.arena_plaza_days; q record; have integer; inserted integer;
+  first_coins integer; book_size integer;
 begin
   begin pid = (p->>'player')::uuid; exception when others then raise exception 'Bad player'; end;
   if pid is null or not exists (select 1 from public.arena_profiles where id = pid and not suspended) then
@@ -97,6 +113,19 @@ begin
     else
       insert into public.arena_plaza_fish_book(player_id, fish, caught, first_day) values (pid, v_ref, 0, d)
       on conflict do nothing;
+    end if;
+    -- A first catch of this fish pays once (the ledger is unique per ref).
+    first_coins = least(50, greatest(0, coalesce((p->>'coins')::integer, 0)));
+    if first_coins > 0 then
+      perform public.arena_grant(pid, first_coins, 'plaza-fish-first', v_ref, d);
+    end if;
+    -- Every fish in the book: the title (a book of at least 8, so a bad
+    -- size can't hand it out).
+    book_size = coalesce((p->>'bookSize')::integer, 0);
+    if book_size >= 8
+       and (select count(*) from public.arena_plaza_fish_book b where b.player_id = pid) >= book_size then
+      insert into public.arena_player_titles(player_id, title_id)
+      select pid, ti.id from public.arena_titles ti where ti.name = 'Master Angler' on conflict do nothing;
     end if;
   elsif k = 'goal' then
     update public.arena_plaza_days set goal = 1 where player_id = pid and day = d;
