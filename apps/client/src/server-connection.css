@@ -267,7 +267,7 @@
   border-radius: inherit;
   background: linear-gradient(90deg, #b98432, #edc76a 55%, #fff1b8);
   box-shadow: 0 0 10px #f3cf8770;
-  transition: width 450ms linear;
+  transition: width 600ms ease-out;
 }
 .server-startup-progress > i::after {
   content: "";
@@ -414,7 +414,7 @@
 /* The startup curtain fades away over the finished first screen, which takes
    taps as soon as the fade starts (server-connection.ts). */
 .server-startup {
-  transition: opacity 300ms ease-out;
+  transition: opacity 450ms ease-out;
 }
 .server-startup.is-leaving {
   opacity: 0;

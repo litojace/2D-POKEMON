@@ -95,7 +95,7 @@ after another and the saved fighter and avatar were not waited for at all.
    with a gold line on its right, not a box) bottom right, above a loading
    bar across the whole width with one status line over its left end. Each
    startup step replaces the last status with a short cross-fade, each shown
-   at least 0.35 s so quick steps never flicker. Darker bands at the bottom
+   at least 0.8 s so every step can be read (the curtain lifts once the status on screen has had its time), then the bar holds full for a beat and the curtain fades in 0.45 s. Darker bands at the bottom
    and behind the title keep them readable on any painting. Every painting has the same
    chance, never twice in a row. The next start's painting is chosen and
    downloaded once the game is up (`ea-next-art`), so it is on the device

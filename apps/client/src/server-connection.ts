@@ -38,16 +38,21 @@ let leaving: ReturnType<typeof setTimeout> | undefined;
 /**
  * The status line: each new status replaces the last with a short
  * cross-fade (the old one fades up and out, server-connection.css), and
- * stays at least STATUS_HOLD_MS so quick steps never flicker past.
+ * stays at least STATUS_HOLD_MS, long enough to read, so quick steps never
+ * flicker past (the owner, 20 Nov: "a little less fast"); the curtain lifts
+ * only once the status on screen has had its time (statusSettleMs).
  */
-const STATUS_HOLD_MS = 350;
+const STATUS_HOLD_MS = 800;
 let statusAt = 0;
 let statusTimer: ReturnType<typeof setTimeout> | undefined;
+let statusPending = false;
 function setStatusText(line: HTMLElement, text: string, now = false) {
   clearTimeout(statusTimer);
+  statusPending = false;
   if (line.dataset.text === text) return;
   const wait = STATUS_HOLD_MS - (performance.now() - statusAt);
   if (!now && line.dataset.text && wait > 0) {
+    statusPending = true;
     statusTimer = setTimeout(() => setStatusText(line, text), wait);
     return;
   }
@@ -62,6 +67,12 @@ function setStatusText(line: HTMLElement, text: string, now = false) {
   const span = document.createElement("span");
   span.textContent = text;
   line.append(span);
+}
+
+/** How long until the status line has shown what it has, a waiting one too. */
+function statusSettleMs() {
+  const rest = Math.max(0, STATUS_HOLD_MS - (performance.now() - statusAt));
+  return statusPending ? rest + STATUS_HOLD_MS : rest;
 }
 
 function updateProgress() {
@@ -284,8 +295,19 @@ export function curtainHeld() {
  * A server still waking up, offline or failed keeps its own panel and
  * retry button (the server's status decides, as before the curtain).
  */
+let releasing = false;
 export function releaseStartupCurtain() {
-  if (!held) return;
+  if (!held || releasing) return;
+  // The status on screen (and one waiting for its turn) has its time first.
+  const wait = currentStatus === "ready" && panel ? statusSettleMs() : 0;
+  if (wait > 0) {
+    releasing = true;
+    setTimeout(() => {
+      releasing = false;
+      releaseStartupCurtain();
+    }, wait);
+    return;
+  }
   held = undefined;
   if (currentStatus !== "ready" || !panel) return void syncProgressTimer();
   const leavingPanel = panel;
@@ -298,15 +320,15 @@ export function releaseStartupCurtain() {
   // of its own rather than this fading one.
   panel = undefined;
   clearTimeout(leaving);
-  // A short beat at full, then a quick fade: the game is already drawn
-  // underneath, and it takes taps as soon as the fade starts.
+  // A beat at full, then the fade: the game is already drawn underneath,
+  // and it takes taps as soon as the fade starts.
   leaving = setTimeout(() => {
     leavingPanel.classList.add("is-leaving");
     leaving = setTimeout(() => {
       leavingPanel.remove();
       leaving = undefined;
-    }, 320);
-  }, 180);
+    }, 470);
+  }, 400);
 }
 
 const startup = new ServerStartup(

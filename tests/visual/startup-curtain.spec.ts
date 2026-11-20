@@ -309,6 +309,16 @@ for (const size of [
         localStorage.setItem("ea-loading-tips", "on");
         localStorage.setItem("ea-hub-scene", "lobby");
       });
+      // A tip that would take a minute to read: the curtain mustn't wait.
+      await page.route(/\/loading-tips\.ts(?:\?|$)/, async (route) => {
+        const response = await route.fetch();
+        const body = await response.text();
+        expect(body).toMatch(/return Math\.min\([^;]+;/);
+        await route.fulfill({
+          response,
+          body: body.replace(/return Math\.min\([^;]+;/, "return 60000;"),
+        });
+      });
       // Every status the curtain shows.
       await page.addInitScript(() => {
         const w = window as any;
@@ -345,12 +355,12 @@ for (const size of [
         .boundingBox())!;
       expect(art.y + art.height).toBeLessThanOrEqual(loading.y + 1);
       await snap(page, info, `startup-tip-${size.width}x${size.height}`);
-      // Loaded long before the tip could be read (this one is long enough
-      // for the 5 s ceiling): the game opens anyway, with no "Tap to enter".
+      // Loaded long before the tip could be read: the game opens anyway,
+      // with no "Tap to enter".
       await page.evaluate(() => (window as any).__sock?.fire("connect"));
       const connected = Date.now();
       await connectUntilUncovered(page);
-      expect(Date.now() - connected).toBeLessThan(4_500);
+      expect(Date.now() - connected).toBeLessThan(15_000);
       const statuses = (await page.evaluate(
         () => (window as any).__statuses,
       )) as string[];
