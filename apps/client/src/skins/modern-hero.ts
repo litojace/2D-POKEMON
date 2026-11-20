@@ -1,5 +1,5 @@
 import type { CharacterId } from "@arena/shared";
-import { DESIGNS, backPanel, torso, type Design, type Kit } from "./modern-designs";
+import { DESIGNS, backPanel, headStrap, torso, type Design, type Kit } from "./modern-designs";
 
 /**
  * Hero Squad for the rest of the roster. The squad shares one language: a
@@ -138,11 +138,15 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
       k.lume("pulse", k.circle(x1, y1, 3.6, ember, k.ink, 0.6), 2, ember);
     if (k.back) k.put("scarf", tube(k.C + 14, k.B, k.C - 22, k.T - 18));
     else k.put("body", tube(k.C - s * 12, k.B - 4, k.C + s * (k.side ? 26 : 52), k.T - 26), true);
-    // Goggles up on the brow.
-    if (!k.back) {
-      const y = k.ht + 14;
+    // Goggles up on the brow, their strap running round the head: across
+    // the brow from the front, from the lens back over the skull in
+    // profile, and across the back of the head from behind.
+    const y = k.ht + 14;
+    const strap = headStrap(k, y, "#5a3a22", 3, `M${k.hx - 46} ${y + 4}Q${k.hx} ${y - 8} ${k.hx + 46} ${y + 4}`);
+    if (k.back) k.put("flame", strap);
+    else {
       const xs = k.side ? [k.hx + k.side * 16] : [k.hx - 16, k.hx + 16];
-      k.put("flame", k.line(`M${k.hx - 46} ${y + 4}Q${k.hx} ${y - 8} ${k.hx + 46} ${y + 4}`, "#5a3a22", 3) +
+      k.put("flame", strap +
         xs.map((x, i) => k.circle(x, y, 9, "#b8823a") + k.lume("pulse", k.circle(x, y, 6, "#ffd27a", k.ink, 0.6), i + 3, ember)).join(""));
     }
   },
@@ -180,11 +184,12 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
       const s = k.side ? -k.side : -1;
       k.put("body", k.path(`M${k.C + s * 4} ${k.T}Q${k.C + s * 22} ${k.T + 2} ${k.C + s * 38} ${k.T + 14}L${k.C + s * 36} ${k.T + 19}Q${k.C + s * 20} ${k.T + 8} ${k.C + s * 2} ${k.T + 6}Z`, "#e8322a", k.ink, 0.8), true);
     }
-    if (!k.back) {
+    const ey = k.ht + 40;
+    if (k.back) k.put("flame", headStrap(k, ey - 14, "#2a2a36", 2, ""));
+    else {
       // The lens sits over the near eye.
-      const ex = k.side ? k.hx + k.side * 22 : k.hx + 22,
-        ey = k.ht + 40;
-      k.put("flame", k.line(`M${k.hx - 48} ${ey - 8}Q${k.hx} ${ey - 18} ${ex} ${ey - 10}`, "#2a2a36", 2) +
+      const ex = k.side ? k.hx + k.side * 22 : k.hx + 22;
+      k.put("flame", (k.side ? headStrap(k, ey - 10, "#2a2a36", 2, "") : k.line(`M${k.hx - 48} ${ey - 8}Q${k.hx} ${ey - 18} ${ex} ${ey - 10}`, "#2a2a36", 2)) +
         `<circle cx="${ex}" cy="${ey}" r="13" fill="#ffb3471a" stroke="#2a2a36" stroke-width="2.4"/>` +
         k.lume("pulse", k.line(`M${ex - 8} ${ey}H${ex - 3}M${ex + 3} ${ey}H${ex + 8}M${ex} ${ey - 8}V${ey - 3}M${ex} ${ey + 3}V${ey + 8}`, amber, 1.2), 1, amber));
     }
