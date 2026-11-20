@@ -31,3 +31,10 @@ After the owner's notes on A:
 - Rite details puts the six rites in columns instead of long lines.
 - Hover only on devices with a mouse: a tap on a phone no longer leaves a
   tile highlighted.
+
+## A, third round (`a-v3/`)
+
+The owner meant the countdown's navy shade, not a grey arena: the grey
+filter is gone, and A uses exactly the countdown's shade (the same radial
+navy gradient as `#arena-overlay.is-countdown`). Everything else is as in
+round two.

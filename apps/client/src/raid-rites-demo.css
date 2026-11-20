@@ -446,11 +446,13 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
 /* ================================================================
    A · Centre stage. The countdown's layout: the title and the big
    number at the top, six tall rite tiles in a 3 × 2 grid filling the
-   middle, the greyed arena showing round them.
+   middle, the arena showing round them under the countdown's shade.
    ================================================================ */
+/* The countdown's own shade (style.css, .is-countdown): the same navy, the
+   same see-through middle. */
 #arena-overlay#arena-overlay.is-rites[data-look="a"]:not(:empty) {
   background: radial-gradient(
-    ellipse 75% 80% at 50% 50%,
+    ellipse 60% 70% at 50% 50%,
     #0712254d,
     #07122599 100%
   );
@@ -846,12 +848,6 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
 
 /* While the rites show, the battle controls and the HUD step aside (the
    card covered them too): the arena and the fighters stay in view. */
-/* The arena turns grey under the shade, as the PvP countdown's arena reads:
-   the rites are the only colour on screen. One filter on the canvas, only
-   while the fight is paused for the choice. */
-body.raid-rites-open #game {
-  filter: grayscale(1) brightness(0.8);
-}
 body.raid-rites-open :is(#battle > :not(.arena-stage), #battle-chat) {
   visibility: hidden;
 }
