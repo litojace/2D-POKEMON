@@ -20,13 +20,21 @@ On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview)
   court's top edge never goes under the HUD.
 - The view leans 35% of the way toward the nearest boss, but the raider always
   stays inside the middle 62% of the view. A downed raider's camera stays on them.
-- **Court-wide mechanics pull out to the whole court** while they are marked,
-  and the camera comes back in half a second after the last one. Which ones is
+- **Court-wide mechanics pull out** while they are marked, and the camera
+  comes back in half a second after the last one. It frames only what the
+  moment needs (`raidFrame`): every raider and boss, every marked warning, and
+  the pieces its answer lies on (rune pads, islands, mirrors and skylights,
+  braziers, the Quiet Zone, the polarity pad, lanterns and moonlight), padded
+  for a fighter's art and name and keeping 7% of the screen clear at each side
+  for the controls. When those span the court it is the whole court; sweeps
+  (Breaker, Tidal Wave) and dreams (their rune pads are laid out clear of the
+  dream panel in the whole-court view) always are. The zoom stays between the whole court's
+  and the follow camera's. Which moments are court-wide is
   data, not per-boss code: `view: "court"` on the attack in `RAID_ATTACKS`
   (`packages/shared/src/raid.ts`), any warning at least 400 px across, and
   running mechanics whose answer may be anywhere (a dream's rune pads, the
   Quiet Zone, polarity partners, Mirror Charge, an airborne Lumiwick's braziers,
-  Prismatail's light-relay mirrors, so that fight keeps the whole court). A new attack whose safe spot
+  Prismatail's light-relay mirrors, so that fight is always framed). A new attack whose safe spot
   can be off screen (islands, pads, a marked raider, braziers) gets
   `view: "court"`; a dodge that only needs the floor around the raider does not.
 - The off-screen boss gets the PvP arrow circling the raider. Off-screen allies

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   RaidCamera,
+  raidFrame,
   raidCameraView,
   raidFollowCentre,
   raidWantsCourt,
@@ -24,6 +25,7 @@ function visibleWorld(view: ReturnType<typeof raidCameraView>) {
     bottom: view.y + H / view.zoomY / 2,
   };
 }
+const WHOLE = { x0: 0, y0: 0, x1: 1600, y1: 900 };
 const raid = (extra: Partial<RaidState> = {}) =>
   ({ warnings: [], ...extra }) as unknown as RaidState;
 const warning = (kind: string, radius = 80) => ({
@@ -55,7 +57,7 @@ const follow = (
       opts.follow ?? true,
       { ...focus, vx: 0, vy: 0 },
       { x: 800, y: 300 },
-      opts.wide ?? false,
+      opts.wide ? WHOLE : undefined,
       "room:1:me",
       16,
       i * 0.016,
@@ -220,5 +222,88 @@ describe("edgeSpot", () => {
     const corner = edgeSpot(5000, 5000, box);
     expect(corner.x).toBeLessThanOrEqual(410.01);
     expect(corner.y).toBeLessThanOrEqual(260.01);
+  });
+});
+
+describe("raidFrame: court-wide moments frame what they need", () => {
+  const people = [
+    { x: 500, y: 450 },
+    { x: 1150, y: 450 },
+  ];
+  it("is undefined when nothing court-wide is going on", () => {
+    expect(raidFrame(raid(), 0, people)).toBeUndefined();
+  });
+  it("frames Prismatail's relay (skylight, mirrors, heart, raiders), not the whole court", () => {
+    const f = raidFrame(
+      raid({
+        mirrors: [
+          { x: 600, y: 300, angle: 0 },
+          { x: 880, y: 300, angle: 0 },
+          { x: 600, y: 600, angle: 0 },
+          { x: 880, y: 600, angle: 0 },
+        ],
+      }),
+      0,
+      people,
+    )!;
+    // The skylight (350, 450), the mirrors and the boss at 1150, padded.
+    expect(f.x0).toBeLessThanOrEqual(350 - 60);
+    expect(f.x1).toBeGreaterThanOrEqual(1150 + 60);
+    expect(f.y0).toBeLessThanOrEqual(300 - 60);
+    expect(f.y1).toBeGreaterThanOrEqual(600 + 60);
+    expect((f.x1 - f.x0) * (f.y1 - f.y0)).toBeLessThan(1600 * 900 * 0.6);
+    // On this phone the framed view is closer than the whole court.
+    const cam = new RaidCamera();
+    const overview = raidCameraView(W, H, HUD);
+    let view = overview;
+    for (let i = 0; i < 300; i++)
+      view = cam.update(
+        W,
+        H,
+        HUD,
+        true,
+        { x: 500, y: 450, vx: 0, vy: 0 },
+        undefined,
+        f,
+        "k",
+        16,
+        i * 0.016,
+        false,
+      );
+    expect(view.zoomX / overview.zoomX).toBeGreaterThan(1.2);
+    // Everything framed is in view.
+    const r = visibleWorld(view);
+    expect(r.left).toBeLessThanOrEqual(f.x0 + 0.5);
+    expect(r.right).toBeGreaterThanOrEqual(f.x1 - 0.5);
+    expect(r.top).toBeLessThanOrEqual(f.y0 + 0.5);
+    expect(r.bottom).toBeGreaterThanOrEqual(f.y1 - 0.5);
+  });
+  it("takes the whole court for sweeps and stays on the court", () => {
+    expect(
+      raidFrame(raid({ warnings: [warning("breaker")] as never }), 0, people),
+    ).toEqual(WHOLE);
+    const f = raidFrame(
+      raid({ warnings: [warning("fan-display", 650)] as never }),
+      0,
+      people,
+    )!;
+    expect(f.x0).toBeGreaterThanOrEqual(0);
+    expect(f.y0).toBeGreaterThanOrEqual(0);
+    expect(f.x1).toBeLessThanOrEqual(1600);
+    expect(f.y1).toBeLessThanOrEqual(900);
+  });
+  it("includes the pieces the answer lies on: islands for High Tide", () => {
+    const f = raidFrame(
+      raid({
+        warnings: [warning("hightide", 60)] as never,
+        islands: [
+          { x: 1450, y: 800, radius: 90, cracks: 0, sunk: false },
+        ] as never,
+      }),
+      0,
+      people,
+    )!;
+    expect(f.x1).toBeGreaterThanOrEqual(1540 - 0.5);
+    expect(f.y1).toBeGreaterThanOrEqual(890 - 0.5);
   });
 });

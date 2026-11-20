@@ -38,45 +38,62 @@ import {
 import "./fitting-room.css";
 
 /**
- * The last closed Shop's live fighter, asleep, for the next open. Booting
- * it (a renderer, the fighter's textures decoded again) on every open was
- * 26 canvases and a third of a second on a 4× slowed CPU (Nov 2026); the
- * next Shop takes it over and moves its canvas into its own stage. Dropped
+ * The last closed Shop, for the next open: its live fighter, asleep, and
+ * the screen itself, built (ui/hub-panel.ts park). Booting the fighter (a
+ * renderer, its textures decoded again) on every open was 26 canvases and a
+ * third of a second on a 4× slowed CPU (Nov 2026); building the screen's
+ * 1,500 elements again and taking the fighter back into it was most of
+ * what was left: 530-580 ms frames at 4× here, 0-300 ms kept (issue #244).
+ * The next Shop takes them over: the screen is patched to its own markup
+ * while still hidden, and the fighter stays on its stage unless that
+ * changed. Dropped
  * after PARKED_MS, when a battle starts, or when the app goes to the
  * background, so it never holds memory for long.
  */
-let parked:
-  | { preview: ShopPreviewHandle; timer: number; watch: MutationObserver }
-  | undefined;
+interface Parked {
+  preview?: ShopPreviewHandle;
+  /** The parked screen's host, its markup and the stage holding the canvas. */
+  wrap?: HTMLElement;
+  template?: HTMLElement;
+  previewHost?: Element | null;
+  timer: number;
+  watch: MutationObserver;
+}
+let parked: Parked | undefined;
 export const PARKED_MS = 60_000;
-function park(preview: ShopPreviewHandle) {
-  unpark()?.();
-  preview.suspend(true);
+/** Drop what a parked Shop holds (its renderer, its screen). */
+const drop = (p: Omit<Parked, "timer" | "watch"> | undefined) => {
+  p?.preview?.();
+  p?.wrap?.remove();
+};
+function park(keep: Omit<Parked, "timer" | "watch">) {
+  drop(unpark());
+  keep.preview?.suspend(true);
   const watch = new MutationObserver(() => {
-    if (document.body.classList.contains("battle-active")) unpark()?.();
+    if (document.body.classList.contains("battle-active")) drop(unpark());
   });
   watch.observe(document.body, {
     attributes: true,
     attributeFilter: ["class"],
   });
   parked = {
-    preview,
-    timer: window.setTimeout(() => unpark()?.(), PARKED_MS),
+    ...keep,
+    timer: window.setTimeout(() => drop(unpark()), PARKED_MS),
     watch,
   };
 }
-/** Take the parked preview (still asleep), if any. */
-function unpark() {
+/** Take what the last Shop left (its fighter still asleep), if anything. */
+function unpark(): Omit<Parked, "timer" | "watch"> | undefined {
   if (!parked) return undefined;
   clearTimeout(parked.timer);
   parked.watch.disconnect();
-  const { preview } = parked;
+  const { timer: _timer, watch: _watch, ...kept } = parked;
   parked = undefined;
-  return preview;
+  return kept;
 }
 if (typeof document !== "undefined")
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) unpark()?.();
+    if (document.hidden) drop(unpark());
   });
 
 /**
@@ -244,9 +261,13 @@ export function openFittingRoom(
    * place, so the portrait under it doesn't flicker and its effects stay.
    * The kept host is copied into the old markup, so patch() leaves it be.
    */
-  function keepFrame(prev: HTMLElement, next: HTMLElement) {
+  function keepFrame(
+    prev: HTMLElement,
+    next: HTMLElement,
+    within: HTMLElement = root(),
+  ) {
     const sel = ".fit-frame-stage";
-    const live = q<HTMLElement>(sel);
+    const live = within.querySelector<HTMLElement>(sel);
     const old = prev.querySelector<HTMLElement>(sel);
     const now = next.querySelector<HTMLElement>(sel);
     if (!live || !old || !now) return;
@@ -308,15 +329,6 @@ export function openFittingRoom(
     const stage = stageEl();
     const host = stage.querySelector(".shop-live-stage");
     if (low) return;
-    if (!preview && !importing) {
-      // The last Shop's live fighter, if it's still asleep nearby.
-      const kept = unpark();
-      if (kept) {
-        preview = kept;
-        preview.suspend(false);
-        previewHost = null;
-      }
-    }
     if (preview) {
       if (host !== previewHost) {
         preview.update(stage);
@@ -723,34 +735,75 @@ export function openFittingRoom(
   if (view.mode === "wardrobe") setSlot(view.slot);
   const html = fittingRoomMarkup(view, data());
   template = parse(html);
+  // What the last Shop left: its fighter, and its screen if the browser
+  // kept it. The screen takes this Shop's markup while still hidden, so it
+  // is styled and laid out once, as it appears.
+  const kept = unpark();
+  const keptRoot =
+    kept?.wrap?.isConnected && kept.template
+      ? (kept.wrap.firstElementChild as HTMLElement | null)
+      : null;
+  if (keptRoot && kept?.template) {
+    keepFrame(kept.template, template, keptRoot);
+    patch(keptRoot, kept.template, template);
+  } else kept?.wrap?.remove();
+  if (kept?.preview && !low) {
+    preview = kept.preview;
+    preview.suspend(false);
+    // Still on its stage when the screen came back and that stage stayed.
+    previewHost =
+      keptRoot && kept.previewHost?.isConnected ? kept.previewHost : null;
+  } else kept?.preview?.();
+  const listeners = [
+    ["click", onClick],
+    ["pointerdown", onDown],
+    ["pointerup", onUp],
+    ["pointercancel", onUp],
+    ["pointerleave", onUp],
+    ["keydown", onKey],
+    ["keyup", onKeyUp],
+  ] as const;
   panel = openHubPanel(html, {
     rail: "shop",
+    reuse: keptRoot ? kept?.wrap : undefined,
     onClose: () => {
       closed = true;
       compactQuery.removeEventListener("change", onCompact);
       stageSize.disconnect();
       clearInterval(clock);
+      // (Its screen may be taken over by the next Shop: let go of it.)
+      for (const [type, fn] of listeners)
+        root().removeEventListener(type, fn as EventListener);
       // Kept asleep for the next Shop while the Lobby stays (not when the
       // Lobby itself is leaving: a match, the Plaza).
-      if (
-        preview &&
-        !low &&
-        document.querySelector(".lobby-layer")?.isConnected
-      )
-        park(preview);
+      const lobby = !!document.querySelector(".lobby-layer")?.isConnected;
+      if (preview && !low && lobby) park({ preview });
       else preview?.();
       preview = undefined;
       syncRail();
       hooks.onClose?.();
     },
+    // Once it has left: the screen too, with what it was drawn from (the
+    // fighter was parked above, at once). Not if what was parked has gone
+    // since (a battle started), nor once the Lobby is leaving.
+    park: (wrap) => {
+      if (!document.querySelector(".lobby-layer")?.isConnected) return false;
+      if (document.body.classList.contains("battle-active")) return false;
+      if (parked && parked.wrap) return false;
+      const fighter = unpark();
+      park({
+        ...fighter,
+        wrap,
+        template,
+        previewHost: wrap.querySelector(".shop-live-stage"),
+      });
+      return true;
+    },
   });
-  root().addEventListener("click", onClick);
-  root().addEventListener("pointerdown", onDown);
-  root().addEventListener("pointerup", onUp);
-  root().addEventListener("pointercancel", onUp);
-  root().addEventListener("pointerleave", onUp);
-  root().addEventListener("keydown", onKey);
-  root().addEventListener("keyup", onKeyUp);
+  // (Not taken back after all, the Lobby having been rebuilt: let it go.)
+  if (keptRoot && root() !== keptRoot) kept?.wrap?.remove();
+  for (const [type, fn] of listeners)
+    root().addEventListener(type, fn as EventListener);
   // Countdowns (server time) move on while the screen is open.
   const clock = setInterval(() => render(), 30_000);
   compactQuery.addEventListener("change", onCompact);
