@@ -3759,18 +3759,17 @@ function renderBattle() {
   // the overlay itself, in the same step as its markup: a rule asking the
   // overlay whether it holds the Reveal (:has) could take effect a frame
   // late in Safari, showing the arena before the Reveal (owner's iPhone).
-  // The countdown is every mode's: PvP, bots, the raids and the Spire
-  // (raid-ui.ts draws theirs with the same countdownCard).
+  // The countdown is every mode's, for players and watchers alike: PvP,
+  // bots, the raids and the Spire all draw overlay.ts countdownCard, so a
+  // change to it (or to its CSS) reaches every fight. The Reveal is the
+  // players' PvP briefing; watchers have their own.
   const player = !!myId || !watching;
   const overlay = $("arena-overlay");
   overlay.classList.toggle(
     "is-reveal",
     player && state.phase === "briefing" && !state.practice && !state.raid,
   );
-  overlay.classList.toggle(
-    "is-countdown",
-    player && state.phase === "countdown",
-  );
+  overlay.classList.toggle("is-countdown", state.phase === "countdown");
   if (state.raid && myId) {
     renderRaidUI(
       state,

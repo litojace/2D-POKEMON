@@ -14,7 +14,8 @@ import { ISLAND, setInsets, type Insets } from "./ui-measure";
 // screen, edge to edge past the notch, under a light see-through shade,
 // one big number, no card; the arena and the fighters stay in view.
 // (Raids and the Spire used to show a small card over the middle of the
-// court, the shade stopping at the safe area.) Practice has no countdown.
+// court, the shade stopping at the safe area.) Watchers see the same
+// countdown as the players (they had the card). Practice has no countdown.
 const SIZES: {
   name: string;
   width: number;
@@ -38,6 +39,8 @@ type Mode = {
   kind: "pvp" | "raid" | "spire";
   options: Record<string, unknown>;
   bot?: boolean;
+  /** Watching the room (Watch this room instead), not playing in it. */
+  watch?: boolean;
   /** The line over the number: which fight this is. */
   eyebrow: RegExp;
 };
@@ -91,6 +94,27 @@ const MODES: Mode[] = [
     options: { floor: 10, stage: "playing" },
     eyebrow: /The Spire · Floor 10/,
   },
+  {
+    name: "watch-duel",
+    kind: "pvp",
+    options: { mode: "duel", phase: "playing" },
+    watch: true,
+    eyebrow: /Watching · WATCH1/,
+  },
+  {
+    name: "watch-raid",
+    kind: "raid",
+    options: { boss: "grumblecrag" },
+    watch: true,
+    eyebrow: /Watching · WATCH1/,
+  },
+  {
+    name: "watch-spire",
+    kind: "spire",
+    options: { floor: 2, stage: "playing" },
+    watch: true,
+    eyebrow: /Watching · WATCH1/,
+  },
 ];
 
 for (const size of SIZES)
@@ -108,20 +132,24 @@ for (const size of SIZES)
         const page = await context.newPage();
         const errors = await openLobby(page);
         await page.evaluate(
-          ({ kind, options, bot }) => {
+          ({ kind, options, bot, watch }) => {
             const w = window as any;
             w.__room(kind, options);
             if (bot) w.__snap.vsBot = "normal";
+            if (watch) w.__snap.code = "WATCH1";
             // The raid itself, not the Spire's Ascendant form.
             if (kind === "raid") {
               delete w.__snap.raid.spire;
               delete w.__snap.raid.variant;
             }
           },
-          { kind: m.kind, options: m.options, bot: !!m.bot },
+          { kind: m.kind, options: m.options, bot: !!m.bot, watch: !!m.watch },
         );
         await openPlayPanel(page);
-        await createRoom(page);
+        if (m.watch) {
+          await page.fill("#code", "WATCH1");
+          await page.click("#watch");
+        } else await createRoom(page);
         await pushUntilBattle(page);
         if (size.inset) await setInsets(page, size.inset);
 
