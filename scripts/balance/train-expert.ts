@@ -10,6 +10,7 @@
  *   --workers <n>    parallel processes (default 4)
  *   --only <a,b>     train only these champions
  *   --state <file>   where progress is kept (default balance-out/train-expert.json)
+ *   --check-games <n> games against each opponent in each final check (default 20)
  *
  * For each champion in turn it makes `mutants` variations of its current
  * style (a few of its numbers moved at random), plays the current style and
@@ -21,6 +22,12 @@
  * saved to the state file, and an accepted style is written to
  * expert-style.ts at once, so a restarted container loses nothing: run the
  * same command again and it carries on.
+ *
+ * Then a final check, because the training's own numbers flatter it (the
+ * best of several variations is partly the luckiest): each learned style
+ * plays against untrained opponents on two fresh sets of games, against
+ * the champion with no style, and is kept only if it wins more on both and
+ * by CHECK_MARGIN points on average. The others are dropped from the file.
  *
  * Run it after a champion is added or changed, then measure as usual. It
  * trains the expert on its rules (look-ahead off: six times faster); the
@@ -113,11 +120,16 @@ const rounds = +opt("--rounds", "4"),
   games = +opt("--games", "6"),
   workers = +opt("--workers", "4"),
   only = opt("--only", "").split(",").filter(Boolean) as CharacterId[],
-  stateFile = opt("--state", "balance-out/train-expert.json");
+  stateFile = opt("--state", "balance-out/train-expert.json"),
+  checkGames = +opt("--check-games", "20");
 const champions = only.length ? only : [...FIGHTER_IDS];
 const STYLE_FILE = "apps/server/src/expert-style.ts";
 /** Points a variation must win by, on average over both game sets, to be kept. */
 const MARGIN = 3;
+/** Points a learned style must win by, on average over the two final checks. */
+const CHECK_MARGIN = 2;
+/** Seeds of the final checks' game sets (never used in training). */
+const CHECK_SEEDS = [3000000, 4000000];
 
 type State = {
   table: Table;
@@ -125,6 +137,8 @@ type State = {
   round: number;
   next: number;
   log: string[];
+  /** Final check: champions done, and their gains on each game set. */
+  checked?: Partial<Record<CharacterId, number[]>>;
 };
 let state: State = existsSync(stateFile)
   ? JSON.parse(readFileSync(stateFile, "utf8"))
@@ -222,6 +236,8 @@ async function evaluate(
   champion: CharacterId,
   candidates: Style[],
   seed: number,
+  table: Table = state.table,
+  perOpponent = games,
 ) {
   const opponents = FIGHTER_IDS.filter((c) => c !== champion);
   const shares = [...Array(workers).keys()].map((w) =>
@@ -234,9 +250,9 @@ async function evaluate(
       const task: Task = {
         champion,
         candidates,
-        table: state.table,
+        table,
         opponents: share,
-        games,
+        games: perOpponent,
         seed,
       };
       const file = join(dir, `task-${w}.json`),
@@ -278,8 +294,8 @@ function writeStyles() {
   );
 }
 
-for (; state.round < rounds; state.round++, state.next = 0) {
-  for (; state.next < champions.length; state.next++) {
+while (state.round < rounds) {
+  while (state.next < champions.length) {
     const champion = champions[state.next];
     const current = state.table[champion] ?? {};
     const variants = [...Array(mutants)].map(() => mutate(current, champion));
@@ -303,14 +319,46 @@ for (; state.round < rounds; state.round++, state.next = 0) {
         first[best] + check - first[0] - again >= 2 * MARGIN
       ) {
         state.table[champion] = variants[best - 1];
+        delete state.checked?.[champion];
         writeStyles();
         line += ` -> kept ${JSON.stringify(variants[best - 1])}`;
       } else line += " -> dropped";
     } else line += " -> kept the current style";
     console.log(line);
     state.log.push(line);
+    // Saved with the step done, so a restart carries on with the next one.
+    state.next++;
     save();
   }
+  state.round++;
+  state.next = 0;
+  save();
+}
+state.checked ??= {};
+for (const champion of champions) {
+  const style = state.table[champion];
+  if (!style || Object.keys(style).length === 0 || state.checked[champion])
+    continue;
+  const gains: number[] = [];
+  for (const seed of CHECK_SEEDS) {
+    const [plain, learned] = await evaluate(
+      champion,
+      [{}, style],
+      seed,
+      {},
+      checkGames,
+    );
+    gains.push(learned - plain);
+  }
+  const mean = gains.reduce((a, b) => a + b, 0) / gains.length;
+  const kept = gains.every((g) => g > 0) && mean >= CHECK_MARGIN;
+  if (!kept) delete state.table[champion];
+  state.checked[champion] = gains;
+  const line = `check ${champion.padEnd(9)} ${gains.map((g) => (g >= 0 ? "+" : "") + g.toFixed(1)).join(" ")} -> ${kept ? "kept" : "dropped"}`;
+  console.log(line);
+  state.log.push(line);
+  writeStyles();
+  save();
 }
 writeStyles();
-console.log(`done: ${rounds} rounds; styles in ${STYLE_FILE}`);
+console.log(`done: ${rounds} rounds and the check; styles in ${STYLE_FILE}`);
