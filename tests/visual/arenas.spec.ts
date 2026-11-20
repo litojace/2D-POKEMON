@@ -16,12 +16,25 @@ for (const size of SIZES)
       await openPlayPanel(page);
       await startPractice(page);
       await pushUntilBattle(page);
-      const settings = await box(page, "#battle-menu"), stage = await box(page, "#game");
-      expect(settings.y).toBeGreaterThanOrEqual(stage.y);
-      expect(settings.y).toBeLessThan(stage.y + 60);
-      expect(settings.x + settings.width).toBeLessThanOrEqual(stage.x + stage.width);
-      await expect(page.locator("#battle-menu")).toHaveAttribute("aria-label", "Battle settings");
+      // The court view sets the stage's frame; on a slow runner the first
+      // layout after the battle starts can still be the old one (the menu
+      // button was seen 50 px past the stage's right edge once), so measure
+      // once the court view is on and the layout has settled.
       await expect(page.locator("body")).toHaveClass(/court-view/);
+      await expect
+        .poll(
+          async () => {
+            const settings = await box(page, "#battle-menu"), stage = await box(page, "#game");
+            return (
+              settings.y >= stage.y &&
+              settings.y < stage.y + 60 &&
+              settings.x + settings.width <= stage.x + stage.width
+            );
+          },
+          { timeout: 10_000, message: "the settings button sits inside the stage's top edge" },
+        )
+        .toBe(true);
+      await expect(page.locator("#battle-menu")).toHaveAttribute("aria-label", "Battle settings");
       const game = await box(page, "#game");
       const canvas = await box(page, "#game canvas");
       // The canvas fills the arena exactly: no overflow, no gap.
