@@ -63,6 +63,8 @@ export interface FriendsData {
   blocked?: readonly { id: string; name: string }[];
   /** Friends can be messaged in the chat (its Friends tab). */
   canMessage?: boolean;
+  /** A friend's player card can be opened (not from a private room). */
+  canCard?: boolean;
   /** Friends with an invitation from you still open (from any screen). */
   invited?: ReadonlySet<string>;
 }
@@ -383,7 +385,17 @@ function friendRow(f: Friend, d: FriendsData, view: FriendsView, now: number) {
           disabled: busy,
           attrs: { "data-friend-remove-ok": f.id },
         })
-      : (d.canMessage
+      : (d.canCard
+          ? button("Player card", {
+              size: "s",
+              icon: "user",
+              attrs: {
+                "data-friend-card": f.id,
+                "aria-label": `${f.name}'s player card and matches`,
+              },
+            })
+          : "") +
+        (d.canMessage
           ? button("Message", {
               size: "s",
               icon: "chat",

@@ -4,8 +4,10 @@ import type { SocialStore } from "../../apps/server/src/social";
 import { fakeAccounts } from "../helpers/accounts";
 import {
   friendsBoardSchema,
+  matchHistorySchema,
   recentPlayersSchema,
 } from "../../packages/shared/src/accounts";
+import { AccountError } from "../../apps/server/src/accounts";
 
 /**
  * The two read-only social endpoints (UI remodel step 6): they need a login,
@@ -146,4 +148,67 @@ it("says plainly when the server has no storage for them", async () => {
   });
   expect(res.status).toBe(503);
   expect((await res.json()).error).toMatch(/server storage/);
+});
+
+it("match history: yours by default, a friend's by id, a page at a time", async () => {
+  const { token } = accounts.add(false);
+  const args: Record<string, unknown>[] = [];
+  accounts.provider.rpc = async (_token, name, body) => {
+    calls.push(`rpc:${name}`);
+    if (name !== "arena_match_history") throw new Error(`unexpected ${name}`);
+    args.push(body as Record<string, unknown>);
+    return { matches: [], more: false, people: {}, totals: null, rating: null };
+  };
+  const get = (q = "") =>
+    fetch(`${url}/api/matches/history${q}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  expect((await fetch(`${url}/api/matches/history`)).status).toBe(401);
+  const mine = await get();
+  expect(mine.status).toBe(200);
+  expect(mine.headers.get("cache-control")).toBe("no-store");
+  expect(matchHistorySchema.parse(await mine.json())).toEqual({
+    matches: [],
+    next: null,
+    totals: null,
+    rating: null,
+  });
+  expect(args[0]).toMatchObject({
+    p_before_at: null,
+    p_before_id: null,
+    p_limit: 10,
+    p_kind: "all",
+  });
+  expect(typeof args[0].p_player).toBe("string");
+  const at = "2026-11-20T09:00:00.000001+00:00";
+  expect(
+    (
+      await get(
+        `?player=${friend}&at=${encodeURIComponent(at)}&id=match-0002&kind=pvp`,
+      )
+    ).status,
+  ).toBe(200);
+  expect(args[1]).toEqual({
+    p_player: friend,
+    p_before_at: at,
+    p_before_id: "match-0002",
+    p_limit: 10,
+    p_kind: "pvp",
+  });
+  // Nonsense is refused before the database is asked.
+  for (const q of ["?player=nope", "?kind=raid", "?at=yesterday", "?limit=500"])
+    expect((await get(q)).status, q).toBe(400);
+  expect(args).toHaveLength(2);
+});
+
+it("match history: the database's refusal reaches the player", async () => {
+  const { token } = accounts.add(false);
+  accounts.provider.rpc = async () => {
+    throw new AccountError(403, "Only friends can see each other's matches.");
+  };
+  const res = await fetch(`${url}/api/matches/history?player=${stranger}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.status).toBe(403);
+  expect((await res.json()).error).toMatch(/Only friends/);
 });
