@@ -247,6 +247,20 @@ Three changes from this work also make every battle lighter now:
   45 ms (what remains is code that draws ellipses directly).
 - **An older phone's first battle starts at Low** (see Auto in section 5).
 
+Fire kits draw fewer glow sprites (20 Nov 2026). Each flame particle drew
+a gold glow and, while young, a second white-hot core glow, so Pyranda's
+ultimate (about 130 flames landing at once) put some 200 glow sprites on
+screen, against at most 58 for any other kit. Two opt-in burst options in
+`fx-engine.ts` keep the flames and their shape and cut only the sprites:
+`dotCore` draws the white-hot core as three additive dots on the particle
+layer, and `shareGlow` gives one in every n flames of a dense burst a
+glow as wide as the light of the n it stands for. Pyranda and Cindrake use
+both. Measured with a fixed frame step (same frames before and after),
+peak glow sprites at High: Pyranda's ultimate 191–221 → 87–90, Chestnut
+Mortar 68 → 38, Ember Curtain 95–99 → 68–70, Cindrake's Magma Leap 77 → 25,
+Sunfire Pillar 63 → 37–39. Glow cover, smoke and particles are unchanged
+within run-to-run noise (a few percent).
+
 Three checks run in CI with the visual suite, and two numbers come back
 from players' phones:
 
@@ -257,7 +271,13 @@ from players' phones:
   particles. The limits are about twice the heaviest kit seen (glow 0.30
   screens, smoke 0.52, particles 218), because which frame a run catches
   moves a peak by up to about 40%. `EFFECT_BUDGET_MEASURE=1` prints every
-  champion's numbers.
+  champion's numbers. A second check, for free-for-all, has the four
+  heaviest kits (Pyranda, Cindrake, Mystowl, Sunbara on 20 Nov 2026) cast
+  each skill on the same tick, aimed across one another, spaced in effect
+  time like the first, and judges the heaviest frame against its own
+  limits: glow 2.6 screens and smoke 2.9 (about twice the 1.23 and 1.15
+  seen), particles 700, the engine's hard cap (583 seen at most). When a
+  kit measures heavier than one of the four, it takes its place.
 - **A real match** (`tests/visual/match-flow-budget.spec.ts`, at High and at
   Low): dressed fighters from the first snapshot, the briefing, then the
   fight. No fighter art may load mid-fight (512 textures before and after),

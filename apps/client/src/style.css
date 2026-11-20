@@ -5274,6 +5274,9 @@ dialog:has(.illustrated-guide) {
   display: block;
   height: 100%;
   background: #8cf7e3;
+  /* --fill (0–100), drawn with a transform: no layout per snapshot. */
+  transform-origin: left;
+  transform: scaleX(calc(var(--fill, 100) / 100));
 }
 .raid-stagger span {
   position: absolute;
@@ -9295,6 +9298,8 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   display: block;
   height: 100%;
   background: #95e6d1;
+  transform-origin: left;
+  transform: scaleX(calc(var(--fill, 100) / 100));
 }
 #raid-storm-targets {
   display: none;
