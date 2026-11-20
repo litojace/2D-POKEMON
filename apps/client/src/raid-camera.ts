@@ -81,6 +81,11 @@ export interface FrameBox {
 }
 /** Room kept round everything framed (world px): a fighter's art and name. */
 const FRAME_PAD = 70;
+/**
+ * Share of the screen's width kept clear on each side when framing: the
+ * joystick and the skill buttons sit at the edges.
+ */
+const FRAME_SIDE = 0.07;
 /** Warnings that sweep the whole court whatever their marked geometry. */
 const SWEEPS = new Set(["breaker", "wave"]);
 
@@ -143,7 +148,8 @@ export function raidFrame(
     raid.islands?.length &&
     (kinds.has("hightide") || kinds.has("dive") || (raid.floodUntil ?? 0) > now)
   )
-    for (const i of raid.islands) if (!i.sunk) add(i.x, i.y, i.radius);
+    for (const i of raid.islands)
+      if (!i.sunk) add(i.x, i.y, i.radius + FRAME_PAD / 2);
   if (kinds.has("nightfall")) {
     for (const l of raid.lanterns ?? []) add(l.x, l.y, FRAME_PAD);
     for (const l of raid.lights ?? []) add(l.x, l.y, l.radius);
@@ -272,7 +278,7 @@ export class RaidCamera {
     const box = this.frame ?? { x0: 0, y0: 0, x1: 1600, y1: 900 };
     const framed = clamp(
       Math.min(
-        width / Math.max(1, box.x1 - box.x0),
+        (width * (1 - 2 * FRAME_SIDE)) / Math.max(1, box.x1 - box.x0),
         (height - top) / Math.max(1, box.y1 - box.y0),
       ),
       overview.zoomX,
