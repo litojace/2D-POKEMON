@@ -902,6 +902,8 @@ Hard, the bottom of the owner's band (42% - 58%), and with a good player's
 hands it is 59.3% for experts, inside 35% - 65%. A further nerf was tried
 before that pass (Seed Spit 750 px/s instead of 780: Hard −2.6, expert
 −3.5) and is not shipped, since it would take Hard below the band. Mystowl
-is about 50% on Hard and 49.8% for experts: nothing to change. Hard,
-Normal and Easy never read the expert's hands or styles, so their numbers
-are those of the sixth pass and Live Wire.
+is 49.8% for experts and 44.1% on Hard, inside both bands: nothing to
+change for now. Hard on the current roster (24 games a pair, the seeds
+above): 43.1% (Mossloth) - 56.6% (Auralynx), Mystowl 44.1%. Hard, Normal
+and Easy never read the expert's hands or styles, so this branch leaves
+their numbers as they are.
