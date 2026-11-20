@@ -23,7 +23,7 @@ import {
 import { menuIcon } from "./menu-icons";
 import { raidBriefingGuide } from "./raid-briefing";
 import { soloRevives } from "./raid-solo";
-import { LIVE_COUNTDOWN, LIVE_SECONDS } from "./overlay";
+import { LIVE_SECONDS } from "./overlay";
 import { spireBlessingIcon } from "./spire-art";
 import { actions, button } from "./ui/components";
 import "./spire-battle.css";
@@ -185,8 +185,8 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
       .join("");
     acts = `<div class="raid-rite-intro">${locked ? '<span class="raid-rite-locked">Blessing locked in · waiting for the team</span>' : "<span>One of three · they stack</span>"}<span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span></div><div class="raid-rite-options spire-blessings">${cards || "<p>Blessing locked in · waiting for the team.</p>"}</div>`;
   } else if (state.phase === "countdown") {
-    title = LIVE_COUNTDOWN;
-    body = `<p>Floor ${s.floor} · ${escape(floor?.name ?? "")}</p>`;
+    // raid-ui.ts shows it as every mode's countdown (countdownCard).
+    body = `Floor ${s.floor} · ${escape(floor?.name ?? "")}`;
   } else if (state.phase === "paused") {
     title = "A teammate disconnected";
     body = "<p>The climb is paused while they reconnect.</p>";

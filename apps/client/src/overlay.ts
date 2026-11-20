@@ -3,6 +3,15 @@ const markupByElement = new WeakMap<HTMLElement, string>();
 export const LIVE_SECONDS = '<span class="live-seconds"></span>';
 /** Countdown digits update in place so the overlay card is not remounted each second. */
 export const LIVE_COUNTDOWN = '<span class="live-countdown"></span>';
+/**
+ * The countdown before a fight (3, 2, 1), the same in every mode: PvP, bot
+ * matches, the raids and the Spire. The fight's name, one big number and a
+ * line under it; style.css draws it over the whole screen, no card, once
+ * main.ts marks #arena-overlay .is-countdown. The detail is markup.
+ */
+export function countdownCard(eyebrow: string, detail: string) {
+  return `<div class="overlay-card countdown-card"><span class="eyebrow">${eyebrow}</span><h2>${LIVE_COUNTDOWN}</h2><div>${detail}</div></div>`;
+}
 export function fillLiveCountdown(root: HTMLElement, seconds: number) {
   const text = String(Math.max(1, Math.ceil(seconds)));
   root.querySelectorAll<HTMLElement>(".live-countdown").forEach((slot) => {

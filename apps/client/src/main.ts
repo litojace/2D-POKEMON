@@ -151,7 +151,7 @@ import { FighterLoading, neededFighters } from "./animation/fighter-loading";
 import {
   setOverlayMarkup,
   LIVE_SECONDS,
-  LIVE_COUNTDOWN,
+  countdownCard,
   fillLiveSeconds,
   fillLiveCountdown,
 } from "./overlay";
@@ -1868,10 +1868,7 @@ function renderWatchOverlay(overlay: HTMLElement) {
         '<span class="vs-mark">VS</span>',
       )}</div><p class="arena-brief"><b>Arena · ${escape(ARENAS[state!.arena ?? "classic"].name)}</b>${escape(ARENAS[state!.arena ?? "classic"].tip)}</p>${partyRulesNote()}`;
   }
-  if (state!.phase === "countdown") {
-    heading = LIVE_COUNTDOWN;
-    details = "Here we go.";
-  }
+  if (state!.phase === "countdown") details = "Here we go.";
   if (state!.phase === "intermission") {
     heading = isTeams()
       ? state!.roundWinnerTeam === null || state!.roundWinnerTeam === undefined
@@ -1894,9 +1891,12 @@ function renderWatchOverlay(overlay: HTMLElement) {
       (isFfa() ? standingsMarkup(state!, "") : "") + recapMarkup(state!, "");
     actions = `<div class="result-actions"><button class="secondary btn-secondary leave-button" id="watch-stop">${iconLabel("stop-watching", "Stop watching")}</button></div>`;
   }
+  const eyebrow = `Watching · ${escape(state!.code)}`;
   setOverlayMarkup(
     overlay,
-    `<div class="overlay-card${actions ? " action-overlay" : state!.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">Watching · ${escape(state!.code)}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match results"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`,
+    state!.phase === "countdown"
+      ? countdownCard(eyebrow, details)
+      : `<div class="overlay-card${actions ? " action-overlay" : ""}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match results"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`,
     actions
       ? `${state!.code}:${state!.matchId ?? ""}:${state!.phase}`
       : undefined,
@@ -3755,6 +3755,22 @@ function renderBattle() {
     state.practice ? Infinity : EX.cost,
     exArmedUntil > performance.now(),
   );
+  // The Reveal and the countdown take the whole screen (style.css). Marked on
+  // the overlay itself, in the same step as its markup: a rule asking the
+  // overlay whether it holds the Reveal (:has) could take effect a frame
+  // late in Safari, showing the arena before the Reveal (owner's iPhone).
+  // The countdown is every mode's: PvP, bots, the raids and the Spire
+  // (raid-ui.ts draws theirs with the same countdownCard).
+  const player = !!myId || !watching;
+  const overlay = $("arena-overlay");
+  overlay.classList.toggle(
+    "is-reveal",
+    player && state.phase === "briefing" && !state.practice && !state.raid,
+  );
+  overlay.classList.toggle(
+    "is-countdown",
+    player && state.phase === "countdown",
+  );
   if (state.raid && myId) {
     renderRaidUI(
       state,
@@ -3797,20 +3813,6 @@ function renderBattle() {
     if (exit) exit.onclick = () => void leave();
     return;
   }
-  const overlay = $("arena-overlay");
-  // The Reveal and the countdown take the whole screen (style.css). Marked on
-  // the overlay itself, in the same step as its markup: a rule asking the
-  // overlay whether it holds the Reveal (:has) could take effect a frame
-  // late in Safari, showing the arena before the Reveal (owner's iPhone).
-  const player = !!myId || !watching;
-  overlay.classList.toggle(
-    "is-reveal",
-    player && state.phase === "briefing" && !state.practice,
-  );
-  overlay.classList.toggle(
-    "is-countdown",
-    player && state.phase === "countdown",
-  );
   if (!myId && watching) {
     renderWatchOverlay(overlay);
     return;
@@ -3913,10 +3915,7 @@ function renderBattle() {
           : "Arena and every fighter loaded";
       actions = `<div class="rv-foot"><div class="rv-load${loading ? " is-loading" : ""}"><span>${status}</span><i role="progressbar" aria-label="Arena loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress * 100)}"><b style="width:${(progress * 100).toFixed(1)}%"></b></i></div><button class="primary btn-primary" id="instructions-ready" ${confirmed || loading ? "disabled" : ""}>${confirmed ? "Ready ✓" : loading ? "Loading…" : "I’m ready"}</button></div>`;
     }
-    if (state.phase === "countdown") {
-      heading = LIVE_COUNTDOWN;
-      details = "Get ready. Make your move.";
-    }
+    if (state.phase === "countdown") details = "Get ready. Make your move.";
     if (state.phase === "intermission") {
       heading = isTeams()
         ? state.roundWinnerTeam === null || state.roundWinnerTeam === undefined
@@ -3993,7 +3992,10 @@ function renderBattle() {
       }
       actions = `<div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
-    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
+    const markup =
+      state.phase === "countdown"
+        ? countdownCard(eyebrow, details)
+        : `<div class="overlay-card${actions ? " action-overlay" : ""}${reveal ? " match-reveal" : ""}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
     // Preserve the pressed button and native scrolling between snapshots.
     // The arena finishing loading starts the Reveal's scroll afresh, but it
     // is the same panel: it must not pop in again (it blinked out, the whole

@@ -79,7 +79,7 @@ import {
 import {
   setOverlayMarkup,
   LIVE_SECONDS,
-  LIVE_COUNTDOWN,
+  countdownCard,
   fillLiveSeconds,
   fillLiveCountdown,
 } from "./overlay";
@@ -189,8 +189,7 @@ export function renderRaidUI(
     const order = riteDisplayOrder(offers, mine);
     actions = `<div class="raid-rite-intro">${offers.length ? "<span>Grow stronger each chapter</span>" : '<span class="raid-rite-locked">Rites locked in · waiting for the team</span>'}<span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span>${raidRiteDetails(order)}</div><div class="raid-rite-options">${raidRiteChoices(order, mine, !offers.length)}</div>`;
   } else if (state.phase === "countdown") {
-    title = LIVE_COUNTDOWN;
-    body = `<p>${raidChapters(r.boss, r.variant)[r.phase - 1].objective}</p>`;
+    body = escape(raidChapters(r.boss, r.variant)[r.phase - 1].objective);
   } else if (state.phase === "paused") {
     title = "A teammate disconnected";
     body = "<p>The raid is paused while they reconnect.</p>";
@@ -276,14 +275,16 @@ export function renderRaidUI(
   const active = document.activeElement;
   const focusId = active && previousCard?.contains(active) ? active.id : "";
   // The briefing and the results use the hub's shared panel, tags and
-  // buttons (UI remodel step 5); the rites, countdown and pause keep the
-  // match's own card.
+  // buttons (UI remodel step 5); the rites and pause keep the match's own
+  // card. The countdown is every mode's (overlay.ts countdownCard).
   const shared = state.phase === "briefing" || state.phase === "finished";
   const replaced = setOverlayMarkup(
     overlay,
-    shared
-      ? `<div class="ui rc-card ${state.phase === "finished" ? "is-results" : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">${escape(kicker)}</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
-      : `<div class="overlay-card raid-overlay${state.phase === "intermission" ? " raid-draft action-overlay" : ""}"><span class="eyebrow">${escape(kicker)}</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
+    state.phase === "countdown"
+      ? countdownCard(escape(kicker), body)
+      : shared
+        ? `<div class="ui rc-card ${state.phase === "finished" ? "is-results" : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">${escape(kicker)}</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
+        : `<div class="overlay-card raid-overlay${state.phase === "intermission" ? " raid-draft action-overlay" : ""}"><span class="eyebrow">${escape(kicker)}</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
     undefined,
     // Picking a rite redraws the same panel: it doesn't pop in again.
     `raid:${state.phase}`,
