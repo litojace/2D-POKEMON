@@ -13,6 +13,11 @@ import "./modern-campus";
 import "./modern-stars";
 import "./modern-pirates";
 import "./modern-vanguard";
+// Legendary headwear and props, drawn over their costumes (after them).
+import "./legend-details-pirates";
+import "./legend-details-vanguard";
+import "./legend-details-vietlegend";
+import "./legend-details-stars";
 
 /**
  * Modern collections (prototype): Neon Campus, Hero Squad, Starlight Idol,
