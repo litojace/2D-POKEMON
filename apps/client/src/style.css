@@ -612,29 +612,11 @@ input::placeholder {
   background: #ffffff15;
   overflow: hidden;
 }
-/* A bar's share is --fill (0–100) and is drawn with transforms, not width:
-   snapshots move it ~15 times a second, and a transform needs no layout.
-   The health fill keeps its rounded end and its gradient over the filled
-   part only: the span (rounded, clipping) slides left by the empty share,
-   and the <i> inside slides back and scales to the filled share. Without
-   --fill (before the first snapshot) both are untransformed: a full bar. */
 .health-track span {
   display: block;
   height: 100%;
-  overflow: hidden;
-  transform: translateX(calc((var(--fill) - 100) * 1%));
-  transition:
-    transform 0.15s,
-    border-radius 0.15s;
-}
-.health-track i {
-  display: block;
-  height: 100%;
   background: var(--element);
-  transform-origin: left;
-  transform: translateX(calc((100 - var(--fill)) * 1%))
-    scaleX(calc(var(--fill) / 100));
-  transition: transform 0.15s;
+  transition: width 0.15s;
 }
 .health-card > small {
   display: inline-block;
@@ -790,12 +772,8 @@ body.is-blinded #game::after {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 100%;
   background: #ffffff0c;
   pointer-events: none;
-  /* --fill (0–100): a transform, not height, so updates need no layout. */
-  transform-origin: bottom;
-  transform: scaleY(calc(var(--fill, 0) / 100));
 }
 .basic-hint small {
   color: var(--muted);
@@ -5296,7 +5274,7 @@ dialog:has(.illustrated-guide) {
   display: block;
   height: 100%;
   background: #8cf7e3;
-  /* --fill (0–100), like the fighters' bars: no layout per snapshot. */
+  /* --fill (0–100), drawn with a transform: no layout per snapshot. */
   transform-origin: left;
   transform: scaleX(calc(var(--fill, 100) / 100));
 }
@@ -10371,18 +10349,8 @@ body.battle-active:not(.battle-raid) .hud.hud-teams {
   border-radius: 999px;
   background: #ffffff1a;
 }
-/* The track's size for the fill's end (cqw, cqh). */
-.health-card .health-track {
-  container-type: size;
-}
 .health-card .health-track span {
   border-radius: inherit;
-  /* As when the fill was a box as wide as its share: its rounded end is
-     never wider than half that share (a sliver at low health). Constant
-     above that, so a snapshot changes no paint. */
-  border-radius: min(50cqh, calc(var(--fill, 100) * 0.5cqw));
-}
-.health-card .health-track i {
   background: linear-gradient(
     90deg,
     color-mix(in srgb, var(--element) 70%, white),
@@ -10426,12 +10394,9 @@ body.battle-active:not(.battle-raid) .hud.hud-teams {
 }
 .hud-ultimate-track i {
   display: block;
+  width: 0;
   height: 100%;
   background: var(--accent);
-  /* --fill (0–100): square ends and one colour, so a plain scale keeps
-     its look (the track's rounded clip cuts it as before). */
-  transform-origin: left;
-  transform: scaleX(calc(var(--fill, 0) / 100));
 }
 .hud-ultimate.is-ready > span,
 .hud-ultimate.is-ready b {
