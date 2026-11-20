@@ -259,12 +259,11 @@ from players' phones:
   moves a peak by up to about 40%. `EFFECT_BUDGET_MEASURE=1` prints every
   champion's numbers. A second check, for free-for-all, has the four
   heaviest kits (Pyranda, Cindrake, Mystowl, Sunbara on 20 Nov 2026) cast
-  each skill on the same tick, aimed across one another, and judges the
-  heaviest frame against its own limits: glow 2.6 screens and smoke 2.9
-  (about twice the 1.50 and 1.44 seen), particles 700. Four heavy kits
-  together already reach the engine's hard cap of 700 particles (692 to
-  696 in every run), so there a heavier kit loses particles, not frames.
-  When a kit measures heavier than one of the four, it takes its place.
+  each skill on the same tick, aimed across one another, spaced in effect
+  time like the first, and judges the heaviest frame against its own
+  limits: glow 2.6 screens and smoke 2.9 (about twice the 1.23 and 1.15
+  seen), particles 700, the engine's hard cap (583 seen at most). When a
+  kit measures heavier than one of the four, it takes its place.
 - **A real match** (`tests/visual/match-flow-budget.spec.ts`, at High and at
   Low): dressed fighters from the first snapshot, the briefing, then the
   fight. No fighter art may load mid-fight (512 textures before and after),
