@@ -2383,8 +2383,8 @@ for (const combo of Object.values(COMBOS)) combo.text = inMeters(combo.text);
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 1.07,
-  cindrake: 0.917,
-  tidefin: 1.106,
+  cindrake: 0.994,
+  tidefin: 1.018,
   auralynx: 0.88,
   lumoth: 1.038,
   mystowl: 0.984,
@@ -2399,7 +2399,7 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   wombolder: 0.913,
   shadopus: 1.011,
   pangrove: 0.904,
-  mossloth: 1.271,
+  mossloth: 1.119,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -2411,8 +2411,8 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
  */
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.873,
-  cindrake: 1.091,
-  tidefin: 0.862,
+  cindrake: 1.16,
+  tidefin: 0.869,
   auralynx: 1.043,
   lumoth: 0.903,
   mystowl: 0.828,
@@ -2427,7 +2427,7 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   wombolder: 1.099,
   shadopus: 1.131,
   pangrove: 1.034,
-  mossloth: 1.105,
+  mossloth: 0.972,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
@@ -2436,8 +2436,8 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
  */
 export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.86,
-  cindrake: 1.07,
-  tidefin: 0.861,
+  cindrake: 1.156,
+  tidefin: 0.839,
   auralynx: 1.17,
   lumoth: 0.824,
   mystowl: 0.832,
@@ -2452,7 +2452,7 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   wombolder: 1.185,
   shadopus: 1.151,
   pangrove: 1.06,
-  mossloth: 1.193,
+  mossloth: 1.05,
 };
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
