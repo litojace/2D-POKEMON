@@ -48,10 +48,18 @@ export const PLAZA_SCALE = {
   hurdle: 30,
 } as const;
 
-/** The zoom for a screen: phones see a little more; never past what is built. */
+/**
+ * The usual zoom on a phone-sized screen (under 1000 px wide). It was 0.66,
+ * to see more of the Plaza; the owner chose 0.8 (20 Nov 2026) so the skins
+ * and their effects read on a phone: a fighter is 67 px tall instead of 55
+ * on an 844 × 390 screen, and still sharp (its sprite is baked at 2.4 px a
+ * world px; a phone's canvas draws at most 0.8 × 2 = 1.6).
+ */
+export const PLAZA_PHONE_ZOOM = 0.8;
+/** The zoom for a screen: phones a little closer; never past what is built. */
 export function plazaZoom(nw: number, nh: number) {
   return Math.max(
-    nw < 1000 ? 0.66 : 1,
+    nw < 1000 ? PLAZA_PHONE_ZOOM : 1,
     nw / (W + PLAZA_OUT.w + PLAZA_OUT.e),
     nh / (H + PLAZA_OUT.n + PLAZA_OUT.s),
   );
@@ -75,6 +83,16 @@ export function plazaZoomRange(nw: number, nh: number) {
     min: Math.min(base, Math.max(built, seen)),
     max: Math.max(base, Math.min(base * 1.8, 1.5)),
   };
+}
+/**
+ * Whether a player may zoom on this screen. Phones may not (the owner, 20 Nov
+ * 2026): the usual zoom is chosen for them, and a second finger on the
+ * playground never changes the view by accident. A phone is a touch screen
+ * whose short side is under 500 CSS px (phones in landscape are 320–430 px
+ * tall; the smallest iPad is 744), so iPads and touch laptops keep the zoom.
+ */
+export function plazaZoomable(coarse: boolean, nw: number, nh: number) {
+  return !coarse || Math.min(nw, nh) >= 500;
 }
 /** The zoom for a screen and a player's chosen factor (1 = the usual). */
 export function plazaZoomAt(nw: number, nh: number, factor: number) {
