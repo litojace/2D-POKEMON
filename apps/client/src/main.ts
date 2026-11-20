@@ -3795,6 +3795,19 @@ function renderBattle() {
     return;
   }
   const overlay = $("arena-overlay");
+  // The Reveal and the countdown take the whole screen (style.css). Marked on
+  // the overlay itself, in the same step as its markup: a rule asking the
+  // overlay whether it holds the Reveal (:has) could take effect a frame
+  // late in Safari, showing the arena before the Reveal (owner's iPhone).
+  const player = !!myId || !watching;
+  overlay.classList.toggle(
+    "is-reveal",
+    player && state.phase === "briefing" && !state.practice,
+  );
+  overlay.classList.toggle(
+    "is-countdown",
+    player && state.phase === "countdown",
+  );
   if (!myId && watching) {
     renderWatchOverlay(overlay);
     return;

@@ -15799,7 +15799,10 @@ body.battle-active:not(.touch-mode)
    2v2 face off across a VS, your side on the left in blue; a free-for-all
    is one row. Sizes follow the overlay (a size container while the Reveal
    shows), so phones held sideways keep the cards and "I'm ready" in view. */
-body.battle-active #arena-overlay:has(> .match-reveal) {
+/* (main.ts marks the overlay .is-reveal with the markup, in one step: a
+   :has(> .match-reveal) rule here could apply a frame late in Safari, and
+   the arena showed before the Reveal on the owner's iPhone.) */
+body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
   /* The whole screen, as a loading screen: not a panel over the arena. */
   position: fixed;
   inset: 0;
@@ -16247,4 +16250,70 @@ body.battle-active #arena-overlay:has(> .match-reveal) {
   .vs-flip > :not(.vs-back) {
     animation: none;
   }
+}
+
+/* The countdown (3, 2, 1) before each round: the whole screen, edge to edge
+   past the notch, under a light shade that keeps the arena and the
+   fighters in view, and one big number in the middle; no card (owner,
+   19 Nov 2026: the card sat over the middle of the arena, and the shade
+   stopped short of the screen's sides). main.ts marks the overlay
+   .is-countdown. */
+body.battle-active:not(.battle-raid) #arena-overlay.is-countdown:not(:empty) {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: max(12px, var(--safe-top, 0px)) max(12px, var(--safe-right, 0px))
+    max(12px, var(--safe-bottom, 0px)) max(12px, var(--safe-left, 0px));
+  background: radial-gradient(
+    ellipse 60% 70% at 50% 50%,
+    #0712254d,
+    #07122599 100%
+  );
+  overflow: hidden;
+}
+:root
+  body.battle-active
+  #battle
+  #arena-overlay#arena-overlay.is-countdown
+  .overlay-card.countdown-card {
+  width: auto;
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+  text-align: center;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+#arena-overlay.is-countdown .countdown-card > .eyebrow {
+  justify-content: center;
+  margin: 0;
+  color: #f7d780;
+  font-size: calc(13px * var(--text-scale, 1));
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px #000c;
+}
+#arena-overlay.is-countdown .countdown-card > h2 {
+  margin: 0;
+  color: #fff;
+  font:
+    800 clamp(110px, 40vh, 240px) / 0.95 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.02em;
+  text-shadow:
+    0 0 32px color-mix(in srgb, var(--element, #f7d780) 55%, transparent),
+    0 6px 24px #000d;
+}
+#arena-overlay.is-countdown .countdown-card > div {
+  margin: 0;
+  color: #eaf1ff;
+  font-size: calc(16px * var(--text-scale, 1));
+  font-weight: 700;
+  text-shadow: 0 2px 10px #000e;
 }
