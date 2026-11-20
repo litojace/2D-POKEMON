@@ -65,7 +65,8 @@ describe("AI bot", () => {
     const games = 16;
     for (let i = 0; i < games; i++) {
       const f = fighters[i % fighters.length],
-        g = fighters[(i + 2 + Math.floor(i / fighters.length)) % fighters.length];
+        g =
+          fighters[(i + 2 + Math.floor(i / fighters.length)) % fighters.length];
       if (botVsBot("hard", "easy", f, g, 20 + i).winner === "A") hardWins++;
       if (botVsBot("easy", "normal", f, g, 40 + i).winner === "B") normalWins++;
     }
@@ -75,6 +76,19 @@ describe("AI bot", () => {
       BOT_PROFILES.hard.reaction,
     );
     // 32 full bot matches: well past vitest's 10s default on slow runners.
+  }, 60_000);
+  it("beats the level below with the same champion (Pyranda, once a coin flip)", () => {
+    // With Normal's old daze (standing still), Easy Pyranda beat Normal
+    // Pyranda 85% of the time. Easy is never dazed now and Normal only
+    // lapses (it keeps moving), so the order holds for every champion.
+    let normalWins = 0;
+    for (let i = 0; i < 8; i++) {
+      const [a, b] =
+        i % 2 ? (["easy", "normal"] as const) : (["normal", "easy"] as const);
+      const arena = botVsBot(a, b, "pyranda", "pyranda", 60 + i);
+      if (arena.winner === (a === "normal" ? "A" : "B")) normalWins++;
+    }
+    expect(normalWins).toBeGreaterThanOrEqual(6);
   }, 60_000);
   it("hunts down and beats a player who stands still", () => {
     const arena = new Arena("still");

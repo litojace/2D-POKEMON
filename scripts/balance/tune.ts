@@ -7,6 +7,8 @@
  *   --out <dir>        where round files go (default balance-out/, gitignored)
  *   --start <file>     starting factors JSON (default: all 1)
  *   --shards <n>       parallel processes per difficulty (default 4)
+ *   --levels <a,b>     bot levels to average (default hard,normal); the
+ *                      balance-only "expert" bot is allowed here
  *   --only <a,b,...>   tune only these champions; the rest keep their
  *                      starting factors, and only pairings with one of these
  *                      are played (adding champions to a tuned roster)
@@ -41,6 +43,10 @@ const out = opt("--out") ?? "balance-out";
 const shards = +(opt("--shards") ?? 4);
 const start = opt("--start");
 const only = opt("--only")?.split(",");
+const levels = (opt("--levels") ?? "hard,normal").split(",");
+for (const l of levels)
+  if (!["easy", "normal", "hard", "expert"].includes(l))
+    throw new Error(`unknown bot level ${l}`);
 mkdirSync(out, { recursive: true });
 
 // A factor moves at most 10% a round, half the distance from 50%.
@@ -67,7 +73,7 @@ for (let r = 0; r < rounds; r++) {
   writeFileSync(file, JSON.stringify(factors));
   used.push(factors);
   const rates: Record<string, Record<string, number>> = {};
-  for (const diff of ["hard", "normal"]) {
+  for (const diff of levels) {
     const parts = [...Array(shards).keys()].map((s) =>
       join(out, `r-${r}-${diff}-${s}.json`),
     );
@@ -104,7 +110,8 @@ for (let r = 0; r < rounds; r++) {
       ).toFixed(1);
   }
   const next: Record<string, number> = {};
-  const avg = (id: string) => (rates[id].hard + rates[id].normal) / 2;
+  const avg = (id: string) =>
+    levels.reduce((sum, l) => sum + rates[id][l], 0) / levels.length;
   for (const id of Object.keys(rates)) {
     if (only && !only.includes(id)) {
       next[id] = factors[id] ?? 1;
@@ -126,7 +133,7 @@ for (let r = 0; r < rounds; r++) {
   );
   for (const id of Object.keys(rates).sort((a, b) => avg(b) - avg(a)))
     console.log(
-      `  ${id.padEnd(10)} ${avg(id).toFixed(1)}%  (hard ${rates[id].hard}, normal ${rates[id].normal})`,
+      `  ${id.padEnd(10)} ${avg(id).toFixed(1)}%  (${levels.map((l) => `${l} ${rates[id][l]}`).join(", ")})`,
     );
   factors = next;
   ids = Object.keys(rates);
