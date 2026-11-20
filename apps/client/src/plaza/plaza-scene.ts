@@ -5053,6 +5053,7 @@ export function openPlaza(options) {
         peak: { ...fireworks.peak },
         cost: { ...fwCost },
         box: fireworks.bounds(),
+        centres: fireworks.centres(),
       }),
       SPOTS,
       /** The photo album's store (tests fill it). */
