@@ -102,6 +102,15 @@ interface ProfileDrawing {
   ) => string;
 }
 
+/**
+ * Champions that hold something in the near paw (Astrabun's mallet): seen
+ * from behind, that paw is on the viewer's left, as it is on the right from
+ * the front. Their rear arms are drawn mirrored (creatureLayers), their
+ * shoulder joints swap sides here and the rig mirrors their arm poses, so
+ * every move reads the same from behind.
+ */
+export const REAR_ARMS_MIRRORED: ReadonlySet<CharacterId> = new Set<CharacterId>(["astrabun"]);
+
 /** Authored joints, before the same cute-proportion transform as the front art. */
 export function profilePivot(
   id: CharacterId,
@@ -128,6 +137,10 @@ export function profilePivot(
         wings:
           id === "auralynx" ? [100, 115] : [116, id === "terradon" ? 134 : 126],
       };
+  if (rear && REAR_ARMS_MIRRORED.has(id)) {
+    points.armL = [128, 122];
+    points.armR = [72, 122];
+  }
   const point = points[part];
   return point && [dir === "right" ? 200 - point[0] : point[0], point[1]];
 }
