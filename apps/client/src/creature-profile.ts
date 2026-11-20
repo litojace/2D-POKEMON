@@ -11,6 +11,7 @@ export const PROFILE_FACE_PARTS: CreaturePart[] = [
   "ears",
   "eyes",
   "flame",
+  "hat",
 ];
 /** The drawing, texture bounds and particle landmarks share this side-head width. */
 export function profileArtX(dir: string, part: CreaturePart, x: number) {
@@ -82,9 +83,11 @@ export function profilePartOrder(
       ...face.filter((p) => p !== "flame"),
       "wings",
       "flame",
+      "hat",
       "scarf",
     ];
-  return [...lower, ...face, "scarf"];
+  // A skin's headwear on an animated crest rides the head, over the face.
+  return [...lower, ...face, "hat", "scarf"];
 }
 interface ProfileDrawing {
   palette: Palette;
@@ -257,6 +260,7 @@ export function creatureProfile(
     eyes: back ? "" : eyes(),
     scarf: "",
     flame: "",
+    hat: "",
   };
   const wingSpot = (x: number, y: number, rx = 9, ry = 11) =>
     e(x, y, rx, ry, p.light) +

@@ -322,14 +322,15 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
         k.put("body", k.path(`M${k.C - k.W - 4} ${k.T + 2}L${k.C - k.W - 8} ${k.B + 8}L${k.C - k.W + 2} ${k.B}Z M${k.C + k.W + 4} ${k.T + 2}L${k.C + k.W + 8} ${k.B + 8}L${k.C + k.W - 2} ${k.B}Z`, "#ff8a3a", k.ink, 0.9), true);
         k.put("body", torso(k, suit, k.line(`M${k.L} ${k.B - 9}H${k.R}`, sun, 2) + k.lume("pulse", sunEm(c, k.T + 15, 6), 0, sun)));
       }
-      // A ring of light round the orange on the head, its rays running.
+      // A ring of light round the orange on the head, its rays running. It
+      // is part of the solar core, so it rocks with the orange (data-crest).
       const ox = k.hx + k.side * 2,
         oy = k.ht - 12;
-      k.put("flame", `<circle cx="${ox}" cy="${oy}" r="17" fill="none" stroke="#ffb347" stroke-width="2"/>` +
+      k.put("flame", `<g data-crest="1"><circle cx="${ox}" cy="${oy}" r="17" fill="none" stroke="#ffb347" stroke-width="2"/>` +
         Array.from({ length: 8 }, (_, i) => {
           const a = (i / 8) * Math.PI * 2;
           return k.lume("chase", k.line(`M${ox + Math.cos(a) * 20} ${oy + Math.sin(a) * 20}L${ox + Math.cos(a) * 25} ${oy + Math.sin(a) * 25}`, sun, 1.8), i, sun);
-        }).join(""));
+        }).join("") + "</g>");
     },
   },
 

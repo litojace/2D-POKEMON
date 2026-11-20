@@ -442,6 +442,22 @@ more than at battle size; plumes, crests, masks, badges and redrawn props
 read in play. `costume-fit.spec.ts` keeps all of it inside the rig's crops
 and off the eyes.
 
+## Headwear over an animated crest
+
+Cindrake's flame flickers in the rig (its whole head-top layer scales in
+and out, and swells on attacks), Terradon's sapling sways and Sunbara's
+yuzu rocks. A costume's pieces on that layer used to move with the crest:
+a pirate bandana pulsing with the flame, a lantern at the hip swinging with
+it. For these champions (`ANIMATED_CRESTS` in `creature-design.ts`) a
+skin's pieces on the head-top layer go on a `hat` layer instead, which
+rides the head rigidly (no flicker, sway, spring or attack swell) and is
+drawn over the face in profile. A piece that is the crest itself (the flame
+the Cinder Buccaneer redraws, the ring round Solar Flare's orange) is
+marked `data-crest` and stays on the crest's layer, animating with it.
+Only these three champions load a hat texture (`partsFor` in
+`animation/assets.ts`). Hip pieces never go on a head layer: the Cinder
+Buccaneer's lantern rides the torso on the scarf layer.
+
 ## Body colours
 
 Every Legendary and modern Epic collection (Nova Vanguard, Sky Pirates,
