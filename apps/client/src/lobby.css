@@ -149,17 +149,25 @@
   height: 20px;
   padding: 0 5px;
   border-radius: 999px;
-  background: var(--ui-danger);
+  /* Glossy like the rail's glass: a light top, a thin dark ring that
+     parts it from the icon (owner, 20 Nov: the flat blue looked unstyled
+     and the 2 px ring heavy). Red still means someone waits on you. */
+  background: linear-gradient(180deg, #ff7486, var(--ui-danger) 55%, #d33a4e);
   color: #fff;
   font:
     800 calc(11px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   font-style: normal;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 0 2px #0b1020;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 0 0 1.5px rgba(11, 16, 32, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.35);
 }
+/* Things left to do (today's missions): blue, not an alarm. */
 .lobby-badge.is-count {
-  background: #3f6fd0;
+  background: linear-gradient(180deg, #78aaff, #3f7ef2 55%, #2c5fd4);
 }
 .lobby-badge[hidden] {
   display: none;
@@ -1001,7 +1009,37 @@
   padding: 0;
   top: -4px;
   left: calc(100% - 4px);
-  background: #a78bff;
+  background: radial-gradient(circle at 35% 30%, #efe8ff, #b69cff 45%, #8a63f5);
+  box-shadow:
+    0 0 0 1.5px rgba(11, 16, 32, 0.9),
+    0 0 6px rgba(170, 120, 255, 0.6);
+}
+/* Something new: a halo pings out three times when the dot appears, then
+   it rests with its glow. Transform and opacity only (no repaint). */
+.lobby-badge.is-new::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  box-shadow: 0 0 5px 2px rgba(180, 140, 255, 0.8);
+  opacity: 0;
+  pointer-events: none;
+  animation: lobby-badge-ping 1.4s ease-out 0.3s 3;
+}
+@keyframes lobby-badge-ping {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-badge.is-new::after {
+    animation: none;
+  }
 }
 .lobby-spark {
   color: #ffe39d !important;
