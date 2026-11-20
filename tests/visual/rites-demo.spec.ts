@@ -68,6 +68,28 @@ for (const look of LOOKS)
         }, OFFERS);
         await expect(page.locator("[data-raid-rite]")).toHaveCount(6);
         await page.waitForTimeout(600);
+        // The shade really covers the screen (a look's rule could lose to
+        // another on specificity and leave the arena uncovered).
+        if (look !== "current")
+          expect(
+            await page.evaluate(() => {
+              const ov = document.getElementById("arena-overlay")!;
+              const r = ov.getBoundingClientRect();
+              return [
+                getComputedStyle(ov).backgroundColor,
+                r.left,
+                r.top,
+                r.width,
+                r.height,
+              ];
+            }),
+          ).toEqual([
+            look === "a" ? "rgba(7, 18, 37, 0.65)" : expect.any(String),
+            0,
+            0,
+            size.width,
+            size.height,
+          ]);
         await snap(page, info, `${look}-${size.name}`);
         if (size.name === "844x390") {
           // One rite picked: it stays in place, checked.

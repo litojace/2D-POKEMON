@@ -38,3 +38,13 @@ The owner meant the countdown's navy shade, not a grey arena: the grey
 filter is gone, and A uses exactly the countdown's shade (the same radial
 navy gradient as `#arena-overlay.is-countdown`). Everything else is as in
 round two.
+
+## A, fourth round (`a-v4/`)
+
+The middle of the map looked uncovered because no shade was drawn at all:
+the overlay's base rule set a transparent background and, being more
+specific, beat every look's shade (in all earlier demo images, A, B and C
+alike; round two only looked darker because of the grey filter). Fixed, and
+A's shade is now one even navy over the whole screen (65%, the countdown's
+edge strength) rather than the countdown's lighter middle. The demo spec
+now checks the overlay's colour and that it covers the screen.

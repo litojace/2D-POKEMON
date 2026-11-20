@@ -17,7 +17,8 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
   z-index: 80;
   display: block;
   padding: 0;
-  background: transparent;
+  /* No background here: each look's shade sets it (a background on this
+     more specific rule would beat theirs). */
   overflow: hidden;
   pointer-events: auto;
 }
@@ -448,14 +449,12 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
    number at the top, six tall rite tiles in a 3 × 2 grid filling the
    middle, the arena showing round them under the countdown's shade.
    ================================================================ */
-/* The countdown's own shade (style.css, .is-countdown): the same navy, the
-   same see-through middle. */
+/* The countdown's navy, but even across the screen: the countdown's shade
+   is lighter in the middle (30%, for its number over the fighters), which
+   left the court between the tiles bright. 65%: the countdown's edge, and
+   about what the old card's touch shade was (#071225a8). */
 #arena-overlay#arena-overlay.is-rites[data-look="a"]:not(:empty) {
-  background: radial-gradient(
-    ellipse 60% 70% at 50% 50%,
-    #0712254d,
-    #07122599 100%
-  );
+  background: #071225a6;
 }
 #arena-overlay#arena-overlay.is-rites[data-look="a"] .rites-screen {
   grid-template-rows: auto minmax(0, 1fr) auto;
