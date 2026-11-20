@@ -1771,8 +1771,11 @@ export class AccountUI {
     if (q.player) params.set("player", q.player);
     if (q.at) params.set("at", q.at);
     if (q.id) params.set("id", q.id);
+    const path = `/api/matches/history?${params}`;
+    // The first page is kept like the card's other records, so the card
+    // opened again shows it at once without asking (until records change).
     return matchHistorySchema.parse(
-      await this.api(`/api/matches/history?${params}`),
+      await (q.at ? this.api(path) : this.fetchCopy(path)),
     );
   }
   private isFriend(id: string) {

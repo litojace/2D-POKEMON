@@ -69,7 +69,12 @@ const PANELS: Panel[] = [
   {
     name: "profile",
     open: (page) => page.click("#account-profile"),
-    asks: ["/api/progress", "/api/raids", "/api/account/name"],
+    asks: [
+      "/api/progress",
+      "/api/raids",
+      "/api/account/name",
+      "/api/matches/history",
+    ],
   },
   {
     name: "raids",
