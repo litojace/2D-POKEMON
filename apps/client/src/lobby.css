@@ -1424,6 +1424,24 @@
     gap: 2px;
     border-radius: 20px;
   }
+  /* Two buttons a row leave no room right of the icon: the badge rides
+     just above it and grows to the left, so it ends at its own button's
+     edge (inside the capsule, clear of the neighbour's icon). */
+  .lobby-rail .lobby-badge {
+    top: -10px;
+    left: auto;
+    right: -7px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+  }
+  .lobby-rail .lobby-badge.is-new {
+    top: -4px;
+    right: -5px;
+    min-width: 12px;
+    height: 12px;
+    padding: 0;
+  }
 }
 /* Narrow phones: the stage needs the room the side cards take. */
 @media (max-width: 760px) {
