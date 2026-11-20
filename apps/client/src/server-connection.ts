@@ -34,6 +34,8 @@ let held: { floor: number; message: string } | undefined;
 /** The bar never moves backwards while the curtain is held. */
 let shownProgress = 0;
 let leaving: ReturnType<typeof setTimeout> | undefined;
+/** Held again over a screen already showing: the curtain fades in. */
+let entering = false;
 
 /**
  * The status line: each new status replaces the last with a short
@@ -204,6 +206,8 @@ function renderStatus() {
       .then(() => shell.classList.add("has-backdrop"))
       .catch(() => shell.classList.add("has-backdrop"));
     panel.querySelector("button")!.onclick = () => retry?.();
+    if (entering) panel.classList.add("is-entering");
+    entering = false;
     document.body.append(panel);
   }
   const copy = {
@@ -228,7 +232,11 @@ function renderStatus() {
  * Cover the game from its first frame until releaseStartupCurtain(). Call
  * once, at startup, before anything is shown.
  */
-export function holdStartupCurtain(message = "Connecting to the game server…") {
+export function holdStartupCurtain(
+  message = "Connecting to the game server…",
+  again = false,
+) {
+  entering = again;
   held = { floor: 0.04, message };
   shownProgress = 0;
   clearTimeout(reveal);

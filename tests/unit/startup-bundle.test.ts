@@ -33,7 +33,8 @@ describe("startup bundle", () => {
           "m",
         ),
       );
-      expect(accounts).toContain(`await import("./screens/${screen}")`);
+      // Loaded when it opens (or just before, accounts.ts loadRaids).
+      expect(accounts).toContain(`import("./screens/${screen}")`);
     }
   });
 });

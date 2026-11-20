@@ -32,6 +32,11 @@ export interface HubPanelOptions {
    * while you are in the room; Escape goes back up a level there).
    */
   escape?: () => void;
+  /**
+   * Already on screen, as far as the player is concerned: no slide in (back
+   * from a fight to the screen it was started from, docs/loading-screens.md).
+   */
+  instant?: boolean;
 }
 export interface HubPanel {
   root: HTMLElement;
@@ -263,13 +268,15 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
   root.focus({ preventScroll: true });
   // In from the rail: a sheet slides further, a panel also grows a touch;
   // then its contents arrive one after another.
-  enter(root, {
-    opacity: 0,
-    transform: root.classList.contains("ui-sheet")
-      ? "translateX(-36px)"
-      : "translateX(-24px) scale(.985)",
-  });
-  stagger(items(root));
+  if (!o.instant) {
+    enter(root, {
+      opacity: 0,
+      transform: root.classList.contains("ui-sheet")
+        ? "translateX(-36px)"
+        : "translateX(-24px) scale(.985)",
+    });
+    stagger(items(root));
+  }
   const openedAt = performance.now();
 
   const panel: HubPanel = {
@@ -295,9 +302,11 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
       // like the screen's did.
       const now = items(root);
       // Screens often fill themselves in right after opening: the fresh
-      // contents keep arriving as the first ones were.
-      if (performance.now() - openedAt < 400) stagger(now);
-      else if (
+      // contents keep arriving as the first ones were (or, opened in place,
+      // are simply there).
+      if (performance.now() - openedAt < 400) {
+        if (!o.instant) stagger(now);
+      } else if (
         (tabs && selectedTabs(root) !== tabs) ||
         (had <= 1 && now.length > 2)
       )

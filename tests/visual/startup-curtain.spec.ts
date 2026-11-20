@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { snap } from "./helpers";
+import { openHub, snap } from "./helpers";
 
 /**
  * The startup curtain (docs/loading-screens.md): one loading screen covers
@@ -32,26 +32,28 @@ window.fetch = async (input, init) => {
  * Every frame from the start: what an uncovered hub showed (the curtain
  * gone or fading). A covered frame is not recorded.
  */
-async function watchUncoveredHub(page: Page) {
-  await page.addInitScript(() => {
-    const w = window as any;
-    w.__uncovered = [];
-    const sample = () => {
-      const curtain = document.getElementById("server-startup");
-      const covered =
-        !!document.getElementById("app-boot") ||
-        (!!curtain && !curtain.classList.contains("is-leaving"));
-      const name = document.getElementById("lobby-fighter-name");
-      if (!covered && name && !document.body.classList.contains("gate-active"))
-        w.__uncovered.push({
-          name: name.textContent,
-          coins: !!document.querySelector("#account-coins > *"),
-          signedIn: !!document.querySelector("#account-profile"),
-        });
-      requestAnimationFrame(sample);
-    };
+function sampleUncoveredHub() {
+  const w = window as any;
+  w.__uncovered = [];
+  const sample = () => {
+    const curtain = document.getElementById("server-startup");
+    const covered =
+      !!document.getElementById("app-boot") ||
+      (!!curtain && !curtain.classList.contains("is-leaving"));
+    const name = document.getElementById("lobby-fighter-name");
+    if (!covered && name && !document.body.classList.contains("gate-active"))
+      w.__uncovered.push({
+        name: name.textContent,
+        coins: !!document.querySelector("#account-coins > *"),
+        signedIn: !!document.querySelector("#account-profile"),
+      });
     requestAnimationFrame(sample);
-  });
+  };
+  requestAnimationFrame(sample);
+}
+async function watchUncoveredHub(page: Page, now = false) {
+  if (now) await page.evaluate(sampleUncoveredHub);
+  else await page.addInitScript(sampleUncoveredHub);
 }
 
 async function connectUntilUncovered(page: Page) {
@@ -606,4 +608,91 @@ test("a first start (no painting chosen yet) shows the starfield", async ({
       timeout: 10_000,
     })
     .toBe("duel-eclipse");
+});
+
+/** Every frame: the front door on screen with no curtain over it. */
+async function watchUncoveredGate(page: Page) {
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__gateSeen = 0;
+    const sample = () => {
+      const curtain = document.getElementById("server-startup");
+      const covered = !!curtain && !curtain.classList.contains("is-leaving");
+      if (!covered && document.body.classList.contains("gate-active"))
+        w.__gateSeen++;
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+}
+
+test("a dropped hub connection is covered until the Lobby is back", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  const errors = await openHub(page);
+  await watchUncoveredGate(page);
+  // The app back from the background with its connection gone, say.
+  await page.evaluate(() => {
+    const s = (window as any).__sock;
+    s.connected = false;
+    s.id = undefined;
+    s.fire("disconnect", "transport close");
+  });
+  const curtain = page.locator("#server-startup");
+  await expect(curtain).toBeVisible();
+  await expect(curtain).toHaveClass(/is-entering/);
+  await expect(page.locator("body")).toHaveClass(/gate-active/);
+  await snap(page, info, "curtain-reconnecting-844x390");
+  await page.evaluate(() => {
+    const s = (window as any).__sock;
+    s.connected = true;
+    s.id = "back";
+  });
+  await connectUntilUncovered(page);
+  await expect(page.locator("#lobby-play")).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__gateSeen)).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test("logging in from the front door is covered until the Lobby is complete", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    const marker = 'window.dispatchEvent(new Event("arena:ready"));';
+    expect(body).toContain(marker);
+    await route.fulfill({
+      response,
+      body: body.replace(marker, "window.__account=accountsUI;" + marker),
+    });
+  });
+  const errors = await openHub(page);
+  // Logged out: the front door, with no curtain over it.
+  await page.evaluate(async () => {
+    const w = window as any;
+    w.__session = w.__account.session;
+    await w.__account.setSession(null);
+  });
+  await expect(page.locator(".welcome-gate")).toBeVisible();
+  await expect(page.locator("#server-startup")).toHaveCount(0);
+  await watchUncoveredHub(page, true);
+  // Logged in again (as this account or another): the curtain until the
+  // Lobby is drawn with the profile.
+  await page.evaluate(() => {
+    const w = window as any;
+    void w.__account.setSession(w.__session);
+  });
+  await expect(page.locator("#server-startup")).toBeVisible();
+  await snap(page, info, "curtain-login-844x390");
+  await connectUntilUncovered(page);
+  await expect(page.locator("#lobby-play")).toBeVisible();
+  const seen = (await page.evaluate(() => (window as any).__uncovered)) as {
+    signedIn: boolean;
+  }[];
+  expect(seen.length).toBeGreaterThan(0);
+  for (const frame of seen) expect(frame.signedIn).toBe(true);
+  expect(errors).toEqual([]);
 });

@@ -15810,6 +15810,28 @@ body.battle-active:not(.touch-mode)
 /* (main.ts marks the overlay .is-reveal with the markup, in one step: a
    :has(> .match-reveal) rule here could apply a frame late in Safari, and
    the arena showed before the Reveal on the owner's iPhone.) */
+/* Solo test mode's cover while the arena loads (main.ts practiceLoading):
+   the whole screen, like the Reveal, a bar in the middle. */
+body.battle-active #arena-overlay.is-practice-loading:not(:empty) {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: max(20px, var(--safe-top, 0px)) max(32px, var(--safe-right, 0px))
+    max(16px, var(--safe-bottom, 0px)) max(32px, var(--safe-left, 0px));
+  background: #070d1f;
+}
+.practice-loading {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: min(420px, 100%);
+}
+.practice-loading .rv-load {
+  width: 100%;
+  text-align: center;
+}
 body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
   /* The whole screen, as a loading screen: not a panel over the arena. */
   position: fixed;

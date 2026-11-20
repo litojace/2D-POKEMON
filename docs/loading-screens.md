@@ -110,9 +110,44 @@ after another and the saved fighter and avatar were not waited for at all.
 
 `tests/visual/startup-curtain.spec.ts` records every uncovered frame from
 the start and checks the hub is only ever seen complete, from the saved copy
-too, that a tip holds the curtain until read, the painting layout and the
+too, that the curtain never waits for a tip, the painting layout and the
 next painting chosen ahead; `tests/unit/loading-art.test.ts` checks the
 scenes' skins and that choices are even.
+
+## The other loading moments
+
+The same rule after startup: the player never watches a screen being put
+together, and no cover ever traps them.
+
+- **Logging in, another account, a dropped connection.** When the front
+  door would show "connecting" or "loading" (a log-in from the front door,
+  signing in as another account, the hub's connection lost, say when the
+  app comes back from the background), `renderGate` holds the same curtain
+  again (`startStartupCurtain(..., again)`): painting, tip and status line,
+  fading in over what was showing, lifted the same way once the Lobby is
+  complete, and capped the same way. A front-door screen that needs the
+  player (signed out, another device) lifts it at once.
+- **Raid and Spire briefings.** _I'm ready_ reads "Loading the arena · N%"
+  and waits, as the PvP Reveal does, until the battle engine, every
+  fighter's art and the boss's illustrated floor are in (`briefing-ready.ts`,
+  `arenaLoading` in main.ts, `scene.floorPending`); capped by
+  `ARENA_WAIT_MAX_MS`.
+- **Solo test mode.** It has no briefing, so a full-screen cover with the
+  same progress line stays over the court until the arena has loaded
+  (`#arena-overlay.is-practice-loading`).
+- **Back to Raids after a raid.** The Raids screen's code loads while the
+  server answers the leave (`AccountUI.loadRaids`), and the screen opens in
+  place (`openHubPanel({ instant })`), in the same frame as the Lobby:
+  never the bare Lobby first, nor the screen sliding in again.
+- **Your fighter after any battle.** The Lobby is built again, and its
+  live rig takes a moment: the still artwork stays hidden meanwhile (at
+  most `ARRIVE_MS`, then it shows, as on Low graphics), and the fighter fades
+  in once, already moving, instead of being swapped from still to live in
+  front of the player.
+
+`tests/visual/battle-cover.spec.ts` checks the briefing, Solo test mode, the
+return to Raids and the fighter frame by frame; `startup-curtain.spec.ts`
+checks the log-in and the dropped connection.
 
 ## Adding a tip
 

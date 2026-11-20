@@ -1191,13 +1191,31 @@ export class AccountUI {
    * opens at once with what is known, then shows the server's fresh copy of
    * your raid records and your friends.
    */
-  async showRaids(boss?: RaidBossId, tab?: RaidTab, spire?: SpireTab) {
+  private raidHall?: typeof import("./screens/raid-hall");
+  /** The Raids screen's code, loaded ahead (leaving a raid room). */
+  loadRaids() {
+    return import("./screens/raid-hall").then((module) => {
+      this.raidHall = module;
+      return module;
+    });
+  }
+  /**
+   * `instant`: back from a fight to the screen it started from; it is drawn
+   * in place, with the Lobby, rather than sliding in over it.
+   */
+  async showRaids(
+    boss?: RaidBossId,
+    tab?: RaidTab,
+    spire?: SpireTab,
+    instant = false,
+  ) {
     if (!this.ensurePlayer()) return;
     this.toLobbyScreen();
     const accountId = this.account?.id;
     // The raid screens' code and styles load the first time they open, not
-    // with the game (a phone starts faster).
-    const { openRaids } = await import("./screens/raid-hall");
+    // with the game (a phone starts faster). Once loaded (or loaded ahead by
+    // loadRaids), the screen opens in this same moment.
+    const { openRaids } = this.raidHall ?? (await this.loadRaids());
     if (this.account?.id !== accountId) return;
     if (this.raidScreen?.isOpen) {
       if (spire) this.raidScreen.showSpire(spire);
@@ -1241,7 +1259,7 @@ export class AccountUI {
           onSpire: () => this.noteSpireSeen(),
           onClose: () => (this.raidScreen = undefined),
         },
-        { boss, tab, spire },
+        { boss, tab, spire, instant },
       );
     }
     const screen = this.raidScreen;

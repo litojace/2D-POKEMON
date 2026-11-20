@@ -4,6 +4,7 @@
  * raid rite flow and its "rite" message), the countdown, and the results.
  */
 import { CHARACTERS, type Fighter, type Snapshot } from "@arena/shared";
+import { readyButton, type ArenaLoad } from "./briefing-ready";
 import { RAID_ATTACKS } from "../../../packages/shared/src/raid";
 import {
   SPIRE_BLESSINGS,
@@ -130,7 +131,7 @@ let offered: {
  * The overlay for a climb in this phase: its title, body and actions (the
  * same ids and data attributes as a raid's, so raid-ui.ts binds them).
  */
-export function spireOverlay(state: Snapshot, me: Fighter) {
+export function spireOverlay(state: Snapshot, me: Fighter, arena?: ArenaLoad) {
   const r = state.raid!,
     s = r.spire!;
   const floor = SPIRE_FLOORS[s.floor];
@@ -149,12 +150,12 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
       : "Stand beside a fallen ally to revive them.";
     title = `Floor ${s.floor} · ${escape(ascendantOf(floor))}`;
     body = `<div class="rc-body spire-briefing spire-boss-briefing" tabindex="0" role="region" aria-label="Boss floor briefing"><p class="spire-lead">The top of ${escape(zoneOf(floor).name)}: ${escape(zoneOf(floor).bossLead)}</p>${ascendantNew(floor).length ? `<span class="ui-kicker">New attacks</span>${spireFloorPlan(floor)}` : ""}<ul class="spire-rules"><li>${menuIcon("motion")}<span><b>It reads you.</b> ${escape(zoneOf(floor).bossReads)}</span></li><li>${menuIcon("sparkle")}<span>Your <b>blessings</b> fight with you. You pick one more before the fight.</span></li><li>${menuIcon("again")}<span>${revive} A defeat ends the climb.</span></li></ul><details class="rc-extra" id="raid-briefing-extra"><summary>${escape(spirePossessive(sentence(zoneOf(floor).bossName)))} raid, step by step</summary>${raidBriefingGuide(r.boss, me.character, solo)}</details></div>`;
-    acts = `<p class="ui-note rc-meta">Boss floor · starts in <span class="spire-briefing-timer">${LIVE_SECONDS}</span> · ${solo ? "Solo" : `${r.partySize} climbers`}</p>${actions(button(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : `I’m ready — fight ${ascendantOf(floor)}` } }))}`;
+    acts = `<p class="ui-note rc-meta">Boss floor · starts in <span class="spire-briefing-timer">${LIVE_SECONDS}</span> · ${solo ? "Solo" : `${r.partySize} climbers`}</p>${actions(readyButton(waiting, arena, "I’m ready", `I’m ready — fight ${ascendantOf(floor)}`))}`;
   } else if (state.phase === "briefing") {
     const waiting = state.instructionsReady.includes(me.id);
     title = `Floor ${s.floor} · ${escape(floor?.name ?? "The Spire")}`;
     body = `<div class="rc-body spire-briefing" tabindex="0" role="region" aria-label="Floor briefing"><p class="spire-lead">Echoes are shadow copies of the champions, with their whole kits. Read their wind-ups as you would in a match, and beat every wave to open the stairs.</p>${spireFloorPlan(floor)}<ul class="spire-rules"><li>${menuIcon("sparkle")}<span>After each floor you pick a <b>blessing</b>. They stack until the climb ends.</span></li><li>${menuIcon("save")}<span>Every floor you clear is <b>saved at once</b>, with its first-clear reward.</span></li><li>${menuIcon("again")}<span>${r.partySize > 1 ? "Stand beside a fallen ally to revive them." : "One self-revive on each floor."} A defeat ends the climb; you start again from floor ${spireStartCheckpoint(s.startFloor, s.ceiling)}.</span></li></ul></div>`;
-    acts = `<p class="ui-note rc-meta">Climbing from floor ${s.startFloor} · ${r.partySize === 1 ? "Solo" : `${r.partySize} climbers`}</p>${actions(button(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : "I’m ready — start the climb" } }))}`;
+    acts = `<p class="ui-note rc-meta">Climbing from floor ${s.startFloor} · ${r.partySize === 1 ? "Solo" : `${r.partySize} climbers`}</p>${actions(readyButton(waiting, arena, "I’m ready", "I’m ready — start the climb"))}`;
   } else if (state.phase === "intermission") {
     const offers = s.offers[me.id] ?? [];
     const mine = s.blessings[me.id] ?? {};

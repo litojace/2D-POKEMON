@@ -61,6 +61,9 @@ const STEPS: Record<
   connecting: [0.72, "Entering Elemental Plaza…"],
 };
 
+/** The startup curtain has been started (later ones are covers again). */
+let startedOnce = false;
+
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -102,13 +105,22 @@ export async function sceneSettled(limit = SCENE_SETTLE_MS) {
  * Cover the game from its first frame until its first screen is complete,
  * the way big mobile games hold their splash until the account, the
  * player's look and the home screen's art are in. `stage` is asked every
- * 100 ms while the curtain is up (startup only).
+ * 100 ms while the curtain is up. `again`: the game is already running (a
+ * log-in from the front door, another account, the hub's connection back
+ * after a drop), and the same curtain covers the way back in.
  */
 export function startStartupCurtain(
   stage: () => StartupStage,
   settle: () => Promise<void> = () => sceneSettled(),
+  again = false,
 ) {
-  holdStartupCurtain();
+  // Later covers (a log-in, another account, a dropped hub connection) use
+  // the same curtain, fading in over what was showing.
+  // Not before the startup one (the first screens are drawn before it is
+  // started), and never twice at once.
+  if (again && (!startedOnce || curtainHeld())) return;
+  startedOnce = true;
+  holdStartupCurtain(undefined, again);
   // The painting the last start chose and downloaded (none on a first start:
   // the starfield), and a tip that suits its mode.
   const art = artForThisStart();

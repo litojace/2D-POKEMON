@@ -420,10 +420,23 @@
   opacity: 0;
   pointer-events: none;
 }
+/* Held again later (a log-in, a dropped connection): it fades in over the
+   screen that was showing rather than popping in. */
+.server-startup.is-entering {
+  animation: server-startup-in 200ms ease-out both;
+}
+@keyframes server-startup-in {
+  from {
+    opacity: 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .server-startup,
   .server-startup::before {
     transition: none;
+  }
+  .server-startup.is-entering {
+    animation: none;
   }
 }
 /* A gameplay tip under the bar while the startup curtain is held
