@@ -99,3 +99,32 @@ export const CAMPUS_TINTS: Record<CharacterId, Tint> = {
   pangrove: T(40, 0.7, -0.02), // Band Drummer: brass gold
   mossloth: T(150, 0.45, 0.1), // Nap Club Captain: pastel mint
 };
+
+/**
+ * Abyssal Expedition: one dive team, a sea of its own for every diver. The
+ * body takes a deep-water hue (lantern-fish blue, kelp green, vent coral,
+ * abyssal violet...) instead of one teal for all eighteen, and the suit's
+ * stripes, tank bands and gauge pips take the diver's team colour, so the
+ * divers tell apart at battle size. The suit cloth and brass stay shared.
+ */
+export const ABYSSAL_TEAM: Record<CharacterId, { hue: number; team: string }> =
+  {
+    voltkit: { hue: 198, team: "#ffd23f" }, // Arc Diver: lantern-fish blue, signal yellow
+    cindrake: { hue: 8, team: "#ffb347" }, // vent crab red, magma orange
+    tidefin: { hue: 182, team: "#ff7a59" }, // reef teal, coral
+    auralynx: { hue: 246, team: "#8ff5e6" }, // anglerfish indigo, lure aqua
+    lumoth: { hue: 166, team: "#fff17a" }, // glow-plankton green, pale light
+    mystowl: { hue: 220, team: "#ffb02e" }, // Sonar Owl: cobalt, sonar amber
+    terradon: { hue: 150, team: "#ff7a59" }, // Reef Bastion: kelp green, coral
+    duskveil: { hue: 268, team: "#7dffb0" }, // abyssal violet, ghost-light green
+    coilemur: { hue: 204, team: "#ffd23f" }, // steel blue, warning yellow
+    pyranda: { hue: 18, team: "#fff3c4" }, // Coral Rescuer: rescue coral, cream
+    glacelle: { hue: 190, team: "#ff6fae" }, // ice-water teal, jelly pink
+    halcyra: { hue: 212, team: "#ff9a2e" }, // open-sea blue, flare orange
+    sunbara: { hue: 30, team: "#e8443a" }, // Buoy Captain: buoy amber, buoy red
+    astrabun: { hue: 234, team: "#ffd23f" }, // midnight-zone indigo, star yellow
+    wombolder: { hue: 158, team: "#ff9a2e" }, // sea-grass green, hazard orange
+    shadopus: { hue: 176, team: "#ffb02e" }, // Nautilus Captain: deep teal, brass light
+    pangrove: { hue: 136, team: "#ffd23f" }, // kelp-forest green, sun yellow
+    mossloth: { hue: 350, team: "#8ff5e6" }, // Coral Keeper: coral pink, aqua
+  };

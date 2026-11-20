@@ -10,7 +10,9 @@ import type { ModernTheme } from "./modern-fashion";
  * a design per champion drawn after the costume's own, on the same parts.
  */
 export type Details = Partial<Record<CharacterId, Design>>;
-export function legendDetails(theme: ModernTheme, table: Details) {
+/** Draws each champion's extra pieces after its design in a collection
+ * (Legendary details here; Epic signature props in epic-props.ts). */
+export function addDetails(theme: ModernTheme, table: Details) {
   const designs = (DESIGNS[theme] ??= {});
   for (const [id, extra] of Object.entries(table) as [CharacterId, Design][]) {
     const own = designs[id];
@@ -20,6 +22,7 @@ export function legendDetails(theme: ModernTheme, table: Details) {
     };
   }
 }
+export const legendDetails = addDetails;
 
 /**
  * Where Astrabun's mallet head sits on its arm part in each view (measured

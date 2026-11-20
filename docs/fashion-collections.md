@@ -30,7 +30,7 @@ draw anatomy with them.
 | Wayfarer | Honey and russet | Field green, cream |
 | Moonlit Tea | Blossom pink | Indigo silk (matcha on bulky champions) |
 | Astral Court | Midnight indigo | Near-black velvet, gold trim, pale-blue glow |
-| Abyssal Expedition | Deep-water teal | Pressure suit, aqua glow |
+| Abyssal Expedition | A deep-water hue per diver (`ABYSSAL_TEAM`) | Pressure suit, aqua glow, the diver's team colour |
 
 Rare coats replace the default scarf or towel, as Epic suits do.
 `fashion-collections.test.ts` checks that the three Rares differ for every
@@ -357,6 +357,82 @@ something that lights up (`modern-designs.ts` for five of them,
 
 A short confetti trail on a dash. Migration `20261118180000_neon_campus.sql`
 adds the skins and their set.
+
+## The Epic finish
+
+Epic (3,500) sits between Rare (1,500) and Legendary (5,500). Next to a Rare
+it now shows its price in the costume itself, in Epic's own language: cut
+cloth, colour of its own and a lit piece, never Legendary's marks (the aura,
+the gold rim and clasp, a two-tone body, a summoned motif).
+`epic-tailoring.test.ts` checks all of it.
+
+- **Tailored cloth** (`tailorFront` / `tailorBack` in `modern-designs.ts`,
+  for the Epic themes `campus`, `hero` and `kit`): light on the shoulders,
+  shade at the hem and the sides, princess or side seams, a stitched hem and
+  topstitching round the garment's edge in the cloth's own light. From
+  behind, a Hero Squad or Neon Campus back panel has sloped shoulders, a
+  curved hem and a collar, and the panel or cape gains a yoke seam, a
+  centre back seam and fold lines, so it reads as a jacket or a cape rather
+  than a flat block. A see-through piece (Deep Glow's jelly bell) is not
+  sewn.
+- **One sea per diver.** The Abyssal Expedition divers no longer share one
+  teal: each takes a deep-water hue (lantern-fish blue, kelp green, vent
+  red, abyssal violet...) and a team colour on its suit's stripes, tank
+  bands, gauge pips and helmet trim (`ABYSSAL_TEAM` in
+  `collection-colours.ts`), which its bubble trail also carries.
+- **No Epic is a recolour alone.** The eleven champions' own Epics that were
+  a palette and a pattern now wear a costume of their theme (`modern-kit.ts`,
+  accessory `modern-kit`), keeping their colours, pattern, trail and detail:
+
+| Champion | Epic | Costume, and what lights up |
+| --- | --- | --- |
+| Voltkit | Neon Arcade | A synthwave bomber jacket with a ribbed neon collar; cyan piping and a pixel heart; a striped sunset over a neon grid on the back; its goggles kept |
+| Tidefin | Glacier | A faceted ice breastplate and crystal pauldrons; a tiara of three ice spikes whose points glint |
+| Auralynx | Stained Glass | A tabard of leaded glass round a rose window lit from behind; a pointed-arch window on the back; a rose medallion between the ears |
+| Lumoth | Aurora | A night-blue robe with curtains of northern light rippling across it, a shawl collar; a crescent hairpin with a twinkling star |
+| Mystowl | Clockwork | A burgundy waistcoat with gear buttons, shirt and cravat, a pocket watch whose face is lit; a little top hat with a brass gear |
+| Terradon | Geode | A stone breastplate split open on glowing amethyst, amethyst on the shoulders, a geode bursting from the shell; its sprout kept |
+| Duskveil | Candlelight | A sealing-wax capelet dripping cream wax, a brass brooch and a candle burning on the shoulder |
+| Coilemur | Tesla Coil | A gunmetal harness with circuit traces lit in a run and a coil node; a copper-wound tesla coil on the back whose crown glows and sparks |
+| Pyranda | Fireside Knit | A chunky cream and cocoa scarf with fringed tails, a knitted beanie with a pompom |
+| Glacelle | Deep Glow | A frilled jelly collar and a bell cape trailing tendrils, dotted with twinkling lights; a jellyfish hairpin |
+| Halcyra | Paper Crane | A crimson origami tabard with a paper obi and a crane folded on its back; a paper crane at the side of the head |
+
+- **A signature prop per Hero Squad and Neon Campus skin** (`epic-props.ts`),
+  big enough to read at battle size and changing the outline, its lit part
+  in lume. The chibi head hides the shoulders from the front, so pieces sit
+  at the hand (`held`), spread beside the body below the head and out past
+  the line of the back in profile (`onBack`),
+  or on a shaft across the back with the head beside the face (`slung`):
+
+| Champion | Hero Squad prop | Neon Campus prop |
+| --- | --- | --- |
+| Voltkit | Lightning-bolt fins off the visor | An RGB gaming backpack, lit straps and side pockets |
+| Cindrake | A molten greatsword on the back | A great bubbling flask |
+| Tidefin | A golden trident, prongs lit | A striped swim ring round the waist |
+| Auralynx | Prism crystals rising off the back, beside the arms from the front | The school banner on a staff |
+| Lumoth | A lantern staff, a cold white flame in an iron frame | A big camera with a long lens, flash blinking |
+| Mystowl | A seer's staff with a crescent and star | A stack of books |
+| Terradon | A stone tower shield with lava cracks | The game ball |
+| Duskveil | Tattered night wings off the cape | A stage-red velvet cape with tassels |
+| Coilemur | A horseshoe magnet on the back, sparking | A robot buddy clipped at its side |
+| Pyranda | Twin chestnut boosters, nozzles burning | A strawberry layer cake, candle lit |
+| Glacelle | Wings of ice shards, fanning backward in profile | Its choir robe flaring into a bell |
+| Halcyra | A long red scarf streaming in the wind | A longbow on the back |
+| Sunbara | Tongues of fire at the cape's hem | A paint palette and brush, paint glowing |
+| Astrabun | Its mallet head a full moon | A brass telescope on the back |
+| Wombolder | A giant spanner on the back | A watering can |
+| Shadopus | A katana on the back | A giant magnifying glass |
+| Pangrove | Two great lit-veined leaves off the back | Drumsticks crossed on the back |
+| Mossloth | A great clock on the back, hands lit | A big striped pillow |
+
+Goggle and lens straps (Chestnut Comet, Lab Prodigy, Skysight) run round the
+head in every view (`headStrap`): in profile they stop at the head's edge,
+and from behind they cross the back of the head.
+
+Pieces sit on the body, scarf (back) and head-top parts in all four views and
+stay clear of the eyes (`costume-fit.spec.ts`). Cyber Mecha and the other
+seven champions' Epics, which already wore a costume piece, are unchanged.
 
 ## The Legendary finish
 
