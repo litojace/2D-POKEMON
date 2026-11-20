@@ -130,27 +130,44 @@
   letter-spacing: 0.02em;
   color: #c9d6ee;
 }
+/* The badge sits on the icon's top-right corner, not the button's: the
+   button is the rail's whole width, so its corner left a count floating
+   far from the icon it belongs to (owner, 20 Nov). */
+.lobby-rail-icon {
+  position: relative;
+  display: block;
+  line-height: 0;
+  font-style: normal;
+}
 .lobby-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -10px;
+  left: calc(100% - 6px);
   display: grid;
   place-items: center;
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
   border-radius: 999px;
-  background: var(--ui-danger);
+  /* Glossy like the rail's glass: a light top, a thin dark ring that
+     parts it from the icon (owner, 20 Nov: the flat blue looked unstyled
+     and the 2 px ring heavy). Red still means someone waits on you. */
+  background: linear-gradient(180deg, #ff7486, var(--ui-danger) 55%, #d33a4e);
   color: #fff;
   font:
     800 calc(11px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   font-style: normal;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 0 2px #0b1020;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 0 0 1.5px rgba(11, 16, 32, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.35);
 }
+/* Things left to do (today's missions): blue, not an alarm. */
 .lobby-badge.is-count {
-  background: #3f6fd0;
+  background: linear-gradient(180deg, #78aaff, #3f7ef2 55%, #2c5fd4);
 }
 .lobby-badge[hidden] {
   display: none;
@@ -1000,9 +1017,40 @@
   width: 12px;
   height: 12px;
   padding: 0;
-  top: -3px;
-  right: -3px;
-  background: #a78bff;
+  top: -4px;
+  left: calc(100% - 4px);
+  background: radial-gradient(circle at 35% 30%, #efe8ff, #b69cff 45%, #8a63f5);
+  box-shadow:
+    0 0 0 1.5px rgba(11, 16, 32, 0.9),
+    0 0 10px 3px rgba(185, 135, 255, 0.95);
+}
+/* Something new: a halo pings out three times when the dot appears, then
+   it rests with its glow. Transform and opacity only (no repaint). */
+.lobby-badge.is-new::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid rgba(214, 192, 255, 0.95);
+  box-shadow: 0 0 8px 3px rgba(180, 130, 255, 0.9);
+  opacity: 0;
+  pointer-events: none;
+  animation: lobby-badge-ping 1.4s ease-out 0.3s 3;
+}
+@keyframes lobby-badge-ping {
+  0% {
+    opacity: 1;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-badge.is-new::after {
+    animation: none;
+  }
 }
 .lobby-spark {
   color: #ffe39d !important;
@@ -1317,8 +1365,8 @@
     white-space: nowrap;
   }
   .lobby-badge {
-    top: -5px;
-    right: -5px;
+    top: -9px;
+    left: calc(100% - 5px);
     min-width: 16px;
     height: 16px;
     font-size: calc(9px * var(--text-scale, 1));
@@ -1424,6 +1472,24 @@
     align-content: start;
     gap: 2px;
     border-radius: 20px;
+  }
+  /* Two buttons a row leave no room right of the icon: the badge rides
+     just above it and grows to the left, so it ends at its own button's
+     edge (inside the capsule, clear of the neighbour's icon). */
+  .lobby-rail .lobby-badge {
+    top: -10px;
+    left: auto;
+    right: -7px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+  }
+  .lobby-rail .lobby-badge.is-new {
+    top: -4px;
+    right: -5px;
+    min-width: 12px;
+    height: 12px;
+    padding: 0;
   }
 }
 /* Narrow phones: the stage needs the room the side cards take. */

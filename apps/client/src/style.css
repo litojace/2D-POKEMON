@@ -1656,9 +1656,47 @@ body.battle-active.touch-mode {
 #pwa-banner[hidden] {
   display: none;
 }
+#pwa-banner .pwa-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
 #pwa-banner button {
-  margin-left: 12px;
+  min-height: 44px;
+  padding: 10px 16px;
   font-size: calc(11px * var(--text-scale, 1));
+}
+/* Landscape phones: one compact row, so the prompt leaves the hub's corners
+   (Quick Match, PLAY) clear. */
+@media (max-height: 500px) {
+  #pwa-banner:has(.pwa-actions:not([hidden])) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* Beside PLAY (about 192px wide with its margin), clear of the rail. */
+    --pwa-width: min(
+      380px,
+      100vw - 300px - var(--safe-left) - var(--safe-right)
+    );
+    width: var(--pwa-width);
+    left: auto;
+    right: max(
+      calc(50% - var(--pwa-width) / 2),
+      calc(var(--safe-right) + 204px)
+    );
+    transform: none;
+    bottom: calc(var(--safe-bottom) + 8px);
+    padding: 8px 10px;
+  }
+  #pwa-banner .pwa-actions {
+    flex: none;
+    margin-top: 0;
+    gap: 8px;
+  }
+  #pwa-banner button {
+    padding: 8px 12px;
+  }
 }
 .battle-active #pwa-banner {
   top: calc(var(--safe-top) + 4px);
