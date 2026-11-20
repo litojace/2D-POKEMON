@@ -368,21 +368,55 @@ for (const size of [
   });
 }
 
+/**
+ * Paintings in the game for this test (loading-art.ts lists only those whose
+ * picture is in the repository): stand-ins drawn from the game's own
+ * backgrounds, in the given scenes.
+ */
+async function withPaintings(page: Page, ids: string[]) {
+  const stand = [
+    "/assets/backgrounds/elemental-horizon.webp",
+    "/assets/backgrounds/plaza-night-voltkit.webp",
+  ];
+  await page.route(/\/loading-art\.ts(?:\?|$)/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    expect(body).toContain("export const LOADING_ART");
+    const add = ids
+      .map(
+        (id, i) =>
+          `LOADING_ART.push({ ...LOADING_SCENES.find((s) => s.id === ${JSON.stringify(id)}), src: ${JSON.stringify(stand[i % stand.length])} });`,
+      )
+      .join("\n");
+    await route.fulfill({ response, body: `${body}\n${add}` });
+  });
+}
+
 // index.html's boot screen is laid out as the curtain that replaces it: the
-// title, its divider and "Opening the arena…" stay exactly where they are.
-for (const tips of ["on", "off"])
+// title, its divider and "Opening the arena…" stay exactly where they are,
+// with or without a painting.
+for (const [tips, art] of [
+  ["on", ""],
+  ["off", ""],
+  ["on", "duel-storm-vs-forge"],
+] as const)
   for (const size of [
     { width: 844, height: 390 },
     { width: 844, height: 280 },
     { width: 1920, height: 1200 },
   ])
-    test(`the boot screen hands over without moving, tips ${tips}, ${size.width}x${size.height}`, async ({
+    test(`the boot screen hands over without moving, tips ${tips}${art ? ", painting" : ""}, ${size.width}x${size.height}`, async ({
       page,
     }) => {
       await page.setViewportSize(size);
-      await page.addInitScript((t) => {
-        localStorage.setItem("ea-loading-tips", t);
-      }, tips);
+      await page.addInitScript(
+        ([t, a]) => {
+          localStorage.setItem("ea-loading-tips", t);
+          if (a) localStorage.setItem("ea-next-art", a);
+        },
+        [tips, art],
+      );
+      if (art) await withPaintings(page, [art]);
       // Hold the game's code back to measure the boot screen alone.
       let release!: () => void;
       const held = new Promise<void>((resolve) => (release = resolve));
@@ -407,7 +441,9 @@ for (const tips of ["on", "off"])
         await at("#app-boot p"),
       ];
       release();
-      await page.waitForSelector("#server-startup .server-startup-brand h1");
+      await page.waitForSelector(
+        `#server-startup${art ? ".has-art" : ""} .server-startup-brand h1`,
+      );
       await page.evaluate(() => document.fonts.ready);
       expect([
         await at("#server-startup h1"),
@@ -415,3 +451,109 @@ for (const tips of ["on", "off"])
         await at("#server-startup .server-startup-loading h2"),
       ]).toEqual(boot);
     });
+
+for (const size of [
+  { width: 844, height: 390 },
+  { width: 568, height: 320 },
+  { width: 1440, height: 900 },
+])
+  test(`a painting behind the curtain, its tip in the right column, ${size.width}x${size.height}`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: size,
+      isMobile: size.width < 1000,
+      hasTouch: size.width < 1000,
+    });
+    try {
+      const page = await context.newPage();
+      await page.addInitScript(() => {
+        localStorage.setItem("ea-loading-tips", "on");
+        localStorage.setItem("ea-next-art", "teams-hon-viet");
+      });
+      await withPaintings(page, ["teams-hon-viet"]);
+      await page.goto("/");
+      const curtain = page.locator("#server-startup");
+      await expect(curtain).toHaveClass(/has-art/);
+      await expect(curtain).toHaveClass(/has-painting/);
+      await expect(curtain.locator(".server-startup-painting")).toHaveAttribute(
+        "src",
+        /elemental-horizon/,
+      );
+      // A 2v2 painting: a tip for 2v2 (or every mode), never the 1v1 one.
+      const tip = curtain.locator(".server-startup-scene .server-startup-tip");
+      await expect(tip).toBeVisible();
+      await expect(tip).not.toContainText("1v1");
+      await page.evaluate(() => document.fonts.ready);
+      const box = async (s: string) => (await page.locator(s).boundingBox())!;
+      const [title, tipBox, line, bar] = [
+        await box("#server-startup h1"),
+        await tip.boundingBox().then((b) => b!),
+        await box("#server-startup .server-startup-loading h2"),
+        await box("#server-startup .server-startup-progress"),
+      ];
+      for (const [name, r] of Object.entries({ title, tipBox, line, bar })) {
+        // In the right half, inside the screen.
+        expect(r.x, name).toBeGreaterThan(size.width * 0.4);
+        expect(r.x + r.width, name).toBeLessThanOrEqual(size.width);
+        expect(r.y + r.height, name).toBeLessThanOrEqual(size.height);
+      }
+      // Title, then the tip, then the line: nothing overlaps.
+      expect(title.y + title.height).toBeLessThanOrEqual(tipBox.y);
+      expect(tipBox.y + tipBox.height).toBeLessThanOrEqual(line.y);
+      await snap(page, info, `startup-painting-${size.width}x${size.height}`);
+    } finally {
+      await context.close();
+    }
+  });
+
+test("the next start's painting is chosen and downloaded once the game is up", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem("seeded")) {
+      sessionStorage.setItem("seeded", "1");
+      localStorage.setItem("ea-next-art", "duel-eclipse");
+    }
+  });
+  await withPaintings(page, ["duel-eclipse", "ffa-sky-pirates"]);
+  const asked: string[] = [];
+  page.on("request", (r) => asked.push(r.url()));
+  await page.goto("/");
+  await expect(page.locator("#server-startup")).toHaveClass(/has-art/);
+  await connectUntilUncovered(page);
+  // The other painting (never the same twice in a row), fetched ahead.
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("ea-next-art")), {
+      timeout: 10_000,
+    })
+    .toBe("ffa-sky-pirates");
+  await expect
+    .poll(() => asked.some((u) => u.includes("plaza-night-voltkit")))
+    .toBe(true);
+  // The next start shows it, from the first frame of the boot screen.
+  await page.reload();
+  await expect(page.locator("html")).toHaveClass(/boot-art/);
+  await expect(page.locator("#server-startup")).toHaveClass(/has-art/);
+  await expect(page.locator(".server-startup-painting")).toHaveAttribute(
+    "src",
+    /plaza-night-voltkit/,
+  );
+});
+
+test("a first start (no painting chosen yet) shows the starfield", async ({
+  page,
+}) => {
+  await withPaintings(page, ["duel-eclipse"]);
+  await page.goto("/");
+  const curtain = page.locator("#server-startup");
+  await expect(curtain).toBeVisible();
+  await expect(curtain).not.toHaveClass(/has-art/);
+  await expect(page.locator(".server-startup-painting")).toBeHidden();
+  await connectUntilUncovered(page);
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("ea-next-art")), {
+      timeout: 10_000,
+    })
+    .toBe("duel-eclipse");
+});

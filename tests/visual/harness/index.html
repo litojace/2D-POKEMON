@@ -183,6 +183,23 @@
       .boot-no-tips #app-boot .boot-tip {
         display: none;
       }
+      /* The painting layout (server-connection.css .has-art): the column on
+         the right; the tip stands mid-column there, not below the bar. */
+      .boot-art #app-boot {
+        place-items: center end;
+      }
+      .boot-art #app-boot .boot-card {
+        width: clamp(260px, 46%, 460px);
+      }
+      .boot-art #app-boot .boot-tip {
+        display: none;
+      }
+      .boot-art #app-boot.is-failed {
+        place-items: center;
+      }
+      .boot-art #app-boot.is-failed .boot-card {
+        width: min(1080px, 100%);
+      }
       @media (max-height: 500px) {
         #app-boot {
           padding: max(14px, env(safe-area-inset-top))
@@ -287,6 +304,10 @@
       try {
         if (localStorage.getItem("ea-loading-tips") === "off")
           document.documentElement.classList.add("boot-no-tips");
+        // A painting was chosen for this start (loading-art.ts): the
+        // curtain takes its painting layout, and so does this screen.
+        if (localStorage.getItem("ea-next-art"))
+          document.documentElement.classList.add("boot-art");
       } catch {
         /* No storage: tips show. */
       }

@@ -5,12 +5,14 @@ import {
   onCurtainTap,
   releaseStartupCurtain,
   serverReady,
+  setCurtainArt,
   setCurtainTip,
 } from "./server-connection";
+import { artForThisStart, prepareNextArt } from "./loading-art";
 import {
-  LOADING_TIPS,
   nextTip,
   noteTipShown,
+  tipAfter,
   tipMarkup,
   tipReadMs,
   tipsEnabled,
@@ -108,9 +110,15 @@ export function startStartupCurtain(
   settle: () => Promise<void> = () => sceneSettled(),
 ) {
   holdStartupCurtain();
+  // The painting the last start chose and downloaded (none on a first start:
+  // the starfield), and a tip that suits its mode.
+  const art = artForThisStart();
+  setCurtainArt(art ?? null);
   // A gameplay tip from the start. The curtain stays until it has been read
   // (tipReadMs), however quick the load; a tap once loaded goes in at once.
-  let tip: LoadingTip | undefined = tipsEnabled() ? nextTip() : undefined;
+  let tip: LoadingTip | undefined = tipsEnabled()
+    ? nextTip(art?.mode)
+    : undefined;
   let tipSince = performance.now();
   setCurtainTip(tip ? tipMarkup(tip) : null);
   const readUntil = () => (tip ? tipSince + tipReadMs(tip) : 0);
@@ -125,6 +133,9 @@ export function startStartupCurtain(
     clearInterval(poll);
     onCurtainTap(undefined);
     releaseStartupCurtain();
+    // The game is up: choose the next start's painting and download it in a
+    // quiet moment, so it is on the device before that curtain needs it.
+    setTimeout(() => prepareNextArt(art?.id), 3000);
   };
   /** Everything is in: lift the curtain once the tip has been read. */
   const finish = () => {
@@ -142,7 +153,7 @@ export function startStartupCurtain(
     }
     // A long load: the next tip, once this one has been read.
     if (tip && performance.now() > readUntil() + TIP_LINGER_MS) {
-      tip = LOADING_TIPS[(LOADING_TIPS.indexOf(tip) + 1) % LOADING_TIPS.length];
+      tip = tipAfter(tip, art?.mode);
       noteTipShown(tip);
       tipSince = performance.now();
       setCurtainTip(tipMarkup(tip));

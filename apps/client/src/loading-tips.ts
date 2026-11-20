@@ -1,4 +1,5 @@
 import { ORB_SPOTS, RULES } from "@arena/shared";
+import type { PvpMode } from "./loading-art";
 
 /**
  * Tips shown on the startup curtain (docs/loading-screens.md). Every number
@@ -15,6 +16,11 @@ export type LoadingTip = {
   text: string;
   /** A small map of the arena showing where the orbs appear. */
   map?: "duel-orbs" | "team-orbs";
+  /**
+   * The modes it is about (none: every mode). Behind a painting of one mode
+   * (loading-art.ts), only that mode's tips and the general ones show.
+   */
+  modes?: PvpMode[];
 };
 
 const pct = (share: number) => `${Math.round(share * 100)}%`;
@@ -25,6 +31,7 @@ export const LOADING_TIPS: LoadingTip[] = [
   {
     id: "duel-orbs",
     map: "duel-orbs",
+    modes: ["duel"],
     text: `1v1: the healing orb appears at the top centre ${RULES.orbFirst} s into each round, then every ${healEvery} s. The energy orb appears at the bottom centre in between.`,
   },
   {
@@ -38,6 +45,7 @@ export const LOADING_TIPS: LoadingTip[] = [
   {
     id: "team-orbs",
     map: "team-orbs",
+    modes: ["teams", "ffa"],
     text: `2v2 and free-for-all: an orb appears at the top and the bottom centre together, ${RULES.orbFirst} s into each round and every ${RULES.orbInterval} s after, healing and energy taking turns.`,
   },
   {
@@ -83,17 +91,33 @@ export function tipsEnabled() {
   }
 }
 
-/** The next tip after the one shown last time, so every start teaches something new. */
-export function nextTip(): LoadingTip {
-  let last = -1;
+/** Whether a tip suits a painting of this mode (no painting: every tip). */
+export const tipFits = (tip: LoadingTip, mode?: PvpMode) =>
+  !mode || !tip.modes || tip.modes.includes(mode);
+
+/**
+ * The tip after `from` that suits this mode, in order, so every start
+ * teaches something new.
+ */
+export function tipAfter(from: LoadingTip | undefined, mode?: PvpMode) {
+  const start = from ? LOADING_TIPS.indexOf(from) : -1;
+  for (let step = 1; step <= LOADING_TIPS.length; step++) {
+    const tip = LOADING_TIPS[(start + step) % LOADING_TIPS.length];
+    if (tipFits(tip, mode)) return tip;
+  }
+  return LOADING_TIPS[0];
+}
+
+/** The next tip after the one shown last time (suiting the painting's mode). */
+export function nextTip(mode?: PvpMode): LoadingTip {
+  let last: LoadingTip | undefined;
   try {
-    last = LOADING_TIPS.findIndex(
-      (t) => t.id === localStorage.getItem(LAST_TIP_KEY),
-    );
+    const id = localStorage.getItem(LAST_TIP_KEY);
+    last = LOADING_TIPS.find((t) => t.id === id);
   } catch {
     /* Storage blocked: start at the first. */
   }
-  const tip = LOADING_TIPS[(last + 1) % LOADING_TIPS.length];
+  const tip = tipAfter(last, mode);
   noteTipShown(tip);
   return tip;
 }

@@ -1,0 +1,158 @@
+import type { CharacterId } from "@arena/shared";
+
+/**
+ * Paintings behind the startup curtain (docs/loading-screens.md,
+ * docs/loading-art-prompts.md): champions in Legendary and Mythical skins
+ * from the Shop fighting in the game's PvP modes. The scenes are the brief
+ * the paintings are made from; a scene is shown once its picture is in
+ * src/art/loading-art/startup-art-<id>.webp (scripts/import-loading-art.py),
+ * so the list never points at a painting that isn't there. Named startup-*,
+ * the service worker installs them with the game (vite.config.ts
+ * PRECACHED_ART).
+ */
+export type PvpMode = "duel" | "teams" | "ffa";
+export type LoadingScene = {
+  id: string;
+  mode: PvpMode;
+  /** Who is in it, each in a Legendary or Mythical skin from the Shop. */
+  fighters: { champion: CharacterId; skin: string }[];
+  /** Where the fight is (object-position), kept clear of the tip's column. */
+  focus?: string;
+};
+export type LoadingArt = LoadingScene & { src: string };
+
+export const LOADING_SCENES: LoadingScene[] = [
+  {
+    id: "duel-storm-vs-forge",
+    mode: "duel",
+    fighters: [
+      { champion: "voltkit", skin: "voltkit-stormcrown" },
+      { champion: "cindrake", skin: "cindrake-sunforged" },
+    ],
+  },
+  {
+    id: "duel-corsairs",
+    mode: "duel",
+    fighters: [
+      { champion: "voltkit", skin: "voltkit-sky-pirates" },
+      { champion: "tidefin", skin: "tidefin-sky-pirates" },
+    ],
+  },
+  {
+    id: "duel-vanguard",
+    mode: "duel",
+    fighters: [
+      { champion: "terradon", skin: "terradon-nova-vanguard" },
+      { champion: "glacelle", skin: "glacelle-nova-vanguard" },
+    ],
+  },
+  {
+    id: "teams-hon-viet",
+    mode: "teams",
+    fighters: [
+      { champion: "cindrake", skin: "cindrake-hon-viet" },
+      { champion: "voltkit", skin: "voltkit-hon-viet" },
+      { champion: "mossloth", skin: "mossloth-hon-viet" },
+      { champion: "lumoth", skin: "lumoth-hon-viet" },
+    ],
+  },
+  {
+    id: "teams-stars-stripes",
+    mode: "teams",
+    fighters: [
+      { champion: "voltkit", skin: "voltkit-stars-stripes" },
+      { champion: "cindrake", skin: "cindrake-stars-stripes" },
+      { champion: "shadopus", skin: "shadopus-stars-stripes" },
+      { champion: "pyranda", skin: "pyranda-stars-stripes" },
+    ],
+  },
+  {
+    id: "ffa-mythicals",
+    mode: "ffa",
+    fighters: [
+      { champion: "duskveil", skin: "duskveil-eclipse" },
+      { champion: "halcyra", skin: "halcyra-starfletch" },
+      { champion: "auralynx", skin: "auralynx-celestial-sage" },
+      { champion: "terradon", skin: "terradon-world-shell" },
+    ],
+  },
+  {
+    id: "duel-eclipse",
+    mode: "duel",
+    fighters: [
+      { champion: "duskveil", skin: "duskveil-eclipse" },
+      { champion: "lumoth", skin: "lumoth-starweaver" },
+    ],
+  },
+  {
+    id: "ffa-sky-pirates",
+    mode: "ffa",
+    fighters: [
+      { champion: "astrabun", skin: "astrabun-sky-pirates" },
+      { champion: "sunbara", skin: "sunbara-sky-pirates" },
+      { champion: "wombolder", skin: "wombolder-sky-pirates" },
+    ],
+  },
+];
+
+const pictures = import.meta.glob<string>(
+  "./art/loading-art/startup-art-*.webp",
+  { eager: true, query: "?url", import: "default" },
+);
+const pictureOf = (id: string) =>
+  pictures[`./art/loading-art/startup-art-${id}.webp`];
+
+/** The scenes whose painting is in the game. */
+export const LOADING_ART: LoadingArt[] = LOADING_SCENES.flatMap((scene) => {
+  const src = pictureOf(scene.id);
+  return src ? [{ ...scene, src }] : [];
+});
+
+/** The painting chosen (and downloaded) during the last start, for this one. */
+export const NEXT_ART_KEY = "ea-next-art";
+
+/**
+ * This start's painting: the one the last start chose and downloaded, so it
+ * is on the device before the curtain needs it. None on a first start (the
+ * starfield shows; the boot screen in index.html reads the same key).
+ */
+export function artForThisStart(list = LOADING_ART): LoadingArt | undefined {
+  try {
+    const id = localStorage.getItem(NEXT_ART_KEY);
+    return list.find((art) => art.id === id);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * A painting for the next start: any of them with the same chance, but not
+ * the one just shown (when there is another).
+ */
+export function pickNextArt(
+  current: string | undefined,
+  list = LOADING_ART,
+  random = Math.random,
+): LoadingArt | undefined {
+  const choices =
+    list.length > 1 ? list.filter((art) => art.id !== current) : list;
+  return choices[Math.floor(random() * choices.length)];
+}
+
+/**
+ * Once the game is up: choose the next start's painting and download it now,
+ * so it is ready (and cached) before that start's curtain needs it.
+ */
+export function prepareNextArt(current: string | undefined) {
+  const next = pickNextArt(current);
+  try {
+    if (next) localStorage.setItem(NEXT_ART_KEY, next.id);
+    else localStorage.removeItem(NEXT_ART_KEY);
+  } catch {
+    return; // No storage: every start shows the starfield.
+  }
+  if (!next) return;
+  const picture = new Image();
+  picture.decoding = "async";
+  picture.src = next.src;
+}

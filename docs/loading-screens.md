@@ -85,9 +85,29 @@ after another and the saved fighter and avatar were not waited for at all.
    tips). Only the visual harness sets `localStorage["ea-loading-tips"] =
 "off"`, unless a test turns them on.
 
+8. **Paintings** (`loading-art.ts`, the owner's choice of style E, 20 Nov):
+   hand-painted pictures, made in ChatGPT, of champions in Legendary and
+   Mythical Shop skins fighting in the PvP modes
+   ([loading-art-prompts.md](loading-art-prompts.md)). With one, the curtain
+   takes its painting layout: the painting fills the screen and the title,
+   the tip (mid-column, so its length never moves the bar) and the bar stand
+   in a column on the right over a darker band. Every painting has the same
+   chance, never twice in a row. The next start's painting is chosen and
+   downloaded once the game is up (`ea-next-art`), so it is on the device
+   before that curtain needs it; a first start shows the starfield. The
+   painting fades in once decoded; a missing one leaves the starfield behind
+   the same layout. Tips suit the painting's mode (`LoadingTip.modes`: no
+   1v1 orb tip over a 2v2 painting). index.html's boot screen reads the same
+   key and takes the same layout, so nothing moves at the hand-over either.
+   Paintings are named `startup-art-<scene>.webp` in `src/art/loading-art/`:
+   a scene shows only once its picture is there, and the service worker
+   installs them with the game (`PRECACHED_ART`).
+
 `tests/visual/startup-curtain.spec.ts` records every uncovered frame from
 the start and checks the hub is only ever seen complete, from the saved copy
-too, and that a tip holds the curtain until read.
+too, that a tip holds the curtain until read, the painting layout and the
+next painting chosen ahead; `tests/unit/loading-art.test.ts` checks the
+scenes' skins and that choices are even.
 
 ## Adding a tip
 

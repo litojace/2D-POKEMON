@@ -2,6 +2,7 @@ import { ServerStartup, type StartupStatus } from "./server-startup";
 import starfield from "./art/startup-starfield.webp";
 import sigil from "./art/startup-sigil.webp";
 import "./server-connection.css";
+import type { LoadingArt } from "./loading-art";
 
 /** Centered paths keep their shape while the crest floats and their light pulses. */
 const orbitPaths = [
@@ -132,8 +133,10 @@ function renderStatus() {
     panel.className = "server-startup";
     panel.setAttribute("aria-label", "Connecting to Element Arena");
     panel.style.setProperty("--startup-backdrop", `url("${starfield}")`);
-    panel.innerHTML = `<div class="server-startup-card"><header class="server-startup-brand"><h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span>${orbits}<img src="${sigil}" width="960" height="960" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"></p><div class="server-startup-tip" hidden></div><button type="button" hidden>Try again</button></div></div>`;
-    const emblem = panel.querySelector("img")!;
+    panel.innerHTML = `<img class="server-startup-painting" alt="" decoding="async" draggable="false" hidden><div class="server-startup-card"><header class="server-startup-brand"><h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span>${orbits}<img src="${sigil}" width="960" height="960" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"></p><div class="server-startup-tip" hidden></div><button type="button" hidden>Try again</button></div></div>`;
+    const emblem = panel.querySelector<HTMLImageElement>(
+      ".server-startup-art img",
+    )!;
     const shell = panel;
     emblem.addEventListener(
       "error",
@@ -211,6 +214,39 @@ export function setCurtainTip(markup: string | null) {
     void box.offsetWidth;
     box.classList.add("is-new");
   }
+}
+/**
+ * A painting behind the curtain (loading-art.ts): the curtain takes its
+ * painting layout (title, bar and tip in a column on the right) and the
+ * painting fades in over the starfield once decoded. null: the starfield.
+ */
+export function setCurtainArt(art: LoadingArt | null) {
+  const picture = panel?.querySelector<HTMLImageElement>(
+    ".server-startup-painting",
+  );
+  if (!panel || !picture) return;
+  const shell = panel;
+  shell.classList.toggle("has-art", !!art);
+  shell.classList.remove("has-painting");
+  // With a painting the tip stands in the middle of the column (where the
+  // crest is), so a long or short tip never moves the line and bar below.
+  const tip = shell.querySelector<HTMLElement>(".server-startup-tip")!;
+  if (art) shell.querySelector(".server-startup-scene")!.append(tip);
+  else
+    shell
+      .querySelector(".server-startup-loading")!
+      .insertBefore(tip, shell.querySelector(".server-startup-loading button"));
+  picture.hidden = !art;
+  if (!art) return void picture.removeAttribute("src");
+  picture.style.objectPosition = art.focus ?? "";
+  picture.src = art.src;
+  void picture
+    .decode()
+    .then(() => shell.classList.add("has-painting"))
+    .catch(() => {
+      // Missing or broken: the starfield stays behind the same layout.
+      picture.hidden = true;
+    });
 }
 /** Taps on the curtain (outside its retry button) while it is up. */
 export function onCurtainTap(handler: (() => void) | undefined) {

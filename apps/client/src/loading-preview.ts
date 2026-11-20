@@ -3,7 +3,8 @@
  * uses the game's own art and tips: the current curtain (a), your fighter
  * beside the tip (b, like League of Legends' loading screen), a big
  * illustrated tip (c) and the front door's painting (d). A review page, not
- * part of the game.
+ * part of the game. ?v=refs draws the painting brief's skins for reference
+ * pictures (scripts/loading-art/export-references.mjs).
  */
 import "./ui/tokens.css";
 import "./style.css";
@@ -12,6 +13,7 @@ import "./loading-preview.css";
 import { CHARACTERS, ORB_SPOTS, RULES, type CharacterId } from "@arena/shared";
 import { fighterStageArt, setWornSkins } from "./fighter-selection";
 import { LOADING_TIPS, tipMarkup, type LoadingTip } from "./loading-tips";
+import { LOADING_SCENES } from "./loading-art";
 import starfield from "./art/startup-starfield.webp";
 import {
   curtainStep,
@@ -73,6 +75,19 @@ styles.e = `<section class="lp lp-b lp-e" style="--bg:url('${starfield}');--el:$
 // f: the Lobby to come: its blurred Plaza, your fighter where the Lobby will
 // stand it, the tip where its cards will be, the bar where PLAY will be.
 styles.f = `<section class="lp lp-f" style="--el:${hex}"><div class="lp-f-art"></div>${title}<div class="lp-f-fighter">${fighterArt}${nameplate}</div><div class="lp-f-side">${tipCard(true)}${bar("Loading your profile…")}</div></section>`;
+// refs: every skin the painting brief uses, one per box, for
+// scripts/loading-art/export-references.mjs to save as reference pictures.
+if (style === "refs") {
+  const skins = new Map<string, CharacterId>();
+  for (const scene of LOADING_SCENES)
+    for (const f of scene.fighters) skins.set(f.skin, f.champion);
+  styles.refs = `<div class="lp-refs">${[...skins]
+    .map(
+      ([id, champion]) =>
+        `<figure data-ref="${id}">${fighterStageArt(champion, `ref-${id}`, { skin: id, stage: 1 })}</figure>`,
+    )
+    .join("")}</div>`;
+}
 if (styles[style])
   document.querySelector("#loading-preview")!.innerHTML = styles[style];
 else {

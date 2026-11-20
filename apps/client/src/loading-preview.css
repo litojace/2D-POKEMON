@@ -356,3 +356,24 @@ body {
   width: 120%;
   height: 123.76%;
 }
+
+/* refs: one transparent box per skin, for reference pictures */
+.lp-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.lp-refs figure {
+  width: 512px;
+  height: 534px;
+  margin: 0;
+}
+.lp-refs svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+html:has(.lp-refs),
+body:has(.lp-refs) {
+  background: transparent !important;
+}
