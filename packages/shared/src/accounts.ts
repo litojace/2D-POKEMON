@@ -334,6 +334,72 @@ export const recentPlayersSchema = z.object({
 });
 export type RecentPlayer = z.infer<typeof recentPlayerSchema>;
 export type RecentPlayers = z.infer<typeof recentPlayersSchema>;
+
+/**
+ * Match history (docs/match-history.md): one page of a player's matches,
+ * newest first, seen from that player's side. Built by the server
+ * (apps/server/src/match-history.ts) from migration 20261120140000.
+ */
+export const MATCH_HISTORY_PAGE = 10;
+export const MATCH_HISTORY_KINDS = ["all", "pvp", "bot"] as const;
+export type MatchHistoryKind = (typeof MATCH_HISTORY_KINDS)[number];
+const outcome = z.enum(["win", "loss", "draw"]);
+export const matchHistoryPlayerSchema = z.object({
+  /** Account id; null for a bot or a deleted account. */
+  id: z.string().nullable(),
+  name: z.string(),
+  avatar: z.string().nullable(),
+  character: z.string(),
+  team: z.number(),
+  dealt: z.number(),
+  kos: z.number(),
+  combos: z.number(),
+  bot: z.boolean(),
+  /** The player whose history this is. */
+  owner: z.boolean(),
+  /** Most damage in the match (ties: most knock-outs). */
+  mvp: z.boolean(),
+});
+export const matchHistoryEntrySchema = z.object({
+  id: z.string(),
+  playedAt: z.string(),
+  mode: z.enum(["duel", "teams", "ffa"]),
+  arena: z.string(),
+  /** The AI's difficulty, or null against players. */
+  bot: z.enum(["easy", "normal", "hard"]).nullable(),
+  result: outcome,
+  character: z.string(),
+  team: z.number(),
+  /** Each round from this player's side. */
+  rounds: z.array(outcome),
+  dealt: z.number(),
+  kos: z.number(),
+  combos: z.number(),
+  /** The rating this match moved (player-vs-player only). */
+  rating: z.object({ before: z.number(), after: z.number() }).nullable(),
+  players: z.array(matchHistoryPlayerSchema),
+});
+export const matchHistorySchema = z.object({
+  matches: z.array(matchHistoryEntrySchema),
+  /** Where the next page starts (null: no more). */
+  next: z.object({ at: z.string(), id: z.string() }).nullable(),
+  /** First page only: all matches, wins and per-fighter counts. */
+  totals: z
+    .object({
+      matches: z.number(),
+      wins: z.number(),
+      fighters: z.record(
+        z.string(),
+        z.object({ matches: z.number(), wins: z.number() }),
+      ),
+    })
+    .nullable(),
+  /** First page only: the player's rating and rank. */
+  rating: ratingSchema.nullable(),
+});
+export type MatchHistoryPlayer = z.infer<typeof matchHistoryPlayerSchema>;
+export type MatchHistoryEntry = z.infer<typeof matchHistoryEntrySchema>;
+export type MatchHistory = z.infer<typeof matchHistorySchema>;
 /** Fighter mastery: matches played with a fighter unlock badge tiers. */
 export const MASTERY_TIERS = [
   { name: "Bronze", matches: 5, color: "#d69a6a" },

@@ -342,10 +342,11 @@
        every icon + label sits within 1 px of centre (ranks-friends.spec). */
     margin-left: -1.5px;
   }
-  /* The two longer labels grow past 76 px rather than cut their words
+  /* The longer labels grow past 76 px rather than cut their words
      (the options row wraps; a recent player's row has the room). */
   .fr-row .ui-row-acts > .ui-btn[data-friend-add-id],
-  .fr-opts > .ui-btn[data-friend-report-photo] {
+  .fr-opts > .ui-btn[data-friend-report-photo],
+  .fr-opts > .ui-btn[data-friend-card] {
     width: auto;
     min-width: 76px;
     flex: none;
