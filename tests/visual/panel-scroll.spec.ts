@@ -34,6 +34,32 @@ const rail = (action: string) => async (page: Page) => {
   await hubMenu(page, action);
 };
 const settle = (page: Page, ms = 700) => page.waitForTimeout(ms);
+/**
+ * Until the screen's own motion has played out (a tab's new contents slide
+ * in 18 px from the side: ui/motion.ts TAB): mid-slide the panel's body
+ * overflows sideways by up to that much, and the sweep took it for a
+ * sideways scroller nobody can reach ("shop skins", CI 19 Nov, where the
+ * Shop's slide started late on the slow runner). Looping effects (shimmers,
+ * glows) never end and are not waited for.
+ */
+const motionDone = (page: Page, root: string) =>
+  page
+    .waitForFunction(
+      (root) =>
+        !document
+          .getAnimations()
+          .some(
+            (a) =>
+              a.playState === "running" &&
+              Number.isFinite(
+                a.effect?.getComputedTiming().endTime ?? Infinity,
+              ) &&
+              (a.effect as KeyframeEffect | null)?.target?.closest?.(root),
+          ),
+      root,
+      { timeout: 10_000, polling: 100 },
+    )
+    .catch(() => undefined);
 const HUB = ".ui-panel-host";
 
 /** Fifty friends, ten requests each way, thirty on the Friends board and
@@ -314,6 +340,7 @@ async function sweepScreens(page: Page, screens: Screen[], report: Report) {
       await closeAll(page);
       await screen.open(page);
       await settle(page);
+      await motionDone(page, screen.root);
       report[screen.name] = await scrollSweep(page, screen.root);
     } catch (e) {
       report[screen.name] = {
