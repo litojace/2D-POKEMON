@@ -426,3 +426,55 @@
     transition: none;
   }
 }
+/* A gameplay tip under the bar while the startup curtain is held
+   (loading-tips.ts). Not while the server's own status needs the space. */
+.server-startup-tip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(560px, 100%);
+  box-sizing: border-box;
+  margin-top: 2px;
+  padding: 8px 12px;
+  border: 1px solid #dfbd6b55;
+  border-radius: 12px;
+  background: #030a18b8;
+  color: #dbe5f5;
+  text-align: left;
+  font:
+    400 clamp(12px, 1.9vh, 15px) / 1.4 "DM Sans",
+    sans-serif;
+}
+.server-startup-tip.is-new {
+  animation: server-tip-in 420ms ease-out;
+}
+.server-startup-tip b {
+  margin-right: 4px;
+  color: #ffe08a;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.server-startup-tip-map {
+  flex: none;
+  width: clamp(88px, 24vh, 150px);
+  height: auto;
+}
+.server-startup:is([data-status="failed"], [data-status="offline"])
+  .server-startup-tip {
+  display: none;
+}
+@keyframes server-tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (max-height: 320px) {
+  .server-startup-tip {
+    padding: 5px 10px;
+    font-size: calc(11px * var(--text-scale, 1));
+  }
+  .server-startup-tip-map {
+    width: 80px;
+  }
+}

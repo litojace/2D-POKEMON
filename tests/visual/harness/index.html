@@ -94,6 +94,17 @@
       }
     </style>
     <script>
+      // The startup curtain's tips hold it until read (loading-tips.ts):
+      // off here unless a test turns them on, so each start isn't seconds
+      // slower.
+      try {
+        if (localStorage.getItem("ea-loading-tips") === null)
+          localStorage.setItem("ea-loading-tips", "off");
+      } catch {
+        /* No storage: tips show. */
+      }
+    </script>
+    <script>
       // iPadOS calls itself a Mac with a touch screen. Mark iPads so the
       // landscape cover shows when one is held upright, even with a Magic
       // Keyboard or trackpad attached (style.css, #rotate-gate).

@@ -2,9 +2,20 @@ import {
   curtainHeld,
   curtainStep,
   holdStartupCurtain,
+  onCurtainTap,
   releaseStartupCurtain,
   serverReady,
+  setCurtainTip,
 } from "./server-connection";
+import {
+  LOADING_TIPS,
+  nextTip,
+  noteTipShown,
+  tipMarkup,
+  tipReadMs,
+  tipsEnabled,
+  type LoadingTip,
+} from "./loading-tips";
 import { lowGraphics } from "./graphics-quality";
 
 /**
@@ -14,10 +25,12 @@ import { lowGraphics } from "./graphics-quality";
  * - "connecting": the profile is here, the hub connection isn't yet;
  * - "gate": a front-door screen that needs the player (sign up, log in,
  *   try again, another device);
+ * - "provisional": the hub is drawn from this device's copy of the profile
+ *   (profile-copy.ts) while the fresh one loads;
  * - "scene": the first real screen is drawn underneath (hub, room, battle).
  */
 export type StartupStage =
-  "account" | "profile" | "connecting" | "gate" | "scene";
+  "account" | "profile" | "connecting" | "gate" | "provisional" | "scene";
 
 /**
  * Once the server has answered, the longest the curtain waits for the rest.
@@ -25,11 +38,20 @@ export type StartupStage =
  * a loading screen must never trap a player.
  */
 export const CURTAIN_CAP_MS = 12_000;
+/**
+ * How long a hub drawn from the saved copy waits for the fresh profile
+ * before the curtain lifts anyway. On a quick connection the fresh copy is
+ * in by then (nothing can change on screen); on a slow one the saved copy
+ * shows, and only what changed on another device updates after.
+ */
+export const COPY_GRACE_MS = 800;
+/** A long load moves on to the next tip this long after the last was read. */
+export const TIP_LINGER_MS = 2_500;
 /** The longest the drawn scene may take to finish its artwork. */
 export const SCENE_SETTLE_MS = 2_500;
 
 const STEPS: Record<
-  Exclude<StartupStage, "gate" | "scene">,
+  Exclude<StartupStage, "gate" | "scene" | "provisional">,
   [number, string]
 > = {
   // No floor: until the server answers, its own estimate paces the bar.
@@ -86,14 +108,45 @@ export function startStartupCurtain(
   settle: () => Promise<void> = () => sceneSettled(),
 ) {
   holdStartupCurtain();
-  let settling = false;
+  // A gameplay tip from the start. The curtain stays until it has been read
+  // (tipReadMs), however quick the load; a tap once loaded goes in at once.
+  let tip: LoadingTip | undefined = tipsEnabled() ? nextTip() : undefined;
+  let tipSince = performance.now();
+  setCurtainTip(tip ? tipMarkup(tip) : null);
+  const readUntil = () => (tip ? tipSince + tipReadMs(tip) : 0);
+  /** Loaded; waiting for the player to finish reading. */
+  let loaded = false;
+  /** When the scene was first drawn, and what its settling was for. */
+  let sceneSince: number | undefined;
+  let settledFor: StartupStage | undefined;
+  let settling: StartupStage | undefined;
   let readySince: number | undefined;
-  const finish = () => {
+  const release = () => {
     clearInterval(poll);
+    onCurtainTap(undefined);
     releaseStartupCurtain();
+  };
+  /** Everything is in: lift the curtain once the tip has been read. */
+  const finish = () => {
+    if (performance.now() >= readUntil()) return release();
+    if (loaded) return;
+    loaded = true;
+    curtainStep(0.97, "Ready! Tap to enter");
+    onCurtainTap(release);
   };
   const tick = () => {
     if (!curtainHeld()) return clearInterval(poll);
+    if (loaded) {
+      if (performance.now() >= readUntil()) release();
+      return;
+    }
+    // A long load: the next tip, once this one has been read.
+    if (tip && performance.now() > readUntil() + TIP_LINGER_MS) {
+      tip = LOADING_TIPS[(LOADING_TIPS.indexOf(tip) + 1) % LOADING_TIPS.length];
+      noteTipShown(tip);
+      tipSince = performance.now();
+      setCurtainTip(tipMarkup(tip));
+    }
     if (serverReady()) readySince ??= performance.now();
     else readySince = undefined;
     if (
@@ -101,13 +154,24 @@ export function startStartupCurtain(
       performance.now() - readySince > CURTAIN_CAP_MS
     )
       return finish();
-    if (settling) return;
     const now = stage();
     if (now === "gate") return finish();
-    if (now === "scene") {
-      settling = true;
+    if (now === "scene" || now === "provisional") {
+      sceneSince ??= performance.now();
       curtainStep(0.88, "Preparing your fighter…");
-      void settle().then(finish, finish);
+      // Settle the scene, and again once if the fresh profile redrew it
+      // (another fighter or skin from another device).
+      if (!settling && settledFor !== now && settledFor !== "scene") {
+        settling = now;
+        const done = () => {
+          settledFor = settling;
+          settling = undefined;
+        };
+        void settle().then(done, done);
+      }
+      if (settling || !settledFor) return;
+      if (now === "scene" || performance.now() - sceneSince > COPY_GRACE_MS)
+        finish();
       return;
     }
     curtainStep(...STEPS[now]);

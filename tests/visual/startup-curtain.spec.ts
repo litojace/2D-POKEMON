@@ -160,3 +160,210 @@ test("a profile that never answers cannot trap the player behind the curtain", a
     "Checking your account",
   );
 });
+
+/**
+ * The account route answers after `sessionStorage["slow-account"]` ms (or
+ * fails, for "fail"), and notes when it did: a reload keeps the setting.
+ */
+async function controlledAccount(page: Page) {
+  await page.route(/\/fake-api\.ts(?:\?|$)/, async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      response,
+      body: `${await response.text()}
+const copyFetch = window.fetch.bind(window);
+window.fetch = async (input, init) => {
+  const path = new URL(String(input), location.href).pathname;
+  const slow = sessionStorage.getItem("slow-account");
+  if (path === "/api/account" && slow) {
+    if (slow === "fail") return Response.json({ error: "Down for a moment." }, { status: 503 });
+    await new Promise((resolve) => setTimeout(resolve, Number(slow)));
+    window.__accountAnswered = true;
+  }
+  return copyFetch(input, init);
+};`,
+    });
+  });
+  // The account, to sign out with.
+  await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    const marker = 'window.dispatchEvent(new Event("arena:ready"));';
+    expect(body).toContain(marker);
+    await route.fulfill({
+      response,
+      body: body.replace(marker, "window.__account=accountsUI;" + marker),
+    });
+  });
+}
+
+async function phonePage(browser: import("@playwright/test").Browser) {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  await page.addInitScript(() => {
+    localStorage.setItem("ea-graphics", "high");
+    localStorage.setItem("ea-hub-scene", "lobby");
+    (window as any).__savedFighter = "cindrake";
+  });
+  return { context, page };
+}
+
+const savedCopy = (page: Page) =>
+  page.evaluate(() => localStorage.getItem("ea-profile-copy"));
+
+test("a returning player's hub is drawn from this device's copy, not after the profile loads", async ({
+  browser,
+}) => {
+  const { context, page } = await phonePage(browser);
+  try {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await controlledAccount(page);
+    // First start: the profile loads, and this device keeps a copy of it.
+    await page.goto("/");
+    await connectUntilUncovered(page);
+    await expect.poll(() => savedCopy(page)).toContain('"cindrake"');
+    expect(await savedCopy(page)).toContain("voltkit-stormcrown");
+    // Next start, with the profile slow to answer.
+    await page.evaluate(() => sessionStorage.setItem("slow-account", "6000"));
+    await watchUncoveredHub(page);
+    await page.reload();
+    await connectUntilUncovered(page);
+    // The curtain lifted on the saved copy before the profile answered.
+    expect(await page.evaluate(() => !!(window as any).__accountAnswered)).toBe(
+      false,
+    );
+    const seen = (await page.evaluate(() => (window as any).__uncovered)) as {
+      name: string;
+      coins: boolean;
+      signedIn: boolean;
+    }[];
+    expect(seen.length).toBeGreaterThan(0);
+    for (const frame of seen)
+      expect(frame).toEqual({ name: "Cindrake", coins: true, signedIn: true });
+    // The fresh profile replaces it, and is kept again.
+    await expect
+      .poll(() => page.evaluate(() => !!(window as any).__accountAnswered), {
+        timeout: 15_000,
+      })
+      .toBe(true);
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__account.fromCopy))
+      .toBe(false);
+    // Signing out forgets this device's copy.
+    await page.evaluate(() => (window as any).__account.setSession(null));
+    await expect.poll(() => savedCopy(page)).toBe(null);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("a saved copy never outlives a profile that fails to load", async ({
+  browser,
+}) => {
+  const { context, page } = await phonePage(browser);
+  try {
+    await controlledAccount(page);
+    await page.goto("/");
+    await connectUntilUncovered(page);
+    await expect.poll(() => savedCopy(page)).not.toBe(null);
+    await page.evaluate(() => sessionStorage.setItem("slow-account", "fail"));
+    await page.reload();
+    // The front door offers to try again, as without a copy.
+    await expect
+      .poll(
+        async () => {
+          await page.evaluate(() => (window as any).__sock?.fire("connect"));
+          return page.locator("#gate-auth").textContent();
+        },
+        { timeout: 20_000 },
+      )
+      .toContain("couldn't load your profile");
+    await expect(page.locator("#account-coins > *")).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+});
+
+for (const size of [
+  { width: 844, height: 390 },
+  { width: 844, height: 280 },
+  { width: 1440, height: 900 },
+]) {
+  test(`a tip stays until it has been read, fits ${size.width}x${size.height}`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: size,
+      isMobile: size.width < 1000,
+      hasTouch: size.width < 1000,
+    });
+    try {
+      const page = await context.newPage();
+      await page.addInitScript(() => {
+        localStorage.setItem("ea-loading-tips", "on");
+        localStorage.setItem("ea-hub-scene", "lobby");
+      });
+      await page.goto("/");
+      const tip = page.locator("#server-startup .server-startup-tip");
+      // A first start begins with where the orbs appear, with its map.
+      await expect(tip).toBeVisible();
+      await expect(tip).toContainText("healing orb appears at the top centre");
+      await expect(tip.locator("svg.server-startup-tip-map")).toBeVisible();
+      const shownAt = Date.now();
+      await page.evaluate(() => document.fonts.ready);
+      for (const part of [
+        ".server-startup-brand",
+        ".server-startup-progress",
+        ".server-startup-tip",
+      ]) {
+        const r = (await page.locator(part).boundingBox())!;
+        expect(r.x, part).toBeGreaterThanOrEqual(0);
+        expect(r.y, part).toBeGreaterThanOrEqual(0);
+        expect(r.x + r.width, part).toBeLessThanOrEqual(size.width);
+        expect(r.y + r.height, part).toBeLessThanOrEqual(size.height);
+      }
+      const art = (await page.locator(".server-startup-art").boundingBox())!;
+      const loading = (await page
+        .locator(".server-startup-loading")
+        .boundingBox())!;
+      expect(art.y + art.height).toBeLessThanOrEqual(loading.y + 1);
+      await snap(page, info, `startup-tip-${size.width}x${size.height}`);
+      // Loaded long before it's read: ready, waiting for the reader.
+      await expect
+        .poll(async () => {
+          await page.evaluate(() => (window as any).__sock?.fire("connect"));
+          return page.locator("#server-startup p").textContent();
+        })
+        .toContain("Tap to enter");
+      await expect(page.locator("#server-startup")).toHaveCount(0, {
+        timeout: 10_000,
+      });
+      // tipReadMs: this tip is long enough for the 7 s ceiling.
+      expect(Date.now() - shownAt).toBeGreaterThan(6_000);
+      // The next start shows the next tip, and a tap goes in once loaded.
+      await page.reload();
+      await expect(tip).toBeVisible();
+      await expect(tip).not.toContainText("healing orb appears at the top");
+      await expect
+        .poll(async () => {
+          await page.evaluate(() => (window as any).__sock?.fire("connect"));
+          return page.locator("#server-startup p").textContent();
+        })
+        .toContain("Tap to enter");
+      const tapped = Date.now();
+      await page
+        .locator("#server-startup")
+        .click({ position: { x: 20, y: 20 } });
+      await expect(page.locator("#server-startup")).toHaveCount(0);
+      expect(Date.now() - tapped).toBeLessThan(2_000);
+    } finally {
+      await context.close();
+    }
+  });
+}

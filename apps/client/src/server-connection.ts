@@ -30,6 +30,7 @@ let held: { floor: number; message: string } | undefined;
 /** The bar never moves backwards while the curtain is held. */
 let shownProgress = 0;
 let leaving: ReturnType<typeof setTimeout> | undefined;
+let curtainTap: (() => void) | undefined;
 
 function updateProgress() {
   const now = performance.now();
@@ -131,7 +132,7 @@ function renderStatus() {
     panel.className = "server-startup";
     panel.setAttribute("aria-label", "Connecting to Element Arena");
     panel.style.setProperty("--startup-backdrop", `url("${starfield}")`);
-    panel.innerHTML = `<div class="server-startup-card"><header class="server-startup-brand"><h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span>${orbits}<img src="${sigil}" width="960" height="960" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"></p><button type="button" hidden>Try again</button></div></div>`;
+    panel.innerHTML = `<div class="server-startup-card"><header class="server-startup-brand"><h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span>${orbits}<img src="${sigil}" width="960" height="960" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"></p><div class="server-startup-tip" hidden></div><button type="button" hidden>Try again</button></div></div>`;
     const emblem = panel.querySelector("img")!;
     const shell = panel;
     emblem.addEventListener(
@@ -154,6 +155,10 @@ function renderStatus() {
       .then(() => shell.classList.add("has-backdrop"))
       .catch(() => shell.classList.add("has-backdrop"));
     panel.querySelector("button")!.onclick = () => retry?.();
+    // A tap anywhere but the retry button: the curtain's own (onCurtainTap).
+    panel.addEventListener("click", (event) => {
+      if (!(event.target as Element).closest("button")) curtainTap?.();
+    });
     document.body.append(panel);
   }
   const copy = {
@@ -193,6 +198,23 @@ export function curtainStep(floor: number, message: string) {
   held = { floor: Math.max(held.floor, floor), message };
   if (currentStatus === "ready") renderStatus();
   else updateProgress();
+}
+/** A tip under the bar while the curtain is held (null: none). */
+export function setCurtainTip(markup: string | null) {
+  const box = panel?.querySelector<HTMLElement>(".server-startup-tip");
+  if (!box) return;
+  box.hidden = !markup;
+  if (markup && box.innerHTML !== markup) {
+    box.innerHTML = markup;
+    // Each new tip fades in (server-connection.css).
+    box.classList.remove("is-new");
+    void box.offsetWidth;
+    box.classList.add("is-new");
+  }
+}
+/** Taps on the curtain (outside its retry button) while it is up. */
+export function onCurtainTap(handler: (() => void) | undefined) {
+  curtainTap = handler;
 }
 /** The game server has answered (the last health check succeeded). */
 export function serverReady() {

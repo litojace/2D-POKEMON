@@ -7895,7 +7895,7 @@ startStartupCurtain(() => {
     return status === "connecting" ? "connecting" : "gate";
   }
   if (screen || document.body.classList.contains("battle-active"))
-    return "scene";
+    return accountsUI?.fromCopy ? "provisional" : "scene";
   return "account";
 });
 accountsUI = new AccountUI({

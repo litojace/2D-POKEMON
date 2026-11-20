@@ -61,14 +61,45 @@ after another and the saved fighter and avatar were not waited for at all.
    curtain waits at most 12 s (`CURTAIN_CAP_MS`) and then shows whatever the
    game has.
 
+6. **This device's copy of the profile** (`profile-copy.ts`): what the first
+   screen shows (account, coins, worn skins, raid look, Journey and missions
+   cards, Spire card, avatar, the account's fighter) is kept in
+   `localStorage` whenever it changes. The next start draws the hub from it
+   at once while the fresh profile loads (`AccountUI.fromCopy`), so the
+   curtain no longer waits for the profile's round trips. It still gives the
+   fresh copy up to 800 ms (`COPY_GRACE_MS`): on a quick connection nothing
+   changes on screen; on a slow one only what changed on another device
+   updates after. The copy is only used for the same account, for 30 days,
+   in the same format version; a fresh profile that fails to load drops it
+   (the front door offers to try again, as before), a refused login and
+   signing out forget it.
+7. **Tips** (`loading-tips.ts`) under the bar: each start shows the next
+   one, and the curtain stays until it has been read (`tipReadMs`: about a
+   quarter second a word, 3–7 s), even when loading is quicker. Once loaded
+   it says "Ready! Tap to enter" and a tap goes in at once. A long load moves
+   to the next tip. Every number in a tip is built from the server's rules
+   (`RULES`, `ORB_SPOTS`) and `tests/unit/loading-tips.test.ts` checks each
+   claim against the server's simulation (where and when orbs appear, what
+   they give). `localStorage["ea-loading-tips"] = "off"` turns them off; the
+   visual harness does so unless a test turns them on.
+
 `tests/visual/startup-curtain.spec.ts` records every uncovered frame from
-the start and checks the hub is only ever seen complete.
+the start and checks the hub is only ever seen complete, from the saved copy
+too, and that a tip holds the curtain until read.
+
+## Adding a tip
+
+Add it to `LOADING_TIPS`, build any number from `RULES` (never type it), keep
+it under 30 words, and add a check of its claim to
+`tests/unit/loading-tips.test.ts`.
 
 ## Adding to the first screen
 
 Anything new the Lobby shows on entry and that comes from the server should
 be part of the profile load (`AccountUI.loadSession`, before `checked`), not
-loaded after the hub appears, or it will pop in after the curtain. New
+loaded after the hub appears, or it will pop in after the curtain. If it
+should show from the saved copy too, add it to `ProfileCopy` (and bump
+`PROFILE_COPY_VERSION` when the stored shape changes). New
 pictures on the first screen are decoded by `sceneSettled` automatically if
 they are `<img>` elements (not `loading="lazy"`). Keep the whole wait short:
 the curtain is a cover for loading, not a reason to load more.
