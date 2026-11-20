@@ -13,6 +13,5 @@ export const EXPERT_STYLE: Partial<Record<CharacterId, Style>> = {
   halcyra: {"slots":[1.285,0.418,1,1],"kite":0.862,"floor":0.589},
   mossloth: {"slots":[1,0.977,1,1],"circle":0.884,"sight":0.977},
   shadopus: {"slots":[1.33,0.949,1,1],"closeIn":2.213},
-  coilemur: {"slots":[1,1,1,1.902],"floor":0,"reach":54.217},
   pyranda: {"engage":0.157,"sight":0.958},
 };
