@@ -361,7 +361,8 @@ const DETAILS: Details = {
       bone = "#f4ecd8";
     const x = k.hx + k.side * 2,
       y = k.ht + 12;
-    const part = k.side || k.back ? "eyes" : "flame";
+    // Headwear: it goes on the hat layer, riding the head (ANIMATED_CRESTS).
+    const part = "flame";
     let band = [-22, -8, 8, 22].map((dx) => ((k.side && dx * k.side > 12) || (!k.side && Math.abs(dx) < 10) ? "" : k.circle(x + dx, y + 3.5 + Math.abs(dx) * 0.04, 1.5, GOLD, GOLD_DARK, 0.5))).join("");
     if (!k.back) {
       const sx = k.side ? x + k.side * 27 : x,
@@ -378,10 +379,11 @@ const DETAILS: Details = {
     const ky = y + 1;
     band += [[kx + d * 6, ky + 22], [kx + d * 16, ky + 16]].map(([cx0, cy0]) => k.circle(cx0, cy0, 2.2, GOLD, GOLD_DARK, 0.6) + k.circle(cx0, cy0, 1, GOLD_DARK, "none", 0)).join("");
     k.put(part, band);
-    // The lantern: brass posts, cage bars, ring and finial, rising sparks.
+    // The lantern: brass posts, cage bars, ring and finial, rising sparks;
+    // on the scarf layer, with the lantern it details.
     const lx = k.back ? k.R + 8 : k.side ? k.C - k.side * 10 : k.L - 8,
       ly = k.B - 2;
-    k.put("flame",
+    k.put("scarf",
       k.line(`M${lx - 1.6} ${ly - 7}V${ly + 5}M${lx + 1.6} ${ly - 7}V${ly + 5}`, "#3a2a1c", 0.9) +
       k.rect(lx - 6.6, ly - 9.5, 2, 17, 0.8, GOLD, k.ink, 0.5) + k.rect(lx + 4.6, ly - 9.5, 2, 17, 0.8, GOLD, k.ink, 0.5) +
       k.path(`M${lx - 6.5} ${ly - 9}L${lx} ${ly - 14}L${lx + 6.5} ${ly - 9}Z`, GOLD, k.ink, 0.6) + k.path(`M${lx - 3} ${ly - 10}L${lx} ${ly - 12.4}L${lx + 3} ${ly - 10}`, "none", GOLD_DARK, 0.7) +

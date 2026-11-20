@@ -25,6 +25,7 @@ import { loadRigTextures, textureResolution } from "./rig-textures";
 import {
   moodKey,
   parts,
+  partsFor,
   rigAnchorsFor,
   rigKey,
   rigAssets,
@@ -178,7 +179,7 @@ export class FighterRig {
     this.root = scene.add.container(0, 0).setDepth(2);
     this.effects = battleCurves(scene.add.graphics()).setDepth(3);
     this.under = battleCurves(scene.add.graphics()).setDepth(1.9);
-    for (const part of parts) {
+    for (const part of partsFor(character)) {
       const asset = assets.find(
         (a) => a.key === rigKey(character, "down", part),
       )!;
@@ -315,8 +316,9 @@ export class FighterRig {
     const dir = facing(pose.angle);
     if (dir !== this.dir) {
       this.dir = dir;
-      const order =
-        dir === "down" ? parts : profilePartOrder(dir, this.character);
+      const order = (
+        dir === "down" ? parts : profilePartOrder(dir, this.character)
+      ).filter((part) => this.images.has(part));
       order.forEach((part, index) =>
         this.root.moveTo(this.images.get(part)!, index),
       );
@@ -878,6 +880,13 @@ export class FighterRig {
     flame.rotation = rigidHeadwear
       ? head.rotation
       : flame.rotation + head.rotation;
+    // A skin's headwear over an animated crest rides the head rigidly: no
+    // flicker, sway, spring or attack swell (creature-design ANIMATED_CRESTS).
+    this.images
+      .get("hat")
+      ?.setPosition(ears.x, ears.y)
+      .setRotation(head.rotation)
+      .setScale(0.5);
     if (reduced) {
       // Poses only: no bobbing, lunging or squashing.
       offsetX = 0;

@@ -136,7 +136,11 @@ for (const canvas of [false, true])
                 r.rootY,
                 `${r.id} glides above the ground in every direction`,
               ).toBeLessThan(r.anchorY - 3);
-            expect(r.parts).toHaveLength(13);
+            // Champions with an animated crest (ANIMATED_CRESTS in
+            // creature-design.ts) also draw a hat layer for skin headwear.
+            expect(r.parts).toHaveLength(
+              ["cindrake", "terradon", "sunbara"].includes(r.id) ? 14 : 13,
+            );
             moved ||=
               JSON.stringify(r.points) !== JSON.stringify(rest[i].points);
             for (const point of r.points)

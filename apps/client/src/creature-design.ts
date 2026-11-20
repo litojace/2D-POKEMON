@@ -42,7 +42,20 @@ export type CreaturePart =
   | "ears"
   | "eyes"
   | "scarf"
-  | "flame";
+  | "flame"
+  /**
+   * A skin's headwear on a champion whose head-top piece moves on its own
+   * (Cindrake's living flame, Terradon's swaying sapling, Sunbara's rocking
+   * yuzu): it rides the head rigidly instead, so a hat or band never
+   * flickers, sways or rocks with the crest (see ANIMATED_CRESTS).
+   */
+  | "hat";
+/**
+ * Champions whose head-top piece animates on its own in the rig. A skin's
+ * pieces on that layer go on the "hat" layer instead, which follows the head
+ * rigidly, so only the crest itself flickers, sways or rocks.
+ */
+export const ANIMATED_CRESTS = new Set<CharacterId>(["cindrake", "terradon", "sunbara"]);
 export const creatureParts: CreaturePart[] = [
   "tail",
   "wings",
@@ -57,6 +70,7 @@ export const creatureParts: CreaturePart[] = [
   "eyes",
   "scarf",
   "flame",
+  "hat",
 ];
 /**
  * Chibi proportions baked into every part: the face (head, ears, eyes, crest)
@@ -80,6 +94,7 @@ export const PROPORTIONS: Record<CreaturePart, typeof FACE> = {
   eyes: FACE,
   scarf: FRAME,
   flame: FACE,
+  hat: FACE,
 };
 /** Where a point of part `part` lands once its proportion transform is applied. */
 export function proportioned(part: CreaturePart, x: number, y: number) {
@@ -499,6 +514,7 @@ export function creatureLayers(
     eyes: frontEyes(),
     scarf: "",
     flame: "",
+    hat: "",
   };
   // ---- Pieces the new eight share between parts.
   /** A small living flame (Pyranda's tail tip and its chestnut). */
@@ -1180,15 +1196,20 @@ function dressLayers(
       .map((s) => s.accessory),
   ];
   for (const a of extras)
-    for (const [part, svg] of accessorySvg(a, id, dir, p)) {
+    for (const [own, svg] of accessorySvg(a, id, dir, p)) {
+      // Headwear rides the head, not an animated crest; a piece that is the
+      // crest itself (a flame a design redraws) is marked data-crest.
+      const part = own === "flame" && ANIMATED_CRESTS.has(id) && !svg.includes("data-crest") ? "hat" : own;
       // A piece marked UNDER (a pack, hanging sleeves) goes behind the part.
       const under = svg.startsWith(UNDER);
       const g = `<g class="skin-accessory skin-${a}">${under ? svg.slice(UNDER.length) : svg}</g>`;
       layers[part] = under ? g + layers[part] : layers[part] + g;
     }
   if (art.mythic)
-    for (const [part, svg] of awakeningSvg(art.mythic, stage, id, dir, p))
+    for (const [own, svg] of awakeningSvg(art.mythic, stage, id, dir, p)) {
+      const part = own === "flame" && ANIMATED_CRESTS.has(id) ? "hat" : own;
       layers[part] += `<g class="skin-awakening">${svg}</g>`;
+    }
   for (const [part, keep] of kept) layers[part] += keep;
   // Halcyra's beak, made for the skin's figure (skins/halcyra-beaks.ts).
   if (id === "halcyra")
@@ -1225,6 +1246,7 @@ export function creatureSvgRenderer(
     "ears",
     "eyes",
     "flame",
+    "hat",
   ];
   const order = dir === "down" ? [] : profilePartOrder(dir, id);
   // A part listed after the head (Terradon's shell from behind) draws over it.
@@ -1258,7 +1280,7 @@ export function creatureSvgRenderer(
           .filter((p) => !omit.includes(p))
           .map(group)
           .join("")}<g class="fighter-face">${(
-          (faceParts ?? ["head", "ears", "eyes", "flame"]) as CreaturePart[]
+          (faceParts ?? ["head", "ears", "eyes", "flame", "hat"]) as CreaturePart[]
         )
           .filter((p) => !omit.includes(p))
           .map(group)

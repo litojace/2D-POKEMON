@@ -293,7 +293,9 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
     // right from behind, at the hip nearest us in profile.
     const lx = k.back ? k.R + 8 : k.side ? k.C - k.side * 10 : k.L - 8,
       ly = k.B - 2;
-    k.put("flame", k.line(`M${lx} ${ly - 16}V${ly - 10}`, "#3a2a1c", 1.4) + k.path(`M${lx - 6} ${ly - 9}L${lx} ${ly - 14}L${lx + 6} ${ly - 9}Z`, "#3a2a1c", k.ink, 0.6) +
+    // On the scarf layer: it rides the torso (swaying a touch, never with
+    // the living flame) and is drawn over the arms, so it shows in profile.
+    k.put("scarf", k.line(`M${lx} ${ly - 16}V${ly - 10}`, "#3a2a1c", 1.4) + k.path(`M${lx - 6} ${ly - 9}L${lx} ${ly - 14}L${lx + 6} ${ly - 9}Z`, "#3a2a1c", k.ink, 0.6) +
       k.rect(lx - 6, ly - 9, 12, 16, 2, "#3a2a1c", k.ink, 0.8) +
       k.lume("pulse", k.rect(lx - 4, ly - 7, 8, 12, 1.5, ember, "none") + k.path(`M${lx} ${ly - 5}q3 3 0 7q-3 -3 0 -7Z`, "#fff3b0", "none"), 1, ember) +
       k.rect(lx - 7, ly + 6, 14, 3, 1, "#3a2a1c", k.ink, 0.6));
@@ -306,11 +308,12 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
     const skull = k.back ? "" : k.side
       ? k.circle(x + k.side * 27, y + 3, 2.6, "#f4ecd8", k.ink, 0.5)
       : k.circle(x, y + 2.5, 3.4, "#f4ecd8", k.ink, 0.6) + k.circle(x - 1.2, y + 2.2, 0.8, "#1b1b1b", "none", 0) + k.circle(x + 1.2, y + 2.2, 0.8, "#1b1b1b", "none", 0);
-    // Cindrake's head-top layer sits behind its head in profile and from
-    // behind (creature-profile.ts), so there the bandana goes on the layer
-    // drawn after the head; the flame stays behind, rising over the top.
-    if (k.side || k.back) k.put("flame", flame);
-    k.put(k.side || k.back ? "eyes" : "flame", (k.side || k.back ? "" : flame) + headBand(k, y, 37, 8, scarf) + [-22, -8, 8, 22].map((dx) => (k.side && dx * k.side > 12) || (!k.side && Math.abs(dx) < 10) ? "" : k.circle(x + dx, y + 3.5 + Math.abs(dx) * 0.04, 1.1, "#f4ecd8", "none", 0)).join("") + skull + backKnot(k, y + 1, 37, scarf));
+    // The redrawn flame is the crest itself, so it stays on the flame layer
+    // and keeps its living flicker (data-crest); the bandana and its knot
+    // are headwear and ride the head on the hat layer, over the face in
+    // every view (creature-design.ts, ANIMATED_CRESTS).
+    k.put("flame", `<g data-crest="1">${flame}</g>`);
+    k.put("flame", headBand(k, y, 37, 8, scarf) + [-22, -8, 8, 22].map((dx) => (k.side && dx * k.side > 12) || (!k.side && Math.abs(dx) < 10) ? "" : k.circle(x + dx, y + 3.5 + Math.abs(dx) * 0.04, 1.1, "#f4ecd8", "none", 0)).join("") + skull + backKnot(k, y + 1, 37, scarf));
   },
   // Prism Navigator: a long indigo coat under a star-chart capelet whose
   // stars light up in turn, a compass-rose pin on its brow band, and a brass
