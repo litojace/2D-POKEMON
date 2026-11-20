@@ -320,6 +320,7 @@ async function measure(
     c.on = true;
   });
   const before = await layouts(cdp);
+  const openAt = Date.now();
   await panel.open(page);
   await page.waitForTimeout(SETTLE_MS);
   const laidOut = (await layouts(cdp)) - before;
@@ -345,8 +346,9 @@ async function measure(
   await expect(
     page.locator(".ui-panel-host:not([data-ui-leaving])"),
   ).toHaveCount(0);
+  const closedAt = Date.now();
   await page.waitForTimeout(800);
-  return { ...counted, laidOut, steady };
+  return { ...counted, laidOut, steady, openAt, closedAt };
 }
 
 test("a screen opened again shows what it had: no new requests, no rebuild, no long frame", async ({
@@ -442,7 +444,7 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
       ).toBe(0);
       expect(
         again.laidOut,
-        `${panel.name}: layouts on a repeat open`,
+        `${panel.name}: layouts on a repeat open, ${again.openAt - first.closedAt} ms after the first closed`,
       ).toBeLessThanOrEqual(MAX_LAYOUTS);
       expect(
         again.reads,
@@ -450,7 +452,7 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
       ).toBeLessThanOrEqual(MAX_LAYOUT_READS);
       expect(
         again.worst - again.steady,
-        `${panel.name}: longest frame on a repeat open (ms) over the steady ${again.steady} ms: ${again.longs.join("; ")}`,
+        `${panel.name}: longest frame on a repeat open (ms) over the steady ${again.steady} ms, ${again.openAt - first.closedAt} ms after the first closed: ${again.longs.join("; ")}`,
       ).toBeLessThanOrEqual(LONG_FRAME_MS);
     }
     console.log(JSON.stringify(results));
