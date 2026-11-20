@@ -74,15 +74,15 @@ after another and the saved fighter and avatar were not waited for at all.
    (the front door offers to try again, as before), a refused login and
    signing out forget it.
 7. **Tips** (`loading-tips.ts`): short, one or two lines, text only (the
-   owner, 20 Nov: no illustrations). Each start shows the next one, and the
-   curtain stays until it has been read (`tipReadMs`: a beat plus about a
-   fifth of a second a word, 2.5–5 s; about 3.9 s on average for the current
-   tips, down from 6), even when loading is quicker. Once loaded it says
-   "Ready! Tap to enter" and a tap goes in at once. A long load moves to the
-   next tip. Every number in a tip is built from the server's rules
-   (`RULES`) and `tests/unit/loading-tips.test.ts` checks each claim against
-   the server's simulation (where and when orbs appear, what they give).
-   Every player waits for the tip alike, new or returning. Only the visual
+   owner, 20 Nov: no illustrations). Each start shows the next one while it
+   loads. The curtain never waits for it: the game opens as soon as its
+   first screen is complete (the owner, 20 Nov: enter by itself, no "Tap to
+   enter"; it still waits for the fighter, skins and pictures, so nothing
+   pops in). A long load moves on to the next tip once this one has had
+   time to be read (`tipReadMs`, 2.5–5 s, plus `TIP_LINGER_MS`). Every
+   number in a tip is built from the server's rules (`RULES`) and
+   `tests/unit/loading-tips.test.ts` checks each claim against the server's
+   simulation (where and when orbs appear, what they give). Only the visual
    harness sets `localStorage["ea-loading-tips"] = "off"`, unless a test
    turns them on.
 

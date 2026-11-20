@@ -2,7 +2,6 @@ import {
   curtainHeld,
   curtainStep,
   holdStartupCurtain,
-  onCurtainTap,
   releaseStartupCurtain,
   serverReady,
   setCurtainArt,
@@ -114,43 +113,30 @@ export function startStartupCurtain(
   // the starfield), and a tip that suits its mode.
   const art = artForThisStart();
   setCurtainArt(art ?? null);
-  // A gameplay tip from the start. The curtain stays until it has been read
-  // (tipReadMs), however quick the load; a tap once loaded goes in at once.
+  // A gameplay tip while it loads. The curtain doesn't wait for it: the game
+  // opens as soon as its first screen is complete (the owner, 20 Nov: no
+  // "Tap to enter", no reading time). A long load moves on to the next tip.
   let tip: LoadingTip | undefined = tipsEnabled()
     ? nextTip(art?.mode)
     : undefined;
   let tipSince = performance.now();
   setCurtainTip(tip ? tipMarkup(tip) : null);
   const readUntil = () => (tip ? tipSince + tipReadMs(tip) : 0);
-  /** Loaded; waiting for the player to finish reading. */
-  let loaded = false;
   /** When the scene was first drawn, and what its settling was for. */
   let sceneSince: number | undefined;
   let settledFor: StartupStage | undefined;
   let settling: StartupStage | undefined;
   let readySince: number | undefined;
-  const release = () => {
+  /** Everything is in: lift the curtain. */
+  const finish = () => {
     clearInterval(poll);
-    onCurtainTap(undefined);
     releaseStartupCurtain();
     // The game is up: choose the next start's painting and download it in a
     // quiet moment, so it is on the device before that curtain needs it.
     setTimeout(() => prepareNextArt(art?.id), 3000);
   };
-  /** Everything is in: lift the curtain once the tip has been read. */
-  const finish = () => {
-    if (performance.now() >= readUntil()) return release();
-    if (loaded) return;
-    loaded = true;
-    curtainStep(0.97, "Ready! Tap to enter");
-    onCurtainTap(release);
-  };
   const tick = () => {
     if (!curtainHeld()) return clearInterval(poll);
-    if (loaded) {
-      if (performance.now() >= readUntil()) release();
-      return;
-    }
     // A long load: the next tip, once this one has been read.
     if (tip && performance.now() > readUntil() + TIP_LINGER_MS) {
       tip = tipAfter(tip, art?.mode);

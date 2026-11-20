@@ -31,7 +31,6 @@ let held: { floor: number; message: string } | undefined;
 /** The bar never moves backwards while the curtain is held. */
 let shownProgress = 0;
 let leaving: ReturnType<typeof setTimeout> | undefined;
-let curtainTap: (() => void) | undefined;
 
 function updateProgress() {
   const now = performance.now();
@@ -158,10 +157,6 @@ function renderStatus() {
       .then(() => shell.classList.add("has-backdrop"))
       .catch(() => shell.classList.add("has-backdrop"));
     panel.querySelector("button")!.onclick = () => retry?.();
-    // A tap anywhere but the retry button: the curtain's own (onCurtainTap).
-    panel.addEventListener("click", (event) => {
-      if (!(event.target as Element).closest("button")) curtainTap?.();
-    });
     document.body.append(panel);
   }
   const copy = {
@@ -247,10 +242,6 @@ export function setCurtainArt(art: LoadingArt | null) {
       // Missing or broken: the starfield stays behind the same layout.
       picture.hidden = true;
     });
-}
-/** Taps on the curtain (outside its retry button) while it is up. */
-export function onCurtainTap(handler: (() => void) | undefined) {
-  curtainTap = handler;
 }
 /** The game server has answered (the last health check succeeded). */
 export function serverReady() {

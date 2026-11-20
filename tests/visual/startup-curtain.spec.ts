@@ -295,7 +295,7 @@ for (const size of [
   { width: 844, height: 280 },
   { width: 1440, height: 900 },
 ]) {
-  test(`a tip stays until it has been read, fits ${size.width}x${size.height}`, async ({
+  test(`a tip shows while it loads and never holds the game, fits ${size.width}x${size.height}`, async ({
     browser,
   }, info) => {
     const context = await browser.newContext({
@@ -309,12 +309,24 @@ for (const size of [
         localStorage.setItem("ea-loading-tips", "on");
         localStorage.setItem("ea-hub-scene", "lobby");
       });
+      // Every status the curtain shows.
+      await page.addInitScript(() => {
+        const w = window as any;
+        w.__statuses = [];
+        new MutationObserver(() => {
+          const text = document.querySelector("#server-startup p")?.textContent;
+          if (text && w.__statuses.at(-1) !== text) w.__statuses.push(text);
+        }).observe(document, {
+          subtree: true,
+          childList: true,
+          characterData: true,
+        });
+      });
       await page.goto("/");
       const tip = page.locator("#server-startup .server-startup-tip");
       // A first start begins with where the orbs appear.
       await expect(tip).toBeVisible();
       await expect(tip).toContainText("healing orb spawns top centre");
-      const shownAt = Date.now();
       await page.evaluate(() => document.fonts.ready);
       for (const part of [
         ".server-startup-brand",
@@ -333,34 +345,20 @@ for (const size of [
         .boundingBox())!;
       expect(art.y + art.height).toBeLessThanOrEqual(loading.y + 1);
       await snap(page, info, `startup-tip-${size.width}x${size.height}`);
-      // Loaded long before it's read: ready, waiting for the reader.
-      await expect
-        .poll(async () => {
-          await page.evaluate(() => (window as any).__sock?.fire("connect"));
-          return page.locator("#server-startup p").textContent();
-        })
-        .toContain("Tap to enter");
-      await expect(page.locator("#server-startup")).toHaveCount(0, {
-        timeout: 10_000,
-      });
-      // tipReadMs: this tip is long enough for the 5 s ceiling.
-      expect(Date.now() - shownAt).toBeGreaterThan(4_500);
-      // The next start shows the next tip, and a tap goes in once loaded.
+      // Loaded long before the tip could be read (this one is long enough
+      // for the 5 s ceiling): the game opens anyway, with no "Tap to enter".
+      await page.evaluate(() => (window as any).__sock?.fire("connect"));
+      const connected = Date.now();
+      await connectUntilUncovered(page);
+      expect(Date.now() - connected).toBeLessThan(4_500);
+      const statuses = (await page.evaluate(
+        () => (window as any).__statuses,
+      )) as string[];
+      expect(statuses.join(" | ")).not.toMatch(/tap/i);
+      // The next start shows the next tip.
       await page.reload();
       await expect(tip).toBeVisible();
       await expect(tip).not.toContainText("healing orb spawns top centre");
-      await expect
-        .poll(async () => {
-          await page.evaluate(() => (window as any).__sock?.fire("connect"));
-          return page.locator("#server-startup p").textContent();
-        })
-        .toContain("Tap to enter");
-      const tapped = Date.now();
-      await page
-        .locator("#server-startup")
-        .click({ position: { x: 20, y: 20 } });
-      await expect(page.locator("#server-startup")).toHaveCount(0);
-      expect(Date.now() - tapped).toBeLessThan(2_000);
     } finally {
       await context.close();
     }

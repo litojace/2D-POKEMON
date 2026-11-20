@@ -104,7 +104,6 @@ const K2_STEPS: [string, number][] = [
   ["Loading your profile…", 0.5],
   ["Entering Elemental Plaza…", 0.72],
   ["Preparing your fighter…", 0.88],
-  ["Ready! Tap to enter", 0.97],
 ];
 styles.k2 =
   `<section class="lp-x lp-x-k lp-x-k2" style="--painting:url('${painting}')">` +
