@@ -3,10 +3,10 @@
  * each side's name and rounds and the clock. Health is the bar over each
  * fighter, and nobody sees an opponent's ultimate, so the pill keeps the
  * fight unpredictable and, on phones, gives the arena the screen's height.
- * main.ts adds .hud-badge to #hud (and .pvp-badge to <body>) outside raids
- * and Practice. The cards keep their elements and ids; this only shows the
- * name, the score and the clock. ID-weighted selectors win over the cards'
- * many layout rules in style.css.
+ * Practice uses it too (its score stays empty). main.ts adds .hud-badge to
+ * #hud (and .pvp-badge to <body>) outside raids, which hide #hud for their
+ * own boss HUD. ID-weighted selectors win over the older #hud layout rules
+ * in style.css.
  */
 body.battle-active #battle #hud.hud-badge {
   /* Two sides of one width around the clock (the pill sizes to the wider
@@ -42,55 +42,70 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
 #hud.hud-badge .hud-side.right {
   justify-content: flex-start;
 }
-#hud.hud-badge .health-card {
-  display: flex;
-  align-items: center;
-  flex: none;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  box-shadow: none;
-}
 /* Name and score share a baseline (digits are taller than the name's
    letters). The score is on the clock's side (owner, 10 Nov): the right
    half is the left half in a mirror, so the two scores read together
    across the clock, as in most esports scoreboards. */
-#hud.hud-badge .health-card > div:first-child {
+#hud.hud-badge .hud-fighter {
   position: relative;
   top: -1px;
   display: flex;
   align-items: baseline;
+  flex: none;
   gap: 5px;
-  margin: 0;
+  min-width: 0;
   font-size: calc(12px * var(--text-scale, 1));
+  line-height: 1.2;
   white-space: nowrap;
 }
-#hud.hud-badge .health-card.right > div:first-child {
+#hud.hud-badge .hud-fighter.right {
   flex-direction: row-reverse;
 }
-#hud.hud-badge .health-card b {
+#hud.hud-badge .hud-fighter b {
+  min-width: 0;
   max-width: 96px;
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 600;
 }
-#hud.hud-badge .health-card strong[id^="score-"] {
+#hud.hud-badge .hud-fighter strong[id^="score-"] {
+  flex: none;
   font:
     700 calc(15px * var(--text-scale, 1)) "Barlow Condensed",
     sans-serif;
   color: var(--element);
   margin: 0;
 }
-#hud.hud-badge.hud-teams .health-card strong[id^="score-"] {
+/* A mode without a score (Practice): only the names. */
+#hud.hud-badge .hud-fighter strong[id^="score-"]:empty {
+  display: none;
+}
+/* 2v2: blue and red sides, your own name underlined; a free-for-all
+   scores each fighter in their own colour. */
+#hud.hud-badge.hud-teams .hud-fighter {
+  --team: #5ab0ff;
+}
+#hud.hud-badge.hud-teams .hud-fighter.team-1 {
+  --team: #ff5d6c;
+}
+#hud.hud-badge.hud-ffa .hud-fighter {
+  --team: var(--element);
+}
+#hud.hud-badge.hud-teams .hud-fighter.me b {
+  color: #fff;
+  text-decoration: underline;
+  text-decoration-color: var(--team);
+  text-underline-offset: 3px;
+}
+#hud.hud-badge.hud-teams .hud-fighter strong[id^="score-"] {
   color: var(--team);
 }
 /* 2v2: the team's rounds once, beside the clock. */
 #hud.hud-badge.hud-teams:not(.hud-ffa)
-  .health-card:not(.right):first-child
+  .hud-fighter:not(.right):first-child
   strong[id^="score-"],
 #hud.hud-badge.hud-teams:not(.hud-ffa)
-  .health-card.right:last-child
+  .hud-fighter.right:last-child
   strong[id^="score-"] {
   /* Kept in the row (out of sight, no width) so every name sits on the
      same baseline as the ones beside a score. */
@@ -102,17 +117,10 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
 /* On the right the score is before the name: the gap to cancel is on its
    other side. */
 #hud.hud-badge.hud-teams:not(.hud-ffa)
-  .health-card.right:last-child
+  .hud-fighter.right:last-child
   strong[id^="score-"] {
   margin-left: 0;
   margin-right: -5px;
-}
-/* What the badge leaves to the fighters themselves. */
-#hud.hud-badge .health-card > div:first-child > span,
-#hud.hud-badge .health-track,
-#hud.hud-badge .health-card small,
-#hud.hud-badge .hud-ultimate {
-  display: none;
 }
 #hud.hud-badge .timer-wrap {
   position: relative;
@@ -140,7 +148,7 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
 }
 /* The clock first, the round under it. */
 #hud.hud-badge #round-label {
-  /* The cards' phone layout pins it above the clock; here it is in line. */
+  /* An older phone layout pins it above the clock; here it is in line. */
   position: static;
   order: 1;
   width: auto;

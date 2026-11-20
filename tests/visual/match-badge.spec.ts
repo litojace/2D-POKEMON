@@ -113,9 +113,9 @@ async function without(
 }
 
 /** Where the ink is (CSS px) in each range of columns (CSS px across), from
- * two photos: the whole badge, and the badge with every card's text and
+ * two photos: the whole badge, and the badge with every fighter's text and
  * the clock hidden (the badge is see-through, so the arena behind it can't
- * be told from text any other way). A card's dot, name and score sit side
+ * be told from text any other way). A fighter's name and score sit side
  * by side, so each is told apart by its own columns: two photos in all,
  * where a pair per item (each costing seconds at 2x on a software
  * renderer) ran out of time on a slow CI machine. */
@@ -126,7 +126,7 @@ async function inkByColumns(
   const shown = await badgeShot(page);
   const tag = await page.addStyleTag({
     content:
-      "#hud .health-card > div:first-child, #hud .timer-wrap { visibility: hidden !important; }",
+      "#hud .hud-fighter, #hud .timer-wrap { visibility: hidden !important; }",
   });
   const bare = decodePng(
     await page.screenshot({ clip: shown.clip, animations: "disabled" }),
@@ -186,13 +186,7 @@ for (const size of SIZES)
         // Names, rounds and the clock; no health numbers or ultimates.
         await expect(page.locator("#round-label")).toHaveText("R1 · BO5");
         await expect(page.locator("#timer")).toHaveText("01:35");
-        for (const hidden of [
-          ".hud-ultimate",
-          ".health-track",
-          "small[id^=health-text-]",
-        ])
-          for (const el of await hud.locator(hidden).all())
-            await expect(el).toBeHidden();
+        await expect(hud.locator("[id^=health-], [id^=ult-]")).toHaveCount(0);
         await expect(page.locator("#phase-label")).toBeHidden();
         // Centred at the top, inside the screen.
         const box = (await hud.boundingBox())!;
@@ -211,7 +205,7 @@ for (const size of SIZES)
         const middle = box.y + box.height / 2;
         // Number the cards (the clock sits between them among the divs).
         const cards = await hud
-          .locator(".health-card")
+          .locator(".hud-fighter")
           .evaluateAll(
             (all) =>
               all.map(
@@ -228,7 +222,7 @@ for (const size of SIZES)
             const r = e.getBoundingClientRect();
             return [r.left, r.right] as [number, number];
           };
-          document.querySelectorAll("#hud .health-card").forEach((c, i) => {
+          document.querySelectorAll("#hud .hud-fighter").forEach((c, i) => {
             out[`name${i}`] = across(c.querySelector("b")!);
             out[`score${i}`] = across(c.querySelector("strong[id^=score-]")!);
           });
@@ -268,7 +262,7 @@ for (const size of SIZES)
           const shown = (e: Element) =>
             getComputedStyle(e).visibility !== "hidden";
           const cards = Array.from(
-            document.querySelectorAll("#hud .health-card"),
+            document.querySelectorAll("#hud .hud-fighter"),
           );
           const clock = box(document.querySelector("#hud .timer-wrap")!);
           const items = cards.map((c) => {
@@ -276,7 +270,7 @@ for (const size of SIZES)
               score = c.querySelector("strong[id^=score-]")!;
             return {
               right: c.classList.contains("right"),
-              dot: getComputedStyle(c.firstElementChild!, "::before").content,
+              dot: getComputedStyle(c, "::before").content,
               name: [name.left, name.right],
               score: shown(score) ? [box(score).left, box(score).right] : null,
             };
@@ -367,25 +361,83 @@ test("the badge says when the ring closes, and the arrow points at an opponent o
   }
 });
 
-test("Practice keeps the full cards", async ({ browser }) => {
-  const context = await browser.newContext({
-    viewport: { width: 844, height: 390 },
-    isMobile: true,
-    hasTouch: true,
+// Practice (Solo test mode) shows the same badge (owner, 20 Nov 2026):
+// the names and the clock, no round score; health is over each fighter.
+for (const size of [
+  { name: "844x390", width: 844, height: 390, phone: true, island: true },
+  { name: "667x375", width: 667, height: 375, phone: true, island: false },
+  { name: "1440x900", width: 1440, height: 900, phone: false, island: false },
+])
+  test(`Practice shows the score badge (${size.name})`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+      reducedMotion: "reduce",
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openHub(page);
+      await page.evaluate(() => (window as any).__room("practice", {}));
+      await openPlayPanel(page);
+      await createRoom(page);
+      await pushUntilBattle(page);
+      if (size.island) await setInsets(page, ISLAND);
+      const hud = page.locator("#hud");
+      await expect(hud).toHaveClass(/hud-badge/);
+      await expect(page.locator("body")).toHaveClass(/pvp-badge/);
+      await expect(hud.locator(".hud-fighter b")).toHaveText([
+        "tester",
+        "Training target",
+      ]);
+      // No round score, no health numbers or ultimates.
+      for (const score of await hud.locator("strong[id^=score-]").all())
+        await expect(score).toBeHidden();
+      await expect(hud.locator("[id^=health-], [id^=ult-]")).toHaveCount(0);
+      await expect(page.locator("#round-label")).toHaveText("FREE PRACTICE");
+      await expect(page.locator("#timer")).toHaveText("∞");
+      await expect(page.locator("#phase-label")).toBeHidden();
+      // Centred at the top, inside the safe area, one line.
+      const box = (await hud.boundingBox())!;
+      expect(Math.abs(box.x + box.width / 2 - size.width / 2)).toBeLessThan(
+        1.5,
+      );
+      expect(box.height).toBeLessThanOrEqual(44);
+      const inset = size.island
+        ? ISLAND
+        : { left: 0, right: 0, top: 0, bottom: 0 };
+      expect(box.x).toBeGreaterThanOrEqual(inset.left);
+      expect(box.x + box.width).toBeLessThanOrEqual(size.width - inset.right);
+      expect(box.y).toBeGreaterThanOrEqual(inset.top);
+      // The gear (and on desktop the Practice panel's button) stay clear of
+      // the badge.
+      const overlaps = (a: typeof box, b: typeof box) =>
+        a.x < b.x + b.width &&
+        b.x < a.x + a.width &&
+        a.y < b.y + b.height &&
+        b.y < a.y + a.height;
+      const gear = page.locator("#battle-menu");
+      expect(overlaps(box, (await gear.boundingBox())!)).toBe(false);
+      await snap(page, info, `practice-badge-${size.name}`);
+      // The panel still opens, with its options: phones reach it from the
+      // gear's settings, desktops from its own button.
+      if (size.phone) {
+        await gear.click();
+        await page.locator("#settings-practice").click();
+      } else {
+        const summary = page.locator("#practice-settings > summary");
+        expect(overlaps(box, (await summary.boundingBox())!)).toBe(false);
+        await summary.click();
+      }
+      await expect(page.locator("#practice-unlimited")).toBeVisible();
+      await expect(page.locator("#practice-reset")).toBeVisible();
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
   });
-  try {
-    const page = await context.newPage();
-    await openHub(page);
-    await page.evaluate(() => (window as any).__room("practice", {}));
-    await openPlayPanel(page);
-    await createRoom(page);
-    await pushUntilBattle(page);
-    await expect(page.locator("#hud")).not.toHaveClass(/hud-badge/);
-    await expect(page.locator("#hud .health-track").first()).toBeVisible();
-  } finally {
-    await context.close();
-  }
-});
 
 /** Where an element's ink is across (CSS px), like ink() for height. */
 async function inkAcross(page: Page, hide: string) {
@@ -415,7 +467,7 @@ for (const size of [
       // A long name against a short one.
       const errors = await match(page, "duel", 95, "Bartholomew");
       if (size.island) await setInsets(page, ISLAND);
-      await expect(page.locator("#hud .health-card b").first()).toHaveText(
+      await expect(page.locator("#hud .hud-fighter b").first()).toHaveText(
         "Bartholomew",
       );
       const box = (await page.locator("#hud").boundingBox())!;
