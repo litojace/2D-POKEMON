@@ -26,7 +26,13 @@ On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview)
   the pieces its answer lies on (rune pads, islands, mirrors and skylights,
   braziers, the Quiet Zone, the polarity pad, lanterns and moonlight), padded
   for a fighter's art and name and keeping 7% of the screen clear at each side
-  for the controls. When those span the court it is the whole court; sweeps
+  for the controls. The middle of every marked warning and moonlight pool
+  (`FRAME_CORE`, 65% of its radius: icon, order dots, crescent) also stays
+  clear of the touch controls themselves: when the framed view would put one
+  under the joystick or a button, the camera pans across the room the frame
+  leaves and, if it must, pulls out toward the whole court's zoom
+  (`raidFramePlacement`). The controls are measured when they are laid out
+  (`TouchControls.onLayout`, `fitRenderer`), never per frame. When those span the court it is the whole court; sweeps
   (Breaker, Tidal Wave) and dreams (their rune pads are laid out clear of the
   dream panel in the whole-court view) always are. The zoom stays between the whole court's
   and the follow camera's. Which moments are court-wide is
@@ -35,7 +41,8 @@ On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview)
   running mechanics whose answer may be anywhere (a dream's rune pads, the
   Quiet Zone, polarity partners, Mirror Charge, an airborne Lumiwick's braziers,
   Prismatail's light-relay mirrors, so that fight is always framed). A new attack whose safe spot
-  can be off screen (islands, pads, a marked raider, braziers) gets
+  can be off screen (islands, pads, a marked raider, braziers, a chain of
+  leaps that chases a raider like Shade Pounce) gets
   `view: "court"`; a dodge that only needs the floor around the raider does not.
 - The off-screen boss gets the PvP arrow circling the raider. Off-screen allies
   get a small arrow in their colour at the screen's edge (`ally-bearings.ts`); a

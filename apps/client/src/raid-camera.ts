@@ -71,8 +71,26 @@ export function raidWantsCourt(raid: RaidState, now: number) {
   return false;
 }
 
+/** A spot on the court that must stay readable (world px, a centre and radius). */
+export interface FrameMark {
+  x: number;
+  y: number;
+  r: number;
+}
 /** A world rectangle the camera should show (the court is 1600 × 900). */
 export interface FrameBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  /**
+   * The middles of the marked warnings and their safe spots: kept clear of
+   * the touch controls when the camera frames the moment.
+   */
+  marks?: FrameMark[];
+}
+/** A screen rectangle the touch controls cover (canvas px, like the view). */
+export interface ScreenRect {
   x0: number;
   y0: number;
   x1: number;
@@ -87,6 +105,11 @@ const FRAME_PAD = 70;
 const FRAME_SIDE = 0.07;
 /** Warnings that sweep the whole court whatever their marked geometry. */
 const SWEEPS = new Set(["breaker", "wave"]);
+/**
+ * The share of a warning's radius that must stay clear of the controls: its
+ * middle, where the icon, the order dots and a pool's crescent are drawn.
+ */
+export const FRAME_CORE = 0.65;
 
 /**
  * What a court-wide moment needs in view: every raider and boss, every
@@ -115,12 +138,22 @@ export function raidFrame(
   const whole = { x0: 0, y0: 0, x1: 1600, y1: 900 };
   for (const p of people) add(p.x, p.y, FRAME_PAD);
   const kinds = new Set(raid.warnings.map((w) => w.kind));
+  const marks: FrameMark[] = [];
   for (const w of raid.warnings) {
     if (SWEEPS.has(w.kind)) return whole;
     const r = Math.min(w.radius, 900) + FRAME_PAD / 2;
     add(w.x, w.y, r);
     add(w.tx, w.ty, r);
-    for (const pool of w.pools ?? []) add(pool.x, pool.y, pool.radius);
+    // A court-wide warning covers the controls whatever the camera does.
+    if (w.radius > 0 && w.radius < RAID_WIDE_RADIUS) {
+      marks.push({ x: w.x, y: w.y, r: w.radius * FRAME_CORE });
+      if (Math.hypot(w.tx - w.x, w.ty - w.y) > 1)
+        marks.push({ x: w.tx, y: w.ty, r: w.radius * FRAME_CORE });
+    }
+    for (const pool of w.pools ?? []) {
+      add(pool.x, pool.y, pool.radius);
+      marks.push({ x: pool.x, y: pool.y, r: pool.radius * FRAME_CORE });
+    }
   }
   const dreaming =
     (raid.dream && raid.dream.until > now) ||
@@ -160,7 +193,136 @@ export function raidFrame(
     y0: Math.max(0, y0),
     x1: Math.min(1600, x1),
     y1: Math.min(900, y1),
+    ...(marks.length ? { marks } : {}),
   };
+}
+
+/** Zooms tried, from the framed zoom out to the overview's, to clear the controls. */
+const PLACE_ZOOMS = 6;
+/** Pans tried across the slack the frame leaves (across × down). */
+const PLACE_ACROSS = 9,
+  PLACE_DOWN = 5;
+
+/** How many marks a view at this centre and zoom hides (off screen or under a control). */
+function hiddenMarks(
+  marks: readonly FrameMark[],
+  controls: readonly ScreenRect[],
+  c: Point,
+  zoom: number,
+  width: number,
+  height: number,
+  top: number,
+) {
+  let hidden = 0;
+  for (const m of marks) {
+    const x = (m.x - c.x) * zoom + width / 2,
+      y = (m.y - c.y) * zoom + height / 2,
+      r = m.r * zoom;
+    if (x - r < 0 || x + r > width || y - r < top || y + r > height) {
+      hidden++;
+      continue;
+    }
+    for (const b of controls) {
+      const dx = Math.max(b.x0 - x, 0, x - b.x1),
+        dy = Math.max(b.y0 - y, 0, y - b.y1);
+      if (dx * dx + dy * dy < r * r) {
+        hidden++;
+        break;
+      }
+    }
+  }
+  return hidden;
+}
+
+/**
+ * Where to frame a court-wide moment: the box's middle at the closest zoom
+ * that fits it, unless that leaves a mark (a warning's middle, a safe spot)
+ * under the touch controls. Then the camera pans across the room the box
+ * leaves, and if need be pulls out (never past the overview), to the closest
+ * view that hides the fewest marks. Shared data, no per-boss placement.
+ */
+export function raidFramePlacement(
+  box: FrameBox,
+  width: number,
+  height: number,
+  top: number,
+  /** The zoom that fits the box, and the overview's (the floor). */
+  fit: number,
+  floor: number,
+  controls: readonly ScreenRect[],
+): { x: number; y: number; zoom: number } {
+  const middle = (zoom: number) =>
+    clampCentre(
+      {
+        x: (box.x0 + box.x1) / 2,
+        // The box's middle in the space below the HUD.
+        y: (box.y0 + box.y1) / 2 - top / zoom / 2,
+      },
+      zoom,
+      width,
+      height,
+      top,
+    );
+  const marks = box.marks ?? [];
+  const first = { ...middle(fit), zoom: fit };
+  if (!marks.length || !controls.length) return first;
+  let best = first,
+    bestHidden = hiddenMarks(marks, controls, first, fit, width, height, top),
+    bestMove = 0;
+  if (!bestHidden) return first;
+  const side = width * FRAME_SIDE;
+  for (let i = 0; i <= PLACE_ZOOMS; i++) {
+    const zoom =
+      fit > floor ? fit * Math.pow(floor / fit, i / PLACE_ZOOMS) : fit;
+    const base = middle(zoom);
+    // Centres that keep the whole box in view (beside the side margins,
+    // below the HUD).
+    const range = (lo: number, hi: number) =>
+      lo <= hi ? [lo, hi] : [(lo + hi) / 2, (lo + hi) / 2];
+    const [xLo, xHi] = range(
+      box.x1 - (width / 2 - side) / zoom,
+      box.x0 + (width / 2 - side) / zoom,
+    );
+    const [yLo, yHi] = range(
+      box.y1 - height / 2 / zoom,
+      box.y0 + (height / 2 - top) / zoom,
+    );
+    for (let a = 0; a < PLACE_ACROSS; a++)
+      for (let d = 0; d < PLACE_DOWN; d++) {
+        const c = clampCentre(
+          {
+            x: xLo + ((xHi - xLo) * a) / (PLACE_ACROSS - 1),
+            y: yLo + ((yHi - yLo) * d) / (PLACE_DOWN - 1),
+          },
+          zoom,
+          width,
+          height,
+          top,
+        );
+        const hidden = hiddenMarks(
+          marks,
+          controls,
+          c,
+          zoom,
+          width,
+          height,
+          top,
+        );
+        const move = Math.hypot(c.x - base.x, c.y - base.y);
+        // Fewest hidden; then the closest zoom (tried first); then the
+        // least pan from the box's middle.
+        if (
+          hidden < bestHidden ||
+          (hidden === bestHidden && zoom === best.zoom && move < bestMove)
+        ) {
+          best = { ...c, zoom };
+          bestHidden = hidden;
+          bestMove = move;
+        }
+      }
+    if (!bestHidden || fit <= floor) break;
+  }
+  return best;
 }
 
 /** The follow zoom: the court covers the space below the HUD, then RAID_FOLLOW_ZOOM. */
@@ -256,6 +418,8 @@ export class RaidCamera {
     /** Seconds, any clock (for the hold after a court-wide warning). */
     now: number,
     reduced: boolean,
+    /** What the touch controls cover (canvas px): framed marks stay clear. */
+    controls: readonly ScreenRect[] = [],
   ): CameraView {
     width = Math.max(1, width);
     height = Math.max(1, height);
@@ -284,8 +448,19 @@ export class RaidCamera {
       overview.zoomX,
       followZoom(width, height, top),
     );
-    const targetZoom = close ? followZoom(width, height, top) : framed;
-    const target = close
+    const placed = close
+      ? undefined
+      : raidFramePlacement(
+          box,
+          width,
+          height,
+          top,
+          framed,
+          overview.zoomX,
+          controls,
+        );
+    const targetZoom = placed ? placed.zoom : followZoom(width, height, top);
+    const target = !placed
       ? raidFollowCentre(
           width,
           height,
@@ -298,17 +473,7 @@ export class RaidCamera {
           },
           boss,
         )
-      : clampCentre(
-          {
-            x: (box.x0 + box.x1) / 2,
-            // The box's middle in the space below the HUD.
-            y: (box.y0 + box.y1) / 2 - top / framed / 2,
-          },
-          framed,
-          width,
-          height,
-          top,
-        );
+      : placed;
     const ms = clamp(delta, 0, 100);
     // Out to the court quickly (a warning is showing), back in gently.
     const zoomBlend = 1 - Math.exp(-ms / (close ? 420 : 140));
