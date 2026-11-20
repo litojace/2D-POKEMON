@@ -90,8 +90,9 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
     // The comedy mask on its stick: a white face with gold rim, eye holes
     // and a wide smile; facing us from the front and in profile, its back
     // (plain gold) from behind.
-    const mx = k.back ? k.L - 12 : k.side ? k.C + k.side * 26 : k.R + 14,
-      my = k.T - 20;
+    // In profile it is held lower, at the chest, clear of the face.
+    const mx = k.back ? k.L - 12 : k.side ? k.C + k.side * 28 : k.R + 14,
+      my = k.side ? k.T + 6 : k.T - 20;
     const face = k.back
       ? k.path(`M${mx - 12} ${my - 9}Q${mx} ${my - 15} ${mx + 12} ${my - 9}Q${mx + 13} ${my + 6} ${mx} ${my + 12}Q${mx - 13} ${my + 6} ${mx - 12} ${my - 9}Z`, "#b8862a")
       : k.path(`M${mx - 12} ${my - 9}Q${mx} ${my - 15} ${mx + 12} ${my - 9}Q${mx + 13} ${my + 6} ${mx} ${my + 12}Q${mx - 13} ${my + 6} ${mx - 12} ${my - 9}Z`, "#fff6e0") +
