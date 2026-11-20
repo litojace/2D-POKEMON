@@ -303,6 +303,21 @@ from players' phones:
   slowest frames, stutter, level and density, glow, smoke and particles),
   for a player to screenshot.
 
+The Plaza's wishing-fountain fireworks (20 Nov 2026) follow the same
+rules, although the Plaza is a 2D canvas, not a Phaser scene, so
+`fx-engine.ts` can't draw there. `apps/client/src/plaza/plaza-fireworks.ts`
+has the engine's levers: sparks at 35% at Low and with reduced motion, no
+spark tails at Low, one pooled array of at most 220 sparks, one pre-drawn
+glow sprite per colour for the bursts' flashes, and a glow budget (Low: 0.2
+screens; over it every flash shrinks alike, never below half size). Its
+counts (`stats`, `peak`) are read by `tests/visual/plaza-wish.spec.ts` and
+`tests/visual/plaza-wish-performance.spec.ts`. Measured at High on an
+844×390 screen in this container: 60 fps at the fountain before and during
+the 5 s show (95th percentile frame 17 ms both), the fireworks' own drawing
+0.07 ms a frame on average (0.6 ms at most), at most 103 sparks, 2 flashes
+and 0.09 screens of glow, which is under Low's budget, so Low only thins
+the sparks.
+
 ### 9. Shots and wind-ups on your own timeline
 
 Players on phones reported (10 Nov 2026) that skills stuttered when cast,

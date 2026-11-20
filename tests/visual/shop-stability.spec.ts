@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
-import { openHub } from "./helpers";
+import { expect, test, type Page } from "@playwright/test";
+import { openHub, snap } from "./helpers";
 import { exposeAccount, shopServer } from "./shop-server";
 
 // The fitting room (UI remodel step 2) refreshes in place: a fresh copy of
@@ -120,7 +120,10 @@ for (const size of [
       ).toBeGreaterThan(0);
       // Closing releases every effect it started.
       await page.locator(".fit-room .ui-close").click();
-      await expect(page.locator(".fit-room")).toHaveCount(0);
+      // (A closed Shop stays in the page, hidden, for its next open: ui/hub-panel.ts park.)
+      await expect(
+        page.locator(".fit-room:not([data-ui-leaving])"),
+      ).toHaveCount(0);
       await expect
         .poll(() =>
           page.evaluate(
@@ -137,7 +140,8 @@ for (const size of [
     }
   });
 }
-test("downloaded updates wait until the Shop closes", async ({ page }) => {
+/** The update worker, faked: onNeedRefresh on demand, counted applies and reloads. */
+async function fakeUpdates(page: Page) {
   await page.route(/\/stubs\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch();
     await route.fulfill({
@@ -158,6 +162,11 @@ test("downloaded updates wait until the Shop closes", async ({ page }) => {
       ),
     });
   });
+}
+test("downloaded updates wait until the Shop closes, then ask first", async ({
+  page,
+}, info) => {
+  await fakeUpdates(page);
   const errors = await openHub(page);
   await page.click("#account-coins");
   await expect(page.locator(".fit-room")).toBeVisible();
@@ -171,9 +180,74 @@ test("downloaded updates wait until the Shop closes", async ({ page }) => {
   await expect(page.locator("#pwa-banner")).toContainText(
     "after closing menus",
   );
+  await expect(page.locator("#pwa-update-now")).toBeHidden();
   await page.locator(".fit-room .ui-close").click();
+  // Back in the hub: a prompt, and nothing applies until the player agrees.
+  await expect(page.locator("#pwa-update-now")).toBeVisible();
+  await expect(page.locator("#pwa-banner")).toContainText("New version ready");
+  await snap(page, info, "pwa-update-prompt");
+  await page.waitForTimeout(500);
+  expect(
+    await page.evaluate(() => [
+      (window as any).__pwaApplies || 0,
+      (window as any).__pwaReloads || 0,
+    ]),
+  ).toEqual([0, 0]);
+  // Later hides it; Update now (once asked again) applies and reloads.
+  await page.locator("#pwa-update-later").click();
+  await expect(page.locator("#pwa-banner")).toBeHidden();
+  await page.evaluate(() => {
+    const now = Date.now();
+    Date.now = () => now + 11 * 60 * 1000;
+    window.dispatchEvent(new Event("focus"));
+  });
+  await page.locator("#pwa-update-now").click();
   await expect
     .poll(() => page.evaluate(() => (window as any).__pwaReloads || 0))
     .toBe(1);
+  expect(await page.evaluate(() => (window as any).__pwaApplies || 0)).toBe(1);
   expect(errors).toEqual([]);
 });
+for (const [width, height] of [
+  [667, 375],
+  [844, 390],
+  [932, 430],
+])
+  test(`the update prompt fits a ${width}×${height} landscape phone`, async ({
+    browser,
+  }, info) => {
+    const ctx = await browser.newContext({
+      viewport: { width, height },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await ctx.newPage();
+      await fakeUpdates(page);
+      const errors = await openHub(page);
+      await page.evaluate(() => (window as any).__pwaOptions.onNeedRefresh());
+      const now = page.locator("#pwa-update-now"),
+        later = page.locator("#pwa-update-later");
+      await expect(now).toBeVisible();
+      await snap(page, info, `pwa-update-prompt-${width}x${height}`);
+      const banner = (await page.locator("#pwa-banner").boundingBox())!;
+      expect(banner.x).toBeGreaterThanOrEqual(0);
+      expect(banner.y).toBeGreaterThanOrEqual(0);
+      expect(banner.x + banner.width).toBeLessThanOrEqual(width);
+      expect(banner.y + banner.height).toBeLessThanOrEqual(height);
+      for (const button of [now, later])
+        expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      // PLAY stays reachable while the prompt waits for an answer.
+      const play = (await page.locator("#lobby-play").boundingBox())!;
+      expect(
+        banner.x + banner.width <= play.x || banner.y + banner.height <= play.y,
+        JSON.stringify({ banner, play }),
+      ).toBe(true);
+      await later.tap();
+      await expect(page.locator("#pwa-banner")).toBeHidden();
+      expect(errors).toEqual([]);
+    } finally {
+      await ctx.close();
+    }
+  });

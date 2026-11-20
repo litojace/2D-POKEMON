@@ -386,7 +386,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   layer.innerHTML = `<div class="lobby-backdrop" aria-hidden="true"></div>
 <nav class="lobby-rail" aria-label="Main menu">${RAIL.map(
     ([id, label, icon]) =>
-      `<button type="button" data-lobby-action="${id}" title="${label}" aria-label="${label}">${menuIcon(icon)}<span>${label}</span><i class="lobby-badge" data-badge-for="${id}" hidden></i></button>`,
+      `<button type="button" data-lobby-action="${id}" title="${label}" aria-label="${label}"><i class="lobby-rail-icon">${menuIcon(icon)}<i class="lobby-badge" data-badge-for="${id}" hidden></i></i><span>${label}</span></button>`,
   ).join("")}</nav>
 <section class="lobby-stage" aria-label="Your fighter">
   <div class="lobby-party-bar" id="lobby-party-bar" hidden><span class="lobby-party-faces" id="lobby-party-faces"></span><span id="lobby-party-size"></span><button type="button" class="lobby-rejoin" id="lobby-rejoin" data-lobby-action="party-room" hidden>${iconLabel("enter", "Rejoin room")}</button><button type="button" data-lobby-action="leave-party">${iconLabel("leave", "Leave party")}</button></div>

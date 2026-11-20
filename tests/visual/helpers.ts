@@ -22,6 +22,11 @@ export async function openHub(page: Page) {
     } catch {
       /* No storage: Auto. */
     }
+    // Tests find the client's module URLs in resource timing (the dev
+    // server serves them by path). Its buffer holds 250 entries by default
+    // and drops later ones; the hub now loads about that many, so a module
+    // loaded late (boss-prepaint.ts) went missing.
+    performance.setResourceTimingBufferSize(5000);
   });
   // The harness serves every client module unbundled, one request each, so a
   // page load passes the browser's default 250 resource-timing entries; the
