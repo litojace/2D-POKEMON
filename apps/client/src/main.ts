@@ -7,7 +7,12 @@ import {
   type GraphicsSetting,
 } from "./graphics-quality";
 import { softwareRendering } from "./gpu-check";
-import { RaidCamera, raidFrame } from "./raid-camera";
+import {
+  RaidCamera,
+  raidFrame,
+  underControls,
+  type ControlSides,
+} from "./raid-camera";
 import { AllyBearings } from "./ally-bearings";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
 import { capGameFrames, screenHz, type FrameCap } from "./frame-cap";
@@ -662,6 +667,30 @@ let replacedAccount = sessionStorage.getItem("arena-session-replaced");
 let gameInstance: Phaser.Game | undefined;
 let battleResizeObserver: ResizeObserver | undefined;
 let raidCameraHudBottom = 0;
+/** Phones: how far the joystick and the skill buttons reach in from each side
+ * of the arena (game px). Measured once on the first raid frame after the
+ * battle is laid out (fitRenderer clears it), never every frame. */
+let raidControlSides: ControlSides | undefined;
+function measureRaidControls(): ControlSides {
+  const frame = $("game").parentElement!.getBoundingClientRect(),
+    dpr = renderScale();
+  const joystick = document.querySelector<HTMLElement>(".touch-pad .joystick");
+  const buttons = Array.from(
+    document.querySelectorAll<HTMLElement>(".touch-buttons button"),
+  ).filter((b) => b.offsetWidth);
+  return {
+    left: joystick?.offsetWidth
+      ? Math.max(0, joystick.getBoundingClientRect().right - frame.left) * dpr
+      : 0,
+    right: buttons.length
+      ? Math.max(
+          0,
+          frame.right -
+            Math.min(...buttons.map((b) => b.getBoundingClientRect().left)),
+        ) * dpr
+      : 0,
+  };
+}
 let state: Snapshot | undefined,
   myId = "",
   selected: CharacterId = lastHomeFighter(),
@@ -6104,6 +6133,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           delta,
           feelNow / 1000,
           reducedMotion,
+          raidFollow ? (raidControlSides ??= measureRaidControls()) : undefined,
         )
       : this.followCamera.update(
           this.scale.width,
@@ -6160,13 +6190,24 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !opponent ||
       // A downed raider's phone camera stays on them, not on the partner.
       (raidFollow && raidFocus !== presented) ||
-      !outsideView(
+      (!outsideView(
         opponent.x,
         opponent.y,
         this.scale.width,
         this.scale.height,
         view,
-      );
+      ) &&
+        // On a phone raid, a boss under the skill buttons or the joystick
+        // counts as off screen too: the arrow says where it is.
+        !(
+          raidFollow &&
+          raidControlSides &&
+          underControls(
+            (opponent.x - view.x) * view.zoomX + this.scale.width / 2,
+            this.scale.width,
+            raidControlSides,
+          )
+        ));
     // PvP and phone raids: an arrow circling the fighter you follow, in the
     // nearest off-screen opponent's colour (owner, 7 Nov 2026: no chip at
     // the top, where the score badge is; on phones the raid HUD is there).
@@ -6244,7 +6285,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
                   ((at.y - BEARING_LIFT - view.y) * view.zoomY +
                     this.scale.height / 2) *
                   css,
-                color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
                 downed: !!state!.raid!.downed[p.id],
               };
             })
@@ -6252,7 +6292,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       {
         left: 18,
         top: raidCameraHudBottom * this.scale.zoom + 18,
-        right: this.scale.width * this.scale.zoom - 18,
+        // Right-side arrows sit by the skill buttons, never under them or
+        // over the clock in the corner.
+        right:
+          (this.scale.width - (raidControlSides?.right ?? 0)) *
+            this.scale.zoom -
+          18,
         bottom: this.scale.height * this.scale.zoom - 18,
       },
     );
@@ -7689,6 +7734,7 @@ function fitRenderer() {
       ? Math.max(0, raidHud.getBoundingClientRect().bottom - frame.top + 6) *
         dpr
       : 0;
+  raidControlSides = undefined;
   $("battle").style.setProperty("--desktop-arena-width", `${frame.width}px`);
   $("battle").style.setProperty(
     "--desktop-arena-top",
