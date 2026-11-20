@@ -53,6 +53,15 @@ test("shots run on from their snapshot to where the server will have them", asyn
         abilityId,
         color: 0xffd23f,
       });
+      // Snapshots at the server's 15 Hz first, so your timeline sits on its
+      // steady lead. After the gaps above (300 ms and more) it had run on to
+      // its 0.3 s cap, and the shots' snapshot then eased it back down
+      // (LocalTimeline.lead): drawn shots stepped back (285.50 after 285.85,
+      // CI 19 Nov), a correction this test does not mean to measure.
+      for (let i = 0; i < 8; i++) {
+        w.__push();
+        await new Promise((r) => setTimeout(r, 1000 / 15));
+      }
       // Mid-court lanes with no cover on the classic court's rows.
       w.__snap.projectiles = [shot(950, "me", 60), shot(951, "p2", 640)];
       w.__drawnShots = [];
