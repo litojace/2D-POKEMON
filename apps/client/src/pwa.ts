@@ -14,7 +14,7 @@ export function setupPWA(
   notify: (text: string) => void,
 ) {
   // The iPhone app updates through the App Store: no worker, no banner.
-  if (isNativeApp()) return { sync() {} };
+  if (isNativeApp()) return { sync() {}, serverUpdating() {} };
   let install: InstallPrompt | undefined;
   let registration: ServiceWorkerRegistration | undefined;
   let lastCheck = 0;
@@ -23,10 +23,12 @@ export function setupPWA(
   const banner = document.createElement("aside");
   banner.id = "pwa-banner";
   banner.hidden = true;
-  banner.setAttribute("role", "status");
-  banner.innerHTML = "<span></span>";
+  // Asks before updating (docs/mobile-pwa.md): Update now, or Later.
+  banner.innerHTML =
+    '<span role="status"></span><div class="pwa-actions" hidden><button type="button" class="primary" id="pwa-update-now">Update now</button><button type="button" class="secondary" id="pwa-update-later">Later</button></div>';
   document.body.append(banner);
   const message = banner.querySelector("span")!;
+  const actions = banner.querySelector<HTMLElement>(".pwa-actions")!;
 
   const peers = () => {
     const records: Array<{ active: boolean; at: number }> = [];
@@ -43,9 +45,12 @@ export function setupPWA(
     }
     return peerMatchActive(records, Date.now());
   };
-  // A dialog, or a hub screen opened inside the Lobby (ui/hub-panel.ts).
+  // A dialog, or a hub screen opened inside the Lobby (ui/hub-panel.ts);
+  // not one parked for its next open (the Shop, closed but kept).
   const menuOpen = () =>
-    !!document.querySelector("dialog[open], .ui-panel-host");
+    !!document.querySelector(
+      "dialog[open], .ui-panel-host:not([data-ui-parked])",
+    );
   const idle = () =>
     safeToUpdate(getPhase(), menuOpen()) &&
     !peers() &&
@@ -57,12 +62,12 @@ export function setupPWA(
     reload: () => location.reload(),
     now: () => Date.now(),
   });
-  const checkForUpdate = async () => {
+  const checkForUpdate = async (soon = false) => {
     if (
       !registration ||
       checking ||
       !navigator.onLine ||
-      document.visibilityState !== "visible" ||
+      (!soon && document.visibilityState !== "visible") ||
       Date.now() - lastCheck < 5000
     )
       return;
@@ -77,14 +82,33 @@ export function setupPWA(
     }
   };
   const paint = () => {
-    banner.hidden = !automatic.waiting && !automatic.reloadReady;
+    const asking = automatic.asking,
+      safe = idle();
+    // "Later" hides it until the snooze ends; a match only gets a quiet note.
+    banner.hidden =
+      !automatic.pending || (safe && !asking && !automatic.accepted);
+    actions.hidden = !asking;
     if (!banner.hidden) {
-      message.textContent = idle()
-        ? "Updating to the latest arena version…"
-        : "Update downloaded · applies after closing menus and returning to the Lobby or the Plaza.";
+      const text = automatic.accepted
+        ? safe
+          ? "Updating to the latest arena version…"
+          : "Update accepted · applies after closing menus and returning to the Lobby or the Plaza."
+        : asking
+          ? "New version ready. Updating takes a few seconds."
+          : "Update ready · you can install it after closing menus and returning to the Lobby or the Plaza.";
+      if (message.textContent !== text) message.textContent = text;
     }
     void automatic.sync();
   };
+  actions.querySelector<HTMLButtonElement>("#pwa-update-now")!.onclick = () => {
+    void automatic.accept().finally(paint);
+    paint();
+  };
+  actions.querySelector<HTMLButtonElement>("#pwa-update-later")!.onclick =
+    () => {
+      automatic.later();
+      paint();
+    };
   let lastBeat = 0,
     lastMenuOpen = false,
     lastPhase: string | undefined;
@@ -226,5 +250,16 @@ export function setupPWA(
       "You are offline. Live battles require a connection; the game will try to reconnect.",
     ),
   );
-  return { sync: heartbeat };
+  return {
+    sync: heartbeat,
+    /**
+     * The server said a deploy is replacing it (docs/server-updates.md): the
+     * new client is probably out already, so look for it now, and the prompt
+     * is ready the moment the match ends.
+     */
+    serverUpdating() {
+      lastCheck = 0;
+      void checkForUpdate(true);
+    },
+  };
 }

@@ -32,6 +32,20 @@ export interface HubPanelOptions {
    * while you are in the room; Escape goes back up a level there).
    */
   escape?: () => void;
+  /**
+   * Keep the screen built after it closes, for the next open (`reuse`):
+   * asked once it has left; true parks it instead of removing it. A parked
+   * screen stays where it was in the page but out of its drawing, styles
+   * and layout (display: none, ui/components.css), so its elements, decoded
+   * pictures and what other code put in it (the Shop's live fighter) are
+   * there for the next open, and other screens don't pay for it meanwhile.
+   * Building the Shop's 1,500 elements and taking its fighter back on every
+   * open was most of its repeat open (issue #244). The caller owns it from
+   * then on and removes it when it's no longer wanted.
+   */
+  park?: (wrap: HTMLElement) => boolean;
+  /** A screen parked by `park`, to open again as it was. */
+  reuse?: HTMLElement;
 }
 export interface HubPanel {
   root: HTMLElement;
@@ -49,6 +63,28 @@ let current:
   { panel: HubPanel; close: (replaced?: boolean) => void } | undefined;
 /** Lobby parts a screen that was replaced still covers, for the next one. */
 let handoff: HTMLElement[] = [];
+/** On a parked screen's host (ui/components.css hides it). */
+export const PARKED = "data-ui-parked";
+/** Out of the page's drawing, styles and layout, ready to open again. */
+function park(wrap: HTMLElement, root: HTMLElement) {
+  wrap.setAttribute(PARKED, "");
+  // Its leave held it at opacity 0, and out of reach: as it was, for when
+  // it opens (all of it is styled again then anyway, so now costs nothing).
+  for (const a of root.getAnimations()) a.cancel();
+  wrap.inert = false;
+  wrap.style.pointerEvents = "";
+  wrap.style.zIndex = "";
+  wrap.querySelectorAll<HTMLElement>(".ui-panel").forEach((el) => {
+    el.style.pointerEvents = "";
+  });
+}
+function unpark(wrap: HTMLElement) {
+  wrap.removeAttribute(PARKED);
+  delete wrap.dataset.uiLeaving;
+  wrap.querySelectorAll<HTMLElement>(".ui-panel").forEach((el) => {
+    delete el.dataset.uiLeaving;
+  });
+}
 /** What a screen's contents are: they arrive one after another. The
  * shared pieces (tabs, rows, tiles, the foot) when a screen uses them,
  * otherwise its body's parts, with a list counted item by item. */
@@ -84,7 +120,12 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     document.querySelector<HTMLElement>(".lobby-layer") ??
     document.body;
   const returnFocus = document.activeElement as HTMLElement | null;
-  const wrap = document.createElement("div");
+  // Taken back where it was parked, on this host (not a Lobby since left).
+  const kept =
+    o.reuse?.parentElement === host && o.reuse.hasAttribute(PARKED)
+      ? o.reuse
+      : undefined;
+  const wrap = kept ?? document.createElement("div");
   wrap.className = "ui-panel-host";
   let covered: HTMLElement[] = handoff;
   handoff = [];
@@ -100,8 +141,10 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
       },
     ].filter((t) => t.el);
 
-  const mount = (markup: string) => {
-    wrap.innerHTML = markup;
+  /** The screen's markup, or (none) the parked screen taken back as is. */
+  const mount = (markup?: string) => {
+    if (markup !== undefined) wrap.innerHTML = markup;
+    else unpark(wrap);
     const root = wrap.firstElementChild as HTMLElement | null;
     if (!root?.classList.contains("ui-panel"))
       throw new Error("openHubPanel expects markup from panel()");
@@ -220,20 +263,26 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
       transform: root.classList.contains("ui-sheet")
         ? "translateX(-28px)"
         : "translateX(-16px) scale(.99)",
-    }).then(() => wrap.remove());
+    }).then(() => {
+      if (o.park && wrap.isConnected && o.park(wrap)) park(wrap, root);
+      else wrap.remove();
+    });
     if (current?.panel === panel) current = undefined;
     if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
     document.dispatchEvent(new Event(PANEL_EVENT));
     o.onClose?.();
   }
 
-  let root = mount(html);
+  let root = mount(kept ? undefined : html);
   // Before any screen still fading out, so a lookup finds this one first;
-  // the one leaving stays drawn on top until it has faded.
+  // the one leaving stays drawn on top until it has faded. (A parked
+  // screen opens where it was.)
   const leavingHost = host.querySelector(
     ":scope > .ui-panel-host[data-ui-leaving]",
   );
-  if (leavingHost) host.insertBefore(wrap, leavingHost);
+  if (kept) {
+    /* already in place */
+  } else if (leavingHost) host.insertBefore(wrap, leavingHost);
   else host.append(wrap);
   // The Lobby leaves the page (the Plaza, a match): its screen closes too,
   // so nothing keeps listening or drawing out of sight.

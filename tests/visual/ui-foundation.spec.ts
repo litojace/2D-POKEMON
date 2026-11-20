@@ -231,7 +231,10 @@ for (const size of SIZES)
       await page.evaluate(() =>
         Promise.all(
           Array.from(
-            document.querySelectorAll<HTMLImageElement>(".ui-panel img"),
+            // (Not a screen parked for its next open: never loaded.)
+            document.querySelectorAll<HTMLImageElement>(
+              ".ui-panel-host:not([data-ui-parked]) .ui-panel img",
+            ),
           ).map((i) => i.decode().catch(() => {})),
         ),
       );
