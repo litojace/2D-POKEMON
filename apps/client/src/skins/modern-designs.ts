@@ -596,8 +596,9 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
         k.put("body", torso(k, toga, [0, 1, 2].map((i) => k.line(`M${k.L + i * 6} ${k.T - 2}L${k.R} ${k.B - 12 + i * 6}`, fold, 1.4)).join("") +
           k.lume("pulse", k.rect(c - 5, k.B - 18, 10, 7, 1, "#cfe8d8", k.ink, 0.6), 0, "#ffffff")));
       }
-      onPole(k, (x, y) => k.path(`M${x - 5} ${y + 4}H${x + 5}L${x + 3} ${y + 10}H${x - 3}Z`, "#5fae9a") +
-        k.lume("pulse", k.path(`M${x} ${y - 10}Q${x + 7} ${y - 2} ${x + 4} ${y + 4}H${x - 4}Q${x - 7} ${y - 2} ${x} ${y - 10}Z`, "#ffb347", k.ink, 0.7) + k.path(`M${x} ${y - 4}Q${x + 3} ${y} ${x + 2} ${y + 3}H${x - 2}Q${x - 3} ${y} ${x} ${y - 4}Z`, "#fff3a8", "none"), 1, "#ffb347"));
+      // The torch, held high (drawn larger than the pole's other loads).
+      onPole(k, (x, y) => `<g transform="translate(${x} ${y}) scale(1.4) translate(${-x} ${-y})">` + k.path(`M${x - 5} ${y + 4}H${x + 5}L${x + 3} ${y + 10}H${x - 3}Z`, "#5fae9a") +
+        k.lume("pulse", k.path(`M${x} ${y - 10}Q${x + 7} ${y - 2} ${x + 4} ${y + 4}H${x - 4}Q${x - 7} ${y - 2} ${x} ${y - 10}Z`, "#ffb347", k.ink, 0.7) + k.path(`M${x} ${y - 4}Q${x + 3} ${y} ${x + 2} ${y + 3}H${x - 2}Q${x - 3} ${y} ${x} ${y - 4}Z`, "#fff3a8", "none"), 1, "#ffb347") + "</g>");
       // The crown: a band with seven rays, lit one after another.
       const x = k.hx + k.side * 3,
         y = k.ht + 12;

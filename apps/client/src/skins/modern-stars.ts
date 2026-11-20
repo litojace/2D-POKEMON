@@ -70,14 +70,20 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
     else {
       const c = cx(k);
       k.put("body", torso(k, dress, k.path(`M${c - 11} ${k.T + 4}H${c + 11}L${c + 13} ${k.B + 4}H${c - 13}Z`, "#ffffff", k.ink, 0.7) + k.path(`M${c - 9} ${k.T - 1}L${c} ${k.T + 6}L${c + 9} ${k.T - 1}Z`, "#ff6fae", k.ink, 0.6)));
-      const mx = c + (k.side ? k.side * 4 : 10),
-        my = k.T + 14;
-      k.put("body", k.path(`M${mx - 4} ${my}h8l-1.4 8h-5.2Z`, "#ffb3cf", k.ink, 0.5) + k.circle(mx, my - 1, 4, "#fff6f0", k.ink, 0.5) + k.circle(mx + 1, my - 5, 1.4, RED, "none", 0) +
-        k.lume("pulse", k.line(`M${mx + 1} ${my - 1}l3 -9`, "#59f0ff", 1.4), 0, "#59f0ff"));
+      // A sundae glass on its stem: a strawberry shake, whipped cream, a
+      // cherry and the neon straw.
+      const mx = c + (k.side ? k.side * 5 : 11),
+        my = k.T + 12;
+      k.put("body", k.path(`M${mx - 5.4} ${my}h10.8l-2.6 9.6h-5.6Z`, "#ffb3cf", k.ink, 0.6) + k.line(`M${mx} ${my + 9.6}v2.6`, "#e8f4f6", 1.6) + `<ellipse cx="${mx}" cy="${my + 12.6}" rx="3.6" ry="1.2" fill="#e8f4f6" stroke="${k.ink}" stroke-width="0.5"/>` +
+        k.path(`M${mx - 5.6} ${my}q0 -3.4 3 -3.4q1 -2.6 3 -2.4q2.4 -0.4 2.8 2.2q2.8 0.4 2.4 3.6Z`, "#fff6f0", k.ink, 0.6) + k.circle(mx + 1, my - 6.6, 1.8, RED, k.ink, 0.5) + k.line(`M${mx + 1.4} ${my - 8.2}q0.6 -2 2 -2.6`, "#3f8a4f", 0.7) +
+        k.lume("pulse", k.line(`M${mx - 1.6} ${my - 1}l-2.6 -11`, "#59f0ff", 1.6), 0, "#59f0ff"));
     }
+    // A soda fountain's folded paper cap, worn front to back.
     const x = k.hx + k.side * 2,
-      y = k.ht + 12;
-    k.put("flame", k.path(`M${x - 20} ${y}Q${x} ${y - 14} ${x + 20} ${y}Q${x} ${y - 4} ${x - 20} ${y}Z`, "#ffffff") + k.line(`M${x - 16} ${y - 3}Q${x} ${y - 9} ${x + 16} ${y - 3}`, "#ff6fae", 1.6));
+      y = k.ht + 14;
+    k.put("flame", k.side
+      ? k.path(`M${x - 26} ${y + 2}Q${x - 28} ${y - 9} ${x - 16} ${y - 13}L${x + 16} ${y - 13}Q${x + 28} ${y - 9} ${x + 26} ${y + 2}Q${x} ${y - 2} ${x - 26} ${y + 2}Z`, "#ffffff")
+      : k.path(`M${x - 24} ${y + 3}L${x - 19} ${y - 9}Q${x} ${y - 17} ${x + 19} ${y - 9}L${x + 24} ${y + 3}Q${x} ${y - 2} ${x - 24} ${y + 3}Z`, "#ffffff"));
   },
   // Film Noir: a trench coat with its belt and a fedora, and a film reel
   // badge whose sprocket holes light in a run.
@@ -96,7 +102,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
           return k.lume("chase", k.circle(rx + Math.cos(a) * 3.4, ry + Math.sin(a) * 3.4, 1, "#fff3c4", "none", 0), i, "#fff3c4");
         }).join(""));
     }
-    k.put("flame", hatShape(k, 26, 12, k.ht + 30, "#3a3a48", "#3a3a48", 1.5) + k.line(`M${k.hx + k.side * 2 - 16} ${k.ht + 26}Q${k.hx} ${k.ht + 23} ${k.hx + k.side * 2 + 16} ${k.ht + 26}`, "#1b1b24", 2));
+    k.put("flame", hatShape(k, 32, 21, k.ht + 34, "#3a3a48", "#3a3a48", 1.5) + k.line(`M${k.hx + k.side * 2 - 20} ${k.ht + 30}Q${k.hx} ${k.ht + 27} ${k.hx + k.side * 2 + 20} ${k.ht + 30}`, "#1b1b24", 2));
   },
   // Rodeo Rider: a fringed vest, a competitor's number on the back and a
   // lasso of light coiled at the hip.
@@ -125,8 +131,8 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
         `<text x="${c}" y="${k.T + 22}" font-family="Brush Script MT,cursive" font-size="9" text-anchor="middle" fill="${RED}">Aces</text>`));
       const bx = c + (k.side ? k.side * 4 : 12),
         by = k.B - 8;
-      k.put("body", k.path(`M${bx - 6} ${by + 4}q-2 -8 4 -10q6 -1 8 4q1 6 -4 8Z`, "#8a5a2c", k.ink, 0.6) + k.circle(bx, by - 2, 3.4, "#ffffff", k.ink, 0.5) +
-        k.lume("pulse", k.path(`M${bx - 2} ${by - 5}q2 3 0 6M${bx + 2} ${by - 5}q-2 3 0 6`, "none", RED, 0.8), 0, "#ff6a5a"));
+      k.put("body", k.path(`M${bx - 8} ${by + 5}q-3 -10 4 -13q8 -2 10 4q2 8 -5 10Z`, "#9a6230", k.ink, 0.8) + k.circle(bx, by - 2.4, 4.6, "#ffffff", k.ink, 0.7) +
+        k.lume("pulse", k.path(`M${bx - 2.6} ${by - 6.2}q2.6 3.8 0 7.6M${bx + 2.6} ${by - 6.2}q-2.6 3.8 0 7.6`, "none", RED, 0.9), 0, "#ff6a5a"));
     }
     const x = k.hx + k.side * 2,
       cy = k.ht + 18,
@@ -182,7 +188,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
     // The top hat sits between the ears.
     const x = k.hx + k.side * 2,
       y = k.ht + 12;
-    k.put("flame", k.path(`M${x - 22} ${y}Q${x} ${y + 6} ${x + 22} ${y}Q${x} ${y - 6} ${x - 22} ${y}Z`, coat) + k.rect(x - 13, y - 26, 26, 25, 2, coat) + k.rect(x - 13, y - 8, 26, 5, 0, RED, "none"));
+    k.put("flame", k.path(`M${x - 24} ${y}Q${x} ${y + 6} ${x + 24} ${y}Q${x} ${y - 6} ${x - 24} ${y}Z`, coat) + k.rect(x - 14, y - 32, 28, 31, 2, coat) + k.rect(x - 14, y - 9, 28, 5.6, 0, RED, "none"));
   },
   // Linebacker: a helmet with a stripe and shoulder pads under a jersey
   // whose number lights up.
