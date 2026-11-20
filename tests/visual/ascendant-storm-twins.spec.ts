@@ -176,12 +176,22 @@ function hidden(
       mark.y - mark.r < b.bottom,
   )?.what;
 }
-const context = (browser: Browser, s: (typeof SIZES)[number]) =>
-  browser.newContext({
+/**
+ * These checks read the whole arena against the HUD and touch controls, so
+ * phones choose "Whole court in raids" (phones otherwise follow the raider;
+ * raid-layout.spec.ts covers that camera).
+ */
+const context = async (browser: Browser, s: (typeof SIZES)[number]) => {
+  const ctx = await browser.newContext({
     viewport: { width: s.width, height: s.height },
     deviceScaleFactor: 2,
     ...(s.phone ? { isMobile: true, hasTouch: true } : {}),
   });
+  await ctx.addInitScript(() =>
+    localStorage.setItem("arena-controls", JSON.stringify({ raidCourt: true })),
+  );
+  return ctx;
+};
 const twinsNow = (page: Page) =>
   page.evaluate(() =>
     (window as any).__combat.arena

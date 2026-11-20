@@ -6124,7 +6124,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !!state?.raid &&
       touch.enabled &&
       innerWidth > innerHeight &&
-      innerHeight <= 600;
+      innerHeight <= 600 &&
+      !controlPrefs().raidCourt;
     const raidFocus =
       state?.raid && me && state.raid.downed[me.id]
         ? (this.positions.get(me.id) ?? me)

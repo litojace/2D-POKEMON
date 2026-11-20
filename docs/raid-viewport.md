@@ -25,12 +25,16 @@ On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview)
   data, not per-boss code: `view: "court"` on the attack in `RAID_ATTACKS`
   (`packages/shared/src/raid.ts`), any warning at least 400 px across, and
   running mechanics whose answer may be anywhere (a dream's rune pads, the
-  Quiet Zone, polarity partners, Mirror Charge, an airborne Lumiwick's braziers). A new attack whose safe spot
+  Quiet Zone, polarity partners, Mirror Charge, an airborne Lumiwick's braziers,
+  Prismatail's light-relay mirrors, so that fight keeps the whole court). A new attack whose safe spot
   can be off screen (islands, pads, a marked raider, braziers) gets
   `view: "court"`; a dodge that only needs the floor around the raider does not.
 - The off-screen boss gets the PvP arrow circling the raider. Off-screen allies
   get a small arrow in their colour at the screen's edge (`ally-bearings.ts`); a
   downed ally's is red with a pulsing "!", so a reviver knows where to run.
+- Players who prefer the overview tick **Whole court in raids** in Settings →
+  Controls (phones only; `raidCourt` in the saved controls). The Ascendant
+  specs that read the whole arena against the HUD and touch controls choose it.
 
 Dim mirrored continuations of the current floor fill the newly exposed perimeter.
 Eight images reuse the selected baked floor texture, including asynchronous art

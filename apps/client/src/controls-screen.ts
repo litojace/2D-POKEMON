@@ -86,6 +86,9 @@ export function controlsScreenHTML(padConnected: boolean, touchHTML = "") {
     `<div class="eyebrow">Controls</div><h2>Make it yours.</h2>` +
     `<div class="controls-layout"><div class="controls-preferences">${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}<fieldset class="cast-mode"><legend>Skill casting</legend>${cast}</fieldset>` +
     `<label class="choice assist"><input type="checkbox" id="aim-assist"${prefs.aimAssist ? " checked" : ""}><span><b>Aim assist (mouse)</b><small>Basic attacks snap to an opponent close to your cursor. Skills always go exactly where you aim.</small></span></label>` +
+    (touchHTML
+      ? `<label class="choice assist"><input type="checkbox" id="raid-court"${prefs.raidCourt ? " checked" : ""}><span><b>Whole court in raids</b><small>Boss fights show the entire court instead of following your champion. Fighters look smaller.</small></span></label>`
+      : "") +
     `</div><div class="controls-bindings"><div class="bindings" role="group" aria-label="Key bindings">${rows}</div>` +
     `<p class="binding-note" id="binding-note" role="status">Click a box, then press a key or click it with the mouse button you want. Delete clears it, Esc cancels.</p>` +
     `<button type="button" id="controls-reset" class="quiet">${iconLabel("again", "Reset to defaults")}</button>` +
@@ -187,6 +190,10 @@ export function showControlsScreen(options: ControlsScreenOptions) {
       ...controlPrefs(),
       aimAssist: (e.target as HTMLInputElement).checked,
     });
+  const raidCourt = box.querySelector<HTMLInputElement>("#raid-court");
+  if (raidCourt)
+    raidCourt.onchange = () =>
+      setControlPrefs({ ...controlPrefs(), raidCourt: raidCourt.checked });
   box.querySelector<HTMLButtonElement>("#controls-reset")!.onclick = () => {
     setControlPrefs({ ...DEFAULT_PREFS });
     showControlsScreen(options); // Re-renders and replaces this screen's listeners.

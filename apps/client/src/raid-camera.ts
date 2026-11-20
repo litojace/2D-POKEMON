@@ -63,6 +63,8 @@ export function raidWantsCourt(raid: RaidState, now: number) {
   if (raid.polarities?.some((p) => !p.cancelled && p.until > now)) return true;
   if (raid.polarityPad && raid.polarityPad.until > now) return true;
   if (raid.stormMirror && raid.stormMirror.until > now) return true;
+  // Prismatail's light relay: windows, mirrors and heart make one puzzle.
+  if (raid.mirrors?.length) return true;
   // Lumiwick aloft: the brazier triangle is the whole fight until it lands.
   if (raid.airborne && raid.braziers?.length) return true;
   return false;
