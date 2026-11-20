@@ -1090,6 +1090,8 @@ export const PLAZA_QUESTS = [
   { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 15 },
   { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 15 },
   { id: "photo", text: "Use the Photo Spot", max: 1, coins: 10 },
+  // Migration 20261120180000_plaza_fishing.
+  { id: "fish", text: "Catch 3 fish", max: 3, coins: 15 },
 ] as const;
 export type PlazaQuestId = (typeof PLAZA_QUESTS)[number]["id"];
 /** A lap under this time completes the lap quest. */
@@ -1131,12 +1133,204 @@ export const PLAZA_SPOTS = [
     label: "Leaderboard",
     icon: "trophy",
   },
+  {
+    // The west bank of the pond, where its path arrives (PLAZA_FISHING).
+    id: "fish",
+    x: PLAZA_POND.x - PLAZA_POND.rx - 5,
+    y: PLAZA_POND.y - 35,
+    r: 100,
+    label: "Fish",
+    icon: "fish",
+  },
 ] as const;
 export type PlazaSpotId = (typeof PLAZA_SPOTS)[number]["id"];
 /** The spot within reach of (x, y), if any (the server checks reach with a little slack). */
 export function plazaSpotAt(x: number, y: number, slack = 0) {
   return PLAZA_SPOTS.find((s) => Math.hypot(x - s.x, y - s.y) < s.r + slack);
 }
+
+/* ---------- fishing at the pond ---------- */
+/**
+ * Fishing (the "fish" spot): cast, wait, and tap when the bobber dips. The
+ * game server decides when a fish bites and which one (apps/server/src/
+ * plaza.ts); the browser only shows it. Catches go to the database through
+ * arena_plaza_record (migration 20261120180000_plaza_fishing).
+ */
+export const PLAZA_FISHING = {
+  /** A fish bites this long after the cast (ms, uniformly at random). */
+  biteMinMs: 2000,
+  biteMaxMs: 6000,
+  /** The bobber stays under this long: tap within it to catch. */
+  windowMs: 1000,
+  /** The server also takes a tap this much later (the round trip). */
+  slackMs: 450,
+  /** After a line comes in, the next cast waits this long (ms). */
+  castGapMs: 1000,
+  /** Walking this far past the spot's reach reels the line in (px). */
+  reachSlack: 40,
+  /** The most catches that count per Pacific day (toward the fish quest). */
+  perDay: 30,
+  /** Where the bobber lands: in open water (clear of the lily pads), in
+   * front of the spot. */
+  bobber: {
+    x: PLAZA_POND.x - PLAZA_POND.rx * 0.64,
+    y: PLAZA_POND.y + 18,
+  },
+} as const;
+/** How common each rarity is (relative weight per fish) and its colour. */
+export const PLAZA_FISH_RARITY = {
+  common: { name: "Common", weight: 30, color: "#b9c4d6" },
+  uncommon: { name: "Uncommon", weight: 14, color: "#6fdc8c" },
+  rare: { name: "Rare", weight: 5, color: "#5fb3ff" },
+  legendary: { name: "Legendary", weight: 1, color: "#ffc83d" },
+} as const;
+export type PlazaFishRarity = keyof typeof PLAZA_FISH_RARITY;
+export interface PlazaFish {
+  id: string;
+  name: string;
+  /** The element it is themed on. */
+  element: string;
+  rarity: PlazaFishRarity;
+  /** Only bites at this time of day (the player's own clock); any time if unset. */
+  time?: "day" | "night";
+  /** Body and fin colours (the Fish book and the catch). */
+  color: string;
+  fin: string;
+}
+/**
+ * The pond's fish, in Fish book order. Add a fish here and it bites, shows
+ * in the book and is recorded: the database only checks the id's shape.
+ * Ids are kept for good once shipped (players' books store them).
+ */
+export const PLAZA_FISH: readonly PlazaFish[] = [
+  {
+    id: "ember-minnow",
+    name: "Ember Minnow",
+    element: "Fire",
+    rarity: "common",
+    color: "#ff7a45",
+    fin: "#ffd65b",
+  },
+  {
+    id: "tide-guppy",
+    name: "Tide Guppy",
+    element: "Water",
+    rarity: "common",
+    color: "#4fb3ff",
+    fin: "#bfe8ff",
+  },
+  {
+    id: "pebble-carp",
+    name: "Pebble Carp",
+    element: "Earth",
+    rarity: "common",
+    color: "#b08a5a",
+    fin: "#e3c99a",
+  },
+  {
+    id: "reed-perch",
+    name: "Reed Perch",
+    element: "Nature",
+    rarity: "common",
+    color: "#6fbf4a",
+    fin: "#d4f59a",
+  },
+  {
+    id: "zap-eel",
+    name: "Zap Eel",
+    element: "Electric",
+    rarity: "uncommon",
+    color: "#ffd84a",
+    fin: "#fff3a8",
+  },
+  {
+    id: "sunscale-koi",
+    name: "Sunscale Koi",
+    element: "Light",
+    rarity: "uncommon",
+    time: "day",
+    color: "#fff1c2",
+    fin: "#ff9f43",
+  },
+  {
+    id: "gloom-catfish",
+    name: "Gloom Catfish",
+    element: "Shadow",
+    rarity: "uncommon",
+    time: "night",
+    color: "#5a4a7a",
+    fin: "#a48bd6",
+  },
+  {
+    id: "mindfin-betta",
+    name: "Mindfin Betta",
+    element: "Psychic",
+    rarity: "rare",
+    color: "#ff6fae",
+    fin: "#c47dff",
+  },
+  {
+    id: "aura-angelfish",
+    name: "Aura Angelfish",
+    element: "Aura",
+    rarity: "rare",
+    color: "#7fe7ff",
+    fin: "#e8fbff",
+  },
+  {
+    id: "moon-lanternfish",
+    name: "Moon Lanternfish",
+    element: "Shadow",
+    rarity: "rare",
+    time: "night",
+    color: "#2f3a6a",
+    fin: "#ffe58f",
+  },
+  {
+    id: "starlight-sturgeon",
+    name: "Starlight Sturgeon",
+    element: "Light",
+    rarity: "legendary",
+    time: "night",
+    color: "#1e2a5a",
+    fin: "#fff6c8",
+  },
+];
+export const PLAZA_FISH_BY_ID: Record<string, PlazaFish> = Object.fromEntries(
+  PLAZA_FISH.map((f) => [f.id, f]),
+);
+/**
+ * The time of day on the player's own clock (0 = midnight .. 1), from server
+ * time and the browser's UTC offset (Date#getTimezoneOffset, minutes): the
+ * Plaza's day and night follow the device clock (plaza-scene.ts).
+ */
+export function plazaTimeOfDay(now: number, tzOffsetMin = 0) {
+  const tz =
+    Number.isFinite(tzOffsetMin) && Math.abs(tzOffsetMin) <= 14 * 60
+      ? Math.round(tzOffsetMin)
+      : 0;
+  const day = 86_400_000;
+  return ((((now - tz * 60_000) % day) + day) % day) / day;
+}
+/** Night (the Plaza's night grading past half): 18:00 to 06:00. */
+export const plazaIsNight = (tod: number) => tod >= 0.75 || tod < 0.25;
+/** The fish that can bite now. */
+export const plazaFishFor = (night: boolean) =>
+  PLAZA_FISH.filter((f) => !f.time || f.time === (night ? "night" : "day"));
+/** Which fish bites, for a random number `r` in [0, 1): by rarity weight. */
+export function plazaFishPick(r: number, night: boolean): PlazaFish {
+  const pool = plazaFishFor(night),
+    total = pool.reduce((s, f) => s + PLAZA_FISH_RARITY[f.rarity].weight, 0);
+  let left = Math.min(Math.max(r, 0), 0.999999) * total;
+  for (const f of pool) {
+    left -= PLAZA_FISH_RARITY[f.rarity].weight;
+    if (left < 0) return f;
+  }
+  return pool[pool.length - 1];
+}
+/** What the server tells the angler (socket "plaza-fish"). */
+export type PlazaFishNote =
+  { state: "bite" } | { state: "gone"; why: "late" | "moved" };
 
 /* ---------- the ball pitch (Orb Ball) ---------- */
 export const PLAZA_BALL = {
@@ -1321,6 +1515,10 @@ export interface PlazaProgress {
   quests: Record<PlazaQuestId, { n: number; done: boolean }>;
   /** Orbs that counted today. */
   orbsToday: number;
+  /** Catches that counted today (PLAZA_FISHING.perDay; older servers: none). */
+  fishToday?: number;
+  /** The Fish book: counted catches of each fish ever caught, by id. */
+  fishBook?: Record<string, number>;
   bestLapMs: number | null;
   board: { name: string; ms: number; me?: boolean }[];
 }
@@ -1332,8 +1530,8 @@ export type PlazaNews =
 /** What the game server reports to the database (arena_plaza_record). */
 export interface PlazaRecord {
   player: string;
-  kind: "orb" | "goal" | "lap" | "cheers" | "photo";
-  /** Orbs: "<shower>-<orb id>". */
+  kind: "orb" | "goal" | "lap" | "cheers" | "photo" | "fish";
+  /** Orbs: "<shower>-<orb id>"; fish: the fish's id (PLAZA_FISH). */
   ref?: string;
   /** Laps: the time in ms. */
   ms?: number;

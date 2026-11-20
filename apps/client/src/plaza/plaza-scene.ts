@@ -47,6 +47,7 @@ import {
   PLAZA_POND,
   PLAZA_QUESTS,
   PLAZA_ROCKS,
+  PLAZA_FISHING,
   PLAZA_SPAWN,
   PLAZA_SQUARE,
   PLAZA_STAGE,
@@ -98,6 +99,7 @@ import { sceneLines, setPerfSource } from "../perf-hud";
 import { depthSort, slices, spot } from "./plaza-depth";
 import { plazaPath } from "./plaza-path";
 import { PlazaPrediction } from "./plaza-predict";
+import { FISH_SPOT, createFishing, fishBook } from "./plaza-fishing";
 import {
   PLAZA_SPRITE_PX,
   drawWornBehind,
@@ -149,6 +151,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
       <button type="button" class="pz-round" id="pz-wheel-btn" aria-label="Quick chat">${I("smile")}<small>Chat</small></button>
       <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat (T)">${I("gift")}<small id="pz-treats">0</small></button>
       <button type="button" class="pz-round" id="pz-album-btn" aria-label="Photo album">${I("album")}<small>Album</small></button>
+      <button type="button" class="pz-round" id="pz-fish-btn" aria-label="Fish book">${I("fish")}<small>Fish</small></button>
     </div>
     <div class="pz-wheel" id="pz-wheel" hidden>
       ${EMOTE_KEYS.map((e, i) => `<button type="button" data-emote="${e}" style="--a:${i}" aria-label="Emote ${e}">${e}</button>`).join("")}
@@ -166,6 +169,13 @@ const PLAZA_HTML = `<div class="pz" id="pz">
         <p class="pz-album-note">Saved on this device only · the newest ${ALBUM_LIMIT} are kept</p>
       </section>
       <div class="pz-album-view" id="pz-album-view" hidden></div>
+    </div>
+    <div class="pz-fishbook" id="pz-fishbook" role="dialog" aria-modal="true" aria-label="Fish book" hidden>
+      <section class="pz-fishbook-panel">
+        <header><b>${I("fish")}<span>Fish book</span></b><span class="pz-fishbook-count" id="pz-fishbook-count" aria-live="polite"></span><button type="button" class="x" data-fb="close" aria-label="Close the Fish book">✕</button></header>
+        <ul class="pz-fishbook-list" id="pz-fishbook-list"></ul>
+        <p class="pz-fishbook-note" id="pz-fishbook-note"></p>
+      </section>
     </div>
     <div class="pz-card glass" id="pz-card" role="dialog" aria-label="Player" hidden></div>
     <div class="pz-start" id="pz-start" hidden><b>Plaza</b><span>Click to start</span><div class="pz-keys"><span><kbd>WASD</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> dash</span><span><kbd>E</kbd> interact</span><span><kbd>Q</kbd> emote</span><span><kbd>T</kbd> treat</span></div></div>
@@ -1149,6 +1159,7 @@ export function openPlaza(options) {
     // Quests pay coins on the server: the top bar's balance follows.
     if (paid) options.onCoins?.();
     renderQuests();
+    if (!$("pz-fishbook").hidden) renderFishBook();
   }
   socket.on("plaza-progress", setProgress);
   const bestLap = () =>
@@ -1306,6 +1317,15 @@ export function openPlaza(options) {
       else if (k === "tab") keepTabInAlbum(e);
       return;
     }
+    if (!$("pz-fishbook").hidden) {
+      if (k === "escape") hideFishBook();
+      else if (k === "tab") {
+        // Its only button: Tab stays on it, not on the HUD behind.
+        e.preventDefault();
+        $("pz-fishbook").querySelector('[data-fb="close"]').focus();
+      }
+      return;
+    }
     if (photoOpen) {
       if (k === "escape" || k === "e") closePhoto();
       return;
@@ -1392,6 +1412,10 @@ export function openPlaza(options) {
   $("pz-album-btn").onclick = () => {
     start();
     showAlbum();
+  };
+  $("pz-fish-btn").onclick = () => {
+    start();
+    showFishBook();
   };
   $("pz-wheel").addEventListener("click", (e) => {
     const b = e.target.closest("[data-emote]");
@@ -1778,6 +1802,60 @@ export function openPlaza(options) {
       },
     },
   ];
+  // Fishing at the pond (plaza-fishing.ts): the server picks the bite and the fish.
+  const fishing = createFishing({
+    socket,
+    toast: pzToast,
+    low: () => low,
+    caught: (f) => {
+      // Low graphics: the name only, no splash of particles.
+      if (!low)
+        burst(
+          PLAZA_FISHING.bobber.x,
+          PLAZA_FISHING.bobber.y,
+          20,
+          "●",
+          10,
+          f.color,
+        );
+      FX.push({
+        text: f.name,
+        x: P.x,
+        y: P.y - 100,
+        t: 0,
+        life: 1.4,
+        small: 1,
+      });
+    },
+  });
+  SPOTS.push({
+    ...FISH_SPOT,
+    act: () => fishing.act(),
+    get label() {
+      return fishing.label();
+    },
+  });
+  const onFish = (note) => fishing.onNote(note);
+  socket.on("plaza-fish", onFish);
+  function renderFishBook() {
+    const b = fishBook(progress?.fishBook);
+    $("pz-fishbook-count").textContent = `${b.caught} / ${b.total}`;
+    setInner($("pz-fishbook-list"), b.html);
+    $("pz-fishbook-note").textContent =
+      `Today: ${Math.min(progress?.fishToday ?? 0, PLAZA_FISHING.perDay)} / ${PLAZA_FISHING.perDay} catches count · cast at the pond`;
+  }
+  function showFishBook() {
+    toggleWheel(false);
+    hideCard();
+    $("pz-fishbook").hidden = false;
+    renderFishBook();
+    $("pz-fishbook").querySelector('[data-fb="close"]').focus();
+  }
+  function hideFishBook() {
+    $("pz-fishbook").hidden = true;
+    screen.focus({ preventScroll: true });
+  }
+  $("pz-fishbook").querySelector('[data-fb="close"]').onclick = hideFishBook;
   let near = null;
   function interact() {
     if (near) near.act();
@@ -1909,6 +1987,7 @@ export function openPlaza(options) {
   }
   // A tap on the dimmed background around the polaroid puts it away.
   onBackdrop($("pz-photo"), (t) => t.id === "pz-photo", closePhoto);
+  onBackdrop($("pz-fishbook"), (t) => t.id === "pz-fishbook", hideFishBook);
 
   /* the photo album: on this device only (plaza-album.ts, PLAN.md) */
   const album = openAlbum();
@@ -3889,6 +3968,7 @@ export function openPlaza(options) {
     });
 
     drawPond(g, time);
+    fishing.drawWater(g, time);
     FX.filter((f) => f.ring || f.dust).forEach((f) => {
       const k = f.t / f.life;
       g.strokeStyle = f.dust
@@ -4282,6 +4362,7 @@ export function openPlaza(options) {
     const sorted = depthSort(shown);
     if (debugOrder) debugOrder = sorted.map((i) => i.name ?? "?");
     for (const i of sorted) i.draw();
+    if (!photo) fishing.drawRod(g, P);
     BUTTER.forEach((b) => GFX.butterfly(g, time + b.ph, b.x, b.y, b.c, 1.3));
     SMOKE.forEach((m) => {
       g.fillStyle = `rgba(240,240,245,${0.45 * (1 - m.t / m.life)})`;
@@ -4593,11 +4674,19 @@ export function openPlaza(options) {
         SPOTS.find((s) => Math.hypot(P.x - s.x, (P.y - s.y) * 1.3) < s.r) ||
         null;
       const ib = $("pz-interact");
+      fishing.update(dt);
       if (near) {
-        if (ib.dataset.id !== near.id) {
+        // The fishing spot's word changes with the line (Fish, Reel in, Reel!).
+        const label = near.label;
+        if (ib.dataset.id !== near.id || ib.dataset.label !== label) {
           ib.dataset.id = near.id;
-          ib.innerHTML = `${I(near.icon)}<span>${near.label}</span><kbd>E</kbd>`;
+          ib.dataset.label = label;
+          ib.innerHTML = `${I(near.icon)}<span>${label}</span><kbd>E</kbd>`;
         }
+        ib.classList.toggle(
+          "bite",
+          near.id === "fish" && fishing.state === "bite",
+        );
         ib.hidden = false;
       } else {
         ib.hidden = true;
@@ -4848,6 +4937,7 @@ export function openPlaza(options) {
       socket.off("plaza-state", onState);
       socket.off("plaza-treat", onTreat);
       socket.off("plaza-treats", onTreats);
+      socket.off("plaza-fish", onFish);
       removeEventListener("pointermove", pinchMove, true);
       removeEventListener("pointerup", pinchEnd, true);
       removeEventListener("pointercancel", pinchEnd, true);
@@ -4916,6 +5006,10 @@ export function openPlaza(options) {
       /** Treat particles flying now (tests). */
       treatFx: () => FX.filter((f) => f.g === "●").length,
       SPOTS,
+      /** Fishing's line now: null, "cast", "wait" or "bite" (tests). */
+      get fishing() {
+        return fishing.state;
+      },
       /** The photo album's store (tests fill it). */
       album,
     },

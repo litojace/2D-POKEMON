@@ -3238,6 +3238,20 @@ export function createArenaServer(
         bobaPending = false;
       }
     });
+    // Fishing at the pond: the server picks the fish and the bite
+    // (PlazaWorld.cast/reel); a catch is recorded like the other quests.
+    socket.on("plaza-fish", (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      const d = data as { act?: unknown; tz?: unknown } | null;
+      if (plaza.plazaOf(socket.id) === undefined)
+        return fail(cb, "Not in the Plaza.");
+      const now = Date.now();
+      if (d?.act === "cast") return reply(cb, plaza.cast(socket.id, now, d.tz));
+      if (d?.act !== "reel") return fail(cb, "Nothing to do here.");
+      const r = plaza.reel(socket.id, now);
+      if (r.ok) recordPlaza(socket.id, { kind: "fish", ref: r.fish });
+      reply(cb, r);
+    });
     socket.on("plaza-leave", (_data: unknown, cb: unknown) => {
       plaza.leave(socket.id);
       reply(cb, { ok: true });
@@ -3444,6 +3458,8 @@ export function createArenaServer(
     else if (e.type === "lap") recordPlaza(e.key, { kind: "lap", ms: e.ms });
     else if (e.type === "cheers")
       recordPlaza(e.key, { kind: "cheers", n: e.n });
+    else if (e.type === "fish")
+      io.sockets.sockets.get(e.key)?.emit("plaza-fish", e.note);
     else if (e.type === "news") toPlaza(e.plaza, "plaza-news", e.news);
     else toPlaza(e.plaza, "plaza-orbs", e.orbs);
   };

@@ -3,6 +3,7 @@ import { PlazaWorld } from "../../../apps/server/src/plaza";
 import {
   PLAZA,
   PLAZA_EMOTES,
+  PLAZA_FISHING,
   PLAZA_QUESTS,
 } from "../../../packages/shared/src/plaza";
 import { CHAT_LIMITS, quickText } from "../../../packages/shared/src/chat";
@@ -33,6 +34,11 @@ w.__plazaProgress = {
     { name: "Nova", ms: 6120 },
     { name: "tester", ms: 7420, me: true },
   ],
+};
+/** Tests: the fish on the line bites at the next step. */
+w.__plazaBiteNow = () => {
+  const line = (world as any).visitors.get(ME)?.line;
+  if (line) line.biteAt = 0;
 };
 /** Treats left today (PLAZA.treatsDaily a day): treats to throw. */
 w.__plazaTreats = 3;
@@ -98,6 +104,25 @@ const handle = (ev: string, data: any) => {
   }
   // The Nearby lines the server keeps (the drawer reads them on opening).
   if (ev === "chat-history") return { ok: true, lines: [...placeLines] };
+  // Fishing: the real PlazaWorld decides; a catch is recorded here as the
+  // database would (arena_plaza_record), and the progress sent back.
+  if (ev === "plaza-fish") {
+    if (data?.act === "cast") return world.cast(ME, Date.now(), data.tz);
+    const r = world.reel(ME, Date.now());
+    if (r.ok) {
+      const p = w.__plazaProgress;
+      p.fishBook = { ...(p.fishBook ?? {}) };
+      if ((p.fishToday ?? 0) < PLAZA_FISHING.perDay) {
+        p.fishToday = (p.fishToday ?? 0) + 1;
+        p.fishBook[r.fish] = (p.fishBook[r.fish] ?? 0) + 1;
+        const q = p.quests.fish;
+        q.n = Math.min(3, q.n + 1);
+        q.done = q.n >= 3;
+      } else p.fishBook[r.fish] ??= 0;
+      setTimeout(() => w.__sock?.fire("plaza-progress", structuredClone(p)));
+    }
+    return r;
+  }
   if (ev === "plaza-act") {
     if (data.spot === "cafe") {
       if (!world.at(ME, "cafe"))
@@ -127,6 +152,7 @@ let ticks = 0;
 setInterval(() => {
   for (const e of world.step(1 / PLAZA.tick, Date.now()))
     if (e.type === "news") w.__sock?.fire("plaza-news", e.news);
+    else if (e.type === "fish") w.__sock?.fire("plaza-fish", e.note);
     else if (e.type === "orbs") w.__sock?.fire("plaza-orbs", e.orbs);
   if (++ticks % 2) return;
   const v = w.__sock && world.view(ME);

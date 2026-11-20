@@ -5,6 +5,7 @@ import {
   PLAZA_CAFE,
   PLAZA_CHEER_SECONDS,
   PLAZA_EMOTES,
+  PLAZA_FISHING,
   PLAZA_FLAG,
   PLAZA_GATE,
   PLAZA_HURDLES,
@@ -21,16 +22,20 @@ import {
   plazaBody,
   plazaCollide,
   plazaDash,
+  plazaFishPick,
+  plazaIsNight,
   plazaJump,
   plazaSpotAt,
   plazaStep,
   plazaStick,
+  plazaTimeOfDay,
   onTrack,
   trackPoint,
   trackPolar,
   type PlazaBall,
   type PlazaBody,
   type PlazaEmote,
+  type PlazaFishNote,
   type PlazaNews,
   type PlazaTreat,
   type PlazaOrb,
@@ -77,6 +82,9 @@ interface Visitor {
   runwayNewsAt: number;
   /** Orbs caught per shower (only the first few pay). */
   orbs: Map<string, number>;
+  /** A fishing line in the pond, and when the next cast may go (ms). */
+  line: FishingLine | null;
+  nextCast: number;
   profile: PlazaProfile;
   version: number;
 }
@@ -108,6 +116,17 @@ interface PlazaInput {
   /** When it plays, on the step clock (ms). */
   at: number;
 }
+/** A line in the pond: the fish (secret until caught) and when it bites. */
+interface FishingLine {
+  fish: string;
+  biteAt: number;
+  /** When it bit (ms), once it has. */
+  bitAt: number | null;
+}
+/** What a reel brings in: the fish, or why it got away. */
+export type PlazaReel =
+  | { ok: true; fish: string }
+  | { ok: false; error: string; why?: "early" | "late" };
 /** Where a pitch bot's teammate waits while the other chases the ball. */
 const BOT_SUPPORT = { back: 120, wide: 110, tie: 24 } as const;
 const clampTo = (v: number, lo: number, hi: number) =>
@@ -185,6 +204,7 @@ export type PlazaEvent =
   | { type: "goal"; key: string }
   | { type: "lap"; key: string; ms: number }
   | { type: "cheers"; key: string; n: number }
+  | { type: "fish"; key: string; note: PlazaFishNote }
   | { type: "news"; plaza: number; news: PlazaNews }
   | { type: "orbs"; plaza: number; orbs: PlazaOrbs };
 
@@ -399,6 +419,8 @@ export class PlazaWorld {
       onRunway: false,
       runwayNewsAt: -Infinity,
       orbs: new Map(),
+      line: null,
+      nextCast: -Infinity,
       profile: { ...profile, accountId, id: this.nextId++ },
       version: 1,
     };
@@ -671,6 +693,72 @@ export class PlazaWorld {
     const v = this.visitors.get(key);
     return !!v && plazaSpotAt(v.body.x, v.body.y, 40)?.id === spot;
   }
+  /**
+   * Cast a line at the pond. The server picks the fish now (by rarity, and
+   * by the time of day on the player's clock: `tzOffsetMin` is the
+   * browser's Date#getTimezoneOffset) and when it bites; the browser hears
+   * of the bite from `step` and of the fish only once it is caught.
+   */
+  cast(key: string, now: number, tzOffsetMin?: unknown) {
+    const v = this.visitors.get(key);
+    if (!v) return { ok: false as const, error: "Not in the Plaza." };
+    if (!this.atPond(v))
+      return { ok: false as const, error: "Walk up to the pond first." };
+    if (v.line)
+      return { ok: false as const, error: "Your line is already out." };
+    if (now < v.nextCast) return { ok: false as const, error: "One moment…" };
+    const tz = typeof tzOffsetMin === "number" ? tzOffsetMin : 0,
+      night = plazaIsNight(plazaTimeOfDay(now, tz)),
+      { biteMinMs, biteMaxMs } = PLAZA_FISHING;
+    v.line = {
+      fish: plazaFishPick(this.random(), night).id,
+      biteAt: now + biteMinMs + this.random() * (biteMaxMs - biteMinMs),
+      bitAt: null,
+    };
+    return { ok: true as const };
+  }
+  /** Tap to reel in: a catch only while the bobber is under (with slack). */
+  reel(key: string, now: number): PlazaReel {
+    const v = this.visitors.get(key),
+      line = v?.line;
+    if (!v || !line) return { ok: false, error: "No line in the water." };
+    v.line = null;
+    v.nextCast = now + PLAZA_FISHING.castGapMs;
+    if (line.bitAt === null)
+      return { ok: false, error: "Too soon! The fish swam off.", why: "early" };
+    if (now - line.bitAt > PLAZA_FISHING.windowMs + PLAZA_FISHING.slackMs)
+      return { ok: false, error: "Too late! The fish got away.", why: "late" };
+    return { ok: true, fish: line.fish };
+  }
+  /** Fishing state (tests): the line, if any. */
+  lineOf(key: string) {
+    const line = this.visitors.get(key)?.line;
+    return line ? { ...line } : null;
+  }
+  private atPond(v: Visitor) {
+    return (
+      plazaSpotAt(v.body.x, v.body.y, PLAZA_FISHING.reachSlack)?.id === "fish"
+    );
+  }
+  /** A line's moment: the bite, a fish that waited too long, or walking off. */
+  private stepLine(v: Visitor, now: number, events: PlazaEvent[]) {
+    const line = v.line;
+    if (!line) return;
+    const gone = (why: "late" | "moved") => {
+      v.line = null;
+      v.nextCast = now + PLAZA_FISHING.castGapMs;
+      events.push({ type: "fish", key: v.key, note: { state: "gone", why } });
+    };
+    if (!this.atPond(v)) return gone("moved");
+    if (line.bitAt === null && now >= line.biteAt) {
+      line.bitAt = now;
+      events.push({ type: "fish", key: v.key, note: { state: "bite" } });
+    } else if (
+      line.bitAt !== null &&
+      now - line.bitAt > PLAZA_FISHING.windowMs + PLAZA_FISHING.slackMs
+    )
+      gone("late");
+  }
   /** Volt Boba (free): the speed boost. */
   boost(key: string) {
     const v = this.visitors.get(key);
@@ -703,6 +791,7 @@ export class PlazaWorld {
     for (const v of this.visitors.values()) {
       this.stepVisitor(v, from, now, dt);
       if (v.emote && now >= v.emoteUntil) v.emote = 0;
+      this.stepLine(v, now, events);
       const lap = v.lap.update(v.body.x, v.body.y, now);
       if (lap.lapMs !== undefined && lap.lapMs >= 1000) {
         events.push({ type: "lap", key: v.key, ms: lap.lapMs });

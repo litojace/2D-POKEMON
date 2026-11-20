@@ -1452,3 +1452,185 @@
 .pc-h img.pc-avatar {
   object-position: 50% 50%;
 }
+/* ---------- fishing at the pond (plaza-fishing.ts) ---------- */
+/* A bite: the interact button turns gold and pulses until you tap. */
+.plaza-layer .pz-interact.bite {
+  background: #ffd65b;
+  color: #0b1020;
+  animation: pz-bite 0.32s ease-in-out infinite alternate;
+}
+@keyframes pz-bite {
+  to {
+    transform: scale(1.06);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plaza-layer .pz-interact.bite {
+    animation: none;
+  }
+}
+/* The Fish book: over the Plaza like the album, inside the safe area and
+   under the header's row; its list scrolls when it doesn't fit. */
+.plaza-layer .pz-fishbook {
+  position: absolute;
+  inset: calc(-1 * var(--safe-top, 0px)) calc(-1 * var(--safe-right, 0px))
+    calc(-1 * var(--safe-bottom, 0px)) calc(-1 * var(--safe-left, 0px));
+  box-sizing: border-box;
+  padding: calc(var(--safe-top, 0px) + var(--hud-row2))
+    calc(var(--safe-right, 0px) + var(--hud-x-r))
+    calc(var(--safe-bottom, 0px) + var(--hud-y-b))
+    calc(var(--safe-left, 0px) + var(--hud-x-l));
+  display: grid;
+  place-items: center;
+  background: #0b1020b3;
+  animation: pz-fadein 0.25s;
+  z-index: 5;
+}
+.plaza-layer .pz-fishbook[hidden] {
+  display: none;
+}
+.plaza-layer .pz-fishbook-panel {
+  box-sizing: border-box;
+  width: min(620px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  row-gap: 10px;
+  padding: 16px;
+  border: 1px solid #ffffff26;
+  border-radius: 18px;
+  background: #0d1428f0;
+  box-shadow: 0 20px 60px #000a;
+}
+.plaza-layer .pz-fishbook-panel header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 36px;
+  align-items: center;
+  gap: 10px;
+}
+.plaza-layer .pz-fishbook-panel header b {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  min-width: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.5em;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.plaza-layer .pz-fishbook-panel header b .ico {
+  width: 1.15em;
+  height: 1.15em;
+}
+.plaza-layer .pz-fishbook-count {
+  padding: 0 0.8em;
+  height: 1.9em;
+  border-radius: 999px;
+  background: #ffffff14;
+  color: var(--dim);
+  font-weight: 700;
+  line-height: 1.9em;
+  font-variant-numeric: tabular-nums;
+}
+.plaza-layer .pz-fishbook-panel .x {
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: #ffffff12;
+  color: var(--dim);
+  font-size: calc(16px * var(--text-scale, 1));
+  line-height: 36px;
+  text-align: center;
+  cursor: pointer;
+}
+.plaza-layer .pz-fishbook-list {
+  min-height: 0;
+  margin: 0;
+  padding: 0 2px 2px 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.plaza-layer .pz-fish {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 6px;
+  border: 1px solid #ffffff1f;
+  border-top: 3px solid var(--rar);
+  border-radius: 10px;
+  background: #ffffff0a;
+  text-align: center;
+  min-width: 0;
+}
+.plaza-layer .pz-fish svg {
+  width: 56px;
+  height: 33px;
+}
+.plaza-layer .pz-fish b {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(13px * var(--text-scale, 1));
+}
+.plaza-layer .pz-fish small {
+  color: var(--dim);
+  font-size: calc(11px * var(--text-scale, 1));
+  line-height: 1.25;
+}
+.plaza-layer .pz-fish .rar {
+  color: var(--rar);
+  font-weight: 700;
+}
+.plaza-layer .pz-fish.unknown b {
+  color: var(--dim);
+}
+.plaza-layer .pz-fishbook-note {
+  margin: 0;
+  font-size: 0.85em;
+  color: var(--dim);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.plaza-layer.phone .pz-fishbook-panel {
+  padding: 10px;
+  row-gap: 6px;
+  border-radius: 14px;
+}
+.plaza-layer.phone .pz-fishbook-panel header {
+  grid-template-columns: minmax(0, 1fr) auto 30px;
+}
+.plaza-layer.phone .pz-fishbook-panel header b {
+  font-size: 1.2em;
+}
+.plaza-layer.phone .pz-fishbook-panel .x {
+  width: 30px;
+  height: 30px;
+  font-size: calc(14px * var(--text-scale, 1));
+  line-height: 30px;
+}
+.plaza-layer.phone .pz-fishbook-list {
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 6px;
+}
+.plaza-layer.phone .pz-fish {
+  padding: 5px 4px;
+}
+.plaza-layer.phone .pz-fish svg {
+  width: 44px;
+  height: 26px;
+}
