@@ -374,6 +374,42 @@
 .plaza-layer .pz-round {
   font-size: 1.15em;
 }
+/* At the fountain, a treat is a wish (PLAZA_WISH). */
+.plaza-layer .pz-round.wish {
+  border-color: #ff8fc4;
+  box-shadow: 0 0 0 2px #ff8fc466;
+}
+/* The copy's wish meter as a ring round the treat button, and a badge. */
+.plaza-layer #pz-treat {
+  position: relative;
+}
+.plaza-layer .pz-wishn {
+  position: absolute;
+  top: -0.35em;
+  right: -0.45em;
+  min-width: 2.1em;
+  padding: 0.15em 0.35em;
+  border-radius: 999px;
+  background: #ff8fc4;
+  color: #0b1020;
+  font-size: 0.55em;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+.plaza-layer .pz-wishn[hidden] {
+  display: none;
+}
+/* The copy's wish meter as a ring round the treat button. */
+.plaza-layer .pz-round.wishing {
+  background:
+    radial-gradient(
+      closest-side,
+      #0b1020 calc(100% - 4px),
+      transparent calc(100% - 3px)
+    ),
+    conic-gradient(#ff8fc4 calc(var(--wish, 0) * 360deg), #ffffff26 0);
+}
 .plaza-layer .pz-round small {
   font-size: 0.52em;
   font-weight: 700;

@@ -59,6 +59,8 @@ export interface PlazaTreat {
   treat: string;
   x: number;
   y: number;
+  /** Thrown into the fountain: a wish (PLAZA_WISH). */
+  wish?: true;
 }
 
 export const PLAZA_SQUARE = { x: 1350, y: 900, rx: 372, ry: 246 } as const;
@@ -1082,6 +1084,61 @@ export function orbHeight(ms: number) {
   return Math.max(0, ORB_SHOWER.height - 0.5 * ORB_SHOWER.gravity * t * t);
 }
 
+/* ---------- Wishing fountain: treats thrown at the fountain fill a shared
+   meter per Plaza copy; a full meter sets off fireworks and pays everyone who
+   wished (the database's arena_plaza_wish(), migration
+   20261120130000_plaza_wishing_fountain) ---------- */
+export const PLAZA_WISH = {
+  /** A treat thrown inside this ellipse round the fountain's centre is a wish (px). */
+  reach: { rx: 215, ry: 150 },
+  /** The server allows this much more (px), for lag. */
+  slack: 40,
+  /**
+   * Wishes to fill the meter: perPlayer for each player in the copy, between
+   * min and max, fixed by the fill's first wish. With treatsDaily 10, three or
+   * four players fill it with two treats each (a few minutes at the fountain);
+   * someone alone needs four.
+   */
+  perPlayer: 2,
+  min: 4,
+  max: 24,
+  /** A meter nobody has added to for this long empties (ms). */
+  idleMs: 10 * 60_000,
+  /** The fireworks over the square (ms). */
+  showMs: 5000,
+  /** Shop coins for each wisher in a fill, at most perDay paid fills a Pacific day. */
+  coins: 5,
+  perDay: 3,
+} as const;
+/** Wishes a copy of `players` players needs to fill the meter. */
+export function wishTarget(players: number) {
+  const n = Math.ceil(Math.max(1, players | 0) * PLAZA_WISH.perPlayer);
+  return Math.max(PLAZA_WISH.min, Math.min(PLAZA_WISH.max, n));
+}
+/** Standing close enough to the fountain to throw a treat in (slack for lag). */
+export function atFountain(x: number, y: number, slack = 0) {
+  const dx = (x - PLAZA_FOUNTAIN.x) / (PLAZA_WISH.reach.rx + slack),
+    dy = (y - PLAZA_FOUNTAIN.y) / (PLAZA_WISH.reach.ry + slack);
+  return dx * dx + dy * dy <= 1;
+}
+/** A copy's wish meter, sent to everyone in it when it changes. */
+export interface PlazaWish {
+  /** Wishes so far, and how many fill it (0 wishes: the browser uses wishTarget). */
+  n: number;
+  target: number;
+  /** Fireworks: when they start (server ms) and their pattern's seed. */
+  show?: { at: number; seed: number };
+}
+/** What arena_plaza_wish answers for one wisher of a fill. */
+export interface PlazaWishPay {
+  /** Paid now (false: this fill was paid already, or today's cap is reached). */
+  paid: boolean;
+  /** Coins paid now (0 when not paid). */
+  coins: number;
+  /** Paid fills today, after this one. */
+  today: number;
+}
+
 /* ---------- Plaza today: daily quests paid in shop coins (the database's
    arena_plaza_quests(), migration 20261120120000_raise_plaza_quest_coins) ---------- */
 export const PLAZA_QUESTS = [
@@ -1328,7 +1385,8 @@ export interface PlazaProgress {
 export type PlazaNews =
   | { kind: "goal"; id: number; name: string; side: 0 | 1 }
   | { kind: "lap"; id: number; name: string; ms: number }
-  | { kind: "runway"; id: number; name: string };
+  | { kind: "runway"; id: number; name: string }
+  | { kind: "wish" };
 /** What the game server reports to the database (arena_plaza_record). */
 export interface PlazaRecord {
   player: string;
