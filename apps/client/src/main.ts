@@ -6118,8 +6118,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       : undefined;
     // Raids: the whole court on desktop; landscape phones follow the raider
     // (or, downed, stay on them) and pull out for court-wide mechanics.
+    // Phones only (the CSS's landscape phone breakpoint): a tablet already
+    // shows the whole court large enough.
     const raidFollow =
-      !!state?.raid && touch.enabled && innerWidth > innerHeight;
+      !!state?.raid &&
+      touch.enabled &&
+      innerWidth > innerHeight &&
+      innerHeight <= 600;
     const raidFocus =
       state?.raid && me && state.raid.downed[me.id]
         ? (this.positions.get(me.id) ?? me)

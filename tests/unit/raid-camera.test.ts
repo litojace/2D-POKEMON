@@ -179,6 +179,24 @@ describe("raidWantsCourt", () => {
         1,
       ),
     ).toBe(false);
+    expect(
+      raidWantsCourt(
+        raid({
+          airborne: true,
+          braziers: [{ x: 1, y: 1, progress: 0, litUntil: 0 }],
+        }),
+        1,
+      ),
+    ).toBe(true);
+    expect(
+      raidWantsCourt(
+        raid({
+          airborne: false,
+          braziers: [{ x: 1, y: 1, progress: 0, litUntil: 0 }],
+        }),
+        1,
+      ),
+    ).toBe(false);
   });
 });
 

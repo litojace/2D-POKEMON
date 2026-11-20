@@ -47,7 +47,8 @@ const clamp = (n: number, lo: number, hi: number) =>
  * Does the raid need the whole court in view right now? A court-wide warning
  * (RAID_ATTACKS[kind].view, or any warning RAID_WIDE_RADIUS across), or a
  * running mechanic whose answer may be anywhere: a dream's rune pads, the
- * moving Quiet Zone, polarity partners, Mirror Charge's twins.
+ * moving Quiet Zone, polarity partners, Mirror Charge's twins, the braziers
+ * that bring an airborne Lumiwick down.
  */
 export function raidWantsCourt(raid: RaidState, now: number) {
   if (
@@ -62,6 +63,8 @@ export function raidWantsCourt(raid: RaidState, now: number) {
   if (raid.polarities?.some((p) => !p.cancelled && p.until > now)) return true;
   if (raid.polarityPad && raid.polarityPad.until > now) return true;
   if (raid.stormMirror && raid.stormMirror.until > now) return true;
+  // Lumiwick aloft: the brazier triangle is the whole fight until it lands.
+  if (raid.airborne && raid.braziers?.length) return true;
   return false;
 }
 

@@ -11,7 +11,7 @@ recalculate the available view at the renderer's density.
 
 ## Phones in landscape: the follow camera
 
-On a landscape touch screen the whole court made fighters tiny and easy to lose
+On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview) the whole court made fighters tiny and easy to lose
 (owner, 20 Nov 2026), so raids and the Spire follow the raider there
 (`RaidCamera` in `apps/client/src/raid-camera.ts`):
 
@@ -25,7 +25,7 @@ On a landscape touch screen the whole court made fighters tiny and easy to lose
   data, not per-boss code: `view: "court"` on the attack in `RAID_ATTACKS`
   (`packages/shared/src/raid.ts`), any warning at least 400 px across, and
   running mechanics whose answer may be anywhere (a dream's rune pads, the
-  Quiet Zone, polarity partners, Mirror Charge). A new attack whose safe spot
+  Quiet Zone, polarity partners, Mirror Charge, an airborne Lumiwick's braziers). A new attack whose safe spot
   can be off screen (islands, pads, a marked raider, braziers) gets
   `view: "court"`; a dodge that only needs the floor around the raider does not.
 - The off-screen boss gets the PvP arrow circling the raider. Off-screen allies
