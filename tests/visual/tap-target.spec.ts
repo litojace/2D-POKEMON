@@ -39,11 +39,29 @@ async function hook(page: Page) {
 const lockedId = (page: Page) =>
   page.evaluate(() => (window as any).__targetLock.id as string | undefined);
 
+/**
+ * A phone. `wholeCourt`: the raid shows the whole court ("Whole court in
+ * raids"), for taps at fixed court points that the follow camera would put
+ * under the touch controls.
+ */
 async function phone(
   browser: Browser,
   size: { width: number; height: number },
+  wholeCourt = false,
 ) {
-  return browser.newContext({ viewport: size, isMobile: true, hasTouch: true });
+  const context = await browser.newContext({
+    viewport: size,
+    isMobile: true,
+    hasTouch: true,
+  });
+  if (wholeCourt)
+    await context.addInitScript(() =>
+      localStorage.setItem(
+        "arena-controls",
+        JSON.stringify({ raidCourt: true }),
+      ),
+    );
+  return context;
 }
 
 /** A free-for-all with three enemies: Kai nearest, Rae and Mina farther. */
@@ -326,7 +344,7 @@ for (const size of PHONES)
 test("taps lock on to Inkpurr's bodies and its unlit lanterns", async ({
   browser,
 }, info) => {
-  const context = await phone(browser, PHONES[0]);
+  const context = await phone(browser, PHONES[0], true);
   try {
     const page = await context.newPage();
     const errors = await raidBattle(page, "gloomshade", ["me"]);
@@ -443,7 +461,7 @@ test("a tap aims at the bubble holding a teammate", async ({ browser }) => {
 // its defeat ends the lock.
 test("a tap locks on to a Spire Echo", async ({ browser }, info) => {
   test.setTimeout(120_000);
-  const context = await phone(browser, PHONES[0]);
+  const context = await phone(browser, PHONES[0], true);
   try {
     const page = await context.newPage();
     await hook(page);

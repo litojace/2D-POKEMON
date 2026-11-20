@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "@playwright/test";
 import {
   createRoom,
   openHub,
@@ -50,6 +50,22 @@ const KINDS: Record<number, "wave" | "elite" | "boss"> = {
   9: "wave",
   10: "boss",
 };
+
+/**
+ * A context whose raids show the whole court ("Whole court in raids"): these
+ * checks read the court's art and every fighter on it. The floor tests below
+ * keep the phone's follow camera.
+ */
+async function courtContext(
+  browser: Browser,
+  options: Parameters<Browser["newContext"]>[0],
+) {
+  const context = await browser.newContext(options);
+  await context.addInitScript(() =>
+    localStorage.setItem("arena-controls", JSON.stringify({ raidCourt: true })),
+  );
+  return context;
+}
 
 /** Expose the battle's game (after the arena prewarm line in main.ts). */
 async function hookGame(page: Page) {
@@ -142,9 +158,16 @@ for (const size of SIZES)
         await climb(page, floor);
         await page.waitForTimeout(600);
         const c = await court(page);
-        // The whole court is in view and fills the frame (the raid camera).
-        expect(c.view.w).toBeGreaterThanOrEqual(1599);
-        expect(c.view.h).toBeGreaterThanOrEqual(899);
+        // Desktop and tablets: the whole court is in view (the raid camera).
+        // Phones follow the raider, never past the court's edges.
+        if (size.phone && size.height <= 600) {
+          expect(c.view.w).toBeLessThan(1599);
+          expect(c.view.w).toBeLessThanOrEqual(1600.5);
+          expect(c.view.h).toBeLessThanOrEqual(900.5);
+        } else {
+          expect(c.view.w).toBeGreaterThanOrEqual(1599);
+          expect(c.view.h).toBeGreaterThanOrEqual(899);
+        }
         expect(
           Math.max(
             (1600 * c.view.zoom) / c.view.width,
@@ -206,7 +229,7 @@ test("the stairs light when a floor is cleared, and the next floor is ready", as
   browser,
 }, info) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: DESKTOP.width, height: DESKTOP.height },
   });
   try {
@@ -270,7 +293,7 @@ test("floor 9 to floor 10 in the same room: the summit court, nothing loaded mid
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -347,7 +370,7 @@ test("floor 9 to floor 10 in the same room: the summit court, nothing loaded mid
 
 test("the summit grade darkens Cragmuff's court", async ({ browser }) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: DESKTOP.width, height: DESKTOP.height },
   });
   try {
@@ -430,7 +453,7 @@ test("high floors keep amber crystals and a readable floor number", async ({
   browser,
 }, info) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -537,7 +560,7 @@ for (const size of ZONE2_SIZES)
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
         hasTouch: size.phone,
@@ -600,7 +623,7 @@ for (const size of [
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: true,
         hasTouch: true,
@@ -674,7 +697,7 @@ test("floor 20: the lagoon's summit grade, painted on floor 19, nothing fetched 
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -836,7 +859,7 @@ for (const size of ZONE3_SIZES)
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
         hasTouch: size.phone,
@@ -1036,7 +1059,7 @@ for (const size of [
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: true,
         hasTouch: true,
@@ -1188,7 +1211,7 @@ test("floor 30: Inkpurr's Lantern Yard with its summit grade, painted on floor 2
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -1333,7 +1356,7 @@ test("Inkpurr's own raid keeps the Lantern Yard ungraded", async ({
   browser,
 }) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -1428,7 +1451,7 @@ for (const size of ZONE4_SIZES)
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
         hasTouch: size.phone,
@@ -1491,7 +1514,7 @@ for (const size of [
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: true,
         hasTouch: true,
@@ -1741,7 +1764,7 @@ test("floor 40: Snoozaku's Cloud Deck with its summit grade, painted on floor 39
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -1886,7 +1909,7 @@ test("Snoozaku's own raid keeps the Cloud Deck ungraded", async ({
   browser,
 }) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -1953,7 +1976,7 @@ test("zone 4: Snoozaku's Cloud Deck kept to floor 40, painted on floor 39, nothi
   browser,
 }, info) => {
   test.setTimeout(240_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -2115,7 +2138,7 @@ for (const size of ZONE5_SIZES)
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
         hasTouch: size.phone,
@@ -2183,7 +2206,7 @@ for (const size of [
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: true,
         hasTouch: true,
@@ -2543,7 +2566,7 @@ test("floor 50: Prismell's Sun Atrium with its summit grade, painted on floor 49
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -2699,7 +2722,7 @@ test("Prismell's own raid keeps the Sun Atrium ungraded", async ({
   browser,
 }) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -2746,7 +2769,7 @@ test("zone 5: Prismell's Sun Atrium kept to floor 50, painted on floor 49, nothi
 }, info) => {
   test.skip(!ZONE5_REAL, "zone 5's rooms are not built yet");
   test.setTimeout(240_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -2880,7 +2903,7 @@ for (const size of ZONE6_SIZES)
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
         hasTouch: size.phone,
@@ -2948,7 +2971,7 @@ for (const size of [
       browser,
     }, info) => {
       test.setTimeout(180_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: true,
         hasTouch: true,
@@ -3249,7 +3272,7 @@ test("floor 60: Lumiwick's Sky Terrace with its summit grade, painted on floor 5
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -3407,7 +3430,7 @@ test("Lumiwick's own raid keeps the Sky Terrace ungraded", async ({
   browser,
 }) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -3454,7 +3477,7 @@ test("zone 6: Lumiwick's Sky Terrace kept to floor 60, painted on floor 59, noth
 }, info) => {
   test.skip(!ZONE6_REAL, "zone 6's rooms are not built yet");
   test.setTimeout(240_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -3570,7 +3593,7 @@ for (const size of ZONE7_SIZES)
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
         hasTouch: size.phone,
@@ -3638,7 +3661,7 @@ for (const size of [
       browser,
     }, info) => {
       test.setTimeout(180_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: true,
         hasTouch: true,
@@ -3947,7 +3970,7 @@ test("floor 70: the Storm Twins' Conductor Ring with its summit grade, painted o
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -4125,7 +4148,7 @@ test("the Storm Twins' own raid keeps the Conductor Ring ungraded", async ({
   browser,
 }) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -4174,7 +4197,7 @@ for (const size of [
     browser,
   }, info) => {
     test.setTimeout(240_000);
-    const context = await browser.newContext({
+    const context = await courtContext(browser, {
       viewport: { width: size.width, height: size.height },
       isMobile: true,
       hasTouch: true,
