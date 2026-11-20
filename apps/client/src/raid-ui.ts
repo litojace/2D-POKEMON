@@ -278,8 +278,9 @@ export function renderRaidUI(
   // match's own card.
   const shared = state.phase === "briefing" || state.phase === "finished";
   // The rites take the whole screen, as the countdown does
-  // (screens/raid-rites.css); the Spire's blessings keep the match card.
-  const rites = state.phase === "intermission" && !spire;
+  // (screens/raid-rites.css); so do the Spire's blessings (spire-ui.ts).
+  const rites =
+    state.phase === "intermission" && (!spire || spire.screen !== undefined);
   overlay.classList.toggle("is-rites", rites);
   // The countdown (3, 2, 1) is the PvP one, raids and the Spire alike: the
   // whole screen, one big number, no card (style.css, .is-countdown). Marked
@@ -289,7 +290,7 @@ export function renderRaidUI(
   const replaced = setOverlayMarkup(
     overlay,
     rites
-      ? ritesScreen(state, me, kicker)
+      ? (spire?.screen ?? ritesScreen(state, me, kicker))
       : shared
         ? `<div class="ui rc-card ${state.phase === "finished" ? "is-results" : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">${escape(kicker)}</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
         : `<div class="overlay-card raid-overlay${state.phase === "intermission" ? " raid-draft action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">${escape(kicker)}</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
