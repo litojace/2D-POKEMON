@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import { pinScreen } from "../../apps/client/src/screen-pin";
 
 const page = (x: number, y: number) => {
@@ -29,5 +31,33 @@ describe("screen pin", () => {
     expect(pinScreen(page(0, 300), false, false, false)).toBe(false);
     expect(pinScreen(page(0, 300), true, false, true)).toBe(false);
     expect(pinScreen(page(0, 0), true, false, false)).toBe(false);
+  });
+});
+
+/**
+ * A text field focused for typing never takes `preventScroll`: on iPhone and
+ * iPad it also stops Safari lifting the page above the keyboard, so a field a
+ * button opened sat under the keyboard (focusForTyping in screen-pin.ts).
+ */
+describe("text fields focused for typing", () => {
+  const SRC = join(__dirname, "../../apps/client/src");
+  const files = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory()
+        ? files(join(dir, e.name))
+        : e.name.endsWith(".ts")
+          ? [join(dir, e.name)]
+          : [],
+    );
+  // One statement that finds or names an input box and focuses it unscrolled.
+  const FIELD_NO_SCROLL =
+    /(HTMLInputElement|HTMLTextAreaElement|\binput\b|#fr-add-code)[^;{}]*\.focus\(\{\s*preventScroll:\s*true/g;
+  it("let the browser bring them above the keyboard", () => {
+    const found = files(SRC).flatMap((file) =>
+      [...readFileSync(file, "utf8").matchAll(FIELD_NO_SCROLL)].map(
+        (m) => `${relative(SRC, file)}: ${m[0].replace(/\s+/g, " ")}`,
+      ),
+    );
+    expect(found).toEqual([]);
   });
 });

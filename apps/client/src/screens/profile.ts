@@ -1,4 +1,5 @@
 import { askConfirm, openHubPanel, type HubPanel } from "../ui/hub-panel";
+import { focusForTyping } from "../screen-pin";
 import { parse, patch } from "../ui/patch";
 import type { RaidBossId } from "../../../../packages/shared/src/raid-roster";
 import {
@@ -169,7 +170,7 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     );
     if (open && input) {
       input.value = hooks.data().name;
-      input.focus({ preventScroll: true });
+      focusForTyping(input);
       input.select();
     } else focusOn("[data-profile-rename]");
   }
@@ -209,9 +210,11 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     view.nameBusy = false;
     render();
     if (view.renaming)
-      root()
-        .querySelector<HTMLInputElement>("[data-profile-name-form] input")
-        ?.focus({ preventScroll: true });
+      focusForTyping(
+        root().querySelector<HTMLInputElement>(
+          "[data-profile-name-form] input",
+        ),
+      );
     else focusOn("[data-profile-rename]");
   }
 
@@ -225,7 +228,7 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     );
     if (open && input) {
       input.value = "";
-      input.focus({ preventScroll: true });
+      focusForTyping(input);
       // On a phone the form opens below the fold: bring all of it in.
       input
         .closest("form")
@@ -253,9 +256,11 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
       render();
       // The box was disabled while waiting, which took the focus away: put
       // it back so Enter tries again (as the name form does).
-      root()
-        .querySelector<HTMLInputElement>("[data-profile-delete-form] input")
-        ?.focus({ preventScroll: true });
+      focusForTyping(
+        root().querySelector<HTMLInputElement>(
+          "[data-profile-delete-form] input",
+        ),
+      );
     }
   }
 

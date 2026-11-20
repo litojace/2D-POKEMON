@@ -46,6 +46,21 @@ export function typingIn(el: Element | null) {
   ].includes(el.type);
 }
 
+/**
+ * Focus a text field for typing (a button that opens a form: Add friend,
+ * Change name). Never with `preventScroll`: since 2022 iPhone and iPad
+ * Safari honour it (WebKit bug 236584), and then it also skips lifting the
+ * page above the keyboard, so the field sat under the keyboard until it was
+ * tapped again (owner's iPhone, landscape, Nov 2026). Without it the browser
+ * only scrolls when the field is out of sight, and on a fixed screen the lift
+ * goes back once the keyboard closes (watchScreenPin).
+ */
+export function focusForTyping(field: HTMLElement | null | undefined) {
+  if (!field) return false;
+  field.focus();
+  return true;
+}
+
 /** The body classes of screens that are exactly the window. */
 const FIXED_SCREENS = ["hub-active", "battle-active"];
 
