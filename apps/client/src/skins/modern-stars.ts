@@ -183,8 +183,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
       k.put("body", torso(k, "#ffffff", k.path(`M${k.L - 2} ${k.T - 2}H${c - 5}L${c - 3} ${k.B + 4}H${k.L - 2}Z M${k.R + 2} ${k.T - 2}H${c + 5}L${c + 3} ${k.B + 4}H${k.R + 2}Z`, coat, k.ink, 0.8) +
         k.path(`M${c} ${k.T + 3}l-5 -3v6Z M${c} ${k.T + 3}l5 -3v6Z`, RED, k.ink, 0.5)));
     }
-    onPole(k, (x, y) => k.line(`M${x} ${y + 20}L${x} ${y - 2}`, "#2a2a36", 2.4) + k.line(`M${x} ${y - 2}V${y - 6}`, "#ffffff", 2.4) +
-      k.lume("twinkle", k.path(starD(x, y - 9, 5, 4, 0.35), "#fff3a8", "none"), 0, "#ffffff"));
+    // Its wand is its mallet, re-forged (legend-details-stars.ts).
     // The top hat sits between the ears.
     const x = k.hx + k.side * 2,
       y = k.ht + 12;

@@ -26,6 +26,8 @@ export const STARS_ART: Record<string, SkinArt> = Object.fromEntries(
       trail: { kind: "star", colors: [0xc8323a, 0xffffff] },
       skill: 0xf2c14e,
       signature: `${id}-stars-stripes`,
+      // Astrabun's mallet becomes a magic wand (legend-details-stars.ts).
+      ...(id === "astrabun" ? { weapon: { handle: "#2a2a36", head: "#2a2a36" } } : {}),
     } satisfies SkinArt,
   ]),
 );

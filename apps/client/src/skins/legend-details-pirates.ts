@@ -1,4 +1,4 @@
-import { legendDetails, type Details } from "./legend-details";
+import { legendDetails, malletHead, type Details } from "./legend-details";
 import type { Kit } from "./modern-designs";
 // Registers the costumes these details are drawn over.
 import "./modern-pirates";
@@ -856,6 +856,29 @@ const DETAILS: Details = {
     else if (k.side) k.put("body", lash(k.C - k.side * 16, k.T + 4) + ring(k.C - k.side * 31, k.T + 4));
     else k.put("body", ring(k.L - 19, k.T - 2) + ring(k.R + 19, k.T - 2) + lash(k.L - 12, k.T - 2) + lash(k.R + 12, k.T - 2));
   },
+};
+
+/**
+ * The Moonsail Bosun's mallet becomes a little mast (the handle,
+ * recoloured in pirate-art.ts) flying its moonsail: a canvas sail bellied
+ * by the wind with a gold crescent on it, a yard across its head and a
+ * navy pennant streaming from the masthead.
+ */
+const ownSail = DETAILS.astrabun;
+DETAILS.astrabun = (k) => {
+  ownSail?.(k);
+  const { x, y } = malletHead(k);
+  const d = k.side ? -k.side : 1;
+  // Kept within the arm's crop: the masthead stays below the head's top.
+  const top = y - 20,
+    foot = y + 17;
+  k.put("armR", k.line(`M${x} ${foot + 2}V${top - 6}`, "#6a4424", 3) + k.circle(x, top - 7, 2.2, GOLD, GOLD_DARK, 0.6) +
+    k.path(`M${x} ${top - 6}l${-d * 14} -4l${d * 4} 5l${-d * 4} 5Z`, "#24345e", k.ink, 0.6) +
+    k.line(`M${x - 20} ${top}H${x + 20}`, "#6a4424", 2.4) +
+    // Both edges belly the same way, with the wind.
+    k.path(`M${x - 19} ${top + 1}Q${x - 19 + 7 * d} ${y - 6} ${x - 19} ${foot}H${x + 19}Q${x + 19 + 7 * d} ${y - 6} ${x + 19} ${top + 1}Z`, "#f4ecd8", k.ink, 1) +
+    k.line(`M${x - 19} ${top + 10}Q${x} ${top + 13} ${x + 19} ${top + 10}M${x - 19} ${foot - 9}Q${x} ${foot - 6} ${x + 19} ${foot - 9}`, "#d8ccb0", 0.8) +
+    k.lume("pulse", k.path(`M${x + 4} ${y - 9}A9.5 9.5 0 1 0 ${x + 4} ${y + 10}A7.4 7.4 0 1 1 ${x + 4} ${y - 9}Z`, GOLD, GOLD_DARK, 0.7), 4, "#fff3b0"));
 };
 
 legendDetails("pirates", DETAILS);

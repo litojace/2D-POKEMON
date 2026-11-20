@@ -223,6 +223,8 @@ export const VANGUARD_ART: Record<string, SkinArt> = Object.fromEntries(
         skill: parseInt(look.glow.slice(1), 16),
         vanguard: id,
         signature: `${id}-nova-vanguard`,
+        // Astrabun's mallet becomes a comet staff (legend-details-vanguard.ts).
+        ...(id === "astrabun" ? { weapon: { handle: "#9fb4d0", head: "#1c2850" } } : {}),
       } satisfies SkinArt,
     ];
   }),

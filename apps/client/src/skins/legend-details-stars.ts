@@ -1,4 +1,4 @@
-import { legendDetails, type Details } from "./legend-details";
+import { legendDetails, malletHead, type Details } from "./legend-details";
 import { onPole, type Kit } from "./modern-designs";
 // Registers the costumes these details are drawn over.
 import "./modern-stars";
@@ -261,7 +261,7 @@ const DETAILS: Details = {
   },
   // Stage Magician: a satin top hat (a sheen down the crown, a lit rim on
   // top, a satin band with its bow) with a card peeking from the band; a fan
-  // of cards at the coat and white tips on the wand.
+  // of cards at the coat (its wand is the mallet, below).
   astrabun(k) {
     const x = k.hx + k.side * 2,
       y = k.ht + 12;
@@ -283,9 +283,6 @@ const DETAILS: Details = {
     const bx = onRight(k, 10);
     const bow = bx === null ? "" : k.path(`M${x + bx} ${y - 6.2}l-3.6 -2.6v5.2Z M${x + bx} ${y - 6.2}l3.6 -2.6v5.2Z`, "#9a1c26", k.ink, 0.5) + k.circle(x + bx, y - 6.2, 1.1, "#ff9a9a", "none", 0);
     k.put("flame", sheen + top + lip + card + band + bow);
-    // White tips at both ends of the wand, and two more sparks round its star.
-    onPole(k, (wx, wy) => k.line(`M${wx} ${wy + 20}V${wy + 16}`, "#ffffff", 2.6) + k.line(`M${wx} ${wy - 2}V${wy - 6}`, "#ffffff", 2.6) +
-      k.lume("twinkle", k.path(k.star(wx + 5, wy - 4, 2, 4, 0.35), GOLD_L, "none", 0) + k.path(k.star(wx - 4, wy - 13, 1.6, 4, 0.35), "#ffffff", "none", 0), 2, "#ffffff"));
     if (k.back) return;
     // A fan of three cards at the coat.
     const c = k.C + k.side * 3;
@@ -763,6 +760,26 @@ const DETAILS: Details = {
         return k.circle(gx + 5 + Math.cos(ang) * 1.4, gy + 20 + Math.sin(ang) * 1.4, 1.1, "#ffffff", "none", 0);
       }).join("") + k.circle(gx + 5, gy + 20, 0.9, "#ffd84a", "none", 0));
   },
+};
+
+/**
+ * The Stage Magician's mallet becomes its magic wand: a black wand (the
+ * handle, recoloured in stars-art.ts) with a white tip, crowned by a gold
+ * star in a burst of sparkle. It takes over from the little wand it used
+ * to carry on its back (modern-stars.ts).
+ */
+const ownWand = DETAILS.astrabun;
+DETAILS.astrabun = (k) => {
+  ownWand?.(k);
+  const { x, y } = malletHead(k);
+  const rays = Array.from({ length: 8 }, (_, i) => {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    return `M${x + Math.cos(a) * 15} ${y + Math.sin(a) * 15}L${x + Math.cos(a) * 24} ${y + Math.sin(a) * 24}`;
+  }).join("");
+  k.put("armR", k.rect(x - 3.4, y + 10, 6.8, 9, 1.2, "#ffffff", k.ink, 0.7) +
+    k.circle(x, y, 18, "#2a2a36", k.ink, 1) +
+    k.lume("twinkle", k.line(rays, "#fff3a8", 1.6), 5, "#ffffff") +
+    k.lume("pulse", k.path(k.star(x, y, 17, 5, 0.45), "#f2c14e", "#a8823a", 1) + k.path(k.star(x, y, 8, 5, 0.45), "#fff3c4", "none", 0), 6, "#fff3a8"));
 };
 
 legendDetails("stars", DETAILS);

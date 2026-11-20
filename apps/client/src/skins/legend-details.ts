@@ -20,3 +20,15 @@ export function legendDetails(theme: ModernTheme, table: Details) {
     };
   }
 }
+
+/**
+ * Where Astrabun's mallet head sits on its arm part in each view (measured
+ * from the art, final units; the left view mirrors the right). The mallet
+ * stands upright there, its handle running down from the head; the rig
+ * turns the whole arm as it swings, so a piece drawn here swings with it.
+ * The head is about 38 wide and 32 tall, so a replacement covers that box.
+ */
+export function malletHead(k: { back: boolean; side: number }) {
+  const spot = k.back ? [143, 99] : k.side ? [54, 106] : [150.7, 101.5];
+  return { x: k.side < 0 ? 200 - spot[0] : spot[0], y: spot[1] };
+}

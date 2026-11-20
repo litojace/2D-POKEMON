@@ -1,5 +1,5 @@
 import type { Kit } from "./modern-designs";
-import { legendDetails, type Details } from "./legend-details";
+import { legendDetails, malletHead, type Details } from "./legend-details";
 // Registers the costumes these details are drawn over.
 import { VANGUARD_LOOK } from "./modern-vanguard";
 
@@ -367,6 +367,24 @@ const DETAILS: Details = {
     else if (k.side) k.put("flame", prof(k, k.hx, band(`M${k.hx - 30} ${y + 8}Q${k.hx} ${y - 3} ${k.hx + 28} ${y + 3}`) + puff(k.hx - 8, y + 2) + drop(k.hx + 26, y + 2)));
     else k.put("flame", band(`M${k.hx - 40} ${y + 8}Q${k.hx} ${y - 4} ${k.hx + 40} ${y + 8}`) + puff(k.hx - 38, y + 7) + puff(k.hx + 36, y + 7) + drop(k.hx, y - 0.5));
   },
+};
+
+/**
+ * Comet Strider's mallet becomes a comet staff: a silver shaft (the
+ * handle, recoloured in vanguard-art.ts) topped by a night-blue orb that
+ * holds a glowing star, its comet tail streaming up and back.
+ */
+const ownComet = DETAILS.astrabun;
+DETAILS.astrabun = (k) => {
+  ownComet?.(k);
+  const { x, y } = malletHead(k);
+  // The tail streams behind it in profile, outward from the front and back.
+  const back = k.side ? -k.side : 1;
+  const tail = [0, 1, 2].map((i) => k.path(`M${x + back * 4} ${y - 8 + i * 6}Q${x + back * (22 + i * 4)} ${y - 26 + i * 4} ${x + back * (34 + i * 6)} ${y - 40 + i * 6}Q${x + back * (18 + i * 2)} ${y - 18 + i * 6} ${x + back * 2} ${y - 2 + i * 6}Z`, i === 1 ? "#ffe9a8" : "#9fd8ff", "none")).join("");
+  k.put("armR", k.lume("chase", tail, 3, "#9fd8ff") +
+    k.circle(x, y, 19, "#1c2850", k.ink, 1.1) + k.circle(x, y, 15.5, "none", "#9fd8ff", 1.2) +
+    k.lume("pulse", k.path(k.star(x, y, 13, 5, 0.46), "#ffe9a8", k.ink, 0.8) + k.path(k.star(x, y, 6, 5, 0.46), "#ffffff", "none", 0), 4, "#ffe9a8") +
+    k.circle(x - 9, y - 9, 2, "#ffffff", "none", 0));
 };
 
 legendDetails("vanguard", DETAILS);

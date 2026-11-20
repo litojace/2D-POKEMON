@@ -25,6 +25,8 @@ export const PIRATE_ART: Record<string, SkinArt> = Object.fromEntries(
         trail: { kind: "coin", colors: [0xffd65b, plume] },
         skill: 0xffd65b,
         signature: `${id}-sky-pirates`,
+        // Astrabun's mallet becomes a moonsail mast (legend-details-pirates.ts).
+        ...(id === "astrabun" ? { weapon: { handle: "#6a4424", head: "#f4ecd8" } } : {}),
       } satisfies SkinArt,
     ];
   }),

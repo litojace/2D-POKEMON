@@ -413,6 +413,15 @@ and cloud). Some examples:
   gilded torch cage and lit crown windows; a satin top hat with a peeking
   card; a backwards snapback for the Times Square DJ.
 
+Astrabun's mallet is re-forged for each Legendary, as Hồn Việt first did
+with its rabbit lantern: Nova's Comet Strider holds a comet staff (a silver
+shaft, a night-blue orb with a glowing star and a streaming tail), the
+Moonsail Bosun a little mast flying a moonsail with a gold crescent, and
+the Stage Magician its magic wand (a black wand, a white tip, a gold star
+in a burst of sparkle; the little wand it carried on its back is gone).
+Each recolours the handle and head through `SkinArt.weapon` and draws over
+the head at `malletHead` (`legend-details.ts`), so it swings with the arm.
+
 Small prop details (chains, seals, inlay, a press card) read in the Shop
 more than at battle size; plumes, crests, masks, badges and redrawn props
 read in play. `costume-fit.spec.ts` keeps all of it inside the rig's crops
