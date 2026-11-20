@@ -136,6 +136,21 @@ describe("LocalTimeline", () => {
     expect(Math.abs(t.lead(now) - target)).toBeLessThan(0.006);
   });
 
+  it("estimates the newest snapshot's lead without the easing (hit gaps)", () => {
+    const t = new LocalTimeline();
+    expect(t.estimate(0)).toBe(0);
+    t.snapshot(5, 0);
+    for (let now = 0; now <= 64; now += 16) t.lead(now);
+    // The next snapshot: five unanswered again. The eased lead still holds
+    // the 64 ms the clock ran on; the estimate is the snapshot's own.
+    t.snapshot(5, 66);
+    expect(t.estimate(66)).toBeCloseTo(5 / RULES.tick, 9);
+    expect(t.lead(66) - t.estimate(66)).toBeGreaterThan(0.05);
+    expect(t.estimate(82)).toBeCloseTo(5 / RULES.tick + 0.016, 9);
+    t.snapshot(20, 100);
+    expect(t.estimate(100)).toBe(LEAD.max);
+  });
+
   it("never runs further ahead than its cap (a stall, not latency)", () => {
     const t = new LocalTimeline();
     t.snapshot(5, 0);

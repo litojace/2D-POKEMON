@@ -403,6 +403,36 @@ between the levels that no change tried here closes. 2v2 and free-for-all
 on unused line-ups (`FRESH_BASE=7000`): 2v2 44.5% - 55.5%, 4-player
 20.9% - 29.0%, 3-player 28.8% - 42.0% (Halcyra, unchanged).
 
+## Live Wire replaces Spark Trail (Coilemur)
+
+Players found Spark Trail hard to use: opponents walk round the trail. The
+trail was never its worth, though. Taken away for real (the bots never cast
+it), Coilemur fell from 50% to 18% on Hard: its 30% speed burst is what lets
+a grappler catch a shooter. (Switching a skill off with a very long cooldown,
+as the levers in the sixth pass did, still lets it be cast once at the start
+and after a refund; it reported Spark Trail as worth 1.2 points. Switch a
+skill off by giving it a kind the bots never choose.)
+
+**Live Wire** (11 s): after a quarter-second wind-up Coilemur runs 30%
+faster for 3.5 s and locks a wire onto the enemy nearest the aim (380 px).
+For 2.5 s the enemy takes 3 every half second; if it gets more than 250 px
+away the wire yanks it 220 px back, deals 6 and paralyses it for half a
+second, and snaps. Walls cut it. A wire that finds nobody keeps its full
+cooldown (no refund, so the speed burst can't be spammed). The rite Long
+Wire (3.5 s) replaces Long Trail. Spark Trail itself stays for the Spire's
+Static Wake blessing (`SPARK_TRAIL`).
+
+Coilemur health 150 (148). Two seeds, 24 games a pair: Hard 49.9% and expert
+60.5% (with Spark Trail 50.0% / 62.3%); without Live Wire it would be 19.4% /
+41.4%. Normal handicap 0.31 (0.357): Normal 52.9% (39.7% before). 2v2 44.8% -
+55.2%, 4-player 21.6% - 28.1%, 3-player 28.8% - 42.6% on unused line-ups.
+
+The Spire's Coilemur Echoes became harder for the play-tests' Halcyra (a
+shooter the wire keeps yanking back). Armour, so each floor clears about as
+often as before (seeds 1-72, main / now): 9 1.40 (1.35) 13 / 17, 16 1.66
+(1.56) 30 / 31, 63 6.8 (6.6) 33 / 29, 65 0.64 (0.60) 38 / 39, 66 4.35 (4.1)
+42 / 39, 69 2.35 (2.2) 13 / 14.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now
@@ -723,3 +753,85 @@ So this table is not for tuning champions. Use the look-ahead to check
 that a new champion's mechanics are used and answered (`new-mechanic.ts`).
 Measure balance on Hard and on the expert without it
 (`EXPERT_OFF=lookAhead`), as before.
+
+### Self-training: a learned way of playing each champion
+
+The expert plays every champion by the same rules. The trainer
+(`scripts/balance/train-expert.ts`) learns, per champion, a few numbers
+that change how those rules play it (`Style` in `apps/server/src/bot.ts`,
+written to `apps/server/src/expert-style.ts`, expert only): preferred
+distance (`range` for shooters, `reach` and `closeIn` for brawlers), how
+far it looks for openings (`sight`), circling (`circle`), when it dashes
+in, backs off or kites (`engage`, `retreat`, `kite`), a weight on each
+skill (`slots`) and the lowest score a skill must reach to be cast
+(`floor`). A champion missing from the file plays by the rules as written.
+
+**How it learns (evolution with honest checks).** For each champion in
+turn, six variations of its current style (two or three numbers moved at
+random, within limits; only numbers that mean something for it) play the
+17 others, 8 games each, on the same seeds as the current style. The best
+variation is played again on a second set of games and kept only if it
+wins there too and by 3 points on average over both. Four passes over the
+roster took about 1.5 hours on four processes (rules only, look-ahead off:
+six times faster). Progress is saved after every step, so the same command
+carries on after a restart.
+
+**The training's own numbers flatter it.** The best of six variations is
+partly the luckiest, so the training kept styles for 14 champions, but
+against untrained opponents on fresh games most of them won nothing:
+
+| Champion  | Fresh set A | Fresh set B | Confirming set | Kept |
+| --------- | ----------: | ----------: | -------------: | ---- |
+| Mossloth  |        +7.9 |       +11.8 |           +4.5 | yes  |
+| Mystowl   |        +6.5 |        +0.9 |          +11.0 | yes  |
+| Shadopus  |        +6.2 |        +6.5 |            0.0 | no   |
+| Lumoth    |        +5.3 |        +5.6 |           +1.8 | no   |
+| Wombolder |        +2.1 |        +1.5 |                | no   |
+| Pyranda   |        +1.2 |        +1.5 |                | no   |
+| Auralynx  |        +4.7 |         0.0 |                | no   |
+| Pangrove  |        +2.4 |        −0.3 |                | no   |
+| Tidefin   |        −0.9 |        +4.7 |                | no   |
+| Halcyra   |        +0.6 |        −2.6 |                | no   |
+| Duskveil  |        −1.8 |        +0.6 |                | no   |
+| Sunbara   |        −0.6 |         0.0 |                | no   |
+| Glacelle  |        −2.4 |        −1.8 |                | no   |
+| Coilemur  |        −6.2 |        −1.2 |                | no   |
+
+(Points of win rate over the same champion with no style; sets A and B
+are 340 games a side, the confirming set 510.) Shadopus and Lumoth looked
+good on A and B, the very sets they were chosen on, and not on the third;
+the round robin below agrees. So the trainer now ends with this check
+itself: each learned style must win on two fresh sets (both positive, 2
+points on average), then on a third with more games that was not used to
+choose (2 points again). Styles that fail are dropped from the file.
+Running the trainer again on a finished state changes nothing.
+
+**Round robin** (expert without look-ahead, 24 games a pair, the same
+seeds as the table above):
+
+| Champion | Untrained | Trained |
+| -------- | --------: | ------: |
+| Mossloth |     79.7% |   84.6% |
+| Mystowl  |     60.5% |   67.6% |
+| Shadopus |     53.7% |   53.2% |
+| Lumoth   |     46.6% |   45.1% |
+
+The others move only through their games against those two (all other
+games are identical): by up to 4 points (Voltkit 40.9% to 37.0%, Duskveil
+47.8% to 44.6%). Spread 12.8 to 14.2. The untrained
+column is exactly the "Expert, rules only" column above. The trained
+expert plays Mossloth and Mystowl better, so they are stronger than the
+untrained expert showed: worth knowing when tuning them.
+
+**After adding or changing a champion:** delete
+`balance-out/train-expert.json` (or pass a new `--state`), run
+`npx tsx scripts/balance/train-expert.ts` (add `--only <ids>` to train
+just the new champion against the current styles), run Prettier on
+`expert-style.ts`, then measure as usual. Hard, Normal and Easy never read
+a style (their round robins are byte-identical to `main`), and
+`tests/unit/bot-style.test.ts` checks that a style is the expert's alone
+and that no style plays exactly as the rules.
+
+What it cannot learn: anything the rules have no number for. A new kind of
+skill is still the look-ahead's job (or a new rule); the trainer only tunes
+how the existing rules play each champion.
