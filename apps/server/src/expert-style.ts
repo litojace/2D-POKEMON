@@ -8,4 +8,9 @@ import type { Style } from "./bot.js";
  */
 export const EXPERT_STYLE: Partial<Record<CharacterId, Style>> = {
   voltkit: { sight: 1.211, floor: 1.661 },
+  tidefin: { circle: 0.677 },
+  mystowl: { retreat: 0.281, reach: 62.079 },
+  duskveil: { kite: 1, sight: 1.316 },
+  coilemur: { circle: 1.088, retreat: 0.397 },
+  pangrove: { sight: 1.172, range: 1.106 },
 };
