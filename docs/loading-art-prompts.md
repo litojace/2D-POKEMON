@@ -60,7 +60,8 @@ Then for each next scene: "Next: <scene id>", with its references attached.
    colours, same props, same character. A skin drawn differently from the
    one in the Shop misleads buyers, so ask again ("the Storm Revenant's crown
    and gorget must match the reference") rather than keep a near miss. Check
-   the composition too: nobody's face in the top 15% or the bottom 30%.
+   the composition too: nobody between the top and 20%, below 58%, or in
+   the bottom-right quarter (where the tip goes).
 4. Download it as `<scene id>.png` (`duel-storm-vs-forge.png` ...).
 5. Import them:
 
@@ -93,12 +94,16 @@ follows these rules exactly:
   eyes, clean shapes, their exact colours, outfits and props.
 - Each creature wears exactly the outfit in its reference picture: do not
   add, remove or change pieces, colours, symbols or props.
-- Landscape, 1536 x 1024. The game puts its title at the top and a line of
-  text with a loading bar across the whole bottom, and phone screens cut
-  the top and bottom of the picture. So every creature, face and important
-  effect sits in the middle band, between 18% and 68% of the height. The
-  top 15% is calm sky or arena wall; the bottom 30% is calm, darker arena
-  floor with no faces or key action.
+- Landscape, 1536 x 1024. Phone screens are much wider than the picture,
+  so they show only its middle band (about the top and bottom 15% are cut),
+  and the game puts its title in the top-right corner and a tip with a
+  loading bar across the bottom, the tip in the bottom-right corner. So:
+  every creature, face, body and important effect sits between 20% and 58%
+  of the height; the top 15% is calm sky or arena wall; the bottom 40% is
+  calm, darker arena floor; and the bottom-right quarter is empty floor with
+  nobody in it (the first painting, duel-corsairs, had its right-hand
+  creature standing there and the tip covered it). Leave headroom: ears,
+  hats and horns stay below 20%.
 - The setting is the game's arena: an elemental coliseum court of carved
   stone with glowing element runes, seen from slightly above.
 - Elemental skill effects (lightning, fire, water, light, shadow, earth,

@@ -376,9 +376,8 @@ for (const size of [
 }
 
 /**
- * Paintings in the game for this test (loading-art.ts lists only those whose
- * picture is in the repository): stand-ins drawn from the game's own
- * backgrounds, in the given scenes.
+ * The paintings in the game for this test, instead of the repository's:
+ * stand-ins drawn from the game's own backgrounds, in the given scenes.
  */
 async function withPaintings(page: Page, ids: string[]) {
   const stand = [
@@ -395,7 +394,11 @@ async function withPaintings(page: Page, ids: string[]) {
           `LOADING_ART.push({ ...LOADING_SCENES.find((s) => s.id === ${JSON.stringify(id)}), src: ${JSON.stringify(stand[i % stand.length])} });`,
       )
       .join("\n");
-    await route.fulfill({ response, body: `${body}\n${add}` });
+    // Only these: the repository's own paintings would make choices random.
+    await route.fulfill({
+      response,
+      body: `${body}\nLOADING_ART.length = 0;\n${add}`,
+    });
   });
 }
 
