@@ -26,8 +26,11 @@
  * Then a final check, because the training's own numbers flatter it (the
  * best of several variations is partly the luckiest): each learned style
  * plays against untrained opponents on two fresh sets of games, against
- * the champion with no style, and is kept only if it wins more on both and
- * by CHECK_MARGIN points on average. The others are dropped from the file.
+ * the champion with no style, and passes only if it wins more on both and
+ * by CHECK_MARGIN points on average. A style that passes is confirmed on a
+ * third set never used to choose (the ones chosen look better on the sets
+ * they were chosen on) and kept only if it wins by CHECK_MARGIN there too.
+ * The others are dropped from the file.
  *
  * Run it after a champion is added or changed, then measure as usual. It
  * trains the expert on its rules (look-ahead off: six times faster); the
@@ -130,6 +133,8 @@ const MARGIN = 3;
 const CHECK_MARGIN = 2;
 /** Seeds of the final checks' game sets (never used in training). */
 const CHECK_SEEDS = [3000000, 4000000];
+/** Seed of the confirming game set (1.5 times the games). */
+const CONFIRM_SEED = 6000000;
 
 type State = {
   table: Table;
@@ -335,26 +340,41 @@ while (state.round < rounds) {
   save();
 }
 state.checked ??= {};
+const sign = (g: number) => (g >= 0 ? "+" : "") + g.toFixed(1);
+/** Gain of the learned style over no style, on one fresh game set. */
+async function gainOn(
+  champion: CharacterId,
+  style: Style,
+  seed: number,
+  n: number,
+) {
+  const [plain, learned] = await evaluate(champion, [{}, style], seed, {}, n);
+  return learned - plain;
+}
+// A dropped style is gone from the table; a confirmed one has three gains.
 for (const champion of champions) {
   const style = state.table[champion];
-  if (!style || Object.keys(style).length === 0 || state.checked[champion])
-    continue;
-  const gains: number[] = [];
-  for (const seed of CHECK_SEEDS) {
-    const [plain, learned] = await evaluate(
-      champion,
-      [{}, style],
-      seed,
-      {},
-      checkGames,
-    );
-    gains.push(learned - plain);
+  if (!style || Object.keys(style).length === 0) continue;
+  const gains = [...(state.checked[champion] ?? [])];
+  if (gains.length === 3) continue;
+  if (gains.length < 2) {
+    gains.length = 0;
+    for (const seed of CHECK_SEEDS)
+      gains.push(await gainOn(champion, style, seed, checkGames));
   }
-  const mean = gains.reduce((a, b) => a + b, 0) / gains.length;
-  const kept = gains.every((g) => g > 0) && mean >= CHECK_MARGIN;
+  let kept =
+    gains[0] > 0 && gains[1] > 0 && (gains[0] + gains[1]) / 2 >= CHECK_MARGIN;
+  // The styles chosen on those two sets look better there than they are:
+  // confirm on a third, with more games, never used to choose.
+  if (kept) {
+    gains.push(
+      await gainOn(champion, style, CONFIRM_SEED, Math.round(checkGames * 1.5)),
+    );
+    kept = gains[2] >= CHECK_MARGIN;
+  }
   if (!kept) delete state.table[champion];
   state.checked[champion] = gains;
-  const line = `check ${champion.padEnd(9)} ${gains.map((g) => (g >= 0 ? "+" : "") + g.toFixed(1)).join(" ")} -> ${kept ? "kept" : "dropped"}`;
+  const line = `check ${champion.padEnd(9)} ${gains.map(sign).join(" ")} -> ${kept ? "kept" : "dropped"}`;
   console.log(line);
   state.log.push(line);
   writeStyles();
