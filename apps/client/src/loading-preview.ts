@@ -65,6 +65,14 @@ const styles: Record<string, string> = {
   // d: the front door's painting and a caption (it already has Voltkit).
   d: `<section class="lp lp-d"><div class="lp-d-art"></div>${title}<div class="lp-d-caption"><div class="lp-d-tip"><b>TIP</b> ${tipText}</div>${bar("Loading your profile…")}</div></section>`,
 };
+/** The tip as a card: a map tip shows its arena large, others their text. */
+const tipCard = (compact = false) =>
+  `<div class="lp-tipcard${compact ? " is-compact" : ""}">${tip.map ? arenaMap() : ""}<b>TIP</b><p>${tipText}</p></div>`;
+// e: your fighter (b) with the illustrated tip (c) when the tip has one.
+styles.e = `<section class="lp lp-b lp-e" style="--bg:url('${starfield}');--el:${hex}"><div class="lp-b-stage">${fighterArt}${nameplate}</div><div class="lp-b-side">${title}${tipCard()}${bar("Loading your profile…")}</div></section>`;
+// f: the Lobby to come: its blurred Plaza, your fighter where the Lobby will
+// stand it, the tip where its cards will be, the bar where PLAY will be.
+styles.f = `<section class="lp lp-f" style="--el:${hex}"><div class="lp-f-art"></div>${title}<div class="lp-f-fighter">${fighterArt}${nameplate}</div><div class="lp-f-side">${tipCard(true)}${bar("Loading your profile…")}</div></section>`;
 if (styles[style])
   document.querySelector("#loading-preview")!.innerHTML = styles[style];
 else {
@@ -72,4 +80,21 @@ else {
   holdStartupCurtain();
   setCurtainTip(tipMarkup(tip));
   curtainStep(progress, "Loading your profile…");
+  // g: the curtain (a) with your fighter inside the crest's orbits.
+  if (style === "g") {
+    const art = document.querySelector<HTMLElement>(".server-startup-art")!;
+    art.classList.add("lp-g-art");
+    art.style.setProperty("--el", hex);
+    art.querySelector("img")!.hidden = true;
+    art.insertAdjacentHTML("beforeend", fighterArt);
+  }
+}
+// f: placed as the Lobby places them (measured from lobby.css at these sizes).
+const lobby = document.querySelector<HTMLElement>(".lp-f");
+if (lobby) {
+  const big = innerHeight >= 360;
+  lobby.style.setProperty("--fx", `${big ? 238 : 165}px`);
+  lobby.style.setProperty("--fy", `${big ? 94 : 116}px`);
+  lobby.style.setProperty("--fs", `${big ? 228 : 136}px`);
+  lobby.style.setProperty("--side", `${big ? 634 : 376}px`);
 }

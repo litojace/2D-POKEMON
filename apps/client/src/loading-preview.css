@@ -245,3 +245,114 @@ body {
 .lp-d .lp-bar {
   justify-items: start;
 }
+
+/* e: the tip card can carry the illustrated arena */
+.lp-tipcard .lp-arena {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 34vh;
+  margin: 0 auto 8px;
+}
+.lp-e .lp-tipcard p {
+  font-size: clamp(12px, 3.2vh, 15px);
+}
+
+/* f: the Lobby to come */
+.lp-f-art {
+  position: absolute !important;
+  inset: 0;
+  z-index: 0 !important;
+  background: #0b1020 url("/assets/backgrounds/lobby-backdrop-d99b61e6.webp")
+    center / cover no-repeat;
+}
+.lp-f .lp-title {
+  font-size: clamp(16px, 4.4vh, 30px);
+}
+.lp-f-fighter {
+  position: absolute !important;
+  left: var(--fx);
+  top: var(--fy);
+  width: var(--fs);
+}
+.lp-f-fighter .lp-fighter {
+  width: var(--fs);
+  height: var(--fs);
+}
+.lp-f-fighter .lp-name {
+  margin-top: 4px;
+}
+.lp-f-side {
+  position: absolute !important;
+  left: var(--side);
+  right: max(14px, env(safe-area-inset-right));
+  top: 64px;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+.lp-tipcard.is-compact {
+  align-self: start;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 10px 12px;
+}
+.lp-tipcard.is-compact .lp-arena {
+  max-height: 22vh;
+}
+.lp-tipcard.is-compact p {
+  font-size: clamp(11px, 3vh, 13px);
+}
+
+/* g: your fighter inside the crest's orbits */
+.lp-g-art .lp-fighter {
+  position: absolute;
+  inset: -6%;
+}
+.lp-g-art .server-startup-aura {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--el) 45%, transparent),
+    transparent 70%
+  );
+}
+/* Short phones: the illustrated tip gives up height before anything is cut. */
+@media (max-height: 360px) {
+  .lp-b-side {
+    gap: 8px;
+  }
+  .lp-tipcard {
+    padding: 8px 12px;
+  }
+  .lp-tipcard .lp-arena {
+    max-height: 22vh;
+    margin-bottom: 4px;
+  }
+  .lp-tipcard.is-compact .lp-arena {
+    max-height: 16vh;
+  }
+  .lp-tipcard p,
+  .lp-e .lp-tipcard p {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .lp-tipcard.is-compact p {
+    font-size: 11px;
+  }
+  .lp-name b {
+    font-size: 20px;
+  }
+}
+/* f: the art in the Lobby's box exactly as lobby.css places it (the rig's
+   padded frame, offset back), so the fighter doesn't move at the hand-over. */
+.lp-f-fighter .lp-fighter {
+  position: relative;
+}
+.lp-f-fighter .lp-fighter svg {
+  position: absolute;
+  left: -10%;
+  top: -13.86%;
+  width: 120%;
+  height: 123.76%;
+}
