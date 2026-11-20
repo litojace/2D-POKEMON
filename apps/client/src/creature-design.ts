@@ -599,7 +599,8 @@ export function creatureLayers(
     const blade = (x: number) =>
       `${path(`M${x - 2} 150Q${x + 4} 116 ${x + 20} 92Q${x + 30} 114 ${x + 8} 152Z`, `url(#${prefix}-jewel)`)}${line(`M${x + 4} 146Q${x + 10} 120 ${x + 19} 100`, "#ffffff", 1.6, 0.8)}${path(`M${x - 6} 150H${x + 14}L${x + 12} 156H${x - 4}Z`, "#ffe7c2")}`;
     layers.armL = hand(69);
-    layers.armR = `${blade(131)}${hand(131)}`;
+    // Marked as held, so a skin can hand it something else (SkinArt.heldOff).
+    layers.armR = `<g data-held="1">${blade(131)}</g>${hand(131)}`;
   }
   if (id === "auralynx") {
     // Ascendant lynx monk: tall ears with crystal tips, a forehead gem, a
@@ -738,7 +739,7 @@ export function creatureLayers(
     layers.armR = `${path("M126 124Q144 134 146 154L132 152Q130 140 120 132Z", body)}${e(140, 154, 6, 5, p.light)}`;
     layers.scarf = `${path("M64 112Q100 128 136 112L132 124Q100 138 68 124Z", p.dark)}${path("M96 122Q92 132 100 136Q94 130 100 124Z", p.glow)}`;
     // Lantern on a crook, hanging from its tip; the rig swings this layer.
-    layers.tail = `${tailPath("M126 150Q150 148 156 120Q160 98 172 92Q180 92 180 100", "none", ` stroke="${p.dark}" stroke-width="4" stroke-linecap="round"`)}${line(`M${tailX(180)} 100V106`, p.dark, 2)}<circle cx="${tailX(180)}" cy="118" r="17" fill="${shine}" stroke="none"/>${path(`M${tailX(173)} 108H${tailX(187)}L${tailX(185)} 128H${tailX(175)}Z`, p.accent)}${e(tailX(180), 118, 4.5, 7, p.glow)}${e(tailX(180), 120, 2, 3.5, "#ffffff")}${line(`M${tailX(172)} 107H${tailX(188)}M${tailX(174)} 129H${tailX(186)}`, p.dark, 3)}`;
+    layers.tail = `${tailPath("M126 150Q150 148 156 120Q160 98 172 92Q180 92 180 100", "none", ` stroke="${p.dark}" stroke-width="4" stroke-linecap="round"`)}${line(`M${tailX(180)} 100V106`, p.dark, 2)}<circle cx="${tailX(180)}" cy="118" r="17" fill="${shine}" stroke="none"/><g data-held="1">${path(`M${tailX(173)} 108H${tailX(187)}L${tailX(185)} 128H${tailX(175)}Z`, p.accent)}${e(tailX(180), 118, 4.5, 7, p.glow)}${e(tailX(180), 120, 2, 3.5, "#ffffff")}${line(`M${tailX(172)} 107H${tailX(188)}M${tailX(174)} 129H${tailX(186)}`, p.dark, 3)}</g>`;
   }
   if (id === "coilemur") {
     // Ring-tailed lemur: pointed ears, a white face mask with dark eye patches,
@@ -781,7 +782,7 @@ export function creatureLayers(
     const dark = marks.limb;
     layers.body = `${e(100, 138, 30, 28)}${e(100, 144, 17, 18, marks.belly)}${highlight(80, 124, 16)}`;
     layers.armL = hand(67, dark);
-    layers.armR = `${path("M134 132Q134 120 143 118Q152 120 152 130Q150 138 143 138Q136 138 134 132Z", "#8a4a22")}${e(143, 121, 7, 3, "#c98a52")}${flameTip(143, 110, 6)}${hand(133, dark)}`;
+    layers.armR = `<g data-held="1">${path("M134 132Q134 120 143 118Q152 120 152 130Q150 138 143 138Q136 138 134 132Z", "#8a4a22")}${e(143, 121, 7, 3, "#c98a52")}${flameTip(143, 110, 6)}</g>${hand(133, dark)}`;
     layers.legL = paw(80, 160, 14, dark);
     layers.legR = paw(120, 160, 14, dark);
     layers.tail = `${path("M122 152Q160 160 172 132Q180 108 164 92Q156 86 150 94Q162 104 158 120Q152 140 120 140Z", body)}${line("M150 140Q160 136 168 128M158 118Q166 114 174 114", marks.mark, 6, 0.35)}${flameTip(157, 88, 10)}`;
@@ -1145,6 +1146,11 @@ function dressLayers(
       kept.push([part, layers[part].replace(/<g data-swap="1">[\s\S]*?<\/g>/g, "")]);
     layers[part] = "";
   }
+  // A skin that hands its champion something else takes the held piece off
+  // (Tidefin's fin-blade, Pyranda's chestnut, Duskveil's lantern body).
+  if (art.heldOff)
+    for (const part of Object.keys(layers) as CreaturePart[])
+      layers[part] = layers[part].replace(/<g data-held="1">[\s\S]*?<\/g>/g, "");
   // A skin's re-forged weapon: Astrabun's mallet handle and head.
   if (art.weapon)
     for (const part of ["armR", "armL"] as const)

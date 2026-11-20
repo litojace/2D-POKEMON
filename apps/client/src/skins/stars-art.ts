@@ -2,7 +2,8 @@ import type { CharacterId } from "@arena/shared";
 import { STARS_STRIPES_NAMES } from "../../../../packages/shared/src/shop";
 import type { SkinArt } from "./skin-art";
 import { modernReplaces } from "./modern-designs";
-import { tintPalette } from "./fashion-art";
+import { legendPalette } from "./fashion-art";
+import { LEGEND_SECOND } from "./legend-colours";
 import { STARS_TINTS } from "./collection-colours";
 // Registers the Stars & Stripes designs, which modernReplaces looks up.
 import "./modern-stars";
@@ -19,12 +20,16 @@ export const STARS_ART: Record<string, SkinArt> = Object.fromEntries(
   (Object.keys(STARS_STRIPES_NAMES) as CharacterId[]).map((id) => [
     `${id}-stars-stripes`,
     {
-      palette: tintPalette(id, STARS_TINTS[id]),
+      palette: legendPalette(id, STARS_TINTS[id], LEGEND_SECOND["stars-stripes"][id]),
       accessories: ["modern-stars"],
       replaces: modernReplaces("stars", id),
       trail: { kind: "star", colors: [0xc8323a, 0xffffff] },
       skill: 0xf2c14e,
       signature: `${id}-stars-stripes`,
+      // Takes off the held piece its design re-forges (legend-details).
+      ...(id === "pyranda" || id === "duskveil" || id === "tidefin" ? { heldOff: true } : {}),
+      // Astrabun's mallet becomes a magic wand (legend-details-stars.ts).
+      ...(id === "astrabun" ? { weapon: { handle: "#2a2a36", head: "#2a2a36" } } : {}),
     } satisfies SkinArt,
   ]),
 );
