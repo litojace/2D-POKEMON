@@ -753,3 +753,85 @@ So this table is not for tuning champions. Use the look-ahead to check
 that a new champion's mechanics are used and answered (`new-mechanic.ts`).
 Measure balance on Hard and on the expert without it
 (`EXPERT_OFF=lookAhead`), as before.
+
+### Self-training: a learned way of playing each champion
+
+The expert plays every champion by the same rules. The trainer
+(`scripts/balance/train-expert.ts`) learns, per champion, a few numbers
+that change how those rules play it (`Style` in `apps/server/src/bot.ts`,
+written to `apps/server/src/expert-style.ts`, expert only): preferred
+distance (`range` for shooters, `reach` and `closeIn` for brawlers), how
+far it looks for openings (`sight`), circling (`circle`), when it dashes
+in, backs off or kites (`engage`, `retreat`, `kite`), a weight on each
+skill (`slots`) and the lowest score a skill must reach to be cast
+(`floor`). A champion missing from the file plays by the rules as written.
+
+**How it learns (evolution with honest checks).** For each champion in
+turn, six variations of its current style (two or three numbers moved at
+random, within limits; only numbers that mean something for it) play the
+17 others, 8 games each, on the same seeds as the current style. The best
+variation is played again on a second set of games and kept only if it
+wins there too and by 3 points on average over both. Four passes over the
+roster took about 1.5 hours on four processes (rules only, look-ahead off:
+six times faster). Progress is saved after every step, so the same command
+carries on after a restart.
+
+**The training's own numbers flatter it.** The best of six variations is
+partly the luckiest, so the training kept styles for 14 champions, but
+against untrained opponents on fresh games most of them won nothing:
+
+| Champion  | Fresh set A | Fresh set B | Confirming set | Kept |
+| --------- | ----------: | ----------: | -------------: | ---- |
+| Mossloth  |        +7.9 |       +11.8 |           +4.5 | yes  |
+| Mystowl   |        +6.5 |        +0.9 |          +11.0 | yes  |
+| Shadopus  |        +6.2 |        +6.5 |            0.0 | no   |
+| Lumoth    |        +5.3 |        +5.6 |           +1.8 | no   |
+| Wombolder |        +2.1 |        +1.5 |                | no   |
+| Pyranda   |        +1.2 |        +1.5 |                | no   |
+| Auralynx  |        +4.7 |         0.0 |                | no   |
+| Pangrove  |        +2.4 |        −0.3 |                | no   |
+| Tidefin   |        −0.9 |        +4.7 |                | no   |
+| Halcyra   |        +0.6 |        −2.6 |                | no   |
+| Duskveil  |        −1.8 |        +0.6 |                | no   |
+| Sunbara   |        −0.6 |         0.0 |                | no   |
+| Glacelle  |        −2.4 |        −1.8 |                | no   |
+| Coilemur  |        −6.2 |        −1.2 |                | no   |
+
+(Points of win rate over the same champion with no style; sets A and B
+are 340 games a side, the confirming set 510.) Shadopus and Lumoth looked
+good on A and B, the very sets they were chosen on, and not on the third;
+the round robin below agrees. So the trainer now ends with this check
+itself: each learned style must win on two fresh sets (both positive, 2
+points on average), then on a third with more games that was not used to
+choose (2 points again). Styles that fail are dropped from the file.
+Running the trainer again on a finished state changes nothing.
+
+**Round robin** (expert without look-ahead, 24 games a pair, the same
+seeds as the table above):
+
+| Champion | Untrained | Trained |
+| -------- | --------: | ------: |
+| Mossloth |     79.7% |   84.6% |
+| Mystowl  |     60.5% |   67.6% |
+| Shadopus |     53.7% |   53.2% |
+| Lumoth   |     46.6% |   45.1% |
+
+The others move only through their games against those two (all other
+games are identical): by up to 4 points (Voltkit 40.9% to 37.0%, Duskveil
+47.8% to 44.6%). Spread 12.8 to 14.2. The untrained
+column is exactly the "Expert, rules only" column above. The trained
+expert plays Mossloth and Mystowl better, so they are stronger than the
+untrained expert showed: worth knowing when tuning them.
+
+**After adding or changing a champion:** delete
+`balance-out/train-expert.json` (or pass a new `--state`), run
+`npx tsx scripts/balance/train-expert.ts` (add `--only <ids>` to train
+just the new champion against the current styles), run Prettier on
+`expert-style.ts`, then measure as usual. Hard, Normal and Easy never read
+a style (their round robins are byte-identical to `main`), and
+`tests/unit/bot-style.test.ts` checks that a style is the expert's alone
+and that no style plays exactly as the rules.
+
+What it cannot learn: anything the rules have no number for. A new kind of
+skill is still the look-ahead's job (or a new rule); the trainer only tunes
+how the existing rules play each champion.
