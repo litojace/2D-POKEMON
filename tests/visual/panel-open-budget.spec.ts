@@ -14,7 +14,8 @@ import { openHub } from "./helpers";
  *   it is laid out only a few times;
  * - no canvas is made again for the screen (the Roster's portraits);
  * - and on a 4× slowed CPU no frame takes longer than LONG_FRAME_MS (more
- *   than the page's steady frame, where every frame was already long).
+ *   than the page's steady frame, where every frame was already long; the
+ *   Shop has its own limit, see PANELS).
  *
  * A phone held sideways (956×440, an iPhone's landscape screen), touch.
  * Mostly counted, not timed: this machine draws on the CPU. The timed limit
@@ -24,6 +25,10 @@ import { openHub } from "./helpers";
  * open had frames of 522-627 ms: its own work well within the limit, the
  * frame as a whole not (PR #237, 19 Nov). Where the page's frames are long
  * one after another, the limit counts from their median.
+ * Frames are taken by when they started, after the tap: on a busy page the
+ * browser reports a long frame up to seconds later, so taking those reported
+ * while an open was measured counted the Lobby's frames from before the tap
+ * and missed the open's own (the Shop's 470–630 ms frame read 0 here).
  */
 const LONG_FRAME_MS = 450;
 /** Layouts in the 1.5 s after a tap (the open, its entrance, settling). */
@@ -49,6 +54,8 @@ interface Panel {
   asks: string[];
   /** What else it shows from the server (comes with the news itself). */
   shows?: string[];
+  /** Its own longest-frame limit, where it is not LONG_FRAME_MS. */
+  longFrame?: number;
 }
 const rail = (action: string) => (page: Page) =>
   page.evaluate(
@@ -83,6 +90,12 @@ const PANELS: Panel[] = [
     open: rail("shop"),
     asks: ["/api/raids"],
     shows: ["/api/economy"],
+    // The Shop builds its whole screen again on every open (about 1,500
+    // elements) and takes its live fighter back into it: one frame of
+    // 470–630 ms at 4× here, measured by start time (Nov 2026; the other
+    // screens 80–270 ms). The owner's call (PR #237): its own limit for
+    // now, to be brought down by making the Shop's repeat open cheaper.
+    longFrame: 700,
   },
   {
     name: "missions",
@@ -140,7 +153,6 @@ function instrument() {
     reads: 0,
     openedAt: 0,
     made: new WeakSet<Element>(),
-    frames: [] as number[],
   });
   new MutationObserver((list) => {
     if (!c.on) return;
@@ -176,11 +188,10 @@ function instrument() {
   // The last long frames and what ran in them, for a failure to name
   // (and the ones of a measured open, for its longest-frame check).
   (c as any).longs = [] as string[];
+  (c as any).all = [] as [number, number, string][];
   try {
     new PerformanceObserver((l) => {
       for (const e of l.getEntries()) {
-        if (c.on) c.frames.push(e.duration);
-        (c as any).pre?.push([e.startTime, e.duration]);
         // Busy: a long frame with work of the page's own in it. On CI's
         // runner every Lobby frame took 180-190 ms with no script at all
         // (its steady drawing there, PR #237, 19 Nov), so "no long frame
@@ -202,7 +213,13 @@ function instrument() {
           `${Math.round(e.startTime)} +${Math.round(e.duration)} ms [${scripts.join(", ")}]`,
         );
         if (longs.length > 30) longs.shift();
-        if (c.on) ((c as any).openLongs ??= []).push(longs[longs.length - 1]);
+        // Every long frame by when it started: on a busy page the observer
+        // hears of a frame up to seconds later (CI, PR #237: the Lobby's
+        // frames from before a tap were reported during the open, and
+        // none in the second before it), so frames are picked by start.
+        const all = (c as any).all as [number, number, string][];
+        all.push([e.startTime, e.duration, longs[longs.length - 1]]);
+        if (all.length > 600) all.shift();
       }
     }).observe({ type: "long-animation-frame" });
   } catch {
@@ -284,27 +301,8 @@ async function measure(
   // /api/friends after a change", when the wait took a few seconds).
   if (o.changed)
     await page.evaluate(() => (window as any).__sock.fire("economy-changed"));
-  // The page's steady frame now: where its frames are long one after
-  // another (long frames over 70% of a second), their median;
-  // otherwise 0, and the limit is as it was.
-  const steady = await page.evaluate(async () => {
-    const c = (window as any).__count;
-    c.pre = [] as [number, number][];
-    const from = performance.now();
-    await new Promise((r) => setTimeout(r, 1000));
-    const to = performance.now();
-    // Long-frame entries reach the observer a while after their frame on a
-    // busy page (CI read 0 here while every frame was 240-260 ms long).
-    await new Promise((r) => setTimeout(r, 600));
-    const pre = (c.pre as [number, number][]).filter(
-      ([t]) => t >= from && t < to,
-    );
-    c.pre = undefined;
-    const busy = pre.reduce((n, [, d]) => n + d, 0);
-    if (busy < 0.7 * (to - from)) return 0;
-    const d = pre.map(([, d]) => d).sort((a, b) => a - b);
-    return Math.round(d[d.length >> 1]);
-  });
+  // A second of the page as it is, for its steady frame (below).
+  await page.waitForTimeout(1000);
   await page.evaluate(() => {
     const c = (window as any).__count;
     Object.assign(c, {
@@ -313,14 +311,25 @@ async function measure(
       late: 0,
       reads: 0,
       made: new WeakSet(),
-      frames: [],
-      openLongs: [],
     });
     c.openedAt = performance.now();
     c.on = true;
   });
   const before = await layouts(cdp);
   const openAt = Date.now();
+  // When the open's tap or click really came: Playwright may wait a while
+  // for the button to hold still first on a slowed page.
+  await page.evaluate(() => {
+    const c = (window as any).__count;
+    c.tapAt = undefined;
+    const at = (e: Event) => {
+      c.tapAt ??= e.timeStamp;
+      document.removeEventListener("pointerdown", at, true);
+      document.removeEventListener("click", at, true);
+    };
+    document.addEventListener("pointerdown", at, true);
+    document.addEventListener("click", at, true);
+  });
   await panel.open(page);
   await page.waitForTimeout(SETTLE_MS);
   const laidOut = (await layouts(cdp)) - before;
@@ -337,8 +346,6 @@ async function measure(
       canvases: Array.from(
         document.querySelectorAll(".ui-panel:not([data-ui-leaving]) canvas"),
       ).filter((el) => c.made.has(el) && !el.closest(stills)).length,
-      worst: Math.round(Math.max(0, ...(c.frames as number[]))),
-      longs: (c.openLongs ?? []) as string[],
     };
   }, TILE_STILLS);
   await expect(page.locator(".ui-panel:not([data-ui-leaving])")).toBeVisible();
@@ -348,7 +355,33 @@ async function measure(
   ).toHaveCount(0);
   const closedAt = Date.now();
   await page.waitForTimeout(800);
-  return { ...counted, laidOut, steady, openAt, closedAt };
+  // The open's frames: those that started from the tap through the settle
+  // (all reported by now). The page's steady frame: where the second
+  // before the tap was long frames one after another (over 70% of it),
+  // their median; otherwise 0, and the limit is as it was.
+  const frames = await page.evaluate(
+    ({ settle }) => {
+      const c = (window as any).__count;
+      const tapAt = (c.tapAt as number | undefined) ?? Infinity;
+      const all = c.all as [number, number, string][];
+      // The frame with the tap in it, and those after it.
+      const open = all.filter(([t, d]) => t + d > tapAt && t < tapAt + settle);
+      const pre = all.filter(([t]) => t >= tapAt - 1000 && t < tapAt);
+      const busy = pre.reduce((n, [, d]) => n + d, 0);
+      const d = pre.map(([, d]) => d).sort((a, b) => a - b);
+      return {
+        tapped: c.tapAt !== undefined,
+        worst: Math.round(Math.max(0, ...open.map(([, d]) => d))),
+        steady: busy < 700 ? 0 : Math.round(d[d.length >> 1]),
+        longs: [
+          ...pre.map(([, , s]) => `before the tap: ${s}`),
+          ...open.map(([, , s]) => s),
+        ],
+      };
+    },
+    { settle: SETTLE_MS },
+  );
+  return { ...counted, ...frames, laidOut, openAt, closedAt };
 }
 
 test("a screen opened again shows what it had: no new requests, no rebuild, no long frame", async ({
@@ -450,10 +483,11 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
         again.reads,
         `${panel.name}: layout reads on a repeat open`,
       ).toBeLessThanOrEqual(MAX_LAYOUT_READS);
+      expect(again.tapped, `${panel.name}: the open's tap was seen`).toBe(true);
       expect(
         again.worst - again.steady,
         `${panel.name}: longest frame on a repeat open (ms) over the steady ${again.steady} ms, ${again.openAt - first.closedAt} ms after the first closed: ${again.longs.join("; ")}`,
-      ).toBeLessThanOrEqual(LONG_FRAME_MS);
+      ).toBeLessThanOrEqual(panel.longFrame ?? LONG_FRAME_MS);
     }
     console.log(JSON.stringify(results));
     expect(errors).toEqual([]);
