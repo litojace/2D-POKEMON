@@ -4088,6 +4088,17 @@ socket.on(
   },
 );
 socket.on("account-changed", () => void accountsUI.refresh());
+// A deploy is replacing the server (docs/server-updates.md): a match in
+// progress plays on to the end; new matches wait for the new server.
+socket.on("server-update", () => {
+  pwa.serverUpdating();
+  const phase = state?.phase;
+  toast(
+    !state?.practice && phase && phase !== "lobby" && phase !== "finished"
+      ? "A server update is waiting. Your match continues; the update follows it."
+      : "The server is updating. New matches open again in about a minute.",
+  );
+});
 // Coins, missions or Awakening changed after a match or raid.
 socket.on("economy-changed", () => void accountsUI.loadEconomy());
 socket.on("room-invite", (data: unknown) => roomInvites.receive(data));
