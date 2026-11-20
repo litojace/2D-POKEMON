@@ -253,14 +253,14 @@ test("the Photo Spot takes a polaroid, and quests update from the server", async
   await expect(page.locator("#account-coins")).toContainText("2,340");
   await page.evaluate(() => {
     const w = window as any;
-    w.__economyPatch = { balance: 2342 };
+    w.__economyPatch = { balance: 2360 };
     const p = structuredClone(w.__plazaProgress);
     p.quests.lap = { n: 1, done: true };
     w.__sock.fire("plaza-progress", p);
   });
   await expect(page.locator("#pz-quests h5")).toContainText("2/5");
-  await expect(page.locator("#toast")).toContainText("+2 coins");
-  await expect(page.locator("#account-coins")).toContainText("2,342");
+  await expect(page.locator("#toast")).toContainText("+20 coins");
+  await expect(page.locator("#account-coins")).toContainText("2,360");
   expect(errors).toEqual([]);
 });
 
