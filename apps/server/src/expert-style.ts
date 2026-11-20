@@ -12,4 +12,5 @@ export const EXPERT_STYLE: Partial<Record<CharacterId, Style>> = {
   lumoth: {"slots":[1,1,1.568,1.067],"retreat":0.403},
   astrabun: {"slots":[0.796,1,1,1],"sight":1.481,"closeIn":2.502},
   wombolder: {"slots":[1.144,1,1,1],"engage":0.078},
+  voltkit: {"range":1.151},
 };
