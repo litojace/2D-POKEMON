@@ -67,9 +67,9 @@ const styles: Record<string, string> = {
   // d: the front door's painting and a caption (it already has Voltkit).
   d: `<section class="lp lp-d"><div class="lp-d-art"></div>${title}<div class="lp-d-caption"><div class="lp-d-tip"><b>TIP</b> ${tipText}</div>${bar("Loading your profile…")}</div></section>`,
 };
-/** The tip as a card: a map tip shows its arena large, others their text. */
+/** The tip as a card. */
 const tipCard = (compact = false) =>
-  `<div class="lp-tipcard${compact ? " is-compact" : ""}">${tip.map ? arenaMap() : ""}<b>TIP</b><p>${tipText}</p></div>`;
+  `<div class="lp-tipcard${compact ? " is-compact" : ""}"><b>TIP</b><p>${tipText}</p></div>`;
 // e: your fighter (b) with the illustrated tip (c) when the tip has one.
 styles.e = `<section class="lp lp-b lp-e" style="--bg:url('${starfield}');--el:${hex}"><div class="lp-b-stage">${fighterArt}${nameplate}</div><div class="lp-b-side">${title}${tipCard()}${bar("Loading your profile…")}</div></section>`;
 // f: the Lobby to come: its blurred Plaza, your fighter where the Lobby will

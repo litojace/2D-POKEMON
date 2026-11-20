@@ -434,9 +434,10 @@
   gap: 12px;
   width: min(560px, 100%);
   box-sizing: border-box;
-  /* Every tip is at least as tall as one with a map, so the bar above never
-     moves between tips; index.html's boot screen keeps the same space. */
-  min-height: calc(clamp(88px, 24vh, 150px) * 0.5625 + 18px);
+  /* Every tip is two lines tall at least (tips are one or two), so the bar
+     above never moves between tips; index.html's boot screen keeps the same
+     space. */
+  min-height: calc(2.8em + 18px);
   margin-top: 2px;
   padding: 8px 12px;
   border: 1px solid #dfbd6b55;
@@ -457,11 +458,6 @@
   font-weight: 700;
   letter-spacing: 0.08em;
 }
-.server-startup-tip-map {
-  flex: none;
-  width: clamp(88px, 24vh, 150px);
-  height: auto;
-}
 .server-startup:is([data-status="failed"], [data-status="offline"])
   .server-startup-tip {
   display: none;
@@ -474,12 +470,9 @@
 }
 @media (max-height: 320px) {
   .server-startup-tip {
-    min-height: calc(80px * 0.5625 + 14px);
+    min-height: calc(2.8em + 12px);
     padding: 5px 10px;
     font-size: calc(11px * var(--text-scale, 1));
-  }
-  .server-startup-tip-map {
-    width: 80px;
   }
 }
 /* The painting layout (loading-art.ts, setCurtainArt): the painting fills the

@@ -34,7 +34,7 @@ describe("loading tips", () => {
     expect(TOP.x).toBe(800);
     expect(BOTTOM.x).toBe(800);
     const text = tip("duel-orbs");
-    expect(text).toContain(`${RULES.orbFirst} s into each round`);
+    expect(text).toContain(`top centre at ${RULES.orbFirst} s`);
     expect(text).toContain(`every ${RULES.orbInterval * 2} s`);
     for (let round = 0; round < 2; round++) {
       const a = playing();
@@ -71,7 +71,7 @@ describe("loading tips", () => {
     a.orbs = [];
     tick(a, RULES.orbInterval);
     expect(orbsAt(a).map((o) => o.kind)).toEqual(["energy", "energy"]);
-    expect(tip("team-orbs")).toContain(`every ${RULES.orbInterval} s`);
+    expect(tip("team-orbs")).toContain(`then every ${RULES.orbInterval} s`);
   });
   it("orb values, and full fighters walk through", () => {
     const a = playing();
@@ -86,13 +86,13 @@ describe("loading tips", () => {
     expect(a.orbs).toHaveLength(0);
     expect(p.hp).toBeCloseTo(full / 2 + full * RULES.orbHeal, 0);
     expect(tip("orb-values")).toContain(
-      `${Math.round(RULES.orbHeal * 100)}% of your health`,
+      `+${Math.round(RULES.orbHeal * 100)}% health`,
     );
-    expect(tip("orb-values")).toContain(`adds ${RULES.orbEnergy} charge`);
+    expect(tip("orb-values")).toContain(`+${RULES.orbEnergy} ultimate charge`);
   });
   it("states the other rules with the server's numbers", () => {
     expect(tip("basic-cooldowns")).toContain(`${RULES.basicHitCooldownCut} s`);
-    expect(tip("comeback")).toContain(`${RULES.ultComeback} extra`);
+    expect(tip("comeback")).toContain(`+${RULES.ultComeback} ultimate charge`);
     expect(tip("best-of")).toContain(`win ${RULES.roundsToWin} rounds`);
     expect(tip("ult-charge")).toContain(
       `${(RULES.ultPerDamageDealt / RULES.ultPerDamageTaken).toFixed(1)}×`,
@@ -101,10 +101,10 @@ describe("loading tips", () => {
   it("each tip has time to be read, and is safe markup", () => {
     for (const t of LOADING_TIPS) {
       const ms = tipReadMs(t);
-      expect(ms).toBeGreaterThanOrEqual(3000);
-      expect(ms).toBeLessThanOrEqual(7000);
-      // Short enough to read in that time at about four words a second.
-      expect(t.text.split(/\s+/).length).toBeLessThanOrEqual(30);
+      expect(ms).toBeGreaterThanOrEqual(2500);
+      expect(ms).toBeLessThanOrEqual(5000);
+      // Short (the owner, 20 Nov): read at a glance, in one or two lines.
+      expect(t.text.split(/\s+/).length).toBeLessThanOrEqual(22);
       expect(tipMarkup(t)).not.toMatch(/<script|on\w+=/i);
     }
     expect(new Set(LOADING_TIPS.map((t) => t.id)).size).toBe(

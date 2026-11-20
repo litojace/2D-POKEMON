@@ -73,17 +73,18 @@ after another and the saved fighter and avatar were not waited for at all.
    in the same format version; a fresh profile that fails to load drops it
    (the front door offers to try again, as before), a refused login and
    signing out forget it.
-7. **Tips** (`loading-tips.ts`) under the bar: each start shows the next
-   one, and the curtain stays until it has been read (`tipReadMs`: about a
-   quarter second a word, 3–7 s), even when loading is quicker. Once loaded
-   it says "Ready! Tap to enter" and a tap goes in at once. A long load moves
-   to the next tip. Every number in a tip is built from the server's rules
-   (`RULES`, `ORB_SPOTS`) and `tests/unit/loading-tips.test.ts` checks each
-   claim against the server's simulation (where and when orbs appear, what
-   they give). Every player waits for the tip alike, new or returning (a choice made
-   on purpose: about 4.5–7 s a start, 6 s on average for the current
-   tips). Only the visual harness sets `localStorage["ea-loading-tips"] =
-"off"`, unless a test turns them on.
+7. **Tips** (`loading-tips.ts`): short, one or two lines, text only (the
+   owner, 20 Nov: no illustrations). Each start shows the next one, and the
+   curtain stays until it has been read (`tipReadMs`: a beat plus about a
+   fifth of a second a word, 2.5–5 s; about 3.9 s on average for the current
+   tips, down from 6), even when loading is quicker. Once loaded it says
+   "Ready! Tap to enter" and a tap goes in at once. A long load moves to the
+   next tip. Every number in a tip is built from the server's rules
+   (`RULES`) and `tests/unit/loading-tips.test.ts` checks each claim against
+   the server's simulation (where and when orbs appear, what they give).
+   Every player waits for the tip alike, new or returning. Only the visual
+   harness sets `localStorage["ea-loading-tips"] = "off"`, unless a test
+   turns them on.
 
 8. **Paintings** (`loading-art.ts`, the owner's choice of style E, 20 Nov):
    hand-painted pictures, made in ChatGPT, of champions in Legendary and
@@ -113,7 +114,7 @@ scenes' skins and that choices are even.
 ## Adding a tip
 
 Add it to `LOADING_TIPS`, build any number from `RULES` (never type it), keep
-it under 30 words, and add a check of its claim to
+it under 22 words, and add a check of its claim to
 `tests/unit/loading-tips.test.ts`.
 
 ## Adding to the first screen

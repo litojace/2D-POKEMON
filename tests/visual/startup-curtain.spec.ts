@@ -311,10 +311,9 @@ for (const size of [
       });
       await page.goto("/");
       const tip = page.locator("#server-startup .server-startup-tip");
-      // A first start begins with where the orbs appear, with its map.
+      // A first start begins with where the orbs appear.
       await expect(tip).toBeVisible();
-      await expect(tip).toContainText("healing orb appears at the top centre");
-      await expect(tip.locator("svg.server-startup-tip-map")).toBeVisible();
+      await expect(tip).toContainText("healing orb spawns top centre");
       const shownAt = Date.now();
       await page.evaluate(() => document.fonts.ready);
       for (const part of [
@@ -344,12 +343,12 @@ for (const size of [
       await expect(page.locator("#server-startup")).toHaveCount(0, {
         timeout: 10_000,
       });
-      // tipReadMs: this tip is long enough for the 7 s ceiling.
-      expect(Date.now() - shownAt).toBeGreaterThan(6_000);
+      // tipReadMs: this tip is long enough for the 5 s ceiling.
+      expect(Date.now() - shownAt).toBeGreaterThan(4_500);
       // The next start shows the next tip, and a tap goes in once loaded.
       await page.reload();
       await expect(tip).toBeVisible();
-      await expect(tip).not.toContainText("healing orb appears at the top");
+      await expect(tip).not.toContainText("healing orb spawns top centre");
       await expect
         .poll(async () => {
           await page.evaluate(() => (window as any).__sock?.fire("connect"));
