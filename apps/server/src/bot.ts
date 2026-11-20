@@ -20,6 +20,7 @@ import {
   farMultiplier,
   platesOf,
   type Ability,
+  type AbilityKind,
   type CharacterId,
   type StatusKind,
   type Fighter,
@@ -374,6 +375,61 @@ const OFFENSIVE = new Set([
   "rush",
   "blink",
 ]);
+/**
+ * Every skill kind `chooseSkill` has a `case` for. A kind missing here (and
+ * there) scores 0, so bots would never cast it: tests/unit/bot-skill-kinds
+ * checks every champion's kit, with and without rites, against this list.
+ * The `default` of that switch fails the typecheck if a kind listed here has
+ * no `case`, so add both together.
+ */
+const BOT_SKILL_KIND_LIST = [
+  "projectile",
+  "charged",
+  "barrage",
+  "beam",
+  "rush",
+  "blink",
+  "veil",
+  "screen",
+  "taunt",
+  "rewind",
+  "tether",
+  "gaze",
+  "clamp",
+  "throw",
+  "pound",
+  "cage",
+  "surf",
+  "wave",
+  "storm",
+  "hunt",
+  "leap",
+  "creep",
+  "garden",
+  "lure",
+  "trail",
+  "steer",
+  "grapple",
+  "shrapnel",
+  "tunnel",
+  "cyclone",
+  "seedling",
+  "timewarp",
+  "swap",
+  "melee",
+  "cone",
+  "nova",
+  "zone",
+  "counter",
+  "barrier",
+  "clone",
+  "buff",
+  "rest",
+] as const satisfies readonly AbilityKind[];
+type BotSkillKind = (typeof BOT_SKILL_KIND_LIST)[number];
+export const BOT_SKILL_KINDS: ReadonlySet<AbilityKind> = new Set(
+  BOT_SKILL_KIND_LIST,
+);
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
 type Point = { x: number; y: number };
@@ -1605,6 +1661,12 @@ export class BotBrain {
           } else if (s.hpRatio < 0.45 && s.dist > 430 && !s.threatened)
             score = 30;
           break;
+        default: {
+          // Only kinds without a `case` reach here: none of them may be in
+          // BOT_SKILL_KINDS (a typecheck error names the one missing a case).
+          const unhandled: Exclude<AbilityKind, BotSkillKind> = a.kind;
+          void unhandled;
+        }
       }
       if (!score) return;
       if (OFFENSIVE.has(a.kind) && a.bonusVsStatus && s.enemyDisabled)
