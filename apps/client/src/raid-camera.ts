@@ -205,6 +205,10 @@ export class RaidCamera {
       this.zoom += (targetZoom - this.zoom) * zoomBlend;
       this.x += (target.x - this.x) * moveBlend;
       this.y += (target.y - this.y) * moveBlend;
+      // Settle exactly once there (a blend alone only ever gets closer).
+      if (Math.abs(targetZoom - this.zoom) < 1e-4) this.zoom = targetZoom;
+      if (Math.abs(target.x - this.x) < 0.05) this.x = target.x;
+      if (Math.abs(target.y - this.y) < 0.05) this.y = target.y;
     }
     // Never past the overview's zoom, and never off the court at this zoom.
     this.zoom = Math.max(this.zoom, overview.zoomX);

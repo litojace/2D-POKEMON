@@ -124,10 +124,17 @@ describe("raid camera on phones", () => {
     const overview = raidCameraView(W, H, HUD);
     follow(cam, { x: 300, y: 700 }, { frames: 5 });
     const out = follow(cam, { x: 300, y: 700 }, { wide: true, frames: 60 });
+    // Settled exactly on the overview, not just close to it.
+    const settled = follow(
+      cam,
+      { x: 300, y: 700 },
+      { wide: true, frames: 400 },
+    );
+    expect(settled).toEqual(overview);
     expect(out.zoomX).toBeCloseTo(overview.zoomX, 2);
     expect(out.x).toBeCloseTo(overview.x, 0);
     expect(out.y).toBeCloseTo(overview.y, 0);
-    const back = follow(cam, { x: 300, y: 700 }, { frames: 200 });
+    const back = follow(cam, { x: 300, y: 700 }, { frames: 600 });
     expect(back.zoomX).toBeGreaterThan(overview.zoomX * 1.5);
   });
 

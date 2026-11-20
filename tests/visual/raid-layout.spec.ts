@@ -352,7 +352,11 @@ for (const size of [
         // Desktop fits the whole court: a raider running to a corner
         // doesn't move it. Phones follow the raider there, closer up.
         await heroTo(page, 1500, 800);
-        if (mobile) {
+        // Prismatail's light relay (mirrors) keeps the whole court on phones too.
+        const relay = await page.evaluate(
+          () => !!(window as any).__snap.raid.mirrors?.length,
+        );
+        if (mobile && !relay) {
           await expect.poll(() => cameraSignature(page)).not.toEqual(camera);
           await expect.poll(() => heroOnScreen(page)).toBe(true);
           // Fighters at least 1.4× the size the whole-court view drew them.
