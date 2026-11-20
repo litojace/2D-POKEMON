@@ -113,7 +113,7 @@ export function stormTwinHealth(state: Snapshot) {
   return `<div class="raid-twin-health">${twinBars(state)
     .map(
       (t, i) =>
-        `<div class="raid-twin-bar" style="--twin-color:${i ? "#8edfff" : "#ffe18b"}"><div><b>${t.name}</b><span>${t.status}</span></div><div class="raid-twin-track" role="progressbar" aria-label="${t.name} health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(t.percent)}"><i class="raid-boss-trail" style="width:${t.trail}%"></i><i class="raid-boss-fill" style="width:${t.percent}%"></i><span class="raid-boss-pct" aria-hidden="true">${Math.ceil(t.percent)}%</span></div><div class="raid-twin-stagger" title="${t.name} stagger"><i style="width:${t.stagger}%"></i></div></div>`,
+        `<div class="raid-twin-bar" style="--twin-color:${i ? "#8edfff" : "#ffe18b"}"><div><b>${t.name}</b><span>${t.status}</span></div><div class="raid-twin-track" role="progressbar" aria-label="${t.name} health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(t.percent)}"><i class="raid-boss-trail" style="width:${t.trail}%"></i><i class="raid-boss-fill" style="width:${t.percent}%"></i><span class="raid-boss-pct" aria-hidden="true">${Math.ceil(t.percent)}%</span></div><div class="raid-twin-stagger" title="${t.name} stagger"><i style="--fill:${t.stagger}"></i></div></div>`,
     )
     .join("")}</div>`;
 }

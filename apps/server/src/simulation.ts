@@ -1889,6 +1889,8 @@ export class Arena {
       }
     }
     if (a.kind === "tether") {
+      // Live Wire: Coilemur runs faster to chase, wire or no wire.
+      if (a.tether?.haste) this.status(p, "haste", a.tether.haste);
       // The enemy nearest the aim, within reach and in sight.
       const aim = { x: p.lastInput.aimX, y: p.lastInput.aimY };
       const target = enemies
@@ -1913,8 +1915,9 @@ export class Arena {
           nextTick: this.time + (a.tether?.tick ?? 0.25),
           skill: slot,
         };
-      else if (slot >= 0 && slot !== ULT_SLOT)
-        // Nobody in reach: most of the cooldown comes back.
+      else if (slot >= 0 && slot !== ULT_SLOT && !a.tether?.haste)
+        // Nobody in reach: most of the cooldown comes back (not for Live
+        // Wire, whose speed burst would come back with it).
         p.cooldowns[slot] = Math.min(p.cooldowns[slot], this.time + 1.5);
     }
     if (a.kind === "gaze") {
@@ -2492,6 +2495,8 @@ export class Arena {
   /**
    * Gill Siphon: while the stream holds (in reach, in sight, the caster not
    * stunned), the target takes a tick of damage and the caster drinks its share.
+   * Live Wire (`tether.yank`): a target that gets too far is yanked back
+   * toward the caster, hurt and paralysed, and the wire snaps.
    */
   private stepTether(p: Fighter, disabled: boolean) {
     const t = p.tether!;
@@ -2511,6 +2516,23 @@ export class Arena {
       !this.lineClear(p, target)
     ) {
       p.tether = undefined;
+      return;
+    }
+    const yank = a.tether?.yank;
+    if (
+      yank &&
+      Math.hypot(target.x - p.x, target.y - p.y) >
+        yank.at + this.hitRadius(target)
+    ) {
+      p.tether = undefined;
+      this.event("burst", target, CHARACTERS[p.character].color, 0, p.id, a.id);
+      this.damage(target, yank.damage, p.id, {
+        ...a,
+        damage: yank.damage,
+        knockback: -yank.pull,
+        status: yank.status,
+        statusDuration: yank.statusDuration,
+      });
       return;
     }
     if (this.time >= t.nextTick) {

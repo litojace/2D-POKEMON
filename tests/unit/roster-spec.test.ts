@@ -36,7 +36,7 @@ const ROSTER: Record<
     name: "Cindrake",
     element: "Fire",
     role: "Burst damage fighter",
-    basic: ["Cinder Snap", 455],
+    basic: ["Cinder Snap", 500],
     skills: [
       ["Crest Flare", 8],
       ["Magma Leap", 13],
@@ -124,7 +124,7 @@ const ROSTER: Record<
     skills: [
       ["Magnet Lash", 11],
       ["Static Clamp", 12],
-      ["Spark Trail", 15],
+      ["Live Wire", 11],
       ["Electromagnet", 20],
     ],
   },
@@ -228,10 +228,10 @@ const ROSTER: Record<
     name: "Mossloth",
     element: "Nature",
     role: "Time gardener",
-    basic: ["Seed Spit", 345],
+    basic: ["Seed Spit", 300],
     skills: [
       ["Seedling", 5],
-      ["Sloth Time", 12],
+      ["Sloth Time", 9],
       ["Lazy Swap", 11],
       ["Overgrowth", 20],
     ],

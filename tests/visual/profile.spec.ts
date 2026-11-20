@@ -757,48 +757,39 @@ test("a locked name says when; a refusal says why", async ({ browser }) => {
         days: 14,
       };
     }, serverTime);
-    // The account, to forget its 30 s copies below (accounts.ts fetchCopy).
-    await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
-      const response = await route.fetch();
-      const body = await response.text();
-      const marker = 'window.dispatchEvent(new Event("arena:ready"));';
-      expect(body).toContain(marker);
-      await route.fulfill({
-        response,
-        body: body.replace(marker, "window.__account=accountsUI;" + marker),
-      });
-    });
     const { errors, panel } = await open(page, SIZES[3]);
     await expect(panel.locator("[data-profile-rename]")).toBeDisabled();
     await expect(
       panel.locator(".pf-section", { hasText: "Name" }),
     ).toContainText(/You can change it again in (10 d 0 h|9 d 23 h)/);
     expect(await layoutProblems(page, { phone: true })).toEqual([]);
-    // If the server refuses anyway (another device changed it), its reason shows.
-    await page.evaluate(() => {
+    expect(errors).toEqual([]);
+    // If the server refuses anyway (another device changed it), its reason
+    // shows. A fresh page: opened again within 30 s, the Profile shows the
+    // copy it had (COPY_MAX_AGE_MS), and only a POST forgets that copy. (This
+    // used to reopen the same page and pass only when the Lobby's fighter
+    // save, 800 ms after sign-in, happened to land between the two opens.)
+    await page.close();
+    const again = await context.newPage();
+    await again.addInitScript((now) => {
       const w = window as any;
+      w.__serverTime = now;
       w.__nameStatus = null;
       w.__refuseName = true;
-      // The Profile reopens on copies up to 30 s old; this one must be asked
-      // again. (Before the startup curtain a late fighter save, a POST,
-      // happened to clear them mid-test.)
-      w.__account.forgetCopies();
-    });
-    await page.keyboard.press("Escape");
-    // Gone (its close glides out) before it opens again with the new answer.
-    await expect(panel).toHaveCount(0);
-    await page.click("#account-profile");
-    await expect(panel.locator("[data-profile-rename]")).toBeEnabled();
-    await panel.locator("[data-profile-rename]").click();
-    await panel.locator("[data-profile-name-form] input").fill("Nova");
-    await page.keyboard.press("Enter");
-    await page.locator("[data-ui-confirm] [data-ui-confirm-ok]").click();
-    await expect(panel.locator(".pf-name-message")).toHaveText(
+    }, serverTime);
+    const refused = await open(again, SIZES[3]);
+    const card = refused.panel;
+    await expect(card.locator("[data-profile-rename]")).toBeEnabled();
+    await card.locator("[data-profile-rename]").click();
+    await card.locator("[data-profile-name-form] input").fill("Nova");
+    await again.keyboard.press("Enter");
+    await again.locator("[data-ui-confirm] [data-ui-confirm-ok]").click();
+    await expect(card.locator(".pf-name-message")).toHaveText(
       "You can change your name again on November 20, 2026 at 03:00 UTC.",
     );
-    await expect(panel.locator(".pf-card-name")).toHaveText("tester");
-    await expect(panel.locator("[data-profile-name-form] input")).toBeFocused();
-    expect(errors).toEqual([]);
+    await expect(card.locator(".pf-card-name")).toHaveText("tester");
+    await expect(card.locator("[data-profile-name-form] input")).toBeFocused();
+    expect(refused.errors).toEqual([]);
   } finally {
     await context.close();
   }

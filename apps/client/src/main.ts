@@ -19,6 +19,7 @@ import {
   PERF_MIN_SECONDS,
   connectionKind,
   deviceKind,
+  drawnGap,
   loadPhases,
   perfMode,
   setPerfMode,
@@ -236,6 +237,7 @@ import {
 import { AudioManager } from "./audio";
 import { drawLeafStorm, plateFx } from "./skill-fx-nature";
 import { drawSiphon } from "./skill-fx-water";
+import { drawLiveWire } from "./skill-fx-electric";
 import { InterpolationBuffer } from "./networking/interpolation";
 import {
   LocalTimeline,
@@ -438,17 +440,18 @@ const shotTimeline = new ShotTimeline();
 const drawnSelf: { t: number; x: number; y: number }[] = [];
 /**
  * A hit on you: the server hit you at (event.x, event.y) at about the last
- * snapshot's time, which your screen showed a lead ago. How far from there
- * were you drawn then?
+ * snapshot's time, which your screen showed a lead ago (the snapshot's own,
+ * un-eased lead: drawnGap). How far from there were you drawn then?
  */
 function measureHitGap(event: { x: number; y: number }) {
-  const now = performance.now(),
-    back = now - timeline.lead(now) * 1000;
-  let best: (typeof drawnSelf)[number] | undefined;
-  for (const d of drawnSelf)
-    if (!best || Math.abs(d.t - back) < Math.abs(best.t - back)) best = d;
-  if (best && Math.abs(best.t - back) < 100)
-    netMeter.hitGap(Math.hypot(best.x - event.x, best.y - event.y));
+  const now = performance.now();
+  const gap = drawnGap(
+    drawnSelf,
+    now - timeline.estimate(now) * 1000,
+    event.x,
+    event.y,
+  );
+  if (gap !== undefined) netMeter.hitGap(gap);
 }
 /** Script errors during the match, for its battle-perf report. */
 let matchErrors = 0;
@@ -7180,8 +7183,24 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             reducedMotion,
           );
       }
-      // Gill Siphon: the stream to the enemy it holds.
-      if (serverPlayer.tether) {
+      // Gill Siphon: the stream to the enemy it holds; Live Wire: the wire.
+      const wire =
+        serverPlayer.tether &&
+        CHARACTERS[p.character].skills[serverPlayer.tether.skill]?.tether?.yank;
+      if (serverPlayer.tether && wire) {
+        const to = this.positions.get(serverPlayer.tether.target);
+        if (to)
+          drawLiveWire(
+            this,
+            x,
+            y - jump,
+            to.x,
+            to.y,
+            reducedMotion ? 0 : _time,
+            CHARACTERS[p.character].color,
+            Math.hypot(to.x - x, to.y - y) / wire.at,
+          );
+      } else if (serverPlayer.tether) {
         const to = this.positions.get(serverPlayer.tether.target);
         if (to)
           drawSiphon(

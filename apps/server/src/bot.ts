@@ -30,6 +30,7 @@ import {
 } from "../../../packages/shared/src/index.js";
 import type { Arena } from "./simulation.js";
 import { LOOK_EVERY, lookAhead } from "./bot-lookahead.js";
+import { EXPERT_STYLE } from "./expert-style.js";
 /**
  * Server-side AI opponent. Each tick it reads the arena the way a player
  * would (with a reaction delay and imperfect aim) and returns the same Input
@@ -67,6 +68,44 @@ export const EXPERT_FLAGS: (keyof ExpertFlags)[] = [
   "dodgeMarks",
   "lookAhead",
 ];
+/**
+ * How the expert plays one champion: the hand-set numbers of its rules,
+ * learned per champion by scripts/balance/train-expert.ts (expert-style.ts).
+ * Anything left out plays as the rules always did.
+ */
+export interface Style {
+  /** A shooter's preferred distance × this. */
+  range?: number;
+  /** A brawler's preferred distance, px (70). */
+  reach?: number;
+  /** How much a brawler cares about getting to that distance (2.6). */
+  closeIn?: number;
+  /** How much it cares about keeping the opponent in sight (× 1). */
+  sight?: number;
+  /** How much it circles the opponent (× 1). */
+  circle?: number;
+  /** Chance per tick to dash in when the gap is closable (Profile.engage). */
+  engage?: number;
+  /** Health share below which it plays safe (Profile.retreat). */
+  retreat?: number;
+  /** How carefully a shooter keeps out of corners (Profile.kite). */
+  kite?: number;
+  /** Each skill slot's score × this (the ultimate last). */
+  slots?: number[];
+  /** A skill scoring below this waits for a better moment (0). */
+  floor?: number;
+}
+export const STYLE_KEYS = [
+  "range",
+  "reach",
+  "closeIn",
+  "sight",
+  "circle",
+  "engage",
+  "retreat",
+  "kite",
+  "floor",
+] as const;
 interface Profile {
   /** Seconds between seeing the opponent move and reacting to it. */
   reaction: number;
@@ -151,6 +190,8 @@ interface Profile {
    * new mechanic the rules don't know yet (scripts/balance/new-mechanic.ts).
    */
   unknownKinds?: readonly string[];
+  /** The expert's learned way of playing each champion (expert-style.ts). */
+  style?: Partial<Record<CharacterId, Style>>;
 }
 /**
  * The skill revolution (docs/skill-revolution.md) recalibrated the duel daze
@@ -217,14 +258,14 @@ const NORMAL_DAZE_BEFORE_SMART_BOTS: Partial<Record<CharacterId, number>> = {
  */
 const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
   voltkit: 0.285,
-  cindrake: 0.46,
-  tidefin: 0.27,
+  cindrake: 0.49,
+  tidefin: 0.29,
   auralynx: 0.203,
   lumoth: 0.242,
   mystowl: 0.224,
   terradon: 0.265,
   duskveil: 0.361,
-  coilemur: 0.357,
+  coilemur: 0.31,
   pyranda: 0.281,
   glacelle: 0.232,
   halcyra: 0.268,
@@ -233,7 +274,7 @@ const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
   wombolder: 0.335,
   shadopus: 0.33,
   pangrove: 0.355,
-  mossloth: 0.31,
+  mossloth: 0.29,
 };
 /**
  * Easy lapses 0.25 less of its seconds than Normal does on the same
@@ -346,6 +387,7 @@ export const EXPERT_PROFILE: Profile = {
     dodgeMarks: true,
     lookAhead: true,
   },
+  style: EXPERT_STYLE,
 };
 /** Every profile a BotBrain can use, the expert's included (balance scripts). */
 export const BALANCE_PROFILES: Record<BotLevel, Profile> = {
@@ -391,6 +433,7 @@ const OFFENSIVE = new Set([
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
 type Point = { x: number; y: number };
+const NO_STYLE: Style = {};
 /** Seconds before its next attack that the expert turns back to face a gazer. */
 const LOOK_BACK = 0.15;
 /** Seconds the expert takes to see a new mark on the ground (it isn't instant). */
@@ -657,6 +700,10 @@ export class BotBrain {
     this.targetId = pick.id;
     return pick;
   }
+  /** The expert's learned way of playing this champion (none: the rules as written). */
+  private styleOf(me: Fighter): Style {
+    return this.profile.style?.[me.character] ?? NO_STYLE;
+  }
   /** Way of moving the look-ahead chose, kept for a moment. */
   private commit?: { until: number; dx: number; dy: number };
   private nextLook = 0;
@@ -848,12 +895,12 @@ export class BotBrain {
       pvp &&
       !melee &&
       (enemyBasic.kind === "melee" || enemyBasic.kind === "cone")
-        ? (this.profile.kite ?? 0)
+        ? (this.styleOf(me).kite ?? this.profile.kite ?? 0)
         : 0;
     // Low and behind on health: play safe until it is healed or ahead.
     const retreating =
       pvp &&
-      hpRatio < (this.profile.retreat ?? 0) &&
+      hpRatio < (this.styleOf(me).retreat ?? this.profile.retreat ?? 0) &&
       hpRatio < enemyRatio - 0.1;
     if (t >= this.nextThink) {
       this.nextThink = t + this.profile.think * (0.8 + this.random() * 0.4);
@@ -1079,7 +1126,8 @@ export class BotBrain {
       // PvP: much keener once the opponent has spent its own dash (it
       // cannot slip away), the way a player baits the escape out first.
       this.random() <
-        this.profile.engage * (pvp && enemy.dashAt > t + 0.4 ? 3 : 1)
+        (this.styleOf(me).engage ?? this.profile.engage) *
+          (pvp && enemy.dashAt > t + 0.4 ? 3 : 1)
     ) {
       // Dash at where the opponent will be when the dash ends.
       const ahead = RULES.dashDuration * this.profile.lead;
@@ -1325,9 +1373,11 @@ export class BotBrain {
     },
   ) {
     const basic = arena.kit(me).basic;
+    const st = this.styleOf(me);
     let preferred = melee
-      ? 70
-      : clamp(basic.range * 0.5, 240, 400) + (hpRatio < 0.35 ? 90 : 0);
+      ? (st.reach ?? 70)
+      : clamp(basic.range * 0.5, 240, 400) * (st.range ?? 1) +
+        (hpRatio < 0.35 ? 90 : 0);
     const { kiting, retreating } = pvp;
     // Low and behind: a shooter backs off further (a brawler can only win
     // up close, so it keeps fighting and goes for healing orbs instead).
@@ -1356,8 +1406,9 @@ export class BotBrain {
       let score = via
         ? // Walking around cover: head for the corner.
           -Math.hypot(via.x - x, via.y - y) / 25
-        : (-Math.abs(d - preferred) / 60) * (melee ? 2.6 : 1);
-      if (arena.lineClear({ x, y }, target)) score += melee ? 1 : 2.2;
+        : (-Math.abs(d - preferred) / 60) * (melee ? (st.closeIn ?? 2.6) : 1);
+      if (arena.lineClear({ x, y }, target))
+        score += (melee ? 1 : 2.2) * (st.sight ?? 1);
       // Circle the opponent instead of running straight at it.
       const tx =
           (target.x - me.x) /
@@ -1368,7 +1419,8 @@ export class BotBrain {
       score +=
         (dx * -ty + dy * tx) *
         this.strafe *
-        (via ? 0.15 : melee && now > 180 ? 0.35 : 0.9);
+        (via ? 0.15 : melee && now > 180 ? 0.35 : 0.9) *
+        (st.circle ?? 1);
       // Backing off: away from the opponent, and never into a corner where
       // a brawler pins it.
       if (away && now < preferred) score += away * 1.2 * (-dx * tx - dy * ty);
@@ -1494,8 +1546,16 @@ export class BotBrain {
           if (s.threatened && s.hpRatio < 0.65) score = 17;
           break;
         case "tether":
+          // Live Wire: wire a target that keeps its distance (it can't run
+          // off any more); one already up close needs it less.
+          if (a.tether?.yank) {
+            // Well inside its reach: the wind-up gives the target time to
+            // step out, and a wire that finds nobody is wasted.
+            if (s.sight && reach(a.range * 0.8))
+              score = s.dist > 140 ? 22 : 10;
+          }
           // Gill Siphon: lock on while the target is in reach.
-          if (s.sight && reach(a.range * 0.95))
+          else if (s.sight && reach(a.range * 0.95))
             score = a.damage * (a.duration / (a.tether?.tick ?? 0.25)) * 0.6;
           break;
         case "gaze":
@@ -1689,6 +1749,9 @@ export class BotBrain {
         if (!opening) return;
         score *= 1.5;
       }
+      const st = this.styleOf(me);
+      if (st.slots) score *= st.slots[i] ?? 1;
+      if (st.floor && score < st.floor) return;
       if (score > bestScore) {
         bestScore = score;
         best = i;
