@@ -22,6 +22,10 @@ export const CAMPUS_ART: Record<string, SkinArt> = Object.fromEntries(
       replaces: modernReplaces("campus", id),
       trail: { kind: "confetti", colors: [0x59f0ff, 0xff4fd8] },
       skill: 0x59f0ff,
+      // Stargazer's mallet is its telescope's stand (epic-props.ts).
+      ...(id === "astrabun" ? { weapon: { handle: "#3a3f5a", head: "#a8743a" } } : {}),
+      // Bake Club Chef holds its cake where its chestnut was (epic-props.ts).
+      ...(id === "pyranda" ? { heldOff: true } : {}),
     } satisfies SkinArt,
   ]),
 );
