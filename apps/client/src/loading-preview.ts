@@ -93,6 +93,26 @@ for (const v of ["h", "i", "j", "k"])
     `<footer class="lp-x-foot"><div class="lp-x-line"><span>Opening the arena…</span><small>Loading your profile…</small></div><div class="server-startup-progress" style="--startup-progress:${progress}"><i></i></div></footer>` +
     `</section>`;
 
+/*
+ * k2: k with a bigger crest and title, and one status line instead of two:
+ * each startup step replaces the last (a short cross-fade), as the real
+ * curtain's steps do (startup-curtain.ts STEPS), while the bar fills.
+ */
+const K2_STEPS: [string, number][] = [
+  ["Connecting to the game server…", 0.1],
+  ["Checking your account…", 0.3],
+  ["Loading your profile…", 0.5],
+  ["Entering Elemental Plaza…", 0.72],
+  ["Preparing your fighter…", 0.88],
+  ["Ready! Tap to enter", 0.97],
+];
+styles.k2 =
+  `<section class="lp-x lp-x-k lp-x-k2" style="--painting:url('${painting}')">` +
+  `<header class="lp-x-brand">${crest}<h1 class="lp-title" aria-label="Element Arena"><span>ELEMENT</span><span>ARENA</span></h1></header>` +
+  `<div class="lp-x-tip"><b>TIP</b> ${tipText}</div>` +
+  `<footer class="lp-x-foot"><div class="lp-x-status" role="status" aria-live="polite"><span>${K2_STEPS[0][0]}</span></div><div class="server-startup-progress" style="--startup-progress:${K2_STEPS[0][1]}"><i></i></div></footer>` +
+  `</section>`;
+
 // refs: every skin the painting brief uses, one per box, for
 // scripts/loading-art/export-references.mjs to save as reference pictures.
 if (style === "refs") {
@@ -108,7 +128,32 @@ if (style === "refs") {
 }
 if (styles[style])
   document.querySelector("#loading-preview")!.innerHTML = styles[style];
-else {
+// k2: walk through the steps (?step=<n> holds one, for a still).
+if (style === "k2") {
+  const line = document.querySelector<HTMLElement>(".lp-x-status")!;
+  const meter = document.querySelector<HTMLElement>(
+    ".lp-x-k2 .server-startup-progress",
+  )!;
+  const show = (n: number) => {
+    const [text, amount] = K2_STEPS[n];
+    const old = line.querySelector("span:not(.is-out)");
+    old?.classList.add("is-out");
+    setTimeout(() => old?.remove(), 300);
+    line.insertAdjacentHTML("beforeend", `<span>${text}</span>`);
+    meter.style.setProperty("--startup-progress", String(amount));
+  };
+  const held = query.get("step");
+  if (held !== null) show(Math.min(K2_STEPS.length - 1, Number(held)));
+  else {
+    let n = 0;
+    const next = () => {
+      n = (n + 1) % K2_STEPS.length;
+      show(n);
+      setTimeout(next, n === K2_STEPS.length - 1 ? 2000 : 1100);
+    };
+    setTimeout(next, 1100);
+  }
+} else {
   // a: the curtain as it ships, drawn by its own code.
   holdStartupCurtain();
   setCurtainTip(tipMarkup(tip));

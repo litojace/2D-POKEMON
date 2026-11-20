@@ -517,3 +517,42 @@ body:has(.lp-refs) {
   background: linear-gradient(270deg, #030a18cc, #030a1866 70%, #030a1800);
   text-align: right;
 }
+
+/* k2: k with a bigger crest and title, one status line */
+.lp-x-k2 .lp-title {
+  font-size: clamp(24px, 7vh, 54px);
+}
+.lp-x-k2 .lp-crest {
+  width: clamp(40px, 11.5vh, 88px);
+  height: clamp(40px, 11.5vh, 88px);
+}
+.lp-x-k2 .lp-x-tip {
+  bottom: calc(var(--pad-y) + clamp(44px, 11vh, 60px));
+}
+.lp-x-status {
+  position: relative;
+  height: 1.4em;
+  font-size: clamp(13px, 3.4vh, 17px);
+  font-weight: 500;
+  text-shadow: 0 1px 8px #000;
+}
+.lp-x-status span {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  white-space: nowrap;
+  animation: lp-status-in 300ms ease-out;
+}
+.lp-x-status span.is-out {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 300ms ease-out,
+    transform 300ms ease-out;
+}
+@keyframes lp-status-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
