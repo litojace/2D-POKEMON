@@ -1698,6 +1698,88 @@ body.battle-active.touch-mode {
     padding: 8px 12px;
   }
 }
+/* The first update ask fills the screen like the round countdown: edge to
+   edge past the notch, a shade that keeps the hub dimly in view, one big
+   line in the middle (owner, 20 Nov 2026: option B, then the banner). */
+#pwa-takeover {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-banner);
+  display: grid;
+  place-items: center;
+  padding: max(12px, var(--safe-top, 0px)) max(12px, var(--safe-right, 0px))
+    max(12px, var(--safe-bottom, 0px)) max(12px, var(--safe-left, 0px));
+  background: radial-gradient(
+    ellipse 60% 70% at 50% 50%,
+    #071225b3,
+    #071225e6 100%
+  );
+  text-align: center;
+  overflow: hidden;
+  animation: pwa-takeover-in var(--dur-3) ease-out;
+}
+#pwa-takeover[hidden] {
+  display: none;
+}
+@keyframes pwa-takeover-in {
+  from {
+    opacity: 0;
+  }
+}
+#pwa-takeover .eyebrow {
+  justify-content: center;
+  margin: 0;
+  color: #f7d780;
+  font-size: calc(13px * var(--text-scale, 1));
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px #000c;
+}
+#pwa-takeover h2 {
+  margin: 0;
+  color: #fff;
+  font:
+    800 clamp(56px, 24vh, 150px) / 0.95 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 32px color-mix(in srgb, #f7d780 55%, transparent),
+    0 6px 24px #000d;
+}
+#pwa-takeover p {
+  margin: 6px 0 0;
+  color: #eaf1ff;
+  font-size: calc(16px * var(--text-scale, 1));
+  font-weight: 700;
+  text-shadow: 0 2px 10px #000e;
+}
+.pwa-takeover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: clamp(10px, 4vh, 24px);
+}
+.pwa-takeover-actions button {
+  min-height: 48px;
+  padding: 12px 26px;
+  font-size: calc(14px * var(--text-scale, 1));
+}
+/* Solid, so the hub's labels never show through it. */
+.pwa-takeover-later {
+  border-radius: 6px;
+  background: #1d3050;
+  color: #edf3ff;
+  border: 1px solid #8baee555;
+  font-weight: 700;
+}
+@media (prefers-reduced-motion: reduce) {
+  #pwa-takeover {
+    animation: none;
+  }
+}
 .battle-active #pwa-banner {
   top: calc(var(--safe-top) + 4px);
   bottom: auto;

@@ -163,6 +163,18 @@ async function fakeUpdates(page: Page) {
     });
   });
 }
+/** Moves the page's clock past the Later snooze and lets the prompt re-check. */
+const pastSnooze = (page: Page) =>
+  page.evaluate(() => {
+    const now = Date.now();
+    Date.now = () => now + 11 * 60 * 1000;
+    window.dispatchEvent(new Event("focus"));
+  });
+const counts = (page: Page) =>
+  page.evaluate(() => [
+    (window as any).__pwaApplies || 0,
+    (window as any).__pwaReloads || 0,
+  ]);
 test("downloaded updates wait until the Shop closes, then ask first", async ({
   page,
 }, info) => {
@@ -171,41 +183,50 @@ test("downloaded updates wait until the Shop closes, then ask first", async ({
   await page.click("#account-coins");
   await expect(page.locator(".fit-room")).toBeVisible();
   await page.evaluate(() => (window as any).__pwaOptions.onNeedRefresh());
-  expect(
-    await page.evaluate(() => [
-      (window as any).__pwaApplies || 0,
-      (window as any).__pwaReloads || 0,
-    ]),
-  ).toEqual([0, 0]);
+  expect(await counts(page)).toEqual([0, 0]);
   await expect(page.locator("#pwa-banner")).toContainText(
     "after closing menus",
   );
+  await expect(page.locator("#pwa-takeover")).toBeHidden();
   await expect(page.locator("#pwa-update-now")).toBeHidden();
   await page.locator(".fit-room .ui-close").click();
-  // Back in the hub: a prompt, and nothing applies until the player agrees.
+  // Back in the hub: the first ask fills the screen; nothing applies yet.
+  const takeover = page.locator("#pwa-takeover");
+  await expect(takeover).toBeVisible();
+  await expect(takeover).toContainText("New version");
+  await expect(page.locator("#pwa-takeover-now")).toBeFocused();
+  await expect(page.locator("#pwa-banner")).toBeHidden();
+  await snap(page, info, "pwa-update-takeover");
+  await page.waitForTimeout(500);
+  expect(await counts(page)).toEqual([0, 0]);
+  // Later: gone; asked again after the snooze, in the banner this time.
+  await page.locator("#pwa-takeover-later").click();
+  await expect(takeover).toBeHidden();
+  await expect(page.locator("#pwa-banner")).toBeHidden();
+  await pastSnooze(page);
   await expect(page.locator("#pwa-update-now")).toBeVisible();
+  await expect(takeover).toBeHidden();
   await expect(page.locator("#pwa-banner")).toContainText("New version ready");
   await snap(page, info, "pwa-update-prompt");
-  await page.waitForTimeout(500);
-  expect(
-    await page.evaluate(() => [
-      (window as any).__pwaApplies || 0,
-      (window as any).__pwaReloads || 0,
-    ]),
-  ).toEqual([0, 0]);
-  // Later hides it; Update now (once asked again) applies and reloads.
-  await page.locator("#pwa-update-later").click();
-  await expect(page.locator("#pwa-banner")).toBeHidden();
-  await page.evaluate(() => {
-    const now = Date.now();
-    Date.now = () => now + 11 * 60 * 1000;
-    window.dispatchEvent(new Event("focus"));
-  });
   await page.locator("#pwa-update-now").click();
-  await expect
-    .poll(() => page.evaluate(() => (window as any).__pwaReloads || 0))
-    .toBe(1);
-  expect(await page.evaluate(() => (window as any).__pwaApplies || 0)).toBe(1);
+  await expect.poll(() => counts(page)).toEqual([1, 1]);
+  expect(errors).toEqual([]);
+});
+test("Update now on the full-screen ask applies at once, and Escape means Later", async ({
+  page,
+}) => {
+  await fakeUpdates(page);
+  const errors = await openHub(page);
+  await page.evaluate(() => (window as any).__pwaOptions.onNeedRefresh());
+  await expect(page.locator("#pwa-takeover")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#pwa-takeover")).toBeHidden();
+  expect(await counts(page)).toEqual([0, 0]);
+  // A fresh page (the next session) asks full screen again.
+  await page.reload();
+  await page.evaluate(() => (window as any).__pwaOptions.onNeedRefresh());
+  await page.locator("#pwa-takeover-now").click();
+  await expect.poll(() => counts(page)).toEqual([1, 1]);
   expect(errors).toEqual([]);
 });
 for (const [width, height] of [
@@ -213,7 +234,7 @@ for (const [width, height] of [
   [844, 390],
   [932, 430],
 ])
-  test(`the update prompt fits a ${width}×${height} landscape phone`, async ({
+  test(`the update prompts fit a ${width}×${height} landscape phone`, async ({
     browser,
   }, info) => {
     const ctx = await browser.newContext({
@@ -227,18 +248,39 @@ for (const [width, height] of [
       await fakeUpdates(page);
       const errors = await openHub(page);
       await page.evaluate(() => (window as any).__pwaOptions.onNeedRefresh());
+      const inside = async (selector: string) => {
+        const box = (await page.locator(selector).boundingBox())!;
+        expect(box.x, selector).toBeGreaterThanOrEqual(0);
+        expect(box.y, selector).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width, selector).toBeLessThanOrEqual(width);
+        expect(box.y + box.height, selector).toBeLessThanOrEqual(height);
+        return box;
+      };
+      // The full-screen ask: everything on screen, touch-sized buttons.
+      await expect(page.locator("#pwa-takeover-now")).toBeVisible();
+      await snap(page, info, `pwa-update-takeover-${width}x${height}`);
+      for (const id of [
+        "#pwa-takeover h2",
+        "#pwa-takeover p",
+        "#pwa-takeover-now",
+        "#pwa-takeover-later",
+      ])
+        await inside(id);
+      for (const id of ["#pwa-takeover-now", "#pwa-takeover-later"])
+        expect(
+          (await page.locator(id).boundingBox())!.height,
+        ).toBeGreaterThanOrEqual(44);
+      await page.locator("#pwa-takeover-later").tap();
+      await expect(page.locator("#pwa-takeover")).toBeHidden();
+      // The banner, after the snooze: beside PLAY, not over it.
+      await pastSnooze(page);
       const now = page.locator("#pwa-update-now"),
         later = page.locator("#pwa-update-later");
       await expect(now).toBeVisible();
       await snap(page, info, `pwa-update-prompt-${width}x${height}`);
-      const banner = (await page.locator("#pwa-banner").boundingBox())!;
-      expect(banner.x).toBeGreaterThanOrEqual(0);
-      expect(banner.y).toBeGreaterThanOrEqual(0);
-      expect(banner.x + banner.width).toBeLessThanOrEqual(width);
-      expect(banner.y + banner.height).toBeLessThanOrEqual(height);
+      const banner = await inside("#pwa-banner");
       for (const button of [now, later])
         expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-      // PLAY stays reachable while the prompt waits for an answer.
       const play = (await page.locator("#lobby-play").boundingBox())!;
       expect(
         banner.x + banner.width <= play.x || banner.y + banner.height <= play.y,

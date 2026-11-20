@@ -29,6 +29,17 @@ export function setupPWA(
   document.body.append(banner);
   const message = banner.querySelector("span")!;
   const actions = banner.querySelector<HTMLElement>(".pwa-actions")!;
+  // The first ask fills the screen like the round countdown; after Later,
+  // the banner above asks instead (docs/mobile-pwa.md).
+  const takeover = document.createElement("div");
+  takeover.id = "pwa-takeover";
+  takeover.hidden = true;
+  takeover.setAttribute("role", "dialog");
+  takeover.setAttribute("aria-modal", "true");
+  takeover.setAttribute("aria-labelledby", "pwa-takeover-title");
+  takeover.innerHTML =
+    '<div class="pwa-takeover-inner"><div class="eyebrow">Update ready</div><h2 id="pwa-takeover-title">New version</h2><p>Updating takes a few seconds. Your coins and progress stay.</p><div class="pwa-takeover-actions"><button type="button" class="primary" id="pwa-takeover-now">Update now</button><button type="button" class="pwa-takeover-later" id="pwa-takeover-later">Later</button></div></div>';
+  document.body.append(takeover);
 
   const peers = () => {
     const records: Array<{ active: boolean; at: number }> = [];
@@ -83,10 +94,16 @@ export function setupPWA(
   };
   const paint = () => {
     const asking = automatic.asking,
+      full = automatic.fullScreen,
       safe = idle();
+    if (takeover.hidden === full) {
+      takeover.hidden = !full;
+      if (full)
+        takeover.querySelector<HTMLButtonElement>("#pwa-takeover-now")!.focus();
+    }
     // "Later" hides it until the snooze ends; a match only gets a quiet note.
     banner.hidden =
-      !automatic.pending || (safe && !asking && !automatic.accepted);
+      full || !automatic.pending || (safe && !asking && !automatic.accepted);
     actions.hidden = !asking;
     if (!banner.hidden) {
       const text = automatic.accepted
@@ -100,15 +117,28 @@ export function setupPWA(
     }
     void automatic.sync();
   };
-  actions.querySelector<HTMLButtonElement>("#pwa-update-now")!.onclick = () => {
+  const updateNow = () => {
     void automatic.accept().finally(paint);
     paint();
   };
+  const later = () => {
+    automatic.later();
+    paint();
+  };
+  actions.querySelector<HTMLButtonElement>("#pwa-update-now")!.onclick =
+    updateNow;
   actions.querySelector<HTMLButtonElement>("#pwa-update-later")!.onclick =
-    () => {
-      automatic.later();
-      paint();
-    };
+    later;
+  takeover.querySelector<HTMLButtonElement>("#pwa-takeover-now")!.onclick =
+    updateNow;
+  takeover.querySelector<HTMLButtonElement>("#pwa-takeover-later")!.onclick =
+    later;
+  takeover.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      later();
+    }
+  });
   let lastBeat = 0,
     lastMenuOpen = false,
     lastPhase: string | undefined;
