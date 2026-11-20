@@ -166,6 +166,14 @@ export function mobileLayout(
         y: (attackY - 44 - 10 - 22) * scale,
         size: 44 * scale,
       },
+      // A boss's contextual action (Turn mirror, Look away): above the
+      // first skill, past the cluster's top (negative y). A narrow screen
+      // has no room beside the skills: the raider needs the middle.
+      context: {
+        x: 28 * scale,
+        y: ((short ? 22 : 26) - 22 - 10 - 22) * scale,
+        size: 44 * scale,
+      },
     };
   }
   const unit = Math.max(
@@ -271,6 +279,11 @@ export function mobileLayout(
     dash.y - dash.size / 2 - gap - aimSize / 2,
     dx < clear ? ult.y - Math.sqrt(clear ** 2 - dx ** 2) : Infinity,
   );
+  // A boss's contextual action (Turn mirror, Look away), as action games
+  // put an interact prompt by the skills: left of skill 2 (the ring's
+  // leftmost), one gap away, past the cluster's left edge (negative x).
+  const skill2 = targets.find((t) => t.action === "1")!;
+  const contextSize = Math.max(44, 52 * scale);
   return {
     compact: false,
     joystick,
@@ -278,6 +291,11 @@ export function mobileLayout(
     height: ring.height + 2 * margin,
     targets: order.map((action) => targets.find((t) => t.action === action)!),
     aim: { x: aimX, y: aimY, size: aimSize },
+    context: {
+      x: skill2.x - skill2.size / 2 - gap - contextSize / 2,
+      y: skill2.y,
+      size: contextSize,
+    },
   };
 }
 

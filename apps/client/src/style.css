@@ -15558,3 +15558,232 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-countdown:not(:empty) {
     background: none;
   }
 }
+
+/* ── Contextual boss actions on phones (demo, owner 20 Nov 2026) ──
+   Prismatail's Turn mirror / Look away sit in the touch cluster's slot,
+   left of skill 2 (mobile-input.ts context), and each shows only when it
+   can be used, popping in like an interact prompt (prismatail-controls.ts
+   data-ready). Three looks to compare (localStorage "arena-prism-ui"). */
+.touch-buttons .touch-context {
+  position: absolute;
+  pointer-events: none;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context:not([hidden]) {
+  position: absolute;
+  inset: auto 0 0 auto;
+  top: auto;
+  left: auto;
+  width: auto;
+  max-width: none;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 8px;
+  height: auto;
+  max-height: none;
+  transform: none;
+  pointer-events: none;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  button {
+  position: relative;
+  inset: auto;
+  display: none;
+  /* Not the old rows' flex: 1 (a zero basis that ignores the height). */
+  flex: none;
+  overflow: visible;
+  pointer-events: auto;
+}
+/* Not a skill: no cooldown ring (style.css .touch-buttons button::before). */
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls
+  button::before {
+  content: none;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  button[data-ready] {
+  display: inline-flex;
+  animation: context-pop 0.18s ease-out;
+}
+@keyframes context-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+/* Look away while Glare winds up: a ring that fills to the flash. */
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  [data-prism-away][data-ready] {
+  --ring: conic-gradient(#ffd65b calc(var(--charge, 0) * 360deg), #ffffff26 0);
+}
+
+/* A: round icons the size of a skill, the name under them. */
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.ctx-a
+  button {
+  flex-direction: column;
+  justify-content: center;
+  width: var(--ctx-size, 52px);
+  height: var(--ctx-size, 52px);
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #e5cc89;
+  background: #14223bf0;
+  color: #ffebaf;
+  font-size: 0;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.ctx-a
+  button
+  span {
+  font-size: calc(22px * var(--text-scale, 1));
+  line-height: 1;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.ctx-a
+  button::after {
+  content: attr(aria-label);
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff4cf;
+  font:
+    700 calc(9px * var(--text-scale, 1)) / 1 "DM Sans",
+    sans-serif;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.ctx-a
+  [data-prism-away][data-ready]::before,
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.ctx-c
+  [data-prism-away][data-ready]::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: var(--ring);
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 4px),
+    #000 calc(100% - 3px)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 4px),
+    #000 calc(100% - 3px)
+  );
+}
+
+/* B: a labelled pill, growing left from the slot. */
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.ctx-b
+  button {
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  min-height: 0;
+  padding: 0 12px 0 10px;
+  flex-direction: row;
+  border-radius: 17px;
+  border: 1.5px solid #e5cc89;
+  background: #14223bf0;
+  color: #ffebaf;
+  font:
+    700 calc(12px * var(--text-scale, 1)) / 1 "DM Sans",
+    sans-serif;
+  white-space: nowrap;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.ctx-b
+  [data-prism-away][data-ready] {
+  background:
+    linear-gradient(
+      90deg,
+      #ffd65b66 calc(var(--charge, 0) * 100%),
+      transparent 0
+    ),
+    #14223bf0;
+}
+
+/* C: one slot, round like A; Look away takes it while Glare winds up. */
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.ctx-c
+  button {
+  flex-direction: column;
+  justify-content: center;
+  width: var(--ctx-size, 52px);
+  height: var(--ctx-size, 52px);
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #e5cc89;
+  background: #14223bf0;
+  color: #ffebaf;
+  font-size: 0;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.ctx-c
+  button
+  span {
+  font-size: calc(22px * var(--text-scale, 1));
+  line-height: 1;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.ctx-c:has([data-prism-away][data-ready])
+  [data-prism-turn] {
+  display: none;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.ctx-c
+  button::after {
+  content: attr(aria-label);
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff4cf;
+  font:
+    700 calc(9px * var(--text-scale, 1)) / 1 "DM Sans",
+    sans-serif;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  [data-prism-away][data-ready] {
+  border-color: #ffd65b;
+  box-shadow: 0 0 12px #ffd65b88;
+}
+@media (prefers-reduced-motion: reduce) {
+  body.battle-active.touch-mode.battle-raid
+    .touch-context
+    #raid-prism-controls.is-context
+    button[data-ready] {
+    animation: none;
+  }
+}

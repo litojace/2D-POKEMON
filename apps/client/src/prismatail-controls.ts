@@ -1,4 +1,22 @@
 import type { Snapshot, Fighter } from "@arena/shared";
+import { setHudStyle } from "./hud-dom";
+
+/**
+ * Phones (demo, owner 20 Nov 2026): the pair lives in the touch cluster's
+ * contextual slot, left of skill 2, and each button shows only when it can
+ * be used (an interact prompt, as action games put one by the skills):
+ * Turn mirror by a mirror, Look away while Glare winds up. Three looks to
+ * compare, picked by localStorage "arena-prism-ui": "a" round icons, "b"
+ * labelled pills, "c" one slot (Look away first).
+ */
+function contextStyle() {
+  try {
+    const v = localStorage.getItem("arena-prism-ui");
+    return v === "b" || v === "c" ? v : "a";
+  } catch {
+    return "a";
+  }
+}
 /**
  * Prismell's atrium is on the court: its raid, or the Spire's boss floor in
  * its zone (the wave and elite floors have no mirrors or Glare).
@@ -46,11 +64,23 @@ export function renderPrismatailControls(
   me: Fighter,
   frame: HTMLElement,
 ) {
-  let panel = frame.querySelector<HTMLElement>("#raid-prism-controls");
+  let panel = document.getElementById("raid-prism-controls");
   if (!panel) {
     panel = document.createElement("div");
     panel.id = "raid-prism-controls";
     frame.append(panel);
+  }
+  // Phones: into the touch cluster's contextual slot (desktop: the frame).
+  const slot = document.body.classList.contains("touch-mode")
+    ? document.querySelector<HTMLElement>(".touch-buttons .touch-context")
+    : null;
+  const home = slot ?? frame;
+  if (panel.parentElement !== home) home.append(panel);
+  panel.classList.toggle("is-context", !!slot);
+  if (slot) {
+    const style = contextStyle();
+    for (const v of ["a", "b", "c"])
+      panel.classList.toggle(`ctx-${v}`, v === style);
   }
   panel.hidden = !prismCourt(state) || state.phase !== "playing" || me.hp <= 0;
   frame.classList.toggle(
@@ -67,7 +97,7 @@ export function renderPrismatailControls(
   }
   if (!panel.childElementCount) {
     panel.innerHTML =
-      '<button type="button" data-prism-turn title="Attack the nearby mirror to rotate it 45°"><span aria-hidden="true">↻</span> Turn mirror</button><button type="button" data-prism-away aria-pressed="false" title="Hold to aim away from Prismell during Glare"><span aria-hidden="true">◉</span> Look away</button>';
+      '<button type="button" data-prism-turn aria-label="Turn mirror" title="Attack the nearby mirror to rotate it 45°"><span aria-hidden="true">↻</span> Turn mirror</button><button type="button" data-prism-away aria-label="Look away" aria-pressed="false" title="Hold to aim away from Prismell during Glare"><span aria-hidden="true">◉</span> Look away</button>';
     panel.querySelector<HTMLButtonElement>("[data-prism-turn]")!.onclick =
       () => {
         turningBasicAt = undefined;
@@ -135,10 +165,20 @@ export function renderPrismatailControls(
   const nearby = state.raid!.mirrors?.some(
     (m) => Math.hypot(m.x - me.x, m.y - me.y) <= 145,
   );
-  panel.querySelector<HTMLButtonElement>("[data-prism-turn]")!.disabled =
-    !nearby;
-  panel.classList.toggle(
-    "glare-warning",
-    state.raid!.warnings.some((w) => w.kind === "glare"),
-  );
+  const turn = panel.querySelector<HTMLButtonElement>("[data-prism-turn]")!;
+  const away = panel.querySelector<HTMLButtonElement>("[data-prism-away]")!;
+  turn.disabled = !nearby;
+  const glare = state.raid!.warnings.find((w) => w.kind === "glare");
+  panel.classList.toggle("glare-warning", !!glare);
+  // Contextual: each shows only when it can be used (Look away also while
+  // held, so letting go is never a moving target).
+  turn.toggleAttribute("data-ready", !!nearby);
+  away.toggleAttribute("data-ready", !!glare || lookingAway);
+  // How far Glare has wound up (0 to 1): the ring round Look away.
+  const start = glare?.startedAt ?? glare?.at;
+  const charge =
+    glare && start !== undefined && glare.at > start
+      ? Math.min(1, Math.max(0, (state.time - start) / (glare.at - start)))
+      : 0;
+  setHudStyle(away, "--charge", charge.toFixed(2));
 }
