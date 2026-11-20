@@ -383,7 +383,8 @@ Changes:
   out of 72, main / now: 30 / 34, 44 / 42, 46 / 47, 27 / 26, 34 / 30,
   43 / 44. Halcyra, the play-tests' raider, is unchanged.
 
-Results (seeds 310000 - 330000, 24 games a pair, 11,016 duels a level):
+Results (seeds 310000 - 330000, 24 games a pair, 11,016 duels a level;
+the expert here is the one before its look-ahead, #243):
 
 | Level  | Before                  | After                   |
 | ------ | ----------------------- | ----------------------- |
