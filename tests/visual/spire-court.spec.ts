@@ -2033,7 +2033,12 @@ test("zone 4: Snoozaku's Cloud Deck kept to floor 40, painted on floor 39, nothi
       });
       if (cleared) break;
     }
-    await page.waitForTimeout(1500);
+    // While they are open, the next floor's court is painted: waited for
+    // as on floor 29 (a fixed 1.5 s was too short for CI's runner, which
+    // had not drawn a frame on the cleared floor yet, 19 Nov).
+    await expect
+      .poll(async () => (await scene()).floors, { timeout: 30_000 })
+      .toContain("arena-floor-spire-summit-deck:art");
     const ready = (await scene()).floors;
     floorNow = 40;
     await page.evaluate(() => (window as any).__spireStep(3));
@@ -2337,7 +2342,19 @@ for (const size of [
             await page.waitForTimeout(1000);
             me = (await fighterContrast(page)).find((f) => f.id === "me");
           }
-          pale[character] = +(me?.seen ?? 0).toFixed(3);
+          // The median over its idle cycle: one reading ranged 0.59-0.69
+          // for Glacelle here from pose to pose, and CI's runner caught
+          // 0.593 and 0.596 (PR #237, 19 Nov) against a median near 0.66.
+          const seen = [me?.seen ?? 0];
+          for (let k = 0; k < 5; k++) {
+            await page.waitForTimeout(500);
+            seen.push(
+              (await fighterContrast(page)).find((f) => f.id === "me")?.seen ??
+                0,
+            );
+          }
+          seen.sort((a, b) => a - b);
+          pale[character] = +((seen[2] + seen[3]) / 2).toFixed(3);
           await shot5(page, `z5-floor-${floor}-read-${character}-${size.name}`);
         }
         console.log(JSON.stringify({ floor, size: size.name, pale }));
@@ -2346,7 +2363,8 @@ for (const size of [
         // 0.61–0.71 and 0.54–0.64. A gold champion on warm gold stone is
         // the hardest case of any zone: it reads by its outlines, shading
         // and white ring. A champion's idle pose moves the share by up to
-        // ±0.05 from run to run. Held at zone 4's level.)
+        // ±0.05 from run to run, so the median of six readings counts.
+        // Held at zone 4's level.)
         expect(pale.glacelle).toBeGreaterThan(0.6);
         expect(pale.sunbara).toBeGreaterThan(0.5);
         expect(cover.cool).toBeGreaterThan(0.04);
@@ -2779,7 +2797,12 @@ test("zone 5: Prismell's Sun Atrium kept to floor 50, painted on floor 49, nothi
       });
       if (cleared) break;
     }
-    await page.waitForTimeout(1500);
+    // While they are open, the next floor's court is painted: waited for
+    // as on floor 29 (a fixed 1.5 s was too short for CI's runner, which
+    // had not drawn a frame on the cleared floor yet, 19 Nov).
+    await expect
+      .poll(async () => (await scene()).floors, { timeout: 30_000 })
+      .toContain("arena-floor-spire-summit-atrium:art");
     const ready = (await scene()).floors;
     floorNow = 50;
     await page.evaluate(() => (window as any).__spireStep(3));
@@ -3482,7 +3505,12 @@ test("zone 6: Lumiwick's Sky Terrace kept to floor 60, painted on floor 59, noth
       });
       if (cleared) break;
     }
-    await page.waitForTimeout(1500);
+    // While they are open, the next floor's court is painted: waited for
+    // as on floor 29 (a fixed 1.5 s was too short for CI's runner, which
+    // had not drawn a frame on the cleared floor yet, 19 Nov).
+    await expect
+      .poll(async () => (await scene()).floors, { timeout: 30_000 })
+      .toContain("arena-floor-spire-summit-terrace:art");
     const ready = (await scene()).floors;
     floorNow = 60;
     await page.evaluate(() => (window as any).__spireStep(3));
@@ -4197,7 +4225,12 @@ for (const size of [
         });
         if (cleared) break;
       }
-      await page.waitForTimeout(1500);
+      // While they are open, the next floor's court is painted: waited for
+      // as on floor 29 (a fixed 1.5 s was too short for CI's runner, which
+      // had not drawn a frame on the cleared floor yet, 19 Nov).
+      await expect
+        .poll(async () => (await scene()).floors, { timeout: 30_000 })
+        .toContain("arena-floor-spire-summit-ring:art");
       const ready = (await scene()).floors;
       await shot7(page, `z7-real-floor-69-cleared-${size.name}`);
       floorNow = 70;
