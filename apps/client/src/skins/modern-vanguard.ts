@@ -386,14 +386,13 @@ export const VANGUARD_DESIGNS_NEW: Record<CharacterId, Design> = {
     k.put("flame", rays + band + gem);
   },
   // Comet Strider: a shield plate with comet streaks lit in a run, a comet
-  // clip on its left high on the forehead (well clear of its star eyes), and
-  // jet heels.
+  // clip on its left on the brow band (clear of its star eyes), and jet heels.
   astrabun(k) {
     const L = VANGUARD_LOOK.astrabun;
     armour(k, L, (x, y, s) => [0, 1, 2].map((i) => k.lume("chase", k.line(`M${x + (6 - i * 6) * s} ${y - 8 * s}l${-5 * s} ${14 * s}`, i === 1 ? L.glow : "#9fd8ff", 2 * s), 2 + i, L.glow)).join(""));
     if (!k.back) {
-      const hx = k.side ? k.hx - k.side * 8 : k.hx + 28,
-        hy = k.ht + 13,
+      const hx = k.side ? k.hx - k.side * 8 : k.hx + 30,
+        hy = k.ht + 28,
         tail = k.side ? -k.side : 1;
       k.put("flame", k.lume("pulse", k.path(`M${hx} ${hy - 4}Q${hx + tail * 14} ${hy - 12} ${hx + tail * 24} ${hy - 18}Q${hx + tail * 12} ${hy - 4} ${hx} ${hy + 4}Z`, "#9fd8ff", "none"), 0, L.glow) +
         k.lume("twinkle", k.path(k.star(hx, hy, 6, 5), L.glow, k.ink, 0.6), 1, L.glow));

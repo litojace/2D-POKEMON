@@ -297,8 +297,8 @@ const DETAILS: Details = {
     if (burst) k.put("flame", burst + k.lume("pulse", k.circle(gx, gy + 2, 4.6, "#ff9a3a", "#b8862a", 1) + k.circle(gx, gy + 2, 2, "#fff3b0", "none", 0), 8, VANGUARD_LOOK.sunbara.glow));
   },
   // Comet Strider: a star band high on the forehead, lit along its length
-  // and studded with gold stars. It stops short of the comet clip on its
-  // left, so the clip's star stands on its own, clear of the eyes.
+  // and studded with gold stars, well above the comet clip by its left eye,
+  // so the clip's star stands on its own.
   astrabun(k) {
     const L = VANGUARD_LOOK.astrabun;
     const y = k.ht + 9;
