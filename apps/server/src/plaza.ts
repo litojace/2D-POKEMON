@@ -53,6 +53,15 @@ interface Visitor {
   plaza: number;
   body: PlazaBody;
   dir: { x: number; y: number };
+  /** Timed sticks, dashes and jumps waiting for their moment (PlazaInput). */
+  queue: PlazaInput[];
+  /** A timed message plays at its browser time plus `lead` (step ms minus
+   * browser ms): the latest arrival lately, from `seen` (arrival, lag). */
+  lead: number | null;
+  seen: [number, number][];
+  /** The newest message number applied (PlazaState.ack), and when (step ms). */
+  ack: number;
+  ackAt: number;
   emote: number;
   emoteUntil: number;
   lastEmote: number;
@@ -70,6 +79,34 @@ interface Visitor {
   orbs: Map<string, number>;
   profile: PlazaProfile;
   version: number;
+}
+/**
+ * A dash a little before the cooldown ends still goes (seconds): the
+ * browser's dashes reach the server unevenly spaced, and refusing one the
+ * browser already showed puts the server's copy 120 px behind.
+ */
+const PLAZA_DASH_SLACK = 0.1;
+/** Timed inputs: at most `holdMs` behind their arrival and `queue` waiting.
+ * The lead rises at once to cover a late arrival and falls back, at most
+ * `leadDecay` ms a second, once none in the last `windowMs` was that late. */
+export const PLAZA_INPUT = {
+  holdMs: 400,
+  queue: 64,
+  windowMs: 2000,
+  leadDecay: 50,
+} as const;
+/** How the browser numbers (`s`) and times (`t`, its own ms clock) an input. */
+export interface PlazaTiming {
+  s?: unknown;
+  t?: unknown;
+}
+interface PlazaInput {
+  kind: "stick" | "jump" | "dash";
+  x: number;
+  y: number;
+  seq: number;
+  /** When it plays, on the step clock (ms). */
+  at: number;
 }
 /** Where a pitch bot's teammate waits while the other chases the ball. */
 const BOT_SUPPORT = { back: 120, wide: 110, tie: 24 } as const;
@@ -265,7 +302,16 @@ export class PlazaWorld {
   private nextOrb = 1;
   private told = new Map<string, Map<number, number>>();
   private clock = 0;
-  constructor(private random: () => number = Math.random) {}
+  /** The real time (ms) players have been moved up to: the last step's
+   * `now`. Timed inputs are placed on this clock, and players move through
+   * the time that really passed, so a late tick doesn't leave the server's
+   * clock behind your browser's (and inputs held longer and longer). */
+  private movedTo: number | null = null;
+  constructor(
+    private random: () => number = Math.random,
+    /** The real clock (the same as step's `now`): when a timed input arrived. */
+    private realNow: () => number = Date.now,
+  ) {}
 
   get size() {
     return this.visitors.size;
@@ -337,6 +383,11 @@ export class PlazaWorld {
       plaza,
       body: plazaBody(spot.x, spot.y),
       dir: { x: 0, y: 0 },
+      queue: [],
+      lead: null,
+      seen: [],
+      ack: 0,
+      ackAt: 0,
       emote: 0,
       emoteUntil: 0,
       lastEmote: -Infinity,
@@ -484,21 +535,96 @@ export class PlazaWorld {
     }
   }
   /** The stick: clamped to length 1; non-numbers count as standing still. */
-  input(key: string, dx: unknown, dy: unknown) {
-    const v = this.visitors.get(key);
-    if (!v) return false;
-    v.dir = plazaStick(dx, dy);
-    return true;
+  input(key: string, dx: unknown, dy: unknown, timing?: PlazaTiming) {
+    return this.receive(key, { kind: "stick", ...plazaStick(dx, dy) }, timing);
   }
-  jump(key: string) {
-    const v = this.visitors.get(key);
-    return !!v && plazaJump(v.body);
+  jump(key: string, timing?: PlazaTiming) {
+    return this.receive(key, { kind: "jump", x: 0, y: 0 }, timing);
   }
   /** A dash, the way the browser dashed (`dx`, `dy`; a bad or missing
    * direction falls back to the last stick). */
-  dash(key: string, dx?: unknown, dy?: unknown) {
+  dash(key: string, dx?: unknown, dy?: unknown, timing?: PlazaTiming) {
+    return this.receive(key, { kind: "dash", ...plazaStick(dx, dy) }, timing);
+  }
+  /**
+   * A stick, jump or dash from the browser. Untimed (no `t`), it applies at
+   * once. Timed, it waits for its moment: the browser's time `t` plus the
+   * visitor's lead, so the server plays your inputs as far apart as you
+   * pressed them however unevenly they arrived — a dash and the stick after
+   * it land on the server where they landed on your screen.
+   */
+  private receive(
+    key: string,
+    m: Pick<PlazaInput, "kind" | "x" | "y">,
+    timing: PlazaTiming = {},
+  ) {
     const v = this.visitors.get(key);
-    return !!v && plazaDash(v.body, plazaStick(dx, dy));
+    if (!v) return false;
+    const seq =
+        typeof timing.s === "number" && Number.isSafeInteger(timing.s)
+          ? timing.s
+          : 0,
+      t = timing.t;
+    if (typeof t !== "number" || !Number.isFinite(t)) {
+      if (seq > v.ack) {
+        v.ack = seq;
+        v.ackAt = this.movedTo ?? 0;
+      }
+      return this.apply(v, m);
+    }
+    // When it reached us, on the step clock.
+    const arrived = Math.max(this.realNow(), this.movedTo ?? -Infinity);
+    v.seen.push([arrived, arrived - t]);
+    v.lead = v.lead === null ? arrived - t : Math.max(v.lead, arrived - t);
+    const last = v.queue.at(-1)?.at ?? -Infinity;
+    v.queue.push({
+      ...m,
+      seq,
+      // In order, and never held more than PLAZA_INPUT.holdMs.
+      at: Math.max(last, Math.min(t + v.lead, arrived + PLAZA_INPUT.holdMs)),
+    });
+    if (v.queue.length > PLAZA_INPUT.queue) v.queue.shift();
+    return true;
+  }
+  private apply(v: Visitor, m: Pick<PlazaInput, "kind" | "x" | "y">) {
+    if (m.kind === "stick") {
+      v.dir = { x: m.x, y: m.y };
+      return true;
+    }
+    if (m.kind === "jump") return plazaJump(v.body);
+    return plazaDash(v.body, m, PLAZA_DASH_SLACK);
+  }
+  /** Move a visitor from `from` to `end` (ms), playing their timed inputs on time. */
+  private stepVisitor(v: Visitor, from: number, end: number, dt: number) {
+    const move = (ms: number) => {
+      // plazaStep takes at most 0.1 s at a time.
+      for (let left = ms; left > 1e-6; left -= 100)
+        plazaStep(v.body, v.dir, Math.min(100, left) / 1000);
+    };
+    let at = from;
+    while (v.queue.length && v.queue[0].at <= end) {
+      const m = v.queue.shift()!,
+        when = Math.max(at, m.at);
+      if (when > at) move(when - at);
+      at = when;
+      this.apply(v, m);
+      if (m.seq > v.ack) {
+        v.ack = m.seq;
+        v.ackAt = at;
+      }
+    }
+    if (end > at) move(end - at);
+    // When the network calms (the late arrival is no longer recent), the
+    // lead comes back down, gently: a quick drop would squeeze the next
+    // inputs together.
+    while (v.seen.length && v.seen[0][0] < end - PLAZA_INPUT.windowMs)
+      v.seen.shift();
+    if (v.lead !== null && v.seen.length) {
+      let recent = -Infinity;
+      for (const [, lag] of v.seen) recent = Math.max(recent, lag);
+      if (recent < v.lead)
+        v.lead -= Math.min(v.lead - recent, dt * PLAZA_INPUT.leadDecay);
+    }
   }
   /** At most one emote a second. */
   emote(key: string, kind: unknown, now: number) {
@@ -565,9 +691,17 @@ export class PlazaWorld {
 
   step(dt: number, now: number): PlazaEvent[] {
     this.clock = now;
+    // Players move through the time since the last step: usually `dt`, more
+    // when a tick ran late (a busy server), at most a second.
+    const last = this.movedTo,
+      from =
+        last !== null && now > last && now - last <= 1000
+          ? last
+          : now - dt * 1000;
+    this.movedTo = now;
     const events: PlazaEvent[] = [];
     for (const v of this.visitors.values()) {
-      plazaStep(v.body, v.dir, dt);
+      this.stepVisitor(v, from, now, dt);
       if (v.emote && now >= v.emoteUntil) v.emote = 0;
       const lap = v.lap.update(v.body.x, v.body.y, now);
       if (lap.lapMs !== undefined && lap.lapMs >= 1000) {
@@ -742,12 +876,14 @@ export class PlazaWorld {
         f.angle += dt * (def.pace ?? 0.55);
         const p = trackPoint(f.angle, def.lane),
           q = trackPolar(b.x, b.y);
-        // Jump the hurdle just ahead.
+        // Jump the hurdle ahead so the top of the jump is over it: half a
+        // jump's time before they get there at their pace round the track.
+        const lead = ((def.pace ?? 0.55) * PLAZA.jump.seconds) / 2;
         if (
           onTrack(b.x, b.y) &&
           PLAZA_HURDLES.some((h) => {
             const ahead = ((h - q.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-            return ahead > 0 && ahead < 0.17;
+            return ahead > 0 && ahead < lead;
           })
         )
           plazaJump(b);
@@ -1015,6 +1151,14 @@ export class PlazaWorld {
           : {}),
         score: [...c.score] as [number, number],
         claps: me.claps,
+        ...(me.ack
+          ? {
+              ack: [me.ack, Math.round((this.movedTo ?? 0) - me.ackAt)] as [
+                number,
+                number,
+              ],
+            }
+          : {}),
         ...(me.lap.running
           ? {
               lap: [
