@@ -80,8 +80,10 @@ after another and the saved fighter and avatar were not waited for at all.
    to the next tip. Every number in a tip is built from the server's rules
    (`RULES`, `ORB_SPOTS`) and `tests/unit/loading-tips.test.ts` checks each
    claim against the server's simulation (where and when orbs appear, what
-   they give). `localStorage["ea-loading-tips"] = "off"` turns them off; the
-   visual harness does so unless a test turns them on.
+   they give). Every player waits for the tip alike, new or returning (a choice made
+   on purpose: about 4.5–7 s a start, 6 s on average for the current
+   tips). Only the visual harness sets `localStorage["ea-loading-tips"] =
+"off"`, unless a test turns them on.
 
 `tests/visual/startup-curtain.spec.ts` records every uncovered frame from
 the start and checks the hub is only ever seen complete, from the saved copy

@@ -69,7 +69,10 @@ export function tipReadMs(tip: LoadingTip) {
 }
 
 const LAST_TIP_KEY = "ea-last-tip";
-/** Where the tips are: off (the visual harness, a player who opted out) or on. */
+/**
+ * "off" only for the visual harness (each test start would be seconds
+ * slower). Players have no switch: every start waits for its tip alike.
+ */
 export const TIPS_SETTING_KEY = "ea-loading-tips";
 
 export function tipsEnabled() {
