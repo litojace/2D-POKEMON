@@ -1083,13 +1083,13 @@ export function orbHeight(ms: number) {
 }
 
 /* ---------- Plaza today: daily quests paid in shop coins (the database's
-   arena_plaza_quests(), migration 20261119190000_remove_farm_bistro_leaves) ---------- */
+   arena_plaza_quests(), migration 20261120120000_raise_plaza_quest_coins) ---------- */
 export const PLAZA_QUESTS = [
-  { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 2 },
-  { id: "lap", text: "Run a lap in under 30 s", max: 1, coins: 2 },
-  { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 2 },
-  { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 1 },
-  { id: "photo", text: "Use the Photo Spot", max: 1, coins: 1 },
+  { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 20 },
+  { id: "lap", text: "Run a lap in under 30 s", max: 1, coins: 20 },
+  { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 15 },
+  { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 15 },
+  { id: "photo", text: "Use the Photo Spot", max: 1, coins: 10 },
 ] as const;
 export type PlazaQuestId = (typeof PLAZA_QUESTS)[number]["id"];
 /** A lap under this time completes the lap quest. */
