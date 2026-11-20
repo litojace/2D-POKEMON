@@ -4350,6 +4350,11 @@ socket.on("state", (snapshot: WireSnapshot) => {
   if (state.phase === "lobby") syncFlair(me);
   seq = Math.max(seq, me.ack);
   pending = pending.filter((i) => i.seq > me.ack);
+  // Outside play the server drops inputs without answering them (Arena.
+  // submit): the ones sent as a round ended would be replayed on your
+  // fighter at every snapshot, and it ran on the spot through the round's
+  // end and the next countdown (owner, 20 Nov 2026).
+  if (state.phase !== "playing") pending = [];
   if (me.hp <= 0 || me.out) {
     pending = [];
     owedSteps = 0;
@@ -6735,7 +6740,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         continue;
       }
       const serverTime = state.time;
-      const airborne = serverPlayer.jumpUntil - serverTime;
+      // Nobody moves outside play: a round that ended mid-run, mid-dash or
+      // mid-jump leaves those in the snapshot (the server stops, it doesn't
+      // reset them until the next round), which held fighters in a run on
+      // the spot through the round's end and the result.
+      const live = state.phase === "playing";
+      const airborne = live ? serverPlayer.jumpUntil - serverTime : 0;
       // Static Glide keeps a fighter airborne longer than a jump: it lifts,
       // sails at a steady height and settles, instead of following the jump arc.
       let glide = gliding.get(p.id);
@@ -6765,11 +6775,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         look: p.raidLook,
         skin: p.championLooks?.[p.character] ?? null,
         ambient: ambient.has(p.id),
-        speed: Math.hypot(p.vx, p.vy),
+        speed: live ? Math.hypot(p.vx, p.vy) : 0,
         angle: p.angle,
         // A glide spreads the glider membranes (the dash pose).
-        dash: serverPlayer.dashUntil > state.time || isGliding,
-        jump: serverPlayer.jumpUntil > state.time && !isGliding,
+        dash: (live && serverPlayer.dashUntil > state.time) || isGliding,
+        jump: live && serverPlayer.jumpUntil > state.time && !isGliding,
         shell: serverPlayer.statuses.some(
           (s) => s.kind === "shell" && s.until > serverTime,
         ),
