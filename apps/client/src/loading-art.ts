@@ -42,6 +42,27 @@ export const LOADING_SCENES: LoadingScene[] = [
     ],
   },
   {
+    id: "rest-moonlit-ruins",
+    fighters: [
+      { champion: "lumoth", skin: "lumoth-starweaver" },
+      { champion: "duskveil", skin: "duskveil-eclipse" },
+    ],
+  },
+  {
+    id: "rest-sky-harbour",
+    fighters: [
+      { champion: "sunbara", skin: "sunbara-sky-pirates" },
+      { champion: "astrabun", skin: "astrabun-sky-pirates" },
+    ],
+  },
+  {
+    id: "rest-aurora",
+    fighters: [
+      { champion: "halcyra", skin: "halcyra-starfletch" },
+      { champion: "auralynx", skin: "auralynx-celestial-sage" },
+    ],
+  },
+  {
     id: "duel-storm-vs-forge",
     mode: "duel",
     fighters: [

@@ -133,10 +133,13 @@ Attach the references named in each row (from
 Calm scenes (no mode, so any tip shows), the owner's choice of 20 Nov,
 made in ChatGPT without a line from this page:
 
-| Scene id             | Shows                                                                         |
-| -------------------- | ----------------------------------------------------------------------------- |
-| `rest-hoi-an`        | Mossloth "Ông Đồ" and Lumoth "Đèn Lồng Hội An" by a lantern-lit Hội An canal  |
-| `rest-vanguard-hill` | Terradon "Bulwark Grove" and Glacelle "Frost Weaver" on a hill above a valley |
+| Scene id             | Shows                                                                          |
+| -------------------- | ------------------------------------------------------------------------------ |
+| `rest-hoi-an`        | Mossloth "Ông Đồ" and Lumoth "Đèn Lồng Hội An" by a lantern-lit Hội An canal   |
+| `rest-vanguard-hill` | Terradon "Bulwark Grove" and Glacelle "Frost Weaver" on a hill above a valley  |
+| `rest-moonlit-ruins` | Lumoth "Fallen Lightbringer" and Duskveil "Crimson Sovereign" in moonlit ruins |
+| `rest-sky-harbour`   | Sunbara "Sunset Skipper" and Astrabun "Moonsail Bosun" on a sky-island pier    |
+| `rest-aurora`        | Halcyra "Nightfeather" and Auralynx "Spectral Warden" under an aurora          |
 
 **duel-storm-vs-forge**
 
