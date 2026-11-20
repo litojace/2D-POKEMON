@@ -1097,18 +1097,22 @@ export const PLAZA_WISH = {
    * Wishes to fill the meter: perPlayer for each player in the copy, between
    * min and max, fixed by the fill's first wish. With treatsDaily 10, three or
    * four players fill it with two treats each (a few minutes at the fountain);
-   * someone alone needs four.
+   * two need three each, and someone alone six (once a day): it pays best
+   * together.
    */
   perPlayer: 2,
-  min: 4,
+  min: 6,
   max: 24,
   /** A meter nobody has added to for this long empties (ms). */
   idleMs: 10 * 60_000,
   /** The fireworks over the square (ms). */
   showMs: 5000,
-  /** Shop coins for each wisher in a fill, at most perDay paid fills a Pacific day. */
-  coins: 5,
-  perDay: 3,
+  /**
+   * Shop coins for each wisher in a fill (a PvP win's 15), at most perDay
+   * paid fills a Pacific day: 30 a day on top of the Plaza quests' 80.
+   */
+  coins: 15,
+  perDay: 2,
 } as const;
 /** Wishes a copy of `players` players needs to fill the meter. */
 export function wishTarget(players: number) {

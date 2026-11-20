@@ -48,6 +48,8 @@ describe("the wish meter's size", () => {
     expect(wishTarget(2)).toBe(PLAZA_WISH.min);
     // Three or four players fill it with two treats each.
     expect(wishTarget(3)).toBe(6);
+    // Alone, a day's treats fill it once.
+    expect(Math.floor(PLAZA.treatsDaily / wishTarget(1))).toBe(1);
     expect(wishTarget(4)).toBe(8);
     expect(wishTarget(PLAZA.capacity)).toBe(PLAZA_WISH.max);
   });
@@ -179,7 +181,7 @@ describe("the Plaza world's wishes", () => {
     w.wish("s2", QUIET);
     w.leave("s2", QUIET + 1);
     let last: PlazaEvent[] = [];
-    for (let i = 0; i < 3; i++) last = w.wish("s1", QUIET + 10 + i);
+    for (let i = 1; i < wishTarget(2); i++) last = w.wish("s1", QUIET + 10 + i);
     expect(last.find((e) => e.type === "wished")).toMatchObject({
       accounts: ["acc-2", "acc-1"],
     });

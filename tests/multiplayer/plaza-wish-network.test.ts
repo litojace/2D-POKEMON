@@ -45,7 +45,7 @@ const setup = async () => {
   };
   accounts.provider.recordWish = async (player, ref) => {
     paid.push([player, ref]);
-    return { paid: true, coins: 5, today: 1 };
+    return { paid: true, coins: 15, today: 1 };
   };
   server = createArenaServer({ accounts: accounts.provider, autoTick: false });
   await new Promise<void>((r) => server!.http.listen(0, "127.0.0.1", r));
@@ -105,7 +105,7 @@ it("makes a wish only at the fountain, and fills the copy's meter together", asy
   toFountain(ann.socket);
   toFountain(ben.socket);
   const goal = wishTarget(2);
-  expect(goal).toBe(4);
+  expect(goal).toBe(6);
   // Ann's cooldown from the plain treat: Ben wishes first.
   expect(await emit(ben.socket, "plaza-treat")).toMatchObject({
     ok: true,
@@ -114,11 +114,12 @@ it("makes a wish only at the fountain, and fills the copy's meter together", asy
   await settle();
   expect(ann.seen.wishes.at(-1)).toEqual({ n: 1, target: goal });
   expect(ann.seen.treats.at(-1)?.wish).toBe(true);
-  await settle(PLAZA.treatSeconds * 1000 + 50);
-  await emit(ann.socket, "plaza-treat");
-  await emit(ben.socket, "plaza-treat");
-  await settle(PLAZA.treatSeconds * 1000 + 50);
-  await emit(ann.socket, "plaza-treat");
+  // Then both at once, three rounds a cooldown apart: six in all.
+  for (let round = 0; round < 3; round++) {
+    await settle(PLAZA.treatSeconds * 1000 + 50);
+    await emit(ann.socket, "plaza-treat");
+    if (round < 2) await emit(ben.socket, "plaza-treat");
+  }
   await settle();
   // Full: fireworks for both, the news, each wisher paid once.
   for (const p of [ann, ben]) {
@@ -126,7 +127,7 @@ it("makes a wish only at the fountain, and fills the copy's meter together", asy
     expect(last.n).toBe(0);
     expect(last.show?.at).toBeGreaterThan(0);
     expect(p.seen.news).toContainEqual({ kind: "wish" });
-    expect(p.seen.pays).toEqual([{ paid: true, coins: 5, today: 1 }]);
+    expect(p.seen.pays).toEqual([{ paid: true, coins: 15, today: 1 }]);
   }
   expect(paid.map(([who]) => who).sort()).toEqual(
     [ann.account.id, ben.account.id].sort(),
@@ -142,4 +143,4 @@ it("makes a wish only at the fountain, and fills the copy's meter together", asy
   expect(cat.seen.wishes.at(-1)?.show?.at).toBe(
     ann.seen.wishes.at(-1)!.show!.at,
   );
-}, 15000);
+}, 20000);

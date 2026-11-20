@@ -17,7 +17,7 @@ create or replace function public.arena_plaza_wish(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
   pid uuid; v_ref text = p->>'ref'; d date = public.arena_today();
-  v_coins constant integer = 5; v_cap constant integer = 3; n integer;
+  v_coins constant integer = 15; v_cap constant integer = 2; n integer;
 begin
   begin pid = (p->>'player')::uuid; exception when others then raise exception 'Bad player'; end;
   if pid is null or not exists (select 1 from public.arena_profiles where id = pid and not suspended) then
