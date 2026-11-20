@@ -237,6 +237,7 @@ import {
 import { AudioManager } from "./audio";
 import { drawLeafStorm, plateFx } from "./skill-fx-nature";
 import { drawSiphon } from "./skill-fx-water";
+import { drawLiveWire } from "./skill-fx-electric";
 import { InterpolationBuffer } from "./networking/interpolation";
 import {
   LocalTimeline,
@@ -7175,8 +7176,24 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             reducedMotion,
           );
       }
-      // Gill Siphon: the stream to the enemy it holds.
-      if (serverPlayer.tether) {
+      // Gill Siphon: the stream to the enemy it holds; Live Wire: the wire.
+      const wire =
+        serverPlayer.tether &&
+        CHARACTERS[p.character].skills[serverPlayer.tether.skill]?.tether?.yank;
+      if (serverPlayer.tether && wire) {
+        const to = this.positions.get(serverPlayer.tether.target);
+        if (to)
+          drawLiveWire(
+            this,
+            x,
+            y - jump,
+            to.x,
+            to.y,
+            reducedMotion ? 0 : _time,
+            CHARACTERS[p.character].color,
+            Math.hypot(to.x - x, to.y - y) / wire.at,
+          );
+      } else if (serverPlayer.tether) {
         const to = this.positions.get(serverPlayer.tether.target);
         if (to)
           drawSiphon(

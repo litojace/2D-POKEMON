@@ -224,7 +224,7 @@ const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
   mystowl: 0.224,
   terradon: 0.265,
   duskveil: 0.361,
-  coilemur: 0.357,
+  coilemur: 0.31,
   pyranda: 0.281,
   glacelle: 0.232,
   halcyra: 0.268,
@@ -1494,8 +1494,16 @@ export class BotBrain {
           if (s.threatened && s.hpRatio < 0.65) score = 17;
           break;
         case "tether":
+          // Live Wire: wire a target that keeps its distance (it can't run
+          // off any more); one already up close needs it less.
+          if (a.tether?.yank) {
+            // Well inside its reach: the wind-up gives the target time to
+            // step out, and a wire that finds nobody is wasted.
+            if (s.sight && reach(a.range * 0.8))
+              score = s.dist > 140 ? 22 : 10;
+          }
           // Gill Siphon: lock on while the target is in reach.
-          if (s.sight && reach(a.range * 0.95))
+          else if (s.sight && reach(a.range * 0.95))
             score = a.damage * (a.duration / (a.tether?.tick ?? 0.25)) * 0.6;
           break;
         case "gaze":

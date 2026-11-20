@@ -403,6 +403,36 @@ between the levels that no change tried here closes. 2v2 and free-for-all
 on unused line-ups (`FRESH_BASE=7000`): 2v2 44.5% - 55.5%, 4-player
 20.9% - 29.0%, 3-player 28.8% - 42.0% (Halcyra, unchanged).
 
+## Live Wire replaces Spark Trail (Coilemur)
+
+Players found Spark Trail hard to use: opponents walk round the trail. The
+trail was never its worth, though. Taken away for real (the bots never cast
+it), Coilemur fell from 50% to 18% on Hard: its 30% speed burst is what lets
+a grappler catch a shooter. (Switching a skill off with a very long cooldown,
+as the levers in the sixth pass did, still lets it be cast once at the start
+and after a refund; it reported Spark Trail as worth 1.2 points. Switch a
+skill off by giving it a kind the bots never choose.)
+
+**Live Wire** (11 s): after a quarter-second wind-up Coilemur runs 30%
+faster for 3.5 s and locks a wire onto the enemy nearest the aim (380 px).
+For 2.5 s the enemy takes 3 every half second; if it gets more than 250 px
+away the wire yanks it 220 px back, deals 6 and paralyses it for half a
+second, and snaps. Walls cut it. A wire that finds nobody keeps its full
+cooldown (no refund, so the speed burst can't be spammed). The rite Long
+Wire (3.5 s) replaces Long Trail. Spark Trail itself stays for the Spire's
+Static Wake blessing (`SPARK_TRAIL`).
+
+Coilemur health 150 (148). Two seeds, 24 games a pair: Hard 49.9% and expert
+60.5% (with Spark Trail 50.0% / 62.3%); without Live Wire it would be 19.4% /
+41.4%. Normal handicap 0.31 (0.357): Normal 52.9% (39.7% before). 2v2 44.8% -
+55.2%, 4-player 21.6% - 28.1%, 3-player 28.8% - 42.6% on unused line-ups.
+
+The Spire's Coilemur Echoes became harder for the play-tests' Halcyra (a
+shooter the wire keeps yanking back). Armour, so each floor clears about as
+often as before (seeds 1-72, main / now): 9 1.40 (1.35) 13 / 17, 16 1.66
+(1.56) 30 / 31, 63 6.8 (6.6) 33 / 29, 65 0.64 (0.60) 38 / 39, 66 4.35 (4.1)
+42 / 39, 69 2.35 (2.2) 13 / 14.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now

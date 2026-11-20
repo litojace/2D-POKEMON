@@ -48,7 +48,7 @@ it("pins roster health (champion balance overhaul) and movement speeds", () => {
     mystowl: [138, 255],
     terradon: [196, 222],
     duskveil: [148, 260],
-    coilemur: [148, 250],
+    coilemur: [150, 250],
     pyranda: [152, 235],
     glacelle: [158, 255],
     halcyra: [141, 260],
