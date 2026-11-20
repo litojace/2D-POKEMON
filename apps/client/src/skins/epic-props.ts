@@ -155,18 +155,23 @@ const HERO: Details = {
         k.lume("pulse", k.path(`M${bx - 4} ${y + 9}Q${bx} ${y + 22} ${bx + 4} ${y + 9}Z`, "#ffb347", "none", 0), 3 + i, "#ffb347")).join("");
     }, true);
   },
-  // Frost Sentinel: a kite shield of deep ice, a snowflake lit in its face.
+  // Frost Sentinel: wings of ice shards fanning out from its back. From the
+  // front they rise beside the arms, clear of the head; in profile they fan
+  // backward, away from the face, out past the line of the back.
   glacelle(k) {
-    held(k, (x, y) => {
-      const flake = [0, 60, 120].map((a) => {
-        const c = Math.cos((a * Math.PI) / 180) * 7,
-          sn = Math.sin((a * Math.PI) / 180) * 7;
-        return `M${x - c} ${y - 1 - sn}L${x + c} ${y - 1 + sn}`;
-      }).join("");
-      return k.path(`M${x - 13} ${y - 15}Q${x} ${y - 19} ${x + 13} ${y - 15}L${x + 11} ${y + 4}L${x} ${y + 20}L${x - 11} ${y + 4}Z`, "#2c6fb0", k.ink, 1.3) +
-        k.path(`M${x - 9} ${y - 12}Q${x} ${y - 15} ${x + 9} ${y - 12}L${x + 8} ${y + 3}L${x} ${y + 15}L${x - 8} ${y + 3}Z`, "#bfe8ff", "#7fc0e8", 0.8) +
-        k.lume("pulse", k.line(flake, "#ffffff", 1.8), 3, "#9fe8ff");
-    });
+    onBack(k, (x, y, v) => {
+      // Which way each wing fans: both sides from the front and behind, only
+      // toward the back in profile (left of a right-facing champion).
+      const sides = v === "side" ? [-k.side] : [-1, 1];
+      const by = v === "front" ? y - 2 : y;
+      return sides.map((s) => [0, 1, 2].map((i) => {
+        const bx = x + s * (v === "side" ? 0 : v === "front" ? k.W + 8 : k.W - 6);
+        const h = 46 - i * 8;
+        const a = s * ((v === "front" ? 18 : v === "side" ? 24 : 28) + i * 22);
+        return `<g transform="rotate(${a} ${bx} ${by})">` + k.path(shard(bx, by, 6.5 - i * 0.8, h), i ? "#c8eeff" : "#8fd8ff", k.ink, 1.2) +
+          k.line(`M${bx} ${by - 3}L${bx} ${by - h + 6}`, "#ffffff", 1.1) + `</g>`;
+      }).join("") + k.lume("twinkle", k.path(k.star(x + s * (v === "side" ? 30 : k.W + 22), by - 26, 2.4, 4, 0.3), "#ffffff", "none", 0), s > 0 ? 4 : 3, "#ffffff")).join("");
+    }, true);
   },
   // Skysight: a long red scarf streaming out in the wind.
   halcyra(k) {

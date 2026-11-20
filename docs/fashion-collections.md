@@ -417,7 +417,7 @@ the gold rim and clasp, a two-tone body, a summoned motif).
 | Duskveil | Tattered night wings off the cape | A stage-red velvet cape with tassels |
 | Coilemur | A horseshoe magnet on the back, sparking | A robot buddy clipped at its side |
 | Pyranda | Twin chestnut boosters, nozzles burning | A strawberry layer cake, candle lit |
-| Glacelle | A kite shield of deep ice, a snowflake lit in it | Its choir robe flaring into a bell |
+| Glacelle | Wings of ice shards, fanning backward in profile | Its choir robe flaring into a bell |
 | Halcyra | A long red scarf streaming in the wind | A longbow on the back |
 | Sunbara | Tongues of fire at the cape's hem | A paint palette and brush, paint glowing |
 | Astrabun | Its mallet head a full moon | A brass telescope on the back |
