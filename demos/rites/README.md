@@ -18,3 +18,16 @@ All three fill the whole screen past the notch, under a see-through shade
 (no blur), with big bold type and no card around them. The rites, buttons,
 details and team list are the same as today. To try one live, open the game
 with `?rites=a`, `?rites=b` or `?rites=c`.
+
+## A, second round (`a-v2/`)
+
+After the owner's notes on A:
+
+- The buff figures sit beside the rite's picture instead of on top of it,
+  each with its unit (−25% / damage · 3s; Helping Paws shows both figures).
+- The arena turns grey under the shade, as the PvP countdown's arena looks.
+- The tiles are taller and fill the middle. Where the screen has room
+  (956×440 and up) each also shows the rite's full effect.
+- Rite details puts the six rites in columns instead of long lines.
+- Hover only on devices with a mouse: a tap on a phone no longer leaves a
+  tile highlighted.

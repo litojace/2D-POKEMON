@@ -32,13 +32,15 @@ export function raidRiteChoices(
   list: readonly RaidRite[],
   picked: readonly RaidRite[] = [],
   locked = false,
+  /** Also show the full effect under the trigger (rites screen prototype). */
+  full = false,
 ) {
   const cards = list
     .map((id) => {
       const rite = RAID_RITES[id];
       const chosen = picked.includes(id);
       const off = chosen || locked;
-      return `<button data-raid-rite="${id}" class="secondary raid-rite-${id}${chosen ? " is-picked" : ""}"${off ? " disabled" : ""} aria-pressed="${chosen}" title="${escape(rite.text)}" aria-label="${escape(rite.name + ". " + rite.text + (chosen ? " Chosen." : ""))}"><span class="raid-rite-copy"><span class="raid-rite-heading">${raidRiteBuffPicture(id)}<b>${rite.name}</b></span><small class="raid-rite-trigger">${raidRiteBuffTrigger(id)}</small></span>${chosen ? '<span class="raid-rite-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>' : ""}</button>`;
+      return `<button data-raid-rite="${id}" class="secondary raid-rite-${id}${chosen ? " is-picked" : ""}"${off ? " disabled" : ""} aria-pressed="${chosen}" title="${escape(rite.text)}" aria-label="${escape(rite.name + ". " + rite.text + (chosen ? " Chosen." : ""))}"><span class="raid-rite-copy"><span class="raid-rite-heading">${raidRiteBuffPicture(id)}<b>${rite.name}</b></span><small class="raid-rite-trigger">${raidRiteBuffTrigger(id)}</small>${full ? `<small class="raid-rite-full">${escape(rite.text)}</small>` : ""}</span>${chosen ? '<span class="raid-rite-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>' : ""}</button>`;
     })
     .join("");
   // Locked in: the heading says so (raid-ui.ts), so the cards keep their places.

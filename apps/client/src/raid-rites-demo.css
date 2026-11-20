@@ -165,11 +165,19 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
     background-color 120ms,
     transform 120ms;
 }
+/* A ring in the rite's colour on keyboard focus, and on hover only where
+   there is real hover (a tap on a phone would leave it stuck on). */
 #arena-overlay#arena-overlay.is-rites
   .raid-rite-options
-  > button:is(:hover, :focus-visible):not(:disabled) {
-  background: rgba(var(--rite-rgb), 0.16);
-  box-shadow: inset 0 0 0 1.5px rgba(var(--rite-rgb), 0.7);
+  > button:focus-visible:not(:disabled) {
+  box-shadow: inset 0 0 0 2px rgba(var(--rite-rgb), 0.85);
+}
+@media (hover: hover) {
+  #arena-overlay#arena-overlay.is-rites
+    .raid-rite-options
+    > button:hover:not(:disabled) {
+    box-shadow: inset 0 0 0 2px rgba(var(--rite-rgb), 0.85);
+  }
 }
 #arena-overlay#arena-overlay.is-rites
   .raid-rite-options
@@ -217,53 +225,72 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
     sans-serif;
   text-align: inherit;
 }
+/* The art and its buff figures side by side: a figure never covers the
+   art. Each figure is a dark chip with its value and unit (−25% / damage). */
 #arena-overlay#arena-overlay.is-rites .raid-rite-icon {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 48px;
+  --art-w: 64px;
+  --art-h: 48px;
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: auto;
+  height: auto;
   margin: 0;
   border: 0;
   border-radius: 0;
+  background: none;
+  color: var(--rite-color);
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-icon > svg {
+  flex: none;
+  width: var(--art-w);
+  height: var(--art-h);
+  border-radius: 50%;
   background: radial-gradient(
     closest-side,
     rgba(var(--rite-rgb), 0.35),
     transparent
   );
-  color: var(--rite-color);
-}
-#arena-overlay#arena-overlay.is-rites .raid-rite-icon > svg {
-  width: 64px;
-  height: 48px;
   filter: drop-shadow(0 2px 6px #000a);
 }
-/* The buff figure (−25%, +12) sits on the art. */
 #arena-overlay#arena-overlay.is-rites .raid-rite-stats {
-  position: absolute;
-  right: -10px;
-  bottom: -4px;
-  display: grid;
-  justify-items: end;
+  position: static;
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  transform: none;
 }
-#arena-overlay#arena-overlay.is-rites .raid-rite-buff-stat {
-  display: block;
+#arena-overlay#arena-overlay.is-rites .raid-rite-buff-stat,
+#arena-overlay#arena-overlay.is-rites .raid-rite-buff-stat--second {
+  position: static;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: #050c1cd9;
+  box-shadow: inset 0 0 0 1px rgba(var(--rite-rgb), 0.5);
   line-height: 1;
+  text-shadow: none;
 }
 #arena-overlay#arena-overlay.is-rites .raid-rite-buff-value {
   color: #fff;
   font:
-    800 calc(18px * var(--text-scale, 1)) / 1 "Barlow Condensed",
+    800 calc(var(--stat-size, 20px) * var(--text-scale, 1)) / 1
+      "Barlow Condensed",
     sans-serif;
-  text-shadow:
-    0 1px 4px #000,
-    0 0 10px #000c;
 }
 #arena-overlay#arena-overlay.is-rites .raid-rite-buff-unit {
-  display: none;
-}
-#arena-overlay#arena-overlay.is-rites .raid-rite-buff-stat--second {
-  display: none;
+  display: block;
+  color: #c9d6ea;
+  font:
+    700 calc(var(--unit-size, 10px) * var(--text-scale, 1)) / 1.1 "DM Sans",
+    sans-serif;
+  white-space: nowrap;
 }
 /* Picked: checked, dimmed in place. Locked (all picks made): the rest grey. */
 #arena-overlay#arena-overlay.is-rites .raid-rite-options > button:disabled {
@@ -390,6 +417,25 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
   width: 64px;
   height: 48px;
 }
+/* The entries sit in columns: no long lines across a wide screen. */
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference > ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
+  gap: 10px;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference li {
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: #ffffff0d;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference .raid-rite-icon {
+  --art-w: 56px;
+  --art-h: 42px;
+}
 #arena-overlay#arena-overlay.is-rites .raid-team-builds > div {
   display: grid;
   gap: 2px;
@@ -398,35 +444,37 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
 }
 
 /* ================================================================
-   A · Centre stage. The countdown's layout: a radial shade, the title
-   and the big number at the top, the six rites in a 3 × 2 grid in the
-   middle, the arena showing all round.
+   A · Centre stage. The countdown's layout: the title and the big
+   number at the top, six tall rite tiles in a 3 × 2 grid filling the
+   middle, the greyed arena showing round them.
    ================================================================ */
 #arena-overlay#arena-overlay.is-rites[data-look="a"]:not(:empty) {
   background: radial-gradient(
     ellipse 75% 80% at 50% 50%,
-    #07122566,
-    #071225a6 100%
+    #0712254d,
+    #07122599 100%
   );
 }
 #arena-overlay#arena-overlay.is-rites[data-look="a"] .rites-screen {
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: clamp(6px, 2vh, 18px);
-  align-items: center;
+  gap: 8px;
 }
 #arena-overlay#arena-overlay.is-rites[data-look="a"] .rites-head {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 16px;
-  width: min(980px, 100%);
+  width: min(1100px, 100%);
   margin: 0 auto;
 }
-#arena-overlay#arena-overlay.is-rites[data-look="a"] .rites-head > .rites-lead {
+#arena-overlay#arena-overlay.is-rites[data-look="a"] .rites-lead {
   grid-column: 2;
   display: grid;
   justify-items: center;
   gap: 4px;
+}
+#arena-overlay#arena-overlay.is-rites[data-look="a"] .rites-title {
+  font-size: clamp(28px, 8vh, 56px);
 }
 #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-choice-timer {
   grid-column: 3;
@@ -437,82 +485,128 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
 }
 #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-options {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-rows: 1fr;
-  width: min(980px, 100%);
-  margin: 0 auto;
-  align-self: center;
+  grid-auto-rows: minmax(0, 1fr);
+  align-self: stretch;
+  gap: 10px 12px;
+  width: min(1100px, 100%);
+  max-height: 640px;
+  margin: auto;
+  height: 100%;
 }
 #arena-overlay#arena-overlay.is-rites[data-look="a"]
   .raid-rite-options
   > button {
-  justify-items: center;
   align-content: center;
+  justify-items: center;
+  padding: 10px 12px;
   border-bottom: 3px solid rgba(var(--rite-rgb), 0.85);
-  border-radius: 14px 14px 4px 4px;
+  border-radius: 14px 14px 6px 6px;
   background:
     linear-gradient(to top, rgba(var(--rite-rgb), 0.2), transparent 70%),
-    #07122599;
+    #071225e0;
   text-align: center;
+}
+#arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-copy {
+  justify-items: center;
+  gap: 6px;
 }
 #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-heading {
   justify-items: center;
+  gap: 8px;
+}
+#arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-icon {
+  --art-w: 80px;
+  --art-h: 60px;
+  --stat-size: 24px;
+  --unit-size: 11px;
+}
+#arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-heading > b {
+  font-size: calc(24px * var(--text-scale, 1));
+}
+#arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-trigger {
+  font-size: calc(14px * var(--text-scale, 1));
 }
 @media (min-height: 600px) {
   #arena-overlay#arena-overlay.is-rites[data-look="a"] .rites-objective {
     display: block;
   }
+  #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-options {
+    gap: 18px 22px;
+  }
+  #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-icon {
+    --art-w: 128px;
+    --art-h: 96px;
+    --stat-size: 32px;
+    --unit-size: 13px;
+    gap: 12px;
+  }
   #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-heading > b {
-    font-size: calc(26px * var(--text-scale, 1));
+    font-size: calc(30px * var(--text-scale, 1));
   }
   #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-trigger {
-    font-size: calc(14px * var(--text-scale, 1));
-  }
-  #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-icon,
-  #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-icon > svg {
-    width: 112px;
-    height: 84px;
-  }
-  #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-options {
-    gap: 18px 24px;
-    max-height: 520px;
+    font-size: calc(16px * var(--text-scale, 1));
   }
 }
+/* The full effect, where the tile has room for it (not on the
+   shortest phones: Rite details has it there). */
+#arena-overlay#arena-overlay.is-rites .raid-rite-full {
+  display: none;
+  max-width: 34ch;
+  margin: 0;
+  color: #b9c8de;
+  text-align: center;
+  font:
+    500 calc(12px * var(--text-scale, 1)) / 1.35 "DM Sans",
+    sans-serif;
+  overflow-wrap: normal;
+}
+@media (min-height: 430px) {
+  #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-full {
+    display: block;
+  }
+}
+@media (min-height: 600px) {
+  #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-full {
+    font-size: calc(15px * var(--text-scale, 1));
+  }
+}
+/* Phones held sideways: everything still in each tile, a step smaller. */
 @media (max-height: 599px) {
+  #arena-overlay#arena-overlay.is-rites[data-look="a"] .rites-screen {
+    gap: 6px;
+  }
   #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-options {
-    gap: 6px 10px;
+    gap: 6px 8px;
   }
   #arena-overlay#arena-overlay.is-rites[data-look="a"]
     .raid-rite-options
     > button {
-    grid-template-columns: 56px minmax(0, 1fr);
-    justify-items: start;
-    align-items: center;
-    column-gap: 8px;
-    padding: 4px 8px;
-    text-align: left;
+    padding: 6px 8px;
   }
-  #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-copy {
-    display: contents;
-  }
+  #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-copy,
   #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-heading {
-    display: contents;
+    gap: 3px;
   }
   #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-icon {
-    grid-row: 1 / 3;
-    width: 56px;
-    height: 42px;
+    --art-w: 56px;
+    --art-h: 42px;
+    --stat-size: 18px;
+    --unit-size: 9px;
+    gap: 6px;
   }
-  #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-icon > svg {
-    width: 56px;
-    height: 42px;
+  #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-buff-stat {
+    padding: 3px 6px;
   }
   #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-heading > b {
-    align-self: end;
     font-size: calc(18px * var(--text-scale, 1));
   }
   #arena-overlay#arena-overlay.is-rites[data-look="a"] .raid-rite-trigger {
-    align-self: start;
-    font-size: calc(11px * var(--text-scale, 1));
+    font-size: calc(12px * var(--text-scale, 1));
+  }
+  #arena-overlay#arena-overlay.is-rites[data-look="a"]
+    :is(.raid-rite-more, .raid-team-summary)
+    > summary {
+    min-height: 40px;
   }
 }
 
@@ -586,7 +680,6 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
     width: min(1280px, 100%);
     margin: 0 auto;
   }
-  #arena-overlay#arena-overlay.is-rites[data-look="b"] .raid-rite-icon,
   #arena-overlay#arena-overlay.is-rites[data-look="b"] .raid-rite-icon > svg {
     width: 96px;
     height: 72px;
@@ -613,7 +706,6 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
   #arena-overlay#arena-overlay.is-rites[data-look="b"] .raid-rite-trigger {
     font-size: calc(11px * var(--text-scale, 1));
   }
-  #arena-overlay#arena-overlay.is-rites[data-look="b"] .raid-rite-icon,
   #arena-overlay#arena-overlay.is-rites[data-look="b"] .raid-rite-icon > svg {
     width: 56px;
     height: 42px;
@@ -725,7 +817,6 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
     max-width: 560px;
     gap: 10px;
   }
-  #arena-overlay#arena-overlay.is-rites[data-look="c"] .raid-rite-icon,
   #arena-overlay#arena-overlay.is-rites[data-look="c"] .raid-rite-icon > svg {
     width: 88px;
     height: 66px;
@@ -741,7 +832,6 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
   #arena-overlay#arena-overlay.is-rites[data-look="c"] .rites-objective {
     display: none;
   }
-  #arena-overlay#arena-overlay.is-rites[data-look="c"] .raid-rite-icon,
   #arena-overlay#arena-overlay.is-rites[data-look="c"] .raid-rite-icon > svg {
     width: 48px;
     height: 36px;
@@ -756,6 +846,12 @@ body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
 
 /* While the rites show, the battle controls and the HUD step aside (the
    card covered them too): the arena and the fighters stay in view. */
+/* The arena turns grey under the shade, as the PvP countdown's arena reads:
+   the rites are the only colour on screen. One filter on the canvas, only
+   while the fight is paused for the choice. */
+body.raid-rites-open #game {
+  filter: grayscale(1) brightness(0.8);
+}
 body.raid-rites-open :is(#battle > :not(.arena-stage), #battle-chat) {
   visibility: hidden;
 }
