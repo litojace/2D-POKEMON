@@ -389,7 +389,7 @@ export type AbilityKind =
    * Lock a stream onto the enemy nearest the aim within `range`: every
    * `tether.tick` seconds it takes `damage` (the caster drains `drain` of it)
    * for up to `duration`, until it gets `tether.breakRange` px away or out
-   * of sight.
+   * of sight (or, with `tether.yank`, is yanked back: Live Wire).
    */
   | "tether"
   /**
@@ -565,8 +565,25 @@ export interface Ability {
   boomerang?: boolean;
   /** Rewind: how far back (seconds), the share of health lost since it gives back, and the most. */
   rewind?: { seconds: number; heal: number; max: number };
-  /** Tether: seconds between ticks, and how far the target can get before it snaps. */
-  tether?: { tick: number; breakRange: number };
+  /**
+   * Tether: seconds between ticks, and how far the target can get before it
+   * snaps. With `yank` (Live Wire) it never snaps for range: a target that
+   * gets more than `yank.at` px away is pulled `yank.pull` px back toward
+   * the caster, takes `yank.damage` and `yank.status`, and the wire ends.
+   */
+  tether?: {
+    tick: number;
+    breakRange: number;
+    /** Seconds the caster runs faster from the cast (Live Wire: to chase). */
+    haste?: number;
+    yank?: {
+      at: number;
+      pull: number;
+      damage: number;
+      status: StatusKind;
+      statusDuration: number;
+    };
+  };
   /** Leash (status "leash"): how far from where it was hit the target can go (px). */
   leash?: number;
   /** Gaze: how closely (radians) an enemy must be aiming at the caster to be caught. */
@@ -782,14 +799,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A stout magma newt with a living flame crest. Layers burns and hits hardest up close.",
     color: 0xff7a4f,
-    health: 148,
+    health: 158,
     speed: 240,
     basic: basic(
       "cinder-snap",
       "Cinder Snap",
       "melee",
       14,
-      455,
+      500,
       "A short-range burst of fire in front of Cindrake.",
       { range: 170, arc: 0.2, knockback: 10 },
     ),
@@ -883,7 +900,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       5,
       240,
       "A fast water projectile.",
-      { speed: 950, radius: 8, range: 640 },
+      { speed: 950, radius: 6, range: 640 },
     ),
     skills: [
       ability(
@@ -906,9 +923,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "river-dash",
         "River Dash",
         "surf",
-        12,
+        20,
         9,
-        "Shoot 300 px along your aim on a jet of water, straight through enemies: each one you pass takes 12 and is Soaked. Pass through anyone and the cooldown drops to 3 seconds: dash in, then dash out.",
+        "Shoot 300 px along your aim on a jet of water, straight through enemies: each one you pass takes 20 and is Soaked. Pass through anyone and the cooldown drops to 3 seconds: dash in, then dash out.",
         {
           range: 300,
           speed: 1000,
@@ -1314,7 +1331,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A ring-tailed lemur whose striped tail is a living electromagnet. Yanks runners in, then won't let go.",
     color: 0xf2c94c,
-    health: 148,
+    health: 150,
     speed: 250,
     basic: basic(
       "coil-swipe",
@@ -1360,21 +1377,30 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "spark-trail",
-        "Spark Trail",
-        "trail",
-        6,
-        15,
-        "For 3.5 seconds Coilemur runs 30% faster and leaves a crackling trail behind it that lasts 2 seconds: enemies who touch it take 6 and are paralysed for a moment. Run rings round them.",
+        "live-wire",
+        "Live Wire",
+        "tether",
+        3,
+        11,
+        "After a quarter-second wind-up, Coilemur runs 30% faster for 3.5 seconds and lashes a live wire onto the enemy nearest your aim (380 px). While it holds (2.5 seconds), the enemy takes 3 every half second, and if it gets more than 250 px away the wire yanks it back toward Coilemur: 6 damage and paralysed for half a second, and the wire snaps. Walls cut the wire. No more running away.",
         {
-          radius: 28,
-          duration: 3.5,
-          range: 0,
-          tickInterval: 0.4,
+          range: 380,
+          radius: 60,
+          duration: 2.5,
+          cast: 0.25,
           knockback: 0,
-          status: "paralysis",
-          statusDuration: 0.4,
-          trail: { fade: 2 },
+          tether: {
+            tick: 0.5,
+            breakRange: 9999,
+            haste: 3.5,
+            yank: {
+              at: 250,
+              pull: 220,
+              damage: 6,
+              status: "paralysis",
+              statusDuration: 0.5,
+            },
+          },
         },
       ),
       ability(
@@ -2056,7 +2082,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A three-toed sloth with a moss garden on its back. Moss grows while it stands still; it plants seeds that grow, slows time itself, and lazily swaps places.",
     color: 0x9bd36a,
-    health: 185,
+    health: 148,
     speed: 240,
     passive: "moss",
     basic: basic(
@@ -2064,7 +2090,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "Seed Spit",
       "projectile",
       9,
-      345,
+      300,
       "Spit a hard seed.",
       { speed: 750, range: 640, radius: 10 },
     ),
@@ -2094,7 +2120,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Sloth Time",
         "timewarp",
         0,
-        12,
+        9,
         "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed. Dashing isn't slowed: dash out of the bubble and you are free at once.",
         { range: 520, radius: 165, duration: 3, knockback: 0, warp: 0.35 },
       ),
@@ -2136,6 +2162,31 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
     ],
   },
+};
+/**
+ * Spark Trail, Coilemur's skill until Live Wire replaced it (Nov 2026). The
+ * Spire's Static Wake blessing still lays its crackling trail.
+ */
+export const SPARK_TRAIL: Ability = {
+  ...ability(
+    "spark-trail",
+    "Spark Trail",
+    "trail",
+    6,
+    15,
+    "For 3.5 seconds Coilemur runs 30% faster and leaves a crackling trail behind it that lasts 2 seconds: enemies who touch it take 6 and are paralysed for a moment.",
+    {
+      radius: 28,
+      duration: 3.5,
+      range: 0,
+      tickInterval: 0.4,
+      knockback: 0,
+      status: "paralysis",
+      statusDuration: 0.4,
+      trail: { fade: 2 },
+    },
+  ),
+  element: "Electric",
 };
 /**
  * Free practice: the target drops this electrified ground patch every few
@@ -2383,8 +2434,8 @@ for (const combo of Object.values(COMBOS)) combo.text = inMeters(combo.text);
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 1.07,
-  cindrake: 0.98,
-  tidefin: 1.106,
+  cindrake: 0.994,
+  tidefin: 1.018,
   auralynx: 0.88,
   lumoth: 1.038,
   mystowl: 0.984,
@@ -2399,7 +2450,7 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   wombolder: 0.913,
   shadopus: 1.011,
   pangrove: 0.904,
-  mossloth: 1.017,
+  mossloth: 1.119,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -2411,8 +2462,8 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
  */
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.873,
-  cindrake: 1.164,
-  tidefin: 0.862,
+  cindrake: 1.16,
+  tidefin: 0.869,
   auralynx: 1.043,
   lumoth: 0.903,
   mystowl: 0.828,
@@ -2427,7 +2478,7 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   wombolder: 1.099,
   shadopus: 1.131,
   pangrove: 1.034,
-  mossloth: 0.884,
+  mossloth: 0.972,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
@@ -2436,8 +2487,8 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
  */
 export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.86,
-  cindrake: 1.143,
-  tidefin: 0.861,
+  cindrake: 1.156,
+  tidefin: 0.839,
   auralynx: 1.17,
   lumoth: 0.824,
   mystowl: 0.832,
@@ -2452,7 +2503,7 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   wombolder: 1.185,
   shadopus: 1.151,
   pangrove: 1.06,
-  mossloth: 0.954,
+  mossloth: 1.05,
 };
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
@@ -3688,8 +3739,8 @@ export const RITES: Rite[] = [
     "major",
     "river-dash",
     "Whitewater",
-    "River Dash throws the enemies it goes through aside (a strong knockback) and deals 16 instead of 12.",
-    { set: { damage: 16, knockback: 110 } },
+    "River Dash throws the enemies it goes through aside (a strong knockback) and deals 26 instead of 20.",
+    { set: { damage: 26, knockback: 110 } },
   ),
   rite(
     "tidefin",
@@ -3948,10 +3999,10 @@ export const RITES: Rite[] = [
   rite(
     "coilemur",
     "minor",
-    "spark-trail",
-    "Long Trail",
-    "Spark Trail lasts 4.5s instead of 3.5s.",
-    { set: { duration: 4.5 } },
+    "live-wire",
+    "Long Wire",
+    "Live Wire holds for 3.5s instead of 2.5s.",
+    { set: { duration: 3.5 } },
   ),
   rite(
     "coilemur",

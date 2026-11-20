@@ -208,6 +208,7 @@ const rosterIconSources: Record<string, string> = {
   "Coil Swipe": "Cloak Rend",
   "Static Clamp": "Charge Orb",
   "Spark Trail": "Livewire Field",
+  "Live Wire": "Livewire Field",
   "Ember Lob": "Cinder",
   "Hot Coals": "Ember Ring",
   "Ember Curtain": "Prism Guard",

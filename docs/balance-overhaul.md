@@ -338,6 +338,101 @@ or more 23 to 21.
   check's noise (about ±3 points a champion).
 - The Spire and raid tests pass unchanged.
 
+## Sixth pass: for skilled players
+
+The owner's players are skilled, so this pass looks at the expert bot as
+well as Hard. Among experts the roster spreads far wider (three seeds,
+11,016 duels each): Hard 47.5% - 53.2% (sd 1.8), expert 20.8% - 77.9%
+(sd 13.2). Shooters that keep their distance gain (Mossloth 78%, Halcyra
+65%, Mystowl 64%), champions that have to walk in lose (Tidefin 21%,
+Cindrake 25%): against an expert Mossloth, Terradon spends 10% of the fight
+in reach, against a Hard one 19%.
+
+The target the owner chose: Hard within about 42% - 58% and expert within
+about 35% - 65%, leaving the rest of the roster alone.
+
+**What moves the two levels apart.** Each champion's basic interval,
+health and every skill's cooldown were changed one at a time (12 games a
+pair, two seeds, both levels; 108 levers). In logit units no lever leans
+more than about 0.5 towards either level, while the gaps are 1.0 - 1.3.
+Almost every buff helps Hard more than the expert, including new mechanics
+tried for this: a slow on Cindrake's basic hit, bigger Tide Needles, less
+moss regeneration, and a "Regrowth" passive for Tidefin (heal after 2.5 s
+unhurt: +14 on Hard, +7 on expert). Health is the one lever that leans
+towards experts for some champions (Voltkit, Cindrake, Mossloth, Halcyra).
+So numbers can trade one level's balance for the other's but cannot close
+a champion's gap, and kit changes of the kind tried move it little.
+
+Changes:
+
+- **Mossloth**: health 148 (was 185), Seed Spit every 300 ms (was 345),
+  Sloth Time every 9 s (was 12).
+- **Tidefin**: River Dash deals 20 (was 12; the Whitewater rite 26 instead
+  of 16), Tide Needle radius 6 (was 8).
+- **Cindrake**: health 158 (was 148), Cinder Snap every 500 ms (was 455).
+- **Normal handicaps**: Cindrake 0.49 (0.46), Tidefin 0.29 (0.27),
+  Mossloth 0.29 (0.31).
+- **2v2 and free-for-all**: the three champions' factors from the check on
+  unused line-ups. (Scaling them by old/new health first also scaled the
+  basic interval, and Mossloth reached 74% in 2v2.)
+- **Spire**: every floor with one of the three as an Echo was compared with
+  `main` (a solo Normal Halcyra, as the play-tests). Floors 3, 14, 17, 39,
+  59 and 61 moved by more than the noise on seeds 1-72 and their armour was
+  set so each clears as often as before: 3 1.65 (1.69), 14 1.68 (1.62),
+  17 1.50 (1.53), 39 1.55 (1.63), 59 2.92 (2.85), 61 5.63 (5.8). Clears
+  out of 72, main / now: 30 / 34, 44 / 42, 46 / 47, 27 / 26, 34 / 30,
+  43 / 44. Halcyra, the play-tests' raider, is unchanged.
+
+Results (seeds 310000 - 330000, 24 games a pair, 11,016 duels a level;
+the expert here is the one before its look-ahead, #243):
+
+| Level  | Before                  | After                   |
+| ------ | ----------------------- | ----------------------- |
+| Hard   | 47.5% - 53.2% (sd 1.8)  | 42.0% - 56.7% (sd 3.3)  |
+| Expert | 20.8% - 77.9% (sd 13.2) | 29.7% - 67.1% (sd 10.4) |
+| Normal | 46.7% - 52.7% (#240)    | 45.7% - 56.0%           |
+
+| Champion | Hard before → after | Expert before → after |
+| -------- | ------------------: | --------------------: |
+| Mossloth |       51.7% → 42.0% |         77.9% → 67.1% |
+| Tidefin  |       47.5% → 56.7% |         20.8% → 29.7% |
+| Cindrake |       48.7% → 55.3% |         25.0% → 32.3% |
+
+The three still sit at the edges: each has a gap of about 25 points
+between the levels that no change tried here closes. 2v2 and free-for-all
+on unused line-ups (`FRESH_BASE=7000`): 2v2 44.5% - 55.5%, 4-player
+20.9% - 29.0%, 3-player 28.8% - 42.0% (Halcyra, unchanged).
+
+## Live Wire replaces Spark Trail (Coilemur)
+
+Players found Spark Trail hard to use: opponents walk round the trail. The
+trail was never its worth, though. Taken away for real (the bots never cast
+it), Coilemur fell from 50% to 18% on Hard: its 30% speed burst is what lets
+a grappler catch a shooter. (Switching a skill off with a very long cooldown,
+as the levers in the sixth pass did, still lets it be cast once at the start
+and after a refund; it reported Spark Trail as worth 1.2 points. Switch a
+skill off by giving it a kind the bots never choose.)
+
+**Live Wire** (11 s): after a quarter-second wind-up Coilemur runs 30%
+faster for 3.5 s and locks a wire onto the enemy nearest the aim (380 px).
+For 2.5 s the enemy takes 3 every half second; if it gets more than 250 px
+away the wire yanks it 220 px back, deals 6 and paralyses it for half a
+second, and snaps. Walls cut it. A wire that finds nobody keeps its full
+cooldown (no refund, so the speed burst can't be spammed). The rite Long
+Wire (3.5 s) replaces Long Trail. Spark Trail itself stays for the Spire's
+Static Wake blessing (`SPARK_TRAIL`).
+
+Coilemur health 150 (148). Two seeds, 24 games a pair: Hard 49.9% and expert
+60.5% (with Spark Trail 50.0% / 62.3%); without Live Wire it would be 19.4% /
+41.4%. Normal handicap 0.31 (0.357): Normal 52.9% (39.7% before). 2v2 44.8% -
+55.2%, 4-player 21.6% - 28.1%, 3-player 28.8% - 42.6% on unused line-ups.
+
+The Spire's Coilemur Echoes became harder for the play-tests' Halcyra (a
+shooter the wire keeps yanking back). Armour, so each floor clears about as
+often as before (seeds 1-72, main / now): 9 1.40 (1.35) 13 / 17, 16 1.66
+(1.56) 30 / 31, 63 6.8 (6.6) 33 / 29, 65 0.64 (0.60) 38 / 39, 66 4.35 (4.1)
+42 / 39, 69 2.35 (2.2) 13 / 14.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now
