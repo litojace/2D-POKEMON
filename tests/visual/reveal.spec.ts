@@ -6,6 +6,7 @@ import {
   pickRoomMode,
   snap,
 } from "./helpers";
+import { ISLAND, setInsets } from "./ui-measure";
 
 // The Reveal (docs/hidden-picks.md): a PvP match's briefing. Each player's
 // card starts face down (a "?" and their name) while the arena loads, then
@@ -228,3 +229,89 @@ for (const size of SIZES)
         await context.close();
       }
     });
+
+// The Reveal and the countdown on the owner's iPhone (956×440 sideways,
+// the Dynamic Island's insets): both reach every edge of the screen, past
+// the notch. The Reveal is marked on the overlay itself in the same step as
+// its markup (no :has rule that Safari could apply a frame late, showing
+// the arena first); the countdown is one big number under a light shade,
+// no card, with the arena and the fighters still in view.
+test("the Reveal and the countdown fill the whole screen on an iPhone held sideways", async ({
+  browser,
+}, info) => {
+  test.setTimeout(90_000);
+  const context = await browser.newContext({
+    viewport: { width: 956, height: 440 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await page.evaluate(() =>
+      (window as any).__room("pvp", { mode: "duel", phase: "briefing" }),
+    );
+    await openPlayPanel(page);
+    await createRoom(page);
+    const overlay = page.locator("#arena-overlay");
+    await expect
+      .poll(async () => {
+        await page.evaluate(() => (window as any).__push());
+        return overlay.locator(".match-reveal").count();
+      })
+      .toBe(1);
+    await setInsets(page, ISLAND);
+    const whole = () =>
+      overlay.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return [r.left, r.top, r.width, r.height].map(Math.round);
+      });
+    await expect(overlay).toHaveClass(/\bis-reveal\b/);
+    expect(await whole()).toEqual([0, 0, 956, 440]);
+
+    // Everyone is ready: 3, 2, 1.
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__snap.phase = "countdown";
+      w.__snap.remaining = 2;
+      w.__push();
+    });
+    const card = overlay.locator(".countdown-card");
+    await expect(card.locator("h2")).toHaveText("2");
+    await expect(overlay).toHaveClass(/\bis-countdown\b/);
+    await expect(overlay).not.toHaveClass(/\bis-reveal\b/);
+    expect(await whole()).toEqual([0, 0, 956, 440]);
+    const look = await page.evaluate(() => {
+      const ov = document.getElementById("arena-overlay")!;
+      const c = ov.querySelector<HTMLElement>(".countdown-card")!;
+      const s = getComputedStyle(c);
+      const h2 = c.querySelector("h2")!;
+      const shade = getComputedStyle(ov).backgroundImage;
+      return {
+        card: [s.backgroundColor, s.backgroundImage, s.borderTopWidth],
+        number: parseFloat(getComputedStyle(h2).fontSize),
+        // The shade is see-through: its darkest stop lets the arena show.
+        alphas: [...shade.matchAll(/rgba\([^)]*,\s*([\d.]+)\)/g)].map((m) =>
+          Number(m[1]),
+        ),
+      };
+    });
+    expect(look.card).toEqual(["rgba(0, 0, 0, 0)", "none", "0px"]);
+    expect(look.number).toBeGreaterThanOrEqual(110);
+    expect(look.alphas.length).toBeGreaterThan(0);
+    expect(Math.max(...look.alphas)).toBeLessThanOrEqual(0.65);
+    await snap(page, info, "countdown-956x440-island");
+
+    // The fight: nothing over the arena.
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__snap.phase = "playing";
+      w.__push();
+    });
+    await expect(overlay).toBeEmpty();
+    await expect(overlay).toBeHidden();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

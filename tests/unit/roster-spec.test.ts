@@ -122,7 +122,7 @@ const ROSTER: Record<
     role: "Grappler",
     basic: ["Coil Swipe", 360],
     skills: [
-      ["Magnet Lash", 12],
+      ["Magnet Lash", 11],
       ["Static Clamp", 12],
       ["Spark Trail", 15],
       ["Electromagnet", 20],

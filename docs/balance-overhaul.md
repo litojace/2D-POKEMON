@@ -278,6 +278,66 @@ with all four waves on `main`:
   previous check) goes to 1.02, Auralynx (38.5%) to 1.17 and Mossloth (27.5%)
   to 0.98. In 4-player Mossloth (31.4%) goes to 0.94.
 
+## Fifth pass: after the smarter bots
+
+The smarter Easy, Normal and Hard bots (#238, `docs/smarter-bots.md`) give
+Hard the expert's counterplay (looking away from gazes, jumping seedlings,
+dodging marked ground), so Hard and the expert with Hard's reactions and aim
+now agree within noise (seed 300000: every champion within 4.4 points, most
+within 2). Tuned on Hard, checked on three seeds (310000, 320000 and 330000,
+24 games a pair each, 11,016 duels). One seed is not enough: on the code
+before this pass, Halcyra was 8.8 points apart between two of these seeds.
+
+Changes, kept small because health moves a duel a lot (Coilemur +6 health
+and a 2-second shorter Magnet Lash went from 44% to 59%):
+
+- **Mystowl** (57%): Mind Maze confuses for 2 seconds (was 2.2), Third-Eye
+  Ray deals 15 (was 17).
+- **Cindrake** (56%): health 148 (was 151). **Astrabun**: 132 (was 134).
+- **Coilemur** (43.5%): health 148 (was 144), Magnet Lash every 11 seconds
+  (was 12).
+- **Mossloth** (45%, the bots now jump its seedlings): health 185 (was 180).
+  One more point of Seed Spit damage instead took it to 61%.
+- **Pyranda**: health 152 (was 150). **Halcyra**, **Lumoth**: 141 (was 138).
+  **Shadopus**: 132 (was 129). **Terradon**: 196 (was 193).
+
+Hard, the same 11,016 duels before and after:
+
+| Champion  | Before | After |
+| --------- | -----: | ----: |
+| Pangrove  |  52.8% | 53.2% |
+| Pyranda   |  49.3% | 52.7% |
+| Halcyra   |  46.3% | 52.6% |
+| Mossloth  |  45.0% | 51.7% |
+| Duskveil  |  51.3% | 51.6% |
+| Voltkit   |  51.6% | 51.1% |
+| Terradon  |  48.5% | 51.1% |
+| Coilemur  |  43.5% | 50.6% |
+| Auralynx  |  52.0% | 50.2% |
+| Wombolder |  49.4% | 49.6% |
+| Shadopus  |  47.0% | 49.0% |
+| Astrabun  |  52.7% | 48.8% |
+| Cindrake  |  56.1% | 48.7% |
+| Mystowl   |  56.9% | 48.2% |
+| Glacelle  |  50.0% | 48.0% |
+| Lumoth    |  46.2% | 47.9% |
+| Tidefin   |  49.2% | 47.5% |
+| Sunbara   |  52.2% | 47.5% |
+
+Range 43.5% - 56.9% to 47.5% - 53.2%, spread (sd) 3.5 to 1.8, pairs won 80%
+or more 23 to 21.
+
+- **Normal** (seeds 310000 and 320000): 46.7% - 52.7%, spread 1.9, so
+  `dazeBy` is unchanged, and `RAID_DAZE_BY` with it.
+- **2v2 and free-for-all**: the mode factors of every champion whose health
+  changed are scaled by old / new health, so its health in those modes stays
+  what the factors were tuned for. Checked on unused line-ups
+  (`FRESH_BASE=7000`, 1,000 matches per difficulty): 2v2 43.6% - 55.1%,
+  4-player 21.2% - 30.3%, 3-player 27.8% - 39.8%, the same ranges as after
+  the smarter bots (44.0% - 54.8%, 21.1% - 28.4%, 27.9% - 39.5%) within the
+  check's noise (about ±3 points a champion).
+- The Spire and raid tests pass unchanged.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now

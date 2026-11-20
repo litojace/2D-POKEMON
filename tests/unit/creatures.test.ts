@@ -41,23 +41,23 @@ it("has eighteen fighters, ninety unique moves and four special skills per fight
 it("pins roster health (champion balance overhaul) and movement speeds", () => {
   const baseline: Record<string, [number, number]> = {
     voltkit: [157, 270],
-    cindrake: [151, 240],
+    cindrake: [148, 240],
     tidefin: [146, 285],
     auralynx: [170, 235],
-    lumoth: [138, 265],
+    lumoth: [141, 265],
     mystowl: [138, 255],
-    terradon: [193, 222],
+    terradon: [196, 222],
     duskveil: [148, 260],
-    coilemur: [144, 250],
-    pyranda: [150, 235],
+    coilemur: [148, 250],
+    pyranda: [152, 235],
     glacelle: [158, 255],
-    halcyra: [138, 260],
+    halcyra: [141, 260],
     sunbara: [190, 240],
-    astrabun: [134, 262],
+    astrabun: [132, 262],
     wombolder: [173, 232],
-    shadopus: [129, 278],
+    shadopus: [132, 278],
     pangrove: [140, 245],
-    mossloth: [180, 240],
+    mossloth: [185, 240],
   };
   for (const [id, stats] of Object.entries(baseline)) {
     const c = CHARACTERS[id as CharacterId];
