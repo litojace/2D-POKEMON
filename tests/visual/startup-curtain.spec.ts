@@ -432,21 +432,39 @@ for (const [tips, art] of [
           const r = document.querySelector(s)!.getBoundingClientRect();
           return [r.x, r.y, r.width, r.height].map((v) => Math.round(v));
         }, selector);
-      const boot = [
-        await at("#app-boot h1"),
-        await at("#app-boot .boot-divider"),
-        await at("#app-boot p"),
-      ];
+      // The starfield: title, divider, "Opening the arena…". A painting
+      // (style K): title, gold star, the status line and the bar.
+      const boot = art
+        ? [
+            await at("#app-boot h1"),
+            await at("#app-boot .boot-crest"),
+            await at("#app-boot p"),
+            await at("#app-boot .boot-progress"),
+          ]
+        : [
+            await at("#app-boot h1"),
+            await at("#app-boot .boot-divider"),
+            await at("#app-boot p"),
+          ];
       release();
       await page.waitForSelector(
         `#server-startup${art ? ".has-art" : ""} .server-startup-brand h1`,
       );
       await page.evaluate(() => document.fonts.ready);
-      expect([
-        await at("#server-startup h1"),
-        await at("#server-startup .server-startup-divider"),
-        await at("#server-startup .server-startup-loading h2"),
-      ]).toEqual(boot);
+      expect(
+        art
+          ? [
+              await at("#server-startup h1"),
+              await at("#server-startup .server-startup-crest"),
+              await at("#server-startup .server-startup-loading p"),
+              await at("#server-startup .server-startup-progress"),
+            ]
+          : [
+              await at("#server-startup h1"),
+              await at("#server-startup .server-startup-divider"),
+              await at("#server-startup .server-startup-loading h2"),
+            ],
+      ).toEqual(boot);
     });
 
 for (const size of [
@@ -454,7 +472,7 @@ for (const size of [
   { width: 568, height: 320 },
   { width: 1440, height: 900 },
 ])
-  test(`a painting behind the curtain, its tip in the right column, ${size.width}x${size.height}`, async ({
+  test(`a painting behind the curtain in style K, ${size.width}x${size.height}`, async ({
     browser,
   }, info) => {
     const context = await browser.newContext({
@@ -478,26 +496,48 @@ for (const size of [
         /elemental-horizon/,
       );
       // A 2v2 painting: a tip for 2v2 (or every mode), never the 1v1 one.
-      const tip = curtain.locator(".server-startup-scene .server-startup-tip");
+      const tip = curtain.locator(".server-startup-tip");
       await expect(tip).toBeVisible();
       await expect(tip).not.toContainText("1v1");
       await page.evaluate(() => document.fonts.ready);
+      // One status at a time once the cross-fade is over.
+      await expect(
+        curtain.locator(".server-startup-loading p > span:not([aria-hidden])"),
+      ).toHaveCount(1);
       const box = async (s: string) => (await page.locator(s).boundingBox())!;
-      const [title, tipBox, line, bar] = [
+      const [crest, title, tipBox, line, bar] = [
+        await box("#server-startup .server-startup-crest"),
         await box("#server-startup h1"),
         await tip.boundingBox().then((b) => b!),
-        await box("#server-startup .server-startup-loading h2"),
+        await box(
+          "#server-startup .server-startup-loading p > span:not([aria-hidden])",
+        ),
         await box("#server-startup .server-startup-progress"),
       ];
-      for (const [name, r] of Object.entries({ title, tipBox, line, bar })) {
-        // In the right half, inside the screen.
-        expect(r.x, name).toBeGreaterThan(size.width * 0.4);
+      for (const [name, r] of Object.entries({
+        crest,
+        title,
+        tipBox,
+        line,
+        bar,
+      })) {
+        expect(r.x, name).toBeGreaterThanOrEqual(0);
         expect(r.x + r.width, name).toBeLessThanOrEqual(size.width);
         expect(r.y + r.height, name).toBeLessThanOrEqual(size.height);
       }
-      // Title, then the tip, then the line: nothing overlaps.
-      expect(title.y + title.height).toBeLessThanOrEqual(tipBox.y);
+      // The star and title top right, the star on the title's left.
+      expect(title.x + title.width).toBeGreaterThan(size.width * 0.85);
+      expect(title.y).toBeLessThan(size.height * 0.1);
+      expect(crest.x + crest.width).toBeLessThanOrEqual(title.x);
+      // The bar across the whole width, the status line on its left end,
+      // the tip on the right above both.
+      expect(bar.width).toBeGreaterThan(size.width * 0.85);
+      expect(bar.y + bar.height).toBeGreaterThan(size.height * 0.9);
+      expect(line.x).toBeLessThan(size.width * 0.1);
+      expect(line.y + line.height).toBeLessThanOrEqual(bar.y);
+      expect(tipBox.x + tipBox.width).toBeGreaterThan(size.width * 0.9);
       expect(tipBox.y + tipBox.height).toBeLessThanOrEqual(line.y);
+      expect(tipBox.y).toBeGreaterThan(title.y + title.height);
       await snap(page, info, `startup-painting-${size.width}x${size.height}`);
     } finally {
       await context.close();

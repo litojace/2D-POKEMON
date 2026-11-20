@@ -475,10 +475,39 @@
     font-size: calc(11px * var(--text-scale, 1));
   }
 }
-/* The painting layout (loading-art.ts, setCurtainArt): the painting fills the
-   screen and the title, bar and tip stand in a column on the right, over a
-   darker band so the tip reads on any painting. index.html's boot screen has
-   the same layout when a painting was chosen (html.boot-art). */
+/* The status line holds one status at a time: a new one rises in as the last
+   fades up and out (server-connection.ts setStatusText). */
+.server-startup-loading p {
+  display: grid;
+}
+.server-startup-loading p > span {
+  grid-area: 1 / 1;
+  animation: server-status-in 300ms ease-out;
+}
+.server-startup-loading p > span.is-out {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 300ms ease-out,
+    transform 300ms ease-out;
+}
+@keyframes server-status-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.server-startup-crest {
+  display: none;
+}
+
+/* The painting layout, the owner's style K (20 Nov; loading-art.ts,
+   setCurtainArt): the painting fills the screen; the gold star and the
+   title stand top right; the tip bottom right, above a bar across the whole
+   width with one status line over its left end. Darker bands at the bottom
+   and behind the title keep them readable on any painting. Everything is
+   placed from the screen's edges, as index.html's boot screen places its
+   own (html.boot-art), so nothing moves at the hand-over. */
 .server-startup-painting {
   position: absolute;
   inset: 0;
@@ -493,35 +522,103 @@
   opacity: 1;
 }
 .server-startup.has-art {
-  place-items: center end;
+  --art-top: max(14px, env(safe-area-inset-top));
+  --art-bottom: max(14px, env(safe-area-inset-bottom));
+  --art-left: max(28px, env(safe-area-inset-left));
+  --art-right: max(28px, env(safe-area-inset-right));
 }
 .server-startup.has-art::after {
-  background: linear-gradient(
-    90deg,
-    #02081500 28%,
-    #020815a6 56%,
-    #020815e0 78%
-  );
+  background:
+    linear-gradient(0deg, #020815e6 0, #02081599 18%, #02081500 42%),
+    radial-gradient(ellipse 45% 40% at 100% 0, #020815b3, #02081500);
 }
 .server-startup.has-art .server-startup-card {
-  width: clamp(260px, 46%, 460px);
+  display: contents;
 }
-.server-startup.has-art .server-startup-art {
+.server-startup.has-art
+  :is(
+    .server-startup-scene,
+    .server-startup-divider,
+    .server-startup-loading h2
+  ) {
   display: none;
 }
+.server-startup.has-art .server-startup-brand {
+  position: absolute;
+  top: var(--art-top);
+  right: var(--art-right);
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.6vh, 14px);
+}
+.server-startup.has-art .server-startup-crest {
+  display: block;
+  flex: none;
+  width: clamp(40px, 11.5vh, 88px);
+  height: clamp(40px, 11.5vh, 88px);
+  filter: drop-shadow(0 0 10px #ffd76a88) drop-shadow(0 2px 6px #000a);
+}
+.server-startup.has-art .server-startup-brand h1 {
+  font-size: clamp(24px, 7vh, 54px);
+  text-align: left;
+}
+.server-startup.has-art .server-startup-loading {
+  position: absolute;
+  left: calc(var(--art-left) + 13px);
+  right: calc(var(--art-right) + 13px);
+  bottom: var(--art-bottom);
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.server-startup.has-art .server-startup-loading p {
+  order: -1;
+  min-height: 0;
+  height: 1.4em;
+  max-width: none;
+  color: #f2f5ff;
+  font:
+    500 clamp(13px, 3.4vh, 17px) / 1.4 "DM Sans",
+    sans-serif;
+  text-align: left;
+  white-space: nowrap;
+  text-shadow: 0 1px 8px #000;
+}
+.server-startup.has-art .server-startup-progress {
+  width: 100%;
+}
+.server-startup.has-art .server-startup-loading button {
+  align-self: center;
+}
 /* Over a painting the tip is a caption, not a box (owner's choice, 20 Nov):
-   a gold line on its left and a shade fading out behind the text. The dark
-   band already gives it contrast (at least 13:1 on a bright painting). */
+   a gold line on its right and a shade fading out behind the text. The
+   bottom band gives it contrast on any painting. Placed above the bar, it
+   never moves the bar or the status line however long it is. */
 .server-startup.has-art .server-startup-tip {
+  position: absolute;
+  right: -13px;
+  bottom: calc(100% + clamp(10px, 3vh, 18px));
+  width: auto;
+  max-width: min(46vw, 460px);
   min-height: 0;
   margin: 0;
-  max-height: 100%;
-  overflow: hidden;
+  padding: 6px 12px;
   border: 0;
-  border-left: 3px solid #ffe08a;
-  border-radius: 0 10px 10px 0;
-  background: linear-gradient(90deg, #030a18cc, #030a1866 70%, #030a1800);
+  border-right: 3px solid #ffe08a;
+  border-radius: 10px 0 0 10px;
+  background: linear-gradient(270deg, #030a18cc, #030a1866 70%, #030a1800);
+  color: #e3ebf8;
+  font-size: clamp(12px, 3.3vh, 16px);
+  text-align: right;
   text-shadow: 0 1px 3px #000;
+}
+@media (max-height: 320px) {
+  .server-startup.has-art {
+    --art-top: max(10px, env(safe-area-inset-top));
+    --art-bottom: max(10px, env(safe-area-inset-bottom));
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .server-startup-painting {

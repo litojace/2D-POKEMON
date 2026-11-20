@@ -12,6 +12,9 @@ const orbitPaths = [
 ];
 const orbits = `<svg class="server-startup-orbits" viewBox="0 0 320 320" aria-hidden="true" focusable="false">${orbitPaths.map(({ rx, ry, angle }, index) => `<g transform="rotate(${angle} 160 160)" style="--orbit-duration:${6 + index * 2}s;--orbit-delay:${-index * 2}s"><ellipse class="server-startup-orbit" cx="160" cy="160" rx="${rx}" ry="${ry}"/></g>`).join("")}</svg>`;
 
+/** The game's gold star (the front door's and the top bar's), by the title. */
+const crest = `<svg class="server-startup-crest" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><defs><linearGradient id="startup-crest-gold" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#startup-crest-gold)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg>`;
+
 let retry: (() => void) | undefined;
 let panel: HTMLElement | undefined;
 let reveal: ReturnType<typeof setTimeout> | undefined;
@@ -31,6 +34,35 @@ let held: { floor: number; message: string } | undefined;
 /** The bar never moves backwards while the curtain is held. */
 let shownProgress = 0;
 let leaving: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * The status line: each new status replaces the last with a short
+ * cross-fade (the old one fades up and out, server-connection.css), and
+ * stays at least STATUS_HOLD_MS so quick steps never flicker past.
+ */
+const STATUS_HOLD_MS = 350;
+let statusAt = 0;
+let statusTimer: ReturnType<typeof setTimeout> | undefined;
+function setStatusText(line: HTMLElement, text: string, now = false) {
+  clearTimeout(statusTimer);
+  if (line.dataset.text === text) return;
+  const wait = STATUS_HOLD_MS - (performance.now() - statusAt);
+  if (!now && line.dataset.text && wait > 0) {
+    statusTimer = setTimeout(() => setStatusText(line, text), wait);
+    return;
+  }
+  line.dataset.text = text;
+  statusAt = performance.now();
+  const old = line.querySelector("span:not([aria-hidden])");
+  if (old) {
+    old.setAttribute("aria-hidden", "true");
+    old.classList.add("is-out");
+    setTimeout(() => old.remove(), 300);
+  }
+  const span = document.createElement("span");
+  span.textContent = text;
+  line.append(span);
+}
 
 function updateProgress() {
   const now = performance.now();
@@ -104,7 +136,11 @@ function showStatus(status: StartupStatus) {
     if (held) return renderStatus();
     if (panel) {
       panel.dataset.status = status;
-      panel.querySelector("p")!.textContent = "Connected. Entering the arena…";
+      setStatusText(
+        panel.querySelector("p")!,
+        "Connected. Entering the arena…",
+        true,
+      );
       updateProgress();
       // Let the fill reach the end before revealing the already-ready game.
       dismiss = setTimeout(() => {
@@ -132,7 +168,7 @@ function renderStatus() {
     panel.className = "server-startup";
     panel.setAttribute("aria-label", "Connecting to Element Arena");
     panel.style.setProperty("--startup-backdrop", `url("${starfield}")`);
-    panel.innerHTML = `<img class="server-startup-painting" alt="" decoding="async" draggable="false" hidden><div class="server-startup-card"><header class="server-startup-brand"><h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span>${orbits}<img src="${sigil}" width="960" height="960" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"></p><div class="server-startup-tip" hidden></div><button type="button" hidden>Try again</button></div></div>`;
+    panel.innerHTML = `<img class="server-startup-painting" alt="" decoding="async" draggable="false" hidden><div class="server-startup-card"><header class="server-startup-brand">${crest}<h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span>${orbits}<img src="${sigil}" width="960" height="960" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"></p><div class="server-startup-tip" hidden></div><button type="button" hidden>Try again</button></div></div>`;
     const emblem = panel.querySelector<HTMLImageElement>(
       ".server-startup-art img",
     )!;
@@ -168,8 +204,7 @@ function renderStatus() {
     failed:
       "Connection is taking longer than expected. Check your connection and try again.",
   };
-  const message = panel.querySelector("p")!;
-  if (message.textContent !== copy[status]) message.textContent = copy[status];
+  setStatusText(panel.querySelector("p")!, copy[status]);
   panel.querySelector("button")!.hidden = status !== "failed";
   // "loading": the server answered and the game is still getting ready (the
   // bar keeps its sheen, unlike a finished "ready").
@@ -212,7 +247,8 @@ export function setCurtainTip(markup: string | null) {
 }
 /**
  * A painting behind the curtain (loading-art.ts): the curtain takes its
- * painting layout (title, bar and tip in a column on the right) and the
+ * painting layout (the owner's style K: the gold star and title top right,
+ * the tip bottom right above a full-width bar and one status line) and the
  * painting fades in over the starfield once decoded. null: the starfield.
  */
 export function setCurtainArt(art: LoadingArt | null) {
@@ -223,14 +259,6 @@ export function setCurtainArt(art: LoadingArt | null) {
   const shell = panel;
   shell.classList.toggle("has-art", !!art);
   shell.classList.remove("has-painting");
-  // With a painting the tip stands in the middle of the column (where the
-  // crest is), so a long or short tip never moves the line and bar below.
-  const tip = shell.querySelector<HTMLElement>(".server-startup-tip")!;
-  if (art) shell.querySelector(".server-startup-scene")!.append(tip);
-  else
-    shell
-      .querySelector(".server-startup-loading")!
-      .insertBefore(tip, shell.querySelector(".server-startup-loading button"));
   picture.hidden = !art;
   if (!art) return void picture.removeAttribute("src");
   picture.style.objectPosition = art.focus ?? "";
@@ -263,7 +291,7 @@ export function releaseStartupCurtain() {
   const leavingPanel = panel;
   panel.dataset.status = "ready";
   panel.removeAttribute("aria-busy");
-  panel.querySelector("p")!.textContent = "Entering the arena…";
+  setStatusText(panel.querySelector("p")!, "Entering the arena…", true);
   updateProgress();
   syncProgressTimer();
   // A later wait for the server (after an hour asleep, say) gets a panel

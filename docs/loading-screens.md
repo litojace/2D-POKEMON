@@ -86,14 +86,17 @@ after another and the saved fighter and avatar were not waited for at all.
    harness sets `localStorage["ea-loading-tips"] = "off"`, unless a test
    turns them on.
 
-8. **Paintings** (`loading-art.ts`, the owner's choice of style E, 20 Nov):
+8. **Paintings** (`loading-art.ts`, 20 Nov):
    hand-painted pictures, made in ChatGPT, of champions in Legendary and
    Mythical Shop skins fighting in the PvP modes
    ([loading-art-prompts.md](loading-art-prompts.md)). With one, the curtain
-   takes its painting layout: the painting fills the screen and the title,
-   the tip (mid-column, so its length never moves the bar) and the bar stand
-   in a column on the right over a darker band; there the tip is a caption
-   with a gold line on its left, not a box (owner's choice, 20 Nov). Every painting has the same
+   takes its painting layout, the owner's style K: the painting fills the
+   screen; the gold star and the title stand top right; the tip (a caption
+   with a gold line on its right, not a box) bottom right, above a loading
+   bar across the whole width with one status line over its left end. Each
+   startup step replaces the last status with a short cross-fade, each shown
+   at least 0.35 s so quick steps never flicker. Darker bands at the bottom
+   and behind the title keep them readable on any painting. Every painting has the same
    chance, never twice in a row. The next start's painting is chosen and
    downloaded once the game is up (`ea-next-art`), so it is on the device
    before that curtain needs it; a first start shows the starfield. The
