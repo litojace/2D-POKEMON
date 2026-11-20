@@ -15533,21 +15533,19 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-countdown:not(:empty) {
   }
 }
 
-/* The raid clock on phones: the game's glass (ui/aero.css tokens), blurred
-   like the quick-chat button rather than a solid box (owner, 20 Nov 2026).
-   Battles otherwise stay blur-free (aero.css: the court changes every
-   frame); a 44 x 20 px pill is as little to blur as that 44 px button. At
-   Low graphics (light-effects.css) the tokens turn it near solid with no
-   blur. The time's <b> drops aero.css's solid battle fill: that rule's
-   :is() counts "#hud.hud-badge #phase-label" (two ids) on top of #battle,
-   so this needs three (#app #battle #raid-hud) to win. */
+/* The raid clock on phones: the game's glass tint and gold rim (ui/aero.css
+   tokens), see-through rather than a solid box (owner, 20 Nov 2026), and no
+   blur: battles stay blur-free (aero.css: the court changes every frame, so
+   a blur would be redrawn every frame). The time's <b> drops aero.css's
+   solid battle fill: that rule's :is() counts "#hud.hud-badge #phase-label"
+   (two ids) on top of #battle, so this needs three (#app #battle #raid-hud)
+   to win. */
 @media (orientation: landscape) {
   :root body.battle-active.touch-mode.battle-raid #raid-hud .raid-elapsed {
     border: 1px solid var(--aero-rim);
     border-radius: 7px;
-    background: var(--aero-tint);
-    -webkit-backdrop-filter: var(--aero-blur);
-    backdrop-filter: var(--aero-blur);
+    background: var(--glass-thin);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   }
   :root
     body.battle-active.touch-mode.battle-raid
