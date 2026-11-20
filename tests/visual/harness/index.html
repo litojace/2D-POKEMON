@@ -17,7 +17,23 @@
     <link rel="icon" type="image/png" href="/icons/arena-192.png" />
     <title>Element Arena · visual harness</title>
     <!-- Keep a usable loading/retry screen even when a release's JS or CSS
-         cannot load. This small shell deliberately has no external assets. -->
+         cannot load. This small shell needs no other file (its two fonts are
+         optional). -->
+    <!-- The boot screen's title and line (optional: system fonts if not). -->
+    <link
+      rel="preload"
+      href="/assets/fonts/barlow-condensed-latin-600-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/assets/fonts/dm-sans-latin-500-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <style id="arena-boot-style">
       html {
         background: #0b1020;
@@ -29,52 +45,213 @@
       #rotate-gate {
         display: none;
       }
+      /* While the game's code downloads, this shell is laid out exactly as
+         the startup curtain that follows it (server-connection.css: the same
+         padding, card, title, divider and line), so the title doesn't move
+         when the curtain takes over. Its fonts are optional: if they can't
+         load, system fonts show and the retry page still works. */
+      @font-face {
+        font-family: "Barlow Condensed";
+        font-style: normal;
+        font-weight: 600;
+        font-display: block;
+        src: url("/assets/fonts/barlow-condensed-latin-600-normal.woff2")
+          format("woff2");
+      }
+      @font-face {
+        font-family: "DM Sans";
+        font-style: normal;
+        font-weight: 500;
+        font-display: block;
+        src: url("/assets/fonts/dm-sans-latin-500-normal.woff2") format("woff2");
+      }
+      #app-boot,
+      #app-boot * {
+        box-sizing: border-box;
+      }
       #app-boot {
         position: fixed;
         inset: 0;
         z-index: 2147483001;
         display: grid;
-        place-content: center;
-        gap: 14px;
-        padding: 24px;
-        background: #0b1020;
-        color: #edf3ff;
+        place-items: center;
+        padding: max(20px, env(safe-area-inset-top))
+          max(24px, env(safe-area-inset-right))
+          max(20px, env(safe-area-inset-bottom))
+          max(24px, env(safe-area-inset-left));
+        overflow: auto;
+        background: #040d1e;
+        color: #f2f5ff;
         text-align: center;
         font:
           16px/1.5 system-ui,
           sans-serif;
       }
-      /* While the game's code downloads this shell matches the startup
-         curtain that follows it (server-connection.css): the same title and
-         line, so opening the game reads as one loading screen. */
+      #app-boot .boot-card {
+        width: min(1080px, 100%);
+        height: 100%;
+        max-height: 900px;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        justify-items: center;
+        gap: clamp(8px, 2vh, 18px);
+      }
+      #app-boot .boot-brand {
+        display: grid;
+        justify-items: center;
+        gap: clamp(7px, 1.2vh, 12px);
+      }
       #app-boot h1 {
         margin: 0;
         color: #f2f5ff;
         font:
           600 clamp(27px, 7.2vh, 60px) / 0.96 "Barlow Condensed",
           Impact,
-          system-ui,
           sans-serif;
-        letter-spacing: 0.17em;
-        padding-left: 0.17em;
         text-transform: uppercase;
+        text-shadow:
+          0 2px 14px #020714,
+          0 0 25px #9dcfff22;
       }
       #app-boot h1 span {
         display: block;
+        letter-spacing: 0.17em;
+        padding-left: 0.17em;
       }
-      /* A failed load is a message, not a title. */
-      #app-boot:has(button:not([hidden])) h1 {
+      #app-boot .boot-divider {
+        position: relative;
+        display: block;
+        width: clamp(94px, 17vh, 150px);
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          #dfbd6b 35%,
+          #dfbd6b 65%,
+          transparent
+        );
+      }
+      #app-boot .boot-divider::after {
+        content: "";
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        top: -3px;
+        left: calc(50% - 3px);
+        transform: rotate(45deg);
+        background: #f3d58c;
+      }
+      #app-boot .boot-loading {
+        grid-row: 3;
+        width: min(520px, 100%);
+        display: grid;
+        justify-items: center;
+        gap: 10px;
+      }
+      #app-boot p {
+        margin: 0;
+        color: #f1f4fc;
+        font:
+          500 clamp(14px, 2.1vh, 18px) / 1.3 "DM Sans",
+          sans-serif;
+        letter-spacing: 0.02em;
+        text-shadow: 0 1px 10px #020714;
+      }
+      #app-boot .boot-progress {
+        display: block;
+        width: 100%;
+        height: 12px;
+        border: 1px solid #d7b56ddd;
+        border-radius: 999px;
+        background: #050e20e6;
+      }
+      /* The space the curtain's status line and tip take (empty here), so
+         "Opening the arena…" doesn't move either. */
+      #app-boot .boot-status {
+        display: block;
+        min-height: 2.8em;
+        font: 400 clamp(11px, 1.6vh, 13px) / 1.4 sans-serif;
+      }
+      #app-boot .boot-tip {
+        display: block;
+        visibility: hidden;
+        width: min(560px, 100%);
+        min-height: calc(clamp(88px, 24vh, 150px) * 0.5625 + 18px);
+        margin-top: 2px;
+      }
+      .boot-no-tips #app-boot .boot-tip {
+        display: none;
+      }
+      @media (max-height: 500px) {
+        #app-boot {
+          padding: max(14px, env(safe-area-inset-top))
+            max(28px, env(safe-area-inset-right))
+            max(14px, env(safe-area-inset-bottom))
+            max(28px, env(safe-area-inset-left));
+        }
+        #app-boot .boot-card {
+          gap: 8px;
+        }
+        #app-boot .boot-loading {
+          width: min(430px, 100%);
+          gap: 7px;
+        }
+      }
+      @media (max-height: 320px) {
+        #app-boot {
+          padding-top: max(10px, env(safe-area-inset-top));
+          padding-bottom: max(10px, env(safe-area-inset-bottom));
+        }
+        #app-boot .boot-brand {
+          gap: 7px;
+        }
+        #app-boot h1 {
+          font-size: 23px;
+        }
+        #app-boot .boot-loading {
+          gap: 6px;
+        }
+        #app-boot p {
+          font-size: 13px;
+        }
+        #app-boot .boot-status {
+          font-size: 11px;
+        }
+        #app-boot .boot-tip {
+          min-height: calc(80px * 0.5625 + 14px);
+        }
+      }
+      /* A failed load: a centred message and a reload button. */
+      #app-boot.is-failed {
+        background: #0b1020;
+      }
+      #app-boot.is-failed .boot-card {
+        height: auto;
+        grid-template-rows: none;
+        gap: 14px;
+      }
+      #app-boot.is-failed .boot-loading {
+        grid-row: auto;
+        gap: 14px;
+      }
+      #app-boot.is-failed
+        :is(.boot-divider, .boot-progress, .boot-status, .boot-tip) {
+        display: none;
+      }
+      #app-boot.is-failed h1 {
         color: #ffe08a;
         font:
           700 28px/1.2 system-ui,
           sans-serif;
-        letter-spacing: 0;
-        padding-left: 0;
         text-transform: none;
       }
-      #app-boot p {
-        margin: 0;
+      #app-boot.is-failed p {
         color: #b0c2dd;
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        letter-spacing: 0;
       }
       #app-boot button {
         justify-self: center;
@@ -105,6 +282,16 @@
       }
     </script>
     <script>
+      // No tip will show (loading-tips.ts): the boot screen keeps no space
+      // for one.
+      try {
+        if (localStorage.getItem("ea-loading-tips") === "off")
+          document.documentElement.classList.add("boot-no-tips");
+      } catch {
+        /* No storage: tips show. */
+      }
+    </script>
+    <script>
       // iPadOS calls itself a Mac with a touch screen. Mark iPads so the
       // landscape cover shows when one is held upright, even with a Magic
       // Keyboard or trackpad attached (style.css, #rotate-gate).
@@ -127,6 +314,7 @@
           const title = shell.querySelector("h1");
           title.removeAttribute("aria-label");
           title.textContent = "The arena couldn't load";
+          shell.classList.add("is-failed");
           shell.querySelector("p").textContent =
             "Reload to reconnect. Your account and progress are kept.";
           shell.querySelector("button").hidden = false;
@@ -189,9 +377,21 @@
   </head>
   <body>
     <section id="app-boot" role="status" aria-live="polite">
-      <h1 aria-label="Element Arena"><span>Element</span><span>Arena</span></h1>
-      <p>Opening the arena…</p>
-      <button type="button" hidden>Reload game</button>
+      <div class="boot-card">
+        <header class="boot-brand">
+          <h1 aria-label="Element Arena">
+            <span>Element</span><span>Arena</span>
+          </h1>
+          <span class="boot-divider" aria-hidden="true"></span>
+        </header>
+        <div class="boot-loading">
+          <p>Opening the arena…</p>
+          <span class="boot-progress" aria-hidden="true"></span>
+          <span class="boot-status" aria-hidden="true"></span>
+          <span class="boot-tip" aria-hidden="true"></span>
+          <button type="button" hidden>Reload game</button>
+        </div>
+      </div>
     </section>
     <div id="app"></div>
     <!-- Element Arena plays in landscape only. On touch devices held upright

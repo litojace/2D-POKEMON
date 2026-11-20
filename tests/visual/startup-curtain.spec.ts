@@ -367,3 +367,51 @@ for (const size of [
     }
   });
 }
+
+// index.html's boot screen is laid out as the curtain that replaces it: the
+// title, its divider and "Opening the arena…" stay exactly where they are.
+for (const tips of ["on", "off"])
+  for (const size of [
+    { width: 844, height: 390 },
+    { width: 844, height: 280 },
+    { width: 1920, height: 1200 },
+  ])
+    test(`the boot screen hands over without moving, tips ${tips}, ${size.width}x${size.height}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(size);
+      await page.addInitScript((t) => {
+        localStorage.setItem("ea-loading-tips", t);
+      }, tips);
+      // Hold the game's code back to measure the boot screen alone.
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      await page.route(
+        /\/apps\/client\/src\/main\.ts(?:\?|$)/,
+        async (route) => {
+          await held;
+          await route.continue();
+        },
+      );
+      void page.goto("/").catch(() => {});
+      await page.waitForSelector("#app-boot h1");
+      await page.evaluate(() => document.fonts.ready);
+      const at = (selector: string) =>
+        page.evaluate((s) => {
+          const r = document.querySelector(s)!.getBoundingClientRect();
+          return [r.x, r.y, r.width, r.height].map((v) => Math.round(v));
+        }, selector);
+      const boot = [
+        await at("#app-boot h1"),
+        await at("#app-boot .boot-divider"),
+        await at("#app-boot p"),
+      ];
+      release();
+      await page.waitForSelector("#server-startup .server-startup-brand h1");
+      await page.evaluate(() => document.fonts.ready);
+      expect([
+        await at("#server-startup h1"),
+        await at("#server-startup .server-startup-divider"),
+        await at("#server-startup .server-startup-loading h2"),
+      ]).toEqual(boot);
+    });
