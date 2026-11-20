@@ -73,13 +73,27 @@ full-screen flashes, large auras, changed hitboxes or ability timings.
 Modelled on premium skins in League of Legends, Mobile Legends and Brawl
 Stars: their effects live on the costume and on what the champion does
 (abilities, movement, landing, victory), not on props circling it all the
-time. Riot's VFX guidance puts readability first, so idle stays quiet.
+time. Riot's VFX guidance puts readability first, so idle stays quiet on the
+champion itself; the tier shows at the feet (the aura below).
 
 - **Idle: light on the suit.** Nova Vanguard: energy runs up a seam into
   the chest emblem, which breathes. Sky Pirates: a glint sweeps the
   tricorne's gold brim, and the buckle holds a warm light that flashes a beat
   later. With the ambient budget, a few motes drift off (Nova's rise and
   slow; the pirates' gold dust settles).
+- **A Legendary aura at rest**, so the tier reads from across the court
+  and a 5,500-coin skin never looks like a 3,500 Epic (`legendaryAura` in
+  `epic-signature-fx.ts`). On every graphics level: a pool of the skin's
+  light under the feet, a rim in Legendary gold (`TIER_COLORS.legendary`)
+  and a comet of light running round it. With the ambient budget: a second
+  comet, four marks of the collection turning slowly on the rim (Nova's hex
+  pips in the suit's glow, the pirates' gold compass points, Hồn Việt's
+  drum suns, Stars & Stripes' red and blue stars), a soft light behind the
+  shoulders and two glints rising beside the body, off the face. While the
+  ultimate's motif is out it steps back to the pool and rim. It stays below
+  a Mythical's Stage II rune circle and Stage III seal: one thin rim, no
+  orbiting shards. Idle frames now draw at most 19 calls compact and 36
+  full (budgets 20 and 40).
 - **Moving: its own trail at the feet.** Nova: energy ripples, light streaks
   on a dash. Pirates: sea-spray puffs that bloom and thin out, and gold
   dust. The generic skin trail is off for these skins, so there is only one.

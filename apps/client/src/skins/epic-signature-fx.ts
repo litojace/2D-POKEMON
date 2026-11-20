@@ -1534,13 +1534,17 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
     c: sig.c,
     h: sig.h,
   };
+  const since = ctx.now - (FLOURISHES.get(ctx.g) ?? -Infinity);
+  const summoned = since >= 0 && since < FLOURISH_MS;
+  // While the motif is out the aura steps back to its pool and rim, so the
+  // ultimate's frames cost no more than before.
+  legendaryAura(frame, pirate ? "sky-pirates" : vn ? "hon-viet" : us ? "stars-stripes" : "nova-vanguard", summoned ? "rim" : ctx.ambient ? "full" : "compact");
   if (pirate) pirateSuit(frame);
   else if (vn) vietSuit(frame);
   else if (us) starsSuit(frame);
   else novaSuit(frame);
   // The champion's own motif, summoned: it pops in with a little overshoot
   // as it fades up, holds, then eases back as it fades out.
-  const since = ctx.now - (FLOURISHES.get(ctx.g) ?? -Infinity);
   if (since >= 0 && since < FLOURISH_MS) {
     const k = since / FLOURISH_MS;
     const a = Math.min(1, k / 0.1, (1 - k) / 0.2);
@@ -1555,6 +1559,95 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
   if (pirate) pirateMoments(frame);
   if (vn) vietMoments(frame);
   if (us) starsMoments(frame);
+}
+
+/** Legendary's gold, the tier colour (TIER_COLORS.legendary). */
+const LEGEND_GOLD = 0xffbf3c;
+/**
+ * Each collection's mark on the aura's ring: a small shape with `n` points
+ * (`inner` is the notch depth, 1 for a plain polygon) in its colours.
+ */
+const AURA_MARKS: Record<string, { n: number; inner: number; colors: number[] | null }> = {
+  // Nova Vanguard: hex pips in the suit's own glow.
+  "nova-vanguard": { n: 6, inner: 1, colors: null },
+  // Sky Pirates: compass points in gold.
+  "sky-pirates": { n: 4, inner: 0.34, colors: [0xffd36b] },
+  // Hồn Việt: the Đông Sơn drum's sun in gold.
+  "hon-viet": { n: 8, inner: 0.45, colors: [0xffd84a] },
+  // Stars & Stripes: red and blue stars.
+  "stars-stripes": { n: 5, inner: 0.45, colors: [0xe8434b, 0x5b8cff] },
+};
+const markPts = (x: number, y: number, r: number, n: number, inner: number, rot: number) =>
+  inner >= 1
+    ? poly(x, y, r, n, rot)
+    : Array.from({ length: n * 2 }, (_, i) => {
+        const a = -Math.PI / 2 + rot + (i * Math.PI) / n;
+        const rr = i % 2 ? r * inner : r;
+        return { x: x + Math.cos(a) * rr, y: y + Math.sin(a) * rr };
+      });
+
+/**
+ * The Legendary aura, worn at rest so the tier reads from across the court:
+ * a pool of the skin's light under the feet, a gold rim round them with a
+ * comet of light running along it, and (with the ambient budget) a second
+ * comet, the collection's marks turning slowly on the rim, a soft light
+ * behind the shoulders and two glints rising either side of the body, off
+ * the face. Lighter than a Mythical's rune circle and seal, and stateless:
+ * a function of time only. "rim" (while the motif is out): 6 calls;
+ * compact: 10; full: at most 25.
+ */
+function legendaryAura(f: Frame, collection: string, mode: "rim" | "compact" | "full") {
+  const full = mode === "full";
+  const { s, t } = f;
+  const flat = f.ctx.flat ?? WORLD_ART.groundY;
+  const rx = 25 * s,
+    ry = rx * flat;
+  const breathe = wave(t / 2400);
+  // The pool of light, and the gold rim (its near half over the feet).
+  f.under.fillStyle(f.c, 0.1 + 0.06 * breathe).fillEllipse(f.x, f.ground, rx * 2.3, ry * 2.3);
+  flatRing(f, f.x, f.ground, rx, ry, LEGEND_GOLD, 0.55 + 0.25 * breathe, 1.5 * s, 10);
+  if (mode === "rim") return;
+  // Comets of light running round the rim, each a tail and a bright head.
+  const comets = full ? 2 : 1;
+  const heads: { x: number; y: number; front: boolean }[] = [];
+  f.under.lineStyle(2 * s, f.c, 0.7);
+  for (let i = 0; i < comets; i++) {
+    const a = (t / 2200) * TAU + i * Math.PI;
+    f.under.strokePoints(curve(6, (u) => {
+      const b = a - 0.9 * (1 - u);
+      return { x: f.x + Math.cos(b) * rx, y: f.ground + Math.sin(b) * ry };
+    }));
+    heads.push({ x: f.x + Math.cos(a) * rx, y: f.ground + Math.sin(a) * ry, front: Math.sin(a) > 0 });
+  }
+  for (const p of heads) on(f, p.front).fillStyle(0xffffff, 0.95).fillCircle(p.x, p.y, 1.7 * s);
+  if (!full) return;
+  // The collection's marks, turning slowly on the rim.
+  const mark = AURA_MARKS[collection] ?? AURA_MARKS["nova-vanguard"];
+  const colors = mark.colors ?? [f.c];
+  const rot = (t / 9000) * TAU;
+  colors.forEach((c, ci) => {
+    f.under.fillStyle(c, 0.95);
+    for (let i = ci; i < 4; i += colors.length) {
+      const a = rot + (i * Math.PI) / 2;
+      f.under.fillPoints(markPts(f.x + Math.cos(a) * rx, f.ground + Math.sin(a) * ry, 2.6 * s, mark.n, mark.inner, rot * 2), true);
+    }
+  });
+  // A soft light behind the shoulders.
+  f.under.fillStyle(f.c, 0.07 + 0.05 * breathe).fillCircle(f.x, f.chest, f.headR * 1.7);
+  // Two glints rise either side of the body, fading in and out.
+  for (const side of [-1, 1]) {
+    const k = (t / 1700 + (side > 0 ? 0.5 : 0)) % 1;
+    const a = Math.sin(k * Math.PI);
+    const gx = f.x + side * (f.headR + 5 * s),
+      gy = f.body - k * 26 * s,
+      r = (1 + 1.4 * a) * s;
+    f.under.fillStyle(f.h, 0.9 * a).fillPoints([
+      { x: gx, y: gy - r * 1.8 },
+      { x: gx + r * 0.6, y: gy },
+      { x: gx, y: gy + r * 1.8 },
+      { x: gx - r * 0.6, y: gy },
+    ], true);
+  }
 }
 
 /** Nova Vanguard: energy running along the suit's seams into its emblem. */
