@@ -6,10 +6,15 @@ on:
   pull_request:
     paths-ignore: ["docs/**", "**/*.md"]
   workflow_dispatch:
-# A newer push to the same branch replaces a run still in progress.
+# A newer push to the same branch replaces a run still in progress, except
+# on main: each commit there gets its own group and always runs to the end,
+# so main has a full result per commit even when merges come faster than a
+# run (about 1-1.5 h with 18 visual shards). A shared group with
+# cancel-in-progress: false would not do: GitHub keeps one pending run per
+# group and cancels the older pending one.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   verify:
     # Pinned: ubuntu-latest became 26.04 (Nov 2026), where Playwright 1.56
