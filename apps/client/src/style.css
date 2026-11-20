@@ -15387,7 +15387,10 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
    19 Nov 2026: the card sat over the middle of the arena, and the shade
    stopped short of the screen's sides). main.ts marks the overlay
    .is-countdown. */
-body.battle-active:not(.battle-raid) #arena-overlay.is-countdown:not(:empty) {
+/* Raids and the Spire too (raid-ui.ts marks their overlay; owner, 20 Nov
+   2026): the doubled id beats the raid's touch rule that keeps its card
+   inside the notch insets. */
+body.battle-active #arena-overlay#arena-overlay.is-countdown:not(:empty) {
   position: fixed;
   inset: 0;
   z-index: 80;
@@ -15439,7 +15442,9 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-countdown:not(:empty) {
     0 0 32px color-mix(in srgb, var(--element, #f7d780) 55%, transparent),
     0 6px 24px #000d;
 }
-#arena-overlay.is-countdown .countdown-card > div {
+/* The line under the number: a div in PvP, a paragraph in raids and the
+   Spire (their objective, or the floor). */
+#arena-overlay.is-countdown .countdown-card > :is(div, p) {
   margin: 0;
   color: #eaf1ff;
   font-size: calc(16px * var(--text-scale, 1));
