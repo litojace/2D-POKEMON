@@ -33,6 +33,10 @@ interface Particle {
   grav: number;
   bounce: number;
   spin: number;
+  /** Flames: radius factor of the gold glow (0: none, see shareGlow). */
+  glow: number;
+  /** Flames: white-hot core as dots on the additive layer (see dotCore). */
+  dotCore: boolean;
 }
 interface Decal {
   kind: "scorch" | "crack" | "wet" | "glyph" | "molten";
@@ -63,6 +67,19 @@ export interface BurstOptions {
   grav?: number;
   drag?: number;
   bounce?: number;
+  /**
+   * Flames: draw the white-hot core as a few additive dots instead of a
+   * second glow sprite. The same small bright centre, one glow a flame
+   * instead of two (glow sprites are what a phone's GPU pays for).
+   */
+  dotCore?: boolean;
+  /**
+   * Flames: one gold glow shared by every `shareGlow` flames of a dense
+   * burst, √shareGlow times wider so the light covers the same area. The
+   * flame bodies (soft sprites) and their cores stay one a flame, so the
+   * burst keeps its shape; only the glow sprites are fewer.
+   */
+  shareGlow?: number;
 }
 const MAX_PARTICLES = 700;
 const TAU = Math.PI * 2;
@@ -475,6 +492,9 @@ export class Fx {
     const count = Math.round(
       o.count * Math.min(this.reduced ? 0.35 : 1, this.density),
     );
+    // Each shared glow as wide as the light of the flames it stands for.
+    const share = Math.max(1, Math.round(o.shareGlow ?? 1)),
+      shared = count ? Math.sqrt(count / Math.ceil(count / share)) : 1;
     for (let i = 0; i < count && this.particles.length < MAX_PARTICLES; i++) {
       const a =
         o.angle === undefined
@@ -498,6 +518,8 @@ export class Fx {
         grav: o.grav ?? 0,
         bounce: o.bounce ?? 0.35,
         spin: rand(-8, 8),
+        glow: i % share ? 0 : shared,
+        dotCore: !!o.dotCore,
       });
     }
   }
@@ -599,8 +621,24 @@ export class Fx {
             k < 0.35 ? 0xffa53a : p.color,
             0.85 * fade,
           );
-          this.glow(sx, sy, s * 1.1, 0xffc65a, 0.5 * fade * (0.3 + hot));
-          if (hot > 0) this.glow(sx, sy, s * 0.5, 0xfff4c8, 0.7 * hot);
+          if (p.glow)
+            this.glow(
+              sx,
+              sy,
+              s * 1.1 * p.glow,
+              0xffc65a,
+              0.5 * fade * (0.3 + hot),
+            );
+          if (hot <= 0) break;
+          if (!p.dotCore) {
+            this.glow(sx, sy, s * 0.5, 0xfff4c8, 0.7 * hot);
+            break;
+          }
+          // The glow sprite's falloff in three steps: 0.7 at the centre,
+          // gone by half its radius (about what the sprite shows).
+          g.fillStyle(0xfff4c8, 0.12 * hot).fillCircle(sx, sy, s * 0.36);
+          g.fillStyle(0xfff4c8, 0.22 * hot).fillCircle(sx, sy, s * 0.2);
+          g.fillStyle(0xffffff, 0.36 * hot).fillCircle(sx, sy, s * 0.09);
           break;
         }
         case "drop":

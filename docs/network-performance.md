@@ -247,6 +247,20 @@ Three changes from this work also make every battle lighter now:
   45 ms (what remains is code that draws ellipses directly).
 - **An older phone's first battle starts at Low** (see Auto in section 5).
 
+Fire kits draw fewer glow sprites (20 Nov 2026). Each flame particle drew
+a gold glow and, while young, a second white-hot core glow, so Pyranda's
+ultimate (about 130 flames landing at once) put some 200 glow sprites on
+screen, against at most 58 for any other kit. Two opt-in burst options in
+`fx-engine.ts` keep the flames and their shape and cut only the sprites:
+`dotCore` draws the white-hot core as three additive dots on the particle
+layer, and `shareGlow` gives one in every n flames of a dense burst a
+glow as wide as the light of the n it stands for. Pyranda and Cindrake use
+both. Measured with a fixed frame step (same frames before and after),
+peak glow sprites at High: Pyranda's ultimate 191–221 → 87–90, Chestnut
+Mortar 68 → 38, Ember Curtain 95–99 → 68–70, Cindrake's Magma Leap 77 → 25,
+Sunfire Pillar 63 → 37–39. Glow cover, smoke and particles are unchanged
+within run-to-run noise (a few percent).
+
 Three checks run in CI with the visual suite, and two numbers come back
 from players' phones:
 
