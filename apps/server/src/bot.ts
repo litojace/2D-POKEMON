@@ -29,6 +29,7 @@ import {
   RING_KINDS,
 } from "../../../packages/shared/src/index.js";
 import type { Arena } from "./simulation.js";
+import { LOOK_EVERY, lookAhead } from "./bot-lookahead.js";
 /**
  * Server-side AI opponent. Each tick it reads the arena the way a player
  * would (with a reaction delay and imperfect aim) and returns the same Input
@@ -54,11 +55,17 @@ export interface ExpertFlags {
   jumpSeeds: boolean;
   /** Plans a way out of marked blasts (mortars, creeping marks, bolts, flares). */
   dodgeMarks: boolean;
+  /**
+   * At key moments, plays a few candidate actions about a second ahead on a
+   * copy of the match and takes the best (bot-lookahead.ts). Expert only.
+   */
+  lookAhead?: boolean;
 }
 export const EXPERT_FLAGS: (keyof ExpertFlags)[] = [
   "lookAway",
   "jumpSeeds",
   "dodgeMarks",
+  "lookAhead",
 ];
 interface Profile {
   /** Seconds between seeing the opponent move and reacting to it. */
@@ -138,6 +145,12 @@ interface Profile {
    * (defaults to `reaction`; the expert's is MARK_REACTION).
    */
   markReaction?: number;
+  /**
+   * Measurement only: skill kinds its rules act as if they had never seen
+   * (no score, never chosen), to check that the expert's look-ahead uses a
+   * new mechanic the rules don't know yet (scripts/balance/new-mechanic.ts).
+   */
+  unknownKinds?: readonly string[];
 }
 /**
  * The skill revolution (docs/skill-revolution.md) recalibrated the duel daze
@@ -204,8 +217,8 @@ const NORMAL_DAZE_BEFORE_SMART_BOTS: Partial<Record<CharacterId, number>> = {
  */
 const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
   voltkit: 0.285,
-  cindrake: 0.46,
-  tidefin: 0.27,
+  cindrake: 0.49,
+  tidefin: 0.29,
   auralynx: 0.203,
   lumoth: 0.242,
   mystowl: 0.224,
@@ -220,7 +233,7 @@ const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
   wombolder: 0.335,
   shadopus: 0.33,
   pangrove: 0.355,
-  mossloth: 0.31,
+  mossloth: 0.29,
 };
 /**
  * Easy lapses 0.25 less of its seconds than Normal does on the same
@@ -331,6 +344,7 @@ export const EXPERT_PROFILE: Profile = {
     lookAway: true,
     jumpSeeds: true,
     dodgeMarks: true,
+    lookAhead: true,
   },
 };
 /** Every profile a BotBrain can use, the expert's included (balance scripts). */
@@ -643,7 +657,54 @@ export class BotBrain {
     this.targetId = pick.id;
     return pick;
   }
+  /** Way of moving the look-ahead chose, kept for a moment. */
+  private commit?: { until: number; dx: number; dy: number };
+  private nextLook = 0;
   think(arena: Arena, me: Fighter): Input {
+    const input = this.rules(arena, me);
+    if (!this.profile.expert?.lookAhead) return input;
+    return this.lookAheadOn(arena, me, input);
+  }
+  /**
+   * Expert: weigh the rules' choice against a few others by playing them
+   * ahead on a copy of the match (bot-lookahead.ts). Not in raids, nor
+   * against a stealthed enemy (the copy would give its position away).
+   */
+  private lookAheadOn(arena: Arena, me: Fighter, input: Input): Input {
+    const t = arena.time;
+    const enemy = arena.players.find((p) => p.id === this.targetId);
+    if (
+      arena.mode === "raid" ||
+      arena.phase !== "playing" ||
+      !enemy ||
+      enemy.hp <= 0 ||
+      me.hp <= 0 ||
+      (me.burrow && t < me.burrow.until) ||
+      arena.has(enemy, "stealth")
+    ) {
+      this.commit = undefined;
+      return input;
+    }
+    if (this.commit && t < this.commit.until && !input.dash && !input.jump) {
+      input.dx = this.commit.dx;
+      input.dy = this.commit.dy;
+    }
+    if (t < this.nextLook) return input;
+    const choice = lookAhead(
+      arena,
+      me,
+      enemy,
+      input,
+      this.random,
+      (z) =>
+        !!markOf(z) && arena.rivals(z.owner, me.id) && !this.seesMark(arena, z),
+    );
+    if (!choice) return input;
+    this.nextLook = t + LOOK_EVERY;
+    this.commit = choice.commit;
+    return choice.input;
+  }
+  private rules(arena: Arena, me: Fighter): Input {
     const input = blankInput();
     // An opponent (in a raid, the boss; never a teammate).
     const enemy = this.pickTarget(arena, me);
@@ -1377,6 +1438,7 @@ export class BotBrain {
       bestScore = 0;
     skills.forEach((a: Ability, i) => {
       if (!skillReady(me, i, t)) return;
+      if (this.profile.unknownKinds?.includes(a.kind)) return;
       let score = 0;
       const reach = (range: number) => s.dist <= range;
       switch (a.kind) {

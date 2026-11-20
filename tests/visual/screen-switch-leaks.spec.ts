@@ -82,6 +82,8 @@ function track() {
   }
   const canvases: WeakRef<HTMLCanvasElement>[] = [];
   let made = 0;
+  /** Where this window's canvases were made (a failure lists them). */
+  let from: string[] = [];
   const create = Document.prototype.createElement;
   Document.prototype.createElement = function (
     this: Document,
@@ -90,7 +92,19 @@ function track() {
   ) {
     const e = create.call(this, tag, ...(rest as []));
     if (String(tag).toLowerCase() === "canvas") {
-      made++;
+      // The fighters' rig layers painted ahead in quiet moments
+      // (fighter-prepaint.ts) are a cache that warms one layer every few
+      // seconds (still going 25 s into this test with the CPU slowed 3×),
+      // whatever screen is shown: not this screen's pictures. They still
+      // count as held.
+      const at = new Error().stack?.split("\n").slice(2, 4).join(" ") ?? "";
+      // A fighter look's Plaza sprite, baked once the first time that look
+      // is seen (plaza-sprite.ts), counted to wait for the baking to end.
+      if (at.includes("plaza-sprite")) w.__sprites = (w.__sprites ?? 0) + 1;
+      if (!at.includes("fighter-prepaint")) {
+        made++;
+        from.push(at.replace(/\s+/g, " ").trim());
+      }
       canvases.push(new WeakRef(e as HTMLCanvasElement));
     }
     return e;
@@ -110,6 +124,7 @@ function track() {
   w.__held = {
     start() {
       ran = frames = made = 0;
+      from = [];
     },
     read() {
       const live = canvases
@@ -119,6 +134,7 @@ function track() {
         /** Callbacks run per page frame (each running loop adds one). */
         perFrame: Math.round((ran / Math.max(1, frames)) * 10) / 10,
         made,
+        from,
         canvases: live.length,
         megapixels:
           Math.round(live.reduce((n, c) => n + c.width * c.height, 0) / 1e5) /
@@ -136,6 +152,7 @@ function track() {
 type Held = {
   perFrame: number;
   made: number;
+  from: string[];
   canvases: number;
   megapixels: number;
   contexts: number;
@@ -152,6 +169,15 @@ async function go(page: Page, scene: string) {
   await expect(page.locator(shown)).toBeVisible({ timeout: 30_000 });
   await page.waitForTimeout(300);
 }
+
+/**
+ * Behind the Lobby an iPhone's Plaza lets go of its painted ground (3300 x
+ * 2300, 7.6 Mpx) once the page is idle, within requestIdleCallback's 3 s
+ * timeout (plaza-scene.ts hide()). Measured sooner, on a slow runner it was
+ * still held: 17.8 Mpx against 9.9 (CI, 19 Nov 2026), a pending release,
+ * not a pile.
+ */
+const GROUND_RELEASE_MS = 3200;
 
 /** What the page holds after a full garbage collection, over `ms` on this screen. */
 async function held(page: Page, ms = 1500): Promise<Held> {
@@ -176,22 +202,52 @@ test("switching Lobby and Plaza many times piles nothing up", async ({
   // Two rounds first: every screen opened, its caches warm.
   await round();
   await round();
+  await page.waitForTimeout(GROUND_RELEASE_MS);
   const before = await held(page);
   // Standing on the Plaza (seen before) makes no pictures frame after frame.
   await go(page, "plaza");
+  // Each townsfolk look is baked into a sprite (two canvases, full and
+  // flat) once, the first time it is seen: 13 looks over this test. On a
+  // slow runner the last of those first bakes were still landing here (8
+  // canvases, all plaza-sprite.ts bakeSprite, CI 19 Nov 2026); a look seen
+  // before is never baked again. Wait for them to end, then measure.
+  const sprites = () => page.evaluate(() => (window as any).__sprites ?? 0);
+  await expect
+    .poll(
+      async () => {
+        const from = await sprites();
+        await page.waitForTimeout(1500);
+        return (await sprites()) - from;
+      },
+      {
+        timeout: 60_000,
+        intervals: [0],
+        message: "Plaza sprites still baking",
+      },
+    )
+    .toBe(0);
   const plaza = await held(page, 2500);
   await go(page, "lobby");
   for (let i = 0; i < 8; i++) await round();
+  await page.waitForTimeout(GROUND_RELEASE_MS);
   const after = await held(page);
   info.annotations.push({
     type: "held",
     description: JSON.stringify({ before, plaza, after }),
   });
-  expect(plaza.made, "canvases made in 2.5 s on the Plaza").toBeLessThanOrEqual(
-    4,
-  );
-  // Only the Lobby's loops run behind the Lobby, as many as before.
-  expect(after.perFrame).toBeLessThanOrEqual(before.perFrame);
+  expect(
+    plaza.made,
+    `canvases made in 2.5 s on the Plaza (${plaza.from.join("; ")})`,
+  ).toBeLessThanOrEqual(4);
+  // Only the Lobby's loops run behind the Lobby, as many as before. A loop
+  // left running adds a whole callback to every frame; a one-shot callback
+  // (a fade, a row's edge mark) adds a fraction, the more so where frames
+  // are slow: CI's 1.5 s window holds a few frames, and read 2 before and
+  // 2.3 after with no loop left over. So whole loops are compared.
+  expect(
+    Math.floor(after.perFrame),
+    `loops per frame behind the Lobby (before ${before.perFrame}, after ${after.perFrame})`,
+  ).toBeLessThanOrEqual(Math.floor(before.perFrame));
   expect(after.intervals).toBe(before.intervals);
   expect(after.listeners).toBe(before.listeners);
   expect(after.contexts).toBe(before.contexts);
