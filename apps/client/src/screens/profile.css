@@ -859,3 +859,20 @@
     flex-basis: 100%;
   }
 }
+
+/* Six tabs and Share card share the head of a small phone held sideways
+   (iPhone SE, 667 x 375): Share card keeps its icon, the tabs their room. */
+@media (max-height: 500px) and (max-width: 740px) {
+  .profile-panel [data-profile-share] > span {
+    display: none;
+  }
+  .profile-panel .ui-panel-head > .ui-btn.is-s[data-profile-share] {
+    min-width: 0;
+    width: calc(var(--ctl-s) + 4px);
+    padding-inline: 0;
+    justify-content: center;
+  }
+  .profile-panel .ui-panel-head [data-ui-profile-tab] {
+    padding-inline: 5px;
+  }
+}

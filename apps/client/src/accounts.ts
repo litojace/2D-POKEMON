@@ -56,6 +56,7 @@ import {
   leaderboardSchema,
   friendsBoardSchema,
   recentPlayersSchema,
+  matchHistorySchema,
   nameStatusSchema,
   type RecentPlayer,
   progressSchema,
@@ -70,6 +71,8 @@ import { askConfirm } from "./ui/hub-panel";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { renderOnline } from "./admin-online";
 import { openProfile, type ProfileScreen } from "./screens/profile";
+import { openFriendCard, type FriendCardScreen } from "./screens/friend-card";
+import type { HistoryQuery } from "./screens/match-history";
 import type { ProfileData } from "./screens/profile-view";
 import { openRanks, type RanksScreen } from "./screens/ranks";
 import type { RanksData } from "./screens/ranks-view";
@@ -1576,8 +1579,16 @@ export class AccountUI {
         journey: () => void this.showJourney(),
         raids: (boss) =>
           void this.showRaids(boss, boss ? "rewards" : undefined),
+        history: (q) => this.matchHistory(q),
+        isFriend: (id) => this.isFriend(id),
+        friendCard: (id) => this.showFriendCard(id, false),
         onClose: () => (this.profileScreen = undefined),
       });
+      // Which players in your matches are friends (their names open cards).
+      if (!this.account.guest)
+        void this.loadFriendList(accountId, FRIENDS_MAX_AGE_MS).then(() =>
+          this.profileScreen?.refresh(),
+        );
     }
     await this.loadProfile(accountId);
   }
@@ -1664,6 +1675,7 @@ export class AccountUI {
           ...this.friendsData,
           blocked: this.blocked,
           canMessage: !!this.hooks.messageFriend,
+          canCard: !host,
           invited: this.hooks.invitedFriends?.(),
           room,
           party: {
@@ -1737,6 +1749,7 @@ export class AccountUI {
       },
       unblock: (id) => this.unblock(id),
       message: (id, name) => this.hooks.messageFriend?.(id, name),
+      card: (id) => this.showFriendCard(id, true),
       inviteToParty: async (id) => ok(await this.hooks.inviteToParty?.(id)),
       inviteToRoom: async (id) => ok(await this.hooks.inviteFriend?.(id)),
       join: (code) => this.hooks.joinRoom?.(code),
@@ -1752,6 +1765,50 @@ export class AccountUI {
     await this.loadFriendList(accountId, FRIENDS_MAX_AGE_MS);
     // The list it opened with was still fresh: nothing to redraw.
     if (this.friendsData !== shown && screen.isOpen) screen.refresh();
+  }
+  /** A page of match history: yours, or a friend's (docs/match-history.md). */
+  private async matchHistory(q: HistoryQuery & { player?: string }) {
+    const params = new URLSearchParams({ kind: q.kind });
+    if (q.player) params.set("player", q.player);
+    if (q.at) params.set("at", q.at);
+    if (q.id) params.set("id", q.id);
+    return matchHistorySchema.parse(
+      await this.api(`/api/matches/history?${params}`),
+    );
+  }
+  private isFriend(id: string) {
+    return !!this.friendsData.list?.friends.some((f) => f.id === id);
+  }
+  private friendCard?: FriendCardScreen;
+  /**
+   * A friend's player card and matches. From Friends it has a way back
+   * there; from a match board it opens on its own.
+   */
+  async showFriendCard(id: string, fromFriends: boolean) {
+    if (!this.ensurePlayer()) return;
+    const accountId = this.account!.id;
+    if (!this.friendsData.list) await this.loadFriendList(accountId);
+    const person = this.friendsData.list?.friends.find((f) => f.id === id);
+    if (this.account?.id !== accountId) return;
+    if (!person) {
+      this.hooks.notify("Only friends can see each other's matches.");
+      return;
+    }
+    this.toLobbyScreen();
+    this.friendCard = openFriendCard({
+      person,
+      history: (q) => {
+        if (this.account?.id !== accountId)
+          return Promise.reject(
+            new Error("Your session changed. Reopen the card."),
+          );
+        return this.matchHistory(q);
+      },
+      back: fromFriends ? () => void this.showFriends() : undefined,
+      isFriend: (other) => this.isFriend(other),
+      open: (other) => void this.showFriendCard(other, fromFriends),
+      onClose: () => (this.friendCard = undefined),
+    });
   }
   /** The server's answer `friendsData.list` was read from. */
   private friendsListRaw: unknown;
