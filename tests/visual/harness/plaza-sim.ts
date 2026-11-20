@@ -116,9 +116,11 @@ w.__reply = (ev: string, data: any) =>
     ? handle(ev, data)
     : before.reply?.(ev, data);
 w.__emit = (ev: string, data: any) => {
-  if (ev === "plaza-input") world.input(ME, data.dx, data.dy);
-  else if (ev === "plaza-jump") world.jump(ME);
-  else if (ev === "plaza-dash") world.dash(ME, data?.dx, data?.dy);
+  // Numbered and timed, as the game server takes them (PlazaTiming).
+  const timing = { s: data?.s, t: data?.t };
+  if (ev === "plaza-input") world.input(ME, data.dx, data.dy, timing);
+  else if (ev === "plaza-jump") world.jump(ME, timing);
+  else if (ev === "plaza-dash") world.dash(ME, data?.dx, data?.dy, timing);
   else before.emit?.(ev, data);
 };
 let ticks = 0;

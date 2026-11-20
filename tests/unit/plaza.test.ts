@@ -186,8 +186,9 @@ describe("Plaza movement", () => {
   });
 
   it("trips over a hurdle you walk into, not one you jump", () => {
+    // Far enough back that the jump below can put its top over the hurdle.
     const p = trackPoint(PLAZA_HURDLES[0], 0.5),
-      before = trackPoint(PLAZA_HURDLES[0] - 0.12, 0.5),
+      before = trackPoint(PLAZA_HURDLES[0] - 0.4, 0.5),
       dir = {
         x: (p.x - before.x) / Math.hypot(p.x - before.x, p.y - before.y),
         y: (p.y - before.y) / Math.hypot(p.x - before.x, p.y - before.y),
@@ -200,6 +201,11 @@ describe("Plaza movement", () => {
     run(jumper, dir, Math.max(0, d / PLAZA.speed - 0.325));
     plazaJump(jumper);
     expect(run(jumper, dir, 0.8).some((e) => e.tripped)).toBe(false);
+    // The same at 60 frames a second: clearing doesn't depend on the rate.
+    const phone = plazaBody(before.x, before.y);
+    run(phone, dir, Math.max(0, d / PLAZA.speed - 0.325), 1 / 60);
+    plazaJump(phone);
+    expect(run(phone, dir, 0.8, 1 / 60).some((e) => e.tripped)).toBe(false);
   });
 });
 
@@ -267,43 +273,103 @@ describe("the dash track lap timer", () => {
     expect(timer.running).toBe(true);
     return { timer, t, a: -0.4 };
   };
-  it("forgives the server's copy drifting wide on a bend for a moment", () => {
-    // The server moves you from your stick a network trip late, so after a
-    // dash its copy of you can be well outside while you see yourself inside.
+  it("ends the lap the moment you run off the red lane, either side", () => {
+    const { slack } = PLAZA_LAP_LANE;
+    for (const px of [slack + 2, -slack - 2]) {
+      const { timer, t, a } = startLap();
+      const p = beyond(a + 0.04, px);
+      expect(timer.update(p.x, p.y, t + 50)).toEqual({ cancelled: true });
+      expect(timer.running).toBe(false);
+    }
+  });
+  it("keeps the lap while your body still touches the lane", () => {
     let { timer, t, a } = startLap();
-    for (let i = 0; i < 10; i++, a += 0.04) {
-      const p = beyond(a, PLAZA_LAP_LANE.outerSlack + 40);
+    // Hugging the outer edge, then the inner one, within the slack.
+    for (let i = 0; i < 20; i++, a += 0.04) {
+      const p = beyond(a, PLAZA_LAP_LANE.slack - 4);
+      expect(timer.update(p.x, p.y, (t += 50)).cancelled).toBeUndefined();
+    }
+    for (let i = 0; i < 20; i++, a += 0.04) {
+      const p = beyond(a, -PLAZA_LAP_LANE.slack + 4);
       expect(timer.update(p.x, p.y, (t += 50)).cancelled).toBeUndefined();
     }
     for (; a < Math.PI * 1.5 - 0.15; a += 0.04) {
-      const p = trackPoint(a, 0.9);
+      const p = trackPoint(a);
       timer.update(p.x, p.y, (t += 50));
     }
     const p = trackPoint(-Math.PI / 2 + 0.05);
     expect(timer.update(p.x, p.y, (t += 50)).lapMs).toBeGreaterThan(0);
   });
-  it("still cancels a lap that stays off the lane or cuts the infield", () => {
-    let { timer, t, a } = startLap();
-    let cancelled = false;
-    for (let i = 0; i < 30 && !cancelled; i++, a += 0.02) {
-      const p = beyond(a, PLAZA_LAP_LANE.outerSlack + 40);
-      cancelled = !!timer.update(p.x, p.y, (t += 50)).cancelled;
-      if (cancelled) expect(i * 50).toBeGreaterThan(PLAZA_LAP_LANE.graceMs);
-    }
-    expect(cancelled).toBe(true);
-    ({ timer, t, a } = startLap());
-    // Into the infield, past the slack: at once, no grace.
-    const p = beyond(a, -PLAZA_LAP_LANE.innerOff - 10);
-    expect(timer.update(p.x, p.y, t + 50)).toEqual({ cancelled: true });
-  });
   it("starts a lap only on the painted lane, not walking by just outside", () => {
     const timer = new LapTimer();
     let t = 0;
     for (let a = -Math.PI / 2 - 0.3; a < -Math.PI / 2 + 0.3; a += 0.04) {
-      const p = beyond(a, PLAZA_LAP_LANE.startSlack + 20);
+      const p = beyond(a, PLAZA_LAP_LANE.slack + 20);
       expect(timer.update(p.x, p.y, (t += 50)).started).toBeUndefined();
     }
     expect(timer.running).toBe(false);
+  });
+});
+
+describe("the same step at any frame rate", () => {
+  /** Walk `dir` for `seconds` in steps of `dt`, calling `at` once at `when`. */
+  const walk = (
+    dt: number,
+    seconds: number,
+    from: { x: number; y: number },
+    dir: { x: number; y: number },
+    at?: { when: number; act: (b: ReturnType<typeof plazaBody>) => void },
+  ) => {
+    const b = plazaBody(from.x, from.y);
+    let t = 0,
+      acted = false;
+    while (t < seconds - 1e-9) {
+      if (at && !acted && t >= at.when - 1e-9) {
+        at.act(b);
+        acted = true;
+      }
+      const d = Math.min(dt, seconds - t);
+      plazaStep(b, dir, d);
+      t += d;
+    }
+    return b;
+  };
+  it("dashes as far at the server's 20 steps a second as at 60 frames", () => {
+    const from = { x: 1350, y: 1100 },
+      dir = { x: 1, y: 0 };
+    const server = walk(1 / 20, 1, from, dir, { when: 0, act: plazaDash }),
+      phone = walk(1 / 60, 1, from, dir, { when: 0, act: plazaDash });
+    expect(Math.abs(server.x - phone.x)).toBeLessThan(0.5);
+  });
+  it("trips at the same spot and stands up at the same moment", () => {
+    // Dash along the lane into the first hurdle without jumping.
+    const a = PLAZA_HURDLES[0],
+      from = trackPoint(a - 0.35),
+      to = trackPoint(a),
+      d = Math.hypot(to.x - from.x, to.y - from.y),
+      dir = { x: (to.x - from.x) / d, y: (to.y - from.y) / d };
+    const go = (dt: number, seconds: number) =>
+      walk(dt, seconds, from, dir, { when: 0.2, act: plazaDash });
+    // Mid-stumble: down at the same spot, with the same time left.
+    let server = go(1 / 20, 0.6),
+      phone = go(1 / 60, 0.6);
+    expect(server.stun).toBeGreaterThan(0);
+    expect(Math.abs(server.stun - phone.stun)).toBeLessThan(0.005);
+    expect(Math.hypot(server.x - phone.x, server.y - phone.y)).toBeLessThan(2);
+    // Up again and running on: still together.
+    server = go(1 / 20, 1.2);
+    phone = go(1 / 60, 1.2);
+    expect(server.stun + phone.stun).toBe(0);
+    expect(Math.hypot(server.x - phone.x, server.y - phone.y)).toBeLessThan(2);
+  });
+  it("still trips a dash whose step jumps right over a hurdle", () => {
+    const a = PLAZA_HURDLES[1],
+      p = trackPoint(a),
+      // A 0.1 s step at dash speed (68 px) straddling the hurdle.
+      t = { x: -Math.sin(a), y: Math.cos(a) },
+      b = plazaBody(p.x - t.x * 30, p.y - t.y * 30);
+    plazaDash(b, t);
+    expect(plazaStep(b, t, 0.1).tripped).toBe(true);
   });
 });
 

@@ -782,14 +782,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A stout magma newt with a living flame crest. Layers burns and hits hardest up close.",
     color: 0xff7a4f,
-    health: 148,
+    health: 158,
     speed: 240,
     basic: basic(
       "cinder-snap",
       "Cinder Snap",
       "melee",
       14,
-      455,
+      500,
       "A short-range burst of fire in front of Cindrake.",
       { range: 170, arc: 0.2, knockback: 10 },
     ),
@@ -883,7 +883,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       5,
       240,
       "A fast water projectile.",
-      { speed: 950, radius: 8, range: 640 },
+      { speed: 950, radius: 6, range: 640 },
     ),
     skills: [
       ability(
@@ -906,9 +906,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "river-dash",
         "River Dash",
         "surf",
-        12,
+        20,
         9,
-        "Shoot 300 px along your aim on a jet of water, straight through enemies: each one you pass takes 12 and is Soaked. Pass through anyone and the cooldown drops to 3 seconds: dash in, then dash out.",
+        "Shoot 300 px along your aim on a jet of water, straight through enemies: each one you pass takes 20 and is Soaked. Pass through anyone and the cooldown drops to 3 seconds: dash in, then dash out.",
         {
           range: 300,
           speed: 1000,
@@ -2056,7 +2056,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A three-toed sloth with a moss garden on its back. Moss grows while it stands still; it plants seeds that grow, slows time itself, and lazily swaps places.",
     color: 0x9bd36a,
-    health: 185,
+    health: 148,
     speed: 240,
     passive: "moss",
     basic: basic(
@@ -2064,7 +2064,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "Seed Spit",
       "projectile",
       9,
-      345,
+      300,
       "Spit a hard seed.",
       { speed: 780, range: 640, radius: 10 },
     ),
@@ -2094,7 +2094,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Sloth Time",
         "timewarp",
         0,
-        12,
+        9,
         "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed. Dashing isn't slowed: dash out of the bubble and you are free at once.",
         { range: 520, radius: 165, duration: 3, knockback: 0, warp: 0.35 },
       ),
@@ -2383,8 +2383,8 @@ for (const combo of Object.values(COMBOS)) combo.text = inMeters(combo.text);
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 1.07,
-  cindrake: 0.98,
-  tidefin: 1.106,
+  cindrake: 0.994,
+  tidefin: 1.018,
   auralynx: 0.88,
   lumoth: 1.038,
   mystowl: 0.984,
@@ -2399,7 +2399,7 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   wombolder: 0.913,
   shadopus: 1.011,
   pangrove: 0.904,
-  mossloth: 1.017,
+  mossloth: 1.119,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -2411,8 +2411,8 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
  */
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.873,
-  cindrake: 1.164,
-  tidefin: 0.862,
+  cindrake: 1.16,
+  tidefin: 0.869,
   auralynx: 1.043,
   lumoth: 0.903,
   mystowl: 0.828,
@@ -2427,7 +2427,7 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   wombolder: 1.099,
   shadopus: 1.131,
   pangrove: 1.034,
-  mossloth: 0.884,
+  mossloth: 0.972,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
@@ -2436,8 +2436,8 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
  */
 export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.86,
-  cindrake: 1.143,
-  tidefin: 0.861,
+  cindrake: 1.156,
+  tidefin: 0.839,
   auralynx: 1.17,
   lumoth: 0.824,
   mystowl: 0.832,
@@ -2452,7 +2452,7 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   wombolder: 1.185,
   shadopus: 1.151,
   pangrove: 1.06,
-  mossloth: 0.954,
+  mossloth: 1.05,
 };
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
@@ -3688,8 +3688,8 @@ export const RITES: Rite[] = [
     "major",
     "river-dash",
     "Whitewater",
-    "River Dash throws the enemies it goes through aside (a strong knockback) and deals 16 instead of 12.",
-    { set: { damage: 16, knockback: 110 } },
+    "River Dash throws the enemies it goes through aside (a strong knockback) and deals 26 instead of 20.",
+    { set: { damage: 26, knockback: 110 } },
   ),
   rite(
     "tidefin",
