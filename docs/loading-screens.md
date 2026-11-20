@@ -108,6 +108,12 @@ after another and the saved fighter and avatar were not waited for at all.
    a scene shows only once its picture is there, and the service worker
    installs them with the game (`PRECACHED_ART`).
 
+The status line shows the bar's percentage beside it once the server has
+answered (while it wakes up the bar is only an estimate, so no number).
+Not downloaded megabytes: the curtain waits on answers (account, profile,
+connection, drawing the Lobby), not on a download; the web app's offline
+files come in the background and never hold it.
+
 `tests/visual/startup-curtain.spec.ts` records every uncovered frame from
 the start and checks the hub is only ever seen complete, from the saved copy
 too, that the curtain never waits for a tip, the painting layout and the

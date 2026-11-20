@@ -497,6 +497,26 @@
   grid-area: 1 / 1;
   animation: server-status-in 300ms ease-out;
 }
+/* The percentage beside the status (server-connection.ts updateProgress):
+   gold figures of one width, so the line doesn't shift as it counts. */
+.server-startup-loading p {
+  grid-template-columns: auto auto;
+  justify-content: center;
+  column-gap: 0.5em;
+}
+.server-startup.has-art .server-startup-loading p {
+  justify-content: start;
+}
+.server-startup-percent {
+  grid-area: 1 / 2;
+  align-self: start;
+  color: #ffd76a;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.server-startup-percent:empty {
+  display: none;
+}
 .server-startup-loading p > span.is-out {
   opacity: 0;
   transform: translateY(-6px);

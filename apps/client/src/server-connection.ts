@@ -102,6 +102,13 @@ function updateProgress() {
       );
   if (held) shownProgress = amount;
   meter.style.setProperty("--startup-progress", String(amount));
+  // The percentage beside the status (the owner, 20 Nov), once the server
+  // has answered: while it wakes up the bar is only an estimate, and the
+  // status says so instead. Read out by the bar itself, not the line.
+  const percent = panel?.querySelector<HTMLElement>(".server-startup-percent");
+  if (percent)
+    percent.textContent =
+      currentStatus === "ready" ? `${Math.round(amount * 100)}%` : "";
   meter.setAttribute(
     "aria-valuetext",
     held && currentStatus === "ready"
@@ -181,7 +188,7 @@ function renderStatus() {
     panel.className = "server-startup";
     panel.setAttribute("aria-label", "Connecting to Element Arena");
     panel.style.setProperty("--startup-backdrop", `url("${starfield}")`);
-    panel.innerHTML = `<img class="server-startup-painting" alt="" decoding="async" draggable="false" hidden><div class="server-startup-card"><header class="server-startup-brand">${crest}<h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span>${orbits}<img src="${sigil}" width="960" height="960" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"></p><div class="server-startup-tip" hidden></div><button type="button" hidden>Try again</button></div></div>`;
+    panel.innerHTML = `<img class="server-startup-painting" alt="" decoding="async" draggable="false" hidden><div class="server-startup-card"><header class="server-startup-brand">${crest}<h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span>${orbits}<img src="${sigil}" width="960" height="960" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"><b class="server-startup-percent" aria-hidden="true"></b></p><div class="server-startup-tip" hidden></div><button type="button" hidden>Try again</button></div></div>`;
     const emblem = panel.querySelector<HTMLImageElement>(
       ".server-startup-art img",
     )!;

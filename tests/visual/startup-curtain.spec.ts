@@ -97,6 +97,14 @@ test("the hub is first seen complete: saved fighter, coins and profile", async (
     // Connected early, as a warm server does: the hub is ready to draw
     // before the profile is.
     await page.evaluate(() => (window as any).__sock?.fire("connect"));
+    // Once the server has answered, the percentage beside the status
+    // matches the bar's own value.
+    const percent = curtain.locator(".server-startup-percent");
+    await expect(percent).toHaveText(/^\d{1,3}%$/);
+    const bar = curtain.locator(".server-startup-progress");
+    expect(await percent.textContent()).toBe(
+      `${await bar.getAttribute("aria-valuenow")}%`,
+    );
     await page.evaluate(() => document.fonts.ready);
     await snap(page, info, "startup-curtain-loading-844x390");
     await connectUntilUncovered(page);
