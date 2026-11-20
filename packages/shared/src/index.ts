@@ -1596,7 +1596,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A kingfisher who focuses aura through a crystal beak. The longest reach in the arena, and the frailest body.",
     color: 0x6f8dff,
-    health: 137,
+    health: 141,
     speed: 260,
     basic: basic(
       "aura-quill",
@@ -2056,7 +2056,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A three-toed sloth with a moss garden on its back. Moss grows while it stands still; it plants seeds that grow, slows time itself, and lazily swaps places.",
     color: 0x9bd36a,
-    health: 145,
+    health: 148,
     speed: 240,
     passive: "moss",
     basic: basic(
@@ -2393,13 +2393,13 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   coilemur: 0.927,
   pyranda: 0.988,
   glacelle: 0.972,
-  halcyra: 1.057,
+  halcyra: 1.027,
   sunbara: 1.045,
   astrabun: 0.982,
   wombolder: 0.913,
   shadopus: 1.011,
   pangrove: 0.904,
-  mossloth: 1.297,
+  mossloth: 1.271,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -2421,13 +2421,13 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   coilemur: 1.194,
   pyranda: 0.818,
   glacelle: 0.91,
-  halcyra: 0.838,
+  halcyra: 0.814,
   sunbara: 0.88,
   astrabun: 1.142,
   wombolder: 1.099,
   shadopus: 1.131,
   pangrove: 1.034,
-  mossloth: 1.128,
+  mossloth: 1.105,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
@@ -2446,13 +2446,13 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   coilemur: 1.2,
   pyranda: 0.827,
   glacelle: 0.91,
-  halcyra: 0.797,
+  halcyra: 0.774,
   sunbara: 0.878,
   astrabun: 1.21,
   wombolder: 1.185,
   shadopus: 1.151,
   pangrove: 1.06,
-  mossloth: 1.218,
+  mossloth: 1.193,
 };
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).

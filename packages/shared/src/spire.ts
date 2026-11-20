@@ -1533,7 +1533,7 @@ export const SPIRE_TUNING: Record<
   36: { difficulty: "normal", power: 0.6, armour: 1.54, limit: 180 },
   37: { difficulty: "normal", power: 0.61, armour: 1.74, limit: 180 },
   38: { difficulty: "normal", power: 0.62, armour: 3.37, limit: 180 },
-  39: { difficulty: "normal", power: 0.63, armour: 1.63, limit: 180 },
+  39: { difficulty: "normal", power: 0.63, armour: 1.55, limit: 180 },
   40: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 5: a climb starts at 41 with no blessings, against Light Echoes
   // (a sturdy support capybara, a versatile moth, a sky marksman) and one
