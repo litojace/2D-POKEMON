@@ -102,6 +102,15 @@ interface ProfileDrawing {
   ) => string;
 }
 
+/**
+ * Champions that hold something in the near paw (Astrabun's mallet): seen
+ * from behind, that paw is on the viewer's left, as it is on the right from
+ * the front. Their rear arms are drawn mirrored (creatureLayers), their
+ * shoulder joints swap sides here and the rig mirrors their arm poses, so
+ * every move reads the same from behind.
+ */
+export const REAR_ARMS_MIRRORED: ReadonlySet<CharacterId> = new Set<CharacterId>(["astrabun"]);
+
 /** Authored joints, before the same cute-proportion transform as the front art. */
 export function profilePivot(
   id: CharacterId,
@@ -128,6 +137,10 @@ export function profilePivot(
         wings:
           id === "auralynx" ? [100, 115] : [116, id === "terradon" ? 134 : 126],
       };
+  if (rear && REAR_ARMS_MIRRORED.has(id)) {
+    points.armL = [128, 122];
+    points.armR = [72, 122];
+  }
   const point = points[part];
   return point && [dir === "right" ? 200 - point[0] : point[0], point[1]];
 }
@@ -1429,7 +1442,7 @@ export function creatureProfile(
         ) +
         path("M118 22Q128 6 146 8Q140 18 128 22Z");
       profiles.head = e(100, 88, 39, 33, face) + shine(76, 71, 22);
-      profiles.armR = mallet(140) + profiles.armR;
+      profiles.armR = `<g data-held="1">${mallet(140)}</g>` + profiles.armR;
       // The cotton tail sits over the back.
       profiles.wings =
         e(100, 152, 13, 12, "#ffffff") +
@@ -1469,7 +1482,7 @@ export function creatureProfile(
         ) + star(86, 62, 3);
       // Carried over the near shoulder.
       profiles.armR =
-        `<g transform="rotate(35 112 154)">${mallet(112)}</g>` + profiles.armR;
+        `<g transform="rotate(35 112 154)"><g data-held="1">${mallet(112)}</g></g>` + profiles.armR;
       profiles.tail =
         e(128, 150, 13, 12, "#ffffff") +
         e(124, 146, 5, 4, "#ffffff", ' stroke="none" opacity=".9"');

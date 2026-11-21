@@ -73,7 +73,13 @@ import {
   connectionReportSchema,
 } from "../../../packages/shared/src/connection.js";
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
-import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
+import {
+  PLAZA,
+  PLAZA_FISH,
+  PLAZA_FISH_BY_ID,
+  PLAZA_FISH_RARITY,
+  type PlazaRecord,
+} from "../../../packages/shared/src/plaza.js";
 import {
   PARTY_AWAY_MS,
   Parties,
@@ -739,6 +745,7 @@ export function createArenaServer(
         }
       }
     },
+    connectionLog,
   );
   /** Signed-in players with a live connection, merged per account. */
   function listOnline(): OnlineList {
@@ -3315,6 +3322,32 @@ export function createArenaServer(
         bobaPending = false;
       }
     });
+    // Fishing at the pond: the server picks the fish and the bite
+    // (PlazaWorld.cast/reel); a catch is recorded like the other quests.
+    socket.on("plaza-fish", (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      const d = data as { act?: unknown; tz?: unknown } | null;
+      if (plaza.plazaOf(socket.id) === undefined)
+        return fail(cb, "Not in the Plaza.");
+      const now = Date.now();
+      if (d?.act === "cast") return reply(cb, plaza.cast(socket.id, now, d.tz));
+      if (d?.act === "stop")
+        return reply(cb, { ok: plaza.stopFishing(socket.id, now) });
+      if (d?.act === "reel") return reply(cb, plaza.reel(socket.id, now));
+      if (d?.act !== "land") return fail(cb, "Nothing to do here.");
+      // The fight's end: the server runs it again from its seed (plaza-fight.ts).
+      const r = plaza.land(socket.id, now, (d as { moves?: unknown }).moves);
+      if (r.ok)
+        recordPlaza(socket.id, {
+          kind: "fish",
+          ref: r.fish,
+          coins:
+            PLAZA_FISH_RARITY[PLAZA_FISH_BY_ID[r.fish]?.rarity]?.firstCoins ??
+            0,
+          bookSize: PLAZA_FISH.length,
+        });
+      reply(cb, r);
+    });
     socket.on("plaza-leave", (_data: unknown, cb: unknown) => {
       plaza.leave(socket.id);
       reply(cb, { ok: true });
@@ -3539,6 +3572,8 @@ export function createArenaServer(
     else if (e.type === "lap") recordPlaza(e.key, { kind: "lap", ms: e.ms });
     else if (e.type === "cheers")
       recordPlaza(e.key, { kind: "cheers", n: e.n });
+    else if (e.type === "fish")
+      io.sockets.sockets.get(e.key)?.emit("plaza-fish", e.note);
     else if (e.type === "news") toPlaza(e.plaza, "plaza-news", e.news);
     else if (e.type === "wish") toPlaza(e.plaza, "plaza-wish", e.wish);
     else if (e.type === "wished")

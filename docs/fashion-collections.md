@@ -420,11 +420,21 @@ the gold rim and clasp, a two-tone body, a summoned motif).
 | Glacelle | Wings of ice shards, fanning backward in profile | Its choir robe flaring into a bell |
 | Halcyra | A long red scarf streaming in the wind | A longbow on the back |
 | Sunbara | Tongues of fire at the cape's hem | A paint palette and brush, paint glowing |
-| Astrabun | Its mallet head a full moon | A brass telescope on the back |
+| Astrabun | A moon staff in place of its mallet | A brass telescope in place of its mallet (the club kit's pole telescope removed) |
 | Wombolder | A giant spanner on the back | A watering can |
 | Shadopus | A katana on the back | A giant magnifying glass |
 | Pangrove | Two great lit-veined leaves off the back | Drumsticks crossed on the back |
 | Mossloth | A great clock on the back, hands lit | A big striped pillow |
+
+Props are built like objects, not cut paper: each solid shape takes light at
+its top left and shade at its bottom right (`shadeProp`), and the props carry
+their construction (the watering can's riveted bands, label, filler cap and
+pierced rose; the cake's dripping cream tiers and strawberries; the camera's
+leather grip and ringed lens; the shield's iron rim and boss; the katana's
+pierced guard and cord; the clock's gear rim and pendulum...). Bake Club
+Chef's chestnut comes off (`heldOff`) so its cake sits in that hand. Astrabun's mallet is a held piece too (`data-held`), so Stargazer and Moon
+Blink take it off and hold their own piece along its line (`inMalletFrame`),
+turning with the paw in every view.
 
 Goggle and lens straps (Chestnut Comet, Lab Prodigy, Skysight) run round the
 head in every view (`headStrap`): in profile they stop at the head's edge,

@@ -1,4 +1,4 @@
-import { addDetails, malletHead, type Details } from "./legend-details";
+import { addDetails, inMalletFrame, type Details } from "./legend-details";
 import type { Kit } from "./modern-designs";
 
 /**
@@ -63,19 +63,29 @@ const HERO: Details = {
     const fin = (x: number, a: number, i: number) => k.lume("pulse", `<g transform="rotate(${a} ${x} ${y})">${sc(x, y, 1.45, k.path(boltD(x, y - 10), "#ffd84a", k.ink, 1))}</g>`, i, "#ffd84a");
     k.put("flame", k.side ? fin(k.hx - k.side * 22, -k.side * 30, 0) : fin(k.hx - 34, -30, 0) + fin(k.hx + 34, 30, 1));
   },
-  // Blaze Breaker: a molten greatsword across its back, its edge glowing.
+  // Blaze Breaker: a molten greatsword across its back: a riveted iron
+  // crossguard, a leather-wrapped grip and pommel, and a blade fuller that
+  // runs with magma, its edge glowing.
   cindrake(k) {
-    slung(k, "#2e2a34", 3.4, (x, y, a) => `<g transform="rotate(${a} ${x} ${y})">` +
-      k.rect(x - 8, y + 2, 16, 4, 1.5, "#4a4452", k.ink, 0.9) +
-      k.path(`M${x - 4.5} ${y + 2}V${y - 20}L${x} ${y - 28}L${x + 4.5} ${y - 20}V${y + 2}Z`, "#3a3440", k.ink, 1) +
-      k.lume("pulse", k.path(`M${x - 2.6} ${y}V${y - 19}L${x} ${y - 24}L${x + 2.6} ${y - 19}V${y}Z`, "#ff8a3a", "none", 0), 3, "#ff8a3a") + `</g>`);
+    slung(k, "#3a2a24", 3.4, (x, y, a) => `<g transform="rotate(${a} ${x} ${y})">` +
+      k.circle(x, y + 13, 2.4, "#6a5a52", k.ink, 0.7) +
+      k.rect(x - 1.8, y + 5, 3.6, 7, 1, "#5a3a24", k.ink, 0.6) + k.line(`M${x - 1.8} ${y + 6.5}l3.6 1.4M${x - 1.8} ${y + 8.8}l3.6 1.4`, "#2a1a10", 0.6) +
+      k.path(`M${x - 9} ${y + 2}L${x - 7} ${y + 5.4}H${x + 7}L${x + 9} ${y + 2}L${x + 7} ${y + 3}H${x - 7}Z`, "#4a4452", k.ink, 0.9) +
+      k.circle(x - 6, y + 3.6, 0.6, "#a8a8b4", "none", 0) + k.circle(x + 6, y + 3.6, 0.6, "#a8a8b4", "none", 0) +
+      k.path(`M${x - 5} ${y + 2}V${y - 22}L${x} ${y - 30}L${x + 5} ${y - 22}V${y + 2}Z`, "#3a3440", k.ink, 1) +
+      k.line(`M${x - 3.6} ${y}V${y - 21}`, "#5a5462", 0.8) +
+      k.lume("pulse", k.path(`M${x - 1.6} ${y}V${y - 21}L${x} ${y - 25}L${x + 1.6} ${y - 21}V${y}Z`, "#ff8a3a", "none", 0) + k.line(`M${x + 4.4} ${y - 1}V${y - 21.4}L${x} ${y - 29}`, "#ffb347", 0.8), 3, "#ff8a3a") + `</g>`);
   },
-  // Tide Guardian: a golden trident across its back, its prongs lit.
+  // Tide Guardian: a golden trident across its back: barbed prongs with
+  // lit tips, a crossbar set with a pearl, and a shaft bound with sea-blue
+  // cord.
   tidefin(k) {
     slung(k, "#e8b84a", 2.4, (x, y, a) => `<g transform="rotate(${a} ${x} ${y})">` +
-      k.path(`M${x - 9} ${y - 2}Q${x} ${y + 6} ${x + 9} ${y - 2}L${x + 9} ${y - 14}L${x + 6} ${y - 6}Q${x} ${y} ${x - 6} ${y - 6}L${x - 9} ${y - 14}Z`, "#e8b84a", k.ink, 0.9) +
-      k.path(`M${x - 2} ${y + 1}L${x} ${y - 18}L${x + 2} ${y + 1}Z`, "#e8b84a", k.ink, 0.9) +
-      k.lume("pulse", k.circle(x - 9, y - 14, 1.6, "#bff6ff", "none", 0) + k.circle(x, y - 18, 1.8, "#bff6ff", "none", 0) + k.circle(x + 9, y - 14, 1.6, "#bff6ff", "none", 0), 3, "#7ff0ff") + `</g>`);
+      k.line(`M${x} ${y + 8}V${y + 14}`, "#2c6fb0", 3.4) + k.line(`M${x - 1.6} ${y + 9}l3.2 1.4M${x - 1.6} ${y + 11.6}l3.2 1.4`, "#9fd8ff", 0.6) +
+      k.path(`M${x - 10} ${y - 2}Q${x} ${y + 7} ${x + 10} ${y - 2}L${x + 10} ${y - 15}L${x + 12} ${y - 12}L${x + 7} ${y - 6}Q${x} ${y} ${x - 7} ${y - 6}L${x - 12} ${y - 12}L${x - 10} ${y - 15}Z`, "#e8b84a", k.ink, 0.9) +
+      k.path(`M${x - 2.2} ${y + 1}L${x} ${y - 20}L${x + 2.2} ${y + 1}Z`, "#e8b84a", k.ink, 0.9) + k.path(`M${x - 2} ${y - 13}l-2.4 2.4l2.2 -0.2Z M${x + 2} ${y - 13}l2.4 2.4l-2.2 -0.2Z`, "#c8902a", k.ink, 0.5) +
+      k.rect(x - 7, y + 2.4, 14, 3, 1.2, "#c8902a", k.ink, 0.7) + k.circle(x, y + 3.9, 1.7, "#f4f0ff", k.ink, 0.5) +
+      k.lume("pulse", k.circle(x - 10, y - 15, 1.6, "#bff6ff", "none", 0) + k.circle(x, y - 20, 1.8, "#bff6ff", "none", 0) + k.circle(x + 10, y - 15, 1.6, "#bff6ff", "none", 0), 3, "#7ff0ff") + `</g>`);
   },
   // Prism Fist: a cluster of great prism crystals rising off its back.
   auralynx(k) {
@@ -105,18 +115,28 @@ const HERO: Details = {
       k.rect(x - 8, y - 3, 16, 19, 3, "#e8fbff", iron, 1.6) + k.lume("pulse", k.rect(x - 5.5, y - 0.5, 11, 14, 2, "#7ff0ff", "none", 0) + k.path(`M${x} ${y + 1}q4 5 0 10q-4 -5 0 -10Z`, "#ffffff", "none", 0), 3, "#7ff0ff") +
       k.line(`M${x} ${y - 3}V${y + 16}`, iron, 1.2) + k.path(`M${x - 9} ${y + 16}H${x + 9}L${x + 6} ${y + 20}H${x - 6}Z`, iron, k.ink, 0.8)));
   },
-  // Third Eye: a seer's staff crowned with a crescent and a star.
+  // Third Eye: a seer's staff, its head a silver crescent cradling a lit
+  // star and an eye-shaped gem, ribbons tied below it.
   mystowl(k) {
     slung(k, "#3a3070", 2.4, (x, y, a) => `<g transform="rotate(${a} ${x} ${y})">` +
-      k.path(`M${x + 5} ${y - 22}A11 11 0 1 0 ${x + 5} ${y}A8.5 8.5 0 1 1 ${x + 5} ${y - 22}Z`, "#b9a8ff", k.ink, 1) +
-      k.lume("pulse", k.path(k.star(x + 1, y - 11, 5, 5), "#ffffff", k.ink, 0.6), 3, "#c8b8ff") + `</g>`, true);
+      k.path(`M${x - 1} ${y + 2}q-6 4 -8 12M${x + 1} ${y + 2}q6 3 7 11`, "none", "#b9a8ff", 1.4) +
+      k.rect(x - 2.6, y - 1, 5.2, 4, 1, "#c8ccd6", k.ink, 0.6) +
+      k.path(`M${x + 5} ${y - 22}A11 11 0 1 0 ${x + 5} ${y}A8.5 8.5 0 1 1 ${x + 5} ${y - 22}Z`, "#d8dcf0", k.ink, 1) +
+      k.path(`M${x - 6.4} ${y - 15}A8 8 0 0 0 ${x - 4} ${y - 4}`, "none", "#ffffff", 1) +
+      k.path(`M${x - 4.6} ${y - 11}q2 -2.4 4.6 0q-2.6 2.4 -4.6 0Z`, "#7a5cff", k.ink, 0.5) + k.circle(x - 2.3, y - 11, 0.8, "#1e1a4a", "none", 0) +
+      k.lume("pulse", k.path(k.star(x + 2, y - 11, 5, 5), "#ffffff", k.ink, 0.6), 3, "#c8b8ff") + `</g>`, true);
   },
-  // Iron Bulwark: a stone tower shield, lava glowing in its cracks.
+  // Iron Bulwark: a stone tower shield rimmed in riveted iron, a raised
+  // boss at its heart, chips in the stone and lava glowing in its cracks.
   terradon(k) {
     held(k, (x, y) => {
       const d = `M${x - 13} ${y - 16}H${x + 13}V${y + 2}Q${x + 13} ${y + 16} ${x} ${y + 22}Q${x - 13} ${y + 16} ${x - 13} ${y + 2}Z`;
-      return k.path(d, "#6a6670", k.ink, 1.3) + k.path(`M${x - 9} ${y - 12}H${x + 9}V${y + 1}Q${x + 9} ${y + 12} ${x} ${y + 17}Q${x - 9} ${y + 12} ${x - 9} ${y + 1}Z`, "#57535c", "#45414a", 0.8) +
-        k.lume("pulse", k.line(`M${x - 6} ${y - 10}L${x - 1} ${y - 2}L${x + 5} ${y - 6}M${x - 1} ${y - 2}L${x + 1} ${y + 8}L${x - 4} ${y + 13}`, "#ff8a3a", 1.6), 3, "#ff8a3a");
+      const inner = `M${x - 9.5} ${y - 12.5}H${x + 9.5}V${y + 1.5}Q${x + 9.5} ${y + 12.5} ${x} ${y + 17}Q${x - 9.5} ${y + 12.5} ${x - 9.5} ${y + 1.5}Z`;
+      return k.path(d, "#4a4652", k.ink, 1.3) + k.path(inner, "#6a6670", "#3a3640", 0.9) +
+        [[-11, -14], [0, -14], [11, -14], [-11, -4], [11, -4], [-9, 8], [9, 8], [0, 19]].map(([dx, dy]) => k.circle(x + dx, y + dy, 0.9, "#a8a8b4", k.ink, 0.4)).join("") +
+        k.path(`M${x - 6} ${y - 9}l3 1l-1 3Z M${x + 5} ${y + 9}l3 -1l-1 3Z`, "#57535c", "none", 0) +
+        k.lume("pulse", k.line(`M${x - 6} ${y - 10}L${x - 1} ${y - 3}L${x + 5} ${y - 7}M${x - 1} ${y - 3}L${x + 1} ${y + 7}L${x - 4} ${y + 12}M${x + 1} ${y + 7}L${x + 6} ${y + 9}`, "#ff8a3a", 1.6), 3, "#ff8a3a") +
+        k.circle(x, y - 1, 3.6, "#57535c", k.ink, 0.9) + k.circle(x - 1, y - 2, 1.2, "#8a8694", "none", 0);
     });
   },
   // Duskwatch: its cape flares into tattered night wings either side.
@@ -135,13 +155,17 @@ const HERO: Details = {
         // From the front its two arms rise either side of the body.
         const w = k.W + 13,
           top = y - 22;
-        return [-1, 1].map((s) => k.rect(x + s * w - 4.5, top, 9, 30, 2, "#e0303a", k.ink, 1.1) + k.rect(x + s * w - 4.5, top - 8, 9, 9, 0, "#dfe4ec", k.ink, 1)).join("") +
+        return [-1, 1].map((s) => k.rect(x + s * w - 4.5, top, 9, 30, 2, "#e0303a", k.ink, 1.1) + k.line(`M${x + s * w - 4.5} ${top + 10}h9M${x + s * w - 4.5} ${top + 12}h9`, "#a81c24", 0.9) +
+          k.rect(x + s * w - 4.5, top - 8, 9, 9, 0, "#dfe4ec", k.ink, 1) + k.line(`M${x + s * w - 3} ${top - 6}h6`, "#ffffff", 0.8) +
+          k.path(s < 0 ? `M${x + s * w - 1.6} ${top - 1.6}v-4.6l3.2 4.6v-4.6` : `M${x + s * w + 1.6} ${top - 5.8}h-3.2v2.3h3.2v2.3h-3.2`, "none", "#3a3f4a", 0.8)).join("") +
           k.lume("blink", k.line(`M${x - w} ${top - 10}l3 -5l-2 0l3 -5M${x + w} ${top - 10}l-3 -5l2 0l-3 -5`, "#fff7a8", 1.3), 3, "#fff7a8");
       }
       const w = v === "side" ? 10 : k.W + 4,
         top = y - 34;
       return k.path(`M${x - w} ${top}V${y - 4}Q${x - w} ${y + 14} ${x} ${y + 14}Q${x + w} ${y + 14} ${x + w} ${y - 4}V${top}H${x + w - 9}V${y - 4}Q${x + w - 9} ${y + 5} ${x} ${y + 5}Q${x - w + 9} ${y + 5} ${x - w + 9} ${y - 4}V${top}Z`, "#e0303a", k.ink, 1.1) +
         k.rect(x - w, top - 8, 9, 9, 0, "#dfe4ec", k.ink, 1) + k.rect(x + w - 9, top - 8, 9, 9, 0, "#dfe4ec", k.ink, 1) +
+        k.line(`M${x - w} ${top + 10}h9M${x + w - 9} ${top + 10}h9M${x - w} ${top + 12}h9M${x + w - 9} ${top + 12}h9`, "#a81c24", 0.9) +
+        k.rect(x - 5, y + 6.4, 10, 5, 1.4, "#c8ccd6", k.ink, 0.7) + k.circle(x - 2.6, y + 8.9, 0.8, "#4a4f5c", "none", 0) + k.circle(x + 2.6, y + 8.9, 0.8, "#4a4f5c", "none", 0) +
         k.lume("blink", k.line(`M${x - w + 4} ${top - 10}l3 -5l-2 0l3 -5M${x + w - 4} ${top - 10}l-3 -5l2 0l-3 -5`, "#fff7a8", 1.3), 3, "#fff7a8");
     });
   },
@@ -150,8 +174,13 @@ const HERO: Details = {
     onBack(k, (x, y, v) => {
       const xs = v === "side" ? [x] : v === "front" ? [x - k.W - 8, x + k.W + 8] : [x - k.W + 2, x + k.W - 2];
       return xs.map((bx, i) =>
-        k.rect(bx - 6, y - 26, 12, 30, 5, "#8a4a2a", k.ink, 1.1) + k.line(`M${bx - 6} ${y - 16}H${bx + 6}M${bx - 6} ${y - 6}H${bx + 6}`, "#c8ccd6", 1.6) +
-        k.path(`M${bx - 4} ${y + 4}H${bx + 4}L${bx + 6} ${y + 9}H${bx - 6}Z`, "#4a4a56", k.ink, 0.8) +
+        k.path(`M${bx - 6} ${y - 2}l-4 7l4 -1Z M${bx + 6} ${y - 2}l4 7l-4 -1Z`, "#c8ccd6", k.ink, 0.7) +
+        k.rect(bx - 6, y - 24, 12, 28, 4, "#8a4a2a", k.ink, 1.1) +
+        k.path(`M${bx - 6} ${y - 22}Q${bx} ${y - 34} ${bx + 6} ${y - 22}Z`, "#c8ccd6", k.ink, 0.9) +
+        k.rect(bx - 6.4, y - 18, 12.8, 2.6, 0.8, "#c8ccd6", k.ink, 0.6) + k.rect(bx - 6.4, y - 4, 12.8, 2.6, 0.8, "#c8ccd6", k.ink, 0.6) +
+        [-3.6, 0, 3.6].map((d) => k.circle(bx + d, y - 16.7, 0.5, "#4a4f5c", "none", 0) + k.circle(bx + d, y - 2.7, 0.5, "#4a4f5c", "none", 0)).join("") +
+        k.path(`M${bx} ${y - 14}q4 2 3 6q-3 3 -6 0q-1 -4 3 -6Z`, "#5a2e18", k.ink, 0.5) +
+        k.path(`M${bx - 4} ${y + 4}H${bx + 4}L${bx + 6} ${y + 9}H${bx - 6}Z`, "#4a4a56", k.ink, 0.8) + k.line(`M${bx - 5} ${y + 6.5}h10`, "#8a8f9c", 0.7) +
         k.lume("pulse", k.path(`M${bx - 4} ${y + 9}Q${bx} ${y + 22} ${bx + 4} ${y + 9}Z`, "#ffb347", "none", 0), 3 + i, "#ffb347")).join("");
     }, true);
   },
@@ -194,25 +223,42 @@ const HERO: Details = {
     if (k.back) k.put("scarf", flames(k.C - k.W - 6, k.C + k.W + 6, k.B + 2));
     else k.put("body", k.side ? flames(k.C - k.side * 2 - 14, k.C - k.side * 2 + 14, k.B) : flames(k.C - k.W - 14, k.C - k.W + 6, k.B) + flames(k.C + k.W - 6, k.C + k.W + 14, k.B), true);
   },
-  // Moon Blink: its mallet head becomes a full moon, its craters lit.
+  // Moon Blink: the mallet comes off (SkinArt.heldOff in hero-art.ts) and
+  // the paw holds a moon staff drawn along the mallet's line
+  // (inMalletFrame): a silver shaft bound in blue, a crescent cradle and a
+  // full moon with its craters, its rim lit.
   astrabun(k) {
-    const { x, y } = malletHead(k);
-    k.put("armR", k.circle(x, y, 17, "#e8ecff", k.ink, 1.2) + k.circle(x - 6, y - 4, 4, "#c8d0f0", "none", 0) + k.circle(x + 6, y + 5, 3, "#c8d0f0", "none", 0) + k.circle(x + 5, y - 7, 2, "#c8d0f0", "none", 0) +
-      k.lume("pulse", `<circle cx="${x}" cy="${y}" r="15" fill="none" stroke="#fff6c9" stroke-width="1.6"/>`, 3, "#fff6c9"));
+    k.put("armR", inMalletFrame(k, (x) => `<g transform="rotate(6 ${x} 155)">` +
+      k.rect(x - 2, 104, 4, 52, 1.6, "#c8d0e6", k.ink, 0.9) +
+      k.line(`M${x - 2} 138l4 2M${x - 2} 142l4 2M${x - 2} 146l4 2`, "#3b4f9a", 1) +
+      k.path(`M${x - 12} 94Q${x - 10} 108 ${x} 109Q${x + 10} 108 ${x + 12} 94Q${x + 6} 104 ${x} 104Q${x - 6} 104 ${x - 12} 94Z`, "#c8d0e6", k.ink, 0.9) +
+      k.circle(x, 88, 13, "#e8ecff", k.ink, 1.2) + k.circle(x - 4.6, 84.6, 3.2, "#c8d0f0", "none", 0) + k.circle(x + 5, 92, 2.4, "#c8d0f0", "none", 0) + k.circle(x + 4, 82, 1.6, "#c8d0f0", "none", 0) +
+      k.lume("pulse", `<circle cx="${x}" cy="88" r="11.4" fill="none" stroke="#fff6c9" stroke-width="1.6"/>`, 3, "#fff6c9") + `</g>`));
   },
-  // Bulldozer: a giant spanner slung across its back.
+  // Bulldozer: a giant adjustable spanner slung across its back: a jaw
+  // with its worm screw, a hanging hole, a ridged rubber grip and a hazard
+  // stripe that glows.
   wombolder(k) {
-    slung(k, "#b8bec8", 4, (x, y, a) => `<g transform="rotate(${a} ${x} ${y})">` +
-      k.path(`M${x - 4} ${y + 6}L${x - 10} ${y - 6}L${x - 6} ${y - 16}L${x - 2} ${y - 8}H${x + 2}L${x + 6} ${y - 16}L${x + 10} ${y - 6}L${x + 4} ${y + 6}Z`, "#c8ccd6", k.ink, 1) +
-      k.lume("pulse", k.rect(x - 2, y + 8, 4, 8, 1, "#ffd23f", "none", 0), 3, "#ffd23f") + `</g>`);
+    slung(k, "#b8bec8", 4.4, (x, y, a) => `<g transform="rotate(${a} ${x} ${y})">` +
+      k.rect(x - 3.4, y + 10, 6.8, 12, 2, "#e0a020", k.ink, 0.9) + k.line(`M${x - 3.4} ${y + 13}h6.8M${x - 3.4} ${y + 16}h6.8M${x - 3.4} ${y + 19}h6.8`, "#8a5a10", 0.8) +
+      k.path(`M${x - 5} ${y + 8}L${x - 11} ${y - 5}L${x - 7} ${y - 17}L${x - 2} ${y - 8}H${x + 2}L${x + 6} ${y - 15}L${x + 11} ${y - 5}L${x + 5} ${y + 8}Z`, "#c8ccd6", k.ink, 1.1) +
+      k.rect(x - 3.6, y - 4, 7.2, 5, 1.4, "#8a8f9c", k.ink, 0.6) + k.line(`M${x - 2.4} ${y - 4}v5M${x - 0.8} ${y - 4}v5M${x + 0.8} ${y - 4}v5M${x + 2.4} ${y - 4}v5`, "#4a4f5c", 0.5) +
+      k.circle(x, y + 4.4, 1.4, "#3a3f4a", k.ink, 0.5) +
+      k.lume("pulse", k.rect(x - 2.4, y + 22.4, 4.8, 3, 0.8, "#ffd23f", "none", 0), 3, "#ffd23f") + `</g>`);
   },
-  // Inkshade: a katana across its back, its wrapped hilt over a shoulder.
+  // Inkshade: a katana across its back, its lacquered scabbard banded, a
+  // pierced round guard, a diamond-wrapped hilt with a capped pommel and
+  // a silk cord, its pommel gem glowing.
   shadopus(k) {
     slung(k, "#1e1e2a", 3, (x, y, a) => `<g transform="rotate(${a} ${x} ${y})">` +
-      k.path(`M${x - 6} ${y + 4}H${x + 6}V${y + 7}H${x - 6}Z`, "#4a4a5a", k.ink, 0.8) +
-      k.rect(x - 2.4, y - 16, 4.8, 20, 1.2, "#c8323a", k.ink, 0.8) +
-      k.line(`M${x - 2.4} ${y - 12}l4.8 3M${x - 2.4} ${y - 6}l4.8 3M${x - 2.4} ${y}l4.8 3`, "#1e1e2a", 0.9) +
-      k.lume("pulse", k.circle(x, y - 18, 2, "#ff6ad8", k.ink, 0.6), 3, "#ff6ad8") + `</g>`);
+      k.line(`M${x} ${y + 12}V${y + 20}`, "#c8323a", 0.9) + k.path(`M${x} ${y + 20}l-2 4h4Z`, "#c8323a", k.ink, 0.4) +
+      k.rect(x - 1.8, y + 8, 3.6, 3, 0.6, "#c89048", k.ink, 0.5) +
+      `<ellipse cx="${x}" cy="${y + 5.6}" rx="6.4" ry="2" fill="#4a4a5a" stroke="${k.ink}" stroke-width=".8"/>` +
+      k.circle(x - 3.4, y + 5.6, 0.7, "#1e1e2a", "none", 0) + k.circle(x + 3.4, y + 5.6, 0.7, "#1e1e2a", "none", 0) +
+      k.rect(x - 2.6, y - 16, 5.2, 20.6, 1.4, "#c8323a", k.ink, 0.8) +
+      Array.from({ length: 5 }, (_, i) => k.path(`M${x} ${y - 14 + i * 4}l2.2 2l-2.2 2l-2.2 -2Z`, "#1e1e2a", "none", 0)).join("") +
+      k.rect(x - 3, y - 19, 6, 3.2, 1, "#c89048", k.ink, 0.6) +
+      k.lume("pulse", k.circle(x, y - 20.6, 1.8, "#ff6ad8", k.ink, 0.5), 3, "#ff6ad8") + `</g>`);
   },
   // Leaf Ranger: two great leaves rising off its back like a glider, their
   // veins lit.
@@ -228,16 +274,25 @@ const HERO: Details = {
       }).join("");
     }, true);
   },
-  // Chrono Keeper: a great clock on its back, its hands sweeping in light.
+  // Chrono Keeper: a great brass clock on its back: a toothed gear rim, a
+  // dial with numerals marked, a pendulum below and hands sweeping in light.
   mossloth(k) {
     const clock = (x: number, y: number, r: number) =>
-      k.circle(x, y, r + 3, "#6a5a3a", k.ink, 1.1) + k.circle(x, y, r, "#f7f1e1", k.ink, 0.8) +
-      [0, 1, 2, 3].map((i) => {
-        const a = (i * Math.PI) / 2;
-        return k.line(`M${x + Math.cos(a) * (r - 1)} ${y + Math.sin(a) * (r - 1)}L${x + Math.cos(a) * (r - 4)} ${y + Math.sin(a) * (r - 4)}`, "#3a2a1a", 1.4);
+      k.path(Array.from({ length: 24 }, (_, i) => {
+        const a = (i * Math.PI) / 12,
+          rr = i % 2 ? r + 3 : r + 5;
+        return `${i ? "L" : "M"}${(x + Math.cos(a) * rr).toFixed(1)} ${(y + Math.sin(a) * rr).toFixed(1)}`;
+      }).join("") + "Z", "#a8823a", k.ink, 1) +
+      k.circle(x, y, r + 1.4, "#6a5a3a", k.ink, 0.8) + k.circle(x, y, r, "#f7f1e1", k.ink, 0.8) +
+      Array.from({ length: 12 }, (_, i) => {
+        const a = (i * Math.PI) / 6,
+          l = i % 3 ? 2 : 3.6;
+        return k.line(`M${x + Math.cos(a) * (r - 1)} ${y + Math.sin(a) * (r - 1)}L${x + Math.cos(a) * (r - 1 - l)} ${y + Math.sin(a) * (r - 1 - l)}`, "#3a2a1a", i % 3 ? 0.8 : 1.4);
       }).join("") +
-      k.lume("pulse", k.line(`M${x} ${y}V${y - r + 4}M${x} ${y}L${x + r * 0.5} ${y + r * 0.2}`, "#5fe0ff", 1.8), 3, "#5fe0ff");
-    if (k.back) k.put("scarf", clock(k.C, k.T + 14, 15));
+      k.lume("pulse", k.line(`M${x} ${y}V${y - r + 4}M${x} ${y}L${x + r * 0.5} ${y + r * 0.2}`, "#5fe0ff", 1.8), 3, "#5fe0ff") +
+      k.circle(x, y, 1.4, "#a8823a", k.ink, 0.5);
+    const pendulum = (x: number, y: number) => k.line(`M${x} ${y}v8`, "#a8823a", 1.2) + k.circle(x, y + 10, 2.6, "#c8a050", k.ink, 0.6);
+    if (k.back) k.put("scarf", pendulum(k.C, k.T + 30) + clock(k.C, k.T + 14, 15));
     else if (k.side) k.put("body", clock(k.C - k.side * (k.W + 6), k.T + 8, 14), true);
     else k.put("body", clock(k.C + k.W + 14, k.T + 6, 14), true);
   },
@@ -258,58 +313,104 @@ const CAMPUS: Details = {
         k.lume("chase", k.rect(k.C + s * (k.W + 12) - 1.4, k.T + 6, 2.8, 16, 1.2, s > 0 ? "#59f0ff" : "#ff4fd8", "none", 0), s > 0 ? 7 : 6, s > 0 ? "#59f0ff" : "#ff4fd8")).join(""));
     onBack(k, (x, y, v) => {
       const w = v === "side" ? 9 : v === "front" ? k.W + 6 : 17;
-      return k.rect(x - w, y - 22, 2 * w, 34, 6, "#2b2f3d", k.ink, 1.1) + k.rect(x - w + 4, y - 4, 2 * w - 8, 12, 3, "#3d4256", k.ink, 0.8) +
+      return k.path(`M${x - 5} ${y - 22}q0 -5 5 -5q5 0 5 5`, "none", "#2b2f3d", 2.2) +
+        k.rect(x - w, y - 22, 2 * w, 34, 6, "#2b2f3d", k.ink, 1.1) +
+        `<path d="M${x - w + 3} ${y - 19}H${x + w - 3}" stroke="#8a8f9c" stroke-width=".8" stroke-dasharray="1 1"/>` +
+        k.rect(x - w + 4, y - 4, 2 * w - 8, 12, 3, "#3d4256", k.ink, 0.8) + k.path(`M${x - w + 4} ${y - 1}H${x + w - 4}`, "none", "#2b2f3d", 1) +
+        k.rect(x - 1.6, y - 2, 3.2, 3.4, 0.8, "#c8ccd6", k.ink, 0.4) +
+        k.path(`M${x - 3} ${y - 10}l3 -3l3 3l-3 3Z`, "#ff4fd8", k.ink, 0.5) +
         ["#ff4fd8", "#59f0ff", "#7dff8a", "#ffd84a"].map((c, i) => k.lume("chase", k.circle(x - w + 4 + i * ((2 * w - 8) / 3), y - 15, 1.6, c, "none", 0), 3 + i, c)).join("");
     });
   },
-  // Lab Prodigy: a great round flask, bubbling green.
+  // Lab Prodigy: a round-bottomed flask with a cork and a paper label, its
+  // glass ruled with measuring marks and catching a streak of light, the
+  // potion inside glowing and bubbling up the neck.
   cindrake(k) {
     held(k, (x, y) =>
-      k.path(`M${x - 3} ${y - 14}h6v8q10 4 10 14q0 10 -13 10q-13 0 -13 -10q0 -10 10 -14Z`, "#e8f8ff", k.ink, 1.1) +
-      k.lume("pulse", k.path(`M${x - 11} ${y + 4}q0 -3 4 -5h14q4 2 4 5q0 7 -11 7q-11 0 -11 -7Z`, "#7dff8a", "none", 0) + k.circle(x - 2, y - 3, 1.4, "#b6ff4f", "none", 0) + k.circle(x + 3, y - 8, 1, "#b6ff4f", "none", 0), 3, "#7dff8a") +
-      k.rect(x - 4, y - 17, 8, 3, 1, "#c8a06a", k.ink, 0.6));
+      k.path(`M${x - 3.2} ${y - 13}h6.4v8q10.5 4 10.5 14q0 10.5 -13.7 10.5q-13.7 0 -13.7 -10.5q0 -10 10.5 -14Z`, "#e8f8ff", k.ink, 1.1) +
+      k.lume("pulse", k.path(`M${x - 11.6} ${y + 4}q0 -3.4 4.6 -5.4h14q4.6 2 4.6 5.4q0 7.6 -11.6 7.6q-11.6 0 -11.6 -7.6Z`, "#7dff8a", "none", 0) +
+        k.circle(x - 3, y - 2, 1.5, "#b6ff4f", "none", 0) + k.circle(x + 2, y - 7, 1.1, "#b6ff4f", "none", 0) + k.circle(x + 0.5, y - 11, 0.8, "#b6ff4f", "none", 0) + k.circle(x + 5, y + 4, 1.2, "#d8ffb0", "none", 0), 3, "#7dff8a") +
+      k.line(`M${x + 8} ${y - 1}h3M${x + 9.4} ${y + 3}h3M${x + 10} ${y + 7}h3`, "#7aa8c8", 0.7) +
+      k.path(`M${x - 8.5} ${y - 1}Q${x - 11} ${y + 4} ${x - 9} ${y + 9}`, "none", "#ffffff", 1.6) +
+      k.rect(x - 5, y + 3, 9, 6, 1, "#f7f1e1", k.ink, 0.5) + k.line(`M${x - 3.4} ${y + 5}h6M${x - 3.4} ${y + 7}h4`, "#8a7a5a", 0.5) +
+      k.path(`M${x - 4.2} ${y - 18}h8.4l-0.8 5.4h-6.8Z`, "#c8956a", k.ink, 0.7) + k.line(`M${x - 3} ${y - 16.4}h6`, "#9a6a40", 0.6) +
+      k.rect(x - 3.6, y - 13.4, 7.2, 2, 0.8, "#c8d8e8", k.ink, 0.5));
   },
-  // Swim Team Star: a striped swim ring round its waist.
+  // Swim Team Star: a swim ring round its waist, banded red and white with
+  // rope loops, a valve and a shine along its top.
   tidefin(k) {
     const y = k.B - 4,
       rx = k.side ? k.W + 6 : k.W + 10,
       ry = 8;
     const ring = (half: "back" | "front") => {
       const d = half === "front" ? `M${k.C - rx} ${y}A${rx} ${ry} 0 0 0 ${k.C + rx} ${y}` : `M${k.C - rx} ${y}A${rx} ${ry} 0 0 1 ${k.C + rx} ${y}`;
-      return k.line(d, k.ink, 9.4) + k.line(d, "#ffffff", 7.4) + `<path d="${d}" fill="none" stroke="#e8343a" stroke-width="7.4" stroke-dasharray="9 9"/>` + (half === "front" ? `<path d="${d}" fill="none" stroke="#ffffff" stroke-opacity=".6" stroke-width="1.4" transform="translate(0 -2)"/>` : "");
+      return k.line(d, k.ink, 9.4) + k.line(d, "#ffffff", 7.4) + `<path d="${d}" fill="none" stroke="#e8343a" stroke-width="7.4" stroke-dasharray="9 9"/>` +
+        (half === "front"
+          ? `<path d="${d}" fill="none" stroke="#ffffff" stroke-opacity=".7" stroke-width="1.4" transform="translate(0 -2.4)"/>` +
+            `<path d="${d}" fill="none" stroke="#f7f1e1" stroke-width=".9" stroke-dasharray="1 6" transform="translate(0 3.6)"/>` +
+            k.rect(k.C + (k.side ? -k.side * 4 : 6) - 1.4, y + ry - 1.6, 2.8, 2.6, 0.6, "#ffd84a", k.ink, 0.4)
+          : "");
     };
     k.put("body", ring("back"), true);
     k.put(k.back ? "scarf" : "body", ring("front"));
   },
-  // Council President: the school banner on its staff, its crest lit.
+  // Council President: the school banner on a staff: a swallowtail flag
+  // with a stitched border and fringe, the crest's star lit on a shield,
+  // and a gilt finial with a tassel.
   auralynx(k) {
     slung(k, "#8a6a4a", 2.2, (x, y) => {
       const f = k.side ? -k.side : k.back ? -1 : 1;
-      return k.path(`M${x} ${y - 2}Q${x + f * 12} ${y - 6} ${x + f * 24} ${y - 2}V${y + 16}Q${x + f * 12} ${y + 12} ${x} ${y + 16}Z`, "#2f3f8c", k.ink, 1) +
-        k.line(`M${x} ${y + 12}Q${x + f * 12} ${y + 8} ${x + f * 24} ${y + 12}`, "#c8323a", 2) +
-        k.lume("pulse", k.path(k.star(x + f * 12, y + 4, 4.5, 5), "#ffffff", k.ink, 0.5), 3, "#bfe8ff") + k.circle(x, y - 3, 2.2, "#dfe4ec", k.ink, 0.6);
+      return k.path(`M${x} ${y - 2}Q${x + f * 11} ${y - 6} ${x + f * 22} ${y - 2}L${x + f * 18} ${y + 7}L${x + f * 22} ${y + 16}Q${x + f * 12} ${y + 12} ${x} ${y + 16}Z`, "#2f3f8c", k.ink, 1) +
+        `<path d="M${x + f * 2} ${y}Q${x + f * 11} ${y - 3.4} ${x + f * 19.5} ${y}L${x + f * 16} ${y + 7}L${x + f * 19.5} ${y + 14}Q${x + f * 12} ${y + 10.4} ${x + f * 2} ${y + 14}Z" fill="none" stroke="#bfe8ff" stroke-width=".6" stroke-dasharray="1.4 1.2"/>` +
+        k.line(`M${x} ${y + 12}Q${x + f * 10} ${y + 8} ${x + f * 19} ${y + 12}`, "#c8323a", 2) +
+        k.path(`M${x + f * 5} ${y}h${f * 10}v7q0 5 ${-f * 5} 7q${-f * 5} -2 ${-f * 5} -7Z`, "#f7f1e1", k.ink, 0.6) +
+        k.lume("pulse", k.path(k.star(x + f * 10, y + 5.4, 3.8, 5), "#ffd84a", k.ink, 0.5), 3, "#ffd84a") +
+        k.path(`M${x - 2.4} ${y - 3}L${x} ${y - 9}L${x + 2.4} ${y - 3}Z`, "#e6c46a", k.ink, 0.6) + k.circle(x, y - 3, 1.8, "#e6c46a", k.ink, 0.5) +
+        k.line(`M${x + f * 2} ${y - 2}q${f * 2} 4 ${f * 1} 8`, "#c8323a", 1) + k.circle(x + f * 3, y + 6.6, 1.2, "#c8323a", "none", 0);
     });
   },
-  // Photo Club Snap: a big camera with a long lens, its flash blinking.
+  // Photo Club Snap: a film camera with a textured leather grip, a lens
+  // barrel in three rings with a glass reflection, a shutter button, a
+  // strap lug, a viewfinder and a flash that blinks.
   lumoth(k) {
     held(k, (x, y, f) =>
-      k.rect(x - 11, y - 8, 22, 15, 3, "#2b2f3d", k.ink, 1) + k.rect(x - 7, y - 11, 8, 4, 1, "#2b2f3d", k.ink, 0.8) +
-      k.rect(x + f * 6 - 5, y - 4, 10, 12, 2, "#3d4256", k.ink, 0.8) + k.circle(x + f * 6, y + 9, 4.5, "#6a8aa8", k.ink, 0.9) +
-      k.circle(x - f * 4, y - 1, 4.5, "#4a5a70", k.ink, 0.9) + k.circle(x - f * 5, y - 2, 1.4, "#ffffff", "none", 0) +
-      k.lume("blink", k.rect(x + 4, y - 11, 5, 3, 1, "#ffffff", k.ink, 0.5), 3, "#fff6c9"));
+      k.rect(x - 12, y - 8, 24, 16, 3, "#2b2f3d", k.ink, 1) +
+      k.rect(x - 12, y - 4, 24, 9, 1, "#4a3a2e", k.ink, 0.6) +
+      Array.from({ length: 10 }, (_, i) => k.circle(x - 10 + (i % 5) * 2.2 + (i > 4 ? 1.1 : 0), y - 2 + (i > 4 ? 3 : 0), 0.35, "#2a1e16", "none", 0)).join("") +
+      k.rect(x - 8, y - 12, 9, 4.4, 1, "#3d4256", k.ink, 0.8) + k.rect(x - 6.4, y - 11, 4, 2.4, 0.6, "#8ab4d8", "none", 0) +
+      k.rect(x + 3.5, y - 10.5, 3.6, 2.6, 0.6, "#c8ccd6", k.ink, 0.5) +
+      k.circle(x + f * 2, y + 1, 7.4, "#3d4256", k.ink, 1) + k.circle(x + f * 2, y + 1, 5.6, "#c8ccd6", k.ink, 0.6) +
+      k.circle(x + f * 2, y + 1, 4.2, "#2a3a5a", k.ink, 0.6) + k.circle(x + f * 2, y + 1, 2.2, "#4a6a9a", "none", 0) +
+      k.path(`M${x + f * 2 - 2.6} ${y - 1.2}q1.4 -1.6 3.4 -1.4`, "none", "#ffffff", 1) +
+      k.circle(x - f * 12.4, y - 5, 1.3, "#c8ccd6", k.ink, 0.5) +
+      k.lume("blink", k.rect(x + f * 6 - 3, y - 7.4, 6, 3.4, 1, "#ffffff", k.ink, 0.5), 3, "#fff6c9"));
   },
-  // Library Prefect: a tall stack of books held at its side.
+  // Library Prefect: a stack of clothbound books, each with banded spines,
+  // gilt titles and cream page edges, a ribbon marker hanging from the top
+  // one and a reading lamp's glint on its clasp.
   mystowl(k) {
-    held(k, (x, y) =>
-      [["#3a5ab0", 0], ["#c8323a", 7], ["#2f8a4f", 14]].map(([c, dy], i) =>
-        k.rect(x - 12 + (i % 2) * 2, y + 8 - (dy as number), 22, 7, 1, c as string, k.ink, 0.9) + k.line(`M${x - 10 + (i % 2) * 2} ${y + 11.5 - (dy as number)}H${x + 8 + (i % 2) * 2}`, "#f7f1e1", 1)).join("") +
-      k.lume("twinkle", k.path(k.star(x + 4, y - 9, 2.4, 4, 0.35), "#fff3c4", "none", 0), 3, "#fff3c4"));
+    held(k, (x, y) => {
+      const book = (bx: number, by: number, w: number, c: string, band: string) =>
+        k.rect(bx, by, w, 7.5, 1.4, c, k.ink, 0.9) +
+        k.rect(bx + w - 4.5, by + 1.2, 3.6, 5.1, 0.6, "#f7f1e1", "#c8b890", 0.5) +
+        k.line(`M${bx + w - 4} ${by + 2.4}h2.6M${bx + w - 4} ${by + 3.8}h2.6M${bx + w - 4} ${by + 5.2}h2.6`, "#d8ccb0", 0.4) +
+        k.line(`M${bx + 2.6} ${by}V${by + 7.5}M${bx + 5} ${by}V${by + 7.5}`, band, 1) +
+        k.line(`M${bx + 7.5} ${by + 3.75}h${w - 14}`, "#f2d27a", 1);
+      return book(x - 13, y + 8, 24, "#3a5ab0", "#24387a") + book(x - 11, y + 0.5, 22, "#b8323a", "#7a1c24") + book(x - 12, y - 7, 23, "#2f8a4f", "#1c5a32") +
+        k.path(`M${x - 3} ${y - 7}v-1h2.4v6l-1.2 -1.2l-1.2 1.2Z`, "#ffd84a", k.ink, 0.4) +
+        k.rect(x + 7.5, y - 5.6, 2.4, 4.4, 0.6, "#f2d27a", k.ink, 0.4) +
+        k.lume("twinkle", k.path(k.star(x + 8.7, y - 3.4, 2.4, 4, 0.35), "#fff3c4", "none", 0), 3, "#fff3c4");
+    });
   },
-  // Team Captain: the game ball held at its side.
+  // Team Captain: a basketball, its seams and pebbled grain, a scuffed
+  // shine and the captain's star stitched on.
   terradon(k) {
     held(k, (x, y) =>
-      k.circle(x, y + 2, 12, "#ff8a2a", k.ink, 1.2) + k.line(`M${x - 12} ${y + 2}H${x + 12}M${x} ${y - 10}V${y + 14}M${x - 8} ${y - 7}Q${x - 3} ${y + 2} ${x - 8} ${y + 11}M${x + 8} ${y - 7}Q${x + 3} ${y + 2} ${x + 8} ${y + 11}`, "#5a2a12", 1) +
-      k.lume("pulse", k.path(`M${x - 6} ${y - 6}q3 -3 7 -3`, "none", "#fff3c4", 1.4), 3, "#fff3c4"));
+      k.circle(x, y + 2, 12, "#f07a24", k.ink, 1.2) +
+      [[-6, -4], [-2, -7], [3, -6], [7, -2], [-8, 3], [4, 5], [-3, 8], [8, 6], [0, 1]].map(([dx, dy]) => k.circle(x + dx, y + 2 + dy, 0.45, "#b8501a", "none", 0)).join("") +
+      k.line(`M${x - 12} ${y + 2}H${x + 12}M${x} ${y - 10}V${y + 14}M${x - 8.5} ${y - 6.5}Q${x - 3} ${y + 2} ${x - 8.5} ${y + 10.5}M${x + 8.5} ${y - 6.5}Q${x + 3} ${y + 2} ${x + 8.5} ${y + 10.5}`, "#3a1a08", 1.2) +
+      k.path(`M${x - 8} ${y - 4}Q${x - 6} ${y - 8} ${x - 1} ${y - 9}`, "none", "#ffd8b0", 1.6) +
+      k.lume("pulse", k.path(k.star(x + 5, y - 3, 2.6, 5), "#fff3c4", k.ink, 0.4), 3, "#fff3c4"));
   },
   // Drama Club Lead: a velvet cape lined in stage-curtain red, tasselled.
   duskveil(k) {
@@ -319,23 +420,48 @@ const CAMPUS: Details = {
     if (k.back) k.put("scarf", cape(k.C - k.W - 2, k.C + k.W + 2));
     else k.put("body", k.side ? cape(k.C - k.side * 4 - 12, k.C - k.side * 4 + 12) : cape(k.C - k.W - 6, k.C + k.W + 6), true);
   },
-  // Robotics Whiz: a little robot buddy clipped to its belt at its side.
+  // Robotics Whiz: a little robot buddy at its side: a riveted body with a
+  // control panel, a screen face whose eyes glow, ear bolts, an antenna
+  // that blinks and little treads.
   coilemur(k) {
     const bot = (x: number, y: number) =>
-      k.rect(x - 7, y - 4, 14, 12, 3, "#c8d0dc", k.ink, 1) + k.rect(x - 9, y - 16, 18, 13, 4, "#dfe4ec", k.ink, 1) +
-      k.rect(x - 6, y - 13, 12, 7, 2, "#2b2f3d", "none", 0) +
-      k.lume("pulse", k.circle(x - 2.5, y - 9.5, 1.5, "#59f0ff", "none", 0) + k.circle(x + 2.5, y - 9.5, 1.5, "#59f0ff", "none", 0), 3, "#59f0ff") +
-      k.line(`M${x} ${y - 16}V${y - 21}`, "#4a4a56", 1) + k.lume("blink", k.circle(x, y - 22, 1.8, "#ff4f5a", k.ink, 0.5), 4, "#ff4f5a");
+      k.rect(x - 8, y + 7, 16, 4, 2, "#3a3f4a", k.ink, 0.8) + [-5, 0, 5].map((d) => k.circle(x + d, y + 9, 1.2, "#8a8f9c", k.ink, 0.4)).join("") +
+      k.rect(x - 7, y - 4, 14, 11, 3, "#c8d0dc", k.ink, 1) +
+      k.rect(x - 4.6, y - 1.4, 9.2, 5.4, 1, "#3d4256", k.ink, 0.5) + k.circle(x - 2, y + 1.3, 1, "#ff4f5a", "none", 0) + k.circle(x + 1, y + 1.3, 1, "#7dff8a", "none", 0) + k.rect(x + 2.4, y + 0.4, 1.4, 1.8, 0.3, "#ffd84a", "none", 0) +
+      [[-6, -3], [6, -3], [-6, 6], [6, 6]].map(([dx, dy]) => k.circle(x + dx, y + dy, 0.5, "#8a8f9c", "none", 0)).join("") +
+      k.rect(x - 9, y - 17, 18, 13, 4, "#dfe4ec", k.ink, 1) +
+      k.rect(x - 6.4, y - 14.4, 12.8, 8, 2, "#1e2230", k.ink, 0.6) +
+      k.lume("pulse", k.rect(x - 4.4, y - 12, 2.6, 3, 1, "#59f0ff", "none", 0) + k.rect(x + 1.8, y - 12, 2.6, 3, 1, "#59f0ff", "none", 0) + k.path(`M${x - 2} ${y - 8}q2 1.4 4 0`, "none", "#59f0ff", 0.7), 3, "#59f0ff") +
+      k.circle(x - 9.6, y - 10.5, 1.8, "#8a8f9c", k.ink, 0.5) + k.circle(x + 9.6, y - 10.5, 1.8, "#8a8f9c", k.ink, 0.5) +
+      k.line(`M${x} ${y - 17}V${y - 22}`, "#4a4a56", 1) + k.lume("blink", k.circle(x, y - 23, 1.8, "#ff4f5a", k.ink, 0.5), 4, "#ff4f5a");
     if (k.back) k.put("scarf", sc(k.C + k.W + 12, k.T + 22, 1.3, bot(k.C + k.W + 12, k.T + 22)));
     else k.put("body", k.side ? sc(k.C + k.side * (k.W + 2), k.T + 26, 1.3, bot(k.C + k.side * (k.W + 2), k.T + 26)) : sc(k.C - k.W - 12, k.T + 22, 1.3, bot(k.C - k.W - 12, k.T + 22)));
   },
-  // Bake Club Chef: a strawberry layer cake on a tray, its candle lit.
+  // Bake Club Chef: a two-tier strawberry cake on a cake stand, cream
+  // dripping from each tier, piped rosettes, strawberries with their seeds
+  // and leaves, and a striped candle alight on top.
   pyranda(k) {
-    held(k, (x, y) =>
-      `<ellipse cx="${x}" cy="${y + 10}" rx="15" ry="4" fill="#dfe4ec" stroke="${k.ink}" stroke-width="1"/>` +
-      k.rect(x - 11, y - 2, 22, 11, 3, "#ffd8e6", k.ink, 1) + k.line(`M${x - 11} ${y + 3}H${x + 11}`, "#ff6fae", 2) +
-      k.rect(x - 8, y - 10, 16, 8, 3, "#fff6f0", k.ink, 1) + k.circle(x - 3, y - 11, 2.6, "#e8343a", k.ink, 0.6) + k.circle(x + 4, y - 11, 2.6, "#e8343a", k.ink, 0.6) +
-      k.rect(x - 1, y - 18, 2, 7, 0.6, "#7ad0ff", k.ink, 0.5) + k.lume("pulse", k.path(`M${x} ${y - 24}q2.4 3 0 5q-2.4 -2 0 -5Z`, "#ffc94a", "none", 0), 3, "#ffc94a"));
+    held(k, (x, y) => {
+      const drips = (x0: number, x1: number, yy: number) =>
+        k.path(`M${x0} ${yy}H${x1}V${yy + 2}` + Array.from({ length: 5 }, (_, i) => {
+          const xx = x1 - ((i + 0.5) * (x1 - x0)) / 5;
+          return `L${xx + 1.4} ${yy + 2}Q${xx} ${yy + 4.5 + (i % 2) * 1.6} ${xx - 1.4} ${yy + 2}`;
+        }).join("") + `L${x0} ${yy + 2}Z`, "#fffaf4", k.ink, 0.6);
+      const berry = (bx: number, by: number) =>
+        k.path(`M${bx} ${by + 3.2}Q${bx - 3} ${by} ${bx - 1.6} ${by - 1.4}Q${bx} ${by - 2.2} ${bx + 1.6} ${by - 1.4}Q${bx + 3} ${by} ${bx} ${by + 3.2}Z`, "#e8343a", k.ink, 0.6) +
+        k.path(`M${bx - 1.8} ${by - 1.4}l1 -1.4l0.8 1l0.8 -1l1 1.4Z`, "#4caf50", k.ink, 0.4) +
+        k.circle(bx - 0.6, by + 0.4, 0.3, "#ffe0a0", "none", 0) + k.circle(bx + 0.8, by + 1.4, 0.3, "#ffe0a0", "none", 0);
+      return (
+        k.path(`M${x - 4} ${y + 13}h8l2 4h-12Z`, "#c8ccd6", k.ink, 0.7) +
+        `<ellipse cx="${x}" cy="${y + 11}" rx="15" ry="3.6" fill="#e6eaf2" stroke="${k.ink}" stroke-width="1"/>` +
+        k.rect(x - 12, y - 1, 24, 11, 3, "#ffc8dc", k.ink, 1) + k.line(`M${x - 12} ${y + 5}H${x + 12}`, "#ff6fae", 2) + drips(x - 12, x + 12, y - 1) +
+        k.rect(x - 8, y - 10, 16, 9, 3, "#fff6f0", k.ink, 1) + drips(x - 8, x + 8, y - 10) +
+        [-9, -4.5, 0, 4.5, 9].map((dx) => k.circle(x + dx, y + 9.4, 1.2, "#fffaf4", k.ink, 0.4)).join("") +
+        berry(x - 4, y - 12) + berry(x + 4, y - 12) + berry(x - 9, y - 3) + berry(x + 9, y - 3) +
+        k.rect(x - 1, y - 19, 2, 7, 0.6, "#7ad0ff", k.ink, 0.5) + k.line(`M${x - 1} ${y - 17}l2 -1M${x - 1} ${y - 14.6}l2 -1`, "#ffffff", 0.6) +
+        k.lume("pulse", k.path(`M${x} ${y - 25}q2.6 3.2 0 5.4q-2.6 -2.2 0 -5.4Z`, "#ffc94a", "#ff8a3a", 0.4), 3, "#ffc94a")
+      );
+    });
   },
   // Choir Soloist: its robe flares into a bell, a stole down the front and
   // notes that twinkle on the hem.
@@ -353,56 +479,179 @@ const CAMPUS: Details = {
     const s = k.side ? -k.side : 1;
     const draw = (x: number, y: number, len: number) =>
       k.path(`M${x} ${y - len}Q${x + s * len * 0.5} ${y} ${x} ${y + len}`, "none", k.ink, 4.2) + k.path(`M${x} ${y - len}Q${x + s * len * 0.5} ${y} ${x} ${y + len}`, "none", "#a8723a", 2.6) +
-      k.line(`M${x} ${y - len}L${x} ${y + len}`, "#f7f1e1", 0.8) + k.rect(x + s * len * 0.25 - 2, y - 4, 4, 8, 1, "#3a5ab0", k.ink, 0.6) +
+      k.line(`M${x} ${y - len}L${x} ${y + len}`, "#f7f1e1", 0.8) + k.rect(x + s * len * 0.25 - 2.4, y - 5, 4.8, 10, 1.2, "#3a5ab0", k.ink, 0.6) +
+      k.line(`M${x + s * len * 0.25 - 2.4} ${y - 2.6}l4.8 1.4M${x + s * len * 0.25 - 2.4} ${y}l4.8 1.4M${x + s * len * 0.25 - 2.4} ${y + 2.4}l4.8 1.4`, "#24387a", 0.6) +
+      k.path(`M${x + s * len * 0.27} ${y - 6}l${s * 3} -1l0 2Z`, "#c8ccd6", k.ink, 0.4) +
+      k.path(`M${x + s * len * 0.12} ${y - len * 0.55}q${s * 1.6} 1 ${s * 1.4} 3`, "none", "#d8a868", 0.8) + k.path(`M${x + s * len * 0.12} ${y + len * 0.55}q${s * 1.6} -1 ${s * 1.4} -3`, "none", "#d8a868", 0.8) +
       k.lume("pulse", k.circle(x, y - len, 1.6, "#7dff8a", "none", 0) + k.circle(x, y + len, 1.6, "#7dff8a", "none", 0), 3, "#7dff8a");
     if (k.back) k.put("scarf", `<g transform="rotate(${-s * 28} ${k.C} ${k.T + 12})">${draw(k.C, k.T + 12, 34)}</g>`);
     else k.put("body", `<g transform="rotate(${s * 28} ${k.C} ${k.T + 6})">${draw(k.C + s * (k.side ? 6 : 10), k.T + 4, 38)}</g>`, true);
   },
-  // Art Club Painter: a big paint palette with a brush, its paint glowing.
+  // Art Club Painter: a wooden palette with its thumb hole and grain, six
+  // blobs of paint (the glow-in-the-dark ones lit) and a brush with a
+  // metal ferrule and a loaded tip.
   sunbara(k) {
     held(k, (x, y, f) =>
-      k.path(`M${x - 14} ${y + 2}Q${x - 16} ${y - 12} ${x} ${y - 12}Q${x + 16} ${y - 12} ${x + 15} ${y + 2}Q${x + 14} ${y + 12} ${x} ${y + 10}Q${x - 4} ${y + 2} ${x - 8} ${y + 8}Q${x - 14} ${y + 10} ${x - 14} ${y + 2}Z`, "#e6c08a", k.ink, 1.1) +
-      ["#ff4f6a", "#59f0ff", "#ffd84a", "#7dff8a"].map((c, i) => k.lume("twinkle", k.circle(x - 8 + i * 5, y - 6 + (i % 2) * 3, 2.4, c, k.ink, 0.5), 3 + i, c)).join("") +
-      k.line(`M${x + f * 4} ${y + 6}L${x + f * 16} ${y - 16}`, "#8a5a2a", 2) + k.path(`M${x + f * 16} ${y - 16}l${f * 2} -5l${f * 2} 3Z`, "#ff4f6a", k.ink, 0.5));
+      k.path(`M${x - 15} ${y + 2}Q${x - 17} ${y - 13} ${x} ${y - 13}Q${x + 17} ${y - 13} ${x + 16} ${y + 2}Q${x + 15} ${y + 13} ${x} ${y + 11}Q${x - 4} ${y + 3} ${x - 9} ${y + 9}Q${x - 15} ${y + 11} ${x - 15} ${y + 2}Z`, "#e6c08a", k.ink, 1.1) +
+      k.line(`M${x - 10} ${y - 8}Q${x} ${y - 11} ${x + 10} ${y - 8}M${x - 6} ${y - 4}Q${x + 2} ${y - 6} ${x + 12} ${y - 2}`, "#c89a5a", 0.6) +
+      `<ellipse cx="${x - 3}" cy="${y + 4}" rx="3" ry="2.4" fill="#1b2238" stroke="${k.ink}" stroke-width=".8"/>` +
+      [["#ff4f6a", -9, -6], ["#59f0ff", -3, -8], ["#ffd84a", 3, -8], ["#7dff8a", 9, -5], ["#b48aff", 11, 1], ["#ffffff", 6, 5]].map(([c, dx, dy], i) => {
+        const blob = k.path(`M${x + +dx - 2.6} ${y + +dy}q0 -2.6 2.6 -2.6q2.8 0 2.6 2.4q0 2.6 -2.8 2.4q-2.4 0 -2.4 -2.2Z`, c as string, k.ink, 0.5) + k.circle(x + +dx - 0.8, y + +dy - 1, 0.6, "#ffffff", "none", 0);
+        return i < 4 ? k.lume("twinkle", blob, 3 + i, c as string) : blob;
+      }).join("") +
+      k.line(`M${x + f * 2} ${y + 8}L${x + f * 16} ${y - 15}`, k.ink, 3) + k.line(`M${x + f * 2} ${y + 8}L${x + f * 16} ${y - 15}`, "#8a5a2a", 1.8) +
+      k.path(`M${x + f * 14.4} ${y - 12.4}l${f * 3.6} 2.2l${f * 1} -1.6l${-f * 3.6} -2.2Z`, "#c8ccd6", k.ink, 0.5) +
+      k.path(`M${x + f * 15.6} ${y - 14.6}q${f * 1} -4 ${f * 4} -5q${f * 0.4} 3.4 ${-f * 2} 6.4Z`, "#ff4f6a", k.ink, 0.5));
   },
-  // Stargazer: a brass telescope slung across its back, its lens glinting.
+  // Stargazer: the mallet comes off (SkinArt.heldOff in campus-art.ts) and
+  // the paw holds a brass telescope in its place, drawn along the mallet's
+  // own line (inMalletFrame) so it turns with the paw and points at the sky
+  // in every view: an eyepiece at the paw, a focuser, a navy tube banded in
+  // brass with a little finder scope, a dew shield and a lens that glints.
   astrabun(k) {
-    slung(k, "#b8803a", 5, (x, y, a) => `<g transform="rotate(${a} ${x} ${y})">` +
-      k.rect(x - 5, y - 8, 10, 12, 2, "#c89048", k.ink, 1) + k.circle(x, y - 8, 5, "#3a4a7a", k.ink, 1) +
-      k.lume("twinkle", k.path(k.star(x - 1.5, y - 9.5, 2.2, 4, 0.3), "#ffffff", "none", 0), 3, "#bfe8ff") + `</g>`);
+    const brass = "#c89048",
+      navy = "#2a3a7a";
+    k.put("armR", inMalletFrame(k, (x) => `<g transform="rotate(6 ${x} 155)">` +
+      k.rect(x - 2.2, 140, 4.4, 13, 1, "#3a3f4a", k.ink, 0.8) +
+      k.rect(x - 4, 130, 8, 10, 1.4, brass, k.ink, 0.9) + k.line(`M${x + 4} 133h2.4v4h-2.4`, "#8a5a2a", 1) +
+      k.path(`M${x - 5} 131L${x - 8} 88H${x + 8}L${x + 5} 131Z`, navy, k.ink, 1.1) +
+      k.rect(x - 6.6, 116, 13.2, 3, 1, brass, k.ink, 0.6) + k.rect(x - 7.6, 98, 15.2, 3, 1, brass, k.ink, 0.6) +
+      k.line(`M${x - 5.4} 126L${x - 7.2} 92`, "#5a6aa8", 1.2) +
+      k.rect(x + 8, 104, 4, 12, 1.2, "#3a3f4a", k.ink, 0.6) + k.line(`M${x + 6} 108h2M${x + 6} 113h2`, brass, 1) + k.circle(x + 10, 104, 1.6, "#9fd8ff", k.ink, 0.4) +
+      k.rect(x - 9.6, 76, 19.2, 13, 2, brass, k.ink, 1) + k.line(`M${x - 9.6} 80h19.2`, "#8a5a2a", 0.8) +
+      `<ellipse cx="${x}" cy="76" rx="9" ry="2.8" fill="#24305e" stroke="${k.ink}" stroke-width=".9"/>` +
+      `<ellipse cx="${x - 2.4}" cy="75.6" rx="3" ry="1" fill="#9fd8ff" opacity=".8"/>` +
+      k.lume("twinkle", k.path(k.star(x + 3, 73.6, 3.2, 4, 0.3), "#ffffff", "none", 0), 3, "#bfe8ff") + `</g>`));
   },
-  // Garden Club Keeper: a green watering can, drops of water catching light.
+  // Garden Club Keeper: a tin watering can, its rim and base banded and
+  // riveted, a leaf label, a filler cap, an arched handle with a grip, a
+  // braced spout ending in a rose pierced with holes, and a spray of drops
+  // catching the light.
   wombolder(k) {
-    held(k, (x, y, f) =>
-      k.path(`M${x - 9} ${y - 8}H${x + 9}L${x + 8} ${y + 10}H${x - 8}Z`, "#3fa05a", k.ink, 1.1) + k.path(`M${x - 6} ${y - 8}Q${x} ${y - 18} ${x + 6} ${y - 8}`, "none", "#2f7a44", 2) +
-      k.path(`M${x + f * 8} ${y + 4}L${x + f * 20} ${y - 6}`, "none", "#3fa05a", 3) + k.path(`M${x + f * 19} ${y - 9}l${f * 4} 0l0 6Z`, "#2f7a44", k.ink, 0.6) +
-      k.lume("twinkle", k.circle(x + f * 25, y - 2, 1.5, "#9fe8ff", "none", 0) + k.circle(x + f * 27, y + 4, 1.2, "#9fe8ff", "none", 0), 3, "#9fe8ff"));
+    held(k, (x, y, f) => {
+      const tin = "#3fa05a",
+        band = "#2a7040",
+        rose = x + f * 17;
+      return (
+        // The arched handle behind the body, with a wrapped grip.
+        k.path(`M${x - f * 8} ${y - 6}Q${x - f * 2} ${y - 22} ${x + f * 8} ${y - 8}`, "none", k.ink, 4.4) +
+        k.path(`M${x - f * 8} ${y - 6}Q${x - f * 2} ${y - 22} ${x + f * 8} ${y - 8}`, "none", band, 2.8) +
+        k.line(`M${x - f * 4} ${y - 15}l${f * 2} -1.6M${x - f * 1} ${y - 16.4}l${f * 2} -0.6M${x + f * 2} ${y - 16.2}l${f * 2} 0.6`, "#9fd8a8", 0.9) +
+        // The spout and its brace.
+        k.path(`M${x + f * 7} ${y + 4}L${x + f * 15} ${y - 7}L${x + f * 17} ${y - 5}L${x + f * 9} ${y + 8}Z`, tin, k.ink, 0.9) +
+        k.line(`M${x + f * 8} ${y - 2}L${x + f * 13} ${y + 1}`, band, 1.2) +
+        // The rose: a flared head with its holes.
+        k.path(`M${rose - f * 2} ${y - 9}L${rose + f * 4} ${y - 13}L${rose + f * 7} ${y - 5}L${rose + f * 1} ${y - 3}Z`, "#c8ccd6", k.ink, 0.9) +
+        [[3.2, -10.4], [4.6, -8.2], [5.6, -6.2], [2.4, -7.6], [3.6, -5.6]].map(([dx, dy]) => k.circle(rose + f * dx, y + dy, 0.55, "#4a4f5c", "none", 0)).join("") +
+        // The can: tapered tin with banded, riveted rim and base.
+        k.path(`M${x - 10} ${y - 8}H${x + 10}L${x + 9} ${y + 11}H${x - 9}Z`, tin, k.ink, 1.1) +
+        k.rect(x - 10.6, y - 9.5, 21.2, 3.6, 1, band, k.ink, 0.8) +
+        k.rect(x - 9.6, y + 8.4, 19.2, 3.4, 1, band, k.ink, 0.8) +
+        [-7, -2.4, 2.4, 7].map((dx) => k.circle(x + dx, y - 7.7, 0.55, "#c8ccd6", "none", 0) + k.circle(x + dx * 0.92, y + 10.1, 0.55, "#c8ccd6", "none", 0)).join("") +
+        // A leaf label and the filler cap.
+        k.rect(x - 5.5, y - 2.5, 11, 8, 1.5, "#f7f1e1", k.ink, 0.6) +
+        k.path(`M${x - 2.6} ${y + 3.6}Q${x - 2.6} ${y - 1} ${x + 2.6} ${y - 1.4}Q${x + 2.4} ${y + 3.4} ${x - 2.6} ${y + 3.6}Z`, "#5fbf6a", k.ink, 0.5) +
+        k.line(`M${x - 2.4} ${y + 3.4}L${x + 1.6} ${y - 0.4}`, "#2a7040", 0.6) +
+        `<ellipse cx="${x - f * 3}" cy="${y - 9.6}" rx="4" ry="1.6" fill="#1e3a28" stroke="${k.ink}" stroke-width=".7"/>` +
+        // The spray: drops falling from the rose.
+        // Kept within the arm's reach of the crop: the old can's drops went
+        // no further out than these.
+        k.lume("twinkle", [[7, -1, 1.5], [9, 4, 1.3], [5, 7, 1.1], [9.5, -4.5, 1.2]].map(([dx, dy, r]) => k.path(`M${rose + f * dx} ${y + dy - r * 1.6}q${r} ${r * 1.4} 0 ${r * 2.4}q${-r} ${-r} 0 ${-r * 2.4}Z`, "#9fe8ff", k.ink, 0.4)).join(""), 3, "#9fe8ff")
+      );
+    });
   },
-  // Mystery Club Sleuth: a giant magnifying glass, its lens glinting.
+  // Mystery Club Sleuth: a giant magnifying glass, its brass rim bevelled
+  // and screwed to a turned wooden handle with brass bands, the lens
+  // reflecting a window of light.
   shadopus(k) {
     slung(k, "#6a4424", 3, (x, y) =>
-      k.circle(x, y - 6, 11, "#c8ccd6", k.ink, 1.1) + k.circle(x, y - 6, 8, "#bfe8ff88", k.ink, 0.8) +
-      k.lume("twinkle", k.path(k.star(x - 3, y - 9, 3, 4, 0.3), "#ffffff", "none", 0), 3, "#ffffff"));
+      k.rect(x - 2.4, y + 1, 4.8, 5, 1, "#c89048", k.ink, 0.6) +
+      k.circle(x, y - 7, 12, "#c89048", k.ink, 1.2) + k.circle(x, y - 7, 10.4, "none", "#8a5a2a", 0.8) +
+      k.circle(x, y - 7, 9, "#bfe8ff88", k.ink, 0.8) +
+      k.path(`M${x - 6} ${y - 9}q2 -5 7 -6`, "none", "#ffffff", 1.6) + k.path(`M${x + 4} ${y - 1}q2 -1 3 -3`, "none", "#ffffff", 1) +
+      k.circle(x + 11.4, y - 7, 0.8, "#8a5a2a", "none", 0) + k.circle(x - 11.4, y - 7, 0.8, "#8a5a2a", "none", 0) +
+      k.lume("twinkle", k.path(k.star(x - 3, y - 10, 3, 4, 0.3), "#ffffff", "none", 0), 3, "#ffffff"));
   },
   // Band Drummer: a pair of drumsticks crossed on its back, tips lit.
   pangrove(k) {
     onBack(k, (x, y, v) => {
       const w = v === "side" ? 12 : v === "front" ? k.W + 24 : k.W + 6;
-      return [-1, 1].map((s) => k.line(`M${x - s * w * 0.6} ${y + 10}L${x + s * w} ${y - 34}`, k.ink, 4) + k.line(`M${x - s * w * 0.6} ${y + 10}L${x + s * w} ${y - 34}`, "#e6c08a", 2.4) +
-        k.circle(x + s * w, y - 35, 3.4, "#ffffff", k.ink, 0.8)).join("") +
+      return [-1, 1].map((s) => {
+        const x0 = x - s * w * 0.6, y0 = y + 10, x1 = x + s * w, y1 = y - 34;
+        const at = (t: number) => `${x0 + (x1 - x0) * t} ${y0 + (y1 - y0) * t}`;
+        return k.line(`M${x0} ${y0}L${x1} ${y1}`, k.ink, 4.2) + k.line(`M${x0} ${y0}L${x1} ${y1}`, "#e6c08a", 2.6) +
+          k.line(`M${at(0.35)}L${at(0.9)}`, "#f7e0b0", 0.6) +
+          k.line(`M${at(0)}L${at(0.22)}`, "#c8323a", 3) +
+          k.circle(x1, y1 - 1, 3.4, "#ffffff", k.ink, 0.8) + k.circle(x1 - 1, y1 - 2, 1, "#ffffff", "none", 0);
+      }).join("") +
         k.lume("pulse", k.circle(x + w, y - 35, 1.6, "#ffd84a", "none", 0) + k.circle(x - w, y - 35, 1.6, "#ffd84a", "none", 0), 3, "#ffd84a");
     });
   },
-  // Nap Club Captain: a big striped pillow tucked under its arm.
+  // Nap Club Captain: a plump striped pillow, its seams stitched, a tassel
+  // at each corner, a crescent-and-star print and a little tag.
   mossloth(k) {
     held(k, (x, y) =>
       k.path(`M${x - 13} ${y - 10}Q${x} ${y - 14} ${x + 13} ${y - 10}Q${x + 17} ${y + 2} ${x + 13} ${y + 14}Q${x} ${y + 18} ${x - 13} ${y + 14}Q${x - 17} ${y + 2} ${x - 13} ${y - 10}Z`, "#cfe0ff", k.ink, 1.1) +
-      k.line(`M${x - 13} ${y - 2}Q${x} ${y - 4} ${x + 14} ${y - 2}M${x - 14} ${y + 6}Q${x} ${y + 4} ${x + 14} ${y + 6}`, "#8aa8e8", 1.6) +
-      k.lume("twinkle", k.path(k.star(x + 3, y + 1, 3.2, 5), "#fff3a8", k.ink, 0.4), 3, "#fff3a8"));
+      k.line(`M${x - 14} ${y - 3}Q${x} ${y - 5} ${x + 15} ${y - 3}M${x - 15} ${y + 6}Q${x} ${y + 4} ${x + 15} ${y + 6}`, "#8aa8e8", 2) +
+      `<path d="M${x - 11} ${y - 8}Q${x} ${y - 11} ${x + 11} ${y - 8}Q${x + 14} ${y + 2} ${x + 11} ${y + 12}Q${x} ${y + 15} ${x - 11} ${y + 12}Q${x - 14} ${y + 2} ${x - 11} ${y - 8}Z" fill="none" stroke="#6a88c8" stroke-width=".7" stroke-dasharray="1.6 1.3"/>` +
+      [[-13, -10], [13, -10], [13, 14], [-13, 14]].map(([dx, dy]) => k.path(`M${x + dx} ${y + dy}l${dx > 0 ? 2 : -2} ${dy > 0 ? 2 : -2}l${dx > 0 ? 1.6 : -1.6} ${dy > 0 ? 3.2 : -3.2}l${dx > 0 ? -2.6 : 2.6} ${dy > 0 ? -1 : 1}Z`, "#ffd84a", k.ink, 0.5)).join("") +
+      k.path(`M${x - 4} ${y - 2}A5 5 0 1 0 ${x + 1} ${y + 6}A4 4 0 1 1 ${x - 4} ${y - 2}Z`, "#fff3a8", k.ink, 0.5) +
+      k.rect(x + 8, y + 9, 4, 3, 0.6, "#ffffff", k.ink, 0.4) +
+      k.lume("twinkle", k.path(k.star(x + 5, y + 1, 3, 5), "#fff3a8", k.ink, 0.4), 3, "#fff3a8"));
   },
 };
 
 /** The props by collection, for the tests. */
 export const EPIC_PROPS = { hero: HERO, campus: CAMPUS } as const;
-addDetails("hero", HERO);
-addDetails("campus", CAMPUS);
+
+/**
+ * The props' finish: every solid shape takes light at its top left and
+ * shade at its bottom right (a gradient over its own outline), so a prop
+ * reads as a rounded, solid object rather than flat cut paper. Lit pieces
+ * (lume) and see-through glass are left as they are.
+ */
+// Each finished piece carries its own copy, as every part is cut into its
+// own texture and a drawing defines each id once. The id is a hash of the
+// piece, so the same art always draws the same SVG.
+const hash = (t: string) => {
+  let h = 2166136261;
+  for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 16777619);
+  return (h >>> 0).toString(36);
+};
+const propShade = (id: string) =>
+  `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">` +
+  `<stop offset="0" stop-color="#ffffff" stop-opacity=".42"/><stop offset=".38" stop-color="#ffffff" stop-opacity="0"/>` +
+  `<stop offset=".6" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity=".34"/></linearGradient></defs>`;
+const SHAPE = /^<(path|rect|circle|ellipse)\b[^>]*\bfill="(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})"[^>]*\/>$/;
+export function shadeProp(svg: string) {
+  const id = `epic-prop-shade-${hash(svg)}`;
+  let out = "",
+    lume = 0,
+    shaded = false;
+  // Walk the tags, keeping track of whether we are inside a lume group.
+  const depth: boolean[] = [];
+  for (const tok of svg.split(/(?=<)|(?<=>)/)) {
+    if (tok.startsWith("<g")) {
+      const lit = /class="lume"/.test(tok);
+      depth.push(lit);
+      if (lit) lume++;
+    } else if (tok.startsWith("</g")) {
+      if (depth.pop()) lume--;
+    }
+    out += tok;
+    if (lume || !SHAPE.test(tok)) continue;
+    // Skip specks: they are dots of colour, not objects.
+    const r = Number(tok.match(/\br="([\d.]+)"/)?.[1] ?? 99),
+      w = Number(tok.match(/\bwidth="([\d.]+)"/)?.[1] ?? 99),
+      h = Number(tok.match(/\bheight="([\d.]+)"/)?.[1] ?? 99);
+    if (r < 2.5 || w < 3 || h < 3) continue;
+    out += tok.replace(/\bfill="[^"]*"/, `fill="url(#${id})"`).replace(/\bstroke="[^"]*"/, 'stroke="none"');
+    shaded = true;
+  }
+  return shaded ? propShade(id) + out : out;
+}
+/** Each prop draws through a kit whose pieces come out finished. */
+const finished = (table: Details): Details =>
+  Object.fromEntries(Object.entries(table).map(([id, fn]) => [id, (k: Kit) => fn!({ ...k, put: (part, svg, under) => k.put(part, shadeProp(svg), under) })]));
+addDetails("hero", finished(HERO));
+addDetails("campus", finished(CAMPUS));

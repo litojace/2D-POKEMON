@@ -60,6 +60,13 @@ On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview)
   When the boss still ends up under the buttons or the joystick, it gets the
   off-screen arrow, and right-side ally arrows sit by the buttons (never under
   them or over the clock).
+- **Prismatail's Turn mirror / Look away** on phones are one round contextual
+  button in the touch cluster's slot, left of skill 1 (above it on a narrow
+  screen; `mobileLayout`'s `context`), as action games put an interact prompt
+  by the skills. It shows only when usable: Turn mirror by a mirror, Look away
+  while Glare winds up (taking the slot, with the wind-up as a gold ring). The
+  follow camera keeps your raider clear of the slot. Desktop keeps both as
+  labelled buttons.
 - Players who prefer the overview tick **Whole court in raids** in Settings →
   Controls (phones only; `raidCourt` in the saved controls). The Ascendant
   specs that read the whole arena against the HUD and touch controls choose it.
@@ -76,3 +83,23 @@ The visual layout checks cover all seven bosses in normal and skill-practice
 states, small phone/browser-bar sizes and desktop shapes. They verify the HUD gap,
 all four fighting-floor corners, unchanged camera position when a learner moves
 to the edge, mechanic-control alignment, and the scene's shared floor textures.
+
+## Phones: the shared top corners
+
+Every raid and every Spire floor share one top layout on landscape phones
+(owner, 21 Nov 2026), whatever the boss, now and in later updates:
+
+- The quick-chat button in the top-left corner and the gear in the
+  top-right, both 4px in from the safe area, the same size and height.
+- The boss's (or floor's) HUD between them, with the same 56px clear on
+  both sides, so its bar is centred on screen.
+- Under them: the party's health on the left (screens/raid-party.css), the
+  clock on the right (see-through glass, no blur: battles stay blur-free).
+- A boss's own actions in the touch cluster's contextual slot by skill 1.
+
+The rules use only `battle-raid` and `touch-mode` (no boss or floor
+selectors), so a new boss or floor gets them as it is. Keep boss- and
+floor-specific UI out of these corners. `tests/visual/raid-corners.spec.ts`
+checks every boss in `RAID_BOSS_ORDER` (a new one is checked without a test
+change), a Spire wave floor and boss floor, with and without the Dynamic
+Island's insets.

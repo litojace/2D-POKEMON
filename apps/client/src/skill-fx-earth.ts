@@ -1063,6 +1063,37 @@ function grudgeThump(
     fx.glow(x, y - 20, 50, color, 0.3 * fade);
   });
 }
+/** Shell Up ends: the shell bursts open and shoves everyone close away. */
+function shellBurst(
+  scene: Phaser.Scene,
+  a: Ability,
+  x: number,
+  y: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    r = a.burst?.radius ?? 140;
+  rocks(fx, x, y, 10, [140, 300], [120, 300], { size: [2, 4] });
+  fx.shake(120, 0.004);
+  shot(fx.reduced ? 160 : 360, (k) => {
+    const rr = 24 + ease(k) * r;
+    fx.floorSolid
+      .lineStyle(8 * (1 - k), DARK, 0.3 * (1 - k))
+      .strokeEllipse(x, y, rr * 2, rr * 2 * SQ);
+    fx.floorSolid
+      .lineStyle(4 * (1 - k), color, 0.8 * (1 - k))
+      .strokeEllipse(x, y, rr * 2, rr * 2 * SQ);
+    // Shell plates thrown outward.
+    for (let i = 0; i < 6; i++) {
+      const ang = (i / 6) * TAU + 0.3,
+        d = 30 + ease(k) * r * 0.8,
+        px = x + Math.cos(ang) * d,
+        py = y - 18 + Math.sin(ang) * d * SQ;
+      fx.solid.fillStyle(PLATE_LIGHT, 0.9 * (1 - k)).fillCircle(px, py, 6);
+    }
+  });
+}
 export const earthKit: FxKit = {
   projectile: { "bush-boomerang": boomerang },
   cast: {
@@ -1082,6 +1113,7 @@ export const earthKit: FxKit = {
   zone: { "mud-mire": dustCloud },
   windup: { tremor: tremorWindup, landslide: landslideWindup },
   impact: {
+    "shell-up": shellBurst,
     "burrow-rush": rushContact,
     landslide: landslideEruption,
     "bush-boomerang": pebbleImpact,

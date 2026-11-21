@@ -259,8 +259,8 @@ const NORMAL_DAZE_BEFORE_SMART_BOTS: Partial<Record<CharacterId, number>> = {
  */
 const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
   voltkit: 0.285,
-  cindrake: 0.49,
-  tidefin: 0.29,
+  cindrake: 0.45,
+  tidefin: 0.32,
   auralynx: 0.203,
   lumoth: 0.242,
   mystowl: 0.224,
@@ -1685,7 +1685,12 @@ export class BotBrain {
           const plates =
             CHARACTERS[me.character].passive === "plates" ? platesOf(me) : 0;
           if (s.sight && reach(a.range * 0.55))
-            score = a.damage * (a.count ?? 3) * (1 + plates) * 0.35;
+            score =
+              a.damage *
+              (a.perPlate !== undefined
+                ? (a.count ?? 3) + a.perPlate * plates
+                : (a.count ?? 3) * (1 + plates)) *
+              0.35;
           break;
         }
         case "tunnel":
