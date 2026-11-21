@@ -247,6 +247,12 @@ export class Arena {
   private leaps = new Map<string, { until: number; ability: Ability }>();
   /** Riptide Wave: when each enemy a wave reached stops being carried (`zone:fighter`). */
   private carried = new Map<string, number>();
+  /** Riptide Wave: waves that have sent their second wall (and second walls). */
+  private waveFollowed = new Set<number>();
+  /** Frost Breath: ticks in a row each enemy has spent in a caster's breath (`caster:enemy`). */
+  private coneStreak = new Map<string, number>();
+  /** Shell Up: when each fighter's shell bursts open. */
+  private restBursts = new Map<string, { at: number; ability: Ability }>();
   protected clearBufferedSkills(id?: string) {
     if (id === undefined) this.bufferedSkills.clear();
     else this.bufferedSkills.delete(id);
@@ -586,6 +592,9 @@ export class Arena {
     this.surfs.clear();
     this.leaps.clear();
     this.carried.clear();
+    this.waveFollowed.clear();
+    this.coneStreak.clear();
+    this.restBursts.clear();
     // Fighter roulette: a fresh random fighter for everyone each round.
     if (this.rule("random") && !this.practice)
       for (const p of this.players) {
@@ -1565,6 +1574,8 @@ export class Arena {
       const skill = CHARACTERS[p.character].skills.findIndex(
         (k) => k.id === a.id,
       );
+      for (const key of [...this.coneStreak.keys()])
+        if (key.startsWith(`${p.id}:`)) this.coneStreak.delete(key);
       p.channel = {
         until: this.time + a.duration,
         nextTick: this.time + (a.tickDelay ?? 0.1),
@@ -1611,7 +1622,13 @@ export class Arena {
     if (a.kind === "shrapnel") {
       // Every plate becomes blades: `count`, plus `count` per plate.
       const plated = CHARACTERS[p.character].passive === "plates";
-      const n = Math.max(1, (a.count ?? 3) * (1 + (plated ? platesOf(p) : 0)));
+      const plates = plated ? platesOf(p) : 0;
+      const n = Math.max(
+        1,
+        a.perPlate !== undefined
+          ? (a.count ?? 3) + a.perPlate * plates
+          : (a.count ?? 3) * (1 + plates),
+      );
       if (plated) {
         p.plates = 0;
         p.plateAt = this.time + PLATES.regrowDelay;
@@ -2314,6 +2331,8 @@ export class Arena {
       // Ticks land at 0.4s, 0.9s … so a full Rest always heals duration / interval times.
       sleep.nextTick = this.time + STATUS_RULES.restInterval - 0.1;
       p.channel = undefined;
+      if (a.burst)
+        this.restBursts.set(p.id, { at: this.time + a.duration, ability: a });
     }
     if (a.kind === "clone") {
       p.clone = { x: p.x, y: p.y, until: this.time + a.duration };
@@ -2783,6 +2802,24 @@ export class Arena {
     }
   }
   /** How far a wave's front has rolled from where it started (px). */
+  /** Shell Up: the shell bursts open, shoving and hurting everyone close. */
+  private shellBurst(p: Fighter, a: Ability) {
+    const b = a.burst!;
+    this.event("burst", p, CHARACTERS[p.character].color, b.radius, p.id, a.id);
+    for (const enemy of this.enemiesOf(p))
+      if (
+        enemy.hp > 0 &&
+        Math.hypot(enemy.x - p.x, enemy.y - p.y) <
+          b.radius + this.hitRadius(enemy) &&
+        this.lineClear(p, enemy)
+      )
+        this.damage(enemy, b.damage, p.id, {
+          ...a,
+          damage: b.damage,
+          knockback: b.knockback,
+          status: undefined,
+        });
+  }
   waveFront(zone: Zone) {
     return Math.min(
       zone.ability.range,
@@ -2795,6 +2832,27 @@ export class Arena {
    * runs out; a wall in the way slams it.
    */
   private stepWave(zone: Zone) {
+    const second = zone.ability.wave?.second;
+    if (
+      second &&
+      !this.waveFollowed.has(zone.id) &&
+      this.time >= (zone.born ?? this.time) + second
+    ) {
+      // The second wall rolls out from where the first one started.
+      this.waveFollowed.add(zone.id);
+      if (this.zones.length < RULES.maxZones) {
+        const id = ++this.serial;
+        this.waveFollowed.add(id);
+        this.zones.push({
+          ...zone,
+          id,
+          born: this.time,
+          nextTick: this.time,
+          until:
+            this.time + zone.ability.range / Math.max(1, zone.ability.speed),
+        });
+      }
+    }
     const a = zone.ability,
       ux = Math.cos(zone.angle ?? 0),
       uy = Math.sin(zone.angle ?? 0),
@@ -3581,18 +3639,42 @@ export class Arena {
       input.skill = -1;
       input.ex = false;
       if (p.clone && p.clone.until <= this.time) p.clone = undefined;
+      const shell = this.restBursts.get(p.id);
+      if (shell && this.time >= shell.at) {
+        this.restBursts.delete(p.id);
+        if (p.hp > 0 && !p.out) this.shellBurst(p, shell.ability);
+      }
       if (p.channel) {
         const a = this.kit(p).skills[p.channel.skill];
         if (a && this.time >= p.channel.nextTick) {
           p.channel.nextTick += a.tickInterval ?? 0.2;
-          for (const enemy of this.enemiesOf(p))
-            if (enemy.hp > 0 && this.inArc(p, enemy, a.range, a.arc ?? 0.7))
+          // Crest Flare: the flame reaches further as the breath goes on.
+          const grown =
+            (a.cone?.grow ?? 0) *
+            Math.min(1, 1 - (p.channel.until - this.time) / a.duration);
+          for (const enemy of this.enemiesOf(p)) {
+            const key = `${p.id}:${enemy.id}`;
+            if (
+              enemy.hp > 0 &&
+              this.inArc(p, enemy, a.range + grown, a.arc ?? 0.7)
+            ) {
               this.damage(
                 enemy,
                 a.damage * (p.channel.ex ? EX.damage : 1),
                 p.id,
                 a,
               );
+              // Frost Breath: long enough in the breath and it freezes solid.
+              const freeze = a.cone?.freeze;
+              if (freeze) {
+                const n = (this.coneStreak.get(key) ?? 0) + 1;
+                this.coneStreak.set(key, n);
+                if (n === freeze && enemy.hp > 0)
+                  this.status(enemy, "freeze", a.cone?.freezeFor ?? 0.6, p.id);
+              }
+            } else if ((this.coneStreak.get(key) ?? 0) > 0)
+              this.coneStreak.delete(key);
+          }
         }
         if (!a || this.time >= p.channel.until) p.channel = undefined;
       }
