@@ -1478,7 +1478,7 @@ export const SPIRE_TUNING: Record<
   3: { difficulty: "easy", power: 0.5, armour: 0.99, limit: 180 },
   4: { difficulty: "easy", power: 0.45, armour: 2.04, limit: 180 },
   5: { difficulty: "normal", power: 0.4, armour: 0.7, limit: 240 },
-  6: { difficulty: "easy", power: 0.55, armour: 1.05, limit: 180 },
+  6: { difficulty: "easy", power: 0.55, armour: 1.2, limit: 180 },
   7: { difficulty: "normal", power: 0.4, armour: 1.49, limit: 180 },
   8: { difficulty: "normal", power: 0.45, armour: 1.07, limit: 180 },
   9: { difficulty: "normal", power: 0.5, armour: 1.4, limit: 180 },
@@ -1499,7 +1499,7 @@ export const SPIRE_TUNING: Record<
   11: { difficulty: "normal", power: 0.44, armour: 1.46, limit: 180 },
   12: { difficulty: "normal", power: 0.45, armour: 1.81, limit: 180 },
   13: { difficulty: "normal", power: 0.46, armour: 1.79, limit: 180 },
-  14: { difficulty: "normal", power: 0.47, armour: 1.68, limit: 180 },
+  14: { difficulty: "normal", power: 0.47, armour: 1.6, limit: 180 },
   15: { difficulty: "normal", power: 0.55, armour: 0.58, limit: 240 },
   16: { difficulty: "normal", power: 0.48, armour: 1.29, limit: 180 },
   17: { difficulty: "normal", power: 0.49, armour: 1.5, limit: 180 },
@@ -1522,7 +1522,7 @@ export const SPIRE_TUNING: Record<
   26: { difficulty: "normal", power: 0.52, armour: 1.07, limit: 180 },
   27: { difficulty: "normal", power: 0.53, armour: 1.42, limit: 180 },
   28: { difficulty: "normal", power: 0.54, armour: 1.67, limit: 180 },
-  29: { difficulty: "normal", power: 0.55, armour: 1.65, limit: 180 },
+  29: { difficulty: "normal", power: 0.55, armour: 1.69, limit: 180 },
   30: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 4: a climb starts at 31 with no blessings, against Psychic Echoes
   // (a duelist owl, a blinking rabbit, a counter lynx) and one off-element
@@ -1537,7 +1537,7 @@ export const SPIRE_TUNING: Record<
   34: { difficulty: "normal", power: 0.59, armour: 2.33, limit: 180 },
   35: { difficulty: "normal", power: 0.62, armour: 0.57, limit: 240 },
   36: { difficulty: "normal", power: 0.6, armour: 0.99, limit: 180 },
-  37: { difficulty: "normal", power: 0.61, armour: 1.74, limit: 180 },
+  37: { difficulty: "normal", power: 0.61, armour: 1.84, limit: 180 },
   38: { difficulty: "normal", power: 0.62, armour: 2.3, limit: 180 },
   39: { difficulty: "normal", power: 0.63, armour: 1.55, limit: 180 },
   40: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
@@ -1580,7 +1580,7 @@ export const SPIRE_TUNING: Record<
   54: { difficulty: "normal", power: 0.635, armour: 3.12, limit: 180 },
   55: { difficulty: "normal", power: 0.66, armour: 0.71, limit: 240 },
   56: { difficulty: "normal", power: 0.64, armour: 2.5, limit: 180 },
-  57: { difficulty: "normal", power: 0.65, armour: 2.95, limit: 180 },
+  57: { difficulty: "normal", power: 0.65, armour: 2.85, limit: 180 },
   58: { difficulty: "normal", power: 0.66, armour: 3.2, limit: 180 },
   59: { difficulty: "normal", power: 0.67, armour: 2.92, limit: 180 },
   60: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
@@ -1595,7 +1595,7 @@ export const SPIRE_TUNING: Record<
   // 55 (the elite), 52, 46, 41 and 38% on floor 69. (Floor 62 sits on a
   // cliff: 2.7 clears 60%, 3.0 74%.)
   61: { difficulty: "normal", power: 0.66, armour: 3.6, limit: 180 },
-  62: { difficulty: "normal", power: 0.67, armour: 2.85, limit: 180 },
+  62: { difficulty: "normal", power: 0.67, armour: 3.5, limit: 180 },
   63: { difficulty: "normal", power: 0.68, armour: 3.2, limit: 180 },
   64: { difficulty: "normal", power: 0.69, armour: 4.8, limit: 180 },
   65: { difficulty: "normal", power: 0.7, armour: 0.64, limit: 240 },
