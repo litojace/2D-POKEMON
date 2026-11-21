@@ -9,6 +9,7 @@ import {
   type RaidProgress,
 } from "../../packages/shared/src/raid";
 import type { Economy } from "../../packages/shared/src/shop";
+import { DEFAULT_AVATAR } from "../../packages/shared/src/avatars";
 import { cosmeticPicture } from "../../apps/client/src/cosmetic-picture";
 import {
   fitView,
@@ -93,7 +94,7 @@ it("future levels are try-ons only, while the earned level and equip action stay
     expect(parts.stage).toContain(
       `data-tier="${cosmeticTier("conqueror", stars)}"`,
     );
-    expect(parts.stage).toContain('data-fighter="voltkit"');
+    expect(parts.stage).toContain('class="portrait-avatar"');
     expect(parts.stage).toContain('class="portrait-disc"');
     expect(parts.stage.match(/data-fit-stars=/g)).toHaveLength(6);
     expect(parts.stage).toContain("Your level: 1★");
@@ -126,29 +127,28 @@ it("viewing a lower level on a maxed frame never invents a sixth star", () => {
   expect(stage).toContain("Maximum level earned.");
   expect(stage).not.toContain("50/60");
 });
-it("reviews the actual equipped champion skin and awakening stage inside the chosen frame", () => {
+it("reviews your own avatar inside the chosen frame, as everyone sees you", () => {
   const e = {
     ...economy,
     looks: { tidefin: { skin: "tidefin-moontide", stage: 3 } },
   } as Economy;
   const stage = fittingRoomParts(
     fitView("wardrobe", "tidefin", { slot: "frame", selected: "conqueror" }),
-    data(progress(40), e, { skin: "candy-colours" }),
+    {
+      ...data(progress(40), e, { skin: "candy-colours" }),
+      avatar: "ea-avatar-007",
+    },
   ).stage;
   expect(stage).toContain('data-portrait-frame="conqueror"');
   expect(stage).toContain('data-frame-stars="4"');
-  expect(stage).toContain('data-fighter="tidefin"');
-  expect(stage).toContain("tidefin-moontide");
-  expect(stage).not.toContain("preview-palette-candy-colours-fit-frame-live");
+  expect(stage).toContain('src="/assets/avatars/ea-avatar-007.webp"');
+  // Not the fighter, its skin or its Colors: portraits are avatars now.
+  expect(stage).not.toContain("data-fighter");
+  expect(stage).not.toContain("tidefin-moontide");
+  expect(stage).not.toContain("candy-colours");
 });
-it("shows equipped Colors on the avatar when no champion skin covers them", () => {
-  const stage = fittingRoomParts(
-    fitView("wardrobe", "terradon", { slot: "frame", selected: "conqueror" }),
-    data(progress(20), economy, { skin: "candy-colours" }),
-  ).stage;
-  expect(stage).toContain('data-fighter="terradon"');
-  expect(stage).toContain(
-    'id="preview-palette-candy-colours-fit-frame-live-colors"',
-  );
+it("shows the default avatar in the frame before one is chosen", () => {
+  const stage = fittingRoomParts(frameView(), data(progress(20))).stage;
+  expect(stage).toContain(`src="/assets/avatars/${DEFAULT_AVATAR}.webp"`);
   expect(stage).toContain('data-frame-stars="2"');
 });
