@@ -29,6 +29,7 @@ import { iconLabel, menuIcon } from "./menu-icons";
 import { actions as uiActions, button as uiButton } from "./ui/components";
 import "./screens/raid-cards.css";
 import "./screens/raid-rites.css";
+import { paintRaidParty } from "./raid-party";
 import { raidContributions, raidGoals } from "./raid-presentation";
 import { paintRaidHud, raidHudView } from "./raid-hud";
 import type Phaser from "phaser";
@@ -132,6 +133,7 @@ export function renderRaidUI(
   // the boss only.
   raidControls(state, me, request);
   paintRaidHud(hud, raidHudView(state, me));
+  paintRaidParty(state, me);
   const overlay = document.getElementById("arena-overlay")!;
   // Fetch saved progress once per result: the caller refreshes frame stars
   // and turns over newly earned reward cards from it.
