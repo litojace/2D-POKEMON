@@ -1778,15 +1778,28 @@ body.battle-active.touch-mode {
     animation: none;
   }
 }
+/* In a battle: a short pill at the bottom middle, between the joystick and
+   the skill buttons, clear of the score at the top (owner, 21 Nov 2026: at
+   the top it covered the names and the score). */
 .battle-active #pwa-banner {
-  top: calc(var(--safe-top) + 4px);
-  bottom: auto;
-  font-size: calc(10px * var(--text-scale, 1));
-  padding: 4px;
+  top: auto;
+  bottom: calc(var(--safe-bottom) + 6px);
+  /* Centred in the gap the touch controls leave (touch-controls.ts sets
+     both gutters), so it never sits over a button. */
+  left: calc(var(--safe-left) + var(--movement-gutter, 0px) + 8px);
+  right: calc(var(--safe-right) + var(--combat-gutter, 0px) + 8px);
+  transform: none;
+  width: fit-content;
+  max-width: none;
+  margin-inline: auto;
+  font-size: calc(11px * var(--text-scale, 1));
+  padding: 5px 12px;
+  border-radius: 999px;
   pointer-events: none;
-  opacity: 0.6;
-  width: auto;
-  max-width: 60vw;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .battle-active #pwa-banner button {
   display: none;
