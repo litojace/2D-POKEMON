@@ -392,18 +392,20 @@ for (const size of SIZES.filter((s) => s.name !== "short-phone"))
         };
         w.__push();
       });
-      const cards = page.locator(".raid-draft [data-raid-rite]");
+      // The rites screen (the whole screen, like the countdown).
+      const cards = page.locator(".rites-screen [data-raid-rite]");
       await expect(cards).toHaveCount(3);
-      const draft = await box(page, ".raid-draft");
+      const draft = await box(page, ".rites-screen .raid-rite-options");
       for (const c of await cards.all()) {
         const b = await c.boundingBox();
         expect(b && inside(b, draft)).toBe(true);
         const copy = await c.locator(".raid-rite-copy").boundingBox();
         expect(copy && b && inside(copy, b)).toBe(true);
       }
-      await expect(page.locator(".raid-draft .eyebrow")).toHaveText(
-        "The Spire · Floor 3",
+      await expect(page.locator(".rites-screen .rites-kicker")).toHaveText(
+        "The Spire · Floor 3 next",
       );
+      await expect(page.locator("#arena-overlay")).toHaveClass(/\bis-rites\b/);
       await snap(page, info, `spire-blessings-${size.name}`);
       const first = await cards.first().getAttribute("data-raid-rite");
       await cards.first().click();

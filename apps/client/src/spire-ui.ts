@@ -23,7 +23,7 @@ import {
 import { menuIcon } from "./menu-icons";
 import { raidBriefingGuide } from "./raid-briefing";
 import { soloRevives } from "./raid-solo";
-import { LIVE_COUNTDOWN, LIVE_SECONDS } from "./overlay";
+import { LIVE_COUNTDOWN, LIVE_NUMBER, LIVE_SECONDS } from "./overlay";
 import { spireBlessingIcon } from "./spire-art";
 import { actions, button } from "./ui/components";
 import "./spire-battle.css";
@@ -137,7 +137,11 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
   const heroes = state.players.filter((p) => !p.raidBoss && !p.echo && !p.out);
   let title = "",
     body = "",
-    acts = "";
+    acts = "",
+    // The blessing choice: the raid's rites screen, the whole screen like
+    // the countdown (screens/raid-rites.css); raid-ui.ts shows it instead of
+    // the card.
+    screen: string | undefined;
   if (state.phase === "briefing" && floor?.kind === "boss") {
     // The top of the zone: the Ascendant, what is new, then ready (on a clock).
     const waiting = state.instructionsReady.includes(me.id);
@@ -171,10 +175,6 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
       (id) => (mine[id] ?? 0) > (offered.before[id] ?? 0),
     );
     const locked = !offers.length;
-    title = locked
-      ? `Blessing chosen · Floor ${s.floor} next`
-      : `Choose a blessing · Floor ${s.floor} next`;
-    body = `<p class="raid-phase-objective"><b>${escape(floor?.name ?? "")}</b> · ${floor?.kind === "boss" ? "Boss floor" : floor?.kind === "elite" ? "Elite floor" : `${s.waves} waves`}</p><p class="spire-plan-line">${escape(spireFloorLine(floor))}</p><details class="raid-team-summary"><summary>Your blessings</summary><div class="spire-team" aria-label="Team blessings">${heroes.map((p) => `<div><b>${escape(p.name)}</b><span>${escape(held(state, p.id))}${s.offers[p.id]?.length ? " · Choosing…" : ""}</span></div>`).join("")}</div></details>`;
     const cards = offered.ids
       .map((id) =>
         spireBlessingCard(id, offered.before[id] ?? 0, {
@@ -183,7 +183,14 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
         }),
       )
       .join("");
-    acts = `<div class="raid-rite-intro">${locked ? '<span class="raid-rite-locked">Blessing locked in · waiting for the team</span>' : "<span>One of three · they stack</span>"}<span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span></div><div class="raid-rite-options spire-blessings">${cards || "<p>Blessing locked in · waiting for the team.</p>"}</div>`;
+    const kind =
+      floor?.kind === "boss"
+        ? "Boss floor"
+        : floor?.kind === "elite"
+          ? "Elite floor"
+          : `${s.waves} waves`;
+    const heading = locked ? "Blessing chosen" : "Choose a blessing";
+    screen = `<div class="rites-screen is-spire" role="dialog" aria-label="${heading}, floor ${s.floor} next"><header class="rites-head"><div class="rites-lead"><span class="rites-kicker">The Spire · Floor ${s.floor} next</span><h2 class="rites-title">${heading} <span class="rites-pips" aria-hidden="true"><i${picked || locked ? ' class="on"' : ""}></i></span></h2><p class="rites-objective"><b>${escape(floor?.name ?? "")}</b> · ${kind} · ${escape(spireFloorLine(floor))}</p></div><span class="raid-choice-timer" role="timer" aria-label="Time left to choose">${LIVE_NUMBER}</span></header><div class="raid-rite-options spire-blessings">${cards || "<p>Blessing locked in · waiting for the team.</p>"}</div><footer class="rites-foot">${locked ? '<span class="raid-rite-locked">Blessing locked in · waiting for the team</span>' : "<span>One of three · they stack</span>"}<details class="raid-team-summary"><summary>Your blessings</summary><div class="spire-team" aria-label="Team blessings">${heroes.map((p) => `<div><b>${escape(p.name)}</b><span>${escape(held(state, p.id))}${s.offers[p.id]?.length ? " · Choosing…" : ""}</span></div>`).join("")}</div></details></footer></div>`;
   } else if (state.phase === "countdown") {
     title = LIVE_COUNTDOWN;
     body = `<p>Floor ${s.floor} · ${escape(floor?.name ?? "")}</p>`;
@@ -259,5 +266,11 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
       }),
     )}`;
   }
-  return { title, body, actions: acts, kicker: `The Spire · Floor ${s.floor}` };
+  return {
+    title,
+    body,
+    actions: acts,
+    screen,
+    kicker: `The Spire · Floor ${s.floor}`,
+  };
 }
