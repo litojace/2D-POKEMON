@@ -51,7 +51,7 @@ describe("text fields focused for typing", () => {
     );
   // One statement that finds or names an input box and focuses it unscrolled.
   const FIELD_NO_SCROLL =
-    /(HTMLInputElement|HTMLTextAreaElement|\binput\b|#fr-add-code)[^;{}]*\.focus\(\{\s*preventScroll:\s*true/g;
+    /(HTMLInputElement|HTMLTextAreaElement|\binput\b|#fr-add-code|#code\b)[^;{}]*\.focus\(\{\s*preventScroll:\s*true/g;
   it("let the browser bring them above the keyboard", () => {
     const found = files(SRC).flatMap((file) =>
       [...readFileSync(file, "utf8").matchAll(FIELD_NO_SCROLL)].map(

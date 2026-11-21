@@ -18,6 +18,9 @@ export interface PlazaScreenOptions {
   colour?: string | null;
   /** Your Aura slot (an aura id), shown round your fighter. */
   aura?: string | null;
+  /** Your Entrance and Victory slots, played as you arrive and score. */
+  entrance?: string | null;
+  victory?: string | null;
   /** An image URL for a fighter in a skin (canvas sprite); `flat` leaves
    * out the masked overlays some browsers draw wrong (plaza-sprite.ts). */
   art(
@@ -68,6 +71,8 @@ export interface PlazaScreen {
     skin: { skin: string; stage?: number } | null,
     colour?: string | null,
     aura?: string | null,
+    entrance?: string | null,
+    victory?: string | null,
   ): void;
   close(): void;
   /** A Nearby chat line: a bubble over the speaker's head. */
@@ -81,6 +86,8 @@ export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
       skin: unknown,
       colour?: string | null,
       aura?: string | null,
+      entrance?: string | null,
+      victory?: string | null,
     ): void;
     say(accountId: string, text: string): void;
     hide(): void;
@@ -93,6 +100,8 @@ export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
     options.skin,
     options.colour ?? null,
     options.aura ?? null,
+    options.entrance ?? null,
+    options.victory ?? null,
   );
   // Visual tests read positions through this (development builds only).
   if (import.meta.env.DEV)
@@ -131,8 +140,15 @@ export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
   join();
   return {
     say: (accountId, text) => scene.say(accountId, text),
-    look(next, skin, colour, aura) {
-      scene.look(next, skin, colour ?? null, aura ?? null);
+    look(next, skin, colour, aura, entrance, victory) {
+      scene.look(
+        next,
+        skin,
+        colour ?? null,
+        aura ?? null,
+        entrance ?? null,
+        victory ?? null,
+      );
       character = next;
       // The server reloads the saved skin and wardrobe itself.
       options.socket.emit("plaza-look", { character: next }, () => {});

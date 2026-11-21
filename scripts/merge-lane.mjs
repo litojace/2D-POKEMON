@@ -10,7 +10,14 @@
 // machinery, the shared UI, and the battle (what older phones lag on).
 //
 //   node scripts/merge-lane.mjs [base]     (base: origin/main)
+//
+// In CI (.github/workflows/ci.yml, the `lane` job) it also writes
+// `lane=FAST` or `lane=FULL` to $GITHUB_OUTPUT: a FAST pull request runs
+// verify only, and the 18 visual shards are left to main's scheduled full
+// run (the shards of a PR that merges on verify only spent runners for
+// nothing, and main's own runs starved).
 import { execFileSync } from "node:child_process";
+import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 /** More files than this is too much to check by hand: FULL. */
@@ -94,9 +101,11 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   console.log(`${r.lane} lane (${r.files} files changed against ${base})`);
   if (r.docsOnly) console.log("- docs and Markdown only: CI runs nothing");
   for (const why of r.reasons) console.log(`- ${why}`);
+  if (process.env.GITHUB_OUTPUT)
+    appendFileSync(process.env.GITHUB_OUTPUT, `lane=${r.lane}\n`);
   if (r.lane === "FAST")
     console.log(
-      "Merge once the PR's verify job is green and the visual specs this touches pass locally; then watch main's full run.",
+      "Merge once the PR's verify job is green and the visual specs this touches pass locally; main's scheduled full run checks it after.",
     );
   else
     console.log(
