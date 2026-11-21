@@ -66,9 +66,6 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
   let closed = false;
   const root = () => panel.root;
 
-  // A phone held sideways shows the card's column as tabs; turning a
-  // tablet or resizing a window across the line redraws it.
-  const compactQuery = matchMedia("(max-height: 500px)");
   const history = hooks.history
     ? historyController(
         hooks.history,
@@ -81,11 +78,9 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     : null;
   const data = () => ({
     ...hooks.data(),
-    compact: compactQuery.matches,
     history: history?.state,
     canOpen: hooks.friendCard ? hooks.isFriend : undefined,
   });
-  const onCompact = () => render();
   function render() {
     if (closed) return;
     const next = parse(profileMarkup(view, data()));
@@ -371,12 +366,10 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     onClose: () => {
       closed = true;
       clearInterval(tick);
-      compactQuery.removeEventListener("change", onCompact);
       hooks.onClose?.();
     },
   });
   root().addEventListener("click", onClick);
-  compactQuery.addEventListener("change", onCompact);
   root().addEventListener("submit", onSubmit);
   root().addEventListener("keydown", onKey);
   // A photo picked for your own picture.
