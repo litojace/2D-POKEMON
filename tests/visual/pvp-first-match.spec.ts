@@ -5,6 +5,7 @@ import {
   pushUntilBattle,
   snap,
   startPractice,
+  skipTour,
 } from "./helpers";
 
 // PvP audit (docs/pvp-plan.md §3): a new mobile player's path from the
@@ -21,6 +22,7 @@ const PHONE = {
 };
 
 async function newPlayer(page: Page) {
+  await skipTour(page);
   await page.addInitScript(() => {
     const w = window as any;
     w.__economyPatch = {
