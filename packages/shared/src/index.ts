@@ -739,7 +739,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       6,
       270,
       "A fast electric projectile.",
-      { speed: 860, range: 680, radius: 9 },
+      { speed: 930, range: 680, radius: 9 },
     ),
     skills: [
       ability(
@@ -749,7 +749,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         20,
         8,
         "A powerful electric bolt toward your aim. Briefly paralyzes.",
-        { speed: 1050, radius: 12, status: "paralysis", statusDuration: 0.6 },
+        { speed: 1500, radius: 12, status: "paralysis", statusDuration: 0.6 },
       ),
       ability(
         "ball-lightning",
