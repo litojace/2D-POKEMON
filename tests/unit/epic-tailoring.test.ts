@@ -58,6 +58,16 @@ describe("Epic skins (3,500 coins)", () => {
           expect(calls(fn as (k: any) => void, side, back).length, `${theme} ${id} ${side} ${back}`).toBeGreaterThan(0);
   });
 
+  it("hand Stargazer its telescope and Moon Blink its moon staff in place of the mallet", () => {
+    // The mallet's head: its path, as the champion draws it front and side.
+    const MALLET = /fill="#d29a5c"/;
+    for (const dir of dirs) {
+      expect(all("astrabun-neon-campus", "astrabun", dir), `campus ${dir}`).not.toMatch(MALLET);
+      expect(all("astrabun-hero-squad", "astrabun", dir), `hero ${dir}`).not.toMatch(MALLET);
+      expect(Object.values(creatureLayers("astrabun", dir).layers).join(""), `own ${dir}`).toMatch(MALLET);
+    }
+  });
+
   it("keep Legendary's marks off Epics: no gold rim, no clasp, no aura or motif", () => {
     for (const s of epics) {
       const art = SKIN_ART[s.id];

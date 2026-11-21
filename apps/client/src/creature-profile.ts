@@ -1429,7 +1429,7 @@ export function creatureProfile(
         ) +
         path("M118 22Q128 6 146 8Q140 18 128 22Z");
       profiles.head = e(100, 88, 39, 33, face) + shine(76, 71, 22);
-      profiles.armR = mallet(140) + profiles.armR;
+      profiles.armR = `<g data-held="1">${mallet(140)}</g>` + profiles.armR;
       // The cotton tail sits over the back.
       profiles.wings =
         e(100, 152, 13, 12, "#ffffff") +
@@ -1469,7 +1469,7 @@ export function creatureProfile(
         ) + star(86, 62, 3);
       // Carried over the near shoulder.
       profiles.armR =
-        `<g transform="rotate(35 112 154)">${mallet(112)}</g>` + profiles.armR;
+        `<g transform="rotate(35 112 154)"><g data-held="1">${mallet(112)}</g></g>` + profiles.armR;
       profiles.tail =
         e(128, 150, 13, 12, "#ffffff") +
         e(124, 146, 5, 4, "#ffffff", ' stroke="none" opacity=".9"');

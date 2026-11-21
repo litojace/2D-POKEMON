@@ -22,6 +22,8 @@ export const HERO_ART: Record<string, SkinArt> = Object.fromEntries(
       replaces: modernReplaces("hero", id),
       trail: { kind: "star", colors: [0xffd84a, 0xffffff] },
       skill: 0xffd84a,
+      // Moon Blink's moon staff replaces its mallet (epic-props.ts).
+      ...(id === "astrabun" ? { heldOff: true } : {}),
     } satisfies SkinArt,
   ]),
 );
