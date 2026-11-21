@@ -60,6 +60,12 @@ interface Parked {
   watch: MutationObserver;
 }
 let parked: Parked | undefined;
+/**
+ * Shops open now. One closed while the next was already opening (closed and
+ * opened again during its leave) must not be parked under it: two Shops
+ * would then sit in the page, the parked one out of date.
+ */
+let openShops = 0;
 export const PARKED_MS = 60_000;
 /**
  * Shops open now. One closed and opened again before it had finished
@@ -800,6 +806,8 @@ export function openFittingRoom(
       if (!document.querySelector(".lobby-layer")?.isConnected) return false;
       if (document.body.classList.contains("battle-active")) return false;
       if (parked && parked.wrap) return false;
+      // A newer Shop is open already: this one goes.
+      if (openShops > 0) return false;
       const fighter = unpark();
       park({
         ...fighter,
@@ -810,6 +818,7 @@ export function openFittingRoom(
       return true;
     },
   });
+  openShops++;
   // (Not taken back after all, the Lobby having been rebuilt: let it go.)
   if (keptRoot && root() !== keptRoot) kept?.wrap?.remove();
   for (const [type, fn] of listeners)
