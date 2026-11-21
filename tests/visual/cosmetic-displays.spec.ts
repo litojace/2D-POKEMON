@@ -74,7 +74,14 @@ window.fetch=async(input,init)=>{
         await page.click(`.fit-room [data-ui-item="galaxy-${suffix}"]`);
         if (suffix === "frame") {
           await expect(stage).toHaveClass(/is-item/);
-          await expect(stage.locator(".portrait-disc svg")).toHaveCount(1);
+          // Your avatar in the frame, as everyone sees you; not the
+          // fighter (#306).
+          await expect(
+            stage.locator(".portrait-disc img.portrait-avatar"),
+          ).toHaveCount(1);
+          await expect(
+            stage.locator(".portrait-disc svg[data-fighter]"),
+          ).toHaveCount(0);
           await expect(stage.locator(":scope > canvas")).toHaveCount(0);
         } else {
           await expect(stage).not.toHaveClass(/is-item/);
