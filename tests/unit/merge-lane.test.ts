@@ -33,6 +33,7 @@ describe("mergeLane", () => {
     ["tests/visual/harness/fake-api.ts", "harness"],
     ["tests/visual/playwright.config.ts", "harness"],
     ["scripts/check-migrations.mjs", "CI or production runs"],
+    ["scripts/full-run-due.mjs", "CI or production runs"],
     ["apps/client/src/ui/components.ts", "shared UI"],
     ["apps/client/src/style.css", "shared UI"],
     ["apps/client/src/fx-engine.ts", "battle"],
