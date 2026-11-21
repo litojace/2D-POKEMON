@@ -5,6 +5,7 @@ import {
   profileFaceOrder,
   PROFILE_HEAD_WIDTH,
   PROFILE_FACE_PARTS,
+  REAR_ARMS_MIRRORED,
 } from "./creature-profile";
 import { championMaterials } from "./champion-materials";
 import { styleHalcyraBeak } from "./skins/halcyra-beaks";
@@ -1130,6 +1131,11 @@ export function creatureLayers(
         `<g transform="matrix(${s} 0 0 ${s} ${+(cx - s * cx).toFixed(3)} ${+(cy - s * cy).toFixed(3)})">${layers[part]}</g>`;
     }
   if (art && look) dressLayers(id, dir, look, art, p, prefix, layers, flat);
+  // Seen from behind, the paw that holds something is on the other side
+  // (REAR_ARMS_MIRRORED): both arms, with all they carry, are mirrored.
+  if (back && REAR_ARMS_MIRRORED.has(id))
+    for (const part of ["armL", "armR"] as const)
+      if (layers[part]) layers[part] = `<g transform="matrix(-1 0 0 1 200 0)">${layers[part]}</g>`;
   if (profile)
     for (const part of PROFILE_FACE_PARTS)
       if (layers[part])
