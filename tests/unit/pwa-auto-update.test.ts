@@ -196,3 +196,20 @@ it("asks before reloading into an update another tab already activated", async (
   await gate.accept();
   expect(reload).toHaveBeenCalledOnce();
 });
+it("asks full screen the first time, and in the banner after Later", () => {
+  let now = 0;
+  const gate = new PwaAutoUpdate({
+    safe: () => true,
+    activate: async () => {},
+    reload: () => {},
+    now: () => now,
+  });
+  expect(gate.fullScreen).toBe(false);
+  gate.available();
+  expect(gate.fullScreen).toBe(true);
+  gate.later();
+  expect(gate.fullScreen).toBe(false);
+  now = UPDATE_SNOOZE_MS;
+  expect(gate.asking).toBe(true);
+  expect(gate.fullScreen).toBe(false);
+});
