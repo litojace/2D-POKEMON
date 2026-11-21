@@ -15561,7 +15561,7 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-countdown:not(:empty) {
 
 /* ── Contextual boss actions on phones (demo, owner 20 Nov 2026) ──
    Prismatail's Turn mirror / Look away sit in the touch cluster's slot,
-   left of skill 2 (mobile-input.ts context), and each shows only when it
+   left of skill 1 (mobile-input.ts context), and each shows only when it
    can be used, popping in like an interact prompt (prismatail-controls.ts
    data-ready). Three looks to compare (localStorage "arena-prism-ui"). */
 .touch-buttons .touch-context {

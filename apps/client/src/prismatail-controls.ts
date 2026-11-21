@@ -3,7 +3,7 @@ import { setHudStyle } from "./hud-dom";
 
 /**
  * Phones (demo, owner 20 Nov 2026): the pair lives in the touch cluster's
- * contextual slot, left of skill 2, and each button shows only when it can
+ * contextual slot, left of skill 1, and each button shows only when it can
  * be used (an interact prompt, as action games put one by the skills):
  * Turn mirror by a mirror, Look away while Glare winds up. Three looks to
  * compare, picked by localStorage "arena-prism-ui": "a" round icons, "b"
