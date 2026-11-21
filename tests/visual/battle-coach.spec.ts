@@ -5,12 +5,14 @@ import {
   pushUntilBattle,
   snap,
   startPractice,
+  skipTour,
 } from "./helpers";
 
 // The first match's coach (battle-coach.ts): a new player's match against a
 // bot shows one line at a time (move, attack, skill, dash, the goal), each
 // gone when the player does it; it ends with the match.
 async function newPlayer(page: Page) {
+  await skipTour(page);
   await page.addInitScript(() => {
     const w = window as any;
     w.__economyPatch = {
