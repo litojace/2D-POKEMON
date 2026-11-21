@@ -7,6 +7,15 @@ launch: verify small phones and safe-area insets before desktop polish.
 Keep new content driven by shared data rather than floor/boss-specific UI
 branches. For Spire updates, follow [the content guide](docs/spire-content-guide.md).
 
+**Text fields a button opens** (a form, a code box, a name to change):
+focus them with `focusForTyping(field)` from `apps/client/src/screen-pin.ts`,
+never `field.focus({ preventScroll: true })` and never `select()` straight
+after `focus()`. On iPhone both keep Safari from lifting the field above the
+keyboard, so it sits under the keyboard until tapped again (#287, #303).
+To have the text selected as well, pass `{ selectAll: true }`; it then
+selects only where there is a mouse, not on a touch screen.
+`tests/unit/screen-pin.test.ts` fails on either pattern in client code.
+
 ## Running tests quickly
 
 The full visual suite (`tests/visual`, Playwright) has over 100 files and is
