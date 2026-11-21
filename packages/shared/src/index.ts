@@ -601,8 +601,21 @@ export interface Ability {
   chainWindow?: number;
   /** Surf: the cooldown left after a dash that went through an enemy (s). */
   surf?: { refund: number };
-  /** Wave: the longest an enemy is carried along (s). */
-  wave?: { carry: number };
+  /**
+   * Wave: the longest an enemy is carried along (s); `second`: a second wall
+   * rolls out this many seconds after the first (one jump can't clear both).
+   */
+  wave?: { carry: number; second?: number };
+  /**
+   * Cone: `grow` px of reach gained over the breath (stepping back is not
+   * enough); `freeze`: an enemy hit by this many ticks in a row is frozen for
+   * `freezeFor` seconds (once a breath).
+   */
+  cone?: { grow?: number; freeze?: number; freezeFor?: number };
+  /** Shrapnel: blades = `count` + `perPlate` per plate (instead of count each). */
+  perPlate?: number;
+  /** Rest: when it ends, a shockwave round the fighter (damage, radius, knockback). */
+  burst?: { damage: number; radius: number; knockback: number };
   /**
    * Projectile: it flies through enemies, zapping the nearest one within
    * `radius` in sight for `damage` every `tick` seconds, and explodes at the
@@ -726,7 +739,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       6,
       270,
       "A fast electric projectile.",
-      { speed: 860, range: 680, radius: 9 },
+      { speed: 930, range: 680, radius: 9 },
     ),
     skills: [
       ability(
@@ -736,7 +749,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         20,
         8,
         "A powerful electric bolt toward your aim. Briefly paralyzes.",
-        { speed: 1050, radius: 12, status: "paralysis", statusDuration: 0.6 },
+        { speed: 1500, radius: 12, status: "paralysis", statusDuration: 0.6 },
       ),
       ability(
         "ball-lightning",
@@ -815,9 +828,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "crest-flare",
         "Crest Flare",
         "cone",
-        6,
+        5,
         8,
-        "The flame crest flares into a cone of fire for 1.2 seconds. Burns.",
+        "The flame crest flares into a cone of fire for 1.2 seconds, reaching from 230 px out to 300 px as it burns. Burns.",
         {
           range: 230,
           arc: 0.75,
@@ -827,6 +840,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           knockback: 0,
           status: "burn",
           statusDuration: 1.5,
+          cone: { grow: 70 },
         },
       ),
       ability(
@@ -891,7 +905,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "An axolotl duelist in a river sash. The quickest fighter; pokes, slips away, regrows, then finishes.",
     color: 0x4fd6e6,
-    health: 146,
+    health: 136,
     speed: 285,
     basic: basic(
       "tide-needle",
@@ -946,9 +960,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "riptide-wave",
         "Riptide Wave",
         "wave",
-        24,
+        18,
         20,
-        "After a short charge, a wall of water 380 px wide rolls from Tidefin along your aim across the whole court, over any wall. Enemies it reaches take 24 and are carried along for up to half a second; carried into a wall, they take 12 more and are stunned.",
+        "After a short charge, two walls of water 380 px wide roll from Tidefin along your aim, 0.9 seconds apart, across the whole court and over any wall. Each wall that reaches an enemy deals 18 and carries it along for up to half a second; carried into a wall, it takes 9 more and is stunned. One jump can't clear both.",
         {
           cast: 0.35,
           speed: 650,
@@ -959,7 +973,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           wallSlam: 0.5,
           status: "stun",
           statusDuration: 0.6,
-          wave: { carry: 0.5 },
+          wave: { carry: 0.5, second: 0.9 },
         },
       ),
     ],
@@ -1211,8 +1225,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "rest",
         0,
         16,
-        "Pull into your shell for 2.5 seconds: you can't move or act, but take 45% less damage and regrow 30 HP.",
-        { duration: 2.5, heal: 6, status: "shell" },
+        "Pull into your shell for 1.5 seconds: you can't move or act, but take 45% less damage and regrow 21 HP. Then the shell bursts open, shoving away everyone within 140 px.",
+        {
+          duration: 1.5,
+          heal: 7,
+          status: "shell",
+          burst: { damage: 0, radius: 140, knockback: 300 },
+        },
       ),
       ability(
         "mud-mire",
@@ -1581,9 +1600,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "cone",
         4,
         12,
-        "Breathe a freezing cone for 1 second. Slows.",
+        "Breathe a freezing cone for 1 second: 4 damage every 0.2 seconds and a slow. An enemy caught by four breaths in a row is frozen solid for half a second.",
         {
-          range: 210,
+          range: 230,
           arc: 0.7,
           duration: 1,
           tickDelay: 0.1,
@@ -1591,6 +1610,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           knockback: 0,
           status: "slow",
           statusDuration: 0.6,
+          cone: { freeze: 4, freezeFor: 0.5 },
         },
       ),
       ability(
@@ -2028,9 +2048,10 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "shrapnel",
         6,
         9,
-        "Shed your armour plates as a fan of blades: 3 blades, plus 3 for each plate you have. Every plate is spent and grows back later.",
+        "Shed your armour plates as a fan of blades: 6 blades, plus 2 for each plate you have. Every plate is spent and grows back later.",
         {
-          count: 3,
+          count: 6,
+          perPlate: 2,
           fan: 1.2,
           speed: 760,
           range: 300,
@@ -3902,8 +3923,8 @@ export const RITES: Rite[] = [
     "minor",
     "shell-up",
     "Thick Moss",
-    "Shell Up regrows 35 HP instead of 30.",
-    { set: { heal: 7 } },
+    "Shell Up regrows 27 HP instead of 21.",
+    { set: { heal: 9 } },
   ),
   rite("terradon", "minor", "mud-mire", "Deep Mud", "Mud Mire is 20% wider.", {
     mul: { radius: 1.2 },

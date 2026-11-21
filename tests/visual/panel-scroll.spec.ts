@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   hubMenu,
   openHub,
+  openPlaza,
   openPlayPanel,
   pushUntilBattle,
   startPractice,
@@ -461,3 +462,35 @@ for (const size of SIZES) {
     }
   });
 }
+
+// The Plaza's Fish book (plaza-fishing.ts): its list of fish scrolls.
+for (const size of SIZES)
+  test(`the Plaza's Fish book scrolls to its end at ${size.name}`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      page.setDefaultTimeout(10_000);
+      const errors = await openPlaza(page);
+      if (size.island) await setInsets(page, ISLAND);
+      await page.click("#pz-fish-btn");
+      await expect(page.locator("#pz-fishbook")).toBeVisible();
+      await settle(page);
+      const report: Report = {
+        "fish book": await scrollSweep(page, "#pz-fishbook"),
+      };
+      print(size.name, "fish book", report["fish book"]);
+      expect(
+        failing(report),
+        "panels that can't be scrolled to the end",
+      ).toEqual([]);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

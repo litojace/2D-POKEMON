@@ -78,16 +78,95 @@ for (const size of [
     // A decoded CSS background may still be uploading to the compositor on a
     // busy GPU. Wait for a still pair rather than treating that first paint as
     // continuous animation; keep ordinary animation preferences enabled.
-    await expect
-      .poll(
-        async () => {
-          const first = await page.screenshot({ clip });
-          await page.waitForTimeout(350);
-          return (await page.screenshot({ clip })).equals(first);
+    // CI's headless shell took longer than 5 s at 1280x720 (every run on main
+    // bdd558d, 21 Nov; never locally), so it gets 20 s (#314).
+    //
+    // "Still" allows the CPU renderer's own noise, not motion. On CI's
+    // SwiftShader two screenshots of the untouched page differed in 21-23 of
+    // the 207,360 pixels, by one level in one channel, scattered over the
+    // whole clip (PR #308, 21 Nov), on every pair for 5 s. Anything that moves
+    // changes far more (measured here): a 30 px square sliding across the clip
+    // changed 840 pixels by up to 246 levels; the backdrop fading by 30% over
+    // 20 s changed 155,364 by up to 2; drifting 40 px over 30 s, 176,839 by up
+    // to 70. So a pair is still when no pixel moved by more than one level and
+    // fewer than one in a thousand moved at all.
+    const pixelDiff = (pair: Buffer[]) =>
+      page.evaluate(
+        async (pngs) => {
+          const read = async (b64: string) => {
+            const img = new Image();
+            img.src = `data:image/png;base64,${b64}`;
+            await img.decode();
+            const c = document.createElement("canvas");
+            c.width = img.width;
+            c.height = img.height;
+            const g = c.getContext("2d")!;
+            g.drawImage(img, 0, 0);
+            return g.getImageData(0, 0, c.width, c.height);
+          };
+          const [a, b] = await Promise.all(pngs.map(read));
+          let n = 0,
+            max = 0,
+            x0 = a.width,
+            y0 = a.height,
+            x1 = -1,
+            y1 = -1;
+          for (let i = 0; i < a.data.length; i += 4) {
+            let d = 0;
+            for (let k = 0; k < 4; k++)
+              d = Math.max(d, Math.abs(a.data[i + k] - b.data[i + k]));
+            if (!d) continue;
+            n++;
+            max = Math.max(max, d);
+            const x = (i / 4) % a.width,
+              y = Math.floor(i / 4 / a.width);
+            x0 = Math.min(x0, x);
+            y0 = Math.min(y0, y);
+            x1 = Math.max(x1, x);
+            y1 = Math.max(y1, y);
+          }
+          return {
+            pixels: a.width * a.height,
+            changedPixels: n,
+            maxDelta: max,
+            box: [x0, y0, x1, y1],
+          };
         },
-        { timeout: 5000 },
-      )
-      .toBe(true);
+        pair.map((b) => b.toString("base64")),
+      );
+    let pair: Buffer[] = [];
+    let diff: Awaited<ReturnType<typeof pixelDiff>> | undefined;
+    try {
+      await expect
+        .poll(
+          async () => {
+            const first = await page.screenshot({ clip });
+            await page.waitForTimeout(350);
+            pair = [first, await page.screenshot({ clip })];
+            if (pair[1].equals(first)) return true;
+            diff = await pixelDiff(pair);
+            return (
+              diff.maxDelta <= 1 && diff.changedPixels * 1000 < diff.pixels
+            );
+          },
+          { timeout: 20_000 },
+        )
+        .toBe(true);
+    } catch (error) {
+      // Keep the last pair and say where they differ and by how much.
+      if (!diff) throw error;
+      await info.attach("still-pair-first", {
+        body: pair[0],
+        contentType: "image/png",
+      });
+      await info.attach("still-pair-second", {
+        body: pair[1],
+        contentType: "image/png",
+      });
+      throw new Error(
+        `${(error as Error).message}\nlast pair differs: ${JSON.stringify(diff)} (clip ${JSON.stringify(clip)})`,
+      );
+    }
     for (const mode of ["signup", "login", "forgot"]) {
       if (mode === "forgot") await page.click("#auth-forgot");
       else await page.click(`[data-auth-tab="${mode}"]`);

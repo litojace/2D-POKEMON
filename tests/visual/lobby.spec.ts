@@ -1604,3 +1604,41 @@ for (const viewport of [
       await context.close();
     }
   });
+
+test("your fighter wears its skin as soon as the Lobby opens after signing in", async ({
+  page,
+}) => {
+  await shopServer(page);
+  const errors = await openLobby(page);
+  // The harness account wears Storm Crown (stage 2) on Voltkit. The account
+  // answers after the Lobby is first drawn: the stage must take the skin
+  // then, without leaving for the Plaza and coming back.
+  const art = page.locator("#lobby-fighter-art");
+  await expect(art).toHaveAttribute("data-preview-champion", "voltkit");
+  await expect(art).toHaveAttribute("data-preview-item", "voltkit-stormcrown");
+  await expect(art).toHaveAttribute("data-preview-stage", "2");
+  expect(errors).toEqual([]);
+});
+
+test("a skin answer held back until after the Lobby is up still dresses the fighter", async ({
+  page,
+}) => {
+  await shopServer(page);
+  await page.addInitScript(() => {
+    // Hold /api/economy (shop-server.ts) until the Lobby is on screen.
+    const ready = () => {
+      const w = window as any;
+      if (w.__shop) w.__shop.delay = true;
+      else setTimeout(ready, 0);
+    };
+    ready();
+  });
+  const errors = await openLobby(page);
+  const art = page.locator("#lobby-fighter-art");
+  await expect(art).toHaveAttribute("data-preview-champion", "voltkit");
+  await page.waitForFunction(() => !!(window as any).__shop.release);
+  await expect(art).toHaveAttribute("data-preview-item", "");
+  await page.evaluate(() => (window as any).__shop.release());
+  await expect(art).toHaveAttribute("data-preview-item", "voltkit-stormcrown");
+  expect(errors).toEqual([]);
+});

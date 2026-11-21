@@ -9,6 +9,7 @@ import {
   profileEmissionPoint,
   PROFILE_HEAD_WIDTH,
   PROFILE_FACE_PARTS,
+  REAR_ARMS_MIRRORED,
 } from "../creature-profile";
 import { drawElementGlyph } from "../element-effects";
 import type Phaser from "phaser";
@@ -935,6 +936,17 @@ export class FighterRig {
       );
       if (image.texture.key !== texture) image.setTexture(texture);
     }
+    // Seen from behind, a champion whose near paw holds something has its
+    // arms mirrored (REAR_ARMS_MIRRORED): mirror their poses too, so a swing
+    // or a held prop moves the same way it does from the front.
+    if (dir === "up" && REAR_ARMS_MIRRORED.has(this.character))
+      for (const part of ["armL", "armR"] as const) {
+        const image = this.images.get(part);
+        const asset = this.assets.find((a) => a.key === rigKey(this.character, dir, part));
+        if (!image || !asset) continue;
+        image.x = 2 * asset.x - image.x;
+        image.rotation = -image.rotation;
+      }
     // Carry complete side/rear parts with the torso. Their own shoulder/hip
     // pivots remain independent, including the hidden overlap at each joint.
     if (dir !== "down") {

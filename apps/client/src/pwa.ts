@@ -112,7 +112,11 @@ export function setupPWA(
           : "Update accepted · applies after closing menus and returning to the Lobby or the Plaza."
         : asking
           ? "New version ready. Updating takes a few seconds."
-          : "Update ready · you can install it after closing menus and returning to the Lobby or the Plaza.";
+          : !document.body.classList.contains("battle-active")
+            ? "Update ready · you can install it after closing menus and returning to the Lobby or the Plaza."
+            : document.body.classList.contains("practice-active")
+              ? "Update after practice"
+              : "Update after this match";
       if (message.textContent !== text) message.textContent = text;
     }
     void automatic.sync();

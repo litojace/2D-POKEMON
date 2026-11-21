@@ -7,6 +7,15 @@ launch: verify small phones and safe-area insets before desktop polish.
 Keep new content driven by shared data rather than floor/boss-specific UI
 branches. For Spire updates, follow [the content guide](docs/spire-content-guide.md).
 
+**Text fields a button opens** (a form, a code box, a name to change):
+focus them with `focusForTyping(field)` from `apps/client/src/screen-pin.ts`,
+never `field.focus({ preventScroll: true })` and never `select()` straight
+after `focus()`. On iPhone both keep Safari from lifting the field above the
+keyboard, so it sits under the keyboard until tapped again (#287, #303).
+To have the text selected as well, pass `{ selectAll: true }`; it then
+selects only where there is a mouse, not on a touch screen.
+`tests/unit/screen-pin.test.ts` fails on either pattern in client code.
+
 ## Running tests quickly
 
 The full visual suite (`tests/visual`, Playwright) has over 100 files and is
@@ -161,8 +170,12 @@ It prints the lane and why, from the files the branch changes against
 - **Main's full check is scheduled**, every three hours on main's latest
   commit (also Actions → Arena checks → Run workflow on `main`). A push to
   `main` runs verify only: a merge-started full run kept being replaced by
-  the next merge before it found runners. A red scheduled run opens the
-  issue "Main is red: the scheduled full run failed" (green closes it).
+  the next merge before it found runners. GitHub drops scheduled runs when
+  busy, so a push to `main` also starts a full run when none is waiting or
+  running and none started in three hours (`scripts/full-run-due.mjs`). A
+  red full run on main (scheduled
+  or by hand) opens the issue "Main is red: the scheduled full run failed"
+  (green closes it).
   **While it is open, merge nothing but its fix**, in either lane.
 - Say the lane and its reasons in the PR description. Merge only when the
   owner has asked for it: the lane says when a merge is safe, not that one

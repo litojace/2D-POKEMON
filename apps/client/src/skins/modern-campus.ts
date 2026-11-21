@@ -172,7 +172,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
     k.put("flame", band(k, k.ht + 20, k.side ? 42 : 48, "#2f6fb8", 5));
   },
   // Astronomy Club: a navy pinafore with constellation pins that light in
-  // turn, and a telescope slung on the back.
+  // turn. Its telescope is the mallet, re-forged (epic-props.ts).
   astrabun(k) {
     const navy = "#2a2f6e";
     const pins = (x0: number, y0: number) => [[0, 0], [5, 3], [9, -1], [13, 4]].map(([dx, dy], i) => k.lume("chase", k.circle(x0 + dx, y0 + dy, 1.1, "#fff3a8", "none", 0), i, "#fff3a8")).join("") +
@@ -182,8 +182,6 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
       const c = cx(k);
       k.put("body", torso(k, navy, collar(k, c, "#ffd84a", true) + pins(c - 12, k.T + 16)));
     }
-    onPole(k, (x, y) => `<g transform="rotate(${k.side ? -k.side * 30 : 30} ${x} ${y + 10})">` + k.rect(x - 4, y - 6, 8, 26, 2, "#b8823a", k.ink, 0.8) + k.rect(x - 5, y - 8, 10, 4, 1, "#e6c46a", k.ink, 0.5) +
-      k.lume("pulse", k.circle(x, y - 6, 2.4, "#bfe8ff", "none", 0), 3, "#bfe8ff") + "</g>");
   },
   // Gardening Club: overalls, a straw hat and a seedling in a pot whose
   // first leaves glow.

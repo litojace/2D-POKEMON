@@ -5,6 +5,7 @@ import {
   profileFaceOrder,
   PROFILE_HEAD_WIDTH,
   PROFILE_FACE_PARTS,
+  REAR_ARMS_MIRRORED,
 } from "./creature-profile";
 import { championMaterials } from "./champion-materials";
 import { styleHalcyraBeak } from "./skins/halcyra-beaks";
@@ -907,7 +908,9 @@ export function creatureLayers(
     layers.body = `${e(100, 138, 28, 28)}${e(100, 143, 17, 19, pearl)}${highlight(80, 124, 16)}`;
     layers.tail = `${e(130, 156, 13, 12, "#ffffff")}${e(126, 152, 5, 4, "#ffffff", ' stroke="none" opacity=".9"')}`;
     const mallet = `${path("M148 154L156 96L162 97L154 155Z", "#b37a45")}${path("M140 80Q140 72 160 74Q178 76 178 86L176 100Q176 108 158 106Q140 104 140 96Z", "#d29a5c")}${path("M152 76L150 104L156 105L158 76Z", p.glow)}${line("M144 82Q158 82 174 86", "#ffffff", 1.6, 0.5)}`;
-    layers.armR = `${mallet}${hand(133)}`;
+    // The mallet is a held piece: a skin that hands Astrabun something else
+    // takes it off (SkinArt.heldOff).
+    layers.armR = `<g data-held="1">${mallet}</g>${hand(133)}`;
     layers.legL = paw(82, 160, 15);
     layers.legR = paw(118, 160, 15);
   }
@@ -1128,6 +1131,11 @@ export function creatureLayers(
         `<g transform="matrix(${s} 0 0 ${s} ${+(cx - s * cx).toFixed(3)} ${+(cy - s * cy).toFixed(3)})">${layers[part]}</g>`;
     }
   if (art && look) dressLayers(id, dir, look, art, p, prefix, layers, flat);
+  // Seen from behind, the paw that holds something is on the other side
+  // (REAR_ARMS_MIRRORED): both arms, with all they carry, are mirrored.
+  if (back && REAR_ARMS_MIRRORED.has(id))
+    for (const part of ["armL", "armR"] as const)
+      if (layers[part]) layers[part] = `<g transform="matrix(-1 0 0 1 200 0)">${layers[part]}</g>`;
   if (profile)
     for (const part of PROFILE_FACE_PARTS)
       if (layers[part])
