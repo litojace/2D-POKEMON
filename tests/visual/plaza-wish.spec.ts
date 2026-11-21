@@ -85,8 +85,8 @@ test("a treat at the fountain is a wish; a full meter brings fireworks for every
   await expect(page.locator("#pz-banner")).not.toHaveClass(/\bon\b/);
   await expect(page.locator("#pz-wishn")).toBeHidden();
   await expect(page.locator("#pz-treat")).not.toHaveClass(/wishing/);
-  // The sparks burst on this phone's screen, below the top HUD (the scene
-  // switch and the event pill), for the whole show.
+  // Every burst is centred below the top HUD (the scene switch and the event
+  // pill) and its sparks stay on this phone's screen, for the whole show.
   const hudBottom = await page.evaluate(() =>
     Math.max(
       ...["#hub-scenes", "#pz-event"].map((s) => {
@@ -108,7 +108,11 @@ test("a treat at the fountain is a wish; a full meter brings fireworks for every
         bottom = (fw.box.y1 - v.y0) * v.z,
         left = (fw.box.x0 - v.x0) * v.z,
         right = (fw.box.x1 - v.x0) * v.z;
-      expect(top, "sparks below the top HUD").toBeGreaterThan(hudBottom - 6);
+      for (const c of fw.centres)
+        expect((c.y - v.y0) * v.z, `${c.kind} under the HUD`).toBeGreaterThan(
+          hudBottom,
+        );
+      expect(top).toBeGreaterThan(0);
       expect(bottom).toBeLessThan(375);
       expect(left).toBeGreaterThan(0);
       expect(right).toBeLessThan(667);
@@ -123,7 +127,8 @@ test("a treat at the fountain is a wish; a full meter brings fireworks for every
     .poll(async () => (await plaza("fireworks")).active, { timeout: 4000 })
     .toBe(false);
   const fw = await plaza("fireworks");
-  expect(fw.peak.sparks).toBeGreaterThan(20);
+  expect(fw.peak.sparks).toBeGreaterThan(100);
+  expect(fw.centres.map((c: { kind: string }) => c.kind)).toContain("heart");
   expect(fw.peak.sparks).toBeLessThanOrEqual(FIREWORKS.maxSparks);
   expect(fw.peak.flashes).toBeGreaterThan(0);
   expect(errors).toEqual([]);
