@@ -10,7 +10,12 @@ import {
 import { canvasGraphics } from "./skins/fx-canvas";
 import { drawColorsFx, isColors } from "./skins/colors-fx";
 import "./cosmetic-fx.css";
-import { drawAnyParticle, stepParticle, type FxParticle } from "./skins/skin-fx";
+import {
+  drawAnyParticle,
+  stepParticle,
+  type FxParticle,
+} from "./skins/skin-fx";
+import { rigEntrance, rigVictory } from "./skins/rig-piece-fx";
 
 /**
  * Every item thumbnail (Shop, Wardrobe, Raid Hub, Journey, rewards) shows
@@ -88,52 +93,6 @@ const visible = new Set<Live>();
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 let frame = 0;
 let lastTick = 0;
-
-/**
- * Entrance pieces drawn by the rig itself in play get a matching stand-in.
- * Mountainborn: the rig's burst of pebbles from the feet (animation/rig.ts),
- * nothing more; a Rare entrance has no flourish.
- */
-function entranceFallback(emit: (p: FxParticle) => void, id: string) {
-  if (id !== "mountainborn") return false;
-  for (let i = 0; i < 22; i++) {
-    const a = -Math.PI * (0.1 + Math.random() * 0.8);
-    const speed = 90 + Math.random() * 150;
-    emit({
-      x: (Math.random() - 0.5) * 30,
-      y: 0,
-      vx: Math.cos(a) * speed,
-      vy: Math.sin(a) * speed - 60,
-      life: 0.8 + Math.random() * 0.4,
-      size: 2.5 + Math.random() * 2.5,
-      color: [0x8a7a68, 0xa99782, 0x6f6152, 0xffc46b][i % 4],
-      shape: "pebble",
-    });
-  }
-  return true;
-}
-function victoryFallback(
-  g: ReturnType<typeof canvasGraphics>,
-  id: string,
-  t: number,
-) {
-  if (id !== "rockslide-flex") return false;
-  // A pile of rocks rises under the fighter.
-  const rise = Math.min(1, t / 0.35);
-  for (let i = 0; i < 7; i++) {
-    const x = (i - 3) * 16,
-      h = (18 + (3 - Math.abs(i - 3)) * 9) * rise;
-    g.fillStyle(i % 2 ? 0x8a7458 : 0x6f5c45, 1).fillTriangle(
-      x - 14,
-      0,
-      x + 14,
-      0,
-      x,
-      -h,
-    );
-  }
-  return true;
-}
 
 /**
  * The thumbnail's size in canvas pixels. A still is drawn once, so it reads
@@ -233,7 +192,7 @@ function draw(live: Live, now: number, paint = true) {
       live.cycle = cycle;
       live.particles = [];
       if (!playCollectionEntrance(emit, live.id, 0, 0, 1))
-        entranceFallback(emit, live.id);
+        rigEntrance(emit, live.id, 0, 0);
       if (still) for (let s = 0; s < 7; s++) step(live, 0.05);
     }
   } else {
@@ -261,7 +220,7 @@ function draw(live: Live, now: number, paint = true) {
         first,
       )
     )
-      victoryFallback(gb, live.id, t);
+      rigVictory(gb, live.id, 0, 0, 1, t);
   }
   if (!still) step(live, dt);
   // Particles a finale emits behind the fighter stay on the back canvas.

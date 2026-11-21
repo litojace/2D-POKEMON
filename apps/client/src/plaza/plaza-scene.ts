@@ -121,8 +121,12 @@ import {
 import { PlazaFireworks } from "./plaza-fireworks";
 import {
   PLAZA_SPRITE_PX,
+  PLAZA_SPRITE_TALL,
+  PLAZA_SPRITE_TOP,
+  cheerWearer,
   drawWornBehind,
   drawWornFront,
+  greetWearer,
 } from "./plaza-cosmetics";
 import {
   PLAZA_MARGIN,
@@ -130,6 +134,7 @@ import {
   plazaCamClamp,
   plazaZoomAt,
   plazaZoomRange,
+  plazaZoomable,
 } from "./plaza-surround";
 import {
   RIVER_LAMPS,
@@ -961,6 +966,27 @@ export function openPlaza(options) {
     id === meId ? P.name : (profiles.get(id)?.name ?? "Someone");
   const imgOf = (id) => (id === meId ? P.img : (others.get(id)?.img ?? P.img));
   const BODIES = () => [P, ...others.values()];
+  /** Who draws a skin's ambient particles this frame (pickFullFx). */
+  const FULL_FX_NEAREST = 5;
+  let fullFx = new Set();
+  function pickFullFx() {
+    const near = [...others.values()]
+      .map((b) => [Math.hypot(b.x - P.x, b.y - P.y), b])
+      .sort((a, b) => a[0] - b[0])
+      .slice(0, FULL_FX_NEAREST)
+      .map((e) => e[1]);
+    fullFx = new Set([P, ...near]);
+  }
+  /** Entrances play for who arrives while you're here, not for everyone
+   *  already in the Plaza when you join (a burst for the whole crowd). */
+  const enteredAt = performance.now();
+  const ARRIVAL_MS = 4000;
+  function greetArrival(b) {
+    if (b.greeted || performance.now() > (b.arrived ?? 0) + ARRIVAL_MS) return;
+    if (!b.entrance && !b.skin?.skin) return;
+    b.greeted = true;
+    greetWearer(b);
+  }
   /** The server's latest position for you, to correct the prediction. */
   let srv = null;
   /** Your sticks, jumps and dashes go out numbered and timed on this clock
@@ -1257,6 +1283,12 @@ export function openPlaza(options) {
   socket.on("plaza-news", onNews);
   function onNews(n) {
     const who = n.id === meId ? "You" : `<b>${esc(n.name)}</b>`;
+    // Scoring and finishing a lap play the Victory slot (and the skin's
+    // celebration), as winning a match does.
+    if (n.kind === "goal" || n.kind === "lap") {
+      const b = n.id === meId ? P : others.get(n.id);
+      if (b) cheerWearer(b, performance.now());
+    }
     if (n.kind === "wish") {
       // A feed line, no banner: the banner would hide the fireworks.
       feed(null, "The Plaza's wish came true!");
@@ -1292,7 +1324,7 @@ export function openPlaza(options) {
       feed(n.id, `${who} hit the runway`);
   }
 
-  /* ---------- zoom: pinch, the wheel, + and − ---------- */
+  /* ---------- zoom: pinch (tablets), the wheel, + and − ---------- */
   /** The player's zoom against the usual one (kept on this device). */
   let zoomF = 1;
   /** The zoom the player chose, and fishing mode's extra on top of it. */
@@ -1303,7 +1335,16 @@ export function openPlaza(options) {
   } catch {
     /* no storage */
   }
+  /** Phones always show the usual zoom (plazaZoomable); a zoom kept from
+   *  before is left in storage but not used there. */
+  const zoomable = () =>
+    plazaZoomable(matchMedia("(pointer: coarse)").matches, NW, NH);
   function setZoom(f, keep = true) {
+    if (!zoomable()) {
+      Z = plazaZoomAt(NW, NH, 1);
+      cam = plazaCamClamp(cam.x, cam.y, NW, NH, Z);
+      return;
+    }
     const r = plazaZoomRange(NW, NH);
     zBase = plazaZoomAt(NW, NH, f);
     // What was asked for past a limit is not kept: a wider screen later
@@ -1338,7 +1379,7 @@ export function openPlaza(options) {
     return Math.hypot(a.x - b.x, a.y - b.y);
   };
   cv.addEventListener("pointerdown", (e) => {
-    if (e.pointerType !== "touch") return;
+    if (e.pointerType !== "touch" || !zoomable()) return;
     fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (fingers.size === 2) {
       pinchFrom = spread();
@@ -1841,7 +1882,11 @@ export function openPlaza(options) {
   function showEmote(b, e) {
     b.emote = e;
     b.emoteT = PLAZA.emoteSeconds;
-    if (e === "💃") b.dance = 4;
+    if (e === "💃") {
+      b.dance = 4;
+      // A dance shows off the Victory slot (and the skin's celebration).
+      cheerWearer(b, performance.now());
+    }
   }
   /* ---------- pair emotes (asked from a player's card) ---------- */
   /** Play pair emote `pair` (PLAZA_PAIR_EMOTES) on body `b`. */
@@ -2578,15 +2623,21 @@ export function openPlaza(options) {
     for (const p of list) {
       profiles.set(p.id, p);
       const b = others.get(p.id);
-      if (b)
+      if (b) {
         Object.assign(b, {
           name: p.name,
           bot: !!p.bot,
+          character: p.character,
           skin: p.skin,
           colour: p.look?.skin ?? null,
           aura: p.look?.aura ?? null,
+          entrance: p.look?.entrance ?? null,
+          victory: p.look?.victory ?? null,
           img: imageFor(p.character, p.skin, p.look?.skin ?? null),
         });
+        // Their wardrobe comes a moment after they do.
+        greetArrival(b);
+      }
       // Your own fighter and skins come from your saved wardrobe (look()), at
       // once: the server's copy starts bare until it has read the wardrobe.
       if (p.id === meId) P.name = p.name;
@@ -2655,9 +2706,14 @@ export function openPlaza(options) {
           y,
           name: p?.name ?? "",
           bot: !!p?.bot,
+          character: p?.character ?? "voltkit",
           skin: p?.skin ?? null,
           colour: p?.look?.skin ?? null,
           aura: p?.look?.aura ?? null,
+          entrance: p?.look?.entrance ?? null,
+          victory: p?.look?.victory ?? null,
+          // Arrived while you're here (not in the crowd you joined).
+          arrived: performance.now() - enteredAt > 1500 ? performance.now() : 0,
           img: imageFor(
             p?.character ?? "voltkit",
             p?.skin ?? null,
@@ -2666,6 +2722,7 @@ export function openPlaza(options) {
           emoteIdx: 0,
         });
         others.set(id, b);
+        greetArrival(b);
       }
       b.tx = x;
       b.ty = y;
@@ -3500,16 +3557,18 @@ export function openPlaza(options) {
     }
     const sp = im?.sprite;
     if (!sp) return;
-    // What they wear shows here as everywhere: the Aura's ring and the
-    // Colors' motif behind, their near half in front (plaza-cosmetics.ts).
-    const worn = { now: time * 1000, reduced, low };
+    const { bob, rot, sq } = bodyPose(b, time);
+    b.bob = bob;
+    // What they wear shows here as everywhere: the Aura's ring, the Colors'
+    // motif, a skin's own effects, entrances and victories behind, their
+    // near half in front (plaza-cosmetics.ts).
+    const worn = { now: time * 1000, reduced, low, full: fullFx.has(b) };
     drawWornBehind(g, b, worn);
     for (const tr of b.trail) {
       g.globalAlpha = 0.32 * (1 - tr.t / 0.3);
       drawSprite(g, sp, tr.x, tr.y - tr.z, s, b.face, 0, 0);
     }
     g.globalAlpha = 1;
-    const { bob, rot, sq } = bodyPose(b, time);
     drawSprite(g, sp, b.x, b.y - b.z - bob, s, b.face, rot, sq);
     drawWornFront(g, b, worn);
     // Bots (the pitch bots and the townsfolk) wear a quieter, italic name
@@ -3603,7 +3662,7 @@ export function openPlaza(options) {
     g.translate(x, y);
     if (rot) g.rotate(rot);
     g.scale((face > 0 ? -1 : 1) * (1 + sq), 1 - sq);
-    g.drawImage(im, -s / 2, -s * 0.9, s, s * 1.01);
+    g.drawImage(im, -s / 2, -s * PLAZA_SPRITE_TOP, s, s * PLAZA_SPRITE_TALL);
     g.restore();
   }
   function drawBall(g) {
@@ -4338,6 +4397,9 @@ export function openPlaza(options) {
       g.ellipse(o.x, o.y, 12 * (1 - o.z / 500), 5, 0, 0, 7);
       g.fill();
     });
+    // A skin's ambient particles: you and the nearest few only (a crowd
+    // costs a phone's GPU; plaza-cosmetics.ts).
+    if (!photo) pickFullFx();
     // Everything standing, each with its footprint on the ground, drawn in
     // depth order (plaza-depth.ts): long things (hurdles, goals, the
     // gantry, the food truck) behind or in front of each walker where they
@@ -5022,6 +5084,10 @@ export function openPlaza(options) {
           py = b.y;
         b.x += (b.tx - b.x) * k;
         b.y += (b.ty - b.y) * k;
+        if (dt > 0) {
+          b.vx = (b.x - px) / dt;
+          b.vy = (b.y - py) / dt;
+        }
         b.z += (b.tz - b.z) * Math.min(1, k * 1.6);
         b.air = b.z > 1 ? 1 : 0;
         if (b.dash && Math.random() < 0.8)
@@ -5372,14 +5438,25 @@ export function openPlaza(options) {
     },
     say,
     /** Your fighter or skin changed. */
-    look(character, skin, colour = null, aura = null) {
+    look(
+      character,
+      skin,
+      colour = null,
+      aura = null,
+      entrance = null,
+      victory = null,
+    ) {
       P.character = character;
       P.skin = skin ?? null;
       P.colour = colour ?? null;
       // Your Aura shows at once; others' come with their profiles.
       P.aura = aura ?? null;
+      P.entrance = entrance ?? null;
+      P.victory = victory ?? null;
       P.fx = [];
       P.img = imageFor(character, skin ?? null, colour ?? null);
+      // Arriving, or changing fighter or outfit: your entrance plays.
+      greetWearer(P);
     },
     close() {
       setPerfSource("plaza", undefined);
