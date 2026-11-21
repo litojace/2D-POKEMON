@@ -78,32 +78,18 @@ for (const size of [
     // A decoded CSS background may still be uploading to the compositor on a
     // busy GPU. Wait for a still pair rather than treating that first paint as
     // continuous animation; keep ordinary animation preferences enabled.
-    let pair: Buffer[] = [];
-    try {
-      await expect
-        .poll(
-          async () => {
-            const first = await page.screenshot({ clip });
-            await page.waitForTimeout(350);
-            pair = [first, await page.screenshot({ clip })];
-            return pair[1].equals(first);
-          },
-          { timeout: 5000 },
-        )
-        .toBe(true);
-    } catch (error) {
-      // On CI this has failed with no clue to what moved (21 Nov): keep the
-      // last pair and say where they differ and by how much.
-      if (pair.length < 2) throw error;
-      await info.attach("still-pair-first", {
-        body: pair[0],
-        contentType: "image/png",
-      });
-      await info.attach("still-pair-second", {
-        body: pair[1],
-        contentType: "image/png",
-      });
-      const diff = await page.evaluate(
+    //
+    // "Still" allows the CPU renderer's own noise, not motion. On CI's
+    // SwiftShader two screenshots of the untouched page differed in 21-23 of
+    // the 207,360 pixels, by one level in one channel, scattered over the
+    // whole clip (PR #308, 21 Nov), on every pair for 5 s. Anything that moves
+    // changes far more (measured here): a 30 px square sliding across the clip
+    // changed 840 pixels by up to 246 levels; the backdrop fading by 30% over
+    // 20 s changed 155,364 by up to 2; drifting 40 px over 30 s, 176,839 by up
+    // to 70. So a pair is still when no pixel moved by more than one level and
+    // fewer than one in a thousand moved at all.
+    const pixelDiff = (pair: Buffer[]) =>
+      page.evaluate(
         async (pngs) => {
           const read = async (b64: string) => {
             const img = new Image();
@@ -138,7 +124,7 @@ for (const size of [
             y1 = Math.max(y1, y);
           }
           return {
-            size: [a.width, a.height],
+            pixels: a.width * a.height,
             changedPixels: n,
             maxDelta: max,
             box: [x0, y0, x1, y1],
@@ -146,6 +132,35 @@ for (const size of [
         },
         pair.map((b) => b.toString("base64")),
       );
+    let pair: Buffer[] = [];
+    let diff: Awaited<ReturnType<typeof pixelDiff>> | undefined;
+    try {
+      await expect
+        .poll(
+          async () => {
+            const first = await page.screenshot({ clip });
+            await page.waitForTimeout(350);
+            pair = [first, await page.screenshot({ clip })];
+            if (pair[1].equals(first)) return true;
+            diff = await pixelDiff(pair);
+            return (
+              diff.maxDelta <= 1 && diff.changedPixels * 1000 < diff.pixels
+            );
+          },
+          { timeout: 5000 },
+        )
+        .toBe(true);
+    } catch (error) {
+      // Keep the last pair and say where they differ and by how much.
+      if (!diff) throw error;
+      await info.attach("still-pair-first", {
+        body: pair[0],
+        contentType: "image/png",
+      });
+      await info.attach("still-pair-second", {
+        body: pair[1],
+        contentType: "image/png",
+      });
       throw new Error(
         `${(error as Error).message}\nlast pair differs: ${JSON.stringify(diff)} (clip ${JSON.stringify(clip)})`,
       );
