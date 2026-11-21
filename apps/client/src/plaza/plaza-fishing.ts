@@ -58,18 +58,16 @@ export function fishingFrame(w: number, h: number) {
     x1 = P.x + P.rx + 30,
     y0 = Math.min(FISH_SPOT.y - 150, P.y - P.ry - 20),
     y1 = P.y + P.ry + 30,
-    // Leave sits low on the left; Book, today's count and the big button
-    // take a column on the right.
-    left = Math.min(40, w * 0.05),
-    right = Math.min(150, w * 0.2),
+    // Centred on the screen, a touch right of the middle (the angler's
+    // side is lighter than the water's); as big as fits with room for
+    // fishing's right-hand column of buttons on both sides.
+    side = Math.min(150, w * 0.2),
     top = Math.min(70, h * 0.16),
     bottom = Math.min(80, h * 0.2),
-    z = Math.min(
-      (w - left - right) / (x1 - x0),
-      (h - top - bottom) / (y1 - y0),
-    );
+    nudge = Math.min(14, w * 0.015),
+    z = Math.min((w - side * 2) / (x1 - x0), (h - top - bottom) / (y1 - y0));
   return {
-    x: (x0 + x1) / 2 - (left - right) / 2 / z,
+    x: (x0 + x1) / 2 - nudge / z,
     y: (y0 + y1) / 2 - (top - bottom) / 2 / z,
     z,
   };

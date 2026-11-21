@@ -124,6 +124,18 @@ for (const size of [
           );
         })
         .toBe(true);
+      // Centred on the screen: the angler's left edge to the pond's far rim
+      // sits in the middle, a touch to the right, never to the left (once
+      // the camera has eased there).
+      await expect
+        .poll(async () => {
+          const v = (await mode(page)).view,
+            toX = (x: number) => ((x - v.x0) / (v.x1 - v.x0)) * size.width,
+            mid =
+              (toX(SPOT.x - 40) + toX(PLAZA_POND.x + PLAZA_POND.rx + 15)) / 2;
+          return mid >= size.width / 2 && mid <= size.width / 2 + 30;
+        })
+        .toBe(true);
       // Today's count is a round tile beside Book, the same size.
       const today = await box(page, "#pz-fish-today"),
         bookBtn = await box(page, "#pz-fish-book2");
