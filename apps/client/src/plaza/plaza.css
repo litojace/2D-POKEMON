@@ -1565,3 +1565,644 @@
 .pc-h img.pc-avatar {
   object-position: 50% 50%;
 }
+/* ---------- fishing at the pond (plaza-fishing.ts) ---------- */
+/* The Fish book: over the Plaza like the album, inside the safe area and
+   under the header's row; its list scrolls when it doesn't fit. */
+.plaza-layer .pz-fishbook {
+  position: absolute;
+  inset: calc(-1 * var(--safe-top, 0px)) calc(-1 * var(--safe-right, 0px))
+    calc(-1 * var(--safe-bottom, 0px)) calc(-1 * var(--safe-left, 0px));
+  box-sizing: border-box;
+  padding: calc(var(--safe-top, 0px) + var(--hud-row2))
+    calc(var(--safe-right, 0px) + var(--hud-x-r))
+    calc(var(--safe-bottom, 0px) + var(--hud-y-b))
+    calc(var(--safe-left, 0px) + var(--hud-x-l));
+  display: grid;
+  place-items: center;
+  background: #0b1020b3;
+  animation: pz-fadein 0.25s;
+  z-index: 5;
+}
+.plaza-layer .pz-fishbook[hidden] {
+  display: none;
+}
+.plaza-layer .pz-fishbook-panel {
+  box-sizing: border-box;
+  width: min(620px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  row-gap: 10px;
+  padding: 16px;
+  border: 1px solid #ffffff26;
+  border-radius: 18px;
+  background: #0d1428f0;
+  box-shadow: 0 20px 60px #000a;
+}
+.plaza-layer .pz-fishbook-panel header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 36px;
+  align-items: center;
+  gap: 10px;
+}
+.plaza-layer .pz-fishbook-panel header b {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  min-width: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.5em;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.plaza-layer .pz-fishbook-panel header b .ico {
+  width: 1.15em;
+  height: 1.15em;
+}
+.plaza-layer .pz-fishbook-count {
+  padding: 0 0.8em;
+  height: 1.9em;
+  border-radius: 999px;
+  background: #ffffff14;
+  color: var(--dim);
+  font-weight: 700;
+  line-height: 1.9em;
+  font-variant-numeric: tabular-nums;
+}
+.plaza-layer .pz-fishbook-panel .x {
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: #ffffff12;
+  color: var(--dim);
+  font-size: calc(16px * var(--text-scale, 1));
+  line-height: 36px;
+  text-align: center;
+  cursor: pointer;
+}
+.plaza-layer .pz-fishbook-list {
+  min-height: 0;
+  margin: 0;
+  padding: 0 2px 2px 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.plaza-layer .pz-fish {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 6px;
+  border: 1px solid #ffffff1f;
+  border-top: 3px solid var(--rar);
+  border-radius: 10px;
+  background: #ffffff0a;
+  text-align: center;
+  min-width: 0;
+}
+.plaza-layer .pz-fish svg {
+  width: 76px;
+  height: 48px;
+}
+.plaza-layer .pz-fish b {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(13px * var(--text-scale, 1));
+}
+.plaza-layer .pz-fish small {
+  color: var(--dim);
+  font-size: calc(11px * var(--text-scale, 1));
+  line-height: 1.25;
+}
+.plaza-layer .pz-fish .rar {
+  color: var(--rar);
+  font-weight: 700;
+}
+.plaza-layer .pz-fish.unknown b {
+  color: var(--dim);
+}
+.plaza-layer .pz-fishbook-note {
+  margin: 0;
+  font-size: 0.85em;
+  color: var(--dim);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.plaza-layer.phone .pz-fishbook-panel {
+  padding: 10px;
+  row-gap: 6px;
+  border-radius: 14px;
+}
+.plaza-layer.phone .pz-fishbook-panel header {
+  grid-template-columns: minmax(0, 1fr) auto 30px;
+}
+.plaza-layer.phone .pz-fishbook-panel header b {
+  font-size: 1.2em;
+}
+.plaza-layer.phone .pz-fishbook-panel .x {
+  width: 30px;
+  height: 30px;
+  font-size: calc(14px * var(--text-scale, 1));
+  line-height: 30px;
+}
+.plaza-layer.phone .pz-fishbook-list {
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 6px;
+}
+.plaza-layer.phone .pz-fish {
+  padding: 5px 4px;
+}
+.plaza-layer.phone .pz-fish svg {
+  width: 58px;
+  height: 36px;
+}
+.plaza-layer .pz-fish small.first,
+.plaza-layer .pz-catch-card em {
+  color: #ffd65b;
+  font-style: normal;
+  font-weight: 700;
+}
+.plaza-layer .pz-fish small.first {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- fishing mode (plaza-fishing.ts) ---------- */
+/* At the dock: a round Fish button, not the long action pill. Dash's size
+   and on Dash's line (the row's bottom, not centred on Jump), and it pops
+   in with a few rings so a player sees it appear. */
+.plaza-layer .pz-interact[data-id="fish"] {
+  position: relative;
+  width: 4.8em;
+  height: 4.8em;
+  padding: 0;
+  align-self: flex-end;
+  animation: pz-fish-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1);
+  border-radius: 50%;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.1em;
+  font-size: 1em;
+  background: radial-gradient(circle at 35% 30%, #7fe0ff, #2f8fd8 70%);
+  color: #fff;
+  border-color: #ffffffaa;
+  box-shadow: inset 0 -4px 0 #1d5f9a;
+}
+.plaza-layer .pz-interact[data-id="fish"]::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 3px solid #7fe0ff;
+  pointer-events: none;
+  opacity: 0;
+  animation: pz-fish-ring 1.2s ease-out 0.35s 3;
+}
+@keyframes pz-fish-pop {
+  from {
+    scale: 0.3;
+    opacity: 0;
+  }
+}
+@keyframes pz-fish-ring {
+  from {
+    scale: 1;
+    opacity: 0.9;
+  }
+  to {
+    scale: 1.55;
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plaza-layer .pz-interact[data-id="fish"],
+  .plaza-layer .pz-interact[data-id="fish"]::after {
+    animation: none;
+  }
+}
+.plaza-layer .pz-interact[data-id="fish"] .ico {
+  width: 1.7em;
+  height: 1.7em;
+}
+.plaza-layer .pz-interact[data-id="fish"] span {
+  font-size: 0.8em;
+  font-weight: 800;
+  text-shadow: 0 1px 0 #0b1020;
+}
+.plaza-layer .pz-interact[data-id="fish"] kbd {
+  display: none;
+}
+.plaza-layer.phone .pz-interact[data-id="fish"] {
+  width: 64px;
+  height: 64px;
+  padding: 0;
+}
+/* In fishing mode the walking controls step aside for fishing's own. */
+.plaza-layer.fishing .pz-joy,
+.plaza-layer.fishing .pz-actions,
+.plaza-layer.fishing .pz-left,
+.plaza-layer.fishing .pz-wheel,
+.plaza-layer.fishing .pz-quests,
+.plaza-layer.fishing .pz-event,
+.plaza-layer.fishing .pz-runcard,
+.plaza-layer.fishing .pz-timer {
+  display: none !important;
+}
+.plaza-layer .pz-fishhud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: pz-fadein 0.3s;
+}
+.plaza-layer .pz-fishhud[hidden] {
+  display: none;
+}
+.plaza-layer .pz-fishhud > * {
+  pointer-events: auto;
+}
+.plaza-layer .pz-fish-exit {
+  position: absolute;
+  left: var(--hud-x-l);
+  bottom: var(--hud-y-b);
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  height: 3em;
+  padding: 0 1.1em 0 0.9em;
+  border: 1px solid #ffb3b3;
+  border-radius: 999px;
+  /* Red: the way out, told apart at a glance from fishing's blue buttons. */
+  background: linear-gradient(#f0525a, #c62f3a);
+  box-shadow:
+    0 3px 0 #8a1d26,
+    0 6px 14px #0006;
+  color: #fff;
+  font: 800 1em var(--font-body);
+  text-shadow: 0 1px 0 #0005;
+  cursor: pointer;
+}
+.plaza-layer .pz-fish-exit:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 1px 0 #8a1d26,
+    0 3px 8px #0006;
+}
+.plaza-layer .pz-fish-exit span {
+  font-size: 0.95em;
+}
+.plaza-layer .pz-fish-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--hud-y-b) + 0.4em);
+  transform: translateX(-50%);
+  max-width: calc(100% - 22em);
+  padding: 0.55em 1.1em;
+  border-radius: 999px;
+  background: #0b1020c4;
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.plaza-layer .pz-fish-hint[data-kind="bite"] {
+  background: #ffd65b;
+  color: #0b1020;
+}
+.plaza-layer .pz-fish-hint[data-kind="miss"] {
+  background: #5a1f2acc;
+}
+.plaza-layer .pz-fish-side {
+  position: absolute;
+  right: var(--hud-x-r);
+  bottom: calc(var(--hud-y-b) + 6.8em);
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+}
+/* Today's count: a round tile like Book beside it (it is not a button). */
+.plaza-layer .pz-fish-today {
+  pointer-events: none;
+  cursor: default;
+  font-variant-numeric: tabular-nums;
+}
+.plaza-layer .pz-fish-today b {
+  font-size: 0.95em;
+  font-weight: 800;
+}
+.plaza-layer .pz-fish-today small {
+  color: var(--dim);
+}
+/* In a fight: only Hold and Leave (the close-up needs the room). */
+.plaza-layer .pz-fishhud[data-phase="fight"] .pz-fish-side {
+  display: none;
+}
+.plaza-layer .pz-fish-act[data-kind="fight"] {
+  background: radial-gradient(circle at 35% 30%, #ffd08a, #f07a2a 70%);
+  box-shadow:
+    0 6px 0 #a8461a,
+    0 10px 24px #0008;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.plaza-layer .pz-fish-act[data-kind="fight"].held {
+  transform: translateY(4px) scale(0.96);
+  box-shadow:
+    0 2px 0 #a8461a,
+    0 0 0 8px #ffd08a44,
+    0 6px 16px #0008;
+}
+.plaza-layer .pz-fish-act {
+  position: absolute;
+  right: var(--hud-x-r);
+  bottom: var(--hud-y-b);
+  width: 6em;
+  height: 6em;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.1em;
+  padding: 0;
+  border: 2px solid #ffffffcc;
+  border-radius: 50%;
+  color: #fff;
+  font: 900 1.1em var(--font-body);
+  text-shadow: 0 1px 0 #0b1020;
+  cursor: pointer;
+  background: radial-gradient(circle at 35% 30%, #7fe0ff, #2f8fd8 70%);
+  box-shadow:
+    0 6px 0 #1d5f9a,
+    0 10px 24px #0008;
+  transition: transform 0.12s;
+}
+.plaza-layer .pz-fish-act:active {
+  transform: translateY(3px);
+}
+.plaza-layer .pz-fish-act .ico-rod {
+  width: 2em;
+  height: 2em;
+}
+.plaza-layer .pz-fish-act kbd {
+  font: 700 0.6em var(--font-body);
+  opacity: 0.75;
+}
+.plaza-layer.coarse .pz-fish-act kbd {
+  display: none;
+}
+.plaza-layer .pz-fish-act[data-kind="reel"] {
+  background: radial-gradient(circle at 35% 30%, #4a5a86, #1d2748 70%);
+  box-shadow:
+    0 6px 0 #10162c,
+    0 10px 24px #0008;
+}
+.plaza-layer .pz-fish-act[data-kind="bite"] {
+  background: radial-gradient(circle at 35% 30%, #fff1a8, #ffc21a 70%);
+  color: #3a2400;
+  text-shadow: none;
+  box-shadow:
+    0 6px 0 #b8860b,
+    0 0 0 6px #ffd65b55,
+    0 10px 24px #0008;
+  animation: pz-bite 0.3s ease-in-out infinite alternate;
+}
+.plaza-layer .pz-fish-act[data-kind="busy"] {
+  opacity: 0.6;
+  cursor: default;
+}
+@keyframes pz-bite {
+  to {
+    transform: scale(1.08);
+  }
+}
+.plaza-layer.phone .pz-fish-act {
+  width: 84px;
+  height: 84px;
+  font-size: calc(15px * var(--text-scale, 1));
+}
+.plaza-layer.phone .pz-fish-side {
+  bottom: calc(var(--hud-y-b) + 84px + var(--hud-gap));
+}
+.plaza-layer.phone .pz-fish-exit {
+  height: 40px;
+  font-size: calc(13px * var(--text-scale, 1));
+}
+.plaza-layer.phone .pz-fish-hint {
+  max-width: calc(100% - 270px);
+  font-size: calc(12px * var(--text-scale, 1));
+}
+/* A catch: the fish in full, rays of its rarity's colour behind it. It
+   never takes taps. */
+.plaza-layer .pz-catch {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--hud-row2) + 0.5em);
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+  animation: pz-catch-in 0.45s var(--ease-pop, ease-out);
+}
+.plaza-layer .pz-catch[hidden] {
+  display: none;
+}
+@keyframes pz-catch-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.5);
+  }
+}
+.plaza-layer .pz-catch-card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 13em;
+  padding: 10px 22px 12px;
+  border: 1px solid #ffffff30;
+  border-top: 4px solid var(--rar);
+  border-radius: 16px;
+  background: #0d1428f2;
+  box-shadow: 0 14px 40px #000a;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.plaza-layer .pz-catch-card .rays {
+  position: absolute;
+  left: 50%;
+  top: 42px;
+  width: 220px;
+  height: 220px;
+  margin: -110px 0 0 -110px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    color-mix(in srgb, var(--rar) 45%, transparent) 0deg 10deg,
+    transparent 10deg 24deg
+  );
+  -webkit-mask: radial-gradient(circle, #000 20%, transparent 70%);
+  mask: radial-gradient(circle, #000 20%, transparent 70%);
+  animation: pz-rays 6s linear infinite;
+  pointer-events: none;
+}
+@keyframes pz-rays {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.plaza-layer .pz-catch-card svg {
+  position: relative;
+  width: 128px;
+  height: 80px;
+  animation: pz-catch-fish 0.9s ease-in-out infinite alternate;
+}
+@keyframes pz-catch-fish {
+  to {
+    transform: translateY(-4px) rotate(-3deg);
+  }
+}
+.plaza-layer .pz-catch-card > :not(.rays) {
+  position: relative;
+}
+.plaza-layer .pz-catch-card small {
+  color: var(--dim);
+  font-size: calc(11px * var(--text-scale, 1));
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.plaza-layer .pz-catch-card.new small {
+  color: #ffd65b;
+}
+.plaza-layer .pz-catch-card b {
+  font-family: var(--display);
+  font-size: calc(22px * var(--text-scale, 1));
+  line-height: 1.1;
+}
+.plaza-layer .pz-catch-card .meta {
+  color: var(--dim);
+  font-size: calc(12px * var(--text-scale, 1));
+}
+.plaza-layer .pz-catch-card i {
+  color: var(--rar);
+  font-style: normal;
+  font-weight: 700;
+}
+.plaza-layer .pz-catch-card em {
+  margin-top: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #ffd65b;
+  color: #3a2400;
+  font-style: normal;
+  font-weight: 800;
+  font-size: calc(12px * var(--text-scale, 1));
+}
+.plaza-layer .pz-catch-card .badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: #ef4f61;
+  color: #fff;
+  font-size: calc(10px * var(--text-scale, 1));
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.plaza-layer.phone .pz-catch-card {
+  min-width: 11em;
+  padding: 6px 16px 8px;
+}
+.plaza-layer.phone .pz-catch-card svg {
+  width: 96px;
+  height: 60px;
+}
+.plaza-layer.phone .pz-catch-card b {
+  font-size: calc(17px * var(--text-scale, 1));
+}
+@media (prefers-reduced-motion: reduce) {
+  .plaza-layer .pz-catch,
+  .plaza-layer .pz-catch-card .rays,
+  .plaza-layer .pz-catch-card svg,
+  .plaza-layer .pz-fish-act[data-kind="bite"] {
+    animation: none;
+  }
+}
+/* In fishing mode the camera is in close and the angler stands near the
+   middle: the catch card waits at the right, under the clock, fish beside
+   its words. */
+.plaza-layer.fishing .pz-catch {
+  left: auto;
+  right: var(--hud-x-r);
+  top: calc(var(--hud-row2) + var(--hud-clock-h) + var(--hud-gap));
+  transform: none;
+  animation-name: pz-catch-side;
+}
+@keyframes pz-catch-side {
+  from {
+    opacity: 0;
+    transform: translateX(40px) scale(0.8);
+  }
+}
+.plaza-layer.fishing .pz-catch-card {
+  grid-template-columns: auto auto;
+  justify-items: start;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 0;
+  min-width: 0;
+  padding: 8px 16px 8px 8px;
+  border-top: 1px solid #ffffff30;
+  border-left: 4px solid var(--rar);
+  text-align: left;
+}
+.plaza-layer.fishing .pz-catch-card svg {
+  grid-row: 1 / span 4;
+}
+.plaza-layer.fishing .pz-catch-card .rays {
+  left: 72px;
+  top: 50%;
+}
+.plaza-layer.fishing .pz-catch-card .badge {
+  top: 6px;
+  right: auto;
+  left: 8px;
+}
+.plaza-layer.fishing .pz-catch-card em {
+  margin-top: 2px;
+}
+.plaza-layer.phone.fishing .pz-catch-card {
+  padding: 5px 12px 5px 4px;
+  column-gap: 6px;
+}
+.plaza-layer.phone.fishing .pz-catch-card svg {
+  width: 80px;
+  height: 50px;
+}
+.plaza-layer.phone.fishing .pz-catch-card .rays {
+  left: 44px;
+  width: 150px;
+  height: 150px;
+  margin: -75px 0 0 -75px;
+}

@@ -131,9 +131,10 @@ it("pays each quest once a day and keeps the best lap of the week", async () => 
   p = await record({ player: runner, kind: "lap", ms: 9_000 });
   expect(p.bestLapMs).toBe(6_420);
   expect(p.quests.lap.done).toBe(true);
+  // Every quest but fishing (tests/integration/plaza-fishing.test.ts).
   expect(await ledger(runner, "plaza-quest")).toEqual({
-    n: 5,
-    s: PLAZA_QUESTS.reduce((s, q) => s + q.coins, 0),
+    n: PLAZA_QUESTS.length - 1,
+    s: PLAZA_QUESTS.reduce((s, q) => s + (q.id === "fish" ? 0 : q.coins), 0),
   });
   await record({ player: rival, kind: "lap", ms: 5_900 });
   expect((await progress(runner)).board).toEqual([

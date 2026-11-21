@@ -3,6 +3,7 @@ import { asRgb, openPlaza, snap } from "./helpers";
 import {
   PLAZA_FOUNTAIN,
   PLAZA_HURDLE_SEGMENTS,
+  PLAZA_QUESTS,
   PLAZA_TRACK,
 } from "../../packages/shared/src/plaza";
 
@@ -144,9 +145,12 @@ for (const viewport of [
         expect(quests.x, "quests under the card").toBeCloseTo(card.x, 0);
       } else {
         // As wide as the player card on the other side, and short enough
-        // to leave the right side of the playground open.
+        // to leave the right side of the playground open: 215 px for five
+        // quests, a row (37 px) more for each one past that.
         expect(quests.w, "quests as wide as the card").toBeCloseTo(card.w, 0);
-        expect(quests.h, "quests height").toBeLessThanOrEqual(215);
+        expect(quests.h, "quests height").toBeLessThanOrEqual(
+          215 + Math.max(0, PLAZA_QUESTS.length - 5) * 37,
+        );
       }
       const clashes = all.flatMap((a, i) =>
         all
@@ -233,7 +237,9 @@ test("the Photo Spot takes a polaroid, and quests update from the server", async
 }, info) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const errors = await openPlaza(page);
-  await expect(page.locator("#pz-quests h5")).toContainText("1/5");
+  await expect(page.locator("#pz-quests h5")).toContainText(
+    `1/${PLAZA_QUESTS.length}`,
+  );
   await teleport(page, 1010, 520);
   await expect(page.locator("#pz-interact")).toContainText("Take photo", {
     timeout: 10_000,
@@ -259,7 +265,9 @@ test("the Photo Spot takes a polaroid, and quests update from the server", async
     p.quests.lap = { n: 1, done: true };
     w.__sock.fire("plaza-progress", p);
   });
-  await expect(page.locator("#pz-quests h5")).toContainText("2/5");
+  await expect(page.locator("#pz-quests h5")).toContainText(
+    `2/${PLAZA_QUESTS.length}`,
+  );
   await expect(page.locator("#toast")).toContainText("+20 coins");
   await expect(page.locator("#account-coins")).toContainText("2,360");
   expect(errors).toEqual([]);
