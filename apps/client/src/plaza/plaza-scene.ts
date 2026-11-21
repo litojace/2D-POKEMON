@@ -1144,8 +1144,13 @@ export function openPlaza(options) {
     paintSurroundings(g);
     g.setTransform(1, 0, 0, 1, 0, 0);
   }
+  /** The map board's small picture of the Plaza: made once, with the
+   * ground, while the Plaza opens (scaling the whole ground down is the
+   * costly part, too slow to do mid-frame on a slow phone). */
+  let boardPic = null;
   function prep() {
     paintBg();
+    boardPic = paintPlazaMap(bg, GM, 264);
     ready = true;
   }
 
@@ -3809,12 +3814,18 @@ export function openPlaza(options) {
    * frame); the bulbs twinkle live.
    */
   let leaderSpr = null,
-    leaderKey = "";
+    leaderKey = "",
+    leaderTry = null,
+    leaderAt = 0;
   function leaderSprite() {
     const rows = boardRows().slice(0, 5);
     const key = rows.map(([n, t, m]) => `${n}|${t}|${m}`).join(";");
     const ready = ICON_IMG("trophy")?.complete;
     if (leaderSpr && key === leaderKey) return leaderSpr;
+    // Before the trophy has loaded: the last one, again at most twice a second.
+    if (leaderTry && key === leaderKey && performance.now() - leaderAt < 500)
+      return leaderTry;
+    leaderAt = performance.now();
     const R = 2,
       w = 200,
       h = 262,
@@ -3935,11 +3946,10 @@ export function openPlaza(options) {
     });
     g.textBaseline = "alphabetic";
     const spr = { c, w, h, ax, ay };
-    if (ready) {
-      leaderSpr = spr;
-      leaderKey = key;
-    }
-    return spr;
+    leaderKey = key;
+    if (ready) leaderSpr = spr;
+    else leaderSpr = null;
+    return (leaderTry = spr);
   }
   function drawLeader(g, time) {
     const { x, y } = LEADER;
@@ -4107,8 +4117,7 @@ export function openPlaza(options) {
       mh = Math.round((mw * H) / W),
       mx = -mw / 2,
       my = -134;
-    const pic = paintPlazaMap(bg, GM, mw * R);
-    g.drawImage(pic, mx, my, mw, mh);
+    g.drawImage(boardPic, mx, my, mw, mh);
     g.strokeStyle = "rgba(60,30,10,.6)";
     g.lineWidth = 1.5;
     g.strokeRect(mx, my, mw, mh);
@@ -4158,10 +4167,10 @@ export function openPlaza(options) {
     g.textBaseline = "middle";
     g.strokeText("PLAZA MAP", 0, -150);
     g.fillText("PLAZA MAP", 0, -150);
-    // Kept only once its icons and font have drawn.
-    const done =
-      PLAZA_PLACES.every((p) => ICON_IMG(p.icon)?.complete) &&
-      document.fonts?.check?.("800 17px 'Barlow Condensed'") !== false;
+    // Kept once its icons have drawn (data pictures, a moment after load;
+    // until then it is put together again at most twice a second, from the
+    // map picture made once in prep, never from the whole ground).
+    const done = PLAZA_PLACES.every((p) => ICON_IMG(p.icon)?.complete);
     const spr = { c, w, h, ax, ay };
     if (done) boardSpr = spr;
     return (boardTry = spr);

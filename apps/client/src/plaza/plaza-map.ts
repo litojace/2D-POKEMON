@@ -35,7 +35,6 @@ export function paintPlazaMap(
   c.width = Math.round(width);
   c.height = Math.round(H * k);
   const g = c.getContext("2d")!;
-  g.imageSmoothingQuality = "high";
   g.drawImage(ground, margin, margin, W, H, 0, 0, c.width, c.height);
   g.scale(k, k);
   // A little more contrast and warmth than the ground itself, as printed

@@ -537,6 +537,10 @@ const GFX = (() => {
   const signpost = (arms, icon) => {
     const key = `signpost:${arms.map((a) => `${a.text}/${a.dir}/${a.icon}`).join("|")}`;
     if (cache.has(key)) return cache.get(key);
+    // Painted before its icons had loaded: that one, again at most twice a
+    // second (not a new canvas every frame).
+    const early = signEarly.get(key);
+    if (early && performance.now() - early.at < 500) return early.spr;
     const ims = arms.map((a) => icon?.(a.icon));
     const ready = ims.every((im) => !im || im.complete);
     const STEP = 34,
@@ -622,9 +626,13 @@ const GFX = (() => {
         g.restore();
       });
     });
-    if (ready) cache.set(key, spr);
+    if (ready) {
+      cache.set(key, spr);
+      signEarly.delete(key);
+    } else signEarly.set(key, { spr, at: performance.now() });
     return spr;
   };
+  const signEarly = new Map();
 
   /* ---------------- by the fishing dock (PLAZA_DECOR) ---------------- */
   /** A rack of fishing rods: an A-frame with three rods leaning on it. */
