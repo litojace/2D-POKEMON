@@ -256,6 +256,22 @@ window.fetch = async (input, init) => {
       }
       return Response.json({ fighter: f.__savedFighter ?? null });
     }
+    // How the Lobby tour ended, kept with the account (migration
+    // 20261121090000): window.__tour is what the account has; each ending
+    // the client sends is pushed to window.__tourEnds.
+    if (url.pathname === "/api/account/tour") {
+      const f = window as unknown as {
+        __tour?: string | null;
+        __tourEnds?: unknown[];
+      };
+      if (init?.method === "POST") {
+        const end = JSON.parse(String(init.body));
+        f.__tour = end.result;
+        (f.__tourEnds ??= []).push(end);
+        return Response.json({ ok: true });
+      }
+      return Response.json({ tour: f.__tour ?? null });
+    }
     // The library avatar (migration 20261119100000): window.__avatar is
     // what the account wears; each choice is pushed to window.__avatarSaves.
     if (url.pathname === "/api/account/avatar") {

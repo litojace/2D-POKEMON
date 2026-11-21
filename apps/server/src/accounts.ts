@@ -499,6 +499,19 @@ export function createAccountProvider(): AccountProvider {
 }
 /** A fighter to keep with the account: one on the roster. */
 const savedFighterSchema = z.object({ fighter: z.enum(FIGHTER_IDS) }).strict();
+/**
+ * How a Lobby tour ended (apps/client/src/hub-tour.ts): finished or skipped,
+ * how many of its steps the player saw, and whether it was a replay.
+ */
+export const tourEndSchema = z
+  .object({
+    result: z.enum(["done", "skipped"]),
+    reached: z.number().int().min(0).max(20),
+    steps: z.number().int().min(1).max(20),
+    replay: z.boolean(),
+  })
+  .strict()
+  .refine((t) => t.reached <= t.steps, "More steps reached than shown.");
 export async function authorize(
   provider: AccountProvider,
   token: unknown,
@@ -533,6 +546,8 @@ export function installAccountRoutes(
   presence: (accountId: string) => Partial<Friend> = () => ({ online: false }),
   /** Tell a player's open games that their friends list changed. */
   onFriendsChanged: (accountId: string) => void = () => {},
+  /** One line for the server log (server.ts connectionLog). */
+  log: (event: string, details: Record<string, unknown>) => void = () => {},
 ) {
   const requests = new Map<string, { count: number; until: number }>();
   app.use("/api", (req, res, next) => {
@@ -617,6 +632,32 @@ export function installAccountRoutes(
     route(false, async (req, res, token) => {
       const { fighter } = savedFighterSchema.parse(req.body);
       await provider.rpc(token, "arena_save_fighter", { p_fighter: fighter });
+      res.json({ ok: true });
+    }),
+  );
+  // How your Lobby tour ended (migration 20261121090000), so another device
+  // doesn't show it again. Null before it ever ended.
+  app.get(
+    "/api/account/tour",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      const saved = await provider.rpc(token, "arena_my_tour", {});
+      res.json({
+        tour: saved === "done" || saved === "skipped" ? saved : null,
+      });
+    }),
+  );
+  app.post(
+    "/api/account/tour",
+    route(false, async (req, res, token) => {
+      const end = tourEndSchema.parse(req.body);
+      await provider.rpc(token, "arena_save_tour", {
+        p_result: end.result,
+        p_reached: end.reached,
+      });
+      // The new-player funnel (docs/player-funnel.md): how tours end. No
+      // account: the database row is the per-account record.
+      log("arena-tour", end);
       res.json({ ok: true });
     }),
   );
