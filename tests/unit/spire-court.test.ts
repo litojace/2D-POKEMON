@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   OBSTACLES,
+  ORB_SPOTS,
   RULES,
   blocked,
   currentObstacles,
@@ -18,13 +19,18 @@ import {
   SPIRE_RING,
   SPIRE_STAIRS,
   spireCourtLayout,
+  spireCourtOrbSpots,
   spireCourtWalls,
   spireEchoSpawnCandidate,
   spireRaiderSpawn,
   type SpireCourtLayoutId,
 } from "../../packages/shared/src/spire-court";
-import { SPIRE_FLOORS, SPIRE_SEATS } from "../../packages/shared/src/spire";
-import { SpireArena } from "../../apps/server/src/spire";
+import {
+  SPIRE_FLOORS,
+  SPIRE_SEATS,
+  spireUnderControls,
+} from "../../packages/shared/src/spire";
+import { SpireArena, createSpireArena } from "../../apps/server/src/spire";
 import { cornersNow } from "../../apps/server/src/bot";
 
 afterEach(() => useObstacles(OBSTACLES));
@@ -172,6 +178,37 @@ describe("Spire court layouts", () => {
     },
   );
 
+  it.each(LAYOUTS)(
+    "%s lays its healing orbs on open ground a raider can reach",
+    (id) => {
+      const spots = SPIRE_COURT_LAYOUTS[id].orbs ?? ORB_SPOTS;
+      expect(spots.length).toBeGreaterThanOrEqual(2);
+      useObstacles(wallsOf(id));
+      const flood = reachable(spireRaiderSpawn(0));
+      for (const s of spots) {
+        // No stone over any of the orb's glow, and room to stand on it.
+        for (const o of wallsOf(id))
+          expect(gap(o, s.x, s.y), `${s.x},${s.y}`).toBeGreaterThan(
+            R + RULES.orbRadius,
+          );
+        expect(flood.has(s), `${s.x},${s.y}`).toBe(true);
+        // Not on the rune ring, nor under a phone's touch controls.
+        const dx = (s.x - SPIRE_RING.x) / SPIRE_RING.r,
+          dy = (s.y - SPIRE_RING.y) / (SPIRE_RING.r * 0.65);
+        expect(Math.hypot(dx, dy)).toBeGreaterThan(1.15);
+        expect(spireUnderControls(s.x, s.y, RULES.orbRadius)).toBe(false);
+      }
+    },
+  );
+
+  it("a stone on the arena's usual orb spots would fail the orb test", () => {
+    // The Four Gates' top and bottom gates stand on them.
+    const covered = ORB_SPOTS.filter((s) =>
+      SPIRE_COURT_LAYOUTS.gates.blocks.some((o) => gap(o, s.x, s.y) === 0),
+    );
+    expect(covered).toHaveLength(ORB_SPOTS.length);
+  });
+
   it("a sealed layout would fail the walk test", () => {
     // A wall right across the court: the far side is cut off.
     useObstacles([{ x: 700, y: 0, w: 60, h: RULES.height }]);
@@ -299,6 +336,48 @@ describe("the server's Spire court", () => {
     expect(boss.raid.spire!.kind).toBe("boss");
     expect(boss.walls()).toEqual(OBSTACLES);
     expect(boss.raid.pillars).toHaveLength(OBSTACLES.length);
+  });
+
+  it("spawns the orbs where the floor's layout puts them, and a raider picks one up", () => {
+    for (const floor of [1, 2, 3, 4, 5, 6, 8, 13, 26, 38, 41, 53, 61]) {
+      const def = SPIRE_FLOORS[floor];
+      const a = createSpireArena(`ORB${floor}`, def.zone) as any;
+      a.add("me", "tester", "voltkit");
+      a.add("p2", "Kai", "cindrake");
+      a.configureSpire({ startFloor: floor, ceiling: def.zone * 10 });
+      a.start();
+      expect(a.raid.spire.floor).toBe(floor);
+      const spots = spireCourtOrbSpots({ floor, kind: def.kind })!;
+      a.nextOrb = 0;
+      a.stepOrbs();
+      expect(
+        a.orbs.map((o: any) => ({ x: o.x, y: o.y })),
+        `floor ${floor}`,
+      ).toEqual(spots.map((s) => ({ x: s.x, y: s.y })));
+      const walls = a.walls();
+      for (const orb of a.orbs)
+        for (const o of walls)
+          expect(gap(o, orb.x, orb.y), `floor ${floor}`).toBeGreaterThan(
+            R + RULES.orbRadius,
+          );
+      // A hurt raider walking onto the first orb heals.
+      const [me] = a.heroes();
+      const orb = a.orbs[0];
+      Object.assign(me, { x: orb.x, y: orb.y, hp: 10 });
+      a.stepOrbs();
+      expect(me.hp, `floor ${floor}`).toBeGreaterThan(10);
+    }
+    // An orb left on floor 2 (the usual spots) is gone on floor 3, whose
+    // outcrops stand there; one on floor 3's own spots stays.
+    const a = climbAt(2);
+    a.nextOrb = 0;
+    a.stepOrbs();
+    expect(a.orbs).toHaveLength(2);
+    a.orbs.push({ id: 999, x: 650, y: 190, kind: "heal" });
+    a.setupFloor(3);
+    expect(a.orbs.map((o: any) => [o.x, o.y])).toEqual([[650, 190]]);
+    // The boss floor keeps its raid's own spots.
+    expect(climbAt(10).orbSpots()).toBe(ORB_SPOTS);
   });
 
   it("Echo bots path round the court's blocks (their corners are waypoints)", () => {

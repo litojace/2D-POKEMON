@@ -68,6 +68,11 @@ for (const size of SIZES)
         );
       expect(cols).toBe(6);
       expect(total % cols).toBe(0);
+      // Measured once the panel has finished opening: mid scale-in, cards
+      // round to two sizes for a frame (116 and 117 px at 0.9987).
+      await room.evaluate((el) =>
+        Promise.all(el.getAnimations().map((a) => a.finished)),
+      );
       const boxes = await cards.evaluateAll((els) =>
         els.map((e) => e.getBoundingClientRect().toJSON()),
       );

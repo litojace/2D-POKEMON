@@ -1467,14 +1467,20 @@ export const SPIRE_TUNING: Record<
     limit: number;
   }
 > = {
+  // Floors 1, 3, 6 and 8 of every zone (the Four Gates and Crystal Ring
+  // courts) were tuned while their healing orbs spawned inside a stone, out
+  // of reach. Once the orbs moved onto open ground those floors were retuned
+  // (their Echoes take less damage) so a solo bot clears them about as often
+  // as before: on 192 seeds a floor, within about 7 points of the old rate.
+  // Floor 1 was always cleared and still is.
   1: { difficulty: "easy", power: 0.4, armour: 1.5, limit: 180 },
   2: { difficulty: "easy", power: 0.45, armour: 1.35, limit: 180 },
-  3: { difficulty: "easy", power: 0.5, armour: 1.9, limit: 180 },
+  3: { difficulty: "easy", power: 0.5, armour: 0.99, limit: 180 },
   4: { difficulty: "easy", power: 0.45, armour: 2.04, limit: 180 },
   5: { difficulty: "normal", power: 0.4, armour: 0.7, limit: 240 },
-  6: { difficulty: "easy", power: 0.55, armour: 1.49, limit: 180 },
+  6: { difficulty: "easy", power: 0.55, armour: 1.05, limit: 180 },
   7: { difficulty: "normal", power: 0.4, armour: 1.49, limit: 180 },
-  8: { difficulty: "normal", power: 0.45, armour: 1.4, limit: 180 },
+  8: { difficulty: "normal", power: 0.45, armour: 1.07, limit: 180 },
   9: { difficulty: "normal", power: 0.5, armour: 1.4, limit: 180 },
   // The boss floor: the raid's own time limit (no extra wave for big parties).
   10: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
@@ -1490,14 +1496,14 @@ export const SPIRE_TUNING: Record<
   // By simulation (tests/unit/spire-zone2.test.ts; 96 seeds) a solo bot
   // clears floor 11 about four times in five, floor 16 about two in five,
   // falling smoothly to about one in five on floor 19; floor 9 one in three.
-  11: { difficulty: "normal", power: 0.44, armour: 2.04, limit: 180 },
+  11: { difficulty: "normal", power: 0.44, armour: 1.46, limit: 180 },
   12: { difficulty: "normal", power: 0.45, armour: 1.81, limit: 180 },
-  13: { difficulty: "normal", power: 0.46, armour: 2.48, limit: 180 },
-  14: { difficulty: "normal", power: 0.47, armour: 1.6, limit: 180 },
+  13: { difficulty: "normal", power: 0.46, armour: 1.79, limit: 180 },
+  14: { difficulty: "normal", power: 0.47, armour: 1.68, limit: 180 },
   15: { difficulty: "normal", power: 0.55, armour: 0.58, limit: 240 },
-  16: { difficulty: "normal", power: 0.48, armour: 1.66, limit: 180 },
+  16: { difficulty: "normal", power: 0.48, armour: 1.29, limit: 180 },
   17: { difficulty: "normal", power: 0.49, armour: 1.5, limit: 180 },
-  18: { difficulty: "normal", power: 0.5, armour: 1.74, limit: 180 },
+  18: { difficulty: "normal", power: 0.5, armour: 1.36, limit: 180 },
   19: { difficulty: "normal", power: 0.52, armour: 1.85, limit: 180 },
   20: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 3: a climb starts at 21 with no blessings, against Shadow Echoes
@@ -1508,15 +1514,15 @@ export const SPIRE_TUNING: Record<
   // (tests/unit/spire-zone3.test.ts; a solo Normal bot raider, 96 seeds)
   // floor 21 is cleared about two times in three, falling smoothly to
   // about one in three on floor 29.
-  21: { difficulty: "normal", power: 0.48, armour: 2.72, limit: 180 },
+  21: { difficulty: "normal", power: 0.48, armour: 1.4, limit: 180 },
   22: { difficulty: "normal", power: 0.49, armour: 1.76, limit: 180 },
-  23: { difficulty: "normal", power: 0.5, armour: 3.12, limit: 180 },
+  23: { difficulty: "normal", power: 0.5, armour: 1.91, limit: 180 },
   24: { difficulty: "normal", power: 0.51, armour: 2.83, limit: 180 },
   25: { difficulty: "normal", power: 0.58, armour: 0.54, limit: 240 },
-  26: { difficulty: "normal", power: 0.52, armour: 1.65, limit: 180 },
+  26: { difficulty: "normal", power: 0.52, armour: 1.07, limit: 180 },
   27: { difficulty: "normal", power: 0.53, armour: 1.42, limit: 180 },
-  28: { difficulty: "normal", power: 0.54, armour: 2.27, limit: 180 },
-  29: { difficulty: "normal", power: 0.55, armour: 1.69, limit: 180 },
+  28: { difficulty: "normal", power: 0.54, armour: 1.67, limit: 180 },
+  29: { difficulty: "normal", power: 0.55, armour: 1.65, limit: 180 },
   30: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 4: a climb starts at 31 with no blessings, against Psychic Echoes
   // (a duelist owl, a blinking rabbit, a counter lynx) and one off-element
@@ -1525,14 +1531,14 @@ export const SPIRE_TUNING: Record<
   // (tests/unit/spire-zone4.test.ts; a solo Normal bot raider, 96 seeds)
   // floor 31 is cleared about two times in three, falling smoothly to
   // about one in three on floors 38 and 39.
-  31: { difficulty: "normal", power: 0.56, armour: 2.66, limit: 180 },
+  31: { difficulty: "normal", power: 0.56, armour: 1.5, limit: 180 },
   32: { difficulty: "normal", power: 0.57, armour: 1.49, limit: 180 },
-  33: { difficulty: "normal", power: 0.58, armour: 3.53, limit: 180 },
+  33: { difficulty: "normal", power: 0.58, armour: 2.19, limit: 180 },
   34: { difficulty: "normal", power: 0.59, armour: 2.33, limit: 180 },
   35: { difficulty: "normal", power: 0.62, armour: 0.57, limit: 240 },
-  36: { difficulty: "normal", power: 0.6, armour: 1.54, limit: 180 },
-  37: { difficulty: "normal", power: 0.61, armour: 1.84, limit: 180 },
-  38: { difficulty: "normal", power: 0.62, armour: 3.37, limit: 180 },
+  36: { difficulty: "normal", power: 0.6, armour: 0.99, limit: 180 },
+  37: { difficulty: "normal", power: 0.61, armour: 1.74, limit: 180 },
+  38: { difficulty: "normal", power: 0.62, armour: 2.3, limit: 180 },
   39: { difficulty: "normal", power: 0.63, armour: 1.55, limit: 180 },
   40: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 5: a climb starts at 41 with no blessings, against Light Echoes
@@ -1547,14 +1553,14 @@ export const SPIRE_TUNING: Record<
   // all 336 seeds) floor 41 is cleared about two times in three (66%), then
   // 62, 59, 48, about 45 (the elite, unchanged), 49, 45, 42 and 35% on
   // floor 49.
-  41: { difficulty: "normal", power: 0.58, armour: 4.8, limit: 180 },
+  41: { difficulty: "normal", power: 0.58, armour: 3.05, limit: 180 },
   42: { difficulty: "normal", power: 0.59, armour: 3.35, limit: 180 },
-  43: { difficulty: "normal", power: 0.6, armour: 6.5, limit: 180 },
+  43: { difficulty: "normal", power: 0.6, armour: 3.66, limit: 180 },
   44: { difficulty: "normal", power: 0.61, armour: 4.5, limit: 180 },
   45: { difficulty: "normal", power: 0.64, armour: 0.8, limit: 240 },
-  46: { difficulty: "normal", power: 0.62, armour: 3.75, limit: 180 },
+  46: { difficulty: "normal", power: 0.62, armour: 2.73, limit: 180 },
   47: { difficulty: "normal", power: 0.63, armour: 3.3, limit: 180 },
-  48: { difficulty: "normal", power: 0.64, armour: 4.8, limit: 180 },
+  48: { difficulty: "normal", power: 0.64, armour: 3.9, limit: 180 },
   49: { difficulty: "normal", power: 0.65, armour: 3.05, limit: 180 },
   50: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 6: a climb starts at 51 with no blessings, against Fire Echoes (a
@@ -1565,18 +1571,17 @@ export const SPIRE_TUNING: Record<
   // 1–120, checked on 121–336, then corrected on all 336. By simulation
   // (tests/unit/spire-zone6.test.ts; a solo Normal bot raider, 336 seeds)
   // floor 51 is cleared about two times in three (67%), then 62, 60, 54,
-  // 49 (the elite), 47, 44, 38 and 35% on floor 59. (Floor 53's armour
-  // sits on a cliff, 5.75 clearing 51% and 5.8 63%, so its step down from
-  // 52 comes from its power instead: 0.62 63%, 0.63 60%, 0.64 58%; floor
-  // 54 keeps its power above it, 0.635 clearing 54% as 0.63 did.)
-  51: { difficulty: "normal", power: 0.6, armour: 5.2, limit: 180 },
+  // 49 (the elite), 47, 44, 38 and 35% on floor 59. (Floor 53's step
+  // down from 52 came from its power (0.63) as its armour sat on a cliff;
+  // floor 54 keeps its power above it, 0.635 clearing 54% as 0.63 did.)
+  51: { difficulty: "normal", power: 0.6, armour: 3.27, limit: 180 },
   52: { difficulty: "normal", power: 0.61, armour: 2.45, limit: 180 },
-  53: { difficulty: "normal", power: 0.63, armour: 5.8, limit: 180 },
+  53: { difficulty: "normal", power: 0.63, armour: 4.0, limit: 180 },
   54: { difficulty: "normal", power: 0.635, armour: 3.12, limit: 180 },
   55: { difficulty: "normal", power: 0.66, armour: 0.71, limit: 240 },
-  56: { difficulty: "normal", power: 0.64, armour: 3.85, limit: 180 },
-  57: { difficulty: "normal", power: 0.65, armour: 2.85, limit: 180 },
-  58: { difficulty: "normal", power: 0.66, armour: 4.1, limit: 180 },
+  56: { difficulty: "normal", power: 0.64, armour: 2.5, limit: 180 },
+  57: { difficulty: "normal", power: 0.65, armour: 2.95, limit: 180 },
+  58: { difficulty: "normal", power: 0.66, armour: 3.2, limit: 180 },
   59: { difficulty: "normal", power: 0.67, armour: 2.92, limit: 180 },
   60: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 7, the summit: a climb starts at 61 with no blessings, against
@@ -1589,14 +1594,14 @@ export const SPIRE_TUNING: Record<
   // floor 61 is cleared about two times in three (69%), then 67, 62, 57,
   // 55 (the elite), 52, 46, 41 and 38% on floor 69. (Floor 62 sits on a
   // cliff: 2.7 clears 60%, 3.0 74%.)
-  61: { difficulty: "normal", power: 0.66, armour: 5.63, limit: 180 },
-  62: { difficulty: "normal", power: 0.67, armour: 3.5, limit: 180 },
-  63: { difficulty: "normal", power: 0.68, armour: 6.8, limit: 180 },
+  61: { difficulty: "normal", power: 0.66, armour: 3.6, limit: 180 },
+  62: { difficulty: "normal", power: 0.67, armour: 2.85, limit: 180 },
+  63: { difficulty: "normal", power: 0.68, armour: 3.2, limit: 180 },
   64: { difficulty: "normal", power: 0.69, armour: 4.8, limit: 180 },
   65: { difficulty: "normal", power: 0.7, armour: 0.64, limit: 240 },
-  66: { difficulty: "normal", power: 0.7, armour: 4.35, limit: 180 },
+  66: { difficulty: "normal", power: 0.7, armour: 3.0, limit: 180 },
   67: { difficulty: "normal", power: 0.71, armour: 2.7, limit: 180 },
-  68: { difficulty: "normal", power: 0.72, armour: 4.15, limit: 180 },
+  68: { difficulty: "normal", power: 0.72, armour: 2.95, limit: 180 },
   69: { difficulty: "normal", power: 0.73, armour: 2.35, limit: 180 },
   70: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };

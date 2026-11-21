@@ -34,9 +34,11 @@ import {
   hidesLandmark,
   onWalkable,
   plazaCamClamp,
+  PLAZA_PHONE_ZOOM,
   plazaZoom,
   plazaZoomAt,
   plazaZoomRange,
+  plazaZoomable,
   propBox,
 } from "../../apps/client/src/plaza/plaza-surround";
 
@@ -269,7 +271,7 @@ describe("Plaza camera: never past what is built", () => {
     expect(Math.max(...Object.values(PLAZA_OUT))).toBeLessThan(PLAZA_MARGIN);
     for (const [nw, nh] of screens) {
       const z = plazaZoom(nw, nh);
-      expect(z).toBeGreaterThanOrEqual(0.66);
+      expect(z).toBeGreaterThanOrEqual(PLAZA_PHONE_ZOOM);
       for (const [x, y] of [
         [0, 0],
         [W, H],
@@ -311,16 +313,40 @@ describe("Plaza camera: never past what is built", () => {
         }
       }
     }
-    // A phone can zoom out a little and in a lot; a desktop in too.
-    const phone = plazaZoomRange(844, 390);
-    expect(phone.min).toBeLessThan(0.6);
-    expect(phone.max).toBeGreaterThan(1.1);
+    // A tablet or a desktop can zoom in, and out a little.
+    const tablet = plazaZoomRange(1133, 744);
+    expect(tablet.min).toBeLessThan(tablet.base);
+    expect(tablet.max).toBe(1.5);
     expect(plazaZoomRange(1280, 800).max).toBe(1.5);
-    expect(plazaZoomAt(844, 390, NaN)).toBe(0.66);
+    expect(plazaZoomAt(844, 390, NaN)).toBe(PLAZA_PHONE_ZOOM);
   });
-  it("phones see as much as before (zoom 0.66), desktops 1", () => {
-    expect(plazaZoom(844, 390)).toBe(0.66);
+  it("phones are a little closer (zoom 0.8, the owner's pick), desktops 1", () => {
+    expect(PLAZA_PHONE_ZOOM).toBe(0.8);
+    expect(plazaZoom(844, 390)).toBe(0.8);
+    expect(plazaZoom(667, 375)).toBe(0.8);
     expect(plazaZoom(1280, 800)).toBe(1);
+    // A fighter (84 px) is 67 px tall on a phone, a sixth of the screen.
+    expect(84 * plazaZoom(844, 390)).toBeGreaterThan(65);
+  });
+  it("only phones lose the zoom: tablets, touch laptops and desktops keep it", () => {
+    // Phones in landscape and portrait (touch, short side under 500 px).
+    for (const [w, h] of [
+      [667, 375],
+      [844, 390],
+      [932, 430],
+      [390, 844],
+    ])
+      expect(plazaZoomable(true, w, h), `${w}x${h}`).toBe(false);
+    // iPad mini to iPad Pro, both ways up.
+    for (const [w, h] of [
+      [1133, 744],
+      [744, 1133],
+      [1366, 1024],
+    ])
+      expect(plazaZoomable(true, w, h), `${w}x${h}`).toBe(true);
+    // A mouse keeps the zoom, even in a small window.
+    expect(plazaZoomable(false, 844, 390)).toBe(true);
+    expect(plazaZoomable(false, 1440, 900)).toBe(true);
   });
   it("at an edge you are no longer pressed against the side of the screen", () => {
     const z = plazaZoom(844, 390);

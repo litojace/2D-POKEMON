@@ -1,4 +1,5 @@
 import { openHubPanel, type HubPanel } from "../ui/hub-panel";
+import { focusForTyping } from "../screen-pin";
 import { parse, patch } from "../ui/patch";
 import {
   friendsMarkup,
@@ -125,7 +126,7 @@ export function openFriends(hooks: FriendsHooks): FriendsScreen {
   function toggleAdd(open = !view.adding) {
     view.adding = open;
     render();
-    if (open) focusOn("#fr-add-code");
+    if (open) focusForTyping(q<HTMLElement>("#fr-add-code"));
     else focusOn("[data-friend-add-open].fr-add-toggle");
   }
   async function copyCode(share: boolean) {

@@ -43,7 +43,13 @@ import {
 } from "../../../packages/shared/src/raid";
 import { TITLE_PRESETS, sortTitles } from "./player-nameplate";
 import { isQuietRefresh } from "./session-refresh";
-import { waitForServer } from "./server-connection";
+import { curtainCovers, waitForServer } from "./server-connection";
+import {
+  forgetProfileCopy,
+  keepProfileCopy,
+  readProfileCopy,
+  type ProfileCopy,
+} from "./profile-copy";
 import { createClient, type Session } from "@supabase/supabase-js";
 import {
   accountSchema,
@@ -127,6 +133,11 @@ export const COPY_MAX_AGE_MS = 30_000;
 export const FRIENDS_MAX_AGE_MS = 10_000;
 /** Between screens' code loaded ahead (preloadScreens), and before the first. */
 const PRELOAD_GAP_MS = 4000;
+/**
+ * How long a login waits for the saved fighter and avatar before showing the
+ * hub anyway (they then arrive a moment later, as before).
+ */
+const PROFILE_EXTRAS_MS = 4000;
 const storageKey = "parena-auth";
 const storage = {
   getItem: (key: string) =>
@@ -200,20 +211,139 @@ type Hooks = {
   invitedFriends?: () => ReadonlySet<string>;
 };
 export class AccountUI {
-  account: Account | null = null;
-  /** The saved session has been checked (and the profile loaded, or failed). */
+  /*
+   * What the first screen shows is kept on this device as it changes
+   * (profile-copy.ts): the setters below note each change, and the next
+   * start draws the hub from that copy while the server's loads.
+   */
+  #account: Account | null = null;
+  get account() {
+    return this.#account;
+  }
+  set account(value: Account | null) {
+    this.#account = value;
+    this.rememberSoon();
+  }
+  /**
+   * The saved session has been checked: the profile loaded (or failed), or
+   * this device's copy of it is shown while the fresh one loads
+   * (`fromCopy`).
+   */
   checked = false;
+  /**
+   * The profile on screen is this device's saved copy; the server's fresh
+   * copy is still on its way (it replaces it, or is dropped on failure).
+   */
+  fromCopy = false;
+  #raidLook: RaidLoadout | undefined = undefined;
   /** Equipped raid look (undefined until loaded). */
-  raidLook: RaidLoadout | undefined = undefined;
+  get raidLook() {
+    return this.#raidLook;
+  }
+  set raidLook(value: RaidLoadout | undefined) {
+    this.#raidLook = value;
+    this.rememberSoon();
+  }
+  #raidClears: Partial<Record<RaidBossId, number>> = {};
   /** Saved clears per boss: stars on your boss frame. */
-  raidClears: Partial<Record<RaidBossId, number>> = {};
+  get raidClears() {
+    return this.#raidClears;
+  }
+  set raidClears(value: Partial<Record<RaidBossId, number>>) {
+    this.#raidClears = value;
+    this.rememberSoon();
+  }
+  #economy: Economy | undefined = undefined;
   /** Coins, owned items, missions (undefined until loaded or before migration 010). */
-  economy: Economy | undefined = undefined;
+  get economy() {
+    return this.#economy;
+  }
+  set economy(value: Economy | undefined) {
+    this.#economy = value;
+    this.rememberSoon();
+  }
   session: Session | null = null;
+  #avatar: string | null = null;
   /** Your library avatar (avatars.ts); null: none chosen (the default). */
-  avatar: string | null = null;
+  get avatar() {
+    return this.#avatar;
+  }
+  set avatar(value: string | null) {
+    this.#avatar = value;
+    this.rememberSoon();
+  }
+  #savedFighter: string | null | undefined = undefined;
   /** The fighter the account has saved (undefined until asked, null: none). */
-  private savedFighter: string | null | undefined = undefined;
+  private get savedFighter() {
+    return this.#savedFighter;
+  }
+  private set savedFighter(value: string | null | undefined) {
+    this.#savedFighter = value;
+    this.rememberSoon();
+  }
+  private rememberTimer: ReturnType<typeof setTimeout> | undefined;
+  /**
+   * Keep the first screen's data on this device, shortly after it changes
+   * (several fields change together). Never mid-load: a half-loaded profile
+   * (a new account with the last one's coins, say) is not a copy.
+   */
+  private rememberSoon() {
+    clearTimeout(this.rememberTimer);
+    this.rememberTimer = setTimeout(() => this.rememberProfile(), 300);
+  }
+  private rememberProfile() {
+    clearTimeout(this.rememberTimer);
+    this.rememberTimer = undefined;
+    const account = this.#account;
+    if (
+      !account ||
+      this.sessionLoad ||
+      this.fromCopy ||
+      this.session?.user.id !== account.id
+    )
+      return;
+    keepProfileCopy({
+      account,
+      economy: this.#economy,
+      raidLook: this.#raidLook,
+      raidClears: this.#raidClears,
+      spire: this.spireProgress,
+      avatar: this.#avatar,
+      fighter:
+        this.#savedFighter === undefined
+          ? undefined
+          : this.#savedFighter && Object.hasOwn(CHARACTERS, this.#savedFighter)
+            ? (this.#savedFighter as CharacterId)
+            : null,
+    });
+  }
+  /** Show this device's copy of the profile while the fresh one loads. */
+  private showCopy(copy: ProfileCopy) {
+    this.fromCopy = true;
+    this.#account = copy.account;
+    this.#economy = copy.economy;
+    this.#raidLook = copy.raidLook;
+    this.#raidClears = copy.raidClears;
+    this.spireProgress = copy.spire;
+    this.#avatar = copy.avatar;
+    this.#savedFighter = copy.fighter;
+    this.checked = true;
+    this.renderNav();
+    this.syncAvatar();
+    if (copy.fighter) this.hooks.restoreFighter?.(copy.fighter);
+  }
+  /** The fresh profile couldn't load: nothing from the copy stays. */
+  private dropCopy() {
+    if (!this.fromCopy) return;
+    this.fromCopy = false;
+    this.#account = null;
+    this.#economy = undefined;
+    this.#raidLook = undefined;
+    this.#raidClears = {};
+    this.spireProgress = null;
+    this.#avatar = null;
+    this.#savedFighter = undefined;
+  }
   /** Counts this device's picks, so a slow answer never undoes a new one. */
   private fighterPicks = 0;
   private fighterTimer: ReturnType<typeof setTimeout> | undefined;
@@ -309,8 +439,13 @@ export class AccountUI {
     // Reloading the same player (after a purchase, an equip, a title change…)
     // keeps what's on screen until the fresh copy arrives. Clearing it first
     // made an open Shop say "Log in" and ask a signed-in player to sign in.
+    // (A profile shown from this device's copy is not loaded yet: it loads
+    // in full, as a new login does.)
     const samePlayer =
-      !!session && !!this.account && session.user?.id === this.account.id;
+      !!session &&
+      !!this.account &&
+      !this.fromCopy &&
+      session.user?.id === this.account.id;
     this.session = session;
     if (!samePlayer) {
       // A previous signed-out check says nothing about this new profile load.
@@ -335,54 +470,87 @@ export class AccountUI {
       this.savedFighter = undefined;
       this.avatar = null;
       this.blocked = [];
+      this.fromCopy = false;
       clearTimeout(this.fighterTimer);
+      // Signed out: this device keeps no one's profile.
+      if (!session) forgetProfileCopy();
+      // Signed in: draw the hub from this device's copy at once (the fresh
+      // profile below replaces it as it arrives).
+      const copy = session ? readProfileCopy(session.user.id) : null;
+      if (copy) this.showCopy(copy);
     }
     this.hooks.onSession(session?.access_token ?? null, session?.user.id);
     if (session && !samePlayer) this.hooks.onChange();
+    let freshAccount = false;
     if (session) {
       try {
         if (!samePlayer) await waitForServer();
         if (version !== this.generation) return;
         const account = accountSchema.parse(await this.api("/api/account"));
         if (version !== this.generation) return;
+        freshAccount = true;
         this.account = account;
         // A new login: start on the fighter this account last picked, on
-        // whatever device (not awaited: the rest of the profile goes on).
-        if (!samePlayer) void this.loadSavedFighter(version);
-        if (!samePlayer) void this.loadAvatar(version);
-        if (!samePlayer) void this.loadBlocked(version);
-        try {
-          const progress = (await this.fetchCopy("/api/raids")) as RaidProgress;
-          if (version !== this.generation) return;
-          // Raids open with it at once (and ask again only once it's old).
-          this.raidProgress = progress;
-          this.raidLook = raidLookOf(progress);
-          noteSeenRewards(account.id, progress);
-          this.raidClears = bossClears(progress);
-        } catch {
-          /* Raid storage is optional until migration 007 is installed. */
+        // whatever device, wearing their avatar. Both are part of the first
+        // screen (waited for below, briefly), so it never opens on the
+        // default fighter and swaps a moment later.
+        const extras = samePlayer
+          ? []
+          : [
+              this.loadSavedFighter(version),
+              this.loadAvatar(version),
+              this.loadBlocked(version),
+            ];
+        // Raids, the Spire and the Shop are separate records: asked for
+        // together, the profile (and the skins it wears) arrives in one
+        // round trip instead of three in a row.
+        const [raids, spire, economy] = await Promise.allSettled([
+          this.fetchCopy("/api/raids"),
+          this.fetchCopy("/api/spire"),
+          this.fetchCopy("/api/economy"),
+        ]);
+        if (version !== this.generation) return;
+        // Raid storage is optional until migration 007 is installed.
+        if (raids.status === "fulfilled") {
+          try {
+            const progress = raids.value as RaidProgress;
+            // Raids open with it at once (and ask again only once it's old).
+            this.raidProgress = progress;
+            this.raidLook = raidLookOf(progress);
+            noteSeenRewards(account.id, progress);
+            this.raidClears = bossClears(progress);
+          } catch {
+            /* An older server's record: no raid look. */
+          }
         }
         // The Spire's climb, for the Lobby's Spire card (spire-nudge.ts).
-        try {
-          const climb = (await this.fetchCopy("/api/spire")) as SpireProgress;
-          if (version !== this.generation) return;
-          if (climb) this.spireProgress = climb;
-        } catch {
-          /* Before the Spire's migration: no climb, no card. */
-        }
-        try {
-          const economy = (await this.fetchCopy("/api/economy")) as Economy;
-          if (version !== this.generation) return;
-          this.economy = economy;
-        } catch {
-          /* The Shop needs migration 010. */
-        }
+        // Before the Spire's migration: no climb, no card.
+        if (spire.status === "fulfilled" && spire.value)
+          this.spireProgress = spire.value as SpireProgress;
+        // The Shop needs migration 010.
+        if (economy.status === "fulfilled")
+          this.economy = economy.value as Economy;
+        if (extras.length)
+          await Promise.race([
+            Promise.allSettled(extras),
+            new Promise((resolve) => setTimeout(resolve, PROFILE_EXTRAS_MS)),
+          ]);
+        if (version !== this.generation) return;
         // An open Shop or Missions screen shows the fresh copy.
         this.fittingRoom?.refresh();
         this.missionsScreen?.refresh();
         this.journeyScreen?.refresh();
       } catch (error) {
         if (version !== this.generation) return;
+        // Without the fresh account the saved copy goes too: the front door
+        // offers to try again, as it always has. A refused login also
+        // forgets it on this device.
+        if (!freshAccount) {
+          this.dropCopy();
+          const status = (error as { status?: number } | null)?.status;
+          if (status === 401 || status === 403 || status === 404)
+            forgetProfileCopy();
+        }
         this.hooks.notify(
           error instanceof Error
             ? error.message
@@ -390,6 +558,7 @@ export class AccountUI {
         );
       }
     }
+    this.fromCopy = false;
     this.checked = true;
     if (this.account) {
       try {
@@ -400,6 +569,7 @@ export class AccountUI {
     }
     this.renderNav();
     this.hooks.onChange();
+    this.rememberSoon();
     if (this.account) this.preloadScreens();
   }
   private preloaded = false;
@@ -1023,13 +1193,31 @@ export class AccountUI {
    * opens at once with what is known, then shows the server's fresh copy of
    * your raid records and your friends.
    */
-  async showRaids(boss?: RaidBossId, tab?: RaidTab, spire?: SpireTab) {
+  private raidHall?: typeof import("./screens/raid-hall");
+  /** The Raids screen's code, loaded ahead (leaving a raid room). */
+  loadRaids() {
+    return import("./screens/raid-hall").then((module) => {
+      this.raidHall = module;
+      return module;
+    });
+  }
+  /**
+   * `instant`: back from a fight to the screen it started from; it is drawn
+   * in place, with the Lobby, rather than sliding in over it.
+   */
+  async showRaids(
+    boss?: RaidBossId,
+    tab?: RaidTab,
+    spire?: SpireTab,
+    instant = false,
+  ) {
     if (!this.ensurePlayer()) return;
     this.toLobbyScreen();
     const accountId = this.account?.id;
     // The raid screens' code and styles load the first time they open, not
-    // with the game (a phone starts faster).
-    const { openRaids } = await import("./screens/raid-hall");
+    // with the game (a phone starts faster). Once loaded (or loaded ahead by
+    // loadRaids), the screen opens in this same moment.
+    const { openRaids } = this.raidHall ?? (await this.loadRaids());
     if (this.account?.id !== accountId) return;
     if (this.raidScreen?.isOpen) {
       if (spire) this.raidScreen.showSpire(spire);
@@ -1073,7 +1261,7 @@ export class AccountUI {
           onSpire: () => this.noteSpireSeen(),
           onClose: () => (this.raidScreen = undefined),
         },
-        { boss, tab, spire },
+        { boss, tab, spire, instant },
       );
     }
     const screen = this.raidScreen;
@@ -1819,6 +2007,16 @@ export class AccountUI {
    * opens the player card, whose first block saves it with an email.
    */
   private async warnNewGuest() {
+    if (!this.account?.guest) return;
+    // Over the Lobby, once the log-in's loading curtain has come and gone
+    // (not under it, nor beside it while it fades). It starts a moment after
+    // the log-in, so wait for the Lobby itself; never more than 20 s.
+    const end = performance.now() + 20_000;
+    while (
+      performance.now() < end &&
+      (!document.body.classList.contains("hub-active") || curtainCovers())
+    )
+      await new Promise((resolve) => setTimeout(resolve, 100));
     if (!this.account?.guest) return;
     const save = await askConfirm(guestWarning());
     if (!save || !this.account?.guest) return;

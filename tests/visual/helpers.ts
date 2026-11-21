@@ -40,6 +40,8 @@ export async function openHub(page: Page) {
       { timeout: 30_000, intervals: [500, 1000] },
     )
     .toBe(true);
+  // The startup curtain lifts once the hub is complete underneath.
+  await expect(page.locator("#server-startup")).toHaveCount(0);
   return errors;
 }
 

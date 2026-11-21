@@ -15049,6 +15049,28 @@ body.battle-active:not(.touch-mode)
 /* (main.ts marks the overlay .is-reveal with the markup, in one step: a
    :has(> .match-reveal) rule here could apply a frame late in Safari, and
    the arena showed before the Reveal on the owner's iPhone.) */
+/* Solo test mode's cover while the arena loads (main.ts practiceLoading):
+   the whole screen, like the Reveal, a bar in the middle. */
+body.battle-active #arena-overlay.is-practice-loading:not(:empty) {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: max(20px, var(--safe-top, 0px)) max(32px, var(--safe-right, 0px))
+    max(16px, var(--safe-bottom, 0px)) max(32px, var(--safe-left, 0px));
+  background: #070d1f;
+}
+.practice-loading {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: min(420px, 100%);
+}
+.practice-loading .rv-load {
+  width: 100%;
+  text-align: center;
+}
 body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
   /* The whole screen, as a loading screen: not a panel over the arena. */
   position: fixed;
@@ -15505,7 +15527,10 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
    19 Nov 2026: the card sat over the middle of the arena, and the shade
    stopped short of the screen's sides). main.ts marks the overlay
    .is-countdown. */
-body.battle-active:not(.battle-raid) #arena-overlay.is-countdown:not(:empty) {
+/* Raids and the Spire too (raid-ui.ts marks their overlay; owner, 20 Nov
+   2026): the doubled id beats the raid's touch rule that keeps its card
+   inside the notch insets. */
+body.battle-active #arena-overlay#arena-overlay.is-countdown:not(:empty) {
   position: fixed;
   inset: 0;
   z-index: 80;
@@ -15557,7 +15582,9 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-countdown:not(:empty) {
     0 0 32px color-mix(in srgb, var(--element, #f7d780) 55%, transparent),
     0 6px 24px #000d;
 }
-#arena-overlay.is-countdown .countdown-card > div {
+/* The line under the number: a div in PvP, a paragraph in raids and the
+   Spire (their objective, or the floor). */
+#arena-overlay.is-countdown .countdown-card > :is(div, p) {
   margin: 0;
   color: #eaf1ff;
   font-size: calc(16px * var(--text-scale, 1));
