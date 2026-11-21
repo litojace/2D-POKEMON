@@ -102,9 +102,14 @@ for (const size of SIZES)
             outgoing: [],
           };
           // The toast hides itself after 4.5 s, and a slow runner can take
-          // longer than that to open the lobby: record that it was shown.
+          // longer than that to open the lobby: record that it was shown,
+          // and whether the startup curtain still covered it then (it sits
+          // over the toast, so a toast said under it was never seen).
           new MutationObserver(() => {
-            if (document.querySelector("#toast.show")) w.__toastShown = true;
+            if (w.__toastShown || !document.querySelector("#toast.show"))
+              return;
+            w.__toastShown = true;
+            w.__toastUnderCurtain = !!document.getElementById("server-startup");
           }).observe(document, {
             subtree: true,
             attributes: true,
@@ -122,6 +127,10 @@ for (const size of SIZES)
       await expect
         .poll(() => page.evaluate(() => (window as any).__toastShown === true))
         .toBe(true);
+      expect(
+        await page.evaluate(() => (window as any).__toastUnderCurtain),
+        "the toast showed under the startup curtain, where no one sees it",
+      ).toBe(false);
       await expect(toast).toHaveText(
         "Pip wants to be friends. Open Friends to answer.",
       );
