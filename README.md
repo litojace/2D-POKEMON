@@ -1,28 +1,27 @@
 # Match reports
 
-Newest report: 2026-11-20 20:50 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
+Newest report: 2026-11-21 07:59 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
 
 ## Needs attention
 
+- **2026-11-21 07:59**, duskveil against halcyra (bot, hard) (match `e9lb01`):
+  - Wi-Fi held the phone's inputs 13.1 times a minute (up to 3 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
+- **2026-11-21 07:57**, duskveil against tidefin (bot, hard) (match `17lb14`):
+  - Wi-Fi held the phone's inputs 29.2 times a minute (up to 2 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
 - **2026-11-20 20:50**, pangrove against pangrove (bot, hard) (match `xyfy1p`):
   - 10 hit(s) landed while you were drawn over 24 px away (largest 60 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
   - Wi-Fi held the phone's inputs 44.1 times a minute (up to 1 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-  - old build 39db09a (the newest is 334f311): the phone still runs a cached game. Close it fully and open it again.
 - **2026-11-20 20:49**, pangrove against pangrove (bot, hard) (match `c9bily`):
   - 30 hit(s) landed while you were drawn over 24 px away (largest 101 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-  - old build 39db09a (the newest is 334f311): the phone still runs a cached game. Close it fully and open it again.
 - **2026-11-20 20:47**, glacelle against mystowl (bot, hard) (match `fuhmr0`):
   - 34 hit(s) landed while you were drawn over 24 px away (largest 109 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
   - Wi-Fi held the phone's inputs 60.8 times a minute (up to 1 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-  - old build 39db09a (the newest is 334f311): the phone still runs a cached game. Close it fully and open it again.
 - **2026-11-20 20:34**, glacelle against pangrove (bot, hard) (match `q74wjt`):
   - 24 hit(s) landed while you were drawn over 24 px away (largest 70 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
   - Wi-Fi held the phone's inputs 24 times a minute (up to 1 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-  - old build 39db09a (the newest is 334f311): the phone still runs a cached game. Close it fully and open it again.
 - **2026-11-20 20:33**, glacelle against pangrove (bot, hard) (match `dw49lo`):
   - 37 hit(s) landed while you were drawn over 24 px away (largest 113 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
   - Wi-Fi held the phone's inputs 59.1 times a minute (up to 3 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-  - old build 39db09a (the newest is 334f311): the phone still runs a cached game. Close it fully and open it again.
 - **2026-11-20 18:11**, duskveil against gloomshade (raid boss) (match `tnte3i`):
   - 1 hit(s) landed while you were drawn over 24 px away (largest 33 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
   - Wi-Fi held the phone's inputs 40.7 times a minute (up to 2 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
@@ -150,17 +149,13 @@ Newest report: 2026-11-20 20:50 UTC. From the game server's log (`scripts/perf/e
 - **2026-11-20 02:08**, coilemur against auralynx (match `rg0y84`):
   - 19 hit(s) landed while you were drawn over 24 px away (largest 47 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
   - Wi-Fi held the phone's inputs 20.6 times a minute (up to 3 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-- **2026-11-20 02:08**, auralynx against coilemur (match `rg0y84`):
-  - 20 hit(s) landed while you were drawn over 24 px away (largest 271 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-  - Wi-Fi held the phone's inputs 81 times a minute (up to 3 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-- **2026-11-20 02:06**, coilemur against auralynx (match `cyf2nd`):
-  - 18 hit(s) landed while you were drawn over 24 px away (largest 70 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-  - Wi-Fi held the phone's inputs 13.3 times a minute (up to 2 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
 
 ## Latest matches
 
 | Time (UTC) | Match | Mode | You | Against | Ping (slowest 5%) | Lead | Late updates | Jumps | Hits off-screen | Skill confirm | FPS | Stutter | Graphics | Device | Build |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-21 07:59 | `e9lb01` | duel vs bot | duskveil | halcyra (bot, hard) | 63 ms 🟢 (72) | 191 ms | 0.0% | 23.9/min (max 144 px) | 0 | 87 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 7f7941b |
+| 2026-11-21 07:57 | `17lb14` | duel vs bot | duskveil | tidefin (bot, hard) | 64 ms 🟢 (75) | 191 ms | 0.0% | 35.8/min (max 110 px), ⚠️ 1.8 unexplained | 0 | 88 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 7f7941b |
 | 2026-11-20 20:50 | `xyfy1p` | duel vs bot | pangrove | pangrove (bot, hard) | 68 ms 🟢 (73) | 197 ms | 0.0% | 64.9/min (max 119 px) | ⚠️ 10 (max 60 px) | 87 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 39db09a |
 | 2026-11-20 20:49 | `c9bily` | duel vs bot | pangrove | pangrove (bot, hard) | 71 ms 🟢 (76) | 223 ms | 0.0% | 78.8/min (max 154 px) | ⚠️ 30 (max 101 px) | 110 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 39db09a |
 | 2026-11-20 20:47 | `fuhmr0` | duel vs bot | glacelle | mystowl (bot, hard) | 66 ms 🟢 (73) | 191 ms | 0.1% | 30.4/min (max 180 px), ⚠️ 1.1 unexplained | ⚠️ 34 (max 109 px) | 88 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 39db09a |
@@ -209,13 +204,12 @@ Newest report: 2026-11-20 20:50 UTC. From the game server's log (`scripts/perf/e
 | 2026-11-20 02:10 | `6w407g` | duel | coilemur | auralynx | 62 ms 🟢 (74) | 198 ms | 0.0% | 37.4/min (max 69 px) | ⚠️ 28 (max 49 px) | 109 ms | 59.9 | 0.3% | medium (auto) | android, 8 cores, 8 GB, 120 Hz | 39db09a |
 | 2026-11-20 02:10 | `6w407g` | duel | auralynx | coilemur | 58 ms 🟢 (93) | 178 ms | 3.1% | 44.9/min (max 448 px), ⚠️ 0.9 unexplained | ⚠️ 27 (max 446 px) | 72 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 39db09a |
 | 2026-11-20 02:08 | `rg0y84` | duel | coilemur | auralynx | 62 ms 🟢 (70) | 198 ms | 0.6% | 23.8/min (max 179 px) | ⚠️ 19 (max 47 px) | 86 ms | 59.9 | 0.3% | medium (auto) | android, 8 cores, 8 GB, 120 Hz | 39db09a |
-| 2026-11-20 02:08 | `rg0y84` | duel | auralynx | coilemur | 51 ms 🟢 (65) | 174 ms | 3.4% | 27.8/min (max 342 px) | ⚠️ 20 (max 271 px) | 88 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 39db09a |
-| 2026-11-20 02:06 | `cyf2nd` | duel | coilemur | auralynx | 61 ms 🟢 (85) | 199 ms | 0.3% | 38.6/min (max 187 px) | ⚠️ 18 (max 70 px) | 94 ms | 59.9 | 0.5% | medium (auto) | android, 8 cores, 8 GB, 120 Hz | 39db09a |
 
 ## By day
 
 | Day (UTC) | Reports | Needs attention | Ping, median | Ping, worst 10% | Lead, median | Jumps/min, median | Skill confirm, median | FPS, median | Stutter, median | Dropped connections |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-21 | 2 | 2 | 63 ms | 64 ms | 191 ms | 23.9 | 87 ms | 58.8 | 0.0% | 0 |
 | 2026-11-20 | 65 | 64 | 51 ms | 68 ms | 188 ms | 33.8 | 80 ms | 58.8 | 0.1% | 3 transport close |
 | 2026-11-19 | 20 | 20 | 56 ms | 73 ms | 187 ms | 62.1 | 85 ms | 58.8 | 0.1% | 3 transport close |
 | 2026-11-18 | 65 | 65 | 48 ms | 56 ms | 174 ms | 44.1 | 79 ms | 58.8 | 0.4% | 3 transport close |
