@@ -82,8 +82,8 @@ describe("Frost Breath (Glacelle): held in it, frozen", () => {
     place(me, 300, Y, 500, Y);
     place(them, 450, Y);
     a.cast(me, b);
-    // Ticks at 0.1, 0.3, 0.5 s: the third freezes.
-    seconds(a, 0.42);
+    // Ticks at 0.1, 0.3, 0.5, 0.7 s: the fourth freezes.
+    seconds(a, 0.1 + 0.2 * (b.cone!.freeze! - 1) - 0.08);
     expect(a.has(them, "freeze")).toBe(false);
     seconds(a, 0.12);
     expect(a.has(them, "freeze")).toBe(true);
@@ -101,7 +101,7 @@ describe("Frost Breath (Glacelle): held in it, frozen", () => {
     place(them, 450, Y);
     a.cast(me, skill("glacelle", "frost-breath"));
     const hp = them.hp;
-    // Two ticks (0.1 s, 0.3 s), then out of the breath before the third.
+    // Two ticks (0.1 s, 0.3 s), then out of the breath before the next.
     seconds(a, 0.35);
     expect(them.hp).toBeLessThan(hp);
     expect(a.has(them, "slow")).toBe(true);

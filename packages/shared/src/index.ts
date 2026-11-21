@@ -830,7 +830,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "cone",
         5,
         8,
-        "The flame crest flares into a cone of fire for 1.2 seconds. Burns.",
+        "The flame crest flares into a cone of fire for 1.2 seconds, reaching from 230 px out to 300 px as it burns. Burns.",
         {
           range: 230,
           arc: 0.75,
@@ -962,7 +962,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "wave",
         18,
         20,
-        "After a short charge, a wall of water 380 px wide rolls from Tidefin along your aim across the whole court, over any wall. Enemies it reaches take 24 and are carried along for up to half a second; carried into a wall, they take 12 more and are stunned.",
+        "After a short charge, two walls of water 380 px wide roll from Tidefin along your aim, 0.9 seconds apart, across the whole court and over any wall. Each wall that reaches an enemy deals 18 and carries it along for up to half a second; carried into a wall, it takes 9 more and is stunned. One jump can't clear both.",
         {
           cast: 0.35,
           speed: 650,
@@ -1225,10 +1225,10 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "rest",
         0,
         16,
-        "Pull into your shell for 2.5 seconds: you can't move or act, but take 45% less damage and regrow 30 HP.",
+        "Pull into your shell for 1.5 seconds: you can't move or act, but take 45% less damage and regrow 21 HP. Then the shell bursts open, shoving away everyone within 140 px.",
         {
           duration: 1.5,
-          heal: 8,
+          heal: 7,
           status: "shell",
           burst: { damage: 0, radius: 140, knockback: 300 },
         },
@@ -1598,9 +1598,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "frost-breath",
         "Frost Breath",
         "cone",
-        5,
+        4,
         12,
-        "Breathe a freezing cone for 1 second. Slows.",
+        "Breathe a freezing cone for 1 second: 4 damage every 0.2 seconds and a slow. An enemy caught by four breaths in a row is frozen solid for half a second.",
         {
           range: 230,
           arc: 0.7,
@@ -1610,7 +1610,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           knockback: 0,
           status: "slow",
           statusDuration: 0.6,
-          cone: { freeze: 3, freezeFor: 0.5 },
+          cone: { freeze: 4, freezeFor: 0.5 },
         },
       ),
       ability(
@@ -2046,9 +2046,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "scale-shrapnel",
         "Scale Shrapnel",
         "shrapnel",
-        7,
+        6,
         9,
-        "Shed your armour plates as a fan of blades: 3 blades, plus 3 for each plate you have. Every plate is spent and grows back later.",
+        "Shed your armour plates as a fan of blades: 6 blades, plus 2 for each plate you have. Every plate is spent and grows back later.",
         {
           count: 6,
           perPlate: 2,
