@@ -108,6 +108,12 @@ for (const size of [
         Math.abs(dash.l - fishBtn.r - (jump.l - dash.r)),
       ).toBeLessThanOrEqual(1);
       await snap(page, info, `fishing-dock-${name}`);
+      // The usual camera's width (in Plaza units), to come back to.
+      await page.waitForTimeout(600);
+      const usual = await page.evaluate(() => {
+        const v = (window as any).__plaza.fishingMode.view;
+        return v.x1 - v.x0;
+      });
       await enter(page);
       // The walking controls step aside; the camera comes in close.
       for (const s of [".pz-joy", ".pz-actions", ".pz-left", "#pz-quests"])
@@ -136,6 +142,24 @@ for (const size of [
           return mid >= size.width / 2 && mid <= size.width / 2 + 30;
         })
         .toBe(true);
+      // The screen changes size mid-fishing (a phone turning, a toolbar
+      // going): the frame still holds the whole pond.
+      await page.setViewportSize({
+        width: size.width - 80,
+        height: size.height,
+      });
+      await expect
+        .poll(async () => {
+          const v = (await mode(page)).view;
+          return (
+            v.x0 <= SPOT.x - 30 &&
+            v.x1 >= PLAZA_POND.x + PLAZA_POND.rx &&
+            v.y0 <= PLAZA_POND.y - PLAZA_POND.ry &&
+            v.y1 >= PLAZA_POND.y + PLAZA_POND.ry
+          );
+        })
+        .toBe(true);
+      await page.setViewportSize({ width: size.width, height: size.height });
       // Today's count is a round tile beside Book, the same size.
       const today = await box(page, "#pz-fish-today"),
         bookBtn = await box(page, "#pz-fish-book2");
@@ -245,6 +269,13 @@ for (const size of [
       await expect(page.locator("#pz-fishhud")).toBeHidden();
       await expect(page.locator(".pz-joy")).toBeVisible();
       await expect.poll(async () => (await mode(page)).fz).toBeLessThan(1.05);
+      // ... at the usual zoom (on a phone too, where pinching is off).
+      await expect
+        .poll(async () => {
+          const v = (await mode(page)).view;
+          return Math.abs(v.x1 - v.x0 - usual) / usual;
+        })
+        .toBeLessThan(0.02);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

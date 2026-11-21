@@ -1341,7 +1341,10 @@ export function openPlaza(options) {
     plazaZoomable(matchMedia("(pointer: coarse)").matches, NW, NH);
   function setZoom(f, keep = true) {
     if (!zoomable()) {
-      Z = plazaZoomAt(NW, NH, 1);
+      // Fishing's frame stays on top (fz), so turning a phone mid-fishing
+      // keeps the fishing zoom.
+      zBase = plazaZoomAt(NW, NH, 1);
+      Z = zBase * fz;
       cam = plazaCamClamp(cam.x, cam.y, NW, NH, Z);
       return;
     }
@@ -1350,7 +1353,7 @@ export function openPlaza(options) {
     // What was asked for past a limit is not kept: a wider screen later
     // starts from what was really shown.
     zoomF = zBase / r.base;
-    // Fishing mode's closer camera on top (fz eases to FISHING_ZOOM).
+    // Fishing mode's frame on top (fz eases to fishingFrame's zoom).
     Z = zBase * fz;
     // Inside at once (the camera eases after this): zooming or resizing
     // never shows past what is painted.
