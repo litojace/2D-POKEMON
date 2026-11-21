@@ -780,9 +780,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* As wide as its label (Sit, Volt Boba…), up to 14em; longer ones end in "…". */
 .plaza-layer .pz-interact {
   box-sizing: border-box;
-  width: 14em;
+  width: auto;
+  max-width: 14em;
   padding: 0 0.5em 0 1em;
   justify-content: flex-start;
 }
@@ -818,7 +820,7 @@
   justify-content: flex-end;
 }
 .plaza-layer.phone .pz-interact {
-  width: 13em;
+  max-width: 13em;
   height: 3.2em;
   border-radius: 999px;
   padding: 0 0.45em 0 0.9em;
@@ -906,7 +908,9 @@
   font-size: calc(10px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-interact {
-  width: 13em;
+  /* Not Dash's and Jump's 64px (.pz-act): as wide as its label. */
+  width: auto;
+  max-width: 13em;
   height: 42px;
   font-size: calc(12px * var(--text-scale, 1));
   align-self: center;
@@ -942,6 +946,17 @@
 .plaza-layer.phone .pz-interact kbd,
 .plaza-layer.phone .pz-quests h5 span {
   font-size: calc(12px * var(--text-scale, 1));
+}
+/* Touch screens have no E key to press: the action's name alone, padded
+   evenly (like Dash and Jump without Shift and Space). */
+.plaza-layer.coarse .pz-interact kbd {
+  display: none;
+}
+.plaza-layer.coarse .pz-interact {
+  padding-right: 1em;
+}
+.plaza-layer.coarse.phone .pz-interact {
+  padding-right: 0.9em;
 }
 
 /* ---------- below the line: the Plaza inside the game ---------- */
@@ -1123,6 +1138,68 @@
 .plaza-layer .pz-card .pc-safety .pc-block {
   border-color: #ff6b6b80;
   color: #ff9b9b;
+}
+/* Pair emotes (a high five, a hug, a dance): one compact row of three. */
+.plaza-layer .pz-card .pc-pair {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.plaza-layer .pz-card .pc-pair button {
+  min-height: 36px;
+  padding: 0.3em 0.25em;
+  font-size: 0.82em;
+  line-height: 1.1;
+  background: #24305a;
+}
+.plaza-layer .pz-card .pc-emo {
+  display: block;
+  font-size: 1.15em;
+}
+/* Someone asks you for a pair emote: where the card opens, for a few seconds. */
+.plaza-layer .pz-ask {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--hud-row2) + 44px + var(--hud-gap));
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  border-radius: 16px;
+  padding: 0.45em 0.5em 0.45em 0.8em;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  z-index: 5;
+}
+.plaza-layer.phone .pz-ask {
+  top: calc(var(--hud-row2) + 38px + var(--hud-gap));
+}
+.plaza-layer .pz-ask .pa-emo {
+  font-size: 1.4em;
+}
+.plaza-layer .pz-ask p {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plaza-layer .pz-ask button[data-pa="yes"] {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.45em 0.9em;
+  min-height: 40px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  background: var(--btn-primary-bg);
+  color: var(--ui-accent-ink);
+}
+.plaza-layer .pz-ask .x {
+  border: 0;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+  min-width: 40px;
+  min-height: 40px;
 }
 
 /* ---------- the polaroid and the photo album ----------
