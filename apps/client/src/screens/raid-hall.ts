@@ -68,7 +68,13 @@ const FOCUS_KEYS = [
 
 export function openRaids(
   hooks: RaidHooks,
-  o: { boss?: RaidBossId; tab?: RaidTab; spire?: SpireTab } = {},
+  o: {
+    boss?: RaidBossId;
+    tab?: RaidTab;
+    spire?: SpireTab;
+    /** Back from a fight: already in place, no slide in. */
+    instant?: boolean;
+  } = {},
 ): RaidScreen {
   const view = raidView(o.boss ?? "grumblecrag", {
     mode: o.spire ? "spire" : o.boss ? "boss" : "hall",
@@ -357,6 +363,7 @@ export function openRaids(
   template = parse(html);
   panel = openHubPanel(html, {
     rail: "raids",
+    instant: o.instant,
     onClose: () => {
       closed = true;
       for (const animation of navigation) animation.cancel();
