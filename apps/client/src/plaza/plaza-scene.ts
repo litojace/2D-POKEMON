@@ -5138,7 +5138,7 @@ export function openPlaza(options) {
     // stands in for it (one scene to paint, not two).
     const fv = fishing.fightView();
     if (fv && fv.t >= FIGHT_IN_SECONDS) {
-      fightView.draw(ctx, fv, NW, NH, T, low, fightRoom, 1, PS);
+      fightView.draw(ctx, fv, NW, NH, T, low, fightRoom, 1, PS, night());
       return;
     }
     ctx.fillStyle = "#24452a";
@@ -5187,6 +5187,7 @@ export function openPlaza(options) {
         fightRoom,
         fv.t / FIGHT_IN_SECONDS,
         PS,
+        night(),
       );
   }
 
