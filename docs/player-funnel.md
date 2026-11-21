@@ -34,6 +34,41 @@ means the player came back at least once, not that they came back the next
 day. Only finished matches and raids are saved: a room left before the end
 doesn't count as played. The owner's and testers' accounts are included.
 
+## The Lobby tour
+
+Since 21 Nov 2026 a new account's Lobby tour records how it ended
+(`docs/onboarding.md`). This counts accounts made since then by how
+their tour ended and how many of its 6 steps they saw, against the
+same "played" and "came back" columns as above:
+
+```sql
+with played as (
+  select player_id from arena_match_players
+  union select player_id from arena_raid_players
+)
+select
+  coalesce(t.tour, 'never ended') as tour,
+  t.tour_reached as steps_reached,
+  count(*) as accounts,
+  count(*) filter (
+    where p.id in (select player_id from played)
+  ) as played_a_match_or_raid,
+  count(*) filter (
+    where p.last_online_at >= p.created_at + interval '20 hours'
+  ) as seen_again_a_day_later
+from arena_profiles p
+left join arena_preferences t on t.user_id = p.id
+where not coalesce(p.suspended, false)
+  and p.created_at >= '2026-11-21'
+group by 1, 2
+order by 1, 2;
+```
+
+"never ended" is an account that left before finishing or skipping it,
+or never reached the Lobby. A replay that ends differently replaces the
+row, so a few "done" rows may be replays. The server log's `arena-tour`
+lines count every ending, replays included (`"replay": true`).
+
 ## 16 Nov 2026 (24 accounts, first one 12 Oct)
 
 | Played a match or raid | Guest | Accounts | Gone within 30 min | Seen again a day later |

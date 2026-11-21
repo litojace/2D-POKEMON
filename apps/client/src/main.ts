@@ -130,10 +130,13 @@ import {
   type HelpTopicId,
 } from "./how-to-play";
 import {
+  TOUR_STEPS,
   loadTour,
   runTour,
   saveTour,
   tourDue,
+  tourFromServer,
+  type TourEnd,
   type TourHandle,
 } from "./hub-tour";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
@@ -726,6 +729,8 @@ let helpState: HelpState | undefined;
 /** The Lobby tour (hub-tour.ts): a new account's first look around. */
 let tour: TourHandle | undefined;
 let tourTimer: ReturnType<typeof setTimeout> | undefined;
+/** What the account said about its tour (asked once per account). */
+let tourAsked: { account: string; answered: boolean } | undefined;
 /** EX skills: armed until this time (ms), 0 when not armed. */
 let exArmedUntil = 0;
 /** An invite is waiting for sign-in: say so once. */
@@ -4891,8 +4896,17 @@ function startTour(replay = false) {
         onEnd: (result, reached) => {
           tour = undefined;
           saveTour(account, result);
-          // How far new players get (the funnel, docs/player-funnel.md).
-          console.info("arena-tour", { result, reached, replay });
+          // Kept with the account too (another device won't show it), and
+          // counted for the new-player funnel (docs/player-funnel.md).
+          const end: TourEnd = {
+            result,
+            reached,
+            steps: TOUR_STEPS.length,
+            replay,
+          };
+          accountsUI.api("/api/account/tour", end).catch(() => {
+            /* Kept on this device; the account learns next time. */
+          });
         },
       });
     },
@@ -4906,6 +4920,27 @@ function maybeStartTour() {
   const journey = accountsUI.economy?.journey;
   const level = journey ? playerLevel(journey.xp).level : undefined;
   if (!tourDue(loadTour(account), level)) return;
+  // This browser hasn't seen it end; ask the account (another device may
+  // have), once, and decide when it answers. No answer: show it.
+  if (tourAsked?.account !== account) {
+    tourAsked = { account, answered: false };
+    const asked = tourAsked;
+    accountsUI
+      .api("/api/account/tour")
+      .then(
+        (body) => {
+          const ended = tourFromServer(body);
+          if (ended) saveTour(account, ended);
+        },
+        () => {},
+      )
+      .finally(() => {
+        asked.answered = true;
+        if (tourAsked === asked) maybeStartTour();
+      });
+    return;
+  }
+  if (!tourAsked.answered) return;
   startTour();
 }
 $<HTMLDialogElement>("dialog").addEventListener("close", () => {

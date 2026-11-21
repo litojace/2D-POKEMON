@@ -40,13 +40,13 @@ were found for any of these games, so none are quoted here.
 
 ## What we do
 
-| Moment | What | Where |
-| --- | --- | --- |
-| First Lobby (level ≤ 5) | **Lobby tour**: 6 spotlights (PLAY, rail, cards, fighter, Lobby/Plaza, Menu). Skip on every step, no confirmation. Esc skips, → is Next. | `hub-tour.ts` |
-| Lobby | **Getting started**: 3 steps (bot match, Cragmuff, wear the reward) | `getting-started.ts` |
-| First bot match | **Coach**: move, attack, skill, dash, goal, one line at a time | `battle-coach.ts` |
-| First visit | Feature tips already in place: Plaza help (desktop), Spire guide, mission "how to complete" | each screen |
-| Any time | **How to play**: Basics, Battle, Controls, Modes, Progress, Plaza & friends; Go buttons open the feature; "Replay the Lobby tour" | `how-to-play.ts` |
+| Moment                  | What                                                                                                                                     | Where                |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| First Lobby (level ≤ 5) | **Lobby tour**: 6 spotlights (PLAY, rail, cards, fighter, Lobby/Plaza, Menu). Skip on every step, no confirmation. Esc skips, → is Next. | `hub-tour.ts`        |
+| Lobby                   | **Getting started**: 3 steps (bot match, Cragmuff, wear the reward)                                                                      | `getting-started.ts` |
+| First bot match         | **Coach**: move, attack, skill, dash, goal, one line at a time                                                                           | `battle-coach.ts`    |
+| First visit             | Feature tips already in place: Plaza help (desktop), Spire guide, mission "how to complete"                                              | each screen          |
+| Any time                | **How to play**: Basics, Battle, Controls, Modes, Progress, Plaza & friends; Go buttons open the feature; "Replay the Lobby tour"        | `how-to-play.ts`     |
 
 Rules kept:
 
@@ -57,18 +57,24 @@ Rules kept:
 - **Phones first.** The bubble is placed beside its target inside the
   safe area (`placeBubble`, unit-tested); controls show the device in use
   (touch buttons on a phone, the player's own keys, controller names).
-- **The tour is remembered per account in this browser**
-  (`arena-tour:<account>` = `done` | `skipped`), like Getting started.
-  A new browser on the same account may show it again; that's cheap,
-  since it skips in one tap. Move it to the account if that becomes a
-  complaint.
-- The client logs `arena-tour` (`result`, `reached`, `replay`) in the
-  console. Sending it to the server for the funnel
-  (`docs/player-funnel.md`) is a possible next step.
+- **How the tour ended is kept with the account** (migration
+  `20261121090000_lobby_tour.sql`: `arena_preferences.tour`,
+  `tour_reached`, `tour_at`; `GET`/`POST /api/account/tour`), and in this
+  browser too (`arena-tour:<account>`). The browser answers first; only
+  when it has never seen the tour end does the client ask the account, once,
+  and it starts the tour after the answer (no answer: it shows it). So
+  another device doesn't show it again.
+- **Every ending is counted:** the server logs one `arena-tour` line
+  (`result`, `reached`, `steps`, `replay`; no account), and the database
+  row is the per-account record the funnel query reads
+  (`docs/player-funnel.md`). A replay that ends differently replaces the
+  row.
 
 ## Next steps worth considering
 
 - A short first-visit tip for screens that have none (Wardrobe, Ranks,
   Friends), as data in the same style.
 - A reward for finishing Getting started (UNITE and Wild Rift do this).
-- Measure: tour skipped vs done against "played a match" in the funnel query.
+- Read the tour query in `docs/player-funnel.md` after a week of new
+  accounts: which step people skip at, and whether skipping changes who
+  plays a first match.
