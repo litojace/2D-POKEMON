@@ -3827,8 +3827,8 @@ export const RITES: Rite[] = [
     "major",
     "crystal-cage",
     "Long Cage",
-    "Crystal Cage stands for 4s instead of 2.5s and deals 18 instead of 10.",
-    { set: { duration: 4, damage: 18 } },
+    "Crystal Cage stands for 4s instead of 2.5s and deals 28 instead of 20.",
+    { set: { duration: 4, damage: 28 } },
   ),
   rite(
     "lumoth",

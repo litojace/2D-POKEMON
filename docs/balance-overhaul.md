@@ -574,16 +574,17 @@ Thunderstorm (6.1 / 8.6) are left to the expert-bot work on Voltkit.
 - **Crystal Cage** closes in from 180 to 60 px over its 2.5 s
   (`cage.shrinkTo`; every fighter's hold on it shrinks with it, so
   `holdInCage` squeezes those inside toward Auralynx, on the client too),
-  and deals 20 (10).
+  and deals 20 (10). Rite Long Cage: 4 s and 28 damage (it set 18, which
+  would now have lowered it).
 
 Round robins, `main` / now (24 games a pair, seeds 310000):
 
-| Champion | Hard | Expert | Normal |
-| -------- | ---: | -----: | -----: |
-| Pangrove | 52.9% / 54.2% | 52.9% / 60.0% | 56.6% / 54.2% |
-| Cindrake | 53.7% / 53.4% | 59.1% / 60.5% | 54.4% / 49.0% |
-| Auralynx | 49.3% / 51.2% | 52.5% / 51.0% | 48.8% / 50.7% |
-| Range | 42.2 - 59.1% / 42.9 - 58.3% | 38.7 - 59.3% / 41.4 - 60.5% | 43.1 - 56.6% / 43.1 - 54.4% |
+| Champion |                        Hard |                      Expert |                      Normal |
+| -------- | --------------------------: | --------------------------: | --------------------------: |
+| Pangrove |               52.9% / 54.2% |               52.9% / 60.0% |               56.6% / 54.2% |
+| Cindrake |               53.7% / 53.4% |               59.1% / 60.5% |               54.4% / 49.0% |
+| Auralynx |               49.3% / 51.2% |               52.5% / 51.0% |               48.8% / 50.7% |
+| Range    | 42.2 - 59.1% / 42.9 - 58.3% | 38.7 - 59.3% / 41.4 - 60.5% | 43.1 - 56.6% / 43.1 - 54.4% |
 
 Spire: the three are Echoes on 36 floors; all cleared within 5 of 72 as
 often as on `main` but floor 3 (33 / 24), now armour 1.05 (0.99): 34.
