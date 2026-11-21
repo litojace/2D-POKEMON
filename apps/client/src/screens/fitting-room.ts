@@ -67,12 +67,6 @@ let parked: Parked | undefined;
  */
 let openShops = 0;
 export const PARKED_MS = 60_000;
-/**
- * Shops open now. One closed and opened again before it had finished
- * leaving gets a new screen; the old one must not then be parked as well
- * (two Shops in the page, one hidden, until the next close).
- */
-let openShops = 0;
 /** Drop what a parked Shop holds (its renderer, its screen). */
 const drop = (p: Omit<Parked, "timer" | "watch"> | undefined) => {
   p?.preview?.();
@@ -806,8 +800,6 @@ export function openFittingRoom(
       if (!document.querySelector(".lobby-layer")?.isConnected) return false;
       if (document.body.classList.contains("battle-active")) return false;
       if (parked && parked.wrap) return false;
-      // A newer Shop is open already: this one goes.
-      if (openShops > 0) return false;
       const fighter = unpark();
       park({
         ...fighter,
@@ -818,7 +810,6 @@ export function openFittingRoom(
       return true;
     },
   });
-  openShops++;
   // (Not taken back after all, the Lobby having been rebuilt: let it go.)
   if (keptRoot && root() !== keptRoot) kept?.wrap?.remove();
   for (const [type, fn] of listeners)
