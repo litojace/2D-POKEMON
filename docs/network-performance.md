@@ -307,16 +307,19 @@ The Plaza's wishing-fountain fireworks (20 Nov 2026) follow the same
 rules, although the Plaza is a 2D canvas, not a Phaser scene, so
 `fx-engine.ts` can't draw there. `apps/client/src/plaza/plaza-fireworks.ts`
 has the engine's levers: sparks at 35% at Low and with reduced motion, no
-spark tails at Low, one pooled array of at most 220 sparks, one pre-drawn
-glow sprite per colour for the bursts' flashes, and a glow budget (Low: 0.2
-screens; over it every flash shrinks alike, never below half size). Its
-counts (`stats`, `peak`) are read by `tests/visual/plaza-wish.spec.ts` and
+spark tails, rocket embers or crackle twinkles at Low, one pooled array of
+at most 360 sparks, one pre-drawn glow sprite per colour for the bursts'
+flashes, and a glow budget (Low: 0.2 screens; over it every flash shrinks
+alike, never below half size). Sparks are drawn in groups (one path per
+colour and brightness), and the scene's dimming under the show is one fill
+a frame, skipped at Low. Its counts (`stats`, `peak`) are read by
+`tests/visual/plaza-wish.spec.ts` and
 `tests/visual/plaza-wish-performance.spec.ts`. Measured at High on an
-844×390 screen in this container: 60 fps at the fountain before and during
-the 5 s show (95th percentile frame 17 ms both), the fireworks' own drawing
-0.07 ms a frame on average (0.6 ms at most), at most 103 sparks, 2 flashes
-and 0.09 screens of glow, which is under Low's budget, so Low only thins
-the sparks.
+844×390 screen in this container, for the twelve-shell show (six kinds and
+a three-shell finale): 60 fps at the fountain before and during the 5 s
+show (95th percentile frame 17 ms both), the fireworks' own drawing
+0.17 ms a frame on average (0.9 ms at most), at most 318 sparks, 3 flashes
+and 0.23 screens of glow, which Low holds to 0.2.
 
 ### 9. Shots and wind-ups on your own timeline
 

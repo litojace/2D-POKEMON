@@ -135,3 +135,32 @@ production Supabase database (`.github/workflows/migrate.yml`,
 (`scripts/check-migrations.mjs <file>` runs it twice on an empty database),
 must ship in the same push as the code that needs it, and a migration that
 already ran is never edited: add a new one.
+
+## Merging to main: fast lane or full lane
+
+`main` is production: a merge deploys the game and applies new migrations.
+A PR's full run (verify and 18 visual shards) mostly waits for runners, often
+hours, so not every PR waits for all of it. Before merging, run:
+
+```bash
+node scripts/merge-lane.mjs
+```
+
+It prints the lane and why, from the files the branch changes against
+`origin/main` (rules and tests: `scripts/merge-lane.mjs`,
+`tests/unit/merge-lane.test.ts`).
+
+- **FAST** (a screen's own files, its tests, the server's non-battle routes,
+  docs): run the visual specs the change touches locally (step 2 above),
+  then merge once the PR's `verify` job is green. Then watch `main`'s run:
+  it always runs all 18 shards to the end. If it goes red, fix it at once,
+  ahead of anything else.
+- **FULL** (a migration, dependencies, CI, the build or deploy, the visual
+  harness, the shared UI in `apps/client/src/ui/` and `style.css`, the
+  battle, the game server's rooms, the shared rules, or more than 25 files):
+  wait for the PR's whole run to be green.
+- Say the lane and its reasons in the PR description. Merge only when the
+  owner has asked for it: the lane says when a merge is safe, not that one
+  is wanted.
+- When a FULL rule turns out too wide or too narrow, change it in the script
+  with its test, not case by case.

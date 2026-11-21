@@ -120,7 +120,22 @@ import {
 } from "./screens/room-view";
 import "./screens/room.css";
 import { renderRaidUI, drawRaidArena, raidLookList } from "./raid-ui";
-import { illustratedHelp } from "./illustrated-help";
+import {
+  howToPlayMarkup,
+  helpTopicMarkup,
+  type HelpControls,
+  type HelpDevice,
+  type HelpGo,
+  type HelpState,
+  type HelpTopicId,
+} from "./how-to-play";
+import {
+  loadTour,
+  runTour,
+  saveTour,
+  tourDue,
+  type TourHandle,
+} from "./hub-tour";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import type { RaidBossId, RaidSlot } from "../../../packages/shared/src/raid";
 import type { RaidTab } from "./screens/raid-hall-view";
@@ -710,6 +725,11 @@ let raidRoomReturn:
 let accountShown = "";
 /** Last known "ultimate ready" state, for the ready sound. */
 let ultWasReady = false;
+/** How to play (how-to-play.ts): the topic and device it shows. */
+let helpState: HelpState | undefined;
+/** The Lobby tour (hub-tour.ts): a new account's first look around. */
+let tour: TourHandle | undefined;
+let tourTimer: ReturnType<typeof setTimeout> | undefined;
 /** EX skills: armed until this time (ms), 0 when not armed. */
 let exArmedUntil = 0;
 /** An invite is waiting for sign-in: say so once. */
@@ -1278,15 +1298,6 @@ const skillsText = () =>
   usingPad
     ? SKILL_ACTIONS.map((a) => PAD_LABELS[a]).join(" ")
     : skillLabels(controlPrefs().bindings).join(" ");
-/** The controls cheat sheet used by the briefing and How to play. */
-function controlsList(full = false) {
-  const aimHow = usingPad ? "right stick to aim" : "mouse to aim";
-  const casting =
-    controlPrefs().cast === "preview"
-      ? " · hold to preview, release to cast"
-      : "";
-  return `<div class="controls-list"><span><kbd>${escape(moveText())}</kbd>Move · ${aimHow}</span><span><kbd>${escape(keyText("basic"))}</kbd>Basic attack${full ? " · hold to keep attacking" : ""}</span><span><kbd>${escape(skillsText())}</kbd>Four skills · the last is your ultimate${casting}</span>${full ? "<span><kbd>ULT</kbd>The ultimate charges as you fight · basic hits shorten cooldowns</span><span><kbd>COMBO</kbd>Each fighter has a setup → payoff combo (see the fighter panel)</span>" : ""}<span><kbd>${escape(keyText("dash"))}</kbd>Dash${full ? " · 3 second cooldown" : ""}</span><span><kbd>${escape(keyText("jump"))}</kbd>Jump over ground attacks</span>${full ? "<span><kbd>ESC</kbd>Settings · change keys under Controls</span>" : ""}</div>`;
-}
 /** The briefing's keys: one compact row (the help screen has the full list). */
 function briefKeys() {
   const key = (k: string, what: string) =>
@@ -2807,6 +2818,13 @@ const guide = createGuide({
 });
 function syncLobby(want: boolean) {
   if (!want) {
+    // The tour points at the Lobby: it goes with it (shown again next time).
+    if (tour?.open) {
+      tour.close();
+      tour = undefined;
+    }
+    clearTimeout(tourTimer);
+    tourTimer = undefined;
     if (lobby) {
       lobby.close();
       lobby = undefined;
@@ -2830,6 +2848,7 @@ function syncLobby(want: boolean) {
     lobbyFriendsTimer = setInterval(() => void refreshLobbyFriends(), 60000);
   }
   lobby.update(lobbyView());
+  maybeStartTour();
 }
 /** The roster (UI remodel step 3): every fighter, and a fighter's detail. */
 let rosterScreen: RosterScreen | undefined;
@@ -4752,10 +4771,147 @@ $("guide-open").onclick = () => {
   if (myId) return toast("Finish or leave this room first.");
   guide.reopen();
 };
-$("help").onclick = () =>
-  dialog(
-    `<div class="help-screen"><div class="eyebrow">How to play</div><h2>Welcome to Elemental Plaza.</h2><p>Press <b>PLAY</b> in the Lobby to start a match. Switch between the Lobby and the Plaza at the top of the screen. In battle, win three rounds to take the match.</p><div class="eyebrow help-battle-eyebrow">In battle</div><div class="help-layout"><section class="help-controls" aria-label="Game controls">${controlsList(true)}</section>${illustratedHelp()}</div></div>`,
+function helpControls(): HelpControls {
+  const bindings = controlPrefs().bindings;
+  const pad = (a: PadAction) => PAD_LABELS[a];
+  return {
+    device: touch.enabled && !usingPad ? "touch" : usingPad ? "pad" : "keys",
+    keys: {
+      move: movementLabel(bindings),
+      basic: actionLabel(bindings, "basic"),
+      skills: skillLabels(bindings).join(" "),
+      dash: actionLabel(bindings, "dash"),
+      jump: actionLabel(bindings, "jump"),
+    },
+    pad: {
+      move: "L-STICK",
+      basic: pad("basic"),
+      skills: SKILL_ACTIONS.map((a) => PAD_LABELS[a]).join(" "),
+      dash: pad("dash"),
+      jump: pad("jump"),
+    },
+    preview: controlPrefs().cast === "preview",
+  };
+}
+function showHowToPlay(topic: HelpTopicId = "basics") {
+  const controls = helpControls();
+  const inHub = !myId && !state && !watching && !!accountsUI?.account;
+  helpState = {
+    topic,
+    device: controls.device,
+    canTour: inHub,
+    canGo: inHub,
+  };
+  dialog(howToPlayMarkup(helpState, controls));
+}
+/** Tabs, devices and buttons inside How to play. */
+$<HTMLDialogElement>("dialog").addEventListener("click", (event) => {
+  const root =
+    $<HTMLDialogElement>("dialog").querySelector<HTMLElement>(".htp");
+  if (!root || !helpState) return;
+  const t = (event.target as Element).closest<HTMLElement>(
+    "[data-htp-topic], [data-htp-device], [data-htp-go], [data-htp-tour], [data-htp-guide]",
   );
+  // (The foot sits in the dialog's own footer, outside .htp.)
+  if (!t) return;
+  const body = root.querySelector<HTMLElement>(".htp-body")!;
+  if (t.dataset.htpTopic || t.dataset.htpDevice) {
+    if (t.dataset.htpTopic) {
+      helpState.topic = t.dataset.htpTopic as HelpTopicId;
+      root.dataset.topic = helpState.topic;
+      for (const tab of Array.from(
+        root.querySelectorAll<HTMLElement>("[data-htp-topic]"),
+      )) {
+        const on = tab === t;
+        tab.setAttribute("aria-selected", String(on));
+        tab.tabIndex = on ? 0 : -1;
+      }
+      body.setAttribute("aria-labelledby", t.id);
+      t.scrollIntoView({ block: "nearest", inline: "nearest" });
+    } else helpState.device = t.dataset.htpDevice as HelpDevice;
+    body.innerHTML = helpTopicMarkup(helpState, helpControls());
+    body.scrollTop = 0;
+    body.closest<HTMLElement>(".dialog-content")?.scrollTo({ top: 0 });
+    return;
+  }
+  if (t.dataset.htpGo === "controls") return showControls();
+  $<HTMLDialogElement>("dialog").close();
+  menuOpen = false;
+  if (t.dataset.htpGo) helpGo(t.dataset.htpGo as HelpGo);
+  else if (t.hasAttribute("data-htp-tour")) startTour(true);
+  else $("guide-open").click();
+});
+/** Arrow keys move between How to play's tabs. */
+$<HTMLDialogElement>("dialog").addEventListener("keydown", (event) => {
+  const tab = (event.target as Element).closest<HTMLElement>(
+    "[data-htp-topic]",
+  );
+  if (!tab || (event.key !== "ArrowRight" && event.key !== "ArrowLeft")) return;
+  const all = Array.from(
+    tab.parentElement!.querySelectorAll<HTMLElement>("[data-htp-topic]"),
+  );
+  const next =
+    all[
+      (all.indexOf(tab) + (event.key === "ArrowRight" ? 1 : -1) + all.length) %
+        all.length
+    ];
+  event.preventDefault();
+  next.focus();
+  next.click();
+});
+/** A How to play card's Go: the screen it is about, from the hub. */
+function helpGo(to: HelpGo) {
+  if (myId) return toast("Finish or leave this room first.");
+  if (to === "plaza") return setHubScene("plaza");
+  if (to === "practice") return void lobbyPlay("practice");
+  if (hubScene !== "lobby") setHubScene("lobby");
+  if (to === "play")
+    return requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>("#lobby-mode")?.click(),
+    );
+  if (to === "controls") return showControls();
+  lobbyAction(to);
+}
+$("help").onclick = () => showHowToPlay();
+/** Start it now (replay), or when it is due for a new account. */
+function startTour(replay = false) {
+  const account = accountsUI?.account?.id;
+  if (!account || tour?.open) return;
+  if (hubScene !== "lobby") setHubScene("lobby");
+  // The Lobby lays itself out first (and glides in); then the tour.
+  clearTimeout(tourTimer);
+  tourTimer = setTimeout(
+    () => {
+      tourTimer = undefined;
+      if (
+        !lobby ||
+        myId ||
+        $<HTMLDialogElement>("dialog").open ||
+        document.querySelector(".ui-panel-host .ui-panel")
+      )
+        return;
+      tour = runTour({
+        reduced: reducedMotion,
+        onEnd: (result, reached) => {
+          tour = undefined;
+          saveTour(account, result);
+          // How far new players get (the funnel, docs/player-funnel.md).
+          console.info("arena-tour", { result, reached, replay });
+        },
+      });
+    },
+    replay ? 250 : 900,
+  );
+}
+/** A new account's first Lobby: the tour, once. */
+function maybeStartTour() {
+  const account = accountsUI?.account?.id;
+  if (!account || tour?.open || tourTimer !== undefined) return;
+  const journey = accountsUI.economy?.journey;
+  const level = journey ? playerLevel(journey.xp).level : undefined;
+  if (!tourDue(loadTour(account), level)) return;
+  startTour();
+}
 $<HTMLDialogElement>("dialog").addEventListener("close", () => {
   settingsOpen = false;
   menuOpen = false;
