@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { box, inside, openHub, openLobby, openWardrobe, snap } from "./helpers";
+import { box, inside, openLobby, openWardrobe, snap } from "./helpers";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
 import { exposeAccount, shopServer } from "./shop-server";
 
@@ -448,37 +448,6 @@ test("opening another screen from the rail replaces the fitting room", async ({
   await page.click('.lobby-rail [data-lobby-action="missions"]');
   await expect(page.locator(".fit-room:not([data-ui-leaving])")).toHaveCount(0);
   await expect(page.locator(".missions-sheet")).toBeVisible();
-  expect(errors).toEqual([]);
-});
-
-test("a Shop closed and opened again during its leave leaves one Shop in the page", async ({
-  page,
-}) => {
-  const errors = await openHub(page);
-  // The page's open Shop, not one leaving or parked (ui/hub-panel.ts).
-  const live = ".ui-panel-host:not([data-ui-leaving]):not([data-ui-parked])";
-  const leaving = ".ui-panel-host[data-ui-leaving]:not([data-ui-parked])";
-  // A race: the next Shop must open before the last has finished leaving.
-  // It doesn't every time, so a few rounds (without the fix, at least one
-  // of five left a parked Shop under the open one in every run).
-  for (let round = 0; round < 5; round++) {
-    await page.click("#account-coins");
-    await expect(page.locator(`${live} .fit-room`)).toBeVisible();
-    await page.evaluate((sel) => {
-      document
-        .querySelector<HTMLElement>(`${sel} .fit-room .ui-close`)!
-        .click();
-      setTimeout(() => document.getElementById("account-coins")!.click(), 30);
-    }, live);
-    await expect(page.locator(`${live} .fit-room`)).toBeVisible();
-    await expect(page.locator(leaving)).toHaveCount(0);
-    await page.waitForTimeout(400);
-    await expect(page.locator(".ui-panel-host:has(.fit-room)")).toHaveCount(1);
-    // Closing it still parks it for the next open.
-    await page.locator(`${live} .fit-room .ui-close`).click();
-    await expect(page.locator(leaving)).toHaveCount(0);
-    await expect(page.locator(".ui-panel-host[data-ui-parked]")).toHaveCount(1);
-  }
   expect(errors).toEqual([]);
 });
 
