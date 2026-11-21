@@ -5,18 +5,39 @@ on:
     paths-ignore: ["docs/**", "**/*.md"]
   pull_request:
     paths-ignore: ["docs/**", "**/*.md"]
+  # Main's full check (verify and the 18 visual shards), every three hours
+  # on main's latest commit (CLAUDE.md, "Merging to main"). A merge used to
+  # start main's full run, but main keeps one waiting run and a newer merge
+  # replaces it: with merges coming faster than runners free up, no main run
+  # finished for hours (20-21 Nov 2026). The scheduled run has a group of its
+  # own, so no merge cancels it.
+  schedule:
+    - cron: "17 */3 * * *"
   workflow_dispatch:
 # A newer push to the same branch replaces a run still in progress, except
-# on main: a main run always runs to the end, so main gets a full result even
-# when merges come faster than a run (about 1-1.5 h with 18 visual shards).
-# Main keeps one group, so at most one run is going and one is waiting there;
-# a newer merge replaces only the waiting one (the waiting run is the latest
-# commit and covers the ones it replaced). One group per commit was tried and
-# queued six full runs at once on a busy morning, more than the runners clear.
+# on main, whose runs go to the end. A push to main runs verify only (a few
+# minutes); the scheduled run is in its own group.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'scheduled-full-run' || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' && github.ref != 'refs/heads/main' }}
 jobs:
+  lane:
+    # Which lane a pull request takes to main (scripts/merge-lane.mjs): a
+    # FAST one merges on verify alone, so its visual shards would spend 18
+    # runners on a result nobody waits for; only a FULL one runs them.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    outputs:
+      lane: ${{ steps.lane.outputs.lane }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: lane
+        run: node scripts/merge-lane.mjs origin/${{ github.base_ref }}
   verify:
     # Pinned: ubuntu-latest became 26.04 (Nov 2026), where Playwright 1.56
     # cannot install Chromium ("does not support chromium on ubuntu26.04").
@@ -43,9 +64,16 @@ jobs:
     # count, the shard that drew the raid fights and panel sweeps took 21
     # minutes while others took 4 (Nov 2026); by time, all aim for the same
     # share, about 12. Eighteen runners plus verify stay under the free plan's
-    # 20 jobs at once. It runs for main (what Render deploys), pull requests
-    # and manual runs, not again for the same commit on work.
-    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
+    # 20 jobs at once. It runs for main's scheduled full run, manual runs and
+    # FULL-lane pull requests (a lane that failed to say counts as FULL); not
+    # for pushes, main's included (the scheduled run covers main).
+    needs: lane
+    if: >-
+      ${{ !cancelled() && (
+        github.event_name == 'schedule' ||
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'pull_request' && needs.lane.outputs.lane != 'FAST')
+      ) }}
     name: visual (${{ matrix.shard }} of 18)
     # Pinned: ubuntu-latest became 26.04 (Nov 2026), where Playwright 1.56
     # cannot install Chromium ("does not support chromium on ubuntu26.04").
@@ -77,7 +105,7 @@ jobs:
   visual-report:
     # One HTML report from every shard (screenshots for a person to look over).
     needs: visual
-    if: ${{ !cancelled() && (github.event_name != 'push' || github.ref == 'refs/heads/main') }}
+    if: ${{ !cancelled() && needs.visual.result != 'skipped' }}
     # Pinned: ubuntu-latest became 26.04 (Nov 2026), where Playwright 1.56
     # cannot install Chromium ("does not support chromium on ubuntu26.04").
     runs-on: ubuntu-24.04
@@ -114,3 +142,37 @@ jobs:
           name: visual-report
           path: playwright-report/
           retention-days: 14
+  main-health:
+    # The scheduled full run speaks up: red opens an issue (or adds the new
+    # run to the open one), green closes it. Fix a red main before merging
+    # anything else (CLAUDE.md, "Merging to main").
+    needs: [verify, visual]
+    if: ${{ always() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TITLE: "Main is red: the scheduled full run failed"
+      RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      SHA: ${{ github.sha }}
+      VERIFY: ${{ needs.verify.result }}
+      VISUAL: ${{ needs.visual.result }}
+    steps:
+      - run: |
+          open=$(gh issue list --state open --search "in:title \"$TITLE\"" --json number --jq '.[0].number // empty')
+          if [ "$VERIFY" = success ] && [ "$VISUAL" = success ]; then
+            if [ -n "$open" ]; then
+              gh issue close "$open" --comment "Green again on ${SHA:0:7}: $RUN"
+            fi
+          else
+            body="verify: $VERIFY, visual: $VISUAL, on ${SHA:0:7}. Run: $RUN"
+            if [ -n "$open" ]; then
+              gh issue comment "$open" --body "Still red. $body"
+            else
+              gh issue create --title "$TITLE" --body "$body
+
+          Fix it before merging anything else (CLAUDE.md, \"Merging to main\"). This closes itself when a scheduled run is green."
+            fi
+          fi
