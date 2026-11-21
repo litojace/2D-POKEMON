@@ -2206,3 +2206,391 @@
   height: 150px;
   margin: -75px 0 0 -75px;
 }
+/* ---------- the Plaza map (plaza-map.ts) ---------- */
+/* Over the Plaza like the Fish book, inside the safe area and under the
+   header's row: the painted map on the left with a pin per place, the
+   places on the right as Go buttons. Both send you walking there. */
+.plaza-layer .pz-map {
+  position: absolute;
+  inset: calc(-1 * var(--safe-top, 0px)) calc(-1 * var(--safe-right, 0px))
+    calc(-1 * var(--safe-bottom, 0px)) calc(-1 * var(--safe-left, 0px));
+  box-sizing: border-box;
+  padding: calc(var(--safe-top, 0px) + var(--hud-row2))
+    calc(var(--safe-right, 0px) + var(--hud-x-r))
+    calc(var(--safe-bottom, 0px) + var(--hud-y-b))
+    calc(var(--safe-left, 0px) + var(--hud-x-l));
+  display: grid;
+  place-items: center;
+  background: #0b1020b3;
+  animation: pz-fadein 0.25s;
+  z-index: 5;
+}
+.plaza-layer .pz-map[hidden] {
+  display: none;
+}
+.plaza-layer .pz-map-panel {
+  box-sizing: border-box;
+  width: min(1040px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  row-gap: 10px;
+  padding: 14px;
+  border: 1px solid #ffffff26;
+  border-radius: 18px;
+  background: #0d1428f0;
+  box-shadow: 0 20px 60px #000a;
+}
+.plaza-layer .pz-map-panel header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 12px;
+}
+.plaza-layer .pz-map-panel header b {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.5em;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.plaza-layer .pz-map-panel header b .ico {
+  width: 1.15em;
+  height: 1.15em;
+}
+.plaza-layer .pz-map-hint {
+  min-width: 0;
+  color: var(--dim);
+  font-size: 0.85em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plaza-layer .pz-map-panel .x {
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: #ffffff12;
+  color: var(--dim);
+  font-size: calc(16px * var(--text-scale, 1));
+  line-height: 36px;
+  text-align: center;
+  cursor: pointer;
+}
+/* The map keeps the Plaza's shape (27 : 17) and takes what height there
+   is; the list takes the rest of the width and scrolls if it must. */
+.plaza-layer .pz-map-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr);
+  gap: 12px;
+}
+.plaza-layer .pz-map-view {
+  position: relative;
+  height: min(100%, 520px);
+  max-height: calc(
+    100dvh - var(--safe-top, 0px) - var(--safe-bottom, 0px) - var(--hud-row2) -
+      var(--hud-y-b) - 80px
+  );
+  aspect-ratio: 27 / 17;
+  max-width: 64vw;
+  align-self: center;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 3px #c98d52,
+    0 0 0 5px #4e2c12,
+    0 10px 30px #0008;
+  background: #4f9a3c;
+}
+.plaza-layer .pz-map-view canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.plaza-layer .pz-map-dots,
+.plaza-layer .pz-map-pins {
+  position: absolute;
+  inset: 0;
+}
+.plaza-layer .pz-map-dots {
+  pointer-events: none;
+}
+.plaza-layer .pz-map-dots i {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1.5px #0b1020aa;
+}
+/* You: a gold dot with a ring that keeps rippling out. */
+.plaza-layer .pz-map-dots i.me {
+  width: 12px;
+  height: 12px;
+  margin: -6px;
+  background: var(--ui-accent, #ffd65b);
+  box-shadow:
+    0 0 0 2px #0b1020,
+    0 0 10px #ffd65b;
+  z-index: 1;
+}
+.plaza-layer .pz-map-dots i.me::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid #ffd65b;
+  animation: pz-map-ping 1.6s ease-out infinite;
+}
+@keyframes pz-map-ping {
+  from {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+.plaza-layer .pz-pin {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 0;
+  padding: 3px 8px 3px 3px;
+  border: 1.5px solid #fff;
+  border-radius: 999px;
+  background: #0d1428e6;
+  color: #fff;
+  font-weight: 800;
+  font-size: calc(12px * var(--text-scale, 1));
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 3px 8px #0008;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease-out, ease-out);
+}
+.plaza-layer .pz-pin .ico {
+  width: 20px;
+  height: 20px;
+  padding: 2px;
+  border-radius: 50%;
+  background: #fff;
+}
+.plaza-layer .pz-pin:hover,
+.plaza-layer .pz-pin:focus-visible {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+/* A place with a quest still to do today: gold, with a coin dot. */
+.plaza-layer .pz-pin.quest {
+  border-color: var(--ui-accent, #ffd65b);
+}
+.plaza-layer .pz-pin.quest::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ui-accent, #ffd65b);
+  box-shadow: 0 0 0 2px #0d1428;
+}
+.plaza-layer .pz-map-list {
+  min-height: 0;
+  margin: 0;
+  padding: 0 2px 0 0;
+  list-style: none;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.plaza-layer .pz-map-list button {
+  box-sizing: border-box;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 6px 8px;
+  border: 1px solid #ffffff1f;
+  border-radius: 10px;
+  background: #ffffff0a;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.plaza-layer .pz-map-list button.quest {
+  border-color: #ffd65b66;
+  background: #ffd65b12;
+}
+.plaza-layer .pz-map-list button:hover,
+.plaza-layer .pz-map-list button:focus-visible {
+  background: #ffffff1c;
+}
+.plaza-layer .pz-map-list .ico {
+  width: 30px;
+  height: 30px;
+}
+.plaza-layer .pz-map-list span {
+  display: grid;
+  min-width: 0;
+}
+.plaza-layer .pz-map-list b,
+.plaza-layer .pz-map-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plaza-layer .pz-map-list b {
+  font-size: calc(14px * var(--text-scale, 1));
+}
+.plaza-layer .pz-map-list small {
+  color: var(--dim);
+  font-size: calc(11.5px * var(--text-scale, 1));
+}
+.plaza-layer .pz-map-list small.q {
+  color: var(--ui-accent, #ffd65b);
+  font-weight: 700;
+}
+.plaza-layer .pz-map-list small .ico {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+}
+.plaza-layer .pz-map-list i {
+  padding: 0.25em 0.7em;
+  border-radius: 999px;
+  background: var(--btn-primary-bg, #ffd65b);
+  color: var(--ui-accent-ink, #1a1206);
+  font-style: normal;
+  font-weight: 800;
+  font-size: calc(12px * var(--text-scale, 1));
+}
+/* Phones: the map as tall as there is room, pins as icons only (the list
+   names them), and a compact list. */
+.plaza-layer.phone .pz-map-panel {
+  padding: 8px 10px 10px;
+  row-gap: 6px;
+  border-radius: 14px;
+}
+.plaza-layer.phone .pz-map-panel header {
+  grid-template-columns: auto minmax(0, 1fr) 30px;
+}
+.plaza-layer.phone .pz-map-panel header b {
+  font-size: 1.2em;
+}
+.plaza-layer.phone .pz-map-panel .x {
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  font-size: calc(14px * var(--text-scale, 1));
+}
+.plaza-layer.phone .pz-map-body {
+  gap: 8px;
+  grid-template-columns: auto minmax(150px, 1fr);
+}
+.plaza-layer.phone .pz-map-view {
+  max-width: 58vw;
+  border-radius: 9px;
+}
+.plaza-layer.phone .pz-pin {
+  padding: 2px;
+}
+.plaza-layer.phone .pz-pin span {
+  display: none;
+}
+.plaza-layer.phone .pz-pin .ico {
+  width: 18px;
+  height: 18px;
+}
+.plaza-layer.phone .pz-map-list {
+  gap: 4px;
+}
+.plaza-layer.phone .pz-map-list button {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+}
+.plaza-layer.phone .pz-map-list .ico {
+  width: 22px;
+  height: 22px;
+}
+.plaza-layer.phone .pz-map-list b {
+  font-size: calc(12px * var(--text-scale, 1));
+}
+.plaza-layer.phone .pz-map-list small {
+  font-size: calc(10px * var(--text-scale, 1));
+}
+.plaza-layer.phone .pz-map-list i {
+  padding: 0.2em 0.55em;
+  font-size: calc(10.5px * var(--text-scale, 1));
+}
+/* Quests: a Go button on each row still to do, the place's own icon. */
+.plaza-layer .pz-q {
+  grid-template-columns: 1fr auto auto;
+}
+/* As tall as the row's text, so a row is no taller than before. */
+.plaza-layer .pz-q .go {
+  display: grid;
+  place-items: center;
+  width: 1.7em;
+  height: 1.7em;
+  margin-block: -0.3em;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid #ffffff33;
+  border-radius: 50%;
+  background: #ffffff14;
+  cursor: pointer;
+}
+.plaza-layer .pz-q .go .ico {
+  width: 1.25em;
+  height: 1.25em;
+}
+.plaza-layer .pz-q .go:hover,
+.plaza-layer .pz-q .go:focus-visible {
+  background: #ffffff2e;
+}
+.plaza-layer.phone .pz-q .go {
+  width: 2.2em;
+  height: 2.2em;
+}
+.plaza-layer.fishing .pz-map {
+  display: none;
+}
+.plaza-layer .pz-pin.right {
+  transform: translate(-14px, -50%);
+}
+.plaza-layer .pz-pin.right:hover,
+.plaza-layer .pz-pin.right:focus-visible {
+  transform: translate(-14px, -50%) scale(1.08);
+}
+.plaza-layer .pz-pin.left {
+  flex-direction: row-reverse;
+  padding: 3px 3px 3px 8px;
+  transform: translate(calc(-100% + 14px), -50%);
+}
+.plaza-layer.phone .pz-pin.right,
+.plaza-layer.phone .pz-pin.left {
+  padding: 2px;
+  transform: translate(-50%, -50%);
+}

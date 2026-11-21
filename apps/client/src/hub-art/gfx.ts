@@ -582,43 +582,46 @@ const GFX = (() => {
         });
       }),
     );
-  const mailbox = () =>
-    memo("mailbox", () =>
-      sprite(40, 70, 20, 66, (g) => {
-        g.fillStyle = "#7a5230";
-        rr(g, -3, -40, 6, 40, 2);
-        g.fill();
-        rr(g, -14, -60, 28, 22, 10);
-        g.fillStyle = vg(g, -60, -38, "#5fb3ff", "#2a6fd0");
-        g.fill();
-        g.strokeStyle = "#1c3f80";
-        g.lineWidth = 2;
-        g.stroke();
-        g.fillStyle = "#ef4f61";
-        rr(g, 10, -68, 3, 14, 1);
-        g.fill();
-        rr(g, 10, -68, 9, 6, 1);
-        g.fill();
-      }),
-    );
-
-  /** A wooden signpost: a plank shaped as an arrow (dir 1 points right),
-   * a fish on it for the pond, and its words. Painted once. */
-  const signpost = (text, dir = 1, color = "#2a6fd0") =>
-    memo(`signpost:${text}:${dir}:${color}`, () =>
-      sprite(150, 120, 75, 112, (g) => {
-        g.fillStyle = "#6b4527";
-        rr(g, -4, -78, 8, 78, 3);
-        g.fill();
-        g.scale(dir, 1);
-        // The arrow plank, its point toward where the sign sends you.
+  /**
+   * A wooden fingerpost: a post with one arrow plank per way (dir 1 points
+   * right), stacked top to bottom, each with its icon on a round badge at
+   * the tail and its words. `icon(name)` gives the hub icon's image; the
+   * sprite is kept only once every icon has loaded (a sign painted before
+   * would keep empty badges). Planks alternate a little in tone and tilt,
+   * like boards nailed up one at a time.
+   */
+  const signpost = (arms, icon) => {
+    const key = `signpost:${arms.map((a) => `${a.text}/${a.dir}/${a.icon}`).join("|")}`;
+    if (cache.has(key)) return cache.get(key);
+    const ims = arms.map((a) => icon?.(a.icon));
+    const ready = ims.every((im) => !im || im.complete);
+    const STEP = 34,
+      top = 66 + arms.length * STEP;
+    const spr = sprite(170, top + 18, 85, top + 8, (g) => {
+      // The post, with a little cap.
+      g.fillStyle = vg(g, -top, 0, "#7a5230", "#5a3a1e");
+      rr(g, -4.5, -top + 14, 9, top - 14, 3);
+      g.fill();
+      g.fillStyle = "#4a2e16";
+      rr(g, -6.5, -top + 10, 13, 7, 3);
+      g.fill();
+      g.fillStyle = "rgba(255,255,255,.18)";
+      g.fillRect(-3, -top + 18, 2, top - 22);
+      arms.forEach((arm, i) => {
+        const y = -top + 30 + i * STEP,
+          d = arm.dir,
+          tilt = (i % 2 ? -1 : 1) * 0.025 * d;
+        g.save();
+        g.translate(0, y);
+        g.rotate(tilt);
+        g.scale(d, 1);
         const plank = () => {
           g.beginPath();
-          g.moveTo(-58, -100);
-          g.lineTo(44, -100);
-          g.lineTo(64, -82);
-          g.lineTo(44, -64);
-          g.lineTo(-58, -64);
+          g.moveTo(-60, -14);
+          g.lineTo(50, -14);
+          g.lineTo(70, 0);
+          g.lineTo(50, 14);
+          g.lineTo(-60, 14);
           g.closePath();
         };
         g.fillStyle = "rgba(0,0,0,.25)";
@@ -628,40 +631,56 @@ const GFX = (() => {
         g.fill();
         g.restore();
         plank();
-        g.fillStyle = vg(g, -100, -64, "#c48a4a", "#8a5a30");
+        g.fillStyle = vg(
+          g,
+          -14,
+          14,
+          i % 2 ? "#cf9656" : "#c48a4a",
+          i % 2 ? "#946234" : "#8a5a30",
+        );
         g.fill();
         g.strokeStyle = "#5a3a1e";
         g.lineWidth = 2.5;
         g.stroke();
-        // A fish on a blue badge at the plank's tail.
-        g.fillStyle = color;
+        // Grain and the nail into the post.
+        g.strokeStyle = "rgba(90,58,30,.35)";
+        g.lineWidth = 1;
         g.beginPath();
-        g.arc(-40, -82, 13, 0, 7);
-        g.fill();
-        g.fillStyle = "#fff";
+        g.moveTo(-54, -5);
+        g.lineTo(40, -6);
+        g.moveTo(-50, 6);
+        g.lineTo(46, 5);
+        g.stroke();
+        g.fillStyle = "#3a2614";
         g.beginPath();
-        g.ellipse(-38, -82, 7, 4.5, 0, 0, 7);
-        g.moveTo(-45, -82);
-        g.lineTo(-51, -87);
-        g.lineTo(-51, -77);
-        g.closePath();
+        g.arc(0, 0, 1.8, 0, 7);
         g.fill();
-        g.fillStyle = color;
+        // The badge at the tail, with the place's icon.
+        g.fillStyle = "#fff4d6";
         g.beginPath();
-        g.arc(-35, -83, 1.3, 0, 7);
+        g.arc(-44, 0, 11.5, 0, 7);
         g.fill();
+        g.strokeStyle = "#5a3a1e";
+        g.lineWidth = 2;
+        g.stroke();
+        g.scale(d, 1);
+        const im = ims[i];
+        if (im && im.complete) g.drawImage(im, -44 * d - 9, -9, 18, 18);
         // The words, the right way round whichever way it points.
-        g.scale(dir, 1);
         g.fillStyle = "#fff4d6";
         g.strokeStyle = "#4a2e16";
         g.lineWidth = 3;
-        g.font = "800 19px 'Barlow Condensed', sans-serif";
+        g.font = "800 17px 'Barlow Condensed', sans-serif";
         g.textAlign = "center";
         g.textBaseline = "middle";
-        g.strokeText(text, dir * 12, -81);
-        g.fillText(text, dir * 12, -81);
-      }),
-    );
+        g.strokeText(arm.text, d * 12, 1);
+        g.fillText(arm.text, d * 12, 1);
+        g.restore();
+      });
+    });
+    if (ready) cache.set(key, spr);
+    return spr;
+  };
 
   /* ---------------- by the fishing dock (PLAZA_DECOR) ---------------- */
   /** A rack of fishing rods: an A-frame with three rods leaning on it. */
@@ -1306,55 +1325,6 @@ const GFX = (() => {
     g.fill();
     g.restore();
   }
-  const board = () =>
-    memo("board", () =>
-      sprite(150, 150, 75, 140, (g) => {
-        g.fillStyle = "#6b4527";
-        [-58, 50].forEach((x) => {
-          rr(g, x, -120, 8, 120, 3);
-          g.fill();
-        });
-        rr(g, -64, -116, 128, 80, 6);
-        g.fillStyle = vg(g, -116, -36, "#c98d52", "#8f5a2c");
-        g.fill();
-        g.strokeStyle = "#4e2c12";
-        g.lineWidth = 2.5;
-        g.stroke();
-        [
-          [-54, -106, "#fff8e6", -0.06],
-          [-14, -110, "#ffe4ef", 0.04],
-          [22, -104, "#e6f4ff", -0.03],
-          [-40, -72, "#fffbd6", 0.05],
-          [4, -70, "#e8ffe6", -0.05],
-        ].forEach(([x, y, c, r]) => {
-          g.save();
-          g.translate(x + 14, y + 14);
-          g.rotate(r);
-          g.fillStyle = c;
-          g.fillRect(-14, -14, 30, 28);
-          g.fillStyle = "rgba(60,40,20,.35)";
-          for (let k = 0; k < 3; k++)
-            g.fillRect(-10, -6 + k * 6, 20 - k * 4, 2);
-          g.fillStyle = ["#ef4f61", "#4fb3ff", "#ffd65b"][
-            Math.abs(Math.round(x)) % 3
-          ];
-          g.beginPath();
-          g.arc(1, -11, 3, 0, 7);
-          g.fill();
-          g.restore();
-        });
-        g.beginPath();
-        g.moveTo(-74, -114);
-        g.lineTo(0, -140);
-        g.lineTo(74, -114);
-        g.closePath();
-        g.fillStyle = vg(g, -140, -114, "#4fb3a8", "#1f6b6a");
-        g.fill();
-        g.strokeStyle = "#143f40";
-        g.lineWidth = 2;
-        g.stroke();
-      }),
-    );
   const well = () =>
     memo("well", () =>
       sprite(120, 150, 60, 138, (g) => {
@@ -1985,155 +1955,6 @@ const GFX = (() => {
     g.fill();
     g.restore();
   }
-  function chicken(g, kind, st, t, x, y, s = 1, face = 1) {
-    const C =
-      kind === "brown"
-        ? { b: "#c8743a", l: "#e8a26a", d: "#8a4a22" }
-        : { b: "#fbf7ef", l: "#ffffff", d: "#d7cfc0" };
-    // States: walk, peck, idle, flap, sit (brooding on the ground, legs
-    // tucked in) and scratch (kicking the straw back with one foot, leaning in).
-    const walk = st === "walk",
-      peck = st === "peck",
-      sit = st === "sit",
-      scratch = st === "scratch",
-      p = t * 11;
-    shadow(g, x, y + 1, (sit ? 17 : 15) * s, 4.5 * s, sit ? 0.34 : 0.28);
-    g.save();
-    g.translate(x, y);
-    g.scale(face * s, s);
-    // legs
-    const step = walk
-      ? Math.sin(p) * 4
-      : scratch
-        ? -Math.abs(Math.sin(t * 15)) * 6
-        : 0;
-    g.strokeStyle = "#f2a93a";
-    g.lineWidth = 2;
-    (sit
-      ? []
-      : scratch
-        ? [
-            [-2, step],
-            [3, 0],
-          ]
-        : [
-            [-2, step],
-            [3, -step],
-          ]
-    ).forEach(([lx, d]) => {
-      const lift = walk
-        ? Math.max(0, Math.sin(p + (d > 0 ? 0 : Math.PI))) * 2
-        : scratch && d
-          ? Math.abs(Math.sin(t * 15)) * 2.5
-          : 0;
-      g.beginPath();
-      g.moveTo(lx, -9);
-      g.lineTo(lx + d * 0.5, -lift);
-      g.stroke();
-      g.beginPath();
-      g.moveTo(lx + d * 0.5 - 2.5, -lift);
-      g.lineTo(lx + d * 0.5 + 3, -lift);
-      g.stroke();
-    });
-    const bob = walk
-        ? -Math.abs(Math.sin(p)) * 1.5
-        : sit
-          ? Math.sin(t * 1.6) * 0.4
-          : 0,
-      tilt = peck
-        ? Math.max(0, Math.sin(t * 9)) * 0.5
-        : scratch
-          ? 0.16 + Math.abs(Math.sin(t * 15)) * 0.05
-          : 0;
-    g.save();
-    g.translate(0, (sit ? -7 : -12) + bob);
-    if (sit) g.scale(1.06, 0.9);
-    g.rotate(tilt);
-    // tail
-    [
-      [-10, -6, -1.1],
-      [-12, -3, -0.75],
-      [-11, 0, -0.45],
-    ].forEach(([tx, ty, a], i) => {
-      g.save();
-      g.translate(tx, ty);
-      g.rotate(a);
-      g.fillStyle = i === 1 ? C.d : C.b;
-      ell(g, 0, -6, 3.2, 7.5);
-      g.fill();
-      g.restore();
-    });
-    if (kind === "brown") {
-      g.fillStyle = "#3a5a3a";
-      g.save();
-      g.translate(-12, -6);
-      g.rotate(-1);
-      ell(g, 0, -5, 2.5, 7);
-      g.fill();
-      g.restore();
-    }
-    g.fillStyle = dk(C.b, 0.35);
-    ell(g, 0, 0, 12.5, 10.5);
-    g.fill();
-    const bgr = g.createRadialGradient(-3, -4, 1, 0, 0, 12);
-    bgr.addColorStop(0, C.l);
-    bgr.addColorStop(1, C.b);
-    g.fillStyle = bgr;
-    ell(g, 0, 0, 11.5, 9.6);
-    g.fill();
-    // wing
-    const flap = st === "flap" ? Math.sin(t * 30) * 0.6 : 0;
-    g.save();
-    g.translate(-1, -1);
-    g.rotate(-flap);
-    g.fillStyle = C.d;
-    ell(g, -2, 1, 7.5, 5.4, -0.2);
-    g.fill();
-    g.strokeStyle = rgba(dk(C.d, 0.3), 0.6);
-    g.lineWidth = 0.9;
-    for (let k = 0; k < 3; k++) {
-      g.beginPath();
-      g.arc(-5 + k * 3, 4, 3, 0.3, Math.PI - 0.3);
-      g.stroke();
-    }
-    g.restore();
-    // head
-    const hx = 9 + (peck ? Math.max(0, Math.sin(t * 9)) * 4 : 0),
-      hy = -10 + (peck ? Math.max(0, Math.sin(t * 9)) * 9 : 0);
-    g.fillStyle = "#e63c32";
-    [
-      [hx - 3, hy - 6],
-      [hx, hy - 7.5],
-      [hx + 3, hy - 6],
-    ].forEach(([cx, cy]) => {
-      g.beginPath();
-      g.arc(cx, cy, 2.6, 0, 7);
-      g.fill();
-    });
-    g.fillStyle = dk(C.b, 0.3);
-    g.beginPath();
-    g.arc(hx, hy, 6.3, 0, 7);
-    g.fill();
-    g.fillStyle = C.b;
-    g.beginPath();
-    g.arc(hx, hy, 5.6, 0, 7);
-    g.fill();
-    g.fillStyle = "#f2a93a";
-    g.beginPath();
-    g.moveTo(hx + 5, hy - 1.5);
-    g.lineTo(hx + 10, hy);
-    g.lineTo(hx + 5, hy + 1.6);
-    g.fill();
-    g.fillStyle = "#e63c32";
-    ell(g, hx + 4, hy + 4, 1.6, 2.4);
-    g.fill();
-    g.fillStyle = "#1c1820";
-    g.beginPath();
-    g.arc(hx + 2, hy - 1.5, 1.3, 0, 7);
-    g.fill();
-    g.restore();
-    g.restore();
-  }
   function duck(g, kind, st, t, x, y, s = 1, face = 1, moving = true) {
     const drake = kind === "drake";
     g.save();
@@ -2719,7 +2540,6 @@ const GFX = (() => {
     bench,
     crates,
     hay,
-    mailbox,
     signpost,
     rodRack,
     bucket,
@@ -2730,12 +2550,10 @@ const GFX = (() => {
     barn,
     windmillBody,
     windmillSails,
-    board,
     well,
     foodTruck,
     scarecrow,
     dog,
-    chicken,
     duck,
     bird,
     cow,
