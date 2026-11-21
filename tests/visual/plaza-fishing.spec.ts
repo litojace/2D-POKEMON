@@ -4,6 +4,7 @@ import { ISLAND, setInsets } from "./ui-measure";
 import {
   PLAZA_FISH,
   PLAZA_FISHING,
+  PLAZA_POND,
   PLAZA_SPOTS,
 } from "../../packages/shared/src/plaza";
 
@@ -35,6 +36,32 @@ async function cast(page: Page) {
   await act(page).click();
   await expect.poll(() => phase(page)).toBe("wait");
   await expect(act(page)).toHaveAttribute("data-kind", "reel");
+}
+/**
+ * Land a hooked fish: hold the button while the needle is under the green
+ * band's middle, let go above it, until the fight ends. Then "leap" (caught)
+ * or "miss" (snapped, or it got away).
+ */
+async function fightIt(page: Page, key = false) {
+  const b = await box(page, "#pz-fish-act");
+  if (!key) await page.mouse.move((b.l + b.r) / 2, (b.t + b.b) / 2);
+  let down = false;
+  for (let i = 0; i < 800; i++) {
+    const m = await mode(page);
+    if (m.phase !== "fight") break;
+    const f = m.fight;
+    if (f?.result === "going") {
+      const want = f.tension < (f.lo + f.hi) / 2;
+      if (want !== down) {
+        down = want;
+        if (key) await (want ? page.keyboard.down(" ") : page.keyboard.up(" "));
+        else await (want ? page.mouse.down() : page.mouse.up());
+      }
+    }
+    await page.waitForTimeout(25);
+  }
+  if (down) await (key ? page.keyboard.up(" ") : page.mouse.up());
+  return (await mode(page)).phase;
 }
 const box = (page: Page, s: string) =>
   page.evaluate((s) => {
@@ -85,7 +112,24 @@ for (const size of [
       // The walking controls step aside; the camera comes in close.
       for (const s of [".pz-joy", ".pz-actions", ".pz-left", "#pz-quests"])
         await expect(page.locator(s)).toBeHidden();
-      await expect.poll(async () => (await mode(page)).fz).toBeGreaterThan(1.4);
+      // The camera frames the angler and the whole pond.
+      await expect
+        .poll(async () => {
+          const v = (await mode(page)).view;
+          return (
+            v.x0 <= SPOT.x - 30 &&
+            v.x1 >= PLAZA_POND.x + PLAZA_POND.rx &&
+            v.y0 <= PLAZA_POND.y - PLAZA_POND.ry &&
+            v.y1 >= PLAZA_POND.y + PLAZA_POND.ry
+          );
+        })
+        .toBe(true);
+      // Today's count is a round tile beside Book, the same size.
+      const today = await box(page, "#pz-fish-today"),
+        bookBtn = await box(page, "#pz-fish-book2");
+      expect(Math.abs(today.w - bookBtn.w)).toBeLessThanOrEqual(1);
+      expect(Math.abs(today.t - bookBtn.t)).toBeLessThanOrEqual(1);
+      expect(today.r).toBeLessThan(bookBtn.l);
       // Leave is red, told apart from fishing's blue buttons.
       expect(
         await page
@@ -95,12 +139,30 @@ for (const size of [
       await snap(page, info, `fishing-mode-${name}`);
       await cast(page);
       await snap(page, info, `fishing-wait-${name}`);
-      // The server says it bit: tap at once (the window is about a second).
-      await page.evaluate(() => (window as any).__plazaBiteNow());
-      await expect.poll(() => phase(page), { intervals: [50] }).toBe("bite");
-      // Forced: the gold button pulses, and Playwright waits for a still one.
-      await act(page).click({ force: true });
-      await expect.poll(() => phase(page), { intervals: [50] }).toBe("leap");
+      // The server says it bit: tap at once (the window is about a second),
+      // and the fight's close-up comes in. Land it (a fish that gets away
+      // is a fair result: cast again, at most three times).
+      let landed = false;
+      for (let tries = 0; tries < 3 && !landed; tries++) {
+        if (tries) {
+          await expect.poll(() => phase(page)).toBe("idle");
+          await page.waitForTimeout(PLAZA_FISHING.castGapMs);
+          await cast(page);
+        }
+        await page.evaluate(() => (window as any).__plazaBiteNow());
+        await expect.poll(() => phase(page), { intervals: [50] }).toBe("bite");
+        // Forced: the gold button pulses, and Playwright waits for a still one.
+        await act(page).click({ force: true });
+        await expect.poll(() => phase(page), { intervals: [50] }).toBe("fight");
+        await expect(act(page)).toHaveAttribute("data-kind", "fight");
+        await expect(page.locator(".pz-fish-side")).toBeHidden();
+        if (!tries) {
+          await page.waitForTimeout(700);
+          await snap(page, info, `fishing-fight-${name}`);
+        }
+        landed = (await fightIt(page)) === "leap";
+      }
+      expect(landed).toBe(true);
       await snap(page, info, `fishing-leap-${name}`);
       // The catch card: the fish in full, its name, rarity and coins.
       const card = page.locator("#pz-catch");
@@ -116,6 +178,7 @@ for (const size of [
         )
         .toBe(1);
       await expect(page.locator("#pz-fish-today")).toContainText("1/30");
+      await expect(page.locator(".pz-fish-side")).toBeVisible();
       // Fishing's buttons stay on screen and inside the safe area.
       for (const s of ["#pz-fish-act", "#pz-fish-exit", "#pz-fish-book2"]) {
         const b = await box(page, s);
@@ -213,6 +276,19 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
     [SPOT.x - 400, SPOT.y - 200],
   );
   await expect(toast(page)).toContainText("walked away");
+  await expect(page.locator("#pz-fishhud")).toBeHidden();
+  // A fight on the keyboard: Space held reels, let go gives line.
+  await toPond(page);
+  await page.keyboard.press("e");
+  await page.waitForTimeout(PLAZA_FISHING.castGapMs);
+  await page.keyboard.press("e");
+  await expect.poll(() => phase(page)).toBe("wait");
+  await page.evaluate(() => (window as any).__plazaBiteNow());
+  await expect.poll(() => phase(page), { intervals: [50] }).toBe("bite");
+  await page.keyboard.press("e");
+  await expect.poll(() => phase(page), { intervals: [50] }).toBe("fight");
+  expect(["leap", "miss"]).toContain(await fightIt(page, true));
+  await page.keyboard.press("Escape");
   await expect(page.locator("#pz-fishhud")).toBeHidden();
   // The whole book filled: the server's progress brings the title.
   await page.evaluate(

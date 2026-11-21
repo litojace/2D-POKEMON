@@ -2,6 +2,14 @@ import { describe, expect, it } from "vitest";
 import { PlazaWorld } from "../../apps/server/src/plaza";
 import { fishArt } from "../../apps/client/src/plaza/plaza-fish-art";
 import {
+  PLAZA_FIGHT,
+  plazaFightMovesOk,
+  plazaFightReplay,
+  plazaFightStart,
+  plazaFightStep,
+  type PlazaFightRarity,
+} from "../../packages/shared/src/plaza-fight";
+import {
   PLAZA,
   PLAZA_FISH,
   PLAZA_FISH_BY_ID,
@@ -46,6 +54,28 @@ function world(given: number[] = []) {
   b.x = SPOT.x;
   b.y = SPOT.y;
   return w;
+}
+/**
+ * A player who reacts `delay` steps late: holds while the needle (as they
+ * saw it) is under the band's middle. Their presses and let-goes, and how
+ * the fight went.
+ */
+function play(seed: number, rarity: PlazaFightRarity, delay = 4) {
+  const f = plazaFightStart(seed, rarity),
+    k = PLAZA_FIGHT.fish[rarity],
+    seen: number[] = [],
+    moves: number[] = [];
+  let holding = false;
+  while (f.result === "going") {
+    seen.push(f.tension);
+    const want = seen[Math.max(0, seen.length - 1 - delay)] < (k.lo + k.hi) / 2;
+    if (want !== holding) {
+      holding = want;
+      moves.push(f.tick);
+    }
+    plazaFightStep(f, holding);
+  }
+  return { moves, f };
 }
 const run = (w: PlazaWorld, ms: number, from: number) => {
   const notes: PlazaFishNote[] = [];
@@ -182,8 +212,54 @@ describe("the way to the pond", () => {
   });
 });
 
+describe("landing a hooked fish", () => {
+  it("is the same fight from the same seed, live or replayed from its moves", () => {
+    for (const rarity of Object.keys(PLAZA_FIGHT.fish) as PlazaFightRarity[])
+      for (const seed of [1, 99, 123456]) {
+        const { moves, f } = play(seed, rarity);
+        const again = plazaFightReplay(seed, rarity, moves);
+        expect([again.result, again.tick, again.progress]).toEqual([
+          f.result,
+          f.tick,
+          f.progress,
+        ]);
+        expect(plazaFightMovesOk(moves)).toBe(true);
+      }
+  });
+
+  it("snaps when held, lets the fish go when slack, and lands it in the band", () => {
+    expect(plazaFightReplay(7, "common", [0]).result).toBe("snap");
+    expect(plazaFightReplay(7, "common", []).result).toBe("escape");
+    const { f } = play(7, "common");
+    expect(f.result).toBe("caught");
+    // A few seconds, not a chore.
+    expect(f.tick * PLAZA_FIGHT.tickMs).toBeGreaterThan(2500);
+    expect(f.tick * PLAZA_FIGHT.tickMs).toBeLessThan(9000);
+  });
+
+  it("gets harder with rarity, and a quick player lands even the legendary one", () => {
+    const rate = (r: PlazaFightRarity, delay: number) => {
+      let n = 0;
+      for (let seed = 1; seed <= 200; seed++)
+        if (play(seed * 7919, r, delay).f.result === "caught") n++;
+      return n / 200;
+    };
+    // A player a fifth of a second late: commons always, the legendary
+    // most times; half a second late loses the legendary.
+    expect(rate("common", 4)).toBe(1);
+    expect(rate("legendary", 2)).toBeGreaterThan(0.95);
+    expect(rate("legendary", 4)).toBeGreaterThan(0.6);
+    expect(rate("legendary", 6)).toBeLessThan(rate("common", 6));
+    const F = PLAZA_FIGHT.fish;
+    expect(F.legendary.hi - F.legendary.lo).toBeLessThan(
+      F.common.hi - F.common.lo,
+    );
+    expect(F.legendary.pull).toBeGreaterThan(F.common.pull);
+  });
+});
+
 describe("fishing on the server", () => {
-  it("bites at a random 2-6 s, and a tap in the window catches the fish it picked", () => {
+  it("bites at a random 2-6 s; a tap in the window hooks it, and landing it brings in the fish it picked", () => {
     // Rolls: the fish (0 → the first that bites by day), then the bite (0.5 → 4 s).
     const w = world([0, 0.5]);
     expect(w.cast("s1", NOON, 0)).toEqual({ ok: true });
@@ -194,8 +270,87 @@ describe("fishing on the server", () => {
     expect(notes).toEqual([]);
     ({ notes, now } = run(w, 150, now));
     expect(notes).toEqual([{ state: "bite" }]);
-    expect(w.reel("s1", now + 600)).toEqual({ ok: true, fish: line.fish });
+    const hooked = w.reel("s1", now + 600);
+    expect(hooked).toEqual({
+      ok: true,
+      hooked: true,
+      rarity: PLAZA_FISH_BY_ID[line.fish].rarity,
+      seed: expect.any(Number),
+    });
+    // Still on the line while the fight lasts; no second reel, no "late".
+    expect(w.reel("s1", now + 700).ok).toBe(false);
+    ({ notes, now } = run(w, 3000, now + 600));
+    expect(notes).toEqual([]);
+    if (!hooked.ok) throw new Error();
+    const { moves, f } = play(hooked.seed, hooked.rarity);
+    expect(f.result).toBe("caught");
+    expect(w.land("s1", now + f.tick * PLAZA_FIGHT.tickMs, moves)).toEqual({
+      ok: true,
+      fish: line.fish,
+    });
     expect(w.lineOf("s1")).toBeNull();
+  });
+
+  it("runs the fight again itself: a snap, a fish let go, a made-up win or a too-quick one lands nothing", () => {
+    const hook = () => {
+      const w = world([0, 0]);
+      w.cast("s1", NOON);
+      const { now } = run(w, PLAZA_FISHING.biteMinMs, NOON);
+      const r = w.reel("s1", now);
+      if (!r.ok) throw new Error("not hooked");
+      return { w, now, seed: r.seed, rarity: r.rarity };
+    };
+    const late = (n: number) => n + PLAZA_FIGHT.maxTicks * PLAZA_FIGHT.tickMs;
+    // Held all the way: the line snaps.
+    let h = hook();
+    expect(h.w.land("s1", late(h.now), [0])).toMatchObject({
+      ok: false,
+      why: "snap",
+    });
+    // Never reeled: it swims off.
+    h = hook();
+    expect(h.w.land("s1", late(h.now), [])).toMatchObject({
+      ok: false,
+      why: "escape",
+    });
+    // A real win, sent sooner than the fight could have taken.
+    h = hook();
+    const { moves, f } = play(h.seed, h.rarity);
+    expect(h.w.land("s1", h.now + 200, moves)).toMatchObject({
+      ok: false,
+      why: "bad",
+    });
+    // Moves that aren't moves.
+    for (const bad of [null, "x", [5, 3], [1.5], new Array(999).fill(1)]) {
+      h = hook();
+      expect(h.w.land("s1", late(h.now), bad)).toMatchObject({ ok: false });
+    }
+    // Nothing hooked, or a fish already landed: nothing to land.
+    expect(world().land("s1", NOON, moves)).toMatchObject({ ok: false });
+    h = hook();
+    expect(h.w.land("s1", h.now + f.tick * 50, moves).ok).toBe(true);
+    expect(h.w.land("s1", h.now + f.tick * 50, moves).ok).toBe(false);
+  });
+
+  it("lets a fight nobody finishes go, and leaving mid-fight takes the line in", () => {
+    const w = world([0, 0]);
+    w.cast("s1", NOON);
+    let { now } = run(w, PLAZA_FISHING.biteMinMs, NOON);
+    expect(w.reel("s1", now).ok).toBe(true);
+    let notes: PlazaFishNote[];
+    ({ notes, now } = run(
+      w,
+      PLAZA_FIGHT.maxTicks * PLAZA_FIGHT.tickMs + 3000,
+      now,
+    ));
+    expect(notes).toEqual([{ state: "gone", why: "late" }]);
+    expect(w.lineOf("s1")).toBeNull();
+    const v = world([0, 0]);
+    v.cast("s1", NOON);
+    ({ now } = run(v, PLAZA_FISHING.biteMinMs, NOON));
+    v.reel("s1", now);
+    expect(v.stopFishing("s1", now + 500)).toBe(true);
+    expect(v.lineOf("s1")).toBeNull();
   });
 
   it("covers the whole 2-6 s range", () => {

@@ -22,10 +22,18 @@ import {
   PLAZA_FISH_BY_ID,
   PLAZA_FISH_RARITY,
   PLAZA_FISHING,
+  PLAZA_POND,
   PLAZA_SPOTS,
   type PlazaFish,
   type PlazaFishNote,
 } from "../../../../packages/shared/src/plaza";
+import {
+  PLAZA_FIGHT,
+  plazaFightStart,
+  plazaFightStep,
+  type PlazaFight,
+  type PlazaFightRarity,
+} from "../../../../packages/shared/src/plaza-fight";
 import { fishArt } from "./plaza-fish-art";
 
 export const FISH_SPOT = PLAZA_SPOTS.find((s) => s.id === "fish")!;
@@ -38,8 +46,34 @@ const LEAP_SECONDS = 0.9;
  * shadow darts off across the water and "Missed!" floats up (s). */
 const MISS_SECONDS = 1.1;
 const LINE_IN_SECONDS = 0.45;
-/** How much closer the camera comes in fishing mode. */
-export const FISHING_ZOOM = 1.45;
+/** The fight's close-up comes in over this long (s). */
+export const FIGHT_IN_SECONDS = 0.35;
+/**
+ * Fishing mode's camera: the angler and the whole pond, centred and as big
+ * as fit between the HUD's edges (fishing's buttons stand at the sides).
+ */
+export function fishingFrame(w: number, h: number) {
+  const P = PLAZA_POND,
+    x0 = FISH_SPOT.x - 70,
+    x1 = P.x + P.rx + 30,
+    y0 = Math.min(FISH_SPOT.y - 150, P.y - P.ry - 20),
+    y1 = P.y + P.ry + 30,
+    // Leave sits low on the left; Book, today's count and the big button
+    // take a column on the right.
+    left = Math.min(40, w * 0.05),
+    right = Math.min(150, w * 0.2),
+    top = Math.min(70, h * 0.16),
+    bottom = Math.min(80, h * 0.2),
+    z = Math.min(
+      (w - left - right) / (x1 - x0),
+      (h - top - bottom) / (y1 - y0),
+    );
+  return {
+    x: (x0 + x1) / 2 - (left - right) / 2 / z,
+    y: (y0 + y1) / 2 - (top - bottom) / 2 / z,
+    z,
+  };
+}
 
 type Ack = (err: unknown, r?: any) => void;
 export interface FishingSocket {
@@ -66,7 +100,22 @@ export interface FishingDeps {
  * The line: none ("idle"), the cast flying, waiting (with nibbles), a bite,
  * a fish leaping in, or a fish that got away.
  */
-export type FishingPhase = "idle" | "cast" | "wait" | "bite" | "leap" | "miss";
+export type FishingPhase =
+  "idle" | "cast" | "wait" | "bite" | "fight" | "leap" | "miss";
+/** The fight as drawn (plaza-fight-view.ts) and shown on the HUD. */
+export interface FightView {
+  rarity: PlazaFightRarity;
+  tension: number;
+  progress: number;
+  thrash: boolean;
+  strain: number;
+  lo: number;
+  hi: number;
+  holding: boolean;
+  result: PlazaFight["result"];
+  /** Seconds since it was hooked. */
+  t: number;
+}
 
 export function createFishing(deps: FishingDeps) {
   let active = false,
@@ -83,7 +132,18 @@ export function createFishing(deps: FishingDeps) {
     leapFish: PlazaFish | null = null,
     leapNew = false,
     /** A short word on the HUD after a miss ("Too soon!"…). */
-    note = "";
+    note = "",
+    /** The fight to land a hooked fish: its steps, the presses and
+     * let-goes (as steps, for the server), holding now, time not yet
+     * stepped (ms), and whether its end went to the server. */
+    fight: PlazaFight | null = null,
+    moves: number[] = [],
+    holding = false,
+    owed = 0,
+    landing = false,
+    /** How the fight is going, for the hint: in the band, too slack, or
+     * straining (the HUD changes only when this does). */
+    fightMood: "ok" | "slack" | "strain" = "ok";
   const B = PLAZA_FISHING.bobber;
 
   const set = (p: FishingPhase) => {
@@ -124,8 +184,7 @@ export function createFishing(deps: FishingDeps) {
       busy = false;
       if (!active) return;
       if (err) return lose("The reel slipped");
-      const fish = r?.ok ? PLAZA_FISH_BY_ID[r.fish] : undefined;
-      if (!fish)
+      if (!r?.ok || !r.hooked || !(r.rarity in PLAZA_FIGHT.fish))
         return lose(
           r?.why === "early"
             ? "Too soon! It swam off"
@@ -133,11 +192,35 @@ export function createFishing(deps: FishingDeps) {
               ? "Too late! It got away"
               : "It got away",
         );
-      leapFish = fish;
-      leapNew = deps.isNew(fish);
-      if (typeof navigator !== "undefined") navigator.vibrate?.(30);
-      set("leap");
+      // Hooked: the fight to land it (the server's seed, the fish's rarity).
+      fight = plazaFightStart(r.seed, r.rarity);
+      moves = [];
+      holding = false;
+      owed = 0;
+      landing = false;
+      fightMood = "ok";
+      if (typeof navigator !== "undefined") navigator.vibrate?.([30, 40, 30]);
+      set("fight");
     });
+  }
+  /** The fight is over here: the server runs it again and says. */
+  function land() {
+    landing = true;
+    deps.socket
+      .timeout(5000)
+      .emit("plaza-fish", { act: "land", moves }, (err, r) => {
+        fight = null;
+        landing = false;
+        if (!active) return;
+        if (err) return lose("The line slipped");
+        const fish = r?.ok ? PLAZA_FISH_BY_ID[r.fish] : undefined;
+        if (!fish)
+          return lose(r?.why === "snap" ? "The line snapped!" : "It got away");
+        leapFish = fish;
+        leapNew = deps.isNew(fish);
+        if (typeof navigator !== "undefined") navigator.vibrate?.(30);
+        set("leap");
+      });
   }
 
   return {
@@ -155,8 +238,12 @@ export function createFishing(deps: FishingDeps) {
         : null;
     },
     /** The HUD's action button: its word and look. */
-    button(): { label: string; kind: "cast" | "reel" | "bite" | "busy" } {
+    button(): {
+      label: string;
+      kind: "cast" | "reel" | "bite" | "fight" | "busy";
+    } {
       if (phase === "bite") return { label: "Reel!", kind: "bite" };
+      if (phase === "fight") return { label: "Hold", kind: "fight" };
       if (phase === "cast" || phase === "wait")
         return { label: "Reel", kind: "reel" };
       if (phase === "leap" || phase === "miss")
@@ -172,6 +259,14 @@ export function createFishing(deps: FishingDeps) {
           return "Wait for the bite. A nibble is not a bite!";
         case "bite":
           return "It's biting! Reel it in!";
+        case "fight": {
+          const name = fight ? PLAZA_FISH_RARITY[fight.rarity].name : "";
+          return fightMood === "strain"
+            ? "Ease off! The line is straining"
+            : fightMood === "slack"
+              ? "Reel in! It's swimming off"
+              : `${name} fish on! Hold to reel, keep it in the green`;
+        }
         case "leap":
           return "Got it!";
         case "miss":
@@ -193,13 +288,44 @@ export function createFishing(deps: FishingDeps) {
     /** Out of fishing mode: a line still out comes in, quietly. */
     exit() {
       if (!active) return;
-      if (phase === "cast" || phase === "wait" || phase === "bite")
+      if (
+        phase === "cast" ||
+        phase === "wait" ||
+        phase === "bite" ||
+        (phase === "fight" && !landing)
+      )
         deps.socket.emit("plaza-fish", { act: "stop" });
       active = false;
       phase = "idle";
       leapFish = null;
+      fight = null;
+      landing = false;
       busy = false;
       deps.changed();
+    },
+    /** Holding the action button (or its key) down, in a fight: reels. */
+    hold(on: boolean) {
+      if (phase !== "fight" || !fight || fight.result !== "going") return;
+      if (on === holding) return;
+      holding = on;
+      moves.push(fight.tick);
+    },
+    /** The fight, for its close-up and the HUD (null with none). */
+    fightView(): FightView | null {
+      if (phase !== "fight" || !fight) return null;
+      const k = PLAZA_FIGHT.fish[fight.rarity];
+      return {
+        rarity: fight.rarity,
+        tension: fight.tension,
+        progress: fight.progress,
+        thrash: fight.thrash,
+        strain: fight.strain,
+        lo: k.lo,
+        hi: k.hi,
+        holding,
+        result: fight.result,
+        t,
+      };
     },
     /** The action button: cast, or reel in. */
     act() {
@@ -213,7 +339,7 @@ export function createFishing(deps: FishingDeps) {
       if (n.state === "bite" && (phase === "wait" || phase === "cast")) {
         if (typeof navigator !== "undefined") navigator.vibrate?.(60);
         set("bite");
-      } else if (n.state === "gone" && phase !== "leap") {
+      } else if (n.state === "gone" && phase !== "leap" && !landing) {
         if (n.why === "moved") {
           deps.toast("You walked away from the pond. Line reeled in.");
           this.exit();
@@ -224,6 +350,30 @@ export function createFishing(deps: FishingDeps) {
       if (!active) return;
       clock += dt;
       t += dt;
+      if (phase === "fight" && fight) {
+        // Steps at the server's pace; the last one's end goes to the server.
+        owed += dt * 1000;
+        while (owed >= PLAZA_FIGHT.tickMs && fight.result === "going") {
+          owed -= PLAZA_FIGHT.tickMs;
+          const was = fight.thrash;
+          plazaFightStep(fight, holding);
+          if (fight.thrash && !was && typeof navigator !== "undefined")
+            navigator.vibrate?.(18);
+        }
+        const k = PLAZA_FIGHT.fish[fight.rarity],
+          mood =
+            fight.tension >= 0.93
+              ? "strain"
+              : fight.tension < k.lo && fight.tick > 20
+                ? "slack"
+                : "ok";
+        if (mood !== fightMood) {
+          fightMood = mood;
+          deps.changed();
+        }
+        if (fight.result !== "going" && !landing) land();
+        return;
+      }
       if (phase === "cast" && t >= WIND_SECONDS + FLY_SECONDS) set("wait");
       else if (phase === "wait") {
         if (nibbleT >= 0) {
@@ -240,16 +390,14 @@ export function createFishing(deps: FishingDeps) {
         deps.caught(fish, leapNew);
       } else if (phase === "miss" && t >= MISS_SECONDS) set("idle");
     },
-    /** Where the camera looks in fishing mode: between angler and bobber. */
-    focus(me: { x: number; y: number }) {
-      return { x: me.x + (B.x - me.x) * 0.5, y: (me.y - 40 + B.y) / 2 };
-    },
+
     /** Leaving the Plaza. */
     reset() {
       active = false;
       phase = "idle";
       busy = false;
       leapFish = null;
+      fight = null;
     },
     /** On the water, right after the pond: the dock, the bobber and its ripples. */
     drawWater(g: CanvasRenderingContext2D, time: number) {

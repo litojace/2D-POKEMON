@@ -3332,8 +3332,10 @@ export function createArenaServer(
       if (d?.act === "cast") return reply(cb, plaza.cast(socket.id, now, d.tz));
       if (d?.act === "stop")
         return reply(cb, { ok: plaza.stopFishing(socket.id, now) });
-      if (d?.act !== "reel") return fail(cb, "Nothing to do here.");
-      const r = plaza.reel(socket.id, now);
+      if (d?.act === "reel") return reply(cb, plaza.reel(socket.id, now));
+      if (d?.act !== "land") return fail(cb, "Nothing to do here.");
+      // The fight's end: the server runs it again from its seed (plaza-fight.ts).
+      const r = plaza.land(socket.id, now, (d as { moves?: unknown }).moves);
       if (r.ok)
         recordPlaza(socket.id, {
           kind: "fish",

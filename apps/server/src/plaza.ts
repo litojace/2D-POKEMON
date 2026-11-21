@@ -1,4 +1,10 @@
 import {
+  PLAZA_FIGHT,
+  plazaFightMovesOk,
+  plazaFightReplay,
+  type PlazaFightRarity,
+} from "../../../packages/shared/src/plaza-fight.js";
+import {
   LapTimer,
   ORB_SHOWER,
   PLAZA,
@@ -27,6 +33,7 @@ import {
   plazaCollide,
   plazaDash,
   plazaFishPick,
+  PLAZA_FISH_BY_ID,
   plazaIsNight,
   plazaJump,
   plazaSpotAt,
@@ -136,11 +143,21 @@ interface FishingLine {
   biteAt: number;
   /** When it bit (ms), once it has. */
   bitAt: number | null;
+  /** Hooked (reeled in time): when, and the fight's seed (plaza-fight.ts). */
+  hookedAt: number | null;
+  seed: number;
 }
-/** What a reel brings in: the fish, or why it got away. */
+/** A reel in time hooks the fish: the fight to land it starts (the fish
+ * itself stays secret; its rarity sets how it fights). */
 export type PlazaReel =
-  | { ok: true; fish: string }
+  | { ok: true; hooked: true; rarity: PlazaFightRarity; seed: number }
   | { ok: false; error: string; why?: "early" | "late" };
+/** The fight's end: the fish, or why it got away. */
+export type PlazaLand =
+  | { ok: true; fish: string }
+  | { ok: false; error: string; why?: "snap" | "escape" | "bad" };
+/** How much sooner than its own length a fight may end (network, ms). */
+const FIGHT_SLACK_MS = 600;
 /** Where a pitch bot's teammate waits while the other chases the ball. */
 const BOT_SUPPORT = { back: 120, wide: 110, tie: 24 } as const;
 const clampTo = (v: number, lo: number, hi: number) =>
@@ -927,20 +944,69 @@ export class PlazaWorld {
       fish: plazaFishPick(this.random(), night).id,
       biteAt: now + biteMinMs + this.random() * (biteMaxMs - biteMinMs),
       bitAt: null,
+      hookedAt: null,
+      seed: 0,
     };
     return { ok: true as const };
   }
-  /** Tap to reel in: a catch only while the bobber is under (with slack). */
+  /** Tap to reel in: hooked only while the bobber is under (with slack). */
   reel(key: string, now: number): PlazaReel {
     const v = this.visitors.get(key),
       line = v?.line;
-    if (!v || !line) return { ok: false, error: "No line in the water." };
+    if (!v || !line || line.hookedAt !== null)
+      return { ok: false, error: "No line in the water." };
+    const lost = (r: PlazaReel) => {
+      v.line = null;
+      v.nextCast = now + PLAZA_FISHING.castGapMs;
+      return r;
+    };
+    if (line.bitAt === null)
+      return lost({
+        ok: false,
+        error: "Too soon! The fish swam off.",
+        why: "early",
+      });
+    if (now - line.bitAt > PLAZA_FISHING.windowMs + PLAZA_FISHING.slackMs)
+      return lost({
+        ok: false,
+        error: "Too late! The fish got away.",
+        why: "late",
+      });
+    line.hookedAt = now;
+    line.seed = Math.floor(this.random() * 2 ** 31);
+    return {
+      ok: true,
+      hooked: true,
+      rarity: PLAZA_FISH_BY_ID[line.fish].rarity,
+      seed: line.seed,
+    };
+  }
+  /**
+   * The fight's end: the browser's presses and let-goes (steps, see
+   * plaza-fight.ts). The fight is run again here from the seed; a catch
+   * also needs as long to have passed as the fight took (less a little for
+   * the network), so a made-up quick win doesn't land anything.
+   */
+  land(key: string, now: number, moves: unknown): PlazaLand {
+    const v = this.visitors.get(key),
+      line = v?.line;
+    if (!v || !line || line.hookedAt === null)
+      return { ok: false, error: "Nothing on the line.", why: "bad" };
     v.line = null;
     v.nextCast = now + PLAZA_FISHING.castGapMs;
-    if (line.bitAt === null)
-      return { ok: false, error: "Too soon! The fish swam off.", why: "early" };
-    if (now - line.bitAt > PLAZA_FISHING.windowMs + PLAZA_FISHING.slackMs)
-      return { ok: false, error: "Too late! The fish got away.", why: "late" };
+    if (!plazaFightMovesOk(moves))
+      return { ok: false, error: "The line tangled.", why: "bad" };
+    const f = plazaFightReplay(
+      line.seed,
+      PLAZA_FISH_BY_ID[line.fish].rarity,
+      moves,
+    );
+    if (f.result === "snap")
+      return { ok: false, error: "The line snapped!", why: "snap" };
+    if (f.result !== "caught")
+      return { ok: false, error: "It got away.", why: "escape" };
+    if (now - line.hookedAt < f.tick * PLAZA_FIGHT.tickMs - FIGHT_SLACK_MS)
+      return { ok: false, error: "The line tangled.", why: "bad" };
     return { ok: true, fish: line.fish };
   }
   /** Leaving fishing mode: the line comes in quietly (no catch, no news). */
@@ -971,6 +1037,15 @@ export class PlazaWorld {
       events.push({ type: "fish", key: v.key, note: { state: "gone", why } });
     };
     if (!this.atPond(v)) return gone("moved");
+    if (line.hookedAt !== null) {
+      // A fight nobody finished (a closed tab): the fish slips off.
+      if (
+        now - line.hookedAt >
+        PLAZA_FIGHT.maxTicks * PLAZA_FIGHT.tickMs + FIGHT_SLACK_MS * 4
+      )
+        gone("late");
+      return;
+    }
     if (line.bitAt === null && now >= line.biteAt) {
       line.bitAt = now;
       events.push({ type: "fish", key: v.key, note: { state: "bite" } });

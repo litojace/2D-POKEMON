@@ -107,10 +107,12 @@ import { FrameCap } from "../frame-cap";
 import { PreviewPerf } from "../preview-perf";
 import { sceneLines, setPerfSource } from "../perf-hud";
 import { depthSort, slices, spot } from "./plaza-depth";
+import { createFightView } from "./plaza-fight-view";
 import { plazaPath } from "./plaza-path";
 import { PlazaPrediction } from "./plaza-predict";
 import {
-  FISHING_ZOOM,
+  FIGHT_IN_SECONDS,
+  fishingFrame,
   FISH_SPOT,
   catchCard,
   createFishing,
@@ -192,7 +194,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
       <button type="button" class="pz-fish-exit" id="pz-fish-exit" aria-label="Leave fishing (Esc)">✕<span>Leave</span></button>
       <div class="pz-fish-hint" id="pz-fish-hint" aria-live="polite"></div>
       <div class="pz-fish-side">
-        <span class="pz-fish-today" id="pz-fish-today"></span>
+        <span class="pz-round pz-fish-today" id="pz-fish-today" role="status" aria-label="Fish counted today"></span>
         <button type="button" class="pz-round" id="pz-fish-book2" aria-label="Fish book">${I("fish")}<small>Book</small></button>
       </div>
       <button type="button" class="pz-fish-act" id="pz-fish-act"><svg class="ico-rod" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 27 25 5" stroke="#8a5a32" stroke-width="3" stroke-linecap="round"/><circle cx="9" cy="23" r="3.2" fill="#3a2a1a"/><path d="M25 5q4 9 0 17" fill="none" stroke="#fff" stroke-width="1.2"/><circle cx="25" cy="23.5" r="2.6" fill="#ef4f61" stroke="#fff" stroke-width="1"/></svg><b></b><kbd>E</kbd></button>
@@ -1404,8 +1406,10 @@ export function openPlaza(options) {
     if (fishing.active) {
       if (!onButton) e.preventDefault();
       if (e.repeat) return;
-      if (k === "e" || k === " " || k === "enter") fishing.act();
-      else if (
+      if (k === "e" || k === " " || k === "enter") {
+        if (fishing.phase === "fight") fishing.hold(true);
+        else fishing.act();
+      } else if (
         [
           "escape",
           "w",
@@ -1456,7 +1460,12 @@ export function openPlaza(options) {
     if ("12345678".includes(k) && k.length === 1) emote(EMOTE_KEYS[+k - 1]);
   }
   screen.addEventListener("keydown", onKey);
-  screen.addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
+  screen.addEventListener("keyup", (e) => {
+    const k = e.key.toLowerCase();
+    keys.delete(k);
+    // Letting go of the reel key in a fight gives line.
+    if (k === "e" || k === " " || k === "enter") fishing.hold(false);
+  });
   screen.addEventListener("blur", () => keys.clear());
   function start() {
     $("pz-start").hidden = true;
@@ -2010,6 +2019,10 @@ export function openPlaza(options) {
       catchTimer = setTimeout(() => (card.hidden = true), 2600);
     },
   });
+  const fightView = createFightView();
+  /** Where the fight's gauge stands: over the Leave button (measured once
+   * as the fight starts, never per frame). */
+  let fightRoom = { gx: 0, gy0: 0, gy1: 0 };
   SPOTS.push({ ...FISH_SPOT, act: () => enterFishing() });
   function enterFishing() {
     if (fishing.active) return;
@@ -2036,15 +2049,51 @@ export function openPlaza(options) {
     }
     const b = fishing.button(),
       act = $("pz-fish-act");
+    $("pz-fishhud").dataset.phase = fishing.phase;
+    if (fishing.phase === "fight" && act.dataset.kind !== "fight") {
+      fightView.reset();
+      const r = $("pz-fish-exit").getBoundingClientRect(),
+        l = layer.getBoundingClientRect(),
+        top = r.top - l.top;
+      fightRoom = {
+        gx: r.left - l.left + 22,
+        gy0: Math.max(84, top - 34 - Math.min(230, NH * 0.5)),
+        gy1: top - 34,
+      };
+    }
+    if (b.kind !== "fight") act.classList.remove("held");
     act.dataset.kind = b.kind;
     act.querySelector("b").textContent = b.label;
     act.disabled = b.kind === "busy";
     $("pz-fish-hint").textContent = fishing.hint();
     $("pz-fish-hint").dataset.kind = fishing.phase;
-    $("pz-fish-today").textContent =
-      `${Math.min(progress?.fishToday ?? 0, PLAZA_FISHING.perDay)}/${PLAZA_FISHING.perDay} today`;
+    const today = `${Math.min(progress?.fishToday ?? 0, PLAZA_FISHING.perDay)}/${PLAZA_FISHING.perDay}`;
+    if ($("pz-fish-today").dataset.n !== today) {
+      $("pz-fish-today").dataset.n = today;
+      $("pz-fish-today").innerHTML = `<b>${today}</b><small>today</small>`;
+    }
   }
-  onPress($("pz-fish-act"), () => fishing.act());
+  onPress($("pz-fish-act"), () => {
+    if (fishing.phase !== "fight") fishing.act();
+  });
+  // In a fight the button is held: down reels, up (or the finger sliding
+  // off, or the page losing it) gives line.
+  {
+    const act = $("pz-fish-act");
+    act.addEventListener("pointerdown", (e) => {
+      if (fishing.phase !== "fight" || e.button !== 0) return;
+      act.setPointerCapture?.(e.pointerId);
+      fishing.hold(true);
+      act.classList.add("held");
+    });
+    const up = () => {
+      fishing.hold(false);
+      act.classList.remove("held");
+    };
+    for (const ev of ["pointerup", "pointercancel", "lostpointercapture"])
+      act.addEventListener(ev, up);
+    act.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
   $("pz-fish-exit").onclick = exitFishing;
   $("pz-fish-book2").onclick = () => showFishBook();
   const onFish = (note) => fishing.onNote(note);
@@ -5062,15 +5111,15 @@ export function openPlaza(options) {
       const lead = { x: P.vx * 0.25, y: P.vy * 0.2 };
       // Follows you a little past the Plaza's edges, onto the river, the
       // woods and the fields, never past what is painted (plaza-surround.ts).
-      // Fishing: the camera comes in close, between the angler and the bobber.
-      const fzWant = fishing.active ? FISHING_ZOOM : 1;
+      // Fishing: the angler and the whole pond, centred, as big as fits
+      // between fishing's buttons (fishingFrame).
+      const frame = fishing.active ? fishingFrame(NW, NH) : null;
+      const fzWant = frame ? frame.z / zBase : 1;
       if (Math.abs(fz - fzWant) > 0.001) {
         fz += (fzWant - fz) * Math.min(1, dt * 4);
         Z = zBase * fz;
       }
-      const look = fishing.active
-        ? fishing.focus(P)
-        : { x: P.x + lead.x, y: P.y - 40 + lead.y };
+      const look = frame ?? { x: P.x + lead.x, y: P.y - 40 + lead.y };
       const want = plazaCamClamp(look.x, look.y, NW, NH, Z);
       cam.x += (want.x - cam.x) * Math.min(1, dt * 5);
       cam.y += (want.y - cam.y) * Math.min(1, dt * 5);
@@ -5085,6 +5134,13 @@ export function openPlaza(options) {
     }
     ctx.setTransform(PS, 0, 0, PS, 0, 0);
     ctx.imageSmoothingQuality = "high";
+    // A hooked fish's fight: its close-up comes in over the Plaza, then
+    // stands in for it (one scene to paint, not two).
+    const fv = fishing.fightView();
+    if (fv && fv.t >= FIGHT_IN_SECONDS) {
+      fightView.draw(ctx, fv, NW, NH, T, low, fightRoom, 1, PS);
+      return;
+    }
     ctx.fillStyle = "#24452a";
     ctx.fillRect(0, 0, NW, NH);
     ctx.save();
@@ -5120,6 +5176,18 @@ export function openPlaza(options) {
     vg.addColorStop(1, "rgba(5,10,25,.35)");
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, NW, NH);
+    if (fv)
+      fightView.draw(
+        ctx,
+        fv,
+        NW,
+        NH,
+        T,
+        low,
+        fightRoom,
+        fv.t / FIGHT_IN_SECONDS,
+        PS,
+      );
   }
 
   /* ---------- size, enter, leave ---------- */
@@ -5411,7 +5479,19 @@ export function openPlaza(options) {
       },
       /** Fishing mode: on, its phase and the camera's extra zoom (tests). */
       get fishingMode() {
-        return { active: fishing.active, phase: fishing.phase, fz };
+        return {
+          active: fishing.active,
+          phase: fishing.phase,
+          fz,
+          fight: fishing.fightView(),
+          // What the camera shows, in Plaza coordinates.
+          view: {
+            x0: cam.x - NW / 2 / Z,
+            y0: cam.y - NH / 2 / Z,
+            x1: cam.x + NW / 2 / Z,
+            y1: cam.y + NH / 2 / Z,
+          },
+        };
       },
       /** The photo album's store (tests fill it). */
       album,

@@ -141,7 +141,8 @@ const handle = (ev: string, data: any) => {
   if (ev === "plaza-fish") {
     if (data?.act === "cast") return world.cast(ME, Date.now(), data.tz);
     if (data?.act === "stop") return { ok: world.stopFishing(ME, Date.now()) };
-    const r = world.reel(ME, Date.now());
+    if (data?.act === "reel") return world.reel(ME, Date.now());
+    const r = world.land(ME, Date.now(), data?.moves);
     if (r.ok) {
       const p = w.__plazaProgress;
       p.fishBook = { ...(p.fishBook ?? {}) };
@@ -149,8 +150,9 @@ const handle = (ev: string, data: any) => {
         p.fishToday = (p.fishToday ?? 0) + 1;
         p.fishBook[r.fish] = (p.fishBook[r.fish] ?? 0) + 1;
         const q = p.quests.fish;
-        q.n = Math.min(3, q.n + 1);
-        q.done = q.n >= 3;
+        const max = PLAZA_QUESTS.find((x) => x.id === "fish")!.max;
+        q.n = Math.min(max, q.n + 1);
+        q.done = q.n >= max;
       } else p.fishBook[r.fish] ??= 0;
       // The whole book: the title (arena_plaza_record).
       p.fishTitle = PLAZA_FISH.every((f) => p.fishBook[f.id] !== undefined);

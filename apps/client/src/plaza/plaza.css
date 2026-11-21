@@ -1899,14 +1899,39 @@
   align-items: center;
   gap: 0.6em;
 }
+/* Today's count: a round tile like Book beside it (it is not a button). */
 .plaza-layer .pz-fish-today {
-  padding: 0.35em 0.8em;
-  border-radius: 999px;
-  background: #0b1020c4;
-  color: var(--dim);
-  font-weight: 700;
-  font-size: 0.9em;
+  pointer-events: none;
+  cursor: default;
   font-variant-numeric: tabular-nums;
+}
+.plaza-layer .pz-fish-today b {
+  font-size: 0.95em;
+  font-weight: 800;
+}
+.plaza-layer .pz-fish-today small {
+  color: var(--dim);
+}
+/* In a fight: only Hold and Leave (the close-up needs the room). */
+.plaza-layer .pz-fishhud[data-phase="fight"] .pz-fish-side {
+  display: none;
+}
+.plaza-layer .pz-fish-act[data-kind="fight"] {
+  background: radial-gradient(circle at 35% 30%, #ffd08a, #f07a2a 70%);
+  box-shadow:
+    0 6px 0 #a8461a,
+    0 10px 24px #0008;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.plaza-layer .pz-fish-act[data-kind="fight"].held {
+  transform: translateY(4px) scale(0.96);
+  box-shadow:
+    0 2px 0 #a8461a,
+    0 0 0 8px #ffd08a44,
+    0 6px 16px #0008;
 }
 .plaza-layer .pz-fish-act {
   position: absolute;
