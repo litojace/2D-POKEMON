@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   PLAZA_AURA_SCALE,
   PLAZA_FX_CAP,
@@ -76,6 +76,14 @@ describe("Plaza: worn effects", () => {
   });
 
   it("Colors show their motif unless a champion skin is worn, particles capped", () => {
+    // The motif drifts off at random (0.9 a second for a Common set): with
+    // Math.random, about 1 run in 300 drew none in these 6.4 s and failed
+    // (main, after #297). A seeded sequence keeps the spread, not the luck.
+    let seed = 7;
+    const random = vi.spyOn(Math, "random").mockImplementation(() => {
+      seed = (seed * 16807) % 2147483647;
+      return (seed - 1) / 2147483646;
+    });
     const b = body({ colour: "candy-colours", sp: 0 });
     expect(wearsFx(b)).toBe(true);
     let most = 0,
@@ -90,6 +98,7 @@ describe("Plaza: worn effects", () => {
     expect(drawn).toBeGreaterThan(0);
     expect(most).toBeGreaterThan(0);
     expect(most).toBeLessThanOrEqual(PLAZA_FX_CAP);
+    random.mockRestore();
     const skinned = body({
       colour: "candy-colours",
       skin: { skin: "voltkit-stormcrown" },
