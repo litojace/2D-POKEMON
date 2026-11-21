@@ -503,8 +503,9 @@ describe("the stage", () => {
     expect(stage).toContain("is-frame");
     expect(stage).toContain('class="portrait-review-avatar fit-frame-avatar"');
     expect(stage).toContain('data-portrait-frame="galaxy-frame"');
-    expect(stage).toContain('data-fighter="tidefin"');
-    expect(stage).toContain("tidefin-moontide");
+    // Your avatar in the frame, as everyone sees you; not the fighter.
+    expect(stage).toContain('class="portrait-avatar"');
+    expect(stage).not.toContain('data-fighter="tidefin"');
   });
   it("draws a still fighter on Low graphics, with the original ready for Hold to compare", () => {
     const view = shop({

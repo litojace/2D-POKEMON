@@ -60,7 +60,7 @@ import { creatureSvg, type SkinLook } from "../creature-design";
 import { colourPreview, hasColourPalette } from "../colour-preview";
 import { previewViewBox } from "../shop-preview-layout";
 import { stageLight } from "../stage-light";
-import { framedAvatar } from "../portraits";
+import { avatarImage, framePortrait } from "../portraits";
 import { itemPicture, picksCountdown } from "../shop-ui";
 import { menuIcon } from "../menu-icons";
 import {
@@ -138,6 +138,8 @@ export interface FitData {
   progress: RaidProgress | null;
   /** The equipped shared looks (Colors, aura, entrance, victory, frame). */
   look: RaidLoadout;
+  /** Your avatar (null: the default), shown inside a frame being viewed. */
+  avatar?: string | null;
   /** Why something is missing (a load failed). */
   problem?: string;
   /** Still loading the first copy. */
@@ -497,7 +499,8 @@ function stageMarkup(view: FitView, d: FitData) {
   let live: string;
   let extra = "";
   if (frameView) {
-    // A frame is shown on the portrait it goes around, large.
+    // A frame is shown large on the portrait it goes around: your avatar,
+    // as everyone sees you (identityPortrait), whatever fighter is chosen.
     const boss = rewardBoss(selected.id);
     const mine = frameStars(selected.id, clears);
     const stars = boss
@@ -507,7 +510,7 @@ function stageMarkup(view: FitView, d: FitData) {
         )
       : 0;
     const tier = cosmeticTier(selected.id, stars);
-    live = `<div class="shop-live-stage is-item is-frame portrait-review-stage fit-frame-stage" data-preview-champion="${view.champion}" data-preview-item="${esc(selected.id)}" data-preview-action="idle" data-tier="${tier}" role="img" aria-label="${esc(`${name} portrait · ${selected.name}${boss ? ` · ${stars} stars` : ""} · ${TIER_NAMES[tier]}`)}"><div class="shop-preview-fallback"><div class="portrait-review-avatar fit-frame-avatar">${framedAvatar({ character: view.champion, raidLook: { ...outfit.look, frame: selected.id as never }, championLooks: outfit.skin ? { [view.champion]: outfit.skin } : {} }, "fit-frame-live", stars)}</div></div></div>`;
+    live = `<div class="shop-live-stage is-item is-frame portrait-review-stage fit-frame-stage" data-preview-champion="${view.champion}" data-preview-item="${esc(selected.id)}" data-preview-action="idle" data-tier="${tier}" role="img" aria-label="${esc(`Your portrait · ${selected.name}${boss ? ` · ${stars} stars` : ""} · ${TIER_NAMES[tier]}`)}"><div class="shop-preview-fallback"><div class="portrait-review-avatar fit-frame-avatar">${framePortrait(avatarImage(d.avatar), selected.id, stars)}</div></div></div>`;
     if (boss) {
       const have = clears[boss] ?? 0;
       extra = `<div class="fit-stars" role="group" aria-label="Preview frame level">${Array.from(

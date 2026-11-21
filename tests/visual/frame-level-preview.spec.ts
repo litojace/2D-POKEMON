@@ -59,12 +59,13 @@ window.fetch=async(input,init)=>{
       const art = page.locator(".fit-frame-stage .portrait-frame");
       await expect(art).toHaveAttribute("data-frame-stars", "1");
       await expect(page.locator("[data-fit-stars]")).toHaveCount(6);
-      await expect(art.locator("svg[data-fighter=tidefin]")).toHaveCount(1);
-      expect(await art.innerHTML()).toContain("tidefin-moontide");
+      // Your avatar in the frame, as everyone sees you; not the fighter.
+      await expect(art.locator("img.portrait-avatar")).toHaveCount(1);
+      await expect(art.locator("svg[data-fighter]")).toHaveCount(0);
       await expect(page.locator(".fit-frame-stage > canvas")).toHaveCount(0);
       await page.evaluate(() => {
         (window as any).__frameReviewSvg = document.querySelector(
-          ".fit-frame-avatar svg",
+          ".fit-frame-avatar img",
         );
         (window as any).__frameReviewStage =
           document.querySelector(".fit-frame-stage");
@@ -112,7 +113,7 @@ window.fetch=async(input,init)=>{
           await page.evaluate(
             () =>
               (window as any).__frameReviewSvg ===
-                document.querySelector(".fit-frame-avatar svg") &&
+                document.querySelector(".fit-frame-avatar img") &&
               (window as any).__frameReviewStage ===
                 document.querySelector(".fit-frame-stage"),
           ),
@@ -203,12 +204,13 @@ window.fetch=async(input,init)=>{
       await expect(page.locator("[data-fit-stars]")).toHaveCount(0);
       await page.click(".fit-grid [data-ui-item=conqueror]");
       await expect(art).toHaveAttribute("data-frame-stars", "1");
-      // Another fighter keeps the previewed level, in that fighter's look.
+      // Another fighter keeps the previewed level, and the same avatar:
+      // your portrait doesn't change with the fighter.
       await page.click('[data-fit-stars="3"]');
       await page.click('[data-fit-fighter="auralynx"]');
       await expect(art).toHaveAttribute("data-frame-stars", "3");
-      await expect(art.locator("svg[data-fighter=auralynx]")).toHaveCount(1);
-      expect(await art.innerHTML()).toContain("auralynx-celestial-sage");
+      await expect(art.locator("img.portrait-avatar")).toHaveCount(1);
+      await expect(art.locator("svg[data-fighter]")).toHaveCount(0);
       await snap(
         page,
         info,
