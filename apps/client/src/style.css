@@ -15667,3 +15667,19 @@ body.battle-active.touch-mode.battle-raid
     animation: none;
   }
 }
+
+/* Phones in a raid: the quick-chat button in the top-left corner, matching
+   the gear in the top-right (owner, 21 Nov 2026), and the boss's HUD keeps
+   the same 56px clear on both sides. Under them, the clock on the right and
+   the party's health list on the left (screens/raid-party.css) start at the
+   same height. The #battle-chat id outranks the rule that steps the button
+   down below a long party list. */
+@media (orientation: landscape) {
+  body.battle-active.touch-mode.battle-raid #raid-hud {
+    left: calc(var(--safe-left) + 56px);
+  }
+  body.battle-active.battle-raid.touch-mode #battle-chat[data-raid="true"] {
+    top: calc(var(--safe-top, 0px) + 4px);
+    left: calc(var(--safe-left, 0px) + 4px);
+  }
+}
