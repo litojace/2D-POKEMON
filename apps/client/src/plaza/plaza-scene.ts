@@ -2115,10 +2115,12 @@ export function openPlaza(options) {
     act.disabled = b.kind === "busy";
     $("pz-fish-hint").textContent = fishing.hint();
     $("pz-fish-hint").dataset.kind = fishing.phase;
-    const today = `${Math.min(progress?.fishToday ?? 0, PLAZA_FISHING.perDay)}/${PLAZA_FISHING.perDay}`;
+    const caught = Math.min(progress?.fishToday ?? 0, PLAZA_FISHING.perDay),
+      today = `${caught}/${PLAZA_FISHING.perDay}`;
     if ($("pz-fish-today").dataset.n !== today) {
       $("pz-fish-today").dataset.n = today;
-      $("pz-fish-today").innerHTML = `<b>${today}</b><small>today</small>`;
+      $("pz-fish-today").innerHTML =
+        `<b>${caught}<i>/${PLAZA_FISHING.perDay}</i></b><small>today</small>`;
     }
   }
   onPress($("pz-fish-act"), () => {
