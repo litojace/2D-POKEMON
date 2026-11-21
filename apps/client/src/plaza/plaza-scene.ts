@@ -5139,6 +5139,15 @@ export function openPlaza(options) {
     const fv = fishing.fightView();
     if (fv && fv.t >= FIGHT_IN_SECONDS) {
       fightView.draw(ctx, fv, NW, NH, T, low, fightRoom, 1, PS, night());
+      // A show going on meanwhile keeps moving (unseen), so its sparks
+      // aren't frozen in place when the fight ends.
+      if (fireworks.active(serverNow()))
+        fireworks.step(serverNow(), dt, {
+          x0: cam.x - NW / 2 / Z,
+          y0: cam.y - NH / 2 / Z,
+          x1: cam.x + NW / 2 / Z,
+          y1: cam.y + NH / 2 / Z,
+        });
       return;
     }
     ctx.fillStyle = "#24452a";
