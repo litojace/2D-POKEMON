@@ -494,10 +494,11 @@ Live Wire: 44.8% - 55.2%, 21.6% - 28.1%, 28.8% - 42.6%).
 
 **Spire.** The five are Echoes on 38 floors. Played by the play-tests' solo
 Normal Halcyra (seeds 1-72), most floors cleared about as often as on `main`
-(within 5 of 72; on average 1.4 harder). Six moved more, and their armour
-was set so each clears about as often as before (main / now, armour):
-3 34 / 38 1.9 (1.65), 14 42 / 42 1.6 (1.68), 29 33 / 34 1.69 (1.65),
-37 40 / 39 1.84 (1.74), 57 38 / 37 2.85 (2.95), 62 38 / 40 3.5 (2.85).
+(within 5 of 72; on average 0.9 harder), measured after the healing orbs
+moved onto open ground. Six moved more, and their armour was set so each
+clears about as often as before (main / now, armour): 6 31 / 33 1.2 (1.05),
+14 42 / 42 1.6 (1.68), 29 33 / 34 1.69 (1.65), 37 40 / 39 1.84 (1.74),
+57 38 / 37 2.85 (2.95), 62 38 / 40 3.5 (2.85).
 Raids are played with the same kits, so a Tidefin, Glacelle, Pangrove,
 Cindrake or Terradon raider plays these skills there too.
 
