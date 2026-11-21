@@ -315,7 +315,7 @@ for (const s of SIZES)
         w.__room("spire", { floor: 3, stage: "intermission", seats: 2 });
         w.__push();
       });
-      const cards = page.locator(".raid-draft [data-raid-rite]");
+      const cards = page.locator(".rites-screen [data-raid-rite]");
       await expect(cards).toHaveCount(3);
       await settle(page);
       for (const c of await cards.all()) {
@@ -335,7 +335,18 @@ for (const s of SIZES)
         expect(b.clip).toBe(false);
         inSafe(b, s, "blessing card");
       }
-      inSafe(await boxOf(page, ".raid-draft"), s, "blessing panel");
+      // The screen itself reaches every edge (like the countdown); what it
+      // shows stays inside the safe area.
+      inSafe(
+        await boxOf(page, ".rites-screen .rites-head"),
+        s,
+        "blessing heading",
+      );
+      inSafe(
+        await boxOf(page, ".rites-screen .raid-rite-options"),
+        s,
+        "blessing tiles",
+      );
       // A party sees the quick-chat button between floors: it never sits
       // on a card.
       if (await page.locator("#battle-chat").isVisible()) {
