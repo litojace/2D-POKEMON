@@ -433,6 +433,124 @@ often as before (seeds 1-72, main / now): 9 1.40 (1.35) 13 / 17, 16 1.66
 (1.56) 30 / 31, 63 6.8 (6.6) 33 / 29, 65 0.64 (0.60) 38 / 39, 66 4.35 (4.1)
 42 / 39, 69 2.35 (2.2) 13 / 14.
 
+## Five weak skills reworked
+
+A skill audit switched each of the 72 skills off in turn (its kind set to
+one the bots never choose) and measured how much its champion's win rate
+fell, on Hard and on the expert without look-ahead (two seeds, 12 games a
+pair, 408 duels a row; a drop has an error of about 3.5 points). Five did
+almost nothing, re-measured on `main` with the expert's good player's hands
+(drop on expert / Hard):
+
+| Skill                             | Drop before | Why                            |
+| --------------------------------- | ----------: | ------------------------------ |
+| Riptide Wave (Tidefin's ultimate) |   2.2 / 2.4 | one jump clears it             |
+| Scale Shrapnel (Pangrove)         |   1.0 / 0.5 | 3 weak blades with no plates   |
+| Frost Breath (Glacelle)           |  -2.7 / 5.7 | a small slow; walk out of it   |
+| Crest Flare (Cindrake)            |   4.7 / 6.6 | step back out of the cone      |
+| Shell Up (Terradon)               |  5.9 / 11.1 | 2.5 s standing still to be hit |
+
+(A typical skill is worth 15 - 30 points; the strongest, Shell Bash,
+Facet Guard and Kindle, over 40. The audit's own expert columns were first
+measured with the look-ahead on, a near-perfect dodger the look-ahead
+section above says not to tune with, and with the fast hands; the numbers
+here are not.)
+
+- **Riptide Wave:** two walls of water 0.9 s apart (`wave.second`), 18 each
+  (24 before), the slam 9. A jump lasts 0.65 s and comes back after 2 s, so
+  one jump can't clear both: jump one and step out of the other's lane.
+  Tidefin health 136 (146) pays for it.
+- **Scale Shrapnel:** 6 blades plus 2 a plate (`perPlate`; 3 plus 3 a plate
+  before, the same 12 at full plates), 6 damage each.
+- **Frost Breath:** 4 every 0.2 s and a slow, and four breaths in a row
+  freeze for half a second (`cone.freeze`, once a breath): stand in it and
+  you are frozen. Range 230 (210).
+- **Crest Flare:** the flame reaches from 230 px out to 300 px over the
+  breath (`cone.grow`; drawn growing), so a step back no longer saves you;
+  5 a tick (6). Cindrake was already the experts' strongest champion.
+- **Shell Up:** 1.5 s (2.5), regrows 21 HP (30), and the shell bursts open
+  at the end, shoving away everyone within 140 px by 300 px (`burst`): no
+  more free hits on a shell. Rite Thick Moss: 27 HP instead of 21.
+
+Round robins, `main` / now (24 games a pair, seeds 310000, the expert
+without look-ahead):
+
+| Champion |                        Hard |                      Expert |                      Normal |
+| -------- | --------------------------: | --------------------------: | --------------------------: |
+| Tidefin  |               54.4% / 58.3% |               45.3% / 52.0% |               51.0% / 56.6% |
+| Cindrake |               56.1% / 53.9% |               59.6% / 59.1% |               49.5% / 44.9% |
+| Terradon |               53.2% / 53.2% |               58.8% / 58.8% |               53.2% / 51.5% |
+| Glacelle |               49.3% / 52.2% |               52.2% / 57.1% |               49.3% / 51.7% |
+| Pangrove |               51.5% / 53.7% |               54.2% / 54.9% |               53.7% / 55.9% |
+| Range    | 43.6 - 56.1% / 43.1 - 58.3% | 33.6 - 59.6% / 32.4 - 59.1% | 44.6 - 55.9% / 42.4 - 56.6% |
+
+Voltkit is still the expert's weakest (32.4%), as on `main`.
+
+Normal handicaps: Tidefin 0.32 (0.29), Cindrake 0.45 (0.49), so each does
+about as well against Normal bots as on `main` (two seeds, 12 games a pair:
+Tidefin 50.7%, Cindrake 50.2%). On unused line-ups: 2v2 44.3% - 56.5%
+(Glacelle the highest), 4-player 21.1% - 28.7%, 3-player 27.7% - 42.6% (with
+Live Wire: 44.8% - 55.2%, 21.6% - 28.1%, 28.8% - 42.6%).
+
+**Spire.** The five are Echoes on 38 floors. Played by the play-tests' solo
+Normal Halcyra (seeds 1-72), most floors cleared about as often as on `main`
+(within 5 of 72; on average 0.9 harder), measured after the healing orbs
+moved onto open ground. Six moved more, and their armour was set so each
+clears about as often as before (main / now, armour): 6 31 / 33 1.2 (1.05),
+14 42 / 42 1.6 (1.68), 29 33 / 34 1.69 (1.65), 37 40 / 39 1.84 (1.74),
+57 38 / 37 2.85 (2.95), 62 38 / 40 3.5 (2.85).
+Raids are played with the same kits, so a Tidefin, Glacelle, Pangrove,
+Cindrake or Terradon raider plays these skills there too.
+
+## Voltkit: faster shots for good dodgers
+
+With a good player's hands the expert left only Voltkit outside the
+owner's band for skilled players (expert 35% - 65%): about 31%, while it
+was 47% - 51% on Hard. Its damage is all shots and marks (Spark Dart,
+Static Lance, Ball Lightning, Thunderstorm), and an expert sidesteps them.
+Levers tried on Voltkit's pairings alone (expert without look-ahead, 24
+games a pair, seed 5000; Hard / expert, from 47.3% / 31.1%):
+
+| Change                            |  Hard | Expert |
+| --------------------------------- | ----: | -----: |
+| Health 170 (157)                  | 63.7% |  45.3% |
+| Ball Lightning zaps for 5 (3)     | 65.0% |  47.1% |
+| Speed 290 (270)                   | 60.0% |  39.2% |
+| Spark Dart 1000 px/s (860)        | 57.4% |  42.2% |
+| Thunderstorm 120 px (95)          | 54.7% |  36.0% |
+| Static Lance 1300 px/s (1050)     | 47.8% |  35.5% |
+| Static Lance 1500, Spark Dart 930 | 55.1% |  41.7% |
+
+Health and the zaps raise Hard as much as the expert (Hard would leave its
+band first). A faster shot is what a good dodger feels: the expert sees it
+late, while Hard dodges less to begin with, so it gains less. **Static Lance now flies at 1500
+px/s (1050) and Spark Dart at 930 (860).** On three seeds (5000 and 310000
+at 24 games a pair, 9000 at 48) Voltkit goes from 31.6% to 40.9% for
+experts and from 49.1% to 54.3% on Hard.
+
+Whole round robins, seed 310000, 24 games a pair (before / after):
+
+| Level  | Voltkit       | Range                       | sd        |
+| ------ | ------------- | --------------------------- | --------- |
+| Hard   | 49.0% / 55.6% | 43.1 - 58.6% / 42.2 - 59.1% | 3.8 / 4.2 |
+| Expert | 32.8% / 38.7% | 32.8 - 59.1% / 38.7 - 59.3% | 6.8 / 6.0 |
+| Normal | 48.3% / 47.1% | 43.4 - 55.9% / 43.1 - 56.6% | 3.3 / 3.4 |
+
+(Hard's top is Tidefin, from the reworked Riptide Wave above; no other
+champion moves by more than 2.2 points.) Normal, Voltkit's pairings at 48
+games a pair on seed 9000: 44.4% to 48.3%, so its handicap stays 0.285. 2v2 and
+free-for-all on unused line-ups (`FRESH_BASE=7000`, 400 matches a level,
+Voltkit's line-ups): 2v2 54.0% to 52.7%, 4-player 29.4% to 26.8%, 3-player
+38.2% to 39.1%, within the noise, so the mode factors stay.
+
+**Spire.** Voltkit is an Echo on floors 1 and 61 - 69. Played by the
+play-tests' solo Normal Halcyra (seeds 1 - 72), floor 1 is still always
+cleared and 61 - 69 within 5 of 72, all but floor 64 (38 to 28). On 192 seeds
+the floors that moved most are within 5 points: 64 97 / 88, 63 64 / 74,
+65 100 / 92, 67 47 / 46 (the orb move's retune allowed about 7), and
+floor 64's armour did not move its rate in order on 72 seeds (4.8 28,
+4.4 21, 4.1 28, 3.5 22): it was noise, so no floor's armour changes.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now

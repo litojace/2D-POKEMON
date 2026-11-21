@@ -42,7 +42,7 @@ it("pins roster health (champion balance overhaul) and movement speeds", () => {
   const baseline: Record<string, [number, number]> = {
     voltkit: [157, 270],
     cindrake: [158, 240],
-    tidefin: [146, 285],
+    tidefin: [136, 285],
     auralynx: [170, 235],
     lumoth: [141, 265],
     mystowl: [138, 255],

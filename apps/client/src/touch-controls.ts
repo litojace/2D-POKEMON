@@ -442,6 +442,19 @@ export class TouchControls {
       "--combat-cluster-height",
       layout.height + rise + "px",
     );
+    let context = cluster.querySelector<HTMLElement>(".touch-context");
+    if (!context) {
+      context = document.createElement("div");
+      context.className = "touch-context";
+      cluster.append(context);
+    }
+    Object.assign(context.style, {
+      left: layout.context.x - layout.context.size / 2 + "px",
+      top: layout.context.y - layout.context.size / 2 + "px",
+      width: layout.context.size + "px",
+      height: layout.context.size + "px",
+    });
+    context.style.setProperty("--ctx-size", layout.context.size + "px");
     Object.assign(this.aim.style, {
       left: layout.aim.x - layout.aim.size / 2 + "px",
       top: layout.aim.y - layout.aim.size / 2 + "px",

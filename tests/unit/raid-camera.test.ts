@@ -173,6 +173,10 @@ describe("raidWantsCourt", () => {
     expect(
       raidWantsCourt(raid({ warnings: [warning("pounce")] as never }), 0),
     ).toBe(true);
+    // So does Geyser Line's row, 300 px on from the raider.
+    expect(
+      raidWantsCourt(raid({ warnings: [warning("geyser")] as never }), 0),
+    ).toBe(true);
   });
   it("covers running mechanics whose answer may be anywhere", () => {
     expect(
@@ -583,5 +587,52 @@ describe("framed warnings stay clear of the touch controls", () => {
     expect(clear(circle, placed)).toBe(true);
     expect(placed.zoom).toBe(fit);
     expect(placed.x).toBeGreaterThan(middle.x);
+  });
+});
+
+describe("Geyser Line on a phone", () => {
+  it("shows every geyser's middle, the row running away from the boss", () => {
+    // The server's row: three geysers 150 px apart from the raider, away
+    // from the boss (above them), which the follow camera leans toward.
+    const raider = { x: 800, y: 500 },
+      boss = { x: 800, y: 250 };
+    const geysers = [0, 1, 2].map((k) => ({
+      id: k,
+      kind: "geyser",
+      x: 800,
+      y: 500 + 150 * k,
+      tx: 800,
+      ty: 500 + 150 * k,
+      radius: 85,
+      at: 2,
+      chain: k + 1,
+    }));
+    const f = raidFrame(raid({ warnings: geysers } as never), 0, [
+      raider,
+      boss,
+    ]);
+    expect(f).toBeDefined();
+    const cam = new RaidCamera();
+    let view = raidCameraView(W, H, HUD);
+    for (let i = 0; i < 300; i++)
+      view = cam.update(
+        W,
+        H,
+        HUD,
+        true,
+        { ...raider, vx: 0, vy: 0 },
+        boss,
+        f,
+        "k",
+        16,
+        i * 0.016,
+        false,
+      );
+    for (const g of geysers) {
+      const y = (g.y - view.y) * view.zoomY + H / 2,
+        r = g.radius * FRAME_CORE * view.zoomY;
+      expect(y - r, `geyser ${g.chain} top`).toBeGreaterThanOrEqual(HUD);
+      expect(y + r, `geyser ${g.chain} bottom`).toBeLessThanOrEqual(H);
+    }
   });
 });

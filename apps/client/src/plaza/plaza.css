@@ -2012,9 +2012,36 @@
   cursor: default;
   font-variant-numeric: tabular-nums;
 }
+/* The count stands in a row as tall as Book's fish icon (1.55em of the
+   tile), centred in it: "today" then sits level with "Book", and the widest
+   count (30/30) lands where the circle is widest. */
 .plaza-layer .pz-fish-today b {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(1.55em / 0.95);
   font-size: 0.95em;
   font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+/* Book and today: the top row (fish, count) a touch lower and the gap a
+   touch smaller, so the pair sits in the circle's optical middle (a word's
+   room under its letters made it look high). The words don't move. */
+.plaza-layer .pz-fish-side .pz-round {
+  gap: calc(4px - 0.15em);
+}
+.plaza-layer .pz-fish-side .pz-round > :first-child {
+  margin-top: 0.3em;
+}
+/* The day's cap, smaller and dimmer: the count reads first, and "30/30"
+   keeps clear of the circle's edge. */
+.plaza-layer .pz-fish-today b i {
+  font-style: normal;
+  font-size: 0.68em;
+  font-weight: 700;
+  color: var(--dim);
+  margin-left: 0.05em;
 }
 .plaza-layer .pz-fish-today small {
   color: var(--dim);

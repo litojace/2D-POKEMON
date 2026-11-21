@@ -2363,10 +2363,12 @@ export function openPlaza(options) {
     act.disabled = b.kind === "busy";
     $("pz-fish-hint").textContent = fishing.hint();
     $("pz-fish-hint").dataset.kind = fishing.phase;
-    const today = `${Math.min(progress?.fishToday ?? 0, PLAZA_FISHING.perDay)}/${PLAZA_FISHING.perDay}`;
+    const caught = Math.min(progress?.fishToday ?? 0, PLAZA_FISHING.perDay),
+      today = `${caught}/${PLAZA_FISHING.perDay}`;
     if ($("pz-fish-today").dataset.n !== today) {
       $("pz-fish-today").dataset.n = today;
-      $("pz-fish-today").innerHTML = `<b>${today}</b><small>today</small>`;
+      $("pz-fish-today").innerHTML =
+        `<b>${caught}<i>/${PLAZA_FISHING.perDay}</i></b><small>today</small>`;
     }
   }
   onPress($("pz-fish-act"), () => {
@@ -5481,6 +5483,11 @@ export function openPlaza(options) {
       }
     } else coveredAt = undefined;
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
+    // The fireworks keep to the clock down to 4 frames a second: at dt's
+    // 0.05 s cap a slow device (under 20 fps) aged their sparks in slow
+    // motion, and the show outlasted PLAZA_WISH.showMs by many seconds.
+    // They only look, so a longer step costs nothing.
+    const showDt = Math.max(0, Math.min(0.25, (now - last) / 1000));
     last = now;
     T = now / 1000;
     if (!ready) return;
@@ -5695,7 +5702,7 @@ export function openPlaza(options) {
     drawWishMeter(ctx);
     if (fireworks.active(serverNow())) {
       const t0 = performance.now();
-      fireworks.step(serverNow(), dt, {
+      fireworks.step(serverNow(), showDt, {
         x0: cam.x - NW / 2 / Z,
         y0: cam.y - NH / 2 / Z,
         x1: cam.x + NW / 2 / Z,

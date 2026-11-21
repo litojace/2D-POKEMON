@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, snap } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+  startPractice,
+} from "./helpers";
 import { exposeAccount, shopServer } from "./shop-server";
 
 // The fitting room (UI remodel step 2) refreshes in place: a fresh copy of
@@ -302,6 +308,69 @@ for (const [width, height] of [
       ).toBe(true);
       await later.tap();
       await expect(page.locator("#pwa-banner")).toBeHidden();
+      expect(errors).toEqual([]);
+    } finally {
+      await ctx.close();
+    }
+  });
+for (const [width, height] of [
+  [568, 320],
+  [844, 390],
+])
+  test(`in a battle, the update note sits at the bottom, over no control (${width}×${height})`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(180_000);
+    const ctx = await browser.newContext({
+      viewport: { width, height },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await ctx.newPage();
+      await fakeUpdates(page);
+      const errors = await openHub(page);
+      await page.evaluate(() => (window as any).__room("practice"));
+      await openPlayPanel(page);
+      await startPractice(page);
+      await pushUntilBattle(page);
+      await page.evaluate(() => (window as any).__pwaOptions.onNeedRefresh());
+      const note = page.locator("#pwa-banner");
+      await expect(note).toContainText("Update after practice");
+      await expect(page.locator("#pwa-takeover")).toBeHidden();
+      await snap(page, info, `pwa-battle-note-${width}x${height}`);
+      const rects = await page.evaluate(() => {
+        const box = (e: Element) => {
+          const r = e.getBoundingClientRect();
+          return { x: r.left, y: r.top, r: r.right, b: r.bottom };
+        };
+        return {
+          note: box(document.getElementById("pwa-banner")!),
+          others: [
+            ...document.querySelectorAll(
+              // Every control and readout a battle shows, the chat
+              // button and the battle menu included.
+              ".touch-buttons button, .joystick, #hud, #chat-button, #battle-menu, #mobile-settings, .match-badge, #spectate",
+            ),
+          ]
+            .filter((e) => e.getBoundingClientRect().width > 0)
+            .map((e) => ({ name: e.className, ...box(e) })),
+        };
+      });
+      // In the bottom part of the screen, and on it.
+      expect(rects.note.y).toBeGreaterThan(height * 0.75);
+      expect(rects.note.x).toBeGreaterThanOrEqual(0);
+      expect(rects.note.r).toBeLessThanOrEqual(width);
+      expect(rects.note.b).toBeLessThanOrEqual(height);
+      const over = rects.others.filter(
+        (o) =>
+          rects.note.x < o.r &&
+          o.x < rects.note.r &&
+          rects.note.y < o.b &&
+          o.y < rects.note.b,
+      );
+      expect(over.map((o) => o.name)).toEqual([]);
       expect(errors).toEqual([]);
     } finally {
       await ctx.close();

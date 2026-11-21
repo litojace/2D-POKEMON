@@ -78,16 +78,31 @@ for (const size of [
     // A decoded CSS background may still be uploading to the compositor on a
     // busy GPU. Wait for a still pair rather than treating that first paint as
     // continuous animation; keep ordinary animation preferences enabled.
-    await expect
-      .poll(
-        async () => {
-          const first = await page.screenshot({ clip });
-          await page.waitForTimeout(350);
-          return (await page.screenshot({ clip })).equals(first);
-        },
-        { timeout: 5000 },
-      )
-      .toBe(true);
+    // CI's headless shell took longer than 5 s at 1280x720 (every run on main
+    // bdd558d, 21 Nov; never locally), so it gets 20 s. A painting that
+    // really moves still never gives a still pair; the last pair is attached
+    // to the report to show what changed.
+    let pair: Buffer[] = [];
+    try {
+      await expect
+        .poll(
+          async () => {
+            const first = await page.screenshot({ clip });
+            await page.waitForTimeout(350);
+            pair = [first, await page.screenshot({ clip })];
+            return pair[1].equals(first);
+          },
+          { timeout: 20_000 },
+        )
+        .toBe(true);
+    } catch (error) {
+      for (const [i, shot] of pair.entries())
+        await info.attach(`backdrop-${i + 1}`, {
+          body: shot,
+          contentType: "image/png",
+        });
+      throw error;
+    }
     for (const mode of ["signup", "login", "forgot"]) {
       if (mode === "forgot") await page.click("#auth-forgot");
       else await page.click(`[data-auth-tab="${mode}"]`);

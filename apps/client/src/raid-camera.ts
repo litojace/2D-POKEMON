@@ -341,10 +341,10 @@ export function raidFrameView(
   sides: ControlSides = NO_SIDES,
 ): { zoom: number; x: number } {
   const mid = (box.x0 + box.x1) / 2;
-  const span = width * (0.5 - FRAME_SIDE);
+  const side = width * FRAME_SIDE;
   const band = (zoom: number): [number, number] => {
-    let lo = box.x1 - span / zoom,
-      hi = box.x0 + span / zoom;
+    let lo = box.x1 - (width / 2 - side) / zoom,
+      hi = box.x0 + (width / 2 - side) / zoom;
     if (raider && (sides.left || sides.right)) {
       const [rlo, rhi] = clearBand(raider.x, zoom, width, sides);
       lo = Math.max(lo, rlo);

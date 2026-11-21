@@ -36,6 +36,12 @@ w.__plazaProgress = {
     { name: "tester", ms: 7420, me: true },
   ],
 };
+/** Tests: how long a new cast waits before its fish bites (ms), instead of
+ * the server's random 2-6 s; unset keeps the server's. */
+w.__plazaBiteAfter = 0;
+/** Tests: a fish that has bitten waits for the tap instead of swimming off
+ * after the window (off: the server's window). */
+w.__plazaBiteHold = false;
 /** Tests: the fish on the line bites at the next step. */
 w.__plazaBiteNow = () => {
   const line = (world as any).visitors.get(ME)?.line;
@@ -139,7 +145,15 @@ const handle = (ev: string, data: any) => {
   // Fishing: the real PlazaWorld decides; a catch is recorded here as the
   // database would (arena_plaza_record), and the progress sent back.
   if (ev === "plaza-fish") {
-    if (data?.act === "cast") return world.cast(ME, Date.now(), data.tz);
+    if (data?.act === "cast") {
+      const r = world.cast(ME, Date.now(), data.tz);
+      // Tests: a fish that bites only when told (__plazaBiteNow), so a slow
+      // machine never sees it bite and swim off between two looks.
+      const line = (world as any).visitors.get(ME)?.line;
+      if (r.ok && line && w.__plazaBiteAfter)
+        line.biteAt = Date.now() + w.__plazaBiteAfter;
+      return r;
+    }
     if (data?.act === "stop") return { ok: world.stopFishing(ME, Date.now()) };
     if (data?.act === "reel") return world.reel(ME, Date.now());
     const r = world.land(ME, Date.now(), data?.moves);
@@ -196,6 +210,16 @@ function fire(e: ReturnType<PlazaWorld["step"]>[number]) {
 }
 let ticks = 0;
 setInterval(() => {
+  // Tests: a bite that waits for the tap (__plazaBiteHold), so a slow
+  // machine's tap still lands inside the window.
+  const line = (world as any).visitors.get(ME)?.line;
+  if (
+    w.__plazaBiteHold &&
+    line &&
+    line.bitAt !== null &&
+    line.hookedAt === null
+  )
+    line.bitAt = Date.now();
   for (const e of world.step(1 / PLAZA.tick, Date.now())) fire(e);
   if (++ticks % 2) return;
   const v = w.__sock && world.view(ME);

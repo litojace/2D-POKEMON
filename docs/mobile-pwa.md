@@ -40,7 +40,7 @@ No API responses, authentication tokens, Socket.IO traffic, match snapshots, or 
 
 A new worker waits for the player to agree (`pwa.ts`, `pwa-auto-update.ts`). The browser checks for one every minute and whenever the game comes back to the front. Once one is downloaded:
 
-- **In a match, or with a menu open:** a quiet note only ("Update ready · you can install it after closing menus…"). Nothing activates or reloads. Briefing, countdown, play, intermission, a disconnect pause and the results screen all count as a match.
+- **In a match, or with a menu open:** a quiet note only ("Update ready · you can install it after closing menus…"). Nothing activates or reloads. Briefing, countdown, play, intermission, a disconnect pause and the results screen all count as a match. In a battle on a touch screen the note is a short pill ("Update after this match", or "Update after practice") at the bottom, centred in the gap between the joystick and the skill buttons, so it covers neither the score nor a control.
 - **In the Lobby or the Plaza, nothing open:** the first ask fills the screen like the round countdown: "NEW VERSION", **Update now** and **Later**. Update now activates the worker and reloads (a few seconds). Later (or Escape) hides it for 10 minutes (`UPDATE_SNOOZE_MS`); after that it asks again in the compact banner, not full screen. A new session asks full screen again.
 - **Another tab:** same-origin tab heartbeats hold the prompt back while another tab reports an active match. If another tab already applied the update, this tab still asks before reloading. Heartbeats expire after two minutes, so a crashed tab cannot block updates. Without storage, the current tab is still protected.
 
