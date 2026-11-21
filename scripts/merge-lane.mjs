@@ -44,7 +44,7 @@ export const FULL_RULES = [
     "the visual tests' shared harness changes",
   ],
   [
-    /^scripts\/(check-migrations|migrate-production|visual-shards|verify-pwa)\.mjs$/,
+    /^scripts\/(check-migrations|migrate-production|visual-shards|verify-pwa|full-run-due)\.mjs$/,
     "a script CI or production runs changes",
   ],
   [

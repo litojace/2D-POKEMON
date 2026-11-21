@@ -632,7 +632,8 @@ button.chat-say:focus-visible {
 
 /* ── Quick chat in a battle (chat/battle-chat.ts) ─────────────────────────
    One button top left, opposite the scoreboard's right side; in a raid it
-   sits where the raid's signals button was, under the raid's HUD. Clear of
+   sits where the raid's signals button was, under the raid's HUD (phones:
+   in the top-left corner, matching the gear, style.css). Clear of
    the camera cutout (mid-height on the sides, touch-cutout.spec.ts) and of
    the joystick (bottom left). */
 .battle-chat {

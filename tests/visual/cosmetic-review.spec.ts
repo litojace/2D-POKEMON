@@ -283,9 +283,13 @@ for (const size of [
       for (const collection of collections) {
         await page.click(`[data-fit-collection=${collection}]`);
         await page.click(`.fit-room [data-ui-item=${collection}-frame]`);
+        // Your avatar in the frame, as everyone sees you; not the fighter.
         await expect(
-          stage.locator(".portrait-disc svg[data-fighter=tidefin]"),
+          stage.locator(".portrait-disc img.portrait-avatar"),
         ).toHaveCount(1);
+        await expect(
+          stage.locator(".portrait-disc svg[data-fighter]"),
+        ).toHaveCount(0);
         await expect(stage.locator(":scope > canvas")).toHaveCount(0);
         // The tile shows the whole ring, round, with its edge inside.
         const art = page.locator(

@@ -16,8 +16,7 @@ import {
 } from "../../apps/client/src/plaza/plaza-depth";
 import {
   BAKED,
-  COWS,
-  FIELDS,
+  KITES,
   LANDMARKS,
   LIVE,
   MOVER_BOX,
@@ -164,15 +163,23 @@ describe("Plaza depth: footprints, not one number each", () => {
 });
 
 describe("Plaza surroundings", () => {
-  it("is all outside where anyone can walk", () => {
+  it("is all outside where anyone can walk, and the Farm's fields have gone", () => {
+    for (const p of SURROUND)
+      expect([
+        "barn",
+        "mill",
+        "scarecrow",
+        "well",
+        "hay",
+        "crates",
+      ]).not.toContain(p.kind);
     for (const p of SURROUND)
       expect(onWalkable(p.x, p.y, 40), `${p.kind} at ${p.x},${p.y}`).toBe(
         false,
       );
-    for (const c of COWS) {
-      expect(onWalkable(c.x, c.y, 40)).toBe(false);
-      expect(c.x).toBeGreaterThan(FIELDS.paddock.x0);
-      expect(c.x).toBeLessThan(FIELDS.paddock.x1);
+    for (const k of KITES) {
+      expect(onWalkable(k.x, k.y, 40)).toBe(false);
+      expect(onWalkable(k.at.x, k.at.y, 40)).toBe(false);
     }
     // Nothing the server collides with lies out there (the rules are unchanged).
     for (const o of PLAZA_OBSTACLES) expect(o.y).toBeLessThan(H);
@@ -194,9 +201,9 @@ describe("Plaza surroundings", () => {
     expect(
       coversMovers(propBox({ kind: "tree", x: -40, y: 900, s: 1, v: 0 })),
     ).toBe(true);
-    // A barn far into the fields never does; nor does the far bank.
+    // A bandstand far into the park never does; nor does the far bank.
     expect(
-      coversMovers(propBox({ kind: "barn", x: 700, y: 1935, s: 1, v: 0 })),
+      coversMovers(propBox({ kind: "gazebo", x: 700, y: 1935, s: 1, v: 0 })),
     ).toBe(false);
     expect(
       coversMovers(
@@ -213,18 +220,18 @@ describe("Plaza surroundings", () => {
     );
   });
 
-  it("nothing baked stands in front of a cow or the windmill's sails", () => {
+  it("nothing baked stands in front of a kite or the balloon", () => {
     const moving = movingBoxes();
-    expect(moving.length).toBe(COWS.length + 1);
+    expect(moving.length).toBe(KITES.length + 1);
     for (const m of moving) {
       const p = bakedInFront(m);
       expect(p ? `${p.kind} at ${p.x},${p.y}` : null, m.name).toBeNull();
     }
-    // The check itself: a tree just in front of the first cow is caught.
-    const c = COWS[0];
+    // The check itself: a tree in front of the first kite reaches over it.
+    const k = KITES[0];
     expect(
-      propBox({ kind: "tree", x: c.x, y: c.y + 120, s: 1, v: 0 }).top,
-    ).toBeLessThan(c.y);
+      propBox({ kind: "tree", x: k.x, y: k.y + 150, s: 1, v: 0 }).top,
+    ).toBeLessThan(k.y);
   });
 
   it("each baked picture lies outside the Plaza's own ground (never over its paths)", () => {
@@ -237,9 +244,9 @@ describe("Plaza surroundings", () => {
     }
   });
 
-  it("no tree stands in front of the barn, the windmill or the well", () => {
+  it("no tree stands in front of the bandstand or the balloon", () => {
     const marks = SURROUND.filter((p) => LANDMARKS.includes(p.kind));
-    expect(marks.length).toBe(3);
+    expect(marks.length).toBe(2);
     for (const a of SURROUND)
       for (const m of marks)
         if (a !== m)

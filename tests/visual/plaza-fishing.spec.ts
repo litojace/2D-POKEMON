@@ -174,6 +174,32 @@ for (const size of [
       expect(Math.abs(today.w - bookBtn.w)).toBeLessThanOrEqual(1);
       expect(Math.abs(today.t - bookBtn.t)).toBeLessThanOrEqual(1);
       expect(today.r).toBeLessThan(bookBtn.l);
+      // Their words sit on one line ("today" level with "Book"), and the
+      // widest count, 30/30, stays inside the circle with room to spare.
+      const fit = await page.evaluate(() => {
+        const t = document.querySelector("#pz-fish-today")!;
+        const was = t.innerHTML;
+        t.innerHTML = `<b>30<i>/30</i></b><small>today</small>`;
+        const tr = t.getBoundingClientRect(),
+          b = t.querySelector("b")!,
+          range = document.createRange();
+        range.selectNodeContents(b);
+        const g = range.getBoundingClientRect(),
+          r = tr.width / 2 - 1,
+          // The circle's width at the count's middle line.
+          dy = g.top + g.height / 2 - (tr.top + tr.height / 2),
+          chord = 2 * Math.sqrt(r * r - dy * dy),
+          labels = [
+            t.querySelector("small")!.getBoundingClientRect().top,
+            document
+              .querySelector("#pz-fish-book2 small")!
+              .getBoundingClientRect().top,
+          ];
+        t.innerHTML = was;
+        return { width: g.width, chord, labels };
+      });
+      expect(Math.abs(fit.labels[0] - fit.labels[1])).toBeLessThanOrEqual(0.5);
+      expect(fit.width + 8).toBeLessThanOrEqual(fit.chord);
       // Leave is red, told apart from fishing's blue buttons.
       expect(
         await page
@@ -384,7 +410,8 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
     PLAZA_FISH.map((f) => f.id),
   );
   await expect(toast(page)).toContainText("Title earned: Master Angler");
-  await page.click("#pz-fish-btn");
+  await page.click("#pz-map-btn");
+  await page.click("#pz-map-book");
   await expect(page.locator("#pz-fishbook-note")).toContainText(
     "Title earned: Master Angler",
   );
