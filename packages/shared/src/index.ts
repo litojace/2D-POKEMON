@@ -828,7 +828,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "crest-flare",
         "Crest Flare",
         "cone",
-        6,
+        5,
         8,
         "The flame crest flares into a cone of fire for 1.2 seconds. Burns.",
         {
@@ -905,7 +905,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "An axolotl duelist in a river sash. The quickest fighter; pokes, slips away, regrows, then finishes.",
     color: 0x4fd6e6,
-    health: 146,
+    health: 136,
     speed: 285,
     basic: basic(
       "tide-needle",
@@ -960,7 +960,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "riptide-wave",
         "Riptide Wave",
         "wave",
-        16,
+        18,
         20,
         "After a short charge, a wall of water 380 px wide rolls from Tidefin along your aim across the whole court, over any wall. Enemies it reaches take 24 and are carried along for up to half a second; carried into a wall, they take 12 more and are stunned.",
         {
@@ -1230,7 +1230,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           duration: 1.5,
           heal: 8,
           status: "shell",
-          burst: { damage: 4, radius: 140, knockback: 260 },
+          burst: { damage: 0, radius: 140, knockback: 300 },
         },
       ),
       ability(
