@@ -61,8 +61,25 @@ for (const size of [
       if (size.inset) await setInsets(page, size.inset);
       await toPond(page);
       // At the dock: a round Fish button, not the long pill.
+      // Dash's size, on Dash's line, the same gap as Dash to Jump; it pops in.
+      expect(
+        await page
+          .locator("#pz-interact")
+          .evaluate((el) => getComputedStyle(el).animationName),
+      ).toBe("pz-fish-pop");
+      await page
+        .locator("#pz-interact")
+        .evaluate((el) =>
+          Promise.all(el.getAnimations().map((a) => a.finished)),
+        );
       const fishBtn = await box(page, "#pz-interact");
-      expect(fishBtn.w).toBeLessThanOrEqual(70);
+      const dash = await box(page, "#pz-dash");
+      const jump = await box(page, "#pz-jump");
+      expect(Math.abs(fishBtn.w - dash.w)).toBeLessThanOrEqual(1);
+      expect(Math.abs(fishBtn.b - dash.b)).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(dash.l - fishBtn.r - (jump.l - dash.r)),
+      ).toBeLessThanOrEqual(1);
       await snap(page, info, `fishing-dock-${name}`);
       await enter(page);
       // The walking controls step aside; the camera comes in close.
