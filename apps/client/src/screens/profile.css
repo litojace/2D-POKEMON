@@ -19,6 +19,12 @@
 .pf-card {
   position: relative;
   display: grid;
+  /* One column exactly the card's width. Left automatic, the column could
+     grow past the card to its contents' widest size (the avatar sizes
+     itself from its own box, a container query), and Safari settled it
+     differently after the column beside it redrew: the avatar and the
+     words sat off-centre on some tabs (owner, iPhone, 21 Nov). */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   min-height: 0;
   border-radius: var(--rad-xl);
@@ -35,6 +41,7 @@
 .pf-card-art {
   display: grid;
   place-items: center;
+  min-width: 0;
   min-height: 0;
   padding: var(--sp-4);
 }

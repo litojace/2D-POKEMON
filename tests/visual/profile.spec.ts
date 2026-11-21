@@ -360,6 +360,45 @@ for (const size of SIZES)
         }),
       ).toEqual([]);
       expect(await spills(page, ".profile-panel")).toEqual([]);
+      // The card stands still and centred whichever tab is open: its
+      // avatar and words never move when the column beside it changes.
+      const cardPlace = () =>
+        panel.evaluate((p) => {
+          const c = p.querySelector(".pf-card")!.getBoundingClientRect();
+          const mid = (s: string) => {
+            const r = p.querySelector(s)!.getBoundingClientRect();
+            return (
+              Math.round((r.left + r.width / 2 - (c.left + c.width / 2)) * 2) /
+              2
+            );
+          };
+          return {
+            card: [c.left, c.top, c.width, c.height].map(Math.round),
+            avatar: mid(".pf-card-avatar > *"),
+            name: mid(".pf-card-name"),
+            tags: mid(".pf-card-tags"),
+          };
+        });
+      const places: Record<string, unknown> = {};
+      for (const t of [
+        "overview",
+        "matches",
+        "avatar",
+        "titles",
+        "mastery",
+        "trophies",
+      ]) {
+        await tab(t);
+        places[t] = await cardPlace();
+      }
+      const first = places.overview as Awaited<ReturnType<typeof cardPlace>>;
+      for (const off of [first.avatar, first.name, first.tags])
+        expect(
+          Math.abs(off),
+          "the card's contents are centred",
+        ).toBeLessThanOrEqual(1);
+      for (const [t, p] of Object.entries(places))
+        expect(p, `the card on the ${t} tab`).toEqual(first);
       // Every tab fits its column, nothing cut off or spilling.
       for (const t of ["overview", "matches", "titles", "mastery"]) {
         await tab(t);
