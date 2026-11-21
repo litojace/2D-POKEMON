@@ -258,7 +258,7 @@ const NORMAL_DAZE_BEFORE_SMART_BOTS: Partial<Record<CharacterId, number>> = {
  * against Hard ones (scripts/balance/round-robin.ts).
  */
 const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.285,
+  voltkit: 0.265,
   cindrake: 0.45,
   tidefin: 0.32,
   auralynx: 0.203,
