@@ -54,6 +54,30 @@ const shown = (page: Page) =>
       }),
   );
 
+/** Its pop-in over (a busy CI runner starts it late): measure after. */
+const settled = (page: Page) =>
+  page.evaluate(() =>
+    Promise.all(
+      Array.from(
+        document.querySelectorAll<HTMLElement>("#raid-prism-controls button"),
+      ).flatMap((b) => b.getAnimations().map((a) => a.finished)),
+    ).then(() => undefined),
+  );
+
+/** How far the one button shown is off its slot (0 when in place). */
+const offSlot = (page: Page) =>
+  page.evaluate(() => {
+    const b = Array.from(
+      document.querySelectorAll<HTMLElement>("#raid-prism-controls button"),
+    ).find((b) => b.offsetWidth > 0);
+    if (!b) return Infinity;
+    const r = b.getBoundingClientRect(),
+      s = document
+        .querySelector(".touch-buttons .touch-context")!
+        .getBoundingClientRect();
+    return Math.round(Math.max(Math.abs(r.x - s.x), Math.abs(r.y - s.y)));
+  });
+
 for (const size of SIZES)
   test(`Prismatail's contextual button shows only when usable, centred, at ${size.width}x${size.height}`, async ({
     browser,
@@ -121,13 +145,10 @@ for (const size of SIZES)
       await expect
         .poll(async () => (await shown(page)).map((b) => b.kind))
         .toEqual(["turn"]);
-      // After its pop-in (0.18 s).
-      await page.waitForTimeout(400);
+      await settled(page);
+      // In the slot (where it is now).
+      await expect.poll(() => offSlot(page)).toBeLessThanOrEqual(1);
       const [turn] = await shown(page);
-      // In the slot where it is now.
-      const now = (await boxes()).slot;
-      expect(Math.abs(turn.x - now.x)).toBeLessThanOrEqual(1);
-      expect(Math.abs(turn.y - now.y)).toBeLessThanOrEqual(1);
       expect(Math.abs(turn.width - turn.height)).toBeLessThanOrEqual(1);
       expect(Math.abs(turn.dx)).toBeLessThanOrEqual(1);
       expect(Math.abs(turn.dy)).toBeLessThanOrEqual(1);
@@ -155,11 +176,9 @@ for (const size of SIZES)
       await expect
         .poll(async () => (await shown(page)).map((b) => b.kind))
         .toEqual(["away"]);
-      await page.waitForTimeout(400);
+      await settled(page);
+      await expect.poll(() => offSlot(page)).toBeLessThanOrEqual(1);
       const [away] = await shown(page);
-      const then = (await boxes()).slot;
-      expect(Math.abs(away.x - then.x)).toBeLessThanOrEqual(1);
-      expect(Math.abs(away.y - then.y)).toBeLessThanOrEqual(1);
       expect(Math.abs(away.dx)).toBeLessThanOrEqual(1);
       expect(Math.abs(away.dy)).toBeLessThanOrEqual(1);
       expect(away.ring).toContain("conic-gradient");
