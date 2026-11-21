@@ -156,3 +156,33 @@ test.describe("on a wide screen", () => {
     expect(errors).toEqual([]);
   });
 });
+
+test("on a slow device the fireworks still end on time, not in slow motion", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => localStorage.setItem("ea-graphics", "high"));
+  await openPlaza(page);
+  await page.evaluate(
+    ([x, y]) => {
+      (window as any).__plazaPosition(x, y);
+      Object.assign((window as any).__plaza.P, { x, y });
+    },
+    [PLAZA_FOUNTAIN.x, PLAZA_FOUNTAIN.y + 110],
+  );
+  // About 2 frames a second, as CI's CPU-drawn browser runs it. The scene's
+  // step is capped at 0.05 s; the sparks used to age at that cap and the
+  // show lasted over 20 s here (CI: shard 5 timed out waiting for its end).
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 25 });
+  const active = () =>
+    page.evaluate(() => (window as any).__plaza.fireworks().active);
+  for (let i = 0; i < PLAZA_WISH.min; i++)
+    await page.evaluate(() => (window as any).__plazaWish());
+  await expect.poll(active, { timeout: 10_000 }).toBe(true);
+  const started = Date.now();
+  await expect.poll(active, { timeout: 30_000, intervals: [250] }).toBe(false);
+  expect((Date.now() - started) / 1000).toBeLessThan(
+    PLAZA_WISH.showMs / 1000 + 4,
+  );
+});

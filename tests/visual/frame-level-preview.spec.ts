@@ -56,7 +56,10 @@ window.fetch=async(input,init)=>{
       });
       await page.click("[data-fit-slot=frame]");
       await page.click(".fit-grid [data-ui-item=conqueror]");
-      const art = page.locator(".fit-frame-stage .portrait-frame");
+      // The open Shop's: a closed one stays in the page, hidden, for its
+      // next open (ui/hub-panel.ts park; it carries data-ui-leaving).
+      const open = ".fit-room:not([data-ui-leaving])";
+      const art = page.locator(`${open} .fit-frame-stage .portrait-frame`);
       await expect(art).toHaveAttribute("data-frame-stars", "1");
       await expect(page.locator("[data-fit-stars]")).toHaveCount(6);
       await expect(art.locator("svg[data-fighter=tidefin]")).toHaveCount(1);
@@ -220,9 +223,9 @@ window.fetch=async(input,init)=>{
         (window as any).__clears = 50;
         void (window as any).__account.showWardrobe();
       });
-      await page.click("[data-fit-slot=frame]");
+      await page.click(`${open} [data-fit-slot=frame]`);
       await expect(art).toHaveAttribute("data-tier", "mythic");
-      const tile = page.locator(".fit-grid [data-ui-item=conqueror]");
+      const tile = page.locator(`${open} .fit-grid [data-ui-item=conqueror]`);
       await expect(tile.locator(".ui-tile-sub")).toContainText("★★★★★");
       await expect(tile.locator(".ui-rarity")).toHaveText("Mythical");
       await expect(tile.locator(".raid-cosmetic-preview")).toHaveAttribute(
@@ -230,7 +233,7 @@ window.fetch=async(input,init)=>{
         "mythic",
       );
       await expect(header).toHaveAttribute("data-tier", "mythic");
-      await page.locator(".fit-room .ui-close").click();
+      await page.locator(`${open} .ui-close`).click();
       await page.evaluate(
         () =>
           void (window as any).__account.showRaids("grumblecrag", "rewards"),

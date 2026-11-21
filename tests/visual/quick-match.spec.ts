@@ -40,8 +40,11 @@ for (const size of SIZES)
     });
     try {
       const page = await context.newPage();
-      await page.clock.install();
       const errors = await openHub(page);
+      // A fake clock for the queue's timers only, once the hub is up: from
+      // the first load it slowed the startup curtain's own timers (status
+      // pacing, fade) about threefold, past openHub's wait on a slow runner.
+      await page.clock.install();
       await expect(page.locator("#lobby-mode")).toContainText("Quick Match");
       await lonelyQueue(page);
       await page.locator("#lobby-play").tap();
@@ -83,8 +86,9 @@ test("an unanswered offer starts a Quick Match bot by itself", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 956, height: 440 });
-  await page.clock.install();
   const errors = await openHub(page);
+  // A fake clock for the queue's timers only, once the hub is up.
+  await page.clock.install();
   await lonelyQueue(page);
   await page.locator("#lobby-play").click();
   await expect(page.locator("#quick-search")).toBeVisible();

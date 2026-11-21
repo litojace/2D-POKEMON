@@ -273,7 +273,7 @@ for (const size of [
                 game = await box(page, "#game");
               const hud = await box(page, "#raid-hud");
               const obstacles = await page
-                .locator(".touch-buttons button, #battle-menu, .raid-elapsed")
+                .locator(".touch-buttons > button, #battle-menu, .raid-elapsed")
                 .evaluateAll((items) =>
                   items.map((item) => {
                     const r = item.getBoundingClientRect();
@@ -292,18 +292,23 @@ for (const size of [
                   `${boss}: ${selector} overlaps another control`,
                 ).toBe(false);
               }
-              if (selector === "#raid-prism-controls") {
-                const buttons = await panel
-                  .locator("button")
-                  .evaluateAll((items) =>
-                    items.map((item) => item.getBoundingClientRect().y),
-                  );
-                expect(Math.abs(buttons[0] - buttons[1])).toBeLessThanOrEqual(
-                  1,
-                );
-                expect(
-                  size.width - controls.x - controls.width,
-                ).toBeLessThanOrEqual(size.height <= 350 ? 54 : 8);
+              if (selector === "#raid-prism-controls" && mobile) {
+                // Phones: Prismatail's actions share the touch cluster's
+                // contextual slot, left of skill 1 (above it on a narrow
+                // screen) (prism-context.spec.ts covers when they show).
+                const slot = await box(page, ".touch-buttons .touch-context"),
+                  skill1 = await box(page, '.touch-buttons [data-skill="0"]');
+                expect(Math.abs(controls.x - slot.x)).toBeLessThanOrEqual(1);
+                expect(Math.abs(controls.y - slot.y)).toBeLessThanOrEqual(1);
+                if (size.width >= 600) {
+                  expect(slot.x + slot.width).toBeLessThanOrEqual(skill1.x);
+                  expect(
+                    Math.abs(
+                      slot.y + slot.height / 2 - skill1.y - skill1.height / 2,
+                    ),
+                  ).toBeLessThanOrEqual(2);
+                } else
+                  expect(slot.y + slot.height).toBeLessThanOrEqual(skill1.y);
               }
               expect(controls.x).toBeGreaterThanOrEqual(0);
               expect(controls.x + controls.width).toBeLessThanOrEqual(

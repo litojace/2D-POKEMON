@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { CHAMPION_SKINS } from "../../packages/shared/src/shop";
 import { FIGHTER_IDS } from "../../packages/shared/src/index";
+import { REAR_ARMS_MIRRORED } from "../../apps/client/src/creature-profile";
 /**
  * A prop that stands up from the near paw (Astrabun's mallet) is painted on
  * that arm: raised overhead, it would hang upside down onto the belly.
@@ -10,9 +11,12 @@ function expectPropUpright(r: any, what: string) {
   if (!r.propArm) return;
   const side = r.dir === "left" || r.dir === "right";
   const hold = side ? r.propArm.side : r.propArm.front;
-  // Side drawings are mirrored: the left view's rotations are negated.
+  // Side drawings are mirrored: the left view's rotations are negated. So
+  // are the rear arms of a champion whose held paw changes side from behind
+  // (REAR_ARMS_MIRRORED).
   const arm = r.points.find((p: any) => p.part === "armR").rotation;
-  const local = r.dir === "left" ? -arm : arm;
+  const mirrored = r.dir === "left" || (r.dir === "up" && REAR_ARMS_MIRRORED.has(r.id));
+  const local = mirrored ? -arm : arm;
   expect(
     Math.abs(local - hold),
     `${r.id} ${r.dir} ${what}: the upright prop stays up`,

@@ -276,9 +276,11 @@ describe("projectile impact events", () => {
     );
     expect(hit).toBeTruthy();
     expect(impact).toBeTruthy();
-    // Touching: fighter edge + projectile edge, within one swept step.
-    expect(Math.abs(impact!.x - a.players[1].x)).toBeLessThan(
-      RULES.radius + CHARACTERS.voltkit.basic.radius + 12,
+    // Touching: fighter edge + projectile edge, within one swept step (10
+    // px), measured from where the target stood when hit (land() puts it
+    // 160 px out; the dart's knockback moves it after).
+    expect(Math.abs(impact!.x - (a.players[0].x + 160))).toBeLessThan(
+      RULES.radius + CHARACTERS.voltkit.basic.radius + 10,
     );
   });
   it("lands Riptide Wave as Tidefin's combo on a Soaked enemy", () => {

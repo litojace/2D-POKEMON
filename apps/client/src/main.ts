@@ -699,7 +699,11 @@ function measureRaidControls(): ControlSides {
     dpr = renderScale();
   const joystick = document.querySelector<HTMLElement>(".touch-pad .joystick");
   const buttons = Array.from(
-    document.querySelectorAll<HTMLElement>(".touch-buttons button"),
+    // The cluster's own buttons and its contextual slot (left of skill 1),
+    // where a boss's action pops up: your raider stands clear of both.
+    document.querySelectorAll<HTMLElement>(
+      ".touch-buttons > button, .touch-buttons > .touch-context",
+    ),
   ).filter((b) => b.offsetWidth);
   raidControlBoxes = [...buttons, ...(joystick?.offsetWidth ? [joystick] : [])]
     .map((e) => e.getBoundingClientRect())
@@ -3140,6 +3144,11 @@ function renderMenu(revealSelection = false) {
   )
     return renderGate();
   document.body.classList.remove("gate-active");
+  // Your skins and looks first: the Lobby's stage (syncHub) draws your
+  // fighter from them. Set after it, an account that answered once the
+  // Lobby was up left the fighter undressed until the next visit.
+  setWornSkins(accountsUI?.economy?.looks);
+  setWornLook(accountsUI?.raidLook);
   syncHub();
   const raidChallenge = state?.raid
     ? `${state.raid.boss}/${state.raid.peril}`
@@ -3208,8 +3217,6 @@ function renderMenu(revealSelection = false) {
   ]);
   const wornChanged = wornKey !== lastWornKey;
   lastWornKey = wornKey;
-  setWornSkins(accountsUI?.economy?.looks);
-  setWornLook(accountsUI?.raidLook);
   // A room (or a room you watch): the seats beside the roster picker.
   if (!home) {
     renderRoom(watchingRoom);
@@ -6031,6 +6038,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         "lure",
         "leap",
         "garden",
+        // Shell Up bursting open.
+        "rest",
       ].includes(ability.kind)
     ) {
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
@@ -7409,8 +7418,28 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         );
       if (serverPlayer.channel) {
         const cone = c.skills[serverPlayer.channel.skill];
-        if (cone)
-          drawChannel(g, cone, x, y, p.angle, c.color, _time, reducedMotion);
+        // Crest Flare: the flame reaches further as the breath goes on.
+        const grow = cone?.cone?.grow;
+        const shown =
+          cone && grow
+            ? {
+                ...cone,
+                range:
+                  cone.range +
+                  grow *
+                    Math.min(
+                      1,
+                      Math.max(
+                        0,
+                        1 -
+                          (serverPlayer.channel.until - state.time) /
+                            cone.duration,
+                      ),
+                    ),
+              }
+            : cone;
+        if (shown)
+          drawChannel(g, shown, x, y, p.angle, c.color, _time, reducedMotion);
       }
       if (serverPlayer.charge) {
         // Wind-up telegraph showing the real area of the incoming move.

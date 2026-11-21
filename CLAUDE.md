@@ -161,8 +161,12 @@ It prints the lane and why, from the files the branch changes against
 - **Main's full check is scheduled**, every three hours on main's latest
   commit (also Actions → Arena checks → Run workflow on `main`). A push to
   `main` runs verify only: a merge-started full run kept being replaced by
-  the next merge before it found runners. A red scheduled run opens the
-  issue "Main is red: the scheduled full run failed" (green closes it).
+  the next merge before it found runners. GitHub drops scheduled runs when
+  busy, so a push to `main` also starts a full run when none is waiting or
+  running and none started in three hours (`scripts/full-run-due.mjs`). A
+  red full run on main (scheduled
+  or by hand) opens the issue "Main is red: the scheduled full run failed"
+  (green closes it).
   **While it is open, merge nothing but its fix**, in either lane.
 - Say the lane and its reasons in the PR description. Merge only when the
   owner has asked for it: the lane says when a merge is safe, not that one

@@ -78,6 +78,8 @@ for (const size of [
     // A decoded CSS background may still be uploading to the compositor on a
     // busy GPU. Wait for a still pair rather than treating that first paint as
     // continuous animation; keep ordinary animation preferences enabled.
+    // CI's headless shell took longer than 5 s at 1280x720 (every run on main
+    // bdd558d, 21 Nov; never locally), so it gets 20 s (#314).
     //
     // "Still" allows the CPU renderer's own noise, not motion. On CI's
     // SwiftShader two screenshots of the untouched page differed in 21-23 of
@@ -147,7 +149,7 @@ for (const size of [
               diff.maxDelta <= 1 && diff.changedPixels * 1000 < diff.pixels
             );
           },
-          { timeout: 5000 },
+          { timeout: 20_000 },
         )
         .toBe(true);
     } catch (error) {
