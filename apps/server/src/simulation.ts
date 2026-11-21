@@ -1630,7 +1630,7 @@ export class Arena {
           : (a.count ?? 3) * (1 + plates),
       );
       if (plated) {
-        p.plates = 0;
+        p.plates = Math.max(0, plates - (a.platesSpent ?? plates));
         p.plateAt = this.time + PLATES.regrowDelay;
       }
       const fan = a.fan ?? 1.5;
@@ -2662,6 +2662,26 @@ export class Arena {
           damage: a.damage / 2,
           knockback: 60,
         });
+  }
+  /**
+   * Crystal Cage closing in: the ring and every fighter's hold on it shrink
+   * together (holdInCage then squeezes those inside toward the middle).
+   */
+  private stepCage(zone: Zone) {
+    const shrink = zone.ability.cage?.shrinkTo;
+    if (shrink === undefined || zone.until <= this.time) return;
+    const born = zone.born ?? this.time,
+      k = Math.min(1, (this.time - born) / Math.max(0.01, zone.until - born));
+    zone.radius = zone.ability.radius - (zone.ability.radius - shrink) * k;
+    for (const q of this.players)
+      for (const s of q.statuses)
+        if (
+          s.kind === "cage" &&
+          s.until === zone.until &&
+          s.tx === zone.x &&
+          s.ty === zone.y
+        )
+          s.amount = zone.radius;
   }
   /** Does a crystal cage stand between where this shot is and where it is going? */
   private caged(pr: Projectile, dt: number) {
@@ -3781,7 +3801,10 @@ export class Arena {
       return true;
     });
     for (const zone of this.zones) {
-      if (zone.ability.kind === "cage") continue;
+      if (zone.ability.kind === "cage") {
+        this.stepCage(zone);
+        continue;
+      }
       if (zone.ability.kind === "wave") {
         this.stepWave(zone);
         continue;

@@ -614,6 +614,10 @@ export interface Ability {
   cone?: { grow?: number; freeze?: number; freezeFor?: number };
   /** Shrapnel: blades = `count` + `perPlate` per plate (instead of count each). */
   perPlate?: number;
+  /** Shrapnel: how many plates a cast spends (all of them when unset). */
+  platesSpent?: number;
+  /** Cage: the ring closes in to `shrinkTo` px over its duration. */
+  cage?: { shrinkTo: number };
   /** Rest: when it ends, a shockwave round the fighter (damage, radius, knockback). */
   burst?: { damage: number; radius: number; knockback: number };
   /**
@@ -828,15 +832,15 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "crest-flare",
         "Crest Flare",
         "cone",
-        5,
+        6,
         8,
-        "The flame crest flares into a cone of fire for 1.2 seconds, reaching from 230 px out to 300 px as it burns. Burns.",
+        "The flame crest flares into a short, fierce cone of fire for half a second: 6 damage every 0.1 seconds, reaching from 230 px out to 300 px as it burns. Burns.",
         {
           range: 230,
           arc: 0.75,
-          duration: 1.2,
+          duration: 0.5,
           tickDelay: 0.1,
-          tickInterval: 0.2,
+          tickInterval: 0.1,
           knockback: 0,
           status: "burn",
           statusDuration: 1.5,
@@ -1037,8 +1041,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "cage",
         10,
         20,
-        "After a short charge, crystal spires rise in a 180 px ring round Auralynx for 2.5 seconds: nobody can cross it and no shot gets through. Enemies caught inside take 10.",
-        { radius: 180, cast: 0.4, duration: 2.5, knockback: 0 },
+        "After a short charge, crystal spires rise in a 180 px ring round Auralynx for 2.5 seconds: nobody can cross it and no shot gets through. Enemies caught inside take 10, and the ring closes in to 90 px, squeezing them toward Auralynx.",
+        {
+          radius: 180,
+          cast: 0.4,
+          duration: 2.5,
+          knockback: 0,
+          cage: { shrinkTo: 90 },
+        },
       ),
     ],
   },
@@ -2048,10 +2058,11 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "shrapnel",
         6,
         9,
-        "Shed your armour plates as a fan of blades: 6 blades, plus 2 for each plate you have. Every plate is spent and grows back later.",
+        "Shed one armour plate as a fan of blades: 6 blades, plus 2 for each plate you have. The plate grows back later.",
         {
           count: 6,
           perPlate: 2,
+          platesSpent: 1,
           fan: 1.2,
           speed: 760,
           range: 300,
@@ -3680,8 +3691,8 @@ export const RITES: Rite[] = [
     "minor",
     "crest-flare",
     "Long Breath",
-    "Crest Flare lasts 1.6s instead of 1.2s.",
-    { set: { duration: 1.6 } },
+    "Crest Flare lasts 0.7s instead of 0.5s.",
+    { set: { duration: 0.7 } },
   ),
   rite(
     "cindrake",

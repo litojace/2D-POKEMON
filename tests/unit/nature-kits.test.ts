@@ -131,17 +131,18 @@ describe("Tongue Grapple", () => {
 });
 
 describe("Scale Shrapnel", () => {
-  it("fires 6 blades plus 2 per plate and spends every plate", () => {
+  it("fires 6 blades plus 2 per plate and spends one plate", () => {
     const a = arena("pangrove");
     const [me, them] = a.players;
     place(them, 1500, 850);
     place(me, 300, Y, 700, Y);
     a.cast(me, skill("pangrove", "scale-shrapnel"));
     expect(a.projectiles).toHaveLength(12);
-    expect(platesOf(me)).toBe(0);
+    expect(platesOf(me)).toBe(2);
     a.projectiles = [];
     a.cast(me, skill("pangrove", "scale-shrapnel"));
-    expect(a.projectiles).toHaveLength(6);
+    expect(a.projectiles).toHaveLength(10);
+    expect(platesOf(me)).toBe(1);
   });
   it("hurts more up close with plates than without", () => {
     const dealt = (plates: number) => {
