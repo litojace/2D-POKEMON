@@ -2580,6 +2580,8 @@ function syncPlaza(want: boolean, hub = want) {
         skin,
         accountsUI.raidLook?.skin ?? null,
         accountsUI.raidLook?.aura ?? null,
+        accountsUI.raidLook?.entrance ?? null,
+        accountsUI.raidLook?.victory ?? null,
       );
     plazaLook = look;
     return;
@@ -2595,6 +2597,8 @@ function syncPlaza(want: boolean, hub = want) {
     skin,
     colour: accountsUI.raidLook?.skin ?? null,
     aura: accountsUI.raidLook?.aura ?? null,
+    entrance: accountsUI.raidLook?.entrance ?? null,
+    victory: accountsUI.raidLook?.victory ?? null,
     reduced: reducedMotion,
     low: plazaLow,
     art: (character, worn, flat, colour) => {
