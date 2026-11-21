@@ -3102,6 +3102,11 @@ function renderMenu(revealSelection = false) {
   if (!isRoom && !watchingRoom && (!accountsUI?.account || !connected))
     return renderGate();
   document.body.classList.remove("gate-active");
+  // Your skins and looks first: the Lobby's stage (syncHub) draws your
+  // fighter from them. Set after it, an account that answered once the
+  // Lobby was up left the fighter undressed until the next visit.
+  setWornSkins(accountsUI?.economy?.looks);
+  setWornLook(accountsUI?.raidLook);
   syncHub();
   const raidChallenge = state?.raid
     ? `${state.raid.boss}/${state.raid.peril}`
@@ -3170,8 +3175,6 @@ function renderMenu(revealSelection = false) {
   ]);
   const wornChanged = wornKey !== lastWornKey;
   lastWornKey = wornKey;
-  setWornSkins(accountsUI?.economy?.looks);
-  setWornLook(accountsUI?.raidLook);
   // A room (or a room you watch): the seats beside the roster picker.
   if (!home) {
     renderRoom(watchingRoom);
