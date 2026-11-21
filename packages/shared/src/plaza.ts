@@ -241,7 +241,6 @@ export const PLAZA_HOUSES: readonly {
       sd: 2,
       w: 140,
       windows: 1,
-      sign: { t: "STUDIO", bg: "#2a1f4c" },
     },
   },
   {
@@ -259,7 +258,6 @@ export const PLAZA_HOUSES: readonly {
       sd: 4,
       w: 150,
       windows: 1,
-      sign: { t: "BAKERY", bg: "#7a3a1a" },
     },
   },
   {
@@ -630,16 +628,33 @@ export const PLAZA_BENCHES: readonly { x: number; y: number }[] = [
   { x: 1710, y: 680 },
 ];
 /**
- * Signposts where a path leaves another: an arrow plank pointing along the
- * branch (dir 1: east, -1: west) with its words. The fishing pond's stands
- * at the fork off the main path, on the corner north of the pond path.
+ * Signposts where a path leaves another: a post with one or more arrow
+ * planks, each pointing along its way (dir 1: east, -1: west) with its
+ * words and a badge (icon: a hub icon name). The fingerpost at the fork off
+ * the main path, on the corner north of the pond path, is the first one a
+ * new player meets walking south from where they arrive: it sends them to
+ * the places they can't see from the square (the pitch, the track, the pond).
  */
+export interface PlazaSignArm {
+  text: string;
+  dir: 1 | -1;
+  icon: string;
+}
 export const PLAZA_SIGNPOSTS: readonly {
   x: number;
   y: number;
-  text: string;
-  dir: 1 | -1;
-}[] = [{ x: 1468, y: 1352, text: "FISHING", dir: 1 }];
+  arms: readonly PlazaSignArm[];
+}[] = [
+  {
+    x: 1468,
+    y: 1352,
+    arms: [
+      { text: "ORB BALL", dir: 1, icon: "ball" },
+      { text: "DASH TRACK", dir: -1, icon: "flag" },
+      { text: "FISHING", dir: 1, icon: "fish" },
+    ],
+  },
+];
 /**
  * Things by the fishing dock (drawn by the client: gfx rodRack, bucket,
  * tackleBox, reeds, rowboat). `r`: a footprint nobody walks through (reeds stand on
@@ -648,7 +663,15 @@ export const PLAZA_SIGNPOSTS: readonly {
 export const PLAZA_DECOR: readonly {
   x: number;
   y: number;
-  kind: "rodrack" | "bucket" | "tackle" | "reeds" | "rowboat";
+  kind:
+    | "rodrack"
+    | "bucket"
+    | "tackle"
+    | "reeds"
+    | "rowboat"
+    | "chalkboard"
+    | "parasol"
+    | "pot";
   r: number;
   /** Squashes the footprint (a long thing seen at a slant). */
   sy?: number;
@@ -661,6 +684,21 @@ export const PLAZA_DECOR: readonly {
   { x: 1992, y: 1520, kind: "reeds", r: 0, seed: 1 },
   { x: 2036, y: 1556, kind: "reeds", r: 0, seed: 2 },
   { x: 1996, y: 1350, kind: "reeds", r: 0, seed: 3 },
+  // Volt Boba: its chalkboard (what it gives, for free) and a café table in
+  // the shade, south of the truck, just off the paths.
+  { x: 1790, y: 614, kind: "chalkboard", r: 12 },
+  { x: 1885, y: 630, kind: "parasol", r: 22, sy: 1.6 },
+  // A pot of flowers either side of each house's door (where nobody can
+  // stand: the house keeps everyone a step away).
+  ...PLAZA_HOUSES.flatMap((h, i) =>
+    [-1, 1].map((side) => ({
+      x: h.x + side * 40,
+      y: h.y + 6,
+      kind: "pot" as const,
+      r: 0,
+      seed: i * 2 + (side > 0 ? 1 : 0),
+    })),
+  ),
 ];
 const SCATTER = scatter();
 /** Benches, lamps and signposts, as round footprints scattered scenery keeps clear of. */
@@ -673,9 +711,9 @@ const FIXTURES = [
     size: Math.max(70, d.r * 2 + 40),
   })),
   ...PLAZA_SIGNPOSTS.map((s) => ({
-    x: s.x + s.dir * 10,
+    x: s.x,
     y: s.y - 40,
-    size: 150,
+    size: 170,
   })),
   ...PLAZA_LAMPS.map((l) => ({ x: l.x, y: l.y, size: 24 })),
 ];
@@ -1196,13 +1234,15 @@ export interface PlazaWishPay {
 /* ---------- Plaza today: daily quests paid in shop coins (the database's
    arena_plaza_quests(), migration 20261120120000_raise_plaza_quest_coins) ---------- */
 export const PLAZA_QUESTS = [
-  { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 20 },
+  // An even 100 coins a day, weighted by effort (migration
+  // 20261121180000_plaza_quests_hundred, docs/plaza-economy.md).
+  { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 15 },
   { id: "lap", text: "Run a lap in under 30 s", max: 1, coins: 20 },
-  { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 15 },
-  { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 15 },
-  { id: "photo", text: "Use the Photo Spot", max: 1, coins: 10 },
+  { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 10 },
+  { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 20 },
+  { id: "photo", text: "Use the Photo Spot", max: 1, coins: 5 },
   // Migration 20261120180000_plaza_fishing.
-  { id: "fish", text: "Catch 10 fish", max: 10, coins: 25 },
+  { id: "fish", text: "Catch 10 fish", max: 10, coins: 30 },
 ] as const;
 export type PlazaQuestId = (typeof PLAZA_QUESTS)[number]["id"];
 /** A lap under this time completes the lap quest. */
@@ -1229,12 +1269,14 @@ export const PLAZA_SPOTS = [
     icon: "boba",
   },
   {
+    // The Plaza map board (it used to be an "Event board" that only opened
+    // the quest list already on screen).
     id: "board",
     x: PLAZA_BOARD.x,
     y: PLAZA_BOARD.y + 30,
     r: 100,
-    label: "Event board",
-    icon: "clipboard",
+    label: "Plaza map",
+    icon: "map",
   },
   {
     id: "leader",
@@ -1255,6 +1297,106 @@ export const PLAZA_SPOTS = [
   },
 ] as const;
 export type PlazaSpotId = (typeof PLAZA_SPOTS)[number]["id"];
+/* ---------- places on the Plaza map ---------- */
+/**
+ * What the Plaza map shows and where its Go takes you: each place's name,
+ * icon (a hub icon), where you walk to (on open ground, on or by a path),
+ * and the daily quests done there (PLAZA_QUESTS ids), so the map and the
+ * quest list can send a player straight to them. New places and quests are
+ * data here, not branches in the screen.
+ */
+export interface PlazaPlace {
+  id: string;
+  name: string;
+  /** One short line on the map card. */
+  blurb: string;
+  icon: string;
+  x: number;
+  y: number;
+  quests: readonly string[];
+  /** Which side of its pin the map writes its name (default: centred). */
+  label?: "left" | "right";
+}
+export const PLAZA_PLACES: readonly PlazaPlace[] = [
+  {
+    id: "fountain",
+    name: "Wishing fountain",
+    blurb: "Toss treats, fill the wish, catch orbs",
+    icon: "sparkle",
+    x: PLAZA_SQUARE.x,
+    y: PLAZA_FOUNTAIN.y + 120,
+    quests: ["orbs"],
+  },
+  {
+    id: "runway",
+    name: "Runway",
+    blurb: "Show off your skin, collect cheers",
+    icon: "star",
+    x: PLAZA_SQUARE.x,
+    y: PLAZA_WALK.y1 - 40,
+    quests: ["cheers"],
+  },
+  {
+    id: "photo",
+    name: "Photo Spot",
+    blurb: "Take a photo for your album",
+    icon: "camera",
+    x: PLAZA_PHOTO.x,
+    y: PLAZA_PHOTO.y + 40,
+    quests: ["photo"],
+  },
+  {
+    id: "cafe",
+    name: "Volt Boba",
+    blurb: "A free drink: 30 s of speed",
+    icon: "boba",
+    x: PLAZA_CAFE.x - 30,
+    y: PLAZA_CAFE.y + 80,
+    quests: [],
+  },
+  {
+    id: "pitch",
+    name: "Orb Ball pitch",
+    blurb: "Kick the ball into a goal",
+    icon: "ball",
+    x: (PLAZA_PITCH.x0 + PLAZA_PITCH.x1) / 2,
+    y: (PLAZA_PITCH.y0 + PLAZA_PITCH.y1) / 2 + 60,
+    quests: ["goal"],
+  },
+  {
+    id: "track",
+    name: "Dash Track",
+    blurb: "Run a lap, jump the hurdles",
+    icon: "flag",
+    // The start line: the top of the lane.
+    x: PLAZA_TRACK.cx + 40,
+    y: PLAZA_TRACK.cy - (PLAZA_TRACK.ro[1] + PLAZA_TRACK.ri[1]) / 2,
+    quests: ["lap"],
+    // Clear of the TOP DASH board's name, just up and to the left.
+    label: "right",
+  },
+  {
+    id: "leader",
+    name: "TOP DASH board",
+    blurb: "This week's fastest laps",
+    icon: "trophy",
+    x: PLAZA_LEADER.x + 10,
+    y: PLAZA_LEADER.y + 40,
+    quests: [],
+  },
+  {
+    id: "pond",
+    name: "Fishing pond",
+    blurb: "Cast a line, fill the Fish book",
+    icon: "fish",
+    x: PLAZA_POND.x - PLAZA_POND.rx - 40,
+    y: PLAZA_POND.y - 40,
+    quests: ["fish"],
+  },
+];
+/** The place where a daily quest is done. */
+export const plazaPlaceOf = (quest: string) =>
+  PLAZA_PLACES.find((p) => p.quests.includes(quest));
 /** The spot within reach of (x, y), if any (the server checks reach with a little slack). */
 export function plazaSpotAt(x: number, y: number, slack = 0) {
   return PLAZA_SPOTS.find((s) => Math.hypot(x - s.x, y - s.y) < s.r + slack);

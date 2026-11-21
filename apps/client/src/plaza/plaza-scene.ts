@@ -50,6 +50,8 @@ import {
   PLAZA_PITCH,
   PLAZA_POND,
   PLAZA_QUESTS,
+  PLAZA_PLACES,
+  plazaPlaceOf,
   PLAZA_ROCKS,
   PLAZA_FISH,
   PLAZA_FISH_RARITY,
@@ -109,6 +111,7 @@ import { sceneLines, setPerfSource } from "../perf-hud";
 import { depthSort, slices, spot } from "./plaza-depth";
 import { createFightView } from "./plaza-fight-view";
 import { plazaPath } from "./plaza-path";
+import { mapFrac, mapPinsHtml, paintPlazaMap } from "./plaza-map";
 import { PlazaPrediction } from "./plaza-predict";
 import {
   FIGHT_IN_SECONDS,
@@ -172,10 +175,10 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     <div class="pz-runcard glass" id="pz-runcard" hidden></div>
     <div class="pz-joy" id="pz-joy"><div class="ring" id="pz-ring"><div class="knob" id="pz-knob"></div></div></div>
     <div class="pz-left">
+      <button type="button" class="pz-round" id="pz-map-btn" aria-label="Plaza map (M)">${I("map")}<small>Map</small></button>
       <button type="button" class="pz-round" id="pz-wheel-btn" aria-label="Quick chat">${I("smile")}<small>Chat</small></button>
       <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat (T)">${I("gift")}<small id="pz-treats">0</small><b class="pz-wishn" id="pz-wishn" hidden></b></button>
       <button type="button" class="pz-round" id="pz-album-btn" aria-label="Photo album">${I("album")}<small>Album</small></button>
-      <button type="button" class="pz-round" id="pz-fish-btn" aria-label="Fish book">${I("fish")}<small>Fish</small></button>
     </div>
     <div class="pz-wheel" id="pz-wheel" hidden>
       ${EMOTE_KEYS.map((e, i) => `<button type="button" data-emote="${e}" style="--a:${i}" aria-label="Emote ${e}">${e}</button>`).join("")}
@@ -211,9 +214,22 @@ const PLAZA_HTML = `<div class="pz" id="pz">
         <p class="pz-fishbook-note" id="pz-fishbook-note"></p>
       </section>
     </div>
+    <div class="pz-map" id="pz-map" role="dialog" aria-modal="true" aria-label="Plaza map" hidden>
+      <section class="pz-map-panel">
+        <header><b>${I("map")}<span>Plaza map</span></b><span class="pz-map-hint" id="pz-map-hint">Tap a place to walk there</span><button type="button" class="pz-map-book" id="pz-map-book" aria-label="Fish book (B)">${I("fish")}<span>Fish book</span></button><button type="button" class="x" data-map="close" aria-label="Close the map">✕</button></header>
+        <div class="pz-map-body">
+          <div class="pz-map-view" id="pz-map-view">
+            <canvas id="pz-map-cv" aria-hidden="true"></canvas>
+            <div class="pz-map-dots" id="pz-map-dots" aria-hidden="true"></div>
+            <div class="pz-map-pins" id="pz-map-pins"></div>
+          </div>
+          <ul class="pz-map-list" id="pz-map-list"></ul>
+        </div>
+      </section>
+    </div>
     <div class="pz-card glass" id="pz-card" role="dialog" aria-label="Player" hidden></div>
     <div class="pz-ask glass" id="pz-ask" role="alertdialog" aria-label="Pair emote request" hidden></div>
-    <div class="pz-start" id="pz-start" hidden><b>Plaza</b><span>Click to start</span><div class="pz-keys"><span><kbd>WASD</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> dash</span><span><kbd>E</kbd> interact</span><span><kbd>Q</kbd> emote</span><span><kbd>T</kbd> treat</span></div></div>
+    <div class="pz-start" id="pz-start" hidden><b>Plaza</b><span>Click to start</span><div class="pz-keys"><span><kbd>WASD</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> dash</span><span><kbd>E</kbd> interact</span><span><kbd>Q</kbd> emote</span><span><kbd>T</kbd> treat</span><span><kbd>M</kbd> map</span><span><kbd>B</kbd> Fish book</span></div></div>
   </div>
 </div>`;
 
@@ -713,6 +729,25 @@ export function openPlaza(options) {
         g.fillStyle = (i + k) % 2 ? "#1c1c24" : "#fafafa";
         g.fillRect(TRACK.cx - 18 + k * 12, y, 12, 12);
       }
+    {
+      // Lane numbers just past the start line, and arrows the way you run.
+      g.font = "800 22px 'Barlow Condensed', sans-serif";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillStyle = "rgba(255,245,234,.85)";
+      const lw = (TRACK.ro[1] - TRACK.ri[1]) / 3;
+      for (let k = 0; k < 3; k++) {
+        const y = TRACK.cy - TRACK.ri[1] - lw * (k + 0.5);
+        g.fillText(String(k + 1), TRACK.cx + 42, y + 1);
+        g.beginPath();
+        g.moveTo(TRACK.cx + 66, y - 5);
+        g.lineTo(TRACK.cx + 78, y);
+        g.lineTo(TRACK.cx + 66, y + 5);
+        g.closePath();
+        g.fill();
+      }
+      g.textBaseline = "alphabetic";
+    }
     g.save();
     g.beginPath();
     g.ellipse(TRACK.cx, TRACK.cy, TRACK.ri[0] - 3, TRACK.ri[1] - 3, 0, 0, 7);
@@ -747,6 +782,8 @@ export function openPlaza(options) {
       16,
     );
     g.fill();
+    // Mown in a chequer, as stadium grass is: stripes across, fainter
+    // stripes down, and the grain of the blades over it.
     for (let i = 0; i < 10; i++) {
       g.fillStyle = i % 2 ? "#5fb951" : "#56ad48";
       g.fillRect(
@@ -755,6 +792,41 @@ export function openPlaza(options) {
         (PITCH.x1 - PITCH.x0) / 10 + 1,
         PITCH.y1 - PITCH.y0,
       );
+    }
+    for (let j = 0; j < 8; j++) {
+      if (j % 2) continue;
+      g.fillStyle = "rgba(255,255,255,.045)";
+      g.fillRect(
+        PITCH.x0,
+        PITCH.y0 + (j * (PITCH.y1 - PITCH.y0)) / 8,
+        PITCH.x1 - PITCH.x0,
+        (PITCH.y1 - PITCH.y0) / 8,
+      );
+    }
+    for (let i = 0; i < 1600; i++) {
+      g.fillStyle =
+        rnd() < 0.5 ? "rgba(30,80,30,.18)" : "rgba(200,255,170,.14)";
+      g.fillRect(
+        PITCH.x0 + rnd() * (PITCH.x1 - PITCH.x0),
+        PITCH.y0 + rnd() * (PITCH.y1 - PITCH.y0),
+        1.2,
+        3,
+      );
+    }
+    // Worn grass in each goalmouth, where everyone stands.
+    for (const gx of [PITCH.x0 + 26, PITCH.x1 - 26]) {
+      const wg = g.createRadialGradient(
+        gx,
+        (PITCH.gy0 + PITCH.gy1) / 2,
+        4,
+        gx,
+        (PITCH.gy0 + PITCH.gy1) / 2,
+        60,
+      );
+      wg.addColorStop(0, "rgba(160,130,70,.35)");
+      wg.addColorStop(1, "rgba(160,130,70,0)");
+      g.fillStyle = wg;
+      g.fillRect(gx - 60, PITCH.gy0 - 20, 120, PITCH.gy1 - PITCH.gy0 + 40);
     }
     g.strokeStyle = "#f6fff2";
     g.lineWidth = 5;
@@ -779,6 +851,33 @@ export function openPlaza(options) {
       96,
       PITCH.gy1 - PITCH.gy0 + 100,
     );
+    {
+      // Penalty spots, the arcs at the boxes and the corner arcs.
+      const my = (PITCH.gy0 + PITCH.gy1) / 2;
+      g.fillStyle = "#f6fff2";
+      for (const px of [PITCH.x0 + 70, PITCH.x1 - 70]) {
+        g.beginPath();
+        g.ellipse(px, my, 4, 3, 0, 0, 7);
+        g.fill();
+      }
+      g.lineWidth = 4;
+      g.beginPath();
+      g.ellipse(PITCH.x0 + 70, my, 54, 36, 0, -1.0, 1.0);
+      g.stroke();
+      g.beginPath();
+      g.ellipse(PITCH.x1 - 70, my, 54, 36, 0, Math.PI - 1.0, Math.PI + 1.0);
+      g.stroke();
+      for (const [cx, cy, a0] of [
+        [PITCH.x0, PITCH.y0, 0],
+        [PITCH.x1, PITCH.y0, Math.PI / 2],
+        [PITCH.x1, PITCH.y1, Math.PI],
+        [PITCH.x0, PITCH.y1, -Math.PI / 2],
+      ]) {
+        g.beginPath();
+        g.ellipse(cx, cy, 14, 10, 0, a0, a0 + Math.PI / 2);
+        g.stroke();
+      }
+    }
     // pond rim stones
     g.fillStyle = "rgba(40,60,40,.35)";
     g.beginPath();
@@ -826,6 +925,98 @@ export function openPlaza(options) {
     fw.addColorStop(1, "#2a1f4c");
     g.fillStyle = fw;
     g.fillRect(WALK.x0, WALK.y0 - 1, WALK.x1 - WALK.x0, WALK.y1 - WALK.y0 + 1);
+    {
+      // The stage dressed for a show: lacquered boards with a sheen, a gold
+      // star in a ring at its centre, and a pink carpet down the catwalk
+      // with gold piping. (It was a bare purple floor.)
+      const sw = STAGE.x1 - STAGE.x0,
+        sh = STAGE.y1 - STAGE.y0,
+        scx = (STAGE.x0 + STAGE.x1) / 2,
+        scy = (STAGE.y0 + STAGE.y1) / 2;
+      g.save();
+      g.beginPath();
+      g.rect(STAGE.x0, STAGE.y0, sw, sh);
+      g.clip();
+      g.strokeStyle = "rgba(10,6,24,.35)";
+      g.lineWidth = 1;
+      for (let y = STAGE.y0 + 11, r = 0; y < STAGE.y1; y += 11, r++) {
+        g.beginPath();
+        g.moveTo(STAGE.x0, y);
+        g.lineTo(STAGE.x1, y);
+        g.stroke();
+        for (let x = STAGE.x0 + ((r * 53) % 90); x < STAGE.x1; x += 90) {
+          g.beginPath();
+          g.moveTo(x, y - 11);
+          g.lineTo(x, y);
+          g.stroke();
+        }
+      }
+      // The sheen: a soft diagonal band of light across the boards.
+      const sg = g.createLinearGradient(STAGE.x0, STAGE.y0, STAGE.x1, STAGE.y1);
+      sg.addColorStop(0.25, "rgba(255,255,255,0)");
+      sg.addColorStop(0.42, "rgba(255,220,255,.12)");
+      sg.addColorStop(0.5, "rgba(255,255,255,.04)");
+      sg.addColorStop(0.62, "rgba(255,220,255,.1)");
+      sg.addColorStop(0.8, "rgba(255,255,255,0)");
+      g.fillStyle = sg;
+      g.fillRect(STAGE.x0, STAGE.y0, sw, sh);
+      g.restore();
+      // The star in its ring (flattened: the floor is seen at a slant).
+      g.save();
+      g.translate(scx, scy + 4);
+      g.scale(1, 0.5);
+      g.strokeStyle = "rgba(255,214,91,.75)";
+      g.lineWidth = 4;
+      g.beginPath();
+      g.arc(0, 0, 70, 0, 7);
+      g.stroke();
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.arc(0, 0, 80, 0, 7);
+      g.stroke();
+      const star = (r0, r1) => {
+        g.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const a = -Math.PI / 2 + (i * Math.PI) / 5,
+            r = i % 2 ? r1 : r0;
+          g.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        g.closePath();
+      };
+      star(56, 23);
+      const st = g.createLinearGradient(0, -56, 0, 56);
+      st.addColorStop(0, "#fff1a8");
+      st.addColorStop(1, "#e0a020");
+      g.fillStyle = st;
+      g.fill();
+      g.strokeStyle = "#8a5a10";
+      g.lineWidth = 2;
+      g.stroke();
+      g.restore();
+      // The catwalk's carpet.
+      const cw = 40,
+        cx0 = (WALK.x0 + WALK.x1) / 2 - cw / 2;
+      const cg = g.createLinearGradient(cx0, 0, cx0 + cw, 0);
+      cg.addColorStop(0, "#d04a8a");
+      cg.addColorStop(0.5, "#ff7fb8");
+      cg.addColorStop(1, "#d04a8a");
+      g.fillStyle = cg;
+      g.fillRect(cx0, STAGE.y1, cw, WALK.y1 - STAGE.y1);
+      g.fillStyle = "#ffd65b";
+      g.fillRect(cx0 - 2, STAGE.y1, 2, WALK.y1 - STAGE.y1);
+      g.fillRect(cx0 + cw, STAGE.y1, 2, WALK.y1 - STAGE.y1);
+      g.fillStyle = "rgba(255,255,255,.18)";
+      for (let y = STAGE.y1 + 8; y < WALK.y1 - 6; y += 16)
+        g.fillRect(cx0 + 6, y, cw - 12, 2);
+      // Steps up at both ends of the stage's front.
+      for (const sx of [STAGE.x0 + 30, STAGE.x1 - 90])
+        for (let k = 0; k < 2; k++) {
+          g.fillStyle = k ? "#3d2d6e" : "#2a1f4c";
+          g.fillRect(sx, STAGE.y1 + 18 + k * 9, 60, 9);
+          g.fillStyle = "rgba(255,214,91,.6)";
+          g.fillRect(sx, STAGE.y1 + 18 + k * 9, 60, 1.5);
+        }
+    }
     g.strokeStyle = "#ffd65b";
     g.lineWidth = 3;
     g.strokeRect(STAGE.x0, STAGE.y0, STAGE.x1 - STAGE.x0, STAGE.y1 - STAGE.y0);
@@ -860,27 +1051,79 @@ export function openPlaza(options) {
     g.lineWidth = 2.5;
     g.stroke();
     g.setLineDash([]);
-    // garden strip beyond the gate
+    // The flower border along the south fence. (It was rows of vegetable
+    // beds, left from the Farm that has gone: now a park's flower walk, a
+    // trimmed box hedge with beds of tulips in drifts of one colour.)
     g.fillStyle = "#5fa444";
     g.fillRect(0, GATE.y + 20, W, H - GATE.y - 20);
-    for (let r = 0; r < 2; r++)
-      for (let x = 80; x < W - 60; x += 150) {
-        if (Math.abs(x + 55 - GATE.x) < 170) continue;
-        g.fillStyle = "#7a5534";
+    {
+      const y0 = GATE.y + 34,
+        y1 = H - 8;
+      const BLOOM = [
+        ["#ff6f9a", "#ffd0de"],
+        ["#ffd65b", "#fff4b8"],
+        ["#ffffff", "#ffe9f2"],
+        ["#c47dff", "#ecd6ff"],
+        ["#ff8a3d", "#ffd2a8"],
+        ["#4fb3ff", "#d3ecff"],
+      ];
+      for (let x = 30, k = 0; x < W - 30; k++) {
+        const w = 150 + ((k * 37) % 60);
+        if (Math.abs(x + w / 2 - GATE.x) < 110 + w / 2) {
+          x += 40;
+          continue;
+        }
+        // The bed: dark soil inside a clipped box edge.
+        g.fillStyle = "#3f8a37";
         g.beginPath();
-        g.roundRect(x, GATE.y + 42 + r * 30, 110, 20, 8);
+        g.roundRect(x - 6, y0 - 6, w + 12, y1 - y0 + 12, 14);
         g.fill();
-        for (let k = 0; k < 5; k++) {
-          g.fillStyle = "#3f8f3a";
+        g.fillStyle = "#6a4a2c";
+        g.beginPath();
+        g.roundRect(x, y0, w, y1 - y0, 10);
+        g.fill();
+        g.fillStyle = "rgba(255,255,255,.08)";
+        for (let i = 0; i < 40; i++)
+          g.fillRect(x + rnd() * w, y0 + rnd() * (y1 - y0), 2, 2);
+        // Box hedge highlights along its top edge.
+        g.fillStyle = "#5fb34c";
+        for (let hx = x; hx < x + w; hx += 12) {
           g.beginPath();
-          g.arc(x + 11 + k * 22, GATE.y + 46 + r * 30, 7, 0, 7);
-          g.fill();
-          g.fillStyle = "#8fdc66";
-          g.beginPath();
-          g.arc(x + 9 + k * 22, GATE.y + 44 + r * 30, 4, 0, 7);
+          g.arc(hx + 6, y0 - 4, 5, 0, 7);
           g.fill();
         }
+        // Tulips: leaves, then a cup of petals, in rows staggered.
+        const [c, hi] = BLOOM[k % BLOOM.length];
+        for (let ty = y0 + 12, row = 0; ty < y1 - 4; ty += 14, row++)
+          for (let tx = x + 10 + (row % 2) * 8; tx < x + w - 8; tx += 16) {
+            const jx = (rnd() - 0.5) * 4,
+              jy = (rnd() - 0.5) * 3;
+            g.fillStyle = "#3f9a3a";
+            g.beginPath();
+            g.ellipse(tx + jx - 3, ty + jy + 2, 2, 5, -0.5, 0, 7);
+            g.ellipse(tx + jx + 3, ty + jy + 2, 2, 5, 0.5, 0, 7);
+            g.fill();
+            g.fillStyle = c;
+            g.beginPath();
+            g.moveTo(tx + jx - 4.5, ty + jy - 6);
+            g.lineTo(tx + jx - 2, ty + jy - 3);
+            g.lineTo(tx + jx, ty + jy - 7);
+            g.lineTo(tx + jx + 2, ty + jy - 3);
+            g.lineTo(tx + jx + 4.5, ty + jy - 6);
+            g.quadraticCurveTo(tx + jx + 5, ty + jy + 1, tx + jx, ty + jy + 1);
+            g.quadraticCurveTo(
+              tx + jx - 5,
+              ty + jy + 1,
+              tx + jx - 4.5,
+              ty + jy - 6,
+            );
+            g.fill();
+            g.fillStyle = hi;
+            g.fillRect(tx + jx - 2.5, ty + jy - 4, 1.5, 3);
+          }
+        x += w + 26;
       }
+    }
     for (let x = 10; x < W; x += 30) {
       if (Math.abs(x - GATE.x) < 72) continue;
       g.fillStyle = "#9a6a3a";
@@ -901,8 +1144,13 @@ export function openPlaza(options) {
     paintSurroundings(g);
     g.setTransform(1, 0, 0, 1, 0, 0);
   }
+  /** The map board's small picture of the Plaza: made once, with the
+   * ground, while the Plaza opens (scaling the whole ground down is the
+   * costly part, too slow to do mid-frame on a slow phone). */
+  let boardPic = null;
   function prep() {
     paintBg();
+    boardPic = paintPlazaMap(bg, GM, 264);
     ready = true;
   }
 
@@ -1033,17 +1281,6 @@ export function openPlaza(options) {
     jump: 0,
     c: ["#ff8a3d", "#ffffff", "#ffd65b"][i],
   }));
-  const HENS = ["white", "brown", "white"].map((k, i) => ({
-    k,
-    x: GATE.x - 220 + i * 190,
-    y: GATE.y - 100 + i * 18,
-    tx: null,
-    ty: null,
-    wait: 1 + i,
-    face: 1,
-    st: "idle",
-    t0: 0,
-  }));
   const PIGEONS = Array.from({ length: 9 }, (_, i) => {
     const a = i * 0.7 + 1,
       r = 0.35 + (i % 3) * 0.18;
@@ -1108,8 +1345,7 @@ export function openPlaza(options) {
     low = true;
     layer.dataset.graphics = "low";
     syncHubGraphics();
-    for (const list of [DUCKS, FISH, HENS, PIGEONS, BUTTER, SMOKE])
-      list.length = 0;
+    for (const list of [DUCKS, FISH, PIGEONS, BUTTER, SMOKE]) list.length = 0;
     flock = null;
     fireworks.setLevel(true, reduced);
     // Redraw at 1x (before the first resize, that sizes it anyway).
@@ -1196,14 +1432,27 @@ export function openPlaza(options) {
     const box = $("pz-quests");
     const q = progress?.quests;
     const done = q ? PLAZA_QUESTS.filter((x) => q[x.id]?.done).length : 0;
+    const left = PLAZA_QUESTS.filter((x) => !q?.[x.id]?.done).reduce(
+      (a, x) => a + x.coins,
+      0,
+    );
     box.className = `pz-quests glass${qmin[qk()] ? " min" : ""}`;
     setInner(
       box,
-      `<h5><span>Plaza today · ${done}/${PLAZA_QUESTS.length}</span><button type="button" data-qmin aria-label="${qmin[qk()] ? "Expand" : "Collapse"}">${qmin[qk()] ? "▾" : "▴"}</button></h5>${PLAZA_QUESTS.map(
+      // The whole title row is the fold button (it was only the small
+      // arrow at its end): today's count, the coins still to earn, a
+      // chevron, and folded, a progress line along the bottom.
+      `<h5><button type="button" class="pz-qhead" data-qmin aria-expanded="${!qmin[qk()]}" aria-controls="pz-quests" aria-label="Plaza today, ${done} of ${PLAZA_QUESTS.length} done${left ? `, ${left} coins left` : ""}. ${qmin[qk()] ? "Show" : "Hide"} quests"><span class="t">Plaza today</span><span class="n">${done}/${PLAZA_QUESTS.length}</span>${left ? `<span class="c">+${left} ${I("coin", "coin")}</span><b class="pz-qbadge" aria-hidden="true">${PLAZA_QUESTS.length - done}</b>` : `<span class="c ok">✓</span>`}<i class="chev" aria-hidden="true"></i></button><span class="pz-qline" aria-hidden="true"><i style="width:${(done / PLAZA_QUESTS.length) * 100}%"></i></span></h5>${PLAZA_QUESTS.map(
         (x) => {
           const n = q?.[x.id]?.n ?? 0,
             paid = q?.[x.id]?.done;
-          return `<div class="pz-q${paid ? " done" : ""}"><span>${x.text}</span><span class="rw">${paid ? "✓" : `+${x.coins} ${I("coin", "coin")}`}</span><span class="bar"><i style="width:${(Math.min(n, x.max) / x.max) * 100}%"></i></span></div>`;
+          const place = plazaPlaceOf(x.id);
+          // Go: walk to where it is done (the map's places, shared data).
+          const go =
+            place && !paid
+              ? `<button type="button" class="go" data-go="${place.id}" aria-label="Go to ${esc(place.name)}" title="Go to ${esc(place.name)}">${I(place.icon)}</button>`
+              : "<span></span>";
+          return `<div class="pz-q${paid ? " done" : ""}"><span>${x.text}</span><span class="rw">${paid ? "✓" : `+${x.coins} ${I("coin", "coin")}`}</span>${go}<span class="bar"><i style="width:${(Math.min(n, x.max) / x.max) * 100}%"></i></span></div>`;
         },
       ).join("")}`,
     );
@@ -1213,6 +1462,8 @@ export function openPlaza(options) {
       qmin[qk()] = !qmin[qk()];
       renderQuests();
     }
+    const go = e.target.closest("[data-go]");
+    if (go) goToPlace(go.dataset.go);
   });
   function setProgress(p) {
     if (!p?.quests) return;
@@ -1436,6 +1687,10 @@ export function openPlaza(options) {
       else if (k === "tab") keepTabInAlbum(e);
       return;
     }
+    if (mapOpen()) {
+      if (k === "escape" || k === "m") hideMap();
+      return;
+    }
     if (!$("pz-fishbook").hidden) {
       if (k === "escape") hideFishBook();
       else if (k === "tab") {
@@ -1501,6 +1756,8 @@ export function openPlaza(options) {
     if (k === "e") interact();
     if (k === "q") toggleWheel();
     if (k === "t") throwTreat();
+    if (k === "m") showMap();
+    if (k === "b") showFishBook();
     if ("12345678".includes(k) && k.length === 1) emote(EMOTE_KEYS[+k - 1]);
   }
   screen.addEventListener("keydown", onKey);
@@ -1562,8 +1819,10 @@ export function openPlaza(options) {
     start();
     showAlbum();
   };
-  $("pz-fish-btn").onclick = () => {
-    start();
+  // The Fish book opens from the map (its HUD button went, to keep the
+  // phone's row of buttons short), from fishing's Book, or with B.
+  $("pz-map-book").onclick = () => {
+    hideMap();
     showFishBook();
   };
   $("pz-wheel").addEventListener("click", (e) => {
@@ -2010,13 +2269,9 @@ export function openPlaza(options) {
       x: BOARD.x,
       y: BOARD.y + 30,
       r: 100,
-      label: "Event board",
-      icon: "clipboard",
-      act: () => {
-        qmin[qk()] = false;
-        renderQuests();
-        pzToast("Plaza quests are open");
-      },
+      label: "Plaza map",
+      icon: "map",
+      act: () => showMap(),
     },
     {
       id: "leader",
@@ -2170,6 +2425,82 @@ export function openPlaza(options) {
     screen.focus({ preventScroll: true });
   }
   $("pz-fishbook").querySelector('[data-fb="close"]').onclick = hideFishBook;
+
+  /* ---------- the Plaza map (plaza-map.ts): every place, and Go ---------- */
+  let mapPic = null,
+    mapDotsAt = 0;
+  const mapOpen = () => !$("pz-map").hidden;
+  /** Today's unfinished quests done at a place. */
+  const questsAt = (place) =>
+    PLAZA_QUESTS.filter(
+      (x) => place.quests.includes(x.id) && !progress?.quests?.[x.id]?.done,
+    );
+  function renderMap() {
+    if (!mapPic) mapPic = paintPlazaMap(bg, GM, 900);
+    const cvm = $("pz-map-cv");
+    if (cvm.width !== mapPic.width) {
+      cvm.width = mapPic.width;
+      cvm.height = mapPic.height;
+      cvm.getContext("2d").drawImage(mapPic, 0, 0);
+    }
+    setInner(
+      $("pz-map-pins"),
+      mapPinsHtml(PLAZA_PLACES, I, (p) => questsAt(p).length > 0),
+    );
+    setInner(
+      $("pz-map-list"),
+      PLAZA_PLACES.map((p) => {
+        const q = questsAt(p)[0];
+        const line = q
+          ? `<small class="q">${esc(q.text)} · +${q.coins} ${I("coin", "coin")}</small>`
+          : `<small>${esc(p.blurb)}</small>`;
+        return `<li><button type="button" data-place="${p.id}"${q ? ' class="quest"' : ""}>${I(p.icon)}<span><b>${esc(p.name)}</b>${line}</span><i aria-hidden="true">Go</i></button></li>`;
+      }).join(""),
+    );
+    renderMapDots();
+  }
+  /** You and the other players on the map (every quarter second while open). */
+  function renderMapDots() {
+    mapDotsAt = performance.now();
+    const dot = (b, cls) => {
+      const { fx, fy } = mapFrac(b.x, b.y);
+      return `<i class="${cls}" style="left:${(fx * 100).toFixed(2)}%;top:${(fy * 100).toFixed(2)}%"></i>`;
+    };
+    let html = "";
+    for (const b of others.values()) if (!b.bot) html += dot(b, "pl");
+    $("pz-map-dots").innerHTML = html + dot(P, "me");
+  }
+  function showMap() {
+    toggleWheel(false);
+    hideCard();
+    standStill();
+    $("pz-map").hidden = false;
+    renderMap();
+    $("pz-map").querySelector('[data-map="close"]').focus();
+  }
+  function hideMap() {
+    $("pz-map").hidden = true;
+    screen.focus({ preventScroll: true });
+  }
+  /** Walk to a place on the map (round whatever is in the way). */
+  function goToPlace(id) {
+    const p = PLAZA_PLACES.find((x) => x.id === id);
+    if (!p) return;
+    start();
+    if (mapOpen()) hideMap();
+    if (fishing.active) exitFishing();
+    walkTo({ x: p.x, y: p.y }, true);
+    pzToast(`Walking to ${p.name}`);
+  }
+  $("pz-map").querySelector('[data-map="close"]').onclick = hideMap;
+  $("pz-map").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-place]");
+    if (b) goToPlace(b.dataset.place);
+  });
+  $("pz-map-btn").onclick = () => {
+    start();
+    showMap();
+  };
   let near = null;
   function interact() {
     if (near) near.act();
@@ -2372,6 +2703,7 @@ export function openPlaza(options) {
   // A tap on the dimmed background around the polaroid puts it away.
   onBackdrop($("pz-photo"), (t) => t.id === "pz-photo", closePhoto);
   onBackdrop($("pz-fishbook"), (t) => t.id === "pz-fishbook", hideFishBook);
+  onBackdrop($("pz-map"), (t) => t.id === "pz-map", hideMap);
 
   /* the photo album: on this device only (plaza-album.ts, PLAN.md) */
   const album = openAlbum();
@@ -2875,6 +3207,12 @@ export function openPlaza(options) {
   }
   /** A lamp's head above its foot (the lamp sprite, scaled). */
   const LAMP_HEAD = 78 * PLAZA_SCALE.lamp;
+  /** Coins on the fountain's bottom (round its centre, off the column). */
+  const FOUNT_COINS = Array.from({ length: 16 }, (_, k) => {
+    const a = k * 2.399,
+      r = 0.42 + ((k * 37) % 50) / 100;
+    return [Math.cos(a) * 96 * r, 2 + Math.sin(a) * 50 * r, k];
+  });
   function drawFountain(g, time) {
     const { x, y } = FOUNT;
     // basin wall (front) + rim + water
@@ -2928,6 +3266,18 @@ export function openPlaza(options) {
     g.beginPath();
     g.ellipse(x, y + 2, brx - 15, bry - 11, 0, 0, 7);
     g.clip();
+    // Wishes: coins on the bottom, a few catching the light in turn.
+    for (const [cx, cy, k] of FOUNT_COINS) {
+      const tw = low ? 0 : Math.max(0, Math.sin(time * 2.2 + k * 5.3));
+      g.fillStyle = "rgba(160,110,20,.55)";
+      g.beginPath();
+      g.ellipse(x + cx, y + cy, 4.2, 2.4, 0, 0, 7);
+      g.fill();
+      g.fillStyle = `rgba(255,${214 + tw * 30},${91 + tw * 120},${0.55 + tw * 0.45})`;
+      g.beginPath();
+      g.ellipse(x + cx - 0.5, y + cy - 0.6, 3.4, 1.9, 0, 0, 7);
+      g.fill();
+    }
     g.strokeStyle = "rgba(255,255,255,.35)";
     g.lineWidth = 1.6;
     for (let i = 0; i < 9; i++) {
@@ -3196,6 +3546,112 @@ export function openPlaza(options) {
       { name: left ? "goal-left" : "goal-right" },
     );
   }
+  /** A corner flag: a white pole and a pennant in the side's colour,
+   * rippling in the breeze (a still pennant on Low graphics). */
+  function drawCornerFlag(g, x, y, i, time) {
+    GFX.shadow(g, x + 2, y + 1, 6, 2);
+    g.fillStyle = "#f6f6f6";
+    g.fillRect(x - 1.5, y - 44, 3, 44);
+    g.fillStyle = "#c9c9c9";
+    g.fillRect(x + 0.5, y - 44, 1, 44);
+    const c = x < (PITCH.x0 + PITCH.x1) / 2 ? "#4fb3ff" : "#ef4f61",
+      t = low ? 0 : time * 6 + i * 1.7;
+    g.fillStyle = c;
+    g.beginPath();
+    g.moveTo(x + 1.5, y - 44);
+    for (let k = 1; k <= 4; k++)
+      g.lineTo(x + 1.5 + k * 4.5, y - 44 + Math.sin(t + k) * k * 0.6 + k * 0.5);
+    for (let k = 4; k >= 1; k--)
+      g.lineTo(x + 1.5 + k * 4.5, y - 32 + Math.sin(t + k) * k * 0.6 - k * 0.9);
+    g.lineTo(x + 1.5, y - 31);
+    g.closePath();
+    g.fill();
+    g.fillStyle = "#ffd65b";
+    g.beginPath();
+    g.arc(x, y - 45, 2.4, 0, 7);
+    g.fill();
+  }
+  /** Dragonflies over the pond: they hover, then dart to a new spot. */
+  const DRAGONFLIES = [0, 1, 2].map((i) => ({
+    x: POND.x - 80 + i * 70,
+    y: POND.y - 30 + i * 18,
+    tx: POND.x,
+    ty: POND.y,
+    wait: i * 0.7,
+    c: ["#4fd0ff", "#ff7fb8", "#8fe36a"][i],
+  }));
+  let dragonT = 0;
+  function drawDragonflies(g, time) {
+    const dt = Math.min(0.05, Math.max(0, time - dragonT));
+    dragonT = time;
+    for (const d of DRAGONFLIES) {
+      if ((d.wait -= dt) <= 0) {
+        // A new spot over the water or the reeds by the dock.
+        const a = Math.random() * Math.PI * 2,
+          r = 0.3 + Math.random() * 0.75;
+        d.tx = POND.x + Math.cos(a) * POND.rx * r;
+        d.ty = POND.y + Math.sin(a) * POND.ry * r;
+        d.wait = 1.2 + Math.random() * 2.5;
+      }
+      const k = Math.min(1, dt * 4);
+      d.x += (d.tx - d.x) * k;
+      d.y += (d.ty - d.y) * k;
+      const hx = d.x + Math.sin(time * 3 + d.c.length) * 2,
+        hy = d.y - 34 + Math.sin(time * 5 + d.x) * 2,
+        face = d.tx >= d.x ? 1 : -1;
+      GFX.shadow(g, d.x, d.y, 5, 1.6, 0.14);
+      g.save();
+      g.translate(hx, hy);
+      g.scale(face, 1);
+      // Wings: a blur of four, flickering.
+      const f = 0.55 + 0.45 * Math.abs(Math.sin(time * 40 + d.x));
+      g.fillStyle = `rgba(230,250,255,${0.55 * f})`;
+      for (const [wx, wy, r] of [
+        [-1, -1, -0.5],
+        [-1, 1, 0.5],
+        [2, -1, -0.3],
+        [2, 1, 0.3],
+      ]) {
+        g.beginPath();
+        g.ellipse(wx, wy * 4, 6, 2, r, 0, 7);
+        g.fill();
+      }
+      g.fillStyle = d.c;
+      g.fillRect(-9, -0.8, 12, 1.6);
+      g.beginPath();
+      g.arc(4.5, 0, 2.2, 0, 7);
+      g.fill();
+      g.restore();
+    }
+  }
+  /** How each kind of PLAZA_DECOR is drawn: its picture, footprint half
+   * width, height, and ground shadow (none for reeds and pots). */
+  const DECOR_ART = {
+    rodrack: { spr: () => GFX.rodRack(), foot: 26, h: 90, shadow: [26, 5] },
+    bucket: { spr: () => GFX.bucket(), foot: 14, h: 50, shadow: [14, 5] },
+    tackle: { spr: () => GFX.tackleBox(), foot: 14, h: 50, shadow: [14, 5] },
+    rowboat: { spr: () => GFX.rowboat(), foot: 56, h: 50, shadow: [58, 9] },
+    reeds: { spr: (seed) => GFX.reeds(seed), foot: 14, h: 70 },
+    chalkboard: {
+      spr: () => GFX.chalkboard(),
+      foot: 20,
+      h: 80,
+      shadow: [20, 5],
+    },
+    parasol: {
+      spr: () => GFX.parasol(),
+      foot: 34,
+      h: 118,
+      shadow: [40, 9],
+      sw: 56,
+    },
+    pot: {
+      spr: (seed) => GFX.flowerPot(seed),
+      foot: 12,
+      h: 44,
+      shadow: [11, 4],
+    },
+  };
   function drawFlood(g, f, n) {
     g.fillStyle = "rgba(0,0,0,.25)";
     g.beginPath();
@@ -3351,41 +3807,163 @@ export function openPlaza(options) {
     g.stroke();
     g.setLineDash([]);
   }
-  function drawLeader(g) {
-    const { x, y } = LEADER;
-    g.fillStyle = "rgba(0,0,0,.25)";
+  /**
+   * The TOP DASH board: a stadium scoreboard on two legs, a gold header with
+   * the trophy, medals for the top three, your row lit, and bulbs along its
+   * top. Painted into a sprite whenever the week's rows change (not every
+   * frame); the bulbs twinkle live.
+   */
+  let leaderSpr = null,
+    leaderKey = "",
+    leaderTry = null,
+    leaderAt = 0;
+  function leaderSprite() {
+    const rows = boardRows().slice(0, 5);
+    const key = rows.map(([n, t, m]) => `${n}|${t}|${m}`).join(";");
+    const ready = ICON_IMG("trophy")?.complete;
+    if (leaderSpr && key === leaderKey) return leaderSpr;
+    // Before the trophy has loaded: the last one, again at most twice a second.
+    if (leaderTry && key === leaderKey && performance.now() - leaderAt < 500)
+      return leaderTry;
+    leaderAt = performance.now();
+    const R = 2,
+      w = 200,
+      h = 262,
+      ax = 100,
+      ay = 254;
+    const c = document.createElement("canvas");
+    c.width = w * R;
+    c.height = h * R;
+    const g = c.getContext("2d");
+    g.scale(R, R);
+    g.translate(ax, ay);
+    // Legs on base plates.
+    for (const lx of [-66, 58]) {
+      const lg = g.createLinearGradient(lx, 0, lx + 8, 0);
+      lg.addColorStop(0, "#4a5068");
+      lg.addColorStop(1, "#262a3a");
+      g.fillStyle = lg;
+      g.fillRect(lx, -110, 8, 110);
+      g.fillStyle = "#1c2030";
+      g.beginPath();
+      g.roundRect(lx - 6, -6, 20, 7, 2);
+      g.fill();
+    }
+    // The cabinet: a bevelled steel frame round a navy screen.
+    g.fillStyle = "rgba(0,0,0,.3)";
     g.beginPath();
-    g.ellipse(x + 10, y + 3, 90, 14, 0, 0, 7);
+    g.roundRect(-92, -246, 190, 146, 10);
     g.fill();
-    g.fillStyle = "#2a2f42";
-    g.fillRect(x - 70, y - 150, 8, 152);
-    g.fillRect(x + 62, y - 150, 8, 152);
-    g.fillStyle = "#0b0d16";
-    g.fillRect(x - 90, y - 250, 180, 150);
-    g.fillStyle = "#151b36";
-    g.fillRect(x - 84, y - 244, 168, 138);
+    const fr = g.createLinearGradient(0, -250, 0, -100);
+    fr.addColorStop(0, "#5a6280");
+    fr.addColorStop(0.5, "#2f3550");
+    fr.addColorStop(1, "#1f2438");
+    g.fillStyle = fr;
+    g.beginPath();
+    g.roundRect(-94, -250, 188, 146, 10);
+    g.fill();
+    g.fillStyle = "#0d1226";
+    g.beginPath();
+    g.roundRect(-86, -242, 172, 130, 6);
+    g.fill();
+    for (const [bx, by] of [
+      [-88, -244],
+      [88, -244],
+      [-88, -110],
+      [88, -110],
+    ]) {
+      g.fillStyle = "#8a92b0";
+      g.beginPath();
+      g.arc(bx, by, 2, 0, 7);
+      g.fill();
+    }
+    // Gold header band with the trophy.
+    const hb = g.createLinearGradient(0, -240, 0, -214);
+    hb.addColorStop(0, "#ffe58a");
+    hb.addColorStop(1, "#e0a020");
+    g.fillStyle = hb;
+    g.beginPath();
+    g.roundRect(-84, -240, 168, 26, 5);
+    g.fill();
+    const tr = ICON_IMG("trophy");
+    if (tr?.complete) g.drawImage(tr, -78, -238, 22, 22);
+    g.fillStyle = "#3a2406";
+    g.font = "800 19px 'Barlow Condensed', sans-serif";
     g.textAlign = "left";
-    g.font = "800 20px 'Barlow Condensed', sans-serif";
-    g.fillStyle = "#ffd65b";
-    {
-      const tr = ICON_IMG("trophy");
-      if (tr.complete) g.drawImage(tr, x - 76, y - 238, 22, 22);
-    }
-    g.fillText("TOP DASH", x - 50, y - 220);
-    const rows = boardRows();
+    g.textBaseline = "middle";
+    g.fillText("TOP DASH", -52, -226);
+    g.textAlign = "right";
+    g.font = "800 10px 'DM Sans', sans-serif";
+    g.fillText("THIS WEEK", 78, -226);
+    // Rows: medals for the top three, your row lit.
+    const MEDAL = ["#ffd65b", "#d6dbe6", "#e0995a"];
     if (!rows.length) {
-      g.font = "700 14px 'DM Sans', sans-serif";
+      g.textAlign = "center";
       g.fillStyle = "#a0afc8";
-      g.fillText("No laps this week yet", x - 74, y - 196);
+      g.font = "700 13px 'DM Sans', sans-serif";
+      g.fillText("No laps this week yet", 0, -176);
+      g.fillStyle = "#ffd65b";
+      g.font = "800 13px 'DM Sans', sans-serif";
+      g.fillText("Be the first!", 0, -156);
     }
-    rows.slice(0, 5).forEach(([n, t, mine], i) => {
-      g.font = "700 14px 'DM Sans', sans-serif";
-      g.fillStyle = mine ? "#ffd65b" : "#e6ecff";
-      g.fillText(`${i + 1}. ${n}`, x - 74, y - 196 + i * 20);
-      g.textAlign = "right";
-      g.fillText(t.toFixed(2), x + 74, y - 196 + i * 20);
+    rows.forEach(([n, t, mine], i) => {
+      const ry = -198 + i * 20;
+      if (i % 2) {
+        g.fillStyle = "rgba(255,255,255,.04)";
+        g.fillRect(-84, ry - 10, 168, 20);
+      }
+      if (mine) {
+        g.fillStyle = "rgba(255,214,91,.16)";
+        g.fillRect(-84, ry - 10, 168, 20);
+        g.fillStyle = "#ffd65b";
+        g.fillRect(-84, ry - 10, 3, 20);
+      }
+      if (i < 3) {
+        g.fillStyle = MEDAL[i];
+        g.beginPath();
+        g.arc(-70, ry, 7.5, 0, 7);
+        g.fill();
+        g.fillStyle = "rgba(0,0,0,.55)";
+        g.font = "800 10px 'DM Sans', sans-serif";
+        g.textAlign = "center";
+        g.fillText(String(i + 1), -70, ry + 0.5);
+      } else {
+        g.fillStyle = "#7f8bb0";
+        g.font = "800 11px 'DM Sans', sans-serif";
+        g.textAlign = "center";
+        g.fillText(String(i + 1), -70, ry + 0.5);
+      }
       g.textAlign = "left";
+      g.fillStyle = mine ? "#ffd65b" : "#e6ecff";
+      g.font = "700 13px 'DM Sans', sans-serif";
+      let name = String(n);
+      while (name.length > 3 && g.measureText(name).width > 100)
+        name = name.slice(0, -2) + "…";
+      g.fillText(name, -56, ry + 0.5);
+      g.textAlign = "right";
+      g.font = "800 13px 'DM Sans', sans-serif";
+      g.fillText(t.toFixed(2), 78, ry + 0.5);
     });
+    g.textBaseline = "alphabetic";
+    const spr = { c, w, h, ax, ay };
+    leaderKey = key;
+    if (ready) leaderSpr = spr;
+    else leaderSpr = null;
+    return (leaderTry = spr);
+  }
+  function drawLeader(g, time) {
+    const { x, y } = LEADER;
+    GFX.shadow(g, x + 10, y + 3, 92, 14, 0.25);
+    GFX.blit(g, leaderSprite(), x, y);
+    // Bulbs along the top, chasing.
+    for (let i = 0; i < 9; i++) {
+      const bx = x - 80 + i * 20,
+        on = low ? 1 : 0.55 + 0.45 * Math.sin(time * 4 - i * 0.8);
+      g.fillStyle = `rgba(255,236,170,${on})`;
+      g.beginPath();
+      g.arc(bx, y - 254, 2.6, 0, 7);
+      g.fill();
+    }
   }
   /** The Photo Spot's camera, seen from behind: it stands in front of the
    * arch on its own feet (not against a post) and points at the spot. */
@@ -3486,16 +4064,120 @@ export function openPlaza(options) {
   function drawCafe(g) {
     GFX.blit(g, GFX.foodTruck(), CAFE.x, CAFE.y + 4);
   }
-  function drawBoard(g) {
-    GFX.shadow(g, BOARD.x + 8, BOARD.y + 2, 70, 14);
-    GFX.blit(g, GFX.board(), BOARD.x, BOARD.y + 4);
-    g.textAlign = "center";
-    g.font = "800 18px 'Barlow Condensed', sans-serif";
-    g.fillStyle = "#fff";
+  /**
+   * The Plaza map board ("you are here"): the same painted map as the Map
+   * dialog, framed on two posts under a little roof, with a red pin where
+   * the board stands. Painted once, the first time it is drawn.
+   */
+  let boardSpr = null,
+    boardTry = null,
+    boardTryAt = 0;
+  function mapBoard() {
+    if (boardSpr) return boardSpr;
+    // Not all drawn yet: the last try, again at most twice a second.
+    if (boardTry && performance.now() - boardTryAt < 500) return boardTry;
+    boardTryAt = performance.now();
+    const R = 2,
+      w = 168,
+      h = 190,
+      ax = 84,
+      ay = 182;
+    const c = document.createElement("canvas");
+    c.width = w * R;
+    c.height = h * R;
+    const g = c.getContext("2d");
+    g.scale(R, R);
+    g.translate(ax, ay);
+    // Posts.
+    for (const x of [-66, 58]) {
+      const pg = g.createLinearGradient(x, 0, x + 8, 0);
+      pg.addColorStop(0, "#8a5a30");
+      pg.addColorStop(1, "#5a3a1e");
+      g.fillStyle = pg;
+      g.beginPath();
+      g.roundRect(x, -150, 8, 150, 3);
+      g.fill();
+    }
+    // The frame and the map in it.
+    g.fillStyle = "rgba(0,0,0,.3)";
+    g.beginPath();
+    g.roundRect(-72, -138, 148, 102, 8);
+    g.fill();
+    const fg = g.createLinearGradient(0, -142, 0, -40);
+    fg.addColorStop(0, "#c98d52");
+    fg.addColorStop(1, "#8f5a2c");
+    g.fillStyle = fg;
+    g.beginPath();
+    g.roundRect(-74, -142, 148, 102, 8);
+    g.fill();
+    g.strokeStyle = "#4e2c12";
+    g.lineWidth = 2.5;
+    g.stroke();
+    const mw = 132,
+      mh = Math.round((mw * H) / W),
+      mx = -mw / 2,
+      my = -134;
+    g.drawImage(boardPic, mx, my, mw, mh);
+    g.strokeStyle = "rgba(60,30,10,.6)";
+    g.lineWidth = 1.5;
+    g.strokeRect(mx, my, mw, mh);
+    // The places' icons, small, and the red "you are here" pin.
+    for (const p of PLAZA_PLACES) {
+      const im = ICON_IMG(p.icon);
+      const px = mx + (p.x / W) * mw,
+        py = my + (p.y / H) * mh;
+      g.fillStyle = "rgba(255,255,255,.9)";
+      g.beginPath();
+      g.arc(px, py, 5.5, 0, 7);
+      g.fill();
+      if (im?.complete) g.drawImage(im, px - 4.5, py - 4.5, 9, 9);
+    }
+    {
+      const px = mx + (BOARD.x / W) * mw,
+        py = my + (BOARD.y / H) * mh;
+      g.fillStyle = "#ef4f61";
+      g.strokeStyle = "#fff";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(px, py);
+      g.bezierCurveTo(px - 7, py - 7, px - 5, py - 13, px, py - 13);
+      g.bezierCurveTo(px + 5, py - 13, px + 7, py - 7, px, py);
+      g.fill();
+      g.stroke();
+    }
+    // The roof and its sign.
+    g.beginPath();
+    g.moveTo(-86, -140);
+    g.lineTo(0, -170);
+    g.lineTo(86, -140);
+    g.closePath();
+    const rg = g.createLinearGradient(0, -170, 0, -140);
+    rg.addColorStop(0, "#4fb3a8");
+    rg.addColorStop(1, "#1f6b6a");
+    g.fillStyle = rg;
+    g.fill();
+    g.strokeStyle = "#143f40";
+    g.lineWidth = 2;
+    g.stroke();
+    g.fillStyle = "#fff4d6";
     g.strokeStyle = "#2a1f12";
-    g.lineWidth = 4;
-    g.strokeText("EVENT BOARD", BOARD.x, BOARD.y - 150);
-    g.fillText("EVENT BOARD", BOARD.x, BOARD.y - 150);
+    g.lineWidth = 3.5;
+    g.font = "800 17px 'Barlow Condensed', sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.strokeText("PLAZA MAP", 0, -150);
+    g.fillText("PLAZA MAP", 0, -150);
+    // Kept once its icons have drawn (data pictures, a moment after load;
+    // until then it is put together again at most twice a second, from the
+    // map picture made once in prep, never from the whole ground).
+    const done = PLAZA_PLACES.every((p) => ICON_IMG(p.icon)?.complete);
+    const spr = { c, w, h, ax, ay };
+    if (done) boardSpr = spr;
+    return (boardTry = spr);
+  }
+  function drawBoard(g) {
+    GFX.shadow(g, BOARD.x + 8, BOARD.y + 2, 76, 14);
+    GFX.blit(g, mapBoard(), BOARD.x, BOARD.y + 4);
   }
   function drawGate(g) {
     const { x, y } = GATE;
@@ -3830,36 +4512,6 @@ export function openPlaza(options) {
       f.x = nx;
       f.y = ny;
       if (Math.random() < dt * 0.03) f.jump = 0.01;
-    });
-    HENS.forEach((h) => {
-      if (h.wait > 0) {
-        h.wait -= dt;
-        if (h.wait <= 0) h.st = "idle";
-        return;
-      }
-      if (h.tx == null) {
-        if (Math.random() < 0.4) {
-          h.st = "peck";
-          h.wait = 1.5 + Math.random() * 2;
-          return;
-        }
-        h.tx = GATE.x - 300 + Math.random() * 600;
-        h.ty = GATE.y - 170 + Math.random() * 130;
-        if (Math.abs(h.tx - GATE.x) < 90) h.tx += 200;
-      }
-      const dx = h.tx - h.x,
-        dy = h.ty - h.y,
-        d = Math.hypot(dx, dy);
-      if (d < 5) {
-        h.tx = null;
-        h.st = "idle";
-        h.wait = 0.6 + Math.random() * 1.5;
-        return;
-      }
-      h.st = "walk";
-      h.face = dx > 0 ? 1 : -1;
-      h.x += (dx / d) * 50 * dt;
-      h.y += (dy / d) * 50 * dt;
     });
     PIGEONS.forEach((b) => {
       const threat =
@@ -4447,50 +5099,32 @@ export function openPlaza(options) {
           { sw: o.spr.w / 2, name: "rock" },
         ),
       ),
-      ...PLAZA_DECOR.map((o) =>
-        spot(
+      ...PLAZA_DECOR.map((o) => {
+        const d = DECOR_ART[o.kind];
+        return spot(
           o.x,
           o.y,
-          o.kind === "rowboat" ? 56 : o.kind === "rodrack" ? 26 : 14,
-          o.kind === "rodrack" ? 90 : o.kind === "reeds" ? 70 : 50,
+          d.foot,
+          d.h,
           () => {
-            if (o.kind !== "reeds")
-              GFX.shadow(
-                g,
-                o.x + 3,
-                o.y + 2,
-                o.kind === "rowboat" ? 58 : o.kind === "rodrack" ? 26 : 14,
-                o.kind === "rowboat" ? 9 : 5,
-              );
-            GFX.blit(
-              g,
-              o.kind === "rodrack"
-                ? GFX.rodRack()
-                : o.kind === "bucket"
-                  ? GFX.bucket()
-                  : o.kind === "rowboat"
-                    ? GFX.rowboat()
-                    : o.kind === "tackle"
-                      ? GFX.tackleBox()
-                      : GFX.reeds(o.seed),
-              o.x,
-              o.y + 4,
-            );
+            if (d.shadow)
+              GFX.shadow(g, o.x + 3, o.y + 2, d.shadow[0], d.shadow[1]);
+            GFX.blit(g, d.spr(o.seed), o.x, o.y + 4);
           },
-          { name: o.kind },
-        ),
-      ),
+          { sw: d.sw ?? 0, name: o.kind },
+        );
+      }),
       ...PLAZA_SIGNPOSTS.map((o) =>
         spot(
           o.x,
           o.y,
           8,
-          112,
+          70 + o.arms.length * 34,
           () => {
-            GFX.shadow(g, o.x + 4, o.y + 2, 14, 5);
-            GFX.blit(g, GFX.signpost(o.text, o.dir), o.x, o.y + 4);
+            GFX.shadow(g, o.x + 4, o.y + 2, 16, 5);
+            GFX.blit(g, GFX.signpost(o.arms, ICON_IMG), o.x, o.y + 4);
           },
-          { sw: 60, name: "signpost" },
+          { sw: 72, name: "signpost" },
         ),
       ),
       ...LAMPS.map((o) =>
@@ -4530,16 +5164,6 @@ export function openPlaza(options) {
         name: "house",
         draw: () => drawHouse(g, h, night()),
       })),
-      ...HENS.map((h) =>
-        spot(
-          h.x,
-          h.y,
-          10,
-          40,
-          () => GFX.chicken(g, h.k, h.st, time + h.t0, h.x, h.y, 1.15, h.face),
-          { name: "hen" },
-        ),
-      ),
       ...PIGEONS.map((b) =>
         spot(
           b.x,
@@ -4601,6 +5225,18 @@ export function openPlaza(options) {
               { name: "pet" },
             ),
           ]),
+      // Corner flags on the pitch, waving (still on Low graphics).
+      ...[
+        [PITCH.x0, PITCH.y0],
+        [PITCH.x1, PITCH.y0],
+        [PITCH.x0, PITCH.y1],
+        [PITCH.x1, PITCH.y1],
+      ].map(([x, y], i) =>
+        spot(x, y, 4, 48, () => drawCornerFlag(g, x, y, i, time), {
+          sw: 20,
+          name: "corner-flag",
+        }),
+      ),
       ...FLOOD.map((o) =>
         spot(o.x, o.y, 6, 256, () => drawFlood(g, o, night()), {
           sw: 28,
@@ -4666,7 +5302,7 @@ export function openPlaza(options) {
         y1: LEADER.y,
         h: 252,
         name: "leader",
-        draw: () => drawLeader(g),
+        draw: () => drawLeader(g, time),
       },
       {
         x0: PHOTO.x - 86,
@@ -4728,7 +5364,7 @@ export function openPlaza(options) {
         x1: BOARD.x + 70,
         y0: BOARD.y - 6,
         y1: BOARD.y,
-        h: 170,
+        h: 190,
         name: "board",
         draw: () => drawBoard(g),
       },
@@ -4741,22 +5377,6 @@ export function openPlaza(options) {
         name: "gate",
         draw: () => drawGate(g),
       },
-      spot(
-        GATE.x + 120,
-        GATE.y + 2,
-        16,
-        60,
-        () => GFX.blit(g, GFX.mailbox(), GATE.x + 120, GATE.y + 2),
-        { name: "mailbox" },
-      ),
-      spot(
-        GATE.x - 140,
-        GATE.y + 4,
-        34,
-        46,
-        () => GFX.blit(g, GFX.hay(), GATE.x - 140, GATE.y + 4),
-        { name: "hay" },
-      ),
       spot(ball.x, ball.y, ball.r || 14, 40, () => drawBall(g), {
         z: ball.z || 0,
         name: "ball",
@@ -4816,6 +5436,7 @@ export function openPlaza(options) {
     for (const i of sorted) i.draw();
     if (!photo) fishing.drawRod(g, P);
     BUTTER.forEach((b) => GFX.butterfly(g, time + b.ph, b.x, b.y, b.c, 1.3));
+    if (!low) drawDragonflies(g, time);
     SMOKE.forEach((m) => {
       g.fillStyle = `rgba(240,240,245,${0.45 * (1 - m.t / m.life)})`;
       g.beginPath();
@@ -5027,6 +5648,7 @@ export function openPlaza(options) {
     T = now / 1000;
     if (!ready) return;
     const photo = !$("pz-photo").hidden;
+    if (mapOpen() && now - mapDotsAt > 250) renderMapDots();
     if (!photo) {
       if (todHold > 0) todHold -= dt;
       else tod = realTod();

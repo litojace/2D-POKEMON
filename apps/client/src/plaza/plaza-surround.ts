@@ -5,7 +5,10 @@
  * an edge you stood at the side of the screen, and the last strip of the
  * map was bare grass. As town builders do it (Hay Day, Township), the world
  * goes on past where you can walk: a river with a far bank to the north,
- * woods west and east, fields, a barn and a windmill to the south.
+ * woods west and east, and to the south a park: a wildflower meadow with a
+ * bandstand, picnic blankets, a hot-air balloon and kites. (It was farmland,
+ * a barn, a windmill and cows, from when the Plaza had a Farm; the Farm has
+ * gone, so its fields did too, owner's call, 21 Nov 2026.)
  * The camera may look a little way past the edge (PLAZA_OUT), never past
  * what is painted (PLAZA_MARGIN), and the zoom only ever shows what is built.
  *
@@ -176,13 +179,11 @@ export type SurroundKind =
   | "pine"
   | "bush"
   | "rock"
-  | "hay"
-  | "barn"
-  | "mill"
-  | "scarecrow"
-  | "well"
-  | "lamp"
-  | "crates";
+  | "gazebo"
+  | "balloon"
+  | "picnic"
+  | "bench"
+  | "lamp";
 export interface SurroundProp {
   kind: SurroundKind;
   x: number;
@@ -193,7 +194,9 @@ export interface SurroundProp {
   v: number;
 }
 /** Big things people look at: trees must not stand in front of them. */
-export const LANDMARKS: readonly SurroundKind[] = ["barn", "mill", "well"];
+export const LANDMARKS: readonly SurroundKind[] = ["gazebo", "balloon"];
+/** The balloon floats this high over its spot (world px, before `s`). */
+export const BALLOON_UP = 150;
 
 /** Where a prop's picture reaches. */
 export function propBox(p: SurroundProp): PropBox {
@@ -213,21 +216,18 @@ export function propBox(p: SurroundProp): PropBox {
       return box(35 * s + 10, 58 * s);
     case "rock":
       return box(28 * s, 34 * s);
-    case "hay":
-      return box(40 * s, 46 * s);
-    case "barn":
-      return box(130 * s, 212 * s, 10 * s);
-    case "mill":
-      // The body (150 wide, 214 high) and the sails turning round its hub.
-      return box(Math.max(75, 92 * 0.9) * s, Math.max(214, 168 + 92 * 0.9) * s);
-    case "scarecrow":
-      return box(45 * s, 126 * s);
-    case "well":
-      return box(60 * s, 140 * s);
+    case "gazebo":
+      return box(112 * s, 218 * s);
+    case "balloon":
+      // What is baked: its shadow on the meadow. (The balloon floats over
+      // it, drawn every frame: balloonBox.)
+      return box(40 * s, 12 * s);
+    case "picnic":
+      return box(48 * s, 40 * s);
+    case "bench":
+      return box(46 * s, 62 * s);
     case "lamp":
       return box(20 * s * PLAZA_SCALE.lamp, 106 * s * PLAZA_SCALE.lamp);
-    case "crates":
-      return box(45 * s, 74 * s);
   }
 }
 /** Does `a` stand in front of landmark `b` and hide part of it? */
@@ -247,12 +247,12 @@ function rand(seed: number) {
 }
 /** The river along the north edge (ground y), and its two footbridges. */
 export const RIVER = { y0: -150, y1: -8, bridges: [960, 1760] } as const;
-/** The country road south from the gate, and the cows' paddock. */
-export const FIELDS = {
-  road: { x0: PLAZA_GATE.x - 52, x1: PLAZA_GATE.x + 52 },
-  paddock: { x0: 2180, x1: 2640, y0: 1760, y1: 1930 },
+/** The park south of the gate: the lane down from it, and the circle it
+ * ends in round a flower bed. */
+export const PARK = {
+  lane: { x0: PLAZA_GATE.x - 46, x1: PLAZA_GATE.x + 46 },
+  circle: { x: PLAZA_GATE.x, y: H + 205, rx: 120, ry: 62 },
 } as const;
-
 function build(): SurroundProp[] {
   const r = rand(4242);
   const out: SurroundProp[] = [];
@@ -304,42 +304,65 @@ function build(): SurroundProp[] {
       }
     }
   }
-  // South: the fields south of the gate.
+  // South: the park. The bandstand west of the lane, the balloon east;
+  // picnics on the meadow, benches facing the flower circle.
   out.push(
-    { kind: "barn", x: 720, y: 1935, s: 1, v: 0 },
-    { kind: "mill", x: 1980, y: 1965, s: 1, v: 0 },
-    { kind: "scarecrow", x: 1040, y: 1850, s: 1, v: 0 },
-    { kind: "well", x: 1650, y: 1850, s: 0.9, v: 0 },
-    { kind: "hay", x: 470, y: 1780, s: 1, v: 0 },
-    { kind: "hay", x: 545, y: 1800, s: 1, v: 1 },
-    { kind: "hay", x: 1520, y: 1770, s: 1, v: 2 },
-    { kind: "crates", x: 900, y: 1905, s: 1, v: 0 },
+    { kind: "gazebo", x: 720, y: 1935, s: 1, v: 0 },
+    { kind: "balloon", x: 1980, y: 1965, s: 1, v: 0 },
+    { kind: "picnic", x: 470, y: 1790, s: 1, v: 0 },
+    { kind: "picnic", x: 1040, y: 1850, s: 1, v: 1 },
+    { kind: "picnic", x: 1640, y: 1820, s: 1, v: 2 },
+    { kind: "picnic", x: 2420, y: 1830, s: 1, v: 3 },
+    { kind: "bench", x: PLAZA_GATE.x - 175, y: H + 200, s: 1, v: 0 },
+    { kind: "bench", x: PLAZA_GATE.x + 175, y: H + 200, s: 1, v: 1 },
   );
   for (const [x, y, k] of [
     [180, 1900, 0],
     [330, 1950, 1],
-    [1220, 1960, 2],
-    [1480, 1990, 3],
+    // Clear of the flower circle and its benches.
+    [1010, 1975, 2],
+    [1700, 1990, 3],
     [2780, 1990, 4],
   ] as const)
     out.push({ kind: "tree", x, y, s: 0.95, v: 300 + k });
   return out;
 }
 export const SURROUND: readonly SurroundProp[] = build();
-/** Cows grazing in the paddock (drawn every frame: they chew and look up). */
-export const COWS: readonly {
+/** Kites over the meadow, each tied to a picnic (drawn every frame: they
+ * dance on the wind). `at`: where its string is held. */
+export const KITES: readonly {
   x: number;
   y: number;
-  face: 1 | -1;
+  at: { x: number; y: number };
+  c: readonly [string, string];
   ph: number;
 }[] = [
-  { x: 2260, y: 1820, face: 1, ph: 0 },
-  { x: 2420, y: 1860, face: -1, ph: 2.1 },
-  { x: 2560, y: 1800, face: -1, ph: 4.3 },
+  {
+    x: 560,
+    y: 1700,
+    at: { x: 490, y: 1784 },
+    c: ["#ff6f9a", "#ffd65b"],
+    ph: 0,
+  },
+  {
+    x: 2520,
+    y: 1712,
+    at: { x: 2440, y: 1824 },
+    c: ["#4fb3ff", "#ffffff"],
+    ph: 2.3,
+  },
 ];
-/** The windmill's sails turn; their hub (world px). */
-export function millHub(p: SurroundProp) {
-  return { x: p.x, y: p.y - 168 * p.s };
+/** Where the floating balloon's picture reaches (with its bob). */
+export function balloonBox(p: SurroundProp): PropBox {
+  const top = p.y - (BALLOON_UP + 166) * p.s;
+  return { x0: p.x - 70 * p.s, x1: p.x + 70 * p.s, top, foot: p.y };
+}
+/** The balloon's basket and envelope over its spot, bobbing. */
+export function balloonAt(p: SurroundProp, t = 0) {
+  return {
+    x: p.x + Math.sin(t * 0.4) * 6,
+    y: p.y - BALLOON_UP * p.s + Math.sin(t * 0.7) * 5,
+  };
 }
 /** Props baked into the meadow (never over a walker), and those drawn live. */
 export const BAKED = SURROUND.filter((p) => !coversMovers(propBox(p)));
@@ -353,24 +376,19 @@ export const RIVER_LAMPS = SURROUND.filter((p) => p.kind === "lamp");
  */
 export function movingBoxes(): (PropBox & { name: string })[] {
   return [
-    ...COWS.map((c) => ({
-      name: `cow ${c.x},${c.y}`,
-      x0: c.x - 50,
-      x1: c.x + 50,
-      top: c.y - 80,
-      foot: c.y,
+    // A kite and its tail, as it sways (its string runs down to a picnic,
+    // over the blanket, as it should).
+    ...KITES.map((k) => ({
+      name: `kite ${k.x},${k.y}`,
+      x0: k.x - 40,
+      x1: k.x + 40,
+      top: k.y - 40,
+      foot: k.y + 60,
     })),
-    ...SURROUND.filter((p) => p.kind === "mill").map((p) => {
-      const h = millHub(p),
-        r = 92 * 0.9 * p.s;
-      return {
-        name: "sails",
-        x0: h.x - r,
-        x1: h.x + r,
-        top: h.y - r,
-        foot: p.y,
-      };
-    }),
+    ...SURROUND.filter((p) => p.kind === "balloon").map((p) => ({
+      name: "balloon",
+      ...balloonBox(p),
+    })),
   ];
 }
 /** A baked prop that stands in front of `b` and covers part of it. */

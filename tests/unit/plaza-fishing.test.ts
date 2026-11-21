@@ -198,8 +198,11 @@ describe("the way to the pond", () => {
       return Math.hypot(x - PLAZA_POND.x, y - PLAZA_POND.y) < PLAZA_POND.rx;
     })!;
     const [a, b] = pond.pts.map(([x, y]) => ({ x, y }));
-    const sign = PLAZA_SIGNPOSTS.find((s) => s.text === "FISHING")!;
-    expect(sign.dir).toBe(Math.sign(PLAZA_POND.x - sign.x));
+    const sign = PLAZA_SIGNPOSTS.find((s) =>
+      s.arms.some((a) => a.text === "FISHING"),
+    )!;
+    const arm = sign.arms.find((a) => a.text === "FISHING")!;
+    expect(arm.dir).toBe(Math.sign(PLAZA_POND.x - sign.x));
     // Near where the pond path leaves the main path, just off its stones.
     expect(Math.hypot(sign.x - a.x, sign.y - a.y)).toBeLessThan(160);
     const off = segmentDistance(sign.x, sign.y, a, b) - pond.w / 2;
