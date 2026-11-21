@@ -293,7 +293,6 @@ export const PLAZA_TREES: readonly { x: number; y: number; kind: string }[] = (
     [2660, 600, "pine"],
     [2660, 1280, "mint"],
     [2520, 1520, "autumn"],
-    [1880, 1530, "round"],
     [930, 1180, "apple"],
     [1810, 1240, "orange"],
     [2655, 920, "pine"],

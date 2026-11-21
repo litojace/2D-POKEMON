@@ -482,12 +482,20 @@ export function openPlaza(options) {
           L = Math.hypot(x1 - x0, y1 - y0),
           ux = (x1 - x0) / L,
           uy = (y1 - y0) / L;
-        for (let d = 0; d < L; d += 22)
-          for (let k = -w / 2 + 14; k < w / 2 - 6; k += 24) {
+        // Rows across the path, centred on its line: 0, ±24... on even rows
+        // and ±12, ±36... on odd ones, as far as a stone stays on the sand.
+        for (let d = 0, row = 0; d < L; d += 22, row++)
+          for (
+            let k =
+              -Math.floor((w / 2 - 8 + (row % 2) * 12) / 24) * 24 +
+              (row % 2) * 12;
+            k <= w / 2 - 8;
+            k += 24
+          ) {
             const jx = (rnd() - 0.5) * 6,
               jy = (rnd() - 0.5) * 6,
-              x = x0 + ux * d - uy * (k + ((d / 22) % 2) * 12) + jx,
-              y = y0 + uy * d + ux * (k + ((d / 22) % 2) * 12) + jy;
+              x = x0 + ux * d - uy * k + jx,
+              y = y0 + uy * d + ux * k + jy;
             const c = ["#efe3c8", "#e6d6b4", "#f4ead6", "#dccaa6"][
               Math.floor(rnd() * 4)
             ];
