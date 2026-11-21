@@ -349,7 +349,9 @@ for (const [width, height] of [
           note: box(document.getElementById("pwa-banner")!),
           others: [
             ...document.querySelectorAll(
-              ".touch-buttons button, .joystick, #hud",
+              // Every control and readout a battle shows, the chat
+              // button and the battle menu included.
+              ".touch-buttons button, .joystick, #hud, #chat-button, #battle-menu, #mobile-settings, .match-badge, #spectate",
             ),
           ]
             .filter((e) => e.getBoundingClientRect().width > 0)
