@@ -60,6 +60,8 @@ interface Parked {
   watch: MutationObserver;
 }
 let parked: Parked | undefined;
+/** Shops opened so far: a closed one parks only if none opened after it. */
+let opened = 0;
 export const PARKED_MS = 60_000;
 /** Drop what a parked Shop holds (its renderer, its screen). */
 const drop = (p: Omit<Parked, "timer" | "watch"> | undefined) => {
@@ -189,6 +191,7 @@ export function openFittingRoom(
   let template: HTMLElement;
   let panel: HubPanel;
   let closed = false;
+  const mine = ++opened;
   let busy = false;
   let preview: ShopPreviewHandle | undefined;
   let importing = false;
@@ -787,6 +790,10 @@ export function openFittingRoom(
     // fighter was parked above, at once). Not if what was parked has gone
     // since (a battle started), nor once the Lobby is leaving.
     park: (wrap) => {
+      // Opened again before this one finished leaving: the newer screen was
+      // built afresh and is the one to keep (otherwise this one stays in
+      // the page beside it, hidden, with a second stage).
+      if (opened !== mine) return false;
       if (!document.querySelector(".lobby-layer")?.isConnected) return false;
       if (document.body.classList.contains("battle-active")) return false;
       if (parked && parked.wrap) return false;

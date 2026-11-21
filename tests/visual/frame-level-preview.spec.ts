@@ -221,45 +221,6 @@ window.fetch=async(input,init)=>{
         void (window as any).__account.showWardrobe();
       });
       await page.click("[data-fit-slot=frame]");
-      // Diagnostic (temporary): where each frame on the stage sits, for a
-      // CI-only failure (two frames here); printed in the CI log.
-      console.log(
-        "FRAME-DIAG",
-        JSON.stringify(
-          await page.evaluate(() => ({
-            hosts: Array.from(document.querySelectorAll(".ui-panel-host")).map(
-              (h) => ({
-                parked: h.hasAttribute("data-ui-parked"),
-                leaving: h.hasAttribute("data-ui-leaving"),
-                root: (h.firstElementChild as HTMLElement | null)?.className,
-                label: h.firstElementChild?.getAttribute("aria-label"),
-              }),
-            ),
-            frames: Array.from(
-              document.querySelectorAll(".fit-frame-stage .portrait-frame"),
-            ).map((f) => {
-              const path: string[] = [];
-              for (
-                let e: Element | null = f;
-                e && !e.classList.contains("ui-panel-host");
-                e = e.parentElement
-              )
-                path.push(
-                  `${e.tagName.toLowerCase()}.${e.className}[${Array.from(e.parentElement?.children ?? []).indexOf(e)}/${e.parentElement?.children.length}]`,
-                );
-              const stage = f.closest(".fit-frame-stage")!;
-              return {
-                stars: f.getAttribute("data-frame-stars"),
-                path,
-                stageAttrs: Array.from(stage.attributes).map(
-                  (a) => `${a.name}=${a.value.slice(0, 60)}`,
-                ),
-                stageKids: Array.from(stage.children).map((c) => c.className),
-              };
-            }),
-          })),
-        ),
-      );
       await expect(art).toHaveAttribute("data-tier", "mythic");
       const tile = page.locator(".fit-grid [data-ui-item=conqueror]");
       await expect(tile.locator(".ui-tile-sub")).toContainText("★★★★★");
