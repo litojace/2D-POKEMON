@@ -7,7 +7,13 @@ import {
   type GraphicsSetting,
 } from "./graphics-quality";
 import { softwareRendering } from "./gpu-check";
-import { RaidCamera, raidFrame, type ScreenRect } from "./raid-camera";
+import {
+  RaidCamera,
+  raidFrame,
+  underControls,
+  type ControlSides,
+  type ScreenRect,
+} from "./raid-camera";
 import { AllyBearings } from "./ally-bearings";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
 import { capGameFrames, screenHz, type FrameCap } from "./frame-cap";
@@ -662,38 +668,40 @@ let replacedAccount = sessionStorage.getItem("arena-session-replaced");
 let gameInstance: Phaser.Game | undefined;
 let battleResizeObserver: ResizeObserver | undefined;
 let raidCameraHudBottom = 0;
-/**
- * What the touch controls cover over the arena (CSS px from its corner, and
- * the arena's CSS width to scale them to the drawing buffer), measured when
- * the controls or the arena are laid out, never per frame. A court-wide
- * moment's warnings stay clear of them on the phone camera.
- */
-let raidCameraControls: { x0: number; y0: number; x1: number; y1: number }[] =
-  [];
-let raidCameraControlsWidth = 1;
-function measureRaidControls() {
-  const game = document.getElementById("game");
-  if (!game || !touch.enabled) {
-    raidCameraControls = [];
-    return;
-  }
-  const frame = game.getBoundingClientRect();
-  raidCameraControlsWidth = frame.width || 1;
-  raidCameraControls = Array.from(
-    document.querySelectorAll<HTMLElement>(
-      "#mobile-controls .touch-buttons button, #mobile-controls .joystick",
-    ),
-  )
-    .filter((e) => e.offsetWidth)
-    .map((e) => {
-      const r = e.getBoundingClientRect();
-      return {
-        x0: r.left - frame.left,
-        y0: r.top - frame.top,
-        x1: r.right - frame.left,
-        y1: r.bottom - frame.top,
-      };
-    });
+/** Phones: how far the joystick and the skill buttons reach in from each side
+ * of the arena (game px). Measured once on the first raid frame after the
+ * battle is laid out (fitRenderer clears it), never every frame. */
+let raidControlSides: ControlSides | undefined;
+/** Phones: each touch control's box over the arena (game px), measured with
+ * raidControlSides: a court-wide moment's warnings stay clear of them. */
+let raidControlBoxes: ScreenRect[] = [];
+function measureRaidControls(): ControlSides {
+  const frame = $("game").parentElement!.getBoundingClientRect(),
+    dpr = renderScale();
+  const joystick = document.querySelector<HTMLElement>(".touch-pad .joystick");
+  const buttons = Array.from(
+    document.querySelectorAll<HTMLElement>(".touch-buttons button"),
+  ).filter((b) => b.offsetWidth);
+  raidControlBoxes = [...buttons, ...(joystick?.offsetWidth ? [joystick] : [])]
+    .map((e) => e.getBoundingClientRect())
+    .map((r) => ({
+      x0: (r.left - frame.left) * dpr,
+      y0: (r.top - frame.top) * dpr,
+      x1: (r.right - frame.left) * dpr,
+      y1: (r.bottom - frame.top) * dpr,
+    }));
+  return {
+    left: joystick?.offsetWidth
+      ? Math.max(0, joystick.getBoundingClientRect().right - frame.left) * dpr
+      : 0,
+    right: buttons.length
+      ? Math.max(
+          0,
+          frame.right -
+            Math.min(...buttons.map((b) => b.getBoundingClientRect().left)),
+        ) * dpr
+      : 0,
+  };
 }
 let state: Snapshot | undefined,
   myId = "",
@@ -960,7 +968,8 @@ const touch: TouchControls = new TouchControls(
       scene.actions = { skill: -1, dash: false, jump: false, basic: false };
   },
 );
-touch.onLayout = measureRaidControls;
+// Controls laid out again (resize, settings, toggled): measure them anew.
+touch.onLayout = () => (raidControlSides = undefined);
 if (touch.available)
   setupBattleDock(
     $("battle"),
@@ -5260,25 +5269,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   private needsHydration = true;
   private followCamera = new FollowCamera();
   private raidCamera = new RaidCamera();
-  private raidControlsSeen: { from: unknown; k: number; rects: ScreenRect[] } =
-    { from: undefined, k: 0, rects: [] };
-  /** The touch controls' boxes in the drawing buffer's pixels (cached). */
-  private raidControls() {
-    const k = this.scale.width / raidCameraControlsWidth,
-      seen = this.raidControlsSeen;
-    if (seen.from !== raidCameraControls || seen.k !== k)
-      this.raidControlsSeen = {
-        from: raidCameraControls,
-        k,
-        rects: raidCameraControls.map((r) => ({
-          x0: r.x0 * k,
-          y0: r.y0 * k,
-          x1: r.x1 * k,
-          y1: r.y1 * k,
-        })),
-      };
-    return this.raidControlsSeen.rects;
-  }
   private allyBearings = new AllyBearings(
     () => document.getElementById("game")?.parentElement ?? null,
   );
@@ -6157,7 +6147,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           delta,
           feelNow / 1000,
           reducedMotion,
-          this.raidControls(),
+          raidFollow ? (raidControlSides ??= measureRaidControls()) : undefined,
+          raidFollow ? raidControlBoxes : undefined,
         )
       : this.followCamera.update(
           this.scale.width,
@@ -6214,13 +6205,24 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !opponent ||
       // A downed raider's phone camera stays on them, not on the partner.
       (raidFollow && raidFocus !== presented) ||
-      !outsideView(
+      (!outsideView(
         opponent.x,
         opponent.y,
         this.scale.width,
         this.scale.height,
         view,
-      );
+      ) &&
+        // On a phone raid, a boss under the skill buttons or the joystick
+        // counts as off screen too: the arrow says where it is.
+        !(
+          raidFollow &&
+          raidControlSides &&
+          underControls(
+            (opponent.x - view.x) * view.zoomX + this.scale.width / 2,
+            this.scale.width,
+            raidControlSides,
+          )
+        ));
     // PvP and phone raids: an arrow circling the fighter you follow, in the
     // nearest off-screen opponent's colour (owner, 7 Nov 2026: no chip at
     // the top, where the score badge is; on phones the raid HUD is there).
@@ -6298,7 +6300,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
                   ((at.y - BEARING_LIFT - view.y) * view.zoomY +
                     this.scale.height / 2) *
                   css,
-                color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
                 downed: !!state!.raid!.downed[p.id],
               };
             })
@@ -6306,7 +6307,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       {
         left: 18,
         top: raidCameraHudBottom * this.scale.zoom + 18,
-        right: this.scale.width * this.scale.zoom - 18,
+        // Right-side arrows sit by the skill buttons, never under them or
+        // over the clock in the corner.
+        right:
+          (this.scale.width - (raidControlSides?.right ?? 0)) *
+            this.scale.zoom -
+          18,
         bottom: this.scale.height * this.scale.zoom - 18,
       },
     );
@@ -7738,12 +7744,12 @@ function fitRenderer() {
   const frame = parent.parentElement!.getBoundingClientRect();
   const battle = $("battle").getBoundingClientRect();
   const raidHud = document.getElementById("raid-hud");
-  measureRaidControls();
   raidCameraHudBottom =
     state?.raid && raidHud && !raidHud.hidden
       ? Math.max(0, raidHud.getBoundingClientRect().bottom - frame.top + 6) *
         dpr
       : 0;
+  raidControlSides = undefined;
   $("battle").style.setProperty("--desktop-arena-width", `${frame.width}px`);
   $("battle").style.setProperty(
     "--desktop-arena-top",

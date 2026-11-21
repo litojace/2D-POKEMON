@@ -31,8 +31,8 @@ On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview)
   clear of the touch controls themselves: when the framed view would put one
   under the joystick or a button, the camera pans across the room the frame
   leaves and, if it must, pulls out toward the whole court's zoom
-  (`raidFramePlacement`). The controls are measured when they are laid out
-  (`TouchControls.onLayout`, `fitRenderer`), never per frame. When those span the court it is the whole court; sweeps
+  (`raidFramePlacement`), keeping your raider clear of the controls' columns
+  (below) throughout. Each control's box is measured with `ControlSides`. When those span the court it is the whole court; sweeps
   (Breaker, Tidal Wave) and dreams (their rune pads are laid out clear of the
   dream panel in the whole-court view) always are. The zoom stays between the whole court's
   and the follow camera's. Which moments are court-wide is
@@ -45,8 +45,20 @@ On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview)
   leaps that chases a raider like Shade Pounce) gets
   `view: "court"`; a dodge that only needs the floor around the raider does not.
 - The off-screen boss gets the PvP arrow circling the raider. Off-screen allies
-  get a small arrow in their colour at the screen's edge (`ally-bearings.ts`); a
-  downed ally's is red with a pulsing "!", so a reviver knows where to run.
+  get a small arrow in the allies' blue (as on their nameplates, whatever their
+  champion's colour) at the screen's edge (`ally-bearings.ts`); a downed ally's
+  turns red with a pulsing "!", so a reviver knows where to run.
+- **Clear of the touch controls.** The joystick's and skill buttons' reach in
+  from each side is measured once per layout (`ControlSides`, on the first raid
+  frame after `fitRenderer` or after the controls are laid out again,
+  `TouchControls.onLayout`). Your raider always stands between them, with
+  about a fighter's half-width to spare; the court may scroll past the screen's
+  edge for that, showing the dim scenery round it. The boss is kept clear too
+  when both fit. A court-wide frame keeps your raider clear as well, zooming out
+  only as far as that needs.
+  When the boss still ends up under the buttons or the joystick, it gets the
+  off-screen arrow, and right-side ally arrows sit by the buttons (never under
+  them or over the clock).
 - Players who prefer the overview tick **Whole court in raids** in Settings →
   Controls (phones only; `raidCourt` in the saved controls). The Ascendant
   specs that read the whole arena against the HUD and touch controls choose it.

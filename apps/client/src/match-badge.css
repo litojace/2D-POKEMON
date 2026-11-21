@@ -222,7 +222,9 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
 }
 
 /* Raid allies off a phone's follow camera (ally-bearings.ts): an arrow at
-   the screen's edge in their colour; a downed ally's pulses red with "!". */
+   the screen's edge in the allies' blue (as on their nameplates, whatever
+   their champion's colour, so a red champion never reads as downed); a
+   downed ally's turns red and pulses a "!". */
 .ally-bearing {
   position: absolute;
   top: 0;
@@ -240,13 +242,12 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
   place-items: center;
   width: 22px;
   height: 22px;
-  filter: drop-shadow(0 0 3px var(--ally-color, #fff))
-    drop-shadow(0 1px 1px #000c);
+  filter: drop-shadow(0 0 3px #5ab0ff) drop-shadow(0 1px 1px #000c);
 }
 .ally-bearing span::before {
   content: "";
   margin-left: 3px;
-  border-left: 12px solid var(--ally-color, #fff);
+  border-left: 12px solid #5ab0ff;
   border-top: 7px solid transparent;
   border-bottom: 7px solid transparent;
 }
