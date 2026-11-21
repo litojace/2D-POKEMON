@@ -61,6 +61,15 @@ interface Parked {
 }
 let parked: Parked | undefined;
 export const PARKED_MS = 60_000;
+/**
+ * The Shop opened last. A Shop's screen is parked once its leave has
+ * played (ui/hub-panel.ts), so a Shop opened again during that leave got a
+ * new screen, and the old one, parked a moment later, stayed in the page
+ * beside it: two Wardrobes (tests/visual/frame-level-preview.spec.ts on CI,
+ * 20 Nov 2026), and the newer one then not kept when it closed. Only the
+ * latest Shop parks its screen.
+ */
+let latestShop: object | undefined;
 /** Drop what a parked Shop holds (its renderer, its screen). */
 const drop = (p: Omit<Parked, "timer" | "watch"> | undefined) => {
   p?.preview?.();
@@ -171,6 +180,7 @@ export function openFittingRoom(
   hooks: FittingRoomHooks,
   options: FittingRoomOptions,
 ): FittingRoom {
+  const shop = (latestShop = {});
   const view = fitView(mode, options.champion, {
     section: options.section ?? "today",
   });
@@ -787,6 +797,8 @@ export function openFittingRoom(
     // fighter was parked above, at once). Not if what was parked has gone
     // since (a battle started), nor once the Lobby is leaving.
     park: (wrap) => {
+      // A newer Shop opened during this one's leave: it parks its own.
+      if (latestShop !== shop) return false;
       if (!document.querySelector(".lobby-layer")?.isConnected) return false;
       if (document.body.classList.contains("battle-active")) return false;
       if (parked && parked.wrap) return false;

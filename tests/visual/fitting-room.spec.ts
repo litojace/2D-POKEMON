@@ -634,3 +634,92 @@ for (const size of [SIZES[0], SIZES[2]])
       await context.close();
     }
   });
+
+// A Shop parks its screen for the next open once its leave has played
+// (ui/hub-panel.ts park). Opened again during that leave, the old screen was
+// parked a moment later beside the new one: two Wardrobes in the page
+// (frame-level-preview on CI, 20 Nov 2026), and the open one not kept when
+// it closed. Only the Shop opened last parks its screen.
+test("a Shop opened again while the last one leaves leaves one screen, kept for the next open", async ({
+  page,
+}) => {
+  await exposeAccount(page);
+  await shopServer(page);
+  const errors = await openLobby(page);
+  const hosts = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll(".ui-panel-host")]
+        .filter((h) => h.querySelector(".fit-room"))
+        .map((h) =>
+          h.hasAttribute("data-ui-parked")
+            ? "parked"
+            : h.hasAttribute("data-ui-leaving") ||
+                h.querySelector("[data-ui-leaving]")
+              ? "leaving"
+              : "open",
+        ),
+    );
+  await page.evaluate(() => void (window as any).__account.showWardrobe());
+  await expect(page.locator(".fit-room:not([data-ui-leaving])")).toBeVisible();
+  // Close and open again during the close's leave. Here the next Shop opens
+  // ~350 ms on, after the 170 ms leave; on CI it opened first. So this one
+  // leave runs 3 s, as on a slow phone (ui/motion.ts leave: its animation
+  // and its fallback timer).
+  await page.evaluate(() => {
+    const w = window as any;
+    const animate = Element.prototype.animate;
+    const setT = window.setTimeout;
+    const LEAVE = 170;
+    let stretched = false;
+    Element.prototype.animate = function (frames, options) {
+      if (
+        !stretched &&
+        typeof options === "object" &&
+        options?.duration === LEAVE &&
+        this.classList.contains("fit-room")
+      ) {
+        stretched = true;
+        options = { ...options, duration: 3000 };
+      }
+      return animate.call(this, frames, options);
+    };
+    w.setTimeout = (fn: TimerHandler, ms?: number, ...rest: unknown[]) =>
+      setT(fn, ms === LEAVE + 80 ? 3080 : ms, ...rest);
+    w.__restoreMotion = () => {
+      Element.prototype.animate = animate;
+      w.setTimeout = setT;
+    };
+  });
+  await page.locator(".fit-room .ui-close").click();
+  await page.evaluate(() => void (window as any).__account.showWardrobe());
+  // The new one opens while the old one is still leaving.
+  await expect
+    .poll(hosts, { timeout: 10_000 })
+    .toEqual(expect.arrayContaining(["open", "leaving"]));
+  await page.evaluate(() => (window as any).__restoreMotion());
+  // Once the old leave has played: one screen, the open one.
+  await expect.poll(hosts, { timeout: 10_000 }).toEqual(["open"]);
+  await page.waitForTimeout(500);
+  expect(await hosts()).toEqual(["open"]);
+  // Closed, the open one is the one kept, and comes back on the next open.
+  const kept = await page.evaluate(() => {
+    const host = [...document.querySelectorAll(".ui-panel-host")].find((h) =>
+      h.querySelector(".fit-room:not([data-ui-leaving])"),
+    );
+    (window as any).__keptHost = host;
+    return !!host;
+  });
+  expect(kept).toBe(true);
+  await page.locator(".fit-room .ui-close").click();
+  await expect.poll(hosts, { timeout: 10_000 }).toEqual(["parked"]);
+  await page.evaluate(() => void (window as any).__account.showWardrobe());
+  await expect.poll(hosts, { timeout: 10_000 }).toEqual(["open"]);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).__keptHost.isConnected &&
+        !(window as any).__keptHost.hasAttribute("data-ui-parked"),
+    ),
+  ).toBe(true);
+  expect(errors).toEqual([]);
+});
