@@ -170,8 +170,7 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     );
     if (open && input) {
       input.value = hooks.data().name;
-      focusForTyping(input);
-      input.select();
+      focusForTyping(input, { selectAll: true });
     } else focusOn("[data-profile-rename]");
   }
   /** Check the name, ask once more (the next change is 14 days away), send. */

@@ -55,9 +55,22 @@ export function typingIn(el: Element | null) {
  * only scrolls when the field is out of sight, and on a fixed screen the lift
  * goes back once the keyboard closes (watchScreenPin).
  */
-export function focusForTyping(field: HTMLElement | null | undefined) {
+export function focusForTyping(
+  field: HTMLElement | null | undefined,
+  { selectAll = false } = {},
+) {
   if (!field) return false;
   field.focus();
+  // Selecting the text as well (a name to type over) stops the lift again on
+  // iPhone: with focus() and select() together the field stayed under the
+  // keyboard while Add friend, focus alone, was lifted (owner's iPhone, Nov
+  // 2026; WebKit bug 217350). So only where there is no on-screen keyboard.
+  if (
+    selectAll &&
+    field instanceof HTMLInputElement &&
+    !matchMedia("(pointer: coarse)").matches
+  )
+    field.select();
   return true;
 }
 

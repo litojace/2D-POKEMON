@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { pinScreen } from "../../apps/client/src/screen-pin";
+import { focusForTyping, pinScreen } from "../../apps/client/src/screen-pin";
 
 const page = (x: number, y: number) => {
   const w = {
@@ -59,5 +59,56 @@ describe("text fields focused for typing", () => {
       ),
     );
     expect(found).toEqual([]);
+  });
+  // focus() with select() kept the name box under the iPhone keyboard where
+  // focus() alone was lifted: selecting goes through focusForTyping only.
+  it("select their text only through focusForTyping", () => {
+    const found = files(SRC)
+      .filter((file) => !file.endsWith("screen-pin.ts"))
+      .flatMap((file) =>
+        [
+          ...readFileSync(file, "utf8").matchAll(
+            /(HTMLInputElement|HTMLTextAreaElement|\binput\b|\bfield\b)[^;{}]*\.select\(\)/g,
+          ),
+        ].map((m) => `${relative(SRC, file)}: ${m[0].replace(/\s+/g, " ")}`),
+      );
+    expect(found).toEqual([]);
+  });
+});
+
+describe("focusForTyping", () => {
+  class FakeInput {
+    calls: string[] = [];
+    focus(options?: unknown) {
+      this.calls.push(options === undefined ? "focus" : "focus+options");
+    }
+    select() {
+      this.calls.push("select");
+    }
+  }
+  const touch = (coarse: boolean) => {
+    vi.stubGlobal("HTMLInputElement", FakeInput);
+    vi.stubGlobal("matchMedia", (q: string) => ({
+      matches: coarse && q === "(pointer: coarse)",
+    }));
+  };
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("focuses with no options, so iOS may lift the page", () => {
+    touch(true);
+    const f = new FakeInput();
+    expect(focusForTyping(f as unknown as HTMLElement)).toBe(true);
+    expect(f.calls).toEqual(["focus"]);
+    expect(focusForTyping(null)).toBe(false);
+  });
+  it("selects the text with a mouse, never on a touch screen", () => {
+    touch(true);
+    const phone = new FakeInput();
+    focusForTyping(phone as unknown as HTMLElement, { selectAll: true });
+    expect(phone.calls).toEqual(["focus"]);
+    touch(false);
+    const desk = new FakeInput();
+    focusForTyping(desk as unknown as HTMLElement, { selectAll: true });
+    expect(desk.calls).toEqual(["focus", "select"]);
   });
 });
