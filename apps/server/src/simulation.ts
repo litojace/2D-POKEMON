@@ -2847,7 +2847,8 @@ export class Arena {
           id,
           born: this.time,
           nextTick: this.time,
-          until: this.time + zone.ability.range / Math.max(1, zone.ability.speed),
+          until:
+            this.time + zone.ability.range / Math.max(1, zone.ability.speed),
         });
       }
     }

@@ -442,13 +442,13 @@ pair, 408 duels a row; a drop has an error of about 3.5 points). Five did
 almost nothing, re-measured on `main` with the expert's good player's hands
 (drop on expert / Hard):
 
-| Skill | Drop before | Why |
-| ----- | ----------: | --- |
-| Riptide Wave (Tidefin's ultimate) | 2.2 / 2.4 | one jump clears it |
-| Scale Shrapnel (Pangrove) | 1.0 / 0.5 | 3 weak blades with no plates |
-| Frost Breath (Glacelle) | -2.7 / 5.7 | a small slow; walk out of it |
-| Crest Flare (Cindrake) | 4.7 / 6.6 | step back out of the cone |
-| Shell Up (Terradon) | 5.9 / 11.1 | 2.5 s standing still to be hit |
+| Skill                             | Drop before | Why                            |
+| --------------------------------- | ----------: | ------------------------------ |
+| Riptide Wave (Tidefin's ultimate) |   2.2 / 2.4 | one jump clears it             |
+| Scale Shrapnel (Pangrove)         |   1.0 / 0.5 | 3 weak blades with no plates   |
+| Frost Breath (Glacelle)           |  -2.7 / 5.7 | a small slow; walk out of it   |
+| Crest Flare (Cindrake)            |   4.7 / 6.6 | step back out of the cone      |
+| Shell Up (Terradon)               |  5.9 / 11.1 | 2.5 s standing still to be hit |
 
 (A typical skill is worth 15 - 30 points; the strongest, Shell Bash,
 Facet Guard and Kindle, over 40. The audit's own expert columns were first
@@ -475,16 +475,31 @@ here are not.)
 Round robins, `main` / now (24 games a pair, seeds 310000, the expert
 without look-ahead):
 
-| Champion | Hard | Expert | Normal |
-| -------- | ---: | -----: | -----: |
-| Tidefin  | 54.4% / 58.3% | 45.3% / 52.0% | 51.0% / 56.6% |
-| Cindrake | 56.1% / 53.9% | 59.6% / 59.1% | 49.5% / 44.9% |
-| Terradon | 53.2% / 53.2% | 58.8% / 58.8% | 53.2% / 51.5% |
-| Glacelle | 49.3% / 52.2% | 52.2% / 57.1% | 49.3% / 51.7% |
-| Pangrove | 51.5% / 53.7% | 54.2% / 54.9% | 53.7% / 55.9% |
+| Champion |                        Hard |                      Expert |                      Normal |
+| -------- | --------------------------: | --------------------------: | --------------------------: |
+| Tidefin  |               54.4% / 58.3% |               45.3% / 52.0% |               51.0% / 56.6% |
+| Cindrake |               56.1% / 53.9% |               59.6% / 59.1% |               49.5% / 44.9% |
+| Terradon |               53.2% / 53.2% |               58.8% / 58.8% |               53.2% / 51.5% |
+| Glacelle |               49.3% / 52.2% |               52.2% / 57.1% |               49.3% / 51.7% |
+| Pangrove |               51.5% / 53.7% |               54.2% / 54.9% |               53.7% / 55.9% |
 | Range    | 43.6 - 56.1% / 43.1 - 58.3% | 33.6 - 59.6% / 32.4 - 59.1% | 44.6 - 55.9% / 42.4 - 56.6% |
 
 Voltkit is still the expert's weakest (32.4%), as on `main`.
+
+Normal handicaps: Tidefin 0.32 (0.29), Cindrake 0.45 (0.49), so each does
+about as well against Normal bots as on `main` (two seeds, 12 games a pair:
+Tidefin 50.7%, Cindrake 50.2%). On unused line-ups: 2v2 44.3% - 56.5%
+(Glacelle the highest), 4-player 21.1% - 28.7%, 3-player 27.7% - 42.6% (with
+Live Wire: 44.8% - 55.2%, 21.6% - 28.1%, 28.8% - 42.6%).
+
+**Spire.** The five are Echoes on 38 floors. Played by the play-tests' solo
+Normal Halcyra (seeds 1-72), most floors cleared about as often as on `main`
+(within 5 of 72; on average 1.4 harder). Six moved more, and their armour
+was set so each clears about as often as before (main / now, armour):
+3 34 / 38 1.9 (1.65), 14 42 / 42 1.6 (1.68), 29 33 / 34 1.69 (1.65),
+37 40 / 39 1.84 (1.74), 57 38 / 37 2.85 (2.95), 62 38 / 40 3.5 (2.85).
+Raids are played with the same kits, so a Tidefin, Glacelle, Pangrove,
+Cindrake or Terradon raider plays these skills there too.
 
 ## Also fixed
 
