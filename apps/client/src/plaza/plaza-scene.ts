@@ -1428,10 +1428,17 @@ export function openPlaza(options) {
     const box = $("pz-quests");
     const q = progress?.quests;
     const done = q ? PLAZA_QUESTS.filter((x) => q[x.id]?.done).length : 0;
+    const left = PLAZA_QUESTS.filter((x) => !q?.[x.id]?.done).reduce(
+      (a, x) => a + x.coins,
+      0,
+    );
     box.className = `pz-quests glass${qmin[qk()] ? " min" : ""}`;
     setInner(
       box,
-      `<h5><span>Plaza today · ${done}/${PLAZA_QUESTS.length}</span><button type="button" data-qmin aria-label="${qmin[qk()] ? "Expand" : "Collapse"}">${qmin[qk()] ? "▾" : "▴"}</button></h5>${PLAZA_QUESTS.map(
+      // The whole title row is the fold button (it was only the small
+      // arrow at its end): today's count, the coins still to earn, a
+      // chevron, and folded, a progress line along the bottom.
+      `<h5><button type="button" class="pz-qhead" data-qmin aria-expanded="${!qmin[qk()]}" aria-controls="pz-quests" aria-label="Plaza today, ${done} of ${PLAZA_QUESTS.length} done${left ? `, ${left} coins left` : ""}. ${qmin[qk()] ? "Show" : "Hide"} quests"><span class="t">Plaza today</span><span class="n">${done}/${PLAZA_QUESTS.length}</span>${left ? `<span class="c">+${left} ${I("coin", "coin")}</span>` : `<span class="c ok">✓</span>`}<i class="chev" aria-hidden="true"></i></button><span class="pz-qline" aria-hidden="true"><i style="width:${(done / PLAZA_QUESTS.length) * 100}%"></i></span></h5>${PLAZA_QUESTS.map(
         (x) => {
           const n = q?.[x.id]?.n ?? 0,
             paid = q?.[x.id]?.done;

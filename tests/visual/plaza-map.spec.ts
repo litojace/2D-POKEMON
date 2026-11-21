@@ -146,3 +146,34 @@ test("the map board by the square opens the map", async ({ page }) => {
   await expect(page.locator("#pz-map")).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("Plaza today opens and closes from anywhere on its title, on a phone too", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 667, height: 375 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openPlaza(page);
+    const quests = page.locator("#pz-quests");
+    // Folded on phones: tap the word "Plaza", far from the chevron.
+    await expect(quests).toHaveClass(/\bmin\b/);
+    const head = page.locator("#pz-quests .pz-qhead");
+    await expect(head).toHaveAttribute("aria-expanded", "false");
+    const box = (await quests.boundingBox())!;
+    await page.touchscreen.tap(box.x + 10, box.y + box.height / 2);
+    await expect(quests).not.toHaveClass(/\bmin\b/);
+    await expect(head).toHaveAttribute("aria-expanded", "true");
+    await expect(quests.locator(".pz-q").first()).toBeVisible();
+    // And the title folds it again, from its left end.
+    const open = (await head.boundingBox())!;
+    await page.touchscreen.tap(open.x + 8, open.y + open.height / 2);
+    await expect(quests).toHaveClass(/\bmin\b/);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

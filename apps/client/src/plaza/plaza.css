@@ -177,13 +177,104 @@
   color: var(--dim);
   font-weight: 700;
 }
-.plaza-layer .pz-quests h5 button {
+/* The title row is one big fold button: anywhere on it opens or closes
+   the list (it was only the arrow at its end). */
+.plaza-layer .pz-quests h5 {
+  position: relative;
+}
+.plaza-layer .pz-qhead {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  min-width: 0;
+  min-height: 2.2em;
+  margin: -0.35em -0.45em;
+  padding: 0.35em 0.45em;
   border: 0;
+  border-radius: 9px;
   background: none;
-  color: var(--dim);
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
   cursor: pointer;
-  font-size: 1em;
-  padding: 0 0.2em;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+.plaza-layer .pz-qhead:hover,
+.plaza-layer .pz-qhead:focus-visible {
+  background: #ffffff12;
+}
+.plaza-layer .pz-qhead:active {
+  background: #ffffff1f;
+}
+.plaza-layer .pz-qhead .t {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plaza-layer .pz-qhead .n {
+  padding: 0.05em 0.45em;
+  border-radius: 999px;
+  background: #ffffff1a;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.plaza-layer .pz-qhead .c {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+  margin-left: auto;
+  color: var(--ui-accent, #ffd65b);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.plaza-layer .pz-qhead .c .ico {
+  width: 1.1em;
+  height: 1.1em;
+}
+.plaza-layer .pz-qhead .c.ok {
+  color: var(--ui-ok, #7be08a);
+}
+/* The chevron turns as the list opens. */
+.plaza-layer .pz-qhead .chev {
+  flex: none;
+  width: 0.5em;
+  height: 0.5em;
+  margin: 0 0.15em 0.15em 0.1em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-135deg) translate(-0.1em, -0.1em);
+  transition: transform 0.2s var(--ease-out, ease-out);
+}
+.plaza-layer .pz-quests.min .pz-qhead .chev {
+  transform: rotate(45deg);
+}
+/* Folded: today's progress as a thin line along the bottom. */
+.plaza-layer .pz-qline {
+  display: none;
+}
+.plaza-layer .pz-quests.min .pz-qline {
+  display: block;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.55em;
+  height: 3px;
+  border-radius: 2px;
+  background: #ffffff1a;
+  overflow: hidden;
+  pointer-events: none;
+}
+.plaza-layer .pz-qline i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--ui-ok), #b6f36b);
 }
 .plaza-layer .pz-q {
   display: grid;
@@ -881,10 +972,26 @@
   line-height: 1.2;
   text-wrap: pretty;
 }
-.plaza-layer.phone .pz-quests h5 button {
-  min-width: 32px;
-  min-height: 28px;
-  font-size: calc(13px * var(--text-scale, 1));
+/* Folded on a phone, the button is the whole pill, edge to edge. */
+.plaza-layer.phone .pz-quests.min {
+  padding: 0;
+}
+.plaza-layer.phone .pz-quests.min h5 {
+  align-self: stretch;
+  align-items: stretch;
+}
+.plaza-layer.phone .pz-quests.min .pz-qhead {
+  margin: 0;
+  padding: 0 0.7em;
+  border-radius: inherit;
+}
+.plaza-layer.phone .pz-quests.min .pz-qline {
+  left: 0.7em;
+  right: 0.7em;
+  bottom: 5px;
+}
+.plaza-layer.phone .pz-qhead {
+  min-height: 32px;
 }
 .plaza-layer.phone .pz-actions {
   align-items: flex-end;
@@ -2593,4 +2700,19 @@
 .plaza-layer.phone .pz-pin.left {
   padding: 2px;
   transform: translate(-50%, -50%);
+}
+/* Phones: the card is narrow, so the title row packs tighter, and open,
+   the coins left give way to the title (each row shows its own coins). */
+.plaza-layer.phone .pz-qhead {
+  gap: 0.3em;
+  letter-spacing: 0.05em;
+}
+.plaza-layer.phone .pz-qhead .n {
+  padding: 0.05em 0.35em;
+}
+.plaza-layer.phone .pz-quests:not(.min) .pz-qhead .c {
+  display: none;
+}
+.plaza-layer.phone .pz-quests:not(.min) .pz-qhead .chev {
+  margin-left: auto;
 }
