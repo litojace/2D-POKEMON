@@ -60,7 +60,7 @@ import { creatureSvg, type SkinLook } from "../creature-design";
 import { colourPreview, hasColourPalette } from "../colour-preview";
 import { previewViewBox } from "../shop-preview-layout";
 import { stageLight } from "../stage-light";
-import { framedAvatar } from "../portraits";
+import { avatarImage, framePortrait } from "../portraits";
 import { itemPicture, picksCountdown } from "../shop-ui";
 import { menuIcon } from "../menu-icons";
 import {
@@ -138,6 +138,8 @@ export interface FitData {
   progress: RaidProgress | null;
   /** The equipped shared looks (Colors, aura, entrance, victory, frame). */
   look: RaidLoadout;
+  /** Your avatar (null: the default), shown inside a frame being viewed. */
+  avatar?: string | null;
   /** Why something is missing (a load failed). */
   problem?: string;
   /** Still loading the first copy. */
@@ -494,11 +496,11 @@ function stageMarkup(view: FitView, d: FitData) {
   const name = CHARACTERS[view.champion].name;
   const palette = outfit.skin ? "" : (outfit.look.skin ?? "");
   const clears = bossClears(d.progress);
-  const earnedStars = frameStars(outfit.look.frame, clears);
   let live: string;
   let extra = "";
   if (frameView) {
-    // A frame is shown on the portrait it goes around, large.
+    // A frame is shown large on the portrait it goes around: your avatar,
+    // as everyone sees you (identityPortrait), whatever fighter is chosen.
     const boss = rewardBoss(selected.id);
     const mine = frameStars(selected.id, clears);
     const stars = boss
@@ -508,7 +510,7 @@ function stageMarkup(view: FitView, d: FitData) {
         )
       : 0;
     const tier = cosmeticTier(selected.id, stars);
-    live = `<div class="shop-live-stage is-item is-frame portrait-review-stage fit-frame-stage" data-preview-champion="${view.champion}" data-preview-item="${esc(selected.id)}" data-preview-action="idle" data-tier="${tier}" role="img" aria-label="${esc(`${name} portrait · ${selected.name}${boss ? ` · ${stars} stars` : ""} · ${TIER_NAMES[tier]}`)}"><div class="shop-preview-fallback"><div class="portrait-review-avatar fit-frame-avatar">${framedAvatar({ character: view.champion, raidLook: { ...outfit.look, frame: selected.id as never }, championLooks: outfit.skin ? { [view.champion]: outfit.skin } : {} }, "fit-frame-live", stars)}</div></div></div>`;
+    live = `<div class="shop-live-stage is-item is-frame portrait-review-stage fit-frame-stage" data-preview-champion="${view.champion}" data-preview-item="${esc(selected.id)}" data-preview-action="idle" data-tier="${tier}" role="img" aria-label="${esc(`Your portrait · ${selected.name}${boss ? ` · ${stars} stars` : ""} · ${TIER_NAMES[tier]}`)}"><div class="shop-preview-fallback"><div class="portrait-review-avatar fit-frame-avatar">${framePortrait(avatarImage(d.avatar), selected.id, stars)}</div></div></div>`;
     if (boss) {
       const have = clears[boss] ?? 0;
       extra = `<div class="fit-stars" role="group" aria-label="Preview frame level">${Array.from(
@@ -536,9 +538,8 @@ function stageMarkup(view: FitView, d: FitData) {
           : "";
     live = `<div class="shop-live-stage fit-live${d.low ? " is-still" : ""}" data-preview-champion="${view.champion}" data-preview-item="${esc(view.selected ?? look?.skin ?? "")}" data-preview-skin="${esc(look?.skin ?? "")}" data-preview-stage="${look?.stage ?? 1}" data-preview-look="${encodeURIComponent(JSON.stringify(outfit.look))}" data-preview-action="${view.action}" role="img" aria-label="${esc(`${name}${look?.skin ? ` in ${nameOf(look.skin)}` : ""}`)}">${stageLight(previewViewBox(view.action), "fit")}<div class="shop-preview-fallback${colours}"${palette ? ` data-cosmetic="${esc(palette)}"` : ""}>${still}</div>${d.low ? `<div class="shop-preview-fallback fit-original" hidden>${stillFighter(view.champion, null, "", view.action, "fit-original")}</div>` : ""}</div>`;
   }
-  // Top: the portrait frame you'd wear (opens the Frame slot), and the
-  // animations that only play on the stage.
-  const frameBadge = `<button type="button" class="fit-frame-badge" data-fit-slot="frame" aria-label="Portrait frame: ${esc(outfit.look.frame ? nameOf(outfit.look.frame) : "none")}. Choose a frame">${framedAvatar({ character: view.champion, raidLook: outfit.look, championLooks: outfit.skin ? { [view.champion]: outfit.skin } : {} }, "fit-badge", earnedStars)}<small>${outfit.look.frame ? "Portrait frame" : "No frame"}</small></button>`;
+  // Top: the animations that only play on the stage. (No portrait frame
+  // badge: portraits are preset avatars, and the Frame slot picks frames.)
   // A Mythical also shows its Stage III ultimate.
   const mythicShown =
     !!outfit.skin &&
@@ -606,7 +607,7 @@ function stageMarkup(view: FitView, d: FitData) {
     : (info?.source ?? (outfit.skin ? "" : `${name} · original look`));
   const rarity =
     focus && !set ? rarityTag(rarityOf(focus, starsOf(focus, d))) : "";
-  return `<section class="ui-split-stage fit-stage${frameView ? " is-frame" : ""}" style="--el:${elVar(view.champion)}" aria-label="Try-on stage" data-fit-region="stage">${live}<div class="fit-stage-top">${frameBadge}${plays}</div><div class="fit-stage-info"><span class="fit-row">${rarity}<span class="ui-note">${state}</span></span><b class="fit-stage-name">${esc(title)}</b>${sub ? `<small class="ui-note fit-stage-sub">${esc(sub)}</small>` : ""}${extra}${compare || awaken ? `<span class="fit-row fit-stage-tools">${compare}${awaken}</span>` : ""}${awakenNote}</div></section>`;
+  return `<section class="ui-split-stage fit-stage${frameView ? " is-frame" : ""}" style="--el:${elVar(view.champion)}" aria-label="Try-on stage" data-fit-region="stage">${live}${plays ? `<div class="fit-stage-top">${plays}</div>` : ""}<div class="fit-stage-info"><span class="fit-row">${rarity}<span class="ui-note">${state}</span></span><b class="fit-stage-name">${esc(title)}</b>${sub ? `<small class="ui-note fit-stage-sub">${esc(sub)}</small>` : ""}${extra}${compare || awaken ? `<span class="fit-row fit-stage-tools">${compare}${awaken}</span>` : ""}${awakenNote}</div></section>`;
 }
 export function awakeningNote(id: string, e: Economy | null) {
   if (e?.mythicTesting) return "All stages unlocked for testing.";
