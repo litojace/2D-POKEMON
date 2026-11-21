@@ -106,6 +106,17 @@ const data = (extra: Partial<ProfileData> = {}): ProfileData => ({
   ...extra,
 });
 const html = (d = data(), v = profileView()) => profileMarkup(v, d);
+/** Every tab's page, one after another (the card shows one at a time). */
+const TABS = [
+  "overview",
+  "matches",
+  "avatar",
+  "titles",
+  "mastery",
+  "trophies",
+] as const;
+const every = (d = data(), v: Partial<ReturnType<typeof profileView>> = {}) =>
+  TABS.map((tab) => html(d, { ...profileView(), ...v, tab })).join("");
 
 describe("the numbers", () => {
   it("shows matches, wins, win rate and raid clears", () => {
@@ -153,7 +164,7 @@ describe("the numbers", () => {
 
 describe("the card", () => {
   it("shows your fighter, title, name, level, rank and best mastery", () => {
-    const page = html();
+    const page = every();
     expect(page).toContain('data-fighter="voltkit"');
     expect(page).toContain(">Mountain Conqueror</small>");
     expect(page).toContain('<b class="pf-card-name">tester</b>');
@@ -174,7 +185,7 @@ describe("the card", () => {
 
 describe("titles", () => {
   it("are chips with No title first and only the worn one pressed", () => {
-    const page = html();
+    const page = every();
     expect(page).toContain('data-profile-title=""');
     for (const t of titles)
       expect(page).toContain(`data-profile-title="${t.id}"`);
@@ -182,25 +193,25 @@ describe("titles", () => {
     expect(page).toMatch(
       new RegExp(`aria-pressed="true" data-profile-title="${id(2)}"`),
     );
-    expect(html(data({ title: null }))).toMatch(
+    expect(every(data({ title: null }))).toMatch(
       /aria-pressed="true" data-profile-title=""/,
     );
   });
   it("wear their colour; a bad colour never reaches the style", () => {
-    const page = html();
+    const page = every();
     expect(page).toContain("--title:#ffbc65");
     expect(page).not.toContain("--title:nope");
   });
   it("escape names and descriptions", () => {
-    const page = html();
+    const page = every();
     expect(page).not.toContain("<b>Sneaky</b>");
     expect(page).toContain("&lt;b&gt;Sneaky&lt;/b&gt;");
   });
   it("say where titles come from when there are none", () => {
-    expect(html(data({ titles: [], title: null }))).toContain("Earn titles");
+    expect(every(data({ titles: [], title: null }))).toContain("Earn titles");
   });
   it("all wait while one is being put on", () => {
-    const page = html(data(), { ...profileView(), equipping: id(1) });
+    const page = every(data(), { equipping: id(1) });
     expect(
       page.match(
         /data-profile-title="[^"]*" title="[^"]*" disabled|data-profile-title="" disabled/g,
@@ -212,7 +223,7 @@ describe("titles", () => {
 
 describe("the rest of the profile", () => {
   it("has every fighter's mastery, both summaries, every boss and the achievements", () => {
-    const page = html();
+    const page = every();
     expect(page.match(/class="pf-mastery-chip/g)).toHaveLength(18);
     expect(page).toContain("Voltkit: Gold mastery, 31 played, 20 won");
     expect(page).toContain('data-profile-go="journey"');
@@ -231,12 +242,11 @@ describe("the rest of the profile", () => {
     expect(page).not.toContain("pf-links");
     expect(page).toContain("Player · t@example.com");
   });
-  it("is five tabs on a phone, one shown at a time", () => {
+  it("is tabs on every screen, one shown at a time", () => {
     const tabsOf = (page: string) =>
       [...page.matchAll(/data-ui-profile-tab="([a-z]+)"/g)].map((m) => m[1]);
-    // A desktop: one column, no tabs.
-    expect(tabsOf(html())).toEqual([]);
-    const phone = data({ compact: true });
+    // A desktop too: no long column holding everything.
+    const phone = data();
     const overview = html(phone);
     expect(tabsOf(overview)).toEqual([
       "overview",

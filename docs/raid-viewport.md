@@ -38,8 +38,19 @@ On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview)
   can be off screen (islands, pads, a marked raider, braziers) gets
   `view: "court"`; a dodge that only needs the floor around the raider does not.
 - The off-screen boss gets the PvP arrow circling the raider. Off-screen allies
-  get a small arrow in their colour at the screen's edge (`ally-bearings.ts`); a
-  downed ally's is red with a pulsing "!", so a reviver knows where to run.
+  get a small arrow in the allies' blue (as on their nameplates, whatever their
+  champion's colour) at the screen's edge (`ally-bearings.ts`); a downed ally's
+  turns red with a pulsing "!", so a reviver knows where to run.
+- **Clear of the touch controls.** The joystick's and skill buttons' reach in
+  from each side is measured once per layout (`ControlSides`, on the first raid
+  frame after `fitRenderer`). Your raider always stands between them, with
+  about a fighter's half-width to spare; the court may scroll past the screen's
+  edge for that, showing the dim scenery round it. The boss is kept clear too
+  when both fit. A court-wide frame keeps your raider clear as well, zooming out
+  only as far as that needs.
+  When the boss still ends up under the buttons or the joystick, it gets the
+  off-screen arrow, and right-side ally arrows sit by the buttons (never under
+  them or over the clock).
 - Players who prefer the overview tick **Whole court in raids** in Settings →
   Controls (phones only; `raidCourt` in the saved controls). The Ascendant
   specs that read the whole arena against the HUD and touch controls choose it.

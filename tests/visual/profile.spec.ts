@@ -266,10 +266,10 @@ for (const size of SIZES)
       if (size.phone)
         expect(fit.size, "the avatar's size").toBeGreaterThanOrEqual(85);
 
-      // A phone shows the card's column as tabs (Overview, Titles, Mastery,
-      // Trophies); a desktop shows it all in one column.
+      // Every screen shows the card's column as tabs (Overview, Matches,
+      // Avatar, Titles, Mastery, Trophies): one part at a time, so a desktop
+      // no longer scrolls through everything.
       const tab = async (t: string) => {
-        if (!size.phone) return;
         await panel.locator(`[data-ui-profile-tab="${t}"]`).click();
         await expect(
           panel.locator(`[data-profile-main][data-tab="${t}"]`),
@@ -290,9 +290,8 @@ for (const size of SIZES)
           )
           .toBe(0);
       };
-      if (size.phone)
-        await expect(panel.locator(".ui-panel-head .ui-tabs")).toBeVisible();
-      else await expect(panel.locator("[data-ui-profile-tab]")).toHaveCount(0);
+      await expect(panel.locator(".ui-panel-head .ui-tabs")).toBeVisible();
+      await expect(panel.locator("[data-ui-profile-tab]")).toHaveCount(6);
       // The card: you (your avatar, not a fighter), title, name, level,
       // rank, mastery.
       const card = panel.locator(".pf-card");
@@ -361,19 +360,57 @@ for (const size of SIZES)
         }),
       ).toEqual([]);
       expect(await spills(page, ".profile-panel")).toEqual([]);
+      // The card stands still and centred whichever tab is open: its
+      // avatar and words never move when the column beside it changes.
+      const cardPlace = () =>
+        panel.evaluate((p) => {
+          const c = p.querySelector(".pf-card")!.getBoundingClientRect();
+          const mid = (s: string) => {
+            const r = p.querySelector(s)!.getBoundingClientRect();
+            return (
+              Math.round((r.left + r.width / 2 - (c.left + c.width / 2)) * 2) /
+              2
+            );
+          };
+          return {
+            card: [c.left, c.top, c.width, c.height].map(Math.round),
+            avatar: mid(".pf-card-avatar > *"),
+            name: mid(".pf-card-name"),
+            tags: mid(".pf-card-tags"),
+          };
+        });
+      const places: Record<string, unknown> = {};
+      for (const t of [
+        "overview",
+        "matches",
+        "avatar",
+        "titles",
+        "mastery",
+        "trophies",
+      ]) {
+        await tab(t);
+        places[t] = await cardPlace();
+      }
+      const first = places.overview as Awaited<ReturnType<typeof cardPlace>>;
+      for (const off of [first.avatar, first.name, first.tags])
+        expect(
+          Math.abs(off),
+          "the card's contents are centred",
+        ).toBeLessThanOrEqual(1);
+      for (const [t, p] of Object.entries(places))
+        expect(p, `the card on the ${t} tab`).toEqual(first);
       // Every tab fits its column, nothing cut off or spilling.
-      if (size.phone)
-        for (const t of ["overview", "titles", "mastery"]) {
-          await tab(t);
-          expect(
-            await layoutProblems(page, {
-              inset: size.island ? ISLAND : undefined,
-              phone: size.phone,
-            }),
-            t,
-          ).toEqual([]);
-          expect(await spills(page, ".profile-panel"), t).toEqual([]);
-        }
+      for (const t of ["overview", "matches", "titles", "mastery"]) {
+        await tab(t);
+        expect(
+          await layoutProblems(page, {
+            inset: size.island ? ISLAND : undefined,
+            phone: size.phone,
+          }),
+          t,
+        ).toEqual([]);
+        expect(await spills(page, ".profile-panel"), t).toEqual([]);
+      }
       await tab("overview");
 
       // Centred: the card's words in the card, each number and label in its
@@ -509,6 +546,8 @@ test("titles wear on a tap, a refusal says why; a guest can save their account",
   try {
     const page = await context.newPage();
     const { errors, panel } = await open(page, SIZES[1]);
+    // Titles have their own tab on a desktop too.
+    await panel.locator('[data-ui-profile-tab="titles"]').click();
     const expert = panel.locator(".pf-title-chip", { hasText: "Expert" });
     await expert.click();
     await expect(panel.locator(".pf-title-chip.is-on")).toHaveText("Expert");
@@ -549,6 +588,7 @@ test("titles wear on a tap, a refusal says why; a guest can save their account",
       "Card saved as a picture; the message is copied.",
     );
     // A trophy opens that boss's rewards in Raids.
+    await panel.locator('[data-ui-profile-tab="trophies"]').click();
     await panel.locator('[data-profile-boss="emberwing"]').click();
     await expect(page.locator(".profile-panel")).toHaveCount(0);
     await expect(page.locator(".rh-room")).toBeVisible();
