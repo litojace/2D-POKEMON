@@ -1685,7 +1685,12 @@ export class BotBrain {
           const plates =
             CHARACTERS[me.character].passive === "plates" ? platesOf(me) : 0;
           if (s.sight && reach(a.range * 0.55))
-            score = a.damage * (a.count ?? 3) * (1 + plates) * 0.35;
+            score =
+              a.damage *
+              (a.perPlate !== undefined
+                ? (a.count ?? 3) + a.perPlate * plates
+                : (a.count ?? 3) * (1 + plates)) *
+              0.35;
           break;
         }
         case "tunnel":

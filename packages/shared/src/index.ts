@@ -601,8 +601,21 @@ export interface Ability {
   chainWindow?: number;
   /** Surf: the cooldown left after a dash that went through an enemy (s). */
   surf?: { refund: number };
-  /** Wave: the longest an enemy is carried along (s). */
-  wave?: { carry: number };
+  /**
+   * Wave: the longest an enemy is carried along (s); `second`: a second wall
+   * rolls out this many seconds after the first (one jump can't clear both).
+   */
+  wave?: { carry: number; second?: number };
+  /**
+   * Cone: `grow` px of reach gained over the breath (stepping back is not
+   * enough); `freeze`: an enemy hit by this many ticks in a row is frozen for
+   * `freezeFor` seconds (once a breath).
+   */
+  cone?: { grow?: number; freeze?: number; freezeFor?: number };
+  /** Shrapnel: blades = `count` + `perPlate` per plate (instead of count each). */
+  perPlate?: number;
+  /** Rest: when it ends, a shockwave round the fighter (damage, radius, knockback). */
+  burst?: { damage: number; radius: number; knockback: number };
   /**
    * Projectile: it flies through enemies, zapping the nearest one within
    * `radius` in sight for `damage` every `tick` seconds, and explodes at the
@@ -827,6 +840,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           knockback: 0,
           status: "burn",
           statusDuration: 1.5,
+          cone: { grow: 110 },
         },
       ),
       ability(
@@ -959,7 +973,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           wallSlam: 0.5,
           status: "stun",
           statusDuration: 0.6,
-          wave: { carry: 0.5 },
+          wave: { carry: 0.5, second: 0.9 },
         },
       ),
     ],
@@ -1212,7 +1226,12 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         0,
         16,
         "Pull into your shell for 2.5 seconds: you can't move or act, but take 45% less damage and regrow 30 HP.",
-        { duration: 2.5, heal: 6, status: "shell" },
+        {
+          duration: 1.5,
+          heal: 10,
+          status: "shell",
+          burst: { damage: 14, radius: 140, knockback: 260 },
+        },
       ),
       ability(
         "mud-mire",
@@ -1579,11 +1598,11 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "frost-breath",
         "Frost Breath",
         "cone",
-        4,
+        5,
         12,
         "Breathe a freezing cone for 1 second. Slows.",
         {
-          range: 210,
+          range: 230,
           arc: 0.7,
           duration: 1,
           tickDelay: 0.1,
@@ -1591,6 +1610,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           knockback: 0,
           status: "slow",
           statusDuration: 0.6,
+          cone: { freeze: 3, freezeFor: 0.7 },
         },
       ),
       ability(
@@ -2026,11 +2046,12 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "scale-shrapnel",
         "Scale Shrapnel",
         "shrapnel",
-        6,
+        7,
         9,
         "Shed your armour plates as a fan of blades: 3 blades, plus 3 for each plate you have. Every plate is spent and grows back later.",
         {
-          count: 3,
+          count: 6,
+          perPlate: 2,
           fan: 1.2,
           speed: 760,
           range: 300,
