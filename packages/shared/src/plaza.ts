@@ -629,10 +629,27 @@ export const PLAZA_BENCHES: readonly { x: number; y: number }[] = [
   { x: 990, y: 680 },
   { x: 1710, y: 680 },
 ];
+/**
+ * Signposts where a path leaves another: an arrow plank pointing along the
+ * branch (dir 1: east, -1: west) with its words. The fishing pond's stands
+ * at the fork off the main path, on the corner north of the pond path.
+ */
+export const PLAZA_SIGNPOSTS: readonly {
+  x: number;
+  y: number;
+  text: string;
+  dir: 1 | -1;
+}[] = [{ x: 1468, y: 1352, text: "FISHING", dir: 1 }];
 const SCATTER = scatter();
-/** Benches and lamps, as round footprints scattered scenery keeps clear of. */
+/** Benches, lamps and signposts, as round footprints scattered scenery keeps clear of. */
 const FIXTURES = [
   ...PLAZA_BENCHES.map((b) => ({ x: b.x, y: b.y, size: 100 })),
+  // A signpost's plank stands above and beside its post: keep it in the clear.
+  ...PLAZA_SIGNPOSTS.map((s) => ({
+    x: s.x + s.dir * 10,
+    y: s.y - 40,
+    size: 150,
+  })),
   ...PLAZA_LAMPS.map((l) => ({ x: l.x, y: l.y, size: 24 })),
 ];
 export const PLAZA_BUSHES = settle(SCATTER.bushes, FIXTURES);
@@ -657,6 +674,7 @@ export const PLAZA_OBSTACLES: readonly PlazaObstacle[] = [
   { x: PLAZA_FOUNTAIN.x, y: PLAZA_FOUNTAIN.y, r: 100, sy: 1.6 },
   ...PLAZA_TREES.map((t) => ({ x: t.x, y: t.y, r: 22 })),
   ...PLAZA_LAMPS.map((l) => ({ x: l.x, y: l.y, r: 9 })),
+  ...PLAZA_SIGNPOSTS.map((p) => ({ x: p.x, y: p.y, r: 8 })),
   ...PLAZA_BENCHES.map((b) => ({ x: b.x, y: b.y - 6, r: 40, sy: 3 })),
   ...PLAZA_BUSHES.map((b) => ({ x: b.x, y: b.y - 4, r: 26, sy: 1.6 })),
   ...PLAZA_ROCKS.map((b) => ({ x: b.x, y: b.y - 4, r: 16, sy: 1.6 })),
@@ -1151,7 +1169,7 @@ export const PLAZA_QUESTS = [
   { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 15 },
   { id: "photo", text: "Use the Photo Spot", max: 1, coins: 10 },
   // Migration 20261120180000_plaza_fishing.
-  { id: "fish", text: "Catch 3 fish", max: 3, coins: 15 },
+  { id: "fish", text: "Catch 10 fish", max: 10, coins: 25 },
 ] as const;
 export type PlazaQuestId = (typeof PLAZA_QUESTS)[number]["id"];
 /** A lap under this time completes the lap quest. */

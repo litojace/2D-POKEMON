@@ -4,7 +4,7 @@
 --  * The game server decides the bite and the fish and reports each catch:
 --    arena_plaza_record({player, kind: 'fish', ref: <fish id>}).
 --  * At most 30 catches count a Pacific day (PLAZA_FISHING.perDay), like the
---    orbs' cap: they fill the new daily quest "Catch 3 fish" (15 coins) and
+--    orbs' cap: they fill the new daily quest "Catch 10 fish" (25 coins) and
 --    the Fish book's counts. A fish never caught before still enters the
 --    book past the cap, with nothing counted.
 --  * The Fish book: every fish a player has caught, with how many counted
@@ -42,10 +42,10 @@ insert into public.arena_titles(name, description, color, active)
 select 'Master Angler', 'Catch every fish in the Plaza pond''s Fish book.', '#5fb3ff', true
 where not exists (select 1 from public.arena_titles where name = 'Master Angler');
 
--- The quests, with "Catch 3 fish" last (the order of PLAZA_QUESTS).
+-- The quests, with "Catch 10 fish" last (the order of PLAZA_QUESTS).
 create or replace function public.arena_plaza_quests() returns table(id text, needed integer, coins integer)
 language sql immutable set search_path = public as $$
-  values ('goal', 1, 20), ('lap', 1, 20), ('cheers', 15, 15), ('orbs', 10, 15), ('photo', 1, 10), ('fish', 3, 15)
+  values ('goal', 1, 20), ('lap', 1, 20), ('cheers', 15, 15), ('orbs', 10, 15), ('photo', 1, 10), ('fish', 10, 25)
 $$;
 revoke all on function public.arena_plaza_quests() from public, anon, authenticated, service_role;
 

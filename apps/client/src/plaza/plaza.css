@@ -1809,12 +1809,23 @@
   gap: 0.45em;
   height: 3em;
   padding: 0 1.1em 0 0.9em;
-  border: 1px solid #ffffff3a;
+  border: 1px solid #ffb3b3;
   border-radius: 999px;
-  background: #0b1020d9;
+  /* Red: the way out, told apart at a glance from fishing's blue buttons. */
+  background: linear-gradient(#f0525a, #c62f3a);
+  box-shadow:
+    0 3px 0 #8a1d26,
+    0 6px 14px #0006;
   color: #fff;
   font: 800 1em var(--font-body);
+  text-shadow: 0 1px 0 #0005;
   cursor: pointer;
+}
+.plaza-layer .pz-fish-exit:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 1px 0 #8a1d26,
+    0 3px 8px #0006;
 }
 .plaza-layer .pz-fish-exit span {
   font-size: 0.95em;

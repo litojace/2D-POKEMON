@@ -69,6 +69,12 @@ for (const size of [
       for (const s of [".pz-joy", ".pz-actions", ".pz-left", "#pz-quests"])
         await expect(page.locator(s)).toBeHidden();
       await expect.poll(async () => (await mode(page)).fz).toBeGreaterThan(1.4);
+      // Leave is red, told apart from fishing's blue buttons.
+      expect(
+        await page
+          .locator("#pz-fish-exit")
+          .evaluate((el) => getComputedStyle(el).backgroundImage),
+      ).toContain("rgb(240, 82, 90)");
       await snap(page, info, `fishing-mode-${name}`);
       await cast(page);
       await snap(page, info, `fishing-wait-${name}`);

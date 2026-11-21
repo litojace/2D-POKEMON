@@ -24,6 +24,7 @@ import {
   ORB_SHOWER,
   PLAZA,
   PLAZA_BENCHES,
+  PLAZA_SIGNPOSTS,
   PLAZA_BOARD,
   PLAZA_BUSHES,
   PLAZA_CAFE,
@@ -3413,14 +3414,6 @@ export function openPlaza(options) {
         ["#ff8fb8", "#ffd65b", "#ffffff"][i % 3],
       );
     }
-    g.fillStyle = "#7a5230";
-    g.beginPath();
-    g.roundRect(x - 64, y - 206, 128, 36, 8);
-    g.fill();
-    g.fillStyle = "#fff4d6";
-    g.font = "800 22px 'Barlow Condensed', sans-serif";
-    g.textAlign = "center";
-    g.fillText("THE FIELDS", x, y - 181);
   }
   const HK = PLAZA_SCALE.house;
   function drawHouse(g, h, n) {
@@ -4337,6 +4330,19 @@ export function openPlaza(options) {
           { sw: o.spr.w / 2, name: "rock" },
         ),
       ),
+      ...PLAZA_SIGNPOSTS.map((o) =>
+        spot(
+          o.x,
+          o.y,
+          8,
+          112,
+          () => {
+            GFX.shadow(g, o.x + 4, o.y + 2, 14, 5);
+            GFX.blit(g, GFX.signpost(o.text, o.dir), o.x, o.y + 4);
+          },
+          { sw: 60, name: "signpost" },
+        ),
+      ),
       ...LAMPS.map((o) =>
         spot(o.x, o.y, 9, 110 * PLAZA_SCALE.lamp, () => drawLamp(g, o), {
           sw: 24,
@@ -4581,7 +4587,7 @@ export function openPlaza(options) {
         x1: GATE.x + 80,
         y0: GATE.y - 4,
         y1: GATE.y,
-        h: 210,
+        h: 195,
         name: "gate",
         draw: () => drawGate(g),
       },

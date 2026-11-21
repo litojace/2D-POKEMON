@@ -8,8 +8,10 @@ import {
   PLAZA_FISH_RARITY,
   PLAZA_FISH_SHAPES,
   PLAZA_FISHING,
+  PLAZA_PATHS,
   PLAZA_POND,
   PLAZA_QUESTS,
+  PLAZA_SIGNPOSTS,
   PLAZA_SPOTS,
   plazaCollide,
   plazaFishFor,
@@ -17,6 +19,7 @@ import {
   plazaIsNight,
   plazaSpotAt,
   plazaTimeOfDay,
+  segmentDistance,
   type PlazaFishNote,
 } from "../../packages/shared/src/plaza";
 
@@ -152,8 +155,30 @@ describe("the fish table", () => {
           s.r + SPOT.r,
         );
     expect(PLAZA_QUESTS.find((q) => q.id === "fish")).toMatchObject({
-      max: 3,
+      text: "Catch 10 fish",
+      max: 10,
     });
+  });
+});
+
+describe("the way to the pond", () => {
+  it("has a FISHING signpost at the fork, beside the pond path, pointing at the pond", () => {
+    const pond = PLAZA_PATHS.find((p) => {
+      const [x, y] = p.pts[p.pts.length - 1];
+      return Math.hypot(x - PLAZA_POND.x, y - PLAZA_POND.y) < PLAZA_POND.rx;
+    })!;
+    const [a, b] = pond.pts.map(([x, y]) => ({ x, y }));
+    const sign = PLAZA_SIGNPOSTS.find((s) => s.text === "FISHING")!;
+    expect(sign.dir).toBe(Math.sign(PLAZA_POND.x - sign.x));
+    // Near where the pond path leaves the main path, just off its stones.
+    expect(Math.hypot(sign.x - a.x, sign.y - a.y)).toBeLessThan(160);
+    const off = segmentDistance(sign.x, sign.y, a, b) - pond.w / 2;
+    expect(off).toBeGreaterThan(4);
+    expect(off).toBeLessThan(40);
+    // Nobody walks through it.
+    const walker = { x: sign.x, y: sign.y + 2 };
+    plazaCollide(walker);
+    expect(walker.y - sign.y).toBeGreaterThan(PLAZA.radius);
   });
 });
 

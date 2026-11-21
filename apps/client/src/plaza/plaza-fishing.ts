@@ -34,8 +34,10 @@ const WIND_SECONDS = 0.28;
 const FLY_SECONDS = 0.42;
 /** A caught fish leaps from the water to the angler (s). */
 const LEAP_SECONDS = 0.9;
-/** A lost fish: the bobber pops up and the line comes in (s). */
-const MISS_SECONDS = 0.45;
+/** A lost fish: the line comes in slack (LINE_IN_SECONDS), the fish's
+ * shadow darts off across the water and "Missed!" floats up (s). */
+const MISS_SECONDS = 1.1;
+const LINE_IN_SECONDS = 0.45;
 /** How much closer the camera comes in fishing mode. */
 export const FISHING_ZOOM = 1.45;
 
@@ -96,6 +98,7 @@ export function createFishing(deps: FishingDeps) {
   const lose = (word: string) => {
     note = word;
     set("miss");
+    if (typeof navigator !== "undefined") navigator.vibrate?.([12, 50, 12]);
   };
 
   function cast() {
@@ -267,9 +270,31 @@ export function createFishing(deps: FishingDeps) {
             ? 4 + Math.sin(t * 40)
             : nib
               ? Math.sin((nibbleT / 0.32) * Math.PI) * 3
-              : pop
-                ? -Math.sin((t / MISS_SECONDS) * Math.PI) * 8
-                : Math.sin(time * 3) * 1.5);
+              : Math.sin(time * 3) * 1.5);
+      if (pop) {
+        // The one that got away: its shadow darts off, away from the dock,
+        // and a ring spreads where the bobber was.
+        const k = Math.min(1, t / MISS_SECONDS),
+          e = 1 - (1 - k) * (1 - k),
+          sx = B.x + e * 90,
+          sy = B.y + 8 + Math.sin(k * 14) * 2;
+        g.fillStyle = `rgba(10,40,70,${0.42 * (1 - k)})`;
+        g.beginPath();
+        g.ellipse(sx, sy, 13, 4.5, 0, 0, 7);
+        g.moveTo(sx - 11, sy);
+        g.lineTo(sx - 21, sy - 5 + Math.sin(k * 40) * 2);
+        g.lineTo(sx - 21, sy + 5 + Math.sin(k * 40) * 2);
+        g.closePath();
+        g.fill();
+        if (!low) {
+          g.strokeStyle = `rgba(255,255,255,${0.75 * (1 - k)})`;
+          g.lineWidth = 2;
+          g.beginPath();
+          g.ellipse(B.x, B.y + 2, 8 + e * 34, 3 + e * 12, 0, 0, 7);
+          g.stroke();
+        }
+        return;
+      }
       if (!low) {
         g.lineWidth = 1.5;
         // Calm rings while waiting; a small one on a nibble; a splash on the bite.
@@ -328,6 +353,8 @@ export function createFishing(deps: FishingDeps) {
         const k = t / WIND_SECONDS;
         ang = k < 1 ? -1.0 - k * 0.9 : -1.9 + Math.min(1, (k - 1) * 2.4) * 1.25;
       } else if (phase === "bite") ang = -0.55 + Math.sin(t * 30) * 0.06;
+      else if (phase === "miss")
+        ang = -0.6 - Math.min(1, t / MISS_SECONDS) * 0.4;
       else if (phase === "leap")
         ang = -1.35 - Math.sin((t / LEAP_SECONDS) * Math.PI) * 0.4;
       const L = 58,
@@ -366,9 +393,10 @@ export function createFishing(deps: FishingDeps) {
         bx = p.x;
         by = p.y;
       } else if (phase === "miss") {
-        const k = t / MISS_SECONDS;
+        const k = Math.min(1, t / LINE_IN_SECONDS);
         bx = B.x + (tx - B.x) * k;
         by = B.y + (ty - B.y) * k;
+        if (k >= 1) line = false;
       }
       if (line) {
         g.strokeStyle = "rgba(255,255,255,.8)";
@@ -380,7 +408,22 @@ export function createFishing(deps: FishingDeps) {
         g.stroke();
       }
       if (phase === "cast" && t > WIND_SECONDS) drawBobber(g, bx, by, false);
-      if (phase === "miss") drawBobber(g, bx, by, false);
+      if (phase === "miss" && line) drawBobber(g, bx, by, false);
+      // "Missed!" floating up over the angler's head.
+      if (phase === "miss") {
+        const k = Math.min(1, t / MISS_SECONDS);
+        g.save();
+        g.globalAlpha = 1 - k * k;
+        g.font = "800 22px 'Barlow Condensed', sans-serif";
+        g.textAlign = "center";
+        g.lineWidth = 4;
+        g.strokeStyle = "#0b1020";
+        g.fillStyle = "#ff6b6b";
+        const y = me.y - me.z - 118 - k * 18;
+        g.strokeText("Missed!", me.x, y);
+        g.fillText("Missed!", me.x, y);
+        g.restore();
+      }
       // "!" over the angler's head while the bite lasts.
       if (phase === "bite" && t < PLAZA_FISHING.windowMs / 1000) {
         const s = 1 + Math.max(0, 0.35 - t) * 1.5,

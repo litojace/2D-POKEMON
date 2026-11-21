@@ -12,7 +12,7 @@ import {
 
 // Migration 20261120180000_plaza_fishing: the game server reports each catch
 // (arena_plaza_record, kind "fish"); at most PLAZA_FISHING.perDay count a
-// day, toward the "Catch 3 fish" quest and the Fish book.
+// day, toward the "Catch 10 fish" quest and the Fish book.
 let db: PGlite;
 const angler = "00000000-0000-4000-8000-000000000391",
   other = "00000000-0000-4000-8000-000000000392",
@@ -91,18 +91,20 @@ it("counts catches toward the quest, pays it once, and fills the Fish book", asy
   expect(p.fishBook).toEqual({});
   expect(p.quests.fish).toEqual({ n: 0, done: false });
   const c0 = await coins(angler);
-  await record({ player: angler, kind: "fish", ref: "tide-guppy" });
+  const n = fishQuest.max;
+  for (let i = 0; i < n - 2; i++)
+    await record({ player: angler, kind: "fish", ref: "tide-guppy" });
   p = await record({ player: angler, kind: "fish", ref: "tide-guppy" });
-  expect(p.quests.fish).toEqual({ n: 2, done: false });
+  expect(p.quests.fish).toEqual({ n: n - 1, done: false });
   expect(await coins(angler)).toBe(c0);
   p = await record({ player: angler, kind: "fish", ref: "zap-eel" });
-  expect(p.quests.fish).toEqual({ n: 3, done: true });
-  expect(p.fishToday).toBe(3);
-  expect(p.fishBook).toEqual({ "tide-guppy": 2, "zap-eel": 1 });
+  expect(p.quests.fish).toEqual({ n, done: true });
+  expect(p.fishToday).toBe(n);
+  expect(p.fishBook).toEqual({ "tide-guppy": n - 1, "zap-eel": 1 });
   expect(await coins(angler)).toBe(c0 + fishQuest.coins);
   // Paid once a day.
   p = await record({ player: angler, kind: "fish", ref: "ember-minnow" });
-  expect(p.quests.fish).toEqual({ n: 3, done: true });
+  expect(p.quests.fish).toEqual({ n, done: true });
   expect(await coins(angler)).toBe(c0 + fishQuest.coins);
   // Only the angler's book.
   expect((await progress(other)).fishBook).toEqual({});
@@ -166,12 +168,12 @@ it("pays each fish's first catch once, by rarity, capped", async () => {
       PLAZA_FISH_RARITY.common.firstCoins +
       PLAZA_FISH_RARITY.legendary.firstCoins,
   });
-  // Three catches also finish the day's fish quest.
+  // Three catches are short of the day's fish quest: first catches only.
+  expect(fishQuest.max).toBeGreaterThan(3);
   expect(await coins(who)).toBe(
     c0 +
       PLAZA_FISH_RARITY.common.firstCoins +
-      PLAZA_FISH_RARITY.legendary.firstCoins +
-      fishQuest.coins,
+      PLAZA_FISH_RARITY.legendary.firstCoins,
   );
   // A bad amount is capped, never negative; a missing one pays nothing.
   await record({ player: who, kind: "fish", ref: "zap-eel", coins: 9999 });

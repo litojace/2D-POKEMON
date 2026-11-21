@@ -602,6 +602,67 @@ const GFX = (() => {
       }),
     );
 
+  /** A wooden signpost: a plank shaped as an arrow (dir 1 points right),
+   * a fish on it for the pond, and its words. Painted once. */
+  const signpost = (text, dir = 1, color = "#2a6fd0") =>
+    memo(`signpost:${text}:${dir}:${color}`, () =>
+      sprite(150, 120, 75, 112, (g) => {
+        g.fillStyle = "#6b4527";
+        rr(g, -4, -78, 8, 78, 3);
+        g.fill();
+        g.scale(dir, 1);
+        // The arrow plank, its point toward where the sign sends you.
+        const plank = () => {
+          g.beginPath();
+          g.moveTo(-58, -100);
+          g.lineTo(44, -100);
+          g.lineTo(64, -82);
+          g.lineTo(44, -64);
+          g.lineTo(-58, -64);
+          g.closePath();
+        };
+        g.fillStyle = "rgba(0,0,0,.25)";
+        g.save();
+        g.translate(0, 3);
+        plank();
+        g.fill();
+        g.restore();
+        plank();
+        g.fillStyle = vg(g, -100, -64, "#c48a4a", "#8a5a30");
+        g.fill();
+        g.strokeStyle = "#5a3a1e";
+        g.lineWidth = 2.5;
+        g.stroke();
+        // A fish on a blue badge at the plank's tail.
+        g.fillStyle = color;
+        g.beginPath();
+        g.arc(-40, -82, 13, 0, 7);
+        g.fill();
+        g.fillStyle = "#fff";
+        g.beginPath();
+        g.ellipse(-38, -82, 7, 4.5, 0, 0, 7);
+        g.moveTo(-45, -82);
+        g.lineTo(-51, -87);
+        g.lineTo(-51, -77);
+        g.closePath();
+        g.fill();
+        g.fillStyle = color;
+        g.beginPath();
+        g.arc(-35, -83, 1.3, 0, 7);
+        g.fill();
+        // The words, the right way round whichever way it points.
+        g.scale(dir, 1);
+        g.fillStyle = "#fff4d6";
+        g.strokeStyle = "#4a2e16";
+        g.lineWidth = 3;
+        g.font = "800 19px 'Barlow Condensed', sans-serif";
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.strokeText(text, dir * 12, -81);
+        g.fillText(text, dir * 12, -81);
+      }),
+    );
+
   /* ---------------- buildings ---------------- */
   function house(o) {
     const {
@@ -2465,6 +2526,7 @@ const GFX = (() => {
     crates,
     hay,
     mailbox,
+    signpost,
     house,
     barn,
     windmillBody,
