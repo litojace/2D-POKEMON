@@ -273,7 +273,7 @@ for (const size of [
                 game = await box(page, "#game");
               const hud = await box(page, "#raid-hud");
               const obstacles = await page
-                .locator(".touch-buttons button, #battle-menu, .raid-elapsed")
+                .locator(".touch-buttons > button, #battle-menu, .raid-elapsed")
                 .evaluateAll((items) =>
                   items.map((item) => {
                     const r = item.getBoundingClientRect();
@@ -293,42 +293,22 @@ for (const size of [
                 ).toBe(false);
               }
               if (selector === "#raid-prism-controls" && mobile) {
-                // Phones: Turn mirror over Look away, under the chat button
-                // and above the joystick (owner, 20 Nov 2026), clear of both.
-                const buttons = await panel
-                  .locator("button")
-                  .evaluateAll((items) =>
-                    items.map((item) => {
-                      const r = item.getBoundingClientRect();
-                      return { x: r.x, y: r.y, bottom: r.bottom };
-                    }),
-                  );
-                const chat = await box(page, "#battle-chat"),
-                  joystick = await box(page, ".touch-pad .joystick");
-                if (size.height >= 360) {
-                  expect(controls.y + controls.height).toBeLessThanOrEqual(
-                    joystick.y,
-                  );
+                // Phones: Prismatail's actions share the touch cluster's
+                // contextual slot, left of skill 1 (above it on a narrow
+                // screen) (prism-context.spec.ts covers when they show).
+                const slot = await box(page, ".touch-buttons .touch-context"),
+                  skill1 = await box(page, '.touch-buttons [data-skill="0"]');
+                expect(Math.abs(controls.x - slot.x)).toBeLessThanOrEqual(1);
+                expect(Math.abs(controls.y - slot.y)).toBeLessThanOrEqual(1);
+                if (size.width >= 600) {
+                  expect(slot.x + slot.width).toBeLessThanOrEqual(skill1.x);
                   expect(
-                    Math.abs(buttons[0].x - buttons[1].x),
-                  ).toBeLessThanOrEqual(1);
-                  expect(buttons[1].y).toBeGreaterThanOrEqual(
-                    buttons[0].bottom,
-                  );
-                  expect(controls.y).toBeGreaterThanOrEqual(
-                    chat.y + chat.height,
-                  );
-                  expect(Math.abs(controls.x - chat.x)).toBeLessThanOrEqual(2);
-                } else {
-                  // Too short to stack under the chat button: beside the
-                  // skill buttons, on one row, as before.
-                  expect(
-                    Math.abs(buttons[0].y - buttons[1].y),
-                  ).toBeLessThanOrEqual(1);
-                  expect(
-                    size.width - controls.x - controls.width,
-                  ).toBeLessThanOrEqual(54);
-                }
+                    Math.abs(
+                      slot.y + slot.height / 2 - skill1.y - skill1.height / 2,
+                    ),
+                  ).toBeLessThanOrEqual(2);
+                } else
+                  expect(slot.y + slot.height).toBeLessThanOrEqual(skill1.y);
               }
               expect(controls.x).toBeGreaterThanOrEqual(0);
               expect(controls.x + controls.width).toBeLessThanOrEqual(

@@ -171,10 +171,6 @@ export function raidFrame(
 export interface ControlSides {
   left: number;
   right: number;
-  /** A boss's mechanic buttons on the left, above the joystick (Prismatail's
-   * Turn mirror / Look away): their right edge. A court-wide frame keeps
-   * what it shows to the right of them. */
-  panel?: number;
 }
 const NO_SIDES: ControlSides = { left: 0, right: 0 };
 /** Room kept between your raider and the controls (world px, about a fighter's half-width). */
@@ -311,11 +307,10 @@ export function raidFrameView(
   sides: ControlSides = NO_SIDES,
 ): { zoom: number; x: number } {
   const mid = (box.x0 + box.x1) / 2;
-  const right = width * FRAME_SIDE,
-    left = Math.max(right, sides.panel ?? 0);
+  const side = width * FRAME_SIDE;
   const band = (zoom: number): [number, number] => {
-    let lo = box.x1 - (width / 2 - right) / zoom,
-      hi = box.x0 + (width / 2 - left) / zoom;
+    let lo = box.x1 - (width / 2 - side) / zoom,
+      hi = box.x0 + (width / 2 - side) / zoom;
     if (raider && (sides.left || sides.right)) {
       const [rlo, rhi] = clearBand(raider.x, zoom, width, sides);
       lo = Math.max(lo, rlo);

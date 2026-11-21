@@ -51,12 +51,13 @@ On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview)
   When the boss still ends up under the buttons or the joystick, it gets the
   off-screen arrow, and right-side ally arrows sit by the buttons (never under
   them or over the clock).
-- **Prismatail's Turn mirror / Look away** sit on the left on phones at least
-  360px tall: stacked under the chat button, above the joystick, so the
-  top-right corner (allies, the relay's far mirrors) stays clear. A
-  court-wide frame keeps what it shows right of them (`ControlSides.panel`,
-  re-measured when the panel shows or hides). Shorter screens keep them beside
-  the skill buttons.
+- **Prismatail's Turn mirror / Look away** on phones are one round contextual
+  button in the touch cluster's slot, left of skill 1 (above it on a narrow
+  screen; `mobileLayout`'s `context`), as action games put an interact prompt
+  by the skills. It shows only when usable: Turn mirror by a mirror, Look away
+  while Glare winds up (taking the slot, with the wind-up as a gold ring). The
+  follow camera keeps your raider clear of the slot. Desktop keeps both as
+  labelled buttons.
 - Players who prefer the overview tick **Whole court in raids** in Settings →
   Controls (phones only; `raidCourt` in the saved controls). The Ascendant
   specs that read the whole arena against the HUD and touch controls choose it.
