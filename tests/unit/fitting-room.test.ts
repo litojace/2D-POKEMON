@@ -474,18 +474,20 @@ describe("the stage", () => {
     }
     expect(JSON.stringify({ e, look })).toBe(saved);
   });
-  it("shows the portrait frame badge in the Wardrobe only, not the Shop", () => {
+  it("draws no portrait frame badge on the stage (portraits are preset avatars)", () => {
     const d = data(economy(), { look: { frame: "conqueror" } });
-    const inShop = fittingRoomParts(shop(), d).stage;
-    expect(inShop).not.toContain("fit-frame-badge");
-    expect(inShop).not.toContain("data-portrait-frame");
-    // Entrance and Victory stay on the Shop's stage.
-    expect(inShop).toContain('data-fit-play="entrance"');
-    const inWardrobe = fittingRoomParts(wardrobe(), d).stage;
-    expect(inWardrobe).toContain(
-      'class="fit-frame-badge" data-fit-slot="frame"',
+    for (const view of [shop(), wardrobe()]) {
+      const stage = fittingRoomParts(view, d).stage;
+      expect(stage).not.toContain("fit-frame-badge");
+      expect(stage).not.toContain("data-fit-slot");
+      expect(stage).not.toContain("data-portrait-frame");
+      // Entrance and Victory stay on the stage.
+      expect(stage).toContain('data-fit-play="entrance"');
+    }
+    // Frames are picked from the Wardrobe's Frame slot tab.
+    expect(fittingRoomParts(wardrobe(), d).body).toContain(
+      'data-fit-slot="frame"',
     );
-    expect(inWardrobe).toContain('data-portrait-frame="conqueror"');
   });
   it("shows a frame large on the portrait it goes around", () => {
     const e = economy({

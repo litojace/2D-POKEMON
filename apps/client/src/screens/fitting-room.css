@@ -69,33 +69,14 @@
   right: 14px;
   top: 14px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: flex-start;
   gap: var(--sp-2);
-}
-.fit-frame-badge {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--ui-dim);
-  font-size: var(--fs-micro);
-  cursor: pointer;
-}
-.fit-frame-badge > :first-child {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
 }
 .fit-plays {
   display: grid;
   gap: 6px;
   grid-template-columns: 124px;
-  /* At the right edge, with or without the frame badge (Wardrobe only). */
-  margin-left: auto;
 }
 /* Stacked, one width: their icons in one column and their labels from one
    line (centred, each sat by its own label's length). */
@@ -743,22 +724,6 @@
     left: 8px;
     right: 8px;
     top: 9px;
-  }
-  .fit-frame-badge::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 44px;
-    height: 44px;
-    transform: translate(-50%, -50%);
-  }
-  .fit-frame-badge > small {
-    display: none;
-  }
-  .fit-frame-badge > :first-child {
-    width: 38px;
-    height: 38px;
   }
   /* Entrance and Victory: round icon buttons in a column at the stage's
      right edge (as mobile games put their side actions), 40 px each. As
