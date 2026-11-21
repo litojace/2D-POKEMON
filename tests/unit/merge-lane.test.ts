@@ -74,3 +74,18 @@ describe("mergeLane", () => {
     );
   });
 });
+
+describe("merge-lane in CI", () => {
+  it("writes lane=FAST or lane=FULL to $GITHUB_OUTPUT", async () => {
+    const { execFileSync } = await import("node:child_process");
+    const { mkdtempSync, readFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const out = join(mkdtempSync(join(tmpdir(), "lane-")), "out");
+    // HEAD against itself: nothing changes, so FAST.
+    execFileSync("node", ["scripts/merge-lane.mjs", "HEAD"], {
+      env: { ...process.env, GITHUB_OUTPUT: out },
+    });
+    expect(readFileSync(out, "utf8")).toBe("lane=FAST\n");
+  });
+});
