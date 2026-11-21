@@ -42,7 +42,8 @@ On a landscape phone (touch, at most 600 CSS px tall; tablets keep the overview)
   Quiet Zone, polarity partners, Mirror Charge, an airborne Lumiwick's braziers,
   Prismatail's light-relay mirrors, so that fight is always framed). A new attack whose safe spot
   can be off screen (islands, pads, a marked raider, braziers, a chain of
-  leaps that chases a raider like Shade Pounce) gets
+  leaps that chases a raider like Shade Pounce, a row of geysers running on from
+  them like Geyser Line) gets
   `view: "court"`; a dodge that only needs the floor around the raider does not.
 - The off-screen boss gets the PvP arrow circling the raider. Off-screen allies
   get a small arrow in the allies' blue (as on their nameplates, whatever their

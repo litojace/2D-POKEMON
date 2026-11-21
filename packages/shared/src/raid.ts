@@ -460,6 +460,9 @@ export const RAID_ATTACKS: Record<
   },
   geyser: {
     name: "Geyser Line",
+    // The row runs 300 px on from the raider, away from the boss the phone
+    // camera leans toward: the later geysers fell off a phone's screen.
+    view: "court",
     tip: "Three geysers in a row, marked at once, erupt one after another (dots count them). Step sideways out of the line, not along it.",
     summary: "A row of geysers erupts in turn. Step sideways off the line.",
   },
