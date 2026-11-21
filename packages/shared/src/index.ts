@@ -3923,8 +3923,8 @@ export const RITES: Rite[] = [
     "minor",
     "shell-up",
     "Thick Moss",
-    "Shell Up regrows 35 HP instead of 30.",
-    { set: { heal: 7 } },
+    "Shell Up regrows 27 HP instead of 21.",
+    { set: { heal: 9 } },
   ),
   rite("terradon", "minor", "mud-mire", "Deep Mud", "Mud Mire is 20% wider.", {
     mul: { radius: 1.2 },
