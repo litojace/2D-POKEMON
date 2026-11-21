@@ -76,19 +76,38 @@ for (const size of SIZES)
       await expect(page.locator("#raid-prism-controls")).toHaveClass(
         /is-context/,
       );
-      const slot = await page
-        .locator(".touch-buttons .touch-context")
-        .boundingBox();
-      const skill1 = await page
-        .locator('.touch-buttons [data-skill="0"]')
-        .boundingBox();
+      // The cluster settles after the fight starts (slower on CI): measure
+      // once two reads agree.
+      const boxes = () =>
+        page.evaluate(() => {
+          const box = (selector: string) => {
+            const r = document.querySelector(selector)!.getBoundingClientRect();
+            return { x: r.x, y: r.y, width: r.width, height: r.height };
+          };
+          return {
+            slot: box(".touch-buttons .touch-context"),
+            skill1: box('.touch-buttons [data-skill="0"]'),
+          };
+        });
+      let last = "";
+      await expect
+        .poll(async () => {
+          const now = JSON.stringify(await boxes());
+          const same = now === last;
+          last = now;
+          return same;
+        })
+        .toBe(true);
+      const { slot, skill1 } = JSON.parse(last) as Awaited<
+        ReturnType<typeof boxes>
+      >;
       // Left of skill 1, level with it (a narrow screen: above it).
       if (size.width >= 600) {
-        expect(slot!.x + slot!.width).toBeLessThanOrEqual(skill1!.x);
+        expect(slot.x + slot.width).toBeLessThanOrEqual(skill1.x);
         expect(
-          Math.abs(slot!.y + slot!.height / 2 - skill1!.y - skill1!.height / 2),
+          Math.abs(slot.y + slot.height / 2 - skill1.y - skill1.height / 2),
         ).toBeLessThanOrEqual(2);
-      } else expect(slot!.y + slot!.height).toBeLessThanOrEqual(skill1!.y);
+      } else expect(slot.y + slot.height).toBeLessThanOrEqual(skill1.y);
 
       // Far from every mirror, no Glare: nothing shows.
       await setHero(page, 300, 780);
@@ -105,7 +124,10 @@ for (const size of SIZES)
       // After its pop-in (0.18 s).
       await page.waitForTimeout(400);
       const [turn] = await shown(page);
-      expect(Math.abs(turn.x - slot!.x)).toBeLessThanOrEqual(1);
+      // In the slot where it is now.
+      const now = (await boxes()).slot;
+      expect(Math.abs(turn.x - now.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(turn.y - now.y)).toBeLessThanOrEqual(1);
       expect(Math.abs(turn.width - turn.height)).toBeLessThanOrEqual(1);
       expect(Math.abs(turn.dx)).toBeLessThanOrEqual(1);
       expect(Math.abs(turn.dy)).toBeLessThanOrEqual(1);
@@ -135,7 +157,9 @@ for (const size of SIZES)
         .toEqual(["away"]);
       await page.waitForTimeout(400);
       const [away] = await shown(page);
-      expect(Math.abs(away.x - slot!.x)).toBeLessThanOrEqual(1);
+      const then = (await boxes()).slot;
+      expect(Math.abs(away.x - then.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(away.y - then.y)).toBeLessThanOrEqual(1);
       expect(Math.abs(away.dx)).toBeLessThanOrEqual(1);
       expect(Math.abs(away.dy)).toBeLessThanOrEqual(1);
       expect(away.ring).toContain("conic-gradient");
