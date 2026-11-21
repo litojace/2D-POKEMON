@@ -19,6 +19,12 @@
 .pf-card {
   position: relative;
   display: grid;
+  /* One column exactly the card's width. Left automatic, the column could
+     grow past the card to its contents' widest size (the avatar sizes
+     itself from its own box, a container query), and Safari settled it
+     differently after the column beside it redrew: the avatar and the
+     words sat off-centre on some tabs (owner, iPhone, 21 Nov). */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   min-height: 0;
   border-radius: var(--rad-xl);
@@ -35,6 +41,7 @@
 .pf-card-art {
   display: grid;
   place-items: center;
+  min-width: 0;
   min-height: 0;
   padding: var(--sp-4);
 }
@@ -830,32 +837,61 @@
   .pf-mini-row > .ui-note {
     white-space: normal;
   }
-  /* Overview: who you are and Delete account sit at the bottom of the
-     column, Delete in the corner (owner, 19 Nov). */
-  .pf-main:has(> .pf-account) {
-    display: flex;
-    flex-direction: column;
+}
+
+/* Overview: who you are and Delete account sit at the bottom of the
+   column, Delete in the corner (owner, 19 Nov); a desktop too,
+   now that it shows tabs. */
+.pf-main:has(> .pf-account) {
+  display: flex;
+  flex-direction: column;
+}
+.pf-main:has(> .pf-account) > * {
+  flex: none;
+}
+.pf-account {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px var(--sp-2);
+}
+.pf-account .pf-who {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-account .pf-delete:has(.pf-delete-form:not([hidden])) {
+  flex-basis: 100%;
+}
+/* Its heading stays for screen readers (the row's label), not on screen:
+   the button says it (a phone hides it the same way, above). */
+.pf-account .pf-section:has(#pf-delete-h) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* Six tabs and Share card share the head of a small phone held sideways
+   (iPhone SE, 667 x 375): Share card keeps its icon, the tabs their room. */
+@media (max-height: 500px) and (max-width: 740px) {
+  .profile-panel [data-profile-share] > span {
+    display: none;
   }
-  .pf-main:has(> .pf-account) > * {
-    flex: none;
-  }
-  .pf-account {
-    margin-top: auto;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px var(--sp-2);
-  }
-  .pf-account .pf-who {
-    flex: 1 1 0;
+  .profile-panel .ui-panel-head > .ui-btn.is-s[data-profile-share] {
     min-width: 0;
-    margin: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* A thumb's width (phone-fit: 41 x 44 at least). */
+    width: 42px;
+    padding-inline: 0;
+    justify-content: center;
   }
-  .pf-account .pf-delete:has(.pf-delete-form:not([hidden])) {
-    flex-basis: 100%;
+  .profile-panel .ui-panel-head [data-ui-profile-tab] {
+    padding-inline: 5px;
   }
 }

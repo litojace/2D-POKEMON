@@ -28,12 +28,11 @@ export interface AllyMark {
   /** Screen position (CSS px, relative to the arena box). */
   x: number;
   y: number;
-  color: string;
   downed: boolean;
 }
 
 /**
- * Raid allies off a phone's follow camera: a small arrow in their colour at
+ * Raid allies off a phone's follow camera: a small arrow in the allies' blue at
  * the screen's edge, pointing at them; a downed ally's pulses red with "!",
  * so a reviver knows where to run. Only allies off screen get one.
  */
@@ -59,7 +58,6 @@ export class AllyBearings {
       mark.hidden = false;
       mark.classList.toggle("is-downed", ally.downed);
       setHudStyle(mark, "transform", `translate(${spot.x}px, ${spot.y}px)`);
-      setHudStyle(mark, "--ally-color", ally.color);
       setHudStyle(
         mark.firstElementChild as HTMLElement,
         "transform",

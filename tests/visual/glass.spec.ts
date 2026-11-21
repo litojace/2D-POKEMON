@@ -403,10 +403,11 @@ test.describe("phone: less scrolling", () => {
       expect(m, t).toBeLessThan(t === "overview" ? 1.4 : 1.05);
     }
     await snap(page, info, "phone-profile-trophies");
-    // A desktop keeps the one column, no tabs.
+    // A desktop has the same tabs (no long column holding everything).
     await page.setViewportSize({ width: 1440, height: 900 });
-    await expect(panel.locator("[data-ui-profile-tab]")).toHaveCount(0);
-    await expect(panel.locator(".pf-mastery-chip")).toHaveCount(18);
+    await expect(panel.locator("[data-ui-profile-tab]")).toHaveCount(6);
     await expect(panel.locator(".pf-trophy")).toHaveCount(7);
+    await panel.locator('[data-ui-profile-tab="mastery"]').click();
+    await expect(panel.locator(".pf-mastery-chip")).toHaveCount(18);
   });
 });

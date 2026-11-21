@@ -62,6 +62,7 @@ import {
   leaderboardSchema,
   friendsBoardSchema,
   recentPlayersSchema,
+  matchHistorySchema,
   nameStatusSchema,
   type RecentPlayer,
   progressSchema,
@@ -73,9 +74,12 @@ import {
   type BlockedPlayer,
 } from "../../../packages/shared/src/accounts";
 import { askConfirm } from "./ui/hub-panel";
+import { guestWarning } from "./guest-warning";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { renderOnline } from "./admin-online";
 import { openProfile, type ProfileScreen } from "./screens/profile";
+import { openFriendCard, type FriendCardScreen } from "./screens/friend-card";
+import type { HistoryQuery } from "./screens/match-history";
 import type { ProfileData } from "./screens/profile-view";
 import { openRanks, type RanksScreen } from "./screens/ranks";
 import type { RanksData } from "./screens/ranks-view";
@@ -1088,9 +1092,7 @@ export class AccountUI {
         }
         await this.setSession(data.session);
         element<HTMLDialogElement>("dialog").close();
-        this.hooks.notify(
-          "You're playing as a guest. Save your account from your profile any time to keep your progress.",
-        );
+        await this.warnNewGuest();
       };
     form.onsubmit = async (event) => {
       event.preventDefault();
@@ -1764,8 +1766,16 @@ export class AccountUI {
         journey: () => void this.showJourney(),
         raids: (boss) =>
           void this.showRaids(boss, boss ? "rewards" : undefined),
+        history: (q) => this.matchHistory(q),
+        isFriend: (id) => this.isFriend(id),
+        friendCard: (id) => this.showFriendCard(id, false),
         onClose: () => (this.profileScreen = undefined),
       });
+      // Which players in your matches are friends (their names open cards).
+      // (Guests can have friends too.)
+      void this.loadFriendList(accountId, FRIENDS_MAX_AGE_MS).then(() =>
+        this.profileScreen?.refresh(),
+      );
     }
     await this.loadProfile(accountId);
   }
@@ -1852,6 +1862,7 @@ export class AccountUI {
           ...this.friendsData,
           blocked: this.blocked,
           canMessage: !!this.hooks.messageFriend,
+          canCard: !host,
           invited: this.hooks.invitedFriends?.(),
           room,
           party: {
@@ -1925,6 +1936,7 @@ export class AccountUI {
       },
       unblock: (id) => this.unblock(id),
       message: (id, name) => this.hooks.messageFriend?.(id, name),
+      card: (id) => this.showFriendCard(id, true),
       inviteToParty: async (id) => ok(await this.hooks.inviteToParty?.(id)),
       inviteToRoom: async (id) => ok(await this.hooks.inviteFriend?.(id)),
       join: (code) => this.hooks.joinRoom?.(code),
@@ -1940,6 +1952,69 @@ export class AccountUI {
     await this.loadFriendList(accountId, FRIENDS_MAX_AGE_MS);
     // The list it opened with was still fresh: nothing to redraw.
     if (this.friendsData !== shown && screen.isOpen) screen.refresh();
+  }
+  /** A page of match history: yours, or a friend's (docs/match-history.md). */
+  private async matchHistory(q: HistoryQuery & { player?: string }) {
+    const params = new URLSearchParams({ kind: q.kind });
+    if (q.player) params.set("player", q.player);
+    if (q.at) params.set("at", q.at);
+    if (q.id) params.set("id", q.id);
+    const path = `/api/matches/history?${params}`;
+    // The first page is kept like the card's other records, so the card
+    // opened again shows it at once without asking (until records change).
+    return matchHistorySchema.parse(
+      await (q.at ? this.api(path) : this.fetchCopy(path)),
+    );
+  }
+  private isFriend(id: string) {
+    return !!this.friendsData.list?.friends.some((f) => f.id === id);
+  }
+  private friendCard?: FriendCardScreen;
+  /**
+   * A friend's player card and matches. From Friends it has a way back
+   * there; from a match board it opens on its own.
+   */
+  async showFriendCard(id: string, fromFriends: boolean) {
+    if (!this.ensurePlayer()) return;
+    const accountId = this.account!.id;
+    if (!this.friendsData.list) await this.loadFriendList(accountId);
+    const person = this.friendsData.list?.friends.find((f) => f.id === id);
+    if (this.account?.id !== accountId) return;
+    if (!person) {
+      this.hooks.notify("Only friends can see each other's matches.");
+      return;
+    }
+    this.toLobbyScreen();
+    this.friendCard = openFriendCard({
+      person,
+      history: (q) => {
+        if (this.account?.id !== accountId)
+          return Promise.reject(
+            new Error("Your session changed. Reopen the card."),
+          );
+        return this.matchHistory(q);
+      },
+      back: fromFriends ? () => void this.showFriends() : undefined,
+      isFriend: (other) => this.isFriend(other),
+      open: (other) => void this.showFriendCard(other, fromFriends),
+      onClose: () => (this.friendCard = undefined),
+    });
+  }
+  /**
+   * A new guest pass, said plainly once, when it's made: everything plays,
+   * but it lives on this device only and can't be recovered once lost
+   * (logging out, clearing the app's data, a new phone). Save my account
+   * opens the player card, whose first block saves it with an email.
+   */
+  private async warnNewGuest() {
+    if (!this.account?.guest) return;
+    const save = await askConfirm(guestWarning());
+    if (!save || !this.account?.guest) return;
+    await this.showProfile();
+    // Straight to the email box (its form is the card's first block).
+    document
+      .querySelector<HTMLInputElement>("[data-profile-save] input")
+      ?.focus({ preventScroll: false });
   }
   /** The server's answer `friendsData.list` was read from. */
   private friendsListRaw: unknown;
