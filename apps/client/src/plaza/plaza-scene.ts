@@ -5472,6 +5472,7 @@ export function openPlaza(options) {
         peak: { ...fireworks.peak },
         cost: { ...fwCost },
         box: fireworks.bounds(),
+        centres: fireworks.centres(),
       }),
       SPOTS,
       /** Fishing's line now: null, "cast", "wait" or "bite" (tests). */
