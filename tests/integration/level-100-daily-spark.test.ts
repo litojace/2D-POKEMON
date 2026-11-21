@@ -214,7 +214,7 @@ it("doubles mission and match XP from real results and shows the bonus in the jo
   expect((await journey(racer)).xp).toBe(250);
 });
 
-it("keeps 20 × 400 for the month in progress and runs 30 × 1,200 from the next month", async () => {
+it("keeps 20 × 400 for the month in progress and runs 30 × 800 from the next month", async () => {
   const d = await today(),
     thisMonth = d.slice(0, 7),
     first = new Date(thisMonth + "-01T12:00:00Z");
@@ -238,8 +238,9 @@ it("keeps 20 × 400 for the month in progress and runs 30 × 1,200 from the next
       "select count(*)::int v from public.arena_coin_ledger where player_id=$1 and reason='season' and ref like $2",
       [seasoned, next + ":%"],
     );
-  // 3 × 10,000 plus that day's 500 Spark = 30,500 season XP: tier 25.
-  for (let i = 0; i < 3; i++)
+  // 2 × 10,000 plus that day's 500 Spark = 20,500 season XP: tier 25 at
+  // 800 XP a tier (migration 20261121200000).
+  for (let i = 0; i < 2; i++)
     await grant(seasoned, 10000, "next-" + i, nextDay);
   expect(await tiers()).toBe(25);
   const theme = seasonTheme(next);
@@ -254,11 +255,11 @@ it("keeps 20 × 400 for the month in progress and runs 30 × 1,200 from the next
   expect(await owned()).toEqual(
     ["aura", "colors", "frame"].map((s) => `season-${theme}-${s}`),
   );
-  await grant(seasoned, 10000, "next-3", nextDay);
+  await grant(seasoned, 10000, "next-2", nextDay);
   expect(await tiers()).toBe(SEASON_RULES.tiers);
   await db.exec("reset role");
   expect(await owned()).toContain(`season-${theme}-victory`);
-  await grant(seasoned, 10000, "next-4", nextDay);
+  await grant(seasoned, 10000, "next-3", nextDay);
   expect(await tiers()).toBe(SEASON_RULES.tiers);
 });
 

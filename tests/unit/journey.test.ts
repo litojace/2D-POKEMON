@@ -150,7 +150,7 @@ describe("calendar rotations", () => {
       itemTiers: [5, 10, 15, 20],
     });
     expect(
-      seasonRules({ tiers: 30, tierXp: 1200, itemTiers: [5, 12, 20, 30] }),
+      seasonRules({ tiers: 30, tierXp: 800, itemTiers: [5, 12, 20, 30] }),
     ).toEqual(SEASON_RULES);
     expect(seasonRules({ tiers: 30, tierXp: 1200 })).toEqual({
       tiers: 20,

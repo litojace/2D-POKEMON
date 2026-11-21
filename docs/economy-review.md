@@ -6,6 +6,11 @@
 > Hai việc nên làm thay vào đó: (1) để ý **mùa tháng 12**, vì nó cắt mạnh xu từ
 > Season của người chơi ít; (2) đặt sẵn các ngưỡng đo dưới đây và xem lại khi có
 > khoảng 50 người chơi mỗi tuần trong 4 tuần.
+>
+> **Đã quyết (21/11/2026):** chủ game chọn 30 bậc × **800 XP** cho Season từ
+> tháng 12. Migration `20261121200000_season_thirty_by_800.sql` đổi luật, và nếu
+> lỡ chạy sau khi mùa 30 bậc đã bắt đầu thì trả bù các bậc người chơi được nâng
+> lên (`tests/integration/season-thirty-by-800.test.ts`).
 
 Tài liệu này chỉ đọc số. Không đổi giá, không ghi gì vào database. Các truy vấn
 đều là `SELECT` trên production (project `zrmbdtvuriiikvwcvqfj`), chỉ lấy số
