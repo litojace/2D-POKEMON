@@ -2057,7 +2057,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Scale Shrapnel",
         "shrapnel",
         6,
-        9,
+        11,
         "Shed two armour plates as a fan of blades: 6 blades, plus 2 for each plate you have. The plates grow back later.",
         {
           count: 6,
