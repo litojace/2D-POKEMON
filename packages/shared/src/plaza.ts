@@ -663,7 +663,15 @@ export const PLAZA_SIGNPOSTS: readonly {
 export const PLAZA_DECOR: readonly {
   x: number;
   y: number;
-  kind: "rodrack" | "bucket" | "tackle" | "reeds" | "rowboat";
+  kind:
+    | "rodrack"
+    | "bucket"
+    | "tackle"
+    | "reeds"
+    | "rowboat"
+    | "chalkboard"
+    | "parasol"
+    | "pot";
   r: number;
   /** Squashes the footprint (a long thing seen at a slant). */
   sy?: number;
@@ -676,6 +684,21 @@ export const PLAZA_DECOR: readonly {
   { x: 1992, y: 1520, kind: "reeds", r: 0, seed: 1 },
   { x: 2036, y: 1556, kind: "reeds", r: 0, seed: 2 },
   { x: 1996, y: 1350, kind: "reeds", r: 0, seed: 3 },
+  // Volt Boba: its chalkboard (what it gives, for free) and a café table in
+  // the shade, south of the truck, just off the paths.
+  { x: 1790, y: 614, kind: "chalkboard", r: 12 },
+  { x: 1885, y: 630, kind: "parasol", r: 22, sy: 1.6 },
+  // A pot of flowers either side of each house's door (where nobody can
+  // stand: the house keeps everyone a step away).
+  ...PLAZA_HOUSES.flatMap((h, i) =>
+    [-1, 1].map((side) => ({
+      x: h.x + side * 40,
+      y: h.y + 6,
+      kind: "pot" as const,
+      r: 0,
+      seed: i * 2 + (side > 0 ? 1 : 0),
+    })),
+  ),
 ];
 const SCATTER = scatter();
 /** Benches, lamps and signposts, as round footprints scattered scenery keeps clear of. */
@@ -1211,13 +1234,15 @@ export interface PlazaWishPay {
 /* ---------- Plaza today: daily quests paid in shop coins (the database's
    arena_plaza_quests(), migration 20261120120000_raise_plaza_quest_coins) ---------- */
 export const PLAZA_QUESTS = [
-  { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 20 },
+  // An even 100 coins a day, weighted by effort (migration
+  // 20261121180000_plaza_quests_hundred, docs/plaza-economy.md).
+  { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 15 },
   { id: "lap", text: "Run a lap in under 30 s", max: 1, coins: 20 },
-  { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 15 },
-  { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 15 },
-  { id: "photo", text: "Use the Photo Spot", max: 1, coins: 10 },
+  { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 10 },
+  { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 20 },
+  { id: "photo", text: "Use the Photo Spot", max: 1, coins: 5 },
   // Migration 20261120180000_plaza_fishing.
-  { id: "fish", text: "Catch 10 fish", max: 10, coins: 25 },
+  { id: "fish", text: "Catch 10 fish", max: 10, coins: 30 },
 ] as const;
 export type PlazaQuestId = (typeof PLAZA_QUESTS)[number]["id"];
 /** A lap under this time completes the lap quest. */

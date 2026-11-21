@@ -2378,7 +2378,7 @@
 }
 .plaza-layer .pz-map-panel header {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 36px;
+  grid-template-columns: auto minmax(0, 1fr) auto 36px;
   align-items: center;
   gap: 12px;
 }
@@ -2626,7 +2626,7 @@
   border-radius: 14px;
 }
 .plaza-layer.phone .pz-map-panel header {
-  grid-template-columns: auto minmax(0, 1fr) 30px;
+  grid-template-columns: auto minmax(0, 1fr) auto 30px;
 }
 .plaza-layer.phone .pz-map-panel header b {
   font-size: 1.2em;
@@ -2742,4 +2742,68 @@
 }
 .plaza-layer.phone .pz-quests:not(.min) .pz-qhead .chev {
   margin-left: auto;
+}
+/* Folded, the title row is short: no count or coins, only how many quests
+   are left, as the Lobby's rail shows today's missions (a glossy blue
+   badge: things to do, not an alarm). Open, the count and the coins left. */
+.plaza-layer .pz-qbadge {
+  display: none;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #78aaff, #3f7ef2 55%, #2c5fd4);
+  color: #fff;
+  font:
+    800 calc(11px * var(--text-scale, 1)) / 1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 0 0 1.5px rgba(11, 16, 32, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.plaza-layer .pz-quests.min .pz-qbadge {
+  display: grid;
+}
+.plaza-layer .pz-quests.min .pz-qhead .n,
+.plaza-layer .pz-quests.min .pz-qhead .c:not(.ok) {
+  display: none;
+}
+.plaza-layer .pz-quests.min .pz-qhead .chev {
+  margin-left: 0.25em;
+}
+/* The Fish book, from the map's header. */
+.plaza-layer .pz-map-book {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  min-height: 0;
+  height: 36px;
+  padding: 0 0.8em 0 0.5em;
+  border: 1px solid #ffffff26;
+  border-radius: 999px;
+  background: #ffffff12;
+  color: #fff;
+  font-weight: 800;
+  font-size: calc(13px * var(--text-scale, 1));
+  white-space: nowrap;
+  cursor: pointer;
+}
+.plaza-layer .pz-map-book:hover,
+.plaza-layer .pz-map-book:focus-visible {
+  background: #ffffff24;
+}
+.plaza-layer .pz-map-book .ico {
+  width: 22px;
+  height: 22px;
+}
+.plaza-layer.phone .pz-map-book {
+  height: 30px;
+  font-size: calc(11.5px * var(--text-scale, 1));
 }

@@ -410,7 +410,8 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
     PLAZA_FISH.map((f) => f.id),
   );
   await expect(toast(page)).toContainText("Title earned: Master Angler");
-  await page.click("#pz-fish-btn");
+  await page.click("#pz-map-btn");
+  await page.click("#pz-map-book");
   await expect(page.locator("#pz-fishbook-note")).toContainText(
     "Title earned: Master Angler",
   );
