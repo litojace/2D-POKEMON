@@ -292,7 +292,7 @@ export const PLAZA_TREES: readonly { x: number; y: number; kind: string }[] = (
     [1800, 210, "cherry"],
     [2660, 600, "pine"],
     [2660, 1280, "mint"],
-    [2520, 1520, "autumn"],
+    [2600, 1560, "autumn"],
     [930, 1180, "apple"],
     [1810, 1240, "orange"],
     [2655, 920, "pine"],
@@ -640,11 +640,38 @@ export const PLAZA_SIGNPOSTS: readonly {
   text: string;
   dir: 1 | -1;
 }[] = [{ x: 1468, y: 1352, text: "FISHING", dir: 1 }];
+/**
+ * Things by the fishing dock (drawn by the client: gfx rodRack, bucket,
+ * tackleBox, reeds, rowboat). `r`: a footprint nobody walks through (reeds stand on
+ * the pond's rim, which nobody walks on anyway).
+ */
+export const PLAZA_DECOR: readonly {
+  x: number;
+  y: number;
+  kind: "rodrack" | "bucket" | "tackle" | "reeds" | "rowboat";
+  r: number;
+  /** Squashes the footprint (a long thing seen at a slant). */
+  sy?: number;
+  seed?: number;
+}[] = [
+  { x: 1872, y: 1492, kind: "rodrack", r: 26 },
+  { x: 1745, y: 1500, kind: "rowboat", r: 50, sy: 2.4 },
+  { x: 1914, y: 1500, kind: "tackle", r: 18 },
+  { x: 1952, y: 1494, kind: "bucket", r: 12 },
+  { x: 1992, y: 1520, kind: "reeds", r: 0, seed: 1 },
+  { x: 2036, y: 1556, kind: "reeds", r: 0, seed: 2 },
+  { x: 1996, y: 1350, kind: "reeds", r: 0, seed: 3 },
+];
 const SCATTER = scatter();
 /** Benches, lamps and signposts, as round footprints scattered scenery keeps clear of. */
 const FIXTURES = [
   ...PLAZA_BENCHES.map((b) => ({ x: b.x, y: b.y, size: 100 })),
   // A signpost's plank stands above and beside its post: keep it in the clear.
+  ...PLAZA_DECOR.map((d) => ({
+    x: d.x,
+    y: d.y,
+    size: Math.max(70, d.r * 2 + 40),
+  })),
   ...PLAZA_SIGNPOSTS.map((s) => ({
     x: s.x + s.dir * 10,
     y: s.y - 40,
@@ -675,6 +702,12 @@ export const PLAZA_OBSTACLES: readonly PlazaObstacle[] = [
   ...PLAZA_TREES.map((t) => ({ x: t.x, y: t.y, r: 22 })),
   ...PLAZA_LAMPS.map((l) => ({ x: l.x, y: l.y, r: 9 })),
   ...PLAZA_SIGNPOSTS.map((p) => ({ x: p.x, y: p.y, r: 8 })),
+  ...PLAZA_DECOR.filter((d) => d.r).map((d) => ({
+    x: d.x,
+    y: d.y - 2,
+    r: d.r,
+    sy: 1.6,
+  })),
   ...PLAZA_BENCHES.map((b) => ({ x: b.x, y: b.y - 6, r: 40, sy: 3 })),
   ...PLAZA_BUSHES.map((b) => ({ x: b.x, y: b.y - 4, r: 26, sy: 1.6 })),
   ...PLAZA_ROCKS.map((b) => ({ x: b.x, y: b.y - 4, r: 16, sy: 1.6 })),

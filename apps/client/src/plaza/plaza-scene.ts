@@ -25,6 +25,7 @@ import {
   PLAZA,
   PLAZA_BENCHES,
   PLAZA_SIGNPOSTS,
+  PLAZA_DECOR,
   PLAZA_BOARD,
   PLAZA_BUSHES,
   PLAZA_CAFE,
@@ -4328,6 +4329,39 @@ export function openPlaza(options) {
             GFX.blit(g, o.spr, o.x, o.y + 4);
           },
           { sw: o.spr.w / 2, name: "rock" },
+        ),
+      ),
+      ...PLAZA_DECOR.map((o) =>
+        spot(
+          o.x,
+          o.y,
+          o.kind === "rowboat" ? 56 : o.kind === "rodrack" ? 26 : 14,
+          o.kind === "rodrack" ? 90 : o.kind === "reeds" ? 70 : 50,
+          () => {
+            if (o.kind !== "reeds")
+              GFX.shadow(
+                g,
+                o.x + 3,
+                o.y + 2,
+                o.kind === "rowboat" ? 58 : o.kind === "rodrack" ? 26 : 14,
+                o.kind === "rowboat" ? 9 : 5,
+              );
+            GFX.blit(
+              g,
+              o.kind === "rodrack"
+                ? GFX.rodRack()
+                : o.kind === "bucket"
+                  ? GFX.bucket()
+                  : o.kind === "rowboat"
+                    ? GFX.rowboat()
+                    : o.kind === "tackle"
+                      ? GFX.tackleBox()
+                      : GFX.reeds(o.seed),
+              o.x,
+              o.y + 4,
+            );
+          },
+          { name: o.kind },
         ),
       ),
       ...PLAZA_SIGNPOSTS.map((o) =>

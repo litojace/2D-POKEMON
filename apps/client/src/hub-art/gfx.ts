@@ -663,6 +663,200 @@ const GFX = (() => {
       }),
     );
 
+  /* ---------------- by the fishing dock (PLAZA_DECOR) ---------------- */
+  /** A rack of fishing rods: an A-frame with three rods leaning on it. */
+  const rodRack = () =>
+    memo("rodrack", () =>
+      sprite(80, 96, 40, 90, (g) => {
+        g.strokeStyle = "#7a5230";
+        g.lineWidth = 5;
+        g.beginPath();
+        g.moveTo(-26, 0);
+        g.lineTo(-18, -48);
+        g.moveTo(26, 0);
+        g.lineTo(18, -48);
+        g.stroke();
+        rr(g, -28, -52, 56, 8, 3);
+        g.fillStyle = vg(g, -52, -44, "#c48a4a", "#8a5a30");
+        g.fill();
+        // The rods: thin, bending out at the tips, a reel on each.
+        [
+          [-16, "#3a6fd0"],
+          [0, "#d0503a"],
+          [16, "#3a9a5a"],
+        ].forEach(([x, c]) => {
+          g.strokeStyle = "#5a3a1e";
+          g.lineWidth = 2.5;
+          g.beginPath();
+          g.moveTo(x, -2);
+          g.quadraticCurveTo(x - 2, -60, x + 8, -86);
+          g.stroke();
+          g.strokeStyle = "rgba(255,255,255,.7)";
+          g.lineWidth = 0.8;
+          g.beginPath();
+          g.moveTo(x + 8, -86);
+          g.lineTo(x + 7, -30);
+          g.stroke();
+          g.fillStyle = c;
+          g.beginPath();
+          g.arc(x + 2, -18, 4, 0, 7);
+          g.fill();
+        });
+      }),
+    );
+  /** A wooden bucket, a fish's tail sticking out. */
+  const bucket = () =>
+    memo("bucket", () =>
+      sprite(44, 50, 22, 44, (g) => {
+        g.beginPath();
+        g.moveTo(-14, -26);
+        g.lineTo(14, -26);
+        g.lineTo(11, 0);
+        g.lineTo(-11, 0);
+        g.closePath();
+        g.fillStyle = vg(g, -26, 0, "#c48a4a", "#7a5230");
+        g.fill();
+        g.strokeStyle = "#4a2e16";
+        g.lineWidth = 1.5;
+        g.stroke();
+        g.strokeStyle = "#8a96a8";
+        g.lineWidth = 2.5;
+        [-18, -7].forEach((y) => {
+          g.beginPath();
+          g.moveTo(-13 + (y + 26) * 0.11, y);
+          g.lineTo(13 - (y + 26) * 0.11, y);
+          g.stroke();
+        });
+        g.fillStyle = "#3a6f9a";
+        g.beginPath();
+        g.ellipse(0, -26, 14, 4, 0, 0, 7);
+        g.fill();
+        // The tail.
+        g.fillStyle = "#ff9a4a";
+        g.beginPath();
+        g.moveTo(2, -27);
+        g.lineTo(-6, -40);
+        g.lineTo(2, -36);
+        g.lineTo(9, -41);
+        g.closePath();
+        g.fill();
+      }),
+    );
+  /** A tackle box, lid open, lures in its trays. */
+  const tackleBox = () =>
+    memo("tacklebox", () =>
+      sprite(56, 44, 28, 38, (g) => {
+        rr(g, -22, -18, 44, 18, 3);
+        g.fillStyle = vg(g, -18, 0, "#3fae5c", "#227a3c");
+        g.fill();
+        g.strokeStyle = "#14502a";
+        g.lineWidth = 1.5;
+        g.stroke();
+        g.beginPath();
+        g.moveTo(-22, -18);
+        g.lineTo(-18, -32);
+        g.lineTo(22, -32);
+        g.lineTo(22, -18);
+        g.closePath();
+        g.fillStyle = "#2f8f4a";
+        g.fill();
+        g.stroke();
+        g.fillStyle = "#e9f3ea";
+        rr(g, -18, -22, 36, 5, 2);
+        g.fill();
+        ["#ff5d4a", "#ffd84a", "#5fb3ff", "#ff8fb8"].forEach((c, i) =>
+          ball(g, -13 + i * 9, -20, 2.4, c),
+        );
+        g.fillStyle = "#cfd6e0";
+        rr(g, -4, -10, 8, 4, 1);
+        g.fill();
+      }),
+    );
+  /** A rowboat pulled up on the grass, upside down, an oar against it. */
+  const rowboat = () =>
+    memo("rowboat", () =>
+      sprite(130, 70, 65, 60, (g) => {
+        // The hull, keel up: an almond of planks.
+        const hull = () => {
+          g.beginPath();
+          g.moveTo(-56, -14);
+          g.quadraticCurveTo(-30, -44, 10, -42);
+          g.quadraticCurveTo(48, -40, 58, -16);
+          g.quadraticCurveTo(40, 2, 0, 2);
+          g.quadraticCurveTo(-40, 2, -56, -14);
+          g.closePath();
+        };
+        hull();
+        g.fillStyle = vg(g, -44, 2, "#4f8fd0", "#2a5f9a");
+        g.fill();
+        g.save();
+        hull();
+        g.clip();
+        g.strokeStyle = "rgba(10,30,60,.35)";
+        g.lineWidth = 1.5;
+        for (let i = 1; i < 4; i++) {
+          g.beginPath();
+          g.moveTo(-60, -14 + i * 1.5 - i * 8);
+          g.quadraticCurveTo(0, -44 + i * 12, 60, -16 - i * 2 + i * 6);
+          g.stroke();
+        }
+        // The gunwale: a white band along its lower edge.
+        g.strokeStyle = "#f4ead6";
+        g.lineWidth = 6;
+        g.beginPath();
+        g.moveTo(-56, -12);
+        g.quadraticCurveTo(-40, 2, 0, 2);
+        g.quadraticCurveTo(40, 2, 58, -14);
+        g.stroke();
+        g.restore();
+        hull();
+        g.strokeStyle = "#1c3f66";
+        g.lineWidth = 2;
+        g.stroke();
+        // The keel.
+        g.strokeStyle = "#7a5230";
+        g.lineWidth = 4;
+        g.beginPath();
+        g.moveTo(-48, -22);
+        g.quadraticCurveTo(0, -48, 52, -24);
+        g.stroke();
+        // An oar leaning on it.
+        g.strokeStyle = "#c48a4a";
+        g.lineWidth = 3.5;
+        g.beginPath();
+        g.moveTo(30, 4);
+        g.lineTo(52, -50);
+        g.stroke();
+        g.fillStyle = "#c48a4a";
+        g.beginPath();
+        g.ellipse(27, 8, 5, 10, 0.4, 0, 7);
+        g.fill();
+      }),
+    );
+  /** Reeds and cattails at the water's edge. */
+  const reeds = (seed = 1) =>
+    memo(`reeds:${seed}`, () =>
+      sprite(70, 80, 35, 74, (g) => {
+        srand(seed * 97);
+        for (let i = 0; i < 9; i++) {
+          const x = -24 + i * 6 + (rnd() - 0.5) * 4,
+            h = 40 + rnd() * 26,
+            lean = (rnd() - 0.5) * 14;
+          g.strokeStyle = i % 2 ? "#4f9a3c" : "#6fbf4a";
+          g.lineWidth = 3;
+          g.beginPath();
+          g.moveTo(x, 0);
+          g.quadraticCurveTo(x, -h * 0.6, x + lean, -h);
+          g.stroke();
+          if (i % 3 === 1) {
+            g.fillStyle = "#7a4a2a";
+            rr(g, x + lean * 0.8 - 2.5, -h * 0.92, 5, 13, 2.5);
+            g.fill();
+          }
+        }
+      }),
+    );
+
   /* ---------------- buildings ---------------- */
   function house(o) {
     const {
@@ -2527,6 +2721,11 @@ const GFX = (() => {
     hay,
     mailbox,
     signpost,
+    rodRack,
+    bucket,
+    tackleBox,
+    reeds,
+    rowboat,
     house,
     barn,
     windmillBody,
