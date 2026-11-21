@@ -526,99 +526,46 @@ const GFX = (() => {
         g.stroke();
       }),
     );
-  const crates = () =>
-    memo("crates", () =>
-      sprite(90, 80, 45, 72, (g) => {
-        const crate = (x, y, s) => {
-          rr(g, x, y - s, s, s, 3);
-          g.fillStyle = vg(g, y - s, y, "#e3a960", "#a96a33");
-          g.fill();
-          g.strokeStyle = "#6b3f1c";
-          g.lineWidth = 2;
-          g.stroke();
-          g.beginPath();
-          g.moveTo(x + 4, y - s + 4);
-          g.lineTo(x + s - 4, y - 4);
-          g.moveTo(x + s - 4, y - s + 4);
-          g.lineTo(x + 4, y - 4);
-          g.strokeStyle = "rgba(107,63,28,.6)";
-          g.stroke();
-        };
-        crate(-40, 0, 36);
-        crate(-2, 0, 34);
-        crate(-24, -36, 32);
-        [
-          ["#ff5d4a", -30, -66],
-          ["#ffd84a", -18, -70],
-          ["#7cc95a", -8, -66],
-        ].forEach(([c, x, y]) => ball(g, x, y, 6, c));
-      }),
-    );
-  const hay = () =>
-    memo("hay", () =>
-      sprite(80, 50, 40, 44, (g) => {
-        rr(g, -34, -34, 68, 34, 10);
-        g.fillStyle = vg(g, -34, 0, "#ffe38a", "#d9a63a");
-        g.fill();
-        g.strokeStyle = "#9a6e1c";
-        g.lineWidth = 2;
-        g.stroke();
-        g.strokeStyle = "rgba(150,100,20,.5)";
-        g.lineWidth = 1;
-        for (let i = 0; i < 16; i++) {
-          const x = -30 + i * 4;
-          g.beginPath();
-          g.moveTo(x, -30);
-          g.lineTo(x + 2, -4);
-          g.stroke();
-        }
-        g.strokeStyle = "#b5442e";
-        g.lineWidth = 3;
-        [-14, 14].forEach((x) => {
-          g.beginPath();
-          g.moveTo(x, -34);
-          g.lineTo(x, 0);
-          g.stroke();
-        });
-      }),
-    );
-  const mailbox = () =>
-    memo("mailbox", () =>
-      sprite(40, 70, 20, 66, (g) => {
-        g.fillStyle = "#7a5230";
-        rr(g, -3, -40, 6, 40, 2);
-        g.fill();
-        rr(g, -14, -60, 28, 22, 10);
-        g.fillStyle = vg(g, -60, -38, "#5fb3ff", "#2a6fd0");
-        g.fill();
-        g.strokeStyle = "#1c3f80";
-        g.lineWidth = 2;
-        g.stroke();
-        g.fillStyle = "#ef4f61";
-        rr(g, 10, -68, 3, 14, 1);
-        g.fill();
-        rr(g, 10, -68, 9, 6, 1);
-        g.fill();
-      }),
-    );
-
-  /** A wooden signpost: a plank shaped as an arrow (dir 1 points right),
-   * a fish on it for the pond, and its words. Painted once. */
-  const signpost = (text, dir = 1, color = "#2a6fd0") =>
-    memo(`signpost:${text}:${dir}:${color}`, () =>
-      sprite(150, 120, 75, 112, (g) => {
-        g.fillStyle = "#6b4527";
-        rr(g, -4, -78, 8, 78, 3);
-        g.fill();
-        g.scale(dir, 1);
-        // The arrow plank, its point toward where the sign sends you.
+  /**
+   * A wooden fingerpost: a post with one arrow plank per way (dir 1 points
+   * right), stacked top to bottom, each with its icon on a round badge at
+   * the tail and its words. `icon(name)` gives the hub icon's image; the
+   * sprite is kept only once every icon has loaded (a sign painted before
+   * would keep empty badges). Planks alternate a little in tone and tilt,
+   * like boards nailed up one at a time.
+   */
+  const signpost = (arms, icon) => {
+    const key = `signpost:${arms.map((a) => `${a.text}/${a.dir}/${a.icon}`).join("|")}`;
+    if (cache.has(key)) return cache.get(key);
+    const ims = arms.map((a) => icon?.(a.icon));
+    const ready = ims.every((im) => !im || im.complete);
+    const STEP = 34,
+      top = 66 + arms.length * STEP;
+    const spr = sprite(170, top + 18, 85, top + 8, (g) => {
+      // The post, with a little cap.
+      g.fillStyle = vg(g, -top, 0, "#7a5230", "#5a3a1e");
+      rr(g, -4.5, -top + 14, 9, top - 14, 3);
+      g.fill();
+      g.fillStyle = "#4a2e16";
+      rr(g, -6.5, -top + 10, 13, 7, 3);
+      g.fill();
+      g.fillStyle = "rgba(255,255,255,.18)";
+      g.fillRect(-3, -top + 18, 2, top - 22);
+      arms.forEach((arm, i) => {
+        const y = -top + 30 + i * STEP,
+          d = arm.dir,
+          tilt = (i % 2 ? -1 : 1) * 0.025 * d;
+        g.save();
+        g.translate(0, y);
+        g.rotate(tilt);
+        g.scale(d, 1);
         const plank = () => {
           g.beginPath();
-          g.moveTo(-58, -100);
-          g.lineTo(44, -100);
-          g.lineTo(64, -82);
-          g.lineTo(44, -64);
-          g.lineTo(-58, -64);
+          g.moveTo(-60, -14);
+          g.lineTo(50, -14);
+          g.lineTo(70, 0);
+          g.lineTo(50, 14);
+          g.lineTo(-60, 14);
           g.closePath();
         };
         g.fillStyle = "rgba(0,0,0,.25)";
@@ -628,40 +575,56 @@ const GFX = (() => {
         g.fill();
         g.restore();
         plank();
-        g.fillStyle = vg(g, -100, -64, "#c48a4a", "#8a5a30");
+        g.fillStyle = vg(
+          g,
+          -14,
+          14,
+          i % 2 ? "#cf9656" : "#c48a4a",
+          i % 2 ? "#946234" : "#8a5a30",
+        );
         g.fill();
         g.strokeStyle = "#5a3a1e";
         g.lineWidth = 2.5;
         g.stroke();
-        // A fish on a blue badge at the plank's tail.
-        g.fillStyle = color;
+        // Grain and the nail into the post.
+        g.strokeStyle = "rgba(90,58,30,.35)";
+        g.lineWidth = 1;
         g.beginPath();
-        g.arc(-40, -82, 13, 0, 7);
-        g.fill();
-        g.fillStyle = "#fff";
+        g.moveTo(-54, -5);
+        g.lineTo(40, -6);
+        g.moveTo(-50, 6);
+        g.lineTo(46, 5);
+        g.stroke();
+        g.fillStyle = "#3a2614";
         g.beginPath();
-        g.ellipse(-38, -82, 7, 4.5, 0, 0, 7);
-        g.moveTo(-45, -82);
-        g.lineTo(-51, -87);
-        g.lineTo(-51, -77);
-        g.closePath();
+        g.arc(0, 0, 1.8, 0, 7);
         g.fill();
-        g.fillStyle = color;
+        // The badge at the tail, with the place's icon.
+        g.fillStyle = "#fff4d6";
         g.beginPath();
-        g.arc(-35, -83, 1.3, 0, 7);
+        g.arc(-44, 0, 11.5, 0, 7);
         g.fill();
+        g.strokeStyle = "#5a3a1e";
+        g.lineWidth = 2;
+        g.stroke();
+        g.scale(d, 1);
+        const im = ims[i];
+        if (im && im.complete) g.drawImage(im, -44 * d - 9, -9, 18, 18);
         // The words, the right way round whichever way it points.
-        g.scale(dir, 1);
         g.fillStyle = "#fff4d6";
         g.strokeStyle = "#4a2e16";
         g.lineWidth = 3;
-        g.font = "800 19px 'Barlow Condensed', sans-serif";
+        g.font = "800 17px 'Barlow Condensed', sans-serif";
         g.textAlign = "center";
         g.textBaseline = "middle";
-        g.strokeText(text, dir * 12, -81);
-        g.fillText(text, dir * 12, -81);
-      }),
-    );
+        g.strokeText(arm.text, d * 12, 1);
+        g.fillText(arm.text, d * 12, 1);
+        g.restore();
+      });
+    });
+    if (ready) cache.set(key, spr);
+    return spr;
+  };
 
   /* ---------------- by the fishing dock (PLAZA_DECOR) ---------------- */
   /** A rack of fishing rods: an A-frame with three rods leaning on it. */
@@ -773,6 +736,179 @@ const GFX = (() => {
       }),
     );
   /** A rowboat pulled up on the grass, upside down, an oar against it. */
+  /* ---------------- Volt Boba and the houses (PLAZA_DECOR) ---------------- */
+  /** Volt Boba's A-frame chalkboard: what it gives, in chalk. */
+  const chalkboard = () =>
+    memo("chalkboard", () =>
+      sprite(70, 86, 35, 80, (g) => {
+        g.strokeStyle = "#6b4527";
+        g.lineWidth = 3;
+        g.beginPath();
+        g.moveTo(-20, 0);
+        g.lineTo(-12, -66);
+        g.moveTo(20, 0);
+        g.lineTo(12, -66);
+        g.stroke();
+        rr(g, -24, -74, 48, 58, 4);
+        g.fillStyle = vg(g, -74, -16, "#c48a4a", "#8a5a30");
+        g.fill();
+        rr(g, -20, -70, 40, 50, 3);
+        g.fillStyle = "#2b3a33";
+        g.fill();
+        g.fillStyle = "rgba(255,255,255,.06)";
+        g.fillRect(-18, -68, 14, 46);
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillStyle = "#ff9bd2";
+        g.font = "800 10px 'Barlow Condensed', sans-serif";
+        g.fillText("VOLT BOBA", 0, -62);
+        g.fillStyle = "#fffbe6";
+        g.font = "800 15px 'Barlow Condensed', sans-serif";
+        g.fillText("FREE", 0, -48);
+        g.fillStyle = "#8fe0ff";
+        g.font = "700 9px 'DM Sans', sans-serif";
+        g.fillText("30s speed", 0, -35);
+        // A cup in chalk.
+        g.strokeStyle = "#fffbe6";
+        g.lineWidth = 1.2;
+        g.beginPath();
+        g.moveTo(-5, -30);
+        g.lineTo(-3.5, -23);
+        g.lineTo(3.5, -23);
+        g.lineTo(5, -30);
+        g.closePath();
+        g.moveTo(1, -30);
+        g.lineTo(3, -35);
+        g.stroke();
+      }),
+    );
+  /** A café table under a striped parasol, with two stools and a cup. */
+  const parasol = () =>
+    memo("parasol", () =>
+      sprite(120, 130, 60, 118, (g) => {
+        // Stools.
+        for (const x of [-30, 30]) {
+          g.fillStyle = "#2c3348";
+          g.fillRect(x - 1.5, -16, 3, 16);
+          ell(g, x, -17, 10, 4);
+          g.fillStyle = "#ff9bd2";
+          g.fill();
+        }
+        // Table.
+        g.fillStyle = "#2c3348";
+        g.fillRect(-2, -30, 4, 30);
+        ell(g, 0, -1, 12, 3);
+        g.fill();
+        ell(g, 0, -31, 22, 7);
+        g.fillStyle = "#f4f1ea";
+        g.fill();
+        g.strokeStyle = "#c9c2b6";
+        g.lineWidth = 1.5;
+        g.stroke();
+        // A cup of boba on it.
+        rr(g, 6, -42, 7, 10, 2);
+        g.fillStyle = "#e8c8ff";
+        g.fill();
+        g.fillStyle = "#3a2214";
+        g.fillRect(7, -35, 5, 2);
+        g.strokeStyle = "#ff7fb0";
+        g.lineWidth = 1.2;
+        g.beginPath();
+        g.moveTo(10, -42);
+        g.lineTo(12, -47);
+        g.stroke();
+        // Pole and parasol: panels, pink and cream, a scalloped edge.
+        g.fillStyle = "#e6e0d4";
+        g.fillRect(-1.5, -100, 3, 70);
+        const top = -112,
+          eave = -88;
+        for (let i = 0; i < 8; i++) {
+          const a0 = (i / 8) * Math.PI,
+            a1 = ((i + 1) / 8) * Math.PI;
+          g.fillStyle = i % 2 ? "#ff6f9a" : "#fff4f0";
+          g.beginPath();
+          g.moveTo(0, top);
+          g.lineTo(Math.cos(a0) * 54, eave + Math.sin(a0) * 12);
+          g.lineTo(Math.cos(a1) * 54, eave + Math.sin(a1) * 12);
+          g.closePath();
+          g.fill();
+        }
+        for (let i = 0; i <= 8; i++) {
+          const a = (i / 8) * Math.PI;
+          g.fillStyle = i % 2 ? "#ff6f9a" : "#fff4f0";
+          g.beginPath();
+          g.arc(Math.cos(a) * 52, eave + Math.sin(a) * 12 + 1, 5, 0, Math.PI);
+          g.fill();
+        }
+        g.fillStyle = "rgba(255,255,255,.25)";
+        g.beginPath();
+        g.moveTo(0, top);
+        g.lineTo(-54, eave);
+        g.lineTo(-20, eave + 10);
+        g.closePath();
+        g.fill();
+        g.fillStyle = "#e0a020";
+        g.beginPath();
+        g.arc(0, top - 2, 3, 0, 7);
+        g.fill();
+      }),
+    );
+  /** A terracotta pot of flowers (by a house's door). */
+  const flowerPot = (seed = 0) =>
+    memo(`pot:${seed % 4}`, () =>
+      sprite(44, 50, 22, 44, (g) => {
+        const C = ["#ff6f9a", "#ffd65b", "#c47dff", "#ffffff"][seed % 4];
+        g.fillStyle = "#4f9a3c";
+        for (const [x, y, r] of [
+          [-8, -26, 7],
+          [8, -27, 7],
+          [0, -33, 8],
+        ]) {
+          g.beginPath();
+          g.arc(x, y, r, 0, 7);
+          g.fill();
+        }
+        g.fillStyle = "#6fc04f";
+        g.beginPath();
+        g.arc(-3, -31, 4, 0, 7);
+        g.fill();
+        for (const [x, y] of [
+          [-9, -30],
+          [7, -32],
+          [0, -38],
+          [10, -24],
+          [-4, -24],
+        ]) {
+          g.fillStyle = C;
+          for (let k = 0; k < 5; k++) {
+            g.beginPath();
+            g.arc(
+              x + Math.cos(k * 1.256) * 2.2,
+              y + Math.sin(k * 1.256) * 2.2,
+              1.9,
+              0,
+              7,
+            );
+            g.fill();
+          }
+          g.fillStyle = "#ffcf3a";
+          g.beginPath();
+          g.arc(x, y, 1.2, 0, 7);
+          g.fill();
+        }
+        g.beginPath();
+        g.moveTo(-12, -20);
+        g.lineTo(12, -20);
+        g.lineTo(9, 0);
+        g.lineTo(-9, 0);
+        g.closePath();
+        g.fillStyle = vg(g, -20, 0, "#e0805a", "#a8492e");
+        g.fill();
+        rr(g, -13, -22, 26, 5, 2);
+        g.fillStyle = "#c8643e";
+        g.fill();
+      }),
+    );
   const rowboat = () =>
     memo("rowboat", () =>
       sprite(130, 70, 65, 60, (g) => {
@@ -1110,318 +1246,6 @@ const GFX = (() => {
       ),
     );
   }
-  const barn = () =>
-    memo("barn", () =>
-      sprite(260, 230, 120, 210, (g) => {
-        const w = 200,
-          h = 110,
-          x0 = -100,
-          top = -h;
-        // silo
-        const sx = 105;
-        rr(g, sx - 26, -160, 52, 160, 10);
-        g.fillStyle = hg(g, sx - 26, sx + 26, "#d8e3ee", "#7d8ea3");
-        g.fill();
-        g.strokeStyle = "#45566c";
-        g.lineWidth = 2;
-        g.stroke();
-        for (let y = -150; y < -6; y += 22) {
-          g.strokeStyle = "rgba(60,80,100,.5)";
-          g.beginPath();
-          g.moveTo(sx - 26, y);
-          g.lineTo(sx + 26, y);
-          g.stroke();
-        }
-        g.beginPath();
-        g.ellipse(sx, -160, 28, 30, 0, Math.PI, 0);
-        g.fillStyle = hg(g, sx - 28, sx + 28, "#ff8a6a", "#a8342a");
-        g.fill();
-        g.stroke();
-        // barn wall
-        g.beginPath();
-        g.moveTo(x0, 0);
-        g.lineTo(x0, top);
-        g.lineTo(x0 + 30, top - 48);
-        g.lineTo(0, top - 78);
-        g.lineTo(-x0 - 30, top - 48);
-        g.lineTo(-x0, top);
-        g.lineTo(-x0, 0);
-        g.closePath();
-        g.fillStyle = vg(g, top - 78, 0, "#f06a52", "#c63e33", "#9c2a26");
-        g.fill();
-        g.strokeStyle = "#5c1714";
-        g.lineWidth = 2.5;
-        g.stroke();
-        g.strokeStyle = "rgba(90,20,20,.35)";
-        g.lineWidth = 1;
-        for (let x = x0 + 12; x < -x0; x += 12) {
-          g.beginPath();
-          g.moveTo(x, -2);
-          g.lineTo(x, top - 30 + Math.abs(x) * 0.3);
-          g.stroke();
-        }
-        // gambrel roof
-        const rp = () => {
-          g.beginPath();
-          g.moveTo(x0 - 12, top + 4);
-          g.lineTo(x0 + 24, top - 50);
-          g.lineTo(0, top - 86);
-          g.lineTo(-x0 - 24, top - 50);
-          g.lineTo(-x0 + 12, top + 4);
-          g.lineTo(-x0 + 2, top + 4);
-          g.lineTo(-x0 - 30, top - 42);
-          g.lineTo(0, top - 70);
-          g.lineTo(x0 + 30, top - 42);
-          g.lineTo(x0 - 2, top + 4);
-          g.closePath();
-        };
-        rp();
-        g.fillStyle = vg(g, top - 86, top, "#6d7896", "#3b4360");
-        g.fill();
-        g.strokeStyle = "#232843";
-        g.lineWidth = 2;
-        g.stroke();
-        // trims
-        g.strokeStyle = "#fffaf0";
-        g.lineWidth = 5;
-        g.beginPath();
-        g.moveTo(x0 + 4, -2);
-        g.lineTo(x0 + 4, top + 6);
-        g.moveTo(-x0 - 4, -2);
-        g.lineTo(-x0 - 4, top + 6);
-        g.stroke();
-        // big doors with X
-        const dw = 76,
-          dh = 74;
-        g.fillStyle = vg(g, -dh, 0, "#d94a3c", "#9c2a26");
-        g.fillRect(-dw / 2, -dh, dw, dh);
-        g.strokeStyle = "#fffaf0";
-        g.lineWidth = 4.5;
-        g.strokeRect(-dw / 2, -dh, dw, dh);
-        g.beginPath();
-        g.moveTo(0, -dh);
-        g.lineTo(0, 0);
-        g.moveTo(-dw / 2, -dh);
-        g.lineTo(0, 0);
-        g.moveTo(0, -dh);
-        g.lineTo(-dw / 2, 0);
-        g.moveTo(0, -dh);
-        g.lineTo(dw / 2, 0);
-        g.moveTo(dw / 2, -dh);
-        g.lineTo(0, 0);
-        g.stroke();
-        // loft
-        g.fillStyle = "#3a1c14";
-        rr(g, -18, top - 30, 36, 26, 4);
-        g.fill();
-        g.strokeStyle = "#fffaf0";
-        g.lineWidth = 3.5;
-        g.stroke();
-        g.fillStyle = "#ffd65b";
-        for (let i = 0; i < 9; i++) {
-          g.beginPath();
-          g.moveTo(-14 + i * 3.4, top - 6);
-          g.lineTo(-12 + i * 3.4, top - 18 - (i % 3) * 3);
-          g.lineTo(-10 + i * 3.4, top - 6);
-          g.fill();
-        }
-      }),
-    );
-  const windmillBody = () =>
-    memo("wmb", () =>
-      sprite(150, 230, 75, 214, (g) => {
-        g.beginPath();
-        g.moveTo(-42, 0);
-        g.lineTo(-26, -160);
-        g.lineTo(26, -160);
-        g.lineTo(42, 0);
-        g.closePath();
-        g.fillStyle = hg(g, -42, 42, "#fff6e4", "#d2bf9e");
-        g.fill();
-        g.strokeStyle = "#7a6648";
-        g.lineWidth = 2.2;
-        g.stroke();
-        for (let y = -140; y < 0; y += 34) {
-          const hw = 42 - 16 * (-y / 160);
-          g.fillStyle = "#9a6a3a";
-          g.fillRect(-hw, y, hw * 2, 5);
-        }
-        g.fillStyle = "#6a4a2c";
-        g.beginPath();
-        g.moveTo(-10, 0);
-        g.lineTo(-10, -26);
-        g.arc(0, -26, 10, Math.PI, 0);
-        g.lineTo(10, 0);
-        g.fill();
-        g.fillStyle = "#8fd0ff";
-        g.beginPath();
-        g.arc(0, -98, 9, 0, 7);
-        g.fill();
-        g.strokeStyle = "#7a6648";
-        g.lineWidth = 2;
-        g.stroke();
-        g.beginPath();
-        g.moveTo(-36, -158);
-        g.quadraticCurveTo(0, -214, 36, -158);
-        g.closePath();
-        g.fillStyle = vg(g, -205, -158, "#4fb3a8", "#1f6b6a");
-        g.fill();
-        g.strokeStyle = "#143f40";
-        g.stroke();
-        return { hub: [0, -168] };
-      }),
-    );
-  function windmillSails(g, x, y, t, s = 1) {
-    g.save();
-    g.translate(x, y);
-    g.scale(s, s);
-    g.rotate(t);
-    for (let i = 0; i < 4; i++) {
-      g.save();
-      g.rotate((i * Math.PI) / 2);
-      g.fillStyle = "#7a5230";
-      g.fillRect(-3, -2, 92, 5);
-      g.fillStyle = "rgba(255,248,232,.92)";
-      g.strokeStyle = "#7a5230";
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.moveTo(18, 3);
-      g.lineTo(88, 3);
-      g.lineTo(88, 24);
-      g.lineTo(18, 16);
-      g.closePath();
-      g.fill();
-      g.stroke();
-      for (let k = 30; k < 88; k += 14) {
-        g.beginPath();
-        g.moveTo(k, 3);
-        g.lineTo(k, 23 - (88 - k) * 0.08);
-        g.stroke();
-      }
-      g.restore();
-    }
-    g.fillStyle = "#5a3a20";
-    g.beginPath();
-    g.arc(0, 0, 8, 0, 7);
-    g.fill();
-    g.restore();
-  }
-  const board = () =>
-    memo("board", () =>
-      sprite(150, 150, 75, 140, (g) => {
-        g.fillStyle = "#6b4527";
-        [-58, 50].forEach((x) => {
-          rr(g, x, -120, 8, 120, 3);
-          g.fill();
-        });
-        rr(g, -64, -116, 128, 80, 6);
-        g.fillStyle = vg(g, -116, -36, "#c98d52", "#8f5a2c");
-        g.fill();
-        g.strokeStyle = "#4e2c12";
-        g.lineWidth = 2.5;
-        g.stroke();
-        [
-          [-54, -106, "#fff8e6", -0.06],
-          [-14, -110, "#ffe4ef", 0.04],
-          [22, -104, "#e6f4ff", -0.03],
-          [-40, -72, "#fffbd6", 0.05],
-          [4, -70, "#e8ffe6", -0.05],
-        ].forEach(([x, y, c, r]) => {
-          g.save();
-          g.translate(x + 14, y + 14);
-          g.rotate(r);
-          g.fillStyle = c;
-          g.fillRect(-14, -14, 30, 28);
-          g.fillStyle = "rgba(60,40,20,.35)";
-          for (let k = 0; k < 3; k++)
-            g.fillRect(-10, -6 + k * 6, 20 - k * 4, 2);
-          g.fillStyle = ["#ef4f61", "#4fb3ff", "#ffd65b"][
-            Math.abs(Math.round(x)) % 3
-          ];
-          g.beginPath();
-          g.arc(1, -11, 3, 0, 7);
-          g.fill();
-          g.restore();
-        });
-        g.beginPath();
-        g.moveTo(-74, -114);
-        g.lineTo(0, -140);
-        g.lineTo(74, -114);
-        g.closePath();
-        g.fillStyle = vg(g, -140, -114, "#4fb3a8", "#1f6b6a");
-        g.fill();
-        g.strokeStyle = "#143f40";
-        g.lineWidth = 2;
-        g.stroke();
-      }),
-    );
-  const well = () =>
-    memo("well", () =>
-      sprite(120, 150, 60, 138, (g) => {
-        g.fillStyle = "#7a5230";
-        [-38, 32].forEach((x) => {
-          rr(g, x, -100, 7, 74, 2);
-          g.fill();
-        });
-        g.beginPath();
-        g.moveTo(-50, -98);
-        g.lineTo(0, -128);
-        g.lineTo(50, -98);
-        g.closePath();
-        g.fillStyle = vg(g, -128, -98, "#ff8a6a", "#b03a2e");
-        g.fill();
-        g.strokeStyle = "#5e1a14";
-        g.lineWidth = 2;
-        g.stroke();
-        g.strokeStyle = "#6b4527";
-        g.lineWidth = 4;
-        g.beginPath();
-        g.moveTo(-34, -80);
-        g.lineTo(34, -80);
-        g.stroke();
-        g.strokeStyle = "#c9a36a";
-        g.lineWidth = 1.5;
-        g.beginPath();
-        g.moveTo(0, -80);
-        g.lineTo(0, -58);
-        g.stroke();
-        rr(g, -8, -60, 16, 14, 3);
-        g.fillStyle = "#9a6a3a";
-        g.fill();
-        g.strokeStyle = "#4e2c12";
-        g.stroke();
-        g.beginPath();
-        g.ellipse(0, -30, 44, 14, 0, 0, 7);
-        g.fillStyle = "#1f2a3a";
-        g.fill();
-        g.beginPath();
-        g.moveTo(-44, -30);
-        g.lineTo(-44, -4);
-        g.ellipse(0, -4, 44, 14, 0, Math.PI, 0, true);
-        g.lineTo(44, -30);
-        g.ellipse(0, -30, 44, 14, 0, 0, Math.PI);
-        g.closePath();
-        g.fillStyle = vg(g, -30, 8, "#d9d3c4", "#8e8778");
-        g.fill();
-        g.strokeStyle = "#5e584c";
-        g.lineWidth = 2;
-        g.stroke();
-        g.strokeStyle = "rgba(94,88,76,.6)";
-        g.lineWidth = 1;
-        for (let k = 0; k < 7; k++) {
-          const x = -40 + k * 13;
-          g.beginPath();
-          g.moveTo(x, -20 + Math.abs(x) * 0.05);
-          g.lineTo(x, -6 + 14 * Math.sqrt(Math.max(0, 1 - (x / 44) ** 2)));
-          g.stroke();
-        }
-        g.beginPath();
-        g.ellipse(0, -30, 44, 14, 0, 0, 7);
-        g.strokeStyle = "#f1ebdc";
-        g.lineWidth = 5;
-        g.stroke();
-      }),
-    );
   const foodTruck = () =>
     memo("truck", () =>
       sprite(320, 200, 165, 180, (g) => {
@@ -1556,88 +1380,6 @@ const GFX = (() => {
         return { glow: [-20, -95] };
       }),
     );
-  const scarecrow = () =>
-    memo("scare", () =>
-      sprite(90, 130, 45, 124, (g) => {
-        g.fillStyle = "#7a5230";
-        rr(g, -3, -100, 6, 100, 2);
-        g.fill();
-        rr(g, -34, -78, 68, 6, 2);
-        g.fill();
-        g.beginPath();
-        g.moveTo(-26, -80);
-        g.lineTo(26, -80);
-        g.lineTo(20, -36);
-        g.lineTo(-20, -36);
-        g.closePath();
-        g.fillStyle = vg(g, -80, -36, "#6fa8dc", "#3d6fa3");
-        g.fill();
-        g.strokeStyle = "#1f3f66";
-        g.lineWidth = 2;
-        g.stroke();
-        g.fillStyle = "#e9c46a";
-        [
-          [-30, -76],
-          [30, -76],
-          [-18, -36],
-          [18, -36],
-        ].forEach(([x, y]) => {
-          for (let k = 0; k < 3; k++) {
-            g.beginPath();
-            g.moveTo(x, y);
-            g.lineTo(x + (k - 1) * 4 + Math.sign(x) * 6, y + 9);
-            g.lineTo(x + (k - 1) * 4 + Math.sign(x) * 3, y + 9);
-            g.fill();
-          }
-        });
-        g.fillStyle = "#ffb84a";
-        [
-          [-14, -60],
-          [8, -48],
-        ].forEach(([x, y]) => {
-          g.fillRect(x, y, 7, 7);
-        });
-        ball(g, 0, -96, 17, "#ff8a1a", 0.3);
-        g.strokeStyle = "rgba(160,70,0,.5)";
-        g.lineWidth = 1.2;
-        [-8, 0, 8].forEach((x) => {
-          g.beginPath();
-          g.moveTo(x, -112);
-          g.quadraticCurveTo(x * 1.6, -96, x, -80);
-          g.stroke();
-        });
-        g.fillStyle = "#3a1a00";
-        [
-          [-6, -100],
-          [6, -100],
-        ].forEach(([x, y]) => {
-          g.beginPath();
-          g.moveTo(x - 3.5, y + 2);
-          g.lineTo(x, y - 3);
-          g.lineTo(x + 3.5, y + 2);
-          g.fill();
-        });
-        g.beginPath();
-        g.moveTo(-8, -89);
-        g.quadraticCurveTo(0, -83, 8, -89);
-        g.lineTo(5, -90);
-        g.quadraticCurveTo(0, -86, -5, -90);
-        g.closePath();
-        g.fill();
-        g.fillStyle = "#e9c46a";
-        ell(g, 0, -110, 26, 6);
-        g.fill();
-        g.beginPath();
-        g.moveTo(-14, -110);
-        g.lineTo(-10, -128);
-        g.lineTo(10, -128);
-        g.lineTo(14, -110);
-        g.fill();
-        g.fillStyle = "#c0392b";
-        g.fillRect(-12, -116, 24, 4);
-      }),
-    );
-
   /* ---------------- animals (drawn per frame, facing +x) ---------------- */
   const BREEDS = {
     gold: {
@@ -1985,155 +1727,6 @@ const GFX = (() => {
     g.fill();
     g.restore();
   }
-  function chicken(g, kind, st, t, x, y, s = 1, face = 1) {
-    const C =
-      kind === "brown"
-        ? { b: "#c8743a", l: "#e8a26a", d: "#8a4a22" }
-        : { b: "#fbf7ef", l: "#ffffff", d: "#d7cfc0" };
-    // States: walk, peck, idle, flap, sit (brooding on the ground, legs
-    // tucked in) and scratch (kicking the straw back with one foot, leaning in).
-    const walk = st === "walk",
-      peck = st === "peck",
-      sit = st === "sit",
-      scratch = st === "scratch",
-      p = t * 11;
-    shadow(g, x, y + 1, (sit ? 17 : 15) * s, 4.5 * s, sit ? 0.34 : 0.28);
-    g.save();
-    g.translate(x, y);
-    g.scale(face * s, s);
-    // legs
-    const step = walk
-      ? Math.sin(p) * 4
-      : scratch
-        ? -Math.abs(Math.sin(t * 15)) * 6
-        : 0;
-    g.strokeStyle = "#f2a93a";
-    g.lineWidth = 2;
-    (sit
-      ? []
-      : scratch
-        ? [
-            [-2, step],
-            [3, 0],
-          ]
-        : [
-            [-2, step],
-            [3, -step],
-          ]
-    ).forEach(([lx, d]) => {
-      const lift = walk
-        ? Math.max(0, Math.sin(p + (d > 0 ? 0 : Math.PI))) * 2
-        : scratch && d
-          ? Math.abs(Math.sin(t * 15)) * 2.5
-          : 0;
-      g.beginPath();
-      g.moveTo(lx, -9);
-      g.lineTo(lx + d * 0.5, -lift);
-      g.stroke();
-      g.beginPath();
-      g.moveTo(lx + d * 0.5 - 2.5, -lift);
-      g.lineTo(lx + d * 0.5 + 3, -lift);
-      g.stroke();
-    });
-    const bob = walk
-        ? -Math.abs(Math.sin(p)) * 1.5
-        : sit
-          ? Math.sin(t * 1.6) * 0.4
-          : 0,
-      tilt = peck
-        ? Math.max(0, Math.sin(t * 9)) * 0.5
-        : scratch
-          ? 0.16 + Math.abs(Math.sin(t * 15)) * 0.05
-          : 0;
-    g.save();
-    g.translate(0, (sit ? -7 : -12) + bob);
-    if (sit) g.scale(1.06, 0.9);
-    g.rotate(tilt);
-    // tail
-    [
-      [-10, -6, -1.1],
-      [-12, -3, -0.75],
-      [-11, 0, -0.45],
-    ].forEach(([tx, ty, a], i) => {
-      g.save();
-      g.translate(tx, ty);
-      g.rotate(a);
-      g.fillStyle = i === 1 ? C.d : C.b;
-      ell(g, 0, -6, 3.2, 7.5);
-      g.fill();
-      g.restore();
-    });
-    if (kind === "brown") {
-      g.fillStyle = "#3a5a3a";
-      g.save();
-      g.translate(-12, -6);
-      g.rotate(-1);
-      ell(g, 0, -5, 2.5, 7);
-      g.fill();
-      g.restore();
-    }
-    g.fillStyle = dk(C.b, 0.35);
-    ell(g, 0, 0, 12.5, 10.5);
-    g.fill();
-    const bgr = g.createRadialGradient(-3, -4, 1, 0, 0, 12);
-    bgr.addColorStop(0, C.l);
-    bgr.addColorStop(1, C.b);
-    g.fillStyle = bgr;
-    ell(g, 0, 0, 11.5, 9.6);
-    g.fill();
-    // wing
-    const flap = st === "flap" ? Math.sin(t * 30) * 0.6 : 0;
-    g.save();
-    g.translate(-1, -1);
-    g.rotate(-flap);
-    g.fillStyle = C.d;
-    ell(g, -2, 1, 7.5, 5.4, -0.2);
-    g.fill();
-    g.strokeStyle = rgba(dk(C.d, 0.3), 0.6);
-    g.lineWidth = 0.9;
-    for (let k = 0; k < 3; k++) {
-      g.beginPath();
-      g.arc(-5 + k * 3, 4, 3, 0.3, Math.PI - 0.3);
-      g.stroke();
-    }
-    g.restore();
-    // head
-    const hx = 9 + (peck ? Math.max(0, Math.sin(t * 9)) * 4 : 0),
-      hy = -10 + (peck ? Math.max(0, Math.sin(t * 9)) * 9 : 0);
-    g.fillStyle = "#e63c32";
-    [
-      [hx - 3, hy - 6],
-      [hx, hy - 7.5],
-      [hx + 3, hy - 6],
-    ].forEach(([cx, cy]) => {
-      g.beginPath();
-      g.arc(cx, cy, 2.6, 0, 7);
-      g.fill();
-    });
-    g.fillStyle = dk(C.b, 0.3);
-    g.beginPath();
-    g.arc(hx, hy, 6.3, 0, 7);
-    g.fill();
-    g.fillStyle = C.b;
-    g.beginPath();
-    g.arc(hx, hy, 5.6, 0, 7);
-    g.fill();
-    g.fillStyle = "#f2a93a";
-    g.beginPath();
-    g.moveTo(hx + 5, hy - 1.5);
-    g.lineTo(hx + 10, hy);
-    g.lineTo(hx + 5, hy + 1.6);
-    g.fill();
-    g.fillStyle = "#e63c32";
-    ell(g, hx + 4, hy + 4, 1.6, 2.4);
-    g.fill();
-    g.fillStyle = "#1c1820";
-    g.beginPath();
-    g.arc(hx + 2, hy - 1.5, 1.3, 0, 7);
-    g.fill();
-    g.restore();
-    g.restore();
-  }
   function duck(g, kind, st, t, x, y, s = 1, face = 1, moving = true) {
     const drake = kind === "drake";
     g.save();
@@ -2397,165 +1990,6 @@ const GFX = (() => {
     }
     g.restore();
   }
-  function cow(g, st, t, x, y, s = 1, face = 1) {
-    shadow(g, x, y + 2, 46 * s, 10 * s, 0.3);
-    g.save();
-    g.translate(x, y);
-    g.scale(face * s, s);
-    const graze = st === "graze",
-      head = graze
-        ? Math.max(0, Math.min(1, Math.sin(t * 0.45) * 1.6 + 0.7))
-        : 0,
-      chew = Math.sin(t * 8) * 0.8;
-    // legs
-    g.fillStyle = "#e9e3d8";
-    [
-      [-24, 1],
-      [18, 1],
-    ].forEach(([lx]) => {
-      rr(g, lx - 3, -24, 8, 24, 3);
-      g.fillStyle = "#c9c2b4";
-      g.fill();
-    });
-    // tail
-    const sw = Math.sin(t * 2.3) * 0.4;
-    g.save();
-    g.translate(-32, -40);
-    g.rotate(0.3 + sw);
-    g.strokeStyle = "#e9e3d8";
-    g.lineWidth = 3;
-    g.beginPath();
-    g.moveTo(0, 0);
-    g.quadraticCurveTo(-4, 14, -2, 24);
-    g.stroke();
-    g.fillStyle = "#2a2430";
-    ell(g, -2, 26, 3, 5);
-    g.fill();
-    g.restore();
-    // body
-    rr(g, -36, -56, 70, 34, 16);
-    g.fillStyle = "#3a3440";
-    g.fill();
-    rr(g, -35, -55, 68, 32, 15);
-    const bg = g.createLinearGradient(0, -55, 0, -23);
-    bg.addColorStop(0, "#ffffff");
-    bg.addColorStop(1, "#d8d2c6");
-    g.fillStyle = bg;
-    g.fill();
-    g.save();
-    rr(g, -35, -55, 68, 32, 15);
-    g.clip();
-    g.fillStyle = "#2a2430";
-    [
-      [-20, -48, 10, 7],
-      [6, -40, 12, 8],
-      [-8, -28, 7, 5],
-      [24, -52, 7, 6],
-    ].forEach(([sx, sy, rx, ry]) => {
-      ell(g, sx, sy, rx, ry, 0.4);
-      g.fill();
-    });
-    g.restore();
-    g.fillStyle = "#ffb3c1";
-    ell(g, -10, -22, 7, 4);
-    g.fill();
-    g.fillStyle = "#f2ece0";
-    [
-      [-26, 0],
-      [16, 0],
-    ].forEach(([lx]) => {
-      rr(g, lx - 3, -28, 8, 28, 3);
-      g.fill();
-      g.fillStyle = "#3a3440";
-      rr(g, lx - 3, -4, 8, 5, 2);
-      g.fill();
-      g.fillStyle = "#f2ece0";
-    });
-    // head on a neck: up (looking) to down (grazing)
-    const na = -0.25 + head * 1.45,
-      nx = 30 + Math.cos(na) * 26,
-      ny = -46 + Math.sin(na) * 26;
-    g.strokeStyle = "#3a3440";
-    g.lineWidth = 17;
-    g.beginPath();
-    g.moveTo(26, -46);
-    g.lineTo(nx, ny);
-    g.stroke();
-    g.strokeStyle = "#f4efe6";
-    g.lineWidth = 14.5;
-    g.stroke();
-    g.save();
-    g.translate(nx + 4, ny);
-    g.rotate(head * 0.35);
-    g.fillStyle = "#c9b9a0";
-    [
-      [-3, -12, -0.6],
-      [8, -12, 0.6],
-    ].forEach(([hx, hy, r]) => {
-      g.save();
-      g.translate(hx, hy);
-      g.rotate(r);
-      ell(g, 0, -3, 2, 4.5);
-      g.fill();
-      g.restore();
-    });
-    const earF = t % 6 < 0.2 ? 0.6 : 0;
-    g.fillStyle = "#3a3440";
-    g.save();
-    g.translate(-4, -6);
-    g.rotate(-0.6 - earF);
-    ell(g, -5, 0, 6, 3);
-    g.fill();
-    g.restore();
-    rr(g, -6, -12, 20, 24, 9);
-    g.fillStyle = "#ffffff";
-    g.fill();
-    g.strokeStyle = "#3a3440";
-    g.lineWidth = 1.5;
-    g.stroke();
-    g.fillStyle = "#2a2430";
-    ell(g, 0, -6, 5, 4);
-    g.fill();
-    g.fillStyle = "#ffb3c1";
-    rr(g, -4, 4 + (graze && head > 0.7 ? chew * 0.6 : 0), 20, 11, 6);
-    g.fill();
-    g.fillStyle = "#c97a8a";
-    ell(g, 2, 9, 1.6, 1.2);
-    ell(g, 9, 9, 1.6, 1.2);
-    g.fill();
-    if (head < 0.5) {
-      g.fillStyle = "#1c1820";
-      g.beginPath();
-      g.arc(5, -3, 1.8, 0, 7);
-      g.fill();
-      g.fillStyle = "#fff";
-      g.beginPath();
-      g.arc(5.5, -3.6, 0.6, 0, 7);
-      g.fill();
-    } else {
-      g.strokeStyle = "#1c1820";
-      g.lineWidth = 1.3;
-      g.beginPath();
-      g.arc(5, -3, 1.8, 0.2, Math.PI - 0.2);
-      g.stroke();
-    }
-    g.restore();
-    g.fillStyle = "#ffd65b";
-    g.beginPath();
-    g.arc(28 + Math.cos(na) * 10, -40 + Math.sin(na) * 10, 3.5, 0, 7);
-    g.fill();
-    if (graze && head > 0.8) {
-      g.fillStyle = "#5fbf4f";
-      for (let k = 0; k < 5; k++) {
-        g.beginPath();
-        g.moveTo(nx - 6 + k * 4, 0);
-        g.lineTo(nx - 4 + k * 4, -6 - (k % 2) * 3);
-        g.lineTo(nx - 2 + k * 4, 0);
-        g.fill();
-      }
-    }
-    g.restore();
-  }
   function cat(g, st, t, x, y, s = 1, face = 1) {
     g.save();
     g.translate(x, y);
@@ -2717,28 +2151,20 @@ const GFX = (() => {
     rock,
     lamp,
     bench,
-    crates,
-    hay,
-    mailbox,
     signpost,
     rodRack,
     bucket,
     tackleBox,
     reeds,
     rowboat,
+    chalkboard,
+    parasol,
+    flowerPot,
     house,
-    barn,
-    windmillBody,
-    windmillSails,
-    board,
-    well,
     foodTruck,
-    scarecrow,
     dog,
-    chicken,
     duck,
     bird,
-    cow,
     cat,
     butterfly,
     fish,
