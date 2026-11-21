@@ -474,6 +474,21 @@ describe("the stage", () => {
     }
     expect(JSON.stringify({ e, look })).toBe(saved);
   });
+  it("draws no portrait frame badge on the stage (portraits are preset avatars)", () => {
+    const d = data(economy(), { look: { frame: "conqueror" } });
+    for (const view of [shop(), wardrobe()]) {
+      const stage = fittingRoomParts(view, d).stage;
+      expect(stage).not.toContain("fit-frame-badge");
+      expect(stage).not.toContain("data-fit-slot");
+      expect(stage).not.toContain("data-portrait-frame");
+      // Entrance and Victory stay on the stage.
+      expect(stage).toContain('data-fit-play="entrance"');
+    }
+    // Frames are picked from the Wardrobe's Frame slot tab.
+    expect(fittingRoomParts(wardrobe(), d).body).toContain(
+      'data-fit-slot="frame"',
+    );
+  });
   it("shows a frame large on the portrait it goes around", () => {
     const e = economy({
       looks: { tidefin: { skin: "tidefin-moontide", stage: 3 } },
@@ -488,8 +503,9 @@ describe("the stage", () => {
     expect(stage).toContain("is-frame");
     expect(stage).toContain('class="portrait-review-avatar fit-frame-avatar"');
     expect(stage).toContain('data-portrait-frame="galaxy-frame"');
-    expect(stage).toContain('data-fighter="tidefin"');
-    expect(stage).toContain("tidefin-moontide");
+    // Your avatar in the frame, as everyone sees you; not the fighter.
+    expect(stage).toContain('class="portrait-avatar"');
+    expect(stage).not.toContain('data-fighter="tidefin"');
   });
   it("draws a still fighter on Low graphics, with the original ready for Hold to compare", () => {
     const view = shop({
