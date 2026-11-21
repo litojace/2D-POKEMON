@@ -502,6 +502,55 @@ clears about as often as before (main / now, armour): 6 31 / 33 1.2 (1.05),
 Raids are played with the same kits, so a Tidefin, Glacelle, Pangrove,
 Cindrake or Terradon raider plays these skills there too.
 
+## Voltkit: faster shots for good dodgers
+
+With a good player's hands the expert left only Voltkit outside the
+owner's band for skilled players (expert 35% - 65%): about 31%, while it
+was 47% - 51% on Hard. Its damage is all shots and marks (Spark Dart,
+Static Lance, Ball Lightning, Thunderstorm), and an expert sidesteps them.
+Levers tried on Voltkit's pairings alone (expert without look-ahead, 24
+games a pair, seed 5000; Hard / expert, from 47.3% / 31.1%):
+
+| Change                            |  Hard | Expert |
+| --------------------------------- | ----: | -----: |
+| Health 170 (157)                  | 63.7% |  45.3% |
+| Ball Lightning zaps for 5 (3)     | 65.0% |  47.1% |
+| Speed 290 (270)                   | 60.0% |  39.2% |
+| Spark Dart 1000 px/s (860)        | 57.4% |  42.2% |
+| Thunderstorm 120 px (95)          | 54.7% |  36.0% |
+| Static Lance 1300 px/s (1050)     | 47.8% |  35.5% |
+| Static Lance 1500, Spark Dart 930 | 55.1% |  41.7% |
+
+Health and the zaps raise Hard as much as the expert (Hard would leave its
+band first). A faster shot is what a good dodger feels: the expert sees it
+late, while Hard dodges less to begin with, so it gains less. **Static Lance now flies at 1500
+px/s (1050) and Spark Dart at 930 (860).** On three seeds (5000 and 310000
+at 24 games a pair, 9000 at 48) Voltkit goes from 31.6% to 40.9% for
+experts and from 49.1% to 54.3% on Hard.
+
+Whole round robins, seed 310000, 24 games a pair (before / after):
+
+| Level  | Voltkit       | Range                       | sd        |
+| ------ | ------------- | --------------------------- | --------- |
+| Hard   | 49.0% / 55.6% | 43.1 - 58.6% / 42.2 - 59.1% | 3.8 / 4.2 |
+| Expert | 32.8% / 38.7% | 32.8 - 59.1% / 38.7 - 59.3% | 6.8 / 6.0 |
+| Normal | 48.3% / 47.1% | 43.4 - 55.9% / 43.1 - 56.6% | 3.3 / 3.4 |
+
+(Hard's top is Tidefin, from the reworked Riptide Wave above; no other
+champion moves by more than 2.2 points.) Normal, Voltkit's pairings at 48
+games a pair on seed 9000: 44.4% to 48.3%, so its handicap stays 0.285. 2v2 and
+free-for-all on unused line-ups (`FRESH_BASE=7000`, 400 matches a level,
+Voltkit's line-ups): 2v2 54.0% to 52.7%, 4-player 29.4% to 26.8%, 3-player
+38.2% to 39.1%, within the noise, so the mode factors stay.
+
+**Spire.** Voltkit is an Echo on floors 1 and 61 - 69. Played by the
+play-tests' solo Normal Halcyra (seeds 1 - 72), floor 1 is still always
+cleared and 61 - 69 within 5 of 72, all but floor 64 (38 to 28). On 192 seeds
+the floors that moved most are within 5 points: 64 97 / 88, 63 64 / 74,
+65 100 / 92, 67 47 / 46 (the orb move's retune allowed about 7), and
+floor 64's armour did not move its rate in order on 72 seeds (4.8 28,
+4.4 21, 4.1 28, 3.5 22): it was noise, so no floor's armour changes.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now
