@@ -943,6 +943,14 @@ export class PlazaWorld {
       return { ok: false, error: "Too late! The fish got away.", why: "late" };
     return { ok: true, fish: line.fish };
   }
+  /** Leaving fishing mode: the line comes in quietly (no catch, no news). */
+  stopFishing(key: string, now: number) {
+    const v = this.visitors.get(key);
+    if (!v?.line) return false;
+    v.line = null;
+    v.nextCast = now + PLAZA_FISHING.castGapMs;
+    return true;
+  }
   /** Fishing state (tests): the line, if any. */
   lineOf(key: string) {
     const line = this.visitors.get(key)?.line;

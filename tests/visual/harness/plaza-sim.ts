@@ -140,6 +140,7 @@ const handle = (ev: string, data: any) => {
   // database would (arena_plaza_record), and the progress sent back.
   if (ev === "plaza-fish") {
     if (data?.act === "cast") return world.cast(ME, Date.now(), data.tz);
+    if (data?.act === "stop") return { ok: world.stopFishing(ME, Date.now()) };
     const r = world.reel(ME, Date.now());
     if (r.ok) {
       const p = w.__plazaProgress;
@@ -180,6 +181,8 @@ w.__emit = (ev: string, data: any) => {
   if (ev === "plaza-input") world.input(ME, data.dx, data.dy, timing);
   else if (ev === "plaza-jump") world.jump(ME, timing);
   else if (ev === "plaza-dash") world.dash(ME, data?.dx, data?.dy, timing);
+  else if (ev === "plaza-fish" && data?.act === "stop")
+    world.stopFishing(ME, Date.now());
   else before.emit?.(ev, data);
 };
 /** What server.ts sends for a Plaza event (rewards are the database's). */

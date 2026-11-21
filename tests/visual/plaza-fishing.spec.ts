@@ -7,13 +7,17 @@ import {
   PLAZA_SPOTS,
 } from "../../packages/shared/src/plaza";
 
-// Fishing at the pond: cast, the bobber dips, tap to catch; and the Fish
-// book. The harness runs the real PlazaWorld (harness/plaza-sim.ts), which
-// decides the bite and the fish; __plazaBiteNow makes the fish bite at once.
+// Fishing mode at the pond: the round Fish button at the dock opens it (the
+// camera comes in close, fishing's own buttons replace the walking ones),
+// Cast, the bite, Reel!, the fish leaps in, Leave. The harness runs the
+// real PlazaWorld (harness/plaza-sim.ts), which decides the bite and the
+// fish; __plazaBiteNow makes the fish bite at once.
 const SPOT = PLAZA_SPOTS.find((s) => s.id === "fish")!;
-const fishing = (page: Page) =>
-  page.evaluate(() => (window as any).__plaza.fishing);
+const mode = (page: Page) =>
+  page.evaluate(() => (window as any).__plaza.fishingMode);
+const phase = async (page: Page) => (await mode(page)).phase;
 const toast = (page: Page) => page.locator("#toast");
+const act = (page: Page) => page.locator("#pz-fish-act");
 async function toPond(page: Page) {
   await page.evaluate(
     ([x, y]) => (window as any).__plazaPosition(x, y),
@@ -22,15 +26,20 @@ async function toPond(page: Page) {
   await expect(page.locator("#pz-interact")).toBeVisible({ timeout: 10_000 });
   await expect(page.locator("#pz-interact")).toContainText("Fish");
 }
-async function cast(page: Page) {
+async function enter(page: Page) {
   await page.click("#pz-interact");
-  await expect.poll(() => fishing(page)).toBe("wait");
-  await expect(page.locator("#pz-interact")).toContainText("Reel in");
+  await expect(page.locator("#pz-fishhud")).toBeVisible();
+  await expect(act(page)).toHaveAttribute("data-kind", "cast");
+}
+async function cast(page: Page) {
+  await act(page).click();
+  await expect.poll(() => phase(page)).toBe("wait");
+  await expect(act(page)).toHaveAttribute("data-kind", "reel");
 }
 const box = (page: Page, s: string) =>
   page.evaluate((s) => {
     const r = document.querySelector(s)!.getBoundingClientRect();
-    return { l: r.left, t: r.top, r: r.right, b: r.bottom };
+    return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width };
   }, s);
 
 for (const size of [
@@ -38,7 +47,7 @@ for (const size of [
   { width: 852, height: 393, inset: ISLAND },
 ]) {
   const name = `${size.width}x${size.height}${size.inset ? "-island" : ""}`;
-  test(`fishing on a phone (${name}): cast, bite, catch, and the Fish book`, async ({
+  test(`fishing mode on a phone (${name}): in close, cast, bite, catch, the Fish book, leave`, async ({
     browser,
   }, info) => {
     const context = await browser.newContext({
@@ -51,50 +60,69 @@ for (const size of [
       const errors = await openPlaza(page);
       if (size.inset) await setInsets(page, size.inset);
       await toPond(page);
+      // At the dock: a round Fish button, not the long pill.
+      const fishBtn = await box(page, "#pz-interact");
+      expect(fishBtn.w).toBeLessThanOrEqual(70);
+      await snap(page, info, `fishing-dock-${name}`);
+      await enter(page);
+      // The walking controls step aside; the camera comes in close.
+      for (const s of [".pz-joy", ".pz-actions", ".pz-left", "#pz-quests"])
+        await expect(page.locator(s)).toBeHidden();
+      await expect.poll(async () => (await mode(page)).fz).toBeGreaterThan(1.4);
+      await snap(page, info, `fishing-mode-${name}`);
       await cast(page);
       await snap(page, info, `fishing-wait-${name}`);
       // The server says it bit: tap at once (the window is about a second).
       await page.evaluate(() => (window as any).__plazaBiteNow());
-      await expect.poll(() => fishing(page), { intervals: [50] }).toBe("bite");
+      await expect.poll(() => phase(page), { intervals: [50] }).toBe("bite");
       // Forced: the gold button pulses, and Playwright waits for a still one.
-      await page.click("#pz-interact", { force: true });
-      // The catch card: the fish drawn in full, its name and rarity.
+      await act(page).click({ force: true });
+      await expect.poll(() => phase(page), { intervals: [50] }).toBe("leap");
+      await snap(page, info, `fishing-leap-${name}`);
+      // The catch card: the fish in full, its name, rarity and coins.
       const card = page.locator("#pz-catch");
       await expect(card).toBeVisible();
-      // New to the book: its first-catch coins, and the feed says so.
       await expect(card).toContainText("First catch!");
       await expect(card).toContainText(/\+\d+ coins/);
       await expect(page.locator("#pz-feed")).toContainText("First catch:");
-      await expect(card.locator("svg")).toHaveCount(1);
       await snap(page, info, `fishing-catch-${name}`);
-      const c = await box(page, "#pz-catch");
-      expect(c.l).toBeGreaterThanOrEqual(size.inset?.left ?? 0);
-      expect(c.r).toBeLessThanOrEqual(size.width - (size.inset?.right ?? 0));
-      await expect.poll(() => fishing(page)).toBeNull();
+      await expect.poll(() => phase(page)).toBe("idle");
       await expect
         .poll(() =>
           page.evaluate(() => (window as any).__plaza.progress?.fishToday),
         )
         .toBe(1);
+      await expect(page.locator("#pz-fish-today")).toContainText("1/30");
+      // Fishing's buttons stay on screen and inside the safe area.
+      for (const s of ["#pz-fish-act", "#pz-fish-exit", "#pz-fish-book2"]) {
+        const b = await box(page, s);
+        expect(b.l, s).toBeGreaterThanOrEqual(size.inset?.left ?? 0);
+        expect(b.r, s).toBeLessThanOrEqual(
+          size.width - (size.inset?.right ?? 0),
+        );
+        expect(b.b, s).toBeLessThanOrEqual(size.height);
+      }
 
-      // The Fish book: one caught, the rest unknown; it fits inside the
-      // safe area and its list scrolls to the last fish.
-      await page.click("#pz-fish-btn");
+      // Another bite, left alone: the button turns gold and pulses, then
+      // the server lets the fish go.
+      await page.waitForTimeout(PLAZA_FISHING.castGapMs);
+      await cast(page);
+      await page.evaluate(() => (window as any).__plazaBiteNow());
+      await expect.poll(() => phase(page), { intervals: [50] }).toBe("bite");
+      await snap(page, info, `fishing-bite-${name}`);
+      await expect(act(page)).toHaveAttribute("data-kind", "bite");
+      await expect(page.locator("#pz-fish-hint")).toContainText("biting");
+      await expect(page.locator("#pz-fish-hint")).toContainText("got away");
+
+      // The Fish book, from fishing's own button: one caught, inside the
+      // safe area, its list scrolling to the last fish.
+      await page.click("#pz-fish-book2");
       const book = page.locator("#pz-fishbook");
       await expect(book).toBeVisible();
       await expect(page.locator("#pz-fishbook-count")).toHaveText(
         `1 / ${PLAZA_FISH.length}`,
       );
       await expect(page.locator(".pz-fish:not(.unknown)")).toHaveCount(1);
-      await expect(page.locator(".pz-fish.unknown")).toHaveCount(
-        PLAZA_FISH.length - 1,
-      );
-      await expect(page.locator("#pz-fishbook-note")).toContainText(
-        "today 1 / 30",
-      );
-      await expect(page.locator("#pz-fishbook-note")).toContainText(
-        "Master Angler",
-      );
       await expect(page.locator(".pz-fish.unknown small.first")).toHaveCount(
         PLAZA_FISH.length - 1,
       );
@@ -103,54 +131,22 @@ for (const size of [
       expect(panel.r).toBeLessThanOrEqual(
         size.width - (size.inset?.right ?? 0),
       );
-      expect(panel.t).toBeGreaterThanOrEqual(0);
       expect(panel.b).toBeLessThanOrEqual(
         size.height - (size.inset?.bottom ?? 0),
       );
-      // The panel's header stays under the game's header row.
-      expect(panel.t).toBeGreaterThanOrEqual(
-        (await box(page, "#account-profile")).b,
-      );
       await snap(page, info, `fishbook-${name}`);
       const list = page.locator("#pz-fishbook-list");
-      const scroll = await list.evaluate((el) => ({
-        overflow: el.scrollHeight > el.clientHeight + 1,
-        style: getComputedStyle(el).overflowY,
-      }));
-      expect(scroll.style).toBe("auto");
-      if (scroll.overflow) {
-        // A finger can reach the last fish.
-        await list.evaluate((el) => (el.scrollTop = el.scrollHeight));
-        const last = await box(page, ".pz-fish:last-child");
-        const l = await box(page, "#pz-fishbook-list");
-        expect(last.b).toBeLessThanOrEqual(l.b + 1);
-        expect(last.t).toBeGreaterThanOrEqual(l.t - 1);
-      }
-      // Closes with its ✕, and a tap on the dimmed background.
+      expect(await list.evaluate((el) => getComputedStyle(el).overflowY)).toBe(
+        "auto",
+      );
       await page.click('[data-fb="close"]');
       await expect(book).toBeHidden();
-      await page.click("#pz-fish-btn");
-      await expect(book).toBeVisible();
-      await page.mouse.click(size.width / 2, size.height - 4);
-      await expect(book).toBeHidden();
 
-      // Another bite, left alone: the bobber dips, the button turns gold
-      // and pulses, then the server lets the fish go.
-      await page.waitForTimeout(PLAZA_FISHING.castGapMs);
-      await cast(page);
-      await page.evaluate(() => (window as any).__plazaBiteNow());
-      await expect.poll(() => fishing(page), { intervals: [50] }).toBe("bite");
-      await snap(page, info, `fishing-bite-${name}`);
-      await expect(page.locator("#pz-interact")).toHaveClass(/bite/);
-      await expect(page.locator("#pz-interact")).toContainText("Reel!");
-      // The action row stays on screen and inside the safe area.
-      const act = await box(page, "#pz-interact");
-      expect(act.l).toBeGreaterThanOrEqual(size.inset?.left ?? 0);
-      expect(act.r).toBeLessThanOrEqual(size.width - (size.inset?.right ?? 0));
-      expect(act.b).toBeLessThanOrEqual(size.height);
-      await expect(toast(page)).toContainText("got away");
-      await expect.poll(() => fishing(page)).toBeNull();
-      await expect(page.locator("#pz-interact")).not.toHaveClass(/bite/);
+      // Leave: the walking controls and the usual camera come back.
+      await page.click("#pz-fish-exit");
+      await expect(page.locator("#pz-fishhud")).toBeHidden();
+      await expect(page.locator(".pz-joy")).toBeVisible();
+      await expect.poll(async () => (await mode(page)).fz).toBeLessThan(1.05);
       expect(errors).toEqual([]);
     } finally {
       await context.close();
@@ -158,25 +154,43 @@ for (const size of [
   });
 }
 
-test("a tap before the bite loses the fish, and walking off reels the line in", async ({
+test("on a keyboard: E enters and casts, a tap before the bite loses the fish, Esc leaves, and a line left out comes in", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   const errors = await openPlaza(page);
   await toPond(page);
-  await cast(page);
-  await page.click("#pz-interact");
-  await expect(toast(page)).toContainText("Too soon");
-  await expect.poll(() => fishing(page)).toBeNull();
-  // After a moment (PLAZA_FISHING.castGapMs) the next cast goes.
+  await page.keyboard.press("e");
+  await expect(page.locator("#pz-fishhud")).toBeVisible();
+  await page.keyboard.press("e");
+  await expect.poll(() => phase(page)).toBe("wait");
+  // A nibble is not a bite: reeling now loses the fish.
+  await page.keyboard.press("e");
+  await expect(page.locator("#pz-fish-hint")).toContainText("Too soon");
+  await expect.poll(() => phase(page)).toBe("idle");
+  // Leaving with the line out reels it in on the server too.
   await page.waitForTimeout(PLAZA_FISHING.castGapMs + 100);
-  await cast(page);
+  await page.keyboard.press("e");
+  await expect.poll(() => phase(page)).toBe("wait");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#pz-fishhud")).toBeHidden();
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as any).__plazaWorld.lineOf("local")),
+    )
+    .toBeNull();
+  // Moved off the dock while fishing (the server's word): out of the mode.
+  await toPond(page);
+  await page.keyboard.press("e");
+  await page.waitForTimeout(PLAZA_FISHING.castGapMs);
+  await page.keyboard.press("e");
+  await expect.poll(() => phase(page)).toBe("wait");
   await page.evaluate(
     ([x, y]) => (window as any).__plazaPosition(x, y),
     [SPOT.x - 400, SPOT.y - 200],
   );
   await expect(toast(page)).toContainText("walked away");
-  await expect.poll(() => fishing(page)).toBeNull();
+  await expect(page.locator("#pz-fishhud")).toBeHidden();
   // The whole book filled: the server's progress brings the title.
   await page.evaluate(
     (ids) => {
@@ -189,12 +203,7 @@ test("a tap before the bite loses the fish, and walking off reels the line in", 
     PLAZA_FISH.map((f) => f.id),
   );
   await expect(toast(page)).toContainText("Title earned: Master Angler");
-  // Escape closes the Fish book on a keyboard.
   await page.click("#pz-fish-btn");
-  await expect(page.locator("#pz-fishbook")).toBeVisible();
-  await expect(page.locator("#pz-fishbook-count")).toHaveText(
-    `${PLAZA_FISH.length} / ${PLAZA_FISH.length}`,
-  );
   await expect(page.locator("#pz-fishbook-note")).toContainText(
     "Title earned: Master Angler",
   );

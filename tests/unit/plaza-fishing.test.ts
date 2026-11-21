@@ -240,6 +240,20 @@ describe("fishing on the server", () => {
     expect(w.reel("nobody", NOON).ok).toBe(false);
   });
 
+  it("leaving fishing mode takes the line in quietly", () => {
+    const w = world([0, 0.5]);
+    expect(w.stopFishing("s1", NOON)).toBe(false);
+    w.cast("s1", NOON);
+    expect(w.stopFishing("s1", NOON + 100)).toBe(true);
+    expect(w.lineOf("s1")).toBeNull();
+    // No bite or "gone" note follows, and the next cast waits as usual.
+    const { notes } = run(w, 7000, NOON + 100);
+    expect(notes).toEqual([]);
+    expect(w.cast("s1", NOON + 200).ok).toBe(false);
+    expect(w.cast("s1", NOON + 100 + PLAZA_FISHING.castGapMs).ok).toBe(true);
+    expect(w.stopFishing("nobody", NOON)).toBe(false);
+  });
+
   it("never sends the fish before it is caught", () => {
     const w = world([0, 0]);
     w.cast("s1", NOON);

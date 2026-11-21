@@ -3330,6 +3330,8 @@ export function createArenaServer(
         return fail(cb, "Not in the Plaza.");
       const now = Date.now();
       if (d?.act === "cast") return reply(cb, plaza.cast(socket.id, now, d.tz));
+      if (d?.act === "stop")
+        return reply(cb, { ok: plaza.stopFishing(socket.id, now) });
       if (d?.act !== "reel") return fail(cb, "Nothing to do here.");
       const r = plaza.reel(socket.id, now);
       if (r.ok)

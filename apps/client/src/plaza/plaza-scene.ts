@@ -107,7 +107,13 @@ import { sceneLines, setPerfSource } from "../perf-hud";
 import { depthSort, slices, spot } from "./plaza-depth";
 import { plazaPath } from "./plaza-path";
 import { PlazaPrediction } from "./plaza-predict";
-import { FISH_SPOT, catchCard, createFishing, fishBook } from "./plaza-fishing";
+import {
+  FISHING_ZOOM,
+  FISH_SPOT,
+  catchCard,
+  createFishing,
+  fishBook,
+} from "./plaza-fishing";
 import { PlazaFireworks } from "./plaza-fireworks";
 import {
   PLAZA_SPRITE_PX,
@@ -180,6 +186,15 @@ const PLAZA_HTML = `<div class="pz" id="pz">
       <div class="pz-album-view" id="pz-album-view" hidden></div>
     </div>
     <div class="pz-catch" id="pz-catch" aria-live="polite" hidden></div>
+    <div class="pz-fishhud" id="pz-fishhud" hidden>
+      <button type="button" class="pz-fish-exit" id="pz-fish-exit" aria-label="Leave fishing (Esc)">✕<span>Leave</span></button>
+      <div class="pz-fish-hint" id="pz-fish-hint" aria-live="polite"></div>
+      <div class="pz-fish-side">
+        <span class="pz-fish-today" id="pz-fish-today"></span>
+        <button type="button" class="pz-round" id="pz-fish-book2" aria-label="Fish book">${I("fish")}<small>Book</small></button>
+      </div>
+      <button type="button" class="pz-fish-act" id="pz-fish-act"><svg class="ico-rod" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 27 25 5" stroke="#8a5a32" stroke-width="3" stroke-linecap="round"/><circle cx="9" cy="23" r="3.2" fill="#3a2a1a"/><path d="M25 5q4 9 0 17" fill="none" stroke="#fff" stroke-width="1.2"/><circle cx="25" cy="23.5" r="2.6" fill="#ef4f61" stroke="#fff" stroke-width="1"/></svg><b></b><kbd>E</kbd></button>
+    </div>
     <div class="pz-fishbook" id="pz-fishbook" role="dialog" aria-modal="true" aria-label="Fish book" hidden>
       <section class="pz-fishbook-panel">
         <header><b>${I("fish")}<span>Fish book</span></b><span class="pz-fishbook-count" id="pz-fishbook-count" aria-live="polite"></span><button type="button" class="x" data-fb="close" aria-label="Close the Fish book">✕</button></header>
@@ -1198,6 +1213,7 @@ export function openPlaza(options) {
     // Quests pay coins on the server: the top bar's balance follows.
     if (paid) options.onCoins?.();
     renderQuests();
+    if (fishing.active) renderFishHud();
     if (!$("pz-fishbook").hidden) renderFishBook();
   }
   socket.on("plaza-progress", setProgress);
@@ -1267,6 +1283,9 @@ export function openPlaza(options) {
   /* ---------- zoom: pinch, the wheel, + and − ---------- */
   /** The player's zoom against the usual one (kept on this device). */
   let zoomF = 1;
+  /** The zoom the player chose, and fishing mode's extra on top of it. */
+  let zBase = 1,
+    fz = 1;
   try {
     zoomF = Number(localStorage.getItem("ea-plaza-zoom")) || 1;
   } catch {
@@ -1274,10 +1293,12 @@ export function openPlaza(options) {
   }
   function setZoom(f, keep = true) {
     const r = plazaZoomRange(NW, NH);
-    Z = plazaZoomAt(NW, NH, f);
+    zBase = plazaZoomAt(NW, NH, f);
     // What was asked for past a limit is not kept: a wider screen later
     // starts from what was really shown.
-    zoomF = Z / r.base;
+    zoomF = zBase / r.base;
+    // Fishing mode's closer camera on top (fz eases to FISHING_ZOOM).
+    Z = zBase * fz;
     // Inside at once (the camera eases after this): zooming or resizing
     // never shows past what is painted.
     cam = plazaCamClamp(cam.x, cam.y, NW, NH, Z);
@@ -1366,6 +1387,29 @@ export function openPlaza(options) {
         e.preventDefault();
         $("pz-fishbook").querySelector('[data-fb="close"]').focus();
       }
+      return;
+    }
+    // Fishing mode: its own keys. E, Space or Enter casts and reels; Esc
+    // or a step leaves.
+    if (fishing.active) {
+      if (!onButton) e.preventDefault();
+      if (e.repeat) return;
+      if (k === "e" || k === " " || k === "enter") fishing.act();
+      else if (
+        [
+          "escape",
+          "w",
+          "a",
+          "s",
+          "d",
+          "arrowup",
+          "arrowdown",
+          "arrowleft",
+          "arrowright",
+        ].includes(k)
+      )
+        exitFishing();
+      else if (k === "b") showFishBook();
       return;
     }
     if (photoOpen) {
@@ -1539,6 +1583,8 @@ export function openPlaza(options) {
       );
     if (who) return showCard(who);
     hideCard();
+    // Fishing: the playground doesn't take you anywhere (Leave does).
+    if (fishing.active) return;
     // A click walks you there, round whatever is in the way (plaza-path.ts).
     if (e.pointerType === "mouse") walkTo(w, true);
   });
@@ -1925,13 +1971,16 @@ export function openPlaza(options) {
       },
     },
   ];
-  // Fishing at the pond (plaza-fishing.ts): the server picks the bite and the fish.
+  // Fishing at the pond (plaza-fishing.ts): a mode with its own buttons, the
+  // camera in close; the server picks the bite and the fish.
   let catchTimer = 0;
   const fishing = createFishing({
     socket,
     toast: pzToast,
     low: () => low,
-    caught: (f) => {
+    changed: () => renderFishHud(),
+    isNew: (f) => progress?.fishBook?.[f.id] === undefined,
+    caught: (f, first) => {
       // Low graphics: the name only, no splash of particles.
       if (!low)
         burst(
@@ -1945,19 +1994,49 @@ export function openPlaza(options) {
       // The fish itself, drawn in full, for a moment over the Plaza.
       const card = $("pz-catch");
       // New to the book: its first-catch coins (the server pays them).
-      card.innerHTML = catchCard(f, progress?.fishBook?.[f.id] === undefined);
+      card.innerHTML = catchCard(f, first);
       card.hidden = false;
       clearTimeout(catchTimer);
       catchTimer = setTimeout(() => (card.hidden = true), 2600);
     },
   });
-  SPOTS.push({
-    ...FISH_SPOT,
-    act: () => fishing.act(),
-    get label() {
-      return fishing.label();
-    },
-  });
+  SPOTS.push({ ...FISH_SPOT, act: () => enterFishing() });
+  function enterFishing() {
+    if (fishing.active) return;
+    standStill();
+    toggleWheel(false);
+    hideCard();
+    fishing.enter();
+    screen.focus({ preventScroll: true });
+  }
+  function exitFishing() {
+    fishing.exit();
+    screen.focus({ preventScroll: true });
+  }
+  /** The fishing HUD, from the mode's phase (only when it changes). */
+  function renderFishHud() {
+    const on = fishing.active;
+    layer.classList.toggle("fishing", on);
+    $("pz-fishhud").hidden = !on;
+    if (!on) return;
+    // A new cast puts the last catch's card away (it would hide the "!").
+    if (fishing.phase === "cast") {
+      clearTimeout(catchTimer);
+      $("pz-catch").hidden = true;
+    }
+    const b = fishing.button(),
+      act = $("pz-fish-act");
+    act.dataset.kind = b.kind;
+    act.querySelector("b").textContent = b.label;
+    act.disabled = b.kind === "busy";
+    $("pz-fish-hint").textContent = fishing.hint();
+    $("pz-fish-hint").dataset.kind = fishing.phase;
+    $("pz-fish-today").textContent =
+      `${Math.min(progress?.fishToday ?? 0, PLAZA_FISHING.perDay)}/${PLAZA_FISHING.perDay} today`;
+  }
+  onPress($("pz-fish-act"), () => fishing.act());
+  $("pz-fish-exit").onclick = exitFishing;
+  $("pz-fish-book2").onclick = () => showFishBook();
   const onFish = (note) => fishing.onNote(note);
   socket.on("plaza-fish", onFish);
   function renderFishBook() {
@@ -4622,6 +4701,7 @@ export function openPlaza(options) {
         g.globalAlpha = 1;
       }
     }
+    if (!photo) fishing.drawCatch(g, P);
     // day / night grading and lights
     const n = night();
     // Golden hour: the late sun warms the whole square.
@@ -4886,17 +4966,10 @@ export function openPlaza(options) {
       const ib = $("pz-interact");
       fishing.update(dt);
       if (near) {
-        // The fishing spot's word changes with the line (Fish, Reel in, Reel!).
-        const label = near.label;
-        if (ib.dataset.id !== near.id || ib.dataset.label !== label) {
+        if (ib.dataset.id !== near.id) {
           ib.dataset.id = near.id;
-          ib.dataset.label = label;
-          ib.innerHTML = `${I(near.icon)}<span>${label}</span><kbd>E</kbd>`;
+          ib.innerHTML = `${I(near.icon)}<span>${near.label}</span><kbd>E</kbd>`;
         }
-        ib.classList.toggle(
-          "bite",
-          near.id === "fish" && fishing.state === "bite",
-        );
         ib.hidden = false;
       } else {
         ib.hidden = true;
@@ -4941,7 +5014,16 @@ export function openPlaza(options) {
       const lead = { x: P.vx * 0.25, y: P.vy * 0.2 };
       // Follows you a little past the Plaza's edges, onto the river, the
       // woods and the fields, never past what is painted (plaza-surround.ts).
-      const want = plazaCamClamp(P.x + lead.x, P.y - 40 + lead.y, NW, NH, Z);
+      // Fishing: the camera comes in close, between the angler and the bobber.
+      const fzWant = fishing.active ? FISHING_ZOOM : 1;
+      if (Math.abs(fz - fzWant) > 0.001) {
+        fz += (fzWant - fz) * Math.min(1, dt * 4);
+        Z = zBase * fz;
+      }
+      const look = fishing.active
+        ? fishing.focus(P)
+        : { x: P.x + lead.x, y: P.y - 40 + lead.y };
+      const want = plazaCamClamp(look.x, look.y, NW, NH, Z);
       cam.x += (want.x - cam.x) * Math.min(1, dt * 5);
       cam.y += (want.y - cam.y) * Math.min(1, dt * 5);
       {
@@ -5191,6 +5273,7 @@ export function openPlaza(options) {
       socket.off("plaza-treats", onTreats);
       socket.off("plaza-fish", onFish);
       clearTimeout(catchTimer);
+      fishing.reset();
       socket.off("plaza-pair-ask", onPairAsk);
       socket.off("plaza-pair", onPair);
       socket.off("plaza-pair-no", onPairNo);
@@ -5277,6 +5360,10 @@ export function openPlaza(options) {
       /** Fishing's line now: null, "cast", "wait" or "bite" (tests). */
       get fishing() {
         return fishing.state;
+      },
+      /** Fishing mode: on, its phase and the camera's extra zoom (tests). */
+      get fishingMode() {
+        return { active: fishing.active, phase: fishing.phase, fz };
       },
       /** The photo album's store (tests fill it). */
       album,
