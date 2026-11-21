@@ -182,8 +182,15 @@ test("back from a battle, your fighter appears already moving", async ({
   await page.click("#battle-menu");
   await page.click("#exit-room");
   await expect(page.locator("#lobby-fighter-art")).toHaveClass(/is-ready/);
+  // The watcher records "live" on the next frame after the rig is ready;
+  // on a slow runner that frame can come after the class is seen (CI, 21
+  // Nov: the last look read was "hidden").
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__looks.at(-1)), {
+      timeout: 10_000,
+    })
+    .toBe("live");
   const looks: string[] = await page.evaluate(() => (window as any).__looks);
-  expect(looks.at(-1)).toBe("live");
   expect(looks).not.toContain("still");
   await expect(page.locator("#lobby-fighter-art")).not.toHaveClass(
     /is-arriving/,
