@@ -471,6 +471,9 @@ export const RAID_ATTACKS: Record<
   },
   pounce: {
     name: "Shade Pounce",
+    // The leaps chase a raider a step further each time, past the floor
+    // round them, and come from bodies across the yard.
+    view: "court",
     tip: "Every body leaps onto a raider, one after another (dots count the order): the copies first, the real one last. Step out of the circle under you. A real one that lands in lantern light casts a shadow.",
     summary:
       "Bodies pounce in turn. Step out of each circle; the last is real.",

@@ -63,6 +63,7 @@ import { serverNow } from "../server-clock";
 import { countdownText } from "../ui/countdown";
 import { seasonState } from "./journey-view";
 import { rankProgress } from "./ranks-view";
+import { historyMarkup, type HistoryState } from "./match-history-view";
 
 export interface ProfileData {
   name: string;
@@ -92,9 +93,10 @@ export interface ProfileData {
   nameStatus: NameStatus | null;
   /** Players can delete their account here; administrators can't. */
   canDelete: boolean;
-  /** A phone held sideways (max-height 500 px): the card's column becomes
-   * tabs (Overview, Titles, Mastery, Trophies) instead of one long scroll. */
-  compact?: boolean;
+  /** Your match history (docs/match-history.md), when it can load. */
+  history?: HistoryState;
+  /** A player in a match whose card you can open (your friends). */
+  canOpen?: (id: string) => boolean;
 }
 export interface ProfileView {
   /** The title being equipped ("" for no title), while the server answers. */
@@ -115,7 +117,7 @@ export interface ProfileView {
   deleteBusy: boolean;
   /** Why it wasn't deleted (or what to type). */
   deleteMessage: string;
-  /** The tab open on a phone. */
+  /** The tab open (every screen size: one part at a time, no long scroll). */
   tab: ProfileTab;
   /** The avatar library's style shown. */
   avatarStyle: AvatarStyle;
@@ -125,9 +127,10 @@ export interface ProfileView {
   avatarStatus: string;
 }
 export type ProfileTab =
-  "overview" | "avatar" | "titles" | "mastery" | "trophies";
+  "overview" | "matches" | "avatar" | "titles" | "mastery" | "trophies";
 const PROFILE_TABS: [ProfileTab, string][] = [
   ["overview", "Overview"],
+  ["matches", "Matches"],
   ["avatar", "Avatar"],
   ["titles", "Titles"],
   ["mastery", "Mastery"],
@@ -250,7 +253,7 @@ function photoRow(d: ProfileData, view: ProfileView) {
 }
 
 /** The card other players see: your avatar, title, name and tags. */
-export function playerCard(d: ProfileData) {
+export function playerCard(d: ProfileData, label = "Your player card") {
   const level = d.journey ? playerLevel(d.journey.xp).level : null;
   const rank = rankLine(d.progress);
   const best = bestMastery(d.progress);
@@ -261,7 +264,7 @@ export function playerCard(d: ProfileData) {
       : "",
     best ? tag(best.text) : "",
   ].join("");
-  return `<aside class="pf-card" style="--el:${elVar(d.fighter)}" aria-label="Your player card"><span class="pf-card-art pf-card-avatar" aria-hidden="true">${identityPortrait({ avatar: d.avatar, raidLook: d.look, raidClears: d.clears })}</span><span class="pf-card-text">${d.title ? `<small class="pf-card-title player-title title-${titleTreatment(d.title)}" style="--title-color:${safeColor(d.titleColor)};color:${safeColor(d.titleColor)}">${esc(d.title)}</small>` : ""}<b class="pf-card-name">${esc(d.name)}</b><span class="pf-card-tags">${tags}</span></span></aside>`;
+  return `<aside class="pf-card" style="--el:${elVar(d.fighter)}" aria-label="${esc(label)}"><span class="pf-card-art pf-card-avatar" aria-hidden="true">${identityPortrait({ avatar: d.avatar, raidLook: d.look, raidClears: d.clears })}</span><span class="pf-card-text">${d.title ? `<small class="pf-card-title player-title title-${titleTreatment(d.title)}" style="--title-color:${safeColor(d.titleColor)};color:${safeColor(d.titleColor)}">${esc(d.title)}</small>` : ""}<b class="pf-card-name">${esc(d.name)}</b><span class="pf-card-tags">${tags}</span></span></aside>`;
 }
 
 function tiles(d: ProfileData) {
@@ -369,33 +372,38 @@ function main(d: ProfileData, view: ProfileView) {
   const trophy = `${section("Raid trophies", "Clears per boss", "pf-trophy-h")}${trophies(d)}${achievements(d)}`;
   const who = `<p class="ui-note pf-who">${esc(d.role)}${d.email ? ` · ${esc(d.email)}` : ""}</p>`;
   const overview = `${tiles(d)}${d.guest ? saveAccount(view) : ""}${nameRow(d, view)}`;
-  // A phone: one tab at a time (its tabs sit in the head).
-  if (d.compact)
-    return {
-      // Who you are and Delete account share one line on a phone.
-      overview: `${overview}${summaries(d)}<div class="pf-account">${who}${deleteRow(d, view)}</div>`,
-      avatar: avatars,
-      titles,
-      mastery,
-      trophies: trophy,
-    }[view.tab];
-  return `${overview}${avatars}${titles}${mastery}${summaries(d)}${trophy}${who}${deleteRow(d, view)}`;
+  const matches = d.history
+    ? historyMarkup(d.history, { whose: "Your", canOpen: d.canOpen })
+    : "";
+  // One tab at a time on every screen (its tabs sit in the head): the
+  // column used to hold everything on a desktop, a long scroll.
+  return {
+    // Who you are and Delete account share one line.
+    overview: `${overview}${summaries(d)}<div class="pf-account">${who}${deleteRow(d, view)}</div>`,
+    matches,
+    avatar: avatars,
+    titles,
+    mastery,
+    trophies: trophy,
+  }[view.tab];
 }
 
 export function profileMarkup(view: ProfileView, d: ProfileData) {
   const tools = button("Share card", {
     size: "s",
     icon: "share",
-    attrs: { "data-profile-share": true },
+    attrs: { "data-profile-share": true, "aria-label": "Share card" },
   });
   const tabRow =
-    d.compact && (d.progress || !d.progressProblem)
+    d.progress || !d.progressProblem
       ? tabs(
-          PROFILE_TABS.map(([id, label]) => ({
-            id,
-            label,
-            selected: view.tab === id,
-          })),
+          PROFILE_TABS.filter(([id]) => id !== "matches" || d.history).map(
+            ([id, label]) => ({
+              id,
+              label,
+              selected: view.tab === id,
+            }),
+          ),
           "Player card",
           "profile-tab",
         )

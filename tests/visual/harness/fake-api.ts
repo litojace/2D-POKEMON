@@ -256,6 +256,22 @@ window.fetch = async (input, init) => {
       }
       return Response.json({ fighter: f.__savedFighter ?? null });
     }
+    // How the Lobby tour ended, kept with the account (migration
+    // 20261121090000): window.__tour is what the account has; each ending
+    // the client sends is pushed to window.__tourEnds.
+    if (url.pathname === "/api/account/tour") {
+      const f = window as unknown as {
+        __tour?: string | null;
+        __tourEnds?: unknown[];
+      };
+      if (init?.method === "POST") {
+        const end = JSON.parse(String(init.body));
+        f.__tour = end.result;
+        (f.__tourEnds ??= []).push(end);
+        return Response.json({ ok: true });
+      }
+      return Response.json({ tour: f.__tour ?? null });
+    }
     // The library avatar (migration 20261119100000): window.__avatar is
     // what the account wears; each choice is pushed to window.__avatarSaves.
     if (url.pathname === "/api/account/avatar") {
@@ -270,6 +286,59 @@ window.fetch = async (input, init) => {
         return Response.json({ ok: true, avatar });
       }
       return Response.json({ avatar: f.__avatar ?? null });
+    }
+    // Match history (docs/match-history.md): window.__history maps a player
+    // id ("me" for you) to their matches, newest first; the fake pages and
+    // filters them as the server does. window.__historyProblem refuses
+    // (a stranger), window.__historyDelay holds each answer (ms), and every
+    // ask is pushed to window.__historyCalls.
+    if (url.pathname === "/api/matches/history") {
+      const h = window as unknown as {
+        __history?: Record<
+          string,
+          {
+            bot: string | null;
+            playedAt: string;
+            id: string;
+            result: string;
+            character: string;
+          }[]
+        >;
+        __historyTotals?: Record<string, unknown>;
+        __historyRating?: unknown;
+        __historyProblem?: string;
+        __historyDelay?: number;
+        __historyCalls?: string[];
+      };
+      (h.__historyCalls ??= []).push(url.search);
+      if (h.__historyDelay)
+        await new Promise((r) => setTimeout(r, h.__historyDelay));
+      if (h.__historyProblem)
+        return Response.json({ error: h.__historyProblem }, { status: 403 });
+      const player = url.searchParams.get("player") ?? "me";
+      const kind = url.searchParams.get("kind") ?? "all";
+      const at = url.searchParams.get("at");
+      const id = url.searchParams.get("id");
+      const all = (h.__history?.[player] ?? []).filter(
+        (m) => kind === "all" || (kind === "bot") === (m.bot !== null),
+      );
+      const from = at ? all.findIndex((m) => m.id === id) + 1 : 0;
+      const page = all.slice(from, from + 10);
+      const more = from + 10 < all.length;
+      const last = page.at(-1);
+      const mine = h.__history?.[player] ?? [];
+      return Response.json({
+        matches: page,
+        next: more && last ? { at: last.playedAt, id: last.id } : null,
+        totals: at
+          ? null
+          : (h.__historyTotals?.[player] ?? {
+              matches: mine.length,
+              wins: mine.filter((m) => m.result === "win").length,
+              fighters: {},
+            }),
+        rating: at ? null : (h.__historyRating ?? null),
+      });
     }
     // Tests can set window.__missions (before load, or then refresh the
     // economy) to give the player today's missions, and window.__friends to

@@ -4,6 +4,7 @@ import { clientOrigins } from "./api-cors.js";
 import type {
   PlazaProgress,
   PlazaRecord,
+  PlazaWishPay,
 } from "../../../packages/shared/src/plaza.js";
 import {
   RAID_COSMETICS,
@@ -51,6 +52,7 @@ import {
   supabaseSocialStore,
   type SocialStore,
 } from "./social.js";
+import { buildMatchHistory, type MatchHistoryPage } from "./match-history.js";
 import express, {
   type Express,
   type Request,
@@ -77,13 +79,28 @@ import {
   friendRespondSchema,
   friendRemoveSchema,
   ratingSchema,
+  MATCH_HISTORY_KINDS,
+  MATCH_HISTORY_PAGE,
   type Friend,
   type Account,
   type MatchSummary,
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261119160000_avatar_library_77.sql";
+export const LATEST_MIGRATION = "20261120140000_match_history.sql";
+/** A page of match history: whose, from where, and which matches. */
+const matchHistoryQuerySchema = z
+  .object({
+    player: z.string().uuid().optional(),
+    at: z
+      .string()
+      .max(40)
+      .refine((s) => !Number.isNaN(Date.parse(s)))
+      .optional(),
+    id: z.string().min(8).max(64).optional(),
+    kind: z.enum(MATCH_HISTORY_KINDS).optional(),
+  })
+  .strict();
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -96,6 +113,11 @@ export interface AccountProvider {
   recordActivity?(receipt: ActivityReceipt): Promise<void>;
   /** Something the game server saw in the Plaza (quests, orbs, laps); returns the player's progress. */
   recordPlaza?(event: PlazaRecord): Promise<PlazaProgress | null>;
+  /**
+   * A full wish meter in the Plaza: pay this wisher once per fill (`ref`, the
+   * fill's id) within the daily cap (arena_plaza_wish); null for no player.
+   */
+  recordWish?(player: string, ref: string): Promise<PlazaWishPay | null>;
   authenticate(token: string): Promise<Account | null>;
   /** Read-only rows for friends' ratings and recent players (step 6). */
   social?: SocialStore;
@@ -413,6 +435,23 @@ export function createAccountProvider(): AccountProvider {
         throw new AccountError(503, "Plaza rewards could not be stored.");
       return (result.data as PlazaProgress | null) ?? null;
     },
+    async recordWish(player, ref) {
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey)
+        throw new AccountError(
+          503,
+          "Plaza rewards require server storage configuration.",
+        );
+      const admin = createClient(url, serviceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const result = await admin.rpc("arena_plaza_wish", {
+        p: { player, ref },
+      });
+      if (result.error)
+        throw new AccountError(503, "Plaza rewards could not be stored.");
+      return (result.data as PlazaWishPay | null) ?? null;
+    },
     async recordActivity(receipt) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (!url || !serviceKey)
@@ -460,6 +499,19 @@ export function createAccountProvider(): AccountProvider {
 }
 /** A fighter to keep with the account: one on the roster. */
 const savedFighterSchema = z.object({ fighter: z.enum(FIGHTER_IDS) }).strict();
+/**
+ * How a Lobby tour ended (apps/client/src/hub-tour.ts): finished or skipped,
+ * how many of its steps the player saw, and whether it was a replay.
+ */
+export const tourEndSchema = z
+  .object({
+    result: z.enum(["done", "skipped"]),
+    reached: z.number().int().min(0).max(20),
+    steps: z.number().int().min(1).max(20),
+    replay: z.boolean(),
+  })
+  .strict()
+  .refine((t) => t.reached <= t.steps, "More steps reached than shown.");
 export async function authorize(
   provider: AccountProvider,
   token: unknown,
@@ -494,6 +546,8 @@ export function installAccountRoutes(
   presence: (accountId: string) => Partial<Friend> = () => ({ online: false }),
   /** Tell a player's open games that their friends list changed. */
   onFriendsChanged: (accountId: string) => void = () => {},
+  /** One line for the server log (server.ts connectionLog). */
+  log: (event: string, details: Record<string, unknown>) => void = () => {},
 ) {
   const requests = new Map<string, { count: number; until: number }>();
   app.use("/api", (req, res, next) => {
@@ -578,6 +632,32 @@ export function installAccountRoutes(
     route(false, async (req, res, token) => {
       const { fighter } = savedFighterSchema.parse(req.body);
       await provider.rpc(token, "arena_save_fighter", { p_fighter: fighter });
+      res.json({ ok: true });
+    }),
+  );
+  // How your Lobby tour ended (migration 20261121090000), so another device
+  // doesn't show it again. Null before it ever ended.
+  app.get(
+    "/api/account/tour",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      const saved = await provider.rpc(token, "arena_my_tour", {});
+      res.json({
+        tour: saved === "done" || saved === "skipped" ? saved : null,
+      });
+    }),
+  );
+  app.post(
+    "/api/account/tour",
+    route(false, async (req, res, token) => {
+      const end = tourEndSchema.parse(req.body);
+      await provider.rpc(token, "arena_save_tour", {
+        p_result: end.result,
+        p_reached: end.reached,
+      });
+      // The new-player funnel (docs/player-funnel.md): how tours end. No
+      // account: the database row is the per-account record.
+      log("arena-tour", end);
       res.json({ ok: true });
     }),
   );
@@ -1160,6 +1240,25 @@ export function installAccountRoutes(
           rating,
         }),
       );
+    }),
+  );
+  // Match history (docs/match-history.md): yours, or a friend's (the
+  // database refuses anyone else), a page at a time.
+  app.get(
+    "/api/matches/history",
+    route(false, async (req, res, token, account) => {
+      res.setHeader("Cache-Control", "no-store");
+      const q = matchHistoryQuerySchema.safeParse(req.query);
+      if (!q.success) throw new AccountError(400, "Invalid page.");
+      const player = q.data.player ?? account.id;
+      const page = (await provider.rpc(token, "arena_match_history", {
+        p_player: player,
+        p_before_at: q.data.at ?? null,
+        p_before_id: q.data.at ? (q.data.id ?? null) : null,
+        p_limit: MATCH_HISTORY_PAGE,
+        p_kind: q.data.kind ?? "all",
+      })) as MatchHistoryPage;
+      res.json(buildMatchHistory(page, player));
     }),
   );
   // Friends › Recent: the players in your latest matches (step 6).

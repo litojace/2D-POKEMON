@@ -1656,9 +1656,127 @@ body.battle-active.touch-mode {
 #pwa-banner[hidden] {
   display: none;
 }
+#pwa-banner .pwa-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
 #pwa-banner button {
-  margin-left: 12px;
+  min-height: 44px;
+  padding: 10px 16px;
   font-size: calc(11px * var(--text-scale, 1));
+}
+/* Landscape phones: one compact row, so the prompt leaves the hub's corners
+   (Quick Match, PLAY) clear. */
+@media (max-height: 500px) {
+  #pwa-banner:has(.pwa-actions:not([hidden])) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* Beside PLAY (about 192px wide with its margin), clear of the rail. */
+    --pwa-width: min(
+      380px,
+      100vw - 300px - var(--safe-left) - var(--safe-right)
+    );
+    width: var(--pwa-width);
+    left: auto;
+    right: max(
+      calc(50% - var(--pwa-width) / 2),
+      calc(var(--safe-right) + 204px)
+    );
+    transform: none;
+    bottom: calc(var(--safe-bottom) + 8px);
+    padding: 8px 10px;
+  }
+  #pwa-banner .pwa-actions {
+    flex: none;
+    margin-top: 0;
+    gap: 8px;
+  }
+  #pwa-banner button {
+    padding: 8px 12px;
+  }
+}
+/* The first update ask fills the screen like the round countdown: edge to
+   edge past the notch, a shade that keeps the hub dimly in view, one big
+   line in the middle (owner, 20 Nov 2026: option B, then the banner). */
+#pwa-takeover {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-banner);
+  display: grid;
+  place-items: center;
+  padding: max(12px, var(--safe-top, 0px)) max(12px, var(--safe-right, 0px))
+    max(12px, var(--safe-bottom, 0px)) max(12px, var(--safe-left, 0px));
+  background: radial-gradient(
+    ellipse 60% 70% at 50% 50%,
+    #071225b3,
+    #071225e6 100%
+  );
+  text-align: center;
+  overflow: hidden;
+  animation: pwa-takeover-in var(--dur-3) ease-out;
+}
+#pwa-takeover[hidden] {
+  display: none;
+}
+@keyframes pwa-takeover-in {
+  from {
+    opacity: 0;
+  }
+}
+#pwa-takeover .eyebrow {
+  justify-content: center;
+  margin: 0;
+  color: #f7d780;
+  font-size: calc(13px * var(--text-scale, 1));
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px #000c;
+}
+#pwa-takeover h2 {
+  margin: 0;
+  color: #fff;
+  font:
+    800 clamp(56px, 24vh, 150px) / 0.95 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 32px color-mix(in srgb, #f7d780 55%, transparent),
+    0 6px 24px #000d;
+}
+#pwa-takeover p {
+  margin: 6px 0 0;
+  color: #eaf1ff;
+  font-size: calc(16px * var(--text-scale, 1));
+  font-weight: 700;
+  text-shadow: 0 2px 10px #000e;
+}
+.pwa-takeover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: clamp(10px, 4vh, 24px);
+}
+#pwa-takeover .pwa-takeover-actions button {
+  min-height: 48px;
+  padding: 12px 26px;
+  font-size: calc(16px * var(--text-scale, 1));
+}
+/* The game's pill (.secondary), but solid, so the hub's labels never show
+   through it. */
+#pwa-takeover .pwa-takeover-later,
+#pwa-takeover .pwa-takeover-later:hover:not(:disabled) {
+  background: #1d3050;
+}
+@media (prefers-reduced-motion: reduce) {
+  #pwa-takeover {
+    animation: none;
+  }
 }
 .battle-active #pwa-banner {
   top: calc(var(--safe-top) + 4px);
@@ -14931,6 +15049,28 @@ body.battle-active:not(.touch-mode)
 /* (main.ts marks the overlay .is-reveal with the markup, in one step: a
    :has(> .match-reveal) rule here could apply a frame late in Safari, and
    the arena showed before the Reveal on the owner's iPhone.) */
+/* Solo test mode's cover while the arena loads (main.ts practiceLoading):
+   the whole screen, like the Reveal, a bar in the middle. */
+body.battle-active #arena-overlay.is-practice-loading:not(:empty) {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: max(20px, var(--safe-top, 0px)) max(32px, var(--safe-right, 0px))
+    max(16px, var(--safe-bottom, 0px)) max(32px, var(--safe-left, 0px));
+  background: #070d1f;
+}
+.practice-loading {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: min(420px, 100%);
+}
+.practice-loading .rv-load {
+  width: 100%;
+  text-align: center;
+}
 body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
   /* The whole screen, as a loading screen: not a panel over the arena. */
   position: fixed;
@@ -15387,7 +15527,10 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
    19 Nov 2026: the card sat over the middle of the arena, and the shade
    stopped short of the screen's sides). main.ts marks the overlay
    .is-countdown. */
-body.battle-active:not(.battle-raid) #arena-overlay.is-countdown:not(:empty) {
+/* Raids and the Spire too (raid-ui.ts marks their overlay; owner, 20 Nov
+   2026): the doubled id beats the raid's touch rule that keeps its card
+   inside the notch insets. */
+body.battle-active #arena-overlay#arena-overlay.is-countdown:not(:empty) {
   position: fixed;
   inset: 0;
   z-index: 80;
@@ -15439,7 +15582,9 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-countdown:not(:empty) {
     0 0 32px color-mix(in srgb, var(--element, #f7d780) 55%, transparent),
     0 6px 24px #000d;
 }
-#arena-overlay.is-countdown .countdown-card > div {
+/* The line under the number: a div in PvP, a paragraph in raids and the
+   Spire (their objective, or the floor). */
+#arena-overlay.is-countdown .countdown-card > :is(div, p) {
   margin: 0;
   color: #eaf1ff;
   font-size: calc(16px * var(--text-scale, 1));

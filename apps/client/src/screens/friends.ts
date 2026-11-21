@@ -1,4 +1,5 @@
 import { openHubPanel, type HubPanel } from "../ui/hub-panel";
+import { focusForTyping } from "../screen-pin";
 import { parse, patch } from "../ui/patch";
 import {
   friendsMarkup,
@@ -33,6 +34,8 @@ export interface FriendsHooks {
   reportPhoto?(photo: string, name: string): Promise<string>;
   /** Open the chat on a conversation with this friend. */
   message?(id: string, name: string): void;
+  /** A friend's player card and match history. */
+  card?(id: string): void;
   inviteToParty(id: string): Promise<Reply>;
   inviteToRoom(id: string): Promise<Reply>;
   join(code: string): void;
@@ -123,7 +126,7 @@ export function openFriends(hooks: FriendsHooks): FriendsScreen {
   function toggleAdd(open = !view.adding) {
     view.adding = open;
     render();
-    if (open) focusOn("#fr-add-code");
+    if (open) focusForTyping(q<HTMLElement>("#fr-add-code"));
     else focusOn("[data-friend-add-open].fr-add-toggle");
   }
   async function copyCode(share: boolean) {
@@ -243,6 +246,10 @@ export function openFriends(hooks: FriendsHooks): FriendsScreen {
         photo,
         async () => (await hooks.reportPhoto?.(photo, name)) ?? "",
       );
+    } else if (d.friendCard) {
+      const id = d.friendCard;
+      view.menu = view.removing = null;
+      hooks.card?.(id);
     } else if (d.friendMessage) {
       const id = d.friendMessage,
         name = d.friendName ?? "";

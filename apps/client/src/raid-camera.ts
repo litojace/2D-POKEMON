@@ -71,8 +71,26 @@ export function raidWantsCourt(raid: RaidState, now: number) {
   return false;
 }
 
+/** A spot on the court that must stay readable (world px, a centre and radius). */
+export interface FrameMark {
+  x: number;
+  y: number;
+  r: number;
+}
 /** A world rectangle the camera should show (the court is 1600 × 900). */
 export interface FrameBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  /**
+   * The middles of the marked warnings and their safe spots: kept clear of
+   * the touch controls when the camera frames the moment.
+   */
+  marks?: FrameMark[];
+}
+/** A screen rectangle a touch control covers (game px, like the view). */
+export interface ScreenRect {
   x0: number;
   y0: number;
   x1: number;
@@ -87,6 +105,11 @@ const FRAME_PAD = 70;
 const FRAME_SIDE = 0.07;
 /** Warnings that sweep the whole court whatever their marked geometry. */
 const SWEEPS = new Set(["breaker", "wave"]);
+/**
+ * The share of a warning's radius that must stay clear of the controls: its
+ * middle, where the icon, the order dots and a pool's crescent are drawn.
+ */
+export const FRAME_CORE = 0.65;
 
 /**
  * What a court-wide moment needs in view: every raider and boss, every
@@ -115,12 +138,22 @@ export function raidFrame(
   const whole = { x0: 0, y0: 0, x1: 1600, y1: 900 };
   for (const p of people) add(p.x, p.y, FRAME_PAD);
   const kinds = new Set(raid.warnings.map((w) => w.kind));
+  const marks: FrameMark[] = [];
   for (const w of raid.warnings) {
     if (SWEEPS.has(w.kind)) return whole;
     const r = Math.min(w.radius, 900) + FRAME_PAD / 2;
     add(w.x, w.y, r);
     add(w.tx, w.ty, r);
-    for (const pool of w.pools ?? []) add(pool.x, pool.y, pool.radius);
+    // A court-wide warning covers the controls whatever the camera does.
+    if (w.radius > 0 && w.radius < RAID_WIDE_RADIUS) {
+      marks.push({ x: w.x, y: w.y, r: w.radius * FRAME_CORE });
+      if (Math.hypot(w.tx - w.x, w.ty - w.y) > 1)
+        marks.push({ x: w.tx, y: w.ty, r: w.radius * FRAME_CORE });
+    }
+    for (const pool of w.pools ?? []) {
+      add(pool.x, pool.y, pool.radius);
+      marks.push({ x: pool.x, y: pool.y, r: pool.radius * FRAME_CORE });
+    }
   }
   const dreaming =
     (raid.dream && raid.dream.until > now) ||
@@ -160,6 +193,52 @@ export function raidFrame(
     y0: Math.max(0, y0),
     x1: Math.min(1600, x1),
     y1: Math.min(900, y1),
+    ...(marks.length ? { marks } : {}),
+  };
+}
+
+/**
+ * How much of the screen the touch controls cover at each side (game px):
+ * the joystick's right edge from the left, the skill buttons' left edge from
+ * the right. Measured when the battle is laid out (never per frame).
+ */
+export interface ControlSides {
+  left: number;
+  right: number;
+}
+const NO_SIDES: ControlSides = { left: 0, right: 0 };
+/** Room kept between your raider and the controls (world px, about a fighter's half-width). */
+const CONTROL_PAD = 55;
+
+/**
+ * The camera centres (world x) that put `p` on screen between the controls
+ * at this zoom, with CONTROL_PAD to spare.
+ */
+function clearBand(
+  p: number,
+  zoom: number,
+  width: number,
+  sides: ControlSides,
+): [number, number] {
+  const pad = CONTROL_PAD * zoom;
+  return [
+    p - (width / 2 - sides.right - pad) / zoom,
+    p + (width / 2 - sides.left - pad) / zoom,
+  ];
+}
+/** Is this screen x (game px) under the joystick's or the skill buttons' column? */
+export function underControls(x: number, width: number, sides: ControlSides) {
+  return (
+    (sides.left > 0 && x < sides.left) ||
+    (sides.right > 0 && x > width - sides.right)
+  );
+}
+/** The court's edges may scroll past the screen's edges this far (screen px), so a raider at a wall can still stand clear of the controls. */
+function apronFor(sides: ControlSides, zoom: number): ControlSides {
+  const pad = CONTROL_PAD * zoom;
+  return {
+    left: sides.left ? sides.left + pad : 0,
+    right: sides.right ? sides.right + pad : 0,
   };
 }
 
@@ -179,12 +258,21 @@ function clampCentre(
   width: number,
   height: number,
   top: number,
+  /** Screen px the court's left/right edges may scroll in from the screen's. */
+  apron: ControlSides = NO_SIDES,
 ): Point {
   const halfW = width / zoom / 2;
   // The visible world below the HUD, as a centre and half-height.
   const halfVis = (height - top) / zoom / 2,
     lift = top / zoom / 2;
-  const x = halfW >= 800 ? 800 : clamp(c.x, halfW, 1600 - halfW);
+  const x =
+    halfW >= 800
+      ? 800
+      : clamp(
+          c.x,
+          halfW - apron.left / zoom,
+          1600 - halfW + apron.right / zoom,
+        );
   const visY = halfVis >= 450 ? 450 : clamp(c.y + lift, halfVis, 900 - halfVis);
   return { x, y: visY - lift };
 }
@@ -192,6 +280,9 @@ function clampCentre(
 /**
  * Where the follow camera aims: the raider (and where they're heading),
  * leaning toward the boss, but never so far that the raider nears the edge.
+ * On a phone the raider always stands clear of the joystick and the skill
+ * buttons (the court may scroll past the screen's edge for it), and the boss
+ * does too when both fit.
  */
 export function raidFollowCentre(
   width: number,
@@ -201,6 +292,7 @@ export function raidFollowCentre(
   raider: Point,
   ahead: Point,
   boss?: Point,
+  sides: ControlSides = NO_SIDES,
 ): Point {
   const lift = top / zoom / 2;
   const halfW = width / zoom / 2,
@@ -210,17 +302,200 @@ export function raidFollowCentre(
   // The point the visible area (below the HUD) centres on.
   let vx = boss ? fx + (boss.x - fx) * RAID_BOSS_PULL : fx;
   let vy = boss ? fy + (boss.y - fy) * RAID_BOSS_PULL : fy;
-  vx = clamp(
-    vx,
-    raider.x - halfW * RAIDER_MARGIN,
-    raider.x + halfW * RAIDER_MARGIN,
-  );
+  let [lo, hi] = clearBand(raider.x, zoom, width, sides);
+  lo = Math.max(lo, raider.x - halfW * RAIDER_MARGIN);
+  hi = Math.min(hi, raider.x + halfW * RAIDER_MARGIN);
+  if (boss) {
+    // The boss clear of the controls too, where that keeps the raider clear.
+    const [blo, bhi] = clearBand(boss.x, zoom, width, sides);
+    if (Math.max(lo, blo) <= Math.min(hi, bhi)) vx = clamp(vx, blo, bhi);
+  }
+  vx = lo <= hi ? clamp(vx, lo, hi) : raider.x;
   vy = clamp(
     vy,
     raider.y - halfVis * RAIDER_MARGIN,
     raider.y + halfVis * RAIDER_MARGIN,
   );
-  return clampCentre({ x: vx, y: vy - lift }, zoom, width, height, top);
+  return clampCentre(
+    { x: vx, y: vy - lift },
+    zoom,
+    width,
+    height,
+    top,
+    apronFor(sides, zoom),
+  );
+}
+
+/**
+ * A court-wide moment's view: the frame between FRAME_SIDE margins and, on a
+ * phone, your raider clear of the controls; as close as both allow (never
+ * past `most`, never further out than `least`). Returns the zoom and the
+ * camera's world x.
+ */
+export function raidFrameView(
+  box: FrameBox,
+  width: number,
+  least: number,
+  most: number,
+  raider: Point | undefined,
+  sides: ControlSides = NO_SIDES,
+): { zoom: number; x: number } {
+  const mid = (box.x0 + box.x1) / 2;
+  const span = width * (0.5 - FRAME_SIDE);
+  const band = (zoom: number): [number, number] => {
+    let lo = box.x1 - span / zoom,
+      hi = box.x0 + span / zoom;
+    if (raider && (sides.left || sides.right)) {
+      const [rlo, rhi] = clearBand(raider.x, zoom, width, sides);
+      lo = Math.max(lo, rlo);
+      hi = Math.min(hi, rhi);
+    }
+    return [lo, hi];
+  };
+  const fits = (zoom: number) => {
+    const [lo, hi] = band(zoom);
+    return lo <= hi;
+  };
+  let zoom = most;
+  if (!fits(most)) {
+    if (!fits(least)) return { zoom: most, x: mid };
+    let a = least,
+      b = most;
+    for (let i = 0; i < 24; i++) {
+      const m = (a + b) / 2;
+      if (fits(m)) a = m;
+      else b = m;
+    }
+    zoom = a;
+  }
+  const [lo, hi] = band(zoom);
+  return { zoom, x: clamp(mid, lo, hi) };
+}
+
+/** Zooms tried, from the framed zoom out to the overview's, to clear the controls. */
+const PLACE_ZOOMS = 6;
+/** Pans tried across the room the frame leaves (across × down). */
+const PLACE_ACROSS = 9,
+  PLACE_DOWN = 5;
+
+/** How many marks a view at this centre and zoom hides (off screen or under a control). */
+function hiddenMarks(
+  marks: readonly FrameMark[],
+  controls: readonly ScreenRect[],
+  c: Point,
+  zoom: number,
+  width: number,
+  height: number,
+  top: number,
+) {
+  let hidden = 0;
+  for (const m of marks) {
+    const x = (m.x - c.x) * zoom + width / 2,
+      y = (m.y - c.y) * zoom + height / 2,
+      r = m.r * zoom;
+    if (x - r < 0 || x + r > width || y - r < top || y + r > height) {
+      hidden++;
+      continue;
+    }
+    for (const b of controls) {
+      const dx = Math.max(b.x0 - x, 0, x - b.x1),
+        dy = Math.max(b.y0 - y, 0, y - b.y1);
+      if (dx * dx + dy * dy < r * r) {
+        hidden++;
+        break;
+      }
+    }
+  }
+  return hidden;
+}
+
+/**
+ * Where to frame a court-wide moment. First raidFrameView's view (the box in
+ * view, your raider clear of the controls' columns). If that leaves a mark (a
+ * warning's middle, a safe spot) under a touch control, the camera pans
+ * across the room the box leaves and, if need be, pulls out (never past the
+ * overview), still keeping your raider clear, to the closest view that hides
+ * the fewest marks. Shared data, no per-boss placement.
+ */
+export function raidFramePlacement(
+  box: FrameBox,
+  width: number,
+  height: number,
+  top: number,
+  /** raidFrameView's zoom and camera x. */
+  fitted: { zoom: number; x: number },
+  /** The overview's zoom: never further out. */
+  floor: number,
+  controls: readonly ScreenRect[],
+  raider?: Point,
+  sides: ControlSides = NO_SIDES,
+): { x: number; y: number; zoom: number } {
+  const midY = (zoom: number) => (box.y0 + box.y1) / 2 - top / zoom / 2;
+  const centre = (x: number, y: number, zoom: number) =>
+    clampCentre({ x, y }, zoom, width, height, top, apronFor(sides, zoom));
+  const fit = fitted.zoom;
+  const first = { ...centre(fitted.x, midY(fit), fit), zoom: fit };
+  const marks = box.marks ?? [];
+  if (!marks.length || !controls.length) return first;
+  let best = first,
+    bestHidden = hiddenMarks(marks, controls, first, fit, width, height, top),
+    bestMove = 0;
+  if (!bestHidden) return first;
+  const side = width * FRAME_SIDE;
+  const keepRaider = !!raider && !!(sides.left || sides.right);
+  for (let i = 0; i <= PLACE_ZOOMS; i++) {
+    const zoom =
+      fit > floor ? fit * Math.pow(floor / fit, i / PLACE_ZOOMS) : fit;
+    // Centres that keep the whole box in view (beside the side margins,
+    // below the HUD) and your raider clear of the controls' columns.
+    let xLo = box.x1 - (width / 2 - side) / zoom,
+      xHi = box.x0 + (width / 2 - side) / zoom;
+    if (xLo > xHi) xLo = xHi = (xLo + xHi) / 2;
+    if (keepRaider) {
+      const [rlo, rhi] = clearBand(raider!.x, zoom, width, sides);
+      xLo = Math.max(xLo, rlo);
+      xHi = Math.min(xHi, rhi);
+      if (xLo > xHi) continue;
+    }
+    let yLo = box.y1 - height / 2 / zoom,
+      yHi = box.y0 + (height / 2 - top) / zoom;
+    if (yLo > yHi) yLo = yHi = (yLo + yHi) / 2;
+    const base = centre(
+      clamp((box.x0 + box.x1) / 2, xLo, xHi),
+      midY(zoom),
+      zoom,
+    );
+    for (let a = 0; a < PLACE_ACROSS; a++)
+      for (let d = 0; d < PLACE_DOWN; d++) {
+        const c = centre(
+          xLo + ((xHi - xLo) * a) / (PLACE_ACROSS - 1),
+          yLo + ((yHi - yLo) * d) / (PLACE_DOWN - 1),
+          zoom,
+        );
+        const hidden = hiddenMarks(
+          marks,
+          controls,
+          c,
+          zoom,
+          width,
+          height,
+          top,
+        );
+        const move = Math.hypot(c.x - base.x, c.y - base.y);
+        // Fewest hidden; then the closest zoom (tried first); then the
+        // least pan from the box's middle.
+        if (
+          hidden < bestHidden ||
+          (hidden === bestHidden && zoom === best.zoom && move < bestMove)
+        ) {
+          best = { ...c, zoom };
+          bestHidden = hidden;
+          bestMove = move;
+        }
+      }
+    if (!bestHidden || fit <= floor) break;
+  }
+  return best;
 }
 
 export interface RaidCameraFocus extends Point {
@@ -256,6 +531,10 @@ export class RaidCamera {
     /** Seconds, any clock (for the hold after a court-wide warning). */
     now: number,
     reduced: boolean,
+    /** Phones: where the touch controls sit (ControlSides). */
+    sides: ControlSides = NO_SIDES,
+    /** Phones: each touch control's box (game px): framed marks stay clear. */
+    controls: readonly ScreenRect[] = [],
   ): CameraView {
     width = Math.max(1, width);
     height = Math.max(1, height);
@@ -276,16 +555,36 @@ export class RaidCamera {
     }
     // A court-wide moment: frame what it needs, as close as that allows.
     const box = this.frame ?? { x0: 0, y0: 0, x1: 1600, y1: 900 };
-    const framed = clamp(
-      Math.min(
-        (width * (1 - 2 * FRAME_SIDE)) / Math.max(1, box.x1 - box.x0),
-        (height - top) / Math.max(1, box.y1 - box.y0),
-      ),
+    const fitted = raidFrameView(
+      box,
+      width,
       overview.zoomX,
-      followZoom(width, height, top),
+      clamp(
+        Math.min(
+          (width * (1 - 2 * FRAME_SIDE)) / Math.max(1, box.x1 - box.x0),
+          (height - top) / Math.max(1, box.y1 - box.y0),
+        ),
+        overview.zoomX,
+        followZoom(width, height, top),
+      ),
+      focus,
+      sides,
     );
-    const targetZoom = close ? followZoom(width, height, top) : framed;
-    const target = close
+    const placed = close
+      ? undefined
+      : raidFramePlacement(
+          box,
+          width,
+          height,
+          top,
+          fitted,
+          overview.zoomX,
+          controls,
+          focus,
+          sides,
+        );
+    const targetZoom = placed ? placed.zoom : followZoom(width, height, top);
+    const target = !placed
       ? raidFollowCentre(
           width,
           height,
@@ -297,18 +596,9 @@ export class RaidCamera {
             y: clamp(focus!.vy * 0.16, -65, 65),
           },
           boss,
+          sides,
         )
-      : clampCentre(
-          {
-            x: (box.x0 + box.x1) / 2,
-            // The box's middle in the space below the HUD.
-            y: (box.y0 + box.y1) / 2 - top / framed / 2,
-          },
-          framed,
-          width,
-          height,
-          top,
-        );
+      : placed;
     const ms = clamp(delta, 0, 100);
     // Out to the court quickly (a warning is showing), back in gently.
     const zoomBlend = 1 - Math.exp(-ms / (close ? 420 : 140));
@@ -334,6 +624,7 @@ export class RaidCamera {
       width,
       height,
       top,
+      apronFor(sides, this.zoom),
     );
     this.x = c.x;
     this.y = c.y;

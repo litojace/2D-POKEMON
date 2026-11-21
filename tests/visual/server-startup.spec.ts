@@ -26,6 +26,21 @@ window.fetch = async (input, init) => {
   });
 }
 
+/** Connect the hub (the harness's socket waits to be told) until the curtain lifts. */
+async function enterHub(page: Page) {
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => (window as any).__sock?.fire("connect"));
+        return page.locator("#server-startup").count();
+      },
+      { timeout: 20_000, intervals: [300, 500] },
+    )
+    .toBe(0);
+  await expect(page.locator("body")).not.toHaveClass(/gate-active/);
+  await expect(page.locator("#lobby-play")).toBeVisible();
+}
+
 for (const size of [
   { width: 1440, height: 900 },
   { width: 844, height: 390 },
@@ -138,7 +153,11 @@ for (const size of [
       await progress.evaluate((el) => {
         new MutationObserver((_mutations, observer) => {
           if (el.getAttribute("aria-valuenow") === "100") {
-            (window as any).__startupCompleted = true;
+            // The bar completes only over a finished hub: profile and coins.
+            (window as any).__startupCompleted =
+              !document.body.classList.contains("gate-active") &&
+              !!document.querySelector("#account-profile") &&
+              !!document.querySelector("#account-coins > *");
             observer.disconnect();
           }
         }).observe(el, {
@@ -147,21 +166,17 @@ for (const size of [
         });
       });
       await page.evaluate(() => (window as any).__releaseStartup());
-      await expect
-        .poll(() => page.evaluate(() => (window as any).__startupCompleted))
-        .toBe(true);
-      await expect(panel).toHaveCount(0);
+      // The server answering no longer lifts the curtain: it stays over the
+      // profile load and the connection, so the hub never fills in on screen.
       await expect
         .poll(() =>
           page.evaluate(() => (window as any).__startupProfileRequests),
         )
         .toBe(1);
-      await expect
-        .poll(async () => {
-          await page.evaluate(() => (window as any).__sock.fire("connect"));
-          return page.locator("#lobby-play").isVisible();
-        })
-        .toBe(true);
+      await enterHub(page);
+      expect(
+        await page.evaluate(() => (window as any).__startupCompleted),
+      ).toBe(true);
       await expect(page.locator("#toast")).not.toContainText(
         /couldn't load|taking longer|Connection lost/,
       );
@@ -198,8 +213,9 @@ test("offline startup resumes without a login error when the network returns", a
   await page.evaluate(() => {
     (window as any).__online = true;
   });
-  await expect(page.locator("#server-startup")).toHaveCount(0);
-  await expect(page.locator("#gate-auth")).not.toContainText(
+  // A profile error would leave the front door up instead of the hub.
+  await enterHub(page);
+  await expect(page.locator("#toast")).not.toContainText(
     "couldn't load your profile",
   );
 });
@@ -255,10 +271,10 @@ test("a startup timeout exposes a working retry without reloading the page", asy
     .poll(() => page.evaluate(() => (window as any).__startupHealthRequests))
     .toBeGreaterThan(before);
   await page.evaluate(() => (window as any).__releaseStartup());
-  await expect(page.locator("#server-startup")).toHaveCount(0);
   await expect
     .poll(() => page.evaluate(() => (window as any).__startupProfileRequests))
     .toBe(1);
+  await enterHub(page);
 });
 
 test("a token refresh during cold start connects once with the fresh token", async ({
@@ -361,17 +377,21 @@ test("unavailable artwork still allows connection and entry", async ({
   ).toBeVisible();
   await expect(page.locator(".server-startup-art img")).toBeHidden();
   await page.evaluate(() => (window as any).__releaseStartup());
-  await expect(page.locator("#server-startup")).toHaveCount(0);
   await expect
     .poll(() => page.evaluate(() => (window as any).__startupProfileRequests))
     .toBe(1);
+  await enterHub(page);
 });
 
 test("the startup sigil still fits after turning the phone upright and back", async ({
   browser,
 }) => {
   const land = { width: 956, height: 440 };
-  const context = await browser.newContext({ viewport: land, isMobile: true, hasTouch: true });
+  const context = await browser.newContext({
+    viewport: land,
+    isMobile: true,
+    hasTouch: true,
+  });
   try {
     const page = await context.newPage();
     await coldServer(page);

@@ -129,6 +129,12 @@ export const LOBBY_MODES: readonly {
   },
 ];
 const MODE_KEY = "arena-lobby-mode";
+/**
+ * The longest your fighter waits hidden for its live rig before the still
+ * artwork shows (lobby-screen.ts arrive()). Measured 0.3 s back from a
+ * battle on a desktop; a slow phone takes longer.
+ */
+export const ARRIVE_MS = 1200;
 /** The mode this device picked last, or null if it never picked one. */
 export function chosenLobbyMode(): LobbyMode | null {
   try {
@@ -386,7 +392,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   layer.innerHTML = `<div class="lobby-backdrop" aria-hidden="true"></div>
 <nav class="lobby-rail" aria-label="Main menu">${RAIL.map(
     ([id, label, icon]) =>
-      `<button type="button" data-lobby-action="${id}" title="${label}" aria-label="${label}">${menuIcon(icon)}<span>${label}</span><i class="lobby-badge" data-badge-for="${id}" hidden></i></button>`,
+      `<button type="button" data-lobby-action="${id}" title="${label}" aria-label="${label}"><i class="lobby-rail-icon">${menuIcon(icon)}<i class="lobby-badge" data-badge-for="${id}" hidden></i></i><span>${label}</span></button>`,
   ).join("")}</nav>
 <section class="lobby-stage" aria-label="Your fighter">
   <div class="lobby-party-bar" id="lobby-party-bar" hidden><span class="lobby-party-faces" id="lobby-party-faces"></span><span id="lobby-party-size"></span><button type="button" class="lobby-rejoin" id="lobby-rejoin" data-lobby-action="party-room" hidden>${iconLabel("enter", "Rejoin room")}</button><button type="button" data-lobby-action="leave-party">${iconLabel("leave", "Leave party")}</button></div>
@@ -639,6 +645,33 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         // The still artwork stays when the renderer can't load.
       });
   };
+  /**
+   * Your fighter appears once, already moving: while the live rig is on its
+   * way (back from a battle, the Lobby is built again) the still artwork
+   * stays hidden instead of showing and then being swapped for the rig in
+   * a slightly different pose (docs/loading-screens.md). Never for long:
+   * past ARRIVE_MS the still artwork shows, as on Low graphics.
+   */
+  let arriveTimer: ReturnType<typeof setTimeout> | undefined;
+  let arriveWatch: MutationObserver | undefined;
+  const arrived = () => {
+    clearTimeout(arriveTimer);
+    arriveWatch?.disconnect();
+    arriveWatch = undefined;
+    layer.querySelector("#lobby-fighter-art")?.classList.remove("is-arriving");
+  };
+  const arrive = () => {
+    const art = $("lobby-fighter-art");
+    if (art.classList.contains("is-ready")) return;
+    art.classList.add("is-arriving");
+    clearTimeout(arriveTimer);
+    arriveTimer = setTimeout(arrived, ARRIVE_MS);
+    arriveWatch?.disconnect();
+    arriveWatch = new MutationObserver(() => {
+      if (art.classList.contains("is-ready")) arrived();
+    });
+    arriveWatch.observe(art, { attributes: true, attributeFilter: ["class"] });
+  };
   /** Why your fighter is still artwork, for the frame-rate read-out. */
   let stillWhy = "";
   const mountRig = () => {
@@ -649,10 +682,11 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     }
     rigLoading = true;
     stillWhy = "loading";
+    arrive();
     void import("./shop-preview")
       .then(({ mountShopPreview }) => {
         rigLoading = false;
-        if (closed || rig || lowGraphics()) return;
+        if (closed || rig || lowGraphics()) return arrived();
         rig = mountShopPreview($("lobby-fighter"), "selection");
         rig.suspend(layer.classList.contains("is-covered"));
       })
@@ -661,6 +695,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         // read-out says why).
         rigLoading = false;
         stillWhy = `failed: ${error instanceof Error ? error.message : String(error)}`;
+        arrived();
       });
   };
   /**
@@ -900,6 +935,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     },
     close() {
       closed = true;
+      arrived();
       rig?.();
       rig = undefined;
       for (const seat of seatRigs.splice(0)) seat?.();

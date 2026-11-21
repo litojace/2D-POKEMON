@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  FRAME_CORE,
   RaidCamera,
   raidFrame,
+  raidFramePlacement,
+  underControls,
   raidCameraView,
   raidFollowCentre,
   raidWantsCourt,
@@ -166,6 +169,10 @@ describe("raidWantsCourt", () => {
         0,
       ),
     ).toBe(true);
+    // Shade Pounce's leaps chase a raider past the floor round them.
+    expect(
+      raidWantsCourt(raid({ warnings: [warning("pounce")] as never }), 0),
+    ).toBe(true);
   });
   it("covers running mechanics whose answer may be anywhere", () => {
     expect(
@@ -305,5 +312,276 @@ describe("raidFrame: court-wide moments frame what they need", () => {
     )!;
     expect(f.x1).toBeGreaterThanOrEqual(1540 - 0.5);
     expect(f.y1).toBeGreaterThanOrEqual(890 - 0.5);
+  });
+});
+
+describe("clear of the touch controls", () => {
+  // The joystick reaches 30% in from the left, the skill buttons 30% from the right.
+  const SIDES = { left: W * 0.3, right: W * 0.3 };
+  const settle = (
+    cam: RaidCamera,
+    raider: { x: number; y: number },
+    boss: { x: number; y: number } | undefined,
+    frame?: { x0: number; y0: number; x1: number; y1: number },
+  ) => {
+    let view = raidCameraView(W, H, HUD);
+    for (let i = 0; i < 300; i++)
+      view = cam.update(
+        W,
+        H,
+        HUD,
+        true,
+        { ...raider, vx: 0, vy: 0 },
+        boss,
+        frame,
+        "k",
+        16,
+        i * 0.016,
+        false,
+        SIDES,
+      );
+    return view;
+  };
+  const screenX = (view: ReturnType<typeof raidCameraView>, x: number) =>
+    (x - view.x) * view.zoomX + W / 2;
+  it("keeps your raider between the joystick and the buttons, even at a wall", () => {
+    for (const x of [20, 300, 800, 1300, 1580]) {
+      const view = settle(new RaidCamera(), { x, y: 600 }, undefined);
+      const sx = screenX(view, x);
+      expect(sx).toBeGreaterThanOrEqual(SIDES.left - 0.5);
+      expect(sx).toBeLessThanOrEqual(W - SIDES.right + 0.5);
+    }
+  });
+  it("keeps the boss clear too when both fit", () => {
+    const view = settle(
+      new RaidCamera(),
+      { x: 600, y: 500 },
+      { x: 1000, y: 450 },
+    );
+    const bx = screenX(view, 1000);
+    // With a fighter's half-width (55 world px) to spare.
+    expect(bx).toBeLessThanOrEqual(W - SIDES.right - 55 * view.zoomX + 0.5);
+    expect(screenX(view, 600)).toBeGreaterThanOrEqual(SIDES.left - 0.5);
+  });
+  it("frames a court-wide moment with your raider clear of the controls", () => {
+    const frame = { x0: 280, y0: 230, x1: 1220, y1: 670 };
+    const overview = raidCameraView(W, H, HUD);
+    const view = settle(new RaidCamera(), { x: 330, y: 600 }, undefined, frame);
+    const sx = screenX(view, 330);
+    expect(sx).toBeGreaterThanOrEqual(SIDES.left - 0.5);
+    // The whole frame still shows, and never further out than the whole court.
+    expect(screenX(view, frame.x0)).toBeGreaterThanOrEqual(-0.5);
+    expect(screenX(view, frame.x1)).toBeLessThanOrEqual(W + 0.5);
+    expect(view.zoomX).toBeGreaterThanOrEqual(overview.zoomX - 1e-9);
+  });
+});
+
+describe("underControls", () => {
+  it("is true in the joystick's and the buttons' columns only", async () => {
+    const { underControls } = await import("../../apps/client/src/raid-camera");
+    const sides = { left: 300, right: 500 };
+    expect(underControls(100, 1700, sides)).toBe(true);
+    expect(underControls(800, 1700, sides)).toBe(false);
+    expect(underControls(1300, 1700, sides)).toBe(true);
+    expect(underControls(100, 1700, { left: 0, right: 0 })).toBe(false);
+  });
+});
+
+describe("framed warnings stay clear of the touch controls", () => {
+  // The skill buttons and the joystick on this phone (canvas px).
+  const buttons = { x0: 1200, y0: 280, x1: 1650, y1: 745 },
+    joystick = { x0: 52, y0: 526, x1: 257, y1: 732 };
+  const controls = [buttons, joystick];
+  const onScreen = (
+    p: { x: number; y: number },
+    view: { x: number; y: number; zoom: number },
+  ) => ({
+    x: (p.x - view.x) * view.zoom + W / 2,
+    y: (p.y - view.y) * view.zoom + H / 2,
+  });
+  const clear = (
+    m: { x: number; y: number; r: number },
+    view: { x: number; y: number; zoom: number },
+  ) => {
+    const c = onScreen(m, view),
+      r = m.r * view.zoom;
+    return controls.every((b) => {
+      const dx = Math.max(b.x0 - c.x, 0, c.x - b.x1),
+        dy = Math.max(b.y0 - c.y, 0, c.y - b.y1);
+      return dx * dx + dy * dy >= r * r;
+    });
+  };
+
+  it("marks each warning's middle and each moonlight pool", () => {
+    const people = [
+      { x: 500, y: 450 },
+      { x: 1150, y: 450 },
+    ];
+    const f = raidFrame(
+      raid({
+        warnings: [
+          { ...warning("pounce", 105), x: 700, y: 560, tx: 700, ty: 560 },
+          {
+            ...warning("nightfall", 0),
+            x: 800,
+            y: 450,
+            tx: 800,
+            ty: 450,
+            pools: [{ x: 1041, y: 730, radius: 115 }],
+          },
+        ] as never,
+      }),
+      0,
+      people,
+    )!;
+    expect(f.marks).toEqual([
+      { x: 700, y: 560, r: 105 * FRAME_CORE },
+      { x: 1041, y: 730, r: 115 * FRAME_CORE },
+    ]);
+  });
+
+  it("frames the box's middle when nothing is under the controls", () => {
+    const box = { x0: 400, y0: 200, x1: 1200, y1: 700 };
+    const fit = 0.9,
+      floor = raidCameraView(W, H, HUD).zoomX;
+    const free = raidFramePlacement(
+      box,
+      W,
+      H,
+      HUD,
+      { zoom: fit, x: 800 },
+      floor,
+      [],
+    );
+    expect(free.zoom).toBe(fit);
+    expect(
+      raidFramePlacement(
+        { ...box, marks: [{ x: 800, y: 300, r: 60 }] },
+        W,
+        H,
+        HUD,
+        { zoom: fit, x: (box.x0 + box.x1) / 2 },
+        floor,
+        controls,
+      ),
+    ).toEqual(free);
+  });
+
+  it("pulls out (never past the overview) until a pool under the buttons shows", () => {
+    // Nightfall: a pool in the court's lower right, right under the buttons.
+    const pool = { x: 1150, y: 730, r: 115 * FRAME_CORE };
+    const box = { x0: 260, y0: 140, x1: 1340, y1: 845, marks: [pool] };
+    const overview = raidCameraView(W, H, HUD);
+    const fit = Math.min(
+      (W * 0.86) / (box.x1 - box.x0),
+      (H - HUD) / (box.y1 - box.y0),
+    );
+    // The box's middle at the zoom that fits it hides the pool.
+    const middle = raidFramePlacement(
+      box,
+      W,
+      H,
+      HUD,
+      { zoom: fit, x: (box.x0 + box.x1) / 2 },
+      overview.zoomX,
+      [],
+    );
+    expect(clear(pool, middle)).toBe(false);
+    const placed = raidFramePlacement(
+      box,
+      W,
+      H,
+      HUD,
+      { zoom: fit, x: (box.x0 + box.x1) / 2 },
+      overview.zoomX,
+      controls,
+    );
+    expect(clear(pool, placed)).toBe(true);
+    expect(placed.zoom).toBeLessThan(fit);
+    expect(placed.zoom).toBeGreaterThanOrEqual(overview.zoomX - 1e-9);
+    // The camera settles there and still shows everything framed.
+    const cam = new RaidCamera();
+    let view = overview;
+    for (let i = 0; i < 300; i++)
+      view = cam.update(
+        W,
+        H,
+        HUD,
+        true,
+        { x: 900, y: 620, vx: 0, vy: 0 },
+        { x: 800, y: 430 },
+        box,
+        "k",
+        16,
+        i * 0.016,
+        false,
+        undefined,
+        controls,
+      );
+    expect(clear(pool, { x: view.x, y: view.y, zoom: view.zoomX })).toBe(true);
+    const r = visibleWorld(view);
+    expect(r.left).toBeLessThanOrEqual(box.x0 + 0.5);
+    expect(r.right).toBeGreaterThanOrEqual(box.x1 - 0.5);
+    expect(r.top).toBeLessThanOrEqual(box.y0 + 0.5);
+    expect(r.bottom).toBeGreaterThanOrEqual(box.y1 - 0.5);
+  });
+
+  it("keeps your raider clear of the controls' columns while it clears a pool", () => {
+    const pool = { x: 1150, y: 730, r: 115 * FRAME_CORE };
+    const box = { x0: 260, y0: 140, x1: 1340, y1: 845, marks: [pool] };
+    const overview = raidCameraView(W, H, HUD);
+    const sides = { left: joystick.x1, right: W - buttons.x0 };
+    const raider = { x: 900, y: 620 };
+    const fit = Math.min(
+      (W * 0.86) / (box.x1 - box.x0),
+      (H - HUD) / (box.y1 - box.y0),
+    );
+    const placed = raidFramePlacement(
+      box,
+      W,
+      H,
+      HUD,
+      { zoom: fit, x: (box.x0 + box.x1) / 2 },
+      overview.zoomX,
+      controls,
+      raider,
+      sides,
+    );
+    expect(clear(pool, placed)).toBe(true);
+    const at = onScreen(raider, placed).x;
+    expect(underControls(at, W, sides)).toBe(false);
+  });
+
+  it("pans across the room a narrow frame leaves, staying as close", () => {
+    // A tall, narrow frame: room to slide sideways at the same zoom.
+    const circle = { x: 1030, y: 640, r: 105 * FRAME_CORE };
+    const box = { x0: 500, y0: 200, x1: 1035, y1: 800, marks: [circle] };
+    const overview = raidCameraView(W, H, HUD);
+    const fit = Math.min(
+      (W * 0.86) / (box.x1 - box.x0),
+      (H - HUD) / (box.y1 - box.y0),
+    );
+    const middle = raidFramePlacement(
+      box,
+      W,
+      H,
+      HUD,
+      { zoom: fit, x: (box.x0 + box.x1) / 2 },
+      overview.zoomX,
+      [],
+    );
+    expect(clear(circle, middle)).toBe(false);
+    const placed = raidFramePlacement(
+      box,
+      W,
+      H,
+      HUD,
+      { zoom: fit, x: (box.x0 + box.x1) / 2 },
+      overview.zoomX,
+      controls,
+    );
+    expect(clear(circle, placed)).toBe(true);
+    expect(placed.zoom).toBe(fit);
+    expect(placed.x).toBeGreaterThan(middle.x);
   });
 });

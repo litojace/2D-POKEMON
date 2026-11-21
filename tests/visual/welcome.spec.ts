@@ -28,6 +28,9 @@ for (const size of [
     });
     await page.goto("/");
     await expect(page.locator(".auth-panel")).toBeVisible();
+    // The startup curtain lifts to the front door and fades out
+    // (docs/loading-screens.md): measure the page once it has gone.
+    await expect(page.locator("#server-startup")).toHaveCount(0);
     const backdrop = page.locator(".gate-backdrop");
     await backdrop.evaluate(async (element) => {
       const url = getComputedStyle(element).backgroundImage.match(

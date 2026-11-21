@@ -11,6 +11,10 @@ services:
     # this does nothing and GitHub Actions applies them instead.
     preDeployCommand: node scripts/migrate-production.mjs --verify --if-configured
     healthCheckPath: /api/health
+    # A deploy lets matches in progress finish on the old server before it
+    # stops (docs/server-updates.md). Render's limit is 300 seconds;
+    # SHUTDOWN_DRAIN_MS below stays under it, leaving time to close.
+    maxShutdownDelaySeconds: 300
     envVars:
       - key: SUPABASE_URL
         sync: false
@@ -31,6 +35,8 @@ services:
         value: 22.16.0
       - key: RECONNECT_MS
         value: 60000
+      - key: SHUTDOWN_DRAIN_MS
+        value: 285000
       # Sign in with Apple in the iPhone app (docs/ios-app.md).
       - key: APPLE_TEAM_ID
         sync: false

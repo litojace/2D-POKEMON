@@ -1,4 +1,5 @@
 import { firstPad, type PadLike } from "./gamepad";
+import { focusForTyping } from "./screen-pin";
 
 const focusable = (root: ParentNode) =>
   Array.from(
@@ -56,9 +57,11 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       if (!d) return;
       // Measure the roster only after its drawer is visible.
       window.dispatchEvent(new Event("resize"));
-      (d.querySelector<HTMLElement>("#code") ?? d).focus({
-        preventScroll: true,
-      });
+      // The room code box, focused so iOS may lift it above the keyboard
+      // (focusForTyping); the drawer itself when there is none.
+      const code = d.querySelector<HTMLElement>("#code");
+      if (code) focusForTyping(code);
+      else d.focus({ preventScroll: true });
     });
   }
   function close() {

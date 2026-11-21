@@ -118,8 +118,8 @@ for (const size of SIZES)
       await page.click("#account-profile");
       const panel = page.locator(".profile-panel");
       await expect(panel).toBeVisible();
-      if (size.phone)
-        await panel.locator('[data-ui-profile-tab="avatar"]').click();
+      // The avatar library has its own tab on every screen.
+      await panel.locator('[data-ui-profile-tab="avatar"]').click();
       // One style at a time: 26 avatars.
       const tiles = panel.locator("[data-profile-avatar]");
       await expect(tiles).toHaveCount(26);
@@ -221,6 +221,7 @@ test("a guest can't use their own photo", async ({ page }) => {
   const errors = await openLobby(page);
   await page.click("#account-profile");
   const panel = page.locator(".profile-panel");
+  await panel.locator('[data-ui-profile-tab="avatar"]').click();
   await expect(panel.locator(".pf-photo-note")).toContainText(
     "Make an account",
   );

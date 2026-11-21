@@ -177,14 +177,12 @@ body.battle-raid
 
 /* The chat buttons sit top left over the overlay (quick chat between floors,
    the room's chat at the results). The Spire's cards leave that column free
-   when one shows, so no card or title sits under it on a phone; wide screens
-   keep their usual width (tests/visual/spire-safe-area.spec.ts). */
+   when one shows, so no card or title sits under it on a phone; wide
+   screens keep their usual width (tests/visual/spire-safe-area.spec.ts).
+   The blessings do the same in screens/raid-rites.css. */
 body:has(.battle-chat:not([hidden]), #chat-button:not([hidden]))
   #arena-overlay
-  :is(
-    .raid-draft:has(.spire-blessings),
-    .rc-card:has(.spire-briefing, .spire-summary)
-  ) {
+  .rc-card:has(.spire-briefing, .spire-summary) {
   width: min(
     1040px,
     calc(100% - 2 * (max(16px, var(--safe-left, 0px) + 12px) + 52px))

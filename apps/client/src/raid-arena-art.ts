@@ -58,6 +58,8 @@ export function prefetchRaidArena(boss: RaidBossId) {
 export function loadRaidArenaArt(
   id: IllustratedRaidFloor,
   paint: (image: HTMLImageElement) => void,
+  /** It couldn't load: the procedural floor stays (the briefing stops waiting). */
+  failed?: () => void,
 ) {
   const image = new Image();
   image.decoding = "async";
@@ -70,6 +72,7 @@ export function loadRaidArenaArt(
   image.onerror = () => {
     image.onload = null;
     image.onerror = null;
+    failed?.();
   };
   image.src = RAID_ARENA_ART[id];
 }
