@@ -3,6 +3,8 @@ import { PlazaWorld } from "../../../apps/server/src/plaza";
 import {
   PLAZA,
   PLAZA_EMOTES,
+  PLAZA_FISH,
+  PLAZA_FISHING,
   PLAZA_QUESTS,
 } from "../../../packages/shared/src/plaza";
 import { CHAT_LIMITS, quickText } from "../../../packages/shared/src/chat";
@@ -33,6 +35,11 @@ w.__plazaProgress = {
     { name: "Nova", ms: 6120 },
     { name: "tester", ms: 7420, me: true },
   ],
+};
+/** Tests: the fish on the line bites at the next step. */
+w.__plazaBiteNow = () => {
+  const line = (world as any).visitors.get(ME)?.line;
+  if (line) line.biteAt = 0;
 };
 /** A wish at the fountain from someone in this copy (tests fill the meter). */
 w.__plazaWish = () => {
@@ -129,6 +136,30 @@ const handle = (ev: string, data: any) => {
   }
   // The Nearby lines the server keeps (the drawer reads them on opening).
   if (ev === "chat-history") return { ok: true, lines: [...placeLines] };
+  // Fishing: the real PlazaWorld decides; a catch is recorded here as the
+  // database would (arena_plaza_record), and the progress sent back.
+  if (ev === "plaza-fish") {
+    if (data?.act === "cast") return world.cast(ME, Date.now(), data.tz);
+    if (data?.act === "stop") return { ok: world.stopFishing(ME, Date.now()) };
+    if (data?.act === "reel") return world.reel(ME, Date.now());
+    const r = world.land(ME, Date.now(), data?.moves);
+    if (r.ok) {
+      const p = w.__plazaProgress;
+      p.fishBook = { ...(p.fishBook ?? {}) };
+      if ((p.fishToday ?? 0) < PLAZA_FISHING.perDay) {
+        p.fishToday = (p.fishToday ?? 0) + 1;
+        p.fishBook[r.fish] = (p.fishBook[r.fish] ?? 0) + 1;
+        const q = p.quests.fish;
+        const max = PLAZA_QUESTS.find((x) => x.id === "fish")!.max;
+        q.n = Math.min(max, q.n + 1);
+        q.done = q.n >= max;
+      } else p.fishBook[r.fish] ??= 0;
+      // The whole book: the title (arena_plaza_record).
+      p.fishTitle = PLAZA_FISH.every((f) => p.fishBook[f.id] !== undefined);
+      setTimeout(() => w.__sock?.fire("plaza-progress", structuredClone(p)));
+    }
+    return r;
+  }
   if (ev === "plaza-act") {
     if (data.spot === "cafe") {
       if (!world.at(ME, "cafe"))
@@ -152,6 +183,8 @@ w.__emit = (ev: string, data: any) => {
   if (ev === "plaza-input") world.input(ME, data.dx, data.dy, timing);
   else if (ev === "plaza-jump") world.jump(ME, timing);
   else if (ev === "plaza-dash") world.dash(ME, data?.dx, data?.dy, timing);
+  else if (ev === "plaza-fish" && data?.act === "stop")
+    world.stopFishing(ME, Date.now());
   else before.emit?.(ev, data);
 };
 /** What server.ts sends for a Plaza event (rewards are the database's). */
@@ -159,6 +192,7 @@ function fire(e: ReturnType<PlazaWorld["step"]>[number]) {
   if (e.type === "news") w.__sock?.fire("plaza-news", e.news);
   else if (e.type === "orbs") w.__sock?.fire("plaza-orbs", e.orbs);
   else if (e.type === "wish") w.__sock?.fire("plaza-wish", e.wish);
+  else if (e.type === "fish") w.__sock?.fire("plaza-fish", e.note);
 }
 let ticks = 0;
 setInterval(() => {
