@@ -44,7 +44,19 @@ async function newGuest(page: Page) {
   const modal = page.locator(".ui-modal", {
     hasText: "You're playing as a guest",
   });
-  await expect(modal).toBeVisible();
+  // The warning waits for the Lobby, after the log-in's loading curtain
+  // (docs/loading-screens.md): connect, as the game server would.
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => (window as any).__sock.fire("connect"));
+        return modal.isVisible();
+      },
+      { timeout: 30_000, intervals: [500, 1000] },
+    )
+    .toBe(true);
+  // The moment it shows, no curtain is left over or under it.
+  expect(await page.locator("#server-startup").count()).toBe(0);
   return { errors, modal };
 }
 

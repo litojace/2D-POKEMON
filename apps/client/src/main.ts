@@ -273,6 +273,7 @@ import {
   portraitAvatar,
 } from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
+import { startStartupCurtain, type StartupStage } from "./startup-curtain";
 import "./ui/tokens.css";
 import "./style.css";
 import "./ui/components.css";
@@ -2397,6 +2398,14 @@ function renderGate() {
     }
     accountsUI.showAuth(invite || returning ? "login" : "signup");
   }
+  // Signed in from the front door (or as another account), or the hub's
+  // connection dropped (the app back from the background, say): the
+  // loading curtain covers the way in, as at startup, instead of the front
+  // door showing and the Lobby then appearing in front of the player
+  // (docs/loading-screens.md). It lifts at once if a front-door screen
+  // needs the player, and never stays past its cap.
+  if (status === "connecting" || status === "loading")
+    startStartupCurtain(startupStage, undefined, true);
 }
 
 const WORLD_NAMES: Record<World, string> = {
@@ -3103,7 +3112,13 @@ function renderMenu(revealSelection = false) {
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
   // Everyone plays from the shared hub, so the game needs an account.
   // No hub without an account or a connection: the welcome screen instead.
-  if (!isRoom && !watchingRoom && (!accountsUI?.account || !connected))
+  // Nor before the whole profile is in (skins, saved fighter, avatar): the
+  // hub opens complete instead of changing in front of the player.
+  if (
+    !isRoom &&
+    !watchingRoom &&
+    (!accountsUI?.account || !accountsUI.checked || !connected)
+  )
     return renderGate();
   document.body.classList.remove("gate-active");
   syncHub();
@@ -3329,9 +3344,16 @@ async function leave(returnToHub = true) {
       : undefined
     : undefined;
   const leftCode = state?.code;
+  // Back to the Raids screen: its code loads while the server answers, so
+  // the Lobby and the screen are drawn together (no Lobby on its own for a
+  // moment first, docs/loading-screens.md).
+  const raidHall = returnToRaidHub
+    ? accountsUI.loadRaids().catch(() => undefined)
+    : undefined;
   const reply = await request("leave", {
     token: sessionStorage.getItem("arena-token"),
   });
+  await raidHall;
   if (!reply.ok) {
     toast("Could not leave the room yet. Reconnect and try again.");
     return;
@@ -3359,6 +3381,7 @@ async function leave(returnToHub = true) {
       returnToRaidHub.boss,
       returnToRaidHub.tab,
       returnToRaidHub.spire,
+      true,
     );
 }
 /** The spectator bar's arrows: drawn, not the ‹ › glyphs, which some
@@ -3760,6 +3783,8 @@ function renderBattle() {
         return progress;
       },
       accountsUI.economy?.journey,
+      // The briefing's I'm ready waits for the arena, as the Reveal does.
+      { loading: arenaLoading(state), progress: arenaProgress(state) },
     );
     const raidHud = document.getElementById("raid-hud");
     if (raidHud && raidHud !== measuredRaidHud) {
@@ -3789,11 +3814,30 @@ function renderBattle() {
     "is-countdown",
     player && state.phase === "countdown",
   );
+  // Solo test mode starts straight away, with no briefing to load behind:
+  // its own cover until this device has the arena, so the court and the
+  // fighters never pop in (arenaLoading gives up after its cap).
+  const practiceLoading =
+    !!myId &&
+    !!state.practice &&
+    state.phase === "playing" &&
+    arenaLoading(state);
+  overlay.classList.toggle("is-practice-loading", practiceLoading);
   if (!myId && watching) {
     renderWatchOverlay(overlay);
     return;
   }
-  if (state.phase === "playing") {
+  if (practiceLoading) {
+    const progress = arenaProgress(state);
+    const percent = Math.round(progress * 100);
+    setOverlayMarkup(
+      overlay,
+      `<div class="practice-loading" role="status"><span class="eyebrow">Solo test mode</span><div class="rv-load is-loading"><span>Loading the arena · ${percent}%</span><i role="progressbar" aria-label="Arena loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><b style="width:${(progress * 100).toFixed(1)}%"></b></i></div></div>`,
+      "practice-loading",
+      "practice-loading",
+    );
+    overlay.style.pointerEvents = "auto";
+  } else if (state.phase === "playing") {
     // Its own element: a non-empty overlay dims the whole screen on phones.
     setOverlayMarkup(overlay, "");
     renderPvpSpectator();
@@ -4979,6 +5023,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   floorArena: string = "classic";
   floorScale = new Map<string, number>();
   /**
+   * Illustrated raid floors still downloading (their stand-in floor shows
+   * meanwhile): the briefing's I'm ready waits for them (arenaLoading).
+   */
+  floorPending = new Set<string>();
+  /**
    * Each duel court's stone blocks, as pictures that sort with the fighters
    * by where they stand (so you can be in front of or behind one). The
    * Shifting Ruins centre block is flagged so it can rise and sink.
@@ -5049,27 +5098,33 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         else paintCourtFloor(ctx, "classic", true);
         summit?.grade(ctx);
         addCanvasTexture(this.textures, key, canvas);
-        loadRaidArenaArt(picture, (image) => {
-          if (!this.textures?.exists(key)) return;
-          ctx.save();
-          ctx.setTransform(bake, 0, 0, bake, 0, 0);
-          paintIllustratedRaidFloor(ctx, picture, image);
-          summit?.grade(ctx);
-          ctx.restore();
-          canvas.dataset.raidArtwork = id;
-          // A new texture rather than re-uploading the old one in place: on
-          // some phones the in-place update never showed, and the whole first
-          // fight stayed on the stand-in floor (the next fight, painted
-          // already, was fine). Whatever shows the stand-in switches over.
-          const art = `${key}:art`;
-          if (!this.textures.exists(art))
-            addCanvasTexture(this.textures, art, canvas);
-          this.floorScale.set(art, bake);
-          for (const img of [this.floor, ...this.raidSurround])
-            if (img?.texture.key === key) img.setTexture(art);
-          if (this.floor?.texture.key === art) this.floor.setScale(1 / bake);
-          for (const img of this.raidSurround) img.setDisplaySize(1600, 900);
-        });
+        this.floorPending.add(key);
+        loadRaidArenaArt(
+          picture,
+          (image) => {
+            this.floorPending.delete(key);
+            if (!this.textures?.exists(key)) return;
+            ctx.save();
+            ctx.setTransform(bake, 0, 0, bake, 0, 0);
+            paintIllustratedRaidFloor(ctx, picture, image);
+            summit?.grade(ctx);
+            ctx.restore();
+            canvas.dataset.raidArtwork = id;
+            // A new texture rather than re-uploading the old one in place: on
+            // some phones the in-place update never showed, and the whole first
+            // fight stayed on the stand-in floor (the next fight, painted
+            // already, was fine). Whatever shows the stand-in switches over.
+            const art = `${key}:art`;
+            if (!this.textures.exists(art))
+              addCanvasTexture(this.textures, art, canvas);
+            this.floorScale.set(art, bake);
+            for (const img of [this.floor, ...this.raidSurround])
+              if (img?.texture.key === key) img.setTexture(art);
+            if (this.floor?.texture.key === art) this.floor.setScale(1 / bake);
+            for (const img of this.raidSurround) img.setDisplaySize(1600, 900);
+          },
+          () => this.floorPending.delete(key),
+        );
       } else {
         const g = this.make.graphics({}, false);
         paintArenaFloor(scaledPainter(g, bake), ARENAS[id as ArenaId]);
@@ -7942,10 +7997,15 @@ function arenaProgress(s: Snapshot) {
   if (!arenaLoading(s)) return 1;
   if (!scene) return 0.05;
   const { ready, total } = scene.fighterProgress(s);
-  return 0.2 + (0.75 * ready) / Math.max(1, total);
+  // An illustrated raid floor still on its way counts as one more piece.
+  const floor = scene.floorPending.size ? 1 : 0;
+  return 0.2 + (0.75 * ready) / Math.max(1, total + floor);
 }
 function arenaLoading(s: Snapshot) {
-  if ((!gameInstance && !phaserWaitStarted) || scene?.fightersReady(s)) {
+  if (
+    (!gameInstance && !phaserWaitStarted) ||
+    (scene?.fightersReady(s) && !scene.floorPending.size)
+  ) {
     arenaWaitSince = 0;
     return false;
   }
@@ -8136,6 +8196,20 @@ function syncBattleLoop() {
   } else if (gameInstance.isRunning && !gameInstance.loop.running)
     gameInstance.loop.wake();
 }
+// The startup curtain (docs/loading-screens.md): one loading screen from
+// the first frame until the first screen is complete underneath.
+function startupStage(): StartupStage {
+  if (screen.startsWith("gate:")) {
+    const status = screen.split(":")[1];
+    if (status === "loading")
+      return accountsUI?.account ? "profile" : "account";
+    return status === "connecting" ? "connecting" : "gate";
+  }
+  if (screen || document.body.classList.contains("battle-active"))
+    return accountsUI?.fromCopy ? "provisional" : "scene";
+  return "account";
+}
+startStartupCurtain(startupStage);
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
   reportPhoto: (photo, name) => reportPhoto(photo, name),

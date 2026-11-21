@@ -24,6 +24,12 @@
 .server-startup::before {
   z-index: -2;
   background: var(--startup-backdrop) center / cover no-repeat;
+  /* Faded in once downloaded, never drawn in strips (server-connection.ts). */
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+.server-startup.has-backdrop::before {
+  opacity: 1;
 }
 .server-startup::after {
   z-index: -1;
@@ -113,6 +119,11 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+.server-startup.has-sigil .server-startup-art > img {
+  opacity: 1;
 }
 .server-startup-aura {
   position: absolute;
@@ -256,7 +267,7 @@
   border-radius: inherit;
   background: linear-gradient(90deg, #b98432, #edc76a 55%, #fff1b8);
   box-shadow: 0 0 10px #f3cf8770;
-  transition: width 450ms linear;
+  transition: width 600ms ease-out;
 }
 .server-startup-progress > i::after {
   content: "";
@@ -398,5 +409,252 @@
   .server-startup *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+/* The startup curtain fades away over the finished first screen, which takes
+   taps as soon as the fade starts (server-connection.ts). */
+.server-startup {
+  transition: opacity 450ms ease-out;
+}
+.server-startup.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+/* Held again later (a log-in, a dropped connection): it fades in over the
+   screen that was showing rather than popping in. */
+.server-startup.is-entering {
+  animation: server-startup-in 200ms ease-out both;
+}
+@keyframes server-startup-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .server-startup,
+  .server-startup::before {
+    transition: none;
+  }
+  .server-startup.is-entering {
+    animation: none;
+  }
+}
+/* A gameplay tip under the bar while the startup curtain is held
+   (loading-tips.ts). Not while the server's own status needs the space. */
+.server-startup-tip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(560px, 100%);
+  box-sizing: border-box;
+  /* Every tip is two lines tall at least (tips are one or two), so the bar
+     above never moves between tips; index.html's boot screen keeps the same
+     space. */
+  min-height: calc(2.8em + 18px);
+  margin-top: 2px;
+  padding: 8px 12px;
+  border: 1px solid #dfbd6b55;
+  border-radius: 12px;
+  background: #030a18b8;
+  color: #dbe5f5;
+  text-align: left;
+  font:
+    400 clamp(12px, 1.9vh, 15px) / 1.4 "DM Sans",
+    sans-serif;
+}
+.server-startup-tip.is-new {
+  animation: server-tip-in 420ms ease-out;
+}
+.server-startup-tip b {
+  margin-right: 4px;
+  color: #ffe08a;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.server-startup:is([data-status="failed"], [data-status="offline"])
+  .server-startup-tip {
+  display: none;
+}
+@keyframes server-tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (max-height: 320px) {
+  .server-startup-tip {
+    min-height: calc(2.8em + 12px);
+    padding: 5px 10px;
+    font-size: calc(11px * var(--text-scale, 1));
+  }
+}
+/* The status line holds one status at a time: a new one rises in as the last
+   fades up and out (server-connection.ts setStatusText). */
+.server-startup-loading p {
+  display: grid;
+}
+.server-startup-loading p > span {
+  grid-area: 1 / 1;
+  animation: server-status-in 300ms ease-out;
+}
+/* The percentage beside the status (server-connection.ts updateProgress):
+   gold figures of one width, so the line doesn't shift as it counts. */
+.server-startup-loading p {
+  grid-template-columns: auto auto;
+  justify-content: center;
+  column-gap: 0.5em;
+}
+.server-startup.has-art .server-startup-loading p {
+  justify-content: start;
+}
+.server-startup-percent {
+  grid-area: 1 / 2;
+  align-self: start;
+  color: #ffd76a;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.server-startup-percent:empty {
+  display: none;
+}
+.server-startup-loading p > span.is-out {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 300ms ease-out,
+    transform 300ms ease-out;
+}
+@keyframes server-status-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.server-startup-crest {
+  display: none;
+}
+
+/* The painting layout, the owner's style K (20 Nov; loading-art.ts,
+   setCurtainArt): the painting fills the screen; the gold star and the
+   title stand top right; the tip bottom right, above a bar across the whole
+   width with one status line over its left end. Darker bands at the bottom
+   and behind the title keep them readable on any painting. Everything is
+   placed from the screen's edges, as index.html's boot screen places its
+   own (html.boot-art), so nothing moves at the hand-over. */
+.server-startup-painting {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 500ms ease-out;
+}
+.server-startup.has-painting .server-startup-painting {
+  opacity: 1;
+}
+.server-startup.has-art {
+  --art-top: max(14px, env(safe-area-inset-top));
+  --art-bottom: max(14px, env(safe-area-inset-bottom));
+  --art-left: max(28px, env(safe-area-inset-left));
+  --art-right: max(28px, env(safe-area-inset-right));
+}
+.server-startup.has-art::after {
+  background:
+    linear-gradient(0deg, #020815e6 0, #02081599 18%, #02081500 42%),
+    radial-gradient(ellipse 45% 40% at 100% 0, #020815b3, #02081500);
+}
+.server-startup.has-art .server-startup-card {
+  display: contents;
+}
+.server-startup.has-art
+  :is(
+    .server-startup-scene,
+    .server-startup-divider,
+    .server-startup-loading h2
+  ) {
+  display: none;
+}
+.server-startup.has-art .server-startup-brand {
+  position: absolute;
+  top: var(--art-top);
+  right: var(--art-right);
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.6vh, 14px);
+}
+.server-startup.has-art .server-startup-crest {
+  display: block;
+  flex: none;
+  width: clamp(40px, 11.5vh, 88px);
+  height: clamp(40px, 11.5vh, 88px);
+  filter: drop-shadow(0 0 10px #ffd76a88) drop-shadow(0 2px 6px #000a);
+}
+.server-startup.has-art .server-startup-brand h1 {
+  font-size: clamp(24px, 7vh, 54px);
+  text-align: left;
+}
+.server-startup.has-art .server-startup-loading {
+  position: absolute;
+  left: calc(var(--art-left) + 13px);
+  right: calc(var(--art-right) + 13px);
+  bottom: var(--art-bottom);
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.server-startup.has-art .server-startup-loading p {
+  order: -1;
+  min-height: 0;
+  height: 1.4em;
+  max-width: none;
+  color: #f2f5ff;
+  font:
+    500 clamp(13px, 3.4vh, 17px) / 1.4 "DM Sans",
+    sans-serif;
+  text-align: left;
+  white-space: nowrap;
+  text-shadow: 0 1px 8px #000;
+}
+.server-startup.has-art .server-startup-progress {
+  width: 100%;
+}
+.server-startup.has-art .server-startup-loading button {
+  align-self: center;
+}
+/* Over a painting the tip is a caption, not a box (owner's choice, 20 Nov):
+   a gold line on its right and a shade fading out behind the text. The
+   bottom band gives it contrast on any painting. Placed above the bar, it
+   never moves the bar or the status line however long it is. */
+.server-startup.has-art .server-startup-tip {
+  position: absolute;
+  right: -13px;
+  bottom: calc(100% + clamp(10px, 3vh, 18px));
+  width: auto;
+  max-width: min(46vw, 460px);
+  min-height: 0;
+  margin: 0;
+  padding: 6px 12px;
+  border: 0;
+  border-right: 3px solid #ffe08a;
+  border-radius: 10px 0 0 10px;
+  background: linear-gradient(270deg, #030a18cc, #030a1866 70%, #030a1800);
+  color: #e3ebf8;
+  font-size: clamp(12px, 3.3vh, 16px);
+  text-align: right;
+  text-shadow: 0 1px 3px #000;
+}
+@media (max-height: 320px) {
+  .server-startup.has-art {
+    --art-top: max(10px, env(safe-area-inset-top));
+    --art-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .server-startup-painting {
+    transition: none;
   }
 }
