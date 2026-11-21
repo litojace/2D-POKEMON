@@ -259,8 +259,8 @@ const NORMAL_DAZE_BEFORE_SMART_BOTS: Partial<Record<CharacterId, number>> = {
  */
 const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
   voltkit: 0.285,
-  cindrake: 0.49,
-  tidefin: 0.29,
+  cindrake: 0.45,
+  tidefin: 0.32,
   auralynx: 0.203,
   lumoth: 0.242,
   mystowl: 0.224,
