@@ -12,6 +12,7 @@ import {
   raidFrame,
   underControls,
   type ControlSides,
+  type ScreenRect,
 } from "./raid-camera";
 import { AllyBearings } from "./ally-bearings";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
@@ -687,6 +688,9 @@ let raidCameraHudBottom = 0;
  * of the arena (game px). Measured once on the first raid frame after the
  * battle is laid out (fitRenderer clears it), never every frame. */
 let raidControlSides: ControlSides | undefined;
+/** Phones: each touch control's box over the arena (game px), measured with
+ * raidControlSides: a court-wide moment's warnings stay clear of them. */
+let raidControlBoxes: ScreenRect[] = [];
 function measureRaidControls(): ControlSides {
   const frame = $("game").parentElement!.getBoundingClientRect(),
     dpr = renderScale();
@@ -694,6 +698,14 @@ function measureRaidControls(): ControlSides {
   const buttons = Array.from(
     document.querySelectorAll<HTMLElement>(".touch-buttons button"),
   ).filter((b) => b.offsetWidth);
+  raidControlBoxes = [...buttons, ...(joystick?.offsetWidth ? [joystick] : [])]
+    .map((e) => e.getBoundingClientRect())
+    .map((r) => ({
+      x0: (r.left - frame.left) * dpr,
+      y0: (r.top - frame.top) * dpr,
+      x1: (r.right - frame.left) * dpr,
+      y1: (r.bottom - frame.top) * dpr,
+    }));
   return {
     left: joystick?.offsetWidth
       ? Math.max(0, joystick.getBoundingClientRect().right - frame.left) * dpr
@@ -977,6 +989,8 @@ const touch: TouchControls = new TouchControls(
       scene.actions = { skill: -1, dash: false, jump: false, basic: false };
   },
 );
+// Controls laid out again (resize, settings, toggled): measure them anew.
+touch.onLayout = () => (raidControlSides = undefined);
 if (touch.available)
   setupBattleDock(
     $("battle"),
@@ -6349,6 +6363,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           feelNow / 1000,
           reducedMotion,
           raidFollow ? (raidControlSides ??= measureRaidControls()) : undefined,
+          raidFollow ? raidControlBoxes : undefined,
         )
       : this.followCamera.update(
           this.scale.width,
