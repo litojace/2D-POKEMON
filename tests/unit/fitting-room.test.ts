@@ -474,6 +474,19 @@ describe("the stage", () => {
     }
     expect(JSON.stringify({ e, look })).toBe(saved);
   });
+  it("shows the portrait frame badge in the Wardrobe only, not the Shop", () => {
+    const d = data(economy(), { look: { frame: "conqueror" } });
+    const inShop = fittingRoomParts(shop(), d).stage;
+    expect(inShop).not.toContain("fit-frame-badge");
+    expect(inShop).not.toContain("data-portrait-frame");
+    // Entrance and Victory stay on the Shop's stage.
+    expect(inShop).toContain('data-fit-play="entrance"');
+    const inWardrobe = fittingRoomParts(wardrobe(), d).stage;
+    expect(inWardrobe).toContain(
+      'class="fit-frame-badge" data-fit-slot="frame"',
+    );
+    expect(inWardrobe).toContain('data-portrait-frame="conqueror"');
+  });
   it("shows a frame large on the portrait it goes around", () => {
     const e = economy({
       looks: { tidefin: { skin: "tidefin-moontide", stage: 3 } },

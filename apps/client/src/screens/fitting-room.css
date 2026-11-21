@@ -94,6 +94,8 @@
   display: grid;
   gap: 6px;
   grid-template-columns: 124px;
+  /* At the right edge, with or without the frame badge (Wardrobe only). */
+  margin-left: auto;
 }
 /* Stacked, one width: their icons in one column and their labels from one
    line (centred, each sat by its own label's length). */
