@@ -43,7 +43,7 @@ import {
 } from "../../../packages/shared/src/raid";
 import { TITLE_PRESETS, sortTitles } from "./player-nameplate";
 import { isQuietRefresh } from "./session-refresh";
-import { waitForServer } from "./server-connection";
+import { curtainCovers, waitForServer } from "./server-connection";
 import {
   forgetProfileCopy,
   keepProfileCopy,
@@ -2007,6 +2007,16 @@ export class AccountUI {
    * opens the player card, whose first block saves it with an email.
    */
   private async warnNewGuest() {
+    if (!this.account?.guest) return;
+    // Over the Lobby, once the log-in's loading curtain has come and gone
+    // (not under it, nor beside it while it fades). It starts a moment after
+    // the log-in, so wait for the Lobby itself; never more than 20 s.
+    const end = performance.now() + 20_000;
+    while (
+      performance.now() < end &&
+      (!document.body.classList.contains("hub-active") || curtainCovers())
+    )
+      await new Promise((resolve) => setTimeout(resolve, 100));
     if (!this.account?.guest) return;
     const save = await askConfirm(guestWarning());
     if (!save || !this.account?.guest) return;

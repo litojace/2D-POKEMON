@@ -349,6 +349,15 @@ export function releaseStartupCurtain(now = false) {
   }, 400);
 }
 
+/**
+ * Whether a startup curtain covers the game: held, or still fading out. For
+ * what asks something of the player right after a log-in (the new guest's
+ * warning), which must wait until it has gone.
+ */
+export function curtainCovers() {
+  return !!held || leaving !== undefined;
+}
+
 const startup = new ServerStartup(
   async (signal) => {
     const origin = import.meta.env.VITE_SERVER_URL || location.origin;
