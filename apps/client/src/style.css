@@ -15604,3 +15604,202 @@ body.battle-active #arena-overlay#arena-overlay.is-countdown:not(:empty) {
   font-weight: 700;
   text-shadow: 0 2px 10px #000e;
 }
+
+/* The raid clock on phones: the game's glass tint and gold rim (ui/aero.css
+   tokens), see-through rather than a solid box (owner, 20 Nov 2026), and no
+   blur: battles stay blur-free (aero.css: the court changes every frame, so
+   a blur would be redrawn every frame). The time's <b> drops aero.css's
+   solid battle fill: that rule's :is() counts "#hud.hud-badge #phase-label"
+   (two ids) on top of #battle, so this needs three (#app #battle #raid-hud)
+   to win. */
+@media (orientation: landscape) {
+  :root body.battle-active.touch-mode.battle-raid #raid-hud .raid-elapsed {
+    border: 1px solid var(--aero-rim);
+    border-radius: 7px;
+    background: var(--glass-thin);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  }
+  :root
+    body.battle-active.touch-mode.battle-raid
+    #app
+    #battle
+    #raid-hud
+    .raid-elapsed
+    b {
+    border: 0;
+    background: none;
+  }
+}
+
+/* Prismatail's icons are drawn (prismatail-controls.ts ICON), sized to the
+   label beside them on desktop. */
+#raid-prism-controls .prism-icon {
+  display: inline-grid;
+  place-items: center;
+}
+#raid-prism-controls .prism-icon svg {
+  display: block;
+  width: 1.15em;
+  height: 1.15em;
+}
+
+/* ── Contextual boss actions on phones (owner, 20 Nov 2026) ──
+   Prismatail's Turn mirror / Look away share the touch cluster's slot, left
+   of skill 1 (mobile-input.ts context), as action games put an interact
+   prompt by the skills. One round button shows only when it can be used
+   (prismatail-controls.ts data-ready): Turn mirror by a mirror; Look away
+   while Glare winds up, taking the slot as the danger, with the wind-up as
+   a gold ring. The icon is centred on the circle exactly (a drawn icon in
+   a box over the whole button). */
+.touch-buttons .touch-context {
+  position: absolute;
+  pointer-events: none;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context:not([hidden]) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  display: block;
+  transform: none;
+  pointer-events: none;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  button {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex: none;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: visible;
+  border: 2px solid #e5cc89;
+  border-radius: 50%;
+  background: #14223bf0;
+  color: #ffebaf;
+  font-size: 0;
+  pointer-events: auto;
+}
+/* Not a skill: no cooldown ring (.touch-buttons button::before). */
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  button::before {
+  content: none;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  button[data-ready] {
+  display: block;
+  animation: context-pop 0.18s ease-out;
+}
+/* One slot: Look away takes it while Glare winds up. */
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context:has([data-prism-away][data-ready])
+  [data-prism-turn] {
+  display: none;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  .prism-icon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  .prism-icon
+  svg {
+  width: 48%;
+  height: 48%;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  button::after {
+  content: attr(aria-label);
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff4cf;
+  font:
+    700 calc(9px * var(--text-scale, 1)) / 1 "DM Sans",
+    sans-serif;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  [data-prism-away][data-ready] {
+  border-color: #ffd65b;
+  box-shadow: 0 0 12px #ffd65b88;
+}
+/* Glare's wind-up: a gold ring round Look away that fills to the flash. */
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  [data-prism-away][data-ready]::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #ffd65b calc(var(--charge, 0) * 360deg),
+    #ffffff26 0
+  );
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 4px),
+    #000 calc(100% - 3px)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 4px),
+    #000 calc(100% - 3px)
+  );
+}
+@keyframes context-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.battle-active.touch-mode.battle-raid
+    .touch-context
+    #raid-prism-controls.is-context
+    button[data-ready] {
+    animation: none;
+  }
+}
+
+/* Phones in a raid: the quick-chat button in the top-left corner, matching
+   the gear in the top-right (owner, 21 Nov 2026), and the boss's HUD keeps
+   the same 56px clear on both sides. Under them, the clock on the right and
+   the party's health list on the left (screens/raid-party.css) start at the
+   same height. The #battle-chat id outranks the rule that steps the button
+   down below a long party list. */
+@media (orientation: landscape) {
+  body.battle-active.touch-mode.battle-raid #raid-hud {
+    left: calc(var(--safe-left) + 56px);
+  }
+  body.battle-active.battle-raid.touch-mode #battle-chat[data-raid="true"] {
+    top: calc(var(--safe-top, 0px) + 4px);
+    left: calc(var(--safe-left, 0px) + 4px);
+  }
+}

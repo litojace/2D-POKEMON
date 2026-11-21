@@ -699,7 +699,11 @@ function measureRaidControls(): ControlSides {
     dpr = renderScale();
   const joystick = document.querySelector<HTMLElement>(".touch-pad .joystick");
   const buttons = Array.from(
-    document.querySelectorAll<HTMLElement>(".touch-buttons button"),
+    // The cluster's own buttons and its contextual slot (left of skill 1),
+    // where a boss's action pops up: your raider stands clear of both.
+    document.querySelectorAll<HTMLElement>(
+      ".touch-buttons > button, .touch-buttons > .touch-context",
+    ),
   ).filter((b) => b.offsetWidth);
   raidControlBoxes = [...buttons, ...(joystick?.offsetWidth ? [joystick] : [])]
     .map((e) => e.getBoundingClientRect())

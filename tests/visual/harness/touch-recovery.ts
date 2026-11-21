@@ -38,6 +38,20 @@ export async function prismRecovery() {
   arena.phase = "playing";
   const snapshot = arena.snapshot(),
     me = snapshot.players.find((p) => !p.raidBoss)!;
+  // Glare winds up: on phones Look away shows only then (its contextual
+  // slot by the skills), as when a player holds it.
+  const boss = snapshot.players.find((p) => p.raidBoss)!;
+  snapshot.raid!.warnings.push({
+    id: 1,
+    kind: "glare",
+    x: boss.x,
+    y: boss.y,
+    tx: boss.x,
+    ty: boss.y,
+    radius: 900,
+    startedAt: snapshot.time,
+    at: snapshot.time + 2,
+  });
   const frame = document.createElement("div");
   document.body.append(frame);
   renderPrismatailControls(snapshot, me, frame);

@@ -34,6 +34,20 @@ boss briefing as needed. Prepare database migrations for new rewards and
 checkpoint/release limits; keep shared data and persisted rewards in sync.
 Do not publish unfinished floors merely to preview their UI.
 
+## The battle screen is shared
+
+Spire floors fight on the raid screen (`#raid-hud`, the quick-chat button,
+the gear), so the raid layout applies to every floor, released or not:
+on phones the quick-chat button sits in the top-left corner and the gear in
+the top-right, with the floor's or boss's HUD between them and the same room
+on both sides; under them, the party's health on the left and the clock on
+the right. A boss's own actions go in the touch cluster's contextual slot by
+skill 1 (`mobileLayout`'s `context`), shown only when usable. Keep floor- and
+boss-specific UI out of those corners and that slot's neighbourhood, and add
+no floor-number or boss-ID selectors for them; `tests/visual/raid-corners.spec.ts`
+checks every boss in `RAID_BOSS_ORDER` and a wave and a boss floor
+(docs/raid-viewport.md).
+
 ## Checks
 
 Run `tests/unit/spire-hall.test.ts` and `tests/unit/spire.test.ts`, typecheck
