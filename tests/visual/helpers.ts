@@ -44,6 +44,24 @@ export async function openHub(page: Page) {
 }
 
 /** The hub, always starting on the Lobby. */
+/**
+ * A new account (level 5 or below) gets the Lobby tour (hub-tour.ts) over
+ * the Lobby. Specs about something else mark it seen for the harness's
+ * account, so it doesn't cover what they click.
+ */
+export async function skipTour(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem(
+        "arena-tour:11111111-1111-4111-8111-111111111111",
+        "done",
+      );
+    } catch {
+      /* No storage. */
+    }
+  });
+}
+
 export async function openLobby(page: Page) {
   await page.addInitScript(() => {
     try {

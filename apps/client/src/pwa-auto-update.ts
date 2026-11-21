@@ -4,7 +4,8 @@ export const UPDATE_SNOOZE_MS = 10 * 60 * 1000;
  * A downloaded update asks the player first (docs/mobile-pwa.md): the prompt
  * shows only where updating is safe (the Lobby or the Plaza, no menu open,
  * no match in this or another tab), and nothing activates or reloads until
- * the player taps Update now. "Later" asks again after UPDATE_SNOOZE_MS.
+ * the player taps Update now. The first ask fills the screen (`fullScreen`);
+ * after "Later" it asks again after UPDATE_SNOOZE_MS, in the compact banner.
  *
  * Activation and reload are separately guarded: another tab may activate the
  * worker while this tab is in a match. Never reload that match mid-play.
@@ -17,6 +18,8 @@ export class PwaAutoUpdate {
   accepted = false;
   private retryAt = 0;
   private snoozedUntil = 0;
+  /** The player already answered the full-screen ask with Later. */
+  private answered = false;
   constructor(
     private actions: {
       safe: () => boolean;
@@ -45,6 +48,10 @@ export class PwaAutoUpdate {
       this.actions.safe()
     );
   }
+  /** The first ask: the full-screen prompt rather than the banner. */
+  get fullScreen() {
+    return this.asking && !this.answered;
+  }
   /** Update now: applies at once while it is still safe. */
   accept() {
     this.accepted = true;
@@ -52,6 +59,7 @@ export class PwaAutoUpdate {
   }
   /** Later: ask again after UPDATE_SNOOZE_MS. */
   later() {
+    this.answered = true;
     this.snoozedUntil = this.actions.now() + UPDATE_SNOOZE_MS;
   }
   async sync() {

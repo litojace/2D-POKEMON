@@ -634,3 +634,33 @@ for (const size of [SIZES[0], SIZES[2]])
       await context.close();
     }
   });
+
+// A Shop opened again while the last one was still sliding away (a fast
+// close-and-reopen; on CI's slow runner, frame-level-preview.spec.ts does
+// it) got a new screen, and then the old one was parked for the next open
+// anyway: two Shops in the page, one hidden, until the next close. A lookup
+// for the room's pieces found both (frame-level-preview failed on main's CI,
+// "resolved to 2 elements", 20 Nov 2026).
+test("a Shop reopened while the last one is leaving is the only Shop left", async ({
+  page,
+}) => {
+  await exposeAccount(page);
+  await shopServer(page);
+  const errors = await openLobby(page);
+  await page.click('.lobby-rail [data-lobby-action="shop"]');
+  await expect(page.locator(".fit-room")).toBeVisible();
+  // Close and open again in the same moment: the first is still leaving.
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>(".fit-room .ui-close")!.click();
+    void (window as any).__account.showShop();
+  });
+  await expect(page.locator(".fit-room:not([data-ui-leaving])")).toHaveCount(1);
+  // Once the old one has left (its leave is well under a second), one Shop.
+  await page.waitForTimeout(1500);
+  await expect(page.locator(".ui-panel-host .fit-room")).toHaveCount(1);
+  await expect(page.locator(".ui-panel-host[data-ui-parked]")).toHaveCount(0);
+  // And closing that one parks it as before, for the next open.
+  await page.locator(".fit-room .ui-close").click();
+  await expect(page.locator(".ui-panel-host[data-ui-parked]")).toHaveCount(1);
+  expect(errors).toEqual([]);
+});

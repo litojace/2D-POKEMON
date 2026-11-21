@@ -62,7 +62,7 @@ for (const size of SIZES)
       await page.click("#account-profile");
       const panel = page.locator(".profile-panel");
       await expect(panel).toBeVisible();
-      if (size.phone) {
+      {
         // Six tabs and Share card fit the head, none cut off or under it.
         const head = await panel.evaluate((p) => {
           const tabs = Array.from(
@@ -86,7 +86,7 @@ for (const size of SIZES)
         await expect(
           panel.locator('[data-profile-main][data-tab="matches"]'),
         ).toBeVisible();
-      } else await panel.locator(".mh").scrollIntoViewIfNeeded();
+      }
       const rows = panel.locator(".mh-row");
       await expect(rows).toHaveCount(10);
       await expect(rows.first()).toHaveClass(/is-win/);

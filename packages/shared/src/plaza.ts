@@ -1199,6 +1199,58 @@ export function plazaSpotAt(x: number, y: number, slack = 0) {
   return PLAZA_SPOTS.find((s) => Math.hypot(x - s.x, y - s.y) < s.r + slack);
 }
 
+/* ---------- pair emotes ---------- */
+/**
+ * Emotes two players share, asked for from a player's card. In snapshots a
+ * pair emote is the walker's emote field set to `emote` (one of
+ * PLAZA_EMOTES, so a browser that doesn't know pair emotes still pops that
+ * bubble) with PLAZA_FLAG.pair set. Each must use a different `emote`.
+ */
+export const PLAZA_PAIR_EMOTES = [
+  { id: "highfive", label: "High five", icon: "✋", emote: "👏" },
+  { id: "hug", label: "Hug", icon: "🤗", emote: "❤️" },
+  { id: "dance", label: "Dance together", icon: "💃", emote: "💃" },
+] as const satisfies readonly {
+  id: string;
+  label: string;
+  icon: string;
+  emote: PlazaEmote;
+}[];
+export type PlazaPairEmoteId = (typeof PLAZA_PAIR_EMOTES)[number]["id"];
+export const PLAZA_PAIR = {
+  /** How near the other player must be to ask (px); answering allows `slack` more. */
+  reach: 160,
+  slack: 60,
+  /** An unanswered request lapses after this (s). */
+  askSeconds: 8,
+  /** How long the pair animation plays (s). */
+  playSeconds: 2,
+  /** At most one request this often per player (s). */
+  askEvery: 3,
+} as const;
+/** The pair emote a walker shows (emote field, flags), if any. */
+export function plazaPairOf(emote: number, flags: number) {
+  if (!(flags & PLAZA_FLAG.pair) || !emote) return undefined;
+  const e = PLAZA_EMOTES[emote - 1];
+  return PLAZA_PAIR_EMOTES.find((p) => p.emote === e);
+}
+/** A pair request, as the asked player hears it. */
+export interface PlazaPairAsk {
+  /** The asker's walker id and name. */
+  from: number;
+  name: string;
+  kind: PlazaPairEmoteId;
+  /** How long it stays open (ms). */
+  ms: number;
+}
+/** A pair emote starting, told to both players. */
+export interface PlazaPairStart {
+  kind: PlazaPairEmoteId;
+  /** The two walker ids: the asker, then the one who said yes. */
+  a: number;
+  b: number;
+}
+
 /* ---------- the ball pitch (Orb Ball) ---------- */
 export const PLAZA_BALL = {
   radius: 22,
@@ -1313,7 +1365,14 @@ export function plazaBallStep<K>(
 
 /* ---------- what the server sends ---------- */
 /** Body flags in a snapshot. */
-export const PLAZA_FLAG = { dash: 1, stun: 2, boost: 4, bot: 8 } as const;
+export const PLAZA_FLAG = {
+  dash: 1,
+  stun: 2,
+  boost: 4,
+  bot: 8,
+  /** The emote is a pair emote (PLAZA_PAIR_EMOTES). */
+  pair: 16,
+} as const;
 /** One body: [id, x, y, z, face, flags, emote (1-based, 0 = none), speed]. */
 export type PlazaWalker = [
   number,

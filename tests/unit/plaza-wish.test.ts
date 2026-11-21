@@ -3,7 +3,9 @@ import { PlazaWorld, type PlazaEvent } from "../../apps/server/src/plaza";
 import {
   FIREWORKS,
   PlazaFireworks,
+  SHELL_KINDS,
   fireworkShells,
+  shellEnds,
 } from "../../apps/client/src/plaza/plaza-fireworks";
 import {
   PLAZA,
@@ -191,17 +193,27 @@ describe("the Plaza world's wishes", () => {
 describe("the fireworks", () => {
   /** A phone's view of the square (world px), as the scene passes it. */
   const VIEW = { x0: 1000, y0: 700, x1: 1960, y1: 1240 };
-  it("are the same for everyone with the same seed, and end with the show", () => {
+  it("are the same for everyone with the same seed, every kind, ending with the show", () => {
     expect(fireworkShells(42)).toEqual(fireworkShells(42));
     expect(fireworkShells(42)).not.toEqual(fireworkShells(43));
-    for (const s of fireworkShells(7)) {
+    const shells = fireworkShells(7);
+    expect(new Set(shells.map((s) => s.kind))).toEqual(
+      new Set(Object.keys(SHELL_KINDS)),
+    );
+    for (const s of shells) {
       expect(Math.abs(s.u)).toBeLessThanOrEqual(FIREWORKS.across / 2);
       expect(s.v).toBeGreaterThanOrEqual(FIREWORKS.band[0]);
       expect(s.v).toBeLessThanOrEqual(FIREWORKS.band[1]);
-      expect(
-        s.launch + FIREWORKS.riseSeconds + FIREWORKS.life[1],
-      ).toBeLessThanOrEqual(PLAZA_WISH.showMs / 1000);
+      expect(s.launch + shellEnds(s.kind)).toBeLessThanOrEqual(
+        PLAZA_WISH.showMs / 1000,
+      );
     }
+    // A finale: the last three go up together.
+    const last = shells.slice(-3).map((s) => s.launch);
+    expect(Math.max(...last) - Math.min(...last)).toBeLessThanOrEqual(0.15);
+    // No kind's sparks go further than the reach.
+    for (const k of Object.values(SHELL_KINDS))
+      expect(k.speed[1] / k.drag).toBeLessThanOrEqual(FIREWORKS.reach + 1e-9);
   });
 
   const play = (
@@ -229,21 +241,18 @@ describe("the fireworks", () => {
     return { peak, out };
   };
 
-  it("burst inside the viewer's view, under the top HUD", () => {
+  it("burst in the viewer's view, centred under the top HUD, sparks on screen", () => {
     const fw = new PlazaFireworks(() => 0.5);
     fw.start(0, 9, 0);
-    const { peak, out } = play(fw, 0, PLAZA_WISH.showMs);
+    const { peak, out } = play(fw, 0, PLAZA_WISH.showMs + 1500);
     expect(peak).toBeGreaterThan(0);
     expect(out).toBe(0);
-    // The highest a spark goes: below the top quarter of a 375 px phone,
-    // where the scene switch and the event pill are.
-    const h = VIEW.y1 - VIEW.y0;
-    const top = Math.min(
-      ...fireworkShells(9).map(
-        (s) => VIEW.y0 + h * s.v - FIREWORKS.speed[1] / FIREWORKS.drag - 1,
-      ),
-    );
-    expect((top - VIEW.y0) / h).toBeGreaterThan(0.24);
+    // Burst centres sit below the top quarter of a 375 px phone, where the
+    // scene switch and the event pill are.
+    const h = VIEW.y1 - VIEW.y0,
+      centres = fw.centres();
+    expect(centres).toHaveLength(fireworkShells(9).length);
+    for (const c of centres) expect((c.y - VIEW.y0) / h).toBeGreaterThan(0.4);
   });
 
   it("stay within the spark cap, and Low and reduced motion are lighter", () => {
@@ -283,6 +292,10 @@ describe("the fireworks", () => {
       lineTo() {},
       stroke() {},
       fillRect() {},
+      rect() {},
+      fill() {},
+      setTransform() {},
+      canvas: { width: 667, height: 375 },
       drawImage(_i: unknown, _x: number, _y: number, w: number) {
         calls.push(w);
       },
@@ -309,14 +322,16 @@ describe("the fireworks", () => {
         }
         return { ...fw.peak };
       };
-      const high = measure(false, 0.7);
+      const high = measure(false, 0.7),
+        low = measure(true, 0.7);
       expect(high.flashes).toBeGreaterThan(0);
       expect(high.shrink).toBe(1);
-      // Light already: the busiest frame (two shells together) fits Low's
-      // budget at full size.
+      // A fraction of the screen at its brightest (the finale's three).
       expect(high.glowCover).toBeGreaterThan(0.05);
-      expect(high.glowCover).toBeLessThan(FIREWORKS.lowGlowBudget);
-      expect(measure(true, 0.7).shrink).toBe(1);
+      expect(high.glowCover).toBeLessThan(0.6);
+      // Low holds it to its budget, never below half size.
+      expect(low.glowCover).toBeLessThanOrEqual(FIREWORKS.lowGlowBudget + 1e-9);
+      expect(low.shrink).toBeGreaterThanOrEqual(0.5);
       // The flashes take the same share of any screen, whatever the zoom.
       expect(measure(false, 1.5).glowCover).toBeCloseTo(high.glowCover, 5);
       // Over a budget they all shrink to fit it…
