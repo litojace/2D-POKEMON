@@ -38,6 +38,8 @@ import {
   PLAZA_LEADER,
   PLAZA_LED,
   PLAZA_PADS,
+  PLAZA_PAIR,
+  PLAZA_PAIR_EMOTES,
   PLAZA_TREAT_BY_ID,
   PLAZA_PATHS,
   PLAZA_PHOTO,
@@ -70,6 +72,7 @@ import {
   plazaCollide,
   plazaDash,
   plazaJump,
+  plazaPairOf,
   plazaStep,
   trackPoint,
   segmentDistance,
@@ -185,6 +188,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
       </section>
     </div>
     <div class="pz-card glass" id="pz-card" role="dialog" aria-label="Player" hidden></div>
+    <div class="pz-ask glass" id="pz-ask" role="alertdialog" aria-label="Pair emote request" hidden></div>
     <div class="pz-start" id="pz-start" hidden><b>Plaza</b><span>Click to start</span><div class="pz-keys"><span><kbd>WASD</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> dash</span><span><kbd>E</kbd> interact</span><span><kbd>Q</kbd> emote</span><span><kbd>T</kbd> treat</span></div></div>
   </div>
 </div>`;
@@ -1649,7 +1653,7 @@ export function openPlaza(options) {
     const card = $("pz-card");
     // Who they are: their avatar (docs/hidden-picks.md, "Avatars").
     const photo = photoIdOf(p.avatar);
-    card.innerHTML = `<div class="pc-h"><img class="pc-avatar" src="${avatarSrc(p.avatar)}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts"><button type="button" data-pc="friend">${iconLabel("add-friend", "Add friend")}</button><button type="button" data-pc="party">${iconLabel("friends", "Invite to party")}</button></div><div class="pc-acts pc-safety">${photo ? `<button type="button" data-pc="report-photo">${iconLabel("report", "Report picture")}</button>` : ""}<button type="button" data-pc="report">${iconLabel("report", "Report")}</button><button type="button" data-pc="block" class="pc-block">${iconLabel("block", "Block")}</button></div>`;
+    card.innerHTML = `<div class="pc-h"><img class="pc-avatar" src="${avatarSrc(p.avatar)}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts pc-pair">${PLAZA_PAIR_EMOTES.map((e) => `<button type="button" data-pc="pair" data-kind="${e.id}"><span class="pc-emo" aria-hidden="true">${e.icon}</span>${e.label}</button>`).join("")}</div><div class="pc-acts"><button type="button" data-pc="friend">${iconLabel("add-friend", "Add friend")}</button><button type="button" data-pc="party">${iconLabel("friends", "Invite to party")}</button></div><div class="pc-acts pc-safety">${photo ? `<button type="button" data-pc="report-photo">${iconLabel("report", "Report picture")}</button>` : ""}<button type="button" data-pc="report">${iconLabel("report", "Report")}</button><button type="button" data-pc="block" class="pc-block">${iconLabel("block", "Block")}</button></div>`;
     card.hidden = false;
   }
   function hideCard() {
@@ -1660,6 +1664,12 @@ export function openPlaza(options) {
     const b = e.target.closest("[data-pc]");
     if (!b) return;
     if (b.dataset.pc === "close" || !cardFor) return hideCard();
+    if (b.dataset.pc === "pair") {
+      askPair(cardFor.id, b.dataset.kind);
+      hideCard();
+      screen.focus({ preventScroll: true });
+      return;
+    }
     b.disabled = true;
     let close = false;
     try {
@@ -1768,6 +1778,81 @@ export function openPlaza(options) {
     b.emoteT = PLAZA.emoteSeconds;
     if (e === "💃") b.dance = 4;
   }
+  /* ---------- pair emotes (asked from a player's card) ---------- */
+  /** Play pair emote `pair` (PLAZA_PAIR_EMOTES) on body `b`. */
+  function startPair(b, pair) {
+    if (b.pairT > 0 && b.pairKind === pair.id) return;
+    b.pairKind = pair.id;
+    b.pairT = PLAZA_PAIR.playSeconds;
+    b.emote = pair.icon;
+    b.emoteT = PLAZA_PAIR.playSeconds;
+    b.dance = pair.id === "dance" ? PLAZA_PAIR.playSeconds : 0;
+    burst(b.x + b.face * 22, b.y, 70, pair.icon, low ? 2 : 4, null, 0.5);
+  }
+  function askPair(to, kind) {
+    const pair = PLAZA_PAIR_EMOTES.find((e) => e.id === kind);
+    if (!pair) return;
+    socket.timeout(5000).emit("plaza-pair-ask", { to, kind }, (err, r) => {
+      if (err) return pzToast("That didn't go through. Try again.");
+      if (!r?.ok) return pzToast(r?.error ?? "They can't be asked right now.");
+      pzToast(`Asked ${nameOf(to)} for a ${pair.label.toLowerCase()}…`);
+    });
+  }
+  /** A request to you: a small prompt, open for its few seconds. */
+  let askFrom = null,
+    askTimer = 0;
+  function hideAsk() {
+    askFrom = null;
+    clearTimeout(askTimer);
+    $("pz-ask").hidden = true;
+  }
+  const onPairAsk = (a) => {
+    const pair = PLAZA_PAIR_EMOTES.find((e) => e.id === a?.kind);
+    if (!pair || typeof a.from !== "number") return;
+    const acc = profiles.get(a.from)?.accountId;
+    if (acc && options.isBlocked?.(acc)) return;
+    askFrom = a.from;
+    const el = $("pz-ask");
+    el.innerHTML = `<span class="pa-emo" aria-hidden="true">${pair.icon}</span><p><b>${esc(a.name)}</b> wants a ${esc(pair.label.toLowerCase())}!</p><button type="button" data-pa="yes">Accept</button><button type="button" class="x" data-pa="no" aria-label="No thanks">✕</button>`;
+    el.hidden = false;
+    clearTimeout(askTimer);
+    askTimer = setTimeout(hideAsk, Math.max(1000, Math.min(a.ms || 0, 10_000)));
+  };
+  $("pz-ask").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-pa]");
+    if (!b || askFrom == null) return;
+    const yes = b.dataset.pa === "yes";
+    socket
+      .timeout(5000)
+      .emit("plaza-pair-answer", { from: askFrom, yes }, (err, r) => {
+        if (yes && (err || !r?.ok))
+          pzToast(
+            err
+              ? "That didn't go through."
+              : (r?.error ?? "That request has ended."),
+          );
+      });
+    hideAsk();
+    screen.focus({ preventScroll: true });
+  });
+  /** Both players: face each other and play it now (others see it in the next snapshot). */
+  const onPair = (m) => {
+    const pair = PLAZA_PAIR_EMOTES.find((e) => e.id === m?.kind);
+    if (!pair) return;
+    const body = (id) => (id === meId ? P : others.get(id));
+    const a = body(m.a),
+      b = body(m.b);
+    if (a && b) {
+      a.face = b.x >= a.x ? 1 : -1;
+      b.face = -a.face;
+    }
+    if (a) startPair(a, pair);
+    if (b) startPair(b, pair);
+  };
+  const onPairNo = (m) => pzToast(`${m?.name || "They"} said maybe later.`);
+  socket.on("plaza-pair-ask", onPairAsk);
+  socket.on("plaza-pair", onPair);
+  socket.on("plaza-pair-no", onPairNo);
   function burst(x, y, z, glyph, n = 12, color, spd = 1) {
     if (reduced) n = Math.ceil(n / 3);
     for (let i = 0; i < n; i++) {
@@ -2453,9 +2538,12 @@ export function openPlaza(options) {
       b.dash = flags & PLAZA_FLAG.dash ? 1 : 0;
       b.stun = flags & PLAZA_FLAG.stun ? 1 : 0;
       b.buff = flags & PLAZA_FLAG.boost ? 1 : 0;
-      if (emoteIdx !== b.emoteIdx) {
-        b.emoteIdx = emoteIdx;
-        if (emoteIdx) showEmote(b, EMOTE_KEYS[emoteIdx - 1]);
+      const pair = plazaPairOf(emoteIdx, flags),
+        ek = pair ? -emoteIdx : emoteIdx;
+      if (ek !== b.emoteIdx) {
+        b.emoteIdx = ek;
+        if (pair) startPair(b, pair);
+        else if (emoteIdx) showEmote(b, EMOTE_KEYS[emoteIdx - 1]);
       }
     }
     for (const id of others.keys()) if (!seen.has(id)) others.delete(id);
@@ -3366,6 +3454,15 @@ export function openPlaza(options) {
       sq = Math.sin(time * 18) * 0.06;
     }
     if (b.stun > 0) rot = Math.sin(time * 30) * 0.12;
+    if (b.pairT > 0 && b.pairKind !== "dance") {
+      // A high five or a hug: lean in toward the other (`face`), and a
+      // high five hops on the slap.
+      const u = PLAZA_PAIR.playSeconds - b.pairT,
+        k = Math.min(1, u / 0.25, b.pairT / 0.25);
+      rot = b.face * (b.pairKind === "hug" ? 0.16 : 0.24) * k;
+      if (b.pairKind === "hug") sq = -0.04 * k + Math.sin(time * 5) * 0.02;
+      else bob += Math.max(0, Math.sin(Math.min(1, u / 0.6) * Math.PI)) * 10;
+    }
     return { bob, rot, sq };
   }
   // The front art carries its tail, lantern or staff on its right side, so
@@ -4756,6 +4853,7 @@ export function openPlaza(options) {
       for (const b of BODIES()) {
         if (b.emoteT > 0) b.emoteT -= dt;
         if (b.dance > 0) b.dance -= dt;
+        if (b.pairT > 0) b.pairT -= dt;
         b.trail.forEach((t) => (t.t += dt));
         b.trail = b.trail.filter((t) => t.t < 0.3);
       }
@@ -5093,6 +5191,10 @@ export function openPlaza(options) {
       socket.off("plaza-treats", onTreats);
       socket.off("plaza-fish", onFish);
       clearTimeout(catchTimer);
+      socket.off("plaza-pair-ask", onPairAsk);
+      socket.off("plaza-pair", onPair);
+      socket.off("plaza-pair-no", onPairNo);
+      clearTimeout(askTimer);
       socket.off("plaza-wish", onWish);
       socket.off("plaza-wish-paid", onWishPaid);
       removeEventListener("pointermove", pinchMove, true);

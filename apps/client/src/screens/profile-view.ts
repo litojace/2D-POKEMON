@@ -93,10 +93,6 @@ export interface ProfileData {
   nameStatus: NameStatus | null;
   /** Players can delete their account here; administrators can't. */
   canDelete: boolean;
-  /** A phone held sideways (max-height 500 px): the card's column becomes
-   * tabs (Overview, Matches, Avatar, Titles, Mastery, Trophies) instead of
-   * one long scroll. */
-  compact?: boolean;
   /** Your match history (docs/match-history.md), when it can load. */
   history?: HistoryState;
   /** A player in a match whose card you can open (your friends). */
@@ -121,7 +117,7 @@ export interface ProfileView {
   deleteBusy: boolean;
   /** Why it wasn't deleted (or what to type). */
   deleteMessage: string;
-  /** The tab open on a phone. */
+  /** The tab open (every screen size: one part at a time, no long scroll). */
   tab: ProfileTab;
   /** The avatar library's style shown. */
   avatarStyle: AvatarStyle;
@@ -379,18 +375,17 @@ function main(d: ProfileData, view: ProfileView) {
   const matches = d.history
     ? historyMarkup(d.history, { whose: "Your", canOpen: d.canOpen })
     : "";
-  // A phone: one tab at a time (its tabs sit in the head).
-  if (d.compact)
-    return {
-      // Who you are and Delete account share one line on a phone.
-      overview: `${overview}${summaries(d)}<div class="pf-account">${who}${deleteRow(d, view)}</div>`,
-      matches,
-      avatar: avatars,
-      titles,
-      mastery,
-      trophies: trophy,
-    }[view.tab];
-  return `${overview}${matches}${avatars}${titles}${mastery}${summaries(d)}${trophy}${who}${deleteRow(d, view)}`;
+  // One tab at a time on every screen (its tabs sit in the head): the
+  // column used to hold everything on a desktop, a long scroll.
+  return {
+    // Who you are and Delete account share one line.
+    overview: `${overview}${summaries(d)}<div class="pf-account">${who}${deleteRow(d, view)}</div>`,
+    matches,
+    avatar: avatars,
+    titles,
+    mastery,
+    trophies: trophy,
+  }[view.tab];
 }
 
 export function profileMarkup(view: ProfileView, d: ProfileData) {
@@ -400,7 +395,7 @@ export function profileMarkup(view: ProfileView, d: ProfileData) {
     attrs: { "data-profile-share": true, "aria-label": "Share card" },
   });
   const tabRow =
-    d.compact && (d.progress || !d.progressProblem)
+    d.progress || !d.progressProblem
       ? tabs(
           PROFILE_TABS.filter(([id]) => id !== "matches" || d.history).map(
             ([id, label]) => ({
