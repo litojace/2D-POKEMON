@@ -161,6 +161,11 @@ test("the tour runs to the end, and How to play replays it", async ({
         ),
       ),
     ).toEqual([["arena-tour:11111111-1111-4111-8111-111111111111", "done"]]);
+    // The account keeps it too, with how far the player got.
+    const ends = () => page.evaluate(() => (window as any).__tourEnds ?? []);
+    await expect
+      .poll(ends)
+      .toEqual([{ result: "done", reached: 6, steps: 6, replay: false }]);
     await page.click(".header-menu > summary");
     await page.click("#help");
     await page.click("[data-htp-tour]");
@@ -169,6 +174,43 @@ test("the tour runs to the end, and How to play replays it", async ({
     await expect(page.locator(".tour-count")).toHaveText(/^1 \//);
     await page.keyboard.press("Escape");
     await expect(tour(page)).toHaveCount(0);
+    // A replay counts as one, apart from the first tour.
+    await expect.poll(ends).toEqual([
+      { result: "done", reached: 6, steps: 6, replay: false },
+      { result: "skipped", reached: 1, steps: 6, replay: true },
+    ]);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("a tour ended on another device doesn't show on this one", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await newPlayer(page);
+    // This browser has never seen it; the account says it was skipped.
+    await page.addInitScript(() => ((window as any).__tour = "skipped"));
+    const errors = await openHub(page);
+    await expect(page.locator(".lobby-play")).toBeVisible();
+    await page.waitForTimeout(2000);
+    await expect(tour(page)).toHaveCount(0);
+    // This browser remembers it now, and nothing was sent back.
+    expect(
+      await page.evaluate(() =>
+        localStorage.getItem("arena-tour:11111111-1111-4111-8111-111111111111"),
+      ),
+    ).toBe("skipped");
+    expect(await page.evaluate(() => (window as any).__tourEnds ?? [])).toEqual(
+      [],
+    );
     expect(errors).toEqual([]);
   } finally {
     await context.close();

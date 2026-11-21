@@ -1,0 +1,558 @@
+/* Startup curtain styles to choose from (loading-preview.ts). */
+body {
+  margin: 0;
+  background: #040d1e;
+}
+.lp {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  color: #f2f5ff;
+  font-family: "DM Sans", sans-serif;
+  background: #040d1e var(--bg, none) center / cover no-repeat;
+  padding: max(14px, env(safe-area-inset-top))
+    max(28px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom))
+    max(28px, env(safe-area-inset-left));
+}
+.lp::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, #02081533, #02081500 45%, #020815aa);
+}
+.lp > * {
+  position: relative;
+  z-index: 1;
+}
+.lp-title {
+  margin: 0;
+  font:
+    600 clamp(20px, 5.4vh, 44px) / 0.96 "Barlow Condensed",
+    Impact,
+    sans-serif;
+  text-transform: uppercase;
+  text-shadow: 0 2px 14px #020714;
+}
+.lp-title span {
+  display: block;
+  letter-spacing: 0.17em;
+}
+.lp-bar {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  width: 100%;
+}
+.lp-bar small {
+  color: #acbed6;
+  font-size: clamp(11px, 1.6vh, 13px);
+}
+.lp-fighter svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 14px 22px #000a);
+}
+.lp-name {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+.lp-name b {
+  font:
+    700 clamp(20px, 6vh, 40px) / 1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.lp-name span {
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--el) 30%, #0b1426);
+  border: 1px solid color-mix(in srgb, var(--el) 60%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* b: your fighter beside the tip */
+.lp-b {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
+}
+.lp-b-stage {
+  height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  justify-items: center;
+  align-items: end;
+  background: radial-gradient(
+    ellipse 55% 45% at 50% 62%,
+    color-mix(in srgb, var(--el) 38%, transparent),
+    transparent 70%
+  );
+}
+.lp-b-stage .lp-fighter {
+  width: min(100%, 62vh);
+  height: 100%;
+  min-height: 0;
+}
+.lp-b-side {
+  display: grid;
+  align-content: center;
+  gap: clamp(10px, 3vh, 22px);
+  justify-items: start;
+}
+.lp-tipcard {
+  padding: 14px 16px;
+  border: 1px solid #dfbd6b66;
+  border-left: 4px solid #ffe08a;
+  border-radius: 12px;
+  background: #030a18c4;
+}
+.lp-tipcard b {
+  color: #ffe08a;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+}
+.lp-tipcard p {
+  margin: 4px 0 0;
+  font-size: clamp(13px, 3.6vh, 17px);
+  line-height: 1.4;
+}
+
+/* c: the tip is the picture */
+.lp-c {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  justify-items: center;
+  gap: clamp(6px, 1.6vh, 12px);
+  text-align: center;
+}
+.lp-c header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.lp-c .lp-title {
+  font-size: clamp(16px, 4vh, 30px);
+  text-align: left;
+}
+.lp-kicker {
+  color: #ffe08a;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+.lp-arena {
+  height: 100%;
+  max-width: 100%;
+  min-height: 0;
+}
+.lp-orb-halo {
+  opacity: 0.25;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lp-pulse 1.6s ease-in-out infinite;
+}
+@keyframes lp-pulse {
+  50% {
+    opacity: 0.05;
+    transform: scale(1.35);
+  }
+}
+.lp-c-text {
+  margin: 0;
+  max-width: 640px;
+  padding: 4px 14px;
+  border-radius: 10px;
+  background: #030a18b3;
+  font-size: clamp(13px, 3.4vh, 17px);
+  line-height: 1.35;
+}
+.lp-dots {
+  display: flex;
+  gap: 6px;
+}
+.lp-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffffff40;
+}
+.lp-dots i.on {
+  width: 18px;
+  border-radius: 4px;
+  background: #ffe08a;
+}
+.lp-c .lp-bar {
+  width: min(520px, 100%);
+}
+
+/* d: the front door's painting */
+.lp-d-art {
+  position: absolute !important;
+  inset: 0;
+  z-index: 0 !important;
+  background: #081326 url("/assets/backgrounds/elemental-horizon.webp") center /
+    cover no-repeat;
+}
+.lp-d::after {
+  background: linear-gradient(
+    180deg,
+    #02081544 0%,
+    #02081500 35%,
+    #020815cc 78%,
+    #020815f2
+  );
+}
+.lp-d .lp-title {
+  font-size: clamp(16px, 4.4vh, 34px);
+}
+.lp-d .lp-fighter {
+  position: absolute;
+  right: 6%;
+  bottom: 22%;
+  width: min(36vw, 56vh);
+  height: min(36vw, 56vh);
+}
+.lp-d-caption {
+  position: absolute !important;
+  left: max(28px, env(safe-area-inset-left));
+  right: max(28px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  display: grid;
+  gap: 10px;
+}
+.lp-d-tip {
+  max-width: 60%;
+  font-size: clamp(13px, 3.4vh, 17px);
+  line-height: 1.4;
+  text-shadow: 0 1px 8px #000;
+}
+.lp-d-tip b {
+  margin-right: 6px;
+  color: #ffe08a;
+  letter-spacing: 0.12em;
+  font-size: 0.8em;
+}
+.lp-d .lp-bar {
+  justify-items: start;
+}
+
+/* e: the tip card can carry the illustrated arena */
+.lp-tipcard .lp-arena {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 34vh;
+  margin: 0 auto 8px;
+}
+.lp-e .lp-tipcard p {
+  font-size: clamp(12px, 3.2vh, 15px);
+}
+
+/* f: the Lobby to come */
+.lp-f-art {
+  position: absolute !important;
+  inset: 0;
+  z-index: 0 !important;
+  background: #0b1020 url("/assets/backgrounds/lobby-backdrop-d99b61e6.webp")
+    center / cover no-repeat;
+}
+.lp-f .lp-title {
+  font-size: clamp(16px, 4.4vh, 30px);
+}
+.lp-f-fighter {
+  position: absolute !important;
+  left: var(--fx);
+  top: var(--fy);
+  width: var(--fs);
+}
+.lp-f-fighter .lp-fighter {
+  width: var(--fs);
+  height: var(--fs);
+}
+.lp-f-fighter .lp-name {
+  margin-top: 4px;
+}
+.lp-f-side {
+  position: absolute !important;
+  left: var(--side);
+  right: max(14px, env(safe-area-inset-right));
+  top: 64px;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+.lp-tipcard.is-compact {
+  align-self: start;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 10px 12px;
+}
+.lp-tipcard.is-compact .lp-arena {
+  max-height: 22vh;
+}
+.lp-tipcard.is-compact p {
+  font-size: clamp(11px, 3vh, 13px);
+}
+
+/* g: your fighter inside the crest's orbits */
+.lp-g-art .lp-fighter {
+  position: absolute;
+  inset: -6%;
+}
+.lp-g-art .server-startup-aura {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--el) 45%, transparent),
+    transparent 70%
+  );
+}
+/* Short phones: the illustrated tip gives up height before anything is cut. */
+@media (max-height: 360px) {
+  .lp-b-side {
+    gap: 8px;
+  }
+  .lp-tipcard {
+    padding: 8px 12px;
+  }
+  .lp-tipcard .lp-arena {
+    max-height: 22vh;
+    margin-bottom: 4px;
+  }
+  .lp-tipcard.is-compact .lp-arena {
+    max-height: 16vh;
+  }
+  .lp-tipcard p,
+  .lp-e .lp-tipcard p {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .lp-tipcard.is-compact p {
+    font-size: 11px;
+  }
+  .lp-name b {
+    font-size: 20px;
+  }
+}
+/* f: the art in the Lobby's box exactly as lobby.css places it (the rig's
+   padded frame, offset back), so the fighter doesn't move at the hand-over. */
+.lp-f-fighter .lp-fighter {
+  position: relative;
+}
+.lp-f-fighter .lp-fighter svg {
+  position: absolute;
+  left: -10%;
+  top: -13.86%;
+  width: 120%;
+  height: 123.76%;
+}
+
+/* refs: one transparent box per skin, for reference pictures */
+.lp-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.lp-refs figure {
+  width: 512px;
+  height: 534px;
+  margin: 0;
+}
+.lp-refs svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+html:has(.lp-refs),
+body:has(.lp-refs) {
+  background: transparent !important;
+}
+
+/* h-k: full-width bar, gold star crest, short text tip */
+.lp-x {
+  --pad-x: max(28px, env(safe-area-inset-right), env(safe-area-inset-left));
+  --pad-y: max(14px, env(safe-area-inset-top), env(safe-area-inset-bottom));
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  color: #f2f5ff;
+  font-family: "DM Sans", sans-serif;
+  background: #040d1e var(--painting) center / cover no-repeat;
+}
+.lp-x::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(0deg, #020815e6 0, #02081599 18%, #02081500 42%),
+    linear-gradient(180deg, #020815b3 0, #02081500 30%);
+}
+.lp-x > * {
+  position: absolute;
+  z-index: 1;
+}
+.lp-x-brand {
+  top: var(--pad-y);
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.6vh, 14px);
+}
+.lp-x .lp-title {
+  font-size: clamp(18px, 5vh, 40px);
+}
+.lp-crest {
+  width: clamp(30px, 8.5vh, 64px);
+  height: clamp(30px, 8.5vh, 64px);
+  flex: none;
+  filter: drop-shadow(0 0 10px #ffd76a88) drop-shadow(0 2px 6px #000a);
+}
+.lp-x-tip {
+  max-width: min(46vw, 460px);
+  padding: 6px 12px;
+  border-left: 3px solid #ffe08a;
+  border-radius: 0 10px 10px 0;
+  background: linear-gradient(90deg, #030a18cc, #030a1866 70%, #030a1800);
+  color: #e3ebf8;
+  font-size: clamp(12px, 3.3vh, 16px);
+  line-height: 1.4;
+  text-shadow: 0 1px 3px #000;
+}
+.lp-x-tip b {
+  margin-right: 6px;
+  color: #ffe08a;
+  letter-spacing: 0.1em;
+  font-size: 0.85em;
+}
+.lp-x-foot {
+  left: calc(var(--pad-x) + 13px);
+  right: calc(var(--pad-x) + 13px);
+  bottom: var(--pad-y);
+  display: grid;
+  gap: 6px;
+}
+.lp-x-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.lp-x-line span {
+  font-size: clamp(13px, 3.4vh, 17px);
+  font-weight: 500;
+  text-shadow: 0 1px 8px #000;
+}
+.lp-x-line small {
+  color: #acbed6;
+  font-size: clamp(11px, 2.8vh, 13px);
+}
+/* h: brand top right, tip mid right */
+.lp-x-h .lp-x-brand {
+  right: var(--pad-x);
+  flex-direction: column;
+}
+.lp-x-h .lp-x-brand .lp-title {
+  text-align: center;
+}
+.lp-x-h .lp-x-tip {
+  right: var(--pad-x);
+  top: 50%;
+  transform: translateY(-60%);
+}
+.lp-x-h::after {
+  background:
+    linear-gradient(90deg, #02081500 40%, #02081599 66%, #020815d9 85%),
+    linear-gradient(0deg, #020815e6 0, #02081500 30%);
+}
+/* i: brand top left, tip above the bar on the left */
+.lp-x-i .lp-x-brand {
+  left: var(--pad-x);
+}
+.lp-x-i .lp-x-tip,
+.lp-x-j .lp-x-tip,
+.lp-x-k .lp-x-tip {
+  bottom: calc(var(--pad-y) + clamp(52px, 13vh, 72px));
+}
+.lp-x-i .lp-x-tip {
+  left: var(--pad-x);
+}
+/* j: brand top centre, tip above the bar in the middle */
+.lp-x-j .lp-x-brand {
+  left: 50%;
+  transform: translateX(-50%);
+}
+.lp-x-j .lp-x-tip {
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(70vw, 620px);
+  border-left: 0;
+  border-radius: 10px;
+  background: radial-gradient(
+    ellipse at center,
+    #030a18c0,
+    #030a1866 70%,
+    #030a1800
+  );
+  text-align: center;
+}
+/* k: brand top right, tip above the bar on the right */
+.lp-x-k .lp-x-brand {
+  right: var(--pad-x);
+}
+.lp-x-k .lp-x-tip {
+  right: var(--pad-x);
+  border-left: 0;
+  border-right: 3px solid #ffe08a;
+  border-radius: 10px 0 0 10px;
+  background: linear-gradient(270deg, #030a18cc, #030a1866 70%, #030a1800);
+  text-align: right;
+}
+
+/* k2: k with a bigger crest and title, one status line */
+.lp-x-k2 .lp-title {
+  font-size: clamp(24px, 7vh, 54px);
+}
+.lp-x-k2 .lp-crest {
+  width: clamp(40px, 11.5vh, 88px);
+  height: clamp(40px, 11.5vh, 88px);
+}
+.lp-x-k2 .lp-x-tip {
+  bottom: calc(var(--pad-y) + clamp(44px, 11vh, 60px));
+}
+.lp-x-status {
+  position: relative;
+  height: 1.4em;
+  font-size: clamp(13px, 3.4vh, 17px);
+  font-weight: 500;
+  text-shadow: 0 1px 8px #000;
+}
+.lp-x-status span {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  white-space: nowrap;
+  animation: lp-status-in 300ms ease-out;
+}
+.lp-x-status span.is-out {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 300ms ease-out,
+    transform 300ms ease-out;
+}
+@keyframes lp-status-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}

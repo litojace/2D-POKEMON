@@ -6,6 +6,7 @@ import {
   placeBubble,
   saveTour,
   tourDue,
+  tourFromServer,
   tourMarkup,
 } from "../../apps/client/src/hub-tour";
 
@@ -51,6 +52,20 @@ describe("Lobby tour", () => {
     store.set("arena-tour:c", "nonsense");
     expect(loadTour("c")).toBeUndefined();
     expect(loadTour(undefined)).toBeUndefined();
+  });
+
+  it("reads the account's answer: an ending, or not yet", () => {
+    expect(tourFromServer({ tour: "done" })).toBe("done");
+    expect(tourFromServer({ tour: "skipped" })).toBe("skipped");
+    for (const body of [
+      { tour: null },
+      { tour: "Done" },
+      { tour: 1 },
+      {},
+      null,
+      "done",
+    ])
+      expect(tourFromServer(body)).toBeUndefined();
   });
 
   it("every step offers Skip; the last says Got it, the first has no Back", () => {

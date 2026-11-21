@@ -739,6 +739,7 @@ export function createArenaServer(
         }
       }
     },
+    connectionLog,
   );
   /** Signed-in players with a live connection, merged per account. */
   function listOnline(): OnlineList {

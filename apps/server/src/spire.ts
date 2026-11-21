@@ -91,6 +91,7 @@ import {
   type SpireState,
 } from "../../../packages/shared/src/spire.js";
 import {
+  spireCourtOrbSpots,
   spireCourtWalls,
   spireEchoSpawnCandidate,
   spireRaiderSpawn,
@@ -289,6 +290,10 @@ export function SpireRules<B extends RaidClass>(Base: B) {
       useObstacles(list);
       return list as Rect[];
     }
+    /** On the Spire's court the orbs lie where its floor's layout puts them (off the cover). */
+    override orbSpots() {
+      return spireCourtOrbSpots(this.spire?.state) ?? super.orbSpots();
+    }
     override snapshot(remaining = 0) {
       // Echo brains are not a "bot match".
       return { ...super.snapshot(remaining), vsBot: null };
@@ -333,6 +338,12 @@ export function SpireRules<B extends RaidClass>(Base: B) {
       this.resetAscendantReads();
       this.projectiles = [];
       this.zones = [];
+      // An orb left on the last floor stays only on one of this floor's
+      // spots: its layout may stand a stone where it lay.
+      const spots = this.orbSpots();
+      this.orbs = this.orbs.filter((o) =>
+        spots.some((v) => v.x === o.x && v.y === o.y),
+      );
       // The Spire's court has no pillars or islands; the boss floor's court
       // is its raid's (Cragmuff's pillars, Tidelotl's lagoon).
       if (def?.kind === "boss") this.setupArena();

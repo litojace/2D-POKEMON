@@ -871,9 +871,10 @@ test("a click on the ground marks where you're going until you arrive", async ({
   expect(errors).toEqual([]);
 });
 
-// Zoom: the mouse wheel and + / − on a desktop, two fingers on a phone;
+// Zoom: the mouse wheel and + / − on a desktop, two fingers on a tablet;
 // within limits (never past what is built or what the server shows), and
-// kept for the next visit.
+// kept for the next visit. Phones keep the usual zoom (0.8): a pinch there
+// does nothing, and a zoom kept from before is not used.
 test("the Plaza zooms with the wheel, the keys and a pinch", async ({
   browser,
 }) => {
@@ -916,7 +917,28 @@ test("the Plaza zooms with the wheel, the keys and a pinch", async ({
       await ctx.close();
     }
   }
-  // Phone: a pinch on the playground.
+  /** Two fingers on the playground, spreading twice as far apart. */
+  const pinch = (page: Page) =>
+    page.evaluate(() => {
+      const cv = document.querySelector("#pz-cv")!;
+      const at = (type: string, id: number, x: number) =>
+        cv.dispatchEvent(
+          new PointerEvent(type, {
+            pointerId: id,
+            pointerType: "touch",
+            clientX: x,
+            clientY: 200,
+            bubbles: true,
+          }),
+        );
+      at("pointerdown", 11, 500);
+      at("pointerdown", 12, 600);
+      at("pointermove", 11, 450);
+      at("pointermove", 12, 650);
+      at("pointerup", 11, 450);
+      at("pointerup", 12, 650);
+    });
+  // Phone: the usual zoom, whatever was kept, and a pinch changes nothing.
   {
     const ctx = await browser.newContext({
       viewport: { width: 844, height: 390 },
@@ -925,31 +947,35 @@ test("the Plaza zooms with the wheel, the keys and a pinch", async ({
     });
     try {
       const page = await ctx.newPage();
+      await page.addInitScript(() =>
+        localStorage.setItem("ea-plaza-zoom", "1.6"),
+      );
+      const errors = await openPlaza(page);
+      expect(await zoomOf(page)).toBeCloseTo(0.8, 3);
+      await pinch(page);
+      await page.mouse.wheel(0, -600);
+      expect(await zoomOf(page)).toBeCloseTo(0.8, 3);
+      expect(errors).toEqual([]);
+    } finally {
+      await ctx.close();
+    }
+  }
+  // Tablet (an iPad mini on its side): a pinch zooms.
+  {
+    const ctx = await browser.newContext({
+      viewport: { width: 1133, height: 744 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await ctx.newPage();
       const errors = await openPlaza(page);
       await page.evaluate(() => (window as any).__plaza.setZoom(1));
-      expect(await zoomOf(page)).toBeCloseTo(0.66, 3);
-      await page.evaluate(() => {
-        const cv = document.querySelector("#pz-cv")!;
-        const at = (type: string, id: number, x: number) =>
-          cv.dispatchEvent(
-            new PointerEvent(type, {
-              pointerId: id,
-              pointerType: "touch",
-              clientX: x,
-              clientY: 200,
-              bubbles: true,
-            }),
-          );
-        at("pointerdown", 11, 500);
-        at("pointerdown", 12, 600);
-        at("pointermove", 11, 450);
-        at("pointermove", 12, 650);
-        at("pointerup", 11, 450);
-        at("pointerup", 12, 650);
-      });
-      // Fingers twice as far apart: twice the zoom, as far as it goes.
       const r = await page.evaluate(() => (window as any).__plaza.zoomRange());
-      expect(await zoomOf(page)).toBeCloseTo(Math.min(r.max, 0.66 * 2), 3);
+      expect(await zoomOf(page)).toBeCloseTo(r.base, 3);
+      await pinch(page);
+      // Fingers twice as far apart: twice the zoom, as far as it goes.
+      expect(await zoomOf(page)).toBeCloseTo(Math.min(r.max, r.base * 2), 3);
       expect(errors).toEqual([]);
     } finally {
       await ctx.close();
@@ -1272,6 +1298,77 @@ test("Nearby chat on the Plaza: the wheel sends quick chat, phrases pop over the
     )
     .toEqual({ lines: ["Well played!"], room: true });
   await snap(page, info, "plaza-chat-bubble");
+  expect(errors).toEqual([]);
+});
+
+// A champion skin's own effects, the Entrance slot when someone arrives and
+// the Victory slot when they dance (or score, or finish a lap), drawn on a
+// phone as in a match (plaza-cosmetics.ts).
+test("the Plaza plays skins' effects, entrances and victories", async ({
+  page,
+}, info) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 844, height: 390 });
+  const errors = await openPlaza(page);
+  // Someone arrives while you're here (not the crowd you joined).
+  await page.waitForTimeout(1800);
+  await page.evaluate(() => {
+    const w = window as any,
+      me = w.__plazaWorld.bodyOf("local");
+    w.__plazaWorld.join("nova", "acct-nova", {
+      name: "Nova",
+      title: null,
+      titleColor: null,
+      level: 9,
+      character: "voltkit",
+      skin: { skin: "voltkit-nova-vanguard", stage: 3 },
+      look: { entrance: "galaxy-entrance", victory: "galaxy-victory" },
+    });
+    Object.assign(w.__plazaWorld.bodyOf("nova"), { x: me.x + 110, y: me.y });
+  });
+  const nova = () =>
+    page.evaluate(() => {
+      const b = [...(window as any).__plaza.others.values()].find(
+        (x: any) => x.name === "Nova",
+      );
+      return b
+        ? {
+            greeted: !!b.greeted,
+            entrance: b.entrance,
+            victory: b.victory,
+            particles: b.sfx?.particles.length ?? 0,
+            cheering: b.sfx?.cheerAt != null,
+            sprite: !!b.img?.sprite,
+          }
+        : null;
+    });
+  await expect
+    .poll(async () => (await nova())?.greeted, { timeout: 15_000 })
+    .toBe(true);
+  expect(await nova()).toMatchObject({
+    entrance: "galaxy-entrance",
+    victory: "galaxy-victory",
+  });
+  // Its entrance burst (and the skin's landing) is in the air.
+  await expect
+    .poll(async () => (await nova())?.particles ?? 0, { timeout: 10_000 })
+    .toBeGreaterThan(0);
+  await snap(page, info, "plaza-skin-entrance-844x390");
+  // A dance plays the victory finale.
+  await page.waitForTimeout(1500);
+  await page.evaluate(() =>
+    (window as any).__plazaWorld.emote("nova", "💃", Date.now()),
+  );
+  await expect
+    .poll(async () => (await nova())?.cheering, { timeout: 10_000 })
+    .toBe(true);
+  await page.waitForTimeout(900);
+  expect((await nova())!.particles).toBeGreaterThan(0);
+  await snap(page, info, "plaza-skin-victory-844x390");
+  // Over after the finale.
+  await expect
+    .poll(async () => (await nova())?.cheering, { timeout: 10_000 })
+    .toBe(false);
   expect(errors).toEqual([]);
 });
 

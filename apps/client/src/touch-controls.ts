@@ -34,6 +34,8 @@ export class TouchControls {
   private aim: HTMLButtonElement;
   /** Called on a tap of the target button (main.ts cycles the lock). */
   onTarget: () => void = () => {};
+  /** Called once the controls are laid out (resize): main.ts measures them. */
+  onLayout: () => void = () => {};
   private geometry = { x: 0, y: 0, radius: 1 };
   private resetActions: () => void;
   private captures = new Map<number, HTMLElement>();
@@ -474,6 +476,7 @@ export class TouchControls {
         height: target.size + "px",
       });
     }
+    this.onLayout();
   }
   /**
    * The target button's state each frame: on only while an enemy is on

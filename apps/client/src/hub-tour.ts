@@ -91,6 +91,23 @@ export function saveTour(
     /* Private mode: the tour may show again after a reload. */
   }
 }
+/**
+ * The account keeps how its tour ended too (migration 20261121090000,
+ * /api/account/tour), so another device doesn't show it again. This reads
+ * that answer: anything but an ending is "not yet".
+ */
+export function tourFromServer(body: unknown): TourSave {
+  const tour = (body as { tour?: unknown } | null)?.tour;
+  return tour === "done" || tour === "skipped" ? tour : undefined;
+}
+/** What the server keeps when a tour ends (and logs as arena-tour). */
+export interface TourEnd {
+  result: "done" | "skipped";
+  /** How many of the steps the player got to. */
+  reached: number;
+  steps: number;
+  replay: boolean;
+}
 /** Start on its own: a new account (by level) that hasn't seen it. */
 export function tourDue(save: TourSave, level: number | undefined) {
   return save === undefined && level !== undefined && level <= TOUR_NEW_LEVEL;
