@@ -5996,6 +5996,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         "lure",
         "leap",
         "garden",
+        // Shell Up bursting open.
+        "rest",
       ].includes(ability.kind)
     ) {
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
@@ -7374,8 +7376,28 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         );
       if (serverPlayer.channel) {
         const cone = c.skills[serverPlayer.channel.skill];
-        if (cone)
-          drawChannel(g, cone, x, y, p.angle, c.color, _time, reducedMotion);
+        // Crest Flare: the flame reaches further as the breath goes on.
+        const grow = cone?.cone?.grow;
+        const shown =
+          cone && grow
+            ? {
+                ...cone,
+                range:
+                  cone.range +
+                  grow *
+                    Math.min(
+                      1,
+                      Math.max(
+                        0,
+                        1 -
+                          (serverPlayer.channel.until - state.time) /
+                            cone.duration,
+                      ),
+                    ),
+              }
+            : cone;
+        if (shown)
+          drawChannel(g, shown, x, y, p.angle, c.color, _time, reducedMotion);
       }
       if (serverPlayer.charge) {
         // Wind-up telegraph showing the real area of the incoming move.
