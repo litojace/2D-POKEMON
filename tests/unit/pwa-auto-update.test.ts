@@ -1,11 +1,14 @@
 import { expect, it, vi } from "vitest";
-import { PwaAutoUpdate } from "../../apps/client/src/pwa-auto-update";
+import {
+  PwaAutoUpdate,
+  UPDATE_SNOOZE_MS,
+} from "../../apps/client/src/pwa-auto-update";
 import {
   peerMatchActive,
   safeToUpdate,
 } from "../../apps/client/src/pwa-policy";
 
-it("activates an available update automatically and reloads only after activation", async () => {
+it("activates an accepted update and reloads only after activation", async () => {
   const activate = vi.fn(async () => {}),
     reload = vi.fn();
   const gate = new PwaAutoUpdate({
@@ -17,7 +20,7 @@ it("activates an available update automatically and reloads only after activatio
   await gate.sync();
   expect(activate).not.toHaveBeenCalled();
   gate.available();
-  await gate.sync();
+  await gate.accept();
   expect(activate).toHaveBeenCalledTimes(1);
   expect(reload).not.toHaveBeenCalled();
   gate.activated();
@@ -39,6 +42,7 @@ it("waits through all live match phases and peer matches before activation or re
     now: () => 0,
   });
   gate.available();
+  gate.accepted = true;
   for (phase of ["playing", "briefing", "countdown", "intermission", "paused"])
     await gate.sync();
   expect(activate).not.toHaveBeenCalled();
@@ -76,7 +80,7 @@ it("avoids duplicate activations and checks safety again when activation finishe
     now: () => 0,
   });
   gate.available();
-  const running = gate.sync();
+  const running = gate.accept();
   await gate.sync();
   expect(activate).toHaveBeenCalledTimes(1);
   safe = false;
@@ -88,7 +92,7 @@ it("avoids duplicate activations and checks safety again when activation finishe
   await gate.sync();
   expect(reload).toHaveBeenCalledTimes(1);
 });
-it("retries failed activation automatically with backoff and waits while hidden or offline", async () => {
+it("retries a failed accepted activation with backoff and waits while hidden or offline", async () => {
   let now = 0,
     visible = true,
     online = true;
@@ -103,6 +107,7 @@ it("retries failed activation automatically with backoff and waits while hidden 
     now: () => now,
   });
   gate.available();
+  gate.accepted = true;
   visible = false;
   await gate.sync();
   visible = true;
@@ -129,6 +134,7 @@ it("defers activation and an already-activated reload while a Shop or other menu
     now: () => 0,
   });
   gate.available();
+  gate.accepted = true;
   await gate.sync();
   expect(activate).not.toHaveBeenCalled();
   gate.activated();
@@ -139,4 +145,71 @@ it("defers activation and an already-activated reload while a Shop or other menu
   expect(reload).toHaveBeenCalledOnce();
   expect(safeToUpdate("lobby", true)).toBe(false);
   expect(safeToUpdate("playing", false)).toBe(false);
+});
+it("asks only where updating is safe, and changes nothing until the player accepts", async () => {
+  let now = 0,
+    safe = false;
+  const activate = vi.fn(async () => {}),
+    reload = vi.fn();
+  const gate = new PwaAutoUpdate({
+    safe: () => safe,
+    activate,
+    reload,
+    now: () => now,
+  });
+  expect(gate.asking).toBe(false);
+  gate.available();
+  // Mid-match: no prompt, and nothing applies on its own.
+  expect(gate.asking).toBe(false);
+  await gate.sync();
+  safe = true;
+  expect(gate.asking).toBe(true);
+  await gate.sync();
+  await gate.sync();
+  expect(activate).not.toHaveBeenCalled();
+  // Later: gone until the snooze ends, then asks again.
+  gate.later();
+  expect(gate.asking).toBe(false);
+  now = UPDATE_SNOOZE_MS - 1;
+  expect(gate.asking).toBe(false);
+  now = UPDATE_SNOOZE_MS;
+  expect(gate.asking).toBe(true);
+  await gate.accept();
+  expect(gate.asking).toBe(false);
+  expect(activate).toHaveBeenCalledOnce();
+  gate.activated();
+  await gate.sync();
+  expect(reload).toHaveBeenCalledOnce();
+});
+it("asks before reloading into an update another tab already activated", async () => {
+  const reload = vi.fn();
+  const gate = new PwaAutoUpdate({
+    safe: () => true,
+    activate: async () => {},
+    reload,
+    now: () => 0,
+  });
+  gate.activated();
+  expect(gate.asking).toBe(true);
+  await gate.sync();
+  expect(reload).not.toHaveBeenCalled();
+  await gate.accept();
+  expect(reload).toHaveBeenCalledOnce();
+});
+it("asks full screen the first time, and in the banner after Later", () => {
+  let now = 0;
+  const gate = new PwaAutoUpdate({
+    safe: () => true,
+    activate: async () => {},
+    reload: () => {},
+    now: () => now,
+  });
+  expect(gate.fullScreen).toBe(false);
+  gate.available();
+  expect(gate.fullScreen).toBe(true);
+  gate.later();
+  expect(gate.fullScreen).toBe(false);
+  now = UPDATE_SNOOZE_MS;
+  expect(gate.asking).toBe(true);
+  expect(gate.fullScreen).toBe(false);
 });

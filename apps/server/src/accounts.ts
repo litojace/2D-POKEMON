@@ -4,6 +4,7 @@ import { clientOrigins } from "./api-cors.js";
 import type {
   PlazaProgress,
   PlazaRecord,
+  PlazaWishPay,
 } from "../../../packages/shared/src/plaza.js";
 import {
   RAID_COSMETICS,
@@ -51,6 +52,7 @@ import {
   supabaseSocialStore,
   type SocialStore,
 } from "./social.js";
+import { buildMatchHistory, type MatchHistoryPage } from "./match-history.js";
 import express, {
   type Express,
   type Request,
@@ -77,13 +79,28 @@ import {
   friendRespondSchema,
   friendRemoveSchema,
   ratingSchema,
+  MATCH_HISTORY_KINDS,
+  MATCH_HISTORY_PAGE,
   type Friend,
   type Account,
   type MatchSummary,
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261119160000_avatar_library_77.sql";
+export const LATEST_MIGRATION = "20261120140000_match_history.sql";
+/** A page of match history: whose, from where, and which matches. */
+const matchHistoryQuerySchema = z
+  .object({
+    player: z.string().uuid().optional(),
+    at: z
+      .string()
+      .max(40)
+      .refine((s) => !Number.isNaN(Date.parse(s)))
+      .optional(),
+    id: z.string().min(8).max(64).optional(),
+    kind: z.enum(MATCH_HISTORY_KINDS).optional(),
+  })
+  .strict();
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -96,6 +113,11 @@ export interface AccountProvider {
   recordActivity?(receipt: ActivityReceipt): Promise<void>;
   /** Something the game server saw in the Plaza (quests, orbs, laps); returns the player's progress. */
   recordPlaza?(event: PlazaRecord): Promise<PlazaProgress | null>;
+  /**
+   * A full wish meter in the Plaza: pay this wisher once per fill (`ref`, the
+   * fill's id) within the daily cap (arena_plaza_wish); null for no player.
+   */
+  recordWish?(player: string, ref: string): Promise<PlazaWishPay | null>;
   authenticate(token: string): Promise<Account | null>;
   /** Read-only rows for friends' ratings and recent players (step 6). */
   social?: SocialStore;
@@ -412,6 +434,23 @@ export function createAccountProvider(): AccountProvider {
       if (result.error)
         throw new AccountError(503, "Plaza rewards could not be stored.");
       return (result.data as PlazaProgress | null) ?? null;
+    },
+    async recordWish(player, ref) {
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey)
+        throw new AccountError(
+          503,
+          "Plaza rewards require server storage configuration.",
+        );
+      const admin = createClient(url, serviceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const result = await admin.rpc("arena_plaza_wish", {
+        p: { player, ref },
+      });
+      if (result.error)
+        throw new AccountError(503, "Plaza rewards could not be stored.");
+      return (result.data as PlazaWishPay | null) ?? null;
     },
     async recordActivity(receipt) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1160,6 +1199,25 @@ export function installAccountRoutes(
           rating,
         }),
       );
+    }),
+  );
+  // Match history (docs/match-history.md): yours, or a friend's (the
+  // database refuses anyone else), a page at a time.
+  app.get(
+    "/api/matches/history",
+    route(false, async (req, res, token, account) => {
+      res.setHeader("Cache-Control", "no-store");
+      const q = matchHistoryQuerySchema.safeParse(req.query);
+      if (!q.success) throw new AccountError(400, "Invalid page.");
+      const player = q.data.player ?? account.id;
+      const page = (await provider.rpc(token, "arena_match_history", {
+        p_player: player,
+        p_before_at: q.data.at ?? null,
+        p_before_id: q.data.at ? (q.data.id ?? null) : null,
+        p_limit: MATCH_HISTORY_PAGE,
+        p_kind: q.data.kind ?? "all",
+      })) as MatchHistoryPage;
+      res.json(buildMatchHistory(page, player));
     }),
   );
   // Friends › Recent: the players in your latest matches (step 6).

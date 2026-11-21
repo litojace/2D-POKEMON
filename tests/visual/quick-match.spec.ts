@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, snap } from "./helpers";
+import { openHub, skipTour, snap } from "./helpers";
 
 // Quick Match (quick-match.ts, docs/pvp-plan.md item 1): for a player past
 // the coached first match, PLAY defaults to Quick Match; the search sheet
@@ -110,6 +110,7 @@ test("an unanswered offer starts a Quick Match bot by itself", async ({
 test("a new player's PLAY is still the coached Easy bot, not Quick Match", async ({
   page,
 }) => {
+  await skipTour(page);
   await page.addInitScript(() => {
     (window as any).__economyPatch = {
       journey: {

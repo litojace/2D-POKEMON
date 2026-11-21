@@ -8,10 +8,14 @@ import {
   PLAZA_FLAG,
   PLAZA_GATE,
   PLAZA_HURDLES,
+  PLAZA_PAIR,
+  PLAZA_PAIR_EMOTES,
   PLAZA_PHOTO,
   PLAZA_PITCH,
   PLAZA_SPAWN,
   PLAZA_SQUARE,
+  PLAZA_WISH,
+  atFountain,
   inPitch,
   onRunway,
   orbHeight,
@@ -25,6 +29,7 @@ import {
   plazaSpotAt,
   plazaStep,
   plazaStick,
+  wishTarget,
   onTrack,
   trackPoint,
   trackPolar,
@@ -33,8 +38,11 @@ import {
   type PlazaEmote,
   type PlazaNews,
   type PlazaTreat,
+  type PlazaWish,
   type PlazaOrb,
   type PlazaOrbs,
+  type PlazaPairAsk,
+  type PlazaPairStart,
   type PlazaProfile,
   type PlazaSpotId,
   type PlazaState,
@@ -65,6 +73,12 @@ interface Visitor {
   emote: number;
   emoteUntil: number;
   lastEmote: number;
+  /** The emote is a pair emote (PLAZA_FLAG.pair). */
+  pair: boolean;
+  /** A pair request waiting for this visitor's answer. */
+  invite: { from: string; kind: number; until: number } | null;
+  /** When this visitor last asked someone for a pair emote (ms). */
+  lastAsk: number;
   /** When this visitor last threw a treat (ms). */
   lastTreat: number;
   lap: LapTimer;
@@ -178,6 +192,19 @@ interface Copy {
   nextOrbAt: number;
   /** When its last player left: it waits, paused, for PLAZA_RETURN_MS. */
   emptySince: number | null;
+  /** The wishing fountain's meter (PLAZA_WISH). */
+  wish: WishMeter;
+}
+interface WishMeter {
+  n: number;
+  /** Fixed by the fill's first wish (0 while empty). */
+  target: number;
+  /** The last wish (ms), for PLAZA_WISH.idleMs. */
+  lastAt: number;
+  /** Who wished in this fill: account id -> wishes. */
+  by: Map<string, number>;
+  /** The last fireworks: start (server ms) and seed. */
+  show: { at: number; seed: number } | null;
 }
 /** What happened this step, for server.ts to pay and announce. */
 export type PlazaEvent =
@@ -186,7 +213,11 @@ export type PlazaEvent =
   | { type: "lap"; key: string; ms: number }
   | { type: "cheers"; key: string; n: number }
   | { type: "news"; plaza: number; news: PlazaNews }
-  | { type: "orbs"; plaza: number; orbs: PlazaOrbs };
+  | { type: "orbs"; plaza: number; orbs: PlazaOrbs }
+  /** The copy's wish meter changed (a wish, a fill, or it emptied). */
+  | { type: "wish"; plaza: number; wish: PlazaWish }
+  /** A fill: pay each wisher once (`ref` is the fill's id). */
+  | { type: "wished"; accounts: string[]; ref: string };
 
 /** The pitch bots, blue side then red, named as the townsfolk are: a role,
  * not "Blue Bot" or "Red Bot" ("Red Bot scored a goal" read as a test). */
@@ -312,6 +343,8 @@ export class PlazaWorld {
     /** The real clock (the same as step's `now`): when a timed input arrived. */
     private realNow: () => number = Date.now,
   ) {}
+  /** A fresh id for each fill (the reward's ref in the database). */
+  wishId: () => string = () => globalThis.crypto.randomUUID();
 
   get size() {
     return this.visitors.size;
@@ -391,6 +424,9 @@ export class PlazaWorld {
       emote: 0,
       emoteUntil: 0,
       lastEmote: -Infinity,
+      pair: false,
+      invite: null,
+      lastAsk: -Infinity,
       lastTreat: -Infinity,
       lap: new LapTimer(),
       cheerIn: PLAZA_CHEER_SECONDS,
@@ -461,6 +497,7 @@ export class PlazaWorld {
       orbs: new Map(),
       nextOrbAt: now,
       emptySince: null,
+      wish: { n: 0, target: 0, lastAt: 0, by: new Map(), show: null },
     };
     this.copies.set(id, c);
     // The first player finds the townsfolk already about their day.
@@ -633,6 +670,7 @@ export class PlazaWorld {
     if (!v || index < 0 || now - v.lastEmote < 1000) return false;
     v.lastEmote = now;
     v.emote = index + 1;
+    v.pair = false;
     v.emoteUntil = now + PLAZA.emoteSeconds * 1000;
     // Cheering someone on the runway counts for them.
     if (["❤️", "🔥", "👏"].includes(kind as string))
@@ -647,6 +685,111 @@ export class PlazaWorld {
           other.claps++;
         }
     return true;
+  }
+  /**
+   * Ask another player (walker id `to`) for a pair emote (`kind`, a
+   * PLAZA_PAIR_EMOTES id). Players only, never yourself, near enough, at
+   * most one request every PLAZA_PAIR.askEvery seconds, and one open request
+   * per player at a time. `blocked` (account ids) says if either blocked the
+   * other: then the request is never delivered, and the asker hears only
+   * that they can't be asked.
+   */
+  pairAsk(
+    key: string,
+    to: unknown,
+    kind: unknown,
+    now: number,
+    blocked: (a: string, b: string) => boolean = () => false,
+  ):
+    { ok: true; to: string; ask: PlazaPairAsk } | { ok: false; error: string } {
+    const v = this.visitors.get(key);
+    if (!v) return { ok: false, error: "Not in the Plaza." };
+    const index = PLAZA_PAIR_EMOTES.findIndex((p) => p.id === kind);
+    if (index < 0) return { ok: false, error: "Pick a pair emote." };
+    if (to === v.profile.id)
+      return { ok: false, error: "Ask someone else for that one." };
+    const t = [...this.visitors.values()].find(
+      (o) => o.plaza === v.plaza && o.profile.id === to,
+    );
+    if (!t || t === v || blocked(v.accountId, t.accountId))
+      return { ok: false, error: "They can't be asked right now." };
+    if (now - v.lastAsk < PLAZA_PAIR.askEvery * 1000)
+      return { ok: false, error: "Wait a moment before asking again." };
+    if (Math.hypot(t.body.x - v.body.x, t.body.y - v.body.y) > PLAZA_PAIR.reach)
+      return { ok: false, error: "Walk a little closer first." };
+    if (t.invite && t.invite.until > now && t.invite.from !== key)
+      return { ok: false, error: "They're answering someone else." };
+    v.lastAsk = now;
+    t.invite = {
+      from: key,
+      kind: index,
+      until: now + PLAZA_PAIR.askSeconds * 1000,
+    };
+    return {
+      ok: true,
+      to: t.key,
+      ask: {
+        from: v.profile.id,
+        name: v.profile.name,
+        kind: PLAZA_PAIR_EMOTES[index].id,
+        ms: PLAZA_PAIR.askSeconds * 1000,
+      },
+    };
+  }
+  /**
+   * Answer the request from walker `from`. Yes plays the pair emote for both,
+   * facing each other, for PLAZA_PAIR.playSeconds, if the request is still
+   * open, the asker still here and near and neither blocked the other.
+   */
+  pairAnswer(
+    key: string,
+    from: unknown,
+    yes: boolean,
+    now: number,
+    blocked: (a: string, b: string) => boolean = () => false,
+  ):
+    | { ok: true; declined: true; asker: string }
+    | {
+        ok: true;
+        declined?: false;
+        keys: [string, string];
+        start: PlazaPairStart;
+      }
+    | { ok: false; error: string } {
+    const v = this.visitors.get(key);
+    if (!v) return { ok: false, error: "Not in the Plaza." };
+    const inv = v.invite,
+      a = inv && this.visitors.get(inv.from);
+    if (!inv || inv.until <= now || !a || a.profile.id !== from) {
+      if (inv && inv.until <= now) v.invite = null;
+      return { ok: false, error: "That request has ended." };
+    }
+    v.invite = null;
+    if (a.plaza !== v.plaza || blocked(a.accountId, v.accountId))
+      return { ok: false, error: "That request has ended." };
+    if (!yes) return { ok: true, declined: true, asker: a.key };
+    if (
+      Math.hypot(a.body.x - v.body.x, a.body.y - v.body.y) >
+      PLAZA_PAIR.reach + PLAZA_PAIR.slack
+    )
+      return { ok: false, error: "You've moved too far apart." };
+    const pair = PLAZA_PAIR_EMOTES[inv.kind],
+      emote = emoteIndex(pair.emote);
+    for (const [p, o] of [
+      [a, v],
+      [v, a],
+    ]) {
+      p.emote = emote;
+      p.pair = true;
+      p.emoteUntil = now + PLAZA_PAIR.playSeconds * 1000;
+      p.lastEmote = now;
+      p.body.face = o.body.x >= p.body.x ? 1 : -1;
+    }
+    return {
+      ok: true,
+      keys: [a.key, v.key],
+      start: { kind: pair.id, a: a.profile.id, b: v.profile.id },
+    };
   }
   /** At most one treat every PLAZA.treatSeconds; true claims the slot. */
   treatReady(key: string, now: number) {
@@ -665,6 +808,76 @@ export class PlazaWorld {
       x: Math.round(v.body.x),
       y: Math.round(v.body.y),
     };
+  }
+  /** Standing at the fountain, where a treat becomes a wish (slack for lag). */
+  atFountain(key: string) {
+    const v = this.visitors.get(key);
+    return !!v && atFountain(v.body.x, v.body.y, PLAZA_WISH.slack);
+  }
+  /**
+   * A treat `key` threw into the fountain: one wish on their copy's meter.
+   * A full meter sets off the fireworks (after any still going), pays each
+   * wisher of the fill and starts again.
+   */
+  wish(key: string, now: number): PlazaEvent[] {
+    const v = this.visitors.get(key),
+      c = v && this.copies.get(v.plaza);
+    if (!v || !c) return [];
+    const m = c.wish;
+    if (m.n > 0 && now - m.lastAt >= PLAZA_WISH.idleMs) this.emptyWish(m);
+    if (m.n === 0) m.target = wishTarget(this.population(c.id));
+    m.n++;
+    m.lastAt = now;
+    m.by.set(v.accountId, (m.by.get(v.accountId) ?? 0) + 1);
+    const events: PlazaEvent[] = [];
+    if (m.n >= m.target) {
+      const prev = m.show ? m.show.at + PLAZA_WISH.showMs : 0;
+      m.show = {
+        at: Math.max(now, prev),
+        seed: Math.floor(this.random() * 1e9),
+      };
+      events.push(
+        { type: "wished", accounts: [...m.by.keys()], ref: this.wishId() },
+        { type: "news", plaza: c.id, news: { kind: "wish" } },
+      );
+      this.emptyWish(m);
+      events.push({
+        type: "wish",
+        plaza: c.id,
+        wish: { n: 0, target: 0, show: { ...m.show } },
+      });
+    } else
+      events.push({
+        type: "wish",
+        plaza: c.id,
+        wish: { n: m.n, target: m.target },
+      });
+    return events;
+  }
+  private emptyWish(m: WishMeter) {
+    m.n = 0;
+    m.target = 0;
+    m.by.clear();
+  }
+  /** The meter in a player's copy (sent when they join), fireworks if on. */
+  wishFor(key: string, now = Date.now()): PlazaWish | undefined {
+    const v = this.visitors.get(key),
+      c = v && this.copies.get(v.plaza);
+    if (!c) return undefined;
+    const m = c.wish,
+      show =
+        m.show && now < m.show.at + PLAZA_WISH.showMs
+          ? { ...m.show }
+          : undefined;
+    return { n: m.n, target: m.target, ...(show ? { show } : {}) };
+  }
+  /** A meter nobody has added to for PLAZA_WISH.idleMs empties. */
+  private stepWish(c: Copy, now: number, events: PlazaEvent[]) {
+    const m = c.wish;
+    if (m.n > 0 && now - m.lastAt >= PLAZA_WISH.idleMs) {
+      this.emptyWish(m);
+      events.push({ type: "wish", plaza: c.id, wish: { n: 0, target: 0 } });
+    }
   }
   /** The spot `key` stands at, if it is `spot` (a little slack for lag). */
   at(key: string, spot: PlazaSpotId) {
@@ -702,7 +915,10 @@ export class PlazaWorld {
     const events: PlazaEvent[] = [];
     for (const v of this.visitors.values()) {
       this.stepVisitor(v, from, now, dt);
-      if (v.emote && now >= v.emoteUntil) v.emote = 0;
+      if (v.emote && now >= v.emoteUntil) {
+        v.emote = 0;
+        v.pair = false;
+      }
       const lap = v.lap.update(v.body.x, v.body.y, now);
       if (lap.lapMs !== undefined && lap.lapMs >= 1000) {
         events.push({ type: "lap", key: v.key, ms: lap.lapMs });
@@ -808,6 +1024,7 @@ export class PlazaWorld {
         });
     }
     this.stepOrbs(c, players, now, events);
+    this.stepWish(c, now, events);
   }
   /** A townsperson's emote, seen by everyone in the copy. */
   private folkEmote(f: Folk, e: (typeof PLAZA_EMOTES)[number], now: number) {
@@ -1101,12 +1318,14 @@ export class PlazaWorld {
       version: number,
       emote: number,
       bot: boolean,
+      extra = 0,
     ) => {
       const flags =
         (body.dash > 0 ? PLAZA_FLAG.dash : 0) |
         (body.stun > 0 ? PLAZA_FLAG.stun : 0) |
         (body.boost > 0 ? PLAZA_FLAG.boost : 0) |
-        (bot ? PLAZA_FLAG.bot : 0);
+        (bot ? PLAZA_FLAG.bot : 0) |
+        extra;
       walkers.push([
         profile.id,
         Math.round(body.x),
@@ -1124,7 +1343,14 @@ export class PlazaWorld {
     };
     for (const v of this.visitors.values())
       if (v.plaza === me.plaza && (v === me || see(v.body)))
-        add(v.body, v.profile, v.version, v.emote, false);
+        add(
+          v.body,
+          v.profile,
+          v.version,
+          v.emote,
+          false,
+          v.pair && v.emote ? PLAZA_FLAG.pair : 0,
+        );
     for (const b of c.bots) if (see(b.body)) add(b.body, b.profile, 1, 0, true);
     for (const f of c.folk)
       if (see(f.body)) add(f.body, f.profile, 1, f.emote, true);

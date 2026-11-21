@@ -59,6 +59,8 @@ export interface PlazaTreat {
   treat: string;
   x: number;
   y: number;
+  /** Thrown into the fountain: a wish (PLAZA_WISH). */
+  wish?: true;
 }
 
 export const PLAZA_SQUARE = { x: 1350, y: 900, rx: 372, ry: 246 } as const;
@@ -1082,6 +1084,65 @@ export function orbHeight(ms: number) {
   return Math.max(0, ORB_SHOWER.height - 0.5 * ORB_SHOWER.gravity * t * t);
 }
 
+/* ---------- Wishing fountain: treats thrown at the fountain fill a shared
+   meter per Plaza copy; a full meter sets off fireworks and pays everyone who
+   wished (the database's arena_plaza_wish(), migration
+   20261120130000_plaza_wishing_fountain) ---------- */
+export const PLAZA_WISH = {
+  /** A treat thrown inside this ellipse round the fountain's centre is a wish (px). */
+  reach: { rx: 215, ry: 150 },
+  /** The server allows this much more (px), for lag. */
+  slack: 40,
+  /**
+   * Wishes to fill the meter: perPlayer for each player in the copy, between
+   * min and max, fixed by the fill's first wish. With treatsDaily 10, three or
+   * four players fill it with two treats each (a few minutes at the fountain);
+   * two need three each, and someone alone six (once a day): it pays best
+   * together.
+   */
+  perPlayer: 2,
+  min: 6,
+  max: 24,
+  /** A meter nobody has added to for this long empties (ms). */
+  idleMs: 10 * 60_000,
+  /** The fireworks over the square (ms). */
+  showMs: 5000,
+  /**
+   * Shop coins for each wisher in a fill (a PvP win's 15), at most perDay
+   * paid fills a Pacific day: 30 a day on top of the Plaza quests' 80.
+   */
+  coins: 15,
+  perDay: 2,
+} as const;
+/** Wishes a copy of `players` players needs to fill the meter. */
+export function wishTarget(players: number) {
+  const n = Math.ceil(Math.max(1, players | 0) * PLAZA_WISH.perPlayer);
+  return Math.max(PLAZA_WISH.min, Math.min(PLAZA_WISH.max, n));
+}
+/** Standing close enough to the fountain to throw a treat in (slack for lag). */
+export function atFountain(x: number, y: number, slack = 0) {
+  const dx = (x - PLAZA_FOUNTAIN.x) / (PLAZA_WISH.reach.rx + slack),
+    dy = (y - PLAZA_FOUNTAIN.y) / (PLAZA_WISH.reach.ry + slack);
+  return dx * dx + dy * dy <= 1;
+}
+/** A copy's wish meter, sent to everyone in it when it changes. */
+export interface PlazaWish {
+  /** Wishes so far, and how many fill it (0 wishes: the browser uses wishTarget). */
+  n: number;
+  target: number;
+  /** Fireworks: when they start (server ms) and their pattern's seed. */
+  show?: { at: number; seed: number };
+}
+/** What arena_plaza_wish answers for one wisher of a fill. */
+export interface PlazaWishPay {
+  /** Paid now (false: this fill was paid already, or today's cap is reached). */
+  paid: boolean;
+  /** Coins paid now (0 when not paid). */
+  coins: number;
+  /** Paid fills today, after this one. */
+  today: number;
+}
+
 /* ---------- Plaza today: daily quests paid in shop coins (the database's
    arena_plaza_quests(), migration 20261120120000_raise_plaza_quest_coins) ---------- */
 export const PLAZA_QUESTS = [
@@ -1136,6 +1197,58 @@ export type PlazaSpotId = (typeof PLAZA_SPOTS)[number]["id"];
 /** The spot within reach of (x, y), if any (the server checks reach with a little slack). */
 export function plazaSpotAt(x: number, y: number, slack = 0) {
   return PLAZA_SPOTS.find((s) => Math.hypot(x - s.x, y - s.y) < s.r + slack);
+}
+
+/* ---------- pair emotes ---------- */
+/**
+ * Emotes two players share, asked for from a player's card. In snapshots a
+ * pair emote is the walker's emote field set to `emote` (one of
+ * PLAZA_EMOTES, so a browser that doesn't know pair emotes still pops that
+ * bubble) with PLAZA_FLAG.pair set. Each must use a different `emote`.
+ */
+export const PLAZA_PAIR_EMOTES = [
+  { id: "highfive", label: "High five", icon: "✋", emote: "👏" },
+  { id: "hug", label: "Hug", icon: "🤗", emote: "❤️" },
+  { id: "dance", label: "Dance together", icon: "💃", emote: "💃" },
+] as const satisfies readonly {
+  id: string;
+  label: string;
+  icon: string;
+  emote: PlazaEmote;
+}[];
+export type PlazaPairEmoteId = (typeof PLAZA_PAIR_EMOTES)[number]["id"];
+export const PLAZA_PAIR = {
+  /** How near the other player must be to ask (px); answering allows `slack` more. */
+  reach: 160,
+  slack: 60,
+  /** An unanswered request lapses after this (s). */
+  askSeconds: 8,
+  /** How long the pair animation plays (s). */
+  playSeconds: 2,
+  /** At most one request this often per player (s). */
+  askEvery: 3,
+} as const;
+/** The pair emote a walker shows (emote field, flags), if any. */
+export function plazaPairOf(emote: number, flags: number) {
+  if (!(flags & PLAZA_FLAG.pair) || !emote) return undefined;
+  const e = PLAZA_EMOTES[emote - 1];
+  return PLAZA_PAIR_EMOTES.find((p) => p.emote === e);
+}
+/** A pair request, as the asked player hears it. */
+export interface PlazaPairAsk {
+  /** The asker's walker id and name. */
+  from: number;
+  name: string;
+  kind: PlazaPairEmoteId;
+  /** How long it stays open (ms). */
+  ms: number;
+}
+/** A pair emote starting, told to both players. */
+export interface PlazaPairStart {
+  kind: PlazaPairEmoteId;
+  /** The two walker ids: the asker, then the one who said yes. */
+  a: number;
+  b: number;
 }
 
 /* ---------- the ball pitch (Orb Ball) ---------- */
@@ -1252,7 +1365,14 @@ export function plazaBallStep<K>(
 
 /* ---------- what the server sends ---------- */
 /** Body flags in a snapshot. */
-export const PLAZA_FLAG = { dash: 1, stun: 2, boost: 4, bot: 8 } as const;
+export const PLAZA_FLAG = {
+  dash: 1,
+  stun: 2,
+  boost: 4,
+  bot: 8,
+  /** The emote is a pair emote (PLAZA_PAIR_EMOTES). */
+  pair: 16,
+} as const;
 /** One body: [id, x, y, z, face, flags, emote (1-based, 0 = none), speed]. */
 export type PlazaWalker = [
   number,
@@ -1328,7 +1448,8 @@ export interface PlazaProgress {
 export type PlazaNews =
   | { kind: "goal"; id: number; name: string; side: 0 | 1 }
   | { kind: "lap"; id: number; name: string; ms: number }
-  | { kind: "runway"; id: number; name: string };
+  | { kind: "runway"; id: number; name: string }
+  | { kind: "wish" };
 /** What the game server reports to the database (arena_plaza_record). */
 export interface PlazaRecord {
   player: string;
