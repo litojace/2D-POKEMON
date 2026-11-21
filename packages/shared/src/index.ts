@@ -840,7 +840,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           knockback: 0,
           status: "burn",
           statusDuration: 1.5,
-          cone: { grow: 110 },
+          cone: { grow: 70 },
         },
       ),
       ability(
@@ -960,7 +960,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "riptide-wave",
         "Riptide Wave",
         "wave",
-        24,
+        16,
         20,
         "After a short charge, a wall of water 380 px wide rolls from Tidefin along your aim across the whole court, over any wall. Enemies it reaches take 24 and are carried along for up to half a second; carried into a wall, they take 12 more and are stunned.",
         {
@@ -1228,9 +1228,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Pull into your shell for 2.5 seconds: you can't move or act, but take 45% less damage and regrow 30 HP.",
         {
           duration: 1.5,
-          heal: 10,
+          heal: 8,
           status: "shell",
-          burst: { damage: 14, radius: 140, knockback: 260 },
+          burst: { damage: 4, radius: 140, knockback: 260 },
         },
       ),
       ability(
@@ -1610,7 +1610,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           knockback: 0,
           status: "slow",
           statusDuration: 0.6,
-          cone: { freeze: 3, freezeFor: 0.7 },
+          cone: { freeze: 3, freezeFor: 0.5 },
         },
       ),
       ability(
