@@ -16,9 +16,11 @@ on:
   workflow_dispatch:
 # A newer push to the same branch replaces a run still in progress, except
 # on main, whose runs go to the end. A push to main runs verify only (a few
-# minutes); the scheduled run is in its own group.
+# minutes). Main's full runs, scheduled or started by hand (Run workflow on
+# main), share a group of their own: in main's push group, a waiting manual
+# run was replaced by the next merge, as the merge-started runs had been.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'scheduled-full-run' || github.ref }}
+  group: ${{ github.workflow }}-${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) && 'main-full-run' || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'schedule' && github.ref != 'refs/heads/main' }}
 jobs:
   lane:
@@ -143,11 +145,11 @@ jobs:
           path: playwright-report/
           retention-days: 14
   main-health:
-    # The scheduled full run speaks up: red opens an issue (or adds the new
-    # run to the open one), green closes it. Fix a red main before merging
-    # anything else (CLAUDE.md, "Merging to main").
+    # Main's full run (scheduled, or by hand on main) speaks up: red opens an
+    # issue (or adds the new run to the open one), green closes it. Fix a red
+    # main before merging anything else (CLAUDE.md, "Merging to main").
     needs: [verify, visual]
-    if: ${{ always() && github.event_name == 'schedule' }}
+    if: ${{ always() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) }}
     runs-on: ubuntu-24.04
     permissions:
       issues: write
@@ -173,6 +175,6 @@ jobs:
             else
               gh issue create --title "$TITLE" --body "$body
 
-          Fix it before merging anything else (CLAUDE.md, \"Merging to main\"). This closes itself when a scheduled run is green."
+          Fix it before merging anything else (CLAUDE.md, \"Merging to main\"). This closes itself when main's next full run is green."
             fi
           fi
