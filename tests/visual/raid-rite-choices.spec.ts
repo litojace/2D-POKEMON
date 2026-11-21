@@ -549,11 +549,29 @@ for (const size of [
             number.textContent,
             parseFloat(getComputedStyle(number).fontSize),
           ],
-          // The HUD and the battle controls step aside.
-          hidden: ["#raid-hud", "#mobile-controls", "#battle-chat"].map((s) => {
+          // The HUD and the battle controls step aside; the quick-chat
+          // button stays (a party talks between chapters), in a column the
+          // screen leaves free.
+          hidden: ["#raid-hud", "#mobile-controls"].map((s) => {
             const e = document.querySelector(s);
             return !e || getComputedStyle(e).visibility === "hidden";
           }),
+          chat: (() => {
+            const e = document.querySelector<HTMLElement>("#battle-chat");
+            if (!e || e.hidden) return "none";
+            if (getComputedStyle(e).visibility === "hidden") return "hidden";
+            const c = e.getBoundingClientRect();
+            const under = [...document.querySelectorAll("[data-raid-rite]")]
+              .map((t) => t.getBoundingClientRect())
+              .some(
+                (t) =>
+                  t.left < c.right &&
+                  t.right > c.left &&
+                  t.top < c.bottom &&
+                  t.bottom > c.top,
+              );
+            return under ? "over a tile" : "clear";
+          })(),
         };
       });
       expect(look.rect).toEqual([0, 0, size.width, size.height]);
@@ -563,7 +581,9 @@ for (const size of [
       expect(look.card).toEqual(["rgba(0, 0, 0, 0)", "0px"]);
       expect(look.number[0]).toBe("12");
       expect(look.number[1]).toBeGreaterThanOrEqual(40);
-      expect(look.hidden).toEqual([true, true, true]);
+      expect(look.hidden).toEqual([true, true]);
+      // A party (this room has two raiders) keeps its quick chat.
+      expect(look.chat).toBe("clear");
       // Every tile is a comfortable touch target, fully on screen and clear
       // of the notch's insets.
       const inset = size.island
