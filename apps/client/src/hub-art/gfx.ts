@@ -81,9 +81,12 @@ const GFX = (() => {
       s = sprite(RX * 2, RY * 2, RX, RY, (c) => {
         c.scale(1, RY / RX);
         const gr = c.createRadialGradient(0, 0, 0, 0, 0, RX);
-        gr.addColorStop(0, `rgba(22,34,28,${A})`);
-        gr.addColorStop(0.55, `rgba(22,34,28,${A * 0.65})`);
-        gr.addColorStop(1, "rgba(22,34,28,0)");
+        // A contact shadow: dark and cool where the thing meets the
+        // ground, fading out softly (shade is cool, light is warm).
+        gr.addColorStop(0, `rgba(16,26,44,${Math.min(0.62, A * 1.45)})`);
+        gr.addColorStop(0.32, `rgba(16,26,44,${A * 1.05})`);
+        gr.addColorStop(0.7, `rgba(18,30,44,${A * 0.42})`);
+        gr.addColorStop(1, "rgba(18,30,44,0)");
         c.fillStyle = gr;
         c.beginPath();
         c.arc(0, 0, RX, 0, 7);

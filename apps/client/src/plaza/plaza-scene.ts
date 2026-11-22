@@ -101,6 +101,7 @@ import {
   meadowLife,
   pathCobble,
   tuft,
+  turfClumps,
 } from "./plaza-ground-art";
 import { GFX } from "../hub-art/gfx";
 import {
@@ -424,7 +425,9 @@ export function openPlaza(options) {
       g.fill();
     }
     // Big soft patches of sunlit and shaded grass, as the land rolls.
-    grassLight(g, rnd, -GM, -GM, GW, GH, Math.round(26 * more));
+    grassLight(g, rnd, -GM, -GM, GW, GH, Math.round(40 * more));
+    // Clumps in the turf, each lit with its own small shadow.
+    turfClumps(g, rnd, -GM, -GM, GW, GH, Math.round(2600 * more));
     // Tufts: dark at the root, lit at the tips (light from the top left).
     for (let i = 0; i < 2000 * more; i++) tuft(g, rnd, gx(), gy(), 0.8 + rnd() * 0.5);
     // Flowers in drifts, clover patches and dandelion clocks, rather than
@@ -575,7 +578,7 @@ export function openPlaza(options) {
     g.arc(0, 0, SQ.rx + 10, 0, 7);
     g.fill();
     // The grout under the pavers: what shows between them.
-    g.fillStyle = "#c2b08c";
+    g.fillStyle = "#9c8a6a";
     g.beginPath();
     g.arc(0, 0, SQ.rx, 0, 7);
     g.fill();
@@ -600,8 +603,8 @@ export function openPlaza(options) {
         // Each paver: its shaded edge, then its face set up and in from it
         // so a sliver of shade shows on the side away from the light, and a
         // lit edge on the side toward it (the top left).
-        paver(2, 2);
-        g.fillStyle = GFX.dk(c, 0.14);
+        paver(2.6, 2.6);
+        g.fillStyle = GFX.dk(c, 0.24);
         g.fill();
         const mid = (a0 + a1) / 2,
           lx = Math.cos(mid),
@@ -609,13 +612,13 @@ export function openPlaza(options) {
           // How much this paver's outer edge faces the light (top left).
           face = -(lx + ly) * 0.7071;
         g.save();
-        g.translate(-0.8, -1.1);
-        paver(2.5, 3);
+        g.translate(-1.2, -1.8);
+        paver(3.2, 3.8);
         g.fillStyle = c;
         g.fill();
         g.restore();
-        g.strokeStyle = `rgba(255,255,255,${0.16 + 0.22 * Math.max(0, -face)})`;
-        g.lineWidth = 1.4;
+        g.strokeStyle = `rgba(255,255,255,${0.22 + 0.3 * Math.max(0, -face)})`;
+        g.lineWidth = 2;
         g.beginPath();
         g.arc(0, 0, r0 + 3.4, a0 + 0.03, a1 - 0.03);
         g.stroke();
@@ -3389,6 +3392,54 @@ export function openPlaza(options) {
    * The night's light map: each lamp, floodlight and lit window lifts the
    * darkness around it, so what it lights keeps its colours.
    */
+  /**
+   * Shadows of clouds drifting slowly across the Plaza by day (High
+   * graphics only): one soft lumpy shape painted once on a small canvas,
+   * stamped large and faint, cool in colour, so the light on the ground
+   * moves as it does outdoors.
+   */
+  let cloudPic = null;
+  function cloudShape() {
+    if (cloudPic) return cloudPic;
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 160;
+    const q = c.getContext("2d");
+    for (const [x, y, r] of [
+      [80, 86, 60],
+      [130, 70, 66],
+      [182, 88, 54],
+      [118, 104, 50],
+      [60, 104, 36],
+      [204, 102, 34],
+    ]) {
+      const gr = q.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, "rgba(20,36,70,.5)");
+      gr.addColorStop(0.6, "rgba(20,36,70,.32)");
+      gr.addColorStop(1, "rgba(20,36,70,0)");
+      q.fillStyle = gr;
+      q.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    return (cloudPic = c);
+  }
+  const CLOUDS = [
+    { y: 300, s: 1.0, v: 9, o: 0 },
+    { y: 1050, s: 1.25, v: 7, o: 1400 },
+    { y: 1500, s: 0.9, v: 11, o: 2600 },
+  ];
+  function drawCloudShadows(g, time, vx0, vy0, vx1, vy1) {
+    const span = W + 2 * PLAZA_MARGIN + 1100;
+    g.globalAlpha = 0.75;
+    for (const c of CLOUDS) {
+      const w = 1000 * c.s,
+        h = 620 * c.s,
+        x = -PLAZA_MARGIN - 1100 + ((c.o + time * c.v) % span),
+        y = c.y - h / 2;
+      if (x > vx1 || x + w < vx0 || y > vy1 || y + h < vy0) continue;
+      g.drawImage(cloudShape(), x, y, w, h);
+    }
+    g.globalAlpha = 1;
+  }
   /** A soft disc of one colour for the night's glows, made once. */
   const GLOW_DISCS = new Map();
   function glowDisc(c) {
@@ -5580,6 +5631,7 @@ export function openPlaza(options) {
     const sorted = depthSort(shown);
     if (debugOrder) debugOrder = sorted.map((i) => i.name ?? "?");
     for (const i of sorted) i.draw();
+    if (!low && night() < 0.5) drawCloudShadows(g, time, vx0, vy0, vx1, vy1);
     if (!photo) fishing.drawRod(g, P);
     BUTTER.forEach((b) => GFX.butterfly(g, time + b.ph, b.x, b.y, b.c, 1.3));
     if (!low) drawDragonflies(g, time);
