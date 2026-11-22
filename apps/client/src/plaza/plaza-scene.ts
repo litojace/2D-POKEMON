@@ -89,6 +89,7 @@ import {
   fountainTiers,
   waterOf as fountainWater,
 } from "./plaza-fountain-art";
+import { flowerArch } from "./plaza-props-art";
 import {
   fallenLeaves,
   grassEdge,
@@ -1265,20 +1266,61 @@ export function openPlaza(options) {
         x += w + 26;
       }
     }
+    // The south fence: pickets with pointed tops, lit on their left, each
+    // throwing a short shadow down-right, and two rails with a lit top
+    // edge and grain.
     for (let x = 10; x < W; x += 30) {
       if (Math.abs(x - GATE.x) < 72) continue;
-      g.fillStyle = "#9a6a3a";
+      g.fillStyle = "rgba(30,50,20,.28)";
       g.beginPath();
-      g.roundRect(x, GATE.y + 2, 10, 28, 3);
+      g.ellipse(x + 9, GATE.y + 31, 8, 3, 0, 0, 7);
       g.fill();
-      g.fillStyle = "#c48a4a";
-      g.fillRect(x, GATE.y + 2, 10, 4);
+      const picket = () => {
+        g.beginPath();
+        g.moveTo(x, GATE.y + 30);
+        g.lineTo(x, GATE.y + 4);
+        g.lineTo(x + 5, GATE.y - 2);
+        g.lineTo(x + 10, GATE.y + 4);
+        g.lineTo(x + 10, GATE.y + 30);
+        g.closePath();
+      };
+      picket();
+      g.fillStyle = "#8f6034";
+      g.fill();
+      g.fillStyle = "#b57d45";
+      g.fillRect(x + 1, GATE.y + 4, 5, 26);
+      g.fillStyle = "rgba(255,228,180,.55)";
+      g.fillRect(x + 1, GATE.y + 4, 1.4, 26);
+      g.strokeStyle = "#5e3c1e";
+      g.lineWidth = 1;
+      picket();
+      g.stroke();
+      g.strokeStyle = "rgba(94,60,30,.4)";
+      g.beginPath();
+      g.moveTo(x + 6.5, GATE.y + 8);
+      g.lineTo(x + 6, GATE.y + 26);
+      g.stroke();
     }
-    g.fillStyle = "#b07a42";
-    g.fillRect(0, GATE.y + 10, GATE.x - 72, 5);
-    g.fillRect(GATE.x + 72, GATE.y + 10, W - GATE.x - 72, 5);
-    g.fillRect(0, GATE.y + 21, GATE.x - 72, 4);
-    g.fillRect(GATE.x + 72, GATE.y + 21, W - GATE.x - 72, 4);
+    for (const [x0, x1] of [
+      [0, GATE.x - 72],
+      [GATE.x + 72, W],
+    ])
+      for (const ry of [GATE.y + 10, GATE.y + 21]) {
+        g.fillStyle = "#8f6034";
+        g.fillRect(x0, ry, x1 - x0, 5);
+        g.fillStyle = "#c48a4a";
+        g.fillRect(x0, ry, x1 - x0, 2);
+        g.fillStyle = "rgba(60,40,20,.25)";
+        g.fillRect(x0, ry + 5, x1 - x0, 1.5);
+        g.strokeStyle = "rgba(94,60,30,.35)";
+        g.lineWidth = 0.7;
+        g.beginPath();
+        for (let gx = x0 + 12; gx < x1; gx += 47) {
+          g.moveTo(gx, ry + 3.2);
+          g.lineTo(gx + 16, ry + 3.4);
+        }
+        g.stroke();
+      }
     // The river bank's verge and railing along the north edge, and the
     // world past the edges.
     paintVerge(g);
@@ -4276,36 +4318,9 @@ export function openPlaza(options) {
     GFX.blit(g, mapBoard(), BOARD.x, BOARD.y + 4);
   }
   function drawGate(g) {
-    const { x, y } = GATE;
-    [x - 70, x + 70].forEach((px) => {
-      const gg = g.createLinearGradient(px - 9, 0, px + 9, 0);
-      gg.addColorStop(0, "#c48a4a");
-      gg.addColorStop(1, "#7a5230");
-      g.fillStyle = gg;
-      g.beginPath();
-      g.roundRect(px - 9, y - 116, 18, 120, 4);
-      g.fill();
-    });
-    g.strokeStyle = "#3f8f3a";
-    g.lineWidth = 22;
-    g.beginPath();
-    g.arc(x, y - 112, 70, Math.PI, 0);
-    g.stroke();
-    g.strokeStyle = "#6fcf5a";
-    g.lineWidth = 15;
-    g.stroke();
-    for (let i = 0; i < 12; i++) {
-      const a = Math.PI + (i / 11) * Math.PI;
-      GFX.ball(
-        g,
-        x + Math.cos(a) * 70,
-        y - 112 + Math.sin(a) * 70,
-        6,
-        ["#ff8fb8", "#ffd65b", "#ffffff"][i % 3],
-      );
-    }
+    // The flower arch, baked (plaza-props-art.ts).
+    GFX.blit(g, flowerArch(70, 112), GATE.x, GATE.y);
   }
-  const HK = PLAZA_SCALE.house;
   function drawHouse(g, h, n) {
     GFX.shadow(g, h.x + 30 * HK, h.y + 4, 110 * HK, 22 * HK);
     GFX.blit(g, h.spr, h.x, h.y, HK);
