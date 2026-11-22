@@ -359,19 +359,25 @@ test("Fish walks you out onto the dock, facing the water, and the line goes out 
       const b = (window as any).__plazaWorld.bodyOf("local");
       return { x: b.x, y: b.y };
     });
-  const S = PLAZA_DOCK.stand;
-  // The server (the harness's real PlazaWorld) walks you there too.
-  await expect
-    .poll(async () => {
-      const at = await local();
-      return Math.hypot(at.x - S.x, at.y - S.y);
-    })
-    .toBeLessThan(14);
-  const at = await local();
-  expect(at.x).toBeGreaterThan(PLAZA_DOCK.x0);
-  expect(at.x).toBeLessThan(PLAZA_DOCK.x1);
-  expect(at.y).toBeGreaterThan(PLAZA_DOCK.y0);
-  expect(at.y).toBeLessThan(PLAZA_DOCK.y1);
+  const S = PLAZA_DOCK.stand,
+    W = PLAZA_DOCK.walk,
+    P = PLAZA_POND;
+  // The server (the harness's real PlazaWorld) walks you out too: onto the
+  // dock's planks, at its outer end, over the water. Not to the pixel: on a
+  // runner drawing a few frames a second the browser steps at most 0.05 s
+  // a frame while the server plays the stick for the real time, so the
+  // server's copy can walk on to the planks' far corner (main, 22 Nov:
+  // 18.7 px from the stand, at x1/y1).
+  const onDockEnd = (at: { x: number; y: number }) =>
+    at.x >= S.x - 12 &&
+    at.x <= W.x1 + 0.5 &&
+    at.y >= W.y0 - 0.5 &&
+    at.y <= W.y1 + 0.5 &&
+    ((at.x - P.x) / P.rx) ** 2 + ((at.y - P.y) / P.ry) ** 2 < 1;
+  await expect.poll(async () => onDockEnd(await local())).toBe(true);
+  // And it stays there (you're not walking on past it).
+  await page.waitForTimeout(800);
+  expect(onDockEnd(await local())).toBe(true);
   // Still fishing, and the cast works from the dock.
   await expect(page.locator("#pz-fishhud")).toBeVisible();
   await cast(page);
