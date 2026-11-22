@@ -159,9 +159,9 @@ for (const size of SIZES)
         await page.waitForTimeout(600);
         const c = await court(page);
         // Desktop and tablets: the whole court is in view (the raid camera).
-        // Phones follow the raider, never past the court's edges.
+        // Phones follow the raider: the court covers the screen, never past
+        // its edges (at most its full width: RAID_FOLLOW_ZOOM is 1).
         if (size.phone && size.height <= 600) {
-          expect(c.view.w).toBeLessThan(1599);
           expect(c.view.w).toBeLessThanOrEqual(1600.5);
           expect(c.view.h).toBeLessThanOrEqual(900.5);
         } else {

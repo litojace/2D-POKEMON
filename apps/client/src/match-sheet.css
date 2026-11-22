@@ -43,7 +43,10 @@ body.battle-active
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* max-content: an auto row could shrink to 0 px when the middle is
+     taller than the screen, and the title then drew over the scrolling
+     details (found on a phone by #362's session, 22 Nov 2026). */
+  grid-template-rows: max-content minmax(0, 1fr) max-content;
   width: 100%;
   max-width: none;
   height: 100%;
@@ -112,8 +115,12 @@ body.touch-mode.chat-corner
   padding: 0;
   text-align: center;
 }
-#arena-overlay#arena-overlay.is-sheet > .overlay-card {
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+/* PvP's card has four rows (kicker, title, details, foot). As specific as
+   the sheet's own rule above, and after it: with the sheet's three rows
+   the title fell into the stretching row and shrank to 0 px whenever the
+   details were taller than the screen, drawing over them (22 Nov 2026). */
+body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
+  grid-template-rows: max-content max-content minmax(0, 1fr) max-content;
 }
 #arena-overlay#arena-overlay.is-sheet
   :is(.rc-head .ui-kicker, .overlay-card > .eyebrow) {

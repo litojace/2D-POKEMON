@@ -862,28 +862,55 @@ export class AccountUI {
     if (this.account) {
       element("account-profile").onclick = () => void this.showProfile();
       element("account-coins").onclick = () => void this.showShop();
-      element("account-logout").onclick = async () => {
-        if (this.account?.guest && !this.confirmedGuestLogout) {
-          this.hooks.openDialog(
-            `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
-          );
-          element("guest-save").onclick = () => void this.showProfile();
-          element("guest-leave").onclick = () => {
-            this.confirmedGuestLogout = true;
-            element<HTMLDialogElement>("dialog").close();
-            element("account-logout")?.click();
-          };
-          return;
-        }
-        this.confirmedGuestLogout = false;
-        await this.signOutHere();
-      };
+      element("account-logout").onclick = () => void this.logOut();
       if (this.account.isAdmin)
         element("account-admin").onclick = () => void this.showAdmin();
     } else {
       element("account-login").onclick = () => this.showAuth("login");
       element("account-signup").onclick = () => this.showAuth("signup");
     }
+  }
+  /**
+   * Log out on this device (the header's button, the title screen's Switch
+   * account). A guest is warned first: their pass can't be recovered.
+   */
+  async logOut() {
+    if (this.account?.guest && !this.confirmedGuestLogout) {
+      this.hooks.openDialog(
+        `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
+      );
+      element("guest-save").onclick = () => void this.showProfile();
+      element("guest-leave").onclick = () => {
+        this.confirmedGuestLogout = true;
+        element<HTMLDialogElement>("dialog").close();
+        void this.logOut();
+      };
+      return;
+    }
+    this.confirmedGuestLogout = false;
+    await this.signOutHere();
+  }
+  /** Your avatar in your frame, as the header shows it (title screen). */
+  identityPicture() {
+    return identityPortrait({
+      avatar: this.avatar,
+      raidLook: this.raidLook,
+      raidClears: this.raidClears,
+    });
+  }
+  /** Your level, once the profile is in. */
+  get level() {
+    return this.economy?.journey
+      ? playerLevel(this.economy.journey.xp).level
+      : null;
+  }
+  /** How this account signs in: "apple", "google", "email" or "guest". */
+  get signInMethod() {
+    if (this.account?.guest) return "guest";
+    const provider = (
+      this.session?.user?.app_metadata as { provider?: unknown } | undefined
+    )?.provider;
+    return typeof provider === "string" ? provider : "email";
   }
   /**
    * Sign in with Apple in the iPhone app: Apple's own sheet, then Supabase

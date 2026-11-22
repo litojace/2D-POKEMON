@@ -26,6 +26,8 @@ export const isNativeApp = () => Capacitor.isNativePlatform();
  * Safari; the website links to its own.
  */
 export const PRIVACY_URL = `${(import.meta.env.VITE_SITE_URL || "").replace(/\/+$/, "")}/privacy.html`;
+/** Help and contact (public/support.html), the same way as the policy. */
+export const SUPPORT_URL = `${(import.meta.env.VITE_SITE_URL || "").replace(/\/+$/, "")}/support.html`;
 
 interface AppleSignInResult {
   user: string;

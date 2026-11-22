@@ -78,6 +78,36 @@ async function sheet(page: Page, card: string) {
   }, card);
 }
 
+/**
+ * Results longer than the screen (the XP card, a level-up, a note): the
+ * title keeps its row and the content scrolls under it. The title's grid
+ * row once shrank to 0 px on a phone held sideways and drew over the
+ * scrolling details (22 Nov 2026, found by #362's session).
+ */
+async function tallKeepsTitle(page: Page, card: string) {
+  return page.evaluate((card) => {
+    const c = document.querySelector(`#arena-overlay ${card}`)!;
+    const body = c.querySelector<HTMLElement>(
+      ".rc-body, :scope > .panel-scroll",
+    )!;
+    const filler = document.createElement("div");
+    filler.style.height = "900px";
+    filler.style.flex = "none";
+    filler.dataset.testFiller = "";
+    body.append(filler);
+    const head = c.querySelector(".rc-head, :scope > h2")!;
+    const h = head.getBoundingClientRect(),
+      b = body.getBoundingClientRect();
+    const out = {
+      titleHeight: Math.round(h.height),
+      overlap: Math.round(h.bottom - b.top),
+      scrolls: body.scrollHeight > body.clientHeight,
+    };
+    filler.remove();
+    return out;
+  }, card);
+}
+
 function holds(
   s: Awaited<ReturnType<typeof sheet>>,
   size: { width: number; height: number },
@@ -216,6 +246,10 @@ for (const size of SIZES) {
           name === "win" ? "rgb(111, 227, 161)" : "rgb(255, 138, 149)",
         );
         expect(look.icons.every(Boolean)).toBe(true);
+        const tall = await tallKeepsTitle(page, ".match-sheet");
+        expect(tall.titleHeight).toBeGreaterThanOrEqual(20);
+        expect(tall.overlap).toBeLessThanOrEqual(0);
+        expect(tall.scrolls).toBe(true);
         await snap(page, info, `pvp-${name}-${label(size)}`);
       }
       // Back in a fight: nothing over the arena.
@@ -274,6 +308,10 @@ for (const size of SIZES) {
         await page.waitForTimeout(300);
         const lost = await sheet(page, ".rc-card");
         holds(lost, size);
+        const tall = await tallKeepsTitle(page, ".rc-card");
+        expect(tall.titleHeight).toBeGreaterThanOrEqual(20);
+        expect(tall.overlap).toBeLessThanOrEqual(0);
+        expect(tall.scrolls).toBe(true);
         // A loss in red, every button with its icon (they were hidden on
         // short phones, where PvP's showed).
         expect(lost.kicker).toBe("rgb(255, 138, 149)");
