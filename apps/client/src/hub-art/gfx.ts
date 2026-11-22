@@ -381,8 +381,43 @@ const GFX = (() => {
           g.arc(x, y, r + 2.2, 0, 7);
           g.fill();
         });
+        // Leaf tips standing proud of the outline, in the dark outline's
+        // colour then the leaf colour, so the edge reads as leaves.
+        for (let i = 0; i < 26; i++) {
+          const [x, y, r] = L[Math.floor(rnd() * L.length)],
+            a = Math.PI + rnd() * Math.PI,
+            px = x + Math.cos(a) * (r + 1),
+            py = y + Math.sin(a) * (r + 1);
+          g.fillStyle = dk(P.d, 0.35);
+          ell(g, px, py, 4.2, 3, a);
+          g.fill();
+          g.fillStyle = P.c;
+          ell(g, px - Math.cos(a) * 1.2, py - Math.sin(a) * 1.2, 3.2, 2.2, a);
+          g.fill();
+        }
         L.forEach(([x, y, r]) => ball(g, x, y, r, P.c, 0.3));
         g.globalCompositeOperation = "source-atop";
+        // Leaf scallops in shade and lit leaflets toward the light.
+        for (let i = 0; i < Math.round(w * 0.6); i++) {
+          const [x, y, r] = L[Math.floor(rnd() * L.length)],
+            a = rnd() * Math.PI * 2,
+            d = rnd() * r * 0.9,
+            px = x + Math.cos(a) * d,
+            py = y + Math.sin(a) * d;
+          g.strokeStyle = rgba(P.d, 0.4);
+          g.lineWidth = 1.2;
+          g.beginPath();
+          g.arc(px, py, 3 + rnd() * 2.5, Math.PI * 0.1, Math.PI * 0.9);
+          g.stroke();
+        }
+        for (let i = 0; i < Math.round(w * 0.25); i++) {
+          const [x, y, r] = L[Math.floor(rnd() * L.length)],
+            px = x - r * 0.3 + (rnd() - 0.5) * r * 0.8,
+            py = y - r * 0.35 + (rnd() - 0.5) * r * 0.6;
+          g.fillStyle = rgba(mix(P.c, P.h, 0.6), 0.45);
+          ell(g, px, py, 1.8 + rnd() * 1.4, 1.1 + rnd() * 0.8, -0.5);
+          g.fill();
+        }
         const ao = g.createLinearGradient(0, -H * 0.2, 0, 4);
         ao.addColorStop(0, "rgba(0,30,10,0)");
         ao.addColorStop(1, "rgba(0,30,10,.35)");
@@ -452,13 +487,58 @@ const GFX = (() => {
         g.save();
         path();
         g.clip();
+        // A facet: the right of the stone turned away from the light.
+        g.fillStyle = "rgba(40,46,70,.18)";
+        g.beginPath();
+        g.moveTo(w * 0.08, -w * 0.5);
+        g.lineTo(w * 0.2, -w * 0.12);
+        g.lineTo(w * 0.05, 4);
+        g.lineTo(w, 4);
+        g.lineTo(w, -w);
+        g.closePath();
+        g.fill();
+        g.strokeStyle = "rgba(60,64,84,.45)";
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(w * 0.08, -w * 0.5);
+        g.lineTo(w * 0.2, -w * 0.12);
+        g.lineTo(w * 0.05, 2);
+        g.stroke();
+        // A crack, and speckles of lichen and grit.
+        g.beginPath();
+        g.moveTo(-w * 0.3, -w * 0.18);
+        g.lineTo(-w * 0.18, -w * 0.08);
+        g.lineTo(-w * 0.22, 0);
+        g.stroke();
+        for (let i = 0; i < 10; i++) {
+          g.fillStyle = i % 3 ? "rgba(70,74,92,.3)" : "rgba(230,224,170,.55)";
+          g.beginPath();
+          g.arc((rnd() - 0.5) * w * 0.8, -rnd() * w * 0.4, 0.6 + rnd() * 0.8, 0, 7);
+          g.fill();
+        }
         g.fillStyle = "rgba(255,255,255,.35)";
         ell(g, -w * 0.14, -w * 0.34, w * 0.22, w * 0.1, -0.3);
         g.fill();
         g.fillStyle = "#6fbf54";
         ell(g, w * 0.12, -w * 0.36, w * 0.16, w * 0.07);
         g.fill();
+        g.fillStyle = "rgba(200,240,150,.6)";
+        ell(g, w * 0.09, -w * 0.39, w * 0.08, w * 0.03);
+        g.fill();
         g.restore();
+        // Grass grown up round its foot.
+        g.lineCap = "round";
+        for (let i = 0; i < 7; i++) {
+          const x = -w * 0.55 + (i / 6) * w * 1.1 + (rnd() - 0.5) * 4;
+          g.strokeStyle = i % 2 ? "#4c9a3c" : "#7cc65a";
+          g.lineWidth = 1.4;
+          g.beginPath();
+          g.moveTo(x, 3);
+          g.lineTo(x - 2, -4 - rnd() * 3);
+          g.moveTo(x + 2, 3);
+          g.lineTo(x + 3, -3 - rnd() * 3);
+          g.stroke();
+        }
       }),
     );
   }
@@ -1163,6 +1243,20 @@ const GFX = (() => {
           g.closePath();
           g.fillStyle = dk(wall, 0.22);
           g.fill();
+          g.save();
+          g.clip();
+          g.strokeStyle = rgba(dk(wall, 0.5), 0.3);
+          g.lineWidth = 1;
+          for (let y = top + 14; y < 0; y += 14) {
+            g.beginPath();
+            g.moveTo(x1, y);
+            g.lineTo(x1 + depth, y - depth * 0.45);
+            g.stroke();
+          }
+          // Shade where the roof overhangs it.
+          g.fillStyle = rgba(dk(wall, 0.7), 0.25);
+          g.fillRect(x1, top - depth, depth, 14 + depth * 0.45);
+          g.restore();
           g.strokeStyle = dk(wall, 0.55);
           g.lineWidth = 2;
           g.stroke();
@@ -1173,12 +1267,25 @@ const GFX = (() => {
           g.strokeStyle = "#5e584c";
           g.lineWidth = 1.5;
           g.stroke();
-          for (let x = x0; x < x1; x += 18) {
-            g.beginPath();
-            g.moveTo(x, -12);
-            g.lineTo(x, 2);
-            g.stroke();
-          }
+          // Fieldstones of mixed sizes in the foundation, lit on top.
+          g.save();
+          rr(g, x0 - 4, -12, w + 8, 14, 3);
+          g.clip();
+          g.lineWidth = 1;
+          for (let row = 0; row < 2; row++)
+            for (let x = x0 - 4 - row * 7; x < x1 + 4; ) {
+              const sw = 10 + rnd() * 12,
+                y = -12 + row * 7;
+              rr(g, x + 0.8, y + 0.8, sw - 1.6, 5.4, 2);
+              g.fillStyle = mix("#d4cec2", "#a29a8a", rnd());
+              g.fill();
+              g.strokeStyle = "rgba(70,64,54,.5)";
+              g.stroke();
+              g.fillStyle = "rgba(255,255,255,.35)";
+              g.fillRect(x + 2, y + 1.4, sw * 0.5, 1);
+              x += sw;
+            }
+          g.restore();
           // front wall
           g.fillStyle = vg(g, top, 0, lt(wall, 0.25), wall, dk(wall, 0.1));
           g.fillRect(x0, top, w, hgt - 12);
@@ -1192,6 +1299,35 @@ const GFX = (() => {
             g.moveTo(x0 + 2, y);
             g.lineTo(x1 - 2, y);
             g.stroke();
+          }
+          // Each board's lit lower edge, just under its line.
+          g.strokeStyle = rgba(lt(wall, 0.6), 0.5);
+          for (let y = top + 15.2; y < -14; y += 14) {
+            g.beginPath();
+            g.moveTo(x0 + 2, y);
+            g.lineTo(x1 - 2, y);
+            g.stroke();
+          }
+          // The wall falls into shade toward its right (light from the
+          // left), and under the eaves.
+          const sh = g.createLinearGradient(x0, 0, x1, 0);
+          sh.addColorStop(0, "rgba(255,255,255,.1)");
+          sh.addColorStop(0.5, "rgba(255,255,255,0)");
+          sh.addColorStop(1, rgba(dk(wall, 0.6), 0.16));
+          g.fillStyle = sh;
+          g.fillRect(x0, top, w, hgt - 12);
+          const ev = g.createLinearGradient(0, top, 0, top + 18);
+          ev.addColorStop(0, rgba(dk(wall, 0.75), 0.4));
+          ev.addColorStop(1, rgba(dk(wall, 0.75), 0));
+          g.fillStyle = ev;
+          g.fillRect(x0, top, w, 18);
+          // Corner boards at both ends.
+          for (const cx of [x0, x1 - 6]) {
+            g.fillStyle = cx === x0 ? lt(wall, 0.55) : lt(wall, 0.2);
+            g.fillRect(cx, top + 2, 6, hgt - 14);
+            g.strokeStyle = rgba(dk(wall, 0.5), 0.5);
+            g.lineWidth = 1;
+            g.strokeRect(cx, top + 2, 6, hgt - 14);
           }
           // door
           const dw = Math.min(34, w * 0.24),
@@ -1208,18 +1344,69 @@ const GFX = (() => {
           g.strokeStyle = dk(door, 0.5);
           g.lineWidth = 2.2;
           g.stroke();
-          g.strokeStyle = rgba(dk(door, 0.5), 0.5);
-          g.lineWidth = 1;
+          // A fanlight of glass in the arch, then four sunk panels.
           g.beginPath();
-          g.moveTo(dx + dw / 2, -14);
-          g.lineTo(dx + dw / 2, -12 - dh + 6);
+          g.arc(dx + dw / 2, -12 - dh + dw / 2, dw / 2 - 3.5, Math.PI, 0);
+          g.closePath();
+          g.fillStyle = vg(g, -12 - dh, -12 - dh + dw / 2, "#d6f0ff", "#7fb4dc");
+          g.fill();
+          g.strokeStyle = dk(door, 0.45);
+          g.lineWidth = 1.2;
           g.stroke();
+          for (let k = 1; k < 4; k++) {
+            const a = Math.PI + (k * Math.PI) / 4;
+            g.beginPath();
+            g.moveTo(dx + dw / 2, -12 - dh + dw / 2);
+            g.lineTo(
+              dx + dw / 2 + Math.cos(a) * (dw / 2 - 3.5),
+              -12 - dh + dw / 2 + Math.sin(a) * (dw / 2 - 3.5),
+            );
+            g.stroke();
+          }
+          const py0 = -12 - dh + dw / 2 + 4,
+            ph = (-16 - py0) / 2 - 2;
+          for (let r = 0; r < 2; r++)
+            for (let c = 0; c < 2; c++) {
+              const px = dx + 4 + c * (dw / 2 - 2),
+                py = py0 + r * (ph + 3);
+              rr(g, px, py, dw / 2 - 6, ph, 1.5);
+              g.fillStyle = rgba(dk(door, 0.4), 0.35);
+              g.fill();
+              g.fillStyle = rgba(lt(door, 0.5), 0.35);
+              g.fillRect(px + 1, py + ph - 1.6, dw / 2 - 8, 1);
+            }
           g.fillStyle = "#ffd65b";
           g.beginPath();
-          g.arc(dx + dw * 0.78, -12 - dh * 0.45, 2.2, 0, 7);
+          g.arc(dx + dw * 0.8, -12 - dh * 0.42, 2.2, 0, 7);
           g.fill();
+          g.fillStyle = "#b8862a";
+          g.beginPath();
+          g.arc(dx + dw * 0.8 + 0.5, -12 - dh * 0.42 + 0.6, 1, 0, 7);
+          g.fill();
+          // The step, with a doormat on it.
           rr(g, dx - 6, -12, dw + 12, 6, 2);
           g.fillStyle = "#b8b0a0";
+          g.fill();
+          g.fillStyle = "rgba(255,255,255,.4)";
+          g.fillRect(dx - 4, -11.5, dw + 8, 1.2);
+          rr(g, dx + 3, -10, dw - 6, 3.5, 1.5);
+          g.fillStyle = mix(door, "#c9583a", 0.5);
+          g.fill();
+          // A little lantern on the wall beside the door (lit at night).
+          // (Over the door's arch when windows flank the door closely.)
+          const lx = windows === 2 ? 0 : dx + dw + 8,
+            ly = windows === 2 ? -12 - dh - 6 : -12 - dh * 0.72;
+          g.fillStyle = "#2c3348";
+          rr(g, lx - 3.5, ly - 7, 7, 1.8, 1);
+          g.fill();
+          rr(g, lx - 2.5, ly - 5.5, 5, 8, 1.2);
+          g.fillStyle = "#ffe9a8";
+          g.fill();
+          g.strokeStyle = "#2c3348";
+          g.lineWidth = 1.2;
+          g.stroke();
+          g.fillStyle = "#2c3348";
+          rr(g, lx - 3, ly + 2.5, 6, 1.6, 0.8);
           g.fill();
           // windows
           const win = [],
@@ -1254,8 +1441,31 @@ const GFX = (() => {
             g.lineWidth = 1.5;
             g.stroke();
             rr(g, wx, wy, ww, wh, 3);
-            g.fillStyle = vg(g, wy, wy + wh, "#bfe8ff", "#6aa8d8");
+            g.fillStyle = vg(g, wy, wy + wh, "#a8d6f2", "#5d93c2");
             g.fill();
+            // The room's dark top and a pair of tied-back curtains.
+            g.fillStyle = "rgba(30,40,70,.22)";
+            g.fillRect(wx, wy, ww, wh * 0.35);
+            const cur = mix(shutters || "#ff9bd2", "#ffffff", 0.55);
+            for (const d of [0, 1]) {
+              g.beginPath();
+              const ex = d ? wx + ww : wx;
+              g.moveTo(ex, wy + 1);
+              g.lineTo(ex + (d ? -ww * 0.3 : ww * 0.3), wy + 1);
+              g.quadraticCurveTo(
+                ex + (d ? -ww * 0.12 : ww * 0.12),
+                wy + wh * 0.55,
+                ex + (d ? -ww * 0.2 : ww * 0.2),
+                wy + wh - 1,
+              );
+              g.lineTo(ex, wy + wh - 1);
+              g.closePath();
+              g.fillStyle = cur;
+              g.fill();
+              g.strokeStyle = rgba(dk(cur, 0.35), 0.6);
+              g.lineWidth = 0.8;
+              g.stroke();
+            }
             g.fillStyle = "rgba(255,255,255,.55)";
             g.beginPath();
             g.moveTo(wx + 3, wy + wh - 4);
@@ -1286,8 +1496,34 @@ const GFX = (() => {
                 g.fill();
               }
             }
+            // The sill: a lit ledge with its shadow on the wall.
+            g.fillStyle = rgba(dk(wall, 0.6), 0.3);
+            g.fillRect(wx - 4, wy + wh + (flowers ? 11 : 4), ww + 8, 2.5);
+            if (!flowers) {
+              rr(g, wx - 5, wy + wh + 1, ww + 10, 3.5, 1.2);
+              g.fillStyle = "#fff8ec";
+              g.fill();
+            }
             win.push([wx, wy, ww, wh]);
           });
+          // Ivy climbing one corner of every other house.
+          if (sd % 2) {
+            const vx = sd % 4 === 1 ? x0 + 4 : x1 - 6;
+            g.strokeStyle = "#5a7a34";
+            g.lineWidth = 1.2;
+            g.beginPath();
+            g.moveTo(vx, -12);
+            for (let y = -12; y > top + 12; y -= 6)
+              g.lineTo(vx + Math.sin(y * 0.3) * 4, y);
+            g.stroke();
+            for (let y = -14; y > top + 10; y -= 3.2) {
+              const lx = vx + Math.sin(y * 0.3) * 4 + (rnd() - 0.5) * 12;
+              g.fillStyle = rnd() < 0.5 ? "#4f9a3c" : "#6fbf4a";
+              g.beginPath();
+              g.ellipse(lx, y, 3, 2.2, rnd() * 3, 0, 7);
+              g.fill();
+            }
+          }
           // chimney
           if (chimney) {
             const cx = x0 + w * 0.72;
@@ -1296,8 +1532,24 @@ const GFX = (() => {
             g.strokeStyle = "#5e2a1a";
             g.lineWidth = 1.8;
             g.strokeRect(cx, ridge + roofH * 0.1, 18, roofH * 0.6);
+            g.strokeStyle = "rgba(94,42,26,.45)";
+            g.lineWidth = 0.8;
+            for (let r = 0, y = ridge + roofH * 0.1 + 5; y < ridge + roofH * 0.7; y += 5, r++) {
+              g.beginPath();
+              g.moveTo(cx, y);
+              g.lineTo(cx + 18, y);
+              for (let bx = cx + (r % 2 ? 3 : 7.5); bx < cx + 18; bx += 9) {
+                g.moveTo(bx, y - 5);
+                g.lineTo(bx, y);
+              }
+              g.stroke();
+            }
+            g.fillStyle = "rgba(255,220,200,.3)";
+            g.fillRect(cx + 1, ridge + roofH * 0.1, 3, roofH * 0.6);
             g.fillStyle = "#6a3424";
             g.fillRect(cx - 3, ridge + roofH * 0.1 - 6, 24, 7);
+            g.fillStyle = "#3a1c12";
+            g.fillRect(cx + 2, ridge + roofH * 0.1 - 7, 14, 2);
           }
           // roof (hip, with tile rows)
           const ov = 14,
@@ -1331,15 +1583,56 @@ const GFX = (() => {
           g.closePath();
           g.fillStyle = rgba(dk(roof, 0.5), 0.45);
           g.fill();
-          for (let y = ridge + 8; y < top + 4; y += 11) {
+          // Tiles row by row: each a shade lighter or darker than the
+          // next, staggered, with its lit lower lip and a shadow line.
+          for (let y = ridge + 8, row = 0; y < top + 4; y += 11, row++) {
+            for (let x = x0 - ov - 10 + (row % 2) * 6; x < x1 + ov + depth; x += 12) {
+              const v = rnd();
+              if (v < 0.3 || v > 0.82) {
+                g.fillStyle =
+                  v < 0.3
+                    ? rgba(dk(roof, 0.3), 0.2)
+                    : rgba(lt(roof, 0.4), 0.18);
+                g.beginPath();
+                g.moveTo(x + 0.8, y - 4);
+                g.lineTo(x + 0.8, y);
+                g.arc(x + 6, y, 5.2, Math.PI, 0, true);
+                g.lineTo(x + 11.2, y - 4);
+                g.closePath();
+                g.fill();
+              }
+            }
             g.strokeStyle = rgba(dk(roof, 0.55), 0.55);
             g.lineWidth = 1.6;
             g.beginPath();
-            for (let x = x0 - ov - 10; x < x1 + ov + depth; x += 12) {
+            for (let x = x0 - ov - 10 + (row % 2) * 6; x < x1 + ov + depth; x += 12) {
               g.moveTo(x, y);
               g.arc(x + 6, y, 6, Math.PI, 0, true);
             }
             g.stroke();
+            g.strokeStyle = rgba(lt(roof, 0.5), 0.35);
+            g.lineWidth = 1;
+            g.beginPath();
+            for (let x = x0 - ov - 10 + (row % 2) * 6; x < x1 + ov + depth; x += 12) {
+              g.moveTo(x + 1.5, y + 3.5);
+              g.arc(x + 6, y + 1.5, 4.5, Math.PI * 0.8, Math.PI * 0.2, true);
+            }
+            g.stroke();
+          }
+          // A few patches of moss on the tiles.
+          for (let k = 0; k < 4; k++) {
+            g.fillStyle = "rgba(110,150,70,.35)";
+            g.beginPath();
+            g.ellipse(
+              x0 + rnd() * w,
+              ridge + roofH * (0.4 + rnd() * 0.5),
+              4 + rnd() * 5,
+              2 + rnd() * 2,
+              0,
+              0,
+              7,
+            );
+            g.fill();
           }
           g.fillStyle = "rgba(255,255,255,.18)";
           g.fillRect(x0, ridge, w, 6);
@@ -1368,6 +1661,7 @@ const GFX = (() => {
           }
           return {
             win,
+            lamp: [lx, ly - 1.5],
             chimney: chimney
               ? [x0 + w * 0.72 + 9, ridge + roofH * 0.1 - 8]
               : null,
