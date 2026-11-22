@@ -785,6 +785,35 @@ dialog.framed-dialog .adm-tabs > .admin-tab {
   background: #13223e;
   color: #e2ecff;
 }
+.adm-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid #8baee530;
+  border-radius: 10px;
+  background: #13223e;
+  cursor: pointer;
+}
+#adm-root .adm-check input {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  flex: none;
+  accent-color: #ffd65b;
+}
+.adm-check span {
+  display: grid;
+  gap: 2px;
+}
+.adm-check b {
+  font-size: calc(13px * var(--text-scale, 1));
+}
+.adm-check small {
+  color: var(--adm-dim);
+  font-size: calc(11px * var(--text-scale, 1));
+}
 .adm-preview {
   display: grid;
   gap: 2px;

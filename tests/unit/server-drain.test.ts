@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import {
   busyRoom,
+  supersededBy,
   trackWrites,
   waitForDrain,
 } from "../../apps/server/src/drain";
@@ -76,4 +77,16 @@ it("waits for busy rooms and saves, but never past the deadline", async () => {
   });
   expect(late).toEqual({ finished: false, busy: 1, saving: 1 });
   expect(now).toBe(5500);
+});
+
+it("reads a newer server only from a /api/health reply with another id", () => {
+  expect(supersededBy({ ok: true, server: "aaaa1111" }, "bbbb2222")).toBe(
+    "aaaa1111",
+  );
+  expect(supersededBy({ ok: true, server: "bbbb2222" }, "bbbb2222")).toBe(
+    undefined,
+  );
+  // An older build (no id), a broken reply, nothing: no move.
+  for (const reply of [{ ok: true }, { server: 7 }, null, undefined, "x"])
+    expect(supersededBy(reply, "bbbb2222")).toBe(undefined);
 });
