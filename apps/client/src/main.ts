@@ -411,11 +411,6 @@ import {
   paintIllustratedRaidFloor,
   prefetchRaidArena,
 } from "./raid-arena-art";
-import {
-  RAID_WIDE_BOUNDS,
-  RAID_WIDE_TINT,
-  loadRaidWideArt,
-} from "./raid-arena-wide";
 import type { LayerAt } from "./raid-layers";
 import {
   courtBlockFrame,
@@ -5183,9 +5178,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   pillarRig?: PillarRig;
   /** Shared floor textures continue into dim, non-playable scenery around the court. */
   raidSurround: Phaser.GameObjects.Image[] = [];
-  /** The world beyond a raid court's walls, as one picture (raid-arena-wide.ts). */
-  raidWide?: Phaser.GameObjects.Image;
-  private raidWideId?: IllustratedRaidFloor;
   /** The Spire's court: sky, cover, stairs and number (spire-court-rig.ts). */
   spireRig?: SpireCourtRig;
   /** The Spire floor on show, and the next one already painted. */
@@ -5300,42 +5292,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (source instanceof HTMLCanvasElement) source.width = source.height = 0;
     }
   }
-  /**
-   * Show the picture of the world round this raid court (undefined: none),
-   * loading it first if need be; the mirrored copies fill in meanwhile.
-   * Only one is kept: the last court's goes, like its floor (releaseFloor).
-   */
-  private showRaidWide(id: IllustratedRaidFloor | undefined) {
-    this.raidWideId = id;
-    const key = id ? `raid-wide-${id}` : undefined;
-    if (!key || !this.textures.exists(key)) this.raidWide?.setVisible(false);
-    if (this.raidWide && this.raidWide.texture.key !== key)
-      this.raidWide.setTexture("__DEFAULT");
-    for (const k of this.textures.getTextureKeys())
-      if (k.startsWith("raid-wide-") && k !== key) this.textures.remove(k);
-    if (!id || !key) return;
-    if (this.textures.exists(key)) return this.placeRaidWide(key);
-    loadRaidWideArt(id, (image) => {
-      // The fight may have moved on while it loaded.
-      if (!this.textures || this.raidWideId !== id) return;
-      if (!this.textures.exists(key)) this.textures.addImage(key, image);
-      this.placeRaidWide(key);
-    });
-  }
-  private placeRaidWide(key: string) {
-    const b = RAID_WIDE_BOUNDS;
-    this.raidWide ??= this.add
-      .image(0, 0, key)
-      .setOrigin(0)
-      .setDepth(-12)
-      .setTint(RAID_WIDE_TINT);
-    this.raidWide
-      .setTexture(key)
-      .setPosition(b.x, b.y)
-      .setDisplaySize(b.width, b.height)
-      .setVisible(true);
-    for (const image of this.raidSurround) image.setVisible(false);
-  }
   /** Bake and place a court's blocks (once per court). */
   private ensureBlocks(id: CourtId) {
     if (this.courtBlocks.has(id)) return this.courtBlocks.get(id)!;
@@ -5443,17 +5399,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         .setTexture(key)
         .setDisplaySize(1600, 900)
         .setVisible(raid && !spire);
-    // Where the court has a picture of the world round it, that shows past
-    // the walls instead of the mirrored copies (once it has loaded).
-    this.showRaidWide(
-      raid && !spire
-        ? this.courtRaid
-          ? "raid-coliseum"
-          : isIllustratedRaidFloor(arena)
-            ? arena
-            : undefined
-        : undefined,
-    );
     if (court) this.ensureBlocks(court);
     // Grumblecrag's raid shows its own pillars (the PvP blocks stay as they are).
     for (const [cid, list] of this.courtBlocks)

@@ -272,7 +272,8 @@ function clampCentre(
   const halfVis = (height - top) / zoom / 2,
     lift = top / zoom / 2;
   // Where the view is as wide as the court or wider, the apron still lets
-  // it slide sideways: the world art beyond the court fills what shows.
+  // it slide sideways, so your raider at a wall stands clear of the
+  // joystick (the dimmed surround fills what shows past the court).
   const xLo = halfW - apron.left / zoom,
     xHi = 1600 - halfW + apron.right / zoom;
   const x = xLo <= xHi ? clamp(c.x, xLo, xHi) : 800;
