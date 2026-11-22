@@ -165,7 +165,7 @@ export function renderRaidUI(
   if (state.phase === "playing") {
     overlay.classList.remove("is-rites");
     document.body.classList.remove("raid-rites-open");
-    overlay.classList.remove("is-countdown");
+    overlay.classList.remove("is-countdown", "is-sheet");
     setOverlayMarkup(overlay, "");
     overlay.style.pointerEvents = "none";
     const banner = document.getElementById("spectate")!;
@@ -290,13 +290,18 @@ export function renderRaidUI(
   // whole screen, one big number, no card (style.css, .is-countdown). Marked
   // with the markup, in the same step (main.ts says why).
   overlay.classList.toggle("is-countdown", state.phase === "countdown");
+  // The briefing ("I'm ready") and the results take the whole screen in the
+  // PvP Reveal's style, raids and the Spire alike (match-sheet.css): every
+  // mode opens and ends the same way (owner, 22 Nov 2026).
+  overlay.classList.toggle("is-sheet", shared);
+  overlay.classList.remove("is-break"); // (PvP's, main.ts)
   document.body.classList.toggle("raid-rites-open", rites);
   const replaced = setOverlayMarkup(
     overlay,
     rites
       ? (spire?.screen ?? ritesScreen(state, me, kicker))
       : shared
-        ? `<div class="ui rc-card ${state.phase === "finished" ? "is-results" : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">${escape(kicker)}</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
+        ? `<div class="ui rc-card ${state.phase === "finished" ? `is-results ${r.result === "victory" ? "is-victory" : "is-defeat"}` : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">${escape(kicker)}</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
         : `<div class="overlay-card raid-overlay${state.phase === "intermission" ? " raid-draft action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">${escape(kicker)}</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
     undefined,
     // Picking a rite redraws the same panel: it doesn't pop in again.
