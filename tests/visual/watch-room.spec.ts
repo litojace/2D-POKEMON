@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub, openPlayPanel, snap } from "./helpers";
+import { inkOffset } from "./tag-ink";
 
 /**
  * Watching a room (main.ts renderWatchOverlay, chat/battle-chat.ts,
@@ -190,7 +191,7 @@ for (const size of SIZES)
         );
         await expect(
           page.locator(".battle-chat-feed li.is-watcher"),
-        ).toHaveText("Vi Well played!");
+        ).toHaveText("ALLViWell played!");
         // To the whole room, with an eye before the name.
         const vi = page.locator(".battle-chat-feed li.is-watcher");
         await expect(vi).toHaveAttribute("data-to", "all");
@@ -310,7 +311,7 @@ test("a player sees a watcher's cheer, and Mute others hides it", async ({
     await expect(page.locator("#battle-chat")).toBeVisible();
     await cheer(1);
     await expect(page.locator(".battle-chat-feed li.is-watcher")).toHaveText(
-      "Vi Nice!",
+      "ALLViNice!",
     );
     await page.click("#battle-chat");
     await page.click("[data-battle-mute]");
@@ -323,3 +324,97 @@ test("a player sees a watcher's cheer, and Mute others hides it", async ({
     await context.close();
   }
 });
+
+for (const size of [
+  { width: 667, height: 375, touch: true },
+  { width: 844, height: 390, touch: true },
+  { width: 1280, height: 720, touch: false },
+])
+  test(`the feed's TEAM / ALL tags hold their letters in the middle at ${size.width}x${size.height}`, async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const scale = 3;
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.touch,
+      hasTouch: size.touch,
+      deviceScaleFactor: scale,
+    });
+    const page = await context.newPage();
+    try {
+      await openHub(page);
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("pvp", { mode: "teams", phase: "playing" });
+        w.__snap.watchers = ["Vi"];
+      });
+      await openPlayPanel(page);
+      await page.evaluate(() =>
+        document.querySelector<HTMLButtonElement>("#play-create")!.click(),
+      );
+      await expect
+        .poll(
+          () =>
+            page.evaluate(() => {
+              (window as any).__push();
+              return document.body.classList.contains("battle-active");
+            }),
+          { timeout: 60_000, intervals: [400] },
+        )
+        .toBe(true);
+      await page.evaluate(() => {
+        const fire = (id: number, from: string, name: string, extra: object) =>
+          (window as any).__sock.fire("chat", {
+            id,
+            channel: "room",
+            from: { id: from, name },
+            at: Date.now(),
+            ...extra,
+          });
+        fire(1, "acct-p3", "Rae", { quick: "help", fighter: "p3" });
+        fire(2, "acct-p2", "Kai", { quick: "fire", fighter: "p2" });
+        fire(3, "acct-vi", "Vi", { quick: "nice", watcher: true });
+      });
+      await expect(page.locator(".battle-chat-to")).toHaveText([
+        "TEAM",
+        "ALL",
+        "ALL",
+      ]);
+      // Measured from one shot, while the lines are still at full strength.
+      const [shot, layout] = await Promise.all([
+        page.screenshot({ animations: "allow" }),
+        page.evaluate(() => {
+          const r = (e: Element) => {
+            const b = e.getBoundingClientRect();
+            return { x: b.x, y: b.y, width: b.width, height: b.height };
+          };
+          const rows = [...document.querySelectorAll(".battle-chat-feed li")];
+          return rows.map((li) => ({
+            tag: r(li.querySelector(".battle-chat-to")!),
+            name: r(li.querySelector("b")!),
+            eye: li.querySelector("b svg")
+              ? r(li.querySelector("b svg")!)
+              : null,
+          }));
+        }),
+      ]);
+      const mid = (b: { y: number; height: number }) => b.y + b.height / 2;
+      for (const row of layout) {
+        // Within half a CSS pixel of the middle, both ways (the letters' ink,
+        // not their font box: caps alone sit high in an em box).
+        const off = inkOffset(shot, row.tag, scale);
+        expect(Math.abs(off.dx), JSON.stringify(off)).toBeLessThanOrEqual(0.6);
+        expect(Math.abs(off.dy), JSON.stringify(off)).toBeLessThanOrEqual(0.6);
+        // The tag, the name and the eye share one middle line.
+        expect(Math.abs(mid(row.tag) - mid(row.name))).toBeLessThanOrEqual(1);
+        if (row.eye)
+          expect(Math.abs(mid(row.eye) - mid(row.name))).toBeLessThanOrEqual(1);
+      }
+      // Same width, so the names line up.
+      expect(new Set(layout.map((r) => Math.round(r.tag.width))).size).toBe(1);
+      expect(new Set(layout.map((r) => Math.round(r.name.x))).size).toBe(1);
+    } finally {
+      await context.close();
+    }
+  });

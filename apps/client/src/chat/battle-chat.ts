@@ -253,11 +253,17 @@ export function mountBattleChat(hooks: BattleChatHooks): BattleChatView {
         eye.setAttribute("role", "img");
         eye.setAttribute("aria-label", "Watching");
       }
-      li.append(who, document.createTextNode(` ${text}`));
       // Who heard it (the server decides; this says what it decided): an
       // emote or a watcher's line reaches the whole room, a call or a
-      // phrase only the speaker's side. Drawn by the CSS (TEAM / ALL).
-      li.dataset.to = emote || watcher ? "all" : "team";
+      // phrase only the speaker's side.
+      const to = emote || watcher ? "all" : "team";
+      li.dataset.to = to;
+      const tag = document.createElement("span");
+      tag.className = "battle-chat-to";
+      tag.textContent = to === "all" ? "ALL" : "TEAM";
+      const said = document.createElement("span");
+      said.textContent = text;
+      li.append(tag, who, said);
       if (watcher) li.classList.add("is-watcher");
       else if (!team) li.classList.add("is-rival");
       feed.append(li);
