@@ -4163,6 +4163,10 @@ socket.on("connect", () => {
     return;
   }
   connected = true;
+  // A fresh connection lands on the server that takes new ones now; if a
+  // deploy is replacing that one too, it says so again (server-update).
+  moveToNewServer = updateSaid.moving = updateSaid.draining = false;
+  clearTimeout(restartReminder);
   // Tell the server what this browser saw when it last dropped (once).
   const dropReport = connectionWatch.reconnected();
   if (dropReport) socket.emit("connection-report", dropReport);
@@ -4184,10 +4188,15 @@ socket.on("connect", () => {
   $("connection").textContent = "SERVER CONNECTED";
   $("connection").classList.add("online");
   const token = sessionStorage.getItem("arena-token");
+  // After a move to a new server (server-update): its own words, not the
+  // resume's "Room expired." (the room stayed on the old server).
+  const note = resumeNote;
+  resumeNote = undefined;
   if (token)
-    void request("resume", { token }).then((reply) => {
+    void request("resume", { token }, note !== undefined).then((reply) => {
       if (reply.ok) identity(reply);
       else {
+        if (note) toast(note);
         sessionStorage.removeItem("arena-token");
         lobbySelection.reset();
         state = undefined;
@@ -4270,16 +4279,75 @@ socket.on("account-changed", () => void accountsUI.refresh());
 // Announcements from the admins (announcements.ts): at once to every open game.
 socket.on("announcement", (data: unknown) => announcements.receive(data));
 socket.on("announcement-ended", (data: unknown) => announcements.end(data));
-// A deploy is replacing the server (docs/server-updates.md): a match in
-// progress plays on to the end; new matches wait for the new server.
-socket.on("server-update", () => {
+// A deploy is replacing the server (docs/server-updates.md). A newer server
+// already takes new connections: this one moves there as soon as it is out
+// of a room (a match, its results, a watched one), so every new match starts
+// on the new server. A match in progress plays on here, and once Render asks
+// this server to stop, the player reads how long it still has.
+let moveToNewServer = false;
+/** What was already said about this update (each said once). */
+const updateSaid = { moving: false, draining: false };
+let restartReminder: ReturnType<typeof setTimeout> | undefined;
+/** Said instead of a failed resume's own error after a move (connect). */
+let resumeNote: string | undefined;
+/** In a room: a match, its results, or watching one. */
+const inRoom = () => !!state || !!watching;
+function moveToNewServerNow() {
+  moveToNewServer = false;
+  clearTimeout(restartReminder);
+  if (!socket.connected) return;
+  // A room lobby can't start here any more (the server refuses Ready); on
+  // the new server it no longer exists.
+  if (state?.phase === "lobby")
+    resumeNote =
+      "The game moved to its new version: open or join the room again.";
+  socket.disconnect().connect();
+}
+// Out of the match (back in the Lobby, or in the room's lobby, where nothing
+// can start on this server any more): move now. Results stay up until left.
+setInterval(() => {
+  if (
+    moveToNewServer &&
+    socket.connected &&
+    (!inRoom() || state?.phase === "lobby")
+  )
+    moveToNewServerNow();
+}, 2000);
+socket.on("server-update", (data: unknown) => {
   pwa.serverUpdating();
-  const phase = state?.phase;
-  toast(
-    !state?.practice && phase && phase !== "lobby" && phase !== "finished"
-      ? "A server update is waiting. Your match continues; the update follows it."
-      : "The server is updating. New matches open again in about a minute.",
-  );
+  const notice = (data ?? {}) as {
+    reconnect?: boolean;
+    draining?: boolean;
+    left?: number;
+    closing?: boolean;
+  };
+  if (notice.closing) {
+    // The time ran out with this match still going: the connection drops
+    // next, and the room isn't on the new server.
+    toast(
+      "The server restarted for the update before your match ended. Moving you to the new version…",
+    );
+    resumeNote = ""; // said already: the failed resume adds nothing
+    return;
+  }
+  if (notice.reconnect || notice.draining) moveToNewServer = true;
+  if (!inRoom() || state?.phase === "lobby") return moveToNewServerNow();
+  if (notice.draining && !updateSaid.draining) {
+    updateSaid.draining = updateSaid.moving = true;
+    const left = Math.max(0, notice.left ?? 0);
+    toast(
+      `Update: the server restarts in about ${Math.max(1, Math.round(left / 60000))}\u00a0min. Finish your match, then update.`,
+    );
+    clearTimeout(restartReminder);
+    if (left > 75_000)
+      restartReminder = setTimeout(() => {
+        if (state && state.phase !== "finished")
+          toast("The server restarts in under a minute: finish your match.");
+      }, left - 60_000);
+  } else if (!updateSaid.moving) {
+    updateSaid.moving = true;
+    toast("A new version is ready. Finish your match, then you'll move to it.");
+  }
 });
 // Coins, missions or Awakening changed after a match or raid.
 socket.on("economy-changed", () => void accountsUI.loadEconomy());
