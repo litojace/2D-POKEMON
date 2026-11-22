@@ -116,6 +116,12 @@ for (const size of SIZES) {
           );
         });
         expect(lines).toBe(1);
+        // phone-fit.spec's floor: no text under 10 px.
+        expect(
+          await q
+            .locator("span")
+            .evaluate((span) => parseFloat(getComputedStyle(span).fontSize)),
+        ).toBeGreaterThanOrEqual(10);
         if (size.phone) {
           const b = (await q.boundingBox())!;
           expect(b.height).toBeLessThanOrEqual(46);

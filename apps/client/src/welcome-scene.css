@@ -346,7 +346,7 @@
     padding: 4px 2px;
     gap: 3px;
     border-radius: 11px;
-    font-size: calc(9.5px * var(--text-scale, 1));
+    font-size: calc(10px * var(--text-scale, 1));
   }
   .gate-quick-btn .menu-option-icon {
     inline-size: 16px;
