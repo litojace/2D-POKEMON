@@ -84,12 +84,13 @@ it("starts this week’s fixed arcade with an AI and awards an arcade-tagged res
   for (let i = 0; i < 100; i++) server!.step();
   expect(a.phase).toBe("playing");
   host.emit("input", { ...blankInput(), seq: 1, dx: 1 });
-  await new Promise((r) => setTimeout(r, 10));
+  // Wait for the input to reach the server, not a fixed 10 ms: on a busy CI
+  // runner it can land after the forfeit, and the player reads as idle.
+  await vi.waitFor(() => expect(a.engaged.has(r.id!)).toBe(true));
   a.playTime = 30;
   a.forfeit(r.id!);
   for (let i = 0; i < 4; i++) server!.step();
-  await new Promise((r) => setTimeout(r, 10));
-  expect(recordActivity).toHaveBeenCalledTimes(1);
+  await vi.waitFor(() => expect(recordActivity).toHaveBeenCalledTimes(1));
   expect(recordActivity.mock.calls[0][0].players[0]).toMatchObject({
     arcade: weekly.id,
     participated: true,
