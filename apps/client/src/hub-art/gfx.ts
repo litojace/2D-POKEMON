@@ -526,113 +526,6 @@ const GFX = (() => {
         g.stroke();
       }),
     );
-  /**
-   * A wooden fingerpost: a post with one arrow plank per way (dir 1 points
-   * right), stacked top to bottom, each with its icon on a round badge at
-   * the tail and its words. `icon(name)` gives the hub icon's image; the
-   * sprite is kept only once every icon has loaded (a sign painted before
-   * would keep empty badges). Planks alternate a little in tone and tilt,
-   * like boards nailed up one at a time.
-   */
-  const signpost = (arms, icon) => {
-    const key = `signpost:${arms.map((a) => `${a.text}/${a.dir}/${a.icon}`).join("|")}`;
-    if (cache.has(key)) return cache.get(key);
-    // Painted before its icons had loaded: that one, again at most twice a
-    // second (not a new canvas every frame).
-    const early = signEarly.get(key);
-    if (early && performance.now() - early.at < 500) return early.spr;
-    const ims = arms.map((a) => icon?.(a.icon));
-    const ready = ims.every((im) => !im || im.complete);
-    const STEP = 34,
-      top = 66 + arms.length * STEP;
-    const spr = sprite(170, top + 18, 85, top + 8, (g) => {
-      // The post, with a little cap.
-      g.fillStyle = vg(g, -top, 0, "#7a5230", "#5a3a1e");
-      rr(g, -4.5, -top + 14, 9, top - 14, 3);
-      g.fill();
-      g.fillStyle = "#4a2e16";
-      rr(g, -6.5, -top + 10, 13, 7, 3);
-      g.fill();
-      g.fillStyle = "rgba(255,255,255,.18)";
-      g.fillRect(-3, -top + 18, 2, top - 22);
-      arms.forEach((arm, i) => {
-        const y = -top + 30 + i * STEP,
-          d = arm.dir,
-          tilt = (i % 2 ? -1 : 1) * 0.025 * d;
-        g.save();
-        g.translate(0, y);
-        g.rotate(tilt);
-        g.scale(d, 1);
-        const plank = () => {
-          g.beginPath();
-          g.moveTo(-60, -14);
-          g.lineTo(50, -14);
-          g.lineTo(70, 0);
-          g.lineTo(50, 14);
-          g.lineTo(-60, 14);
-          g.closePath();
-        };
-        g.fillStyle = "rgba(0,0,0,.25)";
-        g.save();
-        g.translate(0, 3);
-        plank();
-        g.fill();
-        g.restore();
-        plank();
-        g.fillStyle = vg(
-          g,
-          -14,
-          14,
-          i % 2 ? "#cf9656" : "#c48a4a",
-          i % 2 ? "#946234" : "#8a5a30",
-        );
-        g.fill();
-        g.strokeStyle = "#5a3a1e";
-        g.lineWidth = 2.5;
-        g.stroke();
-        // Grain and the nail into the post.
-        g.strokeStyle = "rgba(90,58,30,.35)";
-        g.lineWidth = 1;
-        g.beginPath();
-        g.moveTo(-54, -5);
-        g.lineTo(40, -6);
-        g.moveTo(-50, 6);
-        g.lineTo(46, 5);
-        g.stroke();
-        g.fillStyle = "#3a2614";
-        g.beginPath();
-        g.arc(0, 0, 1.8, 0, 7);
-        g.fill();
-        // The badge at the tail, with the place's icon.
-        g.fillStyle = "#fff4d6";
-        g.beginPath();
-        g.arc(-44, 0, 11.5, 0, 7);
-        g.fill();
-        g.strokeStyle = "#5a3a1e";
-        g.lineWidth = 2;
-        g.stroke();
-        g.scale(d, 1);
-        const im = ims[i];
-        if (im && im.complete) g.drawImage(im, -44 * d - 9, -9, 18, 18);
-        // The words, the right way round whichever way it points.
-        g.fillStyle = "#fff4d6";
-        g.strokeStyle = "#4a2e16";
-        g.lineWidth = 3;
-        g.font = "800 17px 'Barlow Condensed', sans-serif";
-        g.textAlign = "center";
-        g.textBaseline = "middle";
-        g.strokeText(arm.text, d * 12, 1);
-        g.fillText(arm.text, d * 12, 1);
-        g.restore();
-      });
-    });
-    if (ready) {
-      cache.set(key, spr);
-      signEarly.delete(key);
-    } else signEarly.set(key, { spr, at: performance.now() });
-    return spr;
-  };
-  const signEarly = new Map();
 
   /* ---------------- by the fishing dock (PLAZA_DECOR) ---------------- */
   /** A rack of fishing rods: an A-frame with three rods leaning on it. */
@@ -2159,7 +2052,6 @@ const GFX = (() => {
     rock,
     lamp,
     bench,
-    signpost,
     rodRack,
     bucket,
     tackleBox,
