@@ -146,7 +146,7 @@ npx playwright install chromium   # once
 npm run test:visual
 ```
 
-CI runs them on ten runners at once (six shards of the suite and four of the slow panel-scroll sweeps) and merges the shards' results into one HTML report, the `visual-report` artifact. To run one shard locally: `npm run test:visual -- --grep-invert 'scroll to their end' --shard=1/6`.
+CI splits them into thirty shards of about equal running time (`scripts/visual-shards.mjs`, from each test's CI time in `tests/visual/durations.json`), one runner each, and merges the shards' results into one HTML report, the `visual-report` artifact. `node scripts/visual-shards.mjs --plan 30` shows the split. To run one shard locally: `node scripts/visual-shards.mjs 1 30 shard.txt && npm run test:visual -- --test-list shard.txt`.
 
 The asset export regenerates the original SVG prototypes and creates metadata for new folders. Existing manifests and rendered/artist portraits are preserved. `node scripts/generate-icons.mjs` renders the app icon (`scripts/app-icon.svg`, original art) to the iPhone app icon, launch screen and PWA icons.
 
