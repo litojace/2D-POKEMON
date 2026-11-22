@@ -240,6 +240,8 @@ async function fakeAdmin(page: Page) {
           });
           return reply({ applied, balance: balance + applied });
         }
+        if (path === "/api/admin/push-reach")
+          return reply({ available: true, devices: 12 });
         if (path === "/api/admin/announcements")
           return reply(state.announcements);
         if (path === "/api/admin/announce") {
@@ -252,7 +254,7 @@ async function fakeAdmin(page: Page) {
             by: "Boss",
           };
           state.announcements.unshift(sent);
-          return reply(sent);
+          return reply(body.push ? { ...sent, push: { devices: 12 } } : sent);
         }
         if (path === "/api/admin/announcements/end") {
           state.announcements.find((a) => a.id === body.id)!.endsAt =
@@ -632,14 +634,42 @@ test("Admin actions on a phone held sideways", async ({ browser }, info) => {
     await expect(
       page.locator('form[data-form="announce"] textarea'),
     ).toHaveValue("");
-    const first = page.locator("[data-announcement]").first();
+    // A second one, also as a notification: the reach, the confirm, the
+    // request and the toast say so.
+    const again = page.locator('form[data-form="announce"]');
+    await expect(again.locator(".adm-check")).toContainText("12 devices");
+    await again.locator("textarea").fill("Servers restart at 03:00.");
+    await again.locator('input[name="push"]').check();
+    await again.locator("button:not([type=button])").click();
+    await expect(page.locator(".adm-announce .admin-confirm")).toContainText(
+      "notification to 12 devices",
+    );
+    await snap(page, info, "admin-announce-push-844x390");
+    await page.locator('[data-act="announce-yes"]').click();
+    await expect(page.locator("#admin-message")).toHaveText(
+      "Sent to every player, and as a notification to 12 devices.",
+    );
+    expect((await calls(page)).at(-1)).toEqual({
+      path: "/api/admin/announce",
+      body: {
+        message: "Servers restart at 03:00.",
+        tone: "info",
+        hours: 24,
+        push: true,
+      },
+    });
+    // The tick doesn't stay on for the next one.
+    await expect(
+      page.locator('form[data-form="announce"] input[name="push"]'),
+    ).not.toBeChecked();
+    const first = page.locator("[data-announcement]").nth(1);
     await expect(first).toContainText("Double coins");
     await expect(first.locator(".adm-running")).toContainText("Ends in");
     await first.locator('[data-act="announce-end"]').click();
     await expect(page.locator("#admin-message")).toContainText(
       "Announcement ended",
     );
-    await expect(page.locator("[data-announcement]").first()).toHaveClass(
+    await expect(page.locator("[data-announcement]").nth(1)).toHaveClass(
       /is-ended/,
     );
 
