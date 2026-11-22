@@ -11,6 +11,7 @@ import {
   BOT_PROFILES,
   BotBrain,
   EASY_DAZE_GAP,
+  RAID_BOT_PROFILES,
   RAID_DAZE_BY,
 } from "../../apps/server/src/bot";
 
@@ -65,7 +66,8 @@ describe("bot difficulty", () => {
     const { arena, p } = duel("cindrake", 600, "voltkit", 700);
     // Raid mode (stand-ins, Spire Echoes) keeps the old daze, from raidDazeBy.
     arena.mode = "raid";
-    const b = brain("A", { raidDazeBy: { cindrake: 1 }, dazeBy: {} });
+    const raid = RAID_BOT_PROFILES.normal;
+    const b = brain("A", { raidDazeBy: { cindrake: 1 }, dazeBy: {} }, raid);
     for (let i = 0; i < 10; i++) {
       arena.time += 1 / RULES.tick;
       const input = b.think(arena, p);
@@ -77,14 +79,14 @@ describe("bot difficulty", () => {
       ]);
     }
     // Not dazed: the same spot gets a swing.
-    const awake = brain("A", { raidDazeBy: {}, dazeBy: {}, rest: 0 });
+    const awake = brain("A", { raidDazeBy: {}, dazeBy: {}, rest: 0 }, raid);
     expect(awake.think(arena, p).basic).toBe(true);
     // Easy (Spire Echoes on the early floors) is never dazed in a raid,
     // whatever its PvP lapses: a level without raidDazeBy keeps none.
     const echo = brain(
       "A",
       { dazeBy: { cindrake: 1 }, rest: 0, raidDazeBy: undefined },
-      BOT_PROFILES.easy,
+      RAID_BOT_PROFILES.easy,
     );
     expect(echo.think(arena, p).basic).toBe(true);
   });
@@ -147,14 +149,68 @@ describe("bot difficulty", () => {
   });
 
   it("leaves raids on the daze they were tuned with", () => {
-    const raid = BOT_PROFILES.normal.raidDazeBy ?? {};
+    const raid = RAID_BOT_PROFILES.normal.raidDazeBy ?? {};
     // RAID_DAZE_BY first, then Normal's duel daze from before the smarter
     // bots (Duskveil and Mossloth were never in RAID_DAZE_BY).
     for (const [id, d] of Object.entries(RAID_DAZE_BY))
       expect(raid[id as keyof typeof raid], id).toBe(d);
     expect(raid.duskveil).toBe(0.27);
     expect(raid.mossloth).toBe(0.475);
-    expect(BOT_PROFILES.easy.raidDazeBy).toBeUndefined();
-    expect(BOT_PROFILES.hard.raidDazeBy).toBeUndefined();
+    expect(RAID_BOT_PROFILES.easy.raidDazeBy).toBeUndefined();
+    expect(RAID_BOT_PROFILES.hard.raidDazeBy).toBeUndefined();
+  });
+
+  it("plays raids and the Spire with the levels they were tuned with", () => {
+    // The second round of smarter bots changed PvP only (docs/smarter-bots.md).
+    for (const level of ["easy", "normal", "hard"] as const) {
+      const { arena, p } = duel("cindrake", 600, "voltkit", 700);
+      const pvp = new BotBrain("A", level, 3);
+      pvp.think(arena, p);
+      expect(pvp.profile, level).toBe(BOT_PROFILES[level]);
+      arena.mode = "raid";
+      const raid = new BotBrain("A", level, 3);
+      raid.think(arena, p);
+      expect(raid.profile, level).toBe(RAID_BOT_PROFILES[level]);
+    }
+    // Each PvP level is sharper than the one raids keep.
+    for (const level of ["easy", "normal", "hard"] as const) {
+      const [now, before] = [BOT_PROFILES[level], RAID_BOT_PROFILES[level]];
+      expect(now.reaction, level).toBeLessThan(before.reaction);
+      expect(now.aimError, level).toBeLessThan(before.aimError);
+      expect(now.dodge, level).toBeGreaterThan(before.dodge);
+      expect(now.rest, level).toBeLessThan(before.rest);
+    }
+  });
+
+  it("leads a jinking opponent by how it moved lately, not its last step", () => {
+    // Voltkit (a shooter) at A; the opponent runs up for a while, then jinks
+    // down for an instant. A steady lead still aims up the way it went.
+    const aimAt = (steadyLead: boolean) => {
+      const { arena, p, q } = duel("voltkit", 300, "cindrake", 800);
+      const b = brain(
+        "A",
+        {
+          steadyLead,
+          aimError: 0,
+          reaction: 0.1,
+          lead: 1,
+          skillUse: 0,
+          dazeBy: {},
+        },
+        BOT_PROFILES.hard,
+      );
+      let input = blankInput();
+      for (let i = 0; i < 24; i++) {
+        arena.time += 1 / RULES.tick;
+        const jink = i >= 18;
+        q.vy = jink ? 300 : -300;
+        q.y += q.vy / RULES.tick;
+        input = b.think(arena, p);
+      }
+      return input.aimY - q.y;
+    };
+    // Without it the bot leads the jink (down, +y); with it, up the court.
+    expect(aimAt(false)).toBeGreaterThan(0);
+    expect(aimAt(true)).toBeLessThan(aimAt(false));
   });
 });
