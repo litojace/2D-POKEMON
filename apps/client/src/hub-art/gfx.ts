@@ -2063,6 +2063,126 @@ const GFX = (() => {
     g.fill();
   }
   /** state: walk | run | idle | sit | bark ; phase in radians */
+  /**
+   * A dog's torso and head, baked per breed (they were drawn with a
+   * gradient each, every frame): fur lit on the back and dark beneath,
+   * a pale belly, strokes of fur along the coat, a rim of light along the
+   * top, the corgi's white chest and blaze, the black dog's tan, the
+   * cream dog's fluff. Legs, tail, ears, muzzle and eyes stay live.
+   */
+  function dogTorso(breed) {
+    const B = BREEDS[breed] || BREEDS.gold;
+    return memo(`dog-torso:${breed}`, () =>
+      sprite(54, 34, 27, 17, (g) => {
+        g.fillStyle = dk(B.b, 0.45);
+        ell(g, 0, 0, 23.5, 13);
+        g.fill();
+        const bg = g.createLinearGradient(0, -12, 0, 12);
+        bg.addColorStop(0, lt(B.b, 0.22));
+        bg.addColorStop(0.55, B.b);
+        bg.addColorStop(1, B.d);
+        g.fillStyle = bg;
+        ell(g, 0, 0, 22, 11.8);
+        g.fill();
+        g.save();
+        ell(g, 0, 0, 22, 11.8);
+        g.clip();
+        g.fillStyle = B.l;
+        ell(g, 6, 6, 13, 5);
+        g.fill();
+        if (breed === "corgi") {
+          g.fillStyle = B.l;
+          ell(g, 18, 2, 7, 9);
+          g.fill();
+        }
+        if (breed === "black") {
+          g.fillStyle = B.l;
+          ell(g, 15, 5, 6, 4);
+          g.fill();
+        }
+        // Fur: strokes along the coat, dark low, lit high.
+        g.lineCap = "round";
+        for (let k = 0; k < 34; k++) {
+          const fx = -20 + ((k * 17) % 40),
+            fy = -9 + ((k * 11) % 16),
+            up = fy < -1;
+          g.strokeStyle = up ? rgba(lt(B.b, 0.45), 0.55) : rgba(dk(B.b, 0.35), 0.45);
+          g.lineWidth = 0.9;
+          g.beginPath();
+          g.moveTo(fx, fy);
+          g.quadraticCurveTo(fx - 1.6, fy + 1.2, fx - 3, fy + 1.4);
+          g.stroke();
+        }
+        // A rim of light along the back.
+        g.strokeStyle = rgba(lt(B.b, 0.6), 0.6);
+        g.lineWidth = 1.6;
+        g.beginPath();
+        g.ellipse(0, 1, 21, 11.4, 0, Math.PI * 1.15, Math.PI * 1.85);
+        g.stroke();
+        g.restore();
+        if (B.fluff) {
+          g.fillStyle = lt(B.b, 0.3);
+          for (let i = 0; i < 9; i++) {
+            g.beginPath();
+            g.arc(-18 + i * 4.6, -9 + Math.sin(i * 2) * 1.5, 4.2, 0, 7);
+            g.fill();
+          }
+        }
+      }),
+    );
+  }
+  function dogHead(breed) {
+    const B = BREEDS[breed] || BREEDS.gold;
+    return memo(`dog-head:${breed}`, () =>
+      sprite(30, 30, 15, 15, (g) => {
+        g.fillStyle = dk(B.b, 0.45);
+        g.beginPath();
+        g.arc(0, 0, 11.6, 0, 7);
+        g.fill();
+        const hgr = g.createRadialGradient(-3, -4, 1, 0, 0, 12);
+        hgr.addColorStop(0, lt(B.b, 0.3));
+        hgr.addColorStop(0.7, B.b);
+        hgr.addColorStop(1, dk(B.b, 0.12));
+        g.fillStyle = hgr;
+        g.beginPath();
+        g.arc(0, 0, 10.6, 0, 7);
+        g.fill();
+        g.save();
+        g.beginPath();
+        g.arc(0, 0, 10.6, 0, 7);
+        g.clip();
+        if (breed === "corgi" || breed === "gold") {
+          // A pale blaze down the forehead into the cheek.
+          g.fillStyle = rgba(B.l, breed === "corgi" ? 0.95 : 0.45);
+          g.beginPath();
+          g.moveTo(1, -11);
+          g.quadraticCurveTo(4, -4, 7, 4);
+          g.lineTo(2, 8);
+          g.quadraticCurveTo(-1, -2, -1, -11);
+          g.fill();
+        }
+        g.lineCap = "round";
+        for (let k = 0; k < 12; k++) {
+          const a = (k / 12) * Math.PI * 2;
+          g.strokeStyle = k < 6 ? rgba(dk(B.b, 0.3), 0.4) : rgba(lt(B.b, 0.45), 0.5);
+          g.lineWidth = 0.8;
+          g.beginPath();
+          g.moveTo(Math.cos(a) * 7, Math.sin(a) * 7);
+          g.lineTo(Math.cos(a) * 9.5, Math.sin(a) * 9.5);
+          g.stroke();
+        }
+        g.restore();
+        if (B.fluff) {
+          g.fillStyle = lt(B.b, 0.35);
+          for (let i = 0; i < 5; i++) {
+            g.beginPath();
+            g.arc(-7 + i * 3.5, -9 + Math.abs(i - 2), 3.6, 0, 7);
+            g.fill();
+          }
+        }
+      }),
+    );
+  }
   function dog(g, breed, st, t, x, y, s = 1, face = 1, o = {}) {
     const B = BREEDS[breed] || BREEDS.gold,
       sh = B.short ? 0.7 : 1;
@@ -2150,32 +2270,10 @@ const GFX = (() => {
     }
     const by = (sit ? -16 : -24 * sh) + bob,
       breathe = 1 + Math.sin(t * 2.6) * 0.025;
-    g.fillStyle = dk(B.b, 0.45);
-    ell(g, 0, by, 23.5, 13 * breathe);
-    g.fill();
-    const bg = g.createLinearGradient(0, by - 12, 0, by + 12);
-    bg.addColorStop(0, lt(B.b, 0.18));
-    bg.addColorStop(0.6, B.b);
-    bg.addColorStop(1, B.d);
-    g.fillStyle = bg;
-    ell(g, 0, by, 22, 11.8 * breathe);
-    g.fill();
-    g.fillStyle = B.l;
-    ell(g, 6, by + 6, 13, 5);
-    g.fill();
-    if (B.fluff) {
-      g.fillStyle = lt(B.b, 0.3);
-      for (let i = 0; i < 9; i++) {
-        g.beginPath();
-        g.arc(-18 + i * 4.6, by - 9 + Math.sin(i * 2) * 1.5, 4.2, 0, 7);
-        g.fill();
-      }
-    }
-    if (breed === "black") {
-      g.fillStyle = B.l;
-      ell(g, 15, by + 5, 6, 4);
-      g.fill();
-    }
+    // The torso, baked per breed (dogTorso), breathing.
+    g.translate(0, by);
+    g.scale(1, breathe);
+    blit(g, dogTorso(breed), 0, 0);
     g.restore();
     // near legs
     if (sit) {
@@ -2250,25 +2348,8 @@ const GFX = (() => {
       g.fill();
       g.restore();
     }
-    g.fillStyle = dk(B.b, 0.45);
-    g.beginPath();
-    g.arc(0, 0, 11.6, 0, 7);
-    g.fill();
-    const hgr = g.createRadialGradient(-3, -4, 1, 0, 0, 12);
-    hgr.addColorStop(0, lt(B.b, 0.25));
-    hgr.addColorStop(1, B.b);
-    g.fillStyle = hgr;
-    g.beginPath();
-    g.arc(0, 0, 10.6, 0, 7);
-    g.fill();
-    if (B.fluff) {
-      g.fillStyle = lt(B.b, 0.35);
-      for (let i = 0; i < 5; i++) {
-        g.beginPath();
-        g.arc(-7 + i * 3.5, -9 + Math.abs(i - 2), 3.6, 0, 7);
-        g.fill();
-      }
-    }
+    // The head's fur, baked per breed (dogHead).
+    blit(g, dogHead(breed), 0, 0);
     // muzzle + jaw
     const jaw = bark
       ? 0.45 + Math.abs(Math.sin(t * 20)) * 0.2
