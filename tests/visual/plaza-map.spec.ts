@@ -190,3 +190,81 @@ test("Plaza today is a round button that opens its list, on a phone too", async 
     await context.close();
   }
 });
+
+test("a movement key takes back a Go walk; a jump doesn't", async ({
+  page,
+}) => {
+  const errors = await openPlaza(page);
+  const at = () =>
+    page.evaluate(() => {
+      const b = (window as any).__plazaWorld.bodyOf("local");
+      return { x: b.x, y: b.y };
+    });
+  await page.locator(".plaza-layer").focus();
+  // Go to the pond, then jump on the way: still walking there.
+  await page.keyboard.press("m");
+  await page.locator('.pz-map-list [data-place="pond"]').click();
+  await page.waitForTimeout(400);
+  await page.keyboard.press(" ");
+  const a = await at();
+  await page.waitForTimeout(700);
+  const b = await at();
+  expect(Math.hypot(b.x - a.x, b.y - a.y)).toBeGreaterThan(80);
+  // A tap of a movement key: the walk stops once it's let go.
+  await page.keyboard.down("a");
+  await page.waitForTimeout(120);
+  await page.keyboard.up("a");
+  await page.waitForTimeout(500);
+  const c = await at();
+  await page.waitForTimeout(800);
+  const d = await at();
+  expect(Math.hypot(d.x - c.x, d.y - c.y)).toBeLessThan(6);
+  expect(errors).toEqual([]);
+});
+
+test("on a phone, moving the joystick takes back a Go walk", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openPlaza(page);
+    const at = () =>
+      page.evaluate(() => {
+        const b = (window as any).__plazaWorld.bodyOf("local");
+        return { x: b.x, y: b.y };
+      });
+    await page.click("#pz-map-btn");
+    await page.locator('.pz-map-list [data-place="pond"]').click();
+    await page.waitForTimeout(400);
+    // A short push on the stick, then let go.
+    const joy = (await page.locator("#pz-joy").boundingBox())!;
+    const ox = joy.x + joy.width * 0.3,
+      oy = joy.y + joy.height * 0.6;
+    const ev = (type: string, x: number, y: number) =>
+      page.locator("#pz-joy").dispatchEvent(type, {
+        pointerId: 7,
+        pointerType: "touch",
+        clientX: x,
+        clientY: y,
+        bubbles: true,
+        isPrimary: true,
+      });
+    await ev("pointerdown", ox, oy);
+    await ev("pointermove", ox - 40, oy);
+    await page.waitForTimeout(150);
+    await ev("pointerup", ox - 40, oy);
+    await page.waitForTimeout(500);
+    const c = await at();
+    await page.waitForTimeout(800);
+    const d = await at();
+    expect(Math.hypot(d.x - c.x, d.y - c.y)).toBeLessThan(6);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

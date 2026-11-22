@@ -435,7 +435,8 @@ export function openPlaza(options) {
     // Big soft patches of sunlit and shaded grass, as the land rolls.
     grassLight(g, rnd, -GM, -GM, GW, GH, Math.round(40 * more));
     // Tufts: dark at the root, lit at the tips (light from the top left).
-    for (let i = 0; i < 2000 * more; i++) tuft(g, rnd, gx(), gy(), 0.8 + rnd() * 0.5);
+    for (let i = 0; i < 2000 * more; i++)
+      tuft(g, rnd, gx(), gy(), 0.8 + rnd() * 0.5);
     // Flowers in drifts, clover patches and dandelion clocks, rather than
     // an even sprinkle of one flower.
     meadowLife(g, rnd, 0, 0, W, H, (x, y) => clear(x, y), 230);
@@ -559,7 +560,8 @@ export function openPlaza(options) {
           gap < 2 &&
           !inSquare(x, y, 1.06) &&
           !PLAZA_LANDINGS.some(
-            (l) => ((x - l.x) / (l.rx + 8)) ** 2 + ((y - l.y) / (l.ry + 8)) ** 2 < 1,
+            (l) =>
+              ((x - l.x) / (l.rx + 8)) ** 2 + ((y - l.y) / (l.ry + 8)) ** 2 < 1,
           )
         );
       };
@@ -890,7 +892,15 @@ export function openPlaza(options) {
     g.lineWidth = 7;
     g.strokeStyle = "rgba(30,60,30,.25)";
     g.beginPath();
-    g.ellipse(TRACK.cx + 1, TRACK.cy + 4, TRACK.ri[0] - 7, TRACK.ri[1] - 7, 0, 0, 7);
+    g.ellipse(
+      TRACK.cx + 1,
+      TRACK.cy + 4,
+      TRACK.ri[0] - 7,
+      TRACK.ri[1] - 7,
+      0,
+      0,
+      7,
+    );
     g.stroke();
     g.lineWidth = 6;
     g.strokeStyle = "#d9d6cc";
@@ -900,7 +910,15 @@ export function openPlaza(options) {
     g.lineWidth = 2;
     g.strokeStyle = "#f6f4ee";
     g.beginPath();
-    g.ellipse(TRACK.cx - 0.6, TRACK.cy - 1.2, TRACK.ri[0] - 5, TRACK.ri[1] - 5, 0, 0, 7);
+    g.ellipse(
+      TRACK.cx - 0.6,
+      TRACK.cy - 1.2,
+      TRACK.ri[0] - 5,
+      TRACK.ri[1] - 5,
+      0,
+      0,
+      7,
+    );
     g.stroke();
     g.restore();
     // The lane's rubber worn paler where runners run (lane 1's line).
@@ -1981,7 +1999,9 @@ export function openPlaza(options) {
     )
       return;
     keys.add(k);
-    target = null;
+    // A movement key takes back a walk that Go or a click started; jumping,
+    // dashing, emotes and treats don't.
+    if (MOVE_KEYS.includes(k)) cancelWalk();
     if (k === " ") jump();
     if (k === "shift" || k === "j") dash();
     if (k === "e") interact();
@@ -2124,6 +2144,23 @@ export function openPlaza(options) {
     if (e.pointerType === "mouse") walkTo(w, true);
   });
   /** The rest of the way after `target`, and where it ends. */
+  const MOVE_KEYS = [
+    "w",
+    "a",
+    "s",
+    "d",
+    "arrowup",
+    "arrowdown",
+    "arrowleft",
+    "arrowright",
+  ];
+  /** Stop a walk Go or a click started: you're steering yourself now. */
+  function cancelWalk() {
+    target = null;
+    route = [];
+    routeEnd = null;
+    if (clickMark?.ok) clickMark = null;
+  }
   let route = [],
     routeEnd = null,
     replannedAt = 0;
@@ -2295,6 +2332,9 @@ export function openPlaza(options) {
       k = m > max ? max / m : 1;
     joy.x = (dx / max) * k;
     joy.y = (dy / max) * k;
+    // Moving the stick takes back a walk that Go or a tap started (it used
+    // to carry on toward it as soon as the stick was let go).
+    if (Math.hypot(joy.x, joy.y) > 0.2) cancelWalk();
     if (
       !Number.isFinite(joy.x) ||
       !Number.isFinite(joy.y) ||
@@ -3437,8 +3477,7 @@ export function openPlaza(options) {
       for (const [wx, wy, ww, wh] of h.spr.win ?? [])
         L(h.x + (wx + ww / 2) * HK, h.y + (wy + wh) * HK, 100, 0.4, 0.8);
     for (const h of HOUSES)
-      if (h.spr.lamp)
-        L(h.x + h.spr.lamp[0] * HK, h.y + 6, 60, 0.35, 0.8);
+      if (h.spr.lamp) L(h.x + h.spr.lamp[0] * HK, h.y + 6, 60, 0.35, 0.8);
     for (const l of RIVER_LAMPS) L(l.x, l.y - 6, 150, 0.48, 0.6);
     for (const o of ev.orbs) L(o.x, o.y - 10, 90, 0.5, 0.8);
     nightLight.end(g);
@@ -3612,43 +3651,47 @@ export function openPlaza(options) {
     GFX.blit(g, ledShade(w, h), x0, y0);
     const star = runwayOn ? P : [...others.values()].find((n) => inRunway(n));
     const spr = star?.img?.sprite;
-    const words = star && spr
-      ? `star|${star.name}|${starSkin(star)}|${star.me ? claps : ""}|${ICON_IMG("heart").complete}`
-      : `idle|${ev.on}`;
+    const words =
+      star && spr
+        ? `star|${star.name}|${starSkin(star)}|${star.me ? claps : ""}|${ICON_IMG("heart").complete}`
+        : `idle|${ev.on}`;
     // (Painted again once the fonts have loaded, too.)
-    const pic = ledPic(`${words}|${spr ? spr.width : 0}|${document.fonts?.status}`, (q) => {
-      if (star && spr) {
-        q.drawImage(spr, 20, 6, h * 0.99, h * 1.0);
-        q.textAlign = "left";
-        q.fillStyle = "#ff9bd2";
-        q.font = "800 16px 'DM Sans', sans-serif";
-        q.fillText("ON THE RUNWAY", h + 34, 40);
-        q.fillStyle = "#fff";
-        q.font = "800 46px 'Barlow Condensed', sans-serif";
-        q.fillText(String(star.name).toUpperCase(), h + 34, 86);
-        q.fillStyle = "#ffd65b";
-        q.font = "700 20px 'DM Sans', sans-serif";
-        q.fillText(starSkin(star), h + 34, 118);
-        if (star.me) {
-          const sw = q.measureText(starSkin(star)).width,
-            hi = ICON_IMG("heart");
-          if (hi.complete) q.drawImage(hi, h + 46 + sw, 101, 22, 22);
-          q.fillText(String(claps), h + 72 + sw, 118);
+    const pic = ledPic(
+      `${words}|${spr ? spr.width : 0}|${document.fonts?.status}`,
+      (q) => {
+        if (star && spr) {
+          q.drawImage(spr, 20, 6, h * 0.99, h * 1.0);
+          q.textAlign = "left";
+          q.fillStyle = "#ff9bd2";
+          q.font = "800 16px 'DM Sans', sans-serif";
+          q.fillText("ON THE RUNWAY", h + 34, 40);
+          q.fillStyle = "#fff";
+          q.font = "800 46px 'Barlow Condensed', sans-serif";
+          q.fillText(String(star.name).toUpperCase(), h + 34, 86);
+          q.fillStyle = "#ffd65b";
+          q.font = "700 20px 'DM Sans', sans-serif";
+          q.fillText(starSkin(star), h + 34, 118);
+          if (star.me) {
+            const sw = q.measureText(starSkin(star)).width,
+              hi = ICON_IMG("heart");
+            if (hi.complete) q.drawImage(hi, h + 46 + sw, 101, 22, 22);
+            q.fillText(String(claps), h + 72 + sw, 118);
+          }
+        } else {
+          q.textAlign = "center";
+          q.fillStyle = "#fff";
+          q.font = "800 64px 'Barlow Condensed', sans-serif";
+          q.fillText("RUNWAY", w / 2, 84);
+          q.fillStyle = "#ff9bd2";
+          q.font = "700 18px 'DM Sans', sans-serif";
+          q.fillText(
+            ev.on ? "ORB SHOWER IN PROGRESS" : "STEP UP TO SHOW OFF YOUR SKIN",
+            w / 2,
+            118,
+          );
         }
-      } else {
-        q.textAlign = "center";
-        q.fillStyle = "#fff";
-        q.font = "800 64px 'Barlow Condensed', sans-serif";
-        q.fillText("RUNWAY", w / 2, 84);
-        q.fillStyle = "#ff9bd2";
-        q.font = "700 18px 'DM Sans', sans-serif";
-        q.fillText(
-          ev.on ? "ORB SHOWER IN PROGRESS" : "STEP UP TO SHOW OFF YOUR SKIN",
-          w / 2,
-          118,
-        );
-      }
-    });
+      },
+    );
     GFX.blit(g, pic, x0, y0);
     // Scanlines, the glass's sheen and its darker edges (baked).
     GFX.blit(g, ledGlass(w, h), x0, y0);
@@ -3760,10 +3803,17 @@ export function openPlaza(options) {
   const SHEDDERS = TREES.filter((t) => t.k === "cherry" || t.k === "autumn");
   function drawFalling(g, time, vx0, vy0, vx1, vy1) {
     for (const t of SHEDDERS) {
-      if (t.x + 160 < vx0 || t.x - 160 > vx1 || t.y + 40 < vy0 || t.y - 220 > vy1)
+      if (
+        t.x + 160 < vx0 ||
+        t.x - 160 > vx1 ||
+        t.y + 40 < vy0 ||
+        t.y - 220 > vy1
+      )
         continue;
       const cols =
-        t.k === "cherry" ? ["#ffd0e2", "#ffffff", "#ff9fc4"] : ["#f2a33a", "#e8742e", "#ffd06a"];
+        t.k === "cherry"
+          ? ["#ffd0e2", "#ffffff", "#ff9fc4"]
+          : ["#f2a33a", "#e8742e", "#ffd06a"];
       for (let i = 0; i < 6; i++) {
         const life = 5 + (i % 3),
           k = ((time + i * 1.37 + t.ph) % life) / life,
@@ -3774,7 +3824,15 @@ export function openPlaza(options) {
         g.globalAlpha = a * 0.9;
         g.fillStyle = cols[i % 3];
         g.beginPath();
-        g.ellipse(x, y, 3.2, 1.6 + Math.abs(Math.sin(time * 4 + i)) * 1.4, time * 2 + i, 0, 7);
+        g.ellipse(
+          x,
+          y,
+          3.2,
+          1.6 + Math.abs(Math.sin(time * 4 + i)) * 1.4,
+          time * 2 + i,
+          0,
+          7,
+        );
         g.fill();
       }
     }
@@ -4587,7 +4645,12 @@ export function openPlaza(options) {
         xx = x - rx + ((i * 97 + time * (8 + (i % 3) * 3)) % (rx * 2)),
         w = 14 + (i % 4) * 6;
       g.moveTo(xx - w, yy);
-      g.quadraticCurveTo(xx, yy - 3 - Math.sin(time * 1.5 + i) * 1.5, xx + w, yy);
+      g.quadraticCurveTo(
+        xx,
+        yy - 3 - Math.sin(time * 1.5 + i) * 1.5,
+        xx + w,
+        yy,
+      );
     }
     g.stroke();
     // The lily pads, bobbing.
@@ -4727,7 +4790,8 @@ export function openPlaza(options) {
           b.ty = SQ.y + Math.sin(a) * SQ.ry * r;
           if (!inFount(b.tx, b.ty, 10)) break;
         }
-        if (inFount(b.tx, b.ty, 10)) b.ty = FOUNT.y + FOUNT.wall + FOUNT.ry + 40;
+        if (inFount(b.tx, b.ty, 10))
+          b.ty = FOUNT.y + FOUNT.wall + FOUNT.ry + 40;
         b.fly = 2.2;
         return;
       }
