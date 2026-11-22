@@ -1735,9 +1735,11 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Yuzu Toss",
         "projectile",
         14,
-        8,
+        7,
         "Toss a glowing yuzu that bursts on impact; Sunbara soaks up a fifth of the damage it deals as health.",
-        { speed: 650, radius: 16, explosion: 80, drain: 0.2 },
+        // 760 px/s and 7 s (were 650 and 8) since Hard dodges like a good
+        // player: docs/smarter-bots.md, "Second round".
+        { speed: 760, radius: 16, explosion: 80, drain: 0.2 },
       ),
       ability(
         "warm-spring",
