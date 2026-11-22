@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, snap } from "./helpers";
 import { exposeAccount } from "./shop-server";
+import { ISLAND, setInsets, type Insets } from "./ui-measure";
 
 // The Admin panel (apps/client/src/admin-panel.ts): five sections in the
 // dialog's tab bar, phones held sideways first. The admin API is faked in the
@@ -20,6 +21,16 @@ async function fakeAdmin(page: Page) {
         new Date(Date.now() - minutes * 60000).toISOString();
       const state = {
         calls: [] as { path: string; body: any }[],
+        announcements: [
+          {
+            id: 1,
+            message: "Servers restart at 03:00 for ten minutes.",
+            tone: "warning",
+            createdAt: at(60 * 30),
+            endsAt: at(60 * 6),
+            by: "Boss",
+          },
+        ] as any[],
         wallets: { [NOVA]: 250 } as Record<string, number>,
         chat: {} as Record<string, { until: string; reason: string }>,
         ledger: {
@@ -51,6 +62,7 @@ async function fakeAdmin(page: Page) {
             suspended: false,
             title: "Arena Rival",
             createdAt: "2026-10-01T00:00:00Z",
+            lastOnline: at(1),
             titleIds: [RIVAL_TITLE],
           },
           {
@@ -60,6 +72,7 @@ async function fakeAdmin(page: Page) {
             suspended: true,
             title: null,
             createdAt: "2026-09-12T00:00:00Z",
+            lastOnline: at(60 * 26),
             titleIds: [],
           },
           {
@@ -69,6 +82,7 @@ async function fakeAdmin(page: Page) {
             suspended: false,
             title: null,
             createdAt: "2026-08-01T00:00:00Z",
+            lastOnline: null as string | null,
             titleIds: [OLD_TITLE],
           },
         ],
@@ -226,11 +240,36 @@ async function fakeAdmin(page: Page) {
           });
           return reply({ applied, balance: balance + applied });
         }
+        if (path === "/api/admin/announcements")
+          return reply(state.announcements);
+        if (path === "/api/admin/announce") {
+          const sent = {
+            id: state.announcements.length + 1,
+            message: body.message.trim(),
+            tone: body.tone,
+            createdAt: new Date().toISOString(),
+            endsAt: new Date(Date.now() + body.hours * 3600000).toISOString(),
+            by: "Boss",
+          };
+          state.announcements.unshift(sent);
+          return reply(sent);
+        }
+        if (path === "/api/admin/announcements/end") {
+          state.announcements.find((a) => a.id === body.id)!.endsAt =
+            new Date().toISOString();
+          return reply({ ok: true });
+        }
         if (path === "/api/admin/players") {
           const s = (q.get("search") ?? "").toLowerCase();
           const list = state.players.filter(
             (p) => !s || p.displayName.toLowerCase().includes(s) || p.id === s,
           );
+          if (q.get("sort") === "online")
+            list.sort(
+              (a, b) =>
+                Date.parse(b.lastOnline ?? "1970-01-01") -
+                Date.parse(a.lastOnline ?? "1970-01-01"),
+            );
           return reply({ players: list, total: list.length });
         }
         if (path === "/api/admin/titles" && !body) return reply(state.titles);
@@ -294,8 +333,8 @@ const tab = (page: Page, name: string) =>
   page.locator(`#dialog .admin-tab[data-tab="${name}"]`);
 
 /** Nothing in the panel sticks out sideways, and the tab bar fits. */
-async function fits(page: Page) {
-  return page.evaluate(() => {
+async function fits(page: Page, inset?: Insets) {
+  return page.evaluate((inset) => {
     const content = document.querySelector<HTMLElement>(
       "#dialog .dialog-content",
     )!;
@@ -308,11 +347,12 @@ async function fits(page: Page) {
     const bar = document.querySelector<HTMLElement>("#dialog .admin-tabs")!;
     return {
       sideways: content.scrollWidth - content.clientWidth,
+      // Inside the screen, and clear of a notch or Dynamic Island.
       inScreen:
-        dialog.left >= 0 &&
-        dialog.right <= innerWidth &&
-        dialog.top >= 0 &&
-        dialog.bottom <= innerHeight,
+        dialog.left >= (inset?.left ?? 0) &&
+        dialog.right <= innerWidth - (inset?.right ?? 0) &&
+        dialog.top >= (inset?.top ?? 0) &&
+        dialog.bottom <= innerHeight - (inset?.bottom ?? 0),
       tabsFit: bar.scrollWidth <= bar.clientWidth + 1,
       tabHeight: Math.min(...tabs.map((t) => t.height)),
       wide: [...content.querySelectorAll<HTMLElement>("*")]
@@ -324,32 +364,36 @@ async function fits(page: Page) {
         .map((e) => `${e.tagName}.${e.className}`)
         .slice(0, 6),
     };
-  });
+  }, inset);
 }
 
 for (const size of [
-  { width: 667, height: 375 },
-  { width: 844, height: 390 },
-  { width: 1440, height: 900 },
+  { width: 667, height: 375, name: "667x375" },
+  { width: 844, height: 390, name: "844x390" },
+  { width: 852, height: 393, name: "852x393-island", island: true },
+  { width: 1440, height: 900, name: "1440x900" },
 ]) {
-  test(`every Admin section fits at ${size.width}x${size.height}`, async ({
+  test(`every Admin section fits at ${size.name}`, async ({
     browser,
   }, info) => {
     const phone = size.width < 1000;
     const context = await browser.newContext({
-      viewport: size,
+      viewport: { width: size.width, height: size.height },
       isMobile: phone,
       hasTouch: phone,
     });
     try {
       const page = await context.newPage();
       const errors = await openAdmin(page);
+      const inset = size.island ? ISLAND : undefined;
+      if (inset) await setInsets(page, inset);
       for (const name of [
         "overview",
         "players",
         "online",
         "reports",
         "titles",
+        "announce",
       ]) {
         await tab(page, name).click();
         await expect(page.locator("#adm-root")).toHaveAttribute(
@@ -361,7 +405,7 @@ for (const size of [
           await page.locator("[data-player] .adm-row-main").first().click();
           await expect(page.locator(".adm-detail")).toBeVisible();
         }
-        const fit = await fits(page);
+        const fit = await fits(page, inset);
         expect(
           fit.sideways,
           `${name} scrolls sideways: ${fit.wide.join(", ")}`,
@@ -369,7 +413,7 @@ for (const size of [
         expect(fit.inScreen, `${name} dialog on screen`).toBe(true);
         expect(fit.tabsFit, `${name} tab bar fits`).toBe(true);
         expect(fit.tabHeight).toBeGreaterThanOrEqual(40);
-        await snap(page, info, `admin-${name}-${size.width}x${size.height}`);
+        await snap(page, info, `admin-${name}-${size.name}`);
       }
       expect(errors).toEqual([]);
     } finally {
@@ -529,6 +573,76 @@ test("Admin actions on a phone held sideways", async ({ browser }, info) => {
       "1",
     );
 
+    // Players: last online on each row, and the order.
+    await tab(page, "players").click();
+    await expect(page.locator(`[data-player="${BOLT}"] small`)).toContainText(
+      "Seen 1d ago",
+    );
+    await page.locator('[data-act="sort"][data-sort="online"]').click();
+    await expect(page.locator("[data-player] strong")).toHaveText([
+      "Nova",
+      "BoltRunnerWithALongName",
+      "Boss",
+    ]);
+    await page.locator(`[data-player="${BOLT}"] .adm-row-main`).click();
+    await expect(
+      page.locator(`[data-player="${BOLT}"] .adm-facts`),
+    ).toContainText("Last online");
+
+    // Announce: write, pick a kind and a length, confirm, then end it.
+    await tab(page, "announce").click();
+    const announce = page.locator('form[data-form="announce"]');
+    await announce
+      .locator("textarea")
+      .fill("Double coins all weekend in every mode!");
+    await expect(announce.locator("[data-preview]")).toHaveText(
+      "Double coins all weekend in every mode!",
+    );
+    await expect(announce.locator("[data-count]")).toHaveText("39 / 300");
+    await announce
+      .locator('[data-act="announce-tone"][data-tone="event"]')
+      .click();
+    // The text survives the redraw.
+    await expect(
+      page.locator('form[data-form="announce"] textarea'),
+    ).toHaveValue("Double coins all weekend in every mode!");
+    await page
+      .locator('form[data-form="announce"] select[name="hours"]')
+      .selectOption("72");
+    await page
+      .locator('form[data-form="announce"] button:not([type=button])')
+      .click();
+    await expect(page.locator(".adm-announce .admin-confirm")).toContainText(
+      "next 3 days",
+    );
+    await snap(page, info, "admin-announce-confirm-844x390");
+    await page.locator('[data-act="announce-yes"]').click();
+    await expect(page.locator("#admin-message")).toHaveText(
+      "Sent to every player.",
+    );
+    expect((await calls(page)).at(-1)).toEqual({
+      path: "/api/admin/announce",
+      body: {
+        message: "Double coins all weekend in every mode!",
+        tone: "event",
+        hours: 72,
+      },
+    });
+    // The form is empty again; the new one leads the list.
+    await expect(
+      page.locator('form[data-form="announce"] textarea'),
+    ).toHaveValue("");
+    const first = page.locator("[data-announcement]").first();
+    await expect(first).toContainText("Double coins");
+    await expect(first.locator(".adm-running")).toContainText("Ends in");
+    await first.locator('[data-act="announce-end"]').click();
+    await expect(page.locator("#admin-message")).toContainText(
+      "Announcement ended",
+    );
+    await expect(page.locator("[data-announcement]").first()).toHaveClass(
+      /is-ended/,
+    );
+
     // Titles: turn one off, edit, create.
     await tab(page, "titles").click();
     await page
@@ -553,6 +667,70 @@ test("Admin actions on a phone held sideways", async ({ browser }, info) => {
       "Title “Champion” created.",
     );
     await expect(page.locator(".adm-title")).toHaveCount(3);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("players see an announcement once, never over a battle", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    const announce = (id: number, message: string) =>
+      page.evaluate(
+        ({ id, message }) =>
+          (window as any).__sock.fire("announcement", {
+            id,
+            message,
+            tone: "event",
+            createdAt: new Date().toISOString(),
+            endsAt: new Date(Date.now() + 3600000).toISOString(),
+          }),
+        { id, message },
+      );
+    await announce(41, "<b>Double</b> coins all weekend!");
+    const banner = page.locator(".announcement-banner");
+    await expect(banner).toBeVisible();
+    // Text, never markup.
+    await expect(banner.locator("p")).toHaveText(
+      "<b>Double</b> coins all weekend!",
+    );
+    await expect(banner.locator("p b")).toHaveCount(0);
+    // It slides down from above (0.2 s): measure where it settles, 8 px
+    // under the top edge, not mid-slide.
+    await expect(banner).toHaveClass(/is-shown/);
+    await expect
+      .poll(async () => (await banner.boundingBox())!.y)
+      .toBeGreaterThanOrEqual(8);
+    const box = await banner.boundingBox();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(844);
+    await snap(page, info, "announcement-banner-844x390");
+    await banner.locator(".announcement-ok").click();
+    await expect(banner).toHaveCount(0);
+    // The same one again is not shown twice on this device.
+    await announce(41, "<b>Double</b> coins all weekend!");
+    await expect(banner).toHaveCount(0);
+    // During a battle it waits, then shows.
+    await page.evaluate(() => document.body.classList.add("battle-active"));
+    await announce(42, "Raid event starts now.");
+    await page.waitForTimeout(500);
+    await expect(banner).toHaveCount(0);
+    await page.evaluate(() => document.body.classList.remove("battle-active"));
+    await expect(banner).toContainText("Raid event starts now.");
+    // An admin ends it early: it goes away.
+    await page.evaluate(() =>
+      (window as any).__sock.fire("announcement-ended", { id: 42 }),
+    );
+    await expect(banner).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

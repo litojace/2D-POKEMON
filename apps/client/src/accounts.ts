@@ -166,6 +166,8 @@ type Hooks = {
   /** Friends closed (a room puts its picker back). */
   onFriendsClosed?: () => void;
   notify: (message: string) => void;
+  /** Running announcements from the admins, fetched at sign-in (announcements.ts). */
+  announce?: (list: unknown) => void;
   onChange: () => void;
   onSession: (token: string | null, accountId?: string) => void;
   /** Same player, fresh token (background refresh): keep it for reconnects only. */
@@ -482,6 +484,12 @@ export class AccountUI {
         if (version !== this.generation) return;
         freshAccount = true;
         this.account = account;
+        // Announcements still running (migration 20261122120000); none
+        // before it, and never in the way of signing in.
+        void this.api("/api/announcements").then(
+          (list) => this.hooks.announce?.(list),
+          () => {},
+        );
         // A new login: start on the fighter this account last picked, on
         // whatever device, wearing their avatar. Both are part of the first
         // screen (waited for below, briefly), so it never opens on the

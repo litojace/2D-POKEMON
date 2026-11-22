@@ -269,7 +269,8 @@ export const PITCH_BOTS = [
  * Townsfolk: NPCs who keep a quiet Plaza lively, as in the approved
  * prototype (docs/hub-redesign/prototype/app/plaza.js). They are marked as
  * bots (role names, not player names; no card, no Add friend), wear Shop
- * skins, and step aside as players arrive. They never count for anything:
+ * skins (Rare and Epic only: Legendary and Mythical skins are what players
+ * earn, owner 22 Nov), and step aside as players arrive. They never count for anything:
  * no population, laps, cheers, orbs, goals, treats or news.
  */
 export const TOWNSFOLK: readonly {
@@ -286,7 +287,7 @@ export const TOWNSFOLK: readonly {
   {
     name: "Stroller",
     character: "mystowl",
-    skin: { skin: "mystowl-oracle", stage: 2 },
+    skin: { skin: "mystowl-clockwork", stage: 1 },
     ai: "wander",
   },
   {
@@ -299,7 +300,7 @@ export const TOWNSFOLK: readonly {
   {
     name: "Jogger",
     character: "terradon",
-    skin: { skin: "terradon-world-shell", stage: 1 },
+    skin: { skin: "terradon-geode", stage: 1 },
     ai: "track",
     lane: 0.3,
     pace: 0.62,
@@ -307,13 +308,13 @@ export const TOWNSFOLK: readonly {
   {
     name: "Dancer",
     character: "voltkit",
-    skin: { skin: "voltkit-stormcrown", stage: 2 },
+    skin: { skin: "voltkit-neon-arcade", stage: 1 },
     ai: "dance",
   },
   {
     name: "Café Regular",
     character: "lumoth",
-    skin: { skin: "lumoth-starweaver", stage: 1 },
+    skin: { skin: "lumoth-rosy-maple", stage: 1 },
     ai: "cafe",
   },
   {
@@ -325,13 +326,13 @@ export const TOWNSFOLK: readonly {
   {
     name: "Sightseer",
     character: "pyranda",
-    skin: { skin: "pyranda-harvest-moon", stage: 1 },
+    skin: { skin: "pyranda-street-vendor", stage: 1 },
     ai: "wander",
   },
   {
     name: "Runway Model",
     character: "tidefin",
-    skin: { skin: "tidefin-moontide", stage: 2 },
+    skin: { skin: "tidefin-glacier", stage: 1 },
     ai: "runway",
     side: 1,
   },
@@ -1544,7 +1545,11 @@ export class PlazaWorld {
                 Math.round(c.ball.x),
                 Math.round(c.ball.y),
                 Math.round(c.ball.z),
-              ] as [number, number, number],
+                Math.round(c.ball.vx),
+                Math.round(c.ball.vy),
+                Math.round(c.ball.vz),
+                Math.round(c.ball.lock * 100) / 100,
+              ] as [number, number, number, number, number, number, number],
             }
           : {}),
         score: [...c.score] as [number, number],

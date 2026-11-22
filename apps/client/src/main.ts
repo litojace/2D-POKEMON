@@ -39,6 +39,7 @@ import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
 import { battleCurves } from "./battle-curves";
 import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
+import { AnnouncementBanner } from "./announcements";
 import { serverNow } from "./server-clock";
 import { PvpSpectator } from "./pvp-spectator";
 import {
@@ -2068,6 +2069,8 @@ async function joinByCode(code: string) {
 /** Room code being watched (no seat), or "". */
 let watching = "";
 const pvpSpectator = new PvpSpectator();
+/** Announcements from the admins, as a banner (announcements.ts). */
+const announcements = new AnnouncementBanner();
 const roomInvites = new RoomInvites({
   accountId: () => accountsUI?.account?.id,
   canJoin: () => connected && !!accountsUI?.account && !myId,
@@ -4264,6 +4267,9 @@ socket.on(
   },
 );
 socket.on("account-changed", () => void accountsUI.refresh());
+// Announcements from the admins (announcements.ts): at once to every open game.
+socket.on("announcement", (data: unknown) => announcements.receive(data));
+socket.on("announcement-ended", (data: unknown) => announcements.end(data));
 // A deploy is replacing the server (docs/server-updates.md): a match in
 // progress plays on to the end; new matches wait for the new server.
 socket.on("server-update", () => {
@@ -8440,6 +8446,7 @@ accountsUI = new AccountUI({
     void watchRoom(code);
   },
   notify: toast,
+  announce: (list) => announcements.receive(list),
   beforeSignOut: async () => {
     roomInvites.clear();
     if (plaza) {
