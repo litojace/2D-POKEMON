@@ -24,13 +24,15 @@ it.skipIf(process.platform === "win32")(
   "lets the server drain on SIGTERM while npm waits for it",
   async () => {
     const dir = mkdtempSync(join(tmpdir(), "arena-start-"));
+    // The handler goes in before "up": a SIGTERM that lands before it would
+    // end the stand-in by default and fail the test by luck of timing.
     writeFileSync(
       join(dir, "server.js"),
-      `console.log("up");
-process.on("SIGTERM", () => {
+      `process.on("SIGTERM", () => {
   console.log("draining");
   setTimeout(() => { console.log("drained"); process.exit(0); }, 400);
 });
+console.log("up");
 setInterval(() => {}, 1000);`,
     );
     const script = start.replace(/\bnode \S+/, "node server.js");
