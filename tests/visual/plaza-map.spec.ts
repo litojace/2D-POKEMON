@@ -218,15 +218,62 @@ test("a movement key takes back a Go walk; a jump doesn't", async ({
     )
     .toBeGreaterThan(80);
   // (Polled: on a CI runner the Plaza can take seconds to get going.)
-  // A tap of a movement key: the walk stops once it's let go.
+  // A tap of a movement key: the walk stops once it's let go. The keys
+  // go to the Plaza (the map's list button had focus), held until the page
+  // has drawn twice: on a CI runner at 4 fps a 120 ms tap fell between
+  // frames, and the walk went on 191 px.
+  await page.locator(".plaza-layer").focus();
+  const focused = await page.evaluate(
+    () => document.activeElement?.className ?? "",
+  );
   await page.keyboard.down("a");
+  await page.evaluate(
+    () =>
+      new Promise((done) =>
+        requestAnimationFrame(() => requestAnimationFrame(done)),
+      ),
+  );
   await page.waitForTimeout(120);
   await page.keyboard.up("a");
+  // Stopped: half a second on (the server's copy is a snapshot behind),
+  // it stands still (three looks in a row) within a couple of frames'
+  // walk of where it was. (A slow page passes the stop on a frame or two
+  // later; the old bug walked on to the pond.)
   await page.waitForTimeout(500);
   const c = await at();
-  await page.waitForTimeout(800);
-  const d = await at();
-  expect(Math.hypot(d.x - c.x, d.y - c.y)).toBeLessThan(6);
+  let last = c,
+    still = 0;
+  for (let i = 0; i < 40 && still < 3; i++) {
+    await page.waitForTimeout(250);
+    const b = await at();
+    still = Math.hypot(b.x - last.x, b.y - last.y) < 1 ? still + 1 : 0;
+    last = b;
+  }
+  const frameMs = await page.evaluate(
+    () =>
+      new Promise<number>((done) => {
+        const t: number[] = [];
+        const f = (n: number) => {
+          t.push(n);
+          if (t.length < 21) requestAnimationFrame(f);
+          else {
+            const d = t
+              .slice(1)
+              .map((x, i) => x - t[i])
+              .sort((a, b) => a - b);
+            done(d[Math.floor(d.length * 0.9)]);
+          }
+        };
+        requestAnimationFrame(f);
+      }),
+  );
+  const walkedOn = Math.hypot(last.x - c.x, last.y - c.y),
+    bound = (2 * PLAZA.speed * frameMs) / 1000 + 6;
+  expect(still, "stands still").toBe(3);
+  expect(
+    walkedOn,
+    `walked on after the key (focus "${focused}", slow frames ${Math.round(frameMs)} ms, bound ${Math.round(bound)} px)`,
+  ).toBeLessThan(bound);
   expect(errors).toEqual([]);
 });
 
