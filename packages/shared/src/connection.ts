@@ -61,6 +61,38 @@ export const battleLoadSchema = z
 export type BattleLoad = z.infer<typeof battleLoadSchema>;
 
 /**
+ * A fighter's art found blank in battle and loaded again (rig-health.ts in
+ * the client), sent as "battle-art" and logged by the server as
+ * "arena-art-blank": which fighter, how many of its textures, and the moment
+ * that found it. A player's own fighter vanished on an iPhone (22 Nov 2026)
+ * and could not be reproduced; this says when it happens and to whom.
+ */
+export const battleArtSchema = z
+  .object({
+    character: z.string().regex(/^[a-z0-9-]{1,32}$/),
+    /** The fighter is the player's own. */
+    mine: z.boolean(),
+    textures: z.number().int().min(0).max(512),
+    blank: z.number().int().min(0).max(512),
+    /** What ran the check: the page shown again, a resumed connection, a
+     * new battle renderer, a restored WebGL context. */
+    trigger: z.enum(["visible", "resume", "renderer", "context"]),
+    /** Loaded again (false: repaired twice already, left as it is). */
+    repaired: z.boolean(),
+    hidden: z.boolean().optional(),
+    build: z
+      .string()
+      .regex(/^[a-z0-9-]{1,16}$/)
+      .optional(),
+    os: z
+      .enum(["ios", "android", "mac", "windows", "linux", "other"])
+      .optional(),
+    app: z.boolean().optional(),
+  })
+  .strict();
+export type BattleArt = z.infer<typeof battleArtSchema>;
+
+/**
  * How smoothly a match ran on a player's device, sent once at its end as
  * "battle-perf" and logged by the server as "arena-perf"
  * (apps/client/src/battle-perf.ts). Technical numbers only: no name or
