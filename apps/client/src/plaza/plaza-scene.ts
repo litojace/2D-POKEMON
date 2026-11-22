@@ -4616,7 +4616,11 @@ export function openPlaza(options) {
         c = Math.cos(d.a),
         nx =
           cx +
-          c * (c < 0 ? Math.min(rx, cx - (LINE_ZONE.bx + DUCK_CLEAR)) : rx),
+          c *
+            (c < 0
+              ? // Each duck by its own path's size, so they don't bunch.
+                Math.min(rx, (cx - (LINE_ZONE.bx + DUCK_CLEAR)) * (d.r / 0.55))
+              : rx),
         ny = POND.y + Math.sin(d.a) * POND.ry * d.r * 1.1;
       d.face = nx > d.x ? 1 : -1;
       d.x = nx;
