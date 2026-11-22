@@ -148,7 +148,7 @@ describe("Ball Lightning (Voltkit)", () => {
 });
 
 describe("Thunderstorm (Voltkit)", () => {
-  it("strikes an enemy anywhere three times, and a stealthed one never", () => {
+  it("strikes an enemy anywhere with every bolt, and a stealthed one never", () => {
     for (const stealthed of [false, true]) {
       const a = arena("voltkit", "shadopus");
       const [me, them] = a.players;
@@ -161,7 +161,10 @@ describe("Thunderstorm (Voltkit)", () => {
       seconds(a, 3);
       const st = skill("voltkit", "thunderstorm");
       if (stealthed) expect(them.hp).toBe(hp);
-      else expect(hp - them.hp).toBeGreaterThanOrEqual(st.damage * 3 - 0.01);
+      else
+        expect(hp - them.hp).toBeGreaterThanOrEqual(
+          st.damage * st.count! - 0.01,
+        );
     }
   });
   it("strikes only the enemy nearest the aim when there are several", () => {
@@ -179,7 +182,9 @@ describe("Thunderstorm (Voltkit)", () => {
     press(a, me, "voltkit", "thunderstorm");
     seconds(a, 3);
     expect(hpNear - near.hp).toBeGreaterThanOrEqual(
-      skill("voltkit", "thunderstorm").damage * 3 - 0.01,
+      skill("voltkit", "thunderstorm").damage *
+        skill("voltkit", "thunderstorm").count! -
+        0.01,
     );
     expect(far.hp).toBe(hpFar);
   });
@@ -189,14 +194,24 @@ describe("Thunderstorm (Voltkit)", () => {
     place(me, 200, Y, 300, Y);
     place(them, 1200, 750);
     const hp = them.hp;
+    const st = skill("voltkit", "thunderstorm");
     press(a, me, "voltkit", "thunderstorm");
-    // Each mark lands 0.55 s after it appears: move 150 px away from each.
-    for (let wave = 0; wave < 3; wave++) {
-      seconds(a, 0.4 + (wave ? 0 : 0.4));
-      them.x += wave % 2 ? -150 : 150;
-      seconds(a, 0.4);
+    // Each mark strikes tickDelay after it appears: step clear of each one
+    // (its radius and a fighter's) as soon as it shows.
+    const seen = new Set<number>();
+    for (let i = 0; i < RULES.tick * 4; i++) {
+      a.tick();
+      for (const z of a.zones)
+        if (
+          z.ability.id === st.id &&
+          z.ability.kind === "zone" &&
+          !seen.has(z.id)
+        ) {
+          seen.add(z.id);
+          them.x += (seen.size % 2 ? 1 : -1) * (z.radius + RULES.radius + 20);
+        }
     }
-    seconds(a, 0.6);
+    expect(seen.size).toBe(st.count);
     expect(them.hp).toBe(hp);
   });
 });

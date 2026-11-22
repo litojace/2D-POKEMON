@@ -589,6 +589,68 @@ Round robins, `main` / now (24 games a pair, seeds 310000):
 Spire: the three are Echoes on 36 floors; all cleared within 5 of 72 as
 often as on `main` but floor 3 (33 / 24), now armour 1.05 (0.99): 34.
 
+## Voltkit: Ball Lightning and Thunderstorm earn their slots
+
+A skill audit (each skill's kind set to "none", two seeds, 12 games a
+pair) found two of Voltkit's skills worth little: switching off Ball
+Lightning cost it 4.4 points for experts and 7.6 on Hard, Thunderstorm 6.1
+and 8.6 (a typical skill is worth 15 - 30). The orb was easy to walk away
+from, and a good dodger stepped out of every bolt. Both now do something
+an opponent must answer, and Voltkit as a whole stays where it was:
+
+- **Ball Lightning:** every zap and the burst slow for 0.3 s, so with its
+  30% bonus against hindered enemies each zap after the first hurts more,
+  and a slowed enemy is easier to hit with Static Lance. The burst deals 8
+  (12).
+- **Thunderstorm:** four bolts (three), 0.65 s apart (0.8), 14 damage
+  (16), 120 px (95), and 0.8 s of paralysis (0.5): a bolt that lands holds
+  its target for the next. Each mark still shows 0.55 s before it strikes,
+  so every bolt can be stepped out of.
+- **Health 135** (157) pays for both.
+
+Levers tried on Voltkit's pairings (expert without look-ahead, seed 5000,
+24 games a pair; Hard / expert, from 55.1% / 41.7%): the slow alone 70.6%
+/ 56.9%, five bolts alone 60.8% / 43.9%. Spark Dart at 5 damage made
+Voltkit win more (62.5% / 46.8%), not less, a bot effect rather than
+strength, so it was not used. Paralysis that chains and a wider bolt
+mattered most for the ultimate; health took the extra strength back.
+
+| Seed (games a pair) | Before Hard / expert | After Hard / expert |
+| ------------------- | -------------------: | ------------------: |
+| 5000 (24)           |        55.1% / 41.7% |       54.7% / 40.9% |
+| 9000 (48)           |        52.1% / 42.4% |       55.5% / 42.0% |
+| 310000 (24, all)    |        55.6% / 38.7% |       55.1% / 42.4% |
+
+Switched off after the change (seed 9000): Ball Lightning is worth 18.1
+points on Hard and 17.9 for experts, Thunderstorm 18.0 and 18.6. Whole
+round robins on seed 310000: Hard 42.2% - 60.3% (Tidefin, +1.2), expert
+39.7% - 58.6% (sd 6.0 to 5.7); no other champion moves by more than 1.7
+points.
+
+- **Normal** fell 2 - 3 points (47.1% to 43.6% on seed 310000), so its
+  handicap is 0.265 (0.285): 50.1% on seed 9000 and 45.1% on 310000 at 48
+  games a pair (`main` 48.3% and 47.1%).
+- **2v2** rose (52.7% to 57.5% on `FRESH_BASE=7000`), so its factor is 1.03
+  (1.07): 51.3% and 54.8% on 7000 and 8000 (`main` 52.7% and 54.4%).
+  4-player 26.8% to 28.5%, 3-player 39.1% to 39.8%: factors kept.
+- **Spire** (floors 1 and 61 - 69, the play-tests' Halcyra): the Echoes
+  have less health but skills that bite, and on 72 seeds 61 - 69 moved
+  from 40 38 17 28 35 42 15 20 15 to 41 47 26 31 40 37 17 24 10. On 192
+  seeds the floors that moved most are within 5 points (62 112 / 121, 63
+  74 / 81, 65 92 / 98, 66 107 / 105, 69 36 / 32): no armour changes.
+  (Spire Echoes don't use the Normal handicap: the 72-seed rates were the
+  same before and after it changed.)
+- `tests/visual/effect-budget.spec.ts` passes (Voltkit's ultimate: glow
+  0.06 of the screen, 33 particles).
+
+**Also fixed with it.** Ascendant Lumiwick's overlap rule now also waits when the oldest live
+attack lands before anyone could move (inside a reaction): then "a safe
+spot exists" only meant every raider stood in one at that moment. With
+the new kits, an echoed dive was placed 0.5 s after another dive while
+ember rain was 0.27 s from landing, and one raider's next step into a lane
+left no spot (`tests/unit/raid-ascendant-lumiwick.test.ts`, 4 raiders).
+Waiting only gives raiders more warning.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now
