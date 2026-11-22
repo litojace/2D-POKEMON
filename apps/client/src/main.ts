@@ -24,8 +24,10 @@ import {
   BUILD,
   NetMeter,
   PERF_MIN_SECONDS,
+  appShell,
   connectionKind,
   deviceKind,
+  deviceModel,
   drawnGap,
   loadPhases,
   perfMode,
@@ -206,6 +208,9 @@ import {
   PRIVACY_URL,
   SUPPORT_URL,
   isNativeApp,
+  loadDeviceInfo,
+  nativeDeviceInfo,
+  nativePlatform,
   setupNativeShell,
 } from "./native";
 import {
@@ -543,6 +548,27 @@ let battleStill: boolean | undefined;
 let battleDensity: number | undefined;
 /** How smoothly this match runs on this device (battle-perf.ts). */
 const battlePerf = new BattlePerfMeter();
+/**
+ * Our own work in the last frame (ms): Phaser's step from its start to the
+ * end of rendering (createGame). In a long frame, short work means the
+ * graphics chip set the pace (battle-perf FrameSample.work).
+ */
+let frameWork: number | undefined;
+/** The raid's warned attacks as one key, worked out once per snapshot. */
+let attackKey: { warnings?: readonly { kind: string }[]; key: string } = {
+  key: "",
+};
+function raidAttackKey(warnings: readonly { kind: string }[]) {
+  if (attackKey.warnings !== warnings)
+    attackKey = {
+      warnings,
+      key: [...new Set(warnings.map((w) => w.kind))]
+        .filter((k) => /^[a-z0-9-]{1,32}$/.test(k))
+        .sort()
+        .join(","),
+    };
+  return attackKey.key;
+}
 /**
  * Moves whose cast effect plays on your press (predicted): it depends only on
  * where you stand and face. The rest wait for the server (see
@@ -968,6 +994,8 @@ battleHudSize.observe($("abilities"));
 watchBattleZoom();
 // The iPhone app never zooms: a double tap in the Plaza zoomed the game in.
 if (isNativeApp()) lockAppZoom();
+// The phone's model for match reports (native.ts), read once.
+loadDeviceInfo();
 guardTouchHold();
 const homeNavigation = setupHomeNavigation($("menu"), () => showSettings());
 $("home-settings").onclick = () => showSettings();
@@ -6020,9 +6048,25 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // 17 Nov 2026); the Plaza measures itself.
     if (live) battleQuality.frame(now);
     else battleQuality.pause();
-    battlePerf.frame(now, live);
-    const knobs = battleQuality.knobs();
     const fx = fxFor(this);
+    const raid = state?.raid;
+    battlePerf.frame(
+      now,
+      live,
+      live
+        ? {
+            work: frameWork,
+            glow: fx.stats.glowCover,
+            soft: fx.stats.softCover,
+            particles: fx.stats.particles,
+            objects: this.children.length,
+            ...(raid
+              ? { phase: raid.phase, attacks: raidAttackKey(raid.warnings) }
+              : {}),
+          }
+        : undefined,
+    );
+    const knobs = battleQuality.knobs();
     fx.density = knobs.particles;
     fx.trailScale = knobs.trails;
     fx.glowBudget = knobs.glowBudget;
@@ -8582,6 +8626,7 @@ function arenaLoading(s: Snapshot) {
  */
 function reportBattlePerf() {
   const summary = battlePerf.summary();
+  const detail = battlePerf.detail();
   const net = netMeter.summary();
   battlePerf.reset();
   netMeter.reset();
@@ -8612,6 +8657,13 @@ function reportBattlePerf() {
     errors,
     ...(softwareRendering() ? { gpu: "software" as const } : {}),
     ...(screenHz(battleFrames) ? { hz: screenHz(battleFrames) } : {}),
+    shell: appShell(nativePlatform(), deviceKind().app),
+    ...deviceModel(nativeDeviceInfo(), {
+      width: window.screen.width,
+      height: window.screen.height,
+      dpr: window.devicePixelRatio,
+    }),
+    ...detail,
   });
 }
 /**
@@ -8714,6 +8766,14 @@ function ensureBattleRenderer() {
         battleFrames = capGameFrames(game);
       },
     },
+  });
+  // Our own work per frame, for the match report (frameWork).
+  let stepStart = 0;
+  gameInstance.events.on(Phaser.Core.Events.PRE_STEP, () => {
+    stepStart = performance.now();
+  });
+  gameInstance.events.on(Phaser.Core.Events.POST_RENDER, () => {
+    if (stepStart) frameWork = performance.now() - stepStart;
   });
   // A player can return home while the first texture load is still finishing.
   gameInstance.events.once(Phaser.Core.Events.POST_RENDER, syncBattleLoop);
