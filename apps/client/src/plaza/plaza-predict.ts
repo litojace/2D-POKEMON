@@ -92,6 +92,18 @@ export class PlazaPrediction {
     return { err, snap: false, dx, dy };
   }
 
+  /**
+   * How far the server's snapshot is behind your own timeline (ms): the
+   * snapshot matches where the browser had you `ack[1]` ms after it sent
+   * stick `ack[0]`, so the rest up to `now` is the lag (a network trip and
+   * the snapshot's age). Undefined when that stick is forgotten.
+   */
+  lag(ack: [number, number] | undefined, now: number) {
+    const sent = ack && this.sentAt.get(ack[0]);
+    if (sent === undefined) return undefined;
+    return Math.max(0, now - (sent + ack![1]));
+  }
+
   /** The part of the owed correction to apply this frame (px). */
   ease(dt: number): Point {
     const k = 1 - Math.exp(-dt / PLAZA_PREDICT.ease),

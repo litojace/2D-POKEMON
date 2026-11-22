@@ -746,6 +746,8 @@ export function createArenaServer(
       }
     },
     connectionLog,
+    // An admin's announcement reaches every open game, signed in or not.
+    (event, payload) => io.emit(event, payload),
   );
   /** Signed-in players with a live connection, merged per account. */
   function listOnline(): OnlineList {

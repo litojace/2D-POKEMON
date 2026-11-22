@@ -71,6 +71,7 @@ import {
   titleUpdateSchema,
   titleGrantSchema,
   adminCoinsSchema,
+  announceSchema,
   equipTitleSchema,
   nameChangeSchema,
   matchReportSchema,
@@ -549,6 +550,8 @@ export function installAccountRoutes(
   onFriendsChanged: (accountId: string) => void = () => {},
   /** One line for the server log (server.ts connectionLog). */
   log: (event: string, details: Record<string, unknown>) => void = () => {},
+  /** Send an event to every connected game (an admin's announcement). */
+  broadcast: (event: string, payload: unknown) => void = () => {},
 ) {
   const requests = new Map<string, { count: number; until: number }>();
   app.use("/api", (req, res, next) => {
@@ -1305,12 +1308,26 @@ export function installAccountRoutes(
       const offset = Number(req.query.offset ?? 0);
       if (!Number.isInteger(offset) || offset < 0 || offset > 100000)
         throw new AccountError(400, "Invalid page.");
-      res.json(
-        await provider.rpc(token, "arena_admin_players", {
-          p_search: search,
-          p_offset: offset,
-        }),
-      );
+      const sort = req.query.sort === "online" ? "online" : "new";
+      try {
+        // With last-online and the sort (migration 20261122120000).
+        res.json(
+          await provider.rpc(token, "arena_admin_player_list", {
+            p_search: search,
+            p_offset: offset,
+            p_sort: sort,
+          }),
+        );
+      } catch (error) {
+        // Before that migration: the older list, newest first.
+        if (sort === "online") throw error;
+        res.json(
+          await provider.rpc(token, "arena_admin_players", {
+            p_search: search,
+            p_offset: offset,
+          }),
+        );
+      }
     }),
   );
   app.post(
@@ -1514,6 +1531,55 @@ export function installAccountRoutes(
       });
       onPlayerChanged(data.playerId);
       res.json(result);
+    }),
+  );
+  // Announcements (migration 20261122120000): an admin sends one to every
+  // player; games online get it at once, the rest when they next sign in.
+  app.get(
+    "/api/announcements",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      try {
+        res.json(await provider.rpc(token, "arena_current_announcements", {}));
+      } catch {
+        // Before the migration (or a database hiccup): no announcements.
+        res.json([]);
+      }
+    }),
+  );
+  app.get(
+    "/api/admin/announcements",
+    route(true, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_admin_announcements", {}));
+    }),
+  );
+  app.post(
+    "/api/admin/announce",
+    route(true, async (req, res, token) => {
+      const data = announceSchema.parse(req.body);
+      const sent = await provider.rpc(token, "arena_admin_announce", {
+        p_message: data.message,
+        p_tone: data.tone,
+        p_hours: data.hours,
+      });
+      broadcast("announcement", sent);
+      log("arena-announce", { tone: data.tone, hours: data.hours });
+      res.json(sent);
+    }),
+  );
+  app.post(
+    "/api/admin/announcements/end",
+    route(true, async (req, res, token) => {
+      const data = z
+        .object({ id: z.number().int().positive() })
+        .strict()
+        .parse(req.body);
+      await provider.rpc(token, "arena_admin_end_announcement", {
+        p_id: data.id,
+      });
+      broadcast("announcement-ended", { id: data.id });
+      res.json({ ok: true });
     }),
   );
   app.post(
