@@ -156,17 +156,17 @@ replaces in bot duels (`difficulty-gap.ts 4`, every pair, 612 duels):
 (The Normal and Easy rows are the candidates' numbers before Normal's
 `dazeBy` was recalibrated.)
 
-| Setting                       | Easy        | Normal      | Hard        |
-| ----------------------------- | ----------- | ----------- | ----------- |
-| Reaction                      | 0.5 → 0.47 s | 0.36 → 0.33 s | 0.25 → 0.2 s |
-| Aim spread                    | 0.27 → 0.26 | 0.215 → 0.19 | 0.14 → 0.12 |
-| Dodges                        | 10 → 18%    | 43 → 47%    | 55 → 80%    |
+| Setting                       | Easy          | Normal        | Hard          |
+| ----------------------------- | ------------- | ------------- | ------------- |
+| Reaction                      | 0.5 → 0.47 s  | 0.36 → 0.33 s | 0.25 → 0.2 s  |
+| Aim spread                    | 0.27 → 0.26   | 0.215 → 0.19  | 0.14 → 0.12   |
+| Dodges                        | 10 → 18%      | 43 → 47%      | 55 → 80%      |
 | Decides every                 | 0.45 → 0.38 s | 0.19 → 0.17 s | 0.12 → 0.08 s |
-| Holds fire (`rest`)           | 42 → 36%    | 12 → 10%    | 5 → 0%      |
-| Uses a good skill chance      | 35 → 38%    | 42 → 52%    | 90%         |
-| Leads moving targets          | 0 → 5%      | 20 → 40%    | 85%         |
-| Looks away from Eyespot Flash | -           | - → yes     | yes         |
-| Reads marks after             | 0.9 → 0.88 s | 0.75 → 0.72 s | 0.6 s       |
+| Holds fire (`rest`)           | 42 → 36%      | 12 → 10%      | 5 → 0%        |
+| Uses a good skill chance      | 35 → 38%      | 42 → 52%      | 90%           |
+| Leads moving targets          | 0 → 5%        | 20 → 40%      | 85%           |
+| Looks away from Eyespot Flash | -             | - → yes       | yes           |
+| Reads marks after             | 0.9 → 0.88 s  | 0.75 → 0.72 s | 0.6 s         |
 
 Hard now has the balance expert's reaction, aim and decisions (a good
 player's hands, not a machine's) without its look-ahead. Three of the
@@ -214,7 +214,19 @@ then two steps at 0.4 gain. The gaps between the levels stay as they were:
 Hard beats Normal in 99.7% of duels (99.7% on main), Normal beats Easy in
 91.7% (93.1%).
 
-__MODES__
+**2v2 and free-for-all.** The sharper bots moved both (checked on
+line-ups no tuning played, `FRESH_BASE=7000`, 1,000 matches per level):
+2v2 to 40.9% – 62.0% (Mossloth 62%), four-player free-for-all to 20.3% –
+34.6%. `TEAM_TUNING` was retuned with four fresh rounds (`FRESH_BASE`
+5010–5040) and `FFA_TUNING` with five (5010–5050), the last three rounds'
+factors averaged. Three-player free-for-all stayed inside its range
+(27.4% – 41.1%), so `FFA_THREE_TUNING` is unchanged.
+
+| Mode (fresh line-ups) | Before (main) | New bots, old factors | Retuned       |
+| --------------------- | ------------- | --------------------- | ------------- |
+| 2v2                   | 41.9% – 55.8% | 40.9% – 62.0%         | 45.7% – 55.8% |
+| 4-player free-for-all | 21.4% – 29.1% | 20.3% – 34.6%         | 20.4% – 28.9% |
+| 3-player free-for-all | 27.7% – 41.5% | 27.4% – 41.1%         | (unchanged)   |
 
 ## Tools
 
