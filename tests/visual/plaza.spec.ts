@@ -710,6 +710,37 @@ test("Jump and Dash work while the other thumb holds the joystick", async ({
   }
 });
 
+// Bodies keep out of the fountain's basin (PLAZA_OBSTACLES), and so do
+// the square's animals: they used to check only where a walk ended, so the
+// corgi and the pigeons walked straight through the basin (owner, 22 Nov).
+test("the corgi walks round the fountain, not through its basin", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const errors = await openPlaza(page);
+  const F = PLAZA_FOUNTAIN;
+  const inBasin = (x: number, y: number) =>
+    ((x - F.x) / F.rx) ** 2 +
+      ((y - (F.y + F.wall / 2)) / (F.ry + F.wall / 2)) ** 2 <
+    1;
+  // West of the basin, sent east: the straight line crosses it.
+  await page.evaluate(
+    ([x, y, tx, ty]) => (window as any).__plaza.sendPet(x, y, tx, ty),
+    [F.x - F.rx - 40, F.y + 10, F.x + F.rx + 40, F.y + 10],
+  );
+  const seen: { x: number; y: number }[] = [];
+  for (let i = 0; i < 25; i++) {
+    const a = await page.evaluate(() => (window as any).__plaza.animals());
+    seen.push(a.pet);
+    for (const b of a.pigeons)
+      if (!b.fly)
+        expect(inBasin(b.x, b.y), `pigeon at ${b.x},${b.y}`).toBe(false);
+    await page.waitForTimeout(120);
+  }
+  expect(seen.filter((p) => inBasin(p.x, p.y))).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test("the dash track's lane is whole (no wedge cut out of it)", async ({
   page,
 }) => {

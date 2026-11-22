@@ -4535,6 +4535,24 @@ export function openPlaza(options) {
       ),
     );
   }
+  /**
+   * The fountain's basin, rim to foot, with some room round it: animals
+   * keep out of it as bodies do (PLAZA_OBSTACLES). They used to check only
+   * where they were going, so a straight walk crossed the basin (owner).
+   */
+  const inFount = (x, y, pad = 14) =>
+    ((x - FOUNT.x) / (FOUNT.rx + pad)) ** 2 +
+      ((y - (FOUNT.y + FOUNT.wall / 2)) / (FOUNT.ry + FOUNT.wall / 2 + pad)) **
+        2 <
+    1;
+  /** A straight walk from a to b that keeps clear of the basin. */
+  const clearWalk = (ax, ay, bx, by, pad) => {
+    for (let k = 0; k <= 12; k++) {
+      const t = k / 12;
+      if (inFount(ax + (bx - ax) * t, ay + (by - ay) * t, pad)) return false;
+    }
+    return true;
+  };
   function updateAnimals(dt) {
     DUCKS.forEach((d) => {
       d.a += d.s * dt * (d.dab > 0 ? 0.2 : 1);
@@ -4563,6 +4581,9 @@ export function openPlaza(options) {
       if (Math.random() < dt * 0.03) f.jump = 0.01;
     });
     PIGEONS.forEach((b) => {
+      // (One standing in the basin, as placed at the start, steps out.)
+      if (!(b.fly > 0) && inFount(b.x, b.y, 2))
+        b.y = FOUNT.y + FOUNT.wall + FOUNT.ry + 24;
       const threat =
         BODIES().some(
           (n) =>
@@ -4589,10 +4610,15 @@ export function openPlaza(options) {
         return;
       }
       if (threat) {
-        const a = Math.random() * Math.PI * 2,
-          r = 0.3 + Math.random() * 0.6;
-        b.tx = SQ.x + Math.cos(a) * SQ.rx * r;
-        b.ty = SQ.y + Math.sin(a) * SQ.ry * r;
+        // Fly off and land somewhere on the square, never in the basin.
+        for (let k = 0; k < 8; k++) {
+          const a = Math.random() * Math.PI * 2,
+            r = 0.3 + Math.random() * 0.6;
+          b.tx = SQ.x + Math.cos(a) * SQ.rx * r;
+          b.ty = SQ.y + Math.sin(a) * SQ.ry * r;
+          if (!inFount(b.tx, b.ty, 10)) break;
+        }
+        if (inFount(b.tx, b.ty, 10)) b.ty = FOUNT.y + FOUNT.wall + FOUNT.ry + 40;
         b.fly = 2.2;
         return;
       }
@@ -4618,7 +4644,7 @@ export function openPlaza(options) {
         b.ty = b.y + (Math.random() - 0.5) * 70;
         if (
           !inSquare(b.tx, b.ty, 0.95) ||
-          ((b.tx - FOUNT.x) / 140) ** 2 + ((b.ty - FOUNT.y) / 100) ** 2 < 1
+          !clearWalk(b.x, b.y, b.tx, b.ty, 10)
         ) {
           b.tx = null;
           return;
@@ -4635,8 +4661,17 @@ export function openPlaza(options) {
         return;
       }
       b.face = dx > 0 ? 1 : -1;
-      b.x += (dx / d) * 34 * dt;
-      b.y += (dy / d) * 34 * dt;
+      const px = b.x + (dx / d) * 34 * dt,
+        py = b.y + (dy / d) * 34 * dt;
+      // (A walker that finds itself at the basin stops and picks again.)
+      if (inFount(px, py, 6)) {
+        b.tx = null;
+        b.st = "idle";
+        b.wait = 0.3;
+        return;
+      }
+      b.x = px;
+      b.y = py;
     });
     BUTTER.forEach((b) => {
       b.ph += dt;
@@ -4665,6 +4700,7 @@ export function openPlaza(options) {
         ? 1
         : Math.max(0, CAT.awake - dt * 0.5);
     // The corgi trots between spots round the square and barks now and then.
+    if (inFount(PET.x, PET.y, 4)) PET.y = FOUNT.y + FOUNT.wall + FOUNT.ry + 30;
     if (PET.wait > 0) {
       PET.wait -= dt;
       if (PET.bark > 0) {
@@ -4678,11 +4714,7 @@ export function openPlaza(options) {
           r = 0.45 + Math.random() * 0.5;
         PET.tx = SQ.x + Math.cos(a) * SQ.rx * r;
         PET.ty = SQ.y + Math.sin(a) * SQ.ry * r + 20;
-        if (
-          ((PET.tx - FOUNT.x) / 150) ** 2 + ((PET.ty - FOUNT.y) / 105) ** 2 <
-          1
-        )
-          PET.tx = null;
+        if (!clearWalk(PET.x, PET.y, PET.tx, PET.ty, 24)) PET.tx = null;
       }
       if (PET.tx != null) {
         const dx = PET.tx - PET.x,
@@ -4692,9 +4724,16 @@ export function openPlaza(options) {
           PET.tx = null;
           PET.wait = 2 + Math.random() * 4;
         } else {
-          const sp = 120;
-          PET.x += (dx / d) * Math.min(d, sp * dt);
-          PET.y += (dy / d) * Math.min(d, sp * dt);
+          const sp = 120,
+            px = PET.x + (dx / d) * Math.min(d, sp * dt),
+            py = PET.y + (dy / d) * Math.min(d, sp * dt);
+          if (inFount(px, py, 16)) {
+            PET.tx = null;
+            PET.wait = 0.5;
+            return;
+          }
+          PET.x = px;
+          PET.y = py;
           PET.face = dx > 0 ? 1 : -1;
           PET.st = "walk";
         }
@@ -6226,6 +6265,15 @@ export function openPlaza(options) {
         y1: cam.y + NH / 2 / Z,
         z: Z,
       }),
+      /** The square's animals on the ground now (tests). */
+      animals: () => ({
+        pet: { x: PET.x, y: PET.y },
+        pigeons: PIGEONS.map((b) => ({ x: b.x, y: b.y, fly: b.fly > 0 })),
+      }),
+      /** Tests: put the corgi somewhere, walking toward a point. */
+      sendPet(x, y, tx, ty) {
+        Object.assign(PET, { x, y, tx, ty, wait: 0 });
+      },
       /** The click marker now (tests). */
       clickMark: () => (clickMark ? { ...clickMark } : null),
       /** Tests: zoom to a factor of the usual (as a pinch or the wheel). */

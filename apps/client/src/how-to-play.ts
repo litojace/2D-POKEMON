@@ -276,7 +276,7 @@ export function controlRows(device: HelpDevice, c: HelpControls): Row[] {
       ],
       ["Dash · Jump", "Dodge shots · hop over ground attacks"],
       ["Target", "The crosshair picks which enemy to aim at"],
-      ["Settings", "The gear (top right): button size, opacity and more"],
+      ["Settings", "The gear: sound, graphics, controls and more"],
     ];
   const k = device === "pad" ? c.pad : c.keys;
   const aim = device === "pad" ? "Right stick aims" : "The mouse aims";
