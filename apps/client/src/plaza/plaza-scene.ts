@@ -89,6 +89,7 @@ import {
   fountainTiers,
   waterOf as fountainWater,
 } from "./plaza-fountain-art";
+import { ledGlass, ledRig, ledShade, ledWords } from "./plaza-stage-art";
 import {
   fallenLeaves,
   grassEdge,
@@ -3495,86 +3496,70 @@ export function openPlaza(options) {
     g.stroke();
     g.restore();
   }
+  /** The screen's words, painted again only when they change. */
+  const ledPic = ledWords(LED.x1 - LED.x0, LED.y1 - LED.y0);
   function drawLED(g, time) {
     const { x0, x1, y0, y1 } = LED,
       w = x1 - x0,
       h = y1 - y0;
-    // truss + legs
-    g.fillStyle = "#1a1a24";
-    g.fillRect(x0 - 24, y0 - 34, w + 48, 16);
-    [x0 - 24, x1 + 10].forEach((x) =>
-      g.fillRect(x, y0 - 34, 14, STAGE.y0 - y0 + 34),
-    );
+    // The truss, its towers, the bezel and the speakers (baked).
+    GFX.blit(g, ledRig(x0, y0, x1, y1, STAGE.y0), x0, y0);
+    // The light cans, pulsing.
     for (let i = 0; i < 6; i++) {
       const x = x0 + 30 + (i * (w - 60)) / 5;
-      g.fillStyle = "#2b2b38";
+      g.fillStyle = `rgba(255,240,200,${low ? 0.75 : 0.5 + 0.5 * Math.sin(time * 3 + i)})`;
       g.beginPath();
-      g.arc(x, y0 - 20, 9, 0, 7);
-      g.fill();
-      g.fillStyle = `rgba(255,240,200,${0.5 + 0.5 * Math.sin(time * 3 + i)})`;
-      g.beginPath();
-      g.arc(x, y0 - 14, 5, 0, 7);
+      g.ellipse(x, y0 - 12, 5, 4, 0, 0, 7);
       g.fill();
     }
-    // screen
-    g.fillStyle = "#07060f";
-    g.fillRect(x0 - 6, y0 - 6, w + 12, h + 12);
-    const gr = g.createLinearGradient(x0, y0, x1, y1);
-    const hshift = (time * 30) % 360;
-    gr.addColorStop(0, `hsl(${(300 + hshift) % 360} 80% 28%)`);
-    gr.addColorStop(1, `hsl(${(220 + hshift) % 360} 80% 22%)`);
-    g.fillStyle = gr;
+    // The screen's slowly shifting colour: one flat fill (no gradient
+    // made a frame); the baked glass below darkens it toward the bottom.
+    const hshift = low ? 0 : (time * 30) % 360;
+    g.fillStyle = `hsl(${(280 + hshift) % 360} 80% 30%)`;
     g.fillRect(x0, y0, w, h);
-    g.save();
-    g.beginPath();
-    g.rect(x0, y0, w, h);
-    g.clip();
+    GFX.blit(g, ledShade(w, h), x0, y0);
     const star = runwayOn ? P : [...others.values()].find((n) => inRunway(n));
-    if (star && star.img?.sprite) {
-      g.drawImage(star.img.sprite, x0 + 20, y0 + 6, h * 0.99, h * 1.0);
-      g.textAlign = "left";
-      g.fillStyle = "#ff9bd2";
-      g.font = "800 16px 'DM Sans', sans-serif";
-      g.fillText("ON THE RUNWAY", x0 + h + 34, y0 + 40);
-      g.fillStyle = "#fff";
-      g.font = "800 46px 'Barlow Condensed', sans-serif";
-      g.fillText(String(star.name).toUpperCase(), x0 + h + 34, y0 + 86);
-      g.fillStyle = "#ffd65b";
-      g.font = "700 20px 'DM Sans', sans-serif";
-      g.fillText(starSkin(star), x0 + h + 34, y0 + 118);
-      if (star.me) {
-        const sw = g.measureText(starSkin(star)).width,
-          hi = ICON_IMG("heart");
-        if (hi.complete) g.drawImage(hi, x0 + h + 46 + sw, y0 + 101, 22, 22);
-        g.fillText(String(claps), x0 + h + 72 + sw, y0 + 118);
+    const spr = star?.img?.sprite;
+    const words = star && spr
+      ? `star|${star.name}|${starSkin(star)}|${star.me ? claps : ""}|${ICON_IMG("heart").complete}`
+      : `idle|${ev.on}`;
+    // (Painted again once the fonts have loaded, too.)
+    const pic = ledPic(`${words}|${spr ? spr.width : 0}|${document.fonts?.status}`, (q) => {
+      if (star && spr) {
+        q.drawImage(spr, 20, 6, h * 0.99, h * 1.0);
+        q.textAlign = "left";
+        q.fillStyle = "#ff9bd2";
+        q.font = "800 16px 'DM Sans', sans-serif";
+        q.fillText("ON THE RUNWAY", h + 34, 40);
+        q.fillStyle = "#fff";
+        q.font = "800 46px 'Barlow Condensed', sans-serif";
+        q.fillText(String(star.name).toUpperCase(), h + 34, 86);
+        q.fillStyle = "#ffd65b";
+        q.font = "700 20px 'DM Sans', sans-serif";
+        q.fillText(starSkin(star), h + 34, 118);
+        if (star.me) {
+          const sw = q.measureText(starSkin(star)).width,
+            hi = ICON_IMG("heart");
+          if (hi.complete) q.drawImage(hi, h + 46 + sw, 101, 22, 22);
+          q.fillText(String(claps), h + 72 + sw, 118);
+        }
+      } else {
+        q.textAlign = "center";
+        q.fillStyle = "#fff";
+        q.font = "800 64px 'Barlow Condensed', sans-serif";
+        q.fillText("RUNWAY", w / 2, 84);
+        q.fillStyle = "#ff9bd2";
+        q.font = "700 18px 'DM Sans', sans-serif";
+        q.fillText(
+          ev.on ? "ORB SHOWER IN PROGRESS" : "STEP UP TO SHOW OFF YOUR SKIN",
+          w / 2,
+          118,
+        );
       }
-    } else {
-      g.textAlign = "center";
-      g.fillStyle = "#fff";
-      g.font = "800 64px 'Barlow Condensed', sans-serif";
-      g.fillText("RUNWAY", (x0 + x1) / 2, y0 + 84);
-      g.fillStyle = "#ff9bd2";
-      g.font = "700 18px 'DM Sans', sans-serif";
-      g.fillText(
-        ev.on ? "ORB SHOWER IN PROGRESS" : "STEP UP TO SHOW OFF YOUR SKIN",
-        (x0 + x1) / 2,
-        y0 + 118,
-      );
-    }
-    g.fillStyle = "rgba(0,0,0,.18)";
-    for (let y = y0; y < y1; y += 4) g.fillRect(x0, y, w, 1.5);
-    g.restore();
-    // speakers
-    [x0 - 70, x1 + 30].forEach((x) => {
-      g.fillStyle = "#15151f";
-      g.fillRect(x, STAGE.y0 - 120, 40, 120);
-      g.fillStyle = "#2c2c3a";
-      [STAGE.y0 - 96, STAGE.y0 - 46].forEach((y) => {
-        g.beginPath();
-        g.arc(x + 20, y, 14, 0, 7);
-        g.fill();
-      });
     });
+    GFX.blit(g, pic, x0, y0);
+    // Scanlines, the glass's sheen and its darker edges (baked).
+    GFX.blit(g, ledGlass(w, h), x0, y0);
   }
   /**
    * A goal runs away from the viewer (along y), so it is drawn in slices
