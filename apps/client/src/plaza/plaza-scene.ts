@@ -133,6 +133,7 @@ import { createFightView } from "./plaza-fight-view";
 import { plazaPath } from "./plaza-path";
 import { mapFrac, mapPinsHtml, paintPlazaMap } from "./plaza-map";
 import { PlazaPrediction } from "./plaza-predict";
+import { BallPrediction, ServerClock, SnapTrack } from "./plaza-net";
 import {
   FIGHT_IN_SECONDS,
   fishingFrame,
@@ -1379,6 +1380,14 @@ export function openPlaza(options) {
     r: 22,
     spin: 0,
     lock: 0,
+  };
+  /** Smooth others and a ball you can kick at once (plaza-net.ts). */
+  const net = {
+    clock: new ServerClock(),
+    tracks: new Map(),
+    ball: null,
+    /** The last network lag measured (ms): a phone's usual until then. */
+    lag: 150,
   };
   let score = [0, 0];
   const FX = [];
@@ -3137,6 +3146,11 @@ export function openPlaza(options) {
   function onState(s) {
     meId = s.me;
     offset = s.now - Date.now();
+    net.clock.sample(s.now, performance.now());
+    {
+      const lag = predict.lag(s.ack, stepClock);
+      if (lag !== undefined && lag < 1500) net.lag = lag;
+    }
     population = s.population | 0;
     score = s.score;
     if (s.claps > claps && runwayOn)
@@ -3155,7 +3169,16 @@ export function openPlaza(options) {
       }
     claps = s.claps;
     lapState = s.lap ?? null;
-    if (s.ball) {
+    if (s.ball && s.ball.length >= 7) {
+      // Velocity and the post-goal wait too: run it in your timeline.
+      const [x, y, z, vx, vy, vz, lock] = s.ball;
+      const srvBall = { x, y, z, vx, vy, vz, lock };
+      if (!net.ball) net.ball = new BallPrediction(srvBall);
+      net.ball.server(srvBall, net.lag, performance.now());
+      ball.tx = x;
+      ball.ty = y;
+      ball.tz = z;
+    } else if (s.ball) {
       if (
         ball.tx == null ||
         Math.hypot(s.ball[0] - ball.x, s.ball[1] - ball.y) > 300
@@ -3214,6 +3237,14 @@ export function openPlaza(options) {
         others.set(id, b);
         greetArrival(b);
       }
+      {
+        let tr = net.tracks.get(id);
+        if (!tr) net.tracks.set(id, (tr = new SnapTrack()));
+        const nw = tr.newest;
+        if (!nw || Math.hypot(nw.x - x, nw.y - y) > 300)
+          tr.reset(s.now, x, y, z);
+        else tr.push(s.now, x, y, z);
+      }
       b.tx = x;
       b.ty = y;
       b.tz = z;
@@ -3231,7 +3262,11 @@ export function openPlaza(options) {
         else if (emoteIdx) showEmote(b, EMOTE_KEYS[emoteIdx - 1]);
       }
     }
-    for (const id of others.keys()) if (!seen.has(id)) others.delete(id);
+    for (const id of others.keys())
+      if (!seen.has(id)) {
+        others.delete(id);
+        net.tracks.delete(id);
+      }
   }
   let lapState = null,
     lapShown = null,
@@ -5951,13 +5986,24 @@ export function openPlaza(options) {
       P.buff = P.boost;
       if (P.dash > 0 && Math.random() < 0.8)
         P.trail.push({ x: ox, y: oy, z: P.z, t: 0 });
-      // Everyone else: smoothed toward the server.
+      // Everyone else: drawn a moment in the past, between the server's
+      // snapshots around it (plaza-net.ts), or smoothed toward the newest
+      // before the server's clock is known.
       const k = 1 - Math.exp(-dt / 0.09);
+      const seenT = net.clock.now(performance.now()),
+        seenDelay = net.clock.delay();
       for (const b of others.values()) {
         const px = b.x,
           py = b.y;
-        b.x += (b.tx - b.x) * k;
-        b.y += (b.ty - b.y) * k;
+        const at =
+          seenT !== null && net.tracks.get(b.id)?.at(seenT - seenDelay);
+        if (at) {
+          b.x = at.x;
+          b.y = at.y;
+        } else {
+          b.x += (b.tx - b.x) * k;
+          b.y += (b.ty - b.y) * k;
+        }
         if (dt > 0) {
           b.vx = (b.x - px) / dt;
           b.vy = (b.y - py) / dt;
@@ -5974,7 +6020,17 @@ export function openPlaza(options) {
         b.trail.forEach((t) => (t.t += dt));
         b.trail = b.trail.filter((t) => t.t < 0.3);
       }
-      if (ball.tx != null) {
+      if (net.ball) {
+        // Your kicks move it at once; the server's ball keeps it honest.
+        const ox2 = ball.x,
+          oy2 = ball.y;
+        net.ball.step(P, dt, performance.now());
+        const nb = net.ball.ball;
+        ball.x = nb.x;
+        ball.y = nb.y;
+        ball.z = nb.z;
+        ball.spin += Math.hypot(ball.x - ox2, ball.y - oy2) / ball.r;
+      } else if (ball.tx != null) {
         const ox2 = ball.x,
           oy2 = ball.y;
         ball.x += (ball.tx - ball.x) * Math.min(1, k * 1.4);
@@ -6432,6 +6488,8 @@ export function openPlaza(options) {
       others,
       orbs,
       ball,
+      /** Smoothing and ball prediction state (plaza-net.ts; tests). */
+      net,
       get score() {
         return score;
       },

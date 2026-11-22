@@ -1545,7 +1545,11 @@ export class PlazaWorld {
                 Math.round(c.ball.x),
                 Math.round(c.ball.y),
                 Math.round(c.ball.z),
-              ] as [number, number, number],
+                Math.round(c.ball.vx),
+                Math.round(c.ball.vy),
+                Math.round(c.ball.vz),
+                Math.round(c.ball.lock * 100) / 100,
+              ] as [number, number, number, number, number, number, number],
             }
           : {}),
         score: [...c.score] as [number, number],
