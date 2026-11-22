@@ -72,6 +72,67 @@ describe("shots on your timeline", () => {
     expect(edge.x).toBeCloseTo(RULES.width - r, 6);
   });
 
+  it("stops on the first fighter it strikes, where the server's impact goes off", () => {
+    // Player report (22 Nov 2026): your shot, drawn ahead of the server,
+    // flew on through its target and the blast then went off behind it.
+    const arena = new Arena("LEAD");
+    arena.add("one", "One", "voltkit");
+    arena.add("two", "Two", "voltkit");
+    arena.start();
+    arena.phase = "playing";
+    arena.deadline = 999;
+    const [p, q] = arena.players;
+    arena.walls();
+    Object.assign(p, { x: 120, y: 60, angle: 0 });
+    Object.assign(q, { x: 420, y: 60 });
+    arena.cast(p, CHARACTERS.voltkit.basic);
+    const snapshot = structuredClone(arena.projectiles[0]);
+    // Where it stood when struck (the hit knocks it back).
+    const target = [{ x: q.x, y: q.y, r: RULES.radius }];
+    let impact: { x: number; y: number } | undefined;
+    for (let n = 0; n < 30 && !impact; n++) {
+      arena.tick();
+      impact = arena.events.find(
+        (e) => e.kind === "impact" && e.owner === "one",
+      );
+    }
+    expect(impact).toBeDefined();
+    // Drawn well past the moment it struck: it waits on the target's edge.
+    const drawn = leadProjectile(snapshot, 0.3, currentObstacles(), 1, target);
+    expect(Math.abs(drawn.x - impact!.x)).toBeLessThan(10.5);
+    expect(drawn.x).toBeLessThan(420 - RULES.radius);
+    expect(drawn.y).toBeCloseTo(snapshot.y, 6);
+    // Without targets it is drawn past the target's centre (the bug).
+    expect(leadProjectile(snapshot, 0.3, currentObstacles()).x).toBeGreaterThan(
+      420,
+    );
+  });
+
+  it("strikes the nearest target first, and ignores them when it flies through", () => {
+    const r = CHARACTERS.voltkit.basic.radius;
+    const targets = [
+      { x: 470, y: 300, r: 24 },
+      { x: 420, y: 310, r: 24 },
+      { x: 380, y: 500, r: 24 },
+    ];
+    const near = leadProjectile(shot(), 0.3, [], 1, targets);
+    const reach = 24 + r;
+    expect(Math.hypot(near.x - 420, near.y - 310)).toBeCloseTo(reach, 6);
+    expect(near.remaining).toBeCloseTo(600 - (near.x - 300), 6);
+    // Ball Lightning's aura shots fly through fighters.
+    const aura = shot({ ability: { ...CHARACTERS.voltkit.basic, aura: true } });
+    expect(leadProjectile(aura, 0.3, [], 1, targets).x).toBeCloseTo(570, 6);
+    // Already touching one: it stays where the snapshot had it.
+    expect(
+      leadProjectile(shot(), 0.3, [], 1, [{ x: 310, y: 300, r: 24 }]).x,
+    ).toBe(300);
+    // A target off its line is no obstacle.
+    expect(leadProjectile(shot(), 0.1, [], 1, [targets[2]]).x).toBeCloseTo(
+      390,
+      6,
+    );
+  });
+
   it("draws a boomerang where the snapshot had it, and slows in a bubble", () => {
     const boomerang = shot({
       ability: { ...CHARACTERS.voltkit.basic, boomerang: true },

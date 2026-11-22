@@ -269,6 +269,7 @@ import {
   LocalTimeline,
   ShotTimeline,
   leadProjectile,
+  type ShotTarget,
 } from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
 import {
@@ -7025,6 +7026,27 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         pb = ownerOf.get(b);
       return a !== b && (!pa || !pb || teamOf(pa) !== teamOf(pb));
     };
+    // The fighters (and decoys) a shot can strike, where they are drawn: a
+    // shot drawn ahead of the server stops on the first it touches, as the
+    // server's does (timeline-lead.ts leadProjectile).
+    const targetsOf = new Map<string, ShotTarget[]>();
+    const fighters = state.players;
+    const shotTargets = (owner: string) => {
+      let list = targetsOf.get(owner);
+      if (list) return list;
+      list = [];
+      for (const p of fighters) {
+        if (!rivals(owner, p.id) || p.hp <= 0 || p.out) continue;
+        // A shot stopping in the air would give away a fighter in stealth.
+        if (p.id !== myId && p.statuses.some((s) => s.kind === "stealth"))
+          continue;
+        const at = this.positions.get(p.id) ?? p;
+        list.push({ x: at.x, y: at.y, r: p.raidBoss ? 70 : RULES.radius });
+        if (p.clone) list.push({ x: p.clone.x, y: p.clone.y, r: RULES.radius });
+      }
+      targetsOf.set(owner, list);
+      return list;
+    };
     for (const pr of state.projectiles) {
       const seconds = shotTimeline.seconds(
         pr,
@@ -7042,7 +7064,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       const slow = bubble
         ? (bubble.ability.warp ?? STATUS_RULES.warpMultiplier)
         : 1;
-      const drawn = leadProjectile(pr, seconds, walls, slow);
+      const hits = shotTargets(pr.owner);
+      const drawn = leadProjectile(pr, seconds, walls, slow, hits);
       drawProjectile(g, tinted(drawn), _time, reducedMotion);
     }
     shotTimeline.keep(state.projectiles.map((pr) => pr.id));
