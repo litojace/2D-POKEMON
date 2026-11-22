@@ -23,13 +23,19 @@ match events).
 - **Recent form**: the last ten results as W/L/D chips, the record and win
   rate over them, and the fighter played most.
 - **A row per match**, newest first: Victory/Defeat/Draw with a coloured
-  edge, the mode, your fighter, who it was against (`vs Kai`, `vs Kai +1`,
-  `vs Hard bot`), how long ago and on which arena, each round won or lost
-  (a dot per round; hidden on phones held sideways), knock-outs and damage,
-  and the rating the match moved (`+16`, `−12`; `–` against bots).
-- **Tap a row** for the board: everyone's fighter, knock-outs, damage and
-  combos, your side first, MVP marked (most damage, then most knock-outs;
-  nobody when no one landed a hit). A friend's name opens their card.
+  edge and the rounds' score (`Victory 2–1`), the mode, your fighter, who
+  it was against (`vs Kai`, `vs Kai +1`, `vs Hard bot`) with an MVP tag
+  when you were MVP, your fighter's name, how long ago and on which arena,
+  each round won or lost (a dot per round; hidden on phones held sideways),
+  damage and knock-outs (`736 dmg`, `2 KOs`), and the rating the match
+  moved, labelled (`+16 Rating`; nothing against bots, which move none).
+- **Tap a row** for the board: column titles once (KOs, Damage, Combos),
+  everyone's fighter and numbers, the card owner's side first and named
+  for them (`Your side`, `Kai's side`), MVP marked. The MVP is the most
+  damage on the **winning** side (the whole board on a draw), then most
+  knock-outs; nobody when no one landed a hit. A loser marked MVP beside
+  "Defeat" read as a contradiction (owner, 22 Nov 2026). A friend's name
+  opens their card.
 - **All / Players / Bots** filter the list; **More matches** loads the next
   ten.
 

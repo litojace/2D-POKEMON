@@ -49,3 +49,48 @@ for (const s of SCREENS)
       expect(errors).toEqual([]);
     });
   });
+
+test("on a phone, Controls has no joystick or button sliders; keys fold away", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    // Sizes saved before 22 Nov 2026 are no longer read.
+    await page.addInitScript(() =>
+      localStorage.setItem(
+        "arena-controls",
+        JSON.stringify({ joystickSize: 0.8, buttonSize: 0.85, opacity: 0.4 }),
+      ),
+    );
+    const errors = await openHub(page);
+    await page.evaluate(() => document.getElementById("settings")!.click());
+    const dialog = page.locator("#dialog");
+    await expect(dialog.locator(".settings-screen")).toBeVisible();
+    await dialog.locator("#open-controls").click();
+    await expect(dialog.locator("#raid-court")).toBeVisible();
+    await expect(dialog.locator('input[type="range"]')).toHaveCount(0);
+    await expect(dialog.locator("#control-reset")).toHaveCount(0);
+    // Keys, mouse and controller are there, folded.
+    const more = dialog.locator(".controls-more");
+    await expect(more).not.toHaveAttribute("open", "");
+    await expect(dialog.locator("button.binding").first()).toBeHidden();
+    await more.locator("summary").click();
+    await expect(dialog.locator("button.binding").first()).toBeVisible();
+    // The touch controls are drawn at the default opacity.
+    expect(
+      await page.evaluate(() =>
+        document
+          .getElementById("mobile-controls")!
+          .style.getPropertyValue("--hud-opacity"),
+      ),
+    ).toBe("0.85");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

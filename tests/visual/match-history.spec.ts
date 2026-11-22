@@ -90,8 +90,11 @@ for (const size of SIZES)
       const rows = panel.locator(".mh-row");
       await expect(rows).toHaveCount(10);
       await expect(rows.first()).toHaveClass(/is-win/);
-      await expect(rows.first().locator(".mh-delta")).toHaveText("+16");
-      await expect(rows.nth(1).locator(".mh-delta")).toHaveText("−12");
+      await expect(rows.first().locator(".mh-delta > b")).toHaveText("+16");
+      await expect(rows.first().locator(".mh-delta > small")).toHaveText(
+        "Rating",
+      );
+      await expect(rows.nth(1).locator(".mh-delta > b")).toHaveText("−12");
       await expect(panel.locator(".mh-form")).toContainText("Last 10");
       await settled(page, ".profile-panel");
       expect(
@@ -105,7 +108,7 @@ for (const size of SIZES)
       // A tap opens everyone's numbers: the team match, MVP marked.
       await rows.nth(1).locator(".mh-sum").click();
       await expect(rows.nth(1).locator(".mh-board > li")).toHaveCount(4);
-      await expect(rows.nth(1).locator(".mh-mvp")).toHaveCount(1);
+      await expect(rows.nth(1).locator(".mh-board .mh-mvp")).toHaveCount(1);
       // Every player's numbers stand in the same columns, MVP or not.
       const columns = await rows
         .nth(1)
@@ -121,6 +124,25 @@ for (const size of SIZES)
             ).size,
         );
       expect(columns, "the board's columns line up").toBe(1);
+      // The column titles stand over the numbers.
+      const titles = await rows.nth(1).evaluate((row) => {
+        const right = (e: Element) =>
+          Math.round(e.getBoundingClientRect().right);
+        const head = Array.from(
+          row.querySelectorAll(".mh-board-head > span"),
+        ).slice(3);
+        const cells = Array.from(
+          row.querySelector(".mh-board > li")!.querySelectorAll(".mh-cell"),
+        );
+        return {
+          names: head.map((h) => h.textContent),
+          aligned: head.every((h, i) => right(h) === right(cells[i])),
+        };
+      });
+      expect(titles).toEqual({
+        names: ["KOs", "Damage", "Combos"],
+        aligned: true,
+      });
       await rows.nth(1).scrollIntoViewIfNeeded();
       await settled(page, ".profile-panel");
       expect(await spills(page, ".profile-panel")).toEqual([]);

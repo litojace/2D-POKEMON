@@ -168,7 +168,20 @@ export function openFriends(hooks: FriendsHooks): FriendsScreen {
 
   const onClick = (event: MouseEvent) => {
     const t = (event.target as Element).closest<HTMLButtonElement>("button");
-    if (!t || !root().contains(t) || t.disabled) return;
+    // A tap anywhere on a friend's row (name, picture, status) opens its
+    // options, as the ⋯ button does: a small target is easy to miss on a
+    // phone. Its own buttons and the open options keep their meaning.
+    if (!t) {
+      const line = (event.target as Element).closest<HTMLElement>(
+        ".fr-row > .ui-row",
+      );
+      const more = line?.querySelector<HTMLButtonElement>(
+        ":scope > .ui-row-acts > [data-friend-menu]",
+      );
+      if (more && root().contains(more)) more.click();
+      return;
+    }
+    if (!root().contains(t) || t.disabled) return;
     const d = t.dataset;
     if (d.uiFriendsTab) setTab(d.uiFriendsTab as FriendsTab);
     else if (d.friendAddOpen !== undefined)

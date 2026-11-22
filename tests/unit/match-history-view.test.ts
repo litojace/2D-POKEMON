@@ -135,6 +135,15 @@ describe("markup", () => {
     );
   });
 
+  it("a bot match moves no rating: no dash, no Rating label", () => {
+    const s = historyState();
+    s.matches = [entry({ bot: "hard", rating: null })];
+    const html = historyMarkup(s, { whose: "Your", now: NOW });
+    expect(html).toContain('<span class="mh-delta is-none"></span>');
+    expect(html).not.toContain("Rating</small>");
+    expect(html).not.toContain(">–<");
+  });
+
   it("a row, its board when open, names escaped, More when there's more", () => {
     const s = historyState();
     s.matches = [entry()];
@@ -146,6 +155,10 @@ describe("markup", () => {
     });
     expect(html).toContain('class="mh-row is-win"');
     expect(html).toContain("+16");
+    // The rounds' score beside the result, the rating labelled, KOs spelled.
+    expect(html).toContain('<span class="mh-score ui-num">2–1</span>');
+    expect(html).toContain("<small>Rating</small>");
+    expect(html).toContain("3 KOs");
     expect(html).toContain("1h ago");
     expect(html).toContain("data-history-more");
     expect(html).not.toContain("Kai <b>");
@@ -159,9 +172,20 @@ describe("markup", () => {
     });
     expect(html).toContain("mh-board");
     expect(html).toContain('data-history-player="kai"');
-    // You aren't a link on your own board; one MVP.
+    // You aren't a link on your own board; one MVP on the board, and the
+    // row says you were it.
     expect(html).not.toContain('data-history-player="me"');
-    expect(html.match(/mh-mvp"/g)).toHaveLength(1);
+    const [summary, detail] = html.split('class="mh-detail"');
+    expect(detail.match(/mh-mvp"/g)).toHaveLength(1);
+    expect(summary).toContain('mh-mvp"');
+    // Column titles once, the side named for whose card it is.
+    expect(detail.match(/mh-board-head/g)).toHaveLength(1);
+    expect(detail).toContain("Your side");
+    expect(
+      historyMarkup(s, { whose: "Ana's", now: NOW }).split(
+        'class="mh-detail"',
+      )[1],
+    ).toContain("Ana&#39;s side");
     // Not a friend: a name, not a link.
     expect(historyMarkup(s, { whose: "Your", now: NOW })).not.toContain(
       "data-history-player",
