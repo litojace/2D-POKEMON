@@ -20,6 +20,16 @@ async function fakeAdmin(page: Page) {
         new Date(Date.now() - minutes * 60000).toISOString();
       const state = {
         calls: [] as { path: string; body: any }[],
+        announcements: [
+          {
+            id: 1,
+            message: "Servers restart at 03:00 for ten minutes.",
+            tone: "warning",
+            createdAt: at(60 * 30),
+            endsAt: at(60 * 6),
+            by: "Boss",
+          },
+        ] as any[],
         wallets: { [NOVA]: 250 } as Record<string, number>,
         chat: {} as Record<string, { until: string; reason: string }>,
         ledger: {
@@ -51,6 +61,7 @@ async function fakeAdmin(page: Page) {
             suspended: false,
             title: "Arena Rival",
             createdAt: "2026-10-01T00:00:00Z",
+            lastOnline: at(1),
             titleIds: [RIVAL_TITLE],
           },
           {
@@ -60,6 +71,7 @@ async function fakeAdmin(page: Page) {
             suspended: true,
             title: null,
             createdAt: "2026-09-12T00:00:00Z",
+            lastOnline: at(60 * 26),
             titleIds: [],
           },
           {
@@ -69,6 +81,7 @@ async function fakeAdmin(page: Page) {
             suspended: false,
             title: null,
             createdAt: "2026-08-01T00:00:00Z",
+            lastOnline: null as string | null,
             titleIds: [OLD_TITLE],
           },
         ],
@@ -226,11 +239,36 @@ async function fakeAdmin(page: Page) {
           });
           return reply({ applied, balance: balance + applied });
         }
+        if (path === "/api/admin/announcements")
+          return reply(state.announcements);
+        if (path === "/api/admin/announce") {
+          const sent = {
+            id: state.announcements.length + 1,
+            message: body.message.trim(),
+            tone: body.tone,
+            createdAt: new Date().toISOString(),
+            endsAt: new Date(Date.now() + body.hours * 3600000).toISOString(),
+            by: "Boss",
+          };
+          state.announcements.unshift(sent);
+          return reply(sent);
+        }
+        if (path === "/api/admin/announcements/end") {
+          state.announcements.find((a) => a.id === body.id)!.endsAt =
+            new Date().toISOString();
+          return reply({ ok: true });
+        }
         if (path === "/api/admin/players") {
           const s = (q.get("search") ?? "").toLowerCase();
           const list = state.players.filter(
             (p) => !s || p.displayName.toLowerCase().includes(s) || p.id === s,
           );
+          if (q.get("sort") === "online")
+            list.sort(
+              (a, b) =>
+                Date.parse(b.lastOnline ?? "1970-01-01") -
+                Date.parse(a.lastOnline ?? "1970-01-01"),
+            );
           return reply({ players: list, total: list.length });
         }
         if (path === "/api/admin/titles" && !body) return reply(state.titles);
@@ -350,6 +388,7 @@ for (const size of [
         "online",
         "reports",
         "titles",
+        "announce",
       ]) {
         await tab(page, name).click();
         await expect(page.locator("#adm-root")).toHaveAttribute(
@@ -529,6 +568,76 @@ test("Admin actions on a phone held sideways", async ({ browser }, info) => {
       "1",
     );
 
+    // Players: last online on each row, and the order.
+    await tab(page, "players").click();
+    await expect(page.locator(`[data-player="${BOLT}"] small`)).toContainText(
+      "Seen 1d ago",
+    );
+    await page.locator('[data-act="sort"][data-sort="online"]').click();
+    await expect(page.locator("[data-player] strong")).toHaveText([
+      "Nova",
+      "BoltRunnerWithALongName",
+      "Boss",
+    ]);
+    await page.locator(`[data-player="${BOLT}"] .adm-row-main`).click();
+    await expect(
+      page.locator(`[data-player="${BOLT}"] .adm-facts`),
+    ).toContainText("Last online");
+
+    // Announce: write, pick a kind and a length, confirm, then end it.
+    await tab(page, "announce").click();
+    const announce = page.locator('form[data-form="announce"]');
+    await announce
+      .locator("textarea")
+      .fill("Double coins all weekend in every mode!");
+    await expect(announce.locator("[data-preview]")).toHaveText(
+      "Double coins all weekend in every mode!",
+    );
+    await expect(announce.locator("[data-count]")).toHaveText("39 / 300");
+    await announce
+      .locator('[data-act="announce-tone"][data-tone="event"]')
+      .click();
+    // The text survives the redraw.
+    await expect(
+      page.locator('form[data-form="announce"] textarea'),
+    ).toHaveValue("Double coins all weekend in every mode!");
+    await page
+      .locator('form[data-form="announce"] select[name="hours"]')
+      .selectOption("72");
+    await page
+      .locator('form[data-form="announce"] button:not([type=button])')
+      .click();
+    await expect(page.locator(".adm-announce .admin-confirm")).toContainText(
+      "next 3 days",
+    );
+    await snap(page, info, "admin-announce-confirm-844x390");
+    await page.locator('[data-act="announce-yes"]').click();
+    await expect(page.locator("#admin-message")).toHaveText(
+      "Sent to every player.",
+    );
+    expect((await calls(page)).at(-1)).toEqual({
+      path: "/api/admin/announce",
+      body: {
+        message: "Double coins all weekend in every mode!",
+        tone: "event",
+        hours: 72,
+      },
+    });
+    // The form is empty again; the new one leads the list.
+    await expect(
+      page.locator('form[data-form="announce"] textarea'),
+    ).toHaveValue("");
+    const first = page.locator("[data-announcement]").first();
+    await expect(first).toContainText("Double coins");
+    await expect(first.locator(".adm-running")).toContainText("Ends in");
+    await first.locator('[data-act="announce-end"]').click();
+    await expect(page.locator("#admin-message")).toContainText(
+      "Announcement ended",
+    );
+    await expect(page.locator("[data-announcement]").first()).toHaveClass(
+      /is-ended/,
+    );
+
     // Titles: turn one off, edit, create.
     await tab(page, "titles").click();
     await page
@@ -553,6 +662,64 @@ test("Admin actions on a phone held sideways", async ({ browser }, info) => {
       "Title “Champion” created.",
     );
     await expect(page.locator(".adm-title")).toHaveCount(3);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("players see an announcement once, never over a battle", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    const announce = (id: number, message: string) =>
+      page.evaluate(
+        ({ id, message }) =>
+          (window as any).__sock.fire("announcement", {
+            id,
+            message,
+            tone: "event",
+            createdAt: new Date().toISOString(),
+            endsAt: new Date(Date.now() + 3600000).toISOString(),
+          }),
+        { id, message },
+      );
+    await announce(41, "<b>Double</b> coins all weekend!");
+    const banner = page.locator(".announcement-banner");
+    await expect(banner).toBeVisible();
+    // Text, never markup.
+    await expect(banner.locator("p")).toHaveText(
+      "<b>Double</b> coins all weekend!",
+    );
+    await expect(banner.locator("p b")).toHaveCount(0);
+    const box = await banner.boundingBox();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(844);
+    await snap(page, info, "announcement-banner-844x390");
+    await banner.locator(".announcement-ok").click();
+    await expect(banner).toHaveCount(0);
+    // The same one again is not shown twice on this device.
+    await announce(41, "<b>Double</b> coins all weekend!");
+    await expect(banner).toHaveCount(0);
+    // During a battle it waits, then shows.
+    await page.evaluate(() => document.body.classList.add("battle-active"));
+    await announce(42, "Raid event starts now.");
+    await page.waitForTimeout(500);
+    await expect(banner).toHaveCount(0);
+    await page.evaluate(() => document.body.classList.remove("battle-active"));
+    await expect(banner).toContainText("Raid event starts now.");
+    // An admin ends it early: it goes away.
+    await page.evaluate(() =>
+      (window as any).__sock.fire("announcement-ended", { id: 42 }),
+    );
+    await expect(banner).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally {
     await context.close();
