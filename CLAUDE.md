@@ -206,6 +206,10 @@ It prints the lane and why, from the files the branch changes against
   or by hand) opens the issue "Main is red: the scheduled full run failed"
   (green closes it).
   **While it is open, merge nothing but its fix**, in either lane.
+  A PR that fixes it says "Refs #<issue>", not "Fixes #<issue>": GitHub
+  closes the issue at merge, before a full run has shown main green (#322
+  and #323 each closed #321 early, and other merges slipped in). Close it
+  by hand once main's full run is green.
 - Say the lane and its reasons in the PR description. Once the lane says a
   merge is safe, the session that owns the PR merges it (see "Claude
   sessions run this repo" above); no one waits for the owner to ask.
