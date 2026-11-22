@@ -753,14 +753,24 @@ button.chat-say:focus-visible {
 .battle-chat-feed li.is-rival b {
   color: #ff9aa5;
 }
-/* A watcher's line: their name in gold, marked as watching. */
+/* A watcher's line: their name in gold, then a small "Watching" tag, so
+   the tag never reads as part of what they said. */
 .battle-chat-feed li.is-watcher b {
   color: #ffd98a;
 }
 .battle-chat-feed li.is-watcher b::after {
-  content: " · watching";
-  color: var(--ui-dim);
-  font-weight: 500;
+  content: "Watching";
+  display: inline-block;
+  margin: 0 2px 0 5px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(255, 217, 138, 0.16);
+  color: #ffd98a;
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  vertical-align: 1px;
 }
 @keyframes battle-chat-line {
   0%,
