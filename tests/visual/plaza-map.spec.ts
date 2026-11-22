@@ -304,7 +304,7 @@ test("on a slow device a Go walk stops where it was going", async ({
   const frameRate = () =>
     page.evaluate(
       () =>
-        new Promise<number>((done) => {
+        new Promise<[number, number]>((done) => {
           const t: number[] = [];
           const f = (n: number) => {
             t.push(n);
@@ -314,23 +314,30 @@ test("on a slow device a Go walk stops where it was going", async ({
                 .slice(1)
                 .map((x, i) => x - t[i])
                 .sort((a, b) => a - b);
-              done(1000 / d[d.length >> 1]);
+              done([1000 / d[d.length >> 1], d[Math.floor(d.length * 0.9)]]);
             }
           };
           requestAnimationFrame(f);
         }),
     );
-  const fps = await frameRate();
+  const [fps] = await frameRate();
   const rate = Math.min(4, Math.max(1, fps / 10));
   await (
     await page.context().newCDPSession(page)
   ).send("Emulation.setCPUThrottlingRate", { rate });
-  // You can't stop finer than one frame's walk: at the frame rate it now
-  // draws, the bound is that walk and a little (24 px at least). A CI
+  // You can't stop finer than one frame's walk: the bound is the walk in
+  // one of the page's slow frames (its 90th percentile, as it now draws),
+  // at the Boba speed if you have it, and a little (24 px at least). A CI
   // runner drawing the Plaza at 4 fps walks 60 px a frame; before #364
-  // the walk ended 106 px off at 7 fps (bound 42).
-  const slowFps = await frameRate(),
-    bound = Math.max(24, PLAZA.speed / slowFps + 8);
+  // the walk ended 108-151 px off at 3-4 fps.
+  const [slowFps, slowFrameMs] = await frameRate();
+  const boosted = await page.evaluate(
+    () => (window as any).__plaza.P.boost > 0,
+  );
+  const bound = Math.max(
+    24,
+    (PLAZA.speed * (boosted ? PLAZA.boba.speed : 1) * slowFrameMs) / 1000 + 8,
+  );
   const server = () =>
     page.evaluate(() => {
       const b = (window as any).__plazaWorld.bodyOf("local");
@@ -352,7 +359,7 @@ test("on a slow device a Go walk stops where it was going", async ({
     expect(still, id).toBe(4);
     expect(
       Math.hypot(last.x - p.x, last.y - p.y),
-      `${id} (page at ${Math.round(fps)} fps, slowed ${rate.toFixed(1)}x to ${Math.round(slowFps)} fps)`,
+      `${id} (page at ${Math.round(fps)} fps, slowed ${rate.toFixed(1)}x to ${Math.round(slowFps)} fps, slow frames ${Math.round(slowFrameMs)} ms, bound ${Math.round(bound)} px)`,
     ).toBeLessThan(bound);
   }
   expect(errors).toEqual([]);
