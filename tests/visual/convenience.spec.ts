@@ -95,7 +95,7 @@ for (const size of SIZES)
         });
         w.__push();
       });
-      await expect(page.locator(".action-overlay h2")).toBeVisible();
+      await expect(page.locator("#rematch")).toBeVisible();
       const coach = page.locator(".result-coach");
       await expect(coach).toContainText("3 losses in a row");
       await expect(page.locator("#coach-practice")).toContainText("Practice");

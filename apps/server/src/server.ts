@@ -68,6 +68,7 @@ import { DRAIN_MESSAGE, busyRoom, trackWrites, waitForDrain } from "./drain.js";
 /** Every champion's basic attack: spammed, so it never forces a snapshot. */
 const BASIC_IDS = new Set(Object.values(CHARACTERS).map((c) => c.basic.id));
 import {
+  battleArtSchema,
   battleLoadSchema,
   battlePerfSchema,
   connectionReportSchema,
@@ -188,6 +189,7 @@ import { TickClock } from "./tick-clock.js";
 import { z, ZodError } from "zod";
 import type { Request, Response, NextFunction } from "express";
 import {
+  AnnouncementPush,
   FriendPush,
   validDevice,
   webPushSender,
@@ -268,6 +270,11 @@ export function createArenaServer(
   const friendPush =
     pushSender && accounts.pushDevices
       ? new FriendPush(accounts.pushDevices, pushSender)
+      : null;
+  /** Admins' announcements as notifications, to devices that want game news. */
+  const announcePush =
+    pushSender && accounts.pushDevices
+      ? new AnnouncementPush(accounts.pushDevices, pushSender)
       : null;
   const fighterAppearance = new FighterAppearance(accounts);
   const portraitChoice = new PortraitChoice(accounts);
@@ -752,6 +759,7 @@ export function createArenaServer(
     connectionLog,
     // An admin's announcement reaches every open game, signed in or not.
     (event, payload) => io.emit(event, payload),
+    announcePush,
   );
   /** Signed-in players with a live connection, merged per account. */
   function listOnline(): OnlineList {
@@ -3040,6 +3048,31 @@ export function createArenaServer(
         fail(cb, "Couldn't turn notifications on. Try again.");
       }
     });
+    // Game news (admins' announcements) on or off for this device
+    // (migration 20261122140000); only the player's own device.
+    socket.on("push-news", async (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !requirePlayer(cb)) return;
+      const d = data as { endpoint?: unknown; on?: unknown } | null;
+      if (
+        typeof d?.endpoint !== "string" ||
+        d.endpoint.length > 1000 ||
+        typeof d.on !== "boolean"
+      )
+        return fail(cb, "Nothing to change.");
+      if (!accounts.pushDevices?.setNews)
+        return fail(cb, "Game news isn't available right now.");
+      try {
+        const done = await accounts.pushDevices.setNews(
+          account()!.id,
+          d.endpoint,
+          d.on,
+        );
+        if (done) reply(cb, { ok: true });
+        else fail(cb, "Turn notifications on for this device first.");
+      } catch {
+        fail(cb, "Couldn't change game news. Try again.");
+      }
+    });
     socket.on("push-unsubscribe", async (data: unknown, cb: unknown) => {
       if (!allowed(5) || !account()) return;
       const endpoint = (data as { endpoint?: unknown } | null)?.endpoint;
@@ -3402,6 +3435,25 @@ export function createArenaServer(
           mode: a.mode,
           phase: a.phase,
           character: a.players.find((p) => p.id === id)?.character,
+        });
+      }),
+    );
+    socket.on("battle-art", (data: unknown) =>
+      withRoom(undefined, (a) => {
+        // A fighter's art found blank and loaded again (rig-health.ts in the
+        // client); a cap keeps a looping client quiet.
+        const sent = (socket.data.artReports ?? 0) as number;
+        if (sent >= 10) return;
+        const result = battleArtSchema.safeParse(data);
+        if (!result.success) return;
+        socket.data.artReports = sent + 1;
+        connectionLog("arena-art-blank", {
+          ...result.data,
+          account: account()?.id,
+          room: a.code,
+          mode: a.mode,
+          phase: a.phase,
+          ...(a instanceof RaidArena ? { boss: a.raid.boss } : {}),
         });
       }),
     );

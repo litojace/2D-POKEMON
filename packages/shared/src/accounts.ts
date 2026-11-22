@@ -169,6 +169,8 @@ export const announceSchema = z
     message: z.string().trim().min(3).max(300),
     tone: z.enum(ANNOUNCEMENT_TONES),
     hours: z.number().int().min(1).max(168),
+    /** Also as a phone/browser notification (migration 20261122140000). */
+    push: z.boolean().optional(),
   })
   .strict();
 export const announcementSchema = z.object({

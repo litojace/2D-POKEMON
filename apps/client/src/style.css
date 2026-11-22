@@ -2555,6 +2555,10 @@ body.battle-still .spectator {
 .battle-nameplate {
   left: 0;
   top: 0;
+  /* Under the touch controls (.touch-pad, 20): a fighter behind the skill
+     buttons kept its name and bar over them (owner, 22 Nov 2026). The
+     fighter itself is drawn under them too. */
+  z-index: 19;
   will-change: transform;
 }
 .battle-nameplate .fighter-health {
@@ -4831,71 +4835,71 @@ dialog:has(.illustrated-guide) {
   color: var(--accent);
   padding-top: 5px;
 }
-.guide-ultimate {
-  position: absolute;
-  right: 15%;
-  top: 19px;
-  width: 66px;
-  height: 66px;
-  border: 2px solid #ffda67;
-  border-radius: 50%;
+/* Ultimate and EX: the button (and EX's mark) above its meter and label,
+   centred in the picture. */
+.guide-charge {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 8px;
+  height: 100%;
+}
+.guide-charge-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.guide-ultimate,
+.guide-charge .guide-move {
+  box-sizing: border-box;
+  width: 62px;
+  height: 62px;
   padding: 8px;
+  border-radius: 50%;
+}
+.guide-ultimate {
+  border: 2px solid #ffda67;
   background: #ffe07112;
   box-shadow: 0 0 22px #ffda6755;
 }
-.guide-meter,
-.guide-ex-meter {
-  position: absolute;
-  bottom: 14px;
-  left: 12%;
-  width: 76%;
+.guide-charge .guide-move {
+  border: 2px solid #83c7ff;
+  box-shadow: 0 0 20px #6dbfff66;
+}
+.guide-ex {
+  font-size: calc(36px * var(--text-scale, 1));
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1;
+  color: #b2dbff;
+  text-shadow: 0 0 16px #6dbfff;
+}
+.guide-charge-bar {
+  display: block;
+  width: min(76%, 240px);
   height: 10px;
   border-radius: 6px;
   background: #0e1d34;
   border: 1px solid color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
 }
-.guide-meter i,
-.guide-ex-meter i {
+.guide-charge-bar i {
   display: block;
   height: 100%;
   width: 100%;
-  background: linear-gradient(90deg, #cf943c, #ffe794);
   border-radius: 6px;
+  background: linear-gradient(90deg, #cf943c, #ffe794);
 }
-.guide-meter b,
-.guide-ex-meter b {
-  position: absolute;
-  width: 100%;
-  text-align: center;
-  bottom: 14px;
-  font-size: calc(9px * var(--text-scale, 1));
-  letter-spacing: 1.5px;
-  color: #ffe08a;
-}
-.guide-ex {
-  position: absolute;
-  left: 18%;
-  top: 28px;
-  font-size: calc(36px * var(--text-scale, 1));
-  font-weight: 900;
-  font-style: italic;
-  color: #b2dbff;
-  text-shadow: 0 0 16px #6dbfff;
-}
-.guide-ex + .guide-move {
-  position: absolute;
-  right: 18%;
-  top: 19px;
-  width: 65px;
-  height: 65px;
-  border: 2px solid #83c7ff;
-  box-shadow: 0 0 20px #6dbfff66;
-}
-.guide-ex-meter i {
+.is-ex .guide-charge-bar i {
   width: 33.333%;
   background: #82caff;
 }
-.guide-ex-meter b {
+.guide-charge-label {
+  font-size: calc(10px * var(--text-scale, 1));
+  line-height: 1;
+  letter-spacing: 1.5px;
+  color: #ffe08a;
+}
+.is-ex .guide-charge-label {
   color: #a8d5ff;
 }
 .guide-orb {
@@ -5075,21 +5079,14 @@ dialog:has(.illustrated-guide) {
   .guide-clock {
     font-size: calc(10px * var(--text-scale, 1));
   }
-  .guide-ultimate {
-    width: 54px;
-    height: 54px;
-    right: 9%;
-    top: 12px;
+  .guide-ultimate,
+  .guide-charge .guide-move {
+    width: 52px;
+    height: 52px;
     padding: 7px;
   }
   .guide-ex {
-    left: 9%;
     font-size: calc(28px * var(--text-scale, 1));
-  }
-  .guide-ex + .guide-move {
-    width: 52px;
-    height: 52px;
-    right: 9%;
   }
   .guide-orb {
     width: 40px;
@@ -5131,14 +5128,6 @@ dialog:has(.illustrated-guide) {
   .guide-safe-ring ~ .guide-fighter {
     left: calc(50% - 38px);
     top: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .guide-meter b {
-    width: auto;
-    right: 0;
-    font-size: calc(8px * var(--text-scale, 1));
   }
 }
 

@@ -149,3 +149,81 @@ it("sorts the admin player list, with the older list as a fallback", async () =>
     { p_search: "", p_offset: 0 },
   ]);
 });
+
+it("also sends an announcement as a notification, when asked", async () => {
+  await server.close();
+  const sent: { endpoint: string; payload: any }[] = [];
+  const devices = ["a", "b"].map((n) => ({
+    endpoint: `https://fcm.googleapis.com/fcm/send/${n}`,
+    p256dh: "BNcRdreALRFXTkOO",
+    auth: "tBHItJI5",
+  }));
+  accounts.provider.pushDevices = {
+    save: async () => {},
+    remove: async () => {},
+    list: async () => [],
+    newsPage: async (after) => devices.filter((d) => d.endpoint > after),
+    newsCount: async () => devices.length,
+  };
+  server = createArenaServer({
+    accounts: accounts.provider,
+    autoTick: false,
+    push: {
+      publicKey: "key",
+      send: async (d, payload) => {
+        sent.push({ endpoint: d.endpoint, payload: JSON.parse(payload) });
+        return "sent";
+      },
+    },
+  });
+  await new Promise<void>((resolve) =>
+    server.http.listen(0, "127.0.0.1", resolve),
+  );
+  const address = server.http.address();
+  if (!address || typeof address === "string") throw Error("No address");
+  url = `http://127.0.0.1:${address.port}`;
+  const { token } = accounts.add(true);
+  expect(await (await request(token, "/api/admin/push-reach")).json()).toEqual({
+    available: true,
+    devices: 2,
+  });
+  // Without the tick: no notification.
+  await request(token, "/api/admin/announce", {
+    message: "Quiet one",
+    tone: "info",
+    hours: 1,
+  });
+  expect(sent).toEqual([]);
+  const response = await request(token, "/api/admin/announce", {
+    message: "Double coins this weekend!",
+    tone: "event",
+    hours: 24,
+    push: true,
+  });
+  expect(await response.json()).toMatchObject({ id: 4, push: { devices: 2 } });
+  await expect.poll(() => sent.length).toBe(2);
+  expect(sent[0].payload).toEqual({
+    kind: "announcement",
+    title: "Element Arena · Event",
+    body: "Double coins this weekend!",
+    tag: "announcement-4",
+  });
+});
+
+it("says when notifications aren't set up", async () => {
+  const { token } = accounts.add(true);
+  expect(await (await request(token, "/api/admin/push-reach")).json()).toEqual({
+    available: false,
+    devices: 0,
+  });
+  const response = await request(token, "/api/admin/announce", {
+    message: "Hello all",
+    tone: "info",
+    hours: 1,
+    push: true,
+  });
+  expect(response.status).toBe(200);
+  expect((await response.json()).push).toEqual({
+    error: "Notifications aren't set up on the server.",
+  });
+});

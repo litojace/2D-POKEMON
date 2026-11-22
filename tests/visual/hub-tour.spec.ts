@@ -268,6 +268,39 @@ for (const size of SIZES.slice(0, 2))
         });
         for (const row of rows)
           expect(Math.max(...row) - Math.min(...row)).toBeLessThanOrEqual(1);
+        if (topic === "battle") {
+          // The meter cards: no fighter behind the bar (owner, 22 Nov
+          // 2026), and the button, bar and label stacked inside the picture
+          // without touching.
+          const meters = await dialog.evaluate((d) =>
+            Array.from(d.querySelectorAll(".guide-charge")).map((c) => {
+              const scene = c.closest(".guide-scene")!.getBoundingClientRect();
+              const parts = [
+                ".guide-charge-row",
+                ".guide-charge-bar",
+                ".guide-charge-label",
+              ].map((s) => c.querySelector(s)!.getBoundingClientRect());
+              return {
+                fighter: !!c
+                  .closest(".guide-scene")!
+                  .querySelector(".guide-fighter"),
+                inside: parts.every(
+                  (r) =>
+                    r.top >= scene.top - 0.5 &&
+                    r.bottom <= scene.bottom + 0.5 &&
+                    r.left >= scene.left &&
+                    r.right <= scene.right,
+                ),
+                stacked:
+                  parts[0].bottom <= parts[1].top &&
+                  parts[1].bottom <= parts[2].top,
+              };
+            }),
+          );
+          expect(meters).toHaveLength(2);
+          for (const m of meters)
+            expect(m).toEqual({ fighter: false, inside: true, stacked: true });
+        }
         await snap(page, info, `htp-${topic}-${size.width}x${size.height}`);
       }
       // A phone sees the touch buttons first, not keyboard keys.

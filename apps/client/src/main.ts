@@ -162,9 +162,11 @@ import {
 } from "./boss-vector-prewarm";
 import {
   addPrepaintedLayers,
+  forgetPrepainted,
   holdFighterPrepaint,
   syncFighterPrepaint,
 } from "./fighter-prepaint";
+import { rigArtHealth, type ArtNode } from "./rig-health";
 import { prewarmRaidArena } from "./raid-arena-prewarm";
 import { PillarRig, prewarmPillars } from "./raid-grumble-pillars-rig";
 import { IMPACT_RADIUS } from "./raid-grumble-pillars";
@@ -288,6 +290,7 @@ import "./ui/tokens.css";
 import "./style.css";
 import "./ui/components.css";
 import "./battle-dock.css";
+import "./match-sheet.css";
 import "./cosmetic-review.css";
 import "./collection-frames.css";
 import "./journey-frames.css";
@@ -310,7 +313,7 @@ import { watchNotchInsets } from "./notch-insets";
 import { watchScrollRows } from "./ui/scroll-rows";
 import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
-import { askConfirm, openHubPanelNow } from "./ui/hub-panel";
+import { askConfirm, openHubPanelNow, PANEL_EVENT } from "./ui/hub-panel";
 import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { createGuide } from "./getting-started-screen";
 import { openQuickSearch, type QuickSearchHandle } from "./quick-match";
@@ -437,7 +440,13 @@ import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
 import { mountChat, type ChatFriend, type ChatPlace } from "./chat/chat-ui";
-import { pushState, turnPushOff, turnPushOn } from "./chat/push-setup";
+import {
+  pushNews,
+  pushState,
+  setPushNews,
+  turnPushOff,
+  turnPushOn,
+} from "./chat/push-setup";
 import { mountBattleChat } from "./chat/battle-chat";
 import {
   CHAT_MODES,
@@ -647,6 +656,9 @@ const chat = mountChat({
               error: "Notifications aren't available right now.",
             })
         : turnPushOff((event, data) => request(event, data, true)),
+    news: pushNews,
+    setNews: (on) =>
+      setPushNews(on, (event, data) => request(event, data, true)),
   },
   me: () =>
     accountsUI?.account
@@ -700,9 +712,11 @@ const battleChat = mountBattleChat({
 });
 let authConnectionAttempt = 0;
 const connectionWatch = new ConnectionWatch();
-document.addEventListener("visibilitychange", () =>
-  connectionWatch.visibility(),
-);
+document.addEventListener("visibilitychange", () => {
+  connectionWatch.visibility();
+  // Shown again: Safari may have let the fighters' canvases go meanwhile.
+  if (!document.hidden) scene?.checkArtSoon("visible");
+});
 window.addEventListener("offline", () => connectionWatch.network());
 window.addEventListener("online", () => connectionWatch.network());
 // Keep a displaced tab paused across reloads. Only an explicit button press
@@ -757,6 +771,8 @@ let state: Snapshot | undefined,
   local: Fighter | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
+/** What ran a fighter-art check (rig-health.ts, "battle-art"). */
+type ArtTrigger = "visible" | "resume" | "renderer" | "context";
 /** Ticks the server held for your late inputs (Fighter.held). */
 let owedSteps = 0;
 let raidRoomReturn:
@@ -1034,6 +1050,9 @@ function identity(reply: Reply) {
   owedSteps = 0;
   eventId = 0;
   scene?.hydrateNextSnapshot();
+  // A resumed connection (often after the page was in the background):
+  // check the fighters' art is still there (rig-health.ts).
+  scene?.checkArtSoon("resume");
   local = undefined;
   remoteFrames.clear();
   timeline.clear();
@@ -1732,6 +1751,44 @@ function vsReveal(
     VS_FLIP_FIRST + (s.players.length - 1) * VS_FLIP_STEP + VS_FLIP_MS;
   if (elapsed > last) return undefined;
   return (i: number) => VS_FLIP_FIRST + i * VS_FLIP_STEP - elapsed;
+}
+/**
+ * Draw the Reveal again just after its last card has turned over, so
+ * "I'm ready" lights up then even if no snapshot arrives at that moment.
+ */
+let vsRevealTimer: ReturnType<typeof setTimeout> | undefined;
+function scheduleRevealEnd(players: number) {
+  if (vsRevealTimer !== undefined) return;
+  const last = VS_FLIP_FIRST + (players - 1) * VS_FLIP_STEP + VS_FLIP_MS;
+  const wait = Math.max(0, vsRevealAt + last + 220 - performance.now());
+  vsRevealTimer = setTimeout(() => {
+    vsRevealTimer = undefined;
+    if (state?.phase === "briefing" && !state.raid) renderBattle();
+  }, wait);
+}
+/**
+ * A fighter's full health for its bar. A PvP round always starts everyone
+ * full (the server's resetRound), so the health in the Reveal and the
+ * countdown is the server's own full health: the bar trusts it over this
+ * client's table, which an out-of-date app gets wrong. On the owner's
+ * phone (22 Nov 2026) Voltkit's bar started a round at 86%: the app still
+ * had its old 157 health, the server 135. Raids, the Spire and Solo test
+ * keep the table: their fighters don't all start full.
+ */
+const fullSeen = new Map<string, number>();
+function fullHealth(s: Snapshot, p: Fighter) {
+  const key = `${s.code}:${p.id}:${p.character}`;
+  if (
+    !s.raid &&
+    !s.practice &&
+    !p.out &&
+    p.hp > 0 &&
+    (s.phase === "briefing" || s.phase === "countdown")
+  ) {
+    if (fullSeen.size > 64) fullSeen.clear();
+    fullSeen.set(key, p.hp);
+  }
+  return fullSeen.get(key) ?? maxHealth(p.character, s.mode, s.players.length);
 }
 /** The room's ⋯ menu (Settings, Invite, Leave) is open. */
 let roomMenuOpen = false;
@@ -3927,6 +3984,17 @@ function renderBattle() {
     "is-countdown",
     player && state.phase === "countdown",
   );
+  // The break between rounds and the results take the whole screen too,
+  // as the Reveal and the countdown do (match-sheet.css): the match opens
+  // and ends in the same style (owner, 22 Nov 2026).
+  overlay.classList.toggle(
+    "is-break",
+    player && state.phase === "intermission" && !state.practice,
+  );
+  overlay.classList.toggle(
+    "is-sheet",
+    player && state.phase === "finished" && !state.practice,
+  );
   // Solo test mode starts straight away, with no briefing to load behind:
   // its own cover until this device has the arena, so the court and the
   // fighters never pop in (arenaLoading gives up after its cap).
@@ -4039,14 +4107,21 @@ function renderBattle() {
         partyRulesNote();
       // Ready only once this device has the arena: the countdown starts when
       // everyone is ready, so a slow phone would otherwise miss the start.
+      // …and only once every card has turned over (owner, 22 Nov 2026):
+      // you see who you face before you can start. Lights up when the last
+      // card lands (scheduleRevealEnd draws the Reveal again then).
+      const flipping = !!flips && !loading;
+      if (flipping) scheduleRevealEnd(state.players.length);
       const progress = arenaProgress(state);
       const readyCount = state.instructionsReady.length;
       const status = loading
         ? `Loading the arena · ${Math.round(progress * 100)}%`
         : confirmed
           ? `Waiting for the others · ${readyCount}/${state.players.length} ready`
-          : "Arena and every fighter loaded";
-      actions = `<div class="rv-foot"><div class="rv-load${loading ? " is-loading" : ""}"><span>${status}</span><i role="progressbar" aria-label="Arena loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress * 100)}"><b style="width:${(progress * 100).toFixed(1)}%"></b></i></div><button class="primary btn-primary" id="instructions-ready" ${confirmed || loading ? "disabled" : ""}>${confirmed ? "Ready ✓" : loading ? "Loading…" : "I’m ready"}</button></div>`;
+          : flipping
+            ? "Revealing the fighters…"
+            : "Arena and every fighter loaded";
+      actions = `<div class="rv-foot"><div class="rv-load${loading ? " is-loading" : ""}"><span>${status}</span><i role="progressbar" aria-label="Arena loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress * 100)}"><b style="width:${(progress * 100).toFixed(1)}%"></b></i></div><button class="primary btn-primary" id="instructions-ready" ${confirmed || loading || flipping ? "disabled" : ""}>${confirmed ? "Ready ✓" : loading ? "Loading…" : "I’m ready"}</button></div>`;
     }
     if (state.phase === "countdown") {
       heading = LIVE_COUNTDOWN;
@@ -4065,6 +4140,7 @@ function renderBattle() {
       const rites = riteMarkup(me, Math.ceil(state.remaining));
       details = rites.body;
       actions = rites.actions;
+      eyebrow = `Round ${state.round} · ${escape(ARENAS[state.arena ?? "classic"].name)}`;
     }
     if (state.phase === "paused") {
       heading = isTeams() ? "A player disconnected" : "Opponent disconnected";
@@ -4135,12 +4211,28 @@ function renderBattle() {
           details += `<div class="result-coach" role="note"><p><b>${streak} losses in a row.</b> A few minutes in Solo test${easier ? " or an easier bot" : ""} can help.</p><div class="result-coach-actions"><button type="button" class="secondary btn-secondary" id="coach-practice">${iconLabel("target", `Practice ${escape(CHARACTERS[me.character].name)}`)}</button>${easier ? `<button type="button" class="secondary btn-secondary" id="coach-easier" data-level="${easier}">${iconLabel("bot", `Try ${AI_LEVELS.find((l) => l.id === easier)!.name}`)}</button>` : ""}</div></div>`;
         }
       }
+      // The Reveal's kicker: the mode and where (the title says who won).
+      eyebrow = `${isTeams() ? "2v2 Teams" : isFfa() ? "Free-for-all" : state.vsBot ? "1v1 vs Bot" : "1v1 Duel"} · ${escape(state.arcade ? ARCADE_EVENTS[state.arcade.id].name : ARENAS[state.arena ?? "classic"].name)}`;
+      // What happens next, on the left of the foot as on the Reveal's.
+      const rematchers = state.players.filter((p) => p.ready).length;
+      const next = state.vsBot
+        ? "Rematch the same bot, or head back"
+        : `${rematchers}/${state.players.length} ready for a rematch`;
       // Against a bot, the rematch can bring another fighter (not in PvP,
       // where picks stay secret until a match starts, nor the arcade).
       const canSwap = !!state.vsBot && !state.arcade && !me.ready;
-      actions = `<div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button>${canSwap ? `<button class="secondary btn-secondary" id="change-fighter">${iconLabel("swap", "Change fighter")}</button>` : ""}<button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
+      actions = `<p class="sheet-note">${next}</p><div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button>${canSwap ? `<button class="secondary btn-secondary" id="change-fighter">${iconLabel("swap", "Change fighter")}</button>` : ""}<button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
-    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
+    const finished = state.phase === "finished";
+    const won =
+      finished &&
+      (isTeams() ? state.winnerTeam === teamOf(me) : state.winner === myId);
+    const sheet = finished
+      ? ` match-sheet ${won ? "is-victory" : "is-defeat"}`
+      : state.phase === "intermission"
+        ? ` round-break${actions ? " has-rites" : ""}`
+        : "";
+    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}${sheet}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
     // Preserve the pressed button and native scrolling between snapshots.
     // The arena finishing loading starts the Reveal's scroll afresh, but it
     // is the same panel: it must not pop in again (it blinked out, the whole
@@ -5134,11 +5226,15 @@ function startTour(replay = false) {
   tourTimer = setTimeout(
     () => {
       tourTimer = undefined;
+      // A new guest answers their guest pass warning first; the tour
+      // follows (owner, 22 Nov 2026: it opened over the warning).
       if (
         !lobby ||
         myId ||
         $<HTMLDialogElement>("dialog").open ||
-        document.querySelector(".ui-panel-host .ui-panel")
+        document.querySelector(".ui-panel-host .ui-panel") ||
+        document.querySelector("[data-ui-confirm]") ||
+        accountsUI?.guestWarningPending
       )
         return;
       tour = runTour({
@@ -5163,6 +5259,13 @@ function startTour(replay = false) {
     replay ? 250 : 900,
   );
 }
+// The guest warning answered (Got it, or Save account and its card closed):
+// the tour, if it is still due.
+window.addEventListener("guest-warning-done", () => maybeStartTour());
+// Save account opens the player card first: the tour once it closes.
+document.addEventListener(PANEL_EVENT, () => {
+  if (hubScene === "lobby" && !myId) maybeStartTour();
+});
 /** A new account's first Lobby: the tour, once. */
 function maybeStartTour() {
   const account = accountsUI?.account?.id;
@@ -5719,6 +5822,79 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   hydrateNextSnapshot() {
     this.needsHydration = true;
   }
+  /** Art checks to run (rig-health.ts), at these times (performance.now). */
+  private artChecks: { at: number; trigger: ArtTrigger }[] = [];
+  /** Fighters still to look at in the current check, one a frame. */
+  private artQueue: string[] = [];
+  private artTrigger: ArtTrigger = "renderer";
+  /** Fighters whose art was loaded again in this renderer, and how often. */
+  private artRepairs = new Map<CharacterId, number>();
+  /**
+   * After a moment that can lose a canvas's pixels (the page shown again, a
+   * resumed connection, a new renderer, a restored WebGL context), look at
+   * every fighter's art twice, soon and a little later (a reload settles).
+   */
+  checkArtSoon(trigger: ArtTrigger) {
+    const now = performance.now();
+    this.artChecks.push(
+      { at: now + 700, trigger },
+      { at: now + 3000, trigger },
+    );
+  }
+  /**
+   * A fighter drawn as nothing: every texture its rig uses came back blank.
+   * Its rig and textures go, its art is forgotten and loads again (the
+   * fighter is a plain stand-in meanwhile), and the server hears of it
+   * ("arena-art-blank"). Twice per fighter per renderer at most: art that
+   * keeps coming back blank is only reported.
+   */
+  private runArtChecks(now: number) {
+    if (document.hidden) return;
+    // Due: queue every fighter on the court, then look at one per frame
+    // (reading canvases back costs; a court of eight in one frame stalled).
+    if (this.artChecks.some((c) => c.at <= now)) {
+      const due = this.artChecks.filter((c) => c.at <= now);
+      this.artChecks = this.artChecks.filter((c) => c.at > now);
+      this.artTrigger = due[due.length - 1].trigger;
+      for (const id of this.rigs.keys())
+        if (!this.artQueue.includes(id)) this.artQueue.push(id);
+    }
+    const id = this.artQueue.shift();
+    const rig = id === undefined ? undefined : this.rigs.get(id);
+    if (!id || !rig) return;
+    const health = rigArtHealth(rig.root as unknown as ArtNode);
+    if (!health.blank) return;
+    const character = rig.character;
+    const times = this.artRepairs.get(character) ?? 0;
+    const repaired = times < 2;
+    if (repaired) {
+      this.artRepairs.set(character, times + 1);
+      // Every rig drawing from the same art goes too (a teammate on the
+      // same fighter): its textures are about to be removed.
+      for (const [other, r] of this.rigs)
+        if (r.character === character) {
+          r.destroy();
+          this.rigs.delete(other);
+        }
+      for (const key of health.keys) {
+        forgetPrepainted(key);
+        if (this.textures.exists(key)) this.textures.remove(key);
+      }
+      this.fighters.forget(character);
+    }
+    if (connected)
+      socket.emit("battle-art", {
+        character,
+        mine: id === myId,
+        textures: health.total,
+        blank: health.keys.length,
+        trigger: this.artTrigger,
+        repaired,
+        build: BUILD,
+        ...deviceKind(),
+      });
+  }
+
   private getRig(id: string, character: CharacterId) {
     let rig = this.rigs.get(id);
     if (rig && rig.character !== character) {
@@ -5854,6 +6030,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   create() {
     battleLoadMarks.create ||= performance.now();
     scene = this;
+    // A new renderer, often rebuilt mid-fight after a reconnect, and a
+    // WebGL context given back: check the fighters' art (rig-health.ts).
+    this.checkArtSoon("renderer");
+    this.game.canvas?.addEventListener("webglcontextrestored", () =>
+      this.checkArtSoon("context"),
+    );
     // The boss's pieces are drawn once into an atlas: now, not on its first frame.
     if (state?.raid)
       prewarmBossAtlas(
@@ -6500,6 +6682,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     }
   }
   update(_time: number, delta: number) {
+    // Art found blank goes first, so its fighter is asked for again below.
+    this.runArtChecks(performance.now());
     // A fighter still loading is drawn as a stand-in (readyRig) while its
     // art loads; nothing else waits for it.
     if (state) this.requestFighters(state);
@@ -6957,7 +7141,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         reducedMotion,
         _time / 1000,
         state.raid
-          ? { boss: this.bossGraphics, at: this.layerAt, court: this.courtRaid }
+          ? {
+              boss: this.bossGraphics,
+              at: this.layerAt,
+              court: this.courtRaid,
+              drawnAt: (id) => this.positions.get(id),
+            }
           : undefined,
       ) ?? [];
     for (const [key, layer] of this.layers)
@@ -7979,7 +8168,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       updateNameplateHealth(
         label,
         serverPlayer.hp,
-        maxHealth(p.character, state.mode, state.players.length),
+        fullHealth(state, serverPlayer),
         p.id === myId
           ? "self"
           : (state.raid && !serverPlayer.echo) ||

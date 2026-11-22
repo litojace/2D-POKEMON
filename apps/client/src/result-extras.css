@@ -90,3 +90,30 @@ dialog .fp-tile.is-current {
   margin: 0;
   padding: 8px 14px;
 }
+
+/* The full-screen results (match-sheet.css): the kicker and title keep
+   their height when the details run longer than a phone held sideways
+   (the losing-streak note made them), instead of shrinking to nothing
+   and drawing over the scrolling details. */
+body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
+  grid-template-rows: max-content max-content minmax(0, 1fr) max-content;
+}
+/* The note is as wide as the score table above it, centred. */
+#arena-overlay .result-coach {
+  width: min(560px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+}
+/* With Change fighter the foot has four buttons: on a phone held sideways
+   the "what next" note beside them would wrap to three lines, and the
+   buttons say it already. */
+@media (max-width: 960px) {
+  #arena-overlay#arena-overlay.is-sheet
+    .panel-actions:has(#change-fighter)
+    > .sheet-note {
+    display: none;
+  }
+  #arena-overlay#arena-overlay.is-sheet .panel-actions:has(#change-fighter) {
+    justify-content: center;
+  }
+}
