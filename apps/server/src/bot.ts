@@ -193,12 +193,6 @@ interface Profile {
   unknownKinds?: readonly string[];
   /** The expert's learned way of playing each champion (expert-style.ts). */
   style?: Partial<Record<CharacterId, Style>>;
-  /**
-   * PvP only: leads shots and cuts off by how the opponent moved over the
-   * last STEADY_LOOK seconds, not by its latest step, so a player who
-   * jinks left and right no longer sends every shot wide.
-   */
-  steadyLead?: boolean;
 }
 /**
  * The skill revolution (docs/skill-revolution.md) recalibrated the duel daze
@@ -399,8 +393,6 @@ export const RAID_BOT_PROFILES: Record<BotDifficulty, Profile> = {
     markReaction: 0.6,
   },
 };
-/** How far back a steady lead looks (see Profile.steadyLead). */
-const STEADY_LOOK = 0.3;
 /**
  * The levels players pick, in PvP (raids and the Spire: RAID_BOT_PROFILES).
  * The second round of smarter bots (2026-11-22) moved each up a step, when
@@ -446,7 +438,6 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     retreat: 0.31,
     expert: { lookAway: true, jumpSeeds: true, dodgeMarks: true },
     markReaction: 0.72,
-    steadyLead: true,
     dazeBy: NORMAL_DAZE_BY,
     raidDazeBy: undefined,
   },
@@ -461,7 +452,6 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     think: 0.08,
     rest: 0,
     markReaction: undefined,
-    steadyLead: true,
     style: EXPERT_STYLE,
   },
 };
@@ -743,8 +733,6 @@ export class BotBrain {
   profile: Profile;
   private random: () => number;
   private seen: Seen[] = [];
-  /** Where the opponent has been lately (steadyLead). */
-  private track: { t: number; x: number; y: number }[] = [];
   private nextThink = 0;
   private plan = { dx: 0, dy: 0 };
   private strafe = 1;
@@ -778,7 +766,6 @@ export class BotBrain {
   /** Forget per-round memory (positions, judged shots) at a new round. */
   reset() {
     this.seen = [];
-    this.track = [];
     this.nextThink = 0;
     this.judged.clear();
     this.cloneDecision = undefined;
@@ -859,7 +846,6 @@ export class BotBrain {
     // A new target: forget what it saw of the last one.
     if (this.targetId !== undefined && this.targetId !== pick.id) {
       this.seen = [];
-      this.track = [];
       this.cloneDecision = undefined;
     }
     this.targetId = pick.id;
@@ -951,26 +937,11 @@ export class BotBrain {
       vx: 0,
       vy: 0,
     };
-    // PvP: how it has been moving lately, not just this instant, so a
-    // jink one way and back again doesn't send the lead wide.
-    let moving = { vx: view.vx, vy: view.vy };
-    if (pvp && this.profile.steadyLead) {
-      if (!arena.has(enemy, "stealth"))
-        this.track.push({ t, x: enemy.x, y: enemy.y });
-      while (this.track.length > 2 && this.track[1].t <= view.t - STEADY_LOOK)
-        this.track.shift();
-      const from = this.track[0];
-      if (from && view.t - from.t > STEADY_LOOK / 2)
-        moving = {
-          vx: (view.x - from.x) / (view.t - from.t),
-          vy: (view.y - from.y) / (view.t - from.t),
-        };
-    }
     // The expert's counterplay, for the levels that have it (PvP only:
     // raids play as tuned).
     const ex = pvp ? this.profile.expert : undefined;
     // A decoy may fool it (decided once per clone).
-    let target = { x: view.x, y: view.y, ...moving };
+    let target = { x: view.x, y: view.y, vx: view.vx, vy: view.vy };
     if (enemy.clone) {
       if (!this.cloneDecision || this.cloneDecision.until !== enemy.clone.until)
         this.cloneDecision = {

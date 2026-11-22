@@ -181,36 +181,4 @@ describe("bot difficulty", () => {
       expect(now.rest, level).toBeLessThan(before.rest);
     }
   });
-
-  it("leads a jinking opponent by how it moved lately, not its last step", () => {
-    // Voltkit (a shooter) at A; the opponent runs up for a while, then jinks
-    // down for an instant. A steady lead still aims up the way it went.
-    const aimAt = (steadyLead: boolean) => {
-      const { arena, p, q } = duel("voltkit", 300, "cindrake", 800);
-      const b = brain(
-        "A",
-        {
-          steadyLead,
-          aimError: 0,
-          reaction: 0.1,
-          lead: 1,
-          skillUse: 0,
-          dazeBy: {},
-        },
-        BOT_PROFILES.hard,
-      );
-      let input = blankInput();
-      for (let i = 0; i < 24; i++) {
-        arena.time += 1 / RULES.tick;
-        const jink = i >= 18;
-        q.vy = jink ? 300 : -300;
-        q.y += q.vy / RULES.tick;
-        input = b.think(arena, p);
-      }
-      return input.aimY - q.y;
-    };
-    // Without it the bot leads the jink (down, +y); with it, up the court.
-    expect(aimAt(false)).toBeGreaterThan(0);
-    expect(aimAt(true)).toBeLessThan(aimAt(false));
-  });
 });
