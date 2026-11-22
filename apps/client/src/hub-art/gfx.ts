@@ -81,12 +81,14 @@ const GFX = (() => {
       s = sprite(RX * 2, RY * 2, RX, RY, (c) => {
         c.scale(1, RY / RX);
         const gr = c.createRadialGradient(0, 0, 0, 0, 0, RX);
-        // A contact shadow: dark and cool where the thing meets the
-        // ground, fading out softly (shade is cool, light is warm).
-        gr.addColorStop(0, `rgba(16,26,44,${Math.min(0.62, A * 1.45)})`);
-        gr.addColorStop(0.32, `rgba(16,26,44,${A * 1.05})`);
-        gr.addColorStop(0.7, `rgba(18,30,44,${A * 0.42})`);
-        gr.addColorStop(1, "rgba(18,30,44,0)");
+        // A contact shadow: darkest where the thing meets the ground,
+        // fading out softly.
+        // (A deep green, not near-black: on the Plaza's grass a grey or
+        // navy shadow looked dirty, owner's call 22 Nov.)
+        gr.addColorStop(0, `rgba(24,62,34,${Math.min(0.5, A * 1.25)})`);
+        gr.addColorStop(0.35, `rgba(24,62,34,${A * 0.95})`);
+        gr.addColorStop(0.7, `rgba(30,70,40,${A * 0.4})`);
+        gr.addColorStop(1, "rgba(30,70,40,0)");
         c.fillStyle = gr;
         c.beginPath();
         c.arc(0, 0, RX, 0, 7);
@@ -1392,8 +1394,8 @@ const GFX = (() => {
           g.strokeStyle = dk(wall, 0.5);
           g.lineWidth = 2;
           g.strokeRect(x0, top, w, hgt - 12);
-          g.strokeStyle = rgba(dk(wall, 0.4), 0.25);
-          g.lineWidth = 1;
+          g.strokeStyle = rgba(dk(wall, 0.45), 0.42);
+          g.lineWidth = 1.3;
           for (let y = top + 14; y < -14; y += 14) {
             g.beginPath();
             g.moveTo(x0 + 2, y);
@@ -1416,11 +1418,11 @@ const GFX = (() => {
           sh.addColorStop(1, rgba(dk(wall, 0.6), 0.16));
           g.fillStyle = sh;
           g.fillRect(x0, top, w, hgt - 12);
-          const ev = g.createLinearGradient(0, top, 0, top + 18);
-          ev.addColorStop(0, rgba(dk(wall, 0.75), 0.4));
+          const ev = g.createLinearGradient(0, top, 0, top + 24);
+          ev.addColorStop(0, rgba(dk(wall, 0.8), 0.55));
           ev.addColorStop(1, rgba(dk(wall, 0.75), 0));
           g.fillStyle = ev;
-          g.fillRect(x0, top, w, 18);
+          g.fillRect(x0, top, w, 24);
           // Corner boards at both ends.
           for (const cx of [x0, x1 - 6]) {
             g.fillStyle = cx === x0 ? lt(wall, 0.55) : lt(wall, 0.2);
@@ -1702,8 +1704,8 @@ const GFX = (() => {
                 g.fill();
               }
             }
-            g.strokeStyle = rgba(dk(roof, 0.55), 0.55);
-            g.lineWidth = 1.6;
+            g.strokeStyle = rgba(dk(roof, 0.6), 0.8);
+            g.lineWidth = 2.2;
             g.beginPath();
             for (let x = x0 - ov - 10 + (row % 2) * 6; x < x1 + ov + depth; x += 12) {
               g.moveTo(x, y);

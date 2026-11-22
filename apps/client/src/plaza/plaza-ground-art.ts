@@ -342,8 +342,9 @@ export function grassLight(g, rnd, x0, y0, w, h, n) {
       ry = rx * (0.45 + rnd() * 0.25),
       lit = rnd() < 0.55;
     const gr = g.createRadialGradient(x, y, 0, x, y, rx);
-    const c = lit ? "214,240,120" : "30,84,60";
-    gr.addColorStop(0, `rgba(${c},${lit ? 0.3 : 0.28})`);
+    // Shade in the grass is a deeper, still-green green, never grey.
+    const c = lit ? "214,240,120" : "70,140,50";
+    gr.addColorStop(0, `rgba(${c},${lit ? 0.28 : 0.2})`);
     gr.addColorStop(1, `rgba(${c},0)`);
     g.save();
     g.translate(x, y);
@@ -365,7 +366,7 @@ export function turfClumps(g, rnd, x0, y0, w, h, n) {
     const x = x0 + rnd() * w,
       y = y0 + rnd() * h,
       r = 7 + rnd() * 9;
-    g.fillStyle = "rgba(24,72,40,.3)";
+    g.fillStyle = "rgba(70,140,50,.32)";
     g.beginPath();
     g.ellipse(x + r * 0.35, y + r * 0.3, r, r * 0.5, 0, 0, 7);
     g.fill();

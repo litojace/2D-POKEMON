@@ -3392,54 +3392,6 @@ export function openPlaza(options) {
    * The night's light map: each lamp, floodlight and lit window lifts the
    * darkness around it, so what it lights keeps its colours.
    */
-  /**
-   * Shadows of clouds drifting slowly across the Plaza by day (High
-   * graphics only): one soft lumpy shape painted once on a small canvas,
-   * stamped large and faint, cool in colour, so the light on the ground
-   * moves as it does outdoors.
-   */
-  let cloudPic = null;
-  function cloudShape() {
-    if (cloudPic) return cloudPic;
-    const c = document.createElement("canvas");
-    c.width = 256;
-    c.height = 160;
-    const q = c.getContext("2d");
-    for (const [x, y, r] of [
-      [80, 86, 60],
-      [130, 70, 66],
-      [182, 88, 54],
-      [118, 104, 50],
-      [60, 104, 36],
-      [204, 102, 34],
-    ]) {
-      const gr = q.createRadialGradient(x, y, 0, x, y, r);
-      gr.addColorStop(0, "rgba(20,36,70,.5)");
-      gr.addColorStop(0.6, "rgba(20,36,70,.32)");
-      gr.addColorStop(1, "rgba(20,36,70,0)");
-      q.fillStyle = gr;
-      q.fillRect(x - r, y - r, r * 2, r * 2);
-    }
-    return (cloudPic = c);
-  }
-  const CLOUDS = [
-    { y: 300, s: 1.0, v: 9, o: 0 },
-    { y: 1050, s: 1.25, v: 7, o: 1400 },
-    { y: 1500, s: 0.9, v: 11, o: 2600 },
-  ];
-  function drawCloudShadows(g, time, vx0, vy0, vx1, vy1) {
-    const span = W + 2 * PLAZA_MARGIN + 1100;
-    g.globalAlpha = 0.75;
-    for (const c of CLOUDS) {
-      const w = 1000 * c.s,
-        h = 620 * c.s,
-        x = -PLAZA_MARGIN - 1100 + ((c.o + time * c.v) % span),
-        y = c.y - h / 2;
-      if (x > vx1 || x + w < vx0 || y > vy1 || y + h < vy0) continue;
-      g.drawImage(cloudShape(), x, y, w, h);
-    }
-    g.globalAlpha = 1;
-  }
   /** A soft disc of one colour for the night's glows, made once. */
   const GLOW_DISCS = new Map();
   function glowDisc(c) {
@@ -5631,7 +5583,6 @@ export function openPlaza(options) {
     const sorted = depthSort(shown);
     if (debugOrder) debugOrder = sorted.map((i) => i.name ?? "?");
     for (const i of sorted) i.draw();
-    if (!low && night() < 0.5) drawCloudShadows(g, time, vx0, vy0, vx1, vy1);
     if (!photo) fishing.drawRod(g, P);
     BUTTER.forEach((b) => GFX.butterfly(g, time + b.ph, b.x, b.y, b.c, 1.3));
     if (!low) drawDragonflies(g, time);
