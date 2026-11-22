@@ -41,6 +41,16 @@ export function cropArt(skins = costumeSkins()) {
   return out;
 }
 
+/** Every champion's own crops (no skin), as play draws them. */
+export function championCrops() {
+  const out: { key: string; url: string }[] = [];
+  for (const id of Object.keys(CHARACTERS) as CharacterId[])
+    for (const a of rigAssets(id, null, DIRS))
+      if (!a.key.includes("~lume") && PARTS.test(a.key))
+        out.push({ key: a.key, url: a.url });
+  return out;
+}
+
 /**
  * For each costume skin and view: the default eyes alone, and the parts
  * drawn over the eyes (the head-top piece and the scarf from the front;
