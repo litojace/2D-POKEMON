@@ -13,8 +13,8 @@ const { sprite, memo, ball, rnd, srand, mix, rgba } = GFX;
  * edge, a cap) and a hoop of leafy vine, flowers in clusters along it.
  * Anchored at the gate's middle on the ground; posts at ±span.
  */
-export function flowerArch(span = 70, rise = 112) {
-  return memo(`flower-arch:${span}:${rise}`, () =>
+export function flowerArch(span = 70, rise = 112, white = false) {
+  return memo(`flower-arch:${span}:${rise}:${white}`, () =>
     sprite(span * 2 + 70, rise + span + 60, span + 35, rise + span + 40, (g) => {
       srand(77);
       for (const px of [-span, span]) {
@@ -24,14 +24,21 @@ export function flowerArch(span = 70, rise = 112) {
         g.ellipse(px + 6, 2, 14, 5, 0, 0, 7);
         g.fill();
         const gg = g.createLinearGradient(px - 9, 0, px + 9, 0);
-        gg.addColorStop(0, "#d79a58");
-        gg.addColorStop(0.35, "#c48a4a");
-        gg.addColorStop(1, "#6e4626");
+        if (white) {
+          // A painted white post (the Photo Spot's).
+          gg.addColorStop(0, "#ffffff");
+          gg.addColorStop(0.35, "#f6f1e6");
+          gg.addColorStop(1, "#bdb3a0");
+        } else {
+          gg.addColorStop(0, "#d79a58");
+          gg.addColorStop(0.35, "#c48a4a");
+          gg.addColorStop(1, "#6e4626");
+        }
         g.fillStyle = gg;
         g.beginPath();
         g.roundRect(px - 9, -rise - 4, 18, rise + 8, 4);
         g.fill();
-        g.strokeStyle = "rgba(90,55,25,.45)";
+        g.strokeStyle = white ? "rgba(150,140,120,.3)" : "rgba(90,55,25,.45)";
         g.lineWidth = 0.9;
         for (let k = 0; k < 4; k++) {
           const gx = px - 5 + k * 3.4;
@@ -42,7 +49,7 @@ export function flowerArch(span = 70, rise = 112) {
         }
         g.fillStyle = "rgba(255,230,190,.45)";
         g.fillRect(px - 8, -rise, 2, rise);
-        g.fillStyle = "#8a5a30";
+        g.fillStyle = white ? "#d8cfbd" : "#8a5a30";
         g.beginPath();
         g.roundRect(px - 12, -rise - 10, 24, 8, 3);
         g.fill();
@@ -112,6 +119,27 @@ export function flowerArch(span = 70, rise = 112) {
           ball(g, x, y, 1.7, "#ffb21a", 0.6);
         }
       }
+    }),
+  );
+}
+
+/**
+ * A sign's words in outlined letters, baked (they were drawn with a font
+ * every frame). The key carries the fonts' status, so the words are
+ * painted again once the font has loaded.
+ */
+export function signWords(text, size = 22) {
+  const fonts = typeof document !== "undefined" ? document.fonts?.status : "";
+  return memo(`sign-words:${text}:${size}:${fonts}`, () =>
+    sprite(text.length * size * 0.62 + 20, size + 14, (text.length * size * 0.62 + 20) / 2, size + 4, (g) => {
+      g.textAlign = "center";
+      g.font = `800 ${size}px 'Barlow Condensed', sans-serif`;
+      g.fillStyle = "#fff";
+      g.strokeStyle = "#2a1f4c";
+      g.lineWidth = 4;
+      g.lineJoin = "round";
+      g.strokeText(text, 0, 0);
+      g.fillText(text, 0, 0);
     }),
   );
 }
