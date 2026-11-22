@@ -421,7 +421,7 @@ export function createFightView() {
       y = hz + (h - hz) * (0.14 + 0.58 * k),
       dx = Math.cos(time * 1.3),
       x =
-        w * 0.4 +
+        w * 0.36 +
         Math.sin(time * 1.3) * w * (0.18 - k * 0.07) +
         (v.thrash ? Math.sin(time * 28) * 10 : 0);
     return { x, y, s: 0.6 + k * 1.0, dir: dx >= 0 ? 1 : -1 };
@@ -834,12 +834,14 @@ export function createFightView() {
       }
 
       // ---- the rod and line ----
-      const bx = w * 0.9,
+      // From the bottom a little right of the middle, leaning in: the big
+      // Hold button keeps the right-hand corner to itself.
+      const bx = w * 0.74,
         by = h + 40,
         bend = v.tension,
-        tx = w * (0.64 + bend * 0.03),
+        tx = w * (0.55 + bend * 0.03),
         ty = h * (0.3 + bend * 0.18),
-        cx = w * 0.76,
+        cx = w * 0.63,
         cy = h * (0.55 - bend * 0.05) + bend * 30;
       const at = (u: number) => ({
         x: (1 - u) ** 2 * bx + 2 * u * (1 - u) * cx + u * u * tx,
