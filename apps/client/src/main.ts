@@ -313,7 +313,14 @@ import { askConfirm, openHubPanelNow } from "./ui/hub-panel";
 import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { createGuide } from "./getting-started-screen";
 import { openQuickSearch, type QuickSearchHandle } from "./quick-match";
-import { recordBotResult, suggestedBotLevel } from "./bot-ladder";
+import {
+  LOSS_STREAK_HINT,
+  easierBot,
+  recordBotOutcome,
+  recordBotResult,
+  suggestedBotLevel,
+  type BotLevelId,
+} from "./bot-ladder";
 import { createCoach } from "./battle-coach";
 import { playerLevel } from "../../../packages/shared/src/journey";
 import { openRoster, type RosterScreen } from "./screens/roster";
@@ -448,11 +455,15 @@ import { syncUiEffects } from "./ui/ui-effects";
 import { practiceMeter } from "./practice-meter";
 import {
   PRACTICE_STATS,
+  loadPracticePrefs,
   practicePanelMarkup,
+  savePracticePrefs,
   type PracticeStat,
 } from "./practice-panel";
 import "./ui/phone-fit.css";
 import "./settings-screen.css";
+import { fighterPickerMarkup } from "./fighter-picker";
+import "./result-extras.css";
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(
@@ -3403,9 +3414,16 @@ function renderMenu(revealSelection = false) {
         const button = $<HTMLButtonElement>("practice");
         button.disabled = true;
         const name = $<HTMLInputElement>("name").value.trim() || "Trainer";
-        // A new Solo test starts with normal skills.
-        practiceEx = false;
-        identity(await request("practice", { name, character: selected }));
+        // A new Solo test starts with the switches you left on last time.
+        const prefs = loadPracticePrefs();
+        practiceEx = prefs.ex;
+        const reply = await request("practice", { name, character: selected });
+        identity(reply);
+        if (reply.ok && (prefs.unlimitedCooldowns || prefs.targetAttacks))
+          void request("practice-options", {
+            unlimitedCooldowns: prefs.unlimitedCooldowns,
+            targetAttacks: prefs.targetAttacks,
+          });
         button.disabled = false;
       };
   }
@@ -3606,14 +3624,25 @@ function renderBattle() {
           "practice-character",
           $<HTMLSelectElement>("practice-character").value,
         );
-      const options = () =>
+      // Every switch is remembered on this device for the next Solo test.
+      const remember = () =>
+        savePracticePrefs({
+          unlimitedCooldowns: $<HTMLInputElement>("practice-unlimited").checked,
+          targetAttacks: $<HTMLInputElement>("practice-attacks").checked,
+          ex: practiceEx,
+        });
+      const options = () => {
+        remember();
         void request("practice-options", {
           unlimitedCooldowns: $<HTMLInputElement>("practice-unlimited").checked,
           targetAttacks: $<HTMLInputElement>("practice-attacks").checked,
         });
+      };
       practiceDamage = practiceMeter();
-      $("practice-ex").onchange = () =>
-        (practiceEx = $<HTMLInputElement>("practice-ex").checked);
+      $("practice-ex").onchange = () => {
+        practiceEx = $<HTMLInputElement>("practice-ex").checked;
+        remember();
+      };
       $("practice-unlimited").onchange = options;
       $("practice-attacks").onchange = options;
       $("practice-reset").onclick = () => void request("practice-reset");
@@ -4090,13 +4119,25 @@ function renderBattle() {
       // A finished match against a bot: Getting started's first step.
       if (state.vsBot) {
         guide.mark("bot");
-        recordBotResult(
-          state.matchId ?? `${state.code}:${state.time}`,
-          state.vsBot,
-          won,
+        const matchKey = state.matchId ?? `${state.code}:${state.time}`;
+        recordBotResult(matchKey, state.vsBot, won);
+        const decided = isTeams()
+          ? state.winnerTeam !== null && state.winnerTeam !== undefined
+          : !!state.winner;
+        const streak = recordBotOutcome(
+          matchKey,
+          won ? "win" : decided ? "loss" : "draw",
         );
+        // Three losses in a row: a way to practise, or an easier bot.
+        if (!won && decided && !state.arcade && streak >= LOSS_STREAK_HINT) {
+          const easier = easierBot(state.vsBot);
+          details += `<div class="result-coach" role="note"><p><b>${streak} losses in a row.</b> A few minutes in Solo test${easier ? " or an easier bot" : ""} can help.</p><div class="result-coach-actions"><button type="button" class="secondary btn-secondary" id="coach-practice">${iconLabel("target", `Practice ${escape(CHARACTERS[me.character].name)}`)}</button>${easier ? `<button type="button" class="secondary btn-secondary" id="coach-easier" data-level="${easier}">${iconLabel("bot", `Try ${AI_LEVELS.find((l) => l.id === easier)!.name}`)}</button>` : ""}</div></div>`;
+        }
       }
-      actions = `<div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
+      // Against a bot, the rematch can bring another fighter (not in PvP,
+      // where picks stay secret until a match starts, nor the arcade).
+      const canSwap = !!state.vsBot && !state.arcade && !me.ready;
+      actions = `<div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button>${canSwap ? `<button class="secondary btn-secondary" id="change-fighter">${iconLabel("swap", "Change fighter")}</button>` : ""}<button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
     const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
     // Preserve the pressed button and native scrolling between snapshots.
@@ -4127,6 +4168,22 @@ function renderBattle() {
       };
     if (state.phase === "finished") {
       $("rematch").onclick = () => void request("rematch");
+      const swap = document.getElementById("change-fighter");
+      if (swap) swap.onclick = showFighterPicker;
+      // The losing-streak note: leave this bot room, then start the other.
+      const coachPractice = document.getElementById("coach-practice");
+      if (coachPractice)
+        coachPractice.onclick = async () => {
+          await leave();
+          void lobbyPlay("practice");
+        };
+      const coachEasier = document.getElementById("coach-easier");
+      if (coachEasier)
+        coachEasier.onclick = async () => {
+          const level = coachEasier.dataset.level as BotLevelId;
+          await leave();
+          void lobbyPlay(`bot-${level}` as LobbyMode);
+        };
       document
         .querySelectorAll<HTMLButtonElement>("[data-add-friend]")
         .forEach((b) => {
@@ -4659,6 +4716,25 @@ function dialog(html: string) {
     menuOpen = false;
   };
 }
+/** Result screen → Change fighter: a pick is the rematch, with that fighter. */
+function showFighterPicker() {
+  const me = state?.players.find((p) => p.id === myId);
+  if (!me) return;
+  dialog(fighterPickerMarkup(me.character));
+  for (const b of Array.from(
+    document.querySelectorAll<HTMLButtonElement>("#dialog [data-fp-pick]"),
+  ))
+    b.onclick = async () => {
+      const id = b.dataset.fpPick as CharacterId;
+      $<HTMLDialogElement>("dialog").close();
+      menuOpen = false;
+      const reply = await request("rematch", { character: id });
+      if (!reply.ok) return toast(reply.error ?? "Try again.");
+      // It is your fighter from now on, in the Lobby too.
+      selected = id;
+      rememberHomeFighter(id);
+    };
+}
 /**
  * The Settings leave button. Outlined red normally; bolder, with what it
  * costs, while a match is actually under way.
@@ -4787,7 +4863,12 @@ function settingsMarkup(reduced: boolean) {
     const note = state.practice
       ? ""
       : `<p class="st-note">Online matches keep running while this is open.</p>`;
-    side = `<section class="prefs-card st-card" aria-labelledby="prefs-match"><h3 id="prefs-match">${menuIcon("battle")}This match</h3>${note}${practiceTools}${motion}</section>`;
+    // What each of your skills does: on a phone there is no hover to read
+    // it, and holding a skill button casts it.
+    const skills = state.players.some((p) => p.id === myId)
+      ? `<div class="st-row"><span class="st-row-text"><b>Your skills</b><small>What each one does, and its cooldown.</small></span><button id="settings-skills" class="secondary btn-secondary">${iconLabel("info", "Skills")}</button></div>`
+      : "";
+    side = `<section class="prefs-card st-card" aria-labelledby="prefs-match"><h3 id="prefs-match">${menuIcon("battle")}This match</h3>${note}${practiceTools}${skills}${motion}</section>`;
   } else
     side = `<section class="prefs-card st-card" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3>${graphicsRow()}${isNativeApp() ? "" : fullscreenRow()}${motion}</section>`;
   const appIcon = !state && isNativeApp() ? appIconCardHTML() : "";
@@ -4823,6 +4904,8 @@ function showSettings() {
   $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
   $("settings-credits").onclick = showCredits;
+  const skills = document.getElementById("settings-skills");
+  if (skills) skills.onclick = showSkills;
   const exitRoom = $("exit-room");
   if (exitRoom) exitRoom.onclick = () => void leave();
 }
@@ -4857,6 +4940,31 @@ function bindDisplayCard() {
     }
     syncDisplayCard();
   };
+}
+/** Settings → Your skills: the fighter you play now, with a way back. */
+function showSkills() {
+  const me = state?.players.find((p) => p.id === myId);
+  if (!me) return showSettings();
+  const c = CHARACTERS[me.character];
+  const kit = kitOf(me.character, me.rites);
+  const row = (name: string, when: string, text: string) =>
+    `<li class="sk-row"><span class="sk-icon">${abilityIcon(name)}</span><span class="sk-text"><b>${escape(name)}</b><small>${escape(when)}</small><span>${escape(text)}</span></span></li>`;
+  const list = [
+    row(c.basic.name, "Basic attack · no cooldown", c.basic.description),
+    ...kit.skills.map((a, i) =>
+      row(
+        a.name,
+        i === ULT_SLOT
+          ? "Ultimate · fills by fighting"
+          : `Skill ${i + 1} · ${a.cooldown}s cooldown`,
+        a.description,
+      ),
+    ),
+  ].join("");
+  dialog(
+    `<div class="skills-screen"><button type="button" class="quiet" id="skills-back">${iconLabel("back", "Settings")}</button><h2>${escape(c.name)}'s skills</h2><ul class="sk-list">${list}</ul></div>`,
+  );
+  $("skills-back").onclick = showSettings;
 }
 /** Who and what made the game (opened from Settings, with a way back). */
 function showCredits() {
@@ -8364,6 +8472,8 @@ startStartupCurtain(startupStage);
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
   reportPhoto: (photo, name) => reportPhoto(photo, name),
+  // Match history's "Play the Hard bot again": the bot bar's own start.
+  playBot: (level) => void lobbyPlay(`bot-${level}`),
   chooseFighter: (id) => {
     if (id === selected) return;
     selected = id;

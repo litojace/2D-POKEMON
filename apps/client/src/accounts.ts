@@ -178,6 +178,8 @@ type Hooks = {
   reportPhoto?: (photo: string, name: string) => Promise<void>;
   /** Make a fighter your Lobby fighter. */
   chooseFighter?: (id: CharacterId) => void;
+  /** Start a match against a bot of that level (match history). */
+  playBot?: (level: "easy" | "normal" | "hard") => void;
   /** The fighter saved with the account (picked on another device). */
   restoreFighter?: (id: CharacterId) => void;
   /** Show the Lobby (the Shop and Wardrobe open inside it). */
@@ -1768,6 +1770,7 @@ export class AccountUI {
         raids: (boss) =>
           void this.showRaids(boss, boss ? "rewards" : undefined),
         history: (q) => this.matchHistory(q),
+        playBot: this.hooks.playBot,
         isFriend: (id) => this.isFriend(id),
         friendCard: (id) => this.showFriendCard(id, false),
         onClose: () => (this.profileScreen = undefined),

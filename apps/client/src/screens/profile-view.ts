@@ -97,6 +97,8 @@ export interface ProfileData {
   history?: HistoryState;
   /** A player in a match whose card you can open (your friends). */
   canOpen?: (id: string) => boolean;
+  /** An opened bot match offers to play that bot again. */
+  replay?: boolean;
 }
 export interface ProfileView {
   /** The title being equipped ("" for no title), while the server answers. */
@@ -373,7 +375,11 @@ function main(d: ProfileData, view: ProfileView) {
   const who = `<p class="ui-note pf-who">${esc(d.role)}${d.email ? ` · ${esc(d.email)}` : ""}</p>`;
   const overview = `${tiles(d)}${d.guest ? saveAccount(view) : ""}${nameRow(d, view)}`;
   const matches = d.history
-    ? historyMarkup(d.history, { whose: "Your", canOpen: d.canOpen })
+    ? historyMarkup(d.history, {
+        whose: "Your",
+        canOpen: d.canOpen,
+        replay: d.replay,
+      })
     : "";
   // One tab at a time on every screen (its tabs sit in the head): the
   // column used to hold everything on a desktop, a long scroll.

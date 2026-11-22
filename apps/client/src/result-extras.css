@@ -1,0 +1,92 @@
+/* Result screen extras: Change fighter's picker and the losing-streak note.
+
+   Change fighter (fighter-picker.ts): a grid of
+   portraits that fits a phone held sideways without scrolling where it can
+   (six across at 844 x 390). */
+.fp-screen {
+  display: grid;
+  gap: 10px;
+}
+.fp-note {
+  margin: 0;
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+/* Six across: the eighteen fighters make three even rows. */
+.fp-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+dialog .fp-tile {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  min-height: 84px;
+  margin: 0;
+  padding: 8px 4px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-2);
+  color: var(--ui-text);
+  font: 600 var(--fs-small) / 1.2 var(--font-body);
+  cursor: pointer;
+}
+dialog .fp-tile:hover,
+dialog .fp-tile:focus-visible {
+  border-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+}
+dialog .fp-tile.is-current {
+  border-color: var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 10%, var(--ui-bg-2));
+}
+.fp-tile > span:last-child {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .fp-note {
+    display: none;
+  }
+  .fp-grid {
+    gap: 6px;
+  }
+  dialog .fp-tile {
+    min-height: 72px;
+    padding: 6px 4px;
+  }
+  .fp-tile .ui-avatar {
+    --size: 40px !important;
+  }
+}
+
+/* Three bot losses in a row (main.ts): a note with Solo test and an easier
+   bot, inside the result's scrolling details. */
+.result-coach {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 40%, transparent);
+  border-radius: var(--rad-md);
+  background: color-mix(in srgb, var(--ui-accent) 8%, var(--ui-bg-1));
+  text-align: left;
+}
+.result-coach > p {
+  margin: 0;
+  color: var(--ui-text);
+  font-size: var(--fs-small);
+  line-height: 1.4;
+}
+.result-coach-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#arena-overlay .result-coach-actions > button {
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 14px;
+}

@@ -75,9 +75,13 @@
   color: var(--ui-dim);
   font-size: var(--fs-small);
 }
-.settings-quick-actions #settings-practice {
+/* The match card's buttons (Practice tools, Skills): one width, one edge. */
+.st-row > #settings-practice,
+.st-row > #settings-skills {
+  width: 184px;
   min-height: 40px;
   margin: 0;
+  justify-content: center;
 }
 .prefs-gpu-off {
   margin: 4px 0 0;
@@ -116,7 +120,9 @@
   .st-badge {
     padding: 3px 10px;
   }
-  .settings-quick-actions #settings-practice {
+  .st-row > #settings-practice,
+  .st-row > #settings-skills {
+    width: 172px;
     min-height: 36px;
   }
 }
@@ -179,5 +185,67 @@ dialog .controls-touch label.choice.assist {
 @media (prefers-reduced-motion: reduce) {
   .controls-more > summary::after {
     transition: none;
+  }
+}
+
+/* Settings → Your skills (showSkills in main.ts): a row per skill, its
+   icon, name, kind and cooldown, then what it does. */
+.sk-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sk-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-2);
+}
+.sk-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ui-bg-0);
+  border: 1px solid var(--ui-line-2);
+  overflow: hidden;
+}
+.sk-icon > svg,
+.sk-icon > img {
+  width: 34px;
+  height: 34px;
+}
+.sk-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.sk-text > b {
+  font: 700 var(--fs-body) / 1.25 var(--font-body);
+  color: var(--ui-text);
+}
+.sk-text > small {
+  color: var(--ui-accent);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+.sk-text > span {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+  line-height: 1.4;
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .sk-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sk-row {
+    padding: 8px 10px;
   }
 }

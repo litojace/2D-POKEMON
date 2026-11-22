@@ -66,6 +66,11 @@ const RESULT: Record<MatchHistoryEntry["result"], string> = {
   loss: "Defeat",
   draw: "Draw",
 };
+const RESULT_BOT: Record<NonNullable<MatchHistoryEntry["bot"]>, string> = {
+  easy: "the Easy",
+  normal: "the Normal",
+  hard: "the Hard",
+};
 const SHORT: Record<MatchHistoryEntry["result"], string> = {
   win: "W",
   loss: "L",
@@ -193,6 +198,7 @@ function board(
   m: MatchHistoryEntry,
   canOpen: (id: string) => boolean,
   whose: string,
+  replay: boolean,
 ) {
   const teams = [...new Set(m.players.map((p) => p.team))];
   const sides = teams
@@ -213,7 +219,13 @@ function board(
   const mvp = m.players.some((p) => p.mvp)
     ? `<p class="ui-note mh-detail-note">MVP: most damage on the ${m.result === "draw" ? "board" : "winning side"}.</p>`
     : "";
-  return `<div class="mh-detail" id="mh-detail-${esc(m.id)}"><p class="ui-note mh-detail-head">${esc(MODE[m.mode])} · ${esc(arenaName(m.arena))}${score ? ` · Rounds ${esc(score)}` : ""} · <time datetime="${when.toISOString()}">${esc(when.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</time></p>${BOARD_HEAD}${sides}${mvp}</div>`;
+  // Your own bot match: play that bot again, same level (the arena is the
+  // server's pick, as for any bot match).
+  const again =
+    replay && m.bot
+      ? `<div class="mh-detail-acts">${button(`Play ${RESULT_BOT[m.bot]} bot again`, { size: "s", icon: "bot", attrs: { "data-history-replay": m.bot } })}</div>`
+      : "";
+  return `<div class="mh-detail" id="mh-detail-${esc(m.id)}"><p class="ui-note mh-detail-head">${esc(MODE[m.mode])} · ${esc(arenaName(m.arena))}${score ? ` · Rounds ${esc(score)}` : ""} · <time datetime="${when.toISOString()}">${esc(when.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</time></p>${BOARD_HEAD}${sides}${mvp}${again}</div>`;
 }
 
 function row(
@@ -222,6 +234,7 @@ function row(
   canOpen: (id: string) => boolean,
   now: number,
   whose: string,
+  replay: boolean,
 ) {
   const delta = ratingDelta(m.rating);
   const score = roundScore(m);
@@ -232,12 +245,14 @@ function row(
   const rating = delta
     ? `<span class="mh-delta ${delta.cls}" title="Rating change"><b class="ui-num">${esc(delta.text)}</b></span>`
     : `<span class="mh-delta is-none"></span>`;
-  return `<li class="mh-row is-${m.result}${open ? " is-open" : ""}"><button type="button" class="mh-sum" data-history-match="${esc(m.id)}" aria-expanded="${open}" aria-controls="mh-detail-${esc(m.id)}" aria-label="${esc(label)}"><span class="mh-result"><b>${esc(RESULT[m.result])}${score ? ` <span class="mh-score ui-num">${esc(score)}</span>` : ""}</b><small>${esc(m.mode === "ffa" ? "FFA" : MODE[m.mode])}${mvp ? ' · <b class="mh-mvp">MVP</b>' : ""}</small></span>${portrait(m.character, 34)}<span class="mh-main"><b>${esc(opponents(m) || fighter)}</b><small>${esc(fighter)} · <time datetime="${esc(m.playedAt)}">${esc(playedAgo(m.playedAt, now))}</time><span class="mh-arena"> · ${esc(arenaName(m.arena))}</span></small></span>${rounds(m)}<span class="mh-kda"><b class="ui-num">${num(m.dealt)} dmg</b><small class="ui-num">${esc(plural(m.kos, "KO", "KOs"))}</small></span>${rating}</button>${open ? board(m, canOpen, whose) : ""}</li>`;
+  return `<li class="mh-row is-${m.result}${open ? " is-open" : ""}"><button type="button" class="mh-sum" data-history-match="${esc(m.id)}" aria-expanded="${open}" aria-controls="mh-detail-${esc(m.id)}" aria-label="${esc(label)}"><span class="mh-result"><b>${esc(RESULT[m.result])}${score ? ` <span class="mh-score ui-num">${esc(score)}</span>` : ""}</b><small>${esc(m.mode === "ffa" ? "FFA" : MODE[m.mode])}${mvp ? ' · <b class="mh-mvp">MVP</b>' : ""}</small></span>${portrait(m.character, 34)}<span class="mh-main"><b>${esc(opponents(m) || fighter)}</b><small><span class="mh-fighter">${esc(fighter)} · </span><time datetime="${esc(m.playedAt)}">${esc(playedAgo(m.playedAt, now))}</time><span class="mh-arena"> · ${esc(arenaName(m.arena))}</span></small></span>${rounds(m)}<span class="mh-kda"><b class="ui-num">${num(m.dealt)} dmg</b><small class="ui-num">${esc(plural(m.kos, "KO", "KOs"))}</small></span>${rating}</button>${open ? board(m, canOpen, whose, replay) : ""}</li>`;
 }
 
 export interface HistoryOptions {
   /** "Your" or "Ana's", for the words around the list. */
   whose: string;
+  /** Your own card: an opened bot match offers to play that bot again. */
+  replay?: boolean;
   /** Players whose card can be opened from the board (your friends). */
   canOpen?: (id: string) => boolean;
   now?: number;
@@ -287,7 +302,7 @@ export function historyMarkup(s: HistoryState, o: HistoryOptions) {
         })
       : "";
     body = `${form(s, o.whose)}<ul class="mh-list" aria-label="${esc(`${o.whose} matches`)}">${s.matches
-      .map((m) => row(m, s.open === m.id, canOpen, now, o.whose))
+      .map((m) => row(m, s.open === m.id, canOpen, now, o.whose, !!o.replay))
       .join(
         "",
       )}</ul>${more || s.problem ? `<div class="mh-foot">${more}${s.problem ? `<p class="ui-note" role="status">${esc(s.problem)}</p>` : ""}</div>` : ""}`;
