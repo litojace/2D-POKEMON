@@ -255,27 +255,28 @@ const NORMAL_DAZE_BEFORE_SMART_BOTS: Partial<Record<CharacterId, number>> = {
 /**
  * Normal's per-champion lapse share in PvP (see `daze`), calibrated in bot
  * round robins so each champion does about as well against Normal bots as
- * against Hard ones (scripts/balance/round-robin.ts).
+ * against Hard ones (scripts/balance/round-robin.ts). Calibrated again for
+ * the second round of smarter bots (2026-11-22): 43.9% - 54.9%.
  */
 const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.265,
-  cindrake: 0.45,
-  tidefin: 0.32,
-  auralynx: 0.203,
-  lumoth: 0.242,
-  mystowl: 0.224,
-  terradon: 0.265,
-  duskveil: 0.361,
-  coilemur: 0.31,
-  pyranda: 0.281,
-  glacelle: 0.232,
-  halcyra: 0.268,
-  sunbara: 0.255,
-  astrabun: 0.242,
-  wombolder: 0.335,
-  shadopus: 0.33,
-  pangrove: 0.355,
-  mossloth: 0.29,
+  voltkit: 0.256,
+  cindrake: 0.391,
+  tidefin: 0.302,
+  auralynx: 0.255,
+  lumoth: 0.278,
+  mystowl: 0.245,
+  terradon: 0.278,
+  duskveil: 0.364,
+  coilemur: 0.334,
+  pyranda: 0.282,
+  glacelle: 0.256,
+  halcyra: 0.29,
+  sunbara: 0.267,
+  astrabun: 0.261,
+  wombolder: 0.293,
+  shadopus: 0.345,
+  pangrove: 0.363,
+  mossloth: 0.22,
 };
 /** Normal's PvP daze before the second round of smarter bots (2026-11-22). */
 const NORMAL_DAZE_BEFORE_V2: Partial<Record<CharacterId, number>> = {
