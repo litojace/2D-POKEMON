@@ -225,7 +225,6 @@
   block-size: 64px;
   overflow: hidden;
   border: 1px solid rgba(193, 225, 245, 0.3);
-  border-radius: 14px;
   background: rgba(5, 15, 29, 0.45);
 }
 .title-avatar > svg,
@@ -233,6 +232,17 @@
   display: block;
   inline-size: 100%;
   block-size: 100%;
+}
+/* One round shape: the ring hugs the round portrait (.portrait-disc). A
+   worn frame draws its own ring and ornaments, so the box steps aside for
+   it, as in the Lobby's player card (portrait-frames.css). */
+.title-avatar {
+  border-radius: 50%;
+}
+.title-avatar:has(> .portrait-frame) {
+  overflow: visible;
+  border-color: transparent;
+  background: transparent;
 }
 .title-id {
   display: grid;
@@ -349,7 +359,6 @@
     flex-basis: 44px;
     inline-size: 44px;
     block-size: 44px;
-    border-radius: 12px;
   }
   .title-name {
     font-size: calc(17px * var(--text-scale, 1));

@@ -78,6 +78,13 @@ for (const size of SIZES) {
       const view = { x: 0, y: 0, width: size.width, height: size.height };
       const card = await box(page, ".gate-card");
       expect(inside(card, view)).toBe(true);
+      // One round shape: the box around the avatar is a circle, like the
+      // round portrait in it (no square box around a round picture).
+      expect(
+        await page
+          .locator(".title-avatar")
+          .evaluate((e) => getComputedStyle(e).borderRadius),
+      ).toBe("50%");
       // The name reads in full, and every control is a real touch target.
       expect(
         await page
