@@ -69,6 +69,7 @@ import { MOVE_MESSAGE, supersededBy } from "./drain.js";
 /** Every champion's basic attack: spammed, so it never forces a snapshot. */
 const BASIC_IDS = new Set(Object.values(CHARACTERS).map((c) => c.basic.id));
 import {
+  battleArtSchema,
   battleLoadSchema,
   battlePerfSchema,
   connectionReportSchema,
@@ -3421,6 +3422,25 @@ export function createArenaServer(
           mode: a.mode,
           phase: a.phase,
           character: a.players.find((p) => p.id === id)?.character,
+        });
+      }),
+    );
+    socket.on("battle-art", (data: unknown) =>
+      withRoom(undefined, (a) => {
+        // A fighter's art found blank and loaded again (rig-health.ts in the
+        // client); a cap keeps a looping client quiet.
+        const sent = (socket.data.artReports ?? 0) as number;
+        if (sent >= 10) return;
+        const result = battleArtSchema.safeParse(data);
+        if (!result.success) return;
+        socket.data.artReports = sent + 1;
+        connectionLog("arena-art-blank", {
+          ...result.data,
+          account: account()?.id,
+          room: a.code,
+          mode: a.mode,
+          phase: a.phase,
+          ...(a instanceof RaidArena ? { boss: a.raid.boss } : {}),
         });
       }),
     );

@@ -162,9 +162,11 @@ import {
 } from "./boss-vector-prewarm";
 import {
   addPrepaintedLayers,
+  forgetPrepainted,
   holdFighterPrepaint,
   syncFighterPrepaint,
 } from "./fighter-prepaint";
+import { rigArtHealth, type ArtNode } from "./rig-health";
 import { prewarmRaidArena } from "./raid-arena-prewarm";
 import { PillarRig, prewarmPillars } from "./raid-grumble-pillars-rig";
 import { IMPACT_RADIUS } from "./raid-grumble-pillars";
@@ -269,6 +271,7 @@ import {
   LocalTimeline,
   ShotTimeline,
   leadProjectile,
+  type ShotTarget,
 } from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
 import {
@@ -688,9 +691,11 @@ const battleChat = mountBattleChat({
 });
 let authConnectionAttempt = 0;
 const connectionWatch = new ConnectionWatch();
-document.addEventListener("visibilitychange", () =>
-  connectionWatch.visibility(),
-);
+document.addEventListener("visibilitychange", () => {
+  connectionWatch.visibility();
+  // Shown again: Safari may have let the fighters' canvases go meanwhile.
+  if (!document.hidden) scene?.checkArtSoon("visible");
+});
 window.addEventListener("offline", () => connectionWatch.network());
 window.addEventListener("online", () => connectionWatch.network());
 // Keep a displaced tab paused across reloads. Only an explicit button press
@@ -745,6 +750,8 @@ let state: Snapshot | undefined,
   local: Fighter | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
+/** What ran a fighter-art check (rig-health.ts, "battle-art"). */
+type ArtTrigger = "visible" | "resume" | "renderer" | "context";
 /** Ticks the server held for your late inputs (Fighter.held). */
 let owedSteps = 0;
 let raidRoomReturn:
@@ -1022,6 +1029,9 @@ function identity(reply: Reply) {
   owedSteps = 0;
   eventId = 0;
   scene?.hydrateNextSnapshot();
+  // A resumed connection (often after the page was in the background):
+  // check the fighters' art is still there (rig-health.ts).
+  scene?.checkArtSoon("resume");
   local = undefined;
   remoteFrames.clear();
   timeline.clear();
@@ -5678,6 +5688,79 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   hydrateNextSnapshot() {
     this.needsHydration = true;
   }
+  /** Art checks to run (rig-health.ts), at these times (performance.now). */
+  private artChecks: { at: number; trigger: ArtTrigger }[] = [];
+  /** Fighters still to look at in the current check, one a frame. */
+  private artQueue: string[] = [];
+  private artTrigger: ArtTrigger = "renderer";
+  /** Fighters whose art was loaded again in this renderer, and how often. */
+  private artRepairs = new Map<CharacterId, number>();
+  /**
+   * After a moment that can lose a canvas's pixels (the page shown again, a
+   * resumed connection, a new renderer, a restored WebGL context), look at
+   * every fighter's art twice, soon and a little later (a reload settles).
+   */
+  checkArtSoon(trigger: ArtTrigger) {
+    const now = performance.now();
+    this.artChecks.push(
+      { at: now + 700, trigger },
+      { at: now + 3000, trigger },
+    );
+  }
+  /**
+   * A fighter drawn as nothing: every texture its rig uses came back blank.
+   * Its rig and textures go, its art is forgotten and loads again (the
+   * fighter is a plain stand-in meanwhile), and the server hears of it
+   * ("arena-art-blank"). Twice per fighter per renderer at most: art that
+   * keeps coming back blank is only reported.
+   */
+  private runArtChecks(now: number) {
+    if (document.hidden) return;
+    // Due: queue every fighter on the court, then look at one per frame
+    // (reading canvases back costs; a court of eight in one frame stalled).
+    if (this.artChecks.some((c) => c.at <= now)) {
+      const due = this.artChecks.filter((c) => c.at <= now);
+      this.artChecks = this.artChecks.filter((c) => c.at > now);
+      this.artTrigger = due[due.length - 1].trigger;
+      for (const id of this.rigs.keys())
+        if (!this.artQueue.includes(id)) this.artQueue.push(id);
+    }
+    const id = this.artQueue.shift();
+    const rig = id === undefined ? undefined : this.rigs.get(id);
+    if (!id || !rig) return;
+    const health = rigArtHealth(rig.root as unknown as ArtNode);
+    if (!health.blank) return;
+    const character = rig.character;
+    const times = this.artRepairs.get(character) ?? 0;
+    const repaired = times < 2;
+    if (repaired) {
+      this.artRepairs.set(character, times + 1);
+      // Every rig drawing from the same art goes too (a teammate on the
+      // same fighter): its textures are about to be removed.
+      for (const [other, r] of this.rigs)
+        if (r.character === character) {
+          r.destroy();
+          this.rigs.delete(other);
+        }
+      for (const key of health.keys) {
+        forgetPrepainted(key);
+        if (this.textures.exists(key)) this.textures.remove(key);
+      }
+      this.fighters.forget(character);
+    }
+    if (connected)
+      socket.emit("battle-art", {
+        character,
+        mine: id === myId,
+        textures: health.total,
+        blank: health.keys.length,
+        trigger: this.artTrigger,
+        repaired,
+        build: BUILD,
+        ...deviceKind(),
+      });
+  }
+
   private getRig(id: string, character: CharacterId) {
     let rig = this.rigs.get(id);
     if (rig && rig.character !== character) {
@@ -5813,6 +5896,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   create() {
     battleLoadMarks.create ||= performance.now();
     scene = this;
+    // A new renderer, often rebuilt mid-fight after a reconnect, and a
+    // WebGL context given back: check the fighters' art (rig-health.ts).
+    this.checkArtSoon("renderer");
+    this.game.canvas?.addEventListener("webglcontextrestored", () =>
+      this.checkArtSoon("context"),
+    );
     // The boss's pieces are drawn once into an atlas: now, not on its first frame.
     if (state?.raid)
       prewarmBossAtlas(
@@ -6459,6 +6548,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     }
   }
   update(_time: number, delta: number) {
+    // Art found blank goes first, so its fighter is asked for again below.
+    this.runArtChecks(performance.now());
     // A fighter still loading is drawn as a stand-in (readyRig) while its
     // art loads; nothing else waits for it.
     if (state) this.requestFighters(state);
@@ -6916,7 +7007,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         reducedMotion,
         _time / 1000,
         state.raid
-          ? { boss: this.bossGraphics, at: this.layerAt, court: this.courtRaid }
+          ? {
+              boss: this.bossGraphics,
+              at: this.layerAt,
+              court: this.courtRaid,
+              drawnAt: (id) => this.positions.get(id),
+            }
           : undefined,
       ) ?? [];
     for (const [key, layer] of this.layers)
@@ -6985,6 +7081,27 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         pb = ownerOf.get(b);
       return a !== b && (!pa || !pb || teamOf(pa) !== teamOf(pb));
     };
+    // The fighters (and decoys) a shot can strike, where they are drawn: a
+    // shot drawn ahead of the server stops on the first it touches, as the
+    // server's does (timeline-lead.ts leadProjectile).
+    const targetsOf = new Map<string, ShotTarget[]>();
+    const fighters = state.players;
+    const shotTargets = (owner: string) => {
+      let list = targetsOf.get(owner);
+      if (list) return list;
+      list = [];
+      for (const p of fighters) {
+        if (!rivals(owner, p.id) || p.hp <= 0 || p.out) continue;
+        // A shot stopping in the air would give away a fighter in stealth.
+        if (p.id !== myId && p.statuses.some((s) => s.kind === "stealth"))
+          continue;
+        const at = this.positions.get(p.id) ?? p;
+        list.push({ x: at.x, y: at.y, r: p.raidBoss ? 70 : RULES.radius });
+        if (p.clone) list.push({ x: p.clone.x, y: p.clone.y, r: RULES.radius });
+      }
+      targetsOf.set(owner, list);
+      return list;
+    };
     for (const pr of state.projectiles) {
       const seconds = shotTimeline.seconds(
         pr,
@@ -7002,7 +7119,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       const slow = bubble
         ? (bubble.ability.warp ?? STATUS_RULES.warpMultiplier)
         : 1;
-      const drawn = leadProjectile(pr, seconds, walls, slow);
+      const hits = shotTargets(pr.owner);
+      const drawn = leadProjectile(pr, seconds, walls, slow, hits);
       drawProjectile(g, tinted(drawn), _time, reducedMotion);
     }
     shotTimeline.keep(state.projectiles.map((pr) => pr.id));
