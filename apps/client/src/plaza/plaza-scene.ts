@@ -457,8 +457,8 @@ export function openPlaza(options) {
       }
       g.fill();
     };
-    strokeAll(18, "rgba(60,90,40,.35)");
-    landings(9, "rgba(60,90,40,.35)");
+    strokeAll(18, "rgba(70,120,50,.22)");
+    landings(9, "rgba(70,120,50,.22)");
     strokeAll(6, "#d9c9a3");
     landings(3, "#d9c9a3");
     // Grit in the sand: the joints between the stones show it.
@@ -597,7 +597,7 @@ export function openPlaza(options) {
         // so a sliver of shade shows on the side away from the light, and a
         // lit edge on the side toward it (the top left).
         paver(2, 2);
-        g.fillStyle = GFX.dk(c, 0.14);
+        g.fillStyle = GFX.dk(c, 0.1);
         g.fill();
         const mid = (a0 + a1) / 2,
           lx = Math.cos(mid),
