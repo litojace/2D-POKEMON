@@ -15,7 +15,7 @@
   padding: 8px 8px 8px 12px;
   border: 1px solid #8baee555;
   border-radius: 14px;
-  background: #101c35f2;
+  background: #101c35; /* solid: nothing behind shows through */
   color: #eef2ff;
   box-shadow: 0 10px 30px #0009;
   opacity: 0;
