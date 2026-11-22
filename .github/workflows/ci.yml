@@ -89,9 +89,10 @@ jobs:
     # minutes while others took 4 (Nov 2026); by time, all aim for the same
     # share. The account is on GitHub Pro (22 Nov 2026): 40 jobs at once
     # instead of the free plan's 20. Thirty shards plus verify leave about
-    # nine for other pull requests' lane and verify jobs; 38 would cut a
-    # shard's tests by only ~2 minutes more and make a second full run (a
-    # FULL pull request next to main's scheduled one) wait for the first.
+    # nine for other pull requests' lane and verify jobs. By durations.json
+    # (22 Nov), the slowest shard takes ~21 min at 18 shards, ~12.5 at 30 and
+    # ~10 at 38: 38 would save only ~2.5 min more and make a second full run
+    # (a FULL pull request next to main's scheduled one) wait for the first.
     # Each shard costs about a minute of setup (npm ci, Chromium). The
     # shard count is the matrix's length: the total comes from
     # strategy.job-total, so changing the list is all it takes. It runs for main's scheduled full
