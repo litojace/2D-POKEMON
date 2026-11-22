@@ -1890,7 +1890,9 @@ export function openPlaza(options) {
     )
       return;
     keys.add(k);
-    target = null;
+    // A movement key takes back a walk that Go or a click started; jumping,
+    // dashing, emotes and treats don't.
+    if (MOVE_KEYS.includes(k)) cancelWalk();
     if (k === " ") jump();
     if (k === "shift" || k === "j") dash();
     if (k === "e") interact();
@@ -2033,6 +2035,23 @@ export function openPlaza(options) {
     if (e.pointerType === "mouse") walkTo(w, true);
   });
   /** The rest of the way after `target`, and where it ends. */
+  const MOVE_KEYS = [
+    "w",
+    "a",
+    "s",
+    "d",
+    "arrowup",
+    "arrowdown",
+    "arrowleft",
+    "arrowright",
+  ];
+  /** Stop a walk Go or a click started: you're steering yourself now. */
+  function cancelWalk() {
+    target = null;
+    route = [];
+    routeEnd = null;
+    if (clickMark?.ok) clickMark = null;
+  }
   let route = [],
     routeEnd = null,
     replannedAt = 0;
@@ -2204,6 +2223,9 @@ export function openPlaza(options) {
       k = m > max ? max / m : 1;
     joy.x = (dx / max) * k;
     joy.y = (dy / max) * k;
+    // Moving the stick takes back a walk that Go or a tap started (it used
+    // to carry on toward it as soon as the stick was let go).
+    if (Math.hypot(joy.x, joy.y) > 0.2) cancelWalk();
     if (
       !Number.isFinite(joy.x) ||
       !Number.isFinite(joy.y) ||
