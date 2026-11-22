@@ -3380,6 +3380,9 @@ export function openPlaza(options) {
     for (const h of HOUSES)
       for (const [wx, wy, ww, wh] of h.spr.win ?? [])
         L(h.x + (wx + ww / 2) * HK, h.y + (wy + wh) * HK, 100, 0.4, 0.8);
+    for (const h of HOUSES)
+      if (h.spr.lamp)
+        L(h.x + h.spr.lamp[0] * HK, h.y + 6, 60, 0.35, 0.8);
     for (const l of RIVER_LAMPS) L(l.x, l.y - 6, 150, 0.48, 0.6);
     for (const o of ev.orbs) L(o.x, o.y - 10, 90, 0.5, 0.8);
     nightLight.end(g);
@@ -4362,6 +4365,14 @@ export function openPlaza(options) {
         g.roundRect(h.x + wx * HK, h.y + wy * HK, ww * HK, wh * HK, 3 * HK);
         g.fill();
       });
+    // The porch lantern by the door, lit at dusk.
+    if (n > 0.05 && h.spr.lamp) {
+      const [lx, ly] = h.spr.lamp;
+      g.fillStyle = `rgba(255,236,170,${0.9 * n})`;
+      g.beginPath();
+      g.arc(h.x + lx * HK, h.y + ly * HK, 3.2 * HK, 0, 7);
+      g.fill();
+    }
   }
   function drawBody(g, b, time, photo) {
     const s = PLAZA_SPRITE_PX,
@@ -5713,6 +5724,16 @@ export function openPlaza(options) {
       glow(FOUNT.x, FOUNT.y - 40, 170, "120,220,255", 0.22 * n);
       for (const l of RIVER_LAMPS)
         glow(l.x, l.y - LAMP_HEAD, 90, "255,214,140", 0.55 * n);
+      // The porch lanterns by the houses' doors.
+      for (const h of HOUSES)
+        if (h.spr.lamp)
+          glow(
+            h.x + h.spr.lamp[0] * HK,
+            h.y + h.spr.lamp[1] * HK,
+            26,
+            "255,214,140",
+            0.7 * n,
+          );
       if (!low && vy0 < 0) drawRiverLights(g, time, n, vx0, vx1);
       for (let i = 0; i < 40; i++) {
         const t = TREES[i % TREES.length];
