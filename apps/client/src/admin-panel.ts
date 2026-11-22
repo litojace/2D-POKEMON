@@ -216,6 +216,13 @@ export class AdminPanel {
     message: "",
     tone: "info" as Announcement["tone"],
     hours: 24,
+    /** Also as a phone/browser notification (migration 20261122140000). */
+    push: false,
+  };
+  /** Devices an announcement's notification would reach (or none). */
+  private pushReach: { available: boolean; devices: number } = {
+    available: false,
+    devices: 0,
   };
   /** Each opened player's coins and chat stop (or why it couldn't load). */
   private status = new Map<string, AdminPlayerStatus | { error: string }>();
@@ -313,6 +320,19 @@ export class AdminPanel {
           if (v.tab === "overview" || !v.search)
             this.totalPlayers = directory.total;
         }),
+      );
+    if (v.tab === "announce")
+      work.push(
+        (
+          api("/api/admin/push-reach") as Promise<{
+            available: boolean;
+            devices: number;
+          }>
+        ).then(
+          (reach) => (this.pushReach = reach),
+          // An older server: no notifications.
+          () => (this.pushReach = { available: false, devices: 0 }),
+        ),
       );
     if (v.tab === "announce")
       work.push(
@@ -831,6 +851,14 @@ export class AdminPanel {
     this.draft.message = String(fields.get("message") ?? "").trim();
     const hours = Number(fields.get("hours"));
     if (ANNOUNCE_HOURS.some((h) => h.hours === hours)) this.draft.hours = hours;
+    this.draft.push = this.pushReach.available && fields.get("push") === "on";
+  }
+  /** "Also send as a notification", with how many devices it reaches. */
+  private pushOption() {
+    const r = this.pushReach;
+    if (!r.available)
+      return `<p class="adm-hint adm-push-off">${icon("info")}Notifications aren't set up on the server, so this shows in the game only.</p>`;
+    return `<label class="adm-check"><input type="checkbox" name="push"${this.draft.push ? " checked" : ""}${this.view.pending === "announce" ? " disabled" : ""}><span><b>Also send as a notification</b><small>${plural(r.devices, "device")} with notifications and game news on. Players on the iPhone or Android app don't get these yet.</small></span></label>`;
   }
   private announceBody() {
     const d = this.draft;
@@ -844,9 +872,9 @@ export class AdminPanel {
     const hours = ANNOUNCE_HOURS.find((h) => h.hours === d.hours)!;
     const online = this.online.players.length + this.online.guests;
     const confirm = pending
-      ? `<div class="admin-confirm adm-confirm"><p><b>Send this to every player?</b> ${online ? `${plural(online, "player")} online now see it at once; ` : ""}everyone who signs in during the next ${hours.label} sees it once.</p><div class="admin-actions"><button type="button" class="adm-btn adm-btn-primary" data-confirm data-act="announce-yes">${icon("send")}<span>Send now</span></button><button type="button" class="adm-btn" data-act="cancel">Cancel</button></div></div>`
+      ? `<div class="admin-confirm adm-confirm"><p><b>Send this to every player?</b> ${online ? `${plural(online, "player")} online now see it at once; ` : ""}everyone who signs in during the next ${hours.label} sees it once.${d.push ? ` It also goes out as a notification to ${plural(this.pushReach.devices, "device")}.` : ""}</p><div class="admin-actions"><button type="button" class="adm-btn adm-btn-primary" data-confirm data-act="announce-yes">${icon("send")}<span>Send now</span></button><button type="button" class="adm-btn" data-act="cancel">Cancel</button></div></div>`
       : "";
-    const form = `<form class="adm-panel adm-announce" data-form="announce"><label class="adm-field-block"><span>Message</span><textarea name="message" rows="2" maxlength="300" required placeholder="What should every player know?" aria-label="Announcement">${escape(d.message)}</textarea><small data-count>${d.message.length} / 300</small></label><div class="adm-announce-row"><div class="adm-chips" role="group" aria-label="Kind">${tones}</div><label class="adm-hours"><span>Shows for</span><select name="hours" aria-label="Shows for">${ANNOUNCE_HOURS.map((h) => `<option value="${h.hours}"${h.hours === d.hours ? " selected" : ""}>${h.label}</option>`).join("")}</select></label></div><div class="adm-preview tone-${d.tone}" aria-hidden="true"><b>${TONE_LABELS[d.tone]}</b><span data-preview>${escape(d.message || "Your message")}</span></div>${
+    const form = `<form class="adm-panel adm-announce" data-form="announce"><label class="adm-field-block"><span>Message</span><textarea name="message" rows="2" maxlength="300" required placeholder="What should every player know?" aria-label="Announcement">${escape(d.message)}</textarea><small data-count>${d.message.length} / 300</small></label><div class="adm-announce-row"><div class="adm-chips" role="group" aria-label="Kind">${tones}</div><label class="adm-hours"><span>Shows for</span><select name="hours" aria-label="Shows for">${ANNOUNCE_HOURS.map((h) => `<option value="${h.hours}"${h.hours === d.hours ? " selected" : ""}>${h.label}</option>`).join("")}</select></label></div>${this.pushOption()}<div class="adm-preview tone-${d.tone}" aria-hidden="true"><b>${TONE_LABELS[d.tone]}</b><span data-preview>${escape(d.message || "Your message")}</span></div>${
       pending
         ? confirm
         : `<div class="adm-actions"><button class="adm-btn adm-btn-primary">${icon("send")}<span>Send to everyone</span></button></div>`
@@ -1155,13 +1183,28 @@ export class AdminPanel {
         this.draft.tone = button.dataset.tone as Announcement["tone"];
         return this.redraw();
       case "announce-yes": {
-        const { message, tone, hours } = this.draft;
+        const { message, tone, hours, push } = this.draft;
         button.disabled = true;
         try {
-          await api("/api/admin/announce", { message, tone, hours });
-          this.draft = { message: "", tone: "info", hours: 24 };
+          const sent = (await api("/api/admin/announce", {
+            message,
+            tone,
+            hours,
+            ...(push ? { push: true } : {}),
+          })) as {
+            push?: { devices: number } | { error: string };
+          };
+          this.draft = { message: "", tone: "info", hours: 24, push: false };
           await this.show({ pending: null }, true);
-          this.say("Sent to every player.");
+          const note = sent.push;
+          if (note && "error" in note)
+            this.say(`Sent in the game. Notification: ${note.error}`, true);
+          else
+            this.say(
+              note
+                ? `Sent to every player, and as a notification to ${plural(note.devices, "device")}.`
+                : "Sent to every player.",
+            );
         } catch (error) {
           this.fail(error);
           if (button.isConnected) button.disabled = false;

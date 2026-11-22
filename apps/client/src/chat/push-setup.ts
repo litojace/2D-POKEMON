@@ -85,6 +85,11 @@ export async function turnPushOn(
       }));
     const reply = await ask("push-subscribe", sub.toJSON());
     if (!reply.ok) await sub.unsubscribe().catch(() => {});
+    // A new subscription starts with game news on: keep this device's "off".
+    else if (!pushNews())
+      await ask("push-news", { endpoint: sub.endpoint, on: false }).catch(
+        () => null,
+      );
     return reply;
   } catch {
     return { ok: false, error: "Couldn't turn notifications on. Try again." };
@@ -104,5 +109,35 @@ export async function turnPushOff(ask?: PushRequest): Promise<Reply> {
     return { ok: true };
   } catch {
     return { ok: false, error: "Couldn't turn notifications off. Try again." };
+  }
+}
+
+/** Game news (admins' announcements) on this device: on unless turned off
+ *  (migration 20261122140000; the server keeps it with the subscription). */
+const NEWS_KEY = "ea-push-news";
+export function pushNews() {
+  try {
+    return localStorage.getItem(NEWS_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+export async function setPushNews(
+  on: boolean,
+  ask: PushRequest,
+): Promise<Reply> {
+  try {
+    const sub = await subscription();
+    if (!sub) return { ok: false, error: "Turn notifications on first." };
+    const reply = await ask("push-news", { endpoint: sub.endpoint, on });
+    if (reply.ok)
+      try {
+        localStorage.setItem(NEWS_KEY, on ? "on" : "off");
+      } catch {
+        /* No storage: the server still has it. */
+      }
+    return reply;
+  } catch {
+    return { ok: false, error: "Couldn't change game news. Try again." };
   }
 }

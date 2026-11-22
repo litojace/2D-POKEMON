@@ -429,7 +429,13 @@ import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
 import { mountChat, type ChatFriend, type ChatPlace } from "./chat/chat-ui";
-import { pushState, turnPushOff, turnPushOn } from "./chat/push-setup";
+import {
+  pushNews,
+  pushState,
+  setPushNews,
+  turnPushOff,
+  turnPushOn,
+} from "./chat/push-setup";
 import { mountBattleChat } from "./chat/battle-chat";
 import {
   CHAT_MODES,
@@ -635,6 +641,9 @@ const chat = mountChat({
               error: "Notifications aren't available right now.",
             })
         : turnPushOff((event, data) => request(event, data, true)),
+    news: pushNews,
+    setNews: (on) =>
+      setPushNews(on, (event, data) => request(event, data, true)),
   },
   me: () =>
     accountsUI?.account
