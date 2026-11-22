@@ -135,6 +135,30 @@ export const titleGrantSchema = z
     grant: z.boolean(),
   })
   .strict();
+/** An admin adds or takes a player's coins (migration 20261122100000).
+ *  `ref` is a fresh id per click: a retried request never pays twice. */
+export const adminCoinsSchema = z
+  .object({
+    playerId: z.string().uuid(),
+    amount: z
+      .number()
+      .int()
+      .min(-100000)
+      .max(100000)
+      .refine((n) => n !== 0, "Choose an amount other than 0"),
+    reason: z.string().trim().min(3).max(120),
+    ref: z.string().uuid(),
+  })
+  .strict();
+/** What the Admin panel shows when a player's row opens. */
+export interface AdminPlayerStatus {
+  balance: number;
+  /** ISO time their chat is stopped until, or null. */
+  chatUntil: string | null;
+  chatReason: string | null;
+  /** Their latest coin movements, newest first. */
+  coins: { amount: number; reason: string; at: string }[];
+}
 export const equipTitleSchema = z
   .object({ titleId: z.string().uuid().nullable() })
   .strict();

@@ -9,6 +9,7 @@
 // no new server code or migration. After an action the open section is
 // redrawn in place, so the list keeps its scroll position.
 import type {
+  AdminPlayerStatus,
   ManagedPlayer,
   OnlineActivity,
   OnlineList,
@@ -59,6 +60,39 @@ export const MUTE_CHOICES = [
   { hours: 168, label: "7 days" },
   { hours: 0, label: "Unmute" },
 ] as const;
+/** One-tap amounts in the Coins form. */
+export const COIN_PRESETS = [100, 500, 1000, 5000] as const;
+/** Coin ledger reasons, as an admin reads them. */
+const COIN_REASONS: Record<string, string> = {
+  admin: "Admin",
+  pvp: "Match",
+  raid: "Raid",
+  spire: "Spire",
+  level: "Level up",
+  "daily-first": "First win of the day",
+  streak: "Mission streak",
+  mission: "Mission",
+  "missions-bonus": "Missions bonus",
+  season: "Season",
+  "season-repeat": "Season",
+  expedition: "Expedition",
+  "plaza-quest": "Plaza quest",
+  "plaza-wish": "Wishing fountain",
+  "plaza-fish-first": "Fishing",
+  "leaf-trade": "Leaf trade",
+  "leaf-retire": "Leaves retired",
+  buy: "Shop",
+};
+/** A fresh id for one coin change (the database pays each id once). */
+export function newRef() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto)
+    return crypto.randomUUID();
+  const hex = (n: number) =>
+    Array.from({ length: n }, () =>
+      Math.floor(Math.random() * 16).toString(16),
+    ).join("");
+  return `${hex(8)}-${hex(4)}-4${hex(3)}-${"89ab"[Math.floor(Math.random() * 4)]}${hex(3)}-${hex(12)}`;
+}
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const escape = (text: string) =>
@@ -135,6 +169,8 @@ export class AdminPanel {
   private directory: PlayerDirectory = { players: [], total: 0 };
   private totalPlayers: number | null = null;
   private titles: Title[] = [];
+  /** Each opened player's coins and chat stop (or why it couldn't load). */
+  private status = new Map<string, AdminPlayerStatus | { error: string }>();
   private timer?: ReturnType<typeof setTimeout>;
   private toastTimer?: ReturnType<typeof setTimeout>;
   /** Bumped by every load, so a slow answer never draws over a newer one. */
@@ -344,6 +380,9 @@ export class AdminPanel {
   }
   private afterDraw() {
     const v = this.view;
+    // An open player row loads their coins and chat stop once.
+    if (v.tab === "players" && v.open && !this.status.has(v.open))
+      void this.loadStatus(v.open);
     // A step that asks for typing puts the cursor in its field.
     const field = document.querySelector<HTMLInputElement>(
       "#adm-root [data-autofocus]",
@@ -367,6 +406,29 @@ export class AdminPanel {
         if (this.mounted() && this.view.tab === "online")
           void this.show({}, true);
       }, 10000);
+  }
+  private async loadStatus(id: string) {
+    let result: AdminPlayerStatus | { error: string };
+    try {
+      result = (await this.hooks.api(
+        `/api/admin/players/${id}/status`,
+      )) as AdminPlayerStatus;
+    } catch (error) {
+      result = {
+        error:
+          error instanceof Error ? error.message : "Couldn't load their coins.",
+      };
+    }
+    this.status.set(id, result);
+    // Redraw only if their row is still the open one and nothing is typed.
+    const typing = document.activeElement?.closest?.("#adm-root form");
+    if (
+      this.mounted() &&
+      this.view.tab === "players" &&
+      this.view.open === id &&
+      !typing
+    )
+      this.redraw();
   }
   private loadPhoto(box: HTMLElement) {
     const pic = box.querySelector<HTMLElement>(".admin-photo-pic")!;
@@ -558,7 +620,7 @@ export class AdminPanel {
     const grantable = sortTitles(
       this.titles.filter((t) => t.active && !p.titleIds.includes(t.id)),
     );
-    const facts = `<dl class="adm-facts"><div><dt>Player ID</dt><dd class="adm-id"><code>${p.id}</code><button type="button" class="adm-icon-btn adm-copy" data-act="copy" data-copy="${p.id}" aria-label="Copy player ID" title="Copy ID">${icon("copy")}</button></dd></div><div><dt>Status</dt><dd>${p.suspended ? '<span class="adm-bad">Suspended</span>' : "Active"}</dd></div><div><dt>Right now</dt><dd>${live ? `${describeActivity(live, this.hooks.fighterName)} · ${onlineFor(live.since, Date.now())}` : "Offline"}</dd></div><div><dt>Joined</dt><dd>${new Date(p.createdAt).toLocaleString()}</dd></div></dl>`;
+    const facts = `<dl class="adm-facts"><div><dt>Player ID</dt><dd class="adm-id"><code>${p.id}</code><button type="button" class="adm-icon-btn adm-copy" data-act="copy" data-copy="${p.id}" aria-label="Copy player ID" title="Copy ID">${icon("copy")}</button></dd></div><div><dt>Status</dt><dd>${p.suspended ? '<span class="adm-bad">Suspended</span>' : "Active"}</dd></div><div><dt>Right now</dt><dd>${live ? `${describeActivity(live, this.hooks.fighterName)} · ${onlineFor(live.since, Date.now())}` : "Offline"}</dd></div><div><dt>Joined</dt><dd>${new Date(p.createdAt).toLocaleString()}</dd></div>${p.isAdmin ? "" : this.statusFacts(p.id)}</dl>`;
     const newTitle =
       pending === `newtitle:${p.id}` ? this.titleForm(null, "grant") : "";
     const titles = `<section class="adm-block"><h4>Titles</h4><div class="admin-titles-row">${owned
@@ -581,7 +643,33 @@ export class AdminPanel {
     if (pending === `delete:${p.id}`)
       confirm = `<div class="admin-confirm adm-confirm"><p><b>Permanently delete ${name}?</b> Their login, profile and titles are removed for good. This cannot be undone.</p><label><span>Type <b>${name}</b> to confirm</span><input data-confirm-name data-autofocus autocomplete="off" aria-label="Type ${name} to confirm"></label><div class="admin-actions"><button type="button" class="adm-btn adm-btn-danger" data-confirm data-act="delete-yes" disabled>Delete account</button><button type="button" class="adm-btn" data-act="cancel">Cancel</button></div></div>`;
     const actions = `<section class="adm-block"><h4>Moderation</h4>${mute}<div class="adm-actions"><button type="button" class="adm-btn ${p.suspended ? "adm-btn-primary" : ""}" data-act="suspend">${icon(p.suspended ? "check" : "lock")}<span>${p.suspended ? "Unsuspend" : "Suspend"}</span></button><button type="button" class="adm-btn adm-btn-danger" data-act="delete">${icon("trash")}<span>Delete account</span></button></div>${confirm}</section>`;
-    return `<div class="adm-detail" id="adm-detail-${p.id}">${facts}${titles}${actions}</div>`;
+    return `<div class="adm-detail" id="adm-detail-${p.id}">${facts}${titles}${this.coinsBlock(p.id)}${actions}</div>`;
+  }
+  /** Coins and chat lines of a player's facts (loading, or why not). */
+  private statusFacts(id: string) {
+    const st = this.status.get(id);
+    if (!st)
+      return `<div><dt>Coins</dt><dd class="adm-dim">Loading…</dd></div><div><dt>Chat</dt><dd class="adm-dim">Loading…</dd></div>`;
+    if ("error" in st)
+      return `<div class="adm-wide"><dt>Coins &amp; chat</dt><dd class="adm-dim">${escape(st.error)}</dd></div>`;
+    const chat = st.chatUntil
+      ? `<span class="adm-bad">Muted until ${escape(new Date(st.chatUntil).toLocaleString([], { dateStyle: "short", timeStyle: "short" }))}</span>${st.chatReason ? ` · ${escape(st.chatReason)}` : ""}`
+      : "Can chat";
+    return `<div><dt>Coins</dt><dd data-coins><b>${st.balance.toLocaleString()}</b></dd></div><div><dt>Chat</dt><dd data-chat>${chat}</dd></div>`;
+  }
+  /** Add or take coins, with a reason; their latest coin movements below. */
+  private coinsBlock(id: string) {
+    const st = this.status.get(id);
+    if (!st || "error" in st) return "";
+    const history = st.coins.length
+      ? `<details class="adm-details"><summary>Latest coin changes</summary><ul class="adm-ledger">${st.coins
+          .map(
+            (c) =>
+              `<li><b class="${c.amount < 0 ? "adm-minus" : "adm-plus"}">${c.amount > 0 ? "+" : ""}${c.amount.toLocaleString()}</b><span>${escape(COIN_REASONS[c.reason] ?? c.reason)}</span><small>${ago(c.at)}</small></li>`,
+          )
+          .join("")}</ul></details>`
+      : "";
+    return `<section class="adm-block"><h4>Coins</h4><form class="adm-coins" data-form="coins" data-ref="${newRef()}"><div class="adm-coin-row"><input name="amount" type="number" inputmode="numeric" min="1" max="100000" step="1" required placeholder="Amount" aria-label="Coins"><div class="adm-presets" role="group" aria-label="Quick amounts">${COIN_PRESETS.map((n) => `<button type="button" data-act="coin-preset" data-amount="${n}">${n.toLocaleString()}</button>`).join("")}</div></div><input name="reason" maxlength="120" minlength="3" required placeholder="Why? (kept in the admin log)" aria-label="Reason" autocomplete="off"><div class="adm-actions"><button class="adm-btn adm-btn-primary" name="dir" value="add">${icon("create")}<span>Add coins</span></button><button class="adm-btn adm-btn-danger" name="dir" value="take">${icon("cancel")}<span>Take coins</span></button></div></form>${history}</section>`;
   }
 
   private onlineBody() {
@@ -734,7 +822,15 @@ export class AdminPanel {
       this.titles.find((t) => t.id === id)?.name ?? "Title";
     switch (act) {
       case "refresh":
+        this.status.clear();
         return void this.show();
+      case "coin-preset": {
+        const field = button
+          .closest("form")
+          ?.querySelector<HTMLInputElement>('input[name="amount"]');
+        if (field) field.value = button.dataset.amount!;
+        return;
+      }
       case "go":
         return void this.show({
           tab: button.dataset.tab as AdminTab,
@@ -801,6 +897,7 @@ export class AdminPanel {
         );
       case "mute": {
         if (!row) return;
+        this.status.delete(row.id);
         const hours = Number(button.dataset.hours);
         const choice = MUTE_CHOICES.find((c) => c.hours === hours)!;
         return this.act(
@@ -943,6 +1040,41 @@ export class AdminPanel {
     this.afterDraw();
   }
 
+  /** Add or take coins (the form's own id makes a retry pay once). */
+  private async coins(form: HTMLFormElement, submitter: HTMLElement | null) {
+    const row = this.row(form);
+    if (!row) return;
+    const fields = new FormData(form);
+    const take = (submitter as HTMLButtonElement | null)?.value === "take";
+    const size = Math.floor(Number(fields.get("amount")));
+    const reason = String(fields.get("reason") ?? "").trim();
+    if (!(size >= 1 && size <= 100000))
+      return this.say("Choose 1 to 100,000 coins.", true);
+    if (reason.length < 3)
+      return this.say("Say why (3 characters or more).", true);
+    const buttons = Array.from(
+      form.querySelectorAll<HTMLButtonElement>("button"),
+    );
+    buttons.forEach((b) => (b.disabled = true));
+    try {
+      const result = (await this.hooks.api("/api/admin/coins", {
+        playerId: row.id,
+        amount: take ? -size : size,
+        reason,
+        ref: form.dataset.ref,
+      })) as { applied: number; balance: number };
+      this.status.delete(row.id);
+      await this.show({ pending: null }, true);
+      this.say(
+        result.applied === 0
+          ? `Nothing changed: ${row.name} has ${result.balance.toLocaleString()} coins.`
+          : `${result.applied > 0 ? "Added" : "Took"} ${Math.abs(result.applied).toLocaleString()} coins ${result.applied > 0 ? "to" : "from"} ${row.name}. Balance: ${result.balance.toLocaleString()}.`,
+      );
+    } catch (error) {
+      this.fail(error);
+      buttons.forEach((b) => b.isConnected && (b.disabled = false));
+    }
+  }
   private async change(event: Event) {
     const select = event.target as HTMLSelectElement;
     if (select.dataset.act !== "grant" || !select.value) return;
@@ -991,6 +1123,7 @@ export class AdminPanel {
         pending: null,
       });
     }
+    if (kind === "coins") return this.coins(form, event.submitter);
     if (kind !== "title") return;
     const submit = form.querySelector<HTMLButtonElement>(
       "button:not([type=button])",

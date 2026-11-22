@@ -70,6 +70,7 @@ import {
   resolveReportSchema,
   titleUpdateSchema,
   titleGrantSchema,
+  adminCoinsSchema,
   equipTitleSchema,
   nameChangeSchema,
   matchReportSchema,
@@ -1484,6 +1485,35 @@ export function installAccountRoutes(
     route(true, async (_req, res) => {
       res.setHeader("Cache-Control", "no-store");
       res.json(listOnline());
+    }),
+  );
+  // A player's coins and chat stop, and coins added or taken by an admin
+  // (migration 20261122100000).
+  app.get(
+    "/api/admin/players/:id/status",
+    route(true, async (req, res, token) => {
+      const id = z.string().uuid().safeParse(req.params.id);
+      if (!id.success) throw new AccountError(400, "Invalid player.");
+      res.setHeader("Cache-Control", "no-store");
+      res.json(
+        await provider.rpc(token, "arena_admin_player_status", {
+          p_player: id.data,
+        }),
+      );
+    }),
+  );
+  app.post(
+    "/api/admin/coins",
+    route(true, async (req, res, token) => {
+      const data = adminCoinsSchema.parse(req.body);
+      const result = await provider.rpc(token, "arena_admin_adjust_coins", {
+        p_player: data.playerId,
+        p_amount: data.amount,
+        p_reason: data.reason,
+        p_ref: data.ref,
+      });
+      onPlayerChanged(data.playerId);
+      res.json(result);
     }),
   );
   app.post(
