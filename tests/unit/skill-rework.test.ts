@@ -139,8 +139,28 @@ describe("Scale Shrapnel (Pangrove): blades even without plates", () => {
       a.cast(me, s);
       const blades = a.projectiles.filter((p) => p.ability.id === s.id);
       expect(blades).toHaveLength(s.count! + s.perPlate! * plates);
-      expect(me.plates).toBe(0);
+      expect(me.plates).toBe(Math.max(0, plates - s.platesSpent!));
     }
+  });
+});
+
+describe("Crystal Cage (Auralynx): the ring closes in", () => {
+  it("squeezes an enemy inside toward Auralynx, and keeps it in", () => {
+    const a = arena("auralynx");
+    const [me, them] = a.players;
+    const c = skill("auralynx", "crystal-cage");
+    place(me, 500, Y + 20);
+    place(them, 500 + c.radius - 40, Y + 20);
+    a.cast(me, c);
+    const zone = a.zones.find((z) => z.ability.id === c.id)!;
+    seconds(a, c.duration * 0.5);
+    expect(zone.radius).toBeLessThan(c.radius);
+    seconds(a, c.duration * 0.45);
+    // Near the end the ring is close to its smallest; the enemy is inside it.
+    expect(zone.radius).toBeLessThan(c.cage!.shrinkTo + 15);
+    expect(Math.hypot(them.x - me.x, them.y - me.y)).toBeLessThan(
+      c.cage!.shrinkTo + 15,
+    );
   });
 });
 

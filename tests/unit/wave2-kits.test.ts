@@ -188,9 +188,10 @@ describe("Crystal Cage (Auralynx)", () => {
     a.phase = "playing";
     a.deadline = 999;
     const [me, inside, outside] = a.players;
-    place(me, 500, Y + 100);
-    place(inside, 600, Y + 100);
-    place(outside, 900, Y + 100);
+    // On open ground: the closing ring squeezes along a straight line.
+    place(me, 500, Y);
+    place(inside, 600, Y);
+    place(outside, 900, Y);
     const cage = skill("auralynx", "crystal-cage");
     const hp = inside.hp;
     a.cast(me, cage);
@@ -198,12 +199,14 @@ describe("Crystal Cage (Auralynx)", () => {
     inside.lastInput = { ...inside.lastInput, dx: 1 };
     outside.lastInput = { ...outside.lastInput, dx: -1 };
     seconds(a, 1.5);
-    expect(
-      Math.hypot(inside.x - 500, inside.y - (Y + 100)),
-    ).toBeLessThanOrEqual(cage.radius);
-    expect(
-      Math.hypot(outside.x - 500, outside.y - (Y + 100)),
-    ).toBeGreaterThanOrEqual(cage.radius);
+    // The ring closes in (cage.shrinkTo): whoever is inside goes with it,
+    // whoever is outside stays outside it as it is now.
+    const ring = a.zones.find((z) => z.ability.id === cage.id)!.radius;
+    expect(ring).toBeLessThan(cage.radius);
+    expect(Math.hypot(inside.x - 500, inside.y - Y)).toBeLessThanOrEqual(ring);
+    expect(Math.hypot(outside.x - 500, outside.y - Y)).toBeGreaterThanOrEqual(
+      ring,
+    );
     // A shot from outside dies on the ring.
     a.projectiles.push({
       id: ++a.serial,

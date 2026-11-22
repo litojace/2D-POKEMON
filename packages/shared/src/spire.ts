@@ -1475,7 +1475,7 @@ export const SPIRE_TUNING: Record<
   // Floor 1 was always cleared and still is.
   1: { difficulty: "easy", power: 0.4, armour: 1.5, limit: 180 },
   2: { difficulty: "easy", power: 0.45, armour: 1.35, limit: 180 },
-  3: { difficulty: "easy", power: 0.5, armour: 0.99, limit: 180 },
+  3: { difficulty: "easy", power: 0.5, armour: 1.05, limit: 180 },
   4: { difficulty: "easy", power: 0.45, armour: 2.04, limit: 180 },
   5: { difficulty: "normal", power: 0.4, armour: 0.7, limit: 240 },
   6: { difficulty: "easy", power: 0.55, armour: 1.2, limit: 180 },
