@@ -411,8 +411,13 @@ for (const size of [
         // Each line fades out over 5 s and is then removed, and a slow
         // runner can take longer than that to reach the shot: hold the
         // lines at full strength in the same step that adds them.
+        // (The slide-in ends at once; the fade waits at its start.)
         for (const li of document.querySelectorAll(".battle-chat-feed li"))
           for (const a of li.getAnimations()) {
+            if (!(a instanceof CSSAnimation)) {
+              a.finish();
+              continue;
+            }
             a.pause();
             a.currentTime = 0;
           }
@@ -460,6 +465,118 @@ for (const size of [
       // Same width, so the names line up.
       expect(new Set(layout.map((r) => Math.round(r.tag.width))).size).toBe(1);
       expect(new Set(layout.map((r) => Math.round(r.name.x))).size).toBe(1);
+    } finally {
+      await context.close();
+    }
+  });
+
+for (const reduced of [false, true])
+  test(`the quick-chat grid and feed move smoothly${reduced ? " (none with reduced motion)" : ""}`, async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({
+      viewport: { width: 844, height: 390 },
+      isMobile: true,
+      hasTouch: true,
+      reducedMotion: reduced ? "reduce" : "no-preference",
+    });
+    const page = await context.newPage();
+    try {
+      await openHub(page);
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("pvp", { mode: "teams", phase: "playing" });
+        w.__snap.watchers = ["Vi"];
+      });
+      await openPlayPanel(page);
+      await page.evaluate(() =>
+        document.querySelector<HTMLButtonElement>("#play-create")!.click(),
+      );
+      await expect
+        .poll(
+          () =>
+            page.evaluate(() => {
+              (window as any).__push();
+              return document.body.classList.contains("battle-active");
+            }),
+          { timeout: 60_000, intervals: [400] },
+        )
+        .toBe(true);
+      // Four lines in a row: the fourth pushes the oldest out.
+      const moving = await page.evaluate(() => {
+        const fire = (id: number) =>
+          (window as any).__sock.fire("chat", {
+            id,
+            channel: "room",
+            from: { id: "acct-vi", name: "Vi" },
+            at: Date.now(),
+            quick: "nice",
+            watcher: true,
+          });
+        for (const id of [1, 2, 3]) fire(id);
+        // Let the first three finish arriving.
+        for (const li of document.querySelectorAll(".battle-chat-feed li"))
+          for (const a of li.getAnimations())
+            if (!(a instanceof CSSAnimation)) a.finish();
+        fire(4);
+        const rows = [...document.querySelectorAll(".battle-chat-feed li")];
+        // What moves on each row besides its CSS fade: the glide up (and,
+        // on the new line, its slide in), transforms and opacity only.
+        return rows.map((li) =>
+          li
+            .getAnimations()
+            .filter((a) => !(a instanceof CSSAnimation))
+            .flatMap((a) =>
+              ((a.effect as KeyframeEffect).getKeyframes() as Keyframe[]).map(
+                (k) =>
+                  Object.keys(k)
+                    .filter(
+                      (p) =>
+                        ![
+                          "offset",
+                          "easing",
+                          "composite",
+                          "computedOffset",
+                        ].includes(p),
+                    )
+                    .sort()
+                    .join("+"),
+              ),
+            ),
+        );
+      });
+      expect(moving).toHaveLength(3);
+      if (reduced) expect(moving.flat()).toEqual([]);
+      else {
+        // The two kept lines glide; the new one slides in and fades up.
+        expect(moving[0]).toEqual(["transform", "transform"]);
+        expect(moving[1]).toEqual(["transform", "transform"]);
+        expect(moving[2]).toEqual(["opacity+transform", "opacity+transform"]);
+      }
+      // The grid: fades in; on closing it stops taking presses at once and
+      // is hidden when its fade ends.
+      const grid = page.locator("#battle-chat-grid");
+      // (Pressed and checked in one step: the fade is 0.14 s.)
+      const opening = await grid.evaluate((g) => {
+        document.getElementById("battle-chat")!.click();
+        return { hidden: g.hidden, fades: g.getAnimations().length };
+      });
+      expect(opening).toEqual({ hidden: false, fades: reduced ? 0 : 1 });
+      await expect
+        .poll(() => grid.evaluate((g) => g.getAnimations().length))
+        .toBe(0);
+      const closing = await grid.evaluate((g) => {
+        document.getElementById("battle-chat")!.click();
+        return { inert: (g as HTMLElement).inert, hidden: g.hidden };
+      });
+      expect(closing.inert).toBe(true);
+      expect(closing.hidden).toBe(reduced);
+      await expect(grid).toBeHidden();
+      // It opens again straight away, whatever was playing.
+      await page.click("#battle-chat");
+      await expect(grid).toBeVisible();
+      expect(await grid.evaluate((g) => (g as HTMLElement).inert)).toBe(false);
     } finally {
       await context.close();
     }

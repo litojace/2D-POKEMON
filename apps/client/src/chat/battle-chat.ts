@@ -15,6 +15,12 @@
  *   The players see a watcher's line in the feed, an eye before the name;
  *   "Mute others" (was "Mute rivals") hides watchers along with rivals.
  *
+ * Motion (ui/motion.ts rules: transform and opacity only, never waited on,
+ * off with reduced motion or Low graphics): the grid fades and scales in
+ * and out; a new feed line slides in from the left; when a fourth line
+ * pushes the oldest out, the others glide up into its place instead of
+ * jumping (its height is read once, at that moment, never per frame).
+ *
  * Performance (docs/network-performance.md): nothing here runs per frame.
  * The bubble is a child of the fighter's nameplate, so it moves with it for
  * free; the feed fades with a CSS animation (opacity only); no layout is
@@ -29,6 +35,7 @@ import {
 } from "../../../../packages/shared/src/chat";
 import type { RaidPingKind } from "../../../../packages/shared/src/raid";
 import { menuIcon } from "../menu-icons";
+import { EASE_OUT, uiMotion } from "../ui/motion";
 
 interface Reply {
   ok: boolean;
@@ -88,6 +95,8 @@ const WATCH: ChatQuick[] = [
 const PINGS: RaidPingKind[] = ["stack", "revive", "bait"];
 const BUBBLE_MS = 2600;
 const FEED_LINES = 3;
+/** The feed's row gap (chat.css, .battle-chat-feed gap). */
+const FEED_GAP = 2;
 
 const label = (q: ChatQuick) =>
   q in CHAT_EMOTES
@@ -155,13 +164,35 @@ export function mountBattleChat(hooks: BattleChatHooks): BattleChatView {
     ].join("");
   }
 
-  const setOpen = (open: boolean) => {
-    grid.hidden = !open;
+  let open = false;
+  let gridFade: Animation | null = null;
+  const setOpen = (next: boolean) => {
+    if (next === open) return;
+    open = next;
     button.setAttribute("aria-expanded", String(open));
+    gridFade?.cancel();
+    gridFade = null;
+    // Applied at once (pressable or not); the fade only plays over it.
+    grid.inert = !open;
+    if (open) grid.hidden = false;
+    if (!uiMotion() || typeof grid.animate !== "function") {
+      grid.hidden = !open;
+      return;
+    }
+    const shut = { opacity: 0, transform: "scale(0.94)" },
+      shown = { opacity: 1, transform: "none" };
+    gridFade = grid.animate(open ? [shut, shown] : [shown, shut], {
+      duration: open ? 140 : 110,
+      easing: EASE_OUT,
+    });
+    if (!open)
+      gridFade.onfinish = () => {
+        if (!open) grid.hidden = true;
+      };
   };
   button.addEventListener("click", () => {
-    if (grid.hidden) render();
-    setOpen(grid.hidden);
+    if (!open) render();
+    setOpen(!open);
   });
   grid.addEventListener("click", (e) => {
     const t = e.target as HTMLElement;
@@ -192,7 +223,7 @@ export function mountBattleChat(hooks: BattleChatHooks): BattleChatView {
   document.addEventListener(
     "pointerdown",
     (e) => {
-      if (grid.hidden) return;
+      if (!open) return;
       const t = e.target as Node;
       if (!grid.contains(t) && !button.contains(t)) setOpen(false);
     },
@@ -232,7 +263,7 @@ export function mountBattleChat(hooks: BattleChatHooks): BattleChatView {
       if (isRaid !== raid || isWatcher !== watching) {
         raid = isRaid;
         watching = isWatcher;
-        if (!grid.hidden) render();
+        if (open) render();
       }
       button.dataset.raid = String(raid);
       button.dataset.watching = String(watching);
@@ -270,10 +301,36 @@ export function mountBattleChat(hooks: BattleChatHooks): BattleChatView {
       li.append(tag, body);
       if (watcher) li.classList.add("is-watcher");
       else if (!team) li.classList.add("is-rival");
+      const motion = uiMotion() && typeof li.animate === "function";
+      // A fourth line pushes the oldest out: the others glide up into its
+      // place (its height read once, now, before the new line is added).
+      const out: HTMLElement[] = [];
+      while (feed.children.length - out.length >= FEED_LINES)
+        out.push(feed.children[out.length] as HTMLElement);
+      const lift = motion
+        ? out.reduce((h, el) => h + el.offsetHeight, 0) + out.length * FEED_GAP
+        : 0;
+      for (const el of out) el.remove();
       feed.append(li);
-      while (feed.children.length > FEED_LINES)
-        feed.firstElementChild!.remove();
       li.addEventListener("animationend", () => li.remove(), { once: true });
+      if (!motion) return;
+      if (lift)
+        for (const el of Array.from(feed.children) as HTMLElement[])
+          if (el !== li)
+            el.animate(
+              [{ transform: `translateY(${lift}px)` }, { transform: "none" }],
+              { duration: 180, easing: EASE_OUT },
+            );
+      li.animate(
+        [
+          {
+            opacity: 0,
+            transform: `translate(-10px, ${lift ? lift : 0}px)`,
+          },
+          { opacity: 1, transform: "none" },
+        ],
+        { duration: lift ? 180 : 150, easing: EASE_OUT },
+      );
     },
     close() {
       button.remove();
