@@ -30,6 +30,32 @@ import { openHub } from "./helpers";
  * and missed the open's own (the Shop's 470–630 ms frame read 0 here).
  */
 const LONG_FRAME_MS = 450;
+/**
+ * How long PROBE takes on the 4× slowed page on an ordinary CI runner, the
+ * runner LONG_FRAME_MS was set on. CI's runners are not all as fast: on
+ * 22 Nov one ran every Lobby frame two to three times longer than usual,
+ * and the Fighters' and the Raids' repeat opens read 584 and 682 ms with no
+ * steady frame before the tap to count from (issue #338), while the same
+ * code passed on the next run. So the limit grows with how much slower
+ * than this the runner is at that moment, and never shrinks below
+ * LONG_FRAME_MS.
+ */
+const PROBE_REF_MS = 240;
+/**
+ * The runner's speed, on the page as it is measured (same throttling): a
+ * fixed piece of script, the median of three runs, in ms.
+ */
+const PROBE = () => {
+  const once = () => {
+    const t = performance.now();
+    let x = 0;
+    for (let i = 0; i < 2_000_000; i++) x = (x + Math.sqrt(i * 1.0001)) % 1e6;
+    (window as any).__probeSink = x;
+    return performance.now() - t;
+  };
+  const runs = [once(), once(), once()].sort((a, b) => a - b);
+  return Math.round(runs[1]);
+};
 /** Layouts in the 1.5 s after a tap (the open, its entrance, settling). */
 const MAX_LAYOUTS = 12;
 /**
@@ -296,6 +322,9 @@ async function measure(
   panel: Panel,
   o: { changed?: boolean } = {},
 ) {
+  // The runner's speed now, before the wait for a quiet page (the probe is
+  // a long frame of its own, which the wait then lets pass).
+  const probe = await page.evaluate(PROBE);
   await quiet(page);
   // The server says records changed just before this open, not before the
   // wait: the Lobby's own friends check could ask again meanwhile, and the
@@ -383,7 +412,7 @@ async function measure(
     },
     { settle: SETTLE_MS },
   );
-  return { ...counted, ...frames, laidOut, openAt, closedAt };
+  return { ...counted, ...frames, laidOut, openAt, closedAt, probe };
 }
 
 test("a screen opened again shows what it had: no new requests, no rebuild, no long frame", async ({
@@ -486,10 +515,14 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
         `${panel.name}: layout reads on a repeat open`,
       ).toBeLessThanOrEqual(MAX_LAYOUT_READS);
       expect(again.tapped, `${panel.name}: the open's tap was seen`).toBe(true);
+      // A runner slower than the one LONG_FRAME_MS was set on gets as much
+      // more time (PROBE_REF_MS); a faster one is held to LONG_FRAME_MS.
+      const slower = Math.max(1, again.probe / PROBE_REF_MS);
+      const limit = Math.round(LONG_FRAME_MS * slower);
       expect(
         again.worst - again.steady,
-        `${panel.name}: longest frame on a repeat open (ms) over the steady ${again.steady} ms, ${again.openAt - first.closedAt} ms after the first closed: ${again.longs.join("; ")}`,
-      ).toBeLessThanOrEqual(LONG_FRAME_MS);
+        `${panel.name}: longest frame on a repeat open (ms) over the steady ${again.steady} ms, ${again.openAt - first.closedAt} ms after the first closed, limit ${limit} ms (runner probe ${again.probe} ms, ${slower.toFixed(2)}× the reference): ${again.longs.join("; ")}`,
+      ).toBeLessThanOrEqual(limit);
     }
     console.log(JSON.stringify(results));
     expect(errors).toEqual([]);
