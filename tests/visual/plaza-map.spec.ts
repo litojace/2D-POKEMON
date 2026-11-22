@@ -207,9 +207,16 @@ test("a movement key takes back a Go walk; a jump doesn't", async ({
   await page.waitForTimeout(400);
   await page.keyboard.press(" ");
   const a = await at();
-  await page.waitForTimeout(700);
-  const b = await at();
-  expect(Math.hypot(b.x - a.x, b.y - a.y)).toBeGreaterThan(80);
+  await expect
+    .poll(
+      async () => {
+        const b = await at();
+        return Math.hypot(b.x - a.x, b.y - a.y);
+      },
+      { timeout: 20_000 },
+    )
+    .toBeGreaterThan(80);
+  // (Polled: on a CI runner the Plaza can take seconds to get going.)
   // A tap of a movement key: the walk stops once it's let go.
   await page.keyboard.down("a");
   await page.waitForTimeout(120);
@@ -240,7 +247,17 @@ test("on a phone, moving the joystick takes back a Go walk", async ({
       });
     await page.click("#pz-map-btn");
     await page.locator('.pz-map-list [data-place="pond"]').click();
-    await page.waitForTimeout(400);
+    // Walking there (or the stop below would prove nothing).
+    const a = await at();
+    await expect
+      .poll(
+        async () => {
+          const b = await at();
+          return Math.hypot(b.x - a.x, b.y - a.y);
+        },
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThan(40);
     // A short push on the stick, then let go.
     const joy = (await page.locator("#pz-joy").boundingBox())!;
     const ox = joy.x + joy.width * 0.3,
