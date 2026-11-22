@@ -139,6 +139,83 @@ suggestion. Three-player free-for-all stayed inside its earlier range
 (27.5% – 40.5%), so `FFA_THREE_TUNING` is unchanged. (The 2v2 "new bots,
 old factors" check ran before the expert's counterplay was added.)
 
+## Second round: every level a step up (2026-11-22)
+
+Real matches showed Hard falling behind. In duels against bots
+(`arena_matches`, `vs_bot`, 4–22 November), the players who play often won
+55–82% of their Hard duels, and more each week; Easy and Normal won nearly
+every time. So each level moved up a step, measured against the level it
+replaces in bot duels (`difficulty-gap.ts 4`, every pair, 612 duels):
+
+| New level vs the old one | New wins | Old takes of rounds |
+| ------------------------ | -------- | ------------------- |
+| Hard                     | 73.2%    | 35.5%               |
+| Normal                   | 72.1%    | 37.2%               |
+| Easy                     | 69.1%    | 38.7%               |
+
+(The Normal and Easy rows are the candidates' numbers before Normal's
+`dazeBy` was recalibrated.)
+
+| Setting                       | Easy        | Normal      | Hard        |
+| ----------------------------- | ----------- | ----------- | ----------- |
+| Reaction                      | 0.5 → 0.47 s | 0.36 → 0.33 s | 0.25 → 0.2 s |
+| Aim spread                    | 0.27 → 0.26 | 0.215 → 0.19 | 0.14 → 0.12 |
+| Dodges                        | 10 → 18%    | 43 → 47%    | 55 → 80%    |
+| Decides every                 | 0.45 → 0.38 s | 0.19 → 0.17 s | 0.12 → 0.08 s |
+| Holds fire (`rest`)           | 42 → 36%    | 12 → 10%    | 5 → 0%      |
+| Uses a good skill chance      | 35 → 38%    | 42 → 52%    | 90%         |
+| Leads moving targets          | 0 → 5%      | 20 → 40%    | 85%         |
+| Looks away from Eyespot Flash | -           | - → yes     | yes         |
+| Reads marks after             | 0.9 → 0.88 s | 0.75 → 0.72 s | 0.6 s       |
+
+Hard now has the balance expert's reaction, aim and decisions (a good
+player's hands, not a machine's) without its look-ahead. Three of the
+expert's other edges stayed out, each measured in a Hard round robin:
+
+- Dodging 90% of shots took the slower shooters down (Voltkit 39.5%,
+  Pyranda 39.2%); 75% let Halcyra's learned style take it to 64%; 80%
+  without styles is the middle.
+- The expert's instant read of marks sank Pyranda, whose kit is marks
+  (37.5%); Hard keeps its 0.6 s.
+- The learned styles (`expert-style.ts`, only Halcyra's is kept) are tuned
+  for the expert's hands; on Hard's, Halcyra rose to 64%.
+
+A "steady lead" (leading a shot by how the opponent moved over the last
+0.3 s, against players who jink left and right) was tried for Normal and
+Hard and taken out: it cost Voltkit six points in Hard duels (39.5% →
+33.3%), and what it gains against jinking players can't be measured with
+bots, which change direction rarely.
+
+**Sunbara**, the support, was the one champion the new Hard left behind
+(38.2%): its damage is projectiles, and a better dodger slips its slow
+Yuzu Toss. Yuzu Toss now flies at 760 px/s (was 650) with a 7 s cooldown
+(was 8): 40.9% → 46.1% in a 408-duel probe. Its Spire Echo made floor 49
+harder (68 clears in 144 against 85), so floor 49's armour is 3.25 (was
+3.05; 88 clears). The other ten floors with a Sunbara Echo (12, 41–48, 68)
+stayed within the noise of 72 seeds.
+
+**Raids and the Spire play as before.** Raider stand-ins and Spire Echoes
+keep the levels they were tuned with (`RAID_BOT_PROFILES`: a brain swaps
+to them on its first think in raid mode), and the balance-only expert is
+still built on the old Hard. Ten seeded Spire floors in all seven zones
+gave the same clear counts on main and on this branch before Sunbara's
+change.
+
+| Round robin (24 games a pair, 3,672 duels) | Before (main) | After         |
+| ------------------------------------------ | ------------- | ------------- |
+| Hard                                       | 42.9% – 58.3% | 43.4% – 57.8% |
+| Normal (`dazeBy` recalibrated)             | 43.1% – 54.4% | 43.9% – 54.9% |
+| Easy (never calibrated per champion)       | 23.9% – 71.8% | 22.3% – 72.8% |
+
+Normal's `dazeBy` was recalibrated toward each champion's Hard rate
+(clipped to 46–54%): three full steps, which overshot (the win rate moves
+150–250 points per unit of daze), a least-squares fit through those three,
+then two steps at 0.4 gain. The gaps between the levels stay as they were:
+Hard beats Normal in 99.7% of duels (99.7% on main), Normal beats Easy in
+91.7% (93.1%).
+
+__MODES__
+
 ## Tools
 
 - `scripts/balance/difficulty-mirror.ts <games> [strong] [weak] [shard shards out.json]`:
