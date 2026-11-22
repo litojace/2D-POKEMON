@@ -147,6 +147,64 @@ const GFX = (() => {
     cherry: { c: "#ffb3cf", d: "#d86a99", h: "#fff0f6" },
     lime: { c: "#9fd84a", d: "#4f8f24", h: "#eaffa0" },
   };
+  /**
+   * Soft rounded lobes in three flat tones ("cloud" style, owner's pick
+   * of five, 22 Nov): each lobe in shade, a mid tone set up and left on
+   * it, a light tone further toward the light, and a rim of light on its
+   * upper-left edge, inside a dark outline; a few leaf ticks. Shared by
+   * crowns and bushes.
+   */
+  function puffs(g, lobes, P, rim = 2.5, ticks = 18, edge = 3) {
+    g.fillStyle = dk(P.d, 0.3);
+    lobes.forEach(([x, y, r]) => {
+      g.beginPath();
+      g.arc(x, y, r + edge, 0, 7);
+      g.fill();
+    });
+    g.fillStyle = P.d;
+    lobes.forEach(([x, y, r]) => {
+      g.beginPath();
+      g.arc(x, y, r, 0, 7);
+      g.fill();
+    });
+    g.save();
+    g.beginPath();
+    lobes.forEach(([x, y, r]) => {
+      g.moveTo(x + r, y);
+      g.arc(x, y, r, 0, 7);
+    });
+    g.clip();
+    g.fillStyle = P.c;
+    lobes.forEach(([x, y, r]) => {
+      g.beginPath();
+      g.arc(x - r * 0.12, y - r * 0.16, r * 0.9, 0, 7);
+      g.fill();
+    });
+    g.fillStyle = mix(P.c, P.h, 0.45);
+    lobes.forEach(([x, y, r]) => {
+      g.beginPath();
+      g.arc(x - r * 0.3, y - r * 0.36, r * 0.5, 0, 7);
+      g.fill();
+    });
+    g.strokeStyle = rgba(P.h, 0.8);
+    g.lineWidth = rim;
+    lobes.forEach(([x, y, r]) => {
+      g.beginPath();
+      g.arc(x, y, r - rim, Math.PI * 1.05, Math.PI * 1.45);
+      g.stroke();
+    });
+    g.strokeStyle = rgba(P.d, 0.5);
+    g.lineWidth = 1.6;
+    for (let i = 0; i < ticks; i++) {
+      const [x, y, r] = lobes[i % lobes.length],
+        a = rnd() * 7,
+        d = rnd() * r * 0.7;
+      g.beginPath();
+      g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, 5, 0.2, Math.PI - 0.2);
+      g.stroke();
+    }
+    g.restore();
+  }
   function canopy(pal, w, sd, fruit) {
     const P = PALS[pal],
       H = w * 0.88;
@@ -169,108 +227,7 @@ const GFX = (() => {
           y * H + (rnd() - 0.5) * H * 0.05,
           r * w * (0.92 + rnd() * 0.16),
         ]);
-        L.forEach(([x, y, r]) => {
-          g.fillStyle = dk(P.d, 0.35);
-          g.beginPath();
-          g.arc(x, y, r + 2.6, 0, 7);
-          g.fill();
-        });
-        L.forEach(([x, y, r]) => {
-          g.fillStyle = P.d;
-          g.beginPath();
-          g.arc(x, y, r, 0, 7);
-          g.fill();
-        });
-        L.forEach(([x, y, r]) => {
-          const gr = g.createRadialGradient(
-            x - r * 0.4,
-            y - r * 0.5,
-            r * 0.1,
-            x - r * 0.1,
-            y - r * 0.12,
-            r * 0.95,
-          );
-          gr.addColorStop(0, lt(P.c, 0.28));
-          gr.addColorStop(0.7, P.c);
-          gr.addColorStop(1, rgba(P.c, 0));
-          g.fillStyle = gr;
-          g.beginPath();
-          g.arc(x - r * 0.08, y - r * 0.12, r * 0.9, 0, 7);
-          g.fill();
-        });
-        // Clumps of leaves over each blob: small pointed leaves in three
-        // tones, darker low and right, lighter high and left (the light),
-        // so the crown reads as foliage in depth rather than smooth balls.
-        g.globalCompositeOperation = "source-atop";
-        const leaf = (x, y, s, a, c) => {
-          g.fillStyle = c;
-          g.beginPath();
-          g.moveTo(x + Math.cos(a) * s, y + Math.sin(a) * s);
-          g.quadraticCurveTo(
-            x + Math.cos(a + 1.6) * s * 0.5,
-            y + Math.sin(a + 1.6) * s * 0.5,
-            x - Math.cos(a) * s,
-            y - Math.sin(a) * s,
-          );
-          g.quadraticCurveTo(
-            x + Math.cos(a - 1.6) * s * 0.5,
-            y + Math.sin(a - 1.6) * s * 0.5,
-            x + Math.cos(a) * s,
-            y + Math.sin(a) * s,
-          );
-          g.fill();
-        };
-        const shadeC = rgba(P.d, 0.38),
-          midC = rgba(mix(P.c, P.d, 0.25), 0.7),
-          litC = rgba(mix(P.c, P.h, 0.45), 0.75);
-        for (let i = 0; i < Math.round(w * 1.2); i++) {
-          const [x, y, r] = L[Math.floor(rnd() * L.length)],
-            a = rnd() * Math.PI * 2,
-            d = Math.sqrt(rnd()) * r * 0.95,
-            px = x + Math.cos(a) * d,
-            py = y + Math.sin(a) * d,
-            // Where on its blob: toward the light (top left) or away.
-            lit = (-(px - x) - (py - y)) / (r * 1.4),
-            c = lit > 0.25 ? litC : lit < -0.2 ? shadeC : midC;
-          leaf(px, py, 4.2 + rnd() * 2.6, rnd() * Math.PI, c);
-        }
-        // Dark gaps between clumps, where the crown's inside shows.
-        for (let i = 0; i < Math.round(w * 0.18); i++) {
-          const [x, y, r] = L[Math.floor(rnd() * L.length)],
-            a = Math.PI * 0.1 + rnd() * Math.PI * 0.8,
-            d = r * (0.55 + rnd() * 0.3);
-          g.fillStyle = rgba(dk(P.d, 0.3), 0.5);
-          ell(g, x + Math.cos(a) * d, y + Math.sin(a) * d, 3 + rnd() * 3, 1.6 + rnd() * 1.5, rnd() * 3);
-          g.fill();
-        }
-        // leaf scallops
-        for (let i = 0; i < 70; i++) {
-          const [x, y, r] = L[Math.floor(rnd() * L.length)],
-            a = rnd() * Math.PI * 2,
-            d = rnd() * r * 0.85,
-            px = x + Math.cos(a) * d,
-            py = y + Math.sin(a) * d;
-          g.strokeStyle = rgba(P.d, 0.35);
-          g.lineWidth = 1.4;
-          g.beginPath();
-          g.arc(px, py, 4 + rnd() * 3, Math.PI * 0.1, Math.PI * 0.9);
-          g.stroke();
-        }
-        for (let i = 0; i < 26; i++) {
-          const [x, y, r] = L[Math.floor(rnd() * 5)],
-            px = x - r * 0.3 + (rnd() - 0.5) * r * 0.7,
-            py = y - r * 0.35 + (rnd() - 0.5) * r * 0.5;
-          g.fillStyle = rgba(P.h, 0.55);
-          g.beginPath();
-          g.ellipse(px, py, 3.5 + rnd() * 3, 2.2 + rnd() * 1.8, -0.5, 0, 7);
-          g.fill();
-        }
-        const ao = g.createLinearGradient(0, -H * 0.1, 0, 6);
-        ao.addColorStop(0, "rgba(10,30,20,0)");
-        ao.addColorStop(1, "rgba(10,30,20,.35)");
-        g.fillStyle = ao;
-        g.fillRect(-w, -H * 0.1, w * 2, H * 0.3);
-        g.globalCompositeOperation = "source-over";
+        puffs(g, L, P, 2.5, Math.round(w * 0.12));
         if (fruit)
           for (let i = 0; i < 11; i++) {
             const [x, y, r] = L[Math.floor(rnd() * L.length)],
@@ -279,13 +236,13 @@ const GFX = (() => {
             ball(g, x + Math.cos(a) * d, y + Math.sin(a) * d, 5.2, fruit, 0.55);
           }
         if (pal === "cherry")
-          for (let i = 0; i < 40; i++) {
+          for (let i = 0; i < 30; i++) {
             const [x, y, r] = L[Math.floor(rnd() * L.length)],
               a = rnd() * 7,
-              d = rnd() * r;
-            g.fillStyle = rnd() < 0.5 ? "#ffffff" : "#ff8fbd";
+              d = rnd() * r * 0.8;
+            g.fillStyle = i % 2 ? "#ffffff" : "#ff8fbd";
             g.beginPath();
-            g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, 1.8, 0, 7);
+            g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, 2.4, 0, 7);
             g.fill();
           }
       }),
@@ -392,37 +349,27 @@ const GFX = (() => {
           g.lineWidth = 5;
           g.strokeStyle = "#173f2a";
           g.stroke();
+          // Flat tones in the cloud style: mid green, the right side in
+          // shade, a lit strip down the left.
           path();
-          const gr = g.createLinearGradient(-tw, ty, tw, by);
-          gr.addColorStop(0, "#5fcf7c");
-          gr.addColorStop(0.5, "#2f9a5a");
-          gr.addColorStop(1, "#1d6a43");
-          g.fillStyle = gr;
+          g.fillStyle = "#2f9a5a";
           g.fill();
-          g.strokeStyle = "rgba(200,255,200,.35)";
-          g.lineWidth = 1.5;
-          g.beginPath();
-          g.moveTo(-tw * 0.55, by - 6);
-          g.quadraticCurveTo(-tw * 0.2, by - 2, 0, by - 4);
-          g.stroke();
-          // Needles: short strokes fanning down the tier, lit on its left,
-          // in shade on its right, and a darker band under its hem.
           g.save();
           path();
           g.clip();
-          g.lineWidth = 1;
-          for (let k = 0; k < 26; k++) {
-            const nx = (rnd() * 2 - 1) * tw * 0.9,
-              ny = ty + (by - ty) * (0.35 + rnd() * 0.6);
-            g.strokeStyle = nx < 0 ? "rgba(170,240,170,.4)" : "rgba(10,60,35,.35)";
-            g.beginPath();
-            g.moveTo(nx, ny);
-            g.lineTo(nx + (nx < 0 ? -2.5 : 2.5), ny + 4);
-            g.stroke();
-          }
-          g.fillStyle = "rgba(10,50,30,.25)";
+          g.fillStyle = "#1d6a43";
           g.beginPath();
-          g.ellipse(0, by + 2, tw, 6, 0, 0, Math.PI * 2);
+          g.moveTo(0, ty);
+          g.lineTo(tw * 1.2, by + 8);
+          g.lineTo(2, by + 8);
+          g.closePath();
+          g.fill();
+          g.fillStyle = "#5fcf7c";
+          g.beginPath();
+          g.moveTo(-2, ty + 6);
+          g.quadraticCurveTo(-tw * 0.5, by - 6, -tw * 0.8, by - 4);
+          g.lineTo(-tw * 0.3, by - 2);
+          g.closePath();
           g.fill();
           g.restore();
         }
@@ -477,55 +424,7 @@ const GFX = (() => {
           [-0.12, -0.62, 0.24],
           [0.16, -0.6, 0.22],
         ].map(([x, y, r]) => [x * w, y * H + 3, r * w]);
-        L.forEach(([x, y, r]) => {
-          g.fillStyle = dk(P.d, 0.35);
-          g.beginPath();
-          g.arc(x, y, r + 2.2, 0, 7);
-          g.fill();
-        });
-        // Leaf tips standing proud of the outline, in the dark outline's
-        // colour then the leaf colour, so the edge reads as leaves.
-        for (let i = 0; i < 26; i++) {
-          const [x, y, r] = L[Math.floor(rnd() * L.length)],
-            a = Math.PI + rnd() * Math.PI,
-            px = x + Math.cos(a) * (r + 1),
-            py = y + Math.sin(a) * (r + 1);
-          g.fillStyle = dk(P.d, 0.35);
-          ell(g, px, py, 4.2, 3, a);
-          g.fill();
-          g.fillStyle = P.c;
-          ell(g, px - Math.cos(a) * 1.2, py - Math.sin(a) * 1.2, 3.2, 2.2, a);
-          g.fill();
-        }
-        L.forEach(([x, y, r]) => ball(g, x, y, r, P.c, 0.3));
-        g.globalCompositeOperation = "source-atop";
-        // Leaf scallops in shade and lit leaflets toward the light.
-        for (let i = 0; i < Math.round(w * 0.6); i++) {
-          const [x, y, r] = L[Math.floor(rnd() * L.length)],
-            a = rnd() * Math.PI * 2,
-            d = rnd() * r * 0.9,
-            px = x + Math.cos(a) * d,
-            py = y + Math.sin(a) * d;
-          g.strokeStyle = rgba(P.d, 0.4);
-          g.lineWidth = 1.2;
-          g.beginPath();
-          g.arc(px, py, 3 + rnd() * 2.5, Math.PI * 0.1, Math.PI * 0.9);
-          g.stroke();
-        }
-        for (let i = 0; i < Math.round(w * 0.25); i++) {
-          const [x, y, r] = L[Math.floor(rnd() * L.length)],
-            px = x - r * 0.3 + (rnd() - 0.5) * r * 0.8,
-            py = y - r * 0.35 + (rnd() - 0.5) * r * 0.6;
-          g.fillStyle = rgba(mix(P.c, P.h, 0.6), 0.45);
-          ell(g, px, py, 1.8 + rnd() * 1.4, 1.1 + rnd() * 0.8, -0.5);
-          g.fill();
-        }
-        const ao = g.createLinearGradient(0, -H * 0.2, 0, 4);
-        ao.addColorStop(0, "rgba(0,30,10,0)");
-        ao.addColorStop(1, "rgba(0,30,10,.35)");
-        g.fillStyle = ao;
-        g.fillRect(-w, -H * 0.2, w * 2, H);
-        g.globalCompositeOperation = "source-over";
+        puffs(g, L, P, 2, Math.round(w * 0.08), 2.5);
         if (kind === "flower" || kind === "rose") {
           const cols =
             kind === "rose"
@@ -538,6 +437,10 @@ const GFX = (() => {
               px = x + Math.cos(a) * d,
               py = y + Math.sin(a) * d * 0.8,
               c = cols[i % cols.length];
+            g.fillStyle = rgba(dk(c, 0.5), 0.35);
+            g.beginPath();
+            g.arc(px + 0.8, py + 1.2, 4.4, 0, 7);
+            g.fill();
             for (let k = 0; k < 5; k++) {
               g.fillStyle = c;
               g.beginPath();
