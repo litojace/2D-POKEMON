@@ -53,10 +53,21 @@ describe("Plaza layout", () => {
   });
 
   it("keeps bodies out of the fountain and the pond and inside the map", () => {
-    const f = plazaCollide({ x: PLAZA_FOUNTAIN.x + 1, y: PLAZA_FOUNTAIN.y });
-    expect(
-      Math.hypot(f.x - PLAZA_FOUNTAIN.x, f.y - PLAZA_FOUNTAIN.y),
-    ).toBeGreaterThan(100);
+    // Nowhere on the basin as drawn: not on its rim or in its water, and
+    // not on the wall's foot either (feet stood on the rim before, 22 Nov).
+    const F = PLAZA_FOUNTAIN,
+      onBasin = (x: number, y: number) =>
+        ((x - F.x) / F.rx) ** 2 + ((y - F.y) / F.ry) ** 2 < 1 ||
+        ((x - F.x) / F.rx) ** 2 + ((y - F.y - F.wall) / F.ry) ** 2 < 1;
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 24)
+      for (const k of [0, 0.4, 0.8, 0.99])
+        for (const dy of [0, F.wall / 2, F.wall]) {
+          const f = plazaCollide({
+            x: F.x + Math.cos(a) * F.rx * k,
+            y: F.y + dy + Math.sin(a) * F.ry * k,
+          });
+          expect(onBasin(f.x, f.y), `${f.x}, ${f.y}`).toBe(false);
+        }
     const p = plazaCollide({ x: PLAZA_POND.x + 5, y: PLAZA_POND.y + 5 });
     expect(
       ((p.x - PLAZA_POND.x) / PLAZA_POND.rx) ** 2 +

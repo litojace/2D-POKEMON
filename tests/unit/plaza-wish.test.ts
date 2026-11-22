@@ -73,10 +73,15 @@ describe("standing at the fountain", () => {
       });
       expect(atFountain(p.x, p.y), `angle ${a.toFixed(2)}`).toBe(true);
     }
-    expect(PLAZA_OBSTACLES[0]).toMatchObject({
-      x: PLAZA_FOUNTAIN.x,
-      y: PLAZA_FOUNTAIN.y,
-    });
+    // The first obstacle is the basin, from its rim's far edge to its
+    // wall's near foot.
+    const o = PLAZA_OBSTACLES[0],
+      F = PLAZA_FOUNTAIN;
+    expect(o.x).toBe(F.x);
+    expect(o.y - (o.r + PLAZA.radius) / o.sy!).toBeLessThanOrEqual(F.y - F.ry);
+    expect(o.y + (o.r + PLAZA.radius) / o.sy!).toBeGreaterThanOrEqual(
+      F.y + F.wall + F.ry,
+    );
   });
   it("gives the server a little slack for lag", () => {
     const edge = PLAZA_FOUNTAIN.x + PLAZA_WISH.reach.rx + 20;

@@ -64,7 +64,20 @@ export interface PlazaTreat {
 }
 
 export const PLAZA_SQUARE = { x: 1350, y: 900, rx: 372, ry: 246 } as const;
-export const PLAZA_FOUNTAIN = { x: 1350, y: 892, rx: 118, ry: 74 } as const;
+/**
+ * The wishing fountain's basin as drawn (plaza-scene.ts drawFountain): its
+ * rim, an ellipse round (x, y), and a wall `wall` px tall below it, so its
+ * foot on the ground is the same ellipse `wall` px lower. Bodies keep out of
+ * both (PLAZA_OBSTACLES[0]); before, a smaller ellipse let feet stand on the
+ * rim and in the water.
+ */
+export const PLAZA_FOUNTAIN = {
+  x: 1350,
+  y: 892,
+  rx: 126,
+  ry: 80,
+  wall: 24,
+} as const;
 export const PLAZA_STAGE = { x0: 1140, x1: 1560, y0: 340, y1: 450 } as const;
 export const PLAZA_WALK = { x0: 1300, x1: 1400, y0: 450, y1: 612 } as const;
 export const PLAZA_LED = { x0: 1130, x1: 1570, y0: 150, y1: 300 } as const;
@@ -85,6 +98,19 @@ export const PLAZA_TRACK = {
   ri: [262, 168],
 } as const;
 export const PLAZA_POND = { x: 2210, y: 1450, rx: 220, ry: 118 } as const;
+/**
+ * The fishing dock: planks from the pond's west bank out over the water
+ * (drawn by plaza-fishing.ts). Feet may stand on it (`walk`, plazaCollide),
+ * and Fish walks you to `stand`, near its end, facing the water.
+ */
+export const PLAZA_DOCK = {
+  x0: 1966,
+  x1: 2072,
+  y0: 1398,
+  y1: 1436,
+  walk: { x1: 2056, y0: 1408, y1: 1432 },
+  stand: { x: 2038, y: 1427 },
+} as const;
 export const PLAZA_GATE = { x: 1350, y: 1600 } as const;
 export const PLAZA_PADS: readonly (readonly [number, number])[] = [
   [1145, 765],
@@ -736,7 +762,21 @@ export interface PlazaObstacle {
   sy?: number;
 }
 export const PLAZA_OBSTACLES: readonly PlazaObstacle[] = [
-  { x: PLAZA_FOUNTAIN.x, y: PLAZA_FOUNTAIN.y, r: 100, sy: 1.6 },
+  // The basin's rim and its foot (PLAZA_FOUNTAIN): an ellipse from the rim's
+  // far edge to the wall's near foot, a few px clear all round.
+  (() => {
+    const F = PLAZA_FOUNTAIN,
+      top = F.y - F.ry - 4,
+      bottom = F.y + F.wall + F.ry + 4,
+      rx = F.rx + 6,
+      ry = (bottom - top) / 2;
+    return {
+      x: F.x,
+      y: (top + bottom) / 2,
+      r: rx - PLAZA.radius,
+      sy: rx / ry,
+    };
+  })(),
   ...PLAZA_TREES.map((t) => ({ x: t.x, y: t.y, r: 22 })),
   ...PLAZA_LAMPS.map((l) => ({ x: l.x, y: l.y, r: 9 })),
   ...PLAZA_SIGNPOSTS.map((p) => ({ x: p.x, y: p.y, r: 8 })),
@@ -766,9 +806,13 @@ export function plazaCollide(b: { x: number; y: number }) {
       dy = (b.y - o.y) * sy,
       d = Math.hypot(dx, dy),
       m = o.r + R;
-    if (d < m && d > 0) {
-      b.x = o.x + (dx / d) * m;
-      b.y = o.y + ((dy / d) * m) / sy;
+    if (d < m) {
+      // Right on its centre: out the front (no way is better than another).
+      if (d === 0) b.y = o.y + m / sy;
+      else {
+        b.x = o.x + (dx / d) * m;
+        b.y = o.y + ((dy / d) * m) / sy;
+      }
     }
   }
   if (
@@ -784,6 +828,14 @@ export function plazaCollide(b: { x: number; y: number }) {
   if (b.y > PLAZA_GATE.y + 30) b.y = PLAZA_GATE.y + 30;
   const P = PLAZA_POND;
   if (((b.x - P.x) / P.rx) ** 2 + ((b.y - P.y) / P.ry) ** 2 < 1) {
+    // On the dock (or stepping off its sides): kept on its planks.
+    const D = PLAZA_DOCK,
+      W = D.walk;
+    if (b.x <= W.x1 + 24 && b.y >= W.y0 - 24 && b.y <= W.y1 + 24) {
+      b.x = Math.min(b.x, W.x1);
+      b.y = Math.max(W.y0, Math.min(W.y1, b.y));
+      return b;
+    }
     const a = Math.atan2((b.y - P.y) / P.ry, (b.x - P.x) / P.rx);
     b.x = P.x + Math.cos(a) * P.rx;
     b.y = P.y + Math.sin(a) * P.ry;
@@ -1423,11 +1475,11 @@ export const PLAZA_FISHING = {
   reachSlack: 40,
   /** The most catches that count per Pacific day (toward the fish quest). */
   perDay: 30,
-  /** Where the bobber lands: in open water (clear of the lily pads), in
-   * front of the spot. */
+  /** Where the bobber lands: out near the pond's middle, in open water
+   * clear of the lily pads and the ducks' rounds (plaza-scene.ts). */
   bobber: {
-    x: PLAZA_POND.x - PLAZA_POND.rx * 0.64,
-    y: PLAZA_POND.y + 18,
+    x: PLAZA_POND.x - 25,
+    y: PLAZA_POND.y + 4,
   },
 } as const;
 /** How common each rarity is (relative weight per fish) and its colour. */

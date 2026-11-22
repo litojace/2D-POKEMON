@@ -11,6 +11,7 @@ import {
 } from "../../packages/shared/src/plaza-fight";
 import {
   PLAZA,
+  PLAZA_DOCK,
   PLAZA_FISH,
   PLAZA_FISH_BY_ID,
   PLAZA_FISH_RARITY,
@@ -188,6 +189,52 @@ describe("the fish table", () => {
       text: "Catch 10 fish",
       max: 10,
     });
+  });
+});
+
+describe("the fishing dock", () => {
+  const P = PLAZA_POND,
+    inPond = (x: number, y: number) =>
+      ((x - P.x) / P.rx) ** 2 + ((y - P.y) / P.ry) ** 2 < 1;
+  it("is where Fish takes you: on its planks, out over the water, in reach of the spot", () => {
+    const S = PLAZA_DOCK.stand,
+      D = PLAZA_DOCK;
+    expect(inPond(S.x, S.y)).toBe(true);
+    expect(plazaCollide({ x: S.x, y: S.y })).toEqual({ x: S.x, y: S.y });
+    expect(S.x).toBeGreaterThan(D.x0);
+    expect(S.x).toBeLessThan(D.x1);
+    expect(S.y).toBeGreaterThan(D.y0);
+    expect(S.y).toBeLessThan(D.y1);
+    expect(plazaSpotAt(S.x, S.y)?.id).toBe("fish");
+    // From the bank onto the dock is clear walking (the click path too).
+    const walker = { x: SPOT.x, y: S.y };
+    for (let x = SPOT.x; x <= S.x; x += 4) {
+      walker.x = x;
+      plazaCollide(walker);
+      expect(walker.y).toBe(S.y);
+    }
+  });
+  it("keeps feet on its planks: off its sides or its end you stay on it", () => {
+    const W = PLAZA_DOCK.walk;
+    for (const [x, y] of [
+      [2030, W.y0 - 15],
+      [2030, W.y1 + 15],
+      [W.x1 + 15, 1420],
+    ]) {
+      const b = plazaCollide({ x, y });
+      expect(b.x).toBeLessThanOrEqual(W.x1);
+      expect(b.y).toBeGreaterThanOrEqual(W.y0);
+      expect(b.y).toBeLessThanOrEqual(W.y1);
+    }
+    // Elsewhere the pond still pushes you out onto its bank.
+    const b = plazaCollide({ x: P.x, y: P.y + 30 });
+    expect(inPond(b.x, b.y)).toBe(false);
+  });
+  it("casts out near the pond's middle, well past the dock's end", () => {
+    const B = PLAZA_FISHING.bobber;
+    expect(Math.abs(B.x - P.x)).toBeLessThan(P.rx * 0.2);
+    expect(Math.abs(B.y - P.y)).toBeLessThan(P.ry * 0.2);
+    expect(B.x - PLAZA_DOCK.x1).toBeGreaterThan(80);
   });
 });
 

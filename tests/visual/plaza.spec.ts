@@ -131,27 +131,59 @@ for (const viewport of [
         if (gapB < mb + 30)
           expect(gapB, `${b.name} bottom margin`).toBeCloseTo(mb, 0);
       }
-      // Today's quests, sized against their neighbours: on phones the
-      // folded list is the player card's twin right under it; on desktop
-      // a column as wide as the card.
+      // Today's quests: a round button like the round buttons over Jump
+      // (the Lobby rail's Missions), under the player card on phones and
+      // under the clock on desktop.
       const card = all.find((b) => b.name === "profile")!,
-        quests = all.find((b) => b.name === "quests")!;
+        clock = all.find((b) => b.name === "clock")!,
+        quests = all.find((b) => b.name === "quests")!,
+        round = await page
+          .locator("#pz-map-btn")
+          .evaluate((el) => el.getBoundingClientRect().width);
+      expect(quests.w, "quests round").toBeCloseTo(quests.h, 0);
+      expect(quests.w, "as big as the other round buttons").toBeCloseTo(
+        round,
+        0,
+      );
       if (phone) {
-        expect(quests.w, "quests as wide as the card").toBeCloseTo(card.w, 0);
-        expect(quests.h, "folded quests as tall as the card").toBeCloseTo(
-          card.h,
+        expect(quests.x, "quests under the card").toBeCloseTo(card.x, 0);
+        expect(quests.y).toBeGreaterThan(card.y + card.h);
+      } else {
+        expect(quests.x + quests.w, "under the clock").toBeCloseTo(
+          clock.x + clock.w,
           0,
         );
-        expect(quests.x, "quests under the card").toBeCloseTo(card.x, 0);
-      } else {
-        // As wide as the player card on the other side, and short enough
-        // to leave the right side of the playground open: 215 px for five
-        // quests, a row (37 px) more for each one past that.
-        expect(quests.w, "quests as wide as the card").toBeCloseTo(card.w, 0);
-        expect(quests.h, "quests height").toBeLessThanOrEqual(
-          215 + Math.max(0, PLAZA_QUESTS.length - 5) * 37,
-        );
+        expect(quests.y).toBeGreaterThan(clock.y + clock.h);
       }
+      // Open, the list fits the screen (inside the safe area) and each
+      // quest reads on one line.
+      await page.click("#pz-quests [data-qopen]");
+      const panel = page.locator("#pz-qpanel");
+      await expect(panel).toBeVisible();
+      await panel.evaluate((el) =>
+        Promise.all(el.getAnimations().map((a) => a.finished)),
+      );
+      const pb = (await panel.boundingBox())!;
+      expect(pb.x).toBeGreaterThanOrEqual(left - 1);
+      expect(pb.x + pb.width).toBeLessThanOrEqual(viewport.width - right + 1);
+      expect(pb.y + pb.height).toBeLessThanOrEqual(
+        viewport.height - bottom + 1,
+      );
+      const lines = await panel.evaluate((el) =>
+        [...el.querySelectorAll(".pz-q .tx b")].map((b) => {
+          const r = b.getBoundingClientRect(),
+            lh = parseFloat(getComputedStyle(b).lineHeight);
+          return Math.round(r.height / lh);
+        }),
+      );
+      expect(lines).toEqual(PLAZA_QUESTS.map(() => 1));
+      await snap(
+        page,
+        info,
+        `plaza-quests-${viewport.width}x${viewport.height}${viewport.inset ? "-island" : ""}`,
+      );
+      await page.click("#pz-quests [data-qclose]");
+      await expect(panel).toBeHidden();
       const clashes = all.flatMap((a, i) =>
         all
           .slice(i + 1)
@@ -1075,8 +1107,8 @@ test("the event pill shows when you arrive mid-shower", async ({ page }) => {
 
 // Phones: the emote wheel ran up over the coins, the gear and the clock on
 // a 360px-tall screen, and the toast sat on the action button that grows
-// left of Dash and Jump by the Volt Boba. The wheel opens left of the
-// Emote row, under the header; the toast rises over the Dash and Jump row.
+// left of Dash and Jump by the Volt Boba. The wheel (Q) opens over you,
+// under the header; the toast rises over the Dash and Jump row.
 test("on a short phone the emote wheel and a toast keep clear of the HUD", async ({
   browser,
 }) => {
@@ -1097,7 +1129,11 @@ test("on a short phone the emote wheel and a toast keep clear of the HUD", async
       a: { l: number; t: number; r: number; b: number },
       b: typeof a,
     ) => a.r <= b.l + 1 || b.r <= a.l + 1 || a.b <= b.t + 1 || b.b <= a.t + 1;
-    await page.click("#pz-wheel-btn");
+    // The wheel is a keyboard's (Q): on touch, emotes are the Chat
+    // button's quick chips (its own HUD button went, owner 22 Nov).
+    await expect(page.locator("#pz-wheel-btn")).toHaveCount(0);
+    await page.locator(".plaza-layer").focus();
+    await page.keyboard.press("q");
     await expect(page.locator("#pz-wheel")).toBeVisible();
     // Full size: once its pop-in (from 0.6) has finished.
     await page
@@ -1115,7 +1151,8 @@ test("on a short phone the emote wheel and a toast keep clear of the HUD", async
     expect(wheel.t, "wheel under the header").toBeGreaterThanOrEqual(
       (await rect("#account-profile")).b,
     );
-    await page.click("#pz-wheel-btn");
+    await page.keyboard.press("q");
+    await expect(page.locator("#pz-wheel")).toBeHidden();
     await page.evaluate(() => (window as any).__plazaPosition(1745, 520));
     await expect(page.locator("#pz-interact")).toBeVisible({ timeout: 10_000 });
     await page.evaluate(() => {
@@ -1137,29 +1174,21 @@ test("on a short phone the emote wheel and a toast keep clear of the HUD", async
   }
 });
 
-// The Emote button lights up while its wheel is open, like the Lobby's
-// rail; a second tap on it closes the wheel. A tap on the Plaza with the
-// wheel or a player's card open only closes it: you don't walk there.
-test("the Emote button lights up, and a second tap or a tap on the Plaza closes its wheel", async ({
+// The emote wheel opens with Q (its HUD button went: on touch, emotes are
+// the Chat button's quick chips) and Q closes it. A tap on the Plaza with
+// the wheel or a player's card open only closes it: you don't walk there.
+test("Q opens and closes the emote wheel, and a tap on the Plaza only closes it", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const errors = await openPlaza(page);
-  const btn = page.locator("#pz-wheel-btn"),
-    wheel = page.locator("#pz-wheel");
-  const bg = async () =>
-    asRgb(await btn.evaluate((el) => getComputedStyle(el).backgroundColor));
-  const unlit = await bg();
-  await btn.click();
+  const wheel = page.locator("#pz-wheel");
+  await expect(page.locator("#pz-wheel-btn")).toHaveCount(0);
+  await page.locator(".plaza-layer").focus();
+  await page.keyboard.press("q");
   await expect(wheel).toBeVisible();
-  await expect(btn).toHaveAttribute("aria-expanded", "true");
-  // Once its background transition has run (the CPU-drawn test browser
-  // can hold frames back for seconds while the Plaza draws).
-  await expect.poll(bg, { timeout: 20_000 }).toBe("rgba(255, 214, 91, 0.18)");
-  await btn.click();
+  await page.keyboard.press("q");
   await expect(wheel).toBeHidden();
-  await expect(btn).toHaveAttribute("aria-expanded", "false");
-  await expect.poll(bg, { timeout: 20_000 }).toBe(unlit);
 
   // Open ground east of you (where the walking test goes), on the canvas.
   const local = () =>
@@ -1176,11 +1205,10 @@ test("the Emote button lights up, and a second tap or a tap on the Plaza closes 
     [start.x + 160, start.y],
   );
   expect(spot.hit).toBe("pz-cv");
-  await btn.click();
+  await page.keyboard.press("q");
   await expect(wheel).toBeVisible();
   await page.mouse.click(spot.x, spot.y);
   await expect(wheel).toBeHidden();
-  await expect(btn).toHaveAttribute("aria-expanded", "false");
   await page.waitForTimeout(1200);
   expect(await local(), "the tap that closed the wheel walked you").toEqual(
     start,
@@ -1191,8 +1219,9 @@ test("the Emote button lights up, and a second tap or a tap on the Plaza closes 
     .poll(async () => (await local()).x, { timeout: 15_000 })
     .toBeGreaterThan(start.x + 40);
 
-  // Another button closes the wheel and does its own thing.
-  await btn.click();
+  // A button closes the wheel and does its own thing.
+  await page.locator(".plaza-layer").focus();
+  await page.keyboard.press("q");
   await expect(wheel).toBeVisible();
   await page.click("#pz-album-btn");
   await expect(wheel).toBeHidden();
@@ -1208,7 +1237,8 @@ test("Nearby chat on the Plaza: the wheel sends quick chat, phrases pop over the
 }, info) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const errors = await openPlaza(page);
-  await page.click("#pz-wheel-btn");
+  await page.locator(".plaza-layer").focus();
+  await page.keyboard.press("q");
   await page.click('#pz-wheel [data-emote="👋"]');
   // The Plaza's own state carries it, for everyone (older apps too).
   await expect
