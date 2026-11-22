@@ -3060,6 +3060,11 @@ export function openPlaza(options) {
   });
 
   /* ---------- your movement ---------- */
+  /** How long the last frame took (s, up to 0.5): the next is likely as
+   *  long, and the stick you send now is played that long. */
+  let frameDt = 1 / 60,
+    /** How much of full speed the walk's stick asks for (1 but near a turn). */
+    steerK = 1;
   function inputDir() {
     let x = 0,
       y = 0;
@@ -3072,6 +3077,7 @@ export function openPlaza(options) {
       y += joy.y;
     }
     if (!target) route = [];
+    steerK = 1;
     // Held up on the way (someone in it, a bump): find the way again.
     if (
       !x &&
@@ -3091,8 +3097,15 @@ export function openPlaza(options) {
         target = route.shift() ?? null;
         if (!target) routeEnd = null;
       } else {
-        x = dx / d;
-        y = dy / d;
+        // Slower as you come in, so a long frame (a slow device, under 20
+        // fps) doesn't carry you past the turn and back again: the stick
+        // is held for the whole frame, by the browser and the server.
+        const reach =
+            PLAZA.speed * (P.boost > 0 ? PLAZA.boba.speed : 1) * frameDt,
+          k = reach > d ? d / reach : 1;
+        steerK = k;
+        x = (dx / d) * k;
+        y = (dy / d) * k;
         if (P.stuckT > 0.12) {
           const c = Math.cos(1.2),
             s = Math.sin(1.2);
@@ -5926,12 +5939,15 @@ export function openPlaza(options) {
     } else coveredAt = undefined;
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
     // You (and the ball you kick) move by the time that really passed, in
-    // the server's own 0.05 s steps, up to half a second a frame.
+    // the server's own 0.05 s steps, up to a second a frame (the server's
+    // own limit: past it, the two clocks would part, and the server, which
+    // places your stamped inputs on its own clock, would play them late).
     // With only the capped dt, a device under 20 fps moved you less than
     // the server did with the same stick: a Go walk stopped where the
     // browser had you while the server's copy walked on (past the dock's
     // end on a slow CI runner), and every correction pulled you after it.
-    const moveDt = Math.max(0, Math.min(0.5, (now - last) / 1000));
+    const moveDt = Math.max(0, Math.min(1, (now - last) / 1000));
+    frameDt = Math.max(1 / 120, moveDt);
     // The fireworks keep to the clock down to 4 frames a second: at dt's
     // 0.05 s cap a slow device (under 20 fps) aged their sparks in slow
     // motion, and the show outlasted PLAZA_WISH.showMs by many seconds.
@@ -5946,6 +5962,25 @@ export function openPlaza(options) {
       if (todHold > 0) todHold -= dt;
       else tod = realTod();
       // You: the same step as the server, then a gentle pull toward where it says you are.
+      const ox = P.x,
+        oy = P.y;
+      const ev2: { bounced?: number; landed?: boolean; tripped?: boolean } = {};
+      const run = (span) => {
+        for (let left = span; left > 1e-6; left -= 0.05) {
+          const h = Math.min(0.05, left);
+          const e = plazaStep(P, sent, h);
+          if (e.bounced !== undefined) ev2.bounced = e.bounced;
+          if (e.landed) ev2.landed = true;
+          if (e.tripped) ev2.tripped = true;
+          // The ball you run into, step by step with you (plaza-net.ts).
+          net.ball?.step(P, h, performance.now());
+        }
+        stepClock += span * 1000;
+      };
+      // A long frame (under 20 fps): the time that passed beyond one step
+      // was walked, on the server, with the stick it already had.
+      const catchUp = Math.max(0, moveDt - 0.05);
+      run(catchUp);
       let dir = inputDir();
       if (covered()) {
         keys.clear();
@@ -5953,19 +5988,8 @@ export function openPlaza(options) {
         dir = { x: 0, y: 0 };
       }
       sendInput(dir, now);
-      const ox = P.x,
-        oy = P.y;
-      const ev2: { bounced?: number; landed?: boolean; tripped?: boolean } = {};
-      for (let left = moveDt; left > 1e-6; left -= 0.05) {
-        const h = Math.min(0.05, left);
-        const e = plazaStep(P, sent, h);
-        if (e.bounced !== undefined) ev2.bounced = e.bounced;
-        if (e.landed) ev2.landed = true;
-        if (e.tripped) ev2.tripped = true;
-        // The ball you run into, step by step with you (plaza-net.ts).
-        net.ball?.step(P, h, performance.now());
-      }
-      stepClock += moveDt * 1000;
+      // The frame's own step with the stick as sent now.
+      run(moveDt - catchUp);
       if (ev2.bounced !== undefined)
         FX.push({
           ring: 1,
@@ -5981,7 +6005,7 @@ export function openPlaza(options) {
         pzToast("Tripped! Press Space to jump the hurdles.");
       }
       P.stuckT =
-        target && P.speed < PLAZA.speed * 0.5 && P.dash <= 0
+        target && P.speed < PLAZA.speed * 0.5 * steerK && P.dash <= 0
           ? (P.stuckT || 0) + dt
           : Math.max(0, (P.stuckT || 0) - dt * 0.5);
       if (srv?.acked) {
