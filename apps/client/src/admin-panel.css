@@ -634,6 +634,85 @@ dialog.framed-dialog .adm-tabs > .admin-tab {
   min-height: 42px;
 }
 
+/* ---- Coins (a player's row) ---- */
+.adm-dim {
+  color: var(--adm-dim);
+}
+.adm-facts .adm-wide {
+  grid-column: 1 / -1;
+}
+.adm-facts [data-coins] b {
+  color: var(--ui-accent-hi, #ffe58f);
+  font-size: calc(15px * var(--text-scale, 1));
+}
+.adm-coins {
+  display: grid;
+  gap: 8px;
+}
+.adm-coin-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+#adm-root .adm-coins input {
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+#adm-root .adm-coins input[name="amount"] {
+  flex: 0 1 140px;
+  width: 140px;
+}
+.adm-presets {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.adm .adm-presets > button {
+  flex: none;
+  min-height: 38px;
+  padding: 6px 12px;
+  border: 1px solid #ffd65b55;
+  border-radius: 999px;
+  background: #ffd65b14;
+  color: #ffe58f;
+  font-size: calc(12px * var(--text-scale, 1));
+  font-weight: 800;
+}
+.adm-ledger {
+  display: grid;
+  gap: 2px;
+  margin: 4px 0 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #0d1a30;
+  list-style: none;
+}
+.adm-ledger li {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  font-size: calc(12px * var(--text-scale, 1));
+}
+.adm-ledger span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adm-ledger small {
+  color: var(--adm-dim);
+}
+.adm-plus {
+  color: #7ff0ad;
+}
+.adm-minus {
+  color: #ff9aa3;
+}
+
 /* ---- Online ---- */
 .adm .online-summary {
   margin: 0;

@@ -20,6 +20,11 @@ async function fakeAdmin(page: Page) {
         new Date(Date.now() - minutes * 60000).toISOString();
       const state = {
         calls: [] as { path: string; body: any }[],
+        wallets: { [NOVA]: 250 } as Record<string, number>,
+        chat: {} as Record<string, { until: string; reason: string }>,
+        ledger: {
+          [NOVA]: [{ amount: 250, reason: "pvp", at: at(60) }],
+        } as Record<string, { amount: number; reason: string; at: string }[]>,
         titles: [
           {
             id: RIVAL_TITLE,
@@ -190,6 +195,36 @@ async function fakeAdmin(page: Page) {
             total: list.length,
             open: state.reports.filter((r) => r.status === "open").length,
           });
+        }
+        const statusOf = /^\/api\/admin\/players\/([^/]+)\/status$/.exec(path);
+        if (statusOf) {
+          const id = statusOf[1];
+          return reply({
+            balance: state.wallets[id] ?? 0,
+            chatUntil: state.chat[id]?.until ?? null,
+            chatReason: state.chat[id]?.reason ?? null,
+            coins: state.ledger[id] ?? [],
+          });
+        }
+        if (path === "/api/admin/chat-ban") {
+          if (body.hours)
+            state.chat[body.playerId] = {
+              until: new Date(Date.now() + body.hours * 3600000).toISOString(),
+              reason: body.reason,
+            };
+          else delete state.chat[body.playerId];
+          return reply({ ok: true });
+        }
+        if (path === "/api/admin/coins") {
+          const balance = state.wallets[body.playerId] ?? 0;
+          const applied = Math.max(body.amount, -balance);
+          state.wallets[body.playerId] = balance + applied;
+          (state.ledger[body.playerId] ??= []).unshift({
+            amount: applied,
+            reason: "admin",
+            at: new Date().toISOString(),
+          });
+          return reply({ applied, balance: balance + applied });
         }
         if (path === "/api/admin/players") {
           const s = (q.get("search") ?? "").toLowerCase();
@@ -383,8 +418,58 @@ test("Admin actions on a phone held sideways", async ({ browser }, info) => {
       path: "/api/admin/chat-ban",
       body: { playerId: NOVA, hours: 24, reason: "Set in the Admin panel" },
     });
-    // The row stays open after the redraw.
+    // The row stays open after the redraw, and shows the mute.
     await expect(nova.locator(".adm-detail")).toBeVisible();
+    await expect(nova.locator("[data-chat]")).toContainText("Muted until");
+    await expect(nova.locator("[data-chat]")).toContainText(
+      "Set in the Admin panel",
+    );
+
+    // Coins: the balance, a quick amount, a reason, then add and take.
+    await expect(nova.locator("[data-coins]")).toHaveText("250");
+    const coinForm = nova.locator('form[data-form="coins"]');
+    const firstRef = await coinForm.getAttribute("data-ref");
+    await coinForm
+      .locator('[data-act="coin-preset"][data-amount="500"]')
+      .click();
+    await expect(coinForm.locator('input[name="amount"]')).toHaveValue("500");
+    await coinForm.locator('input[name="reason"]').fill("Raid bug refund");
+    await snap(page, info, "admin-coins-844x390");
+    await coinForm.locator('button[value="add"]').click();
+    await expect(page.locator("#admin-message")).toHaveText(
+      "Added 500 coins to Nova. Balance: 750.",
+    );
+    expect((await calls(page)).at(-1)).toEqual({
+      path: "/api/admin/coins",
+      body: {
+        playerId: NOVA,
+        amount: 500,
+        reason: "Raid bug refund",
+        ref: firstRef,
+      },
+    });
+    await expect(nova.locator("[data-coins]")).toHaveText("750");
+    // A new form means a new request id.
+    expect(
+      await nova.locator('form[data-form="coins"]').getAttribute("data-ref"),
+    ).not.toBe(firstRef);
+    // Taking more than they have stops at 0.
+    await nova
+      .locator('form[data-form="coins"] input[name="amount"]')
+      .fill("1000");
+    await nova
+      .locator('form[data-form="coins"] input[name="reason"]')
+      .fill("Exploit clean-up");
+    await nova.locator('form[data-form="coins"] button[value="take"]').click();
+    await expect(page.locator("#admin-message")).toHaveText(
+      "Took 750 coins from Nova. Balance: 0.",
+    );
+    await expect(nova.locator("[data-coins]")).toHaveText("0");
+    await nova
+      .locator(".adm-ledger")
+      .evaluate((e) => e.closest("details")!.setAttribute("open", ""));
+    await expect(nova.locator(".adm-ledger li")).toHaveCount(3);
+    await expect(nova.locator(".adm-ledger li").first()).toContainText("-750");
 
     // Suspend asks first.
     await nova.locator('[data-act="suspend"]').click();
