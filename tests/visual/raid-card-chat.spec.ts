@@ -11,7 +11,9 @@ import {
 // raid's cards are up: the battle's quick chat over the briefing, the room's
 // chat over the results. Both cards used to start under it (the title and
 // the first step hidden); now they start to its right (raid-cards.css,
-// chat-corner in main.ts), with or without a notch on that side.
+// chat-corner in main.ts), with or without a notch on that side. Since the
+// cards take the whole screen (match-sheet.css, 22 Nov 2026), their
+// content (the steps or the scoreboard, and the foot) keeps that column.
 for (const phone of [
   { name: "plain", insets: null },
   { name: "island", insets: { left: 59, right: 16, bottom: 21, top: 0 } },
@@ -60,15 +62,23 @@ for (const phone of [
         await expect(page.locator(button)).toBeVisible();
         await expect
           .poll(async () => {
-            const c = (await card.boundingBox())!;
             const b = (await page.locator(button).boundingBox())!;
-            return c.x - (b.x + b.width);
+            const left = Math.min(
+              ...(await Promise.all(
+                [".rc-body", ".rc-foot"].map(
+                  async (q) => (await card.locator(q).boundingBox())!.x,
+                ),
+              )),
+            );
+            return left - (b.x + b.width);
           })
           .toBeGreaterThanOrEqual(4);
-        // Still a wide card, inside the screen.
+        // The whole screen; the content still wide, inside it.
         const c = (await card.boundingBox())!;
-        expect(c.width).toBeGreaterThan(600);
-        expect(c.x + c.width).toBeLessThanOrEqual(852);
+        expect([c.x, c.width]).toEqual([0, 852]);
+        const body = (await card.locator(".rc-body").boundingBox())!;
+        expect(body.width).toBeGreaterThan(600);
+        expect(body.x + body.width).toBeLessThanOrEqual(852);
         await snap(page, info, `raid-card-chat-${phone.name}-${phase}`);
       }
       expect(errors).toEqual([]);

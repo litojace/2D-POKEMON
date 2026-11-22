@@ -236,7 +236,8 @@
 .chat-push[hidden] {
   display: none;
 }
-.chat-push-toggle {
+.chat-push-toggle,
+.chat-news-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -256,7 +257,8 @@
   cursor: pointer;
 }
 /* The switch's knob. */
-.chat-push-toggle::before {
+.chat-push-toggle::before,
+.chat-news-toggle::before {
   content: "";
   order: 2;
   flex: none;
@@ -266,11 +268,19 @@
   background:
     radial-gradient(circle at 10px 50%, #fff 7px, transparent 7.5px), #4a5674;
 }
-.chat-push-toggle[aria-checked="true"]::before {
+.chat-push-toggle[aria-checked="true"]::before,
+.chat-news-toggle[aria-checked="true"]::before {
   background:
     radial-gradient(circle at 24px 50%, #2a1a00 7px, transparent 7.5px), #ffd65b;
 }
-.chat-push-toggle:disabled {
+.chat-news-toggle {
+  margin-top: 8px;
+}
+.chat-news-toggle[hidden] {
+  display: none;
+}
+.chat-push-toggle:disabled,
+.chat-news-toggle:disabled {
   opacity: 0.55;
   cursor: default;
 }

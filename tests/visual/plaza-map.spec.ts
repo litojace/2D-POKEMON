@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openPlaza, snap } from "./helpers";
 import {
+  PLAZA,
   PLAZA_PLACES,
   PLAZA_QUESTS,
   plazaPlaceOf,
@@ -191,35 +192,6 @@ test("Plaza today is a round button that opens its list, on a phone too", async 
   }
 });
 
-/**
- * Wait until the Plaza draws steadily (20 frames in a row under 50 ms). On a
- * CI runner its first seconds can draw only a few frames, while sprites are
- * baked and the ground is painted: a test that acts at once measured that
- * warm-up, not the feature (main's full runs for #351).
- */
-async function warm(page: Page) {
-  await page.evaluate(
-    () =>
-      new Promise<void>((done, fail) => {
-        let n = 0,
-          last = performance.now();
-        const give = setTimeout(
-          () => fail(new Error("the Plaza never drew steadily")),
-          30_000,
-        );
-        const f = (t: number) => {
-          n = t - last < 50 ? n + 1 : 0;
-          last = t;
-          if (n >= 20) {
-            clearTimeout(give);
-            done();
-          } else requestAnimationFrame(f);
-        };
-        requestAnimationFrame(f);
-      }),
-  );
-}
-
 test("a movement key takes back a Go walk; a jump doesn't", async ({
   page,
 }) => {
@@ -229,7 +201,6 @@ test("a movement key takes back a Go walk; a jump doesn't", async ({
       const b = (window as any).__plazaWorld.bodyOf("local");
       return { x: b.x, y: b.y };
     });
-  await warm(page);
   await page.locator(".plaza-layer").focus();
   // Go to the pond, then jump on the way: still walking there.
   await page.keyboard.press("m");
@@ -238,20 +209,71 @@ test("a movement key takes back a Go walk; a jump doesn't", async ({
   await page.keyboard.press(" ");
   const a = await at();
   await expect
-    .poll(async () => {
-      const b = await at();
-      return Math.hypot(b.x - a.x, b.y - a.y);
-    })
+    .poll(
+      async () => {
+        const b = await at();
+        return Math.hypot(b.x - a.x, b.y - a.y);
+      },
+      { timeout: 20_000 },
+    )
     .toBeGreaterThan(80);
-  // A tap of a movement key: the walk stops once it's let go.
+  // (Polled: on a CI runner the Plaza can take seconds to get going.)
+  // A tap of a movement key: the walk stops once it's let go. The keys
+  // go to the Plaza (the map's list button had focus), held until the page
+  // has drawn twice: on a CI runner at 4 fps a 120 ms tap fell between
+  // frames, and the walk went on 191 px.
+  await page.locator(".plaza-layer").focus();
+  const focused = await page.evaluate(
+    () => document.activeElement?.className ?? "",
+  );
   await page.keyboard.down("a");
+  await page.evaluate(
+    () =>
+      new Promise((done) =>
+        requestAnimationFrame(() => requestAnimationFrame(done)),
+      ),
+  );
   await page.waitForTimeout(120);
   await page.keyboard.up("a");
+  // Stopped: half a second on (the server's copy is a snapshot behind),
+  // it stands still (three looks in a row) within a couple of frames'
+  // walk of where it was. (A slow page passes the stop on a frame or two
+  // later; the old bug walked on to the pond.)
   await page.waitForTimeout(500);
   const c = await at();
-  await page.waitForTimeout(800);
-  const d = await at();
-  expect(Math.hypot(d.x - c.x, d.y - c.y)).toBeLessThan(6);
+  let last = c,
+    still = 0;
+  for (let i = 0; i < 40 && still < 3; i++) {
+    await page.waitForTimeout(250);
+    const b = await at();
+    still = Math.hypot(b.x - last.x, b.y - last.y) < 1 ? still + 1 : 0;
+    last = b;
+  }
+  const frameMs = await page.evaluate(
+    () =>
+      new Promise<number>((done) => {
+        const t: number[] = [];
+        const f = (n: number) => {
+          t.push(n);
+          if (t.length < 21) requestAnimationFrame(f);
+          else {
+            const d = t
+              .slice(1)
+              .map((x, i) => x - t[i])
+              .sort((a, b) => a - b);
+            done(d[Math.floor(d.length * 0.9)]);
+          }
+        };
+        requestAnimationFrame(f);
+      }),
+  );
+  const walkedOn = Math.hypot(last.x - c.x, last.y - c.y),
+    bound = (2 * PLAZA.speed * frameMs) / 1000 + 6;
+  expect(still, "stands still").toBe(3);
+  expect(
+    walkedOn,
+    `walked on after the key (focus "${focused}", slow frames ${Math.round(frameMs)} ms, bound ${Math.round(bound)} px)`,
+  ).toBeLessThan(bound);
   expect(errors).toEqual([]);
 });
 
@@ -271,16 +293,18 @@ test("on a phone, moving the joystick takes back a Go walk", async ({
         const b = (window as any).__plazaWorld.bodyOf("local");
         return { x: b.x, y: b.y };
       });
-    await warm(page);
     await page.click("#pz-map-btn");
     await page.locator('.pz-map-list [data-place="pond"]').click();
     // Walking there (or the stop below would prove nothing).
     const a = await at();
     await expect
-      .poll(async () => {
-        const b = await at();
-        return Math.hypot(b.x - a.x, b.y - a.y);
-      })
+      .poll(
+        async () => {
+          const b = await at();
+          return Math.hypot(b.x - a.x, b.y - a.y);
+        },
+        { timeout: 20_000 },
+      )
       .toBeGreaterThan(40);
     // A short push on the stick, then let go.
     const joy = (await page.locator("#pz-joy").boundingBox())!;
@@ -308,4 +332,82 @@ test("on a phone, moving the joystick takes back a Go walk", async ({
   } finally {
     await context.close();
   }
+});
+
+// A device under 20 fps: the browser moved you only 0.05 s a frame while
+// the server moved you for the time that really passed, so a Go walk
+// stopped late on the server and its copy walked on past the place (40-66
+// px with the CPU slowed 6x; on a CI runner, off the end of the dock). Now
+// you move by the real time, in the server's own steps.
+test("on a slow device a Go walk stops where it was going", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  const errors = await openPlaza(page);
+  // Slowed to about 10 frames a second, whatever the machine: 4x here (60
+  // fps), less on a CI runner that already draws the Plaza slowly. A fixed
+  // 4x on top of a CI runner went far below that, where the harness's
+  // in-page server (slowed with the page) misses its own ticks.
+  const frameRate = () =>
+    page.evaluate(
+      () =>
+        new Promise<[number, number]>((done) => {
+          const t: number[] = [];
+          const f = (n: number) => {
+            t.push(n);
+            if (t.length < 31) requestAnimationFrame(f);
+            else {
+              const d = t
+                .slice(1)
+                .map((x, i) => x - t[i])
+                .sort((a, b) => a - b);
+              done([1000 / d[d.length >> 1], d[Math.floor(d.length * 0.9)]]);
+            }
+          };
+          requestAnimationFrame(f);
+        }),
+    );
+  const [fps] = await frameRate();
+  const rate = Math.min(4, Math.max(1, fps / 10));
+  await (
+    await page.context().newCDPSession(page)
+  ).send("Emulation.setCPUThrottlingRate", { rate });
+  // You can't stop finer than one frame's walk: the bound is the walk in
+  // one of the page's slow frames (its 90th percentile, as it now draws),
+  // at the Boba speed if you have it, and a little (24 px at least). A CI
+  // runner drawing the Plaza at 4 fps walks 60 px a frame; before #364
+  // the walk ended 108-151 px off at 3-4 fps.
+  const [slowFps, slowFrameMs] = await frameRate();
+  const boosted = await page.evaluate(
+    () => (window as any).__plaza.P.boost > 0,
+  );
+  const bound = Math.max(
+    24,
+    (PLAZA.speed * (boosted ? PLAZA.boba.speed : 1) * slowFrameMs) / 1000 + 8,
+  );
+  const server = () =>
+    page.evaluate(() => {
+      const b = (window as any).__plazaWorld.bodyOf("local");
+      return { x: b.x, y: b.y };
+    });
+  for (const id of ["pond", "cafe"]) {
+    const p = PLAZA_PLACES.find((x) => x.id === id)!;
+    await page.click("#pz-map-btn");
+    await page.locator(`.pz-map-list [data-place="${id}"]`).click();
+    // Until the server's copy stands still (four looks in a row).
+    let last = await server(),
+      still = 0;
+    for (let i = 0; i < 160 && still < 4; i++) {
+      await page.waitForTimeout(250);
+      const b = await server();
+      still = Math.hypot(b.x - last.x, b.y - last.y) < 1 ? still + 1 : 0;
+      last = b;
+    }
+    expect(still, id).toBe(4);
+    expect(
+      Math.hypot(last.x - p.x, last.y - p.y),
+      `${id} (page at ${Math.round(fps)} fps, slowed ${rate.toFixed(1)}x to ${Math.round(slowFps)} fps, slow frames ${Math.round(slowFrameMs)} ms, bound ${Math.round(bound)} px)`,
+    ).toBeLessThan(bound);
+  }
+  expect(errors).toEqual([]);
 });

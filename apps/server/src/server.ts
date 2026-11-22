@@ -65,9 +65,11 @@ import {
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
 import { DRAIN_MESSAGE, busyRoom, trackWrites, waitForDrain } from "./drain.js";
+import { MOVE_MESSAGE, supersededBy } from "./drain.js";
 /** Every champion's basic attack: spammed, so it never forces a snapshot. */
 const BASIC_IDS = new Set(Object.values(CHARACTERS).map((c) => c.basic.id));
 import {
+  battleArtSchema,
   battleLoadSchema,
   battlePerfSchema,
   connectionReportSchema,
@@ -184,6 +186,7 @@ import { TickClock } from "./tick-clock.js";
 import { z, ZodError } from "zod";
 import type { Request, Response, NextFunction } from "express";
 import {
+  AnnouncementPush,
   FriendPush,
   validDevice,
   webPushSender,
@@ -230,6 +233,17 @@ export function createArenaServer(
      * with the PUSH_VAPID_* keys, or none without them; null turns it off.
      */
     push?: PushSender | null;
+    /**
+     * This service's own public health address, asked now and then to see
+     * whether a deploy has put a newer server in front of this one
+     * (docs/server-updates.md). Defaults to RENDER_EXTERNAL_URL's
+     * /api/health on a live server (autoTick); none in tests.
+     */
+    publicHealthUrl?: string;
+    /** How often to ask it, in ms (15 s). */
+    supersedeEvery?: number;
+    /** How to ask it (fetch); tests pass their own. */
+    fetchHealth?: (url: string) => Promise<unknown>;
   } = {},
 ) {
   const connectionLog =
@@ -254,6 +268,32 @@ export function createArenaServer(
    * play on to the end, and no new ones start here.
    */
   let draining = false;
+  /** When the drain gives up (epoch ms), for the countdown players see. */
+  let drainDeadline = 0;
+  /**
+   * This process, among the servers a deploy runs side by side: /api/health
+   * says it, so a server can tell that the public address answers from
+   * another (a commit alone can't: a redeploy runs the same one).
+   */
+  const serverId = randomBytes(4).toString("hex");
+  /**
+   * A newer server answers the public address: Render moved new connections
+   * to it, and stops this one about two minutes later (docs/server-updates.md).
+   * Players connected here move over as soon as they're out of a match, and
+   * no new match starts here.
+   */
+  let superseded = false;
+  /**
+   * What players are told while a deploy replaces this server: move to the
+   * new one once out of a match, and, once Render has asked this one to
+   * stop, how long a match in progress still has (ms).
+   */
+  const updateNotice = () => ({
+    reconnect: true,
+    ...(draining
+      ? { draining: true, left: Math.max(0, drainDeadline - Date.now()) }
+      : {}),
+  });
   /** Notifications of friends' messages to players who are away (push.ts). */
   const pushSender =
     options.push === undefined
@@ -264,6 +304,11 @@ export function createArenaServer(
   const friendPush =
     pushSender && accounts.pushDevices
       ? new FriendPush(accounts.pushDevices, pushSender)
+      : null;
+  /** Admins' announcements as notifications, to devices that want game news. */
+  const announcePush =
+    pushSender && accounts.pushDevices
+      ? new AnnouncementPush(accounts.pushDevices, pushSender)
       : null;
   const fighterAppearance = new FighterAppearance(accounts);
   const portraitChoice = new PortraitChoice(accounts);
@@ -748,6 +793,7 @@ export function createArenaServer(
     connectionLog,
     // An admin's announcement reaches every open game, signed in or not.
     (event, payload) => io.emit(event, payload),
+    announcePush,
   );
   /** Signed-in players with a live connection, merged per account. */
   function listOnline(): OnlineList {
@@ -815,7 +861,7 @@ export function createArenaServer(
     return { players, guests, at: new Date().toISOString() };
   }
   app.get("/api/health", (_req, res) =>
-    res.json({ ok: true, rooms: rooms.size }),
+    res.json({ ok: true, rooms: rooms.size, server: serverId }),
   );
   app.use("/api", (_req, res) =>
     res.status(404).json({ error: "Unknown API endpoint." }),
@@ -1519,7 +1565,7 @@ export function createArenaServer(
   }
   io.on("connection", (socket) => {
     claimAccount(socket);
-    if (draining) socket.emit("server-update", { draining: true });
+    if (draining || superseded) socket.emit("server-update", updateNotice());
     void loadChatBlocks(socket);
     // Whether typed lines are on, so the chat box shows the right state.
     socket.emit("chat-config", { freeText: chat.freeText });
@@ -1557,10 +1603,15 @@ export function createArenaServer(
     };
     const fail = (cb: unknown, error: string) =>
       reply(cb, { ok: false, error });
-    /** Refuses a new match while a deploy replaces this server. */
+    /**
+     * Refuses a new match while a deploy replaces this server, and tells the
+     * player again to move to the new one (in case they missed it).
+     */
     const updating = (cb: unknown) => {
-      if (draining) fail(cb, DRAIN_MESSAGE);
-      return draining;
+      if (!draining && !superseded) return false;
+      fail(cb, draining ? DRAIN_MESSAGE : MOVE_MESSAGE);
+      socket.emit("server-update", updateNotice());
+      return true;
     };
     const attach = (
       arena: Arena,
@@ -3029,6 +3080,31 @@ export function createArenaServer(
         fail(cb, "Couldn't turn notifications on. Try again.");
       }
     });
+    // Game news (admins' announcements) on or off for this device
+    // (migration 20261122140000); only the player's own device.
+    socket.on("push-news", async (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !requirePlayer(cb)) return;
+      const d = data as { endpoint?: unknown; on?: unknown } | null;
+      if (
+        typeof d?.endpoint !== "string" ||
+        d.endpoint.length > 1000 ||
+        typeof d.on !== "boolean"
+      )
+        return fail(cb, "Nothing to change.");
+      if (!accounts.pushDevices?.setNews)
+        return fail(cb, "Game news isn't available right now.");
+      try {
+        const done = await accounts.pushDevices.setNews(
+          account()!.id,
+          d.endpoint,
+          d.on,
+        );
+        if (done) reply(cb, { ok: true });
+        else fail(cb, "Turn notifications on for this device first.");
+      } catch {
+        fail(cb, "Couldn't change game news. Try again.");
+      }
+    });
     socket.on("push-unsubscribe", async (data: unknown, cb: unknown) => {
       if (!allowed(5) || !account()) return;
       const endpoint = (data as { endpoint?: unknown } | null)?.endpoint;
@@ -3394,6 +3470,25 @@ export function createArenaServer(
         });
       }),
     );
+    socket.on("battle-art", (data: unknown) =>
+      withRoom(undefined, (a) => {
+        // A fighter's art found blank and loaded again (rig-health.ts in the
+        // client); a cap keeps a looping client quiet.
+        const sent = (socket.data.artReports ?? 0) as number;
+        if (sent >= 10) return;
+        const result = battleArtSchema.safeParse(data);
+        if (!result.success) return;
+        socket.data.artReports = sent + 1;
+        connectionLog("arena-art-blank", {
+          ...result.data,
+          account: account()?.id,
+          room: a.code,
+          mode: a.mode,
+          phase: a.phase,
+          ...(a instanceof RaidArena ? { boss: a.raid.boss } : {}),
+        });
+      }),
+    );
     socket.on("battle-perf", (data: unknown) =>
       withRoom(undefined, (a, id) => {
         // One per match; a cap keeps a looping client quiet. Technical
@@ -3643,6 +3738,43 @@ export function createArenaServer(
           for (const socket of io.sockets.sockets.values())
             if (socket.data.account) void refreshSocket(socket);
         }, 30000);
+  /** A newer server answers the public address (superseded, above). */
+  const supersede = (by: string) => {
+    if (superseded) return;
+    superseded = true;
+    connectionLog("arena-superseded", {
+      by,
+      busy: [...rooms.values()].filter(busyRoom).length,
+    });
+    io.emit("server-update", updateNotice());
+  };
+  const publicHealthUrl =
+    options.publicHealthUrl ??
+    (options.autoTick !== false && process.env.RENDER_EXTERNAL_URL
+      ? new URL("/api/health", process.env.RENDER_EXTERNAL_URL).href
+      : undefined);
+  const fetchHealth =
+    options.fetchHealth ??
+    (async (url: string) =>
+      (
+        await fetch(url, {
+          headers: { "cache-control": "no-cache" },
+          signal: AbortSignal.timeout(5000),
+        })
+      ).json());
+  /** Asks the public address which server answers it now. */
+  const checkSuperseded = async () => {
+    if (!publicHealthUrl || superseded) return;
+    try {
+      const by = supersededBy(await fetchHealth(publicHealthUrl), serverId);
+      if (by) supersede(by);
+    } catch {
+      // Unreachable for a moment (or a deploy mid-switch): ask again later.
+    }
+  };
+  const supersedeTimer = publicHealthUrl
+    ? setInterval(() => void checkSuperseded(), options.supersedeEvery ?? 15000)
+    : undefined;
   return {
     app,
     http,
@@ -3667,7 +3799,8 @@ export function createArenaServer(
     drain: async (deadline: number, every?: number) => {
       if (!draining) {
         draining = true;
-        io.emit("server-update", { draining: true });
+        drainDeadline = deadline;
+        io.emit("server-update", updateNotice());
       }
       const busy = () => [...rooms.values()].filter(busyRoom).length;
       connectionLog("arena-drain", { busy: busy(), saving: inflight.size });
@@ -3675,7 +3808,18 @@ export function createArenaServer(
       connectionLog("arena-drain-done", result);
       return result;
     },
+    /** This process's id, as /api/health says it. */
+    serverId,
+    /** Whether a newer server answers the public address (superseded). */
+    get superseded() {
+      return superseded;
+    },
+    checkSuperseded,
     close: async () => {
+      // A drain that ran out of time: the players still in a match hear why
+      // they are cut off, not just that the connection went (main.ts).
+      if (draining) io.emit("server-update", { closing: true });
+      if (supersedeTimer) clearInterval(supersedeTimer);
       timer?.stop();
       for (const check of partyAwayTimers) clearTimeout(check);
       if (plazaTimer) clearInterval(plazaTimer);
