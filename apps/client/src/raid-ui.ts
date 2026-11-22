@@ -393,6 +393,7 @@ function drawVent(
   );
   g.fillStyle(color, 1).fillTriangle(x - 7, y + 6, x, y - 8, x + 7, y + 6);
 }
+export type DrawnAt = (id: string) => { x: number; y: number } | undefined;
 export function drawRaidArena(
   g: Phaser.GameObjects.Graphics,
   state: Snapshot,
@@ -404,7 +405,15 @@ export function drawRaidArena(
    * lanterns, braziers, mirrors) and for bosses with several bodies. On the
    * Coliseum court (`court`) broken pillars are rubble drawn by the scene.
    */
-  layers?: { boss: Phaser.GameObjects.Graphics; at: LayerAt; court: boolean },
+  layers?: {
+    boss: Phaser.GameObjects.Graphics;
+    at: LayerAt;
+    court: boolean;
+    /** Where each raider is drawn (your own predicted, the others
+     * smoothed): what follows a raider (curses) goes there, not to the
+     * server's last position, which runs ~60 px behind you as you move. */
+    drawnAt?: DrawnAt;
+  },
 ) {
   const r = state.raid;
   if (!r) return;
@@ -431,7 +440,7 @@ export function drawRaidArena(
   if (tide) drawLagoon(g, state, reduced, clock);
   // (The Spire's wave and elite floors in Inkpurr's zone: its court, no yard.)
   if (gloom && (!r.spire || r.spire.kind === "boss"))
-    drawLanternYard(g, state, reduced, at, clock);
+    drawLanternYard(g, state, reduced, at, clock, layers?.drawnAt);
   for (const w of r.warnings) {
     if (r.boss === "storm-twins" && drawStormWarning(g, state, w)) continue;
     if (r.boss === "emberwing" && drawEmberwingWarning(g, state, w)) continue;

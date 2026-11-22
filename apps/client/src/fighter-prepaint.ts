@@ -166,5 +166,13 @@ export function addPrepaintedLayers(scene: Phaser.Scene, layers: RigAsset[]) {
   return added;
 }
 
+/**
+ * A layer whose canvas came back blank (rig-health.ts: Safari let its
+ * pixels go while the page was hidden): never hand it out again.
+ */
+export function forgetPrepainted(key: string) {
+  painted.delete(key);
+}
+
 /** What's rasterized now (tests). */
 export const prepaintedLayerKeys = () => [...painted.keys()];
