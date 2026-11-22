@@ -54,9 +54,7 @@ describe("the world round each raid court", () => {
       expect(Math.abs(w / h / shape - 1), file).toBeLessThan(0.01);
       // One GPU texture of at most about 8 MB, well inside a 4096 limit.
       expect(w * h * 4, file).toBeLessThanOrEqual(8_000_000);
-      expect(readFileSync(`${DIR}/${file}`).length, file).toBeLessThan(
-        450_000,
-      );
+      expect(readFileSync(`${DIR}/${file}`).length, file).toBeLessThan(450_000);
     }
   });
 });
