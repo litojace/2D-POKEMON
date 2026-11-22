@@ -373,10 +373,15 @@ for (const size of [
         if (mobile && !relay) {
           await expect.poll(() => cameraSignature(page)).not.toEqual(camera);
           await expect.poll(() => heroOnScreen(page)).toBe(true);
-          // Fighters at least 1.4× the size the whole-court view drew them.
-          await expect
-            .poll(async () => (await cameraSignature(page))[0] / overviewZoom)
-            .toBeGreaterThan(1.4);
+          // Fighters larger than the whole-court view drew them, but the
+          // swing kept gentle on phones (owner, 22 Nov 2026: a big swing each
+          // court-wide skill was tiring): the court fills the space below the
+          // HUD, about 1.3× on a 1024×500 phone and 1.4× on 844×390. (A squat
+          // 844×280 swings more, by how tall its HUD is that moment.)
+          const swing = () =>
+            cameraSignature(page).then((c) => c[0] / overviewZoom);
+          await expect.poll(swing).toBeGreaterThan(1.25);
+          if (size.height >= 300) expect(await swing()).toBeLessThan(1.5);
         } else if (mobile) {
           await expect.poll(() => heroOnScreen(page)).toBe(true);
           await expect
