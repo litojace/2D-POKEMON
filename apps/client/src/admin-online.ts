@@ -1,4 +1,5 @@
 import type {
+  OnlineActivity,
   OnlineList,
   OnlinePlayer,
 } from "../../../packages/shared/src/accounts";
@@ -50,46 +51,65 @@ export function describeActivity(
       } <code>${escape(p.room ?? "")}</code>`;
   }
 }
-const LABELS: Record<OnlinePlayer["activity"], string> = {
+export const ACTIVITY_LABELS: Record<OnlineActivity, string> = {
   match: "In match",
   practice: "Practice",
   lobby: "Lobby",
   town: "Plaza",
   menu: "Menu",
 };
-/** Body of the admin "Online" tab. */
+/** Busiest first: matches, then lobbies, practice, the Plaza, menus. */
+const ORDER: OnlineActivity[] = ["match", "lobby", "practice", "town", "menu"];
+/**
+ * Body of the admin "Online" tab: filter chips with a count for each
+ * activity, then one row per signed-in player (busiest first). `filter`
+ * shows one activity only.
+ */
 export function renderOnline(
   list: OnlineList,
   fighterName: (id: string) => string,
   now = Date.now(),
+  filter: "all" | OnlineActivity = "all",
 ) {
   const counts = { match: 0, practice: 0, lobby: 0, town: 0, menu: 0 };
   for (const p of list.players) counts[p.activity]++;
-  const summary = `<div class="online-summary"><span><b>${list.players.length}</b> signed in</span>${(
-    Object.keys(counts) as OnlinePlayer["activity"][]
-  )
-    .filter((k) => counts[k])
-    .map((k) => `<span>${counts[k]} ${LABELS[k].toLowerCase()}</span>`)
-    .join(
-      "",
-    )}${list.guests ? `<span>${list.guests} not signed in</span>` : ""}<button type="button" class="quiet" id="online-refresh">Refresh</button></div>`;
-  const rows = list.players
+  const chip = (id: "all" | OnlineActivity, label: string) =>
+    `<button type="button" class="${filter === id ? "active" : ""}" data-act="online-filter" data-filter="${id}" aria-pressed="${filter === id}">${id === "all" ? "" : `<span class="online-dot ${id}" aria-hidden="true"></span>`}${label}</button>`;
+  const summary = `<div class="report-filter adm-chips adm-sticky" role="group" aria-label="Filter by activity">${chip(
+    "all",
+    `All ${list.players.length}`,
+  )}${ORDER.filter((k) => counts[k])
+    .map((k) => chip(k, `${counts[k]} ${ACTIVITY_LABELS[k].toLowerCase()}`))
+    .join("")}</div>`;
+  const shown = list.players
+    .filter((p) => filter === "all" || p.activity === filter)
+    .sort(
+      (a, b) =>
+        ORDER.indexOf(a.activity) - ORDER.indexOf(b.activity) ||
+        a.displayName.localeCompare(b.displayName),
+    );
+  const rows = shown
     .map(
       (p) =>
         `<div class="admin-row online-row" data-online="${escape(p.id)}" data-name="${escape(p.displayName)}"><div class="admin-row-head"><span class="online-dot ${p.activity}" aria-hidden="true"></span><strong>${escape(p.displayName)}</strong>${
           p.title
             ? `<span class="title-chip" style="--chip:${escape(p.titleColor ?? "#9fb3d1")}">${escape(p.title)}</span>`
             : ""
-        }${p.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ""}${p.guest ? '<span class="admin-badge guest-badge">GUEST</span>' : ""}<span class="online-state ${p.activity}">${LABELS[p.activity]}</span><small>online ${onlineFor(p.since, now)}${p.connections > 1 ? ` · ${p.connections} tabs` : ""}</small></div><div class="online-activity">${describeActivity(p, fighterName)}${
+        }${p.isAdmin ? '<span class="admin-badge">Admin</span>' : ""}${p.guest ? '<span class="admin-badge guest-badge">Guest</span>' : ""}<small>${onlineFor(p.since, now)}${p.connections > 1 ? ` · ${p.connections} tabs` : ""}</small></div><div class="online-activity"><span class="online-state ${p.activity}">${ACTIVITY_LABELS[p.activity]}</span><span class="online-what">${describeActivity(p, fighterName)}</span>${
           p.isAdmin
             ? ""
-            : '<button type="button" class="quiet" data-manage>Manage</button>'
+            : `<button type="button" class="adm-btn" data-manage data-act="manage" data-id="${escape(p.id)}">Manage</button>`
         }</div></div>`,
     )
     .join("");
-  return `${summary}<div class="admin-list">${
-    rows || "<p>No signed-in players are online right now.</p>"
-  }</div><p class="online-note">Updates every 10 seconds while this tab is open · last checked ${new Date(
-    list.at,
-  ).toLocaleTimeString()}</p>`;
+  return `${summary}<div class="admin-list adm-list">${
+    rows ||
+    `<div class="adm-empty"><p>${
+      list.players.length
+        ? "Nobody is doing that right now."
+        : "No signed-in players are online right now."
+    }</p></div>`
+  }</div><p class="online-note">${
+    list.guests ? `${list.guests} not signed in · ` : ""
+  }last checked ${new Date(list.at).toLocaleTimeString()}</p>`;
 }
