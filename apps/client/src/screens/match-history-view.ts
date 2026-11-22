@@ -23,7 +23,6 @@ import type {
   MatchHistoryPlayer,
 } from "../../../../packages/shared/src/accounts";
 import { fighterPortrait } from "../fighter-art";
-import { avatarImage } from "../portraits";
 import { serverNow } from "../server-clock";
 import { avatar, button, emptyState, esc, segmented } from "../ui/components";
 
@@ -176,10 +175,10 @@ function rounds(m: MatchHistoryEntry) {
     .join("")}</span>`;
 }
 
+/** A board row: the fighter they played (players' own pictures are
+ * creatures too, and beside a fighter's name read as that fighter). */
 function boardRow(p: MatchHistoryPlayer, canOpen: boolean) {
-  const who = p.bot
-    ? portrait(p.character, 26)
-    : `<span class="mh-face" aria-hidden="true">${avatarImage(p.avatar)}</span>`;
+  const who = portrait(p.character, 26);
   const name =
     canOpen && p.id && !p.owner
       ? `<button type="button" class="mh-name is-link" data-history-player="${esc(p.id)}" data-history-name="${esc(p.name)}">${esc(p.name)}</button>`
@@ -187,7 +186,7 @@ function boardRow(p: MatchHistoryPlayer, canOpen: boolean) {
   return `<li class="${p.owner ? "is-owner" : ""}">${who}<span class="mh-who">${name}<small class="ui-note">${esc(fighterName(p.character))}</small></span><span class="mh-mvp-slot">${p.mvp ? '<span class="ui-tag mh-mvp">MVP</span>' : ""}</span><span class="mh-cell" aria-label="${esc(plural(p.kos, "knock-out", "knock-outs"))}"><b class="ui-num">${num(p.kos)}</b></span><span class="mh-cell" aria-label="${esc(`${num(p.dealt)} damage`)}"><b class="ui-num">${num(p.dealt)}</b></span><span class="mh-cell" aria-label="${esc(plural(p.combos, "combo", "combos"))}"><b class="ui-num">${num(p.combos)}</b></span></li>`;
 }
 /** The board's column titles, once above both sides. */
-const BOARD_HEAD = `<div class="mh-board-head" aria-hidden="true"><span></span><span>Player · fighter</span><span></span><span title="Opponents knocked out">KOs</span><span title="Damage dealt">Damage</span><span title="Skill combos landed">Combos</span></div>`;
+const BOARD_HEAD = `<div class="mh-board-head" aria-hidden="true"><span></span><span>Player</span><span></span><span title="Opponents knocked out">KOs</span><span title="Damage dealt">Damage</span><span title="Skill combos landed">Combos</span></div>`;
 
 /** Everyone in the match, side by side: the owner's side first. */
 function board(
@@ -229,11 +228,11 @@ function row(
   const mvp = m.players.some((p) => p.owner && p.mvp);
   const fighter = fighterName(m.character);
   const label = `${RESULT[m.result]}${score ? ` ${score}` : ""}, ${MODE[m.mode]} ${opponents(m)} as ${fighter}${mvp ? ", MVP" : ""}, ${num(m.dealt)} damage, ${plural(m.kos, "knock-out", "knock-outs")}${delta ? `, rating ${delta.text}` : ""}, ${playedAgo(m.playedAt, now)}`;
-  // The rating it moved, labelled; nothing at all when it moved none (bots).
+  // The rating it moved; nothing at all when it moved none (bots).
   const rating = delta
-    ? `<span class="mh-delta ${delta.cls}"><b class="ui-num">${esc(delta.text)}</b><small>Rating</small></span>`
+    ? `<span class="mh-delta ${delta.cls}" title="Rating change"><b class="ui-num">${esc(delta.text)}</b></span>`
     : `<span class="mh-delta is-none"></span>`;
-  return `<li class="mh-row is-${m.result}${open ? " is-open" : ""}"><button type="button" class="mh-sum" data-history-match="${esc(m.id)}" aria-expanded="${open}" aria-controls="mh-detail-${esc(m.id)}" aria-label="${esc(label)}"><span class="mh-result"><b>${esc(RESULT[m.result])}${score ? ` <span class="mh-score ui-num">${esc(score)}</span>` : ""}</b><small>${esc(m.mode === "ffa" ? "FFA" : MODE[m.mode])}${mvp ? ' · <b class="mh-mvp">MVP</b>' : ""}</small></span>${portrait(m.character, 34)}<span class="mh-main"><b>${esc(opponents(m) || fighter)}</b><small>${esc(fighter)} · <time datetime="${esc(m.playedAt)}">${esc(playedAgo(m.playedAt, now))}</time> · ${esc(arenaName(m.arena))}</small></span>${rounds(m)}<span class="mh-kda"><b class="ui-num">${num(m.dealt)} dmg</b><small class="ui-num">${esc(plural(m.kos, "KO", "KOs"))}</small></span>${rating}</button>${open ? board(m, canOpen, whose) : ""}</li>`;
+  return `<li class="mh-row is-${m.result}${open ? " is-open" : ""}"><button type="button" class="mh-sum" data-history-match="${esc(m.id)}" aria-expanded="${open}" aria-controls="mh-detail-${esc(m.id)}" aria-label="${esc(label)}"><span class="mh-result"><b>${esc(RESULT[m.result])}${score ? ` <span class="mh-score ui-num">${esc(score)}</span>` : ""}</b><small>${esc(m.mode === "ffa" ? "FFA" : MODE[m.mode])}${mvp ? ' · <b class="mh-mvp">MVP</b>' : ""}</small></span>${portrait(m.character, 34)}<span class="mh-main"><b>${esc(opponents(m) || fighter)}</b><small>${esc(fighter)} · <time datetime="${esc(m.playedAt)}">${esc(playedAgo(m.playedAt, now))}</time><span class="mh-arena"> · ${esc(arenaName(m.arena))}</span></small></span>${rounds(m)}<span class="mh-kda"><b class="ui-num">${num(m.dealt)} dmg</b><small class="ui-num">${esc(plural(m.kos, "KO", "KOs"))}</small></span>${rating}</button>${open ? board(m, canOpen, whose) : ""}</li>`;
 }
 
 export interface HistoryOptions {

@@ -28,9 +28,11 @@ match events).
   when you were MVP, your fighter's name, how long ago and on which arena,
   each round won or lost (a dot per round; hidden on phones held sideways),
   damage and knock-outs (`736 dmg`, `2 KOs`), and the rating the match
-  moved, labelled (`+16 Rating`; nothing against bots, which move none).
+  moved (`+16`, `−12`; nothing against bots, which move none).
 - **Tap a row** for the board: column titles once (KOs, Damage, Combos),
-  everyone's fighter and numbers, the card owner's side first and named
+  everyone's fighter portrait (not their own picture: those are creatures
+  too, and beside "Cindrake" a player's wolf read as the fighter played),
+  name and numbers, the card owner's side first and named
   for them (`Your side`, `Kai's side`), MVP marked. The MVP is the most
   damage on the **winning** side (the whole board on a draw), then most
   knock-outs; nobody when no one landed a hit. A loser marked MVP beside

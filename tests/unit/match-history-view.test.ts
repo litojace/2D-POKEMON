@@ -135,12 +135,11 @@ describe("markup", () => {
     );
   });
 
-  it("a bot match moves no rating: no dash, no Rating label", () => {
+  it("a bot match moves no rating: nothing in its place", () => {
     const s = historyState();
     s.matches = [entry({ bot: "hard", rating: null })];
     const html = historyMarkup(s, { whose: "Your", now: NOW });
     expect(html).toContain('<span class="mh-delta is-none"></span>');
-    expect(html).not.toContain("Rating</small>");
     expect(html).not.toContain(">–<");
   });
 
@@ -157,7 +156,7 @@ describe("markup", () => {
     expect(html).toContain("+16");
     // The rounds' score beside the result, the rating labelled, KOs spelled.
     expect(html).toContain('<span class="mh-score ui-num">2–1</span>');
-    expect(html).toContain("<small>Rating</small>");
+    expect(html).toContain('title="Rating change"><b class="ui-num">+16</b>');
     expect(html).toContain("3 KOs");
     expect(html).toContain("1h ago");
     expect(html).toContain("data-history-more");
@@ -180,6 +179,11 @@ describe("markup", () => {
     expect(summary).toContain('mh-mvp"');
     // Column titles once, the side named for whose card it is.
     expect(detail.match(/mh-board-head/g)).toHaveLength(1);
+    // Every player, bot or not, shows the fighter they played.
+    expect(detail).not.toContain("mh-face");
+    expect(detail.match(/class="ui-avatar/g)?.length).toBe(
+      s.matches![0].players.length,
+    );
     expect(detail).toContain("Your side");
     expect(
       historyMarkup(s, { whose: "Ana's", now: NOW }).split(

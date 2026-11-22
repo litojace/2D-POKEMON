@@ -198,7 +198,7 @@
   font-size: var(--fs-small);
   white-space: nowrap;
 }
-/* The rating the match moved, labelled; empty when it moved none. */
+/* The rating the match moved; empty when it moved none. */
 .mh-delta {
   display: grid;
   justify-items: end;
@@ -267,17 +267,6 @@
 }
 .mh-board > li.is-owner {
   outline: 1px solid color-mix(in srgb, var(--ui-accent) 60%, transparent);
-}
-.mh-face {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  overflow: hidden;
-  line-height: 0;
-}
-.mh-face > img {
-  width: 100%;
-  height: 100%;
 }
 .mh-who {
   display: grid;
@@ -356,6 +345,11 @@
     --size: 28px !important;
   }
   .mh-rounds {
+    display: none;
+  }
+  /* The arena is in the opened match's head: the row keeps the fighter
+     and how long ago whole. */
+  .mh-arena {
     display: none;
   }
   .mh-result > b {

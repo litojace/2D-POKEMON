@@ -91,9 +91,6 @@ for (const size of SIZES)
       await expect(rows).toHaveCount(10);
       await expect(rows.first()).toHaveClass(/is-win/);
       await expect(rows.first().locator(".mh-delta > b")).toHaveText("+16");
-      await expect(rows.first().locator(".mh-delta > small")).toHaveText(
-        "Rating",
-      );
       await expect(rows.nth(1).locator(".mh-delta > b")).toHaveText("−12");
       await expect(panel.locator(".mh-form")).toContainText("Last 10");
       await settled(page, ".profile-panel");
