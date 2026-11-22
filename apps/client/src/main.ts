@@ -276,7 +276,11 @@ import {
   identityPortrait,
   portraitAvatar,
 } from "./portraits";
-import { waitForServer, onServerStartupRetry } from "./server-connection";
+import {
+  curtainCovers,
+  waitForServer,
+  onServerStartupRetry,
+} from "./server-connection";
 import { startStartupCurtain, type StartupStage } from "./startup-curtain";
 import "./ui/tokens.css";
 import "./style.css";
@@ -939,10 +943,35 @@ document.addEventListener("pointerdown", (event) => {
     audio.play("ui");
   }
 });
+/**
+ * A toast said while the startup curtain still covers the game waits for it
+ * to go: the curtain sits over the toast, and the toast's 4.5 s ran out under
+ * it on a slow start, so a waiting friend request was never seen (main's
+ * full run, 21 Nov 2026). Only the latest one waits.
+ */
+let toastTimer = 0;
+let toastWaiting = "";
+let toastWait = 0;
 function toast(message: string) {
+  if (curtainCovers()) {
+    toastWaiting = message;
+    if (!toastWait)
+      toastWait = window.setInterval(() => {
+        if (curtainCovers()) return;
+        clearInterval(toastWait);
+        toastWait = 0;
+        toast(toastWaiting);
+      }, 100);
+    return;
+  }
   $("toast").textContent = message;
   $("toast").classList.add("show");
-  setTimeout(() => $("toast").classList.remove("show"), 4500);
+  // A newer toast keeps its whole time (an older one's timer hid it early).
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(
+    () => $("toast").classList.remove("show"),
+    4500,
+  );
 }
 /** Ask the server; `quiet`: a background read that never shows a toast. */
 function request(

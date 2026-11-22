@@ -55,10 +55,13 @@ export const LEGACY_SEASON_RULES: SeasonRules = {
   tierXp: 400,
   itemTiers: [5, 10, 15, 20],
 };
-/** Seasons from the month after migration 035 runs: 30 tiers of 1,200 XP. */
+/**
+ * Seasons from the month after migration 035 runs: 30 tiers of 800 XP
+ * (1,200 until migration 20261121200000; docs/economy-review.md §2.3).
+ */
 export const SEASON_RULES: SeasonRules = {
   tiers: 30,
-  tierXp: 1200,
+  tierXp: 800,
   itemTiers: [5, 12, 20, 30],
 };
 export const SEASON_TIER_COINS = 50;

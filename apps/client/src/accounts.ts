@@ -1464,6 +1464,7 @@ export class AccountUI {
         economy: this.economy ?? null,
         progress: this.fitProgress,
         look: this.raidLook ?? {},
+        avatar: this.avatar,
         problem: this.fitProblem,
         loading: this.fitLoading,
       }),
