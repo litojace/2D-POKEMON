@@ -41,6 +41,23 @@ async function sheet(page: Page, card: string) {
     const foot = c.querySelector(".rc-foot, :scope > .panel-actions")!;
     const body = c.querySelector(".rc-body, :scope > .panel-scroll")!;
     const buttons = Array.from(foot.querySelectorAll("button")).map(r);
+    // Every result button wears its icon, PvP's and the raid's alike.
+    const icons = Array.from(foot.querySelectorAll("button")).map((b) => {
+      const svg = b.querySelector("svg");
+      return !!svg && svg.getBoundingClientRect().width > 0;
+    });
+    const kicker = c.querySelector(".rc-head .ui-kicker, :scope > .eyebrow")!;
+    // The note in the foot (what happens next): never a narrow column.
+    const note = foot.querySelector<HTMLElement>(".rc-meta, .sheet-note");
+    const noteStyle = note && getComputedStyle(note);
+    const noteLines =
+      note && noteStyle && noteStyle.display !== "none"
+        ? Math.round(
+            note.getBoundingClientRect().height /
+              (parseFloat(noteStyle.lineHeight) ||
+                parseFloat(noteStyle.fontSize) * 1.3),
+          )
+        : 0;
     // The title's own text, centred: measure its text, not its box.
     const range = document.createRange();
     range.selectNodeContents(title);
@@ -54,6 +71,9 @@ async function sheet(page: Page, card: string) {
       body: r(body),
       foot: r(foot),
       buttons,
+      icons,
+      kicker: getComputedStyle(kicker).color,
+      noteLines,
     };
   }, card);
 }
@@ -80,6 +100,7 @@ function holds(
   expect(s.foot.y).toBeGreaterThanOrEqual(s.body.y + s.body.h - 1);
   expect(s.foot.y + s.foot.h).toBeLessThanOrEqual(size.height);
   expect(s.buttons.length).toBeGreaterThan(0);
+  expect(s.noteLines).toBeLessThanOrEqual(2);
   for (const b of s.buttons) {
     expect(b.x).toBeGreaterThanOrEqual(0);
     expect(b.x + b.w).toBeLessThanOrEqual(size.width);
@@ -187,7 +208,14 @@ for (const size of SIZES) {
           name === "win" ? /\bis-victory\b/ : /\bis-defeat\b/,
         );
         await page.waitForTimeout(300);
-        holds(await sheet(page, ".match-sheet"), size);
+        const look = await sheet(page, ".match-sheet");
+        holds(look, size);
+        // Results: a green win, a red loss (owner, 22 Nov 2026), every
+        // button with its icon.
+        expect(look.kicker).toBe(
+          name === "win" ? "rgb(111, 227, 161)" : "rgb(255, 138, 149)",
+        );
+        expect(look.icons.every(Boolean)).toBe(true);
         await snap(page, info, `pvp-${name}-${label(size)}`);
       }
       // Back in a fight: nothing over the arena.
@@ -244,8 +272,24 @@ for (const size of SIZES) {
         await expect(overlay.locator(".rc-card.is-results")).toBeVisible();
         await expect(overlay).toHaveClass(/\bis-sheet\b/);
         await page.waitForTimeout(300);
-        holds(await sheet(page, ".rc-card"), size);
+        const lost = await sheet(page, ".rc-card");
+        holds(lost, size);
+        // A loss in red, every button with its icon (they were hidden on
+        // short phones, where PvP's showed).
+        expect(lost.kicker).toBe("rgb(255, 138, 149)");
+        expect(lost.icons).toEqual([true, true, true]);
         await snap(page, info, `${mode}-results-${label(size)}`);
+        if (mode === "raid") {
+          // A clear in green (after the boss's fall: about 2.8 s).
+          await push(page, `s.raid.result = "victory";`);
+          await expect(overlay.locator(".rc-card.is-victory")).toBeVisible();
+          await page.waitForTimeout(3200);
+          const won = await sheet(page, ".rc-card");
+          holds(won, size);
+          expect(won.kicker).toBe("rgb(111, 227, 161)");
+          expect(won.icons).toEqual([true, true, true]);
+          await snap(page, info, `raid-victory-${label(size)}`);
+        }
         expect(errors).toEqual([]);
       } finally {
         await context.close();

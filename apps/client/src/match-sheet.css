@@ -60,8 +60,9 @@ body.battle-active
      pops in from smaller showed the arena round its edges. */
   animation: rites-in 220ms ease-out both;
 }
-/* The Reveal's navy and its two soft lights. The results: gold for a win,
-   a cool blue for a loss. Over the battle theme's panel tint (ui/aero.css,
+/* The Reveal's navy and its two soft lights. The results: green for a
+   win, red for a loss (owner, 22 Nov 2026), in the light, the kicker and
+   a glow on the title (below). Over the battle theme's panel tint (ui/aero.css,
    two ids in its :is()): hence the long selector, as on the Reveal. */
 :root
   body.battle-active
@@ -79,9 +80,9 @@ body.battle-active
   #arena-overlay#arena-overlay.is-sheet
   > :is(.rc-card, .overlay-card).is-victory {
   background:
-    radial-gradient(60% 70% at 50% 0%, #f7d78040, transparent 70%),
-    radial-gradient(50% 80% at 18% 60%, #2c5fd840, transparent 70%),
-    linear-gradient(180deg, #121b38, #0a1024);
+    radial-gradient(70% 60% at 50% 0%, #3ddc8452, transparent 72%),
+    radial-gradient(50% 80% at 18% 60%, #2c5fd833, transparent 70%),
+    linear-gradient(180deg, #10213a, #0a1024);
 }
 :root
   body.battle-active
@@ -89,9 +90,9 @@ body.battle-active
   #arena-overlay#arena-overlay.is-sheet
   > :is(.rc-card, .overlay-card).is-defeat {
   background:
-    radial-gradient(60% 70% at 50% 0%, #5a78c033, transparent 70%),
-    radial-gradient(50% 80% at 82% 60%, #cf304d33, transparent 70%),
-    linear-gradient(180deg, #111a33, #090f21);
+    radial-gradient(70% 60% at 50% 0%, #ff4d6047, transparent 72%),
+    radial-gradient(50% 80% at 82% 60%, #cf304d2e, transparent 70%),
+    linear-gradient(180deg, #1c1430, #0d0a1c);
 }
 /* A chat button in the top-left corner (raid-cards.css says which): the
    sheet keeps its column free on both sides, so the title stays centred. */
@@ -382,5 +383,66 @@ body.battle-active #arena-overlay#arena-overlay.is-break:has(> .has-rites) {
     > :is(.rc-card, .overlay-card),
   #arena-overlay#arena-overlay.is-break > .overlay-card.round-break {
     animation: none;
+  }
+}
+
+/* ---- Win green, loss red (owner, 22 Nov 2026) ---- */
+#arena-overlay#arena-overlay.is-sheet .is-victory .rc-head .ui-kicker,
+#arena-overlay#arena-overlay.is-sheet .overlay-card.is-victory > .eyebrow {
+  color: #6fe3a1;
+}
+#arena-overlay#arena-overlay.is-sheet .is-defeat .rc-head .ui-kicker,
+#arena-overlay#arena-overlay.is-sheet .overlay-card.is-defeat > .eyebrow {
+  color: #ff8a95;
+}
+#arena-overlay#arena-overlay.is-sheet .is-victory .rc-head .ui-title,
+#arena-overlay#arena-overlay.is-sheet .overlay-card.is-victory > h2 {
+  text-shadow:
+    0 0 24px #3ddc8480,
+    0 2px 0 #0b3a24;
+}
+#arena-overlay#arena-overlay.is-sheet .is-defeat .rc-head .ui-title,
+#arena-overlay#arena-overlay.is-sheet .overlay-card.is-defeat > h2 {
+  text-shadow:
+    0 0 24px #ff4d6066,
+    0 2px 0 #3a0b14;
+}
+#arena-overlay#arena-overlay.is-sheet .is-victory .rc-foot,
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card.is-victory
+  > .panel-actions {
+  border-top-color: #3ddc8459;
+}
+#arena-overlay#arena-overlay.is-sheet .is-defeat .rc-foot,
+#arena-overlay#arena-overlay.is-sheet .overlay-card.is-defeat > .panel-actions {
+  border-top-color: #ff4d604d;
+}
+
+/* ---- Every result button keeps its icon, as PvP's do ---- */
+/* raid-cards.css hides them on short phones to fit three 104 px buttons
+   in the old card; the sheet has the room. */
+#arena-overlay#arena-overlay.is-sheet .rc-card.is-results .rc-foot {
+  --act-w: 168px;
+}
+#arena-overlay#arena-overlay.is-sheet .rc-foot .ui-btn > svg {
+  display: block;
+}
+@container (max-width: 700px) {
+  #arena-overlay#arena-overlay.is-sheet .rc-card.is-results .rc-foot {
+    --act-w: 160px;
+  }
+}
+/* With the icons the three buttons need their width: where the note
+   beside them would wrap to a narrow column, it takes its own line above
+   them, centred, and the buttons stay together. */
+@container (max-width: 960px) {
+  #arena-overlay#arena-overlay.is-sheet .rc-card.is-results .rc-foot {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 6px;
+  }
+  #arena-overlay#arena-overlay.is-sheet .rc-card.is-results .rc-meta {
+    flex-basis: 100%;
+    text-align: center;
   }
 }
