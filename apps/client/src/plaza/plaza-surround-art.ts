@@ -30,6 +30,7 @@ import {
   type SurroundProp,
 } from "./plaza-surround";
 import { spot, type Drawable } from "./plaza-depth";
+import { pathCobble } from "./plaza-ground-art";
 
 // The hub art is ported, untyped drawing code.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -668,18 +669,11 @@ function paintPark(g: Ctx, r: () => number) {
     }
   }
   // The lane: a gravel bed with stones, down to the circle.
+  // The same worn stones as the Plaza's paths (plaza-ground-art.ts).
   const stones = (x0: number, x1: number, ya: number, yb: number) => {
     for (let y = ya, row = 0; y < yb; y += 18, row++)
-      for (let x = x0 + 10 + (row % 2) * 11; x < x1 - 8; x += 22) {
-        g.fillStyle = "rgba(120,100,60,.4)";
-        g.beginPath();
-        g.roundRect(x - 9, y - 5, 18, 13, 5);
-        g.fill();
-        g.fillStyle = ["#efe3c8", "#e6d6b4", "#f4ead6"][((row + x) % 3) | 0];
-        g.beginPath();
-        g.roundRect(x - 9, y - 7, 18, 13, 5);
-        g.fill();
-      }
+      for (let x = x0 + 10 + (row % 2) * 11; x < x1 - 8; x += 22)
+        pathCobble(g, r, x + (r() - 0.5) * 3, y + (r() - 0.5) * 3);
   };
   // (From the gate itself: through the flower border, then the hedge.)
   const gy = PLAZA_GATE.y + 24;

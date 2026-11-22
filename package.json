@@ -17,7 +17,7 @@
     "build": "npm run build -w packages/shared && npm run build -w apps/client && npm run build -w apps/server",
     "typecheck": "tsc --noEmit -p apps/client && tsc --noEmit -p apps/server",
     "test": "vitest run",
-    "start": "node apps/server/dist/apps/server/src/index.js",
+    "start": "exec node apps/server/dist/apps/server/src/index.js",
     "test:visual": "playwright test --config tests/visual/playwright.config.ts",
     "build-posters": "node scripts/posters/build-posters.mjs",
     "ios:build": "node scripts/check-native-env.mjs && npm run build -w packages/shared && npm run build:ios -w apps/client && npm exec -w apps/client -- cap sync ios",

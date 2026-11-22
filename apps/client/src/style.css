@@ -103,49 +103,6 @@
   padding: 18px;
   margin-bottom: 22px;
 }
-.practice-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-#practice-stats {
-  font-size: calc(11px * var(--text-scale, 1));
-  color: var(--muted);
-}
-.practice-actions {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-.practice-actions label {
-  font-size: calc(12px * var(--text-scale, 1));
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #d7e2f8;
-}
-.practice-actions input[type="checkbox"] {
-  accent-color: var(--lime);
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  flex: none;
-}
-.practice-actions select {
-  font: inherit;
-  background: #13223e;
-  color: var(--text);
-  border: 1px solid #ffffff30;
-  padding: 8px;
-  border-radius: 5px;
-}
-.practice-controls p {
-  font-size: calc(11px * var(--text-scale, 1));
-  margin-bottom: 0;
-}
 * {
   box-sizing: border-box;
 }
@@ -12477,7 +12434,6 @@ body.battle-active.court-view #game canvas {
   font-size: calc(13px * var(--text-scale, 1));
   color: var(--text-dim);
 }
-.prefs-grid,
 .credits-grid {
   display: grid;
   gap: 12px;
@@ -12542,24 +12498,6 @@ body.battle-active.court-view #game canvas {
   font: 700 calc(14px * var(--text-scale, 1))/1.3 var(--body);
   font-variant-numeric: tabular-nums;
   color: var(--accent);
-}
-.prefs-status {
-  display: grid;
-  gap: 8px;
-  justify-items: start;
-}
-.prefs-status > b {
-  padding: 4px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font: 700 calc(12px * var(--text-scale, 1))/1.2 var(--body);
-  color: var(--text-dim);
-  background: #ffffff0a;
-}
-.prefs-status > b.is-on {
-  color: var(--equipped);
-  border-color: color-mix(in srgb, var(--equipped) 45%, transparent);
-  background: color-mix(in srgb, var(--equipped) 12%, transparent);
 }
 .prefs-card a {
   color: var(--accent);
@@ -12714,7 +12652,6 @@ body.battle-active.court-view #game canvas {
     margin-bottom: 8px;
     font-size: calc(12px * var(--text-scale, 1));
   }
-  .prefs-grid,
   .credits-grid {
     gap: 8px;
   }
@@ -12749,50 +12686,6 @@ body.battle-active.court-view #game canvas {
   }
   .prefs-slider > output {
     grid-column: 3;
-  }
-  .prefs-card:has(> .prefs-status) {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .framed-dialog .prefs-card:has(> .prefs-status) > h3 {
-    margin: 0;
-  }
-  .prefs-status > span {
-    display: none;
-  }
-  /* Sound on the left, Motion and Graphics stacked on the right. (A class
-     set with the cards, not :has(): see "Battle style recalculation" in
-     docs/network-performance.md.) */
-  .prefs-grid.has-graphics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .prefs-grid.has-graphics > :first-child {
-    grid-row: span 2;
-  }
-  /* Graphics: one line too (name, then Auto / High / Low). */
-  .prefs-card.prefs-graphics {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .framed-dialog .prefs-card.prefs-graphics > h3 {
-    margin: 0;
-  }
-  .prefs-graphics .prefs-choice {
-    flex: 0 1 230px;
-    margin: 0;
-    padding: 2px;
-  }
-  .framed-dialog .prefs-graphics .prefs-choice > button {
-    min-height: 28px;
-    padding: 3px 6px;
-    font-size: calc(12px * var(--text-scale, 1));
-  }
-  .prefs-graphics-note {
-    display: none;
   }
   /* App icon (iPhone app): one line across both columns, icons only (each
      button keeps its name in aria-label). */
@@ -13466,14 +13359,6 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
   left: auto;
   right: calc(var(--safe-right) + 4px);
 }
-.practice-heading #practice-close {
-  width: 36px;
-  min-height: 36px;
-  padding: 2px;
-  margin-left: auto;
-  font-size: calc(22px * var(--text-scale, 1));
-  line-height: 1;
-}
 /* Ally HP sits in the left gutter below the boss, with no extra HUD row. */
 @media (orientation: landscape) {
   body.battle-active.touch-mode.battle-raid #raid-hud .raid-party-bars {
@@ -13609,16 +13494,6 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
 }
 body.battle-active.touch-mode .battle-dock .practice-settings > summary {
   display: none;
-}
-.settings-quick-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 0 12px;
-}
-.settings-quick-actions > button {
-  min-height: 44px;
 }
 
 /* One shared boss layout: name on the HP track, cue and Peril below on the right. */
@@ -14084,23 +13959,6 @@ button[data-raid-boss="somnara"] .raid-splash-image {
 }
 button[data-raid-boss="prismatail"] .raid-splash-image {
   object-position: 60% 40%;
-}
-
-/* Keep the optional Practice shortcut beside the note on short screens. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .settings-screen > .settings-quick-actions {
-    float: right;
-    margin: 0 0 8px 12px;
-  }
-  .settings-screen:has(> .settings-quick-actions) > .prefs-note {
-    display: flex;
-    align-items: center;
-    min-height: 44px;
-    margin: 0 0 8px;
-  }
-  .settings-screen > .prefs-grid {
-    clear: both;
-  }
 }
 
 /* Raid scenery fills the viewport; the camera keeps the fighting floor below HP. */
