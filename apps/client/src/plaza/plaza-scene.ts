@@ -3672,6 +3672,29 @@ export function openPlaza(options) {
       GOAL_SLICES,
       hgt,
       (ya, yb, i) => {
+        // The net's light shadow on the grass inside the goal.
+        g.fillStyle = "rgba(40,100,50,.14)";
+        g.fillRect(Math.min(x, x + d), ya, Math.abs(d), yb - ya);
+        // The mesh: strands across the back and the roof every 8 px.
+        g.strokeStyle = "rgba(255,255,255,.32)";
+        g.lineWidth = 0.8;
+        g.beginPath();
+        for (let yy = Math.ceil(ya / 8) * 8; yy < yb; yy += 8) {
+          g.moveTo(x, yy - hgt);
+          g.lineTo(x + d, yy - hgt * 0.6);
+          g.lineTo(x + d, yy);
+        }
+        for (let k = 1; k < 8; k++) {
+          const hh = (hgt * 0.6 * k) / 8;
+          g.moveTo(x + d, ya - hh);
+          g.lineTo(x + d, yb - hh);
+        }
+        for (let k = 1; k < 4; k++) {
+          const t = k / 4;
+          g.moveTo(x + d * t, ya - hgt + hgt * 0.4 * t);
+          g.lineTo(x + d * t, yb - hgt + hgt * 0.4 * t);
+        }
+        g.stroke();
         g.strokeStyle = "rgba(255,255,255,.55)";
         g.lineWidth = 1;
         g.beginPath();
@@ -3692,19 +3715,26 @@ export function openPlaza(options) {
         g.moveTo(x + d, ya);
         g.lineTo(x + d, yb);
         g.stroke();
-        g.strokeStyle = "#fff";
-        g.lineWidth = 5;
+        // The posts: white, with a grey shaded side and a lit edge.
         g.lineCap = "round";
-        g.beginPath();
-        if (i === 0) {
-          g.moveTo(x, y0);
-          g.lineTo(x, y0 - hgt);
+        for (const [w, c, dx] of [
+          [6, "#b9c2cc", 0.8],
+          [4.6, "#ffffff", 0],
+          [1.4, "#ffffff", -1.4],
+        ]) {
+          g.strokeStyle = c;
+          g.lineWidth = w;
+          g.beginPath();
+          if (i === 0) {
+            g.moveTo(x + dx, y0);
+            g.lineTo(x + dx, y0 - hgt);
+          }
+          if (i === GOAL_SLICES - 1) {
+            g.moveTo(x + dx, y1);
+            g.lineTo(x + dx, y1 - hgt);
+          }
+          g.stroke();
         }
-        if (i === GOAL_SLICES - 1) {
-          g.moveTo(x, y1);
-          g.lineTo(x, y1 - hgt);
-        }
-        g.stroke();
         g.lineCap = "butt";
         // The crossbar, in the team's colour.
         g.strokeStyle = left ? "#5ab0ff" : "#ff5d6c";
