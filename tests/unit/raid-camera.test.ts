@@ -76,8 +76,10 @@ describe("raid camera on phones", () => {
     expect(view.zoomX).toBeCloseTo(
       Math.max(W / 1600, (H - HUD) / 900) * RAID_FOLLOW_ZOOM,
     );
-    // Fighters drawn at least 1.6× bigger on this phone.
-    expect(view.zoomX / overview.zoomX).toBeGreaterThan(1.6);
+    // Fighters drawn bigger than the overview, but the swing between the two
+    // stays gentle (owner, 22 Nov 2026: about 1.67× each way was tiring).
+    expect(view.zoomX / overview.zoomX).toBeGreaterThan(1.35);
+    expect(view.zoomX / overview.zoomX).toBeLessThan(1.5);
   });
 
   it("keeps the raider well inside the view and stays on the court", () => {
@@ -101,7 +103,9 @@ describe("raid camera on phones", () => {
   });
 
   it("leans toward the boss, but not past the raider's margin", () => {
-    const zoom = Math.max(W / 1600, (H - HUD) / 900) * RAID_FOLLOW_ZOOM;
+    // Closer than the court's width (as a tablet-sized phone can be), so
+    // there is room to lean.
+    const zoom = Math.max(W / 1600, (H - HUD) / 900) * 1.3;
     const alone = raidFollowCentre(
       W,
       H,
@@ -128,7 +132,7 @@ describe("raid camera on phones", () => {
     const cam = new RaidCamera();
     const overview = raidCameraView(W, H, HUD);
     follow(cam, { x: 300, y: 700 }, { frames: 5 });
-    const out = follow(cam, { x: 300, y: 700 }, { wide: true, frames: 60 });
+    const out = follow(cam, { x: 300, y: 700 }, { wide: true, frames: 90 });
     // Settled exactly on the overview, not just close to it.
     const settled = follow(
       cam,
@@ -140,7 +144,42 @@ describe("raid camera on phones", () => {
     expect(out.x).toBeCloseTo(overview.x, 0);
     expect(out.y).toBeCloseTo(overview.y, 0);
     const back = follow(cam, { x: 300, y: 700 }, { frames: 600 });
-    expect(back.zoomX).toBeGreaterThan(overview.zoomX * 1.5);
+    expect(back.zoomX).toBeGreaterThan(overview.zoomX * 1.35);
+  });
+
+  it("stays out between two court-wide casts instead of pumping in and out", () => {
+    const cam = new RaidCamera();
+    const overview = raidCameraView(W, H, HUD);
+    const step = (wide: boolean, t: number) =>
+      cam.update(
+        W,
+        H,
+        HUD,
+        true,
+        { x: 300, y: 700, vx: 0, vy: 0 },
+        { x: 800, y: 300 },
+        wide ? WHOLE : undefined,
+        "room:1:me",
+        16,
+        t,
+        false,
+      );
+    let t = 0;
+    for (let i = 0; i < 120; i++) step(true, (t += 0.016));
+    // A second away from the last warning, before the next one: still out.
+    let view = overview;
+    for (let i = 0; i < 60; i++) view = step(false, (t += 0.016));
+    expect(view.zoomX).toBeCloseTo(overview.zoomX, 3);
+    // Once the hold runs out it eases back in, without a jump.
+    let last = view.zoomX,
+      biggest = 0;
+    for (let i = 0; i < 200; i++) {
+      view = step(false, (t += 0.016));
+      biggest = Math.max(biggest, view.zoomX / last);
+      last = view.zoomX;
+    }
+    expect(view.zoomX).toBeGreaterThan(overview.zoomX * 1.2);
+    expect(biggest).toBeLessThan(1.03);
   });
 
   it("keeps the overview on desktop and with reduced motion", () => {
