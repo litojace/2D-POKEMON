@@ -810,49 +810,122 @@ const GFX = (() => {
     );
   /** A rowboat pulled up on the grass, upside down, an oar against it. */
   /* ---------------- Volt Boba and the houses (PLAZA_DECOR) ---------------- */
-  /** Volt Boba's A-frame chalkboard: what it gives, in chalk. */
+  /**
+   * Volt Boba's A-frame chalkboard: what it gives, in chalk. Big enough
+   * for its words and its cup to sit inside the frame (they ran over the
+   * edge, owner 22 Nov). Painted again once the fonts have loaded.
+   */
   const chalkboard = () =>
-    memo("chalkboard", () =>
-      sprite(70, 86, 35, 80, (g) => {
-        g.strokeStyle = "#6b4527";
-        g.lineWidth = 3;
+    memo(`chalkboard:${typeof document !== "undefined" ? document.fonts?.status : ""}`, () =>
+      sprite(92, 112, 46, 104, (g) => {
+        // Back legs, then the front frame's legs.
+        g.strokeStyle = "#4e321c";
+        g.lineWidth = 3.4;
         g.beginPath();
-        g.moveTo(-20, 0);
-        g.lineTo(-12, -66);
-        g.moveTo(20, 0);
-        g.lineTo(12, -66);
+        g.moveTo(-22, 0);
+        g.lineTo(-14, -86);
+        g.moveTo(22, 0);
+        g.lineTo(14, -86);
         g.stroke();
-        rr(g, -24, -74, 48, 58, 4);
-        g.fillStyle = vg(g, -74, -16, "#c48a4a", "#8a5a30");
+        g.strokeStyle = "#7a4e2c";
+        g.lineWidth = 4;
+        g.beginPath();
+        g.moveTo(-30, 0);
+        g.lineTo(-26, -24);
+        g.moveTo(30, 0);
+        g.lineTo(26, -24);
+        g.stroke();
+        // The frame: wood with a lit top and left, grain, nail heads.
+        rr(g, -34, -98, 68, 78, 5);
+        g.fillStyle = vg(g, -98, -20, "#d39a58", "#8a5a30");
         g.fill();
-        rr(g, -20, -70, 40, 50, 3);
-        g.fillStyle = "#2b3a33";
+        g.strokeStyle = "#5e3a1c";
+        g.lineWidth = 1.4;
+        g.stroke();
+        g.fillStyle = "rgba(255,230,190,.45)";
+        g.fillRect(-32, -96, 64, 2);
+        g.fillRect(-32, -96, 2, 74);
+        g.fillStyle = "#3a2410";
+        for (const [nx, ny] of [
+          [-30, -94],
+          [30, -94],
+          [-30, -24],
+          [30, -24],
+        ]) {
+          g.beginPath();
+          g.arc(nx, ny, 1.2, 0, 7);
+          g.fill();
+        }
+        // The slate: dark green with chalk dust and a smudge.
+        rr(g, -29, -93, 58, 68, 3);
+        g.fillStyle = "#26352f";
         g.fill();
-        g.fillStyle = "rgba(255,255,255,.06)";
-        g.fillRect(-18, -68, 14, 46);
+        g.fillStyle = "rgba(255,255,255,.05)";
+        g.fillRect(-27, -91, 20, 64);
+        g.fillStyle = "rgba(255,255,255,.07)";
+        g.beginPath();
+        g.ellipse(8, -36, 16, 5, -0.2, 0, 7);
+        g.fill();
+        // A chalk border, dashed.
+        g.strokeStyle = "rgba(255,251,230,.35)";
+        g.lineWidth = 1;
+        g.setLineDash([3, 2.5]);
+        rr(g, -26, -90, 52, 62, 2);
+        g.stroke();
+        g.setLineDash([]);
         g.textAlign = "center";
         g.textBaseline = "middle";
         g.fillStyle = "#ff9bd2";
-        g.font = "800 10px 'Barlow Condensed', sans-serif";
-        g.fillText("VOLT BOBA", 0, -62);
+        g.font = "800 12px 'Barlow Condensed', sans-serif";
+        g.fillText("VOLT BOBA", 0, -82);
         g.fillStyle = "#fffbe6";
-        g.font = "800 15px 'Barlow Condensed', sans-serif";
-        g.fillText("FREE", 0, -48);
+        g.font = "800 19px 'Barlow Condensed', sans-serif";
+        g.fillText("FREE", 0, -67);
         g.fillStyle = "#8fe0ff";
-        g.font = "700 9px 'DM Sans', sans-serif";
-        g.fillText("30s speed", 0, -35);
-        // A cup in chalk.
+        g.font = "700 10px 'DM Sans', sans-serif";
+        g.fillText("30s speed", 0, -54);
+        // A boba cup in chalk: lid, straw, cup, pearls.
         g.strokeStyle = "#fffbe6";
-        g.lineWidth = 1.2;
+        g.lineWidth = 1.3;
         g.beginPath();
-        g.moveTo(-5, -30);
-        g.lineTo(-3.5, -23);
-        g.lineTo(3.5, -23);
-        g.lineTo(5, -30);
-        g.closePath();
-        g.moveTo(1, -30);
-        g.lineTo(3, -35);
+        g.moveTo(-8, -45);
+        g.lineTo(8, -45);
+        g.moveTo(-7, -45);
+        g.lineTo(-5, -31);
+        g.lineTo(5, -31);
+        g.lineTo(7, -45);
+        g.moveTo(2, -45);
+        g.lineTo(5, -51);
         g.stroke();
+        g.fillStyle = "rgba(255,251,230,.85)";
+        for (const [px, py] of [
+          [-3, -34],
+          [0, -34.5],
+          [3, -34],
+          [-1.5, -37],
+          [1.5, -37],
+        ]) {
+          g.beginPath();
+          g.arc(px, py, 1.1, 0, 7);
+          g.fill();
+        }
+        // A lightning bolt beside it.
+        g.fillStyle = "#ffd84a";
+        g.beginPath();
+        g.moveTo(15, -47);
+        g.lineTo(11, -39);
+        g.lineTo(14, -39);
+        g.lineTo(12, -32);
+        g.lineTo(17, -41);
+        g.lineTo(14, -41);
+        g.closePath();
+        g.fill();
+        // The chalk tray along the bottom, with a stick of chalk.
+        rr(g, -30, -25, 60, 4, 1.5);
+        g.fillStyle = "#6e4424";
+        g.fill();
+        g.fillStyle = "#fffbe6";
+        g.fillRect(-14, -26, 8, 1.6);
       }),
     );
   /** A café table under a striped parasol, with two stools and a cup. */
@@ -1630,8 +1703,44 @@ const GFX = (() => {
         g.fill();
         g.strokeStyle = "#1f6b5a";
         g.stroke();
-        g.fillStyle = "#3c2f6a";
+        // Inside the window: a warm-lit back wall, shelves of jars, and the
+        // barista in an apron behind the cups.
+        g.fillStyle = vg(g, -118, -74, "#5a4890", "#3c2f6a");
         g.fillRect(-90, -118, 138, 44);
+        g.fillStyle = "rgba(255,220,150,.22)";
+        g.fillRect(-90, -118, 138, 10);
+        g.fillStyle = "#2a1f4c";
+        g.fillRect(-90, -101, 138, 2);
+        for (let k = 0; k < 9; k++) {
+          g.fillStyle = ["#ff9bd2", "#8fd0ff", "#ffd65b", "#c9a36a"][k % 4];
+          rr(g, -86 + k * 15, -110, 6, 8, 1.5);
+          g.fill();
+        }
+        g.save();
+        g.translate(34, -78);
+        g.fillStyle = "#f2a556";
+        ell(g, 0, -20, 6.5, 6.5);
+        g.fill();
+        g.fillStyle = "#2a1f4c";
+        ell(g, 0, -26, 7, 3);
+        g.fill();
+        g.fillStyle = "#ff6f9a";
+        rr(g, -7, -14, 14, 14, 3);
+        g.fill();
+        g.fillStyle = "#fff6e8";
+        rr(g, -4.5, -11, 9, 11, 2);
+        g.fill();
+        g.fillStyle = "#1c1820";
+        g.beginPath();
+        g.arc(-2, -21, 0.9, 0, 7);
+        g.arc(2.2, -21, 0.9, 0, 7);
+        g.fill();
+        g.strokeStyle = "#7a3e26";
+        g.lineWidth = 0.8;
+        g.beginPath();
+        g.arc(0.2, -18.6, 1.6, 0.2, Math.PI - 0.2);
+        g.stroke();
+        g.restore();
         [
           ["#c9a36a", -70],
           ["#ff9bd2", -40],
@@ -1677,7 +1786,34 @@ const GFX = (() => {
           g.beginPath();
           g.arc(-97 + i * 19, -128, 9.5, 0, Math.PI);
           g.fill();
+          g.strokeStyle = "rgba(150,40,70,.35)";
+          g.lineWidth = 0.8;
+          g.stroke();
         }
+        // The awning's top lit, a shade line along its fold, and its
+        // support rods down to the body.
+        g.fillStyle = "rgba(255,255,255,.35)";
+        g.beginPath();
+        g.moveTo(-120, -150);
+        g.lineTo(74, -150);
+        g.lineTo(72, -146);
+        g.lineTo(-118, -146);
+        g.closePath();
+        g.fill();
+        g.strokeStyle = "rgba(120,30,60,.3)";
+        g.lineWidth = 1.2;
+        g.beginPath();
+        g.moveTo(-108, -129);
+        g.lineTo(62, -129);
+        g.stroke();
+        g.strokeStyle = "#8f98aa";
+        g.lineWidth = 1.4;
+        g.beginPath();
+        g.moveTo(-104, -128);
+        g.lineTo(-100, -122);
+        g.moveTo(56, -128);
+        g.lineTo(52, -122);
+        g.stroke();
         // roof sign: giant boba cup
         rr(g, -40, -178, 80, 26, 10);
         g.fillStyle = "#2a1f4c";
@@ -1758,21 +1894,54 @@ const GFX = (() => {
           g.arc(x - 3, -21, 1.6, 0, 7);
           g.fill();
         });
-        // menu board
+        // The menu board: a wooden A-frame with a slate, three drinks
+        // each with its colour dot, and a chalk border.
         g.save();
         g.translate(-138, -4);
-        rr(g, -18, -54, 36, 54, 4);
-        g.fillStyle = "#2a1f4c";
-        g.fill();
-        g.strokeStyle = "#8a6a3a";
-        g.lineWidth = 3;
+        g.strokeStyle = "#4e321c";
+        g.lineWidth = 2.6;
+        g.beginPath();
+        g.moveTo(-16, 0);
+        g.lineTo(-12, -14);
+        g.moveTo(16, 0);
+        g.lineTo(12, -14);
         g.stroke();
-        g.fillStyle = "#fff";
-        g.font = "700 8px 'DM Sans', sans-serif";
+        rr(g, -20, -58, 40, 48, 4);
+        g.fillStyle = vg(g, -58, -10, "#d39a58", "#8a5a30");
+        g.fill();
+        g.strokeStyle = "#5e3a1c";
+        g.lineWidth = 1.2;
+        g.stroke();
+        g.fillStyle = "rgba(255,230,190,.45)";
+        g.fillRect(-18, -56, 36, 1.6);
+        rr(g, -16, -54, 32, 40, 2);
+        g.fillStyle = "#26352f";
+        g.fill();
+        g.strokeStyle = "rgba(255,251,230,.35)";
+        g.lineWidth = 0.7;
+        g.setLineDash([2, 2]);
+        rr(g, -14, -52, 28, 36, 1.5);
+        g.stroke();
+        g.setLineDash([]);
+        g.fillStyle = "#ffd65b";
+        g.font = "800 8px 'Barlow Condensed', sans-serif";
         g.textAlign = "center";
-        ["MENU", "Volt", "Berry", "Taro"].forEach((t, i) =>
-          g.fillText(t, 0, -42 + i * 11),
-        );
+        g.fillText("MENU", 0, -44);
+        g.font = "700 7px 'DM Sans', sans-serif";
+        g.textAlign = "left";
+        [
+          ["Volt", "#ffd84a"],
+          ["Berry", "#ff9bd2"],
+          ["Taro", "#c47dff"],
+        ].forEach(([t, c], i) => {
+          const yy = -34 + i * 8;
+          g.fillStyle = c;
+          g.beginPath();
+          g.arc(-9, yy - 2.4, 2, 0, 7);
+          g.fill();
+          g.fillStyle = "#fffbe6";
+          g.fillText(t, -5, yy);
+        });
         g.restore();
         return { glow: [-20, -95] };
       }),

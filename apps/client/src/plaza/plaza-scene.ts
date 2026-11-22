@@ -3812,9 +3812,9 @@ export function openPlaza(options) {
     reeds: { spr: (seed) => GFX.reeds(seed), foot: 14, h: 70 },
     chalkboard: {
       spr: () => GFX.chalkboard(),
-      foot: 20,
-      h: 80,
-      shadow: [20, 5],
+      foot: 30,
+      h: 104,
+      shadow: [28, 6],
     },
     parasol: {
       spr: () => GFX.parasol(),
@@ -3995,7 +3995,23 @@ export function openPlaza(options) {
     const g = c.getContext("2d");
     g.scale(R, R);
     g.translate(ax, ay);
-    // Legs on base plates.
+    // Stone footings, a cross brace between the legs, then the legs.
+    for (const lx of [-66, 58]) {
+      g.fillStyle = "#8f8a80";
+      g.beginPath();
+      g.roundRect(lx - 9, -9, 26, 11, 3);
+      g.fill();
+      g.fillStyle = "#b8b2a6";
+      g.fillRect(lx - 7, -8, 22, 2);
+    }
+    g.strokeStyle = "#2a2f42";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(-62, -86);
+    g.lineTo(62, -30);
+    g.moveTo(62, -86);
+    g.lineTo(-62, -30);
+    g.stroke();
     for (const lx of [-66, 58]) {
       const lg = g.createLinearGradient(lx, 0, lx + 8, 0);
       lg.addColorStop(0, "#4a5068");
@@ -4053,6 +4069,27 @@ export function openPlaza(options) {
     g.textAlign = "right";
     g.font = "800 10px 'DM Sans', sans-serif";
     g.fillText("THIS WEEK", 78, -226);
+    // Bulbs round the cabinet's frame, a glint on the glass, and a
+    // little gold plate under the screen.
+    for (let bx = -86; bx <= 86; bx += 14)
+      for (const by of [-247, -107]) {
+        g.fillStyle = "#15102a";
+        g.beginPath();
+        g.arc(bx, by, 2.4, 0, 7);
+        g.fill();
+        g.fillStyle = "#fff4c2";
+        g.beginPath();
+        g.arc(bx, by, 1.5, 0, 7);
+        g.fill();
+      }
+    g.fillStyle = "rgba(255,255,255,.06)";
+    g.beginPath();
+    g.moveTo(-86, -212);
+    g.lineTo(-20, -212);
+    g.lineTo(-70, -112);
+    g.lineTo(-86, -112);
+    g.closePath();
+    g.fill();
     // Rows: medals for the top three, your row lit.
     const MEDAL = ["#ffd65b", "#d6dbe6", "#e0995a"];
     if (!rows.length) {
@@ -4102,6 +4139,28 @@ export function openPlaza(options) {
       g.font = "800 13px 'DM Sans', sans-serif";
       g.fillText(t.toFixed(2), 78, ry + 0.5);
     });
+    // Empty places, so a short week doesn't leave a dark hole: each a dim
+    // number and a dotted line, waiting for a runner.
+    if (rows.length)
+      for (let i = rows.length; i < 5; i++) {
+        const ry = -198 + i * 20;
+        if (i % 2) {
+          g.fillStyle = "rgba(255,255,255,.04)";
+          g.fillRect(-84, ry - 10, 168, 20);
+        }
+        g.fillStyle = "#4a5578";
+        g.font = "800 11px 'DM Sans', sans-serif";
+        g.textAlign = "center";
+        g.fillText(String(i + 1), -70, ry + 0.5);
+        g.strokeStyle = "rgba(127,139,176,.35)";
+        g.lineWidth = 1;
+        g.setLineDash([2, 3]);
+        g.beginPath();
+        g.moveTo(-56, ry + 1);
+        g.lineTo(78, ry + 1);
+        g.stroke();
+        g.setLineDash([]);
+      }
     g.textBaseline = "alphabetic";
     const spr = { c, w, h, ax, ay };
     leaderKey = key;

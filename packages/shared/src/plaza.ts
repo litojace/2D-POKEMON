@@ -684,7 +684,8 @@ export const PLAZA_DECOR: readonly {
   { x: 1996, y: 1350, kind: "reeds", r: 0, seed: 3 },
   // Volt Boba: its chalkboard (what it gives, for free) and a café table in
   // the shade, south of the truck, just off the paths.
-  { x: 1790, y: 614, kind: "chalkboard", r: 12 },
+  // (Wider since its board grew to fit its words: its legs stand ±30 px.)
+  { x: 1790, y: 614, kind: "chalkboard", r: 22, sy: 1.6 },
   { x: 1885, y: 630, kind: "parasol", r: 22, sy: 1.6 },
   // A pot of flowers either side of each house's door (where nobody can
   // stand: the house keeps everyone a step away).
