@@ -101,7 +101,6 @@ import {
   meadowLife,
   pathCobble,
   tuft,
-  turfClumps,
 } from "./plaza-ground-art";
 import { GFX } from "../hub-art/gfx";
 import {
@@ -426,8 +425,6 @@ export function openPlaza(options) {
     }
     // Big soft patches of sunlit and shaded grass, as the land rolls.
     grassLight(g, rnd, -GM, -GM, GW, GH, Math.round(40 * more));
-    // Clumps in the turf, each lit with its own small shadow.
-    turfClumps(g, rnd, -GM, -GM, GW, GH, Math.round(2600 * more));
     // Tufts: dark at the root, lit at the tips (light from the top left).
     for (let i = 0; i < 2000 * more; i++) tuft(g, rnd, gx(), gy(), 0.8 + rnd() * 0.5);
     // Flowers in drifts, clover patches and dandelion clocks, rather than

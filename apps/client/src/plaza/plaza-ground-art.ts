@@ -356,29 +356,4 @@ export function grassLight(g, rnd, x0, y0, w, h, n) {
   }
 }
 
-/**
- * Clumps in the turf: a lit tuft of grass with its own little shadow
- * below and right of it, so the meadow has a grain you can see at a
- * phone's zoom, not a flat green.
- */
-export function turfClumps(g, rnd, x0, y0, w, h, n) {
-  for (let i = 0; i < n; i++) {
-    const x = x0 + rnd() * w,
-      y = y0 + rnd() * h,
-      r = 7 + rnd() * 9;
-    g.fillStyle = "rgba(70,140,50,.32)";
-    g.beginPath();
-    g.ellipse(x + r * 0.35, y + r * 0.3, r, r * 0.5, 0, 0, 7);
-    g.fill();
-    g.fillStyle = rnd() < 0.5 ? "rgba(150,214,98,.5)" : "rgba(124,198,86,.5)";
-    g.beginPath();
-    g.ellipse(x, y, r * 0.9, r * 0.42, 0, 0, 7);
-    g.fill();
-    g.fillStyle = "rgba(220,250,160,.28)";
-    g.beginPath();
-    g.ellipse(x - r * 0.3, y - r * 0.15, r * 0.4, r * 0.16, 0, 0, 7);
-    g.fill();
-  }
-}
-
 export { mix, lt, dk };
