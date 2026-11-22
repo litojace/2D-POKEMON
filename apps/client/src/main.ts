@@ -444,6 +444,7 @@ import "./chat/chat.css";
 import "./ui/aero.css";
 import "./ui/light-effects.css";
 import { syncUiEffects } from "./ui/ui-effects";
+import { PRACTICE_DPS_WINDOW, practiceMeter } from "./practice-meter";
 import "./ui/phone-fit.css";
 const audio = new AudioManager();
 audio.start();
@@ -754,6 +755,12 @@ let tourTimer: ReturnType<typeof setTimeout> | undefined;
 let tourAsked: { account: string; answered: boolean } | undefined;
 /** EX skills: armed until this time (ms), 0 when not armed. */
 let exArmedUntil = 0;
+/** Solo test mode: skills 1-3 cast as their EX version (free with No skill
+ * cooldowns, a third of the meter otherwise). This device only. */
+let practiceEx = false;
+const practiceExOn = () => practiceEx && !!state?.practice;
+/** Solo test mode's last hit and damage per second. */
+let practiceDamage = practiceMeter();
 /** An invite is waiting for sign-in: say so once. */
 let inviteHinted = true;
 /** Render key for menu, lobby and battle state changes. */
@@ -2939,6 +2946,16 @@ function openRosterScreen() {
       syncHub();
     },
     skins: (id) => void accountsUI.showShop("skins", id),
+    // Test skills: this fighter becomes yours, then Solo test starts with it.
+    practice: (id) => {
+      if (id !== selected) {
+        selected = id;
+        rememberHomeFighter(id);
+        renderMenu();
+        syncHub();
+      }
+      void lobbyPlay("practice");
+    },
     onClose: () => (rosterScreen = undefined),
   });
 }
@@ -3377,6 +3394,8 @@ function renderMenu(revealSelection = false) {
         const button = $<HTMLButtonElement>("practice");
         button.disabled = true;
         const name = $<HTMLInputElement>("name").value.trim() || "Trainer";
+        // A new Solo test starts with normal skills.
+        practiceEx = false;
         identity(await request("practice", { name, character: selected }));
         button.disabled = false;
       };
@@ -3576,7 +3595,7 @@ function renderBattle() {
           )
           .join(
             "",
-          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><button class="secondary btn-secondary" id="practice-reset">${iconLabel("again", "Reset arena")}</button><button class="quiet leave-button" id="practice-exit">${iconLabel("leave", "Exit test mode")}</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. Hover a skill for its description.</p></div></details>`;
+          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><label><input id="practice-ex" type="checkbox"> EX skills (1–3)</label><button class="secondary btn-secondary" id="practice-reset">${iconLabel("again", "Reset arena")}</button><button class="quiet leave-button" id="practice-exit">${iconLabel("leave", "Exit test mode")}</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. EX skills casts skills 1–3 as their stronger EX version. Hover a skill for its description.</p></div></details>`;
       $("practice-settings").addEventListener("toggle", () => {
         if (($("practice-settings") as HTMLDetailsElement).open) stopControls();
       });
@@ -3593,6 +3612,9 @@ function renderBattle() {
           unlimitedCooldowns: $<HTMLInputElement>("practice-unlimited").checked,
           targetAttacks: $<HTMLInputElement>("practice-attacks").checked,
         });
+      practiceDamage = practiceMeter();
+      $("practice-ex").onchange = () =>
+        (practiceEx = $<HTMLInputElement>("practice-ex").checked);
       $("practice-unlimited").onchange = options;
       $("practice-attacks").onchange = options;
       $("practice-reset").onclick = () => void request("practice-reset");
@@ -3643,12 +3665,16 @@ function renderBattle() {
   if (state.practice) {
     setHudText(
       $("practice-stats"),
-      `Damage dealt: ${Math.round(me.stats.dealt)} · Damage taken: ${Math.round(me.stats.received)} · Skills used: ${me.stats.skills}`,
+      (() => {
+        const hit = practiceDamage.update(me.stats.dealt, state.time);
+        return `Last hit: ${hit.lastHit} · DPS (${PRACTICE_DPS_WINDOW}s): ${hit.dps} · Damage dealt: ${Math.round(me.stats.dealt)} · Damage taken: ${Math.round(me.stats.received)} · Skills used: ${me.stats.skills}`;
+      })(),
     );
     $<HTMLInputElement>("practice-unlimited").checked =
       state.practice.unlimitedCooldowns;
     $<HTMLInputElement>("practice-attacks").checked =
       state.practice.targetAttacks;
+    $<HTMLInputElement>("practice-ex").checked = practiceEx;
   }
   setHudText(
     $("round-label"),
@@ -3730,7 +3756,7 @@ function renderBattle() {
             !!state!.practice?.unlimitedCooldowns,
           );
         const armed = exArmedUntil > performance.now();
-        const exReady = !ready && charge >= EX.cost && !state!.practice;
+        const exReady = !ready && charge >= EX.cost;
         setHudText(
           $(`cooldown-${i}`),
           ready
@@ -3761,7 +3787,7 @@ function renderBattle() {
       }
       $(`ability-${i}`).classList.toggle(
         "ex-armed",
-        exArmedUntil > performance.now(),
+        exArmedUntil > performance.now() || practiceExOn(),
       );
       const left = cooldownLeft(me, i, state!.time);
       setHudText(
@@ -3808,8 +3834,8 @@ function renderBattle() {
       duration: CHARACTERS[me.character].basic.interval ?? 0.3,
     },
     state.practice?.unlimitedCooldowns ? RULES.ultMax : (me.ult ?? 0),
-    state.practice ? Infinity : EX.cost,
-    exArmedUntil > performance.now(),
+    state.practice?.unlimitedCooldowns ? Infinity : EX.cost,
+    exArmedUntil > performance.now() || practiceExOn(),
   );
   if (state.raid && myId) {
     renderRaidUI(
@@ -6701,7 +6727,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       } else if (skill >= 0 && skill < ULT_SLOT && exArmedUntil) {
         if (performance.now() < exArmedUntil && meter >= EX.cost) ex = true;
         exArmedUntil = 0;
-      }
+      } else if (skill >= 0 && skill < ULT_SLOT && practiceExOn()) ex = true;
       if (exArmedUntil && performance.now() >= exArmedUntil) exArmedUntil = 0;
       const keyX = heldAxis("left", "right"),
         keyY = heldAxis("up", "down");
