@@ -389,7 +389,15 @@ for (const size of [
         "ALL",
         "ALL",
       ]);
-      // Measured from one shot, while the lines are still at full strength.
+      // Each line fades out over 5 s, and a slow runner can take that long
+      // to shoot the page: hold the lines at full strength first.
+      await page.evaluate(() => {
+        for (const li of document.querySelectorAll(".battle-chat-feed li"))
+          for (const a of li.getAnimations()) {
+            a.pause();
+            a.currentTime = 0;
+          }
+      });
       const [shot, layout] = await Promise.all([
         page.screenshot({ animations: "allow" }),
         page.evaluate(() => {
