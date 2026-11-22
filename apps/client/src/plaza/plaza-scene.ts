@@ -1394,16 +1394,22 @@ export function openPlaza(options) {
   /** The fishing line's run (rod tip to bobber), and how far east of the
    * bobber the ducks' paths end (a duck's half width and the ripples). */
   const LINE_ZONE = fishingLineZone(),
-    DUCK_CLEAR = 52;
-  const DUCKS = ["drake", "hen", "hen", "drake"].map((k, i) => ({
-    k,
-    a: i * 1.6,
-    s: (0.1 + i * 0.02) * (i % 2 ? 1 : -1),
+    DUCK_CLEAR = 75;
+  /** Two ducks, a drake and a hen (owner: four kept swimming over each
+   * other). They go round together, half a turn apart on paths of
+   * different sizes, so they never meet; when one stops to dabble both
+   * slow down, keeping the gap. */
+  const DUCKS = [
+    { k: "drake", off: 0, r: 0.54 },
+    { k: "hen", off: Math.PI, r: 0.42 },
+  ].map((d) => ({
+    ...d,
+    a: d.off,
+    s: 0.12,
     x: 0,
     y: 0,
     face: 1,
     dab: 0,
-    r: 0.4 + (i % 2) * 0.15,
   }));
   const FISH = [0, 1, 2].map((i) => ({
     a: i * 2,
@@ -4743,8 +4749,11 @@ export function openPlaza(options) {
     return true;
   };
   function updateAnimals(dt) {
+    // The first duck leads; the other keeps half a turn behind it.
+    const lead = DUCKS[0];
+    lead.a += lead.s * dt * (DUCKS.some((d) => d.dab > 0) ? 0.2 : 1);
     DUCKS.forEach((d) => {
-      d.a += d.s * dt * (d.dab > 0 ? 0.2 : 1);
+      d.a = lead.a + d.off;
       // Round a point east of the middle, on an egg-shaped path: the
       // half toward the dock is drawn in so its end stays DUCK_CLEAR east
       // of the bobber, so ducks keep clear of the line and the bobber
