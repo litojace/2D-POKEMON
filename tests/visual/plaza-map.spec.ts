@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openPlaza, snap } from "./helpers";
 import {
+  PLAZA,
   PLAZA_PLACES,
   PLAZA_QUESTS,
   plazaPlaceOf,
@@ -300,28 +301,36 @@ test("on a slow device a Go walk stops where it was going", async ({
   // fps), less on a CI runner that already draws the Plaza slowly. A fixed
   // 4x on top of a CI runner went far below that, where the harness's
   // in-page server (slowed with the page) misses its own ticks.
-  const fps = await page.evaluate(
-    () =>
-      new Promise<number>((done) => {
-        const t: number[] = [];
-        const f = (n: number) => {
-          t.push(n);
-          if (t.length < 31) requestAnimationFrame(f);
-          else {
-            const d = t
-              .slice(1)
-              .map((x, i) => x - t[i])
-              .sort((a, b) => a - b);
-            done(1000 / d[d.length >> 1]);
-          }
-        };
-        requestAnimationFrame(f);
-      }),
-  );
+  const frameRate = () =>
+    page.evaluate(
+      () =>
+        new Promise<number>((done) => {
+          const t: number[] = [];
+          const f = (n: number) => {
+            t.push(n);
+            if (t.length < 31) requestAnimationFrame(f);
+            else {
+              const d = t
+                .slice(1)
+                .map((x, i) => x - t[i])
+                .sort((a, b) => a - b);
+              done(1000 / d[d.length >> 1]);
+            }
+          };
+          requestAnimationFrame(f);
+        }),
+    );
+  const fps = await frameRate();
   const rate = Math.min(4, Math.max(1, fps / 10));
   await (
     await page.context().newCDPSession(page)
   ).send("Emulation.setCPUThrottlingRate", { rate });
+  // You can't stop finer than one frame's walk: at the frame rate it now
+  // draws, the bound is that walk and a little (24 px at least). A CI
+  // runner drawing the Plaza at 4 fps walks 60 px a frame; before #364
+  // the walk ended 106 px off at 7 fps (bound 42).
+  const slowFps = await frameRate(),
+    bound = Math.max(24, PLAZA.speed / slowFps + 8);
   const server = () =>
     page.evaluate(() => {
       const b = (window as any).__plazaWorld.bodyOf("local");
@@ -343,8 +352,8 @@ test("on a slow device a Go walk stops where it was going", async ({
     expect(still, id).toBe(4);
     expect(
       Math.hypot(last.x - p.x, last.y - p.y),
-      `${id} (page at ${Math.round(fps)} fps, slowed ${rate.toFixed(1)}x)`,
-    ).toBeLessThan(24);
+      `${id} (page at ${Math.round(fps)} fps, slowed ${rate.toFixed(1)}x to ${Math.round(slowFps)} fps)`,
+    ).toBeLessThan(bound);
   }
   expect(errors).toEqual([]);
 });
