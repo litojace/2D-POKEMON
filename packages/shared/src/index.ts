@@ -2456,7 +2456,7 @@ for (const combo of Object.values(COMBOS)) combo.text = inMeters(combo.text);
  * (2v2 focus fire, docs/smarter-bots.md).
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 1.0,
+  voltkit: 1.03,
   cindrake: 0.994,
   tidefin: 1.018,
   auralynx: 0.88,
