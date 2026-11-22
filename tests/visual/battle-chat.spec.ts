@@ -12,7 +12,7 @@ import {
  * Quick chat in a battle (chat/battle-chat.ts, docs/chat-plan.md): the
  * button top left, clear of the controls and the camera cutout; its grid
  * sends calls; teammates' lines pop over their nameplate and in the feed;
- * a rival's phrase never shows, a rival's emote does until "Mute rivals";
+ * a rival's phrase never shows, a rival's emote does until "Mute others";
  * in a raid the grid carries the raid's signals (the old signals button is
  * gone).
  */
@@ -177,7 +177,7 @@ for (const phone of PHONES)
         1,
       );
       await snap(page, info, `battle-chat-bubbles-${phone.name}`);
-      // Mute rivals: their emotes stop showing.
+      // Mute others: rivals' emotes stop showing.
       await btn.click();
       await grid.locator("[data-battle-mute]").click();
       await expect(grid.locator("[data-battle-mute]")).toHaveAttribute(

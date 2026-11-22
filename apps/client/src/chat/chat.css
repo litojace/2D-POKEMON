@@ -264,8 +264,7 @@
   height: 20px;
   border-radius: 999px;
   background:
-    radial-gradient(circle at 10px 50%, #fff 7px, transparent 7.5px),
-    #4a5674;
+    radial-gradient(circle at 10px 50%, #fff 7px, transparent 7.5px), #4a5674;
 }
 .chat-push-toggle[aria-checked="true"]::before {
   background:
@@ -753,6 +752,15 @@ button.chat-say:focus-visible {
 }
 .battle-chat-feed li.is-rival b {
   color: #ff9aa5;
+}
+/* A watcher's line: their name in gold, marked as watching. */
+.battle-chat-feed li.is-watcher b {
+  color: #ffd98a;
+}
+.battle-chat-feed li.is-watcher b::after {
+  content: " · watching";
+  color: var(--ui-dim);
+  font-weight: 500;
 }
 @keyframes battle-chat-line {
   0%,

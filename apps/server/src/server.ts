@@ -2796,8 +2796,11 @@ export function createArenaServer(
         };
       }
       if (channel === "room") {
+        // A seat, or a ringside seat (watching): watchers chat with the room.
         const session = getSession(socket.id);
-        const arena = session && rooms.get(session.code);
+        const arena = rooms.get(
+          session?.code ?? watchers.get(socket.id)?.code ?? "",
+        );
         if (!arena) return null;
         const owners = fighterAccounts.get(arena);
         const members: ChatMember[] = [];
@@ -2808,6 +2811,16 @@ export function createArenaServer(
           if (![...sessions.values()].some((s) => s.id === p.id)) continue;
           const team = arena instanceof RaidArena ? 0 : arena.teamOf(p);
           members.push(chatMember(accountId, p.name, team));
+        }
+        // Watchers sit on no side (chat.ts: they hear the players' emotes,
+        // and the players hear their emotes and phrases, never calls).
+        for (const [id, w] of watchers) {
+          if (w.code !== arena.code) continue;
+          const viewer = io.sockets.sockets.get(id)?.data.account as
+            Account | undefined;
+          if (!viewer || members.some((m) => m.accountId === viewer.id))
+            continue;
+          members.push({ ...chatMember(viewer.id, w.name), watcher: true });
         }
         return {
           channel,

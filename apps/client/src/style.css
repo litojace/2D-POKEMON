@@ -4273,6 +4273,21 @@ body.spectating #mobile-controls,
 body.spectating #control-hints {
   display: none !important;
 }
+/* "Watching room …" says it once, then fades off the court: the gear keeps
+   Stop watching (restarts each time play starts, as the banner reshows). */
+body.spectating #spectate:not(.pvp-spectator) {
+  pointer-events: none;
+  animation: watch-banner-fade 6s ease-in forwards;
+}
+@keyframes watch-banner-fade {
+  0%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
 .teamup-note {
   margin: 10px auto 4px;
   max-width: 560px;

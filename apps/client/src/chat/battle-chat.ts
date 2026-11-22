@@ -9,6 +9,9 @@
  * - In a raid the grid starts with the raid's team signals (Stack, Revive,
  *   Bait…), which mark the arena as before (raid-ping), in place of the
  *   raid's own signals button.
+ * - Watching a room: emotes and cheers (no calls: a watcher takes no side).
+ *   The players see a watcher's line in the feed, marked "watching";
+ *   "Mute others" (was "Mute rivals") hides watchers along with rivals.
  *
  * Performance (docs/network-performance.md): nothing here runs per frame.
  * The bubble is a child of the fighter's nameplate, so it moves with it for
@@ -36,11 +39,15 @@ export interface BattleChatHooks {
   pingLabel(kind: RaidPingKind): string;
 }
 export interface BattleChatView {
-  /** Shown in a battle with other people in it; in a raid, its signals. */
-  sync(show: boolean, raid: boolean): void;
+  /**
+   * Shown in a battle with other people in it; in a raid, its signals;
+   * `watcher` when this device watches the room (cheers, no calls).
+   */
+  sync(show: boolean, raid: boolean, watcher?: boolean): void;
   /**
    * A line from the room: `plate` is the speaker's nameplate (a bubble goes
-   * over it), `team` whether they fight on your side.
+   * over it), `team` whether they fight on your side, `watcher` whether
+   * the speaker is watching the room.
    */
   receive(
     text: string,
@@ -48,6 +55,7 @@ export interface BattleChatView {
     plate: HTMLElement | null,
     team: boolean,
     emote: boolean,
+    watcher?: boolean,
   ): void;
   close(): void;
 }
@@ -64,6 +72,17 @@ const PVP: ChatQuick[] = [
   "fire",
 ];
 const RAID: ChatQuick[] = ["help", "omw", "careful", "gg", "fire"];
+/** Watching: cheers and emotes, the same eight in a battle and a raid. */
+const WATCH: ChatQuick[] = [
+  "nice",
+  "wp",
+  "go",
+  "gg",
+  "clap",
+  "fire",
+  "laugh",
+  "wave",
+];
 const PINGS: RaidPingKind[] = ["stack", "revive", "bait"];
 const BUBBLE_MS = 2600;
 const FEED_LINES = 3;
@@ -104,28 +123,32 @@ export function mountBattleChat(hooks: BattleChatHooks): BattleChatView {
   document.body.append(button, grid, feed);
 
   let raid = false;
+  let watching = false;
   let muted = readMute();
   let sentAt = 0;
 
   function render() {
-    const chips = (raid ? RAID : PVP).map(
+    const chips = (watching ? WATCH : raid ? RAID : PVP).map(
       (q) =>
         `<button type="button"${q in CHAT_EMOTES ? ' class="is-emote"' : ""} data-battle-quick="${q}" aria-label="${q in CHAT_EMOTES ? q : label(q)}">${label(q)}</button>`,
     );
-    const pings = raid
-      ? PINGS.map(
-          (k) =>
-            `<button type="button" class="is-ping" data-battle-ping="${k}">${hooks.pingLabel(k)}</button>`,
-        )
-      : [];
+    const pings =
+      raid && !watching
+        ? PINGS.map(
+            (k) =>
+              `<button type="button" class="is-ping" data-battle-ping="${k}">${hooks.pingLabel(k)}</button>`,
+          )
+        : [];
+    // In a battle it hides rivals and watchers alike; a watcher hides the
+    // players' emotes. (A raid has no rivals: no button, as before.)
+    const others = watching ? "players" : "others";
     grid.innerHTML = [
       ...pings,
       ...chips,
-      // (No rivals in a raid.)
-      ...(raid
+      ...(raid && !watching
         ? []
         : [
-            `<button type="button" class="is-mute" data-battle-mute aria-pressed="${muted}">${muted ? "Rivals muted" : "Mute rivals"}</button>`,
+            `<button type="button" class="is-mute" data-battle-mute aria-pressed="${muted}">${muted ? `${others[0].toUpperCase()}${others.slice(1)} muted` : `Mute ${others}`}</button>`,
           ]),
     ].join("");
   }
@@ -197,28 +220,32 @@ export function mountBattleChat(hooks: BattleChatHooks): BattleChatView {
   }
 
   return {
-    sync(show, isRaid) {
+    sync(show, isRaid, isWatcher = false) {
       button.hidden = !show;
       feed.hidden = !show;
       if (!show) {
         setOpen(false);
         feed.replaceChildren();
       }
-      if (isRaid !== raid) {
+      if (isRaid !== raid || isWatcher !== watching) {
         raid = isRaid;
+        watching = isWatcher;
         if (!grid.hidden) render();
       }
       button.dataset.raid = String(raid);
+      button.dataset.watching = String(watching);
     },
-    receive(text, name, plate, team, emote) {
+    receive(text, name, plate, team, emote, watcher = false) {
       if (button.hidden) return;
-      if (!team && (muted || !emote)) return;
+      // A watcher's cheer reaches everyone; a rival's only as an emote.
+      if (!team && (muted || (!emote && !watcher))) return;
       if (plate) bubble(plate, text);
       const li = document.createElement("li");
       const who = document.createElement("b");
       who.textContent = name;
       li.append(who, document.createTextNode(` ${text}`));
-      if (!team) li.classList.add("is-rival");
+      if (watcher) li.classList.add("is-watcher");
+      else if (!team) li.classList.add("is-rival");
       feed.append(li);
       while (feed.children.length > FEED_LINES)
         feed.firstElementChild!.remove();

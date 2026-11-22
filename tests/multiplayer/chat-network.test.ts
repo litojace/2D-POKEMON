@@ -199,6 +199,44 @@ it("room chat: typing before the battle reaches everyone in the room", async () 
   ).toEqual({ ok: false, error: "Calls are for battles." });
 });
 
+it("a watcher chats with the room it watches, and stops when they stop watching", async () => {
+  const f = await setup();
+  const host = await request(f.a.s, "create", { name: "One" });
+  const code = (host as { code?: string }).code!;
+  expect((await request(f.b.s, "join", { name: "Two", code })).ok).toBe(true);
+  // Not watching yet: no room to talk to.
+  expect(
+    (await request(f.x.s, "chat-send", { channel: "room", text: "hi" })).ok,
+  ).toBe(false);
+  expect((await request(f.x.s, "watch", { code })).ok).toBe(true);
+  expect(
+    await request(f.x.s, "chat-send", { channel: "room", text: "good luck!" }),
+  ).toEqual({ ok: true });
+  // A player's line reaches the watcher too.
+  expect(
+    await request(f.a.s, "chat-send", { channel: "room", text: "thanks" }),
+  ).toEqual({ ok: true });
+  await settle();
+  for (const who of [f.a, f.b, f.x])
+    expect(who.heard.map((l) => [l.text, !!l.watcher, !!l.fighter])).toEqual([
+      ["good luck!", true, false],
+      ["thanks", false, true],
+    ]);
+  // The room's history is theirs to read; calls are the players'.
+  expect(
+    (await request(f.x.s, "chat-history", { channel: "room" })).lines?.map(
+      (l) => l.text,
+    ),
+  ).toEqual(["good luck!", "thanks"]);
+  expect((await request(f.x.s, "unwatch")).ok).toBe(true);
+  expect(
+    (await request(f.x.s, "chat-send", { channel: "room", text: "bye" })).ok,
+  ).toBe(false);
+  await request(f.a.s, "chat-send", { channel: "room", text: "gone?" });
+  await settle();
+  expect(f.x.heard.map((l) => l.text)).toEqual(["good luck!", "thanks"]);
+});
+
 it("Nearby on the Plaza: quick chat only, to everyone in the copy, with the Plaza's emote", async () => {
   const f = await setup();
   for (const who of [f.a, f.b])

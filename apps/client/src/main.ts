@@ -99,6 +99,7 @@ import {
   pacificDate,
   raidPingLabel,
   isRaider,
+  raidBossName,
 } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
@@ -120,7 +121,12 @@ import {
   type RoomMode as RoomKind,
 } from "./screens/room-view";
 import "./screens/room.css";
-import { renderRaidUI, drawRaidArena, raidLookList } from "./raid-ui";
+import {
+  renderRaidUI,
+  renderRaidWatchHud,
+  drawRaidArena,
+  raidLookList,
+} from "./raid-ui";
 import {
   howToPlayMarkup,
   helpTopicMarkup,
@@ -1934,8 +1940,24 @@ let roomMode: RoomMode = (() => {
   }
 })();
 /** Lobby panel: a duel list, or Blue/Red columns for 2v2. */
+/** A side's name for a watcher: Blue/Red in 2v2, else its fighter's name. */
+function sideName(team: number) {
+  if (isTeams()) return (TEAM_LABELS[team] ?? "").toUpperCase();
+  return (
+    state?.players.find((p) => teamOf(p) === team)?.name ?? ""
+  ).toUpperCase();
+}
+/** Watching: the leading side and the runner-up, for no one in particular. */
+function watchRace(label: string, totals: number[], target: number) {
+  const sides = totals
+    .map((n, team) => ({ n: Math.floor(n), team }))
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 2);
+  return `${label} · ${sides.map((x) => `${sideName(x.team)} ${x.n}`).join(" · ")} / ${target}`;
+}
 /** Orb Rush HUD line: gems you carry, your side's bank and the best rival's. */
 function rushLabel(me: Fighter) {
+  if (!myId) return watchRace("RUSH", state?.banked ?? [], RUSH.target);
   const banked = state?.banked ?? [];
   const mine = banked[teamOf(me)] ?? 0;
   const rival = Math.max(0, ...banked.filter((_, t) => t !== teamOf(me)));
@@ -1943,6 +1965,12 @@ function rushLabel(me: Fighter) {
 }
 /** Crown Hill HUD line: your hold time against the best rival's. */
 function crownLabel(me: Fighter) {
+  if (!myId)
+    return watchRace(
+      "CROWN",
+      state?.crown ?? [],
+      state?.arcade?.hill?.target ?? CROWN.holdSeconds,
+    );
   const crown = state?.crown ?? [];
   const mine = crown[teamOf(me)] ?? 0;
   const rival = Math.max(0, ...crown.filter((_, t) => t !== teamOf(me)));
@@ -1952,7 +1980,9 @@ function crownLabel(me: Fighter) {
 function renderWatchOverlay(overlay: HTMLElement) {
   const banner = $("spectate");
   banner.hidden = state!.phase !== "playing";
-  banner.textContent = `Watching room ${state!.code} · Esc / Menu to stop`;
+  // Phones have no Esc: the gear (top right) holds "Stop watching".
+  const text = `Watching room ${state!.code} · ${touch.enabled ? "⚙ to stop" : "Esc to stop"}`;
+  if (banner.textContent !== text) banner.textContent = text;
   if (state!.phase === "playing") {
     setOverlayMarkup(overlay, "");
     overlay.style.pointerEvents = "none";
@@ -1964,7 +1994,25 @@ function renderWatchOverlay(overlay: HTMLElement) {
   let heading = "",
     details = "",
     actions = "";
-  if (state!.phase === "briefing") {
+  const raid = state!.raid;
+  if (raid) {
+    // A raid: the raiders against the boss, its own words between fights.
+    const raiders = state!.players.filter((p) => isRaider(p) && !p.out);
+    if (state!.phase === "briefing") {
+      heading = `The raiders are getting ready`;
+      details = `<p>${raiders.map((p) => `<b>${escape(p.name)}</b>`).join(" · ")} against ${escape(raidBossName(raid))}</p>`;
+    } else if (state!.phase === "intermission") {
+      heading = "The raiders are choosing rites";
+      details = `<p class="rite-timer">Next phase in ${LIVE_SECONDS}</p>`;
+    } else if (state!.phase === "finished") {
+      heading =
+        raid.result === "victory"
+          ? `${escape(raidBossName(raid))} defeated!`
+          : `${escape(raidBossName(raid))} still stands`;
+      details = `<p>${raiders.map((p) => `<b>${escape(p.name)}</b>`).join(" · ")} · ${Math.floor(raid.elapsed / 60)}:${String(Math.floor(raid.elapsed % 60)).padStart(2, "0")} · ${raid.revives} revives</p>`;
+      actions = `<div class="result-actions"><button class="secondary btn-secondary leave-button" id="watch-stop">${iconLabel("stop-watching", "Stop watching")}</button></div>`;
+    }
+  } else if (state!.phase === "briefing") {
     heading = "The players are getting ready";
     details = `<div class="briefing-versus${isFfa() ? " ffa" : ""}">${state!.players
       .map(
@@ -1979,7 +2027,7 @@ function renderWatchOverlay(overlay: HTMLElement) {
     heading = LIVE_COUNTDOWN;
     details = "Here we go.";
   }
-  if (state!.phase === "intermission") {
+  if (state!.phase === "intermission" && !raid) {
     heading = isTeams()
       ? state!.roundWinnerTeam === null || state!.roundWinnerTeam === undefined
         ? "Round drawn"
@@ -1993,7 +2041,7 @@ function renderWatchOverlay(overlay: HTMLElement) {
     heading = "A player disconnected";
     details = `Waiting for them · ${LIVE_SECONDS}`;
   }
-  if (state!.phase === "finished") {
+  if (state!.phase === "finished" && !raid) {
     heading = isTeams()
       ? `${TEAM_LABELS[state!.winnerTeam ?? 0] ?? ""} team wins`
       : `${name(state!.winner)} wins`;
@@ -2582,7 +2630,10 @@ function syncHub() {
 }
 /** The chat button's place and channels (chat/chat-ui.ts). */
 function syncChat(hub: boolean) {
-  const inRoom = !!myId && !!state;
+  // Watching a room counts as being in it: watchers chat with its players
+  // (docs/chat-plan.md, "Watchers").
+  const watcher = !myId && !!watching && state?.code === watching;
+  const inRoom = (!!myId || watcher) && !!state;
   const fighting =
     inRoom && state!.phase !== "lobby" && state!.phase !== "finished";
   // The Reveal (a PvP briefing) is a few seconds' loading screen: no chat
@@ -2601,15 +2652,19 @@ function syncChat(hub: boolean) {
       !reveal &&
       !state!.practice &&
       !state!.vsBot &&
-      state!.players.length > 1 &&
-      (!state!.raid || state!.raid.partySize > 1),
+      // Someone to talk to: another fighter, a raid party, or a watcher.
+      (watcher ||
+        (state!.watchers?.length ?? 0) > 0 ||
+        (state!.players.length > 1 &&
+          (!state!.raid || state!.raid.partySize > 1))),
     !!state?.raid,
+    watcher,
   );
   chat.sync(place, {
     party: !!party,
     room: inRoom && !state!.practice,
-    // A 2v2 room's own side (docs/hidden-picks.md).
-    team: inRoom && !state!.practice && state!.mode === "teams",
+    // A 2v2 room's own side (docs/hidden-picks.md); a watcher has none.
+    team: inRoom && !watcher && !state!.practice && state!.mode === "teams",
     // Nearby: the Plaza's copy.
     place: hub && hubScene === "plaza",
     // Friends: anyone signed in with an account (guests have no friends).
@@ -3880,6 +3935,17 @@ function renderBattle() {
     if (exit) exit.onclick = () => void leave();
     return;
   }
+  // Watching a raid: the boss's bar and the raiders' health, as they see
+  // them; the overlays between fights are the watcher's (below).
+  if (state.raid && !myId && watching) {
+    renderRaidWatchHud(state);
+    const raidHud = document.getElementById("raid-hud");
+    if (raidHud && raidHud !== measuredRaidHud) {
+      if (measuredRaidHud) battleHudSize.unobserve(measuredRaidHud);
+      measuredRaidHud = raidHud;
+      battleHudSize.observe(raidHud);
+    }
+  }
   const overlay = $("arena-overlay");
   // The Reveal and the countdown take the whole screen (style.css). Marked on
   // the overlay itself, in the same step as its markup: a rule asking the
@@ -4320,18 +4386,26 @@ socket.on("invite-declined", (data: unknown) => {
 socket.on("chat", (line: ChatLine) => {
   chat.receive(line);
   // In a battle: a bubble over the speaker, and the feed under the button.
-  if (line.channel === "room" && line.fighter && state) {
+  // A watcher's line has no fighter: it goes in the feed only.
+  if (line.channel === "room" && (line.fighter || line.watcher) && state) {
     const speaker = state.players.find((p) => p.id === line.fighter);
     const me = state.players.find((p) => p.id === myId);
-    const plate = document.querySelector<HTMLElement>(
-      `.battle-nameplate[data-fighter="${CSS.escape(line.fighter)}"]`,
-    );
+    const plate = line.fighter
+      ? document.querySelector<HTMLElement>(
+          `.battle-nameplate[data-fighter="${CSS.escape(line.fighter)}"]`,
+        )
+      : null;
+    const mine = line.from.id === accountsUI?.account?.id;
     battleChat.receive(
       line.quick ? quickText(line.quick) : (line.text ?? ""),
       line.from.name,
       plate,
-      !!state.raid || (!!speaker && !!me && teamOf(speaker) === teamOf(me)),
+      mine ||
+        (!line.watcher &&
+          (!!state.raid ||
+            (!!speaker && !!me && teamOf(speaker) === teamOf(me)))),
       !!line.quick && quickKind(line.quick) === "emote",
+      !!line.watcher && !mine,
     );
   }
   // Nearby lines pop over the speaker's head. On the Plaza the server
@@ -6424,7 +6498,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // (or, downed, stay on them) and pull out for court-wide mechanics.
     // Phones only (the CSS's landscape phone breakpoint): a tablet already
     // shows the whole court large enough.
+    // Watching (no seat): always the whole court, never a follow or a zoom.
+    const ringside = !myId && !!watching;
     const raidFollow =
+      !ringside &&
       !!state?.raid &&
       touch.enabled &&
       innerWidth > innerHeight &&
@@ -6478,7 +6555,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       : this.followCamera.update(
           this.scale.width,
           this.scale.height,
-          touch.enabled &&
+          // Watching fits the whole court (a phone fills the box only when
+          // its camera follows your own fighter).
+          !ringside &&
+            touch.enabled &&
             !state?.raid &&
             document.body.classList.contains("battle-active") &&
             innerWidth > innerHeight,
@@ -6501,7 +6581,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           reducedMotion,
           this.activeCourt && !this.courtRaid ? STANDS : 0,
           state?.practice ? 1.65 : 1.2,
-          touch.enabled &&
+          !ringside &&
+            touch.enabled &&
             innerWidth > innerHeight &&
             this.activeCourt &&
             !this.courtRaid
@@ -6509,9 +6590,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             : 0,
           // The PvP badge covers the top of a phone's arena: the court may
           // scroll below it (badge pixels → game pixels).
-          touch.enabled && badgeClear ? badgeClear.bottom / this.scale.zoom : 0,
+          !ringside && touch.enabled && badgeClear
+            ? badgeClear.bottom / this.scale.zoom
+            : 0,
         );
-    const hitZoom = state?.raid ? 1 : this.koZoom;
+    // No knockout push-in while watching either: the view stays whole.
+    const hitZoom = state?.raid || ringside ? 1 : this.koZoom;
     this.cameras.main
       .setZoom(view.zoomX * hitZoom, view.zoomY * hitZoom)
       .centerOn(view.x, view.y);

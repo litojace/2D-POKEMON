@@ -355,6 +355,23 @@ export function renderRaidUI(
   if (lobby) lobby.onclick = () => void request("lobby");
 }
 /**
+ * Watching a raid: the boss's bar and cue, and every raider's health in the
+ * party list, as a raider sees them but for no one in particular (cues name
+ * whoever is targeted instead of saying "you"). The overlays between fights
+ * are the watcher's own (main.ts, renderWatchOverlay).
+ */
+export function renderRaidWatchHud(state: Snapshot) {
+  const nobody = { id: "" } as Fighter;
+  let hud = document.getElementById("raid-hud");
+  if (!hud) {
+    hud = document.createElement("div");
+    hud.id = "raid-hud";
+    document.getElementById("battle")!.prepend(hud);
+  }
+  paintRaidHud(hud, raidHudView(state, nobody));
+  paintRaidParty(state, nobody);
+}
+/**
  * The rites choice over the whole screen (screens/raid-rites.css): the
  * title with a pip per pick, the seconds as one big number, six rite tiles,
  * and the rite details and the team's rites as links under them.

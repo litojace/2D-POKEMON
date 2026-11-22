@@ -46,6 +46,8 @@ export interface ChatMember {
   mode: ChatMode;
   /** Their team in a battle (rooms only). */
   team?: number;
+  /** Watching the room, on no side (rooms only). */
+  watcher?: boolean;
 }
 /** Where a line goes: worked out by the server from its own state. */
 export interface ChatRoute {
@@ -134,6 +136,9 @@ export class ChatHub {
       const quick = input.quick as ChatQuick;
       const refused = quickRefusal(context, quick);
       if (refused) return { ok: false, error: refused };
+      // Calls ("Fall back"…) are a side's: a watcher has none.
+      if (sender.watcher && kind === "call")
+        return { ok: false, error: "Calls are for the players." };
       if (now - pace.lastQuick < CHAT_LIMITS.quickGapMs)
         return { ok: false, error: "Wait a moment." };
       pace.lastQuick = now;
@@ -206,6 +211,9 @@ export class ChatHub {
     if (m.mode === "off" || this.blocks(sender.accountId, m.accountId))
       return false;
     if (!route.inBattle || !line.quick) return true;
+    // A watcher's emotes and phrases reach everyone (they take no side, so
+    // they give nothing away); what a side says stays with that side.
+    if (sender.watcher) return true;
     const sameTeam = m.team !== undefined && m.team === sender.team;
     // Opponents who muted emotes hide them on their side.
     return quickSeenInBattle(line.quick, sameTeam, false);
@@ -222,6 +230,7 @@ export class ChatHub {
       channel: route.channel,
       from: { id: sender.accountId, name: sender.name },
       at,
+      ...(sender.watcher ? { watcher: true } : {}),
       ...body,
     };
   }
