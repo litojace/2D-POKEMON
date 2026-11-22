@@ -222,3 +222,36 @@ it("holds snapshots back from a congested socket and delivers every missed event
     expect(delivered.filter((d) => d === id)).toHaveLength(1);
   expect(slow.seen.at(-1)!.wire.meta).toBeDefined();
 });
+
+it("a player who leaves the app is offline in their room at once, and gets the seat back on return", async () => {
+  const { connect, accounts } = await setup();
+  const one = await connect();
+  const token = accounts.add().token;
+  const two = await connect(token);
+  const host = await emit(one, "create", { name: "One" });
+  const guest = await emit(two, "join", { name: "Two", code: host.code });
+  const arena = server!.rooms.get(host.code!)!;
+  const seat = () => arena.players.find((p) => p.id === guest.id);
+  expect(seat()?.connected).toBe(true);
+  // background-exit.ts closes the connection when the app is hidden: the
+  // server hears it now, not after a heartbeat gives up on a frozen app.
+  two.disconnect();
+  await until(() => seat()?.connected === false, 500);
+  expect(server!.io.sockets.sockets.size).toBe(1);
+  // Back in front within the grace: the same seat.
+  const back = await connect(token);
+  const resumed = await emit(back, "resume", { token: guest.token });
+  expect(resumed.ok).toBe(true);
+  expect(seat()?.connected).toBe(true);
+});
+
+it("lets a silent connection go within 20 seconds", () => {
+  // A frozen-then-killed app sends nothing at all: the heartbeat is all
+  // that notices (Socket.IO's default took 45 s).
+  server = createArenaServer({ autoTick: false });
+  const opts = server.io.engine.opts as {
+    pingInterval: number;
+    pingTimeout: number;
+  };
+  expect(opts.pingInterval + opts.pingTimeout).toBeLessThanOrEqual(20_000);
+});

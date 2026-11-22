@@ -200,6 +200,8 @@ type Session = {
   socketId: string | null;
   expires: number;
 };
+/** Socket.IO's heartbeat (ms): a silent connection is gone after both. */
+export const HEARTBEAT = { interval: 10_000, timeout: 10_000 };
 /** When a socket counts as congested (see broadcast). */
 export const BACKPRESSURE = { bytes: 16 * 1024, messages: 4 };
 export function createArenaServer(
@@ -318,6 +320,14 @@ export function createArenaServer(
   const http = createServer(app);
   const io = new Server(http, {
     maxHttpBufferSize: 4096,
+    // A connection that goes quiet (an app frozen in the background, then
+    // swiped away; a phone that lost signal) is let go within 20 s rather
+    // than Socket.IO's default 45 s: until then friends saw the player
+    // online and a room showed their seat as live. The client closes the
+    // connection itself when it is hidden (background-exit.ts); this is for
+    // when it can't. A ping is a few bytes, so 10 s costs nothing.
+    pingInterval: HEARTBEAT.interval,
+    pingTimeout: HEARTBEAT.timeout,
     // The static site (CLIENT_ORIGIN) and the iPhone app (api-cors.ts).
     cors: { origin: [...clientOrigins()] },
   });

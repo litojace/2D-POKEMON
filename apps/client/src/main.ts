@@ -202,7 +202,22 @@ import {
   playRewindDive,
 } from "./skill-effects";
 import { setupPWA } from "./pwa";
-import { PRIVACY_URL, isNativeApp, setupNativeShell } from "./native";
+import {
+  PRIVACY_URL,
+  SUPPORT_URL,
+  isNativeApp,
+  setupNativeShell,
+} from "./native";
+import {
+  BUILD_ID,
+  passTitle,
+  quickBar,
+  repairGame,
+  titleScreen,
+  titleDue,
+  type QuickAction,
+} from "./title-screen";
+import { PROFILE_COPY_KEY } from "./profile-copy";
 import { appIconCardHTML, bindAppIconCard } from "./app-icon-setting";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
@@ -431,6 +446,7 @@ import {
 } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
+import { freezesWhenHidden, watchBackgroundExit } from "./background-exit";
 import { watchSceneSwitch } from "./scene-switch-place";
 import { mountChat, type ChatFriend, type ChatPlace } from "./chat/chat-ui";
 import {
@@ -708,6 +724,31 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("offline", () => connectionWatch.network());
 window.addEventListener("online", () => connectionWatch.network());
+/**
+ * Switching away from the game, or closing it, signs the player out of the
+ * live game at once (background-exit.ts): friends see them offline, the
+ * Plaza drops their avatar and a room shows their seat as offline, instead
+ * of all that waiting for the server's heartbeat to give up on a frozen or
+ * killed app. Coming back reconnects and resumes.
+ */
+const backgroundExit = watchBackgroundExit({
+  socket,
+  canConnect: () =>
+    !replacedAccount &&
+    !!(socket.auth as { accessToken?: string | null }).accessToken,
+  closeAtOnce: () => freezesWhenHidden(isNativeApp()),
+  onLeave: () => {
+    // The server dropped the search with the connection: say so on return.
+    if (quickSearch?.open) {
+      socket.off("quick-found");
+      quickSearch.close();
+      quickSearch = undefined;
+      quickSearchStopped = true;
+    }
+  },
+});
+/** Quick Match stopped when the game went to the background. */
+let quickSearchStopped = false;
 // Keep a displaced tab paused across reloads. Only an explicit button press
 // may reclaim the game; token refresh/focus must not kick the other device.
 let replacedAccount = sessionStorage.getItem("arena-session-replaced");
@@ -1449,8 +1490,9 @@ watchScreenPin();
 // The iPhone app (native.ts): iOS pauses it soon after you switch away, which
 // drops the game connection; coming back reconnects at once.
 void setupNativeShell(() => {
+  backgroundExit.back();
   const token = (socket.auth as { accessToken?: string | null }).accessToken;
-  if (token && !socket.connected) socket.connect();
+  if (token && !replacedAccount && !socket.connected) socket.connect();
 });
 watchCosmeticPreviews();
 // Remember a room from an invite link (?room=ABC123) before the first render.
@@ -2465,9 +2507,62 @@ async function startAdventure(mode: string) {
   await request("browse", selected);
 }
 /**
+ * The title screen (title-screen.ts) is due: once per launch, for a
+ * signed-in player with nowhere else to go. A room to rejoin, an invite
+ * link or a friend's notification goes straight there instead.
+ */
+function titleWanted() {
+  if (!titleDue()) return false;
+  if (
+    replacedAccount ||
+    watching ||
+    friendToOpen ||
+    pendingInvite() ||
+    sessionStorage.getItem("arena-token")
+  ) {
+    passTitle();
+    return false;
+  }
+  return true;
+}
+/** Start on the title screen: in, under the loading curtain. */
+function leaveTitle() {
+  audio.unlock();
+  passTitle();
+  screen = "";
+  startStartupCurtain(startupStage, undefined, true);
+  renderMenu();
+}
+// Enter starts from the title screen, wherever the focus is (a computer's
+// "press Enter"); not while a dialog (Settings, Help) is open over it.
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.repeat) return;
+  const start = document.getElementById("title-start") as HTMLButtonElement;
+  if (!start || start.disabled) return;
+  if (document.querySelector("dialog[open]")) return;
+  const focus = document.activeElement;
+  if (focus instanceof HTMLButtonElement && focus !== start) return;
+  event.preventDefault();
+  leaveTitle();
+});
+/** The front door's quick buttons (title-screen.ts). */
+function quickAction(action: QuickAction) {
+  if (action === "settings") return showSettings();
+  if (action === "help") return showHowToPlay();
+  if (action === "support")
+    return void window.open(SUPPORT_URL, "_blank", "noopener");
+  dialog(
+    `<div class="repair-screen"><h2>Repair the game?</h2><p>If pictures look wrong, an update didn't finish or a screen is stuck, this downloads the game's files again and restarts it.</p><p>Your account, progress and settings stay as they are.</p><div class="dialog-actions"><button type="button" class="primary" id="repair-go">${iconLabel("again", "Repair and restart")}</button></div></div>`,
+  );
+  $("repair-go").onclick = () => {
+    $("repair-go").setAttribute("disabled", "");
+    void repairGame({ forget: [PROFILE_COPY_KEY] });
+  };
+}
+/**
  * The welcome screen: shown when signed out (with the sign-up / log-in
- * panel in it), while the account loads, and while a signed-in player is
- * (re)connecting to the hub.
+ * panel in it), while the account loads, as the title screen once per
+ * launch, and while a signed-in player is (re)connecting to the hub.
  */
 function renderGate() {
   syncHub();
@@ -2476,14 +2571,29 @@ function renderGate() {
     : !accountsUI?.checked
       ? "loading"
       : accountsUI.account
-        ? "connecting"
+        ? titleWanted()
+          ? "title"
+          : "connecting"
         : accountsUI.session
           ? "error"
           : !accountsUI.client
             ? "unavailable"
             : "signed-out";
   const invite = pendingInvite();
-  const key = `gate:${status}:${invite ?? ""}`;
+  const title =
+    status === "title" && accountsUI.account
+      ? titleScreen(
+          {
+            name: accountsUI.account.displayName,
+            level: accountsUI.level,
+            method: accountsUI.signInMethod,
+            picture: accountsUI.identityPicture(),
+            ready: connected,
+          },
+          BUILD_ID,
+        )
+      : undefined;
+  const key = `gate:${status}:${invite ?? ""}:${title ?? ""}`;
   if (screen === key) return;
   screen = key;
   audio.setTheme("lobby");
@@ -2499,7 +2609,18 @@ function renderGate() {
   $("battle").hidden = true;
   syncBattleLoop();
   $("menu").hidden = false;
-  $("menu").innerHTML = welcomeGate(status, invite);
+  $("menu").innerHTML =
+    title ?? welcomeGate(status, invite, { quick: quickBar(BUILD_ID) });
+  document
+    .querySelectorAll<HTMLElement>("[data-gate-quick]")
+    .forEach((button) => {
+      button.onclick = () =>
+        quickAction(button.dataset.gateQuick as QuickAction);
+    });
+  const start = document.getElementById("title-start");
+  if (start) start.onclick = leaveTitle;
+  const change = document.getElementById("title-switch");
+  if (change) change.onclick = () => void accountsUI.logOut();
   const login = document.getElementById("gate-login"),
     retry = document.getElementById("gate-retry");
   if (login) login.onclick = () => accountsUI.showAuth("login");
@@ -2516,6 +2637,8 @@ function renderGate() {
   // Signed out: the panel is right there. Returning players see Log in,
   // new ones Create account.
   if (status === "signed-out") {
+    // Signing in here is the way in: no title screen after it.
+    passTitle();
     let returning = false;
     try {
       returning = localStorage.getItem("arena-has-account") === "yes";
@@ -2618,7 +2741,9 @@ function syncHub() {
     !watching &&
     !state &&
     !sessionStorage.getItem("arena-token") &&
-    !pendingInvite();
+    !pendingInvite() &&
+    // The title screen first, once per launch (title-screen.ts).
+    !titleWanted();
   syncHubScenes(hub);
   // Which hub scene is showing (styles such as the toast's place follow it).
   if (hub) document.body.dataset.hubScene = hubScene;
@@ -3253,7 +3378,7 @@ function renderMenu(revealSelection = false) {
   if (
     !isRoom &&
     !watchingRoom &&
-    (!accountsUI?.account || !accountsUI.checked || !connected)
+    (!accountsUI?.account || !accountsUI.checked || !connected || titleWanted())
   )
     return renderGate();
   document.body.classList.remove("gate-active");
@@ -4260,6 +4385,12 @@ socket.on("connect", () => {
   // deploy is replacing that one too, it says so again (server-update).
   moveToNewServer = updateSaid.moving = updateSaid.draining = false;
   clearTimeout(restartReminder);
+  if (quickSearchStopped) {
+    quickSearchStopped = false;
+    toast(
+      "Quick Match stopped while the game was closed. Press Play to search again.",
+    );
+  }
   // Tell the server what this browser saw when it last dropped (once).
   const dropReport = connectionWatch.reconnected();
   if (dropReport) socket.emit("connection-report", dropReport);
@@ -8771,7 +8902,9 @@ accountsUI = new AccountUI({
     // A connection the server refused or closed (an hour-old token on a
     // phone waking up) never retries by itself: without this, a player sat
     // in the game offline to their friends until they reloaded.
-    else if (!replacedAccount && !socket.active) socket.connect();
+    // Not while closed for the background: coming back reconnects.
+    else if (!replacedAccount && !socket.active && !backgroundExit.away)
+      socket.connect();
   },
   onChange: () => {
     loadMastery();
