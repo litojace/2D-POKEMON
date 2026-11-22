@@ -191,12 +191,77 @@ for (const size of SIZES)
         await expect(
           page.locator(".battle-chat-feed li.is-watcher"),
         ).toHaveText("Vi Well played!");
+        // To the whole room, with an eye before the name.
+        const vi = page.locator(".battle-chat-feed li.is-watcher");
+        await expect(vi).toHaveAttribute("data-to", "all");
+        await expect(vi.locator('b svg[aria-label="Watching"]')).toHaveCount(1);
         await snap(page, info, `watch-${kind}-feed-${size.name}`);
         expect(errors).toEqual([]);
       } finally {
         await context.close();
       }
     });
+
+test("before the battle, a watcher's typed line has an eye in the room chat", async ({
+  browser,
+}, info) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  try {
+    await openHub(page);
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__room("pvp", { mode: "duel" });
+      w.__snap.watchers = ["Vi"];
+    });
+    await openPlayPanel(page);
+    await page.evaluate(() =>
+      document.querySelector<HTMLButtonElement>("#play-create")!.click(),
+    );
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            (window as any).__push();
+            return !!document.querySelector("#chat-button:not([hidden])");
+          }),
+        { timeout: 60_000, intervals: [400] },
+      )
+      .toBe(true);
+    await page.evaluate(() => {
+      const fire = (id: number, from: string, name: string, extra: object) =>
+        (window as any).__sock.fire("chat", {
+          id,
+          channel: "room",
+          from: { id: from, name },
+          at: Date.now(),
+          ...extra,
+        });
+      fire(1, "acct-kai", "Kai", { text: "ready?", fighter: "p2" });
+      fire(2, "acct-vi", "Vi", { text: "good luck both!", watcher: true });
+    });
+    await page.click("#chat-button");
+    const drawer = page.locator("#chat-drawer");
+    await expect(drawer).toBeVisible();
+    await expect(drawer.locator(".chat-line.is-watcher")).toHaveText(
+      "Vigood luck both!",
+    );
+    await expect(
+      drawer.locator('.chat-line.is-watcher b svg[aria-label="Watching"]'),
+    ).toHaveCount(1);
+    await expect(drawer.locator(".chat-line:not(.is-watcher) svg")).toHaveCount(
+      0,
+    );
+    await snap(page, info, "watch-room-chat-drawer");
+  } finally {
+    await context.close();
+  }
+});
 
 test("a player sees a watcher's cheer, and Mute others hides it", async ({
   browser,

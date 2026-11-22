@@ -393,6 +393,16 @@ button.chat-say:focus-visible {
   color: #8fc3ff;
   font-weight: 700;
 }
+/* Watching the room: the name in gold after an eye. */
+.chat-line.is-watcher b {
+  color: #ffd98a;
+}
+.chat-line.is-watcher b svg {
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 3px;
+  vertical-align: -0.2em;
+}
 .chat-line.is-mine b {
   color: var(--ui-accent);
 }
@@ -753,24 +763,45 @@ button.chat-say:focus-visible {
 .battle-chat-feed li.is-rival b {
   color: #ff9aa5;
 }
-/* A watcher's line: their name in gold, then a small "Watching" tag, so
-   the tag never reads as part of what they said. */
+/* A watcher's line: their name in gold after an eye (they have no
+   fighter, so no bubble either). */
 .battle-chat-feed li.is-watcher b {
   color: #ffd98a;
 }
-.battle-chat-feed li.is-watcher b::after {
-  content: "Watching";
+.battle-chat-feed li b svg {
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 3px;
+  vertical-align: -0.2em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+/* Who heard the line, before it: TEAM (your side only, blue) or ALL (the
+   whole room, rivals and watchers too, light). Same width, so the names
+   line up. */
+.battle-chat-feed li[data-to]::before {
   display: inline-block;
-  margin: 0 2px 0 5px;
-  padding: 1px 5px;
-  border-radius: 6px;
-  background: rgba(255, 217, 138, 0.16);
-  color: #ffd98a;
-  font-size: 0.75em;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  min-width: 4.2em;
+  margin-right: 6px;
+  padding: 1px 4px;
+  box-sizing: border-box;
+  border-radius: 5px;
+  font-size: 0.72em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-align: center;
   vertical-align: 1px;
+}
+.battle-chat-feed li[data-to="team"]::before {
+  content: "TEAM";
+  background: #2f6fd6;
+  color: #fff;
+}
+.battle-chat-feed li[data-to="all"]::before {
+  content: "ALL";
+  background: rgba(255, 255, 255, 0.18);
+  color: #f2f6ff;
 }
 @keyframes battle-chat-line {
   0%,

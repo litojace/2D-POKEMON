@@ -9,8 +9,10 @@
  * - In a raid the grid starts with the raid's team signals (Stack, Revive,
  *   Bait…), which mark the arena as before (raid-ping), in place of the
  *   raid's own signals button.
+ * - Each feed line starts with who heard it: TEAM (a call or a phrase, the
+ *   speaker's side only) or ALL (an emote, or a watcher's line).
  * - Watching a room: emotes and cheers (no calls: a watcher takes no side).
- *   The players see a watcher's line in the feed, marked "watching";
+ *   The players see a watcher's line in the feed, an eye before the name;
  *   "Mute others" (was "Mute rivals") hides watchers along with rivals.
  *
  * Performance (docs/network-performance.md): nothing here runs per frame.
@@ -243,7 +245,19 @@ export function mountBattleChat(hooks: BattleChatHooks): BattleChatView {
       const li = document.createElement("li");
       const who = document.createElement("b");
       who.textContent = name;
+      // A watcher: an eye before the name (they have no fighter).
+      if (watcher) {
+        who.insertAdjacentHTML("afterbegin", menuIcon("watch"));
+        const eye = who.firstElementChild!;
+        eye.removeAttribute("aria-hidden");
+        eye.setAttribute("role", "img");
+        eye.setAttribute("aria-label", "Watching");
+      }
       li.append(who, document.createTextNode(` ${text}`));
+      // Who heard it (the server decides; this says what it decided): an
+      // emote or a watcher's line reaches the whole room, a call or a
+      // phrase only the speaker's side. Drawn by the CSS (TEAM / ALL).
+      li.dataset.to = emote || watcher ? "all" : "team";
       if (watcher) li.classList.add("is-watcher");
       else if (!team) li.classList.add("is-rival");
       feed.append(li);

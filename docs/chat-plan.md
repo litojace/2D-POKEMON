@@ -22,11 +22,17 @@ is in its room channel too, on no side (`ChatMember.watcher`):
 - Before and after the battle they type and use quick chat like anyone.
 - In a battle their grid holds cheers and emotes (Nice!, Well played!,
   Let's go!, GG, 👏 🔥 😂 👋), never calls. Their lines reach every
-  player and watcher, marked `watcher` (gold name, "· watching", in the
-  feed; no bubble, they have no fighter). "Mute others" (was "Mute
+  player and watcher, marked `watcher` (an eye before a gold name, in the
+  battle feed and the room chat; no bubble, they have no fighter). "Mute others" (was "Mute
   rivals") hides them along with rivals.
 - They hear the players' emotes only: a side's calls and phrases stay
   with that side.
+
+In a battle each feed line starts with who heard it: **TEAM** (blue: a
+call or a phrase, the speaker's side only) or **ALL** (light: an emote or
+a watcher's line, the whole room including rivals and watchers). Friends'
+messages never show in the battle feed (they stay in the chat's Friends
+tab), so there is no "private" tag.
 
 No world or global chat, no guild chat, no voice. Guests use quick chat
 only. A player's chat setting is free, quick (quick chat only) or off.

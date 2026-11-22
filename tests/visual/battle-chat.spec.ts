@@ -164,6 +164,11 @@ for (const phone of PHONES)
       await expect(page.locator(".battle-chat-feed li")).toHaveText([
         "Rae Help me",
       ]);
+      // A teammate's call reached your side only: TEAM before it.
+      await expect(page.locator(".battle-chat-feed li")).toHaveAttribute(
+        "data-to",
+        "team",
+      );
       // A rival's phrase never shows; a rival's emote does.
       await line(page, "p2", "Kai", "gg", 2);
       await expect(
@@ -176,6 +181,10 @@ for (const phone of PHONES)
       await expect(page.locator(".battle-chat-feed li.is-rival")).toHaveCount(
         1,
       );
+      // An emote reached the whole room: ALL.
+      await expect(
+        page.locator(".battle-chat-feed li.is-rival"),
+      ).toHaveAttribute("data-to", "all");
       await snap(page, info, `battle-chat-bubbles-${phone.name}`);
       // Mute others: rivals' emotes stop showing.
       await btn.click();

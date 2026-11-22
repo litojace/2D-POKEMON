@@ -225,6 +225,15 @@ export function mountChat(hooks: ChatHooks): ChatView {
     }
     const who = document.createElement("b");
     who.textContent = l.from.name;
+    // Someone watching the room: an eye before the name.
+    if (l.watcher) {
+      li.classList.add("is-watcher");
+      who.insertAdjacentHTML("afterbegin", menuIcon("watch"));
+      const eye = who.firstElementChild!;
+      eye.removeAttribute("aria-hidden");
+      eye.setAttribute("role", "img");
+      eye.setAttribute("aria-label", "Watching");
+    }
     const what = document.createElement("span");
     what.textContent = l.quick ? quickText(l.quick) : (l.text ?? "");
     body.append(who, what);
