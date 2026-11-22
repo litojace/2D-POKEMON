@@ -2361,6 +2361,181 @@ const GFX = (() => {
     g.fill();
     g.restore();
   }
+  /**
+   * A duck afloat, baked once per kind (it was drawn shape by shape every
+   * frame, with two gradients): the body lit on its back and darker at
+   * the waterline, flank feathers in scalloped rows (a duck's mottled,
+   * each feather dark in the middle with a pale edge), tertials with pale
+   * edges over the folded wing, the blue speculum between white bars, a
+   * drake's curled tail, chestnut breast, white collar and glossy green
+   * head, and a bill with its nail and nostril. duck() bobs and tips it.
+   */
+  function duckArt(drake) {
+    return memo(`duck:${drake}`, () =>
+      sprite(56, 38, 24, 31, (g) => {
+        const body = drake ? "#ece6da" : "#a77b4f",
+          back = drake ? "#7d7a74" : "#8a6038";
+        const hull = (k) => {
+          g.beginPath();
+          g.moveTo(-18 * k, -9);
+          g.quadraticCurveTo(-8, -16 * k, 6, -13 * k);
+          g.quadraticCurveTo(15 * k, -11, 14 * k, -2);
+          g.quadraticCurveTo(12 * k, 4, 0, 4);
+          g.lineTo(-12 * k, 3);
+          g.quadraticCurveTo(-18 * k, -2, -18 * k, -9);
+          g.closePath();
+        };
+        hull(1);
+        g.fillStyle = dk(body, 0.45);
+        g.fill();
+        g.save();
+        g.scale(0.93, 0.93);
+        hull(1);
+        g.restore();
+        const bg = g.createLinearGradient(0, -14, 0, 4);
+        bg.addColorStop(0, lt(body, 0.2));
+        bg.addColorStop(0.6, body);
+        bg.addColorStop(1, dk(body, 0.22));
+        g.fillStyle = bg;
+        g.fill();
+        g.save();
+        hull(0.93);
+        g.clip();
+        // Flank feathers in rows.
+        for (let row = 0; row < 3; row++)
+          for (let k = 0; k < 7; k++) {
+            const fx = -14 + k * 4.4 + (row % 2) * 2.2,
+              fy = -9 + row * 3.8;
+            if (drake) {
+              g.strokeStyle = "rgba(150,140,125,.45)";
+              g.lineWidth = 0.6;
+              g.beginPath();
+              g.arc(fx, fy, 2.4, 0.2, Math.PI - 0.2);
+              g.stroke();
+            } else {
+              g.fillStyle = "rgba(70,42,18,.5)";
+              ell(g, fx, fy + 0.4, 1.6, 1.2);
+              g.fill();
+              g.strokeStyle = "rgba(230,200,150,.55)";
+              g.lineWidth = 0.6;
+              g.beginPath();
+              g.arc(fx, fy, 2.4, 0.2, Math.PI - 0.2);
+              g.stroke();
+            }
+          }
+        // Darker at the waterline.
+        g.fillStyle = "rgba(20,30,40,.18)";
+        g.fillRect(-20, 0, 40, 6);
+        g.restore();
+        if (drake) {
+          // Chestnut breast and the curled black tail.
+          g.fillStyle = "#7a3e26";
+          ell(g, 9, -6, 5.6, 5.6);
+          g.fill();
+          g.fillStyle = "rgba(255,200,170,.3)";
+          ell(g, 8, -8.5, 2.6, 1.6, -0.4);
+          g.fill();
+          g.fillStyle = "#1c1820";
+          g.beginPath();
+          g.moveTo(-17, -9);
+          g.lineTo(-22, -13);
+          g.lineTo(-15, -6);
+          g.fill();
+          g.strokeStyle = "#1c1820";
+          g.lineWidth = 1.2;
+          g.beginPath();
+          g.arc(-19, -15.5, 2, Math.PI * 0.4, Math.PI * 1.9);
+          g.stroke();
+        }
+        // Folded wing: tertials with pale edges, then the speculum.
+        g.fillStyle = dk(back, 0.25);
+        ell(g, -4, -8.6, 9.6, 4, -0.12);
+        g.fill();
+        g.fillStyle = back;
+        ell(g, -4, -9.2, 9, 3.4, -0.12);
+        g.fill();
+        g.strokeStyle = rgba(lt(back, 0.5), 0.6);
+        g.lineWidth = 0.7;
+        for (let k = 0; k < 4; k++) {
+          g.beginPath();
+          g.moveTo(-11 + k * 3.2, -10.6 + k * 0.2);
+          g.quadraticCurveTo(-8 + k * 3.2, -8, -12.5 + k * 3.2, -6.8);
+          g.stroke();
+        }
+        g.fillStyle = "#fff";
+        ell(g, -3, -7.4, 4.8, 1.9, -0.1);
+        g.fill();
+        g.fillStyle = "#3a6bd8";
+        ell(g, -3, -7.5, 4, 1.3, -0.1);
+        g.fill();
+        g.fillStyle = "rgba(170,200,255,.8)";
+        ell(g, -4, -7.9, 1.8, 0.45, -0.1);
+        g.fill();
+        // Neck and head.
+        g.fillStyle = drake ? "#2d7a3c" : body;
+        ell(g, 10, -15, 4, 6);
+        g.fill();
+        if (drake) {
+          g.fillStyle = "#fff";
+          ell(g, 10, -11.5, 4.4, 1.3);
+          g.fill();
+        }
+        const hc = drake ? "#2d8a46" : "#9a7048";
+        g.fillStyle = dk(hc, 0.45);
+        g.beginPath();
+        g.arc(12, -21, 6.6, 0, 7);
+        g.fill();
+        const hg2 = g.createRadialGradient(10, -23, 1, 12, -21, 7);
+        hg2.addColorStop(0, lt(hc, drake ? 0.45 : 0.3));
+        hg2.addColorStop(0.6, hc);
+        hg2.addColorStop(1, drake ? "#1f5a7a" : dk(hc, 0.1));
+        g.fillStyle = hg2;
+        g.beginPath();
+        g.arc(12, -21, 5.9, 0, 7);
+        g.fill();
+        if (!drake) {
+          // A duck's dark eye-stripe.
+          g.strokeStyle = "rgba(60,36,16,.7)";
+          g.lineWidth = 1.2;
+          g.beginPath();
+          g.moveTo(9, -22.5);
+          g.lineTo(16.5, -23);
+          g.stroke();
+        }
+        g.fillStyle = "rgba(255,255,255,.5)";
+        ell(g, 10, -24.5, 2.2, 1.1, -0.5);
+        g.fill();
+        // Bill: upper, lower, the nail and a nostril.
+        const bc = drake ? "#f2d03a" : "#e8902a";
+        g.fillStyle = dk(bc, 0.25);
+        g.beginPath();
+        g.moveTo(16, -20.5);
+        g.quadraticCurveTo(21, -19.6, 22.6, -19.6);
+        g.quadraticCurveTo(19, -18.2, 16, -19);
+        g.fill();
+        g.fillStyle = bc;
+        g.beginPath();
+        g.moveTo(16, -22.5);
+        g.quadraticCurveTo(24, -22, 23, -19.8);
+        g.quadraticCurveTo(19, -19.6, 16, -20.2);
+        g.fill();
+        g.fillStyle = dk(bc, 0.5);
+        ell(g, 22.6, -20.8, 0.9, 0.8);
+        g.fill();
+        ell(g, 18, -21.4, 0.8, 0.4);
+        g.fill();
+        // Eye with a glint.
+        g.fillStyle = "#1c1820";
+        g.beginPath();
+        g.arc(14, -23, 1.3, 0, 7);
+        g.fill();
+        g.fillStyle = "#fff";
+        g.beginPath();
+        g.arc(13.6, -23.5, 0.45, 0, 7);
+        g.fill();
+      }),
+    );
+  }
   function duck(g, kind, st, t, x, y, s = 1, face = 1, moving = true) {
     const drake = kind === "drake";
     g.save();
@@ -2391,53 +2566,8 @@ const GFX = (() => {
       g.rotate(1.25);
       g.translate(4, 4);
     }
-    const body = drake ? "#ece6da" : "#a77b4f",
-      back = drake ? "#7d7a74" : "#8a6038";
-    g.fillStyle = dk(body, 0.4);
-    g.beginPath();
-    g.moveTo(-18, -9);
-    g.quadraticCurveTo(-8, -16, 6, -13);
-    g.quadraticCurveTo(15, -11, 14, -2);
-    g.quadraticCurveTo(12, 4, 0, 4);
-    g.lineTo(-12, 3);
-    g.quadraticCurveTo(-18, -2, -18, -9);
-    g.fill();
-    const bg = g.createLinearGradient(0, -14, 0, 4);
-    bg.addColorStop(0, lt(body, 0.15));
-    bg.addColorStop(1, dk(body, 0.1));
-    g.fillStyle = bg;
-    g.beginPath();
-    g.moveTo(-16.5, -9);
-    g.quadraticCurveTo(-8, -15, 6, -12);
-    g.quadraticCurveTo(13.5, -10, 12.8, -2);
-    g.quadraticCurveTo(11, 3, 0, 3);
-    g.lineTo(-11, 2);
-    g.quadraticCurveTo(-16.5, -2, -16.5, -9);
-    g.fill();
-    if (drake) {
-      g.fillStyle = "#7a3e26";
-      ell(g, 9, -6, 5.5, 5.5);
-      g.fill();
-      g.fillStyle = "#1c1820";
-      g.beginPath();
-      g.moveTo(-17, -9);
-      g.lineTo(-22, -13);
-      g.lineTo(-15, -6);
-      g.fill();
-    } else {
-      g.fillStyle = "rgba(80,50,20,.4)";
-      for (let i = 0; i < 10; i++) {
-        g.beginPath();
-        g.arc(-12 + (i % 5) * 5, -8 + Math.floor(i / 5) * 5, 1.2, 0, 7);
-        g.fill();
-      }
-    }
-    g.fillStyle = back;
-    ell(g, -4, -9, 9, 3.6, -0.12);
-    g.fill();
-    g.fillStyle = "#3a6bd8";
-    ell(g, -3, -7.5, 4, 1.4, -0.1);
-    g.fill();
+    // The duck itself, baked (duckArt); feet kick while it dabbles.
+    blit(g, duckArt(drake), 0, 0);
     if (st === "dabble") {
       g.fillStyle = "#ff9a3a";
       const kick = Math.sin(t * 16) * 3;
@@ -2446,42 +2576,201 @@ const GFX = (() => {
       ell(g, -2 - kick, 3, 3.5, 1.6);
       g.fill();
     }
-    // neck + head
-    g.fillStyle = drake ? "#2d7a3c" : body;
-    ell(g, 10, -15, 4, 6);
-    g.fill();
-    if (drake) {
-      g.fillStyle = "#fff";
-      ell(g, 10, -11.5, 4.4, 1.3);
-      g.fill();
-    }
-    const hc = drake ? "#2d8a46" : "#9a7048";
-    const hg2 = g.createRadialGradient(10, -23, 1, 12, -21, 7);
-    hg2.addColorStop(0, lt(hc, 0.35));
-    hg2.addColorStop(1, hc);
-    g.fillStyle = dk(hc, 0.4);
-    g.beginPath();
-    g.arc(12, -21, 6.6, 0, 7);
-    g.fill();
-    g.fillStyle = hg2;
-    g.beginPath();
-    g.arc(12, -21, 5.9, 0, 7);
-    g.fill();
-    g.fillStyle = drake ? "#f2d03a" : "#e8902a";
-    g.beginPath();
-    g.moveTo(16, -22.5);
-    g.quadraticCurveTo(24, -22, 23, -19.5);
-    g.quadraticCurveTo(19, -18.5, 16, -19);
-    g.fill();
-    g.fillStyle = "#1c1820";
-    g.beginPath();
-    g.arc(14, -23, 1.2, 0, 7);
-    g.fill();
     g.restore();
     g.fillStyle = "rgba(255,255,255,.28)";
     ell(g, 0, 1.5, 17, 2.2);
     g.fill();
     g.restore();
+  }
+  /**
+   * A perched bird's body and its head, baked once per kind (they were
+   * drawn shape by shape every frame, the pigeon's neck with a gradient):
+   * a fanned tail of feathers with pale edges, the body shaded dark below
+   * and lit on the back, a folded wing of scalloped coverts over long
+   * primaries (bars on a pigeon's), and a head with an eye-ring, a glint
+   * in the eye, a two-tone beak (a pigeon's pale cere) and, on a pigeon,
+   * the green-to-violet sheen of its neck. Anchored where bird() draws
+   * them; the legs, the walk, the bob and the peck stay live.
+   */
+  const BIRD_C = {
+    crow: { b: "#2a2836", l: "#4a4a6a", w: "#1c1a26", beak: "#8a8f9c" },
+    pigeon: { b: "#a5aec2", l: "#d8dde8", w: "#8a93a8", beak: "#3a3a46" },
+    sparrow: { b: "#9a6a3e", l: "#e9d2b0", w: "#6e4524", beak: "#e0a24a" },
+  };
+  function birdBody(kind) {
+    const C = BIRD_C[kind];
+    return memo(`bird-body:${kind}`, () =>
+      sprite(40, 22, 22, 11, (g) => {
+        // Tail: three feathers fanned, each with a pale edge.
+        for (const [a, c] of [
+          [0.16, dk(C.w, 0.15)],
+          [-0.06, C.w],
+          [0.05, lt(C.w, 0.08)],
+        ]) {
+          g.save();
+          g.translate(-7, 1);
+          g.rotate(a);
+          g.fillStyle = c;
+          g.beginPath();
+          g.moveTo(0, -2.4);
+          g.lineTo(-11, -1.4);
+          g.quadraticCurveTo(-12.5, 1, -11, 3);
+          g.lineTo(0, 2.4);
+          g.closePath();
+          g.fill();
+          g.strokeStyle = rgba(lt(C.w, 0.45), 0.6);
+          g.lineWidth = 0.6;
+          g.beginPath();
+          g.moveTo(-1, -2);
+          g.lineTo(-10.5, -1.1);
+          g.stroke();
+          g.restore();
+        }
+        if (kind === "pigeon") {
+          g.fillStyle = "#3a4152";
+          g.fillRect(-18.5, -0.6, 2.4, 3.2);
+        }
+        // Body: an outline in shade, the body darker underneath, the back lit.
+        g.fillStyle = dk(C.b, 0.45);
+        ell(g, 0, 0, 10.2, 7);
+        g.fill();
+        const bg = g.createLinearGradient(0, -6, 0, 6);
+        bg.addColorStop(0, lt(C.b, 0.22));
+        bg.addColorStop(0.55, C.b);
+        bg.addColorStop(1, dk(C.b, 0.22));
+        g.fillStyle = bg;
+        ell(g, 0, -0.4, 9.2, 6.2);
+        g.fill();
+        // A pale breast toward the front (warm on a sparrow).
+        g.fillStyle = rgba(C.l, kind === "crow" ? 0.18 : 0.55);
+        ell(g, 5, 1.6, 4.2, 3.6, 0.3);
+        g.fill();
+        // The folded wing: long primaries, then rows of scalloped coverts.
+        g.fillStyle = dk(C.w, 0.2);
+        g.beginPath();
+        g.moveTo(3, -3.6);
+        g.quadraticCurveTo(-6, -4.6, -13, 0.6);
+        g.quadraticCurveTo(-5, 3.6, 3, 2.6);
+        g.closePath();
+        g.fill();
+        g.strokeStyle = rgba(lt(C.w, 0.35), 0.55);
+        g.lineWidth = 0.6;
+        for (let k = 0; k < 3; k++) {
+          g.beginPath();
+          g.moveTo(-2 - k * 3, 1.6 - k * 0.4);
+          g.lineTo(-8 - k * 2, 0.4 + k * 0.3);
+          g.stroke();
+        }
+        g.fillStyle = C.w;
+        ell(g, -1.5, -0.8, 6.4, 3.6, -0.15);
+        g.fill();
+        for (let row = 0; row < 2; row++)
+          for (let k = 0; k < 4; k++) {
+            const fx = 2.5 - k * 2.8 - row * 1.2,
+              fy = -2.4 + row * 2.2;
+            g.fillStyle = row ? rgba(dk(C.w, 0.25), 0.6) : rgba(lt(C.w, 0.18), 0.85);
+            g.beginPath();
+            g.arc(fx, fy, 1.7, 0, Math.PI);
+            g.fill();
+          }
+        if (kind === "pigeon") {
+          // Two dark wing bars.
+          g.fillStyle = "#454d60";
+          g.fillRect(-6.4, -1.4, 1.4, 4.2);
+          g.fillRect(-3.4, -1.6, 1.4, 4.2);
+        }
+        if (kind === "sparrow") {
+          // Streaks on the back.
+          g.strokeStyle = "rgba(50,28,12,.6)";
+          g.lineWidth = 0.8;
+          for (let k = 0; k < 4; k++) {
+            g.beginPath();
+            g.moveTo(1 - k * 2.6, -3.4);
+            g.lineTo(-1 - k * 2.6, -1.2);
+            g.stroke();
+          }
+        }
+        // The sheen on its back.
+        g.fillStyle = "rgba(255,255,255,.3)";
+        ell(g, 1.5, -4.2, 4, 1.2, -0.1);
+        g.fill();
+      }),
+    );
+  }
+  function birdHead(kind) {
+    const C = BIRD_C[kind];
+    return memo(`bird-head:${kind}`, () =>
+      sprite(22, 18, 8, 9, (g) => {
+        if (kind === "pigeon") {
+          // The neck's sheen, green into violet.
+          const ng = g.createLinearGradient(-4, 0, 2, 6);
+          ng.addColorStop(0, "#6fcf8a");
+          ng.addColorStop(0.5, "#5aa8a0");
+          ng.addColorStop(1, "#b07ad8");
+          g.fillStyle = ng;
+          ell(g, -2, 3, 4.6, 4.2);
+          g.fill();
+          g.fillStyle = "rgba(255,255,255,.35)";
+          ell(g, -3, 1.8, 1.8, 1, -0.4);
+          g.fill();
+        }
+        g.fillStyle = dk(kind === "pigeon" ? "#8a93a8" : C.b, 0.35);
+        g.beginPath();
+        g.arc(0, 0, 4.8, 0, 7);
+        g.fill();
+        const hg2 = g.createRadialGradient(-1.2, -1.8, 0.4, 0, 0, 4.6);
+        hg2.addColorStop(0, lt(kind === "pigeon" ? "#8a93a8" : C.b, 0.35));
+        hg2.addColorStop(1, kind === "pigeon" ? "#7a8398" : C.b);
+        g.fillStyle = hg2;
+        g.beginPath();
+        g.arc(0, -0.2, 4.2, 0, 7);
+        g.fill();
+        if (kind === "sparrow") {
+          // Grey crown, a pale cheek, a dark bib.
+          g.fillStyle = "#8a8d96";
+          g.beginPath();
+          g.arc(-0.5, -1.6, 3, Math.PI, 0);
+          g.fill();
+          g.fillStyle = "#efe2c8";
+          ell(g, 0.8, 1, 2.4, 1.6);
+          g.fill();
+          g.fillStyle = "#2a2018";
+          ell(g, 2.4, 3, 1.6, 1.4);
+          g.fill();
+        }
+        // Beak: upper and lower in two tones, a pigeon's pale cere.
+        g.fillStyle = C.beak;
+        g.beginPath();
+        g.moveTo(3.4, -1.2);
+        g.lineTo(8.2, 0.2);
+        g.lineTo(3.4, 0.4);
+        g.fill();
+        g.fillStyle = dk(C.beak, 0.3);
+        g.beginPath();
+        g.moveTo(3.4, 0.4);
+        g.lineTo(7.4, 0.5);
+        g.lineTo(3.4, 1.5);
+        g.fill();
+        if (kind === "pigeon") {
+          g.fillStyle = "#f2efe8";
+          ell(g, 4, -1.2, 1.3, 0.8);
+          g.fill();
+        }
+        // Eye: a ring, the iris, a pupil and a glint.
+        g.fillStyle = kind === "pigeon" ? "#ffb05a" : kind === "crow" ? "#5a5a6a" : "#fff";
+        g.beginPath();
+        g.arc(1.4, -1.2, 1.5, 0, 7);
+        g.fill();
+        g.fillStyle = "#111";
+        g.beginPath();
+        g.arc(1.6, -1.2, 0.85, 0, 7);
+        g.fill();
+        g.fillStyle = "#fff";
+        g.beginPath();
+        g.arc(1.2, -1.6, 0.4, 0, 7);
+        g.fill();
+      }),
+    );
   }
   function bird(g, kind, st, t, x, y, s = 1, face = 1) {
     const C = {
@@ -2570,141 +2859,233 @@ const GFX = (() => {
       g.save();
       g.translate(0, -9);
       g.rotate(tilt);
-      g.fillStyle = C.w;
-      g.beginPath();
-      g.moveTo(-8, -1);
-      g.lineTo(-17, 1);
-      g.lineTo(-15, 4);
-      g.lineTo(-7, 3);
-      g.fill();
-      g.fillStyle = dk(C.b, 0.35);
-      ell(g, 0, 0, 10, 6.8);
-      g.fill();
-      g.fillStyle = C.b;
-      ell(g, 0, -0.4, 9, 6);
-      g.fill();
-      g.fillStyle = C.w;
-      ell(g, -3, -0.5, 6, 3.6, -0.15);
-      g.fill();
-      if (kind === "pigeon") {
-        g.fillStyle = "#4b5468";
-        g.fillRect(-6, -1.5, 1.5, 4);
-        g.fillRect(-3, -1.5, 1.5, 4);
-      }
+      // The body and the head, baked (birdBody, birdHead); the head
+      // bobs as it walks.
+      blit(g, birdBody(kind), 0, 0);
       const hb = walk ? ((p / Math.PI) % 1 < 0.5 ? 2.5 : -1) : 0;
-      const hx = 8 + hb,
-        hy = -6;
-      if (kind === "pigeon") {
-        const ng = g.createLinearGradient(hx - 4, hy, hx + 2, hy + 6);
-        ng.addColorStop(0, "#6fcf8a");
-        ng.addColorStop(1, "#b07ad8");
-        g.fillStyle = ng;
-        ell(g, hx - 2, hy + 3, 4.4, 4);
-        g.fill();
-      }
-      g.fillStyle = kind === "pigeon" ? "#8a93a8" : C.b;
-      g.beginPath();
-      g.arc(hx, hy, 4.2, 0, 7);
-      g.fill();
-      g.fillStyle = C.beak;
-      g.beginPath();
-      g.moveTo(hx + 3.5, hy - 1);
-      g.lineTo(hx + 8, hy + 0.3);
-      g.lineTo(hx + 3.5, hy + 1.4);
-      g.fill();
-      g.fillStyle = kind === "pigeon" ? "#ff8a3a" : "#fff";
-      g.beginPath();
-      g.arc(hx + 1.4, hy - 1.2, 1.3, 0, 7);
-      g.fill();
-      g.fillStyle = "#111";
-      g.beginPath();
-      g.arc(hx + 1.6, hy - 1.2, 0.7, 0, 7);
-      g.fill();
+      blit(g, birdHead(kind), 8 + hb, -6);
       g.restore();
     }
     g.restore();
   }
+  /**
+   * The ginger cat, baked in parts (it was drawn shape by shape every
+   * frame, and its "z" was text): a curled body with soft fur shading,
+   * stripes and a pale belly; a head awake (green eyes with a glint) or
+   * asleep (closed eyes), pink inner ears, a muzzle, whiskers; a "z".
+   * cat() breathes, flicks the tail, twitches an ear and floats the z.
+   */
+  const CAT_B = "#f2a556",
+    CAT_D = "#c8742e";
+  function catBody() {
+    return memo("cat-body", () =>
+      sprite(48, 26, 24, 18, (g) => {
+        g.fillStyle = dk(CAT_B, 0.4);
+        ell(g, -2, -8, 17, 9.5);
+        g.fill();
+        const fg = g.createRadialGradient(-6, -13, 1, -2, -8, 17);
+        fg.addColorStop(0, lt(CAT_B, 0.3));
+        fg.addColorStop(0.6, CAT_B);
+        fg.addColorStop(1, dk(CAT_B, 0.18));
+        g.fillStyle = fg;
+        ell(g, -2, -8.5, 16, 8.6);
+        g.fill();
+        g.save();
+        ell(g, -2, -8.5, 16, 8.6);
+        g.clip();
+        // A pale belly along the bottom, and stripes over the back.
+        g.fillStyle = "rgba(255,240,220,.55)";
+        ell(g, 2, -1.5, 11, 3.4);
+        g.fill();
+        g.strokeStyle = CAT_D;
+        g.lineCap = "round";
+        for (let k = 0; k < 5; k++) {
+          g.lineWidth = 2.2 - (k % 2) * 0.6;
+          g.beginPath();
+          g.moveTo(-14 + k * 5.6, -16.5);
+          g.quadraticCurveTo(-12 + k * 5.6, -12, -14.5 + k * 5.6, -8.5);
+          g.stroke();
+        }
+        // Fur: short strokes in the shade, lit hairs on the back.
+        g.lineWidth = 0.6;
+        for (let k = 0; k < 18; k++) {
+          const fx = -16 + ((k * 13) % 30),
+            fy = -12 + ((k * 7) % 9);
+          g.strokeStyle = k % 2 ? "rgba(255,230,190,.5)" : "rgba(150,80,30,.35)";
+          g.beginPath();
+          g.moveTo(fx, fy);
+          g.lineTo(fx - 1.2, fy + 2);
+          g.stroke();
+        }
+        g.restore();
+        // A paw tucked in front.
+        g.fillStyle = dk(CAT_B, 0.3);
+        ell(g, 14, -1.6, 6.4, 3.4);
+        g.fill();
+        g.fillStyle = CAT_B;
+        ell(g, 14, -2, 6, 3);
+        g.fill();
+        g.strokeStyle = "rgba(150,80,30,.5)";
+        g.lineWidth = 0.6;
+        for (const px of [16.5, 18.4]) {
+          g.beginPath();
+          g.moveTo(px, -3.6);
+          g.lineTo(px, -0.8);
+          g.stroke();
+        }
+      }),
+    );
+  }
+  function catHead(awake) {
+    return memo(`cat-head:${awake}`, () =>
+      sprite(30, 30, 14, 16, (g) => {
+        // Ears: outer fur, inner pink.
+        for (const [a, b1, c, d1, e, f] of [
+          [-6, -7, -5, -15, 1, -9],
+          [2, -8, 5, -16, 7, -6],
+        ]) {
+          g.fillStyle = dk(CAT_B, 0.3);
+          g.beginPath();
+          g.moveTo(a, b1);
+          g.lineTo(c, d1);
+          g.lineTo(e, f);
+          g.fill();
+          g.fillStyle = "#ffb3c0";
+          g.beginPath();
+          g.moveTo(a + 1.6, b1 - 0.6);
+          g.lineTo(c + 0.3, d1 + 3);
+          g.lineTo(e - 1.4, f - 0.8);
+          g.fill();
+        }
+        g.fillStyle = dk(CAT_B, 0.4);
+        g.beginPath();
+        g.arc(0, 0, 8.4, 0, 7);
+        g.fill();
+        const hg2 = g.createRadialGradient(-2.4, -3, 0.5, 0, 0, 8);
+        hg2.addColorStop(0, lt(CAT_B, 0.32));
+        hg2.addColorStop(0.65, CAT_B);
+        hg2.addColorStop(1, dk(CAT_B, 0.15));
+        g.fillStyle = hg2;
+        g.beginPath();
+        g.arc(0, 0, 7.6, 0, 7);
+        g.fill();
+        // Forehead stripes.
+        g.strokeStyle = CAT_D;
+        g.lineWidth = 1.1;
+        for (const sx of [-1.5, 0.5, 2.5]) {
+          g.beginPath();
+          g.moveTo(sx, -7.2);
+          g.lineTo(sx + 0.3, -4.6);
+          g.stroke();
+        }
+        // Muzzle, nose, mouth and whiskers.
+        g.fillStyle = "#fff4e6";
+        ell(g, 3, 3, 4.6, 3.1);
+        g.fill();
+        g.fillStyle = "#ff8a9a";
+        g.beginPath();
+        g.moveTo(3, 0.8);
+        g.lineTo(5.2, 0.8);
+        g.lineTo(4.1, 2.2);
+        g.closePath();
+        g.fill();
+        g.strokeStyle = "#7a4a30";
+        g.lineWidth = 0.6;
+        g.beginPath();
+        g.moveTo(4.1, 2.2);
+        g.quadraticCurveTo(3.4, 3.6, 2.4, 3.2);
+        g.moveTo(4.1, 2.2);
+        g.quadraticCurveTo(4.9, 3.6, 5.9, 3.2);
+        g.stroke();
+        g.strokeStyle = "rgba(255,255,255,.85)";
+        g.lineWidth = 0.5;
+        g.beginPath();
+        for (const [dy, dx] of [
+          [2.2, 9],
+          [3.4, 8.5],
+        ]) {
+          g.moveTo(6.4, dy);
+          g.lineTo(6.4 + dx, dy - 1 + (dy - 2.8));
+        }
+        g.stroke();
+        g.strokeStyle = "#3a2214";
+        g.lineWidth = 1.2;
+        if (awake) {
+          for (const ex of [-2, 4]) {
+            g.fillStyle = "#3a2214";
+            ell(g, ex, -2, 1.9, 2.5);
+            g.fill();
+            g.fillStyle = "#5ab85a";
+            ell(g, ex, -2, 1.6, 2.2);
+            g.fill();
+            g.fillStyle = "#1a1410";
+            ell(g, ex + 0.2, -2, 0.6, 1.8);
+            g.fill();
+            g.fillStyle = "#fff";
+            g.beginPath();
+            g.arc(ex - 0.5, -3, 0.55, 0, 7);
+            g.fill();
+          }
+        } else {
+          for (const ex of [-2, 4]) {
+            g.beginPath();
+            g.arc(ex, -2, 1.8, 0.2, Math.PI - 0.2);
+            g.stroke();
+          }
+        }
+      }),
+    );
+  }
+  const catZ = () =>
+    memo("cat-z", () =>
+      sprite(16, 18, 8, 12, (g) => {
+        g.font = "700 14px 'DM Sans', sans-serif";
+        g.textAlign = "center";
+        g.fillStyle = "rgba(60,60,90,.35)";
+        g.fillText("z", 0.8, 0.8);
+        g.fillStyle = "#fff";
+        g.fillText("z", 0, 0);
+      }),
+    );
   function cat(g, st, t, x, y, s = 1, face = 1) {
     g.save();
     g.translate(x, y);
     g.scale(face * s, s);
-    const b = "#f2a556",
-      d = "#c8742e",
+    const b = CAT_B,
       br = 1 + Math.sin(t * 1.8) * 0.04,
       awake = st === "awake";
-    // tail wraps
+    // The tail wraps round, striped, flicking now and then.
     const flick =
       Math.sin(t * 2) * 0.2 + (t % 5 < 0.4 ? Math.sin(t * 30) * 0.2 : 0);
-    g.strokeStyle = b;
-    g.lineWidth = 5;
+    g.lineCap = "round";
+    g.strokeStyle = dk(b, 0.35);
+    g.lineWidth = 6;
     g.beginPath();
     g.moveTo(-14, -4);
     g.quadraticCurveTo(-4, 6, 12, 2 + flick * 6);
     g.stroke();
-    g.fillStyle = dk(b, 0.4);
-    ell(g, -2, -8, 17, 9.5 * br);
-    g.fill();
-    g.fillStyle = b;
-    ell(g, -2, -8.5, 16, 8.6 * br);
-    g.fill();
-    g.strokeStyle = d;
-    g.lineWidth = 2;
-    for (let k = 0; k < 4; k++) {
-      g.beginPath();
-      g.arc(-10 + k * 6, -14, 4, 0.3, 1.2);
-      g.stroke();
-    }
+    g.strokeStyle = b;
+    g.lineWidth = 4.6;
+    g.stroke();
+    g.strokeStyle = CAT_D;
+    g.lineWidth = 4.6;
+    g.setLineDash([2, 4]);
+    g.stroke();
+    g.setLineDash([]);
+    // The body, breathing.
+    g.save();
+    g.translate(0, -8);
+    g.scale(1, br);
+    g.translate(0, 8);
+    blit(g, catBody(), 0, 0);
+    g.restore();
     const hy = awake ? -20 : -9,
       hx = 12;
-    g.fillStyle = b;
-    [
-      [-6, -7, -5, -15, 1, -9],
-      [2, -8, 5, -16, 7, -6],
-    ].forEach(([a, b1, c, d1, e, f]) => {
-      g.beginPath();
-      g.moveTo(hx + a, hy + b1);
-      g.lineTo(hx + c, hy + d1 - (t % 7 < 0.15 ? 2 : 0));
-      g.lineTo(hx + e, hy + f);
-      g.fill();
-    });
-    g.fillStyle = dk(b, 0.4);
-    g.beginPath();
-    g.arc(hx, hy, 8.4, 0, 7);
-    g.fill();
-    g.fillStyle = b;
-    g.beginPath();
-    g.arc(hx, hy, 7.6, 0, 7);
-    g.fill();
-    g.fillStyle = "#fff4e6";
-    ell(g, hx + 3, hy + 3, 4.5, 3);
-    g.fill();
-    g.fillStyle = "#ff8a9a";
-    g.beginPath();
-    g.arc(hx + 4, hy + 1.6, 1.2, 0, 7);
-    g.fill();
-    g.strokeStyle = "#3a2214";
-    g.lineWidth = 1.2;
-    if (awake) {
-      g.fillStyle = "#4a9a4a";
-      [hx - 2, hx + 4].forEach((ex) => {
-        ell(g, ex, hy - 2, 1.6, 2.2);
-        g.fill();
-      });
-    } else {
-      [hx - 2, hx + 4].forEach((ex) => {
-        g.beginPath();
-        g.arc(ex, hy - 2, 1.8, 0.2, Math.PI - 0.2);
-        g.stroke();
-      });
-    }
-    g.fillStyle = b;
-    ell(g, hx + 2, -2, 6, 3);
-    g.fill();
+    // An ear twitches now and then (the head lifts a touch).
+    blit(g, catHead(awake), hx, hy - (t % 7 < 0.15 ? 0.6 : 0));
     if (!awake) {
       const k = (t * 0.6) % 1;
-      g.fillStyle = `rgba(255,255,255,${1 - k})`;
-      g.font = `700 ${8 + k * 6}px 'DM Sans', sans-serif`;
-      g.fillText("z", hx + 10 + k * 8, hy - 10 - k * 16);
+      blit(g, catZ(), hx + 10 + k * 8, hy - 10 - k * 16, 0.6 + k * 0.45, false, 1 - k);
     }
     g.restore();
   }
