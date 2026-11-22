@@ -91,6 +91,7 @@ import {
 import { ledGlass, ledRig, ledShade, ledWords } from "./plaza-stage-art";
 import { lilyPad, pondWater } from "./plaza-pond-art";
 import { flowerArch, signWords } from "./plaza-props-art";
+import { floodMast, paintPitch, scoreboardArt } from "./plaza-pitch-art";
 import {
   cobble as stoneAt,
   fallenLeaves,
@@ -915,123 +916,8 @@ export function openPlaza(options) {
     g.textAlign = "center";
     g.fillStyle = "rgba(255,255,255,.88)";
     g.fillText("DASH TRACK", TRACK.cx, TRACK.cy + 18);
-    // pitch
-    g.fillStyle = "rgba(30,60,30,.4)";
-    g.beginPath();
-    g.roundRect(
-      PITCH.x0 - 34,
-      PITCH.y0 - 30,
-      PITCH.x1 - PITCH.x0 + 68,
-      PITCH.y1 - PITCH.y0 + 60,
-      18,
-    );
-    g.fill();
-    g.fillStyle = "#4fa443";
-    g.beginPath();
-    g.roundRect(
-      PITCH.x0 - 28,
-      PITCH.y0 - 24,
-      PITCH.x1 - PITCH.x0 + 56,
-      PITCH.y1 - PITCH.y0 + 48,
-      16,
-    );
-    g.fill();
-    // Mown in a chequer, as stadium grass is: stripes across, fainter
-    // stripes down, and the grain of the blades over it.
-    for (let i = 0; i < 10; i++) {
-      g.fillStyle = i % 2 ? "#5fb951" : "#56ad48";
-      g.fillRect(
-        PITCH.x0 + (i * (PITCH.x1 - PITCH.x0)) / 10,
-        PITCH.y0,
-        (PITCH.x1 - PITCH.x0) / 10 + 1,
-        PITCH.y1 - PITCH.y0,
-      );
-    }
-    for (let j = 0; j < 8; j++) {
-      if (j % 2) continue;
-      g.fillStyle = "rgba(255,255,255,.045)";
-      g.fillRect(
-        PITCH.x0,
-        PITCH.y0 + (j * (PITCH.y1 - PITCH.y0)) / 8,
-        PITCH.x1 - PITCH.x0,
-        (PITCH.y1 - PITCH.y0) / 8,
-      );
-    }
-    for (let i = 0; i < 1600; i++) {
-      g.fillStyle =
-        rnd() < 0.5 ? "rgba(30,80,30,.18)" : "rgba(200,255,170,.14)";
-      g.fillRect(
-        PITCH.x0 + rnd() * (PITCH.x1 - PITCH.x0),
-        PITCH.y0 + rnd() * (PITCH.y1 - PITCH.y0),
-        1.2,
-        3,
-      );
-    }
-    // Worn grass in each goalmouth, where everyone stands.
-    for (const gx of [PITCH.x0 + 26, PITCH.x1 - 26]) {
-      const wg = g.createRadialGradient(
-        gx,
-        (PITCH.gy0 + PITCH.gy1) / 2,
-        4,
-        gx,
-        (PITCH.gy0 + PITCH.gy1) / 2,
-        60,
-      );
-      wg.addColorStop(0, "rgba(160,130,70,.35)");
-      wg.addColorStop(1, "rgba(160,130,70,0)");
-      g.fillStyle = wg;
-      g.fillRect(gx - 60, PITCH.gy0 - 20, 120, PITCH.gy1 - PITCH.gy0 + 40);
-    }
-    g.strokeStyle = "#f6fff2";
-    g.lineWidth = 5;
-    g.strokeRect(PITCH.x0, PITCH.y0, PITCH.x1 - PITCH.x0, PITCH.y1 - PITCH.y0);
-    const pcx = (PITCH.x0 + PITCH.x1) / 2,
-      pcy = (PITCH.y0 + PITCH.y1) / 2;
-    g.beginPath();
-    g.moveTo(pcx, PITCH.y0);
-    g.lineTo(pcx, PITCH.y1);
-    g.stroke();
-    g.beginPath();
-    g.ellipse(pcx, pcy, 78, 52, 0, 0, 7);
-    g.stroke();
-    g.fillStyle = "#f6fff2";
-    g.beginPath();
-    g.arc(pcx, pcy, 5, 0, 7);
-    g.fill();
-    g.strokeRect(PITCH.x0, PITCH.gy0 - 50, 96, PITCH.gy1 - PITCH.gy0 + 100);
-    g.strokeRect(
-      PITCH.x1 - 96,
-      PITCH.gy0 - 50,
-      96,
-      PITCH.gy1 - PITCH.gy0 + 100,
-    );
-    {
-      // Penalty spots, the arcs at the boxes and the corner arcs.
-      const my = (PITCH.gy0 + PITCH.gy1) / 2;
-      g.fillStyle = "#f6fff2";
-      for (const px of [PITCH.x0 + 70, PITCH.x1 - 70]) {
-        g.beginPath();
-        g.ellipse(px, my, 4, 3, 0, 0, 7);
-        g.fill();
-      }
-      g.lineWidth = 4;
-      g.beginPath();
-      g.ellipse(PITCH.x0 + 70, my, 54, 36, 0, -1.0, 1.0);
-      g.stroke();
-      g.beginPath();
-      g.ellipse(PITCH.x1 - 70, my, 54, 36, 0, Math.PI - 1.0, Math.PI + 1.0);
-      g.stroke();
-      for (const [cx, cy, a0] of [
-        [PITCH.x0, PITCH.y0, 0],
-        [PITCH.x1, PITCH.y0, Math.PI / 2],
-        [PITCH.x1, PITCH.y1, Math.PI],
-        [PITCH.x0, PITCH.y1, -Math.PI / 2],
-      ]) {
-        g.beginPath();
-        g.ellipse(cx, cy, 14, 10, 0, a0, a0 + Math.PI / 2);
-        g.stroke();
-      }
-    }
+    // pitch: a stadium pitch, painted once (plaza-pitch-art.ts).
+    paintPitch(g, rnd, PITCH);
     // pond rim stones
     g.fillStyle = "rgba(40,60,40,.35)";
     g.beginPath();
@@ -3672,6 +3558,29 @@ export function openPlaza(options) {
       GOAL_SLICES,
       hgt,
       (ya, yb, i) => {
+        // The net's light shadow on the grass inside the goal.
+        g.fillStyle = "rgba(40,100,50,.14)";
+        g.fillRect(Math.min(x, x + d), ya, Math.abs(d), yb - ya);
+        // The mesh: strands across the back and the roof every 8 px.
+        g.strokeStyle = "rgba(255,255,255,.32)";
+        g.lineWidth = 0.8;
+        g.beginPath();
+        for (let yy = Math.ceil(ya / 8) * 8; yy < yb; yy += 8) {
+          g.moveTo(x, yy - hgt);
+          g.lineTo(x + d, yy - hgt * 0.6);
+          g.lineTo(x + d, yy);
+        }
+        for (let k = 1; k < 8; k++) {
+          const hh = (hgt * 0.6 * k) / 8;
+          g.moveTo(x + d, ya - hh);
+          g.lineTo(x + d, yb - hh);
+        }
+        for (let k = 1; k < 4; k++) {
+          const t = k / 4;
+          g.moveTo(x + d * t, ya - hgt + hgt * 0.4 * t);
+          g.lineTo(x + d * t, yb - hgt + hgt * 0.4 * t);
+        }
+        g.stroke();
         g.strokeStyle = "rgba(255,255,255,.55)";
         g.lineWidth = 1;
         g.beginPath();
@@ -3692,19 +3601,26 @@ export function openPlaza(options) {
         g.moveTo(x + d, ya);
         g.lineTo(x + d, yb);
         g.stroke();
-        g.strokeStyle = "#fff";
-        g.lineWidth = 5;
+        // The posts: white, with a grey shaded side and a lit edge.
         g.lineCap = "round";
-        g.beginPath();
-        if (i === 0) {
-          g.moveTo(x, y0);
-          g.lineTo(x, y0 - hgt);
+        for (const [w, c, dx] of [
+          [6, "#b9c2cc", 0.8],
+          [4.6, "#ffffff", 0],
+          [1.4, "#ffffff", -1.4],
+        ]) {
+          g.strokeStyle = c;
+          g.lineWidth = w;
+          g.beginPath();
+          if (i === 0) {
+            g.moveTo(x + dx, y0);
+            g.lineTo(x + dx, y0 - hgt);
+          }
+          if (i === GOAL_SLICES - 1) {
+            g.moveTo(x + dx, y1);
+            g.lineTo(x + dx, y1 - hgt);
+          }
+          g.stroke();
         }
-        if (i === GOAL_SLICES - 1) {
-          g.moveTo(x, y1);
-          g.lineTo(x, y1 - hgt);
-        }
-        g.stroke();
         g.lineCap = "butt";
         // The crossbar, in the team's colour.
         g.strokeStyle = left ? "#5ab0ff" : "#ff5d6c";
@@ -3852,38 +3768,13 @@ export function openPlaza(options) {
     },
   };
   function drawFlood(g, f, n) {
-    g.fillStyle = "rgba(0,0,0,.25)";
-    g.beginPath();
-    g.ellipse(f.x + 10, f.y + 2, 16, 6, 0, 0, 7);
-    g.fill();
-    g.fillStyle = "#3a3f52";
-    g.fillRect(f.x - 4, f.y - 230, 8, 232);
-    g.fillStyle = "#222634";
-    g.fillRect(f.x - 26, f.y - 252, 52, 26);
-    g.fillStyle = n > 0.3 ? "#fff8d8" : "#c9cfdc";
-    for (let i = 0; i < 3; i++)
-      g.fillRect(f.x - 22 + i * 16, f.y - 248, 12, 18);
+    GFX.shadow(g, f.x + 10, f.y + 2, 18, 6);
+    // Baked mast, lit at night (plaza-pitch-art.ts).
+    GFX.blit(g, floodMast(n > 0.3), f.x, f.y);
   }
   function drawScoreboard(g) {
-    const x = (PITCH.x0 + PITCH.x1) / 2,
-      y = PITCH.y0 - 50;
-    g.fillStyle = "#1a1a24";
-    g.fillRect(x - 6, y - 10, 12, 50);
-    g.fillStyle = "#0b0b14";
-    g.fillRect(x - 120, y - 92, 240, 84);
-    g.fillStyle = "#162040";
-    g.fillRect(x - 114, y - 86, 228, 72);
-    g.textAlign = "center";
-    g.font = "700 14px 'DM Sans', sans-serif";
-    g.fillStyle = "#9fb0d8";
-    g.fillText("ORB BALL", x, y - 66);
-    g.font = "800 44px 'Barlow Condensed', sans-serif";
-    g.fillStyle = "#5ab0ff";
-    g.fillText(score[0], x - 50, y - 24);
-    g.fillStyle = "#fff";
-    g.fillText(":", x, y - 26);
-    g.fillStyle = "#ff5d6c";
-    g.fillText(score[1], x + 50, y - 24);
+    // Baked, painted again only when the score changes (plaza-pitch-art.ts).
+    GFX.blit(g, scoreboardArt(score[0], score[1]), (PITCH.x0 + PITCH.x1) / 2, PITCH.y0 - 10);
   }
   /**
    * The lap gantry spans the lane from its outer edge to its inner one,
