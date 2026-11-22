@@ -386,6 +386,14 @@ for (const size of [
         fire(1, "acct-p3", "Rae", { quick: "help", fighter: "p3" });
         fire(2, "acct-p2", "Kai", { quick: "fire", fighter: "p2" });
         fire(3, "acct-vi", "Vi", { quick: "nice", watcher: true });
+        // Each line fades out over 5 s and is then removed, and a slow
+        // runner can take longer than that to reach the shot: hold the
+        // lines at full strength in the same step that adds them.
+        for (const li of document.querySelectorAll(".battle-chat-feed li"))
+          for (const a of li.getAnimations()) {
+            a.pause();
+            a.currentTime = 0;
+          }
       });
       await expect(page.locator(".battle-chat-to")).toHaveText([
         "TEAM",
@@ -396,15 +404,6 @@ for (const size of [
         await page.addStyleTag({
           content: `.battle-chat-feed li { font-family: ${size.font} !important; }`,
         });
-      // Each line fades out over 5 s, and a slow runner can take that long
-      // to shoot the page: hold the lines at full strength first.
-      await page.evaluate(() => {
-        for (const li of document.querySelectorAll(".battle-chat-feed li"))
-          for (const a of li.getAnimations()) {
-            a.pause();
-            a.currentTime = 0;
-          }
-      });
       const [shot, layout] = await Promise.all([
         page.screenshot({ animations: "allow" }),
         page.evaluate(() => {
@@ -422,6 +421,8 @@ for (const size of [
           }));
         }),
       ]);
+      // All three lines measured (an empty feed must not pass).
+      expect(layout).toHaveLength(3);
       const mid = (b: { y: number; height: number }) => b.y + b.height / 2;
       for (const row of layout) {
         // Within half a CSS pixel of the middle, both ways (the letters' ink,
