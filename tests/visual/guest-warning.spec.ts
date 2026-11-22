@@ -11,8 +11,26 @@ const SIZES = [
   { name: "1280x800", width: 1280, height: 800, phone: false },
 ];
 
-async function newGuest(page: Page) {
+async function newGuest(page: Page, fresh = false) {
   const errors: string[] = [];
+  // A brand-new pass (level 1): the Lobby tour is due for it.
+  if (fresh)
+    await page.addInitScript(() => {
+      (window as any).__economyPatch = {
+        journey: {
+          xp: 0,
+          recent: [],
+          season: {
+            id: "2026-10",
+            xp: 0,
+            week: "2026-W43",
+            goals: {},
+            completed: [],
+          },
+          unlocked: [],
+        },
+      };
+    });
   page.on("pageerror", (e) => errors.push(e.message));
   await page.addInitScript(() => {
     (window as any).__accountPatch = { guest: true, displayName: "Guest 7F3A" };
@@ -96,11 +114,37 @@ for (const size of SIZES)
     }
   });
 
-test("Got it closes the warning and opens nothing else", async ({ page }) => {
+test("Got it closes the warning; the Lobby tour comes after it, never over it", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 844, height: 390 });
-  const { errors, modal } = await newGuest(page);
+  const { errors, modal } = await newGuest(page, true);
+  // The tour (hub-tour.ts) is due for this new account, but waits: it
+  // opened over the warning on the owner's phone (22 Nov 2026).
+  await page.waitForTimeout(2500);
+  await expect(page.locator(".hub-tour")).toHaveCount(0);
   await modal.locator("[data-ui-cancel]").click();
   await expect(modal).toHaveCount(0);
   await expect(page.locator(".profile-panel")).toHaveCount(0);
+  await expect(page.locator(".hub-tour .tour-bubble")).toBeVisible({
+    timeout: 10_000,
+  });
+  expect(errors).toEqual([]);
+});
+
+test("Save account: the tour waits for the player card to close", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  const { errors, modal } = await newGuest(page, true);
+  await modal.locator("[data-ui-confirm-ok]").click();
+  await expect(page.locator(".profile-panel")).toBeVisible();
+  await page.waitForTimeout(2000);
+  await expect(page.locator(".hub-tour")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".profile-panel")).toHaveCount(0);
+  await expect(page.locator(".hub-tour .tour-bubble")).toBeVisible({
+    timeout: 10_000,
+  });
   expect(errors).toEqual([]);
 });
