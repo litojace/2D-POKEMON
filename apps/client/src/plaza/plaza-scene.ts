@@ -4810,17 +4810,7 @@ export function openPlaza(options) {
         }
       }
     }
-    if (Math.random() < dt * 6)
-      HOUSES.forEach((h) => {
-        if (h.spr.chimney && Math.random() < 0.25)
-          SMOKE.push({
-            x: h.x + h.spr.chimney[0],
-            y: h.y + h.spr.chimney[1],
-            t: 0,
-            life: 2.4,
-            vx: 8 + Math.random() * 6,
-          });
-      });
+    // (No chimney smoke: the owner took it out, 22 Nov.)
     SMOKE.forEach((m) => {
       m.t += dt;
       m.x += m.vx * dt;

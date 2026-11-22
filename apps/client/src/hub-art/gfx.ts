@@ -1494,6 +1494,33 @@ const GFX = (() => {
               g.fill();
             }
           }
+          // chimney (behind the roof, as it always was)
+          if (chimney) {
+            const cx = x0 + w * 0.72;
+            g.fillStyle = vg(g, ridge, top, "#d77a5a", "#9a4a32");
+            g.fillRect(cx, ridge + roofH * 0.1, 18, roofH * 0.6);
+            g.strokeStyle = "#5e2a1a";
+            g.lineWidth = 1.8;
+            g.strokeRect(cx, ridge + roofH * 0.1, 18, roofH * 0.6);
+            g.strokeStyle = "rgba(94,42,26,.45)";
+            g.lineWidth = 0.8;
+            for (let r = 0, y = ridge + roofH * 0.1 + 5; y < ridge + roofH * 0.7; y += 5, r++) {
+              g.beginPath();
+              g.moveTo(cx, y);
+              g.lineTo(cx + 18, y);
+              for (let bx = cx + (r % 2 ? 3 : 7.5); bx < cx + 18; bx += 9) {
+                g.moveTo(bx, y - 5);
+                g.lineTo(bx, y);
+              }
+              g.stroke();
+            }
+            g.fillStyle = "rgba(255,220,200,.3)";
+            g.fillRect(cx + 1, ridge + roofH * 0.1, 3, roofH * 0.6);
+            g.fillStyle = "#6a3424";
+            g.fillRect(cx - 3, ridge + roofH * 0.1 - 6, 24, 7);
+            g.fillStyle = "#3a1c12";
+            g.fillRect(cx + 2, ridge + roofH * 0.1 - 7, 14, 2);
+          }
           // roof (hip, with tile rows)
           const ov = 14,
             inset = w * 0.22;
@@ -1593,34 +1620,6 @@ const GFX = (() => {
           rr(g, x0 - ov - 2, top + 1, w + ov * 2 + 4, 8, 4);
           g.fillStyle = dk(roof, 0.2);
           g.fill();
-          // chimney: drawn over the roof, so it shows (the roof used to
-          // hide it while its smoke still rose, owner).
-          if (chimney) {
-            const cx = x0 + w * 0.72;
-            g.fillStyle = vg(g, ridge, top, "#d77a5a", "#9a4a32");
-            g.fillRect(cx, ridge + roofH * 0.1, 18, roofH * 0.6);
-            g.strokeStyle = "#5e2a1a";
-            g.lineWidth = 1.8;
-            g.strokeRect(cx, ridge + roofH * 0.1, 18, roofH * 0.6);
-            g.strokeStyle = "rgba(94,42,26,.45)";
-            g.lineWidth = 0.8;
-            for (let r = 0, y = ridge + roofH * 0.1 + 5; y < ridge + roofH * 0.7; y += 5, r++) {
-              g.beginPath();
-              g.moveTo(cx, y);
-              g.lineTo(cx + 18, y);
-              for (let bx = cx + (r % 2 ? 3 : 7.5); bx < cx + 18; bx += 9) {
-                g.moveTo(bx, y - 5);
-                g.lineTo(bx, y);
-              }
-              g.stroke();
-            }
-            g.fillStyle = "rgba(255,220,200,.3)";
-            g.fillRect(cx + 1, ridge + roofH * 0.1, 3, roofH * 0.6);
-            g.fillStyle = "#6a3424";
-            g.fillRect(cx - 3, ridge + roofH * 0.1 - 6, 24, 7);
-            g.fillStyle = "#3a1c12";
-            g.fillRect(cx + 2, ridge + roofH * 0.1 - 7, 14, 2);
-          }
           if (sign) {
             rr(g, -w * 0.34, top + 5, w * 0.68, 23, 7);
             g.fillStyle = sign.bg || "#2a1f4c";
