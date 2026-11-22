@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { openPlaza, snap } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import {
+  PLAZA_DOCK,
   PLAZA_FISH,
   PLAZA_FISHING,
   PLAZA_POND,
@@ -345,6 +346,39 @@ for (const size of [
   });
 }
 
+test("Fish walks you out onto the dock, facing the water, and the line goes out near the pond's middle", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openPlaza(page);
+  await toPond(page);
+  // Pressed from the bank, a little way from the dock.
+  await enter(page);
+  const local = () =>
+    page.evaluate(() => {
+      const b = (window as any).__plazaWorld.bodyOf("local");
+      return { x: b.x, y: b.y };
+    });
+  const S = PLAZA_DOCK.stand;
+  // The server (the harness's real PlazaWorld) walks you there too.
+  await expect
+    .poll(async () => {
+      const at = await local();
+      return Math.hypot(at.x - S.x, at.y - S.y);
+    })
+    .toBeLessThan(14);
+  const at = await local();
+  expect(at.x).toBeGreaterThan(PLAZA_DOCK.x0);
+  expect(at.x).toBeLessThan(PLAZA_DOCK.x1);
+  expect(at.y).toBeGreaterThan(PLAZA_DOCK.y0);
+  expect(at.y).toBeLessThan(PLAZA_DOCK.y1);
+  // Still fishing, and the cast works from the dock.
+  await expect(page.locator("#pz-fishhud")).toBeVisible();
+  await cast(page);
+  await snap(page, info, "fishing-on-the-dock");
+  expect(errors).toEqual([]);
+});
+
 test("on a keyboard: E enters and casts, a tap before the bite loses the fish, Esc leaves, and a line left out comes in", async ({
   page,
 }) => {
@@ -410,8 +444,14 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
     PLAZA_FISH.map((f) => f.id),
   );
   await expect(toast(page)).toContainText("Title earned: Master Angler");
+  // The map no longer has a Fish book button (fishing has its own); B
+  // still opens it.
   await page.click("#pz-map-btn");
-  await page.click("#pz-map-book");
+  await expect(page.locator("#pz-map-book")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#pz-map")).toBeHidden();
+  await page.locator(".plaza-layer").focus();
+  await page.keyboard.press("b");
   await expect(page.locator("#pz-fishbook-note")).toContainText(
     "Title earned: Master Angler",
   );

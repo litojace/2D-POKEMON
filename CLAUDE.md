@@ -36,6 +36,30 @@ launch: verify small phones and safe-area insets before desktop polish.
 Keep new content driven by shared data rather than floor/boss-specific UI
 branches. For Spire updates, follow [the content guide](docs/spire-content-guide.md).
 
+**Look at every UI change before calling it done** (owner, 22 Nov): take
+screenshots (`VISUAL_SHOTS=<folder>`, or a page.screenshot) at a small
+phone in landscape (667×375 and 844×390, plus 852×393 with the Dynamic
+Island inset) and at desktop, open, closed and in each state, and check
+them box by box:
+
+- Every button, icon and word sits centred in its box, with even padding
+  and no empty band left on one side (a label pushed to the top of a round
+  button, a count off its badge).
+- Text reads in full: no "…" on what matters and no word broken over three
+  lines in a narrow column. Make the box wider or the layout simpler first.
+- Rows line up: same height, icons in one column, numbers right-aligned
+  with tabular figures; badges and rings match the Lobby's.
+- Nothing overlaps or covers another control, the safe areas or the
+  playfield's middle; touch targets stay at least 44 px.
+- Fewer buttons beat more: when two controls do the same job, keep the one
+  players should use and drop the other.
+- The game world agrees with its art: what looks solid (a wall, a basin, a
+  dock's edge) is solid for walking, and props in hand (a rod, a cup) sit in
+  the hand, clear of the face.
+
+Fix what the screenshots show before merging, and say in the PR what you
+looked at.
+
 **Text fields a button opens** (a form, a code box, a name to change):
 focus them with `focusForTyping(field)` from `apps/client/src/screen-pin.ts`,
 never `field.focus({ preventScroll: true })` and never `select()` straight

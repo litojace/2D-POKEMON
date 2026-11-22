@@ -49,6 +49,7 @@ import {
   PLAZA_LANDINGS,
   PLAZA_PITCH,
   PLAZA_POND,
+  PLAZA_DOCK,
   PLAZA_QUESTS,
   PLAZA_PLACES,
   plazaPlaceOf,
@@ -170,13 +171,12 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     <div class="pz-event" id="pz-event" hidden></div>
     <div class="pz-timer glass" id="pz-timer" hidden></div>
     <button type="button" class="pz-clock glass" id="pz-clock" title="Preview day or night">--:--</button>
-    <aside class="pz-quests glass" id="pz-quests"></aside>
+    <aside class="pz-quests" id="pz-quests"></aside>
     <div class="pz-feed" id="pz-feed" aria-live="polite"></div>
     <div class="pz-runcard glass" id="pz-runcard" hidden></div>
     <div class="pz-joy" id="pz-joy"><div class="ring" id="pz-ring"><div class="knob" id="pz-knob"></div></div></div>
     <div class="pz-left">
       <button type="button" class="pz-round" id="pz-map-btn" aria-label="Plaza map (M)">${I("map")}<small>Map</small></button>
-      <button type="button" class="pz-round" id="pz-wheel-btn" aria-label="Quick chat">${I("smile")}<small>Chat</small></button>
       <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat (T)">${I("gift")}<small id="pz-treats">0</small><b class="pz-wishn" id="pz-wishn" hidden></b></button>
       <button type="button" class="pz-round" id="pz-album-btn" aria-label="Photo album">${I("album")}<small>Album</small></button>
     </div>
@@ -216,7 +216,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     </div>
     <div class="pz-map" id="pz-map" role="dialog" aria-modal="true" aria-label="Plaza map" hidden>
       <section class="pz-map-panel">
-        <header><b>${I("map")}<span>Plaza map</span></b><span class="pz-map-hint" id="pz-map-hint">Tap a place to walk there</span><button type="button" class="pz-map-book" id="pz-map-book" aria-label="Fish book (B)">${I("fish")}<span>Fish book</span></button><button type="button" class="x" data-map="close" aria-label="Close the map">✕</button></header>
+        <header><b>${I("map")}<span>Plaza map</span></b><span class="pz-map-hint" id="pz-map-hint">Tap a place to walk there</span><button type="button" class="x" data-map="close" aria-label="Close the map">✕</button></header>
         <div class="pz-map-body">
           <div class="pz-map-view" id="pz-map-view">
             <canvas id="pz-map-cv" aria-hidden="true"></canvas>
@@ -257,6 +257,19 @@ export function openPlaza(options) {
   // Auto (Settings → Graphics) watches the frame rate and may switch to Low.
   let probe =
     graphicsSetting() === "auto" && !low ? new FrameRateProbe() : undefined;
+  /**
+   * Draw at up to 2x on iPhones too (sceneDensity's `sharp`), so fighters
+   * and names are crisp. Where Auto finds that too slow, this device steps
+   * back to 1.5x for good (SOFT_KEY) before anything goes Low.
+   */
+  const SOFT_KEY = "ea-plaza-soft";
+  let sharp = (() => {
+    try {
+      return localStorage.getItem(SOFT_KEY) !== "1";
+    } catch {
+      return true;
+    }
+  })();
   const pzToast = (m) => options.toast(m);
   const syncPhone = () => {
     layer.classList.toggle("phone", innerHeight < 500);
@@ -1271,7 +1284,7 @@ export function openPlaza(options) {
     y: 0,
     face: 1,
     dab: 0,
-    r: 0.4 + (i % 2) * 0.25,
+    r: 0.4 + (i % 2) * 0.15,
   }));
   const FISH = [0, 1, 2].map((i) => ({
     a: i * 2,
@@ -1426,44 +1439,56 @@ export function openPlaza(options) {
 
   /* ---------- Plaza today (quests) and TOP DASH, from the server ---------- */
   let progress = null;
-  const qmin = { desk: false, phone: true };
-  const qk = () => (layer.classList.contains("phone") ? "phone" : "desk");
+  /**
+   * Plaza today: a round button, as the Lobby rail's Missions, with the
+   * quests still to do on a blue badge and the day's progress as a ring
+   * round it. A tap opens the list over it, wide enough that a quest reads
+   * on one line, its progress and coins beside it; a row still to do walks
+   * you to its place (owner, 22 Nov: the folded pill and its narrow rows
+   * broke quests over three lines).
+   */
+  let questsOpen = false;
   function renderQuests() {
     const box = $("pz-quests");
     const q = progress?.quests;
+    const total = PLAZA_QUESTS.length;
     const done = q ? PLAZA_QUESTS.filter((x) => q[x.id]?.done).length : 0;
     const left = PLAZA_QUESTS.filter((x) => !q?.[x.id]?.done).reduce(
       (a, x) => a + x.coins,
       0,
     );
-    box.className = `pz-quests glass${qmin[qk()] ? " min" : ""}`;
+    const todo = total - done;
+    box.classList.toggle("open", questsOpen);
+    const rows = PLAZA_QUESTS.map((x) => {
+      const n = Math.min(q?.[x.id]?.n ?? 0, x.max),
+        paid = !!q?.[x.id]?.done,
+        place = plazaPlaceOf(x.id),
+        shown = paid ? x.max : n;
+      const inner = `<span class="ic" aria-hidden="true">${I(place?.icon ?? "star")}</span><span class="tx"><b>${esc(x.text)}</b><span class="pg"><span class="bar"><i style="width:${(shown / x.max) * 100}%"></i></span><small>${shown}/${x.max}</small></span></span><span class="rw">${paid ? `<span class="ok">✓</span>` : `+${x.coins}${I("coin", "coin")}`}</span>`;
+      // Go: walk to where it is done (the map's places, shared data).
+      return place && !paid
+        ? `<li class="pz-q"><button type="button" class="row" data-go="${place.id}" aria-label="${esc(x.text)}, ${shown} of ${x.max}, ${x.coins} coins. Go to ${esc(place.name)}">${inner}<i class="go" aria-hidden="true"></i></button></li>`
+        : `<li class="pz-q${paid ? " done" : ""}"><div class="row">${inner}</div></li>`;
+    }).join("");
     setInner(
       box,
-      // The whole title row is the fold button (it was only the small
-      // arrow at its end): today's count, the coins still to earn, a
-      // chevron, and folded, a progress line along the bottom.
-      `<h5><button type="button" class="pz-qhead" data-qmin aria-expanded="${!qmin[qk()]}" aria-controls="pz-quests" aria-label="Plaza today, ${done} of ${PLAZA_QUESTS.length} done${left ? `, ${left} coins left` : ""}. ${qmin[qk()] ? "Show" : "Hide"} quests"><span class="t">Plaza today</span><span class="n">${done}/${PLAZA_QUESTS.length}</span>${left ? `<span class="c">+${left} ${I("coin", "coin")}</span><b class="pz-qbadge" aria-hidden="true">${PLAZA_QUESTS.length - done}</b>` : `<span class="c ok">✓</span>`}<i class="chev" aria-hidden="true"></i></button><span class="pz-qline" aria-hidden="true"><i style="width:${(done / PLAZA_QUESTS.length) * 100}%"></i></span></h5>${PLAZA_QUESTS.map(
-        (x) => {
-          const n = q?.[x.id]?.n ?? 0,
-            paid = q?.[x.id]?.done;
-          const place = plazaPlaceOf(x.id);
-          // Go: walk to where it is done (the map's places, shared data).
-          const go =
-            place && !paid
-              ? `<button type="button" class="go" data-go="${place.id}" aria-label="Go to ${esc(place.name)}" title="Go to ${esc(place.name)}">${I(place.icon)}</button>`
-              : "<span></span>";
-          return `<div class="pz-q${paid ? " done" : ""}"><span>${x.text}</span><span class="rw">${paid ? "✓" : `+${x.coins} ${I("coin", "coin")}`}</span>${go}<span class="bar"><i style="width:${(Math.min(n, x.max) / x.max) * 100}%"></i></span></div>`;
-        },
-      ).join("")}`,
+      `<button type="button" class="pz-round pz-qbtn" data-qopen aria-expanded="${questsOpen}" aria-controls="pz-qpanel" aria-label="Plaza today, ${done} of ${total} done${left ? `, ${left} coins to earn` : ""}" title="Plaza today"><i class="pz-qring" style="--p:${done / total}" aria-hidden="true"></i>${I("quests")}<small>Today</small><b class="pz-qbadge${todo ? "" : " ok"}" aria-hidden="true">${todo || "✓"}</b></button><section class="pz-qpanel glass" id="pz-qpanel" aria-label="Plaza today"${questsOpen ? "" : " hidden"}><header><h5><span class="t">Plaza today</span><span class="n">${done}/${total}</span></h5>${left ? `<span class="c">+${left}${I("coin", "coin")}<small>to earn</small></span>` : `<span class="c ok">All done</span>`}<button type="button" class="x" data-qclose aria-label="Close Plaza today">✕</button></header><ul class="pz-qlist">${rows}</ul></section>`,
     );
   }
+  function showQuests(on = !questsOpen) {
+    if (questsOpen === on) return;
+    questsOpen = on;
+    renderQuests();
+    if (on) toggleWheel(false);
+  }
   $("pz-quests").addEventListener("click", (e) => {
-    if (e.target.closest("[data-qmin]")) {
-      qmin[qk()] = !qmin[qk()];
-      renderQuests();
-    }
+    if (e.target.closest("[data-qopen]")) showQuests();
+    else if (e.target.closest("[data-qclose]")) showQuests(false);
     const go = e.target.closest("[data-go]");
-    if (go) goToPlace(go.dataset.go);
+    if (go) {
+      showQuests(false);
+      goToPlace(go.dataset.go);
+    }
   });
   function setProgress(p) {
     if (!p?.quests) return;
@@ -1691,6 +1716,11 @@ export function openPlaza(options) {
       if (k === "escape" || k === "m") hideMap();
       return;
     }
+    // Esc folds Plaza today away (walking keys still walk).
+    if (questsOpen && k === "escape") {
+      showQuests(false);
+      return;
+    }
     if (!$("pz-fishbook").hidden) {
       if (k === "escape") hideFishBook();
       else if (k === "tab") {
@@ -1811,20 +1841,12 @@ export function openPlaza(options) {
     throwTreat();
     screen.focus({ preventScroll: true });
   });
-  $("pz-wheel-btn").onclick = () => {
-    start();
-    toggleWheel();
-  };
   $("pz-album-btn").onclick = () => {
     start();
     showAlbum();
   };
-  // The Fish book opens from the map (its HUD button went, to keep the
-  // phone's row of buttons short), from fishing's Book, or with B.
-  $("pz-map-book").onclick = () => {
-    hideMap();
-    showFishBook();
-  };
+  // The Fish book opens from fishing's Book (or with B): the map's and
+  // the HUD's buttons went, to keep the screens short (owner, 22 Nov).
   $("pz-wheel").addEventListener("click", (e) => {
     const b = e.target.closest("[data-emote]");
     if (b) {
@@ -1833,33 +1855,21 @@ export function openPlaza(options) {
       screen.focus({ preventScroll: true });
     }
   });
+  /**
+   * The emote wheel, from Q (or 1-8 straight away) on a keyboard. Touch
+   * screens send emotes from the Chat button's quick chips: the wheel's
+   * own Chat button went to keep the row over Dash short and to lead
+   * players to the one chat (owner, 22 Nov). It opens over you.
+   */
   function toggleWheel(on) {
     const w = $("pz-wheel"),
       show = on ?? w.hidden;
     w.hidden = !show;
-    // The Emote button lights up while its wheel is open (plaza.css).
-    $("pz-wheel-btn").setAttribute("aria-expanded", String(show));
     if (show) {
-      const r = $("pz-wheel-btn").getBoundingClientRect(),
-        sr = $("pz").querySelector(".pz-hud").getBoundingClientRect();
-      if (layer.classList.contains("phone")) {
-        // Phones: the Emote button sits in the row over Jump, right of
-        // the stage, and above it a 360-430px screen has no room for the
-        // wheel (it ran up over the coins, the gear and the clock). It
-        // opens left of that row instead, by the thumb, kept under the
-        // header's row and above the screen's bottom edge.
-        const row = layer.querySelector(".pz-left").getBoundingClientRect(),
-          rad = (220 * 0.85) / 2,
-          top =
-            document.getElementById("account-profile")?.getBoundingClientRect()
-              .bottom ?? sr.top + 52,
-          cy = row.top + row.height / 2 - sr.top;
-        w.style.left = `${row.left - sr.left - 10 - rad}px`;
-        w.style.top = `${Math.min(sr.height - 8 - rad, Math.max(top - sr.top + 10 + rad, cy))}px`;
-        return;
-      }
-      w.style.left = `${Math.min(sr.width - 120, r.left + r.width / 2 - sr.left + 100)}px`;
-      w.style.top = `${Math.max(120, r.top - sr.top - 90)}px`;
+      const sr = $("pz").querySelector(".pz-hud").getBoundingClientRect(),
+        rad = 110;
+      w.style.left = `${sr.width / 2}px`;
+      w.style.top = `${Math.max(rad + 60, Math.min(sr.height - rad - 8, sr.height / 2 - 70))}px`;
     }
   }
   // A press anywhere outside the emote wheel or a player's card closes it
@@ -1869,11 +1879,13 @@ export function openPlaza(options) {
     "pointerdown",
     (e) => {
       const t = e.target,
-        wheel = !$("pz-wheel").hidden && !t.closest("#pz-wheel, #pz-wheel-btn"),
+        quests = questsOpen && !t.closest("#pz-quests"),
+        wheel = !$("pz-wheel").hidden && !t.closest("#pz-wheel"),
         card = !$("pz-card").hidden && !t.closest("#pz-card");
+      if (quests) showQuests(false);
       if (wheel) toggleWheel(false);
       if (card) hideCard();
-      if ((wheel || card) && t === cv) {
+      if ((quests || wheel || card) && t === cv) {
         e.stopPropagation();
         screen.focus({ preventScroll: true });
       }
@@ -2327,12 +2339,20 @@ export function openPlaza(options) {
    * as the fight starts, never per frame). */
   let fightRoom = { gx: 0, gy0: 0, gy1: 0 };
   SPOTS.push({ ...FISH_SPOT, act: () => enterFishing() });
+  /** Walking out onto the dock for fishing: turn to the water on arrival. */
+  let toDock = false;
   function enterFishing() {
     if (fishing.active) return;
     standStill();
     toggleWheel(false);
     hideCard();
+    showQuests(false);
     fishing.enter();
+    // Out to the end of the dock (PLAZA_DOCK), as the camera comes in, so
+    // you fish from its planks rather than from wherever you pressed Fish.
+    const S = PLAZA_DOCK.stand;
+    if (Math.hypot(P.x - S.x, P.y - S.y) > 6) walkTo({ x: S.x, y: S.y });
+    toDock = true;
     screen.focus({ preventScroll: true });
   }
   function exitFishing() {
@@ -2608,6 +2628,7 @@ export function openPlaza(options) {
     g.lineWidth = 3;
     g.strokeStyle = "#0b1020";
     const label = `✦ WISHES ${wish.n}/${goal}`;
+    g.lineJoin = "round";
     g.strokeText(label, FOUNT.x, y + h / 2 + 1);
     g.fillStyle = "#fff";
     g.fillText(label, FOUNT.x, y + h / 2 + 1);
@@ -3214,11 +3235,9 @@ export function openPlaza(options) {
     return [Math.cos(a) * 96 * r, 2 + Math.sin(a) * 50 * r, k];
   });
   function drawFountain(g, time) {
-    const { x, y } = FOUNT;
-    // basin wall (front) + rim + water
-    const brx = 126,
-      bry = 80,
-      wallH = 24;
+    // basin wall (front) + rim + water, as big as bodies keep clear of
+    // (PLAZA_FOUNTAIN, PLAZA_OBSTACLES)
+    const { x, y, rx: brx, ry: bry, wall: wallH } = FOUNT;
     g.fillStyle = "rgba(30,40,40,.3)";
     g.beginPath();
     g.ellipse(x + 8, y + wallH + 6, brx + 10, bry + 8, 0, 0, 7);
@@ -4058,6 +4077,7 @@ export function openPlaza(options) {
     g.fillStyle = "#fff";
     g.strokeStyle = "#2a1f4c";
     g.lineWidth = 4;
+    g.lineJoin = "round";
     g.strokeText("PHOTO SPOT", x, y - 246);
     g.fillText("PHOTO SPOT", x, y - 246);
   }
@@ -4165,6 +4185,7 @@ export function openPlaza(options) {
     g.font = "800 17px 'Barlow Condensed', sans-serif";
     g.textAlign = "center";
     g.textBaseline = "middle";
+    g.lineJoin = "round";
     g.strokeText("PLAZA MAP", 0, -150);
     g.fillText("PLAZA MAP", 0, -150);
     // Kept once its icons have drawn (data pictures, a moment after load;
@@ -4264,10 +4285,14 @@ export function openPlaza(options) {
       ? "italic 600 12px 'DM Sans', sans-serif"
       : "700 13px 'DM Sans', sans-serif";
     g.textAlign = "center";
-    g.lineWidth = 3.5;
-    g.strokeStyle = "rgba(11,16,32,.85)";
+    // A thin, even outline: round joins (the default mitre joins left
+    // spikes on A, M, N, V and W) and 2.6 px, not 3.5 (owner, 22 Nov).
+    g.lineWidth = 2.6;
+    g.miterLimit = 2;
+    g.strokeStyle = "rgba(11,16,32,.8)";
     g.fillStyle = b.me ? "#ffd65b" : b.bot ? "#aebbe0" : "#fff";
     const ny = b.y - b.z - s * 0.92 - 6;
+    g.lineJoin = "round";
     g.strokeText(b.name, b.x, ny);
     g.fillText(b.name, b.x, ny);
     if (b.emoteT > 0) {
@@ -4412,7 +4437,8 @@ export function openPlaza(options) {
       g.stroke();
     }
     [
-      [x - 120, y - 30, 22],
+      // (Clear of the dock's end, PLAZA_DOCK.)
+      [x - 110, y - 55, 22],
       [x + 100, y + 40, 18],
       [x + 30, y - 60, 16],
       [x - 60, y + 55, 20],
@@ -4491,7 +4517,9 @@ export function openPlaza(options) {
   function updateAnimals(dt) {
     DUCKS.forEach((d) => {
       d.a += d.s * dt * (d.dab > 0 ? 0.2 : 1);
-      const nx = POND.x + Math.cos(d.a) * POND.rx * d.r * 1.2,
+      // Round a point east of the middle, clear of the dock (PLAZA_DOCK)
+      // and of the bobber's spot (PLAZA_FISHING).
+      const nx = POND.x + 30 + Math.cos(d.a) * POND.rx * d.r * 1.2,
         ny = POND.y + Math.sin(d.a) * POND.ry * d.r * 1.1;
       d.face = nx > d.x ? 1 : -1;
       d.x = nx;
@@ -5243,12 +5271,14 @@ export function openPlaza(options) {
           name: "flood",
         }),
       ),
+      // The basin's foot on the ground: someone in front of the wall is
+      // drawn over it, someone behind the rim under it.
       {
-        x0: FOUNT.x - 126,
-        x1: FOUNT.x + 126,
-        y0: FOUNT.y - 60,
-        y1: FOUNT.y + 60,
-        h: 200,
+        x0: FOUNT.x - FOUNT.rx,
+        x1: FOUNT.x + FOUNT.rx,
+        y0: FOUNT.y + FOUNT.wall - FOUNT.ry,
+        y1: FOUNT.y + FOUNT.wall + FOUNT.ry,
+        h: 230,
         name: "fountain",
         draw: () => drawFountain(g, time),
       },
@@ -5463,6 +5493,7 @@ export function openPlaza(options) {
         if (f.icon)
           textWithIcon(g, f.text, f.icon, f.x, f.y - k * 50 - 8, 24, true);
         else {
+          g.lineJoin = "round";
           g.strokeText(f.text, f.x, f.y - k * 50);
           g.fillText(f.text, f.x, f.y - k * 50);
         }
@@ -5619,7 +5650,17 @@ export function openPlaza(options) {
       if (covered() || document.hidden) probe.pause();
       else {
         const verdict = probe.frame(performance.now());
-        if (verdict === "low") {
+        if (verdict === "low" && sharp && sceneDensity(NW, NH) < PS) {
+          // First a step back to 1.5x (as before 22 Nov), watched afresh.
+          sharp = false;
+          try {
+            localStorage.setItem(SOFT_KEY, "1");
+          } catch {
+            /* private mode: soft for this visit only */
+          }
+          resize();
+          probe = new FrameRateProbe(0);
+        } else if (verdict === "low") {
           rememberAutoLow(`Plaza ran at ${Math.round(probe.lastFps)} fps`);
           probe = undefined;
           goLow();
@@ -5760,6 +5801,11 @@ export function openPlaza(options) {
         null;
       const ib = $("pz-interact");
       fishing.update(dt);
+      if (toDock && (!fishing.active || !target)) {
+        // At the dock's end: face the water, where the line goes.
+        if (fishing.active) P.face = PLAZA_FISHING.bobber.x >= P.x ? 1 : -1;
+        toDock = false;
+      }
       if (near) {
         if (ib.dataset.id !== near.id) {
           ib.dataset.id = near.id;
@@ -5905,7 +5951,9 @@ export function openPlaza(options) {
       nh = Math.max(1, layer.clientHeight),
       // Low graphics draws one pixel per CSS pixel; iPhones and iPads keep
       // within a pixel budget (render-budget.ts).
-      ps = low ? 1 : sceneDensity(nw, nh);
+      ps = low
+        ? 1
+        : sceneDensity(nw, nh, undefined, undefined, undefined, sharp);
     NW = nw;
     NH = nh;
     PS = ps;

@@ -55,12 +55,7 @@ test("a treat at the fountain is a wish; a full meter brings fireworks for every
   expect(badge.y).toBeGreaterThanOrEqual(0);
   expect(badge.x + badge.width).toBeLessThanOrEqual(667);
   expect(badge.y + badge.height).toBeLessThanOrEqual(375);
-  for (const sel of [
-    "#pz-wheel-btn",
-    "#pz-album-btn",
-    "#pz-dash",
-    "#pz-jump",
-  ]) {
+  for (const sel of ["#pz-map-btn", "#pz-album-btn", "#pz-dash", "#pz-jump"]) {
     const b = await page.locator(sel).boundingBox();
     if (!b) continue;
     const apart =

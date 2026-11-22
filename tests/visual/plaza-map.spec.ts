@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openPlaza, snap } from "./helpers";
-import { PLAZA_PLACES, plazaPlaceOf } from "../../packages/shared/src/plaza";
+import {
+  PLAZA_PLACES,
+  PLAZA_QUESTS,
+  plazaPlaceOf,
+} from "../../packages/shared/src/plaza";
 
 /*
  * The Plaza map (plaza-map.ts): a Map button and the map board by the
@@ -122,6 +126,7 @@ test("M opens and closes the map; a quest's Go walks you to its place", async ({
   await expect(page.locator("#pz-map")).toBeHidden();
   // Each quest still to do has a Go to where it is done (the done one has none).
   const goal = plazaPlaceOf("goal")!;
+  await page.click("#pz-quests [data-qopen]");
   const go = page.locator(`#pz-quests [data-go="${goal.id}"]`);
   await expect(go).toBeVisible();
   await expect(page.locator('#pz-quests [data-go="photo"]')).toHaveCount(0);
@@ -147,7 +152,7 @@ test("the map board by the square opens the map", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("Plaza today opens and closes from anywhere on its title, on a phone too", async ({
+test("Plaza today is a round button that opens its list, on a phone too", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -158,20 +163,28 @@ test("Plaza today opens and closes from anywhere on its title, on a phone too", 
   try {
     const page = await context.newPage();
     const errors = await openPlaza(page);
-    const quests = page.locator("#pz-quests");
-    // Folded on phones: tap the word "Plaza", far from the chevron.
-    await expect(quests).toHaveClass(/\bmin\b/);
-    const head = page.locator("#pz-quests .pz-qhead");
-    await expect(head).toHaveAttribute("aria-expanded", "false");
-    const box = (await quests.boundingBox())!;
-    await page.touchscreen.tap(box.x + 10, box.y + box.height / 2);
-    await expect(quests).not.toHaveClass(/\bmin\b/);
-    await expect(head).toHaveAttribute("aria-expanded", "true");
-    await expect(quests.locator(".pz-q").first()).toBeVisible();
-    // And the title folds it again, from its left end.
-    const open = (await head.boundingBox())!;
-    await page.touchscreen.tap(open.x + 8, open.y + open.height / 2);
-    await expect(quests).toHaveClass(/\bmin\b/);
+    const btn = page.locator("#pz-quests [data-qopen]"),
+      panel = page.locator("#pz-qpanel");
+    // Folded: the quests still to do on its badge (one of six is done).
+    await expect(btn).toHaveAttribute("aria-expanded", "false");
+    await expect(panel).toBeHidden();
+    await expect(page.locator("#pz-quests .pz-qbadge")).toHaveText(
+      String(PLAZA_QUESTS.length - 1),
+    );
+    const box = (await btn.boundingBox())!;
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(panel).toBeVisible();
+    await expect(btn).toHaveAttribute("aria-expanded", "true");
+    await expect(panel.locator(".pz-q")).toHaveCount(PLAZA_QUESTS.length);
+    // Its ✕ folds it again.
+    await panel.locator("[data-qclose]").tap();
+    await expect(panel).toBeHidden();
+    await expect(btn).toHaveAttribute("aria-expanded", "false");
+    // A tap on the Plaza beside it folds it too, without walking you.
+    await btn.tap();
+    await expect(panel).toBeVisible();
+    await page.touchscreen.tap(400, 200);
+    await expect(panel).toBeHidden();
     expect(errors).toEqual([]);
   } finally {
     await context.close();
