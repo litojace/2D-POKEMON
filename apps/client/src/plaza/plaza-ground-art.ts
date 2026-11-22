@@ -58,6 +58,7 @@ export function cobble(g, rnd, x, y, w, h, c, rot = 0) {
   g.translate(1, 1.8);
   g.rotate(rot);
   path();
+  // A light, warm shadow (a dark one made the paths look dirty, owner).
   g.fillStyle = "rgba(150,122,80,.3)";
   g.fill();
   g.restore();
@@ -342,8 +343,9 @@ export function grassLight(g, rnd, x0, y0, w, h, n) {
       ry = rx * (0.45 + rnd() * 0.25),
       lit = rnd() < 0.55;
     const gr = g.createRadialGradient(x, y, 0, x, y, rx);
-    const c = lit ? "196,236,120" : "38,96,48";
-    gr.addColorStop(0, `rgba(${c},${lit ? 0.16 : 0.14})`);
+    // Shade in the grass is a deeper, still-green green, never grey.
+    const c = lit ? "214,240,120" : "70,140,50";
+    gr.addColorStop(0, `rgba(${c},${lit ? 0.28 : 0.2})`);
     gr.addColorStop(1, `rgba(${c},0)`);
     g.save();
     g.translate(x, y);
