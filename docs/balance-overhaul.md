@@ -1104,6 +1104,13 @@ every pair, 4 games a pair (`difficulty-gap.ts 4 expert hard`): it wins
 89.1% of 612 duels and Hard takes 19.3% of rounds (with the fast hands
 96.2% and 10.9%).
 
+Since the second round of smarter bots (docs/smarter-bots.md, 2026-11-22)
+Hard has the expert's reaction, aim and decisions, but dodges 80% (the
+expert 90%), reads marks in 0.6 s and has no look-ahead or styles. The
+expert still beats it clearly: 79.7% of the same 612 duels, Hard taking
+27.9% of rounds. The expert itself is unchanged (it is built on the old
+Hard, `RAID_BOT_PROFILES.hard`).
+
 **Trained again for these hands** (`train-expert.ts --rounds 4 --mutants 6
 --games 8`, from scratch, a few hours on four processes, on the roster
 before the sixth pass). After the final check only one style was kept:
