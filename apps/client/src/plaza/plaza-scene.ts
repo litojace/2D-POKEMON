@@ -393,7 +393,9 @@ export function openPlaza(options) {
     WALK_BULBS = [];
   for (let x = STAGE.x0 + 14; x < STAGE.x1; x += 26)
     if (x < WALK.x0 - 8 || x > WALK.x1 + 8) STAGE_BULBS.push([x, STAGE.y1 + 9]);
-  for (let y = STAGE.y1 + 34; y < WALK.y1 - 4; y += 24)
+  // (The first pair sits level with the stage front's bulbs, filling the
+  // catwalk's mouth, one each side: owner's call.)
+  for (let y = STAGE.y1 + 10; y < WALK.y1 - 4; y += 24)
     for (const x of [WALK.x0 + 8, WALK.x1 - 8]) WALK_BULBS.push([x, y]);
   const GM = PLAZA_MARGIN,
     GW = W + 2 * GM,
