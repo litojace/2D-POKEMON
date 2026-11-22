@@ -2467,26 +2467,27 @@ for (const combo of Object.values(COMBOS)) combo.text = inMeters(combo.text);
  * the bot fixes (bots pick their own target, Normal no longer flips
  * champions) every factor is within 12% of 1. Retuned for the smarter bots
  * (2v2 focus fire, docs/smarter-bots.md).
+ * Retuned again for the second round of smarter bots (2026-11-22).
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 1.03,
-  cindrake: 0.994,
-  tidefin: 1.018,
-  auralynx: 0.88,
-  lumoth: 1.038,
-  mystowl: 0.984,
-  terradon: 0.898,
-  duskveil: 1.06,
-  coilemur: 0.927,
-  pyranda: 0.988,
-  glacelle: 0.972,
-  halcyra: 1.027,
-  sunbara: 1.045,
-  astrabun: 0.982,
-  wombolder: 0.913,
-  shadopus: 1.011,
-  pangrove: 0.904,
-  mossloth: 1.119,
+  voltkit: 1.054,
+  cindrake: 0.974,
+  tidefin: 1.062,
+  auralynx: 0.853,
+  lumoth: 1.062,
+  mystowl: 0.987,
+  terradon: 0.911,
+  duskveil: 1.064,
+  coilemur: 0.936,
+  pyranda: 0.993,
+  glacelle: 0.947,
+  halcyra: 1.053,
+  sunbara: 1.052,
+  astrabun: 0.992,
+  wombolder: 0.902,
+  shadopus: 1.014,
+  pangrove: 0.896,
+  mossloth: 1.01,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
