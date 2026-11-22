@@ -441,18 +441,20 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     dazeBy: NORMAL_DAZE_BY,
     raidDazeBy: undefined,
   },
-  // Hard plays like the balance expert without its look-ahead: a good
-  // player's hands (0.2 s, 0.12 rad), quick to dodge, no pauses, and each
-  // champion played the way the expert learned (expert-style.ts).
+  // Hard has the balance expert's hands without its look-ahead: a good
+  // player's reaction and aim (0.2 s, 0.12 rad), quick decisions, no
+  // pauses. It dodges 80% of shots, not the expert's 90%, and reads marks
+  // in Hard's old 0.6 s: at 90% the slower shooters sank (Voltkit 39.5%),
+  // and reading marks at once sank Pyranda, whose kit is all marks (37.5%).
+  // The expert's learned styles stay the expert's: with these hands
+  // Halcyra's took it to 64%.
   hard: {
     ...RAID_BOT_PROFILES.hard,
     reaction: 0.2,
     aimError: 0.12,
-    dodge: 0.9,
+    dodge: 0.8,
     think: 0.08,
     rest: 0,
-    markReaction: undefined,
-    style: EXPERT_STYLE,
   },
 };
 /**

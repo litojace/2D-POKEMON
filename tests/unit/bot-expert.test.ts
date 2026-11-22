@@ -119,17 +119,15 @@ describe("expert bot", () => {
     ] as const)
       expect(rest[k]).toBe(hard[k]);
     expect(Object.keys(expert!).sort()).toEqual([...EXPERT_FLAGS].sort());
-    // Today's Hard has the expert's hands and styles, but no look-ahead.
+    // Today's Hard has the expert's reaction, aim, decisions and no rests,
+    // but dodges less, reads marks later and has no look-ahead or styles.
     const { expert: flags, ...now } = BOT_PROFILES.hard;
-    for (const k of [
-      "reaction",
-      "aimError",
-      "dodge",
-      "think",
-      "rest",
-      "style",
-    ] as const)
+    for (const k of ["reaction", "aimError", "think", "rest"] as const)
       expect(now[k], k).toBe(rest[k]);
+    expect(now.dodge).toBeLessThan(rest.dodge);
+    expect(now.dodge).toBeGreaterThan(hard.dodge);
+    expect(now.markReaction).toBe(hard.markReaction);
+    expect(now.style).toBeUndefined();
     expect(flags?.lookAhead).toBeFalsy();
   });
   it("looks away from a ready Eyespot Flash between attacks", () => {
@@ -179,8 +177,8 @@ describe("expert bot", () => {
     mark(a.time - 0.3);
     const input = think(a, "expert");
     expect(input.dash).toBe(true);
-    // Hard reads marks as fast; Normal walks out (too slowly).
-    expect(think(a, "hard").dash).toBe(true);
+    // Hard and Normal walk out (too slowly).
+    expect(think(a, "hard").dash).toBe(false);
     expect(think(a, "normal").dash).toBe(false);
   });
 

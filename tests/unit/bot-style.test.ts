@@ -39,12 +39,9 @@ function match(a: CharacterId, b: CharacterId, style: object | undefined) {
 }
 
 describe("expert style", () => {
-  it("is the expert's and Hard's alone", () => {
-    // Hard plays the expert's learned styles too (docs/smarter-bots.md).
+  it("is the expert's alone", () => {
     expect(EXPERT_PROFILE.style).toBe(EXPERT_STYLE);
-    expect(BOT_PROFILES.hard.style).toBe(EXPERT_STYLE);
-    expect(BOT_PROFILES.normal.style).toBeFalsy();
-    expect(BOT_PROFILES.easy.style).toBeFalsy();
+    for (const p of Object.values(BOT_PROFILES)) expect(p.style).toBeFalsy();
   });
 
   it("holds only known champions and numbers", () => {
