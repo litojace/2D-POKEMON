@@ -82,7 +82,22 @@ import {
   trackPoint,
   segmentDistance,
   trackPolar,
+  plazaPathGap,
 } from "../../../../packages/shared/src/plaza";
+import {
+  fountainBasin,
+  fountainTiers,
+  waterOf as fountainWater,
+} from "./plaza-fountain-art";
+import {
+  fallenLeaves,
+  grassEdge,
+  grassLight,
+  grit,
+  meadowLife,
+  pathCobble,
+  tuft,
+} from "./plaza-ground-art";
 import { GFX } from "../hub-art/gfx";
 import {
   hubIcon as I,
@@ -404,42 +419,16 @@ export function openPlaza(options) {
       g.ellipse(x, y, 2.4 + rnd() * 2.6, 1.3 + rnd(), rnd() * 3, 0, 7);
       g.fill();
     }
-    for (let i = 0; i < 2200 * more; i++) {
-      const x = gx(),
-        y = gy();
-      g.strokeStyle = rnd() < 0.5 ? "#4f9a3c" : "#a6e07e";
-      g.lineWidth = 1.6;
-      g.beginPath();
-      g.moveTo(x - 3, y);
-      g.lineTo(x - 4, y - 7);
-      g.moveTo(x, y);
-      g.lineTo(x, y - 9);
-      g.moveTo(x + 3, y);
-      g.lineTo(x + 5, y - 7);
-      g.stroke();
-    }
-    for (let i = 0; i < 520; i++) {
-      const x = rnd() * W,
-        y = rnd() * H;
-      if (!clear(x, y)) continue;
-      const c = ["#ffffff", "#fff3a6", "#ffc4dc", "#cfe2ff"][i % 4];
-      for (let k = 0; k < 5; k++) {
-        g.fillStyle = c;
-        g.beginPath();
-        g.arc(
-          x + Math.cos(k * 1.256) * 2.2,
-          y + Math.sin(k * 1.256) * 2.2,
-          1.8,
-          0,
-          7,
-        );
-        g.fill();
-      }
-      g.fillStyle = "#ffcf3a";
-      g.beginPath();
-      g.arc(x, y, 1.2, 0, 7);
-      g.fill();
-    }
+    // Big soft patches of sunlit and shaded grass, as the land rolls.
+    grassLight(g, rnd, -GM, -GM, GW, GH, Math.round(26 * more));
+    // Tufts: dark at the root, lit at the tips (light from the top left).
+    for (let i = 0; i < 2000 * more; i++) tuft(g, rnd, gx(), gy(), 0.8 + rnd() * 0.5);
+    // Flowers in drifts, clover patches and dandelion clocks, rather than
+    // an even sprinkle of one flower.
+    meadowLife(g, rnd, 0, 0, W, H, (x, y) => clear(x, y), 230);
+    // Leaves (and the odd fruit) fallen round each tree's foot.
+    for (const t of PLAZA_TREES)
+      fallenLeaves(g, rnd, t.x, t.y, t.kind, (x, y) => clear(x, y));
     // stone paths: soft bed + rounded cobbles. Drawn in layers (every
     // path's bed, then every path's sand, then the stones) so where paths
     // meet they run into each other instead of one's edge lying on another.
@@ -472,21 +461,22 @@ export function openPlaza(options) {
     landings(9, "rgba(60,90,40,.35)");
     strokeAll(6, "#d9c9a3");
     landings(3, "#d9c9a3");
-    const cobble = (x, y, c) => {
-      g.fillStyle = "rgba(120,100,60,.45)";
-      g.beginPath();
-      g.roundRect(x - 10, y - 7 + 2, 20, 15, 6);
-      g.fill();
-      g.fillStyle = c;
-      g.beginPath();
-      g.roundRect(x - 10, y - 8, 20, 15, 6);
-      g.fill();
-      g.fillStyle = "rgba(255,255,255,.35)";
-      g.beginPath();
-      g.roundRect(x - 7, y - 6, 9, 3.5, 2);
-      g.fill();
-    };
-    const STONES = ["#efe3c8", "#e6d6b4", "#f4ead6", "#dccaa6"];
+    // Grit in the sand: the joints between the stones show it.
+    {
+      const onSand = (x, y) => plazaPathGap(x, y).gap < -2;
+      for (const { pts, w } of PLAZA_PATHS) {
+        const xs = pts.map((p) => p[0]),
+          ys = pts.map((p) => p[1]),
+          x0 = Math.min(...xs) - w / 2,
+          y0 = Math.min(...ys) - w / 2,
+          bw = Math.max(...xs) - x0 + w / 2,
+          bh = Math.max(...ys) - y0 + w / 2;
+        grit(g, rnd, x0, y0, bw, bh, onSand, Math.min(9000, (bw * bh) / 60));
+      }
+    }
+    // A worn stone (plaza-ground-art.ts). Stones lie wider than tall
+    // whichever way the path runs: the ground is seen at a slant.
+    const cobble = (x, y) => pathCobble(g, rnd, x, y);
     // A landing's stones first, in rows; the paths' stones stop at its edge.
     const inLanding = (x, y, inset) =>
       PLAZA_LANDINGS.some(
@@ -499,13 +489,12 @@ export function openPlaza(options) {
       for (let y = l.y - l.ry, row = 0; y <= l.y + l.ry; y += 17, row++)
         for (let x = l.x - l.rx + (row % 2) * 12; x <= l.x + l.rx; x += 24) {
           const sx = x + (rnd() - 0.5) * 4,
-            sy = y + (rnd() - 0.5) * 4,
-            c = STONES[Math.floor(rnd() * 4)];
+            sy = y + (rnd() - 0.5) * 4;
           if (
             ((sx - l.x) / (l.rx - 12)) ** 2 + ((sy - l.y) / (l.ry - 9)) ** 2 <
             1
           )
-            cobble(sx, sy, c);
+            cobble(sx, sy);
         }
     /** Segments already paved: a stone that would land on one is left out. */
     const paved = [];
@@ -534,10 +523,7 @@ export function openPlaza(options) {
               jy = (rnd() - 0.5) * 6,
               x = x0 + ux * d - uy * k + jx,
               y = y0 + uy * d + ux * k + jy;
-            const c = ["#efe3c8", "#e6d6b4", "#f4ead6", "#dccaa6"][
-              Math.floor(rnd() * 4)
-            ];
-            if (!onPaved(x, y)) cobble(x, y, c);
+            if (!onPaved(x, y)) cobble(x, y);
           }
         // The segment before this one counts once this one is laid, so a
         // bend's stones don't pile up either.
@@ -550,6 +536,22 @@ export function openPlaza(options) {
       }
       paved.push(mine[mine.length - 1]);
     }
+    // Grass grown up to the paths' edges, leaning over the sand (not where
+    // a path meets another, the square or a landing).
+    {
+      const edgeAt = (x, y) => {
+        const gap = plazaPathGap(x, y).gap;
+        return (
+          gap > -7 &&
+          gap < 2 &&
+          !inSquare(x, y, 1.06) &&
+          !PLAZA_LANDINGS.some(
+            (l) => ((x - l.x) / (l.rx + 8)) ** 2 + ((y - l.y) / (l.ry + 8)) ** 2 < 1,
+          )
+        );
+      };
+      for (const { pts, w } of PLAZA_PATHS) grassEdge(g, rnd, pts, w, edgeAt);
+    }
     // plaza square: concentric pavers + elemental mosaic
     g.save();
     g.translate(SQ.x, SQ.y);
@@ -558,30 +560,87 @@ export function openPlaza(options) {
     g.beginPath();
     g.arc(0, 14, SQ.rx + 16, 0, 7);
     g.fill();
+    // The kerb round the square: a raised ring of dressed stone, its
+    // front (south) face in shade below a lit top.
+    g.fillStyle = "#9a8a6c";
+    g.beginPath();
+    g.arc(0, 7, SQ.rx + 10, 0, 7);
+    g.fill();
     g.fillStyle = "#b9a98a";
     g.beginPath();
-    g.arc(0, 0, SQ.rx + 8, 0, 7);
+    g.arc(0, 0, SQ.rx + 10, 0, 7);
+    g.fill();
+    // The grout under the pavers: what shows between them.
+    g.fillStyle = "#c2b08c";
+    g.beginPath();
+    g.arc(0, 0, SQ.rx, 0, 7);
     g.fill();
     const tones = ["#f2e8d4", "#e9dcc2", "#efe2c9", "#e2d3b5", "#f6eedd"];
     for (let r0 = 130; r0 < SQ.rx; r0 += 30) {
       const r1 = Math.min(SQ.rx, r0 + 30),
         n = Math.round((2 * Math.PI * r1) / 44),
-        off = rnd();
+        off = rnd(),
+        edge = r0 > SQ.rx - 40;
       for (let k = 0; k < n; k++) {
         const a0 = ((k + off) / n) * Math.PI * 2,
-          a1 = ((k + 1 + off) / n) * Math.PI * 2;
-        g.beginPath();
-        g.arc(0, 0, r1 - 2, a0 + 0.006, a1 - 0.006);
-        g.arc(0, 0, r0 + 2, a1 - 0.006, a0 + 0.006, true);
-        g.closePath();
-        g.fillStyle =
-          r0 > SQ.rx - 40 ? "#d2c2a2" : tones[Math.floor(rnd() * tones.length)];
+          a1 = ((k + 1 + off) / n) * Math.PI * 2,
+          c = edge
+            ? GFX.mix("#d2c2a2", "#c4b391", rnd() * 0.6)
+            : tones[Math.floor(rnd() * tones.length)];
+        const paver = (i0, i1) => {
+          g.beginPath();
+          g.arc(0, 0, r1 - i1, a0 + 0.008, a1 - 0.008);
+          g.arc(0, 0, r0 + i0, a1 - 0.008, a0 + 0.008, true);
+          g.closePath();
+        };
+        // Each paver: its shaded edge, then its face set up and in from it
+        // so a sliver of shade shows on the side away from the light, and a
+        // lit edge on the side toward it (the top left).
+        paver(2, 2);
+        g.fillStyle = GFX.dk(c, 0.14);
         g.fill();
+        const mid = (a0 + a1) / 2,
+          lx = Math.cos(mid),
+          ly = Math.sin(mid),
+          // How much this paver's outer edge faces the light (top left).
+          face = -(lx + ly) * 0.7071;
+        g.save();
+        g.translate(-0.8, -1.1);
+        paver(2.5, 3);
+        g.fillStyle = c;
+        g.fill();
+        g.restore();
+        g.strokeStyle = `rgba(255,255,255,${0.16 + 0.22 * Math.max(0, -face)})`;
+        g.lineWidth = 1.4;
+        g.beginPath();
+        g.arc(0, 0, r0 + 3.4, a0 + 0.03, a1 - 0.03);
+        g.stroke();
+        // Now and then a stain or a chip, so the stones read as worn.
+        if (rnd() < 0.18) {
+          const ra = a0 + (a1 - a0) * (0.25 + rnd() * 0.5),
+            rr = r0 + 6 + rnd() * 18;
+          g.fillStyle = "rgba(140,115,75,.16)";
+          g.beginPath();
+          g.ellipse(
+            Math.cos(ra) * rr,
+            Math.sin(ra) * rr,
+            5 + rnd() * 6,
+            3 + rnd() * 3,
+            ra,
+            0,
+            7,
+          );
+          g.fill();
+        }
       }
     }
+    g.fillStyle = "#c2b08c";
+    g.beginPath();
+    g.arc(0, 0, 130, 0, 7);
+    g.fill();
     g.fillStyle = "#e9dcc2";
     g.beginPath();
-    g.arc(0, 0, 128, 0, 7);
+    g.arc(0, 0, 127, 0, 7);
     g.fill();
     const EL = [
       "#ffd84a",
@@ -597,28 +656,70 @@ export function openPlaza(options) {
       const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
       g.save();
       g.rotate(a);
-      g.beginPath();
-      g.moveTo(0, -60);
-      g.lineTo(150, -10);
-      g.lineTo(220, 0);
-      g.lineTo(150, 10);
-      g.lineTo(0, 60);
-      g.closePath();
+      const ray = () => {
+        g.beginPath();
+        g.moveTo(0, -60);
+        g.lineTo(150, -10);
+        g.lineTo(220, 0);
+        g.lineTo(150, 10);
+        g.lineTo(0, 60);
+        g.closePath();
+      };
+      ray();
       g.fillStyle = GFX.rgba(EL[i], 0.5);
       g.fill();
+      // Set in small tiles, with a fine dark edge and a bright spine.
+      g.save();
+      g.clip();
+      g.strokeStyle = "rgba(255,255,255,.28)";
+      g.lineWidth = 1;
+      g.beginPath();
+      for (let t = 14; t < 222; t += 12) {
+        g.moveTo(t, -62);
+        g.lineTo(t, 62);
+      }
+      g.moveTo(0, -24);
+      g.lineTo(222, -24);
+      g.moveTo(0, 24);
+      g.lineTo(222, 24);
+      g.stroke();
+      g.restore();
+      ray();
+      g.strokeStyle = GFX.rgba(GFX.dk(EL[i], 0.4), 0.55);
+      g.lineWidth = 1.5;
+      g.stroke();
+      g.strokeStyle = "rgba(255,255,255,.55)";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(8, 0);
+      g.lineTo(212, 0);
+      g.stroke();
       g.restore();
     }
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2 - Math.PI / 2,
         x = Math.cos(a) * (SQ.rx - 70),
         y = Math.sin(a) * (SQ.rx - 70);
+      g.fillStyle = "#a99877";
+      g.beginPath();
+      g.arc(x + 1, y + 2.5, 25, 0, 7);
+      g.fill();
       g.fillStyle = "#f8f2e4";
       g.beginPath();
       g.arc(x, y, 24, 0, 7);
       g.fill();
-      g.fillStyle = EL[i];
+      g.strokeStyle = "rgba(180,160,120,.7)";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.arc(x, y, 19.5, 0, 7);
+      g.stroke();
+      g.fillStyle = GFX.dk(EL[i], 0.25);
       g.beginPath();
       g.arc(x, y, 15, 0, 7);
+      g.fill();
+      g.fillStyle = EL[i];
+      g.beginPath();
+      g.arc(x - 0.6, y - 1, 13.6, 0, 7);
       g.fill();
       g.fillStyle = "rgba(255,255,255,.6)";
       g.beginPath();
@@ -769,6 +870,33 @@ export function openPlaza(options) {
       g.fillStyle = i % 2 ? "rgba(140,210,100,.35)" : "rgba(80,150,60,.25)";
       g.fillRect(TRACK.cx - 270 + i * 54, TRACK.cy - 180, 54, 360);
     }
+    g.restore();
+    // The infield's kerb: a low concrete ring just inside the lane, lit
+    // on its top, with the infield in its shadow along the north side.
+    g.save();
+    g.lineWidth = 7;
+    g.strokeStyle = "rgba(30,60,30,.25)";
+    g.beginPath();
+    g.ellipse(TRACK.cx + 1, TRACK.cy + 4, TRACK.ri[0] - 7, TRACK.ri[1] - 7, 0, 0, 7);
+    g.stroke();
+    g.lineWidth = 6;
+    g.strokeStyle = "#d9d6cc";
+    g.beginPath();
+    g.ellipse(TRACK.cx, TRACK.cy, TRACK.ri[0] - 5, TRACK.ri[1] - 5, 0, 0, 7);
+    g.stroke();
+    g.lineWidth = 2;
+    g.strokeStyle = "#f6f4ee";
+    g.beginPath();
+    g.ellipse(TRACK.cx - 0.6, TRACK.cy - 1.2, TRACK.ri[0] - 5, TRACK.ri[1] - 5, 0, 0, 7);
+    g.stroke();
+    g.restore();
+    // The lane's rubber worn paler where runners run (lane 1's line).
+    g.save();
+    g.lineWidth = 16;
+    g.strokeStyle = "rgba(255,200,170,.07)";
+    g.beginPath();
+    g.ellipse(TRACK.cx, TRACK.cy, TRACK.ri[0] + 22, TRACK.ri[1] + 22, 0, 0, 7);
+    g.stroke();
     g.restore();
     g.font = "800 50px 'Barlow Condensed', sans-serif";
     g.textAlign = "center";
@@ -3235,55 +3363,14 @@ export function openPlaza(options) {
     return [Math.cos(a) * 96 * r, 2 + Math.sin(a) * 50 * r, k];
   });
   function drawFountain(g, time) {
-    // basin wall (front) + rim + water, as big as bodies keep clear of
-    // (PLAZA_FOUNTAIN, PLAZA_OBSTACLES)
-    const { x, y, rx: brx, ry: bry, wall: wallH } = FOUNT;
-    g.fillStyle = "rgba(30,40,40,.3)";
-    g.beginPath();
-    g.ellipse(x + 8, y + wallH + 6, brx + 10, bry + 8, 0, 0, 7);
-    g.fill();
-    g.beginPath();
-    g.ellipse(x, y, brx, bry, 0, 0, Math.PI);
-    g.lineTo(x - brx, y + wallH);
-    g.ellipse(x, y + wallH, brx, bry, 0, Math.PI, 0, true);
-    g.closePath();
-    const wg = g.createLinearGradient(0, y, 0, y + bry + wallH);
-    wg.addColorStop(0, "#efe6d4");
-    wg.addColorStop(1, "#b4a78e");
-    g.fillStyle = wg;
-    g.fill();
-    g.strokeStyle = "#857a64";
-    g.lineWidth = 2;
-    g.stroke();
-    g.strokeStyle = "rgba(133,122,100,.5)";
-    g.lineWidth = 1.2;
-    for (let k = -5; k <= 5; k++) {
-      const a = Math.PI / 2 + k * 0.27,
-        px = x + Math.cos(a) * brx,
-        py = y + Math.sin(a) * bry;
-      g.beginPath();
-      g.moveTo(px, py);
-      g.lineTo(px, py + wallH);
-      g.stroke();
-    }
-    g.fillStyle = "#f7f0e2";
-    g.beginPath();
-    g.ellipse(x, y, brx, bry, 0, 0, 7);
-    g.fill();
-    g.strokeStyle = "#a59a84";
-    g.lineWidth = 2;
-    g.stroke();
-    const water = g.createRadialGradient(x - 30, y - 20, 10, x, y, brx);
-    water.addColorStop(0, "#9ff0ff");
-    water.addColorStop(0.6, "#3fb8d8");
-    water.addColorStop(1, "#1f86b0");
-    g.fillStyle = water;
-    g.beginPath();
-    g.ellipse(x, y + 2, brx - 15, bry - 11, 0, 0, 7);
-    g.fill();
+    // The stonework is baked (plaza-fountain-art.ts); only the water moves.
+    // As big as bodies keep clear of (PLAZA_FOUNTAIN, PLAZA_OBSTACLES).
+    const { x, y } = FOUNT,
+      wr = fountainWater(FOUNT);
+    GFX.blit(g, fountainBasin(FOUNT), x, y);
     g.save();
     g.beginPath();
-    g.ellipse(x, y + 2, brx - 15, bry - 11, 0, 0, 7);
+    g.ellipse(x, y + wr.dy, wr.rx, wr.ry, 0, 0, 7);
     g.clip();
     // Wishes: coins on the bottom, a few catching the light in turn.
     for (const [cx, cy, k] of FOUNT_COINS) {
@@ -3303,7 +3390,7 @@ export function openPlaza(options) {
       const yy = y - 50 + i * 12,
         ph = time * 1.4 + i;
       g.beginPath();
-      for (let xx = x - brx; xx < x + brx; xx += 8)
+      for (let xx = x - wr.rx; xx < x + wr.rx; xx += 8)
         g.lineTo(xx, yy + Math.sin(xx * 0.05 + ph) * 2.5);
       g.stroke();
     }
@@ -3315,45 +3402,35 @@ export function openPlaza(options) {
       g.ellipse(x, y - 2, 30 + k * 80, 18 + k * 50, 0, 0, 7);
       g.stroke();
     }
+    if (!low) {
+      // Splashes where the falling water lands, and glints of sun on the
+      // water that come and go.
+      for (let i = -6; i <= 6; i += 2) {
+        const a = Math.PI / 2 + i * 0.2,
+          k = (time * 1.6 + i * 0.37 + 10) % 1,
+          sx = x + Math.cos(a) * 96,
+          sy = y - 56 + Math.sin(a) * 28 + 54;
+        g.strokeStyle = `rgba(255,255,255,${0.55 * (1 - k)})`;
+        g.lineWidth = 1.4;
+        g.beginPath();
+        g.ellipse(sx, sy, 3 + k * 9, 1.5 + k * 4, 0, 0, 7);
+        g.stroke();
+      }
+      g.fillStyle = "#ffffff";
+      for (let i = 0; i < 7; i++) {
+        const tw = Math.sin(time * 3.1 + i * 2.7);
+        if (tw < 0.6) continue;
+        const gx = x - 70 + ((i * 53) % 140),
+          gy = y - 30 + ((i * 29) % 60);
+        g.globalAlpha = (tw - 0.6) * 2.2;
+        g.fillRect(gx - 3, gy - 0.6, 6, 1.2);
+        g.fillRect(gx - 0.6, gy - 2, 1.2, 4);
+      }
+      g.globalAlpha = 1;
+    }
     g.restore();
-    // pillar + middle bowl
-    const pil = (yt, yb, w) => {
-      g.fillStyle = GFX.mix("#f2ead8", "#b9ad94", 0.1);
-      const gg = g.createLinearGradient(x - w, 0, x + w, 0);
-      gg.addColorStop(0, "#fffaf0");
-      gg.addColorStop(1, "#b9ad94");
-      g.fillStyle = gg;
-      g.fillRect(x - w, yt, w * 2, yb - yt);
-      g.strokeStyle = "#857a64";
-      g.lineWidth = 1.5;
-      g.strokeRect(x - w, yt, w * 2, yb - yt);
-    };
-    pil(y - 52, y, 13);
-    const bowl = (by, rx, ry, d) => {
-      g.beginPath();
-      g.ellipse(x, by, rx, ry, 0, 0, Math.PI);
-      g.lineTo(x - rx * 0.55, by + d);
-      g.ellipse(x, by + d, rx * 0.55, ry * 0.5, 0, Math.PI, 0, true);
-      g.closePath();
-      const bg2 = g.createLinearGradient(0, by, 0, by + d + ry);
-      bg2.addColorStop(0, "#f2ead8");
-      bg2.addColorStop(1, "#a99c82");
-      g.fillStyle = bg2;
-      g.fill();
-      g.strokeStyle = "#857a64";
-      g.lineWidth = 1.5;
-      g.stroke();
-      g.fillStyle = "#f7f0e2";
-      g.beginPath();
-      g.ellipse(x, by, rx, ry, 0, 0, 7);
-      g.fill();
-      g.stroke();
-      g.fillStyle = water;
-      g.beginPath();
-      g.ellipse(x, by + 1, rx - 8, ry - 5, 0, 0, 7);
-      g.fill();
-    };
-    bowl(y - 56, 64, 30, 18);
+    // The pillars and bowls.
+    GFX.blit(g, fountainTiers(), x, y);
     // water curtain from middle bowl
     g.strokeStyle = "rgba(220,250,255,.55)";
     g.lineWidth = 3;
@@ -3374,8 +3451,6 @@ export function openPlaza(options) {
       g.stroke();
     }
     g.setLineDash([]);
-    pil(y - 104, y - 56, 9);
-    bowl(y - 108, 34, 16, 10);
     // jet + floating crystal
     g.fillStyle = "rgba(220,250,255,.75)";
     g.beginPath();
