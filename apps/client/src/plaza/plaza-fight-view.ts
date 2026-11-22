@@ -1047,6 +1047,10 @@ export function createFightView() {
       g.beginPath();
       g.roundRect(gx - gw / 2, gy0, gw, gy1 - gy0, 9);
       g.fill();
+      // Everything in the gauge stays inside its rounded ends (the red top
+      // was a square poking out of the curve).
+      g.save();
+      g.clip();
       const band = g.createLinearGradient(0, yAt(v.hi), 0, yAt(v.lo));
       band.addColorStop(0, "#5fe08a");
       band.addColorStop(1, "#2fae5c");
@@ -1060,6 +1064,10 @@ export function createFightView() {
         g.fillRect(gx + gw / 2 - 5, yAt(i / 10), 5, 1);
       const ny = yAt(v.tension);
       g.fillStyle = "#fff";
+      g.fillRect(gx - gw / 2, ny - 1.5, gw, 3);
+      g.restore();
+      // The needle's pointer, outside the gauge on its left.
+      g.fillStyle = "#fff";
       g.strokeStyle = "#0b1020";
       g.lineWidth = 2;
       g.beginPath();
@@ -1069,7 +1077,6 @@ export function createFightView() {
       g.closePath();
       g.fill();
       g.stroke();
-      g.fillRect(gx - gw / 2, ny - 1.5, gw, 3);
       // How close the fish is: a thin bar beside the gauge, filling up in
       // its rarity's colour, a little fish riding its top.
       const px = gx + gw / 2 + 10;
