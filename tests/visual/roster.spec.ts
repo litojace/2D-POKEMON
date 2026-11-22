@@ -382,8 +382,8 @@ test("Test skills starts Solo test with that fighter, with EX skills and a damag
   await pushUntilBattle(page);
   await page.click("#practice-settings > summary");
   await expect(page.locator("#practice-ex")).not.toBeChecked();
-  await expect(page.locator("#practice-stats")).toContainText("Last hit: 0");
-  await expect(page.locator("#practice-stats")).toContainText("DPS (5s): 0");
+  await expect(page.locator("#practice-last")).toHaveText("0");
+  await expect(page.locator("#practice-dps")).toHaveText("0");
   // EX skills: skills 1-3 go out as their EX version.
   await page.check("#practice-ex");
   await page.click("#practice-close");
@@ -406,6 +406,7 @@ test("Test skills starts Solo test with that fighter, with EX skills and a damag
     w.__snap.time += 0.1;
     w.__push();
   });
-  await expect(page.locator("#practice-stats")).toContainText("Last hit: 24");
+  await expect(page.locator("#practice-last")).toHaveText("24");
+  await expect(page.locator("#practice-dealt")).toHaveText("24");
   expect(errors).toEqual([]);
 });
