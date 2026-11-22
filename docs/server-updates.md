@@ -34,6 +34,19 @@ once (`io.close()` on `SIGTERM`), and every match in progress was lost.
 The server logs `arena-drain` (live matches and saves when the drain starts)
 and `arena-drain-done` (`finished`: true if everything ended in time).
 
+## The start script must use `exec`
+
+Render runs `npm run start` and sends `SIGTERM` to npm. With a plain
+`node …` start script, npm quits on the signal at once and the server under
+it never hears it: no `arena-drain` line, and every match dies when Render
+removes the old instance. Until 22 Nov 2026 no deploy ever drained for this
+reason (a raid on the old instance was cut off a minute after the new one
+went live, with no `arena-drain` in the logs). `exec node …` makes the
+server take the shell's place, so npm passes it the signal and waits for it
+to exit. `tests/unit/start-signal.test.ts` runs the real start script
+through npm and fails without it. (`exec` needs a Unix shell; `npm start` is
+for production on Linux, `npm run dev` for local work.)
+
 ## Limits
 
 - **Five minutes at most.** A round is 180 seconds plus overtime, so most
