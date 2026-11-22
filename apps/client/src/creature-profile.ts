@@ -151,9 +151,15 @@ export function profilePartBounds(
   _dir: ArticulatedFacing,
   part: CreaturePart,
 ) {
-  if (part === "body") return [44, 88, 112, 91];
-  // Astrabun carries its mallet in the near paw (over the shoulder in profile).
-  if (id === "astrabun" && part === "armR") return [32, 60, 150, 119];
+  // Glacelle's teardrop body tapers to a point below the usual box.
+  if (part === "body")
+    return id === "glacelle" ? [44, 88, 112, 102] : [44, 88, 112, 91];
+  // Shadopus's tentacle tips curl below the usual leg box.
+  if (id === "shadopus" && part === "legL") return [50, 135, 90, 58];
+  if (id === "shadopus" && part === "legR") return [60, 135, 90, 58];
+  // Astrabun carries its mallet in the near paw (over the shoulder in profile;
+  // its head reaches back past x 32 facing right).
+  if (id === "astrabun" && part === "armR") return [24, 60, 158, 119];
   if (part === "armL" || part === "armR") return [32, 104, 136, 75];
   if (part === "flame") return [10, -4, 180, 132];
   return undefined;
@@ -163,6 +169,18 @@ export function frontPartBounds(id: CharacterId, part: CreaturePart) {
   if (id === "halcyra" && part === "flame") return [30, -2, 140, 142];
   // Astrabun's mochi mallet rises past the paw.
   if (id === "astrabun" && part === "armR") return [60, 64, 126, 106];
+  // Glacelle's wing-flaps reach wider than a paw (the left one was clipped in
+  // the lobby), and its teardrop body tapers below the usual box.
+  if (id === "glacelle" && part === "armL") return [30, 108, 112, 60];
+  if (id === "glacelle" && part === "body") return [44, 103, 112, 87];
+  // Mossloth's long arms hang below the usual paw box.
+  if (id === "mossloth" && part === "armL") return [39, 114, 101, 68];
+  if (id === "mossloth" && part === "armR") return [60, 84, 110, 98];
+  // Shadopus's tentacle tips curl below the usual leg box.
+  if (id === "shadopus" && part === "legL") return [50, 135, 90, 58];
+  if (id === "shadopus" && part === "legR") return [60, 135, 90, 58];
+  // Coilemur's tail tip curls above the usual tail box.
+  if (id === "coilemur" && part === "tail") return [0, 30, 200, 150];
   return undefined;
 }
 export function profileViewBox(_id: CharacterId, _dir: ArticulatedFacing) {
