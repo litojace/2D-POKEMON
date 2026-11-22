@@ -2496,26 +2496,27 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
  * take about twice the damage per second of ranged ones (as in a duel), which
  * a duel repays with their higher damage but a free-for-all does not. Tuned
  * with scripts/balance/tune-teams.ts --mode ffa on four-player matches.
+ * Retuned again for the second round of smarter bots (2026-11-22).
  */
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.873,
-  cindrake: 1.16,
-  tidefin: 0.869,
-  auralynx: 1.043,
-  lumoth: 0.903,
-  mystowl: 0.828,
-  terradon: 0.956,
-  duskveil: 0.865,
-  coilemur: 1.194,
-  pyranda: 0.818,
-  glacelle: 0.91,
-  halcyra: 0.814,
-  sunbara: 0.88,
-  astrabun: 1.142,
-  wombolder: 1.099,
-  shadopus: 1.131,
-  pangrove: 1.034,
-  mossloth: 0.972,
+  voltkit: 0.9,
+  cindrake: 1.097,
+  tidefin: 0.886,
+  auralynx: 1.02,
+  lumoth: 0.936,
+  mystowl: 0.861,
+  terradon: 0.959,
+  duskveil: 0.898,
+  coilemur: 1.149,
+  pyranda: 0.817,
+  glacelle: 0.915,
+  halcyra: 0.835,
+  sunbara: 0.914,
+  astrabun: 1.113,
+  wombolder: 1.069,
+  shadopus: 1.102,
+  pangrove: 1.011,
+  mossloth: 0.914,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
