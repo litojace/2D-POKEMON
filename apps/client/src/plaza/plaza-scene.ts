@@ -1415,10 +1415,19 @@ export function openPlaza(options) {
   }));
   const PIGEONS = Array.from({ length: 9 }, (_, i) => {
     const a = i * 0.7 + 1,
-      r = 0.35 + (i % 3) * 0.18;
+      r = 0.35 + (i % 3) * 0.18,
+      x = SQ.x + Math.cos(a) * SQ.rx * r;
+    let y = SQ.y + Math.sin(a) * SQ.ry * r + 30;
+    // Never placed in the fountain's basin (one of the nine was, and only
+    // stepped out on its first update: on a slow first frame it stood in
+    // the water). The same ellipse as inFount, with a margin.
+    const fy = FOUNT.y + FOUNT.wall / 2,
+      fry = FOUNT.ry + FOUNT.wall / 2 + 16;
+    if (((x - FOUNT.x) / (FOUNT.rx + 16)) ** 2 + ((y - fy) / fry) ** 2 < 1)
+      y = FOUNT.y + FOUNT.wall + FOUNT.ry + 24;
     return {
-      x: SQ.x + Math.cos(a) * SQ.rx * r,
-      y: SQ.y + Math.sin(a) * SQ.ry * r + 30,
+      x,
+      y,
       z: 0,
       st: "idle",
       face: i % 2 ? 1 : -1,
