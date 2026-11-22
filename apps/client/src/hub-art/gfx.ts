@@ -1387,9 +1387,55 @@ const GFX = (() => {
         g.strokeStyle = "#1f6b5a";
         g.lineWidth = 2.5;
         g.stroke();
+        // Gloss on the paint: a long soft reflection along the upper body,
+        // and the body darkening toward its sill.
+        g.save();
+        rr(g, -116, -138, 232, 118, 22);
+        g.clip();
+        g.fillStyle = "rgba(255,255,255,.28)";
+        rr(g, -108, -136, 200, 8, 4);
+        g.fill();
+        g.fillStyle = "rgba(20,70,60,.18)";
+        g.fillRect(-116, -40, 232, 20);
+        // Panel seams and rivets.
+        g.strokeStyle = "rgba(20,80,66,.45)";
+        g.lineWidth = 1;
+        for (const x of [-60, 4, 66]) {
+          g.beginPath();
+          g.moveTo(x, -46);
+          g.lineTo(x, -22);
+          g.stroke();
+        }
+        g.fillStyle = "rgba(255,255,255,.55)";
+        for (let x = -108; x < 110; x += 12) {
+          g.beginPath();
+          g.arc(x, -42, 0.9, 0, 7);
+          g.fill();
+        }
+        g.restore();
         rr(g, -116, -60, 232, 14, 0);
         g.fillStyle = "#ff9bd2";
         g.fill();
+        g.fillStyle = "rgba(255,255,255,.35)";
+        g.fillRect(-114, -59, 228, 2);
+        // A lightning-bolt badge on the lower panel.
+        g.save();
+        g.translate(-28, -33);
+        g.fillStyle = "#2a1f4c";
+        g.beginPath();
+        g.arc(0, 0, 9, 0, 7);
+        g.fill();
+        g.fillStyle = "#ffd84a";
+        g.beginPath();
+        g.moveTo(1.5, -6.5);
+        g.lineTo(-4, 1);
+        g.lineTo(-0.5, 1);
+        g.lineTo(-2, 6.5);
+        g.lineTo(4, -1.5);
+        g.lineTo(0.5, -1.5);
+        g.closePath();
+        g.fill();
+        g.restore();
         // cab
         rr(g, 70, -122, 40, 46, 10);
         g.fillStyle = vg(g, -122, -76, "#dff6ff", "#7cb8e0");
@@ -1397,6 +1443,30 @@ const GFX = (() => {
         g.strokeStyle = "#1f6b5a";
         g.lineWidth = 2;
         g.stroke();
+        // Glare across the windscreen, a mirror and a headlight.
+        g.fillStyle = "rgba(255,255,255,.55)";
+        g.beginPath();
+        g.moveTo(76, -82);
+        g.lineTo(92, -118);
+        g.lineTo(100, -118);
+        g.lineTo(84, -82);
+        g.closePath();
+        g.fill();
+        g.fillStyle = "#1f6b5a";
+        g.fillRect(110, -112, 6, 2);
+        rr(g, 114, -118, 5, 12, 2);
+        g.fill();
+        g.fillStyle = "#fff6c8";
+        g.beginPath();
+        g.ellipse(112, -40, 4, 6, 0, 0, 7);
+        g.fill();
+        g.strokeStyle = "#1f6b5a";
+        g.lineWidth = 1.2;
+        g.stroke();
+        // Chrome bumper.
+        rr(g, 88, -29, 24, 6, 3);
+        g.fillStyle = vg(g, -29, -23, "#f2f6fb", "#8f98aa");
+        g.fill();
         // serving window + counter
         rr(g, -96, -124, 150, 56, 8);
         g.fillStyle = "#2a1f4c";
@@ -1480,15 +1550,55 @@ const GFX = (() => {
         g.fillStyle = "#ff6f9a";
         g.fillRect(2, -44, 4, 18);
         g.restore();
-        // wheels
+        // Shade under the awning on the body.
+        g.fillStyle = "rgba(20,60,50,.18)";
+        g.fillRect(-106, -128, 170, 6);
+        // A string of bulbs under the awning's scallops.
+        g.strokeStyle = "rgba(40,30,60,.6)";
+        g.lineWidth = 0.8;
+        g.beginPath();
+        g.moveTo(-104, -116);
+        g.quadraticCurveTo(-20, -108, 60, -116);
+        g.stroke();
+        for (let i = 0; i < 9; i++) {
+          const t = i / 8,
+            bx = -104 + t * 164,
+            by = -116 + Math.sin(t * Math.PI) * 4;
+          g.fillStyle = ["#ffe9a8", "#ffb3d1", "#bfe3ff"][i % 3];
+          g.beginPath();
+          g.arc(bx, by + 2, 1.8, 0, 7);
+          g.fill();
+        }
+        // Wheels: dark arches, treaded tyres, hubcaps with a glint.
         [-70, 60].forEach((x) => {
+          g.fillStyle = "#123f36";
+          g.beginPath();
+          g.arc(x, -18, 22, Math.PI, 0);
+          g.fill();
           g.fillStyle = "#1c1f2c";
           g.beginPath();
           g.arc(x, -18, 18, 0, 7);
           g.fill();
-          g.fillStyle = "#c9cfdc";
+          g.strokeStyle = "#2c3142";
+          g.lineWidth = 1.4;
+          for (let k = 0; k < 12; k++) {
+            const a = (k / 12) * Math.PI * 2;
+            g.beginPath();
+            g.moveTo(x + Math.cos(a) * 15, -18 + Math.sin(a) * 15);
+            g.lineTo(x + Math.cos(a) * 18, -18 + Math.sin(a) * 18);
+            g.stroke();
+          }
+          ball(g, x, -18, 8.5, "#c9cfdc", 0.6);
+          g.fillStyle = "#6f7890";
+          for (let k = 0; k < 5; k++) {
+            const a = (k / 5) * Math.PI * 2;
+            g.beginPath();
+            g.arc(x + Math.cos(a) * 4.5, -18 + Math.sin(a) * 4.5, 1, 0, 7);
+            g.fill();
+          }
+          g.fillStyle = "rgba(255,255,255,.8)";
           g.beginPath();
-          g.arc(x, -18, 8, 0, 7);
+          g.arc(x - 3, -21, 1.6, 0, 7);
           g.fill();
         });
         // menu board
