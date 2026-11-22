@@ -8,6 +8,35 @@ import { openPlaza } from "./helpers";
  */
 test.use({ viewport: { width: 844, height: 390 }, hasTouch: true });
 
+/**
+ * Wait until the Plaza draws steadily (20 frames in a row under 50 ms). On a
+ * CI runner its first seconds can draw only a few frames, while sprites are
+ * baked and the ground is painted: a test that acts at once measured that
+ * warm-up, not the feature (main's full runs for #351).
+ */
+async function warm(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((done, fail) => {
+        let n = 0,
+          last = performance.now();
+        const give = setTimeout(
+          () => fail(new Error("the Plaza never drew steadily")),
+          30_000,
+        );
+        const f = (t: number) => {
+          n = t - last < 50 ? n + 1 : 0;
+          last = t;
+          if (n >= 20) {
+            clearTimeout(give);
+            done();
+          } else requestAnimationFrame(f);
+        };
+        requestAnimationFrame(f);
+      }),
+  );
+}
+
 async function addLatency(page: Page, ms: number) {
   await page.evaluate((ms) => {
     const w = window as any;
@@ -27,6 +56,7 @@ test("the ball you run into moves at once, ahead of you, on an 80 ms network", a
 }) => {
   test.setTimeout(120_000);
   const errors = await openPlaza(page);
+  await warm(page);
   await addLatency(page, 80);
   const runs: { delay: number; gap: number }[] = [];
   for (let i = 0; i < 4; i++) {
