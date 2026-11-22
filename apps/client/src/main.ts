@@ -6921,7 +6921,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         reducedMotion,
         _time / 1000,
         state.raid
-          ? { boss: this.bossGraphics, at: this.layerAt, court: this.courtRaid }
+          ? {
+              boss: this.bossGraphics,
+              at: this.layerAt,
+              court: this.courtRaid,
+              drawnAt: (id) => this.positions.get(id),
+            }
           : undefined,
       ) ?? [];
     for (const [key, layer] of this.layers)
