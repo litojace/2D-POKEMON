@@ -1866,8 +1866,15 @@ export interface PlazaState {
   /** Server time (ms), so the browser can line up the Orb Shower and laps. */
   now: number;
   walkers: PlazaWalker[];
-  /** The ball, when the pitch is in view: [x, y, z]. */
-  ball?: [number, number, number];
+  /**
+   * The ball, when the pitch is in view: [x, y, z], then its velocity
+   * [vx, vy, vz] (px/s) and the seconds left before it returns to the centre
+   * after a goal (0 in play), so the browser can run it on in your own
+   * timeline (plaza-net.ts). Older servers send only the first three.
+   */
+  ball?:
+    | [number, number, number]
+    | [number, number, number, number, number, number, number];
   score: [number, number];
   /** Runway cheers you've had this visit. */
   claps: number;
