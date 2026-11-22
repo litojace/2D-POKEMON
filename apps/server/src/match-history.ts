@@ -58,11 +58,18 @@ export function historyEntry(
     combos: Math.max(0, Math.round(Number(p.combos) || 0)),
     saved: String(p.name ?? ""),
   }));
-  // The MVP: most damage, then most knock-outs; nobody when no one hit.
+  const winner =
+    s.winnerTeam === null || s.winnerTeam === undefined
+      ? null
+      : Number(s.winnerTeam);
+  // The MVP comes from the winning side (everyone on a draw): most damage,
+  // then most knock-outs; nobody when no one hit. A loser marked MVP read
+  // as a contradiction on the board ("Defeat" beside "MVP").
   let mvp = -1;
   list.forEach((p, i) => {
     const b = list[mvp];
     if (
+      (winner === null || p.team === winner) &&
       (p.dealt > 0 || p.kos > 0) &&
       (!b || p.dealt > b.dealt || (p.dealt === b.dealt && p.kos > b.kos))
     )
@@ -92,10 +99,6 @@ export function historyEntry(
     };
   });
   const me = list.find((p) => p.id === player);
-  const winner =
-    s.winnerTeam === null || s.winnerTeam === undefined
-      ? null
-      : Number(s.winnerTeam);
   const parsed = matchHistoryEntrySchema.safeParse({
     id: row.id,
     playedAt: new Date(row.playedAt).toISOString(),
