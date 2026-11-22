@@ -285,3 +285,66 @@ test("on a phone, moving the joystick takes back a Go walk", async ({
     await context.close();
   }
 });
+
+// A device under 20 fps: the browser moved you only 0.05 s a frame while
+// the server moved you for the time that really passed, so a Go walk
+// stopped late on the server and its copy walked on past the place (40-66
+// px with the CPU slowed 6x; on a CI runner, off the end of the dock). Now
+// you move by the real time, in the server's own steps.
+test("on a slow device a Go walk stops where it was going", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  const errors = await openPlaza(page);
+  // Slowed to about 10 frames a second, whatever the machine: 4x here (60
+  // fps), less on a CI runner that already draws the Plaza slowly. A fixed
+  // 4x on top of a CI runner went far below that, where the harness's
+  // in-page server (slowed with the page) misses its own ticks.
+  const fps = await page.evaluate(
+    () =>
+      new Promise<number>((done) => {
+        const t: number[] = [];
+        const f = (n: number) => {
+          t.push(n);
+          if (t.length < 31) requestAnimationFrame(f);
+          else {
+            const d = t
+              .slice(1)
+              .map((x, i) => x - t[i])
+              .sort((a, b) => a - b);
+            done(1000 / d[d.length >> 1]);
+          }
+        };
+        requestAnimationFrame(f);
+      }),
+  );
+  const rate = Math.min(4, Math.max(1, fps / 10));
+  await (
+    await page.context().newCDPSession(page)
+  ).send("Emulation.setCPUThrottlingRate", { rate });
+  const server = () =>
+    page.evaluate(() => {
+      const b = (window as any).__plazaWorld.bodyOf("local");
+      return { x: b.x, y: b.y };
+    });
+  for (const id of ["pond", "cafe"]) {
+    const p = PLAZA_PLACES.find((x) => x.id === id)!;
+    await page.click("#pz-map-btn");
+    await page.locator(`.pz-map-list [data-place="${id}"]`).click();
+    // Until the server's copy stands still (four looks in a row).
+    let last = await server(),
+      still = 0;
+    for (let i = 0; i < 160 && still < 4; i++) {
+      await page.waitForTimeout(250);
+      const b = await server();
+      still = Math.hypot(b.x - last.x, b.y - last.y) < 1 ? still + 1 : 0;
+      last = b;
+    }
+    expect(still, id).toBe(4);
+    expect(
+      Math.hypot(last.x - p.x, last.y - p.y),
+      `${id} (page at ${Math.round(fps)} fps, slowed ${rate.toFixed(1)}x)`,
+    ).toBeLessThan(24);
+  }
+  expect(errors).toEqual([]);
+});

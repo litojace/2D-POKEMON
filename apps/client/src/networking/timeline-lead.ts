@@ -80,17 +80,67 @@ export class LocalTimeline {
   }
 }
 
+/** A fighter a shot can strike, where it is drawn, with its hit radius. */
+export interface ShotTarget {
+  x: number;
+  y: number;
+  r: number;
+}
+
+/**
+ * How far along the segment from `from` to `to` (0..1) a shot of radius
+ * `radius` first touches a target, as the server's hit test has it
+ * (centres closer than the target's hit radius plus the shot's), or
+ * undefined when it touches none.
+ */
+export function shotTargetContact(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  radius: number,
+  targets: readonly ShotTarget[],
+) {
+  const dx = to.x - from.x,
+    dy = to.y - from.y;
+  const a = dx * dx + dy * dy;
+  let first: number | undefined;
+  for (const t of targets) {
+    const reach = t.r + radius;
+    const fx = from.x - t.x,
+      fy = from.y - t.y;
+    const c = fx * fx + fy * fy - reach * reach;
+    // Already touching it: the server strikes on the next step.
+    if (c <= 0) return 0;
+    if (!a) continue;
+    const b = 2 * (fx * dx + fy * dy);
+    const disc = b * b - 4 * a * c;
+    if (disc < 0) continue;
+    const hit = (-b - Math.sqrt(disc)) / (2 * a);
+    if (hit >= 0 && hit <= 1 && (first === undefined || hit < first))
+      first = hit;
+  }
+  return first;
+}
+
 /**
  * Where a shot is `seconds` after its snapshot, as the server moves it: in
  * a straight line, stopped by cover and the court's edge, never past its
  * range. `slow` is a time bubble's factor where it is (1 outside). A
  * boomerang turns back, so it is drawn where the snapshot had it.
+ *
+ * `targets` are the fighters (and decoys) the shot can strike, where they
+ * are drawn. The server stops a shot on the first one it touches, so the
+ * drawn shot stops there too and waits on it for the snapshot with the
+ * impact. Without this a shot you fired, drawn ahead of the server, flew
+ * on through its target and the blast then went off behind it (player
+ * report, 22 Nov 2026). Shots that fly through fighters (Ball Lightning's
+ * `aura`) ignore them.
  */
 export function leadProjectile(
   pr: Projectile,
   seconds: number,
   walls: readonly Rect[],
   slow = 1,
+  targets: readonly ShotTarget[] = [],
 ): Projectile {
   if (!(seconds > 0) || pr.ability.boomerang) return pr;
   const speed = Math.hypot(pr.vx, pr.vy);
@@ -101,7 +151,12 @@ export function leadProjectile(
     x: pr.x + (pr.vx / speed) * reach,
     y: pr.y + (pr.vy / speed) * reach,
   };
-  const at = projectileContact(pr, to, pr.ability.radius, walls) ?? to;
+  let at = projectileContact(pr, to, pr.ability.radius, walls) ?? to;
+  if (targets.length && !pr.ability.aura) {
+    const hit = shotTargetContact(pr, at, pr.ability.radius, targets);
+    if (hit !== undefined)
+      at = { x: pr.x + (at.x - pr.x) * hit, y: pr.y + (at.y - pr.y) * hit };
+  }
   return {
     ...pr,
     x: at.x,
