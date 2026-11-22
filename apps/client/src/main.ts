@@ -4409,7 +4409,13 @@ socket.on("chat", (line: ChatLine) => {
       mine ||
         (!line.watcher &&
           (!!state.raid ||
-            (!!speaker && !!me && teamOf(speaker) === teamOf(me)))),
+            (!!speaker &&
+              (me
+                ? teamOf(speaker) === teamOf(me)
+                : // Watching (no side): the name takes its side's colour,
+                  // Blue as a teammate's, Red as a rival's, like the score
+                  // badge (the server sends a watcher players' emotes only).
+                  teamOf(speaker) === 0)))),
       !!line.quick && quickKind(line.quick) === "emote",
       !!line.watcher && !mine,
     );

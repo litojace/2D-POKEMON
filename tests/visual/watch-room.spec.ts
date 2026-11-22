@@ -197,6 +197,28 @@ for (const size of SIZES)
         await expect(vi).toHaveAttribute("data-to", "all");
         await expect(vi.locator('b svg[aria-label="Watching"]')).toHaveCount(1);
         await snap(page, info, `watch-${kind}-feed-${size.name}`);
+        // A player's emote: the name in its side's colour (Blue as a
+        // teammate's, Red as a rival's), never all of them in rival red.
+        if (kind === "pvp") {
+          await page.evaluate(() => {
+            const fire = (id: number, fighter: string, name: string) =>
+              (window as any).__sock.fire("chat", {
+                id,
+                channel: "room",
+                from: { id: `acct-${fighter}`, name },
+                at: Date.now(),
+                quick: "fire",
+                fighter,
+              });
+            fire(8, "p3", "Rae"); // Blue, with tester
+            fire(9, "p2", "Kai"); // Red
+          });
+          const feed = page.locator(".battle-chat-feed li");
+          await expect(feed.filter({ hasText: "Rae" })).not.toHaveClass(
+            /is-rival/,
+          );
+          await expect(feed.filter({ hasText: "Kai" })).toHaveClass(/is-rival/);
+        }
         expect(errors).toEqual([]);
       } finally {
         await context.close();
