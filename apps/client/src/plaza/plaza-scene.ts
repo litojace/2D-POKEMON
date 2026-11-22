@@ -137,6 +137,7 @@ import { BallPrediction, ServerClock, SnapTrack } from "./plaza-net";
 import {
   FIGHT_IN_SECONDS,
   fishingFrame,
+  fishingLineZone,
   FISH_SPOT,
   catchCard,
   createFishing,
@@ -1390,6 +1391,10 @@ export function openPlaza(options) {
   };
   let score = [0, 0];
   const FX = [];
+  /** The fishing line's run (rod tip to bobber), and how far east of the
+   * bobber the ducks' paths end (a duck's half width and the ripples). */
+  const LINE_ZONE = fishingLineZone(),
+    DUCK_CLEAR = 52;
   const DUCKS = ["drake", "hen", "hen", "drake"].map((k, i) => ({
     k,
     a: i * 1.6,
@@ -3867,7 +3872,12 @@ export function openPlaza(options) {
   }
   function drawScoreboard(g) {
     // Baked, painted again only when the score changes (plaza-pitch-art.ts).
-    GFX.blit(g, scoreboardArt(score[0], score[1]), (PITCH.x0 + PITCH.x1) / 2, PITCH.y0 - 10);
+    GFX.blit(
+      g,
+      scoreboardArt(score[0], score[1]),
+      (PITCH.x0 + PITCH.x1) / 2,
+      PITCH.y0 - 10,
+    );
   }
   /**
    * The lap gantry spans the lane from its outer edge to its inner one,
@@ -4654,9 +4664,20 @@ export function openPlaza(options) {
   function updateAnimals(dt) {
     DUCKS.forEach((d) => {
       d.a += d.s * dt * (d.dab > 0 ? 0.2 : 1);
-      // Round a point east of the middle, clear of the dock (PLAZA_DOCK)
-      // and of the bobber's spot (PLAZA_FISHING).
-      const nx = POND.x + 30 + Math.cos(d.a) * POND.rx * d.r * 1.2,
+      // Round a point east of the middle, on an egg-shaped path: the
+      // half toward the dock is drawn in so its end stays DUCK_CLEAR east
+      // of the bobber, so ducks keep clear of the line and the bobber
+      // (owner: the line was drawn across a duck). Smooth all round.
+      const cx = POND.x + 80,
+        rx = Math.min(110, POND.rx * d.r * 1.2),
+        c = Math.cos(d.a),
+        nx =
+          cx +
+          c *
+            (c < 0
+              ? // Each duck by its own path's size, so they don't bunch.
+                Math.min(rx, (cx - (LINE_ZONE.bx + DUCK_CLEAR)) * (d.r / 0.55))
+              : rx),
         ny = POND.y + Math.sin(d.a) * POND.ry * d.r * 1.1;
       d.face = nx > d.x ? 1 : -1;
       d.x = nx;
@@ -6434,6 +6455,10 @@ export function openPlaza(options) {
         return fishing.state;
       },
       /** Fishing mode: on, its phase and the camera's extra zoom (tests). */
+      /** The pond's ducks (live: a test may turn them round their path)
+       * and the fishing line's run (tests). */
+      ducks: () => DUCKS,
+      lineZone: LINE_ZONE,
       get fishingMode() {
         return {
           active: fishing.active,

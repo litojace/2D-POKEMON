@@ -10,6 +10,7 @@
 // redrawn in place, so the list keeps its scroll position.
 import type {
   AdminPlayerStatus,
+  Announcement,
   ManagedPlayer,
   OnlineActivity,
   OnlineList,
@@ -31,7 +32,8 @@ import {
 } from "./admin-online";
 import "./admin-panel.css";
 
-export type AdminTab = "overview" | "players" | "online" | "reports" | "titles";
+export type AdminTab =
+  "overview" | "players" | "online" | "reports" | "titles" | "announce";
 export type OnlineFilter = "all" | OnlineActivity;
 export interface AdminView {
   tab: AdminTab;
@@ -40,6 +42,8 @@ export interface AdminView {
   status: "open" | "resolved" | "all";
   reportOffset: number;
   onlineFilter: OnlineFilter;
+  /** Players: newest accounts first, or most recently online first. */
+  sort: "new" | "online";
   /** The player row that is open, showing its tools. */
   open: string | null;
   /** An inline step waiting for the admin: "delete:<id>", "suspend:<id>",
@@ -60,6 +64,40 @@ export const MUTE_CHOICES = [
   { hours: 168, label: "7 days" },
   { hours: 0, label: "Unmute" },
 ] as const;
+/** How long an announcement shows (the database takes 1 to 168 hours). */
+export const ANNOUNCE_HOURS = [
+  { hours: 1, label: "1 hour" },
+  { hours: 6, label: "6 hours" },
+  { hours: 24, label: "24 hours" },
+  { hours: 72, label: "3 days" },
+  { hours: 168, label: "7 days" },
+] as const;
+const TONE_LABELS: Record<Announcement["tone"], string> = {
+  info: "Announcement",
+  event: "Event",
+  warning: "Heads up",
+};
+/** "in 5h", "in 2d", "in 12m". */
+export function untilText(iso: string, now = Date.now()) {
+  const minutes = Math.max(0, Math.ceil((Date.parse(iso) - now) / 60000));
+  if (minutes < 60) return `in ${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `in ${hours}h`;
+  return `in ${Math.round(hours / 24)}d`;
+}
+/** A player row's "Seen 3h ago" / "Never seen" (or Joined, before the
+ *  server sends last-online). */
+export function seenText(
+  lastOnline: string | null | undefined,
+  createdAt: string,
+  now = Date.now(),
+) {
+  if (lastOnline === undefined)
+    return `Joined ${new Date(createdAt).toLocaleDateString()}`;
+  if (lastOnline === null) return "Never seen";
+  const when = ago(lastOnline, now);
+  return `Seen ${when === "now" ? "just now" : when}`;
+}
 /** One-tap amounts in the Coins form. */
 export const COIN_PRESETS = [100, 500, 1000, 5000] as const;
 /** Coin ledger reasons, as an admin reads them. */
@@ -148,6 +186,7 @@ const SECTIONS: Record<AdminTab, { label: string; icon: IconName }> = {
   online: { label: "Online", icon: "friends" },
   reports: { label: "Reports", icon: "report" },
   titles: { label: "Titles", icon: "star" },
+  announce: { label: "Announce", icon: "send" },
 };
 
 export class AdminPanel {
@@ -158,6 +197,7 @@ export class AdminPanel {
     status: "open",
     reportOffset: 0,
     onlineFilter: "all",
+    sort: "new",
     open: null,
     pending: null,
   };
@@ -169,6 +209,14 @@ export class AdminPanel {
   private directory: PlayerDirectory = { players: [], total: 0 };
   private totalPlayers: number | null = null;
   private titles: Title[] = [];
+  private announcements: Announcement[] = [];
+  private announceError = "";
+  /** The announcement being written (kept across redraws). */
+  private draft = {
+    message: "",
+    tone: "info" as Announcement["tone"],
+    hours: 24,
+  };
   /** Each opened player's coins and chat stop (or why it couldn't load). */
   private status = new Map<string, AdminPlayerStatus | { error: string }>();
   private timer?: ReturnType<typeof setTimeout>;
@@ -258,13 +306,29 @@ export class AdminPanel {
       work.push(
         (
           api(
-            `/api/admin/players?search=${encodeURIComponent(v.tab === "players" ? v.search : "")}&offset=${v.tab === "players" ? v.offset : 0}`,
+            `/api/admin/players?search=${encodeURIComponent(v.tab === "players" ? v.search : "")}&offset=${v.tab === "players" ? v.offset : 0}&sort=${v.tab === "players" ? v.sort : "new"}`,
           ) as Promise<PlayerDirectory>
         ).then((directory) => {
           this.directory = directory;
           if (v.tab === "overview" || !v.search)
             this.totalPlayers = directory.total;
         }),
+      );
+    if (v.tab === "announce")
+      work.push(
+        (api("/api/admin/announcements") as Promise<Announcement[]>).then(
+          (list) => {
+            this.announcements = list;
+            this.announceError = "";
+          },
+          (error: unknown) => {
+            this.announcements = [];
+            this.announceError =
+              error instanceof Error
+                ? error.message
+                : "Announcements are unavailable.";
+          },
+        ),
       );
     if (v.tab === "players" || v.tab === "titles")
       work.push(
@@ -334,6 +398,14 @@ export class AdminPanel {
         this.openReports === null
           ? "Player reports"
           : `${this.openReports} open`;
+    if (v.tab === "announce") {
+      const running = this.announcements.filter(
+        (a) => Date.parse(a.endsAt) > Date.now(),
+      ).length;
+      sub = running
+        ? `${running} running · every player sees them`
+        : "A banner for every player";
+    }
     if (v.tab === "titles") {
       sub = plural(this.titles.length, "title");
       tools = `<button type="button" class="adm-btn adm-btn-primary" data-act="title-new">${icon("create")}<span>New title</span></button>`;
@@ -486,6 +558,8 @@ export class AdminPanel {
         return this.reportsBody();
       case "titles":
         return this.titlesBody();
+      case "announce":
+        return this.announceBody();
     }
   }
   private notice(text: string) {
@@ -575,7 +649,17 @@ export class AdminPanel {
     const v = this.view;
     const { players, total } = this.directory;
     const onlineById = new Map(this.online.players.map((p) => [p.id, p]));
-    const search = `<form id="admin-search" class="adm-search adm-sticky" data-form="search" role="search"><span class="adm-search-box">${icon("search")}<input name="search" placeholder="Name or player ID" value="${escape(v.search)}" aria-label="Search players" autocomplete="off" enterkeyhint="search">${v.search ? `<button type="button" class="adm-clear" data-act="clear-search" aria-label="Clear search">${icon("cancel")}</button>` : ""}</span><button class="adm-btn adm-btn-primary">Search</button></form>`;
+    const search = `<div class="adm-sticky adm-player-tools"><form id="admin-search" class="adm-search" data-form="search" role="search"><span class="adm-search-box">${icon("search")}<input name="search" placeholder="Name or player ID" value="${escape(v.search)}" aria-label="Search players" autocomplete="off" enterkeyhint="search">${v.search ? `<button type="button" class="adm-clear" data-act="clear-search" aria-label="Clear search">${icon("cancel")}</button>` : ""}</span><button class="adm-btn adm-btn-primary">Search</button></form><div class="adm-chips adm-sort" role="group" aria-label="Order">${(
+      [
+        ["new", "Newest"],
+        ["online", "Last online"],
+      ] as const
+    )
+      .map(
+        ([id, label]) =>
+          `<button type="button" class="${v.sort === id ? "active" : ""}" data-act="sort" data-sort="${id}" aria-pressed="${v.sort === id}">${label}</button>`,
+      )
+      .join("")}</div></div>`;
     const rows = players
       .map((p) =>
         this.playerRow(p, onlineById.get(p.id) ? onlineById.get(p.id)! : null),
@@ -607,7 +691,7 @@ export class AdminPanel {
       : live
         ? `<span class="adm-online"><span class="online-dot ${live.activity}" aria-hidden="true"></span>${ACTIVITY_LABELS[live.activity]}</span>`
         : "";
-    const head = `<button type="button" class="adm-row-main" data-act="toggle" aria-expanded="${open}" aria-controls="adm-detail-${p.id}"><span class="adm-avatar" aria-hidden="true">${escape([...p.displayName][0]?.toUpperCase() ?? "?")}</span><span class="adm-row-text"><span class="adm-row-name"><strong>${name}</strong>${p.isAdmin ? '<span class="admin-badge">Admin</span>' : ""}</span><small>${p.title ? `${escape(p.title)} · ` : ""}Joined ${new Date(p.createdAt).toLocaleDateString()}${owned.length ? ` · ${plural(owned.length, "title")}` : ""}</small></span>${status}<span class="adm-chevron" aria-hidden="true"></span></button>`;
+    const head = `<button type="button" class="adm-row-main" data-act="toggle" aria-expanded="${open}" aria-controls="adm-detail-${p.id}"><span class="adm-avatar" aria-hidden="true">${escape([...p.displayName][0]?.toUpperCase() ?? "?")}</span><span class="adm-row-text"><span class="adm-row-name"><strong>${name}</strong>${p.isAdmin ? '<span class="admin-badge">Admin</span>' : ""}</span><small>${p.title ? `${escape(p.title)} · ` : ""}${live ? `Joined ${new Date(p.createdAt).toLocaleDateString()}` : seenText(p.lastOnline, p.createdAt)}${owned.length ? ` · ${plural(owned.length, "title")}` : ""}</small></span>${status}<span class="adm-chevron" aria-hidden="true"></span></button>`;
     return `<article class="admin-row adm-player${open ? " is-open" : ""}${p.suspended ? " is-suspended" : ""}" data-player="${p.id}" data-name="${name}">${head}${open ? this.playerDetail(p, owned, live) : ""}</article>`;
   }
   private playerDetail(
@@ -620,7 +704,7 @@ export class AdminPanel {
     const grantable = sortTitles(
       this.titles.filter((t) => t.active && !p.titleIds.includes(t.id)),
     );
-    const facts = `<dl class="adm-facts"><div><dt>Player ID</dt><dd class="adm-id"><code>${p.id}</code><button type="button" class="adm-icon-btn adm-copy" data-act="copy" data-copy="${p.id}" aria-label="Copy player ID" title="Copy ID">${icon("copy")}</button></dd></div><div><dt>Status</dt><dd>${p.suspended ? '<span class="adm-bad">Suspended</span>' : "Active"}</dd></div><div><dt>Right now</dt><dd>${live ? `${describeActivity(live, this.hooks.fighterName)} · ${onlineFor(live.since, Date.now())}` : "Offline"}</dd></div><div><dt>Joined</dt><dd>${new Date(p.createdAt).toLocaleString()}</dd></div>${p.isAdmin ? "" : this.statusFacts(p.id)}</dl>`;
+    const facts = `<dl class="adm-facts"><div><dt>Player ID</dt><dd class="adm-id"><code>${p.id}</code><button type="button" class="adm-icon-btn adm-copy" data-act="copy" data-copy="${p.id}" aria-label="Copy player ID" title="Copy ID">${icon("copy")}</button></dd></div><div><dt>Status</dt><dd>${p.suspended ? '<span class="adm-bad">Suspended</span>' : "Active"}</dd></div><div><dt>Right now</dt><dd>${live ? `${describeActivity(live, this.hooks.fighterName)} · ${onlineFor(live.since, Date.now())}` : "Offline"}</dd></div><div><dt>Last online</dt><dd>${live ? "Now" : p.lastOnline ? `${escape(new Date(p.lastOnline).toLocaleString([], { dateStyle: "short", timeStyle: "short" }))} · ${ago(p.lastOnline)}` : p.lastOnline === null ? "Never seen" : "Unknown"}</dd></div><div><dt>Joined</dt><dd>${new Date(p.createdAt).toLocaleString()}</dd></div>${p.isAdmin ? "" : this.statusFacts(p.id)}</dl>`;
     const newTitle =
       pending === `newtitle:${p.id}` ? this.titleForm(null, "grant") : "";
     const titles = `<section class="adm-block"><h4>Titles</h4><div class="admin-titles-row">${owned
@@ -742,6 +826,44 @@ export class AdminPanel {
     }</div></article>`;
   }
 
+  private readDraft(form: HTMLFormElement) {
+    const fields = new FormData(form);
+    this.draft.message = String(fields.get("message") ?? "").trim();
+    const hours = Number(fields.get("hours"));
+    if (ANNOUNCE_HOURS.some((h) => h.hours === hours)) this.draft.hours = hours;
+  }
+  private announceBody() {
+    const d = this.draft;
+    const pending = this.view.pending === "announce";
+    const tones = (["info", "event", "warning"] as const)
+      .map(
+        (t) =>
+          `<button type="button" class="${d.tone === t ? "active" : ""}" data-act="announce-tone" data-tone="${t}" aria-pressed="${d.tone === t}">${TONE_LABELS[t]}</button>`,
+      )
+      .join("");
+    const hours = ANNOUNCE_HOURS.find((h) => h.hours === d.hours)!;
+    const online = this.online.players.length + this.online.guests;
+    const confirm = pending
+      ? `<div class="admin-confirm adm-confirm"><p><b>Send this to every player?</b> ${online ? `${plural(online, "player")} online now see it at once; ` : ""}everyone who signs in during the next ${hours.label} sees it once.</p><div class="admin-actions"><button type="button" class="adm-btn adm-btn-primary" data-confirm data-act="announce-yes">${icon("send")}<span>Send now</span></button><button type="button" class="adm-btn" data-act="cancel">Cancel</button></div></div>`
+      : "";
+    const form = `<form class="adm-panel adm-announce" data-form="announce"><label class="adm-field-block"><span>Message</span><textarea name="message" rows="2" maxlength="300" required placeholder="What should every player know?" aria-label="Announcement">${escape(d.message)}</textarea><small data-count>${d.message.length} / 300</small></label><div class="adm-announce-row"><div class="adm-chips" role="group" aria-label="Kind">${tones}</div><label class="adm-hours"><span>Shows for</span><select name="hours" aria-label="Shows for">${ANNOUNCE_HOURS.map((h) => `<option value="${h.hours}"${h.hours === d.hours ? " selected" : ""}>${h.label}</option>`).join("")}</select></label></div><div class="adm-preview tone-${d.tone}" aria-hidden="true"><b>${TONE_LABELS[d.tone]}</b><span data-preview>${escape(d.message || "Your message")}</span></div>${
+      pending
+        ? confirm
+        : `<div class="adm-actions"><button class="adm-btn adm-btn-primary">${icon("send")}<span>Send to everyone</span></button></div>`
+    }</form>`;
+    const now = Date.now();
+    const list = this.announceError
+      ? this.notice(this.announceError)
+      : this.announcements.length
+        ? `<div class="adm-list">${this.announcements
+            .map((a) => {
+              const running = Date.parse(a.endsAt) > now;
+              return `<article class="adm-panel adm-sent${running ? "" : " is-ended"}" data-announcement="${a.id}"><header><span class="adm-tone tone-${a.tone}">${TONE_LABELS[a.tone]}</span><small>${a.by ? `${escape(a.by)} · ` : ""}${ago(a.createdAt)}</small><span class="${running ? "adm-running" : "adm-done-tag"}">${running ? `Ends ${untilText(a.endsAt, now)}` : "Ended"}</span></header><p>${escape(a.message)}</p>${running ? `<div class="adm-actions"><button type="button" class="adm-btn adm-btn-danger" data-act="announce-end" data-id="${a.id}">${icon("cancel")}<span>End now</span></button></div>` : ""}</article>`;
+            })
+            .join("")}</div>`
+        : `<div class="adm-empty">${icon("send")}<p>No announcements yet.</p></div>`;
+    return `${form}<h3 class="adm-subhead">Sent</h3>${list}`;
+  }
   private titlesBody() {
     const pending = this.view.pending;
     const titles = sortTitles(this.titles);
@@ -1022,6 +1144,38 @@ export class AdminPanel {
             : `“${title.name}” can be granted again.`,
         );
       }
+      case "sort":
+        return void this.show({
+          sort: button.dataset.sort as AdminView["sort"],
+          offset: 0,
+          open: null,
+          pending: null,
+        });
+      case "announce-tone":
+        this.draft.tone = button.dataset.tone as Announcement["tone"];
+        return this.redraw();
+      case "announce-yes": {
+        const { message, tone, hours } = this.draft;
+        button.disabled = true;
+        try {
+          await api("/api/admin/announce", { message, tone, hours });
+          this.draft = { message: "", tone: "info", hours: 24 };
+          await this.show({ pending: null }, true);
+          this.say("Sent to every player.");
+        } catch (error) {
+          this.fail(error);
+          if (button.isConnected) button.disabled = false;
+        }
+        return;
+      }
+      case "announce-end": {
+        const id = Number(button.dataset.id);
+        return this.act(
+          button,
+          () => api("/api/admin/announcements/end", { id }),
+          "Announcement ended. Players no longer see it.",
+        );
+      }
       case "online-filter":
         v.onlineFilter = button.dataset.filter as OnlineFilter;
         return this.redraw();
@@ -1100,6 +1254,18 @@ export class AdminPanel {
 
   private input(event: Event) {
     const field = event.target as HTMLInputElement;
+    const announce = field.closest<HTMLFormElement>(
+      'form[data-form="announce"]',
+    );
+    if (announce) {
+      this.readDraft(announce);
+      const count = announce.querySelector("[data-count]");
+      if (count) count.textContent = `${this.draft.message.length} / 300`;
+      const preview = document.querySelector("#adm-root [data-preview]");
+      if (preview)
+        preview.textContent = this.draft.message.trim() || "Your message";
+      return;
+    }
     if (!field.matches("[data-confirm-name]")) return;
     const row = this.row(field);
     const confirm = field
@@ -1124,6 +1290,13 @@ export class AdminPanel {
       });
     }
     if (kind === "coins") return this.coins(form, event.submitter);
+    if (kind === "announce") {
+      this.readDraft(form);
+      if (this.draft.message.length < 3)
+        return this.say("Write 3 characters or more.", true);
+      this.view.pending = "announce";
+      return this.redraw();
+    }
     if (kind !== "title") return;
     const submit = form.querySelector<HTMLButtonElement>(
       "button:not([type=button])",

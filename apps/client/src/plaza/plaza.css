@@ -1904,6 +1904,18 @@
   height: 84px;
   font-size: calc(15px * var(--text-scale, 1));
 }
+/* In a fight Hold is pressed and held for many seconds: a bigger target
+   (the close-up's rod leans in from further left to leave it room). */
+.plaza-layer .pz-fish-act[data-kind="fight"] {
+  width: 7.4em;
+  height: 7.4em;
+  font-size: 1.2em;
+}
+.plaza-layer.phone .pz-fish-act[data-kind="fight"] {
+  width: 104px;
+  height: 104px;
+  font-size: calc(17px * var(--text-scale, 1));
+}
 .plaza-layer.phone .pz-fish-side {
   bottom: calc(var(--hud-y-b) + 84px + var(--hud-gap));
 }

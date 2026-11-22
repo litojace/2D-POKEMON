@@ -713,6 +713,155 @@ dialog.framed-dialog .adm-tabs > .admin-tab {
   color: #ff9aa3;
 }
 
+/* ---- Players: search and order ---- */
+.adm .adm-player-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.adm .adm-player-tools > .adm-search {
+  flex: 1 1 300px;
+}
+.adm .adm-player-tools > .adm-sort {
+  flex: none;
+}
+.adm .adm-sort > button {
+  min-height: 32px;
+  padding: 4px 12px;
+}
+
+/* ---- Announce ---- */
+.adm .adm-announce {
+  gap: 10px;
+}
+.adm-field-block {
+  position: relative;
+  display: grid;
+  gap: 6px;
+}
+.adm-field-block > span,
+.adm-hours > span {
+  color: var(--adm-dim);
+  font-size: calc(11px * var(--text-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+#adm-root .adm-announce textarea {
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 12px;
+  border: 1px solid #ffffff1c;
+  border-radius: 10px;
+  background: #10213d;
+  color: #fff;
+  font: inherit;
+  font-size: calc(14px * var(--text-scale, 1));
+  resize: vertical;
+}
+.adm-field-block small {
+  justify-self: end;
+  color: var(--adm-dim);
+  font-size: calc(10px * var(--text-scale, 1));
+}
+.adm-announce-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.adm-hours {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.adm .adm-hours select {
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 1px solid #8baee540;
+  border-radius: 10px;
+  background: #13223e;
+  color: #e2ecff;
+}
+.adm-preview {
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid #8baee555;
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: #101c35;
+  font-size: calc(13px * var(--text-scale, 1));
+  overflow-wrap: anywhere;
+}
+.adm-preview b {
+  color: var(--adm-dim);
+  font-size: calc(10px * var(--text-scale, 1));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.adm-preview.tone-info {
+  border-left-color: #8ff0ff;
+}
+.adm-preview.tone-event {
+  border-left-color: #ffd65b;
+}
+.adm-preview.tone-warning {
+  border-left-color: #ffb36b;
+}
+.adm-subhead {
+  color: var(--adm-dim);
+  font-size: calc(11px * var(--text-scale, 1));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.adm .adm-sent > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.adm .adm-sent > header small {
+  color: var(--adm-dim);
+  font-size: calc(11px * var(--text-scale, 1));
+}
+.adm .adm-sent p {
+  overflow-wrap: anywhere;
+}
+.adm .adm-sent.is-ended {
+  opacity: 0.65;
+}
+.adm-tone {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #63dce833;
+  color: #8ff0ff;
+  font-size: calc(10px * var(--text-scale, 1));
+  font-weight: 800;
+}
+.adm-tone.tone-event {
+  background: #ffd65b33;
+  color: #ffe58f;
+}
+.adm-tone.tone-warning {
+  background: #ff9a5c33;
+  color: #ffb36b;
+}
+.adm-running,
+.adm-done-tag {
+  margin-left: auto;
+  font-size: calc(11px * var(--text-scale, 1));
+  font-weight: 700;
+}
+.adm-running {
+  color: #7ff0ad;
+}
+.adm-done-tag {
+  color: var(--adm-dim);
+}
+
 /* ---- Online ---- */
 .adm .online-summary {
   margin: 0;
@@ -1021,8 +1170,9 @@ dialog.framed-dialog .adm-tabs > .admin-tab {
     padding: 10px 12px;
   }
 }
-/* Narrow screens: icons only in the tab bar, except the open section. */
-@media (max-width: 600px) {
+/* Narrow screens: icons only in the tab bar, except the open section
+   (six sections fit a 667 px phone held sideways). */
+@media (max-width: 700px) {
   dialog.framed-dialog .adm-tabs > .admin-tab {
     padding: 8px 10px 10px;
   }
@@ -1034,6 +1184,8 @@ dialog.framed-dialog .adm-tabs > .admin-tab {
     clip-path: inset(50%);
     white-space: nowrap;
   }
+}
+@media (max-width: 600px) {
   .adm-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

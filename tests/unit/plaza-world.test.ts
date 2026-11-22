@@ -144,6 +144,11 @@ describe("the Plaza world", () => {
       expect(FIGHTER_IDS).toContain(t.character);
       if (t.skin) {
         expect(CHAMPION_SKIN_BY_ID[t.skin.skin]?.champion).toBe(t.character);
+        // Rare or Epic only: Legendary and Mythical skins are for players
+        // to earn, not for NPCs to show off (owner, 22 Nov).
+        expect(["rare", "epic"], t.name).toContain(
+          CHAMPION_SKIN_BY_ID[t.skin.skin]?.rarity,
+        );
       }
       expect(t.name).not.toMatch(/\d/);
     }

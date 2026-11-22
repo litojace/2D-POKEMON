@@ -40,9 +40,14 @@ Other Plaza coins, outside the 100:
 
 - **Wishing fountain:** 15 a fill, at most 2 fills a day (30).
 - **First catch of each fish:** 5 / 10 / 25 / 50 by rarity, once per fish
-  (11 fish: 220 in all, once ever).
+  (22 fish since 22 Nov: 8 common, 7 uncommon, 5 rare, 2 legendary, so
+  40 + 70 + 125 + 100 = **335** in all, once ever; before, 11 fish paid
+  175, not the 220 this note used to say).
 
-So a Plaza day pays at most 130, and the Fish book 220 once.
+So a Plaza day pays at most 130, and the Fish book 335 once, spread over
+weeks: a given rare fish bites about once in 70 casts and each legendary
+about once in 370, by day or by night only, and rarer fish are harder to
+land (`PLAZA_FIGHT` in `packages/shared/src/plaza-fight.ts`).
 
 ## Still to check
 

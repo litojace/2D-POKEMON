@@ -59,7 +59,7 @@ Vì vậy mọi phân vị dưới đây là **dấu hiệu, không phải kết
 | `leaf-trade`          |        145 |  0,5 % | **đã dừng** sau 18/11                                                |
 | `plaza-wish`          |         30 |  0,1 % | từ 20/11; 15 × tối đa 2/ngày                                         |
 | `streak` (300/7 ngày) |          0 |    0 % | chưa ai đạt 7 ngày liền xong cả 6 nhiệm vụ                           |
-| `plaza-fish-first`    |          0 |    0 % | 5/10/25/50 mỗi loại cá, tổng 220 một lần (mới thêm 20/11)            |
+| `plaza-fish-first`    |          0 |    0 % | 5/10/25/50 mỗi loại cá; 22 loại từ 22/11, tổng 335 một lần (11 loại cũ là 175)            |
 | **Tổng**              | **28.888** |        |                                                                      |
 
 Không có dòng quà/admin nào trong ledger (admin cấp đồ, không cấp xu).

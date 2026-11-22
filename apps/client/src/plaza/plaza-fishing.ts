@@ -49,6 +49,26 @@ export const ROD = {
   butt: 12,
   rest: -0.62,
 } as const;
+/**
+ * Where the line runs when fishing from the dock: from the rod's tip (at
+ * rest, held by an angler at PLAZA_DOCK.stand) down to the bobber. Ducks
+ * keep their bodies off it (plaza-scene's updateAnimals), so the line and
+ * the bobber never cross over a duck. Fixed, not following the line, so a
+ * duck never jumps aside when a line goes out.
+ */
+export function fishingLineZone() {
+  const B = PLAZA_FISHING.bobber,
+    st = PLAZA_DOCK.stand,
+    d = B.x >= st.x ? 1 : -1,
+    hx = st.x + d * ROD.hand.x,
+    hy = st.y - ROD.hand.y;
+  return {
+    ax: hx + Math.cos(ROD.rest) * ROD.length * d,
+    ay: hy + Math.sin(ROD.rest) * ROD.length,
+    bx: B.x,
+    by: B.y,
+  };
+}
 /** The cast: the rod swings back, then the bobber flies (s). */
 const WIND_SECONDS = 0.28;
 const FLY_SECONDS = 0.42;
@@ -323,15 +343,15 @@ export function createFishing(deps: FishingDeps) {
     /** The fight, for its close-up and the HUD (null with none). */
     fightView(): FightView | null {
       if (phase !== "fight" || !fight) return null;
-      const k = PLAZA_FIGHT.fish[fight.rarity];
       return {
         rarity: fight.rarity,
         tension: fight.tension,
         progress: fight.progress,
         thrash: fight.thrash,
         strain: fight.strain,
-        lo: k.lo,
-        hi: k.hi,
+        // The band as it is now (it wanders for rarer fish).
+        lo: fight.lo,
+        hi: fight.hi,
         holding,
         result: fight.result,
         t,
@@ -370,13 +390,12 @@ export function createFishing(deps: FishingDeps) {
           if (fight.thrash && !was && typeof navigator !== "undefined")
             navigator.vibrate?.(18);
         }
-        const k = PLAZA_FIGHT.fish[fight.rarity],
-          mood =
-            fight.tension >= 0.93
-              ? "strain"
-              : fight.tension < k.lo && fight.tick > 20
-                ? "slack"
-                : "ok";
+        const mood =
+          fight.tension >= 0.93
+            ? "strain"
+            : fight.tension < fight.lo && fight.tick > 20
+              ? "slack"
+              : "ok";
         if (mood !== fightMood) {
           fightMood = mood;
           deps.changed();

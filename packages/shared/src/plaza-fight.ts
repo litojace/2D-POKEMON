@@ -10,7 +10,9 @@
  * In the green band the fish comes in (progress fills). Too slack and it
  * swims back out (progress drains: at 0 it is gone); held at the top too
  * long and the line snaps. Rarer fish thrash harder and more often, keep a
- * narrower band and come in slower.
+ * narrower band and come in slower; they also run (each thrash takes some
+ * line back) and the band itself wanders as the fish changes course, so a
+ * steady rhythm isn't enough (`drift`, `run`).
  */
 export type PlazaFightRarity = "common" | "uncommon" | "rare" | "legendary";
 export type PlazaFightResult = "going" | "caught" | "snap" | "escape";
@@ -19,7 +21,7 @@ export const PLAZA_FIGHT = {
   /** One step (ms): the server replays the fight in these. */
   tickMs: 50,
   /** The longest fight (steps): past it the fish gets away. */
-  maxTicks: 400,
+  maxTicks: 500,
   /** Where the tension and the fish start. */
   tension0: 0.3,
   progress0: 0.3,
@@ -36,7 +38,9 @@ export const PLAZA_FIGHT = {
   /** Most presses and let-goes a fight can send. */
   maxMoves: 400,
   /** What each rarity's fish is like: its band, how fast it comes in, how
-   * hard and how often it thrashes (ms between, ms each). */
+   * hard and how often it thrashes (ms between, ms each), how far the band
+   * wanders (`drift`, up and down from its middle, over `driftMs`) and how
+   * much line a thrash takes back (`run`, progress a second). */
   fish: {
     common: {
       lo: 0.3,
@@ -45,6 +49,9 @@ export const PLAZA_FIGHT = {
       pull: 0.75,
       every: [1100, 1900],
       lasts: [250, 450],
+      drift: 0,
+      driftMs: 4000,
+      run: 0,
     },
     uncommon: {
       lo: 0.34,
@@ -53,22 +60,31 @@ export const PLAZA_FIGHT = {
       pull: 0.95,
       every: [900, 1600],
       lasts: [300, 550],
+      drift: 0.1,
+      driftMs: 4000,
+      run: 0.1,
     },
     rare: {
       lo: 0.38,
       hi: 0.72,
-      gain: 0.13,
+      gain: 0.14,
       pull: 1.0,
       every: [750, 1350],
       lasts: [350, 600],
+      drift: 0.12,
+      driftMs: 3800,
+      run: 0.12,
     },
     legendary: {
       lo: 0.42,
       hi: 0.7,
-      gain: 0.11,
-      pull: 1.1,
+      gain: 0.15,
+      pull: 1.0,
       every: [700, 1200],
       lasts: [350, 650],
+      drift: 0.1,
+      driftMs: 3400,
+      run: 0.12,
     },
   } satisfies Record<
     PlazaFightRarity,
@@ -79,6 +95,9 @@ export const PLAZA_FIGHT = {
       pull: number;
       every: [number, number];
       lasts: [number, number];
+      drift: number;
+      driftMs: number;
+      run: number;
     }
   >,
 } as const;
@@ -105,6 +124,11 @@ export interface PlazaFight {
   thrash: boolean;
   /** Steps held at the top (the line snaps at PLAZA_FIGHT.snapTicks). */
   strain: number;
+  /** The green band now (it wanders for rarer fish), and where in its
+   * wander it started. */
+  lo: number;
+  hi: number;
+  phase: number;
   result: PlazaFightResult;
   /** The fish's next thrash: when it starts and ends (steps). */
   next: number;
@@ -123,11 +147,15 @@ export function plazaFightStart(
     progress: PLAZA_FIGHT.progress0,
     thrash: false,
     strain: 0,
+    lo: PLAZA_FIGHT.fish[rarity].lo,
+    hi: PLAZA_FIGHT.fish[rarity].hi,
+    phase: 0,
     result: "going",
     next: 0,
     until: 0,
     rand: seeded(seed),
   };
+  f.phase = f.rand() * Math.PI * 2;
   plan(f, 0);
   return f;
 }
@@ -152,9 +180,26 @@ export function plazaFightStep(f: PlazaFight, holding: boolean) {
     (holding ? PLAZA_FIGHT.reel : -PLAZA_FIGHT.slack) * dt +
     (f.thrash ? k.pull * dt : 0);
   f.tension = Math.min(1, Math.max(0, f.tension));
-  if (f.tension < k.lo) f.progress -= PLAZA_FIGHT.loss * dt;
-  else if (f.tension <= k.hi) f.progress += k.gain * dt;
+  // The band wanders as the fish turns (a slow swing, from its seed).
+  const half = (k.hi - k.lo) / 2,
+    mid = Math.min(
+      0.9 - half,
+      Math.max(
+        0.12 + half,
+        (k.lo + k.hi) / 2 +
+          k.drift *
+            Math.sin(
+              (f.tick * PLAZA_FIGHT.tickMs * 2 * Math.PI) / k.driftMs + f.phase,
+            ),
+      ),
+    );
+  f.lo = mid - half;
+  f.hi = mid + half;
+  if (f.tension < f.lo) f.progress -= PLAZA_FIGHT.loss * dt;
+  else if (f.tension <= f.hi) f.progress += k.gain * dt;
   else f.progress += k.gain * PLAZA_FIGHT.overGain * dt;
+  // A run: the thrashing fish takes line back.
+  if (f.thrash) f.progress -= k.run * dt;
   f.strain = f.tension >= PLAZA_FIGHT.snapAt ? f.strain + 1 : 0;
   if (f.progress >= 1) f.result = "caught";
   else if (f.strain >= PLAZA_FIGHT.snapTicks) f.result = "snap";
