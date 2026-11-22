@@ -1361,6 +1361,8 @@
   font-size: calc(12px * var(--text-scale, 1));
   font-weight: 600;
   text-align: center;
+  /* Two even lines, not one long and a last word alone. */
+  text-wrap: balance;
   pointer-events: none;
   opacity: 0;
   transform: translate(-50%, 20px);

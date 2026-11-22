@@ -1,5 +1,5 @@
 import { appleConfig, exchangeAppleCode, revokeAppleToken } from "./apple.js";
-import type { PushDevice, PushStore } from "./push.js";
+import type { AnnouncementPush, PushDevice, PushStore } from "./push.js";
 import { clientOrigins } from "./api-cors.js";
 import type {
   PlazaProgress,
@@ -358,6 +358,29 @@ export function createAccountProvider(): AccountProvider {
         if (r.error) throw new Error(r.error.message);
         return (r.data as PushDevice[] | null) ?? [];
       },
+      // Game news (migration 20261122140000).
+      async setNews(player, endpoint, on) {
+        const r = await admin().rpc("arena_push_set_news", {
+          p_player: player,
+          p_endpoint: endpoint,
+          p_news: on,
+        });
+        if (r.error) throw new Error(r.error.message);
+        return r.data === true;
+      },
+      async newsPage(after, limit) {
+        const r = await admin().rpc("arena_push_news_page", {
+          p_after: after,
+          p_limit: limit,
+        });
+        if (r.error) throw new Error(r.error.message);
+        return (r.data as PushDevice[] | null) ?? [];
+      },
+      async newsCount() {
+        const r = await admin().rpc("arena_push_news_count", {});
+        if (r.error) throw new Error(r.error.message);
+        return Number(r.data ?? 0);
+      },
     },
     photos: createAvatarPhotoStore(() => admin() as unknown as PhotoClient),
     async avatarOf(playerId) {
@@ -552,6 +575,11 @@ export function installAccountRoutes(
   log: (event: string, details: Record<string, unknown>) => void = () => {},
   /** Send an event to every connected game (an admin's announcement). */
   broadcast: (event: string, payload: unknown) => void = () => {},
+  /** Announcements as notifications (push.ts); null without VAPID keys. */
+  announcePush: Pick<
+    AnnouncementPush,
+    "available" | "reach" | "send"
+  > | null = null,
 ) {
   const requests = new Map<string, { count: number; until: number }>();
   app.use("/api", (req, res, next) => {
@@ -1564,8 +1592,45 @@ export function installAccountRoutes(
         p_hours: data.hours,
       });
       broadcast("announcement", sent);
-      log("arena-announce", { tone: data.tone, hours: data.hours });
-      res.json(sent);
+      log("arena-announce", {
+        tone: data.tone,
+        hours: data.hours,
+        push: !!data.push,
+      });
+      // Notifications go out in the background: thousands of devices take
+      // a while, and the admin needn't wait. The log says how it went.
+      let push: { devices: number } | { error: string } | undefined;
+      if (data.push) {
+        if (!announcePush?.available)
+          push = { error: "Notifications aren't set up on the server." };
+        else {
+          const devices = await announcePush.reach().catch(() => 0);
+          push = { devices };
+          void announcePush
+            .send(sent as { id: number; message: string; tone: string })
+            .then(
+              (r) => log("arena-announce-push", { ...r }),
+              (error: unknown) =>
+                log("arena-announce-push", { error: String(error) }),
+            );
+        }
+      }
+      res.json(push ? { ...(sent as object), push } : sent);
+    }),
+  );
+  // How many devices an announcement's notification would reach.
+  app.get(
+    "/api/admin/push-reach",
+    route(true, async (_req, res) => {
+      res.setHeader("Cache-Control", "no-store");
+      if (!announcePush?.available) {
+        res.json({ available: false, devices: 0 });
+        return;
+      }
+      res.json({
+        available: true,
+        devices: await announcePush.reach().catch(() => 0),
+      });
     }),
   );
   app.post(

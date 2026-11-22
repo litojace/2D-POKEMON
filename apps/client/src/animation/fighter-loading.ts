@@ -76,6 +76,15 @@ export class FighterLoading {
     }
     return queue;
   }
+  /**
+   * Its art went blank (rig-health.ts): ask for it again, from scratch, as
+   * if it had never loaded (with fresh attempts).
+   */
+  forget(id: CharacterId) {
+    this.ready.delete(id);
+    this.requested.delete(id);
+    this.attempts.delete(id);
+  }
   /** A load finished: whatever is still missing may be asked for again. */
   settled() {
     this.requested.clear();

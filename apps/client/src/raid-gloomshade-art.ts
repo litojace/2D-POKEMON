@@ -197,6 +197,9 @@ export function drawLanternYard(
   reduced: boolean,
   at?: LayerAt,
   clock = state.time,
+  /** Where each raider is drawn (raid-ui.ts DrawnAt): curses follow the
+   * fighter as seen, not the server's last position. */
+  drawnAt?: (id: string) => { x: number; y: number } | undefined,
 ) {
   const r = state.raid!;
   const t = state.time;
@@ -209,9 +212,13 @@ export function drawLanternYard(
   );
   // Curses: ink wisps circle the raider, one per stack; Haunted glows.
   const low = fxFor(g.scene).density < 0.5;
-  for (const p of state.players) {
-    const c = r.curses?.[p.id];
-    if (!c || p.raidBoss || p.hp <= 0) continue;
+  for (const raider of state.players) {
+    const c = r.curses?.[raider.id];
+    if (!c || raider.raidBoss || raider.hp <= 0) continue;
+    // Your own fighter is drawn where your inputs put it, ahead of the
+    // server's last word by about a round trip (~60 px at a run): the
+    // wisps and pips sat beside you, not on you (owner, 22 Nov).
+    const p = drawnAt?.(raider.id) ?? raider;
     const haunted = c.hauntedUntil > t;
     if (!c.stacks && !haunted) continue;
     const spin = reduced ? 0 : t * 2.4;

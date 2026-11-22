@@ -488,6 +488,7 @@ it("before the friends' messages migration runs, friends still message live", as
 
 it("a friend who is away gets a notification of who messaged (never the words)", async () => {
   const devices = new Map<string, PushDevice[]>();
+  const news = new Map<string, boolean>();
   const sent: { endpoint: string; payload: any }[] = [];
   const f = await setup(
     true,
@@ -506,6 +507,13 @@ it("a friend who is away gets a notification of who messaged (never the words)",
         },
         async list(player) {
           return devices.get(player) ?? [];
+        },
+        async setNews(player, endpoint, on) {
+          const mine = (devices.get(player) ?? []).some(
+            (d) => d.endpoint === endpoint,
+          );
+          if (mine) news.set(endpoint, on);
+          return mine;
         },
       };
       return {
@@ -542,6 +550,19 @@ it("a friend who is away gets a notification of who messaged (never the words)",
   expect(await request(f.b.s, "push-subscribe", { endpoint, keys })).toEqual({
     ok: true,
   });
+  // Game news off for this device (migration 20261122140000); never for a
+  // device that isn't theirs.
+  expect(await request(f.b.s, "push-news", { endpoint, on: false })).toEqual({
+    ok: true,
+  });
+  expect(news.get(endpoint)).toBe(false);
+  expect((await request(f.a.s, "push-news", { endpoint, on: true })).ok).toBe(
+    false,
+  );
+  expect(news.get(endpoint)).toBe(false);
+  expect((await request(f.b.s, "push-news", { endpoint, on: "yes" })).ok).toBe(
+    false,
+  );
   // Online: the line arrives in the game, no notification.
   await request(f.a.s, "chat-send", {
     channel: "friend",
