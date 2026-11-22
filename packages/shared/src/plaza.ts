@@ -654,34 +654,6 @@ export const PLAZA_BENCHES: readonly { x: number; y: number }[] = [
   { x: 1710, y: 680 },
 ];
 /**
- * Signposts where a path leaves another: a post with one or more arrow
- * planks, each pointing along its way (dir 1: east, -1: west) with its
- * words and a badge (icon: a hub icon name). The fingerpost at the fork off
- * the main path, on the corner north of the pond path, is the first one a
- * new player meets walking south from where they arrive: it sends them to
- * the places they can't see from the square (the pitch, the track, the pond).
- */
-export interface PlazaSignArm {
-  text: string;
-  dir: 1 | -1;
-  icon: string;
-}
-export const PLAZA_SIGNPOSTS: readonly {
-  x: number;
-  y: number;
-  arms: readonly PlazaSignArm[];
-}[] = [
-  {
-    x: 1468,
-    y: 1352,
-    arms: [
-      { text: "ORB BALL", dir: 1, icon: "ball" },
-      { text: "DASH TRACK", dir: -1, icon: "flag" },
-      { text: "FISHING", dir: 1, icon: "fish" },
-    ],
-  },
-];
-/**
  * Things by the fishing dock (drawn by the client: gfx rodRack, bucket,
  * tackleBox, reeds, rowboat). `r`: a footprint nobody walks through (reeds stand on
  * the pond's rim, which nobody walks on anyway).
@@ -727,19 +699,13 @@ export const PLAZA_DECOR: readonly {
   ),
 ];
 const SCATTER = scatter();
-/** Benches, lamps and signposts, as round footprints scattered scenery keeps clear of. */
+/** Benches, decor and lamps, as round footprints scattered scenery keeps clear of. */
 const FIXTURES = [
   ...PLAZA_BENCHES.map((b) => ({ x: b.x, y: b.y, size: 100 })),
-  // A signpost's plank stands above and beside its post: keep it in the clear.
   ...PLAZA_DECOR.map((d) => ({
     x: d.x,
     y: d.y,
     size: Math.max(70, d.r * 2 + 40),
-  })),
-  ...PLAZA_SIGNPOSTS.map((s) => ({
-    x: s.x,
-    y: s.y - 40,
-    size: 170,
   })),
   ...PLAZA_LAMPS.map((l) => ({ x: l.x, y: l.y, size: 24 })),
 ];
@@ -779,7 +745,6 @@ export const PLAZA_OBSTACLES: readonly PlazaObstacle[] = [
   })(),
   ...PLAZA_TREES.map((t) => ({ x: t.x, y: t.y, r: 22 })),
   ...PLAZA_LAMPS.map((l) => ({ x: l.x, y: l.y, r: 9 })),
-  ...PLAZA_SIGNPOSTS.map((p) => ({ x: p.x, y: p.y, r: 8 })),
   ...PLAZA_DECOR.filter((d) => d.r).map((d) => ({
     x: d.x,
     y: d.y - 2,

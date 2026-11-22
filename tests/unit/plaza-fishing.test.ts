@@ -20,7 +20,6 @@ import {
   PLAZA_PATHS,
   PLAZA_POND,
   PLAZA_QUESTS,
-  PLAZA_SIGNPOSTS,
   PLAZA_SPOTS,
   plazaCollide,
   plazaFishFor,
@@ -235,30 +234,6 @@ describe("the fishing dock", () => {
     expect(Math.abs(B.x - P.x)).toBeLessThan(P.rx * 0.2);
     expect(Math.abs(B.y - P.y)).toBeLessThan(P.ry * 0.2);
     expect(B.x - PLAZA_DOCK.x1).toBeGreaterThan(80);
-  });
-});
-
-describe("the way to the pond", () => {
-  it("has a FISHING signpost at the fork, beside the pond path, pointing at the pond", () => {
-    const pond = PLAZA_PATHS.find((p) => {
-      const [x, y] = p.pts[p.pts.length - 1];
-      return Math.hypot(x - PLAZA_POND.x, y - PLAZA_POND.y) < PLAZA_POND.rx;
-    })!;
-    const [a, b] = pond.pts.map(([x, y]) => ({ x, y }));
-    const sign = PLAZA_SIGNPOSTS.find((s) =>
-      s.arms.some((a) => a.text === "FISHING"),
-    )!;
-    const arm = sign.arms.find((a) => a.text === "FISHING")!;
-    expect(arm.dir).toBe(Math.sign(PLAZA_POND.x - sign.x));
-    // Near where the pond path leaves the main path, just off its stones.
-    expect(Math.hypot(sign.x - a.x, sign.y - a.y)).toBeLessThan(160);
-    const off = segmentDistance(sign.x, sign.y, a, b) - pond.w / 2;
-    expect(off).toBeGreaterThan(4);
-    expect(off).toBeLessThan(40);
-    // Nobody walks through it.
-    const walker = { x: sign.x, y: sign.y + 2 };
-    plazaCollide(walker);
-    expect(walker.y - sign.y).toBeGreaterThan(PLAZA.radius);
   });
 });
 

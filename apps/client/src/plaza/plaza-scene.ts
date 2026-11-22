@@ -24,7 +24,6 @@ import {
   ORB_SHOWER,
   PLAZA,
   PLAZA_BENCHES,
-  PLAZA_SIGNPOSTS,
   PLAZA_DECOR,
   PLAZA_BOARD,
   PLAZA_BUSHES,
@@ -5217,19 +5216,6 @@ export function openPlaza(options) {
           { sw: d.sw ?? 0, name: o.kind },
         );
       }),
-      ...PLAZA_SIGNPOSTS.map((o) =>
-        spot(
-          o.x,
-          o.y,
-          8,
-          70 + o.arms.length * 34,
-          () => {
-            GFX.shadow(g, o.x + 4, o.y + 2, 16, 5);
-            GFX.blit(g, GFX.signpost(o.arms, ICON_IMG), o.x, o.y + 4);
-          },
-          { sw: 72, name: "signpost" },
-        ),
-      ),
       ...LAMPS.map((o) =>
         spot(o.x, o.y, 9, 110 * PLAZA_SCALE.lamp, () => drawLamp(g, o), {
           sw: 24,
