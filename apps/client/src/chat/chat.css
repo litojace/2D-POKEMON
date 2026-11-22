@@ -734,7 +734,11 @@ button.chat-say:focus-visible {
   left: max(12px, calc(var(--safe-left, 0px) + 4px));
   z-index: 55;
   display: grid;
-  gap: 2px;
+  /* The tag, then the name and words: one set of columns for every line
+     (subgrid below), so the tags are as wide as the widest and the names
+     line up whatever font the device draws them in. */
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 5px;
   max-width: 220px;
   margin: 0;
   padding: 0;
@@ -748,6 +752,7 @@ button.chat-say:focus-visible {
 }
 .battle-chat-feed li {
   display: flex;
+  grid-column: 1 / -1;
   align-items: center;
   gap: 5px;
   padding: 3px 8px;
@@ -792,7 +797,7 @@ button.chat-say:focus-visible {
    given back on the left so they are centred across too. Pixel-checked in
    watch-room.spec.ts. */
 .battle-chat-to {
-  display: inline-block;
+  display: block;
   flex: none;
   box-sizing: border-box;
   min-width: 4.2em;
@@ -813,6 +818,21 @@ button.chat-say:focus-visible {
 .battle-chat-feed li[data-to="all"] .battle-chat-to {
   background: rgba(255, 255, 255, 0.18);
   color: #f2f6ff;
+}
+.battle-chat-say {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.battle-chat-say > span {
+  min-width: 0;
+}
+@supports (grid-template-columns: subgrid) {
+  .battle-chat-feed li {
+    display: grid;
+    grid-template-columns: subgrid;
+  }
 }
 @keyframes battle-chat-line {
   0%,

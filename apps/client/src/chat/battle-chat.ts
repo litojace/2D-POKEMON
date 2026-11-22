@@ -263,7 +263,11 @@ export function mountBattleChat(hooks: BattleChatHooks): BattleChatView {
       tag.textContent = to === "all" ? "ALL" : "TEAM";
       const said = document.createElement("span");
       said.textContent = text;
-      li.append(tag, who, said);
+      // The name and the words share one cell (the tags make a column).
+      const body = document.createElement("span");
+      body.className = "battle-chat-say";
+      body.append(who, " ", said);
+      li.append(tag, body);
       if (watcher) li.classList.add("is-watcher");
       else if (!team) li.classList.add("is-rival");
       feed.append(li);

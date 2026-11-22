@@ -191,7 +191,7 @@ for (const size of SIZES)
         );
         await expect(
           page.locator(".battle-chat-feed li.is-watcher"),
-        ).toHaveText("ALLViWell played!");
+        ).toHaveText("ALLVi Well played!");
         // To the whole room, with an eye before the name.
         const vi = page.locator(".battle-chat-feed li.is-watcher");
         await expect(vi).toHaveAttribute("data-to", "all");
@@ -319,7 +319,7 @@ test("a player sees a watcher's cheer, and Mute others hides it", async ({
     await expect(page.locator("#battle-chat")).toBeVisible();
     await cheer(1);
     await expect(page.locator(".battle-chat-feed li.is-watcher")).toHaveText(
-      "ALLViNice!",
+      "ALLVi Nice!",
     );
     await page.click("#battle-chat");
     await page.click("[data-battle-mute]");
@@ -337,8 +337,11 @@ for (const size of [
   { width: 667, height: 375, touch: true },
   { width: 844, height: 390, touch: true },
   { width: 1280, height: 720, touch: false },
+  // The feed's "Barlow" isn't bundled: each device draws it in its own
+  // font. A wide one here (where CI's made TEAM outgrow ALL once).
+  { width: 844, height: 390, touch: true, font: "DejaVu Sans, Verdana" },
 ])
-  test(`the feed's TEAM / ALL tags hold their letters in the middle at ${size.width}x${size.height}`, async ({
+  test(`the feed's TEAM / ALL tags hold their letters in the middle at ${size.width}x${size.height}${size.font ? " in a wide font" : ""}`, async ({
     browser,
   }) => {
     test.setTimeout(120_000);
@@ -389,6 +392,10 @@ for (const size of [
         "ALL",
         "ALL",
       ]);
+      if (size.font)
+        await page.addStyleTag({
+          content: `.battle-chat-feed li { font-family: ${size.font} !important; }`,
+        });
       // Each line fades out over 5 s, and a slow runner can take that long
       // to shoot the page: hold the lines at full strength first.
       await page.evaluate(() => {

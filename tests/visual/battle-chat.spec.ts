@@ -162,7 +162,7 @@ for (const phone of PHONES)
         b.textContent = "Help me";
       });
       await expect(page.locator(".battle-chat-feed li")).toHaveText([
-        "TEAMRaeHelp me",
+        "TEAMRae Help me",
       ]);
       // A teammate's call reached your side only: TEAM before it.
       await expect(page.locator(".battle-chat-feed li")).toHaveAttribute(
