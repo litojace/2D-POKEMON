@@ -73,12 +73,12 @@ selects only where there is a mouse, not on a touch screen.
 
 The full visual suite (`tests/visual`, Playwright) has over 100 files and is
 slow on one machine: the config runs **one worker** on purpose, and the
-`panel-scroll` sweeps alone take over half an hour. CI splits it into eighteen
+`panel-scroll` sweeps alone take over half an hour. CI splits it into thirty
 shards of about equal running time (`.github/workflows/ci.yml`,
 `scripts/visual-shards.mjs`, from each test's CI time in
 `tests/visual/durations.json`). When the shards drift apart (new or slower
 tests), download the `visual-durations` artifact of a green main run over
-that file and commit it; `node scripts/visual-shards.mjs --plan 18` shows the
+that file and commit it; `node scripts/visual-shards.mjs --plan 30` shows the
 split. Locally, don't run all of it: run what the change touches, in
 parallel, in the background.
 
@@ -201,7 +201,7 @@ already ran is never edited: add a new one.
 ## Merging to main: fast lane or full lane
 
 `main` is production: a merge deploys the game and applies new migrations.
-A PR's full run (verify and 18 visual shards) mostly waits for runners, often
+A PR's full run (verify and 30 visual shards) mostly waits for runners, often
 hours, so not every PR waits for all of it. Before merging, run:
 
 ```bash
@@ -219,7 +219,7 @@ It prints the lane and why, from the files the branch changes against
 - **FULL** (a migration, dependencies, CI, the build or deploy, the visual
   harness, the shared UI in `apps/client/src/ui/` and `style.css`, the
   battle, the game server's rooms, the shared rules, or more than 25 files):
-  wait for the PR's whole run (verify and the 18 shards) to be green.
+  wait for the PR's whole run (verify and the 30 shards) to be green.
 - **Main's full check is scheduled**, every three hours on main's latest
   commit (also Actions → Arena checks → Run workflow on `main`). A push to
   `main` runs verify only: a merge-started full run kept being replaced by
