@@ -551,6 +551,44 @@ the floors that moved most are within 5 points: 64 97 / 88, 63 64 / 74,
 floor 64's armour did not move its rate in order on 72 seeds (4.8 28,
 4.4 21, 4.1 28, 3.5 22): it was noise, so no floor's armour changes.
 
+## Second skill audit: three more reworked
+
+The audit again, on `main` after the five reworks and Voltkit's faster
+shots (#307), 12 games a pair on two seeds (24 a pair, the same as a round
+robin), the expert without look-ahead. The roster is closer than before:
+expert 40.7% - 59.8% (33.6% - 59.6% before), Hard 40.0% - 57.4%. Of the
+five, Riptide Wave now matters (11.8 / 12.7 points, expert / Hard), Shell
+Up more (9.1 / 12.0) and Frost Breath some (6.9 / 5.1); Crest Flare (3.4 /
+4.4) and Scale Shrapnel (2.7 / 1.5) still did little, and Crystal Cage
+(6.6 / 4.9) was weak for an ultimate. Ball Lightning (4.4 / 7.6) and
+Thunderstorm (6.1 / 8.6) are left to the expert-bot work on Voltkit.
+
+- **Scale Shrapnel** spends two plates (`platesSpent`), not all of them:
+  shedding every plate threw away the plates' 40% block, as much as the
+  blades were worth. Cooldown 11 (9): with one plate kept, the first try
+  (one plate spent) took Pangrove to 71% for experts.
+- **Crest Flare** is a short, fierce breath: 0.5 s (1.2), 3 every 0.1 s
+  (5 every 0.2 s), still reaching 230 to 300 px; Cindrake stands exposed
+  for less of it. 6 a tick took Cindrake to 82% for experts, 4 to 67%; trimming Heat
+  Cracks to 5 or 4 a tick instead left experts at 67%. Rite Long Breath: 0.7 s.
+- **Crystal Cage** closes in from 180 to 60 px over its 2.5 s
+  (`cage.shrinkTo`; every fighter's hold on it shrinks with it, so
+  `holdInCage` squeezes those inside toward Auralynx, on the client too),
+  and deals 20 (10). Rite Long Cage: 4 s and 28 damage (it set 18, which
+  would now have lowered it).
+
+Round robins, `main` / now (24 games a pair, seeds 310000):
+
+| Champion |                        Hard |                      Expert |                      Normal |
+| -------- | --------------------------: | --------------------------: | --------------------------: |
+| Pangrove |               52.9% / 54.2% |               52.9% / 60.0% |               56.6% / 54.2% |
+| Cindrake |               53.7% / 53.4% |               59.1% / 60.5% |               54.4% / 49.0% |
+| Auralynx |               49.3% / 51.2% |               52.5% / 51.0% |               48.8% / 50.7% |
+| Range    | 42.2 - 59.1% / 42.9 - 58.3% | 38.7 - 59.3% / 41.4 - 60.5% | 43.1 - 56.6% / 43.1 - 54.4% |
+
+Spire: the three are Echoes on 36 floors; all cleared within 5 of 72 as
+often as on `main` but floor 3 (33 / 24), now armour 1.05 (0.99): 34.
+
 ## Voltkit: Ball Lightning and Thunderstorm earn their slots
 
 A skill audit (each skill's kind set to "none", two seeds, 12 games a

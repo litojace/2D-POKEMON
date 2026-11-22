@@ -219,7 +219,7 @@ const ROSTER: Record<
     basic: ["Scale Swipe", 450],
     skills: [
       ["Tongue Grapple", 8],
-      ["Scale Shrapnel", 9],
+      ["Scale Shrapnel", 11],
       ["Tunnel", 14],
       ["Leaf Storm", 20],
     ],

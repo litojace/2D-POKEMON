@@ -25,7 +25,9 @@ describe("your fighter's corrections", () => {
     const run = (noCarry: boolean) =>
       simulateCorrections({
         seconds: 60,
-        me: "cindrake",
+        // (Terradon walks into the flares' pull often; a 0.5 s Crest Flare
+        // left Cindrake out of it in this replay.)
+        me: "terradon",
         bot: "lumoth",
         fullUlt: true,
         noCarry,
