@@ -191,35 +191,6 @@ test("Plaza today is a round button that opens its list, on a phone too", async 
   }
 });
 
-/**
- * Wait until the Plaza draws steadily (20 frames in a row under 50 ms). On a
- * CI runner its first seconds can draw only a few frames, while sprites are
- * baked and the ground is painted: a test that acts at once measured that
- * warm-up, not the feature (main's full runs for #351).
- */
-async function warm(page: Page) {
-  await page.evaluate(
-    () =>
-      new Promise<void>((done, fail) => {
-        let n = 0,
-          last = performance.now();
-        const give = setTimeout(
-          () => fail(new Error("the Plaza never drew steadily")),
-          30_000,
-        );
-        const f = (t: number) => {
-          n = t - last < 50 ? n + 1 : 0;
-          last = t;
-          if (n >= 20) {
-            clearTimeout(give);
-            done();
-          } else requestAnimationFrame(f);
-        };
-        requestAnimationFrame(f);
-      }),
-  );
-}
-
 test("a movement key takes back a Go walk; a jump doesn't", async ({
   page,
 }) => {
@@ -229,7 +200,6 @@ test("a movement key takes back a Go walk; a jump doesn't", async ({
       const b = (window as any).__plazaWorld.bodyOf("local");
       return { x: b.x, y: b.y };
     });
-  await warm(page);
   await page.locator(".plaza-layer").focus();
   // Go to the pond, then jump on the way: still walking there.
   await page.keyboard.press("m");
@@ -238,11 +208,15 @@ test("a movement key takes back a Go walk; a jump doesn't", async ({
   await page.keyboard.press(" ");
   const a = await at();
   await expect
-    .poll(async () => {
-      const b = await at();
-      return Math.hypot(b.x - a.x, b.y - a.y);
-    })
+    .poll(
+      async () => {
+        const b = await at();
+        return Math.hypot(b.x - a.x, b.y - a.y);
+      },
+      { timeout: 20_000 },
+    )
     .toBeGreaterThan(80);
+  // (Polled: on a CI runner the Plaza can take seconds to get going.)
   // A tap of a movement key: the walk stops once it's let go.
   await page.keyboard.down("a");
   await page.waitForTimeout(120);
@@ -271,16 +245,18 @@ test("on a phone, moving the joystick takes back a Go walk", async ({
         const b = (window as any).__plazaWorld.bodyOf("local");
         return { x: b.x, y: b.y };
       });
-    await warm(page);
     await page.click("#pz-map-btn");
     await page.locator('.pz-map-list [data-place="pond"]').click();
     // Walking there (or the stop below would prove nothing).
     const a = await at();
     await expect
-      .poll(async () => {
-        const b = await at();
-        return Math.hypot(b.x - a.x, b.y - a.y);
-      })
+      .poll(
+        async () => {
+          const b = await at();
+          return Math.hypot(b.x - a.x, b.y - a.y);
+        },
+        { timeout: 20_000 },
+      )
       .toBeGreaterThan(40);
     // A short push on the stick, then let go.
     const joy = (await page.locator("#pz-joy").boundingBox())!;
