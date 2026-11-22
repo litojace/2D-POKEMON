@@ -257,6 +257,19 @@ export function openPlaza(options) {
   // Auto (Settings → Graphics) watches the frame rate and may switch to Low.
   let probe =
     graphicsSetting() === "auto" && !low ? new FrameRateProbe() : undefined;
+  /**
+   * Draw at up to 2x on iPhones too (sceneDensity's `sharp`), so fighters
+   * and names are crisp. Where Auto finds that too slow, this device steps
+   * back to 1.5x for good (SOFT_KEY) before anything goes Low.
+   */
+  const SOFT_KEY = "ea-plaza-soft";
+  let sharp = (() => {
+    try {
+      return localStorage.getItem(SOFT_KEY) !== "1";
+    } catch {
+      return true;
+    }
+  })();
   const pzToast = (m) => options.toast(m);
   const syncPhone = () => {
     layer.classList.toggle("phone", innerHeight < 500);
@@ -2615,6 +2628,7 @@ export function openPlaza(options) {
     g.lineWidth = 3;
     g.strokeStyle = "#0b1020";
     const label = `✦ WISHES ${wish.n}/${goal}`;
+    g.lineJoin = "round";
     g.strokeText(label, FOUNT.x, y + h / 2 + 1);
     g.fillStyle = "#fff";
     g.fillText(label, FOUNT.x, y + h / 2 + 1);
@@ -4063,6 +4077,7 @@ export function openPlaza(options) {
     g.fillStyle = "#fff";
     g.strokeStyle = "#2a1f4c";
     g.lineWidth = 4;
+    g.lineJoin = "round";
     g.strokeText("PHOTO SPOT", x, y - 246);
     g.fillText("PHOTO SPOT", x, y - 246);
   }
@@ -4170,6 +4185,7 @@ export function openPlaza(options) {
     g.font = "800 17px 'Barlow Condensed', sans-serif";
     g.textAlign = "center";
     g.textBaseline = "middle";
+    g.lineJoin = "round";
     g.strokeText("PLAZA MAP", 0, -150);
     g.fillText("PLAZA MAP", 0, -150);
     // Kept once its icons have drawn (data pictures, a moment after load;
@@ -4269,10 +4285,14 @@ export function openPlaza(options) {
       ? "italic 600 12px 'DM Sans', sans-serif"
       : "700 13px 'DM Sans', sans-serif";
     g.textAlign = "center";
-    g.lineWidth = 3.5;
-    g.strokeStyle = "rgba(11,16,32,.85)";
+    // A thin, even outline: round joins (the default mitre joins left
+    // spikes on A, M, N, V and W) and 2.6 px, not 3.5 (owner, 22 Nov).
+    g.lineWidth = 2.6;
+    g.miterLimit = 2;
+    g.strokeStyle = "rgba(11,16,32,.8)";
     g.fillStyle = b.me ? "#ffd65b" : b.bot ? "#aebbe0" : "#fff";
     const ny = b.y - b.z - s * 0.92 - 6;
+    g.lineJoin = "round";
     g.strokeText(b.name, b.x, ny);
     g.fillText(b.name, b.x, ny);
     if (b.emoteT > 0) {
@@ -5473,6 +5493,7 @@ export function openPlaza(options) {
         if (f.icon)
           textWithIcon(g, f.text, f.icon, f.x, f.y - k * 50 - 8, 24, true);
         else {
+          g.lineJoin = "round";
           g.strokeText(f.text, f.x, f.y - k * 50);
           g.fillText(f.text, f.x, f.y - k * 50);
         }
@@ -5629,7 +5650,17 @@ export function openPlaza(options) {
       if (covered() || document.hidden) probe.pause();
       else {
         const verdict = probe.frame(performance.now());
-        if (verdict === "low") {
+        if (verdict === "low" && sharp && sceneDensity(NW, NH) < PS) {
+          // First a step back to 1.5x (as before 22 Nov), watched afresh.
+          sharp = false;
+          try {
+            localStorage.setItem(SOFT_KEY, "1");
+          } catch {
+            /* private mode: soft for this visit only */
+          }
+          resize();
+          probe = new FrameRateProbe(0);
+        } else if (verdict === "low") {
           rememberAutoLow(`Plaza ran at ${Math.round(probe.lastFps)} fps`);
           probe = undefined;
           goLow();
@@ -5920,7 +5951,9 @@ export function openPlaza(options) {
       nh = Math.max(1, layer.clientHeight),
       // Low graphics draws one pixel per CSS pixel; iPhones and iPads keep
       // within a pixel budget (render-budget.ts).
-      ps = low ? 1 : sceneDensity(nw, nh);
+      ps = low
+        ? 1
+        : sceneDensity(nw, nh, undefined, undefined, undefined, sharp);
     NW = nw;
     NH = nh;
     PS = ps;

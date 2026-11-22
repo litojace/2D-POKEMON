@@ -75,6 +75,11 @@ export const LARGE_IPAD_PIXEL_BUDGET = 6_000_000;
  * frame, so dragging the Plaza stays smooth. There it also stays
  * within SCENE_PIXEL_BUDGET (an iPad-sized window draws a little softer); a
  * large iPad draws up to 2× within LARGE_IPAD_PIXEL_BUDGET. Never below 1.
+ *
+ * `sharp`: up to 2× on iPhones and smaller iPads too, still within the
+ * budget. At 1.5× on a 3× iPhone every fighter and name was stretched 2×
+ * and looked soft (owner, 22 Nov); the Plaza asks for it until Auto finds
+ * the phone too slow, then steps back to 1.5× before it ever goes Low.
  */
 export function sceneDensity(
   width: number,
@@ -82,8 +87,12 @@ export function sceneDensity(
   dpr = typeof devicePixelRatio === "number" ? devicePixelRatio : 1,
   ios = isIOSDevice(),
   large = largeIPad(ios),
+  sharp = false,
 ) {
-  let d = Math.min(ios && !large ? 1.5 : 2, Number.isFinite(dpr) ? dpr : 1);
+  let d = Math.min(
+    ios && !large && !sharp ? 1.5 : 2,
+    Number.isFinite(dpr) ? dpr : 1,
+  );
   if (ios)
     d = Math.min(
       d,

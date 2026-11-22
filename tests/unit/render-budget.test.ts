@@ -58,6 +58,17 @@ it("keeps the Plaza canvas within the pixel budget on iOS", () => {
   expect(sceneDensity(800, 600, 1, false)).toBe(1);
 });
 
+it("lets the Plaza ask for 2x on an iPhone, within the same budget", () => {
+  expect(sceneDensity(844, 390, 3, true, false, true)).toBe(2);
+  expect(sceneDensity(932, 430, 3, true, false, true)).toBe(2);
+  expect(sceneDensity(844, 390, 1, true, false, true)).toBe(1);
+  // An iPad-sized window still keeps to the budget.
+  const d = sceneDensity(1194, 834, 2, true, false, true);
+  expect(Math.round(1194 * d) * Math.round(834 * d)).toBeLessThanOrEqual(
+    2_002_000,
+  );
+});
+
 it("draws sharp on large iPads (4 GB or more), as on a desktop", () => {
   // The long side of the screen, in points: iPad Pro 13" (M4), 12.9",
   // 11", iPad Air 4+ and iPad 10 are large; iPhones and older iPads not.

@@ -596,6 +596,7 @@ export function createFishing(deps: FishingDeps) {
         g.strokeStyle = "#0b1020";
         g.fillStyle = "#ff6b6b";
         const y = me.y - me.z - 118 - k * 18;
+        g.lineJoin = "round";
         g.strokeText("Missed!", me.x, y);
         g.fillText("Missed!", me.x, y);
         g.restore();
