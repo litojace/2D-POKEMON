@@ -89,7 +89,9 @@ import {
   fountainTiers,
   waterOf as fountainWater,
 } from "./plaza-fountain-art";
+import { lilyPad, pondWater } from "./plaza-pond-art";
 import {
+  cobble as stoneAt,
   fallenLeaves,
   grassEdge,
   grassLight,
@@ -1024,19 +1026,33 @@ export function openPlaza(options) {
     g.beginPath();
     g.ellipse(POND.x, POND.y + 10, POND.rx + 26, POND.ry + 18, 0, 0, 7);
     g.fill();
-    for (let i = 0; i < 64; i++) {
-      const a = (i / 64) * Math.PI * 2,
+    // Bank stones: rounded grey stones of mixed sizes, lit top left, with
+    // moss in the joints and grass growing up between them.
+    for (let i = 0; i < 70; i++) {
+      const a = ((i + (rnd() - 0.5) * 0.4) / 70) * Math.PI * 2,
         x = POND.x + Math.cos(a) * (POND.rx + 10),
         y = POND.y + Math.sin(a) * (POND.ry + 8);
-      const c = ["#c9cdd6", "#b4b9c4", "#d9dce3"][i % 3];
-      g.fillStyle = "#7f8594";
+      const c = ["#c3c8d2", "#aab0bd", "#d2d6de", "#b6bbb0"][i % 4];
+      stoneAt(g, rnd, x, y, 36 + rnd() * 6, 22 + rnd() * 4, c, a);
+    }
+    for (let i = 0; i < 90; i++) {
+      const a = rnd() * Math.PI * 2,
+        x = POND.x + Math.cos(a) * (POND.rx + 10 + (rnd() - 0.5) * 16),
+        y = POND.y + Math.sin(a) * (POND.ry + 8 + (rnd() - 0.5) * 10);
+      g.fillStyle = rnd() < 0.5 ? "rgba(90,140,70,.55)" : "rgba(130,175,90,.5)";
       g.beginPath();
-      g.ellipse(x, y + 3, 18, 11, a, 0, 7);
+      g.ellipse(x, y, 3 + rnd() * 3, 1.6 + rnd() * 1.2, a, 0, 7);
       g.fill();
-      g.fillStyle = c;
-      g.beginPath();
-      g.ellipse(x, y, 17, 10, a, 0, 7);
-      g.fill();
+    }
+    for (let i = 0; i < 40; i++) {
+      const a = rnd() * Math.PI * 2;
+      tuft(
+        g,
+        rnd,
+        POND.x + Math.cos(a) * (POND.rx + 24),
+        POND.y + Math.sin(a) * (POND.ry + 18),
+        0.8 + rnd() * 0.4,
+      );
     }
     // runway floor & catwalk
     g.fillStyle = "rgba(10,5,25,.5)";
@@ -3330,6 +3346,23 @@ export function openPlaza(options) {
    * The night's light map: each lamp, floodlight and lit window lifts the
    * darkness around it, so what it lights keeps its colours.
    */
+  /** A soft disc of one colour for the night's glows, made once. */
+  const GLOW_DISCS = new Map();
+  function glowDisc(c) {
+    let d = GLOW_DISCS.get(c);
+    if (!d) {
+      d = document.createElement("canvas");
+      d.width = d.height = 64;
+      const q = d.getContext("2d"),
+        gr = q.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, `rgba(${c},1)`);
+      gr.addColorStop(1, `rgba(${c},0)`);
+      q.fillStyle = gr;
+      q.fillRect(0, 0, 64, 64);
+      GLOW_DISCS.set(c, d);
+    }
+    return d;
+  }
   function drawNightMap(g, n, vx0, vy0, vx1, vy1) {
     nightLight.begin(g, [255 - 150 * n, 255 - 132 * n, 255 - 62 * n]);
     nightLight.follow(g);
@@ -3417,7 +3450,7 @@ export function openPlaza(options) {
         g.stroke();
       }
       g.fillStyle = "#ffffff";
-      for (let i = 0; i < 7; i++) {
+      for (let i = 0; i < (night() < 0.5 ? 7 : 0); i++) {
         const tw = Math.sin(time * 3.1 + i * 2.7);
         if (tw < 0.6) continue;
         const gx = x - 70 + ((i * 53) % 140),
@@ -3675,6 +3708,34 @@ export function openPlaza(options) {
     c: ["#4fd0ff", "#ff7fb8", "#8fe36a"][i],
   }));
   let dragonT = 0;
+  /**
+   * Petals drifting down from the cherry trees and leaves from the autumn
+   * ones: a few each, on a loop worked out from the time (nothing kept),
+   * swaying as they fall and fading as they land.
+   */
+  const SHEDDERS = TREES.filter((t) => t.k === "cherry" || t.k === "autumn");
+  function drawFalling(g, time, vx0, vy0, vx1, vy1) {
+    for (const t of SHEDDERS) {
+      if (t.x + 160 < vx0 || t.x - 160 > vx1 || t.y + 40 < vy0 || t.y - 220 > vy1)
+        continue;
+      const cols =
+        t.k === "cherry" ? ["#ffd0e2", "#ffffff", "#ff9fc4"] : ["#f2a33a", "#e8742e", "#ffd06a"];
+      for (let i = 0; i < 6; i++) {
+        const life = 5 + (i % 3),
+          k = ((time + i * 1.37 + t.ph) % life) / life,
+          sx = t.x - 60 + ((i * 47 + t.ph * 13) % 120),
+          x = sx + Math.sin(time * 1.6 + i * 2.1) * 14 + k * 30,
+          y = t.y - 150 + k * 170,
+          a = k > 0.85 ? (1 - k) / 0.15 : Math.min(1, k * 6);
+        g.globalAlpha = a * 0.9;
+        g.fillStyle = cols[i % 3];
+        g.beginPath();
+        g.ellipse(x, y, 3.2, 1.6 + Math.abs(Math.sin(time * 4 + i)) * 1.4, time * 2 + i, 0, 7);
+        g.fill();
+      }
+    }
+    g.globalAlpha = 1;
+  }
   function drawDragonflies(g, time) {
     const dt = Math.min(0.05, Math.max(0, time - dragonT));
     dragonT = time;
@@ -4484,76 +4545,90 @@ export function openPlaza(options) {
     g.arc(ball.x, y, ball.r * 0.68, ball.spin + 3.1, ball.spin + 5.3);
     g.stroke();
   }
+  /** Lily pads (clear of the dock's end, PLAZA_DOCK): x, y, radius. */
+  const LILIES = [
+    [-110, -55, 22],
+    [100, 40, 18],
+    [30, -60, 16],
+    [-60, 55, 20],
+    [140, -20, 13],
+  ];
+  /** Where rings spread on the pond now and then (a fish rising). */
+  const POND_RINGS = [
+    [-40, 10],
+    [70, -30],
+    [-130, 20],
+    [120, 60],
+  ];
   function drawPond(g, time) {
     const { x, y, rx, ry } = POND;
-    const wg = g.createRadialGradient(x - 40, y - 30, 10, x, y, rx);
-    wg.addColorStop(0, "#7fe0f0");
-    wg.addColorStop(0.7, "#2fa6cc");
-    wg.addColorStop(1, "#1a7aa6");
-    g.fillStyle = wg;
-    g.beginPath();
-    g.ellipse(x, y, rx, ry, 0, 0, 7);
-    g.fill();
+    // What lies under the water and the light on it (baked).
+    GFX.blit(g, pondWater(rx, ry), x, y);
     g.save();
     g.beginPath();
     g.ellipse(x, y, rx, ry, 0, 0, 7);
     g.clip();
+    // Fish under the water: half seen, and a little blue with the depth.
+    g.globalAlpha = 0.82;
     FISH.forEach((f) => {
       if (!f.jump) GFX.fish(g, time, f.x, f.y, f.ang);
     });
-    g.strokeStyle = "rgba(255,255,255,.28)";
-    g.lineWidth = 1.5;
-    for (let i = 0; i < 8; i++) {
-      const yy = y - ry + 20 + i * 26,
-        ph = time * 0.9 + i * 1.7;
-      g.beginPath();
-      for (let xx = x - rx; xx < x + rx; xx += 10)
-        g.lineTo(xx, yy + Math.sin(xx * 0.04 + ph) * 3);
-      g.stroke();
-    }
-    [
-      // (Clear of the dock's end, PLAZA_DOCK.)
-      [x - 110, y - 55, 22],
-      [x + 100, y + 40, 18],
-      [x + 30, y - 60, 16],
-      [x - 60, y + 55, 20],
-    ].forEach(([px, py, r], i) => {
-      const b = Math.sin(time * 1.2 + i) * 1.5;
-      g.fillStyle = "#3f9a46";
-      g.beginPath();
-      g.ellipse(px, py + b, r, r * 0.6, 0, 0.35, Math.PI * 2 - 0.35);
-      g.lineTo(px, py + b);
-      g.fill();
-      g.fillStyle = "#6fcf5a";
-      g.beginPath();
-      g.ellipse(
-        px - 2,
-        py - 2 + b,
-        r * 0.7,
-        r * 0.4,
-        0,
-        0.4,
-        Math.PI * 2 - 0.4,
-      );
-      g.lineTo(px - 2, py - 2 + b);
-      g.fill();
-      if (i % 2 === 0) {
-        for (let k = 0; k < 6; k++) {
-          g.fillStyle = k % 2 ? "#ffd0e4" : "#ff8fbd";
-          g.beginPath();
-          g.ellipse(
-            px + 4 + Math.cos(k) * 4,
-            py - 6 + b + Math.sin(k) * 2,
-            4,
-            2.5,
-            k,
-            0,
-            7,
-          );
-          g.fill();
-        }
+    g.globalAlpha = 1;
+    if (!low) {
+      // Sunlight wavering on the bottom: pale shapes that drift and breathe.
+      g.fillStyle = "rgba(210,255,255,.1)";
+      for (let i = 0; i < 9; i++) {
+        const px = x + Math.sin(time * 0.3 + i * 2.3) * rx * 0.6,
+          py = y + Math.cos(time * 0.25 + i * 1.9) * ry * 0.55,
+          s = 1 + 0.3 * Math.sin(time * 1.3 + i);
+        g.beginPath();
+        g.ellipse(px, py, 16 * s, 6 * s, Math.sin(time * 0.4 + i) * 0.4, 0, 7);
+        g.fill();
       }
+      // Rings spreading where a fish rose, one after another.
+      for (let i = 0; i < POND_RINGS.length; i++) {
+        const k = (time * 0.35 + i * 0.27) % 1,
+          [ox, oy] = POND_RINGS[i];
+        if (k > 0.75) continue;
+        g.strokeStyle = `rgba(255,255,255,${0.5 * (1 - k / 0.75)})`;
+        g.lineWidth = 1.4;
+        g.beginPath();
+        g.ellipse(x + ox, y + oy, 4 + k * 40, 2 + k * 16, 0, 0, 7);
+        g.stroke();
+      }
+    }
+    // Ripples: short broken arcs drifting across, not lines edge to edge.
+    g.strokeStyle = "rgba(255,255,255,.3)";
+    g.lineWidth = 1.5;
+    g.lineCap = "round";
+    g.beginPath();
+    for (let i = 0; i < 18; i++) {
+      const yy = y - ry + 16 + ((i * 37) % (ry * 2 - 30)),
+        xx = x - rx + ((i * 97 + time * (8 + (i % 3) * 3)) % (rx * 2)),
+        w = 14 + (i % 4) * 6;
+      g.moveTo(xx - w, yy);
+      g.quadraticCurveTo(xx, yy - 3 - Math.sin(time * 1.5 + i) * 1.5, xx + w, yy);
+    }
+    g.stroke();
+    // The lily pads, bobbing.
+    LILIES.forEach(([px, py, r], i) => {
+      const b = low ? 0 : Math.sin(time * 1.2 + i) * 1.5;
+      GFX.blit(g, lilyPad(r, i % 2 === 0), x + px, y + py + b);
     });
+    // Glints of sun on the surface, coming and going (by day).
+    if (!low && night() < 0.5) {
+      g.fillStyle = "#ffffff";
+      for (let i = 0; i < 8; i++) {
+        const tw = Math.sin(time * 2.6 + i * 2.1);
+        if (tw < 0.55) continue;
+        const gx = x - rx * 0.7 + ((i * 61) % (rx * 1.4)),
+          gy = y - ry * 0.6 + ((i * 43) % (ry * 1.2));
+        g.globalAlpha = (tw - 0.55) * 2;
+        g.fillRect(gx - 3.5, gy - 0.6, 7, 1.2);
+        g.fillRect(gx - 0.6, gy - 2.2, 1.2, 4.4);
+      }
+      g.globalAlpha = 1;
+    }
     g.restore();
     FISH.forEach((f) => {
       if (f.jump) {
@@ -5542,6 +5617,7 @@ export function openPlaza(options) {
     if (!photo) fishing.drawRod(g, P);
     BUTTER.forEach((b) => GFX.butterfly(g, time + b.ph, b.x, b.y, b.c, 1.3));
     if (!low) drawDragonflies(g, time);
+    if (!low) drawFalling(g, time, vx0, vy0, vx1, vy1);
     SMOKE.forEach((m) => {
       g.fillStyle = `rgba(240,240,245,${0.45 * (1 - m.t / m.life)})`;
       g.beginPath();
@@ -5625,16 +5701,15 @@ export function openPlaza(options) {
       drawSpotlightsNight(g, time, n);
       g.save();
       g.globalCompositeOperation = "lighter";
+      // Each glow is a soft disc of its colour, painted once and stamped
+      // at its size and strength (it made a gradient per glow per frame:
+      // 40 fireflies, the lamps and the floodlights).
       const glow = (x, y, r, c, a) => {
-        if (low) return;
+        if (low || a <= 0.005) return;
         if (x + r < vx0 || x - r > vx1 || y + r < vy0 || y - r > vy1) return;
-        const gr = g.createRadialGradient(x, y, 0, x, y, r);
-        gr.addColorStop(0, `rgba(${c},${a})`);
-        gr.addColorStop(1, `rgba(${c},0)`);
-        g.fillStyle = gr;
-        g.beginPath();
-        g.arc(x, y, r, 0, 7);
-        g.fill();
+        g.globalAlpha = Math.min(1, a);
+        g.drawImage(glowDisc(c), x - r, y - r, r * 2, r * 2);
+        g.globalAlpha = 1;
       };
       LAMPS.forEach((l) => {
         glow(l.x, l.y - LAMP_HEAD, 90, "255,214,140", 0.55 * n);
