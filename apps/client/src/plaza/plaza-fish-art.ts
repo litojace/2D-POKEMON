@@ -201,6 +201,87 @@ const SHAPES: Record<PlazaFishShape, ShapeArt> = {
         )}</g><path d="M57 21.6Q57.5 24 59 24.5M55.5 22Q55.5 24.5 56.8 25.5" fill="none" stroke="${fin}" stroke-width=".9" stroke-linecap="round"/>`,
     span: [8, 55, 20, 5.5],
   },
+  trout: {
+    body: "M9 20C14 11 38 9.5 52 15.5Q58.5 20 52 24.5C38 30.5 14 29 9 20Z",
+    fins: [
+      "M11 20 1 9Q5 15 4 20Q5 25 1 31Z",
+      "M24 12.5Q29 4.5 36 11Z",
+      "M15 14.5Q17 11 19.5 13.6Z",
+      "M18 26.5Q21 31 25 27.5Z",
+      "M30 28Q33 32 36.5 28.5Z",
+    ],
+    rays: "M3 12 10 19M2.5 20H10M3 28 10 21M27 10 29 6M31 10 33 6.5M20 27.5 21 30M33 28.5 34 31",
+    front: "M38 22.5Q32 26.5 30.5 23.5Q34 21.5 38 22.5Z",
+    eye: [48, 17.5, 2.4],
+    gill: "M43 13Q39.5 20 43 26",
+    mouth: "M56 20.8Q53.5 22 52 21.2",
+    span: [12, 53, 20, 8],
+  },
+  puffer: {
+    body: "M14 20C14 9 26 5 38 7.5C49 10 55 15 55 20C55 25 49 30 38 32.5C26 35 14 31 14 20Z",
+    fins: [
+      "M15 20 5 13Q8 20 5 27Z",
+      "M30 7.2Q34 1.5 39.5 7.6Z",
+      "M30 32.8Q34 38.5 39.5 32.4Z",
+    ],
+    rays: "M7 15 14 19.5M6 20H14M7 25 14 20.5M32 6 34 3.2M36.2 6.6 37.6 3.8M32 34 34 36.8M36.2 33.4 37.6 36.2",
+    front: "M42 23Q36 27 35 24Q38 21.5 42 23Z",
+    eye: [47, 16, 3],
+    gill: "M41 12Q37 20 41 28",
+    mouth: "M55 21.5Q53 23 51.5 22",
+    // Its spines, standing out all round.
+    extra: (fin, dark) =>
+      `<path d="${[
+        [20, 11],
+        [26, 7.5],
+        [44, 9],
+        [50, 12.5],
+        [18, 28],
+        [25, 32],
+        [44, 31],
+        [50, 27.5],
+        [16, 20],
+      ]
+        .map(([x, y]) => {
+          const dx = x - 35,
+            dy = y - 20,
+            l = Math.hypot(dx, dy);
+          return `M${x} ${y}l${((dx / l) * 2.6).toFixed(1)} ${((dy / l) * 2.6).toFixed(1)}`;
+        })
+        .join(
+          "",
+        )}" fill="none" stroke="${dark}" stroke-width="1.1" stroke-linecap="round"/>`,
+    span: [16, 54, 20, 11],
+  },
+  ray: {
+    body: "M8 20C16 17 22 6 36 5C48 4.5 56 13 57 20C56 27 48 35.5 36 35C22 34 16 23 8 20Z",
+    fins: ["M10 19 1 18Q0.3 20 1 22L10 21Z", "M15 19 11 16Q12 20 11 24L15 21Z"],
+    rays: "M20 20Q30 12 44 9M20 20Q30 28 44 31M24 20H48M22 17Q32 10 40 7.5M22 23Q32 30 40 32.5",
+    eye: [47, 15.5, 1.9],
+    gill: "M44 13.5Q42.5 20 44 26.5",
+    mouth: "M57 20.6Q55.5 21.4 54.5 20.8",
+    // The other eye, on the far side of its head.
+    extra: (_fin, dark) =>
+      `<circle cx="47" cy="24.5" r="1.9" fill="#fff" stroke="${dark}" stroke-width=".6"/><circle cx="47.3" cy="24.5" r="1.2" fill="#0b1020"/>`,
+    span: [14, 54, 20, 9],
+  },
+  marlin: {
+    body: "M8 21C14 13 34 11 48 16Q53 19 52 21.5C46 25.5 30 28.5 18 26.5C13 25.5 10 23.5 8 21Z",
+    fins: [
+      "M10 21 2 7Q7 14 5.5 21Q7 28 2 35Z",
+      "M22 14C24 4 34 1 44 4C40 8 38 11 40 15.5Z",
+      "M26 26Q30 31 34 26.5Z",
+    ],
+    rays: "M3 9 9 20M2.8 33 9 22M26 12 28 5M31 11 33 3.8M36 11 38 4.5M40.5 13 42.5 6",
+    front: "M40 21.5Q33 26 31.5 23Q35 20.5 40 21.5Z",
+    eye: [46, 17.8, 2.2],
+    gill: "M42 14.5Q39.5 20 42 24.5",
+    mouth: "M51 21.2Q49.5 22 48.6 21.5",
+    // The long bill.
+    extra: (fin, dark) =>
+      `<path d="M50 18.4L63.5 18.1L50.6 20.6Z" fill="${fin}" stroke="${dark}" stroke-width=".7" stroke-linejoin="round"/>`,
+    span: [12, 48, 20.5, 6],
+  },
 };
 
 /** Mix a colour toward another (0 = a, 1 = b). */
