@@ -5925,6 +5925,13 @@ export function openPlaza(options) {
       }
     } else coveredAt = undefined;
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
+    // You (and the ball you kick) move by the time that really passed, in
+    // the server's own 0.05 s steps, up to half a second a frame.
+    // With only the capped dt, a device under 20 fps moved you less than
+    // the server did with the same stick: a Go walk stopped where the
+    // browser had you while the server's copy walked on (past the dock's
+    // end on a slow CI runner), and every correction pulled you after it.
+    const moveDt = Math.max(0, Math.min(0.5, (now - last) / 1000));
     // The fireworks keep to the clock down to 4 frames a second: at dt's
     // 0.05 s cap a slow device (under 20 fps) aged their sparks in slow
     // motion, and the show outlasted PLAZA_WISH.showMs by many seconds.
@@ -5948,8 +5955,17 @@ export function openPlaza(options) {
       sendInput(dir, now);
       const ox = P.x,
         oy = P.y;
-      const ev2 = plazaStep(P, sent, dt);
-      stepClock += dt * 1000;
+      const ev2: { bounced?: number; landed?: boolean; tripped?: boolean } = {};
+      for (let left = moveDt; left > 1e-6; left -= 0.05) {
+        const h = Math.min(0.05, left);
+        const e = plazaStep(P, sent, h);
+        if (e.bounced !== undefined) ev2.bounced = e.bounced;
+        if (e.landed) ev2.landed = true;
+        if (e.tripped) ev2.tripped = true;
+        // The ball you run into, step by step with you (plaza-net.ts).
+        net.ball?.step(P, h, performance.now());
+      }
+      stepClock += moveDt * 1000;
       if (ev2.bounced !== undefined)
         FX.push({
           ring: 1,
@@ -6033,7 +6049,7 @@ export function openPlaza(options) {
         // Your kicks move it at once; the server's ball keeps it honest.
         const ox2 = ball.x,
           oy2 = ball.y;
-        net.ball.step(P, dt, performance.now());
+        // (Stepped with you above.)
         const nb = net.ball.ball;
         ball.x = nb.x;
         ball.y = nb.y;

@@ -285,3 +285,40 @@ test("on a phone, moving the joystick takes back a Go walk", async ({
     await context.close();
   }
 });
+
+// A device under 20 fps: the browser moved you only 0.05 s a frame while
+// the server moved you for the time that really passed, so a Go walk
+// stopped late on the server and its copy walked on past the place (40-66
+// px with the CPU slowed 6x; on a CI runner, off the end of the dock). Now
+// you move by the real time, in the server's own steps.
+test("on a slow device a Go walk stops where it was going", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  const errors = await openPlaza(page);
+  await (
+    await page.context().newCDPSession(page)
+  ).send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  const server = () =>
+    page.evaluate(() => {
+      const b = (window as any).__plazaWorld.bodyOf("local");
+      return { x: b.x, y: b.y };
+    });
+  for (const id of ["pond", "cafe"]) {
+    const p = PLAZA_PLACES.find((x) => x.id === id)!;
+    await page.click("#pz-map-btn");
+    await page.locator(`.pz-map-list [data-place="${id}"]`).click();
+    // Until the server's copy stands still (four looks in a row).
+    let last = await server(),
+      still = 0;
+    for (let i = 0; i < 160 && still < 4; i++) {
+      await page.waitForTimeout(250);
+      const b = await server();
+      still = Math.hypot(b.x - last.x, b.y - last.y) < 1 ? still + 1 : 0;
+      last = b;
+    }
+    expect(still, id).toBe(4);
+    expect(Math.hypot(last.x - p.x, last.y - p.y), id).toBeLessThan(24);
+  }
+  expect(errors).toEqual([]);
+});
