@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { box, inside, openLobby, snap } from "./helpers";
+import { box, inside, openLobby, pushUntilBattle, snap } from "./helpers";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
 
 // UI remodel step 3 (docs/ui-remodel/PLAN.md): the roster and the fighter
@@ -349,5 +349,63 @@ test("Show all keeps keyboard focus in the roster", async ({ page }) => {
       () => !!document.activeElement?.closest(".roster-room"),
     ),
   ).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test("Test skills starts Solo test with that fighter, with EX skills and a damage meter", async ({
+  page,
+}) => {
+  const errors = await openLobby(page);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__room("practice");
+    w.__sent = [];
+    const before = w.__emit;
+    w.__emit = (ev: string, data: unknown) => {
+      w.__sent.push([ev, data]);
+      before?.(ev, data);
+    };
+  });
+  await page.click('.lobby-rail [data-lobby-action="fighters"]');
+  await page.click('[data-roster-card="mystowl"]');
+  await page.click("[data-roster-details]");
+  await page.click("[data-roster-try]");
+  await expect(page.locator(".roster-room")).toHaveCount(0);
+  // Solo test is asked for with the fighter shown, which is now yours.
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window as any).__sent.find(([ev]: [string]) => ev === "practice"),
+      ),
+    )
+    .toEqual(["practice", expect.objectContaining({ character: "mystowl" })]);
+  await pushUntilBattle(page);
+  await page.click("#practice-settings > summary");
+  await expect(page.locator("#practice-ex")).not.toBeChecked();
+  await expect(page.locator("#practice-stats")).toContainText("Last hit: 0");
+  await expect(page.locator("#practice-stats")).toContainText("DPS (5s): 0");
+  // EX skills: skills 1-3 go out as their EX version.
+  await page.check("#practice-ex");
+  await page.click("#practice-close");
+  await page.evaluate(() => ((window as any).__sent = []));
+  await page.keyboard.press("1");
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window as any).__sent.some(
+          ([ev, d]: [string, any]) => ev === "input" && d?.skill === 0 && d.ex,
+        ),
+      ),
+    )
+    .toBe(true);
+  // The meter reads the damage the server reports.
+  await page.evaluate(() => {
+    const w = window as any;
+    const me = w.__snap.players.find((p: any) => p.id === "me");
+    me.stats.dealt += 24;
+    w.__snap.time += 0.1;
+    w.__push();
+  });
+  await expect(page.locator("#practice-stats")).toContainText("Last hit: 24");
   expect(errors).toEqual([]);
 });

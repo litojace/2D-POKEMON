@@ -520,6 +520,10 @@ function detailMarkup(view: RosterView, d: RosterData) {
             icon: "wardrobe",
             attrs: { "data-roster-skins": c },
           }),
+          button("Test skills", {
+            icon: "target",
+            attrs: { "data-roster-try": c },
+          }),
           button(lock ? "Lock in" : chosen ? "Playing" : "Select", {
             kind: "primary",
             icon: lock ? "lock" : "check",
