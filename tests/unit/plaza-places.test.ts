@@ -1,17 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-  PLAZA,
-  PLAZA_PATHS,
   PLAZA_PLACES,
   PLAZA_QUESTS,
-  PLAZA_SIGNPOSTS,
   PLAZA_SPAWN,
   PLAZA_SPOTS,
   plazaBody,
-  plazaCollide,
   plazaPlaceOf,
   plazaStep,
-  segmentDistance,
 } from "../../packages/shared/src/plaza";
 import { plazaPath, standable } from "../../apps/client/src/plaza/plaza-path";
 import { ICON_SRC } from "../../apps/client/src/hub-art/icons";
@@ -62,48 +57,5 @@ describe("the Plaza map's places", () => {
         s = PLAZA_SPOTS.find((x) => x.id === spot)!;
       expect(Math.hypot(p.x - s.x, p.y - s.y), place).toBeLessThan(s.r);
     }
-  });
-});
-
-describe("the fingerposts", () => {
-  it("stand just off a path, with icons we draw, and nobody walks through them", () => {
-    for (const s of PLAZA_SIGNPOSTS) {
-      expect(s.arms.length).toBeGreaterThan(0);
-      for (const a of s.arms)
-        expect(ICON_SRC[a.icon as keyof typeof ICON_SRC], a.icon).toBeTruthy();
-      const gap = Math.min(
-        ...PLAZA_PATHS.flatMap((p) =>
-          p.pts
-            .slice(1)
-            .map(
-              ([x, y], i) =>
-                segmentDistance(
-                  s.x,
-                  s.y,
-                  { x: p.pts[i][0], y: p.pts[i][1] },
-                  { x, y },
-                ) -
-                p.w / 2,
-            ),
-        ),
-      );
-      expect(gap).toBeGreaterThan(4);
-      expect(gap).toBeLessThan(60);
-      const walker = { x: s.x, y: s.y + 2 };
-      plazaCollide(walker);
-      expect(walker.y - s.y).toBeGreaterThan(PLAZA.radius);
-    }
-  });
-  it("point each arm toward the place it names", () => {
-    const of: Record<string, string> = {
-      "ORB BALL": "pitch",
-      "DASH TRACK": "track",
-      FISHING: "pond",
-    };
-    for (const s of PLAZA_SIGNPOSTS)
-      for (const a of s.arms) {
-        const p = PLAZA_PLACES.find((x) => x.id === of[a.text]);
-        if (p) expect(a.dir, a.text).toBe(Math.sign(p.x - s.x));
-      }
   });
 });

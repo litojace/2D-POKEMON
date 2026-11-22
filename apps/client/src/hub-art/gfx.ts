@@ -463,176 +463,191 @@ const GFX = (() => {
     );
   }
   /* ---------------- props ---------------- */
+  /**
+   * A park street lamp: a stepped cast-iron base, a fluted post with
+   * collars, a lantern of four glass panes (two face you) under a domed cap
+   * with a finial, and a little scroll bracket. Iron is lit on its left
+   * (the Plaza's light comes from the top left). glow: the lantern's middle.
+   */
   const lamp = () =>
     memo("lamp", () =>
-      sprite(40, 110, 20, 104, (g) => {
-        g.fillStyle = "#283048";
-        rr(g, -9, -8, 18, 9, 3);
+      sprite(40, 126, 20, 119, (g) => {
+        const IRON = "#2a3150",
+          IRON_D = "#171c30",
+          IRON_L = "#56628c";
+        // The base: a plinth and a tapering foot, in two steps.
+        g.fillStyle = hg(g, -11, 11, IRON_L, IRON_D);
+        rr(g, -11, -7, 22, 8, 2.5);
         g.fill();
-        g.fillStyle = hg(g, -3, 3, "#4a5578", "#1f2538");
-        rr(g, -3, -78, 6, 72, 3);
-        g.fill();
-        g.fillStyle = "#283048";
-        rr(g, -11, -84, 22, 6, 2);
-        g.fill();
+        g.fillStyle = hg(g, -8, 8, IRON_L, IRON_D);
         g.beginPath();
-        g.moveTo(-9, -84);
-        g.lineTo(-7, -100);
-        g.lineTo(7, -100);
-        g.lineTo(9, -84);
-        g.closePath();
-        g.fillStyle = vg(g, -100, -84, "#fff6d0", "#ffd36b");
-        g.fill();
-        g.strokeStyle = "#283048";
-        g.lineWidth = 2;
-        g.stroke();
-        g.beginPath();
-        g.moveTo(0, -100);
-        g.lineTo(0, -84);
-        g.stroke();
-        g.fillStyle = "#283048";
-        g.beginPath();
-        g.moveTo(-11, -100);
-        g.lineTo(0, -108);
-        g.lineTo(11, -100);
+        g.moveTo(-8, -7);
+        g.quadraticCurveTo(-5, -12, -4, -20);
+        g.lineTo(4, -20);
+        g.quadraticCurveTo(5, -12, 8, -7);
         g.closePath();
         g.fill();
-        g.beginPath();
-        g.arc(0, -109, 2.5, 0, 7);
+        // The post, fluted: a darker groove right of its lit edge.
+        g.fillStyle = hg(g, -3, 3, IRON_L, IRON_D);
+        rr(g, -3, -80, 6, 62, 2.5);
         g.fill();
-        return { glow: [0, -92] };
-      }),
-    );
-  const bench = () =>
-    memo("bench", () =>
-      sprite(92, 56, 46, 50, (g) => {
-        g.fillStyle = "#2c3348";
-        [-34, 30].forEach((x) => {
-          rr(g, x, -22, 5, 22, 2);
-          g.fill();
-          rr(g, x - 1, -40, 6, 20, 2);
-          g.fill();
-        });
-        for (let i = 0; i < 3; i++) {
-          rr(g, -40, -44 + i * 7, 80, 5, 2);
-          g.fillStyle = vg(g, -44 + i * 7, -39 + i * 7, "#e2a868", "#b06e38");
+        g.strokeStyle = "rgba(10,14,28,.45)";
+        g.lineWidth = 0.8;
+        g.beginPath();
+        g.moveTo(0.6, -78);
+        g.lineTo(0.6, -21);
+        g.stroke();
+        g.strokeStyle = "rgba(160,176,220,.35)";
+        g.beginPath();
+        g.moveTo(-1.6, -78);
+        g.lineTo(-1.6, -21);
+        g.stroke();
+        // Collars on the post.
+        for (const y of [-22, -52, -79]) {
+          g.fillStyle = hg(g, -5, 5, IRON_L, IRON_D);
+          rr(g, -5, y - 1.5, 10, 3.5, 1.5);
           g.fill();
         }
-        rr(g, -42, -24, 84, 8, 3);
-        g.fillStyle = vg(g, -24, -16, "#f0b878", "#a8642f");
+        // A scroll bracket each side under the lantern.
+        g.strokeStyle = IRON;
+        g.lineWidth = 1.6;
+        for (const d of [-1, 1]) {
+          g.beginPath();
+          g.moveTo(d * 2, -70);
+          g.quadraticCurveTo(d * 10, -74, d * 9, -82);
+          g.arc(d * 7, -81, 2, d > 0 ? 0 : Math.PI, d > 0 ? Math.PI * 1.6 : -Math.PI * 0.6, d < 0);
+          g.stroke();
+        }
+        // The lantern's floor.
+        g.fillStyle = hg(g, -11, 11, IRON_L, IRON_D);
+        rr(g, -11, -86, 22, 5, 2);
         g.fill();
-        g.strokeStyle = "#6e3e1c";
-        g.lineWidth = 1.2;
+        // Glass: warm light, brighter low down where the flame is.
+        g.beginPath();
+        g.moveTo(-9, -86);
+        g.lineTo(-7.5, -101);
+        g.lineTo(7.5, -101);
+        g.lineTo(9, -86);
+        g.closePath();
+        g.fillStyle = vg(g, -101, -86, "#fff2c4", "#ffe9a0", "#ffc85a");
+        g.fill();
+        // The flame's bright heart and the panes' sheen.
+        g.fillStyle = "rgba(255,255,255,.75)";
+        ell(g, 0, -91, 2.6, 4);
+        g.fill();
+        g.fillStyle = "rgba(255,255,255,.35)";
+        g.beginPath();
+        g.moveTo(-6.5, -88);
+        g.lineTo(-5.4, -99);
+        g.lineTo(-3.6, -99);
+        g.lineTo(-4.4, -88);
+        g.closePath();
+        g.fill();
+        // The frame: its edges and the middle muntin.
+        g.strokeStyle = IRON;
+        g.lineWidth = 1.8;
+        g.beginPath();
+        g.moveTo(-9, -86);
+        g.lineTo(-7.5, -101);
+        g.lineTo(7.5, -101);
+        g.lineTo(9, -86);
+        g.moveTo(0, -101);
+        g.lineTo(0, -86);
         g.stroke();
+        // The cap: a dome over a brim, a finial on top.
+        g.fillStyle = hg(g, -12, 12, IRON_L, IRON_D);
+        rr(g, -12, -104, 24, 4, 2);
+        g.fill();
+        g.beginPath();
+        g.moveTo(-9.5, -104);
+        g.quadraticCurveTo(-8, -112, 0, -113);
+        g.quadraticCurveTo(8, -112, 9.5, -104);
+        g.closePath();
+        g.fill();
+        g.fillStyle = "rgba(170,186,230,.45)";
+        ell(g, -4, -108, 3, 1.4, -0.4);
+        g.fill();
+        g.fillStyle = IRON;
+        g.beginPath();
+        g.arc(0, -115, 2.2, 0, 7);
+        g.fill();
+        return { glow: [0, -93] };
       }),
     );
   /**
-   * A wooden fingerpost: a post with one arrow plank per way (dir 1 points
-   * right), stacked top to bottom, each with its icon on a round badge at
-   * the tail and its words. `icon(name)` gives the hub icon's image; the
-   * sprite is kept only once every icon has loaded (a sign painted before
-   * would keep empty badges). Planks alternate a little in tone and tilt,
-   * like boards nailed up one at a time.
+   * A park bench: cast-iron ends with curled arms, wooden slats with their
+   * grain and a lit top edge each, the seat seen a little from above.
    */
-  const signpost = (arms, icon) => {
-    const key = `signpost:${arms.map((a) => `${a.text}/${a.dir}/${a.icon}`).join("|")}`;
-    if (cache.has(key)) return cache.get(key);
-    // Painted before its icons had loaded: that one, again at most twice a
-    // second (not a new canvas every frame).
-    const early = signEarly.get(key);
-    if (early && performance.now() - early.at < 500) return early.spr;
-    const ims = arms.map((a) => icon?.(a.icon));
-    const ready = ims.every((im) => !im || im.complete);
-    const STEP = 34,
-      top = 66 + arms.length * STEP;
-    const spr = sprite(170, top + 18, 85, top + 8, (g) => {
-      // The post, with a little cap.
-      g.fillStyle = vg(g, -top, 0, "#7a5230", "#5a3a1e");
-      rr(g, -4.5, -top + 14, 9, top - 14, 3);
-      g.fill();
-      g.fillStyle = "#4a2e16";
-      rr(g, -6.5, -top + 10, 13, 7, 3);
-      g.fill();
-      g.fillStyle = "rgba(255,255,255,.18)";
-      g.fillRect(-3, -top + 18, 2, top - 22);
-      arms.forEach((arm, i) => {
-        const y = -top + 30 + i * STEP,
-          d = arm.dir,
-          tilt = (i % 2 ? -1 : 1) * 0.025 * d;
-        g.save();
-        g.translate(0, y);
-        g.rotate(tilt);
-        g.scale(d, 1);
-        const plank = () => {
+  const bench = () =>
+    memo("bench", () =>
+      sprite(92, 56, 46, 50, (g) => {
+        const IRON = "#2c3348",
+          IRON_L = "#56628c";
+        // The far legs and the back's uprights, behind the slats.
+        g.fillStyle = IRON;
+        [-35, 30].forEach((x) => {
+          rr(g, x, -44, 5, 26, 2);
+          g.fill();
+        });
+        // The back: three slats, each with a lit edge and grain.
+        for (let i = 0; i < 3; i++) {
+          const y = -45 + i * 7;
+          rr(g, -41, y, 82, 5, 2);
+          g.fillStyle = vg(g, y, y + 5, "#e6ad6c", "#b47038");
+          g.fill();
+          g.fillStyle = "rgba(255,236,200,.55)";
+          g.fillRect(-39, y + 0.6, 78, 1);
+          g.strokeStyle = "rgba(110,60,25,.35)";
+          g.lineWidth = 0.6;
           g.beginPath();
-          g.moveTo(-60, -14);
-          g.lineTo(50, -14);
-          g.lineTo(70, 0);
-          g.lineTo(50, 14);
-          g.lineTo(-60, 14);
-          g.closePath();
-        };
-        g.fillStyle = "rgba(0,0,0,.25)";
-        g.save();
-        g.translate(0, 3);
-        plank();
-        g.fill();
-        g.restore();
-        plank();
-        g.fillStyle = vg(
-          g,
-          -14,
-          14,
-          i % 2 ? "#cf9656" : "#c48a4a",
-          i % 2 ? "#946234" : "#8a5a30",
-        );
-        g.fill();
-        g.strokeStyle = "#5a3a1e";
-        g.lineWidth = 2.5;
-        g.stroke();
-        // Grain and the nail into the post.
-        g.strokeStyle = "rgba(90,58,30,.35)";
+          for (let k = 0; k < 4; k++) {
+            const gx = -34 + ((i * 23 + k * 19) % 70);
+            g.moveTo(gx, y + 2.5);
+            g.lineTo(gx + 8, y + 2.8);
+          }
+          g.stroke();
+        }
+        // The seat: two slats seen from above.
+        for (let i = 0; i < 2; i++) {
+          const y = -25 + i * 5;
+          rr(g, -42, y, 84, 5, 2);
+          g.fillStyle = vg(g, y, y + 5, i ? "#d89a5a" : "#f2bb7c", "#a8642f");
+          g.fill();
+          g.fillStyle = "rgba(255,240,210,.5)";
+          g.fillRect(-40, y + 0.6, 80, 1);
+        }
+        g.strokeStyle = "#6e3e1c";
         g.lineWidth = 1;
-        g.beginPath();
-        g.moveTo(-54, -5);
-        g.lineTo(40, -6);
-        g.moveTo(-50, 6);
-        g.lineTo(46, 5);
+        rr(g, -42, -25, 84, 10, 3);
         g.stroke();
-        g.fillStyle = "#3a2614";
-        g.beginPath();
-        g.arc(0, 0, 1.8, 0, 7);
-        g.fill();
-        // The badge at the tail, with the place's icon.
-        g.fillStyle = "#fff4d6";
-        g.beginPath();
-        g.arc(-44, 0, 11.5, 0, 7);
-        g.fill();
-        g.strokeStyle = "#5a3a1e";
-        g.lineWidth = 2;
-        g.stroke();
-        g.scale(d, 1);
-        const im = ims[i];
-        if (im && im.complete) g.drawImage(im, -44 * d - 9, -9, 18, 18);
-        // The words, the right way round whichever way it points.
-        g.fillStyle = "#fff4d6";
-        g.strokeStyle = "#4a2e16";
-        g.lineWidth = 3;
-        g.font = "800 17px 'Barlow Condensed', sans-serif";
-        g.textAlign = "center";
-        g.textBaseline = "middle";
-        g.strokeText(arm.text, d * 12, 1);
-        g.fillText(arm.text, d * 12, 1);
-        g.restore();
-      });
-    });
-    if (ready) {
-      cache.set(key, spr);
-      signEarly.delete(key);
-    } else signEarly.set(key, { spr, at: performance.now() });
-    return spr;
-  };
-  const signEarly = new Map();
+        // The iron ends: a curled arm and a curved front leg each side.
+        for (const x of [-38, 38]) {
+          const d = x < 0 ? -1 : 1;
+          g.strokeStyle = IRON;
+          g.lineWidth = 3.2;
+          g.beginPath();
+          g.moveTo(x, -2);
+          g.quadraticCurveTo(x + d * 2, -10, x, -16);
+          g.lineTo(x, -28);
+          g.quadraticCurveTo(x - d * 1, -33, x - d * 6, -32);
+          g.stroke();
+          g.lineWidth = 2.2;
+          g.beginPath();
+          g.arc(x - d * 6, -30, 2.2, 0, 7);
+          g.stroke();
+          // Its foot and the lit edge on the iron.
+          g.fillStyle = IRON;
+          rr(g, x - 4, -3, 8, 3, 1.2);
+          g.fill();
+          g.strokeStyle = IRON_L;
+          g.lineWidth = 0.9;
+          g.beginPath();
+          g.moveTo(x - 1, -4);
+          g.quadraticCurveTo(x + d * 1, -10, x - 1, -16);
+          g.stroke();
+        }
+      }),
+    );
 
   /* ---------------- by the fishing dock (PLAZA_DECOR) ---------------- */
   /** A rack of fishing rods: an A-frame with three rods leaning on it. */
@@ -2142,6 +2157,7 @@ const GFX = (() => {
   }
   return {
     R,
+    memo,
     mix,
     lt,
     dk,
@@ -2159,7 +2175,6 @@ const GFX = (() => {
     rock,
     lamp,
     bench,
-    signpost,
     rodRack,
     bucket,
     tackleBox,

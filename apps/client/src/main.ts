@@ -445,8 +445,14 @@ import "./chat/chat.css";
 import "./ui/aero.css";
 import "./ui/light-effects.css";
 import { syncUiEffects } from "./ui/ui-effects";
-import { PRACTICE_DPS_WINDOW, practiceMeter } from "./practice-meter";
+import { practiceMeter } from "./practice-meter";
+import {
+  PRACTICE_STATS,
+  practicePanelMarkup,
+  type PracticeStat,
+} from "./practice-panel";
 import "./ui/phone-fit.css";
+import "./settings-screen.css";
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(
@@ -3588,17 +3594,7 @@ function renderBattle() {
     // Solo test mode keeps its only leave action inside the Practice panel.
     document.body.classList.toggle("practice-active", !!state.practice);
     if (state.practice) {
-      $("practice-controls").innerHTML =
-        `<details id="practice-settings" class="practice-settings"><summary>Practice</summary><div class="practice-panel"><div class="practice-heading"><span class="eyebrow">Solo test mode</span><span id="practice-stats"></span><button type="button" class="quiet" id="practice-close" aria-label="Close Practice">×</button></div><div class="practice-actions"><label>Creature <select id="practice-character">${Object.values(
-          CHARACTERS,
-        )
-          .map(
-            (c) =>
-              `<option value="${c.id}" ${me.character === c.id ? "selected" : ""}>${c.name}</option>`,
-          )
-          .join(
-            "",
-          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><label><input id="practice-ex" type="checkbox"> EX skills (1–3)</label><button class="secondary btn-secondary" id="practice-reset">${iconLabel("again", "Reset arena")}</button><button class="quiet leave-button" id="practice-exit">${iconLabel("leave", "Exit test mode")}</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. EX skills casts skills 1–3 as their stronger EX version. Hover a skill for its description.</p></div></details>`;
+      $("practice-controls").innerHTML = practicePanelMarkup(me.character);
       $("practice-settings").addEventListener("toggle", () => {
         if (($("practice-settings") as HTMLDetailsElement).open) stopControls();
       });
@@ -3666,13 +3662,16 @@ function renderBattle() {
     me.statuses.some((s) => s.kind === "blind" && s.until > state!.time),
   );
   if (state.practice) {
-    setHudText(
-      $("practice-stats"),
-      (() => {
-        const hit = practiceDamage.update(me.stats.dealt, state.time);
-        return `Last hit: ${hit.lastHit} · DPS (${PRACTICE_DPS_WINDOW}s): ${hit.dps} · Damage dealt: ${Math.round(me.stats.dealt)} · Damage taken: ${Math.round(me.stats.received)} · Skills used: ${me.stats.skills}`;
-      })(),
-    );
+    const hit = practiceDamage.update(me.stats.dealt, state.time);
+    const numbers: Record<PracticeStat, number> = {
+      last: hit.lastHit,
+      dps: hit.dps,
+      dealt: Math.round(me.stats.dealt),
+      taken: Math.round(me.stats.received),
+      skills: me.stats.skills,
+    };
+    for (const [id] of PRACTICE_STATS)
+      setHudText($(`practice-${id}`), numbers[id].toLocaleString("en-US"));
     $<HTMLInputElement>("practice-unlimited").checked =
       state.practice.unlimitedCooldowns;
     $<HTMLInputElement>("practice-attacks").checked =
@@ -4683,11 +4682,11 @@ function leaveButton() {
   return `<button id="exit-room" class="secondary btn-secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave match</span><small>Counts as a forfeit</small></button>`;
 }
 /** Settings → Graphics: Auto, High or Low for the Plaza (graphics-quality.ts). */
-function graphicsCard() {
+function graphicsRow() {
   const setting = graphicsSetting();
   const option = (value: GraphicsSetting, label: string) =>
     `<button type="button" role="radio" data-graphics="${value}" aria-checked="${setting === value}">${label}</button>`;
-  return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p>${softwareRendering() ? GPU_OFF_NOTE : ""}</section>`;
+  return `<div class="st-row st-graphics"><span class="st-row-text"><b id="prefs-graphics">Graphics</b><small class="prefs-graphics-note">${graphicsNote(setting)}</small></span><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div></div>${softwareRendering() ? GPU_OFF_NOTE : ""}`;
 }
 /** Shown when the browser draws without the graphics card (gpu-check.ts). */
 const GPU_OFF_NOTE =
@@ -4768,12 +4767,41 @@ function syncPrefOutputs(root: ParentNode) {
   }
 }
 const syncDialogPrefs = () => syncPrefOutputs($<HTMLDialogElement>("dialog"));
+/**
+ * Settings: Sound on the left; on the right, Display in the hub (graphics,
+ * full screen, motion) or This match in a battle (practice tools, leave,
+ * motion). Rows of a label and its control, the same everywhere. Controls,
+ * Report and Credits sit in the footer. Fits a phone held sideways without
+ * scrolling (settings-screen.css).
+ */
+function settingsMarkup(reduced: boolean) {
+  const motion = `<div class="st-row"><span class="st-row-text"><b>Reduced motion</b><small>Follows your device's accessibility setting.</small></span><span class="st-badge${reduced ? " is-on" : ""}">${reduced ? "On" : "Off"}</span></div>`;
+  const sound = `<section class="prefs-card st-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section>`;
+  let side: string;
+  if (state) {
+    // In a room: what this match offers, then motion.
+    const practiceTools =
+      state.practice && touch.enabled
+        ? `<div class="st-row settings-quick-actions"><span class="st-row-text"><b>Solo test</b><small>Fighter, cooldowns, target and your numbers.</small></span><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice tools")}</button></div>`
+        : "";
+    const note = state.practice
+      ? ""
+      : `<p class="st-note">Online matches keep running while this is open.</p>`;
+    side = `<section class="prefs-card st-card" aria-labelledby="prefs-match"><h3 id="prefs-match">${menuIcon("battle")}This match</h3>${note}${practiceTools}${motion}</section>`;
+  } else
+    side = `<section class="prefs-card st-card" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3>${graphicsRow()}${isNativeApp() ? "" : fullscreenRow()}${motion}</section>`;
+  const appIcon = !state && isNativeApp() ? appIconCardHTML() : "";
+  const leave = myId
+    ? leaveButton()
+    : watching
+      ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>`
+      : "";
+  return `<div class="settings-screen st"><h2>Settings</h2><div class="st-cols">${sound}${side}${appIcon}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel(touch.enabled ? "settings" : "keyboard", touch.enabled ? "Controls" : "Controls &amp; keys")}</button>${leave}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`;
+}
 function showSettings() {
   settingsOpen = true;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  dialog(
-    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${state ? "" : isNativeApp() ? " has-graphics" : " has-display has-graphics"}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${state ? "" : isNativeApp() ? graphicsCard() + appIconCardHTML() : displayCard() + graphicsCard()}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
-  );
+  dialog(settingsMarkup(reduced));
   bindGraphicsCard();
   void bindAppIconCard(toast);
   for (const kind of ["music", "effects"] as const)
@@ -4805,9 +4833,9 @@ function showSettings() {
 const fullscreenSupported = () =>
   !!document.documentElement.requestFullscreen &&
   document.fullscreenEnabled !== false;
-function displayCard() {
+function fullscreenRow() {
   const on = !!document.fullscreenElement;
-  return `<section class="prefs-card prefs-display" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3><div class="prefs-toggle-row"><span><b>Full screen</b><small>${fullscreenSupported() ? "Hide the browser's bars while you play." : "On iPhone, add the game to your Home Screen to play full screen."}</small></span><button type="button" class="prefs-switch" id="settings-fullscreen" role="switch" aria-checked="${on}" ${fullscreenSupported() ? "" : "disabled"}><span>${on ? "On" : "Off"}</span></button></div></section>`;
+  return `<div class="st-row"><span class="st-row-text"><b id="prefs-fullscreen">Full screen</b><small>${fullscreenSupported() ? "Hide the browser's bars while you play." : "On iPhone, add the game to your Home Screen to play full screen."}</small></span><button type="button" class="prefs-switch" id="settings-fullscreen" role="switch" aria-labelledby="prefs-fullscreen" aria-checked="${on}" ${fullscreenSupported() ? "" : "disabled"}><span>${on ? "On" : "Off"}</span></button></div>`;
 }
 function syncDisplayCard() {
   const button = document.getElementById("settings-fullscreen");
@@ -4845,24 +4873,7 @@ function showControls() {
     box: $<HTMLDialogElement>("dialog"),
     onBack: showSettings,
     padConnected: !!firstPad(),
-    // Touch controls live here (Settings keeps room for Graphics).
-    touch: touch.available
-      ? {
-          html: touch.settingsHTML(),
-          bind() {
-            touch.bindSettings();
-            const box = $<HTMLDialogElement>("dialog");
-            // Same function each time, so reopening doesn't stack listeners.
-            box.addEventListener("input", syncDialogPrefs);
-            // Reset sets the knobs directly (no input event), so refresh after it.
-            document
-              .getElementById("control-reset")
-              ?.addEventListener("click", () =>
-                setTimeout(() => syncPrefOutputs(box)),
-              );
-          },
-        }
-      : undefined,
+    touch: touch.available,
   });
 }
 $("mobile-settings").onclick = showSettings;

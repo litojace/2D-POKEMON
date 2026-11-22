@@ -169,6 +169,28 @@ describe("historyEntry", () => {
     });
   });
 
+  it("the MVP comes from the winning side, even with less damage", () => {
+    const base = row();
+    const e = historyEntry(
+      row({
+        summary: {
+          ...base.summary,
+          players: [
+            { ...base.summary.players[0], dealt: 400 },
+            { ...base.summary.players[1], dealt: 700 },
+          ],
+        },
+      }),
+      ben,
+      people,
+    )!;
+    expect(e.result).toBe("loss");
+    expect(e.players.map((p) => [p.name, p.mvp])).toEqual([
+      ["Ben", false],
+      ["Ana", true],
+    ]);
+  });
+
   it("nobody is MVP when no one landed a hit", () => {
     const base = row();
     const e = historyEntry(
