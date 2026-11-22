@@ -684,7 +684,8 @@ export const PLAZA_DECOR: readonly {
   { x: 1996, y: 1350, kind: "reeds", r: 0, seed: 3 },
   // Volt Boba: its chalkboard (what it gives, for free) and a café table in
   // the shade, south of the truck, just off the paths.
-  { x: 1790, y: 614, kind: "chalkboard", r: 12 },
+  // (Wider since its board grew to fit its words: its legs stand ±30 px.)
+  { x: 1790, y: 614, kind: "chalkboard", r: 22, sy: 1.6 },
   { x: 1885, y: 630, kind: "parasol", r: 22, sy: 1.6 },
   // A pot of flowers either side of each house's door (where nobody can
   // stand: the house keeps everyone a step away).
@@ -1493,6 +1494,10 @@ export const PLAZA_FISH_SHAPES = [
   "angel",
   "lantern",
   "sturgeon",
+  "trout",
+  "puffer",
+  "ray",
+  "marlin",
 ] as const;
 export type PlazaFishShape = (typeof PLAZA_FISH_SHAPES)[number];
 /** Markings over the body. */
@@ -1545,6 +1550,48 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     mark: "bars",
   },
   {
+    id: "volt-shiner",
+    name: "Volt Shiner",
+    element: "Electric",
+    rarity: "common",
+    color: "#ffd84a",
+    fin: "#5fb3ff",
+    shape: "trout",
+    mark: "lateral",
+  },
+  {
+    id: "dawn-dace",
+    name: "Dawn Dace",
+    element: "Light",
+    rarity: "common",
+    time: "day",
+    color: "#ffc98a",
+    fin: "#fff1b0",
+    shape: "minnow",
+    mark: "scales",
+  },
+  {
+    id: "dusk-loach",
+    name: "Dusk Loach",
+    element: "Shadow",
+    rarity: "common",
+    time: "night",
+    color: "#6b5a8a",
+    fin: "#b99bff",
+    shape: "eel",
+    mark: "bars",
+  },
+  {
+    id: "dream-darter",
+    name: "Dream Darter",
+    element: "Psychic",
+    rarity: "common",
+    color: "#e48bd8",
+    fin: "#ffd0f4",
+    shape: "perch",
+    mark: "spots",
+  },
+  {
     id: "zap-eel",
     name: "Zap Eel",
     element: "Electric",
@@ -1575,6 +1622,47 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     fin: "#a48bd6",
     shape: "catfish",
     mark: "spots",
+  },
+  {
+    id: "bubble-puffer",
+    name: "Bubble Puffer",
+    element: "Water",
+    rarity: "uncommon",
+    color: "#7fd3ff",
+    fin: "#ffffff",
+    shape: "puffer",
+    mark: "spots",
+  },
+  {
+    id: "rust-trout",
+    name: "Rust Trout",
+    element: "Earth",
+    rarity: "uncommon",
+    color: "#c9774a",
+    fin: "#ffcf8a",
+    shape: "trout",
+    mark: "spots",
+  },
+  {
+    id: "thorn-puffer",
+    name: "Thorn Puffer",
+    element: "Nature",
+    rarity: "uncommon",
+    color: "#7fcf5a",
+    fin: "#e8ff9a",
+    shape: "puffer",
+    mark: "bars",
+  },
+  {
+    id: "glow-tetra",
+    name: "Glow Tetra",
+    element: "Aura",
+    rarity: "uncommon",
+    time: "night",
+    color: "#5fe0c8",
+    fin: "#fff5a0",
+    shape: "guppy",
+    mark: "lateral",
   },
   {
     id: "mindfin-betta",
@@ -1608,6 +1696,27 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     mark: "sparkle",
   },
   {
+    id: "tidal-ray",
+    name: "Tidal Ray",
+    element: "Water",
+    rarity: "rare",
+    color: "#3f8fd0",
+    fin: "#bfe8ff",
+    shape: "ray",
+    mark: "spots",
+  },
+  {
+    id: "storm-ray",
+    name: "Storm Ray",
+    element: "Electric",
+    rarity: "rare",
+    time: "night",
+    color: "#2e3a7a",
+    fin: "#ffe25a",
+    shape: "ray",
+    mark: "zigzag",
+  },
+  {
     id: "starlight-sturgeon",
     name: "Starlight Sturgeon",
     element: "Light",
@@ -1616,6 +1725,17 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     color: "#1e2a5a",
     fin: "#fff6c8",
     shape: "sturgeon",
+    mark: "sparkle",
+  },
+  {
+    id: "solar-marlin",
+    name: "Solar Marlin",
+    element: "Fire",
+    rarity: "legendary",
+    time: "day",
+    color: "#ff7a2e",
+    fin: "#ffd65b",
+    shape: "marlin",
     mark: "sparkle",
   },
 ];
@@ -1866,8 +1986,15 @@ export interface PlazaState {
   /** Server time (ms), so the browser can line up the Orb Shower and laps. */
   now: number;
   walkers: PlazaWalker[];
-  /** The ball, when the pitch is in view: [x, y, z]. */
-  ball?: [number, number, number];
+  /**
+   * The ball, when the pitch is in view: [x, y, z], then its velocity
+   * [vx, vy, vz] (px/s) and the seconds left before it returns to the centre
+   * after a goal (0 in play), so the browser can run it on in your own
+   * timeline (plaza-net.ts). Older servers send only the first three.
+   */
+  ball?:
+    | [number, number, number]
+    | [number, number, number, number, number, number, number];
   score: [number, number];
   /** Runway cheers you've had this visit. */
   claps: number;

@@ -210,6 +210,36 @@ for (const size of [
       await snap(page, info, `fishing-mode-${name}`);
       await cast(page);
       await snap(page, info, `fishing-wait-${name}`);
+      // While the line is out the ducks keep their bodies (a little above
+      // their feet) well off the line and the bobber, so neither is ever
+      // drawn across a duck: each duck is turned all the way round its path.
+      for (let k = 0; k < 24; k++) {
+        const near = await page.evaluate(async (k) => {
+          const p = (window as any).__plaza,
+            L = p.lineZone;
+          for (const d of p.ducks()) d.a = (k / 24) * Math.PI * 2;
+          await new Promise((r) =>
+            requestAnimationFrame(() => requestAnimationFrame(r)),
+          );
+          return Math.min(
+            ...p.ducks().map((d: { x: number; y: number }) => {
+              const bx = d.x,
+                by = d.y - 14,
+                vx = L.bx - L.ax,
+                vy = L.by - L.ay,
+                t = Math.max(
+                  0,
+                  Math.min(
+                    1,
+                    ((bx - L.ax) * vx + (by - L.ay) * vy) / (vx * vx + vy * vy),
+                  ),
+                );
+              return Math.hypot(bx - (L.ax + vx * t), by - (L.ay + vy * t));
+            }),
+          );
+        }, k);
+        expect(near, `duck path at ${k}/24`).toBeGreaterThan(40);
+      }
       // The server says it bit: tap at once (the window is about a second),
       // and the fight's close-up comes in. Land it (a fish that gets away
       // is a fair result, and so is a tap a slow machine sends after the
@@ -232,6 +262,8 @@ for (const size of [
         if ((await phase(page)) !== "fight") continue;
         await expect(act(page)).toHaveAttribute("data-kind", "fight");
         await expect(page.locator(".pz-fish-side")).toBeHidden();
+        // Hold is held for seconds: a bigger target than Cast (84 px).
+        expect((await box(page, "#pz-fish-act")).w).toBeGreaterThanOrEqual(100);
         if (!shot) {
           shot = true;
           await page.waitForTimeout(700);

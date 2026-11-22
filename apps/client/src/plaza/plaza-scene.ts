@@ -133,9 +133,11 @@ import { createFightView } from "./plaza-fight-view";
 import { plazaPath } from "./plaza-path";
 import { mapFrac, mapPinsHtml, paintPlazaMap } from "./plaza-map";
 import { PlazaPrediction } from "./plaza-predict";
+import { BallPrediction, ServerClock, SnapTrack } from "./plaza-net";
 import {
   FIGHT_IN_SECONDS,
   fishingFrame,
+  fishingLineZone,
   FISH_SPOT,
   catchCard,
   createFishing,
@@ -1379,8 +1381,20 @@ export function openPlaza(options) {
     spin: 0,
     lock: 0,
   };
+  /** Smooth others and a ball you can kick at once (plaza-net.ts). */
+  const net = {
+    clock: new ServerClock(),
+    tracks: new Map(),
+    ball: null,
+    /** The last network lag measured (ms): a phone's usual until then. */
+    lag: 150,
+  };
   let score = [0, 0];
   const FX = [];
+  /** The fishing line's run (rod tip to bobber), and how far east of the
+   * bobber the ducks' paths end (a duck's half width and the ripples). */
+  const LINE_ZONE = fishingLineZone(),
+    DUCK_CLEAR = 52;
   const DUCKS = ["drake", "hen", "hen", "drake"].map((k, i) => ({
     k,
     a: i * 1.6,
@@ -3132,6 +3146,11 @@ export function openPlaza(options) {
   function onState(s) {
     meId = s.me;
     offset = s.now - Date.now();
+    net.clock.sample(s.now, performance.now());
+    {
+      const lag = predict.lag(s.ack, stepClock);
+      if (lag !== undefined && lag < 1500) net.lag = lag;
+    }
     population = s.population | 0;
     score = s.score;
     if (s.claps > claps && runwayOn)
@@ -3150,7 +3169,16 @@ export function openPlaza(options) {
       }
     claps = s.claps;
     lapState = s.lap ?? null;
-    if (s.ball) {
+    if (s.ball && s.ball.length >= 7) {
+      // Velocity and the post-goal wait too: run it in your timeline.
+      const [x, y, z, vx, vy, vz, lock] = s.ball;
+      const srvBall = { x, y, z, vx, vy, vz, lock };
+      if (!net.ball) net.ball = new BallPrediction(srvBall);
+      net.ball.server(srvBall, net.lag, performance.now());
+      ball.tx = x;
+      ball.ty = y;
+      ball.tz = z;
+    } else if (s.ball) {
       if (
         ball.tx == null ||
         Math.hypot(s.ball[0] - ball.x, s.ball[1] - ball.y) > 300
@@ -3209,6 +3237,14 @@ export function openPlaza(options) {
         others.set(id, b);
         greetArrival(b);
       }
+      {
+        let tr = net.tracks.get(id);
+        if (!tr) net.tracks.set(id, (tr = new SnapTrack()));
+        const nw = tr.newest;
+        if (!nw || Math.hypot(nw.x - x, nw.y - y) > 300)
+          tr.reset(s.now, x, y, z);
+        else tr.push(s.now, x, y, z);
+      }
       b.tx = x;
       b.ty = y;
       b.tz = z;
@@ -3226,7 +3262,11 @@ export function openPlaza(options) {
         else if (emoteIdx) showEmote(b, EMOTE_KEYS[emoteIdx - 1]);
       }
     }
-    for (const id of others.keys()) if (!seen.has(id)) others.delete(id);
+    for (const id of others.keys())
+      if (!seen.has(id)) {
+        others.delete(id);
+        net.tracks.delete(id);
+      }
   }
   let lapState = null,
     lapShown = null,
@@ -3807,9 +3847,9 @@ export function openPlaza(options) {
     reeds: { spr: (seed) => GFX.reeds(seed), foot: 14, h: 70 },
     chalkboard: {
       spr: () => GFX.chalkboard(),
-      foot: 20,
-      h: 80,
-      shadow: [20, 5],
+      foot: 30,
+      h: 104,
+      shadow: [28, 6],
     },
     parasol: {
       spr: () => GFX.parasol(),
@@ -3832,7 +3872,12 @@ export function openPlaza(options) {
   }
   function drawScoreboard(g) {
     // Baked, painted again only when the score changes (plaza-pitch-art.ts).
-    GFX.blit(g, scoreboardArt(score[0], score[1]), (PITCH.x0 + PITCH.x1) / 2, PITCH.y0 - 10);
+    GFX.blit(
+      g,
+      scoreboardArt(score[0], score[1]),
+      (PITCH.x0 + PITCH.x1) / 2,
+      PITCH.y0 - 10,
+    );
   }
   /**
    * The lap gantry spans the lane from its outer edge to its inner one,
@@ -3985,7 +4030,23 @@ export function openPlaza(options) {
     const g = c.getContext("2d");
     g.scale(R, R);
     g.translate(ax, ay);
-    // Legs on base plates.
+    // Stone footings, a cross brace between the legs, then the legs.
+    for (const lx of [-66, 58]) {
+      g.fillStyle = "#8f8a80";
+      g.beginPath();
+      g.roundRect(lx - 9, -9, 26, 11, 3);
+      g.fill();
+      g.fillStyle = "#b8b2a6";
+      g.fillRect(lx - 7, -8, 22, 2);
+    }
+    g.strokeStyle = "#2a2f42";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(-62, -86);
+    g.lineTo(62, -30);
+    g.moveTo(62, -86);
+    g.lineTo(-62, -30);
+    g.stroke();
     for (const lx of [-66, 58]) {
       const lg = g.createLinearGradient(lx, 0, lx + 8, 0);
       lg.addColorStop(0, "#4a5068");
@@ -4043,6 +4104,27 @@ export function openPlaza(options) {
     g.textAlign = "right";
     g.font = "800 10px 'DM Sans', sans-serif";
     g.fillText("THIS WEEK", 78, -226);
+    // Bulbs round the cabinet's frame, a glint on the glass, and a
+    // little gold plate under the screen.
+    for (let bx = -86; bx <= 86; bx += 14)
+      for (const by of [-247, -107]) {
+        g.fillStyle = "#15102a";
+        g.beginPath();
+        g.arc(bx, by, 2.4, 0, 7);
+        g.fill();
+        g.fillStyle = "#fff4c2";
+        g.beginPath();
+        g.arc(bx, by, 1.5, 0, 7);
+        g.fill();
+      }
+    g.fillStyle = "rgba(255,255,255,.06)";
+    g.beginPath();
+    g.moveTo(-86, -212);
+    g.lineTo(-20, -212);
+    g.lineTo(-70, -112);
+    g.lineTo(-86, -112);
+    g.closePath();
+    g.fill();
     // Rows: medals for the top three, your row lit.
     const MEDAL = ["#ffd65b", "#d6dbe6", "#e0995a"];
     if (!rows.length) {
@@ -4092,6 +4174,28 @@ export function openPlaza(options) {
       g.font = "800 13px 'DM Sans', sans-serif";
       g.fillText(t.toFixed(2), 78, ry + 0.5);
     });
+    // Empty places, so a short week doesn't leave a dark hole: each a dim
+    // number and a dotted line, waiting for a runner.
+    if (rows.length)
+      for (let i = rows.length; i < 5; i++) {
+        const ry = -198 + i * 20;
+        if (i % 2) {
+          g.fillStyle = "rgba(255,255,255,.04)";
+          g.fillRect(-84, ry - 10, 168, 20);
+        }
+        g.fillStyle = "#4a5578";
+        g.font = "800 11px 'DM Sans', sans-serif";
+        g.textAlign = "center";
+        g.fillText(String(i + 1), -70, ry + 0.5);
+        g.strokeStyle = "rgba(127,139,176,.35)";
+        g.lineWidth = 1;
+        g.setLineDash([2, 3]);
+        g.beginPath();
+        g.moveTo(-56, ry + 1);
+        g.lineTo(78, ry + 1);
+        g.stroke();
+        g.setLineDash([]);
+      }
     g.textBaseline = "alphabetic";
     const spr = { c, w, h, ax, ay };
     leaderKey = key;
@@ -4619,9 +4723,20 @@ export function openPlaza(options) {
   function updateAnimals(dt) {
     DUCKS.forEach((d) => {
       d.a += d.s * dt * (d.dab > 0 ? 0.2 : 1);
-      // Round a point east of the middle, clear of the dock (PLAZA_DOCK)
-      // and of the bobber's spot (PLAZA_FISHING).
-      const nx = POND.x + 30 + Math.cos(d.a) * POND.rx * d.r * 1.2,
+      // Round a point east of the middle, on an egg-shaped path: the
+      // half toward the dock is drawn in so its end stays DUCK_CLEAR east
+      // of the bobber, so ducks keep clear of the line and the bobber
+      // (owner: the line was drawn across a duck). Smooth all round.
+      const cx = POND.x + 80,
+        rx = Math.min(110, POND.rx * d.r * 1.2),
+        c = Math.cos(d.a),
+        nx =
+          cx +
+          c *
+            (c < 0
+              ? // Each duck by its own path's size, so they don't bunch.
+                Math.min(rx, (cx - (LINE_ZONE.bx + DUCK_CLEAR)) * (d.r / 0.55))
+              : rx),
         ny = POND.y + Math.sin(d.a) * POND.ry * d.r * 1.1;
       d.face = nx > d.x ? 1 : -1;
       d.x = nx;
@@ -5871,13 +5986,24 @@ export function openPlaza(options) {
       P.buff = P.boost;
       if (P.dash > 0 && Math.random() < 0.8)
         P.trail.push({ x: ox, y: oy, z: P.z, t: 0 });
-      // Everyone else: smoothed toward the server.
+      // Everyone else: drawn a moment in the past, between the server's
+      // snapshots around it (plaza-net.ts), or smoothed toward the newest
+      // before the server's clock is known.
       const k = 1 - Math.exp(-dt / 0.09);
+      const seenT = net.clock.now(performance.now()),
+        seenDelay = net.clock.delay();
       for (const b of others.values()) {
         const px = b.x,
           py = b.y;
-        b.x += (b.tx - b.x) * k;
-        b.y += (b.ty - b.y) * k;
+        const at =
+          seenT !== null && net.tracks.get(b.id)?.at(seenT - seenDelay);
+        if (at) {
+          b.x = at.x;
+          b.y = at.y;
+        } else {
+          b.x += (b.tx - b.x) * k;
+          b.y += (b.ty - b.y) * k;
+        }
         if (dt > 0) {
           b.vx = (b.x - px) / dt;
           b.vy = (b.y - py) / dt;
@@ -5894,7 +6020,17 @@ export function openPlaza(options) {
         b.trail.forEach((t) => (t.t += dt));
         b.trail = b.trail.filter((t) => t.t < 0.3);
       }
-      if (ball.tx != null) {
+      if (net.ball) {
+        // Your kicks move it at once; the server's ball keeps it honest.
+        const ox2 = ball.x,
+          oy2 = ball.y;
+        net.ball.step(P, dt, performance.now());
+        const nb = net.ball.ball;
+        ball.x = nb.x;
+        ball.y = nb.y;
+        ball.z = nb.z;
+        ball.spin += Math.hypot(ball.x - ox2, ball.y - oy2) / ball.r;
+      } else if (ball.tx != null) {
         const ox2 = ball.x,
           oy2 = ball.y;
         ball.x += (ball.tx - ball.x) * Math.min(1, k * 1.4);
@@ -6352,6 +6488,8 @@ export function openPlaza(options) {
       others,
       orbs,
       ball,
+      /** Smoothing and ball prediction state (plaza-net.ts; tests). */
+      net,
       get score() {
         return score;
       },
@@ -6376,6 +6514,10 @@ export function openPlaza(options) {
         return fishing.state;
       },
       /** Fishing mode: on, its phase and the camera's extra zoom (tests). */
+      /** The pond's ducks (live: a test may turn them round their path)
+       * and the fishing line's run (tests). */
+      ducks: () => DUCKS,
+      lineZone: LINE_ZONE,
       get fishingMode() {
         return {
           active: fishing.active,
