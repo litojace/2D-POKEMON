@@ -387,6 +387,14 @@ export function openPlaza(options) {
    * picture, PLAZA_MARGIN past each edge, so there is no seam where a
    * separate picture would meet it. World (0, 0) is at (GM, GM) in it.
    */
+  /** The stage front's bulbs (none across the catwalk's mouth) and the
+   * catwalk's (starting below the stage's front band and its steps). */
+  const STAGE_BULBS = [],
+    WALK_BULBS = [];
+  for (let x = STAGE.x0 + 14; x < STAGE.x1; x += 26)
+    if (x < WALK.x0 - 8 || x > WALK.x1 + 8) STAGE_BULBS.push([x, STAGE.y1 + 9]);
+  for (let y = STAGE.y1 + 34; y < WALK.y1 - 4; y += 24)
+    for (const x of [WALK.x0 + 8, WALK.x1 - 8]) WALK_BULBS.push([x, y]);
   const GM = PLAZA_MARGIN,
     GW = W + 2 * GM,
     GH = H + 2 * GM;
@@ -461,8 +469,8 @@ export function openPlaza(options) {
       }
       g.fill();
     };
-    strokeAll(18, "rgba(60,90,40,.35)");
-    landings(9, "rgba(60,90,40,.35)");
+    strokeAll(18, "rgba(70,120,50,.22)");
+    landings(9, "rgba(70,120,50,.22)");
     strokeAll(6, "#d9c9a3");
     landings(3, "#d9c9a3");
     // Grit in the sand: the joints between the stones show it.
@@ -575,7 +583,7 @@ export function openPlaza(options) {
     g.arc(0, 0, SQ.rx + 10, 0, 7);
     g.fill();
     // The grout under the pavers: what shows between them.
-    g.fillStyle = "#9c8a6a";
+    g.fillStyle = "#bba985";
     g.beginPath();
     g.arc(0, 0, SQ.rx, 0, 7);
     g.fill();
@@ -601,7 +609,7 @@ export function openPlaza(options) {
         // so a sliver of shade shows on the side away from the light, and a
         // lit edge on the side toward it (the top left).
         paver(2.6, 2.6);
-        g.fillStyle = GFX.dk(c, 0.24);
+        g.fillStyle = GFX.dk(c, 0.1);
         g.fill();
         const mid = (a0 + a1) / 2,
           lx = Math.cos(mid),
@@ -1185,20 +1193,25 @@ export function openPlaza(options) {
     g.lineTo(WALK.x1, WALK.y1);
     g.lineTo(WALK.x1, WALK.y0);
     g.stroke();
-    for (let x = STAGE.x0 + 14; x < STAGE.x1; x += 26) {
-      g.fillStyle = "#fff4c2";
+    // Bulbs: warm white along the stage's front, pink down the catwalk.
+    // The two rows used to meet where the catwalk joins the stage, white
+    // and pink mixed (STAGE_BULBS, WALK_BULBS keep them apart).
+    const bulb = (x, y, r, c) => {
+      g.fillStyle = "#15102a";
       g.beginPath();
-      g.arc(x, STAGE.y1 + 9, 3, 0, 7);
+      g.arc(x, y + 0.6, r + 1.6, 0, 7);
       g.fill();
-    }
-    for (let y = WALK.y0 + 14; y < WALK.y1; y += 24) {
-      g.fillStyle = "#ff9bd2";
-      [WALK.x0 + 8, WALK.x1 - 8].forEach((x) => {
-        g.beginPath();
-        g.arc(x, y, 2.6, 0, 7);
-        g.fill();
-      });
-    }
+      g.fillStyle = c;
+      g.beginPath();
+      g.arc(x, y, r, 0, 7);
+      g.fill();
+      g.fillStyle = "rgba(255,255,255,.85)";
+      g.beginPath();
+      g.arc(x - r * 0.35, y - r * 0.35, r * 0.35, 0, 7);
+      g.fill();
+    };
+    for (const [x, y] of STAGE_BULBS) bulb(x, y, 3, "#fff4c2");
+    for (const [x, y] of WALK_BULBS) bulb(x, y, 2.6, "#ff9bd2");
     // photo spot pad
     // (On the landing's stones, so a warm outline that shows on them.)
     g.fillStyle = "rgba(255,255,255,.14)";
@@ -4970,6 +4983,15 @@ export function openPlaza(options) {
       bulbs = [];
     for (let k = 1; k <= n; k++) {
       const [x, y] = bez(a, c, b, k / (n + 1));
+      // No coloured bulb where the wire crosses in front of the catwalk:
+      // it lay over the catwalk's pink bulbs, two kinds mixed.
+      if (
+        x > WALK.x0 - 14 &&
+        x < WALK.x1 + 14 &&
+        y > WALK.y0 - 10 &&
+        y < WALK.y1 + 24
+      )
+        continue;
       bulbs.push({
         x,
         y,
@@ -5052,11 +5074,12 @@ export function openPlaza(options) {
     }
     // The stage's edge and the catwalk's sides (painted bulbs) light up and
     // chase toward the front.
-    for (let x = STAGE.x0 + 14, k = 0; x < STAGE.x1; x += 26, k++)
-      SPARKS.push({ x, y: STAGE.y1 + 9, c: 5, chase: k, r: 9 });
-    for (let y = WALK.y0 + 14, k = 0; y < WALK.y1; y += 24, k++)
-      for (const x of [WALK.x0 + 8, WALK.x1 - 8])
-        SPARKS.push({ x, y, c: 1, chase: k + 4, r: 9 });
+    STAGE_BULBS.forEach(([x, y], k) =>
+      SPARKS.push({ x, y, c: 5, chase: k, r: 9 }),
+    );
+    WALK_BULBS.forEach(([x, y], i) =>
+      SPARKS.push({ x, y, c: 1, chase: (i >> 1) + 4, r: 9 }),
+    );
   }
   /** The strings, wires and bulbs; at night (n > 0) lit, with halos. */
   function drawStringLights(g, time, n, vx0, vy0, vx1, vy1) {

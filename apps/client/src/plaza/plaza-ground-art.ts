@@ -55,16 +55,17 @@ export function cobble(g, rnd, x, y, w, h, c, rot = 0) {
   // Its shadow on the sand (down-right, in the Plaza's light).
   g.save();
   g.rotate(-rot);
-  g.translate(1.8, 3.2);
+  g.translate(1, 1.8);
   g.rotate(rot);
   path();
-  g.fillStyle = "rgba(80,60,34,.6)";
+  // A light, warm shadow (a dark one made the paths look dirty, owner).
+  g.fillStyle = "rgba(150,122,80,.3)";
   g.fill();
   g.restore();
   // The shaded rim, then the face nudged up-left so the rim shows
   // down-right only.
   path();
-  g.fillStyle = dk(c, 0.26);
+  g.fillStyle = dk(c, 0.1);
   g.fill();
   g.save();
   g.rotate(-rot);
@@ -123,7 +124,7 @@ export function grit(g, rnd, x, y, w, h, inside, n) {
     const k = rnd();
     g.fillStyle =
       k < 0.45
-        ? "rgba(140,112,70,.35)"
+        ? "rgba(160,132,90,.25)"
         : k < 0.8
           ? "rgba(255,248,230,.45)"
           : "rgba(110,130,70,.35)";
