@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, snap } from "./helpers";
 import { exposeAccount } from "./shop-server";
+import { ISLAND, setInsets, type Insets } from "./ui-measure";
 
 // The Admin panel (apps/client/src/admin-panel.ts): five sections in the
 // dialog's tab bar, phones held sideways first. The admin API is faked in the
@@ -332,8 +333,8 @@ const tab = (page: Page, name: string) =>
   page.locator(`#dialog .admin-tab[data-tab="${name}"]`);
 
 /** Nothing in the panel sticks out sideways, and the tab bar fits. */
-async function fits(page: Page) {
-  return page.evaluate(() => {
+async function fits(page: Page, inset?: Insets) {
+  return page.evaluate((inset) => {
     const content = document.querySelector<HTMLElement>(
       "#dialog .dialog-content",
     )!;
@@ -346,11 +347,12 @@ async function fits(page: Page) {
     const bar = document.querySelector<HTMLElement>("#dialog .admin-tabs")!;
     return {
       sideways: content.scrollWidth - content.clientWidth,
+      // Inside the screen, and clear of a notch or Dynamic Island.
       inScreen:
-        dialog.left >= 0 &&
-        dialog.right <= innerWidth &&
-        dialog.top >= 0 &&
-        dialog.bottom <= innerHeight,
+        dialog.left >= (inset?.left ?? 0) &&
+        dialog.right <= innerWidth - (inset?.right ?? 0) &&
+        dialog.top >= (inset?.top ?? 0) &&
+        dialog.bottom <= innerHeight - (inset?.bottom ?? 0),
       tabsFit: bar.scrollWidth <= bar.clientWidth + 1,
       tabHeight: Math.min(...tabs.map((t) => t.height)),
       wide: [...content.querySelectorAll<HTMLElement>("*")]
@@ -362,26 +364,29 @@ async function fits(page: Page) {
         .map((e) => `${e.tagName}.${e.className}`)
         .slice(0, 6),
     };
-  });
+  }, inset);
 }
 
 for (const size of [
-  { width: 667, height: 375 },
-  { width: 844, height: 390 },
-  { width: 1440, height: 900 },
+  { width: 667, height: 375, name: "667x375" },
+  { width: 844, height: 390, name: "844x390" },
+  { width: 852, height: 393, name: "852x393-island", island: true },
+  { width: 1440, height: 900, name: "1440x900" },
 ]) {
-  test(`every Admin section fits at ${size.width}x${size.height}`, async ({
+  test(`every Admin section fits at ${size.name}`, async ({
     browser,
   }, info) => {
     const phone = size.width < 1000;
     const context = await browser.newContext({
-      viewport: size,
+      viewport: { width: size.width, height: size.height },
       isMobile: phone,
       hasTouch: phone,
     });
     try {
       const page = await context.newPage();
       const errors = await openAdmin(page);
+      const inset = size.island ? ISLAND : undefined;
+      if (inset) await setInsets(page, inset);
       for (const name of [
         "overview",
         "players",
@@ -400,7 +405,7 @@ for (const size of [
           await page.locator("[data-player] .adm-row-main").first().click();
           await expect(page.locator(".adm-detail")).toBeVisible();
         }
-        const fit = await fits(page);
+        const fit = await fits(page, inset);
         expect(
           fit.sideways,
           `${name} scrolls sideways: ${fit.wide.join(", ")}`,
@@ -408,7 +413,7 @@ for (const size of [
         expect(fit.inScreen, `${name} dialog on screen`).toBe(true);
         expect(fit.tabsFit, `${name} tab bar fits`).toBe(true);
         expect(fit.tabHeight).toBeGreaterThanOrEqual(40);
-        await snap(page, info, `admin-${name}-${size.width}x${size.height}`);
+        await snap(page, info, `admin-${name}-${size.name}`);
       }
       expect(errors).toEqual([]);
     } finally {
@@ -699,8 +704,14 @@ test("players see an announcement once, never over a battle", async ({
       "<b>Double</b> coins all weekend!",
     );
     await expect(banner.locator("p b")).toHaveCount(0);
+    // It slides down from above (0.2 s): measure where it settles, 8 px
+    // under the top edge, not mid-slide.
+    await expect(banner).toHaveClass(/is-shown/);
+    await expect
+      .poll(async () => (await banner.boundingBox())!.y)
+      .toBeGreaterThanOrEqual(8);
     const box = await banner.boundingBox();
-    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.x).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(844);
     await snap(page, info, "announcement-banner-844x390");
     await banner.locator(".announcement-ok").click();
