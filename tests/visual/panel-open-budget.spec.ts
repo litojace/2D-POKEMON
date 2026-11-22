@@ -39,8 +39,12 @@ const LONG_FRAME_MS = 450;
  * code passed on the next run. So the limit grows with how much slower
  * than this the runner is at that moment, and never shrinks below
  * LONG_FRAME_MS.
+ * An ordinary runner measured 94-104 ms (eight opens, run 45005564219,
+ * 22 Nov 2026), so 110 holds it to LONG_FRAME_MS exactly. The probe times
+ * script, not drawing: whether it also rises on a runner as slow as #338's
+ * is not yet seen. Each open logs it ("probe"); check it when this fails.
  */
-const PROBE_REF_MS = 240;
+const PROBE_REF_MS = 110;
 /**
  * The runner's speed, on the page as it is measured (same throttling): a
  * fixed piece of script, the median of three runs, in ms.
