@@ -85,9 +85,10 @@ function holds(
     expect(b.x + b.w).toBeLessThanOrEqual(size.width);
     expect(b.y + b.h).toBeLessThanOrEqual(size.height);
     expect(b.h).toBeGreaterThanOrEqual(44);
-    // Inside the foot, not spilling past it.
-    expect(b.x).toBeGreaterThanOrEqual(s.foot.x - 0.5);
-    expect(b.x + b.w).toBeLessThanOrEqual(s.foot.x + s.foot.w + 0.5);
+    // Inside the foot, not spilling past it (1 px: each edge is rounded
+    // on its own, so a sum of two can be a pixel out on CI's fonts).
+    expect(b.x).toBeGreaterThanOrEqual(s.foot.x - 1);
+    expect(b.x + b.w).toBeLessThanOrEqual(s.foot.x + s.foot.w + 1);
   }
   for (let i = 1; i < s.buttons.length; i++)
     expect(s.buttons[i].x).toBeGreaterThanOrEqual(
