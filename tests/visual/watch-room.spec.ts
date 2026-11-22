@@ -229,7 +229,11 @@ test("before the battle, a watcher's typed line has an eye in the room chat", as
         () =>
           page.evaluate(() => {
             (window as any).__push();
-            return !!document.querySelector("#chat-button:not([hidden])");
+            // The room's chat (the hub's button shows the same id first:
+            // a line fired before the room channel opens is dropped).
+            return !!document.querySelector(
+              '#chat-button[data-place="room"]:not([hidden])',
+            );
           }),
         { timeout: 60_000, intervals: [400] },
       )
@@ -249,6 +253,10 @@ test("before the battle, a watcher's typed line has an eye in the room chat", as
     await page.click("#chat-button");
     const drawer = page.locator("#chat-drawer");
     await expect(drawer).toBeVisible();
+    await expect(drawer.locator('[data-chat-tab="room"]')).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     await expect(drawer.locator(".chat-line.is-watcher")).toHaveText(
       "Vigood luck both!",
     );
