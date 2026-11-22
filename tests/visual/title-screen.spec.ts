@@ -99,6 +99,22 @@ for (const size of SIZES) {
           if (size.island) expect(b.x).toBeGreaterThanOrEqual(ISLAND.left);
         }
       }
+      // Each label reads on one line, and phones get the compact size the
+      // owner picked (option C: 52 × 44, still a full touch target).
+      for (const q of await page.locator("[data-gate-quick]").all()) {
+        const lines = await q.locator("span").evaluate((span) => {
+          const r = span.getBoundingClientRect();
+          return Math.round(
+            r.height / parseFloat(getComputedStyle(span).lineHeight),
+          );
+        });
+        expect(lines).toBe(1);
+        if (size.phone) {
+          const b = (await q.boundingBox())!;
+          expect(b.height).toBeLessThanOrEqual(46);
+          expect(b.width).toBeLessThanOrEqual(56);
+        }
+      }
       // Each quick button's icon and label sit centred in it.
       for (const q of await page.locator("[data-gate-quick]").all()) {
         const offset = await q.evaluate((button) => {
@@ -167,7 +183,7 @@ test("Switch account signs out to the log-in form, without a title screen after"
   expect(errors).toEqual([]);
 });
 
-test("the quick buttons open Settings, How to play and Repair", async ({
+test("the quick buttons open Settings, Help and Repair", async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 667, height: 375 });

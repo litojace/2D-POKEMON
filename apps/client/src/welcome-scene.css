@@ -315,35 +315,54 @@
   max-inline-size: 46ch;
 }
 
+/* Phones held sideways (owner's pick, 22 Nov: option C, "Gọn"): compact
+   quick buttons and card, every target still 44 px tall. */
 @media (max-height: 480px) {
   .welcome-gate .gate-intro {
     gap: 8px;
+  }
+  .welcome-gate.is-title .gate-layout {
+    grid-template-columns: minmax(0, 1fr) min(300px, 42vw);
+  }
+  .welcome-gate.is-title .gate-card {
+    padding: 14px 16px;
   }
   .gate-quick {
     gap: 6px;
   }
   .gate-quick-btn {
-    inline-size: 66px;
-    min-block-size: 54px;
-    padding: 6px 2px;
-    font-size: calc(10.5px * var(--text-scale, 1));
+    inline-size: 52px;
+    min-block-size: 44px;
+    padding: 4px 2px;
+    gap: 3px;
+    border-radius: 11px;
+    font-size: calc(9.5px * var(--text-scale, 1));
   }
   .gate-quick-btn .menu-option-icon {
-    inline-size: 20px;
-    block-size: 20px;
+    inline-size: 16px;
+    block-size: 16px;
   }
   .title-card {
-    gap: 10px;
+    gap: 8px;
   }
   .title-avatar {
-    flex-basis: 52px;
-    inline-size: 52px;
-    block-size: 52px;
+    flex-basis: 44px;
+    inline-size: 44px;
+    block-size: 44px;
+    border-radius: 12px;
   }
   .title-name {
-    font-size: calc(19px * var(--text-scale, 1));
+    font-size: calc(17px * var(--text-scale, 1));
+  }
+  .title-meta {
+    font-size: calc(11.5px * var(--text-scale, 1));
   }
   .title-card .title-start {
-    min-block-size: 50px;
+    min-block-size: 44px;
+    font-size: calc(15px * var(--text-scale, 1));
+  }
+  .title-card .title-switch {
+    min-block-size: 44px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
 }

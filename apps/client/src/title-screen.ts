@@ -1,7 +1,7 @@
 /**
  * The title screen (owner, 22 Nov): opening the game shows who you are
- * playing as, with Start, Switch account and quick buttons (Settings, How to
- * play, Support, Repair), as big games do. It is part of the front door
+ * playing as, with Start, Switch account and quick buttons (Settings, Help,
+ * Support, Repair), as big games do. It is part of the front door
  * (home-screen.ts, welcomeGate) and replaces 20 Nov's "straight to the Lobby"
  * once per launch:
  *
@@ -74,7 +74,7 @@ export function titleCard(a: TitleAccount) {
 export type QuickAction = "settings" | "help" | "support" | "repair";
 const QUICK: [QuickAction, Parameters<typeof menuIcon>[0], string][] = [
   ["settings", "settings", "Settings"],
-  ["help", "help", "How to play"],
+  ["help", "help", "Help"],
   ["support", "chat", "Support"],
   ["repair", "again", "Repair"],
 ];
