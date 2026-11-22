@@ -213,32 +213,44 @@ for (const size of [
       // While the line is out the ducks keep their bodies (a little above
       // their feet) well off the line and the bobber, so neither is ever
       // drawn across a duck: each duck is turned all the way round its path.
+      // Two ducks, and they never swim over each other either.
+      expect(
+        await page.evaluate(() => (window as any).__plaza.ducks().length),
+      ).toBe(2);
       for (let k = 0; k < 24; k++) {
-        const near = await page.evaluate(async (k) => {
+        const [near, apart] = await page.evaluate(async (k) => {
           const p = (window as any).__plaza,
             L = p.lineZone;
-          for (const d of p.ducks()) d.a = (k / 24) * Math.PI * 2;
+          // The lead duck's place on its path (the other keeps half a turn
+          // behind it).
+          p.ducks()[0].a = (k / 24) * Math.PI * 2;
           await new Promise((r) =>
             requestAnimationFrame(() => requestAnimationFrame(r)),
           );
-          return Math.min(
-            ...p.ducks().map((d: { x: number; y: number }) => {
-              const bx = d.x,
-                by = d.y - 14,
-                vx = L.bx - L.ax,
-                vy = L.by - L.ay,
-                t = Math.max(
-                  0,
-                  Math.min(
-                    1,
-                    ((bx - L.ax) * vx + (by - L.ay) * vy) / (vx * vx + vy * vy),
-                  ),
-                );
-              return Math.hypot(bx - (L.ax + vx * t), by - (L.ay + vy * t));
-            }),
-          );
+          const [a, b] = p.ducks();
+          return [
+            Math.min(
+              ...p.ducks().map((d: { x: number; y: number }) => {
+                const bx = d.x,
+                  by = d.y - 14,
+                  vx = L.bx - L.ax,
+                  vy = L.by - L.ay,
+                  t = Math.max(
+                    0,
+                    Math.min(
+                      1,
+                      ((bx - L.ax) * vx + (by - L.ay) * vy) /
+                        (vx * vx + vy * vy),
+                    ),
+                  );
+                return Math.hypot(bx - (L.ax + vx * t), by - (L.ay + vy * t));
+              }),
+            ),
+            Math.hypot(a.x - b.x, (a.y - b.y) * 1.6),
+          ];
         }, k);
-        expect(near, `duck path at ${k}/24`).toBeGreaterThan(40);
+        expect(near, `duck path at ${k}/24`).toBeGreaterThan(60);
+        expect(apart, `ducks apart at ${k}/24`).toBeGreaterThan(70);
       }
       // The server says it bit: tap at once (the window is about a second),
       // and the fight's close-up comes in. Land it (a fish that gets away

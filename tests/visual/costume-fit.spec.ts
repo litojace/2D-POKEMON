@@ -74,6 +74,31 @@ test("no costume is cut off by the crops play draws it from", async ({
   expect(cut).toEqual([]);
 });
 
+// The same check for every champion's own art: a crop whose edge is drawn
+// on cuts the picture off (Glacelle's left wing-flap and the tip of its body
+// were cut this way in the lobby and in play). The default boxes are in
+// animation/assets.ts; a champion that reaches past them gets its own
+// (frontPartBounds, profilePartBounds in creature-profile.ts).
+test("no champion's own art is cut off by its crops", async ({ page }) => {
+  test.setTimeout(300_000);
+  await open(page);
+  const art: { key: string; url: string }[] = await page.evaluate(async () => {
+    const { championCrops } = await import("/costume-audit.ts");
+    return championCrops();
+  });
+  expect(art.length).toBeGreaterThan(400);
+  const e = await edges(page, art);
+  const cut = art
+    .map((a) => {
+      const sides = (["l", "r", "t", "b"] as const).filter(
+        (s) => e[a.key][s] > 4,
+      );
+      return sides.length ? `${a.key}: cut at ${sides.join(", ")}` : "";
+    })
+    .filter(Boolean);
+  expect(cut).toEqual([]);
+});
+
 test("headwear sits clear of the eyes", async ({ page }) => {
   test.setTimeout(600_000);
   await open(page);

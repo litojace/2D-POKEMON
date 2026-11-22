@@ -2034,8 +2034,22 @@ export class AccountUI {
    * (logging out, clearing the app's data, a new phone). Save my account
    * opens the player card, whose first block saves it with an email.
    */
+  /**
+   * A new guest's warning is due or showing: the Lobby tour waits for it
+   * (main.ts startTour), then starts once it is answered ("guest-warning-done").
+   */
+  guestWarningPending = false;
   private async warnNewGuest() {
     if (!this.account?.guest) return;
+    this.guestWarningPending = true;
+    try {
+      await this.showGuestWarning();
+    } finally {
+      this.guestWarningPending = false;
+      window.dispatchEvent(new Event("guest-warning-done"));
+    }
+  }
+  private async showGuestWarning() {
     // Over the Lobby, once the log-in's loading curtain has come and gone
     // (not under it, nor beside it while it fades). It starts a moment after
     // the log-in, so wait for the Lobby itself; never more than 20 s.

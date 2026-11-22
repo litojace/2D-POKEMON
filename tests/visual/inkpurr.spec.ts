@@ -469,8 +469,15 @@ const ink = <T>(page: Page, body: string) =>
         r.frame(1, t, reduced, ["gloomshade"]);
       const warn = (w: any, reduced = false) =>
         art.drawGloomshadeWarning(row.g, row.state, w, reduced);
-      const yard = (reduced = false) =>
-        art.drawLanternYard(row.g, row.state, reduced);
+      const yard = (reduced = false, drawnAt?: any) =>
+        art.drawLanternYard(
+          row.g,
+          row.state,
+          reduced,
+          undefined,
+          row.state.time,
+          drawnAt,
+        );
       const roots = () =>
         Object.fromEntries(
           scene.children.list
@@ -576,6 +583,43 @@ test("the curse beams from every body's gem alike, an ink ghost comes down, and 
   // a wisp per stack; Haunted: three wisps and the bobbing ghost
   expect(out.wisps).toBe(2);
   expect(out.haunted).toBe(4);
+  expect(errors).toEqual([]);
+});
+
+test("a raider's curse follows the fighter as drawn, not the server's last position", async ({
+  page,
+}) => {
+  // Your own fighter is drawn where your inputs put it, about a round trip
+  // ahead of the server's position (~60 px at a run): the wisps, pips and
+  // spread ring sat beside you (owner, 22 Nov). Here the fighter is drawn
+  // 200 px from where the server last had it.
+  const errors = await review(page);
+  const out = await ink<any>(
+    page,
+    INK_SETUP +
+      `
+    frame(5);
+    raid.curses = { [hero.id]: { stacks: 2, hauntedUntil: 0 } };
+    raid.partySize = 2;
+    const drawn = { x: hero.x + 200, y: hero.y + 30 };
+    /** Whether the buffer holds the first stack pip's centre at (x, y). */
+    const pipAt = (x, y) => {
+      const b = row.g.commandBuffer;
+      for (let i = 0; i + 1 < b.length; i++)
+        if (Math.abs(b[i] - x) < 0.01 && Math.abs(b[i + 1] - y) < 0.01) return true;
+      return false;
+    };
+    row.g.clear(); yard(true, (id) => (id === hero.id ? drawn : undefined));
+    const follows = pipAt(drawn.x - 14, drawn.y - 112), leftBehind = pipAt(hero.x - 14, hero.y - 112);
+    row.g.clear(); yard(true);
+    const plain = pipAt(hero.x - 14, hero.y - 112);
+    return { follows, leftBehind, plain };
+  `,
+  );
+  expect(out.follows).toBe(true);
+  expect(out.leftBehind).toBe(false);
+  // With no drawn positions (the boss review), the server's.
+  expect(out.plain).toBe(true);
   expect(errors).toEqual([]);
 });
 
