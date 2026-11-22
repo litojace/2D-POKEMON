@@ -3,7 +3,7 @@ import type { ConnectionReport } from "../../../packages/shared/src/connection";
 /**
  * A drop is put down to the page being hidden, or the device being offline,
  * when that happened within this long before Socket.IO noticed. A silently
- * dead connection takes up to pingInterval + pingTimeout (45 s by default)
+ * dead connection takes up to pingInterval + pingTimeout (20 s, server.ts)
  * to be noticed, so the window has to cover that.
  */
 export const RECENT_MS = 60_000;

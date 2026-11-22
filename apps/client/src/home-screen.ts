@@ -42,6 +42,7 @@ export function homeShell(controls: string) {
 
 export type GateStatus =
   | "loading"
+  | "title"
   | "connecting"
   | "signed-out"
   | "error"
@@ -52,7 +53,12 @@ export type GateStatus =
  * the left, and on the right the sign-up / log-in panel (filled in by
  * AccountUI.showAuth) or the current status.
  */
-export function welcomeGate(status: GateStatus, invite?: string | null) {
+export function welcomeGate(
+  status: GateStatus,
+  invite?: string | null,
+  /** The title screen's card, and the quick buttons (title-screen.ts). */
+  parts: { card?: string; quick?: string } = {},
+) {
   const wait = (text: string) =>
     `<div class="gate-wait" role="status"><span class="gate-spinner" aria-hidden="true"></span><p>${text}</p></div>`;
   const panel =
@@ -66,8 +72,10 @@ export function welcomeGate(status: GateStatus, invite?: string | null) {
             ? `<div class="gate-wait" role="status"><p>We couldn't load your profile. Check your connection and try again.</p><div class="gate-actions"><button type="button" class="auth-submit" id="gate-retry">${iconLabel("again", "Try again")}</button><button type="button" class="auth-link" id="gate-login">Use another account</button></div></div>`
             : status === "unavailable"
               ? `<div class="gate-wait" role="status"><p>Sign-in isn't available right now. Please try again later.</p></div>`
-              : "";
-  return `<section class="welcome-gate" aria-labelledby="gate-title"><div class="gate-backdrop" aria-hidden="true"></div><div class="gate-layout"><div class="gate-intro"><div class="gate-heading"><span class="gate-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><span class="gate-kicker">Real-time creature duels</span><h1 id="gate-title">Element<span>Arena</span></h1>${invite ? `<p class="gate-invite">You've been invited to room <b>${invite}</b>. Log in or create an account to join.</p>` : `<p class="gate-lead">Eighteen elemental fighters. One living Plaza. Your next rival is already here.</p>`}</div></div><div class="gate-card" id="gate-auth">${panel}</div></div></section>`;
+              : status === "title"
+                ? (parts.card ?? "")
+                : "";
+  return `<section class="welcome-gate${status === "title" ? " is-title" : ""}" aria-labelledby="gate-title"><div class="gate-backdrop" aria-hidden="true"></div><div class="gate-layout"><div class="gate-intro"><div class="gate-heading"><span class="gate-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><span class="gate-kicker">Real-time creature duels</span><h1 id="gate-title">Element<span>Arena</span></h1>${invite ? `<p class="gate-invite">You've been invited to room <b>${invite}</b>. Log in or create an account to join.</p>` : `<p class="gate-lead">Eighteen elemental fighters. One living Plaza. Your next rival is already here.</p>`}</div>${parts.quick ?? ""}</div><div class="gate-card" id="gate-auth">${panel}</div></div></section>`;
 }
 
 /** Start a room: the mode choice and Create button, for the hub's Play panel. */

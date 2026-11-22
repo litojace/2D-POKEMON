@@ -149,3 +149,201 @@
     max-block-size: none;
   }
 }
+
+/* Quick buttons (title-screen.ts): at the foot of the pitch, on every
+   front-door screen. The pitch column fills the height so they sit low,
+   clear of the card and of the painting's middle. */
+.welcome-gate .gate-intro {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-block-size: 0;
+}
+.gate-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+.gate-quick-btn {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 5px;
+  inline-size: 76px;
+  min-block-size: 60px;
+  padding: 8px 4px;
+  border: 1px solid rgba(193, 225, 245, 0.24);
+  border-radius: 14px;
+  background: rgba(14, 26, 49, 0.56);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  color: #e8f2fb;
+  font:
+    600 calc(11.5px * var(--text-scale, 1)) / 1.15 "DM Sans",
+    sans-serif;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(235, 248, 255, 0.2);
+}
+.gate-quick-btn:hover {
+  background: rgba(30, 48, 82, 0.72);
+}
+.gate-quick-btn:focus-visible {
+  outline: 2px solid #f2c25b;
+  outline-offset: 2px;
+}
+.gate-quick-btn .menu-option-icon {
+  inline-size: 22px;
+  block-size: 22px;
+  color: #f2c25b;
+}
+.gate-build {
+  margin: 0;
+  color: rgba(214, 228, 242, 0.7);
+  font:
+    500 calc(11px * var(--text-scale, 1)) / 1.2 "DM Sans",
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The title screen's card: who you play as, Start, Switch account. */
+.title-card {
+  display: grid;
+  gap: 14px;
+}
+.title-who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-inline-size: 0;
+}
+.title-avatar {
+  flex: 0 0 64px;
+  inline-size: 64px;
+  block-size: 64px;
+  overflow: hidden;
+  border: 1px solid rgba(193, 225, 245, 0.3);
+  border-radius: 14px;
+  background: rgba(5, 15, 29, 0.45);
+}
+.title-avatar > svg,
+.title-avatar img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+.title-id {
+  display: grid;
+  gap: 3px;
+  min-inline-size: 0;
+}
+.title-id small {
+  color: #bdcddd;
+  font:
+    600 calc(11px * var(--text-scale, 1)) / 1.2 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.title-name {
+  overflow: hidden;
+  color: #fff;
+  font: 800 calc(22px * var(--text-scale, 1)) / 1.15 var(--display, sans-serif);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.title-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: #bdcddd;
+  font:
+    500 calc(12.5px * var(--text-scale, 1)) / 1.2 "DM Sans",
+    sans-serif;
+}
+.title-level {
+  padding: 3px 7px;
+  border: 1px solid rgba(242, 194, 91, 0.35);
+  border-radius: 4px;
+  color: #f2c25b;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.title-card .title-start {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-block-size: 56px;
+  font-size: calc(18px * var(--text-scale, 1));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.title-start .gate-spinner {
+  inline-size: 18px;
+  block-size: 18px;
+}
+.title-card .title-switch {
+  min-block-size: 46px;
+}
+.title-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: -4px 0 0;
+  color: #bdcddd;
+  font:
+    500 calc(12.5px * var(--text-scale, 1)) / 1.2 "DM Sans",
+    sans-serif;
+}
+.title-dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: #f2c25b;
+  box-shadow: 0 0 0 3px rgba(242, 194, 91, 0.18);
+}
+.title-dot.is-on {
+  background: #5fe0a0;
+  box-shadow: 0 0 0 3px rgba(95, 224, 160, 0.2);
+}
+.repair-screen p {
+  max-inline-size: 46ch;
+}
+
+@media (max-height: 480px) {
+  .welcome-gate .gate-intro {
+    gap: 8px;
+  }
+  .gate-quick {
+    gap: 6px;
+  }
+  .gate-quick-btn {
+    inline-size: 66px;
+    min-block-size: 54px;
+    padding: 6px 2px;
+    font-size: calc(10.5px * var(--text-scale, 1));
+  }
+  .gate-quick-btn .menu-option-icon {
+    inline-size: 20px;
+    block-size: 20px;
+  }
+  .title-card {
+    gap: 10px;
+  }
+  .title-avatar {
+    flex-basis: 52px;
+    inline-size: 52px;
+    block-size: 52px;
+  }
+  .title-name {
+    font-size: calc(19px * var(--text-scale, 1));
+  }
+  .title-card .title-start {
+    min-block-size: 50px;
+  }
+}
