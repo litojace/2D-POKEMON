@@ -211,7 +211,7 @@ import {
   passTitle,
   quickBar,
   repairGame,
-  titleCard,
+  titleScreen,
   titleDue,
   type QuickAction,
 } from "./title-screen";
@@ -2475,6 +2475,18 @@ function leaveTitle() {
   startStartupCurtain(startupStage, undefined, true);
   renderMenu();
 }
+// Enter starts from the title screen, wherever the focus is (a computer's
+// "press Enter"); not while a dialog (Settings, Help) is open over it.
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.repeat) return;
+  const start = document.getElementById("title-start") as HTMLButtonElement;
+  if (!start || start.disabled) return;
+  if (document.querySelector("dialog[open]")) return;
+  const focus = document.activeElement;
+  if (focus instanceof HTMLButtonElement && focus !== start) return;
+  event.preventDefault();
+  leaveTitle();
+});
 /** The front door's quick buttons (title-screen.ts). */
 function quickAction(action: QuickAction) {
   if (action === "settings") return showSettings();
@@ -2510,17 +2522,20 @@ function renderGate() {
             ? "unavailable"
             : "signed-out";
   const invite = pendingInvite();
-  const card =
+  const title =
     status === "title" && accountsUI.account
-      ? titleCard({
-          name: accountsUI.account.displayName,
-          level: accountsUI.level,
-          method: accountsUI.signInMethod,
-          picture: accountsUI.identityPicture(),
-          ready: connected,
-        })
+      ? titleScreen(
+          {
+            name: accountsUI.account.displayName,
+            level: accountsUI.level,
+            method: accountsUI.signInMethod,
+            picture: accountsUI.identityPicture(),
+            ready: connected,
+          },
+          BUILD_ID,
+        )
       : undefined;
-  const key = `gate:${status}:${invite ?? ""}:${card ?? ""}`;
+  const key = `gate:${status}:${invite ?? ""}:${title ?? ""}`;
   if (screen === key) return;
   screen = key;
   audio.setTheme("lobby");
@@ -2536,10 +2551,8 @@ function renderGate() {
   $("battle").hidden = true;
   syncBattleLoop();
   $("menu").hidden = false;
-  $("menu").innerHTML = welcomeGate(status, invite, {
-    card,
-    quick: quickBar(BUILD_ID),
-  });
+  $("menu").innerHTML =
+    title ?? welcomeGate(status, invite, { quick: quickBar(BUILD_ID) });
   document
     .querySelectorAll<HTMLElement>("[data-gate-quick]")
     .forEach((button) => {

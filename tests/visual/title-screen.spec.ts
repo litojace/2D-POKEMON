@@ -74,10 +74,47 @@ for (const size of SIZES) {
         "Server online",
       );
       await expect(page.locator(".title-name")).toHaveText(/\S/);
+      // Phones say "Tap", computers "Click".
+      await expect(
+        page.locator(`.title-prompt .for-${size.phone ? "touch" : "mouse"}`),
+      ).toBeVisible();
       await snap(page, info, `title-${size.name}`);
       const view = { x: 0, y: 0, width: size.width, height: size.height };
-      const card = await box(page, ".gate-card");
-      expect(inside(card, view)).toBe(true);
+      const inset = size.island
+        ? ISLAND
+        : { left: 0, right: 0, bottom: 0, top: 0 };
+      // Layout B (owner's pick): the whole screen is the Start button.
+      const tap = await box(page, "#title-start");
+      expect(Math.abs(tap.width - size.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(tap.height - size.height)).toBeLessThanOrEqual(1);
+      // The prompt sits centred under the name, and they don't touch.
+      const prompt = await box(page, ".title-prompt");
+      expect(
+        Math.abs(prompt.x + prompt.width / 2 - size.width / 2),
+      ).toBeLessThanOrEqual(2);
+      const brand = await box(page, ".title-brand");
+      expect(brand.y + brand.height).toBeLessThan(prompt.y);
+      // The corners: inside the safe areas, clear of each other and the name.
+      const who = await box(page, "#title-switch");
+      const quick = await box(page, ".title-quick");
+      const status = await box(page, "#title-status");
+      for (const b of [who, quick, status, brand, prompt]) {
+        expect(inside(b, view)).toBe(true);
+        expect(b.x).toBeGreaterThanOrEqual(inset.left);
+        expect(b.x + b.width).toBeLessThanOrEqual(size.width - inset.right);
+      }
+      const apart = (
+        a: { x: number; y: number; width: number; height: number },
+        b: { x: number; y: number; width: number; height: number },
+      ) =>
+        a.x + a.width <= b.x ||
+        b.x + b.width <= a.x ||
+        a.y + a.height <= b.y ||
+        b.y + b.height <= a.y;
+      expect(apart(who, quick)).toBe(true);
+      expect(apart(who, brand)).toBe(true);
+      expect(apart(quick, brand)).toBe(true);
+      expect(apart(status, prompt)).toBe(true);
       // One round shape: the box around the avatar is a circle, like the
       // round portrait in it (no square box around a round picture).
       expect(
@@ -85,61 +122,56 @@ for (const size of SIZES) {
           .locator(".title-avatar")
           .evaluate((e) => getComputedStyle(e).borderRadius),
       ).toBe("50%");
-      // The name reads in full, and every control is a real touch target.
+      // The name reads in full.
       expect(
         await page
           .locator(".title-name")
           .evaluate((e) => e.scrollWidth <= e.clientWidth),
       ).toBe(true);
-      const targets = page.locator(
-        "#title-start, #title-switch, [data-gate-quick]",
-      );
-      expect(await targets.count()).toBe(6);
-      for (const target of await targets.all()) {
-        const b = (await target.boundingBox())!;
+      // Every corner control is a real touch target, and a tap on it hits
+      // it, never the Start button underneath.
+      const corners = page.locator("#title-switch, [data-gate-quick]");
+      expect(await corners.count()).toBe(5);
+      for (const c of await corners.all()) {
+        const hit = c
+          .locator(".title-quick-icon")
+          .or(c.filter({ has: page.locator(".title-avatar") }));
+        const b = (await hit.first().boundingBox())!;
         expect(b.height).toBeGreaterThanOrEqual(44);
         expect(b.width).toBeGreaterThanOrEqual(44);
-        expect(inside(b, view)).toBe(true);
-        // Quick buttons stay clear of the card, and of the island's inset.
-        if (await target.getAttribute("data-gate-quick")) {
-          expect(b.x + b.width).toBeLessThanOrEqual(card.x);
-          if (size.island) expect(b.x).toBeGreaterThanOrEqual(ISLAND.left);
-        }
+        expect(
+          await c.evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            const top = document.elementFromPoint(
+              r.x + r.width / 2,
+              r.y + Math.min(r.height / 2, 22),
+            );
+            return !!top && el.contains(top);
+          }),
+        ).toBe(true);
       }
-      // Each label reads on one line, and phones get the compact size the
-      // owner picked (option C: 52 × 44, still a full touch target).
+      // Each quick label reads on one line, at 10 px or more
+      // (phone-fit.spec's floor).
       for (const q of await page.locator("[data-gate-quick]").all()) {
-        const lines = await q.locator("span").evaluate((span) => {
+        const label = q.locator("span").last();
+        const lines = await label.evaluate((span) => {
           const r = span.getBoundingClientRect();
           return Math.round(
             r.height / parseFloat(getComputedStyle(span).lineHeight),
           );
         });
         expect(lines).toBe(1);
-        // phone-fit.spec's floor: no text under 10 px.
         expect(
-          await q
-            .locator("span")
-            .evaluate((span) => parseFloat(getComputedStyle(span).fontSize)),
+          await label.evaluate((span) =>
+            parseFloat(getComputedStyle(span).fontSize),
+          ),
         ).toBeGreaterThanOrEqual(10);
-        if (size.phone) {
-          const b = (await q.boundingBox())!;
-          expect(b.height).toBeLessThanOrEqual(46);
-          expect(b.width).toBeLessThanOrEqual(56);
-        }
-      }
-      // Each quick button's icon and label sit centred in it.
-      for (const q of await page.locator("[data-gate-quick]").all()) {
-        const offset = await q.evaluate((button) => {
-          const b = button.getBoundingClientRect();
-          const parts = [...button.children].map((c) =>
-            c.getBoundingClientRect(),
-          );
-          const top = Math.min(...parts.map((p) => p.top)),
-            bottom = Math.max(...parts.map((p) => p.bottom));
-          return Math.abs(top - b.top - (b.bottom - bottom));
-        });
-        expect(offset).toBeLessThanOrEqual(3);
+        // The label is centred under its round icon.
+        const icon = (await q.locator(".title-quick-icon").boundingBox())!;
+        const text = (await label.boundingBox())!;
+        expect(
+          Math.abs(icon.x + icon.width / 2 - (text.x + text.width / 2)),
+        ).toBeLessThanOrEqual(2);
       }
       expect(errors).toEqual([]);
     } finally {
@@ -189,6 +221,18 @@ test("Switch account signs out to the log-in form, without a title screen after"
   await expect(page.locator("[data-title-card]")).toHaveCount(0);
   // The quick buttons stay on the sign-in screen too.
   await expect(page.locator("[data-gate-quick]")).toHaveCount(4);
+  // The same round buttons as on the title screen (owner: one shape on
+  // both screens, round), at the same size.
+  for (const icon of await page
+    .locator("[data-gate-quick] .title-quick-icon")
+    .all()) {
+    expect(await icon.evaluate((e) => getComputedStyle(e).borderRadius)).toBe(
+      "50%",
+    );
+    const b = (await icon.boundingBox())!;
+    expect(Math.round(b.width)).toBe(44);
+    expect(Math.round(b.height)).toBe(44);
+  }
   expect(
     await page.evaluate(() => sessionStorage.getItem("ea-title-passed")),
   ).toBe("1");
@@ -206,6 +250,8 @@ test("the quick buttons open Settings, Help and Repair", async ({
   await expect(dialog.locator(".settings-screen")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
+  // A quick button never starts the game under it.
+  await expect(page.locator("[data-title-card]")).toBeVisible();
   await page.click('[data-gate-quick="help"]');
   await expect(dialog).toBeVisible();
   await page.keyboard.press("Escape");
@@ -219,6 +265,18 @@ test("the quick buttons open Settings, Help and Repair", async ({
   });
   await Promise.all([page.waitForEvent("load"), page.click("#repair-go")]);
   expect(await page.evaluate(() => caches.keys())).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("Enter starts from the title screen on a computer", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const errors = await openTitle(page);
+  await connect(page);
+  // A mouse: "Click to start", not "Tap".
+  await expect(page.locator(".title-prompt .for-mouse")).toBeVisible();
+  await expect(page.locator(".title-prompt .for-touch")).toBeHidden();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#lobby-play")).toBeVisible({ timeout: 30_000 });
   expect(errors).toEqual([]);
 });
 

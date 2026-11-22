@@ -15,7 +15,7 @@
  * Start waits for the game connection ("Connecting…"); everything else on
  * the screen works without one.
  */
-import { iconLabel, menuIcon } from "./menu-icons";
+import { menuIcon } from "./menu-icons";
 
 const PASSED_KEY = "ea-title-passed";
 
@@ -62,15 +62,6 @@ export interface TitleAccount {
   ready: boolean;
 }
 
-/** The card on the right of the front door: who you are, Start, Switch. */
-export function titleCard(a: TitleAccount) {
-  const how =
-    a.method === "guest"
-      ? "Guest pass on this device"
-      : `Signed in with ${METHOD[a.method] ?? "email"}`;
-  return `<div class="title-card" data-title-card><div class="title-who"><span class="title-avatar" aria-hidden="true">${a.picture}</span><span class="title-id"><small>Playing as</small><b class="title-name">${esc(a.name)}</b><span class="title-meta">${a.level !== null ? `<span class="title-level">Lv ${a.level}</span>` : ""}<span>${how}</span></span></span></div><button type="button" class="auth-submit title-start" id="title-start" ${a.ready ? "" : 'disabled aria-describedby="title-status"'}>${a.ready ? iconLabel("battle", "Start") : `<span class="gate-spinner" aria-hidden="true"></span><span>Connecting…</span>`}</button><p class="title-status" id="title-status" role="status">${a.ready ? `<i class="title-dot is-on" aria-hidden="true"></i>Server online` : `<i class="title-dot" aria-hidden="true"></i>Reaching the server…`}</p><button type="button" class="auth-secondary title-switch" id="title-switch">${iconLabel("swap", "Switch account")}</button></div>`;
-}
-
 export type QuickAction = "settings" | "help" | "support" | "repair";
 const QUICK: [QuickAction, Parameters<typeof menuIcon>[0], string][] = [
   ["settings", "settings", "Settings"],
@@ -79,13 +70,38 @@ const QUICK: [QuickAction, Parameters<typeof menuIcon>[0], string][] = [
   ["repair", "again", "Repair"],
 ];
 /**
+ * The title screen (owner's pick, 22 Nov: layout B, "tap anywhere"): the
+ * painting fills the screen with the name in the middle; a tap anywhere
+ * starts. Who you play as sits top left and opens Switch account; the quick
+ * buttons sit top right; the version and the server's state sit in the
+ * bottom corners. The tap target is one screen-sized button under the other
+ * controls, so tapping those never starts the game.
+ */
+export function titleScreen(a: TitleAccount, build = "") {
+  const how = a.method === "guest" ? "Guest" : (METHOD[a.method] ?? "email");
+  const quick = quickButtons();
+  return `<section class="welcome-gate is-title" data-title-card aria-labelledby="title-heading"><div class="gate-backdrop" aria-hidden="true"></div><button type="button" class="title-tap" id="title-start" ${a.ready ? "" : "disabled"} aria-describedby="title-status"><span class="title-prompt">${a.ready ? `<span class="for-touch">Tap to start</span><span class="for-mouse">Click to start</span>` : `<span class="gate-spinner" aria-hidden="true"></span>Connecting…`}</span>${a.ready ? `<small class="title-hint"><span class="for-touch">Tap anywhere on the screen</span><span class="for-mouse">Click anywhere, or press Enter</span></small>` : ""}</button><div class="title-brand"><span class="gate-kicker">Real-time creature duels</span><h1 id="title-heading">Element<span>Arena</span></h1></div><button type="button" class="title-who" id="title-switch" aria-label="${esc(a.name)}, level ${a.level ?? "unknown"}, signed in with ${how}. Switch account"><span class="title-avatar" aria-hidden="true">${a.picture}</span><span class="title-id"><b class="title-name">${esc(a.name)}</b><small>${a.level !== null ? `<span class="title-level">Lv ${a.level}</span> · ` : ""}${menuIcon("swap")}Switch account</small></span></button><nav class="title-quick" aria-label="Quick options">${quick}</nav>${build ? `<p class="title-build">Version ${esc(build)}</p>` : ""}<p class="title-status" id="title-status" role="status"><i class="title-dot${a.ready ? " is-on" : ""}" aria-hidden="true"></i>${a.ready ? "Server online" : "Reaching the server…"}</p></section>`;
+}
+
+/**
  * Quick buttons on every front-door screen: what a player needs before
  * they can (or want to) go in. Repair is the classic "fix client" button:
  * when an update half-arrived or a picture is stuck, it clears the game's
  * downloaded files and reloads, without touching the account.
  */
 export function quickBar(build?: string) {
-  return `<nav class="gate-quick" aria-label="Quick options">${QUICK.map(([action, icon, label]) => `<button type="button" class="gate-quick-btn" data-gate-quick="${action}">${menuIcon(icon)}<span>${label}</span></button>`).join("")}</nav>${build ? `<p class="gate-build">Version ${esc(build)}</p>` : ""}`;
+  return `<nav class="gate-quick" aria-label="Quick options">${quickButtons()}</nav>${build ? `<p class="gate-build">Version ${esc(build)}</p>` : ""}`;
+}
+/**
+ * The quick buttons themselves, one markup for the title screen and the
+ * sign-in screen (owner, 22 Nov: the same round buttons on both): a round
+ * icon with its label under it.
+ */
+function quickButtons() {
+  return QUICK.map(
+    ([action, icon, label]) =>
+      `<button type="button" class="title-quick-btn" data-gate-quick="${action}"><span class="title-quick-icon">${menuIcon(icon)}</span><span>${label}</span></button>`,
+  ).join("");
 }
 
 /** The game's version for the front door ("dev" while developing). */

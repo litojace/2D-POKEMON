@@ -160,44 +160,12 @@
   gap: 12px;
   min-block-size: 0;
 }
+/* The same round buttons as the title screen's (.title-quick-btn). */
 .gate-quick {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: auto;
-}
-.gate-quick-btn {
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 5px;
-  inline-size: 76px;
-  min-block-size: 60px;
-  padding: 8px 4px;
-  border: 1px solid rgba(193, 225, 245, 0.24);
-  border-radius: 14px;
-  background: rgba(14, 26, 49, 0.56);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
-  backdrop-filter: blur(14px) saturate(1.2);
-  color: #e8f2fb;
-  font:
-    600 calc(11.5px * var(--text-scale, 1)) / 1.15 "DM Sans",
-    sans-serif;
-  text-align: center;
-  cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(235, 248, 255, 0.2);
-}
-.gate-quick-btn:hover {
-  background: rgba(30, 48, 82, 0.72);
-}
-.gate-quick-btn:focus-visible {
-  outline: 2px solid #f2c25b;
-  outline-offset: 2px;
-}
-.gate-quick-btn .menu-option-icon {
-  inline-size: 22px;
-  block-size: 22px;
-  color: #f2c25b;
 }
 .gate-build {
   margin: 0;
@@ -208,23 +176,179 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The title screen's card: who you play as, Start, Switch account. */
-.title-card {
+/* The title screen (title-screen.ts; owner's pick, 22 Nov: layout B, "tap
+   anywhere"): the painting fills the screen, the name sits in the middle,
+   one screen-sized button starts, and the other controls sit in the
+   corners above it, inside the safe areas. */
+.welcome-gate.is-title {
+  --t-l: max(14px, var(--safe-left, env(safe-area-inset-left)));
+  --t-r: max(14px, var(--safe-right, env(safe-area-inset-right)));
+  --t-t: max(12px, var(--safe-top, env(safe-area-inset-top)));
+  --t-b: max(10px, var(--safe-bottom, env(safe-area-inset-bottom)));
+  position: relative;
+  block-size: 100dvh;
+  overflow: hidden;
+  color: #eef5fc;
+}
+/* A soft shade under the prompt and the corner lines, so they read on the
+   painting's bright river. */
+.welcome-gate.is-title::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  block-size: 46%;
+  background: linear-gradient(transparent, rgba(5, 12, 26, 0.62));
+  pointer-events: none;
+}
+.title-tap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 0 calc(var(--t-b) + clamp(26px, 8vh, 64px));
+  border: 0;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.title-tap:disabled {
+  color: #fff;
+  opacity: 1;
+  cursor: default;
+}
+/* Tap on touch screens, click and Enter where there is a mouse. */
+.title-tap .for-mouse {
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .title-tap .for-touch {
+    display: none;
+  }
+  .title-tap .for-mouse {
+    display: inline;
+  }
+}
+.title-tap:focus-visible .title-prompt {
+  outline: 2px solid #f2c25b;
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+.title-prompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font:
+    800 calc(clamp(18px, 2.6vw, 28px) * var(--text-scale, 1)) / 1
+      "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px #000;
+  animation: title-breathe 2.4s ease-in-out infinite;
+}
+.title-tap:disabled .title-prompt {
+  animation: none;
+  letter-spacing: 0.12em;
+  opacity: 0.9;
+}
+.title-prompt .gate-spinner {
+  inline-size: 18px;
+  block-size: 18px;
+}
+@keyframes title-breathe {
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-prompt {
+    animation: none;
+  }
+}
+.title-hint {
+  color: #cfe0ee;
+  font:
+    600 calc(11px * var(--text-scale, 1)) / 1.2 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 4px #000c;
+}
+.title-brand {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  z-index: 2;
   display: grid;
-  gap: 14px;
+  justify-items: center;
+  gap: 6px;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+.title-brand .gate-kicker {
+  text-shadow: 0 1px 4px #000c;
+}
+.title-brand h1 {
+  margin: 0;
+  font:
+    800 calc(clamp(44px, 7.4vw, 96px) * var(--text-scale, 1)) / 0.92
+      "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+.title-brand h1 span {
+  display: block;
+  color: #f2c25b;
+}
+.title-who,
+.title-quick,
+.title-build,
+.title-status {
+  position: absolute;
+  z-index: 2;
 }
 .title-who {
+  left: var(--t-l);
+  top: var(--t-t);
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-inline-size: 0;
+  gap: 10px;
+  max-inline-size: min(46vw, 320px);
+  min-block-size: 52px;
+  padding: 4px 14px 4px 4px;
+  border: 1px solid rgba(193, 225, 245, 0.26);
+  border-radius: 999px;
+  background: rgba(14, 26, 49, 0.58);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: inset 0 1px 0 rgba(235, 248, 255, 0.2);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
+.title-who:focus-visible,
+.title-quick-btn:focus-visible {
+  outline: 2px solid #f2c25b;
+  outline-offset: 2px;
+}
+/* One round shape: the ring hugs the round portrait (.portrait-disc). A
+   worn frame draws its own ring and ornaments, so the box steps aside for
+   it, as in the Lobby's player card (portrait-frames.css). */
 .title-avatar {
-  flex: 0 0 64px;
-  inline-size: 64px;
-  block-size: 64px;
+  flex: 0 0 44px;
+  inline-size: 44px;
+  block-size: 44px;
   overflow: hidden;
-  border: 1px solid rgba(193, 225, 245, 0.3);
+  border: 1px solid rgba(193, 225, 245, 0.35);
+  border-radius: 50%;
   background: rgba(5, 15, 29, 0.45);
 }
 .title-avatar > svg,
@@ -233,12 +357,6 @@
   inline-size: 100%;
   block-size: 100%;
 }
-/* One round shape: the ring hugs the round portrait (.portrait-disc). A
-   worn frame draws its own ring and ornaments, so the box steps aside for
-   it, as in the Lobby's player card (portrait-frames.css). */
-.title-avatar {
-  border-radius: 50%;
-}
 .title-avatar:has(> .portrait-frame) {
   overflow: visible;
   border-color: transparent;
@@ -246,69 +364,97 @@
 }
 .title-id {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   min-inline-size: 0;
-}
-.title-id small {
-  color: #bdcddd;
-  font:
-    600 calc(11px * var(--text-scale, 1)) / 1.2 "DM Sans",
-    sans-serif;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 .title-name {
   overflow: hidden;
-  color: #fff;
-  font: 800 calc(22px * var(--text-scale, 1)) / 1.15 var(--display, sans-serif);
+  font:
+    800 calc(17px * var(--text-scale, 1)) / 1.1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.02em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.title-meta {
+.title-id small {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
-  color: #bdcddd;
+  gap: 4px;
+  color: #d6e3ef;
   font:
-    500 calc(12.5px * var(--text-scale, 1)) / 1.2 "DM Sans",
+    600 calc(11px * var(--text-scale, 1)) / 1.2 "DM Sans",
     sans-serif;
+  white-space: nowrap;
+}
+.title-id small .menu-option-icon {
+  inline-size: 13px;
+  block-size: 13px;
 }
 .title-level {
-  padding: 3px 7px;
-  border: 1px solid rgba(242, 194, 91, 0.35);
-  border-radius: 4px;
   color: #f2c25b;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.title-card .title-start {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-block-size: 56px;
-  font-size: calc(18px * var(--text-scale, 1));
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.title-quick {
+  right: var(--t-r);
+  top: var(--t-t);
+  display: flex;
+  gap: 8px;
 }
-.title-start .gate-spinner {
-  inline-size: 18px;
-  block-size: 18px;
+.title-quick-btn {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  inline-size: 56px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #e8f2fb;
+  font:
+    600 calc(10.5px * var(--text-scale, 1)) / 1.1 "DM Sans",
+    sans-serif;
+  text-shadow: 0 1px 3px #000c;
+  cursor: pointer;
 }
-.title-card .title-switch {
-  min-block-size: 46px;
+.title-quick-icon {
+  display: grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  border: 1px solid rgba(193, 225, 245, 0.28);
+  border-radius: 50%;
+  background: rgba(14, 26, 49, 0.6);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 rgba(235, 248, 255, 0.2);
+}
+.title-quick-icon .menu-option-icon {
+  inline-size: 20px;
+  block-size: 20px;
+  color: #f2c25b;
+}
+.title-quick-btn:hover .title-quick-icon {
+  background: rgba(30, 48, 82, 0.75);
+}
+.title-build,
+.title-status {
+  bottom: var(--t-b);
+  margin: 0;
+  color: rgba(228, 238, 247, 0.85);
+  font:
+    500 calc(11px * var(--text-scale, 1)) / 1.2 "DM Sans",
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px #000c;
+}
+.title-build {
+  left: var(--t-l);
 }
 .title-status {
+  right: var(--t-r);
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin: -4px 0 0;
-  color: #bdcddd;
-  font:
-    500 calc(12.5px * var(--text-scale, 1)) / 1.2 "DM Sans",
-    sans-serif;
+  gap: 7px;
 }
 .title-dot {
   inline-size: 8px;
@@ -321,57 +467,37 @@
   background: #5fe0a0;
   box-shadow: 0 0 0 3px rgba(95, 224, 160, 0.2);
 }
+@media (min-height: 600px) {
+  .title-who {
+    min-block-size: 60px;
+  }
+  .title-avatar {
+    flex-basis: 52px;
+    inline-size: 52px;
+    block-size: 52px;
+  }
+  .title-name {
+    font-size: calc(20px * var(--text-scale, 1));
+  }
+  .title-quick {
+    gap: 12px;
+  }
+  .title-quick-btn {
+    inline-size: 64px;
+    font-size: calc(12px * var(--text-scale, 1));
+  }
+  .title-quick-icon {
+    inline-size: 52px;
+    block-size: 52px;
+  }
+}
 .repair-screen p {
   max-inline-size: 46ch;
 }
 
-/* Phones held sideways (owner's pick, 22 Nov: option C, "Gọn"): compact
-   quick buttons and card, every target still 44 px tall. */
+/* Phones held sideways: the sign-in screen's pitch column is tighter. */
 @media (max-height: 480px) {
   .welcome-gate .gate-intro {
     gap: 8px;
-  }
-  .welcome-gate.is-title .gate-layout {
-    grid-template-columns: minmax(0, 1fr) min(300px, 42vw);
-  }
-  .welcome-gate.is-title .gate-card {
-    padding: 14px 16px;
-  }
-  .gate-quick {
-    gap: 6px;
-  }
-  .gate-quick-btn {
-    inline-size: 52px;
-    min-block-size: 44px;
-    padding: 4px 2px;
-    gap: 3px;
-    border-radius: 11px;
-    font-size: calc(10px * var(--text-scale, 1));
-  }
-  .gate-quick-btn .menu-option-icon {
-    inline-size: 16px;
-    block-size: 16px;
-  }
-  .title-card {
-    gap: 8px;
-  }
-  .title-avatar {
-    flex-basis: 44px;
-    inline-size: 44px;
-    block-size: 44px;
-  }
-  .title-name {
-    font-size: calc(17px * var(--text-scale, 1));
-  }
-  .title-meta {
-    font-size: calc(11.5px * var(--text-scale, 1));
-  }
-  .title-card .title-start {
-    min-block-size: 44px;
-    font-size: calc(15px * var(--text-scale, 1));
-  }
-  .title-card .title-switch {
-    min-block-size: 44px;
-    font-size: calc(13px * var(--text-scale, 1));
   }
 }
