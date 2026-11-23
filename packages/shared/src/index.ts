@@ -1331,7 +1331,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           knockback: 0,
           tickDelay: 0.4,
           tickInterval: 1.3,
-          turret: { damage: 4, speed: 640, radius: 10, range: 330 },
+          // 6 a wisp (was 4): Duskveil was the weakest champion at every
+          // bot level (docs/balance-overhaul.md, "Duskveil's lantern").
+          turret: { damage: 6, speed: 640, radius: 10, range: 330 },
         },
       ),
       ability(
