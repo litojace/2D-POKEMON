@@ -48,8 +48,14 @@ export const PLAZA_NET = {
   touchTrust: 250,
   /** Ball: corrections smaller than this are left alone (px). */
   ballDeadZone: 6,
-  /** Ball: past this the browser's ball jumps to the server's (px). */
-  ballSnap: 220,
+  /** Ball: past this the browser's ball jumps to the server's (px): only a
+   * restart or a lost stream. Anything nearer (someone else's kick, seen a
+   * network trip late) glides over quickly: a jump of a few hundred px
+   * looked like the ball vanishing (owner, 23 Nov). */
+  ballSnap: 700,
+  /** Ball: while your own kick is trusted, a disagreement past this is
+   * still taken (someone else kicked it too) (px). */
+  ballTrustMax: 220,
   /** Ball: a correction eases in with this time constant (s). */
   ballEase: 0.12,
 } as const;
@@ -161,15 +167,23 @@ export function ballAhead(ball: PlazaBall, ms: number): PlazaBall {
  */
 export class BallPrediction {
   readonly ball: PlazaBall;
+  /** Where the ball is drawn, less where it is (px): a jump the server
+   * forced (a goal it didn't give) glides away instead of blinking. */
+  readonly vis = { x: 0, y: 0 };
   private touchedAt = -Infinity;
   private owe = { x: 0, y: 0 };
   private started = false;
+  /** The server's last snapshot had the ball in a goal (its restart is a jump). */
+  private srvGoal = false;
   constructor(start: PlazaBall) {
     this.ball = { ...start };
   }
   /** One frame: you (and only you) touch it. Returns true if you did. */
   step(me: PlazaBody, dt: number, now: number) {
     const b = this.ball;
+    const kv = Math.exp(-dt / PLAZA_NET.ballEase);
+    this.vis.x *= kv;
+    this.vis.y *= kv;
     // Ease in what the server corrected, before the frame's own movement.
     if (this.owe.x || this.owe.y) {
       const k = 1 - Math.exp(-dt / PLAZA_NET.ballEase);
@@ -197,17 +211,34 @@ export class BallPrediction {
   server(srv: PlazaBall, lagMs: number, now: number) {
     const b = this.ball;
     if (!this.started || srv.lock > 0) {
+      // A goal the server gave: the ball glides on into the net from where
+      // you see it (it used to blink there).
+      if (this.started && !this.srvGoal) {
+        this.vis.x += b.x - srv.x;
+        this.vis.y += b.y - srv.y;
+      }
       this.started = true;
+      this.srvGoal = srv.lock > 0;
       Object.assign(b, srv);
       this.owe = { x: 0, y: 0 };
       return;
     }
     if (b.lock > 0) {
-      // The browser saw a goal the server hasn't: back in play.
+      const ox = b.x,
+        oy = b.y;
       Object.assign(b, ballAhead(srv, lagMs));
+      // The browser saw a goal the server didn't give: back in play,
+      // gliding out of the net to where the server has it. (After a goal
+      // the server gave, the restart at the centre spot is a jump.)
+      if (!this.srvGoal && b.lock <= 0) {
+        this.vis.x += ox - b.x;
+        this.vis.y += oy - b.y;
+      }
+      this.srvGoal = false;
       this.owe = { x: 0, y: 0 };
       return;
     }
+    this.srvGoal = false;
     const target = ballAhead(srv, lagMs);
     const dx = target.x - b.x,
       dy = target.y - b.y,
@@ -218,7 +249,7 @@ export class BallPrediction {
       this.owe = { x: 0, y: 0 };
       return;
     }
-    if (trusting) return;
+    if (trusting && err <= PLAZA_NET.ballTrustMax) return;
     // Take the server's speed; ease the position (no visible jump).
     b.vx = target.vx;
     b.vy = target.vy;

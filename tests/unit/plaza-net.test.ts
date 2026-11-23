@@ -10,6 +10,7 @@ import { PlazaPrediction } from "../../apps/client/src/plaza/plaza-predict";
 import {
   PLAZA,
   PLAZA_BALL,
+  PLAZA_PITCH,
   plazaBallStart,
   plazaBallStep,
   plazaBody,
@@ -113,11 +114,28 @@ describe("the ball you kick", () => {
     for (let i = 0; i < 12; i++) plazaBallStep(b, [], 1 / 60, last);
     expect(ahead.x).toBeCloseTo(b.x, 3);
     expect(ahead.vx).toBeLessThan(600);
-    // A big disagreement (someone else kicked it): straight to the server's.
+  });
+
+  it("glides to the server's ball when someone else kicked it, never blinks there", () => {
+    // 280 px off (another's kick, seen a network trip late): it used to
+    // jump there in one frame, which looked like the ball vanishing.
     const bp = new BallPrediction(atRest());
     bp.server(atRest(), 0, 0);
+    const far = plazaBody(1000, 900);
     bp.server({ ...atRest(), x: 2560 }, 0, 5000);
-    expect(bp.ball.x).toBe(2560);
+    let prev = bp.ball.x,
+      most = 0;
+    expect(prev).toBe(2280);
+    for (let i = 0; i < 60; i++) {
+      bp.step(far, 1 / 60, 5000 + i * 16.7);
+      most = Math.max(most, Math.abs(bp.ball.x - prev));
+      prev = bp.ball.x;
+    }
+    expect(bp.ball.x).toBeCloseTo(2560, 0);
+    expect(most).toBeLessThan(60);
+    // A restart or a lost stream, far past that, still jumps.
+    bp.server({ ...atRest(), x: 2560 - PLAZA_NET.ballSnap - 10 }, 0, 9000);
+    expect(bp.ball.x).toBeCloseTo(2560 - PLAZA_NET.ballSnap - 10, 0);
   });
 
   it("waits on a goal for the server, and comes back with the server's restart", () => {
@@ -127,6 +145,41 @@ describe("the ball you kick", () => {
     expect(bp.ball.lock).toBe(1);
     bp.server(atRest(), 100, 2000);
     expect(bp.ball.lock).toBe(0);
+    // The restart after a goal the server gave is a jump, not a glide.
+    expect(bp.vis).toEqual({ x: 0, y: 0 });
+  });
+
+  it("glides back out of the net when the server didn't give the goal", () => {
+    const P = PLAZA_PITCH,
+      my = (P.gy0 + P.gy1) / 2;
+    const bp = new BallPrediction(atRest());
+    bp.server(atRest(), 0, 0);
+    // Your kick, in your timeline, into the right goal.
+    const me = plazaBody(P.x1 - 120, my);
+    bp.ball.x = P.x1 - 90;
+    bp.ball.y = my;
+    bp.ball.vx = 700;
+    const far = plazaBody(1000, 900);
+    for (let i = 0; i < 30 && bp.ball.lock <= 0; i++)
+      bp.step(i ? far : me, 1 / 60, 3000 + i * 16.7);
+    expect(bp.ball.lock).toBeGreaterThan(0);
+    const inNet = { x: bp.ball.x, y: bp.ball.y };
+    // The server's ball was stopped (a keeper it saw, the browser didn't).
+    const stopped = { ...atRest(), x: P.x1 - 200, y: my };
+    bp.server(stopped, 0, 4000);
+    expect(bp.ball.lock).toBe(0);
+    // Drawn where it was, then gliding back onto the server's ball.
+    expect(bp.ball.x + bp.vis.x).toBeCloseTo(inNet.x, 3);
+    let prev = bp.ball.x + bp.vis.x,
+      most = 0;
+    for (let i = 0; i < 60; i++) {
+      bp.step(far, 1 / 60, 4000 + i * 16.7);
+      const drawn = bp.ball.x + bp.vis.x;
+      most = Math.max(most, Math.abs(drawn - prev));
+      prev = drawn;
+    }
+    expect(most).toBeLessThan(60);
+    expect(prev).toBeCloseTo(P.x1 - 200, 0);
   });
 });
 
