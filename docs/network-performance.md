@@ -708,6 +708,57 @@ minute), `arena` (the court), and this player's queue over the match:
 running 15 ms late or more, a phone input clock off 30, 5 or more folded
 inputs, and 10 or more holds a minute.
 
+### 17. Thirty snapshots a second
+
+Until 23 Nov 2026 the server sent a snapshot every second tick (15 a
+second). Every hit, blast and opponent move waited up to one tick (33 ms,
+about 17 ms on average) for its slot, and opponents were drawn at least
+80 ms behind the server to ride over the 67 ms gaps. Players are mostly in
+Southern California, about 50 ms from the Oregon server, so after that
+ping these waits were the larger share of what could still be cut.
+
+`RULES.snapshot` is now 30: one snapshot every tick. The client's
+interpolation follows (`INTERPOLATION` in `networking/interpolation.ts`):
+`min` 0.08 → 0.06 s, `initial` 0.1 → 0.08 s, `margin` 0.01 → 0.02 s, the
+lateness window 60 → 120 arrivals and the frame history 12 → 24 (both the
+same seconds as before).
+
+net-sim, 60 s per link, averaged over seeds 1-5 (opponent drawn behind the
+server, p50, and how often a moving opponent is drawn standing still):
+
+| Link         | 15 a second  | 30, old tuning   | 30, new tuning   |
+| ------------ | ------------ | ---------------- | ---------------- |
+| Good Wi-Fi   | 77 ms, 0.0%  | 63 ms, 0.7%      | **53 ms, 0.0%**  |
+| Mobile 4G    | 127 ms, 0.5% | 103 ms, **5.4%** | **111 ms, 0.8%** |
+| Congested    | 264 ms, 1.8% | 264 ms, 2.8%     | 267 ms, 2.3%     |
+| Wi-Fi stalls | 200 ms, 4.5% | 200 ms, 3.5%     | 200 ms, **3.3%** |
+
+The old tuning at 30 a second froze 4G opponents: with half the interval
+the buffer no longer covered the link's jitter, hence the larger margin.
+(A single seeded run is not enough to compare rates: the network's random
+draws follow the number of snapshots, so each rate sees another network.)
+
+The cost, `server-load.ts --rooms 24 --mix pvp2,pvp4,raid4 --seconds 20` on
+this host (80 players fighting non-stop):
+
+| Snapshots a second | Server CPU, % of one core | Tick p95 / p99      | Per player, downstream |
+| ------------------ | ------------------------- | ------------------- | ---------------------- |
+| 15                 | 25.7                      | 9.4 / 11.6 ms       | 78 KB/s                |
+| 30 (two runs)      | 29.0-32.4                 | 9.7-11.7 / 14-17 ms | 147 KB/s               |
+
+- CPU grows 13-26%, not 100%: inputs (30 a second per player) and the
+  simulation cost the same; only the outgoing messages double. Every tick
+  still ran on time. The capacity estimate below shrinks by about a fifth
+  (roughly 65-80 people in battles at once on 0.5 CPU).
+- Download doubles to about 150 KB/s per player in a battle (about 530 MB
+  per hour of non-stop fighting). The whole service sent 2.5 GB in the week
+  of 16-23 Nov 2026 (Render metrics), so this stays far inside the plan.
+- `correction-sim.test.ts` measures the drift carry (Radiant Flare's pull)
+  at 15 a second: at 30 a pull is corrected every tick and the carry barely
+  shows (9 lure corrections with or without it in that replay).
+- `SNAP_LATE` (a late snapshot in the match reports) stays 120 ms so the
+  "Late updates" column compares across builds.
+
 ## Results
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The

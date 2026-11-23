@@ -220,7 +220,8 @@ it("holds snapshots back from a congested socket and delivers every missed event
   const delivered = slow.seen.flatMap((s) => s.wire.events.map((e) => e.id));
   for (const id of castIds)
     expect(delivered.filter((d) => d === id)).toHaveLength(1);
-  expect(slow.seen.at(-1)!.wire.meta).toBeDefined();
+  // The first snapshot after the hold carries the appearance too.
+  expect(slow.seen[before].wire.meta).toBeDefined();
 });
 
 it("a player who leaves the app is offline in their room at once, and gets the seat back on return", async () => {

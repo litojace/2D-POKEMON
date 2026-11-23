@@ -25,13 +25,17 @@ type Frame = {
  */
 export const INTERPOLATION = {
   /** Fixed delay until enough arrivals are measured (s). */
-  initial: 0.1,
-  min: 0.08,
+  initial: 0.08,
+  min: 0.06,
   max: 0.2,
-  /** Extra headroom above measured lateness (s). */
-  margin: 0.01,
-  /** Arrivals measured for the lateness estimate (~4 s at 15 Hz). */
-  window: 60,
+  /**
+   * Extra headroom above measured lateness (s). At 30 snapshots a second
+   * the interval no longer hides 4G jitter on its own: 0.01 froze a moving
+   * opponent 5% of the time there (net-sim, 5 seeds), 0.02 under 1%.
+   */
+  margin: 0.02,
+  /** Arrivals measured for the lateness estimate (~4 s at 30 Hz). */
+  window: 120,
   /** Arrivals needed before adapting. */
   warmup: 8,
   /** When the newest snapshot runs out, keep moving on its velocity (s). */
@@ -75,7 +79,8 @@ export class InterpolationBuffer {
     for (const p of state.players)
       players[p.id] = { x: p.x, y: p.y, angle: p.angle, vx: p.vx, vy: p.vy };
     this.frames.push({ time: state.time, received, players });
-    if (this.frames.length > 12) this.frames.shift();
+    // About 0.8 s of history at 30 snapshots a second.
+    if (this.frames.length > 24) this.frames.shift();
     this.arrivals.push(received - state.time * 1000);
     if (this.arrivals.length > INTERPOLATION.window) this.arrivals.shift();
     // A late packet must not reset the render clock backwards. Use the least

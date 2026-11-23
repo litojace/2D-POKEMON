@@ -23,7 +23,15 @@ export const RULES = {
   width: 1600,
   height: 900,
   tick: 30,
-  snapshot: 15,
+  /**
+   * Snapshots a second: one every tick (was 15, every second tick, until
+   * 23 Nov 2026). Hits, blasts and opponents reach you about 17 ms sooner
+   * on average, and opponents are drawn 16-24 ms closer to the present on
+   * Wi-Fi and 4G, for about twice the download (~150 KB/s per player in a
+   * battle) and ~15-25% more server CPU: docs/network-performance.md,
+   * section 17.
+   */
+  snapshot: 30,
   radius: 24,
   dashSpeed: 850,
   acceleration: 18,

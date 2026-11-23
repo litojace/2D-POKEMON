@@ -389,7 +389,10 @@ export function drawnGap(
   if (best && Math.abs(best.t - at) < 100)
     return Math.hypot(best.x - x, best.y - y);
 }
-/** A snapshot gap longer than this is late (the server sends one every 67 ms). */
+/**
+ * A snapshot gap longer than this is late (the server sends one every
+ * 33 ms; 67 ms before 23 Nov 2026, kept at 120 so reports stay comparable).
+ */
 export const SNAP_LATE = 120;
 /** A correction smaller than this is not noticeable. */
 export const CORRECTION_PX = 4;

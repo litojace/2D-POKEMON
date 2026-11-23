@@ -1395,7 +1395,7 @@ export function createArenaServer(
     if (diagnostics.enabled && ticks % 20 === 0)
       diagnostics.snapshot(Buffer.byteLength(JSON.stringify(wire)));
     // Backpressure: a socket still writing an earlier message is congested.
-    // Queuing more 15 Hz snapshots behind it only makes it later, so it is
+    // Queuing more snapshots behind it only makes it later, so it is
     // skipped; its first snapshot once it drains carries every event it
     // missed (from the room's recent-event history) and the appearance.
     const held = new Set<string>();
@@ -3612,9 +3612,10 @@ export function createArenaServer(
   let ticks = 0;
   /**
    * A skill was cast or a fighter dashed this tick: send the snapshot now
-   * rather than at the next 15 Hz slot (up to 33 ms later), so the cast
-   * reaches every player, and its echo the caster, a tick sooner. Basic
-   * attacks, which players spam, keep the steady rate.
+   * rather than at the next slot, so the cast reaches every player, and its
+   * echo the caster, a tick sooner. Basic attacks, which players spam, keep
+   * the steady rate. (With RULES.snapshot at 30, every tick is a slot and
+   * this changes nothing; it matters again if the rate is ever lowered.)
    */
   const castThisTick = (a: Arena, serial: number) =>
     a.serial > serial &&
