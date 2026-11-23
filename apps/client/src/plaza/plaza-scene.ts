@@ -6116,14 +6116,20 @@ export function openPlaza(options) {
       // between fishing's buttons (fishingFrame).
       const frame = fishing.active ? fishingFrame(NW, NH) : null;
       const fzWant = frame ? frame.z / zBase : 1;
+      // The camera and the zoom ease by the time that really passed (up to
+      // a second, as you move), not the frame's capped 0.05 s: under 20 fps
+      // they fell behind in real time, so after a teleport, a correction
+      // from the server or a hitch, you stayed off the screen for seconds
+      // at a few frames a second (a CI runner drew you nowhere for 2 s).
+      const camK = (rate) => 1 - Math.exp(-moveDt * rate);
       if (Math.abs(fz - fzWant) > 0.001) {
-        fz += (fzWant - fz) * Math.min(1, dt * 4);
+        fz += (fzWant - fz) * camK(4);
         Z = zBase * fz;
       }
       const look = frame ?? { x: P.x + lead.x, y: P.y - 40 + lead.y };
       const want = plazaCamClamp(look.x, look.y, NW, NH, Z);
-      cam.x += (want.x - cam.x) * Math.min(1, dt * 5);
-      cam.y += (want.y - cam.y) * Math.min(1, dt * 5);
+      cam.x += (want.x - cam.x) * camK(5);
+      cam.y += (want.y - cam.y) * camK(5);
       {
         const nt = night() > 0.5,
           ck = $("pz-clock");

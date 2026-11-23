@@ -775,10 +775,17 @@ test("Jump and Dash work while the other thumb holds the joystick", async ({
 // moves ~4 px a frame while running, so in the air the body shook ±1.2 px
 // every frame (owner, 23 Nov). In the air there is no bob now: the jump's
 // arc carries the body, and the walk bob eases out at take-off.
-test("a running jump doesn't shake: no bob in the air", async ({ page }) => {
-  test.setTimeout(90_000);
-  const errors = await openPlaza(page);
-  // Open grass on the pitch, running east.
+/**
+ * Run east on the pitch and take off mid-run: the same jump as Space
+ * (plazaJump's fields) but 1.5 s long, so a CI runner drawing the Plaza at a
+ * few frames a second still draws some of it. (Running onto a bounce pad
+ * missed it on CI: the teleport hadn't reached the browser's copy of you
+ * yet.) Each frame in the air after `skipMs` (the walk bob easing out), the
+ * bob the game drew you with, and whether it drew you that frame at all
+ * (bodyPose stamps `bobT` with the frame's time) and you were in the view:
+ * a body not drawn keeps its last bob, so its "bob" says nothing.
+ */
+async function runningJump(page: Page, skipMs: number) {
   await teleport(page, 2060, 760);
   await page.waitForTimeout(500);
   await page.locator(".plaza-layer").focus();
@@ -788,32 +795,84 @@ test("a running jump doesn't shake: no bob in the air", async ({ page }) => {
       timeout: 20_000,
     })
     .toBeGreaterThan(100);
-  // Take off here and now, mid-run: the same jump as Space (plazaJump's
-  // fields) but 1.5 s long, so a CI runner drawing the Plaza at 3-5 fps
-  // still draws several frames of it. (Running onto a bounce pad missed it
-  // on CI: the teleport hadn't reached the browser's copy of you yet.)
-  // Record the drawn bob each frame in the air after its first quarter
-  // second (the walk bob easing out); give up after 8 s with what there is.
-  const bobs: number[] = await page.evaluate(
-    () =>
-      new Promise((done) => {
-        const P = (window as any).__plaza.P,
-          out: number[] = [],
-          t0 = performance.now();
-        P.air = 1e-4;
-        P.airDur = 1.5;
-        P.airH = 42;
-        const loop = (now: number) => {
-          if (!P.air || now - t0 > 8000) return done(out);
-          if (now - t0 > 250) out.push(P.bob || 0);
+  const frames: { bob: number; drawn: boolean; seen: boolean }[] =
+    await page.evaluate(
+      (skipMs) =>
+        new Promise((done) => {
+          const d = (window as any).__plaza,
+            P = d.P,
+            out: { bob: number; drawn: boolean; seen: boolean }[] = [],
+            t0 = performance.now();
+          P.air = 1e-4;
+          P.airDur = 1.5;
+          P.airH = 42;
+          const loop = (now: number) => {
+            if (!P.air || now - t0 > 8000) return done(out);
+            if (now - t0 > skipMs) {
+              const v = d.view();
+              out.push({
+                bob: P.bob || 0,
+                drawn: P.bobT === now / 1000,
+                seen: P.x > v.x0 && P.x < v.x1 && P.y > v.y0 && P.y < v.y1,
+              });
+            }
+            requestAnimationFrame(loop);
+          };
           requestAnimationFrame(loop);
-        };
-        requestAnimationFrame(loop);
-      }),
-  );
+        }),
+      skipMs,
+    );
   await page.keyboard.up("d");
-  expect(bobs.length).toBeGreaterThan(0);
-  expect(Math.max(...bobs.map(Math.abs))).toBeLessThan(0.5);
+  return frames;
+}
+
+test("a running jump doesn't shake: no bob in the air", async ({ page }) => {
+  test.setTimeout(90_000);
+  const errors = await openPlaza(page);
+  const frames = await runningJump(page, 250);
+  expect(frames.length).toBeGreaterThan(0);
+  expect(frames.filter((f) => !f.drawn || !f.seen)).toEqual([]);
+  expect(Math.max(...frames.map((f) => Math.abs(f.bob)))).toBeLessThan(0.5);
+  expect(errors).toEqual([]);
+});
+
+// At a few frames a second (a starved phone, or CI's software renderer,
+// which went 2 s without a frame) the camera followed by the frame, not by
+// the time that passed: after the teleport and the server's correction you
+// ran off the screen and stayed there for seconds, undrawn, and the jump
+// test read the bob from before take-off (3.99 on CI, 23 Nov). Here frames
+// come every 1.5 s, whatever the machine, and you stay in view.
+test("at a frame every 1.5 s the camera keeps you on the screen", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  // Animation frames held to one every 1.5 s once __slowFrames is set; timers
+  // (the Plaza server in the page) run as usual, as on a starved renderer.
+  await page.addInitScript(() => {
+    const w = window as any,
+      raf = window.requestAnimationFrame.bind(window);
+    let queue: FrameRequestCallback[] = [],
+      next = 0;
+    window.requestAnimationFrame = (cb) => {
+      if (!w.__slowFrames) return raf(cb);
+      queue.push(cb);
+      return 0;
+    };
+    setInterval(() => {
+      if (!w.__slowFrames || !queue.length || performance.now() < next) return;
+      next = performance.now() + 1500;
+      const due = queue;
+      queue = [];
+      raf((t) => due.forEach((cb) => cb(t)));
+    }, 5);
+  });
+  const errors = await openPlaza(page);
+  await page.evaluate(() => ((window as any).__slowFrames = true));
+  // 1.5 s a frame eases the walk bob out at once: judge every frame.
+  const frames = await runningJump(page, 0);
+  expect(frames.length).toBeGreaterThan(0);
+  expect(frames.filter((f) => !f.drawn || !f.seen)).toEqual([]);
+  expect(Math.max(...frames.map((f) => Math.abs(f.bob)))).toBeLessThan(0.5);
   expect(errors).toEqual([]);
 });
 
