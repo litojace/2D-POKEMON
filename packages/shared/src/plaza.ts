@@ -1901,6 +1901,8 @@ export function plazaBallStep<K>(
       last.key = key;
     }
   }
+  const fromX = ball.x,
+    fromY = ball.y;
   ball.x += ball.vx * dt;
   ball.y += ball.vy * dt;
   if (ball.z > 0 || ball.vz > 0) {
@@ -1919,16 +1921,35 @@ export function plazaBallStep<K>(
     ball.y = P.y1 - r;
     ball.vy = -Math.abs(ball.vy) * PLAZA_BALL.bounce;
   }
-  const mouth = ball.y > P.gy0 + 8 && ball.y < P.gy1 - 8;
-  if (ball.x < P.x0 + r && !mouth) {
-    ball.x = P.x0 + r;
-    ball.vx = Math.abs(ball.vx) * PLAZA_BALL.bounce;
+  // The ends. Between the posts (less the ball's own size) it can go on
+  // into the goal; elsewhere the end line turns it back. A ball already in
+  // the goal's mouth when it drifts sideways hits the inside of a post and
+  // stays in the mouth: it used to be pulled back out onto the pitch, past
+  // the line it had crossed (owner, 23 Nov: "kicked in, didn't count, slid
+  // out").
+  const lo = P.gy0 + 8,
+    hi = P.gy1 - 8,
+    mouth = ball.y > lo && ball.y < hi;
+  for (const right of [false, true]) {
+    const past = right ? ball.x > P.x1 - r : ball.x < P.x0 + r;
+    if (!past || mouth) continue;
+    // In the mouth before this step: past the line's inner edge, between
+    // the posts. (Pushed into a corner by a body is not in the mouth.)
+    const wasIn =
+      (right ? fromX > P.x1 - r : fromX < P.x0 + r) && fromY > lo && fromY < hi;
+    if (wasIn) {
+      ball.y = ball.y <= lo ? lo + 0.01 : hi - 0.01;
+      ball.vy =
+        (ball.y < lo + 1 ? 1 : -1) * Math.abs(ball.vy) * PLAZA_BALL.bounce;
+    } else {
+      ball.x = right ? P.x1 - r : P.x0 + r;
+      ball.vx = (right ? -1 : 1) * Math.abs(ball.vx) * PLAZA_BALL.bounce;
+    }
   }
-  if (ball.x > P.x1 - r && !mouth) {
-    ball.x = P.x1 - r;
-    ball.vx = -Math.abs(ball.vx) * PLAZA_BALL.bounce;
-  }
-  if (ball.x < P.x0 - 14 || ball.x > P.x1 + 14) {
+  // A goal: the ball's middle over the goal line, between the posts. (It
+  // was 14 px further in, so a slow ball could stop over the line, half in
+  // the net, and not count.)
+  if (ball.x < P.x0 || ball.x > P.x1) {
     const right = ball.x > P.x1;
     ball.lock = PLAZA_BALL.resetSeconds;
     ball.vx = ball.vy = 0;

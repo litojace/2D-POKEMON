@@ -6069,9 +6069,10 @@ export function openPlaza(options) {
         const ox2 = ball.x,
           oy2 = ball.y;
         // (Stepped with you above.)
-        const nb = net.ball.ball;
-        ball.x = nb.x;
-        ball.y = nb.y;
+        const nb = net.ball.ball,
+          vis = net.ball.vis;
+        ball.x = nb.x + vis.x;
+        ball.y = nb.y + vis.y;
         ball.z = nb.z;
         ball.spin += Math.hypot(ball.x - ox2, ball.y - oy2) / ball.r;
       } else if (ball.tx != null) {
