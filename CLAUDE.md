@@ -28,6 +28,12 @@ decides, merges and coordinates on its own, without waiting to be asked:
   and legal text, deleting or exposing player data, secrets and accounts,
   production settings outside this repo, and anything a security finding
   turns up.
+- **The owner lives in the US** (Orange County, California), though they
+  write in Vietnamese (owner, 23 Nov). Give times in US Pacific time
+  (`America/Los_Angeles`, PT), schedule check-ins and scheduled tasks in
+  that zone, and assume US devices, stores and conventions. Answer in
+  Vietnamese when they write in Vietnamese, but never assume they are in
+  Vietnam or on Vietnam time.
 
 ## Product UI priorities
 
