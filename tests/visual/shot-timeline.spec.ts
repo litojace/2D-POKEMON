@@ -95,3 +95,186 @@ test("shots run on from their snapshot to where the server will have them", asyn
   expect(theirs[0]).toBeLessThanOrEqual(mine[0] + 1e-6);
   expect(errors).toEqual([]);
 });
+
+/**
+ * Player report (22-23 Nov 2026): your shot reached the target, then waited
+ * on it a round trip before its blast went off. Now a shot reaching a
+ * fighter standing still plays its blast at once, and the server's impact
+ * for it plays nothing more (timeline-lead.ts ImpactPrediction).
+ */
+test("your shot's blast plays when it reaches a still target, once", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.route(
+    /\/apps\/client\/src\/skill-effects\.ts(?:\?|$)/,
+    async (route) => {
+      const response = await route.fetch(),
+        body = await response.text();
+      const marker = "export function playImpact(";
+      expect(body).toContain(marker);
+      await route.fulfill({
+        response,
+        body: body.replace(
+          marker,
+          "export function playImpact(...a) { (window.__impacts ??= []).push(a[1].id); return playImpactNow(...a); }\nfunction playImpactNow(",
+        ),
+      });
+    },
+  );
+  const errors = await openHub(page);
+  await page.evaluate(() =>
+    (window as any).__room("pvp", {
+      mode: "duel",
+      phase: "playing",
+      pos: [150, 120, 800, 560],
+    }),
+  );
+  await openPlayPanel(page);
+  await createRoom(page);
+  await pushUntilBattle(page);
+  const abilityId = CHARACTERS.voltkit.basic.id;
+  const seen = await page.evaluate(
+    async ({ abilityId }) => {
+      const w = window as any;
+      // Steady snapshots first, so p2 is drawn where the server has it.
+      for (let i = 0; i < 10; i++) {
+        w.__push();
+        await new Promise((r) => setTimeout(r, 1000 / 15));
+      }
+      w.__impacts = [];
+      // Your shot just short of p2's edge (p2 at 800,560), flying at it.
+      w.__snap.projectiles = [
+        {
+          id: 960,
+          owner: "me",
+          x: 680,
+          y: 560,
+          vx: 600,
+          vy: 0,
+          remaining: 600,
+          abilityId,
+          color: 0xffd23f,
+        },
+      ];
+      w.__push();
+      await new Promise((r) => setTimeout(r, 450));
+      const early = (w.__impacts as unknown[]).length;
+      // The server's impact for it, a round trip later.
+      w.__snap.projectiles = [];
+      w.__snap.events = [
+        {
+          id: 95000,
+          kind: "impact",
+          owner: "me",
+          abilityId,
+          x: 765,
+          y: 560,
+          color: 0xffd23f,
+        },
+      ];
+      w.__push();
+      w.__snap.events = [];
+      await new Promise((r) => setTimeout(r, 200));
+      // Another of your impacts the client never predicted (a wall, say)
+      // still plays.
+      w.__snap.events = [
+        {
+          id: 95001,
+          kind: "impact",
+          owner: "me",
+          abilityId,
+          x: 300,
+          y: 300,
+          color: 0xffd23f,
+        },
+      ];
+      w.__push();
+      w.__snap.events = [];
+      await new Promise((r) => setTimeout(r, 200));
+      return { early, total: (w.__impacts as unknown[]).length };
+    },
+    { abilityId },
+  );
+  // Played before the server said so, not again when it did; the wall
+  // impact on top.
+  expect(seen).toEqual({ early: 1, total: 2 });
+  expect(errors).toEqual([]);
+});
+
+/**
+ * Player report (23 Nov 2026): a delayed blast of yours ran out its ring a
+ * round trip before the damage showed up. Your zones now count down on the
+ * snapshot's clock (where their hits arrive), an opponent's still on your
+ * timeline (the time you have to get out): timeline-lead.ts zoneClock.
+ */
+test("your zone counts down on the snapshot's clock, an opponent's on yours", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.route(
+    /\/apps\/client\/src\/skill-effects\.ts(?:\?|$)/,
+    async (route) => {
+      const response = await route.fetch(),
+        body = await response.text();
+      const marker = "export function drawZone(";
+      expect(body).toContain(marker);
+      await route.fulfill({
+        response,
+        body: body.replace(
+          marker,
+          "export function drawZone(...a) { (window.__zoneProgress ??= {})[a[1].id] = a[2]; return drawZoneNow(...a); }\nfunction drawZoneNow(",
+        ),
+      });
+    },
+  );
+  const errors = await openHub(page);
+  await page.evaluate(() =>
+    (window as any).__room("pvp", {
+      mode: "duel",
+      phase: "playing",
+      pos: [150, 120, 800, 560],
+    }),
+  );
+  await openPlayPanel(page);
+  await createRoom(page);
+  await pushUntilBattle(page);
+  const abilityId = CHARACTERS.cindrake.skills[1].id;
+  const progress = await page.evaluate(
+    async ({ abilityId }) => {
+      const w = window as any;
+      for (let i = 0; i < 8; i++) {
+        w.__push();
+        await new Promise((r) => setTimeout(r, 1000 / 15));
+      }
+      const t = w.__snap.time;
+      const zone = (id: number, owner: string, x: number) => ({
+        id,
+        owner,
+        x,
+        y: 450,
+        radius: 60,
+        until: t + 2,
+        nextTick: t + 9,
+        abilityId,
+        color: 0xff7a3d,
+      });
+      // The same timer: one yours, one your opponent's.
+      w.__snap.zones = [zone(970, "me", 400), zone(971, "p2", 1200)];
+      w.__zoneProgress = {};
+      w.__push();
+      await new Promise((r) => setTimeout(r, 250));
+      const seen = { ...w.__zoneProgress };
+      w.__snap.zones = [];
+      w.__push();
+      return seen;
+    },
+    { abilityId },
+  );
+  expect(progress[970]).toBeDefined();
+  expect(progress[971]).toBeDefined();
+  // Your timeline runs ahead of the snapshot's clock by the unanswered
+  // inputs: the opponent's ring is further along than yours.
+  expect(progress[971]).toBeGreaterThan(progress[970] + 0.005);
+  expect(errors).toEqual([]);
+});

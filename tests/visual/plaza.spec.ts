@@ -708,6 +708,49 @@ test("Jump and Dash work while the other thumb holds the joystick", async ({
   }
 });
 
+// A running jump was jittery: the idle bob's phase was the body's x, which
+// moves ~4 px a frame while running, so in the air the body shook ±1.2 px
+// every frame (owner, 23 Nov). In the air there is no bob now: the jump's
+// arc carries the body, and the walk bob eases out at take-off.
+test("a running jump doesn't shake: no bob in the air", async ({ page }) => {
+  test.setTimeout(90_000);
+  const errors = await openPlaza(page);
+  // Open grass on the pitch, running east.
+  await teleport(page, 2060, 760);
+  await page.waitForTimeout(500);
+  await page.locator(".plaza-layer").focus();
+  await page.keyboard.down("d");
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__plaza.P.sp), {
+      timeout: 20_000,
+    })
+    .toBeGreaterThan(100);
+  // Record the drawn bob each frame of the jump, after its first quarter
+  // second (the walk bob easing out).
+  await page.evaluate(() => {
+    const w = window as any,
+      P = w.__plaza.P,
+      out: number[] = [];
+    let t0: number | null = null;
+    w.__jumpBobs = new Promise((done) => {
+      const loop = (now: number) => {
+        if (P.air) {
+          t0 ??= now;
+          if (now - t0 > 250) out.push(P.bob || 0);
+        } else if (t0 !== null) return done(out);
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+    });
+  });
+  await page.keyboard.press("Space");
+  const bobs: number[] = await page.evaluate(() => (window as any).__jumpBobs);
+  await page.keyboard.up("d");
+  expect(bobs.length).toBeGreaterThan(2);
+  expect(Math.max(...bobs.map(Math.abs))).toBeLessThan(0.5);
+  expect(errors).toEqual([]);
+});
+
 // Bodies keep out of the fountain's basin (PLAZA_OBSTACLES), and so do
 // the square's animals: they used to check only where a walk ended, so the
 // corgi and the pigeons walked straight through the basin (owner, 22 Nov).

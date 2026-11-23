@@ -165,9 +165,27 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.4),
     0 1px 3px rgba(0, 0, 0, 0.35);
 }
-/* Things left to do (today's missions): blue, not an alarm. */
-.lobby-badge.is-count {
-  background: linear-gradient(180deg, #78aaff, #3f7ef2 55%, #2c5fd4);
+/* Something waits but there is nothing to count (today's missions): the
+   same red as a dot, so one colour means "for you" (owner, 23 Nov). */
+.lobby-badge.is-dot {
+  min-width: 10px;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  top: -3px;
+  left: calc(100% - 3px); /* centred where the Spire dot is */
+}
+/* When a badge appears, a halo pings out three times, then it rests.
+   Transform and opacity only (no repaint). */
+.lobby-badge::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid rgba(255, 140, 155, 0.95);
+  opacity: 0;
+  pointer-events: none;
+  animation: lobby-badge-ping 1.4s ease-out 0.3s 3;
 }
 .lobby-badge[hidden] {
   display: none;
@@ -1024,18 +1042,11 @@
     0 0 0 1.5px rgba(11, 16, 32, 0.9),
     0 0 10px 3px rgba(185, 135, 255, 0.95);
 }
-/* Something new: a halo pings out three times when the dot appears, then
-   it rests with its glow. Transform and opacity only (no repaint). */
+/* Something new in the Spire: its halo is violet and glows, and the dot
+   rests with its glow. */
 .lobby-badge.is-new::after {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  border: 2px solid rgba(214, 192, 255, 0.95);
+  border-color: rgba(214, 192, 255, 0.95);
   box-shadow: 0 0 8px 3px rgba(180, 130, 255, 0.9);
-  opacity: 0;
-  pointer-events: none;
-  animation: lobby-badge-ping 1.4s ease-out 0.3s 3;
 }
 @keyframes lobby-badge-ping {
   0% {
@@ -1048,7 +1059,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .lobby-badge.is-new::after {
+  .lobby-badge::after {
     animation: none;
   }
 }
@@ -1489,6 +1500,13 @@
     right: -5px;
     min-width: 12px;
     height: 12px;
+    padding: 0;
+  }
+  .lobby-rail .lobby-badge.is-dot {
+    top: -3px;
+    right: -4px;
+    min-width: 10px;
+    height: 10px;
     padding: 0;
   }
 }
