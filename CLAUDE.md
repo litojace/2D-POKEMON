@@ -75,6 +75,26 @@ To have the text selected as well, pass `{ selectAll: true }`; it then
 selects only where there is a mouse, not on a touch screen.
 `tests/unit/screen-pin.test.ts` fails on either pattern in client code.
 
+## Raid boss ids are the old names
+
+The seven raid bosses got new identities (14 Nov), but their ids stayed,
+because the database's runs, rewards, clears and cosmetics point at them
+and older app versions send them. So `gloomshade` code is Inkpurr, not a
+retired boss: never delete or rewrite boss code as "old" by its id
+(`packages/shared/src/raid-roster.ts` has the list).
+
+| id            | Boss                   |
+| ------------- | ---------------------- |
+| `grumblecrag` | Cragmuff               |
+| `tidewyrm`    | Tidelotl               |
+| `gloomshade`  | Inkpurr (Lantern Yard) |
+| `somnara`     | Snoozaku               |
+| `prismatail`  | Prismell               |
+| `emberwing`   | Lumiwick               |
+| `storm-twins` | Storm Twins            |
+
+Renaming the ids needs a migration on player data: ask the owner first.
+
 ## Running tests quickly
 
 The full visual suite (`tests/visual`, Playwright) has over 100 files and is
