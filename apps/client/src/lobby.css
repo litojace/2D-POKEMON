@@ -173,7 +173,7 @@
   height: 10px;
   padding: 0;
   top: -3px;
-  left: calc(100% - 5px);
+  left: calc(100% - 3px); /* centred where the Spire dot is */
 }
 /* When a badge appears, a halo pings out three times, then it rests.
    Transform and opacity only (no repaint). */
