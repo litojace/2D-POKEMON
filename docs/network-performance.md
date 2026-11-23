@@ -686,6 +686,50 @@ minute), `arena` (the court), and this player's queue over the match:
 running 15 ms late or more, a phone input clock off 30, 5 or more folded
 inputs, and 10 or more holds a minute.
 
+### 17. Fewer pixels a frame: no camera rectangle under the court
+
+The match reports' slowest phone (an iPhone, in the installed app, Low
+graphics, 22 Nov 2026) ran Gloomshade raids at 30-45 fps with 10-50% of
+the time stuttering, other raids and duels at 45-59 fps, and the long
+Gloomshade raids (80-126 s) worst. In the same session Tidewyrm and
+Grumblecrag reached 58.8 fps with the screen measured at 59 Hz, so the app
+does not cap the frame rate: the phone runs out of time in the heaviest
+scene, and a frame just over 16.7 ms waits for the next refresh (33 ms).
+
+Counting the screen area every quad and triangle covers each frame (the
+harness at 844×390, iPhone density 1.5, Low), a Gloomshade raid drew 3.3
+screens of pixels, Tidewyrm 2.7, Grumblecrag and a duel 2.3. One of those
+screens in every battle was Phaser's camera background: Phaser clears the
+canvas, then paints the camera's background colour as a blended rectangle
+over the whole view, and the court's floor covers it at once.
+`camera-clear.ts` makes that colour the canvas's clear colour and skips the
+rectangle for the frame (the camera keeps its colour, so nothing that reads
+or changes it notices). The picture is the same pixel for pixel: the clear
+fills every pixel with the colour the rectangle drew. Gloomshade now draws
+2.45 screens a frame, the others about 1.3-1.7.
+
+Measured on this container's software renderer (which pays per pixel, as a
+phone's graphics chip does, more steeply), Gloomshade at Low, 8 s, three
+runs each: median frame 62.6 / 64.9 / 58.4 ms before, 55.5 / 53.5 / 55.0 ms
+after (about 12% less). JavaScript time per frame is unchanged.
+
+Damage numbers and combo text (`battle-text.ts`) are made with less work:
+Phaser measured each label's font by drawing a test string and reading the
+canvas back (`getImageData`, which on an iPhone waits for the graphics
+chip), and `setResolution` drew and uploaded each label twice. The measure
+is now taken once per font and the resolution passed with the style: one
+draw and one upload a label, 40% less time making one (0.85 → 0.5 ms at
+4× CPU throttle), and the same pixels (compared canvas for canvas).
+
+Not changed, for a decision: at Low an iPhone still draws at 1.5× (as at
+High), so Low gives iPhones no fill relief; and the battle's WebGL canvas
+uses 4× multisampling, which only smooths Graphics edges (rings, arcs,
+telegraphs). Either would cut a phone's drawing further, visibly. The
+server also sends Gloomshade's curse damage as one zero-value hit a tick
+(30 a second per Haunted raider), and each plays a hit spark and a tone:
+in the harness, four Haunted raiders cost 5-10% more JavaScript a frame
+from those ticks alone.
+
 ## Results
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The
