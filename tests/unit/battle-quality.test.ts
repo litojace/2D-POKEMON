@@ -9,6 +9,7 @@ import {
   type BattleQuality,
 } from "../../apps/client/src/battle-quality";
 import type { GraphicsSetting } from "../../apps/client/src/graphics-quality";
+import { rendererDensity } from "../../apps/client/src/render-budget";
 
 /** What the device remembers between battles (localStorage in the game). */
 function device() {
@@ -257,10 +258,14 @@ it("only trims decoration, and at Low draws fewer pixels", () => {
     expect(knobs.particles).toBeGreaterThan(0.3);
   }
   // High and Medium keep the screen's density (at most 2); Low draws at
-  // most 1.5, as iPhones always do.
+  // most 1.25: below the 1.5 iPhones get at every level, so Low lightens
+  // an iPhone's battle too (at 1.5 it drew exactly as at High).
   expect(BATTLE_QUALITY.high.density).toBe(2);
   expect(BATTLE_QUALITY.medium.density).toBe(2);
-  expect(BATTLE_QUALITY.low.density).toBe(1.5);
+  expect(BATTLE_QUALITY.low.density).toBe(1.25);
+  expect(BATTLE_QUALITY.low.density).toBeLessThan(
+    rendererDensity(3, true, false),
+  );
   // Only Low limits decorative glow light (warnings never shrink).
   expect(BATTLE_QUALITY.high.glowBudget).toBe(Infinity);
   expect(BATTLE_QUALITY.medium.glowBudget).toBe(Infinity);

@@ -789,14 +789,23 @@ is now taken once per font and the resolution passed with the style: one
 draw and one upload a label, 40% less time making one (0.85 → 0.5 ms at
 4× CPU throttle), and the same pixels (compared canvas for canvas).
 
-Not changed, for a decision: at Low an iPhone still draws at 1.5× (as at
-High), so Low gives iPhones no fill relief; and the battle's WebGL canvas
-uses 4× multisampling, which only smooths Graphics edges (rings, arcs,
-telegraphs). Either would cut a phone's drawing further, visibly. The
-server also sends Gloomshade's curse damage as one zero-value hit a tick
-(30 a second per Haunted raider), and each plays a hit spark and a tone:
-in the harness, four Haunted raiders cost 5-10% more JavaScript a frame
-from those ticks alone.
+Decided by the owner (23 Nov 2026):
+
+- **Low draws at 1.25×** (`BATTLE_QUALITY.low.density`, was 1.5). iPhones
+  are capped at 1.5 at every level, so Low used to give them no fill relief
+  at all; 1.25 fills 31% fewer pixels than 1.5 and stays sharper than 1×.
+  Android at Low goes from 1.5 to 1.25 as well. High and Medium unchanged.
+- **The battle canvas keeps its 4× multisampling.** Phone graphics chips
+  (Apple's, and most Android ones) draw in tiles and resolve multisampling
+  on the chip, so turning it off would save little and roughen every ring
+  and telegraph edge. Not measured on a phone: revisit only if the reports
+  still show slow frames after the Low change.
+- **Gloomshade's curse lands three times a second** (`GLOOMSHADE.curse
+.tickEvery`): its damage adds up and hits as one, the same damage a
+  second, instead of a hit every tick (30 a second per Haunted raider, each
+  a spark, a tone and a "0"). In a live raid in the harness, three seconds
+  Haunted played 90 hit sparks before and 8 after, and left the raider at
+  111.0 and 111.5 health. Each hit now shows its number (about 3).
 
 ## Results
 

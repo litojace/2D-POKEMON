@@ -260,7 +260,7 @@ for (const quality of ["high", "low"] as const)
       await expect(overlay).toBeVisible();
       await expect(overlay).toContainText(/\d+ fps/);
       await expect(overlay).toContainText(
-        quality === "high" ? /high 2×/ : /low 1\.5×/,
+        quality === "high" ? /high 2×/ : /low 1\.25×/,
       );
       expect(
         await overlay.evaluate((el) => getComputedStyle(el).pointerEvents),
@@ -341,7 +341,7 @@ for (const quality of ["high", "low"] as const)
       ).toBeLessThanOrEqual(before.unpooled + 40);
       expect(battlePerfSchema.safeParse(report).success).toBe(true);
       expect(report.quality).toBe(quality);
-      expect(report.density).toBe(quality === "high" ? 2 : 1.5);
+      expect(report.density).toBe(quality === "high" ? 2 : 1.25);
       if (quality === "low") {
         // Low's glow budget (0.75 screens) holds crowded fights' glow light
         // down, shrinking decorative glows smoothly when it must.

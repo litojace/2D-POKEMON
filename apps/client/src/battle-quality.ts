@@ -53,7 +53,8 @@ export interface BattleQualityKnobs {
   /** Stop purely decorative background animation (the stands' crowd). */
   stillBackground: boolean;
   /** Most canvas pixels per CSS pixel (the screen's own density is lower on
-   * some devices, and iPhones are capped at 1.5 at every level). */
+   * some devices, and iPhones are capped at 1.5 at every level, so only
+   * Low's 1.25 draws them softer). */
   density: number;
   /** Most screens' worth of decorative glow light a frame (fx-engine.ts);
    * warnings (wind-ups, a boss gathering power) are never shrunk. */
@@ -81,7 +82,10 @@ export const BATTLE_QUALITY: Record<BattleQuality, BattleQualityKnobs> = {
     trails: 2.5,
     mythicAmbient: 0,
     stillBackground: true,
-    density: 1.5,
+    // Below the iPhone cap (1.5 at every level: render-budget.ts), so Low
+    // fills fewer pixels on iPhones too: 1.5 left them exactly as at High
+    // (23 Nov 2026). 1.25 fills 31% fewer pixels than 1.5; 1 looked soft.
+    density: 1.25,
     // Measured 10 Nov 2026: one champion's heaviest cast covers at most
     // 0.30 screens; four fighters casting at once 0.66 typically and 1.38 at
     // peak (tests/visual/match-flow-budget.spec.ts). So a duel never shrinks

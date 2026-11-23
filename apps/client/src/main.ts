@@ -8805,7 +8805,8 @@ function flashWhite(root: Phaser.GameObjects.Container) {
 /**
  * Canvas pixels per CSS pixel. Phones have 2–3x screens; rendering at that density
  * keeps creatures, effects and text sharp. Capped at 2 to protect frame rate,
- * and at 1.5 at Low battle graphics (battle-quality.ts), as on iPhones.
+ * and at 1.25 at Low battle graphics (battle-quality.ts), below the 1.5
+ * iPhones get at every level.
  */
 function renderScale() {
   const density = Math.min(rendererDensity(), battleQuality.knobs().density);
