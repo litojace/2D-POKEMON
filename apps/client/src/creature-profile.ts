@@ -100,6 +100,8 @@ interface ProfileDrawing {
     height: number,
     ink?: string,
   ) => string;
+  /** The skin draws a see-through champion solid (SkinArt.solid). */
+  solid?: boolean;
 }
 
 /**
@@ -1215,13 +1217,15 @@ export function creatureProfile(
         1.3,
         0.9,
       );
+    const see = (alpha: string) =>
+      drawing.solid ? "" : ` fill-opacity="${alpha}"`;
     // The body rises under the head as one shape: the neck joint stays
     // covered without a separate underpainting disc showing through.
     const teardrop = back
       ? "M72 120Q78 100 100 98Q122 100 128 120Q134 146 116 166Q106 178 100 186Q94 178 84 166Q66 146 72 120Z"
       : "M78 120Q82 100 100 98Q118 100 122 120Q128 146 112 166Q104 176 98 186Q92 176 84 164Q70 144 78 120Z";
     profiles.body =
-      path(teardrop, body, ' fill-opacity=".9"') +
+      path(teardrop, body, see(".9")) +
       (back
         ? line(
             "M86 128Q84 146 92 162M114 128Q116 146 108 162",
@@ -1233,7 +1237,7 @@ export function creatureProfile(
           e(98, 140, 16, 16, `url(#${prefix}-heartglow)`, ' stroke="none"') +
           line("M86 128Q84 146 92 162", "#ffffff", 1.6, 0.45));
     const flap = (d: string, vein: string) =>
-      path(d, jewel, ' fill-opacity=".85"') + line(vein, "#ffffff", 1.5, 0.75);
+      path(d, jewel, see(".85")) + line(vein, "#ffffff", 1.5, 0.75);
     profiles.legL = profiles.legR = "";
     if (back) {
       profiles.ears = horn(76, 34, -6) + horn(124, 34, 6);

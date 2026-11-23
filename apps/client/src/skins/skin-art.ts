@@ -154,6 +154,13 @@ export interface SkinArt {
    * art), so the skin's own design hands it something else in its place.
    */
   heldOff?: boolean;
+  /**
+   * Draws a see-through champion solid. Glacelle's sea-angel body is a little
+   * translucent by design: on its own pale colours that reads as ice, but
+   * under a dark palette or armour (black steel, mecha plating) the scene
+   * behind shows clearly through the head and body.
+   */
+  solid?: boolean;
 }
 
 const hex = (c: string) => Number.parseInt(c.slice(1), 16);
@@ -619,6 +626,7 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "bubble", colors: [0xff5fd8, 0x4ffff0] },
     skill: 0xff5fd8,
     detail: "shimmer",
+    solid: true,
   },
   "glacelle-cryo-unit": {
     palette: { light: "#f4f8ff", mid: "#bfe8ff", dark: "#161c2a", glow: "#ff6ad5", accent: "#ff6ad5" },
@@ -628,6 +636,7 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "jet", colors: [0xff6ad5, 0xffffff] },
     skill: 0xff6ad5,
     detail: "scan",
+    solid: true,
   },
   "glacelle-polaris": {
     palette: { light: "#d0e6f0", mid: "#33465a", dark: "#08121e", glow: "#7fe8ff", accent: "#7fe8ff" },
@@ -637,6 +646,7 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0x7fe8ff,
     detail: "glint",
     mythic: "rimebane",
+    solid: true,
   },
   // ---------------------------------------------------------------- Halcyra
   "halcyra-teal-wing": { palette: { light: "#f0fff8", mid: "#2fb8a8", dark: "#0f3a3a", glow: "#c9fff4", accent: "#f0c890" } },
