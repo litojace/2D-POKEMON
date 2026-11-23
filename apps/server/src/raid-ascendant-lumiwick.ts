@@ -507,7 +507,15 @@ export function AscendantLumiwickRules<B extends EmberClass>(Base: B) {
         ) +
         1 -
         Math.min(...mine.map((w) => w.at));
-      if (wait <= 0 || this.safeSpotExists([...old, ...mine], 0.1)) return;
+      // When the first of the older attacks lands before anyone could move
+      // (inside a reaction), "a safe spot exists" only means everyone stands
+      // in one right now, and their next step can leave it: an echoed dive
+      // placed so beside another dive, with ember rain about to land, left
+      // no spot a tick later. Then the new attack waits too.
+      const first = Math.min(...old.map((o) => o.at));
+      const noTime = first - this.time - RAID_REACTION - 0.1 <= 0;
+      if (wait <= 0 || (!noTime && this.safeSpotExists([...old, ...mine], 0.1)))
+        return;
       for (const w of fresh) {
         w.at += wait;
         if (w.lockAt !== undefined) w.lockAt += wait;

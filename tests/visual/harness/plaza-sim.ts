@@ -47,10 +47,6 @@ w.__plazaBiteNow = () => {
   const line = (world as any).visitors.get(ME)?.line;
   if (line) line.biteAt = 0;
 };
-/** A wish at the fountain from someone in this copy (tests fill the meter). */
-w.__plazaWish = () => {
-  for (const e of world.wish(ME, Date.now())) fire(e);
-};
 /** Treats left today (PLAZA.treatsDaily a day): treats to throw. */
 w.__plazaTreats = 3;
 w.__plazaTreatsThrown = [] as string[];
@@ -79,22 +75,9 @@ const handle = (ev: string, data: any) => {
       };
     w.__plazaTreats--;
     w.__plazaTreatsThrown.push("cupcake");
-    // At the fountain a treat is a wish (server.ts does the same).
-    const wishing = world.atFountain(ME),
-      thrown = world.treat(ME, "cupcake");
-    setTimeout(() => {
-      w.__sock?.fire(
-        "plaza-treat",
-        wishing ? { ...thrown, wish: true } : thrown,
-      );
-      if (wishing) for (const e of world.wish(ME, Date.now())) fire(e);
-    }, 0);
-    return {
-      ok: true,
-      treat: "cupcake",
-      treats: w.__plazaTreats,
-      ...(wishing ? { wish: true } : {}),
-    };
+    const thrown = world.treat(ME, "cupcake");
+    setTimeout(() => w.__sock?.fire("plaza-treat", thrown), 0);
+    return { ok: true, treat: "cupcake", treats: w.__plazaTreats };
   }
   if (ev === "plaza-look") {
     world.updateProfile(ME, { character: data.character });
@@ -205,7 +188,6 @@ w.__emit = (ev: string, data: any) => {
 function fire(e: ReturnType<PlazaWorld["step"]>[number]) {
   if (e.type === "news") w.__sock?.fire("plaza-news", e.news);
   else if (e.type === "orbs") w.__sock?.fire("plaza-orbs", e.orbs);
-  else if (e.type === "wish") w.__sock?.fire("plaza-wish", e.wish);
   else if (e.type === "fish") w.__sock?.fire("plaza-fish", e.note);
 }
 let ticks = 0;

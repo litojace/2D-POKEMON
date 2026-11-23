@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { openLobby } from "./helpers";
 
 // The Shop's fighter row scrolls sideways on a phone. Picking a fighter far
@@ -12,6 +12,68 @@ test.use({
   hasTouch: true,
 });
 
+/**
+ * Tap a fighter where it is, as a finger does: never scroll the row.
+ *
+ * Playwright's tap() scrolls the target into view again when its first try
+ * fails (the fighter still moving, or something over it): each retry calls
+ * scrollIntoView with another alignment, the first one `inline: "end"`. On a
+ * slow CI runner that right-aligned the tapped fighter, which moved this very
+ * row from its end (198) to 8, and the test blamed the Shop (21 Nov 2026,
+ * "astrabun 8"). Wait instead until the fighter sits still and is what a tap
+ * at its centre hits, then tap that point; what held it up goes in the log.
+ * A fighter outside the row's view isn't tapped (false): the row moved, and
+ * the caller reports where it is.
+ */
+async function tapInPlace(page: Page, target: Locator) {
+  type Seen = { x: number; y: number } | "moving" | "covered" | "outside";
+  let seen: Seen = "moving";
+  await expect
+    .poll(
+      async () => {
+        seen = await target.evaluate(
+          (b) =>
+            new Promise<Seen>((done) => {
+              const a = b.getBoundingClientRect();
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => {
+                  const log = (window as any).__rowLog as string[];
+                  const name = b.getAttribute("data-fit-fighter");
+                  const r = b.getBoundingClientRect();
+                  const view = b
+                    .closest(".fit-fighters")!
+                    .getBoundingClientRect();
+                  if (r.left < view.left || r.right > view.right)
+                    return done("outside");
+                  if (r.left !== a.left || r.top !== a.top) {
+                    log.push(`${name} moving`);
+                    return done("moving");
+                  }
+                  const x = r.left + r.width / 2,
+                    y = r.top + r.height / 2;
+                  const hit = document.elementFromPoint(x, y);
+                  if (!hit || !b.contains(hit)) {
+                    log.push(
+                      `${name} covered by ${hit ? hit.getAttribute("class") || hit.nodeName : "nothing"}`,
+                    );
+                    return done("covered");
+                  }
+                  done({ x, y });
+                }),
+              );
+            }),
+        );
+        return seen !== "moving" && seen !== "covered";
+      },
+      { intervals: [50, 100, 250] },
+    )
+    .toBe(true);
+  const at = seen as Seen;
+  if (typeof at !== "object") return false;
+  await page.touchscreen.tap(at.x, at.y);
+  return true;
+}
+
 async function tapAlongRow(page: Page) {
   const row = page.locator(".fit-room .fit-fighters").first();
   await expect(row).toBeVisible();
@@ -23,8 +85,7 @@ async function tapAlongRow(page: Page) {
   const names = await row
     .locator(".fit-fighter")
     .evaluateAll((bs) => bs.map((b) => b.getAttribute("data-fit-fighter")!));
-  // What happened to the row, for a failure: on CI the first tap once found
-  // it at 8 (the picked fighter just brought into view), never here.
+  // What happened to the row, for a failure.
   await row.evaluate((r) => {
     const w = window as any;
     const t0 = performance.now();
@@ -55,7 +116,14 @@ async function tapAlongRow(page: Page) {
         `tap ${name}: row ${now === w.__row ? "same" : "new"} at ${Math.round(now?.scrollLeft ?? -1)}`,
       );
     }, name);
-    await row.locator(`[data-fit-fighter="${name}"]`).tap();
+    if (
+      !(await tapInPlace(page, row.locator(`[data-fit-fighter="${name}"]`)))
+    ) {
+      seen.push(
+        `${name} ${await row.evaluate((r) => Math.round(r.scrollLeft))}`,
+      );
+      break;
+    }
     await expect(row.locator(`[data-fit-fighter="${name}"]`)).toHaveAttribute(
       "aria-pressed",
       "true",

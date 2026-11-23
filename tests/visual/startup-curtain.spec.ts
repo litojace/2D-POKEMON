@@ -392,7 +392,7 @@ for (const size of [
 async function withPaintings(page: Page, ids: string[]) {
   const stand = [
     "/assets/backgrounds/elemental-horizon.webp",
-    "/assets/backgrounds/plaza-night-voltkit.webp",
+    "/assets/backgrounds/lobby-backdrop-d99b61e6.webp?next-art",
   ];
   await page.route(/\/loading-art\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch();
@@ -589,7 +589,7 @@ test("the next start's painting is chosen and downloaded once the game is up", a
     })
     .toBe("ffa-sky-pirates");
   await expect
-    .poll(() => asked.some((u) => u.includes("plaza-night-voltkit")))
+    .poll(() => asked.some((u) => u.includes("?next-art")))
     .toBe(true);
   // The next start shows it, from the first frame of the boot screen.
   await page.reload();
@@ -597,7 +597,7 @@ test("the next start's painting is chosen and downloaded once the game is up", a
   await expect(page.locator("#server-startup")).toHaveClass(/has-art/);
   await expect(page.locator(".server-startup-painting")).toHaveAttribute(
     "src",
-    /plaza-night-voltkit/,
+    /lobby-backdrop-d99b61e6\.webp\?next-art/,
   );
 });
 

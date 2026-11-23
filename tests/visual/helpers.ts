@@ -40,8 +40,14 @@ export async function openHub(page: Page) {
       { timeout: 30_000, intervals: [500, 1000] },
     )
     .toBe(true);
-  // The startup curtain lifts once the hub is complete underneath.
-  await expect(page.locator("#server-startup")).toHaveCount(0);
+  // The startup curtain lifts once the hub is complete underneath. On a
+  // slow runner that is late: with the CPU 4x slowed it reached 100% after
+  // about 15-18 s and was gone at about 21 s (the status's reading pause,
+  // then the fade), past the default 20 s (quick-match 956x440 on main,
+  // 21 Nov). It must still lift: this only waits longer for it.
+  await expect(page.locator("#server-startup")).toHaveCount(0, {
+    timeout: 60_000,
+  });
   return errors;
 }
 

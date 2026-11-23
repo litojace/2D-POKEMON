@@ -77,8 +77,11 @@ test("Low graphics: the hub has no blur and no decorative loops", async ({
     });
     // A panel with cosmetic pictures (rarity sheens and frame ornaments).
     await page.click('.lobby-rail [data-lobby-action="shop"]');
-    await expect(page.locator("[data-fit-slot]").first()).toBeVisible();
-    await page.click('[data-fit-slot="frame"]');
+    await page.click('.fit-room [data-ui-mode="wardrobe"]');
+    await expect(
+      page.locator(".fit-slots [data-fit-slot]").first(),
+    ).toBeVisible();
+    await page.click('.fit-slots [data-fit-slot="frame"]');
     await page.waitForTimeout(800);
     expect(await effects(page), "the Wardrobe").toEqual({
       blurred: [],

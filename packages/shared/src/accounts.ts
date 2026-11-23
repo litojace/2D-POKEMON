@@ -37,6 +37,9 @@ export interface ManagedPlayer {
   title: string | null;
   createdAt: string;
   titleIds: string[];
+  /** When they were last connected (ISO), or null if never seen
+   *  (migration 20261122120000; missing from an older server). */
+  lastOnline?: string | null;
 }
 export interface PlayerDirectory {
   players: ManagedPlayer[];
@@ -135,6 +138,51 @@ export const titleGrantSchema = z
     grant: z.boolean(),
   })
   .strict();
+/** An admin adds or takes a player's coins (migration 20261122100000).
+ *  `ref` is a fresh id per click: a retried request never pays twice. */
+export const adminCoinsSchema = z
+  .object({
+    playerId: z.string().uuid(),
+    amount: z
+      .number()
+      .int()
+      .min(-100000)
+      .max(100000)
+      .refine((n) => n !== 0, "Choose an amount other than 0"),
+    reason: z.string().trim().min(3).max(120),
+    ref: z.string().uuid(),
+  })
+  .strict();
+/** What the Admin panel shows when a player's row opens. */
+export interface AdminPlayerStatus {
+  balance: number;
+  /** ISO time their chat is stopped until, or null. */
+  chatUntil: string | null;
+  chatReason: string | null;
+  /** Their latest coin movements, newest first. */
+  coins: { amount: number; reason: string; at: string }[];
+}
+/** An announcement an admin sends to every player (migration 20261122120000). */
+export const ANNOUNCEMENT_TONES = ["info", "event", "warning"] as const;
+export const announceSchema = z
+  .object({
+    message: z.string().trim().min(3).max(300),
+    tone: z.enum(ANNOUNCEMENT_TONES),
+    hours: z.number().int().min(1).max(168),
+    /** Also as a phone/browser notification (migration 20261122140000). */
+    push: z.boolean().optional(),
+  })
+  .strict();
+export const announcementSchema = z.object({
+  id: z.number().int().positive(),
+  message: z.string().min(1).max(300),
+  tone: z.enum(ANNOUNCEMENT_TONES),
+  createdAt: z.string(),
+  endsAt: z.string(),
+  /** Who sent it (the admin list only). */
+  by: z.string().nullable().optional(),
+});
+export type Announcement = z.infer<typeof announcementSchema>;
 export const equipTitleSchema = z
   .object({ titleId: z.string().uuid().nullable() })
   .strict();

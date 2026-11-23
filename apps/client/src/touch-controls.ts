@@ -8,7 +8,6 @@ import {
   controlExtent,
   mobileLayout,
   safeViewport,
-  controlPreferences,
   DEFAULT_CONTROLS,
   type ControlPreferences,
   type TouchAction,
@@ -64,13 +63,12 @@ export class TouchControls {
   ) {
     this.root = root;
     this.resetActions = resetActions;
-    let stored: unknown;
-    try {
-      stored = JSON.parse(localStorage.getItem("arena-controls") ?? "null");
-    } catch {
-      stored = null;
-    }
-    this.preferences = controlPreferences(stored);
+    // One layout for everyone: the joystick, button sizes and opacity were
+    // player settings until 22 Nov 2026 and are no longer read (players set
+    // them by mistake and couldn't find their way back). They shared the
+    // "arena-controls" entry with key bindings (controls.ts), so that entry
+    // stays.
+    this.preferences = DEFAULT_CONTROLS;
     this.available = preview || matchMedia("(pointer:coarse)").matches;
     root.hidden = !this.available;
     this.enabled =
@@ -442,6 +440,19 @@ export class TouchControls {
       "--combat-cluster-height",
       layout.height + rise + "px",
     );
+    let context = cluster.querySelector<HTMLElement>(".touch-context");
+    if (!context) {
+      context = document.createElement("div");
+      context.className = "touch-context";
+      cluster.append(context);
+    }
+    Object.assign(context.style, {
+      left: layout.context.x - layout.context.size / 2 + "px",
+      top: layout.context.y - layout.context.size / 2 + "px",
+      width: layout.context.size + "px",
+      height: layout.context.size + "px",
+    });
+    context.style.setProperty("--ctx-size", layout.context.size + "px");
     Object.assign(this.aim.style, {
       left: layout.aim.x - layout.aim.size / 2 + "px",
       top: layout.aim.y - layout.aim.size / 2 + "px",
@@ -481,54 +492,6 @@ export class TouchControls {
     }
     if (this.aim.classList.contains("is-locked") !== locked)
       this.aim.classList.toggle("is-locked", locked);
-  }
-  setPreferences(next: unknown) {
-    this.preferences = controlPreferences(next);
-    localStorage.setItem("arena-controls", JSON.stringify(this.preferences));
-    this.resize();
-  }
-  settingsHTML() {
-    if (!this.available) return "";
-    return (
-      `<h3 id="prefs-touch">${menuIcon("install")}Touch controls</h3><p class="prefs-note">Fixed joystick · saved on this device.</p>` +
-      (["joystickSize", "buttonSize", "opacity"] as const)
-        .map((key) => {
-          const value = this.preferences[key];
-          const [min, max] =
-            key === "opacity"
-              ? [0.4, 1]
-              : key === "buttonSize"
-                ? [0.85, 1.2]
-                : [0.8, 1.25];
-          const label = {
-            joystickSize: "Joystick size",
-            buttonSize: "Combat button size",
-            opacity: "Controls opacity",
-          }[key];
-          return `<label class="prefs-slider"><span class="prefs-slider-label">${label}</span><output for="control-${key}" data-pref-for="control-${key}">${Math.round(value * 100)}%</output><input type="range" id="control-${key}" min="${min}" max="${max}" step=".05" value="${value}"></label>`;
-        })
-        .join("") +
-      `<button type="button" class="quiet" id="control-reset">${iconLabel("again", "Reset mobile layout")}</button>`
-    );
-  }
-  bindSettings() {
-    if (!this.available) return;
-    for (const key of ["joystickSize", "buttonSize", "opacity"] as const) {
-      const input = document.getElementById(
-        "control-" + key,
-      ) as HTMLInputElement;
-      input.oninput = () =>
-        this.setPreferences({
-          ...this.preferences,
-          [key]: Number(input.value),
-        });
-    }
-    document.getElementById("control-reset")!.onclick = () => {
-      this.setPreferences(DEFAULT_CONTROLS);
-      for (const key of ["joystickSize", "buttonSize", "opacity"] as const)
-        (document.getElementById("control-" + key) as HTMLInputElement).value =
-          String(this.preferences[key]);
-    };
   }
   update(
     active: boolean,

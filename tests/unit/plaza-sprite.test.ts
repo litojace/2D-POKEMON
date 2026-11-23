@@ -7,6 +7,7 @@ import {
   SPRITE_W,
   masksFailed,
   spilledPixels,
+  spriteScale,
 } from "../../apps/client/src/plaza/plaza-sprite";
 
 // Desktop Safari painted the masked overlays of fighters drawn into the
@@ -25,6 +26,18 @@ const overlayMasks = (svg: string) =>
   (svg.match(/mask="url\(#[^)"]*-(?:m|surface)-[^)"]*\)"/g) ?? []).length;
 
 describe("Plaza fighter sprites", () => {
+  it("are painted at twice the pixels on dense screens, so phones show them sharp", () => {
+    // 84 units tall at zoom 1 on a 3x phone is 252 pixels: a 200-pixel
+    // sprite was blown up and soft.
+    expect(spriteScale(3)).toBe(2);
+    expect(spriteScale(2)).toBe(2);
+    expect(spriteScale(1.5)).toBe(2);
+    expect(84 * 1 * 3).toBeGreaterThan(SPRITE_H);
+    expect(84 * 1 * 3).toBeLessThanOrEqual(SPRITE_H * spriteScale(3) * 1.3);
+    // A one-ratio screen never shows one bigger than it is painted.
+    expect(spriteScale(1)).toBe(1);
+  });
+
   it("keeps the full drawing when the overlays stay inside the fighter", () => {
     const body = alpha([60, 40, 140, 190]);
     expect(spilledPixels(body, body)).toBe(0);

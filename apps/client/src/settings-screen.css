@@ -1,0 +1,251 @@
+/* Settings (settingsMarkup in main.ts): Sound on the left, Display or This
+   match on the right, each a card of rows: a label (and a line about it)
+   with its control at the end. The cards share a height, so the two columns
+   end together. Phones held sideways show everything without scrolling:
+   the rows drop their second line there. The sliders, switch and Auto /
+   High / Low keep their shared look (style.css, lobby.css). */
+.st-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+.st-card {
+  display: flex;
+  flex-direction: column;
+}
+/* The iPhone app's icon choices take the whole width under both. */
+.st-cols > .prefs-app-icon {
+  grid-column: 1 / -1;
+}
+.st-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 0;
+  border-top: 1px solid var(--ui-line);
+}
+.st-card > h3 + .st-row,
+.st-card > h3 + .st-note + .st-row {
+  border-top: 0;
+}
+.st-row-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.st-row-text > b {
+  font: 600 var(--fs-body) / 1.3 var(--font-body);
+  color: var(--ui-text);
+}
+.st-row-text > small {
+  color: var(--ui-dim);
+  font-size: var(--fs-micro);
+  line-height: 1.35;
+}
+.st-row-text > small b {
+  color: var(--ui-accent);
+}
+.st-row > :last-child:not(.st-row-text) {
+  flex: none;
+}
+.st-graphics .prefs-choice {
+  flex: 0 0 200px;
+  margin: 0;
+}
+.framed-dialog .st-graphics .prefs-choice > button {
+  min-height: 32px;
+}
+.st-badge {
+  padding: 4px 12px;
+  border: 1px solid var(--ui-line-2);
+  border-radius: var(--rad-pill);
+  font: 700 var(--fs-small) / 1.2 var(--font-body);
+  color: var(--ui-dim);
+  background: #ffffff0a;
+}
+.st-badge.is-on {
+  color: var(--ui-ok);
+  border-color: color-mix(in srgb, var(--ui-ok) 45%, transparent);
+}
+.st-note {
+  margin: 0 0 4px;
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+/* The match card's buttons (Practice tools, Skills): one width, one edge. */
+.st-row > #settings-practice,
+.st-row > #settings-skills {
+  width: 184px;
+  min-height: 40px;
+  margin: 0;
+  justify-content: center;
+}
+.prefs-gpu-off {
+  margin: 4px 0 0;
+}
+
+/* A phone held sideways: one line per row. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .st-cols {
+    gap: 8px;
+  }
+  /* 44 px: a row's small controls (28 px) keep a whole finger's hit area
+     (ui/phone-fit.css) without the next row covering it. */
+  .st-row {
+    min-height: 44px;
+    padding: 0;
+  }
+  .st-row-text > small,
+  .st-note {
+    display: none;
+  }
+  .st-row-text > b {
+    font-size: var(--fs-small);
+  }
+  .st-graphics .prefs-choice {
+    flex-basis: 180px;
+    padding: 2px;
+  }
+  .framed-dialog .st-graphics .prefs-choice > button {
+    min-height: 28px;
+    padding: 3px 6px;
+    font-size: var(--fs-small);
+  }
+  .prefs-switch {
+    height: 28px;
+  }
+  .st-badge {
+    padding: 3px 10px;
+  }
+  .st-row > #settings-practice,
+  .st-row > #settings-skills {
+    width: 172px;
+    min-height: 36px;
+  }
+}
+/* A phone held upright: one column. */
+@media (max-width: 620px) and (orientation: portrait) {
+  .st-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Settings → Controls on a touch screen (controls-screen.ts): the Touch
+   card, then keys, mouse and controller folded away. */
+.controls-touch {
+  display: grid;
+  gap: 8px;
+}
+.framed-dialog .controls-touch > h3 {
+  margin: 0;
+}
+dialog .controls-touch label.choice.assist {
+  margin-top: 0;
+}
+.controls-touch-note {
+  margin: 0;
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+  line-height: 1.4;
+}
+.controls-more {
+  margin-top: 12px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--rad-md);
+  background: #ffffff05;
+}
+.controls-more > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0 14px;
+  font: 600 var(--fs-body) / 1.2 var(--font-body);
+  color: var(--ui-text);
+  cursor: pointer;
+  list-style: none;
+}
+.controls-more > summary::-webkit-details-marker {
+  display: none;
+}
+.controls-more > summary::after {
+  content: "▾";
+  color: var(--ui-dim);
+  transition: transform 0.15s;
+}
+.controls-more[open] > summary::after {
+  transform: rotate(180deg);
+}
+.controls-more > .controls-layout {
+  padding: 0 14px 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .controls-more > summary::after {
+    transition: none;
+  }
+}
+
+/* Settings → Your skills (showSkills in main.ts): a row per skill, its
+   icon, name, kind and cooldown, then what it does. */
+.sk-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sk-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-2);
+}
+.sk-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ui-bg-0);
+  border: 1px solid var(--ui-line-2);
+  overflow: hidden;
+}
+.sk-icon > svg,
+.sk-icon > img {
+  width: 34px;
+  height: 34px;
+}
+.sk-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.sk-text > b {
+  font: 700 var(--fs-body) / 1.25 var(--font-body);
+  color: var(--ui-text);
+}
+.sk-text > small {
+  color: var(--ui-accent);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+.sk-text > span {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+  line-height: 1.4;
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .sk-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sk-row {
+    padding: 8px 10px;
+  }
+}

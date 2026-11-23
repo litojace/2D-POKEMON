@@ -208,14 +208,33 @@ for (const size of [
             return Math.abs(frame.height - stage.height);
           })
           .toBeLessThanOrEqual(2);
-        const scenery = await page.evaluate(() => {
-          const s = (window as any).__raidLayoutGame.scene.getScene("arena");
-          return s.raidSurround.filter(
-            (image: any) =>
-              image.visible && image.texture.key === s.floor.texture.key,
-          ).length;
-        });
-        expect(scenery).toBe(8);
+        // Beyond the walls: the arena's painted world (world-art/), as four
+        // bands that cover WORLD round the court and never lie under it
+        // (that would draw the court's pixels twice every frame).
+        await expect
+          .poll(() =>
+            page.evaluate(() => {
+              const s = (window as any).__raidLayoutGame.scene.getScene(
+                "arena",
+              );
+              return s.raidWorld
+                .filter((b: any) => b.visible)
+                .map((b: any) =>
+                  [b.x, b.y, b.displayWidth, b.displayHeight]
+                    .map(Math.round)
+                    .join(","),
+                )
+                .sort();
+            }),
+          )
+          .toEqual(
+            [
+              "-1000,-900,3600,900",
+              "-1000,900,3600,900",
+              "-1000,0,1000,900",
+              "1600,0,1000,900",
+            ].sort(),
+          );
         // The boss frame: Peril, name, Phase on one centred row; the bar
         // below; the callout centred under it. No party bars (fighters'
         // health is on their nameplates).
@@ -273,7 +292,7 @@ for (const size of [
                 game = await box(page, "#game");
               const hud = await box(page, "#raid-hud");
               const obstacles = await page
-                .locator(".touch-buttons button, #battle-menu, .raid-elapsed")
+                .locator(".touch-buttons > button, #battle-menu, .raid-elapsed")
                 .evaluateAll((items) =>
                   items.map((item) => {
                     const r = item.getBoundingClientRect();
@@ -292,18 +311,23 @@ for (const size of [
                   `${boss}: ${selector} overlaps another control`,
                 ).toBe(false);
               }
-              if (selector === "#raid-prism-controls") {
-                const buttons = await panel
-                  .locator("button")
-                  .evaluateAll((items) =>
-                    items.map((item) => item.getBoundingClientRect().y),
-                  );
-                expect(Math.abs(buttons[0] - buttons[1])).toBeLessThanOrEqual(
-                  1,
-                );
-                expect(
-                  size.width - controls.x - controls.width,
-                ).toBeLessThanOrEqual(size.height <= 350 ? 54 : 8);
+              if (selector === "#raid-prism-controls" && mobile) {
+                // Phones: Prismatail's actions share the touch cluster's
+                // contextual slot, left of skill 1 (above it on a narrow
+                // screen) (prism-context.spec.ts covers when they show).
+                const slot = await box(page, ".touch-buttons .touch-context"),
+                  skill1 = await box(page, '.touch-buttons [data-skill="0"]');
+                expect(Math.abs(controls.x - slot.x)).toBeLessThanOrEqual(1);
+                expect(Math.abs(controls.y - slot.y)).toBeLessThanOrEqual(1);
+                if (size.width >= 600) {
+                  expect(slot.x + slot.width).toBeLessThanOrEqual(skill1.x);
+                  expect(
+                    Math.abs(
+                      slot.y + slot.height / 2 - skill1.y - skill1.height / 2,
+                    ),
+                  ).toBeLessThanOrEqual(2);
+                } else
+                  expect(slot.y + slot.height).toBeLessThanOrEqual(skill1.y);
               }
               expect(controls.x).toBeGreaterThanOrEqual(0);
               expect(controls.x + controls.width).toBeLessThanOrEqual(
@@ -368,10 +392,15 @@ for (const size of [
         if (mobile && !relay) {
           await expect.poll(() => cameraSignature(page)).not.toEqual(camera);
           await expect.poll(() => heroOnScreen(page)).toBe(true);
-          // Fighters at least 1.4× the size the whole-court view drew them.
-          await expect
-            .poll(async () => (await cameraSignature(page))[0] / overviewZoom)
-            .toBeGreaterThan(1.4);
+          // Fighters larger than the whole-court view drew them, but the
+          // swing kept gentle on phones (owner, 22 Nov 2026: a big swing each
+          // court-wide skill was tiring): the court fills the space below the
+          // HUD, about 1.3× on a 1024×500 phone and 1.4× on 844×390. (A squat
+          // 844×280 swings more, by how tall its HUD is that moment.)
+          const swing = () =>
+            cameraSignature(page).then((c) => c[0] / overviewZoom);
+          await expect.poll(swing).toBeGreaterThan(1.25);
+          if (size.height >= 300) expect(await swing()).toBeLessThan(1.5);
         } else if (mobile) {
           await expect.poll(() => heroOnScreen(page)).toBe(true);
           await expect

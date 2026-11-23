@@ -21,8 +21,6 @@ import {
   PLAZA_PITCH,
   PLAZA_SPAWN,
   PLAZA_SQUARE,
-  PLAZA_WISH,
-  atFountain,
   inPitch,
   onRunway,
   orbHeight,
@@ -40,7 +38,6 @@ import {
   plazaStep,
   plazaStick,
   plazaTimeOfDay,
-  wishTarget,
   onTrack,
   trackPoint,
   trackPolar,
@@ -50,7 +47,6 @@ import {
   type PlazaFishNote,
   type PlazaNews,
   type PlazaTreat,
-  type PlazaWish,
   type PlazaOrb,
   type PlazaOrbs,
   type PlazaPairAsk,
@@ -228,19 +224,6 @@ interface Copy {
   nextOrbAt: number;
   /** When its last player left: it waits, paused, for PLAZA_RETURN_MS. */
   emptySince: number | null;
-  /** The wishing fountain's meter (PLAZA_WISH). */
-  wish: WishMeter;
-}
-interface WishMeter {
-  n: number;
-  /** Fixed by the fill's first wish (0 while empty). */
-  target: number;
-  /** The last wish (ms), for PLAZA_WISH.idleMs. */
-  lastAt: number;
-  /** Who wished in this fill: account id -> wishes. */
-  by: Map<string, number>;
-  /** The last fireworks: start (server ms) and seed. */
-  show: { at: number; seed: number } | null;
 }
 /** What happened this step, for server.ts to pay and announce. */
 export type PlazaEvent =
@@ -250,11 +233,7 @@ export type PlazaEvent =
   | { type: "cheers"; key: string; n: number }
   | { type: "fish"; key: string; note: PlazaFishNote }
   | { type: "news"; plaza: number; news: PlazaNews }
-  | { type: "orbs"; plaza: number; orbs: PlazaOrbs }
-  /** The copy's wish meter changed (a wish, a fill, or it emptied). */
-  | { type: "wish"; plaza: number; wish: PlazaWish }
-  /** A fill: pay each wisher once (`ref` is the fill's id). */
-  | { type: "wished"; accounts: string[]; ref: string };
+  | { type: "orbs"; plaza: number; orbs: PlazaOrbs };
 
 /** The pitch bots, blue side then red, named as the townsfolk are: a role,
  * not "Blue Bot" or "Red Bot" ("Red Bot scored a goal" read as a test). */
@@ -269,7 +248,8 @@ export const PITCH_BOTS = [
  * Townsfolk: NPCs who keep a quiet Plaza lively, as in the approved
  * prototype (docs/hub-redesign/prototype/app/plaza.js). They are marked as
  * bots (role names, not player names; no card, no Add friend), wear Shop
- * skins, and step aside as players arrive. They never count for anything:
+ * skins (Rare and Epic only: Legendary and Mythical skins are what players
+ * earn, owner 22 Nov), and step aside as players arrive. They never count for anything:
  * no population, laps, cheers, orbs, goals, treats or news.
  */
 export const TOWNSFOLK: readonly {
@@ -286,7 +266,7 @@ export const TOWNSFOLK: readonly {
   {
     name: "Stroller",
     character: "mystowl",
-    skin: { skin: "mystowl-oracle", stage: 2 },
+    skin: { skin: "mystowl-clockwork", stage: 1 },
     ai: "wander",
   },
   {
@@ -299,7 +279,7 @@ export const TOWNSFOLK: readonly {
   {
     name: "Jogger",
     character: "terradon",
-    skin: { skin: "terradon-world-shell", stage: 1 },
+    skin: { skin: "terradon-geode", stage: 1 },
     ai: "track",
     lane: 0.3,
     pace: 0.62,
@@ -307,13 +287,13 @@ export const TOWNSFOLK: readonly {
   {
     name: "Dancer",
     character: "voltkit",
-    skin: { skin: "voltkit-stormcrown", stage: 2 },
+    skin: { skin: "voltkit-neon-arcade", stage: 1 },
     ai: "dance",
   },
   {
     name: "Café Regular",
     character: "lumoth",
-    skin: { skin: "lumoth-starweaver", stage: 1 },
+    skin: { skin: "lumoth-rosy-maple", stage: 1 },
     ai: "cafe",
   },
   {
@@ -325,13 +305,13 @@ export const TOWNSFOLK: readonly {
   {
     name: "Sightseer",
     character: "pyranda",
-    skin: { skin: "pyranda-harvest-moon", stage: 1 },
+    skin: { skin: "pyranda-street-vendor", stage: 1 },
     ai: "wander",
   },
   {
     name: "Runway Model",
     character: "tidefin",
-    skin: { skin: "tidefin-moontide", stage: 2 },
+    skin: { skin: "tidefin-glacier", stage: 1 },
     ai: "runway",
     side: 1,
   },
@@ -380,8 +360,6 @@ export class PlazaWorld {
     /** The real clock (the same as step's `now`): when a timed input arrived. */
     private realNow: () => number = Date.now,
   ) {}
-  /** A fresh id for each fill (the reward's ref in the database). */
-  wishId: () => string = () => globalThis.crypto.randomUUID();
 
   get size() {
     return this.visitors.size;
@@ -536,7 +514,6 @@ export class PlazaWorld {
       orbs: new Map(),
       nextOrbAt: now,
       emptySince: null,
-      wish: { n: 0, target: 0, lastAt: 0, by: new Map(), show: null },
     };
     this.copies.set(id, c);
     // The first player finds the townsfolk already about their day.
@@ -848,76 +825,6 @@ export class PlazaWorld {
       y: Math.round(v.body.y),
     };
   }
-  /** Standing at the fountain, where a treat becomes a wish (slack for lag). */
-  atFountain(key: string) {
-    const v = this.visitors.get(key);
-    return !!v && atFountain(v.body.x, v.body.y, PLAZA_WISH.slack);
-  }
-  /**
-   * A treat `key` threw into the fountain: one wish on their copy's meter.
-   * A full meter sets off the fireworks (after any still going), pays each
-   * wisher of the fill and starts again.
-   */
-  wish(key: string, now: number): PlazaEvent[] {
-    const v = this.visitors.get(key),
-      c = v && this.copies.get(v.plaza);
-    if (!v || !c) return [];
-    const m = c.wish;
-    if (m.n > 0 && now - m.lastAt >= PLAZA_WISH.idleMs) this.emptyWish(m);
-    if (m.n === 0) m.target = wishTarget(this.population(c.id));
-    m.n++;
-    m.lastAt = now;
-    m.by.set(v.accountId, (m.by.get(v.accountId) ?? 0) + 1);
-    const events: PlazaEvent[] = [];
-    if (m.n >= m.target) {
-      const prev = m.show ? m.show.at + PLAZA_WISH.showMs : 0;
-      m.show = {
-        at: Math.max(now, prev),
-        seed: Math.floor(this.random() * 1e9),
-      };
-      events.push(
-        { type: "wished", accounts: [...m.by.keys()], ref: this.wishId() },
-        { type: "news", plaza: c.id, news: { kind: "wish" } },
-      );
-      this.emptyWish(m);
-      events.push({
-        type: "wish",
-        plaza: c.id,
-        wish: { n: 0, target: 0, show: { ...m.show } },
-      });
-    } else
-      events.push({
-        type: "wish",
-        plaza: c.id,
-        wish: { n: m.n, target: m.target },
-      });
-    return events;
-  }
-  private emptyWish(m: WishMeter) {
-    m.n = 0;
-    m.target = 0;
-    m.by.clear();
-  }
-  /** The meter in a player's copy (sent when they join), fireworks if on. */
-  wishFor(key: string, now = Date.now()): PlazaWish | undefined {
-    const v = this.visitors.get(key),
-      c = v && this.copies.get(v.plaza);
-    if (!c) return undefined;
-    const m = c.wish,
-      show =
-        m.show && now < m.show.at + PLAZA_WISH.showMs
-          ? { ...m.show }
-          : undefined;
-    return { n: m.n, target: m.target, ...(show ? { show } : {}) };
-  }
-  /** A meter nobody has added to for PLAZA_WISH.idleMs empties. */
-  private stepWish(c: Copy, now: number, events: PlazaEvent[]) {
-    const m = c.wish;
-    if (m.n > 0 && now - m.lastAt >= PLAZA_WISH.idleMs) {
-      this.emptyWish(m);
-      events.push({ type: "wish", plaza: c.id, wish: { n: 0, target: 0 } });
-    }
-  }
   /** The spot `key` stands at, if it is `spot` (a little slack for lag). */
   at(key: string, spot: PlazaSpotId) {
     const v = this.visitors.get(key);
@@ -1196,7 +1103,6 @@ export class PlazaWorld {
         });
     }
     this.stepOrbs(c, players, now, events);
-    this.stepWish(c, now, events);
   }
   /** A townsperson's emote, seen by everyone in the copy. */
   private folkEmote(f: Folk, e: (typeof PLAZA_EMOTES)[number], now: number) {
@@ -1544,7 +1450,11 @@ export class PlazaWorld {
                 Math.round(c.ball.x),
                 Math.round(c.ball.y),
                 Math.round(c.ball.z),
-              ] as [number, number, number],
+                Math.round(c.ball.vx),
+                Math.round(c.ball.vy),
+                Math.round(c.ball.vz),
+                Math.round(c.ball.lock * 100) / 100,
+              ] as [number, number, number, number, number, number, number],
             }
           : {}),
         score: [...c.score] as [number, number],

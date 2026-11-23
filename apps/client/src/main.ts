@@ -24,8 +24,10 @@ import {
   BUILD,
   NetMeter,
   PERF_MIN_SECONDS,
+  appShell,
   connectionKind,
   deviceKind,
+  deviceModel,
   drawnGap,
   loadPhases,
   perfMode,
@@ -39,6 +41,7 @@ import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
 import { battleCurves } from "./battle-curves";
 import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
+import { AnnouncementBanner } from "./announcements";
 import { serverNow } from "./server-clock";
 import { PvpSpectator } from "./pvp-spectator";
 import {
@@ -99,6 +102,7 @@ import {
   pacificDate,
   raidPingLabel,
   isRaider,
+  raidBossName,
 } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
@@ -120,7 +124,12 @@ import {
   type RoomMode as RoomKind,
 } from "./screens/room-view";
 import "./screens/room.css";
-import { renderRaidUI, drawRaidArena, raidLookList } from "./raid-ui";
+import {
+  renderRaidUI,
+  renderRaidWatchHud,
+  drawRaidArena,
+  raidLookList,
+} from "./raid-ui";
 import {
   howToPlayMarkup,
   helpTopicMarkup,
@@ -161,9 +170,11 @@ import {
 } from "./boss-vector-prewarm";
 import {
   addPrepaintedLayers,
+  forgetPrepainted,
   holdFighterPrepaint,
   syncFighterPrepaint,
 } from "./fighter-prepaint";
+import { rigArtHealth, type ArtNode } from "./rig-health";
 import { prewarmRaidArena } from "./raid-arena-prewarm";
 import { PillarRig, prewarmPillars } from "./raid-grumble-pillars-rig";
 import { IMPACT_RADIUS } from "./raid-grumble-pillars";
@@ -199,7 +210,25 @@ import {
   playRewindDive,
 } from "./skill-effects";
 import { setupPWA } from "./pwa";
-import { PRIVACY_URL, isNativeApp, setupNativeShell } from "./native";
+import {
+  PRIVACY_URL,
+  SUPPORT_URL,
+  isNativeApp,
+  loadDeviceInfo,
+  nativeDeviceInfo,
+  nativePlatform,
+  setupNativeShell,
+} from "./native";
+import {
+  BUILD_ID,
+  passTitle,
+  quickBar,
+  repairGame,
+  titleScreen,
+  titleDue,
+  type QuickAction,
+} from "./title-screen";
+import { PROFILE_COPY_KEY } from "./profile-copy";
 import { appIconCardHTML, bindAppIconCard } from "./app-icon-setting";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
@@ -268,6 +297,7 @@ import {
   LocalTimeline,
   ShotTimeline,
   leadProjectile,
+  type ShotTarget,
 } from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
 import {
@@ -276,12 +306,17 @@ import {
   identityPortrait,
   portraitAvatar,
 } from "./portraits";
-import { waitForServer, onServerStartupRetry } from "./server-connection";
+import {
+  curtainCovers,
+  waitForServer,
+  onServerStartupRetry,
+} from "./server-connection";
 import { startStartupCurtain, type StartupStage } from "./startup-curtain";
 import "./ui/tokens.css";
 import "./style.css";
 import "./ui/components.css";
 import "./battle-dock.css";
+import "./match-sheet.css";
 import "./cosmetic-review.css";
 import "./collection-frames.css";
 import "./journey-frames.css";
@@ -304,11 +339,18 @@ import { watchNotchInsets } from "./notch-insets";
 import { watchScrollRows } from "./ui/scroll-rows";
 import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
-import { askConfirm, openHubPanelNow } from "./ui/hub-panel";
+import { askConfirm, openHubPanelNow, PANEL_EVENT } from "./ui/hub-panel";
 import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { createGuide } from "./getting-started-screen";
 import { openQuickSearch, type QuickSearchHandle } from "./quick-match";
-import { recordBotResult, suggestedBotLevel } from "./bot-ladder";
+import {
+  LOSS_STREAK_HINT,
+  easierBot,
+  recordBotOutcome,
+  recordBotResult,
+  suggestedBotLevel,
+  type BotLevelId,
+} from "./bot-ladder";
 import { createCoach } from "./battle-coach";
 import { playerLevel } from "../../../packages/shared/src/journey";
 import { openRoster, type RosterScreen } from "./screens/roster";
@@ -398,14 +440,12 @@ import {
 } from "./spire-court-rig";
 import { spireFloorTint } from "./spire-court-art";
 import { loadSpireSeen, spireLobbyCard } from "./spire-nudge";
-import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import {
   isIllustratedRaidFloor,
-  loadRaidArenaArt,
   type IllustratedRaidFloor,
   paintIllustratedRaidFloor,
-  prefetchRaidArena,
 } from "./raid-arena-art";
+import { RAID_WORLDS, WORLD, WORLD_DENSITY, paintRaidWorld } from "./world-art";
 import type { LayerAt } from "./raid-layers";
 import {
   courtBlockFrame,
@@ -422,9 +462,16 @@ import {
 } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
+import { freezesWhenHidden, watchBackgroundExit } from "./background-exit";
 import { watchSceneSwitch } from "./scene-switch-place";
 import { mountChat, type ChatFriend, type ChatPlace } from "./chat/chat-ui";
-import { pushState, turnPushOff, turnPushOn } from "./chat/push-setup";
+import {
+  pushNews,
+  pushState,
+  setPushNews,
+  turnPushOff,
+  turnPushOn,
+} from "./chat/push-setup";
 import { mountBattleChat } from "./chat/battle-chat";
 import {
   CHAT_MODES,
@@ -440,7 +487,18 @@ import "./chat/chat.css";
 import "./ui/aero.css";
 import "./ui/light-effects.css";
 import { syncUiEffects } from "./ui/ui-effects";
+import { practiceMeter } from "./practice-meter";
+import {
+  PRACTICE_STATS,
+  loadPracticePrefs,
+  practicePanelMarkup,
+  savePracticePrefs,
+  type PracticeStat,
+} from "./practice-panel";
 import "./ui/phone-fit.css";
+import "./settings-screen.css";
+import { fighterPickerMarkup } from "./fighter-picker";
+import "./result-extras.css";
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(
@@ -505,6 +563,27 @@ let battleStill: boolean | undefined;
 let battleDensity: number | undefined;
 /** How smoothly this match runs on this device (battle-perf.ts). */
 const battlePerf = new BattlePerfMeter();
+/**
+ * Our own work in the last frame (ms): Phaser's step from its start to the
+ * end of rendering (createGame). In a long frame, short work means the
+ * graphics chip set the pace (battle-perf FrameSample.work).
+ */
+let frameWork: number | undefined;
+/** The raid's warned attacks as one key, worked out once per snapshot. */
+let attackKey: { warnings?: readonly { kind: string }[]; key: string } = {
+  key: "",
+};
+function raidAttackKey(warnings: readonly { kind: string }[]) {
+  if (attackKey.warnings !== warnings)
+    attackKey = {
+      warnings,
+      key: [...new Set(warnings.map((w) => w.kind))]
+        .filter((k) => /^[a-z0-9-]{1,32}$/.test(k))
+        .sort()
+        .join(","),
+    };
+  return attackKey.key;
+}
 /**
  * Moves whose cast effect plays on your press (predicted): it depends only on
  * where you stand and face. The rest wait for the server (see
@@ -623,6 +702,9 @@ const chat = mountChat({
               error: "Notifications aren't available right now.",
             })
         : turnPushOff((event, data) => request(event, data, true)),
+    news: pushNews,
+    setNews: (on) =>
+      setPushNews(on, (event, data) => request(event, data, true)),
   },
   me: () =>
     accountsUI?.account
@@ -676,11 +758,38 @@ const battleChat = mountBattleChat({
 });
 let authConnectionAttempt = 0;
 const connectionWatch = new ConnectionWatch();
-document.addEventListener("visibilitychange", () =>
-  connectionWatch.visibility(),
-);
+document.addEventListener("visibilitychange", () => {
+  connectionWatch.visibility();
+  // Shown again: Safari may have let the fighters' canvases go meanwhile.
+  if (!document.hidden) scene?.checkArtSoon("visible");
+});
 window.addEventListener("offline", () => connectionWatch.network());
 window.addEventListener("online", () => connectionWatch.network());
+/**
+ * Switching away from the game, or closing it, signs the player out of the
+ * live game at once (background-exit.ts): friends see them offline, the
+ * Plaza drops their avatar and a room shows their seat as offline, instead
+ * of all that waiting for the server's heartbeat to give up on a frozen or
+ * killed app. Coming back reconnects and resumes.
+ */
+const backgroundExit = watchBackgroundExit({
+  socket,
+  canConnect: () =>
+    !replacedAccount &&
+    !!(socket.auth as { accessToken?: string | null }).accessToken,
+  closeAtOnce: () => freezesWhenHidden(isNativeApp()),
+  onLeave: () => {
+    // The server dropped the search with the connection: say so on return.
+    if (quickSearch?.open) {
+      socket.off("quick-found");
+      quickSearch.close();
+      quickSearch = undefined;
+      quickSearchStopped = true;
+    }
+  },
+});
+/** Quick Match stopped when the game went to the background. */
+let quickSearchStopped = false;
 // Keep a displaced tab paused across reloads. Only an explicit button press
 // may reclaim the game; token refresh/focus must not kick the other device.
 let replacedAccount = sessionStorage.getItem("arena-session-replaced");
@@ -699,7 +808,11 @@ function measureRaidControls(): ControlSides {
     dpr = renderScale();
   const joystick = document.querySelector<HTMLElement>(".touch-pad .joystick");
   const buttons = Array.from(
-    document.querySelectorAll<HTMLElement>(".touch-buttons button"),
+    // The cluster's own buttons and its contextual slot (left of skill 1),
+    // where a boss's action pops up: your raider stands clear of both.
+    document.querySelectorAll<HTMLElement>(
+      ".touch-buttons > button, .touch-buttons > .touch-context",
+    ),
   ).filter((b) => b.offsetWidth);
   raidControlBoxes = [...buttons, ...(joystick?.offsetWidth ? [joystick] : [])]
     .map((e) => e.getBoundingClientRect())
@@ -729,6 +842,8 @@ let state: Snapshot | undefined,
   local: Fighter | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
+/** What ran a fighter-art check (rig-health.ts, "battle-art"). */
+type ArtTrigger = "visible" | "resume" | "renderer" | "context";
 /** Ticks the server held for your late inputs (Fighter.held). */
 let owedSteps = 0;
 let raidRoomReturn:
@@ -746,6 +861,12 @@ let tourTimer: ReturnType<typeof setTimeout> | undefined;
 let tourAsked: { account: string; answered: boolean } | undefined;
 /** EX skills: armed until this time (ms), 0 when not armed. */
 let exArmedUntil = 0;
+/** Solo test mode: skills 1-3 cast as their EX version (free with No skill
+ * cooldowns, a third of the meter otherwise). This device only. */
+let practiceEx = false;
+const practiceExOn = () => practiceEx && !!state?.practice;
+/** Solo test mode's last hit and damage per second. */
+let practiceDamage = practiceMeter();
 /** An invite is waiting for sign-in: say so once. */
 let inviteHinted = true;
 /** Render key for menu, lobby and battle state changes. */
@@ -888,6 +1009,8 @@ battleHudSize.observe($("abilities"));
 watchBattleZoom();
 // The iPhone app never zooms: a double tap in the Plaza zoomed the game in.
 if (isNativeApp()) lockAppZoom();
+// The phone's model for match reports (native.ts), read once.
+loadDeviceInfo();
 guardTouchHold();
 const homeNavigation = setupHomeNavigation($("menu"), () => showSettings());
 $("home-settings").onclick = () => showSettings();
@@ -935,10 +1058,35 @@ document.addEventListener("pointerdown", (event) => {
     audio.play("ui");
   }
 });
+/**
+ * A toast said while the startup curtain still covers the game waits for it
+ * to go: the curtain sits over the toast, and the toast's 4.5 s ran out under
+ * it on a slow start, so a waiting friend request was never seen (main's
+ * full run, 21 Nov 2026). Only the latest one waits.
+ */
+let toastTimer = 0;
+let toastWaiting = "";
+let toastWait = 0;
 function toast(message: string) {
+  if (curtainCovers()) {
+    toastWaiting = message;
+    if (!toastWait)
+      toastWait = window.setInterval(() => {
+        if (curtainCovers()) return;
+        clearInterval(toastWait);
+        toastWait = 0;
+        toast(toastWaiting);
+      }, 100);
+    return;
+  }
   $("toast").textContent = message;
   $("toast").classList.add("show");
-  setTimeout(() => $("toast").classList.remove("show"), 4500);
+  // A newer toast keeps its whole time (an older one's timer hid it early).
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(
+    () => $("toast").classList.remove("show"),
+    4500,
+  );
 }
 /** Ask the server; `quiet`: a background read that never shows a toast. */
 function request(
@@ -975,6 +1123,9 @@ function identity(reply: Reply) {
   owedSteps = 0;
   eventId = 0;
   scene?.hydrateNextSnapshot();
+  // A resumed connection (often after the page was in the background):
+  // check the fighters' art is still there (rig-health.ts).
+  scene?.checkArtSoon("resume");
   local = undefined;
   remoteFrames.clear();
   timeline.clear();
@@ -1382,8 +1533,9 @@ watchScreenPin();
 // The iPhone app (native.ts): iOS pauses it soon after you switch away, which
 // drops the game connection; coming back reconnects at once.
 void setupNativeShell(() => {
+  backgroundExit.back();
   const token = (socket.auth as { accessToken?: string | null }).accessToken;
-  if (token && !socket.connected) socket.connect();
+  if (token && !replacedAccount && !socket.connected) socket.connect();
 });
 watchCosmeticPreviews();
 // Remember a room from an invite link (?room=ABC123) before the first render.
@@ -1674,6 +1826,44 @@ function vsReveal(
   if (elapsed > last) return undefined;
   return (i: number) => VS_FLIP_FIRST + i * VS_FLIP_STEP - elapsed;
 }
+/**
+ * Draw the Reveal again just after its last card has turned over, so
+ * "I'm ready" lights up then even if no snapshot arrives at that moment.
+ */
+let vsRevealTimer: ReturnType<typeof setTimeout> | undefined;
+function scheduleRevealEnd(players: number) {
+  if (vsRevealTimer !== undefined) return;
+  const last = VS_FLIP_FIRST + (players - 1) * VS_FLIP_STEP + VS_FLIP_MS;
+  const wait = Math.max(0, vsRevealAt + last + 220 - performance.now());
+  vsRevealTimer = setTimeout(() => {
+    vsRevealTimer = undefined;
+    if (state?.phase === "briefing" && !state.raid) renderBattle();
+  }, wait);
+}
+/**
+ * A fighter's full health for its bar. A PvP round always starts everyone
+ * full (the server's resetRound), so the health in the Reveal and the
+ * countdown is the server's own full health: the bar trusts it over this
+ * client's table, which an out-of-date app gets wrong. On the owner's
+ * phone (22 Nov 2026) Voltkit's bar started a round at 86%: the app still
+ * had its old 157 health, the server 135. Raids, the Spire and Solo test
+ * keep the table: their fighters don't all start full.
+ */
+const fullSeen = new Map<string, number>();
+function fullHealth(s: Snapshot, p: Fighter) {
+  const key = `${s.code}:${p.id}:${p.character}`;
+  if (
+    !s.raid &&
+    !s.practice &&
+    !p.out &&
+    p.hp > 0 &&
+    (s.phase === "briefing" || s.phase === "countdown")
+  ) {
+    if (fullSeen.size > 64) fullSeen.clear();
+    fullSeen.set(key, p.hp);
+  }
+  return fullSeen.get(key) ?? maxHealth(p.character, s.mode, s.players.length);
+}
 /** The room's ⋯ menu (Settings, Invite, Leave) is open. */
 let roomMenuOpen = false;
 function setRoomMenu(open: boolean) {
@@ -1888,8 +2078,24 @@ let roomMode: RoomMode = (() => {
   }
 })();
 /** Lobby panel: a duel list, or Blue/Red columns for 2v2. */
+/** A side's name for a watcher: Blue/Red in 2v2, else its fighter's name. */
+function sideName(team: number) {
+  if (isTeams()) return (TEAM_LABELS[team] ?? "").toUpperCase();
+  return (
+    state?.players.find((p) => teamOf(p) === team)?.name ?? ""
+  ).toUpperCase();
+}
+/** Watching: the leading side and the runner-up, for no one in particular. */
+function watchRace(label: string, totals: number[], target: number) {
+  const sides = totals
+    .map((n, team) => ({ n: Math.floor(n), team }))
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 2);
+  return `${label} · ${sides.map((x) => `${sideName(x.team)} ${x.n}`).join(" · ")} / ${target}`;
+}
 /** Orb Rush HUD line: gems you carry, your side's bank and the best rival's. */
 function rushLabel(me: Fighter) {
+  if (!myId) return watchRace("RUSH", state?.banked ?? [], RUSH.target);
   const banked = state?.banked ?? [];
   const mine = banked[teamOf(me)] ?? 0;
   const rival = Math.max(0, ...banked.filter((_, t) => t !== teamOf(me)));
@@ -1897,6 +2103,12 @@ function rushLabel(me: Fighter) {
 }
 /** Crown Hill HUD line: your hold time against the best rival's. */
 function crownLabel(me: Fighter) {
+  if (!myId)
+    return watchRace(
+      "CROWN",
+      state?.crown ?? [],
+      state?.arcade?.hill?.target ?? CROWN.holdSeconds,
+    );
   const crown = state?.crown ?? [];
   const mine = crown[teamOf(me)] ?? 0;
   const rival = Math.max(0, ...crown.filter((_, t) => t !== teamOf(me)));
@@ -1906,7 +2118,9 @@ function crownLabel(me: Fighter) {
 function renderWatchOverlay(overlay: HTMLElement) {
   const banner = $("spectate");
   banner.hidden = state!.phase !== "playing";
-  banner.textContent = `Watching room ${state!.code} · Esc / Menu to stop`;
+  // Phones have no Esc: the gear (top right) holds "Stop watching".
+  const text = `Watching room ${state!.code} · ${touch.enabled ? "⚙ to stop" : "Esc to stop"}`;
+  if (banner.textContent !== text) banner.textContent = text;
   if (state!.phase === "playing") {
     setOverlayMarkup(overlay, "");
     overlay.style.pointerEvents = "none";
@@ -1918,7 +2132,25 @@ function renderWatchOverlay(overlay: HTMLElement) {
   let heading = "",
     details = "",
     actions = "";
-  if (state!.phase === "briefing") {
+  const raid = state!.raid;
+  if (raid) {
+    // A raid: the raiders against the boss, its own words between fights.
+    const raiders = state!.players.filter((p) => isRaider(p) && !p.out);
+    if (state!.phase === "briefing") {
+      heading = `The raiders are getting ready`;
+      details = `<p>${raiders.map((p) => `<b>${escape(p.name)}</b>`).join(" · ")} against ${escape(raidBossName(raid))}</p>`;
+    } else if (state!.phase === "intermission") {
+      heading = "The raiders are choosing rites";
+      details = `<p class="rite-timer">Next phase in ${LIVE_SECONDS}</p>`;
+    } else if (state!.phase === "finished") {
+      heading =
+        raid.result === "victory"
+          ? `${escape(raidBossName(raid))} defeated!`
+          : `${escape(raidBossName(raid))} still stands`;
+      details = `<p>${raiders.map((p) => `<b>${escape(p.name)}</b>`).join(" · ")} · ${Math.floor(raid.elapsed / 60)}:${String(Math.floor(raid.elapsed % 60)).padStart(2, "0")} · ${raid.revives} revives</p>`;
+      actions = `<div class="result-actions"><button class="secondary btn-secondary leave-button" id="watch-stop">${iconLabel("stop-watching", "Stop watching")}</button></div>`;
+    }
+  } else if (state!.phase === "briefing") {
     heading = "The players are getting ready";
     details = `<div class="briefing-versus${isFfa() ? " ffa" : ""}">${state!.players
       .map(
@@ -1933,7 +2165,7 @@ function renderWatchOverlay(overlay: HTMLElement) {
     heading = LIVE_COUNTDOWN;
     details = "Here we go.";
   }
-  if (state!.phase === "intermission") {
+  if (state!.phase === "intermission" && !raid) {
     heading = isTeams()
       ? state!.roundWinnerTeam === null || state!.roundWinnerTeam === undefined
         ? "Round drawn"
@@ -1947,7 +2179,7 @@ function renderWatchOverlay(overlay: HTMLElement) {
     heading = "A player disconnected";
     details = `Waiting for them · ${LIVE_SECONDS}`;
   }
-  if (state!.phase === "finished") {
+  if (state!.phase === "finished" && !raid) {
     heading = isTeams()
       ? `${TEAM_LABELS[state!.winnerTeam ?? 0] ?? ""} team wins`
       : `${name(state!.winner)} wins`;
@@ -2022,6 +2254,8 @@ async function joinByCode(code: string) {
 /** Room code being watched (no seat), or "". */
 let watching = "";
 const pvpSpectator = new PvpSpectator();
+/** Announcements from the admins, as a banner (announcements.ts). */
+const announcements = new AnnouncementBanner();
 const roomInvites = new RoomInvites({
   accountId: () => accountsUI?.account?.id,
   canJoin: () => connected && !!accountsUI?.account && !myId,
@@ -2358,9 +2592,62 @@ async function startAdventure(mode: string) {
   await request("browse", selected);
 }
 /**
+ * The title screen (title-screen.ts) is due: once per launch, for a
+ * signed-in player with nowhere else to go. A room to rejoin, an invite
+ * link or a friend's notification goes straight there instead.
+ */
+function titleWanted() {
+  if (!titleDue()) return false;
+  if (
+    replacedAccount ||
+    watching ||
+    friendToOpen ||
+    pendingInvite() ||
+    sessionStorage.getItem("arena-token")
+  ) {
+    passTitle();
+    return false;
+  }
+  return true;
+}
+/** Start on the title screen: in, under the loading curtain. */
+function leaveTitle() {
+  audio.unlock();
+  passTitle();
+  screen = "";
+  startStartupCurtain(startupStage, undefined, true);
+  renderMenu();
+}
+// Enter starts from the title screen, wherever the focus is (a computer's
+// "press Enter"); not while a dialog (Settings, Help) is open over it.
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.repeat) return;
+  const start = document.getElementById("title-start") as HTMLButtonElement;
+  if (!start || start.disabled) return;
+  if (document.querySelector("dialog[open]")) return;
+  const focus = document.activeElement;
+  if (focus instanceof HTMLButtonElement && focus !== start) return;
+  event.preventDefault();
+  leaveTitle();
+});
+/** The front door's quick buttons (title-screen.ts). */
+function quickAction(action: QuickAction) {
+  if (action === "settings") return showSettings();
+  if (action === "help") return showHowToPlay();
+  if (action === "support")
+    return void window.open(SUPPORT_URL, "_blank", "noopener");
+  dialog(
+    `<div class="repair-screen"><h2>Repair the game?</h2><p>If pictures look wrong, an update didn't finish or a screen is stuck, this downloads the game's files again and restarts it.</p><p>Your account, progress and settings stay as they are.</p><div class="dialog-actions"><button type="button" class="primary" id="repair-go">${iconLabel("again", "Repair and restart")}</button></div></div>`,
+  );
+  $("repair-go").onclick = () => {
+    $("repair-go").setAttribute("disabled", "");
+    void repairGame({ forget: [PROFILE_COPY_KEY] });
+  };
+}
+/**
  * The welcome screen: shown when signed out (with the sign-up / log-in
- * panel in it), while the account loads, and while a signed-in player is
- * (re)connecting to the hub.
+ * panel in it), while the account loads, as the title screen once per
+ * launch, and while a signed-in player is (re)connecting to the hub.
  */
 function renderGate() {
   syncHub();
@@ -2369,14 +2656,29 @@ function renderGate() {
     : !accountsUI?.checked
       ? "loading"
       : accountsUI.account
-        ? "connecting"
+        ? titleWanted()
+          ? "title"
+          : "connecting"
         : accountsUI.session
           ? "error"
           : !accountsUI.client
             ? "unavailable"
             : "signed-out";
   const invite = pendingInvite();
-  const key = `gate:${status}:${invite ?? ""}`;
+  const title =
+    status === "title" && accountsUI.account
+      ? titleScreen(
+          {
+            name: accountsUI.account.displayName,
+            level: accountsUI.level,
+            method: accountsUI.signInMethod,
+            picture: accountsUI.identityPicture(),
+            ready: connected,
+          },
+          BUILD_ID,
+        )
+      : undefined;
+  const key = `gate:${status}:${invite ?? ""}:${title ?? ""}`;
   if (screen === key) return;
   screen = key;
   audio.setTheme("lobby");
@@ -2392,7 +2694,18 @@ function renderGate() {
   $("battle").hidden = true;
   syncBattleLoop();
   $("menu").hidden = false;
-  $("menu").innerHTML = welcomeGate(status, invite);
+  $("menu").innerHTML =
+    title ?? welcomeGate(status, invite, { quick: quickBar(BUILD_ID) });
+  document
+    .querySelectorAll<HTMLElement>("[data-gate-quick]")
+    .forEach((button) => {
+      button.onclick = () =>
+        quickAction(button.dataset.gateQuick as QuickAction);
+    });
+  const start = document.getElementById("title-start");
+  if (start) start.onclick = leaveTitle;
+  const change = document.getElementById("title-switch");
+  if (change) change.onclick = () => void accountsUI.logOut();
   const login = document.getElementById("gate-login"),
     retry = document.getElementById("gate-retry");
   if (login) login.onclick = () => accountsUI.showAuth("login");
@@ -2409,6 +2722,8 @@ function renderGate() {
   // Signed out: the panel is right there. Returning players see Log in,
   // new ones Create account.
   if (status === "signed-out") {
+    // Signing in here is the way in: no title screen after it.
+    passTitle();
     let returning = false;
     try {
       returning = localStorage.getItem("arena-has-account") === "yes";
@@ -2511,7 +2826,9 @@ function syncHub() {
     !watching &&
     !state &&
     !sessionStorage.getItem("arena-token") &&
-    !pendingInvite();
+    !pendingInvite() &&
+    // The title screen first, once per launch (title-screen.ts).
+    !titleWanted();
   syncHubScenes(hub);
   // Which hub scene is showing (styles such as the toast's place follow it).
   if (hub) document.body.dataset.hubScene = hubScene;
@@ -2536,7 +2853,10 @@ function syncHub() {
 }
 /** The chat button's place and channels (chat/chat-ui.ts). */
 function syncChat(hub: boolean) {
-  const inRoom = !!myId && !!state;
+  // Watching a room counts as being in it: watchers chat with its players
+  // (docs/chat-plan.md, "Watchers").
+  const watcher = !myId && !!watching && state?.code === watching;
+  const inRoom = (!!myId || watcher) && !!state;
   const fighting =
     inRoom && state!.phase !== "lobby" && state!.phase !== "finished";
   // The Reveal (a PvP briefing) is a few seconds' loading screen: no chat
@@ -2555,15 +2875,19 @@ function syncChat(hub: boolean) {
       !reveal &&
       !state!.practice &&
       !state!.vsBot &&
-      state!.players.length > 1 &&
-      (!state!.raid || state!.raid.partySize > 1),
+      // Someone to talk to: another fighter, a raid party, or a watcher.
+      (watcher ||
+        (state!.watchers?.length ?? 0) > 0 ||
+        (state!.players.length > 1 &&
+          (!state!.raid || state!.raid.partySize > 1))),
     !!state?.raid,
+    watcher,
   );
   chat.sync(place, {
     party: !!party,
     room: inRoom && !state!.practice,
-    // A 2v2 room's own side (docs/hidden-picks.md).
-    team: inRoom && !state!.practice && state!.mode === "teams",
+    // A 2v2 room's own side (docs/hidden-picks.md); a watcher has none.
+    team: inRoom && !watcher && !state!.practice && state!.mode === "teams",
     // Nearby: the Plaza's copy.
     place: hub && hubScene === "plaza",
     // Friends: anyone signed in with an account (guests have no friends).
@@ -2906,6 +3230,16 @@ function openRosterScreen() {
       syncHub();
     },
     skins: (id) => void accountsUI.showShop("skins", id),
+    // Test skills: this fighter becomes yours, then Solo test starts with it.
+    practice: (id) => {
+      if (id !== selected) {
+        selected = id;
+        rememberHomeFighter(id);
+        renderMenu();
+        syncHub();
+      }
+      void lobbyPlay("practice");
+    },
     onClose: () => (rosterScreen = undefined),
   });
 }
@@ -3136,7 +3470,7 @@ function renderMenu(revealSelection = false) {
   if (
     !isRoom &&
     !watchingRoom &&
-    (!accountsUI?.account || !accountsUI.checked || !connected)
+    (!accountsUI?.account || !accountsUI.checked || !connected || titleWanted())
   )
     return renderGate();
   document.body.classList.remove("gate-active");
@@ -3344,7 +3678,16 @@ function renderMenu(revealSelection = false) {
         const button = $<HTMLButtonElement>("practice");
         button.disabled = true;
         const name = $<HTMLInputElement>("name").value.trim() || "Trainer";
-        identity(await request("practice", { name, character: selected }));
+        // A new Solo test starts with the switches you left on last time.
+        const prefs = loadPracticePrefs();
+        practiceEx = prefs.ex;
+        const reply = await request("practice", { name, character: selected });
+        identity(reply);
+        if (reply.ok && (prefs.unlimitedCooldowns || prefs.targetAttacks))
+          void request("practice-options", {
+            unlimitedCooldowns: prefs.unlimitedCooldowns,
+            targetAttacks: prefs.targetAttacks,
+          });
         button.disabled = false;
       };
   }
@@ -3533,17 +3876,7 @@ function renderBattle() {
     // Solo test mode keeps its only leave action inside the Practice panel.
     document.body.classList.toggle("practice-active", !!state.practice);
     if (state.practice) {
-      $("practice-controls").innerHTML =
-        `<details id="practice-settings" class="practice-settings"><summary>Practice</summary><div class="practice-panel"><div class="practice-heading"><span class="eyebrow">Solo test mode</span><span id="practice-stats"></span><button type="button" class="quiet" id="practice-close" aria-label="Close Practice">×</button></div><div class="practice-actions"><label>Creature <select id="practice-character">${Object.values(
-          CHARACTERS,
-        )
-          .map(
-            (c) =>
-              `<option value="${c.id}" ${me.character === c.id ? "selected" : ""}>${c.name}</option>`,
-          )
-          .join(
-            "",
-          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><button class="secondary btn-secondary" id="practice-reset">${iconLabel("again", "Reset arena")}</button><button class="quiet leave-button" id="practice-exit">${iconLabel("leave", "Exit test mode")}</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. Hover a skill for its description.</p></div></details>`;
+      $("practice-controls").innerHTML = practicePanelMarkup(me.character);
       $("practice-settings").addEventListener("toggle", () => {
         if (($("practice-settings") as HTMLDetailsElement).open) stopControls();
       });
@@ -3555,11 +3888,25 @@ function renderBattle() {
           "practice-character",
           $<HTMLSelectElement>("practice-character").value,
         );
-      const options = () =>
+      // Every switch is remembered on this device for the next Solo test.
+      const remember = () =>
+        savePracticePrefs({
+          unlimitedCooldowns: $<HTMLInputElement>("practice-unlimited").checked,
+          targetAttacks: $<HTMLInputElement>("practice-attacks").checked,
+          ex: practiceEx,
+        });
+      const options = () => {
+        remember();
         void request("practice-options", {
           unlimitedCooldowns: $<HTMLInputElement>("practice-unlimited").checked,
           targetAttacks: $<HTMLInputElement>("practice-attacks").checked,
         });
+      };
+      practiceDamage = practiceMeter();
+      $("practice-ex").onchange = () => {
+        practiceEx = $<HTMLInputElement>("practice-ex").checked;
+        remember();
+      };
       $("practice-unlimited").onchange = options;
       $("practice-attacks").onchange = options;
       $("practice-reset").onclick = () => void request("practice-reset");
@@ -3608,14 +3955,21 @@ function renderBattle() {
     me.statuses.some((s) => s.kind === "blind" && s.until > state!.time),
   );
   if (state.practice) {
-    setHudText(
-      $("practice-stats"),
-      `Damage dealt: ${Math.round(me.stats.dealt)} · Damage taken: ${Math.round(me.stats.received)} · Skills used: ${me.stats.skills}`,
-    );
+    const hit = practiceDamage.update(me.stats.dealt, state.time);
+    const numbers: Record<PracticeStat, number> = {
+      last: hit.lastHit,
+      dps: hit.dps,
+      dealt: Math.round(me.stats.dealt),
+      taken: Math.round(me.stats.received),
+      skills: me.stats.skills,
+    };
+    for (const [id] of PRACTICE_STATS)
+      setHudText($(`practice-${id}`), numbers[id].toLocaleString("en-US"));
     $<HTMLInputElement>("practice-unlimited").checked =
       state.practice.unlimitedCooldowns;
     $<HTMLInputElement>("practice-attacks").checked =
       state.practice.targetAttacks;
+    $<HTMLInputElement>("practice-ex").checked = practiceEx;
   }
   setHudText(
     $("round-label"),
@@ -3697,7 +4051,7 @@ function renderBattle() {
             !!state!.practice?.unlimitedCooldowns,
           );
         const armed = exArmedUntil > performance.now();
-        const exReady = !ready && charge >= EX.cost && !state!.practice;
+        const exReady = !ready && charge >= EX.cost;
         setHudText(
           $(`cooldown-${i}`),
           ready
@@ -3728,7 +4082,7 @@ function renderBattle() {
       }
       $(`ability-${i}`).classList.toggle(
         "ex-armed",
-        exArmedUntil > performance.now(),
+        exArmedUntil > performance.now() || practiceExOn(),
       );
       const left = cooldownLeft(me, i, state!.time);
       setHudText(
@@ -3775,8 +4129,8 @@ function renderBattle() {
       duration: CHARACTERS[me.character].basic.interval ?? 0.3,
     },
     state.practice?.unlimitedCooldowns ? RULES.ultMax : (me.ult ?? 0),
-    state.practice ? Infinity : EX.cost,
-    exArmedUntil > performance.now(),
+    state.practice?.unlimitedCooldowns ? Infinity : EX.cost,
+    exArmedUntil > performance.now() || practiceExOn(),
   );
   if (state.raid && myId) {
     renderRaidUI(
@@ -3822,6 +4176,17 @@ function renderBattle() {
     if (exit) exit.onclick = () => void leave();
     return;
   }
+  // Watching a raid: the boss's bar and the raiders' health, as they see
+  // them; the overlays between fights are the watcher's (below).
+  if (state.raid && !myId && watching) {
+    renderRaidWatchHud(state);
+    const raidHud = document.getElementById("raid-hud");
+    if (raidHud && raidHud !== measuredRaidHud) {
+      if (measuredRaidHud) battleHudSize.unobserve(measuredRaidHud);
+      measuredRaidHud = raidHud;
+      battleHudSize.observe(raidHud);
+    }
+  }
   const overlay = $("arena-overlay");
   // The Reveal and the countdown take the whole screen (style.css). Marked on
   // the overlay itself, in the same step as its markup: a rule asking the
@@ -3835,6 +4200,17 @@ function renderBattle() {
   overlay.classList.toggle(
     "is-countdown",
     player && state.phase === "countdown",
+  );
+  // The break between rounds and the results take the whole screen too,
+  // as the Reveal and the countdown do (match-sheet.css): the match opens
+  // and ends in the same style (owner, 22 Nov 2026).
+  overlay.classList.toggle(
+    "is-break",
+    player && state.phase === "intermission" && !state.practice,
+  );
+  overlay.classList.toggle(
+    "is-sheet",
+    player && state.phase === "finished" && !state.practice,
   );
   // Solo test mode starts straight away, with no briefing to load behind:
   // its own cover until this device has the arena, so the court and the
@@ -3948,14 +4324,21 @@ function renderBattle() {
         partyRulesNote();
       // Ready only once this device has the arena: the countdown starts when
       // everyone is ready, so a slow phone would otherwise miss the start.
+      // …and only once every card has turned over (owner, 22 Nov 2026):
+      // you see who you face before you can start. Lights up when the last
+      // card lands (scheduleRevealEnd draws the Reveal again then).
+      const flipping = !!flips && !loading;
+      if (flipping) scheduleRevealEnd(state.players.length);
       const progress = arenaProgress(state);
       const readyCount = state.instructionsReady.length;
       const status = loading
         ? `Loading the arena · ${Math.round(progress * 100)}%`
         : confirmed
           ? `Waiting for the others · ${readyCount}/${state.players.length} ready`
-          : "Arena and every fighter loaded";
-      actions = `<div class="rv-foot"><div class="rv-load${loading ? " is-loading" : ""}"><span>${status}</span><i role="progressbar" aria-label="Arena loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress * 100)}"><b style="width:${(progress * 100).toFixed(1)}%"></b></i></div><button class="primary btn-primary" id="instructions-ready" ${confirmed || loading ? "disabled" : ""}>${confirmed ? "Ready ✓" : loading ? "Loading…" : "I’m ready"}</button></div>`;
+          : flipping
+            ? "Revealing the fighters…"
+            : "Arena and every fighter loaded";
+      actions = `<div class="rv-foot"><div class="rv-load${loading ? " is-loading" : ""}"><span>${status}</span><i role="progressbar" aria-label="Arena loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress * 100)}"><b style="width:${(progress * 100).toFixed(1)}%"></b></i></div><button class="primary btn-primary" id="instructions-ready" ${confirmed || loading || flipping ? "disabled" : ""}>${confirmed ? "Ready ✓" : loading ? "Loading…" : "I’m ready"}</button></div>`;
     }
     if (state.phase === "countdown") {
       heading = LIVE_COUNTDOWN;
@@ -3974,6 +4357,7 @@ function renderBattle() {
       const rites = riteMarkup(me, Math.ceil(state.remaining));
       details = rites.body;
       actions = rites.actions;
+      eyebrow = `Round ${state.round} · ${escape(ARENAS[state.arena ?? "classic"].name)}`;
     }
     if (state.phase === "paused") {
       heading = isTeams() ? "A player disconnected" : "Opponent disconnected";
@@ -4029,15 +4413,43 @@ function renderBattle() {
       // A finished match against a bot: Getting started's first step.
       if (state.vsBot) {
         guide.mark("bot");
-        recordBotResult(
-          state.matchId ?? `${state.code}:${state.time}`,
-          state.vsBot,
-          won,
+        const matchKey = state.matchId ?? `${state.code}:${state.time}`;
+        recordBotResult(matchKey, state.vsBot, won);
+        const decided = isTeams()
+          ? state.winnerTeam !== null && state.winnerTeam !== undefined
+          : !!state.winner;
+        const streak = recordBotOutcome(
+          matchKey,
+          won ? "win" : decided ? "loss" : "draw",
         );
+        // Three losses in a row: a way to practise, or an easier bot.
+        if (!won && decided && !state.arcade && streak >= LOSS_STREAK_HINT) {
+          const easier = easierBot(state.vsBot);
+          details += `<div class="result-coach" role="note"><p><b>${streak} losses in a row.</b> A few minutes in Solo test${easier ? " or an easier bot" : ""} can help.</p><div class="result-coach-actions"><button type="button" class="secondary btn-secondary" id="coach-practice">${iconLabel("target", `Practice ${escape(CHARACTERS[me.character].name)}`)}</button>${easier ? `<button type="button" class="secondary btn-secondary" id="coach-easier" data-level="${easier}">${iconLabel("bot", `Try ${AI_LEVELS.find((l) => l.id === easier)!.name}`)}</button>` : ""}</div></div>`;
+        }
       }
-      actions = `<div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
+      // The Reveal's kicker: the mode and where (the title says who won).
+      eyebrow = `${isTeams() ? "2v2 Teams" : isFfa() ? "Free-for-all" : state.vsBot ? "1v1 vs Bot" : "1v1 Duel"} · ${escape(state.arcade ? ARCADE_EVENTS[state.arcade.id].name : ARENAS[state.arena ?? "classic"].name)}`;
+      // What happens next, on the left of the foot as on the Reveal's.
+      const rematchers = state.players.filter((p) => p.ready).length;
+      const next = state.vsBot
+        ? "Rematch the same bot, or head back"
+        : `${rematchers}/${state.players.length} ready for a rematch`;
+      // Against a bot, the rematch can bring another fighter (not in PvP,
+      // where picks stay secret until a match starts, nor the arcade).
+      const canSwap = !!state.vsBot && !state.arcade && !me.ready;
+      actions = `<p class="sheet-note">${next}</p><div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button>${canSwap ? `<button class="secondary btn-secondary" id="change-fighter">${iconLabel("swap", "Change fighter")}</button>` : ""}<button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
-    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
+    const finished = state.phase === "finished";
+    const won =
+      finished &&
+      (isTeams() ? state.winnerTeam === teamOf(me) : state.winner === myId);
+    const sheet = finished
+      ? ` match-sheet ${won ? "is-victory" : "is-defeat"}`
+      : state.phase === "intermission"
+        ? ` round-break${actions ? " has-rites" : ""}`
+        : "";
+    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}${sheet}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
     // Preserve the pressed button and native scrolling between snapshots.
     // The arena finishing loading starts the Reveal's scroll afresh, but it
     // is the same panel: it must not pop in again (it blinked out, the whole
@@ -4066,6 +4478,22 @@ function renderBattle() {
       };
     if (state.phase === "finished") {
       $("rematch").onclick = () => void request("rematch");
+      const swap = document.getElementById("change-fighter");
+      if (swap) swap.onclick = showFighterPicker;
+      // The losing-streak note: leave this bot room, then start the other.
+      const coachPractice = document.getElementById("coach-practice");
+      if (coachPractice)
+        coachPractice.onclick = async () => {
+          await leave();
+          void lobbyPlay("practice");
+        };
+      const coachEasier = document.getElementById("coach-easier");
+      if (coachEasier)
+        coachEasier.onclick = async () => {
+          const level = coachEasier.dataset.level as BotLevelId;
+          await leave();
+          void lobbyPlay(`bot-${level}` as LobbyMode);
+        };
       document
         .querySelectorAll<HTMLButtonElement>("[data-add-friend]")
         .forEach((b) => {
@@ -4102,6 +4530,16 @@ socket.on("connect", () => {
     return;
   }
   connected = true;
+  // A fresh connection lands on the server that takes new ones now; if a
+  // deploy is replacing that one too, it says so again (server-update).
+  moveToNewServer = updateSaid.moving = updateSaid.draining = false;
+  clearTimeout(restartReminder);
+  if (quickSearchStopped) {
+    quickSearchStopped = false;
+    toast(
+      "Quick Match stopped while the game was closed. Press Play to search again.",
+    );
+  }
   // Tell the server what this browser saw when it last dropped (once).
   const dropReport = connectionWatch.reconnected();
   if (dropReport) socket.emit("connection-report", dropReport);
@@ -4123,10 +4561,15 @@ socket.on("connect", () => {
   $("connection").textContent = "SERVER CONNECTED";
   $("connection").classList.add("online");
   const token = sessionStorage.getItem("arena-token");
+  // After a move to a new server (server-update): its own words, not the
+  // resume's "Room expired." (the room stayed on the old server).
+  const note = resumeNote;
+  resumeNote = undefined;
   if (token)
-    void request("resume", { token }).then((reply) => {
+    void request("resume", { token }, note !== undefined).then((reply) => {
       if (reply.ok) identity(reply);
       else {
+        if (note) toast(note);
         sessionStorage.removeItem("arena-token");
         lobbySelection.reset();
         state = undefined;
@@ -4206,16 +4649,78 @@ socket.on(
   },
 );
 socket.on("account-changed", () => void accountsUI.refresh());
-// A deploy is replacing the server (docs/server-updates.md): a match in
-// progress plays on to the end; new matches wait for the new server.
-socket.on("server-update", () => {
+// Announcements from the admins (announcements.ts): at once to every open game.
+socket.on("announcement", (data: unknown) => announcements.receive(data));
+socket.on("announcement-ended", (data: unknown) => announcements.end(data));
+// A deploy is replacing the server (docs/server-updates.md). A newer server
+// already takes new connections: this one moves there as soon as it is out
+// of a room (a match, its results, a watched one), so every new match starts
+// on the new server. A match in progress plays on here, and once Render asks
+// this server to stop, the player reads how long it still has.
+let moveToNewServer = false;
+/** What was already said about this update (each said once). */
+const updateSaid = { moving: false, draining: false };
+let restartReminder: ReturnType<typeof setTimeout> | undefined;
+/** Said instead of a failed resume's own error after a move (connect). */
+let resumeNote: string | undefined;
+/** In a room: a match, its results, or watching one. */
+const inRoom = () => !!state || !!watching;
+function moveToNewServerNow() {
+  moveToNewServer = false;
+  clearTimeout(restartReminder);
+  if (!socket.connected) return;
+  // A room lobby can't start here any more (the server refuses Ready); on
+  // the new server it no longer exists.
+  if (state?.phase === "lobby")
+    resumeNote =
+      "The game moved to its new version: open or join the room again.";
+  socket.disconnect().connect();
+}
+// Out of the match (back in the Lobby, or in the room's lobby, where nothing
+// can start on this server any more): move now. Results stay up until left.
+setInterval(() => {
+  if (
+    moveToNewServer &&
+    socket.connected &&
+    (!inRoom() || state?.phase === "lobby")
+  )
+    moveToNewServerNow();
+}, 2000);
+socket.on("server-update", (data: unknown) => {
   pwa.serverUpdating();
-  const phase = state?.phase;
-  toast(
-    !state?.practice && phase && phase !== "lobby" && phase !== "finished"
-      ? "A server update is waiting. Your match continues; the update follows it."
-      : "The server is updating. New matches open again in about a minute.",
-  );
+  const notice = (data ?? {}) as {
+    reconnect?: boolean;
+    draining?: boolean;
+    left?: number;
+    closing?: boolean;
+  };
+  if (notice.closing) {
+    // The time ran out with this match still going: the connection drops
+    // next, and the room isn't on the new server.
+    toast(
+      "The server restarted for the update before your match ended. Moving you to the new version…",
+    );
+    resumeNote = ""; // said already: the failed resume adds nothing
+    return;
+  }
+  if (notice.reconnect || notice.draining) moveToNewServer = true;
+  if (!inRoom() || state?.phase === "lobby") return moveToNewServerNow();
+  if (notice.draining && !updateSaid.draining) {
+    updateSaid.draining = updateSaid.moving = true;
+    const left = Math.max(0, notice.left ?? 0);
+    toast(
+      `Update: the server restarts in about ${Math.max(1, Math.round(left / 60000))}\u00a0min. Finish your match, then update.`,
+    );
+    clearTimeout(restartReminder);
+    if (left > 75_000)
+      restartReminder = setTimeout(() => {
+        if (state && state.phase !== "finished")
+          toast("The server restarts in under a minute: finish your match.");
+      }, left - 60_000);
+  } else if (!updateSaid.moving) {
+    updateSaid.moving = true;
+    toast("A new version is ready. Finish your match, then you'll move to it.");
+  }
 });
 // Coins, missions or Awakening changed after a match or raid.
 socket.on("economy-changed", () => void accountsUI.loadEconomy());
@@ -4262,18 +4767,32 @@ socket.on("invite-declined", (data: unknown) => {
 socket.on("chat", (line: ChatLine) => {
   chat.receive(line);
   // In a battle: a bubble over the speaker, and the feed under the button.
-  if (line.channel === "room" && line.fighter && state) {
+  // A watcher's line has no fighter: it goes in the feed only.
+  if (line.channel === "room" && (line.fighter || line.watcher) && state) {
     const speaker = state.players.find((p) => p.id === line.fighter);
     const me = state.players.find((p) => p.id === myId);
-    const plate = document.querySelector<HTMLElement>(
-      `.battle-nameplate[data-fighter="${CSS.escape(line.fighter)}"]`,
-    );
+    const plate = line.fighter
+      ? document.querySelector<HTMLElement>(
+          `.battle-nameplate[data-fighter="${CSS.escape(line.fighter)}"]`,
+        )
+      : null;
+    const mine = line.from.id === accountsUI?.account?.id;
     battleChat.receive(
       line.quick ? quickText(line.quick) : (line.text ?? ""),
       line.from.name,
       plate,
-      !!state.raid || (!!speaker && !!me && teamOf(speaker) === teamOf(me)),
+      mine ||
+        (!line.watcher &&
+          (!!state.raid ||
+            (!!speaker &&
+              (me
+                ? teamOf(speaker) === teamOf(me)
+                : // Watching (no side): the name takes its side's colour,
+                  // Blue as a teammate's, Red as a rival's, like the score
+                  // badge (the server sends a watcher players' emotes only).
+                  teamOf(speaker) === 0)))),
       !!line.quick && quickKind(line.quick) === "emote",
+      !!line.watcher && !mine,
     );
   }
   // Nearby lines pop over the speaker's head. On the Plaza the server
@@ -4363,7 +4882,6 @@ socket.on("state", (snapshot: WireSnapshot) => {
     shotTimeline.clear();
   }
   const previous = state;
-  if (snapshot.raid?.boss) prefetchRaidArena(snapshot.raid.boss);
   // No rite choice mid-fight: at each new chapter the rites grow a step.
   if (
     snapshot.raid &&
@@ -4595,6 +5113,25 @@ function dialog(html: string) {
     menuOpen = false;
   };
 }
+/** Result screen → Change fighter: a pick is the rematch, with that fighter. */
+function showFighterPicker() {
+  const me = state?.players.find((p) => p.id === myId);
+  if (!me) return;
+  dialog(fighterPickerMarkup(me.character));
+  for (const b of Array.from(
+    document.querySelectorAll<HTMLButtonElement>("#dialog [data-fp-pick]"),
+  ))
+    b.onclick = async () => {
+      const id = b.dataset.fpPick as CharacterId;
+      $<HTMLDialogElement>("dialog").close();
+      menuOpen = false;
+      const reply = await request("rematch", { character: id });
+      if (!reply.ok) return toast(reply.error ?? "Try again.");
+      // It is your fighter from now on, in the Lobby too.
+      selected = id;
+      rememberHomeFighter(id);
+    };
+}
 /**
  * The Settings leave button. Outlined red normally; bolder, with what it
  * costs, while a match is actually under way.
@@ -4618,11 +5155,11 @@ function leaveButton() {
   return `<button id="exit-room" class="secondary btn-secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave match</span><small>Counts as a forfeit</small></button>`;
 }
 /** Settings → Graphics: Auto, High or Low for the Plaza (graphics-quality.ts). */
-function graphicsCard() {
+function graphicsRow() {
   const setting = graphicsSetting();
   const option = (value: GraphicsSetting, label: string) =>
     `<button type="button" role="radio" data-graphics="${value}" aria-checked="${setting === value}">${label}</button>`;
-  return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p>${softwareRendering() ? GPU_OFF_NOTE : ""}</section>`;
+  return `<div class="st-row st-graphics"><span class="st-row-text"><b id="prefs-graphics">Graphics</b><small class="prefs-graphics-note">${graphicsNote(setting)}</small></span><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div></div>${softwareRendering() ? GPU_OFF_NOTE : ""}`;
 }
 /** Shown when the browser draws without the graphics card (gpu-check.ts). */
 const GPU_OFF_NOTE =
@@ -4703,12 +5240,46 @@ function syncPrefOutputs(root: ParentNode) {
   }
 }
 const syncDialogPrefs = () => syncPrefOutputs($<HTMLDialogElement>("dialog"));
+/**
+ * Settings: Sound on the left; on the right, Display in the hub (graphics,
+ * full screen, motion) or This match in a battle (practice tools, leave,
+ * motion). Rows of a label and its control, the same everywhere. Controls,
+ * Report and Credits sit in the footer. Fits a phone held sideways without
+ * scrolling (settings-screen.css).
+ */
+function settingsMarkup(reduced: boolean) {
+  const motion = `<div class="st-row"><span class="st-row-text"><b>Reduced motion</b><small>Follows your device's accessibility setting.</small></span><span class="st-badge${reduced ? " is-on" : ""}">${reduced ? "On" : "Off"}</span></div>`;
+  const sound = `<section class="prefs-card st-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section>`;
+  let side: string;
+  if (state) {
+    // In a room: what this match offers, then motion.
+    const practiceTools =
+      state.practice && touch.enabled
+        ? `<div class="st-row settings-quick-actions"><span class="st-row-text"><b>Solo test</b><small>Fighter, cooldowns, target and your numbers.</small></span><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice tools")}</button></div>`
+        : "";
+    const note = state.practice
+      ? ""
+      : `<p class="st-note">Online matches keep running while this is open.</p>`;
+    // What each of your skills does: on a phone there is no hover to read
+    // it, and holding a skill button casts it.
+    const skills = state.players.some((p) => p.id === myId)
+      ? `<div class="st-row"><span class="st-row-text"><b>Your skills</b><small>What each one does, and its cooldown.</small></span><button id="settings-skills" class="secondary btn-secondary">${iconLabel("info", "Skills")}</button></div>`
+      : "";
+    side = `<section class="prefs-card st-card" aria-labelledby="prefs-match"><h3 id="prefs-match">${menuIcon("battle")}This match</h3>${note}${practiceTools}${skills}${motion}</section>`;
+  } else
+    side = `<section class="prefs-card st-card" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3>${graphicsRow()}${isNativeApp() ? "" : fullscreenRow()}${motion}</section>`;
+  const appIcon = !state && isNativeApp() ? appIconCardHTML() : "";
+  const leave = myId
+    ? leaveButton()
+    : watching
+      ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>`
+      : "";
+  return `<div class="settings-screen st"><h2>Settings</h2><div class="st-cols">${sound}${side}${appIcon}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel(touch.enabled ? "settings" : "keyboard", touch.enabled ? "Controls" : "Controls &amp; keys")}</button>${leave}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`;
+}
 function showSettings() {
   settingsOpen = true;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  dialog(
-    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${state ? "" : isNativeApp() ? " has-graphics" : " has-display has-graphics"}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${state ? "" : isNativeApp() ? graphicsCard() + appIconCardHTML() : displayCard() + graphicsCard()}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
-  );
+  dialog(settingsMarkup(reduced));
   bindGraphicsCard();
   void bindAppIconCard(toast);
   for (const kind of ["music", "effects"] as const)
@@ -4730,6 +5301,8 @@ function showSettings() {
   $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
   $("settings-credits").onclick = showCredits;
+  const skills = document.getElementById("settings-skills");
+  if (skills) skills.onclick = showSkills;
   const exitRoom = $("exit-room");
   if (exitRoom) exitRoom.onclick = () => void leave();
 }
@@ -4740,9 +5313,9 @@ function showSettings() {
 const fullscreenSupported = () =>
   !!document.documentElement.requestFullscreen &&
   document.fullscreenEnabled !== false;
-function displayCard() {
+function fullscreenRow() {
   const on = !!document.fullscreenElement;
-  return `<section class="prefs-card prefs-display" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3><div class="prefs-toggle-row"><span><b>Full screen</b><small>${fullscreenSupported() ? "Hide the browser's bars while you play." : "On iPhone, add the game to your Home Screen to play full screen."}</small></span><button type="button" class="prefs-switch" id="settings-fullscreen" role="switch" aria-checked="${on}" ${fullscreenSupported() ? "" : "disabled"}><span>${on ? "On" : "Off"}</span></button></div></section>`;
+  return `<div class="st-row"><span class="st-row-text"><b id="prefs-fullscreen">Full screen</b><small>${fullscreenSupported() ? "Hide the browser's bars while you play." : "On iPhone, add the game to your Home Screen to play full screen."}</small></span><button type="button" class="prefs-switch" id="settings-fullscreen" role="switch" aria-labelledby="prefs-fullscreen" aria-checked="${on}" ${fullscreenSupported() ? "" : "disabled"}><span>${on ? "On" : "Off"}</span></button></div>`;
 }
 function syncDisplayCard() {
   const button = document.getElementById("settings-fullscreen");
@@ -4765,6 +5338,31 @@ function bindDisplayCard() {
     syncDisplayCard();
   };
 }
+/** Settings → Your skills: the fighter you play now, with a way back. */
+function showSkills() {
+  const me = state?.players.find((p) => p.id === myId);
+  if (!me) return showSettings();
+  const c = CHARACTERS[me.character];
+  const kit = kitOf(me.character, me.rites);
+  const row = (name: string, when: string, text: string) =>
+    `<li class="sk-row"><span class="sk-icon">${abilityIcon(name)}</span><span class="sk-text"><b>${escape(name)}</b><small>${escape(when)}</small><span>${escape(text)}</span></span></li>`;
+  const list = [
+    row(c.basic.name, "Basic attack · no cooldown", c.basic.description),
+    ...kit.skills.map((a, i) =>
+      row(
+        a.name,
+        i === ULT_SLOT
+          ? "Ultimate · fills by fighting"
+          : `Skill ${i + 1} · ${a.cooldown}s cooldown`,
+        a.description,
+      ),
+    ),
+  ].join("");
+  dialog(
+    `<div class="skills-screen"><button type="button" class="quiet" id="skills-back">${iconLabel("back", "Settings")}</button><h2>${escape(c.name)}'s skills</h2><ul class="sk-list">${list}</ul></div>`,
+  );
+  $("skills-back").onclick = showSettings;
+}
 /** Who and what made the game (opened from Settings, with a way back). */
 function showCredits() {
   dialog(
@@ -4780,24 +5378,7 @@ function showControls() {
     box: $<HTMLDialogElement>("dialog"),
     onBack: showSettings,
     padConnected: !!firstPad(),
-    // Touch controls live here (Settings keeps room for Graphics).
-    touch: touch.available
-      ? {
-          html: touch.settingsHTML(),
-          bind() {
-            touch.bindSettings();
-            const box = $<HTMLDialogElement>("dialog");
-            // Same function each time, so reopening doesn't stack listeners.
-            box.addEventListener("input", syncDialogPrefs);
-            // Reset sets the knobs directly (no input event), so refresh after it.
-            document
-              .getElementById("control-reset")
-              ?.addEventListener("click", () =>
-                setTimeout(() => syncPrefOutputs(box)),
-              );
-          },
-        }
-      : undefined,
+    touch: touch.available,
   });
 }
 $("mobile-settings").onclick = showSettings;
@@ -4949,11 +5530,15 @@ function startTour(replay = false) {
   tourTimer = setTimeout(
     () => {
       tourTimer = undefined;
+      // A new guest answers their guest pass warning first; the tour
+      // follows (owner, 22 Nov 2026: it opened over the warning).
       if (
         !lobby ||
         myId ||
         $<HTMLDialogElement>("dialog").open ||
-        document.querySelector(".ui-panel-host .ui-panel")
+        document.querySelector(".ui-panel-host .ui-panel") ||
+        document.querySelector("[data-ui-confirm]") ||
+        accountsUI?.guestWarningPending
       )
         return;
       tour = runTour({
@@ -4978,6 +5563,13 @@ function startTour(replay = false) {
     replay ? 250 : 900,
   );
 }
+// The guest warning answered (Got it, or Save account and its card closed):
+// the tour, if it is still due.
+window.addEventListener("guest-warning-done", () => maybeStartTour());
+// Save account opens the player card first: the tour once it closes.
+document.addEventListener(PANEL_EVENT, () => {
+  if (hubScene === "lobby" && !myId) maybeStartTour();
+});
 /** A new account's first Lobby: the tour, once. */
 function maybeStartTour() {
   const account = accountsUI?.account?.id;
@@ -5101,7 +5693,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   /** Its pillars, shadows, rubble and crumbles (raid-grumble-pillars-rig.ts). */
   pillarRig?: PillarRig;
   /** Shared floor textures continue into dim, non-playable scenery around the court. */
-  raidSurround: Phaser.GameObjects.Image[] = [];
+  /** The world round a raid court (world-art/), painted once per arena. */
+  raidWorld: Phaser.GameObjects.Image[] = [];
+  private raidWorldId = "";
   /** The Spire's court: sky, cover, stairs and number (spire-court-rig.ts). */
   spireRig?: SpireCourtRig;
   /** The Spire floor on show, and the next one already painted. */
@@ -5110,8 +5704,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   /** Bake an arena's floor once (2x on dense screens); returns its texture key. */
   floorTexture(id: string) {
     const key = `arena-floor-${id}`;
-    // The illustrated version, once its picture has arrived (see below).
-    if (this.textures.exists(`${key}:art`)) return `${key}:art`;
     const bake = floorBake();
     if (!this.textures.exists(key)) {
       this.floorScale.set(key, bake);
@@ -5146,37 +5738,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         canvas.height = RULES.height * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        if (isRaidFloor(picture)) paintRaidFloor(ctx, picture);
-        else paintCourtFloor(ctx, "classic", true);
+        // Painted in code (world-art/): ready at once, nothing to fetch.
+        paintIllustratedRaidFloor(ctx, picture);
         summit?.grade(ctx);
+        canvas.dataset.raidArtwork = id;
         addCanvasTexture(this.textures, key, canvas);
-        this.floorPending.add(key);
-        loadRaidArenaArt(
-          picture,
-          (image) => {
-            this.floorPending.delete(key);
-            if (!this.textures?.exists(key)) return;
-            ctx.save();
-            ctx.setTransform(bake, 0, 0, bake, 0, 0);
-            paintIllustratedRaidFloor(ctx, picture, image);
-            summit?.grade(ctx);
-            ctx.restore();
-            canvas.dataset.raidArtwork = id;
-            // A new texture rather than re-uploading the old one in place: on
-            // some phones the in-place update never showed, and the whole first
-            // fight stayed on the stand-in floor (the next fight, painted
-            // already, was fine). Whatever shows the stand-in switches over.
-            const art = `${key}:art`;
-            if (!this.textures.exists(art))
-              addCanvasTexture(this.textures, art, canvas);
-            this.floorScale.set(art, bake);
-            for (const img of [this.floor, ...this.raidSurround])
-              if (img?.texture.key === key) img.setTexture(art);
-            if (this.floor?.texture.key === art) this.floor.setScale(1 / bake);
-            for (const img of this.raidSurround) img.setDisplaySize(1600, 900);
-          },
-          () => this.floorPending.delete(key),
-        );
       } else {
         const g = this.make.graphics({}, false);
         paintArenaFloor(scaledPainter(g, bake), ARENAS[id as ArenaId]);
@@ -5203,7 +5769,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // both go, and only when no picture shows either.
     const base = key.replace(/:art$/, "");
     const keys = [base, `${base}:art`];
-    const shown = [this.floor, ...this.raidSurround].some(
+    const shown = [this.floor].some(
       (img) => !!img && keys.includes(img.texture.key),
     );
     if (shown) return;
@@ -5215,6 +5781,75 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       // Give WebKit the canvas memory back now, not at some later collection.
       if (source instanceof HTMLCanvasElement) source.width = source.height = 0;
     }
+  }
+  /**
+   * Show the painted world round this raid court (undefined: none). Only one
+   * is kept, like the floor: the last arena's goes. It is one canvas, shown
+   * as four bands round the court (above, below, left, right) and never
+   * under it: the court's own floor covers the middle, so drawing the world
+   * there too would paint most of the screen twice every frame (+11–15%
+   * frame time on every raid, measured at Low on 844×390). The camera's
+   * background takes the painting's edge colour, so a view even wider than
+   * the painting (a tall portrait screen) carries on in the same tone.
+   */
+  private showRaidWorld(id: IllustratedRaidFloor | undefined) {
+    if (id === this.raidWorldId) {
+      for (const band of this.raidWorld) band.setVisible(!!id);
+      return;
+    }
+    const old = this.raidWorldId ? `raid-world-${this.raidWorldId}` : "";
+    this.raidWorldId = id ?? "";
+    for (const band of this.raidWorld)
+      band.setTexture("__DEFAULT").setVisible(false);
+    if (old && this.textures.exists(old)) {
+      const source = this.textures.get(old).getSourceImage();
+      this.textures.remove(old);
+      if (source instanceof HTMLCanvasElement) source.width = source.height = 0;
+    }
+    if (!id) {
+      this.cameras.main.setBackgroundColor(ARENA_BACKGROUND);
+      return;
+    }
+    const key = `raid-world-${id}`;
+    const s = WORLD_DENSITY;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(WORLD.width * s);
+    canvas.height = Math.round(WORLD.height * s);
+    const ctx = canvas.getContext("2d")!;
+    ctx.setTransform(s, 0, 0, s, -WORLD.x * s, -WORLD.y * s);
+    paintRaidWorld(ctx, id, "all");
+    const texture = addCanvasTexture(this.textures, key, canvas);
+    // The four bands, in world px: everything in WORLD but the court.
+    const { width: W, height: H } = RULES;
+    const right = WORLD.x + WORLD.width,
+      bottom = WORLD.y + WORLD.height;
+    const bands: [string, number, number, number, number][] = [
+      ["top", WORLD.x, WORLD.y, WORLD.width, -WORLD.y],
+      ["bottom", WORLD.x, H, WORLD.width, bottom - H],
+      ["left", WORLD.x, 0, -WORLD.x, H],
+      ["right", W, 0, right - W, H],
+    ];
+    bands.forEach(([name, x, y, w, h], i) => {
+      texture?.add(
+        name,
+        0,
+        Math.round((x - WORLD.x) * s),
+        Math.round((y - WORLD.y) * s),
+        Math.round(w * s),
+        Math.round(h * s),
+      );
+      this.raidWorld[i] ??= this.add
+        .image(0, 0, key, name)
+        .setOrigin(0)
+        .setDepth(-12);
+      this.raidWorld[i]
+        .setTexture(key, name)
+        .setPosition(x, y)
+        .setDisplaySize(w, h)
+        .setName(`raid-world-${name}`)
+        .setVisible(true);
+    });
+    this.cameras.main.setBackgroundColor(RAID_WORLDS[id].edge);
   }
   /** Bake and place a court's blocks (once per court). */
   private ensureBlocks(id: CourtId) {
@@ -5302,27 +5937,17 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // Round the Spire's courts: its sky, not the raid's dimmed floor.
     if (spire) this.spireRig ??= new SpireCourtRig(this, fighterDepth);
     this.spireRig?.show(spire);
-    if (raid && !spire && !this.raidSurround.length) {
-      for (const x of [-1600, 0, 1600])
-        for (const y of [-900, 0, 900]) {
-          if (!x && !y) continue;
-          this.raidSurround.push(
-            this.add
-              .image(x, y, key)
-              .setOrigin(0)
-              .setFlipX(x !== 0)
-              .setFlipY(y !== 0)
-              .setDisplaySize(1600, 900)
-              .setTint(0x627185)
-              .setDepth(-12),
-          );
-        }
-    }
-    for (const image of this.raidSurround)
-      image
-        .setTexture(key)
-        .setDisplaySize(1600, 900)
-        .setVisible(raid && !spire);
+    // Round a raid court: its own painted world, out past anything the
+    // camera shows. The Spire keeps its sky instead.
+    this.showRaidWorld(
+      raid && !spire
+        ? this.courtRaid
+          ? "raid-coliseum"
+          : isIllustratedRaidFloor(arena)
+            ? arena
+            : undefined
+        : undefined,
+    );
     if (court) this.ensureBlocks(court);
     // Grumblecrag's raid shows its own pillars (the PvP blocks stay as they are).
     for (const [cid, list] of this.courtBlocks)
@@ -5534,6 +6159,79 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   hydrateNextSnapshot() {
     this.needsHydration = true;
   }
+  /** Art checks to run (rig-health.ts), at these times (performance.now). */
+  private artChecks: { at: number; trigger: ArtTrigger }[] = [];
+  /** Fighters still to look at in the current check, one a frame. */
+  private artQueue: string[] = [];
+  private artTrigger: ArtTrigger = "renderer";
+  /** Fighters whose art was loaded again in this renderer, and how often. */
+  private artRepairs = new Map<CharacterId, number>();
+  /**
+   * After a moment that can lose a canvas's pixels (the page shown again, a
+   * resumed connection, a new renderer, a restored WebGL context), look at
+   * every fighter's art twice, soon and a little later (a reload settles).
+   */
+  checkArtSoon(trigger: ArtTrigger) {
+    const now = performance.now();
+    this.artChecks.push(
+      { at: now + 700, trigger },
+      { at: now + 3000, trigger },
+    );
+  }
+  /**
+   * A fighter drawn as nothing: every texture its rig uses came back blank.
+   * Its rig and textures go, its art is forgotten and loads again (the
+   * fighter is a plain stand-in meanwhile), and the server hears of it
+   * ("arena-art-blank"). Twice per fighter per renderer at most: art that
+   * keeps coming back blank is only reported.
+   */
+  private runArtChecks(now: number) {
+    if (document.hidden) return;
+    // Due: queue every fighter on the court, then look at one per frame
+    // (reading canvases back costs; a court of eight in one frame stalled).
+    if (this.artChecks.some((c) => c.at <= now)) {
+      const due = this.artChecks.filter((c) => c.at <= now);
+      this.artChecks = this.artChecks.filter((c) => c.at > now);
+      this.artTrigger = due[due.length - 1].trigger;
+      for (const id of this.rigs.keys())
+        if (!this.artQueue.includes(id)) this.artQueue.push(id);
+    }
+    const id = this.artQueue.shift();
+    const rig = id === undefined ? undefined : this.rigs.get(id);
+    if (!id || !rig) return;
+    const health = rigArtHealth(rig.root as unknown as ArtNode);
+    if (!health.blank) return;
+    const character = rig.character;
+    const times = this.artRepairs.get(character) ?? 0;
+    const repaired = times < 2;
+    if (repaired) {
+      this.artRepairs.set(character, times + 1);
+      // Every rig drawing from the same art goes too (a teammate on the
+      // same fighter): its textures are about to be removed.
+      for (const [other, r] of this.rigs)
+        if (r.character === character) {
+          r.destroy();
+          this.rigs.delete(other);
+        }
+      for (const key of health.keys) {
+        forgetPrepainted(key);
+        if (this.textures.exists(key)) this.textures.remove(key);
+      }
+      this.fighters.forget(character);
+    }
+    if (connected)
+      socket.emit("battle-art", {
+        character,
+        mine: id === myId,
+        textures: health.total,
+        blank: health.keys.length,
+        trigger: this.artTrigger,
+        repaired,
+        build: BUILD,
+        ...deviceKind(),
+      });
+  }
+
   private getRig(id: string, character: CharacterId) {
     let rig = this.rigs.get(id);
     if (rig && rig.character !== character) {
@@ -5568,9 +6266,25 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // 17 Nov 2026); the Plaza measures itself.
     if (live) battleQuality.frame(now);
     else battleQuality.pause();
-    battlePerf.frame(now, live);
-    const knobs = battleQuality.knobs();
     const fx = fxFor(this);
+    const raid = state?.raid;
+    battlePerf.frame(
+      now,
+      live,
+      live
+        ? {
+            work: frameWork,
+            glow: fx.stats.glowCover,
+            soft: fx.stats.softCover,
+            particles: fx.stats.particles,
+            objects: this.children.length,
+            ...(raid
+              ? { phase: raid.phase, attacks: raidAttackKey(raid.warnings) }
+              : {}),
+          }
+        : undefined,
+    );
+    const knobs = battleQuality.knobs();
     fx.density = knobs.particles;
     fx.trailScale = knobs.trails;
     fx.glowBudget = knobs.glowBudget;
@@ -5669,6 +6383,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   create() {
     battleLoadMarks.create ||= performance.now();
     scene = this;
+    // A new renderer, often rebuilt mid-fight after a reconnect, and a
+    // WebGL context given back: check the fighters' art (rig-health.ts).
+    this.checkArtSoon("renderer");
+    this.game.canvas?.addEventListener("webglcontextrestored", () =>
+      this.checkArtSoon("context"),
+    );
     // The boss's pieces are drawn once into an atlas: now, not on its first frame.
     if (state?.raid)
       prewarmBossAtlas(
@@ -6315,6 +7035,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     }
   }
   update(_time: number, delta: number) {
+    // Art found blank goes first, so its fighter is asked for again below.
+    this.runArtChecks(performance.now());
     // A fighter still loading is drawn as a stand-in (readyRig) while its
     // art loads; nothing else waits for it.
     if (state) this.requestFighters(state);
@@ -6354,7 +7076,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // (or, downed, stay on them) and pull out for court-wide mechanics.
     // Phones only (the CSS's landscape phone breakpoint): a tablet already
     // shows the whole court large enough.
+    // Watching (no seat): always the whole court, never a follow or a zoom.
+    const ringside = !myId && !!watching;
     const raidFollow =
+      !ringside &&
       !!state?.raid &&
       touch.enabled &&
       innerWidth > innerHeight &&
@@ -6408,7 +7133,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       : this.followCamera.update(
           this.scale.width,
           this.scale.height,
-          touch.enabled &&
+          // Watching fits the whole court (a phone fills the box only when
+          // its camera follows your own fighter).
+          !ringside &&
+            touch.enabled &&
             !state?.raid &&
             document.body.classList.contains("battle-active") &&
             innerWidth > innerHeight,
@@ -6431,7 +7159,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           reducedMotion,
           this.activeCourt && !this.courtRaid ? STANDS : 0,
           state?.practice ? 1.65 : 1.2,
-          touch.enabled &&
+          !ringside &&
+            touch.enabled &&
             innerWidth > innerHeight &&
             this.activeCourt &&
             !this.courtRaid
@@ -6439,9 +7168,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             : 0,
           // The PvP badge covers the top of a phone's arena: the court may
           // scroll below it (badge pixels → game pixels).
-          touch.enabled && badgeClear ? badgeClear.bottom / this.scale.zoom : 0,
+          !ringside && touch.enabled && badgeClear
+            ? badgeClear.bottom / this.scale.zoom
+            : 0,
         );
-    const hitZoom = state?.raid ? 1 : this.koZoom;
+    // No knockout push-in while watching either: the view stays whole.
+    const hitZoom = state?.raid || ringside ? 1 : this.koZoom;
     this.cameras.main
       .setZoom(view.zoomX * hitZoom, view.zoomY * hitZoom)
       .centerOn(view.x, view.y);
@@ -6668,7 +7400,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       } else if (skill >= 0 && skill < ULT_SLOT && exArmedUntil) {
         if (performance.now() < exArmedUntil && meter >= EX.cost) ex = true;
         exArmedUntil = 0;
-      }
+      } else if (skill >= 0 && skill < ULT_SLOT && practiceExOn()) ex = true;
       if (exArmedUntil && performance.now() >= exArmedUntil) exArmedUntil = 0;
       const keyX = heldAxis("left", "right"),
         keyY = heldAxis("up", "down");
@@ -6772,7 +7504,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         reducedMotion,
         _time / 1000,
         state.raid
-          ? { boss: this.bossGraphics, at: this.layerAt, court: this.courtRaid }
+          ? {
+              boss: this.bossGraphics,
+              at: this.layerAt,
+              court: this.courtRaid,
+              drawnAt: (id) => this.positions.get(id),
+            }
           : undefined,
       ) ?? [];
     for (const [key, layer] of this.layers)
@@ -6841,6 +7578,27 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         pb = ownerOf.get(b);
       return a !== b && (!pa || !pb || teamOf(pa) !== teamOf(pb));
     };
+    // The fighters (and decoys) a shot can strike, where they are drawn: a
+    // shot drawn ahead of the server stops on the first it touches, as the
+    // server's does (timeline-lead.ts leadProjectile).
+    const targetsOf = new Map<string, ShotTarget[]>();
+    const fighters = state.players;
+    const shotTargets = (owner: string) => {
+      let list = targetsOf.get(owner);
+      if (list) return list;
+      list = [];
+      for (const p of fighters) {
+        if (!rivals(owner, p.id) || p.hp <= 0 || p.out) continue;
+        // A shot stopping in the air would give away a fighter in stealth.
+        if (p.id !== myId && p.statuses.some((s) => s.kind === "stealth"))
+          continue;
+        const at = this.positions.get(p.id) ?? p;
+        list.push({ x: at.x, y: at.y, r: p.raidBoss ? 70 : RULES.radius });
+        if (p.clone) list.push({ x: p.clone.x, y: p.clone.y, r: RULES.radius });
+      }
+      targetsOf.set(owner, list);
+      return list;
+    };
     for (const pr of state.projectiles) {
       const seconds = shotTimeline.seconds(
         pr,
@@ -6858,7 +7616,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       const slow = bubble
         ? (bubble.ability.warp ?? STATUS_RULES.warpMultiplier)
         : 1;
-      const drawn = leadProjectile(pr, seconds, walls, slow);
+      const hits = shotTargets(pr.owner);
+      const drawn = leadProjectile(pr, seconds, walls, slow, hits);
       drawProjectile(g, tinted(drawn), _time, reducedMotion);
     }
     shotTimeline.keep(state.projectiles.map((pr) => pr.id));
@@ -7772,7 +8531,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       updateNameplateHealth(
         label,
         serverPlayer.hp,
-        maxHealth(p.character, state.mode, state.players.length),
+        fullHealth(state, serverPlayer),
         p.id === myId
           ? "self"
           : (state.raid && !serverPlayer.echo) ||
@@ -7873,6 +8632,8 @@ function fighterDepth(y: number) {
  * screen at most ~930 CSS px wide, so the court never needs more texels than
  * that; a flat 2× cost an iPhone two 23 MB copies of a 3200×1800 floor.
  */
+/** The battle canvas's background, where nothing is painted (the scene sets it at create). */
+const ARENA_BACKGROUND = "#142746";
 function floorBake() {
   return Math.min(2, Math.max(1, Math.round(renderScale() * 4) / 4));
 }
@@ -8095,6 +8856,7 @@ function arenaLoading(s: Snapshot) {
  */
 function reportBattlePerf() {
   const summary = battlePerf.summary();
+  const detail = battlePerf.detail();
   const net = netMeter.summary();
   battlePerf.reset();
   netMeter.reset();
@@ -8125,6 +8887,13 @@ function reportBattlePerf() {
     errors,
     ...(softwareRendering() ? { gpu: "software" as const } : {}),
     ...(screenHz(battleFrames) ? { hz: screenHz(battleFrames) } : {}),
+    shell: appShell(nativePlatform(), deviceKind().app),
+    ...deviceModel(nativeDeviceInfo(), {
+      width: window.screen.width,
+      height: window.screen.height,
+      dpr: window.devicePixelRatio,
+    }),
+    ...detail,
   });
 }
 /**
@@ -8228,6 +8997,14 @@ function ensureBattleRenderer() {
       },
     },
   });
+  // Our own work per frame, for the match report (frameWork).
+  let stepStart = 0;
+  gameInstance.events.on(Phaser.Core.Events.PRE_STEP, () => {
+    stepStart = performance.now();
+  });
+  gameInstance.events.on(Phaser.Core.Events.POST_RENDER, () => {
+    if (stepStart) frameWork = performance.now() - stepStart;
+  });
   // A player can return home while the first texture load is still finishing.
   gameInstance.events.once(Phaser.Core.Events.POST_RENDER, syncBattleLoop);
   gameInstance.events.on(Phaser.Core.Events.RESUME, syncBattleLoop);
@@ -8288,6 +9065,8 @@ startStartupCurtain(startupStage);
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
   reportPhoto: (photo, name) => reportPhoto(photo, name),
+  // Match history's "Play the Hard bot again": the bot bar's own start.
+  playBot: (level) => void lobbyPlay(`bot-${level}`),
   chooseFighter: (id) => {
     if (id === selected) return;
     selected = id;
@@ -8370,6 +9149,7 @@ accountsUI = new AccountUI({
     void watchRoom(code);
   },
   notify: toast,
+  announce: (list) => announcements.receive(list),
   beforeSignOut: async () => {
     roomInvites.clear();
     if (plaza) {
@@ -8414,7 +9194,9 @@ accountsUI = new AccountUI({
     // A connection the server refused or closed (an hour-old token on a
     // phone waking up) never retries by itself: without this, a player sat
     // in the game offline to their friends until they reloaded.
-    else if (!replacedAccount && !socket.active) socket.connect();
+    // Not while closed for the background: coming back reconnects.
+    else if (!replacedAccount && !socket.active && !backgroundExit.away)
+      socket.connect();
   },
   onChange: () => {
     loadMastery();

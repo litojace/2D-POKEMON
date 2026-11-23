@@ -1,9 +1,9 @@
 // Which lane a branch takes to main (CLAUDE.md, "Merging to main"):
 //
 //   FAST: merge once the PR's `verify` job is green and the visual specs the
-//         change touches pass locally; main's own full run (all 18 visual
+//         change touches pass locally; main's own full run (all 30 visual
 //         shards, never cancelled) checks it after the merge.
-//   FULL: wait for the PR's whole run (verify and all 18 visual shards).
+//   FULL: wait for the PR's whole run (verify and all 30 visual shards).
 //
 // FULL is for what can't be taken back or reaches everything: a migration
 // (it runs on the production database at the merge), the build and test
@@ -13,7 +13,7 @@
 //
 // In CI (.github/workflows/ci.yml, the `lane` job) it also writes
 // `lane=FAST` or `lane=FULL` to $GITHUB_OUTPUT: a FAST pull request runs
-// verify only, and the 18 visual shards are left to main's scheduled full
+// verify only, and the 30 visual shards are left to main's scheduled full
 // run (the shards of a PR that merges on verify only spent runners for
 // nothing, and main's own runs starved).
 import { execFileSync } from "node:child_process";
@@ -44,7 +44,7 @@ export const FULL_RULES = [
     "the visual tests' shared harness changes",
   ],
   [
-    /^scripts\/(check-migrations|migrate-production|visual-shards|verify-pwa)\.mjs$/,
+    /^scripts\/(check-migrations|migrate-production|visual-shards|verify-pwa|full-run-due)\.mjs$/,
     "a script CI or production runs changes",
   ],
   [
@@ -109,6 +109,6 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     );
   else
     console.log(
-      "Wait for the PR's whole run: verify and all 18 visual shards.",
+      "Wait for the PR's whole run: verify and all 30 visual shards.",
     );
 }

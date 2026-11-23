@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { openPlaza, snap } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import {
+  PLAZA_DOCK,
   PLAZA_FISH,
   PLAZA_FISHING,
   PLAZA_POND,
@@ -174,6 +175,32 @@ for (const size of [
       expect(Math.abs(today.w - bookBtn.w)).toBeLessThanOrEqual(1);
       expect(Math.abs(today.t - bookBtn.t)).toBeLessThanOrEqual(1);
       expect(today.r).toBeLessThan(bookBtn.l);
+      // Their words sit on one line ("today" level with "Book"), and the
+      // widest count, 30/30, stays inside the circle with room to spare.
+      const fit = await page.evaluate(() => {
+        const t = document.querySelector("#pz-fish-today")!;
+        const was = t.innerHTML;
+        t.innerHTML = `<b>30<i>/30</i></b><small>today</small>`;
+        const tr = t.getBoundingClientRect(),
+          b = t.querySelector("b")!,
+          range = document.createRange();
+        range.selectNodeContents(b);
+        const g = range.getBoundingClientRect(),
+          r = tr.width / 2 - 1,
+          // The circle's width at the count's middle line.
+          dy = g.top + g.height / 2 - (tr.top + tr.height / 2),
+          chord = 2 * Math.sqrt(r * r - dy * dy),
+          labels = [
+            t.querySelector("small")!.getBoundingClientRect().top,
+            document
+              .querySelector("#pz-fish-book2 small")!
+              .getBoundingClientRect().top,
+          ];
+        t.innerHTML = was;
+        return { width: g.width, chord, labels };
+      });
+      expect(Math.abs(fit.labels[0] - fit.labels[1])).toBeLessThanOrEqual(0.5);
+      expect(fit.width + 8).toBeLessThanOrEqual(fit.chord);
       // Leave is red, told apart from fishing's blue buttons.
       expect(
         await page
@@ -183,6 +210,48 @@ for (const size of [
       await snap(page, info, `fishing-mode-${name}`);
       await cast(page);
       await snap(page, info, `fishing-wait-${name}`);
+      // While the line is out the ducks keep their bodies (a little above
+      // their feet) well off the line and the bobber, so neither is ever
+      // drawn across a duck: each duck is turned all the way round its path.
+      // Two ducks, and they never swim over each other either.
+      expect(
+        await page.evaluate(() => (window as any).__plaza.ducks().length),
+      ).toBe(2);
+      for (let k = 0; k < 24; k++) {
+        const [near, apart] = await page.evaluate(async (k) => {
+          const p = (window as any).__plaza,
+            L = p.lineZone;
+          // The lead duck's place on its path (the other keeps half a turn
+          // behind it).
+          p.ducks()[0].a = (k / 24) * Math.PI * 2;
+          await new Promise((r) =>
+            requestAnimationFrame(() => requestAnimationFrame(r)),
+          );
+          const [a, b] = p.ducks();
+          return [
+            Math.min(
+              ...p.ducks().map((d: { x: number; y: number }) => {
+                const bx = d.x,
+                  by = d.y - 14,
+                  vx = L.bx - L.ax,
+                  vy = L.by - L.ay,
+                  t = Math.max(
+                    0,
+                    Math.min(
+                      1,
+                      ((bx - L.ax) * vx + (by - L.ay) * vy) /
+                        (vx * vx + vy * vy),
+                    ),
+                  );
+                return Math.hypot(bx - (L.ax + vx * t), by - (L.ay + vy * t));
+              }),
+            ),
+            Math.hypot(a.x - b.x, (a.y - b.y) * 1.6),
+          ];
+        }, k);
+        expect(near, `duck path at ${k}/24`).toBeGreaterThan(60);
+        expect(apart, `ducks apart at ${k}/24`).toBeGreaterThan(70);
+      }
       // The server says it bit: tap at once (the window is about a second),
       // and the fight's close-up comes in. Land it (a fish that gets away
       // is a fair result, and so is a tap a slow machine sends after the
@@ -205,6 +274,8 @@ for (const size of [
         if ((await phase(page)) !== "fight") continue;
         await expect(act(page)).toHaveAttribute("data-kind", "fight");
         await expect(page.locator(".pz-fish-side")).toBeHidden();
+        // Hold is held for seconds: a bigger target than Cast (84 px).
+        expect((await box(page, "#pz-fish-act")).w).toBeGreaterThanOrEqual(100);
         if (!shot) {
           shot = true;
           await page.waitForTimeout(700);
@@ -319,6 +390,45 @@ for (const size of [
   });
 }
 
+test("Fish walks you out onto the dock, facing the water, and the line goes out near the pond's middle", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openPlaza(page);
+  await toPond(page);
+  // Pressed from the bank, a little way from the dock.
+  await enter(page);
+  const local = () =>
+    page.evaluate(() => {
+      const b = (window as any).__plazaWorld.bodyOf("local");
+      return { x: b.x, y: b.y };
+    });
+  const S = PLAZA_DOCK.stand,
+    W = PLAZA_DOCK.walk,
+    P = PLAZA_POND;
+  // The server (the harness's real PlazaWorld) walks you out too: onto the
+  // dock's planks, at its outer end, over the water. Not to the pixel: on a
+  // runner drawing a few frames a second the browser steps at most 0.05 s
+  // a frame while the server plays the stick for the real time, so the
+  // server's copy can walk on to the planks' far corner (main, 22 Nov:
+  // 18.7 px from the stand, at x1/y1).
+  const onDockEnd = (at: { x: number; y: number }) =>
+    at.x >= S.x - 12 &&
+    at.x <= W.x1 + 0.5 &&
+    at.y >= W.y0 - 0.5 &&
+    at.y <= W.y1 + 0.5 &&
+    ((at.x - P.x) / P.rx) ** 2 + ((at.y - P.y) / P.ry) ** 2 < 1;
+  await expect.poll(async () => onDockEnd(await local())).toBe(true);
+  // And it stays there (you're not walking on past it).
+  await page.waitForTimeout(800);
+  expect(onDockEnd(await local())).toBe(true);
+  // Still fishing, and the cast works from the dock.
+  await expect(page.locator("#pz-fishhud")).toBeVisible();
+  await cast(page);
+  await snap(page, info, "fishing-on-the-dock");
+  expect(errors).toEqual([]);
+});
+
 test("on a keyboard: E enters and casts, a tap before the bite loses the fish, Esc leaves, and a line left out comes in", async ({
   page,
 }) => {
@@ -384,7 +494,14 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
     PLAZA_FISH.map((f) => f.id),
   );
   await expect(toast(page)).toContainText("Title earned: Master Angler");
-  await page.click("#pz-fish-btn");
+  // The map no longer has a Fish book button (fishing has its own); B
+  // still opens it.
+  await page.click("#pz-map-btn");
+  await expect(page.locator("#pz-map-book")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#pz-map")).toBeHidden();
+  await page.locator(".plaza-layer").focus();
+  await page.keyboard.press("b");
   await expect(page.locator("#pz-fishbook-note")).toContainText(
     "Title earned: Master Angler",
   );

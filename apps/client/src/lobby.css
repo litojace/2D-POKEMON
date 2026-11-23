@@ -1752,20 +1752,7 @@ body.hub-active #account-coins > * {
   }
 }
 
-/* Settings → Display. */
-.prefs-toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.prefs-toggle-row span {
-  display: grid;
-  gap: 3px;
-}
-.prefs-toggle-row small {
-  color: var(--ui-dim);
-}
+/* Settings: the full-screen switch (settings-screen.css lays out its row). */
 .prefs-switch {
   display: grid;
   place-items: center;
@@ -1786,29 +1773,6 @@ body.hub-active #account-coins > * {
 }
 .prefs-switch:disabled {
   opacity: 0.5;
-}
-
-/* Short landscape screens: Settings shows everything without scrolling, so
-   Display is one line like Motion and Graphics, and Sound spans the column. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .prefs-grid.has-display > :first-child {
-    grid-row: span 3;
-  }
-  .prefs-card.prefs-display {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .framed-dialog .prefs-card.prefs-display > h3 {
-    margin: 0;
-  }
-  .prefs-display .prefs-toggle-row small {
-    display: none;
-  }
-  .prefs-display .prefs-switch {
-    height: 28px;
-  }
 }
 
 /* Party invitation picker (Lobby → Invite). */

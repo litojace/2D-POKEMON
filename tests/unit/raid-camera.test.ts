@@ -10,6 +10,7 @@ import {
   raidFollowCentre,
   raidWantsCourt,
   RAID_FOLLOW_ZOOM,
+  RAID_OVERSCROLL,
 } from "../../apps/client/src/raid-camera";
 import { edgeSpot } from "../../apps/client/src/ally-bearings";
 import type { RaidState } from "../../packages/shared/src/raid";
@@ -76,8 +77,10 @@ describe("raid camera on phones", () => {
     expect(view.zoomX).toBeCloseTo(
       Math.max(W / 1600, (H - HUD) / 900) * RAID_FOLLOW_ZOOM,
     );
-    // Fighters drawn at least 1.6× bigger on this phone.
-    expect(view.zoomX / overview.zoomX).toBeGreaterThan(1.6);
+    // Fighters drawn bigger than the overview, but the swing between the two
+    // stays gentle (owner, 22 Nov 2026: about 1.67× each way was tiring).
+    expect(view.zoomX / overview.zoomX).toBeGreaterThan(1.35);
+    expect(view.zoomX / overview.zoomX).toBeLessThan(1.5);
   });
 
   it("keeps the raider well inside the view and stays on the court", () => {
@@ -92,16 +95,34 @@ describe("raid camera on phones", () => {
       expect(p.x).toBeLessThan(r.right);
       expect(p.y).toBeGreaterThan(r.top);
       expect(p.y).toBeLessThan(r.bottom);
-      expect(r.left).toBeGreaterThanOrEqual(-0.01);
-      expect(r.right).toBeLessThanOrEqual(1600.01);
-      // The court's top edge never goes under the HUD.
-      expect(r.top).toBeGreaterThanOrEqual(-0.01);
-      expect(r.bottom).toBeLessThanOrEqual(900.01);
+      // Past the walls by at most RAID_OVERSCROLL (the painted world shows).
+      expect(r.left).toBeGreaterThanOrEqual(-RAID_OVERSCROLL - 0.01);
+      expect(r.right).toBeLessThanOrEqual(1600 + RAID_OVERSCROLL + 0.01);
+      expect(r.top).toBeGreaterThanOrEqual(-RAID_OVERSCROLL - 0.01);
+      expect(r.bottom).toBeLessThanOrEqual(900 + RAID_OVERSCROLL + 0.01);
+    }
+  });
+
+  it("a raider by a wall stands well in from the screen's edge", () => {
+    for (const p of [
+      { x: 20, y: 450 },
+      { x: 1580, y: 450 },
+      { x: 800, y: 880 },
+    ]) {
+      const view = follow(new RaidCamera(), p);
+      const sx = (p.x - view.x) * view.zoomX + W / 2,
+        sy = (p.y - view.y) * view.zoomY + H / 2;
+      const inset = 100 * view.zoomX;
+      expect(sx).toBeGreaterThan(inset);
+      expect(sx).toBeLessThan(W - inset);
+      expect(sy).toBeLessThan(H - inset);
     }
   });
 
   it("leans toward the boss, but not past the raider's margin", () => {
-    const zoom = Math.max(W / 1600, (H - HUD) / 900) * RAID_FOLLOW_ZOOM;
+    // Closer than the court's width (as a tablet-sized phone can be), so
+    // there is room to lean.
+    const zoom = Math.max(W / 1600, (H - HUD) / 900) * 1.3;
     const alone = raidFollowCentre(
       W,
       H,
@@ -128,7 +149,7 @@ describe("raid camera on phones", () => {
     const cam = new RaidCamera();
     const overview = raidCameraView(W, H, HUD);
     follow(cam, { x: 300, y: 700 }, { frames: 5 });
-    const out = follow(cam, { x: 300, y: 700 }, { wide: true, frames: 60 });
+    const out = follow(cam, { x: 300, y: 700 }, { wide: true, frames: 90 });
     // Settled exactly on the overview, not just close to it.
     const settled = follow(
       cam,
@@ -140,7 +161,42 @@ describe("raid camera on phones", () => {
     expect(out.x).toBeCloseTo(overview.x, 0);
     expect(out.y).toBeCloseTo(overview.y, 0);
     const back = follow(cam, { x: 300, y: 700 }, { frames: 600 });
-    expect(back.zoomX).toBeGreaterThan(overview.zoomX * 1.5);
+    expect(back.zoomX).toBeGreaterThan(overview.zoomX * 1.35);
+  });
+
+  it("stays out between two court-wide casts instead of pumping in and out", () => {
+    const cam = new RaidCamera();
+    const overview = raidCameraView(W, H, HUD);
+    const step = (wide: boolean, t: number) =>
+      cam.update(
+        W,
+        H,
+        HUD,
+        true,
+        { x: 300, y: 700, vx: 0, vy: 0 },
+        { x: 800, y: 300 },
+        wide ? WHOLE : undefined,
+        "room:1:me",
+        16,
+        t,
+        false,
+      );
+    let t = 0;
+    for (let i = 0; i < 120; i++) step(true, (t += 0.016));
+    // A second away from the last warning, before the next one: still out.
+    let view = overview;
+    for (let i = 0; i < 60; i++) view = step(false, (t += 0.016));
+    expect(view.zoomX).toBeCloseTo(overview.zoomX, 3);
+    // Once the hold runs out it eases back in, without a jump.
+    let last = view.zoomX,
+      biggest = 0;
+    for (let i = 0; i < 200; i++) {
+      view = step(false, (t += 0.016));
+      biggest = Math.max(biggest, view.zoomX / last);
+      last = view.zoomX;
+    }
+    expect(view.zoomX).toBeGreaterThan(overview.zoomX * 1.2);
+    expect(biggest).toBeLessThan(1.03);
   });
 
   it("keeps the overview on desktop and with reduced motion", () => {
@@ -172,6 +228,10 @@ describe("raidWantsCourt", () => {
     // Shade Pounce's leaps chase a raider past the floor round them.
     expect(
       raidWantsCourt(raid({ warnings: [warning("pounce")] as never }), 0),
+    ).toBe(true);
+    // So does Geyser Line's row, 300 px on from the raider.
+    expect(
+      raidWantsCourt(raid({ warnings: [warning("geyser")] as never }), 0),
     ).toBe(true);
   });
   it("covers running mechanics whose answer may be anywhere", () => {
@@ -583,5 +643,52 @@ describe("framed warnings stay clear of the touch controls", () => {
     expect(clear(circle, placed)).toBe(true);
     expect(placed.zoom).toBe(fit);
     expect(placed.x).toBeGreaterThan(middle.x);
+  });
+});
+
+describe("Geyser Line on a phone", () => {
+  it("shows every geyser's middle, the row running away from the boss", () => {
+    // The server's row: three geysers 150 px apart from the raider, away
+    // from the boss (above them), which the follow camera leans toward.
+    const raider = { x: 800, y: 500 },
+      boss = { x: 800, y: 250 };
+    const geysers = [0, 1, 2].map((k) => ({
+      id: k,
+      kind: "geyser",
+      x: 800,
+      y: 500 + 150 * k,
+      tx: 800,
+      ty: 500 + 150 * k,
+      radius: 85,
+      at: 2,
+      chain: k + 1,
+    }));
+    const f = raidFrame(raid({ warnings: geysers } as never), 0, [
+      raider,
+      boss,
+    ]);
+    expect(f).toBeDefined();
+    const cam = new RaidCamera();
+    let view = raidCameraView(W, H, HUD);
+    for (let i = 0; i < 300; i++)
+      view = cam.update(
+        W,
+        H,
+        HUD,
+        true,
+        { ...raider, vx: 0, vy: 0 },
+        boss,
+        f,
+        "k",
+        16,
+        i * 0.016,
+        false,
+      );
+    for (const g of geysers) {
+      const y = (g.y - view.y) * view.zoomY + H / 2,
+        r = g.radius * FRAME_CORE * view.zoomY;
+      expect(y - r, `geyser ${g.chain} top`).toBeGreaterThanOrEqual(HUD);
+      expect(y + r, `geyser ${g.chain} bottom`).toBeLessThanOrEqual(H);
+    }
   });
 });

@@ -11,6 +11,7 @@ import {
 } from "../../packages/shared/src/plaza-fight";
 import {
   PLAZA,
+  PLAZA_DOCK,
   PLAZA_FISH,
   PLAZA_FISH_BY_ID,
   PLAZA_FISH_RARITY,
@@ -19,7 +20,6 @@ import {
   PLAZA_PATHS,
   PLAZA_POND,
   PLAZA_QUESTS,
-  PLAZA_SIGNPOSTS,
   PLAZA_SPOTS,
   plazaCollide,
   plazaFishFor,
@@ -62,13 +62,14 @@ function world(given: number[] = []) {
  */
 function play(seed: number, rarity: PlazaFightRarity, delay = 4) {
   const f = plazaFightStart(seed, rarity),
-    k = PLAZA_FIGHT.fish[rarity],
-    seen: number[] = [],
+    // What they saw: the needle and the band's middle (it wanders).
+    seen: [number, number][] = [],
     moves: number[] = [];
   let holding = false;
   while (f.result === "going") {
-    seen.push(f.tension);
-    const want = seen[Math.max(0, seen.length - 1 - delay)] < (k.lo + k.hi) / 2;
+    seen.push([f.tension, (f.lo + f.hi) / 2]);
+    const [t, mid] = seen[Math.max(0, seen.length - 1 - delay)];
+    const want = t < mid;
     if (want !== holding) {
       holding = want;
       moves.push(f.tick);
@@ -89,9 +90,20 @@ const run = (w: PlazaWorld, ms: number, from: number) => {
 };
 
 describe("the fish table", () => {
-  it("has 8 to 12 fish with unique ids, known rarities and a few night-only ones", () => {
-    expect(PLAZA_FISH.length).toBeGreaterThanOrEqual(8);
-    expect(PLAZA_FISH.length).toBeLessThanOrEqual(12);
+  it("has a full pond: every rarity several times over, unique ids, day- and night-only ones", () => {
+    expect(PLAZA_FISH.length).toBeGreaterThanOrEqual(20);
+    const by = (r: string) => PLAZA_FISH.filter((f) => f.rarity === r);
+    expect(by("common").length).toBeGreaterThanOrEqual(6);
+    expect(by("uncommon").length).toBeGreaterThanOrEqual(5);
+    expect(by("rare").length).toBeGreaterThanOrEqual(4);
+    expect(by("legendary").length).toBeGreaterThanOrEqual(2);
+    // Every rarity can bite by day and by night.
+    for (const night of [false, true])
+      for (const r of ["common", "uncommon", "rare", "legendary"])
+        expect(
+          plazaFishFor(night).some((f) => f.rarity === r),
+          `${r} ${night ? "night" : "day"}`,
+        ).toBe(true);
     expect(new Set(PLAZA_FISH.map((f) => f.id)).size).toBe(PLAZA_FISH.length);
     for (const f of PLAZA_FISH) {
       expect(PLAZA_FISH_RARITY[f.rarity], f.id).toBeDefined();
@@ -106,7 +118,7 @@ describe("the fish table", () => {
     expect(plazaFishFor(true)).toEqual(expect.arrayContaining(night));
   });
 
-  it("draws every fish in its own shape, with ids unique on the page", () => {
+  it("draws every fish, each looking its own, with ids unique on the page", () => {
     const shapes = new Set<string>();
     const ids: string[] = [];
     for (const f of PLAZA_FISH) {
@@ -121,7 +133,12 @@ describe("the fish table", () => {
         if (!known) expect(svg).not.toContain(f.color);
       }
     }
-    expect(shapes.size).toBe(PLAZA_FISH.length);
+    // Every shape is used, and no two fish look alike (shape, mark and
+    // colour together).
+    expect(shapes.size).toBe(PLAZA_FISH_SHAPES.length);
+    expect(
+      new Set(PLAZA_FISH.map((f) => `${f.shape}/${f.mark}/${f.color}`)).size,
+    ).toBe(PLAZA_FISH.length);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -191,24 +208,49 @@ describe("the fish table", () => {
   });
 });
 
-describe("the way to the pond", () => {
-  it("has a FISHING signpost at the fork, beside the pond path, pointing at the pond", () => {
-    const pond = PLAZA_PATHS.find((p) => {
-      const [x, y] = p.pts[p.pts.length - 1];
-      return Math.hypot(x - PLAZA_POND.x, y - PLAZA_POND.y) < PLAZA_POND.rx;
-    })!;
-    const [a, b] = pond.pts.map(([x, y]) => ({ x, y }));
-    const sign = PLAZA_SIGNPOSTS.find((s) => s.text === "FISHING")!;
-    expect(sign.dir).toBe(Math.sign(PLAZA_POND.x - sign.x));
-    // Near where the pond path leaves the main path, just off its stones.
-    expect(Math.hypot(sign.x - a.x, sign.y - a.y)).toBeLessThan(160);
-    const off = segmentDistance(sign.x, sign.y, a, b) - pond.w / 2;
-    expect(off).toBeGreaterThan(4);
-    expect(off).toBeLessThan(40);
-    // Nobody walks through it.
-    const walker = { x: sign.x, y: sign.y + 2 };
-    plazaCollide(walker);
-    expect(walker.y - sign.y).toBeGreaterThan(PLAZA.radius);
+describe("the fishing dock", () => {
+  const P = PLAZA_POND,
+    inPond = (x: number, y: number) =>
+      ((x - P.x) / P.rx) ** 2 + ((y - P.y) / P.ry) ** 2 < 1;
+  it("is where Fish takes you: on its planks, out over the water, in reach of the spot", () => {
+    const S = PLAZA_DOCK.stand,
+      D = PLAZA_DOCK;
+    expect(inPond(S.x, S.y)).toBe(true);
+    expect(plazaCollide({ x: S.x, y: S.y })).toEqual({ x: S.x, y: S.y });
+    expect(S.x).toBeGreaterThan(D.x0);
+    expect(S.x).toBeLessThan(D.x1);
+    expect(S.y).toBeGreaterThan(D.y0);
+    expect(S.y).toBeLessThan(D.y1);
+    expect(plazaSpotAt(S.x, S.y)?.id).toBe("fish");
+    // From the bank onto the dock is clear walking (the click path too).
+    const walker = { x: SPOT.x, y: S.y };
+    for (let x = SPOT.x; x <= S.x; x += 4) {
+      walker.x = x;
+      plazaCollide(walker);
+      expect(walker.y).toBe(S.y);
+    }
+  });
+  it("keeps feet on its planks: off its sides or its end you stay on it", () => {
+    const W = PLAZA_DOCK.walk;
+    for (const [x, y] of [
+      [2030, W.y0 - 15],
+      [2030, W.y1 + 15],
+      [W.x1 + 15, 1420],
+    ]) {
+      const b = plazaCollide({ x, y });
+      expect(b.x).toBeLessThanOrEqual(W.x1);
+      expect(b.y).toBeGreaterThanOrEqual(W.y0);
+      expect(b.y).toBeLessThanOrEqual(W.y1);
+    }
+    // Elsewhere the pond still pushes you out onto its bank.
+    const b = plazaCollide({ x: P.x, y: P.y + 30 });
+    expect(inPond(b.x, b.y)).toBe(false);
+  });
+  it("casts out near the pond's middle, well past the dock's end", () => {
+    const B = PLAZA_FISHING.bobber;
+    expect(Math.abs(B.x - P.x)).toBeLessThan(P.rx * 0.2);
+    expect(Math.abs(B.y - P.y)).toBeLessThan(P.ry * 0.2);
+    expect(B.x - PLAZA_DOCK.x1).toBeGreaterThan(80);
   });
 });
 
@@ -225,6 +267,25 @@ describe("landing a hooked fish", () => {
         ]);
         expect(plazaFightMovesOk(moves)).toBe(true);
       }
+  });
+
+  it("keeps a common fish's band still, and lets a rarer fish's wander inside the gauge", () => {
+    const spread = (r: PlazaFightRarity) => {
+      const f = plazaFightStart(5, r);
+      let lo = 1,
+        hi = 0;
+      for (let i = 0; i < 200; i++) {
+        plazaFightStep(f, i % 6 < 3);
+        if (f.result !== "going") break;
+        lo = Math.min(lo, f.lo);
+        hi = Math.max(hi, f.hi);
+        expect(f.lo).toBeGreaterThanOrEqual(0.12 - 1e-9);
+        expect(f.hi).toBeLessThanOrEqual(0.9 + 1e-9);
+      }
+      return hi - lo - (PLAZA_FIGHT.fish[r].hi - PLAZA_FIGHT.fish[r].lo);
+    };
+    expect(spread("common")).toBeCloseTo(0, 5);
+    expect(spread("rare")).toBeGreaterThan(0.1);
   });
 
   it("snaps when held, lets the fish go when slack, and lands it in the band", () => {
@@ -244,13 +305,27 @@ describe("landing a hooked fish", () => {
         if (play(seed * 7919, r, delay).f.result === "caught") n++;
       return n / 200;
     };
-    // A player a fifth of a second late: commons always, the legendary
-    // most times; half a second late loses the legendary.
-    expect(rate("common", 4)).toBe(1);
+    // A quick player (a tenth of a second late) lands every kind; a fifth
+    // of a second late: commons and uncommons always, rares most times, the
+    // legendary about two times in three; three tenths late: commons still,
+    // rares and legendaries hardly ever.
     expect(rate("legendary", 2)).toBeGreaterThan(0.95);
-    expect(rate("legendary", 4)).toBeGreaterThan(0.6);
-    expect(rate("legendary", 6)).toBeLessThan(rate("common", 6));
+    expect(rate("common", 4)).toBe(1);
+    expect(rate("uncommon", 4)).toBeGreaterThan(0.95);
+    expect(rate("rare", 4)).toBeGreaterThan(0.8);
+    const legend = rate("legendary", 4);
+    expect(legend).toBeGreaterThan(0.45);
+    expect(legend).toBeLessThan(0.85);
+    expect(rate("common", 6)).toBeGreaterThan(0.95);
+    expect(rate("uncommon", 6)).toBeLessThan(0.95);
+    expect(rate("rare", 6)).toBeLessThan(0.2);
+    expect(rate("legendary", 6)).toBeLessThan(0.1);
     const F = PLAZA_FIGHT.fish;
+    // Rarer fish run harder and their band wanders further (commons don't).
+    expect(F.common.drift).toBe(0);
+    expect(F.common.run).toBe(0);
+    expect(F.uncommon.run).toBeLessThanOrEqual(F.rare.run);
+    expect(F.rare.run).toBeLessThanOrEqual(F.legendary.run);
     expect(F.legendary.hi - F.legendary.lo).toBeLessThan(
       F.common.hi - F.common.lo,
     );

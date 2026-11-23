@@ -26,13 +26,17 @@ async function hold(page: Page, pattern: RegExp) {
   return release;
 }
 
-test("a raid briefing's I'm ready waits for the illustrated floor", async ({
+test("a raid briefing is ready at once: the court is painted in code, nothing to wait for", async ({
   page,
 }, info) => {
   await openHub(page);
-  // The boss's painted court arrives late: the briefing must not start on
-  // the stand-in floor.
-  const release = await hold(page, /\/raid-arenas\/[^/]+\.webp/);
+  // The arenas used to be pictures the briefing waited for; now they are
+  // painted when the arena shows (world-art/), so no request goes out.
+  const pictures: string[] = [];
+  page.on("request", (r) => {
+    if (r.resourceType() === "image" && /raid-arenas/.test(r.url()))
+      pictures.push(r.url());
+  });
   await page.evaluate(() =>
     (window as any).__room("raid", { boss: "grumblecrag" }),
   );
@@ -45,10 +49,6 @@ test("a raid briefing's I'm ready waits for the illustrated floor", async ({
     w.__push();
   });
   const ready = page.locator("#raid-instructions");
-  await expect(ready).toBeDisabled();
-  await expect(ready).toContainText("Loading the arena");
-  await snap(page, info, "raid-briefing-loading");
-  release();
   await expect
     .poll(
       async () => {
@@ -59,6 +59,8 @@ test("a raid briefing's I'm ready waits for the illustrated floor", async ({
     )
     .toBe(true);
   await expect(ready).toContainText("I’m ready");
+  await snap(page, info, "raid-briefing-ready");
+  expect(pictures).toEqual([]);
 });
 
 test("Solo test mode is covered until the arena has loaded", async ({
@@ -182,8 +184,15 @@ test("back from a battle, your fighter appears already moving", async ({
   await page.click("#battle-menu");
   await page.click("#exit-room");
   await expect(page.locator("#lobby-fighter-art")).toHaveClass(/is-ready/);
+  // The watcher records "live" on the next frame after the rig is ready;
+  // on a slow runner that frame can come after the class is seen (CI, 21
+  // Nov: the last look read was "hidden").
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__looks.at(-1)), {
+      timeout: 10_000,
+    })
+    .toBe("live");
   const looks: string[] = await page.evaluate(() => (window as any).__looks);
-  expect(looks.at(-1)).toBe("live");
   expect(looks).not.toContain("still");
   await expect(page.locator("#lobby-fighter-art")).not.toHaveClass(
     /is-arriving/,

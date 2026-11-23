@@ -551,6 +551,106 @@ the floors that moved most are within 5 points: 64 97 / 88, 63 64 / 74,
 floor 64's armour did not move its rate in order on 72 seeds (4.8 28,
 4.4 21, 4.1 28, 3.5 22): it was noise, so no floor's armour changes.
 
+## Second skill audit: three more reworked
+
+The audit again, on `main` after the five reworks and Voltkit's faster
+shots (#307), 12 games a pair on two seeds (24 a pair, the same as a round
+robin), the expert without look-ahead. The roster is closer than before:
+expert 40.7% - 59.8% (33.6% - 59.6% before), Hard 40.0% - 57.4%. Of the
+five, Riptide Wave now matters (11.8 / 12.7 points, expert / Hard), Shell
+Up more (9.1 / 12.0) and Frost Breath some (6.9 / 5.1); Crest Flare (3.4 /
+4.4) and Scale Shrapnel (2.7 / 1.5) still did little, and Crystal Cage
+(6.6 / 4.9) was weak for an ultimate. Ball Lightning (4.4 / 7.6) and
+Thunderstorm (6.1 / 8.6) are left to the expert-bot work on Voltkit.
+
+- **Scale Shrapnel** spends two plates (`platesSpent`), not all of them:
+  shedding every plate threw away the plates' 40% block, as much as the
+  blades were worth. Cooldown 11 (9): with one plate kept, the first try
+  (one plate spent) took Pangrove to 71% for experts.
+- **Crest Flare** is a short, fierce breath: 0.5 s (1.2), 3 every 0.1 s
+  (5 every 0.2 s), still reaching 230 to 300 px; Cindrake stands exposed
+  for less of it. 6 a tick took Cindrake to 82% for experts, 4 to 67%; trimming Heat
+  Cracks to 5 or 4 a tick instead left experts at 67%. Rite Long Breath: 0.7 s.
+- **Crystal Cage** closes in from 180 to 60 px over its 2.5 s
+  (`cage.shrinkTo`; every fighter's hold on it shrinks with it, so
+  `holdInCage` squeezes those inside toward Auralynx, on the client too),
+  and deals 20 (10). Rite Long Cage: 4 s and 28 damage (it set 18, which
+  would now have lowered it).
+
+Round robins, `main` / now (24 games a pair, seeds 310000):
+
+| Champion |                        Hard |                      Expert |                      Normal |
+| -------- | --------------------------: | --------------------------: | --------------------------: |
+| Pangrove |               52.9% / 54.2% |               52.9% / 60.0% |               56.6% / 54.2% |
+| Cindrake |               53.7% / 53.4% |               59.1% / 60.5% |               54.4% / 49.0% |
+| Auralynx |               49.3% / 51.2% |               52.5% / 51.0% |               48.8% / 50.7% |
+| Range    | 42.2 - 59.1% / 42.9 - 58.3% | 38.7 - 59.3% / 41.4 - 60.5% | 43.1 - 56.6% / 43.1 - 54.4% |
+
+Spire: the three are Echoes on 36 floors; all cleared within 5 of 72 as
+often as on `main` but floor 3 (33 / 24), now armour 1.05 (0.99): 34.
+
+## Voltkit: Ball Lightning and Thunderstorm earn their slots
+
+A skill audit (each skill's kind set to "none", two seeds, 12 games a
+pair) found two of Voltkit's skills worth little: switching off Ball
+Lightning cost it 4.4 points for experts and 7.6 on Hard, Thunderstorm 6.1
+and 8.6 (a typical skill is worth 15 - 30). The orb was easy to walk away
+from, and a good dodger stepped out of every bolt. Both now do something
+an opponent must answer, and Voltkit as a whole stays where it was:
+
+- **Ball Lightning:** every zap and the burst slow for 0.3 s, so with its
+  30% bonus against hindered enemies each zap after the first hurts more,
+  and a slowed enemy is easier to hit with Static Lance. The burst deals 8
+  (12).
+- **Thunderstorm:** four bolts (three), 0.65 s apart (0.8), 14 damage
+  (16), 120 px (95), and 0.8 s of paralysis (0.5): a bolt that lands holds
+  its target for the next. Each mark still shows 0.55 s before it strikes,
+  so every bolt can be stepped out of.
+- **Health 135** (157) pays for both.
+
+Levers tried on Voltkit's pairings (expert without look-ahead, seed 5000,
+24 games a pair; Hard / expert, from 55.1% / 41.7%): the slow alone 70.6%
+/ 56.9%, five bolts alone 60.8% / 43.9%. Spark Dart at 5 damage made
+Voltkit win more (62.5% / 46.8%), not less, a bot effect rather than
+strength, so it was not used. Paralysis that chains and a wider bolt
+mattered most for the ultimate; health took the extra strength back.
+
+| Seed (games a pair) | Before Hard / expert | After Hard / expert |
+| ------------------- | -------------------: | ------------------: |
+| 5000 (24)           |        55.1% / 41.7% |       54.7% / 40.9% |
+| 9000 (48)           |        52.1% / 42.4% |       55.5% / 42.0% |
+| 310000 (24, all)    |        55.6% / 38.7% |       55.1% / 42.4% |
+
+Switched off after the change (seed 9000): Ball Lightning is worth 18.1
+points on Hard and 17.9 for experts, Thunderstorm 18.0 and 18.6. Whole
+round robins on seed 310000: Hard 42.2% - 60.3% (Tidefin, +1.2), expert
+39.7% - 58.6% (sd 6.0 to 5.7); no other champion moves by more than 1.7
+points.
+
+- **Normal** fell 2 - 3 points (47.1% to 43.6% on seed 310000), so its
+  handicap is 0.265 (0.285): 50.1% on seed 9000 and 45.1% on 310000 at 48
+  games a pair (`main` 48.3% and 47.1%).
+- **2v2** rose (52.7% to 57.5% on `FRESH_BASE=7000`), so its factor is 1.03
+  (1.07): 51.3% and 54.8% on 7000 and 8000 (`main` 52.7% and 54.4%).
+  4-player 26.8% to 28.5%, 3-player 39.1% to 39.8%: factors kept.
+- **Spire** (floors 1 and 61 - 69, the play-tests' Halcyra): the Echoes
+  have less health but skills that bite, and on 72 seeds 61 - 69 moved
+  from 40 38 17 28 35 42 15 20 15 to 41 47 26 31 40 37 17 24 10. On 192
+  seeds the floors that moved most are within 5 points (62 112 / 121, 63
+  74 / 81, 65 92 / 98, 66 107 / 105, 69 36 / 32): no armour changes.
+  (Spire Echoes don't use the Normal handicap: the 72-seed rates were the
+  same before and after it changed.)
+- `tests/visual/effect-budget.spec.ts` passes (Voltkit's ultimate: glow
+  0.06 of the screen, 33 particles).
+
+**Also fixed with it.** Ascendant Lumiwick's overlap rule now also waits when the oldest live
+attack lands before anyone could move (inside a reaction): then "a safe
+spot exists" only meant every raider stood in one at that moment. With
+the new kits, an echoed dive was placed 0.5 s after another dive while
+ember rain was 0.27 s from landing, and one raider's next step into a lane
+left no spot (`tests/unit/raid-ascendant-lumiwick.test.ts`, 4 raiders).
+Waiting only gives raiders more warning.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now
@@ -1003,6 +1103,13 @@ fast hands.
 every pair, 4 games a pair (`difficulty-gap.ts 4 expert hard`): it wins
 89.1% of 612 duels and Hard takes 19.3% of rounds (with the fast hands
 96.2% and 10.9%).
+
+Since the second round of smarter bots (docs/smarter-bots.md, 2026-11-22)
+Hard has the expert's reaction, aim and decisions, but dodges 80% (the
+expert 90%), reads marks in 0.6 s and has no look-ahead or styles. The
+expert still beats it clearly: 79.7% of the same 612 duels, Hard taking
+27.9% of rounds. The expert itself is unchanged (it is built on the old
+Hard, `RAID_BOT_PROFILES.hard`).
 
 **Trained again for these hands** (`train-expert.ts --rounds 4 --mutants 6
 --games 8`, from scratch, a few hours on four processes, on the roster

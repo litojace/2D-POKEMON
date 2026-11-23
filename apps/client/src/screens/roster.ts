@@ -24,7 +24,7 @@ import "./roster.css";
  * fighters with filters and sort, and a fighter's detail on the stage with
  * the live rig ("selection" framing; a still fighter on Low graphics).
  * Select makes the fighter your Lobby fighter; Try skins opens the fitting
- * room on that fighter.
+ * room on that fighter; Test skills starts Solo test mode with it.
  */
 export interface RosterHooks {
   data(): Omit<RosterData, "low">;
@@ -32,6 +32,8 @@ export interface RosterHooks {
   choose(c: CharacterId): void;
   /** The fitting room on this fighter's skins. */
   skins(c: CharacterId): void;
+  /** Solo test mode with this fighter (the roster closes first). */
+  practice?(c: CharacterId): void;
   /** In a room: Ready (or Cancel ready) with the fighter shown. */
   ready?(c: CharacterId): void;
   /** In a room: the fighter shown changed (your teammate sees it). */
@@ -57,6 +59,7 @@ const FOCUS_KEYS = [
   "data-roster-step",
   "data-roster-details",
   "data-roster-select",
+  "data-roster-try",
   "data-roster-ready",
   "data-roster-back",
   "data-roster-reset",
@@ -222,7 +225,12 @@ export function openRoster(
     else if (d.rosterSelect) return select(d.rosterSelect as CharacterId);
     else if (d.rosterReady) return hooks.ready?.(d.rosterReady as CharacterId);
     else if (d.rosterLeave !== undefined) return hooks.leave?.();
-    else if (d.rosterSkins) {
+    else if (d.rosterTry) {
+      const c = d.rosterTry as CharacterId;
+      panel.close();
+      hooks.practice?.(c);
+      return;
+    } else if (d.rosterSkins) {
       const c = d.rosterSkins as CharacterId;
       panel.close();
       hooks.skins(c);

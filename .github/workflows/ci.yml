@@ -5,12 +5,14 @@ on:
     paths-ignore: ["docs/**", "**/*.md"]
   pull_request:
     paths-ignore: ["docs/**", "**/*.md"]
-  # Main's full check (verify and the 18 visual shards), every three hours
+  # Main's full check (verify and the 30 visual shards), every three hours
   # on main's latest commit (CLAUDE.md, "Merging to main"). A merge used to
   # start main's full run, but main keeps one waiting run and a newer merge
   # replaces it: with merges coming faster than runners free up, no main run
   # finished for hours (20-21 Nov 2026). The scheduled run has a group of its
-  # own, so no merge cancels it.
+  # own, so no merge cancels it. GitHub drops scheduled runs when busy, so a
+  # push to main also starts one when none ran for three hours (the
+  # full-run-due job).
   schedule:
     - cron: "17 */3 * * *"
   workflow_dispatch:
@@ -25,7 +27,7 @@ concurrency:
 jobs:
   lane:
     # Which lane a pull request takes to main (scripts/merge-lane.mjs): a
-    # FAST one merges on verify alone, so its visual shards would spend 18
+    # FAST one merges on verify alone, so its visual shards would spend 30
     # runners on a result nobody waits for; only a FULL one runs them.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
@@ -40,6 +42,26 @@ jobs:
           node-version: 22
       - id: lane
         run: node scripts/merge-lane.mjs origin/${{ github.base_ref }}
+  full-run-due:
+    # GitHub drops scheduled runs when busy (none of 21 Nov's 09:17 or 12:17
+    # started), so each push to main also checks: no full run of main waiting
+    # or running, and none started in three hours? Then it starts one by hand
+    # (scripts/full-run-due.mjs). A run started with the job's token still
+    # runs: workflow_dispatch is the exception to "the token starts nothing".
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/full-run-due.mjs
   verify:
     # Pinned: ubuntu-latest became 26.04 (Nov 2026), where Playwright 1.56
     # cannot install Chromium ("does not support chromium on ubuntu26.04").
@@ -60,14 +82,21 @@ jobs:
   visual:
     # The real client in Chromium with no server: one fighter on the select
     # screen, arenas filling their frames, dialogs fitting a phone. Split
-    # across eighteen runners, one worker each, so timing checks keep a
+    # across thirty runners, one worker each, so timing checks keep a
     # machine to themselves. The shards are cut by running time, not test
     # count (scripts/visual-shards.mjs, from tests/visual/durations.json): by
     # count, the shard that drew the raid fights and panel sweeps took 21
     # minutes while others took 4 (Nov 2026); by time, all aim for the same
-    # share, about 12. Eighteen runners plus verify stay under the free plan's
-    # 20 jobs at once. It runs for main's scheduled full run, manual runs and
-    # FULL-lane pull requests (a lane that failed to say counts as FULL); not
+    # share. The account is on GitHub Pro (22 Nov 2026): 40 jobs at once
+    # instead of the free plan's 20. Thirty shards plus verify leave about
+    # nine for other pull requests' lane and verify jobs. By durations.json
+    # (22 Nov), the slowest shard takes ~21 min at 18 shards, ~12.5 at 30 and
+    # ~10 at 38: 38 would save only ~2.5 min more and make a second full run
+    # (a FULL pull request next to main's scheduled one) wait for the first.
+    # Each shard costs about a minute of setup (npm ci, Chromium). The
+    # shard count is the matrix's length: the total comes from
+    # strategy.job-total, so changing the list is all it takes. It runs for main's scheduled full
+    # run, manual runs and FULL-lane pull requests (a lane that failed to say counts as FULL); not
     # for pushes, main's included (the scheduled run covers main).
     needs: lane
     if: >-
@@ -76,14 +105,15 @@ jobs:
         github.event_name == 'workflow_dispatch' ||
         (github.event_name == 'pull_request' && needs.lane.outputs.lane != 'FAST')
       ) }}
-    name: visual (${{ matrix.shard }} of 18)
+    name: visual (${{ matrix.shard }} of ${{ strategy.job-total }})
     # Pinned: ubuntu-latest became 26.04 (Nov 2026), where Playwright 1.56
     # cannot install Chromium ("does not support chromium on ubuntu26.04").
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+        # prettier-ignore
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -92,7 +122,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: node scripts/visual-shards.mjs ${{ matrix.shard }} 18 visual-shard.txt
+      - run: node scripts/visual-shards.mjs ${{ matrix.shard }} ${{ strategy.job-total }} visual-shard.txt
       - run: npm run test:visual -- --test-list visual-shard.txt
         env:
           # Without --shard every blob is report.zip, and the report job's

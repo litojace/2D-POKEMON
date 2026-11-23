@@ -201,3 +201,58 @@ describe("quick chat", () => {
     ).toEqual({ ok: false, error: "Calls are for battles." });
   });
 });
+
+describe("watchers (docs/chat-plan.md, Watchers)", () => {
+  const room = () =>
+    battle(
+      member("ana", { team: 0 }),
+      member("bo", { team: 1 }),
+      member("wes", { watcher: true }),
+      member("vi", { watcher: true }),
+    );
+  it("in a battle: a watcher's emotes and phrases reach everyone, marked", () => {
+    const { chat, tick } = hub();
+    expect(chat.send("wes", room(), { quick: "nice" })).toMatchObject({
+      ok: true,
+      line: { quick: "nice", watcher: true },
+      deliver: ["ana", "bo", "wes", "vi"],
+    });
+    tick(1000);
+    expect(chat.send("wes", room(), { quick: "clap" })).toMatchObject({
+      deliver: ["ana", "bo", "wes", "vi"],
+    });
+  });
+  it("a watcher has no calls: they take no side", () => {
+    expect(hub().chat.send("wes", room(), { quick: "attack" })).toEqual({
+      ok: false,
+      error: "Calls are for the players.",
+    });
+  });
+  it("hears the players' emotes only, never a side's calls or phrases", () => {
+    const { chat, tick } = hub();
+    expect(chat.send("ana", room(), { quick: "attack" })).toMatchObject({
+      deliver: ["ana"],
+    });
+    tick(1000);
+    expect(chat.send("ana", room(), { quick: "gg" })).toMatchObject({
+      deliver: ["ana"],
+    });
+    tick(1000);
+    expect(chat.send("ana", room(), { quick: "fire" })).toMatchObject({
+      deliver: ["ana", "bo", "wes", "vi"],
+    });
+  });
+  it("a player's line is never marked as a watcher's", () => {
+    const sent = hub().chat.send("ana", room(), { quick: "fire" });
+    expect(sent.ok && sent.line.watcher).toBeFalsy();
+  });
+  it("outside a battle a watcher types like anyone, and blocks still hold", () => {
+    const { chat } = hub();
+    const lobby = { ...room(), inBattle: false };
+    chat.setBlocks("ana", ["wes"]);
+    expect(chat.send("wes", lobby, { text: "good luck!" })).toMatchObject({
+      ok: true,
+      deliver: ["bo", "wes", "vi"],
+    });
+  });
+});

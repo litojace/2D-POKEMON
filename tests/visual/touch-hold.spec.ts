@@ -175,7 +175,10 @@ test("admins can select and copy from the Admin panel", async ({ page }) => {
       return fetch(input, init);
     };
   });
-  await page.evaluate(() => (window as any).__account.showAdmin());
+  // Players: the rows an admin copies names and IDs from.
+  await page.evaluate(() =>
+    (window as any).__account.showAdmin({ tab: "players" }),
+  );
   const panel = page.locator("dialog:has(.admin-tabs)");
   await expect(panel).toBeVisible();
   for (const selector of [

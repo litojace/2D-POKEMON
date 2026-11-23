@@ -153,95 +153,7 @@
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
-/* Today's quests: a list as wide as the player card on the other side
-   (--hub-card-w, 236px on desktop), its rows at 13px; on phones, folded,
-   the player card's twin right under it. */
-.plaza-layer .pz-quests {
-  position: absolute;
-  right: var(--hud-x-r);
-  top: calc(var(--hud-row2) + var(--hud-clock-h) + var(--hud-gap));
-  box-sizing: border-box;
-  width: var(--hub-card-w, 236px);
-  border-radius: 14px;
-  padding: 0.65em 0.85em;
-}
-.plaza-layer .pz-quests h5 {
-  margin: 0 0 0.3em;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-family: var(--display);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-size: 0.9em;
-  color: var(--dim);
-  font-weight: 700;
-}
-.plaza-layer .pz-quests h5 button {
-  border: 0;
-  background: none;
-  color: var(--dim);
-  cursor: pointer;
-  font-size: 1em;
-  padding: 0 0.2em;
-}
-.plaza-layer .pz-q {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.12em 0.5em;
-  align-items: center;
-  padding: 0.3em 0;
-  border-top: 1px solid #ffffff14;
-  font-size: 0.93em;
-}
-.plaza-layer .pz-q:first-of-type {
-  border-top: 0;
-}
-.plaza-layer .pz-q .bar {
-  grid-column: 1 / -1;
-  height: 3px;
-  border-radius: 2px;
-  background: #ffffff1a;
-  overflow: hidden;
-}
-.plaza-layer .pz-q .bar i {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, var(--ui-ok), #b6f36b);
-}
-.plaza-layer .pz-q .rw {
-  font-weight: 800;
-  color: var(--ui-accent);
-  white-space: nowrap;
-  font-size: 0.92em;
-}
-.plaza-layer .pz-q.done span:first-child {
-  color: var(--dim);
-  text-decoration: line-through;
-}
-.plaza-layer .pz-q .claim {
-  border: 0;
-  border-radius: 999px;
-  padding: 0.15em 0.7em;
-  font-weight: 800;
-  background: var(--btn-primary-bg);
-  color: var(--ui-accent-ink);
-  cursor: pointer;
-  font-size: 0.9em;
-  animation: pz-glowp 1.4s ease-in-out infinite;
-}
-@keyframes pz-glowp {
-  50% {
-    box-shadow: 0 0 14px var(--ui-accent);
-  }
-}
-.plaza-layer .pz-quests.min .pz-q {
-  display: none;
-}
-.plaza-layer.phone .pz-quests {
-  padding: 0.5em 0.6em;
-  border-radius: 10px;
-}
+
 /* Plaza news (goals, laps, quests): bottom left, like the big games' kill
    feeds and chat, right above the Emote, treat and Album buttons (4.4em at
    1.15em); the newest line sits at the bottom and older ones rise. On touch
@@ -373,42 +285,6 @@
 }
 .plaza-layer .pz-round {
   font-size: 1.15em;
-}
-/* At the fountain, a treat is a wish (PLAZA_WISH). */
-.plaza-layer .pz-round.wish {
-  border-color: #ff8fc4;
-  box-shadow: 0 0 0 2px #ff8fc466;
-}
-/* The copy's wish meter as a ring round the treat button, and a badge. */
-.plaza-layer #pz-treat {
-  position: relative;
-}
-.plaza-layer .pz-wishn {
-  position: absolute;
-  top: -0.35em;
-  right: -0.45em;
-  min-width: 2.1em;
-  padding: 0.15em 0.35em;
-  border-radius: 999px;
-  background: #ff8fc4;
-  color: #0b1020;
-  font-size: 0.55em;
-  font-weight: 800;
-  line-height: 1;
-  pointer-events: none;
-}
-.plaza-layer .pz-wishn[hidden] {
-  display: none;
-}
-/* The copy's wish meter as a ring round the treat button. */
-.plaza-layer .pz-round.wishing {
-  background:
-    radial-gradient(
-      closest-side,
-      #0b1020 calc(100% - 4px),
-      transparent calc(100% - 3px)
-    ),
-    conic-gradient(#ff8fc4 calc(var(--wish, 0) * 360deg), #ffffff26 0);
 }
 .plaza-layer .pz-round small {
   font-size: 0.52em;
@@ -728,13 +604,7 @@
   height: 0.9em;
   vertical-align: 0;
 }
-.plaza-layer .pz-q .rw,
-.plaza-layer .pz-q .claim {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.15em;
-  line-height: 1;
-}
+
 .plaza-layer .pz-feed div span {
   line-height: 1.3;
 }
@@ -829,12 +699,7 @@
   line-height: 1;
   text-box: trim-both cap alphabetic;
 }
-.plaza-layer .pz-q > span:first-child {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+
 /* From the prototype's mobile.css */
 .plaza-layer.phone .pz-hud {
   font-size: calc(12px * var(--text-scale, 1));
@@ -852,40 +717,7 @@
   font-size: calc(11px * var(--text-scale, 1));
   width: 6.6em;
 }
-/* Phones: the quests go left, under the player card and exactly as wide
-   (--hub-card-w, lobby.css); folded, as tall too (--hub-card-h). The clock
-   stays alone at the top of the right column. */
-.plaza-layer.phone .pz-quests {
-  left: var(--hud-x-l);
-  right: auto;
-  top: var(--hud-row2);
-  width: var(--hub-card-w);
-  font-size: calc(12px * var(--text-scale, 1));
-}
-.plaza-layer.phone .pz-quests.min {
-  display: flex;
-  align-items: center;
-  height: var(--hub-card-h);
-  padding-block: 0;
-}
-.plaza-layer.phone .pz-quests.min h5 {
-  flex: 1;
-  margin: 0;
-}
-.plaza-layer.phone .pz-q {
-  font-size: calc(11.5px * var(--text-scale, 1));
-}
-/* At the card's width a long quest wraps instead of losing its end. */
-.plaza-layer.phone .pz-q > span:first-child {
-  white-space: normal;
-  line-height: 1.2;
-  text-wrap: pretty;
-}
-.plaza-layer.phone .pz-quests h5 button {
-  min-width: 32px;
-  min-height: 28px;
-  font-size: calc(13px * var(--text-scale, 1));
-}
+
 .plaza-layer.phone .pz-actions {
   align-items: flex-end;
 }
@@ -943,8 +775,7 @@
   width: 45%;
   height: 70%;
 }
-.plaza-layer.phone .pz-interact kbd,
-.plaza-layer.phone .pz-quests h5 span {
+.plaza-layer.phone .pz-interact kbd {
   font-size: calc(12px * var(--text-scale, 1));
 }
 /* Touch screens have no E key to press: the action's name alone, padded
@@ -1801,10 +1632,20 @@
   width: 1.7em;
   height: 1.7em;
 }
-.plaza-layer .pz-interact[data-id="fish"] span {
+/* Icon and label as one block in the circle's middle: the pill's label
+   rule (flex: 1, line-height 1.2) stretched the label down the column,
+   so it sat high with a gap under it (owner, 22 Nov). */
+.plaza-layer .pz-interact[data-id="fish"] > span {
+  flex: none;
   font-size: 0.8em;
   font-weight: 800;
+  line-height: 1;
+  text-align: center;
   text-shadow: 0 1px 0 #0b1020;
+}
+.plaza-layer .pz-interact[data-id="fish"] .ico {
+  display: block;
+  flex: none;
 }
 .plaza-layer .pz-interact[data-id="fish"] kbd {
   display: none;
@@ -1905,9 +1746,36 @@
   cursor: default;
   font-variant-numeric: tabular-nums;
 }
+/* The count stands in a row as tall as Book's fish icon (1.55em of the
+   tile), centred in it: "today" then sits level with "Book", and the widest
+   count (30/30) lands where the circle is widest. */
 .plaza-layer .pz-fish-today b {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(1.55em / 0.95);
   font-size: 0.95em;
   font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+/* Book and today: the top row (fish, count) a touch lower and the gap a
+   touch smaller, so the pair sits in the circle's optical middle (a word's
+   room under its letters made it look high). The words don't move. */
+.plaza-layer .pz-fish-side .pz-round {
+  gap: calc(4px - 0.15em);
+}
+.plaza-layer .pz-fish-side .pz-round > :first-child {
+  margin-top: 0.3em;
+}
+/* The day's cap, smaller and dimmer: the count reads first, and "30/30"
+   keeps clear of the circle's edge. */
+.plaza-layer .pz-fish-today b i {
+  font-style: normal;
+  font-size: 0.68em;
+  font-weight: 700;
+  color: var(--dim);
+  margin-left: 0.05em;
 }
 .plaza-layer .pz-fish-today small {
   color: var(--dim);
@@ -1999,6 +1867,18 @@
   width: 84px;
   height: 84px;
   font-size: calc(15px * var(--text-scale, 1));
+}
+/* In a fight Hold is pressed and held for many seconds: a bigger target
+   (the close-up's rod leans in from further left to leave it room). */
+.plaza-layer .pz-fish-act[data-kind="fight"] {
+  width: 7.4em;
+  height: 7.4em;
+  font-size: 1.2em;
+}
+.plaza-layer.phone .pz-fish-act[data-kind="fight"] {
+  width: 104px;
+  height: 104px;
+  font-size: calc(17px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-fish-side {
   bottom: calc(var(--hud-y-b) + 84px + var(--hud-gap));
@@ -2205,4 +2085,690 @@
   width: 150px;
   height: 150px;
   margin: -75px 0 0 -75px;
+}
+/* ---------- the Plaza map (plaza-map.ts) ---------- */
+/* Over the Plaza like the Fish book, inside the safe area and under the
+   header's row: the painted map on the left with a pin per place, the
+   places on the right as Go buttons. Both send you walking there. */
+.plaza-layer .pz-map {
+  position: absolute;
+  inset: calc(-1 * var(--safe-top, 0px)) calc(-1 * var(--safe-right, 0px))
+    calc(-1 * var(--safe-bottom, 0px)) calc(-1 * var(--safe-left, 0px));
+  box-sizing: border-box;
+  padding: calc(var(--safe-top, 0px) + var(--hud-row2))
+    calc(var(--safe-right, 0px) + var(--hud-x-r))
+    calc(var(--safe-bottom, 0px) + var(--hud-y-b))
+    calc(var(--safe-left, 0px) + var(--hud-x-l));
+  display: grid;
+  place-items: center;
+  background: #0b1020b3;
+  animation: pz-fadein 0.25s;
+  z-index: 5;
+}
+.plaza-layer .pz-map[hidden] {
+  display: none;
+}
+.plaza-layer .pz-map-panel {
+  box-sizing: border-box;
+  width: min(1040px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  row-gap: 10px;
+  padding: 14px;
+  border: 1px solid #ffffff26;
+  border-radius: 18px;
+  background: #0d1428f0;
+  box-shadow: 0 20px 60px #000a;
+}
+.plaza-layer .pz-map-panel header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto 36px;
+  align-items: center;
+  gap: 12px;
+}
+.plaza-layer .pz-map-panel header b {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.5em;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.plaza-layer .pz-map-panel header b .ico {
+  width: 1.15em;
+  height: 1.15em;
+}
+.plaza-layer .pz-map-hint {
+  min-width: 0;
+  color: var(--dim);
+  font-size: 0.85em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plaza-layer .pz-map-panel .x {
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: #ffffff12;
+  color: var(--dim);
+  font-size: calc(16px * var(--text-scale, 1));
+  line-height: 36px;
+  text-align: center;
+  cursor: pointer;
+}
+/* The map keeps the Plaza's shape (27 : 17) and takes what height there
+   is; the list takes the rest of the width and scrolls if it must. */
+.plaza-layer .pz-map-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr);
+  gap: 12px;
+}
+.plaza-layer .pz-map-view {
+  position: relative;
+  height: min(100%, 520px);
+  max-height: calc(
+    100dvh - var(--safe-top, 0px) - var(--safe-bottom, 0px) - var(--hud-row2) -
+      var(--hud-y-b) - 80px
+  );
+  aspect-ratio: 27 / 17;
+  max-width: 64vw;
+  align-self: center;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 3px #c98d52,
+    0 0 0 5px #4e2c12,
+    0 10px 30px #0008;
+  background: #4f9a3c;
+}
+.plaza-layer .pz-map-view canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.plaza-layer .pz-map-dots,
+.plaza-layer .pz-map-pins {
+  position: absolute;
+  inset: 0;
+}
+.plaza-layer .pz-map-dots {
+  pointer-events: none;
+}
+.plaza-layer .pz-map-dots i {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1.5px #0b1020aa;
+}
+/* You: a gold dot with a ring that keeps rippling out. */
+.plaza-layer .pz-map-dots i.me {
+  width: 12px;
+  height: 12px;
+  margin: -6px;
+  background: var(--ui-accent, #ffd65b);
+  box-shadow:
+    0 0 0 2px #0b1020,
+    0 0 10px #ffd65b;
+  z-index: 1;
+}
+.plaza-layer .pz-map-dots i.me::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid #ffd65b;
+  animation: pz-map-ping 1.6s ease-out infinite;
+}
+@keyframes pz-map-ping {
+  from {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+.plaza-layer .pz-pin {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 0;
+  padding: 3px 8px 3px 3px;
+  border: 1.5px solid #fff;
+  border-radius: 999px;
+  background: #0d1428e6;
+  color: #fff;
+  font-weight: 800;
+  font-size: calc(12px * var(--text-scale, 1));
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 3px 8px #0008;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease-out, ease-out);
+}
+.plaza-layer .pz-pin .ico {
+  width: 20px;
+  height: 20px;
+  padding: 2px;
+  border-radius: 50%;
+  background: #fff;
+}
+.plaza-layer .pz-pin:hover,
+.plaza-layer .pz-pin:focus-visible {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+/* A place with a quest still to do today: gold, with a coin dot. */
+.plaza-layer .pz-pin.quest {
+  border-color: var(--ui-accent, #ffd65b);
+}
+.plaza-layer .pz-pin.quest::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ui-accent, #ffd65b);
+  box-shadow: 0 0 0 2px #0d1428;
+}
+.plaza-layer .pz-map-list {
+  min-height: 0;
+  margin: 0;
+  padding: 0 2px 0 0;
+  list-style: none;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.plaza-layer .pz-map-list button {
+  box-sizing: border-box;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 6px 8px;
+  border: 1px solid #ffffff1f;
+  border-radius: 10px;
+  background: #ffffff0a;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.plaza-layer .pz-map-list button.quest {
+  border-color: #ffd65b66;
+  background: #ffd65b12;
+}
+.plaza-layer .pz-map-list button:hover,
+.plaza-layer .pz-map-list button:focus-visible {
+  background: #ffffff1c;
+}
+.plaza-layer .pz-map-list .ico {
+  width: 30px;
+  height: 30px;
+}
+.plaza-layer .pz-map-list span {
+  display: grid;
+  min-width: 0;
+}
+.plaza-layer .pz-map-list b,
+.plaza-layer .pz-map-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plaza-layer .pz-map-list b {
+  font-size: calc(14px * var(--text-scale, 1));
+}
+.plaza-layer .pz-map-list small {
+  color: var(--dim);
+  font-size: calc(11.5px * var(--text-scale, 1));
+}
+.plaza-layer .pz-map-list small.q {
+  color: var(--ui-accent, #ffd65b);
+  font-weight: 700;
+}
+.plaza-layer .pz-map-list small .ico {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+}
+.plaza-layer .pz-map-list i {
+  padding: 0.25em 0.7em;
+  border-radius: 999px;
+  background: var(--btn-primary-bg, #ffd65b);
+  color: var(--ui-accent-ink, #1a1206);
+  font-style: normal;
+  font-weight: 800;
+  font-size: calc(12px * var(--text-scale, 1));
+}
+/* Phones: the map as tall as there is room, pins as icons only (the list
+   names them), and a compact list. */
+.plaza-layer.phone .pz-map-panel {
+  padding: 8px 10px 10px;
+  row-gap: 6px;
+  border-radius: 14px;
+}
+.plaza-layer.phone .pz-map-panel header {
+  grid-template-columns: auto minmax(0, 1fr) auto 30px;
+}
+.plaza-layer.phone .pz-map-panel header b {
+  font-size: 1.2em;
+}
+.plaza-layer.phone .pz-map-panel .x {
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  font-size: calc(14px * var(--text-scale, 1));
+}
+.plaza-layer.phone .pz-map-body {
+  gap: 8px;
+  grid-template-columns: auto minmax(150px, 1fr);
+}
+.plaza-layer.phone .pz-map-view {
+  max-width: 58vw;
+  border-radius: 9px;
+}
+.plaza-layer.phone .pz-pin {
+  padding: 2px;
+}
+.plaza-layer.phone .pz-pin span {
+  display: none;
+}
+.plaza-layer.phone .pz-pin .ico {
+  width: 18px;
+  height: 18px;
+}
+.plaza-layer.phone .pz-map-list {
+  gap: 4px;
+}
+.plaza-layer.phone .pz-map-list button {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+}
+.plaza-layer.phone .pz-map-list .ico {
+  width: 22px;
+  height: 22px;
+}
+.plaza-layer.phone .pz-map-list b {
+  font-size: calc(12px * var(--text-scale, 1));
+}
+.plaza-layer.phone .pz-map-list small {
+  font-size: calc(10px * var(--text-scale, 1));
+}
+.plaza-layer.phone .pz-map-list i {
+  padding: 0.2em 0.55em;
+  font-size: calc(10.5px * var(--text-scale, 1));
+}
+
+.plaza-layer.fishing .pz-map {
+  display: none;
+}
+.plaza-layer .pz-pin.right {
+  transform: translate(-14px, -50%);
+}
+.plaza-layer .pz-pin.right:hover,
+.plaza-layer .pz-pin.right:focus-visible {
+  transform: translate(-14px, -50%) scale(1.08);
+}
+.plaza-layer .pz-pin.left {
+  flex-direction: row-reverse;
+  padding: 3px 3px 3px 8px;
+  transform: translate(calc(-100% + 14px), -50%);
+}
+.plaza-layer.phone .pz-pin.right,
+.plaza-layer.phone .pz-pin.left {
+  padding: 2px;
+  transform: translate(-50%, -50%);
+}
+
+/* ---------- Plaza today (renderQuests) ----------
+   A round button like the Lobby rail's Missions: the quests still to do on
+   a blue badge, the day's progress as a green ring round it. A tap opens
+   the list over it, wide enough that each quest reads on one line with its
+   progress and coins beside it (owner, 22 Nov: the folded pill's narrow
+   rows broke a quest over three lines). Desktop: the right column under
+   the clock; phones: under the player card. */
+.plaza-layer .pz-quests {
+  --pz-q-top: calc(var(--hud-row2) + var(--hud-clock-h) + var(--hud-gap));
+  position: absolute;
+  right: var(--hud-x-r);
+  top: var(--pz-q-top);
+  z-index: 4;
+}
+.plaza-layer.phone .pz-quests {
+  --pz-q-top: var(--hud-row2);
+  left: var(--hud-x-l);
+  right: auto;
+}
+.plaza-layer .pz-qbtn {
+  position: relative;
+}
+.plaza-layer .pz-qbtn .ico {
+  width: 1.55em;
+  height: 1.55em;
+}
+.plaza-layer .pz-qbtn small {
+  font-size: 0.62em;
+  font-weight: 700;
+  color: var(--dim);
+}
+.plaza-layer.phone .pz-qbtn small {
+  font-size: calc(10px * var(--text-scale, 1));
+}
+/* The day's progress, round the button's edge. */
+.plaza-layer .pz-qring {
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--ui-ok, #7be08a) calc(var(--p, 0) * 360deg),
+    #ffffff1f 0
+  );
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 3px),
+    #000 calc(100% - 2.5px)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 3px),
+    #000 calc(100% - 2.5px)
+  );
+  pointer-events: none;
+}
+/* Things left to do: a glossy blue count on the top-right, as the Lobby
+   rail's (lobby.css .lobby-badge.is-count); all done, a green tick. */
+.plaza-layer .pz-qbadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #78aaff, #3f7ef2 55%, #2c5fd4);
+  color: #fff;
+  font:
+    800 calc(11px * var(--text-scale, 1)) / 1 "DM Sans",
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 0 0 1.5px rgba(11, 16, 32, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.plaza-layer .pz-qbadge.ok {
+  background: linear-gradient(180deg, #9af0a6, #3fbf5a 55%, #2a9a45);
+}
+/* Open: the list stands where the button was, grown from its corner. */
+.plaza-layer .pz-quests.open .pz-qbtn {
+  visibility: hidden;
+}
+.plaza-layer .pz-qpanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  box-sizing: border-box;
+  width: min(
+    340px,
+    calc(100vw - var(--safe-left, 0px) - var(--safe-right, 0px) - 28px)
+  );
+  max-height: calc(
+    100dvh - var(--safe-top, 0px) - var(--safe-bottom, 0px) - var(--pz-q-top) -
+      max(14px, var(--hud-y-b))
+  );
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  font-size: calc(13px * var(--text-scale, 1));
+  transform-origin: top right;
+  animation: pz-qopen 0.18s var(--ease-out, ease-out);
+}
+.plaza-layer.phone .pz-qpanel {
+  left: 0;
+  right: auto;
+  width: min(
+    330px,
+    calc(100vw - var(--safe-left, 0px) - var(--safe-right, 0px) - 28px)
+  );
+  border-radius: 14px;
+  font-size: calc(12px * var(--text-scale, 1));
+  transform-origin: top left;
+}
+.plaza-layer .pz-qpanel[hidden] {
+  display: none;
+}
+@keyframes pz-qopen {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plaza-layer .pz-qpanel {
+    animation: none;
+  }
+}
+.plaza-layer .pz-qpanel header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.55em 0.5em 0.5em 0.9em;
+  border-bottom: 1px solid #ffffff14;
+}
+.plaza-layer .pz-qpanel h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.05em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+}
+.plaza-layer .pz-qpanel h5 .n {
+  padding: 0.1em 0.5em;
+  border-radius: 999px;
+  background: #ffffff1a;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.plaza-layer .pz-qpanel header .c {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+  margin-left: auto;
+  color: var(--ui-accent, #ffd65b);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.plaza-layer .pz-qpanel header .c small {
+  margin-left: 0.25em;
+  color: var(--dim);
+  font-weight: 600;
+}
+.plaza-layer .pz-qpanel header .c.ok {
+  color: var(--ui-ok, #7be08a);
+}
+.plaza-layer .pz-qpanel header .ico {
+  width: 1.1em;
+  height: 1.1em;
+}
+.plaza-layer .pz-qpanel .x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff14;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.plaza-layer .pz-qpanel .x:hover,
+.plaza-layer .pz-qpanel .x:focus-visible {
+  background: #ffffff2b;
+}
+.plaza-layer .pz-qlist {
+  margin: 0;
+  padding: 0.25em 0.35em 0.35em;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* A quest: its place's icon, the words over its progress, the coins; a
+   row still to do is one button that walks you there. */
+.plaza-layer .pz-q .row {
+  display: grid;
+  grid-template-columns: 2.3em minmax(0, 1fr) auto 0.9em;
+  align-items: center;
+  gap: 0.65em;
+  width: 100%;
+  min-height: 3.2em;
+  box-sizing: border-box;
+  padding: 0.35em 0.5em;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.plaza-layer .pz-q + .pz-q {
+  border-top: 1px solid #ffffff10;
+}
+.plaza-layer .pz-q button.row {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.plaza-layer .pz-q button.row:hover,
+.plaza-layer .pz-q button.row:focus-visible {
+  background: #ffffff12;
+}
+.plaza-layer .pz-q button.row:active {
+  background: #ffffff1f;
+}
+.plaza-layer .pz-q .ic {
+  display: grid;
+  place-items: center;
+  width: 2.3em;
+  height: 2.3em;
+  border-radius: 50%;
+  background: #ffffff12;
+  border: 1px solid #ffffff1f;
+}
+.plaza-layer .pz-q .ic .ico {
+  width: 1.3em;
+  height: 1.3em;
+}
+.plaza-layer .pz-q .tx {
+  display: grid;
+  gap: 0.3em;
+  min-width: 0;
+}
+.plaza-layer .pz-q .tx b {
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+  text-wrap: pretty;
+}
+.plaza-layer .pz-q .pg {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+.plaza-layer .pz-q .bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: #ffffff1a;
+  overflow: hidden;
+}
+.plaza-layer .pz-q .bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--ui-ok), #b6f36b);
+}
+.plaza-layer .pz-q .pg small {
+  flex: none;
+  min-width: 2.4em;
+  text-align: right;
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+.plaza-layer .pz-q .rw {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.15em;
+  min-width: 3.4em;
+  font-weight: 800;
+  color: var(--ui-accent, #ffd65b);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.plaza-layer .pz-q .rw .ico {
+  width: 1.15em;
+  height: 1.15em;
+}
+.plaza-layer .pz-q .rw .ok {
+  color: var(--ui-ok, #7be08a);
+  font-size: 1.1em;
+}
+/* The way there: a small chevron at the row's end. */
+.plaza-layer .pz-q .go {
+  justify-self: center;
+  width: 0.45em;
+  height: 0.45em;
+  border-top: 2px solid var(--dim);
+  border-right: 2px solid var(--dim);
+  transform: rotate(45deg);
+}
+.plaza-layer .pz-q.done .tx b {
+  color: var(--dim);
+  text-decoration: line-through;
+}
+.plaza-layer .pz-q.done .ic {
+  opacity: 0.55;
 }

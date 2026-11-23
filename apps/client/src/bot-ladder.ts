@@ -75,3 +75,48 @@ export function recordBotResult(
   if (l.last === match) return;
   save({ ...stepLadder(l, played, won), last: match });
 }
+
+/**
+ * Losses in a row against bots, at any level (draws neither count nor
+ * reset it). Three or more and the result screen suggests Solo test or an
+ * easier bot (main.ts). Kept per device, like the ladder.
+ */
+export const LOSS_STREAK_HINT = 3;
+const LOSSES_KEY = "arena-bot-losses";
+export interface LossStreak {
+  streak: number;
+  last?: string;
+}
+export function stepLosses(
+  l: LossStreak,
+  outcome: "win" | "loss" | "draw",
+): LossStreak {
+  if (outcome === "draw") return l;
+  return { streak: outcome === "loss" ? l.streak + 1 : 0 };
+}
+/** Count a finished bot match once; the streak after it. */
+export function recordBotOutcome(
+  match: string,
+  outcome: "win" | "loss" | "draw",
+): number {
+  let l: LossStreak = { streak: 0 };
+  try {
+    const v = JSON.parse(localStorage.getItem(LOSSES_KEY) ?? "null");
+    if (v && Number.isFinite(v.streak)) l = v;
+  } catch {
+    /* Optional. */
+  }
+  if (l.last === match) return l.streak;
+  const next = { ...stepLosses(l, outcome), last: match };
+  try {
+    localStorage.setItem(LOSSES_KEY, JSON.stringify(next));
+  } catch {
+    /* Optional: this visit only. */
+  }
+  return next.streak;
+}
+/** The level below `level`, or null at Easy. */
+export function easierBot(level: BotLevelId): BotLevelId | null {
+  const i = BOT_DIFFICULTY_ORDER.indexOf(level);
+  return i > 0 ? BOT_DIFFICULTY_ORDER[i - 1] : null;
+}

@@ -1475,7 +1475,7 @@ export const SPIRE_TUNING: Record<
   // Floor 1 was always cleared and still is.
   1: { difficulty: "easy", power: 0.4, armour: 1.5, limit: 180 },
   2: { difficulty: "easy", power: 0.45, armour: 1.35, limit: 180 },
-  3: { difficulty: "easy", power: 0.5, armour: 0.99, limit: 180 },
+  3: { difficulty: "easy", power: 0.5, armour: 1.05, limit: 180 },
   4: { difficulty: "easy", power: 0.45, armour: 2.04, limit: 180 },
   5: { difficulty: "normal", power: 0.4, armour: 0.7, limit: 240 },
   6: { difficulty: "easy", power: 0.55, armour: 1.2, limit: 180 },
@@ -1561,7 +1561,9 @@ export const SPIRE_TUNING: Record<
   46: { difficulty: "normal", power: 0.62, armour: 2.73, limit: 180 },
   47: { difficulty: "normal", power: 0.63, armour: 3.3, limit: 180 },
   48: { difficulty: "normal", power: 0.64, armour: 3.9, limit: 180 },
-  49: { difficulty: "normal", power: 0.65, armour: 3.05, limit: 180 },
+  // 3.05 before Sunbara's faster Yuzu Toss (2026-11-22): its Echo made
+  // the floor harder (68 clears in 144 against 85); 3.25 gives 88.
+  49: { difficulty: "normal", power: 0.65, armour: 3.25, limit: 180 },
   50: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 6: a climb starts at 51 with no blessings, against Fire Echoes (a
   // burst drake, an artillery panda, a versatile moth) and one off-element

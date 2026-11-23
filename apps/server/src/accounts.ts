@@ -1,10 +1,9 @@
 import { appleConfig, exchangeAppleCode, revokeAppleToken } from "./apple.js";
-import type { PushDevice, PushStore } from "./push.js";
+import type { AnnouncementPush, PushDevice, PushStore } from "./push.js";
 import { clientOrigins } from "./api-cors.js";
 import type {
   PlazaProgress,
   PlazaRecord,
-  PlazaWishPay,
 } from "../../../packages/shared/src/plaza.js";
 import {
   RAID_COSMETICS,
@@ -70,6 +69,8 @@ import {
   resolveReportSchema,
   titleUpdateSchema,
   titleGrantSchema,
+  adminCoinsSchema,
+  announceSchema,
   equipTitleSchema,
   nameChangeSchema,
   matchReportSchema,
@@ -113,11 +114,6 @@ export interface AccountProvider {
   recordActivity?(receipt: ActivityReceipt): Promise<void>;
   /** Something the game server saw in the Plaza (quests, orbs, laps); returns the player's progress. */
   recordPlaza?(event: PlazaRecord): Promise<PlazaProgress | null>;
-  /**
-   * A full wish meter in the Plaza: pay this wisher once per fill (`ref`, the
-   * fill's id) within the daily cap (arena_plaza_wish); null for no player.
-   */
-  recordWish?(player: string, ref: string): Promise<PlazaWishPay | null>;
   authenticate(token: string): Promise<Account | null>;
   /** Read-only rows for friends' ratings and recent players (step 6). */
   social?: SocialStore;
@@ -356,6 +352,29 @@ export function createAccountProvider(): AccountProvider {
         if (r.error) throw new Error(r.error.message);
         return (r.data as PushDevice[] | null) ?? [];
       },
+      // Game news (migration 20261122140000).
+      async setNews(player, endpoint, on) {
+        const r = await admin().rpc("arena_push_set_news", {
+          p_player: player,
+          p_endpoint: endpoint,
+          p_news: on,
+        });
+        if (r.error) throw new Error(r.error.message);
+        return r.data === true;
+      },
+      async newsPage(after, limit) {
+        const r = await admin().rpc("arena_push_news_page", {
+          p_after: after,
+          p_limit: limit,
+        });
+        if (r.error) throw new Error(r.error.message);
+        return (r.data as PushDevice[] | null) ?? [];
+      },
+      async newsCount() {
+        const r = await admin().rpc("arena_push_news_count", {});
+        if (r.error) throw new Error(r.error.message);
+        return Number(r.data ?? 0);
+      },
     },
     photos: createAvatarPhotoStore(() => admin() as unknown as PhotoClient),
     async avatarOf(playerId) {
@@ -434,23 +453,6 @@ export function createAccountProvider(): AccountProvider {
       if (result.error)
         throw new AccountError(503, "Plaza rewards could not be stored.");
       return (result.data as PlazaProgress | null) ?? null;
-    },
-    async recordWish(player, ref) {
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (!url || !serviceKey)
-        throw new AccountError(
-          503,
-          "Plaza rewards require server storage configuration.",
-        );
-      const admin = createClient(url, serviceKey, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      });
-      const result = await admin.rpc("arena_plaza_wish", {
-        p: { player, ref },
-      });
-      if (result.error)
-        throw new AccountError(503, "Plaza rewards could not be stored.");
-      return (result.data as PlazaWishPay | null) ?? null;
     },
     async recordActivity(receipt) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -548,6 +550,13 @@ export function installAccountRoutes(
   onFriendsChanged: (accountId: string) => void = () => {},
   /** One line for the server log (server.ts connectionLog). */
   log: (event: string, details: Record<string, unknown>) => void = () => {},
+  /** Send an event to every connected game (an admin's announcement). */
+  broadcast: (event: string, payload: unknown) => void = () => {},
+  /** Announcements as notifications (push.ts); null without VAPID keys. */
+  announcePush: Pick<
+    AnnouncementPush,
+    "available" | "reach" | "send"
+  > | null = null,
 ) {
   const requests = new Map<string, { count: number; until: number }>();
   app.use("/api", (req, res, next) => {
@@ -1304,12 +1313,26 @@ export function installAccountRoutes(
       const offset = Number(req.query.offset ?? 0);
       if (!Number.isInteger(offset) || offset < 0 || offset > 100000)
         throw new AccountError(400, "Invalid page.");
-      res.json(
-        await provider.rpc(token, "arena_admin_players", {
-          p_search: search,
-          p_offset: offset,
-        }),
-      );
+      const sort = req.query.sort === "online" ? "online" : "new";
+      try {
+        // With last-online and the sort (migration 20261122120000).
+        res.json(
+          await provider.rpc(token, "arena_admin_player_list", {
+            p_search: search,
+            p_offset: offset,
+            p_sort: sort,
+          }),
+        );
+      } catch (error) {
+        // Before that migration: the older list, newest first.
+        if (sort === "online") throw error;
+        res.json(
+          await provider.rpc(token, "arena_admin_players", {
+            p_search: search,
+            p_offset: offset,
+          }),
+        );
+      }
     }),
   );
   app.post(
@@ -1484,6 +1507,121 @@ export function installAccountRoutes(
     route(true, async (_req, res) => {
       res.setHeader("Cache-Control", "no-store");
       res.json(listOnline());
+    }),
+  );
+  // A player's coins and chat stop, and coins added or taken by an admin
+  // (migration 20261122100000).
+  app.get(
+    "/api/admin/players/:id/status",
+    route(true, async (req, res, token) => {
+      const id = z.string().uuid().safeParse(req.params.id);
+      if (!id.success) throw new AccountError(400, "Invalid player.");
+      res.setHeader("Cache-Control", "no-store");
+      res.json(
+        await provider.rpc(token, "arena_admin_player_status", {
+          p_player: id.data,
+        }),
+      );
+    }),
+  );
+  app.post(
+    "/api/admin/coins",
+    route(true, async (req, res, token) => {
+      const data = adminCoinsSchema.parse(req.body);
+      const result = await provider.rpc(token, "arena_admin_adjust_coins", {
+        p_player: data.playerId,
+        p_amount: data.amount,
+        p_reason: data.reason,
+        p_ref: data.ref,
+      });
+      onPlayerChanged(data.playerId);
+      res.json(result);
+    }),
+  );
+  // Announcements (migration 20261122120000): an admin sends one to every
+  // player; games online get it at once, the rest when they next sign in.
+  app.get(
+    "/api/announcements",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      try {
+        res.json(await provider.rpc(token, "arena_current_announcements", {}));
+      } catch {
+        // Before the migration (or a database hiccup): no announcements.
+        res.json([]);
+      }
+    }),
+  );
+  app.get(
+    "/api/admin/announcements",
+    route(true, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_admin_announcements", {}));
+    }),
+  );
+  app.post(
+    "/api/admin/announce",
+    route(true, async (req, res, token) => {
+      const data = announceSchema.parse(req.body);
+      const sent = await provider.rpc(token, "arena_admin_announce", {
+        p_message: data.message,
+        p_tone: data.tone,
+        p_hours: data.hours,
+      });
+      broadcast("announcement", sent);
+      log("arena-announce", {
+        tone: data.tone,
+        hours: data.hours,
+        push: !!data.push,
+      });
+      // Notifications go out in the background: thousands of devices take
+      // a while, and the admin needn't wait. The log says how it went.
+      let push: { devices: number } | { error: string } | undefined;
+      if (data.push) {
+        if (!announcePush?.available)
+          push = { error: "Notifications aren't set up on the server." };
+        else {
+          const devices = await announcePush.reach().catch(() => 0);
+          push = { devices };
+          void announcePush
+            .send(sent as { id: number; message: string; tone: string })
+            .then(
+              (r) => log("arena-announce-push", { ...r }),
+              (error: unknown) =>
+                log("arena-announce-push", { error: String(error) }),
+            );
+        }
+      }
+      res.json(push ? { ...(sent as object), push } : sent);
+    }),
+  );
+  // How many devices an announcement's notification would reach.
+  app.get(
+    "/api/admin/push-reach",
+    route(true, async (_req, res) => {
+      res.setHeader("Cache-Control", "no-store");
+      if (!announcePush?.available) {
+        res.json({ available: false, devices: 0 });
+        return;
+      }
+      res.json({
+        available: true,
+        devices: await announcePush.reach().catch(() => 0),
+      });
+    }),
+  );
+  app.post(
+    "/api/admin/announcements/end",
+    route(true, async (req, res, token) => {
+      const data = z
+        .object({ id: z.number().int().positive() })
+        .strict()
+        .parse(req.body);
+      await provider.rpc(token, "arena_admin_end_announcement", {
+        p_id: data.id,
+      });
+      broadcast("announcement-ended", { id: data.id });
+      res.json({ ok: true });
     }),
   );
   app.post(

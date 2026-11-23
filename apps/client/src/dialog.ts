@@ -15,7 +15,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   const toolbar = document.createElement("div");
   toolbar.className = "dialog-toolbar";
   const back = content.querySelector<HTMLButtonElement>(
-    "#controls-back, #credits-back",
+    "#controls-back, #credits-back, #skills-back",
   );
   if (back) toolbar.append(back);
   toolbar.append(close);

@@ -197,6 +197,56 @@ it("logs how long a player's device took to load the battle", async () => {
   expect(log.length).toBe(21);
 });
 
+it("logs a fighter's art found blank and loaded again, with the moment that found it", async () => {
+  const { connect, accounts, log } = await setup();
+  const host = accounts.add(),
+    guest = accounts.add(),
+    outsider = accounts.add();
+  const one = await connect(host.token),
+    two = await connect(guest.token),
+    stranger = await connect(outsider.token);
+  const created = await emit(one, "create", { name: "One" });
+  await emit(two, "join", { name: "Two", code: created.code });
+  const arena = server!.rooms.get(created.code!)!;
+  arena.start();
+  const report = {
+    character: "astrabun",
+    mine: true,
+    textures: 13,
+    blank: 13,
+    trigger: "visible" as const,
+    repaired: true,
+    build: "abc1234",
+    os: "ios" as const,
+    app: true,
+  };
+  // Outside a room, or malformed: nothing is logged.
+  stranger.emit("battle-art", report);
+  one.emit("battle-art", { ...report, trigger: "nope" });
+  one.emit("battle-art", { ...report, character: "<b>" });
+  one.emit("battle-art", { ...report, extra: true });
+  one.emit("battle-art", report);
+  await until(() => log.length === 1);
+  await wait();
+  expect(log).toEqual([
+    {
+      event: "arena-art-blank",
+      details: {
+        ...report,
+        account: host.account.id,
+        room: created.code,
+        mode: "duel",
+        phase: arena.phase,
+      },
+    },
+  ]);
+  // A client stuck in a loop is capped.
+  for (let i = 0; i < 30; i++) two.emit("battle-art", report);
+  await until(() => log.length === 11);
+  await wait(150);
+  expect(log.length).toBe(11);
+});
+
 it("logs how smoothly a match ran on a player's device, without their account", async () => {
   const { connect, accounts, log } = await setup();
   const host = accounts.add(),

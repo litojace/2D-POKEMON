@@ -18,6 +18,7 @@
  * drops the ripples, the splash rings and the sparkles.
  */
 import {
+  PLAZA_DOCK,
   PLAZA_FISH,
   PLAZA_FISH_BY_ID,
   PLAZA_FISH_RARITY,
@@ -37,6 +38,37 @@ import {
 import { fishArt } from "./plaza-fish-art";
 
 export const FISH_SPOT = PLAZA_SPOTS.find((s) => s.id === "fish")!;
+/**
+ * The rod as held (world px, from the angler's feet): the paw a little
+ * forward and low, the rod 84 long out over the water at rest, its grip
+ * reaching back past the paw.
+ */
+export const ROD = {
+  hand: { x: 20, y: 24 },
+  length: 84,
+  butt: 12,
+  rest: -0.62,
+} as const;
+/**
+ * Where the line runs when fishing from the dock: from the rod's tip (at
+ * rest, held by an angler at PLAZA_DOCK.stand) down to the bobber. Ducks
+ * keep their bodies off it (plaza-scene's updateAnimals), so the line and
+ * the bobber never cross over a duck. Fixed, not following the line, so a
+ * duck never jumps aside when a line goes out.
+ */
+export function fishingLineZone() {
+  const B = PLAZA_FISHING.bobber,
+    st = PLAZA_DOCK.stand,
+    d = B.x >= st.x ? 1 : -1,
+    hx = st.x + d * ROD.hand.x,
+    hy = st.y - ROD.hand.y;
+  return {
+    ax: hx + Math.cos(ROD.rest) * ROD.length * d,
+    ay: hy + Math.sin(ROD.rest) * ROD.length,
+    bx: B.x,
+    by: B.y,
+  };
+}
 /** The cast: the rod swings back, then the bobber flies (s). */
 const WIND_SECONDS = 0.28;
 const FLY_SECONDS = 0.42;
@@ -311,15 +343,15 @@ export function createFishing(deps: FishingDeps) {
     /** The fight, for its close-up and the HUD (null with none). */
     fightView(): FightView | null {
       if (phase !== "fight" || !fight) return null;
-      const k = PLAZA_FIGHT.fish[fight.rarity];
       return {
         rarity: fight.rarity,
         tension: fight.tension,
         progress: fight.progress,
         thrash: fight.thrash,
         strain: fight.strain,
-        lo: k.lo,
-        hi: k.hi,
+        // The band as it is now (it wanders for rarer fish).
+        lo: fight.lo,
+        hi: fight.hi,
         holding,
         result: fight.result,
         t,
@@ -358,13 +390,12 @@ export function createFishing(deps: FishingDeps) {
           if (fight.thrash && !was && typeof navigator !== "undefined")
             navigator.vibrate?.(18);
         }
-        const k = PLAZA_FIGHT.fish[fight.rarity],
-          mood =
-            fight.tension >= 0.93
-              ? "strain"
-              : fight.tension < k.lo && fight.tick > 20
-                ? "slack"
-                : "ok";
+        const mood =
+          fight.tension >= 0.93
+            ? "strain"
+            : fight.tension < fight.lo && fight.tick > 20
+              ? "slack"
+              : "ok";
         if (mood !== fightMood) {
           fightMood = mood;
           deps.changed();
@@ -489,26 +520,37 @@ export function createFishing(deps: FishingDeps) {
       me: { x: number; y: number; z: number },
     ) {
       if (!active) return;
+      // Held in the front paw, low at the body's side, so the rod leans out
+      // over the water and clear of the face (it used to start at the chest
+      // and run up across the cheek).
       const d = B.x >= me.x ? 1 : -1,
-        hx = me.x + d * 12,
-        hy = me.y - 30 - me.z;
+        hx = me.x + d * ROD.hand.x,
+        hy = me.y - ROD.hand.y - me.z;
       // The rod's angle (0 = level toward the water, up is negative): held
-      // up, swung back on the cast, then whipped forward; bent on a bite.
-      let ang = -1.0;
+      // out, swung back on the cast, then whipped forward; bent on a bite.
+      let ang: number = ROD.rest;
       if (phase === "cast") {
         const k = t / WIND_SECONDS;
-        ang = k < 1 ? -1.0 - k * 0.9 : -1.9 + Math.min(1, (k - 1) * 2.4) * 1.25;
-      } else if (phase === "bite") ang = -0.55 + Math.sin(t * 30) * 0.06;
+        ang =
+          k < 1
+            ? ROD.rest - k * 0.75
+            : ROD.rest - 0.75 + Math.min(1, (k - 1) * 2.4) * 1.0;
+      } else if (phase === "bite") ang = -0.3 + Math.sin(t * 30) * 0.06;
       else if (phase === "miss")
-        ang = -0.6 - Math.min(1, t / MISS_SECONDS) * 0.4;
+        ang = -0.35 - Math.min(1, t / MISS_SECONDS) * 0.3;
       else if (phase === "leap")
-        ang = -1.35 - Math.sin((t / LEAP_SECONDS) * Math.PI) * 0.4;
-      const L = 58,
-        tx = hx + Math.cos(ang) * L * d,
-        ty = hy + Math.sin(ang) * L;
+        ang = -1.05 - Math.sin((t / LEAP_SECONDS) * Math.PI) * 0.35;
+      const L = ROD.length,
+        cx = Math.cos(ang) * d,
+        cy = Math.sin(ang),
+        tx = hx + cx * L,
+        ty = hy + cy * L,
+        // The butt end, a little behind the paw: a grip to hold.
+        bx0 = hx - cx * ROD.butt,
+        by0 = hy - cy * ROD.butt;
+      g.lineCap = "round";
       g.strokeStyle = "#6a4426";
       g.lineWidth = 3;
-      g.lineCap = "round";
       g.beginPath();
       g.moveTo(hx, hy);
       // A bent rod on a bite or a leap: a curve, not a line.
@@ -521,9 +563,16 @@ export function createFishing(deps: FishingDeps) {
         );
       else g.lineTo(tx, ty);
       g.stroke();
+      // The grip (cork) from the butt to the paw, then the reel under it.
+      g.strokeStyle = "#c98a4e";
+      g.lineWidth = 4.5;
+      g.beginPath();
+      g.moveTo(bx0, by0);
+      g.lineTo(hx + cx * 3, hy + cy * 3);
+      g.stroke();
       g.fillStyle = "#3a2a1a";
       g.beginPath();
-      g.arc(hx + d * 6, hy - 4, 3, 0, 7);
+      g.arc(hx + cx * 6 - cy * d * 4, hy + cy * 6 + Math.abs(cx) * 4, 3, 0, 7);
       g.fill();
       // The line: to the bobber in flight, on the water, or to the leaping fish.
       let bx = B.x,
@@ -566,6 +615,7 @@ export function createFishing(deps: FishingDeps) {
         g.strokeStyle = "#0b1020";
         g.fillStyle = "#ff6b6b";
         const y = me.y - me.z - 118 - k * 18;
+        g.lineJoin = "round";
         g.strokeText("Missed!", me.x, y);
         g.fillText("Missed!", me.x, y);
         g.restore();
@@ -694,26 +744,48 @@ function fishImage(f: PlazaFish) {
   return img;
 }
 
-/** A little plank dock on the bank by the fishing spot: where to stand. */
+/**
+ * The fishing dock (PLAZA_DOCK): planks across its length from the bank's
+ * stones out over the water, a darker edge facing the viewer and posts
+ * into the water under it. Fish walks you out to its end.
+ */
 function drawDock(g: CanvasRenderingContext2D) {
-  const x = FISH_SPOT.x + 6,
-    y = FISH_SPOT.y - 12,
-    w = 58,
-    h = 26;
-  g.fillStyle = "#5a3a20";
-  g.fillRect(x + 4, y + h - 2, 5, 9);
-  g.fillRect(x + w - 9, y + h - 2, 5, 9);
+  const { x0, x1, y0, y1 } = PLAZA_DOCK,
+    w = x1 - x0,
+    h = y1 - y0,
+    edge = 6;
+  // Its shadow on the water and the posts under the near edge.
+  g.fillStyle = "rgba(10,40,70,.28)";
+  g.fillRect(x0 + 4, y1 + edge - 1, w - 2, 6);
+  g.fillStyle = "#4a2e18";
+  for (const px of [x0 + 26, x0 + w * 0.62, x1 - 8])
+    g.fillRect(px - 3, y1, 6, edge + 9);
+  // The near edge, then the deck.
+  g.fillStyle = "#7a5030";
+  g.fillRect(x0, y1, w, edge);
   g.fillStyle = "#b07a48";
-  g.fillRect(x, y, w, h);
-  g.strokeStyle = "#7a5030";
+  g.fillRect(x0, y0, w, h);
+  // Planks across it, lighter and darker by turns.
+  const n = 7,
+    pw = w / n;
+  for (let i = 0; i < n; i++) {
+    g.fillStyle = i % 2 ? "#a46f40" : "#bb8552";
+    g.fillRect(x0 + i * pw + 1, y0 + 1, pw - 2, h - 2);
+  }
+  g.strokeStyle = "#6e4628";
   g.lineWidth = 1.5;
   g.beginPath();
-  for (let i = 1; i < 4; i++) {
-    g.moveTo(x + (w * i) / 4, y);
-    g.lineTo(x + (w * i) / 4, y + h);
+  for (let i = 1; i < n; i++) {
+    g.moveTo(x0 + i * pw, y0);
+    g.lineTo(x0 + i * pw, y1);
   }
-  g.rect(x, y, w, h);
+  g.rect(x0, y0, w, h + edge);
   g.stroke();
+  // Nail heads where the planks cross the joists.
+  g.fillStyle = "#5a3a20";
+  for (let i = 0; i < n; i++)
+    for (const ny of [y0 + 6, y1 - 6])
+      g.fillRect(x0 + i * pw + pw / 2 - 1, ny - 1, 2, 2);
 }
 
 const esc = (s: string) =>

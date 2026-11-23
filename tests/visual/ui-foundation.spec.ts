@@ -101,6 +101,20 @@ for (const size of SIZES)
             incoming: [{ id: "r1", name: "Pip" }],
             outgoing: [],
           };
+          // The toast hides itself after 4.5 s, and a slow runner can take
+          // longer than that to open the lobby: record that it was shown,
+          // and whether the startup curtain still covered it then (it sits
+          // over the toast, so a toast said under it was never seen).
+          new MutationObserver(() => {
+            if (w.__toastShown || !document.querySelector("#toast.show"))
+              return;
+            w.__toastShown = true;
+            w.__toastUnderCurtain = !!document.getElementById("server-startup");
+          }).observe(document, {
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["class"],
+          });
         },
         { missions: MISSIONS, serverTime: SERVER_TIME },
       );
@@ -110,10 +124,20 @@ for (const size of SIZES)
 
       // The friend-request toast: plain words, under the HUD, over nothing.
       const toast = page.locator("#toast");
-      await expect(toast).toHaveClass(/show/);
+      await expect
+        .poll(() => page.evaluate(() => (window as any).__toastShown === true))
+        .toBe(true);
+      expect(
+        await page.evaluate(() => (window as any).__toastUnderCurtain),
+        "the toast showed under the startup curtain, where no one sees it",
+      ).toBe(false);
       await expect(toast).toHaveText(
         "Pip wants to be friends. Open Friends to answer.",
       );
+      // Once its own timer has hidden it, hold it up to measure where it
+      // rests: no timer is left to take it down mid-measure.
+      await expect(toast).not.toHaveClass(/show/, { timeout: 10_000 });
+      await toast.evaluate((el) => el.classList.add("show"));
       // Measure where it rests, not mid-slide (the harness can hold a
       // transition at its first frame).
       await toast.evaluate((el) =>

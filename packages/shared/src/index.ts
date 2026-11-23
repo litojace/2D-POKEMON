@@ -614,6 +614,10 @@ export interface Ability {
   cone?: { grow?: number; freeze?: number; freezeFor?: number };
   /** Shrapnel: blades = `count` + `perPlate` per plate (instead of count each). */
   perPlate?: number;
+  /** Shrapnel: how many plates a cast spends (all of them when unset). */
+  platesSpent?: number;
+  /** Cage: the ring closes in to `shrinkTo` px over its duration. */
+  cage?: { shrinkTo: number };
   /** Rest: when it ends, a shockwave round the fighter (damage, radius, knockback). */
   burst?: { damage: number; radius: number; knockback: number };
   /**
@@ -730,7 +734,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sugar-glider kit that stores static in its antennae. Glides over trouble and stays deadly at range.",
     color: 0xffd65b,
-    health: 157,
+    health: 135,
     speed: 270,
     basic: basic(
       "spark-dart",
@@ -755,15 +759,17 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "ball-lightning",
         "Ball Lightning",
         "projectile",
-        12,
+        8,
         10,
-        "A slow electric orb that flies through enemies, zapping the nearest one within 150 px for 3 every 0.3 seconds, then bursts at the end of its flight for 12. 30% more damage to enemies already slowed, stunned or otherwise hindered.",
+        "A slow electric orb that flies through enemies, zapping the nearest one within 150 px for 3 every 0.3 seconds, then bursts at the end of its flight for 8. Every zap and the burst slow for a moment, and it deals 30% more to enemies already slowed, stunned or otherwise hindered: stay near it and each zap hurts more.",
         {
           speed: 360,
           range: 640,
           radius: 22,
           explosion: 100,
           bonusVsStatus: 1.3,
+          status: "slow",
+          statusDuration: 0.3,
           aura: { radius: 150, tick: 0.3, damage: 3 },
         },
       ),
@@ -786,20 +792,20 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "thunderstorm",
         "Thunderstorm",
         "storm",
-        16,
+        14,
         20,
-        "Call a storm over the whole court: three bolts fall on the enemy nearest your aim, wherever it is, 0.8 seconds apart. Each marks the ground where it is heading and strikes 0.55 seconds later: 16 damage and a short paralysis to anyone in its 95 px.",
+        "Call a storm over the whole court: four bolts fall on the enemy nearest your aim, wherever it is, 0.65 seconds apart. Each marks the ground where it is heading and strikes 0.55 seconds later: 14 damage and 0.8 seconds of paralysis to anyone in its 120 px, so a bolt that lands holds them for the next.",
         {
           cast: 0.4,
-          count: 3,
-          tickInterval: 0.8,
+          count: 4,
+          tickInterval: 0.65,
           tickDelay: 0.55,
-          explosion: 95,
-          duration: 2.4,
+          explosion: 120,
+          duration: 2.6,
           range: 0,
           knockback: 0,
           status: "paralysis",
-          statusDuration: 0.5,
+          statusDuration: 0.8,
         },
       ),
     ],
@@ -828,15 +834,15 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "crest-flare",
         "Crest Flare",
         "cone",
-        5,
+        3,
         8,
-        "The flame crest flares into a cone of fire for 1.2 seconds, reaching from 230 px out to 300 px as it burns. Burns.",
+        "The flame crest flares into a short, fierce cone of fire for half a second: 3 damage every 0.1 seconds, reaching from 230 px out to 300 px as it burns. Burns.",
         {
           range: 230,
           arc: 0.75,
-          duration: 1.2,
+          duration: 0.5,
           tickDelay: 0.1,
-          tickInterval: 0.2,
+          tickInterval: 0.1,
           knockback: 0,
           status: "burn",
           statusDuration: 1.5,
@@ -1035,10 +1041,16 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "crystal-cage",
         "Crystal Cage",
         "cage",
-        10,
         20,
-        "After a short charge, crystal spires rise in a 180 px ring round Auralynx for 2.5 seconds: nobody can cross it and no shot gets through. Enemies caught inside take 10.",
-        { radius: 180, cast: 0.4, duration: 2.5, knockback: 0 },
+        20,
+        "After a short charge, crystal spires rise in a 180 px ring round Auralynx for 2.5 seconds: nobody can cross it and no shot gets through. Enemies caught inside take 20, and the ring closes in to 60 px, squeezing them toward Auralynx.",
+        {
+          radius: 180,
+          cast: 0.4,
+          duration: 2.5,
+          knockback: 0,
+          cage: { shrinkTo: 60 },
+        },
       ),
     ],
   },
@@ -1723,9 +1735,11 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Yuzu Toss",
         "projectile",
         14,
-        8,
+        7,
         "Toss a glowing yuzu that bursts on impact; Sunbara soaks up a fifth of the damage it deals as health.",
-        { speed: 650, radius: 16, explosion: 80, drain: 0.2 },
+        // 760 px/s and 7 s (were 650 and 8) since Hard dodges like a good
+        // player: docs/smarter-bots.md, "Second round".
+        { speed: 760, radius: 16, explosion: 80, drain: 0.2 },
       ),
       ability(
         "warm-spring",
@@ -2047,11 +2061,12 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Scale Shrapnel",
         "shrapnel",
         6,
-        9,
-        "Shed your armour plates as a fan of blades: 6 blades, plus 2 for each plate you have. Every plate is spent and grows back later.",
+        11,
+        "Shed two armour plates as a fan of blades: 6 blades, plus 2 for each plate you have. The plates grow back later.",
         {
           count: 6,
           perPlate: 2,
+          platesSpent: 2,
           fan: 1.2,
           speed: 760,
           range: 300,
@@ -2452,26 +2467,27 @@ for (const combo of Object.values(COMBOS)) combo.text = inMeters(combo.text);
  * the bot fixes (bots pick their own target, Normal no longer flips
  * champions) every factor is within 12% of 1. Retuned for the smarter bots
  * (2v2 focus fire, docs/smarter-bots.md).
+ * Retuned again for the second round of smarter bots (2026-11-22).
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 1.07,
-  cindrake: 0.994,
-  tidefin: 1.018,
-  auralynx: 0.88,
-  lumoth: 1.038,
-  mystowl: 0.984,
-  terradon: 0.898,
-  duskveil: 1.06,
-  coilemur: 0.927,
-  pyranda: 0.988,
-  glacelle: 0.972,
-  halcyra: 1.027,
-  sunbara: 1.045,
-  astrabun: 0.982,
-  wombolder: 0.913,
-  shadopus: 1.011,
-  pangrove: 0.904,
-  mossloth: 1.119,
+  voltkit: 1.054,
+  cindrake: 0.974,
+  tidefin: 1.062,
+  auralynx: 0.853,
+  lumoth: 1.062,
+  mystowl: 0.987,
+  terradon: 0.911,
+  duskveil: 1.064,
+  coilemur: 0.936,
+  pyranda: 0.993,
+  glacelle: 0.947,
+  halcyra: 1.053,
+  sunbara: 1.052,
+  astrabun: 0.992,
+  wombolder: 0.902,
+  shadopus: 1.014,
+  pangrove: 0.896,
+  mossloth: 1.01,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -2480,26 +2496,27 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
  * take about twice the damage per second of ranged ones (as in a duel), which
  * a duel repays with their higher damage but a free-for-all does not. Tuned
  * with scripts/balance/tune-teams.ts --mode ffa on four-player matches.
+ * Retuned again for the second round of smarter bots (2026-11-22).
  */
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.873,
-  cindrake: 1.16,
-  tidefin: 0.869,
-  auralynx: 1.043,
-  lumoth: 0.903,
-  mystowl: 0.828,
-  terradon: 0.956,
-  duskveil: 0.865,
-  coilemur: 1.194,
-  pyranda: 0.818,
-  glacelle: 0.91,
-  halcyra: 0.814,
-  sunbara: 0.88,
-  astrabun: 1.142,
-  wombolder: 1.099,
-  shadopus: 1.131,
-  pangrove: 1.034,
-  mossloth: 0.972,
+  voltkit: 0.9,
+  cindrake: 1.097,
+  tidefin: 0.886,
+  auralynx: 1.02,
+  lumoth: 0.936,
+  mystowl: 0.861,
+  terradon: 0.959,
+  duskveil: 0.898,
+  coilemur: 1.149,
+  pyranda: 0.817,
+  glacelle: 0.915,
+  halcyra: 0.835,
+  sunbara: 0.914,
+  astrabun: 1.113,
+  wombolder: 1.069,
+  shadopus: 1.102,
+  pangrove: 1.011,
+  mossloth: 0.914,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
@@ -3680,8 +3697,8 @@ export const RITES: Rite[] = [
     "minor",
     "crest-flare",
     "Long Breath",
-    "Crest Flare lasts 1.6s instead of 1.2s.",
-    { set: { duration: 1.6 } },
+    "Crest Flare lasts 0.7s instead of 0.5s.",
+    { set: { duration: 0.7 } },
   ),
   rite(
     "cindrake",
@@ -3816,8 +3833,8 @@ export const RITES: Rite[] = [
     "major",
     "crystal-cage",
     "Long Cage",
-    "Crystal Cage stands for 4s instead of 2.5s and deals 18 instead of 10.",
-    { set: { duration: 4, damage: 18 } },
+    "Crystal Cage stands for 4s instead of 2.5s and deals 28 instead of 20.",
+    { set: { duration: 4, damage: 28 } },
   ),
   rite(
     "lumoth",

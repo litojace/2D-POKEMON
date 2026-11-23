@@ -125,6 +125,19 @@ self.addEventListener("push", (event) => {
   } catch {
     /* Not ours. */
   }
+  // An admin's announcement (the server's AnnouncementPush): its words, as
+  // the game's banner shows them; tapping opens the game.
+  if (data.kind === "announcement") {
+    event.waitUntil(
+      self.registration.showNotification(data.title || "Element Arena", {
+        body: data.body || "",
+        tag: data.tag || "announcement",
+        icon: "/icons/arena-192.png",
+        data: {},
+      }),
+    );
+    return;
+  }
   if (data.kind !== "friend-message" || !data.friend?.id) return;
   event.waitUntil(
     self.registration.showNotification(data.title || "Element Arena", {

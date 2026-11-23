@@ -65,9 +65,11 @@ import {
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
 import { DRAIN_MESSAGE, busyRoom, trackWrites, waitForDrain } from "./drain.js";
+import { MOVE_MESSAGE, supersededBy } from "./drain.js";
 /** Every champion's basic attack: spammed, so it never forces a snapshot. */
 const BASIC_IDS = new Set(Object.values(CHARACTERS).map((c) => c.basic.id));
 import {
+  battleArtSchema,
   battleLoadSchema,
   battlePerfSchema,
   connectionReportSchema,
@@ -109,6 +111,10 @@ import {
   BOT_LABELS,
   type BotDifficulty,
 } from "./bot.js";
+/** The result screen's Rematch, optionally with another fighter (bot matches). */
+const rematchSchema = z
+  .object({ character: characterSchema.optional() })
+  .strict();
 const botMatchSchema = identitySchema
   .extend({
     character: characterSchema,
@@ -184,6 +190,7 @@ import { TickClock } from "./tick-clock.js";
 import { z, ZodError } from "zod";
 import type { Request, Response, NextFunction } from "express";
 import {
+  AnnouncementPush,
   FriendPush,
   validDevice,
   webPushSender,
@@ -197,6 +204,8 @@ type Session = {
   socketId: string | null;
   expires: number;
 };
+/** Socket.IO's heartbeat (ms): a silent connection is gone after both. */
+export const HEARTBEAT = { interval: 10_000, timeout: 10_000 };
 /** When a socket counts as congested (see broadcast). */
 export const BACKPRESSURE = { bytes: 16 * 1024, messages: 4 };
 export function createArenaServer(
@@ -230,6 +239,17 @@ export function createArenaServer(
      * with the PUSH_VAPID_* keys, or none without them; null turns it off.
      */
     push?: PushSender | null;
+    /**
+     * This service's own public health address, asked now and then to see
+     * whether a deploy has put a newer server in front of this one
+     * (docs/server-updates.md). Defaults to RENDER_EXTERNAL_URL's
+     * /api/health on a live server (autoTick); none in tests.
+     */
+    publicHealthUrl?: string;
+    /** How often to ask it, in ms (15 s). */
+    supersedeEvery?: number;
+    /** How to ask it (fetch); tests pass their own. */
+    fetchHealth?: (url: string) => Promise<unknown>;
   } = {},
 ) {
   const connectionLog =
@@ -254,6 +274,32 @@ export function createArenaServer(
    * play on to the end, and no new ones start here.
    */
   let draining = false;
+  /** When the drain gives up (epoch ms), for the countdown players see. */
+  let drainDeadline = 0;
+  /**
+   * This process, among the servers a deploy runs side by side: /api/health
+   * says it, so a server can tell that the public address answers from
+   * another (a commit alone can't: a redeploy runs the same one).
+   */
+  const serverId = randomBytes(4).toString("hex");
+  /**
+   * A newer server answers the public address: Render moved new connections
+   * to it, and stops this one about two minutes later (docs/server-updates.md).
+   * Players connected here move over as soon as they're out of a match, and
+   * no new match starts here.
+   */
+  let superseded = false;
+  /**
+   * What players are told while a deploy replaces this server: move to the
+   * new one once out of a match, and, once Render has asked this one to
+   * stop, how long a match in progress still has (ms).
+   */
+  const updateNotice = () => ({
+    reconnect: true,
+    ...(draining
+      ? { draining: true, left: Math.max(0, drainDeadline - Date.now()) }
+      : {}),
+  });
   /** Notifications of friends' messages to players who are away (push.ts). */
   const pushSender =
     options.push === undefined
@@ -265,6 +311,11 @@ export function createArenaServer(
     pushSender && accounts.pushDevices
       ? new FriendPush(accounts.pushDevices, pushSender)
       : null;
+  /** Admins' announcements as notifications, to devices that want game news. */
+  const announcePush =
+    pushSender && accounts.pushDevices
+      ? new AnnouncementPush(accounts.pushDevices, pushSender)
+      : null;
   const fighterAppearance = new FighterAppearance(accounts);
   const portraitChoice = new PortraitChoice(accounts);
   app.use("/api", apiCors(clientOrigins()));
@@ -273,6 +324,14 @@ export function createArenaServer(
   const http = createServer(app);
   const io = new Server(http, {
     maxHttpBufferSize: 4096,
+    // A connection that goes quiet (an app frozen in the background, then
+    // swiped away; a phone that lost signal) is let go within 20 s rather
+    // than Socket.IO's default 45 s: until then friends saw the player
+    // online and a room showed their seat as live. The client closes the
+    // connection itself when it is hidden (background-exit.ts); this is for
+    // when it can't. A ping is a few bytes, so 10 s costs nothing.
+    pingInterval: HEARTBEAT.interval,
+    pingTimeout: HEARTBEAT.timeout,
     // The static site (CLIENT_ORIGIN) and the iPhone app (api-cors.ts).
     cors: { origin: [...clientOrigins()] },
   });
@@ -746,6 +805,9 @@ export function createArenaServer(
       }
     },
     connectionLog,
+    // An admin's announcement reaches every open game, signed in or not.
+    (event, payload) => io.emit(event, payload),
+    announcePush,
   );
   /** Signed-in players with a live connection, merged per account. */
   function listOnline(): OnlineList {
@@ -813,7 +875,7 @@ export function createArenaServer(
     return { players, guests, at: new Date().toISOString() };
   }
   app.get("/api/health", (_req, res) =>
-    res.json({ ok: true, rooms: rooms.size }),
+    res.json({ ok: true, rooms: rooms.size, server: serverId }),
   );
   app.use("/api", (_req, res) =>
     res.status(404).json({ error: "Unknown API endpoint." }),
@@ -1517,7 +1579,7 @@ export function createArenaServer(
   }
   io.on("connection", (socket) => {
     claimAccount(socket);
-    if (draining) socket.emit("server-update", { draining: true });
+    if (draining || superseded) socket.emit("server-update", updateNotice());
     void loadChatBlocks(socket);
     // Whether typed lines are on, so the chat box shows the right state.
     socket.emit("chat-config", { freeText: chat.freeText });
@@ -1555,10 +1617,15 @@ export function createArenaServer(
     };
     const fail = (cb: unknown, error: string) =>
       reply(cb, { ok: false, error });
-    /** Refuses a new match while a deploy replaces this server. */
+    /**
+     * Refuses a new match while a deploy replaces this server, and tells the
+     * player again to move to the new one (in case they missed it).
+     */
     const updating = (cb: unknown) => {
-      if (draining) fail(cb, DRAIN_MESSAGE);
-      return draining;
+      if (!draining && !superseded) return false;
+      fail(cb, draining ? DRAIN_MESSAGE : MOVE_MESSAGE);
+      socket.emit("server-update", updateNotice());
+      return true;
     };
     const attach = (
       arena: Arena,
@@ -2655,9 +2722,25 @@ export function createArenaServer(
           );
       }),
     );
-    socket.on("rematch", (_data: unknown, cb: unknown) =>
+    socket.on("rematch", (data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
         if (updating(cb)) return;
+        // A rematch against a bot may bring another fighter (the result
+        // screen's Change fighter). Only there: in PvP a pick is secret
+        // until the match starts (docs/hidden-picks.md), and the weekly
+        // arcade sets its own fighters.
+        const result = rematchSchema.safeParse(data ?? {});
+        if (!result.success) return fail(cb, "Choose a valid fighter.");
+        const fighter = result.data.character;
+        if (fighter) {
+          if (
+            a instanceof RaidArena ||
+            a instanceof ArcadeArena ||
+            !a.bots.size ||
+            a.players.length - a.bots.size !== 1
+          )
+            return fail(cb, "Change fighters in the lobby.");
+        }
         if (a instanceof RaidArena) {
           if (
             a.phase !== "finished" ||
@@ -2684,6 +2767,10 @@ export function createArenaServer(
               : "Both players must be connected for a rematch.",
           );
         const p = a.players.find((p) => p.id === id)!;
+        if (fighter && fighter !== p.character) {
+          p.flair = undefined;
+          p.character = fighter;
+        }
         p.ready = true;
         if (a.players.every((p) => p.ready)) a.start();
         reply(cb, { ok: true });
@@ -2796,8 +2883,11 @@ export function createArenaServer(
         };
       }
       if (channel === "room") {
+        // A seat, or a ringside seat (watching): watchers chat with the room.
         const session = getSession(socket.id);
-        const arena = session && rooms.get(session.code);
+        const arena = rooms.get(
+          session?.code ?? watchers.get(socket.id)?.code ?? "",
+        );
         if (!arena) return null;
         const owners = fighterAccounts.get(arena);
         const members: ChatMember[] = [];
@@ -2808,6 +2898,16 @@ export function createArenaServer(
           if (![...sessions.values()].some((s) => s.id === p.id)) continue;
           const team = arena instanceof RaidArena ? 0 : arena.teamOf(p);
           members.push(chatMember(accountId, p.name, team));
+        }
+        // Watchers sit on no side (chat.ts: they hear the players' emotes,
+        // and the players hear their emotes and phrases, never calls).
+        for (const [id, w] of watchers) {
+          if (w.code !== arena.code) continue;
+          const viewer = io.sockets.sockets.get(id)?.data.account as
+            Account | undefined;
+          if (!viewer || members.some((m) => m.accountId === viewer.id))
+            continue;
+          members.push({ ...chatMember(viewer.id, w.name), watcher: true });
         }
         return {
           channel,
@@ -3014,6 +3114,31 @@ export function createArenaServer(
         fail(cb, "Couldn't turn notifications on. Try again.");
       }
     });
+    // Game news (admins' announcements) on or off for this device
+    // (migration 20261122140000); only the player's own device.
+    socket.on("push-news", async (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !requirePlayer(cb)) return;
+      const d = data as { endpoint?: unknown; on?: unknown } | null;
+      if (
+        typeof d?.endpoint !== "string" ||
+        d.endpoint.length > 1000 ||
+        typeof d.on !== "boolean"
+      )
+        return fail(cb, "Nothing to change.");
+      if (!accounts.pushDevices?.setNews)
+        return fail(cb, "Game news isn't available right now.");
+      try {
+        const done = await accounts.pushDevices.setNews(
+          account()!.id,
+          d.endpoint,
+          d.on,
+        );
+        if (done) reply(cb, { ok: true });
+        else fail(cb, "Turn notifications on for this device first.");
+      } catch {
+        fail(cb, "Couldn't change game news. Try again.");
+      }
+    });
     socket.on("push-unsubscribe", async (data: unknown, cb: unknown) => {
       if (!allowed(5) || !account()) return;
       const endpoint = (data as { endpoint?: unknown } | null)?.endpoint;
@@ -3108,8 +3233,6 @@ export function createArenaServer(
       reply(cb, { ok: true, plaza: visitor.plaza, me: visitor.profile.id });
       const orbs = plaza.orbsFor(socket.id);
       if (orbs) socket.emit("plaza-orbs", orbs);
-      const wish = plaza.wishFor(socket.id);
-      if (wish) socket.emit("plaza-wish", wish);
       const token = socket.data.accessToken as string | undefined;
       if (token) void plazaAppearance.refresh(socket.id, token, true);
       if (token) void sendTreats(token);
@@ -3233,8 +3356,6 @@ export function createArenaServer(
       if (!token || treatPending) return fail(cb, "One moment…");
       if (!plaza.treatReady(socket.id, Date.now()))
         return fail(cb, "Wait a moment between treats.");
-      // Thrown at the fountain: a wish (where they stood when they threw).
-      const wishing = plaza.atFountain(socket.id);
       treatPending = true;
       try {
         // A fresh id per throw: a retry of this request can't take two treats.
@@ -3253,20 +3374,8 @@ export function createArenaServer(
             treats: r?.left ?? 0,
           });
         const thrown = plaza.treat(socket.id, r.treat);
-        if (thrown)
-          toPlaza(
-            copy,
-            "plaza-treat",
-            wishing ? { ...thrown, wish: true } : thrown,
-          );
-        reply(cb, {
-          ok: true,
-          treat: r.treat,
-          treats: r.left ?? 0,
-          ...(wishing ? { wish: true } : {}),
-        });
-        if (wishing)
-          for (const e of plaza.wish(socket.id, Date.now())) plazaEvent(e);
+        if (thrown) toPlaza(copy, "plaza-treat", thrown);
+        reply(cb, { ok: true, treat: r.treat, treats: r.left ?? 0 });
       } catch (error) {
         fail(
           cb,
@@ -3376,6 +3485,25 @@ export function createArenaServer(
           mode: a.mode,
           phase: a.phase,
           character: a.players.find((p) => p.id === id)?.character,
+        });
+      }),
+    );
+    socket.on("battle-art", (data: unknown) =>
+      withRoom(undefined, (a) => {
+        // A fighter's art found blank and loaded again (rig-health.ts in the
+        // client); a cap keeps a looping client quiet.
+        const sent = (socket.data.artReports ?? 0) as number;
+        if (sent >= 10) return;
+        const result = battleArtSchema.safeParse(data);
+        if (!result.success) return;
+        socket.data.artReports = sent + 1;
+        connectionLog("arena-art-blank", {
+          ...result.data,
+          account: account()?.id,
+          room: a.code,
+          mode: a.mode,
+          phase: a.phase,
+          ...(a instanceof RaidArena ? { boss: a.raid.boss } : {}),
         });
       }),
     );
@@ -3543,24 +3671,6 @@ export function createArenaServer(
       });
     plazaQueue.set(player, run);
   };
-  /** A full wish meter: pay each wisher once (the fill's ref) within the
-   * daily cap, in their Plaza queue, and tell them if they're still here. */
-  const payWish = (player: string, ref: string) => {
-    if (!accounts.recordWish) return;
-    const run = (plazaQueue.get(player) ?? Promise.resolve())
-      .then(() => accounts.recordWish!(player, ref))
-      .then((pay) => {
-        if (!pay?.paid) return;
-        for (const key of plaza.keys())
-          if (plaza.accountOf(key) === player)
-            io.sockets.sockets.get(key)?.emit("plaza-wish-paid", pay);
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (plazaQueue.get(player) === run) plazaQueue.delete(player);
-      });
-    plazaQueue.set(player, run);
-  };
   const toPlaza = (copy: number, event: string, data: unknown) => {
     for (const key of plaza.keys())
       if (plaza.plazaOf(key) === copy)
@@ -3575,9 +3685,6 @@ export function createArenaServer(
     else if (e.type === "fish")
       io.sockets.sockets.get(e.key)?.emit("plaza-fish", e.note);
     else if (e.type === "news") toPlaza(e.plaza, "plaza-news", e.news);
-    else if (e.type === "wish") toPlaza(e.plaza, "plaza-wish", e.wish);
-    else if (e.type === "wished")
-      for (const player of e.accounts) payWish(player, e.ref);
     else toPlaza(e.plaza, "plaza-orbs", e.orbs);
   };
   /** Move everyone in the Plaza, run the pitch and the orbs, send each player what is near. */
@@ -3628,6 +3735,43 @@ export function createArenaServer(
           for (const socket of io.sockets.sockets.values())
             if (socket.data.account) void refreshSocket(socket);
         }, 30000);
+  /** A newer server answers the public address (superseded, above). */
+  const supersede = (by: string) => {
+    if (superseded) return;
+    superseded = true;
+    connectionLog("arena-superseded", {
+      by,
+      busy: [...rooms.values()].filter(busyRoom).length,
+    });
+    io.emit("server-update", updateNotice());
+  };
+  const publicHealthUrl =
+    options.publicHealthUrl ??
+    (options.autoTick !== false && process.env.RENDER_EXTERNAL_URL
+      ? new URL("/api/health", process.env.RENDER_EXTERNAL_URL).href
+      : undefined);
+  const fetchHealth =
+    options.fetchHealth ??
+    (async (url: string) =>
+      (
+        await fetch(url, {
+          headers: { "cache-control": "no-cache" },
+          signal: AbortSignal.timeout(5000),
+        })
+      ).json());
+  /** Asks the public address which server answers it now. */
+  const checkSuperseded = async () => {
+    if (!publicHealthUrl || superseded) return;
+    try {
+      const by = supersededBy(await fetchHealth(publicHealthUrl), serverId);
+      if (by) supersede(by);
+    } catch {
+      // Unreachable for a moment (or a deploy mid-switch): ask again later.
+    }
+  };
+  const supersedeTimer = publicHealthUrl
+    ? setInterval(() => void checkSuperseded(), options.supersedeEvery ?? 15000)
+    : undefined;
   return {
     app,
     http,
@@ -3652,7 +3796,8 @@ export function createArenaServer(
     drain: async (deadline: number, every?: number) => {
       if (!draining) {
         draining = true;
-        io.emit("server-update", { draining: true });
+        drainDeadline = deadline;
+        io.emit("server-update", updateNotice());
       }
       const busy = () => [...rooms.values()].filter(busyRoom).length;
       connectionLog("arena-drain", { busy: busy(), saving: inflight.size });
@@ -3660,7 +3805,18 @@ export function createArenaServer(
       connectionLog("arena-drain-done", result);
       return result;
     },
+    /** This process's id, as /api/health says it. */
+    serverId,
+    /** Whether a newer server answers the public address (superseded). */
+    get superseded() {
+      return superseded;
+    },
+    checkSuperseded,
     close: async () => {
+      // A drain that ran out of time: the players still in a match hear why
+      // they are cut off, not just that the connection went (main.ts).
+      if (draining) io.emit("server-update", { closing: true });
+      if (supersedeTimer) clearInterval(supersedeTimer);
       timer?.stop();
       for (const check of partyAwayTimers) clearTimeout(check);
       if (plazaTimer) clearInterval(plazaTimer);

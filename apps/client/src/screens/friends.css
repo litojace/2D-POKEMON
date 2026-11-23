@@ -91,6 +91,10 @@
   min-height: 60px;
   padding-left: 14px;
 }
+/* A friend's whole row opens its options (friends.ts): it looks tappable. */
+.fr-row > .ui-row:has(> .ui-row-acts > [data-friend-menu]) {
+  cursor: pointer;
+}
 .fr-row.is-offline > .ui-row {
   background: #121a3399;
 }

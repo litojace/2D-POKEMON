@@ -59,12 +59,23 @@ export interface PlazaTreat {
   treat: string;
   x: number;
   y: number;
-  /** Thrown into the fountain: a wish (PLAZA_WISH). */
-  wish?: true;
 }
 
 export const PLAZA_SQUARE = { x: 1350, y: 900, rx: 372, ry: 246 } as const;
-export const PLAZA_FOUNTAIN = { x: 1350, y: 892, rx: 118, ry: 74 } as const;
+/**
+ * The fountain's basin as drawn (plaza-scene.ts drawFountain): its
+ * rim, an ellipse round (x, y), and a wall `wall` px tall below it, so its
+ * foot on the ground is the same ellipse `wall` px lower. Bodies keep out of
+ * both (PLAZA_OBSTACLES[0]); before, a smaller ellipse let feet stand on the
+ * rim and in the water.
+ */
+export const PLAZA_FOUNTAIN = {
+  x: 1350,
+  y: 892,
+  rx: 126,
+  ry: 80,
+  wall: 24,
+} as const;
 export const PLAZA_STAGE = { x0: 1140, x1: 1560, y0: 340, y1: 450 } as const;
 export const PLAZA_WALK = { x0: 1300, x1: 1400, y0: 450, y1: 612 } as const;
 export const PLAZA_LED = { x0: 1130, x1: 1570, y0: 150, y1: 300 } as const;
@@ -85,6 +96,19 @@ export const PLAZA_TRACK = {
   ri: [262, 168],
 } as const;
 export const PLAZA_POND = { x: 2210, y: 1450, rx: 220, ry: 118 } as const;
+/**
+ * The fishing dock: planks from the pond's west bank out over the water
+ * (drawn by plaza-fishing.ts). Feet may stand on it (`walk`, plazaCollide),
+ * and Fish walks you to `stand`, near its end, facing the water.
+ */
+export const PLAZA_DOCK = {
+  x0: 1966,
+  x1: 2072,
+  y0: 1398,
+  y1: 1436,
+  walk: { x1: 2056, y0: 1408, y1: 1432 },
+  stand: { x: 2038, y: 1427 },
+} as const;
 export const PLAZA_GATE = { x: 1350, y: 1600 } as const;
 export const PLAZA_PADS: readonly (readonly [number, number])[] = [
   [1145, 765],
@@ -241,7 +265,6 @@ export const PLAZA_HOUSES: readonly {
       sd: 2,
       w: 140,
       windows: 1,
-      sign: { t: "STUDIO", bg: "#2a1f4c" },
     },
   },
   {
@@ -259,7 +282,6 @@ export const PLAZA_HOUSES: readonly {
       sd: 4,
       w: 150,
       windows: 1,
-      sign: { t: "BAKERY", bg: "#7a3a1a" },
     },
   },
   {
@@ -630,17 +652,6 @@ export const PLAZA_BENCHES: readonly { x: number; y: number }[] = [
   { x: 1710, y: 680 },
 ];
 /**
- * Signposts where a path leaves another: an arrow plank pointing along the
- * branch (dir 1: east, -1: west) with its words. The fishing pond's stands
- * at the fork off the main path, on the corner north of the pond path.
- */
-export const PLAZA_SIGNPOSTS: readonly {
-  x: number;
-  y: number;
-  text: string;
-  dir: 1 | -1;
-}[] = [{ x: 1468, y: 1352, text: "FISHING", dir: 1 }];
-/**
  * Things by the fishing dock (drawn by the client: gfx rodRack, bucket,
  * tackleBox, reeds, rowboat). `r`: a footprint nobody walks through (reeds stand on
  * the pond's rim, which nobody walks on anyway).
@@ -648,7 +659,15 @@ export const PLAZA_SIGNPOSTS: readonly {
 export const PLAZA_DECOR: readonly {
   x: number;
   y: number;
-  kind: "rodrack" | "bucket" | "tackle" | "reeds" | "rowboat";
+  kind:
+    | "rodrack"
+    | "bucket"
+    | "tackle"
+    | "reeds"
+    | "rowboat"
+    | "chalkboard"
+    | "parasol"
+    | "pot";
   r: number;
   /** Squashes the footprint (a long thing seen at a slant). */
   sy?: number;
@@ -661,21 +680,31 @@ export const PLAZA_DECOR: readonly {
   { x: 1992, y: 1520, kind: "reeds", r: 0, seed: 1 },
   { x: 2036, y: 1556, kind: "reeds", r: 0, seed: 2 },
   { x: 1996, y: 1350, kind: "reeds", r: 0, seed: 3 },
+  // Volt Boba: its chalkboard (what it gives, for free) and a café table in
+  // the shade, south of the truck, just off the paths.
+  // (Wider since its board grew to fit its words: its legs stand ±30 px.)
+  { x: 1790, y: 614, kind: "chalkboard", r: 22, sy: 1.6 },
+  { x: 1885, y: 630, kind: "parasol", r: 22, sy: 1.6 },
+  // A pot of flowers either side of each house's door (where nobody can
+  // stand: the house keeps everyone a step away).
+  ...PLAZA_HOUSES.flatMap((h, i) =>
+    [-1, 1].map((side) => ({
+      x: h.x + side * 40,
+      y: h.y + 6,
+      kind: "pot" as const,
+      r: 0,
+      seed: i * 2 + (side > 0 ? 1 : 0),
+    })),
+  ),
 ];
 const SCATTER = scatter();
-/** Benches, lamps and signposts, as round footprints scattered scenery keeps clear of. */
+/** Benches, decor and lamps, as round footprints scattered scenery keeps clear of. */
 const FIXTURES = [
   ...PLAZA_BENCHES.map((b) => ({ x: b.x, y: b.y, size: 100 })),
-  // A signpost's plank stands above and beside its post: keep it in the clear.
   ...PLAZA_DECOR.map((d) => ({
     x: d.x,
     y: d.y,
     size: Math.max(70, d.r * 2 + 40),
-  })),
-  ...PLAZA_SIGNPOSTS.map((s) => ({
-    x: s.x + s.dir * 10,
-    y: s.y - 40,
-    size: 150,
   })),
   ...PLAZA_LAMPS.map((l) => ({ x: l.x, y: l.y, size: 24 })),
 ];
@@ -698,10 +727,23 @@ export interface PlazaObstacle {
   sy?: number;
 }
 export const PLAZA_OBSTACLES: readonly PlazaObstacle[] = [
-  { x: PLAZA_FOUNTAIN.x, y: PLAZA_FOUNTAIN.y, r: 100, sy: 1.6 },
+  // The basin's rim and its foot (PLAZA_FOUNTAIN): an ellipse from the rim's
+  // far edge to the wall's near foot, a few px clear all round.
+  (() => {
+    const F = PLAZA_FOUNTAIN,
+      top = F.y - F.ry - 4,
+      bottom = F.y + F.wall + F.ry + 4,
+      rx = F.rx + 6,
+      ry = (bottom - top) / 2;
+    return {
+      x: F.x,
+      y: (top + bottom) / 2,
+      r: rx - PLAZA.radius,
+      sy: rx / ry,
+    };
+  })(),
   ...PLAZA_TREES.map((t) => ({ x: t.x, y: t.y, r: 22 })),
   ...PLAZA_LAMPS.map((l) => ({ x: l.x, y: l.y, r: 9 })),
-  ...PLAZA_SIGNPOSTS.map((p) => ({ x: p.x, y: p.y, r: 8 })),
   ...PLAZA_DECOR.filter((d) => d.r).map((d) => ({
     x: d.x,
     y: d.y - 2,
@@ -728,9 +770,13 @@ export function plazaCollide(b: { x: number; y: number }) {
       dy = (b.y - o.y) * sy,
       d = Math.hypot(dx, dy),
       m = o.r + R;
-    if (d < m && d > 0) {
-      b.x = o.x + (dx / d) * m;
-      b.y = o.y + ((dy / d) * m) / sy;
+    if (d < m) {
+      // Right on its centre: out the front (no way is better than another).
+      if (d === 0) b.y = o.y + m / sy;
+      else {
+        b.x = o.x + (dx / d) * m;
+        b.y = o.y + ((dy / d) * m) / sy;
+      }
     }
   }
   if (
@@ -746,6 +792,14 @@ export function plazaCollide(b: { x: number; y: number }) {
   if (b.y > PLAZA_GATE.y + 30) b.y = PLAZA_GATE.y + 30;
   const P = PLAZA_POND;
   if (((b.x - P.x) / P.rx) ** 2 + ((b.y - P.y) / P.ry) ** 2 < 1) {
+    // On the dock (or stepping off its sides): kept on its planks.
+    const D = PLAZA_DOCK,
+      W = D.walk;
+    if (b.x <= W.x1 + 24 && b.y >= W.y0 - 24 && b.y <= W.y1 + 24) {
+      b.x = Math.min(b.x, W.x1);
+      b.y = Math.max(W.y0, Math.min(W.y1, b.y));
+      return b;
+    }
     const a = Math.atan2((b.y - P.y) / P.ry, (b.x - P.x) / P.rx);
     b.x = P.x + Math.cos(a) * P.rx;
     b.y = P.y + Math.sin(a) * P.ry;
@@ -1134,75 +1188,18 @@ export function orbHeight(ms: number) {
   return Math.max(0, ORB_SHOWER.height - 0.5 * ORB_SHOWER.gravity * t * t);
 }
 
-/* ---------- Wishing fountain: treats thrown at the fountain fill a shared
-   meter per Plaza copy; a full meter sets off fireworks and pays everyone who
-   wished (the database's arena_plaza_wish(), migration
-   20261120130000_plaza_wishing_fountain) ---------- */
-export const PLAZA_WISH = {
-  /** A treat thrown inside this ellipse round the fountain's centre is a wish (px). */
-  reach: { rx: 215, ry: 150 },
-  /** The server allows this much more (px), for lag. */
-  slack: 40,
-  /**
-   * Wishes to fill the meter: perPlayer for each player in the copy, between
-   * min and max, fixed by the fill's first wish. With treatsDaily 10, three or
-   * four players fill it with two treats each (a few minutes at the fountain);
-   * two need three each, and someone alone six (once a day): it pays best
-   * together.
-   */
-  perPlayer: 2,
-  min: 6,
-  max: 24,
-  /** A meter nobody has added to for this long empties (ms). */
-  idleMs: 10 * 60_000,
-  /** The fireworks over the square (ms). */
-  showMs: 5000,
-  /**
-   * Shop coins for each wisher in a fill (a PvP win's 15), at most perDay
-   * paid fills a Pacific day: 30 a day on top of the Plaza quests' 80.
-   */
-  coins: 15,
-  perDay: 2,
-} as const;
-/** Wishes a copy of `players` players needs to fill the meter. */
-export function wishTarget(players: number) {
-  const n = Math.ceil(Math.max(1, players | 0) * PLAZA_WISH.perPlayer);
-  return Math.max(PLAZA_WISH.min, Math.min(PLAZA_WISH.max, n));
-}
-/** Standing close enough to the fountain to throw a treat in (slack for lag). */
-export function atFountain(x: number, y: number, slack = 0) {
-  const dx = (x - PLAZA_FOUNTAIN.x) / (PLAZA_WISH.reach.rx + slack),
-    dy = (y - PLAZA_FOUNTAIN.y) / (PLAZA_WISH.reach.ry + slack);
-  return dx * dx + dy * dy <= 1;
-}
-/** A copy's wish meter, sent to everyone in it when it changes. */
-export interface PlazaWish {
-  /** Wishes so far, and how many fill it (0 wishes: the browser uses wishTarget). */
-  n: number;
-  target: number;
-  /** Fireworks: when they start (server ms) and their pattern's seed. */
-  show?: { at: number; seed: number };
-}
-/** What arena_plaza_wish answers for one wisher of a fill. */
-export interface PlazaWishPay {
-  /** Paid now (false: this fill was paid already, or today's cap is reached). */
-  paid: boolean;
-  /** Coins paid now (0 when not paid). */
-  coins: number;
-  /** Paid fills today, after this one. */
-  today: number;
-}
-
 /* ---------- Plaza today: daily quests paid in shop coins (the database's
    arena_plaza_quests(), migration 20261120120000_raise_plaza_quest_coins) ---------- */
 export const PLAZA_QUESTS = [
-  { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 20 },
+  // An even 100 coins a day, weighted by effort (migration
+  // 20261121180000_plaza_quests_hundred, docs/plaza-economy.md).
+  { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 15 },
   { id: "lap", text: "Run a lap in under 30 s", max: 1, coins: 20 },
-  { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 15 },
-  { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 15 },
-  { id: "photo", text: "Use the Photo Spot", max: 1, coins: 10 },
+  { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 10 },
+  { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 20 },
+  { id: "photo", text: "Use the Photo Spot", max: 1, coins: 5 },
   // Migration 20261120180000_plaza_fishing.
-  { id: "fish", text: "Catch 10 fish", max: 10, coins: 25 },
+  { id: "fish", text: "Catch 10 fish", max: 10, coins: 30 },
 ] as const;
 export type PlazaQuestId = (typeof PLAZA_QUESTS)[number]["id"];
 /** A lap under this time completes the lap quest. */
@@ -1229,12 +1226,14 @@ export const PLAZA_SPOTS = [
     icon: "boba",
   },
   {
+    // The Plaza map board (it used to be an "Event board" that only opened
+    // the quest list already on screen).
     id: "board",
     x: PLAZA_BOARD.x,
     y: PLAZA_BOARD.y + 30,
     r: 100,
-    label: "Event board",
-    icon: "clipboard",
+    label: "Plaza map",
+    icon: "map",
   },
   {
     id: "leader",
@@ -1255,6 +1254,106 @@ export const PLAZA_SPOTS = [
   },
 ] as const;
 export type PlazaSpotId = (typeof PLAZA_SPOTS)[number]["id"];
+/* ---------- places on the Plaza map ---------- */
+/**
+ * What the Plaza map shows and where its Go takes you: each place's name,
+ * icon (a hub icon), where you walk to (on open ground, on or by a path),
+ * and the daily quests done there (PLAZA_QUESTS ids), so the map and the
+ * quest list can send a player straight to them. New places and quests are
+ * data here, not branches in the screen.
+ */
+export interface PlazaPlace {
+  id: string;
+  name: string;
+  /** One short line on the map card. */
+  blurb: string;
+  icon: string;
+  x: number;
+  y: number;
+  quests: readonly string[];
+  /** Which side of its pin the map writes its name (default: centred). */
+  label?: "left" | "right";
+}
+export const PLAZA_PLACES: readonly PlazaPlace[] = [
+  {
+    id: "fountain",
+    name: "Fountain",
+    blurb: "Toss treats, catch orbs",
+    icon: "sparkle",
+    x: PLAZA_SQUARE.x,
+    y: PLAZA_FOUNTAIN.y + 120,
+    quests: ["orbs"],
+  },
+  {
+    id: "runway",
+    name: "Runway",
+    blurb: "Show off your skin, collect cheers",
+    icon: "star",
+    x: PLAZA_SQUARE.x,
+    y: PLAZA_WALK.y1 - 40,
+    quests: ["cheers"],
+  },
+  {
+    id: "photo",
+    name: "Photo Spot",
+    blurb: "Take a photo for your album",
+    icon: "camera",
+    x: PLAZA_PHOTO.x,
+    y: PLAZA_PHOTO.y + 40,
+    quests: ["photo"],
+  },
+  {
+    id: "cafe",
+    name: "Volt Boba",
+    blurb: "A free drink: 30 s of speed",
+    icon: "boba",
+    x: PLAZA_CAFE.x - 30,
+    y: PLAZA_CAFE.y + 80,
+    quests: [],
+  },
+  {
+    id: "pitch",
+    name: "Orb Ball pitch",
+    blurb: "Kick the ball into a goal",
+    icon: "ball",
+    x: (PLAZA_PITCH.x0 + PLAZA_PITCH.x1) / 2,
+    y: (PLAZA_PITCH.y0 + PLAZA_PITCH.y1) / 2 + 60,
+    quests: ["goal"],
+  },
+  {
+    id: "track",
+    name: "Dash Track",
+    blurb: "Run a lap, jump the hurdles",
+    icon: "flag",
+    // The start line: the top of the lane.
+    x: PLAZA_TRACK.cx + 40,
+    y: PLAZA_TRACK.cy - (PLAZA_TRACK.ro[1] + PLAZA_TRACK.ri[1]) / 2,
+    quests: ["lap"],
+    // Clear of the TOP DASH board's name, just up and to the left.
+    label: "right",
+  },
+  {
+    id: "leader",
+    name: "TOP DASH board",
+    blurb: "This week's fastest laps",
+    icon: "trophy",
+    x: PLAZA_LEADER.x + 10,
+    y: PLAZA_LEADER.y + 40,
+    quests: [],
+  },
+  {
+    id: "pond",
+    name: "Fishing pond",
+    blurb: "Cast a line, fill the Fish book",
+    icon: "fish",
+    x: PLAZA_POND.x - PLAZA_POND.rx - 40,
+    y: PLAZA_POND.y - 40,
+    quests: ["fish"],
+  },
+];
+/** The place where a daily quest is done. */
+export const plazaPlaceOf = (quest: string) =>
+  PLAZA_PLACES.find((p) => p.quests.includes(quest));
 /** The spot within reach of (x, y), if any (the server checks reach with a little slack). */
 export function plazaSpotAt(x: number, y: number, slack = 0) {
   return PLAZA_SPOTS.find((s) => Math.hypot(x - s.x, y - s.y) < s.r + slack);
@@ -1281,11 +1380,11 @@ export const PLAZA_FISHING = {
   reachSlack: 40,
   /** The most catches that count per Pacific day (toward the fish quest). */
   perDay: 30,
-  /** Where the bobber lands: in open water (clear of the lily pads), in
-   * front of the spot. */
+  /** Where the bobber lands: out near the pond's middle, in open water
+   * clear of the lily pads and the ducks' rounds (plaza-scene.ts). */
   bobber: {
-    x: PLAZA_POND.x - PLAZA_POND.rx * 0.64,
-    y: PLAZA_POND.y + 18,
+    x: PLAZA_POND.x - 25,
+    y: PLAZA_POND.y + 4,
   },
 } as const;
 /** How common each rarity is (relative weight per fish) and its colour. */
@@ -1334,6 +1433,10 @@ export const PLAZA_FISH_SHAPES = [
   "angel",
   "lantern",
   "sturgeon",
+  "trout",
+  "puffer",
+  "ray",
+  "marlin",
 ] as const;
 export type PlazaFishShape = (typeof PLAZA_FISH_SHAPES)[number];
 /** Markings over the body. */
@@ -1386,6 +1489,48 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     mark: "bars",
   },
   {
+    id: "volt-shiner",
+    name: "Volt Shiner",
+    element: "Electric",
+    rarity: "common",
+    color: "#ffd84a",
+    fin: "#5fb3ff",
+    shape: "trout",
+    mark: "lateral",
+  },
+  {
+    id: "dawn-dace",
+    name: "Dawn Dace",
+    element: "Light",
+    rarity: "common",
+    time: "day",
+    color: "#ffc98a",
+    fin: "#fff1b0",
+    shape: "minnow",
+    mark: "scales",
+  },
+  {
+    id: "dusk-loach",
+    name: "Dusk Loach",
+    element: "Shadow",
+    rarity: "common",
+    time: "night",
+    color: "#6b5a8a",
+    fin: "#b99bff",
+    shape: "eel",
+    mark: "bars",
+  },
+  {
+    id: "dream-darter",
+    name: "Dream Darter",
+    element: "Psychic",
+    rarity: "common",
+    color: "#e48bd8",
+    fin: "#ffd0f4",
+    shape: "perch",
+    mark: "spots",
+  },
+  {
     id: "zap-eel",
     name: "Zap Eel",
     element: "Electric",
@@ -1416,6 +1561,47 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     fin: "#a48bd6",
     shape: "catfish",
     mark: "spots",
+  },
+  {
+    id: "bubble-puffer",
+    name: "Bubble Puffer",
+    element: "Water",
+    rarity: "uncommon",
+    color: "#7fd3ff",
+    fin: "#ffffff",
+    shape: "puffer",
+    mark: "spots",
+  },
+  {
+    id: "rust-trout",
+    name: "Rust Trout",
+    element: "Earth",
+    rarity: "uncommon",
+    color: "#c9774a",
+    fin: "#ffcf8a",
+    shape: "trout",
+    mark: "spots",
+  },
+  {
+    id: "thorn-puffer",
+    name: "Thorn Puffer",
+    element: "Nature",
+    rarity: "uncommon",
+    color: "#7fcf5a",
+    fin: "#e8ff9a",
+    shape: "puffer",
+    mark: "bars",
+  },
+  {
+    id: "glow-tetra",
+    name: "Glow Tetra",
+    element: "Aura",
+    rarity: "uncommon",
+    time: "night",
+    color: "#5fe0c8",
+    fin: "#fff5a0",
+    shape: "guppy",
+    mark: "lateral",
   },
   {
     id: "mindfin-betta",
@@ -1449,6 +1635,27 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     mark: "sparkle",
   },
   {
+    id: "tidal-ray",
+    name: "Tidal Ray",
+    element: "Water",
+    rarity: "rare",
+    color: "#3f8fd0",
+    fin: "#bfe8ff",
+    shape: "ray",
+    mark: "spots",
+  },
+  {
+    id: "storm-ray",
+    name: "Storm Ray",
+    element: "Electric",
+    rarity: "rare",
+    time: "night",
+    color: "#2e3a7a",
+    fin: "#ffe25a",
+    shape: "ray",
+    mark: "zigzag",
+  },
+  {
     id: "starlight-sturgeon",
     name: "Starlight Sturgeon",
     element: "Light",
@@ -1457,6 +1664,17 @@ export const PLAZA_FISH: readonly PlazaFish[] = [
     color: "#1e2a5a",
     fin: "#fff6c8",
     shape: "sturgeon",
+    mark: "sparkle",
+  },
+  {
+    id: "solar-marlin",
+    name: "Solar Marlin",
+    element: "Fire",
+    rarity: "legendary",
+    time: "day",
+    color: "#ff7a2e",
+    fin: "#ffd65b",
+    shape: "marlin",
     mark: "sparkle",
   },
 ];
@@ -1707,8 +1925,15 @@ export interface PlazaState {
   /** Server time (ms), so the browser can line up the Orb Shower and laps. */
   now: number;
   walkers: PlazaWalker[];
-  /** The ball, when the pitch is in view: [x, y, z]. */
-  ball?: [number, number, number];
+  /**
+   * The ball, when the pitch is in view: [x, y, z], then its velocity
+   * [vx, vy, vz] (px/s) and the seconds left before it returns to the centre
+   * after a goal (0 in play), so the browser can run it on in your own
+   * timeline (plaza-net.ts). Older servers send only the first three.
+   */
+  ball?:
+    | [number, number, number]
+    | [number, number, number, number, number, number, number];
   score: [number, number];
   /** Runway cheers you've had this visit. */
   claps: number;
@@ -1751,8 +1976,7 @@ export interface PlazaProgress {
 export type PlazaNews =
   | { kind: "goal"; id: number; name: string; side: 0 | 1 }
   | { kind: "lap"; id: number; name: string; ms: number }
-  | { kind: "runway"; id: number; name: string }
-  | { kind: "wish" };
+  | { kind: "runway"; id: number; name: string };
 /** What the game server reports to the database (arena_plaza_record). */
 export interface PlazaRecord {
   player: string;

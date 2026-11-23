@@ -10,6 +10,23 @@
 export const DRAIN_MESSAGE =
   "The server is updating. New matches open again in about a minute.";
 
+/**
+ * What a player reads when a new match is refused because a newer server
+ * already answers: their game moves to it at once (main.ts "server-update").
+ */
+export const MOVE_MESSAGE =
+  "A new version of the game is ready. Moving you to it…";
+
+/**
+ * The id of a newer server answering this service's public address, from
+ * its /api/health reply, or undefined when the reply is this server's own,
+ * comes from a server that doesn't say (an older build), or isn't one.
+ */
+export function supersededBy(reply: unknown, own: string) {
+  const id = (reply as { server?: unknown } | null)?.server;
+  return typeof id === "string" && id !== own ? id : undefined;
+}
+
 /** A room whose players would lose a live match if the process ended. */
 export function busyRoom(room: { phase: string; practice?: unknown }) {
   // Practice runs with no end; lobbies and results lose nothing that matters.

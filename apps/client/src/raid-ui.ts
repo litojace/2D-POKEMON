@@ -165,7 +165,7 @@ export function renderRaidUI(
   if (state.phase === "playing") {
     overlay.classList.remove("is-rites");
     document.body.classList.remove("raid-rites-open");
-    overlay.classList.remove("is-countdown");
+    overlay.classList.remove("is-countdown", "is-sheet");
     setOverlayMarkup(overlay, "");
     overlay.style.pointerEvents = "none";
     const banner = document.getElementById("spectate")!;
@@ -290,13 +290,18 @@ export function renderRaidUI(
   // whole screen, one big number, no card (style.css, .is-countdown). Marked
   // with the markup, in the same step (main.ts says why).
   overlay.classList.toggle("is-countdown", state.phase === "countdown");
+  // The briefing ("I'm ready") and the results take the whole screen in the
+  // PvP Reveal's style, raids and the Spire alike (match-sheet.css): every
+  // mode opens and ends the same way (owner, 22 Nov 2026).
+  overlay.classList.toggle("is-sheet", shared);
+  overlay.classList.remove("is-break"); // (PvP's, main.ts)
   document.body.classList.toggle("raid-rites-open", rites);
   const replaced = setOverlayMarkup(
     overlay,
     rites
       ? (spire?.screen ?? ritesScreen(state, me, kicker))
       : shared
-        ? `<div class="ui rc-card ${state.phase === "finished" ? "is-results" : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">${escape(kicker)}</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
+        ? `<div class="ui rc-card ${state.phase === "finished" ? `is-results ${r.result === "victory" ? "is-victory" : "is-defeat"}` : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">${escape(kicker)}</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
         : `<div class="overlay-card raid-overlay${state.phase === "intermission" ? " raid-draft action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">${escape(kicker)}</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
     undefined,
     // Picking a rite redraws the same panel: it doesn't pop in again.
@@ -355,6 +360,23 @@ export function renderRaidUI(
   if (lobby) lobby.onclick = () => void request("lobby");
 }
 /**
+ * Watching a raid: the boss's bar and cue, and every raider's health in the
+ * party list, as a raider sees them but for no one in particular (cues name
+ * whoever is targeted instead of saying "you"). The overlays between fights
+ * are the watcher's own (main.ts, renderWatchOverlay).
+ */
+export function renderRaidWatchHud(state: Snapshot) {
+  const nobody = { id: "" } as Fighter;
+  let hud = document.getElementById("raid-hud");
+  if (!hud) {
+    hud = document.createElement("div");
+    hud.id = "raid-hud";
+    document.getElementById("battle")!.prepend(hud);
+  }
+  paintRaidHud(hud, raidHudView(state, nobody));
+  paintRaidParty(state, nobody);
+}
+/**
  * The rites choice over the whole screen (screens/raid-rites.css): the
  * title with a pip per pick, the seconds as one big number, six rite tiles,
  * and the rite details and the team's rites as links under them.
@@ -388,6 +410,7 @@ function drawVent(
   );
   g.fillStyle(color, 1).fillTriangle(x - 7, y + 6, x, y - 8, x + 7, y + 6);
 }
+export type DrawnAt = (id: string) => { x: number; y: number } | undefined;
 export function drawRaidArena(
   g: Phaser.GameObjects.Graphics,
   state: Snapshot,
@@ -399,7 +422,15 @@ export function drawRaidArena(
    * lanterns, braziers, mirrors) and for bosses with several bodies. On the
    * Coliseum court (`court`) broken pillars are rubble drawn by the scene.
    */
-  layers?: { boss: Phaser.GameObjects.Graphics; at: LayerAt; court: boolean },
+  layers?: {
+    boss: Phaser.GameObjects.Graphics;
+    at: LayerAt;
+    court: boolean;
+    /** Where each raider is drawn (your own predicted, the others
+     * smoothed): what follows a raider (curses) goes there, not to the
+     * server's last position, which runs ~60 px behind you as you move. */
+    drawnAt?: DrawnAt;
+  },
 ) {
   const r = state.raid;
   if (!r) return;
@@ -426,7 +457,7 @@ export function drawRaidArena(
   if (tide) drawLagoon(g, state, reduced, clock);
   // (The Spire's wave and elite floors in Inkpurr's zone: its court, no yard.)
   if (gloom && (!r.spire || r.spire.kind === "boss"))
-    drawLanternYard(g, state, reduced, at, clock);
+    drawLanternYard(g, state, reduced, at, clock, layers?.drawnAt);
   for (const w of r.warnings) {
     if (r.boss === "storm-twins" && drawStormWarning(g, state, w)) continue;
     if (r.boss === "emberwing" && drawEmberwingWarning(g, state, w)) continue;

@@ -170,7 +170,7 @@ const ROSTER: Record<
     role: "Support",
     basic: ["Sunseed", 335],
     skills: [
-      ["Yuzu Toss", 8],
+      ["Yuzu Toss", 7],
       ["Warm Spring", 12],
       ["Daybreak", 15],
       ["Sanctuary", 20],
@@ -219,7 +219,7 @@ const ROSTER: Record<
     basic: ["Scale Swipe", 450],
     skills: [
       ["Tongue Grapple", 8],
-      ["Scale Shrapnel", 9],
+      ["Scale Shrapnel", 11],
       ["Tunnel", 14],
       ["Leaf Storm", 20],
     ],

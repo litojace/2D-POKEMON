@@ -25,6 +25,13 @@ export interface PushStore {
   save(player: string, device: PushDevice): Promise<void>;
   remove(endpoint: string): Promise<void>;
   list(player: string): Promise<PushDevice[]>;
+  /** Game news on or off for a player's own device (migration
+   *  20261122140000); false when it isn't theirs. */
+  setNews?(player: string, endpoint: string, on: boolean): Promise<boolean>;
+  /** Devices that want game news, in endpoint order after `after`. */
+  newsPage?(after: string, limit: number): Promise<PushDevice[]>;
+  /** How many devices want game news. */
+  newsCount?(): Promise<number>;
 }
 export type PushResult = "sent" | "gone" | "failed";
 export interface PushSender {
@@ -180,4 +187,88 @@ export function webPushSender(
       }
     },
   };
+}
+
+/** An admin's announcement as a notification (sw.ts shows it). */
+export interface AnnouncementPushPayload {
+  kind: "announcement";
+  title: string;
+  body: string;
+  /** One per announcement: sending it again replaces it. */
+  tag: string;
+}
+const TONE_TITLES: Record<string, string> = {
+  info: "Element Arena",
+  event: "Element Arena · Event",
+  warning: "Element Arena · Heads up",
+};
+export function announcementPayload(a: {
+  id: number;
+  message: string;
+  tone: string;
+}): AnnouncementPushPayload {
+  const message = a.message.trim();
+  return {
+    kind: "announcement",
+    title: TONE_TITLES[a.tone] ?? "Element Arena",
+    // Phones show about two lines; the game shows it in full.
+    body: message.length > 180 ? `${message.slice(0, 179)}…` : message,
+    tag: `announcement-${a.id}`,
+  };
+}
+export interface AnnouncementPushResult {
+  sent: number;
+  gone: number;
+  failed: number;
+}
+
+/**
+ * Send an announcement to every device that wants game news: a page of
+ * devices at a time, a few at once, forgetting devices whose push service
+ * says they're gone. One send per announcement id while the server runs.
+ */
+export class AnnouncementPush {
+  private sentIds = new Set<number>();
+  constructor(
+    private store: PushStore,
+    private sender: PushSender,
+    private page = 500,
+    private parallel = 20,
+  ) {}
+  /** Whether the store can list devices for news (the migration ran). */
+  get available() {
+    return !!this.store.newsPage && !!this.store.newsCount;
+  }
+  async reach() {
+    return this.store.newsCount ? await this.store.newsCount() : 0;
+  }
+  async send(a: {
+    id: number;
+    message: string;
+    tone: string;
+  }): Promise<AnnouncementPushResult> {
+    const result = { sent: 0, gone: 0, failed: 0 };
+    if (!this.store.newsPage || this.sentIds.has(a.id)) return result;
+    this.sentIds.add(a.id);
+    const payload = JSON.stringify(announcementPayload(a));
+    let after = "";
+    for (;;) {
+      const devices = await this.store.newsPage(after, this.page);
+      if (!devices.length) break;
+      for (let i = 0; i < devices.length; i += this.parallel)
+        await Promise.all(
+          devices.slice(i, i + this.parallel).map(async (d) => {
+            const r = await this.sender.send(d, payload);
+            if (r === "sent") result.sent++;
+            else if (r === "gone") {
+              result.gone++;
+              await this.store.remove(d.endpoint).catch(() => {});
+            } else result.failed++;
+          }),
+        );
+      after = devices[devices.length - 1].endpoint;
+      if (devices.length < this.page) break;
+    }
+    return result;
+  }
 }

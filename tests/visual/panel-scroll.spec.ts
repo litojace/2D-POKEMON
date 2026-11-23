@@ -478,7 +478,9 @@ for (const size of SIZES)
       page.setDefaultTimeout(10_000);
       const errors = await openPlaza(page);
       if (size.island) await setInsets(page, ISLAND);
-      await page.click("#pz-fish-btn");
+      // B opens the Fish book (the map's button for it went).
+      await page.locator(".plaza-layer").focus();
+      await page.keyboard.press("b");
       await expect(page.locator("#pz-fishbook")).toBeVisible();
       await settle(page);
       const report: Report = {

@@ -5,11 +5,7 @@ import {
   NAME_NOT_ALLOWED,
 } from "../../../packages/shared/src/name-filter";
 import { identityPortrait } from "./portraits";
-import {
-  AVATAR_BY_ID,
-  isAvatar,
-  photoIdOf,
-} from "../../../packages/shared/src/avatars";
+import { AVATAR_BY_ID, isAvatar } from "../../../packages/shared/src/avatars";
 import { preparePhoto } from "./avatar-photo";
 import { idle } from "./svg-raster";
 import type { FittingRoom } from "./screens/fitting-room";
@@ -41,7 +37,6 @@ import {
   type RaidProgress,
   type RaidSlot,
 } from "../../../packages/shared/src/raid";
-import { TITLE_PRESETS, sortTitles } from "./player-nameplate";
 import { isQuietRefresh } from "./session-refresh";
 import { curtainCovers, waitForServer } from "./server-connection";
 import {
@@ -56,9 +51,6 @@ import {
   REPORT_CATEGORIES,
   type Account,
   type Title,
-  type PlayerDirectory,
-  type ReportList,
-  type OnlineList,
   leaderboardSchema,
   friendsBoardSchema,
   recentPlayersSchema,
@@ -76,7 +68,7 @@ import {
 import { askConfirm } from "./ui/hub-panel";
 import { guestWarning } from "./guest-warning";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
-import { renderOnline } from "./admin-online";
+import { AdminPanel, type AdminView } from "./admin-panel";
 import { openProfile, type ProfileScreen } from "./screens/profile";
 import { openFriendCard, type FriendCardScreen } from "./screens/friend-card";
 import type { HistoryQuery } from "./screens/match-history";
@@ -174,6 +166,8 @@ type Hooks = {
   /** Friends closed (a room puts its picker back). */
   onFriendsClosed?: () => void;
   notify: (message: string) => void;
+  /** Running announcements from the admins, fetched at sign-in (announcements.ts). */
+  announce?: (list: unknown) => void;
   onChange: () => void;
   onSession: (token: string | null, accountId?: string) => void;
   /** Same player, fresh token (background refresh): keep it for reconnects only. */
@@ -184,6 +178,8 @@ type Hooks = {
   reportPhoto?: (photo: string, name: string) => Promise<void>;
   /** Make a fighter your Lobby fighter. */
   chooseFighter?: (id: CharacterId) => void;
+  /** Start a match against a bot of that level (match history). */
+  playBot?: (level: "easy" | "normal" | "hard") => void;
   /** The fighter saved with the account (picked on another device). */
   restoreFighter?: (id: CharacterId) => void;
   /** Show the Lobby (the Shop and Wardrobe open inside it). */
@@ -490,6 +486,12 @@ export class AccountUI {
         if (version !== this.generation) return;
         freshAccount = true;
         this.account = account;
+        // Announcements still running (migration 20261122120000); none
+        // before it, and never in the way of signing in.
+        void this.api("/api/announcements").then(
+          (list) => this.hooks.announce?.(list),
+          () => {},
+        );
         // A new login: start on the fighter this account last picked, on
         // whatever device, wearing their avatar. Both are part of the first
         // screen (waited for below, briefly), so it never opens on the
@@ -860,28 +862,55 @@ export class AccountUI {
     if (this.account) {
       element("account-profile").onclick = () => void this.showProfile();
       element("account-coins").onclick = () => void this.showShop();
-      element("account-logout").onclick = async () => {
-        if (this.account?.guest && !this.confirmedGuestLogout) {
-          this.hooks.openDialog(
-            `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
-          );
-          element("guest-save").onclick = () => void this.showProfile();
-          element("guest-leave").onclick = () => {
-            this.confirmedGuestLogout = true;
-            element<HTMLDialogElement>("dialog").close();
-            element("account-logout")?.click();
-          };
-          return;
-        }
-        this.confirmedGuestLogout = false;
-        await this.signOutHere();
-      };
+      element("account-logout").onclick = () => void this.logOut();
       if (this.account.isAdmin)
         element("account-admin").onclick = () => void this.showAdmin();
     } else {
       element("account-login").onclick = () => this.showAuth("login");
       element("account-signup").onclick = () => this.showAuth("signup");
     }
+  }
+  /**
+   * Log out on this device (the header's button, the title screen's Switch
+   * account). A guest is warned first: their pass can't be recovered.
+   */
+  async logOut() {
+    if (this.account?.guest && !this.confirmedGuestLogout) {
+      this.hooks.openDialog(
+        `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
+      );
+      element("guest-save").onclick = () => void this.showProfile();
+      element("guest-leave").onclick = () => {
+        this.confirmedGuestLogout = true;
+        element<HTMLDialogElement>("dialog").close();
+        void this.logOut();
+      };
+      return;
+    }
+    this.confirmedGuestLogout = false;
+    await this.signOutHere();
+  }
+  /** Your avatar in your frame, as the header shows it (title screen). */
+  identityPicture() {
+    return identityPortrait({
+      avatar: this.avatar,
+      raidLook: this.raidLook,
+      raidClears: this.raidClears,
+    });
+  }
+  /** Your level, once the profile is in. */
+  get level() {
+    return this.economy?.journey
+      ? playerLevel(this.economy.journey.xp).level
+      : null;
+  }
+  /** How this account signs in: "apple", "google", "email" or "guest". */
+  get signInMethod() {
+    if (this.account?.guest) return "guest";
+    const provider = (
+      this.session?.user?.app_metadata as { provider?: unknown } | undefined
+    )?.provider;
+    return typeof provider === "string" ? provider : "email";
   }
   /**
    * Sign in with Apple in the iPhone app: Apple's own sheet, then Supabase
@@ -1464,6 +1493,7 @@ export class AccountUI {
         economy: this.economy ?? null,
         progress: this.fitProgress,
         look: this.raidLook ?? {},
+        avatar: this.avatar,
         problem: this.fitProblem,
         loading: this.fitLoading,
       }),
@@ -1767,6 +1797,7 @@ export class AccountUI {
         raids: (boss) =>
           void this.showRaids(boss, boss ? "rewards" : undefined),
         history: (q) => this.matchHistory(q),
+        playBot: this.hooks.playBot,
         isFriend: (id) => this.isFriend(id),
         friendCard: (id) => this.showFriendCard(id, false),
         onClose: () => (this.profileScreen = undefined),
@@ -2006,8 +2037,22 @@ export class AccountUI {
    * (logging out, clearing the app's data, a new phone). Save my account
    * opens the player card, whose first block saves it with an email.
    */
+  /**
+   * A new guest's warning is due or showing: the Lobby tour waits for it
+   * (main.ts startTour), then starts once it is answered ("guest-warning-done").
+   */
+  guestWarningPending = false;
   private async warnNewGuest() {
     if (!this.account?.guest) return;
+    this.guestWarningPending = true;
+    try {
+      await this.showGuestWarning();
+    } finally {
+      this.guestWarningPending = false;
+      window.dispatchEvent(new Event("guest-warning-done"));
+    }
+  }
+  private async showGuestWarning() {
     // Over the Lobby, once the log-in's loading curtain has come and gone
     // (not under it, nor beside it while it fades). It starts a moment after
     // the log-in, so wait for the Lobby itself; never more than 20 s.
@@ -2244,468 +2289,15 @@ export class AccountUI {
       }
     };
   }
-  private adminView: {
-    tab: "players" | "reports" | "online";
-    search: string;
-    offset: number;
-    status: "open" | "resolved" | "all";
-    reportOffset: number;
-    message: string;
-  } = {
-    tab: "players",
-    search: "",
-    offset: 0,
-    status: "open",
-    reportOffset: 0,
-    message: "",
-  };
-  private onlineTimer?: ReturnType<typeof setTimeout>;
-  /** `refresh` re-renders in place without the "Loading…" flash (online auto-refresh). */
-  async showAdmin(
-    changes: Partial<typeof this.adminView> = {},
-    refresh = false,
-  ) {
+  private adminPanel?: AdminPanel;
+  /** The Admin panel (admin-panel.ts). `changes` open it on a section. */
+  async showAdmin(changes: Partial<AdminView> = {}) {
     if (!this.account?.isAdmin) return;
-    clearTimeout(this.onlineTimer);
-    const view = Object.assign(this.adminView, { message: "" }, changes);
-    const tab = (id: typeof view.tab, label: string, count?: number | string) =>
-      `<button role="tab" class="admin-tab ${view.tab === id ? "active" : ""}" data-tab="${id}" aria-selected="${view.tab === id}">${label}${count ? ` <b class="admin-count${id === "online" ? " live" : ""}">${count}</b>` : ""}</button>`;
-    const header = (open: number | string, online: number | string = "") =>
-      `<div class="eyebrow">Administration</div><h2>Admin</h2><div class="admin-tabs" role="tablist">${tab("players", "Players")}${tab("online", "Online", online)}${tab("reports", "Reports", open)}</div>`;
-    if (!refresh) this.hooks.openDialog(`${header("")}<p>Loading…</p>`);
-    try {
-      // Who's online comes from the game server's memory; it never blocks the rest.
-      let onlineError = "";
-      const onlineRequest = (
-        this.api("/api/admin/online") as Promise<OnlineList>
-      ).catch((error: unknown) => {
-        onlineError =
-          error instanceof Error ? error.message : "Online list unavailable.";
-        return { players: [], guests: 0, at: new Date().toISOString() };
-      });
-      // Reports are optional: if they can't load, the player tools still work.
-      let reportsError = "";
-      const reports = (await this.api(
-        `/api/admin/reports?status=${view.tab === "reports" ? view.status : "open"}&offset=${view.tab === "reports" ? view.reportOffset : 0}`,
-      ).catch((error: unknown) => {
-        reportsError =
-          error instanceof Error ? error.message : "Reports are unavailable.";
-        return { reports: [], total: 0, open: 0 };
-      })) as ReportList;
-      const online = await onlineRequest;
-      let body = "";
-      let titles: Title[] = [];
-      let players: PlayerDirectory["players"] = [];
-      if (view.tab === "players") {
-        const [directory, catalog] = await Promise.all([
-          this.api(
-            `/api/admin/players?search=${encodeURIComponent(view.search)}&offset=${view.offset}`,
-          ),
-          this.api("/api/admin/titles"),
-        ]);
-        ({ players } = directory as PlayerDirectory);
-        const total = (directory as PlayerDirectory).total;
-        titles = catalog as Title[];
-        const sorted = sortTitles(titles);
-        body = `<div class="admin-title-tools"><select id="delete-title-select" aria-label="Title to delete"><option value="">Delete a title…</option>${sorted.map((t) => `<option value="${t.id}">${escape(t.name)}</option>`).join("")}</select><div class="admin-confirm" id="delete-title-confirm" hidden></div></div><form id="admin-search" class="admin-search"><input name="search" placeholder="Search name or player ID" value="${escape(view.search)}" aria-label="Search players"><button class="secondary">Search</button></form><div class="admin-list">${
-          players
-            .map((p) => {
-              const owned = sortTitles(
-                titles.filter((t) => p.titleIds.includes(t.id)),
-              );
-              const grantable = sortTitles(
-                titles.filter((t) => t.active && !p.titleIds.includes(t.id)),
-              );
-              return `<div class="admin-row" data-player="${p.id}" data-name="${escape(p.displayName)}"><div class="admin-row-head"><strong>${escape(p.displayName)}</strong>${p.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ""}${p.suspended ? '<span class="admin-badge danger">SUSPENDED</span>' : ""}<small>Joined ${new Date(p.createdAt).toLocaleDateString()}</small></div><div class="admin-titles-row">${owned
-                .map(
-                  (t) =>
-                    `<span class="title-chip" style="--chip:${t.color}">${escape(t.name)}<button type="button" data-revoke="${t.id}" aria-label="Remove ${escape(t.name)}" title="Remove title">×</button></span>`,
-                )
-                .join(
-                  "",
-                )}<select class="grant-select" aria-label="Grant a title to ${escape(p.displayName)}"><option value="">+ Grant title…</option>${grantable.map((t) => `<option value="${t.id}">${escape(t.name)}</option>`).join("")}<option value="__new">Create new title…</option></select></div>${
-                p.isAdmin
-                  ? ""
-                  : `<div class="admin-actions"><button type="button" class="secondary" data-action="suspend">${p.suspended ? "Unsuspend" : "Suspend"}</button><button type="button" class="danger-button" data-action="delete">Delete</button></div>`
-              }<div class="admin-confirm" hidden></div></div>`;
-            })
-            .join("") || "<p>No players found.</p>"
-        }</div><div class="admin-pagination"><button id="admin-prev" class="quiet" ${view.offset === 0 ? "disabled" : ""}>Previous</button><span>${total ? `${view.offset + 1}–${Math.min(view.offset + 50, total)} of ${total}` : "0 players"}</span><button id="admin-next" class="quiet" ${view.offset + 50 >= total ? "disabled" : ""}>Next</button></div>`;
-      } else if (view.tab === "online") {
-        body = onlineError
-          ? `<p class="admin-notice">${escape(onlineError)}</p>`
-          : renderOnline(
-              online,
-              (id) => CHARACTERS[id as CharacterId]?.name ?? id,
-            );
-      } else {
-        body = `<div class="report-filter" role="group" aria-label="Report status">${(["open", "resolved", "all"] as const).map((s) => `<button class="${view.status === s ? "active" : ""}" data-status="${s}">${s[0].toUpperCase() + s.slice(1)}</button>`).join("")}</div><div class="admin-list">${
-          reports.reports
-            .map(
-              (r) =>
-                `<article class="report-card ${r.status}" data-report="${r.id}"><div class="admin-row-head"><span class="report-category ${r.category}">${REPORT_CATEGORIES[r.category] ?? r.category}</span><strong>${escape(r.reporterName || "Deleted player")}</strong><small>${new Date(r.createdAt).toLocaleString()}</small></div><p class="report-text">${escape(r.message)}</p>${
-                  Object.keys(r.context ?? {}).length
-                    ? `<small class="report-context">${Object.entries(r.context)
-                        .map(([k, v]) => `${escape(k)}: ${escape(String(v))}`)
-                        .join(" · ")}</small>`
-                    : ""
-                }${chatTarget(r.context) ? `<button type="button" class="secondary" data-chat-stop="${chatTarget(r.context)}">Stop their chat for 24 h</button>` : ""}${
-                  photoTarget(r.context)
-                    ? `<div class="admin-photo" data-admin-photo="${photoTarget(r.context)}"><span class="admin-photo-pic" aria-label="The reported picture">Loading…</span><button type="button" class="secondary" data-photo-keep="true">Keep picture</button><button type="button" class="danger-button" data-photo-keep="false">Remove picture</button></div>`
-                    : ""
-                }<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
-            )
-            .join("") ||
-          `<p>No ${view.status === "all" ? "" : view.status + " "}reports.</p>`
-        }</div><div class="admin-pagination"><button id="report-prev" class="quiet" ${view.reportOffset === 0 ? "disabled" : ""}>Previous</button><span>${reports.total ? `${view.reportOffset + 1}–${Math.min(view.reportOffset + 50, reports.total)} of ${reports.total}` : ""}</span><button id="report-next" class="quiet" ${view.reportOffset + 50 >= reports.total ? "disabled" : ""}>Next</button></div>`;
-      }
-      this.hooks.openDialog(
-        `${header(reports.open, onlineError ? "" : online.players.length)}${reportsError ? `<p class="admin-notice">${escape(reportsError)}</p>` : ""}${view.tab === "reports" && reportsError ? "" : body}<p id="admin-message" role="status">${escape(view.message)}</p>`,
-      );
-      const say = (text: string) =>
-        (element("admin-message").textContent = text);
-      const fail = (error: unknown) =>
-        say(error instanceof Error ? error.message : "Request failed.");
-      document.querySelectorAll<HTMLButtonElement>(".admin-tab").forEach(
-        (tab) =>
-          (tab.onclick = () =>
-            void this.showAdmin({
-              tab: tab.dataset.tab as typeof view.tab,
-            })),
-      );
-      if (view.tab === "online") {
-        if (onlineError) return;
-        element("online-refresh").onclick = () => void this.showAdmin({}, true);
-        document.querySelectorAll<HTMLButtonElement>("[data-manage]").forEach(
-          (button) =>
-            (button.onclick = () =>
-              void this.showAdmin({
-                tab: "players",
-                search:
-                  button.closest<HTMLElement>("[data-online]")!.dataset
-                    .online ?? "",
-                offset: 0,
-              })),
-        );
-        this.onlineTimer = setTimeout(() => {
-          const dialog = document.getElementById(
-            "dialog",
-          ) as HTMLDialogElement | null;
-          if (
-            dialog?.open &&
-            this.adminView.tab === "online" &&
-            document.getElementById("online-refresh")
-          )
-            void this.showAdmin({}, true);
-        }, 10000);
-        return;
-      }
-      if (view.tab === "reports") {
-        if (reportsError) return;
-        document.querySelectorAll<HTMLButtonElement>("[data-status]").forEach(
-          (b) =>
-            (b.onclick = () =>
-              void this.showAdmin({
-                status: b.dataset.status as "open" | "resolved" | "all",
-                reportOffset: 0,
-              })),
-        );
-        element("report-prev").onclick = () =>
-          void this.showAdmin({
-            reportOffset: Math.max(0, view.reportOffset - 50),
-          });
-        element("report-next").onclick = () =>
-          void this.showAdmin({ reportOffset: view.reportOffset + 50 });
-        // A picture report: the picture itself, then keep it or remove it.
-        document
-          .querySelectorAll<HTMLElement>("[data-admin-photo]")
-          .forEach((box) => {
-            const photo = box.dataset.adminPhoto!;
-            const pic = box.querySelector<HTMLElement>(".admin-photo-pic")!;
-            void (
-              this.api(`/api/admin/avatar-photo/${photo}`) as Promise<{
-                src: string | null;
-                hidden: boolean;
-              }>
-            ).then(
-              ({ src, hidden }) => {
-                if (!src) {
-                  pic.textContent = "Already removed.";
-                  return;
-                }
-                const img = document.createElement("img");
-                img.src = src;
-                img.alt = "The reported picture";
-                pic.replaceChildren(img);
-                if (hidden) pic.dataset.hidden = "Hidden (3 reports)";
-              },
-              () => (pic.textContent = "Couldn't load it."),
-            );
-            box
-              .querySelectorAll<HTMLButtonElement>("[data-photo-keep]")
-              .forEach((button) => {
-                button.onclick = async () => {
-                  button.disabled = true;
-                  const keep = button.dataset.photoKeep === "true";
-                  try {
-                    await this.api("/api/admin/avatar-photo", { photo, keep });
-                    await this.showAdmin({
-                      message: keep
-                        ? "Picture kept and shown again."
-                        : "Picture removed. They can add one again in 7 days.",
-                    });
-                  } catch (error) {
-                    fail(error);
-                    button.disabled = false;
-                  }
-                };
-              });
-          });
-        // A chat report: stop the reported player typing for a day.
-        document
-          .querySelectorAll<HTMLButtonElement>("[data-chat-stop]")
-          .forEach((button) => {
-            button.onclick = async () => {
-              button.disabled = true;
-              try {
-                await this.api("/api/admin/chat-ban", {
-                  playerId: button.dataset.chatStop,
-                  hours: 24,
-                  reason: "From a chat report",
-                });
-                await this.showAdmin({
-                  message: "Their chat is stopped for 24 hours.",
-                });
-              } catch (error) {
-                fail(error);
-                button.disabled = false;
-              }
-            };
-          });
-        document
-          .querySelectorAll<HTMLButtonElement>("[data-resolve]")
-          .forEach((button) => {
-            button.onclick = async () => {
-              button.disabled = true;
-              const id = Number(
-                button.closest<HTMLElement>("[data-report]")!.dataset.report,
-              );
-              try {
-                await this.api("/api/admin/reports/resolve", {
-                  id,
-                  resolved: button.dataset.resolve === "true",
-                });
-                await this.showAdmin({
-                  message:
-                    button.dataset.resolve === "true"
-                      ? "Report marked resolved."
-                      : "Report reopened.",
-                });
-              } catch (error) {
-                fail(error);
-                button.disabled = false;
-              }
-            };
-          });
-        return;
-      }
-      element<HTMLFormElement>("admin-search").onsubmit = (e) => {
-        e.preventDefault();
-        void this.showAdmin({
-          search: String(
-            new FormData(e.currentTarget as HTMLFormElement).get("search") ??
-              "",
-          ),
-          offset: 0,
-        });
-      };
-      element("admin-prev").onclick = () =>
-        void this.showAdmin({ offset: Math.max(0, view.offset - 50) });
-      element("admin-next").onclick = () =>
-        void this.showAdmin({ offset: view.offset + 50 });
-      const deleteSelect = element<HTMLSelectElement>("delete-title-select");
-      const deleteBox = element("delete-title-confirm");
-      deleteSelect.onchange = () => {
-        const title = titles.find((t) => t.id === deleteSelect.value);
-        if (!title) {
-          deleteBox.hidden = true;
-          return;
-        }
-        deleteBox.hidden = false;
-        deleteBox.innerHTML = `<p><b>Delete the title "${escape(title.name)}"?</b> It is removed from every player who has it. This cannot be undone.</p><div class="admin-actions"><button type="button" class="danger-button" data-confirm>Delete title</button><button type="button" class="quiet" data-cancel>Cancel</button></div>`;
-        deleteBox.querySelector<HTMLButtonElement>("[data-cancel]")!.onclick =
-          () => {
-            deleteSelect.value = "";
-            deleteBox.hidden = true;
-          };
-        const confirm =
-          deleteBox.querySelector<HTMLButtonElement>("[data-confirm]")!;
-        confirm.focus();
-        confirm.onclick = async () => {
-          confirm.disabled = true;
-          try {
-            await this.api("/api/admin/titles/delete", {
-              id: title.id,
-              confirm: true,
-            });
-            await this.showAdmin({
-              message: `Title "${title.name}" was deleted.`,
-            });
-          } catch (error) {
-            fail(error);
-            confirm.disabled = false;
-          }
-        };
-      };
-      const grant = async (playerId: string, titleId: string, on: boolean) => {
-        await this.api("/api/admin/grants", {
-          playerId,
-          titleId,
-          grant: on,
-        });
-      };
-      document.querySelectorAll<HTMLElement>(".admin-row").forEach((row) => {
-        const id = row.dataset.player!,
-          name = row.dataset.name!;
-        const confirmBox = row.querySelector<HTMLElement>(".admin-confirm")!;
-        row
-          .querySelectorAll<HTMLButtonElement>("[data-revoke]")
-          .forEach((button) => {
-            button.onclick = async () => {
-              button.disabled = true;
-              try {
-                await grant(id, button.dataset.revoke!, false);
-                await this.showAdmin({
-                  message: `Title removed from ${name}.`,
-                });
-              } catch (error) {
-                fail(error);
-                button.disabled = false;
-              }
-            };
-          });
-        const select = row.querySelector<HTMLSelectElement>(".grant-select")!;
-        select.onchange = async () => {
-          if (!select.value) return;
-          if (select.value === "__new") {
-            select.value = "";
-            const preset =
-              TITLE_PRESETS.find(
-                (p) =>
-                  !titles.some(
-                    (t) => t.name.toLowerCase() === p.name.toLowerCase(),
-                  ),
-              ) ?? TITLE_PRESETS[0];
-            confirmBox.hidden = false;
-            confirmBox.innerHTML = `<form class="new-title-form"><input name="name" maxlength="40" required placeholder="Title name" value="${escape(preset.name)}" aria-label="New title name"><input name="color" type="color" value="${preset.color}" aria-label="Title color"><button class="primary">Create &amp; grant</button><button type="button" class="quiet" data-cancel>Cancel</button></form>`;
-            const form = confirmBox.querySelector("form")!;
-            confirmBox.querySelector<HTMLButtonElement>(
-              "[data-cancel]",
-            )!.onclick = () => {
-              confirmBox.hidden = true;
-              confirmBox.innerHTML = "";
-            };
-            form.onsubmit = async (event) => {
-              event.preventDefault();
-              const fields = new FormData(form);
-              try {
-                const titleId = (await this.api("/api/admin/titles", {
-                  id: null,
-                  name: String(fields.get("name")),
-                  description: "An arena honor awarded by an administrator.",
-                  color: String(fields.get("color")),
-                  active: true,
-                })) as string;
-                await grant(id, titleId, true);
-                await this.showAdmin({
-                  message: `Created "${String(fields.get("name"))}" and granted it to ${name}.`,
-                });
-              } catch (error) {
-                fail(error);
-              }
-            };
-            return;
-          }
-          select.disabled = true;
-          try {
-            await grant(id, select.value, true);
-            await this.showAdmin({ message: `Title granted to ${name}.` });
-          } catch (error) {
-            fail(error);
-            select.disabled = false;
-          }
-        };
-        row
-          .querySelectorAll<HTMLButtonElement>("[data-action]")
-          .forEach((button) => {
-            button.onclick = () => {
-              const deleting = button.dataset.action === "delete";
-              const suspended = button.textContent === "Unsuspend";
-              confirmBox.hidden = false;
-              confirmBox.innerHTML = deleting
-                ? `<p><b>Permanently delete ${escape(name)}?</b> Their login, profile and titles are removed for good. This cannot be undone.</p><label><span>Type <b>${escape(name)}</b> to confirm</span><input data-confirm-name autocomplete="off" aria-label="Type ${escape(name)} to confirm"></label><div class="admin-actions"><button type="button" class="danger-button" data-confirm disabled>Delete account</button><button type="button" class="quiet" data-cancel>Cancel</button></div>`
-                : `<p><b>${suspended ? "Unsuspend" : "Suspend"} ${escape(name)}?</b> ${suspended ? "They will be able to log in and play again." : "They are removed from any match and can't play until unsuspended."}</p><div class="admin-actions"><button type="button" class="${suspended ? "primary" : "danger-button"}" data-confirm>${suspended ? "Unsuspend" : "Suspend"}</button><button type="button" class="quiet" data-cancel>Cancel</button></div>`;
-              const confirm =
-                confirmBox.querySelector<HTMLButtonElement>("[data-confirm]")!;
-              const typed = confirmBox.querySelector<HTMLInputElement>(
-                "[data-confirm-name]",
-              );
-              if (typed) {
-                typed.oninput = () =>
-                  (confirm.disabled = typed.value.trim() !== name);
-                typed.focus();
-              } else confirm.focus();
-              confirmBox.querySelector<HTMLButtonElement>(
-                "[data-cancel]",
-              )!.onclick = () => {
-                confirmBox.hidden = true;
-                confirmBox.innerHTML = "";
-              };
-              confirm.onclick = async () => {
-                confirm.disabled = true;
-                try {
-                  if (deleting)
-                    await this.api("/api/admin/players/delete", {
-                      id,
-                      confirm: true,
-                    });
-                  else
-                    await this.api("/api/admin/players/suspend", {
-                      id,
-                      suspended: !suspended,
-                    });
-                  await this.showAdmin({
-                    message: deleting
-                      ? `${name} was deleted.`
-                      : `${name} is ${suspended ? "no longer suspended" : "suspended"}.`,
-                  });
-                } catch (error) {
-                  fail(error);
-                  confirm.disabled = false;
-                }
-              };
-            };
-          });
-      });
-    } catch (error) {
-      this.hooks.openDialog(
-        `<h2>Admin tools unavailable</h2><p>${escape(error instanceof Error ? error.message : "Unable to load administration.")}</p>`,
-      );
-    }
+    this.adminPanel ??= new AdminPanel({
+      api: (path, body) => this.api(path, body),
+      openDialog: (html) => this.hooks.openDialog(html),
+      fighterName: (id) => CHARACTERS[id as CharacterId]?.name ?? id,
+    });
+    await this.adminPanel.show(changes);
   }
-}
-
-/** The reported player of a chat report ("Name (uuid)" in its context). */
-/** A picture report's photo id (a UUID, or nothing). */
-function photoTarget(context: Record<string, string> | undefined) {
-  const id = context?.avatarPhoto;
-  return typeof id === "string" && photoIdOf(`photo:${id}`) ? id : "";
-}
-function chatTarget(context: Record<string, string> | undefined) {
-  if (context?.source !== "chat") return null;
-  return (
-    /\(([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\)$/i.exec(
-      context.reported ?? "",
-    )?.[1] ?? null
-  );
 }

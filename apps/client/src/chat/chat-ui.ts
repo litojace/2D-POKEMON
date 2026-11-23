@@ -70,6 +70,9 @@ export interface ChatHooks {
   push?: {
     state(): Promise<PushState | "server-off">;
     toggle(on: boolean): Promise<Reply>;
+    /** Game news (admins' announcements) on this device, and changing it. */
+    news?(): boolean;
+    setNews?(on: boolean): Promise<Reply>;
   };
 }
 export interface ChatView {
@@ -144,7 +147,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
     )
     .join(
       "",
-    )}</div><p class="chat-mode-note"></p><div class="chat-push" hidden><button type="button" role="switch" class="chat-push-toggle" aria-checked="false">Notify me of friends' messages</button><p class="chat-push-note"></p></div></div><div class="chat-with" hidden><button type="button" class="chat-back" aria-label="All friends">${menuIcon("back")}</button><b></b></div><ol class="chat-lines" aria-live="polite"></ol><p class="chat-empty" hidden></p><div class="chat-quick" role="group" aria-label="Quick chat">${CHIPS.map((q) => `<button type="button" class="chat-chip" data-chat-quick="${q}">${quickText(q)}</button>`).join("")}</div><form class="chat-form"><input id="chat-input" class="chat-input" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" maxlength="${CHAT_LIMITS.length}" aria-label="Message"><button type="submit" class="chat-send" aria-label="Send">${iconLabel("send", "Send")}</button></form><p class="chat-note" role="status"></p>`;
+    )}</div><p class="chat-mode-note"></p><div class="chat-push" hidden><button type="button" role="switch" class="chat-push-toggle" aria-checked="false">Notify me of friends' messages</button><p class="chat-push-note"></p><button type="button" role="switch" class="chat-news-toggle" aria-checked="true" hidden>Game news from the admins</button></div></div><div class="chat-with" hidden><button type="button" class="chat-back" aria-label="All friends">${menuIcon("back")}</button><b></b></div><ol class="chat-lines" aria-live="polite"></ol><p class="chat-empty" hidden></p><div class="chat-quick" role="group" aria-label="Quick chat">${CHIPS.map((q) => `<button type="button" class="chat-chip" data-chat-quick="${q}">${quickText(q)}</button>`).join("")}</div><form class="chat-form"><input id="chat-input" class="chat-input" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" maxlength="${CHAT_LIMITS.length}" aria-label="Message"><button type="submit" class="chat-send" aria-label="Send">${iconLabel("send", "Send")}</button></form><p class="chat-note" role="status"></p>`;
   document.body.append(button, drawer);
   const tabs = drawer.querySelector<HTMLElement>(".chat-tabs")!;
   const list = drawer.querySelector<HTMLOListElement>(".chat-lines")!;
@@ -225,6 +228,15 @@ export function mountChat(hooks: ChatHooks): ChatView {
     }
     const who = document.createElement("b");
     who.textContent = l.from.name;
+    // Someone watching the room: an eye before the name.
+    if (l.watcher) {
+      li.classList.add("is-watcher");
+      who.insertAdjacentHTML("afterbegin", menuIcon("watch"));
+      const eye = who.firstElementChild!;
+      eye.removeAttribute("aria-hidden");
+      eye.setAttribute("role", "img");
+      eye.setAttribute("aria-label", "Watching");
+    }
     const what = document.createElement("span");
     what.textContent = l.quick ? quickText(l.quick) : (l.text ?? "");
     body.append(who, what);
@@ -535,9 +547,20 @@ export function mountChat(hooks: ChatHooks): ChatView {
   const pushToggle =
     pushRow.querySelector<HTMLButtonElement>(".chat-push-toggle")!;
   const pushNote = pushRow.querySelector<HTMLElement>(".chat-push-note")!;
+  const newsToggle =
+    pushRow.querySelector<HTMLButtonElement>(".chat-news-toggle")!;
+  newsToggle.addEventListener("click", async () => {
+    if (!hooks.push?.setNews || newsToggle.disabled) return;
+    const want = newsToggle.getAttribute("aria-checked") !== "true";
+    newsToggle.disabled = true;
+    const reply = await hooks.push.setNews(want);
+    if (!reply.ok && reply.error) say(reply.error);
+    newsToggle.disabled = false;
+    refreshPush();
+  });
   const PUSH_NOTE: Record<PushState, string> = {
-    on: "On for this device: a notification when a friend messages you while you're away. It says who, not what.",
-    off: "Get a notification when a friend messages you while you're away. It says who, not what.",
+    on: "On for this device: a notification when a friend messages you while you're away (it says who, not what), and news from the admins if you keep it on below.",
+    off: "Get a notification when a friend messages you while you're away (it says who, not what), and news from the admins.",
     "install-first":
       "On iPhone and iPad, add the game to your Home Screen first (Share, then Add to Home Screen), and turn this on there.",
     blocked:
@@ -557,6 +580,12 @@ export function mountChat(hooks: ChatHooks): ChatView {
     pushToggle.setAttribute("aria-checked", String(state === "on"));
     pushToggle.disabled = state === "install-first" || state === "blocked";
     pushNote.textContent = state === "server-off" ? "" : PUSH_NOTE[state];
+    // Game news: only once notifications are on for this device.
+    newsToggle.hidden = state !== "on" || !hooks.push?.setNews;
+    newsToggle.setAttribute(
+      "aria-checked",
+      String(hooks.push?.news?.() ?? true),
+    );
   };
   const refreshPush = () =>
     void hooks.push
