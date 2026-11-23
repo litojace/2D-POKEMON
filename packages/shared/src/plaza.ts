@@ -40,7 +40,68 @@ export const PLAZA = {
   /** Free treats a Pacific day (migration 20261119190000_remove_farm_bistro_leaves). */
   treatsDaily: 10,
 } as const;
-/** The treats, thrown in this order through the day (the database's list). */
+/**
+ * Gift boxes (owner, 23 Nov 2026), in place of the treats: tossed ahead of
+ * you, a box flies, lands and bursts open, and its orbs spill out for
+ * everyone else nearby to catch (each counts toward the orbs quest, under
+ * its caps; the thrower can't catch their own). Where they come from:
+ * `freeDaily` a Pacific day, one more for each Plaza quest done today, and
+ * one for each Rare or Legendary fish caught today (at most `fishDaily`).
+ * Must match migration 20261123120000_plaza_gifts.sql.
+ */
+export const PLAZA_GIFT = {
+  freeDaily: 3,
+  perQuest: 1,
+  fishDaily: 3,
+  /** Fish of these rarities earn a box. */
+  fishRarities: ["rare", "legendary"] as readonly string[],
+  /** At most one toss this often (s). */
+  throwSeconds: 1.5,
+  /** Where it lands: this far ahead of you (px, kept on open ground). */
+  reach: 170,
+  /** Its flight and the moment it opens after landing (ms). */
+  flightMs: 750,
+  openMs: 300,
+  /** The orbs it spills, and how far they fly from the box (px). */
+  orbs: 4,
+  goldenOrbs: 8,
+  spill: 80,
+  /** How often a box is golden: more orbs, a bigger burst. */
+  goldenChance: 0.1,
+  /** Orbs lie this long before they fade (ms after the toss). */
+  lastsMs: 14_000,
+} as const;
+/** Gift boxes a player may still toss today. */
+export function plazaGiftsLeft(
+  questsDone: number,
+  fish: number,
+  thrown: number,
+) {
+  return Math.max(
+    0,
+    PLAZA_GIFT.freeDaily +
+      questsDone * PLAZA_GIFT.perQuest +
+      Math.min(fish, PLAZA_GIFT.fishDaily) -
+      thrown,
+  );
+}
+/** A gift box in flight or open: who tossed it (profile id), from and to,
+ * when, golden or not, and its orbs still lying there ([id, x, y]). */
+export interface PlazaGift {
+  id: number;
+  by: number;
+  x0: number;
+  y0: number;
+  x: number;
+  y: number;
+  at: number;
+  golden: boolean;
+  orbs: [number, number, number][];
+}
+/** Orbs gone from a gift box: [gift id, orb id, who caught it (0 = nobody)]. */
+export type PlazaGiftGone = [number, number, number][];
+/** The treats, thrown in this order through the day (the database's list).
+ * Before the gift boxes; kept for the database's old treat functions. */
 export const PLAZA_TREATS = [
   { id: "candy", name: "a candy", color: "#ff6fae" },
   { id: "cupcake", name: "a cupcake", color: "#ffb3d1" },
@@ -1278,7 +1339,7 @@ export const PLAZA_PLACES: readonly PlazaPlace[] = [
   {
     id: "fountain",
     name: "Fountain",
-    blurb: "Toss treats, catch orbs",
+    blurb: "Toss gift boxes, catch orbs",
     icon: "sparkle",
     x: PLAZA_SQUARE.x,
     y: PLAZA_FOUNTAIN.y + 120,
@@ -1969,6 +2030,8 @@ export interface PlazaProgress {
   fishBook?: Record<string, number>;
   /** Has the Fish book's title (PLAZA_FISH_TITLE). */
   fishTitle?: boolean;
+  /** Gift boxes still to toss today (PLAZA_GIFT; older databases: none). */
+  gifts?: number;
   bestLapMs: number | null;
   board: { name: string; ms: number; me?: boolean }[];
 }
@@ -1991,4 +2054,6 @@ export interface PlazaRecord {
    * fish the book holds (catching them all earns PLAZA_FISH_TITLE). */
   coins?: number;
   bookSize?: number;
+  /** Fish: a Rare or Legendary one, which earns a gift box (PLAZA_GIFT). */
+  gift?: boolean;
 }

@@ -14,6 +14,7 @@ import {
   PLAZA_FISHING,
   PLAZA_FLAG,
   PLAZA_GATE,
+  PLAZA_GIFT,
   PLAZA_HURDLES,
   PLAZA_PAIR,
   PLAZA_PAIR_EMOTES,
@@ -46,8 +47,9 @@ import {
   type PlazaEmote,
   type PlazaFishNote,
   type PlazaNews,
-  type PlazaTreat,
   type PlazaOrb,
+  type PlazaGift,
+  type PlazaGiftGone,
   type PlazaOrbs,
   type PlazaPairAsk,
   type PlazaPairStart,
@@ -87,7 +89,7 @@ interface Visitor {
   invite: { from: string; kind: number; until: number } | null;
   /** When this visitor last asked someone for a pair emote (ms). */
   lastAsk: number;
-  /** When this visitor last threw a treat (ms). */
+  /** When this visitor last tossed a gift box (ms). */
   lastTreat: number;
   lap: LapTimer;
   /** Runway: seconds until the next cheer, cheers so far, last runway news. */
@@ -222,8 +224,17 @@ interface Copy {
   shower: string | null;
   orbs: Map<number, { id: number; x: number; y: number; at: number }>;
   nextOrbAt: number;
+  /** Gift boxes tossed here, until their orbs are caught or fade. */
+  gifts: Map<number, CopyGift>;
   /** When its last player left: it waits, paused, for PLAZA_RETURN_MS. */
   emptySince: number | null;
+}
+/** A gift box in a copy: the thrower's key (who can't catch its orbs) and
+ * the orbs still lying there. */
+interface CopyGift {
+  gift: Omit<PlazaGift, "orbs">;
+  byKey: string;
+  orbs: Map<number, { x: number; y: number }>;
 }
 /** What happened this step, for server.ts to pay and announce. */
 export type PlazaEvent =
@@ -233,7 +244,8 @@ export type PlazaEvent =
   | { type: "cheers"; key: string; n: number }
   | { type: "fish"; key: string; note: PlazaFishNote }
   | { type: "news"; plaza: number; news: PlazaNews }
-  | { type: "orbs"; plaza: number; orbs: PlazaOrbs };
+  | { type: "orbs"; plaza: number; orbs: PlazaOrbs }
+  | { type: "giftGone"; plaza: number; gone: PlazaGiftGone };
 
 /** The pitch bots, blue side then red, named as the townsfolk are: a role,
  * not "Blue Bot" or "Red Bot" ("Red Bot scored a goal" read as a test). */
@@ -250,7 +262,7 @@ export const PITCH_BOTS = [
  * bots (role names, not player names; no card, no Add friend), wear Shop
  * skins (Rare and Epic only: Legendary and Mythical skins are what players
  * earn, owner 22 Nov), and step aside as players arrive. They never count for anything:
- * no population, laps, cheers, orbs, goals, treats or news.
+ * no population, laps, cheers, orbs, goals, gift boxes or news.
  */
 export const TOWNSFOLK: readonly {
   name: string;
@@ -348,6 +360,7 @@ export class PlazaWorld {
   private copies = new Map<number, Copy>();
   private nextId = 1;
   private nextOrb = 1;
+  private nextGift = 1;
   private told = new Map<string, Map<number, number>>();
   private clock = 0;
   /** The real time (ms) players have been moved up to: the last step's
@@ -513,6 +526,7 @@ export class PlazaWorld {
       shower: null,
       orbs: new Map(),
       nextOrbAt: now,
+      gifts: new Map(),
       emptySince: null,
     };
     this.copies.set(id, c);
@@ -807,23 +821,122 @@ export class PlazaWorld {
       start: { kind: pair.id, a: a.profile.id, b: v.profile.id },
     };
   }
-  /** At most one treat every PLAZA.treatSeconds; true claims the slot. */
-  treatReady(key: string, now: number) {
+  /** At most one gift box every PLAZA_GIFT.throwSeconds; true claims the slot. */
+  giftReady(key: string, now: number) {
     const v = this.visitors.get(key);
-    if (!v || now - v.lastTreat < PLAZA.treatSeconds * 1000) return false;
+    if (!v || now - v.lastTreat < PLAZA_GIFT.throwSeconds * 1000) return false;
     v.lastTreat = now;
     return true;
   }
-  /** A treat leaves `key`'s hands: where, for everyone in that Plaza copy. */
-  treat(key: string, treat: string): PlazaTreat | undefined {
+  /** Give the slot back (the database said no). */
+  giftRefused(key: string) {
     const v = this.visitors.get(key);
-    if (!v) return undefined;
-    return {
-      id: v.profile.id,
-      treat,
-      x: Math.round(v.body.x),
-      y: Math.round(v.body.y),
+    if (v) v.lastTreat = -Infinity;
+  }
+  /**
+   * A gift box leaves `key`'s hands, tossed PLAZA_GIFT.reach ahead (the way
+   * they last walked, else the way they face), onto open ground. Its orbs
+   * spill round where it lands. For everyone in that Plaza copy.
+   */
+  throwGift(
+    key: string,
+    golden: boolean,
+    now = this.clock || Date.now(),
+  ): { plaza: number; gift: PlazaGift } | undefined {
+    const v = this.visitors.get(key),
+      c = v && this.copies.get(v.plaza);
+    if (!v || !c) return undefined;
+    const b = v.body;
+    let dx = b.lastX,
+      dy = b.lastY;
+    const m = Math.hypot(dx, dy);
+    if (m < 0.1) {
+      dx = b.face > 0 ? 1 : -1;
+      dy = 0;
+    } else {
+      dx /= m;
+      dy /= m;
+    }
+    const land = plazaCollide({
+      x: b.x + dx * PLAZA_GIFT.reach,
+      y: b.y + dy * PLAZA_GIFT.reach * 0.75,
+    });
+    const id = this.nextGift++,
+      n = golden ? PLAZA_GIFT.goldenOrbs : PLAZA_GIFT.orbs,
+      turn = this.random() * Math.PI * 2,
+      orbs = new Map<number, { x: number; y: number }>();
+    for (let i = 1; i <= n; i++) {
+      const a = turn + ((i - 1) / n) * Math.PI * 2,
+        r = PLAZA_GIFT.spill * (0.55 + this.random() * 0.45),
+        spot = plazaCollide({
+          x: land.x + Math.cos(a) * r,
+          y: land.y + Math.sin(a) * r * 0.7,
+        });
+      orbs.set(i, { x: Math.round(spot.x), y: Math.round(spot.y) });
+    }
+    const gift = {
+      id,
+      by: v.profile.id,
+      x0: Math.round(b.x),
+      y0: Math.round(b.y),
+      x: Math.round(land.x),
+      y: Math.round(land.y),
+      at: now,
+      golden,
     };
+    c.gifts.set(id, { gift, byKey: key, orbs });
+    return { plaza: c.id, gift: this.giftView(c.gifts.get(id)!) };
+  }
+  private giftView(g: CopyGift): PlazaGift {
+    return {
+      ...g.gift,
+      orbs: [...g.orbs].map(([id, o]) => [id, o.x, o.y]),
+    };
+  }
+  /** The gift boxes in a player's copy right now (sent when they join). */
+  giftsFor(key: string): PlazaGift[] {
+    const v = this.visitors.get(key),
+      c = v && this.copies.get(v.plaza);
+    return c ? [...c.gifts.values()].map((g) => this.giftView(g)) : [];
+  }
+  /** Gift orbs: once out of the box, caught by anyone but the thrower who
+   * walks over one; gone when they fade. Each catch counts as an orb
+   * (ref "<toss second>-<box id><orb>", under the orb caps). */
+  private stepGifts(
+    c: Copy,
+    players: Visitor[],
+    now: number,
+    events: PlazaEvent[],
+  ) {
+    if (!c.gifts.size) return;
+    const gone: PlazaGiftGone = [];
+    for (const [id, g] of c.gifts) {
+      const age = now - g.gift.at;
+      if (age > PLAZA_GIFT.lastsMs) {
+        for (const orb of g.orbs.keys()) gone.push([id, orb, 0]);
+        c.gifts.delete(id);
+        continue;
+      }
+      // Out of the box and landed: the flight, the opening, their hop out.
+      if (age < PLAZA_GIFT.flightMs + PLAZA_GIFT.openMs + 350) continue;
+      for (const [orb, o] of g.orbs) {
+        const v = players.find(
+          (p) =>
+            p.key !== g.byKey &&
+            Math.hypot(p.body.x - o.x, p.body.y - o.y) < ORB_SHOWER.catchRadius,
+        );
+        if (!v) continue;
+        g.orbs.delete(orb);
+        gone.push([id, orb, v.profile.id]);
+        events.push({
+          type: "orb",
+          key: v.key,
+          ref: `${Math.floor(g.gift.at / 1000)}-${id * 10 + orb}`,
+        });
+      }
+      if (!g.orbs.size) c.gifts.delete(id);
+    }
+    if (gone.length) events.push({ type: "giftGone", plaza: c.id, gone });
   }
   /** The spot `key` stands at, if it is `spot` (a little slack for lag). */
   at(key: string, spot: PlazaSpotId) {
@@ -1103,6 +1216,7 @@ export class PlazaWorld {
         });
     }
     this.stepOrbs(c, players, now, events);
+    this.stepGifts(c, players, now, events);
   }
   /** A townsperson's emote, seen by everyone in the copy. */
   private folkEmote(f: Folk, e: (typeof PLAZA_EMOTES)[number], now: number) {

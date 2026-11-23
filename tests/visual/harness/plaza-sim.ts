@@ -30,6 +30,7 @@ w.__plazaProgress = {
     ]),
   ),
   orbsToday: 0,
+  gifts: 3,
   bestLapMs: 7420,
   board: [
     { name: "Nova", ms: 6120 },
@@ -47,9 +48,32 @@ w.__plazaBiteNow = () => {
   const line = (world as any).visitors.get(ME)?.line;
   if (line) line.biteAt = 0;
 };
-/** Treats left today (PLAZA.treatsDaily a day): treats to throw. */
-w.__plazaTreats = 3;
-w.__plazaTreatsThrown = [] as string[];
+/** Gift boxes left today (the database's count, PLAZA_GIFT), the boxes
+ * tossed so far, and tests: the next box is golden. */
+w.__plazaGifts = 3;
+w.__plazaGiftsThrown = [] as boolean[];
+w.__plazaGolden = false;
+/** Tests: a gift box tossed by someone else (profile `by`, standing at
+ * x0, y0), as the server would send it. */
+w.__plazaOtherGift = (x0: number, y0: number, golden = false) => {
+  const other = world.join("gift-other", "acct-gift-other", {
+    name: "Nova",
+    title: null,
+    titleColor: null,
+    level: 9,
+    character: "voltkit",
+    skin: null,
+  });
+  Object.assign(world.bodyOf("gift-other")!, {
+    x: x0,
+    y: y0,
+    lastX: 1,
+    lastY: 0,
+  });
+  const t = world.throwGift("gift-other", golden, Date.now());
+  if (t) w.__sock?.fire("plaza-gift", t.gift);
+  return other.profile.id;
+};
 const handle = (ev: string, data: any) => {
   if (ev === "plaza-join") {
     const me = world.join(ME, "acct-me", {
@@ -60,24 +84,26 @@ const handle = (ev: string, data: any) => {
       character: data.character,
       skin: null,
     });
-    // The server sends your treat count after the join.
-    setTimeout(() => w.__sock?.fire("plaza-treats", { n: w.__plazaTreats }), 0);
     return { ok: true, plaza: me.plaza, me: me.profile.id };
   }
-  if (ev === "plaza-treat") {
-    if (!world.treatReady(ME, Date.now()))
-      return { ok: false, error: "Wait a moment between treats." };
-    if (w.__plazaTreats < 1)
+  if (ev === "plaza-gift") {
+    if (!world.giftReady(ME, Date.now()))
+      return { ok: false, error: "Wait a moment between gift boxes." };
+    if (w.__plazaGifts < 1) {
+      world.giftRefused(ME);
       return {
         ok: false,
-        error: "No treats left today. More tomorrow!",
-        treats: 0,
+        error:
+          "No gift boxes left today. Plaza quests and rare fish earn more!",
+        gifts: 0,
       };
-    w.__plazaTreats--;
-    w.__plazaTreatsThrown.push("cupcake");
-    const thrown = world.treat(ME, "cupcake");
-    setTimeout(() => w.__sock?.fire("plaza-treat", thrown), 0);
-    return { ok: true, treat: "cupcake", treats: w.__plazaTreats };
+    }
+    w.__plazaGifts--;
+    const golden = !!w.__plazaGolden;
+    w.__plazaGiftsThrown.push(golden);
+    const t = world.throwGift(ME, golden, Date.now());
+    if (t) setTimeout(() => w.__sock?.fire("plaza-gift", t.gift), 0);
+    return { ok: true, golden, gifts: w.__plazaGifts };
   }
   if (ev === "plaza-look") {
     world.updateProfile(ME, { character: data.character });
@@ -189,6 +215,10 @@ function fire(e: ReturnType<PlazaWorld["step"]>[number]) {
   if (e.type === "news") w.__sock?.fire("plaza-news", e.news);
   else if (e.type === "orbs") w.__sock?.fire("plaza-orbs", e.orbs);
   else if (e.type === "fish") w.__sock?.fire("plaza-fish", e.note);
+  else if (e.type === "giftGone") w.__sock?.fire("plaza-gift-gone", e.gone);
+  // A gift orb caught: the database counts it toward the orbs quest.
+  else if (e.type === "orb")
+    w.__plazaOrbRefs = [...(w.__plazaOrbRefs ?? []), e.ref];
 }
 let ticks = 0;
 setInterval(() => {
