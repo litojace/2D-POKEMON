@@ -1,0 +1,11 @@
+-- The Plaza's wishing fountain paid out through arena_plaza_wish (migration
+-- 20261120130000_plaza_wishing_fountain). The owner took the wishes and
+-- their fireworks out on 23 Nov 2026 (PR #372), and the game server has not
+-- called this function since. The owner asked for it to go.
+--
+-- Only the function goes: it owned no table. The coins it paid stay in
+-- arena_wallets, and their ledger rows (reason 'plaza-wish') stay in
+-- arena_coin_ledger, which the admin panel still labels.
+--
+-- Safe to run again: "if exists".
+drop function if exists public.arena_plaza_wish(jsonb);
