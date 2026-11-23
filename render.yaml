@@ -2,7 +2,10 @@ services:
   - type: web
     name: element-arena
     runtime: node
-    plan: 0.5c-512mb
+    # 1 CPU / 2 GB ($25/month), chosen by the owner on 23 Nov 2026 before the
+    # App Store launch. Keep this in step with the dashboard: a Blueprint
+    # sync applies this value (docs/network-performance.md, "Capacity").
+    plan: 1c-2g
     numInstances: 1
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start

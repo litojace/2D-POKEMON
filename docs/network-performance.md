@@ -781,6 +781,11 @@ battle → Town → Shop → Wardrobe cycles (heap after GC):
 
 ## Capacity: the $7 instance versus a larger one
 
+**Since 23 Nov 2026 the server runs on the 1 CPU / 2 GB plan (`1c-2g`,
+$25/month, `render.yaml`)**, chosen ahead of the App Store launch. Real
+load before the move peaked around 0.035 CPU and 140 MB. A full core
+roughly doubles the headroom measured below for the 0.5 CPU plan.
+
 This recommendation is measured on this host only. Render's CPUs may be
 faster or slower, Town visitors were not part of the load, and the
 simulated players fight non-stop, which is harsher than real matches with
