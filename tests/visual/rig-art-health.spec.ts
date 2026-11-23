@@ -17,15 +17,9 @@ import {
 // blanked fighter comes back and is reported ("battle-art"). The check is
 // the same for every champion: the local one is whoever the harness seats.
 
-/**
- * Fighters of every kind on the court with the local one (Voltkit). None is
- * the local fighter's champion: allies are copies of it, look included, so a
- * second Voltkit drew from the very textures the test blanks, and the check
- * (one rig a frame) sometimes found and reported that ally first (`mine`
- * false; #377's and #388's runs, 23 Nov 2026).
- */
+/** Fighters of every kind on the court with the local one. */
 const ALLIES = [
-  "glacelle",
+  "voltkit",
   "tidefin",
   "pyranda",
   "lumoth",
@@ -51,10 +45,6 @@ async function openRaid(page: Page) {
     snap.raid.warnings = [];
     snap.raid.decoys = [];
     const me = snap.players.find((p: any) => p.id === "me");
-    if (allies.includes(me.character))
-      throw new Error(
-        `an ally shares the local fighter's art: ${me.character}`,
-      );
     const boss = snap.players.find((p: any) => p.raidBoss);
     snap.players = [
       boss,

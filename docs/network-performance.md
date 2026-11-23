@@ -759,7 +759,7 @@ this host (80 players fighting non-stop):
 - `SNAP_LATE` (a late snapshot in the match reports) stays 120 ms so the
   "Late updates" column compares across builds.
 
-### 18. Fewer pixels a frame: no camera rectangle under the court
+### 18. Raid frames on phones
 
 The match reports' slowest phone (an iPhone, in the installed app, Low
 graphics, 22 Nov 2026) ran Gloomshade raids at 30-45 fps with 10-50% of
@@ -772,19 +772,14 @@ scene, and a frame just over 16.7 ms waits for the next refresh (33 ms).
 Counting the screen area every quad and triangle covers each frame (the
 harness at 844×390, iPhone density 1.5, Low), a Gloomshade raid drew 3.3
 screens of pixels, Tidewyrm 2.7, Grumblecrag and a duel 2.3. One of those
-screens in every battle was Phaser's camera background: Phaser clears the
+screens in every battle is Phaser's camera background: Phaser clears the
 canvas, then paints the camera's background colour as a blended rectangle
-over the whole view, and the court's floor covers it at once.
-`camera-clear.ts` makes that colour the canvas's clear colour and skips the
-rectangle for the frame (the camera keeps its colour, so nothing that reads
-or changes it notices). The picture is the same pixel for pixel: the clear
-fills every pixel with the colour the rectangle drew. Gloomshade now draws
-2.45 screens a frame, the others about 1.3-1.7.
-
-Measured on this container's software renderer (which pays per pixel, as a
-phone's graphics chip does, more steeply), Gloomshade at Low, 8 s, three
-runs each: median frame 62.6 / 64.9 / 58.4 ms before, 55.5 / 53.5 / 55.0 ms
-after (about 12% less). JavaScript time per frame is unchanged.
+over the whole view, and the court's floor covers it at once. Drawing that
+colour as the clear instead (same pixels; 3.3 → 2.45 screens, median frame
+on the software renderer about 12% shorter) was tried in #388 and taken
+out again: with it, two visual specs failed on CI's runners every time
+(the Spire page's first row never painted; a blanked fighter's art never
+found) while passing locally. Bring it back only with those understood.
 
 Damage numbers and combo text (`battle-text.ts`) are made with less work:
 Phaser measured each label's font by drawing a test string and reading the
