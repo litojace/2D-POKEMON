@@ -33,7 +33,24 @@ async function toPond(page: Page) {
     ([x, y]) => (window as any).__plazaPosition(x, y),
     [SPOT.x, SPOT.y],
   );
-  await expect(page.locator("#pz-interact")).toBeVisible({ timeout: 10_000 });
+  try {
+    await expect(page.locator("#pz-interact")).toBeVisible({ timeout: 10_000 });
+  } catch (e) {
+    // It failed on CI runners only (#367, #379): say what the Plaza was
+    // doing, so the next failure explains itself.
+    const health = await page.evaluate(() => {
+      const w = window as any,
+        b = w.__plazaWorld.bodyOf("local");
+      return {
+        ...w.__plaza.health(),
+        server: b && { x: Math.round(b.x), y: Math.round(b.y) },
+        focus: document.activeElement?.className ?? null,
+      };
+    });
+    throw new Error(
+      `the Fish prompt never showed at the spot (${SPOT.x}, ${SPOT.y}): ${JSON.stringify(health)}\n${(e as Error).message}`,
+    );
+  }
   await expect(page.locator("#pz-interact")).toContainText("Fish");
 }
 async function enter(page: Page) {
