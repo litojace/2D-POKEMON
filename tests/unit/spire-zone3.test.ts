@@ -637,7 +637,9 @@ describe("play-test (bot raiders vs zone 3)", () => {
     return a.raid.spire!.best >= floor;
   }
   it("floor 21 is often cleared solo with no blessings; floor 29 less often, but sometimes", () => {
-    const seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    // 36 seeds: with 12, one champion change could tie the two floors by
+    // chance (Duskveil's lantern, 2026-11-23: 7 of 12 each; 21 of 36 and 18).
+    const seeds = Array.from({ length: 36 }, (_, i) => i + 1);
     const rate = (floor: number) =>
       seeds.filter((s) => playFloor(floor, s)).length / seeds.length;
     const first = rate(21),

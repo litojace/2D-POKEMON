@@ -1516,12 +1516,16 @@ export const SPIRE_TUNING: Record<
   // about one in three on floor 29.
   21: { difficulty: "normal", power: 0.48, armour: 1.4, limit: 180 },
   22: { difficulty: "normal", power: 0.49, armour: 1.76, limit: 180 },
-  23: { difficulty: "normal", power: 0.5, armour: 1.91, limit: 180 },
+  // 23 and 25-28 armour up a little for Duskveil's stronger lantern
+  // (2026-11-23): clears in 144 on main / with the lantern / now: 23 83/72/82,
+  // 25 67/62/71, 26 49/40/49, 27 59/54/60, 28 41/34/43. Was 1.91, 0.54,
+  // 1.07, 1.42 and 1.67.
+  23: { difficulty: "normal", power: 0.5, armour: 1.98, limit: 180 },
   24: { difficulty: "normal", power: 0.51, armour: 2.83, limit: 180 },
-  25: { difficulty: "normal", power: 0.58, armour: 0.54, limit: 240 },
-  26: { difficulty: "normal", power: 0.52, armour: 1.07, limit: 180 },
-  27: { difficulty: "normal", power: 0.53, armour: 1.42, limit: 180 },
-  28: { difficulty: "normal", power: 0.54, armour: 1.67, limit: 180 },
+  25: { difficulty: "normal", power: 0.58, armour: 0.56, limit: 240 },
+  26: { difficulty: "normal", power: 0.52, armour: 1.15, limit: 180 },
+  27: { difficulty: "normal", power: 0.53, armour: 1.5, limit: 180 },
+  28: { difficulty: "normal", power: 0.54, armour: 1.8, limit: 180 },
   29: { difficulty: "normal", power: 0.55, armour: 1.69, limit: 180 },
   30: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 4: a climb starts at 31 with no blessings, against Psychic Echoes
