@@ -128,6 +128,8 @@ export function startStartupCurtain(
   // A gameplay tip while it loads. The curtain doesn't wait for it: the game
   // opens as soon as its first screen is complete (the owner, 20 Nov: no
   // "Tap to enter", no reading time). A long load moves on to the next tip.
+  // (Since 22 Nov a launch lifts it onto the title screen, title-screen.ts,
+  // whose Start is the one tap; the curtain itself still never waits.)
   let tip: LoadingTip | undefined = tipsEnabled()
     ? nextTip(art?.mode)
     : undefined;

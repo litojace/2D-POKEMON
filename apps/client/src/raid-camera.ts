@@ -28,17 +28,23 @@ export function raidCameraView(
 /**
  * Phones in landscape follow their raider (owner, 20 Nov 2026: the whole
  * court made fighters tiny and easy to lose). The court covers the space
- * below the HUD, then this much closer: the same magnification as mobile PvP.
+ * below the HUD, and no closer (owner, 22 Nov 2026: pulling out for every
+ * court-wide skill and back in again was tiring to watch; at 1.2 a phone's
+ * view swung about 1.67× each time, at 1 about 1.4×).
  */
-export const RAID_FOLLOW_ZOOM = 1.2;
+export const RAID_FOLLOW_ZOOM = 1;
 /** How far the view leans from the raider toward the boss (0: none, 1: centred on it). */
 export const RAID_BOSS_PULL = 0.35;
 /** The raider stays inside this share of the visible half-width/height. */
 const RAIDER_MARGIN = 0.62;
 /** Any warning this wide (world px) is a court-wide answer, whatever its kind. */
 export const RAID_WIDE_RADIUS = 400;
-/** Seconds the whole court stays in view after the last court-wide warning. */
-const WIDE_HOLD = 0.5;
+/**
+ * Seconds the whole court stays in view after the last court-wide warning:
+ * long enough that a boss's next court-wide skill finds the camera still out,
+ * instead of it zooming in and straight back out between two casts.
+ */
+export const RAID_WIDE_HOLD = 1.5;
 
 type Point = { x: number; y: number };
 const clamp = (n: number, lo: number, hi: number) =>
@@ -265,14 +271,12 @@ function clampCentre(
   // The visible world below the HUD, as a centre and half-height.
   const halfVis = (height - top) / zoom / 2,
     lift = top / zoom / 2;
-  const x =
-    halfW >= 800
-      ? 800
-      : clamp(
-          c.x,
-          halfW - apron.left / zoom,
-          1600 - halfW + apron.right / zoom,
-        );
+  // Where the view is as wide as the court or wider, the apron still lets
+  // it slide sideways, so your raider at a wall stands clear of the
+  // joystick (the dimmed surround fills what shows past the court).
+  const xLo = halfW - apron.left / zoom,
+    xHi = 1600 - halfW + apron.right / zoom;
+  const x = xLo <= xHi ? clamp(c.x, xLo, xHi) : 800;
   const visY = halfVis >= 450 ? 450 : clamp(c.y + lift, halfVis, 900 - halfVis);
   return { x, y: visY - lift };
 }
@@ -543,7 +547,7 @@ export class RaidCamera {
     const snap = key !== this.identity || this.zoom <= 0;
     this.identity = key;
     if (frame) {
-      this.wideUntil = now + WIDE_HOLD;
+      this.wideUntil = now + RAID_WIDE_HOLD;
       this.frame = frame;
     }
     const close = follow && !reduced && !!focus && now >= this.wideUntil;
@@ -600,8 +604,9 @@ export class RaidCamera {
         )
       : placed;
     const ms = clamp(delta, 0, 100);
-    // Out to the court quickly (a warning is showing), back in gently.
-    const zoomBlend = 1 - Math.exp(-ms / (close ? 420 : 140));
+    // Out to the court promptly (a warning is showing), back in slowly, so
+    // the zoom eases rather than snaps either way.
+    const zoomBlend = 1 - Math.exp(-ms / (close ? 700 : 240));
     const moveBlend = 1 - Math.exp(-ms / (close ? 180 : 140));
     if (snap) {
       this.zoom = targetZoom;

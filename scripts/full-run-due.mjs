@@ -1,4 +1,4 @@
-// Starts main's full run (verify and the 18 visual shards) when it is due,
+// Starts main's full run (verify and the 30 visual shards) when it is due,
 // from a push to main (.github/workflows/ci.yml, the `full-run-due` job).
 //
 // Main's full run is scheduled every three hours, but GitHub drops scheduled
