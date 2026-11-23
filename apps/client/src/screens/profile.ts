@@ -48,6 +48,8 @@ export interface ProfileHooks {
   raids(boss?: RaidBossId): void;
   /** A page of your match history (docs/match-history.md). */
   history?(q: HistoryQuery): Promise<MatchHistory>;
+  /** Play a bot of that level again (an opened bot match's button). */
+  playBot?(level: "easy" | "normal" | "hard"): void;
   /** Whether a player's card can be opened (a friend), and opening it. */
   isFriend?(id: string): boolean;
   friendCard?(id: string, name: string): void;
@@ -75,12 +77,18 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
           panel.close();
           hooks.friendCard?.(id, name);
         },
+        hooks.playBot &&
+          ((level) => {
+            panel.close();
+            hooks.playBot!(level);
+          }),
       )
     : null;
   const data = () => ({
     ...hooks.data(),
     history: history?.state,
     canOpen: hooks.friendCard ? hooks.isFriend : undefined,
+    replay: !!hooks.playBot,
   });
   function render() {
     if (closed) return;

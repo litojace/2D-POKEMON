@@ -111,6 +111,10 @@ import {
   BOT_LABELS,
   type BotDifficulty,
 } from "./bot.js";
+/** The result screen's Rematch, optionally with another fighter (bot matches). */
+const rematchSchema = z
+  .object({ character: characterSchema.optional() })
+  .strict();
 const botMatchSchema = identitySchema
   .extend({
     character: characterSchema,
@@ -2718,9 +2722,25 @@ export function createArenaServer(
           );
       }),
     );
-    socket.on("rematch", (_data: unknown, cb: unknown) =>
+    socket.on("rematch", (data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
         if (updating(cb)) return;
+        // A rematch against a bot may bring another fighter (the result
+        // screen's Change fighter). Only there: in PvP a pick is secret
+        // until the match starts (docs/hidden-picks.md), and the weekly
+        // arcade sets its own fighters.
+        const result = rematchSchema.safeParse(data ?? {});
+        if (!result.success) return fail(cb, "Choose a valid fighter.");
+        const fighter = result.data.character;
+        if (fighter) {
+          if (
+            a instanceof RaidArena ||
+            a instanceof ArcadeArena ||
+            !a.bots.size ||
+            a.players.length - a.bots.size !== 1
+          )
+            return fail(cb, "Change fighters in the lobby.");
+        }
         if (a instanceof RaidArena) {
           if (
             a.phase !== "finished" ||
@@ -2747,6 +2767,10 @@ export function createArenaServer(
               : "Both players must be connected for a rematch.",
           );
         const p = a.players.find((p) => p.id === id)!;
+        if (fighter && fighter !== p.character) {
+          p.flair = undefined;
+          p.character = fighter;
+        }
         p.ready = true;
         if (a.players.every((p) => p.ready)) a.start();
         reply(cb, { ok: true });
@@ -2859,8 +2883,11 @@ export function createArenaServer(
         };
       }
       if (channel === "room") {
+        // A seat, or a ringside seat (watching): watchers chat with the room.
         const session = getSession(socket.id);
-        const arena = session && rooms.get(session.code);
+        const arena = rooms.get(
+          session?.code ?? watchers.get(socket.id)?.code ?? "",
+        );
         if (!arena) return null;
         const owners = fighterAccounts.get(arena);
         const members: ChatMember[] = [];
@@ -2871,6 +2898,16 @@ export function createArenaServer(
           if (![...sessions.values()].some((s) => s.id === p.id)) continue;
           const team = arena instanceof RaidArena ? 0 : arena.teamOf(p);
           members.push(chatMember(accountId, p.name, team));
+        }
+        // Watchers sit on no side (chat.ts: they hear the players' emotes,
+        // and the players hear their emotes and phrases, never calls).
+        for (const [id, w] of watchers) {
+          if (w.code !== arena.code) continue;
+          const viewer = io.sockets.sockets.get(id)?.data.account as
+            Account | undefined;
+          if (!viewer || members.some((m) => m.accountId === viewer.id))
+            continue;
+          members.push({ ...chatMember(viewer.id, w.name), watcher: true });
         }
         return {
           channel,
@@ -3196,8 +3233,6 @@ export function createArenaServer(
       reply(cb, { ok: true, plaza: visitor.plaza, me: visitor.profile.id });
       const orbs = plaza.orbsFor(socket.id);
       if (orbs) socket.emit("plaza-orbs", orbs);
-      const wish = plaza.wishFor(socket.id);
-      if (wish) socket.emit("plaza-wish", wish);
       const token = socket.data.accessToken as string | undefined;
       if (token) void plazaAppearance.refresh(socket.id, token, true);
       if (token) void sendTreats(token);
@@ -3321,8 +3356,6 @@ export function createArenaServer(
       if (!token || treatPending) return fail(cb, "One moment…");
       if (!plaza.treatReady(socket.id, Date.now()))
         return fail(cb, "Wait a moment between treats.");
-      // Thrown at the fountain: a wish (where they stood when they threw).
-      const wishing = plaza.atFountain(socket.id);
       treatPending = true;
       try {
         // A fresh id per throw: a retry of this request can't take two treats.
@@ -3341,20 +3374,8 @@ export function createArenaServer(
             treats: r?.left ?? 0,
           });
         const thrown = plaza.treat(socket.id, r.treat);
-        if (thrown)
-          toPlaza(
-            copy,
-            "plaza-treat",
-            wishing ? { ...thrown, wish: true } : thrown,
-          );
-        reply(cb, {
-          ok: true,
-          treat: r.treat,
-          treats: r.left ?? 0,
-          ...(wishing ? { wish: true } : {}),
-        });
-        if (wishing)
-          for (const e of plaza.wish(socket.id, Date.now())) plazaEvent(e);
+        if (thrown) toPlaza(copy, "plaza-treat", thrown);
+        reply(cb, { ok: true, treat: r.treat, treats: r.left ?? 0 });
       } catch (error) {
         fail(
           cb,
@@ -3650,24 +3671,6 @@ export function createArenaServer(
       });
     plazaQueue.set(player, run);
   };
-  /** A full wish meter: pay each wisher once (the fill's ref) within the
-   * daily cap, in their Plaza queue, and tell them if they're still here. */
-  const payWish = (player: string, ref: string) => {
-    if (!accounts.recordWish) return;
-    const run = (plazaQueue.get(player) ?? Promise.resolve())
-      .then(() => accounts.recordWish!(player, ref))
-      .then((pay) => {
-        if (!pay?.paid) return;
-        for (const key of plaza.keys())
-          if (plaza.accountOf(key) === player)
-            io.sockets.sockets.get(key)?.emit("plaza-wish-paid", pay);
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (plazaQueue.get(player) === run) plazaQueue.delete(player);
-      });
-    plazaQueue.set(player, run);
-  };
   const toPlaza = (copy: number, event: string, data: unknown) => {
     for (const key of plaza.keys())
       if (plaza.plazaOf(key) === copy)
@@ -3682,9 +3685,6 @@ export function createArenaServer(
     else if (e.type === "fish")
       io.sockets.sockets.get(e.key)?.emit("plaza-fish", e.note);
     else if (e.type === "news") toPlaza(e.plaza, "plaza-news", e.news);
-    else if (e.type === "wish") toPlaza(e.plaza, "plaza-wish", e.wish);
-    else if (e.type === "wished")
-      for (const player of e.accounts) payWish(player, e.ref);
     else toPlaza(e.plaza, "plaza-orbs", e.orbs);
   };
   /** Move everyone in the Plaza, run the pitch and the orbs, send each player what is near. */

@@ -27,6 +27,7 @@ export function historyController(
   load: (q: HistoryQuery) => Promise<MatchHistory>,
   render: () => void,
   openPlayer?: (id: string, name: string) => void,
+  playBot?: (level: "easy" | "normal" | "hard") => void,
 ): HistoryController {
   const state = historyState();
   // Answers for an older filter (or an older first page) are dropped.
@@ -87,6 +88,8 @@ export function historyController(
         render();
       } else if (d.historyMore !== undefined) void page(false);
       else if (d.historyRetry !== undefined) void page(true);
+      else if (d.historyReplay && playBot)
+        playBot(d.historyReplay as "easy" | "normal" | "hard");
       else if (d.historyPlayer && openPlayer)
         openPlayer(d.historyPlayer, d.historyName ?? "");
       else return false;

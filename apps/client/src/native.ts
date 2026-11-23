@@ -19,6 +19,29 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
 export const isNativeApp = () => Capacitor.isNativePlatform();
+/** "ios" or "android" inside the app; undefined in a browser. */
+export const nativePlatform = () =>
+  Capacitor.isNativePlatform() ? Capacitor.getPlatform() : undefined;
+
+/**
+ * The phone's model identifier and system version, for match reports
+ * (battle-perf.ts deviceModel): an iPhone 11 is "iPhone12,1". Only the app
+ * can read it (@capacitor/device); a browser, or an app built before the
+ * plugin was added, gives undefined.
+ */
+let deviceInfo: { model?: string; osVersion?: string } | undefined;
+export function loadDeviceInfo() {
+  if (!Capacitor.isNativePlatform() || deviceInfo) return;
+  import("@capacitor/device")
+    .then(({ Device }) => Device.getInfo())
+    .then((info) => {
+      deviceInfo = { model: info.model, osVersion: info.osVersion };
+    })
+    .catch(() => {
+      /* Optional: the report goes without it. */
+    });
+}
+export const nativeDeviceInfo = () => deviceInfo;
 
 /**
  * The privacy policy (public/privacy.html). The app's own pages live at

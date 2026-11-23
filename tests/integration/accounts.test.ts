@@ -696,6 +696,30 @@ it("keeps a finished bot match on rematch and refuses the lobby", async () => {
   expect((await emit(socket, "rematch")).ok).toBe(true);
   expect(arena.phase).toBe("briefing");
 });
+it("a bot rematch can bring another fighter; a bad one is refused", async () => {
+  const player = accounts.add(false);
+  const socket = await connect(player.token);
+  const reply = await emit(socket, "bot-match", {
+    name: "Solo",
+    character: "voltkit",
+    difficulty: "easy",
+  });
+  const arena = server.rooms.get(reply.code!)!;
+  const [me, bot] = arena.players;
+  arena.phase = "playing";
+  arena.deadline = arena.time + 100;
+  arena.teamScores[bot.team ?? 1] = arena.roundsToWin - 1;
+  me.hp = 0;
+  server.step();
+  expect(arena.phase).toBe("finished");
+  expect((await emit(socket, "rematch", { character: "nope" })).ok).toBe(false);
+  expect(arena.phase).toBe("finished");
+  expect((await emit(socket, "rematch", { character: "tidefin" })).ok).toBe(
+    true,
+  );
+  expect(arena.phase).toBe("briefing");
+  expect(arena.players.find((p) => p.id === me.id)!.character).toBe("tidefin");
+});
 it("runs a 2v2 room: four players, teams, shuffle, start and 2v1 on leave", async () => {
   const people = [0, 1, 2, 3, 4].map(() => accounts.add(false));
   const sockets = await Promise.all(people.map((p) => connect(p.token)));
@@ -750,6 +774,11 @@ it("runs a 2v2 room: four players, teams, shuffle, start and 2v1 on leave", asyn
   expect(arena.phase).toBe("finished");
   expect(arena.winnerTeam).toBe(1 - (leaver.team ?? 0));
   const stayer = sockets[arena.players.findIndex((p) => !p.out && p.connected)];
+  // A PvP rematch never brings another fighter (picks are secret until a
+  // match starts): that is the lobby's job.
+  expect((await emit(stayer, "rematch", { character: "tidefin" })).error).toBe(
+    "Change fighters in the lobby.",
+  );
   expect((await emit(stayer, "rematch")).ok).toBe(false);
   expect((await emit(stayer, "lobby")).ok).toBe(true);
   expect(arena.phase).toBe("lobby");

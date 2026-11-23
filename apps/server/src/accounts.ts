@@ -4,7 +4,6 @@ import { clientOrigins } from "./api-cors.js";
 import type {
   PlazaProgress,
   PlazaRecord,
-  PlazaWishPay,
 } from "../../../packages/shared/src/plaza.js";
 import {
   RAID_COSMETICS,
@@ -115,11 +114,6 @@ export interface AccountProvider {
   recordActivity?(receipt: ActivityReceipt): Promise<void>;
   /** Something the game server saw in the Plaza (quests, orbs, laps); returns the player's progress. */
   recordPlaza?(event: PlazaRecord): Promise<PlazaProgress | null>;
-  /**
-   * A full wish meter in the Plaza: pay this wisher once per fill (`ref`, the
-   * fill's id) within the daily cap (arena_plaza_wish); null for no player.
-   */
-  recordWish?(player: string, ref: string): Promise<PlazaWishPay | null>;
   authenticate(token: string): Promise<Account | null>;
   /** Read-only rows for friends' ratings and recent players (step 6). */
   social?: SocialStore;
@@ -459,23 +453,6 @@ export function createAccountProvider(): AccountProvider {
       if (result.error)
         throw new AccountError(503, "Plaza rewards could not be stored.");
       return (result.data as PlazaProgress | null) ?? null;
-    },
-    async recordWish(player, ref) {
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (!url || !serviceKey)
-        throw new AccountError(
-          503,
-          "Plaza rewards require server storage configuration.",
-        );
-      const admin = createClient(url, serviceKey, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      });
-      const result = await admin.rpc("arena_plaza_wish", {
-        p: { player, ref },
-      });
-      if (result.error)
-        throw new AccountError(503, "Plaza rewards could not be stored.");
-      return (result.data as PlazaWishPay | null) ?? null;
     },
     async recordActivity(receipt) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

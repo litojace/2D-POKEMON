@@ -39,12 +39,70 @@ export interface PerfSummary {
   stalls: number;
 }
 
+/**
+ * What one frame held, for the report's detail (`BattlePerfMeter.detail`):
+ * where a slow phone's time goes, not only how much of it.
+ */
+export interface FrameSample {
+  /**
+   * Our own work in the frame (ms): Phaser's step from its start to the end
+   * of rendering, i.e. game logic plus building the draw calls. Short work
+   * in a long frame means the graphics chip (or heat) set the pace.
+   */
+  work?: number;
+  /** The effects engine's last frame (fx-engine.ts FxFrameStats). */
+  glow?: number;
+  soft?: number;
+  particles?: number;
+  /** Objects on the battle scene's display list. */
+  objects?: number;
+  /** The raid boss's phase (1, 2, ...); none outside raids. */
+  phase?: number;
+  /** The boss attacks being warned of, as one key ("nightfall,pounce"). */
+  attacks?: string;
+}
+
+/** Seconds of live play per slice of the report's timeline. */
+export const PERF_SLICE_SECONDS = 15;
+/** At most this many slices are reported (an hour of play). */
+const MAX_SLICES = 240;
+
+/**
+ * The report's detail: how the match changed over time, how much of each
+ * frame was our own work, and what the scene held in its slowest frames.
+ */
+export interface PerfDetail {
+  /** Our work per frame (ms), median and 95th percentile. */
+  workP50?: number;
+  workP95?: number;
+  /** Frames per second and stutter share per 15 s of live play, in order. */
+  sliceFps: number[];
+  sliceJank: number[];
+  /**
+   * The scene at the median frame and over the slowest 5% of frames:
+   * glow and soft cover (screens), particles, display-list objects.
+   */
+  glowP50?: number;
+  glowSlow?: number;
+  softP50?: number;
+  softSlow?: number;
+  particlesP50?: number;
+  particlesSlow?: number;
+  objectsP50?: number;
+  objectsSlow?: number;
+  /** Per raid boss phase: seconds, frames per second, stutter share. */
+  phases?: { phase: number; seconds: number; fps: number; jank: number }[];
+  /** The boss attacks most often warned of in the slowest 5% of frames. */
+  attacksSlow?: string[];
+}
+
 export class BattlePerfMeter {
   private last: number | undefined;
   private steps: number[] = [];
+  private samples: (FrameSample | undefined)[] = [];
   private total = 0;
   /** Feed every rendered frame; `live` is false outside live play. */
-  frame(now: number, live: boolean) {
+  frame(now: number, live: boolean, sample?: FrameSample) {
     if (!live) {
       this.last = undefined;
       return;
@@ -58,9 +116,11 @@ export class BattlePerfMeter {
       // Keep the most recent half: a long match still reports its whole
       // shape closely enough, in bounded memory.
       const dropped = this.steps.splice(0, MAX_FRAMES / 2);
+      this.samples.splice(0, MAX_FRAMES / 2);
       this.total -= dropped.reduce((a, b) => a + b, 0);
     }
     this.steps.push(step);
+    this.samples.push(sample);
     this.total += step;
   }
   /** The whole measurement, or only its last `ms` (the overlay's view). */
@@ -99,9 +159,134 @@ export class BattlePerfMeter {
       stalls: steps.filter((s) => s > PERF_STALL).length,
     };
   }
+  /** The whole match's detail, for its report (not the overlay: it sorts). */
+  detail(): PerfDetail {
+    const steps = this.steps,
+      samples = this.samples;
+    const round = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
+    const pick = (list: number[], q: number) => {
+      if (!list.length) return undefined;
+      const sorted = list.slice().sort((a, b) => a - b);
+      return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
+    };
+    const jankOf = (from: number, to: number) => {
+      let time = 0,
+        jank = 0;
+      for (let i = from; i < to; i++) {
+        time += steps[i];
+        if (steps[i] > PERF_JANK) jank += steps[i];
+      }
+      return { time, jank };
+    };
+    // The timeline: 15 s slices of live play (a last, partial one counts
+    // from 5 s).
+    const sliceFps: number[] = [],
+      sliceJank: number[] = [];
+    let start = 0,
+      time = 0;
+    const close = (end: number) => {
+      const t = jankOf(start, end);
+      if (t.time >= 5000 && sliceFps.length < MAX_SLICES) {
+        sliceFps.push(round(((end - start) * 1000) / t.time));
+        sliceJank.push(round(t.jank / t.time, 3));
+      }
+      start = end;
+      time = 0;
+    };
+    for (let i = 0; i < steps.length; i++) {
+      time += steps[i];
+      if (time >= PERF_SLICE_SECONDS * 1000) close(i + 1);
+    }
+    if (start < steps.length) close(steps.length);
+    const out: PerfDetail = { sliceFps, sliceJank };
+    // Our own work per frame.
+    const work = samples.flatMap((s) =>
+      s?.work !== undefined && s.work >= 0 ? [s.work] : [],
+    );
+    const w50 = pick(work, 0.5),
+      w95 = pick(work, 0.95);
+    if (w50 !== undefined) out.workP50 = round(w50);
+    if (w95 !== undefined) out.workP95 = round(w95);
+    // The scene: at the median frame, and over the slowest 5%.
+    const order = steps.map((_, i) => i).sort((a, b) => steps[b] - steps[a]);
+    const slow = order.slice(0, Math.max(1, Math.ceil(steps.length * 0.05)));
+    const scene = (
+      key: "glow" | "soft" | "particles" | "objects",
+      digits: number,
+    ) => {
+      const all = samples.flatMap((s) =>
+        typeof s?.[key] === "number" ? [s[key] as number] : [],
+      );
+      const inSlow = slow.flatMap((i) =>
+        typeof samples[i]?.[key] === "number"
+          ? [samples[i]![key] as number]
+          : [],
+      );
+      const p50 = pick(all, 0.5),
+        s50 = pick(inSlow, 0.5);
+      return {
+        p50: p50 === undefined ? undefined : round(p50, digits),
+        slow: s50 === undefined ? undefined : round(s50, digits),
+      };
+    };
+    const glow = scene("glow", 2),
+      soft = scene("soft", 2),
+      particles = scene("particles", 0),
+      objects = scene("objects", 0);
+    if (glow.p50 !== undefined) out.glowP50 = glow.p50;
+    if (glow.slow !== undefined) out.glowSlow = glow.slow;
+    if (soft.p50 !== undefined) out.softP50 = soft.p50;
+    if (soft.slow !== undefined) out.softSlow = soft.slow;
+    if (particles.p50 !== undefined) out.particlesP50 = particles.p50;
+    if (particles.slow !== undefined) out.particlesSlow = particles.slow;
+    if (objects.p50 !== undefined) out.objectsP50 = objects.p50;
+    if (objects.slow !== undefined) out.objectsSlow = objects.slow;
+    // Raid boss phases.
+    const byPhase = new Map<number, number[]>();
+    samples.forEach((s, i) => {
+      if (s?.phase === undefined) return;
+      if (!byPhase.has(s.phase)) byPhase.set(s.phase, []);
+      byPhase.get(s.phase)!.push(i);
+    });
+    if (byPhase.size) {
+      out.phases = [...byPhase]
+        .sort((a, b) => a[0] - b[0])
+        .slice(0, 12)
+        .flatMap(([phase, idx]) => {
+          let t = 0,
+            j = 0;
+          for (const i of idx) {
+            t += steps[i];
+            if (steps[i] > PERF_JANK) j += steps[i];
+          }
+          return t > 0
+            ? [
+                {
+                  phase,
+                  seconds: round(t / 1000),
+                  fps: round((idx.length * 1000) / t),
+                  jank: round(j / t, 3),
+                },
+              ]
+            : [];
+        });
+    }
+    // The boss attacks warned of in the slowest frames.
+    const counts = new Map<string, number>();
+    for (const i of slow)
+      for (const kind of new Set((samples[i]?.attacks ?? "").split(",")))
+        if (kind) counts.set(kind, (counts.get(kind) ?? 0) + 1);
+    if (counts.size)
+      out.attacksSlow = [...counts]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([kind]) => kind);
+    return out;
+  }
   reset() {
     this.last = undefined;
     this.steps = [];
+    this.samples = [];
     this.total = 0;
   }
 }
@@ -363,6 +548,44 @@ export function deviceKind(
               ? "linux"
               : "other";
   return { os, app: !!standalone };
+}
+
+/**
+ * Where the game runs: a browser tab, the home-screen web app, or the iOS or
+ * Android app (Capacitor). `app` (deviceKind) only says "installed to the
+ * home screen", so the Xcode-built iPhone app reported false.
+ */
+export type AppShell = "web" | "pwa" | "ios-app" | "android-app";
+export function appShell(
+  nativePlatform: string | undefined,
+  standalone: boolean,
+): AppShell {
+  if (nativePlatform === "ios") return "ios-app";
+  if (nativePlatform === "android") return "android-app";
+  return standalone ? "pwa" : "web";
+}
+
+/**
+ * Which phone, as far as it can be told without naming anyone: in the app,
+ * the model identifier the system gives (an iPhone 11 is "iPhone12,1") and
+ * the system version; in a browser, the screen's size in CSS pixels and its
+ * pixel ratio, which narrow an iPhone to a family of models.
+ */
+export function deviceModel(
+  info: { model?: string; osVersion?: string } | undefined,
+  screen: { width: number; height: number; dpr: number } | undefined,
+): { model?: string; osVersion?: string; screen?: string } {
+  const out: { model?: string; osVersion?: string; screen?: string } = {};
+  const model = info?.model?.trim();
+  if (model && /^[\w ,.()+-]{1,40}$/.test(model)) out.model = model;
+  const os = info?.osVersion?.trim();
+  if (os && /^[\w.]{1,20}$/.test(os)) out.osVersion = os;
+  if (screen && screen.width > 0 && screen.height > 0 && screen.dpr > 0) {
+    const long = Math.round(Math.max(screen.width, screen.height)),
+      short = Math.round(Math.min(screen.width, screen.height));
+    out.screen = `${long}x${short}@${Math.round(screen.dpr * 100) / 100}`;
+  }
+  return out;
 }
 
 /**

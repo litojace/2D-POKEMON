@@ -135,6 +135,27 @@ describe("markup", () => {
     );
   });
 
+  it("your own bot match, opened, offers that bot again; a friend's doesn't", () => {
+    const s = historyState();
+    s.matches = [entry({ bot: "hard", rating: null })];
+    s.open = s.matches[0].id;
+    expect(
+      historyMarkup(s, { whose: "Your", now: NOW, replay: true }),
+    ).toContain('data-history-replay="hard"');
+    expect(
+      historyMarkup(s, { whose: "Your", now: NOW, replay: true }),
+    ).toContain("Play the Hard bot again");
+    expect(historyMarkup(s, { whose: "Kai's", now: NOW })).not.toContain(
+      "data-history-replay",
+    );
+    // A match against players has no such button.
+    s.matches = [entry()];
+    s.open = s.matches[0].id;
+    expect(
+      historyMarkup(s, { whose: "Your", now: NOW, replay: true }),
+    ).not.toContain("data-history-replay");
+  });
+
   it("a bot match moves no rating: nothing in its place", () => {
     const s = historyState();
     s.matches = [entry({ bot: "hard", rating: null })];

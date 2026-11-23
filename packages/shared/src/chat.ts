@@ -170,6 +170,8 @@ export interface ChatLine {
   quick?: ChatQuick;
   /** In a room: the speaker's fighter, for a bubble over them in battle. */
   fighter?: string;
+  /** In a room: the speaker is watching it (no fighter, no side). */
+  watcher?: boolean;
   /** Between friends: who it was sent to. */
   to?: string;
 }

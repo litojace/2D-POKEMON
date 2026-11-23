@@ -303,23 +303,10 @@ from players' phones:
   slowest frames, stutter, level and density, glow, smoke and particles),
   for a player to screenshot.
 
-The Plaza's wishing-fountain fireworks (20 Nov 2026) follow the same
-rules, although the Plaza is a 2D canvas, not a Phaser scene, so
-`fx-engine.ts` can't draw there. `apps/client/src/plaza/plaza-fireworks.ts`
-has the engine's levers: sparks at 35% at Low and with reduced motion, no
-spark tails, rocket embers or crackle twinkles at Low, one pooled array of
-at most 360 sparks, one pre-drawn glow sprite per colour for the bursts'
-flashes, and a glow budget (Low: 0.2 screens; over it every flash shrinks
-alike, never below half size). Sparks are drawn in groups (one path per
-colour and brightness), and the scene's dimming under the show is one fill
-a frame, skipped at Low. Its counts (`stats`, `peak`) are read by
-`tests/visual/plaza-wish.spec.ts` and
-`tests/visual/plaza-wish-performance.spec.ts`. Measured at High on an
-844×390 screen in this container, for the twelve-shell show (six kinds and
-a three-shell finale): 60 fps at the fountain before and during the 5 s
-show (95th percentile frame 17 ms both), the fireworks' own drawing
-0.17 ms a frame on average (0.9 ms at most), at most 318 sparks, 3 flashes
-and 0.23 screens of glow, which Low holds to 0.2.
+The Plaza's wishing-fountain fireworks (20 Nov 2026) were taken out with
+the wishing fountain on 23 Nov 2026. Their own drawing had stayed small
+(0.3–0.9 ms a frame on CI, 0.2 ms here), but their frame-rate test kept
+failing on CI's slow software renderer.
 
 ### 9. Shots and wind-ups on your own timeline
 
@@ -397,6 +384,34 @@ you were drawn), `errors`, `build` (the commit, stamped at build time from
 and from the server: `opponents` (champions only), `botLevel`, and
 `match`, a random tag new at each match start so both players' rows read
 together.
+
+**Where a slow phone's time goes (22 Nov 2026).** A friend's iPhone 11
+lagged in long Gloomshade raids, and the reports could not say which phone
+it was, whether it was the app, whether the match got slower as it went, or
+what was on screen. Each report now also carries:
+
+- `shell`: `web`, `pwa` (home screen), `ios-app` or `android-app`. `app`
+  only means "home screen", so the Xcode-built app reported `false`.
+- `model` and `osVersion` from the app (`@capacitor/device`; an iPhone 11
+  is `iPhone12,1`), and `screen`, the screen's CSS size and pixel ratio
+  (`896x414@2`), which narrows a browser to a family of phones. An app
+  binary built before the plugin was added sends no model.
+- `sliceFps` and `sliceJank`: frame rate and stutter share for each 15 s of
+  live play, so heat building up (or a heavy late phase) shows as a falling
+  line instead of hiding in one average.
+- `workP50` and `workP95`: our own work per frame (Phaser's step through
+  rendering, in ms). Long frames with short work mean the graphics chip or
+  heat set the pace; long work means our code.
+- `glowP50`/`glowSlow`, `softP50`/`softSlow`, `particlesP50`/`particlesSlow`
+  and `objectsP50`/`objectsSlow`: the effects engine's cover and particles
+  and the scene's display-list size at the median frame and over the
+  slowest 5% of frames.
+- In raids, `phases` (seconds, frame rate and stutter per boss phase) and
+  `attacksSlow`, the boss attacks most often being warned of in the slowest
+  frames.
+
+All of them are technical numbers in `KEEP`; still no account, name or
+room code (`tests/unit/perf-reports.test.ts`, `tests/unit/battle-perf.test.ts`).
 
 ### 11. Why your own fighter jumps
 

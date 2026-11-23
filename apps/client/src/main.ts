@@ -24,8 +24,10 @@ import {
   BUILD,
   NetMeter,
   PERF_MIN_SECONDS,
+  appShell,
   connectionKind,
   deviceKind,
+  deviceModel,
   drawnGap,
   loadPhases,
   perfMode,
@@ -100,6 +102,7 @@ import {
   pacificDate,
   raidPingLabel,
   isRaider,
+  raidBossName,
 } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
@@ -121,7 +124,12 @@ import {
   type RoomMode as RoomKind,
 } from "./screens/room-view";
 import "./screens/room.css";
-import { renderRaidUI, drawRaidArena, raidLookList } from "./raid-ui";
+import {
+  renderRaidUI,
+  renderRaidWatchHud,
+  drawRaidArena,
+  raidLookList,
+} from "./raid-ui";
 import {
   howToPlayMarkup,
   helpTopicMarkup,
@@ -206,6 +214,9 @@ import {
   PRIVACY_URL,
   SUPPORT_URL,
   isNativeApp,
+  loadDeviceInfo,
+  nativeDeviceInfo,
+  nativePlatform,
   setupNativeShell,
 } from "./native";
 import {
@@ -332,7 +343,14 @@ import { askConfirm, openHubPanelNow, PANEL_EVENT } from "./ui/hub-panel";
 import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { createGuide } from "./getting-started-screen";
 import { openQuickSearch, type QuickSearchHandle } from "./quick-match";
-import { recordBotResult, suggestedBotLevel } from "./bot-ladder";
+import {
+  LOSS_STREAK_HINT,
+  easierBot,
+  recordBotOutcome,
+  recordBotResult,
+  suggestedBotLevel,
+  type BotLevelId,
+} from "./bot-ladder";
 import { createCoach } from "./battle-coach";
 import { playerLevel } from "../../../packages/shared/src/journey";
 import { openRoster, type RosterScreen } from "./screens/roster";
@@ -474,11 +492,15 @@ import { syncUiEffects } from "./ui/ui-effects";
 import { practiceMeter } from "./practice-meter";
 import {
   PRACTICE_STATS,
+  loadPracticePrefs,
   practicePanelMarkup,
+  savePracticePrefs,
   type PracticeStat,
 } from "./practice-panel";
 import "./ui/phone-fit.css";
 import "./settings-screen.css";
+import { fighterPickerMarkup } from "./fighter-picker";
+import "./result-extras.css";
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(
@@ -543,6 +565,27 @@ let battleStill: boolean | undefined;
 let battleDensity: number | undefined;
 /** How smoothly this match runs on this device (battle-perf.ts). */
 const battlePerf = new BattlePerfMeter();
+/**
+ * Our own work in the last frame (ms): Phaser's step from its start to the
+ * end of rendering (createGame). In a long frame, short work means the
+ * graphics chip set the pace (battle-perf FrameSample.work).
+ */
+let frameWork: number | undefined;
+/** The raid's warned attacks as one key, worked out once per snapshot. */
+let attackKey: { warnings?: readonly { kind: string }[]; key: string } = {
+  key: "",
+};
+function raidAttackKey(warnings: readonly { kind: string }[]) {
+  if (attackKey.warnings !== warnings)
+    attackKey = {
+      warnings,
+      key: [...new Set(warnings.map((w) => w.kind))]
+        .filter((k) => /^[a-z0-9-]{1,32}$/.test(k))
+        .sort()
+        .join(","),
+    };
+  return attackKey.key;
+}
 /**
  * Moves whose cast effect plays on your press (predicted): it depends only on
  * where you stand and face. The rest wait for the server (see
@@ -968,6 +1011,8 @@ battleHudSize.observe($("abilities"));
 watchBattleZoom();
 // The iPhone app never zooms: a double tap in the Plaza zoomed the game in.
 if (isNativeApp()) lockAppZoom();
+// The phone's model for match reports (native.ts), read once.
+loadDeviceInfo();
 guardTouchHold();
 const homeNavigation = setupHomeNavigation($("menu"), () => showSettings());
 $("home-settings").onclick = () => showSettings();
@@ -2035,8 +2080,24 @@ let roomMode: RoomMode = (() => {
   }
 })();
 /** Lobby panel: a duel list, or Blue/Red columns for 2v2. */
+/** A side's name for a watcher: Blue/Red in 2v2, else its fighter's name. */
+function sideName(team: number) {
+  if (isTeams()) return (TEAM_LABELS[team] ?? "").toUpperCase();
+  return (
+    state?.players.find((p) => teamOf(p) === team)?.name ?? ""
+  ).toUpperCase();
+}
+/** Watching: the leading side and the runner-up, for no one in particular. */
+function watchRace(label: string, totals: number[], target: number) {
+  const sides = totals
+    .map((n, team) => ({ n: Math.floor(n), team }))
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 2);
+  return `${label} · ${sides.map((x) => `${sideName(x.team)} ${x.n}`).join(" · ")} / ${target}`;
+}
 /** Orb Rush HUD line: gems you carry, your side's bank and the best rival's. */
 function rushLabel(me: Fighter) {
+  if (!myId) return watchRace("RUSH", state?.banked ?? [], RUSH.target);
   const banked = state?.banked ?? [];
   const mine = banked[teamOf(me)] ?? 0;
   const rival = Math.max(0, ...banked.filter((_, t) => t !== teamOf(me)));
@@ -2044,6 +2105,12 @@ function rushLabel(me: Fighter) {
 }
 /** Crown Hill HUD line: your hold time against the best rival's. */
 function crownLabel(me: Fighter) {
+  if (!myId)
+    return watchRace(
+      "CROWN",
+      state?.crown ?? [],
+      state?.arcade?.hill?.target ?? CROWN.holdSeconds,
+    );
   const crown = state?.crown ?? [];
   const mine = crown[teamOf(me)] ?? 0;
   const rival = Math.max(0, ...crown.filter((_, t) => t !== teamOf(me)));
@@ -2053,7 +2120,9 @@ function crownLabel(me: Fighter) {
 function renderWatchOverlay(overlay: HTMLElement) {
   const banner = $("spectate");
   banner.hidden = state!.phase !== "playing";
-  banner.textContent = `Watching room ${state!.code} · Esc / Menu to stop`;
+  // Phones have no Esc: the gear (top right) holds "Stop watching".
+  const text = `Watching room ${state!.code} · ${touch.enabled ? "⚙ to stop" : "Esc to stop"}`;
+  if (banner.textContent !== text) banner.textContent = text;
   if (state!.phase === "playing") {
     setOverlayMarkup(overlay, "");
     overlay.style.pointerEvents = "none";
@@ -2065,7 +2134,25 @@ function renderWatchOverlay(overlay: HTMLElement) {
   let heading = "",
     details = "",
     actions = "";
-  if (state!.phase === "briefing") {
+  const raid = state!.raid;
+  if (raid) {
+    // A raid: the raiders against the boss, its own words between fights.
+    const raiders = state!.players.filter((p) => isRaider(p) && !p.out);
+    if (state!.phase === "briefing") {
+      heading = `The raiders are getting ready`;
+      details = `<p>${raiders.map((p) => `<b>${escape(p.name)}</b>`).join(" · ")} against ${escape(raidBossName(raid))}</p>`;
+    } else if (state!.phase === "intermission") {
+      heading = "The raiders are choosing rites";
+      details = `<p class="rite-timer">Next phase in ${LIVE_SECONDS}</p>`;
+    } else if (state!.phase === "finished") {
+      heading =
+        raid.result === "victory"
+          ? `${escape(raidBossName(raid))} defeated!`
+          : `${escape(raidBossName(raid))} still stands`;
+      details = `<p>${raiders.map((p) => `<b>${escape(p.name)}</b>`).join(" · ")} · ${Math.floor(raid.elapsed / 60)}:${String(Math.floor(raid.elapsed % 60)).padStart(2, "0")} · ${raid.revives} revives</p>`;
+      actions = `<div class="result-actions"><button class="secondary btn-secondary leave-button" id="watch-stop">${iconLabel("stop-watching", "Stop watching")}</button></div>`;
+    }
+  } else if (state!.phase === "briefing") {
     heading = "The players are getting ready";
     details = `<div class="briefing-versus${isFfa() ? " ffa" : ""}">${state!.players
       .map(
@@ -2080,7 +2167,7 @@ function renderWatchOverlay(overlay: HTMLElement) {
     heading = LIVE_COUNTDOWN;
     details = "Here we go.";
   }
-  if (state!.phase === "intermission") {
+  if (state!.phase === "intermission" && !raid) {
     heading = isTeams()
       ? state!.roundWinnerTeam === null || state!.roundWinnerTeam === undefined
         ? "Round drawn"
@@ -2094,7 +2181,7 @@ function renderWatchOverlay(overlay: HTMLElement) {
     heading = "A player disconnected";
     details = `Waiting for them · ${LIVE_SECONDS}`;
   }
-  if (state!.phase === "finished") {
+  if (state!.phase === "finished" && !raid) {
     heading = isTeams()
       ? `${TEAM_LABELS[state!.winnerTeam ?? 0] ?? ""} team wins`
       : `${name(state!.winner)} wins`;
@@ -2768,7 +2855,10 @@ function syncHub() {
 }
 /** The chat button's place and channels (chat/chat-ui.ts). */
 function syncChat(hub: boolean) {
-  const inRoom = !!myId && !!state;
+  // Watching a room counts as being in it: watchers chat with its players
+  // (docs/chat-plan.md, "Watchers").
+  const watcher = !myId && !!watching && state?.code === watching;
+  const inRoom = (!!myId || watcher) && !!state;
   const fighting =
     inRoom && state!.phase !== "lobby" && state!.phase !== "finished";
   // The Reveal (a PvP briefing) is a few seconds' loading screen: no chat
@@ -2787,15 +2877,19 @@ function syncChat(hub: boolean) {
       !reveal &&
       !state!.practice &&
       !state!.vsBot &&
-      state!.players.length > 1 &&
-      (!state!.raid || state!.raid.partySize > 1),
+      // Someone to talk to: another fighter, a raid party, or a watcher.
+      (watcher ||
+        (state!.watchers?.length ?? 0) > 0 ||
+        (state!.players.length > 1 &&
+          (!state!.raid || state!.raid.partySize > 1))),
     !!state?.raid,
+    watcher,
   );
   chat.sync(place, {
     party: !!party,
     room: inRoom && !state!.practice,
-    // A 2v2 room's own side (docs/hidden-picks.md).
-    team: inRoom && !state!.practice && state!.mode === "teams",
+    // A 2v2 room's own side (docs/hidden-picks.md); a watcher has none.
+    team: inRoom && !watcher && !state!.practice && state!.mode === "teams",
     // Nearby: the Plaza's copy.
     place: hub && hubScene === "plaza",
     // Friends: anyone signed in with an account (guests have no friends).
@@ -3586,9 +3680,16 @@ function renderMenu(revealSelection = false) {
         const button = $<HTMLButtonElement>("practice");
         button.disabled = true;
         const name = $<HTMLInputElement>("name").value.trim() || "Trainer";
-        // A new Solo test starts with normal skills.
-        practiceEx = false;
-        identity(await request("practice", { name, character: selected }));
+        // A new Solo test starts with the switches you left on last time.
+        const prefs = loadPracticePrefs();
+        practiceEx = prefs.ex;
+        const reply = await request("practice", { name, character: selected });
+        identity(reply);
+        if (reply.ok && (prefs.unlimitedCooldowns || prefs.targetAttacks))
+          void request("practice-options", {
+            unlimitedCooldowns: prefs.unlimitedCooldowns,
+            targetAttacks: prefs.targetAttacks,
+          });
         button.disabled = false;
       };
   }
@@ -3789,14 +3890,25 @@ function renderBattle() {
           "practice-character",
           $<HTMLSelectElement>("practice-character").value,
         );
-      const options = () =>
+      // Every switch is remembered on this device for the next Solo test.
+      const remember = () =>
+        savePracticePrefs({
+          unlimitedCooldowns: $<HTMLInputElement>("practice-unlimited").checked,
+          targetAttacks: $<HTMLInputElement>("practice-attacks").checked,
+          ex: practiceEx,
+        });
+      const options = () => {
+        remember();
         void request("practice-options", {
           unlimitedCooldowns: $<HTMLInputElement>("practice-unlimited").checked,
           targetAttacks: $<HTMLInputElement>("practice-attacks").checked,
         });
+      };
       practiceDamage = practiceMeter();
-      $("practice-ex").onchange = () =>
-        (practiceEx = $<HTMLInputElement>("practice-ex").checked);
+      $("practice-ex").onchange = () => {
+        practiceEx = $<HTMLInputElement>("practice-ex").checked;
+        remember();
+      };
       $("practice-unlimited").onchange = options;
       $("practice-attacks").onchange = options;
       $("practice-reset").onclick = () => void request("practice-reset");
@@ -4066,6 +4178,17 @@ function renderBattle() {
     if (exit) exit.onclick = () => void leave();
     return;
   }
+  // Watching a raid: the boss's bar and the raiders' health, as they see
+  // them; the overlays between fights are the watcher's (below).
+  if (state.raid && !myId && watching) {
+    renderRaidWatchHud(state);
+    const raidHud = document.getElementById("raid-hud");
+    if (raidHud && raidHud !== measuredRaidHud) {
+      if (measuredRaidHud) battleHudSize.unobserve(measuredRaidHud);
+      measuredRaidHud = raidHud;
+      battleHudSize.observe(raidHud);
+    }
+  }
   const overlay = $("arena-overlay");
   // The Reveal and the countdown take the whole screen (style.css). Marked on
   // the overlay itself, in the same step as its markup: a rule asking the
@@ -4292,11 +4415,20 @@ function renderBattle() {
       // A finished match against a bot: Getting started's first step.
       if (state.vsBot) {
         guide.mark("bot");
-        recordBotResult(
-          state.matchId ?? `${state.code}:${state.time}`,
-          state.vsBot,
-          won,
+        const matchKey = state.matchId ?? `${state.code}:${state.time}`;
+        recordBotResult(matchKey, state.vsBot, won);
+        const decided = isTeams()
+          ? state.winnerTeam !== null && state.winnerTeam !== undefined
+          : !!state.winner;
+        const streak = recordBotOutcome(
+          matchKey,
+          won ? "win" : decided ? "loss" : "draw",
         );
+        // Three losses in a row: a way to practise, or an easier bot.
+        if (!won && decided && !state.arcade && streak >= LOSS_STREAK_HINT) {
+          const easier = easierBot(state.vsBot);
+          details += `<div class="result-coach" role="note"><p><b>${streak} losses in a row.</b> A few minutes in Solo test${easier ? " or an easier bot" : ""} can help.</p><div class="result-coach-actions"><button type="button" class="secondary btn-secondary" id="coach-practice">${iconLabel("target", `Practice ${escape(CHARACTERS[me.character].name)}`)}</button>${easier ? `<button type="button" class="secondary btn-secondary" id="coach-easier" data-level="${easier}">${iconLabel("bot", `Try ${AI_LEVELS.find((l) => l.id === easier)!.name}`)}</button>` : ""}</div></div>`;
+        }
       }
       // The Reveal's kicker: the mode and where (the title says who won).
       eyebrow = `${isTeams() ? "2v2 Teams" : isFfa() ? "Free-for-all" : state.vsBot ? "1v1 vs Bot" : "1v1 Duel"} · ${escape(state.arcade ? ARCADE_EVENTS[state.arcade.id].name : ARENAS[state.arena ?? "classic"].name)}`;
@@ -4305,7 +4437,10 @@ function renderBattle() {
       const next = state.vsBot
         ? "Rematch the same bot, or head back"
         : `${rematchers}/${state.players.length} ready for a rematch`;
-      actions = `<p class="sheet-note">${next}</p><div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
+      // Against a bot, the rematch can bring another fighter (not in PvP,
+      // where picks stay secret until a match starts, nor the arcade).
+      const canSwap = !!state.vsBot && !state.arcade && !me.ready;
+      actions = `<p class="sheet-note">${next}</p><div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button>${canSwap ? `<button class="secondary btn-secondary" id="change-fighter">${iconLabel("swap", "Change fighter")}</button>` : ""}<button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
     const finished = state.phase === "finished";
     const won =
@@ -4345,6 +4480,22 @@ function renderBattle() {
       };
     if (state.phase === "finished") {
       $("rematch").onclick = () => void request("rematch");
+      const swap = document.getElementById("change-fighter");
+      if (swap) swap.onclick = showFighterPicker;
+      // The losing-streak note: leave this bot room, then start the other.
+      const coachPractice = document.getElementById("coach-practice");
+      if (coachPractice)
+        coachPractice.onclick = async () => {
+          await leave();
+          void lobbyPlay("practice");
+        };
+      const coachEasier = document.getElementById("coach-easier");
+      if (coachEasier)
+        coachEasier.onclick = async () => {
+          const level = coachEasier.dataset.level as BotLevelId;
+          await leave();
+          void lobbyPlay(`bot-${level}` as LobbyMode);
+        };
       document
         .querySelectorAll<HTMLButtonElement>("[data-add-friend]")
         .forEach((b) => {
@@ -4618,18 +4769,32 @@ socket.on("invite-declined", (data: unknown) => {
 socket.on("chat", (line: ChatLine) => {
   chat.receive(line);
   // In a battle: a bubble over the speaker, and the feed under the button.
-  if (line.channel === "room" && line.fighter && state) {
+  // A watcher's line has no fighter: it goes in the feed only.
+  if (line.channel === "room" && (line.fighter || line.watcher) && state) {
     const speaker = state.players.find((p) => p.id === line.fighter);
     const me = state.players.find((p) => p.id === myId);
-    const plate = document.querySelector<HTMLElement>(
-      `.battle-nameplate[data-fighter="${CSS.escape(line.fighter)}"]`,
-    );
+    const plate = line.fighter
+      ? document.querySelector<HTMLElement>(
+          `.battle-nameplate[data-fighter="${CSS.escape(line.fighter)}"]`,
+        )
+      : null;
+    const mine = line.from.id === accountsUI?.account?.id;
     battleChat.receive(
       line.quick ? quickText(line.quick) : (line.text ?? ""),
       line.from.name,
       plate,
-      !!state.raid || (!!speaker && !!me && teamOf(speaker) === teamOf(me)),
+      mine ||
+        (!line.watcher &&
+          (!!state.raid ||
+            (!!speaker &&
+              (me
+                ? teamOf(speaker) === teamOf(me)
+                : // Watching (no side): the name takes its side's colour,
+                  // Blue as a teammate's, Red as a rival's, like the score
+                  // badge (the server sends a watcher players' emotes only).
+                  teamOf(speaker) === 0)))),
       !!line.quick && quickKind(line.quick) === "emote",
+      !!line.watcher && !mine,
     );
   }
   // Nearby lines pop over the speaker's head. On the Plaza the server
@@ -4951,6 +5116,25 @@ function dialog(html: string) {
     menuOpen = false;
   };
 }
+/** Result screen → Change fighter: a pick is the rematch, with that fighter. */
+function showFighterPicker() {
+  const me = state?.players.find((p) => p.id === myId);
+  if (!me) return;
+  dialog(fighterPickerMarkup(me.character));
+  for (const b of Array.from(
+    document.querySelectorAll<HTMLButtonElement>("#dialog [data-fp-pick]"),
+  ))
+    b.onclick = async () => {
+      const id = b.dataset.fpPick as CharacterId;
+      $<HTMLDialogElement>("dialog").close();
+      menuOpen = false;
+      const reply = await request("rematch", { character: id });
+      if (!reply.ok) return toast(reply.error ?? "Try again.");
+      // It is your fighter from now on, in the Lobby too.
+      selected = id;
+      rememberHomeFighter(id);
+    };
+}
 /**
  * The Settings leave button. Outlined red normally; bolder, with what it
  * costs, while a match is actually under way.
@@ -5079,7 +5263,12 @@ function settingsMarkup(reduced: boolean) {
     const note = state.practice
       ? ""
       : `<p class="st-note">Online matches keep running while this is open.</p>`;
-    side = `<section class="prefs-card st-card" aria-labelledby="prefs-match"><h3 id="prefs-match">${menuIcon("battle")}This match</h3>${note}${practiceTools}${motion}</section>`;
+    // What each of your skills does: on a phone there is no hover to read
+    // it, and holding a skill button casts it.
+    const skills = state.players.some((p) => p.id === myId)
+      ? `<div class="st-row"><span class="st-row-text"><b>Your skills</b><small>What each one does, and its cooldown.</small></span><button id="settings-skills" class="secondary btn-secondary">${iconLabel("info", "Skills")}</button></div>`
+      : "";
+    side = `<section class="prefs-card st-card" aria-labelledby="prefs-match"><h3 id="prefs-match">${menuIcon("battle")}This match</h3>${note}${practiceTools}${skills}${motion}</section>`;
   } else
     side = `<section class="prefs-card st-card" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3>${graphicsRow()}${isNativeApp() ? "" : fullscreenRow()}${motion}</section>`;
   const appIcon = !state && isNativeApp() ? appIconCardHTML() : "";
@@ -5115,6 +5304,8 @@ function showSettings() {
   $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
   $("settings-credits").onclick = showCredits;
+  const skills = document.getElementById("settings-skills");
+  if (skills) skills.onclick = showSkills;
   const exitRoom = $("exit-room");
   if (exitRoom) exitRoom.onclick = () => void leave();
 }
@@ -5149,6 +5340,31 @@ function bindDisplayCard() {
     }
     syncDisplayCard();
   };
+}
+/** Settings → Your skills: the fighter you play now, with a way back. */
+function showSkills() {
+  const me = state?.players.find((p) => p.id === myId);
+  if (!me) return showSettings();
+  const c = CHARACTERS[me.character];
+  const kit = kitOf(me.character, me.rites);
+  const row = (name: string, when: string, text: string) =>
+    `<li class="sk-row"><span class="sk-icon">${abilityIcon(name)}</span><span class="sk-text"><b>${escape(name)}</b><small>${escape(when)}</small><span>${escape(text)}</span></span></li>`;
+  const list = [
+    row(c.basic.name, "Basic attack · no cooldown", c.basic.description),
+    ...kit.skills.map((a, i) =>
+      row(
+        a.name,
+        i === ULT_SLOT
+          ? "Ultimate · fills by fighting"
+          : `Skill ${i + 1} · ${a.cooldown}s cooldown`,
+        a.description,
+      ),
+    ),
+  ].join("");
+  dialog(
+    `<div class="skills-screen"><button type="button" class="quiet" id="skills-back">${iconLabel("back", "Settings")}</button><h2>${escape(c.name)}'s skills</h2><ul class="sk-list">${list}</ul></div>`,
+  );
+  $("skills-back").onclick = showSettings;
 }
 /** Who and what made the game (opened from Settings, with a way back). */
 function showCredits() {
@@ -6020,9 +6236,25 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // 17 Nov 2026); the Plaza measures itself.
     if (live) battleQuality.frame(now);
     else battleQuality.pause();
-    battlePerf.frame(now, live);
-    const knobs = battleQuality.knobs();
     const fx = fxFor(this);
+    const raid = state?.raid;
+    battlePerf.frame(
+      now,
+      live,
+      live
+        ? {
+            work: frameWork,
+            glow: fx.stats.glowCover,
+            soft: fx.stats.softCover,
+            particles: fx.stats.particles,
+            objects: this.children.length,
+            ...(raid
+              ? { phase: raid.phase, attacks: raidAttackKey(raid.warnings) }
+              : {}),
+          }
+        : undefined,
+    );
+    const knobs = battleQuality.knobs();
     fx.density = knobs.particles;
     fx.trailScale = knobs.trails;
     fx.glowBudget = knobs.glowBudget;
@@ -6814,7 +7046,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // (or, downed, stay on them) and pull out for court-wide mechanics.
     // Phones only (the CSS's landscape phone breakpoint): a tablet already
     // shows the whole court large enough.
+    // Watching (no seat): always the whole court, never a follow or a zoom.
+    const ringside = !myId && !!watching;
     const raidFollow =
+      !ringside &&
       !!state?.raid &&
       touch.enabled &&
       innerWidth > innerHeight &&
@@ -6868,7 +7103,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       : this.followCamera.update(
           this.scale.width,
           this.scale.height,
-          touch.enabled &&
+          // Watching fits the whole court (a phone fills the box only when
+          // its camera follows your own fighter).
+          !ringside &&
+            touch.enabled &&
             !state?.raid &&
             document.body.classList.contains("battle-active") &&
             innerWidth > innerHeight,
@@ -6891,7 +7129,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           reducedMotion,
           this.activeCourt && !this.courtRaid ? STANDS : 0,
           state?.practice ? 1.65 : 1.2,
-          touch.enabled &&
+          !ringside &&
+            touch.enabled &&
             innerWidth > innerHeight &&
             this.activeCourt &&
             !this.courtRaid
@@ -6899,9 +7138,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             : 0,
           // The PvP badge covers the top of a phone's arena: the court may
           // scroll below it (badge pixels → game pixels).
-          touch.enabled && badgeClear ? badgeClear.bottom / this.scale.zoom : 0,
+          !ringside && touch.enabled && badgeClear
+            ? badgeClear.bottom / this.scale.zoom
+            : 0,
         );
-    const hitZoom = state?.raid ? 1 : this.koZoom;
+    // No knockout push-in while watching either: the view stays whole.
+    const hitZoom = state?.raid || ringside ? 1 : this.koZoom;
     this.cameras.main
       .setZoom(view.zoomX * hitZoom, view.zoomY * hitZoom)
       .centerOn(view.x, view.y);
@@ -8582,6 +8824,7 @@ function arenaLoading(s: Snapshot) {
  */
 function reportBattlePerf() {
   const summary = battlePerf.summary();
+  const detail = battlePerf.detail();
   const net = netMeter.summary();
   battlePerf.reset();
   netMeter.reset();
@@ -8612,6 +8855,13 @@ function reportBattlePerf() {
     errors,
     ...(softwareRendering() ? { gpu: "software" as const } : {}),
     ...(screenHz(battleFrames) ? { hz: screenHz(battleFrames) } : {}),
+    shell: appShell(nativePlatform(), deviceKind().app),
+    ...deviceModel(nativeDeviceInfo(), {
+      width: window.screen.width,
+      height: window.screen.height,
+      dpr: window.devicePixelRatio,
+    }),
+    ...detail,
   });
 }
 /**
@@ -8715,6 +8965,14 @@ function ensureBattleRenderer() {
       },
     },
   });
+  // Our own work per frame, for the match report (frameWork).
+  let stepStart = 0;
+  gameInstance.events.on(Phaser.Core.Events.PRE_STEP, () => {
+    stepStart = performance.now();
+  });
+  gameInstance.events.on(Phaser.Core.Events.POST_RENDER, () => {
+    if (stepStart) frameWork = performance.now() - stepStart;
+  });
   // A player can return home while the first texture load is still finishing.
   gameInstance.events.once(Phaser.Core.Events.POST_RENDER, syncBattleLoop);
   gameInstance.events.on(Phaser.Core.Events.RESUME, syncBattleLoop);
@@ -8775,6 +9033,8 @@ startStartupCurtain(startupStage);
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
   reportPhoto: (photo, name) => reportPhoto(photo, name),
+  // Match history's "Play the Hard bot again": the bot bar's own start.
+  playBot: (level) => void lobbyPlay(`bot-${level}`),
   chooseFighter: (id) => {
     if (id === selected) return;
     selected = id;
