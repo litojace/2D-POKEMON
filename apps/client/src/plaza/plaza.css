@@ -291,6 +291,18 @@
   font-weight: 700;
   color: var(--dim);
 }
+/* The gift box button: its count in gold while there are boxes to toss,
+   dimmed when none are left today. */
+.plaza-layer #pz-treat small {
+  color: #ffd65b;
+  font-variant-numeric: tabular-nums;
+}
+.plaza-layer #pz-treat.empty .ico {
+  opacity: 0.5;
+}
+.plaza-layer #pz-treat.empty small {
+  color: var(--dim);
+}
 .plaza-layer .pz-wheel {
   position: absolute;
   width: 220px;

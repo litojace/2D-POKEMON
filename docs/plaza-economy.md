@@ -49,6 +49,23 @@ weeks: a given rare fish bites about once in 70 casts and each legendary
 about once in 370, by day or by night only, and rarer fish are harder to
 land (`PLAZA_FIGHT` in `packages/shared/src/plaza-fight.ts`).
 
+## Gift boxes (23 Nov 2026)
+
+The free daily treats became gift boxes (`PLAZA_GIFT`, migration
+`20261123120000_plaza_gifts.sql`). They pay **no coins** themselves:
+
+- **Where they come from:** 3 free a Pacific day, 1 more for each Plaza
+  quest done that day (up to 6), and 1 for each Rare or Legendary fish
+  caught that day (at most 3). So 3–12 a day.
+- **What they do:** a tossed box bursts open and spills 4 orbs (8 for a
+  golden box, 1 in 10). Anyone **but the thrower** can catch them, and each
+  catch counts as an orb toward "Catch 10 falling orbs", under the orb
+  caps (10 per shower or box, 50 a day). So boxes let players help each
+  other finish the orbs quest between Orb Showers. They add no coins
+  beyond the quest's 20 a day.
+- **Abuse:** a second account tossing its boxes to a main can at most fill
+  the main's orbs quest (20 coins a day), the same as one Orb Shower.
+
 ## Still to check
 
 Whether the Shop's prices fit what players earn (an Epic skin is 3,500: about

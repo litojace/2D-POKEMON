@@ -79,6 +79,7 @@ import {
   PLAZA,
   PLAZA_FISH,
   PLAZA_FISH_BY_ID,
+  PLAZA_GIFT,
   PLAZA_FISH_RARITY,
   type PlazaRecord,
 } from "../../../packages/shared/src/plaza.js";
@@ -3235,7 +3236,8 @@ export function createArenaServer(
       if (orbs) socket.emit("plaza-orbs", orbs);
       const token = socket.data.accessToken as string | undefined;
       if (token) void plazaAppearance.refresh(socket.id, token, true);
-      if (token) void sendTreats(token);
+      const gifts = plaza.giftsFor(socket.id);
+      if (gifts.length) socket.emit("plaza-gifts", gifts);
       if (!me.guest)
         void portraitChoice.save(me.id, socket.data.accessToken, parsed.data);
     });
@@ -3337,54 +3339,52 @@ export function createArenaServer(
           io.sockets.sockets.get(key)?.emit("plaza-pair", r.start);
       reply(cb, { ok: true });
     });
-    // Treats: a free handful a Pacific day (PLAZA.treatsDaily), thrown for everyone.
-    const sendTreats = async (token: string) => {
-      try {
-        const n = await accounts.rpc(token, "arena_plaza_treats", {});
-        if (plaza.plazaOf(socket.id) !== undefined && typeof n === "number")
-          socket.emit("plaza-treats", { n });
-      } catch {
-        // Older databases have no treats; the button stays at 0.
-      }
-    };
-    let treatPending = false;
-    socket.on("plaza-treat", async (_data: unknown, cb: unknown) => {
+    // Gift boxes (PLAZA_GIFT): the database counts what is left today and
+    // takes one; the Plaza tosses it, and its orbs are for the others nearby.
+    let giftPending = false;
+    socket.on("plaza-gift", async (_data: unknown, cb: unknown) => {
       if (!allowed(10)) return;
       const copy = plaza.plazaOf(socket.id);
       if (copy === undefined) return fail(cb, "Not in the Plaza.");
       const token = socket.data.accessToken as string | undefined;
-      if (!token || treatPending) return fail(cb, "One moment…");
-      if (!plaza.treatReady(socket.id, Date.now()))
-        return fail(cb, "Wait a moment between treats.");
-      treatPending = true;
+      if (!token || giftPending) return fail(cb, "One moment…");
+      if (!plaza.giftReady(socket.id, Date.now()))
+        return fail(cb, "Wait a moment between gift boxes.");
+      giftPending = true;
       try {
-        // A fresh id per throw: a retry of this request can't take two treats.
-        const r = (await accounts.rpc(token, "arena_plaza_treat", {
+        // A fresh id per toss: a retry of this request can't take two boxes.
+        const r = (await accounts.rpc(token, "arena_plaza_gift", {
           p_ref: randomUUID(),
-        })) as {
-          ok?: boolean;
-          treat?: string;
-          left?: number;
-          error?: string;
-        } | null;
-        if (!r?.ok || !r.treat)
+        })) as { ok?: boolean; left?: number; error?: string } | null;
+        if (!r?.ok) {
+          plaza.giftRefused(socket.id);
           return reply(cb, {
             ok: false,
-            error: r?.error ?? "No treats left today.",
-            treats: r?.left ?? 0,
+            error: r?.error ?? "No gift boxes left today.",
+            gifts: r?.left ?? 0,
           });
-        const thrown = plaza.treat(socket.id, r.treat);
-        if (thrown) toPlaza(copy, "plaza-treat", thrown);
-        reply(cb, { ok: true, treat: r.treat, treats: r.left ?? 0 });
+        }
+        // On the Plaza's own clock (its last step), as its orbs are.
+        const thrown = plaza.throwGift(
+          socket.id,
+          Math.random() < PLAZA_GIFT.goldenChance,
+        );
+        if (thrown) toPlaza(thrown.plaza, "plaza-gift", thrown.gift);
+        reply(cb, {
+          ok: true,
+          golden: !!thrown?.gift.golden,
+          gifts: r.left ?? 0,
+        });
       } catch (error) {
+        plaza.giftRefused(socket.id);
         fail(
           cb,
           error instanceof AccountError
             ? error.message
-            : "Treats can't be thrown right now.",
+            : "Gift boxes can't be tossed right now.",
         );
       } finally {
-        treatPending = false;
+        giftPending = false;
       }
     });
     let bobaPending = false;
@@ -3454,6 +3454,9 @@ export function createArenaServer(
             PLAZA_FISH_RARITY[PLAZA_FISH_BY_ID[r.fish]?.rarity]?.firstCoins ??
             0,
           bookSize: PLAZA_FISH.length,
+          gift: PLAZA_GIFT.fishRarities.includes(
+            PLAZA_FISH_BY_ID[r.fish]?.rarity ?? "",
+          ),
         });
       reply(cb, r);
     });
@@ -3685,6 +3688,7 @@ export function createArenaServer(
     else if (e.type === "fish")
       io.sockets.sockets.get(e.key)?.emit("plaza-fish", e.note);
     else if (e.type === "news") toPlaza(e.plaza, "plaza-news", e.news);
+    else if (e.type === "giftGone") toPlaza(e.plaza, "plaza-gift-gone", e.gone);
     else toPlaza(e.plaza, "plaza-orbs", e.orbs);
   };
   /** Move everyone in the Plaza, run the pitch and the orbs, send each player what is near. */

@@ -41,7 +41,6 @@ import {
   PLAZA_PADS,
   PLAZA_PAIR,
   PLAZA_PAIR_EMOTES,
-  PLAZA_TREAT_BY_ID,
   PLAZA_PATHS,
   PLAZA_PHOTO,
   PLAZA_PHOTO_CAMERA,
@@ -133,6 +132,12 @@ import { mapFrac, mapPinsHtml, paintPlazaMap } from "./plaza-map";
 import { PlazaPrediction } from "./plaza-predict";
 import { BallPrediction, ServerClock, SnapTrack } from "./plaza-net";
 import {
+  PlazaGifts,
+  drawConfetti,
+  drawFlash,
+  stepConfetti,
+} from "./plaza-gifts";
+import {
   FIGHT_IN_SECONDS,
   fishingFrame,
   fishingLineZone,
@@ -195,7 +200,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     <div class="pz-joy" id="pz-joy"><div class="ring" id="pz-ring"><div class="knob" id="pz-knob"></div></div></div>
     <div class="pz-left">
       <button type="button" class="pz-round" id="pz-map-btn" aria-label="Plaza map (M)">${I("map")}<small>Map</small></button>
-      <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat (T)">${I("gift")}<small id="pz-treats">0</small></button>
+      <button type="button" class="pz-round" id="pz-treat" aria-label="Toss a gift box (T)">${I("gift")}<small id="pz-treats">0</small></button>
       <button type="button" class="pz-round" id="pz-album-btn" aria-label="Photo album">${I("album")}<small>Album</small></button>
     </div>
     <div class="pz-wheel" id="pz-wheel" hidden>
@@ -247,7 +252,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     </div>
     <div class="pz-card glass" id="pz-card" role="dialog" aria-label="Player" hidden></div>
     <div class="pz-ask glass" id="pz-ask" role="alertdialog" aria-label="Pair emote request" hidden></div>
-    <div class="pz-start" id="pz-start" hidden><b>Plaza</b><span>Click to start</span><div class="pz-keys"><span><kbd>WASD</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> dash</span><span><kbd>E</kbd> interact</span><span><kbd>Q</kbd> emote</span><span><kbd>T</kbd> treat</span><span><kbd>M</kbd> map</span><span><kbd>B</kbd> Fish book</span></div></div>
+    <div class="pz-start" id="pz-start" hidden><b>Plaza</b><span>Click to start</span><div class="pz-keys"><span><kbd>WASD</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> dash</span><span><kbd>E</kbd> interact</span><span><kbd>Q</kbd> emote</span><span><kbd>T</kbd> gift box</span><span><kbd>M</kbd> map</span><span><kbd>B</kbd> Fish book</span></div></div>
   </div>
 </div>`;
 
@@ -1616,6 +1621,7 @@ export function openPlaza(options) {
     if (!p?.quests) return;
     const before = progress;
     progress = p;
+    if (typeof p.gifts === "number") setGifts(p.gifts);
     let paid = false;
     if (before)
       for (const x of PLAZA_QUESTS)
@@ -1900,13 +1906,13 @@ export function openPlaza(options) {
       return;
     keys.add(k);
     // A movement key takes back a walk that Go or a click started; jumping,
-    // dashing, emotes and treats don't.
+    // dashing, emotes and gift boxes don't.
     if (MOVE_KEYS.includes(k)) cancelWalk();
     if (k === " ") jump();
     if (k === "shift" || k === "j") dash();
     if (k === "e") interact();
     if (k === "q") toggleWheel();
-    if (k === "t") throwTreat();
+    if (k === "t") tossGift();
     if (k === "m") showMap();
     if (k === "b") showFishBook();
     if ("12345678".includes(k) && k.length === 1) emote(EMOTE_KEYS[+k - 1]);
@@ -1959,7 +1965,7 @@ export function openPlaza(options) {
   });
   onPress($("pz-treat"), () => {
     start();
-    throwTreat();
+    tossGift();
     screen.focus({ preventScroll: true });
   });
   $("pz-album-btn").onclick = () => {
@@ -2666,36 +2672,62 @@ export function openPlaza(options) {
   function interact() {
     if (near) near.act();
   }
-  /* treats: a free daily allowance (PLAZA.treatsDaily), tossed for everyone */
-  let treats = 0,
-    treatBusy = false;
-  function setTreats(n) {
-    treats = Math.max(0, n | 0);
-    $("pz-treats").textContent = treats > 99 ? "99+" : String(treats);
+  /* gift boxes (PLAZA_GIFT): tossed ahead, they burst open, and their
+     orbs are for everyone else nearby (plaza-gifts.ts) */
+  let giftsLeft = 0,
+    giftBusy = false;
+  function setGifts(n) {
+    giftsLeft = Math.max(0, n | 0);
+    $("pz-treats").textContent = giftsLeft > 99 ? "99+" : String(giftsLeft);
+    $("pz-treat").classList.toggle("empty", giftsLeft < 1);
   }
-  function throwTreat() {
-    if (treatBusy) return;
-    if (treats < 1) return pzToast("No treats left today. More tomorrow!");
-    treatBusy = true;
-    socket.timeout(5000).emit("plaza-treat", {}, (err, r) => {
-      treatBusy = false;
-      if (err) return pzToast("The treat didn't go. Try again.");
-      if (typeof r?.treats === "number") setTreats(r.treats);
+  function tossGift() {
+    if (giftBusy) return;
+    if (giftsLeft < 1)
+      return pzToast(
+        "No gift boxes left today. Plaza quests and rare fish earn more!",
+      );
+    giftBusy = true;
+    socket.timeout(5000).emit("plaza-gift", {}, (err, r) => {
+      giftBusy = false;
+      if (err) return pzToast("The gift box didn't go. Try again.");
+      if (typeof r?.gifts === "number") setGifts(r.gifts);
       if (!r?.ok)
-        return pzToast(r?.error ?? "Treats can't be thrown right now.");
-      const what = PLAZA_TREAT_BY_ID[r.treat]?.name ?? "a treat";
-      pzToast(`Tossed ${what} to everyone!`);
+        return pzToast(r?.error ?? "Gift boxes can't be tossed right now.");
+      pzToast(
+        r.golden
+          ? "A golden gift box! Everyone, grab the orbs!"
+          : "Gift box tossed! Its orbs are for everyone nearby.",
+      );
     });
   }
-  // Everyone in this Plaza sees a treat burst where it was thrown.
-  const onTreat = (t) => {
-    if (!t || typeof t.x !== "number") return;
-    const color = PLAZA_TREAT_BY_ID[t.treat]?.color ?? "#ff6fae";
-    burst(t.x, t.y, 70, "●", 18, color, 1.2);
+  const gifts = new PlazaGifts({
+    fx: FX,
+    me: () => meId,
+    now: () => serverNow(),
+    low: () => low,
+    reduced: () => reduced,
+    caught: (x, y) => {
+      if ((progress?.orbsToday ?? 0) < ORB_SHOWER.perDay)
+        FX.push({
+          text: "+1",
+          icon: "orb",
+          x,
+          y: y - 40,
+          t: 0,
+          life: 0.9,
+          small: 1,
+        });
+    },
+  });
+  const onGift = (g) => gifts.add(g);
+  const onGiftList = (list) => {
+    if (Array.isArray(list)) for (const g of list) gifts.add(g);
   };
-  const onTreats = (t) => setTreats(t?.n ?? 0);
-  socket.on("plaza-treat", onTreat);
-  socket.on("plaza-treats", onTreats);
+  const onGiftGone = (list) => gifts.gone(list);
+  socket.on("plaza-gift", onGift);
+  socket.on("plaza-gifts", onGiftList);
+  socket.on("plaza-gift-gone", onGiftGone);
   let bobaBusy = false;
   function buyTea() {
     if (P.boost > 0) return pzToast("Your boba boost is still active");
@@ -5250,6 +5282,7 @@ export function openPlaza(options) {
       );
       g.stroke();
     });
+    gifts.shadows(g);
     // orbs shadows
     ev.orbs.forEach((o) => {
       g.fillStyle = "rgba(0,0,0,.25)";
@@ -5573,6 +5606,13 @@ export function openPlaza(options) {
         z: ball.z || 0,
         name: "ball",
       }),
+      ...gifts.drawables().map((d) =>
+        spot(d.x, d.y, 14, 50, () => d.draw(g, time), {
+          z: d.z,
+          sw: 24,
+          name: d.name,
+        }),
+      ),
       ...ev.orbs.map((o) =>
         spot(
           o.x,
@@ -5671,6 +5711,10 @@ export function openPlaza(options) {
           if (hi.complete) g.drawImage(hi, x - 13, y - 24, 26, 26);
         }
         g.globalAlpha = 1;
+      } else if (f.cf) {
+        drawConfetti(g, f);
+      } else if (f.flash) {
+        drawFlash(g, f);
       } else if (f.g) {
         g.globalAlpha = 1 - k;
         g.fillStyle = f.c || "#fff";
@@ -5767,6 +5811,7 @@ export function openPlaza(options) {
         ev.orbs.forEach((o) =>
           glow(o.x, o.y - 18 - o.z, 40, "220,170,255", 0.5 * n),
         );
+      gifts.glows(glow, n);
       g.restore();
       drawStringLights(g, time, n, vx0, vy0, vx1, vy1);
     } else {
@@ -5999,9 +6044,11 @@ export function openPlaza(options) {
       updateRun();
       updateRunway();
       updateEvent();
+      gifts.update();
       FX.forEach((f) => {
         f.t += dt;
-        if (f.g) {
+        if (f.cf) stepConfetti(f, dt);
+        else if (f.g) {
           f.x += f.vx * dt;
           f.y += f.vy * dt;
           f.vz -= 500 * dt;
@@ -6316,8 +6363,9 @@ export function openPlaza(options) {
       socket.off("plaza-news", onNews);
       socket.off("plaza-profiles", onProfiles);
       socket.off("plaza-state", onState);
-      socket.off("plaza-treat", onTreat);
-      socket.off("plaza-treats", onTreats);
+      socket.off("plaza-gift", onGift);
+      socket.off("plaza-gifts", onGiftList);
+      socket.off("plaza-gift-gone", onGiftGone);
       socket.off("plaza-fish", onFish);
       clearTimeout(catchTimer);
       fishing.reset();
@@ -6401,8 +6449,9 @@ export function openPlaza(options) {
       get progress() {
         return progress;
       },
-      /** Treat particles flying now (tests). */
-      treatFx: () => FX.filter((f) => f.g === "●").length,
+      /** Gift boxes in the air or open, and confetti flying (tests). */
+      gifts: () => gifts.list(),
+      confetti: () => FX.filter((f) => f.cf).length,
       SPOTS,
       /** Fishing's line now: null, "cast", "wait" or "bite" (tests). */
       get fishing() {
