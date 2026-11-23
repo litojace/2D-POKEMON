@@ -243,14 +243,6 @@ export class PlazaGifts {
         { ring: 1, x, y, t: -0.12, life: 0.75, c: "#ffcf3d" },
         { ring: 1, x, y, t: -0.24, life: 0.9, c: "#fff3b0" },
       );
-      fx.push({
-        text: "Golden gift!",
-        x,
-        y: y - 96,
-        t: 0,
-        life: 1.6,
-        small: 1,
-      });
     }
     // The lid, flung up and away, tumbling.
     fx.push({
@@ -295,6 +287,16 @@ export class PlazaGifts {
       });
     }
     this.sparkle(x, y, golden ? "#ffe27a" : "#ffffff", golden ? 18 : 10);
+    // Last, so it is drawn over the confetti, and above the spray.
+    if (golden)
+      fx.push({
+        text: "Golden gift!",
+        x,
+        y: y - 130,
+        t: 0,
+        life: 1.6,
+        small: 1,
+      });
   }
 
   private sparkle(x: number, y: number, c: string, n: number) {
