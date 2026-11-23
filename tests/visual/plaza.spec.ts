@@ -3,7 +3,6 @@ import { asRgb, openPlaza, snap } from "./helpers";
 import {
   PLAZA_FOUNTAIN,
   PLAZA_GIFT,
-  PLAZA_PADS,
   PLAZA_HURDLE_SEGMENTS,
   PLAZA_QUESTS,
   PLAZA_TRACK,
@@ -779,33 +778,39 @@ test("Jump and Dash work while the other thumb holds the joystick", async ({
 test("a running jump doesn't shake: no bob in the air", async ({ page }) => {
   test.setTimeout(90_000);
   const errors = await openPlaza(page);
-  // Run east onto the north-west bounce pad: 1.15 s in the air
-  // (PLAZA.pad.seconds), long enough to catch several frames even where CI
-  // draws the Plaza at 3-5 fps (a plain jump, 0.65 s, gave it 0-2).
-  const [px, py] = PLAZA_PADS[0];
-  await teleport(page, px - 150, py);
+  // Open grass on the pitch, running east.
+  await teleport(page, 2060, 760);
   await page.waitForTimeout(500);
-  // Record the drawn bob each frame in the air, after its first quarter
-  // second (the walk bob easing out).
-  await page.evaluate(() => {
-    const w = window as any,
-      P = w.__plaza.P,
-      out: number[] = [];
-    let t0: number | null = null;
-    w.__jumpBobs = new Promise((done) => {
-      const loop = (now: number) => {
-        if (P.air) {
-          t0 ??= now;
-          if (now - t0 > 250) out.push(P.bob || 0);
-        } else if (t0 !== null) return done(out);
-        requestAnimationFrame(loop);
-      };
-      requestAnimationFrame(loop);
-    });
-  });
   await page.locator(".plaza-layer").focus();
   await page.keyboard.down("d");
-  const bobs: number[] = await page.evaluate(() => (window as any).__jumpBobs);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__plaza.P.sp), {
+      timeout: 20_000,
+    })
+    .toBeGreaterThan(100);
+  // Take off here and now, mid-run: the same jump as Space (plazaJump's
+  // fields) but 1.5 s long, so a CI runner drawing the Plaza at 3-5 fps
+  // still draws several frames of it. (Running onto a bounce pad missed it
+  // on CI: the teleport hadn't reached the browser's copy of you yet.)
+  // Record the drawn bob each frame in the air after its first quarter
+  // second (the walk bob easing out); give up after 8 s with what there is.
+  const bobs: number[] = await page.evaluate(
+    () =>
+      new Promise((done) => {
+        const P = (window as any).__plaza.P,
+          out: number[] = [],
+          t0 = performance.now();
+        P.air = 1e-4;
+        P.airDur = 1.5;
+        P.airH = 42;
+        const loop = (now: number) => {
+          if (!P.air || now - t0 > 8000) return done(out);
+          if (now - t0 > 250) out.push(P.bob || 0);
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+      }),
+  );
   await page.keyboard.up("d");
   expect(bobs.length).toBeGreaterThan(0);
   expect(Math.max(...bobs.map(Math.abs))).toBeLessThan(0.5);
