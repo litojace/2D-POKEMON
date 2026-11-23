@@ -781,16 +781,18 @@ out again: with it, two visual specs failed on CI's runners every time
 (the Spire page's first row never painted; a blanked fighter's art never
 found) while passing locally. Bring it back only with those understood.
 
-Back since 23 Nov 2026 (branch `claude/raid-fill-low`), with one fix: the
-first version set the renderer's clear colour to the camera's and never
-put it back, so every later frame without a usable battle camera (the scene asleep under the
-hub, between battles) cleared to the last battle's colour instead of the
-game's own. Now the game's colour returns after every frame, as the
-camera's does (`tests/unit/camera-clear.test.ts`). Measured at Low 1.25×,
-844×390 at 2×, 60 s raids, before and after interleaved: Inkpurr
-67.0/70.8 → 55.6/58.0 ms a frame (−17%), Cragmuff 61.4/60.8 → 53.4/53.8 ms
-(−12%), our code's own work per frame unchanged. Every battle (each raid
-boss, the Spire, duels) skips the same one screen of fill.
+Back in #394 (23 Nov 2026), unchanged from the version that failed: it
+restores the game's own clear colour after every frame, as it does the
+camera's (`tests/unit/camera-clear.test.ts`). This time all 30 shards
+passed, `spire.spec.ts` and `rig-art-health.spec.ts` included, so why they
+failed under #388 is still not known; the Spire page has no battle game at
+all (only the lobby fighter's hidden canvas), so camera-clear never runs
+there. If they fail again, read CI's report for them before suspecting it.
+Measured at Low 1.25×, 844×390 at 2×, 60 s raids, before and after
+interleaved: Inkpurr 67.0/70.8 → 55.6/58.0 ms a frame (−17%), Cragmuff
+61.4/60.8 → 53.4/53.8 ms (−12%), our code's own work per frame unchanged.
+Every battle (each raid boss, the Spire, duels) skips the same one screen
+of fill.
 
 Damage numbers and combo text (`battle-text.ts`) are made with less work:
 Phaser measured each label's font by drawing a test string and reading the
