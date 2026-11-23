@@ -1,9 +1,35 @@
 # Match reports
 
-Newest report: 2026-11-22 10:51 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
+Newest report: 2026-11-23 07:13 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
 
 ## Needs attention
 
+- **2026-11-23 07:13**, pangrove against cindrake (match `53vlzh`):
+  - 1 hit(s) landed while you were drawn over 24 px away (largest 65 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+  - Wi-Fi held the phone's inputs 14.8 times a minute (up to 4 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
+- **2026-11-23 07:13**, cindrake against pangrove (match `53vlzh`):
+  - 14 hit(s) landed while you were drawn over 24 px away (largest 75 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+  - Wi-Fi held the phone's inputs 21.2 times a minute (up to 3 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
+- **2026-11-23 06:26**, astrabun against terradon (bot, hard) (match `wn6nas`):
+  - Wi-Fi held the phone's inputs 71.7 times a minute (up to 1 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
+- **2026-11-23 06:09**, wombolder against duskveil (match `367ss4`):
+  - 5 hit(s) landed while you were drawn over 24 px away (largest 126 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+  - Wi-Fi held the phone's inputs 47.2 times a minute (up to 5 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
+- **2026-11-23 06:09**, duskveil against wombolder (match `367ss4`):
+  - 5.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 30 duskveil wombolder`.
+  - 1 hit(s) landed while you were drawn over 24 px away (largest 30 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+  - Wi-Fi held the phone's inputs 54.9 times a minute (up to 2 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
+- **2026-11-23 06:05**, pyranda against lumoth (match `hdb58t`):
+  - 3 hit(s) landed while you were drawn over 24 px away (largest 73 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+  - Wi-Fi held the phone's inputs 81.8 times a minute (up to 8 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
+- **2026-11-23 06:05**, lumoth against pyranda (match `hdb58t`):
+  - 4 hit(s) landed while you were drawn over 24 px away (largest 75 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+  - Wi-Fi held the phone's inputs 56.3 times a minute (up to 2 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
+- **2026-11-23 06:03**, terradon against astrabun (match `b1ffmw`):
+  - Wi-Fi held the phone's inputs 49.9 times a minute (up to 1 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
+- **2026-11-23 06:03**, astrabun against terradon (match `b1ffmw`):
+  - 2 hit(s) landed while you were drawn over 24 px away (largest 29 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+  - Wi-Fi held the phone's inputs 20.9 times a minute (up to 2 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
 - **2026-11-22 10:51**, mystowl against grumblecrag (raid boss) (match `i4csh0`):
   - Wi-Fi held the phone's inputs 17 times a minute (up to 13 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
 - **2026-11-22 10:46**, mystowl against gloomshade (raid boss) (match `y6wy6e`):
@@ -130,35 +156,20 @@ Newest report: 2026-11-22 10:51 UTC. From the game server's log (`scripts/perf/e
 - **2026-11-20 20:34**, glacelle against pangrove (bot, hard) (match `q74wjt`):
   - 24 hit(s) landed while you were drawn over 24 px away (largest 70 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
   - Wi-Fi held the phone's inputs 24 times a minute (up to 1 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-- **2026-11-20 20:33**, glacelle against pangrove (bot, hard) (match `dw49lo`):
-  - 37 hit(s) landed while you were drawn over 24 px away (largest 113 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-  - Wi-Fi held the phone's inputs 59.1 times a minute (up to 3 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-- **2026-11-20 18:11**, duskveil against gloomshade (raid boss) (match `tnte3i`):
-  - 1 hit(s) landed while you were drawn over 24 px away (largest 33 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-  - Wi-Fi held the phone's inputs 40.7 times a minute (up to 2 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-- **2026-11-20 18:05**, tidefin against grumblecrag (raid boss) (match `ndq8vy`):
-  - 1 hit(s) landed while you were drawn over 24 px away (largest 30 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-20 09:17**, mossloth against grumblecrag (raid boss) (match `u0jy1t`):
-  - 95 hit(s) landed while you were drawn over 24 px away (largest 152 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-  - Wi-Fi held the phone's inputs 44.3 times a minute (up to 5 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-- **2026-11-20 09:05**, mossloth against halcyra (bot, hard) (match `md3367`):
-  - 20 hit(s) landed while you were drawn over 24 px away (largest 36 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-  - Wi-Fi held the phone's inputs 45.6 times a minute (up to 1 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-- **2026-11-20 04:42**, voltkit against glacelle (bot, easy) (match `oo2zgw`):
-  - slow connection: ping 100 ms, slowest 5% 158 ms. The player's network: compare other players at the same time before changing the game.
-  - 9 hit(s) landed while you were drawn over 24 px away (largest 47 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-  - Wi-Fi held the phone's inputs 80.8 times a minute (up to 12 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-- **2026-11-20 02:52**, shadopus against astrabun (match `cgvp4f`):
-  - 27 hit(s) landed while you were drawn over 24 px away (largest 73 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-  - Wi-Fi held the phone's inputs 26.8 times a minute (up to 2 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
-- **2026-11-20 02:50**, shadopus against astrabun (match `mhwinq`):
-  - 16 hit(s) landed while you were drawn over 24 px away (largest 104 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-  - Wi-Fi held the phone's inputs 33.7 times a minute (up to 3 ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.
 
 ## Latest matches
 
 | Time (UTC) | Match | Mode | You | Against | Ping (slowest 5%) | Lead | Late updates | Jumps | Hits off-screen | Skill confirm | FPS | Stutter | Graphics | Device | Build |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-23 07:13 | `53vlzh` | duel | pangrove | cindrake | 59 ms 🟢 (67) | 193 ms | 0.3% | 5.8/min (max 159 px) | ⚠️ 1 (max 65 px) | 87 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 9e0cd7a |
+| 2026-11-23 07:13 | `53vlzh` | duel | cindrake | pangrove | 53 ms 🟢 (64) | 187 ms | 0.4% | 9.6/min (max 140 px) | ⚠️ 14 (max 75 px) | 74 ms | 54.9 | 0.0% | high (auto) | windows app, 28 cores, 32 GB, 164 Hz | 9e0cd7a |
+| 2026-11-23 06:26 | `wn6nas` | duel vs bot | astrabun | terradon (bot, hard) | 56 ms 🟢 (68) | 176 ms | 0.2% | 43.6/min (max 239 px) | 0 | 88 ms | 58.8 | 0.6% | high (auto) | ios app, 4 cores, 59 Hz | 8288038 |
+| 2026-11-23 06:09 | `367ss4` | duel | wombolder | duskveil | 68 ms 🟢 (85) | 224 ms | 3.7% | 35.1/min (max 303 px) | ⚠️ 5 (max 126 px) | 104 ms | 58.8 | 0.1% | high (high) | ios app, 4 cores, 59 Hz | 689e975 |
+| 2026-11-23 06:09 | `367ss4` | duel | duskveil | wombolder | 59 ms 🟢 (67) | 187 ms | 0.0% | 24.9/min (max 156 px), ⚠️ 5.1 unexplained | ⚠️ 1 (max 30 px) | 81 ms | 52.6 | 0.4% | high (high) | ios app, 4 cores, 48 Hz | 689e975 |
+| 2026-11-23 06:05 | `hdb58t` | duel | pyranda | lumoth | 68 ms 🟢 (94) | 203 ms | 2.9% | 30.1/min (max 130 px), ⚠️ 1.3 unexplained | ⚠️ 3 (max 73 px) | 101 ms | 58.8 | 0.0% | high (high) | ios app, 4 cores, 59 Hz | 689e975 |
+| 2026-11-23 06:05 | `hdb58t` | duel | lumoth | pyranda | 57 ms 🟢 (65) | 186 ms | 0.1% | 15.7/min (max 150 px) | ⚠️ 4 (max 75 px) | 85 ms | 50 | 0.4% | high (high) | ios app, 4 cores, 48 Hz | 689e975 |
+| 2026-11-23 06:03 | `b1ffmw` | duel | terradon | astrabun | 59 ms 🟢 (62) | 188 ms | 0.0% | 49.9/min (max 150 px) | 0 | 83 ms | 55.6 | 0.4% | high (high) | ios app, 4 cores, 53 Hz | 689e975 |
+| 2026-11-23 06:03 | `b1ffmw` | duel | astrabun | terradon | 61 ms 🟢 (68) | 190 ms | 0.1% | 25.6/min (max 300 px) | ⚠️ 2 (max 29 px) | 93 ms | 58.8 | 0.1% | high (high) | ios app, 4 cores, 59 Hz | 689e975 |
 | 2026-11-22 10:51 | `i4csh0` | raid | mystowl | grumblecrag (raid boss) | 51 ms 🟢 (105) | 190 ms | 0.4% | 1.6/min (max 17 px), ⚠️ 1.6 unexplained | 0 | 88 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 3111759 |
 | 2026-11-22 10:48 | `6m0xkn` | raid | mystowl | tidewyrm (raid boss) | 49 ms 🟢 (50) | 182 ms | 0.0% | 6.5/min (max 75 px) | 0 | 74 ms | 58.8 | 0.1% | high (auto) | ios, 4 cores, 59 Hz | 3111759 |
 | 2026-11-22 10:46 | `y6wy6e` | raid | mystowl | gloomshade (raid boss) | 52 ms 🟢 (59) | 168 ms | 0.0% | 0/min | ⚠️ 9 (max 117 px) | 77 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 3111759 |
@@ -200,20 +211,12 @@ Newest report: 2026-11-22 10:51 UTC. From the game server's log (`scripts/perf/e
 | 2026-11-20 20:49 | `c9bily` | duel vs bot | pangrove | pangrove (bot, hard) | 71 ms 🟢 (76) | 223 ms | 0.0% | 78.8/min (max 154 px) | ⚠️ 30 (max 101 px) | 110 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 39db09a |
 | 2026-11-20 20:47 | `fuhmr0` | duel vs bot | glacelle | mystowl (bot, hard) | 66 ms 🟢 (73) | 191 ms | 0.1% | 30.4/min (max 180 px), ⚠️ 1.1 unexplained | ⚠️ 34 (max 109 px) | 88 ms | 58.8 | 0.0% | high (auto) | ios, 4 cores, 59 Hz | 39db09a |
 | 2026-11-20 20:34 | `q74wjt` | duel vs bot | glacelle | pangrove (bot, hard) | 64 ms 🟢 (69) | 216 ms | 0.0% | 41.1/min (max 140 px) | ⚠️ 24 (max 70 px) | 171 ms | 58.8 | 0.1% | high (auto) | ios, 4 cores, 59 Hz | 39db09a |
-| 2026-11-20 20:33 | `dw49lo` | duel vs bot | glacelle | pangrove (bot, hard) | 71 ms 🟢 (79) | 203 ms | 0.0% | 63.9/min (max 159 px) | ⚠️ 37 (max 113 px) | 120 ms | 58.8 | 0.1% | high (auto) | ios, 4 cores, 59 Hz | 39db09a |
-| 2026-11-20 18:11 | `tnte3i` | raid | duskveil | gloomshade (raid boss) | 62 ms 🟢 (66) | 189 ms | 0.1% | 0/min | ⚠️ 1 (max 33 px) | 73 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | 334f311 |
-| 2026-11-20 18:07 | `h1zruh` | raid | duskveil | grumblecrag (raid boss) | 64 ms 🟢 (70) | 211 ms | 0.0% | 0.8/min (max 12 px), ⚠️ 0.8 unexplained | 0 | 107 ms | 58.8 | 0.2% | high (auto) | ios app, 4 cores, 59 Hz | 334f311 |
-| 2026-11-20 18:05 | `ndq8vy` | raid | tidefin | grumblecrag (raid boss) | 66 ms 🟢 (72) | 209 ms | 0.1% | 6.5/min (max 159 px) | ⚠️ 1 (max 30 px) | 104 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | 334f311 |
-| 2026-11-20 09:17 | `u0jy1t` | raid | mossloth | grumblecrag (raid boss) | 78 ms 🟢 (87) | 192 ms | 0.1% | 23.8/min (max 284 px), ⚠️ 1.6 unexplained | ⚠️ 95 (max 152 px) | 92 ms | 58.8 | 0.1% | high (auto) | ios app, 4 cores, 59 Hz | e1e9c75 |
-| 2026-11-20 09:05 | `md3367` | duel vs bot | mossloth | halcyra (bot, hard) | 74 ms 🟢 (77) | 194 ms | 0.0% | 20.3/min (max 329 px) | ⚠️ 20 (max 36 px) | 82 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | e1e9c75 |
-| 2026-11-20 04:42 | `oo2zgw` | duel vs bot | voltkit | glacelle (bot, easy) | 100 ms 🟡 (158) | 227 ms | 2.1% | 58.2/min (max 27 px) | ⚠️ 9 (max 47 px) | 120 ms | 58.8 | 0.1% | high (auto) | ios app, 4 cores, 59 Hz | 39db09a |
-| 2026-11-20 02:52 | `cgvp4f` | duel | shadopus | astrabun | 48 ms 🟢 (56) | 167 ms | 0.4% | 32.7/min (max 145 px) | ⚠️ 27 (max 73 px) | 64 ms | 59.9 | 0.6% | high (auto) | android, 8 cores, 8 GB, 119 Hz | 39db09a |
-| 2026-11-20 02:50 | `mhwinq` | duel | shadopus | astrabun | 47 ms 🟢 (60) | 168 ms | 0.2% | 18.5/min (max 150 px) | ⚠️ 16 (max 104 px) | 66 ms | 59.9 | 0.5% | high (auto) | android, 8 cores, 8 GB, 120 Hz | 39db09a |
 
 ## By day
 
 | Day (UTC) | Reports | Needs attention | Ping, median | Ping, worst 10% | Lead, median | Jumps/min, median | Skill confirm, median | FPS, median | Stutter, median | Dropped connections |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-23 | 9 | 9 | 59 ms | 68 ms | 188 ms | 25.6 | 87 ms | 58.8 | 0.1% | 4 client namespace disconnect, 3 transport close, 2 server shutting down |
 | 2026-11-22 | 33 | 32 | 49 ms | 54 ms | 172 ms | 7.9 | 83 ms | 55.6 | 3.9% | 17 transport close, 1 server shutting down |
 | 2026-11-21 | 4 | 4 | 47 ms | 64 ms | 168 ms | 34.5 | 74 ms | 58.8 | 0.0% | 1 transport close |
 | 2026-11-20 | 65 | 64 | 51 ms | 68 ms | 188 ms | 33.8 | 80 ms | 58.8 | 0.1% | 3 transport close |
