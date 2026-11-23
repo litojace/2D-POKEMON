@@ -260,7 +260,7 @@ for (const quality of ["high", "low"] as const)
       await expect(overlay).toBeVisible();
       await expect(overlay).toContainText(/\d+ fps/);
       await expect(overlay).toContainText(
-        quality === "high" ? /high 2×/ : /low 1\.5×/,
+        quality === "high" ? /high 2×/ : /low 1\.25×/,
       );
       expect(
         await overlay.evaluate((el) => getComputedStyle(el).pointerEvents),
