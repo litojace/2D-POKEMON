@@ -29,6 +29,19 @@ async function toPond(page: Page, errors: string[] = []) {
     // ... and, once bitten, waits for the tap (see "left alone" below).
     w.__plazaBiteHold = true;
   });
+  // The Plaza drawing steadily first. On CI's software renderer, a cold
+  // Plaza gets a frame only every few seconds at first (main's run on
+  // c056869, #389: 4 frames in the whole 10 s wait), and the prompt shows
+  // only on a frame after the move. Locally this takes well under a second.
+  const frames = () =>
+    page.evaluate(() => (window as any).__plaza.health().frames.stepped[0]);
+  const from = await frames();
+  await expect
+    .poll(frames, {
+      timeout: 45_000,
+      message: "the Plaza never drew 30 more frames before the move",
+    })
+    .toBeGreaterThanOrEqual(from + 30);
   await page.evaluate(
     ([x, y]) => (window as any).__plazaPosition(x, y),
     [SPOT.x, SPOT.y],
@@ -535,22 +548,3 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
   await expect(page.locator("#pz-fishbook")).toBeHidden();
   expect(errors).toEqual([]);
 });
-
-// TEMPORARY (main red #389): the dock prompt again and again on CI's
-// runner, to catch the rare failure with its report. Removed before merge.
-for (let i = 0; i < 12; i++)
-  test(`TEMP dock prompt repeat ${i}`, async ({ browser }) => {
-    const context = await browser.newContext({
-      viewport: { width: 852, height: 393 },
-      isMobile: true,
-      hasTouch: true,
-    });
-    try {
-      const page = await context.newPage();
-      const errors = await openPlaza(page);
-      await setInsets(page, ISLAND);
-      await toPond(page, errors);
-    } finally {
-      await context.close();
-    }
-  });
