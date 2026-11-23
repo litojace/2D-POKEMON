@@ -5694,7 +5694,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   pillarRig?: PillarRig;
   /** Shared floor textures continue into dim, non-playable scenery around the court. */
   /** The world round a raid court (world-art/), painted once per arena. */
-  raidWorld?: Phaser.GameObjects.Image;
+  raidWorld: Phaser.GameObjects.Image[] = [];
   private raidWorldId = "";
   /** The Spire's court: sky, cover, stairs and number (spire-court-rig.ts). */
   spireRig?: SpireCourtRig;
@@ -5784,19 +5784,23 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   }
   /**
    * Show the painted world round this raid court (undefined: none). Only one
-   * is kept, like the floor: the last arena's goes. The camera's background
-   * takes the painting's edge colour, so a view even wider than the
-   * painting (a tall portrait screen) carries on in the same tone.
+   * is kept, like the floor: the last arena's goes. It is one canvas, shown
+   * as four bands round the court (above, below, left, right) and never
+   * under it: the court's own floor covers the middle, so drawing the world
+   * there too would paint most of the screen twice every frame (+11–15%
+   * frame time on every raid, measured at Low on 844×390). The camera's
+   * background takes the painting's edge colour, so a view even wider than
+   * the painting (a tall portrait screen) carries on in the same tone.
    */
   private showRaidWorld(id: IllustratedRaidFloor | undefined) {
     if (id === this.raidWorldId) {
-      this.raidWorld?.setVisible(!!id);
+      for (const band of this.raidWorld) band.setVisible(!!id);
       return;
     }
     const old = this.raidWorldId ? `raid-world-${this.raidWorldId}` : "";
     this.raidWorldId = id ?? "";
-    if (this.raidWorld)
-      this.raidWorld.setTexture("__DEFAULT").setVisible(false);
+    for (const band of this.raidWorld)
+      band.setTexture("__DEFAULT").setVisible(false);
     if (old && this.textures.exists(old)) {
       const source = this.textures.get(old).getSourceImage();
       this.textures.remove(old);
@@ -5814,13 +5818,37 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const ctx = canvas.getContext("2d")!;
     ctx.setTransform(s, 0, 0, s, -WORLD.x * s, -WORLD.y * s);
     paintRaidWorld(ctx, id, "all");
-    addCanvasTexture(this.textures, key, canvas);
-    this.raidWorld ??= this.add.image(0, 0, key).setOrigin(0).setDepth(-12);
-    this.raidWorld
-      .setTexture(key)
-      .setPosition(WORLD.x, WORLD.y)
-      .setDisplaySize(WORLD.width, WORLD.height)
-      .setVisible(true);
+    const texture = addCanvasTexture(this.textures, key, canvas);
+    // The four bands, in world px: everything in WORLD but the court.
+    const { width: W, height: H } = RULES;
+    const right = WORLD.x + WORLD.width,
+      bottom = WORLD.y + WORLD.height;
+    const bands: [string, number, number, number, number][] = [
+      ["top", WORLD.x, WORLD.y, WORLD.width, -WORLD.y],
+      ["bottom", WORLD.x, H, WORLD.width, bottom - H],
+      ["left", WORLD.x, 0, -WORLD.x, H],
+      ["right", W, 0, right - W, H],
+    ];
+    bands.forEach(([name, x, y, w, h], i) => {
+      texture?.add(
+        name,
+        0,
+        Math.round((x - WORLD.x) * s),
+        Math.round((y - WORLD.y) * s),
+        Math.round(w * s),
+        Math.round(h * s),
+      );
+      this.raidWorld[i] ??= this.add
+        .image(0, 0, key, name)
+        .setOrigin(0)
+        .setDepth(-12);
+      this.raidWorld[i]
+        .setTexture(key, name)
+        .setPosition(x, y)
+        .setDisplaySize(w, h)
+        .setName(`raid-world-${name}`)
+        .setVisible(true);
+    });
     this.cameras.main.setBackgroundColor(RAID_WORLDS[id].edge);
   }
   /** Bake and place a court's blocks (once per court). */

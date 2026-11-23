@@ -132,7 +132,7 @@ async function court(page: Page) {
       number: named("spire-number").length,
       sky: named("spire-sky-").length,
       pillars: named("pillar-block").length,
-      surround: scene.raidWorld?.visible ? 1 : 0,
+      surround: scene.raidWorld.filter((b: any) => b.visible).length,
       view: {
         x: cam.worldView.x,
         y: cam.worldView.y,

@@ -77,7 +77,8 @@ for (const viewport of [
                 "arena",
               );
               // Painted at once, with the world round it.
-              if (!scene.raidWorld?.visible) return "no world";
+              if (!scene.raidWorld.some((b: any) => b.visible))
+                return "no world";
               return scene.floor.texture.getSourceImage().dataset?.raidArtwork;
             }),
           )
@@ -173,10 +174,10 @@ for (const viewport of [
         ),
       ).toBe(true);
       expect(
-        await page.evaluate(
-          () =>
-            (window as any).__raidArtGame.scene.getScene("arena").raidWorld
-              ?.visible !== true,
+        await page.evaluate(() =>
+          (window as any).__raidArtGame.scene
+            .getScene("arena")
+            .raidWorld.every((b: any) => !b.visible),
         ),
       ).toBe(true);
       expect(errors).toEqual([]);
