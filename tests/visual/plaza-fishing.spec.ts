@@ -20,7 +20,7 @@ const mode = (page: Page) =>
 const phase = async (page: Page) => (await mode(page)).phase;
 const toast = (page: Page) => page.locator("#toast");
 const act = (page: Page) => page.locator("#pz-fish-act");
-async function toPond(page: Page) {
+async function toPond(page: Page, errors: string[] = []) {
   // The fish bite only when a test says (__plazaBiteNow): the server's
   // random 2-6 s would race a slow machine's looks at the phase.
   await page.evaluate(() => {
@@ -29,6 +29,20 @@ async function toPond(page: Page) {
     // ... and, once bitten, waits for the tap (see "left alone" below).
     w.__plazaBiteHold = true;
   });
+  // The Plaza drawing first. On CI's software renderer, a cold Plaza gets
+  // a frame only every few seconds at first (main's run on c056869, #389:
+  // 4 frames in the whole 10 s wait), and the prompt shows only on a frame
+  // after the move. A few frames say it is going; more cost CI seconds a
+  // call (30 doubled the keyboard test to 84 s of its 90).
+  const frames = () =>
+    page.evaluate(() => (window as any).__plaza.health().frames.stepped[0]);
+  const from = await frames();
+  await expect
+    .poll(frames, {
+      timeout: 45_000,
+      message: "the Plaza never drew 5 more frames before the move",
+    })
+    .toBeGreaterThanOrEqual(from + 5);
   await page.evaluate(
     ([x, y]) => (window as any).__plazaPosition(x, y),
     [SPOT.x, SPOT.y],
@@ -38,17 +52,26 @@ async function toPond(page: Page) {
   } catch (e) {
     // It failed on CI runners only (#367, #379): say what the Plaza was
     // doing, so the next failure explains itself.
-    const health = await page.evaluate(() => {
+    const health = await page.evaluate(async () => {
       const w = window as any,
         b = w.__plazaWorld.bodyOf("local");
+      // Does the page still get animation frames at all?
+      const raf = await new Promise<string>((done) => {
+        const t0 = performance.now();
+        requestAnimationFrame(() =>
+          done(`${Math.round(performance.now() - t0)}ms`),
+        );
+        setTimeout(() => done("none in 2s"), 2000);
+      });
       return {
         ...w.__plaza.health(),
         server: b && { x: Math.round(b.x), y: Math.round(b.y) },
         focus: document.activeElement?.className ?? null,
+        raf,
       };
     });
     throw new Error(
-      `the Fish prompt never showed at the spot (${SPOT.x}, ${SPOT.y}): ${JSON.stringify(health)}\n${(e as Error).message}`,
+      `the Fish prompt never showed at the spot (${SPOT.x}, ${SPOT.y}): ${JSON.stringify(health)}\npage errors: ${JSON.stringify(errors.slice(0, 5))}\n${(e as Error).message}`,
     );
   }
   await expect(page.locator("#pz-interact")).toContainText("Fish");
@@ -112,7 +135,7 @@ for (const size of [
       const page = await context.newPage();
       const errors = await openPlaza(page);
       if (size.inset) await setInsets(page, size.inset);
-      await toPond(page);
+      await toPond(page, errors);
       // At the dock: a round Fish button, not the long pill.
       // Dash's size, on Dash's line, the same gap as Dash to Jump; it pops in.
       expect(
@@ -412,7 +435,7 @@ test("Fish walks you out onto the dock, facing the water, and the line goes out 
 }, info) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const errors = await openPlaza(page);
-  await toPond(page);
+  await toPond(page, errors);
   // Pressed from the bank, a little way from the dock.
   await enter(page);
   const local = () =>
@@ -451,7 +474,7 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
 }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   const errors = await openPlaza(page);
-  await toPond(page);
+  await toPond(page, errors);
   await page.keyboard.press("e");
   await expect(page.locator("#pz-fishhud")).toBeVisible();
   await page.keyboard.press("e");
@@ -472,7 +495,7 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
     )
     .toBeNull();
   // Moved off the dock while fishing (the server's word): out of the mode.
-  await toPond(page);
+  await toPond(page, errors);
   await page.keyboard.press("e");
   await page.waitForTimeout(PLAZA_FISHING.castGapMs);
   await page.keyboard.press("e");
@@ -484,7 +507,7 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
   await expect(toast(page)).toContainText("walked away");
   await expect(page.locator("#pz-fishhud")).toBeHidden();
   // A fight on the keyboard: Space held reels, let go gives line.
-  await toPond(page);
+  await toPond(page, errors);
   await page.keyboard.press("e");
   await page.waitForTimeout(PLAZA_FISHING.castGapMs);
   await page.keyboard.press("e");

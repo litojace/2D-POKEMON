@@ -3110,7 +3110,9 @@ export function openPlaza(options) {
   }
   socket.on("plaza-state", onState);
   /** When the last snapshot came (tests: a stalled stream). */
-  let stateAt = 0;
+  let stateAt = 0,
+    /** …and when one last had you in it (tests). */
+    stateMeAt = 0;
   function onState(s) {
     stateAt = performance.now();
     meId = s.me;
@@ -3161,6 +3163,7 @@ export function openPlaza(options) {
     const seen = new Set();
     for (const [id, x, y, z, face, flags, emoteIdx, speed] of s.walkers) {
       if (id === s.me) {
+        stateMeAt = performance.now();
         srv = { x, y, flags };
         if (s.ack) {
           const r = predict.server(srv, s.ack, P);
@@ -5868,6 +5871,19 @@ export function openPlaza(options) {
   // events (the Orb Shower).
   const DASH_EVERY = PLAZA.dashEvery;
   let lastDraw = 0;
+  /** How far the frames got (tests' failure reports, __plaza.health()):
+   * called, drawn (past the frame cap), stepped (you moved), spotted (the
+   * nearest spot looked up), each a count and the last time (ms). */
+  const reached = {
+    called: [0, 0],
+    drawn: [0, 0],
+    stepped: [0, 0],
+    spotted: [0, 0],
+  };
+  const reach = (k: keyof typeof reached) => {
+    reached[k][0]++;
+    reached[k][1] = performance.now();
+  };
   /** The last frame's drawing order, once a test asks for it. */
   let debugOrder = false;
   // A 120 Hz phone: about 60 frames a second, as everywhere (frame-cap.ts).
@@ -5879,8 +5895,10 @@ export function openPlaza(options) {
   );
   function step(now) {
     raf = requestAnimationFrame(step);
+    reach("called");
     if (low ? now - lastDraw < 30 : !cap.draw(now)) return;
     lastDraw = now;
+    reach("drawn");
     drawn.draw(now, 0);
     if (probe) {
       if (covered() || document.hidden) probe.pause();
@@ -5934,6 +5952,7 @@ export function openPlaza(options) {
     if (!photo) {
       if (todHold > 0) todHold -= dt;
       else tod = realTod();
+      reach("stepped");
       // You: the same step as the server, then a gentle pull toward where it says you are.
       const ox = P.x,
         oy = P.y;
@@ -6083,6 +6102,7 @@ export function openPlaza(options) {
       near =
         SPOTS.find((s) => Math.hypot(P.x - s.x, (P.y - s.y) * 1.3) < s.r) ||
         null;
+      reach("spotted");
       const ib = $("pz-interact");
       fishing.update(dt);
       if (toDock && (!fishing.active || !target)) {
@@ -6480,9 +6500,24 @@ export function openPlaza(options) {
         running,
         cover: { ...coverNow() },
         stateAgeMs: Math.round(performance.now() - stateAt),
+        stateMeAgeMs: stateMeAt
+          ? Math.round(performance.now() - stateMeAt)
+          : -1,
         me: { x: Math.round(P.x), y: Math.round(P.y) },
         near: near?.id ?? null,
         dialog: document.querySelector("dialog[open]")?.className ?? null,
+        // Each: [count, ms since the last] (-1: never).
+        frames: Object.fromEntries(
+          Object.entries(reached).map(([k, [n, at]]) => [
+            k,
+            [n, n ? Math.round(performance.now() - at) : -1],
+          ]),
+        ),
+        srv: srv && { x: srv.x, y: srv.y, acked: !!srv.acked },
+        low,
+        photo: !$("pz-photo").hidden,
+        hidden: document.hidden,
+        visibility: document.visibilityState,
       }),
       confetti: () => FX.filter((f) => f.cf).length,
       SPOTS,
