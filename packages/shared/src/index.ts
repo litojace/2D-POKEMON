@@ -3330,9 +3330,9 @@ export interface Reply {
   me?: number;
   /** Plaza joins: which Plaza copy (with `me`). */
   plaza?: number;
-  /** A Plaza treat: which one was thrown (PLAZA_TREATS), and how many are left. */
-  treat?: string;
-  treats?: number;
+  /** A Plaza gift box (PLAZA_GIFT): golden or not, and how many are left today. */
+  golden?: boolean;
+  gifts?: number;
   /** A message to a friend: kept (read later), or only shown live. */
   kept?: boolean;
   /** Quick Match: waiting in the queue (no opponent yet). */
