@@ -651,6 +651,53 @@ ember rain was 0.27 s from landing, and one raider's next step into a lane
 left no spot (`tests/unit/raid-ascendant-lumiwick.test.ts`, 4 raiders).
 Waiting only gives raiders more warning.
 
+## Duskveil's lantern, and why the lopsided pairs stay (2026-11-23)
+
+The champion counter table was measured again on main after the second
+round of smarter bots: 48 games a pair at each of Normal, Hard and the
+expert without look-ahead (7,344 duels a level). Duskveil was the weakest
+champion at all three: 42.5% (Normal), 43.5% (Hard), 40.4% (expert).
+
+**Haunted Lantern's wisps deal 6, not 4.** The lantern fired about three
+wisps for 12 damage a 15-second cooldown. Four options were probed on
+Duskveil's pairings (408 duels per level):
+
+| Option                  | Hard  | Expert |
+| ----------------------- | ----- | ------ |
+| As it was               | 42.9% | 40.7%  |
+| Shade Crawl roots 0.8 s | 53.4% | 48.5%  |
+| Health 158 (was 148)    | 50.5% | 48.0%  |
+| Lantern wisps 6         | 50.0% | 48.3%  |
+| Basic attack 10 (was 9) | 54.9% | 53.4%  |
+
+The lantern was the right size and gives a weak skill a reason to be cast.
+Round robins (24 games a pair, seed 5000) after the change: Hard 44.9% -
+57.8% (Duskveil 46.6%), Normal 45.3% - 54.2% (Duskveil 50.2%).
+Duskveil's Spire Echoes made zone 3 a little harder (clears in 144, main
+against the lantern: floor 23 83/72, 25 67/62, 26 49/40, 27 59/54, 28
+41/34), so those floors' armour went up: 1.98, 0.56, 1.15, 1.5 and 1.8
+(were 1.91, 0.54, 1.07, 1.42 and 1.67; now 82, 71, 49, 60 and 43). The
+zone 3 play-test now compares floors 21 and 29 over 36 seeds instead of
+12: with the lantern its 12 seeds tied the two floors (7 each), while 36
+seeds give 21 and 18 (72 give 47 and 33).
+
+**The lopsided pairs are mostly close fights played the same way every
+time.** Fourteen pairs went 90% or more one way at Hard. A diagnosis of the
+ten worst (24 duels each, damage per second and by ability) found that in
+most of them the loser deals as much damage per second as the winner, or
+more: Coilemur 22.6 against Terradon's 18.1, Astrabun 20.6 against
+Auralynx's 19.8, Shadopus 19.7 against Cindrake's 18.5, Tidefin 7.6 against
+Sunbara's 5.9. The winner has a little more health, healing or damage
+reduction, and Hard and expert bots play so evenly that a small edge wins
+nearly every time. Normal bots, which lapse, play the same pairs much
+closer (Auralynx-Astrabun 69%, Sunbara-Tidefin 60%, Mossloth-Auralynx 48%),
+and so do people. Changing numbers to fix them would hand the same edge to
+the other side, so they were left. The real counters are a kiter against a
+slow brawler (Mossloth deals twice the damage of Terradon and Auralynx),
+which is how those kits are meant to meet, and Terradon against Coilemur,
+lopsided at every level because Magnet Lash drags Terradon where it wants
+to be.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now
