@@ -7,29 +7,18 @@ import { paintRingInlay } from "./raid-ring-pieces";
 import { engravedRing } from "./raid-emberwing-terrace";
 import { paintConstellationInlay } from "./raid-cloud-deck-pieces";
 import { paintAtriumInlay } from "./raid-prismatail-atrium";
-import grumblecrag from "./art/raid-arenas/grumblecrag.webp";
-import tidewyrm from "./art/raid-arenas/tidewyrm.webp";
-import gloomshade from "./art/raid-arenas/gloomshade.webp";
-import somnara from "./art/raid-arenas/somnara.webp";
-import prismatail from "./art/raid-arenas/prismatail.webp";
-import emberwing from "./art/raid-arenas/emberwing.webp";
-import stormTwins from "./art/raid-arenas/storm-twins.webp";
+import { RAID_WORLDS, paintRaidWorld } from "./world-art";
 
+/**
+ * The raid courts with their own world (world-art/): painted in code when a
+ * fight needs them, so nothing is downloaded and nothing waits.
+ */
 export type IllustratedRaidFloor = RaidFloorId | "raid-coliseum";
-export const RAID_ARENA_ART: Record<IllustratedRaidFloor, string> = {
-  "raid-coliseum": grumblecrag,
-  lagoon: tidewyrm,
-  "lantern-yard": gloomshade,
-  "cloud-deck": somnara,
-  "sun-atrium": prismatail,
-  "sky-terrace": emberwing,
-  "conductor-ring": stormTwins,
-};
 export const isIllustratedRaidFloor = (
   id: string,
-): id is IllustratedRaidFloor => Object.hasOwn(RAID_ARENA_ART, id);
+): id is IllustratedRaidFloor => Object.hasOwn(RAID_WORLDS, id);
 
-/** Each boss's illustrated arena (Grumblecrag fights in the Coliseum). */
+/** Each boss's arena (Grumblecrag fights in the Coliseum). */
 export const RAID_BOSS_ARENA: Record<RaidBossId, IllustratedRaidFloor> = {
   grumblecrag: "raid-coliseum",
   tidewyrm: "lagoon",
@@ -39,55 +28,17 @@ export const RAID_BOSS_ARENA: Record<RaidBossId, IllustratedRaidFloor> = {
   emberwing: "sky-terrace",
   "storm-twins": "conductor-ring",
 };
-const prefetched = new Map<string, HTMLImageElement>();
-/**
- * Start downloading a boss's arena picture while the party is still in the
- * lobby or briefing, so it is in the browser's cache (and painted at once)
- * when the fight starts, instead of the stand-in floor showing meanwhile.
- */
-export function prefetchRaidArena(boss: RaidBossId) {
-  const id = RAID_BOSS_ARENA[boss];
-  if (!id || prefetched.has(id)) return;
-  const image = new Image();
-  image.decoding = "async";
-  image.src = RAID_ARENA_ART[id];
-  prefetched.set(id, image);
-}
 
-/** Only the selected arena is decoded; bake once, then release the source image. */
-export function loadRaidArenaArt(
-  id: IllustratedRaidFloor,
-  paint: (image: HTMLImageElement) => void,
-  /** It couldn't load: the procedural floor stays (the briefing stops waiting). */
-  failed?: () => void,
-) {
-  const image = new Image();
-  image.decoding = "async";
-  image.onload = () => {
-    paint(image);
-    image.onload = null;
-    image.onerror = null;
-  };
-  // The procedural floor remains playable if an offline asset is unavailable.
-  image.onerror = () => {
-    image.onload = null;
-    image.onerror = null;
-    failed?.();
-  };
-  image.src = RAID_ARENA_ART[id];
-}
-
-/** Gameplay landmarks use world coordinates, never the generated illustration. */
+/** The court's painting, then the gameplay landmarks, in world coordinates. */
 export function paintIllustratedRaidFloor(
   c: CanvasRenderingContext2D,
   id: IllustratedRaidFloor,
-  image: HTMLImageElement,
 ) {
   const { width: W, height: H } = RULES;
   c.save();
   c.globalAlpha = 1;
   c.globalCompositeOperation = "source-over";
-  c.drawImage(image, 0, 0, W, H);
+  paintRaidWorld(c, id, "court");
   // Keep white/cyan warnings readable over bright marble and water caustics.
   c.fillStyle = id === "lagoon" ? "#062c3a28" : "#0c112317";
   c.fillRect(0, 0, W, H);

@@ -724,16 +724,12 @@ describe("spireZoneTheme", () => {
             .split(",")
             .map(Number),
         );
-    const shared = new Set(
-      radials(paintZone(1, [])).map((r) => r.join(",")),
-    );
+    const shared = new Set(radials(paintZone(1, [])).map((r) => r.join(",")));
     const added = radials(paintZone(7, [])).filter(
       (r) => !shared.has(r.join(",")),
     );
     expect(added.length).toBeGreaterThan(0);
-    const near = added.filter(([, , , x, y, r]) =>
-      spireUnderControls(x, y, r),
-    );
+    const near = added.filter(([, , , x, y, r]) => spireUnderControls(x, y, r));
     for (const [, , , , , r] of near) expect(r).toBeLessThan(32);
     // The corner coil under the controls stands quiet (no arcs off it);
     // the others crackle.
@@ -779,9 +775,7 @@ describe("spireZoneTheme", () => {
       n.paint(recordingContext(log));
       // Two digits at the two-digit size, centred by the glyphs' ink.
       expect(log).toContain('font=700 104px Georgia, "Times New Roman", serif');
-      expect(log.filter((l) => l.startsWith(`fillText(${f},`)).length).toBe(
-        3,
-      );
+      expect(log.filter((l) => l.startsWith(`fillText(${f},`)).length).toBe(3);
     }
     expect(
       spireFloorPieces(7, 70, "boss", 1.4).find((p) => p.name === "number"),
@@ -792,20 +786,17 @@ describe("spireZoneTheme", () => {
     paintStormSummitGrade(recordingContext(log));
     expect(fingerprint(log)).toBe("49627:7ada9f39");
   });
-  it("the Storm Twins' own Conductor Ring paints exactly as it did (recipe recorded before zone 7)", () => {
+  // Recorded with the raid worlds painted in code (world-art/, 23 Nov 2026).
+  it("the Storm Twins' own Conductor Ring paints exactly as it did (recipe recorded with the painted worlds)", () => {
     const log: string[] = [];
     const undo = installRecordingDocument(log);
     try {
       paintRaidFloor(recordingContext(log), "conductor-ring");
-      paintIllustratedRaidFloor(
-        recordingContext(log),
-        "conductor-ring",
-        {} as HTMLImageElement,
-      );
+      paintIllustratedRaidFloor(recordingContext(log), "conductor-ring");
     } finally {
       undo();
     }
-    expect(fingerprint(log)).toBe("7404:c608c7e7");
+    expect(fingerprint(log)).toBe("14546:3c9dd43");
   });
   it("zone 2's high floors add bioluminescence (none low down)", () => {
     const low = paintZone(2, [11]).join("\n"),
