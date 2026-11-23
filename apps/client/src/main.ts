@@ -62,6 +62,8 @@ import {
 import { queueBossSpellArt } from "./boss-spell-flipbook";
 import { queueBossArt, retainBossArt } from "./boss-painted-rig";
 import { memoryConstrained, rendererDensity } from "./render-budget";
+import { clearWithCameraBackdrop } from "./camera-clear";
+import { addBattleText } from "./battle-text";
 import { watchRendererLifecycle } from "./renderer-lifecycle";
 import {
   groundHeight,
@@ -6867,41 +6869,41 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       const value = event.value.toLocaleString(undefined, {
         maximumFractionDigits: 1,
       });
-      const label = this.add
-        .text(
-          event.x,
-          event.y - 45,
-          bank
-            ? `+${value} GEM${event.value === 1 ? "" : "S"} BANKED`
+      const label = addBattleText(
+        this,
+        event.x,
+        event.y - 45,
+        bank
+          ? `+${value} GEM${event.value === 1 ? "" : "S"} BANKED`
+          : energy
+            ? `+${value}% ULT`
+            : `${heal ? "+" : "−"}${value}`,
+        {
+          fontFamily: "DM Sans, sans-serif",
+          fontStyle: "bold",
+          fontSize: heal
+            ? "26px"
+            : strength === "critical"
+              ? "38px"
+              : strength === "strong"
+                ? "32px"
+                : "26px",
+          color: bank
+            ? "#d8b4ff"
             : energy
-              ? `+${value}% ULT`
-              : `${heal ? "+" : "−"}${value}`,
-          {
-            fontFamily: "DM Sans, sans-serif",
-            fontStyle: "bold",
-            fontSize: heal
-              ? "26px"
-              : strength === "critical"
-                ? "38px"
-                : strength === "strong"
-                  ? "32px"
-                  : "26px",
-            color: bank
-              ? "#d8b4ff"
-              : energy
-                ? "#ffd166"
-                : heal
-                  ? "#7dffb0"
-                  : strength === "critical"
-                    ? "#ffd65b"
-                    : "#eef2ff",
-            stroke: "#0b1020",
-            strokeThickness: 5,
-          },
-        )
+              ? "#ffd166"
+              : heal
+                ? "#7dffb0"
+                : strength === "critical"
+                  ? "#ffd65b"
+                  : "#eef2ff",
+          stroke: "#0b1020",
+          strokeThickness: 5,
+        },
+        renderScale(),
+      )
         .setOrigin(0.5)
-        .setDepth(45)
-        .setResolution(renderScale());
+        .setDepth(45);
       this.tweens.add({
         targets: label,
         y: reducedMotion ? event.y - 45 : event.y - 95,
@@ -6941,26 +6943,26 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const now = performance.now();
     if ((this.comboShown.get(key) ?? 0) > now) return;
     this.comboShown.set(key, now + 600);
-    const label = this.add
-      .text(
-        event.x,
-        event.y - 75,
-        text ??
-          (event.abilityId === "ex-cast"
-            ? `${event.combo!.toUpperCase()}!`
-            : `${event.combo!.toUpperCase()} COMBO!`),
-        {
-          fontFamily: "system-ui, sans-serif",
-          fontStyle: "900",
-          fontSize: "24px",
-          color: "#ffe27a",
-          stroke: "#3a1f00",
-          strokeThickness: 5,
-        },
-      )
+    const label = addBattleText(
+      this,
+      event.x,
+      event.y - 75,
+      text ??
+        (event.abilityId === "ex-cast"
+          ? `${event.combo!.toUpperCase()}!`
+          : `${event.combo!.toUpperCase()} COMBO!`),
+      {
+        fontFamily: "system-ui, sans-serif",
+        fontStyle: "900",
+        fontSize: "24px",
+        color: "#ffe27a",
+        stroke: "#3a1f00",
+        strokeThickness: 5,
+      },
+      renderScale(),
+    )
       .setOrigin(0.5)
-      .setDepth(40)
-      .setResolution(renderScale());
+      .setDepth(40);
     if (reducedMotion) {
       this.time.delayedCall(800, () => label.destroy());
       return;
@@ -9048,6 +9050,22 @@ function ensureBattleRenderer() {
     callbacks: {
       postBoot: (game) => {
         battleFrames = capGameFrames(game);
+        // The camera's background is the canvas's clear colour, not a
+        // full-screen rectangle drawn over it (camera-clear.ts).
+        clearWithCameraBackdrop(
+          game.renderer as unknown as Parameters<
+            typeof clearWithCameraBackdrop
+          >[0],
+          () => {
+            const s = game.scene.scenes[0];
+            const status = s?.sys.settings.status ?? -1;
+            return s?.sys.settings.visible &&
+              status >= Phaser.Scenes.LOADING &&
+              status < Phaser.Scenes.SLEEPING
+              ? s.cameras?.cameras[0]
+              : undefined;
+          },
+        );
       },
     },
   });
