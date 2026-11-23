@@ -9,19 +9,31 @@ import { PLAZA_FOUNTAIN, PLAZA_WISH } from "../../packages/shared/src/plaza";
 // cost; phones pay less, in the same direction.
 test.use({ viewport: { width: 844, height: 390 }, hasTouch: true });
 
-/** Frame intervals (ms) the page drew over `ms`. */
+/**
+ * Frame intervals (ms) the page drew over `ms`, counted from its first drawn
+ * frame and at least 60 of them (up to 3 × `ms`). Main's scheduled run once
+ * got an empty or one-frame sample (beforeFps NaN) when a busy runner held
+ * the page still for the whole window; a stall now only lengthens it.
+ */
 const frames = (page: Page, ms: number) =>
   page.evaluate(
     (ms) =>
       new Promise<number[]>((done) => {
         const out: number[] = [];
-        let last = performance.now();
-        const start = last;
+        let last = 0,
+          start: number | undefined;
         const tick = (t: number) => {
+          if (start === undefined) {
+            start = last = t;
+            requestAnimationFrame(tick);
+            return;
+          }
           out.push(t - last);
           last = t;
-          if (t - start < ms) requestAnimationFrame(tick);
-          else done(out.slice(1));
+          const elapsed = t - start;
+          if ((elapsed < ms || out.length < 60) && elapsed < ms * 3)
+            requestAnimationFrame(tick);
+          else done(out);
         };
         requestAnimationFrame(tick);
       }),
@@ -47,6 +59,7 @@ test("the fireworks keep the Plaza's frame rate (High, phone screen)", async ({
   // Settle (camera, fonts, first paints), then the same spot without a show.
   await page.waitForTimeout(2500);
   const before = await frames(page, 4000);
+  expect(before.length, "frames drawn before the show").toBeGreaterThan(30);
   // Fill the meter: the show runs PLAZA_WISH.showMs.
   for (let i = 0; i < PLAZA_WISH.min; i++)
     await page.evaluate(() => (window as any).__plazaWish());
@@ -54,6 +67,7 @@ test("the fireworks keep the Plaza's frame rate (High, phone screen)", async ({
     .poll(() => page.evaluate(() => (window as any).__plaza.fireworks().active))
     .toBe(true);
   const during = await frames(page, PLAZA_WISH.showMs - 500);
+  expect(during.length, "frames drawn during the show").toBeGreaterThan(30);
   const fw = await page.evaluate(() => (window as any).__plaza.fireworks());
   const result = {
     beforeFps: Math.round(1000 / median(before)),
