@@ -255,9 +255,31 @@ const NORMAL_DAZE_BEFORE_SMART_BOTS: Partial<Record<CharacterId, number>> = {
 /**
  * Normal's per-champion lapse share in PvP (see `daze`), calibrated in bot
  * round robins so each champion does about as well against Normal bots as
- * against Hard ones (scripts/balance/round-robin.ts).
+ * against Hard ones (scripts/balance/round-robin.ts). Calibrated again for
+ * the second round of smarter bots (2026-11-22): 43.9% - 54.9%.
  */
 const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
+  voltkit: 0.256,
+  cindrake: 0.391,
+  tidefin: 0.302,
+  auralynx: 0.255,
+  lumoth: 0.278,
+  mystowl: 0.245,
+  terradon: 0.278,
+  duskveil: 0.364,
+  coilemur: 0.334,
+  pyranda: 0.282,
+  glacelle: 0.256,
+  halcyra: 0.29,
+  sunbara: 0.267,
+  astrabun: 0.261,
+  wombolder: 0.293,
+  shadopus: 0.345,
+  pangrove: 0.363,
+  mossloth: 0.22,
+};
+/** Normal's PvP daze before the second round of smarter bots (2026-11-22). */
+const NORMAL_DAZE_BEFORE_V2: Partial<Record<CharacterId, number>> = {
   voltkit: 0.265,
   cindrake: 0.45,
   tidefin: 0.32,
@@ -284,7 +306,19 @@ const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
  * Easy's slow reactions and loose aim cost a brawler little).
  */
 export const EASY_DAZE_GAP = 0.25;
-export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
+const easyDaze = (normal: Partial<Record<CharacterId, number>>) =>
+  Object.fromEntries(
+    Object.entries(normal)
+      .map(([id, d]) => [id, +Math.max(0, d - EASY_DAZE_GAP).toFixed(3)])
+      .filter(([, d]) => (d as number) > 0),
+  );
+/**
+ * The three levels as they were before the second round of smarter bots
+ * (2026-11-22). Raids and the Spire (raider stand-ins, Spire Echoes) still
+ * play with these, so their difficulty stays where simulation tuned it, and
+ * the balance-only expert is built on this Hard.
+ */
+export const RAID_BOT_PROFILES: Record<BotDifficulty, Profile> = {
   // Easy plays like a beginner: it sees and decides late, aims loosely,
   // rarely dodges, uses few skills and saves nothing. It is weaker than
   // Normal mostly by being slower; it lapses only with the brawlers (see
@@ -307,11 +341,7 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     // blasts, and it notices them late (its reaction time).
     expert: { lookAway: false, jumpSeeds: false, dodgeMarks: true },
     markReaction: 0.9,
-    dazeBy: Object.fromEntries(
-      Object.entries(NORMAL_DAZE_BY)
-        .map(([id, d]) => [id, +Math.max(0, d - EASY_DAZE_GAP).toFixed(3)])
-        .filter(([, d]) => (d as number) > 0),
-    ),
+    dazeBy: easyDaze(NORMAL_DAZE_BEFORE_V2),
   },
   // Normal is Hard with slower reactions, more pauses and looser aim, and a
   // per-champion share of lapsed seconds (dazeBy). Every weakness a bot can
@@ -339,7 +369,7 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     focus: true,
     expert: { lookAway: false, jumpSeeds: true, dodgeMarks: true },
     markReaction: 0.75,
-    dazeBy: NORMAL_DAZE_BY,
+    dazeBy: NORMAL_DAZE_BEFORE_V2,
     raidDazeBy: { ...NORMAL_DAZE_BEFORE_SMART_BOTS, ...RAID_DAZE_BY },
   },
   hard: {
@@ -365,6 +395,70 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
   },
 };
 /**
+ * The levels players pick, in PvP (raids and the Spire: RAID_BOT_PROFILES).
+ * The second round of smarter bots (2026-11-22) moved each up a step, when
+ * players who play often were beating Hard in about two duels of three:
+ * each new level beats the one it replaced in about 70% of bot duels (Hard
+ * 76%), and the gaps between the levels stay as wide (docs/smarter-bots.md).
+ */
+export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
+  // Easy is still a beginner, a slightly quicker one: it reacts and decides
+  // sooner, rests less and dodges a little more often.
+  easy: {
+    ...RAID_BOT_PROFILES.easy,
+    reaction: 0.47,
+    aimError: 0.26,
+    lead: 0.05,
+    dodge: 0.18,
+    think: 0.38,
+    skillUse: 0.38,
+    hesitate: 0.22,
+    fooledByClone: 0.78,
+    engage: 0.012,
+    rest: 0.36,
+    kite: 0.3,
+    retreat: 0.22,
+    markReaction: 0.88,
+    dazeBy: easyDaze(NORMAL_DAZE_BY),
+  },
+  // Normal sits about halfway to the old Hard: quicker hands, more of its
+  // skills used, and it looks away from Eyespot Flash.
+  normal: {
+    ...RAID_BOT_PROFILES.normal,
+    reaction: 0.33,
+    aimError: 0.19,
+    lead: 0.4,
+    dodge: 0.47,
+    think: 0.17,
+    skillUse: 0.52,
+    hesitate: 0.13,
+    fooledByClone: 0.42,
+    engage: 0.04,
+    rest: 0.1,
+    kite: 0.72,
+    retreat: 0.31,
+    expert: { lookAway: true, jumpSeeds: true, dodgeMarks: true },
+    markReaction: 0.72,
+    dazeBy: NORMAL_DAZE_BY,
+    raidDazeBy: undefined,
+  },
+  // Hard has the balance expert's hands without its look-ahead: a good
+  // player's reaction and aim (0.2 s, 0.12 rad), quick decisions, no
+  // pauses. It dodges 80% of shots, not the expert's 90%, and reads marks
+  // in Hard's old 0.6 s: at 90% the slower shooters sank (Voltkit 39.5%),
+  // and reading marks at once sank Pyranda, whose kit is all marks (37.5%).
+  // The expert's learned styles stay the expert's: with these hands
+  // Halcyra's took it to 64%.
+  hard: {
+    ...RAID_BOT_PROFILES.hard,
+    reaction: 0.2,
+    aimError: 0.12,
+    dodge: 0.8,
+    think: 0.08,
+    rest: 0,
+  },
+};
+/**
  * The expert bot, for balance measurement only (never offered to players):
  * Hard made sharper where it pays (measured with difficulty-gap.ts, each
  * setting alone against Hard: reaction +18 points, dodge +9, no rests +7,
@@ -377,7 +471,7 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
  * "A good player's hands").
  */
 export const EXPERT_PROFILE: Profile = {
-  ...BOT_PROFILES.hard,
+  ...RAID_BOT_PROFILES.hard,
   // It reads marks in MARK_REACTION, not in Hard's markReaction.
   markReaction: undefined,
   reaction: 0.2,
@@ -638,7 +732,8 @@ export function waypoint(
 }
 type Seen = { t: number; x: number; y: number; vx: number; vy: number };
 export class BotBrain {
-  readonly profile: Profile;
+  /** Its level's PvP profile; in raids and the Spire, RAID_BOT_PROFILES'. */
+  profile: Profile;
   private random: () => number;
   private seen: Seen[] = [];
   private nextThink = 0;
@@ -664,7 +759,7 @@ export class BotBrain {
   readonly difficulty: BotDifficulty;
   constructor(
     readonly id: string,
-    level: BotLevel,
+    readonly level: BotLevel,
     seed = 1,
   ) {
     this.profile = BALANCE_PROFILES[level];
@@ -767,6 +862,13 @@ export class BotBrain {
   private commit?: { until: number; dx: number; dy: number };
   private nextLook = 0;
   think(arena: Arena, me: Fighter): Input {
+    // Raids and the Spire play the levels they were tuned with.
+    if (
+      arena.mode === "raid" &&
+      this.profile === BALANCE_PROFILES[this.level] &&
+      this.level !== "expert"
+    )
+      this.profile = RAID_BOT_PROFILES[this.level];
     const input = this.rules(arena, me);
     if (!this.profile.expert?.lookAhead) return input;
     return this.lookAheadOn(arena, me, input);

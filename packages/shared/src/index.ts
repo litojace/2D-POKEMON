@@ -1735,9 +1735,11 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Yuzu Toss",
         "projectile",
         14,
-        8,
+        7,
         "Toss a glowing yuzu that bursts on impact; Sunbara soaks up a fifth of the damage it deals as health.",
-        { speed: 650, radius: 16, explosion: 80, drain: 0.2 },
+        // 760 px/s and 7 s (were 650 and 8) since Hard dodges like a good
+        // player: docs/smarter-bots.md, "Second round".
+        { speed: 760, radius: 16, explosion: 80, drain: 0.2 },
       ),
       ability(
         "warm-spring",
@@ -2465,26 +2467,27 @@ for (const combo of Object.values(COMBOS)) combo.text = inMeters(combo.text);
  * the bot fixes (bots pick their own target, Normal no longer flips
  * champions) every factor is within 12% of 1. Retuned for the smarter bots
  * (2v2 focus fire, docs/smarter-bots.md).
+ * Retuned again for the second round of smarter bots (2026-11-22).
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 1.03,
-  cindrake: 0.994,
-  tidefin: 1.018,
-  auralynx: 0.88,
-  lumoth: 1.038,
-  mystowl: 0.984,
-  terradon: 0.898,
-  duskveil: 1.06,
-  coilemur: 0.927,
-  pyranda: 0.988,
-  glacelle: 0.972,
-  halcyra: 1.027,
-  sunbara: 1.045,
-  astrabun: 0.982,
-  wombolder: 0.913,
-  shadopus: 1.011,
-  pangrove: 0.904,
-  mossloth: 1.119,
+  voltkit: 1.054,
+  cindrake: 0.974,
+  tidefin: 1.062,
+  auralynx: 0.853,
+  lumoth: 1.062,
+  mystowl: 0.987,
+  terradon: 0.911,
+  duskveil: 1.064,
+  coilemur: 0.936,
+  pyranda: 0.993,
+  glacelle: 0.947,
+  halcyra: 1.053,
+  sunbara: 1.052,
+  astrabun: 0.992,
+  wombolder: 0.902,
+  shadopus: 1.014,
+  pangrove: 0.896,
+  mossloth: 1.01,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -2493,26 +2496,27 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
  * take about twice the damage per second of ranged ones (as in a duel), which
  * a duel repays with their higher damage but a free-for-all does not. Tuned
  * with scripts/balance/tune-teams.ts --mode ffa on four-player matches.
+ * Retuned again for the second round of smarter bots (2026-11-22).
  */
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.873,
-  cindrake: 1.16,
-  tidefin: 0.869,
-  auralynx: 1.043,
-  lumoth: 0.903,
-  mystowl: 0.828,
-  terradon: 0.956,
-  duskveil: 0.865,
-  coilemur: 1.194,
-  pyranda: 0.818,
-  glacelle: 0.91,
-  halcyra: 0.814,
-  sunbara: 0.88,
-  astrabun: 1.142,
-  wombolder: 1.099,
-  shadopus: 1.131,
-  pangrove: 1.034,
-  mossloth: 0.972,
+  voltkit: 0.9,
+  cindrake: 1.097,
+  tidefin: 0.886,
+  auralynx: 1.02,
+  lumoth: 0.936,
+  mystowl: 0.861,
+  terradon: 0.959,
+  duskveil: 0.898,
+  coilemur: 1.149,
+  pyranda: 0.817,
+  glacelle: 0.915,
+  halcyra: 0.835,
+  sunbara: 0.914,
+  astrabun: 1.113,
+  wombolder: 1.069,
+  shadopus: 1.102,
+  pangrove: 1.011,
+  mossloth: 0.914,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
