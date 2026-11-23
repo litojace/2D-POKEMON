@@ -403,6 +403,16 @@ button.chat-say:focus-visible {
   color: #8fc3ff;
   font-weight: 700;
 }
+/* Watching the room: the name in gold after an eye. */
+.chat-line.is-watcher b {
+  color: #ffd98a;
+}
+.chat-line.is-watcher b svg {
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 3px;
+  vertical-align: -0.2em;
+}
 .chat-line.is-mine b {
   color: var(--ui-accent);
 }
@@ -734,7 +744,11 @@ button.chat-say:focus-visible {
   left: max(12px, calc(var(--safe-left, 0px) + 4px));
   z-index: 55;
   display: grid;
-  gap: 2px;
+  /* The tag, then the name and words: one set of columns for every line
+     (subgrid below), so the tags are as wide as the widest and the names
+     line up whatever font the device draws them in. */
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 5px;
   max-width: 220px;
   margin: 0;
   padding: 0;
@@ -747,6 +761,10 @@ button.chat-say:focus-visible {
   );
 }
 .battle-chat-feed li {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 5px;
   padding: 3px 8px;
   border-radius: 8px;
   background: rgba(10, 19, 37, 0.72);
@@ -762,6 +780,69 @@ button.chat-say:focus-visible {
 }
 .battle-chat-feed li.is-rival b {
   color: #ff9aa5;
+}
+/* A watcher's line: their name in gold after an eye (they have no
+   fighter, so no bubble either). */
+.battle-chat-feed li.is-watcher b {
+  color: #ffd98a;
+}
+.battle-chat-feed li b {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+}
+.battle-chat-feed li b svg {
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+/* Who heard the line, before it: TEAM (your side only, blue) or ALL (the
+   whole room, rivals and watchers too, light). Same width, so the names
+   line up. The caps are centred on their cap height (text-box), not the
+   font's em box, which sits them high; letter-spacing's trailing space is
+   given back on the left so they are centred across too. Pixel-checked in
+   watch-room.spec.ts. */
+.battle-chat-to {
+  display: block;
+  flex: none;
+  box-sizing: border-box;
+  min-width: 4.2em;
+  /* Equal room above and below the trimmed caps. */
+  padding: 0.42em 0.4em 0.42em calc(0.4em + 0.06em);
+  text-align: center;
+  border-radius: 5px;
+  font-size: 0.72em;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-box: trim-both cap alphabetic;
+}
+.battle-chat-feed li[data-to="team"] .battle-chat-to {
+  background: #2f6fd6;
+  color: #fff;
+}
+.battle-chat-feed li[data-to="all"] .battle-chat-to {
+  background: rgba(255, 255, 255, 0.18);
+  color: #f2f6ff;
+}
+.battle-chat-say {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.battle-chat-say > span {
+  min-width: 0;
+}
+@supports (grid-template-columns: subgrid) {
+  .battle-chat-feed li {
+    display: grid;
+    grid-template-columns: subgrid;
+  }
 }
 @keyframes battle-chat-line {
   0%,
