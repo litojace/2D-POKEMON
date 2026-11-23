@@ -15,9 +15,13 @@
 // `lane=FAST` or `lane=FULL` to $GITHUB_OUTPUT: a FAST pull request runs
 // verify only, and the 30 visual shards are left to main's scheduled full
 // run (the shards of a PR that merges on verify only spent runners for
-// nothing, and main's own runs starved).
+// nothing, and main's own runs starved). It writes `specs=...` too, the
+// visual specs the branch changes: a FAST pull request runs those on one
+// runner (the `visual-touched` job), so a new or changed visual test meets
+// CI's slow renderer before main does (#382 merged a jump test that only
+// main's full run found unsteady; #384 and #385 then fixed it).
 import { execFileSync } from "node:child_process";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, existsSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 /** More files than this is too much to check by hand: FULL. */
@@ -92,6 +96,22 @@ export function mergeLane(files) {
   };
 }
 
+/**
+ * The visual specs among `files` that still exist (a deleted spec has
+ * nothing to run), as Playwright takes them. Only plain paths: the list goes
+ * on a command line.
+ */
+export function touchedSpecs(files, exists = existsSync) {
+  return [
+    ...new Set(
+      files
+        .map((f) => f.trim())
+        .filter((f) => /^tests\/visual\/[\w.-]+\.spec\.ts$/.test(f))
+        .filter((f) => exists(f)),
+    ),
+  ].sort();
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const base = process.argv[2] ?? "origin/main";
   const files = execFileSync("git", ["diff", "--name-only", `${base}...HEAD`], {
@@ -101,13 +121,23 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   console.log(`${r.lane} lane (${r.files} files changed against ${base})`);
   if (r.docsOnly) console.log("- docs and Markdown only: CI runs nothing");
   for (const why of r.reasons) console.log(`- ${why}`);
+  const specs = touchedSpecs(files);
   if (process.env.GITHUB_OUTPUT)
-    appendFileSync(process.env.GITHUB_OUTPUT, `lane=${r.lane}\n`);
-  if (r.lane === "FAST")
-    console.log(
-      "Merge once the PR's verify job is green and the visual specs this touches pass locally; main's scheduled full run checks it after.",
+    appendFileSync(
+      process.env.GITHUB_OUTPUT,
+      `lane=${r.lane}\nspecs=${specs.join(" ")}\n`,
     );
-  else
+  if (r.lane === "FAST") {
+    if (specs.length)
+      console.log(
+        `CI also runs the visual specs this changes (visual-touched): ${specs.join(", ")}`,
+      );
+    console.log(
+      specs.length
+        ? "Merge once the PR's verify and visual-touched jobs are green and the visual specs this touches pass locally; main's scheduled full run checks it after."
+        : "Merge once the PR's verify job is green and the visual specs this touches pass locally; main's scheduled full run checks it after.",
+    );
+  } else
     console.log(
       "Wait for the PR's whole run: verify and all 30 visual shards.",
     );
