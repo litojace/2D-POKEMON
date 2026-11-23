@@ -109,8 +109,11 @@
   opacity: 0.85;
   font-weight: 500;
 }
+/* Opaque: it sits top centre, where the townsfolk's name tags walk
+   by; at 78% (and faintly even at 95%) a tag behind showed through its
+   small text. */
 .plaza-layer .pz-event.soon {
-  background: #0b1020c7;
+  background: #0b1020;
   box-shadow: none;
   border: 1px solid #ffffff26;
 }

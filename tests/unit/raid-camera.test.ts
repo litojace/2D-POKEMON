@@ -10,6 +10,7 @@ import {
   raidFollowCentre,
   raidWantsCourt,
   RAID_FOLLOW_ZOOM,
+  RAID_OVERSCROLL,
 } from "../../apps/client/src/raid-camera";
 import { edgeSpot } from "../../apps/client/src/ally-bearings";
 import type { RaidState } from "../../packages/shared/src/raid";
@@ -94,11 +95,27 @@ describe("raid camera on phones", () => {
       expect(p.x).toBeLessThan(r.right);
       expect(p.y).toBeGreaterThan(r.top);
       expect(p.y).toBeLessThan(r.bottom);
-      expect(r.left).toBeGreaterThanOrEqual(-0.01);
-      expect(r.right).toBeLessThanOrEqual(1600.01);
-      // The court's top edge never goes under the HUD.
-      expect(r.top).toBeGreaterThanOrEqual(-0.01);
-      expect(r.bottom).toBeLessThanOrEqual(900.01);
+      // Past the walls by at most RAID_OVERSCROLL (the painted world shows).
+      expect(r.left).toBeGreaterThanOrEqual(-RAID_OVERSCROLL - 0.01);
+      expect(r.right).toBeLessThanOrEqual(1600 + RAID_OVERSCROLL + 0.01);
+      expect(r.top).toBeGreaterThanOrEqual(-RAID_OVERSCROLL - 0.01);
+      expect(r.bottom).toBeLessThanOrEqual(900 + RAID_OVERSCROLL + 0.01);
+    }
+  });
+
+  it("a raider by a wall stands well in from the screen's edge", () => {
+    for (const p of [
+      { x: 20, y: 450 },
+      { x: 1580, y: 450 },
+      { x: 800, y: 880 },
+    ]) {
+      const view = follow(new RaidCamera(), p);
+      const sx = (p.x - view.x) * view.zoomX + W / 2,
+        sy = (p.y - view.y) * view.zoomY + H / 2;
+      const inset = 100 * view.zoomX;
+      expect(sx).toBeGreaterThan(inset);
+      expect(sx).toBeLessThan(W - inset);
+      expect(sy).toBeLessThan(H - inset);
     }
   });
 

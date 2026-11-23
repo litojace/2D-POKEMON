@@ -915,9 +915,10 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       const missionBadge = layer.querySelector<HTMLElement>(
         '[data-badge-for="missions"]',
       )!;
+      // A plain red dot, no count: missions come back every day, so a
+      // number would sit there all day and teach players to skip red.
       missionBadge.hidden = !missions.length || !left;
-      missionBadge.textContent = String(left);
-      missionBadge.classList.add("is-count");
+      missionBadge.classList.add("is-dot");
       // The Spire, once open: its card above Missions (a shortcut past the
       // Raid Hub), glowing with a dot on Raids while something is new.
       const spire = view.spire ?? null;

@@ -4477,10 +4477,26 @@ export function openPlaza(options) {
   }
   /** How a body bobs, sways and squashes this frame (walk, dance, stun). */
   function bodyPose(b, time) {
-    let bob =
-        b.sp > 10 && !b.air
-          ? Math.abs(Math.sin(time * 12 + b.x * 0.01)) * 4
-          : Math.sin(time * 2.4 + b.x) * 1.2,
+    // Each body breathes on its own phase, fixed once. (It was `b.x`: in a
+    // running jump x moves ~4 px a frame, so the phase leapt and the body
+    // shook ±1.2 px every frame in the air, owner 23 Nov.)
+    b.breathPh ??= Math.random() * Math.PI * 2;
+    // Blend weights, eased over ~80 ms: walking (vs standing) and on the
+    // ground (vs in the air, where the jump's arc carries the body). The
+    // bob used to switch in one frame at take-off, landing, starting and
+    // stopping: up to 4 px, a visible jerk.
+    const dtb = b.bobT === undefined ? 1 : Math.max(0, time - b.bobT);
+    b.bobT = time;
+    const ek = 1 - Math.exp(-dtb / 0.08);
+    const walking = b.sp > 10 ? 1 : 0,
+      grounded = b.air ? 0 : 1;
+    b.wWalk ??= walking;
+    b.wGround ??= grounded;
+    b.wWalk += (walking - b.wWalk) * ek;
+    b.wGround += (grounded - b.wGround) * ek;
+    const walkBob = Math.abs(Math.sin(time * 12 + b.breathPh)) * 4,
+      idleBob = Math.sin(time * 2.4 + b.breathPh) * 1.2;
+    let bob = (idleBob + (walkBob - idleBob) * b.wWalk) * b.wGround,
       rot = 0,
       sq = 0;
     if (b.dance > 0) {
@@ -6003,15 +6019,18 @@ export function openPlaza(options) {
         if (at) {
           b.x = at.x;
           b.y = at.y;
+          // Their jump's height from the same moment in the past (it chased
+          // the newest snapshot, ten a second, so a jump rose in steps).
+          b.z = at.z;
         } else {
           b.x += (b.tx - b.x) * k;
           b.y += (b.ty - b.y) * k;
+          b.z += (b.tz - b.z) * Math.min(1, k * 1.6);
         }
         if (dt > 0) {
           b.vx = (b.x - px) / dt;
           b.vy = (b.y - py) / dt;
         }
-        b.z += (b.tz - b.z) * Math.min(1, k * 1.6);
         b.air = b.z > 1 ? 1 : 0;
         if (b.dash && Math.random() < 0.8)
           b.trail.push({ x: px, y: py, z: b.z, t: 0 });

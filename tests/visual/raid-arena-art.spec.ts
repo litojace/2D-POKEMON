@@ -47,9 +47,13 @@ for (const viewport of [
           });
         },
       );
+      // The arenas are painted in code (world-art/): no picture is fetched.
       const requests: string[] = [];
       page.on("request", (r) => {
-        if (r.resourceType() === "image" && r.url().includes("/raid-arenas/"))
+        if (
+          r.resourceType() === "image" &&
+          /raid-arenas|world-art/.test(r.url())
+        )
           requests.push(r.url());
       });
       const errors = await openHub(page);
@@ -72,16 +76,14 @@ for (const viewport of [
               const scene = (window as any).__raidArtGame.scene.getScene(
                 "arena",
               );
-              // Shown through its own texture once painted (not re-uploaded in place).
-              if (!scene.floor.texture.key.endsWith(":art")) return "stand-in";
+              // Painted at once, with the world round it.
+              if (!scene.raidWorld.some((b: any) => b.visible))
+                return "no world";
               return scene.floor.texture.getSourceImage().dataset?.raidArtwork;
             }),
           )
           .toBe(floor);
         if (boss === "grumblecrag") {
-          expect(requests.every((r) => r.includes("grumblecrag.webp"))).toBe(
-            true,
-          );
           // Broken pillars are rubble from the pillars' atlas, lying on the
           // illustrated floor (transparent around it), with no shadow.
           const rubble = await page.evaluate(() => {
@@ -148,7 +150,7 @@ for (const viewport of [
         )
         .toBe("raid-coliseum");
       expect(requests.length).toBe(before);
-      expect(new Set(requests).size).toBe(7);
+      expect(requests).toEqual([]);
       await page.evaluate(() => {
         const w = window as any;
         w.__room("practice");
@@ -175,7 +177,7 @@ for (const viewport of [
         await page.evaluate(() =>
           (window as any).__raidArtGame.scene
             .getScene("arena")
-            .raidSurround.every((s: any) => !s.visible),
+            .raidWorld.every((b: any) => !b.visible),
         ),
       ).toBe(true);
       expect(errors).toEqual([]);

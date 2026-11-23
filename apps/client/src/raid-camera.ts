@@ -248,14 +248,24 @@ function apronFor(sides: ControlSides, zoom: number): ControlSides {
   };
 }
 
+/**
+ * How far past the court's walls a phone's follow camera may look (world
+ * px). Every raid arena paints its world out past the walls (world-art/),
+ * and the Spire has its sky, so the view no longer stops dead at the court's
+ * edge: a raider by a wall stays nearer the middle of the screen, with room
+ * to see what's coming and clear of the screen's edge and controls.
+ */
+export const RAID_OVERSCROLL = 120;
+
 /** The follow zoom: the court covers the space below the HUD, then RAID_FOLLOW_ZOOM. */
 function followZoom(width: number, height: number, top: number) {
   return Math.max(width / 1600, (height - top) / 900) * RAID_FOLLOW_ZOOM;
 }
 
 /**
- * Keep a camera centre (world) inside the court at this zoom: the court's
- * top edge may come no lower than the HUD's bottom, and where the court is
+ * Keep a camera centre (world) near the court at this zoom: the view may
+ * reach RAID_OVERSCROLL past the court's edges (plus the apron at the sides),
+ * the court's top edge never goes up under the HUD, and where the court is
  * smaller than the view it is centred in the space below the HUD.
  */
 function clampCentre(
@@ -271,13 +281,14 @@ function clampCentre(
   // The visible world below the HUD, as a centre and half-height.
   const halfVis = (height - top) / zoom / 2,
     lift = top / zoom / 2;
-  // Where the view is as wide as the court or wider, the apron still lets
-  // it slide sideways, so your raider at a wall stands clear of the
-  // joystick (the dimmed surround fills what shows past the court).
-  const xLo = halfW - apron.left / zoom,
-    xHi = 1600 - halfW + apron.right / zoom;
+  // The painted world past the walls fills whatever shows there.
+  const over = RAID_OVERSCROLL;
+  const xLo = halfW - apron.left / zoom - over,
+    xHi = 1600 - halfW + apron.right / zoom + over;
   const x = xLo <= xHi ? clamp(c.x, xLo, xHi) : 800;
-  const visY = halfVis >= 450 ? 450 : clamp(c.y + lift, halfVis, 900 - halfVis);
+  const yLo = halfVis - over,
+    yHi = 900 - halfVis + over;
+  const visY = yLo <= yHi ? clamp(c.y + lift, yLo, yHi) : 450;
   return { x, y: visY - lift };
 }
 
