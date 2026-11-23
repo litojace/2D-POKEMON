@@ -5803,7 +5803,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (source instanceof HTMLCanvasElement) source.width = source.height = 0;
     }
     if (!id) {
-      this.cameras.main.setBackgroundColor("#142746");
+      this.cameras.main.setBackgroundColor(ARENA_BACKGROUND);
       return;
     }
     const key = `raid-world-${id}`;
@@ -8604,6 +8604,8 @@ function fighterDepth(y: number) {
  * screen at most ~930 CSS px wide, so the court never needs more texels than
  * that; a flat 2× cost an iPhone two 23 MB copies of a 3200×1800 floor.
  */
+/** The battle canvas's background, where nothing is painted (the scene sets it at create). */
+const ARENA_BACKGROUND = "#142746";
 function floorBake() {
   return Math.min(2, Math.max(1, Math.round(renderScale() * 4) / 4));
 }
