@@ -40,13 +40,33 @@ const frames = (page: Page, ms: number) =>
     ms,
   );
 const median = (a: number[]) => [...a].sort((x, y) => x - y)[a.length >> 1];
+/**
+ * A frame this long is the runner pausing the page, not drawing: the
+ * fireworks' own drawing tops out near 4 ms. On a CI runner the Plaza's first
+ * seconds hold frames of 3-6 s while it loads (22 Nov: 12 of 16 CI runs had
+ * one in the "before" window, so their frame rate read 0 or nothing).
+ */
+const STALL_MS = 1000;
+/** One frame at 60 Hz: frame intervals come in steps of it. */
+const VSYNC_MS = 1000 / 60;
+/** Wait until the page has drawn 1.5 s with no stall (up to 30 s). */
+const steady = (page: Page) =>
+  expect
+    .poll(
+      async () => {
+        const f = await frames(page, 1500);
+        return f.length >= 5 && Math.max(...f) < STALL_MS;
+      },
+      { timeout: 30_000, intervals: [0] },
+    )
+    .toBe(true);
 const p95 = (a: number[]) =>
   [...a].sort((x, y) => x - y)[Math.floor(a.length * 0.95)];
 
 test("the fireworks keep the Plaza's frame rate (High, phone screen)", async ({
   page,
 }, info) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   await page.addInitScript(() => localStorage.setItem("ea-graphics", "high"));
   const errors = await openPlaza(page);
   await page.evaluate(
@@ -56,9 +76,19 @@ test("the fireworks keep the Plaza's frame rate (High, phone screen)", async ({
     },
     [PLAZA_FOUNTAIN.x, PLAZA_FOUNTAIN.y + 110],
   );
-  // Settle (camera, fonts, first paints), then the same spot without a show.
-  await page.waitForTimeout(2500);
-  const before = await frames(page, 4000);
+  // Settle (camera, fonts, first paints) until the page draws without
+  // stalls, then the same spot without a show. A window that still caught a
+  // stall is measured again: it would compare the show against a pause.
+  let before: number[] = [];
+  for (let tries = 0; tries < 3; tries++) {
+    await steady(page);
+    before = await frames(page, 4000);
+    if (before.length >= 10 && Math.max(...before) < STALL_MS) break;
+  }
+  expect(
+    before.length >= 10 && Math.max(...before) < STALL_MS,
+    "the page kept stalling before the show",
+  ).toBe(true);
   expect(before.length, "frames drawn before the show").toBeGreaterThan(30);
   // Fill the meter: the show runs PLAZA_WISH.showMs.
   for (let i = 0; i < PLAZA_WISH.min; i++)
@@ -88,8 +118,10 @@ test("the fireworks keep the Plaza's frame rate (High, phone screen)", async ({
   expect(fw.cost.frames).toBeGreaterThan(10);
   // The fireworks' own drawing stays small next to a frame…
   expect(result.fireworksMsPerFrame).toBeLessThan(2);
-  // …the frame rate holds (a little room for run-to-run noise)…
-  expect(result.duringFps).toBeGreaterThanOrEqual(result.beforeFps * 0.8);
+  // …the frame rate holds: the show's middle frame at most a quarter longer
+  // than without it, plus one 60 Hz step, since intervals come in whole
+  // steps of it (at 10-15 fps one step is 10-25% by itself)…
+  expect(median(during)).toBeLessThanOrEqual(median(before) * 1.25 + VSYNC_MS);
   // …and the flashes stay a fraction of the screen.
   expect(result.peakGlowScreens).toBeLessThan(1);
   expect(errors).toEqual([]);
