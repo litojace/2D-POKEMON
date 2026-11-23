@@ -20,7 +20,7 @@ const mode = (page: Page) =>
 const phase = async (page: Page) => (await mode(page)).phase;
 const toast = (page: Page) => page.locator("#toast");
 const act = (page: Page) => page.locator("#pz-fish-act");
-async function toPond(page: Page) {
+async function toPond(page: Page, errors: string[] = []) {
   // The fish bite only when a test says (__plazaBiteNow): the server's
   // random 2-6 s would race a slow machine's looks at the phase.
   await page.evaluate(() => {
@@ -38,17 +38,26 @@ async function toPond(page: Page) {
   } catch (e) {
     // It failed on CI runners only (#367, #379): say what the Plaza was
     // doing, so the next failure explains itself.
-    const health = await page.evaluate(() => {
+    const health = await page.evaluate(async () => {
       const w = window as any,
         b = w.__plazaWorld.bodyOf("local");
+      // Does the page still get animation frames at all?
+      const raf = await new Promise<string>((done) => {
+        const t0 = performance.now();
+        requestAnimationFrame(() =>
+          done(`${Math.round(performance.now() - t0)}ms`),
+        );
+        setTimeout(() => done("none in 2s"), 2000);
+      });
       return {
         ...w.__plaza.health(),
         server: b && { x: Math.round(b.x), y: Math.round(b.y) },
         focus: document.activeElement?.className ?? null,
+        raf,
       };
     });
     throw new Error(
-      `the Fish prompt never showed at the spot (${SPOT.x}, ${SPOT.y}): ${JSON.stringify(health)}\n${(e as Error).message}`,
+      `the Fish prompt never showed at the spot (${SPOT.x}, ${SPOT.y}): ${JSON.stringify(health)}\npage errors: ${JSON.stringify(errors.slice(0, 5))}\n${(e as Error).message}`,
     );
   }
   await expect(page.locator("#pz-interact")).toContainText("Fish");
@@ -112,7 +121,7 @@ for (const size of [
       const page = await context.newPage();
       const errors = await openPlaza(page);
       if (size.inset) await setInsets(page, size.inset);
-      await toPond(page);
+      await toPond(page, errors);
       // At the dock: a round Fish button, not the long pill.
       // Dash's size, on Dash's line, the same gap as Dash to Jump; it pops in.
       expect(
@@ -412,7 +421,7 @@ test("Fish walks you out onto the dock, facing the water, and the line goes out 
 }, info) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const errors = await openPlaza(page);
-  await toPond(page);
+  await toPond(page, errors);
   // Pressed from the bank, a little way from the dock.
   await enter(page);
   const local = () =>
@@ -451,7 +460,7 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
 }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   const errors = await openPlaza(page);
-  await toPond(page);
+  await toPond(page, errors);
   await page.keyboard.press("e");
   await expect(page.locator("#pz-fishhud")).toBeVisible();
   await page.keyboard.press("e");
@@ -472,7 +481,7 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
     )
     .toBeNull();
   // Moved off the dock while fishing (the server's word): out of the mode.
-  await toPond(page);
+  await toPond(page, errors);
   await page.keyboard.press("e");
   await page.waitForTimeout(PLAZA_FISHING.castGapMs);
   await page.keyboard.press("e");
@@ -484,7 +493,7 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
   await expect(toast(page)).toContainText("walked away");
   await expect(page.locator("#pz-fishhud")).toBeHidden();
   // A fight on the keyboard: Space held reels, let go gives line.
-  await toPond(page);
+  await toPond(page, errors);
   await page.keyboard.press("e");
   await page.waitForTimeout(PLAZA_FISHING.castGapMs);
   await page.keyboard.press("e");
@@ -526,3 +535,22 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
   await expect(page.locator("#pz-fishbook")).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+// TEMPORARY (main red #389): the dock prompt again and again on CI's
+// runner, to catch the rare failure with its report. Removed before merge.
+for (let i = 0; i < 12; i++)
+  test(`TEMP dock prompt repeat ${i}`, async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width: 852, height: 393 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openPlaza(page);
+      await setInsets(page, ISLAND);
+      await toPond(page, errors);
+    } finally {
+      await context.close();
+    }
+  });
