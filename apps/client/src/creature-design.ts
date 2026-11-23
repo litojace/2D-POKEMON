@@ -813,7 +813,10 @@ export function creatureLayers(
   }
   if (id === "glacelle") {
     // Sea angel: a translucent floating body with a glowing orange heart, two
-    // frosted wing-flaps, little ice horns and drifting snow crystals.
+    // frosted wing-flaps, little ice horns and drifting snow crystals. A skin
+    // in dark colours or armour draws it solid (SkinArt.solid).
+    const see = (alpha: string) =>
+      art?.solid ? "" : ` fill-opacity="${alpha}"`;
     layers.legL = "";
     layers.legR = "";
     layers.ears = `${path("M76 60L70 34L86 54Z", jewel)}${path("M124 60L130 34L114 54Z", jewel)}${line("M72 40L78 50M128 40L122 50", "#ffffff", 1.4, 0.8)}`;
@@ -824,12 +827,12 @@ export function creatureLayers(
         1.3,
         0.9,
       );
-    layers.head = `${e(100, 88, 39, 34, face, ' fill-opacity=".93"')}${highlight(70, 72, 24)}${stroke("M96.5 109.5Q100 112.6 103.5 109.5")}${frost(66, 103)}${frost(71, 109)}${frost(134, 103)}${frost(129, 109)}`;
+    layers.head = `${e(100, 88, 39, 34, face, see(".93"))}${highlight(70, 72, 24)}${stroke("M96.5 109.5Q100 112.6 103.5 109.5")}${frost(66, 103)}${frost(71, 109)}${frost(134, 103)}${frost(129, 109)}`;
     layers.eyes = frontEyes("#43c6ff", 9.5, 11.5);
-    layers.body = `${path("M72 120Q100 110 128 120Q134 146 116 166Q106 178 100 186Q94 178 84 166Q66 146 72 120Z", body, ' fill-opacity=".9"')}${e(100, 140, 9, 11, `url(#${prefix}-heart)`, ' stroke="none"')}<circle cx="100" cy="140" r="17" fill="url(#${prefix}-heartglow)" stroke="none"/>${line("M86 128Q84 146 92 162M114 128Q116 146 108 162", "#ffffff", 1.6, 0.45)}`;
+    layers.body = `${path("M72 120Q100 110 128 120Q134 146 116 166Q106 178 100 186Q94 178 84 166Q66 146 72 120Z", body, see(".9"))}${e(100, 140, 9, 11, `url(#${prefix}-heart)`, ' stroke="none"')}<circle cx="100" cy="140" r="17" fill="url(#${prefix}-heartglow)" stroke="none"/>${line("M86 128Q84 146 92 162M114 128Q116 146 108 162", "#ffffff", 1.6, 0.45)}`;
     const flap = (dir: number) => {
       const x = (v: number) => 100 + dir * v;
-      return `${path(`M${x(26)} 126Q${x(52)} 104 ${x(64)} 118Q${x(70)} 132 ${x(54)} 146Q${x(40)} 150 ${x(26)} 140Z`, jewel, ' fill-opacity=".85"')}${line(`M${x(30)} 132Q${x(46)} 124 ${x(58)} 124`, "#ffffff", 1.5, 0.75)}${sparkle(x(54), 132, 3)}`;
+      return `${path(`M${x(26)} 126Q${x(52)} 104 ${x(64)} 118Q${x(70)} 132 ${x(54)} 146Q${x(40)} 150 ${x(26)} 140Z`, jewel, see(".85"))}${line(`M${x(30)} 132Q${x(46)} 124 ${x(58)} 124`, "#ffffff", 1.5, 0.75)}${sparkle(x(54), 132, 3)}`;
     };
     layers.armL = flap(-1);
     layers.armR = flap(1);
@@ -1105,6 +1108,7 @@ export function creatureLayers(
       mood,
       eye,
       expression: moodEye,
+      solid: art?.solid,
     });
     Object.assign(layers, painted.layers);
     defs += painted.defs;
