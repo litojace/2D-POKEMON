@@ -261,6 +261,12 @@
 .mh-board-head > span:nth-child(n + 4) {
   text-align: right;
 }
+/* Your own bot match: Play the … bot again, under the board. */
+.mh-detail-acts {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
 .mh-detail-note {
   margin: 0;
   font-size: var(--fs-micro);
@@ -372,8 +378,12 @@
 }
 
 /* The smallest phones held sideways (iPhone SE, 667 x 375): the
-   favourite gives its room to the form chips. */
+   favourite gives its room to the form chips, and a row's second line
+   keeps just how long ago (its portrait shows the fighter). */
 @media (max-height: 500px) and (max-width: 740px) {
+  .mh-fighter {
+    display: none;
+  }
   .mh-fav {
     display: none;
   }

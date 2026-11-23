@@ -111,6 +111,10 @@ import {
   BOT_LABELS,
   type BotDifficulty,
 } from "./bot.js";
+/** The result screen's Rematch, optionally with another fighter (bot matches). */
+const rematchSchema = z
+  .object({ character: characterSchema.optional() })
+  .strict();
 const botMatchSchema = identitySchema
   .extend({
     character: characterSchema,
@@ -2718,9 +2722,25 @@ export function createArenaServer(
           );
       }),
     );
-    socket.on("rematch", (_data: unknown, cb: unknown) =>
+    socket.on("rematch", (data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
         if (updating(cb)) return;
+        // A rematch against a bot may bring another fighter (the result
+        // screen's Change fighter). Only there: in PvP a pick is secret
+        // until the match starts (docs/hidden-picks.md), and the weekly
+        // arcade sets its own fighters.
+        const result = rematchSchema.safeParse(data ?? {});
+        if (!result.success) return fail(cb, "Choose a valid fighter.");
+        const fighter = result.data.character;
+        if (fighter) {
+          if (
+            a instanceof RaidArena ||
+            a instanceof ArcadeArena ||
+            !a.bots.size ||
+            a.players.length - a.bots.size !== 1
+          )
+            return fail(cb, "Change fighters in the lobby.");
+        }
         if (a instanceof RaidArena) {
           if (
             a.phase !== "finished" ||
@@ -2747,6 +2767,10 @@ export function createArenaServer(
               : "Both players must be connected for a rematch.",
           );
         const p = a.players.find((p) => p.id === id)!;
+        if (fighter && fighter !== p.character) {
+          p.flair = undefined;
+          p.character = fighter;
+        }
         p.ready = true;
         if (a.players.every((p) => p.ready)) a.start();
         reply(cb, { ok: true });

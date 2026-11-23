@@ -57,3 +57,31 @@ export function practicePanelMarkup(current: CharacterId) {
     `</div></details>`
   );
 }
+
+/** Solo test's switches, kept on this device for the next Solo test. */
+export interface PracticePrefs {
+  unlimitedCooldowns: boolean;
+  targetAttacks: boolean;
+  ex: boolean;
+}
+const PREFS_KEY = "ea-practice";
+export function loadPracticePrefs(): PracticePrefs {
+  let saved: Partial<PracticePrefs> = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") ?? {};
+  } catch {
+    /* No storage, or a broken entry: start from off. */
+  }
+  return {
+    unlimitedCooldowns: saved.unlimitedCooldowns === true,
+    targetAttacks: saved.targetAttacks === true,
+    ex: saved.ex === true,
+  };
+}
+export function savePracticePrefs(prefs: PracticePrefs) {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    /* Private mode: this visit only. */
+  }
+}

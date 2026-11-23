@@ -7591,6 +7591,8 @@ button.small .button-icon {
     #auth-form,
     #report-form,
     .credits-screen,
+    .skills-screen,
+    .fp-screen,
     .fullscreen-steps,
     .fullscreen-actions
   ) {
@@ -7715,7 +7717,9 @@ button.small .button-icon {
 }
 
 /* Consistent menu rhythm and a live fitting room for Shop cosmetics. */
-dialog :is(.help-screen, .credits-screen, .settings-screen) > h2 {
+dialog
+  :is(.help-screen, .credits-screen, .settings-screen, .skills-screen)
+  > h2 {
   padding-right: 32px;
   line-height: 1.15;
   overflow-wrap: anywhere;
