@@ -38,6 +38,9 @@ match events).
   knock-outs; nobody when no one landed a hit. A loser marked MVP beside
   "Defeat" read as a contradiction (owner, 22 Nov 2026). A friend's name
   opens their card.
+- **Your own bot match**, opened, offers **Play the Hard bot again** (the
+  same level; the server picks the arena, as for any bot match). Not on a
+  friend's card, nor for matches against players.
 - **All / Players / Bots** filter the list; **More matches** loads the next
   ten.
 
