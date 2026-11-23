@@ -3109,7 +3109,10 @@ export function openPlaza(options) {
     }
   }
   socket.on("plaza-state", onState);
+  /** When the last snapshot came (tests: a stalled stream). */
+  let stateAt = 0;
   function onState(s) {
+    stateAt = performance.now();
     meId = s.me;
     offset = s.now - Date.now();
     net.clock.sample(s.now, performance.now());
@@ -6470,6 +6473,17 @@ export function openPlaza(options) {
       },
       /** Gift boxes in the air or open, and confetti flying (tests). */
       gifts: () => gifts.list(),
+      /** Why the Plaza might not be moving on (tests' failure reports):
+       * asleep, covered, how long since a snapshot, and you as drawn. */
+      health: () => ({
+        frozen,
+        running,
+        cover: { ...coverNow() },
+        stateAgeMs: Math.round(performance.now() - stateAt),
+        me: { x: Math.round(P.x), y: Math.round(P.y) },
+        near: near?.id ?? null,
+        dialog: document.querySelector("dialog[open]")?.className ?? null,
+      }),
       confetti: () => FX.filter((f) => f.cf).length,
       SPOTS,
       /** Fishing's line now: null, "cast", "wait" or "bite" (tests). */
