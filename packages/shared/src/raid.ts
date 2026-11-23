@@ -872,6 +872,13 @@ export const GLOOMSHADE = {
     creep: 3,
     cleanseSeconds: 2,
     soloStill: 2.5,
+    /**
+     * Seconds between the curse's hits: its damage (`dps`, `creep`) adds up
+     * and lands every this often, as a burn's does. Every tick was 30 hits a
+     * second per raider (a spark, a tone and a "0" each): 5-10% of a frame's
+     * script with four Haunted, and noise (23 Nov 2026).
+     */
+    tickEvery: 1 / 3,
   },
   /** One more copy with three or more raiders (live raids). */
   split: { delay: 1.2, copies: 3, peril3Copies: 4, partyCopy: 3 },

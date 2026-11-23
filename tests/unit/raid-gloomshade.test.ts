@@ -9,6 +9,7 @@ import {
   RAID_BOSS_ATTACKS,
   handsTileDark,
   raidPattern,
+  raidTraitFor,
   ritesFor,
   type RaidWarning,
 } from "../../packages/shared/src/raid";
@@ -275,6 +276,32 @@ describe("Creeping Curse", () => {
     run(a, GLOOMSHADE.curse.cleanseSeconds + 0.2);
     expect(a.raid.curses!.p0).toBeUndefined();
   });
+  it("lands as a few hits a second, not one a tick, with the same damage", () => {
+    // 23 Nov 2026: every tick was a hit event (30 a second per Haunted
+    // raider, each a spark, a tone and a "0" on every screen).
+    const a = gloom(["voltkit", "terradon"]);
+    park(a);
+    place(a, "p0", 800, 800);
+    place(a, "p1", 1500, 100);
+    a.raid.curses = { p0: { stacks: 3, hauntedUntil: a.time + 10 } };
+    const from = a.serial;
+    const hp = player(a, "p0").hp;
+    run(a, 3);
+    const hits = a.events.filter(
+      (e) => e.id > from && e.kind === "hit" && e.target === "p0",
+    );
+    // Three a second (tickEvery), not ninety in these three seconds.
+    expect(hits.length).toBeGreaterThanOrEqual(8);
+    expect(hits.length).toBeLessThanOrEqual(10);
+    // Each one a number worth showing.
+    for (const h of hits) expect(h.value ?? 0).toBeGreaterThanOrEqual(2);
+    // The same damage a second: at most one interval still owed.
+    const dealt = hp - player(a, "p0").hp;
+    expect(dealt).toBeGreaterThan(
+      GLOOMSHADE.curse.dps * (3 - GLOOMSHADE.curse.tickEvery) - 0.5,
+    );
+    expect(dealt).toBeLessThanOrEqual(GLOOMSHADE.curse.dps * 3 + 0.5);
+  });
   it("spreads to a teammate who stays close for two seconds", () => {
     const a = gloom(["voltkit", "terradon"]);
     park(a);
@@ -416,6 +443,11 @@ describe("a whole run", () => {
     // before the stand-ins, whose brains take their seeds from the raid's
     // (as in raid-emberwing.test.ts).
     a.raid.seed = 1;
+    // start() drew the trait and a gilded boss from its own random seed:
+    // the run's trait came out different each time (about one run in three
+    // was Moonlit, the closest seed-1 fight), so they follow seed 1 too.
+    a.raid.trait = raidTraitFor("gloomshade", 1);
+    a.raid.gilded = false;
     for (const p of a.heroes()) a.standIn(p.id);
     a.phase = "playing";
     a.deadline = 480;

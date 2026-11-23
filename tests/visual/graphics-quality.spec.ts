@@ -56,7 +56,7 @@ test("Settings picks the Plaza's graphics; the Plaza reloads at once", async ({ 
   expect(errors).toEqual([]);
 });
 
-test("Low draws an Android battle at 1.5×, High at 2×, switching mid-battle", async ({ browser }, info) => {
+test("Low draws an Android battle at 1.25×, High at 2×, switching mid-battle", async ({ browser }, info) => {
   // An Android phone (no iPhone user agent) with a 3× screen.
   const context = await browser.newContext({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
   try {
@@ -76,9 +76,9 @@ test("Low draws an Android battle at 1.5×, High at 2×, switching mid-battle", 
     // High (the harness's default): the screen's density, capped at 2.
     await expect.poll(density).toBeCloseTo(2, 1);
     const high = await battle();
-    // Low, picked in the middle of the battle: 1.5 from the next frames on.
+    // Low, picked in the middle of the battle: 1.25 from the next frames on.
     await page.evaluate(() => localStorage.setItem("ea-graphics", "low"));
-    await expect.poll(density, { timeout: 20_000 }).toBeCloseTo(1.5, 1);
+    await expect.poll(density, { timeout: 20_000 }).toBeCloseTo(1.25, 1);
     const low = await battle();
     // Still fills the same box: only the pixels per CSS pixel change.
     expect(low.css).toBe(high.css);
