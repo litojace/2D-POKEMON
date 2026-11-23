@@ -64,6 +64,7 @@ import { queueBossArt, retainBossArt } from "./boss-painted-rig";
 import { memoryConstrained, rendererDensity } from "./render-budget";
 import { addBattleText } from "./battle-text";
 import { watchRendererLifecycle } from "./renderer-lifecycle";
+import { clearWithCameraBackdrop } from "./camera-clear";
 import {
   groundHeight,
   WORLD_ART,
@@ -9050,6 +9051,22 @@ function ensureBattleRenderer() {
     callbacks: {
       postBoot: (game) => {
         battleFrames = capGameFrames(game);
+        // The camera's background is the canvas's clear colour, not a
+        // full-screen rectangle drawn over it (camera-clear.ts).
+        clearWithCameraBackdrop(
+          game.renderer as unknown as Parameters<
+            typeof clearWithCameraBackdrop
+          >[0],
+          () => {
+            const s = game.scene.scenes[0];
+            const status = s?.sys.settings.status ?? -1;
+            return s?.sys.settings.visible &&
+              status >= Phaser.Scenes.LOADING &&
+              status < Phaser.Scenes.SLEEPING
+              ? s.cameras?.cameras[0]
+              : undefined;
+          },
+        );
       },
     },
   });
