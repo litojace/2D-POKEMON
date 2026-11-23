@@ -63,14 +63,47 @@
   height: 18px;
   padding: 0 4px;
   border-radius: 9px;
-  background: #ff5d6c;
+  /* The Lobby badge's red and gloss (lobby.css, .lobby-badge): one red for
+     everything waiting on the player. */
+  background: linear-gradient(180deg, #ff7486, var(--ui-danger) 55%, #d33a4e);
   color: #fff;
   font:
-    700 calc(11px * var(--text-scale, 1))/18px "Barlow",
+    800 calc(11px * var(--text-scale, 1))/18px "DM Sans",
     system-ui,
     sans-serif;
+  font-variant-numeric: tabular-nums;
   text-align: center;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 0 0 1.5px rgba(11, 16, 32, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.35);
   pointer-events: none;
+}
+/* New messages: the same three pings as the Lobby's badges. */
+.chat-unread::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid rgba(255, 140, 155, 0.95);
+  opacity: 0;
+  animation: chat-unread-ping 1.4s ease-out 0.3s 3;
+}
+@keyframes chat-unread-ping {
+  0% {
+    opacity: 1;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-unread::after {
+    animation: none;
+  }
 }
 .chat-unread[hidden] {
   display: none;
@@ -264,8 +297,7 @@
   height: 20px;
   border-radius: 999px;
   background:
-    radial-gradient(circle at 10px 50%, #fff 7px, transparent 7.5px),
-    #4a5674;
+    radial-gradient(circle at 10px 50%, #fff 7px, transparent 7.5px), #4a5674;
 }
 .chat-push-toggle[aria-checked="true"]::before {
   background:
