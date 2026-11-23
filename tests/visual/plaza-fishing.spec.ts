@@ -29,19 +29,20 @@ async function toPond(page: Page, errors: string[] = []) {
     // ... and, once bitten, waits for the tap (see "left alone" below).
     w.__plazaBiteHold = true;
   });
-  // The Plaza drawing steadily first. On CI's software renderer, a cold
-  // Plaza gets a frame only every few seconds at first (main's run on
-  // c056869, #389: 4 frames in the whole 10 s wait), and the prompt shows
-  // only on a frame after the move. Locally this takes well under a second.
+  // The Plaza drawing first. On CI's software renderer, a cold Plaza gets
+  // a frame only every few seconds at first (main's run on c056869, #389:
+  // 4 frames in the whole 10 s wait), and the prompt shows only on a frame
+  // after the move. A few frames say it is going; more cost CI seconds a
+  // call (30 doubled the keyboard test to 84 s of its 90).
   const frames = () =>
     page.evaluate(() => (window as any).__plaza.health().frames.stepped[0]);
   const from = await frames();
   await expect
     .poll(frames, {
       timeout: 45_000,
-      message: "the Plaza never drew 30 more frames before the move",
+      message: "the Plaza never drew 5 more frames before the move",
     })
-    .toBeGreaterThanOrEqual(from + 30);
+    .toBeGreaterThanOrEqual(from + 5);
   await page.evaluate(
     ([x, y]) => (window as any).__plazaPosition(x, y),
     [SPOT.x, SPOT.y],
