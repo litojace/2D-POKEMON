@@ -539,9 +539,7 @@ test("a daily treat bursts for everyone, and T throws one too", async ({
   const errors = await openPlaza(page);
   // The server sends your count (treats left today) after joining.
   await expect(page.locator("#pz-treats")).toHaveText("3");
-  // Clear of the fountain: the spawn is random and about a third of it lies
-  // in the wishing fountain's reach, where a treat is a wish instead
-  // (plaza-wish.spec.ts), which failed this test now and then on CI.
+  // A fixed spot south of the fountain (the spawn is random).
   await teleport(page, PLAZA_FOUNTAIN.x, PLAZA_FOUNTAIN.y + 300);
   await page.click("#pz-treat");
   await expect(page.locator("#toast")).toContainText(
