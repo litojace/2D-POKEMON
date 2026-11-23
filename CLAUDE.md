@@ -221,7 +221,10 @@ It prints the lane and why, from the files the branch changes against
 
 - **FAST** (a screen's own files, its tests, the server's non-battle routes,
   docs): run the visual specs the change touches locally (step 2 above),
-  then merge once the PR's `verify` job is green.
+  then merge once the PR's `verify` job is green. When the PR changes
+  visual specs, CI also runs those specs on one runner (`visual (touched
+  specs)`): wait for it to be green too, since CI's renderer is far slower
+  than the cloud container's (a test that passes locally can fail there).
 - **FULL** (a migration, dependencies, CI, the build or deploy, the visual
   harness, the shared UI in `apps/client/src/ui/` and `style.css`, the
   battle, the game server's rooms, the shared rules, or more than 25 files):

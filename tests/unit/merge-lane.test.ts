@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { mergeLane, MAX_FAST_FILES } from "../../scripts/merge-lane.mjs";
+import {
+  mergeLane,
+  MAX_FAST_FILES,
+  touchedSpecs,
+} from "../../scripts/merge-lane.mjs";
 
 // The lane a branch takes to main (CLAUDE.md, "Merging to main").
 describe("mergeLane", () => {
@@ -87,6 +91,47 @@ describe("merge-lane in CI", () => {
     execFileSync("node", ["scripts/merge-lane.mjs", "HEAD"], {
       env: { ...process.env, GITHUB_OUTPUT: out },
     });
-    expect(readFileSync(out, "utf8")).toBe("lane=FAST\n");
+    expect(readFileSync(out, "utf8")).toBe("lane=FAST\nspecs=\n");
+  });
+});
+
+describe("touchedSpecs", () => {
+  const all = () => true;
+  it("lists the visual specs a branch changes, sorted, each once", () => {
+    expect(
+      touchedSpecs(
+        [
+          "tests/visual/plaza.spec.ts",
+          "apps/client/src/plaza/plaza-scene.ts",
+          "tests/visual/lobby.spec.ts",
+          "tests/visual/plaza.spec.ts",
+          "tests/visual/helpers.ts",
+          "tests/unit/plaza.test.ts",
+          "",
+        ],
+        all,
+      ),
+    ).toEqual(["tests/visual/lobby.spec.ts", "tests/visual/plaza.spec.ts"]);
+  });
+  it("leaves out a deleted spec: there is nothing to run", () => {
+    expect(
+      touchedSpecs(
+        ["tests/visual/gone.spec.ts", "tests/visual/kept.spec.ts"],
+        (f) => f !== "tests/visual/gone.spec.ts",
+      ),
+    ).toEqual(["tests/visual/kept.spec.ts"]);
+  });
+  it("takes only plain paths, for the command line", () => {
+    expect(
+      touchedSpecs(
+        [
+          "tests/visual/a b.spec.ts",
+          "tests/visual/$(x).spec.ts",
+          "tests/visual/harness/plaza-sim.spec.ts",
+          "tests/visual/ok-1.spec.ts",
+        ],
+        all,
+      ),
+    ).toEqual(["tests/visual/ok-1.spec.ts"]);
   });
 });
