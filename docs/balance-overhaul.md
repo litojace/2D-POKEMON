@@ -672,7 +672,10 @@ Duskveil's pairings (408 duels per level):
 
 The lantern was the right size and gives a weak skill a reason to be cast.
 Round robins (24 games a pair, seed 5000) after the change: Hard 44.9% -
-57.8% (Duskveil 46.6%), Normal 45.3% - 54.2% (Duskveil 50.2%).
+57.8% (Duskveil 46.6%), Normal 45.3% - 54.2% (Duskveil 50.2%). Expert
+(Duskveil's pairings, look-ahead off): 49.5%. Fresh line-ups
+(`FRESH_BASE=7000`): 2v2 43.8% - 56.3%, four-player free-for-all 19.6% -
+29.6%, three-player 29.3% - 42.0%, all inside their earlier ranges.
 Duskveil's Spire Echoes made zone 3 a little harder (clears in 144, main
 against the lantern: floor 23 83/72, 25 67/62, 26 49/40, 27 59/54, 28
 41/34), so those floors' armour went up: 1.98, 0.56, 1.15, 1.5 and 1.8
