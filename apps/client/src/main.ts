@@ -440,14 +440,12 @@ import {
 } from "./spire-court-rig";
 import { spireFloorTint } from "./spire-court-art";
 import { loadSpireSeen, spireLobbyCard } from "./spire-nudge";
-import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import {
   isIllustratedRaidFloor,
-  loadRaidArenaArt,
   type IllustratedRaidFloor,
   paintIllustratedRaidFloor,
-  prefetchRaidArena,
 } from "./raid-arena-art";
+import { RAID_WORLDS, WORLD, WORLD_DENSITY, paintRaidWorld } from "./world-art";
 import type { LayerAt } from "./raid-layers";
 import {
   courtBlockFrame,
@@ -4884,7 +4882,6 @@ socket.on("state", (snapshot: WireSnapshot) => {
     shotTimeline.clear();
   }
   const previous = state;
-  if (snapshot.raid?.boss) prefetchRaidArena(snapshot.raid.boss);
   // No rite choice mid-fight: at each new chapter the rites grow a step.
   if (
     snapshot.raid &&
@@ -5696,7 +5693,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   /** Its pillars, shadows, rubble and crumbles (raid-grumble-pillars-rig.ts). */
   pillarRig?: PillarRig;
   /** Shared floor textures continue into dim, non-playable scenery around the court. */
-  raidSurround: Phaser.GameObjects.Image[] = [];
+  /** The world round a raid court (world-art/), painted once per arena. */
+  raidWorld?: Phaser.GameObjects.Image;
+  private raidWorldId = "";
   /** The Spire's court: sky, cover, stairs and number (spire-court-rig.ts). */
   spireRig?: SpireCourtRig;
   /** The Spire floor on show, and the next one already painted. */
@@ -5705,8 +5704,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   /** Bake an arena's floor once (2x on dense screens); returns its texture key. */
   floorTexture(id: string) {
     const key = `arena-floor-${id}`;
-    // The illustrated version, once its picture has arrived (see below).
-    if (this.textures.exists(`${key}:art`)) return `${key}:art`;
     const bake = floorBake();
     if (!this.textures.exists(key)) {
       this.floorScale.set(key, bake);
@@ -5741,37 +5738,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         canvas.height = RULES.height * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        if (isRaidFloor(picture)) paintRaidFloor(ctx, picture);
-        else paintCourtFloor(ctx, "classic", true);
+        // Painted in code (world-art/): ready at once, nothing to fetch.
+        paintIllustratedRaidFloor(ctx, picture);
         summit?.grade(ctx);
+        canvas.dataset.raidArtwork = id;
         addCanvasTexture(this.textures, key, canvas);
-        this.floorPending.add(key);
-        loadRaidArenaArt(
-          picture,
-          (image) => {
-            this.floorPending.delete(key);
-            if (!this.textures?.exists(key)) return;
-            ctx.save();
-            ctx.setTransform(bake, 0, 0, bake, 0, 0);
-            paintIllustratedRaidFloor(ctx, picture, image);
-            summit?.grade(ctx);
-            ctx.restore();
-            canvas.dataset.raidArtwork = id;
-            // A new texture rather than re-uploading the old one in place: on
-            // some phones the in-place update never showed, and the whole first
-            // fight stayed on the stand-in floor (the next fight, painted
-            // already, was fine). Whatever shows the stand-in switches over.
-            const art = `${key}:art`;
-            if (!this.textures.exists(art))
-              addCanvasTexture(this.textures, art, canvas);
-            this.floorScale.set(art, bake);
-            for (const img of [this.floor, ...this.raidSurround])
-              if (img?.texture.key === key) img.setTexture(art);
-            if (this.floor?.texture.key === art) this.floor.setScale(1 / bake);
-            for (const img of this.raidSurround) img.setDisplaySize(1600, 900);
-          },
-          () => this.floorPending.delete(key),
-        );
       } else {
         const g = this.make.graphics({}, false);
         paintArenaFloor(scaledPainter(g, bake), ARENAS[id as ArenaId]);
@@ -5798,7 +5769,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // both go, and only when no picture shows either.
     const base = key.replace(/:art$/, "");
     const keys = [base, `${base}:art`];
-    const shown = [this.floor, ...this.raidSurround].some(
+    const shown = [this.floor].some(
       (img) => !!img && keys.includes(img.texture.key),
     );
     if (shown) return;
@@ -5810,6 +5781,47 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       // Give WebKit the canvas memory back now, not at some later collection.
       if (source instanceof HTMLCanvasElement) source.width = source.height = 0;
     }
+  }
+  /**
+   * Show the painted world round this raid court (undefined: none). Only one
+   * is kept, like the floor: the last arena's goes. The camera's background
+   * takes the painting's edge colour, so a view even wider than the
+   * painting (a tall portrait screen) carries on in the same tone.
+   */
+  private showRaidWorld(id: IllustratedRaidFloor | undefined) {
+    if (id === this.raidWorldId) {
+      this.raidWorld?.setVisible(!!id);
+      return;
+    }
+    const old = this.raidWorldId ? `raid-world-${this.raidWorldId}` : "";
+    this.raidWorldId = id ?? "";
+    if (this.raidWorld)
+      this.raidWorld.setTexture("__DEFAULT").setVisible(false);
+    if (old && this.textures.exists(old)) {
+      const source = this.textures.get(old).getSourceImage();
+      this.textures.remove(old);
+      if (source instanceof HTMLCanvasElement) source.width = source.height = 0;
+    }
+    if (!id) {
+      this.cameras.main.setBackgroundColor("#142746");
+      return;
+    }
+    const key = `raid-world-${id}`;
+    const s = WORLD_DENSITY;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(WORLD.width * s);
+    canvas.height = Math.round(WORLD.height * s);
+    const ctx = canvas.getContext("2d")!;
+    ctx.setTransform(s, 0, 0, s, -WORLD.x * s, -WORLD.y * s);
+    paintRaidWorld(ctx, id, "all");
+    addCanvasTexture(this.textures, key, canvas);
+    this.raidWorld ??= this.add.image(0, 0, key).setOrigin(0).setDepth(-12);
+    this.raidWorld
+      .setTexture(key)
+      .setPosition(WORLD.x, WORLD.y)
+      .setDisplaySize(WORLD.width, WORLD.height)
+      .setVisible(true);
+    this.cameras.main.setBackgroundColor(RAID_WORLDS[id].edge);
   }
   /** Bake and place a court's blocks (once per court). */
   private ensureBlocks(id: CourtId) {
@@ -5897,27 +5909,17 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // Round the Spire's courts: its sky, not the raid's dimmed floor.
     if (spire) this.spireRig ??= new SpireCourtRig(this, fighterDepth);
     this.spireRig?.show(spire);
-    if (raid && !spire && !this.raidSurround.length) {
-      for (const x of [-1600, 0, 1600])
-        for (const y of [-900, 0, 900]) {
-          if (!x && !y) continue;
-          this.raidSurround.push(
-            this.add
-              .image(x, y, key)
-              .setOrigin(0)
-              .setFlipX(x !== 0)
-              .setFlipY(y !== 0)
-              .setDisplaySize(1600, 900)
-              .setTint(0x627185)
-              .setDepth(-12),
-          );
-        }
-    }
-    for (const image of this.raidSurround)
-      image
-        .setTexture(key)
-        .setDisplaySize(1600, 900)
-        .setVisible(raid && !spire);
+    // Round a raid court: its own painted world, out past anything the
+    // camera shows. The Spire keeps its sky instead.
+    this.showRaidWorld(
+      raid && !spire
+        ? this.courtRaid
+          ? "raid-coliseum"
+          : isIllustratedRaidFloor(arena)
+            ? arena
+            : undefined
+        : undefined,
+    );
     if (court) this.ensureBlocks(court);
     // Grumblecrag's raid shows its own pillars (the PvP blocks stay as they are).
     for (const [cid, list] of this.courtBlocks)

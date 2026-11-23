@@ -208,14 +208,25 @@ for (const size of [
             return Math.abs(frame.height - stage.height);
           })
           .toBeLessThanOrEqual(2);
-        const scenery = await page.evaluate(() => {
-          const s = (window as any).__raidLayoutGame.scene.getScene("arena");
-          return s.raidSurround.filter(
-            (image: any) =>
-              image.visible && image.texture.key === s.floor.texture.key,
-          ).length;
-        });
-        expect(scenery).toBe(8);
+        // Beyond the walls: the arena's painted world (world-art/), covering
+        // its whole rectangle, nothing mirrored.
+        await expect
+          .poll(() =>
+            page.evaluate(() => {
+              const s = (window as any).__raidLayoutGame.scene.getScene(
+                "arena",
+              );
+              const w = s.raidWorld;
+              return (
+                !!w?.visible &&
+                w.texture.key.startsWith("raid-world-") &&
+                [w.x, w.y, w.displayWidth, w.displayHeight]
+                  .map(Math.round)
+                  .join(",")
+              );
+            }),
+          )
+          .toBe("-1000,-900,3600,2700");
         // The boss frame: Peril, name, Phase on one centred row; the bar
         // below; the callout centred under it. No party bars (fighters'
         // health is on their nameplates).
