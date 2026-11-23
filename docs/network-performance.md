@@ -349,6 +349,28 @@ Hits, damage and every rule stay the server's. The trade-off: a shot you
 fire at an opponent, who is drawn about 0.1 s in the past (section 2), now
 looks a little further along than that opponent when it lands.
 
+Follow-ups from a player report (22-23 Nov 2026: a basic flew past its
+target, then the ground blew up under it):
+
+- **A drawn shot stops on the fighter it strikes** (`leadProjectile`'s
+  `targets`, the server's own hit test against where fighters are drawn),
+  instead of flying on through until the snapshot with the impact.
+- **Your shot's blast plays when it reaches a fighter standing still**
+  (`ImpactPrediction`): drawn where the server last had it, so the server
+  hits it too. The server's impact for that shot then plays nothing. A
+  moving target is drawn in the past and may be missed on the server, so
+  its blast still waits for the server. Damage numbers always come from
+  the server.
+- **Zones count down on the clock that fits them** (`zoneClock`): an
+  opponent's on your timeline (the time you have to get out), yours and
+  your allies' on the snapshot's own clock, where the hits they deal
+  arrive. On your timeline your blast went off about a round trip before
+  its damage showed. Now they land within one snapshot interval.
+- Not done: sending a snapshot early on a hit. Snapshots go out every
+  second tick, so a hit waits at most one tick (33 ms, about 17 ms on
+  average), and an early snapshot per hit could double the traffic of a
+  busy fight.
+
 `tests/unit/timeline-lead.test.ts` checks a real shot from the server's
 `Arena` against the drawn position tick by tick;
 `tests/visual/shot-timeline.spec.ts` checks in the browser that shots run

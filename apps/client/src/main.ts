@@ -296,8 +296,10 @@ import { InterpolationBuffer } from "./networking/interpolation";
 import {
   LocalTimeline,
   ShotTimeline,
+  ImpactPrediction,
   leadProjectile,
   type ShotTarget,
+  zoneClock,
 } from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
 import {
@@ -516,6 +518,8 @@ const remoteFrames = new InterpolationBuffer();
 /** How far ahead of the last snapshot your fighter is drawn (timeline-lead.ts). */
 const timeline = new LocalTimeline();
 const shotTimeline = new ShotTimeline();
+/** Your shots' blasts played before the server's impact (timeline-lead.ts). */
+const impacts = new ImpactPrediction();
 /**
  * Where your own fighter was drawn over the last second or so, to tell
  * whether a hit on you landed where you saw yourself (battle-perf hitsFar).
@@ -1130,6 +1134,7 @@ function identity(reply: Reply) {
   remoteFrames.clear();
   timeline.clear();
   shotTimeline.clear();
+  impacts.clear();
   sessionStorage.setItem("arena-token", reply.token!);
 }
 const touch: TouchControls = new TouchControls(
@@ -4622,6 +4627,7 @@ socket.on("session-replaced", () => {
   remoteFrames.clear();
   timeline.clear();
   shotTimeline.clear();
+  impacts.clear();
   touch.reset();
   document
     .querySelectorAll<HTMLDialogElement>("dialog[open]")
@@ -4880,6 +4886,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
     remoteFrames.clear();
     timeline.clear();
     shotTimeline.clear();
+    impacts.clear();
   }
   const previous = state;
   // No rite choice mid-fight: at each new chapter the rites grow a step.
@@ -6815,7 +6822,16 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         caster ? () => this.positions.get(caster) : undefined,
       );
     }
-    if (ability && event.kind === "impact")
+    // Your shot's blast may already have played when the drawn shot reached
+    // its target (ImpactPrediction): the server's impact is the same one.
+    if (
+      ability &&
+      event.kind === "impact" &&
+      !(
+        event.owner === myId &&
+        impacts.confirm(event.abilityId, event.x, event.y, performance.now())
+      )
+    )
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
     if (event.kind === "hit" && event.target) this.feelHit(event);
     this.surfaceEffect(event);
@@ -7559,25 +7575,35 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       const at = z.ability.follow ? this.positions.get(z.owner) : undefined;
       return at ? { ...z, x: at.x, y: at.y } : z;
     };
-    for (const z of state.zones)
-      drawZone(
-        g,
-        followed(tinted(z)),
-        1 -
-          Math.max(0, z.until - yourTime) / Math.max(0.01, z.ability.duration),
-        _time,
-        reducedMotion,
-      );
-    const walls = currentObstacles();
-    const bubbles = state.zones.filter(
-      (z) => z.ability.kind === "timewarp" && z.until > yourTime,
-    );
     const ownerOf = new Map(state.players.map((p) => [p.id, p] as const));
     const rivals = (a: string, b: string) => {
       const pa = ownerOf.get(a),
         pb = ownerOf.get(b);
       return a !== b && (!pa || !pb || teamOf(pa) !== teamOf(pb));
     };
+    // An opponent's zone counts down on your timeline (the time you have to
+    // get out); yours and your allies' on the snapshot's clock, so their
+    // blast lands with the damage it deals (timeline-lead.ts zoneClock).
+    const spectating = !ownerOf.has(myId);
+    for (const z of state.zones) {
+      const clock = zoneClock(
+        state.time,
+        !spectating && rivals(z.owner, myId),
+        lead,
+        snapshotAge,
+      );
+      drawZone(
+        g,
+        followed(tinted(z)),
+        1 - Math.max(0, z.until - clock) / Math.max(0.01, z.ability.duration),
+        _time,
+        reducedMotion,
+      );
+    }
+    const walls = currentObstacles();
+    const bubbles = state.zones.filter(
+      (z) => z.ability.kind === "timewarp" && z.until > yourTime,
+    );
     // The fighters (and decoys) a shot can strike, where they are drawn: a
     // shot drawn ahead of the server stops on the first it touches, as the
     // server's does (timeline-lead.ts leadProjectile).
@@ -7593,8 +7619,20 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         if (p.id !== myId && p.statuses.some((s) => s.kind === "stealth"))
           continue;
         const at = this.positions.get(p.id) ?? p;
-        list.push({ x: at.x, y: at.y, r: p.raidBoss ? 70 : RULES.radius });
-        if (p.clone) list.push({ x: p.clone.x, y: p.clone.y, r: RULES.radius });
+        list.push({
+          x: at.x,
+          y: at.y,
+          r: p.raidBoss ? 70 : RULES.radius,
+          // Drawn where the server has it: a shot reaching it hits there too.
+          steady: Math.hypot(at.x - p.x, at.y - p.y) <= 8,
+        });
+        if (p.clone)
+          list.push({
+            x: p.clone.x,
+            y: p.clone.y,
+            r: RULES.radius,
+            steady: true,
+          });
       }
       targetsOf.set(owner, list);
       return list;
@@ -7618,6 +7656,22 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         : 1;
       const hits = shotTargets(pr.owner);
       const drawn = leadProjectile(pr, seconds, walls, slow, hits);
+      // Your shot reaching a fighter standing still: its blast plays now,
+      // not a round trip later with the server's impact (ImpactPrediction).
+      if (
+        pr.owner === myId &&
+        drawn.struck?.steady &&
+        impacts.predict(pr.id, pr.ability.id, drawn.x, drawn.y, frameNow)
+      )
+        playImpact(
+          this,
+          pr.ability,
+          drawn.x,
+          drawn.y,
+          tinted(drawn).color,
+          reducedMotion,
+        );
+      if (impacts.hidden(pr.id, frameNow)) continue;
       drawProjectile(g, tinted(drawn), _time, reducedMotion);
     }
     shotTimeline.keep(state.projectiles.map((pr) => pr.id));
