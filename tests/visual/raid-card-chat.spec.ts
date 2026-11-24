@@ -86,3 +86,71 @@ for (const phone of [
       await context.close();
     }
   });
+
+// Over the whole-screen briefing and results the chat buttons are the room
+// banner's bare gold icon, no disc (match-sheet.css; owner, 24 Nov 2026),
+// and they sit on top of the sheet: on a desktop the sheet used to cover
+// them (#battle is no stacking context there, as it is on a phone).
+for (const device of [
+  { name: "phone", width: 667, height: 375, touch: true },
+  { name: "desktop", width: 1280, height: 720, touch: false },
+])
+  test(`the chat buttons over the raid cards are a bare gold icon, on top (${device.name})`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({
+      viewport: { width: device.width, height: device.height },
+      isMobile: device.touch,
+      hasTouch: device.touch,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openHub(page);
+      await page.evaluate(() =>
+        (window as any).__room("raid", { boss: "tidewyrm" }),
+      );
+      await page.evaluate(() => ((window as any).__snap.raid.partySize = 2));
+      await openPlayPanel(page);
+      await createRoom(page);
+      await pushUntilBattle(page);
+      for (const [phase, button] of [
+        ["briefing", "#battle-chat"],
+        ["finished", "#chat-button"],
+      ]) {
+        await page.evaluate((phase) => {
+          const w = window as any;
+          w.__snap.phase = phase;
+          w.__push();
+        }, phase);
+        await expect(page.locator(".rc-card")).toBeVisible();
+        await expect(page.locator(button)).toBeVisible();
+        await expect
+          .poll(() =>
+            page.evaluate((sel) => {
+              const b = document.querySelector(sel) as HTMLElement;
+              const r = b.getBoundingClientRect();
+              const top = document.elementFromPoint(
+                r.x + r.width / 2,
+                r.y + r.height / 2,
+              );
+              const s = getComputedStyle(b);
+              return {
+                onTop: !!top && b.contains(top),
+                background: s.backgroundColor,
+                border: s.borderTopColor,
+              };
+            }, button),
+          )
+          .toMatchObject({
+            onTop: true,
+            background: "rgba(0, 0, 0, 0)",
+            border: "rgba(0, 0, 0, 0)",
+          });
+        await snap(page, info, `raid-card-chat-icon-${device.name}-${phase}`);
+      }
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
