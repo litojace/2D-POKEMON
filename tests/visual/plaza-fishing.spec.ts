@@ -609,18 +609,28 @@ test("at a frame every 0.5 s the fight keeps to real time", async ({
   // was up to a frame behind plus however late CI drew that frame (failed
   // on CI by 0.2-0.3 s with the game on time, #398 and #402).
   await page.waitForTimeout(3000);
-  const frames: { at: number; t: number }[] = await page.evaluate(
+  const logged: { at: number; t: number }[] = await page.evaluate(
     () => (window as any).__fightFrames,
   );
-  const first = frames[0],
-    last = frames[frames.length - 1];
-  expect(first, "the fight was on when frames slowed").toBeDefined();
-  const real = last.at - first.at;
-  expect(real, "the fight lasted long enough to judge").toBeGreaterThan(1.2);
-  // Each 0.5 s frame moves the clock by the real time since the last one
-  // (moveDt): it keeps to real time within a step.
-  expect(last.t - first.t).toBeGreaterThan(real - 0.1);
-  expect(last.t - first.t).toBeLessThan(real + 0.1);
+  // The frames the Plaza stepped (its clock moved): a frame it skipped (its
+  // frame cap, a busy machine) leaves the clock where it was, and the next
+  // step makes up that time.
+  const frames = logged.filter((f, i) => i === 0 || f.t !== logged[i - 1].t);
+  expect(frames.length, "the fight was on when frames slowed").toBeGreaterThan(
+    1,
+  );
+  // Each step moves the clock by the real time since the last one (moveDt),
+  // up to 1 s: a gap longer than that (a busy machine; frames 1.1-1.6 s apart
+  // were seen locally) gives 1 s, on purpose.
+  let real = 0,
+    clock = 0;
+  for (let i = 1; i < frames.length; i++) {
+    real += Math.min(1, frames[i].at - frames[i - 1].at);
+    clock += frames[i].t - frames[i - 1].t;
+  }
+  expect(real, "the fight lasted long enough to judge").toBeGreaterThan(1);
+  expect(clock).toBeGreaterThan(real - 0.1);
+  expect(clock).toBeLessThan(real + 0.1);
   await page.evaluate(() => ((window as any).__slowFrames = false));
   expect(errors).toEqual([]);
 });
