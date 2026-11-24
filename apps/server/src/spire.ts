@@ -20,6 +20,11 @@
  * Flow: briefing → (blessings, from the second floor) → countdown → waves →
  * floor cleared (saved at once) → next floor in the same room. A defeat ends
  * the climb; "Climb again" starts from the checkpoint with no blessings.
+ * Once every climber has beaten the zone's elite (and until they conquer
+ * the zone), the checkpoint is the floor after it: such a climb first picks
+ * the blessings of the floors it skipped (spireResumeFloor,
+ * spireCatchUpPicks), so it fights with what a climb from the zone's first
+ * floor would hold, as the floors were tuned.
  *
  * Boss floors (floor 10: the Ascendant Cragmuff; 20: the Ascendant
  * Tidelotl; 30: the Ascendant Inkpurr; 40: the Ascendant Snoozaku; 50: the
@@ -76,7 +81,9 @@ import {
   spireBlessingOffer,
   spireBlessingValue,
   spireBorrowed,
+  spireCatchUpPicks,
   spireCourtCap,
+  spireResumeFloor,
   spireRoster,
   spireScale,
   spireStartCheckpoint,
@@ -163,6 +170,12 @@ export function SpireRules<B extends RaidClass>(Base: B) {
     private escortsCalled = false;
     private bastionUsed = new Set<string>();
     private wasStaggered = false;
+    /** The last floor whose blessing cards were dealt this climb. */
+    private dealt = 0;
+    /** The server started this climb at the checkpoint past the elite. */
+    private resumed = false;
+    /** Each climber's highest floor cleared, read before the climb (none without storage). */
+    private memberHighest: number[] = [];
     /** The zone this room climbs (from its boss: one zone per room). */
     readonly zone: number;
 
@@ -213,11 +226,18 @@ export function SpireRules<B extends RaidClass>(Base: B) {
      * Where this party may climb (validated by the server before the start),
      * kept inside this room's zone.
      */
-    configureSpire(o: { startFloor: number; ceiling: number }) {
+    configureSpire(o: {
+      startFloor: number;
+      ceiling: number;
+      resumed?: boolean;
+      highest?: number[];
+    }) {
       const s = this.spire.state;
       const from = spireZoneStart(this.zone);
       s.ceiling = Math.max(from, Math.min(this.zoneTop(), o.ceiling));
       s.startFloor = Math.max(from, Math.min(s.ceiling, o.startFloor));
+      this.resumed = !!o.resumed;
+      this.memberHighest = o.highest ?? [];
       s.floor = s.startFloor;
       s.problem = undefined;
       this.spire.validated = true;
@@ -240,17 +260,43 @@ export function SpireRules<B extends RaidClass>(Base: B) {
       this.spire.runId = randomUUID();
       this.spire.seed = randomSeed();
       this.spire.pending = [];
+      // A climb resumed past the elite picks the skipped floors' cards first.
+      const catchUp = this.resumed
+        ? spireCatchUpPicks(this.zone, s.startFloor)
+        : 0;
+      this.dealt = s.startFloor - catchUp;
       Object.assign(s, {
         floor: s.startFloor,
         best: 0,
+        catchUp: catchUp ? { round: 0, of: catchUp } : undefined,
         blessings: {},
         offers: {},
         saves: [],
         climbSeconds: 0,
         roster: spireRoster(this.zone),
       });
+      s.checkpoint = this.nextStart();
       this.setupFloor(s.startFloor);
       r.message = `The Spire · Floor ${s.floor}: ${SPIRE_FLOORS[s.floor]?.name ?? ""}`;
+    }
+    /**
+     * Where this party's next climb of the zone starts: the lowest of the
+     * climbers' checkpoints (spireResumeFloor), counting the floors this
+     * climb has cleared. Without saved progress, the zone's first floor.
+     */
+    nextStart() {
+      const s = this.spire.state;
+      const from = spireZoneStart(this.zone);
+      if (!this.memberHighest.length) return from;
+      return Math.max(
+        from,
+        Math.min(
+          s.ceiling,
+          ...this.memberHighest.map((h) =>
+            spireResumeFloor(this.zone, Math.max(h, s.best)),
+          ),
+        ),
+      );
     }
     /** Is this floor the zone's Ascendant boss? */
     bossFloor() {
@@ -602,6 +648,7 @@ export function SpireRules<B extends RaidClass>(Base: B) {
         r = this.raid;
       s.clearedAt = this.time;
       s.best = Math.max(s.best, s.floor);
+      s.checkpoint = this.nextStart();
       r.warnings = [];
       this.clearAttacks();
       this.spire.pending.push({
@@ -651,7 +698,12 @@ export function SpireRules<B extends RaidClass>(Base: B) {
     }
 
     // -------------------------------------------------- Blessings (rites)
-    /** Blessings before every floor but the climb's first (no cards then). */
+    /**
+     * Blessings before every floor but the climb's first (no cards then),
+     * one choice per floor: a climb resumed past the elite is dealt the
+     * cards of each floor it skipped, one choice after another (tick deals
+     * the next), before its first floor.
+     */
     protected override offerRaidRites() {
       const s = this.spire.state;
       this.projectiles = [];
@@ -660,17 +712,24 @@ export function SpireRules<B extends RaidClass>(Base: B) {
       this.raid.offers = {};
       s.offers = {};
       this.clearAttacks();
-      if (s.floor <= s.startFloor) {
+      if (this.dealt >= s.floor) {
         this.phase = "countdown";
         this.deadline = this.time + RULES.countdown;
         return;
       }
+      const deal = ++this.dealt;
+      if (s.catchUp && deal <= s.startFloor)
+        s.catchUp = {
+          round: deal - (s.startFloor - s.catchUp.of),
+          of: s.catchUp.of,
+        };
+      else s.catchUp = undefined;
       this.phase = "intermission";
       this.deadline = this.time + SPIRE_CHOICE_SECONDS;
       for (const [seat, p] of this.heroes().entries())
         s.offers[p.id] = spireBlessingOffer(
           this.spire.seed,
-          s.floor,
+          deal,
           seat,
           s.blessings[p.id],
         );
@@ -841,6 +900,10 @@ export function SpireRules<B extends RaidClass>(Base: B) {
           if (s.offers[id]?.[0]) this.pickRite(id, s.offers[id][0]);
       const dashes = new Map(this.heroes().map((p) => [p.id, p.dashUntil]));
       super.tick(dt);
+      // One choice done and more owed (a climb resumed past the elite):
+      // the next floor's cards instead of the countdown.
+      if (this.phase === "countdown" && this.dealt < s.floor)
+        this.offerRaidRites();
       if (this.phase !== "playing" || this.raid.result) return;
       s.climbSeconds += dt;
       this.deadline = this.time + Math.max(0, s.limit - this.raid.elapsed);
@@ -882,10 +945,7 @@ export function SpireRules<B extends RaidClass>(Base: B) {
     }
     protected override finishMessage(won: boolean) {
       const s = this.spire.state;
-      const from = spireStartCheckpoint(
-        Math.max(s.startFloor, s.best + 1),
-        s.ceiling,
-      );
+      const from = this.nextStart();
       if (!won)
         return s.kind === "boss"
           ? `${this.zoneDef().ascendant} ${/s$/.test(this.zoneDef().ascendant) ? "stand" : "stands"} unbroken. Climb again from floor ${from}.`

@@ -1429,6 +1429,34 @@ export const spireStartCheckpoint = (
   const at = spireCheckpoint(floor);
   return at > ceiling ? spireCheckpoint(Math.max(1, ceiling)) : at;
 };
+/** A zone's elite floor (its floor 5), from the floor data; undefined without one. */
+export const spireEliteFloor = (zone: number) =>
+  Object.values(SPIRE_FLOORS).find((f) => f.zone === zone && f.kind === "elite")
+    ?.floor;
+/**
+ * Where a player's climb of `zone` starts, from the highest floor they have
+ * cleared: the floor after the zone's elite once they have beaten it, until
+ * they conquer the zone (its boss floor); otherwise the zone's first floor.
+ * A conquered zone climbs again in full. A party starts at the lowest of its
+ * members' (spireStartFrom). The database needs nothing new: it already
+ * keeps each player's highest floor (arena_spire_start returns it).
+ */
+export function spireResumeFloor(zone: number, highest: number) {
+  const start = spireZoneStart(zone);
+  const elite = spireEliteFloor(zone);
+  return elite !== undefined && highest >= elite && highest < spireZoneTop(zone)
+    ? elite + 1
+    : start;
+}
+/**
+ * The blessings a climb that starts past its zone's first floor picks before
+ * it begins: one for each floor it skipped after the first, the cards a climb
+ * from the first floor would have been offered (`spireBlessingOffer` for
+ * those floors). The floors are tuned with them (each zone's play-test hands
+ * the bot one blessing per floor from the zone's second floor on).
+ */
+export const spireCatchUpPicks = (zone: number, startFloor: number) =>
+  Math.max(0, startFloor - spireZoneStart(zone));
 /** Every champion a zone's floors can field (loaded before the climb starts). */
 export function spireRoster(zone: number): CharacterId[] {
   const out = new Set<CharacterId>();
@@ -1984,6 +2012,8 @@ export interface SpireProgress {
 /** What the server reads for each climber before a climb starts. */
 export interface SpireMember {
   checkpoint: number;
+  /** The highest floor cleared (where the climb resumes: spireResumeFloor). */
+  highestFloor?: number;
   clears: Partial<Record<RaidBossId, number>>;
 }
 /**
@@ -1993,10 +2023,13 @@ export interface SpireMember {
  * nothing is open above SPIRE_BUILT_TOP.
  *
  * One climb is one zone. With `zone` (a room made for that zone) the climb
- * starts at the zone's first floor, never past its boss, and every member
- * must have earned that checkpoint (a party climbs at its lowest
- * checkpoint: a zone above someone's is refused, never started lower in
- * the wrong zone's room). Without it, the lowest checkpoint among the party.
+ * starts at the zone's first floor, or past its elite when every member has
+ * beaten it and none has conquered the zone (spireResumeFloor: the lowest
+ * of the party's; `resumed` then, and `highest` carries each member's
+ * highest floor), never past its boss, and every member must have earned
+ * the zone's checkpoint (a party climbs at its lowest checkpoint: a zone
+ * above someone's is refused, never started lower in the wrong zone's
+ * room). Without it, the lowest checkpoint among the party.
  */
 export function spireStartFrom(
   members: readonly SpireMember[],
@@ -2006,6 +2039,10 @@ export function spireStartFrom(
   startFloor: number;
   ceiling: number;
   reason?: string;
+  /** Started past the zone's first floor (the checkpoint after its elite). */
+  resumed?: boolean;
+  /** Each member's highest floor cleared (the room's next checkpoint). */
+  highest?: number[];
 } {
   const from = zone === undefined ? 1 : spireZoneStart(zone);
   const top =
@@ -2051,7 +2088,21 @@ export function spireStartFrom(
         ceiling: 0,
         reason: `Every climber must reach floor ${from} first: conquer zone ${zone - 1}.`,
       };
-    return { ok: true, startFloor: from, ceiling: Math.max(from, ceiling) };
+    const highest = members.map((m) => Math.max(0, m.highestFloor ?? 0));
+    // Never past what this party may climb (a boss floor someone hasn't
+    // unlocked is not where the climb resumes).
+    const resume = Math.min(
+      ceiling,
+      ...highest.map((h) => spireResumeFloor(zone, h)),
+    );
+    const startFloor = Math.max(from, resume);
+    return {
+      ok: true,
+      startFloor,
+      ceiling: Math.max(from, ceiling),
+      highest,
+      ...(startFloor > from ? { resumed: true } : {}),
+    };
   }
   const startFloor = Math.max(
     1,
@@ -2125,6 +2176,18 @@ export interface SpireState {
   offers: Record<string, SpireBlessingId[]>;
   /** Highest floor cleared this climb (0: none yet). */
   best: number;
+  /**
+   * Where this party's next climb of the zone starts (the server's
+   * spireResumeFloor for each member, kept up to date as floors fall).
+   * Older servers left it out.
+   */
+  checkpoint?: number;
+  /**
+   * A climb that starts at the checkpoint past the elite picks the
+   * blessings of the floors it skipped first (spireCatchUpPicks): `of`
+   * cards in all, `round` the one on offer (0 before the first).
+   */
+  catchUp?: { round: number; of: number };
   /** Server time the floor's last Echo fell (the stairs open). */
   clearedAt?: number;
   /** Seconds the floor may last. */

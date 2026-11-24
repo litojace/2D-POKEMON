@@ -11,7 +11,9 @@ import {
   SPIRE_REWARDS,
   SPIRE_SEASON,
   SPIRE_SEATS,
+  spireResumeFloor,
   spireStartCheckpoint,
+  spireZoneOf,
   spireZoneStart,
   spireZoneTop,
   type SpireFloor,
@@ -95,17 +97,30 @@ export function spireUnlocked(
 }
 /**
  * Your climb so far (nothing saved yet: floor 0, checkpoint 1). The
- * checkpoint is where a climb starts: a zone that is built (after zone 1's
- * boss, floor 1 until zone 2 exists).
+ * checkpoint is where a climb starts: the first floor of the highest zone
+ * open to you that is built (after zone 1's boss, floor 1 until zone 2
+ * exists), or the floor after its elite once you have beaten it
+ * (spireResumeFloor). Zones open from it: a zone's first floor at or below.
  */
 export function spireStanding(
   d: Pick<SpireData, "spire">,
   catalogue: SpireCatalogue = SPIRE_CATALOGUE,
 ) {
   const s = d.spire;
+  const highest = s?.highestFloor ?? 0;
+  const zoneStart = spireStartCheckpoint(
+    s?.checkpoint ?? 1,
+    catalogue.builtTop,
+  );
   return {
-    highest: s?.highestFloor ?? 0,
-    checkpoint: spireStartCheckpoint(s?.checkpoint ?? 1, catalogue.builtTop),
+    highest,
+    checkpoint: Math.max(
+      zoneStart,
+      Math.min(
+        catalogue.builtTop,
+        spireResumeFloor(spireZoneOf(zoneStart), highest),
+      ),
+    ),
     attempts: s?.attempts ?? 0,
     claimed: new Set(s?.claimed ?? []),
   };
@@ -120,7 +135,7 @@ export function spireZoneChoice(
   d: Pick<SpireData, "spire">,
   catalogue: SpireCatalogue = SPIRE_CATALOGUE,
 ) {
-  const { checkpoint } = spireStanding(d, catalogue);
+  const { checkpoint, highest } = spireStanding(d, catalogue);
   const zones = builtZones(catalogue);
   const open = zones
     .filter((z) => spireZoneStart(z.id) <= checkpoint)
@@ -129,7 +144,13 @@ export function spireZoneChoice(
   const zone = open.includes(view.spireZone ?? 0)
     ? view.spireZone!
     : open[open.length - 1];
-  return { zones, open, zone, start: spireZoneStart(zone) };
+  // Where a climb of it starts: past its elite while it is your frontier.
+  return {
+    zones,
+    open,
+    zone,
+    start: Math.max(spireZoneStart(zone), spireResumeFloor(zone, highest)),
+  };
 }
 /** Start climb: whether it can go now, and what it will do. */
 export function spireStartState(
@@ -148,15 +169,22 @@ export function spireStartState(
         ? "Your party leader starts the climb."
         : "";
   const from = start;
+  const first = spireZoneStart(zone);
+  // A party starts past the elite only if everyone has beaten it (the
+  // server checks each climber): the note says so rather than promise it.
+  const where =
+    from > first
+      ? `zone ${zone} · floor ${from} if all have beaten its elite, else ${first}`
+      : `zone ${zone} from floor ${from}`;
   const note = reason
     ? reason
     : play === "solo"
       ? `Just you · zone ${zone} from floor ${from} · one self-revive a floor`
       : size > 1
-        ? from > 1
-          ? `${size} of ${SPIRE_SEATS} seats · zone ${zone} from floor ${from} · everyone needs checkpoint ${from}`
-          : `${size} of ${SPIRE_SEATS} seats · zone ${zone} from floor ${from}`
-        : `A room for up to ${SPIRE_SEATS} · zone ${zone} from floor ${from}`;
+        ? from === first && first > 1
+          ? `${size} of ${SPIRE_SEATS} seats · ${where} · everyone needs checkpoint ${first}`
+          : `${size} of ${SPIRE_SEATS} seats · ${where}`
+        : `A room for up to ${SPIRE_SEATS} · ${where}`;
   return {
     play,
     ok: !reason,
