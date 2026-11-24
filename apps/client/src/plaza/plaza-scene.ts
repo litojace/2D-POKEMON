@@ -1813,6 +1813,9 @@ export function openPlaza(options) {
   function onKey(e) {
     if (!running) return;
     if (e.target.closest && e.target.closest("input, textarea, select")) return;
+    // A hub screen over the Plaza (your card) keeps its keys: Space presses
+    // its buttons, Escape closes it.
+    if (e.target.closest && e.target.closest(".ui-panel-host")) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toLowerCase();
     const albumOpen = !$("pz-album").hidden,
@@ -2223,6 +2226,9 @@ export function openPlaza(options) {
     ring.style.left = `${(e.clientX - r.left) / k}px`;
     ring.style.top = `${(e.clientY - r.top) / k}px`;
     knob.style.transform = "";
+    // How far the knob may go: half the ring, which is bigger on tablets
+    // (plaza.css --pz-joy). Read once per press, not per move.
+    joy.max = ring.offsetWidth / 2 || 55;
     try {
       joyEl.setPointerCapture(e.pointerId);
     } catch {
@@ -2234,7 +2240,7 @@ export function openPlaza(options) {
     const dx = (e.clientX - joy.ox) / joy.k,
       dy = (e.clientY - joy.oy) / joy.k,
       m = Math.hypot(dx, dy),
-      max = 55,
+      max = joy.max || 55,
       k = m > max ? max / m : 1;
     joy.x = (dx / max) * k;
     joy.y = (dy / max) * k;
@@ -6279,7 +6285,7 @@ export function openPlaza(options) {
   /* ---------- panels over the Plaza ---------- */
   // What covers the Plaza, looked up once per DOM change, not every frame.
   let cover;
-  const COVERS = "dialog, .home-drawer, .header-menu";
+  const COVERS = "dialog, .home-drawer, .header-menu, .ui-panel-host";
   const coverWatch = new MutationObserver((records) => {
     if (!cover) return;
     for (const r of records) {
@@ -6297,13 +6303,13 @@ export function openPlaza(options) {
     subtree: true,
     childList: true,
     attributes: true,
-    attributeFilter: ["open", "hidden"],
+    attributeFilter: ["open", "hidden", "data-ui-leaving"],
   });
   // The album counts too: you stand still, and the Plaza behind it rests.
   const coverNow = () =>
     (cover ??= {
       covered: !!document.querySelector(
-        "dialog[open], .home-drawer:not([hidden]), .header-menu[open], .plaza-layer .pz-album:not([hidden])",
+        "dialog[open], .home-drawer:not([hidden]), .header-menu[open], .plaza-layer .pz-album:not([hidden]), .plaza-layer > .ui-panel-host:not([data-ui-leaving])",
       ),
       hides: !!document.querySelector(
         "dialog[open], .home-drawer:not([hidden]), .plaza-layer .pz-album:not([hidden])",

@@ -184,6 +184,12 @@ type Hooks = {
   restoreFighter?: (id: CharacterId) => void;
   /** Show the Lobby (the Shop and Wardrobe open inside it). */
   toLobby?: () => void;
+  /**
+   * Where your card (the header's avatar) opens instead of the Lobby: the
+   * Plaza while you are on it, so looking at your card doesn't send you
+   * back to the Lobby (owner, 24 Nov). None: it opens in the Lobby.
+   */
+  profileHost?: () => HTMLElement | undefined;
   /** Create a raid room for a boss (today's challenge, or straight in solo). */
   startAdventure?: (mode: string) => void;
   startRaid?: (
@@ -1629,6 +1635,10 @@ export class AccountUI {
   /** Leave for the Lobby (a hub screen lives there) and close any old dialog. */
   private toLobbyScreen() {
     this.hooks.toLobby?.();
+    this.closeDialog();
+  }
+  /** Close any old dialog (a hub screen is opening). */
+  private closeDialog() {
     const dialog = document.getElementById(
       "dialog",
     ) as HTMLDialogElement | null;
@@ -1691,6 +1701,8 @@ export class AccountUI {
   }
   /** The open player card, if any (UI remodel step 7). */
   private profileScreen?: ProfileScreen;
+  /** Where the card is open (the Plaza's layer), or none (the Lobby). */
+  private profileHost?: HTMLElement;
   private profileData: Pick<
     ProfileData,
     "progress" | "progressProblem" | "raids" | "nameStatus"
@@ -1701,7 +1713,13 @@ export class AccountUI {
    */
   async showProfile() {
     if (!this.account) return;
-    this.toLobbyScreen();
+    const host = this.hooks.profileHost?.();
+    if (host) this.closeDialog();
+    else this.toLobbyScreen();
+    // Open where you are now: one left open in the other scene goes.
+    if (this.profileScreen?.isOpen && this.profileHost !== host)
+      this.profileScreen.close();
+    this.profileHost = host;
     const accountId = this.account.id;
     if (!this.profileScreen?.isOpen) {
       // It opens on the records it showed last (another player's are
@@ -1711,6 +1729,7 @@ export class AccountUI {
         raids: this.profileData.raids ?? this.raidProgress ?? null,
       };
       this.profileScreen = openProfile({
+        host,
         data: () => {
           const a = this.account!;
           return {

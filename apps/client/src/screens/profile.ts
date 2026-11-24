@@ -28,6 +28,8 @@ import "./match-history.css";
  * answer, or its reason); Share card draws the card as a picture.
  */
 export interface ProfileHooks {
+  /** Where to mount (the Plaza's layer); defaults to the Lobby. */
+  host?: HTMLElement;
   data(): ProfileData;
   /** Wear your own picture (a file from the device); resolves once worn. */
   photo(file: File): Promise<void>;
@@ -375,6 +377,7 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
   // The name's countdown is redrawn while the card is open.
   const tick = setInterval(render, 30_000);
   panel = openHubPanel(html, {
+    host: hooks.host,
     onClose: () => {
       closed = true;
       clearInterval(tick);

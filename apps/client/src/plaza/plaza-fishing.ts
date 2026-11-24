@@ -628,21 +628,32 @@ export function createFishing(deps: FishingDeps) {
         g.save();
         g.translate(x, y);
         g.scale(s, s);
+        // One outline: the circle opens at the bottom into its tail (the
+        // tail was a second shape, outlined across the circle's edge, and
+        // the "!" a font glyph that sat off centre).
+        const r = 16,
+          gap = 0.36;
+        g.beginPath();
+        g.arc(0, 0, r, Math.PI / 2 + gap, Math.PI * 2.5 - gap);
+        g.lineTo(0, r + 9);
+        g.closePath();
         g.fillStyle = "#fff";
         g.strokeStyle = "#0b1020";
         g.lineWidth = 3;
-        g.beginPath();
-        g.ellipse(0, 0, 15, 17, 0, 0, 7);
-        g.moveTo(-4, 14);
-        g.lineTo(0, 24);
-        g.lineTo(4, 14);
+        g.lineJoin = "round";
         g.fill();
         g.stroke();
-        g.fillStyle = "#ef4f61";
-        g.font = "900 26px 'Barlow Condensed', sans-serif";
-        g.textAlign = "center";
-        g.textBaseline = "middle";
-        g.fillText("!", 0, 1);
+        // The "!" drawn, not typed: a bar and a dot, centred in the circle.
+        g.strokeStyle = g.fillStyle = "#ef4f61";
+        g.lineCap = "round";
+        g.lineWidth = 5.5;
+        g.beginPath();
+        g.moveTo(0, -9.5);
+        g.lineTo(0, 2.5);
+        g.stroke();
+        g.beginPath();
+        g.arc(0, 9, 3, 0, Math.PI * 2);
+        g.fill();
         g.restore();
       }
     },
