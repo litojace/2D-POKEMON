@@ -11,11 +11,14 @@ what differs for an agent that is not a Claude session.
 
 ## What is different for you
 
-- **Merging.** Do not merge pull requests or push to `main`: `main` is
-  production (a merge deploys the game and applies migrations). Work on a
-  branch, open a PR, and stop there. In the PR description, give the lane
-  from `node scripts/merge-lane.mjs` and its reasons, what you checked and
-  what you left out, so a Claude session or the owner can merge it.
+- **Merging.** Merge your own PRs by lane, exactly as CLAUDE.md's "Merging
+  to main: fast lane or full lane" says (owner, 23 Nov). Never push straight
+  to `main`: it is production, and a merge deploys the game and applies
+  migrations. Work on a branch and run `node scripts/merge-lane.mjs`. Merge
+  only when the lane says it is safe and no "Main is red" issue is open
+  (unless your PR is its fix). After merging, watch main's next run and fix
+  or revert what your merge broke. Put the lane, its reasons, what you
+  checked and what you left out in the PR description.
 - **Coordinating.** You cannot message Claude sessions. Before you change
   files that another open PR changes (`gh pr list`, then `gh pr diff`), leave
   a comment on that PR naming the files, and say in your own PR which PR
