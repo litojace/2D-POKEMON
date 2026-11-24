@@ -6,9 +6,12 @@ are on screen. Everything below was measured before and after under the same
 conditions; the scripts that produced the numbers are in `scripts/perf/` and
 `tests/visual/battle-performance.spec.ts`, and can be re-run.
 
-The game's rules are unchanged: the server still simulates at 30 ticks a
-second, sends battle snapshots at 15 a second, and decides movement, damage,
-cooldowns and outcomes. Clients still send one input per tick.
+The first pass below used 30 simulation ticks and 15 battle snapshots a
+second. **The current game uses 30 ticks and 30 snapshots a second**
+(section 17), on Render's **1c-2g: 1 CPU / 2 GB in Oregon**. The older
+0.5 CPU / 512 MB results are historical measurements, not current capacity.
+The server decides movement, damage, cooldowns and outcomes; clients send
+one input per tick.
 
 ## What changed
 
@@ -182,7 +185,7 @@ are only an eighth of the frames, so Auto never stepped down for it.
 `ARENA_DIAGNOSTICS=60` on the server logs one JSON line a minute
 (`arena-diagnostics {...}`): rooms, sockets, combat tick and broadcast
 durations (p50/p95/p99/max), event-loop delay, CPU as a percentage of one
-core (Render's 0.5 CPU plan is 50), RSS/heap, outgoing bytes and messages per
+core (the current 1 CPU plan is 100), RSS/heap, outgoing bytes and messages per
 second, and congested-socket skips. When unset, every hook is a no-op.
 
 ## How to measure
@@ -193,7 +196,9 @@ npx tsx scripts/perf/net-sim.ts 120
 ```
 
 ```bash
-# Many concurrent rooms of real Socket.IO clients against a server child process
+# Linux Docker/cgroup v2; pull outside the measured window
+docker pull node:22.16.0-bookworm-slim
+# Default profile: only the server is limited to Render's 1 CPU / 2 GB
 npx tsx scripts/perf/server-load.ts --rooms 24 --mix pvp2,pvp4,raid4 --seconds 20
 ```
 
@@ -207,11 +212,33 @@ npx tsx scripts/perf/server-load.ts --rooms 8 --cycles 10 --seconds 12
 npx playwright test --config tests/visual/playwright.config.ts battle-performance
 ```
 
-To approximate Render's $7 instance (0.5 CPU, 512 MB) on Linux with cgroup
-v1, create a group with a 50 ms per 100 ms CPU quota and a 512 MB memory
-limit and pass its name as `CGROUP=<name>`; the load script moves only the
-server child into it. Results depend on the host CPU: Render's cores may be
-faster or slower than the machine used here.
+The default `render-1c-2g` profile runs the server alone in Linux Docker
+with `--cpus=1 --memory=2g --memory-swap=2g`, Node 22.16.0 (as in
+`render.yaml`), host networking and a read-only checkout mount. Install
+the checkout's dependencies first (`npm ci --include=dev`). The driver and
+its simulated players run outside that container, and the fake-account
+server listens only on a random loopback port. No production connection or
+credentials are needed. This requires local Linux Docker with cgroup v2;
+it does not configure Docker Desktop host networking on macOS/Windows.
+
+Before the driver connects, the child reads `cpu.max` and `memory.max`:
+they must mean exactly one core and 2,147,483,648 bytes (2 GiB, the plan's
+"2 GB"). A missing Docker daemon, an unapplied limit or an old `CGROUP`
+setting fails the run rather than printing a misleading capacity result.
+The JSON records `resources.profile`, `verified`, `cpu`, `memoryBytes` and
+`node`. Inputs use `TickClock` at 30 Hz so the generator's own
+`setInterval(1000 / 30)` drift does not manufacture extra input load.
+
+For an explicitly uncapped diagnostic run:
+
+```bash
+npx tsx scripts/perf/server-load.ts --profile host --rooms 6 --seconds 20
+```
+
+That prints `resources.profile: "host", verified: false`; it is not a
+Render capacity measurement. Neither mode simulates Oregon's network path,
+phone GPUs, Wi-Fi or Render's exact CPU speed. Keep browser performance
+tests and other CPU-heavy jobs out of the load measurement.
 
 ### 7. Closed battles no longer stay in memory
 
@@ -820,7 +847,7 @@ Decided by the owner (23 Nov 2026):
   Haunted played 90 hit sparks before and 8 after, and left the raider at
   111.0 and 111.5 health. Each hit now shows its number (about 3).
 
-## Results
+## Historical results (0.5 CPU / 512 MB, 15 snapshots a second)
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The
 server child ran in a cgroup capped at 0.5 CPU and 512 MB to approximate
@@ -891,29 +918,37 @@ battle → Town → Shop → Wardrobe cycles (heap after GC):
 | Before | 29.5 | 37.3 | 43.6 | 50.3 | 56.0 | 61.0 MB |
 | After  | 31.0 | 31.9 | 30.7 | 31.6 | 31.7 | 31.1 MB |
 
-## Capacity: the $7 instance versus a larger one
+## Current capacity: Render 1c-2g (1 CPU / 2 GB, Oregon)
 
 **Since 23 Nov 2026 the server runs on the 1 CPU / 2 GB plan (`1c-2g`,
-$25/month, `render.yaml`)**, chosen ahead of the App Store launch. Real
-load before the move peaked around 0.035 CPU and 140 MB. A full core
-roughly doubles the headroom measured below for the 0.5 CPU plan.
+$25/month, `render.yaml`)**, chosen ahead of the App Store launch. Read-only
+Render inspection on 23 Nov PT confirmed one instance in Oregon, a one-core
+CPU limit and 2,147,483,648 bytes of memory. Use the verified default
+`server-load.ts` profile above for all new capacity measurements. The
+half-core tables above are retained as history; doubling their player
+counts does not establish this plan's capacity, especially after moving
+from 15 to 30 snapshots a second.
 
-This recommendation is measured on this host only. Render's CPUs may be
-faster or slower, Town visitors were not part of the load, and the
-simulated players fight non-stop, which is harsher than real matches with
-menus and intermissions.
+The current audit and measured 1c-2g baseline are in
+[battle performance audit](battle-performance-audit-2026-11-23.md).
+Treat any player-count estimate as specific to its workload: the current
+load script uses default fighters and one raid boss, and does not include
+Plaza visitors, spectators, player bot AI, all boss phases, real account refreshes
+or a real mobile network. Profile these before publishing a supported
+concurrent-player count.
 
-- **0.5 CPU / 512 MB is enough for roughly 80–100 people in battles at
-  once** with comfortable headroom. It starts to degrade around 150 and
-  fails around 240. Memory is far from its limit.
-- Start on the $7 instance with `ARENA_DIAGNOSTICS=60`. Move to a larger
-  (1+ CPU) instance when, at peak, `cpuPercent` stays above about 35, the
-  tick p99 exceeds about 33 ms, or the event-loop delay p99 exceeds about
-  20 ms. A full core roughly doubles headroom. More memory alone would not
-  help.
-- Bandwidth is now about 75 KB/s per player in battle (about 270 MB per
-  player-hour, down from about 465). Check this against the plan's included
-  outbound transfer.
+On the one-core plan, `cpuPercent=100` consumes the full quota. Track tick
+duration, tick lateness, event-loop delay and queueing, not only average
+CPU: a tick that exceeds 33.3 ms misses the combat budget even when a
+five-minute CPU average looks small. `ARENA_DIAGNOSTICS=60` enables the
+detailed server log; changing production settings still needs the owner's
+approval. Use the existing per-match `serverHz`, `tickLateP95` and
+`tickMsP95` alongside client reports. More RAM cannot fix input arriving
+late from a phone.
+
+At 30 snapshots a second, the earlier 24-room test measured roughly
+150 KB/s per player (section 17), about 530 MB per hour of continuous
+fighting. Use the new run's actual byte count for bandwidth planning.
 
 ## Remaining bottlenecks and limits
 
