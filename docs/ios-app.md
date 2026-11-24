@@ -174,7 +174,12 @@ iOS 26 SDK) and Node 22.
 3. `npm run ios:build` checks those settings, builds the game in "ios" mode
    and copies it into the Xcode project (`cap sync ios`). Run it again after
    every change to the game.
-4. `npm run ios:open` opens Xcode. In the **App** target, **Signing &
+4. `npm run ios:open` opens Xcode. Xcode no longer offers "Update to
+   Recommended Settings": the project has the safe ones and records Xcode
+   27.2 as its last check (`LastUpgradeCheck = 2720`). It keeps iOS 15 as
+   the oldest supported version on purpose. If a newer Xcode offers it again,
+   press **Cancel** (changes made there make the next `git pull` refuse) and
+   update the project in the repo instead. In the **App** target, **Signing &
    Capabilities**: pick your Team, check that **Sign in with Apple** is
    listed (it comes from `App.entitlements`), and let Xcode manage signing.
 5. Plug in an iPhone, unlock it and tap **Trust**. The first time, turn on

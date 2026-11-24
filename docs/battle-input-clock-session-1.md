@@ -154,6 +154,9 @@ Build entry JS: 2,722.42 → 2,725.90 kB (**+3.48 kB**); gzip 915.43 →
   khi dùng cờ pagehide riêng; dùng background-exit chung thì qua. Typecheck,
   build/PWA, 116 test tập trung và tám bài input/touch qua lại. Profile
   trận ở trên đo clock tại `c396415a`; sửa thêm này chỉ đổi gate lifecycle.
+- Đã tích hợp main `8751b188` (Plaza #410 và Xcode #402) sau lượt profile;
+  typecheck, build/PWA, 116 test tập trung và tám bài input/touch đều qua.
+  Số bundle ở trên tách riêng thay đổi clock, không cộng phần UI Plaza.
 
 Merge lane phải là **FULL**: có battle, `main.ts` và schema report dùng chung.
 Chờ verify và đủ 30 visual shards, đồng thời tôn trọng issue Main is red.

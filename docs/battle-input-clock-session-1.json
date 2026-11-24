@@ -2028,7 +2028,13 @@
       "targetedAfterLeaveGuard": 116,
       "finalControlsVisualPassed": 8,
       "targetedAfterVisibilityResume": 116,
-      "visibilityResumeControlsPassed": 8
+      "visibilityResumeControlsPassed": 8,
+      "integratedMain": "8751b188",
+      "targetedWithIntegratedMain": 116,
+      "controlsWithIntegratedMain": 8,
+      "typecheckWithIntegratedMain": "passed",
+      "buildWithIntegratedMain": "passed",
+      "pwaWithIntegratedMain": "passed"
     }
   },
   "interleavedRaid": {
@@ -2233,6 +2239,41 @@
         "sendGapP95": 70,
         "sendGapP99": 70,
         "sendGapMax": 70,
+        "correctionsHit": 0,
+        "correctionsStatus": 0,
+        "correctionsMove": 0,
+        "correctionsOther": 0,
+        "hitsFar": 0,
+        "hitGapMax": 0,
+        "snapGapMax": 0,
+        "correctionP50": 0,
+        "holds": 0,
+        "holdMax": 0,
+        "inputHz": 0
+      }
+    }
+  ],
+  "inputBrowserIntegratedMain": [
+    {
+      "kind": "INPUT_CLOCK_BROWSER",
+      "data": {
+        "rttP50": 0,
+        "rttP95": 0,
+        "snapGapP95": 0,
+        "snapLate": 0,
+        "corrections": 0,
+        "correctionMax": 0,
+        "confirmP50": 0,
+        "pressSamples": 4,
+        "pressToSendP50": 137,
+        "pressToSendP95": 239,
+        "pressToSendP99": 239,
+        "eventToHandlerP95": 1,
+        "handlerToSendP95": 238,
+        "sendGapP50": 17,
+        "sendGapP95": 113,
+        "sendGapP99": 405,
+        "sendGapMax": 405,
         "correctionsHit": 0,
         "correctionsStatus": 0,
         "correctionsMove": 0,

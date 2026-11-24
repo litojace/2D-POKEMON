@@ -2961,6 +2961,9 @@ function syncChat(hub: boolean) {
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
 function syncPlaza(want: boolean, hub = want) {
   if (!want) {
+    // A screen opened over the Plaza (your card) goes with it.
+    if (openHubPanelNow()?.root.closest(".plaza-layer"))
+      openHubPanelNow()?.close();
     // Behind the Lobby the Plaza waits, drawn and kept (you are
     // off it on the server, which keeps your spot); out of the hub it closes.
     if (plaza && hub) plaza.hide();
@@ -9246,6 +9249,11 @@ accountsUI = new AccountUI({
     syncHub();
   },
   toLobby: () => setHubScene("lobby"),
+  // On the Plaza your card opens over it, not back in the Lobby.
+  profileHost: () =>
+    hubScene === "plaza" && document.body.dataset.hubScene === "plaza"
+      ? (document.querySelector<HTMLElement>(".plaza-layer") ?? undefined)
+      : undefined,
   openDialog: dialog,
   startRaid: (boss, options) => void startRaid(boss, options),
   startSpire: (options) => void startSpire(options),

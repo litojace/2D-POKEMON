@@ -739,7 +739,7 @@
 /* Dash and Jump, sized for a thumb in a hurry (they were 54 and 68 px).
    --pz-jump also lifts the round buttons above them (and the toast, below). */
 .plaza-layer.phone {
-  --pz-jump: 80px;
+  --pz-jump: 88px;
 }
 .plaza-layer.phone .pz-act {
   width: 64px;
@@ -806,13 +806,13 @@
 }
 
 /* ---------- below the line: the Plaza inside the game ---------- */
-/* Phones: the game's toast rises over the Dash and Jump row (Jump is 80px,
+/* Phones: the game's toast rises over the Dash and Jump row (Jump is 88px,
    --pz-jump on .plaza-layer.phone, which the toast sits outside of):
    at the bottom it ran into the action button that grows left of them by
    the Volt Boba, the Photo Spot or the gate. */
 @media (max-height: 500px) {
   body.hub-plaza #toast {
-    bottom: calc(max(14px, var(--safe-bottom, 0px)) + 80px + 10px);
+    bottom: calc(max(14px, var(--safe-bottom, 0px)) + 88px + 10px);
   }
 }
 .plaza-layer {
@@ -1880,8 +1880,8 @@
   }
 }
 .plaza-layer.phone .pz-fish-act {
-  width: 84px;
-  height: 84px;
+  width: var(--pz-cast, 84px);
+  height: var(--pz-cast, 84px);
   font-size: calc(15px * var(--text-scale, 1));
 }
 /* In a fight Hold is pressed and held for many seconds: a bigger target
@@ -1897,7 +1897,7 @@
   font-size: calc(17px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-fish-side {
-  bottom: calc(var(--hud-y-b) + 84px + var(--hud-gap));
+  bottom: calc(var(--hud-y-b) + var(--pz-cast, 84px) + var(--hud-gap));
 }
 .plaza-layer.phone .pz-fish-exit {
   height: 40px;
@@ -2789,4 +2789,82 @@
 }
 .plaza-layer .pz-q.done .ic {
   opacity: 0.55;
+}
+
+/* Your card (the header's avatar) opens over the Plaza, not back in the
+   Lobby (owner, 24 Nov): the Lobby's panel frame, with no rail beside it.
+   The Plaza's own buttons step aside under it. */
+.plaza-layer > .ui-panel-host {
+  --lobby-top: calc(var(--hub-card-h) + 32px + var(--hub-drop, 0px));
+  --lobby-gutter: max(14px, var(--safe-left, 0px));
+  --lobby-gutter-r: max(14px, var(--safe-right, 0px));
+  --lobby-bottom: max(14px, var(--safe-bottom, 0px));
+  --lobby-rail: 0px;
+}
+@media (max-height: 500px) {
+  .plaza-layer > .ui-panel-host {
+    --lobby-top: calc(var(--hub-card-h) + 22px + var(--hub-drop, 0px));
+  }
+}
+.plaza-layer:has(> .ui-panel-host:not([data-ui-leaving])) .pz-hud {
+  visibility: hidden;
+}
+
+/* The controls you play with, a size up (owner, 24 Nov: "the important
+   ones: fishing, the joystick, Jump, Dash"), most of all on tablets.
+   Phones: Dash 64 -> 70, Jump 80 -> 88, the Fish button as Dash, Cast and
+   Reel 84 -> 92, Hold 104 -> 112, the stick's ring 110 -> 124. */
+.plaza-layer.phone {
+  --pz-dash: 70px;
+  --pz-cast: 92px;
+  --pz-joy: 124px;
+}
+.plaza-layer.phone .pz-act:not(.pz-interact):not(.big),
+.plaza-layer.phone .pz-interact[data-id="fish"] {
+  width: var(--pz-dash);
+  height: var(--pz-dash);
+}
+.plaza-layer.phone .pz-fish-act[data-kind="fight"] {
+  width: 112px;
+  height: 112px;
+}
+/* Tablets (touch, taller than a phone): Dash 67 -> 78, Jump 88 -> 103 and
+   the Fish button as Dash; Cast and Reel 84 -> 101, Hold 121 -> 138; the
+   stick's ring 110 -> 150. */
+.plaza-layer.coarse:not(.phone) {
+  --pz-joy: 150px;
+}
+.plaza-layer.coarse:not(.phone) .pz-act:not(.pz-interact):not(.big),
+.plaza-layer.coarse:not(.phone) .pz-interact[data-id="fish"] {
+  width: 5.6em;
+  height: 5.6em;
+}
+.plaza-layer.coarse:not(.phone) .pz-act.big {
+  width: 7em;
+  height: 7em;
+}
+.plaza-layer.coarse:not(.phone) .pz-fish-act {
+  width: 7.2em;
+  height: 7.2em;
+  font-size: 1.15em;
+}
+.plaza-layer.coarse:not(.phone) .pz-fish-act[data-kind="fight"] {
+  width: 8.2em;
+  height: 8.2em;
+  font-size: 1.2em;
+}
+.plaza-layer.coarse:not(.phone) .pz-fish-side {
+  bottom: calc(var(--hud-y-b) + 7.2em * 1.15 + var(--hud-gap));
+}
+/* The stick: its ring and knob scale together; plaza-scene.ts reads the
+   ring's size once per press for how far the knob may go. */
+.plaza-layer .pz-joy .ring {
+  width: var(--pz-joy, 110px);
+  height: var(--pz-joy, 110px);
+  margin: calc(var(--pz-joy, 110px) / -2);
+}
+.plaza-layer .pz-joy .knob {
+  width: calc(var(--pz-joy, 110px) * 0.42);
+  height: calc(var(--pz-joy, 110px) * 0.42);
+  margin: calc(var(--pz-joy, 110px) * -0.21);
 }
