@@ -407,10 +407,15 @@
   font-size: calc(26px * var(--text-scale, 1));
   margin-top: 6px;
 }
+/* The countdown is the tags' row's last child, pushed to its end, and wraps
+   under the tags when the card is narrow: pinned to the card's corner it
+   covered "20% off today" on a 667 px phone and on a 1024 px iPad. */
+.fit-deal-text > .fit-row {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
 .fit-deal-timer {
-  position: absolute;
-  top: 12px;
-  right: 14px;
+  margin-left: auto;
 }
 /* A set: its pieces in a strip, the full and the discounted price. */
 .fit-bundle {
@@ -838,17 +843,6 @@
   .fit-deal-price {
     font-size: calc(18px * var(--text-scale, 1));
     margin-top: 0;
-  }
-  /* The countdown sits in the tags' row (it is the row's last child) and
-     wraps under them when the card is narrow: pinned to the corner it
-     covered "20% off today" on a 667 px phone. */
-  .fit-deal-text > .fit-row {
-    flex-wrap: wrap;
-    row-gap: 4px;
-  }
-  .fit-deal-timer {
-    position: static;
-    margin-left: auto;
   }
   .fit-bundle {
     grid-template-columns: minmax(0, 1fr) auto;
