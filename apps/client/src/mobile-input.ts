@@ -146,34 +146,29 @@ export function mobileLayout(
       size: size * scale,
     });
     const attackY = short ? 47 : 51;
+    const targets = [
+      target("0", 28, short ? 22 : 26, 44),
+      target("1", 84, short ? 22 : 26, 44),
+      target("2", 140, short ? 22 : 26, 44),
+      target("3", 28, short ? 70 : 78, 44),
+      target("attack", 220, attackY, 88),
+      target("dash", 84, short ? 72 : 78, 48),
+      target("jump", 140, short ? 70 : 78, 44),
+    ];
+    // The target button: over the basic attack, past the cluster's top.
+    const aim = {
+      x: 220 * scale,
+      y: (attackY - 44 - 10 - 22) * scale,
+      size: 44 * scale,
+    };
     return {
       compact: true,
       joystick: compactJoystick,
       width: 270 * scale,
       height: (short ? 96 : 102) * scale,
-      targets: [
-        target("0", 28, short ? 22 : 26, 44),
-        target("1", 84, short ? 22 : 26, 44),
-        target("2", 140, short ? 22 : 26, 44),
-        target("3", 28, short ? 70 : 78, 44),
-        target("attack", 220, attackY, 88),
-        target("dash", 84, short ? 72 : 78, 48),
-        target("jump", 140, short ? 70 : 78, 44),
-      ],
-      // The target button: over the basic attack, past the cluster's top.
-      aim: {
-        x: 220 * scale,
-        y: (attackY - 44 - 10 - 22) * scale,
-        size: 44 * scale,
-      },
-      // A boss's contextual action (Turn mirror, Look away): above the
-      // first skill, past the cluster's top (negative y). A narrow screen
-      // has no room beside the skills: the raider needs the middle.
-      context: {
-        x: 28 * scale,
-        y: ((short ? 22 : 26) - 22 - 10 - 22) * scale,
-        size: 44 * scale,
-      },
+      targets,
+      aim,
+      context: contextPair(aim, targets, 44 * scale, 10 * scale),
     };
   }
   const unit = Math.max(
@@ -279,25 +274,42 @@ export function mobileLayout(
     dash.y - dash.size / 2 - gap - aimSize / 2,
     dx < clear ? ult.y - Math.sqrt(clear ** 2 - dx ** 2) : Infinity,
   );
-  // A boss's contextual action (Turn mirror, Look away), as action games
-  // put an interact prompt by the skills: left of skill 1 (low on the
-  // ring's left, where the right thumb rests; owner, 20 Nov 2026: skill 2's
-  // side sat too high), one gap away, past the cluster's left edge.
-  const skill1 = targets.find((t) => t.action === "0")!;
-  const contextSize = Math.max(44, 52 * scale);
+  const aim = { x: aimX, y: aimY, size: aimSize };
   return {
     compact: false,
     joystick,
     width: ring.width + 2 * margin,
     height: ring.height + 2 * margin,
     targets: order.map((action) => targets.find((t) => t.action === action)!),
-    aim: { x: aimX, y: aimY, size: aimSize },
-    context: {
-      x: skill1.x - skill1.size / 2 - gap - contextSize / 2,
-      y: skill1.y,
-      size: contextSize,
-    },
+    aim,
+    context: contextPair(aim, targets, Math.max(44, 52 * scale), gap),
   };
+}
+
+/** Room under a contextual button for its name (CSS px). */
+const CONTEXT_LABEL = 12;
+/**
+ * A boss's two contextual actions (Turn mirror, Look away), side by side in
+ * the court's free top-right corner: left of the target button, level with
+ * it, and lifted over any cluster button below them with room for their
+ * names (owner, 24 Nov 2026: both always showing, up there, not one at a
+ * time by skill 1). `x`/`y` are the pair's centre; `size` is one button.
+ */
+function contextPair(
+  aim: { x: number; y: number; size: number },
+  targets: readonly TouchTarget[],
+  size: number,
+  gap: number,
+) {
+  // Between the two: room for their names (about 50 px at 9 px type).
+  const between = Math.max(gap, 18);
+  const width = 2 * size + between;
+  const x = aim.x - aim.size / 2 - gap - width / 2;
+  let y = aim.y;
+  for (const t of targets)
+    if (Math.abs(t.x - x) < width / 2 + t.size / 2 + gap)
+      y = Math.min(y, t.y - t.size / 2 - gap - CONTEXT_LABEL - size / 2);
+  return { x, y, size, width, height: size };
 }
 
 /**

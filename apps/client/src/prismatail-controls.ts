@@ -2,12 +2,12 @@ import type { Snapshot, Fighter } from "@arena/shared";
 import { setHudStyle } from "./hud-dom";
 
 /**
- * Phones (owner, 20 Nov 2026): the pair lives in the touch cluster's
- * contextual slot, left of skill 1, as action games put an interact prompt
- * by the skills. One round button shows only when it can be used: Turn
- * mirror by a mirror, Look away while Glare winds up (it takes the slot
- * then, as the danger), with Glare's wind-up as a ring. Desktop keeps both
- * as labelled buttons.
+ * Phones (owner, 24 Nov 2026): the pair sits side by side in the touch
+ * cluster's contextual slot, the court's free top-right corner left of the
+ * target button, both always showing (one at a time, by skill 1, was hard to
+ * find mid-fight). Turn mirror dims with no mirror in reach; Look away lights
+ * up while Glare winds up, with the wind-up as a ring. Desktop keeps both as
+ * labelled buttons.
  *
  * The icons are drawn (SVG on a 24-unit box, centred), not text glyphs:
  * a font's ↻ sits off-centre in a round button.
@@ -165,8 +165,8 @@ export function renderPrismatailControls(
   turn.disabled = !nearby;
   const glare = state.raid!.warnings.find((w) => w.kind === "glare");
   panel.classList.toggle("glare-warning", !!glare);
-  // Contextual: each shows only when it can be used (Look away also while
-  // held, so letting go is never a moving target).
+  // Both always show; each lights up when it matters (Look away also while
+  // held).
   turn.toggleAttribute("data-ready", !!nearby);
   away.toggleAttribute("data-ready", !!glare || lookingAway);
   // How far Glare has wound up (0 to 1): the ring round Look away.

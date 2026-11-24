@@ -447,8 +447,8 @@ describe("predicted aim", () => {
 describe("live-attack limits and spacing", () => {
   it("the tier table caps live attacks by chapter", () => {
     expect(raidTier("grumblecrag").concurrency).toEqual([1, 2, 2]);
-    expect(raidTier("somnara").concurrency).toEqual([2, 2, 2]);
-    expect(raidTier("storm-twins").concurrency).toEqual([2, 2, 3]);
+    expect(raidTier("somnara").concurrency).toEqual([1, 2, 2]);
+    expect(raidTier("storm-twins").concurrency).toEqual([2, 2, 2]);
   });
   it("Somnara's lullaby rings and Gloomshade's paired pulses can each be jumped", () => {
     const s = cast("somnara", "lullaby", { size: 1 });

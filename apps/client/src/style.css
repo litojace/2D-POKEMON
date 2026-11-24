@@ -15512,14 +15512,14 @@ body.battle-active #arena-overlay#arena-overlay.is-countdown:not(:empty) {
   height: 1.15em;
 }
 
-/* ── Contextual boss actions on phones (owner, 20 Nov 2026) ──
-   Prismatail's Turn mirror / Look away share the touch cluster's slot, left
-   of skill 1 (mobile-input.ts context), as action games put an interact
-   prompt by the skills. One round button shows only when it can be used
-   (prismatail-controls.ts data-ready): Turn mirror by a mirror; Look away
-   while Glare winds up, taking the slot as the danger, with the wind-up as
-   a gold ring. The icon is centred on the circle exactly (a drawn icon in
-   a box over the whole button). */
+/* ── Contextual boss actions on phones (owner, 20 Nov 2026; moved and
+   both shown, 24 Nov 2026) ──
+   Prismatail's Turn mirror and Look away sit side by side in the court's
+   free top-right corner, left of the target button (mobile-input.ts
+   contextPair), both always showing. Turn mirror dims while no mirror is in
+   reach; Look away lights up while Glare winds up, with the wind-up as a
+   gold ring. Each icon is centred on its circle exactly (a drawn icon in a
+   box over the whole button). */
 .touch-buttons .touch-context {
   position: absolute;
   pointer-events: none;
@@ -15533,7 +15533,14 @@ body.battle-active.touch-mode.battle-raid
   height: 100%;
   max-width: none;
   max-height: none;
-  display: block;
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
   transform: none;
   pointer-events: none;
 }
@@ -15541,13 +15548,13 @@ body.battle-active.touch-mode.battle-raid
   .touch-context
   #raid-prism-controls.is-context
   button {
-  position: absolute;
-  inset: 0;
-  display: none;
+  position: relative;
+  display: block;
   flex: none;
-  width: 100%;
-  height: 100%;
+  width: var(--ctx-size, 44px);
+  height: var(--ctx-size, 44px);
   min-height: 0;
+  margin: 0;
   padding: 0;
   overflow: visible;
   border: 2px solid #e5cc89;
@@ -15556,6 +15563,9 @@ body.battle-active.touch-mode.battle-raid
   color: #ffebaf;
   font-size: 0;
   pointer-events: auto;
+  transition:
+    opacity 0.15s ease-out,
+    box-shadow 0.15s ease-out;
 }
 /* Not a skill: no cooldown ring (.touch-buttons button::before). */
 body.battle-active.touch-mode.battle-raid
@@ -15564,19 +15574,18 @@ body.battle-active.touch-mode.battle-raid
   button::before {
   content: none;
 }
+/* Turn mirror with no mirror in reach: still there, dimmed. */
 body.battle-active.touch-mode.battle-raid
   .touch-context
   #raid-prism-controls.is-context
-  button[data-ready] {
-  display: block;
-  animation: context-pop 0.18s ease-out;
+  button:not([data-ready]) {
+  opacity: 0.5;
 }
-/* One slot: Look away takes it while Glare winds up. */
 body.battle-active.touch-mode.battle-raid
   .touch-context
-  #raid-prism-controls.is-context:has([data-prism-away][data-ready])
-  [data-prism-turn] {
-  display: none;
+  #raid-prism-controls.is-context
+  [data-prism-away]:not([data-ready]) {
+  opacity: 0.8;
 }
 body.battle-active.touch-mode.battle-raid
   .touch-context
@@ -15614,9 +15623,23 @@ body.battle-active.touch-mode.battle-raid
 body.battle-active.touch-mode.battle-raid
   .touch-context
   #raid-prism-controls.is-context
+  [data-prism-turn][data-ready] {
+  border-color: #8bf0cc;
+  box-shadow: 0 0 10px #8bf0cc66;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
   [data-prism-away][data-ready] {
   border-color: #ffd65b;
-  box-shadow: 0 0 12px #ffd65b88;
+  background: #3a2a10f0;
+  box-shadow: 0 0 14px #ffd65baa;
+  animation: glare-call 0.5s ease-in-out infinite alternate;
+}
+@keyframes glare-call {
+  to {
+    box-shadow: 0 0 22px #ffd65b;
+  }
 }
 /* Glare's wind-up: a gold ring round Look away that fills to the flash. */
 body.battle-active.touch-mode.battle-raid
@@ -15641,12 +15664,6 @@ body.battle-active.touch-mode.battle-raid
     transparent calc(100% - 4px),
     #000 calc(100% - 3px)
   );
-}
-@keyframes context-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.6);
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   body.battle-active.touch-mode.battle-raid

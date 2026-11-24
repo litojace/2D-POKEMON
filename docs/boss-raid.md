@@ -17,15 +17,17 @@ Every raid runs at Peril 3 (since migration 030). A boss's stars (`RAID_BOSSES[b
 |---|---|---|---|
 | Boss health × (on top of the Peril 3 formula) | 1.15 | 1.25 | 1.35 |
 | Boss damage × (replaces Peril 3's 1.5) | 1.75 | 1.95 | 2.15 |
-| Time between attacks × | 0.85 | 0.78 | 0.72 |
-| Most damaging attacks live at once, chapters 1 / 2 / 3 | 1 / 2 / 2 | 2 / 2 / 2 | 2 / 2 / 3 |
-| Telegraphs of 1.4 s or more × (never under 0.9 s) | 0.95 | 0.88 | 0.82 |
+| Time between attacks × | 0.85 | 0.88 | 0.90 |
+| Most damaging attacks live at once, chapters 1 / 2 / 3 | 1 / 2 / 2 | 1 / 2 / 2 | 2 / 2 / 2 |
+| Telegraphs of 1.4 s or more × (never under 0.9 s) | 0.95 | 0.92 | 0.88 |
 | Predictive aim: share of a run led / most it leads | 55% / 110 px | 70% / 140 px | 80% / 160 px |
 | Exposure, strand and grounded windows × | 0.90 | 0.80 | 0.72 |
 | Soft enrage from (seconds of combat) | 270 | 300 | 330 |
 | Solo self-revive | 8 s, 30% health | 8 s, 25% health | none |
 | Revive time / immunity after it | 3.5 s / 1.5 s | 4 s / 1.25 s | 4.5 s / 1 s |
 | Party pressure (3+ raiders) | chapter 2+ | chapter 2+ | every chapter |
+
+The ★★ and ★★★ rows were slowed on 24 Nov 2026 (owner: they cast so fast the phone camera kept zooming in and out with no time to breathe; health and damage stayed). Their own base rhythms are already quicker than Grumblecrag's, so ★★ still attacks about every 4.2–4.4 s and ★★★ about every 4.0–4.1 s solo (Prismell Glare’s wind-up also went from 1 s to 1.8 s, about 1.6 s on ★★★).
 
 Parties also face a quicker rhythm: the time between attacks × (1 − 0.05 per raider after the first), so four raiders get ×0.85. Past the enrage time the boss **grows furious** (announced in the callout line, and *FURIOUS* in the boss bar): every 30 s, up to four times, it attacks 6% faster and hits 8% harder. Telegraphs never get shorter for it.
 

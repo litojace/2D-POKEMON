@@ -41,7 +41,8 @@ export const PRISMATAIL = {
   scramble: { warn: 1.5, mirrors: [1, 2, 2], turns: [2, 3] },
   lance: { delay: 1.1, width: 26, damage: 25 },
   fan: { delay: 1.45, radius: 650, damage: 24 },
-  glare: { delay: 1, blind: 1.5 },
+  /** Glare's wind-up (×0.88 on ★★★: about 1.6 s) and the blindness after. */
+  glare: { delay: 1.8, blind: 1.5 },
   halo: { delay: 1.75, radius: 150, width: 38, gap: 0.65, damage: 28 },
 } as const;
 /** How long the light relay must stay connected to break the shield. */
