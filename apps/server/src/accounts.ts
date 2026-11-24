@@ -108,7 +108,7 @@ export interface AccountProvider {
   recordRaid?(receipt: RaidReceipt): Promise<void>;
   /** The Spire: save one cleared floor (first-clear rewards once per player). */
   recordSpireFloor?(receipt: SpireFloorReceipt): Promise<SpireFloorResult>;
-  /** The Spire: each climber's checkpoint and raid clears, before a climb. */
+  /** The Spire: each climber's checkpoint, highest floor and raid clears, before a climb. */
   spireStart?(accountIds: string[]): Promise<SpireMember[]>;
   /** Coins, missions and Mythic progress after a real match or raid. */
   recordActivity?(receipt: ActivityReceipt): Promise<void>;
@@ -436,6 +436,7 @@ export function createAccountProvider(): AccountProvider {
         );
       return ((r.data as SpireMember[] | null) ?? []).map((m) => ({
         checkpoint: Number(m.checkpoint) || 1,
+        highestFloor: Math.max(0, Number(m.highestFloor) || 0),
         clears: m.clears ?? {},
       }));
     },

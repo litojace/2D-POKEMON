@@ -785,7 +785,7 @@ test("Jump and Dash work while the other thumb holds the joystick", async ({
  * (bodyPose stamps `bobT` with the frame's time) and you were in the view:
  * a body not drawn keeps its last bob, so its "bob" says nothing.
  */
-async function runningJump(page: Page, skipMs: number) {
+async function runningJump(page: Page, skipMs: number, airDur = 1.5) {
   await teleport(page, 2060, 760);
   await page.waitForTimeout(500);
   await page.locator(".plaza-layer").focus();
@@ -795,34 +795,62 @@ async function runningJump(page: Page, skipMs: number) {
       timeout: 20_000,
     })
     .toBeGreaterThan(100);
-  const frames: { bob: number; drawn: boolean; seen: boolean }[] =
-    await page.evaluate(
-      (skipMs) =>
-        new Promise((done) => {
-          const d = (window as any).__plaza,
-            P = d.P,
-            out: { bob: number; drawn: boolean; seen: boolean }[] = [],
-            t0 = performance.now();
-          P.air = 1e-4;
-          P.airDur = 1.5;
-          P.airH = 42;
-          const loop = (now: number) => {
-            if (!P.air || now - t0 > 8000) return done(out);
-            if (now - t0 > skipMs) {
-              const v = d.view();
-              out.push({
-                bob: P.bob || 0,
-                drawn: P.bobT === now / 1000,
-                seen: P.x > v.x0 && P.x < v.x1 && P.y > v.y0 && P.y < v.y1,
-              });
-            }
-            requestAnimationFrame(loop);
-          };
+  const { frames, end } = await page.evaluate(
+    ([skipMs, airDur]) =>
+      new Promise<{
+        frames: { bob: number; drawn: boolean; seen: boolean }[];
+        end: string;
+      }>((done) => {
+        const d = (window as any).__plaza,
+          P = d.P,
+          out: { bob: number; drawn: boolean; seen: boolean }[] = [],
+          t0 = performance.now();
+        // Who ends the jump, for the report when no frame was judged.
+        let air = P.air,
+          ended = "";
+        Object.defineProperty(P, "air", {
+          configurable: true,
+          enumerable: true,
+          get: () => air,
+          set: (v: number) => {
+            if (air && !v && !ended)
+              ended = `at ${Math.round(performance.now() - t0)} ms, air ${air.toFixed(2)} s: ${new Error().stack?.split("\n").slice(2, 4).join(" <")}`;
+            air = v;
+          },
+        });
+        const finish = () => {
+          Object.defineProperty(P, "air", {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: air,
+          });
+          done({
+            frames: out,
+            end: `${ended || "still in the air"}; x ${Math.round(P.x)} y ${Math.round(P.y)} stun ${P.stun}`,
+          });
+        };
+        P.air = 1e-4;
+        P.airDur = airDur;
+        P.airH = 42;
+        const loop = (now: number) => {
+          if (!P.air || now - t0 > 8000) return finish();
+          if (now - t0 > skipMs) {
+            const v = d.view();
+            out.push({
+              bob: P.bob || 0,
+              drawn: P.bobT === now / 1000,
+              seen: P.x > v.x0 && P.x < v.x1 && P.y > v.y0 && P.y < v.y1,
+            });
+          }
           requestAnimationFrame(loop);
-        }),
-      skipMs,
-    );
+        };
+        requestAnimationFrame(loop);
+      }),
+    [skipMs, airDur],
+  );
   await page.keyboard.up("d");
+  if (!frames.length) console.log(`no frame judged: the jump ended ${end}`);
   return frames;
 }
 
@@ -868,8 +896,13 @@ test("at a frame every 1.5 s the camera keeps you on the screen", async ({
   });
   const errors = await openPlaza(page);
   await page.evaluate(() => ((window as any).__slowFrames = true));
-  // 1.5 s a frame eases the walk bob out at once: judge every frame.
-  const frames = await runningJump(page, 0);
+  // 1.5 s a frame eases the walk bob out at once: judge every frame. A
+  // frame moves you at most 1 s (plaza-scene.ts, moveDt), so a 1.5 s jump
+  // lasted two frames and was judged on one; on CI it was sometimes judged
+  // on none (#398 and #399, 24 Nov), when the game took both steps before
+  // the test's first frame. A 4 s jump spans four frames (three judged
+  // locally); if none is judged again, the log says what ended the jump.
+  const frames = await runningJump(page, 0, 4);
   expect(frames.length).toBeGreaterThan(0);
   expect(frames.filter((f) => !f.drawn || !f.seen)).toEqual([]);
   expect(Math.max(...frames.map((f) => Math.abs(f.bob)))).toBeLessThan(0.5);

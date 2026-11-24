@@ -107,6 +107,56 @@ body.touch-mode.chat-corner
   margin-left: 0;
   max-width: none;
 }
+/* The chat buttons over a whole-screen sheet (the room's chat at the
+   results, quick chat over a briefing): no dark disc of their own, just
+   the gold icon on the sheet's solid navy, as the room banner's
+   (screens/room.css; owner, 24 Nov 2026). A soft fill and the gold rim
+   come up on hover, focus or while the chat is open. The hub's, the
+   battle's, the break's and the rites' keep their disc: the world or the
+   court shows behind them, where a bare icon reads poorly, and the gear
+   beside them keeps its own. Still 40–44 px to tap. */
+:root
+  body.battle-active:has(#arena-overlay.is-sheet:not(:empty))
+  :is(#chat-button, #battle-chat) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ui-accent);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+:root
+  body.battle-active:has(#arena-overlay.is-sheet:not(:empty))
+  :is(#chat-button, #battle-chat):is(
+    :hover,
+    :focus-visible,
+    [aria-expanded="true"]
+  ) {
+  border-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--ui-text) 8%, transparent);
+}
+/* With no disc round it, the unread count sits on the icon's own top
+   right corner (the 22 px icon is centred in the button), as in a room. */
+:root
+  body.battle-active:has(#arena-overlay.is-sheet:not(:empty))
+  #chat-button
+  .chat-unread {
+  top: calc(50% - 19px);
+  right: auto;
+  left: calc(50% + 3px);
+}
+/* On top of the sheet. On a phone #battle is fixed, its own stacking
+   context, so the sheet's z-index 80 stays inside it and the buttons (on
+   <body>) show over it; on a desktop #battle is not, and the sheet covered
+   both buttons, quick chat's grid and its feed (the rites share its
+   z-index, so they are kept under the buttons too). */
+body.battle-active:has(#arena-overlay:is(.is-sheet, .is-rites):not(:empty))
+  :is(#chat-button, #battle-chat, #battle-chat-grid, #battle-chat-feed) {
+  z-index: 81;
+}
 
 /* The heading: the Reveal's gold kicker and big title, centred. */
 #arena-overlay#arena-overlay.is-sheet .rc-head,

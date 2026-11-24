@@ -222,7 +222,8 @@ describe("spireLobbyCard", () => {
       }),
     ).toMatchObject({
       title: "Best: floor 7",
-      note: "Climb from floor 1 · Raid Coliseum",
+      // Past zone 1's elite (floor 5): the climb starts at floor 6.
+      note: "Climb from floor 6 · Raid Coliseum",
       fresh: false,
     });
     expect(

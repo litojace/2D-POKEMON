@@ -82,6 +82,7 @@ import {
 import { setupHomeNavigation } from "./home-navigation";
 import {
   openLobby,
+  releaseParkedLobbyRig,
   partyLobbyMode,
   type LobbyAction,
   type LobbyHandle,
@@ -2841,7 +2842,10 @@ function syncHub() {
   if (hub) document.body.dataset.hubScene = hubScene;
   else delete document.body.dataset.hubScene;
   syncParty();
-  syncLobby(hub && hubScene === "lobby");
+  // Off to the Plaza (the hub stays up), your fighter's rig waits for the
+  // way back; out of the hub (a battle), it goes.
+  syncLobby(hub && hubScene === "lobby", hub && hubScene === "plaza");
+  if (!hub) releaseParkedLobbyRig();
   worldWait = null;
   syncPlaza(hub && hubScene === "plaza", hub);
   renderWorldWait();
@@ -3175,7 +3179,7 @@ const guide = createGuide({
   changed: () => syncLobby(!!lobby),
   toast: (text) => toast(text),
 });
-function syncLobby(want: boolean) {
+function syncLobby(want: boolean, park = false) {
   if (!want) {
     // The tour points at the Lobby: it goes with it (shown again next time).
     if (tour?.open) {
@@ -3185,7 +3189,7 @@ function syncLobby(want: boolean) {
     clearTimeout(tourTimer);
     tourTimer = undefined;
     if (lobby) {
-      lobby.close();
+      lobby.close({ park });
       lobby = undefined;
       clearInterval(lobbyFriendsTimer);
     }

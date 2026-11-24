@@ -14,7 +14,10 @@ import {
   SPIRE_ROLES,
   SPIRE_ZONES,
   spireBlessingText,
+  spireCatchUpPicks,
+  spireEliteFloor,
   spireStartCheckpoint,
+  spireZoneStart,
   type SpireBlessingId,
   type SpireFloor,
   spireBorrowed,
@@ -51,6 +54,23 @@ const zoneOf = (f: SpireFloor) => SPIRE_ZONES[f.zone] ?? SPIRE_ZONES[1];
 const ascendantOf = (f: SpireFloor) => zoneOf(f).ascendant;
 /** What the Ascendant brings that its raid didn't (the boss floor's briefing). */
 const ascendantNew = (f: SpireFloor) => zoneOf(f).ascendantMoves;
+
+/**
+ * Where this party's next climb starts (the server's count, past the elite
+ * once everyone has beaten it); an older server's zone start otherwise.
+ */
+const nextClimb = (s: NonNullable<NonNullable<Snapshot["raid"]>["spire"]>) =>
+  s.checkpoint ??
+  spireStartCheckpoint(Math.max(s.startFloor, s.best + 1), s.ceiling);
+/** The briefing's line on the checkpoint after the zone's elite. */
+function eliteCheckpointLine(
+  s: NonNullable<NonNullable<Snapshot["raid"]>["spire"]>,
+) {
+  const elite = spireEliteFloor(s.zone);
+  if (elite === undefined || s.startFloor > elite || elite >= s.ceiling)
+    return "";
+  return ` Beat the elite on floor ${elite} and, until you conquer the zone, your climbs start from floor ${elite + 1}.`;
+}
 
 /** Who a floor sends: each wave's Echoes and their roles. */
 export function spireFloorPlan(f: SpireFloor | undefined) {
@@ -158,14 +178,17 @@ export function spireOverlay(state: Snapshot, me: Fighter, arena?: ArenaLoad) {
   } else if (state.phase === "briefing") {
     const waiting = state.instructionsReady.includes(me.id);
     title = `Floor ${s.floor} · ${escape(floor?.name ?? "The Spire")}`;
-    body = `<div class="rc-body spire-briefing" tabindex="0" role="region" aria-label="Floor briefing"><p class="spire-lead">Echoes are shadow copies of the champions, with their whole kits. Read their wind-ups as you would in a match, and beat every wave to open the stairs.</p>${spireFloorPlan(floor)}<ul class="spire-rules"><li>${menuIcon("sparkle")}<span>After each floor you pick a <b>blessing</b>. They stack until the climb ends.</span></li><li>${menuIcon("save")}<span>Every floor you clear is <b>saved at once</b>, with its first-clear reward.</span></li><li>${menuIcon("again")}<span>${r.partySize > 1 ? "Stand beside a fallen ally to revive them." : "One self-revive on each floor."} A defeat ends the climb; you start again from floor ${spireStartCheckpoint(s.startFloor, s.ceiling)}.</span></li></ul></div>`;
+    body = `<div class="rc-body spire-briefing" tabindex="0" role="region" aria-label="Floor briefing"><p class="spire-lead">Echoes are shadow copies of the champions, with their whole kits. Read their wind-ups as you would in a match, and beat every wave to open the stairs.</p>${spireFloorPlan(floor)}<ul class="spire-rules"><li>${menuIcon("sparkle")}<span>${s.catchUp ? `You start at your checkpoint, past the elite: first pick the <b>${s.catchUp.of} blessings</b> of the floors before it, then one more after each floor. They stack until the climb ends.` : "After each floor you pick a <b>blessing</b>. They stack until the climb ends."}</span></li><li>${menuIcon("save")}<span>Every floor you clear is <b>saved at once</b>, with its first-clear reward.</span></li><li>${menuIcon("again")}<span>${r.partySize > 1 ? "Stand beside a fallen ally to revive them." : "One self-revive on each floor."} A defeat ends the climb; you start again from floor ${nextClimb(s)}.${eliteCheckpointLine(s)}</span></li></ul></div>`;
     acts = `<p class="ui-note rc-meta">Climbing from floor ${s.startFloor} · ${r.partySize === 1 ? "Solo" : `${r.partySize} climbers`}</p>${actions(readyButton(waiting, arena, "I’m ready", "I’m ready — start the climb"))}`;
   } else if (state.phase === "intermission") {
     const offers = s.offers[me.id] ?? [];
     const mine = s.blessings[me.id] ?? {};
     // The server drops the offer once one is picked: the cards stay put,
     // the picked one checked (like rites), from what was first offered.
-    const key = `${s.floor}:${me.id}`;
+    // A climb resumed past the elite deals several choices before one
+    // floor: each is its own (the same three cards may come twice).
+    const catchUp = s.catchUp && s.catchUp.round > 0 ? s.catchUp : undefined;
+    const key = `${s.floor}:${catchUp?.round ?? 0}:${me.id}`;
     if (
       offers.length &&
       (offered.key !== key || offers.join() !== offered.ids.join())
@@ -191,7 +214,19 @@ export function spireOverlay(state: Snapshot, me: Fighter, arena?: ArenaLoad) {
           ? "Elite floor"
           : `${s.waves} waves`;
     const heading = locked ? "Blessing chosen" : "Choose a blessing";
-    screen = `<div class="rites-screen is-spire" role="dialog" aria-label="${heading}, floor ${s.floor} next"><header class="rites-head"><div class="rites-lead"><span class="rites-kicker">The Spire · Floor ${s.floor} next</span><h2 class="rites-title">${heading} <span class="rites-pips" aria-hidden="true"><i${picked || locked ? ' class="on"' : ""}></i></span></h2><p class="rites-objective"><b>${escape(floor?.name ?? "")}</b> · ${kind} · ${escape(spireFloorLine(floor))}</p></div><span class="raid-choice-timer" role="timer" aria-label="Time left to choose">${LIVE_NUMBER}</span></header><div class="raid-rite-options spire-blessings">${cards || "<p>Blessing locked in · waiting for the team.</p>"}</div><footer class="rites-foot">${locked ? '<span class="raid-rite-locked">Blessing locked in · waiting for the team</span>' : "<span>One of three · they stack</span>"}<details class="raid-team-summary"><summary>Your blessings</summary><div class="spire-team" aria-label="Team blessings">${heroes.map((p) => `<div><b>${escape(p.name)}</b><span>${escape(held(state, p.id))}${s.offers[p.id]?.length ? " · Choosing…" : ""}</span></div>`).join("")}</div></details></footer></div>`;
+    const done = picked || locked;
+    // Catching up: one pip per skipped floor, filled as they are chosen.
+    const pips = catchUp
+      ? Array.from(
+          { length: catchUp.of },
+          (_, i) =>
+            `<i${i < catchUp.round - 1 || (i === catchUp.round - 1 && done) ? ' class="on"' : ""}></i>`,
+        ).join("")
+      : `<i${done ? ' class="on"' : ""}></i>`;
+    const kicker = catchUp
+      ? `Checkpoint · blessing ${catchUp.round} of ${catchUp.of}`
+      : `Floor ${s.floor} next`;
+    screen = `<div class="rites-screen is-spire" role="dialog" aria-label="${heading}, ${catchUp ? `checkpoint blessing ${catchUp.round} of ${catchUp.of}, ` : ""}floor ${s.floor} next"><header class="rites-head"><div class="rites-lead"><span class="rites-kicker">The Spire · ${kicker}</span><h2 class="rites-title">${heading} <span class="rites-pips" aria-hidden="true">${pips}</span></h2><p class="rites-objective"><b>${escape(floor?.name ?? "")}</b> · ${kind} · ${escape(spireFloorLine(floor))}</p></div><span class="raid-choice-timer" role="timer" aria-label="Time left to choose">${LIVE_NUMBER}</span></header><div class="raid-rite-options spire-blessings">${cards || "<p>Blessing locked in · waiting for the team.</p>"}</div><footer class="rites-foot">${locked ? '<span class="raid-rite-locked">Blessing locked in · waiting for the team</span>' : catchUp ? `<span>One of three · for floor ${spireZoneStart(s.zone) + catchUp.round}, which you skipped</span>` : "<span>One of three · they stack</span>"}<details class="raid-team-summary"><summary>Your blessings</summary><div class="spire-team" aria-label="Team blessings">${heroes.map((p) => `<div><b>${escape(p.name)}</b><span>${escape(held(state, p.id))}${s.offers[p.id]?.length ? " · Choosing…" : ""}</span></div>`).join("")}</div></details></footer></div>`;
   } else if (state.phase === "countdown") {
     title = LIVE_COUNTDOWN;
     body = `<p>Floor ${s.floor} · ${escape(floor?.name ?? "")}</p>`;
@@ -235,18 +270,17 @@ export function spireOverlay(state: Snapshot, me: Fighter, arena?: ArenaLoad) {
         : "";
     // This room climbs its zone again from its start; the account's
     // checkpoint moves on to the next zone once this one is conquered.
-    const next = spireStartCheckpoint(
-      Math.max(s.startFloor, s.best + 1),
-      s.ceiling,
-    );
+    // (Past the elite, the checkpoint stays there until the zone falls.)
+    const next = nextClimb(s);
     const checkpoint = conquered ? spireStartCheckpoint(s.best + 1) : next;
+    const owed = spireCatchUpPicks(s.zone, next);
     const banner = conquered
       ? `<p class="spire-conquered" role="status">${menuIcon("leaderboard")}<span><b>${escape(ascendantOf(top))} defeated.</b> ${escape(zoneOf(top).name)} is yours. ${nextZone ? (nextZone.floor <= SPIRE_BUILT_TOP ? `Zone ${nextZone.zone} opens at floor ${nextZone.floor}: pick it in the Spire to climb on.` : "More floors are coming.") : `You stand on the summit: all ${zoneOf(top).id} zones of the Spire are conquered. Climb any of them again from the Spire.`}</span></p>`
       : "";
     body = `${banner}<div class="rc-summary spire-summary"><div class="rc-stats"><span class="rc-stat"><b class="ui-num">${s.best || "—"}</b><small>Best floor</small></span><span class="rc-stat"><b class="ui-num">${checkpoint}</b><small>Checkpoint</small></span><span class="rc-stat"><b class="ui-num">${clock(s.climbSeconds)}</b><small>Climb time</small></span><span class="rc-stat"><b class="ui-num">${r.downs}</b><small>Downs</small></span></div></div>${rewards}<p class="spire-held"><span class="ui-kicker">Blessings</span>${escape(held(state, me.id))}</p>${saved ? `<p class="rc-save${!saving && !failed ? " is-saved" : failed ? " is-error" : ""}" role="status">${saved}</p>` : ""}${conquered ? "" : `<p class="rc-tip">${escape(r.message)}</p>`}`;
     const readyCount = heroes.filter((p) => p.ready).length;
     const retryWait = me.ready || !heroes.every((p) => p.connected);
-    acts = `<p class="ui-note rc-meta">${heroes.length === 1 ? `A new climb from floor ${next} · no blessings` : `${readyCount}/${heroes.length} ready · everyone confirms to climb again`}</p>${actions(
+    acts = `<p class="ui-note rc-meta">${heroes.length === 1 ? `A new climb from floor ${next} · ${owed ? `${owed} blessings to pick first` : "no blessings"}` : `${readyCount}/${heroes.length} ready · everyone confirms to climb again`}</p>${actions(
       button("Return to menu", {
         kind: "danger",
         icon: "home",

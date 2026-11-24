@@ -712,6 +712,40 @@ it("reads checkpoints and raid clears before a climb (lowest among the party)", 
   expect((await progress(bo)).clears).toEqual({ grumblecrag: 1 });
 });
 
+it("reads each climber's highest floor, so a climb resumes past the zone's elite", async () => {
+  // Cy clears zone 1's floors 1 to 6 (past the elite on floor 5) and has
+  // cleared Cragmuff's raid; Bo (above) reached floor 4, short of it.
+  const cy = "00000000-0000-4000-8000-0000000051a3";
+  await db.exec(
+    `reset role;insert into auth.users values('${cy}','{"display_name":"Cy"}');`,
+  );
+  await as(cy);
+  await db.query("select public.arena_me()");
+  for (let f = 1; f <= 6; f++) await record(floor(run(95), f, [cy]));
+  await db.exec(
+    `reset role;insert into public.arena_raid_runs(id,boss,peril,trait,gilded,weekly,week,party_size,seconds,downs,revives,receipt,result)
+     values('${run(96)}','grumblecrag',3,'ancient',false,false,'2026-11-09',1,200,0,0,'{}','victory');
+     insert into public.arena_raid_players(run_id,player_id,character) values('${run(96)}','${cy}','terradon');`,
+  );
+  const [me, them] = await server<(SpireMember & { id: string })[]>(
+    `select public.arena_spire_start(array['${cy}','${bo}']::uuid[]) as v`,
+  );
+  // The stored checkpoint stays the zone's first floor (it opens zones);
+  // the highest floor is what moves the climb past the elite.
+  expect([me.checkpoint, me.highestFloor]).toEqual([1, 6]);
+  expect(spireStartFrom([me], 1)).toMatchObject({
+    ok: true,
+    startFloor: 6,
+    resumed: true,
+    highest: [6],
+  });
+  // With Bo, who hasn't beaten the elite: the party starts at floor 1.
+  expect(them.highestFloor).toBe(4);
+  const party = spireStartFrom([me, them], 1);
+  expect(party).toMatchObject({ ok: true, startFloor: 1, highest: [6, 4] });
+  expect(party.resumed).toBeUndefined();
+});
+
 it("deletes a player's climb with their account", async () => {
   await db.exec(`reset role;delete from auth.users where id='${bo}'`);
   const left = (
