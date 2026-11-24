@@ -541,7 +541,7 @@
     opacity: 0;
   }
 }
-.plaza-layer .flash {
+.plaza-layer :where(.pz) .flash {
   position: absolute;
   inset: 0;
   background: #fff;
@@ -861,12 +861,12 @@
 }
 /* The glass itself (and its blur, at High graphics only) is in
    ui/aero.css; this is the Low look. */
-.plaza-layer .glass {
+.plaza-layer :where(.pz) .glass {
   background: #0b1020d9;
   border: 1px solid #ffffff26;
   box-shadow: 0 8px 24px #0006;
 }
-.plaza-layer .ico {
+.plaza-layer :where(.pz) .ico {
   width: 1.2em;
   height: 1.2em;
   display: inline-block;
@@ -874,7 +874,7 @@
   flex: none;
   overflow: visible;
 }
-.plaza-layer .ico.coin {
+.plaza-layer :where(.pz) .ico.coin {
   width: 1.05em;
   height: 1.05em;
   vertical-align: -0.17em;
@@ -883,7 +883,7 @@
 .plaza-layer [hidden] {
   display: none !important;
 }
-.plaza-layer button {
+.plaza-layer :where(.pz) button {
   font: inherit;
   color: inherit;
 }
@@ -1072,7 +1072,7 @@
   animation: pz-fadein 0.25s;
   z-index: 5;
 }
-.plaza-layer .polaroid {
+.plaza-layer :where(.pz) .polaroid {
   --pw: min(492px, 100cqw - 60px, (100cqh - 172px) * 640 / 420);
   box-sizing: border-box;
   width: calc(var(--pw) + 28px);
@@ -1084,7 +1084,7 @@
   transform: rotate(-2deg);
   animation: pz-snap 0.45s var(--ease-pop);
 }
-.plaza-layer .polaroid img {
+.plaza-layer :where(.pz) .polaroid img {
   display: block;
   width: var(--pw);
   height: calc(var(--pw) * 420 / 640);
@@ -1092,14 +1092,14 @@
   object-fit: cover;
   background: #d9d4c7;
 }
-.plaza-layer .polaroid p,
-.plaza-layer .polaroid small {
+.plaza-layer :where(.pz) .polaroid p,
+.plaza-layer :where(.pz) .polaroid small {
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.plaza-layer .polaroid p {
+.plaza-layer :where(.pz) .polaroid p {
   margin: 10px 2px 0;
   height: 26px;
   font-family: "Caveat", "Comic Sans MS", cursive;
@@ -1107,20 +1107,20 @@
   line-height: 26px;
   color: #2a2a2a;
 }
-.plaza-layer .polaroid small {
+.plaza-layer :where(.pz) .polaroid small {
   margin: 4px 2px 0;
   height: 16px;
   font-size: calc(12px * var(--text-scale, 1));
   line-height: 16px;
   color: #6b6b6b;
 }
-.plaza-layer .polaroid .acts {
+.plaza-layer :where(.pz) .polaroid .acts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 12px;
 }
-.plaza-layer .polaroid .acts > * {
+.plaza-layer :where(.pz) .polaroid .acts > * {
   box-sizing: border-box;
   display: block;
   height: 40px;
@@ -1143,30 +1143,30 @@
   background: #1a2547;
   color: #fff;
 }
-.plaza-layer .polaroid .acts > .pz-main {
+.plaza-layer :where(.pz) .polaroid .acts > .pz-main {
   background: var(--ui-accent);
   color: var(--ui-accent-ink);
 }
-.plaza-layer .polaroid .acts > .pz-delete {
+.plaza-layer :where(.pz) .polaroid .acts > .pz-delete {
   background: #3b1d2c;
   color: #ffc2c9;
 }
-.plaza-layer .polaroid .acts > .pz-delete[data-sure="1"] {
+.plaza-layer :where(.pz) .polaroid .acts > .pz-delete[data-sure="1"] {
   background: #e5484d;
   color: #fff;
 }
-.plaza-layer .polaroid .acts > :disabled {
+.plaza-layer :where(.pz) .polaroid .acts > :disabled {
   opacity: 0.6;
   cursor: default;
 }
-.plaza-layer .polaroid .acts > :focus-visible,
+.plaza-layer :where(.pz) .polaroid .acts > :focus-visible,
 .plaza-layer .pz-album-panel :focus-visible {
   outline: 2px solid #4fb3ff;
   outline-offset: 2px;
 }
 /* Phones: the print on the left, the buttons in a column beside it, so the
    photo can be as tall as the space under the header allows. */
-.plaza-layer.phone .polaroid {
+.plaza-layer.phone :where(.pz) .polaroid {
   --pw: min(400px, 100cqw - 200px, (100cqh - 76px) * 640 / 420);
   width: auto;
   display: flex;
@@ -1178,7 +1178,7 @@
   transform: none;
   animation: pz-fadein 0.25s;
 }
-.plaza-layer.phone .polaroid .print {
+.plaza-layer.phone :where(.pz) .polaroid .print {
   box-sizing: border-box;
   width: calc(var(--pw) + 16px);
   padding: 8px 8px 9px;
@@ -1188,24 +1188,24 @@
   transform: rotate(-2deg);
   animation: pz-snap 0.45s var(--ease-pop);
 }
-.plaza-layer.phone .polaroid p {
+.plaza-layer.phone :where(.pz) .polaroid p {
   margin: 6px 2px 0;
   height: 18px;
   font-size: calc(16px * var(--text-scale, 1));
   line-height: 18px;
 }
-.plaza-layer.phone .polaroid small {
+.plaza-layer.phone :where(.pz) .polaroid small {
   margin: 2px 2px 0;
   height: 14px;
   font-size: calc(11px * var(--text-scale, 1));
   line-height: 14px;
 }
-.plaza-layer.phone .polaroid .acts {
+.plaza-layer.phone :where(.pz) .polaroid .acts {
   width: 150px;
   grid-template-columns: minmax(0, 1fr);
   margin: 0;
 }
-.plaza-layer.phone .polaroid .acts > * {
+.plaza-layer.phone :where(.pz) .polaroid .acts > * {
   height: 38px;
   font-size: calc(13px * var(--text-scale, 1));
   line-height: 38px;
