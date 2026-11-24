@@ -32,8 +32,8 @@ const SIZES: {
     width: 1366,
     height: 1024,
     touch: true,
-    dash: 77,
-    jump: 102,
+    dash: 111,
+    jump: 147,
     ring: 149,
   },
   {
@@ -41,8 +41,8 @@ const SIZES: {
     width: 1133,
     height: 744,
     touch: true,
-    dash: 77,
-    jump: 102,
+    dash: 111,
+    jump: 147,
     ring: 149,
   },
   {
@@ -99,6 +99,31 @@ for (const size of SIZES)
     browser,
   }, info) => {
     const { context, page, errors } = await open(browser, size);
+    // On tablets the round buttons are small beside them (owner's size C),
+    // their words whole.
+    if (size.name.startsWith("ipad")) {
+      const rounds = await page
+        .locator(".plaza-layer .pz-left .pz-round")
+        .evaluateAll((els) =>
+          els.map((el) => {
+            const r = el.getBoundingClientRect(),
+              s = el.querySelector("small")!,
+              t = s.getBoundingClientRect();
+            // The word inside the circle: within its inscribed square-ish
+            // band (left and right edges at least 4 px in).
+            return {
+              w: r.width,
+              fits: t.left >= r.left + 4 && t.right <= r.right - 4,
+              font: parseFloat(getComputedStyle(s).fontSize),
+            };
+          }),
+        );
+      for (const r of rounds) {
+        expect(Math.round(r.w), "round button").toBe(56);
+        expect(r.fits, "its word fits").toBe(true);
+        expect(r.font).toBeGreaterThanOrEqual(11);
+      }
+    }
     // Dash and Jump: big enough to hit, round.
     for (const [id, min] of [
       ["#pz-dash", size.dash],
@@ -227,9 +252,13 @@ for (const size of SIZES.filter((s) => s.name.startsWith("ipad")))
     const act = page.locator("#pz-fish-act");
     await expect(act).toBeVisible();
     const ab = (await act.boundingBox())!;
-    expect(ab.width, "Cast").toBeGreaterThanOrEqual(100);
+    expect(ab.width, "Cast").toBeGreaterThanOrEqual(160);
     expect(ab.x + ab.width).toBeLessThanOrEqual(size.width);
     expect(ab.y + ab.height).toBeLessThanOrEqual(size.height);
+    for (const w of await page
+      .locator(".pz-fish-side .pz-round")
+      .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width)))
+      expect(Math.round(w), "today and Book").toBe(56);
     // Book and today sit above Cast, clear of it.
     const side = (await page.locator(".pz-fish-side").boundingBox())!;
     expect(side.y + side.height).toBeLessThanOrEqual(ab.y);
@@ -241,7 +270,7 @@ for (const size of SIZES.filter((s) => s.name.startsWith("ipad")))
       .toBe("wait");
     // Reel, as big as Cast.
     await expect(act).toHaveAttribute("data-kind", "reel");
-    expect((await act.boundingBox())!.width).toBeGreaterThanOrEqual(100);
+    expect((await act.boundingBox())!.width).toBeGreaterThanOrEqual(160);
     await page.evaluate(() => (window as any).__plazaBiteNow());
     await expect
       .poll(() =>
@@ -249,6 +278,26 @@ for (const size of SIZES.filter((s) => s.name.startsWith("ipad")))
       )
       .toBe("bite");
     await snap(page, info, `fishing-${size.name}-bite`);
+    // Hooked: Hold, the biggest, on screen. (A slow machine's tap can land
+    // after the bite's window: then the fish is gone, and that's fine.)
+    await act.click({ force: true });
+    const hooked = await expect
+      .poll(
+        () => page.evaluate(() => (window as any).__plaza.fishingMode.phase),
+        { intervals: [50], timeout: 5_000 },
+      )
+      .toBe("fight")
+      .then(
+        () => true,
+        () => false,
+      );
+    if (hooked) {
+      const hb = (await act.boundingBox())!;
+      expect(hb.width, "Hold").toBeGreaterThanOrEqual(184);
+      expect(hb.x + hb.width).toBeLessThanOrEqual(size.width);
+      expect(hb.y + hb.height).toBeLessThanOrEqual(size.height);
+      await snap(page, info, `fishing-${size.name}-hold`);
+    }
     expect(errors).toEqual([]);
     await context.close();
   });
