@@ -90,6 +90,42 @@ for (const viewport of [
         expect(cy, p.id).toBeGreaterThan(view.y - 1);
         expect(cy, p.id).toBeLessThan(view.b + 1);
       }
+      // Close is the kit's round one, at the size every Lobby panel's is.
+      const close = map.locator('[data-map="close"]');
+      await expect(close).toHaveClass(/\bui-icon-btn\b/);
+      const closeBox = await box(page, '[data-map="close"]');
+      expect(closeBox.w).toBe(phone ? 32 : 44);
+      expect(closeBox.h).toBe(closeBox.w);
+      // A quest's coin is the digits' size, on their middle (0.35em over the
+      // baseline: a stray margin once put it 2 px under them), and the rows
+      // with one are as tall as those without.
+      const coins = await page.evaluate(() =>
+        Array.from(document.querySelectorAll("#pz-map-list small.q")).map(
+          (s) => {
+            const probe = document.createElement("i");
+            probe.style.cssText =
+              "display:inline-block;width:0;height:0;margin:0;padding:0";
+            s.append(probe);
+            const baseline = probe.getBoundingClientRect().bottom;
+            probe.remove();
+            const c = s.querySelector("svg")!.getBoundingClientRect();
+            const em = parseFloat(getComputedStyle(s).fontSize);
+            return {
+              off: c.top + c.height / 2 - (baseline - 0.35 * em),
+              size: c.height / em,
+            };
+          },
+        ),
+      );
+      expect(coins.length).toBeGreaterThan(0);
+      for (const c of coins) {
+        expect(Math.abs(c.off), JSON.stringify(c)).toBeLessThan(0.75);
+        expect(c.size).toBeCloseTo(1.35, 1);
+      }
+      const heights = await map
+        .locator(".pz-map-list button")
+        .evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect().height));
+      expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1.5);
       await snap(page, info, `plaza-map-${viewport.width}`);
       // Go: the map closes and you walk toward the pond.
       const pond = PLAZA_PLACES.find((p) => p.id === "pond")!;

@@ -1048,6 +1048,19 @@
   min-height: 40px;
 }
 
+/* Close on the Plaza's panels (album, Fish book, map): the kit's round
+   Close (ui/components.ts iconButton, .ui-close's size), as on every Lobby
+   panel, so the Plaza's panels don't have their own square one. */
+.plaza-layer :is(.pz-album-panel, .pz-fishbook-panel, .pz-map-panel) .x {
+  width: var(--close);
+  height: var(--close);
+}
+@media (max-height: 500px) {
+  .plaza-layer :is(.pz-album-panel, .pz-fishbook-panel, .pz-map-panel) .x svg {
+    width: 16px;
+    height: 16px;
+  }
+}
 /* ---------- the polaroid and the photo album ----------
    Both dim the whole screen (the safe areas too) and keep their cards below
    the header and inside the HUD's frame (--hud-row2 and the --hud-x/y
@@ -1225,7 +1238,8 @@
   --rows: 5;
   --gap: 10px;
   --pad: 16px;
-  --head: 36px;
+  /* As tall as Close (--close: 44 px, 32 px on short screens). */
+  --head: max(36px, var(--close));
   --foot: 18px;
   --cmax: 128px;
   /* A cell's width: as big as allowed, small enough for every cell to fit. */
@@ -1252,7 +1266,7 @@
 }
 .plaza-layer .pz-album-panel header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 36px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   height: var(--head);
@@ -1285,20 +1299,6 @@
   line-height: 1.9em;
   text-align: center;
   font-variant-numeric: tabular-nums;
-}
-.plaza-layer .pz-album-panel .x {
-  width: 36px;
-  height: 36px;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 10px;
-  background: #ffffff12;
-  color: var(--dim);
-  font-size: calc(16px * var(--text-scale, 1));
-  line-height: 36px;
-  text-align: center;
-  cursor: pointer;
 }
 .plaza-layer .pz-album-grid {
   position: relative;
@@ -1390,19 +1390,13 @@
   --rows: 4;
   --gap: 6px;
   --pad: 10px;
-  --head: 30px;
+  --head: max(30px, var(--close));
   --foot: 14px;
   --cmax: 96px;
   border-radius: 14px;
 }
 .plaza-layer.phone .pz-album-panel header {
-  grid-template-columns: minmax(0, 1fr) auto 30px;
-}
-.plaza-layer.phone .pz-album-panel .x {
-  width: 30px;
-  height: 30px;
-  font-size: calc(14px * var(--text-scale, 1));
-  line-height: 30px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
 }
 .plaza-layer.phone .pz-album-grid button.slot {
   border-width: 2px;
@@ -1448,7 +1442,7 @@
 }
 .plaza-layer .pz-fishbook-panel header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 36px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
 }
@@ -1478,20 +1472,6 @@
   font-weight: 700;
   line-height: 1.9em;
   font-variant-numeric: tabular-nums;
-}
-.plaza-layer .pz-fishbook-panel .x {
-  width: 36px;
-  height: 36px;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 10px;
-  background: #ffffff12;
-  color: var(--dim);
-  font-size: calc(16px * var(--text-scale, 1));
-  line-height: 36px;
-  text-align: center;
-  cursor: pointer;
 }
 .plaza-layer .pz-fishbook-list {
   min-height: 0;
@@ -1556,16 +1536,10 @@
   border-radius: 14px;
 }
 .plaza-layer.phone .pz-fishbook-panel header {
-  grid-template-columns: minmax(0, 1fr) auto 30px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
 }
 .plaza-layer.phone .pz-fishbook-panel header b {
   font-size: 1.2em;
-}
-.plaza-layer.phone .pz-fishbook-panel .x {
-  width: 30px;
-  height: 30px;
-  font-size: calc(14px * var(--text-scale, 1));
-  line-height: 30px;
 }
 .plaza-layer.phone .pz-fishbook-list {
   grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
@@ -2140,7 +2114,7 @@
 }
 .plaza-layer .pz-map-panel header {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto 36px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
 }
@@ -2167,20 +2141,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.plaza-layer .pz-map-panel .x {
-  width: 36px;
-  height: 36px;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 10px;
-  background: #ffffff12;
-  color: var(--dim);
-  font-size: calc(16px * var(--text-scale, 1));
-  line-height: 36px;
-  text-align: center;
-  cursor: pointer;
 }
 /* The map keeps the Plaza's shape (27 : 17) and takes what height there
    is; the list takes the rest of the width and scrolls if it must. */
@@ -2342,7 +2302,7 @@
 .plaza-layer .pz-map-list button:focus-visible {
   background: #ffffff1c;
 }
-.plaza-layer .pz-map-list .ico {
+.plaza-layer .pz-map-list button > .ico {
   width: 30px;
   height: 30px;
 }
@@ -2367,10 +2327,17 @@
   color: var(--ui-accent, #ffd65b);
   font-weight: 700;
 }
+/* The coin after a quest's reward: its art fills two thirds of the box, so
+   1.35em reads as the digits' size. Its middle sits on the digits' middle
+   (0.35em over the baseline): the box's bottom 0.325em under it. No
+   vertical margin: an inline icon sits by its margin's edge, so a margin
+   moves it (a -0.2em one put the coin 2 px under the digits). */
 .plaza-layer .pz-map-list small .ico {
-  width: 1em;
-  height: 1em;
-  vertical-align: -0.15em;
+  width: 1.35em;
+  height: 1.35em;
+  /* The art's clear edge (1/6 of the box) is gap enough after the space. */
+  margin-left: -0.15em;
+  vertical-align: -0.325em;
 }
 .plaza-layer .pz-map-list i {
   padding: 0.25em 0.7em;
@@ -2389,16 +2356,10 @@
   border-radius: 14px;
 }
 .plaza-layer.phone .pz-map-panel header {
-  grid-template-columns: auto minmax(0, 1fr) auto 30px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
 }
 .plaza-layer.phone .pz-map-panel header b {
   font-size: 1.2em;
-}
-.plaza-layer.phone .pz-map-panel .x {
-  width: 30px;
-  height: 30px;
-  line-height: 30px;
-  font-size: calc(14px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-map-body {
   gap: 8px;
@@ -2427,7 +2388,7 @@
   padding: 3px 6px;
   border-radius: 8px;
 }
-.plaza-layer.phone .pz-map-list .ico {
+.plaza-layer.phone .pz-map-list button > .ico {
   width: 22px;
   height: 22px;
 }
