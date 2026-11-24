@@ -591,6 +591,7 @@
   display: flex;
   gap: 4px;
   overflow-x: auto;
+  overflow-y: hidden;
   padding: 4px 5px;
   border: 1px solid #a89ac32e;
   border-radius: 12px;

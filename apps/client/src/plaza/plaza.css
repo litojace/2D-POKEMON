@@ -1501,6 +1501,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
   gap: 8px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
@@ -2312,6 +2313,7 @@
   display: grid;
   align-content: start;
   gap: 6px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
@@ -2666,6 +2668,7 @@
   margin: 0;
   padding: 0.25em 0.35em 0.35em;
   list-style: none;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
 }

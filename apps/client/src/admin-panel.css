@@ -235,6 +235,7 @@ dialog.framed-dialog .adm-tabs > .admin-tab {
   flex-wrap: nowrap;
   gap: 6px;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
 }
 .adm .adm-chips::-webkit-scrollbar {
@@ -605,6 +606,7 @@ dialog.framed-dialog .adm-tabs > .admin-tab {
   display: flex;
   max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid #8baee540;
   border-radius: 10px;
   scrollbar-width: none;
@@ -668,6 +670,7 @@ dialog.framed-dialog .adm-tabs > .admin-tab {
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
 }
 .adm .adm-presets > button {

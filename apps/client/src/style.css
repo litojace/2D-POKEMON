@@ -1491,11 +1491,11 @@ body.battle-active.touch-mode {
   z-index: 30;
   padding: calc(var(--safe-top) + 10px) calc(var(--safe-right) + 12px)
     calc(var(--safe-bottom) + 10px) calc(var(--safe-left) + 12px);
-  overflow: auto;
+  overflow: hidden auto;
 }
 .battle-active.touch-mode .overlay-card {
   max-height: calc(100dvh - 30px);
-  overflow: auto;
+  overflow: hidden auto;
   width: min(540px, 95vw);
   padding: 20px;
   background: #14294af5;
@@ -1514,7 +1514,7 @@ body.battle-active.touch-mode {
   transform: translateX(-50%);
   max-width: 45vw;
   max-height: 100px;
-  overflow: auto;
+  overflow: hidden auto;
   opacity: 0.85;
   font-size: calc(10px * var(--text-scale, 1));
   padding: 8px;
@@ -1849,7 +1849,7 @@ main {
 dialog {
   max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 24px);
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
-  overflow: auto;
+  overflow: hidden auto;
   top: var(--safe-top);
   bottom: var(--safe-bottom);
   left: var(--safe-left);
@@ -1942,6 +1942,7 @@ dialog {
   min-width: 210px;
   max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 40px);
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 150px);
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 9px;
@@ -2166,7 +2167,7 @@ dialog {
   right: 0;
   width: min(420px, calc(100vw - var(--safe-left) - var(--safe-right) - 32px));
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 80px);
-  overflow: auto;
+  overflow: hidden auto;
   background: #152947f5;
   border: 1px solid #9bc4f34a;
   border-radius: 12px;
@@ -2246,7 +2247,7 @@ body.battle-still .spectator {
 .overlay-card {
   max-height: calc(100% - 24px);
   max-width: calc(100% - 24px);
-  overflow: auto;
+  overflow: hidden auto;
 }
 .battle-active.touch-mode #arena-overlay {
   position: fixed;
@@ -2259,7 +2260,7 @@ body.battle-still .spectator {
 .battle-active.touch-mode .overlay-card {
   max-height: 100%;
   max-width: 100%;
-  overflow: auto;
+  overflow: hidden auto;
 }
 
 /* Empty phase overlays must not shade or intercept an active match. */
@@ -2813,7 +2814,7 @@ body.battle-still .spectator {
 dialog.has-dialog-tabs {
   width: min(760px, 94vw);
   max-height: 90vh;
-  overflow: auto;
+  overflow: hidden auto;
 }
 .admin-tabs,
 .report-filter {
@@ -6865,6 +6866,7 @@ button.small .button-icon {
   min-width: 0;
   min-height: 0;
   max-height: calc(var(--raid-dialog-height) - 54px);
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -8768,7 +8770,7 @@ dialog.framed-dialog > .dialog-content {
   height: auto;
   max-height: none;
   padding: 14px 24px 24px;
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   scroll-padding: 12px;
 }
@@ -8873,7 +8875,7 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
 .panel-scroll {
   min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   padding: 0 8px;
@@ -9986,7 +9988,7 @@ body.home-active .header-menu summary > span {
     sans-serif;
 }
 .home-drawer-scroll {
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   min-width: 0;
   min-height: 0;
@@ -10593,7 +10595,7 @@ body.battle-active:not(.touch-mode) .practice-panel {
   left: 0;
   width: min(560px, calc(100vw - var(--safe-left) - var(--safe-right) - 32px));
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 112px);
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   padding: 16px;
   border: 1px solid var(--line);
@@ -11211,7 +11213,7 @@ body.battle-active:not(.touch-mode) .topbar:has(.header-menu[open]) {
   flex-direction: column;
   align-items: stretch;
   gap: 12px;
-  overflow: auto;
+  overflow: hidden auto;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -11984,6 +11986,7 @@ body.gate-active main {
   }
   .gate-card {
     max-height: calc(100dvh - 32px);
+    overflow-x: hidden;
     overflow-y: auto;
     padding: 20px;
   }

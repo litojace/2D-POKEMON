@@ -107,7 +107,7 @@
   gap: var(--sp-3);
   min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   /* Room for focus rings at the edges of the scrolling column. */
   padding: 2px 4px var(--sp-2) 2px;

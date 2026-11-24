@@ -201,6 +201,7 @@ body:has(.battle-chat:not([hidden]))
   height: 100%;
   margin: auto;
   /* Only with a large text size: the tiles scroll rather than clip. */
+  overflow-x: hidden;
   overflow-y: auto;
   text-align: center;
 }
@@ -472,7 +473,7 @@ body:has(.battle-chat:not([hidden]))
   position: absolute;
   inset: var(--pad-t) var(--pad-r) calc(var(--pad-b) + 54px) var(--pad-l);
   z-index: 5;
-  overflow: auto;
+  overflow: hidden auto;
   padding: 14px 18px;
   border: 0;
   border-radius: 16px;
