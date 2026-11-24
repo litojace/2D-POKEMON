@@ -2226,6 +2226,9 @@ export function openPlaza(options) {
     ring.style.left = `${(e.clientX - r.left) / k}px`;
     ring.style.top = `${(e.clientY - r.top) / k}px`;
     knob.style.transform = "";
+    // How far the knob may go: half the ring, which is bigger on tablets
+    // (plaza.css --pz-joy). Read once per press, not per move.
+    joy.max = ring.offsetWidth / 2 || 55;
     try {
       joyEl.setPointerCapture(e.pointerId);
     } catch {
@@ -2237,7 +2240,7 @@ export function openPlaza(options) {
     const dx = (e.clientX - joy.ox) / joy.k,
       dy = (e.clientY - joy.oy) / joy.k,
       m = Math.hypot(dx, dy),
-      max = 55,
+      max = joy.max || 55,
       k = m > max ? max / m : 1;
     joy.x = (dx / max) * k;
     joy.y = (dy / max) * k;
