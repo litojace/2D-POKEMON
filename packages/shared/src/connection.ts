@@ -128,7 +128,20 @@ export const battlePerfSchema = z
     snapLate: z.number().min(0).max(1).optional(),
     corrections: z.number().min(0).max(100_000).optional(),
     correctionMax: z.number().min(0).max(100_000).optional(),
+    /** Prediction to confirmation; distinct from DOM event to local emit. */
     confirmP50: z.number().min(0).max(60_000).optional(),
+    confirmP95: z.number().min(0).max(60_000).optional(),
+    confirmP99: z.number().min(0).max(60_000).optional(),
+    pressSamples: z.number().int().min(0).max(1_000_000).optional(),
+    pressToSendP50: z.number().min(0).max(60_000).optional(),
+    pressToSendP95: z.number().min(0).max(60_000).optional(),
+    pressToSendP99: z.number().min(0).max(60_000).optional(),
+    eventToHandlerP95: z.number().min(0).max(60_000).optional(),
+    handlerToSendP95: z.number().min(0).max(60_000).optional(),
+    sendGapP50: z.number().min(0).max(60_000).optional(),
+    sendGapP95: z.number().min(0).max(60_000).optional(),
+    sendGapP99: z.number().min(0).max(60_000).optional(),
+    sendGapMax: z.number().min(0).max(60_000).optional(),
     /** Round trip to the server at the end (ms, smoothed; the ping badge). */
     ping: z.number().min(0).max(60_000).optional(),
     /**
@@ -164,7 +177,7 @@ export const battlePerfSchema = z
     /** The longest snapshot gap (ms) and the median correction (px). */
     snapGapMax: z.number().min(0).max(60_000).optional(),
     correctionP50: z.number().min(0).max(100_000).optional(),
-    /** Wi-Fi holds a minute (Fighter.held went above 0) and the most ticks held. */
+    /** Input holds a minute (Fighter.held went above 0) and the most ticks held. */
     holds: z.number().min(0).max(100_000).optional(),
     holdMax: z.number().int().min(0).max(1_000).optional(),
     /** Inputs sent a second of live play (the phone's input clock: 30). */

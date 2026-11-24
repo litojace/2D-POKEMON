@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { RULES } from "../../packages/shared/src/index";
 import { battlePerfSchema } from "../../packages/shared/src/connection";
 import {
   openHub,
@@ -149,7 +150,7 @@ for (const quality of ["high", "low"] as const)
       await openPlayPanel(page);
       await createRoom(page);
       await pushUntilBattle(page);
-      await page.evaluate(() => {
+      await page.evaluate((snapshotHz) => {
         const w = window as any;
         const game = w.__perfGame;
         // Canvas resizes during the fight (each reallocates its buffer).
@@ -179,8 +180,8 @@ for (const quality of ["high", "low"] as const)
         w.__brief = setInterval(() => {
           w.__snap = w.__pack();
           w.__push();
-        }, 1000 / 15);
-      });
+        }, 1000 / snapshotHz);
+      }, RULES.snapshot);
       await page.waitForTimeout(BRIEFING_MS);
       const counts = () =>
         page.evaluate(() => {
@@ -201,48 +202,63 @@ for (const quality of ["high", "low"] as const)
           };
         });
       // The fight: players spread out (some off screen), everyone casting.
-      await page.evaluate(async () => {
-        const w = window as any;
-        clearInterval(w.__brief);
-        const m = await import("/rooms.ts");
-        const a = w.__arena;
-        a.phase = "playing";
-        a.deadline = a.time + 1e6;
-        a.players.forEach((p: any, i: number) => {
-          p.x = [250, 1350, 250, 1350][i];
-          p.y = [200, 200, 750, 750][i];
-        });
-        let tick = 0;
-        w.__fight = setInterval(() => {
-          tick++;
+      await page.evaluate(
+        async ({ tickHz, snapshotHz }) => {
+          const w = window as any;
+          clearInterval(w.__brief);
+          const m = await import("/rooms.ts");
+          const a = w.__arena;
+          a.phase = "playing";
+          a.deadline = a.time + 1e6;
           a.players.forEach((p: any, i: number) => {
-            p.hp = Math.max(p.hp, 60);
-            p.ult = 100;
-            const target = a.players[(i + 1) % a.players.length];
-            a.submit(p, {
-              ...m.blankInput(),
-              seq: p.ack + 1,
-              dx: Math.cos(tick / 20 + i),
-              dy: Math.sin(tick / 20 + i),
-              aimX: target.x,
-              aimY: target.y,
-              basic: true,
-              // Every 4 s all four ultimates at once (the crowded moment);
-              // otherwise one skill a second each, in turn.
-              skill:
-                tick % 120 === 60
-                  ? m.ULT_SLOT
-                  : (tick + i * 11) % 30 === 0
-                    ? ((tick / 30 + i) | 0) % 4
-                    : -1,
-            });
+            p.x = [250, 1350, 250, 1350][i];
+            p.y = [200, 200, 750, 750][i];
           });
-          a.tick();
-          if (tick % 2) return;
-          w.__snap = w.__pack();
-          w.__push();
-        }, 1000 / 30);
-      });
+          let tick = 0;
+          const step = () => {
+            tick++;
+            a.players.forEach((p: any, i: number) => {
+              p.hp = Math.max(p.hp, 60);
+              p.ult = 100;
+              const target = a.players[(i + 1) % a.players.length];
+              a.submit(p, {
+                ...m.blankInput(),
+                seq: p.ack + 1,
+                dx: Math.cos(tick / 20 + i),
+                dy: Math.sin(tick / 20 + i),
+                aimX: target.x,
+                aimY: target.y,
+                basic: true,
+                // Every 4 s all four ultimates at once (the crowded moment);
+                // otherwise one skill a second each, in turn.
+                skill:
+                  tick % 120 === 60
+                    ? m.ULT_SLOT
+                    : (tick + i * 11) % 30 === 0
+                      ? ((tick / 30 + i) | 0) % 4
+                      : -1,
+              });
+            });
+            a.tick();
+            if (tick % Math.round(tickHz / snapshotHz)) return;
+            w.__snap = w.__pack();
+            w.__push();
+          };
+          const from = performance.now();
+          let stepped = 0;
+          w.__fight = setInterval(() => {
+            const due = Math.floor(
+              ((performance.now() - from) * tickHz) / 1000,
+            );
+            if (due - stepped > 10) stepped = due - 10;
+            while (stepped < due) {
+              stepped++;
+              step();
+            }
+          }, 1000 / tickHz);
+        },
+        { tickHz: RULES.tick, snapshotHz: RULES.snapshot },
+      );
       // A moment for the round to start (the countdown, the camera).
       await page.waitForTimeout(2000);
       const before = await counts();

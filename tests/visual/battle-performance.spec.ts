@@ -1,4 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { RULES } from "../../packages/shared/src/index";
 import {
   closeRaids,
   openHub,
@@ -96,99 +97,130 @@ async function enterBattle(page: Page, scenario: Scenario) {
   await createRoom(page);
   await pushUntilBattle(page);
 }
-/** Run a real fight in the page and stream compact snapshots at 15 Hz. */
+/** Run a real fight in the page and stream compact snapshots at RULES.snapshot Hz. */
 async function startFight(page: Page, scenario: Scenario) {
-  await page.evaluate(async (scenario) => {
-    const w = window as any;
-    const m = await import("/rooms.ts");
-    const heroes = ["voltkit", "cindrake", "tidefin", "lumoth"];
-    const a =
-      scenario === "raid4"
-        ? m.createRaidArena("RAID42", "emberwing")
-        : new m.Arena("PVP123", scenario === "pvp2" ? "duel" : "ffa");
-    (scenario === "pvp2" ? heroes.slice(0, 2) : heroes).forEach((c, i) =>
-      a.add(i ? `p${i + 1}` : "me", `Player ${i + 1}`, c),
-    );
-    a.players.forEach((p: any, i: number) => m.dressUp(p, i));
-    if (scenario === "raid4") a.configure(1, false);
-    a.start();
-    a.phase = "playing";
-    a.deadline = a.time + 1e6;
-    const people = a.players.filter((p: any) => !p.raidBoss);
-    people.forEach((p: any, i: number) => {
-      p.x = 520 + (i % 2) * 520;
-      p.y = 300 + Math.floor(i / 2) * 300;
-    });
-    const tracker = m.MetaTracker ? new m.MetaTracker() : undefined;
-    w.__perf = { push: [], bytes: [], update: [], step: [], frames: [] };
-    let tick = 0,
-      cursor = 0;
-    w.__fight = setInterval(() => {
-      tick++;
+  await page.evaluate(
+    async ({ scenario, tickHz, snapshotHz }) => {
+      const w = window as any;
+      const m = await import("/rooms.ts");
+      const heroes = ["voltkit", "cindrake", "tidefin", "lumoth"];
+      const a =
+        scenario === "raid4"
+          ? m.createRaidArena("RAID42", "emberwing")
+          : new m.Arena("PVP123", scenario === "pvp2" ? "duel" : "ffa");
+      (scenario === "pvp2" ? heroes.slice(0, 2) : heroes).forEach((c, i) =>
+        a.add(i ? `p${i + 1}` : "me", `Player ${i + 1}`, c),
+      );
+      a.players.forEach((p: any, i: number) => m.dressUp(p, i));
+      if (scenario === "raid4") a.configure(1, false);
+      a.start();
+      a.phase = "playing";
+      a.deadline = a.time + 1e6;
+      const people = a.players.filter((p: any) => !p.raidBoss);
       people.forEach((p: any, i: number) => {
-        p.hp = Math.max(p.hp, 60);
-        p.ult = 100;
-        const boss = a.players.find((q: any) => q.raidBoss);
-        const target = boss ?? people[(i + 1) % people.length];
-        const together = people.length >= 4 && tick % 45 === 0;
-        a.submit(p, {
-          ...m.blankInput(),
-          seq: p.ack + 1,
-          dx: Math.cos(tick / 20 + i),
-          dy: Math.sin(tick / 20 + i),
-          aimX: target.x,
-          aimY: target.y,
-          basic: true,
-          skill: together
-            ? Math.floor(tick / 45) % 4
-            : (tick + i * 11) % 90 === 0
-              ? ((tick / 90 + i) | 0) % 4
-              : -1,
-        });
+        p.x = 520 + (i % 2) * 520;
+        p.y = 300 + Math.floor(i / 2) * 300;
       });
-      const boss = a.players.find((q: any) => q.raidBoss);
-      if (boss) boss.hp = Math.max(boss.hp, 1000);
-      a.tick();
-      if (tick % 2) return;
-      const s = a.snapshot();
-      s.events = s.events.filter((e: any) => e.id > cursor);
-      if (s.events.length) cursor = s.events.at(-1).id;
-      const changed = tracker?.update(s.players);
-      w.__snap = tracker
-        ? m.packSnapshot(s, {
-            compact: true,
-            metaRev: tracker.rev,
-            meta: changed || tick === 2 ? tracker.meta(s.players) : undefined,
-          })
-        : m.packSnapshot(s);
-      const start = performance.now();
-      w.__push();
-      w.__perf.push.push(performance.now() - start);
-      if (tick % 10 === 0) w.__perf.bytes.push(JSON.stringify(w.__snap).length);
-    }, 1000 / 30);
-    const game = w.__perfGame,
-      scene = game.scene.getScene("arena");
-    if (!w.__wrapped) {
-      w.__wrapped = true;
-      const update = scene.sys.sceneUpdate.bind(scene);
-      scene.sys.sceneUpdate = (...args: any[]) => {
-        const start = performance.now();
-        update(...args);
-        w.__perf?.update.push(performance.now() - start);
+      const tracker = m.MetaTracker ? new m.MetaTracker() : undefined;
+      w.__perf = {
+        push: [],
+        bytes: [],
+        update: [],
+        step: [],
+        frames: [],
+        input: [],
       };
-      // Phaser's loop keeps its own bound step callback: time that.
-      const step = game.loop.callback;
-      let previous = 0;
-      game.loop.callback = (time: number, delta: number) => {
+      let tick = 0,
+        cursor = 0;
+      const step = () => {
+        tick++;
+        people.forEach((p: any, i: number) => {
+          p.hp = Math.max(p.hp, 60);
+          p.ult = 100;
+          const boss = a.players.find((q: any) => q.raidBoss);
+          const target = boss ?? people[(i + 1) % people.length];
+          const together = people.length >= 4 && tick % 45 === 0;
+          a.submit(p, {
+            ...m.blankInput(),
+            seq: p.ack + 1,
+            dx: Math.cos(tick / 20 + i),
+            dy: Math.sin(tick / 20 + i),
+            aimX: target.x,
+            aimY: target.y,
+            basic: true,
+            skill: together
+              ? Math.floor(tick / 45) % 4
+              : (tick + i * 11) % 90 === 0
+                ? ((tick / 90 + i) | 0) % 4
+                : -1,
+          });
+        });
+        const boss = a.players.find((q: any) => q.raidBoss);
+        if (boss) boss.hp = Math.max(boss.hp, 1000);
+        a.tick();
+        if (tick % Math.round(tickHz / snapshotHz)) return;
+        const s = a.snapshot();
+        s.events = s.events.filter((e: any) => e.id > cursor);
+        if (s.events.length) cursor = s.events.at(-1).id;
+        const changed = tracker?.update(s.players);
+        w.__snap = tracker
+          ? m.packSnapshot(s, {
+              compact: true,
+              metaRev: tracker.rev,
+              meta: changed || tick === 1 ? tracker.meta(s.players) : undefined,
+            })
+          : m.packSnapshot(s);
         const start = performance.now();
-        step(time, delta);
-        w.__perf?.step.push(performance.now() - start);
-        // Phaser smooths its delta: measure real frame-to-frame time.
-        if (previous) w.__perf?.frames.push(start - previous);
-        previous = start;
+        w.__push();
+        w.__perf.push.push(performance.now() - start);
+        if (tick % 10 === 0)
+          w.__perf.bytes.push(JSON.stringify(w.__snap).length);
       };
-    }
-  }, scenario);
+      const from = performance.now();
+      let stepped = 0;
+      w.__fight = setInterval(() => {
+        const due = Math.floor(((performance.now() - from) * tickHz) / 1000);
+        if (due - stepped > 10) stepped = due - 10;
+        while (stepped < due) {
+          stepped++;
+          step();
+        }
+      }, 1000 / tickHz);
+      const game = w.__perfGame,
+        scene = game.scene.getScene("arena");
+      if (!w.__wrapped) {
+        w.__wrapped = true;
+        // Input now runs outside Phaser's step. Keep its cost visible rather
+        // than mistaking a shorter scene update for less total JS work.
+        if (scene.sendInput) {
+          const send = scene.sendInput.bind(scene);
+          scene.sendInput = () => {
+            const start = performance.now();
+            send();
+            w.__perf?.input.push(performance.now() - start);
+          };
+        }
+        const update = scene.sys.sceneUpdate.bind(scene);
+        scene.sys.sceneUpdate = (...args: any[]) => {
+          const start = performance.now();
+          update(...args);
+          w.__perf?.update.push(performance.now() - start);
+        };
+        // Phaser's loop keeps its own bound step callback: time that.
+        const step = game.loop.callback;
+        let previous = 0;
+        game.loop.callback = (time: number, delta: number) => {
+          const start = performance.now();
+          step(time, delta);
+          w.__perf?.step.push(performance.now() - start);
+          // Phaser smooths its delta: measure real frame-to-frame time.
+          if (previous) w.__perf?.frames.push(start - previous);
+          previous = start;
+        };
+      }
+    },
+    { scenario, tickHz: RULES.tick, snapshotHz: RULES.snapshot },
+  );
 }
 async function stopFight(page: Page) {
   await page.evaluate(() => clearInterval((window as any).__fight));
@@ -291,6 +323,7 @@ for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
         snapshotHandlingMs: stats(raw.push),
         snapshotBytes: stats(raw.bytes),
         sceneUpdateMs: stats(raw.update),
+        inputStepMs: stats(raw.input),
         frameStepMs: stats(raw.step),
         frameIntervalMs: stats(raw.frames),
         longFrames: raw.frames.filter((d: number) => d > 50).length,
@@ -303,7 +336,7 @@ for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
         body: JSON.stringify(result, null, 2),
         contentType: "application/json",
       });
-      // The software renderer starves timers, so fewer than 15 a second arrive.
+      // The software renderer starves timers, so the actual arrival count can be below RULES.snapshot.
       expect(raw.push.length).toBeGreaterThanOrEqual(SECONDS * 2);
       // Generous guards: a regression to per-snapshot rebuilds would blow these.
       expect(result.snapshotHandlingMs.p50).toBeLessThan(25);

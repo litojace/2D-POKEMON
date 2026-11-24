@@ -316,15 +316,15 @@ export function perfMode(
 /**
  * The network side of a match, from the same device: why a battle can feel
  * late or jerky while it draws at full frame rate. Round trips come from the
- * ping badge; snapshot gaps are how irregularly the server's 15 a second
+ * ping badge; snapshot gaps are how irregularly the server's 30 a second
  * arrive; corrections are how far your own fighter jumped when a snapshot
- * disagreed with what was predicted; a skill's wait is from your press to
- * the server confirming it.
+ * disagreed with what was predicted. Confirmation starts at prediction,
+ * not the DOM press: pressToSend measures that earlier local wait apart.
  */
 export interface NetSummary {
   rttP50: number;
   rttP95: number;
-  /** 95th percentile gap between snapshots (ms; 67 is on time). */
+  /** 95th percentile gap between snapshots (ms; about 33 is on time). */
   snapGapP95: number;
   /** Share of snapshot gaps over 120 ms (a late or bunched snapshot). */
   snapLate: number;
@@ -332,8 +332,23 @@ export interface NetSummary {
   corrections: number;
   /** The largest correction (px). */
   correctionMax: number;
-  /** Median wait from a skill press to the server's confirmation (ms). */
+  /** Median wait from predicted cast to server confirmation (ms). */
   confirmP50: number;
+  confirmP95?: number;
+  confirmP99?: number;
+  /** DOM action event to the emit carrying it (ms); excludes RTT/confirm. */
+  pressSamples?: number;
+  pressToSendP50?: number;
+  pressToSendP95?: number;
+  pressToSendP99?: number;
+  /** Event delivery delay vs the subsequent wait for the input deadline. */
+  eventToHandlerP95?: number;
+  handlerToSendP95?: number;
+  /** Actual gaps between local emits during uninterrupted live play (ms). */
+  sendGapP50?: number;
+  sendGapP95?: number;
+  sendGapP99?: number;
+  sendGapMax?: number;
   /**
    * The corrections a minute by cause (networking/correction-cause.ts):
    * hits and statuses are expected; "other" ones mean the prediction is
@@ -356,7 +371,7 @@ export interface NetSummary {
   correctionP50: number;
   /**
    * Holds a minute: times the server reported ticks held for your late
-   * inputs (Fighter.held went above 0: Wi-Fi held your packets), and the
+   * inputs (Fighter.held went above 0: input was late), and the
    * most ticks held at once.
    */
   holds: number;
@@ -411,6 +426,12 @@ export class NetMeter {
   private holdMost = 0;
   private wasHeld = false;
   private inputs = 0;
+  private sendGaps: number[] = [];
+  private presses: number[] = [];
+  private handlerDelays: number[] = [];
+  private sendDelays: number[] = [];
+  private lastSend: number | undefined;
+  private actionPresses = new Map<string, { event: number; handler: number }>();
   private push(list: number[], v: number) {
     if (list.length >= MAX_SAMPLES) list.splice(0, MAX_SAMPLES / 2);
     list.push(v);
@@ -436,9 +457,58 @@ export class NetMeter {
     this.wasHeld = n > 0;
     this.holdMost = Math.max(this.holdMost, n);
   }
-  /** An input went to the server during live play. */
-  input() {
+  /**
+   * An accepted DOM action edge. Preview skills commit on release. Safari
+   * versions with epoch timestamps are converted to performance.now's origin.
+   * Gamepads have no DOM timestamp: do not call polling time a physical press.
+   */
+  press(
+    action: string,
+    stamp: number | undefined,
+    handled = performance.now(),
+    origin = performance.timeOrigin,
+  ) {
+    if (stamp === undefined || !Number.isFinite(stamp)) return;
+    const event = stamp > 1e12 ? stamp - origin : stamp;
+    if (event < 0 || event > handled || handled - event > 60_000) return;
+    this.actionPresses.set(action, { event, handler: handled });
+  }
+  clearPresses() {
+    this.actionPresses.clear();
+  }
+  /** Hide, exit, disconnect or a new round: neither a gap nor a stale press. */
+  pauseInput() {
+    this.lastSend = undefined;
+    this.clearPresses();
+  }
+  /** An input actually emitted during live play, before prediction/rendering. */
+  input(
+    action?: { basic: boolean; skill: number; dash: boolean; jump: boolean },
+    now = performance.now(),
+  ) {
     this.inputs++;
+    if (
+      this.lastSend !== undefined &&
+      now >= this.lastSend &&
+      now - this.lastSend <= PERF_PAUSE
+    )
+      this.push(this.sendGaps, now - this.lastSend);
+    this.lastSend = now;
+    if (action) {
+      for (const [key, at] of this.actionPresses) {
+        const sent = key.startsWith("skill")
+          ? action.skill === Number(key.slice(5))
+          : action[key as "basic" | "dash" | "jump"];
+        if (sent && now >= at.handler && now - at.event <= 60_000) {
+          this.push(this.presses, now - at.event);
+          this.push(this.handlerDelays, at.handler - at.event);
+          this.push(this.sendDelays, now - at.handler);
+        }
+      }
+      // The actions latch is consumed by this input, including denied/EX
+      // toggles; held Basic repeats never create another physical-press sample.
+      this.clearPresses();
+    }
   }
   correction(px: number, cause?: "hit" | "status" | "move" | "other") {
     if (px <= CORRECTION_PX) return;
@@ -477,6 +547,27 @@ export class NetMeter {
         this.fixes.length ? Math.max(...this.fixes) : 0,
       ),
       confirmP50: q(this.waits, 0.5),
+      ...(this.waits.length
+        ? { confirmP95: q(this.waits, 0.95), confirmP99: q(this.waits, 0.99) }
+        : {}),
+      ...(this.presses.length
+        ? {
+            pressSamples: this.presses.length,
+            pressToSendP50: q(this.presses, 0.5),
+            pressToSendP95: q(this.presses, 0.95),
+            pressToSendP99: q(this.presses, 0.99),
+            eventToHandlerP95: q(this.handlerDelays, 0.95),
+            handlerToSendP95: q(this.sendDelays, 0.95),
+          }
+        : {}),
+      ...(this.sendGaps.length
+        ? {
+            sendGapP50: q(this.sendGaps, 0.5),
+            sendGapP95: q(this.sendGaps, 0.95),
+            sendGapP99: q(this.sendGaps, 0.99),
+            sendGapMax: Math.round(Math.max(...this.sendGaps)),
+          }
+        : {}),
       correctionsHit: perMinute(this.causes.hit),
       correctionsStatus: perMinute(this.causes.status),
       correctionsMove: perMinute(this.causes.move),
@@ -497,6 +588,11 @@ export class NetMeter {
     };
   }
   reset() {
+    this.pauseInput();
+    this.sendGaps = [];
+    this.presses = [];
+    this.handlerDelays = [];
+    this.sendDelays = [];
     this.rtts = [];
     this.gaps = [];
     this.fixes = [];
