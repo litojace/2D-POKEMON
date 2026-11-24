@@ -35,7 +35,16 @@ import {
 export type PreviewPlacement = "shop" | "selection";
 export interface ShopPreviewHandle {
   (): void;
-  update(panel: HTMLElement, placement?: PreviewPlacement): void;
+  /**
+   * Show in `panel`. `keepPose`: the panel shows the look already drawn (the
+   * Lobby built again around a parked rig), so the last frame stays on
+   * screen and the idle carries on, instead of hiding until it is posed.
+   */
+  update(
+    panel: HTMLElement,
+    placement?: PreviewPlacement,
+    keepPose?: boolean,
+  ): void;
   suspend(value: boolean): void;
   replay(): void;
   /** Plays one move now (a Lobby tap); false while the rig is not ready. */
@@ -151,6 +160,11 @@ export function mountShopPreview(
   };
   const cameraZoom = () =>
     selection ? previewZoom(action) : shopPreviewZoom(action, viewportHeight);
+  /** Moved into a new panel (updatePanel's keepPose): drawing waits for
+   *  its first paint, and Phaser re-reads its parent at the first measure. */
+  let settling = false,
+    refreshScale = false,
+    settleFrame = 0;
   const resizeStage = () => {
     // Scene.create has a ready scale manager/renderer, but Game.start has
     // not set isRunning yet. WebKit can deliver its only initial resize
@@ -166,6 +180,10 @@ export function mountShopPreview(
       return;
     const { width, height } = host.getBoundingClientRect();
     if (width <= 0 || height <= 0) return;
+    if (refreshScale) {
+      refreshScale = false;
+      game.scale.refresh();
+    }
     const nextHeight = selection
       ? framing.height
       : Math.max(1, Math.round((framing.width * height) / width));
@@ -227,6 +245,7 @@ export function mountShopPreview(
     const running =
       visible &&
       !suspended &&
+      !settling &&
       !document.hidden &&
       !portraitCover.matches &&
       !failedSelection &&
@@ -283,15 +302,83 @@ export function mountShopPreview(
     if (compare) compare.disabled = true;
     syncLoop();
   };
-  const updatePanel = (next: HTMLElement, nextPlacement = placement) => {
+  /** What a stage shows: champion, item, skin, stage, look and move. */
+  const lookOf = (stage: HTMLElement | undefined) =>
+    stage
+      ? [
+          "previewChampion",
+          "previewItem",
+          "previewSkin",
+          "previewStage",
+          "previewLook",
+          "previewAction",
+        ]
+          .map((k) => stage.dataset[k] ?? "")
+          .join("|")
+      : "";
+  const updatePanel = (
+    next: HTMLElement,
+    nextPlacement = placement,
+    keepPose = false,
+  ) => {
     if (disposed) return;
     // Keep the last fully posed rig visible while the next look decodes. Hiding
     // it first caused a static-art flash on every skin/champion switch.
     const retainPose =
-      placement === "shop" &&
-      nextPlacement === "shop" &&
+      ((placement === "shop" && nextPlacement === "shop") ||
+        (keepPose && placement === nextPlacement)) &&
       !!rig &&
       !!host?.classList.contains("is-ready");
+    // The same look in a new panel (the Lobby built again around a parked
+    // rig): only the canvas moves. The rig, its pose and its clock carry on,
+    // with no rebuild before the new panel's first frame.
+    const nextHost = next.querySelector<HTMLElement>(
+      nextPlacement === "selection" ? ".fighter-rig-stage" : ".shop-live-stage",
+    );
+    if (
+      keepPose &&
+      retainPose &&
+      ready &&
+      nextHost &&
+      game?.canvas &&
+      lookOf(nextHost) === lookOf(host)
+    ) {
+      panel = next;
+      observer.disconnect();
+      sizeObserver.disconnect();
+      host = nextHost;
+      observer.observe(host);
+      sizeObserver.observe(host);
+      visible = true;
+      compare = panel.querySelector<HTMLButtonElement>(
+        "[data-preview-compare]",
+      );
+      originalLabel = host.getAttribute("aria-label")!;
+      host.appendChild(game.canvas);
+      game.scale.parent = host;
+      host.classList.add("is-ready");
+      host.removeAttribute("aria-busy");
+      syncControls();
+      // The canvas still holds its last frame. Nothing is measured or drawn
+      // until the panel has been laid out and painted once: measuring here,
+      // in the middle of building the panel, laid it out twice, and a frame
+      // drawn now held back its first paint (0.25 s at a phone's speed).
+      // The size observer measures after layout; drawing resumes the frame
+      // after the first paint.
+      settling = true;
+      refreshScale = true;
+      cancelAnimationFrame(settleFrame);
+      settleFrame = requestAnimationFrame(() => {
+        settleFrame = requestAnimationFrame(() => {
+          settling = false;
+          dirty = true;
+          syncLoop();
+        });
+      });
+      return;
+    }
+    cancelAnimationFrame(settleFrame);
+    settling = false;
     const previousChampion = champion,
       previousAction = action;
     placement = nextPlacement;
@@ -677,6 +764,7 @@ export function mountShopPreview(
   const dispose: ShopPreviewHandle = Object.assign(
     () => {
       disposed = true;
+      cancelAnimationFrame(settleFrame);
       host.classList.remove("is-ready");
       cancelSelection();
       observer.disconnect();

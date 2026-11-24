@@ -283,7 +283,24 @@ export interface LobbyOptions {
 }
 export interface LobbyHandle {
   update(view: LobbyView): void;
-  close(): void;
+  /** `park`: keep your fighter's live rig for the next Lobby (off to the
+   *  Plaza, where the hub stays up), instead of letting it go. */
+  close(options?: { park?: boolean }): void;
+}
+
+/**
+ * Your fighter's live rig, kept asleep while the Lobby is closed for the
+ * Plaza, with the look it shows. The Lobby is built again on the way back;
+ * booting the renderer and painting the fighter's parts again took about
+ * 0.2 s on a desktop and 1 s at a phone's speed, with the fighter hidden
+ * meanwhile (owner, 24 Nov 2026). Adopted, it is on screen in the Lobby's
+ * first frame, already moving, and fades in with the Lobby.
+ */
+let parked: { rig: ShopPreviewHandle; key: string } | undefined;
+/** Let the parked rig go (out of the hub: a battle needs the memory). */
+export function releaseParkedLobbyRig() {
+  parked?.rig();
+  parked = undefined;
 }
 
 const escape = (s: string) =>
@@ -720,7 +737,20 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   const mountRig = () => {
     if (rig || rigLoading || closed) return;
     if (lowGraphics()) {
+      releaseParkedLobbyRig();
       stillWhy = "Low graphics";
+      return;
+    }
+    if (parked) {
+      // Back from the Plaza: the rig from the last Lobby, on screen at once
+      // when it shows the same look (else posed afresh, as a new look is).
+      const kept = parked;
+      parked = undefined;
+      rig = kept.rig;
+      stillWhy = "";
+      rig.update($("lobby-fighter"), "selection", kept.key === artKey);
+      rig.suspend(layer.classList.contains("is-covered"));
+      arrive();
       return;
     }
     rigLoading = true;
@@ -977,11 +1007,15 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       raidBadge.hidden = !spire?.fresh;
       raidBadge.classList.add("is-new");
     },
-    close() {
+    close(options = {}) {
       closed = true;
       arrived();
       cancelAnimationFrame(revealFrame);
-      rig?.();
+      releaseParkedLobbyRig();
+      if (rig && options.park && artKey && !lowGraphics()) {
+        rig.suspend(true);
+        parked = { rig, key: artKey };
+      } else rig?.();
       rig = undefined;
       for (const seat of seatRigs.splice(0)) seat?.();
       clearTimeout(bubbleTimer);

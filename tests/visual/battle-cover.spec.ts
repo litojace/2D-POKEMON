@@ -201,17 +201,18 @@ test("back from a battle, your fighter appears already moving", async ({
   await snap(page, info, "lobby-after-battle-844x390");
 });
 
-test("back from the Plaza, your fighter fades in over several frames", async ({
+test("back from a battle on a slow phone, your fighter fades in over several frames", async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 844, height: 390 });
-  await openLobby(page);
-  const art = page.locator("#lobby-fighter-art");
-  await expect(art).toHaveClass(/is-ready/, { timeout: 20_000 });
-  await page.click('#hub-scenes [data-hub-scene="plaza"]');
-  await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible({
-    timeout: 20_000,
-  });
+  await openHub(page);
+  await page.evaluate(() =>
+    (window as any).__room("pvp", { mode: "duel", phase: "playing" }),
+  );
+  await openPlayPanel(page);
+  await pickRoomMode(page, "duel");
+  await createRoom(page);
+  await pushUntilBattle(page);
   // A slow phone: frames 100-250 ms apart while the live rig boots. The
   // 0.22 s CSS fade it had was over in one such frame, and the fighter
   // blinked in (owner, 24 Nov 2026).
@@ -231,7 +232,9 @@ test("back from the Plaza, your fighter fades in over several frames", async ({
     };
     requestAnimationFrame(look);
   });
-  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await page.click("#battle-menu");
+  await page.click("#exit-room");
+  const art = page.locator("#lobby-fighter-art");
   await expect(art).toHaveClass(/is-ready/, { timeout: 20_000 });
   await expect
     .poll(() => page.evaluate(() => (window as any).__fade.at(-1)), {
@@ -245,5 +248,64 @@ test("back from the Plaza, your fighter fades in over several frames", async ({
   for (let i = 1; i < fade.length; i++)
     expect(fade[i]).toBeGreaterThanOrEqual(fade[i - 1]);
   await expect(art).not.toHaveClass(/is-arriving/);
+});
+
+test("back from the Plaza, your fighter is there at once, already moving", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await openLobby(page);
+  const art = page.locator("#lobby-fighter-art");
+  await expect(art).toHaveClass(/is-ready/, { timeout: 20_000 });
+  // The rig's canvas, to tell whether the Lobby kept it.
+  await page.evaluate(() => {
+    (window as any).__canvas = document.querySelector(
+      "#lobby-fighter-art > canvas",
+    );
+  });
+  await page.click('#hub-scenes [data-hub-scene="plaza"]');
+  await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible({
+    timeout: 20_000,
+  });
+  // Rebuilding the rig took about 1 s at a phone's speed, the fighter
+  // hidden meanwhile, and then a fade (owner, 24 Nov 2026).
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__first = undefined;
+    const look = () => {
+      const layer = document.querySelector<HTMLElement>(".lobby-layer");
+      const el = document.querySelector<HTMLElement>("#lobby-fighter-art");
+      if (layer && el) {
+        w.__first = {
+          ready: el.classList.contains("is-ready"),
+          opacity: Number(getComputedStyle(el).opacity),
+          kept: el.querySelector("canvas") === w.__canvas,
+        };
+        return;
+      }
+      requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
+  });
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__first), {
+      timeout: 15_000,
+    })
+    .toBeTruthy();
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  const first = await page.evaluate(() => (window as any).__first);
+  // In the Lobby's first frame: the live rig, shown, the same canvas.
+  expect(first).toMatchObject({ ready: true, opacity: 1, kept: true });
+  // And it carries on moving: the idle's clock goes on from where it was.
+  await expect
+    .poll(async () => Number(await art.getAttribute("data-animation-time")))
+    .toBeGreaterThan(0);
+  const then = Number(await art.getAttribute("data-animation-time"));
+  await expect
+    .poll(async () => Number(await art.getAttribute("data-animation-time")))
+    .toBeGreaterThan(then + 300);
   await snap(page, info, "lobby-after-plaza-844x390");
 });
