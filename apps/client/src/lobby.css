@@ -328,14 +328,11 @@
   animation: none;
 }
 /* Waiting for its live rig (lobby-screen.ts arrive()): hidden, then it
-   fades in once, already moving, instead of showing the still artwork and
-   swapping it for the rig. */
-.lobby-fighter-art {
-  transition: opacity 0.22s ease-out;
-}
+   fades in once, already moving (reveal(), paced by frames so a slow phone
+   still sees the fade), instead of showing the still artwork and swapping
+   it for the rig. */
 .lobby-fighter-art.is-arriving {
   opacity: 0;
-  transition: none;
 }
 .lobby-fighter-art > img,
 .lobby-member-art > img {

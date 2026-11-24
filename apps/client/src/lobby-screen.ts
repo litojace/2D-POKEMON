@@ -19,7 +19,7 @@ import { QUIP_MOVE_MS, pickQuip } from "./lobby-quips";
 import { elementIcon } from "./element-icons";
 import { picksCountdown } from "./shop-ui";
 import "./lobby.css";
-import { fadeIn } from "./ui/motion";
+import { fadeIn, uiMotion } from "./ui/motion";
 import { setInner } from "./ui/patch";
 import { avatarImage } from "./portraits";
 import { openHubPanelNow } from "./ui/hub-panel";
@@ -135,6 +135,10 @@ const MODE_KEY = "arena-lobby-mode";
  * battle on a desktop; a slow phone takes longer.
  */
 export const ARRIVE_MS = 1200;
+/** Your fighter's fade-in once it arrives (lobby-screen.ts reveal()): this
+ *  long on a quick device, and never fewer than REVEAL_FRAMES frames. */
+export const REVEAL_MS = 360;
+export const REVEAL_FRAMES = 8;
 /** The mode this device picked last, or null if it never picked one. */
 export function chosenLobbyMode(): LobbyMode | null {
   try {
@@ -654,11 +658,50 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
    */
   let arriveTimer: ReturnType<typeof setTimeout> | undefined;
   let arriveWatch: MutationObserver | undefined;
+  let revealFrame = 0;
   const arrived = () => {
     clearTimeout(arriveTimer);
     arriveWatch?.disconnect();
     arriveWatch = undefined;
-    layer.querySelector("#lobby-fighter-art")?.classList.remove("is-arriving");
+    const art = layer.querySelector<HTMLElement>("#lobby-fighter-art");
+    if (!art?.classList.contains("is-arriving")) return;
+    art.classList.remove("is-arriving");
+    if (closed || !uiMotion()) return;
+    reveal(art);
+  };
+  /**
+   * The fade-in, paced by frames drawn rather than by the clock: the live
+   * rig is ready in the Lobby's busiest moment (the renderer booting, its
+   * first poses painted), and a phone then draws a frame every 100–250 ms,
+   * so a 0.22 s CSS transition was over in one or two frames and the
+   * fighter seemed to blink in (owner, back from the Plaza, 24 Nov 2026).
+   * Each frame moves at most 1/REVEAL_FRAMES of the way, so the fade always
+   * shows; on a quick device it takes REVEAL_MS. Opacity only (the
+   * compositor's work), no layout read.
+   */
+  const reveal = (art: HTMLElement) => {
+    cancelAnimationFrame(revealFrame);
+    let shown = 0;
+    let last: number | undefined;
+    art.style.opacity = "0";
+    const step = (now: number) => {
+      if (closed || !art.isConnected) return;
+      // The first frame only starts the clock: it is often the long one.
+      if (last !== undefined)
+        shown = Math.min(
+          1,
+          shown + Math.min((now - last) / REVEAL_MS, 1 / REVEAL_FRAMES),
+        );
+      last = now;
+      if (shown >= 1) {
+        art.style.removeProperty("opacity");
+        return;
+      }
+      // Ease out: quick to show, soft to land.
+      art.style.opacity = (1 - (1 - shown) ** 3).toFixed(3);
+      revealFrame = requestAnimationFrame(step);
+    };
+    revealFrame = requestAnimationFrame(step);
   };
   const arrive = () => {
     const art = $("lobby-fighter-art");
@@ -937,6 +980,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     close() {
       closed = true;
       arrived();
+      cancelAnimationFrame(revealFrame);
       rig?.();
       rig = undefined;
       for (const seat of seatRigs.splice(0)) seat?.();
