@@ -1553,7 +1553,6 @@ onControlPrefs(() => {
   labelState = "";
   refreshControlLabels();
 });
-let battlePageHidden = false;
 function stopControls() {
   touch.reset();
   if (scene) {
@@ -1567,14 +1566,8 @@ function stopControls() {
   scene?.syncInputClock();
 }
 window.addEventListener("blur", stopControls);
-window.addEventListener("pagehide", () => {
-  battlePageHidden = true;
-  stopControls();
-});
-window.addEventListener("pageshow", () => {
-  battlePageHidden = false;
-  stopControls();
-});
+window.addEventListener("pagehide", stopControls);
+window.addEventListener("pageshow", stopControls);
 document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
@@ -1586,6 +1579,7 @@ watchScreenPin();
 // drops the game connection; coming back reconnects at once.
 void setupNativeShell(() => {
   backgroundExit.back();
+  scene?.syncInputClock();
   const token = (socket.auth as { accessToken?: string | null }).accessToken;
   if (token && !replacedAccount && !socket.connected) socket.connect();
 });
@@ -6157,7 +6151,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !!this.aimView &&
       !$("battle").hidden &&
       !document.hidden &&
-      !battlePageHidden,
+      !backgroundExit.away,
     RULES.tick,
   );
   syncInputClock() {
@@ -6304,7 +6298,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !$<HTMLDialogElement>("dialog").open &&
       (touch.enabled ? touch.focused : document.hasFocus()) &&
       !document.hidden &&
-      !battlePageHidden &&
+      !backgroundExit.away &&
       !["INPUT", "TEXTAREA", "SELECT"].includes(
         document.activeElement?.tagName ?? "",
       )

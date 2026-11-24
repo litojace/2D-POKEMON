@@ -143,10 +143,27 @@ test("input deadlines survive stopped rendering, quick taps and battle lifecycle
     const awayAt = await count();
     await page.waitForTimeout(200);
     expect(await count()).toBe(awayAt);
+    // Native/webview resume may announce visibility without pageshow. The
+    // shared background-exit watcher accepts this route too.
+    await page.evaluate(() =>
+      document.dispatchEvent(new Event("visibilitychange")),
+    );
+    await expect
+      .poll(count, {
+        timeout: 5000,
+        message: "visible resume without pageshow",
+      })
+      .toBeGreaterThan(awayAt);
+    await page.evaluate(() =>
+      window.dispatchEvent(new PageTransitionEvent("pagehide")),
+    );
+    const awayAgainAt = await count();
+    await page.waitForTimeout(100);
+    expect(await count()).toBe(awayAgainAt);
     await page.evaluate(() =>
       window.dispatchEvent(new PageTransitionEvent("pageshow")),
     );
-    await expect.poll(count).toBeGreaterThan(awayAt);
+    await expect.poll(count).toBeGreaterThan(awayAgainAt);
 
     await page.evaluate(() => {
       const w = window as any;

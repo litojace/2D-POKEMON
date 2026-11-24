@@ -1993,14 +1993,15 @@
     "deliberatelyRestoredRenderDependencyInputsIn400Ms": 0,
     "mutationFailedAsExpected": true,
     "controlsPassed": 8,
-    "leaveGuardMutationFailedAsExpected": true
+    "leaveGuardMutationFailedAsExpected": true,
+    "visibilityResumeFailedBeforeSharedLifecycle": true
   },
   "bundleViteReportedKB": {
     "before": 2722.42,
     "after": 2725.9,
     "difference": 3.48,
     "beforeGzip": 915.43,
-    "afterGzip": 916.45
+    "afterGzip": 916.47
   },
   "commands": {
     "legacyProbe": "node scripts/perf/input-clock-probe.cjs",
@@ -2025,7 +2026,9 @@
       "build": "passed",
       "pwa": "passed",
       "targetedAfterLeaveGuard": 116,
-      "finalControlsVisualPassed": 8
+      "finalControlsVisualPassed": 8,
+      "targetedAfterVisibilityResume": 116,
+      "visibilityResumeControlsPassed": 8
     }
   },
   "interleavedRaid": {
@@ -2194,6 +2197,42 @@
         "sendGapP95": 39,
         "sendGapP99": 41,
         "sendGapMax": 41,
+        "correctionsHit": 0,
+        "correctionsStatus": 0,
+        "correctionsMove": 0,
+        "correctionsOther": 0,
+        "hitsFar": 0,
+        "hitGapMax": 0,
+        "snapGapMax": 0,
+        "correctionP50": 0,
+        "holds": 0,
+        "holdMax": 0,
+        "inputHz": 0
+      }
+    }
+  ],
+  "profileFixCommit": "c396415a",
+  "inputBrowserVisibilityResume": [
+    {
+      "kind": "INPUT_CLOCK_BROWSER",
+      "data": {
+        "rttP50": 316,
+        "rttP95": 316,
+        "snapGapP95": 0,
+        "snapLate": 0,
+        "corrections": 0,
+        "correctionMax": 0,
+        "confirmP50": 0,
+        "pressSamples": 4,
+        "pressToSendP50": 27,
+        "pressToSendP95": 38,
+        "pressToSendP99": 38,
+        "eventToHandlerP95": 0,
+        "handlerToSendP95": 38,
+        "sendGapP50": 30,
+        "sendGapP95": 70,
+        "sendGapP99": 70,
+        "sendGapMax": 70,
         "correctionsHit": 0,
         "correctionsStatus": 0,
         "correctionsMove": 0,

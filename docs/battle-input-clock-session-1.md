@@ -32,6 +32,8 @@ mở lại input. Blur xóa controls; input neutral kế tiếp dùng chính cad
 Yêu cầu `leave` khóa input ngay trước RPC, kể cả khi đang tải raid hall;
 nếu bị từ chối thì chỉ mở lại cùng connection/identity đó. Pageshow xóa
 controls thêm lần nữa trước khi mở clock.
+Gate dùng trạng thái `background-exit.away` có sẵn, nên cả pageshow,
+visibilitychange và native resume đều dùng chung đường mở lại input.
 
 ## Số đo tách riêng
 
@@ -123,7 +125,7 @@ sau 1050/1787 ms, cửa sổ danh nghĩa 6 s); **chưa xác minh giảm tổng C
 Không suy mức tăng/giảm CPU đó chỉ từ callback input, hoặc từ scene-update.
 
 Build entry JS: 2,722.42 → 2,725.90 kB (**+3.48 kB**); gzip 915.43 →
-916.45 kB (**+1.02 kB**), theo Vite. Typecheck, build và kiểm tra PWA
+916.47 kB (**+1.04 kB**), theo Vite. Typecheck, build và kiểm tra PWA
 (`node scripts/verify-pwa.mjs`, 122 precache entries) qua.
 
 ## Regression và kiểm tra
@@ -148,6 +150,10 @@ Build entry JS: 2,722.42 → 2,725.90 kB (**+3.48 kB**); gzip 915.43 →
   regression input qua 8/8.
 - Cố tình bỏ khóa input lúc bắt đầu `leave`: regression fail tại guard
   chờ reply, vì còn input trong 200 ms chờ. Đã khôi phục guard.
+- Resume bằng visibilitychange sau pagehide, không có pageshow: test fail
+  khi dùng cờ pagehide riêng; dùng background-exit chung thì qua. Typecheck,
+  build/PWA, 116 test tập trung và tám bài input/touch qua lại. Profile
+  trận ở trên đo clock tại `c396415a`; sửa thêm này chỉ đổi gate lifecycle.
 
 Merge lane phải là **FULL**: có battle, `main.ts` và schema report dùng chung.
 Chờ verify và đủ 30 visual shards, đồng thời tôn trọng issue Main is red.
