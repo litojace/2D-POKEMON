@@ -771,13 +771,35 @@
   bottom: calc(var(--hud-y-b) + var(--pz-jump) + var(--hud-gap));
   flex-direction: row;
 }
+/* 52 px (they were 46): easier to hit with a thumb (owner, 24 Nov). */
 .plaza-layer.phone .pz-round {
-  width: 46px;
-  height: 46px;
-  font-size: calc(13px * var(--text-scale, 1));
+  width: 52px;
+  height: 52px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-round small {
   font-size: calc(10px * var(--text-scale, 1));
+}
+/* Tablets (a touch screen taller than a phone's): the round buttons and
+   their words a size up, about 87 px across (they were 71), since an iPad
+   is held further off and pressed by a thumb (owner, 24 Nov). */
+.plaza-layer.coarse:not(.phone) .pz-round {
+  width: 4.6em;
+  height: 4.6em;
+  font-size: 1.35em;
+}
+.plaza-layer.coarse:not(.phone) .pz-round small {
+  font-size: 0.56em;
+}
+/* Dash and Jump a size up with them (67 and 88 px, now 78 and 103), so
+   the round buttons don't outgrow them. */
+.plaza-layer.coarse:not(.phone) .pz-act:not(.pz-interact) {
+  width: 5.6em;
+  height: 5.6em;
+}
+.plaza-layer.coarse:not(.phone) .pz-act.big {
+  width: 7em;
+  height: 7em;
 }
 .plaza-layer.phone .pz-runcard {
   bottom: 90px;
@@ -2789,4 +2811,23 @@
 }
 .plaza-layer .pz-q.done .ic {
   opacity: 0.55;
+}
+
+/* Your card (the header's avatar) opens over the Plaza, not back in the
+   Lobby (owner, 24 Nov): the Lobby's panel frame, with no rail beside it.
+   The Plaza's own buttons step aside under it. */
+.plaza-layer > .ui-panel-host {
+  --lobby-top: calc(var(--hub-card-h) + 32px + var(--hub-drop, 0px));
+  --lobby-gutter: max(14px, var(--safe-left, 0px));
+  --lobby-gutter-r: max(14px, var(--safe-right, 0px));
+  --lobby-bottom: max(14px, var(--safe-bottom, 0px));
+  --lobby-rail: 0px;
+}
+@media (max-height: 500px) {
+  .plaza-layer > .ui-panel-host {
+    --lobby-top: calc(var(--hub-card-h) + 22px + var(--hub-drop, 0px));
+  }
+}
+.plaza-layer:has(> .ui-panel-host:not([data-ui-leaving])) .pz-hud {
+  visibility: hidden;
 }
