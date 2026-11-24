@@ -1,44 +1,50 @@
-# Agent rules for Element Arena
+# Notes for Codex and other coding agents
 
-These rules apply to any AI coding agent working in this repository (Codex, Claude Code, and others). Read this whole file before starting a task.
+## CLAUDE.md is the rulebook
 
-## Project at a glance
+[CLAUDE.md](CLAUDE.md) holds this repository's rules and process. Read all of
+it before you start, and follow it as if it were written to you: product UI
+priorities and the screenshot check, the raid boss ids, how to run tests,
+the effect and battle performance budgets, migrations, and the merge lanes.
+When this file and CLAUDE.md disagree, CLAUDE.md wins. This file only covers
+what differs for an agent that is not a Claude session.
 
-- Monorepo (npm workspaces, Node 22+): `apps/client` (Phaser + Vite), `apps/server` (Express + Socket.IO), `packages/shared` (rules and data used by both), `supabase/migrations` (database), `tests/` (unit, integration, multiplayer), `scripts/`.
-- The game is **server-authoritative**: the server decides hits, damage, cooldowns, scores and rewards. The client only sends inputs and draws what the server says.
-- All creatures, art and names are original. Never add assets, names or designs copied from existing games.
-- `README.md` and `docs/` describe how features work. Read the relevant doc before changing a system.
+## What is different for you
 
-## Hard rules
+- **Merging.** Do not merge pull requests or push to `main`: `main` is
+  production (a merge deploys the game and applies migrations). Work on a
+  branch, open a PR, and stop there. In the PR description, give the lane
+  from `node scripts/merge-lane.mjs` and its reasons, what you checked and
+  what you left out, so a Claude session or the owner can merge it.
+- **Coordinating.** You cannot message Claude sessions. Before you change
+  files that another open PR changes (`gh pr list`, then `gh pr diff`), leave
+  a comment on that PR naming the files, and say in your own PR which PR
+  should merge first. Merge `main` into your branch to resolve a conflict;
+  never rebase or force-push.
+- **Asking the owner.** Ask before anything CLAUDE.md lists under "Still ask
+  the owner first" (real-money prices, store listings and legal text, player
+  data, secrets and accounts, production settings, security findings).
+  Write to the owner in Vietnamese when they write in Vietnamese, and use US
+  Pacific time.
+- **Tools and paths.** The Chromium path in CLAUDE.md
+  (`/opt/pw-browsers/...`) is for Claude's cloud container. Use the Chromium
+  in your own environment for `PW_CHROMIUM`, or let Playwright find its own.
 
-1. **Read before you edit.** Base every claim on code you have read, and cite it as `path:line`. Do not guess.
-2. **Do not change gameplay without approval.** This covers balance (damage, cooldowns, HP, speed, knockback), match rules, rewards, prices, progression and anything players see in the UI. If a change looks worthwhile, list it as a proposal and wait.
-3. **Keep the server authoritative.** Never move validation, damage, scoring or reward logic to the client, and never trust values the client sends.
-4. **Do not break other platforms.** Keep mobile/PWA, touch controls, controller support, key rebinding and safe-area layout working.
-5. **Keep changes small and focused.** One concern per change. No drive-by refactors, no reformatting whole files, no renaming for taste. Ask before adding a dependency.
-6. **Measure performance work.** Record a number before and after (frame time or FPS, bundle size, object or draw-call count, allocations, network payload size). If you could not measure it, say the gain is unverified.
-7. **Never destroy data.** Do not delete files, edit existing Supabase migrations (add a new numbered one instead) or touch `.env` files or secrets.
-8. **Git.** Do not commit or push unless asked. When asked, work on a new branch (never directly on `main`), and write short imperative English commit messages in the style of the history, for example `Reduce Mythical skin rendering cost and pause hidden animations`.
-9. **Report honestly.** If a check fails, show the output. If you skipped a step or could not verify something, say so plainly.
+## Optimisation and review work
 
-## Workflow
+When asked to check or optimise the game:
 
-1. **Survey.** Read the relevant code and docs, then run the checks below to get a baseline. Do not edit anything yet.
-2. **Report.** List what you found, ordered by severity: bugs, then performance, then cleanup. For each item give `path:line`, the cause, the proposed fix and its risk. **Stop and wait for approval.**
-3. **Fix.** Change only the approved items, one at a time.
-4. **Verify.** After each item, every check must pass.
-5. **Summarize.** What changed, before/after numbers, what is unverified and what is left. Update `README.md` or `docs/` if behaviour or setup changed.
-
-## Checks
-
-These match CI (`.github/workflows/ci.yml`):
-
-```
-npm run typecheck
-npm run test
-npm run build
-node scripts/verify-pwa.mjs
-npm run format:check
-```
-
-Add or update tests in `tests/` when you fix a bug or change logic in `packages/shared` or `apps/server`.
+1. **Survey first.** Read the code and the docs for the area
+   (`docs/network-performance.md` for battle performance), and get a
+   baseline: typecheck, build, the unit and integration tests, and the
+   visual or budget specs for the area. Change nothing yet.
+2. **Report.** List what you found, worst first (bugs, then performance,
+   then cleanup), each with `path:line`, the cause, the fix you propose and
+   its risk.
+3. **Fix in small pieces.** One concern per change, with a test that fails
+   without the fix. No drive-by refactors or whole-file reformatting.
+4. **Measure.** Give numbers before and after (frame time, stutter share,
+   glow and particle cover from `effect-budget.spec.ts`, layout reads,
+   bundle size). A gain you could not measure is unverified: say so.
+5. **Report honestly.** If a check fails, show its output; if you skipped a
+   step, say which and why.
