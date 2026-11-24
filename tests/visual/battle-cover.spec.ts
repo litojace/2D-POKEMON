@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   createRoom,
   openHub,
+  openLobby,
   openPlayPanel,
   pickRoomMode,
   pushUntilBattle,
@@ -198,4 +199,51 @@ test("back from a battle, your fighter appears already moving", async ({
     /is-arriving/,
   );
   await snap(page, info, "lobby-after-battle-844x390");
+});
+
+test("back from the Plaza, your fighter fades in over several frames", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await openLobby(page);
+  const art = page.locator("#lobby-fighter-art");
+  await expect(art).toHaveClass(/is-ready/, { timeout: 20_000 });
+  await page.click('#hub-scenes [data-hub-scene="plaza"]');
+  await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible({
+    timeout: 20_000,
+  });
+  // A slow phone: frames 100-250 ms apart while the live rig boots. The
+  // 0.22 s CSS fade it had was over in one such frame, and the fighter
+  // blinked in (owner, 24 Nov 2026).
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__fade = [];
+    const look = () => {
+      const el = document.querySelector<HTMLElement>("#lobby-fighter-art");
+      if (el?.classList.contains("is-ready")) {
+        const a = Number(getComputedStyle(el).opacity);
+        w.__fade.push(a);
+        if (a >= 1) return;
+      }
+      requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
+  });
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await expect(art).toHaveClass(/is-ready/, { timeout: 20_000 });
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__fade.at(-1)), {
+      timeout: 15_000,
+    })
+    .toBe(1);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  const fade: number[] = await page.evaluate(() => (window as any).__fade);
+  // Drawn part-way on at least four frames, never fading back.
+  expect(fade.filter((a) => a > 0 && a < 1).length).toBeGreaterThanOrEqual(4);
+  for (let i = 1; i < fade.length; i++)
+    expect(fade[i]).toBeGreaterThanOrEqual(fade[i - 1]);
+  await expect(art).not.toHaveClass(/is-arriving/);
+  await snap(page, info, "lobby-after-plaza-844x390");
 });
