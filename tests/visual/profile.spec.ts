@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openLobby, snap } from "./helpers";
+import { openLobby, openPlaza, snap } from "./helpers";
 import {
   boxCentred,
   centred,
@@ -947,3 +947,103 @@ for (const size of SIZES.filter((s) => s.phone))
     ).toBeLessThanOrEqual(1);
     expect(sizes[0], "the avatar's size").toBeGreaterThanOrEqual(85);
   });
+
+// The card is one screen wherever it opens: on the Plaza it sits inside the
+// Plaza's layer, and the Plaza's own rules (`.plaza-layer button { font:
+// inherit; color: inherit }`) once restyled its tabs, buttons and title
+// chips there (owner, 24 Nov). Every part's type and colours match the
+// Lobby's, tab by tab; only sizes may differ (no Lobby rail on the Plaza).
+test("the card on the Plaza looks as it does in the Lobby", async ({
+  browser,
+}) => {
+  test.setTimeout(150_000);
+  const TABS = [
+    "overview",
+    "matches",
+    "avatar",
+    "titles",
+    "mastery",
+    "trophies",
+  ];
+  const look = async (scene: "lobby" | "plaza") => {
+    const context = await browser.newContext({
+      viewport: { width: 844, height: 390 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      await page.addInitScript(
+        ({ raids, progress, titles }) => {
+          const w = window as any;
+          w.__raids = raids;
+          w.__progress = progress;
+          w.__accountPatch = {
+            title: "Cragbreaker",
+            titleColor: "#d9b98a",
+            ownedTitles: titles,
+          };
+        },
+        { raids: RAIDS, progress: PROGRESS, titles: TITLES },
+      );
+      const errors =
+        scene === "lobby" ? await openLobby(page) : await openPlaza(page);
+      await page.click("#account-profile");
+      const panel = page.locator(".profile-panel");
+      await expect(panel).toBeVisible();
+      await expect(panel.locator(".pf-tile b").first()).toHaveText("9,999");
+      const out: Record<string, string[]> = {};
+      for (const t of TABS) {
+        await panel.locator(`[data-ui-profile-tab="${t}"]`).click();
+        await expect(
+          panel.locator(`[data-profile-main][data-tab="${t}"]`),
+        ).toBeVisible();
+        // The tab slides in and its colours fade: read them once settled.
+        await expect
+          .poll(() =>
+            panel.evaluate(
+              (el) =>
+                el
+                  .getAnimations({ subtree: true })
+                  .filter(
+                    (a) =>
+                      a.playState === "running" &&
+                      a.effect?.getTiming().iterations !== Infinity,
+                  ).length,
+            ),
+          )
+          .toBe(0);
+        out[t] = await panel.evaluate((p) =>
+          [p, ...p.querySelectorAll("*")].map((el) => {
+            const s = getComputedStyle(el);
+            const name = `${el.tagName.toLowerCase()}.${[...el.classList].join(".")}`;
+            return [
+              name,
+              s.fontFamily,
+              s.fontWeight,
+              s.fontSize,
+              s.letterSpacing,
+              s.textTransform,
+              s.color,
+              s.borderTopColor,
+              s.backgroundColor,
+            ].join(" | ");
+          }),
+        );
+      }
+      if (scene === "plaza")
+        expect(
+          await panel.evaluate((p) => !!p.closest(".plaza-layer")),
+          "the card opens over the Plaza",
+        ).toBe(true);
+      expect(errors).toEqual([]);
+      return out;
+    } finally {
+      await context.close();
+    }
+  };
+  const lobby = await look("lobby");
+  const plaza = await look("plaza");
+  for (const t of TABS)
+    expect(plaza[t], `the ${t} tab on the Plaza`).toEqual(lobby[t]);
+});
