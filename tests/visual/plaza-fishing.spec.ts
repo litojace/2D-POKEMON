@@ -577,7 +577,13 @@ test("at a frame every 0.5 s the fight keeps to real time", async ({
       next = performance.now() + 500;
       const due = queue;
       queue = [];
-      raf((t) => due.forEach((cb) => cb(t)));
+      raf((t) => {
+        due.forEach((cb) => cb(t));
+        // The fight's clock as this frame left it, at this frame's time.
+        const fight = w.__plaza?.fishingMode?.fight;
+        if (w.__fightFrames && fight)
+          w.__fightFrames.push({ at: t / 1000, t: fight.t });
+      });
     }, 5);
   });
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -593,29 +599,28 @@ test("at a frame every 0.5 s the fight keeps to real time", async ({
   await expect.poll(() => phase(page), { intervals: [50] }).toBe("bite");
   await page.keyboard.press("e");
   await expect.poll(() => phase(page), { intervals: [50] }).toBe("fight");
-  await page.evaluate(() => ((window as any).__slowFrames = true));
-  // The fight's own clock (seconds since hooked) against the page's, while
-  // it lasts: each look is at most one 0.5 s frame behind.
-  const look = () =>
-    page.evaluate(() => {
-      const m = (window as any).__plaza.fishingMode;
-      return {
-        at: performance.now() / 1000,
-        t: m.fight?.t as number | undefined,
-      };
-    });
-  const first = await look();
-  let last = first;
-  for (let i = 0; i < 12; i++) {
-    await page.waitForTimeout(250);
-    const now = await look();
-    if (now.t === undefined) break;
-    last = now;
-  }
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__fightFrames = [];
+    w.__slowFrames = true;
+  });
+  // The fight's own clock (seconds since hooked) against each slow frame's
+  // time, as the frame left it. Read when the test looked instead, the clock
+  // was up to a frame behind plus however late CI drew that frame (failed
+  // on CI by 0.2-0.3 s with the game on time, #398 and #402).
+  await page.waitForTimeout(3000);
+  const frames: { at: number; t: number }[] = await page.evaluate(
+    () => (window as any).__fightFrames,
+  );
+  const first = frames[0],
+    last = frames[frames.length - 1];
+  expect(first, "the fight was on when frames slowed").toBeDefined();
   const real = last.at - first.at;
-  expect(first.t, "the fight was on when frames slowed").toBeDefined();
   expect(real, "the fight lasted long enough to judge").toBeGreaterThan(1.2);
-  expect(last.t! - first.t!).toBeGreaterThan(real - 0.6);
+  // Each 0.5 s frame moves the clock by the real time since the last one
+  // (moveDt): it keeps to real time within a step.
+  expect(last.t - first.t).toBeGreaterThan(real - 0.1);
+  expect(last.t - first.t).toBeLessThan(real + 0.1);
   await page.evaluate(() => ((window as any).__slowFrames = false));
   expect(errors).toEqual([]);
 });
