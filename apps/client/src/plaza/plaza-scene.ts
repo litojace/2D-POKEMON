@@ -3036,8 +3036,15 @@ export function openPlaza(options) {
       const dx = target.x - P.x,
         dy = target.y - P.y,
         d = Math.hypot(dx, dy);
+      // Walked past the end of the way: the stick that carried you here
+      // points away from it now. On a slow device one long frame can carry
+      // you past it (the stick is held for the whole frame), and turning
+      // back carried you past it the other way, and so on: a walk to the
+      // dock's end swung 50 px back and forth at 20x CPU throttle. Stop
+      // where you came to instead.
+      const passed = !route.length && d < 48 && sent.x * dx + sent.y * dy < 0;
       // A turn on the way is passed a little early, so you round it.
-      if (d < (route.length ? 18 : 10)) {
+      if (passed || d < (route.length ? 18 : 10)) {
         target = route.shift() ?? null;
         if (!target) routeEnd = null;
       } else {
