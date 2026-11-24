@@ -1,0 +1,820 @@
+{
+  "datePT": "2026-11-24",
+  "build": "e4c7bde",
+  "note": "Anonymous same-match pairs; match IDs omitted. Android reports omit model; the owner identifies the device as Pixel 8a. fps is 1000/median(frameMs); jank is time in frames>34ms / sampled frame time. work spans PRE_STEP to POST_RENDER, not a separate JS or GPU timer.",
+  "serverWindow": {
+    "timeRange": {
+      "start": "2026-11-24T21:30:00Z",
+      "end": "2026-11-24T21:42:00Z"
+    },
+    "cpuAggregation": "MAX",
+    "resolutionSeconds": 60,
+    "metrics": [
+      {
+        "type": "cpu_usage",
+        "series": [
+          {
+            "unit": "cpu",
+            "values": [
+              {
+                "timestamp": "2026-11-24T21:30:00Z",
+                "value": 0.04022435
+              },
+              {
+                "timestamp": "2026-11-24T21:31:00Z",
+                "value": 0.03208
+              },
+              {
+                "timestamp": "2026-11-24T21:32:00Z",
+                "value": 0.013213984
+              },
+              {
+                "timestamp": "2026-11-24T21:33:00Z",
+                "value": 0.03376215
+              },
+              {
+                "timestamp": "2026-11-24T21:34:00Z",
+                "value": 0.04776065
+              },
+              {
+                "timestamp": "2026-11-24T21:35:00Z",
+                "value": 0.024363084
+              },
+              {
+                "timestamp": "2026-11-24T21:36:00Z",
+                "value": 0.028429633
+              },
+              {
+                "timestamp": "2026-11-24T21:37:00Z",
+                "value": 0.042264733
+              },
+              {
+                "timestamp": "2026-11-24T21:38:00Z",
+                "value": 0.02860985
+              },
+              {
+                "timestamp": "2026-11-24T21:39:00Z",
+                "value": 0.034424633
+              },
+              {
+                "timestamp": "2026-11-24T21:40:00Z",
+                "value": 0.046562582
+              },
+              {
+                "timestamp": "2026-11-24T21:41:00Z",
+                "value": 0.039877232
+              },
+              {
+                "timestamp": "2026-11-24T21:42:00Z",
+                "value": 0.0121936165
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "cpu_limit",
+        "series": [
+          {
+            "unit": "cpu",
+            "values": [
+              {
+                "timestamp": "2026-11-24T21:30:00Z",
+                "value": 1
+              },
+              {
+                "timestamp": "2026-11-24T21:31:00Z",
+                "value": 1
+              },
+              {
+                "timestamp": "2026-11-24T21:32:00Z",
+                "value": 1
+              },
+              {
+                "timestamp": "2026-11-24T21:33:00Z",
+                "value": 1
+              },
+              {
+                "timestamp": "2026-11-24T21:34:00Z",
+                "value": 1
+              },
+              {
+                "timestamp": "2026-11-24T21:35:00Z",
+                "value": 1
+              },
+              {
+                "timestamp": "2026-11-24T21:36:00Z",
+                "value": 1
+              },
+              {
+                "timestamp": "2026-11-24T21:37:00Z",
+                "value": 1
+              },
+              {
+                "timestamp": "2026-11-24T21:38:00Z",
+                "value": 1
+              },
+              {
+                "timestamp": "2026-11-24T21:39:00Z",
+                "value": 1
+              },
+              {
+                "timestamp": "2026-11-24T21:40:00Z",
+                "value": 1
+              },
+              {
+                "timestamp": "2026-11-24T21:41:00Z",
+                "value": 1
+              },
+              {
+                "timestamp": "2026-11-24T21:42:00Z",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "memory_usage",
+        "series": [
+          {
+            "unit": "bytes",
+            "values": [
+              {
+                "timestamp": "2026-11-24T21:30:00Z",
+                "value": 160743420
+              },
+              {
+                "timestamp": "2026-11-24T21:31:00Z",
+                "value": 158076930
+              },
+              {
+                "timestamp": "2026-11-24T21:32:00Z",
+                "value": 159756290
+              },
+              {
+                "timestamp": "2026-11-24T21:33:00Z",
+                "value": 161161220
+              },
+              {
+                "timestamp": "2026-11-24T21:34:00Z",
+                "value": 164073470
+              },
+              {
+                "timestamp": "2026-11-24T21:35:00Z",
+                "value": 165138430
+              },
+              {
+                "timestamp": "2026-11-24T21:36:00Z",
+                "value": 162680830
+              },
+              {
+                "timestamp": "2026-11-24T21:37:00Z",
+                "value": 165593090
+              },
+              {
+                "timestamp": "2026-11-24T21:38:00Z",
+                "value": 145207300
+              },
+              {
+                "timestamp": "2026-11-24T21:39:00Z",
+                "value": 156774400
+              },
+              {
+                "timestamp": "2026-11-24T21:40:00Z",
+                "value": 160231420
+              },
+              {
+                "timestamp": "2026-11-24T21:41:00Z",
+                "value": 159760380
+              },
+              {
+                "timestamp": "2026-11-24T21:42:00Z",
+                "value": 159567870
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "memory_limit",
+        "series": [
+          {
+            "unit": "bytes",
+            "values": [
+              {
+                "timestamp": "2026-11-24T21:30:00Z",
+                "value": 2147483600
+              },
+              {
+                "timestamp": "2026-11-24T21:31:00Z",
+                "value": 2147483600
+              },
+              {
+                "timestamp": "2026-11-24T21:32:00Z",
+                "value": 2147483600
+              },
+              {
+                "timestamp": "2026-11-24T21:33:00Z",
+                "value": 2147483600
+              },
+              {
+                "timestamp": "2026-11-24T21:34:00Z",
+                "value": 2147483600
+              },
+              {
+                "timestamp": "2026-11-24T21:35:00Z",
+                "value": 2147483600
+              },
+              {
+                "timestamp": "2026-11-24T21:36:00Z",
+                "value": 2147483600
+              },
+              {
+                "timestamp": "2026-11-24T21:37:00Z",
+                "value": 2147483600
+              },
+              {
+                "timestamp": "2026-11-24T21:38:00Z",
+                "value": 2147483600
+              },
+              {
+                "timestamp": "2026-11-24T21:39:00Z",
+                "value": 2147483600
+              },
+              {
+                "timestamp": "2026-11-24T21:40:00Z",
+                "value": 2147483600
+              },
+              {
+                "timestamp": "2026-11-24T21:41:00Z",
+                "value": 2147483600
+              },
+              {
+                "timestamp": "2026-11-24T21:42:00Z",
+                "value": 2147483600
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "pairs": [
+    {
+      "label": "A",
+      "timePT": "11/24/2026, 13:03:18",
+      "reports": [
+        {
+          "os": "ios",
+          "fps": 58.8,
+          "frameP95": 17,
+          "frameP99": 18,
+          "jank": 0,
+          "quality": "high",
+          "setting": "auto",
+          "density": 1.5,
+          "workP50": 1,
+          "workP95": 2,
+          "particlesP50": 36,
+          "objectsP50": 303,
+          "rttP50": 50,
+          "rttP95": 54,
+          "pressToSendP95": 106,
+          "handlerToSendP95": 31,
+          "sendGapP95": 37,
+          "inputHz": 30,
+          "serverHz": 30,
+          "tickLateP95": 1,
+          "tickMsP95": 0.7,
+          "mode": "duel",
+          "character": "voltkit",
+          "shell": "ios-app",
+          "screen": "956x440@3"
+        },
+        {
+          "os": "android",
+          "fps": 50.5,
+          "frameP95": 40.1,
+          "frameP99": 50.2,
+          "jank": 0.275,
+          "quality": "low",
+          "setting": "auto",
+          "density": 1.25,
+          "workP50": 10.4,
+          "workP95": 19.9,
+          "particlesP50": 8,
+          "objectsP50": 200,
+          "rttP50": 108,
+          "rttP95": 157,
+          "pressToSendP95": 112,
+          "handlerToSendP95": 84,
+          "sendGapP95": 78,
+          "inputHz": 29.98,
+          "serverHz": 30,
+          "tickLateP95": 1,
+          "tickMsP95": 0.7,
+          "mode": "duel",
+          "character": "cindrake",
+          "shell": "web",
+          "screen": "915x412@2.63"
+        }
+      ]
+    },
+    {
+      "label": "B",
+      "timePT": "11/24/2026, 13:06:07",
+      "reports": [
+        {
+          "os": "ios",
+          "fps": 58.8,
+          "frameP95": 17,
+          "frameP99": 18,
+          "jank": 0,
+          "quality": "high",
+          "setting": "high",
+          "density": 1.5,
+          "workP50": 1,
+          "workP95": 2,
+          "particlesP50": 201,
+          "objectsP50": 489,
+          "rttP50": 51,
+          "rttP95": 54,
+          "pressToSendP95": 172,
+          "handlerToSendP95": 26,
+          "sendGapP95": 37,
+          "inputHz": 30.03,
+          "serverHz": 30,
+          "tickLateP95": 1.1,
+          "tickMsP95": 0.6,
+          "mode": "duel",
+          "character": "pyranda",
+          "shell": "ios-app",
+          "screen": "956x440@3"
+        },
+        {
+          "os": "android",
+          "fps": 28.9,
+          "frameP95": 55.1,
+          "frameP99": 67.8,
+          "jank": 0.644,
+          "quality": "high",
+          "setting": "high",
+          "density": 2,
+          "workP50": 21.7,
+          "workP95": 28.4,
+          "particlesP50": 180,
+          "objectsP50": 472,
+          "rttP50": 133,
+          "rttP95": 154,
+          "pressToSendP95": 83,
+          "handlerToSendP95": 57,
+          "sendGapP95": 96,
+          "inputHz": 30.02,
+          "serverHz": 30,
+          "tickLateP95": 1.1,
+          "tickMsP95": 0.6,
+          "mode": "duel",
+          "character": "pyranda",
+          "shell": "web",
+          "screen": "915x412@2.63"
+        }
+      ]
+    },
+    {
+      "label": "C",
+      "timePT": "11/24/2026, 13:08:40",
+      "reports": [
+        {
+          "os": "ios",
+          "fps": 58.8,
+          "frameP95": 18,
+          "frameP99": 19,
+          "jank": 0,
+          "quality": "high",
+          "setting": "high",
+          "density": 1.5,
+          "workP50": 1,
+          "workP95": 2,
+          "particlesP50": 248,
+          "objectsP50": 588,
+          "rttP50": 50,
+          "rttP95": 51,
+          "pressToSendP95": 740,
+          "handlerToSendP95": 29,
+          "sendGapP95": 37,
+          "inputHz": 30,
+          "serverHz": 30,
+          "tickLateP95": 1,
+          "tickMsP95": 0.6,
+          "mode": "duel",
+          "character": "pyranda",
+          "shell": "ios-app",
+          "screen": "956x440@3"
+        },
+        {
+          "os": "android",
+          "fps": 28.7,
+          "frameP95": 54,
+          "frameP99": 67.2,
+          "jank": 0.661,
+          "quality": "high",
+          "setting": "high",
+          "density": 2,
+          "workP50": 22.5,
+          "workP95": 28.9,
+          "particlesP50": 211,
+          "objectsP50": 505,
+          "rttP50": 129,
+          "rttP95": 149,
+          "pressToSendP95": 104,
+          "handlerToSendP95": 67,
+          "sendGapP95": 93,
+          "inputHz": 29.95,
+          "serverHz": 30,
+          "tickLateP95": 1,
+          "tickMsP95": 0.6,
+          "mode": "duel",
+          "character": "pyranda",
+          "shell": "web",
+          "screen": "915x412@2.63"
+        }
+      ]
+    },
+    {
+      "label": "D",
+      "timePT": "11/24/2026, 13:12:23",
+      "reports": [
+        {
+          "os": "ios",
+          "fps": 58.8,
+          "frameP95": 18,
+          "frameP99": 20,
+          "jank": 0,
+          "quality": "high",
+          "setting": "high",
+          "density": 1.5,
+          "workP50": 2,
+          "workP95": 3,
+          "particlesP50": 238,
+          "objectsP50": 600,
+          "rttP50": 49,
+          "rttP95": 74,
+          "pressToSendP95": 149,
+          "handlerToSendP95": 28,
+          "sendGapP95": 37,
+          "inputHz": 30.01,
+          "serverHz": 30,
+          "tickLateP95": 1.1,
+          "tickMsP95": 0.6,
+          "mode": "duel",
+          "character": "pyranda",
+          "shell": "ios-app",
+          "screen": "956x440@3"
+        },
+        {
+          "os": "android",
+          "fps": 27.3,
+          "frameP95": 56.8,
+          "frameP99": 70.7,
+          "jank": 0.736,
+          "quality": "high",
+          "setting": "high",
+          "density": 2,
+          "workP50": 22.7,
+          "workP95": 30.3,
+          "particlesP50": 207,
+          "objectsP50": 606,
+          "rttP50": 131,
+          "rttP95": 169,
+          "pressToSendP95": 121,
+          "handlerToSendP95": 76,
+          "sendGapP95": 96,
+          "inputHz": 29.99,
+          "serverHz": 30,
+          "tickLateP95": 1.1,
+          "tickMsP95": 0.6,
+          "mode": "duel",
+          "character": "pyranda",
+          "shell": "web",
+          "screen": "915x412@2.63"
+        }
+      ]
+    },
+    {
+      "label": "E",
+      "timePT": "11/24/2026, 13:20:20",
+      "reports": [
+        {
+          "os": "android",
+          "fps": 32.2,
+          "frameP95": 51.6,
+          "frameP99": 66.4,
+          "jank": 0.497,
+          "quality": "low",
+          "setting": "auto",
+          "density": 1.25,
+          "workP50": 18.4,
+          "workP95": 30.3,
+          "particlesP50": 33,
+          "objectsP50": 193,
+          "rttP50": 89,
+          "rttP95": 351,
+          "pressToSendP95": 154,
+          "handlerToSendP95": 110,
+          "sendGapP95": 80,
+          "inputHz": 30.02,
+          "serverHz": 30,
+          "tickLateP95": 1,
+          "tickMsP95": 0.7,
+          "mode": "duel",
+          "character": "cindrake",
+          "shell": "web",
+          "screen": "915x412@2.63"
+        }
+      ]
+    },
+    {
+      "label": "F",
+      "timePT": "11/24/2026, 13:29:58",
+      "reports": [
+        {
+          "os": "android",
+          "fps": 23.3,
+          "frameP95": 67.7,
+          "frameP99": 85.2,
+          "jank": 0.862,
+          "quality": "low",
+          "setting": "auto",
+          "density": 1.25,
+          "workP50": 23.7,
+          "workP95": 37.1,
+          "particlesP50": 59,
+          "objectsP50": 188,
+          "rttP50": 115,
+          "rttP95": 146,
+          "pressToSendP95": 143,
+          "handlerToSendP95": 111,
+          "sendGapP95": 103,
+          "inputHz": 29.95,
+          "serverHz": 30,
+          "tickLateP95": 1,
+          "tickMsP95": 0.9,
+          "mode": "raid",
+          "boss": "grumblecrag",
+          "character": "mossloth",
+          "shell": "web",
+          "screen": "915x412@2.63"
+        },
+        {
+          "os": "ios",
+          "fps": 58.8,
+          "frameP95": 18,
+          "frameP99": 20,
+          "jank": 0,
+          "quality": "high",
+          "setting": "high",
+          "density": 1.5,
+          "workP50": 2,
+          "workP95": 3,
+          "particlesP50": 222,
+          "objectsP50": 218,
+          "rttP50": 74,
+          "rttP95": 88,
+          "pressToSendP95": 119,
+          "handlerToSendP95": 32,
+          "sendGapP95": 37,
+          "inputHz": 29.99,
+          "serverHz": 30,
+          "tickLateP95": 1,
+          "tickMsP95": 0.9,
+          "mode": "raid",
+          "boss": "grumblecrag",
+          "character": "tidefin",
+          "shell": "ios-app",
+          "screen": "956x440@3"
+        }
+      ]
+    },
+    {
+      "label": "G",
+      "timePT": "11/24/2026, 13:33:50",
+      "reports": [
+        {
+          "os": "ios",
+          "fps": 58.8,
+          "frameP95": 18,
+          "frameP99": 21,
+          "jank": 0,
+          "quality": "high",
+          "setting": "high",
+          "density": 1.5,
+          "workP50": 2,
+          "workP95": 3,
+          "particlesP50": 173,
+          "objectsP50": 412,
+          "rttP50": 69,
+          "rttP95": 83,
+          "pressToSendP95": 68,
+          "handlerToSendP95": 25,
+          "sendGapP95": 37,
+          "inputHz": 30,
+          "serverHz": 30,
+          "tickLateP95": 1.1,
+          "tickMsP95": 0.9,
+          "mode": "raid",
+          "boss": "prismatail",
+          "character": "sunbara",
+          "shell": "ios-app",
+          "screen": "956x440@3"
+        }
+      ]
+    },
+    {
+      "label": "H",
+      "timePT": "11/24/2026, 13:36:50",
+      "reports": [
+        {
+          "os": "android",
+          "fps": 23.4,
+          "frameP95": 68.1,
+          "frameP99": 82.4,
+          "jank": 0.861,
+          "quality": "low",
+          "setting": "auto",
+          "density": 1.25,
+          "workP50": 23.9,
+          "workP95": 38.4,
+          "particlesP50": 24,
+          "objectsP50": 156,
+          "rttP50": 109,
+          "rttP95": 161,
+          "pressToSendP95": 150,
+          "handlerToSendP95": 106,
+          "sendGapP95": 104,
+          "inputHz": 29.99,
+          "serverHz": 30,
+          "tickLateP95": 1.1,
+          "tickMsP95": 0.9,
+          "mode": "raid",
+          "boss": "prismatail",
+          "character": "cindrake",
+          "shell": "web",
+          "screen": "915x412@2.63"
+        },
+        {
+          "os": "ios",
+          "fps": 58.8,
+          "frameP95": 21,
+          "frameP99": 23,
+          "jank": 0,
+          "quality": "high",
+          "setting": "high",
+          "density": 1.5,
+          "workP50": 2,
+          "workP95": 3,
+          "particlesP50": 78,
+          "objectsP50": 325,
+          "rttP50": 78,
+          "rttP95": 102,
+          "pressToSendP95": 56,
+          "handlerToSendP95": 27,
+          "sendGapP95": 39,
+          "inputHz": 30.01,
+          "serverHz": 30,
+          "tickLateP95": 1.1,
+          "tickMsP95": 0.9,
+          "mode": "raid",
+          "boss": "prismatail",
+          "character": "sunbara",
+          "shell": "ios-app",
+          "screen": "956x440@3"
+        }
+      ]
+    },
+    {
+      "label": "I",
+      "timePT": "11/24/2026, 13:38:41",
+      "reports": [
+        {
+          "os": "ios",
+          "fps": 58.8,
+          "frameP95": 18,
+          "frameP99": 22,
+          "jank": 0.002,
+          "quality": "high",
+          "setting": "high",
+          "density": 1.5,
+          "workP50": 2,
+          "workP95": 3,
+          "particlesP50": 124,
+          "objectsP50": 397,
+          "rttP50": 79,
+          "rttP95": 165,
+          "pressToSendP95": 61,
+          "handlerToSendP95": 25,
+          "sendGapP95": 37,
+          "inputHz": 30,
+          "serverHz": 30,
+          "tickLateP95": 1.1,
+          "tickMsP95": 0.9,
+          "mode": "raid",
+          "boss": "emberwing",
+          "character": "voltkit",
+          "shell": "ios-app",
+          "screen": "956x440@3"
+        },
+        {
+          "os": "android",
+          "fps": 25.1,
+          "frameP95": 60.7,
+          "frameP99": 82.4,
+          "jank": 0.826,
+          "quality": "low",
+          "setting": "auto",
+          "density": 1.25,
+          "workP50": 22.5,
+          "workP95": 33.6,
+          "particlesP50": 38,
+          "objectsP50": 179,
+          "rttP50": 153,
+          "rttP95": 1004,
+          "pressToSendP95": 123,
+          "handlerToSendP95": 102,
+          "sendGapP95": 96,
+          "inputHz": 30.03,
+          "serverHz": 30,
+          "tickLateP95": 1.1,
+          "tickMsP95": 0.9,
+          "mode": "raid",
+          "boss": "emberwing",
+          "character": "cindrake",
+          "shell": "web",
+          "screen": "915x412@2.63"
+        }
+      ]
+    },
+    {
+      "label": "J",
+      "timePT": "11/24/2026, 13:40:27",
+      "reports": [
+        {
+          "os": "ios",
+          "fps": 58.8,
+          "frameP95": 19,
+          "frameP99": 22,
+          "jank": 0,
+          "quality": "high",
+          "setting": "high",
+          "density": 1.5,
+          "workP50": 2,
+          "workP95": 3,
+          "particlesP50": 139,
+          "objectsP50": 430,
+          "rttP50": 77,
+          "rttP95": 94,
+          "pressToSendP95": 199,
+          "handlerToSendP95": 26,
+          "sendGapP95": 39,
+          "inputHz": 30,
+          "serverHz": 30,
+          "tickLateP95": 1.1,
+          "tickMsP95": 0.9,
+          "mode": "raid",
+          "boss": "emberwing",
+          "character": "voltkit",
+          "shell": "ios-app",
+          "screen": "956x440@3"
+        },
+        {
+          "os": "android",
+          "fps": 24.9,
+          "frameP95": 62.2,
+          "frameP99": 81.1,
+          "jank": 0.841,
+          "quality": "low",
+          "setting": "auto",
+          "density": 1.25,
+          "workP50": 23.1,
+          "workP95": 34,
+          "particlesP50": 37,
+          "objectsP50": 185,
+          "rttP50": 112,
+          "rttP95": 615,
+          "pressToSendP95": 135,
+          "handlerToSendP95": 96,
+          "sendGapP95": 97,
+          "inputHz": 29.82,
+          "serverHz": 30,
+          "tickLateP95": 1.1,
+          "tickMsP95": 0.9,
+          "mode": "raid",
+          "boss": "emberwing",
+          "character": "cindrake",
+          "shell": "web",
+          "screen": "915x412@2.63"
+        }
+      ]
+    }
+  ]
+}

@@ -111,15 +111,16 @@ leave it off unless they ask for it (`createArenaServer({ backpressure })`).
 | ------ | --------------- | ------------ | ---------------------- | ------------- | -------------- |
 | High   | all             | normal       | 2 fighters (you first) | animated      | screen, ≤ 2×   |
 | Medium | 60%             | 1.6× sparser | 1 (you)                | animated      | screen, ≤ 2×   |
-| Low    | 35%             | 2.5× sparser | none                   | still         | ≤ 1.5×         |
+| Low    | 35%             | 2.5× sparser | none                   | still         | ≤ 1.25×        |
 
 Fighters, portraits, text, HUD, telegraphs, danger zones, projectiles,
 status markers and every skill's shapes and colours are identical at every
 level. Low reuses the particle density reduced motion already uses, so it is
-an existing, reviewed look. Low also draws the battle at 1.5 canvas pixels
-per CSS pixel at most, as iPhones do at every level (`rendererDensity`):
-slightly softer, and it is what stops older Android phones lagging when
-skills go off (owner's decision, 10 Nov 2026). A level change mid-battle
+an existing, reviewed look. Low draws the battle at 1.25 canvas pixels per
+CSS pixel at most (owner's decision, 23 Nov 2026); High keeps the platform
+cap from `rendererDensity` (1.5× on iPhones, 2× elsewhere). The earlier
+1.5× Low cap helped older Android phones when skills went off (10 Nov).
+A level change mid-battle
 resizes the canvas on the next frame; the court keeps the density it was
 baked at.
 
@@ -257,14 +258,17 @@ the scene afterwards. The soak test now fails if memory keeps growing.
 
 Three changes from this work also make every battle lighter now:
 
-- **Effects age in real time down to 5 fps.** The effects engine capped
-  each frame's step at 50 ms, so on a phone at 5–20 fps particles and
-  marks outlived their design (twice as long at 10 fps) while new casts
-  kept coming at the game's pace: more on screen, slower frames, longer
-  lives again. The cap is now 200 ms, Phaser's own floor (`FX_MAX_STEP`).
-  In a four-player fight most particles come from spammed basic attacks
-  (about 375 a second asked for here), so at 10 fps this halves what is on
-  screen; this container renders below 5 fps there, so it cannot show it.
+- **Effects expire by unsmoothed elapsed time.** Raising the old 50 ms
+  step cap to 200 ms was insufficient: Phaser's animation delta still
+  clamps during warm-up/blur and replaces frames over 200 ms with older
+  samples. Births follow real time, so particles and ground marks could
+  accumulate while their age clock fell behind. Expiry now uses rendered
+  timestamp gaps; only motion integration keeps the 200 ms cap
+  (`FX_MAX_STEP`). New bursts keep their first visible frame. In a
+  synthetic Low stream with 250 ms frames, the median fell from 700 to
+  140 particles, with a peak of 175; settled 60 Hz counts stayed the same.
+  See [session 2](battle-gpu-session-2.md) for controls, scene measurements
+  and the remaining need to validate on an older iPhone at Low.
 - **Circles cost less to draw.** Battles draw hundreds of filled and
   outlined circles a frame; each one had Phaser compute every outline point
   with cos/sin and make new objects. `circlePoints` (battle-curves.ts)
@@ -312,8 +316,7 @@ from players' phones:
   Phaser's own canvas size check, on a 500 ms timer, is counted apart), the
   page does not grow, nothing leaks (once the match is over and its effects
   have played out, the scene less its pooled effect sprites is back to its
-  size; judged then because under 5 fps Phaser slows game time and effects
-  pile up while the fight lasts), and at Low the glow budget holds
+  size; judged after transient effects finish), and at Low the glow budget holds
   decorative light to 0.75 screens (measured 0.74 at the 90th percentile,
   against about 1 at High).
 - **Effect rules** (`tests/unit/effect-rules.test.ts`): skill effect files
