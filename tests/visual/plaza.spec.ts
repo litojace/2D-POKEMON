@@ -834,15 +834,23 @@ async function runningJump(page: Page, skipMs: number, airDur = 1.5) {
         P.airDur = airDur;
         P.airH = 42;
         const loop = (now: number) => {
-          if (!P.air || now - t0 > 8000) return finish();
-          if (now - t0 > skipMs) {
-            const v = d.view();
-            out.push({
-              bob: P.bob || 0,
-              drawn: P.bobT === now / 1000,
-              seen: P.x > v.x0 && P.x < v.x1 && P.y > v.y0 && P.y < v.y1,
+          // (After this frame's other callbacks, like the judging below.)
+          if (!P.air || now - t0 > 8000) return setTimeout(finish);
+          // Judged once every callback of this frame has run: the Plaza's
+          // own can be queued after this one, and `drawn` then read the
+          // frame before's time on every frame, though the Plaza drew each
+          // one (CI, #402, 24 Nov; reproduced by queueing this loop first).
+          if (now - t0 > skipMs)
+            setTimeout(() => {
+              // Landed meanwhile (a next frame came first): not in the air.
+              if (!P.air) return;
+              const v = d.view();
+              out.push({
+                bob: P.bob || 0,
+                drawn: P.bobT >= now / 1000,
+                seen: P.x > v.x0 && P.x < v.x1 && P.y > v.y0 && P.y < v.y1,
+              });
             });
-          }
           requestAnimationFrame(loop);
         };
         requestAnimationFrame(loop);
