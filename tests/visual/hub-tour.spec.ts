@@ -101,6 +101,39 @@ for (const size of SIZES)
         steps++;
         if (steps === 3) break;
         await page.click("[data-tour=next]");
+        // Between steps the dim stays still: only the spotlight and bubble
+        // fade. (A spotlight that glided across the screen carried the dim
+        // with it, and phones showed it sliding and flashing.)
+        const moving = await page.evaluate(() => {
+          const root = document.querySelector(".hub-tour")!;
+          const dim = root.querySelector(".tour-dim")!.getBoundingClientRect();
+          return {
+            dim: [dim.x, dim.y, dim.width, dim.height],
+            fades: root.getAnimations({ subtree: true }).length,
+            props: root
+              .getAnimations({ subtree: true })
+              .flatMap((a) =>
+                a instanceof CSSTransition
+                  ? [a.transitionProperty]
+                  : (a.effect as KeyframeEffect)
+                      .getKeyframes()
+                      .flatMap((k) =>
+                        Object.keys(k).filter(
+                          (p) =>
+                            ![
+                              "offset",
+                              "easing",
+                              "composite",
+                              "computedOffset",
+                            ].includes(p),
+                        ),
+                      ),
+              ),
+          };
+        });
+        expect(moving.dim).toEqual([0, 0, size.width, size.height]);
+        expect(moving.fades).toBeGreaterThan(0);
+        expect([...new Set(moving.props)]).toEqual(["opacity"]);
       }
       expect(steps).toBe(3);
       // The Lobby behind waits while the tour runs.

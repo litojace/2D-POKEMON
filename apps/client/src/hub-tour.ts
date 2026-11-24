@@ -256,12 +256,31 @@ export interface TourOptions {
 export function runTour(o: TourOptions): TourHandle {
   const steps = TOUR_STEPS;
   const root = document.createElement("div");
-  root.className = "hub-tour is-first";
+  root.className = "hub-tour";
   root.dataset.tour = "";
-  if (o.reduced) root.classList.add("is-reduced");
-  root.innerHTML = `<div class="tour-hole" aria-hidden="true"></div><section class="tour-bubble" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-text"></section>`;
+  // The dim is one still layer; the spotlight is a cut-out of its mask.
+  // Two cut-outs, so a new step's fades in while the last one's fades out
+  // (nothing glides across the screen). One tour at a time: the id is fixed.
+  const cut = `<rect class="tour-cut" fill="#000" opacity="0" width="0" height="0"/>`;
+  root.innerHTML = `<svg class="tour-dim" aria-hidden="true"><mask id="tour-dim-mask"><rect width="100%" height="100%" fill="#fff"/>${cut}${cut}</mask><rect class="tour-dim-fill" width="100%" height="100%" mask="url(#tour-dim-mask)"/></svg><div class="tour-hole" aria-hidden="true"></div><section class="tour-bubble" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-text"></section>`;
   const hole = root.querySelector<HTMLElement>(".tour-hole")!;
   const bubble = root.querySelector<HTMLElement>(".tour-bubble")!;
+  const cuts = Array.from(root.querySelectorAll<SVGRectElement>(".tour-cut"));
+  /** Which cut-out shows the current step's spotlight. */
+  let cutNow = 0;
+  /** The spotlight's corner radius (the ring's, read once when shown). */
+  let radius = -1;
+  /** Set by show(): the next place() is a new step, so it fades in. */
+  let fresh = false,
+    started = false;
+  const fade = (el: Element, from: number, to: number, ms: number) => {
+    for (const a of el.getAnimations()) a.cancel();
+    if (o.reduced || from === to) return;
+    el.animate([{ opacity: from }, { opacity: to }], {
+      duration: ms,
+      easing: "ease-out",
+    });
+  };
   const returnFocus = document.activeElement as HTMLElement | null;
   let index = -1,
     open = true,
@@ -289,11 +308,36 @@ export function runTour(o: TourOptions): TourHandle {
       h: target.h + pad * 2,
     };
     root.classList.toggle("has-target", !!spot);
+    // A new step: its spotlight fades in where the last one fades out, and
+    // the dim between them stays put. (The first step just appears.)
+    const stepIn = fresh && started;
+    fresh = false;
+    started = true;
+    if (stepIn) {
+      const last = cuts[cutNow];
+      fade(last, Number(last.getAttribute("opacity")), 0, 220);
+      last.setAttribute("opacity", "0");
+      cutNow = 1 - cutNow;
+    }
+    const now = cuts[cutNow];
     if (spot) {
       hole.style.transform = `translate(${spot.x}px, ${spot.y}px)`;
       hole.style.width = `${spot.w}px`;
       hole.style.height = `${spot.h}px`;
+      if (radius < 0)
+        radius = parseFloat(getComputedStyle(hole).borderTopLeftRadius) || 0;
+      now.setAttribute("x", `${spot.x}`);
+      now.setAttribute("y", `${spot.y}`);
+      now.setAttribute("width", `${spot.w}`);
+      now.setAttribute("height", `${spot.h}`);
+      now.setAttribute("rx", `${radius}`);
     }
+    if (stepIn) {
+      fade(now, 0, spot ? 1 : 0, 220);
+      fade(hole, 0, 1, 220);
+      fade(bubble, 0, 1, 160);
+    }
+    now.setAttribute("opacity", spot ? "1" : "0");
     const at = placeBubble(
       spot,
       { w: bubble.offsetWidth, h: bubble.offsetHeight },
@@ -302,11 +346,6 @@ export function runTour(o: TourOptions): TourHandle {
     );
     bubble.dataset.side = at.side;
     bubble.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`;
-    // The first spot appears in place; later ones glide from the last.
-    if (root.classList.contains("is-first")) {
-      void root.offsetWidth;
-      root.classList.remove("is-first");
-    }
   };
   /** Show step `to`, passing over steps with nothing on screen. */
   const show = (to: number, dir: 1 | -1) => {
@@ -322,6 +361,7 @@ export function runTour(o: TourOptions): TourHandle {
       shown.indexOf(steps[i]),
       shown.length,
     );
+    fresh = true;
     place();
     bubble.querySelector<HTMLElement>("[data-tour=next]")?.focus({
       preventScroll: true,
