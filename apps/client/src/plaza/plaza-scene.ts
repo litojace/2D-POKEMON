@@ -5987,14 +5987,27 @@ export function openPlaza(options) {
       // You: the same step as the server, then a gentle pull toward where it says you are.
       const ox = P.x,
         oy = P.y;
-      const ev2: { bounced?: number; landed?: boolean; tripped?: boolean } = {};
+      const ev2: {
+        bounced?: number;
+        landed?: boolean;
+        tripped?: boolean;
+        /** When you tripped, on stepClock (ms). */
+        tripAt?: number;
+      } = {};
       const run = (span) => {
         for (let left = span; left > 1e-6; left -= 0.05) {
           const h = Math.min(0.05, left);
           const e = plazaStep(P, sent, h);
           if (e.bounced !== undefined) ev2.bounced = e.bounced;
           if (e.landed) ev2.landed = true;
-          if (e.tripped) ev2.tripped = true;
+          if (e.tripped) {
+            ev2.tripped = true;
+            // The step ends (span - left + h) s in; the trip was the
+            // stumbling already done before that.
+            ev2.tripAt =
+              stepClock +
+              (span - left + h - (PLAZA.stunSeconds - P.stun)) * 1000;
+          }
           // The ball you run into, step by step with you (plaza-net.ts).
           net.ball?.step(P, h, performance.now());
         }
@@ -6024,6 +6037,14 @@ export function openPlaza(options) {
         });
       if (ev2.landed) FX.push({ dust: 1, x: P.x, y: P.y, t: 0, life: 0.4 });
       if (ev2.tripped) {
+        // Tell the server, at the moment it happened: its own hurdles are
+        // lenient (PLAZA_HURDLE), so it trips you when your screen does.
+        const t = Math.round(ev2.tripAt ?? stepClock);
+        socket.emit("plaza-trip", {
+          left: PLAZA.stunSeconds,
+          s: predict.send(t),
+          t,
+        });
         showEmote(P, "💫");
         pzToast("Tripped! Press Space to jump the hurdles.");
       }

@@ -11,6 +11,10 @@
  * `ms` after it sent that number, so that's what it's compared with: only a
  * real disagreement (a dash it refused, a hurdle one side tripped on, a
  * bump) is left, and it is eased in over a few frames.
+ *
+ * A snapshot taken before a slow input reached the server lacks it (the
+ * server plays it at its moment once it comes: apps/server/src/plaza.ts,
+ * rewind), so it isn't compared: the next one has it.
  */
 export const PLAZA_PREDICT = {
   /** How long the browser remembers where it had you (ms). */
@@ -21,6 +25,8 @@ export const PLAZA_PREDICT = {
   snap: 200,
   /** Ease a disagreement out with this time constant (s). */
   ease: 0.1,
+  /** A snapshot missing an input sent this recently is left alone (ms). */
+  wait: 1000,
 } as const;
 
 export interface Point {
@@ -78,6 +84,17 @@ export class PlazaPrediction {
    */
   server(srv: Point, ack: [number, number] | undefined, me: Point) {
     const sent = ack && this.sentAt.get(ack[0]);
+    // An input sent by then that the server hasn't played yet: still coming.
+    const next = ack && this.sentAt.get(ack[0] + 1),
+      newest = this.trail.at(-1)?.t;
+    if (
+      sent !== undefined &&
+      next !== undefined &&
+      next <= sent + ack![1] &&
+      newest !== undefined &&
+      newest - next < PLAZA_PREDICT.wait
+    )
+      return { err: 0, snap: false, dx: 0, dy: 0, stale: true };
     // No numbered input to line up with (none yet, or long ago while standing
     // still): you and the server are both where you stopped.
     const then = (sent !== undefined && this.at(sent + ack![1])) || me;
