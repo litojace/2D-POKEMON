@@ -3288,6 +3288,13 @@ export function createArenaServer(
       } | null;
       plaza.dash(socket.id, d?.dx, d?.dy, { s: d?.s, t: d?.t });
     });
+    // The browser tripped you over a hurdle (PLAZA_HURDLE): when, and the
+    // stumbling still to go.
+    socket.on("plaza-trip", (data: unknown) => {
+      if (!allowed(10)) return;
+      const d = data as { left?: unknown; s?: unknown; t?: unknown } | null;
+      plaza.trip(socket.id, d?.left, { s: d?.s, t: d?.t });
+    });
     socket.on("plaza-emote", (data: unknown, cb: unknown) => {
       if (!allowed(10)) return;
       const ok = plaza.emote(

@@ -969,6 +969,41 @@ export function plazaStick(x: unknown, y: unknown) {
   }
   return { x: dx, y: dy };
 }
+/**
+ * When a hurdle trips you: within `band` px of its line and lower than `low`
+ * px. The browser trips you by these (it is what you see); the server, for a
+ * player whose inputs are timed, by the narrower PLAZA_HURDLE_LENIENT, and
+ * trips you itself only on a hurdle you plainly didn't jump: a jump the
+ * browser just cleared then never trips the server's copy of you a few px
+ * or ms off (which stood you still on the server while your screen ran on,
+ * and pulled you back: the halt after a good jump). A trip of the browser's
+ * own comes to the server as a timed "trip" input (plazaTrip).
+ */
+export const PLAZA_HURDLE = { band: 12, low: 16 } as const;
+export const PLAZA_HURDLE_LENIENT = { band: 6, low: 8 } as const;
+export type PlazaHurdleRule = { readonly band: number; readonly low: number };
+/** How near a hurdle's line a trip the browser reports may be (px). */
+export const PLAZA_TRIP_REACH = 40;
+/** The nearest hurdle's distance from a point (px). */
+export function hurdleDistance(x: number, y: number) {
+  let d = Infinity;
+  for (const [a, b] of PLAZA_HURDLE_SEGMENTS)
+    d = Math.min(d, segmentDistance(x, y, a, b));
+  return d;
+}
+/**
+ * Trip `b` with `left` seconds of stumbling still to go (the browser's own
+ * trip, reported): false when it isn't near a hurdle or already stumbling.
+ */
+export function plazaTrip(b: PlazaBody, left: number = PLAZA.stunSeconds) {
+  if (!Number.isFinite(left) || b.stun > 0) return false;
+  if (hurdleDistance(b.x, b.y) > PLAZA_TRIP_REACH) return false;
+  b.stun = Math.max(0, Math.min(PLAZA.stunSeconds, left));
+  b.stumbled = true;
+  b.dash = 0;
+  b.speed = b.vx = b.vy = 0;
+  return true;
+}
 export interface PlazaStepEvents {
   /** A bounce pad threw the body up (pad index). */
   bounced?: number;
@@ -986,6 +1021,7 @@ export function plazaStep(
   b: PlazaBody,
   dir: { x: number; y: number },
   dt: number,
+  hurdle: PlazaHurdleRule = PLAZA_HURDLE,
 ): PlazaStepEvents {
   dt = Math.min(Math.max(dt, 0), 0.1);
   const events: PlazaStepEvents = {};
@@ -1060,7 +1096,9 @@ export function plazaStep(
     }
   }
   const trip =
-    hd < 12 && !b.stumbled ? hurdleTrip(b, hit!, ox, oy, oAir, dt) : undefined;
+    hd < hurdle.band && !b.stumbled
+      ? hurdleTrip(b, hit!, ox, oy, oAir, dt, hurdle)
+      : undefined;
   if (trip !== undefined) {
     // Fall where and when you reached the hurdle, not a whole step past it:
     // the rest of the step counts as stumbling.
@@ -1077,8 +1115,8 @@ export function plazaStep(
 
 /**
  * When in this step (0..1) the body trips over hurdle `h`, or undefined if it
- * clears it: the first moment it is both within 12 px of the hurdle and
- * lower than 16 px. Worked out exactly rather than at the step's end, so the
+ * clears it: the first moment it is both within `band` px of the hurdle and
+ * lower than `low` px (PLAZA_HURDLE). Worked out exactly rather than at the step's end, so the
  * server's 20 steps a second and the browser's 60 frames trip (or clear)
  * alike, even on a late jump.
  */
@@ -1089,31 +1127,32 @@ function hurdleTrip(
   oy: number,
   oAir: number,
   dt: number,
+  { band, low }: PlazaHurdleRule,
 ) {
   const len = Math.hypot(p1.x - p0.x, p1.y - p0.y),
     side = (px: number, py: number) =>
       ((p1.x - p0.x) * (py - p0.y) - (p1.y - p0.y) * (px - p0.x)) / len,
     s0 = side(ox, oy),
     s1 = side(b.x, b.y);
-  // The part of the step within 12 px of the hurdle's line.
+  // The part of the step within `band` px of the hurdle's line.
   let r0 = 0,
     r1 = 1;
   if (s1 !== s0) {
-    const ra = (-12 - s0) / (s1 - s0),
-      rb = (12 - s0) / (s1 - s0);
+    const ra = (-band - s0) / (s1 - s0),
+      rb = (band - s0) / (s1 - s0);
     r0 = Math.max(0, Math.min(ra, rb));
     r1 = Math.min(1, Math.max(ra, rb));
-  } else if (Math.abs(s0) >= 12) return undefined;
+  } else if (Math.abs(s0) >= band) return undefined;
   if (r0 > r1) return undefined;
   const height = (r: number) => {
     if (!oAir) return 0;
     const a = oAir + r * dt;
     return a >= b.airDur ? 0 : Math.sin((Math.PI * a) / b.airDur) * b.airH;
   };
-  if (height(r0) < 16) return r0;
-  // High when you got there: you trip only if you come down below 16 px
+  if (height(r0) < low) return r0;
+  // High when you got there: you trip only if you come down below `low` px
   // before you're past it.
-  const down = b.airDur * (1 - Math.asin(16 / b.airH) / Math.PI),
+  const down = b.airDur * (1 - Math.asin(low / b.airH) / Math.PI),
     r = (down - oAir) / dt;
   return r <= r1 ? Math.max(r0, r) : undefined;
 }

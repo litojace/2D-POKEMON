@@ -39,6 +39,9 @@ import {
   plazaStep,
   plazaStick,
   plazaTimeOfDay,
+  plazaTrip,
+  PLAZA_HURDLE,
+  PLAZA_HURDLE_LENIENT,
   onTrack,
   trackPoint,
   trackPolar,
@@ -80,6 +83,19 @@ interface Visitor {
   /** The newest message number applied (PlazaState.ack), and when (step ms). */
   ack: number;
   ackAt: number;
+  /** The last PLAZA_INPUT.rewindMs or so: the body at the start of each
+   * step (`seq`: the last timed input played by then), and the timed inputs
+   * played, so one that comes late is played at its moment (rewind). `n`
+   * counts inputs as they are played: the last one played by then. */
+  past: {
+    at: number;
+    body: PlazaBody;
+    dir: { x: number; y: number };
+    n: number;
+  }[];
+  played: PlazaInput[];
+  playedN: number;
+  nextN: number;
   emote: number;
   emoteUntil: number;
   lastEmote: number;
@@ -113,14 +129,26 @@ interface Visitor {
  * browser already showed puts the server's copy 120 px behind.
  */
 const PLAZA_DASH_SLACK = 0.1;
-/** Timed inputs: at most `holdMs` behind their arrival and `queue` waiting.
- * The lead rises at once to cover a late arrival and falls back, at most
- * `leadDecay` ms a second, once none in the last `windowMs` was that late. */
+/**
+ * Timed inputs: at most `holdMs` behind their arrival and `queue` waiting.
+ * One that comes later than the lead allows (a slow packet) is played at its
+ * moment all the same, up to `rewindMs` back: the server rewinds your body
+ * to a step before it and plays the steps again. (Played late instead, a
+ * jump a slow packet held back took off nearer the hurdle than on your
+ * screen and tripped the server's copy of you: you halted after a good
+ * jump, pulled back to where the server had you stumbling.)
+ *
+ * The lead changes only while you stand still, to the latest arrival in the
+ * last `windowMs`: changed while you move, it stretches or squeezes the time
+ * between two inputs, so the server walks you further or less far before a
+ * jump than your screen did. Only an arrival later than a rewind reaches
+ * raises it at once.
+ */
 export const PLAZA_INPUT = {
   holdMs: 400,
   queue: 64,
   windowMs: 2000,
-  leadDecay: 50,
+  rewindMs: 400,
 } as const;
 /** How the browser numbers (`s`) and times (`t`, its own ms clock) an input. */
 export interface PlazaTiming {
@@ -128,10 +156,13 @@ export interface PlazaTiming {
   t?: unknown;
 }
 interface PlazaInput {
-  kind: "stick" | "jump" | "dash";
+  /** A trip is the browser's own (plazaTrip), with seconds left in `x`. */
+  kind: "stick" | "jump" | "dash" | "trip";
   x: number;
   y: number;
   seq: number;
+  /** The server's own count, in arrival order (Visitor.past). */
+  n: number;
   /** When it plays, on the step clock (ms). */
   at: number;
 }
@@ -449,6 +480,10 @@ export class PlazaWorld {
       seen: [],
       ack: 0,
       ackAt: 0,
+      past: [],
+      played: [],
+      playedN: 0,
+      nextN: 1,
       emote: 0,
       emoteUntil: 0,
       lastEmote: -Infinity,
@@ -613,6 +648,13 @@ export class PlazaWorld {
   dash(key: string, dx?: unknown, dy?: unknown, timing?: PlazaTiming) {
     return this.receive(key, { kind: "dash", ...plazaStick(dx, dy) }, timing);
   }
+  /** The browser tripped you over a hurdle, `left` seconds of stumbling to
+   * go, at timing `t` (only timed: the moment matters, and near a hurdle). */
+  trip(key: string, left: unknown, timing?: PlazaTiming) {
+    if (typeof left !== "number" || !Number.isFinite(left)) return false;
+    if (typeof timing?.t !== "number") return false;
+    return this.receive(key, { kind: "trip", x: left, y: 0 }, timing);
+  }
   /**
    * A stick, jump or dash from the browser. Untimed (no `t`), it applies at
    * once. Timed, it waits for its moment: the browser's time `t` plus the
@@ -640,17 +682,56 @@ export class PlazaWorld {
       return this.apply(v, m);
     }
     // When it reached us, on the step clock.
-    const arrived = Math.max(this.realNow(), this.movedTo ?? -Infinity);
-    v.seen.push([arrived, arrived - t]);
-    v.lead = v.lead === null ? arrived - t : Math.max(v.lead, arrived - t);
-    const last = v.queue.at(-1)?.at ?? -Infinity;
-    v.queue.push({
-      ...m,
-      seq,
-      // In order, and never held more than PLAZA_INPUT.holdMs.
-      at: Math.max(last, Math.min(t + v.lead, arrived + PLAZA_INPUT.holdMs)),
-    });
+    const arrived = Math.max(this.realNow(), this.movedTo ?? -Infinity),
+      lag = arrived - t;
+    v.seen.push([arrived, lag]);
+    if (v.lead === null) v.lead = lag;
+    // Later than a rewind reaches: the lead rises at once (PLAZA_INPUT).
+    if (lag - v.lead > PLAZA_INPUT.rewindMs)
+      v.lead = lag - PLAZA_INPUT.rewindMs;
+    const last = Math.max(
+        v.queue.at(-1)?.at ?? -Infinity,
+        v.played.at(-1)?.at ?? -Infinity,
+      ),
+      input: PlazaInput = {
+        ...m,
+        seq,
+        n: v.nextN++,
+        // In order, and never held more than PLAZA_INPUT.holdMs.
+        at: Math.max(last, Math.min(t + v.lead, arrived + PLAZA_INPUT.holdMs)),
+      };
+    if (this.movedTo !== null && input.at < this.movedTo)
+      return this.rewind(v, input);
+    v.queue.push(input);
     if (v.queue.length > PLAZA_INPUT.queue) v.queue.shift();
+    return true;
+  }
+  /**
+   * Play `input`, whose moment has passed, at its moment: back to the body
+   * at the step before it, then the steps since again, with it and the
+   * inputs played since. Without a step that far back, it plays now.
+   */
+  private rewind(v: Visitor, input: PlazaInput) {
+    const end = this.movedTo!;
+    let i = v.past.length - 1;
+    while (i >= 0 && v.past[i].at > input.at) i--;
+    if (i < 0) {
+      v.queue.unshift({ ...input, at: end });
+      return true;
+    }
+    const from = v.past[i],
+      bounds = [...v.past.slice(i).map((p) => p.at), end];
+    Object.assign(v.body, from.body);
+    v.dir = { ...from.dir };
+    const again = v.played.filter((p) => p.n > from.n);
+    v.played = v.played.filter((p) => p.n <= from.n);
+    v.playedN = from.n;
+    v.past = v.past.slice(0, i);
+    v.queue = [...again, input, ...v.queue].sort(
+      (a, b) => a.at - b.at || a.n - b.n,
+    );
+    for (let k = 0; k + 1 < bounds.length; k++)
+      this.advance(v, bounds[k], bounds[k + 1]);
     return true;
   }
   private apply(v: Visitor, m: Pick<PlazaInput, "kind" | "x" | "y">) {
@@ -659,14 +740,51 @@ export class PlazaWorld {
       return true;
     }
     if (m.kind === "jump") return plazaJump(v.body);
+    if (m.kind === "trip") return plazaTrip(v.body, m.x);
     return plazaDash(v.body, m, PLAZA_DASH_SLACK);
   }
   /** Move a visitor from `from` to `end` (ms), playing their timed inputs on time. */
-  private stepVisitor(v: Visitor, from: number, end: number, dt: number) {
+  private stepVisitor(v: Visitor, from: number, end: number) {
+    this.advance(v, from, end);
+    // Keep a little more than a rewind reaches.
+    while (v.past.length > 1 && v.past[1].at <= end - PLAZA_INPUT.rewindMs)
+      v.past.shift();
+    const oldest = v.past[0]?.n ?? Infinity;
+    while (v.played.length && v.played[0].n <= oldest) v.played.shift();
+    while (v.seen.length && v.seen[0][0] < end - PLAZA_INPUT.windowMs)
+      v.seen.shift();
+    // Standing still with nothing waiting: the lead may change (PLAZA_INPUT).
+    const b = v.body;
+    if (
+      v.lead !== null &&
+      v.seen.length &&
+      !v.queue.length &&
+      !v.dir.x &&
+      !v.dir.y &&
+      b.speed < 1 &&
+      !b.air &&
+      b.dash <= 0
+    ) {
+      let recent = -Infinity;
+      for (const [, lag] of v.seen) recent = Math.max(recent, lag);
+      v.lead = recent;
+    }
+  }
+  /** Step a visitor from `from` to `end` (ms) with the inputs due by then. */
+  private advance(v: Visitor, from: number, end: number) {
+    v.past.push({
+      at: from,
+      body: { ...v.body },
+      dir: { ...v.dir },
+      n: v.playedN,
+    });
+    // A player whose inputs are timed trips only on a hurdle plainly not
+    // jumped; the browser reports its own trips (PLAZA_HURDLE).
+    const hurdle = v.lead !== null ? PLAZA_HURDLE_LENIENT : PLAZA_HURDLE;
     const move = (ms: number) => {
       // plazaStep takes at most 0.1 s at a time.
       for (let left = ms; left > 1e-6; left -= 100)
-        plazaStep(v.body, v.dir, Math.min(100, left) / 1000);
+        plazaStep(v.body, v.dir, Math.min(100, left) / 1000, hurdle);
     };
     let at = from;
     while (v.queue.length && v.queue[0].at <= end) {
@@ -675,23 +793,14 @@ export class PlazaWorld {
       if (when > at) move(when - at);
       at = when;
       this.apply(v, m);
+      v.played.push(m);
+      v.playedN = m.n;
       if (m.seq > v.ack) {
         v.ack = m.seq;
         v.ackAt = at;
       }
     }
     if (end > at) move(end - at);
-    // When the network calms (the late arrival is no longer recent), the
-    // lead comes back down, gently: a quick drop would squeeze the next
-    // inputs together.
-    while (v.seen.length && v.seen[0][0] < end - PLAZA_INPUT.windowMs)
-      v.seen.shift();
-    if (v.lead !== null && v.seen.length) {
-      let recent = -Infinity;
-      for (const [, lag] of v.seen) recent = Math.max(recent, lag);
-      if (recent < v.lead)
-        v.lead -= Math.min(v.lead - recent, dt * PLAZA_INPUT.leadDecay);
-    }
   }
   /** At most one emote a second. */
   emote(key: string, kind: unknown, now: number) {
@@ -1080,6 +1189,9 @@ export class PlazaWorld {
     const v = this.visitors.get(key);
     if (!v) return false;
     v.body.boost = PLAZA.boba.seconds;
+    // A rewind would take the drink back: start the history afresh.
+    v.past = [];
+    v.played = [];
     return true;
   }
   boosted(key: string) {
@@ -1105,7 +1217,7 @@ export class PlazaWorld {
     this.movedTo = now;
     const events: PlazaEvent[] = [];
     for (const v of this.visitors.values()) {
-      this.stepVisitor(v, from, now, dt);
+      this.stepVisitor(v, from, now);
       if (v.emote && now >= v.emoteUntil) {
         v.emote = 0;
         v.pair = false;
