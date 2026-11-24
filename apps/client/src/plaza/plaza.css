@@ -2328,13 +2328,16 @@
   font-weight: 700;
 }
 /* The coin after a quest's reward: its art fills two thirds of the box, so
-   1.35em reads as the text's size; it sits on the text's middle and keeps
-   the row as tall as a row without a quest. */
+   1.35em reads as the digits' size. Its middle sits on the digits' middle
+   (0.35em over the baseline): the box's bottom 0.325em under it. No
+   vertical margin: an inline icon sits by its margin's edge, so a margin
+   moves it (a -0.2em one put the coin 2 px under the digits). */
 .plaza-layer .pz-map-list small .ico {
   width: 1.35em;
   height: 1.35em;
-  margin: -0.2em 0 -0.2em 0.05em;
-  vertical-align: -0.32em;
+  /* The art's clear edge (1/6 of the box) is gap enough after the space. */
+  margin-left: -0.15em;
+  vertical-align: -0.325em;
 }
 .plaza-layer .pz-map-list i {
   padding: 0.25em 0.7em;
