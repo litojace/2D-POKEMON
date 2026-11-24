@@ -9,7 +9,7 @@
   padding: max(20px, env(safe-area-inset-top))
     max(24px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom))
     max(24px, env(safe-area-inset-left));
-  overflow: auto;
+  overflow: hidden auto;
   background: #040d1e;
   color: #f2f5ff;
   text-align: center;

@@ -152,7 +152,7 @@ body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
   min-height: 0;
   margin: 0 auto;
   padding: 2px 2px 10px;
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
 }

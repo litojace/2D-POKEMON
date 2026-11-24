@@ -264,9 +264,39 @@ export async function cutOff(page: Page, root: string) {
   }, root);
 }
 
+/**
+ * Scrollers that go up and down but hold content wider than themselves.
+ * With sideways overflow left on (overflow-x auto, or set by overflow-y),
+ * a finger drags the whole panel left and right as well as up and down;
+ * with it hidden, that content is cut off. Either way the box is too
+ * narrow for what is in it (owner's screenshot of a raid's results, 24 Nov
+ * 2026: a column header two pixels past the card let iOS pan the panel).
+ */
+export async function sideways(page: Page, root: string) {
+  return page.evaluate((root) => {
+    const name = (e: Element) =>
+      `${e.tagName.toLowerCase()}${e.id ? `#${e.id}` : ""}.${[...e.classList].slice(0, 3).join(".")}`;
+    const out: string[] = [];
+    for (const base of document.querySelectorAll(root))
+      for (const el of [base, ...base.querySelectorAll("*")]) {
+        if (!(el instanceof HTMLElement)) continue;
+        if (!el.checkVisibility({ visibilityProperty: true })) continue;
+        const cs = getComputedStyle(el);
+        if (cs.overflowY !== "auto" && cs.overflowY !== "scroll") continue;
+        const more = el.scrollWidth - el.clientWidth;
+        if (more > 1)
+          out.push(
+            `${name(el)}: ${more} px wider than itself (overflow-x ${cs.overflowX})`,
+          );
+      }
+    return out;
+  }, root);
+}
+
 /** Swipe every scroller in `root` to its end; list what can't be reached. */
 export async function scrollSweep(page: Page, root: string) {
-  const problems: string[] = [];
+  await stillness(page);
+  const problems: string[] = await sideways(page, root);
   const seen: string[] = [];
   for (const s of await findScrollers(page, root)) {
     const prep = await prepare(page, s.id, s.axis);

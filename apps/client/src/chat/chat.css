@@ -351,6 +351,7 @@
   min-height: 0;
   margin: 8px 0 6px;
   padding: 0 2px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   list-style: none;

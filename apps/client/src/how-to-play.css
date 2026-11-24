@@ -17,6 +17,7 @@
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
   /* Room for focus rings at the ends. */
   padding: 2px;
