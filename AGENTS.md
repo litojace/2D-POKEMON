@@ -9,6 +9,23 @@ the effect and battle performance budgets, migrations, and the merge lanes.
 When this file and CLAUDE.md disagree, CLAUDE.md wins. This file only covers
 what differs for an agent that is not a Claude session.
 
+## Start from the latest main
+
+Your workspace may be an old snapshot of this repository. Before you read
+code or write anything (a fix, a report, a store description), run
+`git fetch origin` and work from `origin/main`. Base every claim on that.
+If something you see disagrees with the live game or with what the owner
+says, check that your copy is current before you trust it.
+
+**Removed features are history.** The Farm, the Bistro and Gold Leaves were
+removed in November 2026. They are not in the game, so never describe or
+recommend them as features. They still appear in places kept for the
+record: README and doc sections marked "(removed)", `docs/hub-redesign/`,
+the old `*farm*` and `*bistro*` migrations, and
+`tests/integration/remove-farm-bistro-leaves.test.ts`. The same goes for any
+section marked removed, retired or old. What the game has today is what the
+code on `origin/main` runs.
+
 ## What is different for you
 
 - **Merging.** Merge your own PRs by lane, exactly as CLAUDE.md's "Merging
