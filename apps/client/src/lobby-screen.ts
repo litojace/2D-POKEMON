@@ -1012,7 +1012,15 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       arrived();
       cancelAnimationFrame(revealFrame);
       releaseParkedLobbyRig();
-      if (rig && options.park && artKey && !lowGraphics()) {
+      // Only a rig already drawn: one still loading would go on painting
+      // the fighter's parts while the Plaza starts, for nothing.
+      if (
+        rig &&
+        options.park &&
+        artKey &&
+        !lowGraphics() &&
+        $("lobby-fighter-art").classList.contains("is-ready")
+      ) {
         rig.suspend(true);
         parked = { rig, key: artKey };
       } else rig?.();
