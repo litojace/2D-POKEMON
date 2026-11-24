@@ -549,3 +549,73 @@ test("on a keyboard: E enters and casts, a tap before the bite loses the fish, E
   await expect(page.locator("#pz-fishbook")).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+// The fight steps at the server's pace, and the server lets a hooked fish
+// go after PLAZA_FIGHT.maxTicks of real time. The fight used to step by the
+// frame's capped 0.05 s, so under 20 fps it ran slow: at 5 fps a fight took
+// four times as long as on the server, and a long one timed out while the
+// player was still reeling. Here frames come every 0.5 s (a starved phone,
+// or CI's software renderer), and the fight's clock keeps up with real time.
+test("at a frame every 0.5 s the fight keeps to real time", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  // Animation frames held to one every 0.5 s once __slowFrames is set; the
+  // Plaza server in the page runs on timers, as usual.
+  await page.addInitScript(() => {
+    const w = window as any,
+      raf = window.requestAnimationFrame.bind(window);
+    let queue: FrameRequestCallback[] = [],
+      next = 0;
+    window.requestAnimationFrame = (cb) => {
+      if (!w.__slowFrames) return raf(cb);
+      queue.push(cb);
+      return 0;
+    };
+    setInterval(() => {
+      if (!w.__slowFrames || !queue.length || performance.now() < next) return;
+      next = performance.now() + 500;
+      const due = queue;
+      queue = [];
+      raf((t) => due.forEach((cb) => cb(t)));
+    }, 5);
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const errors = await openPlaza(page);
+  await toPond(page, errors);
+  // On a keyboard, as its own test does: E enters, casts and reels.
+  await page.keyboard.press("e");
+  await expect(page.locator("#pz-fishhud")).toBeVisible();
+  await page.waitForTimeout(PLAZA_FISHING.castGapMs);
+  await page.keyboard.press("e");
+  await expect.poll(() => phase(page)).toBe("wait");
+  await page.evaluate(() => (window as any).__plazaBiteNow());
+  await expect.poll(() => phase(page), { intervals: [50] }).toBe("bite");
+  await page.keyboard.press("e");
+  await expect.poll(() => phase(page), { intervals: [50] }).toBe("fight");
+  await page.evaluate(() => ((window as any).__slowFrames = true));
+  // The fight's own clock (seconds since hooked) against the page's, while
+  // it lasts: each look is at most one 0.5 s frame behind.
+  const look = () =>
+    page.evaluate(() => {
+      const m = (window as any).__plaza.fishingMode;
+      return {
+        at: performance.now() / 1000,
+        t: m.fight?.t as number | undefined,
+      };
+    });
+  const first = await look();
+  let last = first;
+  for (let i = 0; i < 12; i++) {
+    await page.waitForTimeout(250);
+    const now = await look();
+    if (now.t === undefined) break;
+    last = now;
+  }
+  const real = last.at - first.at;
+  expect(first.t, "the fight was on when frames slowed").toBeDefined();
+  expect(real, "the fight lasted long enough to judge").toBeGreaterThan(1.2);
+  expect(last.t! - first.t!).toBeGreaterThan(real - 0.6);
+  await page.evaluate(() => ((window as any).__slowFrames = false));
+  expect(errors).toEqual([]);
+});

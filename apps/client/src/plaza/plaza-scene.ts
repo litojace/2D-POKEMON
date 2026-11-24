@@ -5996,15 +5996,19 @@ export function openPlaza(options) {
         showEmote(P, "💫");
         pzToast("Tripped! Press Space to jump the hurdles.");
       }
+      // What follows the server or a clock goes by the time that really
+      // passed (moveDt), like your step above and the camera below: with
+      // the capped dt it fell behind under 20 fps. Only what is just to look
+      // at (particles, animals, emotes) keeps the capped dt and slows down.
       P.stuckT =
         target && P.speed < PLAZA.speed * 0.5 * steerK && P.dash <= 0
-          ? (P.stuckT || 0) + dt
-          : Math.max(0, (P.stuckT || 0) - dt * 0.5);
+          ? (P.stuckT || 0) + moveDt
+          : Math.max(0, (P.stuckT || 0) - moveDt * 0.5);
       if (srv?.acked) {
         // Ease in what the server disagreed on (plaza-predict.ts).
         const bx = P.x,
           by = P.y,
-          c = predict.ease(dt);
+          c = predict.ease(moveDt);
         P.x += c.x;
         P.y += c.y;
         plazaCollide(P);
@@ -6017,7 +6021,7 @@ export function openPlaza(options) {
           P.x = srv.x;
           P.y = srv.y;
         } else if (moving ? err > 100 : err > 2) {
-          const k = 1 - Math.exp(-dt / (moving ? 0.8 : 0.15));
+          const k = 1 - Math.exp(-moveDt / (moving ? 0.8 : 0.15));
           P.x += (srv.x - P.x) * k;
           P.y += (srv.y - P.y) * k;
         }
@@ -6030,7 +6034,7 @@ export function openPlaza(options) {
       // Everyone else: drawn a moment in the past, between the server's
       // snapshots around it (plaza-net.ts), or smoothed toward the newest
       // before the server's clock is known.
-      const k = 1 - Math.exp(-dt / 0.09);
+      const k = 1 - Math.exp(-moveDt / 0.09);
       const seenT = net.clock.now(performance.now()),
         seenDelay = net.clock.delay();
       for (const b of others.values()) {
@@ -6049,9 +6053,9 @@ export function openPlaza(options) {
           b.y += (b.ty - b.y) * k;
           b.z += (b.tz - b.z) * Math.min(1, k * 1.6);
         }
-        if (dt > 0) {
-          b.vx = (b.x - px) / dt;
-          b.vy = (b.y - py) / dt;
+        if (moveDt > 0) {
+          b.vx = (b.x - px) / moveDt;
+          b.vy = (b.y - py) / moveDt;
         }
         b.air = b.z > 1 ? 1 : 0;
         if (b.dash && Math.random() < 0.8)
@@ -6105,7 +6109,10 @@ export function openPlaza(options) {
         null;
       reach("spotted");
       const ib = $("pz-interact");
-      fishing.update(dt);
+      // The fight steps at the server's pace (PLAZA_FIGHT.tickMs), and the
+      // server lets a hooked fish go after maxTicks of real time: with the
+      // capped dt, a fight under 20 fps ran slow and a long one timed out.
+      fishing.update(moveDt);
       if (toDock && (!fishing.active || !target)) {
         // At the dock's end: face the water, where the line goes.
         if (fishing.active) P.face = PLAZA_FISHING.bobber.x >= P.x ? 1 : -1;
