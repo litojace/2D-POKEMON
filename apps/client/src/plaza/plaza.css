@@ -2789,33 +2789,52 @@
   width: 112px;
   height: 112px;
 }
-/* Tablets (touch, taller than a phone): Dash 67 -> 78, Jump 88 -> 103 and
-   the Fish button as Dash; Cast and Reel 84 -> 101, Hold 121 -> 138; the
-   stick's ring 110 -> 150. */
+/* Tablets (touch, taller than a phone), size C of the owner's pick on an
+   iPad Pro 13" (24 Nov): the controls you play with big, the round buttons
+   (Map, gift boxes, Album; today and Book) smaller, their words still
+   11 px. Dash 112, Jump 148, the Fish button as Dash, Cast and Reel 162,
+   Hold 186, round buttons 56 (71), the stick's ring 150. */
 .plaza-layer.coarse:not(.phone) {
   --pz-joy: 150px;
+  --pz-tab-round: 56px;
+  --pz-tab-cast: 162px;
+}
+.plaza-layer.coarse:not(.phone) .pz-left .pz-round,
+.plaza-layer.coarse:not(.phone) .pz-fish-side .pz-round {
+  width: var(--pz-tab-round);
+  height: var(--pz-tab-round);
+  font-size: calc(12.7px * var(--text-scale, 1));
+}
+.plaza-layer.coarse:not(.phone) .pz-left .pz-round small,
+.plaza-layer.coarse:not(.phone) .pz-fish-side .pz-round small {
+  font-size: calc(11px * var(--text-scale, 1));
+}
+.plaza-layer.coarse:not(.phone) .pz-fish-side .pz-fish-today b {
+  font-size: calc(13.4px * var(--text-scale, 1));
 }
 .plaza-layer.coarse:not(.phone) .pz-act:not(.pz-interact):not(.big),
 .plaza-layer.coarse:not(.phone) .pz-interact[data-id="fish"] {
-  width: 5.6em;
-  height: 5.6em;
+  width: 112px;
+  height: 112px;
+  font-size: calc(20.7px * var(--text-scale, 1));
 }
 .plaza-layer.coarse:not(.phone) .pz-act.big {
-  width: 7em;
-  height: 7em;
+  width: 148px;
+  height: 148px;
+  font-size: calc(22.4px * var(--text-scale, 1));
 }
 .plaza-layer.coarse:not(.phone) .pz-fish-act {
-  width: 7.2em;
-  height: 7.2em;
-  font-size: 1.15em;
+  width: var(--pz-tab-cast);
+  height: var(--pz-tab-cast);
+  font-size: calc(22.5px * var(--text-scale, 1));
 }
 .plaza-layer.coarse:not(.phone) .pz-fish-act[data-kind="fight"] {
-  width: 8.2em;
-  height: 8.2em;
-  font-size: 1.2em;
+  width: 186px;
+  height: 186px;
+  font-size: calc(22.7px * var(--text-scale, 1));
 }
 .plaza-layer.coarse:not(.phone) .pz-fish-side {
-  bottom: calc(var(--hud-y-b) + 7.2em * 1.15 + var(--hud-gap));
+  bottom: calc(var(--hud-y-b) + var(--pz-tab-cast) + var(--hud-gap));
 }
 /* The stick: its ring and knob scale together; plaza-scene.ts reads the
    ring's size once per press for how far the knob may go. */
