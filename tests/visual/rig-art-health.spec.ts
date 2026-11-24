@@ -17,9 +17,9 @@ import {
 // blanked fighter comes back and is reported ("battle-art"). The check is
 // the same for every champion: the local one is whoever the harness seats.
 
-/** Fighters of every kind on the court with the local one. */
+/** Distinct art from the local Voltkit: blanking it must not blank an ally. */
 const ALLIES = [
-  "voltkit",
+  "cindrake",
   "tidefin",
   "pyranda",
   "lumoth",
@@ -111,7 +111,22 @@ test("a fighter whose art went blank (Safari let its canvases go) is loaded agai
     expect(h.blank, `${id} (${h.character}) is not blank`).toBe(false);
   }
   // The battle's own checks (a new renderer ran one) found nothing.
-  await page.waitForTimeout(3500);
+  // Startup checks are due at 700/3000 ms, then inspect one rig per frame.
+  // On a slow renderer they can still be queued after a fixed 3500 ms wait
+  // and steal the "visible" repair after we blank the fighter below.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const scene = (window as any).__arenaGame.scene.getScene("arena");
+          return scene.artChecks.length + scene.artQueue.length;
+        }),
+      {
+        timeout: 30_000,
+        message: "healthy startup art checks finish before blanking",
+      },
+    )
+    .toBe(0);
   const quiet = await page.evaluate(() =>
     (window as any).__emitted.filter(([ev]: [string]) => ev === "battle-art"),
   );
