@@ -1,0 +1,2291 @@
+{
+  "baselineCommit": "4a32d43ecae6271a7a38d838405b751098741e4a",
+  "environment": {
+    "node": "24.19.0",
+    "chromium": "154.0.8037.57",
+    "renderer": "SwiftShader",
+    "cpuQuotaCores": 2,
+    "memoryGiB": 8,
+    "profileViewport": "844x390@2",
+    "workers": 1,
+    "trace": "off"
+  },
+  "notes": [
+    "Clock replay uses the installed Phaser TimeStep for the legacy accumulator and the production BattleInputClock for the new deadlines.",
+    "Clock replay is deterministic modelled DOM delivery, main-thread stalls and timer jitter; no rendering, network, RTT or server-confirm timing is simulated.",
+    "Profile fixtures have modelled combat in the browser, not a production network. RTT and confirm fields in harness output are not production latency measurements.",
+    "Scene/Phaser work excludes input work now scheduled outside render frames. Total main-thread CDP measurements are retained below."
+  ],
+  "originalTimeStepProbe": [
+    {
+      "name": "60 fps, steady",
+      "realSeconds": 60,
+      "gameSeconds": 60,
+      "inputHz": 29.98,
+      "maxSendGapMs": 50,
+      "maxInputsInOneFrame": 1
+    },
+    {
+      "name": "150 ms hitch every 120 frames",
+      "realSeconds": 64,
+      "gameSeconds": 63.88,
+      "inputHz": 29.94,
+      "maxSendGapMs": 166.7,
+      "maxInputsInOneFrame": 1
+    },
+    {
+      "name": "250 ms hitch every 120 frames",
+      "realSeconds": 67,
+      "gameSeconds": 60,
+      "inputHz": 26.85,
+      "maxSendGapMs": 266.7,
+      "maxInputsInOneFrame": 1
+    },
+    {
+      "name": "200 ms per frame",
+      "realSeconds": 60,
+      "gameSeconds": 59.17,
+      "inputHz": 14.92,
+      "maxSendGapMs": 200,
+      "maxInputsInOneFrame": 3
+    }
+  ],
+  "clockComparison": {
+    "note": "Clock/DOM/timer replay using Phaser's real TimeStep, 30 Hz. No rendering or network; RTT/confirm are not these measurements.",
+    "runs": [
+      {
+        "clock": "Phaser accumulator",
+        "hitchMs": 0,
+        "renderHz": 60,
+        "seconds": 60,
+        "timerJitterMs": "0–2, seeded; minimum 1 ms",
+        "inputHz": 29.983,
+        "inputs": 1799,
+        "acceptedPresses": 189,
+        "sentPresses": 189,
+        "sendGapMs": {
+          "p50": 33.33,
+          "p95": 33.33,
+          "p99": 33.33,
+          "max": 50
+        },
+        "pressToSendMs": {
+          "p50": 17,
+          "p95": 32,
+          "p99": 33.33,
+          "max": 33.33
+        },
+        "eventToHandlerMs": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0
+        },
+        "handlerToSendMs": {
+          "p50": 17,
+          "p95": 32,
+          "p99": 33.33,
+          "max": 33.33
+        }
+      },
+      {
+        "clock": "monotonic deadlines",
+        "hitchMs": 0,
+        "renderHz": 60,
+        "seconds": 60,
+        "timerJitterMs": "0–2, seeded; minimum 1 ms",
+        "inputHz": 29.983,
+        "inputs": 1799,
+        "acceptedPresses": 189,
+        "sentPresses": 189,
+        "sendGapMs": {
+          "p50": 33.36,
+          "p95": 34.83,
+          "p99": 35.31,
+          "max": 36
+        },
+        "pressToSendMs": {
+          "p50": 16.87,
+          "p95": 31.67,
+          "p99": 33.18,
+          "max": 34.28
+        },
+        "eventToHandlerMs": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0
+        },
+        "handlerToSendMs": {
+          "p50": 16.87,
+          "p95": 31.67,
+          "p99": 33.18,
+          "max": 34.28
+        }
+      },
+      {
+        "clock": "Phaser accumulator",
+        "hitchMs": 50,
+        "renderHz": 60,
+        "seconds": 60,
+        "timerJitterMs": "0–2, seeded; minimum 1 ms",
+        "inputHz": 29.983,
+        "inputs": 1799,
+        "acceptedPresses": 189,
+        "sentPresses": 189,
+        "sendGapMs": {
+          "p50": 33.33,
+          "p95": 33.33,
+          "p99": 66.67,
+          "max": 83.33
+        },
+        "pressToSendMs": {
+          "p50": 16.33,
+          "p95": 32.67,
+          "p99": 62,
+          "max": 72.33
+        },
+        "eventToHandlerMs": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 39,
+          "max": 45
+        },
+        "handlerToSendMs": {
+          "p50": 16.33,
+          "p95": 32.33,
+          "p99": 33.33,
+          "max": 62
+        }
+      },
+      {
+        "clock": "monotonic deadlines",
+        "hitchMs": 50,
+        "renderHz": 60,
+        "seconds": 60,
+        "timerJitterMs": "0–2, seeded; minimum 1 ms",
+        "inputHz": 29.983,
+        "inputs": 1799,
+        "acceptedPresses": 189,
+        "sentPresses": 189,
+        "sendGapMs": {
+          "p50": 33.33,
+          "p95": 34.9,
+          "p99": 81.58,
+          "max": 83.33
+        },
+        "pressToSendMs": {
+          "p50": 17.66,
+          "p95": 32.77,
+          "p99": 62.58,
+          "max": 68
+        },
+        "eventToHandlerMs": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 39,
+          "max": 45
+        },
+        "handlerToSendMs": {
+          "p50": 17.58,
+          "p95": 31.99,
+          "p99": 62,
+          "max": 68
+        }
+      },
+      {
+        "clock": "Phaser accumulator",
+        "hitchMs": 150,
+        "renderHz": 60,
+        "seconds": 60,
+        "timerJitterMs": "0–2, seeded; minimum 1 ms",
+        "inputHz": 29.983,
+        "inputs": 1799,
+        "acceptedPresses": 189,
+        "sentPresses": 189,
+        "sendGapMs": {
+          "p50": 33.33,
+          "p95": 33.33,
+          "p99": 166.67,
+          "max": 183.33
+        },
+        "pressToSendMs": {
+          "p50": 16.33,
+          "p95": 80.67,
+          "p99": 155.67,
+          "max": 162
+        },
+        "eventToHandlerMs": {
+          "p50": 0,
+          "p95": 47,
+          "p99": 139,
+          "max": 145
+        },
+        "handlerToSendMs": {
+          "p50": 16.33,
+          "p95": 31.67,
+          "p99": 33.33,
+          "max": 162
+        }
+      },
+      {
+        "clock": "monotonic deadlines",
+        "hitchMs": 150,
+        "renderHz": 60,
+        "seconds": 60,
+        "timerJitterMs": "0–2, seeded; minimum 1 ms",
+        "inputHz": 29.983,
+        "inputs": 1799,
+        "acceptedPresses": 189,
+        "sentPresses": 189,
+        "sendGapMs": {
+          "p50": 33.27,
+          "p95": 34.91,
+          "p99": 181.66,
+          "max": 183
+        },
+        "pressToSendMs": {
+          "p50": 17.67,
+          "p95": 71.28,
+          "p99": 162,
+          "max": 168
+        },
+        "eventToHandlerMs": {
+          "p50": 0,
+          "p95": 47,
+          "p99": 139,
+          "max": 145
+        },
+        "handlerToSendMs": {
+          "p50": 15.79,
+          "p95": 32.29,
+          "p99": 162,
+          "max": 168
+        }
+      },
+      {
+        "clock": "Phaser accumulator",
+        "hitchMs": 250,
+        "renderHz": 60,
+        "seconds": 60,
+        "timerJitterMs": "0–2, seeded; minimum 1 ms",
+        "inputHz": 26.517,
+        "inputs": 1591,
+        "acceptedPresses": 189,
+        "sentPresses": 189,
+        "sendGapMs": {
+          "p50": 33.33,
+          "p95": 33.33,
+          "p99": 266.67,
+          "max": 283.33
+        },
+        "pressToSendMs": {
+          "p50": 20,
+          "p95": 186.67,
+          "p99": 261.67,
+          "max": 262
+        },
+        "eventToHandlerMs": {
+          "p50": 0,
+          "p95": 147,
+          "p99": 239,
+          "max": 245
+        },
+        "handlerToSendMs": {
+          "p50": 16.67,
+          "p95": 33,
+          "p99": 33.33,
+          "max": 262
+        }
+      },
+      {
+        "clock": "monotonic deadlines",
+        "hitchMs": 250,
+        "renderHz": 60,
+        "seconds": 60,
+        "timerJitterMs": "0–2, seeded; minimum 1 ms",
+        "inputHz": 29.983,
+        "inputs": 1799,
+        "acceptedPresses": 189,
+        "sentPresses": 189,
+        "sendGapMs": {
+          "p50": 33.2,
+          "p95": 34.85,
+          "p99": 281.57,
+          "max": 283.23
+        },
+        "pressToSendMs": {
+          "p50": 18.97,
+          "p95": 171.8,
+          "p99": 262,
+          "max": 268
+        },
+        "eventToHandlerMs": {
+          "p50": 0,
+          "p95": 147,
+          "p99": 239,
+          "max": 245
+        },
+        "handlerToSendMs": {
+          "p50": 14.6,
+          "p95": 31.97,
+          "p99": 262,
+          "max": 268
+        }
+      },
+      {
+        "clock": "Phaser accumulator",
+        "hitchMs": 0,
+        "renderHz": 20,
+        "seconds": 60,
+        "timerJitterMs": "0–2, seeded; minimum 1 ms",
+        "inputHz": 29.917,
+        "inputs": 1795,
+        "acceptedPresses": 189,
+        "sentPresses": 189,
+        "sendGapMs": {
+          "p50": 50,
+          "p95": 50,
+          "p99": 50,
+          "max": 100
+        },
+        "pressToSendMs": {
+          "p50": 25,
+          "p95": 47,
+          "p99": 49,
+          "max": 83
+        },
+        "eventToHandlerMs": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0
+        },
+        "handlerToSendMs": {
+          "p50": 25,
+          "p95": 47,
+          "p99": 49,
+          "max": 83
+        }
+      },
+      {
+        "clock": "monotonic deadlines",
+        "hitchMs": 0,
+        "renderHz": 20,
+        "seconds": 60,
+        "timerJitterMs": "0–2, seeded; minimum 1 ms",
+        "inputHz": 29.983,
+        "inputs": 1799,
+        "acceptedPresses": 189,
+        "sentPresses": 189,
+        "sendGapMs": {
+          "p50": 33.36,
+          "p95": 34.83,
+          "p99": 35.31,
+          "max": 36
+        },
+        "pressToSendMs": {
+          "p50": 16.87,
+          "p95": 31.67,
+          "p99": 33.18,
+          "max": 34.28
+        },
+        "eventToHandlerMs": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0
+        },
+        "handlerToSendMs": {
+          "p50": 16.87,
+          "p95": 31.67,
+          "p99": 33.18,
+          "max": 34.28
+        }
+      },
+      {
+        "clock": "Phaser accumulator",
+        "hitchMs": 0,
+        "renderHz": 5,
+        "seconds": 60,
+        "timerJitterMs": "0–2, seeded; minimum 1 ms",
+        "inputHz": 14.917,
+        "inputs": 895,
+        "acceptedPresses": 189,
+        "sentPresses": 189,
+        "sendGapMs": {
+          "p50": 0,
+          "p95": 200,
+          "p99": 200,
+          "max": 200
+        },
+        "pressToSendMs": {
+          "p50": 101,
+          "p95": 190,
+          "p99": 198,
+          "max": 199
+        },
+        "eventToHandlerMs": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0
+        },
+        "handlerToSendMs": {
+          "p50": 101,
+          "p95": 190,
+          "p99": 198,
+          "max": 199
+        }
+      },
+      {
+        "clock": "monotonic deadlines",
+        "hitchMs": 0,
+        "renderHz": 5,
+        "seconds": 60,
+        "timerJitterMs": "0–2, seeded; minimum 1 ms",
+        "inputHz": 29.983,
+        "inputs": 1799,
+        "acceptedPresses": 189,
+        "sentPresses": 189,
+        "sendGapMs": {
+          "p50": 33.36,
+          "p95": 34.83,
+          "p99": 35.31,
+          "max": 36
+        },
+        "pressToSendMs": {
+          "p50": 16.87,
+          "p95": 31.67,
+          "p99": 33.18,
+          "max": 34.28
+        },
+        "eventToHandlerMs": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0
+        },
+        "handlerToSendMs": {
+          "p50": 16.87,
+          "p95": 31.67,
+          "p99": 33.18,
+          "max": 34.28
+        }
+      }
+    ]
+  },
+  "browserOriginal15Hz": [
+    {
+      "kind": "BATTLE_PROFILE",
+      "data": {
+        "scenario": "pvp2",
+        "seconds": 6,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 79,
+          "mean": 1.71,
+          "p50": 0.7,
+          "p95": 6.8,
+          "max": 33.1
+        },
+        "snapshotBytes": {
+          "n": 15,
+          "mean": 2017.67,
+          "p50": 1956,
+          "p95": 2429,
+          "max": 2429
+        },
+        "sceneUpdateMs": {
+          "n": 24,
+          "mean": 5.18,
+          "p50": 2.8,
+          "p95": 13.9,
+          "max": 31.5
+        },
+        "frameStepMs": {
+          "n": 24,
+          "mean": 28.69,
+          "p50": 22.9,
+          "p95": 56.5,
+          "max": 57.5
+        },
+        "frameIntervalMs": {
+          "n": 24,
+          "mean": 254.38,
+          "p50": 228,
+          "p95": 387,
+          "max": 483.9
+        },
+        "longFrames": 24,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 0
+        },
+        "mainThreadMs": {
+          "TaskDuration": 1738,
+          "ScriptDuration": 844,
+          "LayoutDuration": 18,
+          "RecalcStyleDuration": 479
+        },
+        "memory": {
+          "heapMB": 41.4,
+          "dom": 1086,
+          "sceneObjects": 442,
+          "textures": 308,
+          "tweens": 36
+        }
+      }
+    },
+    {
+      "kind": "BATTLE_PROFILE",
+      "data": {
+        "scenario": "pvp4",
+        "seconds": 6,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 82,
+          "mean": 1.74,
+          "p50": 0.7,
+          "p95": 6.6,
+          "max": 12.9
+        },
+        "snapshotBytes": {
+          "n": 17,
+          "mean": 4039.88,
+          "p50": 4042,
+          "p95": 5198,
+          "max": 5198
+        },
+        "sceneUpdateMs": {
+          "n": 20,
+          "mean": 5.62,
+          "p50": 4.6,
+          "p95": 16.5,
+          "max": 16.5
+        },
+        "frameStepMs": {
+          "n": 20,
+          "mean": 22.73,
+          "p50": 14.8,
+          "p95": 68.9,
+          "max": 68.9
+        },
+        "frameIntervalMs": {
+          "n": 20,
+          "mean": 319.96,
+          "p50": 309.6,
+          "p95": 663.6,
+          "max": 663.6
+        },
+        "longFrames": 20,
+        "nameplateMeasures": {
+          "all": 4,
+          "hidden": 0,
+          "hiddenPlates": 0
+        },
+        "mainThreadMs": {
+          "TaskDuration": 1861,
+          "ScriptDuration": 630,
+          "LayoutDuration": 8,
+          "RecalcStyleDuration": 444
+        },
+        "memory": {
+          "heapMB": 44.5,
+          "dom": 1102,
+          "sceneObjects": 449,
+          "textures": 629,
+          "tweens": 12
+        }
+      }
+    },
+    {
+      "kind": "BATTLE_PROFILE",
+      "data": {
+        "scenario": "raid4",
+        "seconds": 6,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 82,
+          "mean": 2.57,
+          "p50": 1.5,
+          "p95": 6.1,
+          "max": 36.5
+        },
+        "snapshotBytes": {
+          "n": 16,
+          "mean": 6827,
+          "p50": 6738,
+          "p95": 8464,
+          "max": 8464
+        },
+        "sceneUpdateMs": {
+          "n": 17,
+          "mean": 11.12,
+          "p50": 5.6,
+          "p95": 50.2,
+          "max": 50.2
+        },
+        "frameStepMs": {
+          "n": 17,
+          "mean": 24.61,
+          "p50": 16.6,
+          "p95": 60.6,
+          "max": 60.6
+        },
+        "frameIntervalMs": {
+          "n": 17,
+          "mean": 391.07,
+          "p50": 384.9,
+          "p95": 616.7,
+          "max": 616.7
+        },
+        "longFrames": 17,
+        "nameplateMeasures": {
+          "all": 2,
+          "hidden": 0,
+          "hiddenPlates": 0
+        },
+        "mainThreadMs": {
+          "TaskDuration": 1725,
+          "ScriptDuration": 646,
+          "LayoutDuration": 13,
+          "RecalcStyleDuration": 394
+        },
+        "memory": {
+          "heapMB": 48.2,
+          "dom": 1141,
+          "sceneObjects": 592,
+          "textures": 706,
+          "tweens": 35
+        }
+      }
+    },
+    {
+      "kind": "SOAK_PROFILE",
+      "data": [
+        {
+          "cycle": 0,
+          "heapMB": 39.7,
+          "dom": 6853,
+          "sceneObjects": 0,
+          "textures": 0,
+          "tweens": 0
+        },
+        {
+          "cycle": 1,
+          "heapMB": 44.5,
+          "dom": 6893,
+          "sceneObjects": 0,
+          "textures": 0,
+          "tweens": 0
+        },
+        {
+          "cycle": 2,
+          "heapMB": 44.6,
+          "dom": 6890,
+          "sceneObjects": 0,
+          "textures": 0,
+          "tweens": 0
+        }
+      ]
+    },
+    {
+      "kind": "MATCH_FLOW",
+      "data": {
+        "before": {
+          "rigTextures": 539,
+          "dom": 1156,
+          "sceneObjects": 362,
+          "unpooled": 110
+        },
+        "after": {
+          "rigTextures": 539,
+          "dom": 1156,
+          "sceneObjects": 748,
+          "unpooled": 359
+        },
+        "settled": {
+          "rigTextures": 539,
+          "dom": 1249,
+          "sceneObjects": 457,
+          "unpooled": 38
+        },
+        "layout": {
+          "reads": 0,
+          "phaser": 2,
+          "by": {},
+          "frames": 40
+        },
+        "glow": {
+          "p50": 1.13,
+          "p90": 1.44,
+          "max": 1.88,
+          "minShrink": 1,
+          "resizes": 0
+        },
+        "report": {
+          "seconds": 21.9,
+          "frames": 51,
+          "fps": 2.5,
+          "frameP95": 691.6,
+          "frameP99": 1157.1,
+          "jank": 1,
+          "stalls": 48,
+          "rttP50": 55,
+          "rttP95": 309,
+          "snapGapP95": 132,
+          "snapLate": 0.092,
+          "corrections": 801.1,
+          "correctionMax": 162,
+          "confirmP50": 0,
+          "correctionsHit": 2.7,
+          "correctionsStatus": 0,
+          "correctionsMove": 267.9,
+          "correctionsOther": 530.4,
+          "hitsFar": 0,
+          "hitGapMax": 0,
+          "snapGapMax": 266,
+          "correctionP50": 16,
+          "holds": 0,
+          "holdMax": 0,
+          "inputHz": 1.17,
+          "quality": "high",
+          "setting": "high",
+          "density": 2,
+          "memory": 8,
+          "cores": 3,
+          "ping": 14,
+          "lead": 66,
+          "os": "windows",
+          "app": false,
+          "linkSpeed": "4g",
+          "build": "dev",
+          "errors": 0,
+          "shell": "web",
+          "screen": "844x390@2",
+          "sliceFps": [2.5, 2.1],
+          "sliceJank": [1, 1],
+          "workP50": 28,
+          "workP95": 75.8,
+          "glowP50": 1.07,
+          "glowSlow": 0.81,
+          "softP50": 0.3,
+          "softSlow": 0.41,
+          "particlesP50": 685,
+          "particlesSlow": 683,
+          "objectsP50": 458,
+          "objectsSlow": 710
+        }
+      }
+    },
+    {
+      "kind": "MATCH_FLOW",
+      "data": {
+        "before": {
+          "rigTextures": 539,
+          "dom": 1156,
+          "sceneObjects": 199,
+          "unpooled": 97
+        },
+        "after": {
+          "rigTextures": 539,
+          "dom": 1156,
+          "sceneObjects": 526,
+          "unpooled": 120
+        },
+        "settled": {
+          "rigTextures": 539,
+          "dom": 1249,
+          "sceneObjects": 528,
+          "unpooled": 122
+        },
+        "layout": {
+          "reads": 0,
+          "phaser": 4,
+          "by": {},
+          "frames": 66
+        },
+        "glow": {
+          "p50": 0.63,
+          "p90": 0.75,
+          "max": 0.75,
+          "minShrink": 0.639235842360296,
+          "resizes": 0
+        },
+        "report": {
+          "seconds": 20.8,
+          "frames": 85,
+          "fps": 4.3,
+          "frameP95": 403.2,
+          "frameP99": 658.8,
+          "jank": 0.999,
+          "stalls": 35,
+          "rttP50": 46,
+          "rttP95": 254,
+          "snapGapP95": 151,
+          "snapLate": 0.143,
+          "corrections": 745.1,
+          "correctionMax": 49,
+          "confirmP50": 0,
+          "correctionsHit": 0,
+          "correctionsStatus": 0,
+          "correctionsMove": 241.7,
+          "correctionsOther": 503.4,
+          "hitsFar": 0,
+          "hitGapMax": 0,
+          "snapGapMax": 228,
+          "correctionP50": 16,
+          "holds": 0,
+          "holdMax": 0,
+          "inputHz": 2.11,
+          "quality": "low",
+          "setting": "low",
+          "density": 1.25,
+          "memory": 8,
+          "cores": 3,
+          "ping": 12,
+          "lead": 80,
+          "os": "windows",
+          "app": false,
+          "linkSpeed": "4g",
+          "build": "dev",
+          "errors": 0,
+          "shell": "web",
+          "screen": "844x390@2",
+          "sliceFps": [4.1, 4],
+          "sliceJank": [1, 0.997],
+          "workP50": 18.7,
+          "workP95": 71.3,
+          "glowP50": 0.6,
+          "glowSlow": 0.6,
+          "softP50": 0.42,
+          "softSlow": 0.43,
+          "particlesP50": 677,
+          "particlesSlow": 669,
+          "objectsP50": 452,
+          "objectsSlow": 615
+        }
+      }
+    }
+  ],
+  "browserBefore30Hz": [
+    {
+      "kind": "BATTLE_PROFILE",
+      "data": {
+        "scenario": "pvp2",
+        "seconds": 6,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 185,
+          "mean": 1.3,
+          "p50": 0.6,
+          "p95": 4.4,
+          "max": 24.7
+        },
+        "snapshotBytes": {
+          "n": 18,
+          "mean": 2090.89,
+          "p50": 2061,
+          "p95": 2347,
+          "max": 2347
+        },
+        "sceneUpdateMs": {
+          "n": 21,
+          "mean": 3.21,
+          "p50": 2.3,
+          "p95": 6.9,
+          "max": 9.3
+        },
+        "frameStepMs": {
+          "n": 21,
+          "mean": 20.82,
+          "p50": 18.1,
+          "p95": 44.2,
+          "max": 49.9
+        },
+        "frameIntervalMs": {
+          "n": 21,
+          "mean": 292.37,
+          "p50": 290.5,
+          "p95": 416.5,
+          "max": 492.8
+        },
+        "longFrames": 21,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 0
+        },
+        "mainThreadMs": {
+          "TaskDuration": 1586,
+          "ScriptDuration": 687,
+          "LayoutDuration": 18,
+          "RecalcStyleDuration": 347
+        },
+        "memory": {
+          "heapMB": 41.5,
+          "dom": 1086,
+          "sceneObjects": 495,
+          "textures": 310,
+          "tweens": 90
+        }
+      }
+    },
+    {
+      "kind": "BATTLE_PROFILE",
+      "data": {
+        "scenario": "pvp4",
+        "seconds": 6,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 199,
+          "mean": 1.46,
+          "p50": 0.6,
+          "p95": 6,
+          "max": 20.3
+        },
+        "snapshotBytes": {
+          "n": 19,
+          "mean": 3886.68,
+          "p50": 4042,
+          "p95": 4916,
+          "max": 4916
+        },
+        "sceneUpdateMs": {
+          "n": 18,
+          "mean": 10.81,
+          "p50": 6.5,
+          "p95": 42,
+          "max": 42
+        },
+        "frameStepMs": {
+          "n": 18,
+          "mean": 29.96,
+          "p50": 26,
+          "p95": 59.5,
+          "max": 59.5
+        },
+        "frameIntervalMs": {
+          "n": 18,
+          "mean": 363.79,
+          "p50": 343,
+          "p95": 657.5,
+          "max": 657.5
+        },
+        "longFrames": 18,
+        "nameplateMeasures": {
+          "all": 2,
+          "hidden": 0,
+          "hiddenPlates": 2
+        },
+        "mainThreadMs": {
+          "TaskDuration": 2183,
+          "ScriptDuration": 893,
+          "LayoutDuration": 10,
+          "RecalcStyleDuration": 388
+        },
+        "memory": {
+          "heapMB": 46.2,
+          "dom": 1102,
+          "sceneObjects": 568,
+          "textures": 648,
+          "tweens": 193
+        }
+      }
+    },
+    {
+      "kind": "BATTLE_PROFILE",
+      "data": {
+        "scenario": "raid4",
+        "seconds": 6,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 192,
+          "mean": 2.25,
+          "p50": 0.9,
+          "p95": 6,
+          "max": 37.5
+        },
+        "snapshotBytes": {
+          "n": 19,
+          "mean": 6752.05,
+          "p50": 6708,
+          "p95": 8670,
+          "max": 8670
+        },
+        "sceneUpdateMs": {
+          "n": 16,
+          "mean": 5.62,
+          "p50": 4.2,
+          "p95": 20.5,
+          "max": 20.5
+        },
+        "frameStepMs": {
+          "n": 16,
+          "mean": 14.64,
+          "p50": 12,
+          "p95": 30.3,
+          "max": 30.3
+        },
+        "frameIntervalMs": {
+          "n": 16,
+          "mean": 379.7,
+          "p50": 383.6,
+          "p95": 563.7,
+          "max": 563.7
+        },
+        "longFrames": 16,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 0
+        },
+        "mainThreadMs": {
+          "TaskDuration": 1639,
+          "ScriptDuration": 699,
+          "LayoutDuration": 48,
+          "RecalcStyleDuration": 258
+        },
+        "memory": {
+          "heapMB": 50.1,
+          "dom": 1144,
+          "sceneObjects": 675,
+          "textures": 743,
+          "tweens": 106
+        }
+      }
+    },
+    {
+      "kind": "MATCH_FLOW",
+      "data": {
+        "before": {
+          "rigTextures": 539,
+          "dom": 1156,
+          "sceneObjects": 372,
+          "unpooled": 130
+        },
+        "after": {
+          "rigTextures": 539,
+          "dom": 1156,
+          "sceneObjects": 769,
+          "unpooled": 318
+        },
+        "settled": {
+          "rigTextures": 539,
+          "dom": 1249,
+          "sceneObjects": 559,
+          "unpooled": 108
+        },
+        "layout": {
+          "reads": 0,
+          "phaser": 2,
+          "by": {},
+          "frames": 38
+        },
+        "glow": {
+          "p50": 1.18,
+          "p90": 1.55,
+          "max": 1.71,
+          "minShrink": 1,
+          "resizes": 0
+        },
+        "report": {
+          "seconds": 22.2,
+          "frames": 53,
+          "fps": 2.5,
+          "frameP95": 648.5,
+          "frameP99": 1106.2,
+          "jank": 1,
+          "stalls": 45,
+          "rttP50": 59,
+          "rttP95": 327,
+          "snapGapP95": 74,
+          "snapLate": 0.018,
+          "corrections": 1714.2,
+          "correctionMax": 161,
+          "confirmP50": 0,
+          "correctionsHit": 2.7,
+          "correctionsStatus": 0,
+          "correctionsMove": 402.4,
+          "correctionsOther": 1309.1,
+          "hitsFar": 0,
+          "hitGapMax": 0,
+          "snapGapMax": 211,
+          "correctionP50": 8,
+          "holds": 0,
+          "holdMax": 0,
+          "inputHz": 1.21,
+          "quality": "high",
+          "setting": "high",
+          "density": 2,
+          "memory": 8,
+          "cores": 3,
+          "ping": 13,
+          "lead": 54,
+          "os": "windows",
+          "app": false,
+          "linkSpeed": "4g",
+          "build": "dev",
+          "errors": 0,
+          "shell": "web",
+          "screen": "844x390@2",
+          "sliceFps": [2.4, 2.3],
+          "sliceJank": [1, 1],
+          "workP50": 28.3,
+          "workP95": 76.1,
+          "glowP50": 1.24,
+          "glowSlow": 1.5,
+          "softP50": 0.34,
+          "softSlow": 0.41,
+          "particlesP50": 684,
+          "particlesSlow": 683,
+          "objectsP50": 537,
+          "objectsSlow": 773
+        }
+      }
+    },
+    {
+      "kind": "MATCH_FLOW",
+      "data": {
+        "before": {
+          "rigTextures": 539,
+          "dom": 1154,
+          "sceneObjects": 232,
+          "unpooled": 128
+        },
+        "after": {
+          "rigTextures": 539,
+          "dom": 1154,
+          "sceneObjects": 528,
+          "unpooled": 112
+        },
+        "settled": {
+          "rigTextures": 539,
+          "dom": 1247,
+          "sceneObjects": 542,
+          "unpooled": 126
+        },
+        "layout": {
+          "reads": 0,
+          "phaser": 4,
+          "by": {},
+          "frames": 68
+        },
+        "glow": {
+          "p50": 0.61,
+          "p90": 0.75,
+          "max": 0.75,
+          "minShrink": 0.6329936405768725,
+          "resizes": 0
+        },
+        "report": {
+          "seconds": 20.7,
+          "frames": 86,
+          "fps": 4.3,
+          "frameP95": 355.7,
+          "frameP99": 719.8,
+          "jank": 0.998,
+          "stalls": 33,
+          "rttP50": 43,
+          "rttP95": 161,
+          "snapGapP95": 92,
+          "snapLate": 0.006,
+          "corrections": 1669.5,
+          "correctionMax": 161,
+          "confirmP50": 0,
+          "correctionsHit": 2.9,
+          "correctionsStatus": 0,
+          "correctionsMove": 393.7,
+          "correctionsOther": 1273,
+          "hitsFar": 1,
+          "hitGapMax": 123,
+          "snapGapMax": 142,
+          "correctionP50": 8,
+          "holds": 0,
+          "holdMax": 0,
+          "inputHz": 2.35,
+          "quality": "low",
+          "setting": "low",
+          "density": 1.25,
+          "memory": 8,
+          "cores": 3,
+          "ping": 12,
+          "lead": 62,
+          "os": "windows",
+          "app": false,
+          "linkSpeed": "3g",
+          "build": "dev",
+          "errors": 0,
+          "shell": "web",
+          "screen": "844x390@2",
+          "sliceFps": [4.2, 4.1],
+          "sliceJank": [1, 0.992],
+          "workP50": 25.1,
+          "workP95": 59.4,
+          "glowP50": 0.61,
+          "glowSlow": 0.61,
+          "softP50": 0.37,
+          "softSlow": 0.38,
+          "particlesP50": 681,
+          "particlesSlow": 657,
+          "objectsP50": 486,
+          "objectsSlow": 495
+        }
+      }
+    },
+    {
+      "kind": "PVP_PROFILE",
+      "data": {
+        "snapshots": {
+          "count": 159,
+          "mean": 0.8314465408948537,
+          "p95": 2.1000000000931323,
+          "max": 24.9000000001397
+        },
+        "update": {
+          "count": 28,
+          "mean": 4.03214285710627,
+          "p95": 9,
+          "max": 31.299999999813735
+        },
+        "bytes": {
+          "count": 159,
+          "mean": 3881.8238993710693,
+          "p95": 4404,
+          "max": 4655
+        },
+        "frame": {
+          "count": 28,
+          "mean": 16.66666666666667,
+          "p95": 16.666666666666664,
+          "max": 16.666666666666664
+        },
+        "hudMutations": 1088,
+        "cpu": {
+          "TaskDuration": 1.8984159999999999,
+          "ScriptDuration": 0.766408,
+          "LayoutDuration": 0.050691,
+          "RecalcStyleDuration": 0.65403,
+          "LayoutCount": 34,
+          "RecalcStyleCount": 85
+        },
+        "top": [
+          {
+            "name": "(idle)",
+            "url": "",
+            "samples": 1895
+          },
+          {
+            "name": "(program)",
+            "url": "",
+            "samples": 516
+          },
+          {
+            "name": "convexPath",
+            "url": "src/graphics-render.ts",
+            "samples": 64
+          },
+          {
+            "name": "(garbage collector)",
+            "url": "",
+            "samples": 29
+          },
+          {
+            "name": "renderGraphics",
+            "url": "src/graphics-render.ts",
+            "samples": 22
+          },
+          {
+            "name": "update",
+            "url": "src/main.ts",
+            "samples": 17
+          },
+          {
+            "name": "render",
+            "url": "deps/phaser.js?v=a596c9a3",
+            "samples": 13
+          },
+          {
+            "name": "batchTri",
+            "url": "deps/phaser.js?v=a596c9a3",
+            "samples": 11
+          },
+          {
+            "name": "take",
+            "url": "src/graphics-render.ts",
+            "samples": 11
+          },
+          {
+            "name": "ellipsePath",
+            "url": "src/graphics-render.ts",
+            "samples": 8
+          },
+          {
+            "name": "render",
+            "url": "animation/rig.ts",
+            "samples": 7
+          },
+          {
+            "name": "update",
+            "url": "src/touch-controls.ts",
+            "samples": 7
+          },
+          {
+            "name": "querySelector",
+            "url": "",
+            "samples": 7
+          },
+          {
+            "name": "g.fillCircle",
+            "url": "src/battle-curves.ts",
+            "samples": 6
+          },
+          {
+            "name": "fillPoints",
+            "url": "deps/phaser.js?v=a596c9a3",
+            "samples": 6
+          },
+          {
+            "name": "bufferSubData",
+            "url": "",
+            "samples": 5
+          },
+          {
+            "name": "batchLine",
+            "url": "deps/phaser.js?v=a596c9a3",
+            "samples": 5
+          },
+          {
+            "name": "",
+            "url": "src/main.ts",
+            "samples": 5
+          },
+          {
+            "name": "batchQuad",
+            "url": "deps/phaser.js?v=a596c9a3",
+            "samples": 4
+          },
+          {
+            "name": "renderBattle",
+            "url": "src/main.ts",
+            "samples": 4
+          }
+        ]
+      }
+    }
+  ],
+  "browserAfter30Hz": [
+    {
+      "kind": "INPUT_CLOCK_BROWSER",
+      "data": {
+        "rttP50": 0,
+        "rttP95": 0,
+        "snapGapP95": 0,
+        "snapLate": 0,
+        "corrections": 0,
+        "correctionMax": 0,
+        "confirmP50": 0,
+        "pressSamples": 4,
+        "pressToSendP50": 14,
+        "pressToSendP95": 63,
+        "pressToSendP99": 63,
+        "eventToHandlerP95": 3,
+        "handlerToSendP95": 61,
+        "sendGapP50": 33,
+        "sendGapP95": 52,
+        "sendGapP99": 53,
+        "sendGapMax": 53,
+        "correctionsHit": 0,
+        "correctionsStatus": 0,
+        "correctionsMove": 0,
+        "correctionsOther": 0,
+        "hitsFar": 0,
+        "hitGapMax": 0,
+        "snapGapMax": 0,
+        "correctionP50": 0,
+        "holds": 0,
+        "holdMax": 0,
+        "inputHz": 0
+      }
+    },
+    {
+      "kind": "BATTLE_PROFILE",
+      "data": {
+        "scenario": "pvp2",
+        "seconds": 6,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 193,
+          "mean": 0.75,
+          "p50": 0.5,
+          "p95": 1.9,
+          "max": 10.9
+        },
+        "snapshotBytes": {
+          "n": 19,
+          "mean": 1884.63,
+          "p50": 1903,
+          "p95": 2324,
+          "max": 2324
+        },
+        "sceneUpdateMs": {
+          "n": 24,
+          "mean": 4.4,
+          "p50": 1.6,
+          "p95": 10.3,
+          "max": 36.1
+        },
+        "frameStepMs": {
+          "n": 24,
+          "mean": 22.58,
+          "p50": 20,
+          "p95": 45.3,
+          "max": 57.1
+        },
+        "frameIntervalMs": {
+          "n": 24,
+          "mean": 264.03,
+          "p50": 258.6,
+          "p95": 441.9,
+          "max": 463.4
+        },
+        "longFrames": 24,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 0
+        },
+        "mainThreadMs": {
+          "TaskDuration": 1507,
+          "ScriptDuration": 799,
+          "LayoutDuration": 11,
+          "RecalcStyleDuration": 277
+        },
+        "memory": {
+          "heapMB": 38.2,
+          "dom": 1086,
+          "sceneObjects": 439,
+          "textures": 324,
+          "tweens": 79
+        }
+      }
+    },
+    {
+      "kind": "BATTLE_PROFILE",
+      "data": {
+        "scenario": "pvp4",
+        "seconds": 6,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 200,
+          "mean": 1.49,
+          "p50": 0.6,
+          "p95": 4.9,
+          "max": 55.5
+        },
+        "snapshotBytes": {
+          "n": 20,
+          "mean": 3928.8,
+          "p50": 4051,
+          "p95": 4916,
+          "max": 4916
+        },
+        "sceneUpdateMs": {
+          "n": 17,
+          "mean": 9.45,
+          "p50": 3.6,
+          "p95": 42.3,
+          "max": 42.3
+        },
+        "frameStepMs": {
+          "n": 17,
+          "mean": 32.06,
+          "p50": 30.5,
+          "p95": 71,
+          "max": 71
+        },
+        "frameIntervalMs": {
+          "n": 17,
+          "mean": 387.59,
+          "p50": 332.9,
+          "p95": 667.6,
+          "max": 667.6
+        },
+        "longFrames": 17,
+        "nameplateMeasures": {
+          "all": 4,
+          "hidden": 0,
+          "hiddenPlates": 0
+        },
+        "mainThreadMs": {
+          "TaskDuration": 2227,
+          "ScriptDuration": 875,
+          "LayoutDuration": 8,
+          "RecalcStyleDuration": 385
+        },
+        "memory": {
+          "heapMB": 46.3,
+          "dom": 1102,
+          "sceneObjects": 506,
+          "textures": 644,
+          "tweens": 94
+        }
+      }
+    },
+    {
+      "kind": "BATTLE_PROFILE",
+      "data": {
+        "scenario": "raid4",
+        "seconds": 6,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 194,
+          "mean": 2.23,
+          "p50": 1.2,
+          "p95": 5.4,
+          "max": 37
+        },
+        "snapshotBytes": {
+          "n": 19,
+          "mean": 6631.63,
+          "p50": 6830,
+          "p95": 8476,
+          "max": 8476
+        },
+        "sceneUpdateMs": {
+          "n": 19,
+          "mean": 9.52,
+          "p50": 4.8,
+          "p95": 46.3,
+          "max": 46.3
+        },
+        "frameStepMs": {
+          "n": 19,
+          "mean": 35.14,
+          "p50": 41.5,
+          "p95": 63.1,
+          "max": 63.1
+        },
+        "frameIntervalMs": {
+          "n": 19,
+          "mean": 389.25,
+          "p50": 392.5,
+          "p95": 512.4,
+          "max": 512.4
+        },
+        "longFrames": 19,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 0
+        },
+        "mainThreadMs": {
+          "TaskDuration": 2426,
+          "ScriptDuration": 1050,
+          "LayoutDuration": 21,
+          "RecalcStyleDuration": 260
+        },
+        "memory": {
+          "heapMB": 50.2,
+          "dom": 1141,
+          "sceneObjects": 677,
+          "textures": 751,
+          "tweens": 85
+        }
+      }
+    },
+    {
+      "kind": "SOAK_PROFILE",
+      "data": [
+        {
+          "cycle": 0,
+          "heapMB": 39.9,
+          "dom": 6853,
+          "sceneObjects": 0,
+          "textures": 0,
+          "tweens": 0
+        },
+        {
+          "cycle": 1,
+          "heapMB": 44.7,
+          "dom": 6893,
+          "sceneObjects": 0,
+          "textures": 0,
+          "tweens": 0
+        },
+        {
+          "cycle": 2,
+          "heapMB": 44.7,
+          "dom": 6890,
+          "sceneObjects": 0,
+          "textures": 0,
+          "tweens": 0
+        }
+      ]
+    },
+    {
+      "kind": "MATCH_FLOW",
+      "data": {
+        "before": {
+          "rigTextures": 539,
+          "dom": 1156,
+          "sceneObjects": 263,
+          "unpooled": 141
+        },
+        "after": {
+          "rigTextures": 539,
+          "dom": 1156,
+          "sceneObjects": 877,
+          "unpooled": 474
+        },
+        "settled": {
+          "rigTextures": 539,
+          "dom": 1249,
+          "sceneObjects": 467,
+          "unpooled": 38
+        },
+        "layout": {
+          "reads": 0,
+          "phaser": 2,
+          "by": {},
+          "frames": 36
+        },
+        "glow": {
+          "p50": 1.07,
+          "p90": 1.42,
+          "max": 1.79,
+          "minShrink": 1,
+          "resizes": 0
+        },
+        "report": {
+          "seconds": 22.1,
+          "frames": 46,
+          "fps": 2.4,
+          "frameP95": 883.3,
+          "frameP99": 1412.3,
+          "jank": 0.999,
+          "stalls": 43,
+          "rttP50": 54,
+          "rttP95": 297,
+          "snapGapP95": 72,
+          "snapLate": 0.003,
+          "corrections": 1724,
+          "correctionMax": 162,
+          "confirmP50": 0,
+          "sendGapP50": 33,
+          "sendGapP95": 73,
+          "sendGapP99": 115,
+          "sendGapMax": 186,
+          "correctionsHit": 2.6,
+          "correctionsStatus": 0,
+          "correctionsMove": 412.5,
+          "correctionsOther": 1308.9,
+          "hitsFar": 0,
+          "hitGapMax": 0,
+          "snapGapMax": 166,
+          "correctionP50": 7,
+          "holds": 0,
+          "holdMax": 0,
+          "inputHz": 30.01,
+          "quality": "high",
+          "setting": "high",
+          "density": 2,
+          "memory": 8,
+          "cores": 3,
+          "ping": 13,
+          "lead": 145,
+          "os": "windows",
+          "app": false,
+          "linkSpeed": "4g",
+          "build": "dev",
+          "errors": 0,
+          "hz": 60,
+          "shell": "web",
+          "screen": "844x390@2",
+          "sliceFps": [2.2, 1.8],
+          "sliceJank": [1, 0.996],
+          "workP50": 20.1,
+          "workP95": 70,
+          "glowP50": 1.11,
+          "glowSlow": 1.07,
+          "softP50": 0.34,
+          "softSlow": 0.16,
+          "particlesP50": 686,
+          "particlesSlow": 674,
+          "objectsP50": 538,
+          "objectsSlow": 577
+        }
+      }
+    },
+    {
+      "kind": "MATCH_FLOW",
+      "data": {
+        "before": {
+          "rigTextures": 539,
+          "dom": 1154,
+          "sceneObjects": 239,
+          "unpooled": 125
+        },
+        "after": {
+          "rigTextures": 539,
+          "dom": 1154,
+          "sceneObjects": 582,
+          "unpooled": 158
+        },
+        "settled": {
+          "rigTextures": 539,
+          "dom": 1247,
+          "sceneObjects": 523,
+          "unpooled": 99
+        },
+        "layout": {
+          "reads": 0,
+          "phaser": 4,
+          "by": {},
+          "frames": 65
+        },
+        "glow": {
+          "p50": 0.64,
+          "p90": 0.75,
+          "max": 0.75,
+          "minShrink": 0.6817388184281199,
+          "resizes": 0
+        },
+        "report": {
+          "seconds": 21,
+          "frames": 83,
+          "fps": 4.1,
+          "frameP95": 364,
+          "frameP99": 777.6,
+          "jank": 0.999,
+          "stalls": 38,
+          "rttP50": 55,
+          "rttP95": 186,
+          "snapGapP95": 99,
+          "snapLate": 0.009,
+          "corrections": 1764.5,
+          "correctionMax": 162,
+          "confirmP50": 0,
+          "sendGapP50": 33,
+          "sendGapP95": 98,
+          "sendGapP99": 120,
+          "sendGapMax": 231,
+          "correctionsHit": 2.8,
+          "correctionsStatus": 0,
+          "correctionsMove": 413.9,
+          "correctionsOther": 1347.8,
+          "hitsFar": 0,
+          "hitGapMax": 0,
+          "snapGapMax": 217,
+          "correctionP50": 7,
+          "holds": 0,
+          "holdMax": 0,
+          "inputHz": 29.97,
+          "quality": "low",
+          "setting": "low",
+          "density": 1.25,
+          "memory": 8,
+          "cores": 3,
+          "ping": 16,
+          "lead": 166,
+          "os": "windows",
+          "app": false,
+          "linkSpeed": "4g",
+          "build": "dev",
+          "errors": 0,
+          "shell": "web",
+          "screen": "844x390@2",
+          "sliceFps": [4, 3.7],
+          "sliceJank": [1, 0.995],
+          "workP50": 23.4,
+          "workP95": 56.3,
+          "glowP50": 0.63,
+          "glowSlow": 0.61,
+          "softP50": 0.4,
+          "softSlow": 0.42,
+          "particlesP50": 681,
+          "particlesSlow": 683,
+          "objectsP50": 488,
+          "objectsSlow": 615
+        }
+      }
+    },
+    {
+      "kind": "PVP_PROFILE",
+      "data": {
+        "snapshots": {
+          "count": 161,
+          "mean": 1.1776397515360197,
+          "p95": 1.8000000002793968,
+          "max": 38.3000000002794
+        },
+        "update": {
+          "count": 26,
+          "mean": 4.319230769348976,
+          "p95": 17.300000000279397,
+          "max": 29.90000000037253
+        },
+        "bytes": {
+          "count": 161,
+          "mean": 3883.204968944099,
+          "p95": 4403,
+          "max": 4655
+        },
+        "frame": {
+          "count": 26,
+          "mean": 16.66666666666667,
+          "p95": 16.666666666666664,
+          "max": 16.666666666666664
+        },
+        "hudMutations": 1104,
+        "cpu": {
+          "TaskDuration": 2.172713,
+          "ScriptDuration": 0.892214,
+          "LayoutDuration": 0.017012,
+          "RecalcStyleDuration": 0.637615,
+          "LayoutCount": 31,
+          "RecalcStyleCount": 79
+        },
+        "top": [
+          {
+            "name": "(idle)",
+            "url": "",
+            "samples": 1837
+          },
+          {
+            "name": "(program)",
+            "url": "",
+            "samples": 549
+          },
+          {
+            "name": "convexPath",
+            "url": "src/graphics-render.ts",
+            "samples": 38
+          },
+          {
+            "name": "renderGraphics",
+            "url": "src/graphics-render.ts",
+            "samples": 32
+          },
+          {
+            "name": "(garbage collector)",
+            "url": "",
+            "samples": 17
+          },
+          {
+            "name": "update",
+            "url": "src/main.ts",
+            "samples": 14
+          },
+          {
+            "name": "update",
+            "url": "src/touch-controls.ts",
+            "samples": 13
+          },
+          {
+            "name": "",
+            "url": "src/main.ts",
+            "samples": 12
+          },
+          {
+            "name": "fanFill",
+            "url": "src/graphics-render.ts",
+            "samples": 11
+          },
+          {
+            "name": "tick",
+            "url": "",
+            "samples": 10
+          },
+          {
+            "name": "render",
+            "url": "animation/rig.ts",
+            "samples": 8
+          },
+          {
+            "name": "bufferSubData",
+            "url": "",
+            "samples": 8
+          },
+          {
+            "name": "querySelector",
+            "url": "",
+            "samples": 8
+          },
+          {
+            "name": "fillPoints",
+            "url": "deps/phaser.js?v=a596c9a3",
+            "samples": 6
+          },
+          {
+            "name": "ellipsePath",
+            "url": "src/graphics-render.ts",
+            "samples": 6
+          },
+          {
+            "name": "step",
+            "url": "src/fx-engine.ts",
+            "samples": 6
+          },
+          {
+            "name": "ImageWebGLRenderer",
+            "url": "deps/phaser.js?v=a596c9a3",
+            "samples": 6
+          },
+          {
+            "name": "get",
+            "url": "deps/phaser.js?v=a596c9a3",
+            "samples": 6
+          },
+          {
+            "name": "",
+            "url": "src/audio.ts",
+            "samples": 6
+          },
+          {
+            "name": "drawParticles",
+            "url": "src/fx-engine.ts",
+            "samples": 5
+          }
+        ]
+      }
+    }
+  ],
+  "inputBrowserAfter": [
+    {
+      "kind": "INPUT_CLOCK_BROWSER",
+      "data": {
+        "rttP50": 0,
+        "rttP95": 0,
+        "snapGapP95": 0,
+        "snapLate": 0,
+        "corrections": 0,
+        "correctionMax": 0,
+        "confirmP50": 0,
+        "pressSamples": 4,
+        "pressToSendP50": 7,
+        "pressToSendP95": 30,
+        "pressToSendP99": 30,
+        "eventToHandlerP95": 0,
+        "handlerToSendP95": 30,
+        "sendGapP50": 33,
+        "sendGapP95": 58,
+        "sendGapP99": 58,
+        "sendGapMax": 58,
+        "correctionsHit": 0,
+        "correctionsStatus": 0,
+        "correctionsMove": 0,
+        "correctionsOther": 0,
+        "hitsFar": 0,
+        "hitGapMax": 0,
+        "snapGapMax": 0,
+        "correctionP50": 0,
+        "holds": 0,
+        "holdMax": 0,
+        "inputHz": 0
+      }
+    }
+  ],
+  "regression": {
+    "legacyStoppedRenderInputsIn400Ms": 0,
+    "deliberatelyRestoredRenderDependencyInputsIn400Ms": 0,
+    "mutationFailedAsExpected": true,
+    "controlsPassed": 8,
+    "leaveGuardMutationFailedAsExpected": true,
+    "visibilityResumeFailedBeforeSharedLifecycle": true
+  },
+  "bundleViteReportedKB": {
+    "before": 2722.42,
+    "after": 2725.9,
+    "difference": 3.48,
+    "beforeGzip": 915.43,
+    "afterGzip": 916.47
+  },
+  "commands": {
+    "legacyProbe": "node scripts/perf/input-clock-probe.cjs",
+    "clockReplay": "npx tsx scripts/perf/input-clock-comparison.ts",
+    "unitIntegration": "npx vitest run tests/unit tests/integration",
+    "visual": "VISUAL_SHOTS=/tmp/session1-shots PW_CHROMIUM=/usr/bin/chromium npx playwright test --config tests/visual/playwright.config.ts tests/visual/battle-input-clock.spec.ts tests/visual/battle-performance.spec.ts tests/visual/match-flow-budget.spec.ts tests/visual/pvp-performance.spec.ts --trace off --workers=1 --reporter=line"
+  },
+  "validation": {
+    "baseline": {
+      "unitIntegrationFiles": 346,
+      "passed": 3550,
+      "skipped": 1,
+      "originalVisualPassed": 6
+    },
+    "after": {
+      "unitIntegrationFiles": 349,
+      "passed": 3564,
+      "skipped": 1,
+      "targetVisualPassed": 8,
+      "controlsVisualPassed": 8,
+      "typecheck": "passed",
+      "build": "passed",
+      "pwa": "passed",
+      "targetedAfterLeaveGuard": 116,
+      "finalControlsVisualPassed": 8,
+      "targetedAfterVisibilityResume": 116,
+      "visibilityResumeControlsPassed": 8,
+      "integratedMain": "8751b188",
+      "targetedWithIntegratedMain": 116,
+      "controlsWithIntegratedMain": 8,
+      "typecheckWithIntegratedMain": "passed",
+      "buildWithIntegratedMain": "passed",
+      "pwaWithIntegratedMain": "passed"
+    }
+  },
+  "interleavedRaid": {
+    "note": "Only main.ts was swapped between baseline 4a32d43e and the clock fix. The new NetMeter/schema were retained in both; no claim of reduced total CPU.",
+    "before": [
+      {
+        "kind": "BATTLE_PROFILE",
+        "data": {
+          "scenario": "raid4",
+          "seconds": 6,
+          "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+          "snapshotHandlingMs": {
+            "n": 194,
+            "mean": 2.15,
+            "p50": 0.9,
+            "p95": 5.3,
+            "max": 40.2
+          },
+          "snapshotBytes": {
+            "n": 20,
+            "mean": 6801.1,
+            "p50": 6675,
+            "p95": 8547,
+            "max": 8547
+          },
+          "sceneUpdateMs": {
+            "n": 19,
+            "mean": 10.63,
+            "p50": 5.9,
+            "p95": 45.4,
+            "max": 45.4
+          },
+          "inputStepMs": {
+            "n": 0,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "frameStepMs": {
+            "n": 19,
+            "mean": 30.12,
+            "p50": 26,
+            "p95": 54.4,
+            "max": 54.4
+          },
+          "frameIntervalMs": {
+            "n": 19,
+            "mean": 380.62,
+            "p50": 360.5,
+            "p95": 542,
+            "max": 542
+          },
+          "longFrames": 19,
+          "nameplateMeasures": {
+            "all": 0,
+            "hidden": 0,
+            "hiddenPlates": 0
+          },
+          "mainThreadMs": {
+            "TaskDuration": 1935,
+            "ScriptDuration": 933,
+            "LayoutDuration": 12,
+            "RecalcStyleDuration": 242
+          },
+          "memory": {
+            "heapMB": 47.8,
+            "dom": 1141,
+            "sceneObjects": 451,
+            "textures": 709,
+            "tweens": 41
+          }
+        }
+      }
+    ],
+    "after": [
+      {
+        "kind": "BATTLE_PROFILE",
+        "data": {
+          "scenario": "raid4",
+          "seconds": 6,
+          "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+          "snapshotHandlingMs": {
+            "n": 189,
+            "mean": 5.69,
+            "p50": 1.7,
+            "p95": 34.8,
+            "max": 72.5
+          },
+          "snapshotBytes": {
+            "n": 19,
+            "mean": 6660.05,
+            "p50": 6610,
+            "p95": 8172,
+            "max": 8172
+          },
+          "sceneUpdateMs": {
+            "n": 15,
+            "mean": 14.57,
+            "p50": 13.3,
+            "p95": 57.9,
+            "max": 57.9
+          },
+          "inputStepMs": {
+            "n": 116,
+            "mean": 0.19,
+            "p50": 0.1,
+            "p95": 1.4,
+            "max": 2.1
+          },
+          "frameStepMs": {
+            "n": 15,
+            "mean": 44.65,
+            "p50": 38.1,
+            "p95": 101.8,
+            "max": 101.8
+          },
+          "frameIntervalMs": {
+            "n": 15,
+            "mean": 490.81,
+            "p50": 346.1,
+            "p95": 1311.7,
+            "max": 1311.7
+          },
+          "longFrames": 15,
+          "nameplateMeasures": {
+            "all": 0,
+            "hidden": 0,
+            "hiddenPlates": 1
+          },
+          "mainThreadMs": {
+            "TaskDuration": 4152,
+            "ScriptDuration": 1787,
+            "LayoutDuration": 14,
+            "RecalcStyleDuration": 297
+          },
+          "memory": {
+            "heapMB": 50.7,
+            "dom": 1141,
+            "sceneObjects": 838,
+            "textures": 799,
+            "tweens": 314
+          }
+        }
+      }
+    ]
+  },
+  "inputBrowserFinal": [
+    {
+      "kind": "INPUT_CLOCK_BROWSER",
+      "data": {
+        "rttP50": 494,
+        "rttP95": 494,
+        "snapGapP95": 0,
+        "snapLate": 0,
+        "corrections": 0,
+        "correctionMax": 0,
+        "confirmP50": 0,
+        "pressSamples": 4,
+        "pressToSendP50": 6,
+        "pressToSendP95": 35,
+        "pressToSendP99": 35,
+        "eventToHandlerP95": 0,
+        "handlerToSendP95": 34,
+        "sendGapP50": 36,
+        "sendGapP95": 39,
+        "sendGapP99": 41,
+        "sendGapMax": 41,
+        "correctionsHit": 0,
+        "correctionsStatus": 0,
+        "correctionsMove": 0,
+        "correctionsOther": 0,
+        "hitsFar": 0,
+        "hitGapMax": 0,
+        "snapGapMax": 0,
+        "correctionP50": 0,
+        "holds": 0,
+        "holdMax": 0,
+        "inputHz": 0
+      }
+    }
+  ],
+  "profileFixCommit": "c396415a",
+  "inputBrowserVisibilityResume": [
+    {
+      "kind": "INPUT_CLOCK_BROWSER",
+      "data": {
+        "rttP50": 316,
+        "rttP95": 316,
+        "snapGapP95": 0,
+        "snapLate": 0,
+        "corrections": 0,
+        "correctionMax": 0,
+        "confirmP50": 0,
+        "pressSamples": 4,
+        "pressToSendP50": 27,
+        "pressToSendP95": 38,
+        "pressToSendP99": 38,
+        "eventToHandlerP95": 0,
+        "handlerToSendP95": 38,
+        "sendGapP50": 30,
+        "sendGapP95": 70,
+        "sendGapP99": 70,
+        "sendGapMax": 70,
+        "correctionsHit": 0,
+        "correctionsStatus": 0,
+        "correctionsMove": 0,
+        "correctionsOther": 0,
+        "hitsFar": 0,
+        "hitGapMax": 0,
+        "snapGapMax": 0,
+        "correctionP50": 0,
+        "holds": 0,
+        "holdMax": 0,
+        "inputHz": 0
+      }
+    }
+  ],
+  "inputBrowserIntegratedMain": [
+    {
+      "kind": "INPUT_CLOCK_BROWSER",
+      "data": {
+        "rttP50": 0,
+        "rttP95": 0,
+        "snapGapP95": 0,
+        "snapLate": 0,
+        "corrections": 0,
+        "correctionMax": 0,
+        "confirmP50": 0,
+        "pressSamples": 4,
+        "pressToSendP50": 137,
+        "pressToSendP95": 239,
+        "pressToSendP99": 239,
+        "eventToHandlerP95": 1,
+        "handlerToSendP95": 238,
+        "sendGapP50": 17,
+        "sendGapP95": 113,
+        "sendGapP99": 405,
+        "sendGapMax": 405,
+        "correctionsHit": 0,
+        "correctionsStatus": 0,
+        "correctionsMove": 0,
+        "correctionsOther": 0,
+        "hitsFar": 0,
+        "hitGapMax": 0,
+        "snapGapMax": 0,
+        "correctionP50": 0,
+        "holds": 0,
+        "holdMax": 0,
+        "inputHz": 0
+      }
+    }
+  ]
+}

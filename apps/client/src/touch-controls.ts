@@ -56,7 +56,7 @@ export class TouchControls {
   constructor(
     root: HTMLElement,
     canPlay: () => boolean,
-    fire: (action: Partial<Actions>) => void,
+    fire: (action: Partial<Actions>, stamp: number, handled: number) => void,
     notify: (text: string) => void,
     resetActions: () => void = () => {},
     preview = false,
@@ -269,6 +269,7 @@ export class TouchControls {
       const action = (button.dataset.skill ??
         button.dataset.action) as TouchAction;
       button.onpointerdown = (event) => {
+        const handled = performance.now();
         if (
           !this.enabled ||
           !canPlay() ||
@@ -279,10 +280,13 @@ export class TouchControls {
         event.preventDefault();
         this.capture(button, event.pointerId);
         this.paint();
-        if (action === "attack") fire({ basic: true });
-        else if (action === "dash") fire({ dash: true });
-        else if (action === "jump") fire({ jump: true });
-        else fire({ skill: Number(action) });
+        if (action === "attack")
+          fire({ basic: true }, event.timeStamp, handled);
+        else if (action === "dash")
+          fire({ dash: true }, event.timeStamp, handled);
+        else if (action === "jump")
+          fire({ jump: true }, event.timeStamp, handled);
+        else fire({ skill: Number(action) }, event.timeStamp, handled);
       };
     }
     window.addEventListener("blur", () => this.reset());

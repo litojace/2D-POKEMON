@@ -33,6 +33,7 @@ import {
   perfMode,
   setPerfMode,
 } from "./battle-perf";
+import { BattleInputClock } from "./battle-input-clock";
 import { correctionCause } from "./networking/correction-cause";
 import { PerfOverlay } from "./perf-overlay";
 import { syncPerfHud } from "./perf-hud";
@@ -881,7 +882,8 @@ let screen = "",
   eventId = 0,
   settingsOpen = false,
   menuOpen = false,
-  connected = false;
+  connected = false,
+  inputSessionReady = false;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -1121,6 +1123,24 @@ function request(
       }),
   );
 }
+function prepareBattlePrediction() {
+  if (!state) return;
+  // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
+  useObstacles(
+    state.raid
+      ? (spireCourtWalls(state.raid.spire) ??
+          (state.arena === "lagoon" ||
+          state.arena === "lantern-yard" ||
+          state.arena === "cloud-deck" ||
+          state.arena === "sun-atrium" ||
+          state.arena === "sky-terrace" ||
+          state.arena === "conductor-ring"
+            ? []
+            : OBSTACLES.filter((_, i) => !state!.raid!.pillars[i]?.broken)))
+      : obstaclesAt(state.arena, arenaClock()),
+  );
+  useSpeedScale(state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1);
+}
 function identity(reply: Reply) {
   if (!reply.ok) return;
   lobbySelection.reset();
@@ -1134,6 +1154,8 @@ function identity(reply: Reply) {
   // check the fighters' art is still there (rig-health.ts).
   scene?.checkArtSoon("resume");
   local = undefined;
+  inputSessionReady = true;
+  stopControls();
   remoteFrames.clear();
   timeline.clear();
   shotTimeline.clear();
@@ -1143,14 +1165,22 @@ function identity(reply: Reply) {
 const touch: TouchControls = new TouchControls(
   $("mobile-controls"),
   () => !!scene?.canControl(),
-  (action) => {
+  (action, stamp, handled) => {
     audio.unlock();
-    if (scene) Object.assign(scene.actions, action);
+    if (scene) {
+      Object.assign(scene.actions, action);
+      for (const [key, value] of Object.entries(action))
+        if (key === "skill" ? Number(value) >= 0 : value)
+          netMeter.press(
+            key === "skill" ? `skill${value}` : key,
+            stamp,
+            handled,
+          );
+    }
   },
   toast,
   () => {
-    if (scene)
-      scene.actions = { skill: -1, dash: false, jump: false, basic: false };
+    if (scene) scene.clearActions();
   },
 );
 // Controls laid out again (resize, settings, toggled): measure them anew.
@@ -1244,7 +1274,11 @@ const typingIn = (target: EventTarget | null) =>
     /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
 const skillSlot = (action: Action | PadAction) =>
   (SKILL_ACTIONS as readonly string[]).indexOf(action);
-function pressAction(action: Action | PadAction) {
+function pressAction(
+  action: Action | PadAction,
+  stamp?: number,
+  handled = performance.now(),
+) {
   // Between rounds the skill keys/buttons pick a rite (1st, 2nd, 3rd, 4th).
   if (state?.phase === "intermission") {
     const pick = skillSlot(action);
@@ -1259,22 +1293,35 @@ function pressAction(action: Action | PadAction) {
   const slot = skillSlot(action);
   if (slot >= 0) {
     const cast = caster.press(slot, controlPrefs().cast);
-    if (cast >= 0) scene.actions.skill = cast;
+    if (cast >= 0) {
+      scene.actions.skill = cast;
+      netMeter.press(`skill${cast}`, stamp, handled);
+    }
   } else if (action === "dash") scene.actions.dash = true;
   else if (action === "jump") scene.actions.jump = true;
   else if (action === "basic") scene.actions.basic = true;
+  if (slot < 0 && ["basic", "dash", "jump"].includes(action))
+    netMeter.press(action, stamp, handled);
 }
-function releaseAction(action: Action | PadAction) {
+function releaseAction(
+  action: Action | PadAction,
+  stamp?: number,
+  handled = performance.now(),
+) {
   const slot = skillSlot(action);
   if (slot < 0) return;
   const cast = caster.release(slot, controlPrefs().cast);
-  if (cast >= 0 && scene?.canControl()) scene.actions.skill = cast;
+  if (cast >= 0 && scene?.canControl()) {
+    scene.actions.skill = cast;
+    netMeter.press(`skill${cast}`, stamp, handled);
+  }
 }
 const matchKeys = () =>
   state?.phase === "playing" && !$<HTMLDialogElement>("dialog").open;
 document.addEventListener(
   "keydown",
   (e) => {
+    const handled = performance.now();
     if (controlsCapturing() || typingIn(e.target)) return;
     const rune = dreamRuneKey(state, myId, e.code);
     if (rune && matchKeys()) {
@@ -1292,7 +1339,7 @@ document.addEventListener(
     // A fresh press moves the key to the end: the latest press wins (heldAxis).
     held.delete(e.code);
     held.add(e.code);
-    if (live) pressAction(action);
+    if (live) pressAction(action, e.timeStamp, handled);
     else if (
       state?.phase === "intermission" &&
       !$<HTMLDialogElement>("dialog").open
@@ -1388,14 +1435,16 @@ function riteMarkup(me: Fighter, _seconds: number) {
 document.addEventListener(
   "keyup",
   (e) => {
+    const handled = performance.now();
     if (!held.delete(e.code)) return;
     const action = actionFor(controlPrefs().bindings, e.code);
-    if (action) releaseAction(action);
+    if (action) releaseAction(action, e.timeStamp, handled);
   },
   true,
 );
 // mousedown/mouseup fire for every button (pointer events skip chorded buttons).
 $("game").addEventListener("mousedown", (e) => {
+  const handled = performance.now();
   audio.unlock();
   if (touch.enabled) return;
   const code = `Mouse${e.button}`;
@@ -1403,13 +1452,14 @@ $("game").addEventListener("mousedown", (e) => {
   if (e.button === 1) e.preventDefault(); // No middle-click autoscroll.
   held.add(code);
   const action = actionFor(controlPrefs().bindings, code);
-  if (action && matchKeys()) pressAction(action);
+  if (action && matchKeys()) pressAction(action, e.timeStamp, handled);
 });
 window.addEventListener("mouseup", (e) => {
+  const handled = performance.now();
   const code = `Mouse${e.button}`;
   if (!held.delete(code)) return;
   const action = actionFor(controlPrefs().bindings, code);
-  if (action) releaseAction(action);
+  if (action) releaseAction(action, e.timeStamp, handled);
 });
 $("game").addEventListener("mousemove", () => (usingPad = false));
 window.addEventListener("blur", () => {
@@ -1431,7 +1481,7 @@ function heldAxis(negative: Action, positive: Action) {
     else if (bindings[positive].includes(code)) value = 1;
   return value;
 }
-/** Poll the controller once per frame; returns its movement for this frame. */
+/** Poll the controller for the render or input update; return its movement. */
 function pollPad() {
   const pad = firstPad();
   if (!pad) {
@@ -1506,31 +1556,18 @@ onControlPrefs(() => {
 function stopControls() {
   touch.reset();
   if (scene) {
-    scene.actions = { skill: -1, dash: false, jump: false, basic: false };
+    scene.clearActions();
     held.clear();
     caster.cancel();
   }
-  if (connected && state?.phase === "playing" && local)
-    socket.emit("input", {
-      seq: ++seq,
-      dx: 0,
-      dy: 0,
-      aimX: Math.max(
-        0,
-        Math.min(RULES.width, local.x + Math.cos(local.angle) * 100),
-      ),
-      aimY: Math.max(
-        0,
-        Math.min(RULES.height, local.y + Math.sin(local.angle) * 100),
-      ),
-      basic: false,
-      skill: -1,
-      dash: false,
-      jump: false,
-    });
+  castPredictor.clear();
+  optimisticCooldowns.clear();
+  netMeter.pauseInput();
+  scene?.syncInputClock();
 }
 window.addEventListener("blur", stopControls);
 window.addEventListener("pagehide", stopControls);
+window.addEventListener("pageshow", stopControls);
 document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
@@ -1542,6 +1579,7 @@ watchScreenPin();
 // drops the game connection; coming back reconnects at once.
 void setupNativeShell(() => {
   backgroundExit.back();
+  scene?.syncInputClock();
   const token = (socket.auth as { accessToken?: string | null }).accessToken;
   if (token && !replacedAccount && !socket.connected) socket.connect();
 });
@@ -3711,6 +3749,13 @@ async function leave(returnToHub = true) {
     await stopWatching();
     return;
   }
+  // Stop at the request, including a slow reply or raid-hall load. A failed
+  // leave can resume this same identity; a reconnect must earn its own gate.
+  const inputBeforeLeave = inputSessionReady;
+  const leavingConnection = socket.id;
+  const leavingPlayer = myId;
+  inputSessionReady = false;
+  stopControls();
   const returnToRaidHub = returnToHub
     ? state?.raid
       ? raidRoomReturn?.code === state.code
@@ -3734,6 +3779,9 @@ async function leave(returnToHub = true) {
   });
   await raidHall;
   if (!reply.ok) {
+    if (socket.id === leavingConnection && myId === leavingPlayer)
+      inputSessionReady = inputBeforeLeave;
+    scene?.syncInputClock();
     toast("Could not leave the room yet. Reconnect and try again.");
     return;
   }
@@ -4544,6 +4592,7 @@ socket.on("connect", () => {
     return;
   }
   connected = true;
+  inputSessionReady = false;
   // A fresh connection lands on the server that takes new ones now; if a
   // deploy is replacing that one too, it says so again (server-update).
   moveToNewServer = updateSaid.moving = updateSaid.draining = false;
@@ -4604,6 +4653,9 @@ socket.on("disconnect", (reason: string) => {
   });
   lobbySelection.reset();
   connected = false;
+  inputSessionReady = false;
+  local = undefined;
+  stopControls();
   if (!myId && !watching && !state) {
     screen = "";
     renderMenu();
@@ -4892,6 +4944,8 @@ socket.on("state", (snapshot: WireSnapshot) => {
   // A stale room (we left it) can still send a last snapshot: ignore it.
   if (spectator && snapshot.code !== watching) return;
   if (state?.phase !== snapshot.phase || state?.round !== snapshot.round) {
+    scene?.clearActions();
+    scene?.stopInputClock();
     remoteFrames.clear();
     timeline.clear();
     shotTimeline.clear();
@@ -4972,6 +5026,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
   const steps = serverSteps(pending, owedSteps);
   timeline.snapshot(Math.max(0, pending.length - owedSteps), receivedAt);
   local = structuredClone(me);
+  prepareBattlePrediction();
   carryCurrent(local, state.time);
   for (const { input, tick } of steps)
     predict(local, input, state.time + tick / RULES.tick);
@@ -5003,6 +5058,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
     !state.arcade
   )
     void reportMatch(state.matchId);
+  scene?.syncInputClock();
   syncBossPrepaint(state);
   syncFighterArt();
   if (state.phase === "lobby") renderMenu();
@@ -6085,11 +6141,158 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   /** Knockout moment: camera push-in multiplier and its end time. */
   koZoom = 1;
   koUntil = 0;
-  accumulator = 0;
+  private inputClock = new BattleInputClock(
+    () => this.sendInput(),
+    () =>
+      scene === this &&
+      connected &&
+      socket.connected &&
+      inputSessionReady &&
+      !!state &&
+      state.phase === "playing" &&
+      !!local &&
+      !!this.aimView &&
+      !$("battle").hidden &&
+      !document.hidden &&
+      !backgroundExit.away,
+    RULES.tick,
+  );
+  syncInputClock() {
+    this.inputClock.sync();
+  }
+  stopInputClock() {
+    this.inputClock.stop();
+    netMeter.pauseInput();
+  }
+  clearActions() {
+    this.actions = { skill: -1, dash: false, jump: false, basic: false };
+    netMeter.clearPresses();
+  }
+  /** One input, one pending entry and one predicted step, on the input clock. */
+  private sendInput() {
+    if (!state || !local) return;
+    const pad = pollPad();
+    this.keepTargetLock();
+    if (!this.canControl()) this.clearActions();
+    prepareBattlePrediction();
+    const aim = this.aimView
+      ? screenToWorld(
+          this.input.activePointer.x,
+          this.input.activePointer.y,
+          this.scale.width,
+          this.scale.height,
+          this.aimView,
+        )
+      : this.aimPoint;
+    const active =
+      this.canControl() &&
+      !settingsOpen &&
+      !menuOpen &&
+      !$<HTMLDialogElement>("dialog").open &&
+      (touch.enabled ? touch.focused : document.hasFocus()) &&
+      !document.hidden;
+    const enemies = visibleEnemies(local, local);
+    // Gloomshade's bodies are aimed at alike (real or copy), and its unlit
+    // lanterns can be locked on to (raid-targets.ts).
+    // Tidewyrm's bubbles holding teammates can be locked on to too.
+    const extra = raidTargets(state, local);
+    const found = extra?.filter((t) => t.kind === "shade" || t.kind === "boss");
+    const bodies = found?.length ? found : undefined;
+    // A locked enemy (touch or controller) before the nearest one.
+    const target =
+      targetLock.resolve<Targetable>(extra ?? enemies) ??
+      (bodies ? bodies[0] : enemies[0]);
+    const combatActive = active && local.hp > 0 && !local.out;
+    let skill = combatActive ? this.actions.skill : -1;
+    // EX skills: the ultimate button before the meter is full arms an EX
+    // version of your next skill (costs a third of the meter).
+    const meter = local.ult ?? 0;
+    let ex = false;
+    if (
+      skill === ULT_SLOT &&
+      meter < RULES.ultMax &&
+      !state.practice?.unlimitedCooldowns
+    ) {
+      if (meter >= EX.cost) {
+        exArmedUntil = exArmedUntil
+          ? 0
+          : performance.now() + EX.armSeconds * 1000;
+        if (exArmedUntil) audio.play("orb");
+      }
+      skill = -1;
+    } else if (skill >= 0 && skill < ULT_SLOT && exArmedUntil) {
+      if (performance.now() < exArmedUntil && meter >= EX.cost) ex = true;
+      exArmedUntil = 0;
+    } else if (skill >= 0 && skill < ULT_SLOT && practiceExOn()) ex = true;
+    if (exArmedUntil && performance.now() >= exArmedUntil) exArmedUntil = 0;
+    const keyX = heldAxis("left", "right"),
+      keyY = heldAxis("up", "down");
+    // Aim: touch and an idle right stick follow the nearest opponent;
+    // the right stick aims by direction and tilt; otherwise the mouse.
+    let aimAt = { x: aim.x, y: aim.y };
+    if (touch.enabled && target) aimAt = target;
+    else if (usingPad && pad?.aim) {
+      const tilt = Math.hypot(pad.aim.x, pad.aim.y),
+        reach = 90 + 410 * tilt;
+      aimAt = {
+        x: local.x + (pad.aim.x / tilt) * reach,
+        y: local.y + (pad.aim.y / tilt) * reach,
+      };
+    } else if (usingPad && target) aimAt = target;
+    else if (usingPad) aimAt = this.aimPoint;
+    else if (controlPrefs().aimAssist && skill < 0)
+      aimAt = assistAim(aimAt, bodies ?? enemies);
+    const stormAim = state ? stormTarget(state, local.id) : undefined;
+    if (stormAim) aimAt = stormAim;
+    const prismAim = state ? prismatailAim(state, local) : undefined;
+    if (prismAim) aimAt = prismAim;
+    aimAt = {
+      x: Ph.Math.Clamp(aimAt.x, 0, RULES.width),
+      y: Ph.Math.Clamp(aimAt.y, 0, RULES.height),
+    };
+    this.aimPoint = aimAt;
+    const input: Input = {
+      seq: ++seq,
+      dx: active ? (touch.enabled ? touch.dx : keyX || (pad?.dx ?? 0)) : 0,
+      dy: active ? (touch.enabled ? touch.dy : keyY || (pad?.dy ?? 0)) : 0,
+      aimX: aimAt.x,
+      aimY: aimAt.y,
+      basic:
+        combatActive &&
+        (prismAim
+          ? prismAim.basic
+          : (touch.enabled
+              ? touch.basic
+              : heldAction("basic") || !!pad?.held.has("basic")) ||
+            this.actions.basic),
+      skill,
+      ...(ex ? { ex: true } : {}),
+      dash: combatActive && this.actions.dash,
+      jump: combatActive && this.actions.jump,
+    };
+    this.actions = { skill: -1, dash: false, jump: false, basic: false };
+    const emittedAt = performance.now();
+    socket.emit("input", input);
+    netMeter.input(input, emittedAt);
+    if (combatActive && coach.running) coach.note(input);
+    // Show your own cast now (before this step's movement changes the
+    // fighter), at the time this input is predicted to run.
+    this.predictCasts(
+      local,
+      input,
+      state.time + Math.max(1, pending.length + 1 - owedSteps) / RULES.tick,
+    );
+    pending.push(input);
+    if (pending.length > 90) pending.shift();
+    const next = newestStep(pending, owedSteps);
+    if (next) predict(local, next.input, state.time + next.tick / RULES.tick);
+  }
   actions = { skill: -1, dash: false, jump: false, basic: false };
   canControl(): boolean {
     return (
       connected &&
+      socket.connected &&
+      inputSessionReady &&
       state?.phase === "playing" &&
       !!local &&
       !local.out &&
@@ -6098,6 +6301,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !$<HTMLDialogElement>("dialog").open &&
       (touch.enabled ? touch.focused : document.hasFocus()) &&
       !document.hidden &&
+      !backgroundExit.away &&
       !["INPUT", "TEXTAREA", "SELECT"].includes(
         document.activeElement?.tagName ?? "",
       )
@@ -6459,6 +6663,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.floor = this.add.image(0, 0, "__DEFAULT").setOrigin(0).setDepth(-10);
     this.floorArena = "";
     const clearDom = () => {
+      this.stopInputClock();
       this.perfOverlay?.remove();
       this.perfOverlay = undefined;
       this.enemyBearing.remove();
@@ -7203,6 +7408,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       .setZoom(view.zoomX * hitZoom, view.zoomY * hitZoom)
       .centerOn(view.x, view.y);
     this.aimView = view;
+    this.syncInputClock();
     const aim = screenToWorld(
       this.input.activePointer.x,
       this.input.activePointer.y,
@@ -7337,7 +7543,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const pad = pollPad();
     this.keepTargetLock();
     if (!this.canControl()) {
-      this.actions = { skill: -1, dash: false, jump: false, basic: false };
+      this.clearActions();
       caster.cancel();
       touch.reset();
       castPredictor.clear();
@@ -7355,21 +7561,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       audio.setAmbience(null);
       return;
     }
-    // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
-    useObstacles(
-      state.raid
-        ? (spireCourtWalls(state.raid.spire) ??
-            (state.arena === "lagoon" ||
-            state.arena === "lantern-yard" ||
-            state.arena === "cloud-deck" ||
-            state.arena === "sun-atrium" ||
-            state.arena === "sky-terrace" ||
-            state.arena === "conductor-ring"
-              ? []
-              : OBSTACLES.filter((_, i) => !state!.raid!.pillars[i]?.broken)))
-        : obstaclesAt(state.arena, arenaClock()),
-    );
-    useSpeedScale(state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1);
+    prepareBattlePrediction();
     this.showArena(
       state.arena ?? "classic",
       !!state.raid,
@@ -7380,114 +7572,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       this.activeCourt && !this.courtRaid ? this.activeCourt : null,
     );
     this.updateBlocks(arenaClock(), state.raid?.pillars);
-    this.accumulator += Math.min(delta, 100);
-    while (this.accumulator >= 1000 / RULES.tick) {
-      this.accumulator -= 1000 / RULES.tick;
-      if (!connected || state.phase !== "playing" || !local) continue;
-      const active =
-        this.canControl() &&
-        !settingsOpen &&
-        !menuOpen &&
-        !$<HTMLDialogElement>("dialog").open &&
-        (touch.enabled ? touch.focused : document.hasFocus()) &&
-        !document.hidden;
-      const enemies = visibleEnemies(local, local);
-      // Gloomshade's bodies are aimed at alike (real or copy), and its unlit
-      // lanterns can be locked on to (raid-targets.ts).
-      // Tidewyrm's bubbles holding teammates can be locked on to too.
-      const extra = raidTargets(state, local);
-      const found = extra?.filter(
-        (t) => t.kind === "shade" || t.kind === "boss",
-      );
-      const bodies = found?.length ? found : undefined;
-      // A locked enemy (touch or controller) before the nearest one.
-      const target =
-        targetLock.resolve<Targetable>(extra ?? enemies) ??
-        (bodies ? bodies[0] : enemies[0]);
-      const combatActive = active && local.hp > 0 && !local.out;
-      let skill = combatActive ? this.actions.skill : -1;
-      // EX skills: the ultimate button before the meter is full arms an EX
-      // version of your next skill (costs a third of the meter).
-      const meter = local.ult ?? 0;
-      let ex = false;
-      if (
-        skill === ULT_SLOT &&
-        meter < RULES.ultMax &&
-        !state.practice?.unlimitedCooldowns
-      ) {
-        if (meter >= EX.cost) {
-          exArmedUntil = exArmedUntil
-            ? 0
-            : performance.now() + EX.armSeconds * 1000;
-          if (exArmedUntil) audio.play("orb");
-        }
-        skill = -1;
-      } else if (skill >= 0 && skill < ULT_SLOT && exArmedUntil) {
-        if (performance.now() < exArmedUntil && meter >= EX.cost) ex = true;
-        exArmedUntil = 0;
-      } else if (skill >= 0 && skill < ULT_SLOT && practiceExOn()) ex = true;
-      if (exArmedUntil && performance.now() >= exArmedUntil) exArmedUntil = 0;
-      const keyX = heldAxis("left", "right"),
-        keyY = heldAxis("up", "down");
-      // Aim: touch and an idle right stick follow the nearest opponent;
-      // the right stick aims by direction and tilt; otherwise the mouse.
-      let aimAt = { x: aim.x, y: aim.y };
-      if (touch.enabled && target) aimAt = target;
-      else if (usingPad && pad?.aim) {
-        const tilt = Math.hypot(pad.aim.x, pad.aim.y),
-          reach = 90 + 410 * tilt;
-        aimAt = {
-          x: local.x + (pad.aim.x / tilt) * reach,
-          y: local.y + (pad.aim.y / tilt) * reach,
-        };
-      } else if (usingPad && target) aimAt = target;
-      else if (usingPad) aimAt = this.aimPoint;
-      else if (controlPrefs().aimAssist && skill < 0)
-        aimAt = assistAim(aimAt, bodies ?? enemies);
-      const stormAim = state ? stormTarget(state, local.id) : undefined;
-      if (stormAim) aimAt = stormAim;
-      const prismAim = state ? prismatailAim(state, local) : undefined;
-      if (prismAim) aimAt = prismAim;
-      aimAt = {
-        x: Ph.Math.Clamp(aimAt.x, 0, RULES.width),
-        y: Ph.Math.Clamp(aimAt.y, 0, RULES.height),
-      };
-      this.aimPoint = aimAt;
-      const input: Input = {
-        seq: ++seq,
-        dx: active ? (touch.enabled ? touch.dx : keyX || (pad?.dx ?? 0)) : 0,
-        dy: active ? (touch.enabled ? touch.dy : keyY || (pad?.dy ?? 0)) : 0,
-        aimX: aimAt.x,
-        aimY: aimAt.y,
-        basic:
-          combatActive &&
-          (prismAim
-            ? prismAim.basic
-            : (touch.enabled
-                ? touch.basic
-                : heldAction("basic") || !!pad?.held.has("basic")) ||
-              this.actions.basic),
-        skill,
-        ...(ex ? { ex: true } : {}),
-        dash: combatActive && this.actions.dash,
-        jump: combatActive && this.actions.jump,
-      };
-      this.actions = { skill: -1, dash: false, jump: false, basic: false };
-      socket.emit("input", input);
-      if (!document.hidden) netMeter.input();
-      if (combatActive && coach.running) coach.note(input);
-      // Show your own cast now (before this step's movement changes the
-      // fighter), at the time this input is predicted to run.
-      this.predictCasts(
-        local,
-        input,
-        state.time + Math.max(1, pending.length + 1 - owedSteps) / RULES.tick,
-      );
-      pending.push(input);
-      if (pending.length > 90) pending.shift();
-      const next = newestStep(pending, owedSteps);
-      if (next) predict(local, next.input, state.time + next.tick / RULES.tick);
-    }
     const g = this.graphics;
     g.clear();
     this.bossGraphics.clear();
@@ -9098,7 +9182,9 @@ function ensureBattleRenderer() {
 function syncBattleLoop() {
   if (!gameInstance) return;
   const Phaser = Ph;
+  scene?.syncInputClock();
   if ($("battle").hidden) {
+    scene?.stopInputClock();
     // Sleeping retains every fighter and arena texture. Release them before
     // opening the hub or the Shop so iOS does not have to evict the whole web app.
     const previous = gameInstance;

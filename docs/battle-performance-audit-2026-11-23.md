@@ -291,6 +291,9 @@ Prompt mở session 1:
 > rõ press-to-send với RTT/confirm. Chưa đổi tick rate, lag compensation,
 > damage/hitbox, đồ họa hoặc production settings. Báo FULL/FAST đúng script.
 
+Chi tiết triển khai session 1 và số đo trước/sau:
+[input clock và press-to-send](battle-input-clock-session-1.md).
+
 Ngưỡng mục tiêu để các session kiểm chứng: frame p95 gần 16.7–20 ms ở
 thiết bị mục tiêu 60 FPS, jank dưới 1–2%, tick p99 dưới 33.3 ms (cần dư
 địa), không có input drift khi gặp hitch, không mất action hoặc áp hai

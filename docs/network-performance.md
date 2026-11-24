@@ -847,6 +847,40 @@ Decided by the owner (23 Nov 2026):
   Haunted played 90 hit sparks before and 8 after, and left the raider at
   111.0 and 111.5 health. Each hit now shows its number (about 3).
 
+### 19. Input deadlines and local press timing
+
+Battle inputs now follow monotonic deadlines in `battle-input-clock.ts`,
+apart from Phaser's smoothed animation delta and the render frame cap. Each
+wake emits at most three inputs and yields before catching up more; short
+hitches retain their deadlines, while a suspension more than ten periods
+behind starts afresh. A timer still waits for a blocked main thread. Each
+emitted seq still adds one pending input and predicts one step; the server's
+held ticks, credit and catch-up limits are unchanged.
+
+The clock stops for a hidden page, pagehide, battle exit and disconnect.
+Reconnect waits for the resume identity and its fresh snapshot. Action
+latches and timestamps are cleared, and old queued callbacks cannot restart
+the previous lifecycle. Blur clears controls; the next neutral input uses
+the same clock rather than adding an extra seq outside its cadence.
+
+Reports now separate DOM action to local emit (`pressToSendP50/P95/P99`,
+`pressSamples`), event delivery (`eventToHandlerP95`), the subsequent wait
+(`handlerToSendP95`), local send gaps (`sendGapP50/P95/P99/Max`), and confirmed
+prediction waits (`confirmP50/P95/P99`). `confirmP50` retains its old starting
+point at prediction, rather than the physical press; RTT remains separate.
+Preview skills measure from commit on release, held Basic counts its first
+press once, and gamepad polling is not labelled as a physical DOM press.
+Raw timestamps remain local; only optional bounded aggregates enter the
+report and public export. `Input` and server authority are unchanged.
+
+The battle/profile fixtures use `RULES.tick/snapshot` and wall-time catch-up,
+so before/after browser profiles run at the current 30 Hz snapshot cadence.
+The TimeStep replay, real-socket and browser regressions, measurements and
+limits are recorded in [session 1](battle-input-clock-session-1.md). In the
+250 ms hitch replay input recovers from 26.52 to 29.98 Hz; the ~262 ms
+press-to-send tail still exposes the blocked main thread. This is not a
+claim about phone FPS or a measured improvement in production RTT.
+
 ## Historical results (0.5 CPU / 512 MB, 15 snapshots a second)
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The

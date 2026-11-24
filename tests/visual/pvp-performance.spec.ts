@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { RULES } from "../../packages/shared/src/index";
 import { openHub, pushUntilBattle, openPlayPanel, createRoom } from "./helpers";
 
 test("profiles a four-player PvP snapshot/render stream", async ({
@@ -35,107 +36,110 @@ test("profiles a four-player PvP snapshot/render stream", async ({
     await openPlayPanel(page);
     await createRoom(page);
     await pushUntilBattle(page);
-    await page.evaluate(async () => {
-      const w = window as any,
-        { Arena, packSnapshot, blankInput, CHARACTERS } =
-          await import("/rooms.ts");
-      const a = new Arena("PVP123", "ffa");
-      ["voltkit", "cindrake", "tidefin", "auralynx"].forEach((c, i) =>
-        a.add(i ? `p${i + 1}` : "me", `Player ${i}`, c as any),
-      );
-      a.start();
-      a.phase = "playing";
-      a.deadline = a.time + 1000;
-      a.players.forEach((p, i) => {
-        p.x = 550 + (i % 2) * 430;
-        p.y = 240 + Math.floor(i / 2) * 400;
-      });
-      {
-        const scale = w.__perfGame.scale,
-          resize = scale.resize.bind(scale);
-        w.__t0 = w.__lastResize = performance.now();
-        scale.resize = (...args: [number, number]) => {
-          w.__lastResize = performance.now();
-          return resize(...args);
-        };
-      }
-      w.__perf = {
-        packets: [],
-        updates: [],
-        bytes: [],
-        mutations: 0,
-        frames: [],
-      };
-      let seq = 0,
-        cursor = 0,
-        ticked = 0;
-      const from = performance.now();
-      // The server ticks 30 times a second whatever this page is doing, as
-      // the real one does (tick-clock.ts): on a starved main thread (this
-      // test machine's software GPU kept it 100% busy, so the interval ran
-      // about 4 times a second and pushed 2 snapshots a second) each call
-      // makes up the ticks that came due, at most 10, like a phone that
-      // receives the queued snapshots after a slow frame.
-      const tick = () => {
-        a.players.forEach((p, i) => {
-          p.hp = CHARACTERS[p.character].health;
-          p.ult = 100;
-          const target = a.players[(i + 1) % 4];
-          a.submit(p, {
-            ...blankInput(),
-            seq: ++seq,
-            dx: Math.cos(a.time + i),
-            dy: Math.sin(a.time + i),
-            aimX: target.x,
-            aimY: target.y,
-            basic: true,
-            skill: seq % 120 < 4 ? Math.floor(a.time / 4) % 4 : -1,
-          });
-        });
-        a.tick();
-        if (seq % 8) return;
-        const s = a.snapshot();
-        s.events = s.events.filter((e) => e.id > cursor);
-        if (s.events.length) cursor = s.events.at(-1)!.id;
-        w.__snap = packSnapshot(s);
-        const start = performance.now();
-        w.__push();
-        w.__perf.packets.push(performance.now() - start);
-        w.__perf.bytes.push(
-          new TextEncoder().encode(JSON.stringify(w.__snap)).length,
+    await page.evaluate(
+      async ({ tickHz, snapshotHz }) => {
+        const w = window as any,
+          { Arena, packSnapshot, blankInput, CHARACTERS } =
+            await import("/rooms.ts");
+        const a = new Arena("PVP123", "ffa");
+        ["voltkit", "cindrake", "tidefin", "auralynx"].forEach((c, i) =>
+          a.add(i ? `p${i + 1}` : "me", `Player ${i}`, c as any),
         );
-      };
-      w.__simulation = setInterval(() => {
-        const due = Math.floor(((performance.now() - from) * 30) / 1000);
-        if (due - ticked > 10) ticked = due - 10;
-        while (ticked < due) {
-          ticked++;
-          tick();
-        }
-      }, 1000 / 30);
-      const scene = w.__perfGame.scene.getScene("arena"),
-        update = scene.sys.sceneUpdate.bind(scene);
-      scene.sys.sceneUpdate = (...args: any[]) => {
-        const start = performance.now();
-        update(...args);
-        w.__perf.updates.push(performance.now() - start);
-        w.__perf.frames.push(args[1]);
-      };
-      const hud = new MutationObserver((entries) => {
-        w.__perf.mutations += entries.length;
-      });
-      for (const id of ["hud", "abilities", "mobile-controls"])
-        hud.observe(document.getElementById(id)!, {
-          subtree: true,
-          childList: true,
-          attributes: true,
-          characterData: true,
+        a.start();
+        a.phase = "playing";
+        a.deadline = a.time + 1000;
+        a.players.forEach((p, i) => {
+          p.x = 550 + (i % 2) * 430;
+          p.y = 240 + Math.floor(i / 2) * 400;
         });
-      w.__stopPerf = () => {
-        clearInterval(w.__simulation);
-        hud.disconnect();
-      };
-    });
+        {
+          const scale = w.__perfGame.scale,
+            resize = scale.resize.bind(scale);
+          w.__t0 = w.__lastResize = performance.now();
+          scale.resize = (...args: [number, number]) => {
+            w.__lastResize = performance.now();
+            return resize(...args);
+          };
+        }
+        w.__perf = {
+          packets: [],
+          updates: [],
+          bytes: [],
+          mutations: 0,
+          frames: [],
+        };
+        let seq = 0,
+          cursor = 0,
+          ticked = 0;
+        const from = performance.now();
+        // The server ticks 30 times a second whatever this page is doing, as
+        // the real one does (tick-clock.ts): on a starved main thread (this
+        // test machine's software GPU kept it 100% busy, so the interval ran
+        // about 4 times a second and pushed 2 snapshots a second) each call
+        // makes up the ticks that came due, at most 10, like a phone that
+        // receives the queued snapshots after a slow frame.
+        const tick = () => {
+          a.players.forEach((p, i) => {
+            p.hp = CHARACTERS[p.character].health;
+            p.ult = 100;
+            const target = a.players[(i + 1) % 4];
+            a.submit(p, {
+              ...blankInput(),
+              seq: ++seq,
+              dx: Math.cos(a.time + i),
+              dy: Math.sin(a.time + i),
+              aimX: target.x,
+              aimY: target.y,
+              basic: true,
+              skill: seq % 120 < 4 ? Math.floor(a.time / 4) % 4 : -1,
+            });
+          });
+          a.tick();
+          if (ticked % Math.round(tickHz / snapshotHz)) return;
+          const s = a.snapshot();
+          s.events = s.events.filter((e) => e.id > cursor);
+          if (s.events.length) cursor = s.events.at(-1)!.id;
+          w.__snap = packSnapshot(s);
+          const start = performance.now();
+          w.__push();
+          w.__perf.packets.push(performance.now() - start);
+          w.__perf.bytes.push(
+            new TextEncoder().encode(JSON.stringify(w.__snap)).length,
+          );
+        };
+        w.__simulation = setInterval(() => {
+          const due = Math.floor(((performance.now() - from) * tickHz) / 1000);
+          if (due - ticked > 10) ticked = due - 10;
+          while (ticked < due) {
+            ticked++;
+            tick();
+          }
+        }, 1000 / tickHz);
+        const scene = w.__perfGame.scene.getScene("arena"),
+          update = scene.sys.sceneUpdate.bind(scene);
+        scene.sys.sceneUpdate = (...args: any[]) => {
+          const start = performance.now();
+          update(...args);
+          w.__perf.updates.push(performance.now() - start);
+          w.__perf.frames.push(args[1]);
+        };
+        const hud = new MutationObserver((entries) => {
+          w.__perf.mutations += entries.length;
+        });
+        for (const id of ["hud", "abilities", "mobile-controls"])
+          hud.observe(document.getElementById(id)!, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            characterData: true,
+          });
+        w.__stopPerf = () => {
+          clearInterval(w.__simulation);
+          hud.disconnect();
+        };
+      },
+      { tickHz: RULES.tick, snapshotHz: RULES.snapshot },
+    );
     // Measure the steady fight: wait until the layout has settled (a
     // renderer resize reallocates the drawing buffer, which is very slow on
     // this test machine's software GPU and is not what this profiles).
@@ -144,7 +148,9 @@ test("profiles a four-player PvP snapshot/render stream", async ({
         () =>
           page.evaluate(() => {
             const w = window as any;
-            return performance.now() - Math.max(w.__t0 + 6000, w.__lastResize + 3000);
+            return (
+              performance.now() - Math.max(w.__t0 + 6000, w.__lastResize + 3000)
+            );
           }),
         { timeout: 30_000, intervals: [500] },
       )
