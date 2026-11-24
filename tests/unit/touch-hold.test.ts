@@ -1,0 +1,48 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { ADMIN, EDITABLE, blocksMenu } from "../../apps/client/src/touch-hold";
+
+// The game is not a page to copy from: a long press on a phone (hold to
+// compare in the Shop) or a drag or right click on a computer selects
+// nothing and opens no menu (owner, 6–7 Nov 2026).
+const field = {
+  closest: (s: string) => (s.split(", ").includes("input") ? {} : null),
+};
+const admin = {
+  closest: (s: string) => (s.includes(ADMIN) ? {} : null),
+};
+const plain = { closest: () => null };
+
+describe("menus and selection", () => {
+  it("cancels a menu or a drag everywhere but a field you type in", () => {
+    expect(blocksMenu(plain)).toBe(true);
+    expect(blocksMenu(null)).toBe(true);
+    expect(blocksMenu(field)).toBe(false);
+    // Admins copy player ids and reports from the Admin panel.
+    expect(blocksMenu(admin)).toBe(false);
+    expect(ADMIN).toBe("dialog:has(.admin-tabs)");
+    expect(EDITABLE).toContain("input");
+    expect(EDITABLE).toContain("textarea");
+  });
+  it("the stylesheet stops selection, the callout and image drags on every device, not in fields", () => {
+    const css = readFileSync("apps/client/src/style.css", "utf8");
+    const at = css.indexOf("/* Not a page to copy");
+    expect(at).toBeGreaterThan(-1);
+    const block = css.slice(at, at + 1600);
+    // Not inside a media query: phones and computers alike.
+    expect(block).toMatch(
+      /\*\/\nhtml \{\s*-webkit-user-select: none;\s*user-select: none;\s*-webkit-touch-callout: none;/,
+    );
+    expect(block).toMatch(/img,\s*a,\s*svg \{\s*-webkit-user-drag: none;/);
+    // Modal dialogs too (Chrome lets their text be selected otherwise).
+    // The Admin panel is the dialog holding the admin tabs: dialog.ts marks
+    // it has-dialog-tabs (a :has() there restyled half the page on every
+    // battle HUD change).
+    expect(block).toMatch(
+      /dialog,\s*dialog \* \{\s*-webkit-user-select: none;\s*user-select: none;/,
+    );
+    expect(block).toMatch(
+      /:is\(input, textarea, select, \[contenteditable="true"\]\),\s*dialog\.has-dialog-tabs,\s*dialog\.has-dialog-tabs \* \{\s*-webkit-user-select: text;\s*user-select: text;/,
+    );
+  });
+});

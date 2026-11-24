@@ -1,3 +1,4 @@
+import { svgMarkup } from "../../apps/client/tests/svg-markup";
 import { describe, expect, it } from "vitest";
 import { FIGHTER_IDS } from "@arena/shared";
 import {
@@ -20,7 +21,7 @@ describe("expressions", () => {
         for (const mood of MOODS) {
           const eyes = creatureLayers(id, dir, mood).layers.eyes;
           expect(eyes, `${id} ${dir} ${mood}`).not.toBe("");
-          expect(eyes).not.toMatch(/NaN|undefined/);
+          expect(svgMarkup(eyes)).not.toMatch(/NaN|undefined/);
           seen.add(eyes);
           // Only the eyes change with the mood.
           expect(creatureLayers(id, dir, mood).layers.head).toBe(
@@ -80,7 +81,7 @@ describe("expressions", () => {
       for (const dir of ["up", "down", "left", "right"] as const)
         for (const mood of ["normal", ...MOODS] as const) {
           const svg = creatureSvg(id, dir, undefined, undefined, mood);
-          expect(svg).not.toMatch(/NaN|undefined|Infinity/);
+          expect(svgMarkup(svg)).not.toMatch(/NaN|undefined|Infinity/);
           expect(svg.match(/<svg /g)).toHaveLength(1);
         }
   });

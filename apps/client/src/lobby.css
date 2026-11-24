@@ -1,0 +1,1918 @@
+/* ── The Lobby (hub redesign phase 2) ──────────────────────────────────────
+   One screen over a blurred painting of the plaza: the menu rail on the left,
+   your fighter and party slots in the middle, cards on the right, the mode
+   and PLAY in the bottom right. Boxes keep fixed sizes so nothing shifts when
+   numbers change; numbers use tabular figures. */
+.lobby-layer {
+  /* 22px under the player card (10px from the top, --hub-card-h tall). */
+  --lobby-top: calc(var(--hub-card-h) + 32px + var(--hub-drop, 0px));
+  /* The header's frame (style.css: max(14px, safe area) at the sides), so
+     the rail and the cards line up under the player card and the gear;
+     the bottom keeps the same margin. The Plaza uses it too. */
+  --lobby-gutter: max(14px, var(--safe-left, 0px));
+  --lobby-gutter-r: max(14px, var(--safe-right, 0px));
+  --lobby-bottom: max(14px, var(--safe-bottom, 0px));
+  --lobby-rail: 60px;
+  /* A rail button's height. */
+  --lobby-rail-btn: 56px;
+  --lobby-cards: 272px;
+  /* The mode button (56px), the gap (8px) and PLAY (76px). */
+  --lobby-play-h: 140px;
+  --lobby-glass: rgba(14, 26, 49, 0.84);
+  --lobby-line: rgba(139, 174, 229, 0.25);
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-hub);
+  overflow: hidden;
+  color: var(--ui-text);
+  font-family: var(--font-body);
+  background: #0b1020;
+}
+/* Not inside a hub screen (ui/hub-panel.ts): shared components keep their
+   own font and colour. :where() keeps this rule's specificity as it was. */
+.lobby-layer button:where(:not(.ui-panel-host *)) {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.lobby-backdrop {
+  /* Fixed, not absolute: it reaches 58 px past the right edge and 47 px past
+     the bottom (inset -28 px, scale 1.04), and as an absolute child that
+     made the Lobby a box the browser could scroll (overflow: hidden still
+     scrolls). A tap on a tab while a screen glided in scrolled the whole
+     Lobby that far, and it stayed there (raid-splash.spec.ts). A fixed
+     backdrop adds nothing to the Lobby's scroll area and draws the same
+     (the Lobby itself is fixed to the whole screen). */
+  position: fixed;
+  inset: -28px;
+  /* The Plaza picture already blurred and dimmed (scripts/lobby-backdrop/
+     blur.py), not a CSS filter: a full-screen filter under the live fighter
+     made its aura stutter on an iPhone. */
+  background: #0b1020 url("/assets/backgrounds/lobby-backdrop-d99b61e6.webp")
+    center 42% / cover no-repeat;
+  transform: scale(1.04);
+}
+.lobby-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      42% 46% at 50% 62%,
+      color-mix(in srgb, var(--ui-accent) 14%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(11, 16, 32, 0.6),
+      rgba(11, 16, 32, 0) 24%,
+      rgba(11, 16, 32, 0) 68%,
+      rgba(11, 16, 32, 0.7)
+    );
+}
+.lobby-layer > :not(.lobby-backdrop) {
+  position: absolute;
+  z-index: 1;
+}
+
+/* Menu rail: one column from under the player card down to the
+   bottom-left corner (PLAY's bottom line). Six buttons, a finger (44 pt)
+   tall even on the shortest phone; they shrink only on a shorter window,
+   never below 28px. */
+.lobby-rail {
+  /* One glass capsule holding the six buttons, as the Lobby / Plaza
+     switch holds its tabs (owner, 16 Nov: six separate tiles didn't match
+     the rest of the HUD). It is as tall as its buttons, never taller than
+     the room between the header and the bottom edge, where they shrink. */
+  --rail-pad: 4px;
+  left: var(--lobby-gutter);
+  top: var(--lobby-top);
+  width: var(--lobby-rail);
+  max-height: calc(100% - var(--lobby-top) - var(--lobby-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--rail-pad);
+  border: 1px solid var(--lobby-line);
+  border-radius: calc(var(--lobby-rail) / 2);
+  background: var(--lobby-glass);
+  backdrop-filter: blur(6px);
+}
+.lobby-rail button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  flex: 0 1 var(--lobby-rail-btn);
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  transition: background-color 0.15s ease;
+}
+.lobby-rail button:hover,
+.lobby-rail button:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+}
+.lobby-rail svg {
+  width: 22px;
+  height: 22px;
+  color: var(--ui-accent-hi);
+}
+.lobby-rail span {
+  font:
+    700 calc(10px * var(--text-scale, 1))/1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.02em;
+  color: #c9d6ee;
+}
+/* The badge sits on the icon's top-right corner, not the button's: the
+   button is the rail's whole width, so its corner left a count floating
+   far from the icon it belongs to (owner, 20 Nov). */
+.lobby-rail-icon {
+  position: relative;
+  display: block;
+  line-height: 0;
+  font-style: normal;
+}
+.lobby-badge {
+  position: absolute;
+  top: -10px;
+  left: calc(100% - 6px);
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  /* Glossy like the rail's glass: a light top, a thin dark ring that
+     parts it from the icon (owner, 20 Nov: the flat blue looked unstyled
+     and the 2 px ring heavy). Red still means someone waits on you. */
+  background: linear-gradient(180deg, #ff7486, var(--ui-danger) 55%, #d33a4e);
+  color: #fff;
+  font:
+    800 calc(11px * var(--text-scale, 1))/1 "DM Sans",
+    sans-serif;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 0 0 1.5px rgba(11, 16, 32, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.35);
+}
+/* Something waits but there is nothing to count (today's missions): the
+   same red as a dot, so one colour means "for you" (owner, 23 Nov). */
+.lobby-badge.is-dot {
+  min-width: 10px;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  top: -3px;
+  left: calc(100% - 3px); /* centred where the Spire dot is */
+}
+/* When a badge appears, a halo pings out three times, then it rests.
+   Transform and opacity only (no repaint). */
+.lobby-badge::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid rgba(255, 140, 155, 0.95);
+  opacity: 0;
+  pointer-events: none;
+  animation: lobby-badge-ping 1.4s ease-out 0.3s 3;
+}
+.lobby-badge[hidden] {
+  display: none;
+}
+
+/* Stage: your fighter between the party seats, the name and arrows below.
+   It is centred in the space between the rail and the cards, and starts
+   under the Lobby toast (#toast in ui/components.css: top 74 px, 38 px tall;
+   54 px and 36 px on phones), so a notice never covers the fighter. */
+.lobby-stage {
+  --lobby-party-gap: clamp(10px, 1.5vw, 24px);
+  /* The party bar's height and the gap under it, when it shows. */
+  --lobby-bar-room: 0px;
+  left: calc(var(--lobby-gutter) + var(--lobby-rail) + 16px);
+  right: calc(var(--lobby-gutter-r) + var(--lobby-cards) + 16px);
+  top: max(calc(var(--lobby-top) + 8px), calc(var(--safe-top, 0px) + 118px));
+  bottom: calc(var(--lobby-bottom) + 6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+.lobby-stage button {
+  pointer-events: auto;
+}
+/* The party row takes all the height the stage has left (under the party
+   bar, above the nameplate). The fighter stands in its middle column, on the
+   same axis as the nameplate; one seat stands on each side of it, and the
+   third seat (shown once both are taken) further back, above the right one,
+   so both sides keep the same width. Everyone stands on one floor: a
+   podium under each seat lies on the line of the fighter's own shadow.
+   The fighter grows into the row: as tall as the row, as wide as the row
+   allows beside a seat on each side (a seat is 36% of the fighter), and no
+   larger than the rig draws sharply (its canvas is 480 px wide). No empty
+   band is left above the fighter. */
+.lobby-party {
+  flex: 1 1 0;
+  min-height: 0;
+  align-self: stretch;
+  container-type: size;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-rows: 1fr auto;
+  grid-template-areas:
+    ".     fighter third"
+    "first fighter second";
+  align-items: end;
+  column-gap: var(--lobby-party-gap);
+  row-gap: 8px;
+}
+.lobby-party > * {
+  /* The party bar lies over the top of the row (it isn't a line of its
+     own): the fighter's frame may reach under it by its empty top band,
+     the 28 of its 250 units above anything a creature draws (y -40 to -12
+     in fighter-selection.ts RIG_FRAME), so a fighter is never covered. */
+  --fighter-size: max(
+    120px,
+    min(
+      100cqh,
+      calc((100cqh - var(--lobby-bar-room)) / 0.888),
+      calc((100cqw - 2 * var(--lobby-party-gap)) / 1.72),
+      560px
+    )
+  );
+  /* A seat's width, and the size of what stands in it: 36% of the fighter,
+     growing into the room left beside it (wide phones waste none) up to
+     45% of it, so the leader stays the big one and the Plaza still shows
+     around them. The right seat and the fourth seat above it always fit
+     the row's height together, under the party bar. */
+  --seat-w: clamp(
+    calc(var(--fighter-size) * 0.36),
+    calc((100cqw - var(--fighter-size)) / 2 - var(--lobby-party-gap) - 4px),
+    min(
+      calc(var(--fighter-size) * 0.45),
+      calc((100cqh - var(--lobby-bar-room) - 8px) / 2.05)
+    )
+  );
+  --seat: var(--seat-w);
+  /* The floor: the centre of the fighter's shadow, 6.93% of its size above
+     the row's bottom (y 176 in the rig's -40…210 frame). */
+  --floor: calc(var(--fighter-size) * 0.0693);
+}
+#lobby-slot-0 {
+  grid-area: first;
+  justify-self: end;
+}
+#lobby-slot-1 {
+  grid-area: second;
+  justify-self: start;
+}
+/* Further back: smaller, and higher up the stage. */
+#lobby-slot-2 {
+  --seat: calc(var(--seat-w) * 0.8);
+  --floor: calc(var(--seat) * 0.34);
+  grid-area: third;
+  justify-self: start;
+}
+.lobby-fighter {
+  grid-area: fighter;
+  position: relative;
+  flex: none;
+  width: var(--fighter-size);
+  height: var(--fighter-size);
+  margin: 0;
+}
+/* The stage light's glow (stage-light.ts, owner's option C) behind your
+   fighter; the podium below is its lit disc and ring. Centred where the
+   preview windows centre it (source y 92 of the tight 0 -12 200 202 frame:
+   51.5% down), 112 units across each way (112% of the box). */
+.lobby-fighter::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 51.5%;
+  width: 112%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  /* Brighter than in the preview windows: the Lobby stands on the Plaza
+     map, where their dark-stage glow vanished. Plain alpha, no blend mode:
+     over the dimmed backdrop "screen" drew the same (within 1/255) and a
+     blended layer sat right under the canvas that redraws every frame. */
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--element, var(--ui-accent)) 85%, transparent),
+    color-mix(in srgb, var(--element, var(--ui-accent)) 38%, transparent) 50%,
+    transparent
+  );
+  pointer-events: none;
+}
+.lobby-fighter-art {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  animation: lobby-idle 3.2s ease-in-out infinite;
+}
+.lobby-fighter-art.is-still {
+  animation: none;
+}
+/* Waiting for its live rig (lobby-screen.ts arrive()): hidden, then it
+   fades in once, already moving (reveal(), paced by frames so a slow phone
+   still sees the fade), instead of showing the still artwork and swapping
+   it for the rig. */
+.lobby-fighter-art.is-arriving {
+  opacity: 0;
+}
+.lobby-fighter-art > img,
+.lobby-member-art > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* The art (and the live rig over it) uses the rig's padded frame
+   (RIG_FRAME, -20 -40 240 250) instead of the tight 0 -12 200 202. The box
+   grows by the padding, so the fighter keeps its size and place:
+   240/200 = 120% wide from -20/200 = -10%, 250/202 = 123.76% tall from
+   -28/202 = -13.86%. */
+.lobby-fighter-art > svg,
+.lobby-fighter-art > canvas,
+.lobby-member-art > svg,
+.lobby-member-art > canvas {
+  position: absolute;
+  left: -10%;
+  top: -13.86%;
+  width: 120% !important;
+  height: 123.76% !important;
+}
+/* The live rig (lobby-screen.ts): a canvas over the artwork, in the same box,
+   shown once its first pose is drawn. Then it moves on its own, so the CSS
+   bob stops, and the aura's front half is drawn again above the canvas, as
+   in the Fighters roster. */
+.lobby-fighter-art > canvas,
+.lobby-member-art > canvas {
+  object-fit: contain;
+  pointer-events: none;
+  opacity: 0;
+}
+.lobby-fighter-art.is-ready,
+.lobby-member-art.is-ready {
+  animation: none;
+}
+.lobby-fighter-art.is-ready > canvas,
+.lobby-member-art.is-ready > canvas {
+  opacity: 1;
+  z-index: 1;
+}
+/* Its own compositing layer: each frame the browser takes the canvas as it
+   is, instead of repainting the Lobby around it (the glow, the podium, the
+   still art). On an iPhone the Lobby ran its frames at 27 a second with our
+   drawing at 1 ms, and at 59 with this layer (owner, iPhone 17 Pro Max,
+   17 Nov 2026; perf-hud.ts measured both). */
+.lobby-fighter-art > canvas,
+.lobby-member-art > canvas {
+  will-change: transform;
+}
+/* Podiums: a lit disc under your fighter and under every seat, all on the
+   same floor line, tinted by the fighter's element (as in the hub redesign
+   proposal). An open seat's podium is fainter. */
+.lobby-floor,
+.lobby-podium {
+  position: absolute;
+  left: 50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    color-mix(in srgb, var(--element, var(--ui-accent)) 55%, #1a2547) 0%,
+    #121a33 62%,
+    transparent 72%
+  );
+  box-shadow: inset 0 0 0 2px
+    color-mix(in srgb, var(--element, var(--ui-accent)) 50%, transparent);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+/* Centred on the fighter's shadow (93.07% down its box), 5:1 like it. */
+.lobby-floor {
+  top: calc(93.07% - 7.8%);
+  width: 78%;
+  height: 15.6%;
+}
+.lobby-podium {
+  bottom: calc(var(--floor) - var(--seat) * 0.09);
+  width: calc(var(--seat) * 0.9);
+  height: calc(var(--seat) * 0.18);
+}
+.lobby-podium.is-open {
+  --element: #9fb3e6;
+  opacity: 0.5;
+}
+@keyframes lobby-idle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.6%);
+  }
+}
+.lobby-emote-bubble {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  min-width: 52px;
+  height: 52px;
+  padding: 0 10px;
+  border-radius: 18px;
+  background: #fff;
+  color: #1a2547;
+  font:
+    800 calc(26px * var(--text-scale, 1))/1 "Barlow Condensed",
+    sans-serif;
+  transform: translateX(-50%);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.lobby-emote-bubble[hidden] {
+  display: none;
+}
+.lobby-emote-bubble.is-popping {
+  animation: lobby-pop 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+/* A line your fighter says when tapped (lobby-quips.ts): a speech bubble
+   over its head, its tail pointing down at it, at most two lines.
+   lobby-screen.ts sets its top: just above the drawn head, below the top
+   bar. Frosted glass like the Lobby's panels, rimmed in the element's
+   colour. */
+.lobby-emote-bubble.is-line {
+  width: max-content;
+  min-width: 0;
+  /* As wide as the stage allows (the party row is its container), so a
+     long line takes two lines even beside a small phone fighter. */
+  max-width: min(260px, calc(100cqw - 16px));
+  height: auto;
+  padding: 7px 13px 8px;
+  border: 1px solid
+    color-mix(in srgb, var(--element, var(--ui-accent)) 60%, #fff 10%);
+  border-radius: 14px;
+  background: rgba(14, 26, 49, 0.66);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3);
+  backdrop-filter: blur(10px) saturate(1.3);
+  color: #f4f7ff;
+  font:
+    700 calc(15px * var(--text-scale, 1))/1.2 "DM Sans",
+    sans-serif;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transform: translateX(-50%);
+}
+/* A small phone's stage: a size smaller, still two lines at most. */
+@container (max-width: 320px) {
+  .lobby-emote-bubble.is-line {
+    max-width: calc(100cqw - 8px);
+    padding: 6px 10px 7px;
+    font-size: calc(14px * var(--text-scale, 1));
+  }
+}
+/* The tail: the lower half of a turned square of the same glass and rim. */
+.lobby-emote-bubble.is-line::after {
+  content: "";
+  position: absolute;
+  /* Under the fighter's head, if the bubble moved to stay on the stage. */
+  left: calc(50% + var(--tail, 0px));
+  top: 100%;
+  width: 12px;
+  height: 12px;
+  margin: -7px 0 0 -6px;
+  border: inherit;
+  border-width: 0 1px 1px 0;
+  border-radius: 0 0 3px 0;
+  background: inherit;
+  -webkit-backdrop-filter: inherit;
+  backdrop-filter: inherit;
+  transform: rotate(45deg);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+/* Low graphics: the same look without the blur. */
+.lobby-layer[data-graphics="low"] .lobby-emote-bubble.is-line,
+.lobby-layer[data-graphics="low"] .lobby-emote-bubble.is-line::after {
+  background: rgba(14, 26, 49, 0.9);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+/* Tap your fighter (lobby-screen.ts): an invisible button over its body. */
+.lobby-fighter-tap {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 12%;
+  bottom: 4%;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 40%;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lobby-fighter-tap:focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+/* The still artwork's answer to a tap (Low graphics, or before the rig). */
+.lobby-fighter-art.is-hopping {
+  animation: lobby-hop 0.55s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+@keyframes lobby-hop {
+  30% {
+    transform: translateY(-7%) scale(1.04, 0.97);
+  }
+  60% {
+    transform: translateY(0) scale(1.05, 0.94);
+  }
+}
+@keyframes lobby-pop {
+  from {
+    transform: translateX(-50%) scale(0.4);
+    opacity: 0;
+  }
+}
+.lobby-slot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  flex: none;
+  width: calc(var(--seat) * 0.8);
+  height: calc(var(--seat) * 0.8);
+  margin: 0;
+  padding: 0;
+  border: 2px dashed rgba(220, 230, 255, 0.45);
+  border-radius: 50%;
+  background: rgba(14, 26, 49, 0.45);
+  color: #dfe7ff;
+}
+.lobby-slot:hover,
+.lobby-slot:focus-visible {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+}
+.lobby-slot span {
+  font:
+    400 clamp(18px, calc(var(--seat) * 0.2), 34px) / 1 "DM Sans",
+    sans-serif;
+}
+.lobby-slot small {
+  font:
+    700 clamp(9px, calc(var(--seat) * 0.075), 14px) / 1 "DM Sans",
+    sans-serif;
+}
+.lobby-nameplate {
+  display: grid;
+  grid-template-columns: 44px 220px 44px;
+  align-items: center;
+  gap: 10px;
+}
+.lobby-step {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--lobby-line);
+  border-radius: 50%;
+  background: var(--lobby-glass);
+  font:
+    700 calc(24px * var(--text-scale, 1))/1 "DM Sans",
+    sans-serif;
+}
+.lobby-name {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.lobby-name h2 {
+  margin: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    800 calc(34px * var(--text-scale, 1))/1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+.lobby-name .element-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  color: var(--element, var(--ui-accent));
+  font:
+    800 calc(11px * var(--text-scale, 1))/1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lobby-name .element-pill svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Party: members stand beside you; the bar above says how many. */
+/* A seat: what stands in it is centred and stands on the floor line (the
+   seat's bottom padding), on its podium; a friend's name hangs under it. */
+.lobby-slot-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  flex: none;
+  width: var(--seat-w);
+  padding-bottom: var(--floor);
+}
+.lobby-slot-wrap[hidden] {
+  display: none;
+}
+.lobby-member {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+}
+/* A friend's fighter in the same padded frame as yours, its shadow on the
+   floor line (6.93% of its box above its bottom). */
+.lobby-member-art {
+  position: relative;
+  z-index: 1;
+  width: var(--seat);
+  height: var(--seat);
+  margin-bottom: calc(var(--seat) * -0.0693);
+  animation: lobby-idle 3.2s ease-in-out infinite;
+}
+.lobby-member figcaption {
+  position: absolute;
+  left: 50%;
+  top: calc(100% - var(--floor) + var(--seat) * 0.09 + 2px);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(var(--seat-w) + 16px);
+  padding: 2px 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  font:
+    700 clamp(9px, calc(var(--seat) * 0.06), 12px) / 1.3 "DM Sans",
+    sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.lobby-crown {
+  color: var(--ui-accent);
+}
+.lobby-stage:has(> .lobby-party-bar:not([hidden])) {
+  --lobby-bar-room: 46px;
+}
+.lobby-party-bar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid var(--lobby-line);
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  font:
+    700 calc(12px * var(--text-scale, 1))/1 "DM Sans",
+    sans-serif;
+  pointer-events: auto;
+}
+.lobby-party-bar[hidden] {
+  display: none;
+}
+.lobby-party-bar button {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-danger) 20%, transparent);
+  color: #ffb3bb;
+  font:
+    700 calc(11px * var(--text-scale, 1))/1 "DM Sans",
+    sans-serif;
+}
+
+/* In someone else's party the leader stands in the middle (lobby-screen.ts):
+   the arrows step your own fighter only, so they wait; the leader's name
+   takes the element pill's place. */
+.lobby-step.is-waiting {
+  visibility: hidden;
+  pointer-events: none;
+}
+.lobby-host-name {
+  display: none;
+}
+.lobby-name.is-host .element-pill {
+  display: none;
+}
+.lobby-name.is-host .lobby-host-name {
+  display: inline-flex;
+  align-items: center;
+  max-width: 220px;
+  padding: 3px 10px;
+  overflow: hidden;
+  border: 1px solid var(--lobby-line);
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  color: var(--ui-accent);
+  font:
+    700 calc(12px * var(--text-scale, 1)) / 1.2 "DM Sans",
+    sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Your seat beside the leader: a tap opens Fighters. */
+.lobby-member-tap {
+  position: absolute;
+  inset: 8% 14% calc(var(--floor) * 0.4);
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 40%;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lobby-member-tap:focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+/* Kick on the leader's stage: a tap on a member's seat swaps its name tag
+   for the button (drawn 26 px, a finger's 44 px to tap). */
+.lobby-kick {
+  position: absolute;
+  left: 50%;
+  top: calc(100% - var(--floor) + var(--seat) * 0.09);
+  z-index: 3;
+  display: none;
+  height: 26px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ui-danger, #e5484d);
+  color: #fff;
+  font:
+    700 calc(11px * var(--text-scale, 1)) / 1 "DM Sans",
+    sans-serif;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.lobby-kick::after {
+  content: "";
+  position: absolute;
+  inset: -9px -6px;
+}
+.lobby-member.is-armed .lobby-kick {
+  display: inline-flex;
+  align-items: center;
+}
+.lobby-member.is-armed figcaption {
+  visibility: hidden;
+}
+.lobby-member.is-you figcaption {
+  color: var(--ui-accent);
+}
+/* A member reconnecting: their place is kept, drawn faded. */
+.lobby-member.is-away .lobby-member-art,
+.lobby-fighter.is-away .lobby-fighter-art {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+.lobby-away {
+  font-weight: 600;
+  opacity: 0.8;
+}
+/* The bar lies over the stage (no neighbour right under it): each button
+   answers a finger's height, 44 px, though it is drawn 26 px tall. */
+.lobby-party-bar button {
+  position: relative;
+}
+.lobby-party-bar button::after {
+  content: "";
+  position: absolute;
+  inset: -9px -3px;
+}
+.lobby-party-bar .lobby-rejoin {
+  background: var(--ui-accent);
+  color: #1b1405;
+}
+.lobby-party-bar .lobby-rejoin[hidden] {
+  display: none;
+}
+
+/* Cards on the right. */
+.lobby-cards {
+  right: var(--lobby-gutter-r);
+  top: var(--lobby-top);
+  width: var(--lobby-cards);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lobby-card {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--lobby-line);
+  border-radius: 14px;
+  background: var(--lobby-glass);
+  backdrop-filter: blur(6px);
+  text-align: left;
+}
+.lobby-card:hover,
+.lobby-card:focus-visible {
+  border-color: var(--ui-accent);
+}
+.lobby-card-kicker {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-accent);
+  font:
+    800 calc(11px * var(--text-scale, 1))/1.1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.lobby-card b {
+  font:
+    800 calc(19px * var(--text-scale, 1))/1.1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.02em;
+}
+.lobby-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-dim);
+  font-size: calc(12px * var(--text-scale, 1));
+  font-variant-numeric: tabular-nums;
+}
+.lobby-card-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+/* Drawn by us, as the Journey and raid bars are: Safari's own progress bar
+   (only tinted by accent-color) showed a light track with a white cap at
+   each end on iPhone (owner, 17 Nov 2026). */
+.lobby-card progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  appearance: none;
+  -webkit-appearance: none;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(139, 174, 229, 0.22);
+}
+.lobby-card progress::-webkit-progress-bar {
+  background: rgba(139, 174, 229, 0.22);
+  border-radius: 6px;
+}
+.lobby-card progress::-webkit-progress-value {
+  background: #9ff3d8;
+  border-radius: 6px;
+}
+.lobby-card progress::-moz-progress-bar {
+  background: #9ff3d8;
+  border-radius: 6px;
+}
+/* The Spire card (spire-nudge.ts): once the Spire is open, above Missions.
+   The tower beside a kicker, one bold line and a note, on violet glass so it
+   reads as the way up at a glance. The gradient is a background-image, so
+   the glass themes' tint (ui/aero.css) stays underneath it; the extra
+   .lobby-layer outranks their hairline. A static glow (no animation) keeps
+   it cheap on older phones; it brightens while something is new. */
+.lobby-card[hidden] {
+  display: none;
+}
+.lobby-layer .lobby-card.lobby-spire-card {
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+  border-color: rgba(190, 160, 255, 0.7);
+  background-image: linear-gradient(
+    135deg,
+    rgba(124, 77, 255, 0.55),
+    rgba(76, 38, 160, 0.5) 55%,
+    rgba(196, 92, 255, 0.4)
+  );
+  box-shadow:
+    0 0 14px rgba(150, 100, 255, 0.35),
+    inset 0 1px 0 rgba(235, 220, 255, 0.25);
+}
+.lobby-layer .lobby-card.lobby-spire-card:is(:hover, :focus-visible) {
+  border-color: #e4d6ff;
+}
+.lobby-layer .lobby-card.lobby-spire-card.is-new {
+  border-color: #d9c8ff;
+  box-shadow:
+    0 0 20px rgba(170, 120, 255, 0.6),
+    inset 0 1px 0 rgba(235, 220, 255, 0.35);
+}
+.lobby-spire-art {
+  width: 34px;
+  height: 44px;
+  background: radial-gradient(
+    ellipse,
+    rgba(209, 181, 255, 0.22),
+    transparent 72%
+  );
+}
+.lobby-spire-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.lobby-spire-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.lobby-spire-text .lobby-card-kicker {
+  color: #e2d4ff;
+}
+.lobby-spire-text small {
+  color: rgba(238, 230, 255, 0.82);
+}
+.lobby-spire-text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lobby-card.is-squeezed {
+  display: none;
+}
+/* Phones: a slimmer tower and tighter lines, so it fits under Missions
+   at 390 px tall. */
+@media (max-height: 500px) {
+  .lobby-layer .lobby-card.lobby-spire-card {
+    grid-template-columns: 26px minmax(0, 1fr);
+    column-gap: 8px;
+    padding-block: 5px;
+  }
+  .lobby-spire-art {
+    width: 26px;
+    height: 36px;
+  }
+  .lobby-spire-text {
+    gap: 2px;
+  }
+  .lobby-spire-text small {
+    line-height: 1.2;
+  }
+}
+/* Short phones (iPhone 14/15 and SE in landscape): the title and the tower
+   say it, so the note steps aside and Missions still fits under the card
+   with the home indicator's inset. Still a finger (44 px) tall. */
+@media (max-height: 400px) {
+  .lobby-spire-text small {
+    display: none;
+  }
+  .lobby-layer .lobby-card.lobby-spire-card {
+    min-height: 44px;
+  }
+}
+.lobby-badge.is-new {
+  min-width: 12px;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  top: -4px;
+  left: calc(100% - 4px);
+  background: radial-gradient(circle at 35% 30%, #efe8ff, #b69cff 45%, #8a63f5);
+  box-shadow:
+    0 0 0 1.5px rgba(11, 16, 32, 0.9),
+    0 0 10px 3px rgba(185, 135, 255, 0.95);
+}
+/* Something new in the Spire: its halo is violet and glows, and the dot
+   rests with its glow. */
+.lobby-badge.is-new::after {
+  border-color: rgba(214, 192, 255, 0.95);
+  box-shadow: 0 0 8px 3px rgba(180, 130, 255, 0.9);
+}
+@keyframes lobby-badge-ping {
+  0% {
+    opacity: 1;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-badge::after {
+    animation: none;
+  }
+}
+.lobby-spark {
+  color: #ffe39d !important;
+}
+.lobby-spark.is-spent {
+  color: var(--ui-dim) !important;
+}
+
+/* Mode and PLAY (bottom right). */
+.lobby-play {
+  right: var(--lobby-gutter-r);
+  bottom: var(--lobby-bottom);
+  display: grid;
+  gap: 8px;
+  width: var(--lobby-cards);
+}
+.lobby-mode {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 14px;
+  border: 1px solid var(--lobby-line);
+  border-radius: 14px;
+  background: var(--lobby-glass);
+  backdrop-filter: blur(6px);
+  text-align: left;
+}
+.lobby-mode-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ui-accent) 14%, transparent);
+  color: var(--ui-accent);
+}
+.lobby-mode-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.lobby-mode-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.lobby-mode-text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    800 calc(18px * var(--text-scale, 1))/1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.lobby-mode-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-dim);
+  font-size: calc(11px * var(--text-scale, 1));
+}
+.lobby-mode-caret {
+  color: var(--ui-dim);
+  text-align: center;
+}
+.lobby-mode[aria-expanded="true"] .lobby-mode-caret {
+  transform: rotate(180deg);
+}
+.lobby-play-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 76px;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: linear-gradient(
+    180deg,
+    var(--ui-accent-hi),
+    #ffcc3d 55%,
+    #f2a91f
+  );
+  box-shadow:
+    0 6px 0 #b8781a,
+    0 14px 26px rgba(0, 0, 0, 0.4);
+  color: var(--ui-accent-ink) !important;
+  font:
+    800 calc(40px * var(--text-scale, 1))/1 "Barlow Condensed",
+    sans-serif !important;
+  letter-spacing: 0.1em;
+}
+/* PLAY stands out: a soft golden glow breathes behind it and a band of
+   light sweeps across it every few seconds. Both move only transform and
+   opacity; they rest under a screen (.is-covered), with reduced motion and
+   on Low graphics. The icon is drawn (an SVG): the ▶ character showed as a
+   blue emoji tile on iPhones. */
+.lobby-play-button {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.lobby-play-button svg {
+  width: 0.68em;
+  height: 0.68em;
+  flex: none;
+  fill: currentColor;
+}
+.lobby-play-button span {
+  position: relative;
+  z-index: 1;
+}
+.lobby-play-button::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 34%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 45%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.6) 55%,
+    transparent 100%
+  );
+  transform: translateX(-150%) skewX(-18deg);
+  pointer-events: none;
+  animation: lobby-play-sweep 4.2s ease-in-out 1.2s infinite;
+}
+@keyframes lobby-play-sweep {
+  0% {
+    transform: translateX(-150%) skewX(-18deg);
+  }
+  38%,
+  100% {
+    transform: translateX(400%) skewX(-18deg);
+  }
+}
+.lobby-play::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  right: -14px;
+  bottom: -16px;
+  height: calc(var(--lobby-play-button-h, 76px) + 32px);
+  border-radius: 34px;
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 220, 110, 0.95),
+    rgba(255, 196, 50, 0.55) 62%,
+    transparent
+  );
+  filter: blur(12px);
+  opacity: 0.45;
+  transform: scale(1);
+  pointer-events: none;
+  z-index: -1;
+  animation: lobby-play-glow 2.6s ease-in-out infinite;
+}
+@keyframes lobby-play-glow {
+  50% {
+    opacity: 1;
+    transform: scale(1.08, 1.18);
+  }
+}
+.lobby-layer[data-graphics="low"] .lobby-play-button::after {
+  animation: none;
+  opacity: 0;
+}
+.lobby-layer[data-graphics="low"] .lobby-play::before {
+  animation: none;
+}
+.lobby-play-button:hover,
+.lobby-play-button:focus-visible {
+  filter: brightness(1.06);
+}
+.lobby-play-button:active {
+  transform: translateY(3px);
+  box-shadow:
+    0 3px 0 #b8781a,
+    0 8px 18px rgba(0, 0, 0, 0.4);
+}
+/* The mode menu opens over the cards' column, exactly as wide, from 8px
+   above the mode button up to the row under the header at most
+   (--lobby-top); a longer list scrolls inside it. --lobby-play-h is the
+   mode button, the gap and PLAY. The cards step aside while it is open,
+   so they never show through the glass. */
+.lobby-mode-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: grid;
+  gap: 4px;
+  box-sizing: border-box;
+  width: 100%;
+  max-height: calc(
+    100dvh - var(--lobby-top) - var(--lobby-bottom) - var(--lobby-play-h) - 8px
+  );
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  border: 1px solid var(--lobby-line);
+  border-radius: 16px;
+  background: rgba(14, 22, 42, 0.97);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+}
+.lobby-mode-menu[hidden] {
+  display: none;
+}
+.lobby-layer:has(.lobby-mode-menu:not([hidden])) .lobby-cards {
+  visibility: hidden;
+}
+.lobby-mode-menu button[hidden] {
+  display: none;
+}
+.lobby-mode-menu button {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+}
+.lobby-mode-menu button svg {
+  width: 20px;
+  height: 20px;
+  color: var(--ui-accent);
+}
+.lobby-mode-menu button span {
+  display: grid;
+  gap: 2px;
+}
+.lobby-mode-menu b {
+  font:
+    800 calc(15px * var(--text-scale, 1))/1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.lobby-mode-menu small {
+  color: var(--ui-dim);
+  font-size: calc(11px * var(--text-scale, 1));
+}
+.lobby-mode-menu button:hover,
+.lobby-mode-menu button:focus-visible {
+  border-color: var(--lobby-line);
+  background: rgba(255, 255, 255, 0.05);
+}
+.lobby-mode-menu [aria-checked="true"] {
+  border-color: var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 10%, transparent);
+}
+.lobby-mode-more {
+  margin-top: 4px;
+  border-top: 1px solid var(--lobby-line) !important;
+  border-radius: 0 0 10px 10px !important;
+}
+
+/* Medium heights (small laptops, tablets): tighter rail, fewer cards. */
+@media (max-height: 760px) {
+  .lobby-layer {
+    /* Mode 42px, gap 6px, PLAY 50px. */
+    --lobby-play-h: 98px;
+    --lobby-rail-btn: 48px;
+  }
+}
+/* Phones: two cards beside the fighter, Journey and today's missions (the
+   Raids card is gone: the rail already opens it). */
+@media (max-height: 500px) {
+  .lobby-friends-card {
+    display: none !important;
+  }
+}
+
+/* Phones in landscape (and short windows): compact everything. */
+@media (max-height: 500px) {
+  .lobby-layer {
+    /* 12px under the player card (42px from max(10px, safe area)), clear
+       of a frame's star row hanging below it. */
+    --lobby-top: calc(var(--hub-card-h) + 22px + var(--hub-drop, 0px));
+    /* Wide enough for a small label under each icon ("Missions"): the
+       stage beside it had room to spare (owner, 18 Nov). */
+    --lobby-rail: 56px;
+    --lobby-rail-btn: 44px;
+    --lobby-cards: 196px;
+  }
+  .lobby-rail {
+    --rail-pad: 3px;
+  }
+  .lobby-rail button {
+    gap: 1px;
+  }
+  .lobby-rail svg {
+    width: 18px;
+    height: 18px;
+  }
+  .lobby-rail span {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: calc(10px * var(--text-scale, 1));
+    letter-spacing: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lobby-badge {
+    top: -9px;
+    left: calc(100% - 5px);
+    min-width: 16px;
+    height: 16px;
+    font-size: calc(9px * var(--text-scale, 1));
+  }
+  .lobby-party-bar {
+    font-size: calc(10px * var(--text-scale, 1));
+  }
+  .lobby-stage:has(> .lobby-party-bar:not([hidden])) {
+    --lobby-bar-room: 40px;
+  }
+  .lobby-nameplate {
+    grid-template-columns: 32px 150px 32px;
+    gap: 6px;
+  }
+  .lobby-step {
+    width: 32px;
+    height: 32px;
+    font-size: calc(18px * var(--text-scale, 1));
+  }
+  .lobby-name h2 {
+    max-width: 150px;
+    font-size: calc(22px * var(--text-scale, 1));
+  }
+  .lobby-name .element-pill {
+    height: 18px;
+    font-size: calc(9px * var(--text-scale, 1));
+  }
+  .lobby-party {
+    row-gap: 4px;
+  }
+  .lobby-stage {
+    top: max(calc(var(--lobby-top) + 8px), calc(var(--safe-top, 0px) + 94px));
+    gap: 4px;
+  }
+  .lobby-card {
+    gap: 2px;
+    padding: 7px 10px;
+    border-radius: 12px;
+  }
+  .lobby-card b {
+    font-size: calc(15px * var(--text-scale, 1));
+  }
+  .lobby-card small {
+    font-size: calc(10px * var(--text-scale, 1));
+  }
+  .lobby-card-kicker {
+    font-size: calc(9px * var(--text-scale, 1));
+  }
+  .lobby-spark {
+    display: none;
+  }
+  .lobby-mode {
+    grid-template-columns: 26px minmax(0, 1fr) 14px;
+    gap: 8px;
+    height: 42px;
+    padding: 0 10px;
+    border-radius: 12px;
+  }
+  .lobby-mode-icon {
+    width: 26px;
+    height: 26px;
+  }
+  .lobby-mode-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+  .lobby-mode-text b {
+    font-size: calc(14px * var(--text-scale, 1));
+  }
+  .lobby-mode-text small {
+    font-size: calc(9px * var(--text-scale, 1));
+  }
+  .lobby-play {
+    gap: 6px;
+  }
+  .lobby-play-button {
+    height: 50px;
+    border-radius: 14px;
+    font-size: calc(28px * var(--text-scale, 1)) !important;
+  }
+  .lobby-play {
+    --lobby-play-button-h: 50px;
+  }
+
+  .lobby-mode-menu button {
+    min-height: 38px;
+  }
+}
+/* The shortest (320 px): two columns of full-size buttons. --lobby-rail is
+   the whole rail's width, so the stage and the panels move over with it. */
+@media (max-height: 340px) {
+  .lobby-layer {
+    --lobby-rail: 76px;
+  }
+  /* Two columns of 36 px: no room for the labels (aria-label names them). */
+  .lobby-rail span {
+    display: none;
+  }
+  .lobby-rail {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 40px;
+    align-content: start;
+    gap: 2px;
+    border-radius: 20px;
+  }
+  /* Two buttons a row leave no room right of the icon: the badge rides
+     just above it and grows to the left, so it ends at its own button's
+     edge (inside the capsule, clear of the neighbour's icon). */
+  .lobby-rail .lobby-badge {
+    top: -10px;
+    left: auto;
+    right: -7px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+  }
+  .lobby-rail .lobby-badge.is-new {
+    top: -4px;
+    right: -5px;
+    min-width: 12px;
+    height: 12px;
+    padding: 0;
+  }
+  .lobby-rail .lobby-badge.is-dot {
+    top: -3px;
+    right: -4px;
+    min-width: 10px;
+    height: 10px;
+    padding: 0;
+  }
+}
+/* Narrow phones: the stage needs the room the side cards take. */
+@media (max-width: 760px) {
+  .lobby-layer {
+    --lobby-cards: 178px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-play-button::after {
+    animation: none;
+    opacity: 0;
+  }
+  .lobby-play::before {
+    animation: none;
+  }
+  .lobby-fighter-art,
+  .lobby-member-art {
+    animation: none;
+  }
+  .lobby-emote-bubble.is-popping,
+  .lobby-fighter-art.is-hopping {
+    animation: none;
+  }
+}
+
+/* ── Hub top bar: the scene switch and fixed-size boxes ─────────────────── */
+.hub-scenes {
+  position: fixed;
+  top: var(--hub-top, max(10px, calc(var(--safe-top, 0px) + 6px)));
+  /* The screen's middle, or the middle of the gap between the player card
+     and the pills where the middle runs into them (scene-switch-place.ts). */
+  left: var(--hub-scenes-x, 50%);
+  z-index: var(--z-hud-top);
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 999px;
+  background: rgba(14, 26, 49, 0.84);
+  backdrop-filter: blur(6px);
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.hub-scenes[hidden] {
+  display: none;
+}
+.hub-scenes button {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ui-dim);
+  font:
+    800 calc(16px * var(--text-scale, 1))/1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.hub-scenes button:hover,
+.hub-scenes button:focus-visible {
+  color: var(--ui-text);
+}
+.hub-scenes button[aria-pressed="true"] {
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
+}
+/* The player card's box and rows. Three rows in the same box: the name and
+   level, the title you wear in small letters, then the XP bar (desktop
+   18 + 2 + 10 + 2 + 5 = 37px of the 38px inside; phones 15 + 1 + 9 + 2 + 5
+   = 32px of 32px). The rows under the header (Lobby, Plaza) are
+   placed from --hub-card-h. */
+:root {
+  /* The header row's top edge: 10px from the top of the screen, or 12px
+     under a status bar (an iPad home-screen app, where iPadOS draws the
+     clock, the app's name and a soft fade along the bar's edge). It sat
+     right against the bar before, half lost in that fade, and the rows
+     below it (placed from 10px) ran into it. --hub-drop is how much lower
+     than 10px it is: every row under the header adds it. */
+  /* (10px with no bar: the extra 2px only comes with a bar.) */
+  --hub-top: calc(
+    var(--safe-top, 0px) + 10px + min(2px, var(--safe-top, 0px) * 100)
+  );
+  --hub-drop: calc(var(--hub-top) - 10px);
+  /* The same, for rows inside a box that already keeps out of the safe
+     area: 0, or 2px under a bar. */
+  --hub-drop-in: calc(var(--hub-top) - var(--safe-top, 0px) - 10px);
+  --hub-card-w: 236px;
+  --hub-card-h: 52px;
+  --hub-card-pad: 6px 14px 6px 6px;
+  /* The card's height less its padding and border, as on phones. */
+  --hub-card-art: 38px;
+  /* The name row: as tall as the level pill. */
+  --hub-card-row: 18px;
+  --hub-card-gap: 2px;
+  --hub-card-title: 10px;
+}
+/* :root makes these outrank style.css's card rules, which load later. */
+:root body.hub-active #account-profile {
+  box-sizing: border-box;
+  width: var(--hub-card-w);
+  height: var(--hub-card-h);
+  padding: var(--hub-card-pad);
+  grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 46px;
+  grid-template-areas: "art name level" "art title title" "art xp xp";
+  align-content: center;
+  row-gap: var(--hub-card-gap);
+}
+/* A portrait frame keeps its wider column gap and left padding (room for
+   the ornaments, portrait-frames.css) but not its 14px row gap: that one
+   is for the old card, and stacked the three rows 61px tall in the 38px
+   inside this one (the name above the card, the bar below it). */
+:root body.hub-active #account-profile:has(.portrait-frame) {
+  row-gap: var(--hub-card-gap);
+}
+/* The title: one small line between the name and the bar (its own colour
+   comes from the title), cut short rather than wrapped. */
+:root body.hub-active #account-profile .nav-title {
+  display: block;
+  grid-area: title;
+  height: var(--hub-card-title);
+  font:
+    700 var(--hub-card-title) / 1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.02em;
+}
+:root body.hub-active #account-profile .account-avatar {
+  width: var(--hub-card-art);
+  height: var(--hub-card-art);
+}
+/* A boss frame's star row: on the card's bottom edge, under the frame's
+   bottom ornament. */
+body.hub-active #account-profile .portrait-frame .frame-stars {
+  bottom: -20%;
+}
+body.hub-active #account-profile .account-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* No padding: the box is fixed, and style.css's .nav-level padding pushed
+   the text below the middle. */
+body.hub-active #account-profile .nav-level {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 46px;
+  height: var(--hub-card-row);
+  padding: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ui-accent) 14%, transparent);
+  color: var(--ui-accent);
+  font:
+    800 calc(13px * var(--text-scale, 1))/1 "Barlow Condensed",
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+body.hub-active .nav-xp {
+  width: 100% !important;
+}
+body.hub-active .nav-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.hub-active #account-coins > * {
+  justify-content: center;
+  width: 132px;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-height: 500px) {
+  .hub-scenes {
+    top: max(8px, calc(var(--safe-top, 0px) + 4px));
+    padding: 3px;
+  }
+  .hub-scenes button {
+    width: 64px;
+    height: 32px;
+    font-size: calc(13px * var(--text-scale, 1));
+  }
+  /* Phones: a little smaller. */
+  :root {
+    --hub-card-w: 172px;
+    --hub-card-h: 42px;
+    --hub-card-pad: 4px 10px 4px 4px;
+    --hub-card-art: 32px;
+    --hub-card-row: 15px;
+    --hub-card-gap: 1px;
+    --hub-card-title: 10px;
+  }
+  :root body.hub-active #account-profile {
+    grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 36px;
+  }
+  :root body.hub-active #account-profile .account-name {
+    font-size: calc(15px * var(--text-scale, 1));
+  }
+  /* 15px tall with 1px under the text: the 10px digits sit exactly in the
+     middle (3px above, 3px below the cap height). */
+  body.hub-active #account-profile .nav-level {
+    width: 36px;
+    padding-bottom: 1px;
+    font-size: calc(10px * var(--text-scale, 1));
+  }
+  body.hub-active #account-coins > * {
+    width: 96px;
+  }
+}
+@media (max-width: 760px) {
+  .hub-scenes button {
+    width: 60px;
+  }
+  :root {
+    --hub-card-w: 152px;
+  }
+  body.hub-active #account-coins > * {
+    width: 88px;
+  }
+  #account-coins .coin-chip b {
+    font-size: calc(14px * var(--text-scale, 1));
+  }
+}
+/* The narrowest phones (iPhone SE, 640–700 px Android): the scene switch
+   and the pills ran into each other (5 px over the coins at 667 px).
+   Slimmer tabs and pills leave at least 12 px between them down to 640. */
+@media (max-width: 700px) {
+  .hub-scenes button {
+    width: 56px;
+  }
+  body.hub-active #account-coins > * {
+    width: 76px;
+    padding: 0 8px;
+  }
+  #account-coins .coin-chip b {
+    font-size: calc(13px * var(--text-scale, 1));
+  }
+}
+
+/* Settings: the full-screen switch (settings-screen.css lays out its row). */
+.prefs-switch {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 64px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(139, 174, 229, 0.35);
+  border-radius: 999px;
+  background: rgba(14, 26, 49, 0.9);
+  color: var(--ui-dim);
+  font-weight: 700;
+}
+.prefs-switch[aria-checked="true"] {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
+}
+.prefs-switch:disabled {
+  opacity: 0.5;
+}
+
+/* Party invitation picker (Lobby → Invite). */
+.party-invite-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.party-invite-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 12px;
+  background: rgba(14, 26, 49, 0.6);
+}
+.party-invite-list li > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.party-invite-list b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.party-invite-list small {
+  color: var(--ui-ok);
+}
+
+/* Behind a dialog, a full-screen drawer or a hub panel the Lobby holds
+   still; the screen open on top (ui/hub-panel.ts) keeps moving. */
+.lobby-layer.is-covered,
+.lobby-layer.is-covered > :not(.ui-panel-host),
+.lobby-layer.is-covered > :not(.ui-panel-host) * {
+  animation-play-state: paused !important;
+}
+
+/* Narrower scene buttons where the switch would otherwise reach the coin
+   pill. */
+@media (max-width: 1100px) and (min-height: 501px) {
+  .hub-scenes button {
+    width: 80px;
+  }
+}
+@media (max-height: 500px) {
+  .hub-scenes button {
+    width: 54px;
+    font-size: calc(12.5px * var(--text-scale, 1));
+    letter-spacing: 0.06em;
+  }
+}
+@media (max-height: 500px) and (max-width: 760px) {
+  .hub-scenes button {
+    width: 50px;
+    font-size: calc(12px * var(--text-scale, 1));
+    letter-spacing: 0.05em;
+  }
+}
+/* Even the gap is too small (scene-switch-place.ts): 40px tabs. */
+.hub-scenes.is-tight button {
+  width: 40px;
+  font-size: calc(11px * var(--text-scale, 1));
+  letter-spacing: 0.03em;
+}
+/* The narrowest phones (568 px, iPhone SE first generation): a slimmer
+   player card leaves the switch room between it and the pills. */
+@media (max-width: 600px) {
+  :root {
+    --hub-card-w: 136px;
+  }
+}
+
+/* The party bar's members as themselves (docs/hidden-picks.md, "Avatars"):
+   overlapping discs, the leader's ringed in gold. */
+.lobby-party-faces {
+  display: flex;
+  margin-left: -6px;
+}
+.lobby-party-faces:empty {
+  display: none;
+}
+.lobby-party-face {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--lobby-line, #ffffff33);
+  background: #1a2547;
+  margin-left: -6px;
+}
+.lobby-party-face:first-child {
+  margin-left: 0;
+}
+.lobby-party-face.is-leader {
+  border-color: var(--ui-accent, #ffd65b);
+}
+.lobby-party-face .portrait-avatar {
+  width: 100%;
+  height: 100%;
+}
+@media (max-height: 500px) {
+  .lobby-party-face {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* A bot match's level (lobby-screen.ts AI_LEVELS): its name in its colour,
+   green, amber, red, and 1 to 3 pips after it, so the level reads without
+   the colour too. The name keeps its row's case and size. */
+/* Doubled: the menu's ".lobby-mode-menu button span" makes spans grids. */
+.ai-level.ai-level {
+  --ai: #5fd38a;
+  display: inline;
+  color: var(--ai);
+}
+.ai-level[data-ai-level="normal"] {
+  --ai: #ffad4a;
+}
+.ai-level[data-ai-level="hard"] {
+  --ai: #ff5d6c;
+}
+/* Inline, a line's middle: the row keeps its height. */
+.ai-pips {
+  margin-left: 5px;
+  font-size: 0;
+  line-height: 0;
+  vertical-align: middle;
+}
+.ai-pips > i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 2px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ai) 25%, transparent);
+}
+.ai-pips > i.on {
+  background: var(--ai);
+}

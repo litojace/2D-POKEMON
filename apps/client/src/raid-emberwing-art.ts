@@ -1,11 +1,16 @@
+import { paintLumiwick } from "./boss-lumiwick-rig";
+import { noteLumiwick } from "./lumiwick-attack-fx";
+import { paintSkyTerrace } from "./raid-emberwing-terrace-rig";
+import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import {
   EMBERWING as E,
-  brazierLifetime,
   type RaidWarning,
 } from "../../../packages/shared/src/raid";
 import { RaidBossMotion, type RaidBossCue } from "./raid-boss-motion";
+import type { LayerAt } from "./raid-layers";
+import { drawAscendantLumiwickWarning } from "./ascendant-lumiwick-art";
 type G = Phaser.GameObjects.Graphics;
 const TAU = Math.PI * 2;
 function flame(g: G, x: number, y: number, size: number, alpha = 1) {
@@ -28,104 +33,18 @@ function flame(g: G, x: number, y: number, size: number, alpha = 1) {
     y - size * 0.7,
   );
 }
-export function drawSkyTerrace(g: G, state: Snapshot, reduced: boolean) {
-  const r = state.raid!,
-    t = reduced ? 0 : state.time;
-  for (const f of r.emberPatches ?? []) {
-    g.fillStyle(0x301e23, 0.65).fillCircle(f.x, f.y, f.radius);
-    g.fillStyle(0xff643d, 0.17).fillCircle(f.x, f.y, f.radius);
-    g.lineStyle(3, 0xffac6f, 0.8).strokeCircle(f.x, f.y, f.radius);
-    for (let i = 0; i < 4; i++) {
-      const a = (i * TAU) / 4;
-      flame(
-        g,
-        f.x + Math.cos(a) * f.radius * 0.55,
-        f.y + Math.sin(a) * f.radius * 0.5,
-        9 + Math.sin(t * 2 + i) * 2,
-        0.65,
-      );
-    }
-  }
-  for (const f of r.emberTrails ?? []) {
-    g.lineStyle(f.width * 2, 0xff633d, 0.21).lineBetween(f.x, f.y, f.tx, f.ty);
-    g.lineStyle(4, 0xffa76a, 0.8).lineBetween(f.x, f.y, f.tx, f.ty);
-    for (let i = 1; i < 5; i++)
-      flame(
-        g,
-        f.x + ((f.tx - f.x) * i) / 5,
-        f.y + ((f.ty - f.y) * i) / 5,
-        8,
-        0.8,
-      );
-  }
-  for (const b of r.braziers ?? []) {
-    const lit = b.litUntil > state.time,
-      active =
-        r.airborne &&
-        (r.trait !== "updraft" || state.time - (r.takeoffAt ?? 0) >= 2),
-      ring = lit ? 0xffdc87 : active ? 0x8be7d0 : 0x7f8da4;
-    g.fillStyle(0x0a1630, 0.4).fillEllipse(b.x, b.y + 24, 112, 38);
-    // Circle matches the actual standing range. The stone bowl is decorative.
-    g.fillStyle(ring, lit ? 0.1 : 0.045).fillCircle(b.x, b.y, E.brazierRadius);
-    g.lineStyle(2, ring, lit ? 1 : 0.6).strokeCircle(b.x, b.y, E.brazierRadius);
-    g.fillStyle(0x354259, 1).fillRoundedRect(b.x - 19, b.y - 5, 38, 35, 5);
-    g.fillStyle(0x5c5862, 1).fillEllipse(b.x, b.y - 7, 64, 25);
-    g.lineStyle(3, 0xc3a37c, 0.9).strokeEllipse(b.x, b.y - 7, 64, 25);
-    g.fillStyle(0x152239, 1).fillEllipse(b.x, b.y - 10, 50, 14);
-    if (lit) {
-      const k = Math.max(
-        0,
-        Math.min(
-          1,
-          (b.litUntil - state.time) /
-            brazierLifetime(r.partySize, r.phase, r.peril),
-        ),
-      );
-      g.lineStyle(5, 0xffdb8d, 1)
-        .beginPath()
-        .arc(
-          b.x,
-          b.y,
-          E.brazierRadius,
-          -Math.PI / 2,
-          -Math.PI / 2 + k * TAU,
-          false,
-        )
-        .strokePath();
-      flame(g, b.x, b.y - 25, 21 + (reduced ? 0 : Math.sin(t * 3) * 2));
-    } else if (b.progress > 0) {
-      g.lineStyle(5, 0x8be7d0, 1)
-        .beginPath()
-        .arc(
-          b.x,
-          b.y,
-          E.brazierRadius,
-          -Math.PI / 2,
-          -Math.PI / 2 + b.progress * TAU,
-          false,
-        )
-        .strokePath();
-      flame(g, b.x, b.y - 17, 8 + b.progress * 8, 0.7);
-    }
-  }
-  for (const ring of r.flameRings ?? []) {
-    g.lineStyle(E.ring.width * 2, 0xff7949, 0.2).strokeCircle(
-      ring.x,
-      ring.y,
-      Math.max(1, ring.radius),
-    );
-    g.lineStyle(4, 0xffce87, 1).strokeCircle(
-      ring.x,
-      ring.y,
-      Math.max(1, ring.radius),
-    );
-  }
-  for (const f of r.emberFeathers ?? []) {
-    const y = f.y - 7 + (reduced ? 0 : Math.sin(t * 2) * 4);
-    g.fillStyle(0xffd778, 0.15).fillCircle(f.x, y, 23);
-    g.fillStyle(0xffbe6c, 1).fillEllipse(f.x, y, 10, 25);
-    g.lineStyle(2, 0xfff0bf, 1).lineBetween(f.x - 4, y + 11, f.x + 4, y - 12);
-  }
+/**
+ * The Sky Terrace's features (braziers, burning ground, dive lanes, flame
+ * rings, feathers): pieces from one atlas drawn when the raid's scene starts,
+ * placed each frame (raid-emberwing-terrace-rig.ts).
+ */
+export function drawSkyTerrace(
+  g: G,
+  state: Snapshot,
+  reduced: boolean,
+  at?: LayerAt,
+) {
+  paintSkyTerrace(g, state, reduced, at);
 }
 export function drawEmberwingWarning(g: G, state: Snapshot, w: RaidWarning) {
   const p = Math.max(
@@ -226,12 +145,30 @@ export function drawEmberwingWarning(g: G, state: Snapshot, w: RaidWarning) {
     else if (w.kind === "ember-rain") flame(g, w.x, w.y - (1 - p) * 100, 9);
     return true;
   }
+  if (w.kind === "snuff-gale" || w.kind === "bound-wicks")
+    return drawAscendantLumiwickWarning(g, state, w);
   return w.kind === "brazier-lighting";
 }
-const controllers = new WeakMap<
-  G,
-  { motion: RaidBossMotion; flight: number; clock: number }
->();
+interface LumiState {
+  motion: RaidBossMotion;
+  flight: number;
+  clock: number;
+  airborne: boolean;
+  /** When the braziers last brought it down, and when it last took off (battle seconds). */
+  groundedAt: number;
+  takeoffAt: number;
+  exposed: boolean;
+}
+const controllers = new WeakMap<G, LumiState>();
+/** How long it stays dazed after the braziers bring it down. */
+const DAZE = 2.4;
+/**
+ * Lumiwick (Emberwing's id): a sky-lantern spirit (boss-lumiwick.ts) that
+ * floats, reading the battle's own state: each attack's windup (its warning)
+ * and follow-through (the cast), dropped onto the floor with its flame heart
+ * open when the braziers are lit, a flare at a new phase, a flinch when hit,
+ * and its flame guttering out when beaten.
+ */
 export function drawEmberwing(
   g: G,
   state: Snapshot,
@@ -243,104 +180,85 @@ export function drawEmberwing(
   if (!boss) return [];
   let c = controllers.get(g);
   if (!c) {
-    c = { motion: new RaidBossMotion(), flight: r.airborne ? 1 : 0, clock };
+    c = {
+      motion: new RaidBossMotion(),
+      flight: r.airborne ? 1 : 0,
+      clock,
+      airborne: !!r.airborne,
+      groundedAt: -10,
+      takeoffAt: -10,
+      exposed: false,
+    };
     controllers.set(g, c);
   }
-  const pose = c.motion.sample(state, clock, reduced)!,
-    dt =
-      state.phase === "paused"
-        ? 0
-        : Math.max(0, Math.min(0.05, clock - c.clock));
+  const pose = c.motion.sample(state, clock, reduced)!;
+  const life = bossLife(g, state, boss, clock, reduced);
+  const dt =
+    state.phase === "paused" ? 0 : Math.max(0, Math.min(0.05, clock - c.clock));
   c.clock = clock;
   const target = r.airborne ? 1 : 0;
   c.flight = reduced
     ? target
     : c.flight + Math.max(-dt * 3, Math.min(dt * 3, target - c.flight));
-  const t = reduced ? 0 : pose.time,
-    x = boss.x,
-    y =
-      boss.y -
-      64 -
-      c.flight * 65 +
-      Math.sin(t * (r.airborne ? 2 : 1.4)) * 5 +
-      pose.collapse * 35;
-  const alpha = pose.dead ? Math.max(0.2, 1 - pose.deathAge * 0.3) : 1,
-    exposed = r.permanentGround || r.exposedUntil > state.time;
-  g.fillStyle(0x10192a, 0.35).fillEllipse(
-    x,
-    boss.y + 12,
-    170 - c.flight * 35,
-    50 - c.flight * 10,
+  const t = life.time;
+  const exposed = !!r.permanentGround || r.exposedUntil > state.time;
+  if (exposed && !c.exposed) c.groundedAt = t;
+  if (!exposed && c.exposed) c.takeoffAt = t;
+  if (r.airborne && !c.airborne && !exposed && t - c.takeoffAt > 2)
+    c.takeoffAt = t;
+  c.exposed = exposed;
+  c.airborne = !!r.airborne;
+  const dazed =
+    (exposed && !r.permanentGround && t - c.groundedAt < DAZE) ||
+    r.staggerUntil > state.time;
+  // its shadow on the floor: smaller and fainter the higher it floats
+  g.fillStyle(0x10192a, 0.3 - c.flight * 0.08).fillEllipse(
+    boss.x,
+    boss.y + 4,
+    150 - c.flight * 30,
+    40 - c.flight * 8,
   );
-  if (r.airborne)
-    g.lineStyle(2, 0xffcf9188, 0.4).strokeEllipse(x, boss.y + 12, 95, 30);
-  // Rounded feathers and a stable body silhouette keep the bird readable during flight.
-  for (let i = 0; i < 5; i++) {
-    const a = -0.8 + i * 0.4,
-      tx = x + Math.cos(a) * 75,
-      ty = y + 38 + Math.sin(a) * 60;
-    g.fillStyle(i % 2 ? 0xe88554 : 0xbc5150, alpha).fillEllipse(tx, ty, 52, 26);
-  }
-  const flap = Math.sin(t * (r.airborne ? 7 : 2)) * 18 * (r.airborne ? 1 : 0.2);
-  for (const side of [-1, 1]) {
-    const wx = x + side * (r.airborne ? 100 : 62),
-      wy = y + 10 + flap;
-    g.fillStyle(0xb9574b, alpha).fillEllipse(
-      wx,
-      wy,
-      r.airborne ? 100 : 52,
-      r.airborne ? 44 : 78,
-    );
-    for (let i = 0; i < 3; i++)
-      g.fillStyle(i % 2 ? 0xffc17b : 0xe78e57, alpha).fillEllipse(
-        wx + side * (i * 15 - 12),
-        wy + 19 + i * 7,
-        29,
-        47,
-      );
-  }
-  g.fillStyle(
-    pose.hurt > 0.2 ? 0xffe0b1 : r.gilded ? 0xe2ab65 : 0xe98b58,
-    alpha,
-  ).fillEllipse(x, y, 144, 135);
-  g.fillStyle(0xffd49c, alpha).fillEllipse(x - 6, y + 25, 102, 81);
-  g.fillStyle(0xf4b078, alpha).fillEllipse(x, y - 45, 105, 84);
-  flame(g, x + 5, y - 98, 29, alpha);
-  flame(g, x - 23, y - 86, 17, alpha);
-  flame(g, x + 29, y - 86, 16, alpha);
-  for (const side of [-1, 1]) {
-    g.fillStyle(0x4b3042, alpha).fillEllipse(x + side * 22, y - 46, 11, 14);
-    g.lineStyle(4, 0x773d43, alpha).lineBetween(
-      x + side * 13,
-      y - 57,
-      x + side * 32,
-      y - 53,
-    );
-    g.fillStyle(0xffffff, alpha).fillCircle(x + side * 22 - 1, y - 49, 2.5);
-  }
-  g.fillStyle(0xffcf76, alpha).fillTriangle(
-    x - 12,
-    y - 31,
-    x + 12,
-    y - 31,
-    x + 2,
-    y - 17,
+  // the attack being wound up (its warning) and the last one cast
+  const wind = r.warnings.find(
+    (w) =>
+      w.kind !== "brazier-lighting" &&
+      // a wick burns on the floor: no wind-up of the lantern's
+      w.kind !== "bound-wicks" &&
+      (!w.casterId || w.casterId === boss.id) &&
+      w.at >= state.time &&
+      (w.startedAt ?? w.at - 1.5) <= state.time,
   );
-  for (const side of [-1, 1])
-    g.fillStyle(0xb66b50, alpha).fillEllipse(x + side * 29, y + 66, 39, 15);
-  if (exposed) {
-    g.fillStyle(0xffe6ad, 0.25).fillCircle(x, y + 22, 30);
-    flame(g, x, y + 16, 19, alpha);
-    g.lineStyle(3, 0xffe6ad, 0.75).strokeCircle(x, y + 22, 35);
-  }
-  if (!reduced && !pose.dead)
-    for (let i = 0; i < 4; i++) {
-      const k = (t * 0.35 + i * 0.25) % 1;
-      g.fillStyle(i % 2 ? 0xffce87 : 0xff8b65, (1 - k) * 0.65).fillCircle(
-        x + 50 + i * 14,
-        y + 25 + k * 65,
-        2.5,
-      );
-    }
+  const cast = life.action.casts[life.action.casts.length - 1];
+  const drawn = paintLumiwick(g, {
+    x: boss.x,
+    y: boss.y,
+    // it turns to where it floats, and to its attack's aim
+    angle: life.heading,
+    clock: t,
+    phase: r.phase,
+    reduced,
+    gilded: !!r.gilded,
+    flight: c.flight,
+    windKind: wind?.kind,
+    windup: life.windup,
+    castKind: cast?.kind,
+    castAge: cast?.age ?? 99,
+    exposed: exposed && !pose.dead,
+    groundAge: t - c.groundedAt,
+    takeoffAge: t - c.takeoffAt,
+    stagger: dazed && !pose.dead,
+    hurt: pose.hurt,
+    dead: pose.dead,
+    deadAge: pose.deathAge,
+    roarAge: pose.transform > 0 ? (1 - pose.transform) * 1.6 : 99,
+  });
+  // where its attack effects start from (lumiwick-attack-fx.ts)
+  if (drawn)
+    noteLumiwick(g.scene, {
+      hem: { x: boss.x + drawn.hem.x, y: boss.y + drawn.hem.y },
+      eyes: drawn.eyes.map((e) => ({ x: boss.x + e.x, y: boss.y + e.y })),
+      flame: drawn.flame,
+      lit: drawn.lit,
+    });
   return pose.cues;
 }

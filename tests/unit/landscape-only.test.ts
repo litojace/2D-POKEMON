@@ -23,6 +23,8 @@ describe("landscape only", () => {
     const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
     let depth = 0;
     for (const ch of code) {
+      // Only delimiters change depth; skip identical assertions for ordinary text.
+      if (ch !== "{" && ch !== "}") continue;
       if (ch === "{") depth++;
       if (ch === "}") depth--;
       expect(depth).toBeGreaterThanOrEqual(0);
@@ -32,19 +34,27 @@ describe("landscape only", () => {
 });
 
 describe("shop grid", () => {
-  it("keeps a lone filtered card card-sized (auto-fill, never auto-fit)", () => {
-    const css = readFileSync("apps/client/src/style.css", "utf8");
-    const rules = css.match(/\.shop-grid \{[^}]*grid-template-columns:[^;]*;/g) ?? [];
+  it("keeps a lone filtered card card-sized (fixed columns, never auto-fit)", () => {
+    // The fitting room's catalogue is the shared item grid (ui/components.css).
+    const css = readFileSync("apps/client/src/ui/components.css", "utf8");
+    const rules = css.match(/\.ui-grid \{[^}]*grid-template-columns:[^;]*;/g) ?? [];
     expect(rules.length).toBeGreaterThan(0);
-    for (const rule of rules) expect(rule).not.toContain("auto-fit");
+    for (const rule of rules) {
+      expect(rule).not.toContain("auto-fit");
+      expect(rule).toContain("repeat(var(--cols");
+    }
   });
 });
 
 describe("main screens", () => {
   it("share one fixed size, so switching tabs never resizes the window", () => {
     const css = readFileSync("apps/client/src/style.css", "utf8");
-    const rule = css.match(/dialog:is\(:has\(\.shop\), :has\(\.raid-hub\)[^{]*\{[^}]*\}/)?.[0] ?? "";
-    for (const screen of [".missions-screen", ".profile-screen", ".friends-screen", "#leaderboard-body", ".admin-tabs"]) expect(rule).toContain(screen);
+    // Missions left for a sheet inside the Lobby (UI remodel step 4).
+    // Raids left for a panel inside the Lobby (UI remodel step 5); Friends
+    // and Ranks for a sheet and a panel (step 6); the profile for a panel
+    // (step 7). Admin stays a dialog.
+    const rule = css.match(/dialog:is\(:has\(\.admin-tabs\)[^{]*\{[^}]*\}/)?.[0] ?? "";
+    expect(rule).toContain(".admin-tabs");
     // A fixed height, not just a cap.
     expect(rule).toMatch(/\n\s*height: var\(--hub-height\);/);
   });

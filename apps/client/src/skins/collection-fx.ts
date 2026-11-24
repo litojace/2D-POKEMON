@@ -1,7 +1,9 @@
+import { WORLD_ART, groundHeight } from "../../../../packages/shared/src/world-art";
 import { JOURNEY_ITEM_BY_ID } from "../../../../packages/shared/src/journey";
 import type Phaser from "phaser";
 import type { FxParticle } from "./skin-fx";
 import { sparkle } from "./skin-fx";
+import { auraFlourish, entranceFlourish, victoryFlourish } from "./tier-fx";
 
 /**
  * The Shop's all-fighter collection pieces in play: auras under the fighter,
@@ -11,115 +13,195 @@ import { sparkle } from "./skin-fx";
 type G = Phaser.GameObjects.Graphics;
 const TAU = Math.PI * 2;
 
-/** Auras sit under the fighter, like the Mountain aura. Returns false if unknown. */
-export function drawCollectionAura(g: G, id: string, x: number, y: number, now: number, reduced: boolean) {
+/**
+ * How high above the ground the aura's items circle (aura units): just off
+ * the floor, around the shadow, so the near half passes in front of the feet
+ * and the far half behind them.
+ */
+export const AURA_LIFT = 3;
+/**
+ * Auras: a ring on the ground plus items circling the fighter. Pass `front`
+ * (a layer drawn over the fighter) and the items come round in front of the
+ * fighter on the near half of the circle, a little larger, and pass behind
+ * it on the far half, a little smaller and fainter, so the ring has depth.
+ * Without it everything draws on `g`. Returns false if the id is unknown.
+ */
+/** The piece's own ring and items, without its rarity flourish. */
+export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, now: number, reduced: boolean, front?: G, flat: number = WORLD_ART.groundY, lift = AURA_LIFT) {
   const t = reduced ? 0 : now;
-  const ring = (n: number, rx: number, ry: number, speed: number, draw: (px: number, py: number, i: number, a: number) => void) => {
+  /** Height of a floor ellipse this wide, on the aura's plane. */
+  const groundHeight = (w: number) => w * flat;
+  /** Each item gets its layer, a size factor `d` and an opacity factor `f`. */
+  const ring = (
+    n: number,
+    rx: number,
+    _legacyRy: number,
+    speed: number,
+    draw: (gg: G, px: number, py: number, i: number, a: number, d: number, f: number) => void,
+    itemLift = lift,
+  ) => {
     for (let i = 0; i < n; i++) {
       const a = t / speed + (i / n) * TAU;
-      draw(x + Math.cos(a) * rx, y + Math.sin(a) * ry, i, a);
+      const near = Math.sin(a);
+      draw(
+        front && near > 0 ? front : g,
+        x + Math.cos(a) * rx,
+        y - itemLift + near * rx * flat,
+        i,
+        a,
+        1 + 0.16 * near,
+        0.82 + 0.18 * near,
+      );
     }
   };
+  if (id === "solar-aura") {
+    // Lv 80: a sun on the ground. A blazing ring, corona rays turning round
+    // it (long gold and short orange in turn) and three small suns in orbit.
+    const turn = t / 2600;
+    const pulse = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(now / 420);
+    g.fillStyle(0xffb347, 0.2 + 0.08 * pulse).fillEllipse(x, y, 96, groundHeight(96));
+    // The long rays reach past the Mythical prismatic rings (radius 52–60).
+    for (const long of [true, false]) {
+      g.fillStyle(long ? 0xffd36b : 0xff8a4c, long ? 0.85 : 0.75);
+      for (let i = long ? 0 : 1; i < 12; i += 2) {
+        const a = turn + (i / 12) * TAU,
+          w = long ? 0.12 : 0.1,
+          r0 = 44,
+          r1 = long ? 66 + 4 * pulse : 56;
+        g.fillTriangle(
+          x + Math.cos(a - w) * r0,
+          y + Math.sin(a - w) * r0 * flat,
+          x + Math.cos(a + w) * r0,
+          y + Math.sin(a + w) * r0 * flat,
+          x + Math.cos(a) * r1,
+          y + Math.sin(a) * r1 * flat,
+        );
+      }
+    }
+    g.lineStyle(3, 0xffc85a, 0.9).strokeEllipse(x, y, 92, groundHeight(92));
+    g.lineStyle(1.2, 0xfff1c4, 0.75).strokeEllipse(x, y, 84, groundHeight(84));
+    ring(3, 49, 20, 5200, (gg, px, py, i, _a, d, f) => {
+      const flare = (reduced ? 1 : 0.8 + 0.2 * Math.sin(now / 260 + i * 2)) * d;
+      gg.fillStyle(0xff8a4c, 0.3 * f).fillCircle(px, py - 4 * d, 7.5 * flare);
+      gg.fillStyle(0xfff1c4, 0.95 * f).fillCircle(px, py - 4 * d, 3 * flare);
+    });
+    return true;
+  }
   const journey=JOURNEY_ITEM_BY_ID[id];
   if (journey?.slot === 'aura') {
     const color=parseInt(journey.color.slice(1),16), accent=parseInt(journey.accent.slice(1),16);
-    g.lineStyle(1.6,color,.7).strokeEllipse(x,y,102,42);
-    g.lineStyle(1,accent,.4).strokeEllipse(x,y,114,48);
-    ring(id==='astral-aura'?8:6,49,20,6200,(px,py,i)=>{
+    g.lineStyle(1.6,color,.7).strokeEllipse(x,y,102,groundHeight(102));
+    g.lineStyle(1,accent,.4).strokeEllipse(x,y,114,groundHeight(114));
+    ring(id==='astral-aura'?8:6,49,20,6200,(gg,px,py,i,_a,d,f)=>{
       const c=i%2?color:accent;
-      g.fillStyle(c,.9).fillTriangle(px,py-5,px+3,py,px,py+5).fillTriangle(px,py-5,px-3,py,px,py+5);
+      gg.fillStyle(c,.9*f).fillTriangle(px,py-5*d,px+3*d,py,px,py+5*d).fillTriangle(px,py-5*d,px-3*d,py,px,py+5*d);
     });
     return true;
   }
   switch (id) {
     case "candy-aura": {
       const colors = [0xff6fa8, 0x6fd6ff, 0xffd65b, 0x8fe06a, 0xc89aff];
-      ring(16, 46, 20, 3000, (px, py, i, a) =>
-        g.lineStyle(3, colors[i % colors.length], 0.9).lineBetween(px - Math.cos(a + i) * 3, py - Math.sin(a + i) * 2, px + Math.cos(a + i) * 3, py + Math.sin(a + i) * 2),
+      ring(16, 46, 20, 3000, (gg, px, py, i, a, d, f) =>
+        gg.lineStyle(3 * d, colors[i % colors.length], 0.9 * f).lineBetween(px - Math.cos(a + i) * 3 * d, py - Math.sin(a + i) * 2 * d, px + Math.cos(a + i) * 3 * d, py + Math.sin(a + i) * 2 * d),
+        0,
       );
       return true;
     }
     case "galaxy-aura": {
       const k = reduced ? 0.5 : 0.5 + Math.sin(now / 900) * 0.5;
-      g.fillStyle(0x4a3a9a, 0.16 + k * 0.08).fillEllipse(x, y, 104, 44);
-      g.fillStyle(0xc86bff, 0.12).fillEllipse(x + Math.cos(t / 1800) * 10, y, 70, 26);
-      ring(6, 48, 19, 5000, (px, py) => sparkle(g, px, py, 2.4, 0xffffff, 0.85));
+      g.fillStyle(0x4a3a9a, 0.16 + k * 0.08).fillEllipse(x, y, 104, groundHeight(104));
+      g.fillStyle(0xc86bff, 0.12).fillEllipse(x + Math.cos(t / 1800) * 10, y, 70, groundHeight(70));
+      ring(6, 48, 19, 5000, (gg, px, py, _i, _a, d, f) => sparkle(gg, px, py, 2.4 * d, 0xffffff, 0.85 * f));
       return true;
     }
     case "retro-aura":
-      ring(8, 46, 19, 3600, (px, py) => {
+      ring(8, 46, 19, 3600, (gg, px, py, _i, _a, d, f) => {
         // A tiny pixel heart.
-        g.fillStyle(0xff3a5a, 0.95);
+        const u = 1.6 * d;
+        gg.fillStyle(0xff3a5a, 0.95 * f);
         for (const [dx, dy] of [[-2, -1], [-1, -2], [1, -2], [2, -1], [-2, 0], [-1, 0], [0, -1], [0, 0], [1, 0], [2, 0], [-1, 1], [0, 1], [1, 1], [0, 2]])
-          g.fillRect(px + dx * 1.6, py + dy * 1.6, 1.6, 1.6);
+          gg.fillRect(px + dx * u, py + dy * u, u, u);
       });
       return true;
     case "festival-aura":
-      ring(5, 44, 18, 4200, (px, py, i) => {
+      ring(5, 44, 18, 4200, (gg, px, py, i, _a, d, f) => {
         const bob = reduced ? 0 : Math.sin(now / 400 + i) * 2;
-        g.fillStyle(0xd8262a, 0.95).fillEllipse(px, py - 8 + bob, 9, 11);
-        g.fillStyle(0xffd65b, 0.9).fillRect(px - 3, py - 14 + bob, 6, 1.6).fillRect(px - 3, py - 3 + bob, 6, 1.6);
-        g.fillStyle(0xffd65b, 0.25).fillCircle(px, py - 8 + bob, 9);
+        gg.fillStyle(0xd8262a, 0.95 * f).fillEllipse(px, py + (-8 + bob) * d, 9 * d, 11 * d);
+        gg.fillStyle(0xffd65b, 0.9 * f).fillRect(px - 3 * d, py + (-14 + bob) * d, 6 * d, 1.6 * d).fillRect(px - 3 * d, py + (-3 + bob) * d, 6 * d, 1.6 * d);
+        gg.fillStyle(0xffd65b, 0.25 * f).fillCircle(px, py + (-8 + bob) * d, 9 * d);
       });
       return true;
     case "garden-aura":
-      ring(10, 46, 19, 4600, (px, py, i, a) => {
-        const dx = Math.cos(a * 2 + i) * 4,
-          dy = Math.sin(a * 2 + i) * 2;
-        g.fillStyle(i % 2 ? 0xffb3cf : 0xfff0f5, 0.95).fillTriangle(px - dx, py - dy, px + dx, py + dy, px - dy, py + dx * 0.6);
+      ring(10, 46, 19, 4600, (gg, px, py, i, a, d, f) => {
+        const dx = Math.cos(a * 2 + i) * 4 * d,
+          dy = Math.sin(a * 2 + i) * 2 * d;
+        gg.fillStyle(i % 2 ? 0xffb3cf : 0xfff0f5, 0.95 * f).fillTriangle(px - dx, py - dy, px + dx, py + dy, px - dy, py + dx * 0.6);
       });
       return true;
     case "tidal-aura": {
       // Tidewyrm's reward: a rolling ring of water with foam crests.
-      g.fillStyle(0x1f8fa6, 0.18).fillEllipse(x, y, 104, 44);
-      g.lineStyle(3, 0x7fe9ff, 0.8).strokeEllipse(x, y, 96, 40);
-      ring(10, 48, 20, 2600, (px, py, i) =>
-        g.fillStyle(i % 2 ? 0xffffff : 0xbff6ff, 0.9).fillCircle(px, py - 2, 3.4),
+      g.fillStyle(0x1f8fa6, 0.18).fillEllipse(x, y, 104, groundHeight(104));
+      g.lineStyle(3, 0x7fe9ff, 0.8).strokeEllipse(x, y, 96, groundHeight(96));
+      ring(10, 48, 20, 2600, (gg, px, py, i, _a, d, f) =>
+        gg.fillStyle(i % 2 ? 0xffffff : 0xbff6ff, 0.9 * f).fillCircle(px, py - 2 * d, 3.4 * d),
+        0,
       );
       return true;
     }
     case "spark-aura": {
-      g.lineStyle(1.5,0x9fe4ff,.55).strokeEllipse(x,y,100,40);
-      ring(8,48,19,5200,(px,py,i)=>{const color=i%2?0x8edfff:0xffe18b;g.lineStyle(2,color,.95).lineBetween(px-3,py-5,px+1,py).lineBetween(px+1,py,px-2,py+5);});
+      g.lineStyle(1.5,0x9fe4ff,.55).strokeEllipse(x,y,100,groundHeight(100));
+      ring(8,48,19,5200,(gg,px,py,i,_a,d,f)=>{const color=i%2?0x8edfff:0xffe18b;gg.lineStyle(2*d,color,.95*f).lineBetween(px-3*d,py-5*d,px+1*d,py).lineBetween(px+1*d,py,px-2*d,py+5*d);});
       return true;
     }
     case "ember-aura": {
-      g.lineStyle(2,0xffa66c,.8).strokeEllipse(x,y,100,40);
-      g.fillStyle(0xff8558,.1).fillEllipse(x,y,110,45);
-      ring(8,48,19,6200,(px,py,i)=>{const rise=reduced?0:Math.sin(now/1000+i)*5;g.fillStyle(i%2?0xffd28b:0xff8765,.85).fillEllipse(px,py-5+rise,3,6);});
+      g.lineStyle(2,0xffa66c,.8).strokeEllipse(x,y,100,groundHeight(100));
+      g.fillStyle(0xff8558,.1).fillEllipse(x,y,110,groundHeight(110));
+      ring(8,48,19,6200,(gg,px,py,i,_a,d,f)=>{const rise=reduced?0:Math.sin(now/1000+i)*5;gg.fillStyle(i%2?0xffd28b:0xff8765,.85*f).fillEllipse(px,py+(-5+rise)*d,3*d,6*d);});
       return true;
     }
     case "halo-aura": {
-      g.lineStyle(3,0xffe5a0,.85).strokeEllipse(x,y,100,40);
-      g.lineStyle(1,0xfff3cf,.4).strokeEllipse(x,y,112,46);
-      ring(6,50,20,6500,(px,py,i)=>{ const color=[0xff899e,0xffd778,0x9aefb5,0x80e1ff,0xa5adff,0xe5a0ff][i];g.fillStyle(color,.9).fillTriangle(px,py-6,px+4,py,px,py+6).fillTriangle(px,py-6,px-4,py,px,py+6); });
+      g.lineStyle(3,0xffe5a0,.85).strokeEllipse(x,y,100,groundHeight(100));
+      g.lineStyle(1,0xfff3cf,.4).strokeEllipse(x,y,112,groundHeight(112));
+      ring(6,50,20,6500,(gg,px,py,i,_a,d,f)=>{ const color=[0xff899e,0xffd778,0x9aefb5,0x80e1ff,0xa5adff,0xe5a0ff][i];gg.fillStyle(color,.9*f).fillTriangle(px,py-6*d,px+4*d,py,px,py+6*d).fillTriangle(px,py-6*d,px-4*d,py,px,py+6*d); });
       return true;
     }
     case "lullaby-aura": {
-      g.fillStyle(0x8977c5, 0.12).fillEllipse(x, y, 102, 43);
-      g.lineStyle(1.5, 0xc9a3ff, 0.45).strokeEllipse(x, y, 98, 41);
-      ring(6, 46, 19, 6000, (px, py, i) => {
-        const bob = reduced ? 0 : Math.sin(now / 750 + i) * 3;
-        g.fillStyle(i % 2 ? 0xc9a3ff : 0xffdf8d, 0.9).fillEllipse(px, py + bob, 5, 3);
-        g.lineStyle(1.4, i % 2 ? 0xc9a3ff : 0xffdf8d, 0.9).lineBetween(px + 2, py + bob, px + 2, py - 10 + bob).lineBetween(px + 2, py - 10 + bob, px + 7, py - 7 + bob);
+      g.fillStyle(0x8977c5, 0.12).fillEllipse(x, y, 102, groundHeight(102));
+      g.lineStyle(1.5, 0xc9a3ff, 0.45).strokeEllipse(x, y, 98, groundHeight(98));
+      ring(6, 46, 19, 6000, (gg, px, py, i, _a, d, f) => {
+        const bob = (reduced ? 0 : Math.sin(now / 750 + i) * 3) * d;
+        const c = i % 2 ? 0xc9a3ff : 0xffdf8d;
+        gg.fillStyle(c, 0.9 * f).fillEllipse(px, py + bob, 5 * d, 3 * d);
+        gg.lineStyle(1.4 * d, c, 0.9 * f).lineBetween(px + 2 * d, py + bob, px + 2 * d, py - 10 * d + bob).lineBetween(px + 2 * d, py - 10 * d + bob, px + 7 * d, py - 7 * d + bob);
       });
       return true;
     }
     case "nightmote": {
       // Gloomshade's reward: fireflies of lantern light circling beneath you.
-      g.fillStyle(0x2b2245, 0.22).fillEllipse(x, y, 100, 42);
-      ring(7, 46, 19, 4400, (px, py, i) => {
+      g.fillStyle(0x2b2245, 0.22).fillEllipse(x, y, 100, groundHeight(100));
+      ring(7, 46, 19, 4400, (gg, px, py, i, _a, d, f) => {
         const bob = reduced ? 0 : Math.sin(now / 350 + i * 1.3) * 4;
-        const blink = reduced ? 1 : 0.55 + 0.45 * Math.abs(Math.sin(now / 500 + i * 2.1));
-        g.fillStyle(0xffd27a, 0.25 * blink).fillCircle(px, py - 6 + bob, 7);
-        g.fillStyle(0xfff1c2, 0.95 * blink).fillCircle(px, py - 6 + bob, 2.6);
+        const blink = (reduced ? 1 : 0.55 + 0.45 * Math.abs(Math.sin(now / 500 + i * 2.1))) * f;
+        gg.fillStyle(0xffd27a, 0.25 * blink).fillCircle(px, py + (-6 + bob) * d, 7 * d);
+        gg.fillStyle(0xfff1c2, 0.95 * blink).fillCircle(px, py + (-6 + bob) * d, 2.6 * d);
+      });
+      return true;
+    }
+    case "mountain-aura": {
+      // Grumblecrag's reward: a golden ring of carved stone chips.
+      g.lineStyle(3, 0xffd28c, 0.75).strokeEllipse(x, y, 98, groundHeight(98));
+      g.lineStyle(1, 0xb88a52, 0.5).strokeEllipse(x, y, 110, groundHeight(110));
+      ring(8, 50, 20, 7000, (gg, px, py, i, _a, d, f) => {
+        const s = (i % 2 ? 4.2 : 3.2) * d;
+        gg.fillStyle(i % 2 ? 0x9b8466 : 0xc8a06a, 0.95 * f).fillTriangle(px - s, py, px, py - s * 1.1, px + s, py).fillTriangle(px - s, py, px, py + s * 0.6, px + s, py);
+        gg.fillStyle(0xffd28c, 0.8 * f).fillCircle(px, py - s * 0.3, 1.1 * d);
       });
       return true;
     }
     case "winter-aura":
-      ring(8, 46, 19, 5200, (px, py, i) => {
-        const s = 4;
-        g.lineStyle(1.4, i % 2 ? 0xffffff : 0xbfe8ff, 0.95)
+      ring(8, 46, 19, 5200, (gg, px, py, i, _a, d, f) => {
+        const s = 4 * d;
+        gg.lineStyle(1.4 * d, i % 2 ? 0xffffff : 0xbfe8ff, 0.95 * f)
           .lineBetween(px - s, py, px + s, py)
           .lineBetween(px - s / 2, py - s * 0.86, px + s / 2, py + s * 0.86)
           .lineBetween(px - s / 2, py + s * 0.86, px + s / 2, py - s * 0.86);
@@ -130,16 +212,42 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
 }
 
 type Emit = (p: FxParticle) => void;
+/** Eclipse finale: when the moon covers the sun (seconds into the finale). */
+export const ECLIPSE_TOTALITY = 1.3;
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
 /** A one-off burst when the round greeting starts. Returns false if unknown. */
-export function playCollectionEntrance(emit: Emit, id: string, x: number, y: number, sc: number) {
+function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) {
   const burst = (n: number, make: (i: number) => Omit<FxParticle, "x" | "y"> & { x?: number; y?: number }) => {
     for (let i = 0; i < n; i++) {
       const p = make(i);
       emit({ x: x, y: y, ...p } as FxParticle);
     }
   };
+  if (id === "nova-entrance") {
+    // Lv 65: starlight rushes into a point and bursts into a nova: stars
+    // fall inward from a wide ring as a white flash, three rings of light
+    // and streaks of starlight burst out of the centre.
+    const cy = y - 40 * sc;
+    burst(16, (i) => {
+      const a = (i / 16) * TAU;
+      return { x: x + Math.cos(a) * 78 * sc, y: cy + Math.sin(a) * 52 * sc, vx: -Math.cos(a) * 210, vy: -Math.sin(a) * 140, life: 0.36, size: (i % 2 ? 3 : 4.6) * sc, color: i % 2 ? 0xb6a0ff : 0xffe7a3, shape: "star" };
+    });
+    emit({ x, y: cy, vx: 0, vy: 0, life: 0.5, size: 13 * sc, color: 0xffffff, shape: "star" });
+    emit({ x, y: cy, vx: 0, vy: 0, life: 0.6, size: 8 * sc, color: 0xffffff, shape: "ring" });
+    emit({ x, y: cy, vx: 0, vy: 0, life: 0.85, size: 13 * sc, color: 0xffe7a3, shape: "ring" });
+    emit({ x, y: cy, vx: 0, vy: 0, life: 1.1, size: 18 * sc, color: 0xb6a0ff, shape: "ring" });
+    burst(18, (i) => {
+      const a = (i / 18) * TAU + 0.17;
+      const speed = i % 2 ? 230 : 330;
+      return { x, y: cy, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed * 0.8, life: 0.5, size: (i % 2 ? 5 : 7) * sc, color: [0xffe7a3, 0xb6a0ff, 0x9ff3d8][i % 3], shape: "ray" };
+    });
+    burst(14, (i) => {
+      const a = (i / 14) * TAU;
+      return { x, y: cy, vx: Math.cos(a) * rnd(70, 130), vy: Math.sin(a) * rnd(60, 110) - 30, life: rnd(0.9, 1.3), size: (i % 3 ? 2.8 : 4.4) * sc, color: [0xffe7a3, 0xb6a0ff, 0x9ff3d8][i % 3], shape: "star", spin: i % 2 ? 3 : -3 };
+    });
+    return true;
+  }
   if (id==='comet-arrival') {
     burst(18,i=>({x:x+(i-9)*3*sc,y:y-60*sc,vx:(i-9)*9,vy:-40+Math.abs(i-9)*10,life:.7+(i%3)*.15,size:(i%4===0?5:2)*sc,color:i%2?0xffd991:0x9ff3d8,shape:'star',spin:i%2?2:-2}));
     return true;
@@ -242,10 +350,10 @@ function pixelText(g: G, text: string, cx: number, cy: number, px: number, color
 
 /**
  * Victory finales, drawn every frame of the celebration (t seconds in).
- * The champion keeps its own victory move; these play around it.
+ * The champion keeps its own victory move; these play around it, all of it
+ * on the layer behind the fighter so nothing ever covers its face.
  */
-export function drawCollectionVictory(
-  g: G,
+function baseVictory(
   under: G,
   emit: Emit,
   chance: (rate: number, dt: number) => boolean,
@@ -259,6 +367,64 @@ export function drawCollectionVictory(
 ) {
   if (t > 3) return false;
   const fade = t > 2.4 ? Math.max(0, 1 - (t - 2.4) / 0.6) : 1;
+  if (id === "eclipse-finale") {
+    // Lv 85: a sun rises behind you, a dark moon slides across it, and at
+    // totality its corona flares round you with a diamond-ring flash.
+    const R = 38 * sc,
+      rise = Math.min(1, t / 0.5),
+      cx = x,
+      cy = y - (20 + 36 * rise) * sc;
+    const cover = Math.max(0, Math.min(1, (t - 0.45) / 0.85)),
+      ease = 1 - (1 - cover) ** 3,
+      total = t >= ECLIPSE_TOTALITY;
+    under.fillStyle(0xffc85a, (total ? 0.12 : 0.28) * fade).fillCircle(cx, cy, R * 1.55);
+    under.fillStyle(0xffe9a8, fade).fillCircle(cx, cy, R);
+    under.fillStyle(0x161a30, fade).fillCircle(cx + (1 - ease) * R * 2.3, cy, R * 0.98);
+    if (total) {
+      const k = Math.min(1, (t - ECLIPSE_TOTALITY) / 0.3) * fade,
+        turn = t * 0.35;
+      for (const gold of [true, false]) {
+        under.fillStyle(gold ? 0xffd27a : 0xb6a0ff, (gold ? 0.75 : 0.6) * k);
+        for (let i = gold ? 0 : 1; i < 16; i += 2) {
+          const a = turn + (i / 16) * TAU,
+            w = 0.07,
+            r1 = R * (gold ? 1.9 : 1.5);
+          under.fillTriangle(
+            cx + Math.cos(a - w) * R,
+            cy + Math.sin(a - w) * R,
+            cx + Math.cos(a + w) * R,
+            cy + Math.sin(a + w) * R,
+            cx + Math.cos(a) * r1,
+            cy + Math.sin(a) * r1,
+          );
+        }
+      }
+      under.lineStyle(2.4 * sc, 0xfff1c4, 0.9 * k).strokeCircle(cx, cy, R * 1.02);
+      // Stars come out in the darkened sky.
+      under.fillStyle(0xfff1c4, 0.85 * k);
+      for (let i = 0; i < 7; i++) {
+        const a = -2.9 + i * 0.97;
+        under.fillCircle(cx + Math.cos(a) * R * 2.25, cy + Math.sin(a) * R * 1.6, (1.2 + (i % 3) * 0.5) * sc);
+      }
+    }
+    // The diamond ring: one bead of sunlight on the rim, just at totality.
+    const flash = t > ECLIPSE_TOTALITY - 0.08 && t < ECLIPSE_TOTALITY + 0.5 ? Math.sin(((t - ECLIPSE_TOTALITY + 0.08) / 0.58) * Math.PI) : 0;
+    if (flash > 0) {
+      const fx = cx + Math.cos(-2.3) * R,
+        fy = cy + Math.sin(-2.3) * R;
+      under.fillStyle(0xfff1c4, 0.35 * flash * fade).fillCircle(fx, fy, 9 * sc * flash);
+      sparkle(under, fx, fy, 11 * sc * flash, 0xffffff, flash * fade);
+    }
+    if (first)
+      for (let i = 0; i < 12; i++)
+        emit({ x, y: y - 40 * sc, vx: (i - 5.5) * 16, vy: -60 - Math.random() * 40, life: 1, size: 2.4 * sc, color: i % 2 ? 0xffd27a : 0xb6a0ff, shape: "star" });
+    if (t >= ECLIPSE_TOTALITY && t - dt < ECLIPSE_TOTALITY)
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * TAU;
+        emit({ x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, life: 0.8, size: (i % 2 ? 2.4 : 3.4) * sc, color: i % 2 ? 0xb6a0ff : 0xfff1c4, shape: "star" });
+      }
+    return true;
+  }
   const journey=JOURNEY_ITEM_BY_ID[id];
   if (journey?.slot==='victory') {
     const color=parseInt(journey.color.slice(1),16), accent=parseInt(journey.accent.slice(1),16);
@@ -266,8 +432,8 @@ export function drawCollectionVictory(
       const k=Math.max(0,Math.min(1,(t-i*.25)/.65));
       if(t<i*.25)continue;
       const sx=x+(i-1)*48*sc, sy=y-100*sc+k*82*sc;
-      g.lineStyle(3*sc,i%2?color:accent,.55*fade).lineBetween(sx+24*sc,sy-50*sc,sx,sy);
-      sparkle(g,sx,sy,5*sc,i%2?color:accent,fade);
+      under.lineStyle(3*sc,i%2?color:accent,.55*fade).lineBetween(sx+24*sc,sy-50*sc,sx,sy);
+      sparkle(under,sx,sy,5*sc,i%2?color:accent,fade);
       if(k===1)under.lineStyle(2*sc,color,(1-Math.min(1,(t-i*.25-.65)/1.2))*fade).strokeEllipse(sx,y+8*sc,42*sc,16*sc);
     }
     if(first)for(let i=0;i<12;i++)emit({x,y:y-40*sc,vx:(i-5.5)*18,vy:-70-Math.random()*40,life:1,size:2.5*sc,color:i%2?color:accent,shape:'star'});
@@ -306,7 +472,7 @@ export function drawCollectionVictory(
     case "retro-victory": {
       const pop = t < 0.25 ? t / 0.25 : 1;
       const blink = Math.floor(t * 6) % 2 ? 0xffd65b : 0x2ff3ff;
-      pixelText(g, "LEVEL UP!", x, y - 86 * sc - (1 - pop) * 10 * sc, 3 * sc, blink, fade);
+      pixelText(under, "LEVEL UP!", x, y - 86 * sc - (1 - pop) * 10 * sc, 3 * sc, blink, fade);
       if (chance(14, dt)) emit({ x: x + rnd(-40, 40) * sc, y: y - rnd(0, 60) * sc, vx: 0, vy: -40, life: 0.5, size: 2.4 * sc, color: [0xff4fd8, 0x2ff3ff, 0xffd65b][Math.floor(rnd(0, 3))], shape: "pixel" });
       return true;
     }
@@ -370,11 +536,18 @@ export function drawCollectionVictory(
       return true;
     }
     case "sweet-dreams": {
+      // Snoozaku's reward: a little dream baku in a nightcap drifts up behind you.
       const rise = Math.min(1, t / 0.8), wx = x + Math.sin(t * 1.8) * 30 * sc, wy = y - (45 + rise * 65) * sc;
       under.fillStyle(0xc9a3ff, 0.18 * fade).fillEllipse(x, y + 6 * sc, 136 * sc, 34 * sc);
-      under.fillStyle(0x8977c5, fade).fillEllipse(wx, wy, 70 * sc, 38 * sc).fillTriangle(wx + 24 * sc, wy, wx + 48 * sc, wy - 18 * sc, wx + 40 * sc, wy + 10 * sc);
-      under.fillStyle(0xd6c9f0, fade).fillEllipse(wx - 3 * sc, wy + 9 * sc, 55 * sc, 17 * sc);
-      under.lineStyle(1.5 * sc, 0x283452, fade).lineBetween(wx - 22 * sc, wy - 2 * sc, wx - 15 * sc, wy - 2 * sc);
+      under.fillStyle(0x9a91e0, fade).fillEllipse(wx - 6 * sc, wy + 4 * sc, 62 * sc, 36 * sc);
+      under.fillStyle(0xf6e6c8, fade).fillEllipse(wx - 12 * sc, wy + 4 * sc, 20 * sc, 34 * sc);
+      under.fillStyle(0x9a91e0, fade).fillCircle(wx + 20 * sc, wy - 8 * sc, 17 * sc);
+      under.fillStyle(0xfff1dc, fade).fillCircle(wx + 8 * sc, wy - 18 * sc, 6 * sc);
+      under.fillStyle(0x9a91e0, fade).fillCircle(wx + 34 * sc, wy - 2 * sc, 6 * sc).fillCircle(wx + 37 * sc, wy + 5 * sc, 5.5 * sc);
+      under.fillStyle(0xe7b8dc, fade).fillCircle(wx + 38 * sc, wy + 10 * sc, 4.5 * sc);
+      under.fillStyle(0x433d9a, fade).fillTriangle(wx + 6 * sc, wy - 20 * sc, wx + 34 * sc, wy - 22 * sc, wx + 8 * sc, wy - 46 * sc);
+      under.fillStyle(0xfff4dc, fade).fillCircle(wx + 6 * sc, wy - 46 * sc, 4.5 * sc).fillEllipse(wx + 20 * sc, wy - 21 * sc, 30 * sc, 8 * sc);
+      under.lineStyle(1.5 * sc, 0x283452, fade).lineBetween(wx + 20 * sc, wy - 8 * sc, wx + 27 * sc, wy - 7 * sc);
       if (chance(12, dt)) emit({ x: wx + rnd(-50, 50) * sc, y: wy + rnd(-30, 25) * sc, vx: rnd(-15, 15), vy: rnd(-35, -10), life: 1, size: 2.5 * sc, color: 0xffdf8d, shape: "star" });
       return true;
     }
@@ -394,10 +567,10 @@ export function drawCollectionVictory(
     case "winter-victory": {
       // A snow globe: a glassy dome with a swirl of snow.
       under.fillStyle(0xbfe8ff, 0.14 * fade).fillCircle(x, y - 18 * sc, 48 * sc);
-      g.lineStyle(2 * sc, 0xffffff, 0.6 * fade).strokeCircle(x, y - 18 * sc, 48 * sc);
-      g.lineStyle(3 * sc, 0xffffff, 0.35 * fade).beginPath();
-      g.arc(x, y - 18 * sc, 42 * sc, -2.6, -1.9);
-      g.strokePath();
+      under.lineStyle(2 * sc, 0xffffff, 0.6 * fade).strokeCircle(x, y - 18 * sc, 48 * sc);
+      under.lineStyle(3 * sc, 0xffffff, 0.35 * fade).beginPath();
+      under.arc(x, y - 18 * sc, 42 * sc, -2.6, -1.9);
+      under.strokePath();
       under.fillStyle(0x8a5a3a, fade).fillRoundedRect(x - 36 * sc, y + 24 * sc, 72 * sc, 10 * sc, 3 * sc);
       if (chance(30, dt)) {
         const a = rnd(0, TAU),
@@ -408,4 +581,48 @@ export function drawCollectionVictory(
     }
   }
   return false;
+}
+
+/**
+ * Auras: the piece's own ring and items, then its rarity flourish
+ * (tier-fx.ts). Returns false if the id is unknown.
+ */
+export function drawCollectionAura(g: G, id: string, x: number, y: number, now: number, reduced: boolean, front?: G, flat: number = WORLD_ART.groundY, lift = AURA_LIFT) {
+  if (!drawCollectionAuraBase(g, id, x, y, now, reduced, front, flat, lift)) return false;
+  auraFlourish(g, id, x, y, now, reduced, flat, front);
+  return true;
+}
+/** A one-off burst when the round greeting starts, plus its rarity flourish. */
+export function playCollectionEntrance(emit0: Emit, id: string, x: number, y: number, sc: number, flourishOnly = false) {
+  const emit: Emit = (p) => emit0({ ...p, glow: true });
+  const known = flourishOnly || baseEntrance(emit, id, x, y, sc);
+  if (known) entranceFlourish(emit, id, x, y, sc);
+  return known;
+}
+/**
+ * Victory finales (t seconds in), plus their rarity flourish. Everything
+ * draws on `under` and every particle is emitted `behind`: a finale plays
+ * behind the champion and never covers its face. `_front` (the layer in
+ * front of the fighter) is accepted for the call shape but never drawn on.
+ */
+export function drawCollectionVictory(
+  _front: G,
+  under: G,
+  emit: Emit,
+  chance: (rate: number, dt: number) => boolean,
+  id: string,
+  x: number,
+  y: number,
+  sc: number,
+  t: number,
+  dt: number,
+  first: boolean,
+) {
+  const emit0 = emit;
+  emit = (p) => emit0({ ...p, glow: true, behind: true });
+  const known = baseVictory(under, emit, chance, id, x, y, sc, t, dt, first);
+  // Rig-drawn pieces (Rockslide Flex) still get their flourish.
+  if (known || id === "rockslide-flex")
+    victoryFlourish(under, emit, chance, id, x, y, sc, t, dt);
+  return known;
 }

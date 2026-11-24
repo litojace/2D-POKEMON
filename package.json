@@ -17,13 +17,20 @@
     "build": "npm run build -w packages/shared && npm run build -w apps/client && npm run build -w apps/server",
     "typecheck": "tsc --noEmit -p apps/client && tsc --noEmit -p apps/server",
     "test": "vitest run",
-    "start": "node apps/server/dist/apps/server/src/index.js"
+    "start": "exec node apps/server/dist/apps/server/src/index.js",
+    "test:visual": "playwright test --config tests/visual/playwright.config.ts",
+    "build-posters": "node scripts/posters/build-posters.mjs",
+    "ios:build": "node scripts/check-native-env.mjs && npm run build -w packages/shared && npm run build:ios -w apps/client && npm exec -w apps/client -- cap sync ios",
+    "ios:open": "npm exec -w apps/client -- cap open ios"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.9",
+    "@playwright/test": "^1.56.0",
     "concurrently": "^9.2.0",
+    "fake-indexeddb": "6.2.5",
+    "pg": "8.23.1",
     "prettier": "^3.9.10",
     "typescript": "^5.9.0",
-    "vitest": "^3.2.0"
+    "vitest": "^4.1.12"
   }
 }

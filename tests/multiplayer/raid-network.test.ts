@@ -7,8 +7,13 @@ import { RAID_FUNCTIONS_MIGRATION } from "../../apps/server/src/accounts";
 import { TidewyrmArena } from "../../apps/server/src/raid-tidewyrm";
 import { SomnaraArena } from "../../apps/server/src/raid-somnara";
 import { GloomshadeArena } from "../../apps/server/src/raid-gloomshade";
-import { blankInput, type Reply } from "@arena/shared";
-import { raidDay } from "../../packages/shared/src/raid";
+import {
+  blankInput,
+  MetaCache,
+  unpackSnapshot,
+  type Reply,
+  type WireSnapshot,
+} from "@arena/shared";
 let server: ReturnType<typeof createArenaServer> | undefined;
 const sockets: Socket[] = [];
 afterEach(async () => {
@@ -50,37 +55,51 @@ const setup = async () => {
   };
   return { connect, recordRaid, accounts };
 };
-it("starts a regular-player solo raid, enforces Peril unlocks, and records a verified victory once outside Elo", async () => {
+it("starts a regular-player solo raid at the one difficulty and records a verified victory once outside Elo", async () => {
   const { connect, recordRaid } = await setup(),
     host = await connect();
   // Unknown boss IDs are rejected even now that the entire roster is playable.
   expect(
-    (await emit(host, "create", { name: "Raider", mode: "raid", boss: "unknown-boss" })).ok,
+    (
+      await emit(host, "create", {
+        name: "Raider",
+        mode: "raid",
+        boss: "unknown-boss",
+      })
+    ).ok,
   ).toBe(false);
-  const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: "grumblecrag" });
+  const created = await emit(host, "create", {
+    name: "Raider",
+    mode: "raid",
+    boss: "grumblecrag",
+  });
   expect(created.ok).toBe(true);
   const a = server!.rooms.get(created.code!) as RaidArena;
   expect(a).toBeInstanceOf(RaidArena);
   expect(a.raid.boss).toBe("grumblecrag");
-  expect(
-    (await emit(host, "raid-config", { peril: 3, daily: false })).ok,
-  ).toBe(false);
-  expect(
-    (await emit(host, "raid-config", { peril: 1, daily: false })).ok,
-  ).toBe(true);
+  // One difficulty: every raid is Peril 3, whatever an old client asks.
+  expect(a.raid.peril).toBe(3);
+  expect((await emit(host, "raid-config", { peril: 1, daily: false })).ok).toBe(
+    true,
+  );
+  expect(a.raid.peril).toBe(3);
   await emit(host, "ready");
   expect(a.phase).toBe("briefing");
   await emit(host, "instructions-ready");
   expect(a.phase).toBe("intermission");
+  // Two rites each, chosen before the fight.
   await emit(host, "rite", { id: a.raid.offers[created.id!][0] });
+  await emit(host, "rite", { id: a.raid.offers[created.id!][0] });
+  expect(a.raid.rites[created.id!]).toHaveLength(2);
   for (let i = 0; i < 125; i++) server!.step();
   expect(a.phase).toBe("playing");
   for (let stage = 1; stage <= 3; stage++) {
     a.damage(a.boss()!, 100000, created.id!);
     server!.step();
+    // No rite choice between chapters: the fight goes straight on.
     if (stage < 3) {
-      await emit(host, "rite", { id: a.raid.offers[created.id!][0] });
-      for (let i = 0; i < 125; i++) server!.step();
+      expect(a.phase).toBe("playing");
+      expect(a.raid.offers[created.id!]).toBeUndefined();
     }
   }
   server!.step();
@@ -90,7 +109,7 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
   expect(recordRaid.mock.calls[0][0]).toMatchObject({
     boss: "grumblecrag",
     partySize: 1,
-    peril: 1,
+    peril: 3,
     daily: false,
     weekly: false,
     feat: false,
@@ -104,26 +123,27 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
   expect(a.raid.result).toBeNull();
   expect(a.players).toHaveLength(2);
 });
-it("lets the host leave a daily raid after returning to the lobby without regular Peril 2 unlocked", async () => {
-  const { connect, accounts } = await setup(), host = await connect();
-  accounts.provider.rpc = async () => ({ highestPeril: 0, clears: 1, cosmetics: [], weekly: [] });
-  const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: raidDay().boss });
+it("rejects retired daily mode; raids stay at the one difficulty", async () => {
+  const { connect, accounts } = await setup(),
+    host = await connect();
+  accounts.provider.rpc = async () => ({
+    highestPeril: 0,
+    clears: 1,
+    cosmetics: [],
+    weekly: [],
+  });
+  const created = await emit(host, "create", {
+    name: "Raider",
+    mode: "raid",
+    boss: "grumblecrag",
+  });
   const a = server!.rooms.get(created.code!) as RaidArena;
-  expect((await emit(host, "raid-config", { peril: 2, daily: true })).ok).toBe(true);
-  await emit(host, "ready");
-  expect(a.phase).toBe("briefing");
-  a.forfeit(created.id!);
-  expect(a.phase).toBe("finished");
-  expect((await emit(host, "lobby")).ok).toBe(true);
-  expect(a.raid.daily).toBe(true);
-  expect(a.raid.peril).toBe(2);
-  // Daily access does not unlock regular Peril 2; the client must request Peril 1.
-  expect((await emit(host, "raid-config", { peril: 2, daily: false })).ok).toBe(false);
-  expect((await emit(host, "raid-config", { peril: 1, daily: false })).ok).toBe(true);
+  expect((await emit(host, "raid-config", { peril: 2, daily: true })).ok).toBe(
+    false,
+  );
+  expect((await emit(host, "raid-config", { peril: 1 })).ok).toBe(true);
   expect(a.raid.daily).toBe(false);
-  expect(a.raid.peril).toBe(1);
-  expect(a.heroes()).toHaveLength(1);
-  expect(a.heroes()[0].ready).toBe(false);
+  expect(a.raid.peril).toBe(3);
 });
 
 it("synchronizes four teammates against the same boss and preserves disconnect recovery", async () => {
@@ -182,9 +202,12 @@ it("broadcasts an equipped cosmetic and its removal to an existing room immediat
   const host = await connect();
   const created = await emit(host, "create", { name: "Raider", mode: "raid" });
   const address = server!.http.address() as { port: number };
+  // Decode as the client does: appearance arrives in versioned meta blocks.
+  const meta = new MetaCache();
   for (const cosmetic of ["cragbound", null]) {
     const update = new Promise<void>((resolve) => {
-      const listener = (state: any) => {
+      const listener = (wire: WireSnapshot) => {
+        const state = unpackSnapshot(wire, meta);
         if (
           (state.players.find((p: any) => p.id === created.id)?.raidLook
             ?.skin ?? null) === cosmetic
@@ -276,120 +299,313 @@ it("only reports an equipped slot after the database really kept it", async () =
   expect(stale.status).toBe(503);
   expect((await stale.json()).error).toContain(RAID_FUNCTIONS_MIGRATION);
 });
-it("opens Tidewyrm in its own arena and checks practice attacks belong to the boss", async () => {
+it("opens Tidewyrm in its own arena, and turns down an old client's boss practice", async () => {
   const { connect } = await setup(),
     host = await connect();
-  const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: "tidewyrm" });
+  const created = await emit(host, "create", {
+    name: "Raider",
+    mode: "raid",
+    boss: "tidewyrm",
+  });
   expect(created.ok).toBe(true);
   const a = server!.rooms.get(created.code!) as RaidArena;
   expect(a).toBeInstanceOf(TidewyrmArena);
   expect(a.raid.boss).toBe("tidewyrm");
-  // Grumblecrag's charge can't be practised here; Tidewyrm's dive can.
-  expect((await emit(host, "raid-drill", { kind: "charge" })).ok).toBe(false);
-  expect((await emit(host, "raid-drill", { kind: "dive" })).ok).toBe(true);
-  expect(a.raid.drill).toBe("dive");
+  // Boss practice is gone; a cached old client gets a clear answer.
+  const drill = await emit(host, "raid-drill", { kind: "dive" });
+  expect(drill.ok).toBe(false);
+  expect(drill.error).toContain("no longer available");
+  expect(a.phase).toBe("lobby");
+  a.start();
   expect(a.arenaId).toBe("lagoon");
 });
-it("opens Gloomshade in the Lantern Yard and practises its own attacks", async () => {
+it("opens Gloomshade in the Lantern Yard", async () => {
   const { connect } = await setup(),
     host = await connect();
-  const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: "gloomshade" });
+  const created = await emit(host, "create", {
+    name: "Raider",
+    mode: "raid",
+    boss: "gloomshade",
+  });
   expect(created.ok).toBe(true);
   const a = server!.rooms.get(created.code!) as RaidArena;
   expect(a).toBeInstanceOf(GloomshadeArena);
-  expect((await emit(host, "raid-drill", { kind: "dive" })).ok).toBe(false);
-  expect((await emit(host, "raid-drill", { kind: "split" })).ok).toBe(true);
-  expect(a.raid.drill).toBe("split");
+  a.start();
   expect(a.arenaId).toBe("lantern-yard");
 });
 
 it("sends Somnara's dream only to its authenticated Dreamer, with Lucid/reveal exceptions and no spectator leak", async () => {
   const { connect, accounts } = await setup();
-  accounts.provider.rpc = async () => ({ clears: 1, highestPeril: 3, cosmetics: [], weekly: [], bosses: { grumblecrag: { clears: 1, highestPeril: 3 } } });
-  const host = await connect(), peer = await connect(), watcher = await connect();
-  const created = await emit(host, "create", { name: "Dream host", mode: "raid", boss: "somnara" });
+  accounts.provider.rpc = async () => ({
+    clears: 1,
+    highestPeril: 3,
+    cosmetics: [],
+    weekly: [],
+    bosses: { grumblecrag: { clears: 1, highestPeril: 3 } },
+  });
+  const host = await connect(),
+    peer = await connect(),
+    watcher = await connect();
+  const created = await emit(host, "create", {
+    name: "Dream host",
+    mode: "raid",
+    boss: "somnara",
+  });
   expect(created.ok).toBe(true);
-  const joined = await emit(peer, "join", { name: "Dream friend", code: created.code }); expect(joined.ok).toBe(true);
+  const joined = await emit(peer, "join", {
+    name: "Dream friend",
+    code: created.code,
+  });
+  expect(joined.ok).toBe(true);
   expect((await emit(watcher, "watch", { code: created.code })).ok).toBe(true);
   const a = server!.rooms.get(created.code!) as SomnaraArena;
-  expect(a).toBeInstanceOf(SomnaraArena); a.start(); a.phase = "playing";
-  (a as any).started = true; (a as any).nextAttack = Infinity;
+  expect(a).toBeInstanceOf(SomnaraArena);
+  a.start();
+  a.phase = "playing";
+  (a as any).started = true;
+  (a as any).nextAttack = Infinity;
   (a as any).startAttack("dream-sequence", a.heroes()[0]);
   const d = a.raid.dream!;
-  const socketById = new Map([[created.id!, host], [joined.id!, peer]]);
-  const dreamer = socketById.get(d.dreamerId)!, other = dreamer === host ? peer : host;
+  const socketById = new Map([
+    [created.id!, host],
+    [joined.id!, peer],
+  ]);
+  const dreamer = socketById.get(d.dreamerId)!,
+    other = dreamer === host ? peer : host;
   const otherId = dreamer === host ? joined.id! : created.id!;
-  const state = (socket: Socket, predicate: (s: any) => boolean) => new Promise<any>((resolve, reject) => {
-    const timeout = setTimeout(() => { socket.off("state", onState); reject(new Error("No matching Somnara snapshot")); }, 2000);
-    const onState = (snapshot: any) => { if (!predicate(snapshot)) return; clearTimeout(timeout); socket.off("state", onState); resolve(snapshot); };
-    socket.on("state", onState);
-  });
-  let pending = [dreamer, other, watcher].map(s => state(s, v => v.raid?.dream?.id === d.id));
+  const state = (socket: Socket, predicate: (s: any) => boolean) =>
+    new Promise<any>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        socket.off("state", onState);
+        reject(new Error("No matching Somnara snapshot"));
+      }, 2000);
+      const onState = (snapshot: any) => {
+        if (!predicate(snapshot)) return;
+        clearTimeout(timeout);
+        socket.off("state", onState);
+        resolve(snapshot);
+      };
+      socket.on("state", onState);
+    });
+  let pending = [dreamer, other, watcher].map((s) =>
+    state(s, (v) => v.raid?.dream?.id === d.id),
+  );
   for (let i = 0; i < 6; i++) server!.step();
   let [own, ally, publicView] = await Promise.all(pending);
-  expect(own.raidDream.full).toBe(true); expect(own.raidDream.runes).toHaveLength(d.length);
-  expect(ally.raidDream).toBeUndefined(); expect(publicView.raidDream).toBeUndefined();
-  expect(JSON.stringify(ally)).not.toContain('"runes"'); expect(JSON.stringify(publicView)).not.toContain('"runes"');
+  expect(own.raidDream.full).toBe(true);
+  expect(own.raidDream.runes).toHaveLength(d.length);
+  expect(ally.raidDream).toBeUndefined();
+  expect(publicView.raidDream).toBeUndefined();
+  expect(JSON.stringify(ally)).not.toContain('"runes"');
+  expect(JSON.stringify(publicView)).not.toContain('"runes"');
   expect((await emit(other, "raid-rune", { rune: "circle" })).ok).toBe(false);
-  expect((await emit(other, "raid-rune", { rune: "circle", playerId: d.dreamerId })).ok).toBe(false);
+  expect(
+    (await emit(other, "raid-rune", { rune: "circle", playerId: d.dreamerId }))
+      .ok,
+  ).toBe(false);
   expect((await emit(dreamer, "raid-rune", { rune: "circle" })).ok).toBe(true);
   a.raid.rites[otherId] = ["lucid"];
-  pending = [state(other, v => v.raidDream?.id === d.id && !v.raidDream.full)];
+  pending = [
+    state(other, (v) => v.raidDream?.id === d.id && !v.raidDream.full),
+  ];
   for (let i = 0; i < 6; i++) server!.step();
-  ally = (await Promise.all(pending))[0]; expect(ally.raidDream.runes).toHaveLength(1);
+  ally = (await Promise.all(pending))[0];
+  expect(ally.raidDream.runes).toHaveLength(1);
   a.heroes()[0].character = "mystowl";
   const { CHARACTERS } = await import("@arena/shared");
-  a.cast(a.heroes()[0], CHARACTERS.mystowl.skills.find(s => s.id === "thoughtstrike")!);
-  pending = [state(other, v => v.raidDream?.full), state(watcher, v => v.raid?.dream?.id === d.id)];
+  a.cast(
+    a.heroes()[0],
+    CHARACTERS.mystowl.skills.find((s) => s.id === "mind-maze")!,
+  );
+  pending = [
+    state(other, (v) => v.raidDream?.full),
+    state(watcher, (v) => v.raid?.dream?.id === d.id),
+  ];
   for (let i = 0; i < 6; i++) server!.step();
   [ally, publicView] = await Promise.all(pending);
-  expect(ally.raidDream.runes).toHaveLength(d.length); expect(publicView.raidDream).toBeUndefined();
+  expect(ally.raidDream.runes).toHaveLength(d.length);
+  expect(publicView.raidDream).toBeUndefined();
   a.heroes()[0].character = "voltkit";
   a.raid.rites[otherId] = [];
-  (a as any).beginDream(); const next = a.raid.dream!;
-  const newOther = socketById.get(a.heroes().find(p => p.id !== next.dreamerId)!.id)!;
-  pending = [state(newOther, v => v.raid?.dream?.id === next.id), state(watcher, v => v.raid?.dream?.id === next.id)];
+  (a as any).beginDream();
+  const next = a.raid.dream!;
+  const newOther = socketById.get(
+    a.heroes().find((p) => p.id !== next.dreamerId)!.id,
+  )!;
+  pending = [
+    state(newOther, (v) => v.raid?.dream?.id === next.id),
+    state(watcher, (v) => v.raid?.dream?.id === next.id),
+  ];
   for (let i = 0; i < 6; i++) server!.step();
   [ally, publicView] = await Promise.all(pending);
-  expect(ally.raidDream).toBeUndefined(); expect(publicView.raidDream).toBeUndefined();
+  expect(ally.raidDream).toBeUndefined();
+  expect(publicView.raidDream).toBeUndefined();
 });
 
-it("opens Prismatail for a co-op party, validates its drills, and broadcasts the relay state", async () => {
-  const {connect,accounts}=await setup();accounts.provider.rpc=async()=>({clears:1,highestPeril:3,cosmetics:[],weekly:[],bosses:{grumblecrag:{clears:1,highestPeril:3}}});
-  const host=await connect(),peer=await connect();
-  const created=await emit(host,'create',{name:'Light host',mode:'raid',boss:'prismatail'});expect(created.ok).toBe(true);
-  const joined=await emit(peer,'join',{name:'Light friend',code:created.code});expect(joined.ok).toBe(true);
-  const a=server!.rooms.get(created.code!) as RaidArena;expect(a.constructor.name).toBe('PrismatailArena');
-  expect((await emit(peer,'raid-drill',{kind:'light-relay'})).ok).toBe(false);
-  expect((await emit(host,'raid-drill',{kind:'dream-sequence'})).ok).toBe(false);
-  expect((await emit(host,'raid-drill',{kind:'light-relay'})).ok).toBe(true);
-  a.phase='playing';a.raid.phase=3;a.heroes().forEach((p,i)=>{p.x=470;p.y=i?600:300});(a as any).started=true;(a as any).nextAttack=Infinity;
-  const pending=new Promise<any>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('No Prismatail relay snapshot')),2000);peer.on('state',s=>{if(s.raid?.lightLinks?.length){clearTimeout(timer);resolve(s);}})});
-  for(let i=0;i<70;i++)server!.step();const snapshot=await pending;
-  expect(snapshot.arena).toBe('sun-atrium');expect(snapshot.raid.mirrors).toHaveLength(4);expect(snapshot.raid.lightLinks.some((s:any)=>s.beam===1)).toBe(true);expect(snapshot.raidDream).toBeUndefined();
-  expect((await emit(host,'raid-drill',{kind:null})).ok).toBe(true);
+it("opens Prismatail for a co-op party and broadcasts the relay state", async () => {
+  const { connect, accounts } = await setup();
+  accounts.provider.rpc = async () => ({
+    clears: 1,
+    highestPeril: 3,
+    cosmetics: [],
+    weekly: [],
+    bosses: { grumblecrag: { clears: 1, highestPeril: 3 } },
+  });
+  const host = await connect(),
+    peer = await connect();
+  const created = await emit(host, "create", {
+    name: "Light host",
+    mode: "raid",
+    boss: "prismatail",
+  });
+  expect(created.ok).toBe(true);
+  const joined = await emit(peer, "join", {
+    name: "Light friend",
+    code: created.code,
+  });
+  expect(joined.ok).toBe(true);
+  const a = server!.rooms.get(created.code!) as RaidArena;
+  expect(a.constructor.name).toBe("PrismatailArena");
+  a.start();
+  a.phase = "playing";
+  a.raid.phase = 3;
+  a.heroes().forEach((p, i) => {
+    p.x = 470;
+    p.y = i ? 600 : 300;
+  });
+  (a as any).started = true;
+  (a as any).nextAttack = Infinity;
+  const pending = new Promise<any>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error("No Prismatail relay snapshot")),
+      2000,
+    );
+    peer.on("state", (s) => {
+      if (s.raid?.lightLinks?.length) {
+        clearTimeout(timer);
+        resolve(s);
+      }
+    });
+  });
+  for (let i = 0; i < 70; i++) server!.step();
+  const snapshot = await pending;
+  expect(snapshot.arena).toBe("sun-atrium");
+  expect(snapshot.raid.mirrors).toHaveLength(4);
+  expect(snapshot.raid.lightLinks.some((s: any) => s.beam === 1)).toBe(true);
+  expect(snapshot.raidDream).toBeUndefined();
 });
 
-it("creates Emberwing in the Sky Terrace, restricts practice to the host, and sends airborne brazier state",async()=>{
- const {connect,accounts}=await setup();accounts.provider.rpc=async()=>({clears:1,highestPeril:3,cosmetics:[],weekly:[],bosses:{grumblecrag:{clears:1,highestPeril:3}}});
- const host=await connect(),peer=await connect();const created=await emit(host,'create',{name:'Fire host',mode:'raid',boss:'emberwing'});expect(created.ok).toBe(true);
- expect((await emit(peer,'join',{name:'Fire friend',code:created.code})).ok).toBe(true);
- const a=server!.rooms.get(created.code!)as RaidArena;expect(a.constructor.name).toBe('EmberwingArena');
- expect((await emit(peer,'raid-drill',{kind:'brazier-lighting'})).ok).toBe(false);expect((await emit(host,'raid-drill',{kind:'light-relay'})).ok).toBe(false);
- expect((await emit(host,'raid-drill',{kind:'brazier-lighting'})).ok).toBe(true);a.phase='playing';a.raid.phase=2;(a as any).started=true;(a as any).nextAttack=Infinity;
- const pending=new Promise<any>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('No Emberwing snapshot')),2000);peer.on('state',s=>{if(s.raid?.airborne&&s.raid?.braziers?.length===3){clearTimeout(timer);resolve(s);}})});
- for(let i=0;i<10;i++)server!.step();const snapshot=await pending;expect(snapshot.arena).toBe('sky-terrace');expect(snapshot.raid.braziers.every((b:any)=>Number.isFinite(b.progress))).toBe(true);expect(snapshot.raidDream).toBeUndefined();
- expect((await emit(host,'raid-drill',{kind:null})).ok).toBe(true);expect(a.raid.airborne).toBe(false);
+it("creates Emberwing in the Sky Terrace and sends airborne brazier state", async () => {
+  const { connect, accounts } = await setup();
+  accounts.provider.rpc = async () => ({
+    clears: 1,
+    highestPeril: 3,
+    cosmetics: [],
+    weekly: [],
+    bosses: { grumblecrag: { clears: 1, highestPeril: 3 } },
+  });
+  const host = await connect(),
+    peer = await connect();
+  const created = await emit(host, "create", {
+    name: "Fire host",
+    mode: "raid",
+    boss: "emberwing",
+  });
+  expect(created.ok).toBe(true);
+  expect(
+    (await emit(peer, "join", { name: "Fire friend", code: created.code })).ok,
+  ).toBe(true);
+  const a = server!.rooms.get(created.code!) as RaidArena;
+  expect(a.constructor.name).toBe("EmberwingArena");
+  a.start();
+  a.phase = "playing";
+  a.raid.phase = 2;
+  (a as any).takeoff();
+  (a as any).started = true;
+  (a as any).nextAttack = Infinity;
+  const pending = new Promise<any>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error("No Emberwing snapshot")),
+      2000,
+    );
+    peer.on("state", (s) => {
+      if (s.raid?.airborne && s.raid?.braziers?.length === 3) {
+        clearTimeout(timer);
+        resolve(s);
+      }
+    });
+  });
+  for (let i = 0; i < 10; i++) server!.step();
+  const snapshot = await pending;
+  expect(snapshot.arena).toBe("sky-terrace");
+  expect(
+    snapshot.raid.braziers.every((b: any) => Number.isFinite(b.progress)),
+  ).toBe(true);
+  expect(snapshot.raidDream).toBeUndefined();
 });
 
-it("starts Storm Twins with both NPCs acknowledged, broadcasts separate health, and records only a real two-twin victory",async()=>{
- const{connect,accounts,recordRaid}=await setup();accounts.provider.rpc=async()=>({clears:1,highestPeril:3,cosmetics:[],weekly:[],bosses:{grumblecrag:{clears:1,highestPeril:3}}});
- const host=await connect(),peer=await connect();const created=await emit(host,'create',{name:'Storm host',mode:'raid',boss:'storm-twins'});expect(created.ok).toBe(true);
- expect((await emit(peer,'join',{name:'Storm friend',code:created.code})).ok).toBe(true);await emit(host,'ready');await emit(peer,'ready');
- const a=server!.rooms.get(created.code!)as RaidArena;expect(a.constructor.name).toBe('StormTwinsArena');expect(a.players.filter(p=>p.raidBoss)).toHaveLength(2);expect(a.raid.partySize).toBe(2);expect(a.phase).toBe('briefing');
- await emit(host,'instructions-ready');await emit(peer,'instructions-ready');expect(a.phase).toBe('intermission');for(const[id,offer]of Object.entries(a.raid.offers))await emit(id===created.id?host:peer,'rite',{id:offer[0]});for(let i=0;i<125;i++)server!.step();expect(a.phase).toBe('playing');
- a.raid.phase=3;(a as any).started=true;(a as any).nextAttack=Infinity;const bosses=a.players.filter(p=>p.raidBoss);
- const snapshot=new Promise<any>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('No twin snapshot')),2000);peer.on('state',s=>{if(s.raid?.twins?.length===2){clearTimeout(timer);resolve(s);}})});
- for(let i=0;i<6;i++)server!.step();const state=await snapshot;expect(state.arena).toBe('conductor-ring');expect(state.players.filter((p:any)=>p.raidBoss)).toHaveLength(2);
- a.damage(bosses[0],100000,created.id!);server!.step();await new Promise(r=>setTimeout(r,10));expect(a.phase).toBe('playing');expect(recordRaid).not.toHaveBeenCalled();a.damage(bosses[1],100000,created.id!);server!.step();await new Promise(r=>setTimeout(r,20));expect(a.raid.result).toBe('victory');expect(recordRaid).toHaveBeenCalledTimes(1);expect(recordRaid.mock.calls[0][0].players).toHaveLength(2);expect(recordRaid.mock.calls[0][0].feat).toBe(true);
+it("starts Storm Twins with both NPCs acknowledged, broadcasts separate health, and records only a real two-twin victory", async () => {
+  const { connect, accounts, recordRaid } = await setup();
+  accounts.provider.rpc = async () => ({
+    clears: 1,
+    highestPeril: 3,
+    cosmetics: [],
+    weekly: [],
+    bosses: { grumblecrag: { clears: 1, highestPeril: 3 } },
+  });
+  const host = await connect(),
+    peer = await connect();
+  const created = await emit(host, "create", {
+    name: "Storm host",
+    mode: "raid",
+    boss: "storm-twins",
+  });
+  expect(created.ok).toBe(true);
+  expect(
+    (await emit(peer, "join", { name: "Storm friend", code: created.code })).ok,
+  ).toBe(true);
+  await emit(host, "ready");
+  await emit(peer, "ready");
+  const a = server!.rooms.get(created.code!) as RaidArena;
+  expect(a.constructor.name).toBe("StormTwinsArena");
+  expect(a.players.filter((p) => p.raidBoss)).toHaveLength(2);
+  expect(a.raid.partySize).toBe(2);
+  expect(a.phase).toBe("briefing");
+  await emit(host, "instructions-ready");
+  await emit(peer, "instructions-ready");
+  expect(a.phase).toBe("intermission");
+  for (let pick = 0; pick < 2; pick++)
+    for (const [id, offer] of Object.entries(a.raid.offers))
+      await emit(id === created.id ? host : peer, "rite", { id: offer[0] });
+  for (let i = 0; i < 125; i++) server!.step();
+  expect(a.phase).toBe("playing");
+  a.raid.phase = 3;
+  (a as any).started = true;
+  (a as any).nextAttack = Infinity;
+  const bosses = a.players.filter((p) => p.raidBoss);
+  const snapshot = new Promise<any>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("No twin snapshot")), 2000);
+    peer.on("state", (s) => {
+      if (s.raid?.twins?.length === 2) {
+        clearTimeout(timer);
+        resolve(s);
+      }
+    });
+  });
+  for (let i = 0; i < 6; i++) server!.step();
+  const state = await snapshot;
+  expect(state.arena).toBe("conductor-ring");
+  expect(state.players.filter((p: any) => p.raidBoss)).toHaveLength(2);
+  a.damage(bosses[0], 100000, created.id!);
+  server!.step();
+  await new Promise((r) => setTimeout(r, 10));
+  expect(a.phase).toBe("playing");
+  expect(recordRaid).not.toHaveBeenCalled();
+  a.damage(bosses[1], 100000, created.id!);
+  server!.step();
+  await new Promise((r) => setTimeout(r, 20));
+  expect(a.raid.result).toBe("victory");
+  expect(recordRaid).toHaveBeenCalledTimes(1);
+  expect(recordRaid.mock.calls[0][0].players).toHaveLength(2);
+  expect(recordRaid.mock.calls[0][0].feat).toBe(true);
 });

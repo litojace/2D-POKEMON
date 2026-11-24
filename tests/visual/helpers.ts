@@ -1,0 +1,257 @@
+import { expect, type Page, type TestInfo } from "@playwright/test";
+
+/**
+ * Load the client signed in and wait for the hub. The hub opens on the Lobby
+ * (the screen after login); the Plaza is its other tab.
+ */
+export async function openHub(page: Page) {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  // This machine renders on the CPU (a few frames a second), so Auto would
+  // always pick Low: pin High unless a test asks for Auto (__graphicsAuto)
+  // or picked a quality itself.
+  await page.addInitScript(() => {
+    try {
+      if (
+        !(window as any).__graphicsAuto &&
+        localStorage.getItem("ea-graphics") === null
+      )
+        localStorage.setItem("ea-graphics", "high");
+      if (localStorage.getItem("ea-hub-scene") === null)
+        localStorage.setItem("ea-hub-scene", "lobby");
+    } catch {
+      /* No storage: Auto. */
+    }
+    // Tests find the client's module URLs in resource timing (the dev
+    // server serves them by path). Its buffer holds 250 entries by default
+    // and drops later ones; the hub now loads about that many, so a module
+    // loaded late (boss-prepaint.ts) went missing.
+    performance.setResourceTimingBufferSize(5000);
+  });
+  await page.goto("/");
+  await page.waitForFunction(() => !!(window as any).__sock);
+  // The client listens for "connect" once its account has loaded.
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => (window as any).__sock.fire("connect"));
+        return page.locator("#lobby-play").isVisible();
+      },
+      { timeout: 30_000, intervals: [500, 1000] },
+    )
+    .toBe(true);
+  // The startup curtain lifts once the hub is complete underneath. On a
+  // slow runner that is late: with the CPU 4x slowed it reached 100% after
+  // about 15-18 s and was gone at about 21 s (the status's reading pause,
+  // then the fade), past the default 20 s (quick-match 956x440 on main,
+  // 21 Nov). It must still lift: this only waits longer for it.
+  await expect(page.locator("#server-startup")).toHaveCount(0, {
+    timeout: 60_000,
+  });
+  return errors;
+}
+
+/** The hub, always starting on the Lobby. */
+/**
+ * A new account (level 5 or below) gets the Lobby tour (hub-tour.ts) over
+ * the Lobby. Specs about something else mark it seen for the harness's
+ * account, so it doesn't cover what they click.
+ */
+export async function skipTour(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem(
+        "arena-tour:11111111-1111-4111-8111-111111111111",
+        "done",
+      );
+    } catch {
+      /* No storage. */
+    }
+  });
+}
+
+export async function openLobby(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem("ea-hub-scene", "lobby");
+    } catch {
+      /* No storage. */
+    }
+  });
+  return openHub(page);
+}
+
+/** The hub's Plaza tab (the harness runs the real PlazaWorld in the page). */
+export async function openPlaza(page: Page) {
+  const errors = await openLobby(page);
+  await page.evaluate(() => localStorage.setItem("ea-plaza-help", "1"));
+  await page.click('#hub-scenes [data-hub-scene="plaza"]');
+  await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__plazaWorld.size))
+    .toBe(1);
+  // Midday, whatever the clock says (night lighting is slow on a CPU renderer).
+  await page.evaluate(() => (window as any).__plaza.setTod(0.42));
+  return errors;
+}
+
+/**
+ * Leaving a raid room returns to the boss list (that boss's page, opened
+ * after the Lobby is back), not to the Lobby: close it with Back to the
+ * Lobby and wait until it has gone.
+ */
+export async function closeRaids(page: Page) {
+  const hall = page.locator(".ui-panel.rh-room:not([data-ui-leaving])");
+  await expect(hall).toBeVisible({ timeout: 20_000 });
+  await hall.locator("[data-ui-close]").first().click();
+  await expect(page.locator(".ui-panel.rh-room")).toHaveCount(0, {
+    timeout: 10_000,
+  });
+}
+
+/** The Play panel (private rooms, bots, solo test), from the Lobby's mode menu. */
+export async function openPlayPanel(page: Page) {
+  await page.click("#lobby-mode");
+  await page.click('#lobby-mode-menu [data-lobby-action="more-play"]');
+  await expect(page.locator("#join")).toBeVisible();
+  // The mode menu closes as the play drawer opens over it.
+  await expect(page.locator("#lobby-mode-menu")).toBeHidden();
+}
+
+/*
+ * The play drawer shows only Join / Watch and your name; the room types,
+ * bot levels and the practice room are the Lobby's mode menu. Their buttons
+ * stay in the drawer, hidden, because PLAY starts matches through them
+ * (lobbyPlay in main.ts). Tests that only need a match press them directly:
+ * the same handlers PLAY runs.
+ */
+const pressHidden = (page: Page, selector: string) =>
+  page.evaluate((s) => {
+    const b = document.querySelector<HTMLButtonElement>(s);
+    if (!b) throw new Error(`no ${s}`);
+    b.click();
+  }, selector);
+/** Create a private room (the fake server decides what kind). */
+export const createRoom = (page: Page) => pressHidden(page, "#play-create");
+/** The practice room. */
+export const startPractice = (page: Page) => pressHidden(page, "#practice");
+/** Choose the room type a created room will have. */
+export const pickRoomMode = (page: Page, mode: string) =>
+  pressHidden(page, `#menu [data-mode="${mode}"]`);
+
+/**
+ * A Lobby screen. The menu rail has fighters, shop, raids, missions, ranks
+ * and friends; the Wardrobe is the Shop's other tab, and the Journey opens
+ * from its card.
+ */
+export async function hubMenu(page: Page, action: string) {
+  if (action === "wardrobe") return openWardrobe(page);
+  if (action === "journey") return page.click("#lobby-journey-card");
+  await page.click(`.lobby-rail [data-lobby-action="${action}"]`);
+}
+
+/** The Wardrobe: the Shop's other tab. */
+export async function openWardrobe(page: Page) {
+  await page.click('.lobby-rail [data-lobby-action="shop"]');
+  await page.click('.fit-room [data-ui-mode="wardrobe"]');
+  await expect(page.locator(".fit-room")).toHaveAttribute(
+    "data-fit-mode",
+    "wardrobe",
+  );
+}
+
+/**
+ * Push the prepared room's snapshot until the battle screen is up.
+ *
+ * The first battle of a page boots Phaser's WebGL renderer. This machine does
+ * GL on the CPU (SwiftShader), so for 10–25 s after that boot starts the page
+ * barely runs a task, and every evaluate here waits behind it: a spec that
+ * pushed "playing" itself before calling this used to burn its whole 20 s
+ * budget on a single round trip, though the battle was already up. So push and
+ * check in one round trip, and give the boot room. A flow that never reaches
+ * the battle still fails here.
+ */
+export async function pushUntilBattle(page: Page) {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          (window as any).__push();
+          return document.body.classList.contains("battle-active");
+        }),
+      { timeout: 60_000, intervals: [400] },
+    )
+    .toBe(true);
+  // A few more frames so the floor and fighters settle.
+  for (let i = 0; i < 4; i++) {
+    await page.evaluate(() => (window as any).__push());
+    await page.waitForTimeout(300);
+  }
+}
+
+export async function snap(page: Page, info: TestInfo, name: string) {
+  // Finish CSS transitions first: this machine renders on the CPU, a few
+  // frames a second, so a sheet sliding in can still be off-screen.
+  const body = await page.screenshot({ animations: "disabled" });
+  await info.attach(name, { body, contentType: "image/png" });
+  // Locally, VISUAL_SHOTS=<folder> also saves each screen there to look over.
+  const dir = process.env.VISUAL_SHOTS;
+  if (dir) {
+    const { mkdirSync, writeFileSync } = await import("node:fs");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(`${dir}/${name}.png`, body);
+  }
+}
+
+/**
+ * Let the UI motion end (ui/motion.ts): every finite animation jumps to its
+ * end, so a screen sliding in or a stage gliding aside is measured where it
+ * settles, and a screen fading out is gone. Looping animations (an idle bob,
+ * PLAY's sweep) keep running.
+ */
+export const settle = (page: Page) =>
+  page.evaluate(async () => {
+    for (const a of document.getAnimations())
+      if (
+        a.effect?.getTiming().iterations !== Infinity &&
+        a.playState !== "finished"
+      )
+        a.finish();
+    // Let what waits on them (removing a closed screen) run.
+    await new Promise((r) => setTimeout(r, 0));
+  });
+
+export type Box = { x: number; y: number; width: number; height: number };
+export const box = async (page: Page, selector: string) => {
+  await settle(page);
+  return page
+    .locator(selector)
+    .first()
+    .evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+};
+/** Is `inner` inside `outer`, give or take a pixel? */
+export const inside = (inner: Box, outer: Box) =>
+  inner.x >= outer.x - 1 &&
+  inner.y >= outer.y - 1 &&
+  inner.x + inner.width <= outer.x + outer.width + 1 &&
+  inner.y + inner.height <= outer.y + outer.height + 1;
+
+/**
+ * A computed colour in rgb()/rgba() form. Colours made with color-mix()
+ * (the see-through shades of a token, ui/tokens.css) come back from
+ * getComputedStyle as `color(srgb r g b / a)`; this writes them the way
+ * plain colours come back, so a test can compare either.
+ */
+export const asRgb = (css: string) =>
+  css.replace(
+    /color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?\)/g,
+    (_, r, g, b, a) => {
+      const c = [r, g, b].map((v) => Math.round(parseFloat(v) * 255));
+      return a === undefined
+        ? `rgb(${c.join(", ")})`
+        : `rgba(${c.join(", ")}, ${parseFloat(a)})`;
+    },
+  );

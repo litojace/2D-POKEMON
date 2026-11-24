@@ -4,6 +4,9 @@ import { CHAMPION_SKIN_BY_ID } from "../../packages/shared/src/shop";
 
 const mock = vi.hoisted(() => ({
   scene: undefined as any,
+  game: undefined as any,
+  resize: vi.fn(),
+  onResize: undefined as undefined | (() => void),
   render: vi.fn(),
   reset: vi.fn(),
   destroy: vi.fn(),
@@ -72,8 +75,14 @@ vi.mock("phaser", () => ({
       canvas = mock.canvas;
       isRunning = true;
       loop = mock.loop;
-      scale = { parent: undefined, refresh: vi.fn() };
+      scale = {
+        parent: undefined,
+        refresh: vi.fn(),
+        width: 400,
+        resize: mock.resize,
+      };
       constructor(config: any) {
+        mock.game = this;
         mock.games();
         mock.scene = new config.scene();
       }
@@ -130,8 +139,11 @@ function panel(
       previewStage: String(stage),
       previewAction: action,
     },
+    getBoundingClientRect: vi.fn(() => ({ width: 400, height: 260 })),
+    querySelector: () => null,
     getAttribute: () => "Snowcap animated preview",
     setAttribute: vi.fn(),
+    removeAttribute: vi.fn(),
     appendChild: vi.fn(),
   };
   const compare = {
@@ -204,6 +216,16 @@ beforeEach(() => {
       disconnect() {}
     },
   );
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: () => void) {
+        mock.onResize = callback;
+      }
+      observe() {}
+      disconnect() {}
+    },
+  );
   vi.stubGlobal("requestAnimationFrame", (fn: () => void) => setTimeout(fn, 0));
   vi.stubGlobal("cancelAnimationFrame", clearTimeout);
 });
@@ -213,6 +235,36 @@ afterEach(() => {
 });
 
 describe("Shop live previews", () => {
+  it("sizes the first scene even when the game has not started its loop", () => {
+    const p = panel();
+    p.host.getBoundingClientRect.mockReturnValue({ width: 400, height: 600 });
+    const dispose = mountShopPreview(p.element);
+    mock.game.isRunning = false;
+    // WebKit delivers the initial observation before Phaser finishes booting.
+    mock.onResize!();
+    expect(mock.resize).not.toHaveBeenCalled();
+    mock.scene.create();
+    expect(mock.resize).toHaveBeenLastCalledWith(400, 600);
+    mock.game.isRunning = true;
+    draw();
+    expect(mock.scene.cameras.main.setZoom).toHaveBeenLastCalledWith(1);
+    dispose();
+  });
+
+  it("fills a tall preview on resize without moving the fighter or reviving a disposed preview", () => {
+    const { host, dispose } = preview();
+    host.getBoundingClientRect.mockReturnValue({ width: 400, height: 600 });
+    mock.onResize!();
+    draw();
+    expect(mock.resize).toHaveBeenLastCalledWith(400, 600);
+    expect(mock.scene.cameras.main.setZoom).toHaveBeenLastCalledWith(1);
+    expect(mock.render.mock.lastCall!.slice(1, 3)).toEqual([200, 154]);
+    dispose();
+    mock.resize.mockClear();
+    host.getBoundingClientRect.mockReturnValue({ width: 400, height: 300 });
+    mock.onResize!();
+    expect(mock.resize).not.toHaveBeenCalled();
+  });
   it("stops the render loop offscreen, ignores old hosts, and wakes to dispose", () => {
     const { host, dispose } = preview();
     draw();
@@ -245,6 +297,41 @@ describe("Shop live previews", () => {
     draw();
     expect(mock.render.mock.lastCall![0].skin).toBeNull();
     expect(mock.loop.running).toBe(false);
+    dispose();
+  });
+  it("shows the original look only while Hold to compare is held (fitting room)", () => {
+    const p = panel();
+    Object.assign(p.compare, {
+      dataset: { previewCompare: "hold" },
+      setPointerCapture: vi.fn(),
+    });
+    const dispose = mountShopPreview(p.element);
+    mock.scene.create();
+    draw();
+    const hold = p.compare as unknown as {
+      onclick: unknown;
+      onpointerdown: (e: object) => void;
+      onpointerup: () => void;
+      onkeydown: (e: object) => void;
+      onkeyup: (e: object) => void;
+    };
+    // Holding is not a toggle: a click does nothing on its own.
+    expect(hold.onclick).toBeNull();
+    hold.onpointerdown({ pointerId: 1, preventDefault: vi.fn() });
+    draw();
+    expect(mock.render.mock.lastCall![0].skin).toBeNull();
+    expect(p.host.dataset).toMatchObject({ original: "true" });
+    hold.onpointerup();
+    draw();
+    expect(mock.render.mock.lastCall![0].skin).not.toBeNull();
+    expect(p.host.dataset).toMatchObject({ original: "false" });
+    // Keyboard: Space held down shows the original, released goes back.
+    hold.onkeydown({ key: " ", repeat: false, preventDefault: vi.fn() });
+    expect(p.host.dataset).toMatchObject({ original: "true" });
+    hold.onkeyup({ key: " " });
+    expect(p.host.dataset).toMatchObject({ original: "false" });
+    // The label stays "Hold to compare" (the old toggle renamed itself).
+    expect(p.compare.textContent).toBe("Compare original");
     dispose();
   });
   it("loads only the front-facing textures needed by the Shop", () => {
@@ -294,7 +381,7 @@ describe("Shop live previews", () => {
         angle: pose.angle,
         x,
         y,
-      }).toEqual({ speed: 0, dash: false, angle: Math.PI / 2, x: 200, y: 174 });
+      }).toEqual({ speed: 0, dash: false, angle: Math.PI / 2, x: 200, y: 154 });
       expect(pose.greet || pose.victory).toBe(false);
     }
     dispose();
@@ -409,19 +496,129 @@ describe("Shop live previews", () => {
     expect(mock.textures.has("voltkit-voltkit-snowcap-1")).toBe(true);
     dispose();
   });
-  it("keeps frames static and releases the renderer even if a load is unfinished", () => {
+  it.each(["galaxy-frame"])(
+    "keeps %s free of a fighter and releases an unfinished renderer",
+    (item) => {
+      const { dispose } = preview();
+      draw();
+      const next = panel("idle", item);
+      next.host.classList.add("is-item");
+      change(dispose, next);
+      mock.render.mockClear();
+      draw();
+      expect(mock.render).not.toHaveBeenCalled();
+      expect(mock.canvas.remove).toHaveBeenCalledOnce();
+      mock.autoLoad = false;
+      change(dispose, panel("idle", "voltkit-midnight"));
+      dispose();
+      mock.finish!();
+      expect(mock.destroy).toHaveBeenCalledExactlyOnceWith(true);
+      expect(mock.rigs).toHaveBeenCalledTimes(1);
+    },
+  );
+});
+
+it("holds the previous posed rig until a complete new look is ready, preserving idle time", () => {
+  const { dispose } = preview();
+  draw();
+  const before = Number(mock.render.mock.lastCall![3]);
+  mock.autoLoad = false;
+  mock.rigDestroy.mockClear();
+  const next = panel("idle", "voltkit-midnight");
+  change(dispose, next);
+  expect(next.host.classList.contains("is-ready")).toBe(true);
+  expect(next.compare.disabled).toBe(true);
+  expect(mock.rigDestroy).not.toHaveBeenCalled();
+  expect(next.host.setAttribute).toHaveBeenCalledWith("aria-busy", "true");
+  const draws = mock.render.mock.calls.length;
+  draw();
+  expect(mock.render).toHaveBeenCalledTimes(draws);
+  mock.finish!();
+  expect(mock.rigDestroy).toHaveBeenCalledOnce();
+  draw();
+  expect(mock.render.mock.lastCall![0].skin.skin).toBe("voltkit-midnight");
+  expect(Number(mock.render.mock.lastCall![3])).toBeGreaterThan(before);
+  expect(next.host.removeAttribute).toHaveBeenCalledWith("aria-busy");
+  expect(next.compare.disabled).toBe(false);
+  expect(mock.games).toHaveBeenCalledOnce();
+  dispose();
+});
+it("keeps the last visible look through rapid pending switches and shows only the latest", () => {
+  const { dispose } = preview();
+  draw();
+  mock.autoLoad = false;
+  mock.rigDestroy.mockClear();
+  const middle = panel("idle", "voltkit-midnight");
+  change(dispose, middle);
+  const oldFinish = mock.finish!;
+  const latest = panel("idle", "tidefin-moontide", "tidefin", 3);
+  change(dispose, latest);
+  expect(latest.host.classList.contains("is-ready")).toBe(true);
+  oldFinish();
+  expect(mock.rigDestroy).not.toHaveBeenCalled();
+  mock.finish!();
+  draw();
+  expect(mock.rigDestroy).toHaveBeenCalledOnce();
+  expect(mock.render.mock.lastCall![0].skin.skin).toBe("tidefin-moontide");
+  dispose();
+});
+
+it("bounds cached source art after repeated decoding failures too", () => {
+  const { dispose } = preview();
+  draw();
+  mock.autoLoad = false;
+  let failedLoad!: () => void;
+  mock.scene.load.once = (_event: string, finish: () => void) => {
+    failedLoad = finish;
+  };
+  for (const skin of Object.values(CHAMPION_SKIN_BY_ID)
+    .filter((s) => s.id !== "voltkit-snowcap")
+    .slice(0, 14)) {
+    change(dispose, panel("idle", skin.id, skin.champion));
+    mock.pending = []; // No missing image decoded successfully.
+    failedLoad();
+  }
+  const generated = mock.assets.mock.calls.length;
+  change(dispose, panel());
+  expect(mock.assets.mock.calls.length).toBeGreaterThan(generated);
+  dispose();
+});
+
+it.each(["entrance", "victory"])(
+  "shows the equipped champion with the real %s effect, and replays without reloading",
+  (action) => {
     const { dispose } = preview();
     draw();
-    change(dispose, panel("idle", "galaxy-frame"));
-    mock.render.mockClear();
+    const effect = `galaxy-${action}`;
+    const next = panel(action, effect, "tidefin", 3);
+    Object.assign(next.host.dataset, {
+      previewSkin: "tidefin-moontide",
+      previewLook: encodeURIComponent(
+        JSON.stringify({ [action]: effect, aura: "galaxy-aura" }),
+      ),
+    });
+    change(dispose, next);
     draw();
-    expect(mock.render).not.toHaveBeenCalled();
-    expect(mock.canvas.remove).toHaveBeenCalledOnce();
-    mock.autoLoad = false;
-    change(dispose, panel("idle", "voltkit-midnight"));
+    const pose = mock.render.mock.lastCall![0];
+    expect(pose.skin).toEqual({ skin: "tidefin-moontide", stage: 3 });
+    expect(pose.look[action]).toBe(effect);
+    expect(pose[action === "entrance" ? "greet" : "victory"]).toBe(true);
+    for (let i = 0; i < 75; i++) mock.scene.update(0, 50);
+    expect(
+      mock.render.mock.lastCall![0][
+        action === "entrance" ? "greet" : "victory"
+      ],
+    ).toBe(false);
+    const rigs = mock.rigs.mock.calls.length;
+    dispose.replay();
+    draw();
+    expect(
+      mock.render.mock.lastCall![0][
+        action === "entrance" ? "greet" : "victory"
+      ],
+    ).toBe(true);
+    expect(mock.rigs).toHaveBeenCalledTimes(rigs);
+    expect(mock.games).toHaveBeenCalledOnce();
     dispose();
-    mock.finish!();
-    expect(mock.destroy).toHaveBeenCalledExactlyOnceWith(true);
-    expect(mock.rigs).toHaveBeenCalledTimes(1);
-  });
-});
+  },
+);

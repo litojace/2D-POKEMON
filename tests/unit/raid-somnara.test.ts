@@ -1,3 +1,4 @@
+import { RAID, RAID_TIERS } from "../../packages/shared/src/raid";
 import { drawSomnara } from "../../apps/client/src/raid-somnara-art";
 import { describe, it, expect, vi } from "vitest";
 import {
@@ -25,13 +26,30 @@ import {
   featureLabel,
   raidContributions,
 } from "../../apps/client/src/raid-presentation";
-const setup = (chars: CharacterId[] = ["voltkit"], peril = 1) => {
+const setup = (
+  chars: CharacterId[] = ["voltkit"],
+  peril = 1,
+  gilded = false,
+) => {
   const a = createRaidArena("DREAM", "somnara") as SomnaraArena;
   chars.forEach((c, i) => a.add(`p${i}`, `Player ${i}`, c));
   a.configure(peril, false);
-  a.start();
+  // start() rolls the seed and a 1-in-20 Gilded chance, and bakes Gilded
+  // into maxHp. Clearing raid.gilded afterwards would leave a Gilded health
+  // pool behind, so pin both rolls instead (20 % 20 === 0 is Gilded).
+  const roll = vi
+    .spyOn(crypto, "getRandomValues")
+    .mockImplementation((buffer: any) => {
+      buffer.fill(gilded ? 20 : 1);
+      return buffer;
+    });
+  try {
+    a.start();
+  } finally {
+    roll.mockRestore();
+  }
+  expect(a.raid.gilded, "setup pins the Gilded roll").toBe(gilded);
   a.phase = "playing";
-  a.raid.gilded = false;
   a.raid.trait = "starry-night";
   (a as any).started = true;
   (a as any).nextAttack = Infinity;
@@ -73,9 +91,11 @@ describe("Somnara's encounter", () => {
     expect(a.arenaId).toBe("cloud-deck");
     expect(a.walls()).toEqual([]);
     expect(a.raid.pillars).toEqual([]);
-    expect(
-      a.raid.maxHp / (a.raid.maxHp > 2200 ? SOMNARA.health.gilded : 1),
-    ).toBeCloseTo(2050, 0);
+    const f = RAID.healthScale * RAID.perilHealth[a.raid.peril];
+    expect(a.raid.maxHp / f).toBeCloseTo(2050, 0);
+    // A Gilded Somnara is a little tougher.
+    const gilded = setup(["voltkit", "terradon"], 1, true);
+    expect(gilded.raid.maxHp / f / SOMNARA.health.gilded).toBeCloseTo(2050, 0);
     expect(ritesFor("somnara")).toContain("lucid");
     expect(ritesFor("grumblecrag")).not.toContain("lucid");
     for (const phase of [1, 2, 3]) {
@@ -84,7 +104,7 @@ describe("Somnara's encounter", () => {
         expect(RAID_BOSS_ATTACKS.somnara).toContain(kind);
     }
   });
-  it("gives solo shorter sequences and 14 seconds; teams get 10 seconds", () => {
+  it("gives solo shorter sequences and 13 seconds; teams get 9 seconds", () => {
     for (const peril of [1, 2, 3]) {
       expect(somnaraSequenceLength(2, peril, 1, "starry-night")).toBe(
         somnaraSequenceLength(2, peril, 4, "starry-night") - 1,
@@ -96,7 +116,13 @@ describe("Somnara's encounter", () => {
     ] as CharacterId[][]) {
       const a = setup(chars);
       attack(a, "dream-sequence");
-      expect(a.raid.dream!.until - a.time).toBe(chars.length === 1 ? 14 : 10);
+      expect(a.raid.dream!.until - a.time).toBe(
+        chars.length === 1
+          ? SOMNARA.sequence.soloSeconds
+          : SOMNARA.sequence.seconds,
+      );
+      expect(SOMNARA.sequence.soloSeconds).toBe(13);
+      expect(SOMNARA.sequence.seconds).toBe(9);
       const seq = sequence(a);
       expect(seq.every((r, i) => !i || r !== seq[i - 1])).toBe(true);
     }
@@ -178,7 +204,11 @@ describe("Somnara's encounter", () => {
     attack(a, "dream-sequence");
     expect(a.raid.dream!.backwards).toBe(false);
     solve(a);
-    expect(a.raid.exposedUntil - a.time).toBeCloseTo(8, 1);
+    // Six seconds plus two for Deep Slumber, on the ★★ tier's windows.
+    expect(a.raid.exposedUntil - a.time).toBeCloseTo(
+      8 * RAID_TIERS[2].windows,
+      1,
+    );
     a.raid.phase = 3;
     const random = vi
       .spyOn(crypto, "getRandomValues")
@@ -197,26 +227,22 @@ describe("Somnara's encounter", () => {
       random.mockRestore();
     }
   });
-  it("clears private dreams, sleep and attacks on chapter breaks, practice switches and retry", () => {
+  it("clears private dreams, sleep and attacks on chapter breaks and retry", () => {
     const a = setup();
     attack(a, "dream-sequence");
     addStacks(a, "p0");
     a.damage(a.boss()!, 1e6, "p0");
     a.tick();
-    expect(a.phase).toBe("intermission");
+    expect(a.raid.phase).toBe(2);
+    expect(a.phase).toBe("playing");
     expect(a.raid.dream).toBeUndefined();
     expect(a.dreamFor("p0")).toBeUndefined();
     expect(a.heroes()[0].statuses.some((s) => s.kind === "sleep")).toBe(false);
-    a.phase = "playing";
-    a.raid.drill = "dream-sequence";
-    attack(a, "dream-sequence");
-    expect(a.setDrill("lullaby")).toBe(true);
-    expect(a.raid.dream).toBeUndefined();
   });
 });
 
 describe("Drowsy, sleep, bubbles and champion tricks", () => {
-  it("sleeps after three stacks, stops moving, and wakes naturally after two seconds", () => {
+  it("sleeps after three stacks, stops moving, and wakes naturally after two and a half seconds", () => {
     const a = setup();
     const p = a.heroes()[0];
     addStacks(a, p.id);
@@ -226,30 +252,33 @@ describe("Drowsy, sleep, bubbles and champion tricks", () => {
     p.lastInput = { ...blankInput(), dx: 1 };
     run(a, 0.5);
     expect(p.x).toBe(x);
-    run(a, 1.7);
+    run(a, 1.5);
+    expect(a.has(p, "sleep")).toBe(true);
+    run(a, 0.7);
     expect(a.has(p, "sleep")).toBe(false);
   });
-  it("wakes from an ally's melee hit without taking friendly damage or losing Hibernate", () => {
+  it("wakes from an ally's melee hit without taking friendly damage or losing Shell Up", () => {
     const a = setup(["cindrake", "terradon"]);
     const [p, ally] = a.heroes();
     ally.x = p.x + 100;
     ally.y = p.y;
     p.angle = 0;
     addStacks(a, ally.id);
-    a.status(ally, "sleep", 5); // Adds/refreshes the boss's sleep; add a separate Hibernate below.
+    // The boss's sleep is already on (addStacks); Terradon is also in its shell.
     ally.statuses.push({
-      kind: "sleep",
+      kind: "shell",
       until: a.time + 5,
       nextTick: a.time + 5,
       amount: 1,
     });
+    expect(a.has(ally, "sleep")).toBe(true);
     const hp = ally.hp;
     a.cast(p, CHARACTERS.cindrake.basic);
     expect(ally.hp).toBe(hp);
-    expect(ally.statuses.filter((s) => s.kind === "sleep")).toHaveLength(1);
-    expect(ally.statuses.find((s) => s.kind === "sleep")!.amount).toBe(1);
+    expect(a.has(ally, "sleep")).toBe(false);
+    expect(ally.statuses.find((s) => s.kind === "shell")!.amount).toBe(1);
   });
-  it("wakes from a friendly projectile and Ember Gust; enemy damage wakes it at normal damage", () => {
+  it("wakes from a friendly projectile and Crest Flare; enemy damage wakes it at normal damage", () => {
     const a = setup(["voltkit", "cindrake"]);
     const [p, ally] = a.heroes();
     addStacks(a, ally.id);
@@ -311,12 +340,12 @@ describe("Drowsy, sleep, bubbles and champion tricks", () => {
     expect(a.raid.dreamBubbles).toHaveLength(0);
     expect(a.raid.dreamTrails!.length).toBeGreaterThan(0);
   });
-  it("Thoughtstrike reveals only the current sequence to the team; a new dream restores privacy", () => {
+  it("Mind Maze reveals only the current sequence to the team; a new dream restores privacy", () => {
     const a = setup(["mystowl", "lumoth"]);
     attack(a, "dream-sequence");
     a.cast(
       a.heroes()[0],
-      CHARACTERS.mystowl.skills.find((s) => s.id === "thoughtstrike")!,
+      CHARACTERS.mystowl.skills.find((s) => s.id === "mind-maze")!,
     );
     expect(a.heroes().every((p) => a.dreamFor(p.id)?.full)).toBe(true);
     (a as any).beginDream();
@@ -410,21 +439,6 @@ describe("Somnara's attacks, controls and progression", () => {
       }
     }
   });
-  it("counts a full Whale Song practice channel as one hit or dodge per raider", () => {
-    const a = setup(["voltkit", "terradon"]);
-    a.raid.drill = "whale-song";
-    a.raid.drillStats = { hits: 0, dodges: 0 };
-    attack(a, "whale-song");
-    const [safe, outside] = a.heroes();
-    outside.x = 1500;
-    outside.y = 800;
-    for (let i = 0; i < 125; i++) {
-      if (a.raid.quietZone)
-        Object.assign(safe, quietZoneAt(a.raid.quietZone, a.time));
-      a.tick();
-    }
-    expect(a.raid.drillStats).toEqual({ hits: 1, dodges: 1 });
-  });
   it("offers 1–4 only to the active Dreamer and keeps other controls untouched", () => {
     const a = setup(["voltkit", "lumoth"]);
     attack(a, "dream-sequence");
@@ -514,31 +528,37 @@ describe("Somnara stand-ins and a full raid", () => {
   });
 });
 
+// Somnara's raid shows Snoozaku (boss-snoozaku-rig.ts): record what the
+// battle tells the rig each frame instead of drawing it.
+const somnaraLooks = vi.hoisted(() => [] as any[]);
+vi.mock("../../apps/client/src/boss-snoozaku-rig", () => ({
+  paintSnoozaku: (_g: unknown, look: unknown) => {
+    somnaraLooks.push(look);
+    return false;
+  },
+}));
 it("restores Somnara's normal pose on a daily retry with the same seed", () => {
   const a = setup();
   const seed = a.raid.seed;
-  const bodies: number[] = [];
-  const g: any = new Proxy(
-    {},
-    {
-      get:
-        (_, method) =>
-        (...args: number[]) => {
-          if (method === "fillEllipse" && args[2] === 250 && args[3] === 144)
-            bodies.push(args[1]);
-          return g;
-        },
-    },
-  );
+  const g: any = new Proxy({}, { get: () => () => g });
   drawSomnara(g, a.snapshot(), false, 0);
+  expect(somnaraLooks.at(-1).dead).toBe(false);
   a.phase = "finished";
   a.raid.result = "victory";
   for (let frame = 1; frame <= 40; frame++)
     drawSomnara(g, a.snapshot(), false, frame * 0.05);
-  expect(bodies.at(-1)!).toBeLessThan(a.boss()!.y - 100);
+  // beaten: it curls up asleep
+  expect(somnaraLooks.at(-1).dead).toBe(true);
+  expect(somnaraLooks.at(-1).deadAge).toBeGreaterThan(1);
   a.start();
   a.raid.seed = seed;
   a.phase = "playing";
   drawSomnara(g, a.snapshot(), false, 3);
-  expect(bodies.at(-1)).toBeCloseTo(a.boss()!.y - 62);
+  // a fresh fight: awake again, not hurt, no yawn
+  const look = somnaraLooks.at(-1);
+  expect(look.dead).toBe(false);
+  expect(look.hurt).toBe(0);
+  expect(look.roarAge).toBeGreaterThan(5);
+  expect(look.y).toBeCloseTo(a.boss()!.y);
+  expect(look.nightmareAge).toBeGreaterThan(5);
 });

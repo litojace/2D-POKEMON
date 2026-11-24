@@ -1,0 +1,27 @@
+/* Item pictures (cosmetic-picture.ts): Colors are a still image of the
+   fighter in the same palette as the live rig, eyes untouched. */
+.shop-look-preview > img {
+  display: block;
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+}
+/* A frame's large fitting-room portrait uses the same avatar as identity UI. */
+.portrait-review-stage {
+  container-type: size;
+}
+.portrait-review-stage .shop-preview-fallback {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.portrait-review-avatar {
+  position: relative;
+  width: min(64cqw, 64cqh, 280px);
+  aspect-ratio: 1;
+  transform: translateY(-10%);
+}
+.portrait-review-avatar .frame-stars {
+  bottom: -24%;
+  font-size: clamp(8px, 4cqh, 12px);
+}

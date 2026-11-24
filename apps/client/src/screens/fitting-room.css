@@ -1,0 +1,1021 @@
+/* ==========================================================================
+   The fitting room: Shop + Wardrobe (UI remodel step 2, docs/ui-remodel/
+   PLAN.md). Markup: screens/fitting-room-view.ts. This file only lays out the
+   shared components (ui/components.css); it never restyles them.
+   ========================================================================== */
+
+/* -------------------------------------------------------------- stage */
+.fit-stage {
+  --fit-info-h: 150px;
+  isolation: isolate;
+  container-type: size;
+}
+/* The stage light (stage-light.ts, owner's option C): the element's glow
+   behind the fighter and a lit disc with a ring under the feet, in the
+   fighter's own frame, behind the still fighter and the live rig alike. */
+.shop-live-stage > .stage-light {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.fit-stage > .shop-live-stage {
+  /* The rig's camera is framed on the host's width, so a tall, narrow stage
+     would draw a small fighter: the host is as wide as 1.25 × its height
+     (centred, the stage clips it), which shows the fighter at full size. */
+  position: absolute;
+  top: 0;
+  bottom: var(--fit-info-h);
+  left: 50%;
+  /* Up to 500 px on a narrow stage; a wider stage gets a host as wide as
+     itself. The preview draws at the size it is shown times the screen's
+     density, with textures to match (shop-preview.ts), so a big stage
+     shows a big, sharp fighter. */
+  width: clamp(100cqw, (100cqh - var(--fit-info-h)) * 1.25, max(100cqw, 500px));
+  height: auto;
+  transform: translateX(-50%);
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  /* The old Shop preview's inset outline: on a host narrower than the
+     stage (desktop) or moved down (phones) it drew a stray line. */
+  box-shadow: none;
+  /* The floor fades out above the name instead of ending in an edge. */
+  mask-image: linear-gradient(180deg, #000 82%, transparent);
+}
+.fit-stage > .shop-live-stage.is-frame {
+  top: 70px;
+  left: 0;
+  width: 100%;
+  transform: none;
+  mask-image: none;
+  background: none;
+  box-shadow: none;
+}
+.fit-frame-avatar {
+  width: min(70%, 260px);
+  aspect-ratio: 1;
+  margin: auto;
+}
+.fit-frame-avatar > * {
+  width: 100%;
+  height: 100%;
+}
+.fit-stage-top {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+.fit-plays {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 124px;
+}
+/* Stacked, one width: their icons in one column and their labels from one
+   line (centred, each sat by its own label's length). */
+.fit-plays .ui-btn {
+  width: 100%;
+  justify-content: flex-start;
+}
+.fit-plays .ui-btn[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+}
+.fit-stage-info {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.fit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.fit-stage-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: calc(40px * var(--text-scale, 1));
+  line-height: 0.95;
+  /* Room inside the clip for Vietnamese marks above and below (Thỏ Ngọc),
+     without moving the line. */
+  padding-block: 0.14em 0.12em;
+  margin-block: -0.14em -0.12em;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fit-stage-sub,
+.fit-awaken-note,
+.fit-stars-note {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fit-stage-tools {
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.fit-awaken,
+.fit-stars {
+  display: inline-flex;
+  gap: 4px;
+}
+.fit-stars {
+  margin-top: 4px;
+}
+.fit-awaken .ui-btn.is-s,
+.fit-stars .ui-btn.is-s {
+  min-width: var(--ctl-s);
+  padding: 0 8px;
+}
+:is(.fit-awaken, .fit-stars) .ui-btn[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+}
+:is(.fit-awaken, .fit-stars) .ui-btn[data-locked="true"] {
+  color: var(--ui-faint);
+  border-style: dashed;
+}
+
+/* ------------------------------------------------------- item pictures */
+/* Every picture box is a size container, so what's in it fits both ways
+   (cqw and cqh): never cut at the top or bottom of a wide box, never
+   stretched. A skin's thumbnail keeps its shape (object-fit) inside a box
+   of its own. */
+.fit-room
+  :is(
+    .ui-tile-art,
+    .fit-deal-art,
+    .fit-slot-art,
+    .fit-bundle-art > span,
+    .fit-foot-art,
+    .fit-set-reward-art
+  ),
+.ui-modal-art {
+  container-type: size;
+}
+.fit-room
+  :is(
+    .ui-tile-art,
+    .fit-deal-art,
+    .fit-slot-art,
+    .fit-bundle-art > span,
+    .fit-foot-art,
+    .fit-set-reward-art
+  )
+  > img,
+.ui-modal-art > img {
+  width: 92cqw;
+  height: 92cqh;
+  max-width: none;
+  object-fit: contain;
+}
+/* Effect pieces (aura, entrance, victory, frame) and Colors are drawn by
+   cosmetic-picture.ts at a small default size: fill the picture box, as a
+   square that fits its height too. The picture box is already their stage,
+   so the effects' own card (cosmetic-fx.css) isn't drawn inside it. */
+.fit-room
+  :is(
+    .ui-tile-art,
+    .fit-deal-art,
+    .fit-slot-art,
+    .fit-bundle-art > span,
+    .fit-foot-art,
+    .fit-set-reward-art
+  )
+  > .raid-cosmetic-preview,
+.ui-modal-art > .raid-cosmetic-preview,
+.fit-confirm-set > .raid-cosmetic-preview {
+  width: min(72cqw, 80cqh);
+  height: auto;
+  aspect-ratio: 1;
+  background: none;
+}
+.fit-confirm-set > .raid-cosmetic-preview {
+  width: 72%;
+}
+.fit-room
+  :is(
+    .ui-tile-art,
+    .fit-deal-art,
+    .fit-slot-art,
+    .fit-bundle-art > span,
+    .fit-foot-art,
+    .fit-set-reward-art
+  )
+  > .raid-cosmetic-preview:has(> .fx-live),
+.ui-modal-art > .raid-cosmetic-preview:has(> .fx-live) {
+  background: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.fit-room .raid-cosmetic-preview > :is(svg, img),
+.ui-modal-art .raid-cosmetic-preview > :is(svg, img) {
+  width: 100%;
+  height: 100%;
+}
+/* A frame keeps room for its ring, ornaments and sparks (a tassel, a
+   sweet, a planet hang outside the ring), on every side. */
+.fit-room .ui-tile[data-slot="frame"] .ui-tile-art > .raid-cosmetic-preview,
+.fit-room .fit-deal[data-slot="frame"] .fit-deal-art > .raid-cosmetic-preview {
+  width: min(52cqw, 58cqh);
+}
+
+/* ------------------------------------------------------- the catalogue */
+.fit-head .ui-seg {
+  flex: none;
+}
+.fit-head .ui-tabs {
+  margin-left: 6px;
+}
+.fit-head .ui-tabs .ui-tag {
+  margin-left: 2px;
+}
+/* Tablet-wide screens (an iPad held sideways, 1024–1200px): the four Shop
+   tabs scroll sideways with no scrollbar, so the last one looked cut off.
+   Tighter tabs fit all four beside Shop | Wardrobe and the close button. */
+@media (max-width: 1200px) and (min-height: 501px) {
+  .fit-head .ui-tabs > button[role="tab"] {
+    padding-inline: 7px;
+    letter-spacing: 0.02em;
+  }
+}
+/* An older 9.7-inch iPad in Safari (1024px wide) needs a size smaller. */
+@media (max-width: 1060px) and (min-height: 501px) {
+  .fit-head .ui-tabs > button[role="tab"] {
+    padding-inline: 5px;
+    font-size: calc(14px * var(--text-scale, 1));
+    letter-spacing: 0;
+  }
+}
+.fit-hint {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fit-room[data-fit-mode="wardrobe"] .fit-head {
+  border-bottom: 1px solid var(--ui-line);
+}
+.fit-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+.fit-warning {
+  color: var(--ui-warn);
+  font-size: var(--fs-small);
+}
+.fit-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  flex-wrap: wrap;
+}
+.fit-filters .ui-chips {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.fit-count {
+  margin-left: auto;
+}
+/* Wide enough to keep the row short, tall enough for a whole fighter. */
+.fit-picks .ui-tile-art {
+  aspect-ratio: 1.35;
+}
+/* Fighters: a row of avatars instead of a dropdown. On desktop they wrap
+   onto a second row, so every fighter shows (a row cut off at the column's
+   edge had no way to reach the rest with a mouse); phones keep one row
+   that scrolls (ui/scroll-rows.ts). */
+.fit-fighters {
+  gap: 6px;
+}
+@media (min-height: 501px) {
+  .fit-fighters {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}
+.fit-fighter {
+  flex: none;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 64px;
+  padding: 4px 2px 5px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--fill-card);
+}
+.fit-fighter > span:last-child {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  color: var(--ui-dim);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fit-fighter[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 7.8%, transparent);
+}
+.fit-fighter[aria-pressed="true"] > span:last-child {
+  color: var(--ui-accent);
+}
+/* Today's featured pick. */
+.fit-deal {
+  position: relative;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  text-align: left;
+  padding: 10px;
+  border-radius: var(--rad-lg);
+  border: 2px solid var(--ui-accent);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--ui-accent) 14.9%, transparent),
+    var(--ui-bg-1) 55%
+  );
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--ui-accent) 20%, transparent),
+    var(--shadow-1);
+}
+.fit-deal[aria-pressed="true"] {
+  box-shadow:
+    0 0 0 2px var(--ui-accent),
+    var(--shadow-1);
+}
+.fit-deal-art {
+  height: 160px;
+  border-radius: var(--rad-md);
+  background: radial-gradient(
+    ellipse at 50% 85%,
+    color-mix(in srgb, var(--r) 34%, var(--ui-bg-2)),
+    var(--ui-bg-0) 75%
+  );
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.fit-deal-art > * {
+  height: 96%;
+  width: auto;
+  max-width: 100%;
+}
+.fit-deal-text {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  min-width: 0;
+}
+.fit-deal-text .ui-note {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fit-deal-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h1);
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fit-deal-price {
+  font-size: calc(26px * var(--text-scale, 1));
+  margin-top: 6px;
+}
+/* The countdown is the tags' row's last child, pushed to its end, and wraps
+   under the tags when the card is narrow: pinned to the card's corner it
+   covered "20% off today" on a 667 px phone and on a 1024 px iPad. */
+.fit-deal-text > .fit-row {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.fit-deal-timer {
+  margin-left: auto;
+}
+/* A set: its pieces in a strip, the full and the discounted price. */
+.fit-bundle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px 10px 10px;
+  text-align: left;
+  border-radius: var(--rad-lg);
+  border: 1px solid color-mix(in srgb, var(--r) 50%, transparent);
+  background: linear-gradient(110deg, #b56bff1f, var(--ui-bg-1) 60%);
+}
+.fit-bundle[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 2px var(--ui-accent) inset;
+}
+.fit-bundle-art {
+  display: flex;
+  gap: 6px;
+}
+.fit-bundle-art > span {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--rad-sm);
+  background: var(--fill-well);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.fit-bundle-art > span > * {
+  width: 90%;
+  height: 90%;
+}
+.fit-bundle-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.fit-bundle-price {
+  font-size: calc(22px * var(--text-scale, 1));
+}
+/* Skin sets: a grid of compact cards (picture, name, owned, price), as
+   many to a row as fit, so the full list stays a few rows tall on phones. */
+.fit-skin-sets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 8px;
+}
+.fit-skin-sets .fit-bundle {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "art text" "art price";
+  align-items: center;
+  gap: 2px 10px;
+  padding: 8px 10px 8px 8px;
+}
+.fit-skin-sets .fit-bundle-art {
+  grid-area: art;
+}
+.fit-skin-sets .fit-bundle-art > span:nth-child(n + 2) {
+  display: none;
+}
+.fit-skin-sets .fit-bundle-art > span {
+  width: 52px;
+  height: 52px;
+}
+.fit-skin-sets .fit-bundle-text {
+  grid-area: text;
+}
+.fit-skin-sets .fit-bundle-text .ui-h {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.1;
+}
+.fit-skin-sets .fit-bundle-price {
+  grid-area: price;
+  font-size: calc(17px * var(--text-scale, 1));
+}
+.fit-earn {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px dashed var(--ui-line-2);
+  border-radius: var(--rad-md);
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.fit-earn b {
+  color: var(--ui-text);
+}
+.fit-earn-left {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* A skin collection's reward frame, beside how many of its skins you own. */
+.fit-set-reward {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.fit-set-reward-art {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+}
+.fit-set-reward .ui-note {
+  margin: 0;
+}
+.fit-collections .ui-chip .ui-tag {
+  height: 16px;
+}
+/* Wardrobe: what each of the six slots holds, as tabs. */
+.fit-slots {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+.fit-slot {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--fill-card);
+  min-width: 0;
+}
+.fit-slot-art {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--rad-sm);
+  background: var(--fill-card-hi);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.fit-slot-art > * {
+  width: 100%;
+  height: 100%;
+}
+.fit-slot-art i,
+.fit-none {
+  font-style: normal;
+  color: var(--ui-faint);
+  font-size: calc(28px * var(--text-scale, 1));
+}
+.fit-slot small {
+  font-size: var(--fs-micro);
+  color: var(--ui-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.fit-slot b {
+  font-size: calc(12px * var(--text-scale, 1));
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fit-slot b.is-none {
+  color: var(--ui-dim);
+  font-weight: 500;
+}
+.fit-slot[aria-selected="true"] {
+  border-color: var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 7.8%, transparent);
+}
+/* A slot with a change not yet saved. */
+.fit-slot[data-changed="true"]::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+.fit-more .ui-tile-art {
+  color: var(--ui-accent);
+}
+.fit-more .ui-tile-art > svg {
+  width: 40%;
+  height: 40%;
+}
+.fit-more {
+  border-style: dashed;
+}
+.fit-empty-note {
+  text-align: center;
+}
+
+/* -------------------------------------------------------- action bar */
+.fit-foot-art {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.fit-foot-art > * {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.fit-foot-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.fit-foot-text .ui-h,
+.fit-foot-text .ui-note {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* One-line names clip their overflow; give Vietnamese marks above and
+   below (Liền Chị Quan Họ) room inside the clip without moving the line. */
+.ui-tile-name,
+.fit-deal-name,
+.fit-slot b,
+.fit-foot-text .ui-h {
+  padding-block: 0.14em 0.12em;
+  margin-block: -0.14em -0.12em;
+}
+/* Read out, not shown: the toast shows the same message. */
+.fit-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.fit-room[aria-busy="true"] {
+  cursor: progress;
+}
+/* The purchase confirmation. */
+.fit-wear {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: var(--fs-small);
+}
+.fit-wear input {
+  accent-color: var(--ui-accent);
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+.fit-confirm-set {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 90%;
+}
+.fit-confirm-set > * {
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+/* ------------------------------------------------- phones, sideways */
+@media (max-width: 1300px) {
+  .fit-deal {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+  .fit-deal-art {
+    height: 128px;
+  }
+  .fit-bundle-art > span:nth-child(n + 4) {
+    display: none;
+  }
+}
+@media (max-height: 500px) {
+  /* Phones: the reward frame rows stay compact above the grid. */
+  .fit-set-reward {
+    gap: 8px;
+  }
+  .fit-set-reward-art {
+    width: 38px;
+    height: 38px;
+  }
+  .fit-stage {
+    --fit-info-h: 44px;
+  }
+  .fit-stage:has(.fit-stars) {
+    --fit-info-h: 50px;
+  }
+  .fit-stage > .shop-live-stage.is-frame {
+    top: 42px;
+  }
+  /* Entrance and Victory stand in the stage's top-right corner, over the
+     fighter's ears and crest: the fighter is drawn lower (the host moves
+     down whole, so the fighter keeps its size), into the room above Hold
+     to compare. */
+  .fit-stage > .shop-live-stage:not(.is-frame) {
+    transform: translate(-50%, var(--fit-drop, 34px));
+  }
+  /* Small buttons on a phone stay 8 px from the stage's edge, so each
+     still catches a 44 px finger. */
+  .fit-stage-top {
+    left: 8px;
+    right: 8px;
+    top: 9px;
+  }
+  /* Entrance and Victory: round icon buttons in a column at the stage's
+     right edge (as mobile games put their side actions), 40 px each. As
+     76 px text buttons they took the stage's top-right half and covered a
+     tall fighter's ears or crest. The label stays for screen readers. */
+  .fit-plays {
+    grid-template-columns: 40px;
+    gap: 8px;
+  }
+  .fit-plays .ui-btn.is-s {
+    width: 40px;
+    height: 40px;
+    min-width: 0;
+    padding: 0;
+    border-radius: 50%;
+    justify-content: center;
+  }
+  /* Icon only: centred in the circle, 18px. The -3px optical nudge
+     (components.css) balances an icon against a label beside it; alone it
+     pulled the icon 1.5px left (most visible on Victory's sparkle), and
+     .ui-btn.is-s svg kept it at 15px. */
+  .fit-plays .ui-btn.is-s > svg {
+    width: 18px;
+    height: 18px;
+    margin-left: 0;
+  }
+  .fit-plays .ui-btn > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .fit-stage-info {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    gap: 2px;
+  }
+  /* On a phone the stage keeps the fighter and its tools; the name is in
+     the action bar. */
+  .fit-stage-info > :not(.fit-stage-tools, .fit-stars) {
+    display: none;
+  }
+  .fit-stage-tools {
+    margin-top: 2px;
+    gap: 16px 4px;
+  }
+  .fit-awaken .ui-btn.is-s,
+  .fit-stars .ui-btn.is-s {
+    min-width: 28px;
+    padding: 0 5px;
+  }
+  /* Awakening stages: a column at the stage's right edge, beside the
+     fighter, so the stage never changes size for a Mythical. One group of
+     three, 6px apart (16px spread them over half the stage). */
+  .fit-awaken {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    flex-direction: column-reverse;
+    gap: 6px;
+  }
+  .fit-stars {
+    gap: 3px;
+  }
+  .fit-stars .ui-btn.is-s {
+    padding: 0;
+  }
+  .fit-head .ui-seg.is-display > button {
+    height: 26px;
+    font-size: calc(12px * var(--text-scale, 1));
+    padding: 0 9px;
+  }
+  .fit-head .ui-tabs {
+    margin-left: 0;
+  }
+  .fit-head .ui-tabs > button[role="tab"] {
+    font-size: calc(12px * var(--text-scale, 1));
+    padding: 6px 6px 5px;
+  }
+  .fit-head .ui-tabs .ui-tag,
+  .fit-hint {
+    display: none;
+  }
+  .fit-section .ui-note,
+  .fit-body > .ui-note {
+    font-size: var(--fs-micro);
+  }
+  .fit-foot-art {
+    width: 36px;
+    height: 36px;
+  }
+  .fit-foot-text .ui-note {
+    display: none;
+  }
+  .fit-deal {
+    grid-template-columns: 110px minmax(0, 1fr);
+    gap: 10px;
+    padding: 6px;
+  }
+  .fit-deal-art {
+    height: 86px;
+  }
+  .fit-deal-text .ui-note {
+    display: none;
+  }
+  .fit-deal-name {
+    font-size: calc(22px * var(--text-scale, 1));
+  }
+  .fit-deal-price {
+    font-size: calc(18px * var(--text-scale, 1));
+    margin-top: 0;
+  }
+  .fit-bundle {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 6px 10px;
+  }
+  .fit-bundle-art,
+  .fit-earn {
+    display: none;
+  }
+  .fit-skin-sets {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+    gap: 6px;
+  }
+  .fit-skin-sets .fit-bundle {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 6px 8px 6px 6px;
+    gap: 0 8px;
+  }
+  .fit-skin-sets .fit-bundle-art {
+    display: flex;
+  }
+  .fit-skin-sets .fit-bundle-art > span {
+    width: 40px;
+    height: 40px;
+  }
+  .fit-skin-sets .fit-bundle-price {
+    font-size: calc(14px * var(--text-scale, 1));
+  }
+  .fit-bundle-price {
+    font-size: calc(16px * var(--text-scale, 1));
+  }
+  .fit-fighter {
+    width: 40px;
+    padding: 2px;
+  }
+  .fit-fighter > span:last-child {
+    display: none;
+  }
+  .fit-slots {
+    gap: 4px;
+  }
+  .fit-slot {
+    padding: 3px 2px;
+    border-radius: 9px;
+  }
+  .fit-slot-art {
+    width: 26px;
+    height: 26px;
+  }
+  .fit-slot small {
+    font-size: var(--fs-micro);
+  }
+  .fit-slot b {
+    font-size: var(--fs-micro);
+  }
+  /* A slot's name and what it holds stay inside it: they get its width,
+     and end in an ellipsis rather than run into the next slot. */
+  .fit-slot small {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+  }
+  .fit-grid[style*="--cols:5"],
+  .fit-grid[style*="--cols:4"] {
+    --cols: 3 !important;
+  }
+  .fit-filters {
+    gap: 6px;
+  }
+}
+/* Wider phones (iPhone Pro, most Androids held sideways): four tiles a row
+   in the catalogue grids, a quarter fewer rows to scroll (Mythic Hall 6 →
+   3.6 screens). A 667 px phone keeps three, so names stay whole. */
+@media (max-height: 500px) and (min-width: 800px) {
+  .fit-grid[style*="--cols:5"],
+  .fit-grid[style*="--cols:4"] {
+    --cols: 4 !important;
+  }
+}
+
+/* ---------------------------------------- Mythic Hall on a phone
+   One fighter at a time (fitting-room-view.ts, mythicPick): a mark on the
+   fighters whose Mythical you own (gold) or whose trial is under way (a
+   gold ring), then the chosen one's Mythical beside its three stages. */
+.fit-fighter {
+  position: relative;
+}
+.fit-fighter-mark {
+  position: absolute;
+  top: 3px;
+  right: 9px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--ui-bg-0);
+  box-sizing: content-box;
+}
+.fit-fighter-mark.is-owned {
+  background: var(--r-mythic);
+}
+.fit-fighter-mark.is-trial {
+  background: var(--ui-bg-0);
+  box-shadow: inset 0 0 0 2px var(--r-mythic);
+}
+.fit-mythic-one {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: start;
+}
+.fit-mythic-stages {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.fit-mythic-stages ol {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fit-mythic-stages li {
+  display: grid;
+  gap: 1px;
+  padding: 6px 8px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line);
+  background: var(--fill-card);
+}
+.fit-mythic-stages li b {
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  letter-spacing: 0.04em;
+  color: var(--ui-dim);
+}
+.fit-mythic-stages li small {
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.fit-mythic-stages li.is-reached {
+  border-color: color-mix(in srgb, var(--r-mythic) 60%, transparent);
+  background: color-mix(in srgb, var(--r-mythic) 12%, transparent);
+}
+.fit-mythic-stages li.is-reached b {
+  color: var(--r-mythic);
+}
+.fit-mythic-stages .ui-bar {
+  --bar: var(--r-mythic);
+}
+
+/* Phones: the count sits after Owned / Not owned, before the rarity chips,
+   so it isn't read as part of the chip the row's fade cuts ("Rar 8 skins"). */
+@media (max-height: 500px) {
+  .fit-filters > .ui-seg {
+    order: 0;
+  }
+  .fit-filters > .fit-count {
+    order: 1;
+    margin-left: 0;
+  }
+  .fit-filters > .ui-chips {
+    order: 2;
+  }
+}
+
+/* The narrowest phones: "ENTRANCE" at the 11 px floor is wider than a sixth
+   of the Wardrobe (it ran into "VICTORY" at 667x375): the six slots go
+   three a row. */
+@media (max-height: 500px) and (max-width: 720px) {
+  .fit-slots {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

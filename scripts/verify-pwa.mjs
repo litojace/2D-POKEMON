@@ -29,6 +29,27 @@ assert(
   "Only public static assets may be cached",
 );
 assert(urls.includes("offline.html"));
+for (const art of [
+  "startup-starfield",
+  "startup-sigil",
+  // Every raid boss is vector art, drawn by the client: no boss atlases.
+  "raid-spell-flipbook",
+])
+  assert(
+    urls.some((url) => new RegExp(`^assets/${art}-[\\w-]+\\.webp$`).test(url)),
+    `${art} must use a content-hashed URL and remain available offline`,
+  );
+assert(
+  !urls.some((url) => /^assets\/raid-(whole|directions)-/.test(url)),
+  "Boss atlases are gone (every boss is vector art) and must not be precached",
+);
+assert(!urls.includes("assets/town/fountain.webp"));
+assert(!urls.includes("assets/town/ground.webp"));
+// The hub's Plaza replaced the old town: its art is no longer downloaded.
+assert(
+  !urls.some((url) => /^assets\/town-/.test(url)),
+  "The old town's art must not be precached",
+);
 const music = JSON.parse(
   readFileSync("apps/client/public/assets/music/sources.json", "utf8"),
 );
@@ -43,6 +64,29 @@ assert(
   "Game entry navigation must remain network-only",
 );
 assert(urls.every((url) => existsSync(root + url)));
+// Phaser loads after the first screen (phaser-runtime.ts), not with the
+// page, yet stays installed for offline battles; so do the Lobby panels
+// that load on first use.
+const entry = readFileSync(root + "index.html", "utf8");
+assert(
+  !/assets\/phaser-[\w-]+\.js/.test(entry),
+  "Phaser must not load with the page (phaser-runtime.ts)",
+);
+for (const chunk of ["phaser", "raid-hall", "fitting-room", "journey"])
+  assert(
+    urls.some((url) => new RegExp(`^assets/${chunk}-[\\w-]+\\.js$`).test(url)),
+    `${chunk} must stay available offline`,
+  );
+// Links in old emails land on these paths; each must be the game page.
+const page = readFileSync(root + "index.html", "utf8");
+for (const path of ["email-confirmed", "reset-password", "auth/callback"]) {
+  assert.equal(
+    readFileSync(root + `${path}.html`, "utf8"),
+    page,
+    `Old auth link page ${path}.html must match index.html`,
+  );
+  assert(!existsSync(root + path), `Drop the unused ${path}/ copy`);
+}
 assert(!existsSync(root + "touch-preview.html"));
 assert(!existsSync(root + "ability-preview.html"));
 console.log(
@@ -54,4 +98,5 @@ assert(!existsSync(root + "safe-preview.html"));
 assert(!existsSync(root + "readiness-preview.html"));
 
 assert(!existsSync(root + "animation-preview.html"));
+assert(!existsSync(root + "boss-animation-preview.html"));
 assert(!existsSync(root + "mobile-layout-preview.html"));

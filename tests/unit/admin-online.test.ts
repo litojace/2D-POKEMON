@@ -78,7 +78,7 @@ describe("admin online list", () => {
       names,
       now,
     );
-    expect(html).toContain("<b>2</b> signed in");
+    expect(html).toContain("All 2");
     expect(html).toContain("1 in match");
     expect(html).toContain("3 not signed in");
     expect(html).toContain("&lt;b&gt;x&lt;/b&gt;");

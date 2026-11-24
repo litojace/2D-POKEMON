@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   AnimationController,
   facing,
@@ -85,4 +85,22 @@ it("identifies basic attacks and all thirty-two skills in the existing event str
 it("defaults to Q, E, R and F for the four skills and right mouse for dash", () => {
   expect(KEYS.skills).toEqual(["Q", "E", "R", "F"]);
   expect(KEYS.dash).toBe("RMB");
+});
+
+describe("moving while casting", () => {
+  const pose = (speed: number) => ({ hp: 100, speed, angle: 0, dash: false, jump: false });
+  it("runs again once the throw has shown, while a movement key is held", async () => {
+    const { AnimationController, RUN_THROUGH_AFTER } = await import("../../apps/client/src/animation/controller");
+    const c = new AnimationController();
+    c.trigger("skill1", 1000, 3000); // a long breath attack
+    expect(c.update(pose(220), 1100, 120)).toBe("skill1");
+    expect(c.update(pose(220), 1000 + RUN_THROUGH_AFTER.skill1!, 120)).toBe("run");
+  });
+  it("plays the whole move when standing still", async () => {
+    const { AnimationController } = await import("../../apps/client/src/animation/controller");
+    const c = new AnimationController();
+    c.trigger("skill3", 1000, 650);
+    expect(c.update(pose(0), 1500, 120)).toBe("skill3");
+    expect(c.update(pose(0), 1700, 120)).toBe("idle");
+  });
 });

@@ -1,0 +1,277 @@
+{
+  "environment": "Chromium headless, SwiftShader, 844x390, DPR 2, four-player deterministic-input local simulation, five-second sample after warm-up",
+  "before": {
+    "snapshots": {
+      "count": 68,
+      "mean": 1.007352941286038,
+      "p95": 2.199999999254942,
+      "max": 12.399999998509884
+    },
+    "update": {
+      "count": 55,
+      "mean": 1.6454545454545455,
+      "p95": 5.099999997764826,
+      "max": 5.300000000745058
+    },
+    "bytes": {
+      "count": 68,
+      "mean": 3486.279411764706,
+      "p95": 3747,
+      "max": 3845
+    },
+    "frame": {
+      "count": 55,
+      "mean": 16.666666666666654,
+      "p95": 16.666666666666664,
+      "max": 16.666666666666664
+    },
+    "hudMutations": 3280,
+    "cpu": {
+      "TaskDuration": 2.43786,
+      "ScriptDuration": 1.42581,
+      "LayoutDuration": 0.061908000000000005,
+      "RecalcStyleDuration": 0.318682,
+      "LayoutCount": 105,
+      "RecalcStyleCount": 159
+    },
+    "top": [
+      {
+        "name": "(idle)",
+        "url": "",
+        "samples": 1907
+      },
+      {
+        "name": "(program)",
+        "url": "",
+        "samples": 665
+      },
+      {
+        "name": "GraphicsWebGLRenderer",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 87
+      },
+      {
+        "name": "batchFillPath",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 80
+      },
+      {
+        "name": "isEarHashed",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 64
+      },
+      {
+        "name": "(garbage collector)",
+        "url": "",
+        "samples": 60
+      },
+      {
+        "name": "indexCurve",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 57
+      },
+      {
+        "name": "earcut",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 54
+      },
+      {
+        "name": "earcutLinked",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 28
+      },
+      {
+        "name": "sortLinked",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 25
+      },
+      {
+        "name": "update",
+        "url": "src/main.ts?t=1793149667110",
+        "samples": 14
+      },
+      {
+        "name": "zOrder",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 11
+      },
+      {
+        "name": "render",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 10
+      },
+      {
+        "name": "area",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 10
+      },
+      {
+        "name": "bufferData",
+        "url": "",
+        "samples": 10
+      },
+      {
+        "name": "",
+        "url": "src/main.ts?t=1793149667110",
+        "samples": 8
+      },
+      {
+        "name": "render",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 7
+      },
+      {
+        "name": "",
+        "url": "src/main.ts?t=1793149667110",
+        "samples": 7
+      },
+      {
+        "name": "drawParticles",
+        "url": "src/fx-engine.ts",
+        "samples": 6
+      },
+      {
+        "name": "render",
+        "url": "animation/rig.ts",
+        "samples": 6
+      }
+    ]
+  },
+  "after": {
+    "snapshots": {
+      "count": 75,
+      "mean": 0.7559999995927016,
+      "p95": 1.9000000022351742,
+      "max": 3
+    },
+    "update": {
+      "count": 65,
+      "mean": 3.027692307646458,
+      "p95": 7.800000000745058,
+      "max": 23.900000002235174
+    },
+    "bytes": {
+      "count": 75,
+      "mean": 3476.2933333333335,
+      "p95": 3747,
+      "max": 3845
+    },
+    "frame": {
+      "count": 65,
+      "mean": 20.639999999999986,
+      "p95": 51.66666666666667,
+      "max": 68.32666666666688
+    },
+    "hudMutations": 462,
+    "cpu": {
+      "TaskDuration": 2.076931,
+      "ScriptDuration": 0.7528600000000001,
+      "LayoutDuration": 0.046762,
+      "RecalcStyleDuration": 0.429306,
+      "LayoutCount": 113,
+      "RecalcStyleCount": 186
+    },
+    "top": [
+      {
+        "name": "(idle)",
+        "url": "",
+        "samples": 2001
+      },
+      {
+        "name": "(program)",
+        "url": "",
+        "samples": 785
+      },
+      {
+        "name": "(garbage collector)",
+        "url": "",
+        "samples": 42
+      },
+      {
+        "name": "batchFillPath",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 33
+      },
+      {
+        "name": "GraphicsWebGLRenderer",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 31
+      },
+      {
+        "name": "update",
+        "url": "src/main.ts?t=1793152865089",
+        "samples": 28
+      },
+      {
+        "name": "earcutLinked",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 23
+      },
+      {
+        "name": "bufferSubData",
+        "url": "",
+        "samples": 15
+      },
+      {
+        "name": "render",
+        "url": "animation/rig.ts?t=1793152303834",
+        "samples": 10
+      },
+      {
+        "name": "",
+        "url": "",
+        "samples": 10
+      },
+      {
+        "name": "earcut",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 9
+      },
+      {
+        "name": "GetPoints",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 7
+      },
+      {
+        "name": "batchSprite",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 7
+      },
+      {
+        "name": "updateNameplate",
+        "url": "src/player-nameplate.ts",
+        "samples": 6
+      },
+      {
+        "name": "StableSort",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 6
+      },
+      {
+        "name": "tick",
+        "url": "src/simulation.ts",
+        "samples": 6
+      },
+      {
+        "name": "",
+        "url": "src/main.ts?t=1793152865089",
+        "samples": 6
+      },
+      {
+        "name": "lineTo",
+        "url": "deps/phaser.js?v=32ea2b1a",
+        "samples": 5
+      },
+      {
+        "name": "clear",
+        "url": "",
+        "samples": 5
+      },
+      {
+        "name": "update",
+        "url": "src/touch-controls.ts?t=1793152642210",
+        "samples": 5
+      }
+    ]
+  }
+}

@@ -5,16 +5,25 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc --noEmit && vite build"
+    "test:boss-art": "vitest run --root . --config ../../vitest.config.ts",
+    "build": "tsc --noEmit && vite build",
+    "build:ios": "tsc --noEmit && vite build --mode ios"
   },
   "dependencies": {
     "@arena/shared": "*",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/device": "8.0.3",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.6.2",
+    "@capacitor/status-bar": "8.0.4",
     "@supabase/supabase-js": "^2.117.3",
     "phaser": "^3.90.0",
     "socket.io-client": "^4.8.0"
   },
   "devDependencies": {
-    "vite": "^6.3.0",
+    "@capacitor/cli": "8.6.2",
+    "vite": "^6.4.5",
     "vite-plugin-pwa": "^2.0.0",
     "workbox-core": "^7.4.1",
     "workbox-precaching": "^7.4.1",

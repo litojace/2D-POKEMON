@@ -1,0 +1,89 @@
+/* ==========================================================================
+   Lighter menus outside battle (ui/ui-effects.ts). Battles are already
+   blur-free (body.battle-active) and keep their own budget, so nothing here
+   reaches them.
+
+   - Low graphics (`:root[data-ui-effects="light"]`): no backdrop blur (the
+     glass gets its deeper solid tint), smaller soft shadows, and no
+     decorative loops: the Lobby fighter's idle bob, PLAY's sweep and glow,
+     cosmetic rarity sheens, orbits and rays, frame ornaments, the startup
+     sigil's float.
+     Loops that say something (an order ready, a loading spinner) stay.
+   - Reduced motion: the same loops stop; the look is otherwise kept.
+
+   Loaded after aero.css, so its tokens win.
+   ========================================================================== */
+:root[data-ui-effects="light"] {
+  --aero-tint: var(--aero-tint-solid);
+  --aero-blur: none;
+  /* No blur behind glass: what shows through stays sharp and competes
+     with the text on it (ui/tokens.css). Pills and cards turn near solid;
+     panels, menus, dialogs and the chat turn solid. */
+  --glass-thin: var(--glass-solid);
+  --glass-regular: var(--glass-opaque);
+  --glass-thick: var(--glass-opaque);
+  --shadow-2: 0 6px 14px #000a;
+}
+:root[data-ui-effects="light"]
+  body:not(.battle-active)
+  :is(*, *::before, *::after) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* The big soft shadows (30–100 px blurs) of drawers, menus, sheets and
+   notices: a short one keeps them apart from what is behind. */
+:root[data-ui-effects="light"]
+  body:not(.battle-active)
+  :is(
+    .home-drawer,
+    .lobby-mode-menu,
+    .header-menu-panel,
+    .room-panel,
+    .room-invite-notice,
+    #toast,
+    .plaza-layer .polaroid,
+    .plaza-layer .pz-album-panel
+  ) {
+  box-shadow: 0 6px 16px #0009;
+}
+
+/* Decorative loops. */
+:root[data-ui-effects="light"]
+  body:not(.battle-active)
+  :is(
+    .lobby-fighter-art,
+    .lobby-member-art,
+    .lobby-play::before,
+    .raid-cosmetic-preview[data-cosmetic]::after,
+    .server-startup-art,
+    .server-startup-aura,
+    .server-startup-orbit,
+    .server-startup-art > i
+  ) {
+  animation: none !important;
+}
+:root[data-ui-effects="light"]
+  body:not(.battle-active)
+  .lobby-play-button::after {
+  animation: none !important;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  body:not(.battle-active)
+    :is(
+      .lobby-fighter-art,
+      .lobby-member-art,
+      .lobby-play::before,
+      .raid-cosmetic-preview[data-cosmetic]::after,
+      .server-startup-art,
+      .server-startup-aura,
+      .server-startup-orbit,
+      .server-startup-art > i
+    ) {
+    animation: none !important;
+  }
+  body:not(.battle-active) .lobby-play-button::after {
+    animation: none !important;
+    opacity: 0;
+  }
+}

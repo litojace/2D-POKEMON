@@ -29,6 +29,10 @@ export interface FighterVisual {
     reduced?: boolean,
   ): void;
   setVisible(visible: boolean): void;
+  /** Draw order (the coliseum courts sort fighters by where they stand). */
+  setDepth(depth: number): void;
+  /** A layer over the fighter, cleared by render() (rigs only). */
+  readonly front?: Phaser.GameObjects.Graphics;
   destroy(): void;
 }
 export function queueFighterAssets(
@@ -53,6 +57,18 @@ export function queueFighterAssets(
       frameHeight: pack.frameHeight,
     });
   else scene.load.atlas(texture, path + pack.image, path + pack.data);
+}
+/** Every texture key queueFighterAssets loads for this fighter. */
+export function fighterTextureKeys(
+  id: CharacterId,
+  layers: RigAsset[],
+): string[] {
+  const pack = fighterPack(id),
+    texture = `frames-${id}`;
+  if (!pack || pack.kind === "layered") return layers.map((a) => a.key);
+  if (pack.kind === "frames")
+    return Object.keys(pack.files).map((name) => `${texture}-${name}`);
+  return [texture];
 }
 function animationKey(id: CharacterId, state: string, dir: string) {
   return `fighter-${id}-${state}-${dir}`;
@@ -96,6 +112,8 @@ class FrameFighterVisual implements FighterVisual {
   readonly controller = new AnimationController();
   readonly root: Phaser.GameObjects.Container;
   private sprite: Phaser.GameObjects.Sprite;
+  /** The sprite's twin in one flat colour over it (pose.wash), made on first use. */
+  private wash?: Phaser.GameObjects.Sprite;
   private current = "";
   private replay = false;
   constructor(
@@ -132,6 +150,9 @@ class FrameFighterVisual implements FighterVisual {
   setVisible(visible: boolean) {
     this.root.setVisible(visible);
   }
+  setDepth(depth: number) {
+    this.root.setDepth(depth);
+  }
   destroy() {
     this.root.destroy(true);
   }
@@ -152,17 +173,48 @@ class FrameFighterVisual implements FighterVisual {
     const selected = this.pack.animations[`${state}-${dir}`] ? state : "idle";
     const key = animationKey(this.character, selected, dir);
     this.root.setPosition(x, y).setAlpha(alpha);
+    let restart = false;
     if (this.current !== key || this.replay) {
       this.current = key;
       this.replay = false;
       this.sprite.play(key);
+      restart = true;
     }
-    if (
-      reduced &&
-      ["idle", "walk", "run", "wave", "victory"].includes(selected)
-    )
-      this.sprite.anims.pause();
+    const still =
+      reduced && ["idle", "walk", "run", "wave", "victory"].includes(selected);
+    if (still) this.sprite.anims.pause();
     else if (this.sprite.anims.isPaused) this.sprite.anims.resume();
-    this.sprite.setTint(state === "hurt" ? 0xffbaba : 0xffffff);
+    this.sprite.setTint(
+      state === "hurt" ? (pose.hurtTint ?? 0xffbaba) : (pose.tint ?? 0xffffff),
+    );
+    this.syncWash(pose.wash, key, restart, still);
+  }
+  /** The wash: a twin playing the same animation, in the wash colour. */
+  private syncWash(
+    wash: AnimationPose["wash"],
+    key: string,
+    restart: boolean,
+    still: boolean,
+  ) {
+    if (!wash) {
+      this.wash?.setVisible(false);
+      return;
+    }
+    if (!this.wash) {
+      const s = this.sprite;
+      this.wash = this.scene.add
+        .sprite(s.x, s.y, s.texture.key, s.frame.name)
+        .setOrigin(s.originX, s.originY)
+        .setScale(s.scaleX, s.scaleY);
+      this.root.add(this.wash);
+      this.wash.play(key);
+      // In step with the sprite, part-way through its animation.
+      this.wash.anims.setProgress(this.sprite.anims.getProgress());
+    }
+    const w = this.wash;
+    if (restart) w.play(key);
+    if (still) w.anims.pause();
+    else if (w.anims.isPaused) w.anims.resume();
+    w.setVisible(true).setAlpha(wash.alpha).setTintFill(wash.color);
   }
 }

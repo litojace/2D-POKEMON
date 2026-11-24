@@ -1,0 +1,795 @@
+/* ==========================================================================
+   The roster and fighter detail (UI remodel step 3, docs/ui-remodel/
+   PLAN.md). Markup: screens/roster-view.ts. Layout only on top of the
+   shared components (ui/components.css).
+   ========================================================================== */
+
+/* ------------------------------------------------------------- grid */
+.roster-head .roster-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-left: auto;
+  min-width: 0;
+}
+.roster-elements .ui-chip {
+  padding: 0 9px;
+}
+.roster-el[style*="--el"] {
+  color: var(--el);
+}
+.roster-el[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+}
+.roster-sort {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+  flex: none;
+}
+.roster-sort select {
+  height: var(--ctl-s);
+  border-radius: var(--rad-sm);
+  background: var(--fill-card);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-line-2);
+  padding: 0 8px;
+  font: inherit;
+}
+/* The whole roster: cards of one size in even rows, six to a row (the
+   eighteen fighters are three full rows; owner, 6 Nov), or three to a row
+   where six don't fit. The grid scrolls. */
+.roster-room[data-roster-mode="grid"] .roster-body {
+  container: roster-grid / inline-size;
+}
+.ui-grid.roster-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 236px;
+}
+@container roster-grid (min-width: 960px) {
+  .ui-grid.roster-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+.roster-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  gap: 4px;
+  padding: 10px;
+  border-radius: var(--rad-lg);
+  border: 1px solid color-mix(in srgb, var(--el) 40%, transparent);
+  background:
+    radial-gradient(
+      ellipse 80% 60% at 50% 65%,
+      color-mix(in srgb, var(--el) 30%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--el) 14%, var(--ui-bg-1)),
+      var(--ui-bg-1)
+    );
+  text-align: left;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  transition: transform var(--dur-1) var(--ease-pop);
+  /* No content-visibility: auto here. Safari on iPhone sometimes skipped
+     drawing a card's insides after it was picked: the frame showed, the
+     fighter and name did not (owner, 12 Nov). See tests/unit/no-content-visibility. */
+}
+.roster-card:hover {
+  transform: translateY(-2px);
+}
+.roster-card[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 2px var(--ui-accent) inset;
+}
+.roster-card-top {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 1;
+}
+.roster-card-art {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding-top: 18px;
+}
+.roster-card-art svg {
+  height: 100%;
+  max-height: 220px;
+  width: auto;
+  max-width: 100%;
+  filter: drop-shadow(0 10px 10px #0008);
+}
+.roster-card-text {
+  display: grid;
+  min-width: 0;
+}
+.roster-card-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: calc(26px * var(--text-scale, 1));
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.roster-card-text small {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.roster-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.roster-card-foot .ui-tag.is-ok {
+  margin-left: auto;
+}
+/* A card narrower than its foot (six to a row on a laptop): the one you
+   play shows Playing in place of its looks count. */
+.roster-card {
+  container: roster-card / inline-size;
+}
+@container roster-card (max-width: 215px) {
+  .roster-card-foot:has(.is-ok) .ui-note {
+    display: none;
+  }
+}
+.roster-room .ui-ring b {
+  font-size: calc(14px * var(--text-scale, 1));
+}
+.roster-foot-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  width: min(260px, 100%);
+}
+.roster-foot-text .ui-note,
+.roster-foot-text .ui-h {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------------------------------------------------------- detail */
+/* The stage is three rows: number and mastery on top, the fighter in all
+   the room between, the nameplate (name, role, stats) at the foot. The
+   fighter stays centred in its row whatever the screen's height, instead
+   of hanging under the top edge of a tall stage. */
+.roster-stage {
+  isolation: isolate;
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--sp-2);
+  padding: 14px 20px 18px;
+}
+/* The fighter: the still art and, over it, the live rig in the same box
+   (the "selection" framing is 480 × 500). It fills its row up to 760 px
+   wide; the canvas and its textures draw at the size it is shown times the
+   screen's density (shop-preview.ts), so it stays sharp. */
+.roster-rig {
+  grid-area: 2 / 1;
+  align-self: center;
+  justify-self: center;
+  position: relative;
+  height: min(100%, 792px);
+  max-width: min(100%, 760px);
+  aspect-ratio: 480 / 500;
+  min-height: 0;
+  display: grid;
+}
+/* The stage light (stage-light.ts, owner's option C): the element's glow
+   and a lit disc with a ring under the feet, in the same 480 × 500 frame as
+   the fighter, so it sits under the still art and the live rig alike. */
+.roster-rig > .stage-light {
+  pointer-events: none;
+}
+.roster-rig > :is(svg, canvas) {
+  grid-area: 1 / 1;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+  overflow: visible;
+}
+.roster-rig > canvas {
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.roster-rig.is-ready > canvas {
+  opacity: 1;
+}
+.roster-stage-top {
+  grid-area: 1 / 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.roster-counter {
+  font-size: calc(34px * var(--text-scale, 1));
+  line-height: 1;
+  color: var(--el);
+}
+.roster-counter small {
+  font-size: calc(14px * var(--text-scale, 1));
+  color: var(--ui-dim);
+}
+/* ‹ › sit level with the fighter, at the stage's edges. */
+.roster-step {
+  grid-area: 2 / 1;
+  align-self: center;
+  position: relative;
+  font-size: calc(24px * var(--text-scale, 1));
+  line-height: 1;
+  z-index: 3;
+}
+.roster-prev {
+  justify-self: start;
+  margin-left: -8px;
+}
+.roster-next {
+  justify-self: end;
+  margin-right: -8px;
+}
+.roster-stage-info {
+  grid-area: 3 / 1;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.roster-plate {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+/* A wide stage: the nameplate on the left, the stats beside it. */
+@container (min-width: 640px) {
+  .roster-stage-info {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    align-items: end;
+    gap: var(--sp-6);
+  }
+}
+.roster-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.roster-stage-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(40px, 7cqw, 56px);
+  line-height: 0.95;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.roster-stats {
+  display: grid;
+  gap: 6px;
+}
+.roster-stat {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) 40px;
+  gap: 12px;
+  align-items: center;
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.roster-stat b {
+  text-align: right;
+  font-size: calc(20px * var(--text-scale, 1));
+  color: var(--ui-text);
+}
+.roster-hint {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.roster-head > .ui-btn {
+  flex: none;
+}
+/* Skills: the chosen one large, then every skill as a row. */
+.roster-skill-big {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+.roster-skill-art {
+  height: 120px;
+  border-radius: var(--rad-md);
+  background: radial-gradient(
+    ellipse at 50% 60%,
+    color-mix(in srgb, var(--el, var(--ui-accent)) 26%, var(--ui-bg-2)),
+    var(--ui-bg-0) 75%
+  );
+  border: 1px solid var(--ui-line);
+  display: grid;
+  place-items: center;
+}
+.roster-skill-art > svg {
+  width: 84px;
+  height: 84px;
+}
+.roster-skill-big-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.roster-skills {
+  display: grid;
+  gap: 6px;
+}
+.roster-skill {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--fill-card);
+  text-align: left;
+  min-width: 0;
+}
+.roster-skill[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 7.8%, transparent);
+}
+.roster-key {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: calc(12px * var(--text-scale, 1));
+  min-width: 26px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: var(--fill-well);
+  border: 1px solid var(--ui-line-2);
+  display: grid;
+  place-items: center;
+}
+.roster-skill-icon svg {
+  width: 36px;
+  height: 36px;
+  display: block;
+}
+.roster-skill-text {
+  display: grid;
+  min-width: 0;
+}
+.roster-skill-text b {
+  font-size: calc(15px * var(--text-scale, 1));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.roster-skill-text small {
+  color: var(--ui-dim);
+  font-size: calc(12px * var(--text-scale, 1));
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.roster-cd {
+  font-size: calc(16px * var(--text-scale, 1));
+  color: var(--ui-dim);
+  min-width: 70px;
+  text-align: right;
+}
+/* The combo, under the basic attack: like a skill row, but not pressable. */
+.roster-combo {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--rad-md);
+  border: 1px dashed var(--ui-line-2);
+  background: var(--fill-card);
+  min-width: 0;
+}
+.roster-combo-tag {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: calc(11px * var(--text-scale, 1));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: var(--ui-accent);
+  border: 1px solid var(--ui-accent);
+}
+.roster-combo-text {
+  display: grid;
+  min-width: 0;
+}
+.roster-combo-text b {
+  font-size: calc(15px * var(--text-scale, 1));
+}
+.roster-combo-text small {
+  color: var(--ui-dim);
+  font-size: calc(12px * var(--text-scale, 1));
+}
+.roster-tricks {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.roster-tricks b {
+  color: var(--ui-text);
+}
+/* Overview and Skins. */
+.roster-bio {
+  font-size: var(--fs-lead);
+  color: var(--ui-text);
+}
+.roster-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+.roster-fact {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 12px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+}
+/* A champion's passive (Pangrove's plates, Mossloth's moss): the full row. */
+.roster-fact.roster-passive {
+  grid-column: 1 / -1;
+}
+.roster-looks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+.roster-look {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+  min-width: 0;
+}
+.roster-look.is-unowned {
+  opacity: 0.62;
+}
+.roster-look-art {
+  aspect-ratio: 1.12;
+  display: grid;
+  place-items: center;
+  border-radius: var(--rad-sm);
+  background: radial-gradient(
+    ellipse at 50% 85%,
+    var(--ui-bg-2),
+    var(--ui-bg-0) 75%
+  );
+  overflow: hidden;
+}
+.roster-look-art > :is(svg, img) {
+  width: 88%;
+  height: 88%;
+}
+.roster-look b {
+  font-family: var(--font-display);
+  font-size: calc(16px * var(--text-scale, 1));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.roster-look small {
+  font-size: var(--fs-micro);
+  color: var(--ui-dim);
+}
+.roster-look small.is-on {
+  color: var(--ui-ok);
+}
+
+/* ------------------------------------------------- phones, sideways */
+@media (max-width: 1300px) {
+  .roster-head .ui-kicker {
+    display: none;
+  }
+  .roster-card-name {
+    font-size: calc(22px * var(--text-scale, 1));
+  }
+}
+@media (max-height: 500px) {
+  .roster-head .ui-kicker,
+  .roster-sort,
+  .roster-ranges {
+    display: none;
+  }
+  .roster-elements .ui-chip {
+    padding: 0 7px;
+  }
+  .roster-elements .ui-chip svg {
+    width: 13px;
+    height: 13px;
+  }
+  .ui-grid.roster-grid {
+    grid-auto-rows: 104px;
+  }
+  .roster-card {
+    padding: 5px;
+    gap: 1px;
+    border-radius: var(--rad-sm);
+  }
+  .roster-card .ui-element {
+    height: 18px;
+    padding: 0 5px;
+    font-size: 0;
+    gap: 0;
+  }
+  .roster-card .ui-element svg {
+    width: 12px;
+    height: 12px;
+  }
+  .roster-card-name {
+    font-size: calc(15px * var(--text-scale, 1));
+  }
+  .roster-card-text small,
+  .roster-card-foot {
+    display: none;
+  }
+  .roster-card-top {
+    left: 4px;
+    right: 4px;
+    top: 4px;
+  }
+  .roster-card-art {
+    padding-top: 10px;
+  }
+  .roster-foot-text {
+    width: 140px;
+  }
+  .roster-stage {
+    padding: 8px;
+    gap: 2px;
+  }
+  .roster-counter {
+    font-size: calc(20px * var(--text-scale, 1));
+  }
+  .roster-step {
+    width: 30px;
+    height: 30px;
+    font-size: calc(18px * var(--text-scale, 1));
+  }
+  .roster-prev {
+    margin-left: -2px;
+  }
+  .roster-next {
+    margin-right: -2px;
+  }
+  .roster-stage-info,
+  .roster-plate {
+    gap: 2px;
+  }
+  .roster-stage-name {
+    font-size: calc(20px * var(--text-scale, 1));
+  }
+  .roster-stage-role,
+  .roster-stats,
+  .roster-hint,
+  .roster-tricks {
+    display: none;
+  }
+  .roster-skill-big {
+    grid-template-columns: 90px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .roster-skill-art {
+    height: 70px;
+  }
+  .roster-skill-art > svg {
+    width: 48px;
+    height: 48px;
+  }
+  .roster-skill-big .ui-note {
+    font-size: calc(11px * var(--text-scale, 1));
+  }
+  .roster-skills {
+    gap: 4px;
+  }
+  .roster-skill {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 4px 6px;
+    gap: 6px;
+  }
+  .roster-skill .roster-key,
+  .roster-skill-text small {
+    display: none;
+  }
+  .roster-skill-icon svg {
+    width: 26px;
+    height: 26px;
+  }
+  .roster-skill-text b {
+    font-size: calc(12px * var(--text-scale, 1));
+  }
+  .roster-cd {
+    font-size: calc(12px * var(--text-scale, 1));
+    min-width: 0;
+  }
+  .roster-combo {
+    padding: 4px 6px;
+    gap: 6px;
+  }
+  .roster-combo-tag {
+    font-size: var(--fs-micro);
+    padding: 2px 4px;
+  }
+  .roster-combo-text b {
+    font-size: calc(12px * var(--text-scale, 1));
+  }
+  .roster-combo-text small {
+    font-size: calc(11px * var(--text-scale, 1));
+  }
+  .roster-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .roster-fact {
+    padding: 6px 8px;
+  }
+  .roster-looks {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .roster-look b {
+    font-size: calc(12px * var(--text-scale, 1));
+  }
+}
+/* Phones: six small cards to a row where they fit (three where not). */
+@media (max-height: 500px) {
+  @container roster-grid (min-width: 560px) {
+    .ui-grid.roster-grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+}
+
+/* ----------------------------- 2v2: your teammate's pick (hidden picks) */
+/* docs/hidden-picks.md: your teammate's name on the fighter they're looking
+   at; a fighter they locked in is theirs, greyed out for you. */
+.roster-mate {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 6px;
+  border-radius: var(--rad-pill, 999px);
+  border: 1px dashed color-mix(in srgb, var(--ui-text) 55%, transparent);
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  line-height: 1.6;
+}
+.roster-mate.is-locked {
+  border-style: solid;
+  border-color: var(--ui-ok);
+}
+.roster-card.is-taken .roster-card-art,
+.roster-card.is-taken .roster-card-text {
+  filter: grayscale(1) brightness(0.6);
+}
+.roster-card.is-taken {
+  border-color: var(--ui-line);
+  background: var(--ui-bg-1);
+}
+@media (max-height: 500px) {
+  .roster-mate {
+    top: 22px;
+  }
+}
+/* Your locked-in fighter in a room: gold, as the seat's Locked state. */
+.ui-tag.roster-locked {
+  background: color-mix(in srgb, var(--ui-warn) 20%, transparent);
+  color: var(--ui-warn);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--ui-warn) 55%, transparent);
+}
+
+/* -------------------------------------------- ranged or close, at a glance */
+.roster-range-badge {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--rad-pill);
+  /* As .ui-element: the colour, tinted, behind a solid glyph. */
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+.roster-range-badge svg {
+  width: 14px;
+  height: 14px;
+}
+.roster-range-badge.is-long {
+  color: #7cc8ff;
+}
+.roster-range-badge.is-close {
+  color: #ff8a5c;
+}
+.roster-foot-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.roster-foot-name .ui-h {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.roster-foot-name .roster-range-badge {
+  width: 20px;
+  height: 20px;
+}
+.roster-foot-name .roster-range-badge svg {
+  width: 12px;
+  height: 12px;
+}
+.roster-foot-range {
+  font-size: var(--fs-micro);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-dim);
+  white-space: nowrap;
+}
+@media (max-height: 500px) {
+  .roster-range-badge {
+    width: 18px;
+    height: 18px;
+  }
+  .roster-range-badge svg {
+    width: 12px;
+    height: 12px;
+  }
+  .roster-foot-range {
+    display: none;
+  }
+}

@@ -1,0 +1,218 @@
+import { test, expect } from "@playwright/test";
+import { box, inside, openHub, snap, hubMenu, settle } from "./helpers";
+import { bossFraming } from "./raid-frames";
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 844, height: 390 },
+  { width: 844, height: 280 },
+  { width: 568, height: 320 },
+]) {
+  test(`boss splash art stays readable and controls work at ${viewport.width}x${viewport.height}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(120000);
+    const context = await browser.newContext({
+      viewport,
+      isMobile: viewport.width < 1000 && viewport.width > viewport.height,
+      hasTouch: viewport.width < 1000 && viewport.width > viewport.height,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openHub(page);
+      await page.evaluate(() => {
+        const fetch = window.fetch.bind(window);
+        window.fetch = async (input, init) =>
+          String(input).includes("/api/raids")
+            ? new Response(
+                JSON.stringify({
+                  clears: 10,
+                  highestPeril: 3,
+                  totalClears: 35,
+                  bestSeconds: 60,
+                  bosses: Object.fromEntries(
+                    [
+                      "grumblecrag",
+                      "tidewyrm",
+                      "gloomshade",
+                      "somnara",
+                      "prismatail",
+                      "emberwing",
+                      "storm-twins",
+                    ].map((id) => [
+                      id,
+                      { clears: 5, highestPeril: 2, bestSeconds: 90 },
+                    ]),
+                  ),
+                  titles: [],
+                  cosmetics: [],
+                  weekly: [],
+                  earned: [],
+                  loadout: {},
+                }),
+                { headers: { "Content-Type": "application/json" } },
+              )
+            : fetch(input, init);
+      });
+      await hubMenu(page, "raids");
+      // The boss list's cards (UI remodel step 5) use the small pictures.
+      const room = page.locator(".rh-room");
+      // Seven boss cards (the Spire's card has its own painting).
+      await expect(
+        room.locator("[data-raid-card] .rh-card-art img"),
+      ).toHaveCount(7);
+      for (const boss of [
+        "grumblecrag",
+        "tidewyrm",
+        "gloomshade",
+        "somnara",
+        "prismatail",
+        "emberwing",
+        "storm-twins",
+      ]) {
+        const card = room.locator(`[data-raid-card="${boss}"]`);
+        await card.scrollIntoViewIfNeeded();
+        await card.click();
+        await room.locator('[data-ui-raid-tab="attacks"]').click();
+        await expect(room.locator("[data-raid-attack]")).toHaveCount(6);
+        // Boss page and tab changes glide in (51a08969): measure where they
+        // land, not mid-glide.
+        await settle(page);
+        const narrow = viewport.width <= 700;
+        const art = room.locator(".rh-poster img");
+        if (!narrow) {
+          await expect(art).toBeVisible();
+          await art.evaluate(async (img: HTMLImageElement) => {
+            await img.decode();
+          });
+          expect(
+            await art.evaluate((img: HTMLImageElement) => img.naturalWidth),
+          ).toBeGreaterThanOrEqual(1200);
+        }
+        await page.evaluate(() => document.fonts.ready);
+        const body = await box(page, ".rh-room .rh-body");
+        const foot = await box(page, ".rh-room .ui-panel-foot");
+        if (viewport.width > viewport.height) {
+          for (const skill of await room.locator("[data-raid-attack]").all()) {
+            await skill.scrollIntoViewIfNeeded();
+            const rect = await skill.boundingBox();
+            expect(
+              rect && inside(rect, body),
+              `${boss}: attack stays above the action bar ${JSON.stringify({ rect, body })}`,
+            ).toBe(true);
+            expect(rect!.height).toBeGreaterThanOrEqual(44);
+          }
+        }
+        if (!narrow) {
+          const stage = await box(page, ".rh-stage");
+          expect(inside(stage, { x: 0, y: 0, ...viewport })).toBe(true);
+          // The stage and the action bar sit side by side, never on top.
+          expect(stage.x + stage.width).toBeLessThanOrEqual(foot.x + 1);
+          // The face stays safely inside the frame, while the wider
+          // camera preserves the creature and surrounding scenery.
+          const f = await bossFraming(page);
+          expect(f.covers, `${boss} fills its stage`).toBe(true);
+          expect(f.x, `${boss}: face clears left edge`).toBeGreaterThan(0.19);
+          expect(f.x, `${boss}: face clears right edge`).toBeLessThan(0.81);
+          expect(f.y, `${boss}: face clears top edge`).toBeGreaterThan(0.15);
+          expect(f.y, `${boss}: face clears caption`).toBeLessThan(0.65);
+          expect(f.zoom, `${boss}: restrained zoom`).toBeLessThan(1.12);
+        }
+        expect(
+          await room.evaluate((el) => el.scrollWidth - el.clientWidth),
+        ).toBeLessThanOrEqual(1);
+        await expect(page.locator(".splash-caption")).toHaveCount(0);
+        if (boss === "grumblecrag" || boss === "storm-twins")
+          await snap(
+            page,
+            info,
+            `splash-${boss}-${viewport.width}x${viewport.height}`,
+          );
+        await room.locator("[data-raid-back]").click();
+      }
+      await room.locator('[data-raid-card="grumblecrag"]').click();
+      await expect(room.locator("[data-raid-start]")).toBeEnabled();
+      await expect(room.locator("[data-raid-practice]")).toHaveCount(0);
+      const actions = await box(page, ".rh-room .ui-panel-foot");
+      await room.locator('[data-ui-raid-tab="guide"]').click();
+      await expect(room.locator(".rh-chapters > li")).toHaveCount(3);
+      await room
+        .locator(".rh-body")
+        .evaluate((el) => (el.scrollTop = el.scrollHeight));
+      expect(await box(page, ".rh-room .ui-panel-foot")).toEqual(actions);
+      await room.locator('[data-ui-raid-tab="rewards"]').click();
+      await expect(
+        room.locator('[data-ui-raid-tab="rewards"]'),
+      ).toHaveAttribute("aria-selected", "true");
+      await expect(room.locator(".rh-reward").first()).toBeVisible();
+      await snap(page, info, `rewards-${viewport.width}x${viewport.height}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test("locked bosses keep their navigation and unlock instruction visible", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openHub(page);
+    await page.evaluate(() => {
+      const fetch = window.fetch.bind(window);
+      window.fetch = async (input, init) =>
+        String(input).includes("/api/raids")
+          ? new Response(
+              JSON.stringify({
+                clears: 0,
+                highestPeril: 0,
+                titles: [],
+                cosmetics: [],
+                weekly: [],
+                earned: [],
+                bosses: {},
+              }),
+              { headers: { "Content-Type": "application/json" } },
+            )
+          : fetch(input, init);
+    });
+    await hubMenu(page, "raids");
+    const room = page.locator(".rh-room");
+    // Locked cards say why (UI remodel step 5).
+    await expect(room.locator("[data-raid-card].is-locked")).toHaveCount(6);
+    // So is the Spire, the last tile.
+    await expect(room.locator("[data-raid-spire].is-locked")).toHaveCount(1);
+    await expect(
+      room.locator('[data-raid-card="emberwing"] .ui-tag'),
+    ).toHaveText("Clear Cragmuff first");
+    await room.locator('[data-raid-card="emberwing"]').click();
+    await expect(room.locator(".rh-stage-name")).toHaveText("Lumiwick");
+    await expect(room.locator("[data-raid-start]")).toBeDisabled();
+    const notice = room.locator(".rh-foot-note.is-reason");
+    await expect(notice).toHaveText("Clear Cragmuff once to unlock Lumiwick.");
+    await expect(notice).toBeInViewport();
+    await room.locator('[data-ui-raid-tab="attacks"]').click();
+    // A locked boss's attacks can still be read before the fight.
+    for (const skill of await room.locator("[data-raid-attack]").all())
+      await expect(skill).toBeEnabled();
+    await expect(room.locator(".rh-attack-big .boss-attack-art")).toBeVisible();
+    await room.locator('[data-ui-raid-tab="guide"]').click();
+    await room
+      .locator(".rh-body")
+      .evaluate((el) => (el.scrollTop = el.scrollHeight));
+    await expect(notice).toBeInViewport();
+    await snap(page, info, "hub-locked-mobile");
+    await page.click(".rh-room .ui-close");
+    await page.evaluate(() => document.getElementById("settings")!.click());
+    await expect(page.locator(".settings-screen")).toBeVisible();
+    await expect(page.locator(".rh-room")).toHaveCount(0);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

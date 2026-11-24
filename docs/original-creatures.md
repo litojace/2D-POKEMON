@@ -1,5 +1,15 @@
 # Original creature overhaul and asset guide
 
+> **November 2026:** the roster is now eighteen. The eight below were joined
+> by Coilemur (Electric lemur), Pyranda (Fire red panda), Glacelle (Water sea
+> angel), Halcyra (Aura kingfisher), Sunbara (Light capybara), Astrabun
+> (Psychic moon rabbit), Wombolder (Earth wombat) and Shadopus (Shadow
+> octopus): kits and design in [new-champions](new-champions/README.md), art
+> in [fighter-assets.md](fighter-assets.md); then by the Nature element's
+> Pangrove (pangolin) and Mossloth (sloth): see
+> [nature-champions.md](nature-champions.md). This page describes the original
+> eight's overhaul and is kept as written.
+
 ## Result and scope
 
 Element Arena now has eight original playable identities and a new elemental emblem, replacing the previous roster artwork, names and playable branding. Selection uses eight compact themed cards, element filtering, larger previews, health/speed/basic statistics and all four skills with descriptions, icons and cooldowns.
@@ -20,7 +30,7 @@ The written art direction guided the initial articulated pass. The user later su
 - `apps/client/src/fighter-selection.ts`, `main.ts`, `style.css`: compact roster/filter/details, asset-backed portraits, original branding and integrated rendering.
 - `apps/client/src/element-effects.ts`, `ability-icons.ts`: eight elemental glyph families and explicit artwork for thirty-two skills, plus basic/universal actions.
 - `apps/client/public/assets/fighters/{id}/`: SVG portrait, selection art and animation metadata for every fighter.
-- `scripts/export-fighters.ts`, `generate-icons.py`: reproducible original assets and install icons. Client HTML, account/install/offline UI and manifest names updated.
+- `scripts/export-fighters.ts`, `generate-icons.mjs`: reproducible original assets and install icons. Client HTML, account/install/offline UI and manifest names updated.
 - Tests cover definitions, migration, asset validation, art keys, selection, all eight practice fighters, combat and animation state handling. Preview pages remain development-only.
 
 ## Completed fighter implementations and gameplay prototypes
@@ -87,7 +97,7 @@ Portrait/selection raster files become visible in the roster independently of th
 
 ## Portrait generation
 
-The eight static portraits were generated using the built-in image tool, guided by the supplied showcase and the Voltkit style reference. Files are `apps/client/public/assets/fighters/{id}/portrait-showcase-v1.webp`. They retain alpha, use lossless WebP encoding, and are loaded lazily in selection. The exact prompt set and tool provenance are in [portrait-generation.md](portrait-generation.md). Native generated PNGs remain in the Codex generated-images directory. No portrait was stretched or bounced to impersonate a combat animation.
+The eight static portraits were generated using the built-in image tool, guided by the supplied showcase and the Voltkit style reference. Files are `apps/client/public/assets/fighters/{id}/portrait-showcase-v1.webp`. They retain alpha, use lossless WebP encoding, and are loaded lazily in selection. Those portrait files and their prompt notes have since been removed; each fighter folder now holds `portrait.svg` and `selection.svg`. Native generated PNGs remain in the Codex generated-images directory. No portrait was stretched or bounced to impersonate a combat animation.
 
 ## Artwork still required
 

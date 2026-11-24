@@ -7,12 +7,19 @@
 import type { CharacterId } from "./index.js";
 import type { RaidSlot } from "./raid.js";
 
-export type Rarity = "common" | "rare" | "epic" | "mythical";
-export const RARITIES: Rarity[] = ["common", "rare", "epic", "mythical"];
+export type Rarity = "common" | "rare" | "epic" | "legendary" | "mythical";
+export const RARITIES: Rarity[] = [
+  "common",
+  "rare",
+  "epic",
+  "legendary",
+  "mythical",
+];
 export const RARITY_NAMES: Record<Rarity, string> = {
   common: "Common",
   rare: "Rare",
   epic: "Epic",
+  legendary: "Legendary",
   mythical: "Mythical",
 };
 /** Champion skin prices by rarity. */
@@ -20,27 +27,439 @@ export const SKIN_PRICES: Record<Rarity, number> = {
   common: 500,
   rare: 1500,
   epic: 3500,
+  /** Above Epic: full original costumes with their own entrance and victory. */
+  legendary: 5500,
   mythical: 8000,
 };
 /** Mythicals: wins with the champion before you can buy, and to awaken. */
 export const MYTHIC_TRIAL_WINS = 30;
 export const AWAKENING = { stage2Wins: 25, stage3Wins: 75 } as const;
 
+/** Champion costumes, distinct from the universal Colors/effect bundles. */
+export const FASHION_COLLECTIONS = {
+  wayfarer: {
+    name: "Wayfarer",
+    rarity: "rare",
+    description: "Trail capes, leather satchels and enamel compass pins",
+  },
+  "moonlit-tea": {
+    name: "Moonlit Tea",
+    rarity: "rare",
+    description: "Crossed silk robes, blossom hairpins and tied obi bows",
+  },
+  "astral-court": {
+    name: "Astral Court",
+    rarity: "rare",
+    description:
+      "Midnight velvet, constellation embroidery and crystal diadems",
+  },
+  "abyssal-expedition": {
+    name: "Abyssal Expedition",
+    rarity: "epic",
+    description:
+      "Pressure suits, glass visors and individual deep-sea equipment",
+  },
+} as const;
+export type FashionCollection = keyof typeof FASHION_COLLECTIONS;
+export const FASHION_COLLECTION_IDS = Object.keys(
+  FASHION_COLLECTIONS,
+) as FashionCollection[];
+
+/** Authored names and accent identity for every current champion. */
+export const FASHION_ROSTER = {
+  voltkit: [
+    "Amber Pathfinder",
+    "Yuzu Tea",
+    "Storm Astronomer",
+    "Arc Diver",
+    "#e9b654",
+  ],
+  cindrake: [
+    "Ember Scout",
+    "Hibiscus Tea",
+    "Solar Regent",
+    "Thermal Vent",
+    "#e77862",
+  ],
+  tidefin: [
+    "Coastal Courier",
+    "Seafoam Tea",
+    "Tidal Astrologer",
+    "Reef Submariner",
+    "#60c7c2",
+  ],
+  auralynx: [
+    "Alpine Wayfinder",
+    "Lavender Tea",
+    "Lunar Paladin",
+    "Cryo Naut",
+    "#b6a3ef",
+  ],
+  lumoth: [
+    "Meadow Surveyor",
+    "Jasmine Tea",
+    "Aurora Envoy",
+    "Abyssal Lantern",
+    "#a6d9a6",
+  ],
+  mystowl: [
+    "Dusk Cartographer",
+    "Plum Blossom Tea",
+    "Star Archivist",
+    "Sonar Owl",
+    "#d49ac7",
+  ],
+  terradon: [
+    "Old Trail Keeper",
+    "Matcha Tea",
+    "World Atlas",
+    "Reef Bastion",
+    "#a7be73",
+  ],
+  duskveil: [
+    "Lantern Wanderer",
+    "Black Sesame Tea",
+    "Eclipse Magister",
+    "Diving Bell Wisp",
+    "#9f91d3",
+  ],
+  coilemur: [
+    "Canopy Messenger",
+    "Honey Citrus Tea",
+    "Comet Acrobat",
+    "Cable Runner",
+    "#eac25e",
+  ],
+  pyranda: [
+    "Maple Rambler",
+    "Cinnamon Tea",
+    "Ember Constellation",
+    "Coral Rescuer",
+    "#de9570",
+  ],
+  glacelle: [
+    "Glacial Navigator",
+    "Blue Peony Tea",
+    "Polar Oracle",
+    "Bathyal Bell",
+    "#99cae8",
+  ],
+  halcyra: [
+    "Skyline Ranger",
+    "Lotus Tea",
+    "Celestial Falconer",
+    "Current Pilot",
+    "#79c7d8",
+  ],
+  sunbara: [
+    "Sunset Rambler",
+    "Osmanthus Tea",
+    "Dawn Consul",
+    "Buoy Captain",
+    "#e8c080",
+  ],
+  astrabun: [
+    "Clover Courier",
+    "Sakura Mochi Tea",
+    "Moon Princess",
+    "Lunar Aquanaut",
+    "#e5abc9",
+  ],
+  wombolder: [
+    "Canyon Explorer",
+    "Roasted Chestnut Tea",
+    "Meteor Sentinel",
+    "Trench Miner",
+    "#b7a385",
+  ],
+  shadopus: [
+    "Deepwater Rover",
+    "Indigo Tea",
+    "Nebula Illusionist",
+    "Nautilus Captain",
+    "#ab91cc",
+  ],
+  pangrove: [
+    "Fern Waykeeper",
+    "Bamboo Tea",
+    "Verdant Zodiac",
+    "Kelp Bulwark",
+    "#8ec59b",
+  ],
+  mossloth: [
+    "Mossy Rambler",
+    "Chrysanthemum Tea",
+    "Dreaming Equinox",
+    "Coral Keeper",
+    "#bac294",
+  ],
+} as const satisfies Record<
+  CharacterId,
+  readonly [string, string, string, string, string]
+>;
+
+export const FASHION_SKINS: ChampionSkin[] = (
+  Object.keys(FASHION_ROSTER) as CharacterId[]
+).flatMap((champion) =>
+  FASHION_COLLECTION_IDS.map((collection, i) => ({
+    id: `${champion}-${collection}`,
+    champion,
+    name: FASHION_ROSTER[champion][i],
+    rarity: FASHION_COLLECTIONS[collection].rarity,
+    collection,
+    description: FASHION_COLLECTIONS[collection].description,
+  })),
+);
+
+/** Original hero costumes with individual rig-mounted equipment and restrained effects. */
+export const VANGUARD_NAMES = {
+  voltkit: "Pulse Courier",
+  cindrake: "Solar Forger",
+  tidefin: "Riptide Ranger",
+  auralynx: "Prism Sentinel",
+  lumoth: "Lumen Warden",
+  mystowl: "Night Cartographer",
+  terradon: "Bulwark Grove",
+  duskveil: "Echo Beacon",
+  coilemur: "Flux Runner",
+  pyranda: "Cinder Medic",
+  glacelle: "Frost Weaver",
+  halcyra: "Gale Captain",
+  sunbara: "Dawn Defender",
+  astrabun: "Comet Strider",
+  wombolder: "Quake Marshal",
+  shadopus: "Deepwatch Oracle",
+  pangrove: "Briar Bastion",
+  mossloth: "Cloud Keeper",
+} as const satisfies Record<CharacterId, string>;
+export const VANGUARD_SKINS: ChampionSkin[] = (
+  Object.keys(VANGUARD_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-nova-vanguard`,
+  champion,
+  name: VANGUARD_NAMES[champion],
+  rarity: "legendary",
+  collection: "nova-vanguard",
+  description:
+    "Original hero suit and equipment, a signature effect, and its own hero landing and victory",
+}));
+
+/** The second Legendary collection: a sky-pirate crew, one captain each. */
+export const SKY_PIRATE_NAMES = {
+  voltkit: "Storm Corsair",
+  cindrake: "Cinder Buccaneer",
+  tidefin: "Tide Admiral",
+  auralynx: "Prism Navigator",
+  lumoth: "Lantern Lookout",
+  mystowl: "Chart Quartermaster",
+  terradon: "Ironhull Captain",
+  duskveil: "Ghost Ship Wisp",
+  coilemur: "Rigging Runner",
+  pyranda: "Spice Raider",
+  glacelle: "Frost Privateer",
+  halcyra: "Crow's Nest Ace",
+  sunbara: "Sunset Skipper",
+  astrabun: "Moonsail Bosun",
+  wombolder: "Anchor Warden",
+  shadopus: "Kraken Captain",
+  pangrove: "Jungle Corsair",
+  mossloth: "Hammock Pirate",
+} as const satisfies Record<CharacterId, string>;
+export const SKY_PIRATE_SKINS: ChampionSkin[] = (
+  Object.keys(SKY_PIRATE_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-sky-pirates`,
+  champion,
+  name: SKY_PIRATE_NAMES[champion],
+  rarity: "legendary",
+  collection: "sky-pirates",
+  description:
+    "A sky-pirate captain's tricorne and coat, a signature effect, an anchor-drop landing and a treasure victory",
+}));
+
+/**
+ * Hồn Việt (Legendary): Vietnamese heritage, each champion a figure of its
+ * own (Trung Thu lanterns, Thánh Gióng, quan họ, Kim Quy, hát bội...), with
+ * embroidery, lanterns and lacquer that give off light, props of its story,
+ * a drum landing, a lantern victory and a motif of its own.
+ */
+export const HON_VIET_NAMES = {
+  voltkit: "Đèn Ông Sao",
+  cindrake: "Thánh Gióng",
+  tidefin: "Hoa Đăng",
+  auralynx: "Võ Sư Vovinam",
+  lumoth: "Đèn Lồng Hội An",
+  mystowl: "Liền Chị Quan Họ",
+  terradon: "Kim Quy",
+  duskveil: "Đèn Kéo Quân",
+  coilemur: "Nghệ Nhân Đàn Bầu",
+  pyranda: "Hạt Dẻ Phố Cổ",
+  glacelle: "Sương Sa Pa",
+  halcyra: "Chim Lạc Đông Sơn",
+  sunbara: "Xuân Hoa Mai",
+  astrabun: "Thỏ Ngọc Cung Trăng",
+  wombolder: "Mùa Lúa Chín",
+  shadopus: "Tướng Hát Bội",
+  pangrove: "Đầm Sen Đồng Tháp",
+  mossloth: "Ông Đồ",
+} as const satisfies Record<CharacterId, string>;
+export const HON_VIET_SKINS: ChampionSkin[] = (
+  Object.keys(HON_VIET_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-hon-viet`,
+  champion,
+  name: HON_VIET_NAMES[champion],
+  rarity: "legendary",
+  collection: "hon-viet",
+  description:
+    "A figure of Vietnamese heritage in full costume with props of its story, glowing embroidery, a drum landing and a lantern victory",
+}));
+
+/**
+ * Hero Squad (Epic): one squad, one language (a suit with a glowing chest
+ * emblem on a white plate, a lit buckle), and a hero of its own for every
+ * champion, drawn from its power. Every name and mark is original.
+ */
+export const HERO_SQUAD_NAMES = {
+  voltkit: "Volt Streak",
+  cindrake: "Blaze Breaker",
+  tidefin: "Tide Guardian",
+  auralynx: "Prism Fist",
+  lumoth: "Lumina",
+  mystowl: "Third Eye",
+  terradon: "Iron Bulwark",
+  duskveil: "Duskwatch",
+  coilemur: "Magnetail",
+  pyranda: "Chestnut Comet",
+  glacelle: "Frost Sentinel",
+  halcyra: "Skysight",
+  sunbara: "Solar Flare",
+  astrabun: "Moon Blink",
+  wombolder: "Bulldozer",
+  shadopus: "Inkshade",
+  pangrove: "Leaf Ranger",
+  mossloth: "Chrono Keeper",
+} as const satisfies Record<CharacterId, string>;
+export const HERO_SQUAD_SKINS: ChampionSkin[] = (
+  Object.keys(HERO_SQUAD_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-hero-squad`,
+  champion,
+  name: HERO_SQUAD_NAMES[champion],
+  rarity: "epic",
+  collection: "hero-squad",
+  description:
+    "An original hero suit with its own powers on show, a glowing chest emblem and lit gear",
+}));
+
+/**
+ * Neon Campus (Epic): one school, and a club of its own for every champion
+ * (gaming, chemistry, swimming, the student council, photography...), its
+ * kit carrying something that lights up.
+ */
+export const NEON_CAMPUS_NAMES = {
+  voltkit: "Game Club Ace",
+  cindrake: "Lab Prodigy",
+  tidefin: "Swim Team Star",
+  auralynx: "Council President",
+  lumoth: "Photo Club Snap",
+  mystowl: "Library Prefect",
+  terradon: "Team Captain",
+  duskveil: "Drama Club Lead",
+  coilemur: "Robotics Whiz",
+  pyranda: "Bake Club Chef",
+  glacelle: "Choir Soloist",
+  halcyra: "Archery Ace",
+  sunbara: "Art Club Painter",
+  astrabun: "Stargazer",
+  wombolder: "Garden Club Keeper",
+  shadopus: "Mystery Club Sleuth",
+  pangrove: "Band Drummer",
+  mossloth: "Nap Club Captain",
+} as const satisfies Record<CharacterId, string>;
+export const NEON_CAMPUS_SKINS: ChampionSkin[] = (
+  Object.keys(NEON_CAMPUS_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-neon-campus`,
+  champion,
+  name: NEON_CAMPUS_NAMES[champion],
+  rarity: "epic",
+  collection: "neon-campus",
+  description:
+    "A school club of its own, with its kit and something on it that lights up",
+}));
+
+/**
+ * Stars & Stripes (Legendary): American popular culture, a figure of its own
+ * for every champion (a space ranger, Lady Liberty, a sheriff, a hot-rod
+ * racer, a stage magician...), with a Walk-of-Fame landing, a fireworks
+ * victory and a motif of its own.
+ */
+export const STARS_STRIPES_NAMES = {
+  voltkit: "Space Ranger",
+  cindrake: "Hot-Rod Racer",
+  tidefin: "Malibu Surfer",
+  auralynx: "Jazz Cat",
+  lumoth: "Neon Diner",
+  mystowl: "Lady Liberty",
+  terradon: "Sheriff",
+  duskveil: "Film Noir",
+  coilemur: "Rodeo Rider",
+  pyranda: "Ace Pitcher",
+  glacelle: "Aurora Alaska",
+  halcyra: "Barnstormer",
+  sunbara: "Fourth of July",
+  astrabun: "Stage Magician",
+  wombolder: "Linebacker",
+  shadopus: "Times Square DJ",
+  pangrove: "Park Ranger",
+  mossloth: "Woodstock Folk",
+} as const satisfies Record<CharacterId, string>;
+export const STARS_STRIPES_SKINS: ChampionSkin[] = (
+  Object.keys(STARS_STRIPES_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-stars-stripes`,
+  champion,
+  name: STARS_STRIPES_NAMES[champion],
+  rarity: "legendary",
+  collection: "stars-stripes",
+  description:
+    "An American figure in full costume with glowing pieces, a Walk-of-Fame landing and a fireworks victory",
+}));
+
 export type Collection =
+  | FashionCollection
+  | "nova-vanguard"
+  | "sky-pirates"
+  | "hon-viet"
+  | "hero-squad"
+  | "neon-campus"
+  | "stars-stripes"
   | "winter"
   | "festival"
   | "garden"
   | "arcade"
-  | "celestial"
+  | "void"
+  | "cyber"
   | "candy"
   | "galaxy"
   | "retro";
 export const COLLECTION_NAMES: Record<Collection, string> = {
+  ...(Object.fromEntries(
+    Object.entries(FASHION_COLLECTIONS).map(([id, c]) => [id, c.name]),
+  ) as Record<FashionCollection, string>),
+  "nova-vanguard": "Nova Vanguard",
+  "sky-pirates": "Sky Pirates",
+  "hon-viet": "Hồn Việt",
+  "hero-squad": "Hero Squad",
+  "neon-campus": "Neon Campus",
+  "stars-stripes": "Stars & Stripes",
   winter: "Winter",
   festival: "Festival",
   garden: "Garden",
   arcade: "Arcade",
-  celestial: "Celestial",
+  void: "Void Knight",
+  cyber: "Cyber Mecha",
   candy: "Candy",
   galaxy: "Galaxy",
   retro: "Retro Pixel",
@@ -70,71 +489,885 @@ const skin = (
   ...(collection ? { collection } : {}),
 });
 
-/** 7 per champion: 3 Common, 2 Rare, 1 Epic, 1 Mythical. */
+/** 14 per champion: 3 Common, 5 Rare, 5 Epic, 1 Mythical. */
 export const CHAMPION_SKINS: ChampionSkin[] = [
+  ...FASHION_SKINS,
+  ...VANGUARD_SKINS,
+  ...SKY_PIRATE_SKINS,
+  ...HON_VIET_SKINS,
+  ...HERO_SQUAD_SKINS,
+  ...NEON_CAMPUS_SKINS,
+  ...STARS_STRIPES_SKINS,
   skin("voltkit", "midnight", "Midnight", "common", "Navy fur, cyan cheeks"),
   skin("voltkit", "peach-fizz", "Peach Fizz", "common", "Peach and pink"),
   skin("voltkit", "mint-static", "Mint Static", "common", "Mint and white"),
-  skin("voltkit", "snowcap", "Snowcap", "rare", "Frosty fur and earmuffs; dashing leaves snowflakes", "winter"),
-  skin("voltkit", "kite-runner", "Kite Runner", "rare", "Paper-kite stripes and a trailing ribbon; dashing leaves confetti", "festival"),
-  skin("voltkit", "neon-arcade", "Neon Arcade", "epic", "Synthwave grid fur, magenta skills, pixel hit sparks", "arcade"),
-  skin("voltkit", "stormcrown", "Stormcrown", "mythical", "Storm-grey fur with gold lightning, a rain cloud and a crown of bolts", "celestial"),
+  skin(
+    "voltkit",
+    "snowcap",
+    "Snowcap",
+    "rare",
+    "Frosty fur and earmuffs; dashing leaves snowflakes",
+    "winter",
+  ),
+  skin(
+    "voltkit",
+    "kite-runner",
+    "Kite Runner",
+    "rare",
+    "Paper-kite stripes and a trailing ribbon; dashing leaves confetti",
+    "festival",
+  ),
+  skin(
+    "voltkit",
+    "neon-arcade",
+    "Neon Arcade",
+    "epic",
+    "Synthwave grid fur, magenta skills, pixel hit sparks",
+    "arcade",
+  ),
+  skin(
+    "voltkit",
+    "arc-unit",
+    "Arc Unit",
+    "epic",
+    "Gold paint over chrome, a V-fin headset, an arc-core collar and a jetpack",
+    "cyber",
+  ),
+  skin(
+    "voltkit",
+    "stormcrown",
+    "Storm Revenant",
+    "mythical",
+    "Black steel crackling with violet lightning: a crown of bolts and a gorget for its goggles and kerchief",
+    "void",
+  ),
 
   skin("cindrake", "ashen", "Ashen", "common", "Charcoal body, ember crest"),
   skin("cindrake", "coral", "Coral", "common", "Coral pink and cream"),
   skin("cindrake", "lime-flame", "Lime Flame", "common", "A green flame crest"),
-  skin("cindrake", "chili-pepper", "Chili Pepper", "rare", "Glossy red with a green stem cap; dashing puffs spice", "garden"),
-  skin("cindrake", "blue-flame", "Blue Flame", "rare", "A cool blue crest and white-hot skills", "winter"),
-  skin("cindrake", "volcano-forge", "Volcano Forge", "epic", "Smith's goggles and molten metal; anvil-spark hits", "festival"),
-  skin("cindrake", "sunforged", "Sunforged", "mythical", "Obsidian with sun-gold cracks and a crest that becomes a sun", "celestial"),
+  skin(
+    "cindrake",
+    "chili-pepper",
+    "Chili Pepper",
+    "rare",
+    "Glossy red with a green stem cap; dashing puffs spice",
+    "garden",
+  ),
+  skin(
+    "cindrake",
+    "blue-flame",
+    "Blue Flame",
+    "rare",
+    "A cool blue crest and white-hot skills",
+    "winter",
+  ),
+  skin(
+    "cindrake",
+    "volcano-forge",
+    "Volcano Forge",
+    "epic",
+    "Smith's goggles and molten metal; anvil-spark hits",
+    "festival",
+  ),
+  skin(
+    "cindrake",
+    "reactor",
+    "Reactor",
+    "epic",
+    "Red plating, a chrome crest fin for its flame and a reactor core",
+    "cyber",
+  ),
+  skin(
+    "cindrake",
+    "sunforged",
+    "Hellforge",
+    "mythical",
+    "Black-iron horns and a crest of black hellfire",
+    "void",
+  ),
 
-  skin("tidefin", "bubblegum", "Bubblegum", "common", "Classic pink with magenta gills"),
+  skin(
+    "tidefin",
+    "bubblegum",
+    "Bubblegum",
+    "common",
+    "Classic pink with magenta gills",
+  ),
   skin("tidefin", "abyss", "Abyss", "common", "Deep navy with teal gills"),
   skin("tidefin", "sandbar", "Sandbar", "common", "Sand and sea-green"),
-  skin("tidefin", "koi-pond", "Koi Pond", "rare", "Koi spots; dashing leaves lily pads", "garden"),
-  skin("tidefin", "corsair", "Corsair", "rare", "A tricorn hat; splashes of gold coins", "festival"),
-  skin("tidefin", "glacier", "Glacier", "epic", "A crystal-ice body; skills turn to ice and snow", "winter"),
-  skin("tidefin", "moontide", "Moontide", "mythical", "A glowing deep-sea body, moonlit skills and jellyfish clones", "celestial"),
+  skin(
+    "tidefin",
+    "koi-pond",
+    "Koi Pond",
+    "rare",
+    "Koi spots; dashing leaves lily pads",
+    "garden",
+  ),
+  skin(
+    "tidefin",
+    "corsair",
+    "Corsair",
+    "rare",
+    "A tricorn hat; splashes of gold coins",
+    "festival",
+  ),
+  skin(
+    "tidefin",
+    "glacier",
+    "Glacier",
+    "epic",
+    "A crystal-ice body; skills turn to ice and snow",
+    "winter",
+  ),
+  skin(
+    "tidefin",
+    "hydro-frame",
+    "Hydro Frame",
+    "epic",
+    "Teal hull plating, a crest fin headset and magenta thrusters",
+    "cyber",
+  ),
+  skin(
+    "tidefin",
+    "moontide",
+    "Abyssal Reaver",
+    "mythical",
+    "Deep-sea armour with a steel dorsal fin and tide-green runes",
+    "void",
+  ),
 
-  skin("auralynx", "snowshoe", "Snowshoe", "common", "White fur, ice-blue fists"),
+  skin(
+    "auralynx",
+    "snowshoe",
+    "Snowshoe",
+    "common",
+    "White fur, ice-blue fists",
+  ),
   skin("auralynx", "desert", "Desert", "common", "Tan fur, amber fists"),
   skin("auralynx", "twilight", "Twilight", "common", "Purple fur, rose fists"),
-  skin("auralynx", "cherry-blossom", "Cherry Blossom", "rare", "A blossom-pink robe; petals drift as it dashes", "garden"),
-  skin("auralynx", "jade-temple", "Jade Temple", "rare", "Jade fists and red tassels", "festival"),
-  skin("auralynx", "stained-glass", "Stained Glass", "epic", "Fists and robe of stained-glass panels; glass-shard hits", "arcade"),
-  skin("auralynx", "celestial-sage", "Celestial Sage", "mythical", "Star-filled fur, orbiting stones and a mandala guard", "celestial"),
+  skin(
+    "auralynx",
+    "cherry-blossom",
+    "Cherry Blossom",
+    "rare",
+    "A blossom-pink robe; petals drift as it dashes",
+    "garden",
+  ),
+  skin(
+    "auralynx",
+    "jade-temple",
+    "Jade Temple",
+    "rare",
+    "Jade fists and red tassels",
+    "festival",
+  ),
+  skin(
+    "auralynx",
+    "stained-glass",
+    "Stained Glass",
+    "epic",
+    "Fists and robe of stained-glass panels; glass-shard hits",
+    "arcade",
+  ),
+  skin(
+    "auralynx",
+    "prism-mech",
+    "Prism Mech",
+    "epic",
+    "Periwinkle armour, a V-fin headset and a cyan prism core",
+    "cyber",
+  ),
+  skin(
+    "auralynx",
+    "celestial-sage",
+    "Spectral Warden",
+    "mythical",
+    "Night-blue plate and a crown of spectral blades over its gem",
+    "void",
+  ),
 
   skin("lumoth", "lunar", "Lunar", "common", "Silver-white fluff"),
   skin("lumoth", "peachy", "Peachy", "common", "Peach and cream"),
   skin("lumoth", "dusk", "Dusk", "common", "Lilac and navy"),
-  skin("lumoth", "rosy-maple", "Rosy Maple", "rare", "Pink and buttery yellow; soft dust puffs", "garden"),
-  skin("lumoth", "paper-lantern", "Paper Lantern", "rare", "Wings like warm paper lanterns", "festival"),
-  skin("lumoth", "aurora", "Aurora", "epic", "Wings that ripple through northern-lights colours", "winter"),
-  skin("lumoth", "starweaver", "Starweaver", "mythical", "Wings woven from starlight and shooting-star sparks", "celestial"),
+  skin(
+    "lumoth",
+    "rosy-maple",
+    "Rosy Maple",
+    "rare",
+    "Pink and buttery yellow; soft dust puffs",
+    "garden",
+  ),
+  skin(
+    "lumoth",
+    "paper-lantern",
+    "Paper Lantern",
+    "rare",
+    "Wings like warm paper lanterns",
+    "festival",
+  ),
+  skin(
+    "lumoth",
+    "aurora",
+    "Aurora",
+    "epic",
+    "Wings that ripple through northern-lights colors",
+    "winter",
+  ),
+  skin(
+    "lumoth",
+    "photon",
+    "Photon",
+    "epic",
+    "Mint plating, twin antennae with yellow lights and a jetpack",
+    "cyber",
+  ),
+  skin(
+    "lumoth",
+    "starweaver",
+    "Fallen Lightbringer",
+    "mythical",
+    "Tarnished armour, a crown of blades between its antennae and a gold rune glow",
+    "void",
+  ),
 
   skin("mystowl", "snowy", "Snowy", "common", "White feathers, gold eyes"),
   skin("mystowl", "barn", "Barn", "common", "Tan with a heart-shaped face"),
   skin("mystowl", "midnight", "Midnight", "common", "Dark blue, silver eyes"),
-  skin("mystowl", "scholar", "Scholar", "rare", "A tiny graduation cap; pages flutter as it dashes", "festival"),
-  skin("mystowl", "witchs-familiar", "Witch's Familiar", "rare", "A pointed hat and potion bubbles", "garden"),
-  skin("mystowl", "clockwork", "Clockwork", "epic", "Brass gears and a golden clock-hand Focus Ray", "arcade"),
-  skin("mystowl", "oracle", "Oracle", "mythical", "A third eye that opens onto a galaxy, with orbiting rune cards", "celestial"),
+  skin(
+    "mystowl",
+    "scholar",
+    "Scholar",
+    "rare",
+    "A tiny graduation cap; pages flutter as it dashes",
+    "festival",
+  ),
+  skin(
+    "mystowl",
+    "witchs-familiar",
+    "Witch's Familiar",
+    "rare",
+    "A pointed hat and potion bubbles",
+    "garden",
+  ),
+  skin(
+    "mystowl",
+    "clockwork",
+    "Clockwork",
+    "epic",
+    "Brass gears and a golden clock-hand Third-Eye Ray",
+    "arcade",
+  ),
+  skin(
+    "mystowl",
+    "psi-core",
+    "Psi Core",
+    "epic",
+    "Pink plating, sensor antennae and a cyan psi core",
+    "cyber",
+  ),
+  skin(
+    "mystowl",
+    "oracle",
+    "Void Inquisitor",
+    "mythical",
+    "Dark plate, a crown of blades and a third eye that never closes",
+    "void",
+  ),
 
   skin("terradon", "mossy", "Mossy", "common", "Moss on the shell"),
-  skin("terradon", "sandstone", "Sandstone", "common", "Red-orange layered stone"),
+  skin(
+    "terradon",
+    "sandstone",
+    "Sandstone",
+    "common",
+    "Red-orange layered stone",
+  ),
   skin("terradon", "granite", "Granite", "common", "Speckled grey"),
-  skin("terradon", "bonsai", "Bonsai", "rare", "A tiny bonsai tree on its head; leaves drop as it dashes", "garden"),
-  skin("terradon", "snowball", "Snowball", "rare", "A snowy shell and a knitted scarf", "winter"),
-  skin("terradon", "geode", "Geode", "epic", "Cracks of glowing amethyst; crystal Tremor", "arcade"),
-  skin("terradon", "world-shell", "World-Shell", "mythical", "A tiny living island on its back, with birds and a waterfall", "celestial"),
+  skin(
+    "terradon",
+    "bonsai",
+    "Bonsai",
+    "rare",
+    "A tiny bonsai tree on its head; leaves drop as it dashes",
+    "garden",
+  ),
+  skin(
+    "terradon",
+    "snowball",
+    "Snowball",
+    "rare",
+    "A snowy shell and a knitted scarf",
+    "winter",
+  ),
+  skin(
+    "terradon",
+    "geode",
+    "Geode",
+    "epic",
+    "Cracks of glowing amethyst; crystal Tremor",
+    "arcade",
+  ),
+  skin(
+    "terradon",
+    "tank-mk2",
+    "Tank Mk II",
+    "epic",
+    "Olive armour plate, a radar dish for its sprout and orange lights",
+    "cyber",
+  ),
+  skin(
+    "terradon",
+    "world-shell",
+    "Obsidian Bulwark",
+    "mythical",
+    "Ram horns, obsidian crystals for a sprout and a spiked shell",
+    "void",
+  ),
 
   skin("duskveil", "ember", "Ember", "common", "Orange flame, charcoal hood"),
-  skin("duskveil", "ghost-white", "Ghost White", "common", "A pale hood and blue flame"),
-  skin("duskveil", "teal-spirit", "Teal Spirit", "common", "Teal flame, navy hood"),
-  skin("duskveil", "pumpkin-lantern", "Pumpkin Lantern", "rare", "A carved-pumpkin glow; autumn leaves on dash", "festival"),
-  skin("duskveil", "paper-lantern", "Paper Lantern", "rare", "A red paper-lantern glow and tassels", "festival"),
-  skin("duskveil", "candlelight", "Candlelight", "epic", "A melting-candle hood; candle-flame Ghostfire", "garden"),
-  skin("duskveil", "eclipse", "Eclipse", "mythical", "A hood that becomes a total eclipse; a tiny black-sun Void Orb", "celestial"),
+  skin(
+    "duskveil",
+    "ghost-white",
+    "Ghost White",
+    "common",
+    "A pale hood and blue flame",
+  ),
+  skin(
+    "duskveil",
+    "teal-spirit",
+    "Teal Spirit",
+    "common",
+    "Teal flame, navy hood",
+  ),
+  skin(
+    "duskveil",
+    "pumpkin-lantern",
+    "Pumpkin Lantern",
+    "rare",
+    "A carved-pumpkin glow; autumn leaves on dash",
+    "festival",
+  ),
+  skin(
+    "duskveil",
+    "paper-lantern",
+    "Paper Lantern",
+    "rare",
+    "A red paper-lantern glow and tassels",
+    "festival",
+  ),
+  skin(
+    "duskveil",
+    "candlelight",
+    "Candlelight",
+    "epic",
+    "A melting-candle hood; candle-flame Ghostfire",
+    "garden",
+  ),
+  skin(
+    "duskveil",
+    "phantom-os",
+    "Phantom OS",
+    "epic",
+    "Violet plating, antennae on the hood and a green core",
+    "cyber",
+  ),
+  skin(
+    "duskveil",
+    "eclipse",
+    "Crimson Sovereign",
+    "mythical",
+    "A horned black hood, crimson eyes and a rune gorget",
+    "void",
+  ),
+
+  // The eight newest champions.
+  skin(
+    "coilemur",
+    "sifaka",
+    "Sifaka",
+    "common",
+    "Snow-white fur, chocolate mask",
+  ),
+  skin(
+    "coilemur",
+    "copper-wire",
+    "Copper Wire",
+    "common",
+    "Copper fur, teal sparks",
+  ),
+  skin(
+    "coilemur",
+    "blackout",
+    "Blackout",
+    "common",
+    "Charcoal fur, lime sparks",
+  ),
+  skin(
+    "coilemur",
+    "firecracker",
+    "Firecracker",
+    "rare",
+    "Lucky red with a gold-banded tail; dashing pops confetti",
+    "festival",
+  ),
+  skin(
+    "coilemur",
+    "frost-fuse",
+    "Frost Fuse",
+    "rare",
+    "Icy fur and a bobble hat; dashing leaves snowflakes",
+    "winter",
+  ),
+  skin(
+    "coilemur",
+    "tesla-coil",
+    "Tesla Coil",
+    "epic",
+    "Gunmetal fur with glowing circuits, teal skills and a crackling pulse",
+    "arcade",
+  ),
+  skin(
+    "coilemur",
+    "tesla-frame",
+    "Tesla Frame",
+    "epic",
+    "Brushed steel, coil antennae and yellow tesla lights",
+    "cyber",
+  ),
+  skin(
+    "coilemur",
+    "cometcaller",
+    "Volt Executioner",
+    "mythical",
+    "Gunmetal plate, cyan-striped limbs and a crown of bolts",
+    "void",
+  ),
+
+  skin("pyranda", "snowy", "Snowy", "common", "White fur, smoky markings"),
+  skin("pyranda", "cinnamon", "Cinnamon", "common", "Cinnamon brown and cream"),
+  skin("pyranda", "plum", "Plum", "common", "Plum fur, peach face"),
+  skin(
+    "pyranda",
+    "chestnut-grove",
+    "Chestnut Grove",
+    "rare",
+    "Chestnut brown with an acorn cap; dashing drops leaves",
+    "garden",
+  ),
+  skin(
+    "pyranda",
+    "street-vendor",
+    "Street Vendor",
+    "rare",
+    "A folded paper hat and a striped coat; dashing puffs spice",
+    "festival",
+  ),
+  skin(
+    "pyranda",
+    "fireside-knit",
+    "Fireside Knit",
+    "epic",
+    "A cable-knit sweater, cocoa-gold skills and a flickering ember",
+    "winter",
+  ),
+  skin(
+    "pyranda",
+    "afterburner",
+    "Afterburner",
+    "epic",
+    "Rust-orange plating, a V-fin and cyan afterburners",
+    "cyber",
+  ),
+  skin(
+    "pyranda",
+    "harvest-moon",
+    "Ashen Warlord",
+    "mythical",
+    "Ash-grey markings, ember runes and a crown of black flame",
+    "void",
+  ),
+
+  skin("glacelle", "deep-sea", "Deep Sea", "common", "Navy body, cyan glow"),
+  skin("glacelle", "lilac-tide", "Lilac Tide", "common", "Lilac and pink"),
+  skin("glacelle", "seafoam", "Seafoam", "common", "Mint and white"),
+  skin(
+    "glacelle",
+    "water-lily",
+    "Water Lily",
+    "rare",
+    "Petal pink with a lotus bloom; dashing scatters petals",
+    "garden",
+  ),
+  skin(
+    "glacelle",
+    "snow-globe",
+    "Snow Globe",
+    "rare",
+    "Snow drifting inside a glassy body; dashing leaves snowflakes",
+    "winter",
+  ),
+  skin(
+    "glacelle",
+    "deep-glow",
+    "Deep Glow",
+    "epic",
+    "An abyssal body with neon spots and magenta skills",
+    "arcade",
+  ),
+  skin(
+    "glacelle",
+    "cryo-unit",
+    "Cryo Unit",
+    "epic",
+    "Ice-white plating, a V-fin and pink cryo lights",
+    "cyber",
+  ),
+  skin(
+    "glacelle",
+    "polaris",
+    "Rimebane",
+    "mythical",
+    "A crown of black ice and frost-bright runes",
+    "void",
+  ),
+
+  skin(
+    "halcyra",
+    "teal-wing",
+    "Teal Wing",
+    "common",
+    "Teal feathers, buff chest",
+  ),
+  skin("halcyra", "pied", "Pied", "common", "Black and white feathers"),
+  skin("halcyra", "sunset", "Sunset", "common", "Coral and gold"),
+  skin(
+    "halcyra",
+    "fletcher",
+    "Fletcher",
+    "rare",
+    "A feathered archer's cap and striped wings; dashing leaves gold dust",
+    "festival",
+  ),
+  skin(
+    "halcyra",
+    "winter-plume",
+    "Winter Plume",
+    "rare",
+    "Frost-white feathers and earmuffs; dashing leaves snowflakes",
+    "winter",
+  ),
+  skin(
+    "halcyra",
+    "paper-crane",
+    "Paper Crane",
+    "epic",
+    "Folded-paper feathers, crimson skills and a glinting crest",
+    "festival",
+  ),
+  skin(
+    "halcyra",
+    "sniper-drone",
+    "Sniper Drone",
+    "epic",
+    "Cobalt plating, a radar dish and orange thrusters",
+    "cyber",
+  ),
+  skin(
+    "halcyra",
+    "starfletch",
+    "Nightfeather",
+    "mythical",
+    "Midnight plumage, a crown of blades and a rune-lit monocle",
+    "void",
+  ),
+
+  skin("sunbara", "cocoa", "Cocoa", "common", "Dark cocoa fur"),
+  skin("sunbara", "milk-tea", "Milk Tea", "common", "Milky beige and caramel"),
+  skin("sunbara", "rose-quartz", "Rose Quartz", "common", "Soft rose pink"),
+  skin(
+    "sunbara",
+    "bathhouse",
+    "Bathhouse",
+    "rare",
+    "A folded towel and steamy stripes; dashing blows bubbles",
+    "festival",
+  ),
+  skin(
+    "sunbara",
+    "snow-day",
+    "Snow Day",
+    "rare",
+    "Snow-dusted fur and a knitted scarf; dashing leaves snowflakes",
+    "winter",
+  ),
+  skin(
+    "sunbara",
+    "sunflower",
+    "Sunflower",
+    "epic",
+    "A sunflower bloom, golden skills and a glint",
+    "garden",
+  ),
+  skin(
+    "sunbara",
+    "solar-mech",
+    "Solar Mech",
+    "epic",
+    "Tan plating, a radar dish for its yuzu and a teal solar core",
+    "cyber",
+  ),
+  skin(
+    "sunbara",
+    "daybreak",
+    "Eclipse Templar",
+    "mythical",
+    "A black sun with a blade corona where the yuzu sat",
+    "void",
+  ),
+
+  skin(
+    "astrabun",
+    "nightfall",
+    "Nightfall",
+    "common",
+    "Navy fur, pale gold glow",
+  ),
+  skin(
+    "astrabun",
+    "sakura-mochi",
+    "Sakura Mochi",
+    "common",
+    "Cherry pink and white",
+  ),
+  skin("astrabun", "matcha", "Matcha", "common", "Matcha green and cream"),
+  skin(
+    "astrabun",
+    "mochi-maker",
+    "Mochi Maker",
+    "rare",
+    "A twisted headband for pounding mochi; dashing throws confetti",
+    "festival",
+  ),
+  skin(
+    "astrabun",
+    "clover",
+    "Clover",
+    "rare",
+    "Clover-green spots and a flower crown; dashing drops leaves",
+    "garden",
+  ),
+  skin(
+    "astrabun",
+    "space-cadet",
+    "Space Cadet",
+    "epic",
+    "A starry suit with an antenna, cyan skills and a glint",
+    "arcade",
+  ),
+  skin(
+    "astrabun",
+    "warp-unit",
+    "Warp Unit",
+    "epic",
+    "Lilac plating, a V-fin between its ears and pink warp jets",
+    "cyber",
+  ),
+  skin(
+    "astrabun",
+    "full-moon",
+    "Rift Duelist",
+    "mythical",
+    "Violet runes, a rift gem and a crown of blades between its ears",
+    "void",
+  ),
+
+  skin("wombolder", "sandy", "Sandy", "common", "Pale sand fur"),
+  skin("wombolder", "coal", "Coal", "common", "Coal-grey fur, green glow"),
+  skin("wombolder", "ochre", "Ochre", "common", "Ochre and rust"),
+  skin(
+    "wombolder",
+    "mushroom-hollow",
+    "Mushroom Hollow",
+    "rare",
+    "A spotted toadstool cap; dashing drops leaves",
+    "garden",
+  ),
+  skin(
+    "wombolder",
+    "snowplough",
+    "Snowplough",
+    "rare",
+    "Frosted fur and a bobble hat; dashing kicks up snow",
+    "winter",
+  ),
+  skin(
+    "wombolder",
+    "gold-rush",
+    "Gold Rush",
+    "epic",
+    "A miner's lamp helmet, gold-veined fur and gold skills",
+    "arcade",
+  ),
+  skin(
+    "wombolder",
+    "bulldozer",
+    "Bulldozer",
+    "epic",
+    "Brown work plating, a crest fin for its stone and lime lights",
+    "cyber",
+  ),
+  skin(
+    "wombolder",
+    "saturnine",
+    "Iron Juggernaut",
+    "mythical",
+    "A riveted iron helm with horns and acid-green runes",
+    "void",
+  ),
+
+  skin(
+    "shadopus",
+    "coral-reef",
+    "Coral Reef",
+    "common",
+    "Coral orange and cream",
+  ),
+  skin("shadopus", "deep-blue", "Deep Blue", "common", "Deep blue and teal"),
+  skin("shadopus", "mimic", "Mimic", "common", "Sand and brown"),
+  skin(
+    "shadopus",
+    "masquerade",
+    "Masquerade",
+    "rare",
+    "A jewelled masquerade mask; dashing throws confetti",
+    "festival",
+  ),
+  skin(
+    "shadopus",
+    "tide-pool",
+    "Tide Pool",
+    "rare",
+    "Rock-pool speckles and a starfish clip; dashing blows bubbles",
+    "garden",
+  ),
+  skin(
+    "shadopus",
+    "anglerlight",
+    "Anglerlight",
+    "epic",
+    "A glowing lure on a stalk, abyss-teal skills and a flicker",
+    "garden",
+  ),
+  skin(
+    "shadopus",
+    "stealth-mk",
+    "Stealth Mk",
+    "epic",
+    "Indigo stealth plating, antennae and red sensor lights",
+    "cyber",
+  ),
+  skin(
+    "shadopus",
+    "nebula",
+    "Abyss Stalker",
+    "mythical",
+    "Black chitin, a crown of blades and magenta runes",
+    "void",
+  ),
+
+  skin("pangrove", "autumn", "Autumn", "common", "Russet and gold leaf scales"),
+  skin(
+    "pangrove",
+    "frostleaf",
+    "Frostleaf",
+    "common",
+    "Frosted silver-blue leaves",
+  ),
+  skin("pangrove", "jade", "Jade", "common", "Deep jade with a gold glow"),
+  skin(
+    "pangrove",
+    "blossom",
+    "Blossom",
+    "rare",
+    "Cherry-blossom scales and a flower crown; dashing scatters petals",
+    "garden",
+  ),
+  skin(
+    "pangrove",
+    "lantern-night",
+    "Lantern Night",
+    "rare",
+    "Festival-red scales and lantern tassels; dashing throws confetti",
+    "festival",
+  ),
+  skin(
+    "pangrove",
+    "golden-sap",
+    "Golden Sap",
+    "epic",
+    "Amber scales veined with sap, a golden stem, golden skills and a glint",
+    "garden",
+  ),
+  skin(
+    "pangrove",
+    "scaleroller",
+    "Scale Roller",
+    "epic",
+    "Plated green scales, a V-fin headset and lime thrusters",
+    "cyber",
+  ),
+  skin(
+    "pangrove",
+    "evergrove",
+    "Thorn Warden",
+    "mythical",
+    "Black thorn-plate, a crown of blades and lime runes",
+    "void",
+  ),
+
+  skin("mossloth", "cinnamon", "Cinnamon", "common", "Warm cinnamon fur"),
+  skin("mossloth", "snowy", "Snowy", "common", "Snow-white fur, pale moss"),
+  skin("mossloth", "dusk", "Dusk", "common", "Lilac-grey fur, violet moss"),
+  skin(
+    "mossloth",
+    "acorn-nap",
+    "Acorn Nap",
+    "rare",
+    "An acorn cap for napping; dashing drops leaves",
+    "garden",
+  ),
+  skin(
+    "mossloth",
+    "cozy-knit",
+    "Cozy Knit",
+    "rare",
+    "A knitted scarf over frosty fur; dashing leaves snowflakes",
+    "winter",
+  ),
+  skin(
+    "mossloth",
+    "bonsai-keeper",
+    "Bonsai Keeper",
+    "epic",
+    "A little bonsai on its head, blossom skills and a shimmer",
+    "garden",
+  ),
+  skin(
+    "mossloth",
+    "treehugger",
+    "Treehugger Mk",
+    "epic",
+    "Khaki armour, a headset with ear pods and a mint core",
+    "cyber",
+  ),
+  skin(
+    "mossloth",
+    "moonbloom",
+    "Blight Sentinel",
+    "mythical",
+    "Rotwood armour, ram horns, crystal crest and mint runes",
+    "void",
+  ),
 ];
 
 /** All-fighter collection pieces for the five appearance slots. */
@@ -155,17 +1388,113 @@ const LOOK_SLOTS: [RaidSlot, string, Rarity, number][] = [
   ["victory", "victory", "epic", 1800],
 ];
 const LOOK_SETS: [Collection, [string, string][]][] = [
-  ["candy", [["Candy colours", "Pastel swirls"], ["Sprinkle aura", "A ring of rainbow sprinkles"], ["Gift-box entrance", "Pop out of a gift box"], ["Cookie frame", "A frosted-cookie border"], ["Cake victory", "A confetti cake bursts behind you"]]],
-  ["galaxy", [["Galaxy colours", "A deep-space tint"], ["Nebula aura", "A slow, glowing nebula ring"], ["Star-tunnel entrance", "Warp in through a tunnel of stars"], ["Planet-ring frame", "A border with a ringed planet"], ["Supernova victory", "A supernova blooms behind you"]]],
-  ["retro", [["Retro colours", "An 8-bit palette"], ["Pixel-heart aura", "A ring of pixel hearts"], ["Player One entrance", "A blocky pixel spawn"], ["Cartridge frame", "A game-cartridge border"], ["Level Up victory", "LEVEL UP! in big pixels"]]],
-  ["festival", [["Festival colours", "Lantern red and gold"], ["Lantern aura", "Floating paper lanterns"], ["Firecracker entrance", "Arrive with a firecracker pop"], ["Tassel frame", "A knot-and-tassel border"], ["Fireworks victory", "A fireworks finale"]]],
-  ["garden", [["Spring colours", "Fresh spring greens"], ["Petal aura", "A ring of drifting petals"], ["Bloom entrance", "Bloom out of a flower"], ["Vine frame", "A leafy vine border"], ["Flower-shower victory", "Flowers rain down around you"]]],
-  ["winter", [["Frost colours", "A frosty tint"], ["Snowflake aura", "A ring of snowflakes"], ["Flurry entrance", "Arrive in a snow flurry"], ["Icicle frame", "An icicle border"], ["Snow-globe victory", "A snow globe shakes around you"]]],
+  [
+    "candy",
+    [
+      ["Candy colors", "Pastel swirls"],
+      ["Sprinkle aura", "A ring of rainbow sprinkles"],
+      ["Gift-box entrance", "Pop out of a gift box"],
+      ["Cookie frame", "A frosted-cookie border"],
+      ["Cake victory", "A confetti cake bursts behind you"],
+    ],
+  ],
+  [
+    "galaxy",
+    [
+      ["Galaxy colors", "A deep-space tint"],
+      ["Nebula aura", "A slow, glowing nebula ring"],
+      ["Star-tunnel entrance", "Warp in through a tunnel of stars"],
+      ["Planet-ring frame", "A border with a ringed planet"],
+      ["Supernova victory", "A supernova blooms behind you"],
+    ],
+  ],
+  [
+    "retro",
+    [
+      ["Retro colors", "An 8-bit palette"],
+      ["Pixel-heart aura", "A ring of pixel hearts"],
+      ["Player One entrance", "A blocky pixel spawn"],
+      ["Cartridge frame", "A game-cartridge border"],
+      ["Level Up victory", "LEVEL UP! in big pixels"],
+    ],
+  ],
+  [
+    "festival",
+    [
+      ["Festival colors", "Lantern red and gold"],
+      ["Lantern aura", "Floating paper lanterns"],
+      ["Firecracker entrance", "Arrive with a firecracker pop"],
+      ["Tassel frame", "A knot-and-tassel border"],
+      ["Fireworks victory", "A fireworks finale"],
+    ],
+  ],
+  [
+    "garden",
+    [
+      ["Spring colors", "Fresh spring greens"],
+      ["Petal aura", "A ring of drifting petals"],
+      ["Bloom entrance", "Bloom out of a flower"],
+      ["Vine frame", "A leafy vine border"],
+      ["Flower-shower victory", "Flowers rain down around you"],
+    ],
+  ],
+  [
+    "winter",
+    [
+      ["Frost colors", "A frosty tint"],
+      ["Snowflake aura", "A ring of snowflakes"],
+      ["Flurry entrance", "Arrive in a snow flurry"],
+      ["Icicle frame", "An icicle border"],
+      ["Snow-globe victory", "A snow globe shakes around you"],
+    ],
+  ],
 ];
+/**
+ * Collection tiers (migration 031): Candy, Garden and Retro are the standard
+ * sets; Winter and Festival are premium (Epic pieces, about 1.6× the price);
+ * Galaxy is the showcase set (Mythical pieces, 2.5×). Colours stay one step
+ * below the set's other pieces. Pricier, rarer pieces get grander effects.
+ */
+export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
+  "nova-vanguard": 1,
+  "sky-pirates": 1,
+  "hon-viet": 1,
+  "hero-squad": 1,
+  "neon-campus": 1,
+  "stars-stripes": 1,
+  wayfarer: 0,
+  "moonlit-tea": 0,
+  "astral-court": 0,
+  "abyssal-expedition": 1,
+  candy: 0,
+  garden: 0,
+  retro: 0,
+  arcade: 0,
+  void: 0,
+  cyber: 0,
+  winter: 1,
+  festival: 1,
+  galaxy: 2,
+};
+const TIER_PRICE = [1, 1.6, 2.5] as const;
+const lookRarity = (base: Rarity, slug: string, tier: 0 | 1 | 2): Rarity => {
+  if (tier === 0) return base;
+  if (tier === 1) return slug === "colours" ? "rare" : "epic";
+  return slug === "colours" ? "epic" : "mythical";
+};
 export const LOOK_ITEMS: LookItem[] = LOOK_SETS.flatMap(([collection, items]) =>
   items.map(([name, description], i) => {
     const [slot, slug, rarity, price] = LOOK_SLOTS[i];
-    return { id: `${collection}-${slug}`, slot, name, rarity, collection, description, price };
+    const tier = COLLECTION_TIER[collection] ?? 0;
+    return {
+      id: `${collection}-${slug}`,
+      slot,
+      name,
+      rarity: lookRarity(rarity, slug, tier),
+      collection,
+      description,
+      price: Math.round((price * TIER_PRICE[tier]) / 10) * 10,
+    };
   }),
 );
 export interface ShopBundle {
@@ -184,6 +1513,44 @@ export const SHOP_BUNDLES: ShopBundle[] = LOOK_SETS.map(([collection]) => ({
   discount: 0.2,
 }));
 
+/**
+ * Full-roster skin sets: the collections that dress all 18 champions in one
+ * design at one rarity. The Void Knight Mythicals are never bundled: each
+ * opens with its own champion's Mythic Trial, and a set would skip it.
+ */
+export const SKIN_SET_COLLECTIONS = [
+  "wayfarer",
+  "moonlit-tea",
+  "astral-court",
+  "cyber",
+  "abyssal-expedition",
+  "nova-vanguard",
+  "sky-pirates",
+  "hon-viet",
+  "hero-squad",
+  "neon-campus",
+  "stars-stripes",
+] as const satisfies readonly Collection[];
+export const SKIN_BUNDLES: ShopBundle[] = SKIN_SET_COLLECTIONS.map(
+  (collection) => ({
+    id: `${collection}-skins`,
+    collection,
+    name: `${COLLECTION_NAMES[collection]} skins`,
+    items: CHAMPION_SKINS.filter((s) => s.collection === collection).map(
+      (s) => s.id,
+    ),
+    discount: 0.2,
+  }),
+);
+/** Every set the Shop sells: Look sets and full-roster skin sets. */
+export const ALL_BUNDLES: ShopBundle[] = [...SHOP_BUNDLES, ...SKIN_BUNDLES];
+export const BUNDLE_BY_ID = Object.fromEntries(
+  ALL_BUNDLES.map((b) => [b.id, b]),
+) as Record<string, ShopBundle>;
+/** A skin set: every piece is a champion skin. */
+export const isSkinBundle = (id: string) =>
+  SKIN_BUNDLES.some((b) => b.id === id);
+
 export const skinPrice = (s: ChampionSkin) => SKIN_PRICES[s.rarity];
 export const CHAMPION_SKIN_BY_ID = Object.fromEntries(
   CHAMPION_SKINS.map((s) => [s.id, s]),
@@ -192,9 +1559,12 @@ export const LOOK_ITEM_BY_ID = Object.fromEntries(
   LOOK_ITEMS.map((i) => [i.id, i]),
 ) as Record<string, LookItem>;
 
+/** Daily slots: two missions per tier; the database owns assignment and rewards. */
+export const DAILY_MISSION_COUNT = 6;
+
 /** Coins (all granted by the game server, never the browser). */
 export const COINS = {
-  /** Raid clear by Peril (index = Peril). */
+  /** Raid clear by Peril (index = Peril; raids are always Peril 3 now). */
   raidClear: [0, 30, 45, 60],
   dailyFirstClear: 50,
   pvpWin: 15,
@@ -204,7 +1574,7 @@ export const COINS = {
   /** Shorter matches (mostly idle) pay nothing. */
   minActiveSeconds: 20,
   allMissionsBonus: 50,
-  /** Every 7 days in a row with all three missions done. */
+  /** Every 7 days in a row with all six missions done. */
   streakBonus: 300,
   /** Today's Picks: one non-Mythical pick is this much off. */
   pickDiscount: 0.2,
@@ -217,7 +1587,6 @@ export type MissionMetric =
   | "skill-uses"
   | "ults"
   | "raid-clear"
-  | "daily-clear"
   | "revives"
   | "raid-peril3"
   | "raid-flawless"
@@ -249,7 +1618,11 @@ export interface Mission {
    */
   solo: boolean;
 }
-export const MISSION_COINS: Record<MissionTier, number> = { easy: 40, medium: 70, hard: 120 };
+export const MISSION_COINS: Record<MissionTier, number> = {
+  easy: 40,
+  medium: 70,
+  hard: 120,
+};
 const mission = (
   id: string,
   tier: MissionTier,
@@ -257,7 +1630,16 @@ const mission = (
   metric: MissionMetric,
   target: number,
   champions?: CharacterId[],
-): Mission => ({ id, tier, text, metric, target, coins: MISSION_COINS[tier], solo: true, ...(champions ? { champions } : {}) });
+): Mission => ({
+  id,
+  tier,
+  text,
+  metric,
+  target,
+  coins: MISSION_COINS[tier],
+  solo: true,
+  ...(champions ? { champions } : {}),
+});
 /** A mission that needs other people (a real match, a 2v2, a party raid). */
 const together = (m: Mission): Mission => ({ ...m, solo: false });
 export const MISSIONS: Mission[] = [
@@ -270,32 +1652,122 @@ export const MISSIONS: Mission[] = [
   mission("raid-play-1", "easy", "Finish a raid, win or lose", "raid-play", 1),
   mission("minutes-10", "easy", "Play for 10 minutes", "minutes", 10),
   // Medium
-  together(mission("pvp-wins-2", "medium", "Win 2 matches against players", "pvp-wins", 2)),
-  mission("daily-1", "medium", "Clear today's Raid of the Day", "daily-clear", 1),
-  together(mission("revives-3", "medium", "Help revive 3 allies in raids", "revives", 3)),
-  mission("earth-water", "medium", "Win a match as Terradon or Tidefin", "wins-with", 1, ["terradon", "tidefin"]),
-  mission("fire-light", "medium", "Win a match as Cindrake or Lumoth", "wins-with", 1, ["cindrake", "lumoth"]),
-  mission("electric-aura", "medium", "Win a match as Voltkit or Auralynx", "wins-with", 1, ["voltkit", "auralynx"]),
-  mission("psychic-shadow", "medium", "Win a match as Mystowl or Duskveil", "wins-with", 1, ["mystowl", "duskveil"]),
+  together(
+    mission(
+      "pvp-wins-2",
+      "medium",
+      "Win 2 matches against players",
+      "pvp-wins",
+      2,
+    ),
+  ),
+  mission(
+    "daily-1",
+    "medium",
+    "Clear a raid as Voltkit or Auralynx",
+    "raid-clear",
+    1,
+    ["voltkit", "auralynx"],
+  ),
+  together(
+    mission(
+      "revives-3",
+      "medium",
+      "Help revive 3 allies in raids",
+      "revives",
+      3,
+    ),
+  ),
+  mission(
+    "earth-water",
+    "medium",
+    "Win a match as Terradon or Tidefin",
+    "wins-with",
+    1,
+    ["terradon", "tidefin"],
+  ),
+  mission(
+    "fire-light",
+    "medium",
+    "Win a match as Cindrake or Lumoth",
+    "wins-with",
+    1,
+    ["cindrake", "lumoth"],
+  ),
+  mission(
+    "electric-aura",
+    "medium",
+    "Win a match as Voltkit or Auralynx",
+    "wins-with",
+    1,
+    ["voltkit", "auralynx"],
+  ),
+  mission(
+    "psychic-shadow",
+    "medium",
+    "Win a match as Mystowl or Duskveil",
+    "wins-with",
+    1,
+    ["mystowl", "duskveil"],
+  ),
   mission("hard-bot", "medium", "Beat a Hard bot", "hard-bot-win", 1),
   mission("bot-wins-3", "medium", "Win 3 matches against bots", "bot-wins", 3),
   mission("raids-2", "medium", "Clear 2 raids", "raid-clear", 2),
   mission("raid-solo-1", "medium", "Clear a raid on your own", "raid-solo", 1),
   mission("ults-8", "medium", "Use your ultimate 8 times", "ults", 8),
-  together(mission("raid-party", "medium", "Clear a raid with a friend", "raid-party", 1)),
+  together(
+    mission(
+      "raid-party",
+      "medium",
+      "Clear a raid with a friend",
+      "raid-party",
+      1,
+    ),
+  ),
   // Hard
-  mission("raid-p3", "hard", "Clear any raid on Peril 3", "raid-peril3", 1),
-  mission("raid-flawless", "hard", "Clear a raid with no downs", "raid-flawless", 1),
-  together(mission("teams-unharmed", "hard", "Win a 2v2 without being knocked out", "teams-unharmed", 1)),
+  // Migration 030 retargets these two: raids have one difficulty now.
+  mission("raid-p3", "hard", "Clear 2 raids on your own", "raid-solo", 2),
+  mission(
+    "raid-flawless",
+    "hard",
+    "Clear a raid with no downs",
+    "raid-flawless",
+    1,
+  ),
+  together(
+    mission(
+      "teams-unharmed",
+      "hard",
+      "Win a 2v2 without being knocked out",
+      "teams-unharmed",
+      1,
+    ),
+  ),
   mission("feat-1", "hard", "Complete a boss feat", "feat", 1),
-  together(mission("pvp-wins-5", "hard", "Win 5 matches against players", "pvp-wins", 5)),
+  together(
+    mission(
+      "pvp-wins-5",
+      "hard",
+      "Win 5 matches against players",
+      "pvp-wins",
+      5,
+    ),
+  ),
   mission("hard-bots-3", "hard", "Beat 3 Hard bots", "hard-bot-win", 3),
   mission("raids-3", "hard", "Clear 3 raids", "raid-clear", 3),
-  mission("raid-solo-p2", "hard", "Clear a raid on your own on Peril 2 or higher", "raid-solo-p2", 1),
+  mission(
+    "raid-solo-p2",
+    "hard",
+    "Clear 2 raids with no downs",
+    "raid-flawless",
+    2,
+  ),
   mission("minutes-30", "hard", "Play for 30 minutes", "minutes", 30),
   together(mission("ffa-win", "hard", "Win a free-for-all", "ffa-wins", 1)),
 ];
-export const MISSION_BY_ID: Record<string, Mission> = Object.fromEntries(MISSIONS.map((m) => [m.id, m]));
+export const MISSION_BY_ID: Record<string, Mission> = Object.fromEntries(
+  MISSIONS.map((m) => [m.id, m]),
+);
 
 /**
  * What the game server reports after a real match or raid (never the
@@ -309,6 +1781,8 @@ export interface ActivityPlayer {
   /** At least one other human, and no bots. */
   vsPeople: boolean;
   botLevel: string | null;
+  /** Quick Match made the room: two searchers, or the fallback bot. */
+  quick?: "human" | "bot" | null;
   mode: string;
   knockedOut: boolean;
   skillUses: number;
@@ -373,27 +1847,46 @@ export interface Economy {
     coins: number;
     done: boolean;
   }[];
+  /** Legacy flag retained for older clients. */
   rerolled: boolean;
+  /** Daily change count and allowance, supplied by migration 023. */
+  rerollsUsed?: number;
+  rerollLimit?: number;
   streak: number;
   /** Coins earned today, by source (for the caps). */
   today: { raidClears: number; pvpMatches: number };
 }
+
+/** An item's list price, before any discount (0 for an unknown id). */
+export const itemListPrice = (id: string) =>
+  CHAMPION_SKIN_BY_ID[id]
+    ? skinPrice(CHAMPION_SKIN_BY_ID[id])
+    : (LOOK_ITEM_BY_ID[id]?.price ?? 0);
 
 /**
  * What an item costs this player (mirrors arena_item_price in migration 010):
  * null once owned; a set costs 80% of the pieces not yet owned; today's deal
  * is 20% off. Prices round to the nearest 10.
  */
-export function shopPrice(id: string, owned: readonly string[], deal: string | null) {
+export function shopPrice(
+  id: string,
+  owned: readonly string[],
+  deal: string | null,
+) {
   const round10 = (n: number) => Math.round(n / 10) * 10;
-  const bundle = SHOP_BUNDLES.find((b) => b.id === id);
+  const bundle = BUNDLE_BY_ID[id];
   if (bundle) {
     const left = bundle.items.filter((i) => !owned.includes(i));
     if (!left.length) return null;
-    return round10(left.reduce((sum, i) => sum + LOOK_ITEM_BY_ID[i].price, 0) * (1 - bundle.discount));
+    return round10(
+      left.reduce((sum, i) => sum + itemListPrice(i), 0) *
+        (1 - bundle.discount),
+    );
   }
   if (owned.includes(id)) return null;
-  const base = CHAMPION_SKIN_BY_ID[id] ? skinPrice(CHAMPION_SKIN_BY_ID[id]) : LOOK_ITEM_BY_ID[id]?.price;
+  const base = CHAMPION_SKIN_BY_ID[id]
+    ? skinPrice(CHAMPION_SKIN_BY_ID[id])
+    : LOOK_ITEM_BY_ID[id]?.price;
   if (base === undefined) return null;
   return id === deal ? round10(base * (1 - COINS.pickDiscount)) : base;
 }

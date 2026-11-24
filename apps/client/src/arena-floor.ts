@@ -20,7 +20,13 @@ export interface FloorPainter {
   ): FloorPainter;
   fillCircle(x: number, y: number, r: number): FloorPainter;
   strokeCircle(x: number, y: number, r: number): FloorPainter;
-  fillEllipse(x: number, y: number, w: number, h: number, smoothness?: number): FloorPainter;
+  fillEllipse(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    smoothness?: number,
+  ): FloorPainter;
   fillTriangle(
     x0: number,
     y0: number,
@@ -144,10 +150,46 @@ export const FLOOR_PALETTES: Record<
     pillar: [0xb89b62, 0xd2b679, 0xf1dcae],
     lines: 0xd9f5f0,
   },
-  "conductor-ring": { surround:0x1c2c43,blades:[0x52647a,0x637790,0x8398aa],grout:0x2b3d55,tones:[0x4c6078],speck:0xe0b881,moss:0x47617a,pillar:[0x776157,0xa47c59,0xe3bb8b],lines:0xa5d5eb },
-  "sky-terrace": { surround: 0x28374d, blades:[0x718196,0x8995a3,0x4b596f], grout:0x374254, tones:[0x626d7d],speck:0xffc78f,moss:0x576174,pillar:[0x465164,0x69788b,0xa3b2c4],lines:0xffd4a3 },
-  "sun-atrium": { surround: 0x253747, blades: [0x708b85, 0x4c706a], grout: 0x485567, tones: [0x68788c,0x728297,0x657789], speck: 0xdfcf9a, moss: 0x819f92, pillar: [0x53657e,0x8ea4bc,0xd8e4ee], lines: 0xffe3a3 },
-  "cloud-deck": { surround: 0x151d3b, blades: [0x525b86, 0x68739e], grout: 0x364266, tones: [0x44547b], speck: 0xc9a3ff, moss: 0x53658b, pillar: [0x52658b, 0x687da7, 0xa1b6d6], lines: 0xd5dcff },
+  "conductor-ring": {
+    surround: 0x1c2c43,
+    blades: [0x52647a, 0x637790, 0x8398aa],
+    grout: 0x2b3d55,
+    tones: [0x4c6078],
+    speck: 0xe0b881,
+    moss: 0x47617a,
+    pillar: [0x776157, 0xa47c59, 0xe3bb8b],
+    lines: 0xa5d5eb,
+  },
+  "sky-terrace": {
+    surround: 0x28374d,
+    blades: [0x718196, 0x8995a3, 0x4b596f],
+    grout: 0x374254,
+    tones: [0x626d7d],
+    speck: 0xffc78f,
+    moss: 0x576174,
+    pillar: [0x465164, 0x69788b, 0xa3b2c4],
+    lines: 0xffd4a3,
+  },
+  "sun-atrium": {
+    surround: 0x253747,
+    blades: [0x708b85, 0x4c706a],
+    grout: 0x485567,
+    tones: [0x68788c, 0x728297, 0x657789],
+    speck: 0xdfcf9a,
+    moss: 0x819f92,
+    pillar: [0x53657e, 0x8ea4bc, 0xd8e4ee],
+    lines: 0xffe3a3,
+  },
+  "cloud-deck": {
+    surround: 0x151d3b,
+    blades: [0x525b86, 0x68739e],
+    grout: 0x364266,
+    tones: [0x44547b],
+    speck: 0xc9a3ff,
+    moss: 0x53658b,
+    pillar: [0x52658b, 0x687da7, 0xa1b6d6],
+    lines: 0xd5dcff,
+  },
   "lantern-yard": {
     surround: 0x1d2440,
     blades: [0x2f4a4a, 0x22383a, 0x3d5c56],
@@ -169,7 +211,10 @@ export const FLOOR_PALETTES: Record<
     lines: 0xfbf3df,
   },
 };
-export function paintArenaFloor(g: FloorPainter, arena: ArenaDef = ARENAS.classic) {
+export function paintArenaFloor(
+  g: FloorPainter,
+  arena: ArenaDef = ARENAS.classic,
+) {
   if (arena.id === "conductor-ring") return paintConductorRing(g);
   if (arena.id === "sky-terrace") return paintSkyTerrace(g);
   if (arena.id === "sun-atrium") return paintSunAtrium(g);
@@ -281,7 +326,11 @@ export function paintArenaFloor(g: FloorPainter, arena: ArenaDef = ARENAS.classi
     if (h.kind === "pool") {
       g.fillStyle(0x0f4b63, 0.9).fillCircle(h.x, h.y, h.radius + 6);
       g.fillStyle(0x1d7c99, 0.95).fillCircle(h.x, h.y, h.radius - 4);
-      g.fillStyle(0x4fd6e6, 0.3).fillCircle(h.x - 18, h.y - 16, h.radius * 0.55);
+      g.fillStyle(0x4fd6e6, 0.3).fillCircle(
+        h.x - 18,
+        h.y - 16,
+        h.radius * 0.55,
+      );
       for (const k of [0.35, 0.6, 0.85])
         g.lineStyle(2, 0xd9f5f0, 0.22).strokeCircle(h.x, h.y, h.radius * k);
       g.lineStyle(5, 0xe8dcae, 0.9).strokeCircle(h.x, h.y, h.radius + 6);
@@ -292,15 +341,32 @@ export function paintArenaFloor(g: FloorPainter, arena: ArenaDef = ARENAS.classi
       g.fillStyle(0x5a1d0e, 0.9).fillCircle(h.x, h.y, r * 0.7);
       g.lineStyle(4, 0x2a1d1a, 1);
       for (let k = -2; k <= 2; k++)
-        g.lineBetween(h.x + k * r * 0.32, h.y - r * 0.85, h.x + k * r * 0.32, h.y + r * 0.85);
+        g.lineBetween(
+          h.x + k * r * 0.32,
+          h.y - r * 0.85,
+          h.x + k * r * 0.32,
+          h.y + r * 0.85,
+        );
       g.lineStyle(4, 0x8c5a3c, 0.95).strokeCircle(h.x, h.y, r);
     }
   }
   // Shifting Ruins: the sunken footprint the centre block rises from.
   if (arena.shifting) {
     const r = arena.shifting.rect;
-    g.fillStyle(0x3b3326, 0.6).fillRoundedRect(r.x - 4, r.y - 4, r.w + 8, r.h + 8, 14);
-    g.lineStyle(2, 0x2c2519, 0.8).strokeRoundedRect(r.x - 4, r.y - 4, r.w + 8, r.h + 8, 14);
+    g.fillStyle(0x3b3326, 0.6).fillRoundedRect(
+      r.x - 4,
+      r.y - 4,
+      r.w + 8,
+      r.h + 8,
+      14,
+    );
+    g.lineStyle(2, 0x2c2519, 0.8).strokeRoundedRect(
+      r.x - 4,
+      r.y - 4,
+      r.w + 8,
+      r.h + 8,
+      14,
+    );
   }
   // Stone pillars (cosmetic look of the shared obstacles).
   for (const o of arena.obstacles) {
@@ -318,7 +384,13 @@ export function paintArenaFloor(g: FloorPainter, arena: ArenaDef = ARENAS.classi
       o.h - 22,
       9,
     );
-    g.fillStyle(pal.pillar[2]).fillRoundedRect(o.x + 6, o.y + 4, o.w - 12, 22, 8);
+    g.fillStyle(pal.pillar[2]).fillRoundedRect(
+      o.x + 6,
+      o.y + 4,
+      o.w - 12,
+      22,
+      8,
+    );
     g.fillStyle(pal.moss, 0.85).fillEllipse(
       o.x + o.w * 0.3,
       o.y + 9,
@@ -368,33 +440,77 @@ function paintLagoon(g: FloorPainter) {
   for (let i = 0; i < 500; i++) {
     const x = random() * W,
       y = random() * H;
-    g.fillStyle(i % 3 ? 0xc4ad73 : 0xead8a5, 0.8).fillCircle(x, y, 1 + random() * 2.5);
+    g.fillStyle(i % 3 ? 0xc4ad73 : 0xead8a5, 0.8).fillCircle(
+      x,
+      y,
+      1 + random() * 2.5,
+    );
   }
   // The water: deep at the edges, bright in the middle.
-  g.fillStyle(0x0f5f78).fillRoundedRect(BORDER, BORDER, W - BORDER * 2, H - BORDER * 2, 40);
-  g.fillStyle(0x16788f).fillRoundedRect(BORDER + 18, BORDER + 18, W - BORDER * 2 - 36, H - BORDER * 2 - 36, 34);
+  g.fillStyle(0x0f5f78).fillRoundedRect(
+    BORDER,
+    BORDER,
+    W - BORDER * 2,
+    H - BORDER * 2,
+    40,
+  );
+  g.fillStyle(0x16788f).fillRoundedRect(
+    BORDER + 18,
+    BORDER + 18,
+    W - BORDER * 2 - 36,
+    H - BORDER * 2 - 36,
+    34,
+  );
   g.fillStyle(0x1f8fa6, 0.9).fillEllipse(W / 2, H / 2, W - 260, H - 200, 128);
   g.fillStyle(0x2aa3b8, 0.6).fillEllipse(W / 2, H / 2, W - 520, H - 380, 128);
   // Sunlit caustics and sandy patches on the bottom.
   for (let i = 0; i < 46; i++) {
     const x = BORDER + 40 + random() * (W - BORDER * 2 - 80),
       y = BORDER + 40 + random() * (H - BORDER * 2 - 80);
-    g.fillStyle(0xd9c48a, 0.12).fillEllipse(x, y, 40 + random() * 70, 18 + random() * 30);
+    g.fillStyle(0xd9c48a, 0.12).fillEllipse(
+      x,
+      y,
+      40 + random() * 70,
+      18 + random() * 30,
+    );
   }
   for (let i = 0; i < 140; i++) {
     const x = BORDER + 20 + random() * (W - BORDER * 2 - 40),
       y = BORDER + 20 + random() * (H - BORDER * 2 - 40),
       w = 12 + random() * 26;
-    g.lineStyle(2, 0xbff6ff, 0.12 + random() * 0.1).lineBetween(x, y, x + w, y + (random() - 0.5) * 8);
+    g.lineStyle(2, 0xbff6ff, 0.12 + random() * 0.1).lineBetween(
+      x,
+      y,
+      x + w,
+      y + (random() - 0.5) * 8,
+    );
   }
   // A ring where the whirlpool forms.
   g.lineStyle(3, 0xd9f5f0, 0.18).strokeCircle(W / 2, H / 2, 150);
   g.lineStyle(2, 0xd9f5f0, 0.1).strokeCircle(W / 2, H / 2, 230);
   // Foam where water meets sand.
-  g.lineStyle(6, 0xf2fbfa, 0.55).strokeRoundedRect(BORDER, BORDER, W - BORDER * 2, H - BORDER * 2, 40);
-  g.lineStyle(3, 0xffffff, 0.35).strokeRoundedRect(BORDER + 9, BORDER + 9, W - BORDER * 2 - 18, H - BORDER * 2 - 18, 34);
+  g.lineStyle(6, 0xf2fbfa, 0.55).strokeRoundedRect(
+    BORDER,
+    BORDER,
+    W - BORDER * 2,
+    H - BORDER * 2,
+    40,
+  );
+  g.lineStyle(3, 0xffffff, 0.35).strokeRoundedRect(
+    BORDER + 9,
+    BORDER + 9,
+    W - BORDER * 2 - 18,
+    H - BORDER * 2 - 18,
+    34,
+  );
   for (let i = 0; i < 6; i++)
-    g.lineStyle(14, 0x062a35, 0.04 + i * 0.012).strokeRoundedRect(i * 7, i * 7, W - i * 14, H - i * 14, 20);
+    g.lineStyle(14, 0x062a35, 0.04 + i * 0.012).strokeRoundedRect(
+      i * 7,
+      i * 7,
+      W - i * 14,
+      H - i * 14,
+      20,
+    );
 }
 
 /**
@@ -416,7 +532,11 @@ function paintLanternYard(g: FloorPainter) {
     const x = random() * W,
       y = random() * H;
     if (x > BORDER && x < W - BORDER && y > BORDER && y < H - BORDER) continue;
-    g.fillStyle(i % 3 ? 0x24403f : 0x2f5250, 0.85).fillCircle(x, y, 4 + random() * 7);
+    g.fillStyle(i % 3 ? 0x24403f : 0x2f5250, 0.85).fillCircle(
+      x,
+      y,
+      4 + random() * 7,
+    );
     if (i % 23 === 0) g.fillStyle(0xd8d2f5, 0.7).fillCircle(x, y, 2);
   }
   // Flagstones: one per Grasping Hands tile, split into a few slabs each.
@@ -425,7 +545,12 @@ function paintLanternYard(g: FloorPainter) {
     tw = W / cols,
     th = H / rows;
   const tones = [0x3a3f63, 0x404669, 0x363b5c, 0x454b70];
-  g.fillStyle(0x161a30).fillRect(BORDER, BORDER, W - BORDER * 2, H - BORDER * 2);
+  g.fillStyle(0x161a30).fillRect(
+    BORDER,
+    BORDER,
+    W - BORDER * 2,
+    H - BORDER * 2,
+  );
   for (let c = 0; c < cols; c++)
     for (let r = 0; r < rows; r++) {
       const x0 = Math.max(BORDER, c * tw),
@@ -433,15 +558,37 @@ function paintLanternYard(g: FloorPainter) {
         x1 = Math.min(W - BORDER, (c + 1) * tw),
         y1 = Math.min(H - BORDER, (r + 1) * th);
       // Every other tile a shade lighter, faintly: the board Hands uses.
-      g.fillStyle(tones[(c * 3 + r) % 4], (c + r) % 2 ? 0.92 : 1).fillRoundedRect(x0 + 4, y0 + 4, x1 - x0 - 8, y1 - y0 - 8, 8);
+      g.fillStyle(
+        tones[(c * 3 + r) % 4],
+        (c + r) % 2 ? 0.92 : 1,
+      ).fillRoundedRect(x0 + 4, y0 + 4, x1 - x0 - 8, y1 - y0 - 8, 8);
       // Slab joints inside the tile.
       const split = 0.35 + random() * 0.3;
-      g.lineStyle(2, 0x1f2440, 0.7).lineBetween(x0 + 8, y0 + (y1 - y0) * split, x1 - 8, y0 + (y1 - y0) * split);
-      g.lineBetween(x0 + (x1 - x0) * (0.3 + random() * 0.4), y0 + 8, x0 + (x1 - x0) * (0.3 + random() * 0.4), y0 + (y1 - y0) * split);
+      g.lineStyle(2, 0x1f2440, 0.7).lineBetween(
+        x0 + 8,
+        y0 + (y1 - y0) * split,
+        x1 - 8,
+        y0 + (y1 - y0) * split,
+      );
+      g.lineBetween(
+        x0 + (x1 - x0) * (0.3 + random() * 0.4),
+        y0 + 8,
+        x0 + (x1 - x0) * (0.3 + random() * 0.4),
+        y0 + (y1 - y0) * split,
+      );
       // Moss in the cracks and a little starlight on the stone.
       for (let k = 0; k < 4; k++)
-        g.fillStyle(0x355a4e, 0.45).fillCircle(x0 + 8 + random() * (x1 - x0 - 16), y0 + 8 + random() * (y1 - y0 - 16), 1.5 + random() * 2.5);
-      g.fillStyle(0xd8d2f5, 0.06).fillEllipse(x0 + (x1 - x0) * 0.35, y0 + (y1 - y0) * 0.3, (x1 - x0) * 0.5, (y1 - y0) * 0.25);
+        g.fillStyle(0x355a4e, 0.45).fillCircle(
+          x0 + 8 + random() * (x1 - x0 - 16),
+          y0 + 8 + random() * (y1 - y0 - 16),
+          1.5 + random() * 2.5,
+        );
+      g.fillStyle(0xd8d2f5, 0.06).fillEllipse(
+        x0 + (x1 - x0) * 0.35,
+        y0 + (y1 - y0) * 0.3,
+        (x1 - x0) * 0.5,
+        (y1 - y0) * 0.25,
+      );
     }
   // A worn moon-circle in the middle, where Gloomshade likes to rest.
   g.lineStyle(4, 0xb7a6d6, 0.16).strokeCircle(W / 2, 430, 120);
@@ -449,81 +596,191 @@ function paintLanternYard(g: FloorPainter) {
   g.fillStyle(0xd8d2f5, 0.08).fillCircle(W / 2 - 18, 412, 46);
   g.fillStyle(0x161a30, 0.12).fillCircle(W / 2, 404, 40);
   // Low stone kerb, then the night closing in at the edges.
-  g.lineStyle(6, 0x4d4668, 0.9).strokeRoundedRect(BORDER, BORDER, W - BORDER * 2, H - BORDER * 2, 18);
-  g.lineStyle(2, 0xb7a6d6, 0.35).strokeRoundedRect(BORDER + 5, BORDER + 5, W - BORDER * 2 - 10, H - BORDER * 2 - 10, 14);
+  g.lineStyle(6, 0x4d4668, 0.9).strokeRoundedRect(
+    BORDER,
+    BORDER,
+    W - BORDER * 2,
+    H - BORDER * 2,
+    18,
+  );
+  g.lineStyle(2, 0xb7a6d6, 0.35).strokeRoundedRect(
+    BORDER + 5,
+    BORDER + 5,
+    W - BORDER * 2 - 10,
+    H - BORDER * 2 - 10,
+    14,
+  );
   for (let i = 0; i < 6; i++)
-    g.lineStyle(14, 0x070914, 0.05 + i * 0.012).strokeRoundedRect(i * 7, i * 7, W - i * 14, H - i * 14, 20);
+    g.lineStyle(14, 0x070914, 0.05 + i * 0.012).strokeRoundedRect(
+      i * 7,
+      i * 7,
+      W - i * 14,
+      H - i * 14,
+      20,
+    );
 }
 
 /** Soft cloud stone, a constellation inlay and clouds around the deck's edge. */
 function paintCloudDeck(g: FloorPainter) {
   g.fillStyle(0x172240).fillRect(0, 0, 1600, 900);
-  for (let row = 0; row < 9; row++) for (let col = 0; col < 16; col++) {
-    const x = col * 100, y = row * 100;
-    g.fillStyle((row + col) % 2 ? 0x354766 : 0x3a4b6f).fillRoundedRect(x + 2, y + 2, 96, 96, 18);
-    if ((row * 7 + col * 3) % 13 === 0) {
-      g.fillStyle(0xa3b6d8, 0.35).fillCircle(x + 48, y + 50, 2);
-      g.lineStyle(1, 0xa3b6d8, 0.3).lineBetween(x + 42, y + 50, x + 54, y + 50).lineBetween(x + 48, y + 44, x + 48, y + 56);
+  for (let row = 0; row < 9; row++)
+    for (let col = 0; col < 16; col++) {
+      const x = col * 100,
+        y = row * 100;
+      g.fillStyle((row + col) % 2 ? 0x354766 : 0x3a4b6f).fillRoundedRect(
+        x + 2,
+        y + 2,
+        96,
+        96,
+        18,
+      );
+      if ((row * 7 + col * 3) % 13 === 0) {
+        g.fillStyle(0xa3b6d8, 0.35).fillCircle(x + 48, y + 50, 2);
+        g.lineStyle(1, 0xa3b6d8, 0.3)
+          .lineBetween(x + 42, y + 50, x + 54, y + 50)
+          .lineBetween(x + 48, y + 44, x + 48, y + 56);
+      }
     }
-  }
   g.lineStyle(3, 0xb7bde4, 0.25).strokeRoundedRect(28, 28, 1544, 844, 40);
   g.lineStyle(2, 0xc9a3ff, 0.15).strokeCircle(800, 450, 275);
   for (let i = 0; i < 12; i++) {
-    const a = i * Math.PI / 6;
-    g.fillStyle(0xd6d8f4, 0.5).fillCircle(800 + Math.cos(a) * 275, 450 + Math.sin(a) * 275, 4);
+    const a = (i * Math.PI) / 6;
+    g.fillStyle(0xd6d8f4, 0.5).fillCircle(
+      800 + Math.cos(a) * 275,
+      450 + Math.sin(a) * 275,
+      4,
+    );
   }
   for (let x = 0; x < 1700; x += 95) {
-    g.fillStyle(0x8599bc, 0.22).fillEllipse(x, 0, 150, 65).fillEllipse(x + 30, 900, 165, 60);
+    g.fillStyle(0x8599bc, 0.22)
+      .fillEllipse(x, 0, 150, 65)
+      .fillEllipse(x + 30, 900, 165, 60);
   }
 }
 
 /** Sun Atrium: baked marble, stained glass and brass inlays. No per-frame scenery work. */
 function paintSunAtrium(g: FloorPainter) {
-  g.fillStyle(0x243649).fillRect(0,0,1600,900);
-  for(let row=0;row<9;row++)for(let col=0;col<16;col++){
-    const x=col*100,y=row*100;
-    g.fillStyle((row+col)%2?0x4e6178:0x54677d).fillRoundedRect(x+1,y+1,98,98,3);
-    g.lineStyle(1,0xb8cad4,.08).lineBetween(x+8,y+20,x+75,y+86);
-  }
-  g.lineStyle(5,0xc8b881,.5).strokeRoundedRect(24,24,1552,852,30);
-  g.lineStyle(1,0xffe5ae,.35).strokeRoundedRect(38,38,1524,824,24);
-  const colors=[0xd97c91,0xe0ba70,0x80b9a8,0x70a9c7,0x8d8dc0,0xb18dbd];
-  for(let i=0;i<8;i++)for(const y of [24,818]){
-    const x=130+i*190;
-    g.fillStyle(0x192a41).fillRoundedRect(x-56,y,112,58,14);
-    g.fillStyle(colors[i%6],.55).fillTriangle(x-48,y+48,x,y+7,x+48,y+48);
-    g.lineStyle(2,0xc8b881,.65).lineBetween(x-48,y+48,x,y+7).lineBetween(x,y+7,x+48,y+48).lineBetween(x,y+7,x,y+48);
-  }
-  for(const radius of [210,310])g.lineStyle(2,0xe0c993,.2).strokeCircle(1000,450,radius);
-  for(let i=0;i<12;i++){
-    const a=i*Math.PI/6,x=1000+Math.cos(a)*310,y=450+Math.sin(a)*310;
-    g.fillStyle(colors[i%6],.28).fillPoints([{x,y:y-13},{x:x+8,y},{x,y:y+13},{x:x-8,y}],true);
+  g.fillStyle(0x243649).fillRect(0, 0, 1600, 900);
+  for (let row = 0; row < 9; row++)
+    for (let col = 0; col < 16; col++) {
+      const x = col * 100,
+        y = row * 100;
+      g.fillStyle((row + col) % 2 ? 0x4e6178 : 0x54677d).fillRoundedRect(
+        x + 1,
+        y + 1,
+        98,
+        98,
+        3,
+      );
+      g.lineStyle(1, 0xb8cad4, 0.08).lineBetween(x + 8, y + 20, x + 75, y + 86);
+    }
+  g.lineStyle(5, 0xc8b881, 0.5).strokeRoundedRect(24, 24, 1552, 852, 30);
+  g.lineStyle(1, 0xffe5ae, 0.35).strokeRoundedRect(38, 38, 1524, 824, 24);
+  const colors = [0xd97c91, 0xe0ba70, 0x80b9a8, 0x70a9c7, 0x8d8dc0, 0xb18dbd];
+  for (let i = 0; i < 8; i++)
+    for (const y of [24, 818]) {
+      const x = 130 + i * 190;
+      g.fillStyle(0x192a41).fillRoundedRect(x - 56, y, 112, 58, 14);
+      g.fillStyle(colors[i % 6], 0.55).fillTriangle(
+        x - 48,
+        y + 48,
+        x,
+        y + 7,
+        x + 48,
+        y + 48,
+      );
+      g.lineStyle(2, 0xc8b881, 0.65)
+        .lineBetween(x - 48, y + 48, x, y + 7)
+        .lineBetween(x, y + 7, x + 48, y + 48)
+        .lineBetween(x, y + 7, x, y + 48);
+    }
+  for (const radius of [210, 310])
+    g.lineStyle(2, 0xe0c993, 0.2).strokeCircle(1000, 450, radius);
+  for (let i = 0; i < 12; i++) {
+    const a = (i * Math.PI) / 6,
+      x = 1000 + Math.cos(a) * 310,
+      y = 450 + Math.sin(a) * 310;
+    g.fillStyle(colors[i % 6], 0.28).fillPoints(
+      [
+        { x, y: y - 13 },
+        { x: x + 8, y },
+        { x, y: y + 13 },
+        { x: x - 8, y },
+      ],
+      true,
+    );
   }
 }
 
 /** Static terrace architecture is baked once, leaving the animation budget for attacks. */
-function paintSkyTerrace(g:FloorPainter){
- g.fillStyle(0x1c2b44).fillRect(0,0,1600,900);
- for(let i=0;i<14;i++)g.fillStyle(0x91a8c0,.12).fillEllipse(i*133, i%2?20:880,230,85);
- g.fillStyle(0x3e485e).fillRoundedRect(35,35,1530,830,35);
- for(let row=0;row<8;row++)for(let col=0;col<15;col++){
-  const x=50+col*100,y=50+row*100;
-  g.fillStyle((col+row)%2?0x59647a:0x5e697f).fillRoundedRect(x+2,y+2,96,96,7);
-  if((row*5+col*7)%13===0)g.lineStyle(1,0xb4ac9e,.23).lineBetween(x+15,y+20,x+53,y+65).lineBetween(x+53,y+65,x+77,y+51);
- }
- g.lineStyle(5,0xc3ac8a,.6).strokeRoundedRect(38,38,1524,824,32);
- g.lineStyle(2,0xe2c299,.25).strokeRoundedRect(55,55,1490,790,24);
- for(const y of [33,856])for(let i=0;i<12;i++){
-  const x=100+i*127;g.fillStyle(0x2b3a50).fillRoundedRect(x-17,y-20,34,40,5);g.fillStyle(0x91a0ae,.7).fillEllipse(x,y-16,40,12);
- }
- g.lineStyle(2,0xe2b78b,.16).strokeCircle(800,450,260);
+function paintSkyTerrace(g: FloorPainter) {
+  g.fillStyle(0x1c2b44).fillRect(0, 0, 1600, 900);
+  for (let i = 0; i < 14; i++)
+    g.fillStyle(0x91a8c0, 0.12).fillEllipse(i * 133, i % 2 ? 20 : 880, 230, 85);
+  g.fillStyle(0x3e485e).fillRoundedRect(35, 35, 1530, 830, 35);
+  for (let row = 0; row < 8; row++)
+    for (let col = 0; col < 15; col++) {
+      const x = 50 + col * 100,
+        y = 50 + row * 100;
+      g.fillStyle((col + row) % 2 ? 0x59647a : 0x5e697f).fillRoundedRect(
+        x + 2,
+        y + 2,
+        96,
+        96,
+        7,
+      );
+      if ((row * 5 + col * 7) % 13 === 0)
+        g.lineStyle(1, 0xb4ac9e, 0.23)
+          .lineBetween(x + 15, y + 20, x + 53, y + 65)
+          .lineBetween(x + 53, y + 65, x + 77, y + 51);
+    }
+  g.lineStyle(5, 0xc3ac8a, 0.6).strokeRoundedRect(38, 38, 1524, 824, 32);
+  g.lineStyle(2, 0xe2c299, 0.25).strokeRoundedRect(55, 55, 1490, 790, 24);
+  for (const y of [33, 856])
+    for (let i = 0; i < 12; i++) {
+      const x = 100 + i * 127;
+      g.fillStyle(0x2b3a50).fillRoundedRect(x - 17, y - 20, 34, 40, 5);
+      g.fillStyle(0x91a0ae, 0.7).fillEllipse(x, y - 16, 40, 12);
+    }
+  g.lineStyle(2, 0xe2b78b, 0.16).strokeCircle(800, 450, 260);
 }
 
-function paintConductorRing(g:FloorPainter){
- g.fillStyle(0x1c2c43).fillRect(0,0,1600,900);
- for(let row=0;row<9;row++)for(let col=0;col<16;col++)g.fillStyle((row+col)%2?0x3b526b:0x415972).fillRoundedRect(col*100+2,row*100+2,96,96,9);
- const ellipse=(rx:number,ry:number,color:number,alpha:number,width:number)=>g.lineStyle(width,color,alpha).strokePoints(Array.from({length:97},(_,i)=>({x:800+Math.cos(i*Math.PI/48)*rx,y:450+Math.sin(i*Math.PI/48)*ry})),true);
- ellipse(730,380,0xd2ad80,.7,5);ellipse(710,360,0x8cdcff,.25,2);ellipse(500,285,0xd2ad80,.17,2);
- for(let i=0;i<16;i++){const a=i*Math.PI/8;g.lineStyle(2,0xe0ba89,.18).lineBetween(800+Math.cos(a)*500,450+Math.sin(a)*285,800+Math.cos(a)*730,450+Math.sin(a)*380);}
- g.lineStyle(2,0x8cdcff,.13).strokeCircle(800,450,150);
+function paintConductorRing(g: FloorPainter) {
+  g.fillStyle(0x1c2c43).fillRect(0, 0, 1600, 900);
+  for (let row = 0; row < 9; row++)
+    for (let col = 0; col < 16; col++)
+      g.fillStyle((row + col) % 2 ? 0x3b526b : 0x415972).fillRoundedRect(
+        col * 100 + 2,
+        row * 100 + 2,
+        96,
+        96,
+        9,
+      );
+  const ellipse = (
+    rx: number,
+    ry: number,
+    color: number,
+    alpha: number,
+    width: number,
+  ) =>
+    g.lineStyle(width, color, alpha).strokePoints(
+      Array.from({ length: 97 }, (_, i) => ({
+        x: 800 + Math.cos((i * Math.PI) / 48) * rx,
+        y: 450 + Math.sin((i * Math.PI) / 48) * ry,
+      })),
+      true,
+    );
+  ellipse(730, 380, 0xd2ad80, 0.7, 5);
+  ellipse(710, 360, 0x8cdcff, 0.25, 2);
+  ellipse(500, 285, 0xd2ad80, 0.17, 2);
+  for (let i = 0; i < 16; i++) {
+    const a = (i * Math.PI) / 8;
+    g.lineStyle(2, 0xe0ba89, 0.18).lineBetween(
+      800 + Math.cos(a) * 500,
+      450 + Math.sin(a) * 285,
+      800 + Math.cos(a) * 730,
+      450 + Math.sin(a) * 380,
+    );
+  }
+  g.lineStyle(2, 0x8cdcff, 0.13).strokeCircle(800, 450, 150);
 }

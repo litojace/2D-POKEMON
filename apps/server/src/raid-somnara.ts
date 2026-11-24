@@ -6,6 +6,8 @@ import {
   type Ability,
   type Fighter,
   type Input,
+  STRIKE_KINDS,
+  RING_KINDS,
 } from "../../../packages/shared/src/index.js";
 import {
   DREAM_RUNES,
@@ -19,8 +21,25 @@ import {
   type RaidDreamView,
   type RaidWarning,
 } from "../../../packages/shared/src/raid.js";
-import { RaidArena, type RaidBossNumbers } from "./raid.js";
+import {
+  RaidArena,
+  raidJitter,
+  type RaidBossNumbers,
+  type RaidReaction,
+  type RaidSituation,
+} from "./raid.js";
 const S = SOMNARA;
+/** Attacks Somnara keeps casting while a dream runs (chapter 1 / later). */
+const DREAM_SAFE_FIRST = new Set<RaidAttack>([
+  "lullaby",
+  "dream-bubbles",
+  "tail-splash",
+]);
+const DREAM_NEVER = new Set<RaidAttack>([
+  "whale-song",
+  "dream-sequence",
+  "nightmare",
+]);
 const distanceToSegment = (
   px: number,
   py: number,
@@ -40,15 +59,20 @@ const distanceToSegment = (
 
 /** Somnara's secret sequence never enters RaidState, snapshots or public events. */
 export class SomnaraArena extends RaidArena {
-  private sequence: DreamRune[] = [];
-  private sharedUntil = 0;
-  private nextStepAt = 0;
-  private previousDreamer = "";
-  private occupied = new Map<string, DreamRune | undefined>();
+  protected sequence: DreamRune[] = [];
+  protected sharedUntil = 0;
+  protected nextStepAt = 0;
+  protected previousDreamer = "";
+  protected occupied = new Map<string, DreamRune | undefined>();
   private ringHits = new Map<number, Set<string>>();
-  private runeCallAt = new Map<string, number>();
+  protected runeCallAt = new Map<string, number>();
+  /** Who stepped the last wrong rune (undefined: the dream ran out). */
+  protected wrongStep?: string;
   private trailAt = new Map<string, number>();
-  private songHits = new Set<string>();
+  /** Exposed after a dream: when its one lullaby goes out. */
+  protected thrashAt = Infinity;
+  private thrashRings = new Set<number>();
+  private thrashWarning = -1;
 
   protected override def(): RaidBossNumbers {
     return S;
@@ -81,7 +105,8 @@ export class SomnaraArena extends RaidArena {
       dreamMistakes: 0,
     });
     this.sequence = [];
-    this.songHits.clear();
+    this.thrashAt = Infinity;
+    this.thrashRings.clear();
     this.previousDreamer = "";
     this.sharedUntil = this.nextStepAt = 0;
     this.occupied.clear();
@@ -101,7 +126,8 @@ export class SomnaraArena extends RaidArena {
       drowsy: {},
     });
     this.sequence = [];
-    this.songHits.clear();
+    this.thrashAt = Infinity;
+    this.thrashRings.clear();
     this.sharedUntil = 0;
     this.occupied.clear();
     this.ringHits.clear();
@@ -117,9 +143,9 @@ export class SomnaraArena extends RaidArena {
   protected override onChapter() {
     this.clearAttacks();
   }
-  protected override finishMessage(won: boolean) {
+  protected override finishMessage(won: boolean): string {
     return won
-      ? "Somnara wakes! A little house lights up among the stars."
+      ? "Snoozaku wakes! Its star-heart twinkles over the clouds."
       : "The dream drifts on. Listen for the runes and try again.";
   }
   override feat() {
@@ -129,11 +155,30 @@ export class SomnaraArena extends RaidArena {
       (this.raid.dreamMistakes ?? 0) === 0
     );
   }
-  private padAt(x: number, y: number) {
-    return S.pads.find((p) => Math.hypot(p.x - x, p.y - y) <= S.padRadius)
+  /** This raid's rune pads (the Ascendant's sit clear of the phone controls). */
+  protected pads(): readonly { rune: DreamRune; x: number; y: number }[] {
+    return S.pads;
+  }
+  protected padAt(x: number, y: number) {
+    return this.pads().find((p) => Math.hypot(p.x - x, p.y - y) <= S.padRadius)
       ?.rune;
   }
-  private bodies() {
+  /** Who may call this dream's runes (the Dreamer). */
+  protected callers(d = this.raid.dream): string[] {
+    return d ? [d.dreamerId] : [];
+  }
+  /** Runes in a new dream. */
+  protected dreamLength() {
+    const r = this.raid;
+    return somnaraSequenceLength(r.phase, r.peril, r.partySize, r.trait);
+  }
+  /** Seconds a new dream lasts. */
+  protected dreamSeconds(): number {
+    return this.raid.partySize === 1
+      ? S.sequence.soloSeconds
+      : S.sequence.seconds;
+  }
+  protected bodies() {
     return this.heroes()
       .filter((p) => p.hp > 0)
       .flatMap((p) => [
@@ -157,8 +202,7 @@ export class SomnaraArena extends RaidArena {
           : []),
       ]);
   }
-  private beginDream() {
-    this.struck.clear();
+  protected beginDream() {
     const alive = this.heroes().filter((p) => p.hp > 0);
     if (!alive.length) return;
     const candidates = alive.filter((p) => p.id !== this.previousDreamer);
@@ -167,12 +211,7 @@ export class SomnaraArena extends RaidArena {
     crypto.getRandomValues(random);
     const dreamer = pool[random[0] % pool.length];
     const r = this.raid;
-    const length = somnaraSequenceLength(
-      r.phase,
-      r.peril,
-      r.partySize,
-      r.trait,
-    );
+    const length = this.dreamLength();
     this.sequence = [];
     for (let i = 0; i < length; i++) {
       const values = new Uint32Array(1);
@@ -190,9 +229,7 @@ export class SomnaraArena extends RaidArena {
       step: 0,
       length,
       startedAt: this.time,
-      until:
-        this.time +
-        (r.partySize === 1 ? S.sequence.soloSeconds : S.sequence.seconds),
+      until: this.time + this.dreamSeconds(),
       backwards: r.phase >= 3 && r.peril >= 3 && (random[1] & 1) === 1,
     };
     r.runeCalls = [];
@@ -223,9 +260,10 @@ export class SomnaraArena extends RaidArena {
     if (
       this.phase !== "playing" ||
       !r.dream ||
-      r.dream.dreamerId !== id ||
+      !this.callers().includes(id) ||
       !p ||
       this.has(p, "sleep") ||
+      this.has(p, "shell") ||
       !DREAM_RUNES.includes(rune) ||
       this.time < (this.runeCallAt.get(id) ?? 0)
     )
@@ -243,21 +281,25 @@ export class SomnaraArena extends RaidArena {
     });
     return true;
   }
-  private nightmare() {
+  protected nightmare() {
     const r = this.raid,
       boss = this.boss();
     if (!boss) return;
     r.dreamMistakes = (r.dreamMistakes ?? 0) + 1;
     this.hitBy = "nightmare";
     for (const p of this.heroes())
-      if (p.hp > 0) this.damage(p, S.sequence.nightmare, boss.id);
+      if (p.hp > 0) {
+        this.damage(p, S.sequence.nightmare, boss.id);
+        // Live raids: the nightmare also leaves everyone a little drowsy.
+        if (this.smart()) this.addDrowsy(p);
+      }
     this.hitBy = undefined;
     this.event("raid-impact", boss, 0xc090ff, undefined, boss.id);
     this.events[this.events.length - 1].raidRadius = 500;
     this.beginDream();
     r.message = `Nightmare! New dream — ${this.heroes().find((p) => p.id === r.dream?.dreamerId)?.name ?? "the Dreamer"} calls this time.`;
   }
-  private stepDream() {
+  protected stepDream() {
     const r = this.raid,
       d = r.dream;
     if (!d) return;
@@ -276,33 +318,55 @@ export class SomnaraArena extends RaidArena {
       this.occupied.set(p.id, rune);
       return rune !== undefined && rune !== before && !p.sleeping;
     });
-    for (const p of entered) {
-      if (this.time < this.nextStepAt || r.dream !== d) break;
-      const rune = this.padAt(p.x, p.y)!;
-      if (rune !== this.sequence[d.step]) {
-        this.nightmare();
-        break;
-      }
-      d.step++;
-      this.nextStepAt = this.time + S.sequence.stepGap;
-      if (!r.drill && r.contributions?.[p.owner])
-        r.contributions[p.owner].pillars++;
-      this.event("heal", p, 0x99efdd, 0, p.owner);
-      if (d.step === d.length) {
-        r.dreamsSolved = (r.dreamsSolved ?? 0) + 1;
-        r.dream = undefined;
-        this.sequence = [];
-        this.sharedUntil = 0;
-        r.exposedUntil =
-          this.time + S.sequence.expose + (r.trait === "deep-slumber" ? 2 : 0);
-        r.message = "Dream solved! Somnara wakes — strike the shining heart!";
-        this.nextAttack = Math.max(this.nextAttack, r.exposedUntil + 0.8);
-        this.countDodges();
-      }
-    }
+    for (const p of entered)
+      if (!this.enterPad(p.owner, p, this.padAt(p.x, p.y)!)) break;
   }
-  private addDrowsy(p: Fighter, bubble = false) {
+  /** A raider (or their double) enters a pad; false once no more count now. */
+  protected enterPad(
+    owner: string,
+    at: { x: number; y: number },
+    rune: DreamRune,
+  ) {
+    const r = this.raid,
+      d = r.dream;
+    if (!d || this.time < this.nextStepAt) return false;
+    if (rune !== this.sequence[d.step]) {
+      this.wrongStep = owner;
+      this.nightmare();
+      this.wrongStep = undefined;
+      return false;
+    }
+    d.step++;
+    this.nextStepAt = this.time + S.sequence.stepGap;
+    if (r.contributions?.[owner]) r.contributions[owner].pillars++;
+    this.event("heal", at, 0x99efdd, 0, owner);
+    if (d.step === d.length) {
+      r.dreamsSolved = (r.dreamsSolved ?? 0) + 1;
+      r.dream = undefined;
+      this.sequence = [];
+      this.sharedUntil = 0;
+      const expose = this.window(
+        S.sequence.expose + (r.trait === "deep-slumber" ? 2 : 0),
+      );
+      r.exposedUntil = this.time + expose;
+      r.message = "Dream solved! Snoozaku wakes — strike the shining heart!";
+      this.nextAttack = Math.max(
+        this.nextAttack,
+        r.exposedUntil + (this.smart() ? 0.4 : 0.8),
+      );
+      // Live raids: halfway through it thrashes once (a softer lullaby), so
+      // melee steps out or jumps once; the damage window stays.
+      if (this.smart()) this.thrashAt = this.time + expose / 2 - 0.55;
+      return false;
+    }
+    return true;
+  }
+  protected addDrowsy(p: Fighter, bubble = false) {
     if (p.hp <= 0 || (bubble && this.hasRite(p, "lucid"))) return;
+    // Shadopus hidden in its Ink Cloud, and anyone in a Warm Spring (or
+    // in Mossloth's Sloth Time, where drowsiness can't catch up), stay awake.
+    if (this.inked(p) || this.inSpring(p) || this.inSpring(p, "sloth-time"))
+      return;
     const d = ((this.raid.drowsy ??= {})[p.id] ??= {
       stacks: 0,
       sleepUntil: 0,
@@ -314,7 +378,7 @@ export class SomnaraArena extends RaidArena {
       d.stacks = 0;
       d.sleepUntil = this.time + S.drowsy.sleep;
       p.statuses = p.statuses.filter((s) => s.kind !== "drowsy");
-      // Keep Somnara's imposed sleep separate from Terradon's Hibernate.
+      // Somnara's imposed sleep is its own status (Terradon's Shell Up is a shell, not sleep).
       p.statuses.push({
         kind: "sleep",
         until: d.sleepUntil,
@@ -324,7 +388,10 @@ export class SomnaraArena extends RaidArena {
       this.raid.message = `${p.name} is asleep! Tap them awake with an attack.`;
     }
   }
-  private wake(p: Fighter) {
+  protected inked(p: Fighter) {
+    return p.character === "shadopus" && this.has(p, "stealth");
+  }
+  protected wake(p: Fighter) {
     const d = this.raid.drowsy?.[p.id];
     if (!d || d.sleepUntil <= this.time) return;
     d.sleepUntil = 0;
@@ -348,14 +415,103 @@ export class SomnaraArena extends RaidArena {
       !(ability?.ground && target.jumpUntil > this.time)
     )
       this.wake(target);
-    if (source && source !== target && !target.raidBoss) return;
+    // (A raider's hit on a teammate only wakes them. The Spire's Echoes, in
+    // its zone-4 room, are foes: hits on them count.)
+    if (source && source !== target && !target.raidBoss && !target.echo) return;
     super.damage(target, amount, owner, ability);
   }
   protected override canStartAttack() {
     return (
       this.raid.exposedUntil <= this.time &&
-      (!this.raid.dream || this.raid.phase >= 3)
+      // Live raids keep attacking through a dream (slower, and only some
+      // attacks); Peril 1-2 rest during the first two chapters' dreams.
+      (!this.raid.dream || this.raid.phase >= 3 || this.smart())
     );
+  }
+  /** Mid-dream: chapter 1 only rings and bubbles; later anything but songs. */
+  protected override allows(kind: RaidAttack) {
+    const r = this.raid;
+    if (!r.dream || !this.smart()) return true;
+    if (r.phase === 1 && !DREAM_SAFE_FIRST.has(kind)) return false;
+    if (DREAM_NEVER.has(kind)) return false;
+    // Alone, the Dreamer on a pad is never the one aimed at.
+    if (
+      r.partySize === 1 &&
+      (kind === "tail-splash" || kind === "falling-stars") &&
+      this.heroes().some((p) => p.hp > 0 && this.padAt(p.x, p.y))
+    )
+      return false;
+    return true;
+  }
+  protected override cadence() {
+    return (
+      super.cadence() *
+      // Alone, it does not slow down for the dream, and attacks faster.
+      (this.smart() && this.raid.partySize === 1
+        ? S.soloCadence
+        : this.raid.dream && this.smart()
+          ? S.dreamCadence
+          : 1)
+    );
+  }
+  /** The Dreamer standing on a pad is never targeted while they work. */
+  protected override chooseTarget(kind: RaidAttack, alive: Fighter[]) {
+    const d = this.raid.dream;
+    const callers = this.callers(d);
+    const free = alive.filter(
+      (p) => !(callers.includes(p.id) && this.padAt(p.x, p.y)),
+    );
+    return super.chooseTarget(kind, free.length ? free : alive);
+  }
+  protected override onMechanic(p: Fighter) {
+    return !!this.padAt(p.x, p.y);
+  }
+  /** Somnara swats raiders who linger at its side, and stars a crowd. */
+  protected override reactions(s: RaidSituation): RaidReaction[] {
+    const out: RaidReaction[] = [];
+    const camper = s.melee.find((m) => m.seconds >= 2);
+    if (camper) out.push({ kind: "tail-splash", score: 1.1, target: camper.p });
+    if (s.cluster.size >= 3) out.push({ kind: "falling-stars", score: 1.2 });
+    return out;
+  }
+  /** Where the Quiet Zone opens: 300-450 px from the party, inside the deck. */
+  private quietSpot(target: Fighter) {
+    const r = this.raid;
+    const alive = this.heroes().filter((p) => p.hp > 0);
+    if (!this.smart() || !alive.length)
+      return {
+        x: Math.max(250, Math.min(1250, target.x)),
+        y: Math.max(200, Math.min(700, target.y)),
+      };
+    const cx = alive.reduce((s, p) => s + p.x, 0) / alive.length,
+      cy = alive.reduce((s, p) => s + p.y, 0) / alive.length;
+    const clamp = (x: number, y: number) => ({
+      x: Math.max(250, Math.min(1250, x)),
+      y: Math.max(200, Math.min(700, y)),
+    });
+    // The slowest raider must still reach it with time to spare.
+    const reach = 222 * (S.song.seconds - 0.6);
+    const base = raidJitter(r.seed, this.attacks, 77) * Math.PI * 2;
+    let best = clamp(cx, cy),
+      bestScore = -Infinity;
+    for (let i = 0; i < 12; i++) {
+      const a = base + (i / 12) * Math.PI * 2;
+      const want =
+        S.quiet.near +
+        (S.quiet.far - S.quiet.near) * raidJitter(r.seed, this.attacks, i);
+      const spot = clamp(cx + Math.cos(a) * want, cy + Math.sin(a) * want);
+      const far = Math.max(
+        ...alive.map((p) => Math.hypot(p.x - spot.x, p.y - spot.y)),
+      );
+      if (far > reach) continue;
+      const near = Math.hypot(spot.x - cx, spot.y - cy);
+      const score = -Math.abs(near - want);
+      if (score > bestScore) {
+        bestScore = score;
+        best = spot;
+      }
+    }
+    return best;
   }
   protected override startAttack(kind: RaidAttack, target: Fighter): void {
     const boss = this.boss()!,
@@ -380,7 +536,9 @@ export class SomnaraArena extends RaidArena {
         S.lullaby.delay,
       ).teach = teach;
     else if (kind === "tail-splash") {
-      const dir = normalize(target.x - boss.x || 1, target.y - boss.y);
+      // Aimed where a running raider is heading.
+      const aim = this.lead(target, this.telegraph(kind, S.tail.delay));
+      const dir = normalize(aim.x - boss.x || 1, aim.y - boss.y);
       Object.assign(
         this.warn(
           kind,
@@ -405,27 +563,48 @@ export class SomnaraArena extends RaidArena {
       ).teach = teach;
     else if (kind === "falling-stars") {
       const n = r.trait === "starry-night" ? 7 : 5;
-      // Move the constellation's centre in from edges; clamping each star
-      // separately would pile several hits onto one indistinguishable marker.
-      const cx = Math.max(320, Math.min(1280, target.x));
-      const cy = Math.max(320, Math.min(580, target.y));
+      // On the middle of a stack (else ahead of a runner). Move the
+      // constellation's centre in from edges; clamping each star separately
+      // would pile several hits onto one indistinguishable marker.
+      const aim = this.aimFloor(kind, target, 220, S.stars.delay);
+      const turn = ((r.seed + this.attacks) % 6) * 0.2;
+      // Live raids, alone: the constellation is laid so its first star
+      // lands where the raider is heading (between the stars is still safe).
+      const solo = this.smart() && r.partySize === 1;
+      const cx = Math.max(
+        320,
+        Math.min(1280, solo ? aim.x - Math.cos(turn) * 220 : aim.x),
+      );
+      const cy = Math.max(
+        320,
+        Math.min(580, solo ? aim.y - Math.sin(turn) * 220 : aim.y),
+      );
       for (let i = 0; i < n; i++) {
         const angle =
           (i / n) * Math.PI * 2 + ((r.seed + this.attacks) % 6) * 0.2;
-        const x = cx + Math.cos(angle) * 220,
+        let x = cx + Math.cos(angle) * 220,
           y = cy + Math.sin(angle) * 220;
+        // Mid-dream, stars fall on the paths between pads, never on one.
+        if (r.dream && this.smart())
+          for (const pad of this.pads()) {
+            const d = Math.hypot(x - pad.x, y - pad.y),
+              keep = S.padRadius + S.stars.radius + 8;
+            if (d < keep) {
+              const u = normalize(x - pad.x || 1, y - pad.y);
+              x = pad.x + u.x * keep;
+              y = pad.y + u.y * keep;
+            }
+          }
         this.warn(kind, x, y, x, y, S.stars.radius, S.stars.delay).teach =
           teach;
       }
     } else if (kind === "whale-song") {
-      this.songHits.clear();
-      this.struck.clear();
       const radius =
         S.song.radius[Math.min(3, Math.max(1, r.peril))] +
         (r.trait === "starry-night" ? 35 : 0);
-      // Start close enough that the slowest fighter can reach it in four seconds.
-      const x = Math.max(250, Math.min(1250, target.x)),
-        y = Math.max(200, Math.min(700, target.y));
+      // Live raids open it away from the party (the slowest fighter can
+      // still reach it in time); Peril 1-2 open it on the target.
+      const { x, y } = this.quietSpot(target);
       r.quietZone = {
         x,
         y,
@@ -439,24 +618,33 @@ export class SomnaraArena extends RaidArena {
   protected override resolveWarning(w: RaidWarning, boss: Fighter) {
     const r = this.raid;
     if (w.kind === "whale-song") {
-      this.struck = new Set(this.songHits);
-      this.countDodges();
-      this.songHits.clear();
       r.quietZone = undefined;
       return;
     }
     if (w.kind === "lullaby") {
-      for (let i = 0; i < S.lullaby.count; i++)
+      const thrash = w.id === this.thrashWarning;
+      for (let i = 0; i < (thrash ? 1 : S.lullaby.count); i++) {
+        const id = ++this.serial;
+        if (thrash) this.thrashRings.add(id);
         (r.dreamRings ??= []).push({
-          id: ++this.serial,
+          id,
           x: w.x,
           y: w.y,
           radius: 0,
-          startedAt: this.time + i * S.lullaby.gap,
+          // Live raids space the rings by the jump cooldown: each one can be
+          // jumped (Peril 1-2 keep the quick 0.8 s rhythm).
+          startedAt:
+            this.time +
+            i * (this.smart() ? RULES.jumpCooldown + 0.3 : S.lullaby.gap),
         });
+      }
     } else if (w.kind === "dream-bubbles") {
-      const n =
-        r.trait === "restless-dream" ? S.bubbles.count + 2 : S.bubbles.count;
+      const count =
+        this.smart() &&
+        (r.partySize === 1 || this.heroes().filter((p) => p.hp > 0).length >= 3)
+          ? S.bubbles.partyCount
+          : S.bubbles.count;
+      const n = r.trait === "restless-dream" ? count + 2 : count;
       for (let i = 0; i < n; i++) {
         const angle = (i * Math.PI * 2) / n;
         (r.dreamBubbles ??= []).push({
@@ -475,7 +663,10 @@ export class SomnaraArena extends RaidArena {
             ? distanceToSegment(p.x, p.y, w.x, w.y, w.tx, w.ty) <
               w.radius + RULES.radius
             : Math.hypot(p.x - w.x, p.y - w.y) < w.radius + RULES.radius;
-        if (hit)
+        // Mid-dream, the Dreamer on a pad is spared.
+        const working =
+          r.dream && this.callers().includes(p.id) && this.padAt(p.x, p.y);
+        if (hit && !(this.smart() && working))
           this.damage(
             p,
             w.kind === "tail-splash" ? S.tail.damage : S.stars.damage,
@@ -483,7 +674,6 @@ export class SomnaraArena extends RaidArena {
           );
       }
       this.hitBy = undefined;
-      this.countDodges();
       this.event(
         "raid-impact",
         { x: w.x, y: w.y },
@@ -511,12 +701,26 @@ export class SomnaraArena extends RaidArena {
   protected override worldStep(dt: number, boss: Fighter) {
     const r = this.raid;
     this.stepDream();
+    if (this.time >= this.thrashAt) {
+      this.thrashAt = Infinity;
+      if (r.exposedUntil > this.time) {
+        const w = this.warn(
+          "lullaby",
+          boss.x,
+          boss.y,
+          boss.x,
+          boss.y,
+          85,
+          S.lullaby.delay,
+        );
+        this.thrashWarning = w.id;
+      }
+    }
     if (r.quietZone) {
       const q = quietZoneAt(r.quietZone, this.time);
       this.hitBy = "whale-song";
       for (const p of this.heroes())
         if (p.hp > 0 && Math.hypot(p.x - q.x, p.y - q.y) > r.quietZone.radius) {
-          this.songHits.add(p.id);
           this.damage(p, (S.song.damage / S.song.seconds) * dt, boss.id);
         }
       this.hitBy = undefined;
@@ -559,23 +763,32 @@ export class SomnaraArena extends RaidArena {
           continue;
         hit.add(p.id);
         if (p.jumpUntil > this.time) continue;
+        // (The ring's sting reveals a hidden Shadopus, but not before it counts.)
+        const hidden = this.inked(p);
         this.hitBy = "lullaby";
-        this.damage(p, S.lullaby.damage, boss.id);
+        this.damage(
+          p,
+          S.lullaby.damage * (this.thrashRings.has(ring.id) ? S.thrash : 1),
+          boss.id,
+        );
         this.hitBy = undefined;
-        this.addDrowsy(p);
+        if (!hidden) this.addDrowsy(p);
       }
     }
     r.dreamRings = (r.dreamRings ?? []).filter(
       (q) => q.radius <= S.lullaby.radius,
     );
     for (const id of this.ringHits.keys())
-      if (!r.dreamRings.some((q) => q.id === id)) this.ringHits.delete(id);
+      if (!r.dreamRings.some((q) => q.id === id)) {
+        this.ringHits.delete(id);
+        this.thrashRings.delete(id);
+      }
     const channels = this.heroes().filter(
       (p) =>
         p.hp > 0 &&
         p.channel &&
         p.channel.until > this.time &&
-        this.kit(p).skills[p.channel.skill]?.id === "ember-gust",
+        this.kit(p).skills[p.channel.skill]?.id === "crest-flare",
     );
     const inGust = (p: Fighter, x: number, y: number) => {
       const a = this.kit(p).skills[p.channel!.skill];
@@ -635,16 +848,41 @@ export class SomnaraArena extends RaidArena {
         )
       )
         return false;
+      // Mid-dream they chase whoever is closest to the next right pad.
+      const next =
+        this.smart() && r.dream
+          ? this.pads().find((q) => q.rune === this.sequence[r.dream!.step])
+          : undefined;
+      const from = next ?? b;
       const target = this.heroes()
         .filter((p) => p.hp > 0)
         .sort(
           (a, c) =>
-            Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y),
+            Math.hypot(a.x - from.x, a.y - from.y) -
+            Math.hypot(c.x - from.x, c.y - from.y),
         )[0];
       if (!target) return true;
-      const d = normalize(target.x - b.x, target.y - b.y);
-      b.x += d.x * S.bubbles.speed * dt;
-      b.y += d.y * S.bubbles.speed * dt;
+      // Live raids, alone: mid-dream they wait at the next right pad (pop
+      // them, or walk in drowsy) and only chase a raider who comes close.
+      let goal: { x: number; y: number } = target;
+      if (
+        next &&
+        r.partySize === 1 &&
+        Math.hypot(target.x - b.x, target.y - b.y) > S.bubbles.guard
+      ) {
+        const u = normalize(b.x - next.x || 1, b.y - next.y);
+        goal = {
+          x: next.x + u.x * (S.padRadius + 30),
+          y: next.y + u.y * (S.padRadius + 30),
+        };
+      }
+      const d = normalize(goal.x - b.x, goal.y - b.y);
+      const step = Math.min(
+        Math.hypot(goal.x - b.x, goal.y - b.y),
+        S.bubbles.speed * dt,
+      );
+      b.x += d.x * step;
+      b.y += d.y * step;
       if (
         Math.hypot(target.x - b.x, target.y - b.y) <=
         S.bubbles.radius + RULES.radius
@@ -655,7 +893,11 @@ export class SomnaraArena extends RaidArena {
       return true;
     });
     this.projectiles = this.projectiles.filter((pr) => !spent.has(pr.id));
-    const d = r.dream;
+    this.botCallRunes();
+  }
+  /** A stand-in Dreamer calls the rune of the step the team is on. */
+  protected botCallRunes() {
+    const d = this.raid.dream;
     if (
       d &&
       this.bots.has(d.dreamerId) &&
@@ -663,25 +905,58 @@ export class SomnaraArena extends RaidArena {
     )
       this.callRune(d.dreamerId, this.sequence[d.step]);
   }
+  /**
+   * The rune a stand-in knows for the step the team is on: from its own
+   * view of the dream, or a rune a caller actually called. Never the
+   * server's secret.
+   */
+  protected botRune(bot: Fighter): DreamRune | undefined {
+    const r = this.raid,
+      d = r.dream;
+    if (!d) return undefined;
+    const view = this.dreamFor(bot.id);
+    const callers = this.callers(d);
+    const called = [...(r.runeCalls ?? [])]
+      .reverse()
+      .find(
+        (q) =>
+          callers.includes(q.playerId) &&
+          q.step === d.step &&
+          q.until > this.time,
+      );
+    return view?.full
+      ? (view.backwards ? [...view.runes].reverse() : view.runes)[d.step]
+      : called?.rune;
+  }
   override cast(p: Fighter, a: Ability, ex = false) {
     super.cast(p, a, ex);
     if (p.raidBoss) return;
     const affected = (x: number, y: number) =>
-      a.kind === "melee" || a.kind === "cone" || a.kind === "beam"
+      STRIKE_KINDS.includes(a.kind) || a.kind === "cone" || a.kind === "beam"
         ? Math.hypot(x - p.x, y - p.y) < a.range + RULES.radius &&
           Math.cos(Math.atan2(y - p.y, x - p.x) - p.angle) > (a.arc ?? 0.35)
-        : a.kind === "nova" &&
+        : RING_KINDS.includes(a.kind) &&
           Math.hypot(x - p.x, y - p.y) < a.radius + RULES.radius;
-    if (["melee", "cone", "beam", "nova"].includes(a.kind)) {
+    if ([...STRIKE_KINDS, ...RING_KINDS, "cone", "beam"].includes(a.kind)) {
       for (const ally of this.heroes())
         if (ally !== p && affected(ally.x, ally.y)) this.wake(ally);
       this.raid.dreamBubbles = (this.raid.dreamBubbles ?? []).filter(
         (b) => !affected(b.x, b.y),
       );
     }
-    if (a.id === "thoughtstrike" && this.raid.dream) {
+    // Astrabun's Moon Hop: landing on (or beside) a rune pad steps on it.
+    if (a.id === "moon-hop" && this.raid.dream) {
+      const pad = this.pads().find(
+        (q) => Math.hypot(q.x - p.x, q.y - p.y) <= S.padRadius + a.radius,
+      );
+      if (pad && this.occupied.get(p.id) !== pad.rune) {
+        this.occupied.set(p.id, pad.rune);
+        this.enterPad(p.id, p, pad.rune);
+      }
+    }
+    if (a.id === "mind-maze" && this.raid.dream) {
       this.sharedUntil = this.raid.dream.until;
-      this.raid.message = `${p.name}'s Thoughtstrike reveals this dream to the whole team!`;
+      this.raid.message = `${p.name}'s Mind Maze reveals this dream to the whole team!`;
     }
   }
   protected override botHint(
@@ -702,28 +977,17 @@ export class SomnaraArena extends RaidArena {
       input.dash = false;
       // Stand-ins only solve information they could receive as a player, or a
       // rune the Dreamer actually called. Never peek at the server's secret.
-      const view = this.dreamFor(bot.id);
-      const called = [...(r.runeCalls ?? [])]
-        .reverse()
-        .find(
-          (q) =>
-            q.playerId === d.dreamerId &&
-            q.step === d.step &&
-            q.until > this.time,
-        );
-      const rune = view?.full
-        ? (view.backwards ? [...view.runes].reverse() : view.runes)[d.step]
-        : called?.rune;
+      const rune = this.botRune(bot);
       const runner = this.bots.has(d.dreamerId)
         ? d.dreamerId
         : this.heroes().find((p) => p.hp > 0 && this.bots.has(p.id))?.id;
       if (rune && runner === bot.id) {
-        const pad = S.pads.find((p) => p.rune === rune)!;
+        const pad = this.pads().find((p) => p.rune === rune)!;
         if (this.padAt(bot.x, bot.y) === rune)
           return go(pad.x + 95, pad.y, false);
         // A direct line from the left spawn to the Star pad crosses Circle.
         // Route through the centre instead of stepping a wrong rune en route.
-        const blocked = S.pads.some(
+        const blocked = this.pads().some(
           (q) =>
             q.rune !== rune &&
             Math.hypot(q.x - bot.x, q.y - bot.y) > S.padRadius + 15 &&

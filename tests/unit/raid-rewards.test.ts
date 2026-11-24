@@ -9,8 +9,21 @@ import {
 } from "../../packages/shared/src/raid";
 
 /** Migrations that seed arena_raid_rewards (009: Grumblecrag; 012: Tidewyrm; 013: Gloomshade; 015: Somnara; 019: Prismatail; 020: Emberwing). */
-const sql = ["009_raid_hub.sql", "012_tidewyrm.sql", "013_gloomshade.sql", "015_somnara.sql", "019_prismatail.sql", "020_emberwing.sql", "021_storm_twins.sql"]
+const sql = [
+  "009_raid_hub.sql",
+  "012_tidewyrm.sql",
+  "013_gloomshade.sql",
+  "015_somnara.sql",
+  "019_prismatail.sql",
+  "020_emberwing.sql",
+  "021_storm_twins.sql",
+]
   .map((f) => readFileSync(`supabase/migrations/${f}`, "utf8"))
+  .join("\n");
+/** Every migration, in order (later ones rename and re-tune). */
+const every = readdirSync("supabase/migrations")
+  .sort()
+  .map((f: string) => readFileSync(`supabase/migrations/${f}`, "utf8"))
   .join("\n");
 /** Rows of the arena_raid_rewards seeds (SQL doubles a quote inside a name). */
 const seeded = [
@@ -24,6 +37,35 @@ const seeded = [
   name: name.replace(/''/g, "'"),
   rule: JSON.parse(rule),
 }));
+// Later migrations may rewrite a rule in place (030: one-difficulty raids).
+for (const [, rule, id] of readdirSync("supabase/migrations")
+  .sort()
+  .map((f: string) => readFileSync(`supabase/migrations/${f}`, "utf8"))
+  .join("\n")
+  .matchAll(
+    /update public\.arena_raid_rewards set rule = '(\{[^']*\})' where id = '([a-z-]+)';/g,
+  )) {
+  const row = seeded.find((r) => r.id === id);
+  if (row) row.rule = JSON.parse(rule);
+}
+const later = readdirSync("supabase/migrations")
+  .sort()
+  .map((f: string) => readFileSync(`supabase/migrations/${f}`, "utf8"))
+  .join("\n");
+// ...or rename a reward or a boss for players (112: Emberwing drawn as Lumiwick).
+for (const [, name, id] of later.matchAll(
+  /update public\.arena_raid_rewards set name = '((?:[^']|'')+)' where id = '([a-z-]+)';/g,
+)) {
+  const row = seeded.find((r) => r.id === id);
+  if (row) row.name = name.replace(/''/g, "'");
+}
+const bossNames = new Map(
+  [
+    ...later.matchAll(
+      /update public\.arena_raid_bosses set name = '((?:[^']|'')+)' where id = '([a-z-]+)';/g,
+    ),
+  ].map(([, name, id]) => [id, name.replace(/''/g, "'")]),
+);
 
 describe("raid rewards", () => {
   it("matches the database seed exactly", () => {
@@ -57,6 +99,16 @@ describe("raid rewards", () => {
     }
   });
 
+  it("gives every title reward its own name (titles are granted by name)", () => {
+    // arena_record_raid joins rewards to titles on the name, so two rewards
+    // sharing one would grant the same title for both (and leave the other
+    // unearnable).
+    const names = RAID_REWARDS.filter((r) => r.slot === "title").map(
+      (r) => r.name,
+    );
+    expect(names.filter((n, i) => names.indexOf(n) !== i)).toEqual([]);
+  });
+
   it("derives the cosmetic list (every slot item) from the rewards", () => {
     expect(Object.keys(RAID_COSMETICS).sort()).toEqual(
       RAID_REWARDS.filter((r) => r.slot !== "title")
@@ -69,9 +121,20 @@ describe("raid rewards", () => {
   it("seeds every boss in the roster, and only playable ones can be raided", () => {
     for (const id of RAID_BOSS_ORDER) {
       // 009 seeds the roster; later migrations switch bosses on as they ship.
-      const enabled = new RegExp(`set playable = true where id = '${id}'`).test(sql);
-      expect(sql).toContain(`('${id}', '${RAID_BOSSES[id].name}', ${id === "grumblecrag"})`);
-      expect(id === "grumblecrag" || enabled, id).toBe(RAID_BOSSES[id].playable);
+      const enabled = new RegExp(`set playable = true where id = '${id}'`).test(
+        sql,
+      );
+      // seeded under its first name, renamed by a later migration if it changed
+      const seededName = [
+        ...sql.matchAll(
+          new RegExp(`\\('${id}', '((?:[^']|'')+)', (true|false)\\)`, "g"),
+        ),
+      ][0]?.[1];
+      expect(seededName, id).toBeTruthy();
+      expect(bossNames.get(id) ?? seededName).toBe(RAID_BOSSES[id].name);
+      expect(id === "grumblecrag" || enabled, id).toBe(
+        RAID_BOSSES[id].playable,
+      );
     }
   });
 });

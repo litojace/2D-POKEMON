@@ -1,0 +1,883 @@
+/* ==========================================================================
+   The Spire in the Raid Hub: its card (last of the boss list) and its page
+   (Climb · Floors · Blessings). Markup: screens/spire-view.ts. Layout on top
+   of the shared components and the Raid Hub's rh- rules; sp- classes only.
+   ========================================================================== */
+
+/* The card and detail page share the hand-painted tower poster. */
+.spire-card-art {
+  display: block;
+  background: #0a0818;
+}
+.sp-poster > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.rh-spire-card .spire-card-art img {
+  /* Keep the crystal summit visible when a short mobile card crops the sky. */
+  object-position: center top;
+}
+.rh-stars.spire-floors {
+  letter-spacing: 0;
+  font-size: calc(12px * var(--text-scale, 1));
+}
+
+/* The page's stage: keep the crystal summit inside the portrait frame. */
+.sp-stage {
+  background: #0a0818;
+}
+.sp-poster {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.sp-poster > img {
+  object-fit: cover;
+  object-position: center top;
+}
+
+.sp-body {
+  /* The zone picker's line moves to the milestones' heading when narrow. */
+  container: sp-body / inline-size;
+  display: grid;
+  align-content: start;
+  gap: var(--sp-3);
+  /* A tab's contents glide in sideways: never a sideways scroller. */
+  overflow-x: hidden;
+}
+.sp-stat {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid color-mix(in srgb, var(--boss) 35%, transparent);
+  background: color-mix(in srgb, var(--boss) 10%, var(--ui-bg-1));
+}
+.sp-stat b {
+  font-family: var(--font-display);
+  font-size: calc(26px * var(--text-scale, 1));
+  line-height: 1;
+}
+.sp-stat small {
+  color: var(--ui-dim);
+}
+.sp-how {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sp-how li {
+  padding: 8px 12px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+  color: #d6def0;
+}
+
+/* The zone picker (Climb tab): one row of equal, finger-sized chips (the
+   zone's number and element glyph; a lock while closed) that fits up to
+   seven zones on the smallest phone without scrolling, and the picked
+   zone's name, element and floors said once beside the row (under it when
+   the row and the words don't fit side by side). */
+.sp-zones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  min-width: 0;
+}
+.sp-zone-picker {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(44px, 56px);
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+.sp-zone {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+  min-width: 44px;
+  min-height: 48px;
+  padding: 4px 2px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--fill-card);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.sp-zone.is-on {
+  border-color: color-mix(in srgb, var(--zone) 80%, transparent);
+  background: color-mix(in srgb, var(--zone) 20%, var(--ui-bg-1));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--zone) 55%, transparent),
+    0 0 12px color-mix(in srgb, var(--zone) 28%, transparent);
+}
+.sp-zone:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.sp-zone:focus-visible {
+  outline: 2px solid var(--zone);
+  outline-offset: 2px;
+}
+.sp-zone-num {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  color: #eef3ff;
+}
+.sp-zone.is-on .sp-zone-num {
+  color: color-mix(in srgb, var(--zone) 45%, #fff);
+}
+.sp-zone-glyph {
+  display: grid;
+  place-items: center;
+  height: 14px;
+  color: var(--zone);
+}
+.sp-zone-glyph svg {
+  width: 14px;
+  height: 14px;
+}
+.sp-zone.is-locked .sp-zone-glyph {
+  color: var(--ui-dim);
+}
+/* A conquered zone: a gold edge (its boss floor cleared). */
+.sp-zone.is-conquered {
+  border-color: #f2cf6b99;
+}
+.sp-zone.is-conquered:not(.is-on) .sp-zone-num {
+  color: #ffe6a3;
+}
+.sp-zone-info {
+  /* Beside the chips while it has room to say the zone whole; under them
+     otherwise (a long name never squeezes to a few letters). */
+  flex: 1 1 240px;
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  margin: 0;
+}
+.sp-zone-info b,
+.sp-zone-info small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* No room beside the chips: the zone is named in the milestones' heading
+   (one line fewer, so the milestones stay in view on a landscape phone). */
+.sp-route-zone {
+  display: none;
+}
+@container sp-body (max-width: 559px) {
+  .sp-zone-info {
+    display: none;
+  }
+  /* One line: a long zone name shortens, the count keeps its place. */
+  .sp-body .sp-route-heading {
+    flex-wrap: nowrap;
+  }
+  .sp-body .sp-route-heading b {
+    flex: 0 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .sp-route-zone {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+.sp-zone-info-num {
+  color: var(--zone);
+}
+.sp-zone-info .element-icon {
+  width: 12px;
+  height: 12px;
+  margin-right: 3px;
+  vertical-align: -1px;
+  color: var(--zone);
+}
+.sp-zone-head small {
+  font-weight: 400;
+}
+
+/* Floors: one row each, with its Echoes, reward and state. */
+.sp-floors {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sp-floor {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--fill-card);
+}
+.sp-floor.is-next {
+  border-color: color-mix(in srgb, var(--boss) 65%, transparent);
+  background: color-mix(in srgb, var(--boss) 12%, var(--ui-bg-1));
+}
+.sp-floor.is-locked,
+.sp-floor.is-soon {
+  opacity: 0.72;
+}
+.sp-floor-num {
+  font-family: var(--font-display);
+  font-size: calc(22px * var(--text-scale, 1));
+  font-weight: 800;
+  text-align: center;
+  color: var(--boss);
+}
+.sp-floor-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.sp-floor-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.sp-floor-name b {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.sp-floor-state {
+  color: var(--ui-dim);
+}
+.sp-floor.is-next .sp-floor-state {
+  color: var(--boss);
+}
+.sp-reward {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: end;
+}
+.sp-title-tag svg {
+  width: 12px;
+  height: 12px;
+  margin-right: 3px;
+}
+.sp-check {
+  display: grid;
+  color: var(--ui-ok);
+}
+.sp-check svg {
+  width: 18px;
+  height: 18px;
+}
+.sp-lock {
+  display: grid;
+}
+.sp-lock svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ui-dim);
+}
+
+/* Blessings: the codex. */
+.sp-blessings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+.sp-blessing {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid color-mix(in srgb, var(--boss) 30%, transparent);
+  background: var(--fill-card);
+}
+.sp-blessing-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--boss);
+  background: color-mix(in srgb, var(--boss) 16%, transparent);
+}
+.sp-blessing-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.sp-blessing-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.sp-stacks {
+  color: var(--boss);
+  font-size: calc(12px * var(--text-scale, 1));
+}
+
+/* ------------------------------------------------- phones, sideways */
+@media (max-height: 500px) {
+  .sp-body {
+    gap: 8px;
+  }
+  .sp-stat {
+    padding: 4px 8px;
+  }
+  .sp-stat b {
+    font-size: calc(18px * var(--text-scale, 1));
+  }
+  .sp-how li {
+    padding: 4px 8px;
+    font-size: calc(13px * var(--text-scale, 1));
+  }
+  .sp-floor {
+    grid-template-columns: 28px minmax(0, 1fr) auto auto;
+    gap: 6px;
+    min-height: 40px;
+    padding: 3px 8px;
+  }
+  .sp-floor-num {
+    font-size: calc(16px * var(--text-scale, 1));
+  }
+  .sp-zone-picker {
+    grid-auto-columns: minmax(46px, 52px);
+    gap: 5px;
+  }
+  .sp-zone-info {
+    flex-basis: 150px;
+  }
+  .sp-zone {
+    /* A finger square after the phone UI scale (tests: 44 px drawn). */
+    min-width: 46px;
+    min-height: 46px;
+    padding: 2px;
+  }
+  .sp-zone-num {
+    font-size: 17px;
+  }
+  .sp-zone-glyph,
+  .sp-zone-glyph svg {
+    height: 12px;
+    width: 12px;
+  }
+  .sp-floor-state {
+    display: none;
+  }
+  .sp-floor .rh-tricks .ui-avatar {
+    --size: 20px !important;
+  }
+  .sp-title-tag {
+    display: none;
+  }
+  .sp-blessings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .sp-blessing {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 6px;
+    padding: 4px 8px;
+  }
+  .sp-blessing-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .sp-blessing-icon svg {
+    width: 17px;
+    height: 17px;
+  }
+}
+@media (max-width: 700px) {
+  .sp-floor .sp-reward .ui-price {
+    font-size: calc(12px * var(--text-scale, 1));
+  }
+}
+
+/* Touch first (iPhone, iPad): the page's tabs are a finger tall everywhere,
+   short landscape phones included (tests/visual/spire-safe-area.spec.ts). */
+.sp-room .ui-tabs > button {
+  min-height: 44px;
+}
+
+/* Saved ascent remains visible beside every tab, without covering the summit. */
+.sp-ascent {
+  position: absolute;
+  z-index: 1;
+  left: 20px;
+  right: 20px;
+  bottom: 180px;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #c3a4ff66;
+  border-radius: var(--rad-md);
+  background: #11152bd9;
+  color: #ede4ff;
+}
+.sp-ascent .sp-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.sp-ascent .sp-stat b small {
+  font: inherit;
+  font-size: 14px;
+  color: #c9b8e7;
+}
+.sp-ascent > small {
+  font-size: 12px;
+}
+.sp-ascent progress {
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  accent-color: #c4a0ff;
+  background: #ffffff24;
+}
+.sp-ascent progress::-webkit-progress-bar {
+  background: #ffffff24;
+}
+.sp-ascent progress::-webkit-progress-value {
+  background: #c4a0ff;
+}
+.sp-ascent progress::-moz-progress-bar {
+  background: #c4a0ff;
+}
+.sp-tower-trail {
+  position: absolute;
+  z-index: 1;
+  right: 12px;
+  top: 24%;
+  bottom: 42%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  width: 8px;
+  background: linear-gradient(
+    90deg,
+    transparent 3px,
+    #e6d5ff55 3px,
+    #e6d5ff55 5px,
+    transparent 5px
+  );
+}
+.sp-tower-trail span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #252138;
+  border: 1px solid #c6b9e3;
+}
+.sp-tower-trail .is-done {
+  background: #ceabff;
+  box-shadow: 0 0 6px #bf8dff;
+}
+.sp-tower-trail .is-next {
+  background: #fff1b5;
+  box-shadow: 0 0 8px #ffd976;
+}
+.sp-tower-trail .is-checkpoint {
+  border: 2px solid #ffda73;
+}
+.sp-preview {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #b391ed66;
+  border-radius: var(--rad-md);
+  background: linear-gradient(120deg, #7c54b52e, #18233777);
+}
+.sp-preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sp-preview-heading > div {
+  min-width: 0;
+}
+.sp-preview h3 {
+  margin: 2px 0 0;
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+.sp-preview p {
+  margin: 0;
+}
+.sp-enemies {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+}
+.sp-enemy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sp-preview-reward {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.sp-preview-reward .ui-price {
+  font-size: 14px;
+}
+.sp-route-wrap {
+  min-width: 0;
+}
+/* A compact ascent trail: generous touch targets around smaller gem medallions. */
+.sp-route-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+.sp-route-heading b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #e7dff8;
+}
+.sp-route-heading b > svg {
+  width: 15px;
+  height: 15px;
+  color: #c7a6f4;
+}
+.sp-route-heading small {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.sp-route-heading strong {
+  color: #93ddc5;
+  font-weight: 700;
+}
+.sp-route {
+  --node-size: 32px;
+  --step-height: 48px;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 5px;
+  border: 1px solid #a89ac32e;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #34304b66, #0e142699);
+  box-shadow: inset 0 1px 0 #ffffff07;
+  scrollbar-width: thin;
+  scrollbar-color: #8c72b955 transparent;
+}
+.sp-milestone {
+  position: relative;
+  isolation: isolate;
+  flex: 1 0 48px;
+  min-width: 48px;
+  min-height: var(--step-height);
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 2px;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #abb3cb;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.sp-route-link {
+  position: absolute;
+  z-index: -1;
+  top: calc(var(--node-size) / 2 + 2px);
+  left: 50%;
+  width: calc(100% + 4px);
+  height: 2px;
+  background: #79778d55;
+  box-shadow: 0 1px 0 #080c1b;
+}
+.sp-milestone:last-child .sp-route-link {
+  display: none;
+}
+.sp-node {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--node-size);
+  height: var(--node-size);
+  box-sizing: border-box;
+  border: 1px solid #6f718c;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #34374c, #181d31 75%);
+  box-shadow:
+    inset 0 1px 1px #ffffff18,
+    0 2px 3px #06091366;
+  transition:
+    border-color var(--dur-1),
+    background var(--dur-1);
+}
+.sp-node-number {
+  font: 700 15px/1 var(--font-display);
+  letter-spacing: 0.02em;
+}
+.sp-node-crest {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid #737087;
+  background: #1b2033;
+  color: #a4adc5;
+}
+.sp-node-crest svg {
+  width: 9px;
+  height: 9px;
+}
+.sp-node-caption {
+  min-height: 10px;
+  font-size: 9px;
+  line-height: 10px;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  color: #a2a9c0;
+}
+.sp-milestone.is-done {
+  color: #d4fff0;
+}
+.sp-milestone.is-done .sp-node {
+  border-color: #6fbca7;
+  background: linear-gradient(145deg, #356b67, #1e3c45);
+}
+.sp-milestone.is-done .sp-node-crest {
+  color: #aff4d9;
+  border-color: #6fbca7;
+  background: #244d4b;
+}
+.sp-milestone.is-done .sp-route-link {
+  background: linear-gradient(90deg, #78d2b7, #8f87c1);
+  box-shadow: 0 0 4px #8ed6c322;
+}
+.sp-milestone.is-next .sp-node {
+  border-color: #c5a1ff;
+  color: #f8f0ff;
+  background: linear-gradient(145deg, #7850ad, #44365f);
+  box-shadow:
+    0 0 8px #b285ed44,
+    inset 0 1px 1px #ffffff33;
+}
+.sp-milestone.is-next .sp-node-caption {
+  color: #dcc2ff;
+}
+.sp-milestone.is-elite .sp-node {
+  border-radius: 9px;
+  transform: rotate(45deg) scale(0.88);
+  border-color: #a48bc6;
+}
+.sp-milestone.is-elite .sp-node-number {
+  transform: rotate(-45deg);
+}
+.sp-milestone.is-elite .sp-node-crest {
+  transform: rotate(-45deg);
+  top: -6px;
+  right: -6px;
+}
+.sp-milestone.is-boss .sp-node {
+  border-radius: 9px 9px 14px 14px;
+  border-color: #c6a064;
+  background: linear-gradient(145deg, #5a483e, #2e2737);
+  color: #ffe3a4;
+}
+.sp-milestone.is-boss .sp-node-crest,
+.sp-milestone.is-elite .sp-node-crest,
+.sp-milestone.is-checkpoint .sp-node-crest {
+  border-color: #b99b64;
+  background: #312c34;
+  color: #ffdf97;
+}
+.sp-milestone.is-boss .sp-node-caption,
+.sp-milestone.is-elite .sp-node-caption,
+.sp-milestone.is-checkpoint .sp-node-caption {
+  color: #d9bd85;
+}
+.sp-milestone.is-checkpoint .sp-node {
+  outline: 1px solid #c7a46588;
+  outline-offset: 2px;
+}
+.sp-milestone[aria-pressed="true"] .sp-node {
+  outline: 2px solid #e1cbff;
+  outline-offset: 2px;
+  color: #fff;
+  box-shadow:
+    0 0 10px #b68be955,
+    inset 0 1px 1px #ffffff22;
+}
+.sp-milestone[aria-pressed="true"] .sp-node-caption {
+  color: #f3e8ff;
+}
+.sp-milestone:focus-visible {
+  outline: 2px solid #ffda73;
+  outline-offset: -1px;
+  background: #b699e414;
+}
+@media (hover: hover) {
+  .sp-milestone:hover .sp-node {
+    border-color: #e1cbff;
+  }
+}
+@media (min-height: 501px) {
+  .sp-route {
+    --node-size: 38px;
+    --step-height: 56px;
+    padding: 7px 6px;
+  }
+  .sp-node-number {
+    font-size: 18px;
+  }
+  .sp-node-caption {
+    font-size: 10px;
+  }
+}
+.sp-start-note {
+  margin: 0;
+}
+.sp-guide {
+  border-top: 1px solid var(--ui-line);
+}
+.sp-guide summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+  font-weight: 700;
+}
+.sp-guide[open] summary {
+  margin-bottom: 6px;
+}
+.sp-conquered {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #77d7a522;
+  color: #b9f6d5;
+}
+@media (max-height: 500px) {
+  .sp-ascent {
+    left: 8px;
+    right: 8px;
+    bottom: 64px;
+    padding: 7px 8px;
+    gap: 4px;
+  }
+  .sp-ascent .sp-stat b {
+    font-size: 20px;
+  }
+  .sp-ascent .sp-stat small,
+  .sp-ascent > small {
+    font-size: 10px;
+  }
+  .sp-preview {
+    padding: 7px;
+    gap: 3px;
+  }
+  .sp-preview h3 {
+    font-size: 18px;
+  }
+  .sp-preview .ui-note {
+    font-size: 11px;
+  }
+  .sp-preview .sp-encounter-description:not(.is-specific) {
+    display: none;
+  }
+  .sp-preview .ui-kicker {
+    font-size: 10px;
+  }
+  .sp-enemies {
+    gap: 4px 8px;
+    font-size: 11px;
+  }
+}
+@media (max-height: 320px) {
+  .sp-ascent {
+    bottom: 56px;
+  }
+  .sp-ascent .sp-stat {
+    display: none;
+  }
+  .sp-tower-trail {
+    display: none;
+  }
+}
+
+/* The checkpoint belongs on the action itself, including on short phones. */
+.sp-room .ui-actions {
+  grid-auto-columns: max-content;
+}
+.sp-room .ui-actions > .ui-btn {
+  min-width: 144px;
+  padding-inline: 16px;
+}
+
+.sp-floor-zone {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.sp-floor-zone h3 {
+  margin: 0;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.sp-floor-name {
+  flex-wrap: wrap;
+}
+.sp-preview-heading > .ui-tag {
+  flex: none;
+}
+.sp-preview-title {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (max-height: 500px) {
+  .sp-floor-zone {
+    gap: 6px;
+  }
+  .sp-floor-zone h3 {
+    font-size: 14px;
+  }
+}

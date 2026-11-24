@@ -1,6 +1,27 @@
 const markupByElement = new WeakMap<HTMLElement, string>();
 /** Countdown values are filled separately so timer ticks preserve focused cards. */
 export const LIVE_SECONDS = '<span class="live-seconds"></span>';
+/** Countdown digits update in place so the overlay card is not remounted each second. */
+export const LIVE_COUNTDOWN = '<span class="live-countdown"></span>';
+export function fillLiveCountdown(root: HTMLElement, seconds: number) {
+  const text = String(Math.max(1, Math.ceil(seconds)));
+  root.querySelectorAll<HTMLElement>(".live-countdown").forEach((slot) => {
+    if (slot.textContent !== text) slot.textContent = text;
+  });
+}
+/** The seconds left as one big number and its unit (the raid's rites). */
+export const LIVE_NUMBER =
+  '<b class="live-number"></b> <span class="live-unit"></span>';
+export function fillLiveNumber(root: HTMLElement, seconds: number) {
+  const n = Math.max(0, Math.ceil(seconds));
+  const unit = n === 1 ? "second" : "seconds";
+  root.querySelectorAll<HTMLElement>(".live-number").forEach((slot) => {
+    if (slot.textContent !== String(n)) slot.textContent = String(n);
+  });
+  root.querySelectorAll<HTMLElement>(".live-unit").forEach((slot) => {
+    if (slot.textContent !== unit) slot.textContent = unit;
+  });
+}
 export function fillLiveSeconds(root: HTMLElement, seconds: number) {
   const n = Math.max(0, Math.ceil(seconds));
   const text = `${n} second${n === 1 ? "" : "s"}`;
@@ -8,12 +29,37 @@ export function fillLiveSeconds(root: HTMLElement, seconds: number) {
     if (slot.textContent !== text) slot.textContent = text;
   });
 }
+/**
+ * The overlay card pops in (style.css, `ea-pop`; the raid's rites screen
+ * fades in, `rites-in`, screens/raid-rites.css). Writing new markup makes a
+ * new card, which would replay the pop on every snapshot that changes the
+ * same panel (a rite picked, a player getting ready). When the panel is the
+ * same one, the new card's pop carries on from where the old one was, or
+ * stays finished.
+ */
+const ENTRY_ANIMATIONS = ["ea-pop", "rites-in"];
+function popOf(card: Element | null | undefined) {
+  return card
+    ?.getAnimations?.()
+    .find(
+      (a): a is CSSAnimation =>
+        "animationName" in a &&
+        ENTRY_ANIMATIONS.includes((a as CSSAnimation).animationName),
+    );
+}
 export function setOverlayMarkup(
   element: HTMLElement,
   markup: string,
   scrollKey?: string,
+  /** Same value as last time: the same panel, so it doesn't pop in again. */
+  panelKey = scrollKey,
 ) {
   if (markupByElement.get(element) === markup) return false;
+  const samePanel =
+    panelKey !== undefined && element.dataset?.popKey === panelKey;
+  const previousPop = samePanel
+    ? popOf(element.firstElementChild)?.currentTime
+    : undefined;
   const previousScroll = scrollKey
     ? element.querySelector<HTMLElement>(".panel-scroll")
     : null;
@@ -25,6 +71,13 @@ export function setOverlayMarkup(
   const focusId = active && element.contains(active) ? active.id : "";
   element.innerHTML = markup;
   markupByElement.set(element, markup);
+  if (panelKey !== undefined) element.dataset.popKey = panelKey;
+  else if (element.dataset?.popKey) delete element.dataset.popKey;
+  if (samePanel) {
+    const pop = popOf(element.firstElementChild);
+    if (pop && typeof previousPop === "number") pop.currentTime = previousPop;
+    else pop?.finish();
+  }
   if (scrollKey) {
     element.dataset.panelKey = scrollKey;
     const scroller = element.querySelector<HTMLElement>(".panel-scroll");

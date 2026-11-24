@@ -1,6 +1,6 @@
 # Separate game accounts
 
-Element Arena follows AMATYC's Supabase auth pattern: email/password signup and login, email confirmation, optional Google sign-in (hidden until you turn it on), password recovery, and optional remembered sessions. Create a **new Supabase project for the game**. Its accounts remain separate from AMATYC. No administrator or default password is shipped.
+Element Arena follows AMATYC's Supabase auth pattern: email/password signup and login, email confirmation, optional Sign in with Apple (hidden until you turn it on), password recovery, and optional remembered sessions. Create a **new Supabase project for the game**. Its accounts remain separate from AMATYC. No administrator or default password is shipped.
 
 ## Database
 
@@ -38,18 +38,18 @@ Enable email/password in Supabase Authentication and keep email confirmation ena
 
 Supabase's default email sender only delivers to addresses belonging to your project's team. Use your Supabase team email for the first administrator test. Before inviting other players, configure a custom SMTP provider under Authentication's email/SMTP settings. See [Supabase SMTP setup](https://supabase.com/docs/guides/auth/auth-smtp).
 
-Under Authentication → URL Configuration, set Site URL to `https://parena.litojace.com` and allow:
+Under Authentication → URL Configuration, set Site URL to `https://parena.litojace.com`.
+
+Email confirmation, password recovery and Sign in with Apple on the website all return to the **site root** with a marker, for example `https://parena.litojace.com/?auth=email-confirmed` (also `?auth=reset-password` and `?auth=auth-callback`). The root is served by both the Web Service and the Static Site, so a missing rewrite rule can never turn an email link into a "Not Found" page. Supabase always accepts a redirect on the same scheme, host and port as the Site URL, so production needs no extra entry. For local development, allow:
 
 ```text
-https://parena.litojace.com/email-confirmed
-https://parena.litojace.com/auth/callback
-https://parena.litojace.com/reset-password
-http://localhost:5173/email-confirmed
-http://localhost:5173/auth/callback
-http://localhost:5173/reset-password
+http://localhost:5173/**
+http://localhost:3001/**
 ```
 
-Add matching localhost:3001 URLs for local production testing. Leave `VITE_SITE_URL` unset during same-device local development. Email links must point to an address accessible from the device opening the email.
+Older emails used `/email-confirmed`, `/reset-password` and `/auth/callback`; the app still recognises those paths wherever they are served, so keep them in the allow list until old links have expired.
+
+Leave `VITE_SITE_URL` unset during same-device local development. Email links must point to an address accessible from the device opening the email.
 
 ## Your administrator account
 
@@ -72,24 +72,55 @@ from public.arena_admins a join auth.users u on u.id = a.user_id;
 
 Refresh the game. **Admin** appears in navigation. **Solo test mode** is available to every signed-in player. Admin membership grants/revocations are done only through trusted SQL administration. The web dashboard cannot promote players or suspend administrators, preventing accidental self-lockout.
 
-## Google sign-in (optional, off by default)
+## Google sign-in (removed)
 
-The "Continue with Google" button is hidden until you turn it on. To set it up:
+The game no longer offers Google sign-in (November 2026). If it was set up before:
 
-1. In [Google Cloud Console](https://console.cloud.google.com/), create (or pick) a project and open **Google Auth Platform**.
-   - **Branding:** app name (Element Arena), support email, and the `litojace.com` domain.
-   - **Audience:** choose **External**. While it's in "Testing", only the test users you list can sign in; publish the app to let anyone in.
-   - **Data Access:** add the `openid` scope (email and profile are there by default). Don't add other scopes.
-2. In **Clients**, create an OAuth client of type **Web application**.
-   - Authorized JavaScript origins: `https://parena.litojace.com`
-   - Authorized redirect URIs: the callback Supabase shows on its Google provider page, normally `https://YOUR_GAME_PROJECT.supabase.co/auth/v1/callback`
-   - Save the client ID and client secret.
-3. In Supabase, open **Authentication → Sign In / Providers → Google**, enable it and paste the client ID and client secret. Keep the secret in Supabase, never in the repository.
-4. In Supabase **Authentication → URL Configuration**, make sure the Site URL is `https://parena.litojace.com` and `https://parena.litojace.com/auth/callback` is in the redirect URLs (it already is if email confirmation works).
-5. In Render, add the environment variable `VITE_GOOGLE_SIGN_IN` = `on` to the web service and redeploy. It's read when the site is built, so a redeploy is needed.
-6. Test it: log out, choose **Continue with Google**, and check you land back in the game signed in.
+1. In Render, remove the `VITE_GOOGLE_SIGN_IN` variable from the web service (and the Static Site, if you use one). The button is gone from the code either way.
+2. In Supabase, open **Authentication → Sign In / Providers → Google** and turn it off, so nobody can still sign in with Google through Supabase directly.
+3. In [Google Cloud Console](https://console.cloud.google.com/), delete the OAuth client the game used.
 
-To hide it again, remove the variable (or set it to anything but `on`) and redeploy. See [Supabase's Google guide](https://supabase.com/docs/guides/auth/social-login/auth-google).
+Players who made their account with Google and never set a password can get back in with **Forgot password?** on the log-in screen, using their Google email address: the reset link lets them choose a password.
+
+## Sign in with Apple (optional, off by default)
+
+The "Continue with Apple" button is hidden until you turn it on. On the website the player goes to Apple's page and comes back signed in. To set it up (an Apple Developer account is needed):
+
+1. In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list), open **Identifiers** and create (or pick) an **App ID** for the game, for example `com.litojace.elementarena`, with **Sign in with Apple** ticked. The iPhone app will use this ID later.
+2. Create a **Services ID**, for example `com.litojace.elementarena.web`. Tick **Sign in with Apple**, choose **Configure**, pick the App ID above as the primary one, and enter:
+   - Domains and subdomains: `YOUR_GAME_PROJECT.supabase.co` (no `https://`)
+   - Return URLs: the callback Supabase shows on its Apple provider page, normally `https://YOUR_GAME_PROJECT.supabase.co/auth/v1/callback`
+3. In **Keys**, create a key with **Sign in with Apple** ticked (configured for the App ID above). Download the `.p8` file: Apple lets you download it only once. Note the **Key ID**, and your **Team ID** (top right of the developer site). Keep the `.p8` file private, never in the repository.
+4. Make the client secret: a token signed with the `.p8` key, from the Team ID, Key ID and Services ID. [Supabase's Apple guide](https://supabase.com/docs/guides/auth/social-login/auth-apple) has a generator and a script. **Apple lets this secret last at most 6 months**: put a reminder in your calendar to make a new one before then, or Apple sign-in stops working on the website.
+5. In Supabase, open **Authentication → Sign In / Providers → Apple**, enable it, put the Services ID in **Client IDs** (first, if you add the iPhone app's ID later) and paste the secret into **Secret Key (for OAuth)**.
+6. In Render, add `VITE_APPLE_SIGN_IN` = `on` to the web service (and the Static Site, if you use one) and redeploy. It's read when the site is built.
+7. Test it: log out, choose **Continue with Apple**, and check you land back in the game signed in. If the player chose **Hide My Email**, Supabase gets an `@privaterelay.appleid.com` address; that's normal. A player who hides their name starts as "Trainer" and can change it from the player card.
+
+To hide it again, remove the variable (or set it to anything but `on`) and redeploy. The iPhone app has its own Apple sign-in (Apple's sheet, not a web page), which needs the app's bundle ID in **Client IDs** as well; see [the iPhone app](ios-app.md#one-time-setup).
+
+## Deleting an account
+
+Players delete their own account from their player card: **Delete account** at the bottom, then type `DELETE`. Guests can too. It needs [migration 109](../supabase/migrations/109_delete_my_account.sql) (after 108). The App Store requires it for any app where people make accounts (App Review Guideline 5.1.1(v)).
+
+- The login and everything the player owns go at once: profile, records, titles, coins, skins, friends, preferences. Matches and raids they played stay for the other players, with the deleted player shown as "Deleted player" and no account id. Reports they sent stay for the admins without their name.
+- Their open games drop them: the game server checks the login again straight away, and the client signs out.
+- Administrators can't delete themselves here (their audit entries point at them, and it would lock the dashboard). Remove an admin from `arena_admins` in SQL first.
+- **Sign in with Apple:** Apple also asks apps to revoke the player's Apple tokens when the account is deleted. Supabase doesn't keep the Apple token needed for that, so the game server keeps its own when a player signs in with Apple in the iPhone app ([migration 111](../supabase/migrations/111_apple_tokens.sql)), and revokes it before deleting the account; see [the iPhone app](ios-app.md#account-deletion-and-apple). Players who only signed in with Apple on the website have no kept token: the deletion still goes through (as Apple asks), and the game tells them how to remove Element Arena under **Sign in with Apple** in their Apple Account settings.
+- Supabase may keep a deleted login in its own backups for a while; see Supabase's documentation for how long.
+
+## Blocking players and the name filter
+
+Players see each other's names and meet strangers in the Plaza, so the App Store asks for a name filter and a way to block people (App Review Guideline 1.2). Both need [migration 110](../supabase/migrations/110_blocks_and_name_filter.sql) (after 109).
+
+**Name filter.** A trigger on `arena_profiles` checks every new name, however it's set: sign-up, a guest's nickname, an Apple (or older Google) name, a name change, or an admin's rename. A refused name picked at sign-up becomes "Trainer"; a refused change says "That name isn't allowed." Names in use before the migration stay until they change. The check reads names the way people try to get around filters: case, accents, look-alike digits (`5h1t`), and spaces or dots between letters (`f.u c k`). Short words that hide inside ordinary ones ("ass" in "class", "cock" in "peacock") are refused only as words of their own. It also refuses "admin", "moderator", "official", "staff" and the game's name, so nobody poses as the team. The words are in `arena_name_words`; the client has the same lists in `packages/shared/src/name-filter.ts` to answer before it asks, and `tests/integration/name-filter.test.ts` fails if the two differ. To add a word, add it to both and to the test's examples. It catches the common cases, not every spelling: players can still report a name, and admins can rename.
+
+**Blocking.** Tap someone in the Plaza for **Block** (and **Report**), or use **Block** on a Recent player or in a friend's options (Friends sheet). Blocking asks first, then:
+
+- ends the friendship and any friend requests both ways, so room invites and party invites stop too (those are for friends);
+- drops their future friend requests without telling them; you're asked to unblock before sending one yourself;
+- hides them from your Plaza (you don't see them, can't tap them, and don't see their emotes).
+
+They aren't told. Blocked players are listed at the bottom of Friends → Recent, with **Unblock**. A player can block up to 500 others. Matches are in private rooms you join by code, so there is no matchmaking to keep blocked players apart.
 
 ## Player and title management
 
@@ -103,7 +134,7 @@ Remember me uses persistent browser storage; unchecked sessions stay per-tab. Si
 
 Run `npm run test`, `npm run typecheck`, and `npm run build`. Isolated PGlite PostgreSQL tests execute the real migration and check privilege escalation, title ownership, retirement/revocation, suspension and auditing. HTTP/Socket.IO tests use an injected test account provider; there is no production bypass setting.
 
-Real email confirmation, Google OAuth, recovery, and deployed Supabase integration require a configured-project test. After setup: register a regular player and verify admin/solo denial; grant your admin via SQL; create and assign a title; equip it as the player; suspend/reactivate the player; test two-account multiplayer, logout, reload recovery and password reset.
+Real email confirmation, Sign in with Apple, recovery, and deployed Supabase integration require a configured-project test. After setup: register a regular player and verify admin/solo denial; grant your admin via SQL; create and assign a title; equip it as the player; suspend/reactivate the player; test two-account multiplayer, logout, reload recovery and password reset.
 
 ## Admin tools
 
@@ -149,6 +180,16 @@ Their profiles and match history rows are removed with them.
 
 After migration 006 every player has a skill rating starting at 1000. Only confirmed player-vs-player matches move it (bot matches and quit matches don't). The first 5 rated matches are placement (bigger swings; shown as Unranked). The rank ladder reuses the title names: Newbie (under 950), Pupil 950, Specialist 1000, Expert 1075, Candidate Master 1150, Master 1225, International Master 1300, Grandmaster 1375, International Grandmaster 1450 and Legendary Grandmaster (1550 **and** #1 on the leaderboard). Reaching a rank adds its title to the player's owned titles for good; titles are never taken away, including ones an admin granted by hand. On the first rated match of each month, ratings move 25% of the way back towards 1000. The thresholds live in `arena_rank_ladder` and must match `RANKS` in `packages/shared/src/accounts.ts` (a test checks this).
 
+Run [065_ratings_safe_updates.sql](../supabase/migrations/065_ratings_safe_updates.sql) after 064. Supabase refuses an `UPDATE` or `DELETE` with no `WHERE` clause from API sessions, and two of 006's rating functions had one: the monthly softening (so from the first new month the leaderboard and rating card failed with "UPDATE requires a WHERE clause") and the rating update after a match (so a confirmed player-vs-player match report was refused). 065 adds the `WHERE` clauses and changes nothing else.
+
+### Changing your name
+
+Run [066_display_name_changes.sql](../supabase/migrations/066_display_name_changes.sql) after 065. Players get _Change name_ on their player card: the first change at any time, then once every 14 days on the database's clock. It adds `arena_profiles.name_changed_at` and two functions (`arena_name_status`, `arena_change_name`); an admin's rename (Admin → Players) doesn't count against the 14 days.
+
+### The Farm, the Bistro and Gold Leaves (removed)
+
+The Elemental Farm ([037](../supabase/migrations/037_farm.sql) and the `*farm*` migrations after it), the Element Bistro ([068](../supabase/migrations/068_bistro.sql) and the `*bistro*` migrations after it) and Gold Leaves ([036](../supabase/migrations/036_gold_leaves.sql)) were removed in Nov 2026. Their migrations still run in name order on a new database, then [20261119190000_remove_farm_bistro_leaves.sql](../supabase/migrations/20261119190000_remove_farm_bistro_leaves.sql) drops their tables and functions. It first turns every Gold Leaf balance into shop coins once, at the old rate (`floor(balance × 5 / 100)`, coin ledger reason `leaf-retire`); Bistro coins are deleted with the Bistro, without conversion. Earned farm titles stay with their owners.
+
 ### Unlimited coins for admin testing
 
 Run [016_admin_shop_coins.sql](../supabase/migrations/016_admin_shop_coins.sql) after the earlier migrations. Existing non-suspended administrators see **∞ coins** and can buy Shop items and collection sets without spending their real balance. Purchases persist, can be equipped normally, and are recorded in the admin audit log. Prices, Mythic Trials, Awakening requirements and regular player spending still work as usual. Removing admin membership ends unlimited spending immediately; the saved wallet balance is unchanged.
@@ -161,7 +202,34 @@ Run [017_admin_mythic_testing.sql](../supabase/migrations/017_admin_mythic_testi
 
 If an owned collection item fails with “That item belongs in another slot”, run the entire [018_collection_equipping.sql](../supabase/migrations/018_collection_equipping.sql) after 017. All three verification columns should read **true**. This restores Shop support to the appearance functions, repairs collection slot mappings and keeps all five slots in saved loadouts. Colours, aura, entrance, frame and victory can be worn together, with one item per slot. Wallets, purchases, earned raid rewards and the admin bypasses remain intact. Avoid reapplying older raid/Shop migrations afterward, since they replace newer functions.
 
-
 ## Player levels and seasonal rewards
 
 After all migrations through `021_storm_twins.sql`, run [022_player_journey.sql](../supabase/migrations/022_player_journey.sql). It adds player XP, automatic level and free season rewards, weekly goal progress, and verified Arcade/Boss Rush activity. The final query should return `journey_enabled = true`. Use the existing server-only service-role key; no additional client secret is needed. Existing accounts start at level 1 and keep all prior purchases and rewards. Previewing rewards does not change earned progress, including for admins.
+
+## Three daily mission changes
+
+After migration 022, run [023_three_mission_changes.sql](../supabase/migrations/023_three_mission_changes.sql) in the Supabase SQL Editor. Both verification columns should read **true**. Each account gets three free mission changes per Pacific calendar day, shared across unfinished missions. Existing changes count toward the new allowance; changing a mission resets only that slot's progress. Completed missions, earned rewards, wallets and journey progress are preserved. The UI shows the remaining count after refreshing missions. Until this migration is applied, the client continues to respect the old one-change allowance.
+
+## Bot missions without a minimum match duration
+
+After migration 023, run [024_fast_bot_missions.sql](../supabase/migrations/024_fast_bot_missions.sql) in the Supabase SQL Editor. Both verification columns should read **true**. Completed matches against Easy, Normal or Hard bots now count toward daily missions regardless of length, including bot-win, Hard-bot, fighter-specific win and match-completion missions. The server must still report a completed match with participation; practice, abandoned and idle results do not qualify. Existing mission progress and rewards are preserved. This applies to newly recorded results and does not retroactively award previously ignored wins. PvP mission duration requirements, match XP, weekly goals, Mythic Trials and raid rules stay unchanged.
+
+## Mission completion audit update
+
+After migration 024, run [025_mission_completion.sql](../supabase/migrations/025_mission_completion.sql) in the Supabase SQL Editor. All three verification columns should read **true**. Play-time missions retain leftover seconds across finished games, and Boss Rush skill casts, ultimate casts and combat time now advance their corresponding daily missions. Existing whole-minute progress, rewards, three free changes and mission-day boundaries are preserved. Changing a mission resets only that slot's accumulated time. New server code also preserves departed raid seats in activity receipts so a co-op clear remains a party clear; departed seats receive no activity rewards. Ordinary raid-clear missions and cosmetics still require a regular raid, while weekly raid goals also accept Boss Rush legs. Past discarded time and previously saved Boss Rush results are not backfilled. See [the mission audit](mission-audit.md) for coverage and remaining requirements.
+
+## Six daily missions and five free changes
+
+After migration 025, run [026_six_daily_missions.sql](../supabase/migrations/026_six_daily_missions.sql) in the Supabase SQL Editor. All three verification columns should read **true**. Refresh Daily missions afterward: each account receives six distinct missions (two per difficulty tier) and five free changes shared across the unfinished list each Pacific calendar day. Solo players receive solo-friendly missions; team players also have solo options and can swap a social mission for a solo one. A changed mission never duplicates another mission on the list.
+
+Complete **all six** to earn the daily +50 coin bonus and advance the streak; every seventh completed day still grants +300 coins. Individual mission rewards remain 40/70/120 coins by tier. Existing slots, progress, leftover seconds and changes already spent today are preserved, and the three extra missions appear when the account next loads its economy. Previously earned daily and streak bonuses remain earned and are not paid twice. Deploy the matching server update so the three added slots can be changed. Until this migration is applied, the UI shows the database's existing mission list and allowance.
+
+## Retired raid modes
+
+Run [028_retire_raid_modes.sql](../supabase/migrations/028_retire_raid_modes.sql) after 027.
+It blocks new Boss Rush/daily-raid reward receipts, removes daily-board fields
+from the public progress RPC, and converts the old daily-clear mission to an
+ordinary Voltkit/Auralynx raid clear. Existing six-slot days, five changes,
+mission progress, coins, XP, unlocks and owned items are preserved. The game
+server also rejects retired create/config requests. No client credential changes
+are needed. Historical migration files and already-earned records are retained.

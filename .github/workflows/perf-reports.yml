@@ -1,0 +1,66 @@
+# Match reports on GitHub: every few hours (or from Actions → Match reports
+# → Run workflow), copy the game server's per-match `arena-perf` and
+# `arena-disconnect` log lines from Render into the `perf-reports` branch,
+# as README.md (latest matches, a summary per day) and reports/<day>.jsonl.
+# Render keeps logs for a few days only, so this has to run often.
+#
+# Needs one repository secret: RENDER_API_KEY (Render → Account settings →
+# API keys). Only technical numbers are written (no accounts, names or room
+# codes): see KEEP in scripts/perf/export-perf-reports.mjs.
+#
+# Pushes made with the workflow's own token start no other workflow, so
+# these commits run no CI, and Render deploys only `main`.
+name: Match reports
+on:
+  schedule:
+    - cron: "41 */3 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: perf-reports
+  cancel-in-progress: false
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      # A whole checkout: a sparse one would hide reports/ in the worktree
+      # below, which shares its sparse-checkout settings.
+      - uses: actions/checkout@v4
+        with:
+          path: game
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Open the perf-reports branch
+        working-directory: game
+        run: |
+          if git fetch --depth 1 origin perf-reports; then
+            git worktree add -B perf-reports ../out FETCH_HEAD
+          else
+            git worktree add --detach ../out
+            cd ../out
+            git checkout --orphan perf-reports
+            git rm -rfq .
+          fi
+      - name: Copy new reports from Render's log
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          if [ -z "$RENDER_API_KEY" ]; then
+            echo "::error::Add the RENDER_API_KEY repository secret (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          node game/scripts/perf/export-perf-reports.mjs out
+      - name: Commit and push
+        working-directory: out
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No new reports."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -qm "Match reports: $(date -u +'%Y-%m-%d %H:%M') UTC"
+          git push origin perf-reports

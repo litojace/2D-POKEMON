@@ -1,8 +1,55 @@
 import type { Fighter } from "@arena/shared";
-import { fighterAvatar } from "./fighter-art";
+import { fighterAvatar, scopeIds, svgPicture } from "./fighter-art";
 import { wornArt } from "./skins/skin-art";
+import { colourPreview } from "./colour-preview";
+import {
+  FRAME_MAX_STARS,
+  frameStars,
+  RAID_COSMETICS,
+} from "../../../packages/shared/src/raid";
+import { LOOK_ITEMS } from "../../../packages/shared/src/shop";
+import { REWARD_ITEMS } from "../../../packages/shared/src/journey";
+import {
+  avatarUrl,
+  knownAvatar,
+  photoIdOf,
+} from "../../../packages/shared/src/avatars";
+import "./portrait-frames.css";
 
-type Portrait = Pick<Fighter, "character" | "raidLook" | "championLooks">;
+const frames = new Set(
+  [
+    ...Object.entries(RAID_COSMETICS).map(([id, item]) => ({ id, ...item })),
+    ...LOOK_ITEMS,
+    ...REWARD_ITEMS,
+  ]
+    .filter((item) => item.slot === "frame")
+    .map((item) => item.id),
+);
+
+/** Stars under a boss frame (frameStars in raid.ts): ★ earned, ☆ to come. */
+export function frameStarRow(stars: number) {
+  stars = safeStars(stars);
+  if (stars <= 0) return "";
+  return `<span class="frame-stars${stars >= FRAME_MAX_STARS ? " is-legendary" : ""}" aria-label="${stars} of ${FRAME_MAX_STARS} frame stars">${"★".repeat(stars)}${"☆".repeat(FRAME_MAX_STARS - stars)}</span>`;
+}
+const safeStars = (stars: number) =>
+  Number.isFinite(stars)
+    ? Math.max(0, Math.min(FRAME_MAX_STARS, Math.floor(stars)))
+    : 0;
+
+/** Clip the portrait, never the frame's ornaments or earned stars. */
+export function framePortrait(art: string, frame?: string | null, stars = 0) {
+  stars = safeStars(stars);
+  const disc = `<span class="portrait-disc">${art}</span>`;
+  return frame && frames.has(frame)
+    ? `<span class="raid-cosmetic-preview portrait-frame${stars >= FRAME_MAX_STARS ? " is-legendary-frame" : ""}" data-cosmetic="${frame}" data-portrait-frame="${frame}" data-frame-stars="${stars}">${disc}${frameStarRow(stars)}</span>`
+    : disc;
+}
+
+type Portrait = Pick<
+  Fighter,
+  "character" | "raidLook" | "championLooks" | "raidClears"
+>;
 /** Equipped appearance items as a list for data-raid-cosmetic~="…". A worn
  * champion skin wins over the all-fighter Skin slot (design §10.5.2). */
 export function portraitCosmetics(p: Portrait) {
@@ -12,7 +59,74 @@ export function portraitCosmetics(p: Portrait) {
     .filter(Boolean)
     .join(" ");
 }
-/** A player's portrait, in the champion skin they wear. */
-export function portraitAvatar(p: Portrait, scope: string) {
-  return fighterAvatar(p.character, scope, p.championLooks?.[p.character]);
+/**
+ * A player's portrait, in the champion skin they wear. `picture`: as one
+ * shared picture rather than inline SVG (svgPicture), for lists of players.
+ */
+export function portraitAvatar(p: Portrait, scope: string, picture = false) {
+  const skin = p.championLooks?.[p.character];
+  // Use the same palette as the live rig; equipped champion skins take priority.
+  const colours = !wornArt(p.character, skin) ? p.raidLook?.skin : null;
+  const inline = () => {
+    const art = fighterAvatar(p.character, scope, skin);
+    return colours
+      ? scopeIds(colourPreview(art, colours), `${scope}-colors`)
+      : art;
+  };
+  return picture
+    ? svgPicture(
+        `${p.character} ${JSON.stringify(skin ?? null)} ${colours ?? ""}`,
+        inline,
+        p.character,
+      )
+    : inline();
+}
+
+/** For identity widgets that do not already paint a frame on their container. */
+export function framedAvatar(
+  p: Portrait,
+  scope: string,
+  stars = frameStars(p.raidLook?.frame, p.raidClears),
+  picture = false,
+) {
+  return framePortrait(
+    portraitAvatar(p, scope, picture),
+    p.raidLook?.frame,
+    stars,
+  );
+}
+
+/**
+ * An avatar's picture filling a portrait disc: a library one (avatars.ts,
+ * the client's own files) or a player's own picture (the game server's).
+ */
+export const avatarImage = (id: string | null | undefined) =>
+  `<img class="portrait-avatar" src="${avatarSrc(id)}" alt="" draggable="false" decoding="async">`;
+
+/** The address of an avatar's picture (a photo comes from the game server). */
+export function avatarSrc(id: string | null | undefined) {
+  const known = knownAvatar(id);
+  return photoIdOf(known) ? serverUrl(avatarUrl(known)) : avatarUrl(known);
+}
+/** Any player's avatar picture by account id (the server redirects to it). */
+export const avatarOfPlayer = (accountId: string) =>
+  serverUrl(`/api/avatar/of/${encodeURIComponent(accountId)}`);
+const serverUrl = (path: string) =>
+  new URL(path, import.meta.env.VITE_SERVER_URL || location.origin).href;
+
+/**
+ * A player as themselves, not as a fighter: their avatar (the default until
+ * they choose one) in their frame. Seats, the player card and Friends show
+ * this, so a seat never gives a hidden pick away (docs/hidden-picks.md).
+ */
+export function identityPortrait(
+  p: Pick<Fighter, "raidLook" | "raidClears"> & {
+    avatar?: string | null;
+  },
+) {
+  return framePortrait(
+    avatarImage(p.avatar),
+    p.raidLook?.frame,
+    frameStars(p.raidLook?.frame, p.raidClears),
+  );
 }

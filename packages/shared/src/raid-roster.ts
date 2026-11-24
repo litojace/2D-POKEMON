@@ -31,20 +31,20 @@ export interface RaidBossInfo {
 export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
   grumblecrag: {
     id: "grumblecrag",
-    name: "Grumblecrag",
-    epithet: "The living mountain",
+    name: "Cragmuff",
+    epithet: "The crystal-horned ram",
     element: "Earth",
     color: "#d9a35b",
     day: 6,
     stars: 1,
     signature: "Bait its charge into a pillar",
     blurb:
-      "A grumpy mountain that woke up on the wrong side of the valley. Lead its charges into pillars to crack the armor and strike the glowing core.",
+      "A grumpy, stubborn mountain ram in a coat of mossy stone wool, with curled horns of glowing amber crystal. Lead its charges into pillars to knock it dizzy and strike the crystal core on its chest.",
     playable: true,
   },
   tidewyrm: {
     id: "tidewyrm",
-    name: "Tidewyrm",
+    name: "Tidelotl",
     epithet: "The rising tide",
     element: "Water",
     color: "#4fd6c8",
@@ -52,12 +52,13 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     stars: 2,
     signature: "Strand it on an island",
     blurb:
-      "A sleepy sea serpent with a pearl on its brow. Lure its dive onto dry land, share the islands when the tide rises, and pop your friends out of bubbles.",
+      "A mischievous axolotl who calls itself lord of the tides, with a pearl on its brow. Lure its dive onto dry land, share the islands when the tide rises, and pop your friends out of bubbles.",
     playable: true,
   },
   gloomshade: {
     id: "gloomshade",
-    name: "Gloomshade",
+    // The id stays "gloomshade" (stats, progress, database rows); players see Inkpurr.
+    name: "Inkpurr",
     epithet: "Lights out",
     element: "Shadow",
     color: "#9c7bff",
@@ -65,38 +66,38 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     stars: 2,
     signature: "Find the one that casts a shadow",
     blurb:
-      "A floppy-eared puff of shadow with a crescent-moon tail. Keep the lanterns lit, find the real one among its copies, and spread out when the curse creeps.",
+      "A round, cat-eared sprite of living ink with a crescent-moon tail. Keep the lanterns lit, find the real one among its copies, and spread out when the curse creeps.",
     playable: true,
   },
   somnara: {
     id: "somnara",
-    name: "Somnara",
-    epithet: "The dream whale",
+    name: "Snoozaku",
+    epithet: "The dream-eating baku",
     element: "Psychic",
     color: "#c9a3ff",
     day: 3,
     stars: 2,
     signature: "Step the runes only the Dreamer sees",
     blurb:
-      "A huge sleepy sky whale with a tiny house on its back. One raider sees its dream; the team must step the runes in order to wake it.",
+      "A chubby, sleepy baku in a starry nightcap that snacks on dreams. One raider sees its dream; the team must step the runes in order to wake it.",
     playable: true,
   },
   prismatail: {
     id: "prismatail",
-    name: "Prismatail",
-    epithet: "Carry the light",
+    name: "Prismell",
+    epithet: "The prism-shelled snail",
     element: "Light",
     color: "#ffe27a",
     day: 0,
     stars: 3,
     signature: "Relay the sunbeam to its heart",
     blurb:
-      "A proud crystal peacock with a shielded heart. Pass the sunbeam raider to raider until it reaches the boss and shatters the shield.",
+      "A proud, sparkly snail in a spiral shell of prism crystal that splits the light into rainbows. Its heart glows in the coil behind a shield: pass the sunbeam raider to raider until it reaches the heart and shatters the shield.",
     playable: true,
   },
   emberwing: {
     id: "emberwing",
-    name: "Emberwing",
+    name: "Lumiwick",
     epithet: "Ground the sky",
     element: "Fire",
     color: "#ff8a4f",
@@ -104,7 +105,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     stars: 3,
     signature: "Light three braziers at once",
     blurb:
-      "A plump, smug fire bird that refuses to land. Light all three braziers together to knock it out of the sky.",
+      "A smug sky-lantern spirit that refuses to come down. Light all three braziers together to pull it out of the sky.",
     playable: true,
   },
   "storm-twins": {
@@ -133,13 +134,6 @@ export const RAID_BOSS_ORDER: RaidBossId[] = [
   "storm-twins",
 ];
 
-/** Featured boss by weekday, Sunday first (the old planet names of the week). */
-export const RAID_DAY_SCHEDULE: RaidBossId[] = [0, 1, 2, 3, 4, 5, 6].map(
-  (day) => RAID_BOSS_ORDER.find((id) => RAID_BOSSES[id].day === day)!,
-);
-
-export const RAID_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 /** The group plays on Pacific time; the day changes at midnight there. */
 export const RAID_TIME_ZONE = "America/Los_Angeles";
 
@@ -155,20 +149,8 @@ export function pacificDate(date = new Date()) {
   return datePart.format(date);
 }
 
-/** Weekday (0 = Sunday) of a YYYY-MM-DD calendar date. */
-export function weekdayOf(day: string) {
-  return new Date(`${day}T12:00:00Z`).getUTCDay();
-}
-
-/** Calendar date `n` days after a YYYY-MM-DD date. */
-export function addDays(day: string, n: number) {
-  const d = new Date(`${day}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
 /** When the next Pacific day starts (handles 23- and 25-hour days). */
-export function nextRaidDayAt(date = new Date()) {
+export function nextPacificDayAt(date = new Date()) {
   const today = pacificDate(date);
   // Step forward by hours to the first instant of the next date, then refine.
   let t = date.getTime();
@@ -181,40 +163,4 @@ export function nextRaidDayAt(date = new Date()) {
     else hi = mid;
   }
   return hi;
-}
-
-const hash = (text: string) => {
-  let seed = 2166136261;
-  for (const ch of text)
-    seed = Math.imul(seed ^ ch.charCodeAt(0), 16777619) >>> 0;
-  return seed;
-};
-
-/**
- * The featured raid on a calendar date: the scheduled boss when it can be
- * played, otherwise the playable bosses take turns. Everyone gets the same
- * seed for that day.
- */
-export function featuredOn(day: string) {
-  const weekday = weekdayOf(day);
-  const scheduled = RAID_DAY_SCHEDULE[weekday];
-  const playable = RAID_BOSS_ORDER.filter((id) => RAID_BOSSES[id].playable);
-  const dayNumber = Math.round(
-    new Date(`${day}T12:00:00Z`).getTime() / 86_400_000,
-  );
-  const boss = RAID_BOSSES[scheduled].playable
-    ? scheduled
-    : playable[dayNumber % playable.length];
-  return { day, weekday, scheduled, boss, seed: hash(`${day}:${boss}`), peril: 2 as const };
-}
-
-/** Today's featured raid (Pacific calendar). */
-export function raidDay(date = new Date()) {
-  return featuredOn(pacificDate(date));
-}
-
-/** The Sunday–Saturday week containing a date (for the Hub's week strip). */
-export function raidWeekDays(day = pacificDate()) {
-  const start = addDays(day, -weekdayOf(day));
-  return [0, 1, 2, 3, 4, 5, 6].map((i) => featuredOn(addDays(start, i)));
 }

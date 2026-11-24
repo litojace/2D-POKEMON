@@ -1,0 +1,1410 @@
+/* ==========================================================================
+   Shared components (UI remodel step 1, docs/ui-remodel/PLAN.md). Markup
+   comes from ui/components.ts. Screen modules only lay these out; they never
+   restyle a component. Tokens are in ui/tokens.css.
+   ========================================================================== */
+/* -------------------------------------------------------------- base */
+/* Base, at zero specificity so every component class wins over it. */
+:where(.ui, .ui-panel, .ui-modal) {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+  color: var(--ui-text);
+  font-variant-numeric: tabular-nums;
+}
+:where(.ui, .ui-panel, .ui-modal) :where(*, *::before, *::after) {
+  box-sizing: border-box;
+}
+:where(.ui, .ui-panel, .ui-modal) :where(button) {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+:where(.ui, .ui-panel, .ui-modal) :where(:focus-visible) {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+/* Headings and paragraphs inside components ignore style.css's global h1,
+   h2 and p rules (margins, 13 px text, line-height 1.8). One class of
+   specificity, before every component, so component classes still win. */
+:is(.ui, .ui-panel, .ui-modal) :where(h1, h2, h3, h4, h5, p) {
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+.ui-kicker {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-small);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ui-accent);
+}
+.ui-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h2);
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.ui-h {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h4);
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.ui-note {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+.ui-num {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------ panel / sheet */
+/* A panel fills the space right of the rail and under the HUD. A sheet is
+   the narrow version that leaves the Lobby (and PLAY) visible. */
+/* The layer a hub screen is mounted in (ui/hub-panel.ts): the whole Lobby,
+   clicks pass through to the rail and the Lobby beside a sheet. */
+.ui-panel-host,
+.lobby-layer > .ui-panel-host {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-panel);
+  pointer-events: none;
+}
+.ui-panel-host > .ui-panel {
+  pointer-events: auto;
+}
+/* A screen kept for its next open (ui/hub-panel.ts park): out of the
+   page's drawing, styles and layout, so other screens don't pay for it.
+   (Not visibility: hidden: its 1,500 elements were then styled and laid
+   out with every other screen, about 70 ms more for Missions and Friends
+   at 4x CPU. Not content-visibility: Safari on iPhone has left such insides
+   blank, tests/unit/no-content-visibility.test.ts.) */
+.ui-panel-host[data-ui-parked] {
+  display: none !important;
+}
+/* Lobby parts under a full panel (ui/hub-panel.ts) aren't drawn. */
+[data-ui-covered] {
+  visibility: hidden;
+}
+/* The panel itself takes focus when it opens; its controls show the ring. */
+.ui-panel:focus {
+  outline: none;
+}
+.ui-panel {
+  position: absolute;
+  top: var(--lobby-top, 92px);
+  bottom: var(--lobby-bottom, 16px);
+  left: calc(var(--lobby-gutter, 16px) + var(--lobby-rail, 60px) + var(--sp-3));
+  right: var(--lobby-gutter-r, 16px);
+  z-index: var(--z-panel);
+  display: flex;
+  flex-direction: column;
+  /* Glass (tokens.css --glass-*, the Lobby's look). */
+  background: var(--glass-regular);
+  border: 1px solid var(--glass-rim);
+  border-radius: var(--rad-xl);
+  box-shadow: none;
+  -webkit-backdrop-filter: var(--glass-blur-panel);
+  backdrop-filter: var(--glass-blur-panel);
+  overflow: hidden;
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+  color: var(--ui-text);
+}
+.ui-sheet {
+  right: auto;
+  width: min(
+    var(--sheet-w),
+    100vw - var(--lobby-gutter, 16px) - var(--lobby-gutter-r, 16px) -
+      var(--lobby-rail, 60px) - var(--sp-3)
+  );
+}
+/* The Lobby beside a sheet (step 4): its stage re-centres in the room right
+   of the sheet, so the fighter stays whole and in view while it keeps
+   moving. The emote tile stays in the rail's column, which the sheet leaves
+   free (moved beside the sheet it landed on PLAY on narrow phones). On
+   phones the side cards make way (the sheet shows what they say) and the
+   stage takes the room above PLAY.
+   ui/hub-panel.ts sets data-ui-sheet on the Lobby while a sheet is open. */
+.lobby-layer[data-ui-sheet] {
+  --ui-sheet-end: calc(
+    var(--lobby-gutter) + var(--lobby-rail) + var(--sp-3) + var(--sheet-w)
+  );
+}
+.lobby-layer[data-ui-sheet] > .lobby-stage {
+  left: calc(var(--ui-sheet-end) + var(--sp-4));
+}
+@media (max-height: 500px) {
+  .lobby-layer[data-ui-sheet] > .lobby-cards {
+    display: none;
+  }
+  .lobby-layer[data-ui-sheet] > .lobby-stage {
+    right: var(--lobby-gutter-r);
+    /* PLAY and the mode (98 px on phones) and a gap. */
+    bottom: calc(var(--lobby-bottom) + 106px);
+  }
+  /* That room is ~200 px wide on a 667 px phone: the fighter alone with its
+     name. The party seats (with their podiums) and the ‹ › arrows (226 px
+     with the name) ran off the screen and over each other; they come back
+     when the sheet closes. */
+  .lobby-layer[data-ui-sheet] :is(.lobby-slot-wrap, .lobby-step) {
+    display: none;
+  }
+  .lobby-layer[data-ui-sheet] .lobby-nameplate {
+    grid-template-columns: minmax(0, 150px);
+  }
+}
+.ui-panel-head {
+  --close-gap: calc((var(--head-h) - var(--close)) / 2);
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  height: var(--head-h);
+  padding: 0 calc(var(--close) + 2 * var(--close-gap)) 0 var(--sp-4);
+}
+/* Close: one size, one spot (top right of every panel), whatever the head holds. */
+.ui-icon-btn.ui-close {
+  position: absolute;
+  top: var(--close-gap);
+  right: var(--close-gap);
+  width: var(--close);
+  height: var(--close);
+}
+/* The heading takes the free space, so tools and Close stay together on
+   the right; Close is always the last child. */
+.ui-panel-head > .ui-heading {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin-right: auto;
+}
+.ui-panel-body {
+  flex: 1 1 auto;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  display: grid;
+  /* One column as wide as the panel, never wider: an implicit column grew
+     to its widest row (the Shop's filters, 425 px in a 351 px body on a
+     667 px phone) and the panel then panned sideways, or cut it off. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: var(--sp-3);
+  min-height: 0;
+}
+/* The action bar: the main action always sits bottom right, where PLAY is. */
+.ui-panel-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 72px;
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--ui-line);
+  background: var(--fill-bar);
+}
+.ui-panel-foot > .ui-foot-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+@media (max-height: 500px) {
+  .ui-panel {
+    border-radius: var(--rad-lg);
+  }
+  .ui-panel-head {
+    padding-left: 10px;
+    gap: var(--sp-2);
+  }
+  .ui-icon-btn.ui-close svg {
+    width: 16px;
+    height: 16px;
+  }
+  .ui-panel-body {
+    padding: var(--sp-2);
+    gap: var(--sp-2);
+  }
+  .ui-panel-foot {
+    min-height: 48px;
+    padding: 6px var(--sp-2);
+  }
+}
+
+/* Phones: an action bar with nothing to act on yet (data-idle: the Shop
+   before you pick something) folds away, and the list takes its 48 px.
+   It comes back with the item you tap. */
+@media (max-height: 500px) {
+  .ui-panel-foot[data-idle] {
+    display: none;
+  }
+}
+
+/* A split panel: a stage on the left (the fighter, large) beside the
+   panel's own head, body and action bar. Same outer box as a panel, so Close
+   still sits in its top-right corner; the two halves draw the surfaces. */
+.ui-panel.is-split {
+  display: grid;
+  grid-template-columns: var(--stage-w) minmax(0, 1fr);
+  gap: var(--sp-3);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  overflow: visible;
+}
+.ui-split-stage,
+.ui-split-main {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--glass-rim);
+  border-radius: var(--rad-xl);
+  overflow: hidden;
+}
+.ui-split-stage {
+  background: radial-gradient(
+    ellipse 90% 55% at 50% 100%,
+    color-mix(in srgb, var(--el, var(--ui-accent)) 22%, var(--ui-bg-2)),
+    var(--ui-bg-0) 72%
+  );
+}
+.ui-split-main {
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-regular);
+  -webkit-backdrop-filter: var(--glass-blur-panel);
+  backdrop-filter: var(--glass-blur-panel);
+}
+/* Desktop: the main column (tabs, lists, catalogue) reads best at a set
+   width; the stage grows with the screen instead (never below --stage-w).
+   Phones keep the fixed narrow stage, the main column needs the room. */
+@media (min-height: 501px) {
+  .ui-panel.is-split {
+    grid-template-columns: minmax(var(--stage-w), 1fr) minmax(
+        0,
+        var(--split-main)
+      );
+  }
+}
+@media (max-height: 500px) {
+  .ui-panel.is-split {
+    gap: var(--sp-2);
+  }
+  .ui-split-stage,
+  .ui-split-main {
+    border-radius: var(--rad-lg);
+  }
+}
+
+/* Phones held sideways: a split panel whose head holds only "‹ Back" and
+   Close (the hint beside Back is hidden there) puts its tab row in that
+   same row, as the hero pages of landscape mobile games do. The list gets
+   the tab row's 45 px back: about a quarter more of it in view on a
+   393 px-tall phone (raid boss page, fighter detail). The head becomes
+   transparent to layout, so Back and the tabs share one grid row; Close
+   keeps its corner (it is placed against .ui-split-main, which starts at
+   the same top-right corner). */
+@media (max-height: 500px) {
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    ) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: var(--head-h) minmax(0, 1fr) auto;
+    --close-gap: calc((var(--head-h) - var(--close)) / 2);
+  }
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > .ui-panel-head {
+    display: contents;
+  }
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > .ui-panel-head
+    > .ui-btn:first-child {
+    grid-row: 1;
+    grid-column: 1;
+    align-self: center;
+    margin-left: 10px;
+  }
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > .ui-panel-head
+    > .ui-note {
+    display: none;
+  }
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > .ui-tabs {
+    grid-row: 1;
+    grid-column: 2;
+    align-items: stretch;
+    margin-left: 6px;
+    padding-right: calc(var(--close) + 2 * var(--close-gap));
+  }
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > :is(.ui-panel-body, .ui-panel-foot) {
+    grid-column: 1 / -1;
+  }
+  /* The tab row's underline runs under Back too. */
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > .ui-panel-body {
+    border-top: 1px solid var(--ui-line);
+  }
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > .ui-tabs {
+    border-bottom: 0;
+  }
+}
+
+/* Low graphics (Settings → Graphics, as in the Plaza): no blur
+   behind panels and no motion inside them. ui/hub-panel.ts sets the
+   attribute. Screens appear at once in every setting: nothing waits on an
+   animation to become visible. */
+.ui-panel[data-graphics="low"],
+.ui-panel[data-graphics="low"] * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  animation: none !important;
+}
+/* Without blur the scene would show through sharp: a deeper tint. */
+.ui-panel[data-graphics="low"]:not(.is-split),
+.ui-panel[data-graphics="low"] > .ui-split-main {
+  background: var(--glass-solid);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-panel,
+  .ui-panel *,
+  .ui-scrim,
+  .ui-scrim * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ------------------------------------------------------------- modal */
+.ui-scrim {
+  position: fixed;
+  inset: 0;
+  /* Over the hub's HUD (z-index 70–71), so a purchase can't be half-seen. */
+  z-index: var(--z-modal);
+  background: var(--scrim);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+}
+/* The age question before a new account (age-gate.ts). */
+.age-gate .age-gate-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+.age-gate label {
+  display: grid;
+  gap: 4px;
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.age-gate select {
+  height: 44px;
+  padding: 0 10px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line-2);
+  background: var(--fill-well);
+  color: var(--ui-text);
+  /* 16px: iOS zooms into smaller fields. */
+  font-family: inherit;
+  font-size: calc(16px * var(--text-scale, 1));
+  font-weight: 600;
+}
+.ui-modal {
+  width: min(440px, 100% - 32px);
+  background: var(--glass-thick);
+  border: 1px solid var(--glass-rim);
+  border-radius: var(--rad-xl);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  font-family: var(--font-body);
+  color: var(--ui-text);
+}
+.ui-modal.has-art {
+  width: min(560px, 100% - 32px);
+  grid-template-columns: 180px minmax(0, 1fr);
+}
+.ui-modal-art {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(
+    ellipse at 50% 85%,
+    color-mix(in srgb, var(--r, var(--ui-accent)) 34%, var(--ui-bg-2)),
+    var(--ui-bg-0) 75%
+  );
+}
+.ui-modal-art > :is(svg, img) {
+  width: 90%;
+  height: auto;
+}
+.ui-modal-body {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 18px 20px 12px;
+}
+.ui-modal-sub {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.ui-ledger {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin: 8px 0 4px;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  background: var(--fill-well);
+  font-size: var(--fs-small);
+}
+.ui-ledger dt {
+  color: var(--ui-dim);
+  align-self: center;
+}
+.ui-ledger dd {
+  margin: 0;
+  text-align: right;
+  font-size: var(--fs-h4);
+}
+.ui-ledger .is-total {
+  border-top: 1px solid var(--ui-line);
+  padding-top: 4px;
+}
+.ui-modal > .ui-actions {
+  grid-column: 1 / -1;
+  justify-content: end;
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--ui-line);
+  background: var(--fill-bar);
+}
+@media (max-height: 500px) {
+  .ui-modal.has-art {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
+  .ui-modal-body {
+    padding: 10px 12px 6px;
+    gap: 3px;
+  }
+  .ui-ledger {
+    margin: 4px 0;
+    padding: 6px 10px;
+  }
+  .ui-ledger dd {
+    font-size: var(--fs-lead);
+  }
+  .ui-modal > .ui-actions {
+    padding: var(--sp-2) 10px;
+  }
+}
+
+/* -------------------------------------------------------------- tabs */
+.ui-tabs {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 0 var(--sp-3);
+  border-bottom: 1px solid var(--ui-line);
+  overflow-x: auto;
+  /* Sideways only (ui/scroll-rows.ts). */
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.ui-tabs > button {
+  flex: none;
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 10px 12px 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-lead);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ui-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ui-panel-head .ui-tabs {
+  border: 0;
+  padding: 0;
+  align-self: stretch;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ui-panel-head:has(.ui-tabs) {
+  border-bottom: 1px solid var(--ui-line);
+}
+/* The selected tab's underline is its own layer (::after, over the
+   button's transparent bottom border), so a tab switch can glide it from
+   the old tab to the new one on the compositor (ui/motion.ts,
+   playTabSwitch). A press answers at once: the tab dips a touch. */
+.ui-tabs > button {
+  position: relative;
+  transition:
+    color 0.16s ease-out,
+    transform 0.12s ease-out;
+}
+.ui-tabs > button:active {
+  transform: scale(0.96);
+}
+.ui-tabs > button[aria-selected="true"] {
+  color: var(--ui-accent);
+}
+.ui-tabs > button[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 3px;
+  background: var(--ui-accent);
+  transform-origin: left center;
+  pointer-events: none;
+}
+@media (max-height: 500px) {
+  .ui-tabs {
+    padding: 0 4px;
+  }
+  .ui-tabs > button {
+    padding: 6px 8px 5px;
+  }
+}
+
+/* Segmented: two to four equal choices (Shop | Wardrobe, All | Owned). */
+.ui-seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  /* Solid, not a see-through fill: the gold pill's rounded edge blends with
+     what is under it, and through glass that is the scene, lighter on one
+     side than the other. The pill then read off-centre (by 5.5 px in CI's
+     Chromium on the Ranks switch). A solid track keeps both edges alike. */
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--rad-pill);
+  flex: none;
+}
+.ui-seg > button {
+  border: 0;
+  background: transparent;
+  border-radius: var(--rad-pill);
+  height: calc(var(--ctl-s) + 2px);
+  padding: 0 14px;
+  font-weight: 700;
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.ui-seg.is-display > button {
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 16px;
+}
+.ui-seg > button[aria-pressed="true"] {
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
+}
+
+/* Filter chips: toggles in a row that scrolls sideways when it must. */
+.ui-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  /* Sideways only (ui/scroll-rows.ts). */
+  overflow-y: hidden;
+  scrollbar-width: none;
+  align-items: center;
+}
+/* Every row that scrolls sideways (ui/scroll-rows.ts lists them: chips,
+   tabs, the raid gallery, quick chat…): an edge fades where more of the
+   row is hidden past it, so a player knows to swipe. */
+.has-more-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 calc(100% - 32px),
+    transparent
+  );
+  mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent);
+}
+.has-more-left {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px);
+  mask-image: linear-gradient(90deg, transparent, #000 32px);
+}
+.has-more-left.has-more-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 32px,
+    #000 calc(100% - 32px),
+    transparent
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 32px,
+    #000 calc(100% - 32px),
+    transparent
+  );
+}
+.ui-chip {
+  flex: none;
+  height: var(--ctl-s);
+  padding: 0 12px;
+  border-radius: var(--rad-pill);
+  border: 1px solid var(--ui-line-2);
+  background: var(--fill-card);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: var(--ui-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ui-chip[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 7.8%, transparent);
+}
+.ui-chip svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ------------------------------------------------------------ buttons */
+/* Every button is one of these, at one of three fixed heights. */
+.ui-btn {
+  --h: var(--ctl-m);
+  height: var(--h);
+  min-width: var(--h);
+  padding: 0 14px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line-2);
+  background: var(--fill-card-hi);
+  color: var(--ui-text);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-lead);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  position: relative;
+  transition:
+    transform var(--dur-1),
+    filter var(--dur-1);
+  box-shadow: 0 3px 0 #0007;
+}
+.ui-btn:active {
+  transform: translateY(2px);
+}
+.ui-btn svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+/* Optical centring, measured on the pixels (ui-foundation.spec.ts): the
+   game's icons are drawn ~5/24 in from their left edge, and letter-spacing
+   leaves a gap after the last letter. Cancel both so icon + label sit in
+   the middle of the button. */
+.ui-btn > svg:first-child {
+  margin-left: -3px;
+}
+/* The crossed swords reach out to 3/24 (their stroke to ~2/24), not 5/24:
+   -3 px pulled Start raid's icon and label 0.8 px left of the middle. */
+.ui-btn > svg[data-icon="battle"]:first-child {
+  margin-left: -1.5px;
+}
+.ui-btn > span {
+  margin-right: -0.05em;
+}
+/* A button's icon is drawn in its label's colour. (style.css paints every
+   menu icon gold, which vanished on a gold button and left its label
+   looking pushed to the right.) */
+.ui-btn > svg {
+  color: currentColor;
+  opacity: 1;
+}
+.ui-btn.is-s {
+  --h: var(--ctl-s);
+  min-width: var(--act-s);
+  font-size: var(--fs-body);
+  padding: 0 10px;
+  box-shadow: none;
+}
+.ui-btn.is-s svg {
+  width: 15px;
+  height: 15px;
+}
+/* An action group: every button the same width and height, primary last
+   (bottom right, where PLAY is). Colour is the only difference. */
+.ui-actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--act-w);
+  gap: var(--sp-2);
+  flex: none;
+}
+.ui-actions > .ui-btn {
+  width: 100%;
+  min-width: 0;
+}
+.ui-btn.is-primary {
+  border: 0;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-ink);
+  box-shadow:
+    0 3px 0 var(--ui-accent-deep),
+    inset 0 2px 0 #fff8;
+}
+.ui-btn.is-ok {
+  border: 0;
+  background: linear-gradient(180deg, #7ff0a2, #2fb45c);
+  color: var(--ui-ok-ink);
+  box-shadow:
+    0 3px 0 var(--ui-ok-deep),
+    inset 0 2px 0 #fff8;
+}
+.ui-btn.is-ghost {
+  background: transparent;
+  box-shadow: none;
+  color: var(--ui-dim);
+}
+.ui-btn.is-danger {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--ui-danger) 53.3%, transparent);
+  color: #ff8a97;
+  box-shadow: none;
+}
+/* Leaving a room or a match is red wherever it is (owner, 6 Nov): a red
+   outline and icon, never a solid red block (red is also boss warnings),
+   as the match's own leave buttons (.leave-button in style.css). */
+.ui-icon-btn.is-danger {
+  border-color: color-mix(in srgb, var(--ui-danger) 53.3%, transparent);
+  background: color-mix(in srgb, var(--ui-danger) 7.8%, transparent);
+}
+.ui-icon-btn.is-danger,
+.ui-icon-btn.is-danger svg {
+  color: #ff8a97;
+}
+:is(.ui-btn, .ui-icon-btn).is-danger:hover:not([disabled]),
+:is(.ui-btn, .ui-icon-btn).is-danger:focus-visible {
+  border-color: color-mix(in srgb, var(--ui-danger) 80%, transparent);
+  background: color-mix(in srgb, var(--ui-danger) 14.9%, transparent);
+  color: #ffc2c8;
+}
+.ui-icon-btn.is-danger:hover svg,
+.ui-icon-btn.is-danger:focus-visible svg {
+  color: #ffc2c8;
+}
+.ui-btn[disabled] {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
+.ui-btn s {
+  font-size: 0.7em;
+  opacity: 0.6;
+}
+/* Phones: a 36 px button still catches a 44 px finger. */
+@media (max-height: 500px) {
+  /* A finger is 44 px: the hit area is at least that tall, centred on the
+     button whatever its border, without changing the layout. */
+  .ui-btn::after {
+    content: "";
+    position: absolute;
+    left: -1px;
+    right: -1px;
+    top: 50%;
+    height: max(100%, 44px);
+    transform: translateY(-50%);
+  }
+  .ui-btn {
+    padding: 0 10px;
+  }
+}
+.ui-icon-btn {
+  width: var(--ctl-m);
+  height: var(--ctl-m);
+  border-radius: 50%;
+  border: 1px solid var(--icon-btn-line);
+  background: var(--icon-btn-bg);
+  display: grid;
+  place-items: center;
+  flex: none;
+  position: relative;
+  padding: 0;
+}
+.ui-icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+@media (max-height: 500px) {
+  .ui-icon-btn::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* --------------------------------------------------- money and state */
+.ui-coin {
+  width: 1em;
+  height: 1em;
+  border-radius: 50%;
+  flex: none;
+  display: inline-block;
+  background: radial-gradient(
+    circle at 35% 30%,
+    #fff6cf,
+    var(--ui-accent) 55%,
+    #b8860b
+  );
+  box-shadow: inset 0 0 0 1.5px #8a6410;
+}
+.ui-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ui-price s {
+  color: var(--ui-dim);
+  font-weight: 600;
+  font-size: 0.8em;
+}
+.ui-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--ui-danger);
+  color: #fff;
+  font-size: calc(11px * var(--text-scale, 1));
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ui-bg-0);
+  font-style: normal;
+}
+.ui-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ui-danger);
+  box-shadow: 0 0 0 2px var(--ui-bg-0);
+  display: inline-block;
+  flex: none;
+}
+.ui-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--rad-xs);
+  font-size: var(--fs-micro);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: #0b1020d9;
+  color: var(--ui-text);
+  white-space: nowrap;
+}
+.ui-tag.is-new {
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
+}
+.ui-tag.is-ok {
+  background: color-mix(in srgb, var(--ui-ok) 14.9%, transparent);
+  color: var(--ui-ok);
+}
+.ui-tag.is-sale {
+  background: var(--ui-danger);
+  color: #fff;
+}
+.ui-tag.is-lock {
+  color: var(--ui-dim);
+}
+.ui-rarity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  color: var(--r);
+  white-space: nowrap;
+}
+.ui-rarity::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg);
+  background: var(--r);
+  flex: none;
+}
+.ui-rarity.is-mythic::before {
+  background: var(--r-foil);
+}
+[data-rarity="common"] {
+  --r: var(--r-common);
+}
+[data-rarity="rare"] {
+  --r: var(--r-rare);
+}
+[data-rarity="epic"] {
+  --r: var(--r-epic);
+}
+[data-rarity="legendary"] {
+  --r: var(--r-legendary);
+}
+[data-rarity="mythical"],
+[data-rarity="mythic"] {
+  --r: var(--r-mythic);
+}
+.ui-element {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px 0 6px;
+  border-radius: var(--rad-pill);
+  background: color-mix(in srgb, var(--el) 22%, transparent);
+  color: var(--el);
+  font-size: var(--fs-micro);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ui-element svg {
+  width: 14px;
+  height: 14px;
+}
+.ui-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ui-accent);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ui-timer::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  background: conic-gradient(currentColor 0 25%, transparent 0) content-box;
+  flex: none;
+}
+
+/* ------------------------------------------------------------ progress */
+.ui-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: #ffffff1a;
+  overflow: hidden;
+}
+.ui-bar > i {
+  display: block;
+  height: 100%;
+  width: var(--p, 0%);
+  border-radius: inherit;
+  background: var(--bar, var(--ui-accent));
+}
+.ui-bar.is-thick {
+  height: 10px;
+  border-radius: 5px;
+}
+.ui-ring {
+  --size: 44px;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--ring, var(--ui-accent)) calc(var(--p, 0) * 1%),
+    #ffffff1a 0
+  );
+  display: grid;
+  place-items: center;
+  flex: none;
+  position: relative;
+}
+.ui-ring::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  /* Solid: it hides the middle of the ring's conic gradient. */
+  background: var(--ui-bg-0);
+}
+.ui-ring > * {
+  position: relative;
+}
+
+/* ------------------------------------------------------------ item tile */
+/* One card for every item: Shop, Wardrobe, rewards. Fixed rows, so a long
+   name or a missing price never moves the art. */
+.ui-tile {
+  --r: var(--ui-line-2);
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto auto auto 1fr;
+  gap: 2px;
+  text-align: left;
+  padding: 8px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid color-mix(in srgb, var(--r) 45%, transparent);
+  min-width: 0;
+  transition: transform var(--dur-1) var(--ease-pop);
+}
+.ui-tile:hover {
+  transform: translateY(-2px);
+}
+.ui-tile-art {
+  position: relative;
+  aspect-ratio: 1.12;
+  border-radius: var(--rad-sm);
+  background: radial-gradient(
+    ellipse at 50% 85%,
+    color-mix(in srgb, var(--r) 26%, var(--ui-bg-2)),
+    var(--ui-bg-0) 75%
+  );
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.ui-tile-art > svg,
+.ui-tile-art > img {
+  width: 92%;
+  height: 92%;
+}
+/* A skin thumbnail (skin-thumbnails.ts) is drawn where its SVG's own fit
+   puts the drawing, whether it shows the SVG or its bitmap. */
+.skin-thumb {
+  object-fit: contain;
+}
+.ui-tile-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: calc(17px * var(--text-scale, 1));
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ui-tile-sub {
+  font-size: var(--fs-micro);
+  color: var(--ui-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ui-tile-foot {
+  align-self: end;
+  margin-top: 4px;
+  font-size: calc(14px * var(--text-scale, 1));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+  font-weight: 700;
+}
+.ui-tile-foot svg {
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+.ui-tile-foot.is-ok {
+  color: var(--ui-ok);
+}
+.ui-tile-foot.is-trial {
+  color: var(--r-mythic);
+}
+.ui-tile-foot.is-dim {
+  color: var(--ui-dim);
+}
+.ui-tile > .ui-tag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+}
+.ui-tile[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  box-shadow:
+    0 0 0 2px var(--ui-accent) inset,
+    var(--shadow-1);
+}
+.ui-tile.is-locked .ui-tile-art > * {
+  filter: grayscale(0.55) brightness(0.7);
+}
+.ui-tile.is-unowned {
+  opacity: 0.62;
+}
+.ui-tile.is-mythic {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--ui-bg-1), var(--ui-bg-1)) padding-box,
+    var(--r-foil) border-box;
+}
+@media (max-height: 500px) {
+  .ui-tile {
+    padding: 4px;
+    border-radius: var(--rad-sm);
+  }
+  .ui-tile-art {
+    border-radius: 7px;
+    margin-bottom: 2px;
+  }
+  .ui-tile-name {
+    font-size: calc(13px * var(--text-scale, 1));
+  }
+  .ui-tile-sub {
+    display: none;
+  }
+  .ui-tile-foot {
+    font-size: calc(11px * var(--text-scale, 1));
+    margin-top: 1px;
+    min-height: 14px;
+  }
+  .ui-tile > .ui-tag {
+    top: 7px;
+    right: 7px;
+    height: 15px;
+    font-size: var(--fs-micro);
+  }
+}
+.ui-grid {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+}
+@media (max-height: 500px) {
+  .ui-grid {
+    gap: 6px;
+  }
+}
+
+/* ------------------------------------------------------------- list row */
+.ui-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 60px;
+  padding: 8px 10px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+}
+.ui-row-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ui-row-main b {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ui-row-main small {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ui-row-acts {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+@media (max-height: 500px) {
+  .ui-row {
+    min-height: 46px;
+    padding: 4px 8px;
+    gap: 8px;
+  }
+}
+
+/* --------------------------------------------------------------- avatar */
+.ui-avatar {
+  --size: 44px;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 30%,
+    var(--ui-bg-3),
+    var(--ui-bg-1)
+  );
+  border: 2px solid var(--el, var(--ui-line-2));
+  position: relative;
+  flex: none;
+}
+.ui-avatar > :is(svg, img) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+.ui-avatar > .ui-status {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--st, var(--st-away));
+  border: 2px solid var(--ui-bg-1);
+}
+@media (max-height: 500px) {
+  .ui-avatar {
+    --size: 34px;
+  }
+}
+
+/* ---------------------------------------------------------- empty state */
+.ui-empty {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: var(--sp-5) var(--sp-4);
+  border: 1px dashed var(--ui-line-2);
+  border-radius: var(--rad-lg);
+  color: var(--ui-dim);
+}
+.ui-empty b {
+  color: var(--ui-text);
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- toast */
+/* The game's one toast (#toast, toast() in main.ts): a dark pill with a gold
+   edge. It never takes clicks. At the bottom by default (battles); in the
+   Lobby it sits under the HUD, clear of the fighter, the nameplate and
+   PLAY. */
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + var(--safe-bottom));
+  z-index: var(--z-toast);
+  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 32px);
+  padding: 10px 18px;
+  border-radius: var(--rad-pill);
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(#1a1630, #120f24) padding-box,
+    linear-gradient(135deg, #ffe48a, #b8791a 60%, #ffe48a) border-box;
+  box-shadow: 0 12px 30px -10px #000c;
+  color: #fff1c4;
+  font-size: calc(12px * var(--text-scale, 1));
+  font-weight: 600;
+  text-align: center;
+  /* Two even lines, not one long and a last word alone. */
+  text-wrap: balance;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 20px);
+  transition:
+    opacity var(--dur-2) ease,
+    transform var(--dur-3) var(--ease-out);
+}
+#toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+body[data-hub-scene="lobby"] #toast {
+  /* Just under the HUD row (top 14 + 52 px; 8 + 40 px on phones). */
+  top: calc(var(--safe-top) + 74px);
+  bottom: auto;
+  transform: translate(-50%, -12px);
+}
+@media (max-height: 500px) {
+  body[data-hub-scene="lobby"] #toast {
+    top: calc(var(--safe-top) + 54px);
+  }
+}
+/* With a screen open, the toast sits on the HUD row above it, as mobile
+   games show notices: over the Lobby / Plaza switch for a moment,
+   never over the screen's own list. (It used to sit above the action bar,
+   which on a phone is the middle of the list: rows went unreadable while it
+   showed.) It never takes taps, so the switch underneath still works. */
+body[data-hub-scene="lobby"]:has(.ui-panel) #toast,
+body.lobby-active:has(.room-screen .ui-panel) #toast {
+  top: calc(var(--safe-top) + 18px);
+  bottom: auto;
+}
+@media (max-height: 500px) {
+  body[data-hub-scene="lobby"]:has(.ui-panel) #toast,
+  body.lobby-active:has(.room-screen .ui-panel) #toast {
+    top: calc(var(--safe-top) + 10px);
+  }
+}
+body[data-hub-scene="lobby"] #toast.show {
+  transform: translate(-50%, 0);
+}

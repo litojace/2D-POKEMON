@@ -1,5 +1,11 @@
+import { drawVanguardFx } from "./vanguard-fx";
+import { drawEpicSignature } from "./epic-signature-fx";
+import type { CreaturePart } from "../creature-design";
+import type { Facing } from "../animation/controller";
+import { WORLD_ART } from "../../../../packages/shared/src/world-art";
 import type Phaser from "phaser";
-import type { SkinArt, Trail } from "./skin-art";
+import { hexToNumber, type SkinArt, type Trail } from "./skin-art";
+import { VOID_KNIGHTS } from "./mythic-art";
 
 /**
  * In-game extras for Shop skins, drawn by the rig each frame: dash trails
@@ -20,7 +26,13 @@ export type FxShape =
   | "coin"
   | "pixel"
   | "flake"
-  | "ring";
+  | "ring"
+  /** A column of light rising from the feet (tiered entrances). */
+  | "beam"
+  /** A flat ring sweeping out across the ground. */
+  | "shock"
+  /** A streak of light trailing behind the particle as it flies. */
+  | "ray";
 export interface FxParticle {
   x: number;
   y: number;
@@ -31,8 +43,47 @@ export interface FxParticle {
   color: number;
   shape: FxShape;
   spin?: number;
+  /** A soft halo under the particle (cosmetic entrances and victories). */
+  glow?: boolean;
+  /** Cosmetic sparks emitted behind the body stay behind as they rise. */
+  behind?: boolean;
+  // ---- Over-life shaping (all optional; a particle without them moves in a
+  // straight line and fades evenly, as before).
+  /** Air resistance: the share of its speed lost per second (0..~6). */
+  drag?: number;
+  /** Size at the end of its life, as a multiple of `size` (smoke grows,
+   * sparks shrink). */
+  grow?: number;
+  /** Share of its life spent fading in, so it never pops into view. */
+  fadeIn?: number;
+  /** Colour at the end of its life (a ramp from `color`). */
+  to?: number;
+  /** Sideways drift in pixels, a slow sway like ash or dust in the air. */
+  sway?: number;
 }
+
+/** Advance one particle: drag, gravity and velocity. Shared by the rig and
+ * the cosmetic previews so both move particles the same way. */
+export function stepParticle(p: FxParticle & { age: number }, dt: number) {
+  p.age += dt;
+  if (p.drag) {
+    const keep = Math.max(0, 1 - p.drag * dt);
+    p.vx *= keep;
+    p.vy *= keep;
+  }
+  p.x += p.vx * dt;
+  p.y += p.vy * dt;
+  p.vy += (FX_GRAVITY[p.shape] ?? 0) * dt;
+}
+const lerpColor = (a: number, b: number, k: number) => {
+  const ch = (c: number, s: number) => (c >> s) & 255;
+  const mix = (s: number) => Math.round(ch(a, s) + (ch(b, s) - ch(a, s)) * k);
+  return (mix(16) << 16) | (mix(8) << 8) | mix(0);
+};
 export interface FxContext {
+  /** Exact animated joint position of final accessory art coordinates. */
+  mount?: (part: CreaturePart, x: number, y: number) => { x: number; y: number };
+  facing?: Facing;
   g: Phaser.GameObjects.Graphics;
   /** Drawn behind the fighter. */
   under: Phaser.GameObjects.Graphics;
@@ -59,6 +110,8 @@ export interface FxContext {
   ultimate: boolean;
   /** Extra ambient particles are within the on-screen budget; ornaments always draw. */
   ambient: boolean;
+  /** Height/width of the ground plane (the fighter's shadow and auras). */
+  flat?: number;
 }
 
 const TRAIL_SHAPE: Record<Trail, FxShape> = {
@@ -75,6 +128,8 @@ const TRAIL_SHAPE: Record<Trail, FxShape> = {
   pixel: "pixel",
   star: "star",
   ember: "dot",
+  void: "puff",
+  jet: "spark",
 };
 /** Extra gravity per shape (px/s²); negative floats up. */
 export const FX_GRAVITY: Partial<Record<FxShape, number>> = {
@@ -91,7 +146,8 @@ const pick = (colors: number[]) => colors[Math.floor(Math.random() * colors.leng
 
 /** Particles left behind while moving (a few) and dashing (a burst). */
 function trail(ctx: FxContext, art: SkinArt) {
-  if (!art.trail || ctx.defeated) return;
+  // Legendary skins draw their own movement trail (epic-signature-fx).
+  if (!art.trail || ctx.defeated || art.signature) return;
   const rate = ctx.dashing ? 40 : ctx.moving ? 6 : 0;
   if (!rate || !ctx.chance(rate, ctx.dt)) return;
   const back = ctx.angle + Math.PI;
@@ -168,6 +224,18 @@ function detail(ctx: FxContext, art: SkinArt) {
       }
       break;
     }
+    case "scan": {
+      // A neon scan line sweeps down the body every 1.8 s.
+      const k = (now / 1800) % 1;
+      if (k < 0.45) {
+        const t = k / 0.45;
+        const sy = ctx.headY - 6 * sc + t * (y - ctx.headY + 4 * sc);
+        const w = (18 - Math.abs(t - 0.5) * 8) * sc;
+        g.lineStyle(4 * sc, color, 0.18 * Math.sin(t * Math.PI)).lineBetween(x - w, sy, x + w, sy);
+        g.lineStyle(1.2 * sc, color, 0.85 * Math.sin(t * Math.PI)).lineBetween(x - w, sy, x + w, sy);
+      }
+      break;
+    }
     case "frost":
       if (ctx.chance(4, ctx.dt))
         ctx.emit({
@@ -194,170 +262,348 @@ const orbit = (ctx: FxContext, i: number, n: number, speed: number, rx: number, 
   };
 };
 
+/** Skin rings lie where the shadow and auras do: centred on the feet, on the
+ * same ground plane, so they stay parallel with them. */
+const groundFlat = (ctx: FxContext) => ctx.flat ?? WORLD_ART.groundY;
+const groundY = (ctx: FxContext) => ctx.y + WORLD_ART.fighterFeet * ctx.sc;
+
+/** Split a ground ring at its side points so its far arc is occluded. */
+function groundRing(
+  ctx: FxContext,
+  width: number,
+  color: number,
+  alpha: number,
+  lineWidth: number,
+) {
+  const { x, sc, g, under } = ctx;
+  const cy = groundY(ctx),
+    rx = width / 2,
+    ry = (width * groundFlat(ctx)) / 2;
+  for (let half = 0; half < 2; half++) {
+    const layer = half === 0 ? g : under;
+    layer.lineStyle(lineWidth, color, alpha).beginPath();
+    for (let i = 0; i <= 32; i++) {
+      const a = half * Math.PI + (i / 32) * Math.PI;
+      const px = x + Math.cos(a) * rx,
+        py = cy + Math.sin(a) * ry;
+      if (i === 0) layer.moveTo(px, py);
+      else layer.lineTo(px, py);
+    }
+    layer.strokePath();
+  }
+}
+
 /**
- * Mythical Awakening effects. Stage 1 is the skin's signature effect,
- * stage 2 adds an orbit, stage 3 the full form (and its accessory).
+ * Stage III: a rune seal on the knight's back, turning slowly. It is a
+ * circle in the plane of the back, so it turns with the fighter: whole and
+ * behind them from the front, narrowing to an edge-on ellipse behind the
+ * back in profile, and in front of them (over the back, lighter) when they
+ * face away.
+ */
+function runeSeal(ctx: FxContext, color: number, hot: number) {
+  const { sc, now } = ctx;
+  // Facing: x across the screen, y toward the camera (angle π/2 = facing it).
+  const fx = Math.cos(ctx.angle),
+    fy = Math.sin(ctx.angle);
+  // The seal's width foreshortens with the turn (kept readable edge-on).
+  const kx = Math.max(0.34, Math.abs(fy));
+  const facingAway = fy < -0.2;
+  const layer = facingAway ? ctx.g : ctx.under;
+  const fade = facingAway ? 0.6 : 1;
+  // It sits a little behind the back: off to the side in profile.
+  const cx = ctx.headX - fx * 26 * sc,
+    cy = ctx.headY + 18 * sc,
+    r = 36 * sc,
+    pulse = (0.75 + Math.sin(now / 600) * 0.25) * fade;
+  /** A point on the seal's own plane (u across it, v up it) on screen. */
+  const at = (u: number, v: number) => ({ x: cx + u * kx, y: cy + v });
+  layer.fillStyle(color, 0.1 * pulse).fillEllipse(cx, cy, (r + 6 * sc) * 2 * kx, (r + 6 * sc) * 2);
+  layer.lineStyle(2.2 * sc, color, 0.7 * pulse).strokeEllipse(cx, cy, r * 2 * kx, r * 2);
+  layer.lineStyle(1.2 * sc, hot, 0.5 * pulse).strokeEllipse(cx, cy, (r - 6 * sc) * 2 * kx, (r - 6 * sc) * 2);
+  layer.lineStyle(1 * sc, color, 0.45 * pulse).strokeEllipse(cx, cy, r * 1.1 * kx, r * 1.1);
+  // Rune ticks between the rings turn one way...
+  for (let i = 0; i < 16; i++) {
+    const a = now / 3000 + (i / 16) * Math.PI * 2;
+    const p0 = at(Math.cos(a) * (r - 5 * sc), Math.sin(a) * (r - 5 * sc)),
+      p1 = at(Math.cos(a) * (r - 1.5 * sc), Math.sin(a) * (r - 1.5 * sc));
+    layer.lineStyle(1.6 * sc, i % 4 ? color : hot, 0.85 * pulse).lineBetween(p0.x, p0.y, p1.x, p1.y);
+  }
+  // ...and a hexagram turns the other.
+  for (const off of [0, Math.PI]) {
+    const pts = [0, 1, 2].map((k) => {
+      const a = -now / 4200 + off + (k / 3) * Math.PI * 2 - Math.PI / 2;
+      return at(Math.cos(a) * (r - 7 * sc), Math.sin(a) * (r - 7 * sc));
+    });
+    layer.lineStyle(1.3 * sc, color, 0.55 * pulse).strokePoints(pts, true);
+  }
+}
+
+/**
+ * The Void Knights' Awakening effects, in each knight's rune colour.
+ * Stage I: black smoke curls off the armour with rune sparks.
+ * Stage II: a rune circle turns on the ground beneath it.
+ * Stage III: a rune seal turns behind its shoulders and rune shards orbit it.
  */
 function mythic(ctx: FxContext, art: SkinArt, stage: number) {
   const { g, under, x, y, sc, now } = ctx;
+  const knight = art.mythic ? VOID_KNIGHTS[art.mythic] : undefined;
+  if (!knight) return;
   const color = art.skill ?? 0xffffff;
+  const hot = hexToNumber(knight.hot);
   const mid = y - 10 * sc;
-  switch (art.mythic) {
-    case "stormcrown": {
-      // Crackling arcs leap across the body.
-      if (Math.floor(now / 90) % (stage >= 2 ? 4 : 7) === 0) {
-        const a = Math.random() * Math.PI * 2;
-        let px = x + Math.cos(a) * 14 * sc,
-          py = mid + Math.sin(a) * 14 * sc;
-        g.lineStyle(1.6 * sc, color, 0.9).beginPath();
-        g.moveTo(px, py);
-        for (let k = 0; k < 4; k++) {
-          px += Math.cos(a) * 5 * sc + (Math.random() - 0.5) * 8 * sc;
-          py += Math.sin(a) * 5 * sc + (Math.random() - 0.5) * 8 * sc;
-          g.lineTo(px, py);
-        }
-        g.strokePath();
-      }
-      if (stage >= 2)
-        for (let i = 0; i < 3; i++) {
-          const o = orbit(ctx, i, 3, 420, 26, 9, 2);
-          sparkle(o.front ? g : under, o.x, o.y, 2.6 * sc, color, 0.9);
-        }
-      if (stage >= 3) {
-        // A small storm cloud with rain flickers above the crown.
-        const cx = ctx.headX,
-          cy = ctx.headY - 26 * sc;
-        g.fillStyle(0x5a6478, 0.85).fillCircle(cx - 8 * sc, cy, 6 * sc).fillCircle(cx, cy - 3 * sc, 8 * sc).fillCircle(cx + 9 * sc, cy, 6 * sc);
-        if (Math.floor(now / 140) % 5 === 0)
-          g.lineStyle(1.6 * sc, color, 1).lineBetween(cx, cy + 5 * sc, cx - 3 * sc, cy + 11 * sc).lineBetween(cx - 3 * sc, cy + 11 * sc, cx + 2 * sc, cy + 15 * sc);
-      }
-      break;
+  if (ctx.ambient && ctx.chance(stage >= 2 ? 9 : 6, ctx.dt))
+    ctx.emit({
+      x: x + (Math.random() - 0.5) * 34 * sc,
+      y: mid + (Math.random() - 0.1) * 22 * sc,
+      vx: (Math.random() - 0.5) * 10,
+      vy: -22 - Math.random() * 16,
+      life: 0.9,
+      size: (2.4 + Math.random() * 1.6) * sc,
+      color: 0x120a1e,
+      shape: "puff",
+      behind: true,
+    });
+  if (ctx.ambient && ctx.chance(stage >= 3 ? 7 : 3, ctx.dt))
+    ctx.emit({
+      x: x + (Math.random() - 0.5) * 30 * sc,
+      y: mid + (Math.random() - 0.3) * 24 * sc,
+      vx: (Math.random() - 0.5) * 16,
+      vy: -30 - Math.random() * 20,
+      life: 0.6,
+      size: 1.6 * sc,
+      color: Math.random() < 0.6 ? color : hot,
+      shape: "spark",
+    });
+  if (stage >= 2) {
+    // A rune circle: a ring with glyph ticks that turns slowly.
+    const k = 0.5 + Math.sin(now / 520) * 0.5;
+    const w = 56 * sc;
+    groundRing(ctx, w, color, 0.3 + k * 0.25, 1.8 * sc);
+    groundRing(ctx, w * 0.78, color, 0.18 + k * 0.12, 1.2 * sc);
+    const cy = groundY(ctx),
+      flat = groundFlat(ctx);
+    for (let i = 0; i < 8; i++) {
+      const a = now / 2600 + (i / 8) * Math.PI * 2;
+      const r0 = w * 0.39,
+        r1 = w * 0.5;
+      const layer = Math.sin(a) > 0 ? g : under;
+      layer
+        .lineStyle(1.6 * sc, i % 2 ? color : hot, 0.55 + k * 0.3)
+        .lineBetween(x + Math.cos(a) * r0, cy + Math.sin(a) * r0 * flat, x + Math.cos(a) * r1, cy + Math.sin(a) * r1 * flat);
     }
-    case "sunforged": {
-      if (ctx.ambient && ctx.chance(stage >= 2 ? 14 : 8, ctx.dt))
-        ctx.emit({
-          x: x + (Math.random() - 0.5) * 30 * sc,
-          y: mid + (Math.random() - 0.3) * 20 * sc,
-          vx: (Math.random() - 0.5) * 12,
-          vy: -40 - Math.random() * 30,
-          life: 0.7,
-          size: (1.4 + Math.random()) * sc,
-          color: Math.random() < 0.5 ? 0xffd65b : 0xffb02e,
-          shape: "dot",
-        });
-      if (stage >= 2) {
-        const k = 0.5 + Math.sin(now / 300) * 0.5;
-        g.lineStyle(2 * sc, 0xffd65b, 0.25 + k * 0.25).strokeEllipse(x, y + 20 * sc, 50 * sc, 16 * sc);
-      }
-      if (stage >= 3) {
-        // A slowly turning sun behind the fighter.
-        under.fillStyle(0xffd65b, 0.16).fillCircle(ctx.headX, ctx.headY + 14 * sc, 34 * sc);
-        for (let i = 0; i < 12; i++) {
-          const a = now / 2400 + (i / 12) * Math.PI * 2;
-          under.lineStyle(3 * sc, 0xffb02e, 0.45).lineBetween(
-            ctx.headX + Math.cos(a) * 30 * sc,
-            ctx.headY + 14 * sc + Math.sin(a) * 30 * sc,
-            ctx.headX + Math.cos(a) * 42 * sc,
-            ctx.headY + 14 * sc + Math.sin(a) * 42 * sc,
-          );
-        }
-      }
-      break;
-    }
-    case "moontide": {
-      // A crescent moon drifts around; the tide rises with each stage.
-      const o = orbit(ctx, 0, 1, 900, 28, 10, -16);
+  }
+  if (stage >= 3) {
+    runeSeal(ctx, color, hot);
+    // Three rune shards orbit at chest height.
+    for (let i = 0; i < 3; i++) {
+      const o = orbit(ctx, i, 3, 1100, 30, 10, -14);
       const tgt = o.front ? g : under;
-      tgt.fillStyle(0xc8f6ff, 0.95).fillCircle(o.x, o.y, 5 * sc);
-      tgt.fillStyle(0x070d24, 1).fillCircle(o.x + 2.4 * sc, o.y - 1 * sc, 4.4 * sc);
-      if (ctx.ambient && ctx.chance(6, ctx.dt))
-        ctx.emit({ x: x + (Math.random() - 0.5) * 30 * sc, y: y + 14 * sc, vx: 0, vy: -26, life: 0.9, size: 2 * sc, color: 0x7ff3ff, shape: "bubble" });
-      if (stage >= 2)
-        for (let i = 0; i < 2; i++) {
-          const k = ((now / 1400 + i / 2) % 1);
-          g.lineStyle(1.6 * sc, 0x7ff3ff, 0.5 * (1 - k)).strokeEllipse(x, y + 20 * sc, (40 + k * 40) * sc, (12 + k * 12) * sc);
-        }
-      if (stage >= 3) {
-        under.fillStyle(0x7ff3ff, 0.12).fillEllipse(x, y + 18 * sc, 90 * sc, 26 * sc);
-        for (let i = 0; i < 6; i++) {
-          const wx = x + (i - 2.5) * 13 * sc;
-          const wy = y + 18 * sc + Math.sin(now / 260 + i) * 2 * sc;
-          under.lineStyle(1.4 * sc, 0xc8f6ff, 0.6).lineBetween(wx - 5 * sc, wy, wx + 5 * sc, wy);
-        }
-      }
-      break;
+      const s = 3.4 * sc;
+      tgt.fillStyle(color, 0.3).fillCircle(o.x, o.y, s * 1.8);
+      tgt.fillStyle(0x1a1028, 1).fillTriangle(o.x, o.y - s * 1.5, o.x + s, o.y, o.x - s, o.y).fillTriangle(o.x, o.y + s * 1.5, o.x + s, o.y, o.x - s, o.y);
+      tgt.lineStyle(1.1 * sc, hot, 0.95).strokeTriangle(o.x, o.y - s * 1.5, o.x + s, o.y, o.x - s, o.y).strokeTriangle(o.x, o.y + s * 1.5, o.x + s, o.y, o.x - s, o.y);
     }
-    case "celestial-sage":
-    case "starweaver":
-    case "oracle": {
-      const n = stage >= 2 ? 5 : 3;
-      const pts = Array.from({ length: n }, (_, i) => orbit(ctx, i, n, art.mythic === "oracle" ? 700 : 1100, 30, 11, -14));
-      if (stage >= 3 || art.mythic === "starweaver") {
-        // Threads join the stars into a moving constellation.
-        g.lineStyle(1 * sc, color, 0.35);
-        for (let i = 0; i < pts.length; i++) {
-          const a = pts[i],
-            b = pts[(i + 1) % pts.length];
-          if (a.front && b.front) g.lineBetween(a.x, a.y, b.x, b.y);
-        }
+  }
+}
+
+/**
+ * The Void Knights' signature moments, drawn over several frames (each rig
+ * remembers when its moment began). All of them stay around the fighter:
+ *
+ *  - Entrance (every stage): a void gate opens behind the fighter, black
+ *    smoke swirls into it and it seals with a rune shockwave.
+ *  - Victory (every stage): a rune sword falls beside the fighter and plants
+ *    itself in the ground with a shockwave, then glows and fades.
+ *  - Ultimate (stage III): a rune circle flashes out on the ground and the
+ *    knight's own strike lands, by its crest: a giant sword plunges in
+ *    behind it (blades), lightning strikes (bolts), a pillar of black fire (flames),
+ *    ice or obsidian spikes erupt (ice, crystals), the tide rings out (fins),
+ *    a black sun flares (eclipse) or the ground quakes (iron).
+ */
+const VOID_MOMENTS = new WeakMap<object, { gate?: number; win?: number; ult?: number }>();
+const GATE_MS = 900,
+  WIN_MS = 1100,
+  ULT_MS = 750;
+
+/** A rune sword, tip down at (x, tipY). */
+function runeSword(g: Phaser.GameObjects.Graphics, x: number, tipY: number, len: number, sc: number, color: number, hot: number, alpha: number) {
+  const w = len * 0.07,
+    guard = tipY - len * 0.72;
+  g.fillStyle(color, 0.25 * alpha).fillTriangle(x - w * 2.4, guard, x + w * 2.4, guard, x, tipY + 4 * sc);
+  g.fillStyle(0x2c3242, alpha).fillPoints(
+    [
+      { x: x - w, y: guard },
+      { x: x + w, y: guard },
+      { x: x + w, y: tipY - len * 0.12 },
+      { x, y: tipY },
+      { x: x - w, y: tipY - len * 0.12 },
+    ],
+    true,
+  );
+  g.lineStyle(1.2 * sc, hot, 0.9 * alpha).lineBetween(x, guard - 2 * sc, x, tipY - len * 0.14);
+  g.lineStyle(3.2 * sc, 0x0a0b12, alpha).lineBetween(x - w * 3.2, guard, x + w * 3.2, guard);
+  g.lineStyle(1.6 * sc, 0x5a6478, alpha).lineBetween(x - w * 3, guard, x + w * 3, guard);
+  g.lineStyle(2.6 * sc, 0x3a2c44, alpha).lineBetween(x, guard, x, guard - len * 0.2);
+  g.fillStyle(color, alpha).fillCircle(x, guard - len * 0.22, 2 * sc);
+}
+
+/** A jagged bolt from (x, y0) down to (x, y1). */
+function bolt(g: Phaser.GameObjects.Graphics, x: number, y0: number, y1: number, sc: number, color: number, alpha: number) {
+  const pts: { x: number; y: number }[] = [];
+  const n = 6;
+  for (let i = 0; i <= n; i++) pts.push({ x: x + (i && i < n ? (Math.random() - 0.5) * 12 * sc : 0), y: y0 + ((y1 - y0) * i) / n });
+  g.lineStyle(5 * sc, color, 0.3 * alpha).strokePoints(pts);
+  g.lineStyle(1.8 * sc, 0xffffff, alpha).strokePoints(pts);
+}
+
+function voidMoments(ctx: FxContext, art: SkinArt, stage: number) {
+  const knight = art.mythic ? VOID_KNIGHTS[art.mythic] : undefined;
+  if (!knight) return;
+  const { g, under, x, y, sc, now } = ctx;
+  const color = art.skill ?? 0xffffff;
+  const hot = hexToNumber(knight.hot);
+  let m = VOID_MOMENTS.get(g);
+  if (!m) VOID_MOMENTS.set(g, (m = {}));
+  if (ctx.greeting) m.gate = now;
+  if (ctx.celebrating) m.win = now;
+  if (ctx.ultimate && stage >= 3) m.ult = now;
+  const feet = groundY(ctx),
+    flat = groundFlat(ctx);
+
+  // Entrance: the void gate.
+  if (m.gate !== undefined) {
+    const k = (now - m.gate) / GATE_MS;
+    if (k < 0 || k > 1) m.gate = undefined;
+    else {
+      const open = k < 0.3 ? k / 0.3 : k > 0.75 ? (1 - k) / 0.25 : 1;
+      const h = 44 * sc * open,
+        w = 20 * sc * open;
+      const cy = y - 18 * sc;
+      under.fillStyle(color, 0.3 * open).fillEllipse(x, cy, w * 2 + 8 * sc, h * 2 + 8 * sc);
+      under.fillStyle(0x07050c, 0.92 * open).fillEllipse(x, cy, w * 2, h * 2);
+      under.lineStyle(2 * sc, hot, 0.9 * open).strokeEllipse(x, cy, w * 2, h * 2);
+      for (let i = 0; i < 6; i++) {
+        const a = now / 300 + (i / 6) * Math.PI * 2;
+        under.fillStyle(color, 0.8 * open).fillCircle(x + Math.cos(a) * w * 0.8, cy + Math.sin(a) * h * 0.8, 1.6 * sc);
       }
-      for (const o of pts) {
-        const tgt = o.front ? g : under;
-        if (art.mythic === "oracle") {
-          // Little watching eyes.
-          tgt.fillStyle(0x1a0a2a, 0.9).fillEllipse(o.x, o.y, 7 * sc, 5 * sc);
-          tgt.fillStyle(color, 1).fillCircle(o.x, o.y, 1.6 * sc);
-        } else sparkle(tgt, o.x, o.y, 2.8 * sc, color, 0.95);
+      // Smoke spirals into the gate as it opens.
+      if (k < 0.5 && ctx.chance(40, ctx.dt)) {
+        const a = Math.random() * Math.PI * 2;
+        ctx.emit({ x: x + Math.cos(a) * 46 * sc, y: cy + Math.sin(a) * 30 * sc, vx: -Math.cos(a) * 80, vy: -Math.sin(a) * 52, life: 0.5, size: 3 * sc, color: 0x120a1e, shape: "puff", behind: true });
       }
-      if (stage >= 3 && art.mythic === "oracle") {
-        const k = (now / 1600) % 1;
-        g.lineStyle(1.4 * sc, color, 0.5 * (1 - k)).strokeCircle(ctx.headX, ctx.headY + 14 * sc, (12 + k * 26) * sc);
-      }
-      if (ctx.ambient && art.mythic === "starweaver" && ctx.chance(stage >= 2 ? 10 : 5, ctx.dt))
-        ctx.emit({ x: x + (Math.random() - 0.5) * 50 * sc, y: mid + (Math.random() - 0.5) * 20 * sc, vx: 0, vy: 14, life: 0.9, size: 1.8 * sc, color: 0xfff3b0, shape: "star" });
-      break;
+      if (k >= 0.75 && k - ctx.dt * 1000 / GATE_MS < 0.75)
+        ctx.emit({ x, y: feet, vx: 0, vy: 0, life: 0.6, size: 12 * sc, color, shape: "shock" });
     }
-    case "world-shell": {
-      // Clouds drift around the little island; birds at stage 3.
-      const clouds = stage >= 2 ? 2 : 1;
-      for (let i = 0; i < clouds; i++) {
-        const o = orbit(ctx, i, clouds, 2200, 24, 6, 0);
-        const cx = ctx.headX + (o.x - x),
-          cy = ctx.headY - 12 * sc + (o.y - y) * 0.6;
-        (o.front ? g : under).fillStyle(0xffffff, 0.85).fillCircle(cx - 3 * sc, cy, 3.4 * sc).fillCircle(cx + 2 * sc, cy - 1.5 * sc, 4 * sc).fillCircle(cx + 6 * sc, cy, 3 * sc);
+  }
+
+  // Victory: a rune sword planted beside the fighter.
+  if (m.win !== undefined) {
+    const k = (now - m.win) / WIN_MS;
+    if (k < 0 || k > 1) m.win = undefined;
+    else {
+      const sx = x + 24 * sc,
+        len = 46 * sc;
+      const land = 0.22;
+      const tipY = k < land ? feet - 120 * sc + (k / land) * 120 * sc : feet;
+      const alpha = k > 0.8 ? (1 - k) / 0.2 : 1;
+      // Behind the fighter, like every victory effect: never over its face.
+      runeSword(under, sx, tipY - (k < land ? 0 : 6 * sc), len, sc, color, hot, alpha);
+      if (k >= land) {
+        const kk = (k - land) / (1 - land);
+        under.lineStyle(2 * sc, color, 0.7 * (1 - kk)).strokeEllipse(sx, feet, (16 + kk * 50) * sc, (16 + kk * 50) * sc * flat);
+        if (k - (ctx.dt * 1000) / WIN_MS < land)
+          for (let i = 0; i < 12; i++) {
+            const a = -Math.PI * (0.1 + 0.8 * Math.random());
+            ctx.emit({ x: sx, y: feet - 4 * sc, vx: Math.cos(a) * 120, vy: Math.sin(a) * 160, life: 0.6, size: 2 * sc, color: i % 2 ? color : hot, shape: "spark", behind: true });
+          }
       }
-      if (ctx.ambient && ctx.chance(stage >= 2 ? 4 : 2, ctx.dt))
-        ctx.emit({ x: ctx.headX + 12 * sc, y: ctx.headY - 6 * sc, vx: 4, vy: 30, life: 0.5, size: 1.4 * sc, color: 0x7fd0ff, shape: "dot" });
-      if (stage >= 3)
-        for (let i = 0; i < 2; i++) {
-          const a = now / 800 + i * Math.PI;
-          const bx = ctx.headX + Math.cos(a) * 30 * sc,
-            by = ctx.headY - 26 * sc + Math.sin(a * 2) * 4 * sc;
-          const flap = Math.sin(now / 80 + i) * 2 * sc;
-          g.lineStyle(1.3 * sc, 0x2a3a1c, 0.9).lineBetween(bx - 3 * sc, by - flap, bx, by).lineBetween(bx, by, bx + 3 * sc, by - flap);
-        }
-      break;
     }
-    case "eclipse": {
-      // A dark sun behind the head, ringed in light that brightens by stage.
-      const r = 22 * sc,
-        cx = ctx.headX,
-        cy = ctx.headY + 16 * sc;
-      const k = 0.5 + Math.sin(now / 500) * 0.5;
-      under.fillStyle(0xffd65b, 0.12 + stage * 0.05).fillCircle(cx, cy, r + (6 + k * 4) * sc);
-      under.lineStyle(2 * sc, 0xfff3b0, 0.5 + stage * 0.12).strokeCircle(cx, cy, r);
-      if (stage >= 2)
-        for (let i = 0; i < 16; i++) {
-          const a = -now / 3000 + (i / 16) * Math.PI * 2;
-          const len = (i % 2 ? 6 : 11) * sc;
-          under.lineStyle(1.5 * sc, 0xffd65b, 0.55).lineBetween(cx + Math.cos(a) * (r + 2 * sc), cy + Math.sin(a) * (r + 2 * sc), cx + Math.cos(a) * (r + 2 * sc + len), cy + Math.sin(a) * (r + 2 * sc + len));
+  }
+
+  // Ultimate (stage III): the rune circle and the knight's own strike.
+  if (m.ult !== undefined) {
+    const k = (now - m.ult) / ULT_MS;
+    if (k < 0 || k > 1) {
+      m.ult = undefined;
+      return;
+    }
+    const fade = 1 - k;
+    groundRing(ctx, (40 + k * 90) * sc, color, 0.8 * fade, 2.4 * sc);
+    groundRing(ctx, (30 + k * 60) * sc, hot, 0.5 * fade, 1.2 * sc);
+    const crest = knight.crest === "none" ? "blades" : knight.crest;
+    switch (crest) {
+      case "blades": {
+        // A giant rune sword plunges into the ground behind the knight.
+        const tipY = k < 0.2 ? feet - 160 * sc + (k / 0.2) * 150 * sc : feet - 10 * sc;
+        runeSword(under, x, tipY, 92 * sc, sc, color, hot, Math.min(1, fade * 1.6));
+        break;
+      }
+      case "bolts":
+        if (k < 0.55 && Math.floor(now / 60) % 2 === 0)
+          for (const dx of [-30, 0, 30]) bolt(g, x + dx * sc, y - 110 * sc, feet, sc, color, fade);
+        break;
+      case "flames":
+        for (let i = 0; i < 9; i++) {
+          const t = (i - 4) / 4;
+          const fx = x + t * 26 * sc,
+            h = (70 - Math.abs(t) * 30) * sc * Math.sin(Math.min(1, k * 2.2) * Math.PI * 0.5) * (0.8 + 0.2 * Math.sin(now / 50 + i)),
+            w = 6 * sc;
+          under.fillStyle(color, 0.55 * fade).fillTriangle(fx - w - 2 * sc, feet, fx + w + 2 * sc, feet, fx, feet - h - 6 * sc);
+          under.fillStyle(0x0c0614, 0.85 * fade).fillTriangle(fx - w, feet, fx + w, feet, fx, feet - h);
         }
-      if (stage >= 3)
+        break;
+      case "ice":
+      case "crystals": {
+        const grow = Math.min(1, k / 0.25);
+        const body = crest === "ice" ? 0x1d3448 : 0x14161a;
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2;
+          const r = 40 * sc;
+          const px = x + Math.cos(a) * r,
+            py = feet + Math.sin(a) * r * flat;
+          const h = (18 + (i % 3) * 6) * sc * grow,
+            w = 4.5 * sc;
+          const layer = Math.sin(a) > 0 ? g : under;
+          layer.fillStyle(body, fade).fillTriangle(px - w, py, px + w, py, px + Math.cos(a) * 4 * sc, py - h);
+          layer.lineStyle(1.2 * sc, hot, 0.9 * fade).lineBetween(px, py - 2 * sc, px + Math.cos(a) * 3 * sc, py - h + 3 * sc);
+        }
+        break;
+      }
+      case "fins":
         for (let i = 0; i < 3; i++) {
-          const o = orbit(ctx, i, 3, 1300, 30, 10, -12);
-          sparkle(o.front ? g : under, o.x, o.y, 2.4 * sc, 0xfff3b0, 0.9);
+          const kk = Math.max(0, k - i * 0.15) / (1 - i * 0.15);
+          if (kk > 0) groundRing(ctx, (30 + kk * 120) * sc, i % 2 ? hot : color, 0.7 * (1 - kk), 3 * sc);
         }
-      break;
+        if (ctx.chance(30, ctx.dt))
+          ctx.emit({ x: x + (Math.random() - 0.5) * 60 * sc, y: feet, vx: 0, vy: -70, life: 0.6, size: 2.4 * sc, color: hot, shape: "bubble" });
+        break;
+      case "eclipse": {
+        const cy = ctx.headY - 34 * sc;
+        const r = (10 + Math.min(1, k * 3) * 12) * sc;
+        g.fillStyle(color, 0.3 * fade).fillCircle(x, cy, r + 8 * sc);
+        for (let i = 0; i < 16; i++) {
+          const a = now / 400 + (i / 16) * Math.PI * 2;
+          const len = (i % 2 ? 10 : 18) * sc;
+          g.lineStyle(2 * sc, color, 0.9 * fade).lineBetween(x + Math.cos(a) * (r + 2 * sc), cy + Math.sin(a) * (r + 2 * sc), x + Math.cos(a) * (r + len), cy + Math.sin(a) * (r + len));
+        }
+        g.fillStyle(hot, fade).fillCircle(x, cy, r);
+        g.fillStyle(0x07040a, fade).fillCircle(x + 2 * sc, cy - 1 * sc, r - 3 * sc);
+        break;
+      }
+      case "iron":
+        for (let i = 0; i < 3; i++) {
+          const kk = Math.max(0, k - i * 0.12) / (1 - i * 0.12);
+          if (kk > 0) groundRing(ctx, (24 + kk * 100) * sc, color, 0.8 * (1 - kk), 3.4 * sc);
+        }
+        // Cracks radiate across the ground.
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + 0.3;
+          const r = Math.min(1, k * 3) * 52 * sc;
+          under.lineStyle(2.4 * sc, color, 0.9 * fade).lineBetween(x + Math.cos(a) * 8 * sc, feet + Math.sin(a) * 8 * sc * flat, x + Math.cos(a) * r, feet + Math.sin(a) * r * flat);
+        }
+        if (k < 0.1 && ctx.chance(60, ctx.dt))
+          ctx.emit({ x: x + (Math.random() - 0.5) * 50 * sc, y: feet, vx: (Math.random() - 0.5) * 80, vy: -160 - Math.random() * 80, life: 0.7, size: 2.6 * sc, color: 0x3a3a30, shape: "pebble" });
+        break;
     }
   }
 }
@@ -368,8 +614,13 @@ export function drawSkinFx(ctx: FxContext, art: SkinArt | undefined, stage: numb
   trail(ctx, art);
   moments(ctx, art, stage);
   if (ctx.defeated) return;
-  detail(ctx, art);
-  if (art.mythic) mythic(ctx, art, stage);
+  if (art.signature) drawEpicSignature(ctx, art.signature);
+  else if (art.vanguard) drawVanguardFx(ctx, art.vanguard);
+  else detail(ctx, art);
+  if (art.mythic) {
+    mythic(ctx, art, stage);
+    voidMoments(ctx, art, stage);
+  }
 }
 
 /** One-off bursts: KO poof (Epic+), Mythical entrance, victory and ultimate. */
@@ -377,7 +628,7 @@ function moments(ctx: FxContext, art: SkinArt, stage: number) {
   const color = art.skill;
   if (color === undefined) return;
   const colors = art.trail?.colors.length ? art.trail.colors : [color];
-  const burst = (n: number, speed: number, shape: FxShape, dy = -10, life = 0.7) => {
+  const burst = (n: number, speed: number, shape: FxShape, dy = -10, life = 0.7, behind = false) => {
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + Math.random() * 0.3;
       const v = speed * (0.6 + Math.random() * 0.5);
@@ -391,20 +642,20 @@ function moments(ctx: FxContext, art: SkinArt, stage: number) {
         color: i % 2 ? color : pick(colors),
         shape,
         spin: (Math.random() - 0.5) * 10,
+        behind,
       });
     }
   };
   // Epic and up: a custom knockout poof in the skin's colours.
   if (ctx.knockedOut) burst(14, 80, "puff", -8, 0.8);
   if (!art.mythic) return;
-  // Mythicals: their own entrance and victory bursts.
-  if (ctx.greeting) burst(18, 120, art.trail ? TRAIL_SHAPE[art.trail.kind] : "star", -12, 0.9);
-  if (ctx.celebrating) burst(24, 150, "star", -26, 1);
-  // Stage III: the full ultimate effect, a ring of the skin's colour.
-  if (ctx.ultimate && stage >= 3) {
-    burst(20, 170, "star", -10, 0.6);
-    ctx.emit({ x: ctx.x, y: ctx.y - 10 * ctx.sc, vx: 0, vy: 0, life: 0.5, size: 18 * ctx.sc, color, shape: "ring" });
-  }
+  // Mythicals: the bursts that start their entrance, victory and (stage
+  // III) ultimate; the Void Knights' gate, planted sword and signature
+  // strike follow over the next frames (voidMoments).
+  if (ctx.greeting) burst(14, 150, "spark", -14, 0.7);
+  // The victory burst stays behind the fighter, off its face.
+  if (ctx.celebrating) burst(10, 90, "star", -30, 1.1, true);
+  if (ctx.ultimate && stage >= 3) burst(20, 170, "star", -10, 0.6);
 }
 
 /** Draw one particle of a skin-only shape. Returns false for the rig's own shapes. */
@@ -442,6 +693,28 @@ export function drawFxParticle(
     case "ring":
       g.lineStyle(3, p.color, fade).strokeCircle(p.x, p.y, p.size * (1 + p.age * 6));
       return true;
+    case "beam": {
+      // Narrow core inside a wider soft glow; it thins as it fades.
+      const k = 1 - p.age / p.life,
+        h = s * 9;
+      g.fillStyle(p.color, 0.22 * fade).fillRect(p.x - s * 1.6 * k, p.y - h, s * 3.2 * k, h);
+      g.fillStyle(0xffffff, 0.55 * fade).fillRect(p.x - s * 0.35 * k, p.y - h, s * 0.7 * k, h);
+      g.fillStyle(p.color, 0.3 * fade).fillEllipse(p.x, p.y, s * 5 * k, s * 1.6 * k);
+      return true;
+    }
+    case "shock": {
+      const r = s * (1 + p.age * 9);
+      g.lineStyle(2.6, p.color, fade).strokeEllipse(p.x, p.y, r * 2, r * 0.75);
+      g.lineStyle(6, p.color, 0.25 * fade).strokeEllipse(p.x, p.y, r * 2.1, r * 0.8);
+      return true;
+    }
+    case "ray": {
+      // The tail points back along the flight; it shortens as it fades.
+      const k = 0.11 * fade;
+      g.lineStyle(s * 0.55, p.color, 0.35 * fade).lineBetween(p.x, p.y, p.x - p.vx * k, p.y - p.vy * k);
+      g.lineStyle(s * 0.22, 0xffffff, 0.9 * fade).lineBetween(p.x, p.y, p.x - p.vx * k * 0.7, p.y - p.vy * k * 0.7);
+      return true;
+    }
     case "flake":
       g.lineStyle(1.1, p.color, fade)
         .lineBetween(p.x - s, p.y, p.x + s, p.y)
@@ -450,4 +723,51 @@ export function drawFxParticle(
       return true;
   }
   return false;
+}
+
+/**
+ * Draw any particle: the skin shapes above plus the rig's own (dot, bubble,
+ * puff, pebble, spark, star). Shared by the rig and the Shop/Wardrobe live
+ * thumbnails so both show exactly the same effect.
+ */
+export function drawAnyParticle(
+  g: Phaser.GameObjects.Graphics,
+  particle: FxParticle & { age: number },
+  linearFade: number,
+) {
+  // Over-life shaping: size, colour ramp, a fade-in, an eased fade-out and
+  // a sway. Plain particles pass straight through.
+  let p = particle,
+    fade = linearFade;
+  if (p.grow !== undefined || p.to !== undefined || p.fadeIn || p.sway) {
+    const k = Math.min(1, p.age / p.life);
+    const inK = p.fadeIn ? Math.min(1, k / p.fadeIn) : 1;
+    // Ease the fade-out: full for most of its life, then gone smoothly.
+    fade = inK * (1 - k * k);
+    p = {
+      ...p,
+      size: p.size * (1 + ((p.grow ?? 1) - 1) * k),
+      color: p.to !== undefined ? lerpColor(p.color, p.to, k) : p.color,
+      x: p.sway ? p.x + Math.sin(p.age * 4 + p.size * 7) * p.sway : p.x,
+    };
+  }
+  if (p.glow && p.shape !== "ring" && p.shape !== "beam" && p.shape !== "shock" && p.shape !== "ray")
+    g.fillStyle(p.color, 0.16 * fade).fillCircle(p.x, p.y, p.size * 2.6);
+  if (drawFxParticle(g, p, fade)) return;
+  const s = p.size;
+  if (p.shape === "dot") g.fillStyle(p.color, 0.85 * fade).fillCircle(p.x, p.y, s);
+  else if (p.shape === "bubble")
+    g.lineStyle(1.2, p.color, 0.8 * fade).strokeCircle(p.x, p.y, s);
+  else if (p.shape === "puff")
+    g.fillStyle(p.color, 0.35 * fade).fillCircle(p.x, p.y, s * (1 + p.age * 2));
+  else if (p.shape === "pebble")
+    g.fillStyle(p.color, fade)
+      .fillTriangle(p.x - s, p.y, p.x, p.y - s * 0.8, p.x + s, p.y)
+      .fillTriangle(p.x - s, p.y, p.x, p.y + s * 0.7, p.x + s, p.y);
+  else if (p.shape === "spark")
+    g.lineStyle(1.6, p.color, fade)
+      .lineBetween(p.x - s, p.y, p.x, p.y - s * 0.6)
+      .lineBetween(p.x, p.y - s * 0.6, p.x + s * 0.4, p.y + s * 0.5);
+  // A tiny four-point star.
+  else sparkle(g, p.x, p.y, s, p.color, 0.9 * fade);
 }

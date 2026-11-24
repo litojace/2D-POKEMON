@@ -1,0 +1,133 @@
+import { isScrollLocked } from "./scroll-lock";
+
+/**
+ * Keep a fixed-screen page (the hub: Lobby, Plaza and their panels; a
+ * battle) at the top of the window.
+ *
+ * Those screens are exactly the window and never scroll, but iPhone and
+ * iPad Safari still move the page: the on-screen keyboard lifts it to show
+ * the field being typed in (a name, a room code, chat) and often leaves it
+ * lifted after the keyboard closes, and the toolbars growing or shrinking can
+ * nudge it too. Then the whole interface sits too high, panels out of place,
+ * with a band of nothing at the bottom, until the page is reloaded (owner's
+ * iPad Pro 13" M4 on iPadOS 27, landscape, 11 Nov 2026). `overflow: hidden`
+ * on the body does not stop it there.
+ *
+ * So whenever the page has moved, and no text field is being typed in (the
+ * keyboard needs that lift), put it back at the top: after the keyboard
+ * closes, after a scroll settles, when the visible area changes size, and
+ * when the page is shown again.
+ */
+export interface PinWindow {
+  scrollX: number;
+  scrollY: number;
+  scrollTo(x: number, y: number): void;
+}
+
+/** A field the on-screen keyboard is open for. */
+export function typingIn(el: Element | null) {
+  if (!el || typeof HTMLElement === "undefined") return false;
+  if (!(el instanceof HTMLElement)) return false;
+  if (el.isContentEditable) return true;
+  if (el instanceof HTMLTextAreaElement) return true;
+  if (el instanceof HTMLSelectElement) return true;
+  if (!(el instanceof HTMLInputElement)) return false;
+  return ![
+    "button",
+    "checkbox",
+    "color",
+    "file",
+    "hidden",
+    "image",
+    "radio",
+    "range",
+    "reset",
+    "submit",
+  ].includes(el.type);
+}
+
+/**
+ * Focus a text field for typing (a button that opens a form: Add friend,
+ * Change name). Never with `preventScroll`: since 2022 iPhone and iPad
+ * Safari honour it (WebKit bug 236584), and then it also skips lifting the
+ * page above the keyboard, so the field sat under the keyboard until it was
+ * tapped again (owner's iPhone, landscape, Nov 2026). Without it the browser
+ * only scrolls when the field is out of sight, and on a fixed screen the lift
+ * goes back once the keyboard closes (watchScreenPin).
+ */
+export function focusForTyping(
+  field: HTMLElement | null | undefined,
+  { selectAll = false } = {},
+) {
+  if (!field) return false;
+  field.focus();
+  // Selecting the text as well (a name to type over) stops the lift again on
+  // iPhone: with focus() and select() together the field stayed under the
+  // keyboard while Add friend, focus alone, was lifted (owner's iPhone, Nov
+  // 2026; WebKit bug 217350). So only where there is no on-screen keyboard.
+  if (
+    selectAll &&
+    field instanceof HTMLInputElement &&
+    !matchMedia("(pointer: coarse)").matches
+  )
+    field.select();
+  return true;
+}
+
+/** The body classes of screens that are exactly the window. */
+const FIXED_SCREENS = ["hub-active", "battle-active"];
+
+/**
+ * Put a moved fixed-screen page back at the top. Returns true when it did.
+ * Leaves it alone while typing, while a dialog has pinned the page
+ * (scroll-lock.ts restores its own position), and on pages that scroll.
+ */
+export function pinScreen(
+  win: PinWindow,
+  fixedScreen: boolean,
+  typing: boolean,
+  locked: boolean,
+) {
+  if (!fixedScreen || typing || locked) return false;
+  if (!win.scrollX && !win.scrollY) return false;
+  win.scrollTo(0, 0);
+  return true;
+}
+
+function pinNow() {
+  pinScreen(
+    window,
+    FIXED_SCREENS.some((name) => document.body.classList.contains(name)),
+    typingIn(document.activeElement),
+    isScrollLocked(),
+  );
+}
+
+let settle: ReturnType<typeof setTimeout> | undefined;
+/** Pin once things have stopped moving (a scroll's momentum, the keyboard). */
+function pinSoon(ms = 150) {
+  clearTimeout(settle);
+  settle = setTimeout(pinNow, ms);
+}
+
+export function watchScreenPin() {
+  if (typeof window === "undefined") return;
+  window.addEventListener("scroll", () => pinSoon(), { passive: true });
+  // The keyboard closing: it animates away, and Safari settles the page
+  // after it, so look again a little later too. Only a field the keyboard
+  // was open for: a tap moving focus between buttons (every screen opening
+  // takes it) closes no keyboard, and each look lays out the page, twice in
+  // the middle of a screen sliding in (Nov 2026).
+  document.addEventListener("focusout", (event) => {
+    if (!typingIn(event.target as Element | null)) return;
+    pinSoon(120);
+    setTimeout(pinNow, 600);
+  });
+  window.visualViewport?.addEventListener("resize", () => pinSoon());
+  window.visualViewport?.addEventListener("scroll", () => pinSoon());
+  window.addEventListener("resize", () => pinSoon());
+  window.addEventListener("pageshow", () => pinSoon(0));
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) pinSoon(0);
+  });
+}

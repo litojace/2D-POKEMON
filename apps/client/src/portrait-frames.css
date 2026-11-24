@@ -1,0 +1,139 @@
+/* Frame artwork is shared with Wardrobe, lobbies and raid results. */
+.portrait-frame.raid-cosmetic-preview {
+  display: grid;
+  place-items: center;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+}
+.fr-avatar:has(> .portrait-frame),
+.player-avatar:has(> .portrait-frame) {
+  overflow: visible;
+  border-color: transparent;
+  background: transparent;
+}
+body:is(.home-active, .lobby-active)
+  #account-profile
+  .account-avatar:has(> .portrait-frame) {
+  overflow: visible;
+  border-color: transparent;
+  background: transparent;
+}
+body.home-active #account-profile:has(.portrait-frame) {
+  gap: 14px;
+  padding-left: 8px;
+}
+body.lobby-active #account-profile:has(.portrait-frame) {
+  column-gap: 14px;
+  padding-left: 12px;
+}
+/* Ornaments scale with each identity portrait’s size. Candy, Garden,
+   Festival and Winter ornaments are sized in collection-frames.css, boss
+   frame ornaments in boss-frames.css; the signature frames
+   (signature-frames.css) draw theirs inside the art. */
+
+/* Boss frames grow with clears (frameStars): a small star row under the
+   portrait, gold and gently glowing at five stars. */
+.portrait-frame .frame-stars {
+  position: absolute;
+  left: 50%;
+  /* Below the frame's bottom ornament (pearl, gem), never over it. */
+  bottom: -20%;
+  z-index: 6;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #0b1222e6;
+  box-shadow: 0 0 0 1px #e9c97a66;
+  color: #ffd76a;
+  font: 700 calc(9px * var(--text-scale, 1)) / 1.25 var(--display, sans-serif);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.portrait-frame .frame-stars.is-legendary {
+  color: #fff2b0;
+  box-shadow:
+    0 0 0 1px #ffd76a,
+    0 0 8px #ffcf4a99;
+}
+/* A still glow: an animated filter repaints the portrait every frame. */
+.portrait-frame.is-legendary-frame {
+  filter: drop-shadow(0 0 6px #ffcf4add) saturate(1.2);
+}
+.account-avatar .portrait-frame .frame-stars {
+  font-size: calc(7px * var(--text-scale, 1));
+  bottom: -24%;
+}
+
+/* Identity widgets share one circular portrait at every responsive size. */
+:is(
+  .account-avatar,
+  .player-avatar,
+  .raid-party-avatar,
+  .raid-score-avatar,
+  .fr-avatar
+) {
+  border-radius: 50% !important;
+  overflow: visible;
+  flex-shrink: 0;
+  position: relative;
+  aspect-ratio: 1;
+}
+:is(
+  .account-avatar,
+  .player-avatar,
+  .raid-party-avatar,
+  .raid-score-avatar,
+  .fr-avatar
+):has(> .portrait-frame) {
+  border-color: transparent;
+  background: transparent;
+}
+.raid-cosmetic-preview:is(.portrait-frame, [data-frame-stars]) {
+  border-radius: 50% !important;
+}
+.portrait-disc {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(circle at 50% 40%, #28486b, #0b1428 85%);
+}
+.portrait-frame > .portrait-disc {
+  position: relative;
+  z-index: 1;
+}
+.portrait-disc > :is(svg, img) {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.portrait-frame .frame-stars {
+  font-size: calc(7px * var(--text-scale, 1));
+  letter-spacing: 0.2px;
+}
+/* Extra room below the circle keeps badges/stars away from the next row. */
+.raid-party-member:has(.frame-stars),
+.raid-score-row:has(.frame-stars) {
+  min-height: 58px;
+}
+
+/* A library avatar (avatars.ts) filling the disc: transparent outside its
+   own circle, so the disc's colour never shows at its edge. */
+.portrait-avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  -webkit-user-drag: none;
+  user-select: none;
+}

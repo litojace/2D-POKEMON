@@ -1,33 +1,32 @@
 /** Keep navigation and actions outside long, touch-scrollable menu content. */
 export function setDialogContent(dialog: HTMLDialogElement, html: string) {
-  dialog.innerHTML = `<button type="button" id="close-dialog" class="close" aria-label="Close dialog">×</button>${html}`;
-  dialog.classList.add("framed-dialog");
-  const raid = !!dialog.querySelector(".raid-hub");
-  const close = dialog.querySelector<HTMLButtonElement>("#close-dialog")!;
+  // Build off-screen first, then swap the dialog's insides in one go.
+  const staging = document.createElement("div");
+  staging.innerHTML = `<button type="button" id="close-dialog" class="close" aria-label="Close dialog">×</button>${html}`;
+  dialog.classList.add("framed-dialog", "card");
+  const close = staging.querySelector<HTMLButtonElement>("#close-dialog")!;
   const content = document.createElement("div");
-  content.className = `dialog-content${raid ? " raid-dialog-content" : ""}`;
+  content.className = "dialog-content";
   content.tabIndex = 0;
   content.setAttribute("role", "region");
   content.setAttribute("aria-label", "Menu content");
-  for (const node of Array.from(dialog.childNodes))
+  for (const node of Array.from(staging.childNodes))
     if (node !== close) content.append(node);
   const toolbar = document.createElement("div");
-  toolbar.className = `dialog-toolbar${raid ? " raid-dialog-toolbar" : ""}`;
+  toolbar.className = "dialog-toolbar";
   const back = content.querySelector<HTMLButtonElement>(
-    "#raid-hub-back, #controls-back, #leaderboard-back",
+    "#controls-back, #credits-back, #skills-back",
   );
   if (back) toolbar.append(back);
   toolbar.append(close);
-  const tabs = content.querySelector<HTMLElement>(
-    ".raid-hub-tabs, .shop-tabs, .admin-tabs, .adventure-tabs",
-  );
+  const tabs = content.querySelector<HTMLElement>(".admin-tabs");
   if (tabs) tabs.classList.add("dialog-tabs");
   dialog.classList.toggle("has-dialog-tabs", !!tabs);
   const inlineTabs = !!tabs && !back;
   dialog.classList.toggle("has-inline-tabs", inlineTabs);
   if (inlineTabs) toolbar.prepend(tabs!);
   else if (!tabs && !back) {
-    const heading = content.querySelector<HTMLElement>(".missions-head, h2");
+    const heading = content.querySelector<HTMLElement>("h2");
     if (heading) {
       heading.classList.add("dialog-heading");
       toolbar.prepend(heading);
@@ -42,24 +41,10 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   const actions = content.querySelectorAll<HTMLElement>(
     [
       ".dialog-actions",
-      ".adventure-actions",
       ".fullscreen-actions",
       ".settings-actions",
-      ".missions-shop",
-      ".raid-hub-actions",
       "#controls-reset",
-      "#control-reset",
       "#open-controls",
-      ".auth-links",
-      "#auth-form > button[type=submit]",
-      "#auth-google",
-      "#guest-form > button",
-      "#profile-save > button",
-      "#profile-title > button",
-      "#profile-leaderboard",
-      "#profile-raids",
-      "#profile-adventure",
-      "#friend-add > button",
       "#report-form > button[type=submit]",
     ].join(","),
   );

@@ -96,23 +96,28 @@ it("ranks fighter mastery by matches played", () => {
 });
 
 it("lists friends online first with Join and Watch where it makes sense", async () => {
-  const { friendsMarkup, friendStatus } = await import(
-    "../../apps/client/src/friends-view"
+  const { friendsMarkup, friendsView, friendStatus } = await import(
+    "../../apps/client/src/screens/friends-view"
   );
-  const html = friendsMarkup({
-    code: "ABCD1234",
-    incoming: [{ id: "x", name: "Newbie" }],
-    outgoing: [],
-    friends: [
-      { id: "1", name: "Kai", online: true, activity: "lobby", room: "ROOM01", joinable: true },
-      { id: "2", name: "Mina", online: true, activity: "match", room: "ROOM02", fighter: "tidefin" },
-      { id: "3", name: "Rowan", online: false },
-    ],
+  const html = friendsMarkup(friendsView(), {
+    list: {
+      code: "ABCD1234",
+      incoming: [{ id: "x", name: "Newbie" }],
+      outgoing: [],
+      friends: [
+        { id: "1", name: "Kai", online: true, activity: "lobby", room: "ROOM01", joinable: true },
+        { id: "2", name: "Mina", online: true, activity: "match", room: "ROOM02", fighter: "tidefin" },
+        { id: "3", name: "Rowan", online: false },
+      ],
+    },
+    recent: null,
+    party: { size: 1, ids: [], leader: true },
   });
-  expect(html).toContain('data-accept="x"');
-  expect(html).toContain('data-join="ROOM01"');
-  expect(html).toContain('data-watch="ROOM02"');
-  expect(html).not.toContain('data-join="ROOM02"');
+  expect(html).toContain('data-friend-accept="x"');
+  expect(html).toContain('data-friend-join="ROOM01"');
+  expect(html).toContain('data-friend-watch="ROOM02"');
+  expect(html).not.toContain('data-friend-join="ROOM02"');
+  expect(html.indexOf("Kai")).toBeLessThan(html.indexOf("Rowan"));
   expect(friendStatus({ id: "2", name: "Mina", online: true, activity: "match", fighter: "tidefin" })).toBe("In a match as Tidefin");
   expect(friendStatus({ id: "3", name: "Rowan", online: false })).toBe("Offline");
 });

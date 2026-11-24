@@ -1,16 +1,17 @@
-# Player journey, weekly arcade and Boss Rush
+# Player journey and weekly arcade
 
-User-approved scope: all four features in one update. Progression is cosmetic; account levels never alter fighter stats or rating. Existing mastery, raid unlocks, purchases and admin testing stay independent.
+Boss Rush and Raid of the Day were retired by migration 028; previous rewards stay owned. Progression is cosmetic; account levels never alter fighter stats or rating. Existing mastery, raid unlocks, purchases and admin testing stay independent.
 
 - [x] Account levels 1–50: 100 + 25 × (level − 1) XP per next level. Verified completed PvP 50 (+25 win), AI 25, raid clears 100/150/200, partial raid XP by phase. Daily missions add 50. Thirty coins per level; ten milestones every five levels.
+- [x] Levels 51–100 (migration 035, hub redesign phase 1): about 1,450 XP for level 50 → 51, rising to 9,075 by level 70 and 11,250 at the top (`xpToNextLevel` in `packages/shared/src/journey.ts`; 431,625 XP in total). Every level from 50 pays 100 coins. New titles at 60 (Arena Veteran), 75 (Mythic Champion), 90 (Ascendant) and 100 (Element Master).
+- [x] Level 55–100 cosmetics (migration 051): Prism frame (55), Nova entrance (65), Starlit colors (70), Solar aura (80), Eclipse finale (85), Prismatic laurel (95) and the Element Master frame (100, with the title). Mythical tier, each with its own art (frames in `scripts/journey-frame-art.mjs`, effects in `apps/client/src/skins/collection-fx.ts`). `arena_add_xp` grants them on the way up and hands back any level cosmetic a player is missing; the migration gave them to everyone already past those levels.
+- [x] Daily Spark (migration 035): the first 500 XP each Pacific day count double, for every XP source, and the bonus also counts for the season. Each bonus is its own XP ledger row (source `spark`, ref `<source>:<ref>`), so a replayed result never doubles twice.
 - [x] Weekly arcade: Monday rotation in Pacific time. Crown Chase (moving hill), Meteor Mayhem (telegraphed hazards), Ultimate Overload (4× meter charge). Supports private 1v1/2v2 and an AI opponent; separate from rating.
-- [x] Boss Rush: weekly three-boss route, shorter final-chapter encounters, solo or 1–4 players. Health and rites carry; each raider chooses full healing or a smaller heal with ultimate charge at camp. Fifteen-second choices and pinned actions. Save one expedition receipt, including partial completion, without granting ordinary per-boss clears.
-- [x] Free monthly seasonal journey: twenty 400-XP tiers, four themed cosmetic milestones, automatic rewards, four weekly goals. Previous rewards stay owned. No purchase gate.
+- [x] Free monthly seasonal journey: twenty 400-XP tiers, four themed cosmetic milestones, automatic rewards, four weekly goals. Previous rewards stay owned. No purchase gate. From the month after migration 035 runs: thirty 800-XP tiers (1,200 until migration `20261121200000`), with the same four cosmetics at tiers 5, 12, 20 and 30 (`arena_season_rules`).
 - [x] Regression, persistence/permissions/replay tests, desktop and mobile browser review; push to main.
 
-Database migration 022 is applied manually after 021; no production database connector is available. The client handles a missing migration without inventing saved progress.
+Apply the SQL migrations in order, through 028. The client handles a missing migration without inventing saved progress.
 
-
-Deployment: run `022_player_journey.sql` in Supabase after migration 021, then deploy this commit. The final SQL query returns `journey_enabled = true`. Reapplying 022 preserves XP, wallets, earned items, admin privileges and previous seasons. Existing player levels start at 1; past matches are not backfilled. The normal raid ledger and rating ledger remain separate from expeditions and arcade.
+Deployment: run `022_player_journey.sql` in Supabase after migration 021, then deploy this commit. The final SQL query returns `journey_enabled = true`. Reapplying 022 preserves XP, wallets, earned items, admin privileges and previous seasons. Existing player levels start at 1; past matches are not backfilled. The normal raid ledger and rating ledger remain separate from arcade.
 
 Balance values are initial settings pending human play feedback. Seasonal XP follows Pacific calendar months; weekly goals and mode rotation reset on Monday. Every monthly tier grants 50 coins, with cosmetics at tiers 5, 10, 15 and 20. Returning cosmetic themes grant 100 extra coins when a milestone item is already owned. Previewing a locked reward never grants it or changes an admin's earned level.

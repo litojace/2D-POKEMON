@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CHARACTERS, RULES } from "@arena/shared";
+import { CHARACTERS, RULES, maxHealth } from "@arena/shared";
 import { Arena } from "../../apps/server/src/simulation";
 import { matchSummary } from "../../apps/server/src/match-summary";
 const tick = (a: Arena, seconds: number) => {
@@ -57,8 +57,9 @@ describe("free-for-all", () => {
   it("on time, the healthiest fighter still standing wins", () => {
     const a = ffa();
     const [p0, p1, p2] = a.players;
-    p0.hp = CHARACTERS.voltkit.health * 0.5;
-    p1.hp = CHARACTERS.tidefin.health * 0.9;
+    // Shares of each fighter's free-for-all health (FFA_TUNING applies).
+    p0.hp = maxHealth("voltkit", "ffa") * 0.5;
+    p1.hp = maxHealth("tidefin", "ffa") * 0.9;
     p2.hp = 0;
     a.deadline = a.time;
     a.tick();

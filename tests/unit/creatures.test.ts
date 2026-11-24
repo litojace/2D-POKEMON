@@ -1,3 +1,4 @@
+import { svgMarkup } from "../../apps/client/tests/svg-markup";
 import { expect, it } from "vitest";
 import {
   CHARACTERS,
@@ -5,6 +6,7 @@ import {
   characterSchema,
   normalizeCharacterId,
   COMBOS,
+  PRACTICE_GRID,
   ULT_SLOT,
   type CharacterId,
 } from "@arena/shared";
@@ -14,16 +16,16 @@ import {
   creatureSvg,
 } from "../../apps/client/src/creature-design";
 import { fighterPackSchema } from "../../apps/client/src/animation/asset-schema";
-import { fighterSelection } from "../../apps/client/src/fighter-selection";
+import { rosterDetail, rosterGrid } from "./roster-markup";
 import { elementShapes } from "../../apps/client/src/element-effects";
 import { readFileSync, existsSync } from "node:fs";
-it("has eight fighters, forty unique moves and four special skills per fighter", () => {
+it("has eighteen fighters, ninety unique moves and four special skills per fighter", () => {
   expect(Object.keys(CHARACTERS)).toEqual([...FIGHTER_IDS]);
   const abilities = Object.values(CHARACTERS).flatMap((c) => [
     c.basic,
     ...c.skills,
   ]);
-  expect(new Set(abilities.map((a) => a.id)).size).toBe(40);
+  expect(new Set(abilities.map((a) => a.id)).size).toBe(90);
   for (const c of Object.values(CHARACTERS)) {
     expect(c.skills).toHaveLength(4);
     expect(c.health).toBeGreaterThan(0);
@@ -36,16 +38,26 @@ it("has eight fighters, forty unique moves and four special skills per fighter",
     Object.keys(elementShapes).length,
   );
 });
-it("increases roster health by 25% while preserving movement speeds", () => {
+it("pins roster health (champion balance overhaul) and movement speeds", () => {
   const baseline: Record<string, [number, number]> = {
-    voltkit: [138, 270],
-    cindrake: [156, 240],
-    tidefin: [131, 285],
-    auralynx: [175, 235],
-    lumoth: [144, 265],
-    mystowl: [130, 255],
-    terradon: [219, 222],
-    duskveil: [150, 260],
+    voltkit: [135, 270],
+    cindrake: [158, 240],
+    tidefin: [136, 285],
+    auralynx: [170, 235],
+    lumoth: [141, 265],
+    mystowl: [138, 255],
+    terradon: [196, 222],
+    duskveil: [148, 260],
+    coilemur: [150, 250],
+    pyranda: [152, 235],
+    glacelle: [158, 255],
+    halcyra: [141, 260],
+    sunbara: [190, 240],
+    astrabun: [132, 262],
+    wombolder: [173, 232],
+    shadopus: [132, 278],
+    pangrove: [140, 245],
+    mossloth: [148, 240],
   };
   for (const [id, stats] of Object.entries(baseline)) {
     const c = CHARACTERS[id as CharacterId];
@@ -58,14 +70,6 @@ it("migrates legacy identifiers without accepting arbitrary object properties", 
     emberwing: "cindrake",
     aquashade: "tidefin",
     auralith: "auralynx",
-    pikachu: "voltkit",
-    charizard: "cindrake",
-    greninja: "tidefin",
-    lucario: "auralynx",
-    eevee: "lumoth",
-    mewtwo: "mystowl",
-    snorlax: "terradon",
-    gengar: "duskveil",
     thornback: "mystowl",
     frostfang: "terradon",
     duskveil: "duskveil",
@@ -88,26 +92,44 @@ it("loads original art and valid public metadata for every fighter and direction
     for (const dir of ["up", "down", "left", "right"] as const) {
       const svg = creatureSvg(id, dir);
       expect(svg).toContain("radialGradient");
-      expect(svg).not.toMatch(/undefined|NaN|scale\(-1/);
+      expect(svgMarkup(svg)).not.toMatch(/undefined|NaN/);
+      // A true side drawing can mirror its counterpart; it never compresses
+      // the front torso and face to manufacture a side view.
+      if (dir === "left" || dir === "right")
+        expect(creatureLayers(id, dir).layers.body).toContain(
+          "data-articulated-facing=",
+        );
       expect(creatureLayers(id, dir).layers.eyes === "").toBe(dir === "up");
     }
     art.add(creatureSvg(id));
   }
-  expect(art.size).toBe(8);
-  expect(fighterSelection("voltkit").match(/data-character=/g)).toHaveLength(8);
+  expect(art.size).toBe(18);
+  // The roster (the one fighter picker since UI remodel step 5).
+  expect(rosterGrid("voltkit").match(/data-roster-card=/g)).toHaveLength(18);
   expect(
-    fighterSelection("voltkit", "Earth").match(/data-character=/g),
-  ).toHaveLength(1);
-  const detail = fighterSelection("terradon");
+    rosterGrid("voltkit", "Nature").match(/data-roster-card=/g),
+  ).toHaveLength(2);
+  expect(
+    rosterGrid("voltkit", "Earth").match(/data-roster-card=/g),
+  ).toHaveLength(2);
+  const detail = rosterDetail("terradon", { tab: "skills" });
   CHARACTERS.terradon.skills.forEach((a, i) => {
     expect(detail).toContain(a.name);
     // The ultimate charges from a meter instead of a cooldown.
-    expect(detail).toContain(i === ULT_SLOT ? "ULT" : `${a.cooldown}s`);
+    expect(detail).toContain(i === ULT_SLOT ? "Ultimate" : `${a.cooldown}s`);
   });
-  expect(detail).toContain(COMBOS.terradon.text);
-  expect(detail).toContain("600 ms between attacks");
+  // The combo sits on the Skills tab, under the basic attack row.
+  const combo = detail.indexOf(COMBOS.terradon.text);
+  expect(combo).toBeGreaterThan(detail.indexOf('data-roster-skill="basic"'));
+  expect(detail.indexOf('data-roster-skill="basic"')).toBeGreaterThan(-1);
+  expect(rosterDetail("terradon", { tab: "overview" })).not.toContain(
+    COMBOS.terradon.text,
+  );
+  expect(rosterDetail("terradon", { tab: "skills", skill: "basic" })).toContain(
+    `${Math.round((CHARACTERS.terradon.basic.interval ?? 0) * 1000)} ms between attacks`,
+  );
   expect(detail).not.toContain("PLACEHOLDER");
-  expect(fighterSelection("voltkit")).toContain("Overcharge");
+  expect(rosterDetail("voltkit", { tab: "skills" })).toContain("Thunderstorm");
 });
 it("validates frame, sheet and atlas imports, frame keys, rates and local paths", () => {
   const animations = Object.fromEntries(
@@ -199,18 +221,18 @@ it("applies counter, barrier and grounded area counterplay on the server", () =>
   guard.cast(p, CHARACTERS.auralynx.skills[2]);
   guard.damage(p, 20, "two");
   expect(p.hp).toBe(CHARACTERS.auralynx.health - 10);
-  expect(guard.players[1].hp).toBe(CHARACTERS.voltkit.health - 6);
+  expect(guard.players[1].hp).toBe(CHARACTERS.voltkit.health - 4);
   const shield = duel("mystowl"),
     m = shield.players[0];
   shield.cast(m, CHARACTERS.mystowl.skills[2]);
   shield.damage(m, 20, "two");
-  // Ward lets 40% of the hit through.
+  // Wing Cloak lets 40% of the hit through.
   expect(m.hp).toBe(CHARACTERS.mystowl.health - 20 * 0.4);
   expect(shield.players[1].hp).toBe(CHARACTERS.voltkit.health);
   const field = duel("voltkit"),
     q = field.players[1];
   q.jumpUntil = field.time + 1;
   const hp = q.hp;
-  field.damage(q, 10, "one", CHARACTERS.voltkit.skills[2]);
+  field.damage(q, 10, "one", PRACTICE_GRID);
   expect(q.hp).toBe(hp);
 });

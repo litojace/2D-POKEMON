@@ -35,6 +35,20 @@ const priority: Record<AnimationState, number> = {
   hurt: 80,
   defeat: 100,
 };
+/**
+ * How long an attack holds the whole body before running takes over again
+ * (ms). Moving while casting is allowed (the server never roots a caster),
+ * so once the throw has visibly happened the legs go back to running
+ * instead of sliding in a planted pose until the move's end (a breath
+ * attack lasts seconds). Standing still, the move plays out in full.
+ */
+export const RUN_THROUGH_AFTER: Partial<Record<AnimationState, number>> = {
+  basic: 140,
+  skill0: 240,
+  skill1: 240,
+  skill2: 240,
+  skill3: 380,
+};
 export interface AnimationPose {
   /** Equipped raid appearance (skin and entrance affect the rig). */
   look?: RaidLoadout;
@@ -53,6 +67,19 @@ export interface AnimationPose {
   ultReady?: boolean;
   /** Round intro (countdown): each fighter greets with its own wave. */
   greet?: boolean;
+  /** Shell Up: pulled into the shell, so only the shell shows. */
+  shell?: boolean;
+  /** Underground (Tunnel): how far its mound has churned, and where it heads. */
+  mound?: { churn: number; heading: number };
+  /** A tint over the whole fighter (Spire Echoes), and the one it flashes when hit. */
+  tint?: number;
+  hurtTint?: number;
+  /**
+   * A flat colour laid over the whole fighter at `alpha` (zone 3's Echoes:
+   * pale ghosts that lift their dark outlines off the dark court). Normal
+   * blending, the fighter's own silhouette: no glow.
+   */
+  wash?: { color: number; alpha: number };
 }
 export function facing(angle: number): Facing {
   return Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))
@@ -99,6 +126,14 @@ export class AnimationController {
       (pose.speed > 12 || pose.dash || pose.jump || pose.charging)
     )
       this.until = 0;
+    const runThrough = RUN_THROUGH_AFTER[this.state];
+    if (
+      runThrough !== undefined &&
+      !pose.charging &&
+      pose.speed > runThreshold &&
+      now - this.started >= runThrough
+    )
+      this.until = 0;
     if (now < this.until) return this.state;
     const next: AnimationState = pose.dash
       ? "dash"
@@ -120,6 +155,10 @@ export class AnimationController {
       this.started = now;
     }
     return this.state;
+  }
+  /** End this move early (a predicted cast the server refused). */
+  cancel(state: AnimationState) {
+    if (this.state === state) this.until = 0;
   }
   reset() {
     this.state = "idle";

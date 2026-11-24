@@ -1,0 +1,660 @@
+/* Approved H / Starforged Sigil. Artwork never contains UI text. */
+.server-startup {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-system, 2147482000);
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  padding: max(20px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom))
+    max(24px, env(safe-area-inset-left));
+  overflow: hidden auto;
+  background: #040d1e;
+  color: #f2f5ff;
+  text-align: center;
+}
+.server-startup::before,
+.server-startup::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.server-startup::before {
+  z-index: -2;
+  background: var(--startup-backdrop) center / cover no-repeat;
+  /* Faded in once downloaded, never drawn in strips (server-connection.ts). */
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+.server-startup.has-backdrop::before {
+  opacity: 1;
+}
+.server-startup::after {
+  z-index: -1;
+  background: linear-gradient(180deg, #02081544, #02081508 45%, #02081599);
+}
+.server-startup-card {
+  position: relative;
+  width: min(1080px, 100%);
+  height: 100%;
+  max-height: 900px;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  justify-items: center;
+  gap: clamp(8px, 2vh, 18px);
+}
+.server-startup-brand {
+  display: grid;
+  justify-items: center;
+  gap: clamp(7px, 1.2vh, 12px);
+}
+.server-startup-brand h1 {
+  margin: 0;
+  color: #f2f5ff;
+  font:
+    600 clamp(27px, 7.2vh, 60px) / 0.96 "Barlow Condensed",
+    Impact,
+    sans-serif;
+  text-transform: uppercase;
+  text-shadow:
+    0 2px 14px #020714,
+    0 0 25px #9dcfff22;
+}
+.server-startup-brand h1 > span {
+  display: block;
+  letter-spacing: 0.17em;
+  /* Balance the tracking after the final glyph for optical centering. */
+  padding-left: 0.17em;
+}
+.server-startup-divider {
+  position: relative;
+  display: block;
+  width: clamp(94px, 17vh, 150px);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #dfbd6b 35%,
+    #dfbd6b 65%,
+    transparent
+  );
+}
+.server-startup-divider::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  top: -3px;
+  left: calc(50% - 3px);
+  transform: rotate(45deg);
+  background: #f3d58c;
+  box-shadow: 0 0 10px #e8bf6a88;
+}
+.server-startup-scene {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  /* The sigil is sized from this box (cq units), not from a percentage
+     height plus aspect-ratio: iOS kept that stale after a rotation, and the
+     sigil spilled over the title and progress bar until turned again. */
+  container-type: size;
+}
+.server-startup-art {
+  position: relative;
+  --sigil: min(100cqh, 100cqw, 64vw, 480px);
+  width: var(--sigil);
+  height: var(--sigil);
+  animation: server-sigil-float 7s ease-in-out infinite;
+}
+.server-startup-art > img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+.server-startup.has-sigil .server-startup-art > img {
+  opacity: 1;
+}
+.server-startup-aura {
+  position: absolute;
+  inset: 13%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #7adfff24,
+    #348bcf14 42%,
+    transparent 72%
+  );
+  animation: server-sigil-glow 5s ease-in-out infinite;
+}
+.server-startup-orbits {
+  position: absolute;
+  inset: -5%;
+  width: 110%;
+  height: 110%;
+  overflow: visible;
+  pointer-events: none;
+  fill: none;
+  stroke: #edc77b;
+}
+.server-startup-orbits ellipse {
+  vector-effect: non-scaling-stroke;
+}
+.server-startup-orbit {
+  stroke-width: 0.85px;
+  stroke-opacity: 0.8;
+  animation: server-sigil-glow var(--orbit-duration) ease-in-out
+    var(--orbit-delay) infinite;
+}
+.server-startup-orbits g:nth-child(2) .server-startup-orbit {
+  stroke-opacity: 0.6;
+}
+.server-startup-orbits g:nth-child(3) .server-startup-orbit {
+  stroke-opacity: 0.4;
+}
+.server-startup-art > i {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  top: 16%;
+  left: 16%;
+  border-radius: 50%;
+  background: #ffe6a0;
+  box-shadow:
+    0 0 8px #f7d383,
+    0 0 18px #f7d38366;
+  animation: server-ember 5s ease-in-out infinite;
+}
+.server-startup-art > i:nth-of-type(2) {
+  top: 36%;
+  left: 92%;
+  animation-delay: -1.2s;
+}
+.server-startup-art > i:nth-of-type(3) {
+  top: 77%;
+  left: 14%;
+  animation-delay: -2.3s;
+}
+.server-startup-art > i:nth-of-type(4) {
+  top: 93%;
+  left: 71%;
+  animation-delay: -3.4s;
+}
+.server-startup-art > i:nth-of-type(5) {
+  top: 7%;
+  left: 79%;
+  animation-delay: -4.2s;
+  background: #b0eaff;
+}
+.server-startup-art > i:nth-of-type(6) {
+  top: 53%;
+  left: 4%;
+  animation-delay: -1.8s;
+  background: #b0eaff;
+}
+.server-startup-loading {
+  width: min(520px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+.server-startup-loading h2 {
+  margin: 0;
+  color: #f1f4fc;
+  font:
+    500 clamp(14px, 2.1vh, 18px) / 1.3 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 10px #020714;
+}
+.server-startup-loading p {
+  margin: 0;
+  min-height: 2.8em;
+  max-width: 500px;
+  color: #acbed6;
+  font:
+    400 clamp(11px, 1.6vh, 13px) / 1.4 "DM Sans",
+    sans-serif;
+  text-wrap: balance;
+  text-shadow: 0 1px 8px #020714;
+}
+.server-startup-progress {
+  position: relative;
+  width: 100%;
+  height: 12px;
+  padding: 2px;
+  border: 1px solid #d7b56ddd;
+  border-radius: 999px;
+  background: #050e20e6;
+  box-shadow:
+    0 0 0 2px #070e1a99,
+    inset 0 1px 4px #0008,
+    0 0 18px #edc97516;
+}
+.server-startup-progress::before,
+.server-startup-progress::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 3px);
+  width: 6px;
+  height: 6px;
+  transform: rotate(45deg);
+  background: #e9c87b;
+  box-shadow: 0 0 7px #edc97555;
+}
+.server-startup-progress::before {
+  left: -13px;
+}
+.server-startup-progress::after {
+  right: -13px;
+}
+.server-startup-progress > i {
+  position: relative;
+  display: block;
+  width: calc(var(--startup-progress, 0.08) * 100%);
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #b98432, #edc76a 55%, #fff1b8);
+  box-shadow: 0 0 10px #f3cf8770;
+  transition: width 600ms ease-out;
+}
+.server-startup-progress > i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    #fff9 50%,
+    transparent 80%
+  );
+  animation: server-loading-sheen 2.4s ease-in-out infinite;
+}
+.server-startup:is(
+    [data-status="offline"],
+    [data-status="failed"],
+    [data-status="ready"]
+  )
+  .server-startup-progress
+  > i::after {
+  animation: none;
+  opacity: 0;
+}
+.server-startup[data-status="failed"] .server-startup-progress {
+  border-color: #d99d77;
+}
+.server-startup button {
+  min-height: 44px;
+  min-width: 180px;
+  padding: 10px 24px;
+  border: 1px solid #ffe9aa;
+  border-radius: 12px;
+  background: linear-gradient(#ffe8a3, #efc654);
+  color: #302610;
+  font-weight: 700;
+}
+.server-startup [hidden] {
+  display: none;
+}
+@keyframes server-loading-sheen {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  35%,
+  65% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+@keyframes server-sigil-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes server-sigil-glow {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+@keyframes server-ember {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-9px);
+  }
+}
+@media (max-height: 500px) {
+  .server-startup {
+    padding: max(14px, env(safe-area-inset-top))
+      max(28px, env(safe-area-inset-right))
+      max(14px, env(safe-area-inset-bottom))
+      max(28px, env(safe-area-inset-left));
+  }
+  .server-startup-card {
+    gap: 8px;
+  }
+  .server-startup-loading {
+    width: min(430px, 100%);
+    gap: 7px;
+  }
+}
+@media (max-height: 320px) {
+  .server-startup {
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .server-startup-brand {
+    gap: 7px;
+  }
+  .server-startup-brand h1 {
+    font-size: calc(23px * var(--text-scale, 1));
+  }
+  .server-startup-loading {
+    gap: 6px;
+  }
+  .server-startup-loading h2 {
+    font-size: calc(13px * var(--text-scale, 1));
+  }
+  .server-startup-loading p {
+    font-size: calc(11px * var(--text-scale, 1));
+  }
+  .server-startup[data-status="failed"] .server-startup-loading {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 24px;
+  }
+  .server-startup[data-status="failed"] .server-startup-loading h2 {
+    grid-column: 1 / -1;
+  }
+  .server-startup[data-status="failed"] .server-startup-loading p {
+    grid-column: 1;
+    min-height: 0;
+  }
+  .server-startup[data-status="failed"] .server-startup-loading button {
+    grid-column: 2;
+    grid-row: 2 / 4;
+    min-width: 124px;
+    align-self: center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .server-startup *,
+  .server-startup *::before,
+  .server-startup *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+/* The startup curtain fades away over the finished first screen, which takes
+   taps as soon as the fade starts (server-connection.ts). */
+.server-startup {
+  transition: opacity 450ms ease-out;
+}
+.server-startup.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+/* Held again later (a log-in, a dropped connection): it fades in over the
+   screen that was showing rather than popping in. */
+.server-startup.is-entering {
+  animation: server-startup-in 200ms ease-out both;
+}
+@keyframes server-startup-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .server-startup,
+  .server-startup::before {
+    transition: none;
+  }
+  .server-startup.is-entering {
+    animation: none;
+  }
+}
+/* A gameplay tip under the bar while the startup curtain is held
+   (loading-tips.ts). Not while the server's own status needs the space. */
+.server-startup-tip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(560px, 100%);
+  box-sizing: border-box;
+  /* Every tip is two lines tall at least (tips are one or two), so the bar
+     above never moves between tips; index.html's boot screen keeps the same
+     space. */
+  min-height: calc(2.8em + 18px);
+  margin-top: 2px;
+  padding: 8px 12px;
+  border: 1px solid #dfbd6b55;
+  border-radius: 12px;
+  background: #030a18b8;
+  color: #dbe5f5;
+  text-align: left;
+  font:
+    400 clamp(12px, 1.9vh, 15px) / 1.4 "DM Sans",
+    sans-serif;
+}
+.server-startup-tip.is-new {
+  animation: server-tip-in 420ms ease-out;
+}
+.server-startup-tip b {
+  margin-right: 4px;
+  color: #ffe08a;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.server-startup:is([data-status="failed"], [data-status="offline"])
+  .server-startup-tip {
+  display: none;
+}
+@keyframes server-tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (max-height: 320px) {
+  .server-startup-tip {
+    min-height: calc(2.8em + 12px);
+    padding: 5px 10px;
+    font-size: calc(11px * var(--text-scale, 1));
+  }
+}
+/* The status line holds one status at a time: a new one rises in as the last
+   fades up and out (server-connection.ts setStatusText). */
+.server-startup-loading p {
+  display: grid;
+}
+.server-startup-loading p > span {
+  grid-area: 1 / 1;
+  animation: server-status-in 300ms ease-out;
+}
+/* The percentage beside the status (server-connection.ts updateProgress):
+   gold figures of one width, so the line doesn't shift as it counts. */
+.server-startup-loading p {
+  grid-template-columns: auto auto;
+  justify-content: center;
+  column-gap: 0.5em;
+}
+.server-startup.has-art .server-startup-loading p {
+  justify-content: start;
+}
+.server-startup-percent {
+  grid-area: 1 / 2;
+  align-self: start;
+  color: #ffd76a;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.server-startup-percent:empty {
+  display: none;
+}
+.server-startup-loading p > span.is-out {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 300ms ease-out,
+    transform 300ms ease-out;
+}
+@keyframes server-status-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.server-startup-crest {
+  display: none;
+}
+
+/* The painting layout, the owner's style K (20 Nov; loading-art.ts,
+   setCurtainArt): the painting fills the screen; the gold star and the
+   title stand top right; the tip bottom right, above a bar across the whole
+   width with one status line over its left end. Darker bands at the bottom
+   and behind the title keep them readable on any painting. Everything is
+   placed from the screen's edges, as index.html's boot screen places its
+   own (html.boot-art), so nothing moves at the hand-over. */
+.server-startup-painting {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 500ms ease-out;
+}
+.server-startup.has-painting .server-startup-painting {
+  opacity: 1;
+}
+.server-startup.has-art {
+  --art-top: max(14px, env(safe-area-inset-top));
+  --art-bottom: max(14px, env(safe-area-inset-bottom));
+  --art-left: max(28px, env(safe-area-inset-left));
+  --art-right: max(28px, env(safe-area-inset-right));
+}
+.server-startup.has-art::after {
+  background:
+    linear-gradient(0deg, #020815e6 0, #02081599 18%, #02081500 42%),
+    radial-gradient(ellipse 45% 40% at 100% 0, #020815b3, #02081500);
+}
+.server-startup.has-art .server-startup-card {
+  display: contents;
+}
+.server-startup.has-art
+  :is(
+    .server-startup-scene,
+    .server-startup-divider,
+    .server-startup-loading h2
+  ) {
+  display: none;
+}
+.server-startup.has-art .server-startup-brand {
+  position: absolute;
+  top: var(--art-top);
+  right: var(--art-right);
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.6vh, 14px);
+}
+.server-startup.has-art .server-startup-crest {
+  display: block;
+  flex: none;
+  width: clamp(40px, 11.5vh, 88px);
+  height: clamp(40px, 11.5vh, 88px);
+  filter: drop-shadow(0 0 10px #ffd76a88) drop-shadow(0 2px 6px #000a);
+}
+.server-startup.has-art .server-startup-brand h1 {
+  font-size: clamp(24px, 7vh, 54px);
+  text-align: left;
+}
+.server-startup.has-art .server-startup-loading {
+  position: absolute;
+  left: calc(var(--art-left) + 13px);
+  right: calc(var(--art-right) + 13px);
+  bottom: var(--art-bottom);
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.server-startup.has-art .server-startup-loading p {
+  order: -1;
+  min-height: 0;
+  height: 1.4em;
+  max-width: none;
+  color: #f2f5ff;
+  font:
+    500 clamp(13px, 3.4vh, 17px) / 1.4 "DM Sans",
+    sans-serif;
+  text-align: left;
+  white-space: nowrap;
+  text-shadow: 0 1px 8px #000;
+}
+.server-startup.has-art .server-startup-progress {
+  width: 100%;
+}
+.server-startup.has-art .server-startup-loading button {
+  align-self: center;
+}
+/* Over a painting the tip is a caption, not a box (owner's choice, 20 Nov):
+   a gold line on its right and a shade fading out behind the text. The
+   bottom band gives it contrast on any painting. Placed above the bar, it
+   never moves the bar or the status line however long it is. */
+.server-startup.has-art .server-startup-tip {
+  position: absolute;
+  right: -13px;
+  bottom: calc(100% + clamp(10px, 3vh, 18px));
+  width: auto;
+  max-width: min(46vw, 460px);
+  min-height: 0;
+  margin: 0;
+  padding: 6px 12px;
+  border: 0;
+  border-right: 3px solid #ffe08a;
+  border-radius: 10px 0 0 10px;
+  background: linear-gradient(270deg, #030a18cc, #030a1866 70%, #030a1800);
+  color: #e3ebf8;
+  font-size: clamp(12px, 3.3vh, 16px);
+  text-align: right;
+  text-shadow: 0 1px 3px #000;
+}
+@media (max-height: 320px) {
+  .server-startup.has-art {
+    --art-top: max(10px, env(safe-area-inset-top));
+    --art-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .server-startup-painting {
+    transition: none;
+  }
+}

@@ -1,4 +1,4 @@
-import { RULES, type Ability } from "@arena/shared";
+import { RULES, blinkLanding, blocked, type Ability } from "@arena/shared";
 
 /**
  * Aim preview: the area a skill will cover if released now, drawn on the
@@ -86,6 +86,9 @@ export function previewShape(
       );
       break;
     case "melee":
+    case "clamp":
+    case "throw":
+    case "pound":
     case "cone": {
       const arc = ability.arc ?? (ability.kind === "melee" ? 0.35 : 0.7);
       shape.polygons.push(
@@ -93,6 +96,78 @@ export function previewShape(
       );
       break;
     }
+    case "surf":
+      // River Dash: its whole length, as wide as the body it carries.
+      shape.polygons.push(
+        lane(from, angle, ability.range, (RULES.radius + 10) * 2),
+      );
+      break;
+    case "wave":
+      // Riptide Wave: the wall of water's full width, across the court.
+      shape.polygons.push(lane(from, angle, ability.range, ability.radius * 2));
+      break;
+    case "leap": {
+      // Magma Leap: where it lands (the aim, up to its reach), its path and
+      // the eruption there.
+      const d = Math.min(
+        ability.range,
+        Math.hypot(aim.x - from.x, aim.y - from.y),
+      );
+      const land = {
+        x: from.x + Math.cos(angle) * d,
+        y: from.y + Math.sin(angle) * d,
+      };
+      if (d > 1) shape.polygons.push(lane(from, angle, d, 10));
+      shape.discs.push({ ...land, r: (ability.explosion ?? 0) + RULES.radius });
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      break;
+    }
+    case "creep": {
+      // Chestnut Storm: every blast along the aim.
+      const c = ability.creep ?? { start: 160, step: 150, gap: 0.2 };
+      for (let i = 0; i < (ability.count ?? 5); i++) {
+        const d = c.start + c.step * i;
+        shape.discs.push({
+          x: from.x + Math.cos(angle) * d,
+          y: from.y + Math.sin(angle) * d,
+          r: ability.explosion ?? 105,
+        });
+      }
+      break;
+    }
+    case "garden": {
+      // Overgrowth: the garden at the aim (short of a wall).
+      const at = blinkLanding(
+        from,
+        angle,
+        Math.min(ability.range, Math.hypot(aim.x - from.x, aim.y - from.y)),
+      );
+      shape.discs.push({ ...at, r: ability.radius });
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      break;
+    }
+    case "lure": {
+      // Radiant Flare: where the flare hangs (short of a wall), how far it
+      // pulls, and the burst.
+      const at = blinkLanding(
+        from,
+        angle,
+        Math.min(ability.range, Math.hypot(aim.x - from.x, aim.y - from.y)),
+      );
+      shape.discs.push({ ...at, r: ability.explosion ?? ability.radius });
+      shape.rings.push({ ...at, r: ability.radius });
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      break;
+    }
+    case "trail":
+      // Laid where the caster walks: just its width round the caster.
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.radius + RULES.radius,
+      });
+      break;
+    case "steer":
     case "zone": {
       const distance = ability.follow
         ? 0
@@ -100,10 +175,42 @@ export function previewShape(
       shape.discs.push({
         x: from.x + Math.cos(angle) * distance,
         y: from.y + Math.sin(angle) * distance,
-        r: ability.radius,
+        // A turret (Haunted Lantern) covers as far as it shoots.
+        r: ability.turret?.range ?? ability.radius,
       });
       if (!ability.follow)
         shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      break;
+    }
+    case "blink": {
+      // Where you'd land now (walls stop it, as on the server), the hop's
+      // path, and the burst there; the ring is the farthest it can reach.
+      const land = blinkLanding(
+        from,
+        angle,
+        Math.min(ability.range, Math.hypot(aim.x - from.x, aim.y - from.y)),
+      );
+      const length = Math.hypot(land.x - from.x, land.y - from.y);
+      if (length > 1) shape.polygons.push(lane(from, angle, length, 10));
+      shape.discs.push({
+        ...land,
+        r: ability.damage > 0 ? ability.radius + RULES.radius : SELF_RING,
+      });
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      break;
+    }
+    case "rush": {
+      // The charge's lane: anyone whose body it brushes is hit (the server's
+      // contact gap is 10 px), plus the eruption around them if it has one.
+      shape.polygons.push(
+        lane(from, angle, ability.range, (RULES.radius + 10) * 2),
+      );
+      if (ability.explosion)
+        shape.rings.push({
+          x: from.x + Math.cos(angle) * ability.range,
+          y: from.y + Math.sin(angle) * ability.range,
+          r: ability.explosion + RULES.radius,
+        });
       break;
     }
     case "nova":
@@ -113,9 +220,106 @@ export function previewShape(
         r: ability.radius + RULES.radius,
       });
       break;
+    case "screen": {
+      // The curtain itself: its real length, across the aim, a little ahead.
+      const d = ability.screen?.distance ?? 90,
+        half = (ability.screen?.length ?? 200) / 2,
+        cx = from.x + Math.cos(angle) * d,
+        cy = from.y + Math.sin(angle) * d,
+        ux = Math.cos(angle + Math.PI / 2),
+        uy = Math.sin(angle + Math.PI / 2),
+        tx = Math.cos(angle) * 12,
+        ty = Math.sin(angle) * 12;
+      shape.polygons.push([
+        { x: cx - ux * half - tx, y: cy - uy * half - ty },
+        { x: cx + ux * half - tx, y: cy + uy * half - ty },
+        { x: cx + ux * half + tx, y: cy + uy * half + ty },
+        { x: cx - ux * half + tx, y: cy - uy * half + ty },
+      ]);
+      break;
+    }
+    case "gaze":
+      // Everyone this close takes the flash (whoever looks is stunned).
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.radius + RULES.radius,
+      });
+      break;
+    case "cage":
+      // The ring the crystal rises on.
+      shape.rings.push({ x: from.x, y: from.y, r: ability.radius });
+      break;
+    case "taunt":
+      // Everyone this close is taunted.
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.radius + RULES.radius,
+      });
+      break;
+    case "tether":
+      // It locks onto the enemy nearest the aim within this reach.
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      shape.polygons.push(lane(from, angle, ability.range, 16));
+      break;
+    case "grapple":
+      // The tongue's lane: it catches the first enemy (or wall) along it.
+      shape.polygons.push(
+        lane(from, angle, ability.range, (ability.radius + RULES.radius) * 2),
+      );
+      break;
+    case "shrapnel":
+      shape.polygons.push(
+        sector(from, angle, ability.range, (ability.fan ?? 1.2) / 2),
+      );
+      break;
+    case "tunnel":
+      // Where it comes up (round itself, where it surfaces) and how far it flings.
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.radius + RULES.radius,
+      });
+      break;
+    case "cyclone":
+      // The storm's reach: the blades' circle (plus a blade), round itself.
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.radius + (ability.cyclone?.blade ?? 26) + RULES.radius,
+      });
+      break;
+    case "seedling":
+    case "timewarp":
+    case "swap": {
+      // Where it lands (at the aim, over cover; an aim inside a wall lands
+      // just short of it, as on the server), and its reach. A swap takes
+      // whoever is nearest the aim.
+      const reach = Math.min(
+        ability.range,
+        Math.hypot(aim.x - from.x, aim.y - from.y),
+      );
+      const point = {
+        x: from.x + Math.cos(angle) * reach,
+        y: from.y + Math.sin(angle) * reach,
+      };
+      const at =
+        ability.kind !== "swap" && blocked(point.x, point.y, 6)
+          ? blinkLanding(from, angle, reach)
+          : point;
+      shape.discs.push({ ...at, r: ability.radius });
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      break;
+    }
     default:
-      // Clone, counter, barrier, buff, rest: they act on yourself.
-      shape.discs.push({ x: from.x, y: from.y, r: SELF_RING });
+      // Clone, counter, barrier, buff, rest, veil: they act on yourself. A buff
+      // with a takeoff pop (Static Glide) shows how far the pop shoves.
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.pop ? ability.pop.radius + RULES.radius : SELF_RING,
+      });
   }
   return shape;
 }

@@ -1,19 +1,15 @@
+import { svgMarkup } from "../../apps/client/tests/svg-markup";
 import { describe, expect, it } from "vitest";
-import { CHARACTERS, FIGHTER_IDS } from "@arena/shared";
+import { FIGHTER_IDS } from "@arena/shared";
 import {
   PROPORTIONS,
   creatureLayers,
   creatureSvg,
   proportioned,
 } from "../../apps/client/src/creature-design";
-import { rigAnchors, rigAssets } from "../../apps/client/src/animation/assets";
-import { traitAura, withAura } from "../../apps/client/src/trait-effects";
-import {
-  AURA_SCALE,
-  drawBattleAura,
-  type AuraPainter,
-} from "../../apps/client/src/battle-aura";
-import { fighterSelection } from "../../apps/client/src/fighter-selection";
+import { partsFor, rigAnchors, rigAssets } from "../../apps/client/src/animation/assets";
+import { ANIMATED_CRESTS } from "../../apps/client/src/creature-design";
+import { rosterDetail, rosterGrid } from "./roster-markup";
 describe("cute proportions", () => {
   it("grows the face and shrinks the body while keeping the feet planted", () => {
     expect(PROPORTIONS.head.s).toBeGreaterThan(1);
@@ -35,11 +31,13 @@ describe("cute proportions", () => {
             );
       }
   });
-  it("draws blush on front faces only (not the void-faced wisp)", () => {
+  it("keeps front blush on every champion except the void-faced wisp and the masked octopus", () => {
+    // Duskveil keeps its void face and Shadopus its ink mask; Terradon has a
+    // pink blush on both cheeks.
     for (const id of FIGHTER_IDS) {
       const front = creatureLayers(id, "down").layers.head;
       expect(front.includes('opacity=".5" stroke="none"'), id).toBe(
-        id !== "duskveil",
+        id !== "duskveil" && id !== "shadopus",
       );
     }
   });
@@ -56,14 +54,18 @@ describe("cute proportions", () => {
   it("crops every part with finite boxes that contain the scaled eyes and head", () => {
     for (const id of FIGHTER_IDS) {
       const assets = rigAssets(id);
-      // 12 parts × 4 facings, plus 4 expressions × the 3 facings with a face.
-      expect(assets).toHaveLength(60);
+      // 13 complete parts in 4 facings + 12 face expressions; no flattened
+      // frames. Champions with an animated crest add a hat layer (4 more).
+      expect(assets).toHaveLength(partsFor(id).length * 4 + 12);
+      expect(partsFor(id).length).toBe(ANIMATED_CRESTS.has(id) ? 14 : 13);
       for (const a of assets) {
         expect(a.width, a.key).toBeGreaterThan(0);
         expect(a.height, a.key).toBeGreaterThan(0);
         for (const v of [a.originX, a.originY, a.x, a.y])
           expect(Number.isFinite(v)).toBe(true);
-        expect(atob(a.url.split(",")[1])).not.toMatch(/NaN|undefined/);
+        expect(svgMarkup(atob(a.url.split(",")[1]))).not.toMatch(
+          /NaN|undefined/,
+        );
       }
       const eyes = assets.find((a) => a.key === `rig-${id}-down-eyes`)!;
       const box = atob(eyes.url.split(",")[1])
@@ -83,90 +85,10 @@ describe("cute proportions", () => {
     expect(creatureSvg("voltkit")).toContain('viewBox="0 -12 200 202"');
   });
 });
-describe("trait auras", () => {
-  it("is deterministic and well formed for every fighter", () => {
-    for (const id of FIGHTER_IDS) {
-      expect(traitAura(id)).toEqual(traitAura(id));
-      const svg = withAura(creatureSvg(id), id);
-      expect(svg.match(/<svg /g)).toHaveLength(1);
-      expect(svg).toContain('class="ta-back"');
-      expect(svg).toContain('class="ta-front"');
-      expect(svg).not.toMatch(/NaN|undefined/);
-      // No tag may carry the same attribute twice (e.g. two style attributes).
-      for (const tag of svg.match(/<[a-zA-Z][^>]*>/g)!) {
-        const names = [...tag.matchAll(/\s([a-zA-Z-]+)="/g)].map((m) => m[1]);
-        expect(new Set(names).size, `${id}: ${tag.slice(0, 80)}`).toBe(
-          names.length,
-        );
-      }
-    }
-  });
-  it("stands still for reduced motion", () => {
-    for (const id of FIGHTER_IDS) {
-      const still = withAura(creatureSvg(id), id, true);
-      expect(still).not.toContain("animation:");
-      expect(still).not.toContain("<animateMotion");
-    }
-    expect(withAura(creatureSvg("duskveil"), "duskveil")).toContain(
-      "<animateMotion",
+describe("menu art", () => {
+  it("no menu portrait wears an element aura (the Wardrobe's look only)", () => {
+    expect(rosterGrid("tidefin") + rosterDetail("tidefin")).not.toContain(
+      "trait-aura",
     );
-  });
-  it("only the selected card and the detail portrait wear an aura", () => {
-    expect(
-      fighterSelection("tidefin").match(/class="trait-aura"/g),
-    ).toHaveLength(2);
-  });
-});
-describe("battle auras", () => {
-  const recorder = () => {
-    const points: number[][] = [];
-    let calls = 0;
-    const p: AuraPainter = {
-      fillStyle: () => p,
-      lineStyle: () => p,
-      fillEllipse: (x, y, w, h) => (
-        calls++,
-        points.push([x - w / 2, y - h / 2], [x + w / 2, y + h / 2]),
-        p
-      ),
-      strokeEllipse: (x, y, w, h) => (
-        calls++,
-        points.push([x - w / 2, y - h / 2], [x + w / 2, y + h / 2]),
-        p
-      ),
-      fillCircle: (x, y, r) => (
-        calls++,
-        points.push([x - r, y - r], [x + r, y + r]),
-        p
-      ),
-      fillTriangle: (a, b, c, d, e, f) => (
-        calls++,
-        points.push([a, b], [c, d], [e, f]),
-        p
-      ),
-      lineBetween: (a, b, c, d) => (calls++, points.push([a, b], [c, d]), p),
-    };
-    return { p, points, calls: () => calls };
-  };
-  it("draws a compact ground effect for every element", () => {
-    for (const id of FIGHTER_IDS) {
-      for (const t of [0, 0.37, 1.9, 12.4]) {
-        const r = recorder();
-        drawBattleAura(r.p, CHARACTERS[id].element, 500, 400, t);
-        expect(r.calls(), id).toBeGreaterThan(2);
-        for (const [x, y] of r.points) {
-          expect(Number.isFinite(x) && Number.isFinite(y)).toBe(true);
-          // Stays around the feet: within the scaled ring, rising no higher than the head.
-          expect(Math.abs(x - 500)).toBeLessThanOrEqual(40 * AURA_SCALE);
-          expect(y - 400).toBeLessThanOrEqual(12 * AURA_SCALE);
-          expect(400 - y).toBeLessThanOrEqual(45 * AURA_SCALE);
-        }
-      }
-    }
-  });
-  it("draws nothing when hidden", () => {
-    const r = recorder();
-    drawBattleAura(r.p, "Fire", 0, 0, 1, 0);
-    expect(r.calls()).toBe(0);
   });
 });

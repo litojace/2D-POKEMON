@@ -13,6 +13,30 @@ const focus = (x = 800, y = 450) => ({
   attacking: false,
 });
 describe("fighter follow camera", () => {
+  it("can scroll under a covered top strip so the court starts below it (PvP badge, 7 Nov 2026)", () => {
+    const [w, h, top] = [834, 382, 60];
+    const edge = (covered: number) => {
+      const view = new FollowCamera().update(
+        w,
+        h,
+        true,
+        focus(800, 0),
+        "room:1",
+        16,
+        false,
+        top,
+        1.2,
+        0,
+        covered,
+      );
+      // Where the world's top (the stands' top edge) lands on the screen.
+      return (-top - view.y) * view.zoomY + h / 2;
+    };
+    // Without a covered strip the stands' top edge is the screen's top.
+    expect(edge(0)).toBeCloseTo(0, 5);
+    // With 48 px covered it sits 48 px down, just below the badge.
+    expect(edge(48)).toBeCloseTo(48, 5);
+  });
   it.each([
     [1200, 675, false],
     [726, 310, true],
@@ -80,4 +104,74 @@ describe("fighter follow camera", () => {
       expect(view.zoomX).toBe(0.5);
     }
   });
+});
+
+describe("stands above the court", () => {
+  it("fits the court plus the stands on desktop, the court's bottom on the screen's bottom", () => {
+    const top = 96;
+    const view = new FollowCamera().update(1600, 996, false, undefined, "a", 16, false, top);
+    expect(view.zoomX).toBeCloseTo(1);
+    // Shows world y from -top to 900.
+    expect(view.y - 996 / view.zoomY / 2).toBeCloseTo(-top);
+    expect(view.y + 996 / view.zoomY / 2).toBeCloseTo(900);
+  });
+  it("never shows past the stands or below the court when following on a phone", () => {
+    const top = 96;
+    for (const [x, y] of [
+      [0, 0],
+      [1600, 900],
+    ]) {
+      const view = new FollowCamera().update(726, 310, true, focus(x, y), "room:1", 16, false, top);
+      const halfH = 310 / view.zoomY / 2;
+      expect(view.y - halfH).toBeGreaterThanOrEqual(-top - 1e-6);
+      expect(view.y + halfH).toBeLessThanOrEqual(900 + 1e-6);
+    }
+  });
+  it("keeps the old view when there are no stands", () => {
+    const a = new FollowCamera().update(800, 450, false, undefined, "a", 16, false);
+    const b = new FollowCamera().update(800, 450, false, undefined, "a", 16, false, 0);
+    expect(b).toEqual(a);
+  });
+});
+
+it("widens the phone PvP view while preserving projection and court boundaries", () => {
+  const narrow = new FollowCamera().update(
+    844,
+    390,
+    true,
+    focus(),
+    "old",
+    16,
+    false,
+  );
+  const wide = new FollowCamera().update(
+    844,
+    390,
+    true,
+    focus(),
+    "pvp",
+    16,
+    false,
+    0,
+    1.2,
+  );
+  expect(844 / wide.zoomX).toBeGreaterThan(1300);
+  expect(844 / wide.zoomX / (844 / narrow.zoomX)).toBeGreaterThan(1.35);
+  expect(wide.zoomX).toBe(wide.zoomY);
+  expect(wide.x - 844 / wide.zoomX / 2).toBeGreaterThanOrEqual(0);
+  expect(wide.x + 844 / wide.zoomX / 2).toBeLessThanOrEqual(1600);
+});
+
+it("reveals the same decorative margin at both mobile court edges without zooming out", () => {
+  for (const [w,h] of [[844,390],[932,430],[844,280]]) {
+    const make = (y:number,bottom:number) => new FollowCamera().update(w,h,true,{...focus(800,y),vx:0,vy:0},"edge",16,false,96,1.2,bottom);
+    const old = make(900,0),lower=make(900,96),upper=make(0,96);
+    expect(lower.zoomX).toBe(old.zoomX);
+    expect(lower.zoomY).toBe(old.zoomY);
+    expect(lower.y+h/lower.zoomY/2).toBeCloseTo(996);
+    expect(upper.y-h/upper.zoomY/2).toBeCloseTo(-96);
+    expect(lower.y).toBeGreaterThan(old.y);
+    const point=screenToWorld(w/2,h/2,w,h,lower);
+    expect(point.y).toBe(lower.y);
+  }
 });

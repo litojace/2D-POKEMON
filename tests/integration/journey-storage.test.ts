@@ -2,10 +2,13 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFile, readdir } from "node:fs/promises";
 import { beforeAll, afterAll, it, expect } from "vitest";
 import {
+  DAILY_SPARK_XP,
   JOURNEY_ITEMS,
+  LEVEL_MILESTONES,
   levelThreshold,
   playerLevel,
   seasonTheme,
+  sparkLeft,
 } from "../../packages/shared/src/journey";
 let db: PGlite;
 const player = "00000000-0000-4000-8000-000000000071",
@@ -138,7 +141,8 @@ it("rejects instant, abandoned and idle results for XP and weekly goals", async 
   }
 });
 it("crosses level and season boundaries atomically and unlocks the correct slot", async () => {
-  await grant(levelThreshold(10), "level-ten");
+  // This is the player's first XP today, so the Daily Spark doubles 500 of it.
+  await grant(levelThreshold(10) - DAILY_SPARK_XP, "level-ten");
   await login(other);
   const j = await journey();
   expect(playerLevel(j.xp).level).toBe(10);
@@ -161,15 +165,20 @@ it("crosses level and season boundaries atomically and unlocks the correct slot"
       )
     ).rows[0].n,
   ).toBe(9);
-  await grant(levelThreshold(10), "level-ten");
+  await grant(levelThreshold(10) - DAILY_SPARK_XP, "level-ten");
   await login(other);
   expect((await journey()).xp).toBe(levelThreshold(10));
 });
-it("caps the displayed level at 50 while retaining XP, and grants every milestone exactly once", async () => {
-  for (let i = 0; i < 4; i++) await grant(10000, "cap-" + i);
+it("caps the level at 100 while retaining XP, and grants every milestone and level coin exactly once", async () => {
+  for (let i = 0; i < 45; i++) await grant(10000, "cap-" + i);
   await login(other);
   const j = await journey();
-  expect(playerLevel(j.xp).level).toBe(50);
+  expect(j.xp).toBeGreaterThan(levelThreshold(100));
+  expect(playerLevel(j.xp)).toMatchObject({
+    level: 100,
+    needed: 0,
+    percent: 100,
+  });
   for (const item of JOURNEY_ITEMS.filter((i) => !i.id.startsWith("season-")))
     expect(j.unlocked).toContain(item.id);
   const e = (await db.query<{ e: any }>("select public.arena_economy() e"))
@@ -179,12 +188,20 @@ it("caps the displayed level at 50 while retaining XP, and grants every mileston
     await db.query<{ m: any }>("select public.arena_me() m")
   ).rows[0].m.ownedTitles.map((t: any) => t.name);
   expect(titles).toEqual(
-    expect.arrayContaining([
-      "Rising Spark",
-      "Arena Vanguard",
-      "Elemental Legend",
-    ]),
+    expect.arrayContaining(
+      LEVEL_MILESTONES.flatMap((m) => (m.title ? [m.title] : [])),
+    ),
   );
+  await db.exec("reset role");
+  // Lv 2–49 pay 30 coins each, Lv 50–100 pay 100 each.
+  expect(
+    (
+      await db.query<{ n: number; total: number }>(
+        "select count(*)::int n, sum(amount)::int total from public.arena_coin_ledger where player_id=$1 and reason='level'",
+        [other],
+      )
+    ).rows[0],
+  ).toEqual({ n: 99, total: 48 * 30 + 51 * 100 });
 });
 it("completes weekly goals once and grants all twenty free season tiers automatically", async () => {
   for (let i = 0; i < 5; i++)
@@ -219,26 +236,25 @@ it("completes weekly goals once and grants all twenty free season tiers automati
     ).rows[0].n,
   ).toBe(20);
 });
-it("gives partial Boss Rush completion its own XP and limited coin rewards", async () => {
+it("does not award XP or coins for a retired Boss Rush receipt", async () => {
   const p = await receipt("expedition", {
     vsPeople: false,
     expedition: { completed: 2 },
   });
-  await record(p);
-  await record(p);
+  await expect(record(p)).rejects.toThrow("retired");
   await login();
   expect(
-    (await journey()).recent.find((r: any) => r.ref === p.id)?.amount,
-  ).toBe(180);
+    (await journey()).recent.find((r: any) => r.ref === p.id),
+  ).toBeUndefined();
   await db.exec("reset role");
   expect(
     (
-      await db.query<{ amount: number }>(
-        "select amount from public.arena_coin_ledger where player_id=$1 and reason='expedition' and ref=$2",
+      await db.query(
+        "select amount from public.arena_coin_ledger where player_id=$1 and ref=$2",
         [player, p.id],
       )
     ).rows,
-  ).toEqual([{ amount: 60 }]);
+  ).toEqual([]);
 });
 it("does not let admins mint earned levels, and preserves progress when the migration is reapplied", async () => {
   await login(admin);
@@ -249,10 +265,16 @@ it("does not let admins mint earned levels, and preserves progress when the migr
       [admin],
     ),
   ).rejects.toThrow("permission");
-  await db.exec(
-    "reset role;" +
-      (await readFile("supabase/migrations/022_player_journey.sql", "utf8")),
-  );
+  // Reapplying 022 restores its older functions; 035 then brings back levels
+  // 1–100 and 051 the Lv 55–100 cosmetics.
+  for (const f of [
+    "022_player_journey.sql",
+    "035_level_100_daily_spark.sql",
+    "051_level_cosmetics.sql",
+  ])
+    await db.exec(
+      "reset role;" + (await readFile("supabase/migrations/" + f, "utf8")),
+    );
   await login(admin);
   expect(await journey()).toEqual(before);
   const e = (await db.query<{ e: any }>("select public.arena_economy() e"))
@@ -274,9 +296,10 @@ it("awards a daily mission’s XP once, without resetting levels or seasons", as
       [other, d],
     );
   await login(other);
-  const after = await journey();
-  expect(after.xp - before.xp).toBe(50);
-  expect(after.season.xp - before.season.xp).toBe(50);
+  const after = await journey(),
+    gained = 50 + Math.min(50, sparkLeft(before));
+  expect(after.xp - before.xp).toBe(gained);
+  expect(after.season.xp - before.season.xp).toBe(gained);
   expect(
     after.recent.filter((r: any) => r.ref === "xp-trigger-check"),
   ).toHaveLength(1);
@@ -294,7 +317,8 @@ it("keeps old seasonal cosmetics while a new month starts from its own XP total"
   await login(player);
   const after = await journey();
   expect(after.season.xp).toBe(before.season.xp);
-  expect(after.xp - before.xp).toBe(8000);
+  // That past day's Daily Spark was still unused.
+  expect(after.xp - before.xp).toBe(8000 + DAILY_SPARK_XP);
   for (const suffix of ["frame", "aura", "colors", "victory"])
     expect(after.unlocked).toContain(`season-${oldTheme}-${suffix}`);
 });

@@ -62,15 +62,22 @@ export function hitFeel(
   strength: HitStrength,
   role: "victim" | "attacker" | "spectator",
   reducedMotion = false,
+  liveCombat = false,
 ): HitFeel {
   const base = BASE[strength];
   const shakeScale = role === "victim" ? 1 : role === "attacker" ? 0.5 : 0;
   const rumbleScale = role === "victim" ? 1 : role === "attacker" ? 0.4 : 0;
   return {
-    // Everyone sees the freeze (it reads as impact), but not the shake.
-    stopMs: reducedMotion ? 0 : base.stopMs,
-    shakeMs: reducedMotion || !shakeScale ? 0 : base.shakeMs,
-    shake: reducedMotion ? 0 : base.shake * shakeScale,
+    // The server keeps moving during a hit. Freezing a live match makes every
+    // participant jump ahead on resume, especially with simultaneous hits.
+    stopMs: reducedMotion || liveCombat ? 0 : base.stopMs,
+    shakeMs:
+      reducedMotion || !shakeScale
+        ? 0
+        : Math.min(base.shakeMs, liveCombat ? 80 : Infinity),
+    shake: reducedMotion
+      ? 0
+      : Math.min(base.shake * shakeScale, liveCombat ? 0.0025 : Infinity),
     flashMs: base.flashMs,
     rumbleMs: rumbleScale ? base.rumbleMs : 0,
     rumble: base.rumble * rumbleScale,
@@ -85,7 +92,19 @@ export const KO_FEEL = {
   tweenSlowdown: 0.3,
 };
 
-/** Best-effort vibration: controller rumble, else phone vibration (Android). */
+/**
+ * The iPhone app's haptics (native.ts sets it): iPhones have no web
+ * vibration, so the app taps the Taptic Engine instead. `strength` is 0–1.
+ */
+let nativeTap: ((strength: number) => void) | null = null;
+export function setNativeTap(tap: ((strength: number) => void) | null) {
+  nativeTap = tap;
+}
+
+/**
+ * Best-effort vibration: controller rumble, else the iPhone app's haptics,
+ * else phone vibration (Android).
+ */
 export function rumble(ms: number, strength: number) {
   if (ms <= 0 || strength <= 0 || typeof navigator === "undefined") return;
   try {
@@ -109,6 +128,10 @@ export function rumble(ms: number, strength: number) {
           .catch(() => {});
         return;
       }
+    }
+    if (nativeTap) {
+      nativeTap(strength);
+      return;
     }
     // iPhone Safari has no web vibration; Android Chrome does.
     navigator.vibrate?.(Math.round(ms * 0.6));

@@ -47,6 +47,8 @@ describe("independent touch state", () => {
 describe("responsive touch layout", () => {
   for (const [width, height] of [
     [320, 568],
+    [568, 280],
+    [568, 320],
     [667, 375],
     [844, 390],
     [1024, 768],
@@ -81,6 +83,17 @@ describe("responsive touch layout", () => {
               (a.size + b.size) / 2 + 3,
             );
           }
+        // The target button (by Dash): a finger's size, inside the
+        // cluster's width (it may rise above its box), clear of every
+        // button.
+        const aim = result.aim;
+        expect(aim.size).toBeGreaterThanOrEqual(44);
+        expect(aim.x - aim.size / 2).toBeGreaterThanOrEqual(-0.1);
+        expect(aim.x + aim.size / 2).toBeLessThanOrEqual(result.width + 0.1);
+        for (const b of result.targets)
+          expect(Math.hypot(aim.x - b.x, aim.y - b.y)).toBeGreaterThan(
+            (aim.size + b.size) / 2 + 3,
+          );
       });
   it("bounds stored preferences and rejects invalid numbers", () => {
     expect(
@@ -95,6 +108,7 @@ it("allows updates only outside matches, including other tabs", () => {
     "briefing",
     "intermission",
     "paused",
+    "finished",
   ])
     expect(safeToUpdate(phase)).toBe(false);
   expect(safeToUpdate("lobby")).toBe(true);
@@ -102,4 +116,39 @@ it("allows updates only outside matches, including other tabs", () => {
   expect(peerMatchActive([{ active: true, at: 1000 }], 2000)).toBe(true);
   expect(peerMatchActive([{ active: false, at: 1000 }], 2000)).toBe(false);
   expect(peerMatchActive([{ active: true, at: 1000 }], 200000)).toBe(false);
+});
+
+it("keeps the approved three-skill arc equally spaced at real landscape viewport sizes", () => {
+  for (const [width, height] of [
+    [844, 390],
+    [932, 430],
+    [844, 280],
+    [667, 375],
+  ])
+    for (const buttonSize of [0.85, 1, 1.2]) {
+      const layout = mobileLayout(
+        width - 24,
+        Math.max(180, height - 88),
+        controlPreferences({ buttonSize }),
+      );
+      const skills = layout.targets.slice(0, 3),
+        basic = layout.targets.find((t) => t.action === "attack")!;
+      const distance = (a: typeof basic, b: typeof basic) =>
+        Math.hypot(a.x - b.x, a.y - b.y);
+      expect(distance(skills[0], skills[1])).toBeCloseTo(
+        distance(skills[1], skills[2]),
+        8,
+      );
+      for (const skill of skills)
+        expect(distance(skill, basic)).toBeCloseTo(
+          distance(skills[0], basic),
+          8,
+        );
+      for (const t of layout.targets) {
+        expect(t.x - t.size / 2).toBeGreaterThanOrEqual(0);
+        expect(t.y - t.size / 2).toBeGreaterThanOrEqual(0);
+        expect(t.x + t.size / 2).toBeLessThanOrEqual(layout.width + 0.01);
+        expect(t.y + t.size / 2).toBeLessThanOrEqual(layout.height + 0.01);
+      }
+    }
 });

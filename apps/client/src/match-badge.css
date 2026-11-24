@@ -1,0 +1,285 @@
+/*
+ * PvP's score badge (owner, 7 Nov 2026): one pill at the top middle with
+ * each side's name and rounds and the clock. Health is the bar over each
+ * fighter, and nobody sees an opponent's ultimate, so the pill keeps the
+ * fight unpredictable and, on phones, gives the arena the screen's height.
+ * Practice uses it too (its score stays empty). main.ts adds .hud-badge to
+ * #hud (and .pvp-badge to <body>) outside raids, which hide #hud for their
+ * own boss HUD. ID-weighted selectors win over the older #hud layout rules
+ * in style.css.
+ */
+body.battle-active #battle #hud.hud-badge {
+  /* Two sides of one width around the clock (the pill sizes to the wider
+     side), so the clock is in the middle of the pill and of the screen. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  left: 50%;
+  right: auto;
+  width: auto;
+  max-width: calc(100% - 120px);
+  margin: 0;
+  padding: 4px 14px;
+  transform: translateX(-50%);
+  border: 1px solid #ffffff22;
+  border-radius: 999px;
+  background: #0b1428d9;
+  box-shadow: 0 4px 14px #0006;
+  color: var(--ui-text);
+  pointer-events: none;
+}
+body.battle-active.touch-mode #battle #hud.hud-badge {
+  top: calc(var(--safe-top) + 6px);
+}
+#hud.hud-badge .hud-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+#hud.hud-badge .hud-side.right {
+  justify-content: flex-start;
+}
+/* Name and score share a baseline (digits are taller than the name's
+   letters). The score is on the clock's side (owner, 10 Nov): the right
+   half is the left half in a mirror, so the two scores read together
+   across the clock, as in most esports scoreboards. */
+#hud.hud-badge .hud-fighter {
+  position: relative;
+  top: -1px;
+  display: flex;
+  align-items: baseline;
+  flex: none;
+  gap: 5px;
+  min-width: 0;
+  font-size: calc(12px * var(--text-scale, 1));
+  line-height: 1.2;
+  white-space: nowrap;
+}
+#hud.hud-badge .hud-fighter.right {
+  flex-direction: row-reverse;
+}
+#hud.hud-badge .hud-fighter b {
+  min-width: 0;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+#hud.hud-badge .hud-fighter strong[id^="score-"] {
+  flex: none;
+  font:
+    700 calc(15px * var(--text-scale, 1)) "Barlow Condensed",
+    sans-serif;
+  color: var(--element);
+  margin: 0;
+}
+/* A mode without a score (Practice): only the names. */
+#hud.hud-badge .hud-fighter strong[id^="score-"]:empty {
+  display: none;
+}
+/* 2v2: blue and red sides, your own name underlined; a free-for-all
+   scores each fighter in their own colour. */
+#hud.hud-badge.hud-teams .hud-fighter {
+  --team: #5ab0ff;
+}
+#hud.hud-badge.hud-teams .hud-fighter.team-1 {
+  --team: #ff5d6c;
+}
+#hud.hud-badge.hud-ffa .hud-fighter {
+  --team: var(--element);
+}
+#hud.hud-badge.hud-teams .hud-fighter.me b {
+  color: #fff;
+  text-decoration: underline;
+  text-decoration-color: var(--team);
+  text-underline-offset: 3px;
+}
+#hud.hud-badge.hud-teams .hud-fighter strong[id^="score-"] {
+  color: var(--team);
+}
+/* 2v2: the team's rounds once, beside the clock. */
+#hud.hud-badge.hud-teams:not(.hud-ffa)
+  .hud-fighter:not(.right):first-child
+  strong[id^="score-"],
+#hud.hud-badge.hud-teams:not(.hud-ffa)
+  .hud-fighter.right:last-child
+  strong[id^="score-"] {
+  /* Kept in the row (out of sight, no width) so every name sits on the
+     same baseline as the ones beside a score. */
+  visibility: hidden;
+  width: 0;
+  margin-left: -5px;
+  overflow: hidden;
+}
+/* On the right the score is before the name: the gap to cancel is on its
+   other side. */
+#hud.hud-badge.hud-teams:not(.hud-ffa)
+  .hud-fighter.right:last-child
+  strong[id^="score-"] {
+  margin-left: 0;
+  margin-right: -5px;
+}
+#hud.hud-badge .timer-wrap {
+  position: relative;
+  /* Its ink (clock and round) on the badge's middle line. */
+  top: -1px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  line-height: 1;
+}
+#hud.hud-badge #timer {
+  margin: 0;
+  font:
+    700 calc(18px * var(--text-scale, 1)) "Barlow Condensed",
+    sans-serif;
+  line-height: 1;
+}
+/* The clock first, the round under it. */
+#hud.hud-badge #round-label {
+  /* An older phone layout pins it above the clock; here it is in line. */
+  position: static;
+  order: 1;
+  width: auto;
+  transform: none;
+  white-space: nowrap;
+  line-height: 1;
+  margin: 2px 0 0;
+  font-size: calc(8px * var(--text-scale, 1));
+  letter-spacing: 0.8px;
+  color: #9fb0d0;
+}
+/* Shown only when it changes the fight (the ring, a rule): a small note
+   under the badge. */
+#hud.hud-badge #phase-label:not([hidden]) {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  width: auto;
+  line-height: 1.2;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #0b1428d9;
+  color: var(--ui-accent);
+  font-size: calc(10px * var(--text-scale, 1));
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+}
+
+/* Phones: no row above the arena; it starts under the notch. */
+@media (orientation: landscape) {
+  body.battle-active.touch-mode.pvp-badge:not(.battle-raid) .arena-frame {
+    top: calc(var(--safe-top) + 4px);
+  }
+}
+
+/* The nearest off-screen opponent: an arrow circling your fighter, in that
+   opponent's colour (main.ts places it). */
+.enemy-bearing.is-orbit {
+  top: 0 !important;
+  left: 0 !important;
+  width: 0;
+  height: 0;
+  padding: 0;
+  gap: 0;
+  border: 0;
+  background: none;
+  overflow: visible;
+}
+.enemy-bearing.is-orbit strong {
+  display: none;
+}
+.enemy-bearing.is-orbit span {
+  position: absolute;
+  left: -12px;
+  top: -12px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  font-size: 0;
+  filter: drop-shadow(0 0 4px var(--bearing-color, var(--ui-accent)))
+    drop-shadow(0 1px 1px #000c);
+}
+.enemy-bearing.is-orbit span::before {
+  content: "";
+  margin-left: 4px;
+  border-left: 14px solid var(--bearing-color, var(--ui-accent));
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+}
+
+/* Raid allies off a phone's follow camera (ally-bearings.ts): an arrow at
+   the screen's edge in the allies' blue (as on their nameplates, whatever
+   their champion's colour, so a red champion never reads as downed); a
+   downed ally's turns red and pulses a "!". */
+.ally-bearing {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  z-index: 22;
+  pointer-events: none;
+}
+.ally-bearing span {
+  position: absolute;
+  left: -11px;
+  top: -11px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 0 3px #5ab0ff) drop-shadow(0 1px 1px #000c);
+}
+.ally-bearing span::before {
+  content: "";
+  margin-left: 3px;
+  border-left: 12px solid #5ab0ff;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+}
+.ally-bearing b {
+  display: none;
+}
+.ally-bearing.is-downed span::before {
+  border-left-color: #ff5a5a;
+}
+.ally-bearing.is-downed b {
+  position: absolute;
+  left: -7px;
+  top: -8px;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ff5a5a;
+  color: #fff;
+  font:
+    800 11px/1 system-ui,
+    sans-serif;
+  animation: ally-down-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes ally-down-pulse {
+  to {
+    transform: scale(1.25);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ally-bearing.is-downed b {
+    animation: none;
+  }
+}

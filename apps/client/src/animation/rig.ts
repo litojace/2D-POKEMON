@@ -1,6 +1,18 @@
-import { cosmeticLayer, type Skin } from "./cosmetics";
+import { battleCurves } from "../battle-curves";
+import {
+  groundHeight,
+  WORLD_ART,
+} from "../../../../packages/shared/src/world-art";
+import { cosmeticLayer, originalOf, type Skin } from "./cosmetics";
+import {
+  profilePartOrder,
+  profileEmissionPoint,
+  PROFILE_HEAD_WIDTH,
+  PROFILE_FACE_PARTS,
+  REAR_ARMS_MIRRORED,
+} from "../creature-profile";
 import { drawElementGlyph } from "../element-effects";
-import Phaser from "phaser";
+import type Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { moodFor, squashFor } from "./expression";
 import {
@@ -10,24 +22,66 @@ import {
   type AnimationState,
   type Facing,
 } from "./controller";
+import { loadRigTextures, textureResolution } from "./rig-textures";
 import {
   moodKey,
   parts,
-  rigAnchors,
+  partsFor,
+  rigAnchorsFor,
   rigKey,
   rigAssets,
   rigPoint,
   skinSuffix,
+  lumeLayers,
+  artOrigins,
+  type LumeKind,
   type Part,
   type RigAsset,
 } from "./assets";
-import { paletteFor, type SkinLook } from "../creature-design";
+import { HOVERING, paletteFor, type SkinLook } from "../creature-design";
 import { hexToNumber, wornArt } from "../skins/skin-art";
-import { FX_GRAVITY, drawFxParticle, drawSkinFx, type FxShape } from "../skins/skin-fx";
-import { drawCollectionVictory, playCollectionEntrance } from "../skins/collection-fx";
+import { drawColorsFx } from "../skins/colors-fx";
+import {
+  drawAnyParticle,
+  stepParticle,
+  drawSkinFx,
+  type FxShape,
+} from "../skins/skin-fx";
+import {
+  drawCollectionVictory,
+  playCollectionEntrance,
+} from "../skins/collection-fx";
 
 /** Skinned texture sets already requested, per scene (loaded on first sight). */
 const requested = new WeakMap<Phaser.Scene, Map<string, string[]>>();
+
+/**
+ * A rig image is its art's size (and so is its origin), whatever its raster,
+ * and takes its texture's own pivot whenever the texture changes: a costume
+ * crops some parts in a wider box (assets.ts COSTUME_BOUNDS), where the same
+ * joint is another fraction of the texture. Keeping the default crop's
+ * fractions drew Tide Admiral's bicorne 26 rig px above its head and its
+ * coat as far below the body (owner's iPhone report, Shop preview).
+ */
+function sizeByResolution(image: Phaser.GameObjects.Image) {
+  image.setSizeToFrame = function (frame?: Phaser.Textures.Frame | boolean) {
+    const f = (
+      frame && typeof frame === "object" ? frame : this.frame
+    ) as Phaser.Textures.Frame;
+    const r = textureResolution(f.texture.key, f.source.width);
+    f.source.resolution = r;
+    this.width = f.realWidth / r;
+    this.height = f.realHeight / r;
+    const origin = artOrigins.get(originalOf(f.texture.key));
+    // After the size: the display origin is measured in it.
+    if (origin) this.setOrigin(origin[0], origin[1]);
+    return this;
+  };
+  // (Test doubles of Phaser have no frames to size.)
+  return typeof image.setFrame === "function"
+    ? image.setFrame(image.frame)
+    : image;
+}
 
 /**
  * Follow-through: these parts hang on damped springs, so they trail behind
@@ -49,9 +103,21 @@ const SPRINGS: Partial<Record<Part, Spring>> = {
 /** Duskveil's lantern swings like a pendulum. */
 const LANTERN: Spring = { drag: 1 / 240, stiff: 32, damp: 3.2 };
 /** Rig pixels from the root (body pivot) down to the feet. */
-const FEET = 21;
+const FEET = WORLD_ART.fighterFeet;
 /** Rockslide Flex victory: how high the rock pile lifts the fighter (rig units). */
 const ROCK_PILE = 24;
+/**
+ * Near-paw props that stand upright from the paw, above the shoulder:
+ * Astrabun's mallet (and each skin's re-forged mallet or wand). The prop is
+ * painted on the arm, so raising that arm overhead turns it upside down onto
+ * the body. Greetings and victories hold that arm (armR, before the side
+ * mirror) near the angle where the prop stands up (radians; front and back
+ * views, and side views, where it rests over the shoulder), within `swing`;
+ * the free paw does the big moves.
+ */
+export const UPRIGHT_PROP_ARM: Partial<
+  Record<CharacterId, { front: number; side: number; swing: number }>
+> = { astrabun: { front: -0.35, side: 0.35, swing: 0.4 } };
 const MAX_PARTICLES = 48;
 
 type ParticleShape = FxShape;
@@ -66,6 +132,7 @@ interface Particle {
   color: number;
   shape: ParticleShape;
   spin?: number;
+  behind?: boolean;
 }
 
 export class FighterRig {
@@ -75,6 +142,7 @@ export class FighterRig {
   private effects: Phaser.GameObjects.Graphics;
   private dir: Facing = "down";
   private previousRotations = new Map<Part, number>();
+  private carriedRotation = 0;
   private lastRender = 0;
   private blinkAt = 0;
   private blinkUntil = 0;
@@ -105,22 +173,32 @@ export class FighterRig {
   private suffix = "";
   /** The state skin effects last saw (to fire one-off bursts once). */
   private fxState: AnimationState = "idle";
+  /** A twin of each part drawn in one flat colour over it (pose.wash). */
+  private washes?: Map<Part, Phaser.GameObjects.Image>;
+  /** The facing the twins were last ordered for. */
+  private washDir = "";
+  /** Light layers over glowing costume pieces, by texture key. */
+  private glows?: Map<string, Phaser.GameObjects.Image>;
   /** Auralynx's ring keeps its phase when its speed or the scene clock changes. */
   private auraRingAngle = 0;
+  /** Height/width of the ground plane skin rings lie on. The fitting room's
+   * floor is flatter than the arena's, so its preview sets its own. */
+  groundFlat: number = WORLD_ART.groundY;
   constructor(
     private scene: Phaser.Scene,
     readonly character: CharacterId,
     private assets: RigAsset[],
   ) {
     this.root = scene.add.container(0, 0).setDepth(2);
-    this.effects = scene.add.graphics().setDepth(3);
-    this.under = scene.add.graphics().setDepth(1.9);
-    for (const part of parts) {
+    this.effects = battleCurves(scene.add.graphics()).setDepth(3);
+    this.under = battleCurves(scene.add.graphics()).setDepth(1.9);
+    for (const part of partsFor(character)) {
       const asset = assets.find(
         (a) => a.key === rigKey(character, "down", part),
       )!;
-      const image = scene.add
-        .image(asset.x, asset.y, asset.key)
+      const image = sizeByResolution(
+        scene.add.image(asset.x, asset.y, asset.key),
+      )
         .setOrigin(asset.originX, asset.originY)
         .setScale(0.5);
       this.images.set(part, image);
@@ -141,6 +219,23 @@ export class FighterRig {
     this.root.setVisible(visible);
     this.effects.setVisible(visible);
     this.under.setVisible(visible);
+  }
+  /**
+   * The layer drawn over the fighter (world coordinates), cleared at the
+   * start of each render: draw on it after render() to pass in front.
+   */
+  get front() {
+    return this.effects;
+  }
+  /** The layer just under the fighter, cleared like `front`. */
+  get behind() {
+    return this.under;
+  }
+  /** Sort the fighter (with its effects and ground layer) among other objects. */
+  setDepth(depth: number) {
+    this.under.setDepth(depth - 0.1);
+    this.root.setDepth(depth);
+    this.effects.setDepth(depth + 0.1);
   }
   destroy() {
     this.root.destroy(true);
@@ -171,14 +266,18 @@ export class FighterRig {
     const pending = asked?.get(suffix);
     // The body can finish before arms, accessories or expression textures.
     // Keep the current form until the entire requested set is ready.
-    if (!this.scene.textures.exists(probe) || pending?.some((key) => !this.scene.textures.exists(key))) {
+    if (
+      !this.scene.textures.exists(probe) ||
+      pending?.some((key) => !this.scene.textures.exists(key))
+    ) {
       if (!asked) requested.set(this.scene, (asked = new Map()));
       if (!asked.has(suffix)) {
         const assets = rigAssets(this.character, look ?? null);
-        asked.set(suffix, assets.map((a) => a.key));
-        for (const a of assets)
-          if (!this.scene.textures.exists(a.key))
-            this.scene.load.svg(a.key, a.url, { width: a.width, height: a.height });
+        asked.set(
+          suffix,
+          assets.map((a) => a.key),
+        );
+        loadRigTextures(this.scene, assets);
         if (!this.scene.load.isLoading()) this.scene.load.start();
       }
       return;
@@ -196,7 +295,10 @@ export class FighterRig {
     reduced = false,
   ) {
     for (const [part, image] of this.images)
-      this.previousRotations.set(part, image.rotation);
+      this.previousRotations.set(
+        part,
+        image.rotation - (part === "body" ? 0 : this.carriedRotation),
+      );
     this.wear(pose.skin);
     const dt = this.lastRender
       ? Math.min(0.05, Math.max(0, now - this.lastRender) / 1000)
@@ -227,22 +329,29 @@ export class FighterRig {
     const dir = facing(pose.angle);
     if (dir !== this.dir) {
       this.dir = dir;
+      const order = (
+        dir === "down" ? parts : profilePartOrder(dir, this.character)
+      ).filter((part) => this.images.has(part));
+      order.forEach((part, index) =>
+        this.root.moveTo(this.images.get(part)!, index),
+      );
       for (const [part, image] of this.images) {
         const asset = this.assets.find(
           (a) => a.key === rigKey(this.character, dir, part),
         )!;
-        image
-          .setTexture(rigKey(this.character, dir, part, this.suffix))
-          .setOrigin(asset.originX, asset.originY)
-          .setPosition(asset.x, asset.y);
+        const key = rigKey(this.character, dir, part, this.suffix);
+        // The worn texture's own pivot: a costume's crop can be wider.
+        const [ox, oy] = artOrigins.get(key) ?? [asset.originX, asset.originY];
+        image.setTexture(key).setOrigin(ox, oy).setPosition(asset.x, asset.y);
       }
     }
+    const rigAnchors = rigAnchorsFor(this.character, dir);
     const t = (now - this.controller.started) / 1000;
     const moving = state === "walk" || state === "run";
-    const heavy = this.character === "terradon";
-    // Mystowl and Duskveil hover instead of stepping.
-    const floats =
-      this.character === "mystowl" || this.character === "duskveil";
+    const heavy =
+      this.character === "terradon" || this.character === "wombolder";
+    // Floating champions keep their feet tucked and glide instead of stepping.
+    const floats = HOVERING.includes(this.character);
     const step = Math.sin(
       t *
         Math.PI *
@@ -259,7 +368,11 @@ export class FighterRig {
     const attack = state === "basic" || skill >= 0;
     const kit = CHARACTERS[this.character];
     const ability =
-      state === "basic" ? kit.basic : skill >= 0 ? kit.skills[skill] : undefined;
+      state === "basic"
+        ? kit.basic
+        : skill >= 0
+          ? kit.skills[skill]
+          : undefined;
     const kind = ability?.kind;
     // Wind-up, strike, settle. It follows authorization; it never delays play.
     const punch = attack
@@ -285,27 +398,37 @@ export class FighterRig {
       wings = this.images.get("wings")!,
       scarf = this.images.get("scarf")!;
     this.root.setPosition(x, y).setAlpha(alpha).setAngle(0);
-    for (const image of this.images.values())
+    for (const [part, image] of this.images) {
+      const asset = this.assets.find(
+        (a) => a.key === rigKey(this.character, dir, part),
+      )!;
       image
+        .setPosition(asset.x, asset.y)
         .setRotation(0)
         .setScale(0.5)
-        .setTint(state === "hurt" ? 0xffb4b4 : 0xffffff);
+        .setTint(
+          state === "hurt"
+            ? (pose.hurtTint ?? 0xffb4b4)
+            : (pose.tint ?? 0xffffff),
+        );
+    }
     let [sx, sy] = reduced ? [1, 1] : squashFor(state, progress, t, pose.angle);
     let offsetX = 0,
       offsetY = 0;
     body.setScale(0.5, 0.5 + (reduced ? 0 : idle * 0.009));
     head.y = rigAnchors.headY + (reduced ? 0 : idle * 0.55);
-    head.rotation = reduced
-      ? 0
-      : this.character === "tidefin"
-        ? -0.05
-        : idle * 0.025;
+    head.rotation = reduced ? 0 : idle * 0.025;
     ears.rotation = reduced ? 0 : Math.sin(now / 250) * 0.04;
     tail.rotation = reduced ? 0 : Math.sin(now / 340) * 0.12;
     wings.setScale(0.5 + (reduced ? 0 : Math.sin(now / 360) * 0.025), 0.5);
+    const rigidHeadwear =
+      this.character === "voltkit" ||
+      this.character === "tidefin" ||
+      this.character === "auralynx";
+    const livingFlame = !reduced && this.character === "cindrake";
     flame.setScale(
-      0.5 + (reduced ? 0 : Math.sin(now / 90) * 0.04),
-      0.5 + (reduced ? 0 : Math.cos(now / 75) * 0.06),
+      0.5 + (livingFlame ? Math.sin(now / 90) * 0.04 : 0),
+      0.5 + (livingFlame ? Math.cos(now / 75) * 0.06 : 0),
     );
     flame.rotation = 0;
     scarf.rotation = reduced ? 0 : Math.sin(now / 200) * 0.06;
@@ -328,24 +451,21 @@ export class FighterRig {
       armR = this.images.get("armR")!,
       legL = this.images.get("legL")!,
       legR = this.images.get("legR")!;
-    for (const part of ["armL", "armR", "legL", "legR"] as Part[]) {
-      const asset = this.assets.find(
-        (a) => a.key === rigKey(this.character, dir, part),
-      )!;
-      this.images.get(part)!.setPosition(asset.x, asset.y);
-    }
-    if (this.character === "auralynx") {
+    const profile = dir !== "down";
+    if (this.character === "auralynx" && !profile) {
       armL.rotation = -0.35;
       armR.rotation = 0.35;
     }
-    if (this.character === "tidefin") {
+    if (this.character === "tidefin" && !profile) {
       body.setScale(0.53, 0.47);
       legL.rotation = -0.18;
       legR.rotation = 0.18;
     }
     if (floats && !reduced && state !== "defeat")
       offsetY -=
-        6 + Math.sin(now / (this.character === "duskveil" ? 260 : 520)) * 3;
+        this.character === "lumoth"
+          ? 6 + Math.sin(now / 310) * 1.8
+          : 6 + Math.sin(now / (this.character === "duskveil" ? 260 : 520)) * 3;
     if (moving && !reduced) {
       const stride =
         this.character === "cindrake"
@@ -357,8 +477,23 @@ export class FighterRig {
       armR.rotation = -step * stride;
       legL.rotation = -step * (floats ? 0.08 : heavy ? 0.18 : 0.28);
       legR.rotation = step * (floats ? 0.08 : heavy ? 0.18 : 0.28);
-      legL.y += step * 2;
-      legR.y -= step * 2;
+      if (!floats) {
+        legL.y += step * 2;
+        legR.y -= step * 2;
+      }
+      if (this.character === "auralynx") {
+        // Relaxed meditation arms and tucked feet, with no alternating walking cycle.
+        armL.rotation = -0.12;
+        armR.rotation = 0.12;
+        legL.rotation = -0.08;
+        legR.rotation = 0.08;
+      }
+      if (this.character === "lumoth") {
+        armL.rotation = -0.1 + Math.sin(now / 310) * 0.025;
+        armR.rotation = 0.1 - Math.sin(now / 310) * 0.025;
+        legL.rotation = -0.05;
+        legR.rotation = 0.05;
+      }
       body.rotation = aimX * 0.055;
       wings.rotation = -step * 0.045;
       scarf.rotation = aimX * 0.16;
@@ -370,7 +505,7 @@ export class FighterRig {
       armR.rotation = -punch * 1.3;
       armL.rotation = punch * 0.7;
       head.rotation = -punch * 0.06;
-      body.rotation = punch * 0.08;
+      body.rotation = (dir === "left" ? -1 : 1) * punch * 0.08;
       if (
         kind === "projectile" ||
         kind === "barrage" ||
@@ -481,8 +616,15 @@ export class FighterRig {
     // ---- Signature idles.
     if (this.character === "auralynx") {
       if (!reduced) {
-        const celebrating = state === "victory" && t < 2.2 && pose.look?.victory !== "rockslide-flex";
-        const speed = celebrating ? 6 : pose.charging || attack ? 1 / 0.42 : 1 / 1.4;
+        const celebrating =
+          state === "victory" &&
+          t < 2.2 &&
+          pose.look?.victory !== "rockslide-flex";
+        const speed = celebrating
+          ? 6
+          : pose.charging || attack
+            ? 1 / 0.42
+            : 1 / 1.4;
         this.auraRingAngle = (this.auraRingAngle + dt * speed) % (Math.PI * 2);
       }
       wings.rotation = this.auraRingAngle;
@@ -521,6 +663,26 @@ export class FighterRig {
       if (this.character === "duskveil")
         // Robe tatters ripple.
         body.setScale(0.5 + Math.sin(now / 180) * 0.012, 0.5);
+      if (this.character === "glacelle") {
+        // Wing-flaps paddle the water; snow crystals drift round.
+        armL.rotation += Math.sin(now / 220) * 0.16;
+        armR.rotation -= Math.sin(now / 220) * 0.16;
+        wings.rotation = Math.sin(now / 900) * 0.08;
+      }
+      if (this.character === "shadopus" && !moving) {
+        // Tentacles never quite keep still.
+        armL.rotation = Math.sin(now / 260) * 0.12;
+        armR.rotation = -Math.sin(now / 290) * 0.12;
+        legL.rotation = Math.sin(now / 330) * 0.06;
+        legR.rotation = -Math.sin(now / 310) * 0.06;
+      }
+      if (this.character === "sunbara")
+        // The yuzu rocks as if floating in a hot spring.
+        flame.rotation = Math.sin(now / 520) * 0.06;
+      if (this.character === "halcyra" || this.character === "astrabun")
+        // A crest that ruffles; long ears that twitch.
+        ears.rotation +=
+          Math.sin(now / (this.character === "astrabun" ? 160 : 210)) * 0.03;
       if (this.character === "voltkit" && state === "dash")
         // Glider membranes spread mid-dash.
         wings.setScale(0.64, 0.56);
@@ -533,7 +695,9 @@ export class FighterRig {
         }
         if (now < this.tiltUntil)
           head.rotation +=
-            this.tiltSide * 0.26 * Math.sin(((this.tiltUntil - now) / 900) * Math.PI);
+            this.tiltSide *
+            0.26 *
+            Math.sin(((this.tiltUntil - now) / 900) * Math.PI);
       }
       if (pose.charging && this.character === "auralynx")
         body.setTint(0xffddff);
@@ -574,10 +738,15 @@ export class FighterRig {
       this.root.setAlpha(alpha * 0.65);
     }
     // ---- Greetings (round intro) and victories, one for each champion.
-    if (state === "wave" && !reduced) this.wave(t, { head, body, armL, armR, legL, legR, tail, wings, flame, ears }, (dx, dy) => {
-      offsetX += dx;
-      offsetY += dy;
-    });
+    if (state === "wave" && !reduced)
+      this.wave(
+        t,
+        { head, body, armL, armR, legL, legR, tail, wings, flame, ears },
+        (dx, dy) => {
+          offsetX += dx;
+          offsetY += dy;
+        },
+      );
     else if (state === "wave") armR.rotation = -2.4;
     // An equipped Victory reward replaces the champion's own victory move.
     if (
@@ -586,14 +755,20 @@ export class FighterRig {
       t < 2.2 &&
       pose.look?.victory !== "rockslide-flex"
     )
-      this.victory(t, { head, body, armL, armR, legL, legR, tail, wings, flame, ears }, (dx, dy) => {
-        offsetX += dx;
-        offsetY += dy;
-      });
+      this.victory(
+        t,
+        { head, body, armL, armR, legL, legR, tail, wings, flame, ears },
+        (dx, dy) => {
+          offsetX += dx;
+          offsetY += dy;
+        },
+      );
     // Rockslide Flex (a Victory reward): a pile of rocks rises under the
     // fighter, who stands on top flexing while pebbles bounce away.
     const flexing =
-      state === "victory" && !reduced && pose.look?.victory === "rockslide-flex";
+      state === "victory" &&
+      !reduced &&
+      pose.look?.victory === "rockslide-flex";
     const lastPileT = this.pileT;
     this.pileT = flexing ? t : 0;
     this.pile = 0;
@@ -606,21 +781,61 @@ export class FighterRig {
       if (t > 0.4 && t < 2.6) {
         const pump = Math.sin((t - 0.4) * 7);
         armL.rotation = 2.45 + pump * 0.18;
-        armR.rotation = -2.45 - pump * 0.18;
+        // An upright prop is pumped beside the head instead (UPRIGHT_PROP_ARM).
+        const held = this.propHold();
+        armR.rotation =
+          held === undefined ? -2.45 - pump * 0.18 : held - pump * 0.25;
         body.rotation = 0;
         head.rotation = -0.06;
         sy *= 1 + Math.max(0, pump) * 0.03;
       }
       // Pebbles burst when the pile lands, and with each flex.
-      const pumps = (v: number) => Math.floor(Math.max(0, v - 0.4) * 7 / Math.PI);
+      const pumps = (v: number) =>
+        Math.floor((Math.max(0, v - 0.4) * 7) / Math.PI);
       if (lastPileT < 0.35 && t >= 0.35) this.pebbles(x, y, 16);
       else if (t < 2.6 && pumps(t) > pumps(lastPileT)) this.pebbles(x, y, 3);
+    }
+    // An upright prop stays upright: its arm never swings overhead.
+    const prop = this.propHold();
+    if (prop !== undefined && (state === "wave" || state === "victory")) {
+      const swing = UPRIGHT_PROP_ARM[this.character]!.swing;
+      armR.rotation = Math.max(
+        prop - swing,
+        Math.min(prop + swing, armR.rotation),
+      );
+    }
+    // Side drawings are mirrored; their local limb poses must mirror too.
+    // World-space lean, lunge and wind already use the aiming direction.
+    if (dir === "left") {
+      for (const part of [
+        "head",
+        "ears",
+        "flame",
+        "armL",
+        "armR",
+        "legL",
+        "legR",
+        "tail",
+        "wings",
+      ] as Part[]) {
+        if (part === "wings" && (this.character === "auralynx" || heavy))
+          continue;
+        this.images.get(part)!.rotation *= -1;
+      }
+      for (const part of ["armL", "armR"] as Part[]) {
+        const asset = this.assets.find(
+          (a) => a.key === rigKey(this.character, dir, part),
+        )!;
+        const image = this.images.get(part)!;
+        image.x = 2 * asset.x - image.x;
+      }
     }
     // Smooth hand-offs between poses (springy parts integrate on their own).
     for (const [part, image] of this.images) {
       // This is a rotating ring, not a wing. Its phase is already continuous;
       // a spring would snap backwards when Phaser wraps +PI to -PI.
-      if (part === "wings" && this.character === "auralynx") continue;
+      if (part === "wings" && (this.character === "auralynx" || heavy))
+        continue;
       if (!reduced && SPRINGS[part]) continue;
       const old = this.previousRotations.get(part) ?? 0;
       const delta = Math.atan2(
@@ -637,7 +852,9 @@ export class FighterRig {
         if (state === "dash") this.kick(-aimX * 3);
       }
       for (const part of Object.keys(SPRINGS) as Part[]) {
-        if (part === "wings" && this.character === "auralynx") continue;
+        if (part === "flame" && rigidHeadwear) continue;
+        if (part === "wings" && (this.character === "auralynx" || heavy))
+          continue;
         const image = this.images.get(part)!;
         const spring =
           part === "tail" && this.character === "duskveil"
@@ -658,6 +875,8 @@ export class FighterRig {
         image.rotation = s.a;
       }
     } else if (reduced) this.springs.clear();
+    // A shell is rigid: it follows the torso, without feather flutter or wing springs.
+    if (heavy) wings.setScale(0.5, 0.5).setRotation(0);
     // Mountainborn entrance: a burst of pebbles as the round's greeting starts.
     if (
       state === "wave" &&
@@ -677,8 +896,22 @@ export class FighterRig {
       Math.sin(head.rotation) * rigAnchors.earsLift,
       head.y - Math.cos(head.rotation) * rigAnchors.earsLift,
     );
+    const earFar = this.images.get("earFar")!;
+    earFar
+      .setPosition(ears.x, ears.y)
+      .setRotation(ears.rotation)
+      .setScale(ears.scaleX, ears.scaleY);
     flame.setPosition(ears.x, ears.y);
-    flame.rotation += head.rotation;
+    flame.rotation = rigidHeadwear
+      ? head.rotation
+      : flame.rotation + head.rotation;
+    // A skin's headwear over an animated crest rides the head rigidly: no
+    // flicker, sway, spring or attack swell (creature-design ANIMATED_CRESTS).
+    this.images
+      .get("hat")
+      ?.setPosition(ears.x, ears.y)
+      .setRotation(head.rotation)
+      .setScale(0.5);
     if (reduced) {
       // Poses only: no bobbing, lunging or squashing.
       offsetX = 0;
@@ -703,13 +936,58 @@ export class FighterRig {
       );
       if (image.texture.key !== texture) image.setTexture(texture);
     }
+    // Seen from behind, a champion whose near paw holds something has its
+    // arms mirrored (REAR_ARMS_MIRRORED): mirror their poses too, so a swing
+    // or a held prop moves the same way it does from the front.
+    if (dir === "up" && REAR_ARMS_MIRRORED.has(this.character))
+      for (const part of ["armL", "armR"] as const) {
+        const image = this.images.get(part);
+        const asset = this.assets.find((a) => a.key === rigKey(this.character, dir, part));
+        if (!image || !asset) continue;
+        image.x = 2 * asset.x - image.x;
+        image.rotation = -image.rotation;
+      }
+    // Carry complete side/rear parts with the torso. Their own shoulder/hip
+    // pivots remain independent, including the hidden overlap at each joint.
+    if (dir !== "down") {
+      const cos = Math.cos(body.rotation),
+        sin = Math.sin(body.rotation);
+      for (const [part, image] of this.images) {
+        if (part === "body") continue;
+        const dx = ((image.x - body.x) * body.scaleX) / 0.5;
+        const dy = ((image.y - body.y) * body.scaleY) / 0.5;
+        image.setPosition(
+          body.x + dx * cos - dy * sin,
+          body.y + dx * sin + dy * cos,
+        );
+        image.rotation += body.rotation;
+      }
+    }
+    this.carriedRotation = dir === "down" ? 0 : body.rotation;
+    for (const image of this.images.values()) image.setVisible(true);
+    // Shell Up: head, limbs and sprout tuck away; only the mossy shell shows.
+    if (pose.shell)
+      for (const [part, image] of this.images)
+        if (part !== "wings") image.setVisible(false);
+    // Underground (Tunnel): only its mound of dirt shows.
+    if (pose.mound)
+      for (const image of this.images.values()) image.setVisible(false);
+    this.syncWash(pose.wash);
+    this.syncGlow(now, pose.ambient !== false, reduced);
     this.effects.clear();
     this.under.clear();
+    if (pose.mound) this.drawMound(pose.mound, x, y, alpha, reduced);
     if (!this.suffix && pose.look?.skin === "starlit-skin") {
       for (let i = 0; i < 5; i++) {
-        const sx = x + (i % 3 - 1) * 14 * this.baseX, sy = y - (12 + Math.floor(i / 3) * 23) * this.baseY;
-        const alpha = reduced ? 0.6 : 0.35 + Math.sin(now / 900 + i * 1.8) ** 2 * 0.55;
-        this.effects.lineStyle(1.2 * this.baseX, 0xf6e8ff, alpha).lineBetween(sx - 3 * this.baseX, sy, sx + 3 * this.baseX, sy).lineBetween(sx, sy - 3 * this.baseY, sx, sy + 3 * this.baseY);
+        const sx = x + ((i % 3) - 1) * 14 * this.baseX,
+          sy = y - (12 + Math.floor(i / 3) * 23) * this.baseY;
+        const alpha = reduced
+          ? 0.6
+          : 0.35 + Math.sin(now / 900 + i * 1.8) ** 2 * 0.55;
+        this.effects
+          .lineStyle(1.2 * this.baseX, 0xf6e8ff, alpha)
+          .lineBetween(sx - 3 * this.baseX, sy, sx + 3 * this.baseX, sy)
+          .lineBetween(sx, sy - 3 * this.baseY, sx, sy + 3 * this.baseY);
       }
     }
     if (this.pile > 0) this.drawPile(x, y);
@@ -717,8 +995,110 @@ export class FighterRig {
       this.particles.length = 0;
       return;
     }
-    this.drawEffects(pose, state, x, y, now, dt, t, progress, skill, attack, moving, dir);
+    this.drawEffects(
+      pose,
+      state,
+      x,
+      y,
+      now,
+      dt,
+      t,
+      progress,
+      skill,
+      attack,
+      moving,
+      dir,
+    );
     this.lastProgress = progress;
+  }
+
+  /**
+   * The wash: each part's twin, just above it, in the wash colour (its
+   * texture, frame, place and pose copied once the part is posed). Made the
+   * first time a pose asks for it; hidden when a pose doesn't.
+   */
+  private syncWash(wash: AnimationPose["wash"]) {
+    if (!wash) {
+      if (this.washes)
+        for (const w of this.washes.values()) w.setVisible(false);
+      return;
+    }
+    if (!this.washes) {
+      this.washes = new Map();
+      for (const [part, image] of this.images) {
+        const twin = sizeByResolution(
+          this.scene.add.image(0, 0, image.texture.key),
+        );
+        this.washes.set(part, twin);
+        this.root.add(twin);
+      }
+      this.washDir = "";
+    }
+    if (this.washDir !== this.dir) {
+      this.washDir = this.dir;
+      for (const [part, twin] of this.washes)
+        this.root.moveAbove(twin, this.images.get(part)!);
+    }
+    for (const [part, twin] of this.washes) {
+      const image = this.images.get(part)!;
+      if (twin.texture.key !== image.texture.key)
+        twin.setTexture(image.texture.key);
+      twin
+        .setOrigin(image.originX, image.originY)
+        .setPosition(image.x, image.y)
+        .setScale(image.scaleX, image.scaleY)
+        .setRotation(image.rotation)
+        .setFlip(image.flipX, image.flipY)
+        .setVisible(image.visible)
+        .setAlpha(image.alpha * wash.alpha)
+        .setTintFill(wash.color);
+    }
+  }
+
+  /**
+   * Light on glowing costume pieces: each light layer of a part (see
+   * `lumeLayers`) rides just above it with additive blending, its strength
+   * following the way it glows. Only fighters with the ambient budget get
+   * them (none on Low): the costume's texture already shows the lit colours,
+   * so without them the pieces simply hold still. Blinks stay at one flash a
+   * second per light, far under the three-flashes-a-second safety line.
+   */
+  private syncGlow(now: number, ambient: boolean, reduced: boolean) {
+    if (!this.glows && (!this.suffix || !ambient)) return;
+    const shown = new Set<string>();
+    if (ambient && this.suffix)
+      for (const image of this.images.values()) {
+        const layers = lumeLayers.get(image.texture.key);
+        if (!layers) continue;
+        for (const l of layers) {
+          if (!this.scene.textures.exists(l.key)) continue;
+          this.glows ??= new Map();
+          let twin = this.glows.get(l.key);
+          if (!twin) {
+            twin = sizeByResolution(
+              this.scene.add.image(0, 0, l.key),
+            ).setBlendMode("ADD");
+            this.glows.set(l.key, twin);
+            this.root.add(twin);
+          }
+          this.root.moveAbove(twin, image);
+          shown.add(l.key);
+          twin
+            .setOrigin(image.originX, image.originY)
+            .setPosition(image.x, image.y)
+            .setScale(image.scaleX, image.scaleY)
+            .setRotation(image.rotation)
+            .setFlip(image.flipX, image.flipY)
+            .setVisible(image.visible)
+            .setAlpha(
+              image.alpha *
+                (reduced ? 0.5 : lumeStrength(l.kind, l.phase, now / 1000)),
+            );
+        }
+      }
+    if (this.glows)
+      for (const [key, twin] of this.glows)
+        if (!shown.has(key)) twin.setVisible(false);
   }
 
   /** A burst of bouncing pebbles from the top of the victory rock pile. */
@@ -761,12 +1141,41 @@ export class FighterRig {
         cy = base - oy * h,
         rw = sw * w,
         rh = Math.max(2, sh * h);
-      g.fillStyle(color, 1).fillRoundedRect(cx - rw / 2, cy - rh / 2, rw, rh, Math.min(rw, rh) * 0.35);
-      g.lineStyle(1.5 * sc, 0x3d342b, 0.9).strokeRoundedRect(cx - rw / 2, cy - rh / 2, rw, rh, Math.min(rw, rh) * 0.35);
-      g.fillStyle(0xffffff, 0.12).fillRect(cx - rw * 0.3, cy - rh * 0.4, rw * 0.35, Math.max(1, rh * 0.15));
+      g.fillStyle(color, 1).fillRoundedRect(
+        cx - rw / 2,
+        cy - rh / 2,
+        rw,
+        rh,
+        Math.min(rw, rh) * 0.35,
+      );
+      g.lineStyle(1.5 * sc, 0x3d342b, 0.9).strokeRoundedRect(
+        cx - rw / 2,
+        cy - rh / 2,
+        rw,
+        rh,
+        Math.min(rw, rh) * 0.35,
+      );
+      g.fillStyle(0xffffff, 0.12).fillRect(
+        cx - rw * 0.3,
+        cy - rh * 0.4,
+        rw * 0.35,
+        Math.max(1, rh * 0.15),
+      );
     }
     // A thin amber glint, like Cragstone's cracks.
-    g.lineStyle(1.4 * sc, 0xffc46b, 0.8).lineBetween(x - 6 * sc, base - h * 0.55, x + 2 * sc, base - h * 0.35);
+    g.lineStyle(1.4 * sc, 0xffc46b, 0.8).lineBetween(
+      x - 6 * sc,
+      base - h * 0.55,
+      x + 2 * sc,
+      base - h * 0.35,
+    );
+  }
+
+  /** The arm angle that keeps an upright prop standing (UPRIGHT_PROP_ARM). */
+  private propHold() {
+    const prop = UPRIGHT_PROP_ARM[this.character];
+    if (!prop) return undefined;
+    return this.dir === "left" || this.dir === "right" ? prop.side : prop.front;
   }
 
   /** Each champion's own greeting at the start of a round. */
@@ -838,6 +1247,62 @@ export class FighterRig {
         // Lifts its lantern.
         p.armR.rotation = -1.6;
         p.tail.rotation = -0.4 + Math.sin(t * 6) * 0.3;
+        break;
+      case "coilemur":
+        // A cheeky wave, tail crackling.
+        p.armR.rotation = hand;
+        p.tail.rotation = Math.sin(t * 12) * 0.2;
+        p.head.rotation = 0.08;
+        break;
+      case "pyranda":
+        // Peeks out from behind its tail, then a tiny wave.
+        p.armL.rotation = hand * 0.5;
+        p.tail.rotation = -0.25;
+        p.head.rotation = -0.12;
+        break;
+      case "glacelle":
+        // A slow bob, both wing-flaps sweeping.
+        p.armL.rotation = Math.sin(t * 6) * 0.5;
+        p.armR.rotation = -Math.sin(t * 6) * 0.5;
+        move(0, -Math.sin(t * 3) * 3);
+        break;
+      case "halcyra":
+        // A crisp salute with one wing.
+        p.armR.rotation = -2.4;
+        p.head.rotation = -0.06;
+        p.ears.rotation = -0.08;
+        break;
+      case "sunbara":
+        // A calm nod.
+        p.head.y += Math.max(0, Math.sin(t * 4)) * 3;
+        p.armR.rotation = -0.6;
+        break;
+      case "astrabun":
+        // Mallet up, ears perked.
+        p.armR.rotation = this.propHold()! - 0.3;
+        p.ears.rotation = Math.sin(t * 10) * 0.08;
+        move(0, -Math.max(0, Math.sin(t * 8)) * 4);
+        break;
+      case "wombolder":
+        // A gruff paw up.
+        p.armR.rotation = -2;
+        p.head.rotation = -0.05;
+        break;
+      case "shadopus":
+        // A tentacle wave from behind the mask.
+        p.armR.rotation = -1.2 + Math.sin(t * 9) * 0.4;
+        p.armL.rotation = 0.3;
+        break;
+      case "pangrove":
+        // A claw raised, the leafy tail swishing.
+        p.armR.rotation = -1.8 + Math.sin(t * 8) * 0.25;
+        p.tail.rotation = Math.sin(t * 6) * 0.15;
+        p.flame.rotation = Math.sin(t * 6) * 0.12;
+        break;
+      case "mossloth":
+        // A very, very slow wave.
+        p.armR.rotation = -1.6 + Math.sin(t * 2.5) * 0.35;
+        p.head.rotation = 0.08;
         break;
     }
   }
@@ -915,9 +1380,143 @@ export class FighterRig {
         p.tail.rotation = -0.6 + Math.sin(t * 5) * 0.35;
         move(0, -Math.sin(t * 4) * 3);
         break;
+      case "coilemur":
+        // Both fists up, the magnet tail spinning.
+        p.armL.rotation = 2.3;
+        p.armR.rotation = -2.3;
+        p.tail.rotation = Math.sin(t * 16) * 0.35;
+        move(0, -Math.max(0, Math.sin(t * 8)) * 6);
+        break;
+      case "pyranda":
+        // A bashful hop, tail flame flaring.
+        p.armL.rotation = 0.9;
+        p.armR.rotation = -0.9;
+        p.tail.setScale(0.52, 0.55);
+        move(0, -Math.max(0, Math.sin(t * 6)) * 5);
+        break;
+      case "glacelle":
+        // A twirl in the current.
+        this.root.rotation = t < 0.9 ? (t / 0.9) * Math.PI * 2 : 0;
+        p.armL.rotation = -0.7;
+        p.armR.rotation = 0.7;
+        move(0, -Math.min(1, t / 0.5) * 8);
+        break;
+      case "halcyra":
+        // Wings flung wide, crest up.
+        p.armL.rotation = 1.9;
+        p.armR.rotation = -1.9;
+        p.ears.setScale(0.5, 0.56);
+        move(0, -Math.min(1, t / 0.4) * 5);
+        break;
+      case "sunbara":
+        // Lies back and soaks it up.
+        p.head.rotation = -0.1;
+        p.armL.rotation = 0.5;
+        p.armR.rotation = -0.5;
+        p.body.setScale(0.52, 0.49);
+        break;
+      case "astrabun":
+        // Free paw waved high between hops, the mallet shaken upright (the
+        // mallet is painted on the near paw: overhead it would hang upside
+        // down onto the belly; see UPRIGHT_PROP_ARM).
+        p.armL.rotation = 2.4 + Math.sin(t * 14) * 0.3;
+        p.armR.rotation = this.propHold()! + Math.sin(t * 14) * 0.25;
+        move(0, -Math.max(0, Math.sin(t * 9)) * 9);
+        break;
+      case "wombolder":
+        // Flexes, then thumps the ground.
+        p.armL.rotation = 1.4;
+        p.armR.rotation = -1.4;
+        p.body.setScale(
+          0.5 + Math.sin(t * 4) * 0.03,
+          0.5 - Math.sin(t * 4) * 0.02,
+        );
+        break;
+      case "pangrove":
+        // Curls into a ball and rolls a full turn, then pops up, arms wide.
+        this.root.rotation = t < 0.7 ? (t / 0.7) * Math.PI * 2 : 0;
+        p.armL.rotation = t < 0.7 ? 0.6 : 1.3;
+        p.armR.rotation = t < 0.7 ? -0.6 : -1.3;
+        break;
+      case "mossloth":
+        // Arms up, slowly swaying like a sloth on a branch.
+        p.armL.rotation = 2.6 + Math.sin(t * 2) * 0.15;
+        p.armR.rotation = -2.6 + Math.sin(t * 2) * 0.15;
+        move(Math.sin(t * 2) * 3, 0);
+        break;
+      case "shadopus":
+        // All tentacles up in a flourish.
+        p.armL.rotation = 1.8 + Math.sin(t * 10) * 0.2;
+        p.armR.rotation = -1.8 - Math.sin(t * 10) * 0.2;
+        p.legL.rotation = -0.3;
+        p.legR.rotation = 0.3;
+        break;
     }
   }
 
+  /**
+   * Pangrove underground (Tunnel): a mound of churned soil on the ground,
+   * leaf-plate tips poking out of its crest, with clods turning over as it
+   * moves toward `heading`. Everyone sees it: it is how the opponent knows
+   * where Pangrove is.
+   */
+  private drawMound(
+    mound: { churn: number; heading: number },
+    x: number,
+    y: number,
+    alpha: number,
+    reduced: boolean,
+  ) {
+    const g = this.effects,
+      R = 30 * (this.baseX / 0.7),
+      cx = x,
+      cy = y + FEET * this.baseY - R * 0.35,
+      churn = reduced ? 0 : mound.churn;
+    // A soft shadow, then the mound itself (lit from above).
+    g.fillStyle(0x000000, 0.22 * alpha).fillEllipse(
+      cx,
+      cy + R * 0.3,
+      R * 2.5,
+      R * 0.9,
+    );
+    g.fillStyle(0x3d2814, alpha).fillEllipse(cx, cy, R * 2.3, R * 1.15);
+    g.fillStyle(0x7a5532, alpha).fillEllipse(cx, cy - R * 0.12, R * 2, R * 0.9);
+    g.fillStyle(0xa57a4a, alpha).fillEllipse(
+      cx - R * 0.2,
+      cy - R * 0.3,
+      R * 1.1,
+      R * 0.4,
+    );
+    // Clods turning over as it digs along.
+    for (let i = 0; i < 6; i++) {
+      const t = churn + (i * Math.PI * 2) / 6,
+        px = cx + Math.cos(t) * R * 0.75,
+        py = cy - R * 0.1 + Math.sin(t) * R * 0.28;
+      if (Math.sin(t) < -0.2) continue;
+      g.fillStyle(i % 2 ? 0x5a3b1e : 0x8c6338, alpha).fillCircle(
+        px,
+        py,
+        R * 0.13,
+      );
+    }
+    // Leaf-plate tips along the crest: the only part of Pangrove that shows.
+    const hx = Math.cos(mound.heading);
+    for (const k of [-0.45, 0, 0.45]) {
+      const px = cx + k * R * 0.9,
+        py = cy - R * 0.45 - (k === 0 ? 4 : 0),
+        lean = hx * 0.3,
+        w = R * 0.2,
+        h = R * 0.42;
+      g.fillStyle(k === 0 ? 0xc7e88a : 0x7fcf6a, alpha).fillTriangle(
+        px - w,
+        py + h * 0.4,
+        px + w,
+        py + h * 0.4,
+        px + lean * h,
+        py - h * 0.6,
+      );
+    }
+  }
   private drawEffects(
     pose: AnimationPose,
     state: AnimationState,
@@ -941,12 +1540,32 @@ export class FighterRig {
       ? hexToNumber(paletteFor(this.character, pose.skin).glow)
       : undefined;
     const sc = this.baseX;
-    const at = (part: Part, ax: number, ay: number) => {
-      const p = rigPoint(part, ax, ay);
+    const screenPoint = (part: Part, p: { x: number; y: number }) => {
+      const asset = this.assets.find(
+        (a) => a.key === rigKey(this.character, dir, part),
+      )!;
+      const image = this.images.get(part)!;
+      const dx = ((p.x - asset.x) * image.scaleX) / 0.5,
+        dy = ((p.y - asset.y) * image.scaleY) / 0.5;
+      const cos = Math.cos(image.rotation),
+        sin = Math.sin(image.rotation);
       return {
-        x: this.root.x + p.x * this.root.scaleX,
-        y: this.root.y + p.y * this.root.scaleY,
+        x: this.root.x + (image.x + dx * cos - dy * sin) * this.root.scaleX,
+        y: this.root.y + (image.y + dx * sin + dy * cos) * this.root.scaleY,
       };
+    };
+    const at = (part: Part, ax: number, ay: number) => {
+      if (dir !== "down")
+        [ax, ay] = profileEmissionPoint(this.character, dir, part, ax, ay);
+      return screenPoint(part, rigPoint(part, ax, ay));
+    };
+    const mount = (part: Part, ax: number, ay: number) => {
+      if (
+        (dir === "left" || dir === "right") &&
+        PROFILE_FACE_PARTS.includes(part)
+      )
+        ax = 100 + (ax - 100) * PROFILE_HEAD_WIDTH;
+      return screenPoint(part, { x: (ax - 100) * 0.5, y: (ay - 130) * 0.5 });
     };
     // The tail tip sits on the far side when facing right.
     const tailX = (ax: number) => (dir === "right" ? 200 - ax : ax);
@@ -990,7 +1609,12 @@ export class FighterRig {
         vy: -30 - Math.random() * 30,
         life: 0.7,
         size: (1.4 + Math.random() * 1.4) * sc,
-        color: Math.random() < 0.5 ? (glow ?? 0xffd34d) : (art ? hexToNumber(paletteFor(this.character, pose.skin).mid) : 0xff7a4f),
+        color:
+          Math.random() < 0.5
+            ? (glow ?? 0xffd34d)
+            : art
+              ? hexToNumber(paletteFor(this.character, pose.skin).mid)
+              : 0xff7a4f,
         shape: "dot",
       });
     }
@@ -1066,6 +1690,8 @@ export class FighterRig {
         size: 2.6 * sc,
         color: Math.random() < 0.5 ? color : 0xffffff,
         shape: "star",
+        // Victory sparkles stay behind the fighter, off its face.
+        behind: true,
       });
     }
     // ---- Shop skin extras (trails, details, Mythical Awakening effects).
@@ -1094,14 +1720,43 @@ export class FighterRig {
           knockedOut: state === "defeat" && this.fxState !== "defeat",
           ultimate: skill === 3 && this.lastProgress < 0.3 && progress >= 0.3,
           ambient: pose.ambient !== false,
+          mount,
+          facing: dir,
+          flat: this.groundFlat,
         },
         art,
         stage,
       );
     }
+    // ---- Colors (all-fighter palettes): their motif and tier extras. A
+    // champion skin wins over Colors, so it draws only without one.
+    if (!this.suffix && !art && pose.look?.skin)
+      drawColorsFx(
+        {
+          g,
+          under: this.under,
+          emit: (p) => this.emit(p),
+          chance: (rate, d) => this.chance(rate, d),
+          x,
+          y,
+          sc,
+          now,
+          dt,
+          moving,
+        },
+        pose.look.skin,
+      );
     // ---- Shop collection pieces: entrance burst and victory finale.
     if (state === "wave" && this.fxState !== "wave" && pose.look?.entrance)
-      playCollectionEntrance((p) => this.emit(p), pose.look.entrance, x, y, sc);
+      playCollectionEntrance(
+        (p) => this.emit(p),
+        pose.look.entrance,
+        x,
+        y,
+        sc,
+        // The rig bursts Mountainborn's pebbles itself; add only its flourish.
+        pose.look.entrance === "mountainborn",
+      );
     if (state === "victory" && pose.look?.victory)
       drawCollectionVictory(
         g,
@@ -1118,48 +1773,24 @@ export class FighterRig {
       );
     this.fxState = state;
     // ---- Update and draw particles.
-    for (const p of this.particles) {
-      p.age += dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vy += (FX_GRAVITY[p.shape] ?? 0) * dt;
-    }
+    for (const p of this.particles) stepParticle(p, dt);
     this.particles = this.particles.filter((p) => p.age < p.life);
-    for (const p of this.particles) {
-      const fade = 1 - p.age / p.life;
-      if (drawFxParticle(g, p, fade)) continue;
-      if (p.shape === "dot") g.fillStyle(p.color, 0.85 * fade).fillCircle(p.x, p.y, p.size);
-      else if (p.shape === "bubble")
-        g.lineStyle(1.2, p.color, 0.8 * fade).strokeCircle(p.x, p.y, p.size);
-      else if (p.shape === "puff")
-        g.fillStyle(p.color, 0.35 * fade).fillCircle(p.x, p.y, p.size * (1 + p.age * 2));
-      else if (p.shape === "pebble") {
-        const s = p.size;
-        g.fillStyle(p.color, fade)
-          .fillTriangle(p.x - s, p.y, p.x, p.y - s * 0.8, p.x + s, p.y)
-          .fillTriangle(p.x - s, p.y, p.x, p.y + s * 0.7, p.x + s, p.y);
-      } else if (p.shape === "spark")
-        g.lineStyle(1.6, p.color, fade)
-          .lineBetween(p.x - p.size, p.y, p.x, p.y - p.size * 0.6)
-          .lineBetween(p.x, p.y - p.size * 0.6, p.x + p.size * 0.4, p.y + p.size * 0.5);
-      else {
-        // A tiny four-point star.
-        const s = p.size;
-        g.fillStyle(p.color, 0.9 * fade)
-          .fillTriangle(p.x - s * 0.35, p.y, p.x + s * 0.35, p.y, p.x, p.y - s * 1.3)
-          .fillTriangle(p.x - s * 0.35, p.y, p.x + s * 0.35, p.y, p.x, p.y + s * 1.3)
-          .fillTriangle(p.x, p.y - s * 0.35, p.x, p.y + s * 0.35, p.x - s * 1.3, p.y)
-          .fillTriangle(p.x, p.y - s * 0.35, p.x, p.y + s * 0.35, p.x + s * 1.3, p.y);
-      }
-    }
+    for (const p of this.particles)
+      drawAnyParticle(p.behind ? this.under : g, p, 1 - p.age / p.life);
     // ---- Duskveil's wisps orbit; dizzy stars circle a fainted head.
     if (this.character === "duskveil" && state !== "defeat")
       for (let i = 0; i < 2; i++) {
         const a = now / 700 + i * Math.PI;
         const wx = x + Math.cos(a) * 30 * sc,
           wy = y - 12 * sc + Math.sin(a) * 10 * sc;
-        g.fillStyle(glow ?? 0x7dffe1, 0.18).fillCircle(wx, wy, 5 * sc);
-        g.fillStyle(glow ?? 0x7dffe1, 0.85).fillCircle(wx, wy, 1.8 * sc);
+        // The near half of the circle passes in front, the far half behind.
+        const near = Math.sin(a),
+          layer = near > 0 ? g : this.under,
+          d = 1 + 0.18 * near;
+        layer.fillStyle(glow ?? 0x7dffe1, 0.18).fillCircle(wx, wy, 5 * sc * d);
+        layer
+          .fillStyle(glow ?? 0x7dffe1, 0.85 * (0.8 + 0.2 * near))
+          .fillCircle(wx, wy, 1.8 * sc * d);
       }
     if (state === "defeat") {
       const top = at("head", 100, 46);
@@ -1182,13 +1813,13 @@ export class FighterRig {
         x,
         y + FEET * sc,
         (44 + pulse * 26) * sc,
-        (16 + pulse * 9) * sc,
+        groundHeight((44 + pulse * 26) * sc),
       );
       g.lineStyle(1.5, 0xffffff, 0.35).strokeEllipse(
         x,
         y + FEET * sc,
         44 * sc,
-        16 * sc,
+        groundHeight(44 * sc),
       );
     }
     // ---- Cast glyph (unchanged): the element sigil where the move leaves.
@@ -1228,5 +1859,24 @@ export class FighterRig {
           x - Math.cos(pose.angle) * (i * 14 + 16),
           y - Math.sin(pose.angle) * (i * 14 + 16),
         );
+  }
+}
+
+/** How strongly a light layer shines at time `t` (seconds), 0..1. */
+export function lumeStrength(kind: LumeKind, phase: number, t: number) {
+  const TAU = Math.PI * 2;
+  switch (kind) {
+    case "pulse":
+      return 0.1 + 0.9 * (0.5 - 0.5 * Math.cos((TAU * t) / 2.2));
+    case "blink":
+      // One flash a second, the odd lights half a second after the even.
+      return (t + phase * 0.5) % 1 < 0.3 ? 1 : 0.1;
+    case "chase":
+      // Even and odd lights take turns, like marquee bulbs.
+      return (
+        0.15 + 0.85 * (0.5 + 0.5 * Math.cos(TAU * (t / 1.2 - phase * 0.5)))
+      );
+    case "twinkle":
+      return Math.max(0, Math.cos(TAU * (t / 2.6 - phase * 0.5))) ** 8;
   }
 }

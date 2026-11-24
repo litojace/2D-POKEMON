@@ -1,0 +1,897 @@
+/* ==========================================================================
+   The player card and profile (UI remodel step 7, docs/ui-remodel/PLAN.md).
+   Markup: screens/profile-view.ts. Layout only on top of the shared
+   components (ui/components.css). The card on the left keeps its place;
+   the column beside it scrolls.
+   ========================================================================== */
+.profile-panel .ui-panel-head > .ui-btn {
+  flex: none;
+}
+.profile-panel > .ui-panel-body.pf-body {
+  grid-template-columns: clamp(300px, 24vw, 400px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
+  gap: var(--sp-4);
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------ the card */
+.pf-card {
+  position: relative;
+  display: grid;
+  /* One column exactly the card's width. Left automatic, the column could
+     grow past the card to its contents' widest size (the avatar sizes
+     itself from its own box, a container query), and Safari settled it
+     differently after the column beside it redrew: the avatar and the
+     words sat off-centre on some tabs (owner, iPhone, 21 Nov). */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  border-radius: var(--rad-xl);
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--el) 60%, transparent);
+  background:
+    radial-gradient(
+      ellipse 80% 50% at 50% 58%,
+      color-mix(in srgb, var(--el) 34%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(180deg, var(--ui-bg-2), var(--ui-bg-0));
+}
+.pf-card-art {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--sp-4);
+}
+.pf-card-art > :is(svg, img) {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 14px #0009);
+}
+.pf-card-text {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  background: linear-gradient(180deg, transparent, var(--ui-bg-0));
+  text-align: center;
+  min-width: 0;
+}
+/* The title as it reads above your fighter, without its arena animation. */
+.pf-card-title.player-title {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-small);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  animation: none;
+}
+.pf-card-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h2);
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.pf-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+}
+.pf-card-tags > .ui-tag {
+  justify-content: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------- the side column */
+.pf-main {
+  display: grid;
+  align-content: start;
+  gap: var(--sp-3);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  /* Room for focus rings at the edges of the scrolling column. */
+  padding: 2px 4px var(--sp-2) 2px;
+}
+.pf-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+.pf-tile {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  min-height: 84px;
+  padding: var(--sp-2);
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+  text-align: center;
+}
+.pf-tile > b {
+  font-size: calc(34px * var(--text-scale, 1));
+  line-height: 1;
+}
+.pf-tile > small {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+.pf-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: var(--sp-1);
+}
+.pf-section > small {
+  text-align: right;
+}
+
+/* Your name: change it once every 14 days. The row and the form are one
+   height, so opening the form moves nothing below it. */
+.pf-name-row,
+.pf-name-form {
+  display: grid;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: calc(var(--ctl-s) + 16px);
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+}
+.pf-name-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+/* The rule's note sits in the row on phones (its heading row goes). */
+.pf-name-note {
+  display: none;
+}
+.pf-name-row > .ui-btn {
+  min-width: var(--act-w);
+}
+.pf-name-form {
+  grid-template-columns: minmax(0, 1fr) var(--act-s) var(--act-s);
+  border-color: color-mix(in srgb, var(--ui-accent) 40%, transparent);
+}
+.pf-name-form > .ui-btn {
+  width: 100%;
+  min-width: 0;
+}
+:is(.pf-name-row, .pf-name-form)[hidden] {
+  display: none;
+}
+.pf-name-now {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h4);
+  letter-spacing: 0.02em;
+}
+.pf-name-form > input {
+  height: var(--ctl-s);
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line-2);
+  background: var(--fill-well);
+  color: var(--ui-text);
+  font: inherit;
+  font-weight: 700;
+}
+.pf-name-form > input:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+.pf-name-message {
+  margin-top: 4px;
+}
+.pf-name-message:empty {
+  display: none;
+}
+
+/* Titles: chips that wear the title at once. */
+.pf-titles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pf-title-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--ctl-s);
+  max-width: 100%;
+  padding: 0 14px;
+  border-radius: var(--rad-pill);
+  border: 1px solid color-mix(in srgb, var(--title) 45%, var(--ui-line-2));
+  background: var(--fill-card);
+  color: var(--title);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-body);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pf-title-chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: -0.04em;
+}
+.pf-title-chip.is-on {
+  border-color: var(--title);
+  background: color-mix(in srgb, var(--title) 22%, var(--ui-bg-1));
+  box-shadow: inset 0 0 0 1px var(--title);
+}
+.pf-title-chip[disabled] {
+  cursor: wait;
+}
+.pf-title-chip[aria-busy="true"] {
+  opacity: 0.6;
+}
+.pf-title-chip:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.pf-status:empty,
+.pf-avatar-status:empty {
+  display: none;
+}
+
+/* Mastery: every fighter, its portrait and its badge. */
+/* Eighteen fighters: two even rows of nine at every size. */
+.pf-mastery {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pf-mastery-chip {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+}
+.pf-mastery-chip.is-none > .ui-avatar {
+  opacity: 0.6;
+}
+.pf-mastery-chip .ui-ring b {
+  font-size: calc(11px * var(--text-scale, 1));
+}
+
+/* Journey and Ranked: two equal cards that open their screens. */
+.pf-minis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+.pf-mini {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pf-mini:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.pf-mini-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.pf-mini-row > * {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-mini-row > b {
+  flex: none;
+  max-width: 60%;
+  font-weight: 700;
+}
+
+/* Raid trophies: each boss's picture, clears in the corner. */
+.pf-trophies {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pf-trophy {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  padding: 0;
+  border-radius: var(--rad-sm);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--boss) 50%, var(--ui-line-2));
+  background: var(--fill-card);
+  cursor: pointer;
+}
+.pf-trophy > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pf-trophy.is-none > img {
+  filter: grayscale(0.8) brightness(0.45);
+}
+.pf-trophy-name {
+  position: absolute;
+  left: 6px;
+  right: 30px;
+  bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #fff;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  text-align: left;
+  text-shadow: 0 1px 3px #000;
+}
+.pf-trophy > b {
+  position: absolute;
+  right: 6px;
+  bottom: 2px;
+  color: #fff;
+  font-size: calc(20px * var(--text-scale, 1));
+  line-height: 1;
+  text-shadow: 0 2px 4px #000;
+}
+.pf-trophy:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+/* Achievements: each gives its title. */
+.pf-achievements {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pf-achievements > li {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--rad-sm);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+  color: var(--ui-dim);
+}
+.pf-achievements > li > b {
+  color: var(--ui-text);
+  font-weight: 700;
+}
+.pf-achievements > li > small {
+  font-size: var(--fs-small);
+}
+.pf-achievements > li.is-earned {
+  border-color: color-mix(in srgb, var(--ui-ok) 40%, transparent);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--ui-ok) 10.2%, transparent),
+    var(--ui-bg-1) 60%
+  );
+}
+.pf-achievements > li.is-earned > b::before {
+  content: "✓ ";
+  color: var(--ui-ok);
+}
+
+/* Ranks, Journey and Raid rewards: three equal buttons. */
+.pf-who:empty {
+  display: none;
+}
+
+/* Delete your account: a quiet red button, then a form that asks you to
+   type DELETE. */
+.pf-delete {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+}
+.pf-delete-form {
+  display: grid;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid #ff6b6b66;
+}
+.pf-delete-form[hidden] {
+  display: none;
+}
+.pf-delete-form > p {
+  margin: 0;
+}
+.pf-delete-label {
+  display: grid;
+  gap: 4px;
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.pf-delete-label > input {
+  height: var(--ctl-s);
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line-2);
+  background: var(--fill-well);
+  color: var(--ui-text);
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.pf-delete-label > input:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+.pf-delete-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+.pf-delete-message {
+  margin: 0;
+}
+.pf-delete-message:empty {
+  display: none;
+}
+
+/* A guest keeps their progress by adding an email. */
+.pf-save {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 40%, transparent);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--ui-accent) 10.2%, transparent),
+    var(--ui-bg-1) 60%
+  );
+}
+.pf-save-text {
+  display: grid;
+  gap: 2px;
+}
+.pf-save-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--act-s);
+  gap: var(--sp-2);
+}
+.pf-save-row > input {
+  height: var(--ctl-s);
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line-2);
+  background: var(--fill-well);
+  color: var(--ui-text);
+  font: inherit;
+}
+.pf-save-row > input:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+.pf-save-row > .ui-btn {
+  width: 100%;
+  min-width: 0;
+}
+.pf-save-status:empty {
+  display: none;
+}
+
+/* A tall window: a wider card (its fighter is as wide as the card, so a
+   narrow card left it small in a tall frame) and bigger numbers. */
+@media (min-height: 1000px) {
+  .profile-panel > .ui-panel-body.pf-body {
+    grid-template-columns: clamp(320px, 30vw, 560px) minmax(0, 1fr);
+  }
+  .pf-tile {
+    min-height: 110px;
+  }
+  .pf-tile > b {
+    font-size: calc(44px * var(--text-scale, 1));
+  }
+  .pf-mastery-chip {
+    padding: 12px 4px;
+  }
+}
+
+/* ------------------------------------------- phones, held sideways */
+@media (max-height: 500px) {
+  .profile-panel .ui-panel-head .ui-kicker {
+    display: none;
+  }
+  .profile-panel > .ui-panel-body.pf-body {
+    grid-template-columns: 170px minmax(0, 1fr);
+    gap: var(--sp-2);
+  }
+  .pf-card {
+    border-radius: var(--rad-lg);
+  }
+  .pf-card-art {
+    padding: 6px;
+  }
+  .pf-card-text {
+    gap: 3px;
+    padding: 6px 8px 8px;
+  }
+  .pf-card-title.player-title {
+    font-size: var(--fs-micro);
+  }
+  .pf-card-name {
+    font-size: var(--fs-h4);
+  }
+  .pf-card-tags {
+    gap: 3px;
+  }
+  .pf-main {
+    gap: var(--sp-2);
+  }
+  .pf-tiles {
+    gap: 6px;
+  }
+  .pf-tile {
+    min-height: 52px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .pf-tile > b {
+    font-size: calc(20px * var(--text-scale, 1));
+  }
+  .pf-tile > small {
+    font-size: var(--fs-micro);
+  }
+  .pf-section {
+    margin-top: 0;
+  }
+  .pf-title-chip {
+    padding: 0 10px;
+  }
+  .pf-name-row,
+  .pf-name-form {
+    min-height: calc(var(--ctl-s) + 10px);
+    padding: 5px 5px 5px 10px;
+  }
+  .pf-name-row > .ui-btn {
+    min-width: var(--act-w);
+  }
+  .pf-mastery {
+    gap: 4px;
+  }
+  .pf-mastery-chip {
+    padding: 4px 2px;
+    gap: 2px;
+  }
+  .pf-mastery-chip > .ui-avatar {
+    --size: 28px !important;
+  }
+  .pf-mastery-chip > .ui-ring {
+    --size: 22px !important;
+  }
+  .pf-mastery-chip .ui-ring b {
+    font-size: var(--fs-micro);
+  }
+  .pf-mini {
+    padding: 8px 10px;
+    gap: 4px;
+  }
+  .pf-trophies {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .pf-trophy > b {
+    font-size: calc(15px * var(--text-scale, 1));
+  }
+  .pf-achievements {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 4px;
+  }
+  .pf-achievements > li {
+    padding: 5px 8px;
+  }
+}
+
+/* ---------------------------------------------- your avatar (the card) */
+/* docs/hidden-picks.md, "Avatars": the card shows you, framed, not a
+   fighter; the library below picks it. */
+.pf-card-avatar {
+  aspect-ratio: 1;
+  align-self: center;
+  justify-self: center;
+  width: min(100%, 220px);
+  padding: var(--sp-5);
+}
+.pf-card-avatar > :is(.portrait-frame, .portrait-disc) {
+  width: 100%;
+  height: 100%;
+}
+.pf-avatar-styles {
+  margin-bottom: var(--sp-2);
+}
+.pf-avatars {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+}
+/* Round on every browser: the picture is the square (aspect-ratio on an
+   <img> holds everywhere), and the button wraps it. Squaring the button
+   itself failed on iPhone and iPad Safari, which stretched it taller than
+   wide, so the round-clipped picture turned into an ellipse (owner,
+   19 Nov). */
+.pf-avatar {
+  display: block;
+  align-self: start;
+  height: auto;
+  padding: 3px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: var(--fill-card);
+  cursor: pointer;
+  min-width: 44px;
+  line-height: 0;
+}
+.pf-avatar .portrait-avatar {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+}
+.pf-avatar:hover,
+.pf-avatar:focus-visible {
+  border-color: var(--ui-line-2);
+}
+.pf-avatar.is-on {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-accent) 35%, transparent);
+}
+.pf-avatar[aria-busy="true"] {
+  opacity: 0.6;
+}
+@media (max-height: 500px) {
+  /* Short screens: the portrait takes the height left above the name and
+     tags (not the card's width), so it never runs down over the title. */
+  .pf-card-avatar {
+    padding: 8px;
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+  }
+  .pf-avatars {
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 6px;
+  }
+}
+/* Your own picture: worn now (if so), what it is, and the button. */
+.pf-photo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+}
+.pf-photo-now {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: block;
+}
+.pf-photo-text {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.pf-photo-note {
+  margin: 0 0 var(--sp-2);
+}
+@media (max-height: 500px) {
+  .pf-photo {
+    padding: 6px 8px;
+    gap: 8px;
+  }
+  .pf-photo-now {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* ------------------------- phones, held sideways: room for the card */
+/* The column beside the card holds short words: its boxes are as tall as
+   those words need (stats, name, Journey and Ranked), so the card gets the
+   width, and the avatar fits whole in it, frame and all. */
+@media (max-height: 500px) {
+  .profile-panel > .ui-panel-body.pf-body {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+  /* The avatar: the biggest square that fits the room above the name. */
+  .pf-card-avatar {
+    container-type: size;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    /* The room kept for a frame is the margin: no padding on top of it. */
+    padding: 2px;
+  }
+  .pf-card-text {
+    gap: 2px;
+    padding: 2px 8px 7px;
+  }
+  /* Room for any frame, worn or not, so the avatar is one size either way
+     and a frame never runs off the card or over the title: frames reach
+     20% of the portrait beyond each side, at most 34% above it and 37%
+     below (measured from every frame: tests/visual/frame-reach.spec.ts,
+     which fails if a new one reaches further). */
+  .pf-card-avatar > :is(.portrait-frame, .portrait-disc, img, svg) {
+    --pf-portrait: min(100cqw / 1.4, 100cqh / 1.71);
+    width: var(--pf-portrait);
+    height: var(--pf-portrait);
+  }
+  .pf-tile {
+    min-height: 0;
+    padding: 5px 4px;
+  }
+  .pf-tile > b {
+    font-size: calc(18px * var(--text-scale, 1));
+  }
+  /* Name: one row (the name, the rule, Change name), no heading row. */
+  .pf-section:has(#pf-name-h),
+  .pf-section:has(#pf-delete-h) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .pf-name-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .pf-name-note {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    font-size: var(--fs-micro);
+  }
+  .pf-name-row,
+  .pf-name-form {
+    min-height: calc(var(--ctl-s) + 6px);
+    padding: 3px 3px 3px 10px;
+  }
+  .pf-name-message:empty {
+    display: none;
+  }
+  .pf-mini {
+    padding: 6px 10px;
+    gap: 3px;
+  }
+  .pf-mini .ui-kicker {
+    font-size: var(--fs-micro);
+  }
+  /* Its note goes under the value when the two don't fit on one line
+     ("40 more for Candidate Master"), rather than being cut. */
+  .pf-mini-row {
+    flex-wrap: wrap;
+    row-gap: 1px;
+  }
+  .pf-mini-row > .ui-note {
+    white-space: normal;
+  }
+}
+
+/* Overview: who you are and Delete account sit at the bottom of the
+   column, Delete in the corner (owner, 19 Nov); a desktop too,
+   now that it shows tabs. */
+.pf-main:has(> .pf-account) {
+  display: flex;
+  flex-direction: column;
+}
+.pf-main:has(> .pf-account) > * {
+  flex: none;
+}
+.pf-account {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px var(--sp-2);
+}
+.pf-account .pf-who {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-account .pf-delete:has(.pf-delete-form:not([hidden])) {
+  flex-basis: 100%;
+}
+/* Its heading stays for screen readers (the row's label), not on screen:
+   the button says it (a phone hides it the same way, above). */
+.pf-account .pf-section:has(#pf-delete-h) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* Six tabs and Share card share the head of a small phone held sideways
+   (iPhone SE, 667 x 375): Share card keeps its icon, the tabs their room. */
+@media (max-height: 500px) and (max-width: 740px) {
+  .profile-panel [data-profile-share] > span {
+    display: none;
+  }
+  .profile-panel .ui-panel-head > .ui-btn.is-s[data-profile-share] {
+    min-width: 0;
+    /* A thumb's width (phone-fit: 41 x 44 at least). */
+    width: 42px;
+    padding-inline: 0;
+    justify-content: center;
+  }
+  .profile-panel .ui-panel-head [data-ui-profile-tab] {
+    padding-inline: 5px;
+  }
+}

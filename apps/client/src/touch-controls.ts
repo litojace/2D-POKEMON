@@ -1,18 +1,25 @@
-import { iconLabel } from "./menu-icons";
+import { setHudAttribute, setHudStyle } from "./hud-dom";
+import { iconLabel, menuIcon } from "./menu-icons";
 import { lockLandscape } from "./orientation";
 import { stadiumBands } from "./stadium";
 import { abilityIcon } from "./ability-icons";
 import {
   TouchInputState,
+  controlExtent,
   mobileLayout,
   safeViewport,
-  controlPreferences,
   DEFAULT_CONTROLS,
   type ControlPreferences,
   type TouchAction,
 } from "./mobile-input";
 export { joystickVector } from "./mobile-input";
 type Actions = { basic: boolean; skill: number; dash: boolean; jump: boolean };
+/** The target button's crosshair. */
+const AIM_ICON =
+  '<svg class="touch-target-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></svg>';
+/** What a touch on the left half may land on without starting the stick. */
+const FLOAT_BLOCKERS =
+  "button, a, input, select, textarea, label, summary, [role=button], dialog, .overlay-card, .practice-panel, #practice-controls, .mobile-tools, .touch-buttons, .header-menu, .ui-panel, .ui-modal";
 export class TouchControls {
   readonly input = new TouchInputState();
   enabled: boolean;
@@ -22,8 +29,21 @@ export class TouchControls {
   private stick: HTMLElement;
   private knob: HTMLElement;
   private buttons: HTMLButtonElement[];
+  /** The target button (by Dash): steps through the enemies on screen. */
+  private aim: HTMLButtonElement;
+  /** Called on a tap of the target button (main.ts cycles the lock). */
+  onTarget: () => void = () => {};
+  /** Called once the controls are laid out (resize): main.ts measures them. */
+  onLayout: () => void = () => {};
   private geometry = { x: 0, y: 0, radius: 1 };
   private resetActions: () => void;
+  private captures = new Map<number, HTMLElement>();
+  private gestureFocus = false;
+  /** iOS standalone may report hasFocus=false after returning to a visible
+   * page. A fresh trusted touch re-arms it; blur/hide always revoke it. */
+  get focused() {
+    return !document.hidden && (document.hasFocus() || this.gestureFocus);
+  }
   get dx() {
     return this.input.dx;
   }
@@ -43,13 +63,12 @@ export class TouchControls {
   ) {
     this.root = root;
     this.resetActions = resetActions;
-    let stored: unknown;
-    try {
-      stored = JSON.parse(localStorage.getItem("arena-controls") ?? "null");
-    } catch {
-      stored = null;
-    }
-    this.preferences = controlPreferences(stored);
+    // One layout for everyone: the joystick, button sizes and opacity were
+    // player settings until 22 Nov 2026 and are no longer read (players set
+    // them by mistake and couldn't find their way back). They shared the
+    // "arena-controls" entry with key bindings (controls.ts), so that entry
+    // stays.
+    this.preferences = DEFAULT_CONTROLS;
     this.available = preview || matchMedia("(pointer:coarse)").matches;
     root.hidden = !this.available;
     this.enabled =
@@ -74,12 +93,26 @@ export class TouchControls {
             '"></button>',
         )
         .join("") +
+      `<button type="button" class="touch-target" data-aim disabled aria-label="Target: no enemy on screen">${AIM_ICON}</button>` +
       "</div></div>";
     this.stick = root.querySelector(".joystick-area")!;
     this.knob = root.querySelector(".joystick-knob")!;
     this.buttons = Array.from(
-      root.querySelectorAll<HTMLButtonElement>(".touch-buttons button"),
+      root.querySelectorAll<HTMLButtonElement>(
+        ".touch-buttons button:not([data-aim])",
+      ),
     );
+    this.aim = root.querySelector<HTMLButtonElement>("[data-aim]")!;
+    // A tap: the next enemy on screen, then none (target-lock.ts). Not held,
+    // and never a stick touch.
+    this.aim.onpointerdown = (event) => {
+      event.stopPropagation();
+      if (!this.enabled || !canPlay() || this.aim.disabled) return;
+      event.preventDefault();
+      this.aim.classList.add("pressed");
+      setTimeout(() => this.aim.classList.remove("pressed"), 120);
+      this.onTarget();
+    };
     const toggle = root.querySelector<HTMLButtonElement>("#touch-toggle")!;
     const display = () => {
       root.classList.toggle("touch-enabled", this.enabled);
@@ -128,7 +161,29 @@ export class TouchControls {
         : "Enter fullscreen ⛶";
       this.resize();
     });
-    this.stick.onpointerdown = (event) => {
+    window.addEventListener(
+      "pointerdown",
+      (event) => {
+        // A new contact cannot belong to the old gesture, even when Safari
+        // recycled its pointerId without delivering the previous pointerup.
+        this.release(event.pointerId);
+        if (event.pointerType === "touch" && event.isPrimary) this.reset(true);
+        if (
+          event.isTrusted &&
+          event.pointerType === "touch" &&
+          this.enabled &&
+          this.root.contains(event.target as Node)
+        )
+          this.gestureFocus = true;
+      },
+      true,
+    );
+    /** Start the joystick: centred on the stick, or (`at`, floating) on
+     * the touch, the stick drawn there until the finger lifts. */
+    const startStick = (event: PointerEvent, at?: { x: number; y: number }) => {
+      const previous = this.input.joystickPointer;
+      if (previous !== null && !this.hasCapture(previous))
+        this.release(previous);
       if (
         !this.enabled ||
         !canPlay() ||
@@ -137,31 +192,79 @@ export class TouchControls {
         return;
       event.preventDefault();
       const rect = this.stick.getBoundingClientRect();
-      this.geometry = {
+      const home = {
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
+      };
+      this.geometry = {
+        ...(at ?? home),
         radius: this.preferences.joystickSize
           ? Number.parseFloat(root.style.getPropertyValue("--joystick-size")) *
             0.32
           : 40,
       };
-      this.stick.setPointerCapture(event.pointerId);
+      if (at) this.float(at.x - home.x, at.y - home.y);
+      this.capture(this.stick, event.pointerId);
       this.move(event);
     };
-    this.stick.onpointermove = (event) => {
-      if (!canPlay()) {
-        this.reset();
+    this.stick.onpointerdown = (event) => startStick(event);
+    // A floating stick: a touch anywhere free on the left half of the screen
+    // starts it right under the finger (owner, 5 Nov 2026), so moving never
+    // waits for a thumb to find the stick. Buttons, menus, panels and the
+    // stick itself answer their own touches.
+    window.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" || !this.enabled) return;
+      if (event.clientX >= window.innerWidth / 2) return;
+      const target = event.target as Element | null;
+      if (
+        !target ||
+        this.stick.contains(target) ||
+        target.closest(FLOAT_BLOCKERS) ||
+        !document.body.classList.contains("battle-active")
+      )
         return;
-      }
-      this.move(event);
-    };
-    const release = (event: PointerEvent) => {
-      this.input.release(event.pointerId);
-      this.paint();
-    };
-    this.stick.onpointerup = release;
-    this.stick.onpointercancel = release;
-    this.stick.onlostpointercapture = release;
+      startStick(event, { x: event.clientX, y: event.clientY });
+    });
+    window.addEventListener(
+      "pointermove",
+      (event) => {
+        if (event.pointerId !== this.input.joystickPointer) return;
+        if (!canPlay()) {
+          this.reset();
+          return;
+        }
+        if (event.pointerType === "mouse" && event.buttons === 0) {
+          this.release(event.pointerId);
+          return;
+        }
+        this.move(event);
+      },
+      true,
+    );
+    // Capture at the window, including releases over disabled skill buttons,
+    // overlays and detached controls. Native capture is a convenience, not
+    // the only route through which an owned finger can be released.
+    for (const type of ["pointerup", "pointercancel", "lostpointercapture"])
+      window.addEventListener(
+        type,
+        (event) => {
+          const id = (event as PointerEvent).pointerId;
+          // An old lost-capture event may arrive after this pointerId was
+          // reclaimed by a new contact. Do not cancel the new capture.
+          if (event.type === "lostpointercapture" && this.hasCapture(id))
+            return;
+          this.release(id);
+        },
+        true,
+      );
+    for (const type of ["touchend", "touchcancel"])
+      window.addEventListener(
+        type,
+        (event) => {
+          if (!(event as TouchEvent).touches.length) this.reset(true);
+        },
+        { capture: true, passive: true },
+      );
     for (const button of this.buttons) {
       const action = (button.dataset.skill ??
         button.dataset.action) as TouchAction;
@@ -174,16 +277,13 @@ export class TouchControls {
         )
           return;
         event.preventDefault();
-        button.setPointerCapture(event.pointerId);
+        this.capture(button, event.pointerId);
         this.paint();
         if (action === "attack") fire({ basic: true });
         else if (action === "dash") fire({ dash: true });
         else if (action === "jump") fire({ jump: true });
         else fire({ skill: Number(action) });
       };
-      button.onpointerup = release;
-      button.onpointercancel = release;
-      button.onlostpointercapture = release;
     }
     window.addEventListener("blur", () => this.reset());
     window.addEventListener("pagehide", () => this.reset());
@@ -213,10 +313,16 @@ export class TouchControls {
       event.clientY - this.geometry.y,
       this.geometry.radius,
     );
-    this.knob.style.transform = `translate(${this.dx * this.geometry.radius}px,${this.dy * this.geometry.radius}px)`;
+    this.knob.style.transform = `translate(${this.input.knobX}px,${this.input.knobY}px)`;
+  }
+  /** Draw the stick `dx`,`dy` from its resting place (0, 0: back home). */
+  private float(dx: number, dy: number) {
+    const on = !!(dx || dy);
+    this.stick.classList.toggle("is-floating", on);
+    this.stick.style.transform = on ? `translate(${dx}px, ${dy}px)` : "";
   }
   private paint() {
-    this.knob.style.transform = `translate(${this.dx * this.geometry.radius}px,${this.dy * this.geometry.radius}px)`;
+    this.knob.style.transform = `translate(${this.input.knobX}px,${this.input.knobY}px)`;
     for (const button of this.buttons) {
       const action = button.dataset.skill ?? button.dataset.action;
       button.classList.toggle(
@@ -225,24 +331,72 @@ export class TouchControls {
       );
     }
   }
-  reset() {
+  private hasCapture(id: number) {
+    try {
+      return !!this.captures.get(id)?.hasPointerCapture(id);
+    } catch {
+      return false;
+    }
+  }
+  private capture(owner: HTMLElement, id: number) {
+    this.captures.set(id, owner);
+    try {
+      owner.setPointerCapture(id);
+    } catch {
+      /* Global move/end listeners also cover unavailable native capture. */
+    }
+  }
+  private release(id: number) {
+    const owner = this.captures.get(id);
     if (
+      !owner &&
+      this.input.joystickPointer !== id &&
+      !this.input.pointers.has(id)
+    )
+      return;
+    this.captures.delete(id);
+    if (id === this.input.joystickPointer) this.float(0, 0);
+    this.input.release(id);
+    try {
+      if (owner?.hasPointerCapture(id)) owner.releasePointerCapture(id);
+    } catch {
+      /* The OS may already have cancelled this contact. */
+    }
+    this.paint();
+  }
+  reset(preserveFocus = false) {
+    if (!preserveFocus) this.gestureFocus = false;
+    if (
+      this.captures.size ||
       this.input.joystickPointer !== null ||
       this.input.pointers.size ||
       this.input.dx ||
       this.input.dy
     ) {
+      const owners = [...this.captures];
+      this.captures.clear();
+      this.float(0, 0);
       this.input.reset();
       this.resetActions();
       this.paint();
+      for (const [id, owner] of owners)
+        try {
+          if (owner.hasPointerCapture(id)) owner.releasePointerCapture(id);
+        } catch {
+          /* Already released by the browser. */
+        }
     }
   }
   resize() {
     this.reset();
+    // Size the controls from the screen the game fills, not the visual
+    // viewport alone: that shrinks while the on-screen keyboard is up or the
+    // page is zoomed, and a battle that began then kept tiny controls (seen
+    // in raids: joystick and buttons at their minimum on a large phone).
     const width = document.body.classList.contains("battle-active")
-      ? (window.visualViewport?.width ?? innerWidth)
+      ? controlExtent(window.visualViewport?.width, innerWidth)
       : this.root.clientWidth || innerWidth;
-    const height = window.visualViewport?.height ?? innerHeight;
+    const height = controlExtent(window.visualViewport?.height, innerHeight);
     const safe = getComputedStyle(this.root);
     const insets = Object.fromEntries(
       ["top", "right", "bottom", "left"].map((dir) => [
@@ -278,10 +432,41 @@ export class TouchControls {
     const cluster = this.root.querySelector<HTMLElement>(".touch-buttons")!;
     cluster.style.width = layout.width + "px";
     cluster.style.height = layout.height + "px";
+    // How high the controls reach: the cluster, and the target button where
+    // it rises over the cluster's top. Panels placed over the controls (a
+    // raid boss's own buttons) stand above both.
+    const rise = Math.max(0, layout.aim.size / 2 - layout.aim.y);
+    document.body.style.setProperty(
+      "--combat-cluster-height",
+      layout.height + rise + "px",
+    );
+    let context = cluster.querySelector<HTMLElement>(".touch-context");
+    if (!context) {
+      context = document.createElement("div");
+      context.className = "touch-context";
+      cluster.append(context);
+    }
+    Object.assign(context.style, {
+      left: layout.context.x - layout.context.size / 2 + "px",
+      top: layout.context.y - layout.context.size / 2 + "px",
+      width: layout.context.size + "px",
+      height: layout.context.size + "px",
+    });
+    context.style.setProperty("--ctx-size", layout.context.size + "px");
+    Object.assign(this.aim.style, {
+      left: layout.aim.x - layout.aim.size / 2 + "px",
+      top: layout.aim.y - layout.aim.size / 2 + "px",
+      width: layout.aim.size + "px",
+      height: layout.aim.size + "px",
+    });
     for (const target of layout.targets) {
       const button = this.buttons.find(
         (b) => (b.dataset.skill ?? b.dataset.action) === target.action,
       )!;
+      button.style.setProperty(
+        "--combat-icon-size",
+        target.iconSize === undefined ? "" : `${target.iconSize}px`,
+      );
       Object.assign(button.style, {
         left: target.x - target.size / 2 + "px",
         top: target.y - target.size / 2 + "px",
@@ -289,43 +474,24 @@ export class TouchControls {
         height: target.size + "px",
       });
     }
+    this.onLayout();
   }
-  setPreferences(next: unknown) {
-    this.preferences = controlPreferences(next);
-    localStorage.setItem("arena-controls", JSON.stringify(this.preferences));
-    this.resize();
-  }
-  settingsHTML() {
-    if (!this.available) return "";
-    return (
-      "<h3>Mobile Controls</h3><p>Fixed joystick · settings are saved on this device.</p>" +
-      (["joystickSize", "buttonSize", "opacity"] as const)
-        .map(
-          (key) =>
-            `<label>${{ joystickSize: "JOYSTICK SIZE", buttonSize: "COMBAT BUTTON SIZE", opacity: "HUD OPACITY" }[key]} <input type="range" id="control-${key}" min="${key === "opacity" ? 0.4 : key === "buttonSize" ? 0.85 : 0.8}" max="${key === "opacity" ? 1 : key === "buttonSize" ? 1.2 : 1.25}" step=".05" value="${this.preferences[key]}"></label>`,
-        )
-        .join("") +
-      `<button class="secondary" id="control-reset">${iconLabel("again", "Reset mobile layout")}</button>`
-    );
-  }
-  bindSettings() {
-    if (!this.available) return;
-    for (const key of ["joystickSize", "buttonSize", "opacity"] as const) {
-      const input = document.getElementById(
-        "control-" + key,
-      ) as HTMLInputElement;
-      input.oninput = () =>
-        this.setPreferences({
-          ...this.preferences,
-          [key]: Number(input.value),
-        });
+  /**
+   * The target button's state each frame: on only while an enemy is on
+   * screen (`available`), lit while a lock holds (`locked`).
+   */
+  setTarget(available: boolean, locked: boolean) {
+    if (this.aim.disabled === available) {
+      this.aim.disabled = !available;
+      this.aim.setAttribute(
+        "aria-label",
+        available
+          ? "Target: next enemy on screen"
+          : "Target: no enemy on screen",
+      );
     }
-    document.getElementById("control-reset")!.onclick = () => {
-      this.setPreferences(DEFAULT_CONTROLS);
-      for (const key of ["joystickSize", "buttonSize", "opacity"] as const)
-        (document.getElementById("control-" + key) as HTMLInputElement).value =
-          String(this.preferences[key]);
-    };
+    if (this.aim.classList.contains("is-locked") !== locked)
+      this.aim.classList.toggle("is-locked", locked);
   }
   update(
     active: boolean,
@@ -372,30 +538,27 @@ export class TouchControls {
       button.disabled =
         !active || (action !== "attack" && left > 0 && !exReady);
       if (button.dataset.iconName !== name) {
+        // The art is the label: skills, the basic attack and the ultimate
+        // carry no text over it (1–3 were keyboard keys anyway). Dash and
+        // Jump use plain glyphs, so they keep a small word under the icon.
         button.innerHTML =
           abilityIcon(name) +
-          '<span class="touch-key">' +
-          // Touch has no keys: number the skills 1–4 (4 is the ultimate).
-          (skill !== undefined
-            ? Number(skill) + 1
-            : action === "attack"
-              ? "BASIC"
-              : action === "dash"
-                ? "DASH"
-                : "JUMP") +
-          '</span><span class="touch-cooldown"></span>';
+          (action === "dash" || action === "jump"
+            ? `<span class="touch-key">${action.toUpperCase()}</span>`
+            : "") +
+          '<span class="touch-cooldown"></span>';
         button.dataset.iconName = name;
         button.title = name;
       }
       const text =
         left <= 0
-          ? ""
+          ? isUlt
+            ? "READY"
+            : ""
           : isUlt
             ? exArmed
               ? "EX ✓"
-              : exReady
-                ? `EX ${Math.floor(ult)}%`
-                : `${Math.floor(ult)}%`
+              : `${Math.floor(ult)}%`
             : left.toFixed(1);
       const label = button.querySelector(".touch-cooldown")!;
       if (label.textContent !== text) label.textContent = text;
@@ -408,7 +571,8 @@ export class TouchControls {
             : action === "jump"
               ? 2
               : basic.duration;
-      button.style.setProperty(
+      setHudStyle(
+        button,
         "--cooldown",
         Math.min(100, (100 * left) / duration) + "%",
       );
@@ -425,12 +589,13 @@ export class TouchControls {
         "ex-armed",
         exArmed && skill !== undefined && !isUlt,
       );
-      button.setAttribute(
+      setHudAttribute(
+        button,
         "aria-label",
         left <= 0
-          ? name
+          ? name + (isUlt ? " · ultimate ready" : "")
           : isUlt
-            ? name + " · charging " + text
+            ? name + " · charging " + text + (exReady ? " · tap to arm EX" : "")
             : name + " · " + text + " seconds",
       );
     }

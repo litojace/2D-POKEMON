@@ -1,4 +1,5 @@
 import { CHARACTERS } from "@arena/shared";
+import { skillArt } from "./skill-art";
 // Each combat icon is drawn for its exact ability, rather than guessed from keywords.
 const electric = "#ffe17b",
   fire = "#ffa16b",
@@ -167,40 +168,88 @@ const rosterIconSources: Record<string, string> = {
   "Spark Dart": "Spark",
   "Static Lance": "Arc Pulse",
   "Ball Lightning": "Charge Orb",
-  "Storm Grid": "Livewire Field",
-  Overcharge: "Overcharge",
+  "Static Glide": "Slipstream",
+  Thunderstorm: "Overcharge",
+  "Practice Grid": "Livewire Field",
   "Cinder Snap": "Cinder",
-  "Ember Gust": "Crest Flare",
-  "Magma Bomb": "Ember Rush",
-  "Blaze Whirl": "Ember Ring",
+  "Crest Flare": "Crest Flare",
+  "Magma Leap": "Ember Rush",
+  "Heat Cracks": "Ember Ring",
   "Sunfire Pillar": "Solar Bloom",
   "Tide Needle": "Droplet",
-  Whirlpool: "Snow Drift",
-  "Mirror Mist": "Mirror Current",
+  "Gill Siphon": "Droplet",
+  "River Dash": "Slipstream",
+  "Tide Double": "Mirror Current",
   "Riptide Wave": "Cold Front",
   "Prism Jab": "Crystal Jab",
   "Prism Shot": "Prism Shot",
-  "Shatter Palm": "Shard Combination",
-  "Mirror Guard": "Prism Guard",
-  "Nova Burst": "Nova Ray",
+  "Shatter Paw": "Shard Combination",
+  "Facet Guard": "Prism Guard",
+  "Crystal Cage": "Prism Guard",
   Glint: "Frost Flake",
-  "Starfall Spray": "Riptide Volley",
-  "Dust Strike": "Stone Knuckle",
+  "Wing Dust": "Riptide Volley",
+  "Eyespot Flash": "Nova Ray",
   "Radiant Flare": "Crystal Blizzard",
   "Mind Dart": "Bramble Seed",
-  "Focus Ray": "Ice Lance",
-  Repulse: "Seismic Crown",
-  Ward: "Verdant Guard",
-  Thoughtstrike: "Wild Bloom",
+  "Third-Eye Ray": "Ice Lance",
+  Hush: "Seismic Crown",
+  "Wing Cloak": "Verdant Guard",
+  "Mind Maze": "Wild Bloom",
   "Boulder Swipe": "Bough Bash",
-  "Shell Slam": "Boulder Charge",
-  "Dust Cloud": "Root Garden",
+  "Shell Bash": "Boulder Charge",
+  "Shell Up": "Mineral Guard",
+  "Mud Mire": "Root Garden",
   Tremor: "Faultline",
   "Lantern Wisp": "Night Wisp",
   "Shade Crawl": "Cloak Rend",
   Ghostfire: "Hollow Echo",
-  "Curse Mark": "Shadow Veil",
-  "Void Orb": "Eclipse",
+  "Haunted Lantern": "Night Wisp",
+  "Wraith Hunt": "Hollow Echo",
+  "Coil Swipe": "Cloak Rend",
+  "Static Clamp": "Charge Orb",
+  "Spark Trail": "Livewire Field",
+  "Live Wire": "Livewire Field",
+  "Ember Lob": "Cinder",
+  "Hot Coals": "Ember Ring",
+  "Ember Curtain": "Prism Guard",
+  "Chestnut Storm": "Solar Bloom",
+  "Rime Shard": "Ice Lance",
+  "Black Ice": "Frost Flake",
+  "Frost Bloom": "Cold Front",
+  "Frost Breath": "Snow Drift",
+  Whiteout: "Crystal Blizzard",
+  "Aura Quill": "Prism Shot",
+  "Pinning Quill": "Tidal Blade",
+  "Halcyon Rewind": "Mirror Current",
+  "Skyline Lance": "Nova Ray",
+  Sunseed: "Bramble Seed",
+  "Yuzu Toss": "Wild Bloom",
+  "Warm Spring": "Root Garden",
+  Daybreak: "Solar Bloom",
+  Sanctuary: "Verdant Guard",
+  "Mallet Bop": "Bough Bash",
+  "Mochi Pound": "Stone Knuckle",
+  "Sticky Mochi": "Bramble Seed",
+  "Full Moon": "Eclipse",
+  "Rump Bump": "Boulder Charge",
+  "Burrow Rush": "Dash",
+  "Bush Boomerang": "Riptide Volley",
+  "Grudge Thump": "Mineral Guard",
+  Landslide: "Faultline",
+  "Ink Jet": "Droplet",
+  "Ink Strike": "Shard Combination",
+  "Ink Cloud": "Shadow Veil",
+  "Kraken Grasp": "Hollow Echo",
+  "Scale Swipe": "Bough Bash",
+  "Tongue Grapple": "Tidal Blade",
+  "Scale Shrapnel": "Riptide Volley",
+  Tunnel: "Faultline",
+  "Leaf Storm": "Wild Bloom",
+  "Seed Spit": "Bramble Seed",
+  Seedling: "Root Garden",
+  "Sloth Time": "Wild Bloom",
+  "Lazy Swap": "Shadow Veil",
+  Overgrowth: "Faultline",
 };
 const elementColors: Record<string, string> = {
   Electric: electric,
@@ -211,6 +260,7 @@ const elementColors: Record<string, string> = {
   Psychic: "#ff8edc",
   Earth: "#e2b97e",
   Shadow: "#b493ff",
+  Nature: "#9ee37a",
 };
 const moveElements = new Map(
   Object.values(CHARACTERS).flatMap((c) =>
@@ -228,15 +278,39 @@ abilityArtwork["Kindle"] = {
   color: elementColors.Light,
   art: '<path d="M14 42V22q0-4 4-4t4 4v-9q0-4 4-4t4 4v4q0-4 4-4t4 4v14q0 10-10 11Z"/><path d="M8 6v8M4 10h8m28-6v6m-3-3h6"/>',
 };
-abilityArtwork["Hibernate"] = {
-  color: elementColors.Earth,
-  art: '<path d="M8 10h11L8 24h11M24 20h8l-8 10h8M34 32h6l-6 8h6"/>',
+// Line glyphs for moves no generic icon fits.
+const magnetGlyph =
+  '<path d="M10 8v16a12 12 0 0 0 24 0V8h-7v16a5 5 0 0 1-10 0V8Z"/><path d="M10 14h7m10 0h7"/>';
+const ownGlyphs: Record<string, [string, string]> = {
+  "Magnet Lash": ["Electric", magnetGlyph + '<path d="m44 4-7 8h6l-6 9"/>'],
+  Electromagnet: [
+    "Electric",
+    magnetGlyph + '<path d="M4 28q-2 12 8 16m32-16q2 12-8 16"/>',
+  ],
+  "Chestnut Mortar": [
+    "Fire",
+    '<path d="M24 12q13 7 13 20 0 9-13 9t-13-9q0-13 13-20Z"/><path d="M12 32q12 5 24 0M24 12V7m-12-3q8-4 18 0"/>',
+  ],
+  "Focus Shot": [
+    "Aura",
+    '<circle cx="24" cy="24" r="13"/><path d="M24 4v10m0 20v10M4 24h10m20 0h10"/><circle cx="24" cy="24" r="2" fill="currentColor"/>',
+  ],
+  "Moon Hop": [
+    "Psychic",
+    '<path d="M32 6a18 18 0 1 0 12 30A14 14 0 0 1 32 6Z"/><path d="m4 42 5-3m-1 7 5-4"/>',
+  ],
+  "Tentacle Lash": [
+    "Shadow",
+    '<path d="M8 44q2-26 22-30 12-2 12 8 0 8-8 8-6 0-6-6"/><circle cx="16" cy="32" r="1.5"/><circle cx="22" cy="22" r="1.5"/>',
+  ],
 };
-abilityArtwork["Ripple Stars"] = {
-  color: "#85e5f4",
-  art: '<path d="m24 4 6 13 15 7-15 6-6 15-6-15-15-6 15-7Z"/><circle cx="24" cy="24" r="5"/>',
-};
+for (const [name, [element, art]] of Object.entries(ownGlyphs))
+  abilityArtwork[name] = { color: elementColors[element], art };
 export function abilityIcon(name: string) {
+  // Champion moves have an illustrated scene (skill-art.ts); generic glyphs
+  // (Jump, Attack, …) keep the line icons below.
+  const illustrated = skillArt(name);
+  if (illustrated) return illustrated;
   const design = abilityArtwork[name];
   const color =
     design?.color ??

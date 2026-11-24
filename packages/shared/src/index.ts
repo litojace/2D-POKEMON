@@ -1,11 +1,37 @@
-import type { RaidLoadout, RaidState } from "./raid.js";
+import type { RaidBossId, RaidLoadout, RaidState } from "./raid.js";
 import type { ChampionLook } from "./shop.js";
 import { z } from "zod";
+import {
+  META_KEYS,
+  type MetaCache,
+  type MetaKey,
+  type SnapshotMeta,
+} from "./snapshot-meta.js";
+export * from "./snapshot-meta.js";
+import { inMeters } from "./units.js";
+export * from "./units.js";
+export * from "./pick-rules.js";
+export * from "./avatars.js";
+/**
+ * Quick Match (docs/pvp-plan.md): how long a lone player searches before
+ * the client offers a sparring bot, and how long that offer waits before it
+ * starts the bot match by itself.
+ */
+export const QUICK_MATCH_FALLBACK_MS = 20_000;
+export const QUICK_MATCH_OFFER_MS = 6_000;
 export const RULES = {
   width: 1600,
   height: 900,
   tick: 30,
-  snapshot: 15,
+  /**
+   * Snapshots a second: one every tick (was 15, every second tick, until
+   * 23 Nov 2026). Hits, blasts and opponents reach you about 17 ms sooner
+   * on average, and opponents are drawn 16-24 ms closer to the present on
+   * Wi-Fi and 4G, for about twice the download (~150 KB/s per player in a
+   * battle) and ~15-25% more server CPU: docs/network-performance.md,
+   * section 17.
+   */
+  snapshot: 30,
   radius: 24,
   dashSpeed: 850,
   acceleration: 18,
@@ -37,7 +63,7 @@ export const RULES = {
   basicHitCooldownCut: 0.25,
   countdown: 3,
   intermission: 4,
-  reconnectMs: 30000,
+  reconnectMs: 60000,
   maxProjectiles: 150,
   maxZones: 40,
 };
@@ -80,7 +106,17 @@ export type CharacterId =
   | "lumoth"
   | "mystowl"
   | "terradon"
-  | "duskveil";
+  | "duskveil"
+  | "coilemur"
+  | "pyranda"
+  | "glacelle"
+  | "halcyra"
+  | "sunbara"
+  | "astrabun"
+  | "wombolder"
+  | "shadopus"
+  | "pangrove"
+  | "mossloth";
 export type StatusKind =
   | "burn"
   | "paralysis"
@@ -89,14 +125,44 @@ export type StatusKind =
   | "stun"
   | "sleep"
   | "drowsy"
+  /** Shell Up: pulled into a shell. Can't move or act, takes less damage, heals. */
+  | "shell"
   | "shield"
   | "counter"
   | "empower"
   | "haste"
   | "stealth"
+  /** Rooted: can't move or dash (a charge stops), but can still attack, cast and jump. */
+  | "root"
+  /** Inside a time bubble (Sloth Time, centre `tx`, `ty`, radius `amount`): walks and rolls at STATUS_RULES.warpMultiplier; dashes are not slowed. */
+  | "warp"
+  /** Taunted: walks toward the taunter (`tx`, `ty`), whatever its input; can still attack and cast. */
+  | "taunt"
+  /** Braced (Grudge Thump): no knockback or pull moves it. */
+  | "brace"
+  /** Leashed (Pinning Quill): can't go farther than `amount` px from (`tx`, `ty`). */
+  | "leash"
+  /** Blinded (Ink Jet): its basic attacks miss. */
+  | "blind"
+  /** Clamped (Static Clamp): a charge that goes off when it runs out (`by` = who clamped it). */
+  | "clamp"
+  /** Caged (Crystal Cage): can't cross the ring of radius `amount` round (`tx`, `ty`); `inside` says which side it is on. */
+  | "cage"
+  /** Carried (Riptide Wave): drifts at (`tx`, `ty`) px/s on top of its own movement. */
+  | "current"
+  /** Drawn to the light (Radiant Flare): drifts toward (`tx`, `ty`) at `amount` px/s. */
+  | "lure"
+  /** Sliding (Black Ice): almost no grip, it slides and barely changes direction. */
+  | "float"
+  /** Confused (Mind Maze): its movement is reversed. */
+  | "confuse"
+  /** Silenced (Hush): it can't cast skills (it can still move, dash and attack). */
+  | "silence"
+  /** Grounded (Sticky Mochi): it can't dash or jump. */
+  | "grounded"
   /** Combo setup: primed for the marker's payoff skill (`by` = the marker). */
   | "mark";
-/** Statuses that count as harmful for effects such as Curse Mark. */
+/** Statuses that count as harmful (the Shadow team-up gift, bots' targeting). */
 export const DEBUFFS: StatusKind[] = [
   "burn",
   "paralysis",
@@ -105,6 +171,18 @@ export const DEBUFFS: StatusKind[] = [
   "stun",
   "sleep",
   "drowsy",
+  "root",
+  "warp",
+  "taunt",
+  "leash",
+  "blind",
+  "clamp",
+  "current",
+  "lure",
+  "float",
+  "confuse",
+  "silence",
+  "grounded",
 ];
 export const STATUS_RULES = {
   stacking: "refresh" as const,
@@ -113,18 +191,105 @@ export const STATUS_RULES = {
   burnInterval: 0.5,
   slowMultiplier: 0.55,
   hasteMultiplier: 1.3,
-  /** Damage multiplier while Mirror Guard is active. */
+  /** Damage multiplier while Facet Guard is active. */
   counterReduction: 0.5,
-  counterReflection: 0.3,
-  /** Damage multiplier while Ward is active. */
+  counterReflection: 0.2,
+  /** Damage multiplier while Wing Cloak is active. */
   shieldReduction: 0.4,
   /** Kindle: outgoing damage multiplier and basic attack interval multiplier. */
   empowerDamage: 1.25,
   empowerInterval: 0.7,
+  /** Seconds between heal ticks while resting (Shell Up). */
   restInterval: 0.5,
-  /** Hibernate: damage multiplier while asleep (the price of the heal). */
+  /** Damage multiplier while asleep. */
   sleepVulnerability: 1.2,
+  /** Shell Up: damage multiplier while in the shell. */
+  shellReduction: 0.55,
+  /** Sloth Time: speed multiplier inside the bubble (movement and enemy shots). */
+  warpMultiplier: 0.35,
+  /** Black Ice: how much grip a sliding fighter keeps (its acceleration multiplier). */
+  floatGrip: 0.12,
 };
+/**
+ * Pangrove's passive: armour plates. A hit of at least `minHit` damage breaks
+ * one and only `block` of it gets through (0.4: the plate stops 60%); after
+ * `regrowDelay` seconds without taking damage they grow back one every
+ * `regrowEvery` seconds.
+ */
+export const PLATES = {
+  max: 3,
+  block: 0.4,
+  minHit: 10,
+  regrowDelay: 2.5,
+  regrowEvery: 2,
+};
+/**
+ * Mossloth's passive: moss grows while it stands still (under `stillSpeed`
+ * px/s), a stack every `growEvery` seconds up to `max`, and falls off one
+ * every `shedEvery` seconds once it moves. Each stack takes `reduction` off
+ * damage taken and regrows `regen` health a second.
+ */
+export const MOSS = {
+  max: 5,
+  stillSpeed: 25,
+  growEvery: 0.5,
+  shedEvery: 0.3,
+  reduction: 0.05,
+  regen: 0.6,
+};
+/** The passives, as players read them (the roster's overview, the tutorial). */
+export const PASSIVES: Record<
+  NonNullable<Character["passive"]>,
+  { name: string; text: string }
+> = {
+  plates: {
+    name: "Armour Plates",
+    text: `Three leaf plates on your back. A hit of ${PLATES.minHit} damage or more breaks one, and only ${Math.round(PLATES.block * 100)}% of it gets through. After ${PLATES.regrowDelay} seconds without taking damage they grow back, one every ${PLATES.regrowEvery} seconds. Scale Shrapnel spends them; coming up from Tunnel grows one back.`,
+  },
+  moss: {
+    name: "Moss",
+    text: `Standing still grows moss: a stack every ${MOSS.growEvery} seconds, up to ${MOSS.max}. Each stack takes ${Math.round(MOSS.reduction * 100)}% off damage and heals ${MOSS.regen} health a second; moving sheds it. Overgrowth grows it full.`,
+  },
+};
+/** Leaf Storm: where each of a storm's blades is now (none without a storm). */
+export function cycloneBlades(
+  p: { x: number; y: number; cyclone?: { at: number } },
+  a: Pick<Ability, "count" | "radius" | "speed">,
+  time: number,
+) {
+  if (!p.cyclone) return [];
+  const n = a.count ?? 3,
+    spin = (time - p.cyclone.at) * a.speed;
+  return Array.from({ length: n }, (_, i) => {
+    const t = spin + (i * Math.PI * 2) / n;
+    return {
+      x: p.x + Math.cos(t) * a.radius,
+      y: p.y + Math.sin(t) * a.radius,
+      angle: t,
+    };
+  });
+}
+/** Plates a fighter has now (Pangrove starts every round with all of them). */
+export const platesOf = (p: { plates?: number }) => p.plates ?? PLATES.max;
+/** A seedling's growth stage now: 0 (sprout), 1 (bud) or 2 (bloom). */
+export function seedStage(
+  zone: { born?: number; ability: Ability },
+  time: number,
+) {
+  const seed = zone.ability.seed;
+  if (!seed) return 0;
+  return Math.min(
+    seed.stages.length - 1,
+    Math.max(0, Math.floor((time - (zone.born ?? time)) / seed.grow)),
+  );
+}
+/** Statuses that stop a fighter from moving and acting. */
+export const DISABLING_STATUSES: StatusKind[] = [
+  "stun",
+  "freeze",
+  "sleep",
+  "shell",
+];
 export type AbilityKind =
   /** Single projectile. */
   | "projectile"
@@ -148,10 +313,189 @@ export type AbilityKind =
   | "counter"
   /** Damage reduction only. */
   | "barrier"
-  /** Self buff (Kindle). */
+  /** Self buff: empower (Kindle), or `status` instead (Static Glide). */
   | "buff"
-  /** Heal over time while asleep and unable to act. */
-  | "rest";
+  /** Heal over time while unable to act: asleep, or in a shell (`status`). */
+  | "rest"
+  /**
+   * Charge toward the aim for `range` px at `speed`. The first enemy touched
+   * takes the hit (plus everyone within `explosion` of it) and the charge stops.
+   */
+  | "rush"
+  /**
+   * Teleport toward the aim, up to `range` px, stopping before walls. With
+   * `damage`, a burst of `radius` hits enemies where the caster lands.
+   */
+  | "blink"
+  /**
+   * Stealth for `duration` (casting or taking damage reveals) plus haste for
+   * `statusDuration`.
+   */
+  | "veil"
+  /**
+   * Shoot a tongue up to `range` px: the first enemy it reaches takes the hit
+   * and the caster zips to it at `speed`; a wall pulls the caster to the wall.
+   */
+  | "grapple"
+  /**
+   * A fan (`fan` radians) of `count` blades for each armour plate the caster
+   * has, plus `count` more; it spends every plate.
+   */
+  | "shrapnel"
+  /**
+   * Dig underground for up to `duration` seconds, moving `tunnel.haste`
+   * times faster: nothing can hit the caster (no damage, statuses or
+   * knockback) and it can't attack, but its mound shows where it is.
+   * Casting it again (or running out of time) surfaces: enemies within
+   * `radius` take `damage` and `status`, and `tunnel.plates` armour plates
+   * grow back.
+   */
+  | "tunnel"
+  /**
+   * For `duration` seconds `count` blades circle the caster `radius` px out,
+   * turning `speed` radians a second: an enemy a blade sweeps (within
+   * `cyclone.blade` px of its spoke, from the caster out to the blade)
+   * takes `damage` and `status`, at most once every
+   * `tickInterval`. The caster is Braced meanwhile. At the end the storm
+   * bursts: enemies within `explosion` take `cyclone.burst`.
+   */
+  | "cyclone"
+  /**
+   * Plant a seed at the aim that grows for `seed.grow` seconds a stage; the
+   * first enemy to step on it sets it off (more damage and a longer root at
+   * each stage). At most `count` at once; it lasts `duration` seconds.
+   */
+  | "seedling"
+  /**
+   * A bubble at the aim for `duration`: enemies inside, and their shots,
+   * move at `warp` times their speed.
+   */
+  | "timewarp"
+  /**
+   * Swap places with the enemy (not a raid boss) or own seedling nearest the
+   * aim, within `radius` of the aim and `range` of the caster.
+   */
+  | "swap"
+  /**
+   * A curtain `screen.length` px wide, across the aim `screen.distance` px
+   * ahead, for `duration`: enemy shots that touch it burn up, and enemies
+   * crossing it get `status`.
+   */
+  | "screen"
+  /**
+   * Enemies within `radius` are Taunted for `statusDuration` (made to walk
+   * toward the caster, still free to attack); the caster is Braced (no
+   * knockback or pull) for `duration`.
+   */
+  | "taunt"
+  /**
+   * Jump back to where the caster was `rewind.seconds` ago and regain
+   * `rewind.heal` of the health lost since (at most `rewind.max`).
+   */
+  | "rewind"
+  /**
+   * Lock a stream onto the enemy nearest the aim within `range`: every
+   * `tether.tick` seconds it takes `damage` (the caster drains `drain` of it)
+   * for up to `duration`, until it gets `tether.breakRange` px away or out
+   * of sight (or, with `tether.yank`, is yanked back: Live Wire).
+   */
+  | "tether"
+  /**
+   * Eyespots flash: enemies within `radius` who are facing the caster (aiming
+   * within `gaze` radians of it) take `damage` and get `status`; the rest
+   * only take `damage`.
+   */
+  | "gaze"
+  /**
+   * Clamp a charge onto the first enemy in front (melee reach): after `fuse`
+   * seconds it takes `damage` and `status`, and arcs to enemies within
+   * `explosion` of it for `chain` of that. A combo-primed target goes off at once.
+   */
+  | "clamp"
+  /**
+   * Seize the enemy in front (`range`, `arc`), hold it for `hold` seconds,
+   * then hurl it `throw` px toward the aim: `damage` (× `wallSlam` into a
+   * wall); enemies within `explosion` of where it lands take half.
+   */
+  | "throw"
+  /**
+   * Up to three strikes in front, each cast again within `chainWindow`
+   * seconds of the last: `strikes` lists each one's damage; the last stuns
+   * (`status`) and pushes (`knockback`). The cooldown starts after the last.
+   */
+  | "pound"
+  /**
+   * A ring of crystal `radius` px round the caster for `duration`: nobody
+   * can cross it, nor can shots. Enemies inside take `damage` as it rises.
+   */
+  | "cage"
+  /**
+   * Dash `range` px along the aim at `speed`, through enemies: each one the
+   * body passes takes the hit once. If any was hit, the cooldown drops to
+   * `surf.refund` seconds.
+   */
+  | "surf"
+  /**
+   * A wall of water `radius` px either side of the aim rolls from the caster
+   * along it at `speed` for `range` px, over cover. Each enemy (not jumping)
+   * its front reaches takes the hit and is carried along for up to
+   * `wave.carry` seconds; carried into a wall, it takes `wallSlam` of the
+   * damage more and `status`.
+   */
+  | "wave"
+  /**
+   * `count` bolts, `tickInterval` apart: each marks the ground ahead of the
+   * enemy nearest the caster's aim (anywhere, if it isn't stealthed) and
+   * strikes there `tickDelay` later: everyone within `explosion` px takes
+   * `damage` and `status`.
+   */
+  | "storm"
+  /**
+   * A wraith (`radius`) that hunts the nearest enemy that isn't stealthed for
+   * `duration`, through walls, at `hunt.speed`: enemies it touches take
+   * `damage` every `tickInterval`, and one under `hunt.execute` of its full
+   * health is knocked out.
+   */
+  | "hunt"
+  /**
+   * A light at the aim (up to `range`) for `duration`: enemies within
+   * `radius` drift toward it at `lure.speed` px/s; then it bursts, and
+   * enemies within `explosion` take `damage` and `status`.
+   */
+  | "lure"
+  /**
+   * Leap toward the aim (up to `range` px) at `speed`, airborne on the way
+   * (ground attacks miss); landing, enemies within `explosion` take `damage`
+   * and `status`. Predicted on the client like a vault.
+   */
+  | "leap"
+  /**
+   * A barrage that creeps along the aim: `count` blasts of `explosion` px,
+   * the first `creep.start` px out and each `creep.step` px farther, landing
+   * `tickDelay` after they are marked and `creep.gap` seconds apart.
+   */
+  | "creep"
+  /**
+   * A garden at the aim (up to `range`, `radius` px) for `duration`: every
+   * `tickInterval` enemies on it take `damage` and are slowed; whoever is
+   * still on it at the end takes `garden.burst` and `status`.
+   */
+  | "garden"
+  /**
+   * For `duration` the caster leaves a trail behind it that lasts
+   * `trail.fade` seconds: enemies touching it (`radius`) take `damage` and
+   * `status`, at most once every `tickInterval`.
+   */
+  | "trail"
+  /**
+   * A zone at the aim that moves toward the caster's aim at `steer.speed`
+   * px/s for `duration`, hitting like a zone every `tickInterval`.
+   */
+  | "steer";
+/** Strikes in front of the caster, within `range` and `arc` (raids treat them alike). */
+export const STRIKE_KINDS: AbilityKind[] = ["melee", "pound", "clamp", "throw"];
+/** Rings round the caster, within `radius` (raids treat them alike). */
+export const RING_KINDS: AbilityKind[] = ["nova", "gaze", "cage"];
 export interface Ability {
   id: string;
   name: string;
@@ -173,6 +517,10 @@ export interface Ability {
   arc?: number;
   duration: number;
   ground: boolean;
+  /**
+   * Pushes the target away from the caster. Negative pulls it toward the
+   * caster instead, stopping just in front of them.
+   */
   knockback: number;
   status?: StatusKind;
   statusDuration?: number;
@@ -183,8 +531,143 @@ export interface Ability {
   follow?: boolean;
   /** Damage multiplier against targets with a harmful status. */
   bonusVsStatus?: number;
-  /** Hibernate: health restored per tick. */
+  /**
+   * Rest: health restored per tick. Decoy: health restored on cast. Zone:
+   * health restored each tick to the caster's team inside it.
+   */
   heal?: number;
+  /** Healing zone: the caster's own share of `heal` (0.5 = half). */
+  selfHeal?: number;
+  /**
+   * Up to this much extra damage the farther the target is: none up close,
+   * the full bonus at the ability's `range` (0.5 = +50%).
+   */
+  farBonus?: number;
+  /**
+   * Rush: if the knockback would drive the target into a wall, the hit deals
+   * this many times the damage and its status lasts twice as long.
+   */
+  wallSlam?: number;
+  /** Veil: the caster's first hit out of stealth deals this many times the damage. */
+  ambush?: number;
+  /** Life drain: the caster heals this share of the damage the hit deals (0.6 = 60%). */
+  drain?: number;
+  /** Shrapnel: the fan's width in radians. */
+  fan?: number;
+  /** Tunnel: speed multiplier underground, and armour plates regrown on surfacing. */
+  tunnel?: { haste: number; plates: number };
+  /** Cyclone: each blade's reach (px) and the final burst's damage. */
+  cyclone?: { blade: number; burst: number };
+  /**
+   * Seedling: seconds per growth stage, the share of `damage` and
+   * `statusDuration` at each stage, and how close an enemy sets it off (px).
+   */
+  seed?: { grow: number; stages: number[]; trigger: number };
+  /** Time bubble: speed multiplier for enemies and enemy shots inside. */
+  warp?: number;
+  /** Nova: every seedling the caster has blooms at full growth. */
+  bloom?: boolean;
+  /** Screen: how wide the curtain is and how far ahead it stands (px). */
+  screen?: { length: number; distance: number };
+  /** Projectile: flies `range` px out, then comes back to the caster, hitting on each pass. */
+  boomerang?: boolean;
+  /** Rewind: how far back (seconds), the share of health lost since it gives back, and the most. */
+  rewind?: { seconds: number; heal: number; max: number };
+  /**
+   * Tether: seconds between ticks, and how far the target can get before it
+   * snaps. With `yank` (Live Wire) it never snaps for range: a target that
+   * gets more than `yank.at` px away is pulled `yank.pull` px back toward
+   * the caster, takes `yank.damage` and `yank.status`, and the wire ends.
+   */
+  tether?: {
+    tick: number;
+    breakRange: number;
+    /** Seconds the caster runs faster from the cast (Live Wire: to chase). */
+    haste?: number;
+    yank?: {
+      at: number;
+      pull: number;
+      damage: number;
+      status: StatusKind;
+      statusDuration: number;
+    };
+  };
+  /** Leash (status "leash"): how far from where it was hit the target can go (px). */
+  leash?: number;
+  /** Gaze: how closely (radians) an enemy must be aiming at the caster to be caught. */
+  gaze?: number;
+  /** Clamp: seconds until the charge goes off. */
+  fuse?: number;
+  /** Clamp: the share of the damage that arcs to enemies near the target. */
+  chain?: number;
+  /** Throw: seconds the enemy is held before it is hurled, and how far (px). */
+  hold?: number;
+  throw?: number;
+  /** Pound: each strike's damage, in order. */
+  strikes?: number[];
+  /** Pound: seconds to cast the next strike before the chain ends. */
+  chainWindow?: number;
+  /** Surf: the cooldown left after a dash that went through an enemy (s). */
+  surf?: { refund: number };
+  /**
+   * Wave: the longest an enemy is carried along (s); `second`: a second wall
+   * rolls out this many seconds after the first (one jump can't clear both).
+   */
+  wave?: { carry: number; second?: number };
+  /**
+   * Cone: `grow` px of reach gained over the breath (stepping back is not
+   * enough); `freeze`: an enemy hit by this many ticks in a row is frozen for
+   * `freezeFor` seconds (once a breath).
+   */
+  cone?: { grow?: number; freeze?: number; freezeFor?: number };
+  /** Shrapnel: blades = `count` + `perPlate` per plate (instead of count each). */
+  perPlate?: number;
+  /** Shrapnel: how many plates a cast spends (all of them when unset). */
+  platesSpent?: number;
+  /** Cage: the ring closes in to `shrinkTo` px over its duration. */
+  cage?: { shrinkTo: number };
+  /** Rest: when it ends, a shockwave round the fighter (damage, radius, knockback). */
+  burst?: { damage: number; radius: number; knockback: number };
+  /**
+   * Projectile: it flies through enemies, zapping the nearest one within
+   * `radius` in sight for `damage` every `tick` seconds, and explodes at the
+   * end of its flight.
+   */
+  aura?: { radius: number; tick: number; damage: number };
+  /** Hunt: how fast the wraith moves (px/s), and the health share it reaps. */
+  hunt?: { speed: number; execute: number };
+  /** Lure: how fast enemies are drawn toward the light (px/s). */
+  lure?: { speed: number };
+  /** Creep: the first blast's distance, the distance between blasts and the time between them. */
+  creep?: { start: number; step: number; gap: number };
+  /** Garden: the damage whoever is still on it at the end takes. */
+  garden?: { burst: number };
+  /** Trail: how long each stretch of the trail lasts (s). */
+  trail?: { fade: number };
+  /** Steer: how fast the zone follows the caster's aim (px/s). */
+  steer?: { speed: number };
+  /**
+   * Knockback only this close (px between centres): farther away the hit
+   * pushes no more than a light 20 (Ember Lob keeps brawlers off without
+   * kiting ranged enemies out of their reach).
+   */
+  knockbackNear?: number;
+  /**
+   * Counter: the caster vaults up to this far toward the aim at `speed`
+   * (Facet Guard), predicted on the client like a rush.
+   */
+  lunge?: number;
+  /** Buff: the caster is airborne for `duration` (ground attacks miss). */
+  glide?: boolean;
+  /** Buff: a burst around the caster on cast that pushes enemies away and slows them. */
+  pop?: { damage: number; radius: number; knockback: number; slow: number };
+  /**
+   * Zone: instead of hurting what is inside it, the zone shoots a projectile
+   * at the nearest enemy within `range` every `tickInterval` seconds.
+   */
+  turret?: { damage: number; speed: number; radius: number; range: number };
+  /** Set by the server on a self-combo payoff fired while primed (it lands later). */
+  selfPrimed?: boolean;
   visual: string;
   sound: string;
   energyCost: number;
@@ -247,6 +730,8 @@ export interface Character {
   speed: number;
   basic: Ability;
   skills: Ability[];
+  /** A passive of its own (Pangrove's armour plates, Mossloth's moss). */
+  passive?: "plates" | "moss";
 }
 export const CHARACTERS: Record<CharacterId, Character> = {
   voltkit: {
@@ -255,67 +740,80 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     element: "Electric",
     role: "Ranged speedster",
     description:
-      "A sugar-glider kit that stores static in its antennae. Fast, slippery and deadly at range.",
+      "A sugar-glider kit that stores static in its antennae. Glides over trouble and stays deadly at range.",
     color: 0xffd65b,
-    health: 138,
+    health: 135,
     speed: 270,
     basic: basic(
       "spark-dart",
       "Spark Dart",
       "projectile",
       6,
-      280,
+      270,
       "A fast electric projectile.",
-      { speed: 860, range: 680, radius: 9 },
+      { speed: 930, range: 680, radius: 9 },
     ),
     skills: [
       ability(
         "static-lance",
         "Static Lance",
         "projectile",
-        18,
+        20,
         8,
         "A powerful electric bolt toward your aim. Briefly paralyzes.",
-        { speed: 1050, radius: 12, status: "paralysis", statusDuration: 0.6 },
+        { speed: 1500, radius: 12, status: "paralysis", statusDuration: 0.6 },
       ),
       ability(
         "ball-lightning",
         "Ball Lightning",
         "projectile",
-        22,
+        8,
         10,
-        "A slow electric orb that bursts on impact, shocking nearby enemies.",
-        { speed: 400, radius: 22, explosion: 100 },
-      ),
-      ability(
-        "storm-grid",
-        "Storm Grid",
-        "zone",
-        5,
-        14,
-        "An electrified ground area that damages and slows over time. Jump to avoid it.",
+        "A slow electric orb that flies through enemies, zapping the nearest one within 150 px for 3 every 0.3 seconds, then bursts at the end of its flight for 8. Every zap and the burst slow for a moment, and it deals 30% more to enemies already slowed, stunned or otherwise hindered: stay near it and each zap hurts more.",
         {
-          radius: 130,
-          duration: 4,
-          ground: true,
+          speed: 360,
+          range: 640,
+          radius: 22,
+          explosion: 100,
+          bonusVsStatus: 1.3,
           status: "slow",
-          statusDuration: 0.7,
-          range: 450,
+          statusDuration: 0.3,
+          aura: { radius: 150, tick: 0.3, damage: 3 },
         },
       ),
       ability(
-        "overcharge",
-        "Overcharge",
-        "nova",
-        30,
-        20,
-        "After a short charge, a circular electrical explosion around Voltkit.",
+        "static-glide",
+        "Static Glide",
+        "buff",
+        0,
+        12,
+        "Take off with a static pop that shoves nearby enemies away and slows them, then glide: airborne (ground attacks miss) and 30% faster. Gliding builds static (Charged).",
         {
-          radius: 190,
-          cast: 0.35,
-          knockback: 120,
+          duration: 1.4,
+          status: "haste",
+          statusDuration: 1.4,
+          glide: true,
+          pop: { damage: 8, radius: 150, knockback: 170, slow: 0.8 },
+        },
+      ),
+      ability(
+        "thunderstorm",
+        "Thunderstorm",
+        "storm",
+        14,
+        20,
+        "Call a storm over the whole court: four bolts fall on the enemy nearest your aim, wherever it is, 0.65 seconds apart. Each marks the ground where it is heading and strikes 0.55 seconds later: 14 damage and 0.8 seconds of paralysis to anyone in its 120 px, so a bolt that lands holds them for the next.",
+        {
+          cast: 0.4,
+          count: 4,
+          tickInterval: 0.65,
+          tickDelay: 0.55,
+          explosion: 120,
+          duration: 2.6,
+          range: 0,
+          knockback: 0,
           status: "paralysis",
-          statusDuration: 1,
+          statusDuration: 0.8,
         },
       ),
     ],
@@ -328,58 +826,60 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A stout magma newt with a living flame crest. Layers burns and hits hardest up close.",
     color: 0xff7a4f,
-    health: 156,
+    health: 158,
     speed: 240,
     basic: basic(
       "cinder-snap",
       "Cinder Snap",
       "melee",
-      15,
-      450,
+      14,
+      500,
       "A short-range burst of fire in front of Cindrake.",
       { range: 170, arc: 0.2, knockback: 10 },
     ),
     skills: [
       ability(
-        "ember-gust",
-        "Ember Gust",
+        "crest-flare",
+        "Crest Flare",
         "cone",
-        6,
+        3,
         8,
-        "A continuous cone of flame for 1.2 seconds. Burns.",
+        "The flame crest flares into a short, fierce cone of fire for half a second: 3 damage every 0.1 seconds, reaching from 230 px out to 300 px as it burns. Burns.",
         {
           range: 230,
           arc: 0.75,
-          duration: 1.2,
+          duration: 0.5,
           tickDelay: 0.1,
-          tickInterval: 0.2,
+          tickInterval: 0.1,
           knockback: 0,
           status: "burn",
           statusDuration: 1.5,
+          cone: { grow: 70 },
         },
       ),
       ability(
-        "magma-bomb",
-        "Magma Bomb",
-        "projectile",
-        24,
-        12,
-        "An explosive fireball that burns enemies caught in the blast.",
+        "magma-leap",
+        "Magma Leap",
+        "leap",
+        16,
+        13,
+        "Leap up to 320 px toward your aim, over ground attacks, and land in an eruption: 16 damage and a burn to every enemy within 110 px.",
         {
-          speed: 620,
-          radius: 18,
+          range: 320,
+          speed: 900,
           explosion: 110,
+          knockback: 80,
           status: "burn",
           statusDuration: 2,
         },
       ),
       ability(
-        "blaze-whirl",
-        "Blaze Whirl",
+        "heat-cracks",
+        "Heat Cracks",
         "zone",
         6,
         15,
-        "Spin while releasing flames around Cindrake for 2.5 seconds.",
+        "Cindrake's glowing cracks split open for 2.5 seconds, scorching everyone close by.",
         {
           radius: 120,
           duration: 2.5,
@@ -393,19 +893,20 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "sunfire-pillar",
         "Sunfire Pillar",
-        "zone",
-        22,
+        "steer",
+        6,
         20,
-        "Summon a large pillar of fire at the aim point. Burns.",
+        "A pillar of fire erupts at the aim point and follows your aim for 3 seconds (200 px a second), hitting for 6 every half second and burning. Steer it onto them.",
         {
-          radius: 120,
+          radius: 90,
           range: 520,
-          duration: 1.2,
-          cast: 0.3,
-          tickDelay: 0.5,
+          duration: 3,
+          cast: 0.15,
+          tickDelay: 0.25,
           tickInterval: 0.5,
           status: "burn",
-          statusDuration: 2,
+          statusDuration: 1.5,
+          steer: { speed: 200 },
         },
       ),
     ],
@@ -416,62 +917,78 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     element: "Water",
     role: "Agile assassin",
     description:
-      "An axolotl duelist in a river sash. The quickest fighter; pokes, misdirects, then finishes.",
+      "An axolotl duelist in a river sash. The quickest fighter; pokes, slips away, regrows, then finishes.",
     color: 0x4fd6e6,
-    health: 131,
+    health: 136,
     speed: 285,
     basic: basic(
       "tide-needle",
       "Tide Needle",
       "projectile",
       5,
-      260,
+      240,
       "A fast water projectile.",
-      { speed: 950, radius: 8, range: 640 },
+      { speed: 950, radius: 6, range: 640 },
     ),
     skills: [
       ability(
-        "ripple-stars",
-        "Ripple Stars",
-        "barrage",
-        11,
-        8,
-        "Throw three water shurikens in a narrow fan.",
-        { count: 3, speed: 1000, radius: 11 },
-      ),
-      ability(
-        "whirlpool",
-        "Whirlpool",
-        "zone",
-        4,
-        12,
-        "A swirling water zone that damages and slows enemies.",
+        "gill-siphon",
+        "Gill Siphon",
+        "tether",
+        3,
+        10,
+        "Lock a stream of water onto the enemy nearest your aim (380 px). For up to 2.1 seconds it takes 3 damage every 0.3 seconds and Tidefin drinks half of it back, until it gets 430 px away or out of sight.",
         {
-          radius: 140,
-          duration: 3.5,
-          range: 420,
-          ground: true,
-          status: "slow",
-          statusDuration: 0.8,
+          range: 380,
+          radius: 60,
+          duration: 2.1,
+          knockback: 0,
+          drain: 0.5,
+          tether: { tick: 0.3, breakRange: 430 },
         },
       ),
       ability(
-        "mirror-mist",
-        "Mirror Mist",
+        "river-dash",
+        "River Dash",
+        "surf",
+        20,
+        9,
+        "Shoot 300 px along your aim on a jet of water, straight through enemies: each one you pass takes 20 and is Soaked. Pass through anyone and the cooldown drops to 3 seconds: dash in, then dash out.",
+        {
+          range: 300,
+          speed: 1000,
+          knockback: 0,
+          surf: { refund: 3 },
+        },
+      ),
+      ability(
+        "tide-double",
+        "Tide Double",
         "clone",
         0,
         15,
-        "Leave a decoy that absorbs one projectile and gain a burst of speed.",
-        { duration: 3.5, status: "haste", statusDuration: 2 },
+        "Leave a water double that soaks up one projectile, then dart away faster while regrowing 4 HP.",
+        { duration: 3.5, status: "haste", statusDuration: 2, heal: 4 },
       ),
       ability(
         "riptide-wave",
         "Riptide Wave",
-        "charged",
-        26,
+        "wave",
+        18,
         20,
-        "A wide, powerful forward-moving wave with heavy knockback.",
-        { cast: 0.25, speed: 520, radius: 42, range: 800, knockback: 200 },
+        "After a short charge, two walls of water 380 px wide roll from Tidefin along your aim, 0.9 seconds apart, across the whole court and over any wall. Each wall that reaches an enemy deals 18 and carries it along for up to half a second; carried into a wall, it takes 9 more and is stunned. One jump can't clear both.",
+        {
+          cast: 0.35,
+          speed: 650,
+          radius: 190,
+          range: 1500,
+          ground: true,
+          knockback: 0,
+          wallSlam: 0.5,
+          status: "stun",
+          statusDuration: 0.6,
+          wave: { carry: 0.5, second: 0.9 },
+        },
       ),
     ],
   },
@@ -483,14 +1000,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A crystal-fisted lynx monk. Durable, patient and brutal against careless attacks.",
     color: 0x7f9cff,
-    health: 175,
+    health: 170,
     speed: 235,
     basic: basic(
       "prism-jab",
       "Prism Jab",
       "melee",
-      13,
-      320,
+      12,
+      345,
       "A close-range energy punch.",
       { range: 130, arc: 0.35, knockback: 12 },
     ),
@@ -499,18 +1016,18 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "prism-shot",
         "Prism Shot",
         "projectile",
-        20,
-        8,
-        "A concentrated aura projectile.",
-        { speed: 600, radius: 20 },
+        22,
+        6,
+        "Fling one of the orbiting crystal shards. It slows for a second, so you can close in.",
+        { speed: 700, radius: 20, status: "slow", statusDuration: 1 },
       ),
       ability(
-        "shatter-palm",
-        "Shatter Palm",
+        "shatter-paw",
+        "Shatter Paw",
         "melee",
         28,
         12,
-        "A close-range shockwave strike with big knockback and a brief stun.",
+        "A crystal-gauntleted paw smash: big knockback and a brief stun.",
         {
           range: 145,
           arc: 0.3,
@@ -520,22 +1037,28 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "mirror-guard",
-        "Mirror Guard",
+        "facet-guard",
+        "Facet Guard",
         "counter",
         0,
         15,
-        "For 1.6 seconds, take half damage and reflect 30% back to the attacker.",
-        { duration: 1.6 },
+        "Raise the faceted gauntlets and vault up to 240 px toward your aim. For 1.6 seconds they take half the damage and refract 20% of shots, beams and blasts back to the attacker (strikes up close are only halved).",
+        { duration: 1.6, lunge: 240, speed: 900 },
       ),
       ability(
-        "nova-burst",
-        "Nova Burst",
-        "nova",
-        34,
+        "crystal-cage",
+        "Crystal Cage",
+        "cage",
         20,
-        "After a short charge, a circular aura explosion.",
-        { radius: 200, cast: 0.4, knockback: 150 },
+        20,
+        "After a short charge, crystal spires rise in a 180 px ring round Auralynx for 2.5 seconds: nobody can cross it and no shot gets through. Enemies caught inside take 20, and the ring closes in to 60 px, squeezing them toward Auralynx.",
+        {
+          radius: 180,
+          cast: 0.4,
+          duration: 2.5,
+          knockback: 0,
+          cage: { shrinkTo: 60 },
+        },
       ),
     ],
   },
@@ -547,38 +1070,40 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A fluffy moth that sheds glowing dust. Balanced at every range; Kindle turns pressure into a race.",
     color: 0x86f0c0,
-    health: 144,
+    health: 141,
     speed: 265,
     basic: basic(
       "glint",
       "Glint",
       "projectile",
       6,
-      300,
+      310,
       "A glowing star projectile.",
       { speed: 820, radius: 10 },
     ),
     skills: [
       ability(
-        "starfall-spray",
-        "Starfall Spray",
+        "wing-dust",
+        "Wing Dust",
         "barrage",
         8,
         8,
-        "Five glowing stars in a spread.",
+        "Beat your wings: five glittering motes of wing dust fly out in a spread.",
         { count: 5, speed: 880, radius: 10 },
       ),
       ability(
-        "dust-strike",
-        "Dust Strike",
-        "melee",
-        24,
+        "eyespot-flash",
+        "Eyespot Flash",
+        "gaze",
+        8,
         12,
-        "A powerful close-range bite.",
+        "Flash the big eyespots on your wings: enemies within 220 px take 8, and those looking at Lumoth (aiming at it) are stunned for 0.5 seconds.",
         {
-          range: 120,
-          arc: 0.4,
-          knockback: 90,
+          radius: 220,
+          gaze: 0.5,
+          knockback: 0,
+          status: "stun",
+          statusDuration: 0.5,
         },
       ),
       ability(
@@ -586,18 +1111,28 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Kindle",
         "buff",
         0,
-        15,
+        13,
         "For 5 seconds, deal 25% more damage and basic attack 30% faster.",
         { duration: 5 },
       ),
       ability(
         "radiant-flare",
         "Radiant Flare",
-        "nova",
-        40,
+        "lure",
+        24,
         20,
-        "After a charge, a powerful energy burst around Lumoth.",
-        { radius: 210, cast: 0.45, knockback: 140 },
+        "Shoot a flare up to 650 px away. It hangs like a little sun for 2 seconds and draws every enemy within 200 px toward it (190 px a second), then bursts: 24 damage and stunned for 0.6 seconds within 150 px.",
+        {
+          cast: 0.35,
+          range: 650,
+          radius: 200,
+          duration: 2,
+          explosion: 150,
+          knockback: 0,
+          status: "stun",
+          statusDuration: 0.6,
+          lure: { speed: 190 },
+        },
       ),
     ],
   },
@@ -607,62 +1142,64 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     element: "Psychic",
     role: "High-power duelist",
     description:
-      "A floating three-eyed owl. Slow, heavy attacks; controls space with rays, pushes and wards.",
+      "A floating three-eyed owl. Slow, heavy attacks; controls space with its third-eye ray, a silencing hush and its wing cloak.",
     color: 0xff79d2,
-    health: 130,
+    health: 138,
     speed: 255,
     basic: basic(
       "mind-dart",
       "Mind Dart",
       "projectile",
       8,
-      400,
+      390,
       "A psychic energy projectile.",
       { speed: 760, radius: 11 },
     ),
     skills: [
       ability(
-        "focus-ray",
-        "Focus Ray",
+        "third-eye-ray",
+        "Third-Eye Ray",
         "beam",
-        18,
+        15,
         8,
-        "An instant psychic beam toward your aim. Walls block it. Slows.",
+        "An instant beam from the third-eye gem toward your aim. Walls block it. Slows.",
         { range: 760, radius: 16, status: "slow", statusDuration: 0.6 },
       ),
       ability(
-        "repulse",
-        "Repulse",
+        "hush",
+        "Hush",
         "nova",
+        10,
         12,
-        12,
-        "A shockwave that pushes nearby opponents far away.",
-        { radius: 180, knockback: 260 },
+        "A silent wingbeat: enemies within 200 px take 10, are pushed back and are Silenced for 1.2 seconds: no skills (they can still move, dash and attack).",
+        { radius: 200, knockback: 160, status: "silence", statusDuration: 1.2 },
       ),
       ability(
-        "ward",
-        "Ward",
+        "wing-cloak",
+        "Wing Cloak",
         "barrier",
         0,
         15,
-        "A defensive shield that blocks 60% of damage for 3 seconds.",
+        "Wrap up in your wing cloak: block 60% of damage for 3 seconds.",
         { duration: 3 },
       ),
       ability(
-        "thoughtstrike",
-        "Thoughtstrike",
+        "mind-maze",
+        "Mind Maze",
         "zone",
-        38,
+        24,
         20,
-        "A delayed psychic explosion at the target location.",
+        "A psychic maze closes over the aim point (150 px): enemies caught take 24 and are Confused for 2 seconds, their movement reversed.",
         {
-          radius: 120,
+          radius: 150,
           range: 600,
-          cast: 0.35,
+          cast: 0.2,
           duration: 0.7,
-          tickDelay: 0.5,
+          tickDelay: 0.35,
           tickInterval: 1,
-          knockback: 120,
+          knockback: 0,
+          status: "confuse",
+          statusDuration: 2,
         },
       ),
     ],
@@ -673,9 +1210,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     element: "Earth",
     role: "Defensive tank",
     description:
-      "A sleepy boulder tortoise. Huge health pool and crushing swings; make them come to you.",
+      "A sleepy boulder tortoise. Huge health pool, crushing swings and a shell to hide in; make them come to you.",
     color: 0xc79a5b,
-    health: 219,
+    health: 196,
     speed: 222,
     basic: basic(
       "boulder-swipe",
@@ -688,12 +1225,12 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     ),
     skills: [
       ability(
-        "shell-slam",
-        "Shell Slam",
+        "shell-bash",
+        "Shell Bash",
         "melee",
         30,
         8,
-        "A heavy close-range body attack that stuns briefly. No dash.",
+        "Ram with the front of the shell: big knockback and a brief stun. No dash.",
         {
           range: 150,
           arc: 0.1,
@@ -703,21 +1240,26 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "hibernate",
-        "Hibernate",
+        "shell-up",
+        "Shell Up",
         "rest",
         0,
-        12,
-        "Fall asleep for 2.5 seconds: heal 75 HP, but you can't move or act and take 20% more damage.",
-        { duration: 2.5, heal: 15 },
+        16,
+        "Pull into your shell for 1.5 seconds: you can't move or act, but take 45% less damage and regrow 21 HP. Then the shell bursts open, shoving away everyone within 140 px.",
+        {
+          duration: 1.5,
+          heal: 7,
+          status: "shell",
+          burst: { damage: 0, radius: 140, knockback: 300 },
+        },
       ),
       ability(
-        "dust-cloud",
-        "Dust Cloud",
+        "mud-mire",
+        "Mud Mire",
         "zone",
         0,
         15,
-        "A drowsy cloud that heavily slows enemies inside.",
+        "Stomp a patch of sticky mud that heavily slows enemies in it. Too sticky to jump out of.",
         {
           radius: 150,
           duration: 3,
@@ -733,7 +1275,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "nova",
         36,
         20,
-        "Slam the ground for a large shockwave. Jump to avoid it.",
+        "Slam the ground for a large shockwave.",
         { radius: 230, cast: 0.5, ground: true, knockback: 140 },
       ),
     ],
@@ -744,16 +1286,16 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     element: "Shadow",
     role: "Trickster / area control",
     description:
-      "A hooded lantern wisp. Sets burns, then cashes them in with Curse Mark.",
+      "A hooded lantern wisp. Hangs its haunted lantern to hold ground, and strikes from the shadows at anything its ghostfire lights up.",
     color: 0x9c6bff,
-    health: 150,
+    health: 148,
     speed: 260,
     basic: basic(
       "lantern-wisp",
       "Lantern Wisp",
       "projectile",
       9,
-      350,
+      345,
       "A ghostly projectile.",
       { speed: 720, radius: 11 },
     ),
@@ -762,10 +1304,16 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "shade-crawl",
         "Shade Crawl",
         "projectile",
-        20,
+        14,
         8,
-        "A fast shadow strike along the ground. Jump to avoid it.",
-        { speed: 1100, radius: 16, ground: true },
+        "Your shadow crawls out and binds the first enemy's shadow: 14 damage and Rooted for 0.4 seconds (it can still attack, but not move or dash).",
+        {
+          speed: 900,
+          radius: 18,
+          knockback: 0,
+          status: "root",
+          statusDuration: 0.4,
+        },
       ),
       ability(
         "ghostfire",
@@ -773,36 +1321,948 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "barrage",
         6,
         12,
-        "Three ghostly flames that burn for 3 seconds.",
+        "Three ghost-lantern flames that burn for 3 seconds and light the target up (Lit).",
         { count: 3, speed: 520, radius: 12, status: "burn", statusDuration: 3 },
       ),
       ability(
-        "curse-mark",
-        "Curse Mark",
-        "projectile",
-        16,
+        "haunted-lantern",
+        "Haunted Lantern",
+        "zone",
+        0,
         15,
-        "A curse that deals double damage to enemies with a harmful status.",
-        { speed: 760, radius: 14, bonusVsStatus: 2 },
+        "Hang your lantern at the aim point: for 4 seconds it shoots a wisp at the nearest enemy in its light every 1.3 seconds.",
+        {
+          // The zone is the lantern itself; its light (turret.range) reaches much further.
+          radius: 40,
+          range: 450,
+          duration: 4,
+          knockback: 0,
+          tickDelay: 0.4,
+          tickInterval: 1.3,
+          // 6 a wisp (was 4): Duskveil was the weakest champion at every
+          // bot level (docs/balance-overhaul.md, "Duskveil's lantern").
+          turret: { damage: 6, speed: 640, radius: 10, range: 330 },
+        },
       ),
       ability(
-        "void-orb",
-        "Void Orb",
-        "charged",
-        34,
+        "wraith-hunt",
+        "Wraith Hunt",
+        "hunt",
+        5,
         20,
-        "After a short charge, a powerful ghost-energy orb that explodes.",
-        { cast: 0.35, speed: 560, radius: 26, explosion: 120 },
+        "A wraith leaves your lantern and hunts the nearest enemy you can see for 3 seconds, through walls. Its touch deals 5 every half second, and reaps an enemy under 20% health: knocked out.",
+        {
+          cast: 0.3,
+          radius: 50,
+          duration: 3,
+          range: 0,
+          tickDelay: 0.3,
+          tickInterval: 0.5,
+          knockback: 0,
+          hunt: { speed: 205, execute: 0.2 },
+        },
+      ),
+    ],
+  },
+  coilemur: {
+    id: "coilemur",
+    name: "Coilemur",
+    element: "Electric",
+    role: "Grappler",
+    description:
+      "A ring-tailed lemur whose striped tail is a living electromagnet. Yanks runners in, then won't let go.",
+    color: 0xf2c94c,
+    health: 150,
+    speed: 250,
+    basic: basic(
+      "coil-swipe",
+      "Coil Swipe",
+      "melee",
+      12,
+      360,
+      "A quick crackling swipe in front of Coilemur.",
+      { range: 140, arc: 0.3, knockback: 12 },
+    ),
+    skills: [
+      ability(
+        "magnet-lash",
+        "Magnet Lash",
+        "projectile",
+        14,
+        11,
+        "Wind up for a quarter second, then crack your magnet tail toward the aim. The first enemy hit is dragged right up to you.",
+        {
+          cast: 0.25,
+          speed: 1000,
+          range: 560,
+          radius: 12,
+          knockback: -600,
+        },
+      ),
+      ability(
+        "static-clamp",
+        "Static Clamp",
+        "clamp",
+        28,
+        12,
+        "Clamp a charge onto whoever is in front of you. 0.9 seconds later it goes off: 28 damage and paralysis, and it arcs to every enemy within 200 px of it for half.",
+        {
+          range: 150,
+          arc: 0.35,
+          knockback: 0,
+          fuse: 0.9,
+          explosion: 200,
+          chain: 0.5,
+          status: "paralysis",
+          statusDuration: 0.6,
+        },
+      ),
+      ability(
+        "live-wire",
+        "Live Wire",
+        "tether",
+        3,
+        11,
+        "After a quarter-second wind-up, Coilemur runs 30% faster for 3.5 seconds and lashes a live wire onto the enemy nearest your aim (380 px). While it holds (2.5 seconds), the enemy takes 3 every half second, and if it gets more than 250 px away the wire yanks it back toward Coilemur: 6 damage and paralysed for half a second, and the wire snaps. Walls cut the wire. No more running away.",
+        {
+          range: 380,
+          radius: 60,
+          duration: 2.5,
+          cast: 0.25,
+          knockback: 0,
+          tether: {
+            tick: 0.5,
+            breakRange: 9999,
+            haste: 3.5,
+            yank: {
+              at: 250,
+              pull: 220,
+              damage: 6,
+              status: "paralysis",
+              statusDuration: 0.5,
+            },
+          },
+        },
+      ),
+      ability(
+        "electromagnet",
+        "Electromagnet",
+        "zone",
+        7,
+        20,
+        "Become a living magnet for 2 seconds: every enemy nearby is dragged toward you and shocked.",
+        {
+          radius: 250,
+          duration: 2,
+          follow: true,
+          range: 0,
+          tickDelay: 0.2,
+          tickInterval: 0.4,
+          knockback: -70,
+          status: "paralysis",
+          statusDuration: 0.4,
+        },
+      ),
+    ],
+  },
+  pyranda: {
+    id: "pyranda",
+    name: "Pyranda",
+    element: "Fire",
+    role: "Artillery",
+    description:
+      'A shy red panda, the "fire fox", with a flame at the tip of its tail. Lobs burning chestnuts from the back line and curls up in its tail when caught.',
+    color: 0xff8a3d,
+    health: 152,
+    speed: 235,
+    basic: basic(
+      "ember-lob",
+      "Ember Lob",
+      "projectile",
+      10,
+      440,
+      "A long-range ember flicked from its tail. It knocks back enemies within 260 px, keeping brawlers off Pyranda.",
+      { speed: 760, range: 760, radius: 12, knockback: 65, knockbackNear: 260 },
+    ),
+    skills: [
+      ability(
+        "chestnut-mortar",
+        "Chestnut Mortar",
+        "zone",
+        22,
+        8,
+        "Lob a burning chestnut over walls to the aim point. It lands 0.6 seconds later and burns.",
+        {
+          radius: 100,
+          range: 720,
+          duration: 0.65,
+          tickDelay: 0.6,
+          tickInterval: 1,
+          knockback: 70,
+          status: "burn",
+          statusDuration: 1.5,
+        },
+      ),
+      ability(
+        "hot-coals",
+        "Hot Coals",
+        "zone",
+        6,
+        12,
+        "Scatter a patch of hot coals for 4 seconds. Burns anyone standing in it.",
+        {
+          radius: 120,
+          range: 600,
+          duration: 4,
+          ground: true,
+          tickInterval: 0.5,
+          knockback: 0,
+          status: "burn",
+          statusDuration: 1.5,
+        },
+      ),
+      ability(
+        "ember-curtain",
+        "Ember Curtain",
+        "screen",
+        7,
+        10,
+        "Sweep up a curtain of embers 240 px wide across your aim for 3 seconds: enemy shots (and grappling tongues) that touch it burn up, and enemies on it take 7 damage every half second, catch fire and are knocked back.",
+        {
+          duration: 3,
+          knockback: 150,
+          status: "burn",
+          statusDuration: 2,
+          tickInterval: 0.5,
+          screen: { length: 240, distance: 90 },
+        },
+      ),
+      ability(
+        "chestnut-storm",
+        "Chestnut Storm",
+        "creep",
+        26,
+        20,
+        "A storm of burning chestnuts creeps along your aim, over any wall: five blasts 115 px wide, from 160 px out to 760 px, 0.15 seconds apart. Each is marked 0.6 seconds before it lands: 26 damage, a burn and a shove.",
+        {
+          cast: 0.3,
+          count: 5,
+          explosion: 115,
+          tickDelay: 0.6,
+          duration: 0.7,
+          range: 760,
+          knockback: 60,
+          status: "burn",
+          statusDuration: 2,
+          creep: { start: 160, step: 150, gap: 0.15 },
+        },
+      ),
+    ],
+  },
+  glacelle: {
+    id: "glacelle",
+    name: "Glacelle",
+    element: "Water",
+    role: "Frost controller",
+    description:
+      "A floating sea angel from the ice shelf. Slows, then freezes you solid; the only champion with true Freeze.",
+    color: 0x9fe8ff,
+    health: 158,
+    speed: 255,
+    basic: basic(
+      "rime-shard",
+      "Rime Shard",
+      "projectile",
+      8,
+      325,
+      "A small shard of ice.",
+      { speed: 820, range: 660, radius: 10 },
+    ),
+    skills: [
+      ability(
+        "black-ice",
+        "Black Ice",
+        "zone",
+        3,
+        13,
+        "Glaze the ground at the aim (up to 600 px, 120 px wide) with black ice for 2 seconds: enemies on it slide about with almost no grip, and take 3 every half second.",
+        {
+          radius: 120,
+          range: 600,
+          cast: 0.15,
+          duration: 2,
+          tickInterval: 0.5,
+          knockback: 0,
+          status: "float",
+          statusDuration: 0.7,
+        },
+      ),
+      ability(
+        "frost-bloom",
+        "Frost Bloom",
+        "zone",
+        14,
+        12,
+        "Frost blooms at the aim point and, after a moment, freezes everyone inside in place.",
+        {
+          radius: 125,
+          range: 520,
+          cast: 0.2,
+          duration: 0.6,
+          tickDelay: 0.5,
+          tickInterval: 1,
+          knockback: 0,
+          status: "freeze",
+          statusDuration: 0.9,
+        },
+      ),
+      ability(
+        "frost-breath",
+        "Frost Breath",
+        "cone",
+        4,
+        12,
+        "Breathe a freezing cone for 1 second: 4 damage every 0.2 seconds and a slow. An enemy caught by four breaths in a row is frozen solid for half a second.",
+        {
+          range: 230,
+          arc: 0.7,
+          duration: 1,
+          tickDelay: 0.1,
+          tickInterval: 0.2,
+          knockback: 0,
+          status: "slow",
+          statusDuration: 0.6,
+          cone: { freeze: 4, freezeFor: 0.5 },
+        },
+      ),
+      ability(
+        "whiteout",
+        "Whiteout",
+        "zone",
+        6,
+        20,
+        "A blizzard at the aim point for 2.6 seconds: the first gust freezes, the rest keep stinging.",
+        {
+          radius: 180,
+          range: 560,
+          cast: 0.35,
+          duration: 2.6,
+          tickDelay: 0.3,
+          tickInterval: 0.45,
+          knockback: 0,
+          status: "freeze",
+          statusDuration: 1,
+        },
+      ),
+    ],
+  },
+  halcyra: {
+    id: "halcyra",
+    name: "Halcyra",
+    element: "Aura",
+    role: "Marksman",
+    description:
+      "A kingfisher who focuses aura through a crystal beak. The longest reach in the arena, and the frailest body.",
+    color: 0x6f8dff,
+    health: 141,
+    speed: 260,
+    basic: basic(
+      "aura-quill",
+      "Aura Quill",
+      "projectile",
+      8,
+      370,
+      "A fast, long-range feather of aura. Up to 50% more damage the farther it flies.",
+      { speed: 1000, range: 760, radius: 9, farBonus: 0.5 },
+    ),
+    skills: [
+      ability(
+        "pinning-quill",
+        "Pinning Quill",
+        "projectile",
+        12,
+        8,
+        "A heavy quill that pins its target on a leash for 1.4 seconds: it can't go more than 110 px from where it was hit.",
+        {
+          speed: 1100,
+          radius: 12,
+          status: "leash",
+          statusDuration: 1.4,
+          leash: 110,
+        },
+      ),
+      ability(
+        "focus-shot",
+        "Focus Shot",
+        "beam",
+        25,
+        12,
+        "Take aim for 0.4 seconds, then fire an instant beam across the court. Up to 50% more damage at long range. Walls block it.",
+        { cast: 0.4, range: 1000, radius: 14, knockback: 60, farBonus: 0.5 },
+      ),
+      ability(
+        "halcyon-rewind",
+        "Halcyon Rewind",
+        "rewind",
+        0,
+        17,
+        "Dive back to where you were 2 seconds ago and win back 40% of the health you lost since (at most 18).",
+        { knockback: 0, rewind: { seconds: 2, heal: 0.4, max: 18 } },
+      ),
+      ability(
+        "skyline-lance",
+        "Skyline Lance",
+        "beam",
+        40,
+        20,
+        "A long charge, then a lance of aura the width of the court. Decoys and walls stop it.",
+        { cast: 0.6, range: 1400, radius: 26, knockback: 160 },
+      ),
+    ],
+  },
+  sunbara: {
+    id: "sunbara",
+    name: "Sunbara",
+    element: "Light",
+    role: "Support",
+    description:
+      "A capybara who bathes in sunlight with a glowing yuzu on its head. Everyone's friend; heals the whole team.",
+    color: 0xffc26b,
+    health: 190,
+    speed: 240,
+    basic: basic(
+      "sunseed",
+      "Sunseed",
+      "projectile",
+      7,
+      335,
+      "A warm seed of light.",
+      { speed: 760, range: 620, radius: 10 },
+    ),
+    skills: [
+      ability(
+        "yuzu-toss",
+        "Yuzu Toss",
+        "projectile",
+        14,
+        7,
+        "Toss a glowing yuzu that bursts on impact; Sunbara soaks up a fifth of the damage it deals as health.",
+        // 760 px/s and 7 s (were 650 and 8) since Hard dodges like a good
+        // player: docs/smarter-bots.md, "Second round".
+        { speed: 760, radius: 16, explosion: 80, drain: 0.2 },
+      ),
+      ability(
+        "warm-spring",
+        "Warm Spring",
+        "zone",
+        0,
+        12,
+        "Open a warm spring at your feet for 3.5 seconds. Allies inside heal 4 HP every half second; Sunbara heals half that.",
+        {
+          radius: 130,
+          range: 0,
+          duration: 3.5,
+          tickDelay: 0.25,
+          tickInterval: 0.5,
+          knockback: 0,
+          heal: 4,
+          selfHeal: 0.5,
+        },
+      ),
+      ability(
+        "daybreak",
+        "Daybreak",
+        "nova",
+        10,
+        15,
+        "A flash of morning light around Sunbara that stuns briefly.",
+        { radius: 150, knockback: 80, status: "stun", statusDuration: 0.5 },
+      ),
+      ability(
+        "sanctuary",
+        "Sanctuary",
+        "zone",
+        0,
+        20,
+        "For 4 seconds a sunny glade follows you: allies inside heal 7 HP every half second (Sunbara half that), enemies inside are slowed.",
+        {
+          radius: 220,
+          range: 0,
+          follow: true,
+          duration: 4,
+          tickDelay: 0.25,
+          tickInterval: 0.5,
+          knockback: 0,
+          heal: 7,
+          selfHeal: 0.5,
+          status: "slow",
+          statusDuration: 0.6,
+        },
+      ),
+    ],
+  },
+  astrabun: {
+    id: "astrabun",
+    name: "Astrabun",
+    element: "Psychic",
+    role: "Blink duelist",
+    description:
+      "A moon rabbit with a mochi mallet. Hops through space to land right on top of you.",
+    color: 0xd78bff,
+    health: 132,
+    speed: 262,
+    basic: basic(
+      "mallet-bop",
+      "Mallet Bop",
+      "melee",
+      14,
+      410,
+      "A bonk with the mochi mallet.",
+      { range: 145, arc: 0.3, knockback: 14 },
+    ),
+    skills: [
+      ability(
+        "moon-hop",
+        "Moon Hop",
+        "blink",
+        12,
+        7,
+        "Teleport up to 300 px toward the aim (not through walls). A small burst where you land.",
+        { range: 300, radius: 90, knockback: 40 },
+      ),
+      ability(
+        "mochi-pound",
+        "Mochi Pound",
+        "pound",
+        10,
+        12,
+        "Three pounds of the mallet: cast it again within 1.4 seconds for the next. 10, then 13, then 20 that stuns and knocks back. The cooldown starts after the last.",
+        {
+          range: 150,
+          arc: 0.3,
+          knockback: 150,
+          status: "stun",
+          statusDuration: 0.45,
+          strikes: [10, 13, 20],
+          chainWindow: 1.4,
+        },
+      ),
+      ability(
+        "sticky-mochi",
+        "Sticky Mochi",
+        "projectile",
+        8,
+        13,
+        "Fling a ball of sticky mochi: the first enemy hit takes 8 and is Grounded for 0.9 seconds: it can't dash or jump. Nowhere to hop away to.",
+        {
+          speed: 820,
+          range: 560,
+          radius: 16,
+          knockback: 0,
+          status: "grounded",
+          statusDuration: 0.9,
+        },
+      ),
+      ability(
+        "full-moon",
+        "Full Moon",
+        "blink",
+        36,
+        20,
+        "Rise for a moment, then crash down up to 450 px away in a big shockwave.",
+        { range: 450, cast: 0.35, radius: 170, knockback: 150 },
+      ),
+    ],
+  },
+  wombolder: {
+    id: "wombolder",
+    name: "Wombolder",
+    element: "Earth",
+    role: "Charger",
+    description:
+      "A wombat with a rump like a boulder. Bulldozes in, blocks with its back end, and never stops digging.",
+    color: 0xb08a62,
+    health: 173,
+    speed: 232,
+    basic: basic(
+      "rump-bump",
+      "Rump Bump",
+      "melee",
+      16,
+      535,
+      "A wide shove with the rump.",
+      { range: 140, arc: 0.15, knockback: 25 },
+    ),
+    skills: [
+      ability(
+        "burrow-rush",
+        "Burrow Rush",
+        "rush",
+        16,
+        9,
+        "Charge up to 380 px toward the aim. The first enemy you hit is knocked back and stunned. Drive them into a wall for a slam: 50% more damage and a longer stun.",
+        {
+          range: 380,
+          speed: 1100,
+          knockback: 160,
+          status: "stun",
+          statusDuration: 0.35,
+          wallSlam: 1.5,
+        },
+      ),
+      ability(
+        "bush-boomerang",
+        "Bush Boomerang",
+        "projectile",
+        11,
+        8,
+        "Throw a boomerang 460 px: it comes back to you, hitting each enemy on the way out and again on the way back.",
+        { speed: 820, range: 460, radius: 14, knockback: 20, boomerang: true },
+      ),
+      ability(
+        "grudge-thump",
+        "Grudge Thump",
+        "taunt",
+        8,
+        14,
+        "Thump the ground and glare: enemies within 240 px take 8 and are Taunted for 1.1 seconds (they must walk at you, but can still fight back). You're Braced for 1.5 seconds: nothing knocks you back or pulls you.",
+        {
+          radius: 240,
+          duration: 1.5,
+          knockback: 0,
+          status: "taunt",
+          statusDuration: 1.1,
+        },
+      ),
+      ability(
+        "landslide",
+        "Landslide",
+        "rush",
+        30,
+        20,
+        "A long, unstoppable charge (620 px). On impact the ground erupts around the target; slamming them into a wall deals 30% more.",
+        {
+          range: 620,
+          speed: 1300,
+          cast: 0.25,
+          explosion: 130,
+          knockback: 180,
+          status: "stun",
+          statusDuration: 0.6,
+          wallSlam: 1.3,
+        },
+      ),
+    ],
+  },
+  shadopus: {
+    id: "shadopus",
+    name: "Shadopus",
+    element: "Shadow",
+    role: "Stealth assassin",
+    description:
+      "A midnight octopus that vanishes in its own ink. Fragile, fast, and gone before you turn around.",
+    color: 0x7b5cff,
+    health: 132,
+    speed: 278,
+    basic: basic(
+      "tentacle-lash",
+      "Tentacle Lash",
+      "melee",
+      11,
+      305,
+      "A quick lash of tentacles.",
+      { range: 150, arc: 0.3, knockback: 10 },
+    ),
+    skills: [
+      ability(
+        "ink-jet",
+        "Ink Jet",
+        "projectile",
+        9,
+        11,
+        "Squirt a jet of ink in their eyes: Blinded for 0.7 seconds, their basic attacks miss.",
+        {
+          speed: 950,
+          range: 520,
+          radius: 14,
+          status: "blind",
+          statusDuration: 0.7,
+        },
+      ),
+      ability(
+        "ink-strike",
+        "Ink Strike",
+        "melee",
+        24,
+        12,
+        "A sharp eight-armed strike in front of you.",
+        { range: 150, arc: 0.35, knockback: 60 },
+      ),
+      ability(
+        "ink-cloud",
+        "Ink Cloud",
+        "veil",
+        0,
+        15,
+        "Vanish in a cloud of ink: stealth for 2.5 seconds and a burst of speed. Enemies can't see or target you at all. Casting or taking damage reveals you, and your first hit out of stealth deals 30% more.",
+        { duration: 2.5, statusDuration: 1.5, ambush: 1.3 },
+      ),
+      ability(
+        "kraken-grasp",
+        "Kraken Grasp",
+        "throw",
+        32,
+        20,
+        "After a short wind-up, the tentacles seize the enemy in front (200 px), hold it for half a second, then hurl it 380 px toward your aim: 32 damage, half again into a wall. Enemies where it lands take half.",
+        {
+          range: 200,
+          arc: 0,
+          cast: 0.25,
+          hold: 0.5,
+          throw: 380,
+          wallSlam: 1.5,
+          explosion: 90,
+          knockback: 0,
+          status: "stun",
+          statusDuration: 0.5,
+        },
+      ),
+    ],
+  },
+  pangrove: {
+    id: "pangrove",
+    name: "Pangrove",
+    element: "Nature",
+    role: "Armoured burrower",
+    description:
+      "A pangolin whose scales are living leaves. Three armour plates soak up hits; it grapples in with its tongue, tunnels under the court to burst up beneath you, sheds its plates as blades, and whips them into a storm.",
+    color: 0x7fcf6a,
+    health: 140,
+    speed: 245,
+    passive: "plates",
+    basic: basic(
+      "scale-swipe",
+      "Scale Swipe",
+      "melee",
+      15,
+      450,
+      "A swipe of leafy scales in front of Pangrove.",
+      { range: 150, arc: 0.25, knockback: 12 },
+    ),
+    skills: [
+      ability(
+        "tongue-grapple",
+        "Tongue Grapple",
+        "grapple",
+        14,
+        8,
+        "Shoot out a sticky tongue. The first enemy it reaches takes 14 damage and is slowed, and Pangrove zips to it; a wall pulls Pangrove to the wall.",
+        {
+          range: 480,
+          radius: 14,
+          speed: 1300,
+          knockback: 0,
+          status: "slow",
+          statusDuration: 1.2,
+        },
+      ),
+      ability(
+        "scale-shrapnel",
+        "Scale Shrapnel",
+        "shrapnel",
+        6,
+        11,
+        "Shed two armour plates as a fan of blades: 6 blades, plus 2 for each plate you have. The plates grow back later.",
+        {
+          count: 6,
+          perPlate: 2,
+          platesSpent: 2,
+          fan: 1.2,
+          speed: 760,
+          range: 300,
+          radius: 10,
+          knockback: 15,
+        },
+      ),
+      ability(
+        "tunnel",
+        "Tunnel",
+        "tunnel",
+        12,
+        14,
+        "Dig underground for up to 1 second (cast again to come up sooner). Nothing can hit you down there and you can't attack, but everyone sees your mound of dirt. Coming up deals 12 damage to enemies within 110 px and flings them away, and an armour plate grows back.",
+        {
+          duration: 1,
+          radius: 110,
+          knockback: 140,
+          tunnel: { haste: 1.1, plates: 1 },
+        },
+      ),
+      ability(
+        "leaf-storm",
+        "Leaf Storm",
+        "cyclone",
+        4,
+        20,
+        "Your leaf plates lift into a storm of 3 blades circling 150 px out for 2.5 seconds. You walk at full speed and can't be knocked back. Each blade sweeps from you out to its tip: an enemy it passes takes 4 damage, is slowed and shoved outward. At the end the storm bursts for 20 damage within 300 px.",
+        {
+          duration: 2.5,
+          radius: 150,
+          count: 3,
+          speed: 5.2,
+          explosion: 300,
+          knockback: 30,
+          status: "slow",
+          statusDuration: 0.4,
+          tickInterval: 0.35,
+          cyclone: { blade: 26, burst: 20 },
+        },
+      ),
+    ],
+  },
+  mossloth: {
+    id: "mossloth",
+    name: "Mossloth",
+    element: "Nature",
+    role: "Time gardener",
+    description:
+      "A three-toed sloth with a moss garden on its back. Moss grows while it stands still; it plants seeds that grow, slows time itself, and lazily swaps places.",
+    color: 0x9bd36a,
+    health: 148,
+    speed: 240,
+    passive: "moss",
+    basic: basic(
+      "seed-spit",
+      "Seed Spit",
+      "projectile",
+      9,
+      300,
+      "Spit a hard seed.",
+      { speed: 780, range: 640, radius: 10 },
+    ),
+    skills: [
+      ability(
+        "seedling",
+        "Seedling",
+        "seedling",
+        28,
+        5,
+        "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 10, 18 or 28 damage and a 0.4, 0.6 or 1 second root. Up to 3 at once.",
+        {
+          range: 520,
+          radius: 70,
+          duration: 15,
+          count: 3,
+          ground: true,
+          knockback: 0,
+          status: "root",
+          statusDuration: 1,
+          bonusVsStatus: 1.4,
+          seed: { grow: 1.5, stages: [0.36, 0.64, 1], trigger: 40 },
+        },
+      ),
+      ability(
+        "sloth-time",
+        "Sloth Time",
+        "timewarp",
+        0,
+        9,
+        "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed.",
+        { range: 520, radius: 165, duration: 3, knockback: 0, warp: 0.35 },
+      ),
+      ability(
+        "lazy-swap",
+        "Lazy Swap",
+        "swap",
+        0,
+        11,
+        "Swap places with the enemy or your own seedling nearest the aim (up to 600 px away). A swapped enemy is slowed for a second.",
+        {
+          range: 600,
+          radius: 120,
+          knockback: 0,
+          status: "slow",
+          statusDuration: 1,
+        },
+      ),
+      ability(
+        "overgrowth",
+        "Overgrowth",
+        "garden",
+        5,
+        20,
+        "A wild garden bursts up at your aim (up to 560 px, 230 px wide) for 2.5 seconds: enemies on it take 5 every half second and are slowed, and whoever is still on it at the end takes 26 and is Rooted for 1.2 seconds. Every seedling you have blooms, and your moss grows full.",
+        {
+          cast: 0.3,
+          range: 560,
+          radius: 230,
+          duration: 2.5,
+          tickDelay: 0.3,
+          tickInterval: 0.5,
+          knockback: 0,
+          status: "root",
+          statusDuration: 1.2,
+          bloom: true,
+          garden: { burst: 26 },
+        },
       ),
     ],
   },
 };
 /**
+ * Spark Trail, Coilemur's skill until Live Wire replaced it (Nov 2026). The
+ * Spire's Static Wake blessing still lays its crackling trail.
+ */
+export const SPARK_TRAIL: Ability = {
+  ...ability(
+    "spark-trail",
+    "Spark Trail",
+    "trail",
+    6,
+    15,
+    "For 3.5 seconds Coilemur runs 30% faster and leaves a crackling trail behind it that lasts 2 seconds: enemies who touch it take 6 and are paralysed for a moment.",
+    {
+      radius: 28,
+      duration: 3.5,
+      range: 0,
+      tickInterval: 0.4,
+      knockback: 0,
+      status: "paralysis",
+      statusDuration: 0.4,
+      trail: { fade: 2 },
+    },
+  ),
+  element: "Electric",
+};
+/**
+ * Free practice: the target drops this electrified ground patch every few
+ * seconds so players can practise jumping. Not any fighter's skill.
+ */
+export const PRACTICE_GRID: Ability = {
+  ...ability(
+    "practice-grid",
+    "Practice Grid",
+    "zone",
+    5,
+    3,
+    "A practice patch of electrified ground. Jump to avoid it.",
+    {
+      radius: 130,
+      duration: 4,
+      ground: true,
+      status: "slow",
+      statusDuration: 0.7,
+      range: 450,
+    },
+  ),
+  element: "Electric",
+};
+/**
  * Signature combos: one "setup → payoff" per fighter. The setup skill marks
  * its target (or, for `self` combos, the caster) for `window` seconds; the
  * payoff skill consumes the mark for a bonus. Readable mastery with no new
- * buttons. Duskveil's Curse Mark (double damage on any harmful status) is the
- * same idea and is listed here so the HUD can show it.
+ * buttons. A self combo whose payoff is a projectile (Charged: Static Lance)
+ * carries the mark on the shot, since the shot lands after the cast.
  */
 export interface Combo {
   /** What the mark is called on screen. */
@@ -812,9 +2272,9 @@ export interface Combo {
   window: number;
   /** The mark sits on the caster instead of the target. */
   self?: boolean;
-  /** Mark the caster when an attack hits them during the setup (Mirror Guard). */
+  /** Mark the caster when an attack hits them during the setup (Facet Guard). */
   onAbsorb?: boolean;
-  /** No mark: the payoff works on any harmful status (Curse Mark). */
+  /** No mark: the payoff works on any harmful status. */
   anyDebuff?: boolean;
   damage?: number;
   radius?: number;
@@ -827,48 +2287,49 @@ export interface Combo {
 export const COMBOS: Record<CharacterId, Combo> = {
   tidefin: {
     name: "Soaked",
-    setup: "whirlpool",
+    setup: "river-dash",
     payoff: "riptide-wave",
     window: 3,
     damage: 1.3,
-    text: "Whirlpool soaks enemies. Riptide Wave deals 30% more to Soaked targets.",
+    text: "River Dash soaks enemies it goes through. Riptide Wave deals 30% more to Soaked targets.",
   },
   voltkit: {
     name: "Charged",
-    setup: "storm-grid",
+    setup: "static-glide",
     payoff: "static-lance",
-    window: 3,
+    window: 2.5,
+    self: true,
     damage: 1.15,
     status: "stun",
     statusDuration: 0.5,
-    text: "Storm Grid charges enemies. Static Lance stuns a Charged target instead of paralysing it.",
+    text: "Static Glide charges Voltkit. A Static Lance thrown while Charged stuns instead of paralysing.",
   },
   cindrake: {
     name: "Scorched",
-    setup: "ember-gust",
-    payoff: "magma-bomb",
+    setup: "crest-flare",
+    payoff: "magma-leap",
     window: 3,
     damage: 1.35,
     status: "burn",
     statusDuration: 4,
-    text: "Ember Gust scorches. Magma Bomb deals 35% more to Scorched targets and burns twice as long.",
+    text: "Crest Flare scorches. Magma Leap lands 35% harder on Scorched targets and burns twice as long.",
   },
   mystowl: {
     name: "Dazed",
-    setup: "repulse",
-    payoff: "thoughtstrike",
+    setup: "hush",
+    payoff: "mind-maze",
     window: 3,
     damage: 1.4,
-    text: "Repulse dazes. Thoughtstrike deals 40% more to Dazed targets.",
+    text: "Hush dazes. Mind Maze deals 40% more to Dazed targets.",
   },
   terradon: {
-    name: "Drowsy",
-    setup: "dust-cloud",
-    payoff: "shell-slam",
+    name: "Mired",
+    setup: "mud-mire",
+    payoff: "shell-bash",
     window: 2.5,
     damage: 1.25,
     knockback: 1.5,
-    text: "Dust Cloud makes enemies drowsy. Shell Slam hits Drowsy targets 25% harder and further.",
+    text: "Mud Mire bogs enemies down. Shell Bash hits Mired targets 25% harder and further.",
   },
   lumoth: {
     name: "Kindled",
@@ -877,27 +2338,119 @@ export const COMBOS: Record<CharacterId, Combo> = {
     window: 5,
     self: true,
     radius: 1.25,
-    text: "Radiant Flare cast while Kindled is 25% wider.",
+    text: "Radiant Flare cast while Kindled draws in and bursts 25% wider.",
   },
   auralynx: {
     name: "Primed",
-    setup: "mirror-guard",
-    payoff: "shatter-palm",
+    setup: "facet-guard",
+    payoff: "shatter-paw",
     window: 2.5,
     self: true,
     onAbsorb: true,
     damage: 1.4,
     status: "stun",
     statusDuration: 0.8,
-    text: "Absorb a hit with Mirror Guard to prime Shatter Palm: 40% more damage and a longer stun.",
+    text: "Refract a shot with Facet Guard to prime Shatter Paw: 40% more damage and a longer stun.",
   },
   duskveil: {
-    name: "Hexed",
+    name: "Lit",
     setup: "ghostfire",
-    payoff: "curse-mark",
-    window: 0,
+    payoff: "shade-crawl",
+    window: 3,
+    damage: 1.25,
+    status: "root",
+    statusDuration: 0.9,
+    text: "Ghostfire lights enemies up. Shade Crawl deals 25% more to Lit targets and roots them for 0.9 seconds.",
+  },
+  coilemur: {
+    name: "Magnetised",
+    setup: "magnet-lash",
+    payoff: "static-clamp",
+    window: 2.5,
+    damage: 1.35,
+    status: "stun",
+    statusDuration: 0.8,
+    text: "Magnet Lash magnetises. Static Clamp on a Magnetised target goes off at once, deals 35% more and stuns.",
+  },
+  pyranda: {
+    name: "Toasted",
+    setup: "hot-coals",
+    payoff: "chestnut-mortar",
+    window: 3,
+    damage: 1.3,
+    text: "Hot Coals toast enemies. Chestnut Mortar deals 30% more to Toasted targets.",
+  },
+  glacelle: {
+    name: "Chilled",
+    setup: "black-ice",
+    payoff: "frost-bloom",
+    window: 3,
+    damage: 1.3,
+    status: "freeze",
+    statusDuration: 1.3,
+    text: "Black Ice chills. Frost Bloom hits Chilled targets 30% harder and freezes them longer.",
+  },
+  halcyra: {
+    name: "Pinned",
+    setup: "pinning-quill",
+    payoff: "focus-shot",
+    window: 3,
+    damage: 1.35,
+    text: "Pinning Quill pins its target on a leash. Focus Shot deals 35% more to a Pinned target.",
+  },
+  sunbara: {
+    name: "Zested",
+    setup: "yuzu-toss",
+    payoff: "daybreak",
+    window: 3,
+    damage: 1.2,
+    status: "stun",
+    statusDuration: 0.9,
+    text: "Yuzu Toss zests enemies. Daybreak stuns Zested targets almost twice as long.",
+  },
+  astrabun: {
+    name: "Moonlit",
+    setup: "moon-hop",
+    payoff: "mochi-pound",
+    window: 2,
+    self: true,
+    damage: 1.35,
+    text: "The first Mochi Pound within 2 seconds of a Moon Hop deals 35% more.",
+  },
+  wombolder: {
+    name: "Pelted",
+    setup: "bush-boomerang",
+    payoff: "burrow-rush",
+    window: 3,
+    damage: 1.3,
+    status: "stun",
+    statusDuration: 0.6,
+    text: "Bush Boomerang pelts. Burrow Rush hits Pelted targets 30% harder and stuns longer.",
+  },
+  shadopus: {
+    name: "Inked",
+    setup: "ink-jet",
+    payoff: "ink-strike",
+    window: 3,
+    damage: 1.4,
+    text: "Ink Jet inks (and blinds) enemies. Ink Strike deals 40% more to Inked targets.",
+  },
+  pangrove: {
+    name: "Latched",
+    setup: "tongue-grapple",
+    payoff: "scale-shrapnel",
+    window: 2.5,
+    self: true,
+    damage: 1.35,
+    text: "Tongue Grapple latches Pangrove on. Scale Shrapnel within 2.5 seconds deals 35% more.",
+  },
+  mossloth: {
+    name: "Timelocked",
+    setup: "sloth-time",
+    payoff: "seedling",
+    window: 3,
     anyDebuff: true,
-    text: "Curse Mark deals double damage to anyone with a harmful status (Ghostfire's burn works).",
+    text: "A seedling set off by an enemy with a harmful status (in Sloth Time, slowed by a swap, rooted) deals 40% more.",
   },
 };
 /** Is `p` carrying a combo mark placed by `by`? (Self combos: by = p.id.) */
@@ -906,15 +2459,133 @@ export function hasMark(p: Fighter, by: string, time: number) {
     (s) => s.kind === "mark" && s.by === by && s.until > time,
   );
 }
-for (const character of Object.values(CHARACTERS))
-  for (const skill of [character.basic, ...character.skills])
+for (const character of Object.values(CHARACTERS)) {
+  // Descriptions are written in court pixels; players read meters.
+  character.description = inMeters(character.description);
+  for (const skill of [character.basic, ...character.skills]) {
     skill.element = character.element;
+    skill.description = inMeters(skill.description);
+  }
+}
+for (const combo of Object.values(COMBOS)) combo.text = inMeters(combo.text);
 /** Seconds between basic attacks, including Kindle. */
-export function basicInterval(character: Character, empowered = false) {
-  return (
-    (character.basic.interval ?? 0.3) *
-    (empowered ? STATUS_RULES.empowerInterval : 1)
-  );
+/**
+ * 2v2 tuning, for the team mode only: a strength factor per champion in the
+ * same form as the duel tuning, health × f and basic-attack interval ÷ √f
+ * (rounded to 5 ms). Duels and raids use the champions' own numbers;
+ * free-for-all has FFA_TUNING. Tuned with scripts/balance/tune-teams.ts; since
+ * the bot fixes (bots pick their own target, Normal no longer flips
+ * champions) every factor is within 12% of 1. Retuned for the smarter bots
+ * (2v2 focus fire, docs/smarter-bots.md).
+ * Retuned again for the second round of smarter bots (2026-11-22).
+ */
+export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
+  voltkit: 1.054,
+  cindrake: 0.974,
+  tidefin: 1.062,
+  auralynx: 0.853,
+  lumoth: 1.062,
+  mystowl: 0.987,
+  terradon: 0.911,
+  duskveil: 1.064,
+  coilemur: 0.936,
+  pyranda: 0.993,
+  glacelle: 0.947,
+  halcyra: 1.053,
+  sunbara: 1.052,
+  astrabun: 0.992,
+  wombolder: 0.902,
+  shadopus: 1.014,
+  pangrove: 0.896,
+  mossloth: 1.01,
+};
+/**
+ * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
+ * (health × f, basic interval ÷ √f). A free-for-all is won by the last
+ * fighter standing, so it rewards lasting rather than damage: melee champions
+ * take about twice the damage per second of ranged ones (as in a duel), which
+ * a duel repays with their higher damage but a free-for-all does not. Tuned
+ * with scripts/balance/tune-teams.ts --mode ffa on four-player matches.
+ * Retuned again for the second round of smarter bots (2026-11-22).
+ */
+export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
+  voltkit: 0.9,
+  cindrake: 1.097,
+  tidefin: 0.886,
+  auralynx: 1.02,
+  lumoth: 0.936,
+  mystowl: 0.861,
+  terradon: 0.959,
+  duskveil: 0.898,
+  coilemur: 1.149,
+  pyranda: 0.817,
+  glacelle: 0.915,
+  halcyra: 0.835,
+  sunbara: 0.914,
+  astrabun: 1.113,
+  wombolder: 1.069,
+  shadopus: 1.102,
+  pangrove: 1.011,
+  mossloth: 0.914,
+};
+/**
+ * The same for a free-for-all that started with three players, tuned on
+ * three-player matches (--mode ffa --players 3): with one enemy fewer the
+ * gap between melee and ranged champions is wider than with four.
+ */
+export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
+  voltkit: 0.86,
+  cindrake: 1.156,
+  tidefin: 0.839,
+  auralynx: 1.17,
+  lumoth: 0.824,
+  mystowl: 0.832,
+  terradon: 1.069,
+  duskveil: 0.826,
+  coilemur: 1.2,
+  pyranda: 0.827,
+  glacelle: 0.91,
+  halcyra: 0.774,
+  sunbara: 0.878,
+  astrabun: 1.21,
+  wombolder: 1.185,
+  shadopus: 1.151,
+  pangrove: 1.06,
+  mossloth: 1.05,
+};
+/**
+ * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
+ * `players` is how many fighters the match started with; only a
+ * free-for-all reads it (default: a full room).
+ */
+export function modeFactor(
+  id: CharacterId,
+  mode?: MatchMode,
+  players = MODE_SIZE.ffa,
+) {
+  if (mode === "teams") return TEAM_TUNING[id] ?? 1;
+  if (mode !== "ffa") return 1;
+  return (players < MODE_SIZE.ffa ? FFA_THREE_TUNING : FFA_TUNING)[id] ?? 1;
+}
+/** A champion's full health in this mode (and free-for-all size). */
+export function maxHealth(id: CharacterId, mode?: MatchMode, players?: number) {
+  const f = modeFactor(id, mode, players);
+  return f === 1
+    ? CHARACTERS[id].health
+    : Math.round(CHARACTERS[id].health * f);
+}
+/** Seconds between basic attacks, including Kindle, in this mode. */
+export function basicInterval(
+  character: Character,
+  empowered = false,
+  mode?: MatchMode,
+  players?: number,
+) {
+  const base = character.basic.interval ?? 0.3,
+    f = modeFactor(character.id, mode, players);
+  const interval =
+    f === 1 ? base : (Math.round((base * 1000) / Math.sqrt(f) / 5) * 5) / 1000;
+  return interval * (empowered ? STATUS_RULES.empowerInterval : 1);
 }
 export interface Vec {
   x: number;
@@ -951,6 +2622,24 @@ export function exAbility(a: Ability): Ability {
     damage: Math.round(a.damage * EX.damage),
     radius: a.radius * EX.radius,
     ...(a.heal ? { heal: Math.round(a.heal * EX.damage) } : {}),
+    ...(a.turret
+      ? {
+          turret: {
+            ...a.turret,
+            damage: Math.round(a.turret.damage * EX.damage),
+            range: a.turret.range * EX.radius,
+          },
+        }
+      : {}),
+    ...(a.pop
+      ? {
+          pop: {
+            ...a.pop,
+            damage: Math.round(a.pop.damage * EX.damage),
+            radius: a.pop.radius * EX.radius,
+          },
+        }
+      : {}),
   };
 }
 export const inputSchema = z
@@ -996,17 +2685,19 @@ export const FIGHTER_IDS = [
   "mystowl",
   "terradon",
   "duskveil",
+  "coilemur",
+  "pyranda",
+  "glacelle",
+  "halcyra",
+  "sunbara",
+  "astrabun",
+  "wombolder",
+  "shadopus",
+  "pangrove",
+  "mossloth",
 ] as const satisfies readonly CharacterId[];
 /** Older internal IDs, accepted so stale clients and saved sessions keep working. */
 const legacyIds: Record<string, CharacterId> = {
-  pikachu: "voltkit",
-  charizard: "cindrake",
-  greninja: "tidefin",
-  lucario: "auralynx",
-  eevee: "lumoth",
-  mewtwo: "mystowl",
-  snorlax: "terradon",
-  gengar: "duskveil",
   thornback: "mystowl",
   frostfang: "terradon",
   voltling: "voltkit",
@@ -1027,8 +2718,13 @@ export interface Status {
   kind: StatusKind;
   until: number;
   nextTick: number;
-  /** Hibernate: health restored per tick. */
+  /** Rest (Shell Up): health restored per tick. Leash: its length (px). */
   amount?: number;
+  /** Taunt: where the taunter is (kept up to date). Leash: where it is pinned. Cage: its centre. */
+  tx?: number;
+  ty?: number;
+  /** Cage: true when the fighter was inside the ring as it rose. */
+  inside?: boolean;
   /** Who applied it (burn damage is credited to them). */
   by?: string;
 }
@@ -1079,10 +2775,18 @@ export const MODE_MIN: Record<MatchMode, number> = {
 export const TEAM_NAMES = ["Blue", "Red"] as const;
 export interface Fighter extends Vec {
   raidBoss?: boolean;
+  /** A Spire Echo: a champion on the enemy side, driven by the bot. */
+  echo?: boolean;
+  /** The Spire's elite captain (an Echo with a boss mechanic and a bar). */
+  elite?: boolean;
+  /** This fighter's dash cooldown when not the usual (Spire blessings); prediction reads it too. */
+  dashCd?: number;
   /** Equipped raid appearance (skin, aura, entrance, frame). */
   raidLook?: RaidLoadout;
   /** Equipped Shop skin for each champion (only the one being played shows). */
   championLooks?: Partial<Record<CharacterId, ChampionLook>>;
+  /** Verified boss clears, used for the equipped portrait frame’s earned stars. */
+  raidClears?: Partial<Record<RaidBossId, number>>;
   team?: Team;
   /** Left the match for good (2v2): stays on the scoreboard, out of play. */
   out?: boolean;
@@ -1091,6 +2795,24 @@ export interface Fighter extends Vec {
   id: string;
   name: string;
   character: CharacterId;
+  /**
+   * PvP lobby: this player has locked in `character` (Lock in, or Ready).
+   * Until then `character` is only a default and the seat reads "Choosing".
+   */
+  locked?: boolean;
+  /**
+   * The player's avatar from the library (packages/shared/src/avatars.ts),
+   * their picture wherever they are; unset: the default.
+   */
+  avatar?: string;
+  /** PvP lobby: the fighter this player is looking at (teammates only). */
+  browse?: CharacterId;
+  /**
+   * PvP lobby: this player's pick is hidden from you (another side). The
+   * server sends no real `character` (or `browse`) for them until the match
+   * starts; `character` is a placeholder and must not be shown.
+   */
+  veiled?: boolean;
   connected: boolean;
   ready: boolean;
   hp: number;
@@ -1098,6 +2820,13 @@ export interface Fighter extends Vec {
   vy: number;
   angle: number;
   ack: number;
+  /**
+   * Held ticks: the server's ticks that found none of this fighter's inputs
+   * (Wi-Fi held them) and so did not move it (Arena.drainInputs). That many
+   * of the unanswered inputs will each take a step at those ticks' times
+   * once they arrive. Absent when none.
+   */
+  held?: number;
   cooldowns: number[];
   /** Ultimate meter, 0 to RULES.ultMax. Carries over between rounds. */
   ult?: number;
@@ -1124,6 +2853,23 @@ export interface Fighter extends Vec {
   /** Active continuous cone (Fire Breath). */
   channel?: { until: number; nextTick: number; skill: number; ex?: boolean };
   clone?: Vec & { until: number };
+  /** Pangrove: armour plates left (undefined = all), and when the next grows back. */
+  plates?: number;
+  plateAt?: number;
+  /** Mossloth: moss stacks, when the next one grows or falls, and whether it stood still. */
+  moss?: number;
+  mossAt?: number;
+  mossStill?: boolean;
+  /** Tunnel: underground until `until` (`slot` is the skill: casting it again surfaces). */
+  burrow?: { until: number; slot: number; haste: number };
+  /** Leaf Storm: blades circling from `at` until `until` (`slot` is the skill). */
+  cyclone?: { at: number; until: number; slot: number };
+  /** Gill Siphon: the stream locked onto `target` until `until`; the next tick, and the skill slot. */
+  tether?: { target: string; until: number; nextTick: number; skill: number };
+  /** Mochi Pound: the strike it is on, the slot, until when the next can follow, and the cooldown's end. */
+  pound?: { skill: number; step: number; until: number; cdEnd: number };
+  /** Kraken Grasp: the enemy held in front, hurled at `at` (`skill` is the slot). */
+  grab?: { target: string; at: number; skill: number };
   lastInput: Input;
 }
 export interface Projectile extends Vec {
@@ -1134,6 +2880,12 @@ export interface Projectile extends Vec {
   remaining: number;
   ability: Ability;
   color: number;
+  /** Boomerang: on its way back to the caster. */
+  back?: boolean;
+  /** Boomerang: who it has hit on this pass. */
+  hit?: string[];
+  /** Ball Lightning (`aura`): when it can zap again. */
+  nextZap?: number;
 }
 /** An orb on the court, waiting to be picked up. */
 export interface Orb extends Vec {
@@ -1141,7 +2893,10 @@ export interface Orb extends Vec {
   /** Healing (default) restores health; energy charges the ultimate meter. */
   kind?: "heal" | "energy";
 }
-/** Party rules the room host can switch on in the lobby. */
+/**
+ * Match rules an arcade week switches on (arcade.ts). Private rooms used
+ * to let the host pick them ("party rules"); that was removed (unused).
+ */
 export const MUTATORS = {
   turbo: {
     name: "Turbo",
@@ -1161,11 +2916,12 @@ export const MUTATORS = {
   },
   calm: {
     name: "Calm court",
-    description: "Always the Stone Court: no arena hazards.",
+    description: "Always the Coliseum Sands: no arena hazards.",
   },
   crown: {
     name: "Crown Hill",
-    description: "Hold the centre circle alone for 12 seconds to win the round.",
+    description:
+      "Hold the centre circle alone for 12 seconds to win the round.",
   },
   random: {
     name: "Fighter roulette",
@@ -1181,7 +2937,8 @@ export const MUTATORS = {
   },
   rush: {
     name: "Orb Rush",
-    description: "Grab gems and carry them to your goal; bank 5 to win the round. Big hits knock gems loose.",
+    description:
+      "Grab gems and carry them to your goal; bank 5 to win the round. Big hits knock gems loose.",
   },
 } as const;
 /** 2v2 team-up: partners fighting side by side both hit harder. */
@@ -1195,14 +2952,27 @@ export const ELEMENT_GIFTS: Record<
   string,
   { name: string; text: string; value: number }
 > = {
-  Electric: { name: "Static charge", text: "basic attacks come 12% faster", value: 0.88 },
+  Electric: {
+    name: "Static charge",
+    text: "basic attacks come 12% faster",
+    value: 0.88,
+  },
   Fire: { name: "Kindling", text: "+6% damage", value: 1.06 },
   Water: { name: "Tidewell", text: "heals 2 health a second", value: 2 },
   Aura: { name: "Aura ward", text: "takes 8% less damage", value: 0.92 },
   Light: { name: "Glow", text: "skills recharge 10% faster", value: 0.9 },
   Psychic: { name: "Focus", text: "ultimate charges 15% faster", value: 1.15 },
   Earth: { name: "Bedrock", text: "knocked back 40% less", value: 0.6 },
-  Shadow: { name: "Dusk edge", text: "+10% damage to slowed, burning or stunned foes", value: 1.1 },
+  Shadow: {
+    name: "Dusk edge",
+    text: "+10% damage to slowed, burning or stunned foes",
+    value: 1.1,
+  },
+  Nature: {
+    name: "Lifebloom",
+    text: "heals 6% of the damage dealt",
+    value: 0.06,
+  },
 };
 /** The gift a fighter's partner gives them (by the partner's element). */
 export function giftFrom(partnerCharacter: CharacterId) {
@@ -1292,6 +3062,12 @@ export interface Zone extends Vec {
   nextTick: number;
   ability: Ability;
   color: number;
+  /** When it was placed (seedlings grow from then). */
+  born?: number;
+  /** Screen: which way the curtain runs (radians). Wave: which way it rolls. */
+  angle?: number;
+  /** Trail: where the caster has been (oldest first) and when. */
+  points?: { x: number; y: number; t: number }[];
 }
 export interface GameEvent extends Vec {
   id: number;
@@ -1328,6 +3104,14 @@ export interface GameEvent extends Vec {
   ko?: boolean;
   /** Hit or burst events: a signature combo paid off (the combo's name). */
   combo?: string;
+  /** Hit events: the attacker's first hit out of stealth (`ambush`). */
+  ambush?: boolean;
+  /** Burst events (a rush landing): the target was driven into a wall (`wallSlam`). */
+  slam?: boolean;
+  /** Hit events: a blinded attacker's basic attack missed. */
+  miss?: boolean;
+  /** Burst events (Mochi Pound): which strike of the chain it was (1, 2, 3). */
+  step?: number;
 }
 export type Phase =
   | "lobby"
@@ -1385,16 +3169,107 @@ export interface Snapshot {
   arena?: ArenaId;
   hazardClock?: number;
 }
-export type WireSnapshot = Omit<Snapshot, "projectiles" | "zones"> & {
+export type WireSnapshot = Omit<
+  Snapshot,
+  "projectiles" | "zones" | "players"
+> & {
+  /** Compact snapshots omit META_KEYS and send lastInput as just the aim. */
+  players: (Omit<Fighter, MetaKey | "lastInput"> &
+    Partial<Pick<Fighter, MetaKey>> & {
+      lastInput: Pick<Input, "aimX" | "aimY"> & Partial<Input>;
+    })[];
   projectiles: (Omit<Projectile, "ability"> & { abilityId: string })[];
   zones: (Omit<Zone, "ability"> & { abilityId: string })[];
+  /** Appearance revision this snapshot's fighters wear (compact snapshots). */
+  metaRev?: number;
+  /** Appearance block, sent when it changes or a socket (re)joins. */
+  meta?: SnapshotMeta;
 };
+const META_KEY_SET: ReadonlySet<string> = new Set(META_KEYS);
+/** Display-only positions: 0.01 px is far below anything drawn. */
+const fine = (n: number) => Math.round(n * 100) / 100;
+/**
+ * Fighters keep every value the client's prediction replays (position,
+ * velocity, dash, times) exact: rounding a position can flip how a step
+ * slides around a pillar corner. Only display values are rounded.
+ */
+function compactFighter(p: Fighter) {
+  const out: Record<string, unknown> = {};
+  for (const key in p)
+    if (!META_KEY_SET.has(key)) out[key] = p[key as keyof Fighter];
+  // Prediction re-aims every step; facing is drawn, 0.0001 rad is invisible.
+  out.angle = Math.round(p.angle * 1e4) / 1e4;
+  // Never show an ultimate as ready before the server's meter is full.
+  if (p.ult !== undefined) out.ult = Math.floor(p.ult * 100) / 100;
+  // Clients only draw other fighters' aim (wind-up telegraphs).
+  out.lastInput = {
+    aimX: fine(p.lastInput.aimX),
+    aimY: fine(p.lastInput.aimY),
+  };
+  return out as WireSnapshot["players"][number];
+}
+/**
+ * The projectile a turret zone fires (Haunted Lantern's wisps). It has its own
+ * id so clients, which rebuild projectiles from ids, draw a small wisp rather
+ * than the lantern.
+ */
+export function turretShot(zone: Ability): Ability {
+  const t = zone.turret!;
+  return {
+    ...zone,
+    id: `${zone.id}-shot`,
+    kind: "projectile",
+    damage: t.damage,
+    radius: t.radius,
+    speed: t.speed,
+    range: t.range * 1.3,
+    knockback: 0,
+    turret: undefined,
+    visual: "projectile",
+    sound: "projectile",
+  };
+}
 const abilities = Object.fromEntries(
-  Object.values(CHARACTERS)
-    .flatMap((c) => [c.basic, ...c.skills])
-    .map((a) => [a.id, a]),
+  [
+    ...Object.values(CHARACTERS).flatMap((c) => [c.basic, ...c.skills]),
+    ...Object.values(CHARACTERS).flatMap((c) =>
+      c.skills.filter((a) => a.turret).map(turretShot),
+    ),
+    PRACTICE_GRID,
+  ].map((a) => [a.id, a]),
 );
-export function packSnapshot(s: Snapshot): WireSnapshot {
+/**
+ * Snapshot for the wire. Without options every fighter is sent in full (as
+ * older clients and tests expect). With `compact`, appearance moves to the
+ * optional `meta` block (see snapshot-meta.ts) and positions are rounded.
+ */
+export function packSnapshot(
+  s: Snapshot,
+  options?: { compact: true; metaRev: number; meta?: SnapshotMeta },
+): WireSnapshot {
+  if (options?.compact)
+    return {
+      ...s,
+      players: s.players.map((p) => ({
+        ...compactFighter(p),
+        character: normalizeCharacterId(p.character) ?? "voltkit",
+      })),
+      projectiles: s.projectiles.map(({ ability, ...pr }) => ({
+        ...pr,
+        x: fine(pr.x),
+        y: fine(pr.y),
+        vx: fine(pr.vx),
+        vy: fine(pr.vy),
+        remaining: fine(pr.remaining),
+        abilityId: ability.id,
+      })),
+      zones: s.zones.map(({ ability, ...zone }) => ({
+        ...zone,
+        abilityId: ability.id,
+      })),
+      metaRev: options.metaRev,
+      ...(options.meta ? { meta: options.meta } : {}),
+    };
   return {
     ...s,
     players: s.players.map((p) => ({
@@ -1420,13 +3295,28 @@ function ownedAbility(s: WireSnapshot, owner: string, id: string): Ability {
       : undefined) ?? abilities[id]
   );
 }
-export function unpackSnapshot(s: WireSnapshot): Snapshot {
+/**
+ * Back to a full Snapshot. Compact fighters get their appearance from
+ * `cache` (updated here from any `meta` block); full ones are used as sent.
+ */
+export function unpackSnapshot(s: WireSnapshot, cache?: MetaCache): Snapshot {
+  if (s.meta && cache) cache.apply(s.code, s.meta);
+  const { meta: _meta, metaRev: _rev, ...rest } = s;
   return {
-    ...s,
-    players: s.players.map((p) => ({
-      ...p,
-      character: normalizeCharacterId(p.character) ?? "voltkit",
-    })),
+    ...rest,
+    players: s.players.map((p) => {
+      const known =
+        s.metaRev !== undefined
+          ? (cache?.get(s.code, p.id) ?? s.meta?.players[p.id])
+          : undefined;
+      return {
+        ...(known ?? {}),
+        ...p,
+        name: p.name ?? known?.name ?? "",
+        lastInput: { ...blankInput(), ...p.lastInput },
+        character: normalizeCharacterId(p.character) ?? "voltkit",
+      } as Fighter;
+    }),
     // Owners' rites can change an ability (e.g. a wider blast): use their kit.
     projectiles: s.projectiles.map(({ abilityId, ...pr }) => ({
       ...pr,
@@ -1444,6 +3334,19 @@ export interface Reply {
   token?: string;
   id?: string;
   code?: string;
+  /** Plaza joins: your walker id in it. */
+  me?: number;
+  /** Plaza joins: which Plaza copy (with `me`). */
+  plaza?: number;
+  /** A Plaza gift box (PLAZA_GIFT): golden or not, and how many are left today. */
+  golden?: boolean;
+  gifts?: number;
+  /** A message to a friend: kept (read later), or only shown live. */
+  kept?: boolean;
+  /** Quick Match: waiting in the queue (no opponent yet). */
+  queued?: boolean;
+  /** Quick Match: other players connected right now (not counting you). */
+  online?: number;
 }
 export const normalize = (x: number, y: number): Vec => {
   const length = Math.hypot(x, y);
@@ -1487,6 +3390,31 @@ export function blocked(x: number, y: number, r = RULES.radius): boolean {
     )
   );
 }
+/**
+ * Where a blink from `from` toward `angle` lands: up to `distance` px,
+ * stopping before the first wall (it never passes through one).
+ */
+export function blinkLanding(from: Vec, angle: number, distance: number): Vec {
+  const dx = Math.cos(angle),
+    dy = Math.sin(angle);
+  let x = from.x,
+    y = from.y;
+  for (let d = 8; d < distance + 8; d += 8) {
+    const step = Math.min(d, distance);
+    const nx = from.x + dx * step,
+      ny = from.y + dy * step;
+    if (blocked(nx, ny, RULES.radius)) break;
+    x = nx;
+    y = ny;
+  }
+  return { x, y };
+}
+/** Damage multiplier for `farBonus` against a target `distance` px away. */
+export function farMultiplier(a: Ability, distance: number) {
+  return a.farBonus
+    ? 1 + a.farBonus * Math.min(1, distance / Math.max(1, a.range))
+    : 1;
+}
 export function move(
   body: Vec,
   dx: number,
@@ -1499,28 +3427,131 @@ export function move(
     if (!blocked(body.x, body.y + dy / steps, r)) body.y += dy / steps;
   }
 }
+/** How long a fighter keeps drifting after a wave or a flare last held it (s). */
+export const CURRENT_HOLD = 0.15;
+/** Radiant Flare draws a fighter no nearer its centre than this (px). */
+export const LURE_CORE = 8;
 export function advanceMovement(
   p: Fighter,
   input: Input,
   dt: number,
   time: number,
 ): void {
-  const dir = normalize(input.dx, input.dy);
+  stepMovement(p, input, dt, time);
+  // Riptide Wave: a current carries it along (jumping clears it).
+  const current = p.statuses.find(
+    (s) => s.kind === "current" && s.until > time && s.tx !== undefined,
+  );
+  if (current && p.jumpUntil <= time && p.hp > 0)
+    move(p, current.tx! * dt, current.ty! * dt);
+  // Radiant Flare: drawn toward the light (worked out here from its centre,
+  // so the client's prediction follows the pull exactly).
+  const lure = p.statuses.find(
+    (s) => s.kind === "lure" && s.until > time && s.tx !== undefined,
+  );
+  if (lure && p.hp > 0) {
+    const dx = lure.tx! - p.x,
+      dy = lure.ty! - p.y,
+      d = Math.hypot(dx, dy),
+      step = Math.min((lure.amount ?? 0) * dt, d - LURE_CORE);
+    if (step > 0) move(p, (dx / d) * step, (dy / d) * step);
+  }
+  holdInCage(p, time);
+}
+/**
+ * Crystal Cage: whoever was inside the ring stays inside, whoever was outside
+ * stays out (after any move, knockbacks included).
+ */
+export function holdInCage(p: Fighter, time: number) {
+  for (const cage of p.statuses) {
+    if (cage.kind !== "cage" || cage.until <= time || cage.tx === undefined)
+      continue;
+    const R = cage.amount ?? 200,
+      dx = p.x - cage.tx,
+      dy = p.y - cage.ty!,
+      d = Math.hypot(dx, dy);
+    const ux = d > 0.001 ? dx / d : 1,
+      uy = d > 0.001 ? dy / d : 0;
+    if (cage.inside) {
+      const max = R - RULES.radius;
+      if (d <= max) continue;
+      for (let k = max; k >= 0; k -= 10)
+        if (!blocked(cage.tx + ux * k, cage.ty! + uy * k)) {
+          p.x = cage.tx + ux * k;
+          p.y = cage.ty! + uy * k;
+          break;
+        }
+    } else {
+      const min = R + RULES.radius;
+      if (d >= min) continue;
+      for (let k = min; k <= min + 200; k += 10)
+        if (!blocked(cage.tx + ux * k, cage.ty! + uy * k)) {
+          p.x = cage.tx + ux * k;
+          p.y = cage.ty! + uy * k;
+          break;
+        }
+    }
+    p.vx = p.vy = 0;
+  }
+}
+function stepMovement(
+  p: Fighter,
+  input: Input,
+  dt: number,
+  time: number,
+): void {
+  let dir = normalize(input.dx, input.dy);
   p.angle = Math.atan2(input.aimY - p.y, input.aimX - p.x);
-  let modifier = 1;
+  // Confused (Mind Maze): every way it tries to walk is reversed.
+  if (p.statuses.some((s) => s.kind === "confuse" && s.until > time))
+    dir = { x: -dir.x, y: -dir.y };
+  // Taunted: it walks toward the taunter, whatever the input says.
+  const taunt = p.statuses.find(
+    (s) => s.kind === "taunt" && s.until > time && s.tx !== undefined,
+  );
+  if (taunt) {
+    const d = Math.hypot(taunt.tx! - p.x, taunt.ty! - p.y);
+    dir =
+      d > RULES.radius * 2
+        ? { x: (taunt.tx! - p.x) / d, y: (taunt.ty! - p.y) / d }
+        : { x: 0, y: 0 };
+  }
+  const leash = p.statuses.find(
+    (s) => s.kind === "leash" && s.until > time && s.tx !== undefined,
+  );
+  const leashFrom = leash ? { x: p.x, y: p.y } : undefined;
+  let modifier = 1,
+    warp = 1;
   for (const s of p.statuses)
     if (s.until > time) {
-      if (s.kind === "freeze" || s.kind === "stun" || s.kind === "sleep")
-        modifier = 0;
+      if (DISABLING_STATUSES.includes(s.kind)) modifier = 0;
       if (s.kind === "slow" || s.kind === "paralysis")
         modifier *= STATUS_RULES.slowMultiplier;
       if (s.kind === "haste") modifier *= STATUS_RULES.hasteMultiplier;
+      if (s.kind === "root") modifier = 0;
+      // Sloth Time works only inside its bubble (`tx`, `ty`, radius
+      // `amount`): step out of it and you are at full speed at once.
+      if (
+        s.kind === "warp" &&
+        (s.tx === undefined ||
+          Math.hypot(p.x - s.tx, p.y - (s.ty ?? 0)) < (s.amount ?? Infinity))
+      )
+        warp = STATUS_RULES.warpMultiplier;
     }
+  modifier *= warp;
+  // Tunnel: faster underground.
+  if (p.burrow && time < p.burrow.until) modifier *= p.burrow.haste;
   if (time < p.dashUntil) {
+    // Dashes and charges are not slowed by Sloth Time: dashing is how you
+    // get out of the bubble.
     p.vx = p.dashX;
     p.vy = p.dashY;
   } else {
-    const factor = 1 - Math.exp(-RULES.acceleration * dt);
+    // Sliding (Black Ice): almost no grip, so it slides and turns slowly.
+    const grip = p.statuses.some((s) => s.kind === "float" && s.until > time)
+      ? STATUS_RULES.floatGrip
+      : 1;
+    const factor = 1 - Math.exp(-RULES.acceleration * grip * dt);
     const speed = CHARACTERS[p.character].speed * modifier * speedScale;
     p.vx += (dir.x * speed - p.vx) * factor;
     p.vy += (dir.y * speed - p.vy) * factor;
@@ -1530,6 +3561,23 @@ export function advanceMovement(
     p.vy = 0;
   }
   move(p, p.vx * dt, p.vy * dt);
+  // Leashed: it can't go past the leash's length from where it was pinned.
+  if (leash && leashFrom) {
+    const len = leash.amount ?? 100,
+      d = Math.hypot(p.x - leash.tx!, p.y - leash.ty!);
+    if (d > len) {
+      const x = leash.tx! + ((p.x - leash.tx!) * len) / d,
+        y = leash.ty! + ((p.y - leash.ty!) * len) / d;
+      if (blocked(x, y)) {
+        p.x = leashFrom.x;
+        p.y = leashFrom.y;
+      } else {
+        p.x = x;
+        p.y = y;
+      }
+      p.vx = p.vy = 0;
+    }
+  }
 }
 export const blankInput = (): Input => ({
   seq: 0,
@@ -1564,7 +3612,9 @@ type RiteNumber =
   | "heal"
   | "knockback"
   | "statusDuration"
-  | "bonusVsStatus";
+  | "tickInterval"
+  | "bonusVsStatus"
+  | "drain";
 export interface Rite {
   id: string;
   fighter: CharacterId;
@@ -1600,58 +3650,859 @@ const rite = (
   tier,
   skill,
   name,
-  text,
+  text: inMeters(text),
   ...change,
 });
 export const RITES: Rite[] = [
-  rite("voltkit", "minor", "static-lance", "Quick Lance", "Static Lance cooldown 8s → 6.5s.", { set: { cooldown: 6.5 } }),
-  rite("voltkit", "minor", "ball-lightning", "Big Ball", "Ball Lightning's blast is 30% wider.", { mul: { explosion: 1.3 } }),
-  rite("voltkit", "minor", "storm-grid", "Long Storm", "Storm Grid lasts 5.5s instead of 4s.", { set: { duration: 5.5 } }),
-  rite("voltkit", "minor", "spark-dart", "Hot Darts", "Spark Dart deals 7 damage instead of 6.", { set: { damage: 7 } }),
-  rite("voltkit", "major", "storm-grid", "Lockdown Grid", "Storm Grid paralyses instead of slowing.", { set: { status: "paralysis", statusDuration: 0.4 } }),
-  rite("voltkit", "major", "ball-lightning", "Thunderhead", "Ball Lightning becomes three orbs of 14 damage with smaller blasts.", { set: { kind: "barrage", count: 3, damage: 14, explosion: 70 } }),
-  rite("cindrake", "minor", "ember-gust", "Long Breath", "Ember Gust lasts 1.6s instead of 1.2s.", { set: { duration: 1.6 } }),
-  rite("cindrake", "minor", "magma-bomb", "Wide Bomb", "Magma Bomb's blast is 30% wider.", { mul: { explosion: 1.3 } }),
-  rite("cindrake", "minor", "blaze-whirl", "Endless Whirl", "Blaze Whirl lasts 3.5s instead of 2.5s.", { set: { duration: 3.5 } }),
-  rite("cindrake", "minor", "cinder-snap", "Searing Snap", "Cinder Snap deals 18 damage instead of 15.", { set: { damage: 18 } }),
-  rite("cindrake", "major", "sunfire-pillar", "Solar Pillar", "Sunfire Pillar erupts instantly and is 25% wider.", { set: { cast: 0 }, mul: { radius: 1.25 } }),
-  rite("cindrake", "major", "blaze-whirl", "Burning Whirl", "Blaze Whirl sets enemies on fire.", { set: { status: "burn", statusDuration: 1.5 } }),
-  rite("tidefin", "minor", "ripple-stars", "Five Stars", "Ripple Stars throws 5 stars of 9 damage instead of 3 of 11.", { set: { count: 5, damage: 9 } }),
-  rite("tidefin", "minor", "whirlpool", "Deep Pool", "Whirlpool is 20% wider.", { mul: { radius: 1.2 } }),
-  rite("tidefin", "minor", "mirror-mist", "Slipstream", "Mirror Mist's speed burst lasts 3s instead of 2s.", { set: { statusDuration: 3 } }),
-  rite("tidefin", "minor", "tide-needle", "Long Needle", "Tide Needle flies 25% further.", { mul: { range: 1.25 } }),
-  rite("tidefin", "major", "whirlpool", "Maelstrom", "Whirlpool deals 6 per tick instead of 4 and lasts 4.5s.", { set: { damage: 6, duration: 4.5 } }),
-  rite("tidefin", "major", "ripple-stars", "Rapid Stars", "Ripple Stars cooldown 8s → 5s.", { set: { cooldown: 5 } }),
-  rite("auralynx", "minor", "prism-shot", "Swift Prism", "Prism Shot flies 35% faster.", { mul: { speed: 1.35 } }),
-  rite("auralynx", "minor", "shatter-palm", "Long Palm", "Shatter Palm reaches 20% further.", { mul: { range: 1.2 } }),
-  rite("auralynx", "minor", "mirror-guard", "Steady Guard", "Mirror Guard lasts 2.2s instead of 1.6s.", { set: { duration: 2.2 } }),
-  rite("auralynx", "minor", "prism-jab", "Hard Jab", "Prism Jab deals 15 damage instead of 13.", { set: { damage: 15 } }),
-  rite("auralynx", "major", "prism-shot", "Prism Burst", "Prism Shot explodes on impact, hitting everyone nearby.", { set: { explosion: 90 } }),
-  rite("auralynx", "major", "nova-burst", "Stunning Nova", "Nova Burst also stuns for 0.6s.", { set: { status: "stun", statusDuration: 0.6 } }),
-  rite("lumoth", "minor", "starfall-spray", "Star Shower", "Starfall Spray throws 7 stars of 7 damage instead of 5 of 8.", { set: { count: 7, damage: 7 } }),
-  rite("lumoth", "minor", "dust-strike", "Sharp Bite", "Dust Strike deals 28 damage instead of 24.", { set: { damage: 28 } }),
-  rite("lumoth", "minor", "kindle", "Long Kindle", "Kindle lasts 6.5s instead of 5s.", { set: { duration: 6.5 } }),
-  rite("lumoth", "minor", "glint", "Bright Glint", "Glint deals 7 damage instead of 6.", { set: { damage: 7 } }),
-  rite("lumoth", "major", "radiant-flare", "Quick Flare", "Radiant Flare charges in 0.2s instead of 0.45s.", { set: { cast: 0.2 } }),
-  rite("lumoth", "major", "dust-strike", "Stunning Bite", "Dust Strike also stuns for 0.5s.", { set: { status: "stun", statusDuration: 0.5 } }),
-  rite("mystowl", "minor", "focus-ray", "Far Sight", "Focus Ray reaches 20% further.", { mul: { range: 1.2 } }),
-  rite("mystowl", "minor", "repulse", "Wide Repulse", "Repulse is 20% wider.", { mul: { radius: 1.2 } }),
-  rite("mystowl", "minor", "ward", "Long Ward", "Ward lasts 4s instead of 3s.", { set: { duration: 4 } }),
-  rite("mystowl", "minor", "mind-dart", "Heavy Dart", "Mind Dart deals 10 damage instead of 8.", { set: { damage: 10 } }),
-  rite("mystowl", "major", "focus-ray", "Mind Lock", "Focus Ray stuns for 0.5s instead of slowing.", { set: { status: "stun", statusDuration: 0.5 } }),
-  rite("mystowl", "major", "thoughtstrike", "Big Thought", "Thoughtstrike is 35% wider.", { mul: { radius: 1.35 } }),
-  rite("terradon", "minor", "shell-slam", "Long Slam", "Shell Slam reaches 20% further.", { mul: { range: 1.2 } }),
-  rite("terradon", "minor", "hibernate", "Deep Sleep", "Hibernate heals 90 HP instead of 75.", { set: { heal: 18 } }),
-  rite("terradon", "minor", "dust-cloud", "Thick Dust", "Dust Cloud is 20% wider.", { mul: { radius: 1.2 } }),
-  rite("terradon", "minor", "boulder-swipe", "Heavy Swipe", "Boulder Swipe deals 18 damage instead of 15.", { set: { damage: 18 } }),
-  rite("terradon", "major", "tremor", "Quick Quake", "Tremor charges in 0.25s instead of 0.5s.", { set: { cast: 0.25 } }),
-  rite("terradon", "major", "dust-cloud", "Sandstorm", "Dust Cloud also deals 4 damage per tick.", { set: { damage: 4 } }),
-  rite("duskveil", "minor", "shade-crawl", "Deep Crawl", "Shade Crawl deals 24 damage instead of 20.", { set: { damage: 24 } }),
-  rite("duskveil", "minor", "ghostfire", "Five Flames", "Ghostfire throws 5 flames instead of 3.", { set: { count: 5 } }),
-  rite("duskveil", "minor", "curse-mark", "Swift Curse", "Curse Mark flies 30% faster.", { mul: { speed: 1.3 } }),
-  rite("duskveil", "minor", "lantern-wisp", "Bright Wisp", "Lantern Wisp deals 11 damage instead of 9.", { set: { damage: 11 } }),
-  rite("duskveil", "major", "curse-mark", "Deep Curse", "Curse Mark deals 2.5× (not 2×) damage on a harmful status.", { set: { bonusVsStatus: 2.5 } }),
-  rite("duskveil", "major", "void-orb", "Burning Void", "Void Orb's blast is 30% wider and burns.", { mul: { explosion: 1.3 }, set: { status: "burn", statusDuration: 2 } }),
+  rite(
+    "voltkit",
+    "minor",
+    "static-lance",
+    "Quick Lance",
+    "Static Lance cooldown 8s → 6.5s.",
+    { set: { cooldown: 6.5 } },
+  ),
+  rite(
+    "voltkit",
+    "minor",
+    "ball-lightning",
+    "Big Ball",
+    "Ball Lightning's blast is 30% wider.",
+    { mul: { explosion: 1.3 } },
+  ),
+  rite(
+    "voltkit",
+    "minor",
+    "static-glide",
+    "Long Glide",
+    "Static Glide lasts 2s instead of 1.4s.",
+    { set: { duration: 2, statusDuration: 2 } },
+  ),
+  rite(
+    "voltkit",
+    "minor",
+    "spark-dart",
+    "Hot Darts",
+    "Spark Dart deals 7 damage instead of 6.",
+    { set: { damage: 7 } },
+  ),
+  rite(
+    "voltkit",
+    "major",
+    "static-glide",
+    "Tailwind",
+    "Static Glide cooldown 12s → 8s.",
+    { set: { cooldown: 8 } },
+  ),
+  rite(
+    "voltkit",
+    "major",
+    "ball-lightning",
+    "Thunderhead",
+    "Ball Lightning becomes three orbs of 10 damage with smaller blasts.",
+    { set: { kind: "barrage", count: 3, damage: 10, explosion: 70 } },
+  ),
+  rite(
+    "cindrake",
+    "minor",
+    "crest-flare",
+    "Long Breath",
+    "Crest Flare lasts 0.7s instead of 0.5s.",
+    { set: { duration: 0.7 } },
+  ),
+  rite(
+    "cindrake",
+    "minor",
+    "magma-leap",
+    "Wide Eruption",
+    "Magma Leap's eruption is 30% wider.",
+    { mul: { explosion: 1.3 } },
+  ),
+  rite(
+    "cindrake",
+    "minor",
+    "heat-cracks",
+    "Deep Cracks",
+    "Heat Cracks lasts 3.5s instead of 2.5s.",
+    { set: { duration: 3.5 } },
+  ),
+  rite(
+    "cindrake",
+    "minor",
+    "cinder-snap",
+    "Searing Snap",
+    "Cinder Snap deals 18 damage instead of 14.",
+    { set: { damage: 18 } },
+  ),
+  rite(
+    "cindrake",
+    "major",
+    "sunfire-pillar",
+    "Solar Pillar",
+    "Sunfire Pillar erupts instantly and is 25% wider.",
+    { set: { cast: 0 }, mul: { radius: 1.25 } },
+  ),
+  rite(
+    "cindrake",
+    "major",
+    "heat-cracks",
+    "Burning Cracks",
+    "Heat Cracks sets enemies on fire.",
+    { set: { status: "burn", statusDuration: 1.5 } },
+  ),
+  rite(
+    "tidefin",
+    "minor",
+    "gill-siphon",
+    "Deep Siphon",
+    "Gill Siphon lasts 3s instead of 2.1s.",
+    { set: { duration: 3 } },
+  ),
+  rite(
+    "tidefin",
+    "minor",
+    "river-dash",
+    "Long Dash",
+    "River Dash goes 25% farther.",
+    { mul: { range: 1.25 } },
+  ),
+  rite(
+    "tidefin",
+    "minor",
+    "tide-double",
+    "Slipstream",
+    "Tide Double's speed burst lasts 3s instead of 2s.",
+    { set: { statusDuration: 3 } },
+  ),
+  rite(
+    "tidefin",
+    "minor",
+    "tide-needle",
+    "Long Needle",
+    "Tide Needle flies 25% further.",
+    { mul: { range: 1.25 } },
+  ),
+  rite(
+    "tidefin",
+    "major",
+    "river-dash",
+    "Whitewater",
+    "River Dash throws the enemies it goes through aside (a strong knockback) and deals 26 instead of 20.",
+    { set: { damage: 26, knockback: 110 } },
+  ),
+  rite(
+    "tidefin",
+    "major",
+    "gill-siphon",
+    "Thirsty Gills",
+    "Gill Siphon drinks back all the damage it deals instead of half.",
+    { set: { drain: 1 } },
+  ),
+  rite(
+    "auralynx",
+    "minor",
+    "prism-shot",
+    "Swift Prism",
+    "Prism Shot flies 35% faster.",
+    { mul: { speed: 1.35 } },
+  ),
+  rite(
+    "auralynx",
+    "minor",
+    "shatter-paw",
+    "Long Paw",
+    "Shatter Paw reaches 20% further.",
+    { mul: { range: 1.2 } },
+  ),
+  rite(
+    "auralynx",
+    "minor",
+    "facet-guard",
+    "Steady Guard",
+    "Facet Guard lasts 2.2s instead of 1.6s.",
+    { set: { duration: 2.2 } },
+  ),
+  rite(
+    "auralynx",
+    "minor",
+    "prism-jab",
+    "Hard Jab",
+    "Prism Jab deals 14 damage instead of 12.",
+    { set: { damage: 14 } },
+  ),
+  rite(
+    "auralynx",
+    "major",
+    "prism-shot",
+    "Prism Burst",
+    "Prism Shot explodes on impact, hitting everyone nearby.",
+    { set: { explosion: 90 } },
+  ),
+  rite(
+    "auralynx",
+    "major",
+    "crystal-cage",
+    "Long Cage",
+    "Crystal Cage stands for 4s instead of 2.5s and deals 28 instead of 20.",
+    { set: { duration: 4, damage: 28 } },
+  ),
+  rite(
+    "lumoth",
+    "minor",
+    "wing-dust",
+    "Dust Storm",
+    "Wing Dust throws 7 motes of 7 damage instead of 5 of 8.",
+    { set: { count: 7, damage: 7 } },
+  ),
+  rite(
+    "lumoth",
+    "minor",
+    "eyespot-flash",
+    "Wide Wings",
+    "Eyespot Flash reaches 20% further.",
+    { mul: { radius: 1.2 } },
+  ),
+  rite(
+    "lumoth",
+    "minor",
+    "kindle",
+    "Long Kindle",
+    "Kindle lasts 6.5s instead of 5s.",
+    { set: { duration: 6.5 } },
+  ),
+  rite(
+    "lumoth",
+    "minor",
+    "glint",
+    "Bright Glint",
+    "Glint deals 7 damage instead of 6.",
+    { set: { damage: 7 } },
+  ),
+  rite(
+    "lumoth",
+    "major",
+    "radiant-flare",
+    "Quick Flare",
+    "Radiant Flare charges in 0.15s instead of 0.35s.",
+    { set: { cast: 0.15 } },
+  ),
+  rite(
+    "lumoth",
+    "major",
+    "eyespot-flash",
+    "Dazzle",
+    "Eyespot Flash stuns for 0.9s instead of 0.5s.",
+    { set: { statusDuration: 0.9 } },
+  ),
+  rite(
+    "mystowl",
+    "minor",
+    "third-eye-ray",
+    "Far Sight",
+    "Third-Eye Ray reaches 20% further.",
+    { mul: { range: 1.2 } },
+  ),
+  rite("mystowl", "minor", "hush", "Deep Hush", "Hush is 20% wider.", {
+    mul: { radius: 1.2 },
+  }),
+  rite(
+    "mystowl",
+    "minor",
+    "wing-cloak",
+    "Long Cloak",
+    "Wing Cloak lasts 4s instead of 3s.",
+    { set: { duration: 4 } },
+  ),
+  rite(
+    "mystowl",
+    "minor",
+    "mind-dart",
+    "Heavy Dart",
+    "Mind Dart deals 10 damage instead of 8.",
+    { set: { damage: 10 } },
+  ),
+  rite(
+    "mystowl",
+    "major",
+    "third-eye-ray",
+    "Mind Lock",
+    "Third-Eye Ray stuns for 0.5s instead of slowing.",
+    { set: { status: "stun", statusDuration: 0.5 } },
+  ),
+  rite(
+    "mystowl",
+    "major",
+    "mind-maze",
+    "Deep Maze",
+    "Mind Maze is 35% wider.",
+    { mul: { radius: 1.35 } },
+  ),
+  rite(
+    "terradon",
+    "minor",
+    "shell-bash",
+    "Long Bash",
+    "Shell Bash reaches 20% further.",
+    { mul: { range: 1.2 } },
+  ),
+  rite(
+    "terradon",
+    "minor",
+    "shell-up",
+    "Thick Moss",
+    "Shell Up regrows 27 HP instead of 21.",
+    { set: { heal: 9 } },
+  ),
+  rite("terradon", "minor", "mud-mire", "Deep Mud", "Mud Mire is 20% wider.", {
+    mul: { radius: 1.2 },
+  }),
+  rite(
+    "terradon",
+    "minor",
+    "boulder-swipe",
+    "Heavy Swipe",
+    "Boulder Swipe deals 18 damage instead of 15.",
+    { set: { damage: 18 } },
+  ),
+  rite(
+    "terradon",
+    "major",
+    "tremor",
+    "Quick Quake",
+    "Tremor charges in 0.25s instead of 0.5s.",
+    { set: { cast: 0.25 } },
+  ),
+  rite(
+    "terradon",
+    "major",
+    "mud-mire",
+    "Sinking Mud",
+    "Mud Mire also deals 4 damage per tick.",
+    { set: { damage: 4 } },
+  ),
+  rite(
+    "duskveil",
+    "minor",
+    "shade-crawl",
+    "Deep Crawl",
+    "Shade Crawl roots for 0.7 seconds instead of 0.4.",
+    { set: { statusDuration: 0.7 } },
+  ),
+  rite(
+    "duskveil",
+    "minor",
+    "ghostfire",
+    "Five Flames",
+    "Ghostfire throws 5 flames instead of 3.",
+    { set: { count: 5 } },
+  ),
+  rite(
+    "duskveil",
+    "minor",
+    "haunted-lantern",
+    "Long Watch",
+    "Haunted Lantern lasts 5.5s instead of 4s.",
+    { set: { duration: 5.5 } },
+  ),
+  rite(
+    "duskveil",
+    "minor",
+    "lantern-wisp",
+    "Bright Wisp",
+    "Lantern Wisp deals 11 damage instead of 9.",
+    { set: { damage: 11 } },
+  ),
+  rite(
+    "duskveil",
+    "major",
+    "haunted-lantern",
+    "Bright Lantern",
+    "Haunted Lantern shoots twice as often.",
+    { mul: { tickInterval: 0.5 } },
+  ),
+  rite(
+    "duskveil",
+    "major",
+    "wraith-hunt",
+    "Long Hunt",
+    "The wraith hunts for 4.5 seconds instead of 3.",
+    { set: { duration: 4.5 } },
+  ),
+  rite(
+    "coilemur",
+    "minor",
+    "magnet-lash",
+    "Long Lash",
+    "Magnet Lash reaches 20% further.",
+    { mul: { range: 1.2 } },
+  ),
+  rite(
+    "coilemur",
+    "minor",
+    "static-clamp",
+    "Tight Clamp",
+    "Static Clamp deals 32 damage instead of 28.",
+    { set: { damage: 32 } },
+  ),
+  rite(
+    "coilemur",
+    "minor",
+    "live-wire",
+    "Long Wire",
+    "Live Wire holds for 3.5s instead of 2.5s.",
+    { set: { duration: 3.5 } },
+  ),
+  rite(
+    "coilemur",
+    "minor",
+    "coil-swipe",
+    "Hot Coil",
+    "Coil Swipe deals 14 damage instead of 12.",
+    { set: { damage: 14 } },
+  ),
+  rite(
+    "coilemur",
+    "major",
+    "magnet-lash",
+    "Quick Lash",
+    "Magnet Lash cooldown 12s → 9s.",
+    { set: { cooldown: 9 } },
+  ),
+  rite(
+    "coilemur",
+    "major",
+    "electromagnet",
+    "Superconductor",
+    "Electromagnet is 25% wider and pulls harder.",
+    { mul: { radius: 1.25, knockback: 1.4 } },
+  ),
+  rite(
+    "pyranda",
+    "minor",
+    "chestnut-mortar",
+    "Big Chestnut",
+    "Chestnut Mortar's blast is 25% wider.",
+    { mul: { radius: 1.25 } },
+  ),
+  rite(
+    "pyranda",
+    "minor",
+    "hot-coals",
+    "Slow Burn",
+    "Hot Coals last 5.5s instead of 4s.",
+    { set: { duration: 5.5 } },
+  ),
+  rite(
+    "pyranda",
+    "minor",
+    "ember-curtain",
+    "Long Curtain",
+    "Ember Curtain stands for 4.5s instead of 3s.",
+    { set: { duration: 4.5 } },
+  ),
+  rite(
+    "pyranda",
+    "minor",
+    "ember-lob",
+    "Hot Lob",
+    "Ember Lob deals 12 damage instead of 10.",
+    { set: { damage: 12 } },
+  ),
+  rite(
+    "pyranda",
+    "major",
+    "chestnut-mortar",
+    "Rapid Fire",
+    "Chestnut Mortar cooldown 8s → 5.5s.",
+    { set: { cooldown: 5.5 } },
+  ),
+  rite(
+    "pyranda",
+    "major",
+    "chestnut-storm",
+    "Harvest Storm",
+    "Chestnut Storm's blasts are 30% wider.",
+    { mul: { explosion: 1.3 } },
+  ),
+  rite(
+    "glacelle",
+    "minor",
+    "black-ice",
+    "Wide Ice",
+    "Black Ice is 25% wider.",
+    { mul: { radius: 1.25 } },
+  ),
+  rite(
+    "glacelle",
+    "minor",
+    "frost-bloom",
+    "Wide Bloom",
+    "Frost Bloom is 20% wider.",
+    { mul: { radius: 1.2 } },
+  ),
+  rite(
+    "glacelle",
+    "minor",
+    "frost-breath",
+    "Long Breath",
+    "Frost Breath lasts 1.4s instead of 1s.",
+    { set: { duration: 1.4 } },
+  ),
+  rite(
+    "glacelle",
+    "minor",
+    "rime-shard",
+    "Sharp Rime",
+    "Rime Shard deals 9 damage instead of 8.",
+    { set: { damage: 9 } },
+  ),
+  rite(
+    "glacelle",
+    "major",
+    "black-ice",
+    "Glacier",
+    "Black Ice lasts 3.5s instead of 2s.",
+    { set: { duration: 3.5 } },
+  ),
+  rite(
+    "glacelle",
+    "major",
+    "whiteout",
+    "Permafrost",
+    "Whiteout lasts 3.6s and is 15% wider.",
+    { set: { duration: 3.6 }, mul: { radius: 1.15 } },
+  ),
+  rite(
+    "halcyra",
+    "minor",
+    "pinning-quill",
+    "Heavy Quill",
+    "Pinning Quill pins for 2.2s instead of 1.4s.",
+    { set: { statusDuration: 2.2 } },
+  ),
+  rite(
+    "halcyra",
+    "minor",
+    "focus-shot",
+    "Steady Aim",
+    "Focus Shot charges in 0.25s instead of 0.4s.",
+    { set: { cast: 0.25 } },
+  ),
+  rite(
+    "halcyra",
+    "minor",
+    "halcyon-rewind",
+    "Quick Rewind",
+    "Halcyon Rewind cooldown 17s → 12s.",
+    { set: { cooldown: 12 } },
+  ),
+  rite(
+    "halcyra",
+    "minor",
+    "aura-quill",
+    "Keen Quill",
+    "Aura Quill deals 9 damage instead of 8.",
+    { set: { damage: 9 } },
+  ),
+  rite(
+    "halcyra",
+    "major",
+    "focus-shot",
+    "Rapid Focus",
+    "Focus Shot cooldown 12s → 8s.",
+    { set: { cooldown: 8 } },
+  ),
+  rite(
+    "halcyra",
+    "major",
+    "skyline-lance",
+    "Stunning Lance",
+    "Skyline Lance also stuns for 0.6s.",
+    { set: { status: "stun", statusDuration: 0.6 } },
+  ),
+  rite(
+    "sunbara",
+    "minor",
+    "warm-spring",
+    "Deep Spring",
+    "Warm Spring is 25% wider.",
+    { mul: { radius: 1.25 } },
+  ),
+  rite(
+    "sunbara",
+    "minor",
+    "yuzu-toss",
+    "Big Yuzu",
+    "Yuzu Toss's burst is 30% wider.",
+    { mul: { explosion: 1.3 } },
+  ),
+  rite("sunbara", "minor", "daybreak", "Wide Dawn", "Daybreak is 20% wider.", {
+    mul: { radius: 1.2 },
+  }),
+  rite(
+    "sunbara",
+    "minor",
+    "sunseed",
+    "Bright Seed",
+    "Sunseed deals 8 damage instead of 7.",
+    { set: { damage: 8 } },
+  ),
+  rite(
+    "sunbara",
+    "major",
+    "warm-spring",
+    "Hot Spring",
+    "Warm Spring heals allies 6 per tick instead of 4.",
+    { set: { heal: 6 } },
+  ),
+  rite(
+    "sunbara",
+    "major",
+    "sanctuary",
+    "Long Summer",
+    "Sanctuary lasts 5.5s instead of 4s.",
+    { set: { duration: 5.5 } },
+  ),
+  rite(
+    "astrabun",
+    "minor",
+    "moon-hop",
+    "Far Hop",
+    "Moon Hop reaches 380 px instead of 300 px.",
+    { set: { range: 380 } },
+  ),
+  rite(
+    "astrabun",
+    "minor",
+    "mochi-pound",
+    "Sticky Mochi",
+    "Mochi Pound stuns for 0.7s instead of 0.45s.",
+    { set: { statusDuration: 0.7 } },
+  ),
+  rite(
+    "astrabun",
+    "minor",
+    "sticky-mochi",
+    "Gooey Mochi",
+    "Sticky Mochi grounds for 1.5 seconds instead of 0.9.",
+    { set: { statusDuration: 1.5 } },
+  ),
+  rite(
+    "astrabun",
+    "minor",
+    "mallet-bop",
+    "Big Bop",
+    "Mallet Bop deals 16 damage instead of 14.",
+    { set: { damage: 16 } },
+  ),
+  rite(
+    "astrabun",
+    "major",
+    "moon-hop",
+    "Double Hop",
+    "Moon Hop cooldown 7s → 5s.",
+    { set: { cooldown: 5 } },
+  ),
+  rite(
+    "astrabun",
+    "major",
+    "full-moon",
+    "Harvest Moon",
+    "Full Moon lands instantly and is 20% wider.",
+    { set: { cast: 0 }, mul: { radius: 1.2 } },
+  ),
+  rite(
+    "wombolder",
+    "minor",
+    "burrow-rush",
+    "Long Burrow",
+    "Burrow Rush travels 20% further.",
+    { mul: { range: 1.2 } },
+  ),
+  rite(
+    "wombolder",
+    "minor",
+    "bush-boomerang",
+    "Heavy Boomerang",
+    "Bush Boomerang deals 14 damage a pass instead of 11.",
+    { set: { damage: 14 } },
+  ),
+  rite(
+    "wombolder",
+    "minor",
+    "grudge-thump",
+    "Long Grudge",
+    "Grudge Thump taunts for 1.6s instead of 1.1s.",
+    { set: { statusDuration: 1.6 } },
+  ),
+  rite(
+    "wombolder",
+    "minor",
+    "rump-bump",
+    "Big Bump",
+    "Rump Bump deals 18 damage instead of 16.",
+    { set: { damage: 18 } },
+  ),
+  rite(
+    "wombolder",
+    "major",
+    "burrow-rush",
+    "Quick Burrow",
+    "Burrow Rush cooldown 9s → 6.5s.",
+    { set: { cooldown: 6.5 } },
+  ),
+  rite(
+    "wombolder",
+    "major",
+    "landslide",
+    "Avalanche",
+    "Landslide's eruption is 35% wider.",
+    { mul: { explosion: 1.35 } },
+  ),
+  rite(
+    "shadopus",
+    "minor",
+    "ink-jet",
+    "Thick Ink",
+    "Ink Jet blinds for 1.1s instead of 0.7s.",
+    { set: { statusDuration: 1.1 } },
+  ),
+  rite(
+    "shadopus",
+    "minor",
+    "ink-strike",
+    "Sharp Ink",
+    "Ink Strike deals 28 damage instead of 24.",
+    { set: { damage: 28 } },
+  ),
+  rite(
+    "shadopus",
+    "minor",
+    "ink-cloud",
+    "Deep Ink",
+    "Ink Cloud's stealth lasts 3.5s instead of 2.5s.",
+    { set: { duration: 3.5 } },
+  ),
+  rite(
+    "shadopus",
+    "minor",
+    "tentacle-lash",
+    "Long Arms",
+    "Tentacle Lash reaches 20% further.",
+    { mul: { range: 1.2 } },
+  ),
+  rite(
+    "shadopus",
+    "major",
+    "ink-cloud",
+    "Vanishing Act",
+    "Ink Cloud cooldown 15s → 10s.",
+    { set: { cooldown: 10 } },
+  ),
+  rite(
+    "shadopus",
+    "major",
+    "kraken-grasp",
+    "Leviathan",
+    "Kraken Grasp reaches 25% further.",
+    { mul: { range: 1.25 } },
+  ),
+  rite(
+    "pangrove",
+    "minor",
+    "tongue-grapple",
+    "Long Tongue",
+    "Tongue Grapple reaches 25% further.",
+    { mul: { range: 1.25 } },
+  ),
+  rite(
+    "pangrove",
+    "minor",
+    "scale-shrapnel",
+    "Sharp Plates",
+    "Scale Shrapnel blades deal 7 damage instead of 6.",
+    { set: { damage: 7 } },
+  ),
+  rite(
+    "pangrove",
+    "minor",
+    "tunnel",
+    "Deep Tunnel",
+    "Tunnel lasts up to 1.4s instead of 1s.",
+    { set: { duration: 1.4 } },
+  ),
+  rite(
+    "pangrove",
+    "minor",
+    "scale-swipe",
+    "Sharp Scales",
+    "Scale Swipe deals 17 damage instead of 15.",
+    { set: { damage: 17 } },
+  ),
+  rite(
+    "pangrove",
+    "major",
+    "tunnel",
+    "Upheaval",
+    "Coming up from Tunnel reaches 150 px instead of 110 px.",
+    { set: { radius: 150 } },
+  ),
+  rite(
+    "pangrove",
+    "major",
+    "leaf-storm",
+    "Gale Force",
+    "Leaf Storm whirls 4 blades instead of 3.",
+    { set: { count: 4 } },
+  ),
+  rite(
+    "mossloth",
+    "minor",
+    "seedling",
+    "Thicket",
+    "Up to 4 seedlings at once instead of 3.",
+    { set: { count: 4 } },
+  ),
+  rite(
+    "mossloth",
+    "minor",
+    "sloth-time",
+    "Wide Bubble",
+    "Sloth Time's bubble is 20% wider.",
+    { mul: { radius: 1.2 } },
+  ),
+  rite(
+    "mossloth",
+    "minor",
+    "lazy-swap",
+    "Lazier",
+    "Lazy Swap cooldown 12s → 9s.",
+    { set: { cooldown: 9 } },
+  ),
+  rite(
+    "mossloth",
+    "minor",
+    "seed-spit",
+    "Hard Seed",
+    "Seed Spit deals 10 damage instead of 9.",
+    { set: { damage: 10 } },
+  ),
+  rite(
+    "mossloth",
+    "major",
+    "seedling",
+    "Deep Roots",
+    "Seedlings root 50% longer.",
+    { mul: { statusDuration: 1.5 } },
+  ),
+  rite(
+    "mossloth",
+    "major",
+    "sloth-time",
+    "Long Nap",
+    "Sloth Time lasts 4.5s instead of 3s.",
+    { set: { duration: 4.5 } },
+  ),
 ];
 export const RITE_BY_ID: Record<string, Rite> = Object.fromEntries(
   RITES.map((r) => [r.id, r]),
@@ -1662,7 +4513,10 @@ export interface Kit {
 }
 const kitCache = new Map<string, Kit>();
 /** A fighter's abilities with their rites applied (cached; never mutate). */
-export function kitOf(character: CharacterId, rites: readonly string[] = []): Kit {
+export function kitOf(
+  character: CharacterId,
+  rites: readonly string[] = [],
+): Kit {
   const base = CHARACTERS[character];
   if (!rites.length) return base;
   const key = `${character}|${rites.join(",")}`;
@@ -1674,7 +4528,10 @@ export function kitOf(character: CharacterId, rites: readonly string[] = []): Ki
       const r = RITE_BY_ID[id];
       if (!r || r.fighter !== character || r.skill !== a.id) continue;
       out = { ...out, ...r.set };
-      for (const [k, m] of Object.entries(r.mul ?? {}) as [RiteNumber, number][])
+      for (const [k, m] of Object.entries(r.mul ?? {}) as [
+        RiteNumber,
+        number,
+      ][])
         out[k] = (out[k] ?? 0) * m;
     }
     return out;
@@ -1705,7 +4562,8 @@ export function riteOffer(
 ) {
   const pool = (tier: RiteTier) =>
     RITES.filter(
-      (r) => r.fighter === character && r.tier === tier && !owned.includes(r.id),
+      (r) =>
+        r.fighter === character && r.tier === tier && !owned.includes(r.id),
     );
   const shuffle = <T>(list: T[]) => {
     for (let i = list.length - 1; i > 0; i--) {
@@ -1717,10 +4575,10 @@ export function riteOffer(
   const hasMajor = owned.some((id) => RITE_BY_ID[id]?.tier === "major");
   const size = RITE_RULES.choices + extra;
   const majors =
-    round >= RITE_RULES.majorFromRound && !hasMajor ? shuffle(pool("major")) : [];
-  return [...majors, ...shuffle(pool("minor"))]
-    .slice(0, size)
-    .map((r) => r.id);
+    round >= RITE_RULES.majorFromRound && !hasMajor
+      ? shuffle(pool("major"))
+      : [];
+  return [...majors, ...shuffle(pool("minor"))].slice(0, size).map((r) => r.id);
 }
 
 /**
@@ -1788,8 +4646,8 @@ const vent = (x: number, y: number, offset: number): Hazard => ({
 export const ARENAS: Record<ArenaId, ArenaDef> = {
   classic: {
     id: "classic",
-    name: "Stone Court",
-    tip: "The original court: four pillars and a centre block for cover.",
+    name: "Coliseum Sands",
+    tip: "The coliseum floor: four stone blocks and a centre block for cover.",
     obstacles: OBSTACLES,
     hazards: [],
   },
@@ -1841,17 +4699,42 @@ export const ARENAS: Record<ArenaId, ArenaDef> = {
     tip: "A shallow lagoon with four raised islands to stand on.",
     obstacles: [],
     hazards: [],
-  },  "lantern-yard": {
+  },
+  "lantern-yard": {
     id: "lantern-yard",
     name: "Lantern Yard",
     tip: "A moonlit courtyard lit by four lanterns.",
     obstacles: [],
     hazards: [],
   },
-  "conductor-ring": { id: "conductor-ring", name: "Conductor Ring", tip: "Balance both twins’ health, pair opposite signs, then finish them together.", obstacles: [], hazards: [] },
-  "sky-terrace": { id: "sky-terrace", name: "Sky Terrace", tip: "Light three braziers together to ground Emberwing.", obstacles: [], hazards: [] },
-  "sun-atrium": { id: "sun-atrium", name: "Sun Atrium", tip: "Relay skylight through the mirror posts into the heart.", obstacles: [], hazards: [] },
-  "cloud-deck": { id: "cloud-deck", name: "Cloud Deck", tip: "Follow the Dreamer and step the four rune pads in order.", obstacles: [], hazards: [] },
+  "conductor-ring": {
+    id: "conductor-ring",
+    name: "Conductor Ring",
+    tip: "Balance both twins’ health, pair opposite signs, then finish them together.",
+    obstacles: [],
+    hazards: [],
+  },
+  "sky-terrace": {
+    id: "sky-terrace",
+    name: "Sky Terrace",
+    tip: "Light three braziers together to ground Lumiwick.",
+    obstacles: [],
+    hazards: [],
+  },
+  "sun-atrium": {
+    id: "sun-atrium",
+    name: "Sun Atrium",
+    tip: "Relay skylight through the mirror posts into the heart.",
+    obstacles: [],
+    hazards: [],
+  },
+  "cloud-deck": {
+    id: "cloud-deck",
+    name: "Cloud Deck",
+    tip: "Follow the Dreamer and step the four rune pads in order.",
+    obstacles: [],
+    hazards: [],
+  },
 };
 /** Matches rotate through every arena. */
 export const ARENA_ROTATION: ArenaId[] = [
@@ -1865,7 +4748,9 @@ const withCentre = new Map<ArenaId, Rect[]>();
 export function shiftingUp(arena: ArenaDef, t: number) {
   const s = arena.shifting;
   if (!s) return false;
-  return t < 0 || (((t % (s.up + s.down)) + s.up + s.down) % (s.up + s.down)) < s.up;
+  return (
+    t < 0 || ((t % (s.up + s.down)) + s.up + s.down) % (s.up + s.down) < s.up
+  );
 }
 /** Seconds until the shifting wall rises (0 if it is up). */
 export function shiftingRisesIn(arena: ArenaDef, t: number) {
@@ -1893,12 +4778,23 @@ export function hazardIn(h: Hazard, t: number) {
 }
 /** What a hazard hit looks like to the damage rules (status, jump to avoid). */
 export function hazardAbility(h: Hazard): Ability {
-  return ability(`hazard-${h.kind}`, h.kind === "vent" ? "Vent" : "Surge", "zone", h.damage, 0, "", {
-    ground: h.ground,
-    knockback: 0,
-    radius: h.radius,
-    ...(h.kind === "vent" && h.status
-      ? { status: h.status, statusDuration: h.statusDuration }
-      : {}),
-  });
+  return ability(
+    `hazard-${h.kind}`,
+    h.kind === "vent" ? "Vent" : "Surge",
+    "zone",
+    h.damage,
+    0,
+    "",
+    {
+      ground: h.ground,
+      knockback: 0,
+      radius: h.radius,
+      ...(h.kind === "vent" && h.status
+        ? { status: h.status, statusDuration: h.statusDuration }
+        : {}),
+    },
+  );
 }
+/** A fighter's dash cooldown (the server and client prediction both read it). */
+export const dashCooldownOf = (p: { dashCd?: number }) =>
+  p.dashCd ?? RULES.dashCooldown;

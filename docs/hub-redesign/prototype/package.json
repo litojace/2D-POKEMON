@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "commonjs",
+  "description": "Hub redesign prototype sources (CommonJS): app/numbers.js writes ../NUMBERS.md."
+}

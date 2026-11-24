@@ -1,4 +1,6 @@
+import { RAID, RAID_TIERS } from "../../packages/shared/src/raid";
 import { describe, expect, it } from "vitest";
+import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import { RaidArena } from "../../apps/server/src/raid";
 import { CHARACTERS, blankInput, type CharacterId } from "@arena/shared";
 import {
@@ -25,7 +27,10 @@ const place = (a: RaidArena, id: string, x: number, y: number) => {
   return p;
 };
 let serial = 5000;
-const warn = (a: RaidArena, w: Partial<RaidWarning> & Pick<RaidWarning, "kind">) => {
+const warn = (
+  a: RaidArena,
+  w: Partial<RaidWarning> & Pick<RaidWarning, "kind">,
+) => {
   const boss = a.boss()!;
   const warning = {
     id: ++serial,
@@ -60,13 +65,23 @@ describe("Grumblecrag's attack plan", () => {
     const solo = raid(["voltkit"]),
       duo = raid(["voltkit", "cindrake"]);
     // A rare Gilded boss is a little tougher.
-    const gild = (a: RaidArena) => (a.raid.gilded ? GRUMBLECRAG.health.gilded : 1);
+    const gild = (a: RaidArena) =>
+      a.raid.gilded ? GRUMBLECRAG.health.gilded : 1;
+    // Every boss is scaled up, and more so on higher Peril.
     expect(solo.raid.maxHp).toBe(
-      Math.round(GRUMBLECRAG.health.base * gild(solo)),
+      Math.round(
+        GRUMBLECRAG.health.base *
+          RAID.healthScale *
+          RAID.perilHealth[solo.raid.peril] *
+          RAID.soloHealth * // solo raiders face a little less health
+          gild(solo),
+      ),
     );
     expect(duo.raid.maxHp).toBe(
       Math.round(
         (GRUMBLECRAG.health.base + GRUMBLECRAG.health.perExtraPlayer) *
+          RAID.healthScale *
+          RAID.perilHealth[duo.raid.peril] *
           gild(duo),
       ),
     );
@@ -92,7 +107,7 @@ describe("rock volley", () => {
     expect(hurt(a, "p1")).toBe(0);
     expect(hurt(a, "p2")).toBe(0);
   });
-  it("Auralynx's Mirror Guard blocks it and staggers the boss", () => {
+  it("Auralynx's Facet Guard blocks it and staggers the boss", () => {
     const a = raid(["auralynx"]);
     const boss = a.boss()!;
     const p = place(a, "p0", 950, 450);
@@ -140,7 +155,7 @@ describe("shared meteor", () => {
     expect(hurt(a, "p1")).toBeCloseTo(GRUMBLECRAG.share.damage / 2, 0);
     expect(hurt(a, "p2")).toBe(0);
   });
-  it("hits a lone target for the full amount, and Mystowl's Ward softens it for all", () => {
+  it("hits a lone target for the full amount, and Mystowl's Wing Cloak softens it for all", () => {
     const alone = raid(["voltkit", "cindrake"]);
     place(alone, "p0", 400, 200);
     place(alone, "p1", 900, 760);
@@ -177,7 +192,7 @@ describe("shared meteor", () => {
 });
 
 describe("difficulty and champions", () => {
-  it("Peril raises boss damage modestly", () => {
+  it("Peril raises boss damage; live raids (Peril 3) use the star tier's", () => {
     const slam = (peril: number) => {
       const a = raid(["voltkit"], peril);
       place(a, "p0", a.boss()!.x - 60, a.boss()!.y);
@@ -188,7 +203,8 @@ describe("difficulty and champions", () => {
     const one = slam(1),
       three = slam(3);
     expect(one).toBeCloseTo(GRUMBLECRAG.slam.damage, 0);
-    expect(three / one).toBeCloseTo(GRUMBLECRAG.perilDamage[3], 2);
+    // Grumblecrag is ★: its tier's damage replaces Peril 3's ×1.5.
+    expect(three / one).toBeCloseTo(RAID_TIERS[1].damage, 2);
   });
   it("Terradon stops a charge head-on for half damage and a stagger", () => {
     const a = raid(["terradon"]);
@@ -209,7 +225,10 @@ describe("difficulty and champions", () => {
     a.damage(ally, 10000, a.boss()!.id);
     expect(a.raid.downed.p1).toBeDefined();
     const lumoth = place(a, "p0", 450, 300);
-    a.cast(lumoth, CHARACTERS.lumoth.skills.find((s) => s.id === "kindle")!);
+    a.cast(
+      lumoth,
+      CHARACTERS.lumoth.skills.find((s) => s.id === "kindle")!,
+    );
     expect(a.raid.downed.p1.progress).toBeGreaterThanOrEqual(0.5);
   });
   it("remembers what downed each raider", () => {
@@ -224,7 +243,7 @@ describe("difficulty and champions", () => {
   });
 });
 
-describe("pings, practice and stand-ins", () => {
+describe("pings and stand-ins", () => {
   it("shows a ping for a few seconds and limits spam", () => {
     const a = raid(["voltkit", "cindrake"]);
     expect(a.ping("p0", "stack")).toBe(true);
@@ -235,28 +254,6 @@ describe("pings, practice and stand-ins", () => {
     for (let i = 0; i < 130; i++) a.tick();
     expect(a.raid.pings).toHaveLength(0);
     expect(a.ping("boss-or-stranger", "stack")).toBe(false);
-  });
-  it("practice repeats one attack, counts hits without hurting anyone, then returns to the lobby", () => {
-    const a = new RaidArena("DRILL");
-    a.add("p0", "Learner", "voltkit");
-    expect(a.startDrill("volley")).toBe(true);
-    expect(a.phase).toBe("countdown");
-    for (let i = 0; i < 30 * 12; i++) a.tick();
-    expect(a.phase).toBe("playing");
-    const stats = a.raid.drillStats!;
-    expect(stats.hits + stats.dodges).toBeGreaterThan(0);
-    const p = a.heroes()[0];
-    expect(p.hp).toBe(CHARACTERS.voltkit.health);
-    const boss = a.boss()!,
-      before = boss.hp;
-    a.damage(boss, 500, p.id);
-    expect(boss.hp).toBe(before);
-    expect(a.raid.result).toBeNull();
-    expect(a.setDrill("charge")).toBe(true);
-    expect(a.raid.drill).toBe("charge");
-    expect(a.stopDrill()).toBe(true);
-    expect(a.phase).toBe("lobby");
-    expect(a.boss()).toBeUndefined();
   });
   it("an AI stand-in dodges telegraphs, stacks for meteors and hands back control", () => {
     const a = raid(["voltkit", "cindrake"]);
@@ -281,5 +278,106 @@ describe("pings, practice and stand-ins", () => {
     const first = cadence();
     a.raid.phase = 3;
     expect(cadence()).toBeLessThan(first);
+  });
+});
+
+describe("boss health by Peril", () => {
+  it("grows with Peril, so higher Peril fights last longer", () => {
+    const hp = (peril: number) => {
+      const a = raid(["voltkit"]);
+      a.raid.peril = peril;
+      a.start();
+      return a.raid.maxHp / (a.raid.gilded ? GRUMBLECRAG.health.gilded : 1);
+    };
+    expect(hp(1)).toBeCloseTo(
+      GRUMBLECRAG.health.base * RAID.healthScale * RAID.soloHealth,
+      -1,
+    );
+    expect(hp(2)).toBeGreaterThan(hp(1));
+    expect(hp(3)).toBeGreaterThan(hp(2));
+  });
+});
+
+describe("boss target choice", () => {
+  type Smart = {
+    chooseTarget(kind: string, alive: unknown[]): { id: string };
+    threat: Map<string, number>;
+    lastTargetId?: string;
+  };
+  const smart = (a: RaidArena) => a as unknown as Smart;
+  const party = (peril: number) => {
+    const a = raid(["voltkit", "cindrake", "tidefin"], peril);
+    place(a, "p0", 600, 450);
+    place(a, "p1", 700, 450);
+    place(a, "p2", 650, 520);
+    return a;
+  };
+  const alive = (a: RaidArena) => a.heroes().filter((p) => p.hp > 0);
+
+  it("turns on whoever is hurting it most", () => {
+    const a = party(3);
+    smart(a).threat.set("p2", 400);
+    smart(a).threat.set("p0", 20);
+    expect(smart(a).chooseTarget("slam", alive(a)).id).toBe("p2");
+  });
+  it("punishes a raider kneeling to revive a fallen ally", () => {
+    const a = party(3);
+    const down = a.players.find((p) => p.id === "p1")!;
+    down.hp = 0;
+    place(a, "p2", down.x + 40, down.y);
+    place(a, "p0", 200, 200);
+    expect(smart(a).chooseTarget("slam", alive(a)).id).toBe("p2");
+  });
+  it("throws a charge at the raider keeping their distance", () => {
+    const a = party(3);
+    const boss = a.boss()!;
+    place(a, "p0", boss.x + 80, boss.y);
+    place(a, "p1", boss.x - 90, boss.y);
+    place(a, "p2", 100, 100);
+    expect(smart(a).chooseTarget("charge", alive(a)).id).toBe("p2");
+  });
+  it("rarely picks the same raider twice in a row", () => {
+    const a = party(2);
+    let repeats = 0;
+    for (let i = 0; i < 40; i++) {
+      (a as unknown as { attacks: number }).attacks = i;
+      const id = smart(a).chooseTarget("slam", alive(a)).id;
+      if (id === smart(a).lastTargetId) repeats++;
+      smart(a).lastTargetId = id;
+    }
+    expect(repeats).toBe(0);
+  });
+});
+
+describe("volley aim", () => {
+  type Aim = {
+    warnVolley(t: unknown, teach: boolean): { tx: number; ty: number };
+    motion: Map<string, { t: number; vx: number; vy: number }[]>;
+  };
+  // `was` is how the raider was moving 0.3 s ago.
+  const aim = (peril: number, was = { vx: 0, vy: 300 }) => {
+    const a = raid(["voltkit"], peril);
+    const boss = a.boss()!;
+    const p = place(a, "p0", boss.x - 300, boss.y);
+    p.vx = 0;
+    p.vy = 300; // running down the screen
+    (a as unknown as Aim).motion.set("p0", [{ t: a.time - 0.3, ...was }]);
+    const w = (a as unknown as Aim).warnVolley(p, false);
+    // How far the cone's centre line passes ahead of the raider (px).
+    const d = Math.hypot(w.tx - boss.x, w.ty - boss.y);
+    return ((w.ty - boss.y) / d) * 300;
+  };
+  it("aims straight at the raider on Peril 1 and a little ahead from Peril 2", () => {
+    expect(Math.abs(aim(1))).toBeLessThan(1);
+    expect(aim(2)).toBeGreaterThan(20);
+  });
+  it("on Peril 3 leads only a raider running straight, never past the tier's cap", () => {
+    // ★ tier: 55% of the travel, at most 110 px.
+    expect(aim(3)).toBeLessThanOrEqual(RAID_TIERS[1].leadCap + 1);
+    expect(aim(3)).toBeGreaterThan(60);
+    // Just turned (was running across the screen): not led at all.
+    expect(Math.abs(aim(3, { vx: 300, vy: 0 }))).toBeLessThan(1);
+    // Standing still 0.3 s ago (just started): not led either.
+    expect(Math.abs(aim(3, { vx: 0, vy: 0 }))).toBeLessThan(1);
   });
 });

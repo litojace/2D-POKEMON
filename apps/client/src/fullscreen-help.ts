@@ -23,7 +23,11 @@ export function fullscreenHelp(options: {
 }) {
   const { standalone, platform, canPrompt, canFullscreen } = options;
   if (standalone)
-    return "<h2>You are already fullscreen</h2><p>Element Arena is running from your home screen, so there are no browser bars in the way. Turn your phone sideways for the best view.</p>";
+    return `<h2>You are already fullscreen</h2><p>Element Arena is running from your home screen, so there are no browser bars in the way. Turn your ${platform === "ipad" ? "iPad" : "phone"} sideways for the best view.</p>${
+      platform === "ipad"
+        ? '<p class="fullscreen-note">The clock and battery along the top belong to iPadOS, which keeps them on screen for home-screen apps; a web game cannot hide them. If the game opens in a window, use its window buttons (top left) to make it full screen.</p>'
+        : ""
+    }`;
   const apple =
     '<ol class="fullscreen-steps"><li>Open this page in <b>Safari</b>.</li><li>Tap <b>Share</b> (the square with an arrow; on newer iOS it may be under the <b>⋯</b> button).</li><li>Choose <b>Add to Home Screen</b>, then <b>Add</b>.</li><li>Open <b>Element Arena</b> from your home screen and turn your phone sideways.</li></ol>';
   const android =

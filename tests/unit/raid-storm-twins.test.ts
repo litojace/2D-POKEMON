@@ -1,3 +1,4 @@
+import { RAID } from "../../packages/shared/src/raid";
 import { describe, it, expect, vi } from "vitest";
 import {
   CHARACTERS,
@@ -6,7 +7,10 @@ import {
   type CharacterId,
 } from "@arena/shared";
 import { createRaidArena } from "../../apps/server/src/raid-bosses";
-import { StormTwinsArena } from "../../apps/server/src/raid-storm-twins";
+import {
+  StormTwinsArena,
+  polaritySigns,
+} from "../../apps/server/src/raid-storm-twins";
 import {
   STORM_TWINS as S,
   RAID_BOSSES,
@@ -68,7 +72,6 @@ const resolve = (a: StormTwinsArena) => {
   const warnings = [...a.raid.warnings];
   a.raid.warnings = [];
   for (const w of warnings) {
-    (a as any).struck.clear();
     (a as any).resolveWarning(w, a.boss()!);
   }
 };
@@ -85,7 +88,13 @@ describe("Storm Twins encounter lifecycle", () => {
     expect(a.raid.twins).toHaveLength(2);
     expect(a.instructionsReady).toEqual(twins(a).map((p) => p.id));
     for (const t of a.raid.twins!)
-      expect([2240, Math.round(4480 * 1.12) / 2]).toContain(t.maxHp);
+      expect([
+        Math.round(4480 * RAID.healthScale * RAID.perilHealth[a.raid.peril]) /
+          2,
+        Math.round(
+          4480 * RAID.healthScale * RAID.perilHealth[a.raid.peril] * 1.12,
+        ) / 2,
+      ]).toContain(t.maxHp);
     expect(a.raid.maxHp).toBe(a.raid.twins!.reduce((s, t) => s + t.maxHp, 0));
     expect(a.arenaId).toBe("conductor-ring");
     expect(a.walls()).toEqual([]);
@@ -106,15 +115,14 @@ describe("Storm Twins encounter lifecycle", () => {
     expect(f.hp + c.hp).toBeCloseTo(a.raid.maxHp * 0.67);
     a.tick();
     expect(a.raid.phase).toBe(2);
-    expect(a.phase).toBe("intermission");
-    a.phase = "playing";
+    expect(a.phase).toBe("playing");
     a.damage(f, 100000, "p0");
     expect(f.hp).toBe(1);
     expect(a.raid.result).toBeNull();
     a.damage(c, 100000, "p0");
     a.tick();
     expect(a.raid.phase).toBe(3);
-    expect(a.phase).toBe("intermission");
+    expect(a.phase).toBe("playing");
   });
   it("staggers and exposes one twin without exposing its partner", () => {
     const a = setup(),
@@ -161,7 +169,10 @@ describe("Storm Twins encounter lifecycle", () => {
         );
         (a as any).nextAttack = Infinity;
         run(a, twinKillWindow(peril, size, "bickering") + 0.1);
-        expect(f.hp).toBeCloseTo(Math.round(a.raid.twins![0].maxHp * 0.35));
+        expect(S.reviveFraction).toBe(0.5);
+        expect(f.hp).toBeCloseTo(
+          Math.round(a.raid.twins![0].maxHp * S.reviveFraction),
+        );
         expect(a.raid.twins![0].fallenAt).toBeUndefined();
         expect(a.raid.twinRevivals).toBe(1);
         expect(a.raid.result).toBeNull();
@@ -177,8 +188,10 @@ describe("Storm Twins encounter lifecycle", () => {
     expect(a.raid.twinRevivals).toBe(0);
   });
   it("adds the In Sync and solo finishing extensions and pauses time on disconnect", () => {
-    expect(twinKillWindow(3, 1, "in-sync")).toBe(14);
-    expect(twinKillWindow(3, 4, "in-sync")).toBe(11);
+    expect(twinKillWindow(3, 4, "bickering")).toBe(7);
+    expect(twinKillWindow(3, 1, "bickering")).toBe(10);
+    expect(twinKillWindow(3, 1, "in-sync")).toBe(13);
+    expect(twinKillWindow(3, 4, "in-sync")).toBe(10);
     const a = setup();
     down(a, 0);
     const before = a.time;
@@ -236,16 +249,21 @@ describe("Polarity fairness and champion tricks", () => {
   it("lets a cancelled teammate help the third raider later, with no repeated credit", () => {
     const a = setup(3);
     attack(a, "polarity");
-    a.heroes()[0].x = 400;
-    a.heroes()[1].x = 450;
-    a.heroes()[2].x = 1000;
+    // The odd one out pairs first with an opposite sign; the third waits.
+    const marks = a.raid.polarities!,
+      lone = marks.findIndex(
+        (m) => marks.filter((n) => n.sign === m.sign).length === 1,
+      ),
+      [mate, third] = [0, 1, 2].filter((i) => i !== lone),
+      hero = (i: number) => a.heroes()[i];
+    hero(lone).x = 400;
+    hero(mate).x = 450;
+    hero(third).x = 1000;
     run(a, 0.1);
-    expect(a.raid.polarities!.map((m) => m.cancelled)).toEqual([
-      true,
-      true,
-      false,
-    ]);
-    a.heroes()[2].x = 470;
+    expect(marks.map((m) => m.cancelled)).toEqual(
+      [0, 1, 2].map((i) => i !== third),
+    );
+    hero(third).x = 470;
     run(a, 0.1);
     expect(a.raid.polarities!.every((m) => m.cancelled)).toBe(true);
     expect(a.heroes().map((p) => a.raid.contributions![p.id].pillars)).toEqual([
@@ -292,24 +310,44 @@ describe("Polarity fairness and champion tricks", () => {
   });
   it("same signs double the failure damage; Grounded reduces only that mismatch", () => {
     const a = setup(4);
-    a.raid.rites.p0 = ["grounded"];
     attack(a, "polarity");
-    Object.assign(a.heroes()[0], { x: 400, y: 450 });
-    Object.assign(a.heroes()[2], { x: 430, y: 450 });
-    a.heroes()[1].x = 1000;
-    a.heroes()[3].x = 1400;
+    // A Grounded raider stands with one of its own sign; the rest stay apart.
+    const sign = (i: number) => a.raid.polarities![i].sign,
+      [g, same] = [0, 1, 2, 3].flatMap((i) =>
+        [0, 1, 2, 3]
+          .filter((j) => j > i && sign(j) === sign(i))
+          .map((j) => [i, j]),
+      )[0],
+      rest = [0, 1, 2, 3].filter((i) => i !== g && i !== same);
+    a.raid.rites[a.heroes()[g].id] = ["grounded"];
+    Object.assign(a.heroes()[g], { x: 400, y: 450 });
+    Object.assign(a.heroes()[same], { x: 430, y: 450 });
+    Object.assign(a.heroes()[rest[0]], { x: 1000, y: 450 });
+    Object.assign(a.heroes()[rest[1]], { x: 1400, y: 450 });
     run(a, 4.1);
-    expect(CHARACTERS.cindrake.health - a.heroes()[0].hp).toBeCloseTo(28);
-    expect(CHARACTERS.cindrake.health - a.heroes()[2].hp).toBeCloseTo(56);
+    expect(CHARACTERS.cindrake.health - a.heroes()[g].hp).toBeCloseTo(28);
+    expect(CHARACTERS.cindrake.health - a.heroes()[same].hp).toBeCloseTo(56);
     expect(a.raid.polarities).toEqual([]);
   });
-  it("Terradon’s sleeping shell blocks the expired mark without faking a polarity pair", () => {
+  it("Terradon’s closed shell blocks the expired mark without faking a polarity pair", () => {
     const a = setup(1, 3, 1, ["terradon"]);
     attack(a, "polarity");
-    a.status(a.heroes()[0], "sleep", 5);
+    a.status(a.heroes()[0], "shell", 5);
     run(a, 4.1);
     expect(a.heroes()[0].hp).toBe(CHARACTERS.terradon.health);
     expect(a.raid.contributions!.p0.pillars).toBe(0);
+  });
+  it("Pangrove underground (Tunnel) takes no Polarity damage", () => {
+    for (const dug of [true, false]) {
+      const a = setup(1, 3, 1, ["pangrove"]);
+      attack(a, "polarity");
+      // Underground for the whole attack.
+      if (dug) a.heroes()[0].burrow = { until: a.time + 5, slot: 2, haste: 1 };
+      run(a, 4.1);
+      const lost = CHARACTERS.pangrove.health - a.heroes()[0].hp;
+      if (dug) expect(lost).toBe(0);
+      else expect(lost).toBeGreaterThan(0);
+    }
   });
   it("Chain Lightning jumps only within 200px, with decreasing damage and no repeated victims", () => {
     const a = setup(3);
@@ -346,7 +384,7 @@ describe("Polarity fairness and champion tricks", () => {
     expect(b.heroes()[0].hp).toBeLessThan(CHARACTERS.cindrake.health);
     expect(b.heroes()[1].hp).toBe(CHARACTERS.cindrake.health);
   });
-  it("Duskveil’s Void Orb shortens the distance between the two real enemies", () => {
+  it("Duskveil’s Wraith Hunt shortens the distance between the two real enemies", () => {
     const a = setup(),
       [f, c] = twins(a);
     f.x = 600;
@@ -356,23 +394,9 @@ describe("Polarity fairness and champion tricks", () => {
       f,
       10,
       "p0",
-      CHARACTERS.duskveil.skills.find((a) => a.id === "void-orb"),
+      CHARACTERS.duskveil.skills.find((a) => a.id === "wraith-hunt"),
     );
     expect(Math.hypot(f.x - c.x, f.y - c.y)).toBeLessThan(before);
-  });
-  it("practice cancellations never grant reward progress", () => {
-    const a = setup();
-    a.raid.drill = "polarity";
-    a.raid.drillStats = { hits: 0, dodges: 0 };
-    attack(a, "polarity");
-    Object.assign(a.heroes()[0], a.raid.polarityPad!);
-    run(a, 0.1);
-    expect(a.raid.contributions!.p0.pillars).toBe(0);
-    expect(a.raid.drillStats.dodges).toBe(1);
-    a.setDrill("link-beam");
-    expect(a.raid.polarities).toEqual([]);
-    a.stopDrill();
-    expect(a.players).toHaveLength(1);
   });
 });
 describe("Storm Twins attacks and presentation", () => {
@@ -385,7 +409,7 @@ describe("Storm Twins attacks and presentation", () => {
     expect(a.raid.stormBeam!.points[1]).toEqual(S.posts[w.beamPost!]);
     expect(a.raid.stormBeam!.points).toHaveLength(3);
   });
-  it("Link Beam can be jumped, reflects from Mirror Guard and stops when one twin falls", () => {
+  it("Link Beam can be jumped, reflects from Facet Guard and stops when one twin falls", () => {
     const a = setup(1, 1, 1, ["auralynx"]),
       [f, c] = twins(a);
     Object.assign(a.heroes()[0], { x: (f.x + c.x) / 2, y: (f.y + c.y) / 2 });
@@ -487,6 +511,26 @@ describe("Storm Twins attacks and presentation", () => {
     expect(raidCue(a.snapshot(), "p0")).toContain("revives in");
     expect(stormTwinHealth(a.snapshot())).toContain("REVIVES IN");
   });
+  it("draws each twin and each post on its own layer, sorted by where it stands", () => {
+    const a = setup(),
+      g: any = new Proxy({}, { get: () => vi.fn(() => g) }),
+      asked: [string, number][] = [];
+    const at = (key: string, y: number) => {
+      asked.push([key, y]);
+      return g;
+    };
+    const snap = a.snapshot();
+    drawConductorRing(g, snap, true, at);
+    drawStormTwins(g, snap, true, 0, at);
+    const twins = (snap.raid!.twins ?? []).map((m) =>
+      snap.players.find((p) => p.id === m.id)!,
+    );
+    expect(twins).toHaveLength(2);
+    expect(asked).toEqual([
+      ...S.posts.map((p, i) => [`post-${i}`, p.y + 17]),
+      ...twins.map((p, i) => [`twin-${i}`, p.y + 13]),
+    ]);
+  });
   it("draws the two bodies and every warning without changing the simulation snapshot", () => {
     const a = setup(),
       g: any = new Proxy({}, { get: () => vi.fn(() => g) }),
@@ -546,6 +590,143 @@ it("renders all Storm Twins cosmetic effects, with different skin palettes", () 
     palettes.push([...p]);
   }
   expect(palettes[0]).not.toEqual(palettes[1]);
+});
+
+describe("Storm Twins AI: smart polarity, aimed rushes and sweeping beams", () => {
+  it("gives raiders standing together the same sign, so everyone must walk to an opposite", () => {
+    const pairs = [
+      { x: 400, y: 300 },
+      { x: 440, y: 330 },
+      { x: 1000, y: 600 },
+      { x: 1030, y: 640 },
+    ];
+    const signs = polaritySigns(pairs, 7);
+    expect(signs[0]).toBe(signs[1]);
+    expect(signs[2]).toBe(signs[3]);
+    expect(signs[0]).not.toBe(signs[2]);
+    // In the arena: every raider's nearest opposite is far beyond reach.
+    const a = setup(4);
+    a.heroes().forEach((p, i) => Object.assign(p, pairs[i]));
+    attack(a, "polarity");
+    const marks = a.raid.polarities!;
+    for (const [i, p] of a.heroes().entries()) {
+      const gap = Math.min(
+        ...a
+          .heroes()
+          .filter((_, j) => marks[j].sign !== marks[i].sign)
+          .map((q) => Math.hypot(q.x - p.x, q.y - p.y)),
+      );
+      expect(gap).toBeGreaterThan(150);
+      // ...and yet within reach before the marks expire.
+      expect(gap).toBeLessThan(222 * (S.polarity.seconds - 0.45));
+    }
+    // A pair always gets opposite signs.
+    const two = polaritySigns(pairs.slice(0, 2), 3);
+    expect(two[0]).not.toBe(two[1]);
+  });
+  it("keeps every raider able to reach an opposite sign, even spread across the ring", () => {
+    const spread = [
+      { x: 120, y: 200 },
+      { x: 1480, y: 200 },
+      { x: 120, y: 760 },
+      { x: 1480, y: 760 },
+    ];
+    const signs = polaritySigns(spread, 1);
+    for (const [i, p] of spread.entries())
+      expect(
+        Math.min(
+          ...spread
+            .filter((_, j) => signs[j] !== signs[i])
+            .map((q) => Math.hypot(q.x - p.x, q.y - p.y)),
+        ),
+      ).toBeLessThan(222 * (S.polarity.seconds - 0.45));
+  });
+  it("rushes each twin through a different raider, ahead of a runner, from where its lane is drawn", () => {
+    const a = setup(2, 2);
+    const [p, q] = a.heroes();
+    Object.assign(p, { x: 500, y: 300, vx: 0, vy: 0 });
+    Object.assign(q, { x: 700, y: 650, vx: 230, vy: 0 });
+    attack(a, "twin-rush");
+    const lanes = a.raid.warnings.filter((w) => w.kind === "twin-rush");
+    expect(lanes).toHaveLength(2);
+    const off = (pt: { x: number; y: number }) =>
+      lanes.map((w) => stormSegmentDistance(pt, w, { x: w.tx, y: w.ty }));
+    // One lane through the raider standing still, one ahead of the runner.
+    expect(Math.min(...off(p))).toBeLessThan(1);
+    const ahead = { x: 700 + Math.min(140, 0.7 * 230 * S.rush.delay), y: 650 };
+    expect(Math.min(...off(ahead))).toBeLessThan(1);
+    expect(off(p).findIndex((d) => d < 1)).not.toBe(
+      off(ahead).findIndex((d) => d < 1),
+    );
+    for (const w of lanes) {
+      expect(w.tx).toBeGreaterThanOrEqual(S.rush.box.x0);
+      expect(w.tx).toBeLessThanOrEqual(S.rush.box.x1);
+      expect(w.ty).toBeGreaterThanOrEqual(S.rush.box.y0);
+      expect(w.ty).toBeLessThanOrEqual(S.rush.box.y1);
+    }
+    // The twins hold still while their lanes are shown.
+    const before = twins(a).map((t) => ({ x: t.x, y: t.y }));
+    (a as any).nextAttack = Infinity;
+    run(a, S.rush.delay - 0.05);
+    expect(twins(a).map((t) => ({ x: t.x, y: t.y }))).toEqual(before);
+    // Solo: both lanes cross where the raider will be.
+    const b = setup(1, 2);
+    Object.assign(b.heroes()[0], { x: 600, y: 450, vx: 0, vy: 0 });
+    attack(b, "twin-rush");
+    for (const w of b.raid.warnings)
+      expect(
+        stormSegmentDistance(b.heroes()[0], w, { x: w.tx, y: w.ty }),
+      ).toBeLessThan(1);
+  });
+  it("sweeps the Link Beam across the biggest group, holding still before it lands", () => {
+    const a = setup(3, 2);
+    const [f, c] = twins(a);
+    Object.assign(f, { x: 800, y: 300 });
+    Object.assign(c, { x: 1200, y: 300 });
+    // Two raiders together south of the beam, one alone north.
+    Object.assign(a.heroes()[0], { x: 1000, y: 560 });
+    Object.assign(a.heroes()[1], { x: 1040, y: 580 });
+    Object.assign(a.heroes()[2], { x: 1000, y: 120 });
+    attack(a, "link-beam");
+    const w = a.raid.warnings[0];
+    // The bend goes through a southern post, nearer the group.
+    expect(S.posts[w.beamPost!].y).toBeGreaterThan(450);
+    (a as any).nextAttack = Infinity;
+    run(a, w.at - S.link.hold - a.time - 0.05);
+    expect(f.y).toBeGreaterThan(300);
+    expect(c.y).toBeGreaterThan(300);
+    // The warning's last 0.6 s: nothing moves, so the drawn line is the hit.
+    run(a, 0.1);
+    const held = twins(a).map((t) => ({ x: t.x, y: t.y }));
+    const drawn = { ...a.raid.warnings[0] };
+    run(a, w.at - a.time - 1 / 60);
+    expect(twins(a).map((t) => ({ x: t.x, y: t.y }))).toEqual(held);
+    run(a, 2 / 30);
+    expect(a.raid.stormBeam!.points[0]).toEqual({ x: drawn.x, y: drawn.y });
+    expect(a.raid.stormBeam!.points.at(-1)).toEqual({
+      x: drawn.tx,
+      y: drawn.ty,
+    });
+    // While it burns it keeps moving towards the group, at orbit speed.
+    const y = f.y;
+    run(a, 1);
+    expect(f.y - y).toBeGreaterThan(60);
+    expect(f.y - y).toBeLessThan(75);
+  });
+  it("hits 24 with the Link Beam (14 when Bickering)", () => {
+    for (const trait of ["in-sync", "bickering"] as const) {
+      const a = setup(1, 1),
+        [f, c] = twins(a);
+      a.raid.trait = trait;
+      Object.assign(a.heroes()[0], { x: (f.x + c.x) / 2, y: (f.y + c.y) / 2 });
+      attack(a, "link-beam");
+      resolve(a);
+      a.tick();
+      expect(CHARACTERS.cindrake.health - a.heroes()[0].hp).toBe(
+        trait === "bickering" ? 14 : 24,
+      );
+    }
+  });
 });
 
 describe("Storm Twins stand-ins and full raids", () => {

@@ -4,6 +4,7 @@ import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts } from "../helpers/accounts";
 import { AccountError } from "../../apps/server/src/accounts";
 import { LOOK_ITEMS } from "../../packages/shared/src/shop";
+import { JOURNEY_ITEMS } from "../../packages/shared/src/journey";
 import type { Reply } from "../../packages/shared/src/index";
 let server: ReturnType<typeof createArenaServer>,
   accounts: ReturnType<typeof fakeAccounts>,
@@ -92,17 +93,123 @@ it("rejects anonymous gameplay and forged admin payloads", async () => {
     ).status,
   ).toBe(403);
 });
-it("rejects invalid credentials, suspension, and account reuse", async () => {
-  await expect(connect("invalid")).rejects.toThrow("expired");
+it("rejects invalid credentials/suspension and replaces the previous game connection", async () => {
+  await expect(connect("invalid")).rejects.toMatchObject({
+    message: expect.stringContaining("expired"),
+    data: { code: "ACCOUNT_ERROR", status: 401 },
+  });
   const banned = accounts.add();
   banned.account.suspended = true;
   await expect(connect(banned.token)).rejects.toThrow("suspended");
   const user = accounts.add(false);
-  const one = await connect(user.token),
-    two = await connect(user.token);
-  await emit(one, "create", { name: "One" });
-  expect((await emit(two, "create", { name: "Two" })).ok).toBe(false);
+  const one = await connect(user.token);
+  const room = await emit(one, "create", { name: "One" });
+  const replaced = new Promise<void>((resolve) =>
+    one.once("session-replaced", resolve),
+  );
+  const disconnected = new Promise<string>((resolve) =>
+    one.once("disconnect", resolve),
+  );
+  const two = await connect(user.token);
+  await replaced;
+  expect(await disconnected).toBe("io server disconnect");
+  expect(one.active).toBe(false); // Socket.IO must not automatically reclaim it.
+  expect((await emit(two, "resume", { token: room.token })).ok).toBe(true);
+  expect([...server.sessions.values()][0].socketId).toBe(two.id);
+  expect(server.io.sockets.sockets.size).toBe(1);
   expect(server.rooms.size).toBe(1);
+});
+it("replaces a Plaza visitor even when the new device uses a different token for the account", async () => {
+  const user = accounts.add(false);
+  accounts.users.set("second-device-token", user.account);
+  const old = await connect(user.token);
+  expect((await emit(old, "plaza-join", { character: "voltkit" })).ok).toBe(
+    true,
+  );
+  expect(server.plaza.size).toBe(1);
+  const next = await connect("second-device-token");
+  await expect.poll(() => old.connected).toBe(false);
+  expect(server.plaza.size).toBe(0);
+  expect((await emit(next, "plaza-join", { character: "lumoth" })).ok).toBe(
+    true,
+  );
+  expect(server.plaza.size).toBe(1);
+  // A refreshed token on the winning socket must not disconnect it.
+  expect((await emit(next, "token", { token: user.token })).ok).toBe(true);
+  expect(next.connected).toBe(true);
+  expect(server.io.sockets.sockets.size).toBe(1);
+});
+it.each(["practice", "token"])(
+  "does not revive a replaced socket after a pending %s authorization",
+  async (event) => {
+    const user = accounts.add(false);
+    const old = await connect(user.token);
+    const authenticate = accounts.provider.authenticate;
+    let release!: () => void;
+    let entered!: () => void;
+    const waiting = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let hold = true;
+    accounts.provider.authenticate = async (token) => {
+      if (hold) {
+        hold = false;
+        entered();
+        await gate;
+      }
+      return authenticate(token);
+    };
+    old.emit(
+      event,
+      event === "practice"
+        ? { name: "Old", character: "voltkit" }
+        : { token: user.token },
+    );
+    await waiting;
+    const next = await connect(user.token);
+    await expect.poll(() => old.connected).toBe(false);
+    release();
+    // Drain the pending authorization before asking the winning socket to play.
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(server.rooms.size).toBe(0);
+    expect((await emit(next, "create", { name: "New" })).ok).toBe(true);
+    expect(server.io.sockets.sockets.size).toBe(1);
+    expect([...server.sessions.values()][0].socketId).toBe(next.id);
+  },
+);
+it("claims an account authenticated after an anonymous connection", async () => {
+  const user = accounts.add(false);
+  const old = await connect(user.token);
+  const next = await connect();
+  expect((await emit(next, "token", { token: user.token })).ok).toBe(true);
+  await expect.poll(() => old.connected).toBe(false);
+  expect((await emit(next, "create", { name: "New" })).ok).toBe(true);
+});
+it("neutralizes the old fighter immediately when another device takes over mid-match", async () => {
+  const user = accounts.add(false);
+  const old = await connect(user.token);
+  const room = await emit(old, "bot-match", {
+    name: "Player",
+    character: "voltkit",
+    difficulty: "easy",
+  });
+  expect(room.ok).toBe(true);
+  const arena = server.rooms.get(room.code!)!;
+  const fighter = arena.players.find((p) => p.id === room.id)!;
+  arena.phase = "playing";
+  fighter.lastInput.dx = 1;
+  fighter.lastInput.basic = true;
+  const next = await connect(user.token);
+  await expect.poll(() => old.connected).toBe(false);
+  expect(fighter.connected).toBe(false);
+  expect(fighter.lastInput.dx).toBe(0);
+  expect(fighter.lastInput.basic).toBe(false);
+  expect(arena.phase).toBe("paused");
+  expect((await emit(next, "resume", { token: room.token })).ok).toBe(true);
+  expect(arena.phase).toBe("playing");
 });
 it("suspended players cannot change or restart a practice session", async () => {
   const admin = accounts.add();
@@ -310,6 +417,101 @@ it("checks HTTP authorization, payloads, origin and title ownership RPC paths", 
     ).status,
   ).toBe(403);
 });
+it("lets a player delete their own account, confirmed, and never an administrator", async () => {
+  const admin = accounts.add(),
+    player = accounts.add(false);
+  const calls: { token: string; name: string }[] = [];
+  accounts.provider.rpc = async (token, name) => {
+    calls.push({ token, name });
+    // The database removes the login: the token no longer checks out.
+    if (name === "arena_delete_my_account") accounts.users.delete(token);
+    return null;
+  };
+  const socket = await connect(player.token);
+  const told = new Promise<void>((resolve) =>
+    socket.once("token-expired", () => resolve()),
+  );
+  const post = (body: unknown, token = player.token) =>
+    fetch(`${url}/api/account/delete`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  // Not signed in, not confirmed, or an extra field: refused before the database.
+  expect(
+    (await fetch(`${url}/api/account/delete`, { method: "POST" })).status,
+  ).toBe(401);
+  expect((await post({})).status).toBe(400);
+  expect((await post({ confirm: "yes" })).status).toBe(400);
+  expect((await post({ confirm: true, id: admin.account.id })).status).toBe(
+    400,
+  );
+  // An administrator is refused here (their audit trail points at them).
+  expect((await post({ confirm: true }, admin.token)).status).toBe(403);
+  const deletes = () =>
+    calls.filter((c) => c.name === "arena_delete_my_account");
+  expect(deletes()).toEqual([]);
+  // The player: the database deletes the login with the player's own token.
+  expect((await post({ confirm: true })).status).toBe(200);
+  expect(deletes()).toEqual([
+    { token: player.token, name: "arena_delete_my_account" },
+  ]);
+  // The open game connection is checked again at once and no longer passes.
+  await told;
+  expect((await post({ confirm: true })).status).toBe(401);
+});
+it("blocks and unblocks through the database, and lists who you blocked", async () => {
+  const player = accounts.add(false),
+    other = accounts.add(false);
+  const calls: { name: string; args: Record<string, unknown> }[] = [];
+  accounts.provider.rpc = async (_token, name, args) => {
+    calls.push({ name, args });
+    return name === "arena_blocked_players"
+      ? [{ id: other.account.id, name: "Player 2" }]
+      : null;
+  };
+  const headers = {
+    Authorization: `Bearer ${player.token}`,
+    "Content-Type": "application/json",
+  };
+  const post = (body: unknown) =>
+    fetch(`${url}/api/blocks`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+  expect((await fetch(`${url}/api/blocks`)).status).toBe(401);
+  const list = await fetch(`${url}/api/blocks`, { headers });
+  expect(list.status).toBe(200);
+  expect(await list.json()).toEqual([
+    { id: other.account.id, name: "Player 2" },
+  ]);
+  // A bad id, a missing flag or an extra field never reach the database.
+  expect((await post({ playerId: "nope", block: true })).status).toBe(400);
+  expect((await post({ playerId: other.account.id })).status).toBe(400);
+  expect(
+    (await post({ playerId: other.account.id, block: true, why: "x" })).status,
+  ).toBe(400);
+  expect((await post({ playerId: other.account.id, block: true })).status).toBe(
+    200,
+  );
+  expect(
+    (await post({ playerId: other.account.id, block: false })).status,
+  ).toBe(200);
+  expect(calls.filter((c) => c.name === "arena_block_player")).toEqual([
+    {
+      name: "arena_block_player",
+      args: { p_player: other.account.id, p_block: true },
+    },
+    {
+      name: "arena_block_player",
+      args: { p_player: other.account.id, p_block: false },
+    },
+  ]);
+});
 it("clears a detached reservation when the owner explicitly leaves after reconnecting", async () => {
   const owner = accounts.add(true),
     socket = await connect(owner.token);
@@ -324,14 +526,12 @@ it("clears a detached reservation when the owner explicitly leaves after reconne
   expect(server.sessions.size).toBe(0);
   expect((await emit(next, "create", { name: "Admin" })).ok).toBe(true);
 });
-it("allows a new room after a lost disconnected reservation but protects active rooms", async () => {
+it("allows a new device to start a room after replacing the old connection", async () => {
   const owner = accounts.add(true),
     socket = await connect(owner.token);
   await emit(socket, "practice", { name: "Admin", character: "voltkit" });
   const second = await connect(owner.token);
-  expect((await emit(second, "create", { name: "Admin" })).ok).toBe(false);
-  socket.disconnect();
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  await expect.poll(() => socket.connected).toBe(false);
   expect((await emit(second, "create", { name: "Admin" })).ok).toBe(true);
   expect(server.sessions.size).toBe(1);
   expect(server.rooms.size).toBe(1);
@@ -370,7 +570,7 @@ it("lists who is online for administrators only", async () => {
   expect((await online()).status).toBe(401);
   expect((await online(host.token)).status).toBe(403);
   await connect(admin.token);
-  await connect(admin.token); // second tab merges into one entry
+  await connect(admin.token); // second tab replaces the previous connection
   await connect(); // guest
   const hostSocket = await connect(host.token);
   const room = await emit(hostSocket, "create", { name: "Host" });
@@ -392,7 +592,7 @@ it("lists who is online for administrators only", async () => {
   const byId = Object.fromEntries(list.players.map((p) => [p.id, p]));
   expect(byId[admin.account.id]).toMatchObject({
     activity: "menu",
-    connections: 2,
+    connections: 1,
     isAdmin: true,
     room: null,
   });
@@ -496,6 +696,30 @@ it("keeps a finished bot match on rematch and refuses the lobby", async () => {
   expect((await emit(socket, "rematch")).ok).toBe(true);
   expect(arena.phase).toBe("briefing");
 });
+it("a bot rematch can bring another fighter; a bad one is refused", async () => {
+  const player = accounts.add(false);
+  const socket = await connect(player.token);
+  const reply = await emit(socket, "bot-match", {
+    name: "Solo",
+    character: "voltkit",
+    difficulty: "easy",
+  });
+  const arena = server.rooms.get(reply.code!)!;
+  const [me, bot] = arena.players;
+  arena.phase = "playing";
+  arena.deadline = arena.time + 100;
+  arena.teamScores[bot.team ?? 1] = arena.roundsToWin - 1;
+  me.hp = 0;
+  server.step();
+  expect(arena.phase).toBe("finished");
+  expect((await emit(socket, "rematch", { character: "nope" })).ok).toBe(false);
+  expect(arena.phase).toBe("finished");
+  expect((await emit(socket, "rematch", { character: "tidefin" })).ok).toBe(
+    true,
+  );
+  expect(arena.phase).toBe("briefing");
+  expect(arena.players.find((p) => p.id === me.id)!.character).toBe("tidefin");
+});
 it("runs a 2v2 room: four players, teams, shuffle, start and 2v1 on leave", async () => {
   const people = [0, 1, 2, 3, 4].map(() => accounts.add(false));
   const sockets = await Promise.all(people.map((p) => connect(p.token)));
@@ -522,7 +746,11 @@ it("runs a 2v2 room: four players, teams, shuffle, start and 2v1 on leave", asyn
   expect((await emit(sockets[1], "shuffle")).ok).toBe(false);
   expect((await emit(sockets[0], "shuffle")).ok).toBe(true);
   expect(arena.players.filter((p) => p.team === 0)).toHaveLength(2);
-  // Starts only when all four are ready.
+  // Starts only when all four are ready (teammates pick different fighters:
+  // a 2v2 team can't lock the same one twice).
+  const picks = ["voltkit", "cindrake", "tidefin", "lumoth"];
+  for (const [i, s] of sockets.slice(0, 4).entries())
+    expect((await emit(s, "select", picks[i])).ok).toBe(true);
   for (const s of sockets.slice(0, 3)) await emit(s, "ready");
   expect(arena.phase).toBe("lobby");
   await emit(sockets[3], "ready");
@@ -546,6 +774,11 @@ it("runs a 2v2 room: four players, teams, shuffle, start and 2v1 on leave", asyn
   expect(arena.phase).toBe("finished");
   expect(arena.winnerTeam).toBe(1 - (leaver.team ?? 0));
   const stayer = sockets[arena.players.findIndex((p) => !p.out && p.connected)];
+  // A PvP rematch never brings another fighter (picks are secret until a
+  // match starts): that is the lobby's job.
+  expect((await emit(stayer, "rematch", { character: "tidefin" })).error).toBe(
+    "Change fighters in the lobby.",
+  );
   expect((await emit(stayer, "rematch")).ok).toBe(false);
   expect((await emit(stayer, "lobby")).ok).toBe(true);
   expect(arena.phase).toBe("lobby");
@@ -579,8 +812,11 @@ it("files a finished match and reports the server's own summary for each player"
   server.broadcast(arena);
   const matchId = arena.snapshot().matchId!;
   expect(matchId).toMatch(/^[0-9a-f-]{36}$/);
-  const calls: { token: string; name: string; args: Record<string, unknown> }[] =
-    [];
+  const calls: {
+    token: string;
+    name: string;
+    args: Record<string, unknown>;
+  }[] = [];
   accounts.provider.rpc = async (token, name, args) => {
     calls.push({ token, name, args });
     return { confirmed: false, records: [], achievements: [] };
@@ -598,7 +834,9 @@ it("files a finished match and reports the server's own summary for each player"
   expect((await post(two.token, { matchId })).status).toBe(200);
   // Someone who wasn't in it, an unknown match, or a forged summary: refused.
   expect((await post(stranger.token, { matchId })).status).toBe(404);
-  expect((await post(one.token, { matchId: "unknown-match" })).status).toBe(404);
+  expect((await post(one.token, { matchId: "unknown-match" })).status).toBe(
+    404,
+  );
   expect(
     (await post(one.token, { matchId, summary: { winnerTeam: 1 } })).status,
   ).toBe(400);
@@ -609,7 +847,8 @@ it("files a finished match and reports the server's own summary for each player"
   ]);
   // Both players submit the very same summary, naming both accounts.
   expect(calls[0].args).toEqual(calls[1].args);
-  const summary = calls[0].args.p_summary as import("../../packages/shared/src/accounts").MatchSummary;
+  const summary = calls[0].args
+    .p_summary as import("../../packages/shared/src/accounts").MatchSummary;
   expect(summary.players.map((p) => p.account)).toEqual([
     one.account.id,
     two.account.id,
@@ -626,12 +865,16 @@ it("runs a free-for-all: starts with three ready, plays on until one is left", a
   expect(host.ok).toBe(true);
   const arena = server.rooms.get(host.code!)!;
   expect(arena.mode).toBe("ffa");
-  expect((await emit(sockets[1], "join", { name: "B", code: host.code })).ok).toBe(true);
+  expect(
+    (await emit(sockets[1], "join", { name: "B", code: host.code })).ok,
+  ).toBe(true);
   // Two players can't start a free-for-all.
   await emit(sockets[0], "ready");
   await emit(sockets[1], "ready");
   expect(arena.phase).toBe("lobby");
-  expect((await emit(sockets[2], "join", { name: "C", code: host.code })).ok).toBe(true);
+  expect(
+    (await emit(sockets[2], "join", { name: "C", code: host.code })).ok,
+  ).toBe(true);
   await emit(sockets[2], "ready");
   expect(arena.phase).toBe("briefing");
   expect(arena.players.map((p) => p.team)).toEqual([0, 1, 2]);
@@ -702,7 +945,12 @@ it("adds live presence to the friends list and pings friends on requests", async
   });
   expect(res.status).toBe(200);
   const body = (await res.json()) as {
-    friends: { name: string; online: boolean; room: string | null; joinable: boolean }[];
+    friends: {
+      name: string;
+      online: boolean;
+      room: string | null;
+      joinable: boolean;
+    }[];
   };
   expect(body.friends[0]).toMatchObject({
     name: "Pal",
@@ -711,7 +959,9 @@ it("adds live presence to the friends list and pings friends on requests", async
     joinable: true,
   });
   expect(body.friends[1]).toMatchObject({ name: "Away", online: false });
-  const pinged = new Promise((resolve) => theirs.once("friends-changed", resolve));
+  const pinged = new Promise((resolve) =>
+    theirs.once("friends-changed", resolve),
+  );
   const sent = await fetch(`${url}/api/friends/request`, {
     method: "POST",
     headers: {
@@ -723,6 +973,51 @@ it("adds live presence to the friends list and pings friends on requests", async
   expect(sent.status).toBe(200);
   await expect(pinged).resolves.toBeUndefined();
   void mine;
+});
+it("a refused login stays offline until the socket connects again with a fresh token", async () => {
+  const me = accounts.add(false),
+    pal = accounts.add(false);
+  accounts.provider.rpc = async (_token, name) => {
+    if (name === "arena_friends")
+      return {
+        code: "ABCDEF12",
+        friends: [
+          { id: pal.account.id, name: "Pal", title: null, titleColor: null },
+        ],
+        incoming: [],
+        outgoing: [],
+      };
+    throw new Error("unexpected " + name);
+  };
+  const palOnline = async () => {
+    const res = await fetch(`${url}/api/friends`, {
+      headers: { authorization: `Bearer ${me.token}` },
+    });
+    return ((await res.json()) as { friends: { online: boolean }[] }).friends[0]
+      .online;
+  };
+  // Pal's phone wakes up with an expired token, with Socket.IO's automatic
+  // reconnection on (as in the game): the server refuses it, and the
+  // socket gives up for good (the client must connect again itself).
+  const stale = io(url, {
+    auth: { accessToken: "expired" },
+    transports: ["websocket"],
+    reconnectionDelay: 50,
+  });
+  clients.push(stale);
+  const refused = await new Promise<Error & { data?: { status?: number } }>(
+    (resolve) => stale.once("connect_error", resolve),
+  );
+  expect(refused.data?.status).toBe(401);
+  expect(stale.active).toBe(false);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  expect(stale.connected).toBe(false);
+  expect(await palOnline()).toBe(false);
+  // With the renewed token (what the client now does), Pal is online.
+  stale.auth = { accessToken: pal.token };
+  stale.connect();
+  await new Promise<void>((resolve) => stale.once("connect", () => resolve()));
+  expect(await palOnline()).toBe(true);
 });
 it("lets a player wear only the mastery flair their records unlock", async () => {
   const player = accounts.add(false);
@@ -752,7 +1047,6 @@ it("lets a player wear only the mastery flair their records unlock", async () =>
   expect((await emit(socket, "flair", { tier: null })).ok).toBe(true);
 });
 
-
 it("equips every collection item through the shared appearance route and reads all slots back", async () => {
   const player = accounts.add(false);
   const loadout: Record<string, string | null> = {};
@@ -767,7 +1061,10 @@ it("equips every collection item through the shared appearance route and reads a
   for (const item of LOOK_ITEMS) {
     const response = await fetch(`${url}/api/raids/equip`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${player.token}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${player.token}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ slot: item.slot, item: item.id }),
     });
     expect(response.status, item.id).toBe(200);
@@ -775,26 +1072,139 @@ it("equips every collection item through the shared appearance route and reads a
   }
 });
 
+it("equips every Journey reward through the shared appearance route, in its own slot only", async () => {
+  // The Journey dialog and the Wardrobe both save here. Ownership is the
+  // database's check (arena_equip_raid_slot); the route only knows the slot.
+  const player = accounts.add(false);
+  const loadout: Record<string, string | null> = {};
+  accounts.provider.rpc = async (_token, name, args) => {
+    if (name === "arena_equip_raid_slot") {
+      loadout[args.p_slot as string] = args.p_item as string | null;
+      return null;
+    }
+    if (name === "arena_raid_progress") return { loadout: { ...loadout } };
+    throw Error(`Unexpected RPC ${name}`);
+  };
+  const post = (slot: string, item: string) =>
+    fetch(`${url}/api/raids/equip`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${player.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ slot, item }),
+    });
+  expect(JOURNEY_ITEMS.map((i) => i.id)).toEqual(
+    expect.arrayContaining([
+      "prism-frame",
+      "solar-aura",
+      "element-master-frame",
+    ]),
+  );
+  for (const item of JOURNEY_ITEMS) {
+    const response = await post(item.slot, item.id);
+    expect(response.status, item.id).toBe(200);
+    expect((await response.json()).progress.loadout[item.slot]).toBe(item.id);
+  }
+  const wrong = await post("aura", "prism-frame");
+  expect(wrong.status).toBe(400);
+  expect((await wrong.json()).error).toBe("That item belongs in another slot.");
+});
+
 it("explains stale collection functions and never reports an unsaved appearance as success", async () => {
   const player = accounts.add(false);
-  const post = (slot: string, item: string) => fetch(`${url}/api/raids/equip`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${player.token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ slot, item }),
-  });
-  accounts.provider.rpc = async () => { throw new AccountError(400, "That item belongs in another slot"); };
+  const post = (slot: string, item: string) =>
+    fetch(`${url}/api/raids/equip`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${player.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ slot, item }),
+    });
+  accounts.provider.rpc = async () => {
+    throw new AccountError(400, "That item belongs in another slot");
+  };
   const stale = await post("victory", "galaxy-victory");
   expect(stale.status).toBe(503);
   expect((await stale.json()).error).toContain("018_collection_equipping.sql");
   const wrong = await post("aura", "galaxy-victory");
   expect(wrong.status).toBe(400);
   expect((await wrong.json()).error).toBe("That item belongs in another slot.");
-  accounts.provider.rpc = async (_token, name) => name === "arena_raid_progress" ? { loadout: {} } : null;
+  accounts.provider.rpc = async (_token, name) =>
+    name === "arena_raid_progress" ? { loadout: {} } : null;
   const lost = await post("victory", "galaxy-victory");
   expect(lost.status).toBe(503);
   expect((await lost.json()).error).toContain("018_collection_equipping.sql");
-  accounts.provider.rpc = async () => { throw new AccountError(400, "Cosmetic not earned"); };
+  accounts.provider.rpc = async () => {
+    throw new AccountError(400, "Cosmetic not earned");
+  };
   const unowned = await post("victory", "galaxy-victory");
   expect(unowned.status).toBe(400);
   expect((await unowned.json()).error).toBe("Cosmetic not earned");
+});
+
+it("accepts all six daily mission slots and rejects invalid reroll requests before the RPC", async () => {
+  const player = accounts.add(false);
+  const slots: unknown[] = [];
+  accounts.provider.rpc = async (_token, name, args) => {
+    expect(name).toBe("arena_reroll_mission");
+    slots.push(args.p_slot);
+    return { missions: [], rerollsUsed: 1, rerollLimit: 5 };
+  };
+  const post = (body: unknown, token = player.token) =>
+    fetch(`${url}/api/missions/reroll`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+  for (let slot = 0; slot < 6; slot++)
+    expect((await post({ slot })).status).toBe(200);
+  expect(slots).toEqual([0, 1, 2, 3, 4, 5]);
+  for (const body of [
+    { slot: -1 },
+    { slot: 6 },
+    { slot: 1.5 },
+    { slot: "5" },
+    { slot: null },
+    {},
+    { slot: 0, rerollsUsed: 0 },
+  ])
+    expect((await post(body)).status).toBe(400);
+  expect((await post({ slot: 5 }, "invalid")).status).toBe(401);
+  expect(slots).toHaveLength(6);
+});
+
+it("has no Farm, Bistro or Gold Leaves routes any more", async () => {
+  const player = accounts.add(false);
+  const calls: string[] = [];
+  accounts.provider.rpc = async (_token, name) => {
+    calls.push(name);
+    return {};
+  };
+  const send = (path: string, body?: unknown) =>
+    fetch(`${url}${path}`, {
+      method: body === undefined ? "GET" : "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${player.token}`,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  // Removed in 20261119190000_remove_farm_bistro_leaves: they reach nothing.
+  for (const [path, body] of [
+    ["/api/farm", undefined],
+    ["/api/farm/act", { request: crypto.randomUUID(), actions: [] }],
+    ["/api/farm/friends", undefined],
+    ["/api/farm/invite", { code: "0123ABCD" }],
+    ["/api/bistro", undefined],
+    ["/api/bistro/act", { request: crypto.randomUUID(), actions: [] }],
+    ["/api/bistro/friends", undefined],
+    ["/api/leaves/trade", { lots: 2 }],
+  ] as const)
+    expect((await send(path, body)).status, path).toBe(404);
+  expect(calls).toEqual([]);
 });

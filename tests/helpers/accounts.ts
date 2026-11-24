@@ -1,5 +1,10 @@
 import type { Account } from "../../packages/shared/src/accounts";
 import type { AccountProvider } from "../../apps/server/src/accounts";
+import {
+  spireRewardsOf,
+  type SpireFloorReceipt,
+  type SpireMember,
+} from "../../packages/shared/src/spire";
 export function fakeAccounts() {
   let serial = 0;
   const users = new Map<string, Account>();
@@ -30,4 +35,40 @@ export function fakeAccounts() {
       return { token, account };
     },
   };
+}
+/**
+ * The Spire's storage in memory: each saved floor, first clears paid once
+ * per player (as arena_record_spire_floor does), and each climber's
+ * checkpoint and raid clears for the start check (a Cragmuff clear unless
+ * `members` says otherwise).
+ */
+export function fakeSpire(
+  provider: AccountProvider,
+  members: Record<string, SpireMember> = {},
+) {
+  const floors: SpireFloorReceipt[] = [];
+  const claimed = new Set<string>();
+  provider.recordSpireFloor = async (receipt) => {
+    floors.push(structuredClone(receipt));
+    const rewards = spireRewardsOf(receipt.floor, receipt.season);
+    const newClaims = receipt.players
+      .filter((p) => !claimed.has(`${p.accountId}:${receipt.floor}`))
+      .map((p) => {
+        claimed.add(`${p.accountId}:${receipt.floor}`);
+        return {
+          accountId: p.accountId,
+          floor: receipt.floor,
+          coins: rewards
+            .filter((r) => r.kind === "coins")
+            .reduce((n, r) => n + r.amount, 0),
+          titles: rewards.filter((r) => r.kind === "title").map((r) => r.item),
+        };
+      });
+    return { newClaims };
+  };
+  provider.spireStart = async (ids) =>
+    ids.map(
+      (id) => members[id] ?? { checkpoint: 1, clears: { grumblecrag: 1 } },
+    );
+  return { floors, members };
 }

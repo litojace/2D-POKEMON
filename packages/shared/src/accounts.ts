@@ -1,4 +1,9 @@
 import { z } from "zod";
+
+/** A player's avatar as other players are sent it (avatars.ts: a library
+ * id or "photo:<id>"). */
+export const avatarField = z.string().max(60).nullable().optional();
+import { nameAllowed, NAME_NOT_ALLOWED } from "./name-filter.js";
 export const titleSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(40),
@@ -32,6 +37,9 @@ export interface ManagedPlayer {
   title: string | null;
   createdAt: string;
   titleIds: string[];
+  /** When they were last connected (ISO), or null if never seen
+   *  (migration 20261122120000; missing from an older server). */
+  lastOnline?: string | null;
 }
 export interface PlayerDirectory {
   players: ManagedPlayer[];
@@ -43,6 +51,14 @@ export const suspendSchema = z
 /** Deleting is permanent, so the request must say so explicitly. */
 export const deletePlayerSchema = z
   .object({ id: z.string().uuid(), confirm: z.literal(true) })
+  .strict();
+/** A player deleting their own account (migration 109): it must say so. */
+export const deleteMyAccountSchema = z
+  .object({ confirm: z.literal(true) })
+  .strict();
+/** The iPhone app's one-time Sign in with Apple code (migration 111). */
+export const appleCodeSchema = z
+  .object({ code: z.string().min(1).max(2000) })
   .strict();
 export const deleteTitleSchema = z
   .object({ id: z.string().uuid(), confirm: z.literal(true) })
@@ -59,7 +75,7 @@ export const reportSchema = z
     category: z.enum(["bug", "player", "account", "other"]),
     message: z.string().trim().min(5).max(1000),
     context: z
-      .record(z.string().max(300))
+      .record(z.string(), z.string().max(300))
       .refine((value) => Object.keys(value).length <= 12, "Too many details"),
   })
   .strict();
@@ -83,7 +99,7 @@ export interface ReportList {
   open: number;
 }
 /** What a signed-in, connected player is doing right now (admin "Online" tab). */
-export type OnlineActivity = "menu" | "lobby" | "match" | "practice";
+export type OnlineActivity = "menu" | "lobby" | "match" | "practice" | "town";
 export interface OnlinePlayer {
   id: string;
   displayName: string;
@@ -122,9 +138,94 @@ export const titleGrantSchema = z
     grant: z.boolean(),
   })
   .strict();
+/** An admin adds or takes a player's coins (migration 20261122100000).
+ *  `ref` is a fresh id per click: a retried request never pays twice. */
+export const adminCoinsSchema = z
+  .object({
+    playerId: z.string().uuid(),
+    amount: z
+      .number()
+      .int()
+      .min(-100000)
+      .max(100000)
+      .refine((n) => n !== 0, "Choose an amount other than 0"),
+    reason: z.string().trim().min(3).max(120),
+    ref: z.string().uuid(),
+  })
+  .strict();
+/** What the Admin panel shows when a player's row opens. */
+export interface AdminPlayerStatus {
+  balance: number;
+  /** ISO time their chat is stopped until, or null. */
+  chatUntil: string | null;
+  chatReason: string | null;
+  /** Their latest coin movements, newest first. */
+  coins: { amount: number; reason: string; at: string }[];
+}
+/** An announcement an admin sends to every player (migration 20261122120000). */
+export const ANNOUNCEMENT_TONES = ["info", "event", "warning"] as const;
+export const announceSchema = z
+  .object({
+    message: z.string().trim().min(3).max(300),
+    tone: z.enum(ANNOUNCEMENT_TONES),
+    hours: z.number().int().min(1).max(168),
+    /** Also as a phone/browser notification (migration 20261122140000). */
+    push: z.boolean().optional(),
+  })
+  .strict();
+export const announcementSchema = z.object({
+  id: z.number().int().positive(),
+  message: z.string().min(1).max(300),
+  tone: z.enum(ANNOUNCEMENT_TONES),
+  createdAt: z.string(),
+  endsAt: z.string(),
+  /** Who sent it (the admin list only). */
+  by: z.string().nullable().optional(),
+});
+export type Announcement = z.infer<typeof announcementSchema>;
 export const equipTitleSchema = z
   .object({ titleId: z.string().uuid().nullable() })
   .strict();
+/** Players change their own name once every 14 days (migration 066). */
+export const NAME_CHANGE_DAYS = 14;
+export const nameChangeSchema = z.object({ name: z.string().max(60) }).strict();
+/** When you last changed your name and when you can next (server time). */
+export const nameStatusSchema = z.object({
+  changedAt: z.string().nullable(),
+  nextAt: z.string().nullable(),
+  now: z.string(),
+  days: z.number(),
+});
+export type NameStatus = z.infer<typeof nameStatusSchema>;
+/**
+ * The same clean-up and checks the database makes, so the form can say
+ * what's wrong before sending. The database still decides.
+ */
+export function checkName(raw: string, current: string) {
+  if (
+    /[\u0000-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u2028-\u202e\u2060-\u2064\ufeff]/.test(
+      raw,
+    )
+  )
+    return {
+      name: "",
+      problem: "That name has characters that can't be shown.",
+    };
+  const name = raw.trim().replace(/ +/g, " ");
+  if (name.length < 1 || [...name].length > 20)
+    return { name, problem: "A name is 1 to 20 characters." };
+  if (/^[\p{P}\p{S}\s]+$/u.test(name))
+    return { name, problem: "Use at least one letter or number." };
+  if (name === current) return { name, problem: "That is already your name." };
+  if (!nameAllowed(name)) return { name, problem: NAME_NOT_ALLOWED };
+  return { name, problem: "" };
+}
+
+/**
+ * Every API answer carries the server's clock in this header (milliseconds
+ * since 1970), so the hub's countdowns never trust the device clock.
+ */
+export const SERVER_TIME_HEADER = "X-Server-Time";
 
 /** Your skill rating and rank (migration 006). */
 export const ratingSchema = z.object({
@@ -190,7 +291,10 @@ export const progressSchema = z.object({
       earnedAt: z.string().nullable(),
     }),
   ),
-  fighters: z.record(z.object({ matches: z.number(), wins: z.number() })),
+  fighters: z.record(
+    z.string(),
+    z.object({ matches: z.number(), wins: z.number() }),
+  ),
   season: z.object({ id: z.string(), matches: z.number(), wins: z.number() }),
   rating: ratingSchema.optional(),
 });
@@ -208,6 +312,9 @@ export const leaderboardSchema = z.object({
       me: z.boolean(),
       rating: z.number().optional(),
       rankName: z.string().optional(),
+      /** The player and their avatar (migration 20261119120000). */
+      id: z.string().optional(),
+      avatar: avatarField,
     }),
   ),
   unranked: z
@@ -223,6 +330,124 @@ export const leaderboardSchema = z.object({
   rating: ratingSchema.optional(),
 });
 export type Leaderboard = z.infer<typeof leaderboardSchema>;
+/**
+ * Your friends' ratings (UI remodel step 6): you and every friend, ranked
+ * among yourselves. Read-only; the server builds it from the ratings table.
+ * `place` is null while a player is still in placement.
+ */
+export const friendsBoardSchema = z.object({
+  season: z.string(),
+  rows: z.array(
+    z.object({
+      id: z.string(),
+      place: z.number().nullable(),
+      name: z.string(),
+      title: z.string().nullable().optional(),
+      titleColor: z.string().nullable().optional(),
+      rating: z.number(),
+      rankName: z.string(),
+      placementLeft: z.number(),
+      wins: z.number(),
+      matches: z.number(),
+      me: z.boolean(),
+      avatar: avatarField,
+    }),
+  ),
+  rating: ratingSchema.optional(),
+});
+export type FriendsBoard = z.infer<typeof friendsBoardSchema>;
+/**
+ * Players you met in your recent matches (UI remodel step 6), newest first.
+ * Read-only, from the confirmed match records. `relation` says whether you
+ * are friends or a request is waiting either way.
+ */
+export const recentPlayerSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  /** The fighter they played in your latest match together. */
+  fighter: z.string().nullable(),
+  lastPlayed: z.string(),
+  /** Matches together in the window, and how many on the same team. */
+  matches: z.number(),
+  together: z.number(),
+  /** Your record against them (as opponents). */
+  wins: z.number(),
+  losses: z.number(),
+  relation: z.enum(["friend", "sent", "received", "none"]),
+  online: z.boolean().optional(),
+  avatar: avatarField,
+});
+export const recentPlayersSchema = z.object({
+  players: z.array(recentPlayerSchema),
+});
+export type RecentPlayer = z.infer<typeof recentPlayerSchema>;
+export type RecentPlayers = z.infer<typeof recentPlayersSchema>;
+
+/**
+ * Match history (docs/match-history.md): one page of a player's matches,
+ * newest first, seen from that player's side. Built by the server
+ * (apps/server/src/match-history.ts) from migration 20261120140000.
+ */
+export const MATCH_HISTORY_PAGE = 10;
+export const MATCH_HISTORY_KINDS = ["all", "pvp", "bot"] as const;
+export type MatchHistoryKind = (typeof MATCH_HISTORY_KINDS)[number];
+const outcome = z.enum(["win", "loss", "draw"]);
+export const matchHistoryPlayerSchema = z.object({
+  /** Account id; null for a bot or a deleted account. */
+  id: z.string().nullable(),
+  name: z.string(),
+  avatar: z.string().nullable(),
+  character: z.string(),
+  team: z.number(),
+  dealt: z.number(),
+  kos: z.number(),
+  combos: z.number(),
+  bot: z.boolean(),
+  /** The player whose history this is. */
+  owner: z.boolean(),
+  /** Most damage in the match (ties: most knock-outs). */
+  mvp: z.boolean(),
+});
+export const matchHistoryEntrySchema = z.object({
+  id: z.string(),
+  playedAt: z.string(),
+  mode: z.enum(["duel", "teams", "ffa"]),
+  arena: z.string(),
+  /** The AI's difficulty, or null against players. */
+  bot: z.enum(["easy", "normal", "hard"]).nullable(),
+  result: outcome,
+  character: z.string(),
+  team: z.number(),
+  /** Each round from this player's side. */
+  rounds: z.array(outcome),
+  dealt: z.number(),
+  kos: z.number(),
+  combos: z.number(),
+  /** The rating this match moved (player-vs-player only). */
+  rating: z.object({ before: z.number(), after: z.number() }).nullable(),
+  players: z.array(matchHistoryPlayerSchema),
+});
+export const matchHistorySchema = z.object({
+  matches: z.array(matchHistoryEntrySchema),
+  /** Where the next page starts (null: no more). */
+  next: z.object({ at: z.string(), id: z.string() }).nullable(),
+  /** First page only: all matches, wins and per-fighter counts. */
+  totals: z
+    .object({
+      matches: z.number(),
+      wins: z.number(),
+      fighters: z.record(
+        z.string(),
+        z.object({ matches: z.number(), wins: z.number() }),
+      ),
+    })
+    .nullable(),
+  /** First page only: the player's rating and rank. */
+  rating: ratingSchema.nullable(),
+});
+export type MatchHistoryPlayer = z.infer<typeof matchHistoryPlayerSchema>;
+export type MatchHistoryEntry = z.infer<typeof matchHistoryEntrySchema>;
+export type MatchHistory = z.infer<typeof matchHistorySchema>;
 /** Fighter mastery: matches played with a fighter unlock badge tiers. */
 export const MASTERY_TIERS = [
   { name: "Bronze", matches: 5, color: "#d69a6a" },
@@ -242,16 +467,41 @@ export function nextMastery(matches: number) {
 }
 
 /** A friend, with what the game server knows about them right now. */
+/** A public equipped raid look (colours, aura, entrance, frame, victory). */
+export const publicLookSchema = z.object({
+  skin: z.string().max(80).nullable().optional(),
+  aura: z.string().max(80).nullable().optional(),
+  entrance: z.string().max(80).nullable().optional(),
+  frame: z.string().max(80).nullable().optional(),
+  victory: z.string().max(80).nullable().optional(),
+});
+/** The Shop skin worn on one champion, and its Awakening stage. */
+export const championLookSchema = z.object({
+  skin: z.string().max(80),
+  stage: z.number().int().min(1).max(3),
+});
 export const friendSchema = z.object({
   id: z.string(),
   name: z.string(),
   title: z.string().nullable().optional(),
   titleColor: z.string().nullable().optional(),
   online: z.boolean().optional(),
-  activity: z.enum(["menu", "lobby", "match", "practice"]).nullable().optional(),
+  lastOnline: z.string().datetime({ offset: true }).nullable().optional(),
+  activity: z
+    .enum(["menu", "lobby", "match", "practice", "town"])
+    .nullable()
+    .optional(),
   room: z.string().nullable().optional(),
   joinable: z.boolean().optional(),
   fighter: z.string().nullable().optional(),
+  /** Public equipped appearance, never owned inventory. */
+  look: publicLookSchema.optional(),
+  championLooks: z.record(z.string(), championLookSchema).optional(),
+  raidClears: z.record(z.string(), z.number().int().nonnegative()).optional(),
+  /** Verified equipped portrait frame, when appearance is available. */
+  frame: z.string().max(80).nullable().optional(),
+  /** Their avatar (avatars.ts: a library id or "photo:<id>"); null: the default. */
+  avatar: avatarField,
 });
 export const friendsSchema = z.object({
   code: z.string(),
@@ -261,6 +511,98 @@ export const friendsSchema = z.object({
 });
 export type Friend = z.infer<typeof friendSchema>;
 export type FriendList = z.infer<typeof friendsSchema>;
+
+/** Short-lived, authenticated invitations to an existing private lobby. */
+export const roomInviteRequestSchema = z
+  .object({ playerId: z.string().uuid() })
+  .strict();
+export const roomInviteSchema = z
+  .object({
+    id: z.string().uuid(),
+    fromId: z.string().uuid(),
+    name: z.string().min(1).max(20),
+    code: z.string().regex(/^[A-Z0-9]{6}$/),
+    /** "party": an invitation to a party on the Lobby; `code` is the party's. */
+    mode: z.enum(["duel", "teams", "ffa", "raid", "party"]),
+    expiresAt: z.number().finite(),
+    /** A member invited you: the name of the party's leader. */
+    leader: z.string().min(1).max(20).optional(),
+  })
+  .strict();
+export type RoomInvite = z.infer<typeof roomInviteSchema>;
+/** Party before a room (hub redesign phase 2b). */
+export const partyInviteRequestSchema = z
+  .object({ playerId: z.string().uuid(), character: z.string().min(1).max(20) })
+  .strict();
+export const partyAcceptSchema = z
+  .object({
+    code: z.string().regex(/^[A-Z0-9]{6}$/),
+    character: z.string().min(1).max(20),
+  })
+  .strict();
+export const partyStateSchema = z
+  .object({
+    code: z.string().regex(/^[A-Z0-9]{6}$/),
+    leader: z.string().uuid(),
+    members: z
+      .array(
+        z.object({
+          id: z.string().uuid(),
+          name: z.string().min(1).max(20),
+          character: z.string().min(1).max(20),
+          /** The skin worn on that champion (saved on their account). */
+          skin: championLookSchema.nullable().optional(),
+          /** Their equipped raid look: colours, aura, entrance, frame. */
+          look: publicLookSchema.optional(),
+          /** Their connection dropped: the party keeps their place a while. */
+          away: z.boolean().optional(),
+          /** Their avatar (avatars.ts). */
+          avatar: avatarField,
+        }),
+      )
+      .min(1)
+      .max(4),
+    /** The room the leader has open: the party plays there. */
+    room: z
+      .object({
+        code: z.string().regex(/^[A-Z0-9]{6}$/),
+        mode: z.enum(["duel", "teams", "ffa", "raid"]),
+      })
+      .nullable()
+      .optional(),
+    /** Friends invited to this party who haven't answered yet. */
+    invites: z
+      .array(
+        z.object({ id: z.string().uuid(), expiresAt: z.number().finite() }),
+      )
+      .max(16)
+      .optional(),
+  })
+  .nullable();
+/** The party leader removed you from the party. */
+export const partyKickedSchema = z
+  .object({ by: z.string().min(1).max(20) })
+  .strict();
+/** A friend turned down your party or room invitation. */
+export const inviteDeclinedSchema = z
+  .object({ playerId: z.string().uuid(), name: z.string().min(1).max(20) })
+  .strict();
+export type PartyState = z.infer<typeof partyStateSchema>;
+export const partyRoomSchema = z
+  .object({
+    code: z.string().regex(/^[A-Z0-9]{6}$/),
+    mode: z.enum(["duel", "teams", "ffa", "raid"]),
+  })
+  .strict();
+/** Block or unblock a player (migration 110). */
+export const blockSchema = z
+  .object({ playerId: z.string().uuid(), block: z.boolean() })
+  .strict();
+/** The players you blocked, newest first. */
+export const blockedListSchema = z.array(
+  z.object({ id: z.string(), name: z.string() }),
+);
+export type BlockedPlayer = z.infer<typeof blockedListSchema>[number];
 export const friendRequestSchema = z
   .object({
     code: z

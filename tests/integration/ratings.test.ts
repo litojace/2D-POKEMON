@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFile } from "node:fs/promises";
 import { beforeAll, afterAll, it, expect } from "vitest";
 import { RANKS } from "../../packages/shared/src/accounts";
+import { buildFriendsBoard, buildRecentPlayers } from "../../apps/server/src/social";
 
 let db: PGlite;
 const ids = Array.from(
@@ -263,4 +264,61 @@ it("keeps rating tables and helpers private", async () => {
   await expect(db.query("select public.arena_season_reset()")).rejects.toThrow();
   const mine = await db.query<{ v: Rating }>("select public.arena_my_rating() as v");
   expect(mine.rows[0].v.matches).toBeGreaterThan(0);
+});
+
+it("gives the server's friends board and recent players the database's ranks and matches", async () => {
+  // The step 6 store reads these exact columns with the service role
+  // (apps/server/src/social.ts); the same reads in SQL feed its builders.
+  await db.exec("reset role");
+  const ratings = (
+    await db.query<{ player_id: string; rating: number; matches: number }>(
+      "select player_id, rating, matches from public.arena_ratings where player_id = any($1::uuid[])",
+      [ids],
+    )
+  ).rows;
+  const top = (
+    await db.query<{ player_id: string }>(
+      `select r.player_id from public.arena_ratings r join public.arena_profiles p on p.id=r.player_id
+       where r.matches >= 5 and not p.guest and not p.suspended order by r.rating desc, r.updated_at asc limit 1`,
+    )
+  ).rows[0]?.player_id ?? null;
+  const board = buildFriendsBoard({
+    me: { id: ana, name: "Ana" },
+    friends: ids.slice(1).map((id, i) => ({ id, name: names[i + 1] })),
+    ratings,
+    top,
+    month: [],
+    season: "2026-11",
+  });
+  for (const row of board.rows) {
+    const db_rank = (await rating(row.id)).rank;
+    expect([row.name, row.rankName]).toEqual([row.name, db_rank]);
+  }
+  const mine = (
+    await db.query<{ match_id: string; team: number; won: boolean; played_at: string }>(
+      `select mp.match_id, mp.team, mp.won, m.played_at::text as played_at from public.arena_match_players mp
+       join public.arena_matches m on m.id = mp.match_id where mp.player_id = $1`,
+      [ana],
+    )
+  ).rows;
+  const others = (
+    await db.query<{ match_id: string; player_id: string; team: number; character: string }>(
+      "select match_id, player_id, team, character from public.arena_match_players where match_id = any($1) and player_id <> $2",
+      [mine.map((m) => m.match_id), ana],
+    )
+  ).rows;
+  const profiles = (
+    await db.query<{ id: string; display_name: string; suspended: boolean }>(
+      "select id, display_name, suspended from public.arena_profiles where id = any($1::uuid[])",
+      [others.map((o) => o.player_id)],
+    )
+  ).rows;
+  const recent = buildRecentPlayers({
+    mine,
+    others,
+    profiles,
+    friends: { friends: [], incoming: [], outgoing: [] },
+  });
+  expect(recent.map((p) => p.name)).toEqual(["Ben"]);
+  expect(recent[0].matches).toBe(mine.length);
 });

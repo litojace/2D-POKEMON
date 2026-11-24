@@ -26,6 +26,8 @@ export interface ControlPrefs {
   cast: CastMode;
   /** Mouse only: basic attacks lean toward an opponent near the cursor. */
   aimAssist: boolean;
+  /** Phones: raids show the whole court instead of following your champion. */
+  raidCourt: boolean;
 }
 
 export const ACTIONS: { id: Action; label: string; group: string }[] = [
@@ -61,6 +63,7 @@ export const DEFAULT_PREFS: ControlPrefs = {
   bindings: DEFAULT_BINDINGS,
   cast: "preview",
   aimAssist: false,
+  raidCourt: false,
 };
 
 /** Keys the browser or the game needs for itself. */
@@ -177,7 +180,10 @@ export function parsePrefs(raw: unknown): ControlPrefs {
   >;
   let bindings = DEFAULT_BINDINGS;
   const saved = data.bindings as Partial<Record<Action, unknown>> | undefined;
-  if (saved && typeof saved === "object") {
+  // A short-lived mouse-movement option saved its own keys (1-5, no left
+  // button attack); it is gone, so those players get the default keys back.
+  const mouseScheme = (data as Record<string, unknown>).move === "mouse";
+  if (saved && typeof saved === "object" && !mouseScheme) {
     bindings = Object.fromEntries(
       ACTIONS.map(({ id }) => [id, [null, null] as Binding]),
     ) as Bindings;
@@ -196,6 +202,7 @@ export function parsePrefs(raw: unknown): ControlPrefs {
     bindings,
     cast: data.cast === "instant" ? "instant" : "preview",
     aimAssist: data.aimAssist === true,
+    raidCourt: data.raidCourt === true,
   };
 }
 

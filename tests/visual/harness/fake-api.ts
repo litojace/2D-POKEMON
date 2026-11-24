@@ -1,0 +1,413 @@
+// Canned answers for the account REST API (see apps/server/src/accounts.ts).
+const U = "11111111-1111-4111-8111-111111111111";
+const today = new Date().toISOString().slice(0, 10);
+const title = (n: number, name: string, color: string) => ({
+  id: `22222222-2222-4222-8222-22222222222${n}`,
+  name,
+  description: "",
+  color,
+  active: true,
+});
+const API: Record<string, unknown> = {
+  "/api/account": {
+    id: U,
+    displayName: "tester",
+    isAdmin: false,
+    suspended: false,
+    title: "Cragbreaker",
+    titleColor: "#d9b98a",
+    ownedTitles: [title(1, "Cragbreaker", "#d9b98a")],
+    guest: false,
+  },
+  "/api/economy": {
+    journey: {
+      xp: 2600,
+      recent: [],
+      season: {
+        id: "2026-10",
+        xp: 0,
+        week: "2026-W43",
+        goals: {},
+        completed: [],
+      },
+      unlocked: [],
+    },
+    balance: 2340,
+    owned: ["voltkit-midnight", "voltkit-stormcrown"],
+    picks: {
+      day: today,
+      items: [
+        "cindrake-blue-flame",
+        "lumoth-starweaver",
+        "mystowl-scholar",
+        "galaxy-aura",
+      ],
+      deal: "cindrake-blue-flame",
+    },
+    trialWins: { voltkit: 30 },
+    awakening: { "voltkit-stormcrown": { wins: 31, peril3: false, stage: 2 } },
+    // A skin is worn on purpose: the fighter select must still show one fighter.
+    looks: { voltkit: { skin: "voltkit-stormcrown", stage: 2 } },
+    missions: [],
+    rerolled: false,
+    streak: 1,
+    today: { raidClears: 0, pvpMatches: 0 },
+  },
+  "/api/progress": {
+    matches: 31,
+    wins: 20,
+    fighters: { voltkit: { matches: 31, wins: 20 } },
+    achievements: [],
+    season: { id: "2026-10", matches: 0, wins: 0 },
+    rating: {
+      rating: 1000,
+      matches: 0,
+      peak: 1000,
+      rank: "Pupil",
+      placementLeft: 5,
+      next: { name: "Specialist", at: 1050 },
+    },
+  },
+  "/api/friends": { code: "a1b2c3d4", friends: [], incoming: [], outgoing: [] },
+  // Ranks (step 6): the top 20 (as the server sends), Mae placing, you at #23.
+  "/api/leaderboard": {
+    season: today.slice(0, 7),
+    rows: [
+      "Aria",
+      "Bram",
+      "Cleo",
+      "Dax",
+      "Esme",
+      "Finn",
+      "Gus",
+      "Hana",
+      "Ivo",
+      "Jude",
+      "Koa",
+      "Lior",
+      "Nico",
+      "Odile",
+      "Pax",
+      "Quill",
+      "Rhea",
+      "Sol",
+      "Tam",
+      "Uma",
+    ].map((name, i) => ({
+      rank: i + 1,
+      name,
+      title: null,
+      titleColor: null,
+      rating: 1620 - i * 18,
+      rankName:
+        i < 1
+          ? "Legendary Grandmaster"
+          : i < 4
+            ? "International Grandmaster"
+            : i < 8
+              ? "Grandmaster"
+              : i < 12
+                ? "International Master"
+                : "Master",
+      wins: 60 - i * 2,
+      matches: 80 - i * 2,
+      me: false,
+    })),
+    unranked: [{ name: "Mae", left: 2 }],
+    me: { rank: 23, wins: 36, matches: 62 },
+    rating: {
+      rating: 1110,
+      matches: 62,
+      peak: 1140,
+      rank: "Expert",
+      placementLeft: 0,
+      next: { name: "Candidate Master", at: 1150 },
+    },
+  },
+  "/api/leaderboard/friends": {
+    season: today.slice(0, 7),
+    rows: [
+      {
+        id: "f-kai",
+        place: 1,
+        name: "Kai",
+        rating: 1388,
+        rankName: "Grandmaster",
+        placementLeft: 0,
+        wins: 14,
+        matches: 22,
+        me: false,
+      },
+      {
+        id: U,
+        place: 2,
+        name: "tester",
+        rating: 1110,
+        rankName: "Expert",
+        placementLeft: 0,
+        wins: 36,
+        matches: 62,
+        me: true,
+      },
+      {
+        id: "f-mina",
+        place: 3,
+        name: "Mina",
+        rating: 1046,
+        rankName: "Specialist",
+        placementLeft: 0,
+        wins: 8,
+        matches: 15,
+        me: false,
+      },
+      {
+        id: "f-rae",
+        place: null,
+        name: "Rae",
+        rating: 1020,
+        rankName: "Unranked",
+        placementLeft: 3,
+        wins: 2,
+        matches: 2,
+        me: false,
+      },
+    ],
+    rating: {
+      rating: 1110,
+      matches: 62,
+      peak: 1140,
+      rank: "Expert",
+      placementLeft: 0,
+      next: { name: "Candidate Master", at: 1150 },
+    },
+  },
+  // Your name: never changed, so it can change now (migration 066).
+  "/api/account/name": {
+    changedAt: null,
+    nextAt: null,
+    now: new Date().toISOString(),
+    days: 14,
+  },
+  "/api/friends/recent": {
+    players: [
+      {
+        id: "33333333-3333-4333-8333-333333333331",
+        name: "Kai",
+        fighter: "cindrake",
+        lastPlayed: new Date(Date.now() - 2 * 3600e3).toISOString(),
+        matches: 3,
+        together: 0,
+        wins: 2,
+        losses: 1,
+        relation: "friend",
+        online: true,
+      },
+      {
+        id: "33333333-3333-4333-8333-333333333332",
+        name: "Wren",
+        fighter: "tidefin",
+        lastPlayed: new Date(Date.now() - 5 * 3600e3).toISOString(),
+        matches: 1,
+        together: 1,
+        wins: 0,
+        losses: 0,
+        relation: "none",
+        online: false,
+      },
+      {
+        id: "33333333-3333-4333-8333-333333333333",
+        name: "Oskar",
+        fighter: "mystowl",
+        lastPlayed: new Date(Date.now() - 30 * 3600e3).toISOString(),
+        matches: 2,
+        together: 0,
+        wins: 0,
+        losses: 2,
+        relation: "sent",
+        online: false,
+      },
+    ],
+  },
+};
+const realFetch = window.fetch.bind(window);
+window.fetch = async (input, init) => {
+  const url = new URL(
+    typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.href
+        : input.url,
+    location.href,
+  );
+  if (url.pathname.startsWith("/api/")) {
+    if (url.pathname === "/api/health") return Response.json({ ok: true });
+    // The fighter kept with the account (migration 108): window.__savedFighter
+    // is what the account has; each save is pushed to window.__fighterSaves.
+    if (url.pathname === "/api/account/fighter") {
+      const f = window as unknown as {
+        __savedFighter?: string | null;
+        __fighterSaves?: string[];
+      };
+      if (init?.method === "POST") {
+        const { fighter } = JSON.parse(String(init.body));
+        f.__savedFighter = fighter;
+        (f.__fighterSaves ??= []).push(fighter);
+        return Response.json({ ok: true });
+      }
+      return Response.json({ fighter: f.__savedFighter ?? null });
+    }
+    // How the Lobby tour ended, kept with the account (migration
+    // 20261121090000): window.__tour is what the account has; each ending
+    // the client sends is pushed to window.__tourEnds.
+    if (url.pathname === "/api/account/tour") {
+      const f = window as unknown as {
+        __tour?: string | null;
+        __tourEnds?: unknown[];
+      };
+      if (init?.method === "POST") {
+        const end = JSON.parse(String(init.body));
+        f.__tour = end.result;
+        (f.__tourEnds ??= []).push(end);
+        return Response.json({ ok: true });
+      }
+      return Response.json({ tour: f.__tour ?? null });
+    }
+    // The library avatar (migration 20261119100000): window.__avatar is
+    // what the account wears; each choice is pushed to window.__avatarSaves.
+    if (url.pathname === "/api/account/avatar") {
+      const f = window as unknown as {
+        __avatar?: string | null;
+        __avatarSaves?: string[];
+      };
+      if (init?.method === "POST") {
+        const { avatar } = JSON.parse(String(init.body));
+        f.__avatar = avatar;
+        (f.__avatarSaves ??= []).push(avatar);
+        return Response.json({ ok: true, avatar });
+      }
+      return Response.json({ avatar: f.__avatar ?? null });
+    }
+    // Match history (docs/match-history.md): window.__history maps a player
+    // id ("me" for you) to their matches, newest first; the fake pages and
+    // filters them as the server does. window.__historyProblem refuses
+    // (a stranger), window.__historyDelay holds each answer (ms), and every
+    // ask is pushed to window.__historyCalls.
+    if (url.pathname === "/api/matches/history") {
+      const h = window as unknown as {
+        __history?: Record<
+          string,
+          {
+            bot: string | null;
+            playedAt: string;
+            id: string;
+            result: string;
+            character: string;
+          }[]
+        >;
+        __historyTotals?: Record<string, unknown>;
+        __historyRating?: unknown;
+        __historyProblem?: string;
+        __historyDelay?: number;
+        __historyCalls?: string[];
+      };
+      (h.__historyCalls ??= []).push(url.search);
+      if (h.__historyDelay)
+        await new Promise((r) => setTimeout(r, h.__historyDelay));
+      if (h.__historyProblem)
+        return Response.json({ error: h.__historyProblem }, { status: 403 });
+      const player = url.searchParams.get("player") ?? "me";
+      const kind = url.searchParams.get("kind") ?? "all";
+      const at = url.searchParams.get("at");
+      const id = url.searchParams.get("id");
+      const all = (h.__history?.[player] ?? []).filter(
+        (m) => kind === "all" || (kind === "bot") === (m.bot !== null),
+      );
+      const from = at ? all.findIndex((m) => m.id === id) + 1 : 0;
+      const page = all.slice(from, from + 10);
+      const more = from + 10 < all.length;
+      const last = page.at(-1);
+      const mine = h.__history?.[player] ?? [];
+      return Response.json({
+        matches: page,
+        next: more && last ? { at: last.playedAt, id: last.id } : null,
+        totals: at
+          ? null
+          : (h.__historyTotals?.[player] ?? {
+              matches: mine.length,
+              wins: mine.filter((m) => m.result === "win").length,
+              fighters: {},
+            }),
+        rating: at ? null : (h.__historyRating ?? null),
+      });
+    }
+    // Tests can set window.__missions (before load, or then refresh the
+    // economy) to give the player today's missions, and window.__friends to
+    // give them friends and requests, and window.__raids for their raid
+    // progress (its loadout is the equipped raid look); window.__board,
+    // __friendsBoard and __recent replace Ranks' boards and Recent players;
+    // __spire the Spire climb (GET /api/spire);
+    // __accountPatch changes the account (title, titles, guest),
+    // __economyPatch the economy (a new player's journey, say) and
+    // __progress the records (the profile, step 7); __nameStatus when the
+    // name can next change.
+    const w = window as unknown as {
+      __missions?: unknown[];
+      __plazaProgress?: unknown;
+      __friends?: unknown;
+      __raids?: unknown;
+      __spire?: unknown;
+      __board?: unknown;
+      __friendsBoard?: unknown;
+      __recent?: unknown;
+      __accountPatch?: object;
+      __economyPatch?: object;
+      __progress?: unknown;
+      __nameStatus?: unknown;
+      __serverTime?: number;
+    };
+    const missions = w.__missions;
+    const body =
+      url.pathname === "/api/economy" && (missions || w.__economyPatch)
+        ? {
+            ...(API[url.pathname] as object),
+            ...(missions ? { missions } : {}),
+            ...w.__economyPatch,
+          }
+        : url.pathname === "/api/plaza"
+          ? w.__plazaProgress
+          : url.pathname === "/api/friends" && w.__friends
+            ? w.__friends
+            : url.pathname === "/api/raids" && w.__raids
+              ? w.__raids
+              : url.pathname === "/api/spire" && w.__spire
+                ? w.__spire
+                : url.pathname === "/api/account/name" && w.__nameStatus
+                  ? w.__nameStatus
+                  : url.pathname === "/api/account" && w.__accountPatch
+                    ? { ...(API[url.pathname] as object), ...w.__accountPatch }
+                    : url.pathname === "/api/progress" && w.__progress
+                      ? w.__progress
+                      : url.pathname === "/api/leaderboard" && w.__board
+                        ? w.__board
+                        : url.pathname === "/api/leaderboard/friends" &&
+                            w.__friendsBoard
+                          ? w.__friendsBoard
+                          : url.pathname === "/api/friends/recent" && w.__recent
+                            ? w.__recent
+                            : API[url.pathname];
+    // window.__serverTime: the server's clock, sent as the real server does
+    // (X-Server-Time); otherwise no header, so the device clock is used.
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (w.__serverTime) headers["X-Server-Time"] = String(w.__serverTime);
+    return new Response(
+      JSON.stringify(body ?? { error: "Not in the offline harness." }),
+      {
+        status: body === undefined ? 404 : 200,
+        headers,
+      },
+    );
+  }
+  return realFetch(input, init);
+};

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { CHARACTERS, blankInput, type CharacterId } from "@arena/shared";
+import {
+  CHARACTERS,
+  blankInput,
+  maxHealth,
+  type CharacterId,
+} from "@arena/shared";
 import { Arena } from "../../apps/server/src/simulation";
 /** A 2v2 arena in play: P0+P2 Blue, P1+P3 Red (join order alternates teams). */
 function teams(
@@ -63,13 +68,13 @@ describe("2v2 teams", () => {
     m.b1.angle = 0;
     const before = m.r1.hp;
     m.a.cast(m.b1, CHARACTERS.mystowl.skills[0]); // beam passes the ally
-    expect(m.b2.hp).toBe(CHARACTERS.terradon.health);
+    expect(m.b2.hp).toBe(maxHealth("terradon", "teams"));
     expect(m.r1.hp).toBeLessThan(before);
     m.b1.lastInput = { ...blankInput(), aimX: 400, aimY: 450 };
     m.a.cast(m.b1, CHARACTERS.mystowl.skills[3]); // zone on the ally
     m.a.cast(m.b1, CHARACTERS.mystowl.basic); // projectile through the ally
     for (let i = 0; i < 60; i++) m.a.tick();
-    expect(m.b2.hp).toBe(CHARACTERS.terradon.health);
+    expect(m.b2.hp).toBe(maxHealth("terradon", "teams"));
   });
   it("area attacks hit both enemies", () => {
     const { a, b1, r1, r2 } = teams([
@@ -81,9 +86,10 @@ describe("2v2 teams", () => {
     place(b1, 800, 200);
     place(r1, 860, 200);
     place(r2, 800, 260);
-    a.cast(b1, CHARACTERS.lumoth.skills[3]); // Radiant Flare nova
-    expect(r1.hp).toBeLessThan(CHARACTERS.terradon.health);
-    expect(r2.hp).toBeLessThan(CHARACTERS.terradon.health);
+    a.cast(b1, CHARACTERS.lumoth.skills[1]); // Eyespot Flash: everyone near
+    for (let i = 0; i < 40; i++) a.tick();
+    expect(r1.hp).toBeLessThan(maxHealth("terradon", "teams"));
+    expect(r2.hp).toBeLessThan(maxHealth("terradon", "teams"));
   });
   it("a round ends only when a whole team is down; knocked-out fighters sit still", () => {
     const { a, b1, r1, r2 } = teams();
@@ -125,7 +131,7 @@ describe("2v2 teams", () => {
   });
   it("credits burn to whoever applied it", () => {
     const { a, b2, r1 } = teams(["voltkit", "voltkit", "cindrake", "voltkit"]);
-    a.damage(r1, 1, b2.id, CHARACTERS.cindrake.skills[1]); // Magma Bomb burns
+    a.damage(r1, 1, b2.id, CHARACTERS.cindrake.skills[1]); // Magma Leap burns
     const burn = r1.statuses.find((s) => s.kind === "burn")!;
     expect(burn.by).toBe(b2.id);
     const dealt = b2.stats.dealt;
@@ -144,7 +150,7 @@ describe("2v2 teams", () => {
     // Next round the leaver stays out.
     a.resetRound();
     expect(r1.hp).toBe(0);
-    expect(r2.hp).toBe(CHARACTERS.voltkit.health);
+    expect(r2.hp).toBe(maxHealth("voltkit", "teams"));
   });
   it("leaves duels unchanged: two players, Blue vs Red, best of five", () => {
     const a = new Arena("D");

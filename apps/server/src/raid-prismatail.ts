@@ -1,4 +1,10 @@
-import { RaidArena } from "./raid.js";
+import { RaidArena, raidJitter } from "./raid.js";
+import {
+  leadPoint,
+  REACTION,
+  SLOWEST_RAIDER,
+  type Point,
+} from "./raid-boss-aim.js";
 import {
   useObstacles,
   RULES,
@@ -7,6 +13,8 @@ import {
   type Input,
   type Ability,
   type StatusKind,
+  STRIKE_KINDS,
+  RING_KINDS,
 } from "../../../packages/shared/src/index.js";
 import {
   PRISMATAIL as P,
@@ -15,9 +23,11 @@ import {
   prismatailPattern,
   mirrorReaches,
   prismRayEnd,
+  prismRelayHold,
   type RelayNode,
   type RaidAttack,
   type RaidWarning,
+  riteValue,
 } from "../../../packages/shared/src/raid.js";
 export const prismDistanceToSegment = (
   p: { x: number; y: number },
@@ -35,15 +45,53 @@ export const prismDistanceToSegment = (
     );
   return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
 };
+/**
+ * How far a raider must walk to leave fan slice `index` of `count` (0 when
+ * already outside it): sideways past the slice's edge, or out past its
+ * reach, whichever is shorter. Uses the same test as the hit.
+ */
+export function fanEscape(
+  p: Point,
+  centre: Point,
+  index: number,
+  count: number,
+  radius: number = P.fan.radius,
+) {
+  const dist = Math.hypot(p.x - centre.x, p.y - centre.y),
+    half = Math.PI / count,
+    off = angleDifference(
+      Math.atan2(p.y - centre.y, p.x - centre.x),
+      (index * Math.PI * 2) / count,
+    );
+  const inside =
+    dist <= radius + RULES.radius &&
+    off <= half + Math.asin(Math.min(1, RULES.radius / Math.max(1, dist)));
+  if (!inside) return 0;
+  const out = radius + RULES.radius - dist + 2,
+    side =
+      off >= half
+        ? RULES.radius + 2
+        : dist * Math.sin(half - off) + RULES.radius + 2;
+  return Math.min(out, side);
+}
 export class PrismatailArena extends RaidArena {
-  private relayAt = 0;
+  protected relayAt = 0;
   private burnAt = new Map<string, number>();
-  private held = 0;
-  private arrivals: (number | undefined)[] = [];
+  protected held = 0;
+  protected arrivals: (number | undefined)[] = [];
   private rotateAt = new Map<number, number>();
   private flareUntil = new Map<string, number>();
   private wardUntil = new Map<string, number>();
   private lastLanceHit = new Map<string, number>();
+  /** Shadopus's Ink Jet: Glare blinds nobody until then. */
+  private inkUntil = 0;
+  /** Raiders carrying the light right now (lances look for them). */
+  protected carriers = new Set<string>();
+  /** Mirrors on the path that last broke the shield (they scramble first). */
+  private lastPath = new Set<number>();
+  /** A break happened: scramble its mirrors as the exposure runs out. */
+  private scrambleArmed = false;
+  private scrambles = 0;
   protected override def() {
     return P;
   }
@@ -88,20 +136,81 @@ export class PrismatailArena extends RaidArena {
     this.flareUntil.clear();
     this.wardUntil.clear();
     this.lastLanceHit.clear();
+    this.inkUntil = 0;
+    this.carriers.clear();
+    this.scrambleArmed = false;
+    for (const m of this.raid.mirrors ?? []) {
+      delete m.scrambleAt;
+      delete m.scrambleTurns;
+    }
   }
   protected override onChapter() {
     this.clearAttacks();
+    // A new chapter never inherits a solved board: the last path scrambles.
+    this.scramble(this.time + P.scramble.warn);
+    this.relayAt = this.time + P.relayRestart;
+  }
+  /**
+   * Mirrors flash, then turn back 2–3 steps at `at`: the ones that carried
+   * the last light first (1 in the first chapter, 2 later).
+   */
+  private scramble(at: number) {
+    const r = this.raid,
+      mirrors = r.mirrors ?? [],
+      n = this.scrambles++;
+    const least = Math.min(
+        mirrors.length,
+        P.scramble.mirrors[r.phase - 1] ?? P.scramble.mirrors.at(-1)!,
+      ),
+      most = Math.min(mirrors.length, Math.max(...P.scramble.mirrors));
+    const order = mirrors
+      .map((_, i) => i)
+      .sort(
+        (a, b) =>
+          Number(this.lastPath.has(b)) - Number(this.lastPath.has(a)) ||
+          raidJitter(r.seed, n, a) - raidJitter(r.seed, n, b),
+      );
+    const turns = mirrors.map(
+        (_, i) =>
+          P.scramble.turns[
+            Math.floor(raidJitter(r.seed, n + 101, i) * P.scramble.turns.length)
+          ],
+      ),
+      angles = mirrors.map((m) => m.angle),
+      chosen: number[] = [];
+    const pick = (i: number) => {
+      chosen.push(i);
+      angles[i] = mirrors[i].angle - (turns[i] * Math.PI) / 4;
+    };
+    for (const i of order.slice(0, least)) pick(i);
+    // From where the raiders stand, a second mirror goes if one leaves a
+    // route open (a board with two routes is not solved by turning one).
+    while (chosen.length < most) {
+      const route = this.openRoute(angles)
+        .filter((node) => node.id.startsWith("mirror-"))
+        .map((node) => Number(node.id.slice(7)))
+        .filter((i) => !chosen.includes(i));
+      if (!route.length) break;
+      pick(route[0]);
+    }
+    for (const i of chosen) {
+      mirrors[i].scrambleAt = at;
+      mirrors[i].scrambleTurns = turns[i];
+    }
   }
   override feat() {
     return this.raid.result === "victory" && (this.raid.quickBreaks ?? 0) >= 3;
   }
-  protected override finishMessage(won: boolean) {
+  protected override finishMessage(won: boolean): string {
     return won
       ? "The shield shatters. The atrium shines for you!"
       : "The light fades. Reconnect the mirrors and try again.";
   }
   override status(p: Fighter, kind: StatusKind, duration: number, by?: string) {
-    if (p.raidBoss && ["stun", "freeze", "paralysis", "sleep"].includes(kind))
+    if (
+      p.raidBoss &&
+      ["stun", "freeze", "paralysis", "sleep", "root"].includes(kind)
+    )
       return;
     super.status(p, kind, duration, by);
   }
@@ -112,6 +221,15 @@ export class PrismatailArena extends RaidArena {
     ability?: Ability,
   ) {
     if (target.raidBoss && this.raid.exposedUntil <= this.time) amount *= 0.12;
+    // Shadopus's Ink Jet blots out its eyes: no Glare for a moment.
+    if (
+      target.raidBoss &&
+      ability?.id === "ink-jet" &&
+      this.heroes().some((p) => p.id === owner)
+    ) {
+      this.inkUntil = this.time + 3;
+      this.raid.message = "Ink on its shell! Prismell can't Glare for now.";
+    }
     super.damage(target, amount, owner, ability);
     // Only the light puzzle opens this boss; chip damage cannot bypass it via stagger.
     if (target.raidBoss) this.raid.stagger = 0;
@@ -128,7 +246,8 @@ export class PrismatailArena extends RaidArena {
   override cast(p: Fighter, a: Ability, ex = false) {
     super.cast(p, a, ex);
     if (p.raidBoss || p.hp <= 0) return;
-    if (a.id === "sunfire-pillar") {
+    // Cindrake's Sunfire Pillar and Glacelle's Frost Bloom ice relay light.
+    if (a.id === "sunfire-pillar" || a.id === "frost-bloom") {
       const aim = p.lastInput,
         d = normalize(aim.aimX - p.x, aim.aimY - p.y),
         len = Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y));
@@ -140,30 +259,134 @@ export class PrismatailArena extends RaidArena {
       });
     }
     if (a.id === "radiant-flare") this.flareUntil.set(p.id, this.time + 4);
-    if (a.id === "ward") this.wardUntil.set(p.id, this.time + a.duration);
+    if (a.id === "skyline-lance") this.cutLanes(p, a);
+    if (a.id === "wing-cloak") this.wardUntil.set(p.id, this.time + a.duration);
     if (
       a.id !== "radiant-flare" &&
-      ["melee", "cone", "beam", "nova"].includes(a.kind)
+      [...STRIKE_KINDS, ...RING_KINDS, "cone", "beam"].includes(a.kind)
     )
       this.raid.mirrors?.forEach((m, i) => {
         const dist = Math.hypot(m.x - p.x, m.y - p.y);
-        const hit =
-          a.kind === "nova"
-            ? dist <= a.radius + 30
-            : dist <= a.range + 30 &&
-              (a.kind === "beam"
-                ? prismDistanceToSegment(m, p, {
-                    x: p.x + Math.cos(p.angle) * a.range,
-                    y: p.y + Math.sin(p.angle) * a.range,
-                  }) <
-                  (a.radius || 20) + 30
-                : Math.cos(Math.atan2(m.y - p.y, m.x - p.x) - p.angle) >
-                  (a.arc ?? 0.35));
+        const hit = RING_KINDS.includes(a.kind)
+          ? dist <= a.radius + 30
+          : dist <= a.range + 30 &&
+            (a.kind === "beam"
+              ? prismDistanceToSegment(m, p, {
+                  x: p.x + Math.cos(p.angle) * a.range,
+                  y: p.y + Math.sin(p.angle) * a.range,
+                }) <
+                (a.radius || 20) + 30
+              : Math.cos(Math.atan2(m.y - p.y, m.x - p.x) - p.angle) >
+                (a.arc ?? 0.35));
         if (hit) this.turn(i);
       });
   }
+  /** Halcyra's Skyline Lance cuts every Prism Lance lane it crosses. */
+  private cutLanes(p: Fighter, a: Ability) {
+    const beam = [...this.events]
+      .reverse()
+      .find(
+        (e) => e.kind === "beam" && e.owner === p.id && e.abilityId === a.id,
+      );
+    if (!beam) return;
+    const end = { x: beam.tx ?? p.x, y: beam.ty ?? p.y },
+      steps = Math.ceil(Math.hypot(end.x - p.x, end.y - p.y) / 8);
+    const crosses = (w: RaidWarning) => {
+      for (let i = 0; i <= steps; i++) {
+        const at = {
+          x: p.x + ((end.x - p.x) * i) / Math.max(1, steps),
+          y: p.y + ((end.y - p.y) * i) / Math.max(1, steps),
+        };
+        if (
+          prismDistanceToSegment(at, w, { x: w.tx, y: w.ty }) <
+          a.radius + w.radius
+        )
+          return true;
+      }
+      return false;
+    };
+    const before = this.raid.warnings.length;
+    this.raid.warnings = this.raid.warnings.filter(
+      (w) =>
+        !(w.kind === "prism-lance" || w.kind === "refraction") || !crosses(w),
+    );
+    if (this.raid.warnings.length < before)
+      this.raid.message = `${p.name}'s Skyline Lance cuts through the prism lances!`;
+  }
   protected override canStartAttack() {
     return this.raid.exposedUntil <= this.time;
+  }
+  /** Lances go after whoever carries the light: hold the relay, or dodge. */
+  protected override chooseTarget(kind: RaidAttack, alive: Fighter[]) {
+    if (kind === "prism-lance" || kind === "refraction") {
+      const carriers = alive.filter((p) => this.carriers.has(p.id));
+      if (carriers.length) return super.chooseTarget(kind, carriers);
+    }
+    return super.chooseTarget(kind, alive);
+  }
+  /** Where a lance aims: a carrier where they stand, anyone else ahead. */
+  protected lanceAim(target: Fighter, delay: number): Point {
+    return !this.carriers.has(target.id)
+      ? leadPoint(target, delay)
+      : { x: target.x, y: target.y };
+  }
+  /**
+   * The fan's hot slice: the one over the most raiders that everyone in it
+   * can still leave in time (an empty slice always qualifies).
+   */
+  protected fanSlice(boss: Fighter, count: number) {
+    const r = this.raid,
+      seeded = (r.seed + this.attacks) % count;
+    const alive = this.heroes().filter((p) => p.hp > 0),
+      reach = SLOWEST_RAIDER * (P.fan.delay - REACTION);
+    let best = seeded,
+      bestScore = -Infinity;
+    for (let k = 0; k < count; k++) {
+      const i = (seeded + k) % count,
+        need = alive.map((p) => fanEscape(p, boss, i, count));
+      if (need.some((d) => d > reach)) continue;
+      const score = need.filter((d) => d > 0).length;
+      if (score > bestScore) {
+        bestScore = score;
+        best = i;
+      }
+    }
+    return best;
+  }
+  /**
+   * Halo Crush's gap: away from the raiders around the ring and against
+   * the way the target runs, and always opening onto the floor.
+   */
+  protected haloGap(centre: Point, target: Fighter) {
+    const toward = Math.atan2(450 - centre.y, 800 - centre.x);
+    const others = this.heroes().filter(
+        (p) =>
+          p.hp > 0 &&
+          Math.abs(Math.hypot(p.x - centre.x, p.y - centre.y) - P.halo.radius) <
+            140,
+      ),
+      speed = Math.hypot(target.vx, target.vy),
+      heading = Math.atan2(target.vy, target.vx);
+    let best = toward,
+      bestCost = Infinity;
+    for (let k = 0; k < 16; k++) {
+      const a = toward + (k * Math.PI) / 8,
+        gx = centre.x + Math.cos(a) * (P.halo.radius + 40),
+        gy = centre.y + Math.sin(a) * (P.halo.radius + 40);
+      if (gx < 60 || gx > 1540 || gy < 60 || gy > 840) continue;
+      let cost = k ? 0.01 : 0;
+      for (const p of others)
+        cost += Math.max(
+          0,
+          Math.cos(Math.atan2(p.y - centre.y, p.x - centre.x) - a),
+        );
+      if (speed > 60) cost += 0.75 * (1 + Math.cos(heading - a));
+      if (cost < bestCost) {
+        bestCost = cost;
+        best = a;
+      }
+    }
+    return best;
   }
   protected override startAttack(kind: RaidAttack, target: Fighter) {
     const boss = this.boss()!,
@@ -177,7 +400,11 @@ export class PrismatailArena extends RaidArena {
     const teach = seen < 2;
     boss.angle = Math.atan2(target.y - boss.y, target.x - boss.x);
     if (kind === "prism-lance" || kind === "refraction") {
-      let end = { x: target.x, y: target.y };
+      const aim = this.lanceAim(
+        target,
+        kind === "refraction" ? 1.45 : P.lance.delay,
+      );
+      let end = aim;
       if (kind === "refraction")
         end =
           [...(r.mirrors ?? [])].sort(
@@ -196,7 +423,7 @@ export class PrismatailArena extends RaidArena {
         P.lance.delay,
       ).teach = teach;
       if (kind === "refraction") {
-        const reflected = prismRayEnd(end, target);
+        const reflected = prismRayEnd(end, aim);
         this.warn(
           kind,
           end.x,
@@ -209,7 +436,7 @@ export class PrismatailArena extends RaidArena {
       }
     } else if (kind === "fan-display") {
       const count = r.trait === "kaleidoscope" ? 8 : 6,
-        index = (r.seed + this.attacks) % count;
+        index = this.fanSlice(boss, count);
       Object.assign(
         this.warn(
           kind,
@@ -243,26 +470,30 @@ export class PrismatailArena extends RaidArena {
           P.halo.radius,
           P.halo.delay,
         ),
-        { gapAngle: Math.atan2(450 - target.y, 800 - target.x), teach },
+        { gapAngle: this.haloGap(target, target), teach },
       );
   }
   protected override resolveWarning(w: RaidWarning, boss: Fighter) {
     this.hitBy = w.kind;
     const end = { x: w.tx, y: w.ty };
-    const voidOrb =
+    // Duskveil's wraith swallows a lance segment it floats over.
+    const wraith =
       w.kind === "prism-lance" || w.kind === "refraction"
-        ? this.projectiles.find(
-            (pr) =>
-              pr.ability.id === "void-orb" &&
-              prismDistanceToSegment(pr, w, end) <
-                (pr.ability.radius || 20) + w.radius,
+        ? this.zones.find(
+            (z) =>
+              z.ability.id === "wraith-hunt" &&
+              z.until > this.time &&
+              prismDistanceToSegment(z, w, end) < z.radius + w.radius,
           )
         : undefined;
-    if (voidOrb) {
-      this.projectiles = this.projectiles.filter((p) => p !== voidOrb);
-      this.raid.message = "Void Orb swallowed a prism lance!";
+    if (wraith) {
+      this.raid.message = "The wraith swallowed a prism lance!";
       this.hitBy = undefined;
-      this.countDodges();
+      return;
+    }
+    if (w.kind === "glare" && this.inkUntil > this.time) {
+      this.raid.message = "Prismell's Glare fizzles behind the ink!";
+      this.hitBy = undefined;
       return;
     }
     for (const p of this.heroes()) {
@@ -280,8 +511,6 @@ export class PrismatailArena extends RaidArena {
             Math.PI / 2
         ) {
           (this.raid.blinded ??= {})[p.id] = this.time + P.glare.blind;
-          this.struck.add(p.id);
-          if (this.raid.drillStats) this.raid.drillStats.hits++;
         }
         continue;
       }
@@ -320,44 +549,91 @@ export class PrismatailArena extends RaidArena {
       }
     }
     this.hitBy = undefined;
-    this.countDodges();
     if (w.kind !== "glare") {
       this.event("raid-impact", w, 0xffd778, undefined, boss.id);
       this.events[this.events.length - 1].raidRadius = Math.min(180, w.radius);
     }
   }
+  /** How long a connected chain must hold to break the shield. */
+  protected relayHold() {
+    return prismRelayHold(this.raid.phase, this.raid.partySize);
+  }
+  /** How long a broken shield stays open. */
+  protected exposeSeconds() {
+    return P.expose + (this.raid.trait === "kaleidoscope" ? 1 : 0);
+  }
+  /** Where it drifts back to between attacks (x), by chapter. */
+  protected restX() {
+    return [1000, 1040, 1080][this.raid.phase - 1];
+  }
+  protected relayRange() {
+    return P.range + (this.raid.trait === "dazzling" ? 60 : 0);
+  }
+  protected relaySources(): { x: number; y: number }[] {
+    return this.raid.phase === 3 && this.raid.partySize > 1
+      ? [
+          { x: 350, y: 300 },
+          { x: 350, y: 600 },
+        ]
+      : [P.source];
+  }
+  /** Raiders, mirrors (optionally with other arrows) and pillars the light can use. */
+  protected relayNodes(angles?: number[]): RelayNode[] {
+    const r = this.raid,
+      range = this.relayRange();
+    return [
+      ...this.heroes()
+        .filter((p) => p.hp > 0)
+        .map((p) => ({
+          id: p.id,
+          x: p.x,
+          y: p.y,
+          player: true,
+          range:
+            range +
+            (this.hasRite(p, "polished")
+              ? riteValue("polished", this.raid.phase)
+              : 0),
+          broadcast: (this.flareUntil.get(p.id) ?? 0) > this.time,
+        })),
+      ...(r.mirrors ?? []).map((m, i) => ({
+        ...m,
+        angle: angles?.[i] ?? m.angle,
+        id: `mirror-${i}`,
+      })),
+      ...(r.sunPillars ?? []).map((m, i) => ({ ...m, id: `pillar-${i}` })),
+    ];
+  }
+  /** A route the light could take right now with these mirror arrows. */
+  private openRoute(angles: number[]) {
+    const boss = this.boss();
+    if (!boss) return [];
+    const nodes = this.relayNodes(angles);
+    for (const source of this.relaySources()) {
+      const path = traceLight(
+        source,
+        nodes,
+        boss,
+        this.relayRange(),
+        this.raid.trait === "overcast" ? 3 : 2,
+      );
+      if (path.length) return path;
+    }
+    return [];
+  }
   private relay(dt: number, boss: Fighter) {
     const r = this.raid;
-    if (
-      this.time < this.relayAt ||
-      r.exposedUntil > this.time ||
-      (r.drill && r.drill !== "light-relay")
-    ) {
+    if (this.time < this.relayAt || r.exposedUntil > this.time) {
       this.burnAt.clear();
+      this.carriers.clear();
       return;
     }
     r.lightStartedAt ??= this.time;
-    const range = P.range + (r.trait === "dazzling" ? 60 : 0),
+    const range = this.relayRange(),
       living = this.heroes().filter((p) => p.hp > 0);
-    const nodes: RelayNode[] = [
-      ...living.map((p) => ({
-        id: p.id,
-        x: p.x,
-        y: p.y,
-        player: true,
-        range: range + (this.hasRite(p, "polished") ? 60 : 0),
-        broadcast: (this.flareUntil.get(p.id) ?? 0) > this.time,
-      })),
-      ...(r.mirrors ?? []).map((m, i) => ({ ...m, id: `mirror-${i}` })),
-      ...(r.sunPillars ?? []).map((m, i) => ({ ...m, id: `pillar-${i}` })),
-    ];
+    const nodes = this.relayNodes();
     const split = r.phase === 3 && r.partySize > 1,
-      sources = split
-        ? [
-            { x: 350, y: 300 },
-            { x: 350, y: 600 },
-          ]
-        : [P.source];
+      sources = this.relaySources();
     const paths: RelayNode[][] = [],
       usedPlayers = new Set<string>();
     r.lightLinks = [];
@@ -416,7 +692,8 @@ export class PrismatailArena extends RaidArena {
     this.held = connected ? this.held + dt : 0;
     r.lightHold = this.held;
     r.lightArrivals = this.arrivals.map((t) => t ?? -1);
-    const carriers = new Set<string>();
+    const carriers = this.carriers;
+    carriers.clear();
     paths.flat().forEach((n) => {
       if (n.player) carriers.add(n.id);
     });
@@ -431,31 +708,35 @@ export class PrismatailArena extends RaidArena {
           this.burnAt.set(p.id, this.time);
         } else if (!this.burnAt.has(p.id)) this.burnAt.set(p.id, this.time);
       } else this.burnAt.delete(p.id);
-    const hold = r.phase === 3 && r.partySize === 1 ? 2 : 0.65;
-    if (this.held >= hold) {
+    if (this.held >= this.relayHold()) {
       r.shieldBreaks = (r.shieldBreaks ?? 0) + 1;
       if (this.time - r.lightStartedAt <= 8)
         r.quickBreaks = (r.quickBreaks ?? 0) + 1;
-      if (!r.drill)
-        for (const p of living)
-          if (
-            paths.some((path) => path.some((n) => n.id === p.id)) &&
-            r.contributions?.[p.id]
-          )
-            r.contributions[p.id].pillars++;
+      for (const p of living)
+        if (
+          paths.some((path) => path.some((n) => n.id === p.id)) &&
+          r.contributions?.[p.id]
+        )
+          r.contributions[p.id].pillars++;
 
       this.burnAt.clear();
-      r.exposedUntil =
-        this.time + P.expose + (r.trait === "kaleidoscope" ? 1 : 0);
+      this.carriers.clear();
+      this.lastPath = new Set(
+        paths
+          .flat()
+          .filter((n) => n.id.startsWith("mirror-"))
+          .map((n) => Number(n.id.slice(7))),
+      );
+      this.scrambleArmed = true;
+      r.exposedUntil = this.time + this.exposeSeconds();
       r.staggerUntil = 0;
       r.warnings = [];
       this.nextAttack = r.exposedUntil + 0.8;
-      this.relayAt = r.exposedUntil + 1.5;
+      this.relayAt = r.exposedUntil + P.relayRestart;
       r.message = "LIGHT RELAY COMPLETE! Strike the shining heart!";
       r.lightStartedAt = undefined;
       this.arrivals = [];
       this.held = 0;
-      if (r.drillStats) r.drillStats.dodges++;
     }
   }
   protected override worldStep(dt: number, boss: Fighter) {
@@ -463,6 +744,22 @@ export class PrismatailArena extends RaidArena {
     r.sunPillars = (r.sunPillars ?? []).filter((p) => p.until > this.time);
     for (const id of Object.keys(r.blinded ?? {}))
       if (r.blinded![id] <= this.time) delete r.blinded![id];
+    // The exposure runs out: the mirrors that carried the light flash, then turn.
+    if (this.scrambleArmed && this.time >= r.exposedUntil - P.scramble.warn) {
+      this.scrambleArmed = false;
+      this.scramble(Math.max(r.exposedUntil, this.time + P.scramble.warn));
+    }
+    r.mirrors?.forEach((m) => {
+      if (m.scrambleAt === undefined || this.time < m.scrambleAt) return;
+      const turns = m.scrambleTurns ?? 2;
+      m.angle =
+        (((m.angle - (turns * Math.PI) / 4) % (Math.PI * 2)) + Math.PI * 2) %
+        (Math.PI * 2);
+      delete m.scrambleAt;
+      delete m.scrambleTurns;
+      this.event("raid-impact", m, 0xff9ab0, undefined, this.raid.bossId);
+      this.events[this.events.length - 1].raidRadius = 45;
+    });
     const spent = new Set<number>();
     r.mirrors?.forEach((m, i) => {
       const shot = this.projectiles.find(
@@ -490,7 +787,7 @@ export class PrismatailArena extends RaidArena {
       this.raid.warnings.length
     )
       return;
-    const tx = [1000, 1040, 1080][this.raid.phase - 1],
+    const tx = this.restX(),
       ty = 450 + Math.sin(this.phaseElapsed * 0.2) * 12;
     const d = normalize(tx - boss.x, ty - boss.y),
       step = Math.min(35 * dt, Math.hypot(tx - boss.x, ty - boss.y));

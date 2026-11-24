@@ -1,0 +1,29 @@
+/* Landscape phones: the header menu, sized like a mobile game's panel
+   (desktop sizes stay as they are). Loaded after style.css. The profile
+   moved into the Lobby in step 7 (screens/profile.css). */
+@media (orientation: landscape) and (max-height: 520px) {
+  /* ---- Header menu (gear) ---- */
+  .header-menu-panel {
+    width: min(
+      380px,
+      calc(100vw - var(--safe-left) - var(--safe-right) - 24px)
+    ) !important;
+    gap: 2px !important;
+    padding: 6px !important;
+    border-radius: 12px !important;
+  }
+  .header-menu-panel .quiet {
+    min-height: 38px !important;
+    padding: 6px 10px !important;
+    gap: 9px !important;
+    font-size: calc(13px * var(--text-scale, 1)) !important;
+  }
+  .header-menu-panel .menu-option-icon {
+    width: 17px;
+    height: 17px;
+  }
+  .header-menu-panel .connection {
+    margin: 4px 8px 2px !important;
+    padding: 6px 0 2px !important;
+  }
+}

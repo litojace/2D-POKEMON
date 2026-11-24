@@ -1,0 +1,1033 @@
+/* ==========================================================================
+   Raids: the boss list and a boss's page (UI remodel step 5, docs/ui-remodel/
+   PLAN.md). Markup: screens/raid-hall-view.ts. Layout only on top of the
+   shared components (ui/components.css). Class names start with rh- so
+   nothing here meets the old Raid Hub rules.
+   ========================================================================== */
+
+/* ------------------------------------------------------------- hall */
+.rh-head > .ui-chips {
+  margin-left: auto;
+  flex-wrap: nowrap;
+}
+/* Always there (empty when nothing to say), so fresh records patch the
+   cards in place instead of rebuilding them. */
+.rh-notes:empty {
+  display: none;
+}
+.rh-note.is-problem {
+  color: #ffb4bc;
+}
+/* Seven vertical boss cards, four to a row on desktop: two rows. A row is half the hall's height (no scrolling on a tall screen)
+   but never squatter than 1 : 1.15, so the cards stay portrait and the
+   hall scrolls a little on a short one. */
+.rh-hall-body {
+  container-type: size;
+}
+.ui-grid.rh-grid {
+  --gap: var(--sp-3);
+  gap: var(--gap);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: max(
+    calc((100cqh - var(--gap)) / 2),
+    calc((100cqw - 3 * var(--gap)) / 4 * 1.15)
+  );
+}
+.rh-notes:not(:empty) ~ .rh-grid {
+  grid-auto-rows: calc((100cqw - 3 * var(--gap)) / 4 * 1.3);
+}
+.rh-card {
+  --card-zoom: 1;
+  position: relative;
+  display: grid;
+  align-content: end;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border-radius: var(--rad-lg);
+  border: 1px solid color-mix(in srgb, var(--boss) 45%, transparent);
+  background: var(--fill-card);
+  text-align: left;
+  transition:
+    border-color var(--dur-1),
+    transform var(--dur-2);
+  /* No content-visibility: auto, as on .roster-card: Safari on iPhone could
+     leave a card blank after it changed. */
+}
+.rh-card:hover,
+.rh-card:focus-visible {
+  border-color: var(--ui-accent);
+}
+@media (hover: hover) {
+  .rh-card:hover {
+    transform: translateY(-3px);
+  }
+}
+.rh-card-art,
+.rh-card-art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.rh-card-art img {
+  object-fit: cover;
+  object-position: 50% 35%;
+  transform: scale(var(--card-zoom));
+  transform-origin: 50% 45%;
+  transition: transform var(--dur-3);
+}
+.rh-card[data-raid-card="tidewyrm"] {
+  --card-zoom: 1.06;
+}
+.rh-card[data-raid-card="emberwing"] {
+  --card-zoom: 1.08;
+}
+/* Snoozaku: a little bigger and lower, level with the other bosses (owner,
+   19 Nov); it grows from its top edge (transform-origin below). */
+.rh-card[data-raid-card="somnara"] {
+  --card-zoom: 1.18;
+}
+.rh-card[data-raid-card="somnara"] .rh-card-art {
+  container-type: size;
+}
+.rh-card[data-raid-card="somnara"] .rh-card-art img {
+  /* Full silhouette x=568..1067 in the 1536 px source: center it rather
+     than its face. Account for the covered image width at every card ratio. */
+  object-position: calc(50% - max(100cqw, 150cqh) * 0.0322265625) top;
+  transform-origin: center top;
+}
+.rh-card[data-raid-card="emberwing"] .rh-card-art img {
+  transform-origin: center top;
+}
+/* Balance the space above the name without changing scale or horizontal
+   framing. Floating silhouettes sit slightly lower; the twins' tendrils
+   get more clearance above the footer. */
+.rh-card[data-raid-card="tidewyrm"] .rh-card-art img,
+.rh-card[data-raid-card="gloomshade"] .rh-card-art img,
+.rh-card[data-raid-card="emberwing"] .rh-card-art img {
+  object-position: 50% 25%;
+}
+.rh-card[data-raid-card="storm-twins"] .rh-card-art img {
+  object-position: 50% 45%;
+}
+/* The bosses that stood high on their card, with an empty foot under them
+   (owner, 19 Nov; Snoozaku and the Storm Twins already fill theirs): the
+   picture grows from its top edge, so the boss is a little bigger and
+   lower, the top stays covered and the foot fills. */
+.rh-card:is(
+  [data-raid-card="grumblecrag"],
+  [data-raid-card="tidewyrm"],
+  [data-raid-card="gloomshade"],
+  [data-raid-card="prismatail"],
+  [data-raid-card="emberwing"]
+) {
+  --card-zoom: 1.2;
+}
+.rh-card:is(
+    [data-raid-card="grumblecrag"],
+    [data-raid-card="tidewyrm"],
+    [data-raid-card="gloomshade"],
+    [data-raid-card="prismatail"],
+    [data-raid-card="emberwing"]
+  )
+  .rh-card-art
+  img {
+  transform-origin: 50% 0%;
+}
+/* Cragmuff's horns reach the card's sides: a lighter zoom. Prismell's face
+   is at the picture's right: it grows from the top right corner, so the
+   face and antennae stay in. */
+.rh-card[data-raid-card="grumblecrag"] {
+  --card-zoom: 1.14;
+}
+.rh-card[data-raid-card="prismatail"] {
+  --card-zoom: 1.16;
+}
+.rh-card[data-raid-card="prismatail"] .rh-card-art img {
+  transform-origin: 100% 0%;
+}
+.rh-card:hover .rh-card-art img {
+  transform: scale(calc(var(--card-zoom) * 1.03));
+}
+/* The text sits on a dark foot of the picture. */
+.rh-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    #0b102099 0%,
+    transparent 22%,
+    transparent 52%,
+    #0b1020f2 88%
+  );
+  pointer-events: none;
+}
+.rh-card.is-locked .rh-card-art img,
+.rh-card.is-soon .rh-card-art img {
+  filter: grayscale(0.6) brightness(0.55);
+}
+.rh-card-top {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 10px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* The corner tag and the stars share the row; on a narrow card the stars
+     go under the tag at the right instead of over it ("Clear Cragmuff
+     first" ran under the stars at 932x430). */
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.rh-card-top > .ui-tag {
+  max-width: 100%;
+  min-width: 0;
+}
+/* A long lock line ("Clear Cragmuff first") wraps inside its tag on a
+   narrow card instead of running past the card's edge, where the card
+   cut it (667x375; fonts a little wider still on some machines). */
+.rh-card-top > .ui-tag.is-lock {
+  height: auto;
+  min-height: 18px;
+  padding-block: 2px;
+  white-space: normal;
+  line-height: 1.15;
+}
+.rh-card-top > .rh-stars {
+  margin-left: auto;
+}
+.rh-card-top .ui-tag:not(.is-new):not(.is-lock) {
+  background: #0b1020d9;
+}
+.rh-card-top .ui-tag svg {
+  width: 11px;
+  height: 11px;
+}
+.rh-card-text {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px;
+}
+.rh-card-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(20px, 2.1vw, 30px);
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rh-card-line {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: #d6def0;
+}
+.rh-stars {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: var(--rad-pill, 999px);
+  background: #0b1020b3;
+  color: var(--ui-accent);
+  letter-spacing: 1px;
+  font-size: calc(14px * var(--text-scale, 1));
+}
+.rh-stars i {
+  font-style: normal;
+  color: #ffffff3a;
+}
+.rh-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+.rh-tricks {
+  display: flex;
+}
+.rh-tricks .ui-avatar {
+  margin-right: -6px;
+  border-width: 2px;
+}
+
+/* -------------------------------------------------------- boss page */
+/* Frame the whole creature with minimal zoom. Keep the face safely inside
+   the image without forcing it into the center or enlarging the painting. */
+.rh-stage {
+  container-type: size;
+  background: var(--fill-well);
+  --z: var(--fz);
+  --px: var(--cx);
+  --py: var(--cy);
+  --at-y: 45cqh;
+}
+.rh-poster {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.rh-poster img {
+  --h: max(calc(100cqh * var(--z)), calc(100cqw / 1.5));
+  position: absolute;
+  max-width: none;
+  height: var(--h);
+  width: calc(var(--h) * 1.5);
+  left: clamp(
+    max(
+      calc(100cqw - var(--h) * 1.5),
+      calc(20cqw - var(--fx) * var(--h) * 1.5)
+    ),
+    calc(50cqw - var(--px) * var(--h) * 1.5),
+    min(0px, calc(80cqw - var(--fx) * var(--h) * 1.5))
+  );
+  top: clamp(
+    calc(100cqh - var(--h)),
+    calc(var(--at-y) - var(--py) * var(--h)),
+    0px
+  );
+}
+.rh-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 52%, #0b1020f2 94%);
+  pointer-events: none;
+}
+.rh-stage-info {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+}
+.rh-win {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px !important;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid color-mix(in srgb, var(--el) 40%, transparent);
+  background: color-mix(in srgb, var(--el) 12%, #0b1020d9);
+}
+.rh-win b {
+  font-size: var(--fs-lead);
+}
+@container (max-height: 520px) {
+  .rh-win {
+    display: none;
+  }
+}
+.rh-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.rh-stage-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: calc(40px * var(--text-scale, 1));
+  line-height: 0.95;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.rh-head > .ui-btn {
+  flex: none;
+}
+.rh-hint {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rh-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+/* Party: four seats, then online friends to invite. */
+.rh-seats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.rh-seat {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 6px 10px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+  text-align: center;
+}
+.rh-seat.is-me {
+  border-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+}
+.rh-seat b {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rh-seat .ui-avatar {
+  margin-bottom: 4px;
+}
+.rh-seat.is-open {
+  border-style: dashed;
+  border-color: var(--ui-line-2);
+  background: transparent;
+}
+.rh-plus {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  border: 2px dashed var(--ui-line-2);
+  display: grid;
+  place-items: center;
+  font-size: calc(24px * var(--text-scale, 1));
+  color: var(--ui-dim);
+}
+.rh-invites {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.rh-invites > .ui-kicker {
+  padding-top: 18px;
+}
+.rh-friends {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+.rh-nofriends {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-height: 52px;
+}
+.rh-status {
+  color: #ffb4bc;
+}
+.rh-status:empty {
+  display: none;
+}
+.rh-picks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px;
+}
+.rh-pick {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+  min-width: 0;
+}
+.rh-pick > span {
+  display: grid;
+  min-width: 0;
+}
+.rh-pick small {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.rh-picks.is-all .rh-pick small {
+  -webkit-line-clamp: 4;
+}
+/* Rewards: a picture, the goal and its progress. */
+.rh-rewards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+.rh-reward {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid color-mix(in srgb, var(--boss) 40%, transparent);
+}
+.rh-reward.is-done {
+  border-color: color-mix(in srgb, var(--ui-ok) 45%, transparent);
+}
+/* A button (a tap opens the whole rule): none of a button's own look. */
+button.rh-reward {
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  box-shadow: none;
+  cursor: pointer;
+}
+button.rh-reward:hover {
+  border-color: color-mix(in srgb, var(--boss) 75%, transparent);
+}
+button.rh-reward:focus-visible {
+  outline: 2px solid var(--boss);
+  outline-offset: 2px;
+}
+/* Open: the name and the rule wrap instead of being cut short, and the
+   whole rule and what the item is follow the bar. The art stays at the
+   top; the other cards in its row keep their own height. */
+.rh-rewards:has(.rh-reward.is-open) {
+  align-items: start;
+}
+.rh-reward.is-open {
+  align-items: start;
+  border-color: var(--boss);
+}
+.rh-reward.is-open .rh-reward-text b,
+.rh-reward.is-open .rh-reward-text small {
+  white-space: normal;
+  overflow: visible;
+}
+.rh-reward.is-open .rh-reward-line {
+  flex-wrap: wrap;
+}
+.rh-reward-more {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: calc(12px * var(--text-scale, 1));
+  line-height: 1.35;
+  color: var(--ui-dim);
+}
+.rh-reward-more strong {
+  display: block;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--boss);
+}
+.rh-reward-art {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--rad-sm);
+  background: color-mix(in srgb, var(--boss) 18%, var(--ui-bg-0));
+  display: grid;
+  /* One track the box's size: an auto track would grow to a picture's own
+     84 px, and the box would show only the middle of a fighter. */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  overflow: hidden;
+}
+.rh-reward-art > :is(svg, img, span),
+.rh-reward-art .raid-cosmetic-preview > :is(svg, img) {
+  width: 100%;
+  height: 100%;
+}
+/* The picture box is already the effect's stage: no second, round card
+   (cosmetic-fx.css) inside it, as in the Shop and Wardrobe. */
+.rh-reward-art > .raid-cosmetic-preview:has(> .fx-live) {
+  background: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+/* A frame paints outside its ring (Conductor's spark 33% above it, Brazier's
+   flame 25% below), and earned stars add a sunburst ~37% past every side;
+   the box clips, so frames get room on every side (56%, and 48% with stars:
+   the sunburst's tips 3 px clear in a phone's 36 px box). */
+.rh-reward-art > .raid-cosmetic-preview[data-frame-stars] {
+  width: 56%;
+  height: auto;
+  aspect-ratio: 1;
+}
+.rh-reward-art
+  > .raid-cosmetic-preview[data-frame-stars]:not([data-frame-stars="0"]) {
+  width: 48%;
+}
+.rh-title-art {
+  display: grid;
+  place-items: center;
+  color: var(--ui-accent);
+}
+.rh-title-art svg {
+  width: 26px;
+  height: 26px;
+}
+.rh-reward-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.rh-reward-text b,
+.rh-reward-text small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rh-reward-text b {
+  padding-right: 18px;
+}
+.rh-reward-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.rh-reward-line .ui-rarity {
+  flex: none;
+}
+.rh-check {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  color: var(--ui-ok);
+}
+.rh-check svg {
+  width: 16px;
+  height: 16px;
+}
+/* The Party tab's strip of attacks (each opens the Attacks tab). */
+.rh-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.rh-attack.is-mini {
+  padding: 8px 10px;
+}
+.rh-attack.is-mini .rh-attack-icon {
+  width: 36px;
+  height: 36px;
+}
+.rh-attack.is-mini .rh-attack-text b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rh-attack.is-mini:hover,
+.rh-attack.is-mini:focus-visible {
+  border-color: var(--ui-accent);
+}
+/* Attacks, like a champion's Skills tab: the picked one large (its art,
+   what it does, how to beat it), then every attack as a row. */
+.rh-attack-big {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.rh-attack-art {
+  width: 120px;
+  height: 120px;
+}
+.rh-attack-art > svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.rh-attack-big-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.rh-attack-big-text p {
+  margin: 0;
+}
+.rh-attack-tip {
+  font-size: var(--fs-small);
+}
+.rh-attack-tip .ui-kicker {
+  display: block;
+  margin-bottom: 2px;
+}
+.rh-attacks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.rh-attack {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--fill-card);
+  text-align: left;
+}
+.rh-attack[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 7.8%, transparent);
+}
+.rh-attack-icon {
+  width: 48px;
+  height: 48px;
+}
+.rh-attack-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.rh-attack-text {
+  display: grid;
+  min-width: 0;
+}
+.rh-attack-text b {
+  font-size: calc(15px * var(--text-scale, 1));
+}
+.rh-attack-text small {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+/* Guide. */
+.rh-blurb {
+  font-size: var(--fs-lead);
+}
+.rh-chapters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: chapter;
+}
+.rh-chapters li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  border: 1px solid var(--ui-line);
+  counter-increment: chapter;
+}
+.rh-chapters li::before {
+  content: counter(chapter);
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--ui-accent);
+}
+/* The action bar: Solo / With party and what it means. */
+.rh-room .ui-foot-info {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.rh-room .ui-foot-info .ui-seg {
+  flex: none;
+}
+.rh-foot-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ------------------------------------------------- narrower screens */
+@media (max-width: 1300px) {
+  .rh-head .ui-kicker {
+    display: none;
+  }
+  .rh-attacks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ------------------------------------------------- phones, sideways */
+@media (max-height: 500px) {
+  .rh-head > .ui-chips .ui-chip {
+    padding: 0 8px;
+  }
+  /* One balanced row on landscape phones; the next card peeks in to
+     invite a swipe. Only this gallery scrolls sideways, not the panel. */
+  .rh-room .rh-hall-body {
+    display: flex;
+    flex-direction: column;
+  }
+  .rh-notes {
+    flex: none;
+  }
+  .ui-grid.rh-grid {
+    --gap: 8px;
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    grid-template-rows: minmax(0, 1fr);
+    grid-auto-columns: clamp(
+      120px,
+      min(26cqw, calc((100cqh - 4px) / 1.25)),
+      210px
+    );
+    grid-auto-rows: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 2px;
+    padding: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--ui-accent) 40%, transparent)
+      transparent;
+  }
+  .rh-notes:not(:empty) ~ .rh-grid {
+    grid-auto-rows: auto;
+  }
+  .rh-grid > .rh-card {
+    scroll-snap-align: start;
+  }
+  .rh-card {
+    border-radius: var(--rad-md);
+  }
+  .rh-card-top {
+    left: 5px;
+    right: 5px;
+    top: 5px;
+  }
+  .rh-card-top .ui-tag {
+    font-size: var(--fs-micro);
+  }
+  .rh-stars {
+    font-size: var(--fs-micro);
+    padding: 1px 4px;
+  }
+  .rh-card-art img {
+    object-position: 50% 10%;
+  }
+  .rh-card[data-raid-card="tidewyrm"] .rh-card-art img,
+  .rh-card[data-raid-card="gloomshade"] .rh-card-art img,
+  .rh-card[data-raid-card="emberwing"] .rh-card-art img {
+    object-position: 50% top;
+  }
+  .rh-card[data-raid-card="storm-twins"] .rh-card-art img {
+    object-position: 50% 25%;
+  }
+  .rh-card-text {
+    padding: 10px;
+    gap: 2px;
+  }
+  .rh-card-name {
+    font-size: clamp(18px, 2.6vw, 22px);
+    line-height: 1.05;
+    text-shadow: 0 2px 8px #03081699;
+  }
+  .rh-card-line,
+  .rh-card-foot {
+    display: none;
+  }
+  /* Phones keep the same wider framing and safe face position. */
+  .rh-stage {
+    --z: var(--fz);
+  }
+  .rh-stage-info {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    gap: 2px;
+  }
+  .rh-stage-name {
+    font-size: calc(20px * var(--text-scale, 1));
+  }
+  .rh-stage-line,
+  .rh-hint {
+    display: none;
+  }
+  .rh-seats {
+    gap: 6px;
+  }
+  .rh-seat {
+    padding: 4px;
+  }
+  .rh-seat .ui-avatar,
+  .rh-plus {
+    --size: 34px !important;
+    width: 34px;
+    height: 34px;
+    margin-bottom: 0;
+    font-size: calc(18px * var(--text-scale, 1));
+  }
+  .rh-seat small {
+    display: none;
+  }
+  .rh-invites {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .rh-invites > .ui-kicker {
+    padding-top: 0;
+  }
+  .rh-friends {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .rh-friend.ui-row {
+    min-height: 40px;
+    padding-block: 2px;
+  }
+  .rh-picks,
+  .rh-rewards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .rh-picks.is-all,
+  .rh-rewards.is-all {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rh-pick {
+    padding: 4px 6px;
+    gap: 6px;
+  }
+  .rh-pick .ui-avatar {
+    --size: 28px !important;
+  }
+  .rh-picks:not(.is-all) .rh-pick small {
+    display: none;
+  }
+  .rh-reward {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 6px;
+    padding: 4px 6px;
+  }
+  .rh-reward-art {
+    width: 36px;
+    height: 36px;
+  }
+  /* A hair more room in the small box: at 56% the Conductor's spark reached
+     the box's edge at some scroll positions (a sub-pixel apart). */
+  .rh-reward-art > .raid-cosmetic-preview[data-frame-stars="0"] {
+    width: 54%;
+  }
+  .rh-attack {
+    min-height: 44px;
+    padding: 6px 8px;
+    gap: 8px;
+  }
+  .rh-attack-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .rh-attack-big {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .rh-attack-art {
+    width: 72px;
+    height: 72px;
+  }
+  .rh-attack-big .ui-h {
+    font-size: calc(15px * var(--text-scale, 1));
+  }
+  .rh-attack-text b {
+    font-size: calc(13px * var(--text-scale, 1));
+  }
+  /* The three chapters side by side, each number beside its name: one
+     short row instead of three cards stacked (the Guide was 4.4 screens
+     tall on a 393 px phone). */
+  .rh-chapters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .rh-chapters li {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-content: start;
+    column-gap: 6px;
+    padding: 6px 8px;
+  }
+  .rh-chapters li > small {
+    grid-column: 1 / -1;
+  }
+  .rh-blurb {
+    font-size: var(--fs-body);
+  }
+  /* Phones: the Attacks tab is one tap away; the strip would only add
+     scrolling. */
+  .rh-strip,
+  .rh-strip-head {
+    display: none;
+  }
+  .rh-foot-note:not(.is-reason) {
+    display: none;
+  }
+}
+
+/* Narrow phones (an iPhone SE sideways): the page's controls need the
+   stage's room; the boss's name stays in the hall card you came from. */
+@media (max-width: 700px) {
+  .ui-panel.is-split.rh-room {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rh-stage {
+    display: none;
+  }
+}
+
+/* The Rewards tab on a phone: looks two a row with their picture, titles
+   three a row without one (it is the same trophy for every title), after
+   the looks; every card a line shorter, its bar a hairline along its foot.
+   An open card takes the whole row. 2.4 screens became 1.9. */
+@media (max-height: 500px) {
+  .rh-rewards.is-all {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .rh-rewards.is-all > .rh-reward {
+    grid-column: span 3;
+  }
+  .rh-rewards.is-all > .rh-reward[data-reward-kind="title"] {
+    grid-column: span 2;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rh-rewards.is-all > .rh-reward[data-reward-kind="title"] .rh-reward-art {
+    display: none;
+  }
+  .rh-rewards.is-all > .rh-reward.is-open {
+    grid-column: 1 / -1;
+  }
+  .rh-rewards.is-all > .rh-reward:not(.is-open) {
+    padding-bottom: 8px;
+  }
+  .rh-rewards.is-all > .rh-reward:not(.is-open) .rh-reward-text {
+    gap: 1px;
+  }
+  .rh-rewards.is-all > .rh-reward:not(.is-open) .rh-reward-text > .ui-bar {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: 3px;
+    height: 3px;
+  }
+}

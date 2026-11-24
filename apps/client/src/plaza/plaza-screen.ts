@@ -1,0 +1,180 @@
+import type { ChatQuick } from "../../../../packages/shared/src/chat";
+import type { Socket } from "socket.io-client";
+import type { CharacterId, Reply } from "@arena/shared";
+import type { PlazaProgress } from "../../../../packages/shared/src/plaza";
+import { openPlaza } from "./plaza-scene";
+
+/**
+ * The Plaza scene of the hub (hub redesign phase 3): the typed entry point
+ * for the ported scene. The game server moves everyone and owns the ball,
+ * the Orb Shower, laps, quests and Volt Boba; the scene draws what it sends
+ * and predicts only your own steps.
+ */
+export interface PlazaScreenOptions {
+  socket: Socket;
+  character: CharacterId;
+  skin: { skin: string; stage?: number } | null;
+  /** The all-fighter Skin slot you wear (a palette id), if any. */
+  colour?: string | null;
+  /** Your Aura slot (an aura id), shown round your fighter. */
+  aura?: string | null;
+  /** Your Entrance and Victory slots, played as you arrive and score. */
+  entrance?: string | null;
+  victory?: string | null;
+  /** An image URL for a fighter in a skin (canvas sprite); `flat` leaves
+   * out the masked overlays some browsers draw wrong (plaza-sprite.ts). */
+  art(
+    character: string,
+    skin: { skin: string; stage?: number } | null,
+    flat?: boolean,
+    /** The Skin slot's palette (ignored under a champion skin). */
+    colour?: string | null,
+  ): string;
+  skinName(skin: string): string | null;
+  fighterName(character: string): string;
+  playerName(): string;
+  loadProgress(): Promise<PlazaProgress>;
+  toast(message: string): void;
+  /** A Plaza quest paid coins (on the server): refresh the balance. */
+  onCoins?(): void;
+  /**
+   * A player you tapped: add as a friend, invite to your party, block (it
+   * asks first) or report. Resolves true when the card should close.
+   */
+  onPlayer(
+    action: "friend" | "party" | "block" | "report" | "report-photo",
+    accountId: string,
+    name: string,
+    /** Their avatar (report-photo reports their own picture). */
+    avatar?: string | null,
+  ): Promise<boolean | void>;
+  /** Players you blocked aren't shown on the Plaza (migration 110). */
+  isBlocked?(accountId: string): boolean;
+  /** Send an emote as quick chat in chat's Nearby channel (chat.ts id). */
+  quickChat?(quick: ChatQuick): void;
+  /** Your account, to find your own fighter for a Nearby bubble. */
+  myAccountId?(): string | undefined;
+  /** The server closed the Plaza (a room opened) or refused the join. */
+  onClose(failed: boolean): void;
+  /** Fewer particles (reduced motion). */
+  reduced: boolean;
+  /** Low graphics: no ambient animals or night glow, 30 fps. */
+  low: boolean;
+}
+export interface PlazaScreen {
+  /** Behind another hub scene: off the Plaza on the server, kept here. */
+  hide(): void;
+  /** Back on the Plaza: shown at once, joined again (where you stood). */
+  show(): void;
+  look(
+    character: CharacterId,
+    skin: { skin: string; stage?: number } | null,
+    colour?: string | null,
+    aura?: string | null,
+    entrance?: string | null,
+    victory?: string | null,
+  ): void;
+  close(): void;
+  /** A Nearby chat line: a bubble over the speaker's head. */
+  say(accountId: string, text: string): void;
+}
+export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
+  document.body.classList.add("hub-screen", "hub-plaza");
+  const scene = openPlaza(options) as {
+    look(
+      character: string,
+      skin: unknown,
+      colour?: string | null,
+      aura?: string | null,
+      entrance?: string | null,
+      victory?: string | null,
+    ): void;
+    say(accountId: string, text: string): void;
+    hide(): void;
+    show(): void;
+    close(): void;
+    _dbg?: unknown;
+  };
+  scene.look(
+    options.character,
+    options.skin,
+    options.colour ?? null,
+    options.aura ?? null,
+    options.entrance ?? null,
+    options.victory ?? null,
+  );
+  // Visual tests read positions through this (development builds only).
+  if (import.meta.env.DEV)
+    (window as unknown as { __plaza?: unknown }).__plaza = scene._dbg;
+  let closed = false,
+    away = false;
+  const finish = (failed: boolean, tellServer: boolean) => {
+    if (closed) return;
+    closed = true;
+    options.socket.off("plaza-closed", onServerClose);
+    options.socket.off("connect", rejoin);
+    if (tellServer && !away) options.socket.emit("plaza-leave", {}, () => {});
+    scene.close();
+    document.body.classList.remove("hub-plaza");
+    if (!document.querySelector(".lobby-layer"))
+      document.body.classList.remove("hub-screen");
+    options.onClose(failed);
+  };
+  const onServerClose = () => finish(false, false);
+  let character = options.character;
+  const join = () =>
+    options.socket.emit(
+      "plaza-join",
+      { character },
+      (reply: Reply | undefined) => {
+        if (!reply?.ok) {
+          options.toast(reply?.error ?? "The Plaza is busy. Try again soon.");
+          finish(true, false);
+        }
+      },
+    );
+  // A dropped connection loses your place: join again when it is back.
+  const rejoin = () => join();
+  options.socket.on("plaza-closed", onServerClose);
+  options.socket.on("connect", rejoin);
+  join();
+  return {
+    say: (accountId, text) => scene.say(accountId, text),
+    look(next, skin, colour, aura, entrance, victory) {
+      scene.look(
+        next,
+        skin,
+        colour ?? null,
+        aura ?? null,
+        entrance ?? null,
+        victory ?? null,
+      );
+      character = next;
+      // The server reloads the saved skin and wardrobe itself.
+      options.socket.emit("plaza-look", { character: next }, () => {});
+    },
+    hide() {
+      if (closed || away) return;
+      away = true;
+      // Others must not see you standing there: leave the Plaza (the server
+      // keeps your spot for a while), and don't rejoin on a reconnect.
+      options.socket.off("connect", rejoin);
+      options.socket.emit("plaza-leave", {}, () => {});
+      scene.hide();
+      document.body.classList.remove("hub-plaza");
+      if (!document.querySelector(".lobby-layer"))
+        document.body.classList.remove("hub-screen");
+    },
+    show() {
+      if (closed || !away) return;
+      away = false;
+      document.body.classList.add("hub-screen", "hub-plaza");
+      scene.show();
+      options.socket.on("connect", rejoin);
+      join();
+    },
+    close: () => finish(false, true),
+  };
+}
+/** The Plaza's sprite cache (released before a battle). */
+export { GFX as hubGfx } from "../hub-art/gfx";

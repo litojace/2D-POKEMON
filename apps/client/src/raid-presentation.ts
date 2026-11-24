@@ -1,14 +1,22 @@
-import { portraitAvatar, portraitCosmetics } from "./portraits";
-import { CHARACTERS, type Snapshot } from "@arena/shared";
+import { framedAvatar } from "./portraits";
+import { ascendantPrismellCue } from "./ascendant-prismell-art";
+import { ascendantLumiwickCue } from "./ascendant-lumiwick-art";
+import { ascendantStormTwinsCue } from "./ascendant-storm-twins-art";
+import { CHARACTERS, meters, type Snapshot } from "@arena/shared";
 import {
   raidChapters,
   DREAM_RUNE_NAMES,
   raidPingLabel,
+  RAID_BOSSES,
   RAID_REWARDS,
+  EMBERWING,
   type RaidBossId,
+  type RaidWarning,
   type RaidContribution,
   type RaidProgress,
   type RaidReward,
+  raidBossName,
+  isRaider,
 } from "../../../packages/shared/src/raid";
 const escape = (s: string) =>
   s.replace(
@@ -19,52 +27,122 @@ const escape = (s: string) =>
       ]!,
   );
 
+/**
+ * With several attacks live at once, the warning to call out: the soonest
+ * one aimed at me, else the soonest to land.
+ */
+export function cueWarning(
+  state: Snapshot,
+  myId: string,
+): RaidWarning | undefined {
+  const all = state.raid?.warnings ?? [];
+  if (all.length < 2) return all[0];
+  const mine = all.filter((w) => w.targetId === myId);
+  return (mine.length ? mine : all).reduce((a, b) => (b.at < a.at ? b : a));
+}
+
 export function raidCue(state: Snapshot, myId: string) {
   const r = state.raid!;
-  if (state.phase !== "playing") return raidChapters(r.boss)[r.phase - 1].objective;
+  if (state.phase !== "playing")
+    return raidChapters(r.boss, r.variant)[r.phase - 1].objective;
   if (r.staggerUntil > state.time)
     return "Core exposed — unleash your ultimates!";
-  const w = r.warnings[0];
+  // The soft enrage is announced for a few seconds when it starts or grows.
+  if ((r.enrage ?? 0) > 0 && state.time - (r.enrageAt ?? -99) < 3)
+    return r.enrage === 1
+      ? `${raidBossName(r)} grows furious — faster, harder attacks!`
+      : `${raidBossName(r)}'s fury builds (${r.enrage}/4)!`;
+  const w = cueWarning(state, myId);
   if (r.boss === "storm-twins") {
-    const fallen=r.twins?.find(t=>(state.players.find(p=>p.id===t.id)?.hp??0)<=0);
-    if(fallen && state.players.some(p=>p.raidBoss&&p.hp>0)) return `${fallen.name} revives in ${Math.max(0,Math.ceil((fallen.reviveAt??state.time)-state.time))}s — finish the other twin!`;
-    const mark=r.polarities?.find(m=>m.playerId===myId&&!m.cancelled);
-    if(mark) return r.polarityPad ? "Polarity — enter your opposite-sign floor pad!" : "Polarity — stand next to an opposite sign!";
-    if(w?.kind === "link-beam" || r.stormBeam) return "Link Beam — jump across the bright ribbon; watch the copper bends!";
-    if(w?.kind === "chain-lightning") return "Chain Lightning — spread out, 200px apart!";
-    if(w?.kind === "twin-rush") return "Twin Rush — leave both crossing lanes!";
-    if(w?.kind === "thunderclap") return "Thunderclap — jump the marked circle or step outside!";
-    if(w?.kind === "static-field") return "Static Field — leave the circle or jump across it!";
-    const exposed=r.twins?.find(t=>t.exposedUntil>state.time);
-    if(exposed)return `${exposed.name} staggered — strike its exposed core!`;
-    return r.phase===3 ? "Keep both low, then finish together. Tap Fizz or Crackle to aim." : "Balance both health bars. Rites open at 67% and 33% combined health.";
+    const fallen = r.twins?.find(
+      (t) => (state.players.find((p) => p.id === t.id)?.hp ?? 0) <= 0,
+    );
+    if (fallen && state.players.some((p) => p.raidBoss && p.hp > 0))
+      return `${fallen.name} revives in ${Math.max(0, Math.ceil((fallen.reviveAt ?? state.time) - state.time))}s — finish the other twin!`;
+    const ascendant = ascendantStormTwinsCue(state, myId, w);
+    if (ascendant) return ascendant;
+    const mark = r.polarities?.find((m) => m.playerId === myId && !m.cancelled);
+    if (mark)
+      return r.polarityPad
+        ? "Polarity — enter your opposite-sign floor pad!"
+        : "Polarity — stand next to an opposite sign!";
+    if (w?.kind === "link-beam" || r.stormBeam)
+      return "Link Beam — jump across the bright ribbon; watch the copper bends!";
+    if (w?.kind === "chain-lightning")
+      return `Chain Lightning — spread out, ${meters(200)} apart!`;
+    if (w?.kind === "twin-rush")
+      return "Twin Rush — leave both crossing lanes!";
+    if (w?.kind === "thunderclap")
+      return "Thunderclap — jump the marked circle or step outside!";
+    if (w?.kind === "static-field")
+      return "Static Field — leave the circle or jump across it!";
+    const exposed = r.twins?.find((t) => t.exposedUntil > state.time);
+    if (exposed) return `${exposed.name} staggered — strike its exposed core!`;
+    return r.phase === 3
+      ? "Keep both low, then finish together. Tap Fizz or Crackle to aim."
+      : "Balance both health bars. Rites open at 67% and 33% combined health.";
   }
   if (r.boss === "emberwing") {
-    if(r.permanentGround && !w && !r.flameRings?.length) return "Wings broken — the heart stays exposed!";
-    if(r.exposedUntil>state.time) return "Grounded — unleash your ultimates! Fire patches have shrunk.";
-    if(w?.kind === "heat-mark") return "Heat Marks — spread out from every marked ally!";
-    if(w?.kind === "dive-bomb") return "Dive locked — sidestep the lane and avoid its burning trail!";
-    if(w?.kind === "wing-gust") return "Wing Gust — leave the cone or dash into the wind!";
-    if((r.flameRings?.length??0)>0 || w?.kind === "flame-ring") return "Flame Ring — jump as the expanding edge reaches you!";
-    if(w?.kind === "ember-rain") return "Ember Rain — step between the marked circles!";
-    if(w?.kind === "scorched-earth") return "Fire spreading — keep away from the growing patches!";
-    if(r.airborne && r.trait === "updraft" && state.time-(r.takeoffAt??0)<2) return `Updraft — braziers ready in ${Math.ceil(2-(state.time-(r.takeoffAt??0)))}s. Get into position!`;
-    if(r.airborne) return `Airborne · ${(r.braziers??[]).filter(b=>b.litUntil>state.time).length}/3 braziers lit · stand in the rings${r.phase===3?` · ${r.chapterGroundings??0}/2 groundings`:""}`;
+    if (r.permanentGround && !w && !r.flameRings?.length)
+      return "Wings broken — the heart stays exposed!";
+    if (r.exposedUntil > state.time)
+      return "Grounded — unleash your ultimates! Fire patches have shrunk.";
+    const ascendant = ascendantLumiwickCue(state, myId, w);
+    if (ascendant) return ascendant;
+    if (w?.kind === "heat-mark")
+      return "Heat Marks — spread out from every marked ally!";
+    if (w?.kind === "dive-bomb")
+      return "Dive locked — sidestep the lane and avoid its burning trail!";
+    if (w?.kind === "wing-gust")
+      return "Hot Gust — leave the cone or dash into the wind!";
+    if ((r.flameRings?.length ?? 0) > 0 || w?.kind === "flame-ring")
+      return "Flame Ring — jump as the expanding edge reaches you!";
+    if (w?.kind === "ember-rain")
+      return "Ember Rain — step between the marked circles!";
+    if (w?.kind === "scorched-earth")
+      return "Fire spreading — keep away from the growing patches!";
+    if (
+      r.airborne &&
+      r.trait === "updraft" &&
+      state.time - (r.takeoffAt ?? 0) < 2
+    )
+      return `Updraft — braziers ready in ${Math.ceil(2 - (state.time - (r.takeoffAt ?? 0)))}s. Get into position!`;
+    if (r.airborne)
+      return `Airborne · ${(r.braziers ?? []).filter((b) => b.litUntil > state.time).length}/3 braziers lit · stand in the rings${r.phase === 3 ? ` · ${r.chapterGroundings ?? 0}/${EMBERWING.permanentGround.after} groundings` : ""}`;
     return "Sidestep dives, jump flame rings, and keep out of burning ground.";
   }
   if (r.boss === "prismatail") {
-    if (r.exposedUntil > state.time) return "Heart exposed — unleash your ultimates!";
-    if ((r.blinded?.[myId] ?? 0) > state.time) return "Dazzled — keep moving until your vision clears.";
-    if (w?.kind === "glare") return "Glare — aim away from the boss or hold Look away!";
-    if (w?.kind === "fan-display") return `Fan ${(w.prismIndex ?? 0) + 1} fires — leave the matching colour and pip count!`;
-    if (w?.kind === "halo-crush") return "Halo closing — move through the teal gap!";
-    if (w?.kind === "refraction") return "Refraction — leave both marked lanes!";
-    if (w?.kind === "prism-lance") return "Lance locked — sidestep the thin lane!";
-    const arrivals=(r.lightArrivals??[]).filter(t=>t>=0);
-    if(r.phase===3 && r.partySize>1 && arrivals.length) return `Split Light · ${arrivals.length}/2 paths · pair within ${Math.max(0,Math.ceil(3-(state.time-Math.min(...arrivals))))}s!`;
-    return r.phase === 3 ? r.partySize === 1 ? `Hold the light path: ${Math.min(2,r.lightHold??0).toFixed(1)}/2s` : "Split Light — connect both paths within 3 seconds!" : "Relay skylight → raider → mirrors → heart. Hit mirrors to turn them.";
+    if (r.exposedUntil > state.time)
+      return "Heart exposed — unleash your ultimates!";
+    if ((r.blinded?.[myId] ?? 0) > state.time)
+      return "Dazzled — keep moving until your vision clears.";
+    const ascendant = ascendantPrismellCue(state, myId, w);
+    if (ascendant) return ascendant;
+    if (w?.kind === "glare")
+      return "Glare — aim away from the boss or hold Look away!";
+    if (w?.kind === "fan-display")
+      return `Fan ${(w.prismIndex ?? 0) + 1} fires — leave the matching color and pip count!`;
+    if (w?.kind === "halo-crush")
+      return "Halo closing — move through the teal gap!";
+    if (w?.kind === "refraction")
+      return "Refraction — leave both marked lanes!";
+    if (w?.kind === "prism-lance")
+      return "Lance locked — sidestep the thin lane!";
+    if (r.mirrors?.some((m) => (m.scrambleAt ?? 0) > state.time))
+      return "Mirrors flashing — they will turn; get ready to re-aim them!";
+    const arrivals = (r.lightArrivals ?? []).filter((t) => t >= 0);
+    if (r.phase === 3 && r.partySize > 1 && arrivals.length)
+      return `Split Light · ${arrivals.length}/2 paths · pair within ${Math.max(0, Math.ceil(3 - (state.time - Math.min(...arrivals))))}s!`;
+    return r.phase === 3
+      ? r.partySize === 1
+        ? `Hold the light path: ${Math.min(2, r.lightHold ?? 0).toFixed(1)}/2s`
+        : "Split Light — connect both paths within 3 seconds!"
+      : "Relay skylight → raider → mirrors → heart. Hit mirrors to turn them.";
   }
-  const tide = somnaraCue(state, myId) || tidewyrmCue(state, myId) || gloomshadeCue(state, myId);
+  const tide =
+    somnaraCue(state, myId) ||
+    tidewyrmCue(state, myId) ||
+    gloomshadeCue(state, myId);
   if (tide) return tide;
   if (w?.kind === "charge") {
     const locked = w.lockAt !== undefined && state.time >= w.lockAt;
@@ -75,6 +153,16 @@ export function raidCue(state: Snapshot, myId: string) {
         : `${state.players.find((p) => p.id === w.targetId)?.name ?? "An ally"} is`;
     return `${who} targeted${w.teach ? " — lead the charge into a pillar!" : " — bait the charge!"}`;
   }
+  if (w?.kind === "avalanche")
+    return w.targetId === myId
+      ? "Avalanche on you — leave the lane, then stay off it!"
+      : "Avalanche — clear the lane; it splits into magma!";
+  if (w?.kind === "fissure")
+    return "The lane erupts — stay off the magma line!";
+  if (w?.kind === "twin-slam")
+    return !r.warnings.some((v) => v.kind === "twin-slam" && v.chain === 2)
+      ? "Second ring — jump again or leave it!"
+      : "Twin Slam — jump ring 1, then ring 2!";
   if (w?.kind === "slam")
     return w.followUp
       ? "Second slam — jump again or leave the circle!"
@@ -122,14 +210,16 @@ export function raidCue(state: Snapshot, myId: string) {
       : r.boss === "gloomshade"
         ? "Found it — strike the glowing core!"
         : "Armor broken — strike the glowing core!";
-  return raidChapters(r.boss)[r.phase - 1].objective;
+  return raidChapters(r.boss, r.variant)[r.phase - 1].objective;
 }
 /** Tidewyrm's callouts, most urgent first. */
 function tidewyrmCue(state: Snapshot, myId: string) {
   const r = state.raid!;
   if (r.boss !== "tidewyrm") return "";
   const name = (id?: string) =>
-    id === myId ? "you" : (state.players.find((p) => p.id === id)?.name ?? "an ally");
+    id === myId
+      ? "you"
+      : (state.players.find((p) => p.id === id)?.name ?? "an ally");
   const prison = r.prisons?.[0];
   if (prison)
     return prison.playerId === myId
@@ -138,26 +228,52 @@ function tidewyrmCue(state: Snapshot, myId: string) {
         : "Trapped in a bubble — mash attack to break out!"
       : `${name(prison.playerId)} is trapped — pop the bubble: three hits!`;
   if ((r.floodUntil ?? 0) > state.time)
-    return r.partySize > 1 ? "High Tide — stay on an island, two per island!" : "High Tide — stay on an island!";
+    return r.partySize > 1
+      ? "High Tide — stay on an island, two per island!"
+      : "High Tide — stay on an island!";
   if (r.undertow) return "Undertow — dash outward, away from the whirlpool!";
   const wave = (r.waves ?? [])[0];
-  if (wave) return wave.high ? "High wave — be on an island!" : "Low wave — jump it!";
-  const w = r.warnings[0];
+  if (wave)
+    return wave.gaps
+      ? "Breaker Wall — stay in a calm lane or on an island!"
+      : wave.high
+        ? "High wave — be on an island!"
+        : "Low wave — jump it!";
+  const w = cueWarning(state, myId);
   if (!w) return "";
+  if (w.kind === "breaker")
+    return "Breaker Wall — get into a calm lane (or onto an island): it can't be jumped!";
+  if (w.kind === "geyser")
+    return w.targetId === myId
+      ? "Geysers under you — step sideways off the line!"
+      : `Geysers rise under ${name(w.targetId)} — step off the line!`;
   if (w.kind === "dive") {
     const locked = w.lockAt !== undefined && state.time >= w.lockAt;
-    if (locked) return w.targetId === myId ? "It's locked — step off now!" : "Splash coming — clear the ring!";
+    if (locked)
+      return w.targetId === myId
+        ? "It's locked — step off now!"
+        : "Splash coming — clear the ring!";
     return w.targetId === myId
       ? w.teach
         ? "The ripple follows you — walk it onto an island, then step off!"
         : "Ripple on you — lead it onto an island!"
       : `The ripple follows ${name(w.targetId)} — give them room near an island.`;
   }
-  if (w.kind === "wave") return w.high ? "A high wave is coming — get on an island!" : "A low wave is coming — get ready to jump!";
-  if (w.kind === "bubbles") return w.teach ? "Bubbles — weave through or pop them with attacks!" : "Bubbles — weave through!";
+  if (w.kind === "wave")
+    return w.high
+      ? "A high wave is coming — get on an island!"
+      : "A low wave is coming — get ready to jump!";
+  if (w.kind === "bubbles")
+    return w.teach
+      ? "Bubbles — weave through or pop them with attacks!"
+      : "Bubbles — weave through!";
   if (w.kind === "hightide") return "The water's rising — get on an island!";
-  if (w.kind === "undertow") return "A whirlpool forms — move away from the centre!";
-  if (w.kind === "prison") return w.targetId === myId ? "A bubble is closing on you!" : `A bubble is closing on ${name(w.targetId)}!`;
+  if (w.kind === "undertow")
+    return "A whirlpool forms — move away from the centre!";
+  if (w.kind === "prison")
+    return w.targetId === myId
+      ? "A bubble is closing on you!"
+      : `A bubble is closing on ${name(w.targetId)}!`;
   return "";
 }
 
@@ -166,27 +282,50 @@ function gloomshadeCue(state: Snapshot, myId: string) {
   const r = state.raid!;
   if (r.boss !== "gloomshade") return "";
   const name = (id?: string) =>
-    id === myId ? "you" : (state.players.find((p) => p.id === id)?.name ?? "an ally");
+    id === myId
+      ? "you"
+      : (state.players.find((p) => p.id === id)?.name ?? "an ally");
   const mine = r.curses?.[myId];
-  if (mine && mine.hauntedUntil > state.time) return "Haunted — get into lantern light to cleanse it!";
-  const w = r.warnings[0];
+  if (mine && mine.hauntedUntil > state.time)
+    return "Haunted — get into lantern light to cleanse it!";
+  const w = cueWarning(state, myId);
+  // Ascendant Inkpurr's Nightfall and Shade Pounce.
+  if (w?.kind === "nightfall")
+    return "Nightfall — get into a pool of moonlight or lantern light!";
+  if (w?.kind === "pounce")
+    return w.targetId === myId
+      ? "It pounces at you — step out of the circle (the last leap is the real one)!"
+      : `Shade Pounce at ${name(w.targetId)} — keep out of the circles!`;
   if (w?.kind === "hands")
     return w.shiftAt !== undefined && state.time < w.shiftAt
       ? "Grasping Hands — the tiles will flip! Watch for the flicker."
       : "Grasping Hands — stand on a tile without hands!";
-  if (w?.kind === "pulse") return w.teach ? "Nightmare Pulse — jump as the ring fills (every copy shows one)!" : "Nightmare Pulse — jump!";
+  if (w?.kind === "pulse")
+    return w.teach
+      ? "Nightmare Pulse — jump as the ring fills (every copy shows one)!"
+      : "Nightmare Pulse — jump!";
   if (w?.kind === "lunge")
-    return w.targetId === myId ? "Shadow Lunge on you — sidestep the lane!" : `Shadow Lunge at ${name(w.targetId)} — keep out of the lane!`;
+    return w.targetId === myId
+      ? "Shadow Lunge on you — sidestep the lane!"
+      : `Shadow Lunge at ${name(w.targetId)} — keep out of the lane!`;
   if (mine && mine.stacks > 0)
-    return r.partySize > 1 ? "Cursed — move away from your team and find lantern light!" : "Cursed — keep moving and find lantern light!";
+    return r.partySize > 1
+      ? "Cursed — move away from your team and find lantern light!"
+      : "Cursed — keep moving and find lantern light!";
   if (w?.kind === "snuff") return "A lantern is going out!";
   if (w?.kind === "curse")
-    return w.targetId === myId ? "A curse is coming for you — find lantern light!" : `A curse is coming for ${name(w.targetId)} — spread out!`;
-  if (w?.kind === "split") return "It's splitting — watch which one casts a shadow in the light!";
+    return w.targetId === myId
+      ? "A curse is coming for you — find lantern light!"
+      : `A curse is coming for ${name(w.targetId)} — spread out!`;
+  if (w?.kind === "split")
+    return "It's splitting — watch which one casts a shadow in the light!";
   if (r.exposedUntil > state.time) return "";
-  if ((r.revealUntil ?? 0) > state.time) return "The real one is marked — hit it six times in a row!";
-  if ((r.decoys?.length ?? 0) > 0) return "Find the real one: only it casts a shadow in lantern light. Copies curse you.";
-  if ((r.lanterns ?? []).some((l) => !l.lit)) return "A lantern is out — hit it twice to relight it.";
+  if ((r.revealUntil ?? 0) > state.time)
+    return "The real one is marked — hit it six times in a row!";
+  if ((r.decoys?.length ?? 0) > 0)
+    return "Find the real one: only it casts a shadow in lantern light. Copies curse you.";
+  if ((r.lanterns ?? []).some((l) => !l.lit))
+    return "A lantern is out — hit it twice to relight it.";
   return "";
 }
 
@@ -195,57 +334,214 @@ function somnaraCue(state: Snapshot, myId: string) {
   const r = state.raid!;
   if (r.boss !== "somnara") return "";
   const drowsy = r.drowsy?.[myId];
-  if (drowsy && drowsy.sleepUntil > state.time) return "Asleep — a teammate can tap you awake without hurting you!";
-  if (r.quietZone) return "Whale Song — follow the moving teal Quiet Zone!";
-  if (r.warnings.some(w => w.kind === "falling-stars")) return "Falling Stars — stand between the constellation points!";
-  const dream = r.dream, view = state.raidDream;
-  if (dream) {
-    if (view?.id === dream.id && view.full) return `${dream.dreamerId === myId ? "You are the Dreamer" : "Dream revealed"}${view.backwards ? " — read RIGHT TO LEFT" : ""}. Call 1–4, then step the pads (${dream.step}/${dream.length}).`;
-    const called = [...(r.runeCalls ?? [])].reverse().find(q => q.until > state.time && q.step === dream.step && q.playerId === dream.dreamerId);
-    return called ? `${DREAM_RUNE_NAMES[called.rune]} called — enter that rune pad (${dream.step}/${dream.length})!` : "Listen to the Dreamer's rune calls, then enter the pads in order.";
+  if (drowsy && drowsy.sleepUntil > state.time)
+    return "Asleep — a teammate can tap you awake without hurting you!";
+  if (r.quietZone) return "Thunder Snore — follow the moving teal Quiet Zone!";
+  // Ascendant Snoozaku's Dream Tide: the Seer calls, everyone runs.
+  const tide = r.warnings.find((w) => w.kind === "dream-tide");
+  if (tide) {
+    const view = state.raidDream;
+    if (view?.tide && view.id === tide.id)
+      return `Only you see it: the ${DREAM_RUNE_NAMES[view.runes[0]]} pad stays awake. Call it (1–4), then go!`;
+    const call = [...(r.runeCalls ?? [])]
+      .reverse()
+      .find((q) => q.step === -1 && q.playerId === tide.targetId);
+    const seer = state.players.find((p) => p.id === tide.targetId);
+    return call
+      ? `${DREAM_RUNE_NAMES[call.rune]} called — get onto that pad before the Dream Tide!`
+      : `Dream Tide — listen for ${seer?.name ?? "the Seer"}'s call!`;
   }
-  if (r.exposedUntil > state.time) return "Dream solved — strike Somnara's shining heart!";
-  if (r.warnings.some(w => w.kind === "lullaby") || r.dreamRings?.length) return "Lullaby Rings — jump! Three Drowsy stacks put you to sleep.";
-  if (r.warnings.some(w => w.kind === "tail-splash")) return "Tail Splash — leave the marked lane!";
+  if (r.warnings.some((w) => w.kind === "falling-stars"))
+    return "Falling Stars — stand between the constellation points!";
+  const dream = r.dream,
+    view = state.raidDream;
+  if (dream) {
+    const twin = !!dream.partnerId;
+    const mine = dream.dreamerId === myId || dream.partnerId === myId;
+    if (view?.id === dream.id && view.full && twin && mine)
+      return `Twin Dream: you see half the runes (? are your partner's). Call yours in turn (${dream.step}/${dream.length}).`;
+    if (view?.id === dream.id && view.full)
+      return `${mine ? "You are the Dreamer" : "Dream revealed"}${view.backwards ? " — read RIGHT TO LEFT" : ""}${view.hidden?.length ? " — it has faded: remember it" : ""}. Call 1–4, then step the pads (${dream.step}/${dream.length}).`;
+    const called = [...(r.runeCalls ?? [])]
+      .reverse()
+      .find(
+        (q) =>
+          q.until > state.time &&
+          q.step === dream.step &&
+          (q.playerId === dream.dreamerId || q.playerId === dream.partnerId),
+      );
+    return called
+      ? `${DREAM_RUNE_NAMES[called.rune]} called — enter that rune pad (${dream.step}/${dream.length})!`
+      : "Listen to the Dreamer's rune calls, then enter the pads in order.";
+  }
+  if (r.exposedUntil > state.time)
+    return "Dream solved — strike Snoozaku's shining heart!";
+  if (r.warnings.some((w) => w.kind === "lullaby") || r.dreamRings?.length)
+    return "Lullaby Rings — jump! Three Drowsy stacks put you to sleep.";
+  if (r.warnings.some((w) => w.kind === "tail-splash"))
+    return "Trunk Slam — leave the marked lane!";
   if (r.dreamBubbles?.length) return "Pop the Dream Bubbles or outrun them.";
   return "";
+}
+type RaidStat = "damage" | "revives" | "pillars";
+/** A fun award for the raider who led one stat (top damage, revives …). */
+export interface RaidRole {
+  stat: RaidStat;
+  label: string;
 }
 /** One fun role per raider who stood out (top damage, revives, pillars). */
 export function raidRoles(
   contributions: Record<string, RaidContribution>,
   boss: RaidBossId = "grumblecrag",
 ) {
-  const roles: Record<string, string[]> = {};
-  const best = (stat: "damage" | "revives" | "pillars", label: string) => {
+  const roles: Record<string, RaidRole[]> = {};
+  const best = (stat: RaidStat, label: string) => {
     const top = Object.entries(contributions).sort(
       (a, b) => b[1][stat] - a[1][stat],
     )[0];
-    if (top && top[1][stat] > 0) (roles[top[0]] ??= []).push(label);
+    if (top && top[1][stat] > 0) (roles[top[0]] ??= []).push({ stat, label });
   };
   best("damage", "Heavy Hitter");
   best("revives", "Medic");
-  best("pillars", boss === "tidewyrm" ? "Strand Master" : boss === "gloomshade" ? "Lantern Keeper" : boss === "storm-twins" ? "Perfect Pair" : boss === "emberwing" ? "Torchbearer" : boss === "prismatail" ? "Lightkeeper" : boss === "somnara" ? "Dream Guide" : "Bait Master");
+  best(
+    "pillars",
+    boss === "tidewyrm"
+      ? "Strand Master"
+      : boss === "gloomshade"
+        ? "Lantern Keeper"
+        : boss === "storm-twins"
+          ? "Perfect Pair"
+          : boss === "emberwing"
+            ? "Torchbearer"
+            : boss === "prismatail"
+              ? "Lightkeeper"
+              : boss === "somnara"
+                ? "Dream Guide"
+                : "Bait Master",
+  );
   return roles;
 }
 /** What the boss-feature column counts (pillars baited, strands …). */
 export const featureLabel = (boss: RaidBossId) =>
-  boss === "tidewyrm" ? "Strands" : boss === "gloomshade" ? "Relights" : boss === "storm-twins" ? "Pairs" : boss === "emberwing" ? "Braziers" : boss === "prismatail" ? "Relays" : boss === "somnara" ? "Runes" : "Pillars";
-export function raidContributions(state: Snapshot) {
+  boss === "tidewyrm"
+    ? "Strands"
+    : boss === "gloomshade"
+      ? "Relights"
+      : boss === "storm-twins"
+        ? "Pairs"
+        : boss === "emberwing"
+          ? "Braziers"
+          : boss === "prismatail"
+            ? "Relays"
+            : boss === "somnara"
+              ? "Runes"
+              : "Pillars";
+/** The boss-feature column's full name, for its header tooltip. */
+const featureTitle = (boss: RaidBossId) =>
+  boss === "tidewyrm"
+    ? "Strands"
+    : boss === "gloomshade"
+      ? "Lanterns relit"
+      : boss === "storm-twins"
+        ? "Polarity pairs"
+        : boss === "emberwing"
+          ? "Braziers lit"
+          : boss === "prismatail"
+            ? "Light relays"
+            : boss === "somnara"
+              ? "Correct runes"
+              : "Pillars broken";
+const featureNote = (boss: RaidBossId) =>
+  boss === "storm-twins"
+    ? "Pairs credit every raider who cancels an opposite sign (including the solo pad)."
+    : boss === "emberwing"
+      ? "Braziers credit the raider who finishes lighting them."
+      : boss === "prismatail"
+        ? "Relays credit every raider in a completed light path."
+        : boss === "somnara"
+          ? "Runes credit the raider whose fighter or clone entered the correct pad."
+          : boss === "tidewyrm"
+            ? "Strands credit the raider who baited the dive."
+            : boss === "gloomshade"
+              ? "Relights credit the raider who lit the lantern."
+              : "Pillars credit the raider who baited the charge.";
+/** Small stroke icons for each stat's award chip. */
+const STAT_ICONS: Record<RaidStat, string> = {
+  damage:
+    '<path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/>',
+  revives: '<path d="M12 5v14M5 12h14"/>',
+  pillars:
+    '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/>',
+};
+const statIcon = (stat: RaidStat) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${STAT_ICONS[stat]}</svg>`;
+const number = (n: number) => Math.round(n).toLocaleString("en-US");
+/**
+ * The post-raid scoreboard: you first, then the party in join order. With a
+ * team, each column's leader is lit gold and damage shows its share of the
+ * team's total; solo runs skip both (they would always be "best").
+ */
+export function raidContributions(state: Snapshot, myId?: string) {
   const r = state.raid!;
   const roles = raidRoles(r.contributions ?? {}, r.boss);
-  return `<section class="raid-contributions" aria-label="Team contributions"><h3>Team contributions</h3><div class="raid-score-head" aria-hidden="true"><span>Raider</span><span>Damage</span><span>Revives</span><span>${featureLabel(r.boss)}</span></div>${state.players
-    .filter((p) => !p.raidBoss)
-    .map((p) => {
-      const stats = r.contributions?.[p.id] ?? {
-        damage: 0,
-        revives: 0,
-        pillars: 0,
-      };
-      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="${r.boss === "tidewyrm" ? "Strands" : r.boss === "gloomshade" ? "Lanterns relit" : r.boss === "storm-twins" ? "Polarity pairs" : r.boss === "emberwing" ? "Braziers lit" : r.boss === "prismatail" ? "Light relays" : r.boss === "somnara" ? "Correct runes" : "Pillars broken"}">${stats.pillars}</span></div>`;
+  const raiders = state.players
+    .filter((p) => isRaider(p))
+    .map((p, i) => ({
+      p,
+      i,
+      stats: r.contributions?.[p.id] ?? { damage: 0, revives: 0, pillars: 0 },
+    }))
+    .sort(
+      (a, b) => Number(b.p.id === myId) - Number(a.p.id === myId) || a.i - b.i,
+    );
+  const team = raiders.length > 1;
+  // Compare what is shown (damage is fractional), so ties light together.
+  const top = (stat: RaidStat) =>
+    Math.max(0, ...raiders.map((x) => Math.round(x.stats[stat])));
+  const lead = {
+    damage: top("damage"),
+    revives: top("revives"),
+    pillars: top("pillars"),
+  };
+  const total = raiders.reduce((sum, x) => sum + x.stats.damage, 0);
+  const cell = (stat: RaidStat, raw: number, extra = "") => {
+    const value = Math.round(raw);
+    const best = team && value > 0 && value === lead[stat];
+    const cls = [best ? "is-best" : "", value > 0 ? "" : "is-zero"]
+      .filter(Boolean)
+      .join(" ");
+    return `<td${cls ? ` class="${cls}"` : ""} data-stat="${stat}">${number(value)}${best ? '<span class="sr-only"> (team best)</span>' : ""}${extra}</td>`;
+  };
+  const rows = raiders
+    .map(({ p, stats }) => {
+      const share =
+        team && total > 0 ? Math.round((stats.damage / total) * 100) : -1;
+      const notes = [
+        CHARACTERS[p.character].name,
+        p.out ? "Left" : "",
+        r.standIns?.includes(p.id) ? "AI stand-in" : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      const chips = (roles[p.id] ?? [])
+        .map(
+          (role) =>
+            `<em class="ui-tag rc-role" data-stat="${role.stat}">${statIcon(role.stat)}${role.label}</em>`,
+        )
+        .join("");
+      return `<tr class="rc-score-row${p.id === myId ? " is-me" : ""}${p.out ? " is-out" : ""}"><th scope="row"><div class="rc-player"><span class="rc-portrait"><span class="raid-score-avatar" aria-hidden="true">${framedAvatar(p, "raid-result-" + p.id)}</span></span><span class="rc-id"><span class="rc-name" title="${escape(p.name)}"><b>${escape(p.name)}</b>${p.id === myId ? '<small class="ui-tag is-new rc-you">You</small>' : ""}</span><span class="rc-sub"><small class="rc-champ" title="${notes}">${notes}</small>${chips ? `<span class="rc-roles">${chips}</span>` : ""}</span></span></div></th>${cell(
+        "damage",
+        stats.damage,
+        share >= 0
+          ? `<span class="rc-share" title="${share}% of the team's damage"><span class="rc-share-bar" aria-hidden="true"><i style="width:${share}%"></i></span><small>${share}%</small></span>`
+          : "",
+      )}${cell("revives", stats.revives)}${cell("pillars", stats.pillars)}</tr>`;
     })
-    .join(
-      "",
-    )}<p class="raid-score-note">Revives credit everyone who helped. ${r.boss === "storm-twins" ? "Pairs credit every raider who cancels an opposite sign (including the solo pad)." : r.boss === "emberwing" ? "Braziers credit the raider who finishes lighting them." : r.boss === "prismatail" ? "Relays credit every raider in a completed light path." : r.boss === "somnara" ? "Runes credit the raider whose fighter or clone entered the correct pad." : r.boss === "tidewyrm" ? "Strands credit the raider who baited the dive." : r.boss === "gloomshade" ? "Relights credit the raider who lit the lantern." : "Pillars credit the raider who baited the charge."}</p></section>`;
+    .join("");
+  const meta = team
+    ? `${raiders.length} raiders · ${number(total)} damage`
+    : `Solo · ${number(total)} damage`;
+  return `<section class="rc-contrib" aria-label="Team contributions"><div class="rc-contrib-top"><h3 class="ui-h">Team contributions</h3><span class="ui-note">${meta}</span></div><table class="rc-score"><thead><tr><th scope="col">Raider</th><th scope="col" title="Damage dealt">Damage</th><th scope="col">Revives</th><th scope="col" title="${featureTitle(r.boss)}">${featureLabel(r.boss)}</th></tr></thead><tbody>${rows}</tbody></table><p class="ui-note rc-score-note">Revives credit everyone who helped. ${featureNote(r.boss)}</p></section>`;
 }
 
 export interface RaidGoal {
@@ -270,7 +566,8 @@ function earnedReward(p: RaidProgress, reward: RaidReward, computed: boolean) {
 /** One reward's exact progress from saved records (never invented). */
 export function raidGoal(p: RaidProgress, reward: RaidReward): RaidGoal {
   const boss = reward.boss ?? "grumblecrag";
-  const record = p.bosses?.[boss] ??
+  const record =
+    p.bosses?.[boss] ??
     (boss === "grumblecrag"
       ? { clears: p.clears, highestPeril: p.highestPeril }
       : { clears: 0, highestPeril: 0 });
@@ -290,20 +587,38 @@ export function raidGoal(p: RaidProgress, reward: RaidReward): RaidGoal {
   };
   switch (rule.kind) {
     case "clears":
-      return goal(record.clears, rule.n, rule.n === 1 ? reward.goal : `${Math.min(record.clears, rule.n)}/${rule.n} clears`);
+      return goal(
+        record.clears,
+        rule.n,
+        rule.n === 1
+          ? reward.goal
+          : `${Math.min(record.clears, rule.n)}/${rule.n} clears`,
+      );
     case "peril":
       return goal(Math.min(record.highestPeril, rule.n), rule.n, reward.goal);
     case "stat": {
       const stats = p.stats?.[boss];
-      const known = stats !== undefined || (boss === "grumblecrag" && p.pillars !== undefined);
-      const have = stats?.[rule.stat] ?? (boss === "grumblecrag" ? (p[rule.stat] ?? 0) : 0);
-      return goal(have, rule.n, known
-        ? `${Math.min(have, rule.n)}/${rule.n} ${rule.stat === "pillars" ? (boss === "tidewyrm" ? "strands" : boss === "gloomshade" ? "lanterns relit" : boss === "storm-twins" ? "polarity pairs" : boss === "emberwing" ? "braziers lit" : boss === "prismatail" ? "light relays" : boss === "somnara" ? "correct runes" : "pillars baited") : "revives"} · wins and losses count`
-        : "Counts from the next raid update");
+      const known =
+        stats !== undefined ||
+        (boss === "grumblecrag" && p.pillars !== undefined);
+      const have =
+        stats?.[rule.stat] ??
+        (boss === "grumblecrag" ? (p[rule.stat] ?? 0) : 0);
+      return goal(
+        have,
+        rule.n,
+        known
+          ? `${Math.min(have, rule.n)}/${rule.n} ${rule.stat === "pillars" ? (boss === "tidewyrm" ? "strands" : boss === "gloomshade" ? "lanterns relit" : boss === "storm-twins" ? "polarity pairs" : boss === "emberwing" ? "braziers lit" : boss === "prismatail" ? "light relays" : boss === "somnara" ? "correct runes" : "pillars baited") : "revives"} · wins and losses count`
+          : "Counts from the next raid update",
+      );
     }
     case "total-clears": {
       const total = p.totalClears ?? p.clears;
-      return goal(total, rule.n, `${Math.min(total, rule.n)}/${rule.n} clears across every boss`);
+      return goal(
+        total,
+        rule.n,
+        `${Math.min(total, rule.n)}/${rule.n} clears across every boss`,
+      );
     }
     default:
       return goal(0, 1, reward.goal);
@@ -320,9 +635,11 @@ export function raidRewardProgress(
   if (!progress)
     return `<div class="raid-next-reward"><b>Your next reward</b><p>${progress === null ? "Open the Raid Hub to check your progress." : "Loading your reward progress…"}</p></div>`;
   // Rare Gilded encounters are never "next": they can't be worked towards.
-  const goal = raidGoals(progress, boss).find((g) => !g.done && g.reward.rule.kind !== "gilded") ?? {
+  const goal = raidGoals(progress, boss).find(
+    (g) => !g.done && g.reward.rule.kind !== "gilded",
+  ) ?? {
     name: "All milestone rewards earned",
-    text: "Try a new champion or today's Raid of the Day board.",
+    text: "Try a new champion, a different boss or a faster clear.",
     value: 1,
     max: 1,
   };

@@ -1,3 +1,8 @@
+import { paintPrismell } from "./boss-prismell-rig";
+import { notePrismell } from "./prismell-attack-fx";
+import { paintBossAura } from "./boss-spell-art";
+import { groundHeight } from "../../../packages/shared/src/world-art";
+import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import {
@@ -6,111 +11,24 @@ import {
   type RaidWarning,
 } from "../../../packages/shared/src/raid";
 import { RaidBossMotion, type RaidBossCue } from "./raid-boss-motion";
+import { paintAtriumRig } from "./raid-prismatail-atrium-rig";
+import { drawAscendantPrismellWarning } from "./ascendant-prismell-art";
+import type { LayerAt } from "./raid-layers";
 type G = Phaser.GameObjects.Graphics;
 const TAU = Math.PI * 2;
-const diamond = (
+/**
+ * The Sun Atrium's live pieces: mirrors, skylights, light-relay beams, Sun
+ * Pillars and the Blinded marker, as images from one atlas
+ * (raid-prismatail-atrium-rig.ts). Its rings and glass are in the baked floor.
+ */
+export function drawSunAtrium(
   g: G,
-  x: number,
-  y: number,
-  size: number,
-  color: number,
-  alpha = 1,
-) =>
-  g.fillStyle(color, alpha).fillPoints(
-    [
-      { x, y: y - size },
-      { x: x + size * 0.6, y },
-      { x, y: y + size },
-      { x: x - size * 0.6, y },
-    ],
-    true,
-  );
-export function drawSunAtrium(g: G, state: Snapshot, reduced: boolean) {
-  const r = state.raid!,
-    t = reduced ? 0 : state.time;
-  // Inlaid glass stays quiet beneath the functional warnings.
-  g.lineStyle(2, 0xffd778, 0.12).strokeEllipse(800, 450, 1150, 660);
-  for (let i = 0; i < 12; i++) {
-    const a = (i * TAU) / 12;
-    g.lineStyle(2, PRISM_COLORS[i % 6], 0.13).lineBetween(
-      800 + Math.cos(a) * 300,
-      450 + Math.sin(a) * 180,
-      800 + Math.cos(a) * 570,
-      450 + Math.sin(a) * 325,
-    );
-  }
-  const sources =
-    r.phase === 3 && r.partySize > 1
-      ? [
-          { x: 350, y: 300 },
-          { x: 350, y: 600 },
-        ]
-      : [P.source];
-  const range = P.range + (r.trait === "dazzling" ? 60 : 0);
-  if (r.exposedUntil <= state.time)
-    for (const s of sources) {
-      g.fillStyle(0xffe9ac, 0.06).fillCircle(s.x, s.y, range);
-      g.lineStyle(2, 0xffe9ac, 0.25).strokeCircle(s.x, s.y, range);
-      g.fillStyle(0xffe9ac, 0.16).fillEllipse(s.x, s.y, 90, 50);
-      g.lineStyle(3, 0xffe9ac, 0.9).strokeEllipse(s.x, s.y, 64, 30);
-      diamond(g, s.x, s.y - 23, 24, 0xffe9ac, 0.9);
-      for (let i = 0; i < 6; i++) {
-        const a = (i * TAU) / 6 + t * 0.18;
-        g.lineStyle(2, 0xffe9ac, 0.55).lineBetween(
-          s.x + Math.cos(a) * 32,
-          s.y - 23 + Math.sin(a) * 32,
-          s.x + Math.cos(a) * 44,
-          s.y - 23 + Math.sin(a) * 44,
-        );
-      }
-    }
-  for (const link of r.lightLinks ?? []) {
-    const color = link.beam ? 0x9cddff : 0xffdc83;
-    g.lineStyle(15, color, 0.13).lineBetween(link.x, link.y, link.tx, link.ty);
-    g.lineStyle(4, color, 0.95).lineBetween(link.x, link.y, link.tx, link.ty);
-    if (!reduced) {
-      const p = (t * 0.65) % 1;
-      diamond(
-        g,
-        link.x + (link.tx - link.x) * p,
-        link.y + (link.ty - link.y) * p,
-        6,
-        0xffffff,
-      );
-    }
-  }
-  for (const [i, m] of (r.mirrors ?? []).entries()) {
-    g.fillStyle(0x0d2034, 0.65).fillEllipse(m.x, m.y + 18, 80, 30);
-    g.fillStyle(0x42536c, 1).fillRoundedRect(m.x - 24, m.y - 12, 48, 35, 7);
-    g.lineStyle(3, 0xd9cf9d, 0.9).strokeCircle(m.x, m.y - 8, 29);
-    diamond(g, m.x, m.y - 8, 26, PRISM_COLORS[i], 0.9);
-    const dx = Math.cos(m.angle),
-      dy = Math.sin(m.angle);
-    g.lineStyle(5, 0xfff5c9, 1).lineBetween(
-      m.x,
-      m.y,
-      m.x + dx * 56,
-      m.y + dy * 56,
-    );
-    g.fillStyle(0xfff5c9, 1).fillTriangle(
-      m.x + dx * 65,
-      m.y + dy * 65,
-      m.x + dx * 48 - dy * 8,
-      m.y + dy * 48 + dx * 8,
-      m.x + dx * 48 + dy * 8,
-      m.y + dy * 48 - dx * 8,
-    );
-  }
-  for (const p of r.sunPillars ?? []) {
-    g.fillStyle(0xffb556, 0.2).fillEllipse(p.x, p.y, 80, 40);
-    diamond(g, p.x, p.y - 35, 32, 0xffdb83, 0.85);
-  }
-  for (const p of state.players)
-    if ((r.blinded?.[p.id] ?? 0) > state.time) {
-      g.lineStyle(3, 0xd4caff, 0.9)
-        .strokeEllipse(p.x, p.y - 102, 32, 15)
-        .lineBetween(p.x - 19, p.y - 90, p.x + 19, p.y - 114);
-    }
+  state: Snapshot,
+  reduced: boolean,
+  at?: LayerAt,
+  clock = state.time,
+) {
+  paintAtriumRig(g, state, reduced, at, clock);
 }
 export function drawPrismatailWarning(g: G, state: Snapshot, w: RaidWarning) {
   const progress = Math.max(
@@ -184,8 +102,13 @@ export function drawPrismatailWarning(g: G, state: Snapshot, w: RaidWarning) {
   }
   if (w.kind === "glare") {
     const y = w.y - 205;
-    g.fillStyle(0xfff3ce, 0.15 + progress * 0.15).fillEllipse(w.x, y, 100, 58);
-    g.lineStyle(4, 0xfff3ce, 1).strokeEllipse(w.x, y, 68, 30);
+    g.fillStyle(0xfff3ce, 0.15 + progress * 0.15).fillEllipse(
+      w.x,
+      y,
+      100,
+      groundHeight(100),
+    );
+    g.lineStyle(4, 0xfff3ce, 1).strokeEllipse(w.x, y, 68, groundHeight(68));
     g.fillStyle(0xfff3ce, 1).fillCircle(w.x, y, 9 + progress * 5);
     g.lineStyle(4, 0xffe2ab, 0.9)
       .beginPath()
@@ -211,9 +134,23 @@ export function drawPrismatailWarning(g: G, state: Snapshot, w: RaidWarning) {
       .strokePath();
     return true;
   }
+  if (w.kind === "eclipse" || w.kind === "umbral-prism")
+    return drawAscendantPrismellWarning(g, state, w);
   return w.kind === "light-relay";
 }
 const motion = new WeakMap<G, RaidBossMotion>();
+/** Where the boss was last frame, to tell when it walks. */
+const steps = new WeakMap<
+  G,
+  { x: number; y: number; time: number; walk: number }
+>();
+/**
+ * Prismell (the "prismatail" raid): the prism-shelled snail (boss-prismell.ts)
+ * posed from the battle's own state. The attack being wound up (its warning)
+ * and the last one cast drive its windups and follow-through; a light relay
+ * opens its heart; it shows its shell off at a new phase, and when beaten the
+ * shell's light goes out and it tucks itself away inside.
+ */
 export function drawPrismatail(
   g: G,
   state: Snapshot,
@@ -229,78 +166,66 @@ export function drawPrismatail(
     motion.set(g, m);
   }
   const pose = m.sample(state, clock, reduced)!;
-  const t = reduced ? 0 : pose.time,
-    x = boss.x,
-    y = boss.y - 60 + Math.sin(t * 1.3) * 4 + pose.collapse * 32,
-    exposed = r.exposedUntil > state.time;
-  const alpha =
-    r.result === "victory" ? Math.max(0.2, 1 - pose.deathAge * 0.35) : 1;
-  g.fillStyle(0x101a2d, 0.35).fillEllipse(x, boss.y + 20, 200, 60);
-  // Each prism feather has its own facet and eye; slow fan breathing never rescales the body.
-  for (let i = 0; i < 9; i++) {
-    const a = -Math.PI + (i / 8) * Math.PI,
-      reach = 152 + Math.sin(t * 1.1 + i * 0.6) * 5;
-    const tx = x + Math.cos(a) * reach,
-      ty = y - 12 + Math.sin(a) * reach;
-    const side = 17,
-      color = PRISM_COLORS[i % 6];
-    g.fillStyle(0x263d59, alpha).fillTriangle(
-      x,
-      y + 15,
-      tx - side,
-      ty,
-      tx + side,
-      ty,
-    );
-    diamond(g, tx, ty, 36, color, alpha * 0.9);
-    diamond(g, tx - 4, ty - 6, 17, 0xfff8e6, alpha * 0.7);
-    g.fillStyle(0x20304d, alpha).fillCircle(tx, ty + 4, 7);
-    g.fillStyle(color, alpha).fillCircle(tx, ty + 4, 3.5);
+  const life = bossLife(g, state, boss, clock, reduced);
+  const exposed = r.exposedUntil > state.time;
+  const stagger = r.staggerUntil > state.time;
+  // walking: its speed over the floor, eased
+  const last = steps.get(g);
+  let walk = last?.walk ?? 0;
+  if (last && state.time > last.time) {
+    const speed =
+      Math.hypot(boss.x - last.x, boss.y - last.y) / (state.time - last.time);
+    walk += (Math.min(1, speed / 120) - walk) * 0.3;
   }
-  g.fillStyle(
-    pose.hurt > 0.2 ? 0xe5faff : r.gilded ? 0xf6c66f : 0x65bcca,
-    alpha,
-  ).fillEllipse(x, y + 14, 107, 120);
-  g.fillStyle(0xffebac, alpha).fillEllipse(x, y + 27, 70, 82);
-  g.fillStyle(0x32788e, alpha)
-    .fillEllipse(x - 43, y + 25 + Math.sin(t * 1.8) * 3, 34, 70)
-    .fillEllipse(x + 43, y + 25 - Math.sin(t * 1.8) * 3, 34, 70);
-  g.fillStyle(0x83d7db, alpha).fillEllipse(x, y - 52, 66, 70);
-  for (const off of [-14, 0, 14]) {
-    g.lineStyle(3, 0xe1c36e, alpha).lineBetween(
-      x + off * 0.4,
-      y - 83,
-      x + off,
-      y - 107 - Math.abs(off) * 0.3,
-    );
-    diamond(g, x + off, y - 109 - Math.abs(off) * 0.3, 8, 0xffe9a0, alpha);
-  }
-  for (const dx of [-15, 15]) {
-    g.fillStyle(0x152438, alpha).fillEllipse(x + dx, y - 56, 10, 15);
-    g.fillStyle(0xffffff, alpha).fillCircle(x + dx - 1, y - 59, 2.5);
-  }
-  g.fillStyle(0xffb56b, alpha).fillTriangle(
-    x - 9,
-    y - 42,
-    x + 9,
-    y - 42,
-    x,
-    y - 29,
+  steps.set(g, { x: boss.x, y: boss.y, time: state.time, walk });
+  const wind = r.warnings.find(
+    (w) =>
+      // an Umbral Prism rides a raider: no wind-up of the shell's
+      w.kind !== "umbral-prism" &&
+      (!w.casterId || w.casterId === boss.id) &&
+      w.at >= state.time &&
+      (w.startedAt ?? w.at - 1.5) <= state.time,
   );
-  g.fillStyle(0xe3b567, alpha)
-    .fillEllipse(x - 25, boss.y + 7, 35, 13)
-    .fillEllipse(x + 25, boss.y + 7, 35, 13);
-  diamond(g, x, y + 22, 26, exposed ? 0xfff5c9 : 0x9ae4ee, alpha);
-  if (!exposed) {
-    g.fillStyle(0x9adfff, 0.14).fillEllipse(x, y + 15, 118, 136);
-    g.lineStyle(3, 0xc6efff, 0.8).strokeEllipse(x, y + 15, 118, 136);
-    g.lineStyle(2, 0xffffff, 0.55).lineBetween(x - 30, y - 27, x - 43, y + 4);
-  } else {
-    g.lineStyle(3, 0xffe9a0, 0.7).strokeCircle(
-      x,
-      y + 22,
-      36 + Math.sin(t * 2) * 3,
-    );
+  const cast = life.action.casts[life.action.casts.length - 1];
+  g.fillStyle(0x101a2d, 0.32).fillEllipse(boss.x, boss.y + 6, 172, 40);
+  const at = paintPrismell(g, {
+    x: boss.x,
+    y: boss.y,
+    angle: boss.angle,
+    clock: pose.time,
+    phase: r.phase,
+    reduced,
+    gilded: !!r.gilded,
+    windKind: wind?.kind,
+    windup: life.windup,
+    castKind: cast?.kind,
+    castAge: cast?.age ?? 99,
+    roarAge: pose.transform > 0 ? (1 - pose.transform) * 1.6 : 99,
+    exposed,
+    stagger,
+    hurt: pose.hurt,
+    dead: pose.dead,
+    deadAge: pose.deathAge,
+    walk: pose.dead || exposed || stagger ? 0 : walk,
+    prismHot: wind?.kind === "fan-display" ? (wind.prismIndex ?? 0) : undefined,
+    scramble: !!r.mirrors?.some((m) => (m.scrambleAt ?? 0) > state.time),
+  });
+  if (at) {
+    // where the shell and its heart are, for the attack effects (prismell-attack-fx.ts)
+    notePrismell(g.scene, {
+      heart: at.heart,
+      shell: at.shell,
+      shellTop: at.shellTop,
+      open: at.open,
+      dim: at.dim,
+      shine: at.shine,
+      // the face: beams and motes keep clear of it
+      head: at.head,
+      headR: at.headR,
+    });
+    if (!pose.dead)
+      // the shared cast aura, kept soft: the shell's facets must stay readable
+      paintBossAura(g, "prismatail", at.heart.x, at.heart.y, life, 0.4);
   }
   return pose.cues;
 }

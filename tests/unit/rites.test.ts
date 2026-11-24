@@ -22,10 +22,12 @@ const duel = () => {
   arena.deadline = 999;
   return { arena, p: arena.players[0], q: arena.players[1] };
 };
-const seeded = (seed = 7) => () => {
-  seed = (seed * 16807) % 2147483647;
-  return seed / 2147483647;
-};
+const seeded =
+  (seed = 7) =>
+  () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
 
 describe("rites", () => {
   it("every fighter has four minors and two majors on real abilities", () => {
@@ -42,20 +44,24 @@ describe("rites", () => {
         const before = [CHARACTERS[id].basic, ...CHARACTERS[id].skills].find(
           (a) => a.id === r.skill,
         )!;
-        const after = [kitOf(id, [r.id]).basic, ...kitOf(id, [r.id]).skills].find(
-          (a) => a.id === r.skill,
-        )!;
+        const after = [
+          kitOf(id, [r.id]).basic,
+          ...kitOf(id, [r.id]).skills,
+        ].find((a) => a.id === r.skill)!;
         expect(after).not.toEqual(before);
       }
     }
     expect(new Set(RITES.map((r) => r.id)).size).toBe(RITES.length);
   });
   it("applies changes without touching the shared roster", () => {
-    const kit = kitOf("cindrake", ["cindrake-wide-bomb", "cindrake-searing-snap"]);
+    const kit = kitOf("cindrake", [
+      "cindrake-wide-eruption",
+      "cindrake-searing-snap",
+    ]);
     expect(kit.skills[1].explosion).toBeCloseTo(110 * 1.3);
     expect(kit.basic.damage).toBe(18);
     expect(CHARACTERS.cindrake.skills[1].explosion).toBe(110);
-    expect(CHARACTERS.cindrake.basic.damage).toBe(15);
+    expect(CHARACTERS.cindrake.basic.damage).toBe(14);
     // Another fighter's rite does nothing.
     expect(kitOf("cindrake", ["tidefin-deep-pool"]).skills).toEqual(
       CHARACTERS.cindrake.skills,
@@ -66,7 +72,9 @@ describe("rites", () => {
     expect(early).toHaveLength(RITE_RULES.choices);
     expect(early.every((id) => RITE_BY_ID[id].tier === "minor")).toBe(true);
     const later = riteOffer("lumoth", [], 3, seeded());
-    expect(later.filter((id) => RITE_BY_ID[id].tier === "major")).toHaveLength(2);
+    expect(later.filter((id) => RITE_BY_ID[id].tier === "major")).toHaveLength(
+      2,
+    );
     const major = later.find((id) => RITE_BY_ID[id].tier === "major")!;
     const after = riteOffer("lumoth", [major], 4, seeded(), 1);
     expect(after).toHaveLength(4);
@@ -111,18 +119,25 @@ describe("rites", () => {
   });
   it("cast uses the rite version: cooldowns and the client's view agree", () => {
     const { arena, p } = duel();
-    p.rites = ["cindrake-wide-bomb"];
-    arena.cast(p, arena.kit(p).skills[1]);
+    // A zone rite (Deep Cracks): the client reads the zone's rite version.
+    p.rites = ["cindrake-deep-cracks"];
+    arena.cast(p, arena.kit(p).skills[2]);
     const wire = unpackSnapshot(packSnapshot(arena.snapshot()));
-    expect(wire.projectiles[0].ability.explosion).toBeCloseTo(110 * 1.3);
-    const tide = duel();
-    tide.q.rites = ["tidefin-rapid-stars"];
-    tide.arena.submit(tide.q, {
-      ...tide.q.lastInput,
-      seq: 99,
-      skill: 0,
-    });
-    tide.arena.tick();
-    expect(tide.q.cooldowns[0] - tide.arena.time).toBeCloseTo(5, 1);
+    expect(wire.zones[0].ability.duration).toBeCloseTo(3.5);
+    expect(CHARACTERS.cindrake.skills[2].duration).toBe(2.5);
+    // A cooldown rite: Halcyon Rewind 17s → 12s.
+    const hal = new Arena("RITES2");
+    hal.add("one", "One", "cindrake");
+    const h = hal.add("two", "Two", "halcyra");
+    hal.start();
+    hal.phase = "playing";
+    hal.deadline = 999;
+    h.rites = ["halcyra-quick-rewind"];
+    const slot = CHARACTERS.halcyra.skills.findIndex(
+      (k) => k.id === "halcyon-rewind",
+    );
+    hal.submit(h, { ...h.lastInput, seq: 99, skill: slot });
+    hal.tick();
+    expect(h.cooldowns[slot] - hal.time).toBeCloseTo(12, 1);
   });
 });

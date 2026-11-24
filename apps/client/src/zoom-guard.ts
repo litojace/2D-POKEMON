@@ -86,6 +86,30 @@ export function setZoomLock(on: boolean) {
   lastTap = -Infinity;
 }
 
+/**
+ * The iPhone app is a game everywhere, not a page: its Plaza has touch
+ * controls too, and two quick taps there zoomed the whole game in
+ * (owner, 19 Nov 2026). Capacitor only turns off pinch (its scroll-view
+ * delegate), not WebKit's double-tap zoom, so the app keeps the viewport at
+ * maximum-scale=1, user-scalable=no for good (a WKWebView honours it, unlike
+ * Safari) and cancels the gesture and double-click events as a fallback.
+ * Touch-action stays as it is, so panels still scroll; iOS's own Zoom
+ * (Settings → Accessibility) still works for anyone who needs it.
+ */
+export function lockAppZoom(
+  doc: Pick<Document, "querySelector" | "addEventListener"> = document,
+) {
+  const meta = doc.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+  if (meta) meta.content = lockedViewport(meta.content);
+  for (const type of [
+    "gesturestart",
+    "gesturechange",
+    "gestureend",
+    "dblclick",
+  ])
+    doc.addEventListener(type, cancel, passiveOff);
+}
+
 /** Lock while <body> has both `battle-active` and `touch-mode`. */
 export function watchBattleZoom(body: HTMLElement = document.body) {
   const sync = () =>

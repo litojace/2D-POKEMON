@@ -198,7 +198,57 @@ it("still equips earned raid rewards alongside collection pieces", async () => {
   });
 });
 
+// It buys every champion skin (250+ purchases): about 6 s on a quiet machine,
+// and past the default 10 s when CI runs the suite in parallel.
 it("keeps every champion skin equippable through its separate champion slot", async () => {
+  // The catalog includes the newest champions' skins, which 053 and 054
+  // seed, the Cyber Mecha Epics (069), and the Nature champions' (070, 071;
+  // 070's other changes need the farm tables, so just its skins).
+  await db.exec("reset role");
+  for (const file of [
+    "053_new_champion_skins.sql",
+    "054_new_champion_mythicals.sql",
+    "069_cyber_mecha_epics.sql",
+  ])
+    await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
+  const nature = await readFile(
+    "supabase/migrations/070_eighteen_champions.sql",
+    "utf8",
+  );
+  await db.exec(
+    nature.slice(
+      nature.indexOf("insert into public.arena_shop_items"),
+      nature.indexOf("items = excluded.items;") +
+        "items = excluded.items;".length,
+    ),
+  );
+  await db.exec(
+    await readFile(
+      "supabase/migrations/071_nature_void_knights_and_cyber.sql",
+      "utf8",
+    ),
+  );
+  // The fashion collections and Nova Vanguard skins (17 Nov 2026), the
+  // Legendary rarity and the Sky Pirates (18 Nov).
+  for (const file of [
+    "20261117170000_fashion_collections.sql",
+    "20261117170001_distinct_epic_collections.sql",
+    "20261117170002_nova_vanguard.sql",
+    // The Legendary rarity (Nova moves to it) and the Sky Pirates.
+    "20261118100000_legendary_skins_and_skin_sets.sql",
+    "20261118120000_sky_pirates.sql",
+    // Hồn Việt (Epic).
+    "20261118140000_hon_viet.sql",
+    // Hero Squad (Epic).
+    "20261118160000_hero_squad.sql",
+    // Dream Carnival retired.
+    "20261118170000_retire_dream_carnival.sql",
+    // Neon Campus (Epic).
+    "20261118180000_neon_campus.sql",
+    // Stars & Stripes (Legendary).
+    "20261118190000_stars_stripes.sql",
+  ])
+    await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   await login(admin);
   for (const skin of CHAMPION_SKINS) {
     await db.query("select public.arena_buy_item($1)", [skin.id]);
@@ -214,4 +264,4 @@ it("keeps every champion skin equippable through its separate champion slot", as
     });
   }
   expect((await economy()).balance).toBe(0);
-});
+}, 60_000);

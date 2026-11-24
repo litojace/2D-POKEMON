@@ -1,81 +1,73 @@
 import { expect, it } from "vitest";
-import { RaidArena } from "../../apps/server/src/raid";
-import { raidAppearance, raidLobby } from "../../apps/client/src/raid-ui";
-import { raidBossPageMarkup } from "../../apps/client/src/raid-hub";
-import type { RaidProgress } from "../../packages/shared/src/raid";
-// The Rewards tab of Grumblecrag's page in the Raid Hub.
-const raidBestiary = (p: RaidProgress, character: "voltkit" | "tidefin" = "voltkit") =>
-  raidBossPageMarkup("grumblecrag", "rewards", p, raidAppearance(p, character));
+import {
+  roomSeatsMarkup,
+  type RoomData,
+} from "../../apps/client/src/screens/room-view";
 
-it("uses the local pending champion for its party avatar while keeping teammates unchanged", () => {
-  const a = new RaidArena("TEST");
-  a.add("me", "Player", "voltkit");
-  a.add("peer", "Teammate", "cindrake");
-  a.start();
-  const html = raidLobby(a.snapshot(), "me", "tidefin");
-  const mine = html
-    .split('data-raid-player="me"')[1]
-    .split('data-raid-player="peer"')[0];
-  expect(mine).toContain('aria-label="Tidefin"');
-  expect(mine).toContain('class="raid-player-character">Tidefin');
-  expect(html.split('data-raid-player="peer"')[1]).toContain(
-    'aria-label="Cindrake"',
-  );
-  expect(a.heroes()[0].character).toBe("voltkit");
-});
-it("marks earned rewards completed and keeps unearned cosmetics visibly locked", () => {
-  const html = raidBestiary({
-    clears: 1,
-    highestPeril: 1,
-    bestSeconds: 60,
-    titles: ["Cragbreaker"],
-    cosmetics: [],
-    weekly: [],
-    equipped: null,
-  });
-  expect(html.match(/class="raid-goal is-complete"/g)).toHaveLength(1);
-  expect(html).toContain("Unlock: 5 clears");
-  expect(html).toContain("1/5 clears");
-  expect(html).toMatch(/data-raid-item="cragbound" data-raid-cosmetic="cragbound" disabled/);
-  // Before migration 008 the lifetime titles say when they start counting.
-  expect(html).toContain("Counts from the next raid update");
-});
-it("equips one item per slot and shows exact title progress", () => {
-  const html = raidBestiary(
+// The raid room's seats (UI remodel step 5: the old raid lobby's panel is
+// the room's seats column now). main.ts seats you with the fighter you
+// picked before the server confirms it; your teammates keep theirs.
+const room = (extra: Partial<RoomData> = {}): RoomData => ({
+  mode: "raid",
+  watch: false,
+  code: "TEST01",
+  boss: "grumblecrag",
+  rounds: 3,
+  host: true,
+  rules: [],
+  teamUp: "",
+  watchers: [],
+  seats: [
     {
-      clears: 10,
-      highestPeril: 3,
-      bestSeconds: 60,
-      titles: [],
-      cosmetics: ["cragbound", "cragstone", "mountain-aura", "mountainborn", "conqueror"],
-      weekly: [],
-      loadout: { skin: "cragstone", frame: "conqueror" },
-      pillars: 7,
-      revives: 25,
-      runs: 14,
+      id: "me",
+      name: "Player",
+      character: "tidefin",
+      avatar: '<svg aria-label="Tidefin"></svg>',
+      ready: false,
+      connected: true,
+      host: true,
+      me: true,
     },
-    "tidefin",
-  );
-  expect(html).toMatch(/is-equipped" data-raid-slot="skin" data-raid-item="cragstone"/);
-  expect(html).toMatch(/is-equipped" data-raid-slot="frame" data-raid-item="conqueror"/);
-  // The aura slot is empty, so its "None" option is the equipped one.
-  expect(html).toMatch(/is-equipped" data-raid-slot="aura" data-raid-item=""/);
-  expect(html).toContain("7/25 pillars baited");
-  expect(html).toContain("20/20 revives");
-  expect(html).toContain("Previewing Tidefin");
-  expect(html).not.toContain('aria-label="Voltkit"');
+    {
+      id: "peer",
+      name: "Teammate",
+      character: "cindrake",
+      avatar: '<svg aria-label="Cindrake"></svg>',
+      ready: true,
+      connected: true,
+      host: false,
+      me: false,
+    },
+  ],
+  ...extra,
 });
-it("offers the Victory slot alongside the other appearance slots", () => {
-  const html = raidBestiary({
-    clears: 3,
-    highestPeril: 1,
-    bestSeconds: 60,
-    titles: [],
-    cosmetics: ["rockslide-flex"],
-    weekly: [],
-    earned: ["cragbreaker", "rockslide-flex"],
-    loadout: { victory: "rockslide-flex" },
-  });
-  expect(html).toContain("<h4>Victory</h4>");
-  expect(html).toMatch(/is-equipped" data-raid-slot="victory" data-raid-item="rockslide-flex"/);
+
+it("shows your pending fighter on your seat and your teammates' own", () => {
+  const html = roomSeatsMarkup(room());
+  const mine = html.split('data-room-seat="me"')[1].split("data-room-seat=")[0];
+  expect(mine).toContain('aria-label="Tidefin"');
+  // The host wears the Lobby's crown, not the word.
+  expect(mine).toContain('class="room-crown" role="img" aria-label="Host"');
+  expect(mine).toContain(">Tidefin<");
+  expect(mine).not.toContain("· Host");
+  expect(mine).toContain("(you)");
+  const peer = html.split('data-room-seat="peer"')[1];
+  expect(peer).toContain('aria-label="Cindrake"');
+  expect(peer).toContain("Ready");
+  // Four seats in a raid: two open ones invite friends.
+  expect(html.match(/data-room-invite/g)).toHaveLength(2);
+  expect(html).toContain("1/2 ready · room TEST01");
+});
+it("seats a 2v2 room by team, with a way to join the other side", () => {
+  const html = roomSeatsMarkup(
+    room({
+      mode: "teams",
+      boss: undefined,
+      seats: room().seats.map((s, i) => ({ ...s, team: i === 0 ? 0 : 1 })),
+    }),
+  );
+  expect(html).toContain("Blue team");
+  expect(html).toContain("Red team");
+  expect(html).toContain('data-team="1"');
+  expect(html).toContain('id="shuffle"');
 });

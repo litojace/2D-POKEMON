@@ -2,15 +2,29 @@ services:
   - type: web
     name: element-arena
     runtime: node
-    plan: free
+    # 1 CPU / 2 GB ($25/month), chosen by the owner on 23 Nov 2026 before the
+    # App Store launch. Keep this in step with the dashboard: a Blueprint
+    # sync applies this value (docs/network-performance.md, "Capacity").
+    plan: 1c-2g
     numInstances: 1
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start
+    # New migrations reach the database before the new server goes live
+    # (docs/auto-migrations.md). Needs SUPABASE_DB_URL below; without it,
+    # this does nothing and GitHub Actions applies them instead.
+    preDeployCommand: node scripts/migrate-production.mjs --verify --if-configured
     healthCheckPath: /api/health
+    # A deploy lets matches in progress finish on the old server before it
+    # stops (docs/server-updates.md). Render's limit is 300 seconds;
+    # SHUTDOWN_DRAIN_MS below stays under it, leaving time to close.
+    maxShutdownDelaySeconds: 300
     envVars:
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
+        sync: false
+      # The database's Session pooler connection string, for migrations only.
+      - key: SUPABASE_DB_URL
         sync: false
       - key: VITE_SUPABASE_URL
         sync: false
@@ -23,4 +37,15 @@ services:
       - key: NODE_VERSION
         value: 22.16.0
       - key: RECONNECT_MS
-        value: 30000
+        value: 60000
+      - key: SHUTDOWN_DRAIN_MS
+        value: 285000
+      # Sign in with Apple in the iPhone app (docs/ios-app.md).
+      - key: APPLE_TEAM_ID
+        sync: false
+      - key: APPLE_KEY_ID
+        sync: false
+      - key: APPLE_PRIVATE_KEY
+        sync: false
+      - key: APPLE_APP_BUNDLE_ID
+        sync: false

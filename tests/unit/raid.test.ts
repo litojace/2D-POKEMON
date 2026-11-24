@@ -1,13 +1,13 @@
 import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import { expect, it } from "vitest";
 import { RaidArena } from "../../apps/server/src/raid";
+import { raidSoloRevive } from "../../packages/shared/src/raid";
 import {
   CHARACTERS,
   blankInput,
   packSnapshot,
   unpackSnapshot,
 } from "@arena/shared";
-import { featuredOn, raidDay } from "../../packages/shared/src/raid";
 const raid = (players = 1) => {
   const a = new RaidArena("TEST");
   for (let i = 0; i < players; i++) a.add("p" + i, "Player " + i);
@@ -31,33 +31,46 @@ it("supports solo and four-player co-op with one distinct boss and scaled health
   const wire = packSnapshot(team.snapshot());
   expect(unpackSnapshot(wire).raid?.phase).toBe(1);
 });
-it("offers one starting rite and new stackable choices at each HP-gated phase", () => {
+it("rites are chosen once before the fight: two of five, then no choice mid-fight", () => {
   const a = raid();
   expect(a.acknowledgeInstructions("p0")).toBe(true);
   expect(a.phase).toBe("intermission");
-  const first = a.raid.offers.p0[0];
+  expect(a.raid.offers.p0).toHaveLength(6);
+  const [first, second] = a.raid.offers.p0;
   expect(a.pickRite("p0", "forged")).toBe(false);
   expect(a.pickRite("p0", first)).toBe(true);
+  // One more to pick: the rest stay on offer, the picked one doesn't.
+  expect(a.raid.offers.p0).toHaveLength(5);
+  expect(a.raid.offers.p0).not.toContain(first);
+  expect(a.pickRite("p0", first)).toBe(false);
+  expect(a.pickRite("p0", second)).toBe(true);
+  expect(a.raid.offers.p0).toBeUndefined();
+  expect(a.raid.rites.p0).toEqual([first, second]);
   fight(a);
   a.damage(a.boss()!, 100000, "p0");
   a.tick();
+  // Chapter 2 starts at once: no rite screen.
   expect(a.raid.phase).toBe(2);
-  expect(a.phase).toBe("intermission");
-  expect(a.raid.rites.p0).toContain(first);
-  expect(a.raid.offers.p0).not.toContain(first);
-  a.pickRite("p0", a.raid.offers.p0[0]);
-  fight(a);
+  expect(a.phase).toBe("playing");
+  expect(a.raid.offers.p0).toBeUndefined();
   a.damage(a.boss()!, 100000, "p0");
   a.tick();
   expect(a.raid.phase).toBe(3);
-  a.pickRite("p0", a.raid.offers.p0[0]);
-  fight(a);
+  expect(a.phase).toBe("playing");
   a.damage(a.boss()!, 100000, "p0");
   a.tick();
   expect(a.raid.result).toBe("victory");
   expect(a.winnerTeam).toBe(0);
-  expect(a.raid.rites.p0).toHaveLength(3);
+  expect(a.raid.rites.p0).toHaveLength(2);
   expect(a.raid.resultId).toBeTruthy();
+});
+it("time running out fills both picks", () => {
+  const a = raid();
+  a.acknowledgeInstructions("p0");
+  const offered = [...a.raid.offers.p0];
+  a.tick(21);
+  expect(a.raid.rites.p0).toEqual(offered.slice(0, 2));
+  expect(a.phase).toBe("countdown");
 });
 it("advances at fractional health gates despite floating-point roundoff", () => {
   const a = raid();
@@ -68,8 +81,7 @@ it("advances at fractional health gates despite floating-point roundoff", () => 
     a.boss()!.hp = a.raid.maxHp * (phase === 1 ? 0.67 : 0.33) + 1e-12;
     a.tick();
     expect(a.raid.phase).toBe(phase + 1);
-    expect(a.phase).toBe("intermission");
-    expect(a.raid.offers.p0.length).toBeGreaterThan(0);
+    expect(a.phase).toBe("playing");
   }
 });
 it("telegraphs boss attacks, breaks pillars on charge, and exposes the weak point", () => {
@@ -118,8 +130,11 @@ it("lets solo revive once, then loses on a second down without awarding a win", 
   const p = a.heroes()[0];
   a.damage(p, 10000, a.boss()!.id);
   expect(a.raid.downed.p0.self).toBe(true);
-  for (let i = 0; i < 182; i++) a.tick();
-  expect(p.hp).toBeGreaterThan(0);
+  // Grumblecrag (★): back up after 8 s with 30% health.
+  for (let i = 0; i < 230; i++) a.tick();
+  expect(p.hp).toBe(0);
+  for (let i = 0; i < 15; i++) a.tick();
+  expect(p.hp).toBeCloseTo(CHARACTERS[p.character].health * 0.3, 0);
   expect(a.raid.revives).toBe(1);
   a.damage(p, 10000, a.boss()!.id);
   a.tick();
@@ -145,7 +160,10 @@ it("keeps partial co-op revive progress when interrupted and never allows friend
   for (let i = 0; i < 10; i++) a.tick();
   expect(a.raid.downed.p0.progress).toBeCloseTo(progress);
   q.x = 340;
-  for (let i = 0; i < 95; i++) a.tick();
+  // Grumblecrag (★): a 3.5 s revive.
+  for (let i = 0; i < 70; i++) a.tick();
+  expect(p.hp).toBe(0);
+  for (let i = 0; i < 30; i++) a.tick();
   expect(p.hp).toBeGreaterThan(0);
   expect(a.raid.revives).toBe(1);
 });
@@ -163,41 +181,38 @@ it("rate limits crawling by simulation time and rejects downed attack packets", 
   expect(p.x - x).toBeLessThan(2);
   expect(p.stats.skills).toBe(0);
 });
-it("daily seeds and traits are stable across rooms and team sizes", () => {
-  // 10 a.m. and 11 p.m. Pacific on the same day share the challenge.
-  const one = raidDay(new Date("2026-10-17T17:00:00Z")),
-    two = raidDay(new Date("2026-10-18T06:00:00Z"));
-  expect(one).toEqual(two);
-  expect(one).not.toEqual(raidDay(new Date("2026-10-18T08:00:00Z")));
-  expect(featuredOn("2026-10-17").seed).toBe(one.seed);
-  const a = createRaidArena("AAA", raidDay().boss),
-    b = createRaidArena("BBB", raidDay().boss);
+it("uses ordinary Peril rules even if an internal legacy caller requests daily mode", () => {
+  const a = createRaidArena("AAA", "grumblecrag");
   a.add("a", "A");
-  b.add("b", "B");
-  b.add("c", "C");
   a.configure(1, true);
-  b.configure(1, true);
   a.start();
-  b.start();
-  expect(a.raid.daily).toBe(true);
-  expect(a.raid.seed).toBe(b.raid.seed);
-  expect(a.raid.seed).toBe(raidDay().seed);
-  expect(a.raid.trait).toBe(b.raid.trait);
-  expect(a.raid.peril).toBe(2);
-  expect(a.raid.gilded).toBe(false);
+  expect(a.raid.daily).toBe(false);
+  expect(a.raid.peril).toBe(1);
+  expect(a.raid.phase).toBe(1);
 });
 
-it("solo raiders self-revive up to Peril 2, but not on Peril 3", () => {
-  for (const peril of [2, 3]) {
-    const a = raid();
-    a.configure(peril, false);
-    fight(a);
-    const [p] = a.heroes();
-    a.damage(p, 999, a.boss()!.id);
-    expect(a.raid.downed[p.id].self).toBe(peril < 3);
-    for (let i = 0; i < 3; i++) a.tick();
-    expect(a.raid.result).toBe(peril < 3 ? null : "defeat");
-  }
+it("solo raiders keep one self-revive against ★ and ★★ bosses, none against ★★★", () => {
+  const a = raid();
+  a.configure(3, false);
+  fight(a);
+  const [p] = a.heroes();
+  a.damage(p, 999, a.boss()!.id);
+  expect(a.raid.downed[p.id].self).toBe(true);
+  for (let i = 0; i < 3; i++) a.tick();
+  expect(a.raid.result).toBe(null);
+  expect(raidSoloRevive("grumblecrag")).toEqual({ seconds: 8, hp: 0.3 });
+  expect(raidSoloRevive("somnara")).toEqual({ seconds: 8, hp: 0.25 });
+  expect(raidSoloRevive("storm-twins")).toBeUndefined();
+  const hard = createRaidArena("HARD", "prismatail");
+  hard.add("p0", "Solo");
+  hard.configure(3, false);
+  hard.start();
+  fight(hard);
+  const [q] = hard.heroes();
+  hard.damage(q, 999, hard.boss()!.id);
+  expect(hard.raid.downed[q.id].self).toBe(false);
+  hard.tick();
+  expect(hard.raid.result).toBe("defeat");
 });
 
 it("the feat needs every charge (at least three) to hit a pillar", () => {
@@ -218,6 +233,7 @@ it("the feat needs every charge (at least three) to hit a pillar", () => {
 
 it("raid rites protect allies, share energy and heal without leaking into PvP kits", () => {
   const a = raid(2);
+  a.configure(1, false); // plain boss damage, to read the rite's share
   fight(a);
   const [p, q] = a.heroes();
   a.raid.rites[p.id] = ["shelter", "sharing", "mending"];
@@ -266,10 +282,14 @@ it("tracks the chosen hero before locking, then preserves the telegraphed lane",
   fight(a);
   const p = a.heroes()[0];
   p.hp = 100000;
-  for (let i = 0; i < 65; i++) a.tick();
+  // Live raids open 1.2 s into a chapter, with the charge (chapter 1 first
+  // plays its cards in order).
+  for (let i = 0; i < 40; i++) a.tick();
   const w = a.raid.warnings.find((w) => w.kind === "charge")!;
   expect(w.targetId).toBe(p.id);
-  expect(w.lockAt! - w.startedAt!).toBeCloseTo(1);
+  // ★ telegraph (1.6 s × 0.95); it locks so the lane is frozen for 0.6 s.
+  expect(w.at - w.startedAt!).toBeCloseTo(1.52, 2);
+  expect(w.lockAt! - w.startedAt!).toBeCloseTo(0.92, 2);
   const original = w.ty;
   p.y = 730;
   a.tick();
@@ -280,7 +300,7 @@ it("tracks the chosen hero before locking, then preserves the telegraphed lane",
   p.y = 100;
   for (let i = 0; i < 6; i++) a.tick();
   expect({ x: w.tx, y: w.ty }).toEqual(locked);
-  expect(w.at - w.lockAt!).toBeCloseTo(0.7);
+  expect(w.at - w.lockAt!).toBeCloseTo(0.6);
 });
 
 it("gives phase two a second slam with time to recover a jump, cancelled by stagger", () => {
@@ -338,11 +358,11 @@ it("ends a final-phase slam combination with debris and a recovery window", () =
   expect(before - a.boss()!.hp).toBeGreaterThan(10);
 });
 
-it("varies teammates' rite offers while preserving daily seat reproducibility", () => {
+it("varies teammates' rite offers within an ordinary raid", () => {
   const make = (code: string) => {
-    const a = createRaidArena(code, raidDay().boss);
+    const a = createRaidArena(code, "grumblecrag");
     for (let i = 0; i < 4; i++) a.add(code + i, "Player");
-    a.configure(1, true);
+    a.configure(1);
     a.start();
     a.heroes().forEach((p) => a.acknowledgeInstructions(p.id));
     return a;
@@ -351,7 +371,7 @@ it("varies teammates' rite offers while preserving daily seat reproducibility", 
     b = make("B");
   const offers = Object.values(a.raid.offers);
   expect(new Set(offers.map((v) => v.join(","))).size).toBe(4);
-  expect(offers).toEqual(Object.values(b.raid.offers));
+  expect(Object.values(b.raid.offers)).toHaveLength(4);
 });
 
 it("credits actual damage and pillar baiting, and resets contributions on quick retry", () => {
@@ -387,7 +407,7 @@ it("credits actual damage and pillar baiting, and resets contributions on quick 
     pillars: 0,
     downs: 0,
   });
-  expect(a.raid.offers.p0).toHaveLength(3);
+  expect(a.raid.offers.p0).toHaveLength(6);
 });
 
 it("credits all participating rescuers, including help before an interruption", () => {
@@ -399,41 +419,76 @@ it("credits all participating rescuers, including help before an interruption", 
   a.damage(p, 10000, a.boss()!.id);
   for (let i = 0; i < 15; i++) a.tick();
   q.x = 700;
-  for (let i = 0; i < 80; i++) a.tick();
+  for (let i = 0; i < 100; i++) a.tick();
   expect(p.hp).toBeGreaterThan(0);
   expect(a.raid.contributions![q.id].revives).toBe(1);
   expect(a.raid.contributions![r.id].revives).toBe(1);
   expect(a.raid.contributions![p.id].revives).toBe(0);
 });
 
-it("allows fifteen seconds to read rites in every chapter, with early completion when everyone picks", () => {
-  for (const chapter of [1, 2, 3]) {
-    const a = raid(2);
-    if (chapter === 1) {
-      a.heroes().forEach((p) => a.acknowledgeInstructions(p.id));
-    } else {
-      fight(a);
-      a.raid.phase = chapter - 1;
-      a.boss()!.hp = a.raid.maxHp * (chapter === 2 ? 0.67 : 0.33);
-      a.tick();
-    }
-    expect(a.raid.phase).toBe(chapter);
-    expect(a.deadline - a.time).toBeCloseTo(15);
-    a.tick(5);
-    expect(a.phase).toBe("intermission");
-    expect(Object.keys(a.raid.offers)).toHaveLength(2);
-    a.pickRite("p0", a.raid.offers.p0[0]);
-    expect(a.deadline - a.time).toBeCloseTo(10);
-    a.pickRite("p1", a.raid.offers.p1[0]);
-    expect(a.deadline - a.time).toBeCloseTo(1);
-    a.tick(1);
-    expect(a.phase).toBe("countdown");
-  }
-  const a = raid();
-  a.acknowledgeInstructions("p0");
-  a.tick(14.9);
+it("allows twenty seconds to choose rites before the fight, ending early once everyone has both", () => {
+  const a = raid(2);
+  a.heroes().forEach((p) => a.acknowledgeInstructions(p.id));
+  expect(a.raid.phase).toBe(1);
+  expect(a.deadline - a.time).toBeCloseTo(20);
+  a.tick(5);
   expect(a.phase).toBe("intermission");
-  a.tick(0.2);
+  expect(Object.keys(a.raid.offers)).toHaveLength(2);
+  a.pickRite("p0", a.raid.offers.p0[0]);
+  a.pickRite("p0", a.raid.offers.p0[0]);
+  expect(a.deadline - a.time).toBeCloseTo(15);
+  a.pickRite("p1", a.raid.offers.p1[0]);
+  // One teammate still has a pick left.
+  expect(a.deadline - a.time).toBeCloseTo(15);
+  a.pickRite("p1", a.raid.offers.p1[0]);
+  expect(a.deadline - a.time).toBeCloseTo(1);
+  a.tick(1);
   expect(a.phase).toBe("countdown");
-  expect(a.raid.rites.p0).toHaveLength(1);
+  const b = raid();
+  b.acknowledgeInstructions("p0");
+  b.tick(19.9);
+  expect(b.phase).toBe("intermission");
+  b.tick(0.2);
+  expect(b.phase).toBe("countdown");
+  expect(b.raid.rites.p0).toHaveLength(2);
+});
+
+it("Grumblecrag always fights in the Coliseum, even in a room with arena rotation", () => {
+  for (let run = 0; run < 4; run++) {
+    const a = new RaidArena("ROOM");
+    a.rotateArenas = true;
+    a.add("p0", "Player 0");
+    a.start();
+    expect(a.snapshot().arena).toBe("classic");
+    a.phase = "finished";
+    a.retry();
+    expect(a.snapshot().arena).toBe("classic");
+  }
+});
+
+it("every boss offers six rites, its own rite always among them", async () => {
+  const { RAID_BOSS_RITES } = await import("../../packages/shared/src/raid");
+  for (const boss of [
+    "grumblecrag",
+    "tidewyrm",
+    "gloomshade",
+    "somnara",
+    "prismatail",
+    "emberwing",
+    "storm-twins",
+  ] as const) {
+    const a = createRaidArena("ROOM", boss);
+    for (let i = 0; i < 4; i++) a.add("p" + i, "Player " + i);
+    a.start();
+    for (const p of a.heroes()) a.acknowledgeInstructions(p.id);
+    for (const p of a.heroes()) {
+      const offer = a.raid.offers[p.id];
+      expect(offer).toHaveLength(6);
+      expect(new Set(offer).size).toBe(6);
+      const own = Object.entries(RAID_BOSS_RITES).find(
+        ([, b]) => b === boss,
+      )?.[0];
+      if (own) expect(offer[0]).toBe(own);
+    }
+  }
 });

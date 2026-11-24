@@ -1,104 +1,328 @@
+import { svgMarkup } from "../../apps/client/tests/svg-markup";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { CHAMPION_SKINS, LOOK_ITEMS } from "../../packages/shared/src/shop";
-import { SKIN_ART, fighterSkillColor, wornArt } from "../../apps/client/src/skins/skin-art";
-import { creatureSvg, paletteFor } from "../../apps/client/src/creature-design";
-import { rigAssets, skinSuffix } from "../../apps/client/src/animation/assets";
+import {
+  SKIN_ART,
+  fighterSkillColor,
+  wornArt,
+} from "../../apps/client/src/skins/skin-art";
+import {
+  creaturePalette,
+  creatureSvg,
+  paletteFor,
+} from "../../apps/client/src/creature-design";
+import { PYRANDA_BASE } from "../../apps/client/src/champion-markings";
+import {
+  artOrigins,
+  rigAssets,
+  skinSuffix,
+} from "../../apps/client/src/animation/assets";
 import { SKINS } from "../../apps/client/src/animation/cosmetics";
-import { drawCollectionAura, drawCollectionVictory, playCollectionEntrance } from "../../apps/client/src/skins/collection-fx";
+import {
+  drawCollectionAura,
+  drawCollectionVictory,
+  playCollectionEntrance,
+} from "../../apps/client/src/skins/collection-fx";
 
 const ids = Object.keys(CHARACTERS) as CharacterId[];
 const DIRS = ["down", "up", "left", "right"] as const;
 
 it("loads a complete front preview with the same textures used in battle", () => {
-  const looks = [null, ...[1, 2, 3].map(stage => ({ skin: "voltkit-stormcrown", stage }))];
+  const looks = [
+    null,
+    ...[1, 2, 3].map((stage) => ({ skin: "voltkit-stormcrown", stage })),
+  ];
   for (const look of looks) {
     const all = rigAssets("voltkit", look);
     const front = rigAssets("voltkit", look, ["down"]);
-    expect(all).toHaveLength(60);
-    expect(front).toHaveLength(16);
-    expect(front).toEqual(all.filter(asset => asset.key.startsWith("rig-voltkit-down-")));
+    expect(all).toHaveLength(64);
+    expect(front).toHaveLength(17);
+    expect(front).toEqual(
+      all.filter((asset) => asset.key.startsWith("rig-voltkit-down-")),
+    );
   }
 });
 /** A Graphics stand-in that accepts any chained drawing call. */
 const graphics = (): any =>
-  new Proxy({}, { get: (_t, key) => (key === "then" ? undefined : () => graphics()) });
+  new Proxy(
+    {},
+    { get: (_t, key) => (key === "then" ? undefined : () => graphics()) },
+  );
 
 describe("champion skin art", () => {
-  it("has art for exactly the 56 skins in the catalog", () => {
-    expect(Object.keys(SKIN_ART).sort()).toEqual(CHAMPION_SKINS.map((s) => s.id).sort());
+  it("has art for exactly the skins in the catalog", () => {
+    expect(Object.keys(SKIN_ART).sort()).toEqual(
+      CHAMPION_SKINS.map((s) => s.id).sort(),
+    );
   });
 
   it("gives each rarity what the design promises", () => {
     for (const s of CHAMPION_SKINS) {
       const art = SKIN_ART[s.id];
-      const extras = !!(art.pattern || art.accessories?.length || art.stageAccessories?.length);
-      if (s.rarity === "common") expect([extras, !!art.trail, art.skill, art.mythic], s.id).toEqual([false, false, undefined, undefined]);
-      if (s.rarity === "rare") expect([extras, !!art.trail, art.mythic], s.id).toEqual([true, true, undefined]);
-      if (s.rarity === "epic") expect([extras, !!art.trail, typeof art.skill, !!art.detail, art.mythic], s.id).toEqual([true, true, "number", true, undefined]);
-      if (s.rarity === "mythical") expect([!!art.trail, typeof art.skill, !!art.mythic], s.id).toEqual([true, "number", true]);
+      const extras = !!(
+        art.pattern ||
+        art.accessories?.length ||
+        art.stageAccessories?.length
+      );
+      if (s.rarity === "common")
+        expect([extras, !!art.trail, art.skill, art.mythic], s.id).toEqual([
+          false,
+          false,
+          undefined,
+          undefined,
+        ]);
+      if (s.rarity === "rare")
+        expect([extras, !!art.trail, art.mythic], s.id).toEqual([
+          true,
+          true,
+          undefined,
+        ]);
+      if (s.rarity === "epic")
+        expect(
+          // An animated detail, the new collections' own signature, or
+          // costume pieces that light up in play (lume layers).
+          [
+            extras,
+            !!art.trail,
+            typeof art.skill,
+            !!(
+              art.detail ||
+              art.signature ||
+              rigAssets(s.champion, { skin: s.id, stage: 1 }, ["down"]).some(
+                (a) => a.key.includes("~lume-"),
+              )
+            ),
+            art.mythic,
+          ],
+          s.id,
+        ).toEqual([true, true, "number", true, undefined]);
+      if (s.rarity === "mythical")
+        expect([!!art.trail, typeof art.skill, !!art.mythic], s.id).toEqual([
+          true,
+          "number",
+          true,
+        ]);
     }
   });
 
   it("draws every skin in every facing as well-formed SVG with its own palette", () => {
     for (const s of CHAMPION_SKINS)
       for (const dir of DIRS)
-        for (const stage of [1, 2, 3]) {
-          const svg = creatureSvg(s.champion, dir, undefined, undefined, "normal", { skin: s.id, stage });
-          expect(svg, `${s.id} ${dir}`).not.toMatch(/NaN|undefined|Infinity/);
+        for (const stage of SKIN_ART[s.id].mythic ||
+        SKIN_ART[s.id].stageAccessories?.length
+          ? [1, 2, 3]
+          : [1]) {
+          const svg = creatureSvg(
+            s.champion,
+            dir,
+            undefined,
+            undefined,
+            "normal",
+            { skin: s.id, stage },
+          );
+          expect(svgMarkup(svg), `${s.id} ${dir}`).not.toMatch(
+            /NaN|undefined|Infinity/,
+          );
           expect(svg).toContain(`${s.champion}-${dir}-${s.id}-body`);
-          expect(svg).toContain(`stroke="${paletteFor(s.champion, { skin: s.id }).dark}"`);
+          expect(svg).toContain(
+            `stroke="${paletteFor(s.champion, { skin: s.id }).dark}"`,
+          );
           // Every mask or filter id is defined once per drawing.
           const defined = [...svg.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
           expect(new Set(defined).size).toBe(defined.length);
-          for (const [, ref] of svg.matchAll(/url\(#([^)]+)\)/g)) expect(defined, `${s.id} ${dir}`).toContain(ref);
+          for (const [, ref] of svg.matchAll(/url\(#([^)]+)\)/g))
+            expect(defined, `${s.id} ${dir}`).toContain(ref);
         }
+  });
+
+  it("recolours Pyranda's markings with a skin and keeps them without one", () => {
+    expect(PYRANDA_BASE).toEqual({
+      mid: creaturePalette.pyranda.mid,
+      dark: creaturePalette.pyranda.dark,
+    });
+    const marks = ["#8a2a14", "#5a2216"];
+    const keepsColours = (id: string) =>
+      !SKIN_ART[id].palette.mid && !SKIN_ART[id].palette.dark;
+    // The belly faces away in the back view, so each marking shows in some facing.
+    const own = DIRS.map((dir) => creatureSvg("pyranda", dir)).join("");
+    for (const m of marks) expect(own).toContain(m);
+    for (const dir of DIRS) {
+      for (const s of CHAMPION_SKINS.filter((s) => s.champion === "pyranda")) {
+        const svg = creatureSvg(
+          "pyranda",
+          dir,
+          undefined,
+          undefined,
+          "normal",
+          {
+            skin: s.id,
+          },
+        );
+        // A skin that keeps Pyranda's own body colours (Sky Pirates: the
+        // costume carries the theme) keeps its markings too (checked below).
+        if (keepsColours(s.id)) continue;
+        for (const m of marks) expect(svg, `${s.id} ${dir}`).not.toContain(m);
+      }
+    }
+    for (const s of CHAMPION_SKINS.filter(
+      (s) => s.champion === "pyranda" && keepsColours(s.id),
+    )) {
+      const all = DIRS.map((dir) =>
+        creatureSvg("pyranda", dir, undefined, undefined, "normal", {
+          skin: s.id,
+        }),
+      ).join("");
+      for (const m of marks) expect(all, s.id).toContain(m);
+    }
   });
 
   it("only applies a skin to the champion it was made for", () => {
     const base = creatureSvg("cindrake", "down");
-    expect(creatureSvg("cindrake", "down", undefined, undefined, "normal", { skin: "voltkit-midnight" })).toBe(base);
-    expect(skinSuffix("cindrake", { skin: "voltkit-midnight", stage: 1 })).toBe("");
-    expect(wornArt("cindrake", { skin: "voltkit-neon-arcade" })).toBeUndefined();
-    expect(fighterSkillColor({ character: "voltkit", championLooks: { voltkit: { skin: "voltkit-neon-arcade", stage: 1 } } })).toBe(0xff4fd8);
-    expect(fighterSkillColor({ character: "voltkit", championLooks: { voltkit: { skin: "voltkit-midnight", stage: 1 } } })).toBeUndefined();
+    expect(
+      creatureSvg("cindrake", "down", undefined, undefined, "normal", {
+        skin: "voltkit-midnight",
+      }),
+    ).toBe(base);
+    expect(skinSuffix("cindrake", { skin: "voltkit-midnight", stage: 1 })).toBe(
+      "",
+    );
+    expect(
+      wornArt("cindrake", { skin: "voltkit-neon-arcade" }),
+    ).toBeUndefined();
+    expect(
+      fighterSkillColor({
+        character: "voltkit",
+        championLooks: { voltkit: { skin: "voltkit-neon-arcade", stage: 1 } },
+      }),
+    ).toBe(0xff4fd8);
+    expect(
+      fighterSkillColor({
+        character: "voltkit",
+        championLooks: { voltkit: { skin: "voltkit-midnight", stage: 1 } },
+      }),
+    ).toBeUndefined();
   });
 
   it("gives every Mythical three distinct forms in every facing and keeps their battle textures separate", () => {
     for (const skin of CHAMPION_SKINS.filter((s) => s.rarity === "mythical")) {
       for (const dir of DIRS) {
-        const forms = [1, 2, 3].map(stage => creatureSvg(skin.champion, dir, undefined, undefined, "normal", { skin: skin.id, stage }));
-        expect(new Set(forms).size, `${skin.id} ${dir}: all three stages need visible artwork`).toBe(3);
+        const forms = [1, 2, 3].map((stage) =>
+          creatureSvg(skin.champion, dir, undefined, undefined, "normal", {
+            skin: skin.id,
+            stage,
+          }),
+        );
+        expect(
+          new Set(forms).size,
+          `${skin.id} ${dir}: all three stages need visible artwork`,
+        ).toBe(3);
       }
-      const stages = [1, 2, 3].map(stage => rigAssets(skin.champion, { skin: skin.id, stage }));
-      const keys = stages.flatMap(assets => assets.map(asset => asset.key));
-      expect(new Set(keys).size, `${skin.id}: switching stage must not reuse another stage's textures`).toBe(keys.length);
+      const stages = [1, 2, 3].map((stage) =>
+        rigAssets(skin.champion, { skin: skin.id, stage }),
+      );
+      const keys = stages.flatMap((assets) => assets.map((asset) => asset.key));
+      expect(
+        new Set(keys).size,
+        `${skin.id}: switching stage must not reuse another stage's textures`,
+      ).toBe(keys.length);
       // Compare the actual encoded images too, rather than just the cache keys.
-      expect(new Set(stages.map(assets => assets.map(asset => asset.url).join())).size, skin.id).toBe(3);
-      expect(skinSuffix(skin.champion, { skin: skin.id }), skin.id).toBe(skinSuffix(skin.champion, { skin: skin.id, stage: 1 }));
+      expect(
+        new Set(stages.map((assets) => assets.map((asset) => asset.url).join()))
+          .size,
+        skin.id,
+      ).toBe(3);
+      expect(skinSuffix(skin.champion, { skin: skin.id }), skin.id).toBe(
+        skinSuffix(skin.champion, { skin: skin.id, stage: 1 }),
+      );
     }
   });
 
   it("leaves non-Mythical texture keys alone", () => {
-    expect(skinSuffix("voltkit", { skin: "voltkit-midnight", stage: 1 })).toBe("~voltkit-midnight");
-    expect(skinSuffix("voltkit", { skin: "voltkit-midnight", stage: 3 })).toBe("~voltkit-midnight");
-    expect(skinSuffix("voltkit", { skin: "voltkit-stormcrown", stage: 2 })).toBe("~voltkit-stormcrown~2");
-    expect(skinSuffix("voltkit", { skin: "voltkit-stormcrown", stage: 3 })).toBe("~voltkit-stormcrown~3");
+    expect(skinSuffix("voltkit", { skin: "voltkit-midnight", stage: 1 })).toBe(
+      "~voltkit-midnight",
+    );
+    expect(skinSuffix("voltkit", { skin: "voltkit-midnight", stage: 3 })).toBe(
+      "~voltkit-midnight",
+    );
+    expect(
+      skinSuffix("voltkit", { skin: "voltkit-stormcrown", stage: 2 }),
+    ).toBe("~voltkit-stormcrown~2");
+    expect(
+      skinSuffix("voltkit", { skin: "voltkit-stormcrown", stage: 3 }),
+    ).toBe("~voltkit-stormcrown~3");
+  });
+
+  it("records each texture's own pivot, so a costume part stays on its joint", () => {
+    // The rig sets a part's origin from artOrigins whenever its texture
+    // changes (rig.ts sizeByResolution). A costume's wider crop puts the same
+    // joint at another fraction of the texture: keeping the default part's
+    // fractions lifted Tide Admiral's hat off its head in the Shop preview.
+    for (const id of ["tidefin-sky-pirates", "voltkit-nova-vanguard"]) {
+      const champion = id.split("-")[0] as CharacterId;
+      const base = rigAssets(champion);
+      const worn = rigAssets(champion, { skin: id, stage: 1 });
+      let moved = 0;
+      for (const a of [...base, ...worn]) {
+        expect(artOrigins.get(a.key), a.key).toEqual([a.originX, a.originY]);
+        const plain = base.find((b) => b.key === a.key.split("~")[0])!;
+        if (a.originY !== plain.originY) moved++;
+      }
+      // The costume really does crop some parts wider (the case this guards).
+      expect(moved, id).toBeGreaterThan(0);
+    }
   });
 
   it("never changes a fighter's size, pivots or placement (fairness)", () => {
     for (const s of CHAMPION_SKINS) {
-      const shape = (a: ReturnType<typeof rigAssets>[number]) => [a.width, a.height, a.originX, a.originY, a.x, a.y];
+      const shape = (a: ReturnType<typeof rigAssets>[number]) => [
+        a.width,
+        a.height,
+        a.originX,
+        a.originY,
+        a.x,
+        a.y,
+      ];
       const base = rigAssets(s.champion).map(shape);
       for (const stage of [1, 2, 3]) {
-        const skinned = rigAssets(s.champion, { skin: s.id, stage });
-        expect(skinned.map(shape), `${s.id} stage ${stage}`).toEqual(base);
+        // Light layers ride over their parts with the same crops (checked
+        // in lume-layers.test.ts); the parts themselves must not change.
+        const all = rigAssets(s.champion, { skin: s.id, stage });
+        const skinned = all.filter((a) => !a.key.includes("~lume-"));
+        for (const l of all.filter((a) => a.key.includes("~lume-")))
+          expect(shape(l), l.key).toEqual(
+            shape(
+              skinned.find((a) => a.key === l.key.replace(/~lume-.*$/, ""))!,
+            ),
+          );
+        // Same pivots and placement. A costume may crop a wider box than
+        // the champion's own outline (so a surfboard or a torch on a pole
+        // isn't cut off), but only transparent margin is added: the box
+        // still holds the default one, with the pivot at the same point.
+        expect(skinned.length, `${s.id} stage ${stage}`).toBe(base.length);
+        skinned.map(shape).forEach((k, i) => {
+          const b = base[i];
+          const where = `${skinned[i].key} stage ${stage}`;
+          expect([k[4], k[5]], where).toEqual([b[4], b[5]]);
+          const left = (v: number[]) => -v[2] * v[0],
+            top = (v: number[]) => -v[3] * v[1];
+          expect(left(k), where).toBeLessThanOrEqual(left(b) + 0.01);
+          expect(top(k), where).toBeLessThanOrEqual(top(b) + 0.01);
+          expect(left(k) + k[0], where).toBeGreaterThanOrEqual(
+            left(b) + b[0] - 0.01,
+          );
+          expect(top(k) + k[1], where).toBeGreaterThanOrEqual(
+            top(b) + b[1] - 0.01,
+          );
+        });
         expect(new Set(skinned.map((a) => a.key)).size).toBe(skinned.length);
         expect(skinned.every((a) => a.key.includes(`~${s.id}`))).toBe(true);
       }
     }
-  });
+    // Every skin's every layer: about 6 s alone, past the default 10 s when
+    // CI runs the whole suite at once.
+  }, 30_000);
 });
 
 describe("collection pieces", () => {
@@ -109,21 +333,44 @@ describe("collection pieces", () => {
       const emitted: unknown[] = [];
       const emit = (p: unknown) => emitted.push(p);
       if (item.slot === "skin") expect(SKINS, item.id).toContain(item.id);
-      if (item.slot === "aura") expect(drawCollectionAura(g, item.id, 0, 0, 1000, false), item.id).toBe(true);
+      if (item.slot === "aura")
+        expect(drawCollectionAura(g, item.id, 0, 0, 1000, false), item.id).toBe(
+          true,
+        );
       if (item.slot === "entrance") {
-        expect(playCollectionEntrance(emit, item.id, 0, 0, 1), item.id).toBe(true);
+        expect(playCollectionEntrance(emit, item.id, 0, 0, 1), item.id).toBe(
+          true,
+        );
         expect(emitted.length).toBeGreaterThan(0);
       }
       if (item.slot === "victory")
-        expect(drawCollectionVictory(g, g, emit, () => true, item.id, 0, 0, 1, 0.5, 0.016, true), item.id).toBe(true);
-      if (item.slot === "frame") expect(css, item.id).toContain(`[data-raid-cosmetic~="${item.id}"]`);
-      if (item.slot !== "frame") expect(css, item.id).toContain(`[data-cosmetic="${item.id}"]`);
+        expect(
+          drawCollectionVictory(
+            g,
+            g,
+            emit,
+            () => true,
+            item.id,
+            0,
+            0,
+            1,
+            0.5,
+            0.016,
+            true,
+          ),
+          item.id,
+        ).toBe(true);
+      if (item.slot === "frame")
+        expect(css, item.id).toContain(`[data-raid-cosmetic~="${item.id}"]`);
+      if (item.slot !== "frame")
+        expect(css, item.id).toContain(`[data-cosmetic="${item.id}"]`);
     }
   });
 });
 
 describe("raid cosmetics", () => {
   const css = readFileSync("apps/client/src/style.css", "utf8");
+  const bossFrames = readFileSync("apps/client/src/boss-frames.css", "utf8");
   /** Grumblecrag's originals are drawn by the rig and main.ts directly. */
   const special = ["mountain-aura", "mountainborn", "rockslide-flex"];
   it("every raid reward in an appearance slot is drawn somewhere", async () => {
@@ -134,15 +381,83 @@ describe("raid cosmetics", () => {
       const emitted: unknown[] = [];
       const emit = (p: unknown) => emitted.push(p);
       if (r.slot === "skin") expect(SKINS, r.id).toContain(r.id);
-      if (r.slot === "aura") expect(drawCollectionAura(g, r.id, 0, 0, 1000, false), r.id).toBe(true);
+      if (r.slot === "aura")
+        expect(drawCollectionAura(g, r.id, 0, 0, 1000, false), r.id).toBe(true);
       if (r.slot === "entrance") {
         expect(playCollectionEntrance(emit, r.id, 0, 0, 1), r.id).toBe(true);
         expect(emitted.length).toBeGreaterThan(0);
       }
       if (r.slot === "victory")
-        expect(drawCollectionVictory(g, g, emit, () => true, r.id, 0, 0, 1, 1, 0.2, true), r.id).toBe(true);
-      if (r.slot === "frame") expect(css, r.id).toContain(`[data-raid-cosmetic~="${r.id}"]`);
-      expect(css, r.id).toContain(`[data-cosmetic="${r.id}"]`);
+        expect(
+          drawCollectionVictory(
+            g,
+            g,
+            emit,
+            () => true,
+            r.id,
+            0,
+            0,
+            1,
+            1,
+            0.2,
+            true,
+          ),
+          r.id,
+        ).toBe(true);
+      // Boss frames are drawn as their own SVG ring and ornament.
+      if (r.slot === "frame") {
+        expect(bossFrames, r.id).toMatch(
+          new RegExp(
+            `\\[data-cosmetic="${r.id}"\\]::before \\{\\s*background-image: url\\("data:image/svg`,
+          ),
+        );
+        expect(bossFrames, r.id).toContain(`[data-cosmetic="${r.id}"]::after`);
+      } else expect(css, r.id).toContain(`[data-cosmetic="${r.id}"]`);
     }
+  });
+});
+
+describe("see-through champions under dark skins", () => {
+  // Glacelle's sea-angel body is a little translucent by design. Under black
+  // steel (Rimebane), an abyssal body (Deep Glow) or mecha plating (Cryo Unit)
+  // the scene behind showed clearly through the head and body, so those skins
+  // draw it solid; its own colours and the glassy Snow Globe stay see-through.
+  const parts = ["head", "body", "armL", "armR"] as const;
+  const seeThrough = (skin: string | null) =>
+    DIRS.flatMap((dir) =>
+      parts.filter((part) =>
+        /fill-opacity="\.\d+"/.test(
+          creatureSvg(
+            "glacelle",
+            dir,
+            part,
+            undefined,
+            "normal",
+            skin ? { skin, stage: 3 } : null,
+          ),
+        ),
+      ).map((part) => `${dir} ${part}`),
+    );
+
+  it("dark and armoured Glacelle skins are drawn solid", () => {
+    for (const skin of [
+      "glacelle-polaris",
+      "glacelle-deep-glow",
+      "glacelle-cryo-unit",
+    ]) {
+      expect(SKIN_ART[skin]?.solid, skin).toBe(true);
+      expect(seeThrough(skin), skin).toEqual([]);
+    }
+  });
+
+  it("every Mythical (black-steel armour) on Glacelle is solid", () => {
+    for (const s of CHAMPION_SKINS.filter((s) => s.champion === "glacelle"))
+      if (SKIN_ART[s.id]?.mythic) expect(SKIN_ART[s.id].solid, s.id).toBe(true);
+  });
+
+  it("Glacelle's own body and the glassy skins stay see-through", () => {
+    expect(seeThrough(null)).not.toEqual([]);
+    expect(seeThrough("glacelle-snow-globe")).not.toEqual([]);
+    expect(seeThrough("glacelle-deep-sea")).not.toEqual([]);
   });
 });

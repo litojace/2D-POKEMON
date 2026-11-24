@@ -1,0 +1,468 @@
+import { describe, expect, it } from "vitest";
+import {
+  LapTimer,
+  ORB_SHOWER,
+  PLAZA,
+  PLAZA_BUSHES,
+  PLAZA_FOUNTAIN,
+  PLAZA_GATE,
+  PLAZA_HURDLES,
+  PLAZA_PADS,
+  PLAZA_BALL,
+  PLAZA_PITCH,
+  PLAZA_POND,
+  PLAZA_ROCKS,
+  PLAZA_SPAWN,
+  PLAZA_SPOTS,
+  PLAZA_LAP_LANE,
+  PLAZA_TRACK,
+  orbHeight,
+  orbShower,
+  plazaBallStart,
+  plazaBallStep,
+  plazaBody,
+  plazaCollide,
+  plazaDash,
+  plazaJump,
+  plazaStep,
+  plazaStick,
+  trackPoint,
+} from "../../packages/shared/src/plaza";
+
+const run = (
+  b: ReturnType<typeof plazaBody>,
+  dir: { x: number; y: number },
+  seconds: number,
+  dt = 1 / PLAZA.tick,
+) => {
+  const events = [];
+  for (let t = 0; t < seconds - 1e-9; t += dt)
+    events.push(plazaStep(b, dir, dt));
+  return events;
+};
+
+describe("Plaza layout", () => {
+  it("scatters the approved 20 bushes and 7 rocks from the prototype's seed", () => {
+    expect(PLAZA_BUSHES).toHaveLength(20);
+    expect(PLAZA_ROCKS).toHaveLength(7);
+    // Same generator, same first bush as the prototype.
+    expect(PLAZA_BUSHES[0].kind).toBe("flower");
+    for (const b of [...PLAZA_BUSHES, ...PLAZA_ROCKS]) {
+      expect(b.x).toBeGreaterThan(40);
+      expect(b.x).toBeLessThan(PLAZA.width - 40);
+    }
+  });
+
+  it("keeps bodies out of the fountain and the pond and inside the map", () => {
+    // Nowhere on the basin as drawn: not on its rim or in its water, and
+    // not on the wall's foot either (feet stood on the rim before, 22 Nov).
+    const F = PLAZA_FOUNTAIN,
+      onBasin = (x: number, y: number) =>
+        ((x - F.x) / F.rx) ** 2 + ((y - F.y) / F.ry) ** 2 < 1 ||
+        ((x - F.x) / F.rx) ** 2 + ((y - F.y - F.wall) / F.ry) ** 2 < 1;
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 24)
+      for (const k of [0, 0.4, 0.8, 0.99])
+        for (const dy of [0, F.wall / 2, F.wall]) {
+          const f = plazaCollide({
+            x: F.x + Math.cos(a) * F.rx * k,
+            y: F.y + dy + Math.sin(a) * F.ry * k,
+          });
+          expect(onBasin(f.x, f.y), `${f.x}, ${f.y}`).toBe(false);
+        }
+    const p = plazaCollide({ x: PLAZA_POND.x + 5, y: PLAZA_POND.y + 5 });
+    expect(
+      ((p.x - PLAZA_POND.x) / PLAZA_POND.rx) ** 2 +
+        ((p.y - PLAZA_POND.y) / PLAZA_POND.ry) ** 2,
+    ).toBeGreaterThanOrEqual(0.999);
+    expect(plazaCollide({ x: -500, y: -500 })).toEqual({ x: 30, y: 110 });
+    // Only the gate opens south.
+    expect(plazaCollide({ x: 400, y: 1690 }).y).toBe(PLAZA_GATE.y);
+    expect(plazaCollide({ x: PLAZA_GATE.x, y: 1690 }).y).toBe(
+      PLAZA_GATE.y + 30,
+    );
+  });
+
+  it("can walk from the spawn to every spot", () => {
+    const cell = 20,
+      cols = Math.ceil(PLAZA.width / cell),
+      rows = Math.ceil(PLAZA.height / cell),
+      free = (c: number, r: number) => {
+        const x = c * cell + cell / 2,
+          y = r * cell + cell / 2,
+          q = plazaCollide({ x, y });
+        return Math.hypot(q.x - x, q.y - y) < 0.5;
+      };
+    const seen = new Uint8Array(cols * rows),
+      start = [
+        Math.floor(PLAZA_SPAWN.x / cell),
+        Math.floor(PLAZA_SPAWN.y / cell),
+      ];
+    expect(free(start[0], start[1])).toBe(true);
+    const queue = [start];
+    seen[start[1] * cols + start[0]] = 1;
+    while (queue.length) {
+      const [c, r] = queue.pop()!;
+      for (const [dc, dr] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
+        const nc = c + dc,
+          nr = r + dr;
+        if (
+          nc < 0 ||
+          nr < 0 ||
+          nc >= cols ||
+          nr >= rows ||
+          seen[nr * cols + nc]
+        )
+          continue;
+        if (!free(nc, nr)) continue;
+        seen[nr * cols + nc] = 1;
+        queue.push([nc, nr]);
+      }
+    }
+    for (const s of PLAZA_SPOTS) {
+      let reachable = false;
+      for (let r = 0; r < rows && !reachable; r++)
+        for (let c = 0; c < cols; c++)
+          if (
+            seen[r * cols + c] &&
+            Math.hypot(c * cell + cell / 2 - s.x, r * cell + cell / 2 - s.y) <
+              s.r - 10
+          ) {
+            reachable = true;
+            break;
+          }
+      expect(reachable, s.id).toBe(true);
+    }
+  });
+});
+
+describe("Plaza movement", () => {
+  it("walks at 240 px/s, faster with Volt Boba, and cleans the stick", () => {
+    const b = plazaBody(600, 1300);
+    run(b, { x: 1, y: 0 }, 1);
+    expect(b.x - 600).toBeCloseTo(240, 0);
+    b.boost = PLAZA.boba.seconds;
+    const x0 = b.x;
+    run(b, { x: 1, y: 0 }, 0.5);
+    expect(b.x - x0).toBeCloseTo(240 * 1.3 * 0.5, 0);
+    expect(plazaStick(5, 0)).toEqual({ x: 1, y: 0 });
+    expect(plazaStick(NaN, "x")).toEqual({ x: 0, y: 0 });
+  });
+
+  it("dashes 680 px/s for 0.18 s once per 0.9 s, and jumps 42 px", () => {
+    const b = plazaBody(600, 1300);
+    run(b, { x: 1, y: 0 }, 0.1);
+    const x0 = b.x;
+    expect(plazaDash(b)).toBe(true);
+    expect(plazaDash(b)).toBe(false);
+    run(b, { x: 0, y: 0 }, 0.2, 0.01);
+    expect(b.x - x0).toBeCloseTo(680 * 0.18, -1);
+    run(b, { x: 0, y: 0 }, 0.7, 0.01);
+    expect(plazaDash(b)).toBe(true);
+    const j = plazaBody(600, 1300);
+    expect(plazaJump(j)).toBe(true);
+    run(j, { x: 0, y: 0 }, 0.325, 0.005);
+    expect(j.z).toBeCloseTo(42, 0);
+    const landed = run(j, { x: 0, y: 0 }, 0.4, 0.005);
+    expect(j.z).toBe(0);
+    expect(landed.some((e) => e.landed)).toBe(true);
+  });
+
+  it("dashes the way the browser dashed, even if the last stick is older", () => {
+    const b = plazaBody(600, 1300);
+    run(b, { x: 1, y: 0 }, 0.1);
+    expect(plazaDash(b, { x: 0, y: 1 })).toBe(true);
+    expect([b.dashX, b.dashY]).toEqual([0, 1]);
+    // No direction (or a bad one): the last stick, as before.
+    const c = plazaBody(600, 1300);
+    run(c, { x: 1, y: 0 }, 0.1);
+    expect(plazaDash(c, plazaStick(NaN, undefined))).toBe(true);
+    expect([c.dashX, c.dashY]).toEqual([1, 0]);
+  });
+
+  it("throws you high from a bounce pad", () => {
+    const [x, y] = PLAZA_PADS[0];
+    const b = plazaBody(x - 60, y);
+    const events = run(b, { x: 1, y: 0 }, 0.3);
+    expect(events.some((e) => e.bounced === 0)).toBe(true);
+    let top = 0;
+    for (let t = 0; t < 1.2; t += 0.01) {
+      plazaStep(b, { x: 0, y: 0 }, 0.01);
+      top = Math.max(top, b.z);
+    }
+    expect(top).toBeGreaterThan(150);
+  });
+
+  it("trips over a hurdle you walk into, not one you jump", () => {
+    // Far enough back that the jump below can put its top over the hurdle.
+    const p = trackPoint(PLAZA_HURDLES[0], 0.5),
+      before = trackPoint(PLAZA_HURDLES[0] - 0.4, 0.5),
+      dir = {
+        x: (p.x - before.x) / Math.hypot(p.x - before.x, p.y - before.y),
+        y: (p.y - before.y) / Math.hypot(p.x - before.x, p.y - before.y),
+      };
+    const walker = plazaBody(before.x, before.y);
+    expect(run(walker, dir, 1).some((e) => e.tripped)).toBe(true);
+    const jumper = plazaBody(before.x, before.y);
+    const d = Math.hypot(p.x - before.x, p.y - before.y);
+    // Jump so the top of the arc is over the hurdle.
+    run(jumper, dir, Math.max(0, d / PLAZA.speed - 0.325));
+    plazaJump(jumper);
+    expect(run(jumper, dir, 0.8).some((e) => e.tripped)).toBe(false);
+    // The same at 60 frames a second: clearing doesn't depend on the rate.
+    const phone = plazaBody(before.x, before.y);
+    run(phone, dir, Math.max(0, d / PLAZA.speed - 0.325), 1 / 60);
+    plazaJump(phone);
+    expect(run(phone, dir, 0.8, 1 / 60).some((e) => e.tripped)).toBe(false);
+  });
+});
+
+describe("the dash track lap timer", () => {
+  const lap = (
+    speed: number,
+    from = -Math.PI / 2 - 0.2,
+    turns = 1.05,
+    dt = 0.05,
+  ) => {
+    const timer = new LapTimer(),
+      results = [];
+    const total = Math.PI * 2 * turns,
+      steps = Math.ceil(total / (speed * dt));
+    for (let i = 0; i <= steps; i++) {
+      const p = trackPoint(from + Math.min(total, i * speed * dt), 0.5);
+      results.push(timer.update(p.x, p.y, i * dt * 1000));
+    }
+    return results;
+  };
+  it("times a clockwise lap from the start line", () => {
+    const results = lap(0.8);
+    expect(
+      results.filter((r) => r.started && r.lapMs === undefined),
+    ).toHaveLength(1);
+    const done = results.find((r) => r.lapMs !== undefined)!;
+    expect(done.lapMs! / 1000).toBeCloseTo((Math.PI * 2) / 0.8, 0);
+  });
+  it("doesn't miss the line at dash speed or count anticlockwise laps", () => {
+    expect(
+      lap(3, -Math.PI / 2 - 0.3, 1.1).some((r) => r.lapMs !== undefined),
+    ).toBe(true);
+    expect(
+      lap(-0.8, -Math.PI / 2 + 0.2).some(
+        (r) => r.started || r.lapMs !== undefined,
+      ),
+    ).toBe(false);
+  });
+  it("cancels a lap when you leave the lane", () => {
+    const timer = new LapTimer();
+    let t = 0;
+    for (let a = -Math.PI / 2 - 0.2; a < 0; a += 0.04) {
+      const p = trackPoint(a);
+      timer.update(p.x, p.y, (t += 50));
+    }
+    expect(timer.running).toBe(true);
+    expect(timer.update(PLAZA_TRACK.cx, PLAZA_TRACK.cy, (t += 50))).toEqual({
+      cancelled: true,
+    });
+    expect(timer.running).toBe(false);
+  });
+  /** A point `px` outside the outer edge (negative: inside the inner edge) at angle `a`. */
+  const beyond = (a: number, px: number) => {
+    const { cx, cy, ro, ri } = PLAZA_TRACK,
+      [rx, ry] = px >= 0 ? [ro[0] + px, ro[1] + px] : [ri[0] + px, ri[1] + px];
+    return { x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry };
+  };
+  const startLap = () => {
+    const timer = new LapTimer();
+    let t = 0;
+    for (let a = -Math.PI / 2 - 0.2; a < -0.4; a += 0.04) {
+      const p = trackPoint(a);
+      timer.update(p.x, p.y, (t += 50));
+    }
+    expect(timer.running).toBe(true);
+    return { timer, t, a: -0.4 };
+  };
+  it("ends the lap the moment you run off the red lane, either side", () => {
+    const { slack } = PLAZA_LAP_LANE;
+    for (const px of [slack + 2, -slack - 2]) {
+      const { timer, t, a } = startLap();
+      const p = beyond(a + 0.04, px);
+      expect(timer.update(p.x, p.y, t + 50)).toEqual({ cancelled: true });
+      expect(timer.running).toBe(false);
+    }
+  });
+  it("keeps the lap while your body still touches the lane", () => {
+    let { timer, t, a } = startLap();
+    // Hugging the outer edge, then the inner one, within the slack.
+    for (let i = 0; i < 20; i++, a += 0.04) {
+      const p = beyond(a, PLAZA_LAP_LANE.slack - 4);
+      expect(timer.update(p.x, p.y, (t += 50)).cancelled).toBeUndefined();
+    }
+    for (let i = 0; i < 20; i++, a += 0.04) {
+      const p = beyond(a, -PLAZA_LAP_LANE.slack + 4);
+      expect(timer.update(p.x, p.y, (t += 50)).cancelled).toBeUndefined();
+    }
+    for (; a < Math.PI * 1.5 - 0.15; a += 0.04) {
+      const p = trackPoint(a);
+      timer.update(p.x, p.y, (t += 50));
+    }
+    const p = trackPoint(-Math.PI / 2 + 0.05);
+    expect(timer.update(p.x, p.y, (t += 50)).lapMs).toBeGreaterThan(0);
+  });
+  it("starts a lap only on the painted lane, not walking by just outside", () => {
+    const timer = new LapTimer();
+    let t = 0;
+    for (let a = -Math.PI / 2 - 0.3; a < -Math.PI / 2 + 0.3; a += 0.04) {
+      const p = beyond(a, PLAZA_LAP_LANE.slack + 20);
+      expect(timer.update(p.x, p.y, (t += 50)).started).toBeUndefined();
+    }
+    expect(timer.running).toBe(false);
+  });
+});
+
+describe("the same step at any frame rate", () => {
+  /** Walk `dir` for `seconds` in steps of `dt`, calling `at` once at `when`. */
+  const walk = (
+    dt: number,
+    seconds: number,
+    from: { x: number; y: number },
+    dir: { x: number; y: number },
+    at?: { when: number; act: (b: ReturnType<typeof plazaBody>) => void },
+  ) => {
+    const b = plazaBody(from.x, from.y);
+    let t = 0,
+      acted = false;
+    while (t < seconds - 1e-9) {
+      if (at && !acted && t >= at.when - 1e-9) {
+        at.act(b);
+        acted = true;
+      }
+      const d = Math.min(dt, seconds - t);
+      plazaStep(b, dir, d);
+      t += d;
+    }
+    return b;
+  };
+  it("dashes as far at the server's 20 steps a second as at 60 frames", () => {
+    const from = { x: 1350, y: 1100 },
+      dir = { x: 1, y: 0 };
+    const server = walk(1 / 20, 1, from, dir, { when: 0, act: plazaDash }),
+      phone = walk(1 / 60, 1, from, dir, { when: 0, act: plazaDash });
+    expect(Math.abs(server.x - phone.x)).toBeLessThan(0.5);
+  });
+  it("trips at the same spot and stands up at the same moment", () => {
+    // Dash along the lane into the first hurdle without jumping.
+    const a = PLAZA_HURDLES[0],
+      from = trackPoint(a - 0.35),
+      to = trackPoint(a),
+      d = Math.hypot(to.x - from.x, to.y - from.y),
+      dir = { x: (to.x - from.x) / d, y: (to.y - from.y) / d };
+    const go = (dt: number, seconds: number) =>
+      walk(dt, seconds, from, dir, { when: 0.2, act: plazaDash });
+    // Mid-stumble: down at the same spot, with the same time left.
+    let server = go(1 / 20, 0.6),
+      phone = go(1 / 60, 0.6);
+    expect(server.stun).toBeGreaterThan(0);
+    expect(Math.abs(server.stun - phone.stun)).toBeLessThan(0.005);
+    expect(Math.hypot(server.x - phone.x, server.y - phone.y)).toBeLessThan(2);
+    // Up again and running on: still together.
+    server = go(1 / 20, 1.2);
+    phone = go(1 / 60, 1.2);
+    expect(server.stun + phone.stun).toBe(0);
+    expect(Math.hypot(server.x - phone.x, server.y - phone.y)).toBeLessThan(2);
+  });
+  it("still trips a dash whose step jumps right over a hurdle", () => {
+    const a = PLAZA_HURDLES[1],
+      p = trackPoint(a),
+      // A 0.1 s step at dash speed (68 px) straddling the hurdle.
+      t = { x: -Math.sin(a), y: Math.cos(a) },
+      b = plazaBody(p.x - t.x * 30, p.y - t.y * 30);
+    plazaDash(b, t);
+    expect(plazaStep(b, t, 0.1).tripped).toBe(true);
+  });
+});
+
+describe("Orb Shower and Orb Ball", () => {
+  it("runs the first minute of every UTC quarter hour", () => {
+    const at = (iso: string) => orbShower(Date.parse(iso));
+    expect(at("2026-11-02T21:15:00.000Z")).toMatchObject({
+      on: true,
+      key: String(Date.parse("2026-11-02T21:15:00.000Z") / 60_000),
+    });
+    expect(at("2026-11-02T21:15:59.999Z").on).toBe(true);
+    expect(at("2026-11-02T21:16:00.000Z")).toMatchObject({
+      on: false,
+      startsAt: Date.parse("2026-11-02T21:30:00.000Z"),
+    });
+    expect(at("2026-11-02T21:59:30.000Z").startsAt).toBe(
+      Date.parse("2026-11-02T22:00:00.000Z"),
+    );
+    expect(orbHeight(0)).toBe(ORB_SHOWER.height);
+    expect(orbHeight(2000)).toBe(0);
+  });
+  it("scores when the ball crosses a goal mouth and names the last touch", () => {
+    const ball = plazaBallStart(),
+      kicker = plazaBody(ball.x - 38, ball.y),
+      last: { key?: string } = {};
+    kicker.dash = 0.18;
+    let goal: ReturnType<typeof plazaBallStep<string>> = {};
+    for (let t = 0; t < 5 && goal.goal === undefined; t += 0.05) {
+      goal = plazaBallStep(ball, [{ key: "me", body: kicker }], 0.05, last);
+      kicker.x = -999; // touch once
+    }
+    expect(goal).toEqual({ goal: 0, scorer: "me" });
+    expect(ball.x).toBeGreaterThan(PLAZA_PITCH.x1);
+    for (let t = 0; t < 2; t += 0.05) plazaBallStep(ball, [], 0.05, last);
+    expect(ball).toMatchObject(plazaBallStart());
+  });
+  // Owner, 23 Nov: "kicked it into the net, it didn't count, it slid out".
+  it("counts a slow ball whose middle is over the goal line", () => {
+    const P = PLAZA_PITCH,
+      last = {};
+    const ball = { ...plazaBallStart(), x: P.x1 - 60, y: 900, vx: 57 };
+    let goal: ReturnType<typeof plazaBallStep> = {};
+    for (let t = 0; t < 5 && goal.goal === undefined; t += 0.05)
+      goal = plazaBallStep(ball, [], 0.05, last);
+    // It used to stop 6 px over the line, half in the net, and not count.
+    expect(goal.goal).toBe(0);
+  });
+  it("keeps a ball in the goal's mouth when it drifts at a post: no pull back onto the pitch", () => {
+    const P = PLAZA_PITCH,
+      last = {};
+    // In the mouth, just short of the line, drifting down at the far post.
+    const ball = {
+      ...plazaBallStart(),
+      x: P.x1 - 10,
+      y: P.gy1 - 12,
+      vx: 120,
+      vy: 300,
+    };
+    let goal: ReturnType<typeof plazaBallStep> = {},
+      minX = ball.x;
+    for (let t = 0; t < 3 && goal.goal === undefined; t += 0.05) {
+      goal = plazaBallStep(ball, [], 0.05, last);
+      minX = Math.min(minX, ball.x);
+      expect(ball.y).toBeLessThan(P.gy1);
+    }
+    expect(goal.goal).toBe(0);
+    // It used to be put back 12 px out, at the end line's inner edge.
+    expect(minX).toBeGreaterThanOrEqual(P.x1 - 10);
+  });
+  it("turns a ball back at the end line beside the goal, and doesn't pull it into the mouth", () => {
+    const P = PLAZA_PITCH,
+      last = {};
+    // Pushed past the line in a corner (a body behind it): back to the line.
+    const ball = { ...plazaBallStart(), x: P.x1 - 5, y: P.gy0 - 80 };
+    plazaBallStep(ball, [], 0.05, last);
+    expect(ball.x).toBe(P.x1 - PLAZA_BALL.radius);
+    expect(ball.y).toBeCloseTo(P.gy0 - 80, 3);
+    // Rolling at the end line beside the goal: bounces back.
+    const b2 = { ...plazaBallStart(), x: P.x1 - 40, y: P.y0 + 60, vx: 500 };
+    for (let t = 0; t < 1; t += 0.05) plazaBallStep(b2, [], 0.05, last);
+    expect(b2.x).toBeLessThan(P.x1 - PLAZA_BALL.radius);
+    expect(b2.lock).toBe(0);
+  });
+});

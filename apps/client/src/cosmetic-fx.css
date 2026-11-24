@@ -1,0 +1,289 @@
+/* Live item thumbnails (cosmetic-fx-preview.ts): the real effect, drawn on
+   a canvas behind the fighter (ground rings, victory art) and one in front
+   (items passing in front, particles). */
+.raid-cosmetic-preview:has(> .fx-live) {
+  position: relative;
+  isolation: isolate;
+}
+.raid-cosmetic-preview > .fx-live {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.raid-cosmetic-preview > .fx-back {
+  z-index: 0;
+}
+.raid-cosmetic-preview:has(> .fx-live) > :is(svg, img) {
+  position: relative;
+  z-index: 1;
+}
+.raid-cosmetic-preview > .fx-front {
+  z-index: 3;
+}
+/* Once the live rig is ready it draws the effects itself and the static
+   fallback is hidden; keep the fallback's own effect canvases hidden with it
+   (".shop-live-stage.is-ready canvas" would show them again, drawing Colors
+   twice and a stray glow disc behind the fighter). */
+.shop-live-stage.is-ready:not(.is-item) .shop-preview-fallback .fx-live {
+  visibility: hidden;
+}
+
+/* Item-only previews fill the stage without a champion obscuring the effect. */
+.shop-live-stage.is-item .shop-preview-fallback {
+  padding: 20px;
+}
+.shop-live-stage.is-item .fx-live {
+  visibility: visible;
+}
+.shop-live-stage.is-item:not(.is-frame)
+  .shop-preview-fallback
+  > .raid-cosmetic-preview {
+  width: 100%;
+  height: 100%;
+  max-width: 420px;
+  max-height: 320px;
+  border-radius: 12px;
+}
+
+/* Rarity colours (cosmetic-tier.ts TIER_COLORS). */
+[data-tier="common"] {
+  --tier: #a7b3c6;
+}
+[data-tier="rare"] {
+  --tier: #4fa8ff;
+}
+[data-tier="epic"] {
+  --tier: #b56bff;
+}
+[data-tier="legendary"] {
+  --tier: #ffbf3c;
+}
+[data-tier="mythic"] {
+  --tier: #ff4f7b;
+}
+
+/* A live thumbnail replaces the old static sketch of the effect with a
+   clean stage tinted by rarity; the canvas shows the real effect. */
+.raid-cosmetic-preview:has(> .fx-live) {
+  background:
+    radial-gradient(
+      circle at 50% 62%,
+      color-mix(in srgb, var(--tier, #4fa8ff) 26%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(180deg, #17254a, #0b1430) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--tier, #4fa8ff) 65%,
+    transparent
+  ) !important;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--tier, #4fa8ff) 45%, transparent) !important;
+  animation: none !important;
+}
+.raid-cosmetic-preview:has(> .fx-live)::before,
+.raid-cosmetic-preview:has(> .fx-live)::after {
+  content: none !important;
+}
+
+/* ── Frames shine by rarity ──
+   Still light only (owner, 18 Nov 2026): nothing turns or orbits round a
+   frame, so a frame costs the same wherever it is drawn and the portrait in
+   the header, a lobby or a match looks like its Shop preview. Two layers,
+   both sized in % of the portrait so they scale with it:
+   .tier-glow  a soft halo behind the frame, brighter with rarity
+   .tier-fx    a thin glossy edge on the portrait's rim
+   Rare       a polished blue edge with a light sheen, a faint halo
+   Epic       a two-colour edge, a purple halo
+   Legendary  a golden edge, a warm halo
+   Mythic     a prismatic edge and a prismatic halo
+   Common frames have no extra. */
+.raid-cosmetic-preview:has(> .tier-fx) {
+  isolation: isolate;
+}
+.raid-cosmetic-preview > :is(.tier-fx, .tier-glow) {
+  position: absolute;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.raid-cosmetic-preview[data-tier="common"] > :is(.tier-fx, .tier-glow) {
+  display: none;
+}
+/* The edge: a ring cut out of a gradient. */
+/* It lies just inside the portrait's rim, never over the frame's own ring
+   art (which starts at the rim and goes out), and its width follows the
+   portrait (% of the frame, within a few px): a 36 px header portrait and a
+   256 px Shop stage show the same frame with the same edge. */
+.raid-cosmetic-preview[data-tier] > .tier-fx {
+  inset: 0;
+  z-index: 2;
+  padding: clamp(1.5px, 3%, 6px);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+.raid-cosmetic-preview[data-tier="rare"] > .tier-fx {
+  background:
+    linear-gradient(115deg, transparent 35%, #ffffffd9 48%, transparent 60%) 40%
+      0 / 300% 100%,
+    linear-gradient(135deg, #cfe6ff, #4fa8ff 45%, #a9d2ff 70%, #2f6fc0);
+}
+/* The gradients' start angle. It used to turn; it stays put now, and the
+   frame art's own edges (boss, collection) still read it. */
+@property --tier-turn {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.raid-cosmetic-preview[data-tier="epic"] > .tier-fx {
+  padding: clamp(2px, 3.5%, 8px);
+  background: conic-gradient(
+    from var(--tier-turn),
+    #b56bff,
+    #f0d7ff,
+    #6a3fd6,
+    #e2a8ff,
+    #b56bff
+  );
+}
+.raid-cosmetic-preview[data-tier="legendary"] > .tier-fx {
+  padding: clamp(2px, 4%, 9px);
+  background: conic-gradient(
+    from var(--tier-turn),
+    #ffbf3c,
+    #fff4c4,
+    #c97a12,
+    #ffe08a,
+    #ffbf3c
+  );
+}
+.raid-cosmetic-preview[data-tier="mythic"] > .tier-fx {
+  padding: clamp(2.5px, 4.5%, 10px);
+  background: conic-gradient(
+    from var(--tier-turn),
+    #ff4f7b,
+    #ffd36b,
+    #8ff0b5,
+    #7fd8ff,
+    #b59bff,
+    #ff4f7b
+  );
+}
+/* The halo: one still gradient behind the frame and its ornaments (no
+   blur, no filter, nothing animated). It starts under the portrait's rim
+   and fades out a third of a portrait beyond it. A frame with its own
+   palette (boss frames' --frame-glow) glows in its colours. */
+.raid-cosmetic-preview > .tier-glow {
+  --glow: var(--frame-glow, var(--tier, #4fa8ff));
+  inset: -34%;
+  border-radius: 50%;
+  z-index: -1;
+  background: radial-gradient(
+    circle closest-side,
+    color-mix(in srgb, var(--glow) var(--glow-strength), transparent) 58%,
+    color-mix(in srgb, var(--glow) calc(var(--glow-strength) / 2), transparent)
+      74%,
+    transparent 100%
+  );
+}
+.raid-cosmetic-preview[data-tier="rare"] > .tier-glow {
+  --glow-strength: 30%;
+}
+.raid-cosmetic-preview[data-tier="epic"] > .tier-glow {
+  --glow-strength: 50%;
+}
+.raid-cosmetic-preview[data-tier="legendary"] > .tier-glow {
+  --glow-strength: 70%;
+}
+/* Mythic shines in every colour: a still prismatic wheel faded out from
+   the rim. */
+.raid-cosmetic-preview[data-tier="mythic"] > .tier-glow {
+  background: conic-gradient(
+    from var(--tier-turn),
+    #ff4f7bcc,
+    #ffd36bcc,
+    #8ff0b5cc,
+    #7fd8ffcc,
+    #b59bffcc,
+    #ff4f7bcc
+  );
+  -webkit-mask: radial-gradient(
+    circle closest-side,
+    #000 58%,
+    #0008 74%,
+    transparent 100%
+  );
+  mask: radial-gradient(
+    circle closest-side,
+    #000 58%,
+    #0008 74%,
+    transparent 100%
+  );
+}
+
+.tier-chip {
+  display: inline-block;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--tier) 70%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tier) 18%, #0b1222);
+  color: color-mix(in srgb, var(--tier) 80%, #fff);
+  font: 700 calc(10px * var(--text-scale, 1))/16px var(--body, sans-serif);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tier-chip[data-tier="mythic"] {
+  background: linear-gradient(90deg, #ff4f7b33, #ffd36b33, #7fd8ff33);
+}
+
+/* A frame's own ornament (pearl, gem, planet, lantern, moon…) is part of
+   the frame: it sits on top of the tier edge, not under it. */
+.raid-cosmetic-preview:has(> .tier-fx)::after {
+  z-index: 5;
+}
+
+/* ── Lists of items keep still ──
+   Dozens of tiles moving at once cost phones' GPUs too much. In the Shop
+   and Wardrobe catalogue (the room but its stage), the Raid Hub's reward
+   cards, the Journey and the reward reveal (STILL_TILES in
+   cosmetic-fx-preview.ts, keep the two lists in step) frames' ornaments
+   rest in their still pose, the one reduced motion shows, and effect
+   canvases draw one chosen moment. What a player chooses plays for real:
+   the Shop and Wardrobe stage, the Raid Hub card they opened, the Journey
+   item they picked (LIVE_PICKS). */
+:is(.fit-room > .ui-split-main, .rh-reward, .journey-room, #reward-reveal)
+  .raid-cosmetic-preview:not(
+    :is(.rh-reward[aria-expanded="true"], .journey-room [aria-pressed="true"]) *
+  ),
+:is(.fit-room > .ui-split-main, .rh-reward, .journey-room, #reward-reveal)
+  .raid-cosmetic-preview:not(
+    :is(.rh-reward[aria-expanded="true"], .journey-room [aria-pressed="true"]) *
+  )::before,
+:is(.fit-room > .ui-split-main, .rh-reward, .journey-room, #reward-reveal)
+  .raid-cosmetic-preview:not(
+    :is(.rh-reward[aria-expanded="true"], .journey-room [aria-pressed="true"]) *
+  )::after,
+:is(.fit-room > .ui-split-main, .rh-reward, .journey-room, #reward-reveal)
+  .raid-cosmetic-preview:not(
+    :is(.rh-reward[aria-expanded="true"], .journey-room [aria-pressed="true"]) *
+  )
+  *,
+:is(.fit-room > .ui-split-main, .rh-reward, .journey-room, #reward-reveal)
+  .raid-cosmetic-preview:not(
+    :is(.rh-reward[aria-expanded="true"], .journey-room [aria-pressed="true"]) *
+  )
+  *::before,
+:is(.fit-room > .ui-split-main, .rh-reward, .journey-room, #reward-reveal)
+  .raid-cosmetic-preview:not(
+    :is(.rh-reward[aria-expanded="true"], .journey-room [aria-pressed="true"]) *
+  )
+  *::after {
+  animation: none !important;
+}

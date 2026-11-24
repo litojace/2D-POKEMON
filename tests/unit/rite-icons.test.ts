@@ -1,6 +1,11 @@
 import { it, expect } from "vitest";
 import { RITES } from "@arena/shared";
-import { riteAbility, riteEffect, riteIcon, RITE_EFFECTS } from "../../apps/client/src/rite-icons";
+import {
+  riteAbility,
+  riteEffect,
+  riteIcon,
+  RITE_EFFECTS,
+} from "../../apps/client/src/rite-icons";
 import { abilityArtwork } from "../../apps/client/src/ability-icons";
 
 it("gives every rite its skill's own icon and an effect badge", () => {
@@ -17,7 +22,33 @@ it("gives every rite its skill's own icon and an effect badge", () => {
   // Majors that change how a move works read as a new move or effect.
   const thunder = RITES.find((r) => r.name === "Thunderhead")!;
   expect(riteEffect(thunder)).toBe("transform");
-  const lockdown = RITES.find((r) => r.name === "Lockdown Grid")!;
-  expect(riteEffect(lockdown)).toBe("status");
-  expect(riteEffect(RITES.find((r) => r.name === "Quick Lance")!)).toBe("cooldown");
+  const mindLock = RITES.find((r) => r.name === "Mind Lock")!;
+  expect(riteEffect(mindLock)).toBe("status");
+  // A lantern that shoots twice as often reads as more shots.
+  const bright = RITES.find((r) => r.name === "Bright Lantern")!;
+  expect(riteEffect(bright)).toBe("count");
+  expect(riteEffect(RITES.find((r) => r.name === "Quick Lance")!)).toBe(
+    "cooldown",
+  );
+  // The newer champions' majors.
+  expect(riteEffect(RITES.find((r) => r.name === "Hot Spring")!)).toBe("heal");
+  expect(riteEffect(RITES.find((r) => r.name === "Glacier")!)).toBe("duration");
+  expect(riteEffect(RITES.find((r) => r.name === "Stunning Lance")!)).toBe(
+    "status",
+  );
+  expect(riteEffect(RITES.find((r) => r.name === "Harvest Moon")!)).toBe(
+    "area",
+  );
+  expect(riteEffect(RITES.find((r) => r.name === "Superconductor")!)).toBe(
+    "area",
+  );
+  // The Nature champions': a wider eruption, more blades, longer roots and naps.
+  expect(riteEffect(RITES.find((r) => r.name === "Upheaval")!)).toBe("area");
+  expect(riteEffect(RITES.find((r) => r.name === "Gale Force")!)).toBe("count");
+  expect(riteEffect(RITES.find((r) => r.name === "Deep Roots")!)).toBe(
+    "duration",
+  );
+  expect(riteEffect(RITES.find((r) => r.name === "Long Nap")!)).toBe(
+    "duration",
+  );
 });

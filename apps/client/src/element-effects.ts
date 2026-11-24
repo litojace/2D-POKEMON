@@ -9,6 +9,7 @@ export const elementShapes = {
   psychic: "spiral",
   earth: "stone",
   shadow: "wisp",
+  nature: "leaf",
 } as const;
 export function drawElementGlyph(
   g: Phaser.GameObjects.Graphics,
