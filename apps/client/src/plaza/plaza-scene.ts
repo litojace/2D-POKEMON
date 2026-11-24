@@ -119,6 +119,7 @@ import {
 } from "./plaza-album";
 import { bakeSprite } from "./plaza-sprite";
 import "./plaza.css";
+import { iconButton } from "../ui/components";
 import { fadeIn } from "../ui/motion";
 import { setInner } from "../ui/patch";
 import { memoryConstrained, sceneDensity } from "../render-budget";
@@ -214,7 +215,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     <div class="pz-photo" id="pz-photo" hidden></div>
     <div class="pz-album" id="pz-album" role="dialog" aria-modal="true" aria-label="Photo album" hidden>
       <section class="pz-album-panel" id="pz-album-panel">
-        <header><b>${I("album")}<span>Album</span></b><span class="pz-album-count" id="pz-album-count" aria-live="polite">0 / ${ALBUM_LIMIT}</span><button type="button" class="x" data-al="close" aria-label="Close the album">✕</button></header>
+        <header><b>${I("album")}<span>Album</span></b><span class="pz-album-count" id="pz-album-count" aria-live="polite">0 / ${ALBUM_LIMIT}</span>${iconButton("cancel", "Close the album", { class: "x", "data-al": "close" })}</header>
         <div class="pz-album-grid" id="pz-album-grid"></div>
         <p class="pz-album-note">Saved on this device only · the newest ${ALBUM_LIMIT} are kept</p>
       </section>
@@ -232,14 +233,14 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     </div>
     <div class="pz-fishbook" id="pz-fishbook" role="dialog" aria-modal="true" aria-label="Fish book" hidden>
       <section class="pz-fishbook-panel">
-        <header><b>${I("fish")}<span>Fish book</span></b><span class="pz-fishbook-count" id="pz-fishbook-count" aria-live="polite"></span><button type="button" class="x" data-fb="close" aria-label="Close the Fish book">✕</button></header>
+        <header><b>${I("fish")}<span>Fish book</span></b><span class="pz-fishbook-count" id="pz-fishbook-count" aria-live="polite"></span>${iconButton("cancel", "Close the Fish book", { class: "x", "data-fb": "close" })}</header>
         <ul class="pz-fishbook-list" id="pz-fishbook-list"></ul>
         <p class="pz-fishbook-note" id="pz-fishbook-note"></p>
       </section>
     </div>
     <div class="pz-map" id="pz-map" role="dialog" aria-modal="true" aria-label="Plaza map" hidden>
       <section class="pz-map-panel">
-        <header><b>${I("map")}<span>Plaza map</span></b><span class="pz-map-hint" id="pz-map-hint">Tap a place to walk there</span><button type="button" class="x" data-map="close" aria-label="Close the map">✕</button></header>
+        <header><b>${I("map")}<span>Plaza map</span></b><span class="pz-map-hint" id="pz-map-hint">Tap a place to walk there</span>${iconButton("cancel", "Close the map", { class: "x", "data-map": "close" })}</header>
         <div class="pz-map-body">
           <div class="pz-map-view" id="pz-map-view">
             <canvas id="pz-map-cv" aria-hidden="true"></canvas>
