@@ -6000,10 +6000,14 @@ export function openPlaza(options) {
       // passed (moveDt), like your step above and the camera below: with
       // the capped dt it fell behind under 20 fps. Only what is just to look
       // at (particles, animals, emotes) keeps the capped dt and slows down.
+      // So does the Go walk's stuck timer, on purpose: on real time, one
+      // long frame slowed at a rail (0.3 s at a few fps) passed its 0.12 s
+      // at once and turned the walk aside, off the dock's end (1 of 6 runs
+      // of the dock walk at 6x CPU throttle, 0 of 6 on the capped dt).
       P.stuckT =
         target && P.speed < PLAZA.speed * 0.5 * steerK && P.dash <= 0
-          ? (P.stuckT || 0) + moveDt
-          : Math.max(0, (P.stuckT || 0) - moveDt * 0.5);
+          ? (P.stuckT || 0) + dt
+          : Math.max(0, (P.stuckT || 0) - dt * 0.5);
       if (srv?.acked) {
         // Ease in what the server disagreed on (plaza-predict.ts).
         const bx = P.x,
