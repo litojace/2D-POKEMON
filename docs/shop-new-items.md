@@ -71,13 +71,16 @@ Winter, Festival, Garden, Candy, Retro Pixel, Galaxy).
 Shipped (none yet in Today's Picks): 1 (migration
 `20261125130000_starlight_idol.sql`); 2–4 (migration
 `20261125140000_seaside_steamworks_borealis.sql`); 5 (migration
-`20261125150000_birthstone.sql`); 6 (migration `20261125160000_rainy_day.sql`).
+`20261125150000_birthstone.sql`); 6 (migration `20261125160000_rainy_day.sql`); 7 (migration
+`20261125170000_grand_prix.sql`).
 
 ![Starlight Idol: the eighteen skins on the Shop's stage](shop-new-items/starlight-idol.jpg)
 
 ![Birthstone: the eighteen gem palettes on the Shop's stage](shop-new-items/birthstone.jpg)
 
 ![Rainy Day: the eighteen raincoats on the Shop's stage](shop-new-items/rainy-day.jpg)
+
+![Grand Prix: the eighteen drivers on the Shop's stage](shop-new-items/grand-prix.jpg)
 
 ![Seaside, Steamworks and Borealis: each set's five pieces on the Shop's stage](shop-new-items/look-sets.jpg)
 
