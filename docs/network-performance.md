@@ -908,6 +908,259 @@ limits are recorded in [session 1](battle-input-clock-session-1.md). In the
 press-to-send tail still exposes the blocked main thread. This is not a
 claim about phone FPS or a measured improvement in production RTT.
 
+### 20. HUD writes that restyle one element, not the page
+
+Section 14 removed the CSS rule that made each HUD change restyle hundreds
+of elements. A duel still restyled about 55 elements per recalculation,
+almost 3,000 a second, and a Pixel 8a at Low still spent 6.6 ms of each
+frame on work other than drawing (p95 10.3). Traces with stacks (25 Nov
+2026; a duel, Cindrake against Voltkit, Low, 915×412 at 2×, a fixed seed,
+12 s; before and after run in turn) put it on how the code wrote to the
+HUD, not on the rules:
+
+1. **`innerWidth > innerHeight` read every frame** in `ArenaScene.update`.
+   On Chrome for phones the read forces styles and layout in the middle of
+   the frame: 340 of `update`'s 406 ms, and close to two recalculations a
+   frame. `viewport-size.ts` keeps the size and reads it again on `resize`
+   and at most every 250 ms. (`match-flow-budget` does not count this read.)
+2. **`textContent =` makes a new text node.** Chromium answers every node
+   going in or out by restyling everything a `:has()` rule could reach,
+   about 55 elements: for each cooldown number (ten a second a button), the
+   enemy arrow's name (every frame, the same word) and the chat badge (each
+   snapshot). `setHudText` (`hud-dom.ts`) changes the text node's `data` in
+   place and writes nothing when the text is the same. Taking out all 111
+   `:has()` rules instead gave about the same result (0.64 s), so the rules
+   stay and the writes changed.
+3. **`--skill-sweep`**, an inherited copy of `--cooldown`, restyled the
+   whole icon's SVG each time a cooldown ring moved (p90 109 elements). The
+   ring now reads `--cooldown: inherit` itself, moves in half-percent steps
+   (`sweepPercent`) and has no 70 ms transition on the main thread.
+4. **`syncHub()` ran at every snapshot** in battle (closing the Lobby and
+   Plaza, placing the chat button, timers). `syncHubInBattle` runs when
+   something it reads has changed, and once a second.
+5. **Writes of the same value**: `hidden` on the spectate banner, the chat
+   button, nameplates and arrows restyled one element each time
+   (`setHudHidden`); a button's `disabled` is guarded the same way
+   (`setHudDisabled`).
+6. **`dialog::backdrop` blurred the running battle** (5 px): no blur while
+   `body.battle-active`.
+7. **Down in a raid**, the revive card was rebuilt at every snapshot: its
+   markup was compared with `innerHTML`, which reads an icon's `<path/>`
+   back as `<path></path>` and never matched. And `main.ts` switched every
+   touch button off after `touch.update` had switched the ready ones on:
+   450 `disabled` writes a second. `setHudMarkup` remembers the markup;
+   `TouchControls.downed` makes the one write.
+
+| Scene (12 s)         | Style time, before → after   | Elements per recalculation (median / p90) | Elements per second |
+| -------------------- | ---------------------------- | ----------------------------------------- | ------------------- |
+| Duel                 | 1.34 → 0.41 s, 1.35 → 0.43 s | 55 / 109 → 4 / 16                         | 2,923 → 316         |
+| Duel, CPU slowed 4×  | 2.55 → 0.88 s                | 55 / 109 → 4 / 20                         | 1,128 → 186         |
+| Raid of four         | 0.21 → 0.16 s                | 5 / 85 → 7 / 23                           | 419 → 203           |
+| Free-for-all of four | 0.32 → 0.16 s                | 5 / 90 → 6 / 16                           | 771 → 177           |
+
+The software renderer here draws 6–30 frames a second, so the per-second
+numbers are lower than a phone's at 60; they compare before with after and
+say nothing about a phone's frame rate. The raid and free-for-all rows are
+one pair of runs each. The duel's count per recalculation is the same in
+every run (four out of four after: 4 / 16).
+
+Rules that follow:
+
+- **Write to the battle HUD through `hud-dom.ts`** (`setHudText`,
+  `setHudHidden`, `setHudAttribute`, `setHudStyle`, `setHudDisabled`,
+  `setHudMarkup`), never `textContent =` or `innerHTML =` at every
+  snapshot, and never compare with `innerHTML` to decide.
+- **Never read the window's or an element's size each frame**: use
+  `viewport-size.ts`, or measure once and cache (section 8).
+- `tests/visual/battle-style-budget.spec.ts` now allows a median of 20 and
+  a p90 of 60 elements per recalculation (it was 120 and 220): `main` before
+  this change fails it at 55 and 109.
+  `tests/visual/raid-downed-writes.spec.ts` counts the writes while down.
+
+**Auto forgets once what it learned before this.** Phones the old style
+work slowed had been stepped down, and a level Auto leaves is not tried
+again for a week (section 5): a Pixel 8a stepped down on 24 Nov would have
+stayed at Low until 1 Dec for stutter its graphics chip did not cause.
+`LEARNED_GENERATION` (`battle-quality.ts`) clears the remembered level and
+its ceiling once per device; Auto starts again where it starts a new device
+and steps down within about eleven seconds of play if the phone really
+cannot keep up. A player's own High or Low is untouched.
+
+Still to measure on a real phone: a Pixel 8a duel and raid at Auto after
+this reaches production (`arena-perf`'s `work`).
+
+### 21. Snapshots as changes: measured before designing (25 Nov 2026)
+
+The performance sweep (S7) read from the code that "75-80% of every
+snapshot does not change" and proposed a delta protocol. Before designing
+one, `scripts/perf/snapshot-delta-probe.ts` measured it: a real server with
+its own 30 Hz loop, real Socket.IO clients over WebSocket, 20 s of
+non-stop fighting per room, one client keeping every snapshot it is sent.
+
+```bash
+npx tsx scripts/perf/snapshot-delta-probe.ts --seconds 20
+```
+
+**Nothing compresses today.** The handshake agrees on no WebSocket
+extension (`Sec-WebSocket-Extensions` is empty: Socket.IO leaves
+`perMessageDeflate` off), so the JSON's size is the size on the wire.
+
+**What a player downloads, per room, and what three alternatives would
+send** (bytes a second for one player; snapshots only, about 330 B/s of
+pings and replies on top):
+
+| Room                     | Snapshot, mean / p95 | Today   | Field delta       | Deflate, 32 KB memory | Delta, then deflate |
+| ------------------------ | -------------------- | ------- | ----------------- | --------------------- | ------------------- |
+| Duel                     | 2,628 / 3,025 B      | 78,800  | 25,400 (**−68%**) | 8,600 (−89%)          | 6,800 (−91%)        |
+| Free-for-all, 4 players  | 4,639 / 5,451 B      | 139,200 | 44,300 (**−68%**) | 15,100 (−89%)         | 11,400 (−92%)       |
+| Raid, 4 heroes, Cragmuff | 6,320 / 7,367 B      | 189,900 | 49,300 (**−74%**) | 18,300 (−90%)         | 12,600 (−93%)       |
+| Raid, 4 heroes, Snoozaku | 7,561 / 9,084 B      | 227,200 | 50,000 (**−78%**) | 20,300 (−91%)         | 12,800 (−94%)       |
+| Spire, solo (floor 1)    | 3,250 / 3,586 B      | 97,500  | 23,500 (**−76%**) | 9,100 (−91%)          | 6,700 (−93%)        |
+
+"Field delta" is only what differs from the snapshot before: fighters,
+shots, zones and events matched by id, changed fields only. "Deflate, 32 KB
+memory" is WebSocket's per-message compression with its context kept
+between messages, at level 3.
+
+**Which parts repeat** (free-for-all; the others are alike). Fighters are
+66% of a snapshot and 76% of their bytes repeat the tick before: `statuses`
+(10% of a fighter, 98% unchanged), `stats` (10%, 98%), `cooldowns` (8%,
+98%), the dash and jump times (99%), `id`, `character`, `connected`,
+`team`, `rites` and the per-arena fields (100%). What does change every tick
+is small: `x`, `y`, `vx`, `vy`, `angle`, `ack`, `ult`, the aim. Shots (18%)
+change every tick, but only their position: each one's `owner`, `abilityId`,
+`angle`, `team` and size repeat. A raid's own block (20-31% of a raid or
+Spire snapshot) counted as "changed" whole, yet most of its fields repeat,
+which is why raids gain the most. Measured field by field, 47-62% of the
+bytes repeat; the delta saves more than that because a field that repeats
+also stops sending its name.
+
+**Compression saves more bytes and doubles the server's CPU.** Turning
+`perMessageDeflate` on needs no protocol and every client already speaks it,
+but it deflates each message once per connection.
+`server-load.ts --profile host --rooms 24 --mix pvp2,pvp4,raid4 --seconds 20`
+(80 players fighting), alternating runs on this host:
+
+|                                   | Server CPU, % of one core | Heap     | RSS        |
+| --------------------------------- | ------------------------- | -------- | ---------- |
+| Today (two runs)                  | 26.8-33.8                 | 43 MB    | 146-171 MB |
+| `perMessageDeflate` on (two runs) | **66.2-68.5**             | 60-67 MB | 209-212 MB |
+
+A delta is built once per room, whatever the number of connections: about
+0.03-0.08 ms per room and tick with the probe's unoptimised version (the
+whole snapshot costs 0.014-0.05 ms to stringify, the delta 0.005-0.01 ms).
+So the delta is the one to build, and compression stays off: the service
+runs on one core.
+
+**Decision: build it.** The benefit is smaller than the sweep's estimate in
+one way (half to two thirds of the bytes repeat, not 75-80%) and as large in
+the way that matters (68-78% fewer bytes: about 530 MB an hour of
+free-for-all becomes about 170 MB, a raid's 690-820 MB about 180 MB). The
+server's CPU is not expected to move much either way; the gain is the
+player's: mobile data, and fewer bytes queued behind a weak link (section
+4's backpressure sees it as congestion at 16 KB).
+
+The design these numbers lead to (built in the next pull requests, behind a
+switch that starts off):
+
+- A client says in its handshake that it understands deltas. One that does
+  not (the iPhone app's bundled game, an installed PWA not yet updated) is
+  sent whole snapshots exactly as today.
+- Per room, not per connection: the server keeps the last snapshot it sent
+  the room and builds one delta from it each tick. A connection that has
+  the snapshot before gets the delta; any other (it just joined, resumed,
+  started watching, was held back by backpressure, or was sent a copy of
+  its own such as Snoozaku's dream or a hidden-pick lobby) gets the whole
+  snapshot, and deltas from the next tick.
+- WebSocket delivers in order and drops nothing on a live connection, so no
+  acknowledgements are needed. Snapshots are numbered all the same: a delta
+  that does not follow what the client holds is dropped with it, the client
+  asks for a whole snapshot and shows nothing until it arrives.
+- The client rebuilds the whole snapshot from the delta and hands the game
+  exactly what parsing it would have: nothing after that point changes
+  (prediction, interpolation, the event cursor, the appearance block).
+
+**What was built** (`packages/shared/src/snapshot-delta.ts`, `broadcast` in
+`apps/server/src/server.ts`):
+
+- **The switch.** `SNAPSHOT_DELTA=on` on the server (or
+  `createArenaServer({ snapshotDelta: true })`). Off, which is the default
+  until the client has shipped, nothing is numbered and nothing is sent
+  differently. On, a connection whose handshake says `auth.delta === 1`
+  takes deltas; any other is sent whole snapshots.
+- **Messages.** A keyframe is the usual `state` message with the room's
+  count `n`. A delta is `state-delta`: `{ code, n, d }`, applying to the
+  room's snapshot `n - 1`. `state-full` (`{ code }`) is the client asking
+  for a keyframe; a quiet room (section 2 of the sweep, `quietRoom`) then
+  sends on its next tick instead of its next beat. `quietRoom` itself is
+  unchanged: a tick it skips sends nothing and counts nothing.
+- **The format follows the data**, with no list of field names to keep up
+  when a snapshot gains a field. An object's delta is `{ s, d, x }` (keys
+  set, keys changed inside, keys gone); a list of things with an `id`
+  (fighters, shots, zones, events) is matched by id, `{ o, a, u }` (the new
+  order when members came or went, the new members, `[index, delta]` for
+  each changed member); any other list is sent whole when it differs.
+  Values are compared as JSON writes them.
+- **Who holds what.** Per room, `synced` is the set of connections that
+  were sent exactly the room's last snapshot. They get the delta. Everyone
+  else gets the whole snapshot and, if they asked for deltas, joins the set.
+  A connection leaves the set when it is held back by backpressure, gets a
+  copy of its own (the catch-up after a hold, Snoozaku's dream for the
+  Dreamer, each side's lobby while picks are hidden: none of those is
+  numbered), joins or resumes, leaves the room, or asks for a keyframe.
+  When nobody is left to take a whole snapshot, none is encoded.
+- **One pass on the server.** The encoder walks the new snapshot against
+  its copy of the last one, writing the differences down and bringing the
+  copy up to date as it goes: 31-53 µs a room and tick where stringifying
+  the whole snapshot takes 47-89 µs, plus 6-12 µs to stringify the delta.
+- **The client's copy is its own.** The decoder applies the delta to a
+  snapshot only it holds and hands the game a fresh copy (prediction
+  changes what it is handed). A delta that does not follow, or does not
+  fit, discards that snapshot: it is never half applied.
+
+**The client** (`apps/client/src/networking/snapshot-stream.ts`): the
+socket's handshake carries `delta: 1` (`SNAPSHOT_AUTH`), and
+`followSnapshots` turns `state` and `state-delta` into the one stream of
+whole snapshots the game has always read. A snapshot without a number (an
+older server, or the switch off) passes straight through: nothing is kept
+or copied. A delta that does not follow asks for `state-full` once, and
+again each second it has not come. The connection dropping forgets what
+was held.
+
+To run any visual spec the way the server sends rooms with the switch on,
+set `VISUAL_DELTA=1` (the harness's `__push` then sends one whole numbered
+snapshot and deltas after it, through JSON, `tests/visual/harness/rooms.ts`).
+`tests/visual/snapshot-delta.spec.ts` does it in every run: each snapshot
+the game is handed is compared with the one the harness numbered, and a
+delta that never arrives shows nothing until the whole snapshot comes.
+
+Tests: `tests/unit/snapshot-delta.test.ts` rebuilds every snapshot of real
+fights (duel, free-for-all, teams, the seven raid bosses, the seven Spire
+zones, a whole match from lobby to results) and compares each with the
+parsed whole; `tests/multiplayer/snapshot-delta.test.ts` runs both kinds of
+client against the server over real connections: an older client beside a
+newer one, the switch off, watching mid-fight, reconnecting, a lost delta, a
+congested connection, Snoozaku's dream, changing rooms.
+
+**Measured with the switch on**
+(`server-load.ts --profile host --rooms 24 --mix pvp2,pvp4,raid4 --seconds 20`,
+80 players fighting; add `--delta on`; six alternating pairs of runs):
+
+|                                 | Whole snapshots    | Deltas                 |
+| ------------------------------- | ------------------ | ---------------------- |
+| Download per player             | 147.0 KB/s         | **41.5 KB/s (−72%)**   |
+| Message, p50 / p95              | 4,880 / 7,050 B    | 1,270 / 2,660 B        |
+| Server CPU, % of one core       | 29.2 (26.9-30.3)   | 31.2 (28.3-33.8)       |
+| Tick, p50 / p95                 | 5.8 / 9.2 ms       | 6.2 / 10.2 ms          |
+| Deltas refused by a client      | -                  | 0 of 288,000           |
+| Client, rebuilding one snapshot | 0.01 ms (p95 0.02) | 0.04-0.05 ms (p95 0.1) |
+
+The download falls by 72%. The server's CPU does not fall: the pairs
+overlap, the average is 2 points higher, and the runs differ from each
+other by more than that. The client's work per snapshot (apply, copy,
+unpack) is a few hundredths of a millisecond, 30 times a second, and
+nothing per frame.
+
 ## Historical results (0.5 CPU / 512 MB, 15 snapshots a second)
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The

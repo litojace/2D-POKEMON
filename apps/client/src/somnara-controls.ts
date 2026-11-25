@@ -4,6 +4,7 @@ import {
   DREAM_RUNE_NAMES,
   type DreamRune,
 } from "../../../packages/shared/src/raid";
+import { setHudAttribute, setHudText } from "./hud-dom";
 const paths: Record<DreamRune, string> = {
   circle: '<circle cx="12" cy="12" r="7"/>',
   star: '<path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L2.2 9.4l6.1-.9Z"/>',
@@ -102,11 +103,12 @@ export function renderSomnaraControls(
   }
   // Keep pressed/focused buttons alive across timer and progress updates.
   const timer = panel.querySelector<HTMLElement>("[data-dream-seconds]")!;
-  timer.textContent = `${seconds}s`;
-  timer.setAttribute("aria-label", `${seconds} seconds remaining`);
-  panel.querySelector<HTMLElement>("[data-dream-progress]")!.textContent = tide
-    ? "call"
-    : `${d.step}/${d.length}`;
+  setHudText(timer, `${seconds}s`);
+  setHudAttribute(timer, "aria-label", `${seconds} seconds remaining`);
+  setHudText(
+    panel.querySelector<HTMLElement>("[data-dream-progress]")!,
+    tide ? "call" : `${d.step}/${d.length}`,
+  );
   for (const b of Array.from(
     panel.querySelectorAll<HTMLButtonElement>("[data-raid-rune]"),
   ))

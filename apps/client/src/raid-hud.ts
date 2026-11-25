@@ -24,6 +24,7 @@ import {
   spireHudLine,
   spireWaveLabel,
 } from "./spire-battle";
+import { setHudText } from "./hud-dom";
 
 const escape = (s: string) =>
   s.replace(
@@ -245,7 +246,7 @@ function write(
   const el = m.parts.get(part);
   if (!el) return;
   m.written.set(id, value);
-  if (property === "text") el.textContent = value;
+  if (property === "text") setHudText(el, value);
   else if (property === "width") el.style.width = value;
   // A meter's share (0–100) for its transform (style.css): no layout.
   else if (property === "fill") el.style.setProperty("--fill", value);

@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, it, expect } from "vitest";
 import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server.js";
+import { AccountError } from "../../apps/server/src/accounts.js";
 import { fakeAccounts } from "../helpers/accounts";
 import {
   CHARACTERS,
@@ -371,8 +372,15 @@ it("cleans empty rooms and recovers a disconnected lobby slot", async () => {
 it("broadcasts every room at the snapshot rate, including when an even number of rooms exist", async () => {
   const one = await connect(),
     two = await connect();
-  await emit(one, "create", { name: "One" });
-  await emit(two, "create", { name: "Two" });
+  const first = await emit(one, "create", { name: "One" });
+  const second = await emit(two, "create", { name: "Two" });
+  // In a fight (a lobby is sent only when it changes: idle-snapshots.test.ts).
+  for (const code of [first.code!, second.code!]) {
+    const arena = server.rooms.get(code)!;
+    arena.phase = "countdown";
+    arena.deadline = arena.time + 60;
+  }
+  await wait();
   let a = 0,
     b = 0;
   one.on("state", () => a++);
@@ -547,4 +555,68 @@ it("sends the snapshot at once when a skill is cast, not at the next slot (at a 
   } finally {
     (RULES as { snapshot: number }).snapshot = rate;
   }
+});
+it("keeps a battle's input stream from using up the other commands' allowance", async () => {
+  // One count per socket for everything: 30 inputs a second passed the
+  // 10-a-second commands' limit a third of the way into each second, so a
+  // refreshed login token sent mid-fight was mostly dropped (and after a
+  // few drops the player was signed out of the match), and so was chat.
+  const { one, two, arena } = await lobby();
+  await emit(one, "ready");
+  await emit(two, "ready");
+  await emit(one, "instructions-ready");
+  await emit(two, "instructions-ready");
+  for (let i = 0; i < 95; i++) server.step();
+  expect(arena.phase).toBe("playing");
+  // A second's worth of inputs, as a phone sends them.
+  for (let seq = 1; seq <= RULES.tick; seq++)
+    one.emit("input", { ...blankInput(), seq, dx: 1 });
+  const account = [...accounts.users.values()][0];
+  accounts.users.set("refreshed-mid-fight", account);
+  expect(await emit(one, "token", { token: "refreshed-mid-fight" })).toEqual({
+    ok: true,
+  });
+  expect((await emit(one, "snapshot-meta")).ok).toBe(true);
+  // The inputs themselves all arrived.
+  server.step();
+  expect(arena.players[0].ack).toBeGreaterThan(0);
+});
+it("keeps a player's seat when the account check itself fails, and signs out only a refused login", async () => {
+  const { one, two, arena } = await lobby();
+  await emit(one, "ready");
+  await emit(two, "ready");
+  await emit(one, "instructions-ready");
+  await emit(two, "instructions-ready");
+  for (let i = 0; i < 95; i++) server.step();
+  expect(arena.phase).toBe("playing");
+  const heard: string[] = [];
+  for (const event of ["access-revoked", "token-expired"])
+    for (const socket of [one, two])
+      socket.on(event, () => heard.push(`${socket === one ? 1 : 2} ${event}`));
+  const real = accounts.provider.authenticate;
+  // The accounts service does not answer (a slow database, a deploy on
+  // their side): nobody's match may end for it.
+  accounts.provider.authenticate = async () => {
+    throw new AccountError(503, "Accounts are unavailable.");
+  };
+  await server.refreshAccounts();
+  accounts.provider.authenticate = async () => {
+    throw new TypeError("fetch failed");
+  };
+  await server.refreshAccounts();
+  await wait();
+  expect(heard).toEqual([]);
+  expect([one.connected, two.connected]).toEqual([true, true]);
+  expect(arena.players.map((p) => p.connected)).toEqual([true, true]);
+  expect(arena.phase).toBe("playing");
+  // A suspended account is refused: that player alone leaves, at once.
+  const [first] = [...accounts.users.values()];
+  accounts.provider.authenticate = async (token) => {
+    const account = await real(token);
+    return account?.id === first.id ? { ...account, suspended: true } : account;
+  };
+  await server.refreshAccounts();
+  await until(() => !one.connected);
+  expect(heard).toEqual(["1 access-revoked"]);
+  expect(two.connected).toBe(true);
 });
