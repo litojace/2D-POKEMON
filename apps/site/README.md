@@ -62,7 +62,7 @@ badges only for a live listing), and add the app links to the hero.
 - [x] Speed: Lighthouse itself was blocked by the session's permissions, so
       measured with Playwright on a throttled phone (4× CPU, slow 4G):
       FCP ≈ 0.9 s, LCP ≈ 0.9 s, CLS 0, 16 requests, 268 KB first load
-      (uncompressed server). Contrast checked by hand (all text ≥ 4.5:1).
+      (uncompressed server). Contrast: the main text and label colours checked by hand, fixed to ≥ 4.5:1 (not an automated audit).
 - [x] Demo published (claude.ai artifact 8pd1gyLZnre9guVQ1EG7PY), sent to the owner
 - [ ] **Waiting for the owner:** style (Arena Dusk recommended) and domain
 - [ ] Then: keep one style (drop the other two style blocks and heroes),
