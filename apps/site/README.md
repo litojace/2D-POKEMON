@@ -55,8 +55,16 @@ badges only for a live listing), and add the app links to the hero.
 
 ## Progress (keep current)
 
-- [x] Page, styles, images from game art, fonts
-- [ ] Real gameplay screenshots (scripts/app-store), robots/sitemap, OG image
-- [ ] Screenshots at 390×844, 844×390, 1440×900; Lighthouse mobile ≥ 90
-- [ ] Demo artifact with three style directions; send to the owner and the origin session
-- [ ] Owner picks a style and the hosting/domain; then create the Render site
+- [x] Page, styles, fonts, images from the game's art, real gameplay captures
+      (scripts/app-store fixed: Create room moved into the mode menu)
+- [x] robots.txt, sitemap.xml, link preview image (og.jpg), favicons
+- [x] Checked at 390×844, 844×390, 667×375, 852×393, 1440×900 in all three styles
+- [x] Speed: Lighthouse itself was blocked by the session's permissions, so
+      measured with Playwright on a throttled phone (4× CPU, slow 4G):
+      FCP ≈ 0.9 s, LCP ≈ 0.9 s, CLS 0, 16 requests, 268 KB first load
+      (uncompressed server). Contrast checked by hand (all text ≥ 4.5:1).
+- [x] Demo published (claude.ai artifact 8pd1gyLZnre9guVQ1EG7PY), sent to the owner
+- [ ] **Waiting for the owner:** style (Arena Dusk recommended) and domain
+- [ ] Then: keep one style (drop the other two style blocks and heroes),
+      set the canonical URL, open the PR, create the Render Static Site,
+      add the domain, check HTTPS and links, tell the QR-card session the URL
