@@ -80,10 +80,9 @@ A Render Static Site of its own (pending the owner's approval):
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Repository / branch | this repo, `main`                                                                                                                                 |
 | Root directory      | `apps/site`                                                                                                                                       |
-| Build command       | `node tools/write-config.mjs` (plain Node, no install)                                                                                            |
+| Build command       | none (the shared sign-in PR adds `node tools/write-config.mjs`)                                                                                   |
 | Publish directory   | `.`                                                                                                                                               |
 | Build filter        | include `apps/site/**` only                                                                                                                       |
-| Env                 | `SITE_SUPABASE_URL`, `SITE_SUPABASE_ANON_KEY` (the game's public values), `SITE_APPLE_SIGN_IN=on` if the game has it                              |
 | Headers `/*`        | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Content-Security-Policy` (below) |
 | Custom domains      | `elementarenausa.com`, `www.elementarenausa.com` (Render redirects www to the apex)                                                               |
 

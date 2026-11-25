@@ -1,10 +1,6 @@
 import { confirmAge, saidUnderAge } from "./age-gate";
 import { isNativeApp, PRIVACY_URL, signInWithAppleNatively } from "./native";
 import {
-  sessionCookieStorage,
-  sharesSession,
-} from "../../../packages/shared/src/session-cookie";
-import {
   nameAllowed,
   NAME_NOT_ALLOWED,
 } from "../../../packages/shared/src/name-filter";
@@ -138,20 +134,7 @@ const PRELOAD_GAP_MS = 4000;
  */
 const PROFILE_EXTRAS_MS = 4000;
 const storageKey = "parena-auth";
-/**
- * On elementarenausa.com the session lives in a cookie for the whole domain,
- * shared with the website's account area and its Play button
- * (packages/shared/src/session-cookie.ts, apps/site/ACCOUNTS.md). Anywhere
- * else (other hosts, local dev, the iPhone app) it stays in this origin's
- * storage as before.
- */
-const sharedCookie =
-  typeof document !== "undefined" &&
-  !isNativeApp() &&
-  sharesSession(location.hostname)
-    ? sessionCookieStorage(document)
-    : null;
-const storage = sharedCookie ?? {
+const storage = {
   getItem: (key: string) =>
     localStorage.getItem(key) ?? sessionStorage.getItem(key),
   setItem: (key: string, value: string) => {
@@ -166,11 +149,10 @@ const storage = sharedCookie ?? {
   },
 };
 function remember(value: boolean) {
-  if (value) localStorage.setItem("parena-remember", "yes");
-  else localStorage.removeItem("parena-remember");
-  if (sharedCookie) return sharedCookie.remember(value, storageKey);
   const token = storage.getItem(storageKey);
   storage.removeItem(storageKey);
+  if (value) localStorage.setItem("parena-remember", "yes");
+  else localStorage.removeItem("parena-remember");
   if (token) storage.setItem(storageKey, token);
 }
 type Hooks = {
