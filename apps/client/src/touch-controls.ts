@@ -451,10 +451,10 @@ export class TouchControls {
       cluster.append(context);
     }
     Object.assign(context.style, {
-      left: layout.context.x - layout.context.size / 2 + "px",
-      top: layout.context.y - layout.context.size / 2 + "px",
-      width: layout.context.size + "px",
-      height: layout.context.size + "px",
+      left: layout.context.x - layout.context.width / 2 + "px",
+      top: layout.context.y - layout.context.height / 2 + "px",
+      width: layout.context.width + "px",
+      height: layout.context.height + "px",
     });
     context.style.setProperty("--ctx-size", layout.context.size + "px");
     Object.assign(this.aim.style, {

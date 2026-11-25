@@ -619,6 +619,30 @@ every `:has()` rule would reach 5 elements; the rest are small. A new
 or whose anchor is `body` or a dialog can bring this back: check a battle
 trace (`UpdateLayoutTree` element counts) when adding one.
 
+**It came back (25 Nov 2026).** A Pixel 8a (Chrome) spent 22 ms of every
+battle frame in our own work (`workP50`) where an iPhone 17 Pro Max spent
+1–2 ms in the same matches, so it played at 23–29 fps. Chrome's counters
+over 20 s of a duel at Low (`Performance.getMetrics`, full-speed CPU in the
+cloud container): style recalculation 3.8 s (19% of the time, about 1,100
+recalculations), script 1.5 s, layout 0.07 s; with the CPU slowed 4×, 37%.
+Removing all 114 `:has()` rules cut it to 1.0 s. Bisected by stylesheet and
+then by rule, most of it was one Profile-screen rule, though that screen is
+closed in battle: `.pf-main:has(> .pf-account) > *`. It is
+`.pf-main.has-account` now, set by `profile-view.ts`: 3.8 s → 2.2–2.3 s in
+two runs. `tests/unit/css-has-rules.test.ts` fails on `:has(...) > *` or
+`:has(...) *` anywhere in the client CSS. The other ~1.2 s is spread over
+many rules: removing any one stylesheet's `:has()` rules made no
+measurable difference, only removing all of them did.
+
+**Guarded in CI.** `tests/visual/battle-style-budget.spec.ts` traces 12 s
+of a seeded duel (Cindrake vs Voltkit, Low, 915×412) and counts the
+elements each style recalculation touched (`UpdateLayoutTree`
+`elementCount`): a count, the same on any machine. On 25 Nov 2026 it was a
+median of 55 and a p90 of 109 in all five runs; with the old
+Profile rule put back, 448 and 448. It fails above 120 and 220. Elements
+per second is printed but not judged, since it follows the frame rate
+(1,700–3,500 here).
+
 ### 15. The server's clock: exactly 30 ticks a second
 
 The 18 Nov 2026 reports (22 matches, mostly 3-player free-for-all, two
