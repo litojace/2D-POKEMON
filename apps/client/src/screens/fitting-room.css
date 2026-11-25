@@ -266,23 +266,11 @@
   max-width: none;
   object-fit: contain;
 }
-/* A frame's picture: the frame round your portrait (pictureOf), a square
-   that fits the box both ways with room for the frame's ornaments. */
-.fit-frame-pic {
-  display: grid;
-  width: min(66cqw, 66cqh);
-  aspect-ratio: 1;
-}
-.fit-frame-pic > * {
-  width: 100%;
-  height: 100%;
-}
-/* A skin in a tile fills the picture (ui/components.css, ".ui-tile-art >
-   .skin-thumb"): the same fifth bigger, in the box's own units. */
+/* A skin in a tile fills the picture, whole (ui/components.css,
+   ".ui-tile-art > .skin-thumb"), in the box's own units. */
 .fit-room .ui-tile-art > .skin-thumb {
-  width: 104cqw;
-  height: 104cqh;
-  translate: 0 2cqh;
+  width: 100cqw;
+  height: 100cqh;
 }
 /* Effect pieces (aura, entrance, victory, frame) and Colors are drawn by
    cosmetic-picture.ts at a small default size: fill the picture box, as a

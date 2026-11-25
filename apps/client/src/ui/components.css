@@ -1212,17 +1212,13 @@
 .skin-thumb {
   object-fit: contain;
 }
-/* In a tile the fighter fills the picture: the thumbnail's frame keeps
-   room for the tallest crest and for the ground shadow, which a small
-   tile can't spare (at 667×375 a fighter was 60 px tall). Laid out a
-   little taller than the box (so its bitmap is painted at that size and
-   stays sharp) with the top edge kept: only the empty strip under the
-   feet leaves the picture. */
+/* In a tile the fighter fills the picture, whole: the thumbnail's frame
+   already keeps room round the tallest crest and the ground shadow, so it
+   needs no margin of its own (it was 92% of the box: at 667×375 a fighter
+   stood 60 px tall). */
 .ui-tile-art > .skin-thumb {
-  width: 104%;
-  height: 104%;
-  max-width: none;
-  translate: 0 1.9%;
+  width: 100%;
+  height: 100%;
 }
 /* The rarity band, joined to the picture above it. */
 .ui-tile > .ui-rarity {

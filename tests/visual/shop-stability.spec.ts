@@ -105,14 +105,27 @@ for (const size of [
       await page.click('.fit-room [data-ui-item="tidefin-abyss"]');
       await expect(stage).toHaveClass(/is-ready/);
       await expect(stage).toHaveAttribute("data-preview-item", "tidefin-abyss");
-      // Filters: a combination with no match offers a way out.
-      await page.click('[data-ui-rarity="mythical"]');
-      await page.click('[data-ui-own="owned"]');
-      await page.click("[data-fit-reset]");
-      await expect(page.locator('[data-ui-rarity="all"]')).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      // Filters: a combination with no match offers a way out. A phone
+      // held sideways has one filter row (ownership and the order): its
+      // skins stand sorted by rarity, so the rarity chips are left out.
+      if (size.height > 500) {
+        await page.click('[data-ui-rarity="mythical"]');
+        await page.click('[data-ui-own="owned"]');
+        await page.click("[data-fit-reset]");
+        await expect(page.locator('[data-ui-rarity="all"]')).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+      } else {
+        await expect(page.locator("[data-ui-rarity]")).toHaveCount(0);
+        await page.click('[data-ui-own="owned"]');
+        await expect(
+          page.locator('.fit-grid [data-ui-item="tidefin-bubblegum"]'),
+        ).toBeVisible();
+        await page.click('[data-fit-sort="price"]');
+        await expect(page.locator("[data-fit-sort]")).toHaveText("Cheapest");
+        await page.click('[data-ui-own="all"]');
+      }
       await expect(page.locator('[data-ui-own="all"]')).toHaveAttribute(
         "aria-pressed",
         "true",

@@ -479,7 +479,7 @@ function pictureOf(id: string, view: FitView, d: FitData, scope: string) {
   // A frame goes round a portrait: yours, as on the stage and everywhere
   // players see you. (It was an empty ring.)
   if (!skin && fitItem(id)?.slot === "frame")
-    return `<span class="fit-frame-pic">${framePortrait(avatarImage(d.avatar), id, starsOf(id, d))}</span>`;
+    return framePortrait(avatarImage(d.avatar), id, starsOf(id, d));
   return itemPicture(
     id,
     skin?.champion ?? view.champion,

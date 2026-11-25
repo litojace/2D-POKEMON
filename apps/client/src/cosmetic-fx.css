@@ -24,7 +24,9 @@
 }
 /* The fighter an aura, entrance or victory is shown on (cosmetic-picture.ts):
    a dim figure between the two canvases, in the Shop and Wardrobe tiles
-   only (SUBJECT_TILES in cosmetic-fx-preview.ts, which draws the effect at
+   and the deal card only: smaller pictures (a set's row, the action bar)
+   have no room for both (SUBJECT_TILES in cosmetic-fx-preview.ts, which
+   draws the effect at
    the same scale: the whole fighter 152 world units to the tile's height,
    feet at 84% of it). The art's frame is 216 units for 138.5 world units,
    feet 91.7% down it: 91.1% of the tile tall, its top 0.5% down. Opacity
@@ -32,7 +34,10 @@
 .raid-cosmetic-preview > img.fx-subject {
   display: none;
 }
-.fit-room > .ui-split-main .raid-cosmetic-preview > img.fx-subject {
+.fit-room
+  :is(.ui-tile-art, .fit-deal-art)
+  > .raid-cosmetic-preview
+  > img.fx-subject {
   display: block;
   position: absolute;
   top: 0.5%;

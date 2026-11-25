@@ -960,7 +960,7 @@ describe("rarity and order in the catalogue", () => {
     const d = data(economy({ owned: ["candy-frame"] }), { avatar: null });
     const body = fittingRoomParts(wardrobe({ slot: "frame" }), d).body;
     expect(body).toMatch(
-      /data-ui-item="candy-frame"[\s\S]*?fit-frame-pic"><span class="raid-cosmetic-preview portrait-frame/,
+      /data-ui-item="candy-frame"[\s\S]*?ui-tile-art"><span class="raid-cosmetic-preview portrait-frame/,
     );
     expect(body).toContain('<span class="ui-rarity is-none"></span>');
   });

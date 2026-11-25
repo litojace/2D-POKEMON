@@ -85,7 +85,7 @@ const FROZEN_AT: Record<Kind, number> = {
  * (their crest is 122 world units above their feet), feet on FEET of the
  * tile's height. cosmetic-fx.css places the figure by the same numbers.
  */
-const SUBJECT_TILES = ".fit-room > .ui-split-main";
+const SUBJECT_TILES = ".fit-room .ui-tile-art, .fit-room .fit-deal-art";
 const SUBJECT = { height: 152, feet: 0.84 } as const;
 /** Steps the frozen moment is simulated in (the live loop's longest step). */
 const FROZEN_STEP = 0.05;
