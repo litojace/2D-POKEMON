@@ -249,6 +249,42 @@ export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, n
       });
       return true;
     }
+    case "firefly-aura": {
+      // A summer evening: fireflies drift round in a loose ring at three
+      // heights, each blinking at its own pace over a faint warm glow.
+      g.fillStyle(0x3a4a1a, 0.18).fillEllipse(x, y, 104, groundHeight(104));
+      g.lineStyle(1.2, 0xd8ff7a, 0.35).strokeEllipse(x, y, 100, groundHeight(100));
+      ring(7, 46, 19, 7400, (gg, px, py, i, _a, d, f) => {
+        const bob = reduced ? 0 : Math.sin(now / 640 + i * 1.9) * 4;
+        const cy = py - (8 + (i % 3) * 7 + bob) * d;
+        const blink = reduced ? 1 : 0.3 + 0.7 * Math.max(0, Math.sin(now / 380 + i * 2.3)) ** 2;
+        gg.fillStyle(0xd8ff7a, 0.24 * blink * f).fillCircle(px, cy, 7 * d);
+        gg.fillStyle(0xfff3a0, 0.95 * blink * f).fillCircle(px, cy, 2.6 * d);
+        // The beetle itself: a small dark head ahead of its lit tail.
+        gg.fillStyle(0x3a2a14, 0.9 * f).fillEllipse(px - 3 * d, cy - 1.4 * d, 3.4 * d, 2.4 * d);
+      });
+      return true;
+    }
+    case "crystal-aura": {
+      // A ring of cut-glass light on the ground, and crystals that turn as
+      // they orbit, violet and ice blue, each catching a glint in turn.
+      g.lineStyle(2, 0xb48cff, 0.7).strokeEllipse(x, y, 102, groundHeight(102));
+      g.lineStyle(1, 0xe6dcff, 0.6).strokeEllipse(x, y, 92, groundHeight(92));
+      ring(6, 47, 19, 6000, (gg, px, py, i, _a, d, f) => {
+        const cy = py - (11 + (reduced ? 0 : Math.sin(now / 700 + i) * 3)) * d;
+        const h = (i % 2 ? 9 : 11.5) * d;
+        const turn = reduced ? 1 : Math.cos(now / 520 + i * 1.3);
+        const w = h * 0.5 * (0.35 + 0.65 * Math.abs(turn));
+        gg.fillStyle(i % 2 ? 0x8ff0ff : 0xb48cff, 0.94 * f)
+          .fillTriangle(px - w, cy, px, cy - h, px + w, cy)
+          .fillTriangle(px - w, cy, px, cy + h * 0.55, px + w, cy);
+        // The facet facing the light, on the side the crystal has turned to.
+        const side = turn > 0 ? -w : w;
+        gg.fillStyle(0xffffff, 0.4 * f).fillTriangle(px + side, cy, px, cy - h, px, cy);
+        if (!reduced && Math.sin(now / 900 + i * 1.05) > 0.94) sparkle(gg, px, cy - h * 0.6, 3.2 * d, 0xffffff, 0.95 * f);
+      });
+      return true;
+    }
     case "borealis-aura": {
       // Curtains of light: rays stand round a ring of light on the ice,
       // each swaying and rising at its own pace, green at the foot and
@@ -401,6 +437,28 @@ function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) 
       });
       burst(8, () => ({ y: y - 10 * sc, vx: rnd(-170, 170), vy: rnd(-200, -60), life: rnd(0.4, 0.7), size: 2.4 * sc, color: 0xffe6a6, shape: "spark" }));
       emit({ x, y, vx: 0, vy: 0, life: 0.55, size: 12 * sc, color: 0xe0a23a, shape: "shock" });
+      return true;
+    case "bubble-entrance":
+      // A big soap bubble bursts round the fighter: its skin flashes as two
+      // rings, small bubbles scatter up and away and droplets fall.
+      emit({ x, y: y - 28 * sc, vx: 0, vy: 0, life: 0.35, size: 22 * sc, color: 0xcff6ff, shape: "ring" });
+      emit({ x, y: y - 28 * sc, vx: 0, vy: 0, life: 0.5, size: 26 * sc, color: 0xffc8f0, shape: "ring" });
+      burst(16, (i) => {
+        const a = (i / 16) * TAU;
+        return { x: x + Math.cos(a) * 26 * sc, y: y - 28 * sc + Math.sin(a) * 26 * sc, vx: Math.cos(a) * rnd(40, 90), vy: Math.sin(a) * rnd(30, 70) - 50, life: rnd(0.8, 1.3), size: rnd(2.4, 4.6) * sc, color: [0xffffff, 0xcff6ff, 0xffc8f0][i % 3], shape: "bubble" };
+      });
+      burst(10, () => ({ x: x + rnd(-24, 24) * sc, y: y - rnd(20, 50) * sc, vx: rnd(-30, 30), vy: rnd(20, 80), life: rnd(0.4, 0.7), size: 1.8 * sc, color: 0xcff6ff, shape: "dot" }));
+      return true;
+    case "portal-entrance":
+      // A portal swirls open on the ground and the fighter steps out: rings
+      // close in, sparks spiral out of its mouth, and a column of its light
+      // stands for a moment.
+      for (let k = 0; k < 3; k++) emit({ x, y, vx: 0, vy: 0, life: 0.45 + k * 0.15, size: (16 - k * 4) * sc, color: k % 2 ? 0x4de8d8 : 0x9a5cff, shape: "shock" });
+      emit({ x, y, vx: 0, vy: 0, life: 0.7, size: 12 * sc, color: 0x9a5cff, shape: "beam" });
+      burst(18, (i) => {
+        const a = (i / 18) * TAU;
+        return { x: x + Math.cos(a) * 30 * sc, y: y + Math.sin(a) * 10 * sc, vx: -Math.sin(a) * 150 + Math.cos(a) * 40, vy: (Math.cos(a) * 150 + Math.sin(a) * 40) * 0.35 - 90, life: rnd(0.5, 0.8), size: (i % 3 ? 2.6 : 3.6) * sc, color: [0x9a5cff, 0x4de8d8, 0xf0e6ff][i % 3], shape: i % 3 ? "spark" : "star", drag: 1.2 };
+      });
       return true;
     case "borealis-entrance":
       // Ribbons of light fall from the sky onto the spot, green, ice blue
@@ -728,6 +786,63 @@ function baseVictory(
       } else if (t > 1.1 && chance(8, dt)) {
         const a = rnd(0, TAU);
         emit({ x: x + Math.cos(a) * R, y: cy + Math.sin(a) * R, vx: Math.cos(a) * 30, vy: Math.sin(a) * 30 - 20, life: 0.5, size: 2.4 * sc, color: 0xffe6a6, shape: "spark" });
+      }
+      return true;
+    }
+    case "trophy-victory": {
+      // A gold trophy rises behind the fighter on a little plinth, a glint
+      // runs over its cup, and sparkles and confetti burst once it is up.
+      const rise = Math.min(1, t / 0.6),
+        ease = 1 - (1 - rise) ** 3,
+        s = sc * (0.7 + 0.3 * ease),
+        base = y - (6 + 30 * ease) * sc;
+      under.fillStyle(0xffe08a, 0.2 * fade * ease).fillCircle(x, base - 34 * s, 48 * s);
+      under.fillStyle(0x6a4a2a, fade).fillRect(x - 16 * s, base, 32 * s, 9 * s);
+      under.fillStyle(0x8a6234, fade).fillRect(x - 12 * s, base - 4 * s, 24 * s, 5 * s);
+      under.fillStyle(0xd9a33a, fade).fillRect(x - 3 * s, base - 16 * s, 6 * s, 12 * s);
+      under.fillStyle(0xe0b048, fade).fillEllipse(x, base - 16 * s, 14 * s, 5 * s);
+      // The cup: two handles, a bowl rounded at the bottom and its rim.
+      under.lineStyle(3.2 * s, 0xd9a33a, fade);
+      for (const d of [-1, 1]) {
+        under.beginPath();
+        under.arc(x + d * 19 * s, base - 42 * s, 7 * s, d < 0 ? Math.PI * 0.5 : -Math.PI * 0.5, d < 0 ? Math.PI * 1.5 : Math.PI * 0.5);
+        under.strokePath();
+      }
+      under.fillStyle(0xf2c14e, fade).fillRect(x - 18 * s, base - 52 * s, 36 * s, 16 * s);
+      under.fillEllipse(x, base - 36 * s, 36 * s, 26 * s);
+      under.fillStyle(0xffe08a, fade).fillEllipse(x, base - 52 * s, 38 * s, 7 * s);
+      under.fillStyle(0x8a5a1a, 0.9 * fade).fillEllipse(x, base - 52 * s, 30 * s, 4 * s);
+      const g = (t % 1.4) / 1.4;
+      under.fillStyle(0xffffff, 0.55 * fade * Math.sin(g * Math.PI)).fillRect(x - 15 * s + g * 26 * s, base - 49 * s, 3.4 * s, 22 * s);
+      if (t >= 0.6 && t - dt < 0.6) {
+        for (let i = 0; i < 18; i++) {
+          const a = -Math.PI * (0.08 + (i / 17) * 0.84);
+          emit({ x, y: base - 54 * s, vx: Math.cos(a) * rnd(90, 170), vy: Math.sin(a) * rnd(120, 200), life: rnd(0.9, 1.3), size: 2.6 * sc, color: [0xf2c14e, 0xff6f8a, 0x6fd6ff, 0xffffff][i % 4], shape: "confetti", spin: rnd(-10, 10) });
+        }
+      } else if (t > 0.6 && chance(7, dt)) {
+        emit({ x: x + rnd(-24, 24) * s, y: base - rnd(30, 60) * s, vx: 0, vy: rnd(-24, -8), life: 0.6, size: rnd(2, 3) * sc, color: 0xfff3c4, shape: "star", fadeIn: 0.2 });
+      }
+      return true;
+    }
+    case "meteor-victory": {
+      // A meteor shower crosses the sky behind the fighter: streaks fall at
+      // a slant, stars come out, and the largest meteor bursts overhead in
+      // a crown of sparks.
+      const rise = Math.min(1, t / 0.4);
+      under.fillStyle(0x1a1f4a, 0.3 * fade * rise).fillCircle(x, y - 54 * sc, 92 * sc);
+      under.fillStyle(0x3a2a6a, 0.22 * fade * rise).fillCircle(x, y - 70 * sc, 64 * sc);
+      if (first || chance(9, dt)) {
+        emit({ x: x + rnd(-30, 120) * sc, y: y - rnd(100, 145) * sc, vx: -rnd(260, 340), vy: rnd(170, 230), life: rnd(0.45, 0.7), size: rnd(4, 6.5) * sc, color: [0xffd36b, 0xff8a4c, 0x9fd8ff][Math.floor(rnd(0, 3))], shape: "ray" });
+      }
+      if (chance(10, dt)) emit({ x: x + rnd(-90, 90) * sc, y: y - rnd(50, 130) * sc, vx: 0, vy: rnd(-10, -2), life: rnd(0.5, 0.9), size: rnd(1.8, 3) * sc, color: 0xffffff, shape: "star", fadeIn: 0.25 });
+      if (t >= 1.3 && t - dt < 1.3) {
+        const cy = y - 100 * sc;
+        emit({ x, y: cy, vx: 0, vy: 0, life: 0.6, size: 16 * sc, color: 0xffd36b, shape: "ring" });
+        emit({ x, y: cy, vx: 0, vy: 0, life: 0.85, size: 22 * sc, color: 0x9fd8ff, shape: "ring" });
+        for (let i = 0; i < 20; i++) {
+          const a = (i / 20) * TAU;
+          emit({ x, y: cy, vx: Math.cos(a) * rnd(120, 210), vy: Math.sin(a) * rnd(100, 180), life: rnd(0.6, 1), size: (i % 2 ? 4.6 : 3.2) * sc, color: i % 2 ? 0xffd36b : 0xffffff, shape: i % 2 ? "ray" : "star", drag: 1.3 });
+        }
       }
       return true;
     }
