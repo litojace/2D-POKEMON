@@ -3690,7 +3690,12 @@ export function createArenaServer(
   const plazaEvent = (e: PlazaEvent) => {
     if (e.type === "orb") recordPlaza(e.key, { kind: "orb", ref: e.ref });
     else if (e.type === "goal") recordPlaza(e.key, { kind: "goal" });
-    else if (e.type === "lap") recordPlaza(e.key, { kind: "lap", ms: e.ms });
+    else if (e.type === "lap")
+      recordPlaza(e.key, {
+        kind: "lap",
+        ms: e.ms,
+        ...(e.run !== undefined ? { run: e.run } : {}),
+      });
     else if (e.type === "cheers")
       recordPlaza(e.key, { kind: "cheers", n: e.n });
     else if (e.type === "fish")

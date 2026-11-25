@@ -1294,7 +1294,7 @@ export const PLAZA_QUESTS = [
   // An even 100 coins a day, weighted by effort (migration
   // 20261121180000_plaza_quests_hundred, docs/plaza-economy.md).
   { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 15 },
-  { id: "lap", text: "Run a lap in under 30 s", max: 1, coins: 20 },
+  { id: "lap", text: "Run 3 laps in a row in 30 s", max: 1, coins: 20 },
   { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 10 },
   { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 20 },
   { id: "photo", text: "Use the Photo Spot", max: 1, coins: 5 },
@@ -1302,8 +1302,14 @@ export const PLAZA_QUESTS = [
   { id: "fish", text: "Catch 10 fish", max: 10, coins: 30 },
 ] as const;
 export type PlazaQuestId = (typeof PLAZA_QUESTS)[number]["id"];
-/** A lap under this time completes the lap quest. */
-export const PLAZA_LAP_QUEST_MS = 30_000;
+/**
+ * The lap quest: this many laps in a row, without leaving the lane, in under
+ * `ms` all told (owner, 25 Nov 2026: one lap under 30 s was too easy for its
+ * 20 coins; players' best laps run 4.8-7.8 s, so 3 in 30 s leaves room for a
+ * trip or two). Any 3 in a row count, so a slow first lap is no reason to
+ * stop. The database checks it again (arena_plaza_record).
+ */
+export const PLAZA_LAP_RUN = { laps: 3, ms: 30_000 } as const;
 /** On the runway, the crowd cheers about this often (s). */
 export const PLAZA_CHEER_SECONDS = 0.6;
 
@@ -1423,7 +1429,7 @@ export const PLAZA_PLACES: readonly PlazaPlace[] = [
   {
     id: "track",
     name: "Dash Track",
-    blurb: "Run a lap, jump the hurdles",
+    blurb: "Run laps, jump the hurdles",
     icon: "flag",
     // The start line: the top of the lane.
     x: PLAZA_TRACK.cx + 40,
@@ -2058,8 +2064,13 @@ export interface PlazaState {
   score: [number, number];
   /** Runway cheers you've had this visit. */
   claps: number;
-  /** Your lap: started at (server ms) and progress 0..1, when running. */
-  lap?: [number, number];
+  /**
+   * Your lap: started at (server ms) and progress 0..1, when running; then,
+   * for the lap quest (PLAZA_LAP_RUN), when your run of laps in a row began
+   * (server ms, the oldest lap that still counts) and which lap of it this
+   * is (1..PLAZA_LAP_RUN.laps).
+   */
+  lap?: [number, number] | [number, number, number, number];
   /**
    * The newest stick, jump or dash number (`s`) the browser sent that the server
    * has applied, and for how many ms of steps it has moved you since: your
@@ -2108,6 +2119,9 @@ export interface PlazaRecord {
   ref?: string;
   /** Laps: the time in ms. */
   ms?: number;
+  /** Laps: the last PLAZA_LAP_RUN.laps laps in a row, all told (ms), once
+   * there are that many; the lap quest needs it under PLAZA_LAP_RUN.ms. */
+  run?: number;
   /** Cheers so far today. */
   n?: number;
   /** Fish: coins for a first catch of this fish (paid once), and how many
