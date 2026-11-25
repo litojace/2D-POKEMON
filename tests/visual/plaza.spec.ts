@@ -1830,6 +1830,15 @@ for (const viewport of [
       // 2 laps of 15 s: past 30 s whatever this lap's time.
       await midRun([15_000, 15_500], 2_000);
       await expect(timer).toHaveClass(/over/);
+      // On a slow renderer the first run above is already past 30 s and red,
+      // so "over" alone doesn't say the new laps are drawn yet: wait for the
+      // run's time to show them (CI read the old 14.5 here, 25 Nov).
+      await expect
+        .poll(async () => {
+          const now = await read();
+          return Math.abs(now.run - now.t - 30.5);
+        })
+        .toBeLessThanOrEqual(0.15);
       const late = await read();
       expect(Math.abs(late.run - late.t - 30.5)).toBeLessThanOrEqual(0.15);
       expect(await fits()).toBe(true);
