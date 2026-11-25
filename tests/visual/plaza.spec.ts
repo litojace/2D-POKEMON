@@ -3,9 +3,11 @@ import { asRgb, openPlaza, snap } from "./helpers";
 import {
   PLAZA_FOUNTAIN,
   PLAZA_GIFT,
+  PLAZA_LAP_START,
   PLAZA_HURDLE_SEGMENTS,
   PLAZA_QUESTS,
   PLAZA_TRACK,
+  trackPoint,
 } from "../../packages/shared/src/plaza";
 
 // Hub redesign phase 3: the new Plaza. The harness runs the real PlazaWorld
@@ -1741,3 +1743,110 @@ test("the Plaza shows the skins players wear: yours at once, others' palettes an
   await snap(page, info, "plaza-skins");
   expect(errors).toEqual([]);
 });
+
+// The lap quest (owner, 25 Nov 2026): 3 laps in a row in 30 s. Mid-run, the
+// timer says which lap of the run this is and the run's time; past 30 s the
+// run's time turns red; once the quest is done, the plain lap timer is back.
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 844, height: 390 },
+  { width: 667, height: 375 },
+])
+  test(`the lap timer counts the quest's run at ${viewport.width}x${viewport.height}`, async ({
+    browser,
+  }, info) => {
+    const phone = viewport.width < 1000;
+    const context = await browser.newContext({
+      viewport,
+      isMobile: phone,
+      hasTouch: phone,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openPlaza(page);
+      // On the lane, a little past the start line, on lap 3 of a run.
+      const midRun = (laps: number[], lapAgo: number) =>
+        page.evaluate(
+          ([x, y, a, laps, lapAgo]) => {
+            const w = window as any,
+              world = w.__plazaWorld;
+            w.__plazaPosition(x, y);
+            const v = world.visitors.get("local");
+            v.run = laps;
+            Object.assign(v.lap, {
+              travelled: 0.4,
+              last: a,
+              startedAt: Date.now() - lapAgo,
+            });
+          },
+          [
+            ...Object.values(trackPoint(PLAZA_LAP_START + 0.4)),
+            PLAZA_LAP_START + 0.4,
+            laps,
+            lapAgo,
+          ] as [number, number, number, number[], number],
+        );
+      const timer = page.locator("#pz-timer");
+      // One read of the timer: this lap's time, the run's lap and time, and
+      // whether it is red. The clock runs on while a slow CI renderer draws
+      // (28 s on one), so only how the numbers relate is checked: the run's
+      // time is this lap's plus the 2 laps before it.
+      const read = () =>
+        timer.evaluate((el) => {
+          const small = el.querySelector("small")!.textContent!,
+            m = /^lap (\d)\/3 · (\d+\.\d)$/.exec(small);
+          return {
+            t: parseFloat(el.firstChild!.textContent!),
+            lap: m ? Number(m[1]) : 0,
+            run: m ? parseFloat(m[2]) : NaN,
+            over: el.classList.contains("over"),
+          };
+        });
+      await midRun([7_100, 7_400], 3_000);
+      await expect(timer).toBeVisible();
+      await expect(timer.locator("small")).toHaveText(/^lap 3\/3 · \d+\.\d$/);
+      const first = await read();
+      expect(first.lap).toBe(3);
+      expect(Math.abs(first.run - first.t - 14.5)).toBeLessThanOrEqual(0.15);
+      expect(first.over).toBe(first.run >= 30);
+      // Whole and centred: no "…", inside its pill.
+      const fits = () =>
+        timer.evaluate((el) => {
+          const r = el.getBoundingClientRect(),
+            sm = el.querySelector("small")!.getBoundingClientRect();
+          return (
+            el.scrollWidth <= el.clientWidth + 1 &&
+            sm.left >= r.left - 1 &&
+            sm.right <= r.right + 1
+          );
+        });
+      expect(await fits()).toBe(true);
+      await snap(
+        page,
+        info,
+        `plaza-lap-run-${viewport.width}x${viewport.height}`,
+      );
+      // Too slow for 30 s: the run's time turns red.
+      // 2 laps of 15 s: past 30 s whatever this lap's time.
+      await midRun([15_000, 15_500], 2_000);
+      await expect(timer).toHaveClass(/over/);
+      const late = await read();
+      expect(Math.abs(late.run - late.t - 30.5)).toBeLessThanOrEqual(0.15);
+      expect(await fits()).toBe(true);
+      await snap(
+        page,
+        info,
+        `plaza-lap-run-over-${viewport.width}x${viewport.height}`,
+      );
+      // Quest done today: the plain lap timer (quarters and best).
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__plazaProgress.quests.lap = { n: 1, done: true };
+        w.__sock?.fire("plaza-progress", structuredClone(w.__plazaProgress));
+      });
+      await expect(timer.locator("small")).toHaveText(/^\d\/4/);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

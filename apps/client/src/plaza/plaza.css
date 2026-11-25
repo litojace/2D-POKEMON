@@ -142,6 +142,10 @@
 .plaza-layer.phone .pz-timer {
   top: calc(var(--hud-row2) + 38px + var(--hud-gap));
 }
+/* The lap quest's run is past 30 s (PLAZA_LAP_RUN): its time turns red. */
+.plaza-layer .pz-timer.over small {
+  color: #ff8a8a;
+}
 /* The clock (tap: preview day or night) heads the right column; the
    quests sit under it. */
 .plaza-layer .pz-clock {

@@ -8,7 +8,7 @@
 }
 .ui-modal:has([data-guest-warning]) > .ui-actions {
   /* Both buttons one width, wide enough for "Save account". */
-  grid-auto-columns: max(var(--act-w), 128px);
+  grid-auto-columns: minmax(max(var(--act-w), 128px), max-content);
 }
 .gw-rows {
   display: grid;

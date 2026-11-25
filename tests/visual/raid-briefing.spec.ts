@@ -129,6 +129,23 @@ for (const size of [
           await box(page, ".rc-card.is-briefing"),
         ),
       ).toBe(true);
+      // "Waiting for the team…" is longer than the button's least width:
+      // the button grows to fit it, never letting it spill past both edges.
+      await expect(page.locator("#raid-instructions")).toContainText(
+        "Waiting for the team",
+      );
+      const label = await box(page, "#raid-instructions > span");
+      const button = await box(page, "#raid-instructions");
+      expect(label.x - button.x, "room left of the label").toBeGreaterThan(6);
+      expect(
+        button.x + button.width - (label.x + label.width),
+        "room right of the label",
+      ).toBeGreaterThan(6);
+      await snap(
+        page,
+        info,
+        `raid-briefing-waiting-${size.width}x${size.height}`,
+      );
       expect(errors).toEqual([]);
     } finally {
       await context.close();

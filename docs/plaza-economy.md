@@ -9,18 +9,30 @@ database by `tests/integration/plaza-rewards.test.ts`.
 
 ## Each quest, by the effort it takes
 
-| Quest                     | What it takes                                                                                   |  Before |     Now |
-| ------------------------- | ----------------------------------------------------------------------------------------------- | ------: | ------: |
-| Catch 10 fish             | 10 catches, each a bite (2–6 s) and a fight; about 5 min with misses                            |      25 |  **30** |
-| Catch 10 falling orbs     | 10 orbs in one Orb Shower (one minute every 15), against everyone else: up to 15 min of waiting |      15 |  **20** |
-| Run a lap in under 30 s   | A full lap over three hurdles without leaving the lane; a few tries                             |      20 |  **20** |
-| Score a goal on the pitch | A goal past the pitch's bots: a minute or two                                                   |      20 |  **15** |
-| 15 cheers on the runway   | Stand on the runway (a cheer about every 0.6 s): under 10 s                                     |      15 |  **10** |
-| Use the Photo Spot        | One tap                                                                                         |      10 |   **5** |
-| **A day**                 |                                                                                                 | **105** | **100** |
+| Quest                       | What it takes                                                                                                                         |  Before |     Now |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------: | ------: |
+| Catch 10 fish               | 10 catches, each a bite (2–6 s) and a fight; about 5 min with misses                                                                  |      25 |  **30** |
+| Catch 10 falling orbs       | 10 orbs in one Orb Shower (one minute every 15), against everyone else: up to 15 min of waiting                                       |      15 |  **20** |
+| Run 3 laps in a row in 30 s | Three laps in a row over three hurdles each, without leaving the lane, in 30 s all told; a few tries (25 Nov: was one lap under 30 s) |      20 |  **20** |
+| Score a goal on the pitch   | A goal past the pitch's bots: a minute or two                                                                                         |      20 |  **15** |
+| 15 cheers on the runway     | Stand on the runway (a cheer about every 0.6 s): under 10 s                                                                           |      15 |  **10** |
+| Use the Photo Spot          | One tap                                                                                                                               |      10 |   **5** |
+| **A day**                   |                                                                                                                                       | **105** | **100** |
 
 The time-gated and skill quests (fish, orbs, lap) went up or stayed; the ones
 done in seconds (cheers, photo) went down.
+
+**The lap quest, 25 Nov 2026.** One lap under 30 s was done at a walk:
+players' best laps of the week run 4.8–7.8 s (median 6.5 s, 9 players,
+`arena_plaza_laps`), and 13 of 20 player-days in the last two weeks finished
+it. The owner made it 3 laps in a row in 30 s all told (10 s a lap on
+average, about 1.5× a median best lap, so a trip or two still fits), for the
+same 20 coins (`PLAZA_LAP_RUN`, migration `20261125060000_plaza_lap_run.sql`).
+Any 3 laps in a row count, and the lap timer shows which lap of the run you
+are on and the run's time while the quest is still to do. The others stay:
+cheers and the Photo Spot already pay the least for the least effort (10 and
+5), and fishing (4 of 20 player-days done) and the orbs (10 of 20) are the
+hardest already.
 
 ## Next to the Lobby
 

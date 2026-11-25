@@ -116,14 +116,14 @@ export function mobileLayout(
     88,
     Math.min(
       164,
-      Math.min(height * 0.34, available * 0.25) * prefs.joystickSize,
+      Math.min(height * 0.46, available * 0.25) * prefs.joystickSize,
     ),
   );
   if (available < 600 && height < 500) {
     const short = height < 310;
     const compactJoystick = Math.min(
       joystick,
-      Math.max(short ? 72 : 88, height * (short ? 0.23 : 0.28)),
+      Math.max(short ? 80 : 96, height * (short ? 0.29 : 0.34)),
     );
     const size = Math.max(
       44,
