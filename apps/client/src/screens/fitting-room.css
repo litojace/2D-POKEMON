@@ -389,10 +389,32 @@
   flex: 1 1 0;
   min-width: 0;
 }
-/* The order button keeps its width when its word changes. */
-.fit-filters > [data-fit-sort] {
+/* The Skins order: ◆ Rarest | coin Cheapest, two halves of one switch
+   (fitting-room-view.ts, filters). The diamond is the tiles' rarity mark
+   (.ui-rarity), the coin their price's. */
+.fit-sort > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.fit-gem {
+  width: 8px;
+  height: 8px;
+  transform: rotate(45deg);
+  background: var(--r-legendary);
   flex: none;
-  min-width: 124px;
+}
+.fit-sort .ui-coin {
+  width: 14px;
+  height: 14px;
+}
+/* On the lit (gold) half the marks take the ink colour or an edge. */
+.fit-sort > button[aria-pressed="true"] .fit-gem {
+  background: var(--ui-accent-ink);
+}
+.fit-sort > button[aria-pressed="true"] .ui-coin {
+  box-shadow: 0 0 0 1.5px var(--ui-accent-ink);
 }
 .fit-count {
   margin-left: auto;
@@ -1142,10 +1164,19 @@
   .fit-filters.has-sort {
     flex-wrap: nowrap;
   }
-  .fit-filters.has-sort > [data-fit-sort] {
-    order: 1;
-    min-width: 0;
-    flex: 1 1 0;
+  /* The order shows its two marks alone, each half a 44 px target; the
+     words stay as the halves' names (aria-label). */
+  .fit-sort > button {
+    min-width: 44px;
+    padding: 0 10px;
+  }
+  .fit-sort-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .fit-filters.has-sort > .fit-count {
     position: absolute;
