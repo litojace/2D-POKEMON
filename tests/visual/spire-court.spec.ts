@@ -462,6 +462,17 @@ test("high floors keep amber crystals and a readable floor number", async ({
     await hookGame(page);
     const errors = await openHub(page);
     await climb(page, 9);
+    // The court is drawn once the battle's scene is up: the battle kit
+    // loads with Phaser after the first screen (#443), so on a busy
+    // machine its floor's atlas and pieces come after climb's fixed wait.
+    // Wait for what is read below, as the other zones' atlas checks do.
+    await page.waitForFunction(() => {
+      const scene = (window as any).__spireGame?.scene.getScene("arena");
+      return (
+        !!scene?.textures.exists("spire-court-1-9") &&
+        scene.children.list.some((o: any) => o.name === "spire-number")
+      );
+    });
     // The height's dusk is on the floor only: the cover, the stairs and
     // the number are not tinted at run time (their stone is shaded when
     // painted, their crystals keep their own light).

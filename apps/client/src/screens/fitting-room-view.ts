@@ -805,6 +805,57 @@ function fighterRow(
 
 /* --------------------------------------------------------- shop body */
 
+/**
+ * Today's "New in the Shop": recent arrivals (shop-arrivals.ts) you don't
+ * own yet, rarest first. New collections stay out of Today's Picks until
+ * the database opens them (in_picks, migration 20261125120000), so without
+ * this row a new collection only showed to someone who went through Skins
+ * fighter by fighter. One skin per new skin collection: the one for the
+ * fighter you're looking at, else the first you don't own (a collection
+ * dresses all eighteen, and eighteen tiles would bury the rest). Look
+ * pieces one by one. Nothing already shown above it (the deal, the picks).
+ */
+export function newInShop(
+  view: FitView,
+  d: FitData,
+  isNew: (id: string) => boolean = isNewArrival,
+  max = 6,
+) {
+  const e = d.economy;
+  if (!e) return [];
+  const shown = new Set([e.picks.deal, ...e.picks.items]);
+  const fresh = (id: string) => isNew(id) && !owns(id, d) && !shown.has(id);
+  const skins = new Map<string, string>();
+  for (const s of CHAMPION_SKINS) {
+    if (!fresh(s.id)) continue;
+    const key = s.collection ?? s.id;
+    const held = skins.get(key);
+    if (
+      !held ||
+      (s.champion === view.champion &&
+        CHAMPION_SKIN_BY_ID[held].champion !== view.champion)
+    )
+      skins.set(key, s.id);
+  }
+  const pieces = LOOK_ITEMS.filter((i) => fresh(i.id)).map((i) => i.id);
+  return [...skins.values(), ...pieces]
+    .map((id, i) => ({ id, i, rank: RARITY_RANK[rarityOf(id)] }))
+    .sort((x, y) => x.rank - y.rank || x.i - y.i)
+    .slice(0, max)
+    .map(({ id }) => id);
+}
+/** The collections the new items come from, by name (the row's note). */
+function arrivalNames(ids: string[]) {
+  const names = ids
+    .map(
+      (id) =>
+        CHAMPION_SKIN_BY_ID[id]?.collection ?? LOOK_ITEM_BY_ID[id]?.collection,
+    )
+    .filter((c): c is Collection => !!c)
+    .map((c) => COLLECTION_NAMES[c]);
+  return [...new Set(names)].join(" · ");
+}
+
 function todayBody(view: FitView, d: FitData) {
   const e = d.economy!;
   const countdown = picksCountdown();
@@ -838,6 +889,14 @@ function todayBody(view: FitView, d: FitData) {
     .slice(0, 3);
   const left = missionCoinsLeft(e);
   const earn = `<div class="fit-earn" role="note"><b>Earn coins</b><span>Win against players <b>+${COINS.pvpWin}</b> · loss <b>+${COINS.pvpLoss}</b></span><span>Raid clear <b>+${COINS.raidClear[3]}</b></span><span>Missions <b>+${MISSION_COINS.easy} / ${MISSION_COINS.medium} / ${MISSION_COINS.hard}</b></span><span class="fit-earn-left">Missions left today: ${price(left)}</span></div>`;
+  const arrivals = newInShop(view, d);
+  const fresh = arrivals.length
+    ? `${section("New in the Shop", `<small class="ui-note">${esc(arrivalNames(arrivals))}</small>`)}${grid(
+        arrivals.map((id) => shopTile(id, view, d)).join(""),
+        3,
+        "fit-picks fit-new",
+      )}`
+    : "";
   const daily = picks.length
     ? `${section("Daily picks", timer(`New picks in ${countdown}`))}${grid(
         picks.map((id) => shopTile(id, view, d)).join(""),
@@ -845,7 +904,7 @@ function todayBody(view: FitView, d: FitData) {
         "fit-picks",
       )}`
     : "";
-  return `${featured}${daily}${bundles.length ? `${section("Bundles", '<small class="ui-note">20% off the pieces you don\'t own</small>')}${bundles.map(({ b }) => bundleRow(b.id, view, d)).join("")}` : ""}${earn}`;
+  return `${featured}${fresh}${daily}${bundles.length ? `${section("Bundles", '<small class="ui-note">20% off the pieces you don\'t own</small>')}${bundles.map(({ b }) => bundleRow(b.id, view, d)).join("")}` : ""}${earn}`;
 }
 /** What a set holds, in a few words. */
 export function setNote(id: string) {
@@ -1366,8 +1425,15 @@ function wardrobeFoot(view: FitView, d: FitData) {
       : "Try something on, then Equip";
   const outfit = stageOutfit(view, d);
   const art = `<span class="fit-foot-art">${fighterAvatar(view.champion, "fit-foot-fighter", outfit.skin)}</span>`;
+  // How many changes above the fighter's name, as the Shop's bar puts the
+  // rarity above the item's: "Voltkit · no changes" on one line was cut to
+  // "VOLTKI…" on a 667 px phone, where the note under it is hidden.
+  const count = changes.length
+    ? `${changes.length} change${changes.length === 1 ? "" : "s"}`
+    : "No changes";
+  const top = `<small class="fit-foot-count"${changes.length ? ' data-changes="true"' : ""}>${count}</small>`;
   return actionBar(
-    `${art}${footText(`${fighter} · ${changes.length ? `${changes.length} change${changes.length === 1 ? "" : "s"}` : "no changes"}`, esc(note))}${status}`,
+    `${art}${footText(fighter, esc(note), top)}${status}`,
     actions(
       button("Revert", {
         icon: "again",
