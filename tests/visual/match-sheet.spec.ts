@@ -357,6 +357,18 @@ for (const size of SIZES) {
         await snap(page, info, `pvp-teams-${label(size)}`);
         holds(await sheet(page, ".match-sheet"), size);
         expect(await recapProblems(page)).toEqual([]);
+        // Each plate's left edge: yours gold, then your teammate in your
+        // team's blue, then both rivals in red (the room's team colours).
+        const edges = await overlay
+          .locator(".recap tbody th")
+          .evaluateAll((cells) =>
+            cells.map((c) => getComputedStyle(c).boxShadow),
+          );
+        expect(edges).toHaveLength(4);
+        expect(edges[1]).toContain("rgb(124, 196, 255)");
+        expect(edges[2]).toContain("rgb(255, 138, 150)");
+        expect(edges[3]).toContain("rgb(255, 138, 150)");
+        expect(edges[0]).not.toContain("rgb(124, 196, 255)");
         // The content never needs dragging sideways.
         expect(
           await overlay

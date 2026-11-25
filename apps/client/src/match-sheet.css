@@ -444,6 +444,31 @@ body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
   :is(th, td) {
   border-top-color: #ffffff59;
 }
+/* Teams: each plate carries its team's colour on its left edge, as the
+   room's team headings do (screens/room.css: Blue #7cc4ff, Red #ff8a96),
+   so who played on which side reads at a glance. Yours keeps the gold
+   edge. The teammate is the row after yours on the same side; the rivals
+   are the split row and the rows after it (only teams have a split). */
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody {
+  --team-0: #7cc4ff;
+  --team-1: #ff8a96;
+}
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .recap
+  tbody
+  :is(tr.me.side-0 + tr.side-0, tr.split.side-0, tr.split ~ tr.side-0)
+  th {
+  box-shadow: inset 3px 0 0 var(--team-0);
+}
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .recap
+  tbody
+  :is(tr.me.side-1 + tr.side-1, tr.split.side-1, tr.split ~ tr.side-1)
+  th {
+  box-shadow: inset 3px 0 0 var(--team-1);
+}
 /* A phone held sideways: tighter plates, so four fighters and the buttons
    still fit without scrolling. */
 @container (max-height: 460px) {
