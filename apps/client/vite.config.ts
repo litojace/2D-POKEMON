@@ -67,9 +67,10 @@ function startupScriptList(): Plugin {
       const lazyPanels = chunks.filter(
         (chunk) =>
           PRECACHED_PANELS.test(chunk.facadeModuleId ?? "") ||
-          // Phaser loads after the first screen (phaser-runtime.ts), but
-          // every battle needs it, offline too.
-          chunk.name === "phaser",
+          // Phaser and the battle kit load after the first screen
+          // (phaser-runtime.ts), but every battle needs them, offline too.
+          chunk.name === "phaser" ||
+          chunk.name === "battle-kit",
       );
       const queue = [...entries, ...lazyPanels].map((chunk) => chunk.fileName);
       while (queue.length) {

@@ -47,8 +47,6 @@ import {
   sweepPercent,
 } from "./hud-dom";
 import { viewportHeight, viewportLandscape } from "./viewport-size";
-import { battleCurves } from "./battle-curves";
-import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
 import { AnnouncementBanner } from "./announcements";
 import { serverNow } from "./server-clock";
@@ -68,12 +66,7 @@ import {
   canDash,
   type CastAction,
 } from "./cast-prediction";
-import { queueBossSpellArt } from "./boss-spell-flipbook";
-import { queueBossArt, retainBossArt } from "./boss-painted-rig";
 import { memoryConstrained, rendererDensity } from "./render-budget";
-import { addBattleText } from "./battle-text";
-import { watchRendererLifecycle } from "./renderer-lifecycle";
-import { clearWithCameraBackdrop } from "./camera-clear";
 import {
   groundHeight,
   WORLD_ART,
@@ -118,7 +111,6 @@ import {
 } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
-import { drawArcade } from "./arcade-art";
 import { stormTarget } from "./storm-twins-controls";
 import { raidTargets } from "./raid-targets";
 import { prismatailAim } from "./prismatail-controls";
@@ -136,12 +128,15 @@ import {
   type RoomMode as RoomKind,
 } from "./screens/room-view";
 import "./screens/room.css";
-import {
-  renderRaidUI,
-  renderRaidWatchHud,
-  drawRaidArena,
-  raidLookList,
-} from "./raid-ui";
+// The raid's and the Spire's battle styles stay in the startup stylesheet,
+// at the place they always had in it (their modules are in the battle kit
+// now): the Raid Hall's cards use them before any battle, and a stylesheet
+// arriving later would win ties it used to lose.
+import "./screens/raid-cards.css";
+import "./screens/raid-rites.css";
+import "./screens/raid-party.css";
+import "./spire-battle.css";
+import { raidLookList } from "./raid-look-list";
 import {
   howToPlayMarkup,
   helpTopicMarkup,
@@ -167,34 +162,16 @@ import type { RaidTab } from "./screens/raid-hall-view";
 import type { SpireTab } from "./screens/spire-view";
 import { LobbySelection } from "./lobby-selection";
 import { setupBattleDock } from "./battle-dock";
-import {
-  queueFighterAssets,
-  createFighterVisual,
-  fighterTextureKeys,
-  type FighterVisual,
-} from "./animation/pipeline";
+import type { FighterVisual } from "./animation/pipeline";
 import { rigAssets, skinSuffix } from "./animation/assets";
-import { loadRigTextures } from "./animation/rig-textures";
-import {
-  bossLookOf,
-  prewarmBossAtlas,
-  syncBossPrepaint,
-} from "./boss-vector-prewarm";
 import {
   addPrepaintedLayers,
   forgetPrepainted,
   holdFighterPrepaint,
   syncFighterPrepaint,
 } from "./fighter-prepaint";
-import { rigArtHealth, type ArtNode } from "./rig-health";
-import { prewarmRaidArena } from "./raid-arena-prewarm";
-import { PillarRig, prewarmPillars } from "./raid-grumble-pillars-rig";
-import { IMPACT_RADIUS } from "./raid-grumble-pillars";
-import { prewarmTerrace } from "./raid-emberwing-terrace-rig";
-import { setRaidMapLow } from "./raid-map-atlas";
-import { prewarmLagoon } from "./raid-tidewyrm-art";
-import { noteCloudDeckEvent, prewarmCloudDeck } from "./raid-somnara-art";
-import { isMirrorTurnImpact } from "./raid-prismatail-atrium";
+import type { ArtNode } from "./rig-health";
+import type { PillarRig } from "./raid-grumble-pillars-rig";
 import { FighterLoading, neededFighters } from "./animation/fighter-loading";
 import {
   setOverlayMarkup,
@@ -209,18 +186,6 @@ import { drawCollectionAura } from "./skins/collection-fx";
 import { battleAuraScale } from "./shop-preview-layout";
 import { colourPreview } from "./colour-preview";
 import { stadiumCrowd } from "./stadium";
-import { paintArenaFloor, scaledPainter } from "./arena-floor";
-import {
-  drawChannel,
-  drawProjectile,
-  drawWindup,
-  drawZone,
-  playBeam,
-  playCast,
-  playHit,
-  playImpact,
-  playRewindDive,
-} from "./skill-effects";
 import { setupPWA } from "./pwa";
 import {
   PRIVACY_URL,
@@ -245,8 +210,13 @@ import { appIconCardHTML, bindAppIconCard } from "./app-icon-setting";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
 import type Phaser from "phaser";
-import { loadPhaser, phaser, whenPhaser } from "./phaser-runtime";
-import { installGraphicsRenderer } from "./graphics-render";
+import {
+  afterPhaser,
+  kit,
+  loadPhaser,
+  phaser,
+  whenPhaser,
+} from "./phaser-runtime";
 import { io } from "socket.io-client";
 import {
   CHARACTERS,
@@ -301,9 +271,6 @@ import {
   platesOf,
 } from "../../../packages/shared/src/index";
 import { AudioManager } from "./audio";
-import { drawLeafStorm, plateFx } from "./skill-fx-nature";
-import { drawSiphon } from "./skill-fx-water";
-import { drawLiveWire } from "./skill-fx-electric";
 import { InterpolationBuffer } from "./networking/interpolation";
 import {
   LocalTimeline,
@@ -384,7 +351,6 @@ import {
   type Action,
 } from "./controls";
 import { PAD_LABELS, firstPad, readPad, type PadAction } from "./gamepad";
-import { drawPreview, previewShape } from "./skill-preview";
 import { controlsCapturing, showControlsScreen } from "./controls-screen";
 import { lockAppZoom, watchBattleZoom } from "./zoom-guard";
 import { guardTouchHold } from "./touch-hold";
@@ -430,8 +396,6 @@ import type { PlazaScreen } from "./plaza/plaza-screen";
 import "./plaza/plaza.css";
 import type { PlazaProgress } from "../../../packages/shared/src/plaza";
 import { CHAMPION_SKIN_BY_ID } from "../../../packages/shared/src/shop";
-import { prepareSurfaceTextures, surfaceBurst } from "./court-surface-fx";
-import { fxFor } from "./fx-engine";
 import {
   ECHO_SKILL_COLOR,
   spireEchoTint,
@@ -444,43 +408,11 @@ import {
   spireZoneStart,
 } from "../../../packages/shared/src/spire";
 import { spireCourtWalls } from "../../../packages/shared/src/spire-court";
-import {
-  SpireCourtRig,
-  hasSpireSummitArena,
-  isSpireFloorId,
-  isSpireSummitFloorId,
-  nextSpireCourtView,
-  paintSpireFloorId,
-  prewarmSpireCourt,
-  spireCourtView,
-  spireFloorId,
-  spireSummitArt,
-  spireSummitFloorId,
-  spireSummitFloorOf,
-  type SpireCourtView,
-} from "./spire-court-rig";
-import { spireFloorTint } from "./spire-court-art";
+import type { SpireCourtView, SpireCourtRig } from "./spire-court-rig";
 import { loadSpireSeen, spireLobbyCard } from "./spire-nudge";
-import {
-  isIllustratedRaidFloor,
-  type IllustratedRaidFloor,
-  paintIllustratedRaidFloor,
-} from "./raid-arena-art";
-import { RAID_WORLDS, WORLD, WORLD_DENSITY, paintRaidWorld } from "./world-art";
+import type { IllustratedRaidFloor } from "./raid-arena-art";
 import type { LayerAt } from "./raid-layers";
-import {
-  courtBlockFrame,
-  courtBlocks,
-  isCourt,
-  paintCourtBlock,
-  paintCourtFloor,
-  paintCourtStands,
-  paintCourtApron,
-  COURT_APRON,
-  SHIFTING_BLOCK,
-  STANDS,
-  type CourtId,
-} from "./arena-courts";
+import type { CourtId } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { freezesWhenHidden, watchBackgroundExit } from "./background-exit";
@@ -3532,7 +3464,7 @@ async function startSpire(options: {
 function renderMenu(revealSelection = false) {
   coach.stop();
   // In a raid room, the boss's atlas is painted ahead (boss-prepaint.ts).
-  syncBossPrepaint(state);
+  if (phaser()) kit.syncBossPrepaint(state);
   syncFighterArt();
   document.body.classList.remove("practice-active");
   audio.setTheme("lobby");
@@ -4242,7 +4174,10 @@ function renderBattle() {
     exArmedUntil > performance.now() || practiceExOn(),
   );
   if (state.raid && myId) {
-    renderRaidUI(
+    // The raid's HUD and overlays come with the battle kit, like the arena
+    // they sit on: drawn when it arrives (afterPhaser, below).
+    if (!phaser()) return;
+    kit.renderRaidUI(
       state,
       me,
       request,
@@ -4283,8 +4218,8 @@ function renderBattle() {
   }
   // Watching a raid: the boss's bar and the raiders' health, as they see
   // them; the overlays between fights are the watcher's (below).
-  if (state.raid && !myId && watching) {
-    renderRaidWatchHud(state);
+  if (state.raid && !myId && watching && phaser()) {
+    kit.renderRaidWatchHud(state);
     const raidHud = document.getElementById("raid-hud");
     if (raidHud && raidHud !== measuredRaidHud) {
       if (measuredRaidHud) battleHudSize.unobserve(measuredRaidHud);
@@ -5102,10 +5037,17 @@ socket.on("state", (snapshot: WireSnapshot) => {
   )
     void reportMatch(state.matchId);
   scene?.syncInputClock();
-  syncBossPrepaint(state);
+  if (phaser()) kit.syncBossPrepaint(state);
   syncFighterArt();
   if (state.phase === "lobby") renderMenu();
   else renderBattle();
+});
+// A raid that began before the battle kit arrived (phaser-runtime.ts) had
+// no boss painted ahead and no raid HUD: both now.
+afterPhaser(() => {
+  if (!state) return;
+  kit.syncBossPrepaint(state);
+  if (state.phase !== "lobby") renderBattle();
 });
 /** Wear your best mastery tier for the fighter you've picked (lobby only). */
 let flairSent = "";
@@ -5781,7 +5723,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   layerAt: LayerAt = (key, groundY) => {
     let layer = this.layers.get(key);
     if (!layer) {
-      layer = battleCurves(this.add.graphics());
+      layer = kit.battleCurves(this.add.graphics());
       this.layers.set(key, layer);
     }
     if (!this.layersUsed.has(key)) {
@@ -5848,25 +5790,30 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       const court = id.startsWith("court-")
         ? id.slice(6).replace(/-bare$/, "")
         : "";
-      if (isCourt(court)) {
+      if (kit.isCourt(court)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
         canvas.height = RULES.height * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintCourtFloor(ctx, court, bare);
+        kit.paintCourtFloor(ctx, court, bare);
         addCanvasTexture(this.textures, key, canvas);
-      } else if (isSpireFloorId(id)) {
+      } else if (kit.isSpireFloorId(id)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
         canvas.height = RULES.height * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintSpireFloorId(ctx, id);
+        kit.paintSpireFloorId(ctx, id);
         addCanvasTexture(this.textures, key, canvas);
-      } else if (isIllustratedRaidFloor(id) || isSpireSummitFloorId(id)) {
+      } else if (
+        kit.isIllustratedRaidFloor(id) ||
+        kit.isSpireSummitFloorId(id)
+      ) {
         // The Spire's boss floor: its raid's court with the summit grade.
-        const summit = isSpireSummitFloorId(id) ? spireSummitArt(id) : null;
+        const summit = kit.isSpireSummitFloorId(id)
+          ? kit.spireSummitArt(id)
+          : null;
         const picture: IllustratedRaidFloor = summit
           ? summit.picture
           : (id as IllustratedRaidFloor);
@@ -5876,14 +5823,14 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
         // Painted in code (world-art/): ready at once, nothing to fetch.
-        paintIllustratedRaidFloor(ctx, picture);
+        kit.paintIllustratedRaidFloor(ctx, picture);
         summit?.grade(ctx);
         canvas.dataset.raidArtwork = id;
         addCanvasTexture(this.textures, key, canvas);
       } else {
         const g = this.make.graphics({}, false);
-        paintArenaFloor(scaledPainter(g, bake), ARENAS[id as ArenaId]);
-        generateGraphicsTexture(
+        kit.paintArenaFloor(kit.scaledPainter(g, bake), ARENAS[id as ArenaId]);
+        kit.generateGraphicsTexture(
           g,
           key,
           RULES.width * bake,
@@ -5948,30 +5895,30 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       return;
     }
     const key = `raid-world-${id}`;
-    const s = WORLD_DENSITY;
+    const s = kit.WORLD_DENSITY;
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(WORLD.width * s);
-    canvas.height = Math.round(WORLD.height * s);
+    canvas.width = Math.round(kit.WORLD.width * s);
+    canvas.height = Math.round(kit.WORLD.height * s);
     const ctx = canvas.getContext("2d")!;
-    ctx.setTransform(s, 0, 0, s, -WORLD.x * s, -WORLD.y * s);
-    paintRaidWorld(ctx, id, "all");
+    ctx.setTransform(s, 0, 0, s, -kit.WORLD.x * s, -kit.WORLD.y * s);
+    kit.paintRaidWorld(ctx, id, "all");
     const texture = addCanvasTexture(this.textures, key, canvas);
     // The four bands, in world px: everything in WORLD but the court.
     const { width: W, height: H } = RULES;
-    const right = WORLD.x + WORLD.width,
-      bottom = WORLD.y + WORLD.height;
+    const right = kit.WORLD.x + kit.WORLD.width,
+      bottom = kit.WORLD.y + kit.WORLD.height;
     const bands: [string, number, number, number, number][] = [
-      ["top", WORLD.x, WORLD.y, WORLD.width, -WORLD.y],
-      ["bottom", WORLD.x, H, WORLD.width, bottom - H],
-      ["left", WORLD.x, 0, -WORLD.x, H],
+      ["top", kit.WORLD.x, kit.WORLD.y, kit.WORLD.width, -kit.WORLD.y],
+      ["bottom", kit.WORLD.x, H, kit.WORLD.width, bottom - H],
+      ["left", kit.WORLD.x, 0, -kit.WORLD.x, H],
       ["right", W, 0, right - W, H],
     ];
     bands.forEach(([name, x, y, w, h], i) => {
       texture?.add(
         name,
         0,
-        Math.round((x - WORLD.x) * s),
-        Math.round((y - WORLD.y) * s),
+        Math.round((x - kit.WORLD.x) * s),
+        Math.round((y - kit.WORLD.y) * s),
         Math.round(w * s),
         Math.round(h * s),
       );
@@ -5986,17 +5933,17 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         .setName(`raid-world-${name}`)
         .setVisible(true);
     });
-    this.cameras.main.setBackgroundColor(RAID_WORLDS[id].edge);
+    this.cameras.main.setBackgroundColor(kit.RAID_WORLDS[id].edge);
   }
   /** Bake and place a court's blocks (once per court). */
   private ensureBlocks(id: CourtId) {
     if (this.courtBlocks.has(id)) return this.courtBlocks.get(id)!;
     const bake = floorBake();
-    const list = courtBlocks(id).map((o) => ({ o, shifting: false }));
+    const list = kit.courtBlocks(id).map((o) => ({ o, shifting: false }));
     if (id === "shifting-ruins")
-      list.push({ o: SHIFTING_BLOCK, shifting: true });
+      list.push({ o: kit.SHIFTING_BLOCK, shifting: true });
     const made = list.map(({ o, shifting }, i) => {
-      const frame = courtBlockFrame(o),
+      const frame = kit.courtBlockFrame(o),
         key = `court-block-${id}-${i}`;
       if (!this.textures.exists(key)) {
         const canvas = document.createElement("canvas");
@@ -6004,7 +5951,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         canvas.height = Math.ceil(frame.h * bake);
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintCourtBlock(ctx, o, i, id);
+        kit.paintCourtBlock(ctx, o, i, id);
         addCanvasTexture(this.textures, key, canvas);
       }
       const img = this.add
@@ -6027,7 +5974,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // Every raid but Grumblecrag's brings its own arena; its pillars are the
     // Coliseum's blocks, so it fights on that court.
     const court =
-      !spireCourt && isCourt(arena) && (!raid || arena === "classic")
+      !spireCourt && kit.isCourt(arena) && (!raid || arena === "classic")
         ? arena
         : undefined;
     const id = spire
@@ -6051,9 +5998,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     }
     const key = this.floorTexture(
       spireCourt
-        ? spireFloorId(spireCourt)
-        : spire && (this.courtRaid || hasSpireSummitArena(arena))
-          ? spireSummitFloorOf(arena)
+        ? kit.spireFloorId(spireCourt)
+        : spire && (this.courtRaid || kit.hasSpireSummitArena(arena))
+          ? kit.spireSummitFloorOf(arena)
           : this.courtRaid
             ? "raid-coliseum"
             : court
@@ -6067,12 +6014,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       // The Spire's platform takes the light of its height.
       .setTint(
         spireCourt
-          ? spireFloorTint(spireCourt.floor, spireCourt.zone)
+          ? kit.spireFloorTint(spireCourt.floor, spireCourt.zone)
           : 0xffffff,
       );
     this.releaseFloor(previous);
     // Round the Spire's courts: its sky, not the raid's dimmed floor.
-    if (spire) this.spireRig ??= new SpireCourtRig(this, fighterDepth);
+    if (spire) this.spireRig ??= new kit.SpireCourtRig(this, fighterDepth);
     this.spireRig?.show(spire);
     // Round a raid court: its own painted world, out past anything the
     // camera shows. The Spire keeps its sky instead.
@@ -6080,7 +6027,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       raid && !spire
         ? this.courtRaid
           ? "raid-coliseum"
-          : isIllustratedRaidFloor(arena)
+          : kit.isIllustratedRaidFloor(arena)
             ? arena
             : undefined
         : undefined,
@@ -6096,16 +6043,16 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (!this.textures.exists(skey)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
-        canvas.height = STANDS * bake;
+        canvas.height = kit.STANDS * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintCourtStands(ctx, court);
+        kit.paintCourtStands(ctx, court);
         addCanvasTexture(this.textures, skey, canvas);
       }
       this.stands.set(
         court,
         this.add
-          .image(0, -STANDS, skey)
+          .image(0, -kit.STANDS, skey)
           .setOrigin(0)
           .setScale(1 / bake)
           .setDepth(-10),
@@ -6119,10 +6066,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (!this.textures.exists(akey)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
-        canvas.height = COURT_APRON * bake;
+        canvas.height = kit.COURT_APRON * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintCourtApron(ctx, court);
+        kit.paintCourtApron(ctx, court);
         addCanvasTexture(this.textures, akey, canvas);
       }
       this.courtAprons.set(
@@ -6137,7 +6084,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     for (const [cid, img] of this.courtAprons)
       img.setVisible(standsOn && cid === court);
 
-    if (this.courtRaid) this.pillarRig ??= new PillarRig(this, fighterDepth);
+    if (this.courtRaid)
+      this.pillarRig ??= new kit.PillarRig(this, fighterDepth);
     this.pillarRig?.setVisible(this.courtRaid);
     // The frame grows to show the stands on desktop (see .court-view in CSS).
     document.body.classList.toggle("court-view", standsOn);
@@ -6157,11 +6105,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         cleared,
         reducedMotion,
         battleQuality.current() === "low",
-        fxFor(this),
+        kit.fxFor(this),
       );
       // While the stairs are open, the next floor is painted (never mid-fight).
       const after =
-        s && s.clearedAt !== undefined ? nextSpireCourtView(spire) : undefined;
+        s && s.clearedAt !== undefined
+          ? kit.nextSpireCourtView(spire)
+          : undefined;
       // (Only a floor this party may climb to.)
       const next =
         after && after.floor <= (s?.ceiling ?? 0) ? after : undefined;
@@ -6170,10 +6120,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         this.spirePrepared = ahead;
         this.spireRig.prepare(next);
         if (next.kind === "boss")
-          this.floorTexture(spireSummitFloorId(next.zone));
+          this.floorTexture(kit.spireSummitFloorId(next.zone));
       }
       if (spire.kind !== "boss") {
-        fxFor(this).setOccluders(this.spireRig.fronts, fighterDepth);
+        kit.fxFor(this).setOccluders(this.spireRig.fronts, fighterDepth);
         return;
       }
     }
@@ -6184,17 +6134,19 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         reducedMotion,
         battleQuality.current() === "low",
       );
-      fxFor(this).setOccluders(fronts, fighterDepth);
+      kit.fxFor(this).setOccluders(fronts, fighterDepth);
       return;
     }
     const list = this.activeCourt && this.courtBlocks.get(this.activeCourt);
     // Effects pass behind the blocks on show (see Fx.at); none off the courts.
-    fxFor(this).setOccluders(
-      list
-        ? list.filter(({ img }) => img.visible).map(({ o }) => o.y + o.h)
-        : [],
-      fighterDepth,
-    );
+    kit
+      .fxFor(this)
+      .setOccluders(
+        list
+          ? list.filter(({ img }) => img.visible).map(({ o }) => o.y + o.h)
+          : [],
+        fighterDepth,
+      );
     if (!list) return;
     for (const { img, shifting } of list) {
       if (shifting) img.setVisible(shiftingUp(ARENAS["shifting-ruins"], t));
@@ -6381,7 +6333,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   /** Only the fighters on the court are built and loaded (fighter-loading.ts). */
   private fighters = new FighterLoading({
     build: (id) => rigAssets(id),
-    keys: fighterTextureKeys,
+    keys: kit.fighterTextureKeys,
     exists: (key) => this.textures.exists(key),
   });
   private loadReported = false;
@@ -6407,7 +6359,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const ids = this.fighters.toRequest(sceneFighters(s));
     if (!ids.length) return;
     for (const id of ids)
-      queueFighterAssets(this, id, this.fighters.assetsFor(id));
+      kit.queueFighterAssets(this, id, this.fighters.assetsFor(id));
     // Files added mid-load join the running load, whoever started it (a
     // skin, boss art), and settle with its COMPLETE (listener in preload).
     if (!this.load.isLoading()) this.load.start();
@@ -6487,7 +6439,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const id = this.artQueue.shift();
     const rig = id === undefined ? undefined : this.rigs.get(id);
     if (!id || !rig) return;
-    const health = rigArtHealth(rig.root as unknown as ArtNode);
+    const health = kit.rigArtHealth(rig.root as unknown as ArtNode);
     if (!health.blank) return;
     const character = rig.character;
     const times = this.artRepairs.get(character) ?? 0;
@@ -6528,7 +6480,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       rig = undefined;
     }
     if (!rig) {
-      rig = createFighterVisual(
+      rig = kit.createFighterVisual(
         this,
         character,
         this.fighters.assetsFor(character),
@@ -6556,7 +6508,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       netMeter.frame(performance.now());
       battleQuality.frame(now);
     } else battleQuality.pause();
-    const fx = fxFor(this);
+    const fx = kit.fxFor(this);
     const raid = state?.raid;
     battlePerf.frame(
       now,
@@ -6578,7 +6530,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     fx.density = knobs.particles;
     fx.trailScale = knobs.trails;
     fx.glowBudget = knobs.glowBudget;
-    setRaidMapLow(knobs.stillBackground);
+    kit.setRaidMapLow(knobs.stillBackground);
     this.perfOverlay?.update(
       now,
       battlePerf.summary(1000),
@@ -6640,8 +6592,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   preload() {
     battleLoadMarks.preload ||= performance.now();
     if (state?.raid) {
-      queueBossArt(this, state.raid.boss);
-      queueBossSpellArt(this);
+      kit.queueBossArt(this, state.raid.boss);
+      kit.queueBossSpellArt(this);
     }
     // Only the fighters in this room: the rest load if they ever appear.
     // Their layers rasterized ahead (fighter-prepaint.ts) are added now;
@@ -6651,7 +6603,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         addPrepaintedLayers(this, this.fighters.assetsFor(id));
     if (state)
       for (const id of this.fighters.toRequest(sceneFighters(state)))
-        queueFighterAssets(this, id, this.fighters.assetsFor(id));
+        kit.queueFighterAssets(this, id, this.fighters.assetsFor(id));
     // The Shop skins they wear load here too, behind the loading screen: a
     // rig would otherwise ask for them on its first frame, mid-battle (a
     // stall while they rasterize, then the skin popping in).
@@ -6661,7 +6613,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         if (!p.raidBoss && look && skinSuffix(p.character, look)) {
           const layers = rigAssets(p.character, look);
           addPrepaintedLayers(this, layers);
-          loadRigTextures(this, layers);
+          kit.loadRigTextures(this, layers);
         }
       }
     // Every load that finishes (this one, and later ones started for a new
@@ -6681,24 +6633,24 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     );
     // The boss's pieces are drawn once into an atlas: now, not on its first frame.
     if (state?.raid)
-      prewarmBossAtlas(
+      kit.prewarmBossAtlas(
         this,
         state.raid.boss,
         state.raid.phase,
-        bossLookOf(state.raid),
+        kit.bossLookOf(state.raid),
       );
     // So are the arena's pieces (lanterns, conductor posts, light, marks).
-    if (state?.raid) prewarmRaidArena(this, state.raid);
+    if (state?.raid) kit.prewarmRaidArena(this, state.raid);
     // So are its arena's (pillars, braziers and burning ground).
-    if (state?.raid?.boss === "grumblecrag") prewarmPillars(this);
-    if (state?.raid?.boss === "emberwing") prewarmTerrace(this);
+    if (state?.raid?.boss === "grumblecrag") kit.prewarmPillars(this);
+    if (state?.raid?.boss === "emberwing") kit.prewarmTerrace(this);
     // The Spire's court: the floor it starts on (the next one is painted
     // while its stairs are open; the boss floor's pillars just above).
-    prewarmSpireCourt(this, spireCourtView(state?.raid));
+    kit.prewarmSpireCourt(this, kit.spireCourtView(state?.raid));
     // So are the arena's painted pieces (islands, rune pads and the rest).
     if (state?.raid) {
-      prewarmLagoon(this, state);
-      prewarmCloudDeck(this, state);
+      kit.prewarmLagoon(this, state);
+      kit.prewarmCloudDeck(this, state);
     }
     battleQuality.restart();
     battlePerf.reset();
@@ -6711,7 +6663,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       this.perfOverlay = new PerfOverlay($("game").parentElement!);
       // The same numbers for the budget tests (tests/visual/effect-budget).
       (window as unknown as Record<string, unknown>).__arenaPerf = {
-        fx: () => ({ ...fxFor(this).stats }),
+        fx: () => ({ ...kit.fxFor(this).stats }),
         summary: (ms?: number) => battlePerf.summary(ms),
         quality: () => battleQuality.current(),
         density: () => renderScale(),
@@ -6727,8 +6679,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.cameras.main.setBackgroundColor("#142746");
     // Effect sprites are painted now, not when they first appear mid-fight
     // (the first hit, the first skill, the first pillar to crumble).
-    fxFor(this);
-    prepareSurfaceTextures(this);
+    kit.fxFor(this);
+    kit.prepareSurfaceTextures(this);
     // The floor picture: showArena bakes the room's court (once per arena,
     // at floorBake's density) on the first frame. No stand-in court is
     // painted first: that was a whole extra full-court canvas per battle.
@@ -6745,7 +6697,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     };
     this.events.once(Ph.Scenes.Events.SHUTDOWN, clearDom);
     this.events.once(Ph.Scenes.Events.DESTROY, clearDom);
-    this.graphics = battleCurves(this.add.graphics());
+    this.graphics = kit.battleCurves(this.add.graphics());
     this.bossGraphics = this.add.graphics();
     // Keys and mouse buttons are read through the player's bindings (see pressAction).
     this.input.mouse!.disableContextMenu();
@@ -6886,8 +6838,15 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // runs after this, so local.angle is still the last step's).
     const angle = Math.atan2(input.aimY - local.y, input.aimX - local.x);
     const color = fighterSkillColor(local) ?? CHARACTERS[local.character].color;
-    playCast(this, ability, local.x, local.y, angle, color, reducedMotion, () =>
-      this.positions.get(local.id),
+    kit.playCast(
+      this,
+      ability,
+      local.x,
+      local.y,
+      angle,
+      color,
+      reducedMotion,
+      () => this.positions.get(local.id),
     );
     this.shownEffects.set(ability.id, performance.now());
   }
@@ -6924,12 +6883,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // Effects pose only fighters whose art has loaded (readyRig); sounds,
     // impacts and the other fighters' poses play as usual meanwhile.
     // Somnara's correct steps and Nightmare are drawn with its arena's pieces.
-    const deck = noteCloudDeckEvent(event, state);
+    const deck = kit.noteCloudDeckEvent(event, state);
     if (
       event.kind === "raid-impact" &&
       this.courtRaid &&
       this.pillarRig &&
-      event.raidRadius === IMPACT_RADIUS &&
+      event.raidRadius === kit.IMPACT_RADIUS &&
       event.color === 0xffd65b
     )
       // A pillar breaking: its ring is drawn with the pillars.
@@ -6938,7 +6897,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       event.kind === "raid-impact" &&
       !deck &&
       // A mirror turning rings its own chime (raid-prismatail-atrium.ts).
-      !isMirrorTurnImpact(state?.raid, event)
+      !kit.isMirrorTurnImpact(state?.raid, event)
     ) {
       const ring = this.add
         .circle(event.x, event.y, event.raidRadius ?? 90, event.color, 0.12)
@@ -7016,7 +6975,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       event.tx !== undefined &&
       event.ty !== undefined
     )
-      playBeam(
+      kit.playBeam(
         this,
         ability,
         event.x,
@@ -7051,7 +7010,14 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         "rest",
       ].includes(ability.kind)
     ) {
-      playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
+      kit.playImpact(
+        this,
+        ability,
+        event.x,
+        event.y,
+        event.color,
+        reducedMotion,
+      );
       // Halcyon Rewind: the dive back from where it left.
       if (
         ability.kind === "rewind" &&
@@ -7059,7 +7025,14 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         event.ty !== undefined &&
         !reducedMotion
       )
-        playRewindDive(this, event.tx, event.ty, event.x, event.y, event.color);
+        kit.playRewindDive(
+          this,
+          event.tx,
+          event.ty,
+          event.x,
+          event.y,
+          event.color,
+        );
     }
     // Novas play on their burst event; every other move plays on cast.
     else if (ability && event.kind === "burst") {
@@ -7068,13 +7041,21 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         event.combo && combo?.radius
           ? { ...ability, radius: ability.radius * combo.radius }
           : ability;
-      playCast(this, shown, event.x, event.y, 0, event.color, reducedMotion);
+      kit.playCast(
+        this,
+        shown,
+        event.x,
+        event.y,
+        0,
+        event.color,
+        reducedMotion,
+      );
     }
     if (event.kind === "hazard") this.hazardBurst(event);
     // Pangrove's plates break and grow back.
     if (event.kind === "burst" && !reducedMotion) {
       if (event.abilityId === "plate-break" || event.abilityId === "plate-grow")
-        plateFx(this, event.x, event.y, event.abilityId === "plate-grow");
+        kit.plateFx(this, event.x, event.y, event.abilityId === "plate-grow");
     }
     if (event.combo && (event.kind === "burst" || event.kind === "hit"))
       this.comboText(event);
@@ -7096,7 +7077,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !(echo && event.abilityId && this.effectShown(event.abilityId))
     ) {
       const caster = event.owner;
-      playCast(
+      kit.playCast(
         this,
         ability,
         event.x,
@@ -7118,11 +7099,18 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         impacts.confirm(event.abilityId, event.x, event.y, performance.now())
       )
     )
-      playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
+      kit.playImpact(
+        this,
+        ability,
+        event.x,
+        event.y,
+        event.color,
+        reducedMotion,
+      );
     if (event.kind === "hit" && event.target) this.feelHit(event);
     this.surfaceEffect(event);
     if (event.kind === "hit")
-      playHit(
+      kit.playHit(
         this,
         ability?.element ?? "",
         event.x,
@@ -7153,39 +7141,40 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       const value = event.value.toLocaleString(undefined, {
         maximumFractionDigits: 1,
       });
-      const label = addBattleText(
-        this,
-        event.x,
-        event.y - 45,
-        bank
-          ? `+${value} GEM${event.value === 1 ? "" : "S"} BANKED`
-          : energy
-            ? `+${value}% ULT`
-            : `${heal ? "+" : "−"}${value}`,
-        {
-          fontFamily: "DM Sans, sans-serif",
-          fontStyle: "bold",
-          fontSize: heal
-            ? "26px"
-            : strength === "critical"
-              ? "38px"
-              : strength === "strong"
-                ? "32px"
-                : "26px",
-          color: bank
-            ? "#d8b4ff"
+      const label = kit
+        .addBattleText(
+          this,
+          event.x,
+          event.y - 45,
+          bank
+            ? `+${value} GEM${event.value === 1 ? "" : "S"} BANKED`
             : energy
-              ? "#ffd166"
-              : heal
-                ? "#7dffb0"
-                : strength === "critical"
-                  ? "#ffd65b"
-                  : "#eef2ff",
-          stroke: "#0b1020",
-          strokeThickness: 5,
-        },
-        renderScale(),
-      )
+              ? `+${value}% ULT`
+              : `${heal ? "+" : "−"}${value}`,
+          {
+            fontFamily: "DM Sans, sans-serif",
+            fontStyle: "bold",
+            fontSize: heal
+              ? "26px"
+              : strength === "critical"
+                ? "38px"
+                : strength === "strong"
+                  ? "32px"
+                  : "26px",
+            color: bank
+              ? "#d8b4ff"
+              : energy
+                ? "#ffd166"
+                : heal
+                  ? "#7dffb0"
+                  : strength === "critical"
+                    ? "#ffd65b"
+                    : "#eef2ff",
+            stroke: "#0b1020",
+            strokeThickness: 5,
+          },
+          renderScale(),
+        )
         .setOrigin(0.5)
         .setDepth(45);
       this.tweens.add({
@@ -7227,24 +7216,25 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const now = performance.now();
     if ((this.comboShown.get(key) ?? 0) > now) return;
     this.comboShown.set(key, now + 600);
-    const label = addBattleText(
-      this,
-      event.x,
-      event.y - 75,
-      text ??
-        (event.abilityId === "ex-cast"
-          ? `${event.combo!.toUpperCase()}!`
-          : `${event.combo!.toUpperCase()} COMBO!`),
-      {
-        fontFamily: "system-ui, sans-serif",
-        fontStyle: "900",
-        fontSize: "24px",
-        color: "#ffe27a",
-        stroke: "#3a1f00",
-        strokeThickness: 5,
-      },
-      renderScale(),
-    )
+    const label = kit
+      .addBattleText(
+        this,
+        event.x,
+        event.y - 75,
+        text ??
+          (event.abilityId === "ex-cast"
+            ? `${event.combo!.toUpperCase()}!`
+            : `${event.combo!.toUpperCase()} COMBO!`),
+        {
+          fontFamily: "system-ui, sans-serif",
+          fontStyle: "900",
+          fontSize: "24px",
+          color: "#ffe27a",
+          stroke: "#3a1f00",
+          strokeThickness: 5,
+        },
+        renderScale(),
+      )
       .setOrigin(0.5)
       .setDepth(40);
     if (reducedMotion) {
@@ -7282,7 +7272,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     } else if (event.kind === "land") kind = "land";
     else if (event.kind === "dash") kind = "dash";
     else return;
-    surfaceBurst(
+    kit.surfaceBurst(
       this,
       this.activeCourt,
       x,
@@ -7462,14 +7452,14 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           `${state?.code ?? "menu"}:${state?.round ?? 0}:${myId ?? ""}`,
           delta,
           reducedMotion,
-          this.activeCourt && !this.courtRaid ? STANDS : 0,
+          this.activeCourt && !this.courtRaid ? kit.STANDS : 0,
           state?.practice ? 1.65 : 1.2,
           !ringside &&
             touch.enabled &&
             landscape &&
             this.activeCourt &&
             !this.courtRaid
-            ? COURT_APRON
+            ? kit.COURT_APRON
             : 0,
           // The PvP badge covers the top of a phone's arena: the court may
           // scroll below it (badge pixels → game pixels).
@@ -7650,7 +7640,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.showArena(
       state.arena ?? "classic",
       !!state.raid,
-      spireCourtView(state.raid),
+      kit.spireCourtView(state.raid),
     );
     // Duel courts have their own background sound (crowd, sea, forge, wind).
     audio.setAmbience(
@@ -7660,7 +7650,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const g = this.graphics;
     g.clear();
     this.bossGraphics.clear();
-    retainBossArt(this, state.raid?.boss);
+    kit.retainBossArt(this, state.raid?.boss);
     // In raids the boss and standing scenery sort with the raiders by where they stand.
     const boss = state.raid ? state.players.find((p) => p.raidBoss) : undefined;
     this.bossGraphics.setDepth(boss ? fighterDepth(boss.y) : 0);
@@ -7692,7 +7682,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         );
     }
     const raidCues =
-      drawRaidArena(
+      kit.drawRaidArena(
         g,
         state,
         reducedMotion,
@@ -7770,7 +7760,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         lead,
         snapshotAge,
       );
-      drawZone(
+      kit.drawZone(
         g,
         followed(tinted(z)),
         1 - Math.max(0, z.until - clock) / Math.max(0.01, z.ability.duration),
@@ -7841,7 +7831,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         drawn.struck?.steady &&
         impacts.predict(pr.id, pr.ability.id, drawn.x, drawn.y, frameNow)
       )
-        playImpact(
+        kit.playImpact(
           this,
           pr.ability,
           drawn.x,
@@ -7850,7 +7840,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           reducedMotion,
         );
       if (impacts.hidden(pr.id, frameNow)) continue;
-      drawProjectile(g, tinted(drawn), _time, reducedMotion);
+      kit.drawProjectile(g, tinted(drawn), _time, reducedMotion);
     }
     shotTimeline.keep(state.projectiles.map((pr) => pr.id));
     // Healing orbs: a soft green glow with a white cross, gently pulsing.
@@ -7941,7 +7931,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       }
     }
     // Crown Hill: the circle to hold, with each side's progress as an arc.
-    drawArcade(g, state, reducedMotion);
+    kit.drawArcade(g, state, reducedMotion);
     if (state.crown) {
       const hill = state.arcade?.hill ?? CROWN;
       const targetSeconds = state.arcade?.hill?.target ?? CROWN.holdSeconds;
@@ -8013,9 +8003,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     if (caster.aiming >= 0 && local && previewer && this.canControl()) {
       const ability = CHARACTERS[local.character].skills[caster.aiming];
       if (ability)
-        drawPreview(
+        kit.drawPreview(
           g,
-          previewShape(ability, local, this.aimPoint),
+          kit.previewShape(ability, local, this.aimPoint),
           CHARACTERS[local.character].color,
           skillReady(
             previewer,
@@ -8209,7 +8199,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           ECHO_SKILL_COLOR,
           0.7,
         ).strokeEllipse(x, feetY, 84, groundHeight(84));
-        const fx = fxFor(this);
+        const fx = kit.fxFor(this);
         fx.glow(
           x,
           feetY,
@@ -8303,7 +8293,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         )
           drawEliteCrown(
             rig.front,
-            fxFor(this),
+            kit.fxFor(this),
             x,
             y -
               jump -
@@ -8426,13 +8416,22 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
               }
             : cone;
         if (shown)
-          drawChannel(g, shown, x, y, p.angle, c.color, _time, reducedMotion);
+          kit.drawChannel(
+            g,
+            shown,
+            x,
+            y,
+            p.angle,
+            c.color,
+            _time,
+            reducedMotion,
+          );
       }
       if (serverPlayer.charge) {
         // Wind-up telegraph showing the real area of the incoming move.
         const windup = c.skills[serverPlayer.charge.skill];
         if (windup)
-          drawWindup(
+          kit.drawWindup(
             g,
             windup,
             x,
@@ -8525,7 +8524,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           serverPlayer.cyclone.slot
         ];
         if (storm)
-          drawLeafStorm(
+          kit.drawLeafStorm(
             this,
             p.id,
             x,
@@ -8547,7 +8546,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (serverPlayer.tether && wire) {
         const to = this.positions.get(serverPlayer.tether.target);
         if (to)
-          drawLiveWire(
+          kit.drawLiveWire(
             this,
             x,
             y - jump,
@@ -8560,7 +8559,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       } else if (serverPlayer.tether) {
         const to = this.positions.get(serverPlayer.tether.target);
         if (to)
-          drawSiphon(
+          kit.drawSiphon(
             this,
             x,
             y - jump,
@@ -8609,11 +8608,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         const r = 22 + 16 * Math.min(1, left / 1.5);
         // The charge sizzles, faster as it runs out.
         if (!reducedMotion)
-          fxFor(this).trail(
-            `clamp-${p.id}`,
-            0.05 + 0.1 * Math.min(1, left),
-            () =>
-              fxFor(this).burst({
+          kit
+            .fxFor(this)
+            .trail(`clamp-${p.id}`, 0.05 + 0.1 * Math.min(1, left), () =>
+              kit.fxFor(this).burst({
                 x,
                 y,
                 z: 30,
@@ -8627,7 +8625,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
                 grav: 1000,
                 bounce: 0.4,
               }),
-          );
+            );
         g.lineStyle(7, 0x2b6f8f, 0.35 * flick).strokeCircle(
           x,
           y - 18 - jump,
@@ -8671,9 +8669,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             g.fillStyle(0xe4d6ff, 0.9).fillCircle(q.x, q.y + 2, 2);
           }
           if (!reducedMotion)
-            fxFor(this).trail(`grasp-${p.id}`, 0.08, () => {
+            kit.fxFor(this).trail(`grasp-${p.id}`, 0.08, () => {
               const q = curve.getPoint(0.3 + Math.random() * 0.6);
-              fxFor(this).burst({
+              kit.fxFor(this).burst({
                 x: q.x,
                 y: q.y + 14,
                 z: 14,
@@ -9193,7 +9191,7 @@ function ensureBattleRenderer() {
   releaseHubArt();
   // Effects, rings and auras are Graphics paths redrawn every frame: draw
   // them without Phaser's per-point garbage (graphics-render.ts).
-  installGraphicsRenderer(Phaser);
+  kit.installGraphicsRenderer(Phaser);
   arenaCssArea = $("game").clientWidth * $("game").clientHeight;
   const dpr = renderScale();
   gameInstance = new Phaser.Game({
@@ -9229,9 +9227,9 @@ function ensureBattleRenderer() {
         battleFrames = capGameFrames(game);
         // The camera's background is the canvas's clear colour, not a
         // full-screen rectangle drawn over it (camera-clear.ts).
-        clearWithCameraBackdrop(
+        kit.clearWithCameraBackdrop(
           game.renderer as unknown as Parameters<
-            typeof clearWithCameraBackdrop
+            typeof kit.clearWithCameraBackdrop
           >[0],
           () => {
             const s = game.scene.scenes[0];
@@ -9261,7 +9259,11 @@ function ensureBattleRenderer() {
   // The arena box also changes when the HUD or skill bar changes height.
   battleResizeObserver = new ResizeObserver(scheduleBattleLayout);
   battleResizeObserver.observe($("game"));
-  watchRendererLifecycle(gameInstance, () => !$("battle").hidden, fitRenderer);
+  kit.watchRendererLifecycle(
+    gameInstance,
+    () => !$("battle").hidden,
+    fitRenderer,
+  );
 }
 /** A hidden battle canvas must not compete with the menu or Shop preview. */
 function syncBattleLoop() {
