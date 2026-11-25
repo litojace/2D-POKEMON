@@ -835,7 +835,10 @@ async function runningJump(page: Page, skipMs: number, airDur = 1.5) {
         P.airH = 42;
         const loop = (now: number) => {
           // (After this frame's other callbacks, like the judging below.)
-          if (!P.air || now - t0 > 8000) return setTimeout(finish);
+          // A slow CI renderer can spend eight wall seconds drawing only
+          // the first steps of this jump. Judge the flight through landing;
+          // the enclosing test timeout still bounds a stuck simulation.
+          if (!P.air) return setTimeout(finish);
           // Judged once every callback of this frame has run: the Plaza's
           // own can be queued after this one, and `drawn` then read the
           // frame before's time on every frame, though the Plaza drew each
