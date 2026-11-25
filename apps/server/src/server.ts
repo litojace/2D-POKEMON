@@ -209,6 +209,15 @@ type Session = {
 export const HEARTBEAT = { interval: 10_000, timeout: 10_000 };
 /** When a socket counts as congested (see broadcast). */
 export const BACKPRESSURE = { bytes: 16 * 1024, messages: 4 };
+/** How often each signed-in connection's account is checked again. */
+const ACCOUNT_CHECK_MS = 30_000;
+/** A connection's place in that period, 0 to 1, from its id (FNV-1a). */
+const spreadOf = (id: string) => {
+  let hash = 2166136261;
+  for (let i = 0; i < id.length; i++)
+    hash = Math.imul(hash ^ id.charCodeAt(i), 16777619);
+  return (hash >>> 0) / 2 ** 32;
+};
 /** How many fault lines a minute reach the log (faultLog). */
 const FAULT_LOG = { perMinute: 20, stack: 1200 };
 /** What a fault's log line says of the error: its stack's first lines. */
@@ -698,10 +707,22 @@ export function createArenaServer(
       next(failure);
     }
   });
-  async function refreshSocket(socket: import("socket.io").Socket) {
+  /**
+   * Load a connection's account again and pass on what changed. `periodic`
+   * is the 30-second check (refreshDueAccounts): it says "account-changed"
+   * only if the account did change. Every other caller knows something of
+   * the player's changed (a route saved an avatar, an admin gave coins, a
+   * raid clear was stored), often outside the account record, and always
+   * says so.
+   */
+  async function refreshSocket(
+    socket: import("socket.io").Socket,
+    periodic = false,
+  ) {
     try {
       const account = await authorize(accounts, socket.data.accessToken);
       if (!ownsConnection(socket)) return;
+      const before = socket.data.account as Account | undefined;
       socket.data.account = account;
       socket.data.expiredChecks = 0;
       void loadChatBlocks(socket);
@@ -744,7 +765,12 @@ export function createArenaServer(
       // A new avatar (or look) reaches the party's members.
       if (parties.of(account.id))
         void loadPartyAppearance(account.id, socket.data.accessToken);
-      socket.emit("account-changed");
+      // The app answers by loading its profile, raids, Spire and Shop
+      // records again. Said after every 30-second check, that was four
+      // requests per player every 30 seconds for nothing, mid-battle too:
+      // the check says it only when the account changed (a name, a title).
+      if (!periodic || JSON.stringify(before) !== JSON.stringify(account))
+        socket.emit("account-changed");
     } catch (error) {
       if (!ownsConnection(socket)) return;
       // An expired token is normal (Supabase tokens last an hour): ask the
@@ -3931,25 +3957,51 @@ export function createArenaServer(
           diagnosticsEvery * 1000,
         )
       : undefined;
-  /** Check every signed-in connection's account again (every 30 s). */
+  /** The 30-second check for every signed-in connection, now (tests). */
   const refreshAccounts = () =>
     Promise.all(
       [...io.sockets.sockets.values()]
         .filter((socket) => socket.data.account)
-        .map((socket) => refreshSocket(socket)),
+        .map((socket) => refreshSocket(socket, true)),
+    );
+  /**
+   * Check the connections whose turn it is. Each signed-in connection is
+   * checked every `ACCOUNT_CHECK_MS`, at a moment of its own in that period
+   * (from its id; the first 15 to 45 s after it connects). One timer used
+   * to check them all in the same instant: several database round trips per
+   * player, the whole server's at once, every 30 seconds. After a deploy
+   * everyone reconnects within seconds of each other, so counting from the
+   * connection's start alone would not spread them.
+   */
+  const refreshDueAccounts = (now = Date.now()) =>
+    Promise.all(
+      [...io.sockets.sockets.values()]
+        .filter((socket) => {
+          if (!socket.data.account) return false;
+          const due = ((socket.data.accountCheckAt as number | undefined) ??=
+            now + ACCOUNT_CHECK_MS * (0.5 + spreadOf(socket.id)));
+          if (due > now) return false;
+          // Its own beat; after a stall, from now rather than in a burst.
+          socket.data.accountCheckAt =
+            due + ACCOUNT_CHECK_MS > now
+              ? due + ACCOUNT_CHECK_MS
+              : now + ACCOUNT_CHECK_MS;
+          return true;
+        })
+        .map((socket) => refreshSocket(socket, true)),
     );
   const accountTimer =
     options.autoTick === false
       ? undefined
       : setInterval(
           () =>
-            void refreshAccounts().catch((error: unknown) =>
+            void refreshDueAccounts().catch((error: unknown) =>
               faultLog("arena-timer-fault", {
                 timer: "accounts",
                 error: faultText(error),
               }),
             ),
-          30000,
+          1000,
         );
   /** A newer server answers the public address (superseded, above). */
   const supersede = (by: string) => {
@@ -4000,6 +4052,7 @@ export function createArenaServer(
     plaza,
     plazaStep,
     refreshAccounts,
+    refreshDueAccounts,
     diagnostics,
     /** Whether a deploy is replacing this server (drain). */
     get draining() {
