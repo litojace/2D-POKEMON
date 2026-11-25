@@ -209,9 +209,17 @@ it("an older client is sent whole snapshots, a newer one changes, and both see t
   expect(bytes(fresh) / bytes(old)).toBeLessThan(0.45);
 });
 
-it("with the switch off (or an older server), a newer client is sent whole snapshots", async () => {
-  // Off is the default: nothing is sent differently until it is turned on.
+it("the switch is on unless SNAPSHOT_DELTA says off", async () => {
   const { connect } = await setup({});
+  const { one, two, b, arena, start } = await duel(connect);
+  start();
+  await play([one, two], arena, 10);
+  expect(b.kinds().filter((k) => k === "delta").length).toBeGreaterThan(5);
+});
+
+it("with the switch off (or an older server), a newer client is sent whole snapshots", async () => {
+  // SNAPSHOT_DELTA=off on the server: what it sent before deltas existed.
+  const { connect } = await setup({ snapshotDelta: false });
   const { one, two, a, b, arena, start } = await duel(connect, [true, true]);
   start();
   await play([one, two], arena, 20);

@@ -1060,8 +1060,7 @@ server's CPU is not expected to move much either way; the gain is the
 player's: mobile data, and fewer bytes queued behind a weak link (section
 4's backpressure sees it as congestion at 16 KB).
 
-The design these numbers lead to (built in the next pull requests, behind a
-switch that starts off):
+The design these numbers lead to:
 
 - A client says in its handshake that it understands deltas. One that does
   not (the iPhone app's bundled game, an installed PWA not yet updated) is
@@ -1083,11 +1082,11 @@ switch that starts off):
 **What was built** (`packages/shared/src/snapshot-delta.ts`, `broadcast` in
 `apps/server/src/server.ts`):
 
-- **The switch.** `SNAPSHOT_DELTA=on` on the server (or
-  `createArenaServer({ snapshotDelta: true })`). Off, which is the default
-  until the client has shipped, nothing is numbered and nothing is sent
-  differently. On, a connection whose handshake says `auth.delta === 1`
-  takes deltas; any other is sent whole snapshots.
+- **The switch.** On since 25 Nov 2026. `SNAPSHOT_DELTA=off` on the server
+  (or `createArenaServer({ snapshotDelta: false })`) turns it off without a
+  deploy of the client: nothing is numbered then and every client is sent
+  whole snapshots, as before. On, a connection whose handshake says
+  `auth.delta === 1` takes deltas; any other is sent whole snapshots.
 - **Messages.** A keyframe is the usual `state` message with the room's
   count `n`. A delta is `state-delta`: `{ code, n, d }`, applying to the
   room's snapshot `n - 1`. `state-full` (`{ code }`) is the client asking
@@ -1144,7 +1143,8 @@ congested connection, Snoozaku's dream, changing rooms.
 
 **Measured with the switch on**
 (`server-load.ts --profile host --rooms 24 --mix pvp2,pvp4,raid4 --seconds 20`,
-80 players fighting; add `--delta on`; six alternating pairs of runs):
+80 players fighting; `--delta off` for the left column; six alternating
+pairs of runs):
 
 |                                 | Whole snapshots    | Deltas                 |
 | ------------------------------- | ------------------ | ---------------------- |
