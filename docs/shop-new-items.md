@@ -27,11 +27,13 @@ complete: catalog, art, frame, seed migration, tests, screenshots.
    a collection's frame for free to whoever owns all of that collection's
    champion skins (Winter, Festival...). A new Look set only shares an id
    with a skin collection when that gift is intended.
-4. **The entry script stays under the precache limit** (3 MiB,
-   `apps/client/vite.config.ts`). It was 2,731,389 bytes (86.8%) on 25 Nov.
-   Every pull request states the size before and after; past 2,950,000
-   bytes the skin art is split into a lazily loaded chunk before more is
-   added. The limit is not raised.
+4. **The startup script stays under its limit**: 2,400,000 bytes, which
+   `scripts/verify-pwa.mjs` enforces in CI (#443); code only a battle needs
+   loads through `battle-kit.ts`. Main was 1,609,089 bytes on 25 Nov; with
+   every collection here (#434 to #473) it is 1,685,395 (+76 KB). Every pull
+   request states the size before and after, and a chain of them growing it
+   by more than about 300 KB is talked over with the performance work first.
+   The limit is not raised.
 
 ## Prices
 
