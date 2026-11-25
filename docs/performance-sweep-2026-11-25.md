@@ -118,6 +118,37 @@ Test: `tests/unit/hud-dom.test.ts`, `tests/unit/viewport-size.test.ts`.
 | S8  | Thiếu timeout/retry cho ghi thưởng; push thông báo chặn 10–30 ms mỗi lô; tick bù vẫn broadcast                                                                                                                                                             | Nhỏ                                                              |
 | S9  | BẢO MẬT (cứng hoá): practice gọi `authorize` dưới hạn 90/giây; socket token giả gọi Supabase không giới hạn                                                                                                                                                | Cùng S1                                                          |
 
+### Đợt B — server: đã làm (25/11/2026, PT)
+
+Mỗi mục được kiểm chứng bằng test đỏ trên `main` trước khi sửa; mỗi mục một
+PR, lane FULL (verify + 30 shard), đã lên production.
+
+| #   | PR   | Trước (đo bằng test)                                                                                                | Sau                                                                                                                                              | Test                                         |
+| --- | ---- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------- |
+| S5  | #440 | Một throw trong `tick`, `snapshot`, `expire` hoặc một handler làm dừng vòng tick, trên production là sập tiến trình | Từng phòng và từng handler có guard riêng; phòng lỗi bị đóng riêng (`arena-room-fault`), handler lỗi trả `{ ok: false }` (`arena-handler-fault`) | `tests/multiplayer/room-faults.test.ts`      |
+| S2  | #444 | Lobby, kết quả, tạm dừng: 60 snapshot trong 2 giây (≈1,2–2 KB mỗi cái)                                              | Gửi khi đổi + 2 lần/giây; tạm dừng 5 lần/giây; briefing cũng vậy. Countdown, trong trận, intermission vẫn 30/giây                                | `tests/multiplayer/idle-snapshots.test.ts`   |
+| S3  | #449 | Mọi kết nối được kiểm tra cùng một khoảnh khắc mỗi 30 s, rồi đều nhận `account-changed` dù không gì đổi             | Mỗi kết nối một thời điểm riêng trong 30 s (từ id); lần kiểm định kỳ chỉ báo khi bản ghi tài khoản đổi; route, admin, lưu thưởng vẫn báo ngay    | `tests/multiplayer/account-refresh.test.ts`  |
+| S4  | #448 | Raid Snoozaku (id `somnara`): 4 lần gửi mỗi tick với 3 người (mỗi ghế một bản + bản của phòng)                      | 1 lần; 2 khi có giấc mơ (chỉ ghế thấy rune mới nhận bản riêng)                                                                                   | `tests/multiplayer/snoozaku-encodes.test.ts` |
+
+Ghi chú:
+
+- **S5, bản app cũ:** người chơi trong phòng lỗi được báo bằng
+  `access-revoked` (mọi bản app đã hiểu: về menu, hiện lý do). Không ghi
+  kết quả hay thưởng cho trận đó. `index.ts` ghi log
+  `arena-unhandled-rejection` thay vì để tiến trình chết; exception ném
+  ngoài promise và ngoài các guard vẫn kết thúc tiến trình như trước.
+- **S2:** cổng nằm ở `quietRoom()` trong `broadcast()`, so sánh trên chính
+  snapshot sẽ gửi (trừ `pauseRemaining`), nên thay đổi làm ở đâu cũng đi
+  ngay tick kế. Khi có giao thức delta (S7) có thể bỏ cổng này.
+- **S3, khác đề xuất ban đầu:** các route HTTP (avatar, tên, danh hiệu,
+  admin cộng xu hoặc cấp đồ…) dựa vào `account-changed` để app tải lại, và
+  thứ chúng đổi thường nằm ngoài bản ghi tài khoản, nên chúng vẫn báo vô
+  điều kiện. Thay đổi làm thẳng trong database (không qua route nào) giờ
+  tới app khi nó tải lại bản ghi đó, không còn tự tới trong 30 s.
+- **Chưa làm:** cache `authenticate` 30–60 s (làm chậm việc khoá tài khoản
+  đúng bằng thời gian cache, và nằm cạnh giới hạn của S1/S9: cần quyết định
+  riêng), S6, S8. S1/S9 đã làm ở #436; S7 là đợt E.
+
 ## 5. Còn lại — tải về, khởi động, bộ nhớ [đọc; kích thước đã đo từ build]
 
 Build `0909e29`: entry JS 2.731 kB (914 kB gzip), Phaser 1.482 kB, CSS
