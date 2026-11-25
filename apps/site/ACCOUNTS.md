@@ -6,6 +6,47 @@ Status: **proposal, waiting for the owner.** No sign-in code is written yet
 The owner asked for: an account area on the website (sign in, change email,
 change password), and a Play button that opens the game already signed in.
 
+## If the owner buys `elementarenausa.com` (being considered, 25 Nov)
+
+A separate session would move the game to the new domain, with
+`parena.litojace.com` redirecting. That move signs every web player out once
+anyway (a new origin has empty storage), so it is the moment to choose the
+layout:
+
+| Address                    | What                               |
+| -------------------------- | ---------------------------------- |
+| `elementarenausa.com`      | the website (`www` redirects here) |
+| `play.elementarenausa.com` | the game                           |
+
+**One-tap Play: one session cookie for `.elementarenausa.com`.** Both sites
+store the Supabase session in a cookie scoped to the domain (Secure,
+SameSite=Lax, split into chunks under the 4 KB limit), so signing in on
+either signs you in on both, and Play is a plain link. On this domain the
+cookie only reaches our own two sites, which removes the objection to option
+B below. Rules that keep it safe:
+
+- Never point a subdomain of `elementarenausa.com` at a third-party or
+  user-content host (that host would receive the session). Email sending
+  records (Resend, MX) are fine: they are not web hosts.
+- Both sites send a strict Content Security Policy and
+  `frame-ancestors 'none'`; the website loads no third-party scripts.
+- The cookie is JS-readable (Supabase's browser client must read it), the
+  same exposure the game's `localStorage` session has today.
+- Game change: `accounts.ts`'s `storage` object becomes a cookie store on
+  the new domain only (the iPhone app keeps its own storage); no migration,
+  since the move starts everyone fresh. "Remember me" = a persistent cookie,
+  otherwise a session cookie.
+- Supabase: Site URL `https://play.elementarenausa.com`; Redirect URLs add
+  `https://play.elementarenausa.com/**` and `https://elementarenausa.com/**`.
+- QR codes (`SHARE_SITE`): `https://elementarenausa.com`.
+
+Same-origin (the game under `elementarenausa.com/play/`) would also work but
+moves the game off `/`, which changes its PWA scope and start URL; the cookie
+layout keeps the game at the root of its own host.
+
+**If the domain is not bought:** option A below (website on the game's host
+at `/home/`, `arena.litojace.com` redirecting there).
+
 ## What the game does today (read from the code)
 
 - Supabase Auth in the browser (`apps/client/src/accounts.ts`). The session
@@ -115,7 +156,8 @@ The website at `arena.litojace.com` has its own Supabase session. Play does:
 
 ## Recommendation
 
-**A.** It gives one-tap Play and a shared account area with no token moving
+**With `elementarenausa.com`: the shared-cookie layout above. Without it: A.**
+For A: It gives one-tap Play and a shared account area with no token moving
 between sites, no new server endpoints and no change to how players' sessions
 are stored. The cost is that the website is served from the game's host (with
 `arena.litojace.com` as its short address) and deploys with the game.
