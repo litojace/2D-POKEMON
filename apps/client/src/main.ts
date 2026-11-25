@@ -2752,14 +2752,25 @@ const WORLD_NAMES: Record<World, string> = {
 syncUiEffects();
 const worlds = worldLoader();
 let phaserWarm: ReturnType<typeof setTimeout> | undefined;
-/** Load Phaser `ms` from now, while the page is idle (phaser-runtime.ts). */
+let phaserWarmNow = false;
+/**
+ * Load Phaser and the battle kit `ms` from now, while the page is idle
+ * (phaser-runtime.ts). At once (0) overtakes a wait the hub began: a room
+ * has a battle coming, and a raid room paints its boss ahead with the kit.
+ */
 function warmPhaser(ms: number) {
-  if (phaser() || phaserWarm !== undefined) return;
+  if (phaser()) return;
+  if (phaserWarm !== undefined) {
+    if (ms || phaserWarmNow) return;
+    clearTimeout(phaserWarm);
+  }
+  phaserWarmNow = !ms;
   phaserWarm = setTimeout(() => {
     const load = () =>
       void loadPhaser().catch(() => {
         // Offline or a new deploy: a battle asks again when it needs it.
         phaserWarm = undefined;
+        phaserWarmNow = false;
       });
     if (ms && typeof requestIdleCallback === "function")
       requestIdleCallback(load, { timeout: 4000 });
