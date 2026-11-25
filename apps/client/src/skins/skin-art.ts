@@ -7,6 +7,7 @@ import { STARS_ART } from "./stars-art";
 import { IDOL_ART } from "./idol-art";
 import { BIRTHSTONE_ART } from "./birthstone-art";
 import { RAIN_ART } from "./rain-art";
+import { RACING_ART } from "./racing-art";
 import { pirateOutfit } from "./pirate-fashion";
 import { modernOutfit, type ModernTheme } from "./modern-fashion";
 import { vanguardOutfit } from "./vanguard-equipment";
@@ -179,6 +180,7 @@ export const SKIN_ART: Record<string, SkinArt> = {
   ...IDOL_ART,
   ...BIRTHSTONE_ART,
   ...RAIN_ART,
+  ...RACING_ART,
   // ---------------------------------------------------------------- Voltkit
   "voltkit-midnight": { palette: { light: "#c9d6ff", mid: "#3a4f9a", dark: "#141b3d", glow: "#5ff6ff", accent: "#5ff6ff" } },
   "voltkit-peach-fizz": { palette: { light: "#fff0e6", mid: "#ffb08f", dark: "#7a3a2e", glow: "#ff8fc8", accent: "#ff6fa8" } },

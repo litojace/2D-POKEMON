@@ -13,6 +13,7 @@ import "./modern-campus";
 import "./modern-stars";
 import "./modern-idol";
 import "./modern-rain";
+import "./modern-racing";
 import "./modern-pirates";
 import "./modern-vanguard";
 import "./modern-kit";
@@ -40,9 +41,9 @@ import "./legend-details-stars";
  *    `data-i` giving each light's place in the row;
  *  - twinkle: sparkles that glint at their own moments.
  */
-export type ModernTheme = "campus" | "hero" | "idol" | "rain" | "viet" | "stars" | "vietlegend" | "pirates" | "vanguard" | "kit";
+export type ModernTheme = "campus" | "hero" | "idol" | "rain" | "racing" | "viet" | "stars" | "vietlegend" | "pirates" | "vanguard" | "kit";
 /** The Epic collections among them, whose cloth is tailored. */
-const EPIC_THEMES = new Set<ModernTheme>(["campus", "hero", "idol", "kit"]);
+const EPIC_THEMES = new Set<ModernTheme>(["campus", "hero", "idol", "racing", "kit"]);
 
 /**
  * The Legendary finish: every garment of a Legendary costume is edged in

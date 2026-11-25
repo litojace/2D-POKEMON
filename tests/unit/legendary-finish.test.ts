@@ -55,7 +55,7 @@ describe("the Legendary finish", () => {
   });
 
   it("leaves the Epics as they were: one tone, plain garments, no clasp", () => {
-    for (const [c, theme] of [["hero-squad", "hero"], ["neon-campus", "campus"], ["starlight-idol", "idol"]] as const)
+    for (const [c, theme] of [["hero-squad", "hero"], ["neon-campus", "campus"], ["starlight-idol", "idol"], ["grand-prix", "racing"]] as const)
       for (const id of ids) {
         const svg = modernOutfit(theme, id, "down", SKIN_ART[`${id}-${c}`].palette as any, head).map(([, s]) => s).join("");
         expect(svg, `${id}-${c}`).not.toContain('stroke-width="3.2"');
