@@ -17,7 +17,7 @@
    Common     nothing added
    Rare       a blue wash from above
    Epic       purple light from above and both lower corners
-   Legendary  gold rays fanning up from the floor, a warm rim
+   Legendary  gold rays fanning up from the feet, a warm rim
    Mythical   a prismatic aurora and stars, a prismatic rim */
 .fit-stage[data-rarity]::before {
   content: "";
@@ -59,23 +59,13 @@
 }
 .fit-stage[data-rarity="legendary"]::before {
   background:
-    radial-gradient(
-      ellipse 70% 42% at 50% calc(100% - var(--fit-info-h)),
-      #ffc44d66,
-      transparent 70%
-    ),
-    repeating-conic-gradient(
-      from -6deg at 50% calc(100% - var(--fit-info-h)),
-      #ffd97824 0 6deg,
-      transparent 6deg 18deg
-    ),
-    linear-gradient(180deg, #2b1f0a99, transparent 70%);
-  /* The rays fade out toward the top corners and under the name. */
-  mask-image: radial-gradient(
-    ellipse 85% 75% at 50% calc(100% - var(--fit-info-h)),
-    #000 35%,
-    transparent 100%
-  );
+    radial-gradient(ellipse 80% 46% at 50% 0%, #ffc44d3d, transparent 72%),
+    linear-gradient(180deg, #2b1f0a8c, transparent 70%);
+}
+/* The rays themselves are part of the stage light's picture
+   (stage-light.ts), so they start at the fighter's feet. */
+.fit-stage[data-rarity="legendary"] .stage-light-rays {
+  visibility: visible;
 }
 .fit-stage[data-rarity="mythical"] {
   border-color: color-mix(in srgb, var(--r-mythic) 60%, transparent);

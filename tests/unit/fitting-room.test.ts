@@ -955,6 +955,11 @@ describe("rarity and order in the catalogue", () => {
     expect(stage(shop(), data(worn))).toBe("mythical");
     // A set has no rarity of its own on the stage.
     expect(stage(shop({ selected: "candy-set" }))).toBeUndefined();
+    // A Legendary's rays are part of the stage light (they start at the
+    // feet), hidden until the stage's rarity shows them.
+    expect(fittingRoomParts(shop(), data()).stage).toContain(
+      '<path class="stage-light-rays" visibility="hidden"',
+    );
   });
   it("shows a frame round your portrait, and a tile with no rarity keeps its row", () => {
     const d = data(economy({ owned: ["candy-frame"] }), { avatar: null });
