@@ -21,6 +21,13 @@ for (const [path, size] of [
 }
 const sw = readFileSync(root + "sw.js", "utf8");
 const urls = [...sw.matchAll(/"url":"([^"]+)"/g)].map((match) => match[1]);
+/** Each precached file's revision (null: its name carries a content hash). */
+const revisions = new Map(
+  [...sw.matchAll(/\{"revision":(null|"[^"]*"),"url":"([^"]+)"\}/g)].map(
+    (match) => [match[2], match[1] === "null" ? null : match[1]],
+  ),
+);
+assert.equal(revisions.size, urls.length, "Every precache entry is read");
 assert(urls.length >= 8, "Build must precache public assets");
 assert(
   urls.every((url) =>
@@ -43,6 +50,37 @@ assert(
   !urls.some((url) => /^assets\/raid-(whole|directions)-/.test(url)),
   "Boss atlases are gone (every boss is vector art) and must not be precached",
 );
+// Installed ahead of time: only what a first screen or any battle needs.
+// The startup paintings are downloaded one start ahead (loading-art.ts),
+// a layered fighter's files are never requested (vite.config.ts
+// fighterFileNeeded), and the 512 px icons are the install manifest's.
+assert(
+  !urls.some((url) => /^assets\/startup-art-/.test(url)),
+  "The startup paintings are cached when first used, not installed (3 MB)",
+);
+for (const url of urls.filter((url) => url.startsWith("assets/fighters/"))) {
+  const pack = JSON.parse(
+    readFileSync(
+      `apps/client/public/assets/fighters/${url.split("/")[2]}/animations.json`,
+      "utf8",
+    ),
+  );
+  assert.notEqual(
+    pack.kind,
+    "layered",
+    `${url}: a layered fighter's files are never downloaded`,
+  );
+}
+assert(!urls.some((url) => /^icons\/arena-(maskable-)?512\.png$/.test(url)));
+for (const icon of ["icons/arena-192.png", "icons/apple-touch-icon.png"])
+  assert(urls.includes(icon), `${icon} must stay available offline`);
+// A file whose name carries no content hash needs a revision: without one,
+// a phone that has it never fetches it again after it changes.
+for (const [url, revision] of revisions)
+  assert(
+    revision !== null || /^assets\/[^/]+-[\w-]{8}\.\w+$/.test(url),
+    `${url} keeps its name between builds, so it needs a revision`,
+  );
 assert(!urls.includes("assets/town/fountain.webp"));
 assert(!urls.includes("assets/town/ground.webp"));
 // The hub's Plaza replaced the old town: its art is no longer downloaded.
