@@ -297,6 +297,65 @@ describe("hurdles agree between your screen and the server", () => {
   });
 });
 
+describe("a hurdle you are over is cleared", () => {
+  const a = PLAZA_HURDLES[0],
+    mid = trackPoint(a),
+    along = { x: -Math.sin(a), y: Math.cos(a) };
+  {
+    const m = Math.hypot(along.x, along.y);
+    along.x /= m;
+    along.y /= m;
+  }
+  /** Run at the hurdle with the stick at `k`, jumping `D` px before its line. */
+  const run = (k: number, D: number) => {
+    const b = plazaBody(mid.x - along.x * 200, mid.y - along.y * 200);
+    let jumped = false,
+      at: { s: number; z: number } | null = null;
+    for (let i = 0; i < 180 && !at; i++) {
+      const s = (b.x - mid.x) * along.x + (b.y - mid.y) * along.y;
+      if (!jumped && -s <= D) jumped = plazaJump(b);
+      if (plazaStep(b, { x: along.x * k, y: along.y * k }, 1 / 60).tripped)
+        at = { s: (b.x - mid.x) * along.x + (b.y - mid.y) * along.y, z: b.z };
+    }
+    return at;
+  };
+  it("never trips you once you are over its line (an early jump landing just past it)", () => {
+    // A thumb on the stick (55%) jumping 65–75 px early, and a full stick
+    // 130 px early: over the bar, then down below 16 px within 12 px past
+    // it. That used to trip you there, hanging in the air for 0.45 s.
+    for (const [k, D] of [
+      [0.55, 65],
+      [0.55, 70],
+      [0.55, 75],
+      [1, 130],
+      [1, 135],
+    ])
+      expect(run(k, D), `stick ${k}, ${D} px`).toBeNull();
+    // Every trip is on the way to the line.
+    for (const k of [0.4, 0.55, 0.8, 1])
+      for (let D = 0; D <= 200; D += 5) {
+        const t = run(k, D);
+        if (t) expect(t.s, `stick ${k}, ${D} px`).toBeLessThanOrEqual(0);
+      }
+  });
+  it("a trip in the air falls to the ground instead of hanging there", () => {
+    // Too late: still rising (7–13 px) when you reach the bar.
+    const t = run(1, 25);
+    expect(t).not.toBeNull();
+    expect(t!.z).toBe(0);
+    // Too early: coming down before the bar.
+    const e = run(0.55, 90);
+    expect(e).not.toBeNull();
+    expect(e!.z).toBe(0);
+  });
+  it("standing on a hurdle's line doesn't trip you", () => {
+    const b = plazaBody(mid.x, mid.y);
+    for (let i = 0; i < 10; i++) plazaStep(b, { x: 0, y: 0 }, 1 / 60);
+    expect(b.stumbled).toBe(false);
+    expect(b.stun).toBe(0);
+  });
+});
+
 describe("snapshots that miss a slow input", () => {
   it("aren't compared: the next one has the input", () => {
     const p = new PlazaPrediction();

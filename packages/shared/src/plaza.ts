@@ -1001,6 +1001,8 @@ export function plazaTrip(b: PlazaBody, left: number = PLAZA.stunSeconds) {
   b.stun = Math.max(0, Math.min(PLAZA.stunSeconds, left));
   b.stumbled = true;
   b.dash = 0;
+  b.air = 0;
+  b.z = 0;
   b.speed = b.vx = b.vy = 0;
   return true;
 }
@@ -1107,6 +1109,9 @@ export function plazaStep(
     b.stun = PLAZA.stunSeconds - (1 - trip) * dt;
     b.stumbled = true;
     b.dash = 0;
+    // Down you go: a trip in the air doesn't hang there while you stumble.
+    b.air = 0;
+    b.z = 0;
     events.tripped = true;
   }
   if (hd > 30) b.stumbled = false;
@@ -1134,15 +1139,17 @@ function hurdleTrip(
       ((p1.x - p0.x) * (py - p0.y) - (p1.y - p0.y) * (px - p0.x)) / len,
     s0 = side(ox, oy),
     s1 = side(b.x, b.y);
-  // The part of the step within `band` px of the hurdle's line.
-  let r0 = 0,
-    r1 = 1;
-  if (s1 !== s0) {
-    const ra = (-band - s0) / (s1 - s0),
-      rb = (band - s0) / (s1 - s0);
-    r0 = Math.max(0, Math.min(ra, rb));
-    r1 = Math.min(1, Math.max(ra, rb));
-  } else if (Math.abs(s0) >= band) return undefined;
+  // Only on the way to its line: once you are over it you have cleared it,
+  // however low you come down (owner, 25 Nov: an early jump landed just past
+  // the bar, tripped there and hung in the air, the halt after a good jump).
+  // Standing still, or moving away from the line, never trips.
+  if (Math.abs(s1) >= Math.abs(s0) && Math.sign(s1) === Math.sign(s0))
+    return undefined;
+  // The part of the step within `band` px of the line, up to the line.
+  const ra = (-band - s0) / (s1 - s0),
+    rb = (band - s0) / (s1 - s0),
+    r0 = Math.max(0, Math.min(ra, rb)),
+    r1 = Math.min(1, Math.max(ra, rb), s0 / (s0 - s1));
   if (r0 > r1) return undefined;
   const height = (r: number) => {
     if (!oAir) return 0;
@@ -1151,7 +1158,7 @@ function hurdleTrip(
   };
   if (height(r0) < low) return r0;
   // High when you got there: you trip only if you come down below `low` px
-  // before you're past it.
+  // before you reach its line.
   const down = b.airDur * (1 - Math.asin(low / b.airH) / Math.PI),
     r = (down - oAir) / dt;
   return r <= r1 ? Math.max(r0, r) : undefined;
