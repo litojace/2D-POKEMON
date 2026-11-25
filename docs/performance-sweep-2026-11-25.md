@@ -190,8 +190,11 @@ Ghi chú:
     có integration test chạy migration thật chứng minh điều này.
   - Push chặn 10–30 ms mỗi lô: chỉ xảy ra khi admin gửi thông báo (hiếm),
     không phải mỗi tick; không đáng đổi.
-  - Tick bù vẫn broadcast: nằm trong `step`/`broadcast`, vùng của đợt E;
-    chuyển cho đợt E.
+  - Tick bù vẫn broadcast: đợt E đã đo và bỏ. 41 trận production 23–25/11
+    (dòng `arena-perf`): `tickLateP95` trung vị 1,1 ms, cao nhất 7,7 ms,
+    `serverHz` 30 ở mọi trận; một tick chỉ thành tick bù khi trễ hơn một
+    chu kỳ (33 ms). Có delta (#460) thì một lần gửi bù chỉ là một delta
+    nhỏ, còn bỏ nó thì client thiếu mẫu nội suy.
 - **Chưa làm:** cache `authenticate` 30–60 s (làm chậm việc khoá tài khoản
   đúng bằng thời gian cache, và nằm cạnh giới hạn của S1/S9: chủ game
   quyết). S1/S9 đã làm ở #436; S7 là đợt E.
