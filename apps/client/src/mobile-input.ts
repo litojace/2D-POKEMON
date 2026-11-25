@@ -168,7 +168,13 @@ export function mobileLayout(
       height: (short ? 96 : 102) * scale,
       targets,
       aim,
-      context: contextPair(aim, targets, 44 * scale, 10 * scale),
+      context: contextPair(
+        aim,
+        targets,
+        44 * scale,
+        10 * scale,
+        (short ? 96 : 102) * scale - height,
+      ),
     };
   }
   const unit = Math.max(
@@ -275,6 +281,7 @@ export function mobileLayout(
     dx < clear ? ult.y - Math.sqrt(clear ** 2 - dx ** 2) : Infinity,
   );
   const aim = { x: aimX, y: aimY, size: aimSize };
+  const clusterHeight = ring.height + 2 * margin;
   return {
     compact: false,
     joystick,
@@ -282,7 +289,13 @@ export function mobileLayout(
     height: ring.height + 2 * margin,
     targets: order.map((action) => targets.find((t) => t.action === action)!),
     aim,
-    context: contextPair(aim, targets, Math.max(44, 52 * scale), gap),
+    context: contextPair(
+      aim,
+      targets,
+      Math.max(44, 52 * scale),
+      gap,
+      clusterHeight - height,
+    ),
   };
 }
 
@@ -293,22 +306,36 @@ const CONTEXT_LABEL = 12;
  * the court's free top-right corner: left of the target button, level with
  * it, and lifted over any cluster button below them with room for their
  * names (owner, 24 Nov 2026: both always showing, up there, not one at a
- * time by skill 1). `x`/`y` are the pair's centre; `size` is one button.
+ * time by skill 1). They never rise past `minTop` (the cluster's y of the
+ * HUD's allowance: a squat screen's boss bar is just above); where lifting
+ * would, they stay level with the target button and slide left until clear.
+ * `x`/`y` are the pair's centre; `size` is one button.
  */
 function contextPair(
   aim: { x: number; y: number; size: number },
   targets: readonly TouchTarget[],
   size: number,
   gap: number,
+  minTop: number,
 ) {
   // Between the two: room for their names (about 50 px at 9 px type).
   const between = Math.max(gap, 18);
   const width = 2 * size + between;
-  const x = aim.x - aim.size / 2 - gap - width / 2;
+  const clearAt = (x: number, y: number) =>
+    targets.every(
+      (t) =>
+        Math.abs(t.x - x) >= width / 2 + t.size / 2 + gap ||
+        y + size / 2 + CONTEXT_LABEL + gap <= t.y - t.size / 2,
+    );
+  let x = aim.x - aim.size / 2 - gap - width / 2;
   let y = aim.y;
   for (const t of targets)
     if (Math.abs(t.x - x) < width / 2 + t.size / 2 + gap)
       y = Math.min(y, t.y - t.size / 2 - gap - CONTEXT_LABEL - size / 2);
+  if (y - size / 2 < minTop) {
+    y = Math.max(aim.y, minTop + size / 2);
+    while (!clearAt(x, y) && x > -2 * width) x -= 4;
+  }
   return { x, y, size, width, height: size };
 }
 

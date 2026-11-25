@@ -20,6 +20,9 @@ const SIZES = [
   { width: 844, height: 390 },
   { width: 667, height: 375 },
   { width: 568, height: 320 },
+  // Squat: the boss bar is just above, so the pair stays level with the
+  // target button, left of the cluster.
+  { width: 844, height: 280 },
 ];
 
 async function setHero(page: Page, x: number, y: number) {
