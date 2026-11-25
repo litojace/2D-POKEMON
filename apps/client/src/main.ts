@@ -164,7 +164,6 @@ import {
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import type { RaidBossId, RaidSlot } from "../../../packages/shared/src/raid";
 import type { RaidTab } from "./screens/raid-hall-view";
-import { partyInviteRow } from "./screens/friends-view";
 import type { SpireTab } from "./screens/spire-view";
 import { LobbySelection } from "./lobby-selection";
 import { setupBattleDock } from "./battle-dock";
@@ -521,6 +520,7 @@ import "./ui/phone-fit.css";
 import "./settings-screen.css";
 import { fighterPickerMarkup } from "./fighter-picker";
 import "./result-extras.css";
+import { partyInviteRow } from "./screens/friends-view";
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(
