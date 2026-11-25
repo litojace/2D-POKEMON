@@ -68,7 +68,10 @@ import {
 import { askConfirm } from "./ui/hub-panel";
 import { guestWarning } from "./guest-warning";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
-import { AdminPanel, type AdminView } from "./admin-panel";
+// The Admin panel's code loads when an admin opens it (showAdmin): no one
+// else runs it. Its stylesheet stays in the startup one, at this place.
+import type { AdminPanel, AdminView } from "./admin-panel";
+import "./admin-panel.css";
 import { openProfile, type ProfileScreen } from "./screens/profile";
 import { openFriendCard, type FriendCardScreen } from "./screens/friend-card";
 import type { HistoryQuery } from "./screens/match-history";
@@ -2312,11 +2315,21 @@ export class AccountUI {
   /** The Admin panel (admin-panel.ts). `changes` open it on a section. */
   async showAdmin(changes: Partial<AdminView> = {}) {
     if (!this.account?.isAdmin) return;
-    this.adminPanel ??= new AdminPanel({
-      api: (path, body) => this.api(path, body),
-      openDialog: (html) => this.hooks.openDialog(html),
-      fighterName: (id) => CHARACTERS[id as CharacterId]?.name ?? id,
-    });
+    if (!this.adminPanel) {
+      let panel: typeof import("./admin-panel");
+      try {
+        panel = await import("./admin-panel");
+      } catch {
+        // Offline, or a new version was deployed since this page loaded.
+        this.hooks.notify("Could not open Admin. Check your connection.");
+        return;
+      }
+      this.adminPanel ??= new panel.AdminPanel({
+        api: (path, body) => this.api(path, body),
+        openDialog: (html) => this.hooks.openDialog(html),
+        fighterName: (id) => CHARACTERS[id as CharacterId]?.name ?? id,
+      });
+    }
     await this.adminPanel.show(changes);
   }
 }
