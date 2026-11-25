@@ -5,9 +5,13 @@ import {
 } from "../../../packages/shared/src/index";
 import { fighterTextureData } from "./fighter-art";
 import { mvpOf } from "./match-recap";
+import { SHARE_SITE, shareLink, shownSite } from "./share-link";
 
 const W = 1200,
   H = 630;
+/** Where the result card's QR code sits (tests read it back from here). */
+export const RESULT_QR = { x: 1004, y: 22, size: 156 } as const;
+const QR = RESULT_QR;
 const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
 
 /** Sides as the card shows them: you (and your partner) first. */
@@ -69,9 +73,12 @@ export function shareSummary(state: Snapshot, myId: string) {
   return { won, headline, text, versus };
 }
 
-export function loadImage(src: string) {
+/** A picture to draw on a card. `cors`: ask another origin for it with
+ * CORS, so drawing it keeps the canvas exportable. */
+export function loadImage(src: string, cors = false) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
+    if (cors) img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
@@ -151,7 +158,17 @@ export async function drawShareCard(
   }
   g.fillStyle = "#a0afc8";
   g.font = "500 24px system-ui, sans-serif";
-  g.fillText(`Play free: ${site.replace(/^https?:\/\//, "")}`, 60, 585);
+  g.fillText(`Play free: ${shownSite(site)}`, 60, 585);
+  // Top right, clear of the headline and the fighters: a camera opens the
+  // game from the picture.
+  await drawScanToPlay(
+    g,
+    shareLink("result", site),
+    QR.x,
+    QR.y,
+    QR.size,
+    "left",
+  );
   return canvas;
 }
 
@@ -175,61 +192,66 @@ function toBlob(canvas: HTMLCanvasElement) {
 }
 
 /**
- * Share a picture: the phone's share sheet with it when it can, otherwise
- * download it and copy the message. `draw(withArt)` draws the canvas; it is
- * asked again without art if the browser refuses to export the first one
- * (some refuse a canvas with SVG drawn on it).
+ * Share a picture: it opens large (share-preview.ts) with the ways this
+ * device has to keep it: the share sheet, a download, or a long press.
+ * `draw(withArt)` draws the canvas; it is asked again without art if the
+ * browser refuses to export the first one (some refuse a canvas with SVG
+ * drawn on it).
  */
 export async function sharePicture(
   draw: (withArt: boolean) => Promise<HTMLCanvasElement>,
-  o: { file: string; text: string; title?: string },
-): Promise<"shared" | "downloaded" | "failed"> {
+  o: { file: string; text: string; title?: string; label: string },
+): Promise<"shown" | "failed"> {
   let blob = await toBlob(await draw(true));
   if (!blob) blob = await toBlob(await draw(false));
   if (!blob) return "failed";
-  const file = new File([blob], o.file, { type: "image/png" });
-  const nav = navigator as Navigator & {
-    canShare?: (data: ShareData) => boolean;
-  };
-  if (nav.share && nav.canShare?.({ files: [file] })) {
-    try {
-      await nav.share({
-        files: [file],
-        text: o.text,
-        title: o.title ?? "Element Arena",
-      });
-      return "shared";
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError")
-        return "shared";
-    }
+  const { showSharePreview } = await import("./share-preview");
+  void showSharePreview({ ...o, blob });
+  return "shown";
+}
+
+/** The QR code and its label in a corner of a card (share-qr.ts, loaded
+ * with the picture). */
+export async function drawScanToPlay(
+  g: CanvasRenderingContext2D,
+  link: string,
+  x: number,
+  y: number,
+  size: number,
+  label: "above" | "left" = "above",
+) {
+  const { drawQr } = await import("./share-qr");
+  g.save();
+  g.textBaseline = "alphabetic";
+  g.fillStyle = "#ffd65b";
+  g.font = "800 20px system-ui, sans-serif";
+  g.letterSpacing = "2px";
+  if (label === "above") {
+    g.textAlign = "center";
+    g.fillText("SCAN TO PLAY", x + size / 2, y - 12);
+  } else {
+    g.textAlign = "right";
+    g.fillText("SCAN", x - 18, y + size / 2 - 6);
+    g.fillText("TO PLAY", x - 18, y + size / 2 + 20);
   }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = file.name;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-  try {
-    await navigator.clipboard.writeText(o.text);
-  } catch {
-    /* the picture alone is fine */
-  }
-  return "downloaded";
+  g.restore();
+  return drawQr(g, link, x, y, size);
 }
 
 /** Share a match result (the results screen's Share). */
 export async function shareResult(
   state: Snapshot,
   myId: string,
-  site = location.origin,
-): Promise<"shared" | "downloaded" | "failed"> {
+  site = SHARE_SITE,
+): Promise<"shown" | "failed"> {
   const { text } = shareSummary(state, myId);
   const canvas = document.createElement("canvas");
   return sharePicture(
     (withArt) => drawShareCard(canvas, state, myId, site, withArt),
-    { file: "element-arena-result.png", text: `${text} ${site}` },
+    {
+      file: "element-arena-result.png",
+      text: `${text} ${site}`,
+      label: "Your match result as a picture",
+    },
   );
 }

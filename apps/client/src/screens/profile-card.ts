@@ -2,15 +2,13 @@
  * Share card (UI remodel step 7, decision 7): your player card as a picture,
  * drawn on the device the way share-card.ts draws match results: 1200×630
  * (the usual link-preview size), your avatar (docs/hidden-picks.md,
- * "Avatars"), your title, name, level, rank and the four numbers. Nothing
- * is uploaded.
+ * "Avatars"), your title, name, level, rank and the four numbers, and a
+ * QR code to the game (share-link.ts). Nothing is uploaded.
  */
-import {
-  avatarUrl,
-  knownAvatar,
-} from "../../../../packages/shared/src/avatars";
 import { playerLevel } from "../../../../packages/shared/src/journey";
-import { fit, loadImage, sharePicture } from "../share-card";
+import { drawScanToPlay, fit, loadImage, sharePicture } from "../share-card";
+import { SHARE_SITE, shareLink, shownSite } from "../share-link";
+import { avatarSrc } from "../portraits";
 import {
   bestMastery,
   profileTiles,
@@ -39,8 +37,32 @@ export function cardSummary(d: ProfileData) {
   };
 }
 
-/** Your avatar's picture (same origin, so the canvas stays shareable). */
-const artSource = (d: ProfileData) => avatarUrl(knownAvatar(d.avatar));
+/** Your avatar's picture: a library one is the client's own file; your own
+ * picture comes from the game server (asked for with CORS, so the canvas
+ * can still be saved; if the server says no, the card goes without it). */
+const artSource = (d: ProfileData) => avatarSrc(d.avatar);
+
+/** Where the card's QR code sits (tests read it back from here). */
+export const CARD_QR = { x: 936, y: 346, size: 224 } as const;
+
+/** The biggest font (from `max` down to `min` px) that fits `text` in
+ * `width`; at `min` the words are shortened as a last resort. */
+function fitFont(
+  g: CanvasRenderingContext2D,
+  text: string,
+  width: number,
+  weight: number,
+  max: number,
+  min: number,
+) {
+  let size = max;
+  g.font = `${weight} ${size}px system-ui, sans-serif`;
+  while (size > min && g.measureText(text).width > width) {
+    size -= 2;
+    g.font = `${weight} ${size}px system-ui, sans-serif`;
+  }
+  return fit(g, text, width);
+}
 
 export async function drawPlayerCard(
   canvas: HTMLCanvasElement,
@@ -57,12 +79,13 @@ export async function drawPlayerCard(
   bg.addColorStop(1, "#0b1020");
   g.fillStyle = bg;
   g.fillRect(0, 0, W, H);
-  // Your panel: a gold glow behind your avatar.
+  // Your panel: a gold glow behind your avatar, the address under it.
+  const cy = 282;
   g.save();
   g.beginPath();
   g.roundRect(40, 40, 420, 550, 28);
   g.clip();
-  const glow = g.createRadialGradient(250, 360, 20, 250, 360, 320);
+  const glow = g.createRadialGradient(250, cy + 60, 20, 250, cy + 60, 320);
   glow.addColorStop(0, `${el}66`);
   glow.addColorStop(1, "#0000");
   g.fillStyle = "#1a2547";
@@ -71,22 +94,28 @@ export async function drawPlayerCard(
   g.fillRect(40, 40, 420, 550);
   if (withArt) {
     try {
-      const img = await loadImage(artSource(d));
+      const img = await loadImage(artSource(d), true);
       g.save();
       g.beginPath();
-      g.arc(250, 300, 170, 0, Math.PI * 2);
+      g.arc(250, cy, 170, 0, Math.PI * 2);
       g.clip();
-      g.drawImage(img, 80, 130, 340, 340);
+      g.drawImage(img, 80, cy - 170, 340, 340);
       g.restore();
       g.strokeStyle = el;
       g.lineWidth = 8;
       g.beginPath();
-      g.arc(250, 300, 172, 0, Math.PI * 2);
+      g.arc(250, cy, 172, 0, Math.PI * 2);
       g.stroke();
     } catch {
       /* the card still works without the picture */
     }
   }
+  g.textAlign = "center";
+  g.fillStyle = "#a0afc8";
+  g.font = "600 20px system-ui, sans-serif";
+  g.fillText("Play free at", 250, 522);
+  g.fillStyle = "#ffffff";
+  g.fillText(fitFont(g, shownSite(site), 380, 700, 28, 18), 250, 558);
   g.restore();
   g.strokeStyle = `${el}aa`;
   g.lineWidth = 4;
@@ -100,12 +129,10 @@ export async function drawPlayerCard(
   g.fillText("ELEMENT ARENA · PLAYER CARD", 510, 90);
   if (d.title) {
     g.fillStyle = safe(d.titleColor, "#d9b98a");
-    g.font = "700 30px system-ui, sans-serif";
-    g.fillText(fit(g, d.title, 640), 510, 150);
+    g.fillText(fitFont(g, d.title, 650, 700, 30, 22), 510, 150);
   }
   g.fillStyle = "#ffffff";
-  g.font = "800 72px system-ui, sans-serif";
-  g.fillText(fit(g, d.name, 640), 510, 225);
+  g.fillText(fitFont(g, d.name, 650, 800, 72, 40), 510, 225);
   const { facts } = cardSummary(d);
   const rank = rankLine(d.progress);
   let x = 510;
@@ -121,34 +148,44 @@ export async function drawPlayerCard(
     g.fillText(fact, x + 14, 284);
     x += w + 12;
   }
+  // The four numbers, two by two, beside the QR code; their bottoms line up.
   const tiles = profileTiles(d.progress, d.raids);
-  const tw = (W - 40 - 510 - 3 * 14) / 4;
+  const gap = 14,
+    top = 330,
+    bottom = CARD_QR.y + CARD_QR.size;
+  const tw = (CARD_QR.x - 20 - 510 - gap) / 2,
+    th = (bottom - top - gap) / 2;
   for (const [i, t] of tiles.entries()) {
-    const tx = 510 + i * (tw + 14);
+    const tx = 510 + (i % 2) * (tw + gap),
+      ty = top + Math.floor(i / 2) * (th + gap);
     g.fillStyle = "#121a33";
     g.beginPath();
-    g.roundRect(tx, 335, tw, 130, 16);
+    g.roundRect(tx, ty, tw, th, 16);
     g.fill();
     g.textAlign = "center";
     g.fillStyle = "#ffffff";
-    g.font = "800 50px system-ui, sans-serif";
-    g.fillText(fit(g, t.value, tw - 16), tx + tw / 2, 410);
+    g.fillText(fitFont(g, t.value, tw - 20, 800, 46, 28), tx + tw / 2, ty + 62);
     g.fillStyle = "#a0afc8";
     g.font = "600 20px system-ui, sans-serif";
-    g.fillText(t.label, tx + tw / 2, 445);
+    g.fillText(t.label, tx + tw / 2, ty + 94);
   }
   g.textAlign = "left";
-  g.fillStyle = "#a0afc8";
-  g.font = "500 24px system-ui, sans-serif";
-  g.fillText(`Play free: ${site.replace(/^https?:\/\//, "")}`, 510, 575);
+  await drawScanToPlay(
+    g,
+    shareLink("card", site),
+    CARD_QR.x,
+    CARD_QR.y,
+    CARD_QR.size,
+  );
   return canvas;
 }
 
-/** Share card: the share sheet with the picture, else download and copy. */
-export function sharePlayerCard(d: ProfileData, site = location.origin) {
+/** Share card: the picture large, to share or keep (share-preview.ts). */
+export function sharePlayerCard(d: ProfileData, site = SHARE_SITE) {
   const canvas = document.createElement("canvas");
   return sharePicture((withArt) => drawPlayerCard(canvas, d, site, withArt), {
     file: "element-arena-player-card.png",
     text: `${cardSummary(d).text} ${site}`,
+    label: "Your player card as a picture",
   });
 }
