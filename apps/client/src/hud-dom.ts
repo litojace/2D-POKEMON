@@ -35,6 +35,33 @@ export function setHudStyle(element: HTMLElement, name: string, value: string) {
 export function setHudHidden(element: HTMLElement, hidden: boolean) {
   if (element.hidden !== hidden) element.hidden = hidden;
 }
+const shownMarkup = new WeakMap<
+  HTMLElement,
+  { markup: string; first: ChildNode | null }
+>();
+/**
+ * `innerHTML`, written only when the markup changes. Comparing with
+ * `element.innerHTML` does not work: the browser writes `<path/>` back as
+ * `<path></path>`, so markup with an icon never matched and the raid's
+ * revive card was rebuilt at every snapshot (30 times a second). The last
+ * markup is remembered instead, with the node it made, so a card someone
+ * else emptied or replaced is written again.
+ */
+export function setHudMarkup(element: HTMLElement, markup: string) {
+  const shown = shownMarkup.get(element);
+  if (shown?.markup === markup && shown.first === element.firstChild)
+    return false;
+  element.innerHTML = markup;
+  shownMarkup.set(element, { markup, first: element.firstChild });
+  return true;
+}
+/** `disabled`, written only when it changes. */
+export function setHudDisabled(
+  element: { disabled: boolean },
+  disabled: boolean,
+) {
+  if (element.disabled !== disabled) element.disabled = disabled;
+}
 /**
  * A cooldown ring's sweep, in half percents (under 2° of the ring): a long
  * cooldown, or the ultimate's meter, then moves the ring a few times a

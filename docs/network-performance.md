@@ -908,6 +908,87 @@ limits are recorded in [session 1](battle-input-clock-session-1.md). In the
 press-to-send tail still exposes the blocked main thread. This is not a
 claim about phone FPS or a measured improvement in production RTT.
 
+### 20. HUD writes that restyle one element, not the page
+
+Section 14 removed the CSS rule that made each HUD change restyle hundreds
+of elements. A duel still restyled about 55 elements per recalculation,
+almost 3,000 a second, and a Pixel 8a at Low still spent 6.6 ms of each
+frame on work other than drawing (p95 10.3). Traces with stacks (25 Nov
+2026; a duel, Cindrake against Voltkit, Low, 915×412 at 2×, a fixed seed,
+12 s; before and after run in turn) put it on how the code wrote to the
+HUD, not on the rules:
+
+1. **`innerWidth > innerHeight` read every frame** in `ArenaScene.update`.
+   On Chrome for phones the read forces styles and layout in the middle of
+   the frame: 340 of `update`'s 406 ms, and close to two recalculations a
+   frame. `viewport-size.ts` keeps the size and reads it again on `resize`
+   and at most every 250 ms. (`match-flow-budget` does not count this read.)
+2. **`textContent =` makes a new text node.** Chromium answers every node
+   going in or out by restyling everything a `:has()` rule could reach,
+   about 55 elements: for each cooldown number (ten a second a button), the
+   enemy arrow's name (every frame, the same word) and the chat badge (each
+   snapshot). `setHudText` (`hud-dom.ts`) changes the text node's `data` in
+   place and writes nothing when the text is the same. Taking out all 111
+   `:has()` rules instead gave about the same result (0.64 s), so the rules
+   stay and the writes changed.
+3. **`--skill-sweep`**, an inherited copy of `--cooldown`, restyled the
+   whole icon's SVG each time a cooldown ring moved (p90 109 elements). The
+   ring now reads `--cooldown: inherit` itself, moves in half-percent steps
+   (`sweepPercent`) and has no 70 ms transition on the main thread.
+4. **`syncHub()` ran at every snapshot** in battle (closing the Lobby and
+   Plaza, placing the chat button, timers). `syncHubInBattle` runs when
+   something it reads has changed, and once a second.
+5. **Writes of the same value**: `hidden` on the spectate banner, the chat
+   button, nameplates and arrows restyled one element each time
+   (`setHudHidden`); a button's `disabled` is guarded the same way
+   (`setHudDisabled`).
+6. **`dialog::backdrop` blurred the running battle** (5 px): no blur while
+   `body.battle-active`.
+7. **Down in a raid**, the revive card was rebuilt at every snapshot: its
+   markup was compared with `innerHTML`, which reads an icon's `<path/>`
+   back as `<path></path>` and never matched. And `main.ts` switched every
+   touch button off after `touch.update` had switched the ready ones on:
+   450 `disabled` writes a second. `setHudMarkup` remembers the markup;
+   `TouchControls.downed` makes the one write.
+
+| Scene (12 s)         | Style time, before → after   | Elements per recalculation (median / p90) | Elements per second |
+| -------------------- | ---------------------------- | ----------------------------------------- | ------------------- |
+| Duel                 | 1.34 → 0.41 s, 1.35 → 0.43 s | 55 / 109 → 4 / 16                         | 2,923 → 316         |
+| Duel, CPU slowed 4×  | 2.55 → 0.88 s                | 55 / 109 → 4 / 20                         | 1,128 → 186         |
+| Raid of four         | 0.21 → 0.16 s                | 5 / 85 → 7 / 23                           | 419 → 203           |
+| Free-for-all of four | 0.32 → 0.16 s                | 5 / 90 → 6 / 16                           | 771 → 177           |
+
+The software renderer here draws 6–30 frames a second, so the per-second
+numbers are lower than a phone's at 60; they compare before with after and
+say nothing about a phone's frame rate. The raid and free-for-all rows are
+one pair of runs each. The duel's count per recalculation is the same in
+every run (four out of four after: 4 / 16).
+
+Rules that follow:
+
+- **Write to the battle HUD through `hud-dom.ts`** (`setHudText`,
+  `setHudHidden`, `setHudAttribute`, `setHudStyle`, `setHudDisabled`,
+  `setHudMarkup`), never `textContent =` or `innerHTML =` at every
+  snapshot, and never compare with `innerHTML` to decide.
+- **Never read the window's or an element's size each frame**: use
+  `viewport-size.ts`, or measure once and cache (section 8).
+- `tests/visual/battle-style-budget.spec.ts` now allows a median of 20 and
+  a p90 of 60 elements per recalculation (it was 120 and 220): `main` before
+  this change fails it at 55 and 109.
+  `tests/visual/raid-downed-writes.spec.ts` counts the writes while down.
+
+**Auto forgets once what it learned before this.** Phones the old style
+work slowed had been stepped down, and a level Auto leaves is not tried
+again for a week (section 5): a Pixel 8a stepped down on 24 Nov would have
+stayed at Low until 1 Dec for stutter its graphics chip did not cause.
+`LEARNED_GENERATION` (`battle-quality.ts`) clears the remembered level and
+its ceiling once per device; Auto starts again where it starts a new device
+and steps down within about eleven seconds of play if the phone really
+cannot keep up. A player's own High or Low is untouched.
+
+Still to measure on a real phone: a Pixel 8a duel and raid at Auto after
+this reaches production (`arena-perf`'s `work`).
+
 ## Historical results (0.5 CPU / 512 MB, 15 snapshots a second)
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The

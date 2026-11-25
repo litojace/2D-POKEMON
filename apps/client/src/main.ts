@@ -3952,7 +3952,10 @@ function renderBattle() {
   document.body.classList.toggle("spectating", !myId && !!watching);
   const knockedOut = !state.raid && !state.practice && (me.hp <= 0 || !!me.out);
   document.body.classList.toggle("pvp-knocked-out", knockedOut);
-  if (!knockedOut) $("spectate").classList.remove("pvp-spectator");
+  // (Only when it is there: taking away a class that is not set still
+  // writes the attribute, 30 times a second.)
+  if (!knockedOut && $("spectate").classList.contains("pvp-spectator"))
+    $("spectate").classList.remove("pvp-spectator");
   queueMicrotask(refreshControlLabels);
   const hudOrder = isTeams()
     ? [
@@ -4219,6 +4222,7 @@ function renderBattle() {
         : "READY",
     );
   }
+  touch.downed = !!state.raid && !!myId && me.hp <= 0;
   touch.update(
     state.phase === "playing" && connected && !!myId && !knockedOut,
     CHARACTERS[me.character].skills.map((a) => a.name),
@@ -4273,10 +4277,6 @@ function renderBattle() {
       measuredRaidHud = raidHud;
       battleHudSize.observe(raidHud);
     }
-    if (me.hp <= 0)
-      document
-        .querySelectorAll<HTMLButtonElement>(".touch-buttons button")
-        .forEach((b) => (b.disabled = true));
     const exit = document.getElementById("raid-exit");
     if (exit) exit.onclick = () => void leave();
     return;

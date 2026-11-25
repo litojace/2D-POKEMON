@@ -1,3 +1,4 @@
+import { setHudHidden, setHudMarkup } from "./hud-dom";
 import { drawBossBattleEffects } from "./boss-spell-art";
 import { resultXp } from "./adventure-ui";
 import type { Journey } from "../../../packages/shared/src/journey";
@@ -122,8 +123,10 @@ export function renderRaidUI(
     "raid-downed",
     state.phase === "playing" && me.hp <= 0,
   );
-  if (state.phase !== "playing")
-    document.getElementById("spectate")?.setAttribute("hidden", "");
+  if (state.phase !== "playing") {
+    const banner = document.getElementById("spectate");
+    if (banner) setHudHidden(banner, true);
+  }
   let hud = document.getElementById("raid-hud");
   if (!hud) {
     hud = document.createElement("div");
@@ -169,11 +172,8 @@ export function renderRaidUI(
     setOverlayMarkup(overlay, "");
     overlay.style.pointerEvents = "none";
     const banner = document.getElementById("spectate")!;
-    banner.hidden = me.hp > 0;
-    if (me.hp <= 0) {
-      const markup = downedCard(state, me.id);
-      if (banner.innerHTML !== markup) banner.innerHTML = markup;
-    }
+    setHudHidden(banner, me.hp > 0);
+    if (me.hp <= 0) setHudMarkup(banner, downedCard(state, me.id));
     return;
   }
   overlay.style.pointerEvents = "auto";

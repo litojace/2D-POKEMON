@@ -69,30 +69,22 @@ Nguyên nhân, đều **[đo]** bằng trace có stack:
    `body.battle-active`.
 
 Test: `tests/unit/hud-dom.test.ts`, `tests/unit/viewport-size.test.ts`.
-**Còn nợ của đợt A (session tiếp theo làm trước khi mở PR):**
+**Phần nợ của đợt A, đã làm xong trong cùng PR:**
 
-- Siết `tests/visual/battle-style-budget.spec.ts`: giới hạn hiện 120 / 220,
-  số mới 4 / 16–20 → đề xuất trung vị ≤ 20, p90 ≤ 60 (bản cũ 55 / 109 sẽ đỏ).
-  Chạy 3–5 lần lấy số trước khi chốt.
-- Thêm mục 20 vào `docs/network-performance.md` (các comment trong code đã
-  trỏ tới "section 20") bằng các số ở trên.
-- **Auto đang kẹt ở Low một tuần trên máy bị lỗi `:has()` đẩy xuống**
-  (`ea-battle-ceiling`, `BATTLE_PROBE.ceilingDays = 7`,
-  `apps/client/src/battle-quality.ts`). Pixel 8a bị hạ 24/11 → kẹt tới 1/12
-  dù nguyên nhân là CSS chứ không phải GPU. Đề xuất: quên một lần các mức đã
-  học trước bản này (khoá thế hệ trong localStorage), có unit test.
-- Chạy: `battle-style-budget`, `match-flow-budget`, `battle-performance`,
-  `touch-recovery`, các spec HUD/raid/chat chạm tới; chụp ảnh HUD ở
-  667×375, 844×390, 852×393 + desktop (vành hồi chiêu, mũi tên, nameplate).
-- Các chỗ còn ghi mỗi snapshot chưa chặn [đọc]:
-  `touch-controls.ts` `aria-label` mỗi 0,1 s; `main.ts` `renderBattle`
-  `classList.remove(...)`; `prismatail-controls.ts:79,87`;
-  `storm-twins-controls.ts:42`; `somnara-controls.ts:70`;
-  `raid-ui.ts:126,172`.
-- **Lỗi khi gục trong raid** [đọc, tin cậy cao]: `raid-ui.ts:175` so
-  `banner.innerHTML !== markup` không bao giờ khớp (`<path/>` serialize
-  thành `<path></path>`) → dựng lại ~10 node 30 lần/giây suốt lúc gục;
-  `main.ts` ~4251 tắt mọi nút touch ngay sau khi `touch.update` bật lại.
+- `tests/visual/battle-style-budget.spec.ts` siết còn trung vị ≤ 20, p90 ≤ 60
+  (trước 120 / 220). [đo] Nhánh này 4 / 16 ở cả bốn lượt; `origin/main`
+  (`4846edb`) đỏ ở 55 / 109.
+- Mục 20 của `docs/network-performance.md` đã viết.
+- Auto quên một lần mức đã học trước bản này (`LEARNED_GENERATION` trong
+  `battle-quality.ts`, khoá `ea-battle-learned`), có unit test.
+- **Lỗi khi gục trong raid** [đo bằng `tests/visual/raid-downed-writes.spec.ts`]:
+  trên main, 30 snapshot = 60 lần ghi vào thẻ hồi sinh (dựng lại cả thẻ) và
+  450 lần ghi `disabled` lên nút touch; nay là 0. Sửa bằng `setHudMarkup` và
+  `TouchControls.downed`.
+- Chưa sửa, vì chưa đo thấy tốn [đọc]: `touch-controls.ts` `aria-label` (đã
+  qua `setHudAttribute`), `classList.toggle/remove` cùng giá trị trong
+  `renderBattle`, `prismatail-controls.ts:79,87`. Số đo duel (4 / 16) cho
+  thấy chúng không còn là nguồn restyle đáng kể; raid Prismell chưa đo riêng.
 
 ## 3. Đợt A — server (đã sửa, có test)
 

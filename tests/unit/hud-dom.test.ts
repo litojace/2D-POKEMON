@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
+  setHudDisabled,
   setHudHidden,
+  setHudMarkup,
   setHudText,
   sweepPercent,
 } from "../../apps/client/src/hud-dom";
@@ -145,5 +147,62 @@ describe("the battle's per-frame code", () => {
     expect(touch).toContain(
       'setHudText(button.querySelector<HTMLElement>(".touch-cooldown")!, text)',
     );
+  });
+});
+
+describe("a card of markup (the raid's revive card)", () => {
+  /** As a browser: `innerHTML` reads back differently from what was set. */
+  function card() {
+    let node: object | null = null;
+    const el = {
+      writes: 0,
+      get firstChild() {
+        return node;
+      },
+      get innerHTML() {
+        return "<svg><path></path></svg>";
+      },
+      set innerHTML(value: string) {
+        el.writes++;
+        node = value ? {} : null;
+      },
+      clear() {
+        node = null;
+      },
+    };
+    return el;
+  }
+  it("is built once, not at every snapshot", () => {
+    const el = card();
+    const html = el as unknown as HTMLElement;
+    const markup = "<svg><path/></svg><b>Downed</b><span>0%</span>";
+    for (let i = 0; i < 30; i++) setHudMarkup(html, markup);
+    expect(el.writes).toBe(1);
+    expect(setHudMarkup(html, markup.replace("0%", "12%"))).toBe(true);
+    expect(el.writes).toBe(2);
+  });
+  it("is built again after someone else emptied it", () => {
+    const el = card();
+    const html = el as unknown as HTMLElement;
+    setHudMarkup(html, "<b>Downed</b>");
+    el.clear();
+    expect(setHudMarkup(html, "<b>Downed</b>")).toBe(true);
+    expect(el.writes).toBe(2);
+  });
+  it("leaves a button's disabled alone when it is the same", () => {
+    let writes = 0;
+    const button = {
+      off: false,
+      get disabled() {
+        return button.off;
+      },
+      set disabled(v: boolean) {
+        writes++;
+        button.off = v;
+      },
+    };
+    for (let i = 0; i < 30; i++) setHudDisabled(button, true);
+    setHudDisabled(button, false);
+    expect(writes).toBe(2);
   });
 });
