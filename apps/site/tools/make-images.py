@@ -21,13 +21,8 @@ PUBLIC = ROOT / "apps/client/public"
 OUT = ROOT / "apps/site/img"
 SHOTS = ROOT / "app-store-screenshots/raw/iphone-medium"
 
-# The hero art at the top of the page, one per style direction (the demo
-# offers three; the chosen one stays).
-HEROES = {
-    "hero-dusk": ART / "loading-art/startup-art-duel-skyline-lance.webp",
-    "hero-day": ART / "loading-art/startup-art-ffa-tide-pools.webp",
-    "hero-raid": ART / "raid-splash/storm-twins.webp",
-}
+# The hero art at the top of the page.
+HEROES = {"hero-dusk": ART / "loading-art/startup-art-duel-skyline-lance.webp"}
 BOSSES = ["grumblecrag", "tidewyrm", "gloomshade", "somnara", "prismatail", "emberwing", "storm-twins"]
 # Real gameplay captures (docs/app-store-screenshots.md), in page order.
 SCREENS = ["1-raid", "2-duel", "3-roster", "4-teams", "5-ffa", "6-plaza"]

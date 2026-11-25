@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://litojace.com/sitemap.xml
+Sitemap: https://elementarenausa.com/sitemap.xml

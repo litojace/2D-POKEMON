@@ -29,7 +29,7 @@
   src: url("fonts/dm-sans-latin-600-normal.woff2") format("woff2");
 }
 
-/* Direction A, "Arena Dusk": the game's navy and gold. */
+/* Arena Dusk: the game's navy and gold (chosen by the owner, 25 Nov). */
 :root {
   --bg: #0b1020;
   --bg-alt: #111a33;
@@ -61,55 +61,14 @@
   color-scheme: dark;
 }
 
-/* Direction B, "Sunny Plaza": daylight, the Plaza's sky and sand. */
-:root[data-style="day"] {
-  --bg: #f3f8fd;
-  --bg-alt: #e3eefa;
-  --surface: #ffffff;
-  --line: #1d3a6626;
-  --text: #13223f;
-  --dim: #4a5d7e;
-  --accent: #ff7a45;
-  --accent-hi: #ff9a6b;
-  --accent-ink: #2a1200;
-  --accent-text: #c2410c;
-  --hero-ink: #13223f;
-  --hero-shade: #f3f8fd;
-  --bar: #f3f8fde6;
-  --el-electric: #8a6a00;
-  --el-fire: #c2410c;
-  --el-water: #1565c0;
-  --el-aura: #0e7488;
-  --el-light: #7d6800;
-  --el-psychic: #8a3cc4;
-  --el-earth: #8a5a22;
-  --el-shadow: #5a3ad0;
-  --el-nature: #2f7a22;
-  color-scheme: light;
-}
-
-/* Direction C, "Raid Night": storm-dark, electric accents, louder type. */
-:root[data-style="raid"] {
-  --bg: #07080f;
-  --bg-alt: #0e1120;
-  --surface: #151a30;
-  --line: #7fe7ff2e;
-  --text: #f4f7ff;
-  --dim: #a3adc6;
-  --accent: #7fe7ff;
-  --accent-hi: #b8f3ff;
-  --accent-ink: #04161c;
-  --accent-text: #7fe7ff;
-  --hero-ink: #ffffff;
-  --hero-shade: #07080f;
-  --bar: #07080fd9;
-  --radius: 4px;
-}
-
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+/* Layout rules (display: grid/flex) must never undo the hidden attribute. */
+[hidden] {
+  display: none !important;
 }
 html {
   -webkit-text-size-adjust: 100%;
@@ -285,14 +244,6 @@ body::before {
   padding: 0 18px;
   font-size: 1.1rem;
 }
-:root[data-style="raid"] .btn {
-  border-radius: var(--radius);
-  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
-  padding-inline: 30px;
-}
-:root[data-style="raid"] .btn-ghost {
-  clip-path: none;
-}
 
 /* ---------- Hero ---------- */
 .hero {
@@ -456,12 +407,6 @@ body::before {
   .lede {
     font-size: 0.95rem;
     line-height: 1.45;
-  }
-}
-@media (min-height: 501px) {
-  :root[data-style="raid"] .hero h1 {
-    font-size: clamp(3.2rem, 13vw, 7rem);
-    line-height: 0.92;
   }
 }
 
@@ -1354,6 +1299,137 @@ body::before {
 .champ-play {
   justify-self: start;
   margin-top: 8px;
+}
+
+/* ---------- Account page (/account/) ---------- */
+.acct {
+  padding-block: calc(96px + env(safe-area-inset-top, 0px)) 56px;
+  display: grid;
+  gap: 16px;
+  max-width: 860px;
+}
+.acct h1 {
+  font-size: clamp(2.4rem, 7vw, 3.4rem);
+  text-transform: uppercase;
+}
+.acct-card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 22px 20px 24px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.acct-card h2 {
+  font-size: 1.8rem;
+  text-transform: uppercase;
+}
+.acct-sub {
+  color: var(--dim);
+}
+.acct-sub a,
+.link {
+  color: var(--accent-text);
+}
+.acct-on,
+.acct-forms {
+  display: grid;
+  gap: 16px;
+}
+@media (min-width: 760px) {
+  .acct-forms {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.acct-form {
+  display: grid;
+  gap: 8px;
+}
+.acct-field {
+  display: grid;
+  gap: 8px;
+}
+.acct-form label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.acct-form input[type="email"],
+.acct-form input[type="password"] {
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  font: 400 1rem/1 var(--body);
+}
+.acct-form input:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 400 !important;
+}
+.check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+.acct-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+.acct-form .btn,
+.acct-row .btn {
+  justify-self: start;
+}
+.btn-ghost {
+  background: transparent;
+  cursor: pointer;
+}
+.acct .btn-ghost {
+  color: var(--text);
+  border-color: var(--line);
+}
+.link {
+  background: none;
+  border: 0;
+  min-height: 44px;
+  padding: 0 4px;
+  font: 600 0.95rem/1 var(--body);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.acct-msg {
+  color: #ff9aa5;
+  font-weight: 600;
+}
+.acct-msg.ok,
+.acct-note {
+  color: #7fe3a0;
+  font-weight: 600;
+}
+.acct-who h2 {
+  font-size: 2.2rem;
+}
+.acct-apple {
+  justify-self: start;
+}
+button.btn-play {
+  border: 0;
+  cursor: pointer;
+}
+button.btn-play:disabled {
+  opacity: 0.6;
+  cursor: progress;
 }
 
 @media (prefers-reduced-motion: reduce) {
