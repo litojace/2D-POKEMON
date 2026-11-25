@@ -20,6 +20,7 @@ import {
   type SpireMember,
 } from "../../../packages/shared/src/spire.js";
 import type { ActivityReceipt } from "../../../packages/shared/src/shop.js";
+import type { RaidDreamView } from "../../../packages/shared/src/raid-somnara.js";
 import {
   DREAM_RUNES,
   RAID_PINGS,
@@ -1440,13 +1441,19 @@ export function createArenaServer(
     }
     // Serialize shared world data once. Somnara's private sequence is added
     // only to the authenticated seat's socket, never a room/spectator broadcast.
-    const seats =
-      arena instanceof RaidArena && arena.raid.boss === "somnara"
-        ? [...sessions.values()].filter(
-            (s) => s.code === arena.code && s.socketId,
-          )
-        : [];
-    for (const session of seats) held.add(session.socketId!);
+    // Only a seat with something private to see gets a copy of its own: the
+    // rest share the room's. (Every seat used to, every tick of the raid,
+    // dream or no dream: one encoding per raider on top of the room's.)
+    const seats: { socketId: string; dream: RaidDreamView }[] = [];
+    if (arena instanceof RaidArena && arena.raid.boss === "somnara")
+      for (const s of sessions.values()) {
+        const dream =
+          s.code === arena.code && s.socketId
+            ? arena.dreamFor(s.id)
+            : undefined;
+        if (dream) seats.push({ socketId: s.socketId!, dream });
+      }
+    for (const seat of seats) held.add(seat.socketId);
     // A PvP lobby hides each side's picks from the others: every side (and
     // the watchers) gets its own copy, built once per side.
     if (picksHidden(arena)) {
@@ -1484,12 +1491,11 @@ export function createArenaServer(
         .except([...held])
         .emit("state", wire);
     else io.to(arena.code).emit("state", wire);
-    for (const session of seats) {
-      const id = session.socketId!;
+    for (const { socketId: id, dream } of seats) {
       if (laggingSockets.has(id) && !personal.has(id)) continue;
       io.to(id).emit("state", {
         ...(personal.get(id) ?? wire),
-        raidDream: (arena as RaidArena).dreamFor(session.id),
+        raidDream: dream,
       });
       personal.delete(id);
     }
