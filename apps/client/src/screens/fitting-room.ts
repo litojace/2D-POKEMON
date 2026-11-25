@@ -169,6 +169,7 @@ const FOCUS_KEYS = [
   "data-fit-equip",
   "data-fit-unequip",
   "data-fit-save",
+  "data-fit-sort",
   "data-fit-revert",
 ];
 
@@ -631,7 +632,8 @@ export function openFittingRoom(
     else if (d.fitCollection) {
       view.collection = d.fitCollection as FitView["collection"];
       tryOn(`${view.collection}-colours`);
-    } else if (d.uiOwn) view.ownership = d.uiOwn as FitView["ownership"];
+    } else if (d.fitSort) view.sort = d.fitSort as FitView["sort"];
+    else if (d.uiOwn) view.ownership = d.uiOwn as FitView["ownership"];
     else if (d.uiRarity) view.rarity = d.uiRarity as FitView["rarity"];
     else if (d.fitReset !== undefined) {
       view.ownership = "all";

@@ -12,6 +12,8 @@
  * account goes with it. With `?perf=1` the same numbers show on screen
  * (perf-overlay.ts) for a player to screenshot.
  */
+import { buildId } from "./build-id";
+
 /** A frame slower than this is a stall (counted, and in the numbers). */
 export const PERF_STALL = 250;
 /** A gap longer than this is a pause, not a frame: left out. */
@@ -700,16 +702,12 @@ export class NetMeter {
   }
 }
 
-declare const __BUILD__: string | undefined;
 /**
- * Which build of the game this is: the commit it was built from (Render sets
- * RENDER_GIT_COMMIT; apps/client/vite.config.ts), "dev" otherwise. A report
- * from an old build means the phone is still running a cached version.
+ * Which build of the game this is: the commit it was built from (build-id.ts),
+ * "dev" otherwise. A report from an old build means the phone is still
+ * running a cached version.
  */
-export const BUILD: string =
-  typeof __BUILD__ === "string" && /^[a-z0-9-]{1,16}$/.test(__BUILD__)
-    ? __BUILD__
-    : "dev";
+export const BUILD: string = buildId() ?? "dev";
 
 /**
  * The kind of device, coarsely, for battle-perf: the system family and

@@ -6,9 +6,9 @@ import type { CharacterId } from "@arena/shared";
  * from the Shop, fighting in the game's PvP modes or resting between them. The scenes are the brief
  * the paintings are made from; a scene is shown once its picture is in
  * src/art/loading-art/startup-art-<id>.webp (scripts/import-loading-art.py),
- * so the list never points at a painting that isn't there. Named startup-*,
- * the service worker installs them with the game (vite.config.ts
- * PRECACHED_ART).
+ * so the list never points at a painting that isn't there. The service
+ * worker keeps the one a start downloads for the next (sw.ts,
+ * arena-startup-art-v1); it does not install all of them with the game.
  */
 export type PvpMode = "duel" | "teams" | "ffa";
 export type LoadingScene = {

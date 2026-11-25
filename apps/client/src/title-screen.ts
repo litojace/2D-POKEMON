@@ -15,6 +15,7 @@
  * Start waits for the game connection ("Connecting…"); everything else on
  * the screen works without one.
  */
+import { buildId } from "./build-id";
 import { menuIcon } from "./menu-icons";
 
 const PASSED_KEY = "ea-title-passed";
@@ -105,11 +106,7 @@ function quickButtons() {
 }
 
 /** The game's version for the front door ("dev" while developing). */
-declare const __BUILD__: string | undefined;
-export const BUILD_ID =
-  typeof __BUILD__ === "string" && /^[a-z0-9-]{1,16}$/.test(__BUILD__)
-    ? __BUILD__
-    : "";
+export const BUILD_ID = buildId() ?? "";
 
 /**
  * Repair: unregister the service worker and empty its caches, then reload.

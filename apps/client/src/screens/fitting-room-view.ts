@@ -28,6 +28,7 @@ import {
   ALL_BUNDLES,
   isSkinBundle,
   itemListPrice,
+  skinPrice,
   shopPrice,
   type Collection,
   type ChampionLook,
@@ -56,13 +57,14 @@ import {
   TIER_NAMES,
   cosmeticTier,
 } from "../../../../packages/shared/src/cosmetic-tier";
-import { fighterAvatar, scopeIds } from "../fighter-art";
+import { fighterAvatar, fighterPortrait, scopeIds } from "../fighter-art";
 import { creatureSvg, type SkinLook } from "../creature-design";
 import { colourPreview, hasColourPalette } from "../colour-preview";
 import { previewViewBox } from "../shop-preview-layout";
 import { stageLight } from "../stage-light";
 import { avatarImage, framePortrait } from "../portraits";
 import { itemPicture, picksCountdown } from "../shop-ui";
+import { isNewArrival } from "../shop-arrivals";
 import { menuIcon } from "../menu-icons";
 import {
   actionBar,
@@ -130,6 +132,8 @@ export interface FitView {
   /** The animation the stage plays ("ultimate": a Mythical's, at Stage III). */
   action: "idle" | "entrance" | "victory" | "ultimate";
   ownership: "all" | "owned" | "unowned";
+  /** The Skins grid's order: rarest first (the default), or cheapest. */
+  sort: "rarity" | "price";
   rarity: Rarity | "all";
   collection: Collection;
 }
@@ -168,6 +172,7 @@ export function fitView(
     selected: null,
     action: "idle",
     ownership: "all",
+    sort: "rarity",
     rarity: "all",
     collection: SHOP_BUNDLES[0].collection,
     ...extra,
@@ -471,12 +476,22 @@ const starsOf = (id: string, d: FitData) =>
   frameStars(id, bossClears(d.progress));
 function pictureOf(id: string, view: FitView, d: FitData, scope: string) {
   const skin = CHAMPION_SKIN_BY_ID[id];
+  // A frame goes round a portrait: yours, as on the stage and everywhere
+  // players see you. (It was an empty ring.)
+  if (!skin && fitItem(id)?.slot === "frame")
+    // With its tier in the markup, as cosmeticPicture writes it: the edge
+    // and halo are right from the first frame, before the preview attaches.
+    return framePortrait(avatarImage(d.avatar), id, starsOf(id, d)).replace(
+      /data-frame-stars="(\d+)"/,
+      (all, stars) => `${all} data-tier="${cosmeticTier(id, Number(stars))}"`,
+    );
   return itemPicture(
     id,
     skin?.champion ?? view.champion,
     scope,
     skin ? stageOf(id, { ...view, stage: undefined }, d) : 1,
     starsOf(id, d),
+    true,
   );
 }
 /** A still of a fighter in a look, framed like the live rig. */
@@ -629,7 +644,14 @@ function stageMarkup(view: FitView, d: FitData) {
     : (info?.source ?? (outfit.skin ? "" : `${name} · original look`));
   const rarity =
     focus && !set ? rarityTag(rarityOf(focus, starsOf(focus, d))) : "";
-  return `<section class="ui-split-stage fit-stage${frameView ? " is-frame" : ""}" style="--el:${elVar(view.champion)}" aria-label="Try-on stage" data-fit-region="stage">${live}${plays ? `<div class="fit-stage-top">${plays}</div>` : ""}<div class="fit-stage-info"><span class="fit-row">${rarity}<span class="ui-note">${state}</span></span><b class="fit-stage-name">${esc(title)}</b>${sub ? `<small class="ui-note fit-stage-sub">${esc(sub)}</small>` : ""}${extra}${compare || awaken ? `<span class="fit-row fit-stage-tools">${compare}${awaken}</span>` : ""}${awakenNote}</div></section>`;
+  // The stage dresses up with what stands on it: the item in focus, else
+  // the skin worn (fitting-room.css, "the stage by rarity").
+  const stageRarity = set
+    ? ""
+    : focus
+      ? rarityOf(focus, starsOf(focus, d))
+      : "";
+  return `<section class="ui-split-stage fit-stage${frameView ? " is-frame" : ""}" style="--el:${elVar(view.champion)}"${stageRarity ? ` data-rarity="${stageRarity}"` : ""} aria-label="Try-on stage" data-fit-region="stage">${live}${plays ? `<div class="fit-stage-top">${plays}</div>` : ""}<div class="fit-stage-info"><span class="fit-row">${rarity}<span class="ui-note">${state}</span></span><b class="fit-stage-name">${esc(title)}</b>${sub ? `<small class="ui-note fit-stage-sub">${esc(sub)}</small>` : ""}${extra}${compare || awaken ? `<span class="fit-row fit-stage-tools">${compare}${awaken}</span>` : ""}${awakenNote}</div></section>`;
 }
 export function awakeningNote(id: string, e: Economy | null) {
   if (e?.mythicTesting) return "All stages unlocked for testing.";
@@ -696,14 +718,60 @@ function shopTile(id: string, view: FitView, d: FitData) {
     id,
     art: pictureOf(id, view, d, `fit-${id}`),
     name: item.name,
-    sub: skin ? `${CHARACTERS[skin.champion].name} skin` : SLOT_NAME[item.slot],
+    sub: skin ? skinSub(skin) : SLOT_NAME[item.slot],
     rarity: rarityOf(id),
     foot,
     footKind,
-    corner: id === e.picks.deal && !owns(id, d) ? tag("−20%", "sale") : "",
+    corner: owns(id, d)
+      ? ""
+      : id === e.picks.deal
+        ? tag("−20%", "sale")
+        : isNewArrival(id)
+          ? tag("New", "new")
+          : "",
     pressed: view.selected === id,
     attrs: { "data-slot": item.slot },
   });
+}
+/**
+ * A skin's second line: its collection where it has one (two Wombolder
+ * skins are both "Bulldozer": Hero Squad and Cyber Mecha), else whose it is.
+ */
+const skinSub = (skin: (typeof CHAMPION_SKINS)[number]) =>
+  skin.collection
+    ? `${COLLECTION_NAMES[skin.collection]} · ${CHARACTERS[skin.champion].name}`
+    : `${CHARACTERS[skin.champion].name} skin`;
+/** Rarest first: what a Shop leads with. */
+const RARITY_RANK: Record<RarityName, number> = {
+  mythical: 0,
+  mythic: 0,
+  legendary: 1,
+  epic: 2,
+  rare: 3,
+  common: 4,
+};
+/**
+ * The Skins grid's order. Rarest first, new arrivals leading their rarity,
+ * then the catalogue's order (it used to be the catalogue's order alone:
+ * the 500-coin skins sat in the middle of a fighter's page). Or cheapest
+ * first, at the list price: today's deal doesn't move a skin.
+ */
+export function sortSkins<T extends (typeof CHAMPION_SKINS)[number]>(
+  skins: readonly T[],
+  sort: FitView["sort"],
+  isNew: (id: string) => boolean = isNewArrival,
+): T[] {
+  const fresh = new Map(skins.map((s) => [s.id, isNew(s.id)]));
+  return skins
+    .map((s, i) => ({ s, i }))
+    .sort((x, y) =>
+      sort === "price"
+        ? skinPrice(x.s) - skinPrice(y.s) || x.i - y.i
+        : RARITY_RANK[x.s.rarity] - RARITY_RANK[y.s.rarity] ||
+          Number(fresh.get(y.s.id)) - Number(fresh.get(x.s.id)) ||
+          x.i - y.i,
+    )
+    .map(({ s }) => s);
 }
 /** Is this item worn now (on any fighter for a skin)? */
 function wornFor(id: string, d: FitData) {
@@ -728,7 +796,9 @@ function fighterRow(
   return `<div class="ui-chips fit-fighters" role="group" aria-label="${esc(label)}">${FIGHTERS.map(
     (c) => {
       const m = mark?.(c);
-      return `<button type="button" class="fit-fighter" data-fit-fighter="${c}" aria-pressed="${c === view.champion}" aria-label="${esc(CHARACTERS[c].name + (m ? `, ${m.say}` : ""))}" style="--el:${elVar(c)}">${avatar(fighterAvatar(c, `fit-fighter-${c}`, wornSkin(d.economy, c)), { element: CHARACTERS[c].element, size: 34 })}${m?.badge ?? ""}<span>${esc(CHARACTERS[c].name)}</span></button>`;
+      // A picture of each fighter, drawn once (fighterPortrait): the row is
+      // rebuilt on every tap, and eighteen inline fighters cost each time.
+      return `<button type="button" class="fit-fighter" data-fit-fighter="${c}" aria-pressed="${c === view.champion}" aria-label="${esc(CHARACTERS[c].name + (m ? `, ${m.say}` : ""))}" style="--el:${elVar(c)}">${avatar(fighterPortrait(c, wornSkin(d.economy, c)), { element: CHARACTERS[c].element, size: 34 })}${m?.badge ?? ""}<span>${esc(CHARACTERS[c].name)}</span></button>`;
     },
   ).join("")}</div>`;
 }
@@ -802,7 +872,10 @@ function bundleRow(id: string, view: FitView, d: FitData, card = false) {
   const set = BUNDLE_BY_ID[id];
   const have = set.items.filter((i) => e.owned.includes(i)).length;
   const p = purchase(id, e);
-  const rarity = isSkinBundle(id) ? rarityOf(set.items[0]) : "epic";
+  // A set is as rare as its rarest piece (Look sets were all "epic").
+  const rarity = set.items
+    .map((i) => rarityOf(i))
+    .reduce((a, b) => (RARITY_RANK[b] < RARITY_RANK[a] ? b : a));
   return `<button type="button" class="fit-bundle" data-ui-item="${esc(id)}" data-rarity="${rarity}" aria-pressed="${view.selected === id}"><span class="fit-bundle-art">${setPreview(
     id,
     view.champion,
@@ -812,7 +885,27 @@ function bundleRow(id: string, view: FitView, d: FitData, card = false) {
       "",
     )}</span><span class="fit-bundle-text"><b class="ui-h">${esc(card ? set.name.replace(/ skins$/i, "") : set.name)}</b><small class="ui-note">${card ? `${have}/${set.items.length} owned` : `${esc(setNote(id))} · ${have} owned`}</small></span><span class="fit-bundle-price">${p ? price(p.price, p.was) : `<span class="ui-tag is-ok">${menuIcon("check")}Complete</span>`}</span></button>`;
 }
-function filters(view: FitView, count: number, rarity: boolean, noun: string) {
+function filters(
+  view: FitView,
+  count: number,
+  rarity: boolean,
+  noun: string,
+  sortable = false,
+) {
+  // One button that says the order and changes it (two orders: no menu).
+  const sort = sortable
+    ? button(view.sort === "price" ? "Cheapest" : "Rarest", {
+        size: "s",
+        icon: "swap",
+        attrs: {
+          "data-fit-sort": view.sort === "price" ? "rarity" : "price",
+          "aria-label":
+            view.sort === "price"
+              ? "Sorted cheapest first. Sort rarest first"
+              : "Sorted rarest first. Sort cheapest first",
+        },
+      })
+    : "";
   const own = segmented(
     (
       [
@@ -836,7 +929,7 @@ function filters(view: FitView, count: number, rarity: boolean, noun: string) {
         "rarity",
       )
     : "";
-  return `<div class="fit-filters">${own}${rare}<small class="ui-note fit-count" role="status">${count} ${count === 1 ? noun : `${noun}s`}</small></div>`;
+  return `<div class="fit-filters${sortable ? " has-sort" : ""}">${own}${sort}${rare}<small class="ui-note fit-count" role="status">${count} ${count === 1 ? noun : `${noun}s`}</small></div>`;
 }
 const ownershipMatch = (id: string, view: FitView, d: FitData) =>
   view.ownership === "all" ||
@@ -863,23 +956,33 @@ function skinsBody(view: FitView, d: FitData) {
         attrs: { "data-ui-section": "collections" },
       }),
     )}`;
-  const skins = CHAMPION_SKINS.filter(
-    (s) =>
-      s.champion === view.champion &&
-      ownershipMatch(s.id, view, d) &&
-      (view.rarity === "all" || s.rarity === view.rarity),
+  // A phone held sideways has one row for the filters: ownership and the
+  // order. Sorted rarest first, a fighter's 18 skins already stand grouped
+  // by rarity, so the rarity chips are left to wider screens.
+  const rarity = d.compact ? "all" : view.rarity;
+  const skins = sortSkins(
+    CHAMPION_SKINS.filter(
+      (s) =>
+        s.champion === view.champion &&
+        ownershipMatch(s.id, view, d) &&
+        (rarity === "all" || s.rarity === rarity),
+    ),
+    view.sort,
   );
-  return `${fighterRow(view, d, "Fighter")}${filters(view, skins.length, true, "skin")}${collectionReward("cyber", view, d)}${
+  // The skins come first; the collection rewards follow them. (Above the
+  // grid they filled a phone's first screen: no skin showed until you
+  // scrolled.)
+  return `${fighterRow(view, d, "Fighter")}${filters(view, skins.length, !d.compact, "skin", true)}${
+    skins.length
+      ? grid(skins.map((s) => shopTile(s.id, view, d)).join(""))
+      : noMatch()
+  }${collectionReward("cyber", view, d)}${
     // The Arcade frame, on the fighters with an Arcade skin.
     CHAMPION_SKINS.some(
       (s) => s.champion === view.champion && s.collection === "arcade",
     )
       ? collectionReward("arcade", view, d)
       : ""
-  }${
-    skins.length
-      ? grid(skins.map((s) => shopTile(s.id, view, d)).join(""))
-      : noMatch()
   }`;
 }
 /**
@@ -1120,7 +1223,7 @@ function wardrobeBody(view: FitView, d: FitData) {
   const noSkins =
     view.slot === "champion" &&
     !CHAMPION_SKINS.some((s) => s.champion === view.champion);
-  const more = `<button type="button" class="ui-tile fit-more" data-fit-more="${noSkins ? "skin" : view.slot}"><span class="ui-tile-art">${menuIcon("shop")}</span><span></span><b class="ui-tile-name">More in the Shop</b><small class="ui-tile-sub">${noSkins ? `No ${esc(fighter)} skins yet` : missing ? `${missing} more ${esc(what)}` : "See what's new"}</small><span class="ui-tile-foot is-dim">Open the Shop →</span></button>`;
+  const more = `<button type="button" class="ui-tile fit-more" data-fit-more="${noSkins ? "skin" : view.slot}"><span class="ui-tile-art">${menuIcon("shop")}</span><span class="ui-rarity is-none"></span><b class="ui-tile-name">More in the Shop</b><small class="ui-tile-sub">${noSkins ? `No ${esc(fighter)} skins yet` : missing ? `${missing} more ${esc(what)}` : "See what's new"}</small><span class="ui-tile-foot is-dim">Open the Shop →</span></button>`;
   const heading =
     view.slot === "champion" ? `${fighter} skins` : SLOT_NAME[view.slot];
   return `${fighterRow(view, d, "Fighter")}${slots}${section(heading, `<small class="ui-note">${items.length + (view.slot === "champion" ? 1 : 0)} owned</small>`)}${grid(plain + tiles + more)}${!items.length ? `<p class="ui-note fit-empty-note">${view.slot === "frame" || view.slot === "aura" ? "Buy pieces in the Shop or earn them from raid bosses." : "Buy pieces in the Shop to wear them here."}</p>` : ""}`;

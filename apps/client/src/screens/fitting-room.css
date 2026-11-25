@@ -10,6 +10,78 @@
   isolation: isolate;
   container-type: size;
 }
+/* The stage by rarity (data-rarity: the item in focus, else the skin worn).
+   A 5,500-coin skin used to stand on the same stage as a 500-coin one: the
+   stage only knew the fighter's element. One still layer behind everything,
+   richer with each tier; the element's light and floor ring stay.
+   Common     nothing added
+   Rare       a blue wash from above
+   Epic       purple light from above and both lower corners
+   Legendary  gold rays fanning up from the feet, a warm rim
+   Mythical   a prismatic aurora and stars, a prismatic rim */
+.fit-stage[data-rarity]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.fit-stage[data-rarity="common"]::before {
+  content: none;
+}
+.fit-stage[data-rarity="rare"]::before {
+  background: radial-gradient(
+    ellipse 90% 50% at 50% 0%,
+    color-mix(in srgb, var(--r-rare) 26%, transparent),
+    transparent 72%
+  );
+}
+.fit-stage[data-rarity="epic"]::before {
+  background:
+    radial-gradient(
+      ellipse 85% 48% at 50% 0%,
+      color-mix(in srgb, var(--r-epic) 36%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 0% 78%,
+      color-mix(in srgb, var(--r-epic) 22%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 100% 78%,
+      color-mix(in srgb, var(--r-epic) 22%, transparent),
+      transparent 70%
+    );
+}
+.fit-stage[data-rarity="legendary"] {
+  border-color: color-mix(in srgb, var(--r-legendary) 60%, transparent);
+}
+.fit-stage[data-rarity="legendary"]::before {
+  background:
+    radial-gradient(ellipse 80% 46% at 50% 0%, #ffc44d3d, transparent 72%),
+    linear-gradient(180deg, #2b1f0a8c, transparent 70%);
+}
+/* The rays themselves are part of the stage light's picture
+   (stage-light.ts), so they start at the fighter's feet. */
+.fit-stage[data-rarity="legendary"] .stage-light-rays {
+  visibility: visible;
+}
+.fit-stage[data-rarity="mythical"] {
+  border-color: color-mix(in srgb, var(--r-mythic) 60%, transparent);
+}
+.fit-stage[data-rarity="mythical"]::before {
+  background:
+    radial-gradient(circle at 14% 12%, #fff 0 1.2px, transparent 2px),
+    radial-gradient(circle at 84% 9%, #fff 0 1.5px, transparent 2.3px),
+    radial-gradient(circle at 72% 30%, #ffffffb3 0 1px, transparent 1.8px),
+    radial-gradient(circle at 9% 44%, #ffffffb3 0 1px, transparent 1.8px),
+    radial-gradient(circle at 91% 52%, #ffffff99 0 1px, transparent 1.8px),
+    radial-gradient(circle at 30% 22%, #ffffff80 0 0.8px, transparent 1.5px),
+    radial-gradient(ellipse 60% 45% at 12% 70%, #ff8fd870, transparent 70%),
+    radial-gradient(ellipse 60% 45% at 88% 70%, #7ff3ff5c, transparent 70%),
+    radial-gradient(ellipse 90% 50% at 50% 0%, #b56bff75, transparent 72%);
+}
 /* The stage light (stage-light.ts, owner's option C): the element's glow
    behind the fighter and a lit disc with a ring under the feet, in the
    fighter's own frame, behind the still fighter and the live rig alike. */
@@ -184,6 +256,12 @@
   max-width: none;
   object-fit: contain;
 }
+/* A skin in a tile fills the picture, whole (ui/components.css,
+   ".ui-tile-art > .skin-thumb"), in the box's own units. */
+.fit-room .ui-tile-art > .skin-thumb {
+  width: 100cqw;
+  height: 100cqh;
+}
 /* Effect pieces (aura, entrance, victory, frame) and Colors are drawn by
    cosmetic-picture.ts at a small default size: fill the picture box, as a
    square that fits its height too. The picture box is already their stage,
@@ -293,6 +371,11 @@
   flex: 1 1 0;
   min-width: 0;
 }
+/* The order button keeps its width when its word changes. */
+.fit-filters > [data-fit-sort] {
+  flex: none;
+  min-width: 124px;
+}
 .fit-count {
   margin-left: auto;
 }
@@ -367,10 +450,14 @@
 .fit-deal-art {
   height: 160px;
   border-radius: var(--rad-md);
-  background: radial-gradient(
-    ellipse at 50% 85%,
-    color-mix(in srgb, var(--r) 34%, var(--ui-bg-2)),
-    var(--ui-bg-0) 75%
+  /* The deal stands on its rarity's backdrop, like a tile. */
+  background: var(
+    --r-backdrop,
+    radial-gradient(
+      ellipse at 50% 85%,
+      color-mix(in srgb, var(--r) 34%, var(--ui-bg-2)),
+      var(--ui-bg-0) 75%
+    )
   );
   display: grid;
   place-items: center;
@@ -426,8 +513,18 @@
   padding: 10px 16px 10px 10px;
   text-align: left;
   border-radius: var(--rad-lg);
-  border: 1px solid color-mix(in srgb, var(--r) 50%, transparent);
-  background: linear-gradient(110deg, #b56bff1f, var(--ui-bg-1) 60%);
+  border: 1px solid color-mix(in srgb, var(--r) 60%, transparent);
+  /* The set's own rarity (its rarest piece), not purple for every set. */
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--r) 20%, var(--ui-bg-1)),
+    var(--ui-bg-1) 60%
+  );
+}
+.fit-bundle[data-rarity="legendary"],
+.fit-bundle[data-rarity="mythical"] {
+  border-width: 1.5px;
+  border-color: color-mix(in srgb, var(--r) 85%, transparent);
 }
 .fit-bundle[aria-pressed="true"] {
   border-color: var(--ui-accent);
@@ -1008,6 +1105,23 @@
   }
   .fit-filters > .ui-chips {
     order: 2;
+  }
+  /* Skins: ownership and the order share the one row; the count is read
+     out, not shown. */
+  .fit-filters.has-sort {
+    flex-wrap: nowrap;
+  }
+  .fit-filters.has-sort > [data-fit-sort] {
+    order: 1;
+    min-width: 0;
+    flex: 1 1 0;
+  }
+  .fit-filters.has-sort > .fit-count {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
   }
 }
 

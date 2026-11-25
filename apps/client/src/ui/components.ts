@@ -237,7 +237,7 @@ export interface TileOptions {
 /** One card for every item: fixed rows, so a long name never moves the art. */
 export function itemTile(o: TileOptions) {
   const mythic = o.rarity === "mythical" || o.rarity === "mythic";
-  return `<button type="button" class="ui-tile${mythic ? " is-mythic" : ""}${o.dim ? " is-unowned" : ""}"${o.rarity ? ` data-rarity="${o.rarity}"` : ""} aria-pressed="${!!o.pressed}" data-ui-item="${esc(o.id)}"${attrs(o.attrs)}>${o.corner ?? ""}<span class="ui-tile-art">${o.art}</span>${o.rarity ? rarityTag(o.rarity) : "<span></span>"}<b class="ui-tile-name">${esc(o.name)}</b><small class="ui-tile-sub">${esc(o.sub ?? "")}</small><span class="ui-tile-foot${o.footKind && o.footKind !== "default" ? ` is-${o.footKind}` : ""}">${o.foot ?? ""}</span></button>`;
+  return `<button type="button" class="ui-tile${mythic ? " is-mythic" : ""}${o.dim ? " is-unowned" : ""}"${o.rarity ? ` data-rarity="${o.rarity}"` : ""} aria-pressed="${!!o.pressed}" data-ui-item="${esc(o.id)}"${attrs(o.attrs)}>${o.corner ?? ""}<span class="ui-tile-art">${o.art}</span>${o.rarity ? rarityTag(o.rarity) : '<span class="ui-rarity is-none"></span>'}<b class="ui-tile-name">${esc(o.name)}</b><small class="ui-tile-sub">${esc(o.sub ?? "")}</small><span class="ui-tile-foot${o.footKind && o.footKind !== "default" ? ` is-${o.footKind}` : ""}">${o.foot ?? ""}</span></button>`;
 }
 
 /* ------------------------------------------------------- empty, confirm */
