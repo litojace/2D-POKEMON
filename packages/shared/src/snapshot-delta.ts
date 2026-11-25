@@ -412,6 +412,10 @@ export class SnapshotDeltaDecoder {
     }
     return cloneData(base) as unknown as WireSnapshot;
   }
+  /** Forget the snapshot we hold (the connection dropped). */
+  reset() {
+    this.base = undefined;
+  }
   /** Whether a delta could be applied right now. */
   get ready() {
     return !!this.base;

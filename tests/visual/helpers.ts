@@ -7,6 +7,10 @@ import { expect, type Page, type TestInfo } from "@playwright/test";
 export async function openHub(page: Page) {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
+  // VISUAL_DELTA=1: every room in this run is sent as the server sends it
+  // with snapshots as changes on (harness/rooms.ts), to run any spec that way.
+  if (process.env.VISUAL_DELTA)
+    await page.addInitScript(() => ((window as any).__delta = true));
   // This machine renders on the CPU (a few frames a second), so Auto would
   // always pick Low: pin High unless a test asks for Auto (__graphicsAuto)
   // or picked a quality itself.

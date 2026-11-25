@@ -272,6 +272,7 @@ import {
 } from "../../../packages/shared/src/index";
 import { AudioManager } from "./audio";
 import { InterpolationBuffer } from "./networking/interpolation";
+import { SNAPSHOT_AUTH, followSnapshots } from "./networking/snapshot-stream";
 import {
   LocalTimeline,
   ShotTimeline,
@@ -594,7 +595,7 @@ function recoverSnapshotMeta(code: string, rev: number) {
 const lobbySelection = new LobbySelection();
 const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   autoConnect: false,
-  auth: { accessToken: null },
+  auth: { accessToken: null, ...SNAPSHOT_AUTH },
 });
 let accountsUI: AccountUI;
 /** The server's key for notifications (null: it sends none). */
@@ -4932,7 +4933,8 @@ socket.on("access-revoked", ({ error }: { error: string }) => {
   // Reconnects too (onSession); a refused expired token is then renewed.
   void accountsUI.refresh();
 });
-socket.on("state", (snapshot: WireSnapshot) => {
+// Whole snapshots and deltas alike arrive here as whole snapshots.
+followSnapshots(socket, (snapshot: WireSnapshot) => {
   if (replacedAccount) return;
   const spectator = !myId && !!watching;
   // A stale room (we left it) can still send a last snapshot: ignore it.
@@ -9468,7 +9470,7 @@ accountsUI = new AccountUI({
     const previous = (
       socket.auth as { accessToken?: string | null } | undefined
     )?.accessToken;
-    socket.auth = { accessToken: token };
+    socket.auth = { accessToken: token, ...SNAPSHOT_AUTH };
     if (replacedAccount) return;
     if (previous === token && socket.connected) return;
     if (previous !== token) socket.disconnect();
@@ -9486,7 +9488,7 @@ accountsUI = new AccountUI({
   onToken: (token) => {
     // Keep the live connection's login fresh (tokens expire hourly) and use
     // the new token if the socket ever has to reconnect.
-    socket.auth = { accessToken: token };
+    socket.auth = { accessToken: token, ...SNAPSHOT_AUTH };
     if (socket.connected) socket.emit("token", { token });
     // A connection the server refused or closed (an hour-old token on a
     // phone waking up) never retries by itself: without this, a player sat

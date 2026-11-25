@@ -1118,6 +1118,22 @@ switch that starts off):
   changes what it is handed). A delta that does not follow, or does not
   fit, discards that snapshot: it is never half applied.
 
+**The client** (`apps/client/src/networking/snapshot-stream.ts`): the
+socket's handshake carries `delta: 1` (`SNAPSHOT_AUTH`), and
+`followSnapshots` turns `state` and `state-delta` into the one stream of
+whole snapshots the game has always read. A snapshot without a number (an
+older server, or the switch off) passes straight through: nothing is kept
+or copied. A delta that does not follow asks for `state-full` once, and
+again each second it has not come. The connection dropping forgets what
+was held.
+
+To run any visual spec the way the server sends rooms with the switch on,
+set `VISUAL_DELTA=1` (the harness's `__push` then sends one whole numbered
+snapshot and deltas after it, through JSON, `tests/visual/harness/rooms.ts`).
+`tests/visual/snapshot-delta.spec.ts` does it in every run: each snapshot
+the game is handed is compared with the one the harness numbered, and a
+delta that never arrives shows nothing until the whole snapshot comes.
+
 Tests: `tests/unit/snapshot-delta.test.ts` rebuilds every snapshot of real
 fights (duel, free-for-all, teams, the seven raid bosses, the seven Spire
 zones, a whole match from lobby to results) and compares each with the
