@@ -4,6 +4,8 @@ import {
   BATTLE_QUALITY,
   BattleQualityGovernor,
   autoStartLevel,
+  forgetOlderLearning,
+  LEARNED_GENERATION,
   isAndroid,
   type BattleCeiling,
   type BattleQuality,
@@ -273,4 +275,41 @@ it("only trims decoration, and at Low draws fewer pixels", () => {
   // never shrinks; below crowded fights' typical 0.66 screens.
   expect(BATTLE_QUALITY.low.glowBudget).toBeGreaterThan(0.45);
   expect(BATTLE_QUALITY.low.glowBudget).toBeLessThan(1);
+});
+
+it("forgets once what Auto learned under an older build", () => {
+  // A phone the old HUD's style work pushed down to Low on 24 Nov: held
+  // there for a week though its graphics chip was not the cause.
+  const data = new Map<string, string>([
+    ["ea-battle-quality", "low"],
+    ["ea-battle-ceiling", JSON.stringify({ level: "low", at: 1 })],
+    ["ea-graphics", "auto"],
+  ]);
+  const store = {
+    getItem: (k: string) => data.get(k) ?? null,
+    setItem: (k: string, v: string) => void data.set(k, v),
+    removeItem: (k: string) => void data.delete(k),
+  };
+  expect(forgetOlderLearning(store)).toBe(true);
+  expect(data.has("ea-battle-quality")).toBe(false);
+  expect(data.has("ea-battle-ceiling")).toBe(false);
+  // The player's own Graphics choice is not Auto's to forget.
+  expect(data.get("ea-graphics")).toBe("auto");
+  expect(data.get("ea-battle-learned")).toBe(LEARNED_GENERATION);
+  // What this build learns afterwards stays.
+  data.set("ea-battle-quality", "medium");
+  data.set("ea-battle-ceiling", JSON.stringify({ level: "medium", at: 2 }));
+  expect(forgetOlderLearning(store)).toBe(false);
+  expect(data.get("ea-battle-quality")).toBe("medium");
+  expect(data.has("ea-battle-ceiling")).toBe(true);
+  // No storage (private mode, a blocked site): nothing to do, no error.
+  expect(forgetOlderLearning(undefined)).toBe(false);
+  expect(
+    forgetOlderLearning({
+      ...store,
+      getItem: () => {
+        throw new Error("blocked");
+      },
+    }),
+  ).toBe(false);
 });

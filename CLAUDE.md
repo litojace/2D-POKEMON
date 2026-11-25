@@ -207,6 +207,14 @@ must stay within what we already ship. Details and measurements:
   `getBoundingClientRect`, `getComputedStyle` after a style change): measure
   once and cache. `tests/visual/match-flow-budget.spec.ts` counts layout
   reads during a real match, and checks that no fighter art loads mid-fight.
+- **Write to the battle HUD through `hud-dom.ts`** (`setHudText`,
+  `setHudHidden`, `setHudAttribute`, `setHudStyle`, `setHudDisabled`,
+  `setHudMarkup`): they write only what changed. `textContent =` makes a new
+  text node each time, and Chromium answers a node going in or out by
+  restyling everything a `:has()` rule could reach (about 55 elements for
+  each cooldown number, 25 Nov); `innerHTML` never compares equal to markup
+  with an icon in it. Read the window's size from `viewport-size.ts`, not
+  `innerWidth` each frame (section 20).
 - **CSS anywhere in the client counts in battle**, even a closed screen's:
   every HUD change makes Chrome recheck the whole page's rules. Never write
   a broad `:has()`: one followed by a combinator and `*` or a bare tag
@@ -253,7 +261,7 @@ It prints the lane and why, from the files the branch changes against
   docs): run the visual specs the change touches locally (step 2 above),
   then merge once the PR's `verify` job is green. When the PR changes
   visual specs, CI also runs those specs on one runner (`visual (touched
-  specs)`): wait for it to be green too, since CI's renderer is far slower
+specs)`): wait for it to be green too, since CI's renderer is far slower
   than the cloud container's (a test that passes locally can fail there).
 - **FULL** (a migration, dependencies, CI, the build or deploy, the visual
   harness, the shared UI in `apps/client/src/ui/` and `style.css`, the

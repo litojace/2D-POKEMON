@@ -722,6 +722,22 @@ export function createArenaServer(
         socket.emit("token-expired");
         return;
       }
+      // Only a refused login signs a player out: one that stayed expired
+      // (401) or a suspended account (403). Anything else is this check
+      // failing, not the player: the accounts service or the database did
+      // not answer (503), a reply was malformed, the network dropped. That
+      // used to end the match as a forfeit for everyone connected, on one
+      // slow answer. The seat stays; the next check, 30 s on, asks again.
+      const refused =
+        error instanceof AccountError &&
+        (error.status === 401 || error.status === 403);
+      if (!refused) {
+        connectionLog("arena-account-check-failed", {
+          status: error instanceof AccountError ? error.status : 0,
+          error: error instanceof Error ? error.message.slice(0, 120) : "",
+        });
+        return;
+      }
       socket.emit("access-revoked", {
         error: error instanceof Error ? error.message : "Login required.",
       });
@@ -1612,6 +1628,24 @@ export function createArenaServer(
         messages = 0;
       }
       return ++messages <= limit;
+    };
+    /**
+     * The steady streams (a battle's inputs, 30 a second; the Plaza's
+     * stick, up to 20) keep counts of their own. Counted with everything
+     * else, they used up the second's allowance of each command with a
+     * small limit: in a battle a quick chat or a refreshed login token
+     * (10 a second) got through only in the first third of each second,
+     * and in the Plaza a jump or a dash pressed while steering was dropped
+     * about half the time, so the server left you on the ground and pulled
+     * you back (found 25 Nov 2026).
+     */
+    const streams = new Map<string, { from: number; count: number }>();
+    const allowedStream = (name: string, limit: number) => {
+      const now = Date.now();
+      let stream = streams.get(name);
+      if (!stream || now - stream.from > 1000)
+        streams.set(name, (stream = { from: now, count: 0 }));
+      return ++stream.count <= limit;
     };
     const reply = (cb: unknown, value: Reply) => {
       if (typeof cb === "function") cb(value);
@@ -2713,16 +2747,21 @@ export function createArenaServer(
     socket.on("rtt", (_data: unknown, cb: unknown) => {
       if (typeof cb === "function") cb();
     });
-    socket.on("input", (data: unknown) =>
-      withRoom(undefined, (a, id) => {
-        const result = inputSchema.safeParse(data);
-        if (result.success)
-          a.enqueue(
-            a.players.find((p) => p.id === id)!,
-            result.data,
-          );
-      }),
-    );
+    socket.on("input", (data: unknown) => {
+      if (!allowedStream("input", 90)) return;
+      withRoom(
+        undefined,
+        (a, id) => {
+          const result = inputSchema.safeParse(data);
+          if (result.success)
+            a.enqueue(
+              a.players.find((p) => p.id === id)!,
+              result.data,
+            );
+        },
+        false,
+      );
+    });
     socket.on("rematch", (data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
         if (updating(cb)) return;
@@ -3264,7 +3303,7 @@ export function createArenaServer(
       reply(cb, { ok: true });
     });
     socket.on("plaza-input", (data: unknown) => {
-      if (!allowed(40)) return;
+      if (!allowedStream("plaza-input", 40)) return;
       const d = data as {
         dx?: unknown;
         dy?: unknown;
@@ -3745,13 +3784,17 @@ export function createArenaServer(
           diagnosticsEvery * 1000,
         )
       : undefined;
+  /** Check every signed-in connection's account again (every 30 s). */
+  const refreshAccounts = () =>
+    Promise.all(
+      [...io.sockets.sockets.values()]
+        .filter((socket) => socket.data.account)
+        .map((socket) => refreshSocket(socket)),
+    );
   const accountTimer =
     options.autoTick === false
       ? undefined
-      : setInterval(() => {
-          for (const socket of io.sockets.sockets.values())
-            if (socket.data.account) void refreshSocket(socket);
-        }, 30000);
+      : setInterval(() => void refreshAccounts(), 30000);
   /** A newer server answers the public address (superseded, above). */
   const supersede = (by: string) => {
     if (superseded) return;
@@ -3800,6 +3843,7 @@ export function createArenaServer(
     broadcast,
     plaza,
     plazaStep,
+    refreshAccounts,
     diagnostics,
     /** Whether a deploy is replacing this server (drain). */
     get draining() {
