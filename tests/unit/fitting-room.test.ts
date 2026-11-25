@@ -14,6 +14,7 @@ import {
   fittingRoomMarkup,
   fittingRoomParts,
   missionCoinsLeft,
+  newInShop,
   ownedFor,
   pendingChanges,
   purchase,
@@ -95,6 +96,15 @@ const tiles = (html: string) =>
   [...html.matchAll(/class="ui-tile[^"]*"[^>]*data-ui-item="([^"]+)"/g)].map(
     (m) => m[1],
   );
+/**
+ * Today's picks alone: the tiles less the "New in the Shop" row's, which
+ * holds whatever shop-arrivals.ts dates in the last 14 days (by today's
+ * clock), so a test of the picks doesn't change when a collection arrives.
+ */
+const pickTiles = (html: string, view: FitView, d: FitData) => {
+  const fresh = new Set(newInShop(view, d));
+  return tiles(html).filter((id) => !fresh.has(id));
+};
 
 describe("prices and the purchase confirmation", () => {
   it("shows the server's price rules: today's 20% off, sets at 80% of what you don't own", () => {
@@ -315,7 +325,10 @@ describe("the Shop's catalogue", () => {
     );
     expect(body).toContain("Ends in");
     expect(body).toContain("New picks in");
-    expect(tiles(body)).toEqual(["galaxy-aura", "mystowl-scholar"]);
+    expect(pickTiles(body, shop(), data(e))).toEqual([
+      "galaxy-aura",
+      "mystowl-scholar",
+    ]);
     // Once bought there is no featured deal.
     expect(
       fittingRoomParts(
@@ -751,7 +764,10 @@ describe("ids this build doesn't know", () => {
       },
     });
     const body = fittingRoomParts(shop(), data(e)).body;
-    expect(tiles(body)).toEqual(["galaxy-aura", "mystowl-scholar"]);
+    expect(pickTiles(body, shop(), data(e))).toEqual([
+      "galaxy-aura",
+      "mystowl-scholar",
+    ]);
     expect(body).not.toContain(NEW);
   });
   it("shows no featured deal when the deal is an unknown item", () => {
@@ -760,7 +776,7 @@ describe("ids this build doesn't know", () => {
     });
     const body = fittingRoomParts(shop(), data(e)).body;
     expect(body).not.toContain('class="fit-deal"');
-    expect(tiles(body)).toEqual(["galaxy-aura"]);
+    expect(pickTiles(body, shop(), data(e))).toEqual(["galaxy-aura"]);
     // The known pick keeps its full price: the deal isn't it.
     expect(purchase("galaxy-aura", e)?.was).toBeUndefined();
   });
@@ -769,7 +785,7 @@ describe("ids this build doesn't know", () => {
       picks: { day: "2026-10-17", items: [NEW, "other-new"], deal: null },
     });
     const body = fittingRoomParts(shop(), data(e)).body;
-    expect(tiles(body)).toEqual([]);
+    expect(pickTiles(body, shop(), data(e))).toEqual([]);
     expect(body).not.toContain("Daily picks");
     expect(body).toContain("Earn coins");
   });
