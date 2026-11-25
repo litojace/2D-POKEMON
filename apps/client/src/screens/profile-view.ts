@@ -414,5 +414,12 @@ export function profileMarkup(view: ProfileView, d: ProfileData) {
           "profile-tab",
         )
       : "";
-  return `<section class="ui-panel profile-panel${tabRow ? " has-tabs" : ""}" role="dialog" aria-label="Player card">${panelHead(d.name, "Player card", tabRow + tools)}<div class="ui-panel-body pf-body">${playerCard(d)}<div class="pf-main" data-profile-main${tabRow ? ` role="tabpanel" data-tab="${view.tab}"` : ""}>${main(d, view)}</div></div></section>`;
+  const body = main(d, view);
+  // A class, not `.pf-main:has(> .pf-account)`: that rule (with its `> *`)
+  // made Chrome re-check it on every style change anywhere in the page,
+  // battles included, where the Profile screen sits closed. It cost about
+  // 40% of all style recalculation in a duel (25 Nov 2026,
+  // docs/network-performance.md "Style recalculation and :has()").
+  const account = body.includes('class="pf-account"') ? " has-account" : "";
+  return `<section class="ui-panel profile-panel${tabRow ? " has-tabs" : ""}" role="dialog" aria-label="Player card">${panelHead(d.name, "Player card", tabRow + tools)}<div class="ui-panel-body pf-body">${playerCard(d)}<div class="pf-main${account}" data-profile-main${tabRow ? ` role="tabpanel" data-tab="${view.tab}"` : ""}>${body}</div></div></section>`;
 }
