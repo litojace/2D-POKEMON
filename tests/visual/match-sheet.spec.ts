@@ -250,6 +250,47 @@ for (const size of SIZES) {
         expect(tall.titleHeight).toBeGreaterThanOrEqual(20);
         expect(tall.overlap).toBeLessThanOrEqual(0);
         expect(tall.scrolls).toBe(true);
+        // The recap is a scoreboard card like a raid's (25 Nov 2026): inside
+        // the sheet, a plate per fighter with every cell one height, each
+        // figure ending under its heading, names whole.
+        const recap = await page.evaluate(() => {
+          const table = document.querySelector<HTMLElement>(
+            "#arena-overlay .recap",
+          )!;
+          const box = table.getBoundingClientRect();
+          const sheetBox = table
+            .closest(".overlay-card")!
+            .getBoundingClientRect();
+          const heads = Array.from(table.querySelectorAll("thead th")).map(
+            (h) => h.getBoundingClientRect(),
+          );
+          const problems: string[] = [];
+          if (box.left < sheetBox.left || box.right > sheetBox.right)
+            problems.push("the card leaves the sheet");
+          if (getComputedStyle(table).borderTopWidth === "0px")
+            problems.push("no card edge");
+          for (const row of Array.from(table.querySelectorAll("tbody tr"))) {
+            const cells = Array.from(row.children) as HTMLElement[];
+            const who = cells[0].textContent;
+            const heights = new Set(
+              cells.map((c) => Math.round(c.getBoundingClientRect().height)),
+            );
+            if (heights.size !== 1)
+              problems.push(`${who}: cells of ${[...heights]} px`);
+            cells.forEach((c, i) => {
+              const b = c.getBoundingClientRect();
+              if (b.left < box.left || b.right > box.right)
+                problems.push(`${who}: cell ${i} outside the card`);
+              if (i && Math.abs(b.right - heads[i].right) > 1)
+                problems.push(`${who}: figure ${i} not under its heading`);
+            });
+            const name = cells[0].querySelector<HTMLElement>("span")!;
+            if (name.scrollWidth > name.clientWidth + 1)
+              problems.push(`${who}: name cut`);
+          }
+          return problems;
+        });
+        expect(recap).toEqual([]);
         await snap(page, info, `pvp-${name}-${label(size)}`);
       }
       // Back in a fight: nothing over the arena.

@@ -9096,7 +9096,30 @@ function arenaLoading(s: Snapshot) {
   }
   const now = performance.now();
   if (!arenaWaitSince) arenaWaitSince = now;
-  return now - arenaWaitSince < ARENA_WAIT_MAX_MS;
+  const loading = now - arenaWaitSince < ARENA_WAIT_MAX_MS;
+  if (loading) watchArenaLoad();
+  return loading;
+}
+let arenaLoadWatch = 0;
+/**
+ * While the arena loads, draw the battle's overlays again a few times a
+ * second, and once more when it is ready: a briefing's "I'm ready" and the
+ * Reveal say how far the load is and open when it ends. Only the server's
+ * next snapshot did that before, and a quiet room sends few of them: with
+ * none, the button stayed on "Loading the arena" (the Spire's briefing,
+ * when the battle kit arrived after the room opened).
+ */
+function watchArenaLoad() {
+  if (arenaLoadWatch) return;
+  arenaLoadWatch = window.setInterval(() => {
+    const live = !!state && state.phase !== "lobby";
+    // (renderBattle asks arenaLoading again, which keeps this one watch.)
+    if (live) renderBattle();
+    if (!live || !arenaLoading(state!)) {
+      window.clearInterval(arenaLoadWatch);
+      arenaLoadWatch = 0;
+    }
+  }, 250);
 }
 /**
  * At the end of a match, tell the server how smoothly it ran on this device
