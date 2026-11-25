@@ -520,6 +520,7 @@ import "./ui/phone-fit.css";
 import "./settings-screen.css";
 import { fighterPickerMarkup } from "./fighter-picker";
 import "./result-extras.css";
+import { partyInviteRow } from "./screens/friends-view";
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(
@@ -2505,7 +2506,11 @@ async function showPartyInvite() {
       ? `<ul class="party-invite-list">${online
           .map((f) => {
             const state = partyInviteButton(f.id);
-            return `<li><span><b>${escape(f.name)}</b><small>${members.has(f.id) ? "In your party" : "Online"}</small></span><button type="button" class="secondary" data-party-invite="${f.id}"${state.off ? " disabled" : ""}>${state.label}</button></li>`;
+            return partyInviteRow(f, {
+              inParty: members.has(f.id),
+              label: state.label,
+              off: state.off,
+            });
           })
           .join("")}</ul>`
       : `<p class="muted">None of your friends are online right now.</p><p><button type="button" class="secondary" id="party-open-friends">${iconLabel("friends", "Open Friends")}</button></p>`;
