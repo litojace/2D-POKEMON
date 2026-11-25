@@ -36,8 +36,24 @@ for (const size of SIZES)
         isMobile: size.phone,
         hasTouch: size.phone,
       });
+      // The cards start face down while the arena loads, so the arena stays
+      // loading until they have been looked at: Phaser (it loads after the
+      // first screen) is held back, as on a slow phone network. The Reveal
+      // draws itself again while the arena loads and turns its cards over
+      // once it is in, snapshot or not (main.ts watchArenaLoad), so on a
+      // slow CI runner the cards had turned and landed before these checks
+      // ran (#462).
+      let release!: () => void;
+      const held = new Promise<void>((r) => (release = r));
       try {
         const page = await context.newPage();
+        await page.route(
+          /\/node_modules\/\.vite\/deps\/phaser\.js/,
+          async (route) => {
+            await held;
+            await route.continue().catch(() => {});
+          },
+        );
         const errors = await openLobby(page);
         await page.evaluate((o) => (window as any).__room("pvp", o), {
           mode: m.mode,
@@ -89,6 +105,10 @@ for (const size of SIZES)
         const cards = card.locator(".rv-card");
         await expect(cards).toHaveCount(m.seats);
         await expect(card.locator(".vs-back")).toHaveCount(m.seats);
+        await expect(card.locator(".rv-card.is-waiting")).toHaveCount(m.seats);
+        await expect(card.locator(".rv-load span")).toContainText(
+          "Loading the arena",
+        );
         await expect(card.locator(".vs-back small").first()).toHaveText(
           "tester",
         );
@@ -104,7 +124,9 @@ for (const size of SIZES)
           await page.screenshot({
             path: `${process.env.VISUAL_SHOTS}/reveal-${m.name}-start-${size.name}.png`,
           });
-        // Snapshots keep coming: every card turns over, and stays turned.
+        // The arena comes in; snapshots keep coming: every card turns over,
+        // and stays turned.
+        release();
         await expect
           .poll(
             async () => {
@@ -226,6 +248,7 @@ for (const size of SIZES)
         await snap(page, info, `reveal-${m.name}-${size.name}`);
         expect(errors).toEqual([]);
       } finally {
+        release();
         await context.close();
       }
     });
