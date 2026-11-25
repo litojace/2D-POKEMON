@@ -67,6 +67,17 @@
 .fit-stage[data-rarity="legendary"] .stage-light-rays {
   visibility: visible;
 }
+/* The rays run on past the fighter's frame (an SVG clips at its viewBox,
+   which the camera fits to the host's width) and past the host (which
+   clips too), up to the stage's top edge: the stage clips them at its own
+   rounded corners. */
+.fit-stage[data-rarity="legendary"] > .shop-live-stage {
+  overflow: visible;
+}
+.fit-stage[data-rarity="legendary"] > .shop-live-stage > .stage-light {
+  overflow: visible;
+  mask-image: none;
+}
 .fit-stage[data-rarity="mythical"] {
   border-color: color-mix(in srgb, var(--r-mythic) 60%, transparent);
 }
@@ -114,7 +125,14 @@
   /* The old Shop preview's inset outline: on a host narrower than the
      stage (desktop) or moved down (phones) it drew a stray line. */
   box-shadow: none;
-  /* The floor fades out above the name instead of ending in an edge. */
+}
+/* The floor fades out above the name instead of ending in an edge. On the
+   host's layers, not the host: a mask clips whatever lies outside the box
+   it is on, and a Legendary's rays reach past the host's top to the
+   stage's (on a phone the host is also moved down, fitting-room.css
+   --fit-drop): they stopped in a straight line a quarter of the way down
+   (owner, 25 Nov). */
+.fit-stage > .shop-live-stage:not(.is-frame) > * {
   mask-image: linear-gradient(180deg, #000 82%, transparent);
 }
 .fit-stage > .shop-live-stage.is-frame {
