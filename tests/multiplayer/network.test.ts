@@ -372,8 +372,15 @@ it("cleans empty rooms and recovers a disconnected lobby slot", async () => {
 it("broadcasts every room at the snapshot rate, including when an even number of rooms exist", async () => {
   const one = await connect(),
     two = await connect();
-  await emit(one, "create", { name: "One" });
-  await emit(two, "create", { name: "Two" });
+  const first = await emit(one, "create", { name: "One" });
+  const second = await emit(two, "create", { name: "Two" });
+  // In a fight (a lobby is sent only when it changes: idle-snapshots.test.ts).
+  for (const code of [first.code!, second.code!]) {
+    const arena = server.rooms.get(code)!;
+    arena.phase = "countdown";
+    arena.deadline = arena.time + 60;
+  }
+  await wait();
   let a = 0,
     b = 0;
   one.on("state", () => a++);
