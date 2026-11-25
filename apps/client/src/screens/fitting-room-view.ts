@@ -951,19 +951,23 @@ function filters(
   noun: string,
   sortable = false,
 ) {
-  // One button that says the order and changes it (two orders: no menu).
+  // The order, as a switch of two halves (owner's pick B, 25 Nov): both
+  // orders in sight, the lit one is the order shown, one tap changes it. A
+  // long toggle button used to fill a phone's row for two choices. The
+  // marks are the tiles' own: the rarity diamond and the coin of a price;
+  // the words show where there is room (fitting-room.css).
   const sort = sortable
-    ? button(view.sort === "price" ? "Cheapest" : "Rarest", {
-        size: "s",
-        icon: "swap",
-        attrs: {
-          "data-fit-sort": view.sort === "price" ? "rarity" : "price",
-          "aria-label":
-            view.sort === "price"
-              ? "Sorted cheapest first. Sort rarest first"
-              : "Sorted rarest first. Sort cheapest first",
-        },
-      })
+    ? `<div class="ui-seg fit-sort" role="group" aria-label="Order">${(
+        [
+          ["rarity", "Rarest", '<i class="fit-gem" aria-hidden="true"></i>'],
+          ["price", "Cheapest", '<i class="ui-coin" aria-hidden="true"></i>'],
+        ] as const
+      )
+        .map(
+          ([id, word, mark]) =>
+            `<button type="button" data-fit-sort="${id}" aria-pressed="${view.sort === id}" aria-label="${word} first" title="${word} first">${mark}<span class="fit-sort-word">${word}</span></button>`,
+        )
+        .join("")}</div>`
     : "";
   const own = segmented(
     (

@@ -844,14 +844,15 @@ describe("rarity and order in the catalogue", () => {
       .map((s) => s.id);
     expect(ids.filter((id) => legendary.includes(id))).toEqual(legendary);
   });
-  it("sorts cheapest first on request, and the button says the order it shows", () => {
+  it("sorts cheapest first on request, and the switch lights the order it shows", () => {
     const rare = fittingRoomParts(shop({ section: "skins" }), data()).body;
-    expect(rare).toMatch(/data-fit-sort="price"[^>]*>.*?Rarest/s);
+    expect(rare).toContain('data-fit-sort="rarity" aria-pressed="true"');
+    expect(rare).toContain('data-fit-sort="price" aria-pressed="false"');
     const cheap = fittingRoomParts(
       shop({ section: "skins", sort: "price" }),
       data(),
     ).body;
-    expect(cheap).toMatch(/data-fit-sort="rarity"[^>]*>.*?Cheapest/s);
+    expect(cheap).toContain('data-fit-sort="price" aria-pressed="true"');
     const ids = tiles(cheap);
     // Every Common first (500 coins), in the catalogue's order.
     const commons = skinsOf("voltkit")
