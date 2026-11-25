@@ -835,11 +835,12 @@ describe("rarity and order in the catalogue", () => {
     ).body;
     expect(cheap).toMatch(/data-fit-sort="rarity"[^>]*>.*?Cheapest/s);
     const ids = tiles(cheap);
-    expect(ids.slice(0, 3)).toEqual([
-      "voltkit-midnight",
-      "voltkit-peach-fizz",
-      "voltkit-mint-static",
-    ]);
+    // Every Common first (500 coins), in the catalogue's order.
+    const commons = skinsOf("voltkit")
+      .filter((s) => s.rarity === "common")
+      .map((s) => s.id);
+    expect(commons).toContain("voltkit-midnight");
+    expect(ids.slice(0, commons.length)).toEqual(commons);
     expect(ids.at(-1)).toBe("voltkit-stormcrown");
     // Today's deal doesn't move a skin: the order is by list price.
     const e = economy({
