@@ -70,11 +70,14 @@ Winter, Festival, Garden, Candy, Retro Pixel, Galaxy).
 | 8   | **Sun Dynasty**    | 18 skins + set                                 | Legendary / 5,500                           | A desert kingdom in gold and lapis: gold is the Legendary finish                                                                            |
 | 9   | Single pieces      | Auras, frames, entrances, victories sold alone | By slot and tier                            | Needs a place in the Collections screen (the Shop screens' session)                                                                         |
 
-Shipped (none yet in Today's Picks): 1 (migration
+Shipped, all merged on 25 Nov: 1 (migration
 `20261125130000_starlight_idol.sql`); 2–4 (migration
 `20261125140000_seaside_steamworks_borealis.sql`); 5 (migration
 `20261125150000_birthstone.sql`); 6 (migration `20261125160000_rainy_day.sql`); 7 (migration
 `20261125170000_grand_prix.sql`); 8 (migration `20261125180000_sun_dynasty.sql`).
+All eight collections were opened to Today's Picks by
+`20261125190000_open_new_picks.sql`, since #435 was live on the web and no App
+Store build existed yet. Their set bundles stay out, as every bundle does.
 
 ![Starlight Idol: the eighteen skins on the Shop's stage](shop-new-items/starlight-idol.jpg)
 
