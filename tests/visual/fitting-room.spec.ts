@@ -325,6 +325,57 @@ test("the Wardrobe: try several things, then Equip once or Revert", async ({
   expect(errors).toEqual([]);
 });
 
+// The Wardrobe's bar on the smallest phone: the count of changes and the
+// fighter's name read in full, and their text stops short of Revert.
+// ("Voltkit · no changes" on one line was cut to "VOLTKI…", and the first
+// fix's capitals ran into Revert: a box that fits can still hold text that
+// spills, so this measures the text itself.)
+test("the Wardrobe's bar reads in full at 667x375", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 667, height: 375 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await shopServer(page, { owned: ["voltkit-midnight", "wombolder-coal"] });
+    const errors = await openLobby(page);
+    await openWardrobe(page);
+    const fits = () =>
+      page.evaluate(() => {
+        const revert = document
+          .querySelector(".ui-panel-foot [data-fit-revert]")!
+          .getBoundingClientRect();
+        return [".fit-foot-count", ".fit-foot-text .ui-h"].map((sel) => {
+          const el = document.querySelector<HTMLElement>(
+            `.ui-panel-foot ${sel}`,
+          )!;
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          const text = range.getBoundingClientRect();
+          return {
+            text: el.textContent,
+            whole: el.scrollWidth <= el.clientWidth + 1,
+            clear: text.right <= revert.left - 4,
+          };
+        });
+      });
+    const ok = (text: string) => ({ text, whole: true, clear: true });
+    expect(await fits()).toEqual([ok("No changes"), ok("Voltkit")]);
+    await page.click('[data-ui-item="voltkit-midnight"]');
+    expect(await fits()).toEqual([ok("1 change"), ok("Voltkit")]);
+    // The longest fighter name.
+    await page
+      .locator('[data-fit-fighter="wombolder"]')
+      .evaluate((el) => (el as HTMLElement).click());
+    await page.click('[data-ui-item="wombolder-coal"]');
+    expect(await fits()).toEqual([ok("1 change"), ok("Wombolder")]);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
 test("keyboard: tabs and grids move with the arrows, Escape leaves to the Lobby", async ({
   page,
 }) => {

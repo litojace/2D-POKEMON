@@ -739,12 +739,12 @@
   text-overflow: ellipsis;
 }
 /* The Wardrobe's count of changes, above the fighter's name (as the Shop's
-   bar shows the rarity there): gold once there is something to Equip. */
+   bar shows the rarity there, in the same small bold type): gold once there
+   is something to Equip. Not in capitals: "NO CHANGES" ran into Revert on a
+   667 px phone. */
 .fit-foot-count {
   font-size: var(--fs-micro);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--ui-dim);
   white-space: nowrap;
 }
@@ -1135,6 +1135,16 @@
     height: 1px;
     overflow: hidden;
     clip-path: inset(50%);
+  }
+}
+
+/* The narrowest phones: the Wardrobe's bar drops the fighter's picture (the
+   stage beside it shows the same fighter), so a name like "Wombolder" and
+   the count above it read in full beside Revert and Equip: the text had
+   59 px there. The Shop's bar keeps its picture, of the item to buy. */
+@media (max-height: 500px) and (max-width: 720px) {
+  .fit-room[data-fit-mode="wardrobe"] .fit-foot-art {
+    display: none;
   }
 }
 
