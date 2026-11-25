@@ -1,5 +1,5 @@
 import type { CharacterId } from "@arena/shared";
-import { DESIGNS, backPanel, hatShape, onPole, torso, type Design, type Kit } from "./modern-designs";
+import { BACK_TRAIT, DESIGNS, backUnder, hatShape, onPole, torso, type Design, type Kit } from "./modern-designs";
 
 /**
  * Stars & Stripes for the rest of the roster: every champion is a figure of
@@ -32,7 +32,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   cindrake(k) {
     const jacket = "#2a2a36";
     const flames = (x: number, y: number) => k.lume("pulse", k.path(`M${x - 8} ${y + 6}q2 -8 5 -4q1 -7 5 -3q2 -6 6 0q-4 4 -16 7Z`, "#ff8a3a", k.ink, 0.5), 0, "#ffb347");
-    if (k.back) backPanel(k, jacket, flames(k.C - 2, k.B - 12));
+    if (k.back) backUnder(k, jacket, flames(k.C - 2, k.B - 12));
     else {
       const c = cx(k);
       k.put("body", torso(k, jacket, flames(c - 4, k.B - 10) + k.line(`M${c} ${k.T + 2}V${k.B}`, "#5a5a68", 1.2)) +
@@ -50,7 +50,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   // the bell glowing gold.
   auralynx(k) {
     const vest = "#5a2f6e";
-    if (k.back) backPanel(k, vest);
+    if (k.back) backUnder(k, vest);
     else {
       const c = cx(k);
       k.put("body", torso(k, CREAM, k.path(`M${k.L - 2} ${k.T - 2}H${c - 5}L${c - 3} ${k.B + 4}H${k.L - 2}Z M${k.R + 2} ${k.T - 2}H${c + 5}L${c + 3} ${k.B + 4}H${k.R + 2}Z`, vest, k.ink, 0.8) +
@@ -66,7 +66,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   // Neon Diner: a diner cap and apron, and a milkshake whose neon straw glows.
   lumoth(k) {
     const dress = "#7fd8e0";
-    if (k.back) backPanel(k, dress, k.path(`M${k.C - 6} ${k.T + 14}l6 4l6 -4l-2 6h-8Z`, "#ffffff", k.ink, 0.6));
+    if (k.back) backUnder(k, dress, k.path(`M${k.C - 6} ${k.T + 14}l6 4l6 -4l-2 6h-8Z`, "#ffffff", k.ink, 0.6));
     else {
       const c = cx(k);
       k.put("body", torso(k, dress, k.path(`M${c - 11} ${k.T + 4}H${c + 11}L${c + 13} ${k.B + 4}H${c - 13}Z`, "#ffffff", k.ink, 0.7) + k.path(`M${c - 9} ${k.T - 1}L${c} ${k.T + 6}L${c + 9} ${k.T - 1}Z`, "#ff6fae", k.ink, 0.6)));
@@ -89,7 +89,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   // badge whose sprocket holes light in a run.
   duskveil(k) {
     const trench = "#b8955a";
-    if (k.back) backPanel(k, trench, k.rect(k.C - k.W - 2, k.B - 12, 2 * k.W + 4, 4, 0, "#8a6a3a"));
+    if (k.back) backUnder(k, trench, k.rect(k.C - k.W - 2, k.B - 12, 2 * k.W + 4, 4, 0, "#8a6a3a"));
     else {
       const c = cx(k);
       k.put("body", torso(k, trench, k.path(`M${k.L - 2} ${k.T - 2}L${c - 2} ${k.T + 18}L${k.L - 2} ${k.T + 22}Z M${k.R + 2} ${k.T - 2}L${c + 2} ${k.T + 18}L${k.R + 2} ${k.T + 22}Z`, "#a8854a", k.ink, 0.7) +
@@ -108,7 +108,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   // lasso of light coiled at the hip.
   coilemur(k) {
     const vest = "#6a4220";
-    if (k.back) backPanel(k, CREAM, k.rect(k.C - 10, k.T + 4, 20, 14, 1, "#ffffff", k.ink, 0.6) + `<text x="${k.C}" y="${k.T + 15}" font-family="Arial Black,Arial,sans-serif" font-size="9" text-anchor="middle" fill="${RED}">7</text>`);
+    if (k.back) backUnder(k, CREAM, k.rect(k.C - 10, k.T + 4, 20, 14, 1, "#ffffff", k.ink, 0.6) + `<text x="${k.C}" y="${k.T + 15}" font-family="Arial Black,Arial,sans-serif" font-size="9" text-anchor="middle" fill="${RED}">7</text>`);
     else {
       const c = cx(k);
       k.put("body", torso(k, CREAM, k.path(`M${k.L - 2} ${k.T - 2}H${c - 5}L${c - 3} ${k.B + 4}H${k.L - 2}Z M${k.R + 2} ${k.T - 2}H${c + 5}L${c + 3} ${k.B + 4}H${k.R + 2}Z`, vest, k.ink, 0.8) +
@@ -124,7 +124,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   // glove whose seams glow.
   pyranda(k) {
     const pin = (x0: number, x1: number, y0: number, y1: number) => [0, 1, 2, 3, 4, 5].map((i) => k.line(`M${x0 + i * (x1 - x0) / 5} ${y0}V${y1}`, "#c8d0e0", 0.8)).join("");
-    if (k.back) backPanel(k, "#ffffff", pin(k.C - k.W, k.C + k.W, k.T, k.B) + `<text x="${k.C}" y="${k.T + 22}" font-family="Arial Black,Arial,sans-serif" font-size="14" text-anchor="middle" fill="${NAVY}">1</text>`);
+    if (k.back) backUnder(k, "#ffffff", pin(k.C - k.W, k.C + k.W, k.T, k.B) + `<text x="${k.C}" y="${k.T + 22}" font-family="Arial Black,Arial,sans-serif" font-size="14" text-anchor="middle" fill="${NAVY}">1</text>`);
     else {
       const c = cx(k);
       k.put("body", torso(k, "#ffffff", pin(k.L, k.R, k.T, k.B) + k.path(`M${c - 9} ${k.T - 1}L${c} ${k.T + 8}L${c + 9} ${k.T - 1}`, "none", NAVY, 1.6) +
@@ -147,7 +147,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   glacelle(k) {
     const parka = "#2c5f8c";
     const aurora = (x0: number, x1: number, y: number) => ["#7dff8a", "#59f0ff", "#c9a3ff"].map((c, i) => k.lume("chase", k.path(`M${x0} ${y + i * 3}q${(x1 - x0) / 4} -4 ${(x1 - x0) / 2} 0t${(x1 - x0) / 2} 0`, "none", c, 1.6), i, c)).join("");
-    if (k.back) backPanel(k, parka, aurora(k.C - k.W, k.C + k.W, k.T + 12));
+    if (k.back) backUnder(k, parka, aurora(k.C - k.W, k.C + k.W, k.T + 12));
     else {
       const c = cx(k);
       k.put("body", torso(k, parka, aurora(k.L, k.R, k.T + 14) + k.line(`M${c} ${k.T + 2}V${k.B}`, "#1f4a70", 1)));
@@ -159,7 +159,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   // and a long scarf whose star pin glows.
   halcyra(k) {
     const leather = "#7a4a24";
-    if (k.back) backPanel(k, leather, k.path(starD(k.C, k.T + 14, 6), CREAM, RED, 0.8));
+    if (k.back) backUnder(k, leather, k.path(starD(k.C, k.T + 14, 6), CREAM, RED, 0.8));
     else {
       const c = cx(k);
       k.put("body", torso(k, leather, k.path(`M${k.L - 2} ${k.T - 2}Q${c} ${k.T + 6} ${k.R + 2} ${k.T - 2}L${k.R + 2} ${k.T + 3}Q${c} ${k.T + 11} ${k.L - 2} ${k.T + 3}Z`, "#e8dcc4", k.ink, 0.6) + k.line(`M${c} ${k.T + 6}V${k.B}`, "#5a3a1c", 1.2)) +
@@ -177,7 +177,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   // wand whose tip sparkles.
   astrabun(k) {
     const coat = "#2a2a36";
-    if (k.back) backPanel(k, coat, k.path(`M${k.C - 2} ${k.B - 2}L${k.C - 8} ${k.B + 12}L${k.C} ${k.B + 6}L${k.C + 8} ${k.B + 12}L${k.C + 2} ${k.B - 2}Z`, coat));
+    if (k.back) backUnder(k, coat, k.path(`M${k.C - 2} ${k.B - 2}L${k.C - 8} ${k.B + 12}L${k.C} ${k.B + 6}L${k.C + 8} ${k.B + 12}L${k.C + 2} ${k.B - 2}Z`, coat));
     else {
       const c = cx(k);
       k.put("body", torso(k, "#ffffff", k.path(`M${k.L - 2} ${k.T - 2}H${c - 5}L${c - 3} ${k.B + 4}H${k.L - 2}Z M${k.R + 2} ${k.T - 2}H${c + 5}L${c + 3} ${k.B + 4}H${k.R + 2}Z`, coat, k.ink, 0.8) +
@@ -192,8 +192,12 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   // Linebacker: a helmet with a stripe and shoulder pads under a jersey
   // whose number lights up.
   wombolder(k) {
-    if (k.back) backPanel(k, NAVY, `<text x="${k.C}" y="${k.T + 24}" font-family="Arial Black,Arial,sans-serif" font-size="18" text-anchor="middle" fill="${CREAM}">55</text>`);
-    else {
+    if (k.back) {
+      // The jersey goes under the boulder, and its number is painted on it.
+      const [, y0, , y1] = BACK_TRAIT.wombolder!.box;
+      backUnder(k, NAVY);
+      k.put("scarf", `<text x="${k.C}" y="${(y0 + y1) / 2 + 7}" font-family="Arial Black,Arial,sans-serif" font-size="18" text-anchor="middle" fill="${CREAM}" stroke="${NAVY}" stroke-width="0.8">55</text>`);
+    } else {
       const c = cx(k);
       k.put("body", torso(k, NAVY, k.line(`M${k.L} ${k.T + 6}H${k.R}`, CREAM, 2) +
         k.lume("pulse", `<text x="${c}" y="${k.B - 6}" font-family="Arial Black,Arial,sans-serif" font-size="15" text-anchor="middle" fill="#ffffff" stroke="${RED}" stroke-width="0.8">55</text>`, 0, "#ffffff")));
@@ -211,7 +215,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   // pendant and headphones round the neck lit in a run.
   shadopus(k) {
     const bomber = "#2a1f44";
-    if (k.back) backPanel(k, bomber, k.path(starD(k.C, k.T + 14, 7), "#ff4fd8", "none"));
+    if (k.back) backUnder(k, bomber, k.path(starD(k.C, k.T + 14, 7), "#ff4fd8", "none"));
     else {
       const c = cx(k);
       k.put("body", torso(k, bomber, k.line(`M${k.L} ${k.B - 5}H${k.R}`, "#ff4fd8", 2)) +
@@ -225,7 +229,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   // pair of binoculars.
   pangrove(k) {
     const shirt = "#c8b07a";
-    if (k.back) backPanel(k, shirt);
+    if (k.back) backUnder(k, shirt);
     else {
       const c = cx(k);
       k.put("body", torso(k, shirt, k.rect(c - 12, k.T + 6, 8, 6, 1, "#b89a62", k.ink, 0.5) + k.rect(c + 4, k.T + 6, 8, 6, 1, "#b89a62", k.ink, 0.5) + k.path(`M${c - 9} ${k.T - 1}L${c} ${k.T + 6}L${c + 9} ${k.T - 1}`, "none", "#3f6a3a", 1.6)) +
@@ -242,7 +246,7 @@ export const STARS: Partial<Record<CharacterId, Design>> = {
   // guitar on the back.
   mossloth(k) {
     const swirl = (x0: number, y0: number) => ["#ff6fae", "#ffd84a", "#59f0ff", "#7dff8a"].map((c, i) => `<circle cx="${x0}" cy="${y0}" r="${14 - i * 3.4}" fill="${c}" opacity=".9"/>`).join("");
-    if (k.back) backPanel(k, "#ff9ac0", swirl(k.C, k.T + 16));
+    if (k.back) backUnder(k, "#ff9ac0", swirl(k.C, k.T + 16));
     else {
       const c = cx(k);
       k.put("body", torso(k, "#ff9ac0", swirl(c, k.T + 16)));
