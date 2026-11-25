@@ -175,7 +175,7 @@
     for (const [label, key, text] of [
       ["Health", "health", c.health],
       ["Speed", "speed", c.speed],
-      ["Reach", "reach", `${reachWord(c.reach)} · ${c.reach}`],
+      ["Reach", "reach", `${reachWord(c.reach)} \u00b7 ${c.reach}`],
     ]) {
       const [lo, hi] = range(key);
       const share = 0.18 + (0.82 * (c[key] - lo)) / (hi - lo || 1);
@@ -214,7 +214,7 @@
     const skins = $("#champ-skins");
     skins.replaceChildren();
     $("#champ-skins-h").textContent =
-      `Featured skins · ${c.skinCount} in the Wardrobe`;
+      `Featured skins \u00b7 ${c.skinCount} in the Wardrobe`;
     const base = el("li");
     const pick = (btn, src, alt) => {
       $$("button", skins).forEach((b) =>
