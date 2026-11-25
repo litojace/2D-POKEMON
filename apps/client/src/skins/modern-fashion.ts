@@ -186,7 +186,7 @@ export function modernOutfit(
   const epic = EPIC_THEMES.has(theme);
   let tailored = !epic || !back;
   const put = (part: CreaturePart, svg: string, under = false) => {
-    if (!tailored && part === "scarf") {
+    if (!tailored && part === "scarf" && !kit.backTailored) {
       const t = tailorBack(kit, svg);
       if (t !== svg) (tailored = true), (svg = t);
     }
