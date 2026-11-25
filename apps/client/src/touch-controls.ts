@@ -1,4 +1,9 @@
-import { setHudAttribute, setHudStyle } from "./hud-dom";
+import {
+  setHudAttribute,
+  setHudStyle,
+  setHudText,
+  sweepPercent,
+} from "./hud-dom";
 import { iconLabel, menuIcon } from "./menu-icons";
 import { lockLandscape } from "./orientation";
 import { stadiumBands } from "./stadium";
@@ -564,8 +569,9 @@ export class TouchControls {
               ? "EX ✓"
               : `${Math.floor(ult)}%`
             : left.toFixed(1);
-      const label = button.querySelector(".touch-cooldown")!;
-      if (label.textContent !== text) label.textContent = text;
+      // In place (hud-dom.ts): a new text node for each tenth of a second
+      // restyled every `:has()` rule's reach, on each cooling button.
+      setHudText(button.querySelector<HTMLElement>(".touch-cooldown")!, text);
       const duration = isUlt
         ? 100
         : skill !== undefined
@@ -575,11 +581,7 @@ export class TouchControls {
             : action === "jump"
               ? 2
               : basic.duration;
-      setHudStyle(
-        button,
-        "--cooldown",
-        Math.min(100, (100 * left) / duration) + "%",
-      );
+      setHudStyle(button, "--cooldown", sweepPercent((100 * left) / duration));
       button.classList.toggle("cooling", left > 0);
       const ready = isUlt && left <= 0;
       if (ready && !button.classList.contains("ult-ready")) {

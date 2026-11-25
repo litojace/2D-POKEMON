@@ -29,6 +29,7 @@ import {
 } from "../../../../packages/shared/src/chat";
 import { filterChat } from "../../../../packages/shared/src/chat-filter";
 import { iconLabel, menuIcon } from "../menu-icons";
+import { setHudAttribute, setHudHidden, setHudText } from "../hud-dom";
 import { needsStamp, stampLong, stampText } from "./chat-time";
 import type { PushState } from "./push-setup";
 
@@ -425,9 +426,15 @@ export function mountChat(hooks: ChatHooks): ChatView {
         n + (drawer.hidden || c !== active || c === "friend" ? unseen[c] : 0),
       0,
     );
-    unread.hidden = total === 0;
-    unread.textContent = total > 9 ? "9+" : String(total);
-    button.setAttribute("aria-label", total ? `Chat, ${total} new` : "Chat");
+    // Called with every battle snapshot (main.ts syncChat): the same count
+    // must write nothing (hud-dom.ts).
+    setHudHidden(unread, total === 0);
+    setHudText(unread, total > 9 ? "9+" : String(total));
+    setHudAttribute(
+      button,
+      "aria-label",
+      total ? `Chat, ${total} new` : "Chat",
+    );
   }
 
   /** Kept lines first, then any that came while they loaded. */
@@ -734,8 +741,8 @@ export function mountChat(hooks: ChatHooks): ChatView {
         (c) => c !== "friend" && !was.split(",").includes(c),
       );
       if (fresh && was) active = fresh;
-      button.hidden = place === "none" || !hooks.me();
-      button.dataset.place = place;
+      setHudHidden(button, place === "none" || !hooks.me());
+      if (button.dataset.place !== place) button.dataset.place = place;
       if (button.hidden) setOpen(false);
       if (open.join() !== was && !drawer.hidden)
         select(active && open.includes(active) ? active : (open[0] ?? null));
