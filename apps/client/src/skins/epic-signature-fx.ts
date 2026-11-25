@@ -1827,7 +1827,8 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
     us = isStars(skin),
     sunCourt = isSun(skin);
   // The motif answers the ultimate; Nova also shows it on landing and win
-  // (the pirates and Hồn Việt have moments of their own there).
+  // (Sky Pirates, Hồn Việt, Stars & Stripes and Sun Dynasty have moments
+  // of their own there).
   if (ctx.ultimate || (!pirate && !vn && !us && !sunCourt && (ctx.greeting || ctx.celebrating))) FLOURISHES.set(ctx.g, ctx.now);
   if (us && (ctx.greeting || ctx.celebrating)) {
     // Stars & Stripes: a star of the Walk of Fame lights up under the feet
@@ -1836,8 +1837,7 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
     if (!m) STARS_MOMENTS.set(ctx.g, (m = {}));
     if (ctx.greeting) m.land = ctx.now;
     else m.win = ctx.now;
-  }
-  if (vn && (ctx.greeting || ctx.celebrating)) {
+  } else if (vn && (ctx.greeting || ctx.celebrating)) {
     // Hồn Việt: a Đông Sơn drum face lights up under the feet, or lanterns
     // rise behind the champion; drawn over the next frames.
     let m = VIET_MOMENTS.get(ctx.g);

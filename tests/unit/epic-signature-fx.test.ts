@@ -342,6 +342,12 @@ describe("Legendary signature effects", () => {
       ] as const) {
         const f = frame(1000, false, Math.PI / 2, { [moment]: true });
         drawSkinFx(f.ctx, art, 1);
+        // The Walk-of-Fame star and the fireworks are the whole moment:
+        // neither brings Nova's column of light, shock ring or star fan.
+        const shapes = f.emit.mock.calls.map(([p]) => p.shape);
+        expect(shapes, `${id} ${moment}`).not.toContain("beam");
+        expect(shapes, `${id} ${moment}`).not.toContain("shock");
+        expect(shapes, `${id} ${moment}`).not.toContain("star");
         f.commands.length = 0;
         drawSkinFx({ ...f.ctx, now: 1000 + ms * 0.5, [moment]: false }, art, 1);
         const mid = f.commands.length;
