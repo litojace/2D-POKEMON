@@ -1787,10 +1787,28 @@ for (const viewport of [
           ] as [number, number, number, number[], number],
         );
       const timer = page.locator("#pz-timer");
+      // One read of the timer: this lap's time, the run's lap and time, and
+      // whether it is red. The clock runs on while a slow CI renderer draws
+      // (28 s on one), so only how the numbers relate is checked: the run's
+      // time is this lap's plus the 2 laps before it.
+      const read = () =>
+        timer.evaluate((el) => {
+          const small = el.querySelector("small")!.textContent!,
+            m = /^lap (\d)\/3 · (\d+\.\d)$/.exec(small);
+          return {
+            t: parseFloat(el.firstChild!.textContent!),
+            lap: m ? Number(m[1]) : 0,
+            run: m ? parseFloat(m[2]) : NaN,
+            over: el.classList.contains("over"),
+          };
+        });
       await midRun([7_100, 7_400], 3_000);
       await expect(timer).toBeVisible();
-      await expect(timer.locator("small")).toHaveText(/^lap 3\/3 · 1[78]\.\d$/);
-      await expect(timer).not.toHaveClass(/over/);
+      await expect(timer.locator("small")).toHaveText(/^lap 3\/3 · \d+\.\d$/);
+      const first = await read();
+      expect(first.lap).toBe(3);
+      expect(Math.abs(first.run - first.t - 14.5)).toBeLessThanOrEqual(0.15);
+      expect(first.over).toBe(first.run >= 30);
       // Whole and centred: no "…", inside its pill.
       const fits = () =>
         timer.evaluate((el) => {
@@ -1809,9 +1827,11 @@ for (const viewport of [
         `plaza-lap-run-${viewport.width}x${viewport.height}`,
       );
       // Too slow for 30 s: the run's time turns red.
-      await midRun([12_000, 12_500], 7_000);
+      // 2 laps of 15 s: past 30 s whatever this lap's time.
+      await midRun([15_000, 15_500], 2_000);
       await expect(timer).toHaveClass(/over/);
-      await expect(timer.locator("small")).toHaveText(/^lap 3\/3 · 3\d\.\d$/);
+      const late = await read();
+      expect(Math.abs(late.run - late.t - 30.5)).toBeLessThanOrEqual(0.15);
       expect(await fits()).toBe(true);
       await snap(
         page,
