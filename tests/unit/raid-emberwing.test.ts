@@ -510,6 +510,13 @@ describe("Emberwing movement and long encounters", () => {
       });
   it("plays every chapter and attack with four stand-ins without invalid positions", () => {
     const a = setup(4, 1, 3, ["voltkit", "cindrake", "tidefin", "lumoth"]);
+    // One fight every run, as in the solo route test below: the raid's seed
+    // picks Emberwing's attacks and the stand-ins' choices. While two
+    // braziers burn, whatever it planned turns into rain on the last lighter,
+    // so in an unlucky fight every heat-mark turn falls then and none is seen
+    // (seed 194095641: 1 of 3,360 seeds swept). Set before the stand-ins,
+    // whose brains take their seed from the raid's.
+    a.raid.seed = 1;
     a.heroes().forEach((p) => a.standIn(p.id));
     (a as any).nextAttack = 0;
     const seen = new Set<string>();
