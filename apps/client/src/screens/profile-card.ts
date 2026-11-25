@@ -6,7 +6,12 @@
  * QR code to the game (share-link.ts). Nothing is uploaded.
  */
 import { playerLevel } from "../../../../packages/shared/src/journey";
-import { drawScanToPlay, fit, loadImage, sharePicture } from "../share-card";
+import {
+  drawScanToPlay,
+  fitFont,
+  loadImage,
+  sharePicture,
+} from "../share-card";
 import { SHARE_SITE, shareLink, shownSite } from "../share-link";
 import { avatarSrc } from "../portraits";
 import {
