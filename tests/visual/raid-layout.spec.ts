@@ -409,8 +409,12 @@ for (const size of [
               }),
             )
             .toBe(true);
+          // Never further out than the overview. The camera may sit right on
+          // it (a court-wide frame is held a while, raid-camera.ts
+          // RAID_WIDE_HOLD), and the overview moves a hair with the HUD's
+          // height since overviewZoom was read (0.08% on 844×280).
           expect((await cameraSignature(page))[0]).toBeGreaterThanOrEqual(
-            overviewZoom - 1e-6,
+            overviewZoom * 0.995,
           );
         } else await expect.poll(() => cameraSignature(page)).toEqual(camera);
         if (boss === "prismatail") {
