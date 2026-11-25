@@ -780,13 +780,22 @@
   height: 15px;
 }
 /* An action group: every button the same width and height, primary last
-   (bottom right, where PLAY is). Colour is the only difference. */
+   (bottom right, where PLAY is). Colour is the only difference.
+   --act-w is the least width, never a cap: a label longer than it ("Waiting
+   for the team…", "Loading the arena · 100%") widens its button instead of
+   spilling past both edges (buttons never wrap: white-space: nowrap). */
 .ui-actions {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: var(--act-w);
+  grid-auto-columns: minmax(var(--act-w), max-content);
   gap: var(--sp-2);
   flex: none;
+}
+/* In a footer the group is as wide as its buttons, so 1fr columns all take
+   the widest label's width: the row stays equal when one label grows. (Not
+   in a modal, whose group spans the bar: 1fr would stretch every button.) */
+:is(.rc-foot, .ui-panel-foot) > .ui-actions {
+  grid-auto-columns: minmax(var(--act-w), 1fr);
 }
 .ui-actions > .ui-btn {
   width: 100%;
