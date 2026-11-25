@@ -22,6 +22,28 @@
 .raid-cosmetic-preview > .fx-front {
   z-index: 3;
 }
+/* The fighter an aura, entrance or victory is shown on (cosmetic-picture.ts):
+   a dim figure between the two canvases, in the Shop and Wardrobe tiles
+   only (SUBJECT_TILES in cosmetic-fx-preview.ts, which draws the effect at
+   the same scale: the whole fighter 152 world units to the tile's height,
+   feet at 84% of it). The art's frame is 216 units for 138.5 world units,
+   feet 91.7% down it: 91.1% of the tile tall, its top 0.5% down. Opacity
+   only: no filter, nothing moves. */
+.raid-cosmetic-preview > img.fx-subject {
+  display: none;
+}
+.fit-room > .ui-split-main .raid-cosmetic-preview > img.fx-subject {
+  display: block;
+  position: absolute;
+  top: 0.5%;
+  left: 50%;
+  width: auto;
+  height: 91.1%;
+  max-width: none;
+  translate: -50% 0;
+  opacity: 0.5;
+  pointer-events: none;
+}
 /* Once the live rig is ready it draws the effects itself and the static
    fallback is hidden; keep the fallback's own effect canvases hidden with it
    (".shop-live-stage.is-ready canvas" would show them again, drawing Colors
@@ -60,8 +82,11 @@
 [data-tier="legendary"] {
   --tier: #ffbf3c;
 }
+/* One Mythical colour on a screen: the rarity tags' pink (--r-mythic,
+   ui/tokens.css). It was crimson here, beside the pink tag of the same item,
+   and close to the red of a sale tag. */
 [data-tier="mythic"] {
-  --tier: #ff4f7b;
+  --tier: var(--r-mythic, #ff9be0);
 }
 
 /* A live thumbnail replaces the old static sketch of the effect with a
@@ -167,12 +192,12 @@
   padding: clamp(2.5px, 4.5%, 10px);
   background: conic-gradient(
     from var(--tier-turn),
-    #ff4f7b,
+    #ff9be0,
     #ffd36b,
     #8ff0b5,
     #7fd8ff,
     #b59bff,
-    #ff4f7b
+    #ff9be0
   );
 }
 /* The halo: one still gradient behind the frame and its ornaments (no
@@ -206,12 +231,12 @@
 .raid-cosmetic-preview[data-tier="mythic"] > .tier-glow {
   background: conic-gradient(
     from var(--tier-turn),
-    #ff4f7bcc,
+    #ff9be0cc,
     #ffd36bcc,
     #8ff0b5cc,
     #7fd8ffcc,
     #b59bffcc,
-    #ff4f7bcc
+    #ff9be0cc
   );
   -webkit-mask: radial-gradient(
     circle closest-side,
@@ -240,7 +265,7 @@
   white-space: nowrap;
 }
 .tier-chip[data-tier="mythic"] {
-  background: linear-gradient(90deg, #ff4f7b33, #ffd36b33, #7fd8ff33);
+  background: linear-gradient(90deg, #ff9be033, #ffd36b33, #7fd8ff33);
 }
 
 /* A frame's own ornament (pearl, gem, planet, lantern, moon…) is part of

@@ -44,6 +44,8 @@ interface Live {
   cycle: number;
   /** A catalogue tile: drawn once, at FROZEN_AT, never animated. */
   frozen: boolean;
+  /** The effect is drawn round a figure of the fighter (SUBJECT). */
+  subject: boolean;
   /** The canvas size the still was drawn at ("w x h"), "" when not drawn. */
   drawnAt: string;
   /** In view (the IntersectionObserver's last word). */
@@ -76,6 +78,15 @@ const FROZEN_AT: Record<Kind, number> = {
   victory: 1.2,
   skin: 1.6,
 };
+/**
+ * Shop and Wardrobe tiles show an aura, entrance or victory round a dim
+ * figure of the fighter (cosmetic-picture.ts, ".fx-subject"), so the effect
+ * is drawn at the fighter's scale there: the whole fighter fits the tile
+ * (their crest is 122 world units above their feet), feet on FEET of the
+ * tile's height. cosmetic-fx.css places the figure by the same numbers.
+ */
+const SUBJECT_TILES = ".fit-room > .ui-split-main";
+const SUBJECT = { height: 152, feet: 0.84 } as const;
 /** Steps the frozen moment is simulated in (the live loop's longest step). */
 const FROZEN_STEP = 0.05;
 /** Graphics that draw nothing: the steps before a frozen moment. */
@@ -135,8 +146,9 @@ function draw(live: Live, now: number, paint = true) {
     back.clearRect(0, 0, w, h);
     front.clearRect(0, 0, w, h);
     // World units around the fighter's feet, fitted to the thumbnail.
-    const scale =
-      live.kind === "aura"
+    const scale = live.subject
+      ? h / SUBJECT.height
+      : live.kind === "aura"
         ? Math.min((w * 0.86) / 128, h / 110)
         : live.kind === "entrance"
           ? Math.min(w / 104, h / 92)
@@ -144,7 +156,14 @@ function draw(live: Live, now: number, paint = true) {
             ? h / 100
             : Math.min(w / 165, h / 118);
     const feetY =
-      h * (live.kind === "aura" ? 0.65 : live.kind === "skin" ? 0.98 : 0.82);
+      h *
+      (live.subject
+        ? SUBJECT.feet
+        : live.kind === "aura"
+          ? 0.65
+          : live.kind === "skin"
+            ? 0.98
+            : 0.82);
     for (const c of [back, front])
       c.setTransform(scale, 0, 0, scale, w / 2, feetY);
     gb = canvasGraphics(back);
@@ -407,6 +426,10 @@ function attach(el: HTMLElement) {
     last: now,
     cycle: -1,
     frozen: isFrozen(el),
+    subject:
+      kind !== "skin" &&
+      !!el.querySelector(":scope > .fx-subject") &&
+      !!el.closest(SUBJECT_TILES),
     drawnAt: "",
     shown: false,
   };

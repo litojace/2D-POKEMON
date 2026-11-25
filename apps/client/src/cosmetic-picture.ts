@@ -3,10 +3,38 @@ import { LOOK_ITEM_BY_ID } from "../../../packages/shared/src/shop";
 import { RAID_COSMETICS } from "../../../packages/shared/src/raid";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey";
 import { colourPreview, hasColourPalette } from "./colour-preview";
-import { fighterAvatar } from "./fighter-art";
+import { fighterArt, fighterAvatar } from "./fighter-art";
 import { cosmeticTier } from "../../../packages/shared/src/cosmetic-tier";
 
-/** Only Colors need a model. Other cosmetics show their own artwork/effect. */
+/**
+ * The fighter an effect is shown on, whole (the frame skin thumbnails use):
+ * one picture per fighter, made once. "" where pictures can't be made from
+ * memory (tests outside a browser).
+ */
+const SUBJECT_FRAME = "-6 -26 212 216";
+const subjects = new Map<CharacterId, string>();
+function subjectUrl(champion: CharacterId) {
+  if (typeof Blob === "undefined" || typeof URL.createObjectURL !== "function")
+    return "";
+  let url = subjects.get(champion);
+  if (!url) {
+    url = URL.createObjectURL(
+      new Blob([fighterArt(champion, SUBJECT_FRAME)], {
+        type: "image/svg+xml",
+      }),
+    );
+    subjects.set(champion, url);
+  }
+  return url;
+}
+
+/**
+ * Colors are shown on the fighter. An aura, entrance or victory shows its
+ * own effect, with the fighter it would be on as a dim figure inside it
+ * where the catalogue wants one (the Shop and Wardrobe tiles: cosmetic-fx.css
+ * ".fx-subject", cosmetic-fx-preview.ts): a ring on an empty floor said
+ * little about what you were buying.
+ */
 export function cosmeticPicture(
   id: string,
   champion: CharacterId,
@@ -24,5 +52,11 @@ export function cosmeticPicture(
       ? `<img src="data:image/svg+xml,${encodeURIComponent(colourPreview(fighterAvatar(champion, scope), id))}" width="84" height="84" alt="" loading="lazy" decoding="async">`
       : fighterAvatar(champion, scope)
     : "";
-  return `<span class="raid-cosmetic-preview shop-look-preview${colors ? "" : " is-effect-only"}" data-cosmetic="${id}"${item.slot === "frame" ? ` data-frame-stars="${stars}"` : ""} data-tier="${cosmeticTier(id, stars)}" aria-hidden="true">${art}</span>`;
+  const effect =
+    item.slot === "aura" || item.slot === "entrance" || item.slot === "victory";
+  const subject = effect ? subjectUrl(champion) : "";
+  const figure = subject
+    ? `<img class="fx-subject" src="${subject}" width="212" height="216" alt="" loading="lazy" decoding="async">`
+    : "";
+  return `<span class="raid-cosmetic-preview shop-look-preview${colors ? "" : " is-effect-only"}" data-cosmetic="${id}"${item.slot === "frame" ? ` data-frame-stars="${stars}"` : ""} data-tier="${cosmeticTier(id, stars)}" aria-hidden="true">${art}${figure}</span>`;
 }
