@@ -52,6 +52,7 @@ import {
   blankInput,
   packSnapshot,
   MetaTracker,
+  type Phase,
   type WireSnapshot,
   practiceOptionsSchema,
   FIGHTER_IDS,
@@ -209,6 +210,18 @@ type Session = {
 export const HEARTBEAT = { interval: 10_000, timeout: 10_000 };
 /** When a socket counts as congested (see broadcast). */
 export const BACKPRESSURE = { bytes: 16 * 1024, messages: 4 };
+/**
+ * Phases nobody is fighting in, and how many ticks may pass between two
+ * sends of a room in one while nothing in it changes (quietRoom): twice a
+ * second, for an app that redraws when a snapshot arrives. A paused match
+ * shows the seconds left to reconnect, so it is sent five times a second.
+ */
+const IDLE_SNAPSHOTS: Partial<Record<Phase, number>> = {
+  lobby: RULES.tick / 2,
+  briefing: RULES.tick / 2,
+  finished: RULES.tick / 2,
+  paused: RULES.tick / 5,
+};
 /** How many fault lines a minute reach the log (faultLog). */
 const FAULT_LOG = { perMinute: 20, stack: 1200 };
 /** What a fault's log line says of the error: its stack's first lines. */
@@ -431,6 +444,8 @@ export function createArenaServer(
       (conn.writeBuffer?.length ?? 0) >= BACKPRESSURE.messages
     );
   };
+  /** What each quiet room was last sent, and at which tick (quietRoom). */
+  const idleSent = new WeakMap<Arena, { key: string; tick: number }>();
   /** Rooms where a socket just joined/resumed/started watching. */
   const metaWanted = new WeakSet<Arena>();
   const metaTracker = (arena: Arena) => {
@@ -1231,7 +1246,12 @@ export function createArenaServer(
         });
     }
   }
-  function broadcast(arena: Arena) {
+  /**
+   * Send a room to everyone in it. `periodic` is the tick's own send (step):
+   * in a room nobody is fighting in, it is skipped while nothing has changed
+   * (quietRoom). Every other caller has just changed something and sends.
+   */
+  function broadcast(arena: Arena, periodic = false) {
     const started = diagnostics.now();
     // Wins and real attempts (not instant quits) are saved:
     // losses still count towards titles and tell us which attacks are unfair.
@@ -1444,6 +1464,13 @@ export function createArenaServer(
       metaRev: tracker.rev,
       meta: changed || wanted ? tracker.meta(snapshot.players) : undefined,
     });
+    if (
+      quietRoom(arena, wire, periodic) &&
+      !snapshot.events.length &&
+      !changed &&
+      !wanted
+    )
+      return;
     // Sampled: measuring every payload would cost as much as sending it.
     if (diagnostics.enabled && ticks % 20 === 0)
       diagnostics.snapshot(Buffer.byteLength(JSON.stringify(wire)));
@@ -1531,6 +1558,41 @@ export function createArenaServer(
     }
     for (const [id, catchUp] of personal) io.to(id).emit("state", catchUp);
     diagnostics.broadcast(started);
+  }
+  /**
+   * Whether this tick's send of a room can be skipped: nobody is fighting in
+   * it (IDLE_SNAPSHOTS), what would be sent is what was sent last, the slow
+   * beat is not due, and no connection is waiting to catch up.
+   *
+   * A lobby, a briefing, a results screen or a paused match changes only
+   * when someone does something, yet each was sent whole to everyone 30
+   * times a second, and the app redrew its menu each time (performance
+   * sweep, S2). The check compares what would be sent, so a change made
+   * anywhere, with or without a broadcast of its own, still goes out on the
+   * next tick. The fight (countdown, playing, intermission) is untouched.
+   */
+  function quietRoom(arena: Arena, wire: WireSnapshot, periodic: boolean) {
+    const every = IDLE_SNAPSHOTS[arena.phase];
+    if (every === undefined) {
+      idleSent.delete(arena);
+      return false;
+    }
+    // The pause's countdown always differs: the beat carries it.
+    const key = JSON.stringify({ ...wire, pauseRemaining: 0 });
+    const last = idleSent.get(arena);
+    if (
+      periodic &&
+      last?.key === key &&
+      ticks - last.tick < every &&
+      // A connection that was too busy to take the last one has room again.
+      ![...laggingSockets].some(([id, behind]) => {
+        const socket = behind.code === arena.code && io.sockets.sockets.get(id);
+        return socket && !congested(socket);
+      })
+    )
+      return true;
+    idleSent.set(arena, { key, tick: ticks });
+    return false;
   }
   function resume(arena: Arena) {
     if (
@@ -3826,12 +3888,9 @@ export function createArenaServer(
         if (before !== a.phase && a.phase === "finished")
           // Bots are always up for a rematch.
           for (const p of a.players) p.ready = a.bots.has(p.id);
-        if (
-          ticks % Math.round(RULES.tick / RULES.snapshot) === 0 ||
-          before !== a.phase ||
-          castThisTick(a, serial)
-        )
-          broadcast(a);
+        if (before !== a.phase || castThisTick(a, serial)) broadcast(a);
+        else if (ticks % Math.round(RULES.tick / RULES.snapshot) === 0)
+          broadcast(a, true);
       } catch (error) {
         closeBrokenRoom(a, error, "tick");
       }
