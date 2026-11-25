@@ -71,6 +71,8 @@ Winter, Festival, Garden, Candy, Retro Pixel, Galaxy).
 Shipped: 1 (migration `20261125130000_starlight_idol.sql`; not yet in
 Today's Picks).
 
+![Starlight Idol: the eighteen skins on the Shop's stage](shop-new-items/starlight-idol.jpg)
+
 Mythicals stay one per champion (the Void Knights): each has a Mythic Trial
 and three Awakening forms, and a second line would be a design decision of
 its own, not catalog growth.
