@@ -301,12 +301,13 @@ export const IDOL: Partial<Record<CharacterId, Design>> = {
         k.lume("pulse", k.path(k.star(c + (k.side ? k.side * 8 : -11), k.T + 13, 3.6, 5), GOLD, k.ink, 0.5), 0, GOLD));
     }
     // The bandana round the brow, its knot at the side; the mohawk above.
+    // Wombolder's eyes sit high on its head: the band rides above them.
     const x = hx(k),
-      y = k.ht + 14;
+      y = k.ht + 7;
     const shards = (k.side ? [-2, -1, 0, 1, 2].map((i) => [x - k.side * 4 + i * 10, 26 - Math.abs(i) * 4]) : [-1, 0, 1].map((i) => [x + i * 10, 32 - Math.abs(i) * 9])).map(([sx, h], i) =>
       k.path(`M${sx - 5.6} ${y - 4}L${sx} ${y - 4 - h}L${sx + 5.6} ${y - 4}Z`, "#8fe8d8", "#2f7a78", 0.8) + k.lume("chase", k.path(`M${sx - 1.6} ${y - 6}L${sx} ${y - 3 - h * 0.8}L${sx + 1.6} ${y - 6}Z`, "#eafffb", "none", 0), i, "#8fffe8")).join("");
     const knotX = k.back ? x + 30 : x - (k.side || 1) * (k.side ? 30 : 40);
-    k.put("flame", shards + band(k, y, k.side ? 40 : 46, red, 7) +
+    k.put("flame", shards + band(k, y, k.side ? 38 : 44, red, 6) +
       [0, 1, 2, 3].map((i) => k.circle(x - 24 + i * 16, y - 0.5 - (i === 1 || i === 2 ? 2.6 : 0), 1, WHITE, "none", 0)).join("") +
       k.path(`M${knotX} ${y + 4}l-7 9l5 -1l1 6Z`, red, k.ink, 0.6) + k.circle(knotX, y + 4, 2.6, red, k.ink, 0.6));
   },
