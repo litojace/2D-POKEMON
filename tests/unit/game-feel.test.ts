@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buzz,
   hitFeel,
   hitStrength,
   rumble,
   setNativeTap,
+  setVibration,
+  vibrationOn,
 } from "../../apps/client/src/game-feel";
 
 describe("hit feel", () => {
@@ -80,5 +83,59 @@ describe("rumble", () => {
     rumble(0, 0.8);
     rumble(100, 0);
     expect(tap).not.toHaveBeenCalled();
+  });
+});
+
+describe("Settings → Vibration", () => {
+  afterEach(() => {
+    setNativeTap(null);
+    vi.unstubAllGlobals();
+  });
+  const device = () => {
+    const vibrate = vi.fn();
+    const store = new Map<string, string>();
+    vi.stubGlobal("navigator", { vibrate, getGamepads: () => [] });
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    });
+    return { vibrate, store };
+  };
+  it("is on by default", () => {
+    device();
+    expect(vibrationOn()).toBe(true);
+  });
+  it("off: no phone buzz, no app haptics, no Plaza buzz; and it stops one going", () => {
+    const { vibrate, store } = device();
+    const tap = vi.fn();
+    setNativeTap(tap);
+    setVibration(false);
+    expect(store.get("arena-vibration")).toBe("off");
+    expect(vibrate).toHaveBeenCalledWith(0);
+    vibrate.mockClear();
+    rumble(140, 0.9);
+    buzz([30, 40, 30]);
+    expect(tap).not.toHaveBeenCalled();
+    expect(vibrate).not.toHaveBeenCalled();
+  });
+  it("back on: hits buzz again", () => {
+    const { vibrate, store } = device();
+    setVibration(false);
+    setVibration(true);
+    expect(store.has("arena-vibration")).toBe(false);
+    rumble(100, 0.5);
+    buzz(18);
+    expect(vibrate).toHaveBeenCalledWith(60);
+    expect(vibrate).toHaveBeenCalledWith(18);
+  });
+  it("stays on when storage can't be read (private mode)", () => {
+    vi.stubGlobal("navigator", { vibrate: vi.fn(), getGamepads: () => [] });
+    vi.stubGlobal("localStorage", {
+      getItem: () => {
+        throw new Error("denied");
+      },
+    });
+    expect(vibrationOn()).toBe(true);
   });
 });

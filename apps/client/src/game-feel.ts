@@ -102,11 +102,51 @@ export function setNativeTap(tap: ((strength: number) => void) | null) {
 }
 
 /**
+ * Settings → Vibration (owner, 25 Nov 2026): on by default; off stops every
+ * buzz, rumble and haptic tap the game makes (hits, the Plaza's fishing).
+ * Kept on this device only.
+ */
+const VIBRATION_KEY = "arena-vibration";
+export function vibrationOn() {
+  try {
+    return localStorage.getItem(VIBRATION_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+export function setVibration(on: boolean) {
+  try {
+    if (on) localStorage.removeItem(VIBRATION_KEY);
+    else localStorage.setItem(VIBRATION_KEY, "off");
+  } catch {
+    /* Private mode: the switch lasts this visit only. */
+  }
+  if (!on) {
+    try {
+      // Stop a buzz already going.
+      navigator.vibrate?.(0);
+    } catch {
+      /* Haptics are optional. */
+    }
+  }
+}
+/** A phone buzz (Android's web vibration), unless Vibration is off. */
+export function buzz(pattern: number | number[]) {
+  if (!vibrationOn() || typeof navigator === "undefined") return;
+  try {
+    navigator.vibrate?.(pattern);
+  } catch {
+    /* Haptics are optional. */
+  }
+}
+
+/**
  * Best-effort vibration: controller rumble, else the iPhone app's haptics,
- * else phone vibration (Android).
+ * else phone vibration (Android). Nothing while Settings → Vibration is off.
  */
 export function rumble(ms: number, strength: number) {
   if (ms <= 0 || strength <= 0 || typeof navigator === "undefined") return;
+  if (!vibrationOn()) return;
   try {
     for (const pad of navigator.getGamepads?.() ?? []) {
       const actuator = (

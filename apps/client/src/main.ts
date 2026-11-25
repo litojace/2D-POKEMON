@@ -380,7 +380,14 @@ import { drawPreview, previewShape } from "./skill-preview";
 import { controlsCapturing, showControlsScreen } from "./controls-screen";
 import { lockAppZoom, watchBattleZoom } from "./zoom-guard";
 import { guardTouchHold } from "./touch-hold";
-import { KO_FEEL, hitFeel, hitStrength, rumble } from "./game-feel";
+import {
+  KO_FEEL,
+  hitFeel,
+  hitStrength,
+  rumble,
+  setVibration,
+  vibrationOn,
+} from "./game-feel";
 import { captureInvite, clearInvite, pendingInvite } from "./invite";
 import { lockScrollWhileOpen, setScrollLock } from "./scroll-lock";
 import { watchMenuMotion } from "./menu-motion";
@@ -5321,7 +5328,7 @@ const syncDialogPrefs = () => syncPrefOutputs($<HTMLDialogElement>("dialog"));
  */
 function settingsMarkup(reduced: boolean) {
   const motion = `<div class="st-row"><span class="st-row-text"><b>Reduced motion</b><small>Follows your device's accessibility setting.</small></span><span class="st-badge${reduced ? " is-on" : ""}">${reduced ? "On" : "Off"}</span></div>`;
-  const sound = `<section class="prefs-card st-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section>`;
+  const sound = `<section class="prefs-card st-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}${vibrationRow()}</section>`;
   let side: string;
   if (state) {
     // In a room: what this match offers, then motion.
@@ -5348,6 +5355,27 @@ function settingsMarkup(reduced: boolean) {
       : "";
   return `<div class="settings-screen st"><h2>Settings</h2><div class="st-cols">${sound}${side}${appIcon}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel(touch.enabled ? "settings" : "keyboard", touch.enabled ? "Controls" : "Controls &amp; keys")}</button>${leave}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`;
 }
+/**
+ * Settings → Sound → Vibration (owner, 25 Nov 2026): the buzz when hits land
+ * (and the Plaza's fishing), on or off. In the Sound card so it is there in
+ * a match too.
+ */
+function vibrationRow() {
+  const on = vibrationOn();
+  return `<div class="st-row"><span class="st-row-text"><b id="prefs-vibration">Vibration</b><small>Buzz when hits land.</small></span><button type="button" class="prefs-switch" id="settings-vibration" role="switch" aria-labelledby="prefs-vibration" aria-checked="${on}"><span>${on ? "On" : "Off"}</span></button></div>`;
+}
+function bindVibrationRow() {
+  const button = document.getElementById("settings-vibration");
+  if (!button) return;
+  button.onclick = () => {
+    const on = !vibrationOn();
+    setVibration(on);
+    button.setAttribute("aria-checked", String(on));
+    button.querySelector("span")!.textContent = on ? "On" : "Off";
+    // A short buzz so you feel it's back on.
+    if (on) rumble(40, 0.5);
+  };
+}
 function showSettings() {
   settingsOpen = true;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -5370,6 +5398,7 @@ function showSettings() {
       ($("practice-settings") as HTMLDetailsElement).open = true;
     };
   bindDisplayCard();
+  bindVibrationRow();
   $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
   $("settings-credits").onclick = showCredits;
