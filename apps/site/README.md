@@ -74,12 +74,28 @@ npx serve apps/site      # or: python3 -m http.server -d apps/site 8080
 
 ## Hosting
 
-Proposed: a separate Render Static Site with root directory `apps/site`, no
-build command, publish directory `.`, and a build filter on `apps/site/**`
-so game merges don't redeploy it (and the game's Static Site can ignore
-`apps/site/**`). Domain: see the proposal in the PR; the canonical URL,
-Open Graph URLs and sitemap use `https://litojace.com/` until the owner
-picks one (search for it in `index.html`, `robots.txt` and `sitemap.xml`).
+A Render Static Site of its own (pending the owner's approval):
+
+| Setting             | Value                                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository / branch | this repo, `main`                                                                                                                                 |
+| Root directory      | `apps/site`                                                                                                                                       |
+| Build command       | `node tools/write-config.mjs` (plain Node, no install)                                                                                            |
+| Publish directory   | `.`                                                                                                                                               |
+| Build filter        | include `apps/site/**` only                                                                                                                       |
+| Env                 | `SITE_SUPABASE_URL`, `SITE_SUPABASE_ANON_KEY` (the game's public values), `SITE_APPLE_SIGN_IN=on` if the game has it                              |
+| Headers `/*`        | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Content-Security-Policy` (below) |
+| Custom domains      | `elementarenausa.com`, `www.elementarenausa.com` (Render redirects www to the apex)                                                               |
+
+CSP: `default-src 'self'; img-src 'self' data:; style-src 'self';
+style-src-attr 'unsafe-inline'; script-src
+'self'; connect-src 'self' https://<project>.supabase.co; frame-ancestors
+'none'; base-uri 'self'; form-action 'self'` (the JSON-LD block is data, not
+script, so `script-src 'self'` still allows it).
+
+The canonical URL, Open Graph URLs and sitemap use
+`https://elementarenausa.com/`; Play, Support and Privacy point at
+`https://play.elementarenausa.com/`.
 
 ## When the apps reach the stores
 
