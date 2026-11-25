@@ -72,7 +72,7 @@ Shipped (none yet in Today's Picks): 1 (migration
 `20261125130000_starlight_idol.sql`); 2–4 (migration
 `20261125140000_seaside_steamworks_borealis.sql`); 5 (migration
 `20261125150000_birthstone.sql`); 6 (migration `20261125160000_rainy_day.sql`); 7 (migration
-`20261125170000_grand_prix.sql`).
+`20261125170000_grand_prix.sql`); 8 (migration `20261125180000_sun_dynasty.sql`).
 
 ![Starlight Idol: the eighteen skins on the Shop's stage](shop-new-items/starlight-idol.jpg)
 
@@ -81,6 +81,19 @@ Shipped (none yet in Today's Picks): 1 (migration
 ![Rainy Day: the eighteen raincoats on the Shop's stage](shop-new-items/rainy-day.jpg)
 
 ![Grand Prix: the eighteen drivers on the Shop's stage](shop-new-items/grand-prix.jpg)
+
+![Sun Dynasty: the eighteen figures of the court on the Shop's stage](shop-new-items/sun-dynasty.jpg)
+
+Sun Dynasty is the fifth Legendary set, built the way the other four are:
+a body in two tones (`SUN_TINTS` and `LEGEND_SECOND`, every body at least
+26 ΔE from the champion's other ones), a costume per champion
+(`modern-sun.ts`: the court's broad bead collar, a pectoral of its trade,
+headwear of its rank) edged in gold with a sun clasp, and a signature table
+(`epic-signature-fx.ts`, `sun`): a motif per champion summoned by the
+ultimate, a gold-sand trail, a sun-mosaic landing and a winged-sunrise
+victory, inside the same drawing budget. The Moon Vizier's lantern becomes
+a brass lamp, the Spice Healer's chestnut a pomegranate and the Lotus
+Sceptre's mallet a gold sceptre crowned with a sun.
 
 ![Seaside, Steamworks and Borealis: each set's five pieces on the Shop's stage](shop-new-items/look-sets.jpg)
 

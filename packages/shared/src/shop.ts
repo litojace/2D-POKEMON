@@ -572,6 +572,44 @@ export const GRAND_PRIX_SKINS: ChampionSkin[] = (
     "A racing suit in its team's colours, a number board that lights up, its own headwear and a trail of tyre smoke",
 }));
 
+/**
+ * Sun Dynasty (Legendary): a desert kingdom in gold and lapis, a figure of
+ * its court for every champion (the Sun Sovereign, a falcon herald, a royal
+ * astronomer, an obelisk builder, a moon vizier...), with a sun-mosaic
+ * landing, a winged-sunrise victory and a motif of its own.
+ */
+export const SUN_DYNASTY_NAMES = {
+  voltkit: "Storm Charioteer",
+  cindrake: "Phoenix Prince",
+  tidefin: "River Pilot",
+  auralynx: "Temple Cat",
+  lumoth: "Lamp Keeper",
+  mystowl: "Royal Astronomer",
+  terradon: "Obelisk Builder",
+  duskveil: "Moon Vizier",
+  coilemur: "Dune Caravaneer",
+  pyranda: "Spice Healer",
+  glacelle: "Mirage Dancer",
+  halcyra: "Falcon Herald",
+  sunbara: "Sun Sovereign",
+  astrabun: "Lotus Sceptre",
+  wombolder: "Sphinx Guardian",
+  shadopus: "Royal Scribe",
+  pangrove: "Oasis Keeper",
+  mossloth: "Shade Bearer",
+} as const satisfies Record<CharacterId, string>;
+export const SUN_DYNASTY_SKINS: ChampionSkin[] = (
+  Object.keys(SUN_DYNASTY_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-sun-dynasty`,
+  champion,
+  name: SUN_DYNASTY_NAMES[champion],
+  rarity: "legendary",
+  collection: "sun-dynasty",
+  description:
+    "A figure of the desert court in gold and lapis with glowing pieces, a sun-mosaic landing and a winged-sunrise victory",
+}));
+
 export type Collection =
   | FashionCollection
   | "nova-vanguard"
@@ -584,6 +622,7 @@ export type Collection =
   | "birthstone"
   | "rainy-day"
   | "grand-prix"
+  | "sun-dynasty"
   | "winter"
   | "festival"
   | "garden"
@@ -610,6 +649,7 @@ export const COLLECTION_NAMES: Record<Collection, string> = {
   birthstone: "Birthstone",
   "rainy-day": "Rainy Day",
   "grand-prix": "Grand Prix",
+  "sun-dynasty": "Sun Dynasty",
   winter: "Winter",
   festival: "Festival",
   garden: "Garden",
@@ -661,6 +701,7 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ...BIRTHSTONE_SKINS,
   ...RAINY_DAY_SKINS,
   ...GRAND_PRIX_SKINS,
+  ...SUN_DYNASTY_SKINS,
   skin("voltkit", "midnight", "Midnight", "common", "Navy fur, cyan cheeks"),
   skin("voltkit", "peach-fizz", "Peach Fizz", "common", "Peach and pink"),
   skin("voltkit", "mint-static", "Mint Static", "common", "Mint and white"),
@@ -1660,6 +1701,7 @@ export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
   birthstone: 0,
   "rainy-day": 0,
   "grand-prix": 1,
+  "sun-dynasty": 1,
   wayfarer: 0,
   "moonlit-tea": 0,
   "astral-court": 0,
@@ -1735,6 +1777,7 @@ export const SKIN_SET_COLLECTIONS = [
   "birthstone",
   "rainy-day",
   "grand-prix",
+  "sun-dynasty",
 ] as const satisfies readonly Collection[];
 export const SKIN_BUNDLES: ShopBundle[] = SKIN_SET_COLLECTIONS.map(
   (collection) => ({

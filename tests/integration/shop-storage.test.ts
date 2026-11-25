@@ -905,6 +905,33 @@ it("sells Rainy Day as Rare at 1,500 and its full set at 80%", async () => {
   expect(await economy()).toEqual(bought);
 });
 
+it("sells Sun Dynasty as Legendary at 5,500 and its full set at 80%", async () => {
+  const sql = await readFile(
+    "supabase/migrations/20261125180000_sun_dynasty.sql",
+    "utf8",
+  );
+  await db.exec("reset role");
+  await db.exec(sql);
+  const rows = await db.query<{ rarity: string; price: number; n: number }>(
+    "select rarity, price, count(*)::int as n from public.arena_shop_items where collection = 'sun-dynasty' and kind = 'champion' and not in_picks group by rarity, price",
+  );
+  expect(rows.rows).toEqual([{ rarity: "legendary", price: 5500, n: 18 }]);
+  await db.exec(
+    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
+  );
+  await login();
+  await db.query("select public.arena_buy_item('sun-dynasty-skins')");
+  const bought = await economy();
+  expect(100000 - bought.balance).toBe(18 * 5500 * 0.8);
+  expect(
+    bought.owned.filter((id: string) => id.endsWith("-sun-dynasty")),
+  ).toHaveLength(18);
+  // Running the migration again changes nothing.
+  await db.exec("reset role");
+  await db.exec(sql);
+  expect(await economy()).toEqual(bought);
+});
+
 it("sells Grand Prix as Epic at 3,500 and its full set at 80%", async () => {
   const sql = await readFile(
     "supabase/migrations/20261125170000_grand_prix.sql",
