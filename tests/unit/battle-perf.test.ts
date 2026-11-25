@@ -263,6 +263,7 @@ describe("network meter", () => {
     expect(m.summary().snapLate).toBe(0);
     m.reset();
     expect(m.summary()).toEqual({
+      hitTraceVersion: 1,
       rttP50: 0,
       rttP95: 0,
       snapGapP95: 0,

@@ -117,6 +117,49 @@ test("input deadlines survive stopped rendering, quick taps and battle lifecycle
       contentType: "application/json",
     });
 
+    // Preserve the pairing of a delayed native event and its next input emit.
+    // Synthetic delivery is controlled; it is not a claim about real iOS latency.
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__inputMeter.reset();
+      const button = document.querySelector<HTMLButtonElement>(
+        '#mobile-controls [data-action="attack"]',
+      )!;
+      const event = new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        pointerId: 190,
+        pointerType: "touch",
+      });
+      Object.defineProperty(event, "timeStamp", {
+        value: performance.now() - 150,
+      });
+      button.dispatchEvent(event);
+      button.dispatchEvent(
+        new PointerEvent("pointerup", {
+          bubbles: true,
+          pointerId: 190,
+          pointerType: "touch",
+        }),
+      );
+    });
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as any).__inputMeter.summary().slowInputs?.length ?? 0,
+        ),
+      )
+      .toBe(1);
+    const traced = await page.evaluate(
+      () => (window as any).__inputMeter.summary().slowInputs[0],
+    );
+    expect(traced).toMatchObject({ action: "basic", source: "touch-controls" });
+    expect(traced.deliveryMs).toBeGreaterThanOrEqual(150);
+    expect(
+      Math.abs(traced.totalMs - traced.deliveryMs - traced.deadlineMs),
+    ).toBeLessThanOrEqual(2);
+    console.log("INPUT_DELAY_TRACE", JSON.stringify(traced));
+
     const count = () => page.evaluate(() => (window as any).__inputs.length);
     await page.evaluate(() => {
       Object.defineProperty(document, "hidden", {

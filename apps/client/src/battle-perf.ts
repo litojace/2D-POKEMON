@@ -321,7 +321,26 @@ export function perfMode(
  * disagreed with what was predicted. Confirmation starts at prediction,
  * not the DOM press: pressToSend measures that earlier local wait apart.
  */
+export interface SlowInputTrace {
+  action: string;
+  source: "touch-controls" | "unknown";
+  deliveryMs: number;
+  deadlineMs: number;
+  totalMs: number;
+  frameGapMs?: number;
+}
+export interface HitTrace {
+  gap: number;
+  eventAgeMs: number;
+  leadMs: number;
+  timed: boolean;
+}
+
 export interface NetSummary {
+  /** At most eight worst accepted inputs/hits; durations only, no timestamps or ids. */
+  slowInputs?: SlowInputTrace[];
+  farHits?: HitTrace[];
+  hitTraceVersion: 1;
   rttP50: number;
   rttP95: number;
   /** 95th percentile gap between snapshots (ms; about 33 is on time). */
@@ -384,6 +403,24 @@ export interface NetSummary {
 }
 /** A hit landing this far from where you were drawn looked like a miss (one fighter radius). */
 export const HIT_GAP_PX = 24;
+/** Match the event's server moment, rather than the enclosing snapshot's time. */
+export function hitDrawTime(
+  receivedAt: number,
+  leadMs: number,
+  snapshotTime: number,
+  event: { at?: number; miss?: boolean },
+): number | undefined {
+  if (event.miss) return;
+  if (event.at === undefined) return receivedAt - leadMs;
+  if (
+    !Number.isFinite(event.at) ||
+    event.at < 0 ||
+    event.at > snapshotTime + 0.001
+  )
+    return;
+  return receivedAt - leadMs - Math.max(0, snapshotTime - event.at) * 1000;
+}
+
 /**
  * How far from (x, y) your fighter was drawn at time `at` (ms): the drawn
  * sample nearest that time, if one is within 100 ms. `at` must be the frame
@@ -414,6 +451,27 @@ export const CORRECTION_PX = 4;
 const MAX_SAMPLES = 20_000;
 
 export class NetMeter {
+  private frames: number[] = [];
+  private slowInputs: SlowInputTrace[] = [];
+  private farHits: HitTrace[] = [];
+  /** Record only the clock, without a DOM read or an allocation per frame. */
+  frame(now: number) {
+    this.frames.push(now);
+    if (this.frames.length > 240) this.frames.splice(0, 60);
+  }
+  private frameGap(event: number, handled: number) {
+    if (!this.frames.length || this.frames[0] > event) return;
+    let worst = 0,
+      previous: number | undefined;
+    for (const at of this.frames) {
+      if (at > handled) break;
+      if (previous !== undefined && at >= event)
+        worst = Math.max(worst, at - previous);
+      previous = at;
+    }
+    if (previous !== undefined) worst = Math.max(worst, handled - previous);
+    return worst <= PERF_PAUSE ? Math.round(worst) : undefined;
+  }
   private rtts: number[] = [];
   private gaps: number[] = [];
   private fixes: number[] = [];
@@ -431,7 +489,10 @@ export class NetMeter {
   private handlerDelays: number[] = [];
   private sendDelays: number[] = [];
   private lastSend: number | undefined;
-  private actionPresses = new Map<string, { event: number; handler: number }>();
+  private actionPresses = new Map<
+    string,
+    { event: number; handler: number; source: "touch-controls" | "unknown" }
+  >();
   private push(list: number[], v: number) {
     if (list.length >= MAX_SAMPLES) list.splice(0, MAX_SAMPLES / 2);
     list.push(v);
@@ -467,17 +528,19 @@ export class NetMeter {
     stamp: number | undefined,
     handled = performance.now(),
     origin = performance.timeOrigin,
+    source: "touch-controls" | "unknown" = "unknown",
   ) {
     if (stamp === undefined || !Number.isFinite(stamp)) return;
     const event = stamp > 1e12 ? stamp - origin : stamp;
     if (event < 0 || event > handled || handled - event > 60_000) return;
-    this.actionPresses.set(action, { event, handler: handled });
+    this.actionPresses.set(action, { event, handler: handled, source });
   }
   clearPresses() {
     this.actionPresses.clear();
   }
   /** Hide, exit, disconnect or a new round: neither a gap nor a stale press. */
   pauseInput() {
+    this.frames = [];
     this.lastSend = undefined;
     this.clearPresses();
   }
@@ -503,6 +566,21 @@ export class NetMeter {
           this.push(this.presses, now - at.event);
           this.push(this.handlerDelays, at.handler - at.event);
           this.push(this.sendDelays, now - at.handler);
+          if (
+            now - at.event >= 80 &&
+            /^(basic|dash|jump|skill[0-3])$/.test(key)
+          ) {
+            this.slowInputs.push({
+              action: key,
+              source: at.source,
+              deliveryMs: Math.round(at.handler - at.event),
+              deadlineMs: Math.round(now - at.handler),
+              totalMs: Math.round(now - at.event),
+              frameGapMs: this.frameGap(at.event, at.handler),
+            });
+            this.slowInputs.sort((a, b) => b.totalMs - a.totalMs);
+            this.slowInputs.length = Math.min(this.slowInputs.length, 8);
+          }
         }
       }
       // The actions latch is consumed by this input, including denied/EX
@@ -516,8 +594,14 @@ export class NetMeter {
     if (cause) this.causes[cause]++;
   }
   /** A hit on you landed `px` from where you were drawn at that moment. */
-  hitGap(px: number) {
-    if (Number.isFinite(px) && px >= 0) this.push(this.gaps2, px);
+  hitGap(px: number, timing?: Omit<HitTrace, "gap">) {
+    if (!Number.isFinite(px) || px < 0) return;
+    this.push(this.gaps2, px);
+    if (px > HIT_GAP_PX && timing) {
+      this.farHits.push({ gap: Math.round(px), ...timing });
+      this.farHits.sort((a, b) => b.gap - a.gap);
+      this.farHits.length = Math.min(this.farHits.length, 8);
+    }
   }
   confirmed(ms: number) {
     if (Number.isFinite(ms) && ms >= 0) this.push(this.waits, ms);
@@ -532,6 +616,13 @@ export class NetMeter {
     const perMinute = (n: number) =>
       minutes > 0 ? Math.round((n / minutes) * 10) / 10 : 0;
     return {
+      hitTraceVersion: 1,
+      ...(this.slowInputs.length
+        ? { slowInputs: this.slowInputs.map((x) => ({ ...x })) }
+        : {}),
+      ...(this.farHits.length
+        ? { farHits: this.farHits.map((x) => ({ ...x })) }
+        : {}),
       rttP50: q(this.rtts, 0.5),
       rttP95: q(this.rtts, 0.95),
       snapGapP95: q(this.gaps, 0.95),
@@ -599,6 +690,9 @@ export class NetMeter {
     this.waits = [];
     this.causes = { hit: 0, status: 0, move: 0, other: 0 };
     this.gaps2 = [];
+    this.frames = [];
+    this.slowInputs = [];
+    this.farHits = [];
     this.lastSnap = undefined;
     this.liveMs = 0;
     this.holdCount = this.holdMost = this.inputs = 0;

@@ -1029,3 +1029,21 @@ fighting. Use the new run's actual byte count for bandwidth planning.
   logic is covered by unit tests (governor pauses, interpolation resync,
   server stale-input stop) and the existing Chromium touch-recovery and
   iOS-app checks.
+
+## Input và hit trace — 24 Nov 2026 (đợt 3)
+
+`GameEvent.at` là simulation time của hit (giây, làm tròn ms). Phép đo
+`hitsFar` nay tính cả tuổi hit trong snapshot và loại event `miss=true`.
+`hitTraceVersion=1` đánh dấu cơ sở đo mới; không so trực tiếp việc số mẫu
+giảm với bản cũ để kết luận hit-test đã tốt hơn. Server cũ thiếu `at` vẫn
+được hỗ trợ và được ghi `timed=false` trong trace.
+
+Report cuối trận có thể thêm `slowInputs` (tối đa tám action chậm nhất từ
+80 ms) và `farHits` (tối đa tám gap trên 24 world px). Input trace giữ cùng
+một thao tác: delivery, deadline, total ms, nguồn điều khiển và optional
+`frameGapMs`. Khoảng frame này không có nếu thiếu lịch sử hoặc qua pause
+trên 2 s; nó chưa phải phép đo GPU hoặc native event queue. Không xuất
+input timestamp tuyệt đối, người chơi hoặc room id. Nested schema strict
+và export whitelist áp dụng cho từng hàng. Xem
+[báo cáo đợt 3](battle-input-hit-session-3.md) cho reproducer, chi phí wire,
+negative control và giới hạn trước khi có trace thiết bị thật.

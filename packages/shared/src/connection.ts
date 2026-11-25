@@ -132,6 +132,43 @@ export const battlePerfSchema = z
     confirmP50: z.number().min(0).max(60_000).optional(),
     confirmP95: z.number().min(0).max(60_000).optional(),
     confirmP99: z.number().min(0).max(60_000).optional(),
+    hitTraceVersion: z.literal(1).optional(),
+    slowInputs: z
+      .array(
+        z
+          .object({
+            action: z.enum([
+              "basic",
+              "dash",
+              "jump",
+              "skill0",
+              "skill1",
+              "skill2",
+              "skill3",
+            ]),
+            source: z.enum(["touch-controls", "unknown"]),
+            deliveryMs: z.number().int().min(0).max(60_000),
+            deadlineMs: z.number().int().min(0).max(60_000),
+            totalMs: z.number().int().min(0).max(60_000),
+            frameGapMs: z.number().int().min(0).max(2000).optional(),
+          })
+          .strict(),
+      )
+      .max(8)
+      .optional(),
+    farHits: z
+      .array(
+        z
+          .object({
+            gap: z.number().min(0).max(100_000),
+            eventAgeMs: z.number().min(0).max(60_000),
+            leadMs: z.number().min(0).max(60_000),
+            timed: z.boolean(),
+          })
+          .strict(),
+      )
+      .max(8)
+      .optional(),
     pressSamples: z.number().int().min(0).max(1_000_000).optional(),
     pressToSendP50: z.number().min(0).max(60_000).optional(),
     pressToSendP95: z.number().min(0).max(60_000).optional(),
