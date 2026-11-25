@@ -31,7 +31,7 @@ function subjectUrl(champion: CharacterId) {
 /**
  * Colors are shown on the fighter. An aura, entrance or victory shows its
  * own effect, with the fighter it would be on as a dim figure inside it
- * where the catalogue wants one (the Shop and Wardrobe tiles: cosmetic-fx.css
+ * where the caller asks for one (the Shop and Wardrobe: cosmetic-fx.css
  * ".fx-subject", cosmetic-fx-preview.ts): a ring on an empty floor said
  * little about what you were buying.
  */
@@ -40,6 +40,8 @@ export function cosmeticPicture(
   champion: CharacterId,
   scope: string,
   stars = 0,
+  /** Draw an effect round a figure of the fighter (the Shop's tiles). */
+  withFigure = false,
 ) {
   const item =
     LOOK_ITEM_BY_ID[id] ??
@@ -54,7 +56,7 @@ export function cosmeticPicture(
     : "";
   const effect =
     item.slot === "aura" || item.slot === "entrance" || item.slot === "victory";
-  const subject = effect ? subjectUrl(champion) : "";
+  const subject = effect && withFigure ? subjectUrl(champion) : "";
   const figure = subject
     ? `<img class="fx-subject" src="${subject}" width="212" height="216" alt="" loading="lazy" decoding="async">`
     : "";
