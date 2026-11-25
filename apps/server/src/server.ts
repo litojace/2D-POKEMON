@@ -209,6 +209,19 @@ type Session = {
 export const HEARTBEAT = { interval: 10_000, timeout: 10_000 };
 /** When a socket counts as congested (see broadcast). */
 export const BACKPRESSURE = { bytes: 16 * 1024, messages: 4 };
+/** How many fault lines a minute reach the log (faultLog). */
+const FAULT_LOG = { perMinute: 20, stack: 1200 };
+/** What a fault's log line says of the error: its stack's first lines. */
+const faultText = (error: unknown) =>
+  (error instanceof Error
+    ? (error.stack ?? error.message)
+    : String(error)
+  ).slice(0, FAULT_LOG.stack);
+/** What players in a room that was closed after a fault are told. */
+const ROOM_FAULT_MESSAGE =
+  "This match hit a server error and was closed. No result was recorded.";
+/** What a command gets back when its handler failed. */
+const HANDLER_FAULT_MESSAGE = "Something went wrong. Please try again.";
 export function createArenaServer(
   options: {
     reconnectMs?: number;
@@ -259,6 +272,29 @@ export function createArenaServer(
       ? () => {}
       : (event: string, details: Record<string, unknown>) =>
           console.log(event, JSON.stringify(details)));
+  /**
+   * Faults (a room, a handler or a timer that threw) are caught where they
+   * happen, so one of them can't end every match; this is their log. A fault
+   * that repeats (the same handler on every message) is logged
+   * `FAULT_LOG.perMinute` times a minute, and the rest are counted in one
+   * `arena-faults-suppressed` line. The stack's first lines say where; no
+   * account or name is logged.
+   */
+  const faults = { from: 0, logged: 0, dropped: 0 };
+  const faultLog = (event: string, details: Record<string, unknown>) => {
+    const now = Date.now();
+    if (now - faults.from > 60_000) {
+      if (faults.dropped)
+        connectionLog("arena-faults-suppressed", { count: faults.dropped });
+      Object.assign(faults, { from: now, logged: 0, dropped: 0 });
+    }
+    if (++faults.logged > FAULT_LOG.perMinute) return void faults.dropped++;
+    try {
+      connectionLog(event, details);
+    } catch {
+      // A log that can't be written must not become a fault of its own.
+    }
+  };
   const diagnosticsEvery = Number(process.env.ARENA_DIAGNOSTICS ?? 0);
   const diagnostics = new ServerDiagnostics(
     options.diagnostics ?? diagnosticsEvery > 0,
@@ -1580,21 +1616,107 @@ export function createArenaServer(
       for (const p of arena.players) p.ready = false;
     } else if (arena.phase === "lobby")
       arena.players = arena.players.filter((p) => p.id !== session.id);
-    if (![...sessions.values()].some((s) => s.code === arena.code)) {
-      rooms.delete(arena.code);
-      chat.drop(`room:${arena.code}`);
-      dropTeamChat(arena.code);
-      // Anyone watching is told the room has closed.
-      for (const [id, w] of watchers)
-        if (w.code === arena.code) {
-          watchers.delete(id);
-          const viewer = io.sockets.sockets.get(id);
-          viewer?.leave(arena.code);
-          viewer?.emit("watch-ended", { reason: "The room closed." });
+    if (![...sessions.values()].some((s) => s.code === arena.code))
+      dropRoom(arena);
+    else broadcast(arena);
+  }
+  /** Forget a room nobody is seated in; anyone watching is told why. */
+  function dropRoom(arena: Arena, reason = "The room closed.") {
+    rooms.delete(arena.code);
+    chat.drop(`room:${arena.code}`);
+    dropTeamChat(arena.code);
+    for (const [id, w] of watchers)
+      if (w.code === arena.code) {
+        watchers.delete(id);
+        const viewer = io.sockets.sockets.get(id);
+        viewer?.leave(arena.code);
+        viewer?.emit("watch-ended", { reason });
+      }
+  }
+  /**
+   * A room whose tick, snapshot or seat handling threw: its state can no
+   * longer be trusted, and it would throw again next tick. Close that room
+   * only (every other match plays on), log it, and send its players back to
+   * the menu with the reason. No result is recorded. `access-revoked` is the
+   * message every app version already answers by leaving the room and
+   * showing the words.
+   */
+  function closeBrokenRoom(arena: Arena, error: unknown, during: string) {
+    const read = <T>(get: () => T) => {
+      try {
+        return get();
+      } catch {
+        return undefined;
+      }
+    };
+    faultLog("arena-room-fault", {
+      during,
+      code: arena.code,
+      mode: read(() => arena.mode),
+      phase: read(() => arena.phase),
+      players: read(() => arena.players.length),
+      raid: read(() => (arena instanceof RaidArena ? arena.raid.boss : null)),
+      tag: read(() => arena.matchTag),
+      error: faultText(error),
+    });
+    // Out of the list first: whatever else fails, it never ticks again.
+    rooms.delete(arena.code);
+    for (const session of [...sessions.values()]) {
+      if (session.code !== arena.code) continue;
+      sessions.delete(session.token);
+      read(() => {
+        if (parties.of(session.accountId)?.room?.code === session.code) {
+          const party = parties.setRoom(session.accountId, undefined);
+          if (party) emitParty(party);
         }
-    } else broadcast(arena);
+      });
+      if (!session.socketId) continue;
+      socketSessions.delete(session.socketId);
+      const socket = io.sockets.sockets.get(session.socketId);
+      socket?.leave(arena.code);
+      socket?.emit("access-revoked", { error: ROOM_FAULT_MESSAGE });
+    }
+    read(() => dropRoom(arena, ROOM_FAULT_MESSAGE));
+  }
+  /**
+   * Socket handlers run inside a guard: one that throws, or whose promise
+   * rejects, is logged and answered with an error. Unguarded, either one
+   * ended the process, and every match with it.
+   */
+  function guardHandlers(socket: import("socket.io").Socket) {
+    type Handler = (...args: unknown[]) => unknown;
+    const listen = socket.on.bind(socket) as (
+      event: string,
+      handler: Handler,
+    ) => typeof socket;
+    const fault = (event: string, args: unknown[], error: unknown) => {
+      faultLog("arena-handler-fault", {
+        on: event,
+        code: getSession(socket.id)?.code ?? null,
+        error: faultText(error),
+      });
+      // Answering twice is harmless: Socket.IO sends the first answer only.
+      const cb = args.at(-1);
+      if (typeof cb !== "function") return;
+      try {
+        cb({ ok: false, error: HANDLER_FAULT_MESSAGE });
+      } catch {
+        // The connection is gone: nobody to answer.
+      }
+    };
+    socket.on = ((event: string, handler: Handler) =>
+      listen(event, (...args: unknown[]) => {
+        try {
+          const result = handler(...args);
+          if (result instanceof Promise)
+            result.catch((error: unknown) => fault(event, args, error));
+        } catch (error) {
+          fault(event, args, error);
+        }
+      })) as typeof socket.on;
   }
   io.on("connection", (socket) => {
+    guardHandlers(socket);
     claimAccount(socket);
     if (draining || superseded) socket.emit("server-update", updateNotice());
     void loadChatBlocks(socket);
@@ -3677,22 +3799,42 @@ export function createArenaServer(
   const step = () => {
     const started = diagnostics.now();
     ticks++;
-    for (const s of sessions.values())
-      if (!s.socketId && s.expires <= Date.now()) expire(s);
-    for (let a of [...rooms.values()]) {
-      const before = a.phase;
-      const serial = a.serial;
-      a.drainInputs();
-      a.tick();
-      if (before !== a.phase && a.phase === "finished")
-        // Bots are always up for a rematch.
-        for (const p of a.players) p.ready = a.bots.has(p.id);
-      if (
-        ticks % Math.round(RULES.tick / RULES.snapshot) === 0 ||
-        before !== a.phase ||
-        castThisTick(a, serial)
-      )
-        broadcast(a);
+    // Each seat and each room in a guard of its own: a fault closes that
+    // room (closeBrokenRoom), and the loop goes on to the others. Unguarded,
+    // one throw here ended the process and every match on it.
+    for (const s of [...sessions.values()]) {
+      if (s.socketId || s.expires > Date.now() || !sessions.has(s.token))
+        continue;
+      try {
+        expire(s);
+      } catch (error) {
+        // Not again next tick: the seat goes, and its room with it.
+        sessions.delete(s.token);
+        const arena = rooms.get(s.code);
+        if (arena) closeBrokenRoom(arena, error, "expire");
+        else faultLog("arena-session-fault", { error: faultText(error) });
+      }
+    }
+    for (const a of [...rooms.values()]) {
+      // Closed earlier in this tick, with a room that broke.
+      if (rooms.get(a.code) !== a) continue;
+      try {
+        const before = a.phase;
+        const serial = a.serial;
+        a.drainInputs();
+        a.tick();
+        if (before !== a.phase && a.phase === "finished")
+          // Bots are always up for a rematch.
+          for (const p of a.players) p.ready = a.bots.has(p.id);
+        if (
+          ticks % Math.round(RULES.tick / RULES.snapshot) === 0 ||
+          before !== a.phase ||
+          castThisTick(a, serial)
+        )
+          broadcast(a);
+      } catch (error) {
+        closeBrokenRoom(a, error, "tick");
+      }
     }
     diagnostics.tick(started);
   };
@@ -3765,7 +3907,12 @@ export function createArenaServer(
     options.autoTick === false
       ? undefined
       : setInterval(() => {
-          if (plaza.size) plazaStep();
+          try {
+            if (plaza.size) plazaStep();
+          } catch (error) {
+            // The Plaza is one world: nothing to close, try again next tick.
+            faultLog("arena-plaza-fault", { error: faultText(error) });
+          }
         }, 1000 / PLAZA.tick);
   const diagnosticsTimer =
     diagnosticsEvery > 0 && options.autoTick !== false
@@ -3794,7 +3941,16 @@ export function createArenaServer(
   const accountTimer =
     options.autoTick === false
       ? undefined
-      : setInterval(() => void refreshAccounts(), 30000);
+      : setInterval(
+          () =>
+            void refreshAccounts().catch((error: unknown) =>
+              faultLog("arena-timer-fault", {
+                timer: "accounts",
+                error: faultText(error),
+              }),
+            ),
+          30000,
+        );
   /** A newer server answers the public address (superseded, above). */
   const supersede = (by: string) => {
     if (superseded) return;
