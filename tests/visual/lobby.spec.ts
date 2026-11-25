@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openLobby, snap } from "./helpers";
+import { openLobby, openPlayPanel, snap } from "./helpers";
 import { shopServer } from "./shop-server";
 
 // Hub redesign phase 2: the Lobby is the first screen after login. The UI
@@ -1685,4 +1685,59 @@ test("a skin answer held back until after the Lobby is up still dresses the figh
   await page.evaluate(() => (window as any).__shop.release());
   await expect(art).toHaveAttribute("data-preview-item", "voltkit-stormcrown");
   expect(errors).toEqual([]);
+});
+
+// Join or watch (the mode menu's last row): its one action is the gold main
+// button, as on every other screen, and Close is the hub panels' round
+// button (25 Nov 2026: Join was the dark secondary, Close a square).
+test("Join or watch: Join is the main gold button and Close is round", async ({
+  browser,
+}, info) => {
+  for (const size of [
+    { width: 667, height: 375, phone: true },
+    { width: 1440, height: 900, phone: false },
+  ]) {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      await openLobby(page);
+      await openPlayPanel(page);
+      const look = await page.evaluate(() => {
+        const join = document.getElementById("join")!;
+        const close = document.querySelector<HTMLElement>(
+          ".home-play-drawer .home-panel-close",
+        )!;
+        const drawer = document
+          .querySelector(".home-play-drawer")!
+          .getBoundingClientRect();
+        const j = join.getBoundingClientRect();
+        const c = close.getBoundingClientRect();
+        return {
+          joinGold: getComputedStyle(join).backgroundImage.includes("gradient"),
+          joinInside: j.left >= drawer.left && j.right <= drawer.right,
+          joinHeight: Math.round(j.height),
+          closeRound: getComputedStyle(close).borderTopLeftRadius === "50%",
+          closeSquare: Math.round(c.width) === Math.round(c.height),
+          closeSize: Math.round(c.width),
+        };
+      });
+      const where = `${size.width}x${size.height}`;
+      expect(look.joinGold, where).toBe(true);
+      expect(look.joinInside, where).toBe(true);
+      // A thumb tall on a phone (a desktop's is 42 px, for a mouse).
+      expect(look.joinHeight, where).toBeGreaterThanOrEqual(
+        size.phone ? 44 : 40,
+      );
+      expect(look.closeRound, where).toBe(true);
+      expect(look.closeSquare, where).toBe(true);
+      expect(look.closeSize, where).toBeGreaterThanOrEqual(40);
+      await snap(page, info, `join-or-watch-${where}`);
+    } finally {
+      await context.close();
+    }
+  }
 });
