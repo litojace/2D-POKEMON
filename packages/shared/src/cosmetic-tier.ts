@@ -29,13 +29,17 @@ export const TIER_NAMES: Record<CosmeticTier, string> = {
   legendary: "Legendary",
   mythic: "Mythical",
 };
-/** Rarity colours (grey, blue, purple, gold, crimson), as games use them. */
+/**
+ * Rarity colours (grey, blue, purple, gold, pink), as games use them.
+ * Mythical is the client's --r-mythic (ui/tokens.css): one colour for it
+ * everywhere. It was crimson here, too close to the red of a sale tag.
+ */
 export const TIER_COLORS: Record<CosmeticTier, string> = {
   common: "#a7b3c6",
   rare: "#4fa8ff",
   epic: "#b56bff",
   legendary: "#ffbf3c",
-  mythic: "#ff4f7b",
+  mythic: "#ff9be0",
 };
 export const tierRank = (t: CosmeticTier) => COSMETIC_TIERS.indexOf(t);
 

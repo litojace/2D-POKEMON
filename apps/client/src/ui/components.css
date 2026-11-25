@@ -1008,21 +1008,62 @@
 .ui-rarity.is-mythic::before {
   background: var(--r-foil);
 }
+/* A rarity's colour (--r) and the backdrop its pictures stand on
+   (--r-backdrop: item tiles, the Shop's deal card and action bar). Each
+   tier's backdrop adds to the one below; all are still gradients. */
 [data-rarity="common"] {
   --r: var(--r-common);
 }
 [data-rarity="rare"] {
   --r: var(--r-rare);
+  --r-backdrop: radial-gradient(
+    ellipse at 50% 92%,
+    color-mix(in srgb, var(--r-rare) 46%, var(--ui-bg-2)),
+    var(--ui-bg-0) 78%
+  );
 }
 [data-rarity="epic"] {
   --r: var(--r-epic);
+  --r-backdrop:
+    radial-gradient(
+      ellipse at 50% 96%,
+      color-mix(in srgb, var(--r-epic) 62%, transparent),
+      transparent 64%
+    ),
+    radial-gradient(
+      ellipse at 50% -10%,
+      color-mix(in srgb, var(--r-epic) 34%, transparent),
+      transparent 60%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--r-epic) 16%, var(--ui-bg-0)),
+      var(--ui-bg-0)
+    );
 }
 [data-rarity="legendary"] {
   --r: var(--r-legendary);
+  --r-backdrop:
+    radial-gradient(ellipse at 50% 100%, #ffc44dcc, transparent 58%),
+    repeating-conic-gradient(
+      from -8deg at 50% 100%,
+      #ffd9782e 0 8deg,
+      transparent 8deg 24deg
+    ),
+    linear-gradient(180deg, #2b1f0a, #120c05);
 }
 [data-rarity="mythical"],
 [data-rarity="mythic"] {
   --r: var(--r-mythic);
+  --r-backdrop:
+    radial-gradient(circle at 18% 22%, #fff 0 1px, transparent 1.6px),
+    radial-gradient(circle at 81% 15%, #fff 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 70% 48%, #ffffffb3 0 0.8px, transparent 1.4px),
+    radial-gradient(circle at 12% 60%, #ffffffb3 0 0.8px, transparent 1.4px),
+    radial-gradient(ellipse at 22% 100%, #ff8fd8b0, transparent 55%),
+    radial-gradient(ellipse at 82% 100%, #7ff3ff99, transparent 55%),
+    radial-gradient(ellipse at 50% -10%, #b56bff8c, transparent 62%),
+    linear-gradient(180deg, #1c1034, #0b0718);
 }
 .ui-element {
   display: inline-flex;
@@ -1109,9 +1150,20 @@
 
 /* ------------------------------------------------------------ item tile */
 /* One card for every item: Shop, Wardrobe, rewards. Fixed rows, so a long
-   name or a missing price never moves the art. */
+   name or a missing price never moves the art.
+
+   Rarity reads from the card itself, before any word is read (owner, 25 Nov
+   2026: "make the Shop's items look better"). A band under the picture
+   carries the rarity's colour and name, and each tier adds to the one
+   below it:
+   Common     a quiet grey band, the plain card
+   Rare       a solid blue band, a blue edge, a blue-lit backdrop
+   Epic       a purple band and edge, a two-light backdrop, a tinted card
+   Legendary  a gold band and a gold-leaf edge, rays behind the picture
+   Mythical   a prismatic band and edge, an aurora with stars behind
+   Everything is a still gradient: nothing animates, blurs or filters, so a
+   grid of tiles costs the same on Low graphics as on High. */
 .ui-tile {
-  --r: var(--ui-line-2);
   position: relative;
   display: grid;
   grid-template-rows: auto auto auto auto 1fr;
@@ -1124,6 +1176,12 @@
   min-width: 0;
   transition: transform var(--dur-1) var(--ease-pop);
 }
+/* A tile with no rarity takes the panel's line colour. (Set on the tile
+   itself this used to beat [data-rarity], declared earlier: no tile's edge
+   or backdrop ever took its rarity's colour.) */
+.ui-tile:not([data-rarity]) {
+  --r: var(--ui-line-2);
+}
 .ui-tile:hover {
   transform: translateY(-2px);
 }
@@ -1131,10 +1189,13 @@
   position: relative;
   aspect-ratio: 1.12;
   border-radius: var(--rad-sm);
-  background: radial-gradient(
-    ellipse at 50% 85%,
-    color-mix(in srgb, var(--r) 26%, var(--ui-bg-2)),
-    var(--ui-bg-0) 75%
+  background: var(
+    --r-backdrop,
+    radial-gradient(
+      ellipse at 50% 85%,
+      color-mix(in srgb, var(--r) 26%, var(--ui-bg-2)),
+      var(--ui-bg-0) 75%
+    )
   );
   display: grid;
   place-items: center;
@@ -1151,14 +1212,58 @@
 .skin-thumb {
   object-fit: contain;
 }
+/* In a tile the fighter fills the picture, whole: the thumbnail's frame
+   already keeps room round the tallest crest and the ground shadow, so it
+   needs no margin of its own (it was 92% of the box: at 667×375 a fighter
+   stood 60 px tall). */
+.ui-tile-art > .skin-thumb {
+  width: 100%;
+  height: 100%;
+}
+/* The rarity band, joined to the picture above it. */
+.ui-tile > .ui-rarity {
+  gap: 5px;
+  height: 18px;
+  margin: -4px 0 2px;
+  padding: 0 7px;
+  border-radius: 0 0 var(--rad-sm) var(--rad-sm);
+  background: color-mix(in srgb, var(--r) 22%, var(--ui-bg-2));
+  color: color-mix(in srgb, var(--r) 70%, #fff);
+  font-size: calc(10px * var(--text-scale, 1));
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  overflow: hidden;
+}
+.ui-tile > .ui-rarity::before {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+}
+/* A tile with no rarity (the Wardrobe's "Original look") keeps the row. */
+.ui-tile > .ui-rarity.is-none {
+  background: none;
+}
+.ui-tile > .ui-rarity.is-none::before {
+  content: none;
+}
+.ui-tile[data-rarity] > .ui-tile-art {
+  border-radius: var(--rad-sm) var(--rad-sm) 0 0;
+}
+/* A name reads in full: one line where it fits, two where it doesn't
+   ("Star-tunnel entrance" on a 100 px tile ended in "…"). The tiles of a
+   row share its height, and the price sits on the bottom edge of each, so
+   a two-line name moves nothing but that row's height. */
 .ui-tile-name {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: calc(17px * var(--text-scale, 1));
   line-height: 1.1;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 .ui-tile-sub {
   font-size: var(--fs-micro);
@@ -1197,23 +1302,70 @@
   right: 12px;
   z-index: 1;
 }
-.ui-tile[aria-pressed="true"] {
-  border-color: var(--ui-accent);
-  box-shadow:
-    0 0 0 2px var(--ui-accent) inset,
-    var(--shadow-1);
-}
 .ui-tile.is-locked .ui-tile-art > * {
   filter: grayscale(0.55) brightness(0.7);
 }
 .ui-tile.is-unowned {
   opacity: 0.62;
 }
-.ui-tile.is-mythic {
-  border: 1.5px solid transparent;
+
+/* Rare: the band turns solid, the edge and the backdrop take its blue. */
+.ui-tile[data-rarity="rare"] {
+  border-color: color-mix(in srgb, var(--r) 62%, transparent);
+}
+.ui-tile[data-rarity="rare"] > .ui-rarity {
+  background: var(--r);
+  color: var(--ui-bg-0);
+}
+/* Epic: a thicker edge, light from above and below, a tinted card. */
+.ui-tile[data-rarity="epic"] {
+  border: 1.5px solid color-mix(in srgb, var(--r) 85%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--r) 20%, var(--ui-bg-1)),
+    var(--ui-bg-1) 62%
+  );
+}
+.ui-tile[data-rarity="epic"] > .ui-rarity {
+  background: linear-gradient(
+    90deg,
+    var(--r),
+    color-mix(in srgb, var(--r) 70%, #ff7ad9)
+  );
+  color: var(--ui-bg-0);
+}
+/* Legendary: gold leaf round the card, rays rising behind the picture. */
+.ui-tile[data-rarity="legendary"] {
+  border: 2px solid transparent;
   background:
-    linear-gradient(var(--ui-bg-1), var(--ui-bg-1)) padding-box,
+    linear-gradient(180deg, #33270f, var(--ui-bg-1) 66%) padding-box,
+    linear-gradient(155deg, #fff3bd, #ffbf3c 32%, #a8690b 66%, #ffd978)
+      border-box;
+}
+.ui-tile[data-rarity="legendary"] > .ui-rarity {
+  background: linear-gradient(180deg, #ffe9a3, #ffbf3c 55%, #e79a1a);
+  color: #3a2400;
+}
+/* Mythical: the prismatic edge and band, an aurora with stars behind. */
+.ui-tile.is-mythic {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(180deg, #2a1838, var(--ui-bg-1) 66%) padding-box,
     var(--r-foil) border-box;
+}
+.ui-tile.is-mythic > .ui-rarity {
+  background: var(--r-foil);
+  color: #2a0f33;
+}
+.ui-tile.is-mythic > .ui-rarity::before {
+  background: currentColor;
+}
+/* Chosen: the accent ring round the card, a hair off its edge, so it reads
+   on a gold or prismatic edge too and covers nothing inside. */
+.ui-tile[aria-pressed="true"] {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+  box-shadow: var(--shadow-1);
 }
 @media (max-height: 500px) {
   .ui-tile {
@@ -1221,8 +1373,22 @@
     border-radius: var(--rad-sm);
   }
   .ui-tile-art {
+    /* Square: the fighter a tenth taller, where a tile is ~100 px wide. */
+    aspect-ratio: 1;
     border-radius: 7px;
     margin-bottom: 2px;
+  }
+  .ui-tile[data-rarity] > .ui-tile-art {
+    border-radius: 7px 7px 0 0;
+  }
+  .ui-tile > .ui-rarity {
+    height: 15px;
+    margin: -2px 0 1px;
+    padding: 0 5px;
+    border-radius: 0 0 7px 7px;
+    /* 10 px is the floor for any text on a phone (phone-fit.spec.ts). */
+    font-size: calc(10px * var(--text-scale, 1));
+    letter-spacing: 0.05em;
   }
   .ui-tile-name {
     font-size: calc(13px * var(--text-scale, 1));

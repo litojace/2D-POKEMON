@@ -105,8 +105,9 @@ after another and the saved fighter and avatar were not waited for at all.
    1v1 orb tip over a 2v2 painting). index.html's boot screen reads the same
    key and takes the same layout, so nothing moves at the hand-over either.
    Paintings are named `startup-art-<scene>.webp` in `src/art/loading-art/`:
-   a scene shows only once its picture is there, and the service worker
-   installs them with the game (`PRECACHED_ART`).
+   a scene shows only once its picture is there. The service worker does
+   not install them with the game (thirteen are 3 MB): it keeps the one each
+   start downloads for the next (`sw.ts`, `arena-startup-art-v1`).
 
 The status line shows the bar's percentage beside it once the server has
 answered (while it wakes up the bar is only an estimate, so no number).
