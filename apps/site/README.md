@@ -72,3 +72,8 @@ badges only for a live listing), and add the app links to the hero.
       (session_01GGURqSvcdeJjPNb1K3n9YJ) the PR
 - [x] Game build unchanged: `npm run build` + `scripts/verify-pwa.mjs` pass,
       entry 1,686,815 bytes (limit 2,400,000), 56 precache entries, no site files
+- [ ] PR description must say (coordinator, 25 Nov): **FULL on main's rules
+      (72 files), FAST with this PR's rule**; why the exception can't hide game
+      files (only `apps/site/` images and fonts, anchored at the repo root;
+      tests pin that other images and the site's code still count); and the
+      `scripts/app-store/screenshots.spec.ts` fix as a separate item
