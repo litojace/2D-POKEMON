@@ -72,11 +72,48 @@ assert(
   !/assets\/phaser-[\w-]+\.js/.test(entry),
   "Phaser must not load with the page (phaser-runtime.ts)",
 );
-for (const chunk of ["phaser", "raid-hall", "fitting-room", "journey"])
+assert(
+  !/assets\/battle-kit-[\w-]+\.js/.test(entry),
+  "The battle kit must not load with the page (phaser-runtime.ts)",
+);
+for (const chunk of [
+  "phaser",
+  "battle-kit",
+  "raid-hall",
+  "fitting-room",
+  "journey",
+])
   assert(
     urls.some((url) => new RegExp(`^assets/${chunk}-[\\w-]+\\.js$`).test(url)),
     `${chunk} must stay available offline`,
   );
+// Every script a precached script imports is precached too: an installed
+// game must not open a panel or a battle offline and miss half of it.
+const scriptImports = (file) =>
+  [
+    ...readFileSync(root + file, "utf8").matchAll(
+      /\bfrom\s*"\.\/([\w.-]+\.js)"|\bimport\s*"\.\/([\w.-]+\.js)"/g,
+    ),
+  ].map((match) => "assets/" + (match[1] ?? match[2]));
+for (const url of urls.filter((url) => /^assets\/[^/]+\.js$/.test(url)))
+  for (const needed of scriptImports(url))
+    assert(
+      urls.includes(needed),
+      `${url} imports ${needed}, which is not precached`,
+    );
+// The script the game starts with. The service worker precaches nothing
+// over 3 MiB (vite.config.ts), so a startup script that grows past it
+// leaves installed games without their entry. Battle-only code belongs in
+// the battle kit (apps/client/src/battle-kit.ts), a screen's code in its
+// own import(): this fails well before that limit, while there is room.
+const startup = entry.match(/src="\/(assets\/index-[\w-]+\.js)"/)?.[1];
+assert(startup && urls.includes(startup), "The startup script is precached");
+const startupBytes = readFileSync(root + startup).length;
+const STARTUP_BUDGET = 2_400_000;
+assert(
+  startupBytes <= STARTUP_BUDGET,
+  `The startup script is ${startupBytes} bytes, over its ${STARTUP_BUDGET} budget (the precache limit is 3,145,728): load battle-only code with the battle kit, or a screen's code on demand`,
+);
 // Links in old emails land on these paths; each must be the game page.
 const page = readFileSync(root + "index.html", "utf8");
 for (const path of ["email-confirmed", "reset-password", "auth/callback"]) {
@@ -90,7 +127,7 @@ for (const path of ["email-confirmed", "reset-password", "auth/callback"]) {
 assert(!existsSync(root + "touch-preview.html"));
 assert(!existsSync(root + "ability-preview.html"));
 console.log(
-  `PWA build verified: ${urls.length} static precache entries, icons, manifest, and preview exclusion.`,
+  `PWA build verified: ${urls.length} static precache entries, icons, manifest, and preview exclusion. Startup script ${startupBytes} bytes of ${STARTUP_BUDGET}.`,
 );
 
 assert(!existsSync(root + "safe-preview.html"));
