@@ -247,6 +247,24 @@ for (const size of [
       await expect(page.locator(".roster-foot-text")).toContainText(
         "Locked in",
       );
+      // The card you locked says Locked inside its edge (with the looks
+      // count beside it the tag ran past the card: "LOCKE", 25 Nov 2026).
+      // (Phones show no foot on the cards.)
+      if (size.height > 500) {
+        const lockedTag = page.locator(".roster-card .roster-locked");
+        await expect(lockedTag).toBeVisible();
+        expect(
+          await lockedTag.evaluate((tag) => {
+            const card = tag.closest(".roster-card")!.getBoundingClientRect();
+            const t = tag.getBoundingClientRect();
+            const foot = tag.parentElement!;
+            return {
+              inside: t.left >= card.left && t.right <= card.right - 4,
+              spill: foot.scrollWidth - foot.clientWidth,
+            };
+          }),
+        ).toEqual({ inside: true, spill: 0 });
+      }
       // No drawer on phones: Ready is in sight, bottom right, beside Lock in.
       await expect(page.locator("#ready")).toBeInViewport();
       const ready = await box(page, "#ready");
