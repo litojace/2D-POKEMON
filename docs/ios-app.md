@@ -12,18 +12,18 @@ app talks to the same game server on Render and the same Supabase project.
 
 ## What's where
 
-| Path                                        | What it is                                                                                                                  |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `apps/client/capacitor.config.ts`           | App name, bundle ID (`com.litojace.elementarena`), dark background, no page bounce.                                         |
-| `apps/client/ios/`                          | The Xcode project. Commit changes to it; `ios/App/App/public` (the built game) and the generated config copies are ignored. |
-| `apps/client/ios/App/App/AppleSignIn.swift` | Native Sign in with Apple (a small plugin inside the app) and the view controller that registers it.                        |
-| `apps/client/ios/App/App/App.entitlements`  | The Sign in with Apple capability.                                                                                          |
-| `apps/client/ios/App/App/Info.plist`        | Landscape only, full screen on iPad, status bar hidden, "no special encryption" (export compliance).                        |
-| `apps/client/src/native.ts`                 | Everything in the client that knows it's in the app.                                                                        |
-| `apps/server/src/apple.ts`                  | Trading Apple's sign-in code for a refresh token, and revoking it.                                                          |
-| `supabase/migrations/111_apple_tokens.sql`  | Where the server keeps those tokens.                                                                                        |
-| `scripts/check-native-env.mjs`              | Stops the build if the app's settings are missing.                                                                          |
-| `node scripts/generate-icons.mjs`           | Draws the app icon (default, dark and tinted), launch screen and PWA icons from `scripts/app-icon.svg`.                     |
+| Path                                        | What it is                                                                                                                                                                                                             |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/client/capacitor.config.ts`           | App name, bundle ID (`com.litojace.elementarena`), dark background, no page bounce.                                                                                                                                    |
+| `apps/client/ios/`                          | The Xcode project. Commit changes to it; `ios/App/App/public` (the built game) and the generated config copies are ignored.                                                                                            |
+| `apps/client/ios/App/App/AppleSignIn.swift` | Native Sign in with Apple (a small plugin inside the app) and the view controller that registers it.                                                                                                                   |
+| `apps/client/ios/App/App/App.entitlements`  | The Sign in with Apple capability.                                                                                                                                                                                     |
+| `apps/client/ios/App/App/Info.plist`        | Landscape only, full screen on iPad, status bar hidden, "no special encryption" (export compliance), and why it adds to Photos (saving a shared card: without `NSPhotoLibraryAddUsageDescription` iOS closes the app). |
+| `apps/client/src/native.ts`                 | Everything in the client that knows it's in the app.                                                                                                                                                                   |
+| `apps/server/src/apple.ts`                  | Trading Apple's sign-in code for a refresh token, and revoking it.                                                                                                                                                     |
+| `supabase/migrations/111_apple_tokens.sql`  | Where the server keeps those tokens.                                                                                                                                                                                   |
+| `scripts/check-native-env.mjs`              | Stops the build if the app's settings are missing.                                                                                                                                                                     |
+| `node scripts/generate-icons.mjs`           | Draws the app icon (default, dark and tinted), launch screen and PWA icons from `scripts/app-icon.svg`.                                                                                                                |
 
 The app runs on **iPhone and iPad** (`TARGETED_DEVICE_FAMILY = "1,2"` in
 the Xcode project, since 24 Nov 2026). See [iPad](#ipad) below.

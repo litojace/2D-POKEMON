@@ -269,6 +269,9 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
           if (id.includes("/phaser/")) return "phaser";
+          // Only shared pictures draw a QR code: the encoder loads with
+          // them (share-qr.ts), not with the game's first scripts.
+          if (id.includes("/qrcode-generator/")) return;
           return "vendor";
         },
       },

@@ -15,13 +15,16 @@ export const EDITABLE = 'input, textarea, select, [contenteditable="true"]';
 /** The Admin panel (the shared dialog holding its tabs): admins copy
  * player ids and report text from it (owner, 7 Nov 2026). */
 export const ADMIN = "dialog:has(.admin-tabs)";
+/** A picture to save (share-preview.ts): its long press opens the system's
+ * Save to Photos / Download image (owner, 25 Nov 2026). */
+export const SAVE_PICTURE = "[data-share-picture]";
 
-/** Cancel this menu or drag? Everywhere but a field you type in and the
- * Admin panel. */
+/** Cancel this menu or drag? Everywhere but a field you type in, the
+ * Admin panel and a picture to save. */
 export function blocksMenu(
   target: { closest(selector: string): unknown } | null,
 ) {
-  return !target?.closest(`${EDITABLE}, ${ADMIN}`);
+  return !target?.closest(`${EDITABLE}, ${ADMIN}, ${SAVE_PICTURE}`);
 }
 
 let installed = false;
