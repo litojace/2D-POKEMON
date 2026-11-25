@@ -1,7 +1,7 @@
 import { defineConfig, type Plugin, type Rollup } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { execSync } from "node:child_process";
-import { copyFileSync, mkdirSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { LEGACY_AUTH_PATHS } from "./src/auth-redirect";
 
@@ -83,26 +83,60 @@ function startupScriptList(): Plugin {
 }
 /**
  * Hashed artwork installed ahead of time (scripts/verify-pwa.mjs checks it):
- * the startup screen, and every boss's painted rig and spell flipbook, so a
- * raid starts without downloading its boss and works offline once installed.
+ * the startup screen's starfield and sigil, and the bosses' spell flipbook,
+ * so a raid starts without downloading it.
+ *
+ * Not the paintings behind the startup curtain (startup-art-*, 3 MB for
+ * thirteen): a start shows one, which the start before chose and downloaded
+ * (loading-art.ts prepareNextArt), and the service worker keeps it (sw.ts).
+ * Installing all of them competed with the first Lobby for the connection.
  */
 const PRECACHED_ART =
-  /^assets\/(startup-|raid-whole-|raid-directions-|raid-spell-flipbook-)/;
+  /^assets\/(startup-starfield-|startup-sigil-|raid-whole-|raid-directions-|raid-spell-flipbook-)/;
+/**
+ * A fighter's files in public/assets/fighters/<id>/ are downloaded only for
+ * a pack of frames, a sheet or an atlas (animation/pipeline.ts
+ * queueFighterAssets, fighter-selection.ts). A layered fighter, which all
+ * are today, is drawn by the client: its animations.json is compiled into
+ * the script (animation/pack-config.ts) and its two pictures are never
+ * requested, so none of its files is installed.
+ */
+const fighterPackKind = new Map<string, string>();
+function fighterFileNeeded(url: string) {
+  const id = url.match(/^assets\/fighters\/([^/]+)\//)?.[1];
+  if (!id) return true;
+  if (!fighterPackKind.has(id)) {
+    let kind = "unknown";
+    try {
+      kind = JSON.parse(
+        readFileSync(
+          resolve(__dirname, `public/assets/fighters/${id}/animations.json`),
+          "utf8",
+        ),
+      ).kind;
+    } catch {
+      // No pack file: keep what is there.
+    }
+    fighterPackKind.set(id, kind);
+  }
+  return fighterPackKind.get(id) !== "layered";
+}
 /**
  * What the service worker installs ahead of time: the shell the game needs
  * to start (startup scripts, styles, fonts, icons, the offline page), the
- * artwork above, and the unhashed public files (fighter layers, music,
- * backgrounds), which need its revision checks to stay current. Hashed
- * scripts loaded later (the Plaza, the shop preview) and the
- * other raid art (splash pictures, thumbnails, portraits, illustrated arenas)
- * are cached by the service worker when first used instead (sw.ts).
+ * artwork above, and the public files that keep their names (music,
+ * backgrounds, fonts), which need its revision checks to stay current.
+ * Hashed scripts loaded later (the Plaza, the shop preview), the startup
+ * paintings and the other raid art (splash pictures, thumbnails, portraits,
+ * illustrated arenas) are cached by the service worker when first used
+ * instead (sw.ts).
  */
 function precached(url: string) {
   if (/^assets\/[^/]+\.js$/.test(url))
     // Unknown (a build without the list): keep every script, as before.
     return !startupScripts.size || startupScripts.has(url);
   if (/^assets\/[^/]+\.webp$/.test(url)) return PRECACHED_ART.test(url);
-  return true;
+  return fighterFileNeeded(url);
 }
 
 /**
@@ -134,7 +168,14 @@ export default defineConfig({
       filename: "sw.ts",
       registerType: "prompt",
       injectRegister: false,
-      includeAssets: ["icons/*.png", "offline.html"],
+      // The icons a page or a notification shows. The two 512 px ones are
+      // the install manifest's: the browser fetches those itself, once.
+      includeManifestIcons: false,
+      includeAssets: [
+        "icons/arena-192.png",
+        "icons/apple-touch-icon.png",
+        "offline.html",
+      ],
       injectManifest: {
         globPatterns: [
           "assets/*.{js,css,webp}",
@@ -145,6 +186,12 @@ export default defineConfig({
         ],
         globIgnores: ["assets/fighters/**/portrait-showcase-v1.webp"],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        // Only a name with Vite's content hash needs no revision. The
+        // plugin's default is everything under assets/, which also holds
+        // the public files that keep their names (music, backgrounds,
+        // fonts): with no revision, a phone that had one never fetched it
+        // again after it changed.
+        dontCacheBustURLsMatching: /^assets\/[^/]+-[\w-]{8}\.\w+$/,
         manifestTransforms: [
           (entries) => ({
             manifest: entries.filter((entry) => precached(entry.url)),
