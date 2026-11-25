@@ -631,6 +631,15 @@ two runs. `tests/unit/css-has-rules.test.ts` fails on `:has(...) > *` or
 many rules: removing any one stylesheet's `:has()` rules made no
 measurable difference, only removing all of them did.
 
+**Guarded in CI.** `tests/visual/battle-style-budget.spec.ts` traces 12 s
+of a seeded duel (Cindrake vs Voltkit, Low, 915×412) and counts the
+elements each style recalculation touched (`UpdateLayoutTree`
+`elementCount`): a count, the same on any machine. On 25 Nov 2026 it was a
+median of 55 and a p90 of 109 in all five runs; with the old
+Profile rule put back, 448 and 448. It fails above 120 and 220. Elements
+per second is printed but not judged, since it follows the frame rate
+(1,700–3,500 here).
+
 ### 15. The server's clock: exactly 30 ticks a second
 
 The 18 Nov 2026 reports (22 matches, mostly 3-player free-for-all, two

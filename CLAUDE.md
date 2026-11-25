@@ -207,6 +207,16 @@ must stay within what we already ship. Details and measurements:
   `getBoundingClientRect`, `getComputedStyle` after a style change): measure
   once and cache. `tests/visual/match-flow-budget.spec.ts` counts layout
   reads during a real match, and checks that no fighter art loads mid-fight.
+- **CSS anywhere in the client counts in battle**, even a closed screen's:
+  every HUD change makes Chrome recheck the whole page's rules. Never write
+  a broad `:has()`: one followed by a combinator and `*` or a bare tag
+  (`.a:has(.b) > *`), or on `body`, `html` or a dialog. Use a class the
+  screen's markup sets instead (`profile-view.ts`, `has-account`). Such
+  rules twice made battle style work several times heavier (15 Nov; 25 Nov,
+  a Pixel 8a at 23–29 fps: `docs/network-performance.md` section 14).
+  `tests/unit/css-has-rules.test.ts` catches the `> *` form. After changing
+  CSS or battle UI, run `tests/visual/battle-style-budget.spec.ts` (about
+  30 s): it counts the elements restyled per recalculation in a real duel.
 - **Test scenarios that swap in a new arena** in the same page must carry on
   its event numbering (`a.serial = previous.serial`): the client skips
   events whose id it has passed, so a fresh count silently hides casts.
