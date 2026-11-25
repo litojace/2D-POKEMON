@@ -292,8 +292,8 @@ export function createArenaServer(
     fetchHealth?: (url: string) => Promise<unknown>;
     /**
      * Send battle snapshots as changes to the clients that ask for them
-     * (snapshot-delta.ts). Defaults to the SNAPSHOT_DELTA environment
-     * switch ("on"); off, every client is sent whole snapshots.
+     * (snapshot-delta.ts). On unless the SNAPSHOT_DELTA environment switch
+     * says "off"; off, every client is sent whole snapshots.
      */
     snapshotDelta?: boolean;
   } = {},
@@ -489,7 +489,7 @@ export function createArenaServer(
    * and so can be sent the next as a delta. Anyone else is sent it whole.
    */
   const snapshotDelta =
-    options.snapshotDelta ?? process.env.SNAPSHOT_DELTA === "on";
+    options.snapshotDelta ?? process.env.SNAPSHOT_DELTA !== "off";
   const deltaRooms = new WeakMap<
     Arena,
     { n: number; encoder: SnapshotDeltaEncoder; synced: Set<string> }
