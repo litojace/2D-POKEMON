@@ -989,6 +989,97 @@ cannot keep up. A player's own High or Low is untouched.
 Still to measure on a real phone: a Pixel 8a duel and raid at Auto after
 this reaches production (`arena-perf`'s `work`).
 
+### 21. Snapshots as changes: measured before designing (25 Nov 2026)
+
+The performance sweep (S7) read from the code that "75-80% of every
+snapshot does not change" and proposed a delta protocol. Before designing
+one, `scripts/perf/snapshot-delta-probe.ts` measured it: a real server with
+its own 30 Hz loop, real Socket.IO clients over WebSocket, 20 s of
+non-stop fighting per room, one client keeping every snapshot it is sent.
+
+```bash
+npx tsx scripts/perf/snapshot-delta-probe.ts --seconds 20
+```
+
+**Nothing compresses today.** The handshake agrees on no WebSocket
+extension (`Sec-WebSocket-Extensions` is empty: Socket.IO leaves
+`perMessageDeflate` off), so the JSON's size is the size on the wire.
+
+**What a player downloads, per room, and what three alternatives would
+send** (bytes a second for one player; snapshots only, about 330 B/s of
+pings and replies on top):
+
+| Room                     | Snapshot, mean / p95 | Today   | Field delta       | Deflate, 32 KB memory | Delta, then deflate |
+| ------------------------ | -------------------- | ------- | ----------------- | --------------------- | ------------------- |
+| Duel                     | 2,628 / 3,025 B      | 78,800  | 25,400 (**−68%**) | 8,600 (−89%)          | 6,800 (−91%)        |
+| Free-for-all, 4 players  | 4,639 / 5,451 B      | 139,200 | 44,300 (**−68%**) | 15,100 (−89%)         | 11,400 (−92%)       |
+| Raid, 4 heroes, Cragmuff | 6,320 / 7,367 B      | 189,900 | 49,300 (**−74%**) | 18,300 (−90%)         | 12,600 (−93%)       |
+| Raid, 4 heroes, Snoozaku | 7,561 / 9,084 B      | 227,200 | 50,000 (**−78%**) | 20,300 (−91%)         | 12,800 (−94%)       |
+| Spire, solo (floor 1)    | 3,250 / 3,586 B      | 97,500  | 23,500 (**−76%**) | 9,100 (−91%)          | 6,700 (−93%)        |
+
+"Field delta" is only what differs from the snapshot before: fighters,
+shots, zones and events matched by id, changed fields only. "Deflate, 32 KB
+memory" is WebSocket's per-message compression with its context kept
+between messages, at level 3.
+
+**Which parts repeat** (free-for-all; the others are alike). Fighters are
+66% of a snapshot and 76% of their bytes repeat the tick before: `statuses`
+(10% of a fighter, 98% unchanged), `stats` (10%, 98%), `cooldowns` (8%,
+98%), the dash and jump times (99%), `id`, `character`, `connected`,
+`team`, `rites` and the per-arena fields (100%). What does change every tick
+is small: `x`, `y`, `vx`, `vy`, `angle`, `ack`, `ult`, the aim. Shots (18%)
+change every tick, but only their position: each one's `owner`, `abilityId`,
+`angle`, `team` and size repeat. A raid's own block (20-31% of a raid or
+Spire snapshot) counted as "changed" whole, yet most of its fields repeat,
+which is why raids gain the most. Measured field by field, 47-62% of the
+bytes repeat; the delta saves more than that because a field that repeats
+also stops sending its name.
+
+**Compression saves more bytes and doubles the server's CPU.** Turning
+`perMessageDeflate` on needs no protocol and every client already speaks it,
+but it deflates each message once per connection.
+`server-load.ts --profile host --rooms 24 --mix pvp2,pvp4,raid4 --seconds 20`
+(80 players fighting), alternating runs on this host:
+
+|                                   | Server CPU, % of one core | Heap     | RSS        |
+| --------------------------------- | ------------------------- | -------- | ---------- |
+| Today (two runs)                  | 26.8-33.8                 | 43 MB    | 146-171 MB |
+| `perMessageDeflate` on (two runs) | **66.2-68.5**             | 60-67 MB | 209-212 MB |
+
+A delta is built once per room, whatever the number of connections: about
+0.03-0.08 ms per room and tick with the probe's unoptimised version (the
+whole snapshot costs 0.014-0.05 ms to stringify, the delta 0.005-0.01 ms).
+So the delta is the one to build, and compression stays off: the service
+runs on one core.
+
+**Decision: build it.** The benefit is smaller than the sweep's estimate in
+one way (half to two thirds of the bytes repeat, not 75-80%) and as large in
+the way that matters (68-78% fewer bytes: about 530 MB an hour of
+free-for-all becomes about 170 MB, a raid's 690-820 MB about 180 MB). The
+server's CPU is not expected to move much either way; the gain is the
+player's: mobile data, and fewer bytes queued behind a weak link (section
+4's backpressure sees it as congestion at 16 KB).
+
+The design these numbers lead to (built in the next pull requests, behind a
+switch that starts off):
+
+- A client says in its handshake that it understands deltas. One that does
+  not (the iPhone app's bundled game, an installed PWA not yet updated) is
+  sent whole snapshots exactly as today.
+- Per room, not per connection: the server keeps the last snapshot it sent
+  the room and builds one delta from it each tick. A connection that has
+  the snapshot before gets the delta; any other (it just joined, resumed,
+  started watching, was held back by backpressure, or was sent a copy of
+  its own such as Snoozaku's dream or a hidden-pick lobby) gets the whole
+  snapshot, and deltas from the next tick.
+- WebSocket delivers in order and drops nothing on a live connection, so no
+  acknowledgements are needed. Snapshots are numbered all the same: a delta
+  that does not follow what the client holds is dropped with it, the client
+  asks for a whole snapshot and shows nothing until it arrives.
+- The client rebuilds the whole snapshot from the delta and hands the game
+  exactly what parsing it would have: nothing after that point changes
+  (prediction, interpolation, the event cursor, the appearance block).
+
 ## Historical results (0.5 CPU / 512 MB, 15 snapshots a second)
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The

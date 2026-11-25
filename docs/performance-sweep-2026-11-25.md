@@ -149,6 +149,11 @@ Ghi chú:
   đúng bằng thời gian cache, và nằm cạnh giới hạn của S1/S9: cần quyết định
   riêng), S6, S8. S1/S9 đã làm ở #436; S7 là đợt E.
 
+**S7 đã đo (25/11)** [đo]: theo từng trường 47–62% byte lặp lại, delta bớt
+68–78% byte mỗi người (FFA 139 → 44 KB/s); hiện không có nén WebSocket, và
+bật nén thì CPU server gấp đôi. Số đo, quyết định (làm) và thiết kế:
+`network-performance.md` mục 21.
+
 ## 5. Còn lại — tải về, khởi động, bộ nhớ [đọc; kích thước đã đo từ build]
 
 Build `0909e29`: entry JS 2.731 kB (914 kB gzip), Phaser 1.482 kB, CSS
