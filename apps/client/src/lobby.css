@@ -1782,9 +1782,11 @@ body.hub-active #account-coins > * {
   padding: 0;
   list-style: none;
 }
-/* An offline friend who is still in your party. */
-.party-invite-list .ui-row-main small {
-  color: var(--ui-dim);
+/* One width for Invite, Invited and In party: the buttons end in one
+   column, and a button doesn't change size when you tap it. */
+.party-invite-list .ui-row-acts > .ui-btn {
+  min-width: 96px;
+  justify-content: center;
 }
 
 /* Behind a dialog, a full-screen drawer or a hub panel the Lobby holds
