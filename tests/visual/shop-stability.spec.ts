@@ -123,7 +123,10 @@ for (const size of [
           page.locator('.fit-grid [data-ui-item="tidefin-bubblegum"]'),
         ).toBeVisible();
         await page.click('[data-fit-sort="price"]');
-        await expect(page.locator("[data-fit-sort]")).toHaveText("Cheapest");
+        await expect(page.locator('[data-fit-sort="price"]')).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
         await page.click('[data-ui-own="all"]');
       }
       await expect(page.locator('[data-ui-own="all"]')).toHaveAttribute(
