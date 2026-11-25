@@ -204,6 +204,19 @@ Lượt screenshot đầu có bốn case qua và desktop fail ở helper: Expect
 
 ## Giới hạn và bước tiếp
 
+Full run trên main sau #419 còn gặp lỗi test Volt Boba: nút tương tác không
+hiện sau teleport của fixture. Reproducer dùng PlazaWorld thật cho thấy
+input neutral đến muộn có thể rewind từ 1745/520 về vị trí cũ 600/1300.
+Helper teleport nay bỏ lịch sử body trước lần dịch chuyển, giữ input đang
+chờ và sequence; lịch sử mới vẫn rewind bình thường. Test cũng đợi lệnh
+dừng thực sự được xử lý thay cho hai tọa độ bằng nhau. Đây là sửa harness,
+không đổi movement production.
+
+Regression helper cũ: 1 fail/2 pass; sau sửa, helper và Plaza prediction
+qua 14 test, case Volt Boba qua 41,5 s. Ảnh lỗi từ CI không tải được do
+HTTP 403; dùng reproducer và kiểm tra hành vi. Thay đổi harness yêu cầu
+chạy lại FULL lane; kết quả đầy đủ và lượt kiểm tra toàn Plaza nằm trên PR.
+
 Chưa có trace trực tiếp iPhone 11/iOS Low hoặc thermal soak. Báo cáo Android
 thật mới nhận xác nhận Low vẫn chậm; chưa có trace CPU/GPU trên máy đó.
 Không dùng software profile để kết luận máy cũ đã đạt 60 FPS.

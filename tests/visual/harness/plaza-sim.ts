@@ -1,5 +1,6 @@
 // The Plaza server, in the page: the real PlazaWorld with the player in it.
 import { PlazaWorld } from "../../../apps/server/src/plaza";
+import { positionPlazaVisitor } from "./plaza-position";
 import {
   PLAZA,
   PLAZA_EMOTES,
@@ -17,8 +18,7 @@ const placeLines: unknown[] = [];
 w.__plazaWorld = world;
 /** Move the player (tests). */
 w.__plazaPosition = (x: number, y: number) => {
-  const b = world.bodyOf(ME);
-  if (b) Object.assign(b, { x, y });
+  positionPlazaVisitor(world, ME, x, y);
 };
 /** Today's quests and TOP DASH as the database would send them. */
 w.__plazaProgress = {
