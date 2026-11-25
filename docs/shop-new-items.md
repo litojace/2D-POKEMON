@@ -77,6 +77,8 @@ Shipped (none yet in Today's Picks): 1 (migration
 
 ![Birthstone: the eighteen gem palettes on the Shop's stage](shop-new-items/birthstone.jpg)
 
+![Rainy Day: the eighteen raincoats on the Shop's stage](shop-new-items/rainy-day.jpg)
+
 ![Seaside, Steamworks and Borealis: each set's five pieces on the Shop's stage](shop-new-items/look-sets.jpg)
 
 The three Look sets keep their portrait CSS (frame art, the small pictures of

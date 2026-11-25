@@ -21,6 +21,7 @@ export const SHOP_ARRIVALS: Readonly<Record<string, string>> = {
   steamworks: "2026-11-25",
   borealis: "2026-11-25",
   birthstone: "2026-11-25",
+  "rainy-day": "2026-11-25",
 };
 /** How long an arrival stays "New". */
 export const NEW_DAYS = 14;

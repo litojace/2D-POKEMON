@@ -1,5 +1,5 @@
 import type { CharacterId } from "@arena/shared";
-import { DESIGNS, backPanel, hatShape, onPole, torso, type Design, type Kit } from "./modern-designs";
+import { DESIGNS, backPanel, hatShape, torso, type Design, type Kit } from "./modern-designs";
 
 /**
  * Rainy Day (Rare): a raincoat for every champion and its own way of keeping
@@ -43,6 +43,30 @@ export const RAIN: Record<CharacterId, Rain> = {
 
 const cx = (k: Kit) => k.C + k.side * 3;
 const hx = (k: Kit) => k.hx + k.side * 2;
+/**
+ * Something held up on a pole over a shoulder: an umbrella, a leaf, a
+ * toadstool. From the front it is held high at C + 40, above the head and
+ * closer in than modern-designs' onPole (C + 64), so a canopy 32 across
+ * each side shows over the head and stays inside the crops play draws it
+ * from (costume-fit.spec.ts); the pole ends under the middle of what it
+ * holds.
+ */
+function held(k: Kit, item: (x: number, y: number) => string) {
+  const s = k.side ? -k.side : 1;
+  if (k.back) {
+    const x = k.C - s * 34,
+      y = k.T - 34;
+    k.put("scarf", k.line(`M${k.C + s * 10} ${k.B - 4}L${x} ${y + 12}`, "#7a5a3a", 2.2) + item(x, y));
+  } else {
+    // Held high, so the canopy shows above the head rather than behind it.
+    const x = k.C + s * (k.side ? 24 : 40),
+      y = k.T - 86;
+    // The pole on the body, behind it; what it holds on the head-top layer,
+    // over a crest, tall ears or a hood, whose crop has room above the head.
+    k.put("body", k.line(`M${k.C + s * 12} ${k.B - 6}L${x} ${y + 12}`, "#7a5a3a", 2.2), true);
+    k.put("flame", item(x, y));
+  }
+}
 /** A drop of rain, its point up. */
 const drop = (k: Kit, x: number, y: number, s = 1) =>
   k.path(`M${x} ${y - 4 * s}Q${x + 3.4 * s} ${y + 1.2 * s} ${x} ${y + 2.6 * s}Q${x - 3.4 * s} ${y + 1.2 * s} ${x} ${y - 4 * s}Z`, "#bfe8ff", "#5a9ad8", 0.6);
@@ -88,8 +112,6 @@ function design(id: CharacterId): Design {
     }
     const x = hx(k),
       y = k.ht + 14 - (look.lift ?? 0);
-    /** Held things lean in toward the head, clear of the picture's edge. */
-    const inward = (px: number) => (px > k.C ? -12 : 12);
     switch (look.keep) {
       case "souwester": {
         // The fisherman's hat: a long brim at the back to shed the rain.
@@ -126,23 +148,18 @@ function design(id: CharacterId): Design {
         break;
       case "umbrella":
         // Resting on the shoulder, its canopy behind the head.
-        onPole(k, (px0, py) => {
-          const px = px0 + inward(px0);
-          return canopy(k, px, py + 16, 35, coat, second) + drop(k, px - 38, py + 26) + drop(k, px + 37, py + 25, 0.8);
-        });
+        held(k, (px, py) => canopy(k, px, py + 14, 32, coat, second) + drop(k, px - 34, py + 22) + drop(k, px + 30, py + 24, 0.8));
         break;
       case "leaf":
-        onPole(k, (px, py) => leaf(k, px - 6 + inward(px), py + 16, 32));
+        held(k, (px, py) => leaf(k, px - 4, py + 14, 30));
         break;
       case "toadstool":
         // A toadstool for an umbrella: a red cap with white spots.
-        onPole(k, (px0, py) => {
-          const px = px0 + inward(px0);
-          return `<g transform="translate(${px} ${py + 14}) scale(1.4) translate(${-px} ${-(py + 12)})">` +
+        held(k, (px, py) =>
+          `<g transform="translate(${px} ${py + 14}) scale(1.4) translate(${-px} ${-(py + 12)})">` +
             k.path(`M${px - 25} ${py + 12}Q${px - 24} ${py - 12} ${px} ${py - 13}Q${px + 24} ${py - 12} ${px + 25} ${py + 12}Q${px} ${py + 6} ${px - 25} ${py + 12}Z`, "#d8342c") +
             k.circle(px - 11, py - 1, 4, "#fff6ea", "none", 0) + k.circle(px + 8, py - 5, 3.2, "#fff6ea", "none", 0) + k.circle(px + 14, py + 4, 2.4, "#fff6ea", "none", 0) + k.circle(px - 2, py + 5, 2.2, "#fff6ea", "none", 0) +
-            "</g>" + drop(k, px + 38, py + 26, 0.9);
-        });
+            "</g>" + drop(k, px - 36, py + 24, 0.9));
         break;
       case "leaf-hat":
         // A big leaf laid over the head, its stem curling up.
