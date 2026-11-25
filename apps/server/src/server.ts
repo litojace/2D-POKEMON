@@ -1672,8 +1672,12 @@ export function createArenaServer(
       if (delta.synced.size || joining.length) {
         wire.n = ++delta.n;
         const d = delta.encoder.encode(wire);
-        if (!d) delta.synced.clear();
-        else if (delta.synced.size) {
+        if (!d) {
+          // Nothing to compare with: whoever was following starts over
+          // from this one, whole.
+          joining.push(...delta.synced);
+          delta.synced.clear();
+        } else if (delta.synced.size) {
           const message: WireSnapshotDelta = {
             code: arena.code,
             n: wire.n,
