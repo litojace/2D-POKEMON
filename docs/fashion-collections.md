@@ -15,6 +15,7 @@ Six collections add 108 champion skins: three Rare and three Epic for each of th
 | Neon Campus | Epic / 3,500 | A school club per champion with its kit; something on it lights up, a confetti dash trail |
 | Hero Squad | Epic / 3,500 | An original hero per champion with its own powers on show; a glowing chest emblem, lit gear, a star dash trail |
 | Hồn Việt | Legendary / 5,500 | A figure of Vietnamese heritage per champion in full costume with props of its story; glowing embroidery and lanterns, a drum landing, a lantern victory, a motif per champion and a petal trail |
+| Starlight Idol | Epic / 3,500 | A stage act per champion (rock frontman, disco dancer, crystal soprano, DJ...) in sequins and rhinestones; brooches, marquee bulbs, a mirror ball and stage lights glow, a pink and gold star dash trail |
 
 ## Color stories
 

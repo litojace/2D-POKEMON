@@ -68,6 +68,9 @@ Winter, Festival, Garden, Candy, Retro Pixel, Galaxy).
 | 8   | **Sun Dynasty**    | 18 skins + set                                 | Legendary / 5,500                           | A desert kingdom in gold and lapis: gold is the Legendary finish                                                                            |
 | 9   | Single pieces      | Auras, frames, entrances, victories sold alone | By slot and tier                            | Needs a place in the Collections screen (the Shop screens' session)                                                                         |
 
+Shipped: 1 (migration `20261125130000_starlight_idol.sql`; not yet in
+Today's Picks).
+
 Mythicals stay one per champion (the Void Knights): each has a Mythic Trial
 and three Awakening forms, and a second line would be a design decision of
 its own, not catalog growth.

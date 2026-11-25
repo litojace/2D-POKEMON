@@ -99,6 +99,7 @@ describe("Sky Pirates and Nova Vanguard, redrawn per champion", () => {
       "stars-stripes",
       "hero-squad",
       "neon-campus",
+      "starlight-idol",
       "sky-pirates",
       "nova-vanguard",
     ];
@@ -126,6 +127,7 @@ describe("Sky Pirates and Nova Vanguard, redrawn per champion", () => {
       "stars-stripes",
       "hero-squad",
       "neon-campus",
+      "starlight-idol",
       "sky-pirates",
       "nova-vanguard",
     ])
@@ -163,6 +165,7 @@ describe("Sky Pirates and Nova Vanguard, redrawn per champion", () => {
       "stars-stripes",
       "hero-squad",
       "neon-campus",
+      "starlight-idol",
       "sky-pirates",
       "nova-vanguard",
     ];

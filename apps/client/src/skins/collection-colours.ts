@@ -3,7 +3,7 @@ import type { Tint } from "./fashion-art";
 
 /**
  * Body colours for the themed collections (Hồn Việt, Stars & Stripes, Hero
- * Squad, Neon Campus), chosen per champion for the figure it plays (a gold
+ * Squad, Neon Campus, Starlight Idol), chosen per champion for the figure it plays (a gold
  * Kim Quy, a candy-red hot-rod racer, a magnet-red Magnetail, a velvet-red
  * drama lead...). Each moves the champion's
  * own colours toward a hue while keeping their lightness, so faces, eyes and
@@ -98,6 +98,27 @@ export const CAMPUS_TINTS: Record<CharacterId, Tint> = {
   shadopus: T(220, 0.08), // Mystery Club Sleuth: detective grey
   pangrove: T(40, 0.7, -0.02), // Band Drummer: brass gold
   mossloth: T(150, 0.45, 0.1), // Nap Club Captain: pastel mint
+};
+
+export const IDOL_TINTS: Record<CharacterId, Tint> = {
+  voltkit: T(355, 0.7), // Thunder Riff: stage-light crimson
+  cindrake: T(275, 0.55), // Pyro Headliner: royal purple
+  tidefin: T(285, 0.6), // Pearl Popstar: orchid
+  auralynx: T(180, 0.55, 0.06), // Prism Soloist: hologram aqua
+  lumoth: T(270, 0.55), // Disco Flutter: disco violet
+  mystowl: T(235, 0.55, -0.12), // Midnight Enchantress: midnight blue
+  terradon: T(175, 0.6), // Street Beat: spray-can turquoise
+  duskveil: T(42, 0.5, 0.04), // Phantom Crooner: champagne gold
+  coilemur: T(310, 0.65), // Synth Looper: synthwave magenta
+  pyranda: T(272, 0.5, -0.04), // Chestnut MC: grape
+  glacelle: T(335, 0.5, 0.04), // Crystal Soprano: rose quartz
+  halcyra: T(178, 0.65, -0.06), // Plume Showstar: peacock teal
+  sunbara: T(100, 0.5, 0.06), // Sunflower Sweetheart: leaf green
+  astrabun: T(340, 0.8, -0.18), // Mochi Starlet: strawberry mochi
+  wombolder: T(215, 0.45, -0.06), // Bedrock Drummer: denim blue
+  shadopus: T(25, 0.8), // Neon Octave: neon coral
+  pangrove: T(8, 0.65, 0.04), // Island Serenader: hibiscus coral
+  mossloth: T(50, 0.8), // Lo-fi Lullaby: honey yellow
 };
 
 /**
