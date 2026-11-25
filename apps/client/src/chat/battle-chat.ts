@@ -35,6 +35,7 @@ import {
 } from "../../../../packages/shared/src/chat";
 import type { RaidPingKind } from "../../../../packages/shared/src/raid";
 import { menuIcon } from "../menu-icons";
+import { setHudHidden } from "../hud-dom";
 import { EASE_OUT, uiMotion } from "../ui/motion";
 
 interface Reply {
@@ -254,19 +255,23 @@ export function mountBattleChat(hooks: BattleChatHooks): BattleChatView {
 
   return {
     sync(show, isRaid, isWatcher = false) {
-      button.hidden = !show;
-      feed.hidden = !show;
+      // Called with every battle snapshot: nothing is written unless it
+      // changed (hud-dom.ts).
+      setHudHidden(button, !show);
+      setHudHidden(feed, !show);
       if (!show) {
         setOpen(false);
-        feed.replaceChildren();
+        if (feed.firstChild) feed.replaceChildren();
       }
       if (isRaid !== raid || isWatcher !== watching) {
         raid = isRaid;
         watching = isWatcher;
         if (open) render();
       }
-      button.dataset.raid = String(raid);
-      button.dataset.watching = String(watching);
+      if (button.dataset.raid !== String(raid))
+        button.dataset.raid = String(raid);
+      if (button.dataset.watching !== String(watching))
+        button.dataset.watching = String(watching);
     },
     receive(text, name, plate, team, emote, watcher = false) {
       if (button.hidden) return;

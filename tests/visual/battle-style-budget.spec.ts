@@ -15,17 +15,20 @@ import { openHub, openPlayPanel, pushUntilBattle, createRoom } from "./helpers";
  *
  * Counted, not timed: Chromium's trace says how many elements each
  * recalculation touched (`UpdateLayoutTree` elementCount), the same on a
- * fast or a slow machine (25 Nov 2026: median 55, p90 109 in every run;
- * with the old Profile rule put back, 448 and 448). The limits are about
- * twice today's, so a rule that brings the restyling back fails here.
+ * fast or a slow machine. 25 Nov 2026, before the HUD's writes were fixed
+ * (section 20): median 55, p90 109 in every run; with the old Profile rule
+ * put back, 448 and 448. Since: median 4, p90 16 in four runs out of four.
+ * The limits sit between the two, several times today's numbers, so a HUD
+ * write that makes a new node each time (`textContent =`), or a rule that
+ * widens what each change restyles, fails here.
  * Elements per second is printed, not judged: it follows the frame rate.
  * STYLE_BUDGET_MEASURE=1 prints the numbers without judging.
  */
 const LIMITS = {
   /** Elements restyled in a typical recalculation. */
-  perRecalcMedian: 120,
+  perRecalcMedian: 20,
   /** ... and in the busier ones (cooldown sweeps, casts). */
-  perRecalcP90: 220,
+  perRecalcP90: 60,
 };
 const FIGHT_MS = 12_000;
 const MEASURE = !!process.env.STYLE_BUDGET_MEASURE;
