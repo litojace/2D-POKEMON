@@ -106,8 +106,9 @@ function precached(url: string) {
 }
 
 /**
- * The commit this build is made from, for battle-perf's `build`: Render sets
- * RENDER_GIT_COMMIT while it builds; otherwise ask git, else "dev".
+ * The commit this build is made from, for battle-perf's `build` and the
+ * title screen's version: Render sets RENDER_GIT_COMMIT while it builds;
+ * otherwise ask git, else "dev".
  */
 function buildId() {
   const fromRender = process.env.RENDER_GIT_COMMIT?.slice(0, 7);
@@ -122,10 +123,30 @@ function buildId() {
     return "dev";
   }
 }
+/**
+ * The build id goes on the page (a <meta>, read by src/build-id.ts), not
+ * into the scripts. As a constant in the script it changed the startup
+ * script's contents, so its hashed name, so the name of every script that
+ * imports it, on every deploy: phones downloaded the whole game again
+ * (about 1 MB compressed) after deploys that changed nothing they run, and
+ * were asked to update for them. The page is never cached (sw.ts).
+ */
+function buildIdMeta(): Plugin {
+  return {
+    name: "build-id-meta",
+    transformIndexHtml: () => [
+      {
+        tag: "meta",
+        attrs: { name: "arena-build", content: buildId() },
+        injectTo: "head",
+      },
+    ],
+  };
+}
 
 export default defineConfig({
-  define: { __BUILD__: JSON.stringify(buildId()) },
   plugins: [
+    buildIdMeta(),
     legacyAuthPages(),
     startupScriptList(),
     VitePWA({
