@@ -51,6 +51,16 @@ describe("startup bundle", () => {
       'import("./battle-kit")',
     );
   });
+  it("loads the Admin panel's code when an admin opens it", () => {
+    // No one else runs it (about 42 kB of the startup script before).
+    const accounts = readFileSync(join(SRC, "accounts.ts"), "utf8");
+    expect(accounts).not.toMatch(
+      /^import\s+(?!type\b)[^;]*from\s+"\.\/admin-panel";/m,
+    );
+    expect(accounts).toContain('import("./admin-panel")');
+    // Its stylesheet stays in the startup one, where its rules always were.
+    expect(accounts).toContain('import "./admin-panel.css";');
+  });
   it("opens the raid screens, the fitting room and the Journey on demand", () => {
     const accounts = readFileSync(join(SRC, "accounts.ts"), "utf8");
     for (const screen of ["raid-hall", "fitting-room", "journey"]) {
