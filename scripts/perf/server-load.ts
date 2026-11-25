@@ -5,6 +5,7 @@
  *   npx tsx scripts/perf/server-load.ts --rooms 10 --mix pvp2,pvp4,raid4
  *   npx tsx scripts/perf/server-load.ts --cycles 8 --rooms 6   # memory soak
  *   npx tsx scripts/perf/server-load.ts --profile host       # uncapped, not capacity
+ *   npx tsx scripts/perf/server-load.ts --delta on           # snapshots as changes
  *
  * Default: Render 1c-2g (1 CPU / 2 GB, Oregon). On Linux, Docker limits
  * only the server; the load generator stays outside. The child verifies
@@ -22,9 +23,11 @@ import { performance } from "node:perf_hooks";
 import { io, type Socket } from "socket.io-client";
 import {
   RULES,
+  SnapshotDeltaDecoder,
   unpackSnapshot,
   type Reply,
   type WireSnapshot,
+  type WireSnapshotDelta,
 } from "../../packages/shared/src/index.js";
 import { summary } from "../../apps/server/src/diagnostics.js";
 import type { Scenario } from "./workloads.js";
@@ -46,6 +49,13 @@ const CYCLES = Number(args.get("cycles") ?? 0);
 const OUT = args.get("out");
 const DUMP = args.get("dump");
 const PROFILE = args.get("profile") ?? RENDER_PROFILE;
+/**
+ * Snapshots as changes (snapshot-delta.ts): the server's switch is turned
+ * on and every simulated player asks for deltas and rebuilds each snapshot
+ * from them, as the app does.
+ */
+const DELTA = args.get("delta") === "on";
+if (DELTA) process.env.SNAPSHOT_DELTA = "on";
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const connections = new Set<Socket>();
 let stopDriving: (() => void) | undefined;
@@ -70,6 +80,8 @@ interface Client {
   unpackMs: number[];
   rtt: number[];
   sizes: number[];
+  /** Deltas that did not follow (none are expected). */
+  refused: number;
 }
 let tokenSerial = 0;
 async function connect(port: number, room: number, seat: number) {
@@ -77,7 +89,10 @@ async function connect(port: number, room: number, seat: number) {
     transports: ["websocket"],
     forceNew: true,
     reconnection: false,
-    auth: { accessToken: `load-${++tokenSerial}` },
+    auth: {
+      accessToken: `load-${++tokenSerial}`,
+      ...(DELTA ? { delta: 1 } : {}),
+    },
   });
   connections.add(socket);
   socket.once("disconnect", () => connections.delete(socket));
@@ -93,6 +108,7 @@ async function connect(port: number, room: number, seat: number) {
     unpackMs: [],
     rtt: [],
     sizes: [],
+    refused: 0,
   };
   socket.io.on("open", () =>
     socket.io.engine.on("packet", (packet: { data?: unknown }) => {
@@ -100,19 +116,35 @@ async function connect(port: number, room: number, seat: number) {
         c.bytes += Buffer.byteLength(packet.data);
     }),
   );
-  socket.on("state", (wire: WireSnapshot) => {
+  const decoder = new SnapshotDeltaDecoder();
+  const onState = (
+    whole: WireSnapshot | undefined,
+    delta?: WireSnapshotDelta,
+  ) => {
     const now = performance.now();
     if (c.last) c.arrivals.push(now - c.last);
     c.last = now;
     c.states++;
     const start = performance.now();
+    // Rebuilding the snapshot from a delta is part of the client's work.
+    const wire = whole ?? decoder.delta(delta!);
+    if (whole) decoder.full(whole);
+    if (!wire) {
+      c.refused++;
+      socket.emit("state-full", { code: delta!.code });
+      return;
+    }
     unpackSnapshot(wire);
     c.unpackMs.push(performance.now() - start);
     if (DUMP && c.room === 1 && c.seat === 0 && c.states === 200)
       writeFileSync(DUMP, JSON.stringify(wire));
     if (c.sizes.length < 400 && c.states % 5 === 0)
-      c.sizes.push(Buffer.byteLength(JSON.stringify(wire)));
-  });
+      c.sizes.push(Buffer.byteLength(JSON.stringify(delta ?? wire)));
+  };
+  socket.on("state", (wire: WireSnapshot) => onState(wire));
+  socket.on("state-delta", (delta: WireSnapshotDelta) =>
+    onState(undefined, delta),
+  );
   await new Promise<void>((resolve, reject) => {
     socket.on("connect", resolve);
     socket.on("connect_error", reject);
@@ -216,6 +248,7 @@ function clientSummary(clients: Client[], seconds: number) {
           10,
       ) / 10,
     snapshotBytes: summary(all("sizes")),
+    deltasRefused: clients.reduce((n, c) => n + c.refused, 0),
     arrivalIntervalMs: summary(arrivals),
     /** Difference from the current snapshot period (33.3 ms at 30 Hz). */
     arrivalJitterMs: summary(arrivals.map((a) => Math.abs(a - interval))),
@@ -272,6 +305,7 @@ async function main() {
       {
         rooms: ROOMS,
         mix: MIX,
+        delta: DELTA,
         resources,
         seconds: SECONDS / 1000,
         cycles: CYCLES,

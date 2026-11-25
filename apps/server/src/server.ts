@@ -1674,11 +1674,20 @@ export function createArenaServer(
         const d = delta.encoder.encode(wire);
         if (!d) delta.synced.clear();
         else if (delta.synced.size) {
-          const to = [...delta.synced];
-          const message: WireSnapshotDelta = { code: arena.code, n: wire.n, d };
+          const message: WireSnapshotDelta = {
+            code: arena.code,
+            n: wire.n,
+            d,
+          };
           // Encoded here, once, before the encoder's snapshot moves on.
-          io.to(to).emit("state-delta", message);
-          skipped.push(...to);
+          // The usual tick: everyone in the room who is not held back.
+          if (!joining.length && !others)
+            io.to(arena.code).except(skipped).emit("state-delta", message);
+          else {
+            const to = [...delta.synced];
+            io.to(to).emit("state-delta", message);
+            skipped.push(...to);
+          }
         }
         for (const id of joining) delta.synced.add(id);
       } else delta.encoder.reset();

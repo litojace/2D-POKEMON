@@ -1080,7 +1080,72 @@ switch that starts off):
   exactly what parsing it would have: nothing after that point changes
   (prediction, interpolation, the event cursor, the appearance block).
 
-(0.5 CPU / 512 MB, 15 snapshots a second)
+**What was built** (`packages/shared/src/snapshot-delta.ts`, `broadcast` in
+`apps/server/src/server.ts`):
+
+- **The switch.** `SNAPSHOT_DELTA=on` on the server (or
+  `createArenaServer({ snapshotDelta: true })`). Off, which is the default
+  until the client has shipped, nothing is numbered and nothing is sent
+  differently. On, a connection whose handshake says `auth.delta === 1`
+  takes deltas; any other is sent whole snapshots.
+- **Messages.** A keyframe is the usual `state` message with the room's
+  count `n`. A delta is `state-delta`: `{ code, n, d }`, applying to the
+  room's snapshot `n - 1`. `state-full` (`{ code }`) is the client asking
+  for a keyframe; a quiet room (section 2 of the sweep, `quietRoom`) then
+  sends on its next tick instead of its next beat. `quietRoom` itself is
+  unchanged: a tick it skips sends nothing and counts nothing.
+- **The format follows the data**, with no list of field names to keep up
+  when a snapshot gains a field. An object's delta is `{ s, d, x }` (keys
+  set, keys changed inside, keys gone); a list of things with an `id`
+  (fighters, shots, zones, events) is matched by id, `{ o, a, u }` (the new
+  order when members came or went, the new members, `[index, delta]` for
+  each changed member); any other list is sent whole when it differs.
+  Values are compared as JSON writes them.
+- **Who holds what.** Per room, `synced` is the set of connections that
+  were sent exactly the room's last snapshot. They get the delta. Everyone
+  else gets the whole snapshot and, if they asked for deltas, joins the set.
+  A connection leaves the set when it is held back by backpressure, gets a
+  copy of its own (the catch-up after a hold, Snoozaku's dream for the
+  Dreamer, each side's lobby while picks are hidden: none of those is
+  numbered), joins or resumes, leaves the room, or asks for a keyframe.
+  When nobody is left to take a whole snapshot, none is encoded.
+- **One pass on the server.** The encoder walks the new snapshot against
+  its copy of the last one, writing the differences down and bringing the
+  copy up to date as it goes: 31-53 µs a room and tick where stringifying
+  the whole snapshot takes 47-89 µs, plus 6-12 µs to stringify the delta.
+- **The client's copy is its own.** The decoder applies the delta to a
+  snapshot only it holds and hands the game a fresh copy (prediction
+  changes what it is handed). A delta that does not follow, or does not
+  fit, discards that snapshot: it is never half applied.
+
+Tests: `tests/unit/snapshot-delta.test.ts` rebuilds every snapshot of real
+fights (duel, free-for-all, teams, the seven raid bosses, the seven Spire
+zones, a whole match from lobby to results) and compares each with the
+parsed whole; `tests/multiplayer/snapshot-delta.test.ts` runs both kinds of
+client against the server over real connections: an older client beside a
+newer one, the switch off, watching mid-fight, reconnecting, a lost delta, a
+congested connection, Snoozaku's dream, changing rooms.
+
+**Measured with the switch on**
+(`server-load.ts --profile host --rooms 24 --mix pvp2,pvp4,raid4 --seconds 20`,
+80 players fighting; add `--delta on`; six alternating pairs of runs):
+
+|                                 | Whole snapshots    | Deltas                 |
+| ------------------------------- | ------------------ | ---------------------- |
+| Download per player             | 147.0 KB/s         | **41.5 KB/s (−72%)**   |
+| Message, p50 / p95              | 4,880 / 7,050 B    | 1,270 / 2,660 B        |
+| Server CPU, % of one core       | 29.2 (26.9-30.3)   | 31.2 (28.3-33.8)       |
+| Tick, p50 / p95                 | 5.8 / 9.2 ms       | 6.2 / 10.2 ms          |
+| Deltas refused by a client      | -                  | 0 of 288,000           |
+| Client, rebuilding one snapshot | 0.01 ms (p95 0.02) | 0.04-0.05 ms (p95 0.1) |
+
+The download falls by 72%. The server's CPU does not fall: the pairs
+overlap, the average is 2 points higher, and the runs differ from each
+other by more than that. The client's work per snapshot (apply, copy,
+unpack) is a few hundredths of a millisecond, 30 times a second, and
+nothing per frame.
+
+## Historical results (0.5 CPU / 512 MB, 15 snapshots a second)
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The
 server child ran in a cgroup capped at 0.5 CPU and 512 MB to approximate

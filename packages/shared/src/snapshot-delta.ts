@@ -72,6 +72,21 @@ export interface WireSnapshotDelta {
 
 /** A value JSON leaves out of an object (and writes as null in a list). */
 const SKIP = Symbol("skip");
+/**
+ * How many keys an object of the encoder's base has, kept on the object
+ * under a symbol (JSON and key loops never see it): a key that went away is
+ * noticed by counting, without listing the base's keys every tick.
+ */
+const SIZE = Symbol("size");
+type Sized = Dict & { [SIZE]?: number };
+const hasOwn = (o: object, key: string) =>
+  Object.prototype.hasOwnProperty.call(o, key);
+/**
+ * Writing `o.__proto__ = v` would change what `o` inherits instead of adding
+ * a key, so a key of that name is never sent, copied or applied. Nothing in
+ * a snapshot is called that.
+ */
+const PROTO = "__proto__";
 /** One value as JSON would write it; objects and lists are returned as is. */
 function plain(v: unknown): unknown {
   switch (typeof v) {
@@ -104,11 +119,16 @@ function copy(v: unknown): Data {
     }
     return out;
   }
-  const out: Dict = {};
+  const out: Sized = {};
+  let size = 0;
   for (const key of Object.keys(v)) {
+    if (key === PROTO) continue;
     const e = plain((v as Record<string, unknown>)[key]);
-    if (e !== SKIP) out[key] = copy(e);
+    if (e === SKIP) continue;
+    out[key] = copy(e);
+    size++;
   }
+  out[SIZE] = size;
   return out;
 }
 /** A deep copy of JSON data (what the game is handed: it may keep or change it). */
@@ -120,8 +140,9 @@ export function cloneData<T>(v: T): T {
     return out as T;
   }
   const out: Record<string, unknown> = {};
-  for (const key in v)
-    out[key] = cloneData((v as Record<string, unknown>)[key]);
+  for (const key of Object.keys(v))
+    if (key !== PROTO)
+      out[key] = cloneData((v as Record<string, unknown>)[key]);
   return out as T;
 }
 const isDict = (v: unknown): v is Dict =>
@@ -150,9 +171,10 @@ function same(base: Data, live: unknown): boolean {
   if (Array.isArray(live)) return false;
   let count = 0;
   for (const key of Object.keys(live)) {
+    if (key === PROTO) continue;
     const e = plain((live as Record<string, unknown>)[key]);
     if (e === SKIP) continue;
-    if (!(key in base) || !same(base[key], e)) return false;
+    if (!hasOwn(base, key) || !same(base[key], e)) return false;
     count++;
   }
   return count === Object.keys(base).length;
@@ -166,7 +188,7 @@ const REPLACED = Symbol("replaced");
  * Values the delta carries are the base's own: write the delta out (JSON)
  * before the next call.
  */
-function syncObject(base: Dict, live: object): ObjectDelta | undefined {
+function syncObject(base: Sized, live: object): ObjectDelta | undefined {
   let s: Dict | undefined,
     d: ObjectDelta["d"],
     x: string[] | undefined,
@@ -174,17 +196,24 @@ function syncObject(base: Dict, live: object): ObjectDelta | undefined {
   const keys = Object.keys(live);
   for (let k = 0; k < keys.length; k++) {
     const key = keys[k];
-    const v = plain((live as Record<string, unknown>)[key]);
-    if (v === SKIP) continue;
-    kept++;
+    const raw = (live as Record<string, unknown>)[key];
     const old = base[key];
-    if (old === v) {
-      // The same number, string, true/false or null (an absent key is
-      // undefined, and `v` never is).
+    // Most of a tick: the same number, string, true/false or null. (The
+    // base never holds undefined, and never shares an object with `live`.)
+    if (raw === old && raw !== undefined) {
+      kept++;
       continue;
     }
-    if (old === undefined && !(key in base)) {
+    if (key === PROTO) continue;
+    const v = plain(raw);
+    if (v === SKIP) continue;
+    kept++;
+    // NaN, written as null, where null already was.
+    if (old === v) continue;
+    // (`old` can be something every object inherits: a key "constructor".)
+    if (old === undefined || !hasOwn(base, key)) {
       (s ??= {})[key] = base[key] = copy(v);
+      base[SIZE]!++;
       continue;
     }
     if (v !== null && typeof v === "object") {
@@ -204,17 +233,17 @@ function syncObject(base: Dict, live: object): ObjectDelta | undefined {
     (s ??= {})[key] = base[key] = copy(v);
   }
   // A key the snapshot no longer has (rare: counted, then looked for).
-  let had = 0;
-  for (const _ in base) had++;
-  if (had !== kept)
+  if (base[SIZE] !== kept) {
     for (const key of Object.keys(base))
       if (
-        !Object.prototype.hasOwnProperty.call(live, key) ||
+        !hasOwn(live, key) ||
         plain((live as Record<string, unknown>)[key]) === SKIP
       ) {
         delete base[key];
         (x ??= []).push(key);
       }
+    base[SIZE] = kept;
+  }
   if (!s && !d && !x) return undefined;
   const out: ObjectDelta = {};
   if (s) out.s = s;
@@ -304,10 +333,13 @@ export class SnapshotDeltaEncoder {
 
 function applyObject(base: Dict, delta: ObjectDelta) {
   if (!isDict(base)) throw new Error("delta: not an object");
-  if (delta.s) for (const key in delta.s) base[key] = delta.s[key];
+  if (delta.s)
+    for (const key of Object.keys(delta.s))
+      if (key !== PROTO) base[key] = delta.s[key];
   if (delta.x) for (const key of delta.x) delete base[key];
   if (delta.d)
-    for (const key in delta.d) {
+    for (const key of Object.keys(delta.d)) {
+      if (!hasOwn(base, key)) throw new Error("delta: no such key");
       const target = base[key],
         sub = delta.d[key];
       if (Array.isArray(target)) applyList(target, sub as ListDelta);
@@ -356,10 +388,12 @@ export class SnapshotDeltaDecoder {
    */
   delta(message: WireSnapshotDelta): WireSnapshot | undefined {
     const base = this.base;
+    // Another room's delta (the last of a room we just left): not ours to
+    // apply, and no reason to give up the snapshot we hold.
+    if (base && message && base.code !== message.code) return undefined;
     if (
       !base ||
       !message ||
-      base.code !== message.code ||
       (base.n as number) + 1 !== message.n ||
       !isDict(message.d)
     ) {

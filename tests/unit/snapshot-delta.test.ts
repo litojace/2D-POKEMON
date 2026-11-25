@@ -136,16 +136,20 @@ describe("a delta rebuilds exactly the snapshot it stands for", () => {
 });
 
 describe("the format", () => {
-  const through = (before: unknown, after: unknown) => {
+  const through = (before: unknown, after: unknown, strict = true) => {
     const encoder = new SnapshotDeltaEncoder();
     const decoder = new SnapshotDeltaDecoder();
     const a = { code: "X", n: 1, v: before } as unknown as WireSnapshot;
     const b = { code: "X", n: 2, v: after } as unknown as WireSnapshot;
     expect(encoder.encode(a)).toBeUndefined();
     decoder.full(sent(a));
-    const d = encoder.encode(b)!;
-    const got = decoder.delta(sent({ code: "X", n: 2, d }));
-    expect(got).toStrictEqual(parsed(b));
+    // As the client receives it (the encoder's own values carry its notes).
+    const d = sent(encoder.encode(b)!);
+    const got = decoder.delta({ code: "X", n: 2, d });
+    // (Strict equality reads `.constructor` to compare types: not for the
+    // test whose data has a key of that name.)
+    if (strict) expect(got).toStrictEqual(parsed(b));
+    else expect(JSON.stringify(got)).toBe(JSON.stringify(b));
     return (d.d?.v ?? d.s?.v) as unknown;
   };
   it("sends only the fields that changed", () => {
@@ -210,6 +214,42 @@ describe("the format", () => {
     ).toBeUndefined();
     expect(through({ a: 1 }, { a: NaN })).toEqual({ s: { a: null } });
     expect(through([1, 2], [1, undefined])).toEqual([1, null]);
+  });
+  it("keys named like what every object inherits are ordinary keys", () => {
+    expect(
+      through({ a: 1 }, { a: 1, constructor: { x: 1 }, toString: 2 }, false),
+    ).toEqual({ s: { constructor: { x: 1 }, toString: 2 } });
+    expect(
+      through(
+        { constructor: { x: 1 }, valueOf: 1 },
+        { constructor: { x: 2 } },
+        false,
+      ),
+    ).toEqual({ d: { constructor: { s: { x: 2 } } }, x: ["valueOf"] });
+    expect(through([1], [1, "constructor"])).toEqual([1, "constructor"]);
+  });
+  it("a key called __proto__ is never sent and changes nothing it should not", () => {
+    const encoder = new SnapshotDeltaEncoder();
+    const decoder = new SnapshotDeltaDecoder();
+    const evil = (n: number, x: number) =>
+      JSON.parse(
+        `{"code":"X","n":${n},"v":{"x":${x},"__proto__":{"polluted":${x}}}}`,
+      ) as WireSnapshot;
+    encoder.encode(evil(1, 1));
+    decoder.full(evil(1, 1));
+    const d = encoder.encode(evil(2, 2))!;
+    expect(JSON.stringify(d)).not.toContain("__proto__");
+    const got = decoder.delta(sent({ code: "X", n: 2, d }));
+    expect(got).toStrictEqual({ code: "X", n: 2, v: { x: 2 } });
+    // A delta naming it (no server of ours sends one) is not applied as a
+    // prototype either.
+    const hostile = JSON.parse(
+      '{"code":"X","n":3,"d":{"s":{"n":3,"__proto__":{"polluted":3}}}}',
+    );
+    const after = decoder.delta(hostile)!;
+    expect(Object.getPrototypeOf(after)).toBe(Object.prototype);
+    expect(({} as { polluted?: number }).polluted).toBeUndefined();
+    expect((after as { polluted?: number }).polluted).toBeUndefined();
   });
   it("handles a value changing kind", () => {
     through(
@@ -298,6 +338,10 @@ describe("a delta that does not follow is refused, never half applied", () => {
     const other = new SnapshotDeltaEncoder();
     other.encode(snap(1, 0, "ROOM02"));
     expect(decoder.delta(message(other, 2, 1, "ROOM02"))).toBeUndefined();
+    // It is not shown, and what we hold of our own room still stands.
+    expect(decoder.ready).toBe(true);
+    const { encoder } = pair();
+    expect(decoder.delta(message(encoder, 2, 5))).toStrictEqual(snap(2, 5));
   });
   it("before any whole snapshot, and after one without a number", () => {
     const encoder = new SnapshotDeltaEncoder();
@@ -339,6 +383,6 @@ describe("a delta that does not follow is refused, never half applied", () => {
     const { encoder } = pair();
     encoder.reset();
     expect(encoder.encode(snap(2, 1))).toBeUndefined();
-    expect(encoder.encode(snap(3, 1))).toEqual({ s: { n: 3 } });
+    expect(sent(encoder.encode(snap(3, 1)))).toEqual({ s: { n: 3 } });
   });
 });
