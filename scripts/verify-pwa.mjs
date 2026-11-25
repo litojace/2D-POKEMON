@@ -77,6 +77,13 @@ for (const chunk of ["phaser", "raid-hall", "fitting-room", "journey"])
     urls.some((url) => new RegExp(`^assets/${chunk}-[\\w-]+\\.js$`).test(url)),
     `${chunk} must stay available offline`,
   );
+// The build's commit is on the page, for battle-perf and the title screen
+// (src/build-id.ts), and in no script: a script holding it would change
+// name on every deploy (vite.config.ts buildIdMeta).
+assert(
+  /<meta name="arena-build" content="[a-z0-9-]{1,16}">/.test(entry),
+  'The page must carry its build id (<meta name="arena-build">)',
+);
 // Links in old emails land on these paths; each must be the game page.
 const page = readFileSync(root + "index.html", "utf8");
 for (const path of ["email-confirmed", "reset-password", "auth/callback"]) {
