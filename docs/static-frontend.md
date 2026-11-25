@@ -14,7 +14,7 @@ Create a **Static Site**, connected to the same repository and `main` branch:
 - Publish directory: `apps/client/dist`
 - `NODE_VERSION=22.16.0`
 - `VITE_SERVER_URL=https://element-arena-np34.onrender.com` (the existing backend)
-- `VITE_SITE_URL=https://parena.litojace.com`
+- `VITE_SITE_URL=https://play.elementarenausa.com`
 - Copy the existing `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` values.
 
 Keep service-role keys, access tokens and other server secrets on the Web Service.
@@ -22,7 +22,9 @@ The frontend only uses the public Supabase URL/anon key.
 
 On the **Web Service**, set `CLIENT_ORIGIN` to the exact frontend origin:
 `https://twod-pokemon.onrender.com` for testing, then
-`https://parena.litojace.com` after moving the custom domain. No trailing slash.
+`https://play.elementarenausa.com` (plus `https://parena.litojace.com` while it
+still redirects: `CLIENT_ORIGIN` takes a comma-separated list). No trailing slash.
+The game's address moved on 25 Nov 2026: [domain-move.md](domain-move.md).
 API CORS and Socket.IO use this origin; authenticated requests still require the
 user's bearer token. Same-origin requests to the existing server continue working.
 

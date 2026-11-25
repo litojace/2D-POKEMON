@@ -9,7 +9,7 @@
  * the iPhone app that is capacitor://localhost, which no camera can open.
  */
 export const SHARE_SITE = (
-  import.meta.env.VITE_SITE_URL || "https://parena.litojace.com"
+  import.meta.env.VITE_SITE_URL || "https://play.elementarenausa.com"
 ).replace(/\/+$/, "");
 
 /** Which picture a visit came from, as `?ref=` (nothing reads it in the
