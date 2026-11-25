@@ -97,7 +97,7 @@ export async function startLoadServer(
           root,
           "--env",
           "ARENA_LOAD_STDIO_IPC=1",
-          // The driver's `--delta on` (snapshots as changes).
+          // The driver's `--delta` (snapshots as changes: on, or off to compare).
           "--env",
           `SNAPSHOT_DELTA=${process.env.SNAPSHOT_DELTA ?? ""}`,
           image,

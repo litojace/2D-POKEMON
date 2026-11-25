@@ -592,7 +592,9 @@ describe("the Wardrobe", () => {
       { slot: "aura", from: "galaxy-aura", to: null },
     ]);
     const foot = fittingRoomParts(view, d).foot;
-    expect(foot).toContain("Voltkit · 2 changes");
+    expect(foot).toContain(
+      `data-changes="true">2 changes</small><b class="ui-h">Voltkit</b>`,
+    );
     expect(foot).toContain("Skin: Storm Revenant → Midnight");
     expect(foot).not.toMatch(
       /data-fit-save[^>]*disabled|disabled[^>]*data-fit-save/,
