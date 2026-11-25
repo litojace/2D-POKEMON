@@ -40,6 +40,8 @@ export class AnnouncementBanner {
   private shown: Announcement | null = null;
   private el: HTMLElement | null = null;
   private waitTimer = 0;
+  /** Local notices with a button to follow (domain-move.ts). */
+  private links = new Map<number, { href: string; label: string }>();
 
   constructor(
     private busy: () => boolean = () =>
@@ -65,6 +67,11 @@ export class AnnouncementBanner {
       (x, y) => Date.parse(x.createdAt) - Date.parse(y.createdAt),
     );
     this.next();
+  }
+  /** A notice from the game itself, with a link button ("Open"). */
+  notice(a: Announcement, link: { href: string; label: string }) {
+    this.links.set(a.id, link);
+    this.receive(a);
   }
   /** An admin ended it early: take it away. */
   end(data: unknown) {
@@ -103,8 +110,19 @@ export class AnnouncementBanner {
           : "Announcement";
     // Text only: never markup from the message.
     el.querySelector("p")!.textContent = a.message;
-    el.querySelector<HTMLButtonElement>(".announcement-ok")!.onclick = () =>
-      this.hide(true);
+    const ok = el.querySelector<HTMLButtonElement>(".announcement-ok")!;
+    ok.onclick = () => this.hide(true);
+    const link = this.links.get(a.id);
+    if (link) {
+      // The link leads; OK becomes "Later" beside it.
+      const go = document.createElement("a");
+      go.className = "announcement-go";
+      go.href = link.href;
+      go.textContent = link.label;
+      ok.textContent = "Later";
+      ok.classList.add("is-quiet");
+      ok.before(go);
+    }
     document.body.append(el);
     this.el = el;
     requestAnimationFrame(() => el.classList.add("is-shown"));

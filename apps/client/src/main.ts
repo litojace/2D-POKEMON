@@ -49,6 +49,7 @@ import {
 import { viewportHeight, viewportLandscape } from "./viewport-size";
 import { RoomInvites } from "./room-invites";
 import { AnnouncementBanner } from "./announcements";
+import { moveNotice, newAddress } from "./domain-move";
 import { serverNow } from "./server-clock";
 import { PvpSpectator } from "./pvp-spectator";
 import {
@@ -2261,6 +2262,15 @@ let watching = "";
 const pvpSpectator = new PvpSpectator();
 /** Announcements from the admins, as a banner (announcements.ts). */
 const announcements = new AnnouncementBanner();
+// On the game's old address: offer the new one (domain-move.ts).
+{
+  const moved = newAddress(location.hostname, import.meta.env.VITE_SITE_URL);
+  if (moved)
+    announcements.notice(moveNotice(moved), {
+      href: `${moved}/`,
+      label: "Open",
+    });
+}
 const roomInvites = new RoomInvites({
   accountId: () => accountsUI?.account?.id,
   canJoin: () => connected && !!accountsUI?.account && !myId,

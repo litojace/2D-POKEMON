@@ -3,9 +3,10 @@
 Owner's decision (25 Nov 2026): the game moves from `parena.litojace.com` to
 **`play.elementarenausa.com`**. The introduction website takes the apex
 `elementarenausa.com` (`www` redirects there; the website session builds it
-from `apps/site`). The old address redirects to the new one, keeping the path
-and query, so invite links (`?room=`), email links (`?auth=`) and QR codes on
-saved pictures keep working.
+from `apps/site`). The old address keeps serving the same game during the
+move, with a banner offering the new one; a redirect (keeping the path and
+query, so `?room=`, `?auth=` and old QR codes still work) comes later, when
+the owner decides.
 
 Status and progress notes are at the end. Every production step below needs
 the owner's go-ahead once, on the exact list (CLAUDE.md, "Still ask the owner
@@ -33,7 +34,7 @@ first").
   that lands on `parena…` and is redirected still signs in on `play.…`.
 - **Installed web app (PWA):** its service worker fetches page navigations
   from the network (`sw.ts`, `NavigationRoute` with `fetch`), so an old home
-  screen icon follows the redirect to the new address. It then opens outside
+  screen icon would follow a redirect (step 11) to the new address. It then opens outside
   the installed app's scope (Safari/Chrome shows the browser bar), so players
   should add the game to the home screen again.
 - **Sign in with Apple (web)** goes through Supabase: the Apple Services ID's
@@ -86,38 +87,52 @@ Each step can be undone on its own; "Undo" says how.
    with Apple, guest play, invite link `?room=` joins the room, the socket
    connects (a match starts), install as an app (Chrome's install prompt,
    iPhone Add to Home Screen), privacy and support pages.
-9. **Cloudflare (`litojace.com`): redirect the old address.**
-   - Set the `parena` record to **Proxied** (orange) and its target to
-     `twod-pokemon.onrender.com`.
-   - Add a Single Redirect rule: Request URL `http*://parena.litojace.com/*`
-     → `https://play.elementarenausa.com/${2}`, **302** for the first week,
-     preserve query string **on**.
-   - Check: `curl -I "https://parena.litojace.com/?room=AB12CD"` →
-     `302`, `location: https://play.elementarenausa.com/?room=AB12CD`; the same
-     for `/?auth=reset-password`, `/email-confirmed`, `/privacy.html`.
-   - After a week without problems, change it to **301**. (301 is kept by
-     browsers, so it waits until we're sure; 302 can be undone at once.)
-     Undo: turn the rule off and set `parena` back to DNS only; Render still has
-     the custom domain, so the old address serves the game again.
+9. **The old address keeps serving the same game** (root and coordinator
+   sessions, 25 Nov): installs on `parena.litojace.com` keep their sign-in,
+   settings and push. From step 7's build, the game shows a light banner
+   there (`domain-move.ts`, through `announcements.ts`): "Element Arena moved
+   to play.elementarenausa.com…" with **Open** and **Later**; never in a
+   battle, and back every three days until they move. Old links, email links
+   and QR codes keep working because the old address is still live.
+   Optionally, set the `parena` record's target to `twod-pokemon.onrender.com`
+   (DNS only), the Static Site's own name, as the documented target.
 10. **iPhone app** (owner, on the Mac): set `VITE_SITE_URL=https://play.elementarenausa.com`
     in `apps/client/.env.ios`, build and upload a new TestFlight build
     (docs/ios-app.md). Builds already installed keep working: their privacy
     and support links and email links point at `parena…`, which redirects.
     App Store Connect: privacy policy URL and support URL to the new address
     (store listing, owner).
-11. **After 30 days:** remove `https://parena.litojace.com/**` from Supabase's
-    Redirect URLs and from `CLIENT_ORIGIN`. Keep the Cloudflare redirect and
-    the `parena` record for good (old QR codes live on in saved pictures).
+11. **Later, when the owner decides (for example before the App Store
+    launch): redirect the old address.** Players on it are signed out once
+    there, so it waits until most have moved.
+    - Set the `parena` record to **Proxied** (orange), target
+      `twod-pokemon.onrender.com`.
+    - Cloudflare Single Redirect in the `litojace.com` zone: Request URL
+      `http*://parena.litojace.com/*` → `https://play.elementarenausa.com/${2}`,
+      preserve query string **on**, **302** for the first week, then **301**
+      (browsers keep a 301, so it waits until we're sure).
+    - Check: `curl -I "https://parena.litojace.com/?room=AB12CD"` → `302`,
+      `location: https://play.elementarenausa.com/?room=AB12CD`; the same for
+      `/?auth=reset-password`, `/email-confirmed`, `/privacy.html`.
+    - Undo: turn the rule off and set `parena` back to DNS only. Render keeps
+      the custom domain, so the old address serves the game again.
+    - Render's own redirect rules can't do this (they match the path, not
+      the host, and never apply where a file exists, like `/`).
+      Keep the redirect and the `parena` record for good afterwards (old QR
+      codes live on in saved pictures). Supabase's `parena` Redirect URL and
+      `CLIENT_ORIGIN`'s `parena` entry go 30 days after the redirect starts.
 
 ## What players notice
 
-- **Web players sign in once more.** A new address has empty storage, so the
-  saved session (`parena-auth`) stays behind on the old address. Guests on the
+- **Web players sign in once more when they move** (not before: the old
+  address keeps serving). A new address has empty storage, so the saved
+  session (`parena-auth`) stays behind on the old address. Guests on the
   web start over unless they added an email (a guest's progress is tied to the
-  device's anonymous account). Suggest a short in-game notice before the move:
-  "Add an email to keep your guest progress."
-- **Home screen icons:** the old icon still opens the game (it redirects), but
-  in the browser. Add the game to the home screen again from the new address.
+  device's anonymous account). The banner on the old address says so.
+- **Home screen icons:** the old icon keeps opening the game on the old
+  address, with the banner. Add the game to the home screen again from the
+  new address. (After the redirect in step 11, the old icon opens the new
+  address in the browser.)
 - **iPhone app players:** nothing changes (the app has its own storage).
 
 ## Shared sign-in with the website (later, the website session)
@@ -130,5 +145,7 @@ this move doesn't touch how the session is stored.
 
 ## Progress
 
-- 25 Nov: plan written, checks above done, code PR opened. Waiting for the
-  owner's go-ahead on the production list.
+- 25 Nov, ~3:50 PM PT: plan written, checks above done, draft PR #481.
+- 25 Nov, ~4:10 PM PT: no redirect at first (root/coordinator sessions);
+  banner on the old address added. Waiting for the owner's go-ahead on the
+  production list.
