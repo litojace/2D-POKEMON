@@ -101,12 +101,6 @@ const time = (s: number) =>
   `${Math.floor(s / 60)}:${Math.floor(s % 60)
     .toString()
     .padStart(2, "0")}`;
-/** Equipped items as a space-separated list (for data-raid-cosmetic~=...). */
-export function raidLookList(look: RaidLoadout | null | undefined) {
-  return Object.values(look ?? {})
-    .filter(Boolean)
-    .join(" ");
-}
 export { portraitAvatar, portraitCosmetics } from "./portraits";
 /** The result whose saved progress was already fetched, per overlay. */
 const resultProgress = new WeakMap<HTMLElement, string>();

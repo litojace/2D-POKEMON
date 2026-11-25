@@ -81,7 +81,7 @@ async function hookGame(page: Page) {
       // plain court: the arenas are painted in code, nothing is fetched)
       body: body.replace(
         marker,
-        "window.__spireGame=gameInstance;window.__paintCourt=paintIllustratedRaidFloor;" +
+        "window.__spireGame=gameInstance;window.__paintCourt=kit.paintIllustratedRaidFloor;" +
           marker,
       ),
     });
