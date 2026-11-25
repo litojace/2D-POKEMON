@@ -715,3 +715,83 @@ test("a Shop reopened while the last one is leaving is the only Shop left", asyn
   await expect(page.locator(".ui-panel-host[data-ui-parked]")).toHaveCount(1);
   expect(errors).toEqual([]);
 });
+
+// The Skins order (owner's pick B, 25 Nov): a switch of two halves, ◆ Rarest
+// and coin Cheapest, beside All / Owned / Not owned. It used to be one long
+// button that filled a phone's row for two choices. Both halves are in
+// sight, the lit one is the order shown; a phone shows the marks alone.
+for (const size of [
+  { name: "667x375", width: 667, height: 375, phone: true },
+  SIZES[2],
+  SIZES[0],
+])
+  test(`the Skins order is a two-half switch that fits the row (${size.name})`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      await shopServer(page);
+      const errors = await openLobby(page);
+      await page.click('.lobby-rail [data-lobby-action="shop"]');
+      await page.click('[data-ui-section="skins"]');
+      const rarest = page.locator('.fit-sort [data-fit-sort="rarity"]');
+      const cheapest = page.locator('.fit-sort [data-fit-sort="price"]');
+      await expect(rarest).toHaveAttribute("aria-pressed", "true");
+      await expect(cheapest).toHaveAttribute("aria-pressed", "false");
+      await expect(rarest).toHaveAccessibleName("Rarest first");
+      await expect(cheapest).toHaveAccessibleName("Cheapest first");
+      const look = () =>
+        page.evaluate(() => {
+          const row = document
+            .querySelector(".fit-filters")!
+            .getBoundingClientRect();
+          return [...document.querySelectorAll(".fit-sort > button")].map(
+            (b) => {
+              const r = b.getBoundingClientRect();
+              // Shown words are measured as drawn (a Range): text can spill
+              // out of a box that itself fits. A phone hides them (1 px box).
+              const span = b.querySelector(".fit-sort-word")!;
+              const shown = span.getBoundingClientRect().width > 1;
+              const range = document.createRange();
+              range.selectNodeContents(span);
+              const w = range.getBoundingClientRect();
+              return {
+                inRow: r.left >= row.left - 0.5 && r.right <= row.right + 0.5,
+                width: r.width,
+                word: shown,
+                wordInside:
+                  !shown ||
+                  (w.left >= r.left - 0.5 && w.right <= r.right + 0.5),
+              };
+            },
+          );
+        });
+      for (const half of await look()) {
+        expect(half.inRow).toBe(true);
+        expect(half.wordInside).toBe(true);
+        // A phone: the marks alone, each half a finger wide; else the words.
+        expect(half.word).toBe(!size.phone);
+        if (size.phone) expect(half.width).toBeGreaterThanOrEqual(44);
+      }
+      await snap(page, info, `fitting-room-sort-rarest-${size.name}`);
+      // One tap: Cheapest lights, the grid leads with a Common skin, and
+      // focus stays on the half you pressed.
+      await cheapest.click();
+      await expect(cheapest).toHaveAttribute("aria-pressed", "true");
+      await expect(rarest).toHaveAttribute("aria-pressed", "false");
+      await expect(cheapest).toBeFocused();
+      await expect(
+        page.locator(".fit-grid > .ui-tile").first().locator(".ui-rarity"),
+      ).toHaveText(/common/i);
+      for (const half of await look()) expect(half.inRow).toBe(true);
+      await snap(page, info, `fitting-room-sort-cheapest-${size.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
