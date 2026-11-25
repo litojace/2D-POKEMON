@@ -108,7 +108,7 @@ Test: `tests/unit/hud-dom.test.ts`, `tests/unit/viewport-size.test.ts`.
 
 | #   | Việc                                                                                                                                                                                                                                                       | Ghi chú                                                          |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| S1  | **BẢO MẬT, cần chủ game quyết:** rate limit HTTP theo `req.ip` nhưng không có `trust proxy` (`apps/server/src/accounts.ts:562-586`) → sau proxy của Render mọi người chung một xô 120/phút; ~12 người online có thể tự chạm trần, ai cũng có thể làm nghẽn | Chưa kiểm trên Render: log `req.ip` và `x-forwarded-for` một lần |
+| S1  | **BẢO MẬT, cần chủ game quyết:** rate limit HTTP theo `req.ip` nhưng không có `trust proxy` (`apps/server/src/accounts.ts:562-586`) → sau proxy của Render mọi người chung một xô 120/phút; ~12 người online có thể tự chạm trần, ai cũng có thể làm nghẽn | Đã làm ở PR #436 (chủ game đồng ý 25/11): xem mục S1/S9 bên dưới |
 | S2  | Phòng không đánh (lobby, kết quả, tạm dừng) vẫn nhận 30 snapshot/giây (`server.ts` `step`), client chạy cả `renderMenu` mỗi lần                                                                                                                            | Gửi khi đổi + 1–2 Hz; đếm ngược 5–10 Hz. −95% byte phòng chờ     |
 | S3  | Bão refresh tài khoản mỗi 30 s: ~20–25 round trip Supabase mỗi người, tất cả cùng một giây, rồi `account-changed` vô điều kiện làm client tải lại 5 API                                                                                                    | Rải theo socket, chỉ emit khi đổi, cache `authenticate` 30–60 s  |
 | S4  | Raid Snoozaku encode N+1 lần mỗi tick (`server.ts:1427-1479`)                                                                                                                                                                                              | Chỉ đi đường riêng khi `dreamFor()` có giá trị                   |
@@ -116,7 +116,36 @@ Test: `tests/unit/hud-dom.test.ts`, `tests/unit/viewport-size.test.ts`.
 | S6  | `/api/friends` quét mọi socket cho từng bạn (O(bạn × socket))                                                                                                                                                                                              | Dựng map online một lần                                          |
 | S7  | 75–80% mỗi snapshot là dữ liệu không đổi (~147 KB/s/người ở FFA, ~530 MB/giờ)                                                                                                                                                                              | Giao thức delta có cờ năng lực; bản cũ vẫn nhận bản đầy đủ       |
 | S8  | Thiếu timeout/retry cho ghi thưởng; push thông báo chặn 10–30 ms mỗi lô; tick bù vẫn broadcast                                                                                                                                                             | Nhỏ                                                              |
-| S9  | BẢO MẬT (cứng hoá): practice gọi `authorize` dưới hạn 90/giây; socket token giả gọi Supabase không giới hạn                                                                                                                                                | Cùng S1                                                          |
+| S9  | BẢO MẬT (cứng hoá): practice gọi `authorize` dưới hạn 90/giây; socket token giả gọi Supabase không giới hạn                                                                                                                                                | Đã làm ở #436, cùng S1                                           |
+
+### S1/S9 — bảo mật: đã làm (#436, 25/11/2026, PT)
+
+Chủ game đồng ý "kiểm chứng rồi sửa luôn" (25/11). Một PR, lane FULL, lên
+production 1:44 AM PT.
+
+- **Đã chứng minh:** trong code, khoá của giới hạn là `req.ip` với Express
+  mặc định, tức địa chỉ của kết nối (proxy), không đọc `X-Forwarded-For`.
+  Bằng test: sau một proxy giả, người thứ hai bị 429 khi người thứ nhất dùng
+  hết 120 (`tests/integration/abuse-limits.test.ts`, đỏ trên `main` cũ).
+- **Chỉ suy ra:** production thật sự chung một xô. Service không có request
+  log và app chưa từng ghi 429, nên không biết đã có ai bị chặn chưa.
+- **Sửa** (`apps/server/src/abuse-limits.ts`): địa chỉ người chơi lấy từ
+  `X-Forwarded-For`, đếm từ bên phải ở độ dài chuỗi ngắn nhất từng thấy từ
+  proxy, nên header client tự gửi không đổi được xô; chỉ đọc header khi kết
+  nối đến từ địa chỉ nội bộ; IPv6 theo /64; `TRUST_PROXY_HOPS` ghim được số
+  hop (không đặt). Không bật `trust proxy` của Express.
+- **S9:** đăng nhập bị từ chối trên socket giới hạn 20/phút mỗi địa chỉ (sau
+  đó không hỏi Supabase); ba lệnh practice có hạn riêng 10/10 s; mỗi kết nối
+  tối đa 300 sự kiện/giây, 10 giây liên tiếp vượt thì ngắt.
+- **Trên production** [đo]: `arena-proxy-chain` ghi
+  `{"forwarded":2,"kinds":["public","public"]}` hai lần (9:56 UTC từ một
+  request thử, 16:01 UTC từ một tiến trình khác). Tới 16:48 UTC không có
+  `arena-auth-refused` hay log mức error.
+- **Còn lại:** chưa thấy hai người chơi thật cùng lúc; nếu Render thêm một
+  tầng proxy khi tiến trình đang chạy, giới hạn quay về chung xô tới lần
+  deploy kế; nhiều người sau một IP (trường, nhà mạng) vẫn chung 120/phút như
+  trước. Cache `authenticate` (S3) phải giữ việc đếm đăng nhập bị từ chối
+  trong `io.use`.
 
 ### Đợt B — server: đã làm (25/11/2026, PT)
 
@@ -229,7 +258,7 @@ Build `0909e29`: entry JS 2.731 kB (914 kB gzip), Phaser 1.482 kB, CSS
 1. **Đợt A** (nhánh này): hoàn tất phần nợ ở mục 2, PR, FULL lane.
 2. **Đo lại trên Pixel 8a** sau khi A lên production: duel + raid, Auto.
    `work` kỳ vọng giảm rõ; nếu raid vẫn < 50 FPS thì làm mục 6 theo trace.
-3. **Đợt B — server:** S2, S3, S4, S5 (S1/S9 chờ chủ game).
+3. **Đợt B — server:** S2, S3, S4, S5. S1/S9 làm riêng ở #436.
 4. **Đợt C — tải về:** L2, L3 (rủi ro thấp), rồi L1 (trước khi entry chạm
    trần L4).
 5. **Đợt D — trong trận:** lỗi gục raid, `surfaceBurst`/`shot` qua fx
