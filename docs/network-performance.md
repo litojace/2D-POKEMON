@@ -1080,7 +1080,7 @@ switch that starts off):
   exactly what parsing it would have: nothing after that point changes
   (prediction, interpolation, the event cursor, the appearance block).
 
-(0.5 CPU / 512 MB, 15 snapshots a second)
+## Historical results (0.5 CPU / 512 MB, 15 snapshots a second)
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The
 server child ran in a cgroup capped at 0.5 CPU and 512 MB to approximate
