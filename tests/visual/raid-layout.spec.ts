@@ -312,22 +312,14 @@ for (const size of [
                 ).toBe(false);
               }
               if (selector === "#raid-prism-controls" && mobile) {
-                // Phones: Prismatail's actions share the touch cluster's
-                // contextual slot, left of skill 1 (above it on a narrow
-                // screen) (prism-context.spec.ts covers when they show).
+                // Phones: Prismatail's two actions fill the touch cluster's
+                // contextual slot, left of the target button
+                // (prism-context.spec.ts covers what they show).
                 const slot = await box(page, ".touch-buttons .touch-context"),
-                  skill1 = await box(page, '.touch-buttons [data-skill="0"]');
+                  aim = await box(page, ".touch-buttons [data-aim]");
                 expect(Math.abs(controls.x - slot.x)).toBeLessThanOrEqual(1);
                 expect(Math.abs(controls.y - slot.y)).toBeLessThanOrEqual(1);
-                if (size.width >= 600) {
-                  expect(slot.x + slot.width).toBeLessThanOrEqual(skill1.x);
-                  expect(
-                    Math.abs(
-                      slot.y + slot.height / 2 - skill1.y - skill1.height / 2,
-                    ),
-                  ).toBeLessThanOrEqual(2);
-                } else
-                  expect(slot.y + slot.height).toBeLessThanOrEqual(skill1.y);
+                expect(slot.x + slot.width).toBeLessThanOrEqual(aim.x);
               }
               expect(controls.x).toBeGreaterThanOrEqual(0);
               expect(controls.x + controls.width).toBeLessThanOrEqual(
@@ -417,8 +409,12 @@ for (const size of [
               }),
             )
             .toBe(true);
+          // Never further out than the overview. The camera may sit right on
+          // it (a court-wide frame is held a while, raid-camera.ts
+          // RAID_WIDE_HOLD), and the overview moves a hair with the HUD's
+          // height since overviewZoom was read (0.08% on 844×280).
           expect((await cameraSignature(page))[0]).toBeGreaterThanOrEqual(
-            overviewZoom - 1e-6,
+            overviewZoom * 0.995,
           );
         } else await expect.poll(() => cameraSignature(page)).toEqual(camera);
         if (boss === "prismatail") {

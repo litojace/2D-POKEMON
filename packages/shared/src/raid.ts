@@ -99,9 +99,10 @@ export const RAID_TIERS: Record<1 | 2 | 3, RaidTier> = {
   2: {
     health: 1.25,
     damage: 1.95,
-    cadence: 0.78,
-    concurrency: [2, 2, 2],
-    telegraph: 0.88,
+    // Owner, 24 Nov 2026: 0.78 cast too fast (the camera never rested).
+    cadence: 0.88,
+    concurrency: [1, 2, 2],
+    telegraph: 0.92,
     leadFraction: 0.7,
     leadCap: 140,
     windows: 0.8,
@@ -114,9 +115,10 @@ export const RAID_TIERS: Record<1 | 2 | 3, RaidTier> = {
   3: {
     health: 1.35,
     damage: 2.15,
-    cadence: 0.72,
-    concurrency: [2, 2, 3],
-    telegraph: 0.82,
+    // Owner, 24 Nov 2026: 0.72 with three attacks live left no time to breathe.
+    cadence: 0.9,
+    concurrency: [2, 2, 2],
+    telegraph: 0.88,
     leadFraction: 0.8,
     leadCap: 160,
     windows: 0.72,

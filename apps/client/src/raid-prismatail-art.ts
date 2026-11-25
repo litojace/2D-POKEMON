@@ -1,7 +1,6 @@
 import { paintPrismell } from "./boss-prismell-rig";
 import { notePrismell } from "./prismell-attack-fx";
 import { paintBossAura } from "./boss-spell-art";
-import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -101,19 +100,7 @@ export function drawPrismatailWarning(g: G, state: Snapshot, w: RaidWarning) {
     return true;
   }
   if (w.kind === "glare") {
-    const y = w.y - 205;
-    g.fillStyle(0xfff3ce, 0.15 + progress * 0.15).fillEllipse(
-      w.x,
-      y,
-      100,
-      groundHeight(100),
-    );
-    g.lineStyle(4, 0xfff3ce, 1).strokeEllipse(w.x, y, 68, groundHeight(68));
-    g.fillStyle(0xfff3ce, 1).fillCircle(w.x, y, 9 + progress * 5);
-    g.lineStyle(4, 0xffe2ab, 0.9)
-      .beginPath()
-      .arc(w.x, y, 45, -Math.PI / 2, -Math.PI / 2 + TAU * progress, false)
-      .strokePath();
+    drawGlareEye(g, w, progress, state.time);
     return true;
   }
   if (w.kind === "halo-crush") {
@@ -137,6 +124,70 @@ export function drawPrismatailWarning(g: G, state: Snapshot, w: RaidWarning) {
   if (w.kind === "eclipse" || w.kind === "umbral-prism")
     return drawAscendantPrismellWarning(g, state, w);
   return w.kind === "light-relay";
+}
+/**
+ * Glare's eye (owner, 24 Nov 2026: the old flat ring above the shell was
+ * hard to see and often sat under the boss bar). An upright eye on a dark
+ * plate opens over the wind-up, its rays grow, and the last third it pulses:
+ * look away before it is wide open. Above the shell, or below it when the
+ * boss is near the top wall.
+ */
+function drawGlareEye(g: G, w: RaidWarning, progress: number, time: number) {
+  const x = w.x,
+    y = w.y - 250 >= 70 ? w.y - 250 : w.y + 115;
+  const late = progress > 0.66;
+  const pulse = late ? 0.5 + 0.5 * Math.sin(time * 22) : 0;
+  const W = 150,
+    open = 0.3 + 0.7 * progress,
+    H = 82 * open;
+  // the lids: an almond, opening as Glare winds up
+  const almond = (w2: number, h2: number) => {
+    const pts: { x: number; y: number }[] = [];
+    for (let i = 0; i <= 24; i++) {
+      const t = -1 + (2 * i) / 24;
+      pts.push({ x: x + (t * w2) / 2, y: y - ((1 - t * t) * h2) / 2 });
+    }
+    for (let i = 23; i >= 1; i--) {
+      const t = -1 + (2 * i) / 24;
+      pts.push({ x: x + (t * w2) / 2, y: y + ((1 - t * t) * h2) / 2 });
+    }
+    return pts;
+  };
+  // rays round it, longer as it opens
+  const rays = 14,
+    reach = 58 + progress * 46 + pulse * 10;
+  g.lineStyle(5, 0xfff3ce, 0.35 + progress * 0.5);
+  for (let i = 0; i < rays; i++) {
+    const a = (i * TAU) / rays;
+    g.lineBetween(
+      x + Math.cos(a) * 62,
+      y + Math.sin(a) * 50,
+      x + Math.cos(a) * reach * 1.15,
+      y + Math.sin(a) * reach,
+    );
+  }
+  // a dark plate so the eye reads on the bright atrium floor
+  g.fillStyle(0x1a1430, 0.62).fillEllipse(x, y, W + 34, 112);
+  g.lineStyle(4, 0xffe2ab, 0.95).strokeEllipse(x, y, W + 34, 112);
+  // the wind-up ring, filling clockwise
+  g.lineStyle(7, late ? 0xff9ab0 : 0xffd778, 1)
+    .beginPath()
+    .arc(x, y, 66, -Math.PI / 2, -Math.PI / 2 + TAU * progress, false)
+    .strokePath();
+  const lids = almond(W, H);
+  g.fillStyle(0xfff8e6, 0.95).fillPoints(lids, true);
+  g.lineStyle(5, late ? 0xff607d : 0xffcf5a, 1).strokePoints(lids, true);
+  // iris and a white-hot pupil, inside the open lids
+  const iris = Math.min(28, H / 2 - 2);
+  if (iris > 4) {
+    g.fillStyle(0xffb52e, 1).fillCircle(x, y, iris);
+    g.fillStyle(0x2a1a40, 1).fillCircle(x, y, iris * 0.55);
+    g.fillStyle(0xffffff, 0.6 + pulse * 0.4).fillCircle(
+      x,
+      y,
+      iris * (0.25 + 0.2 * progress),
+    );
+  }
 }
 const motion = new WeakMap<G, RaidBossMotion>();
 /** Where the boss was last frame, to tell when it walks. */

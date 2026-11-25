@@ -160,8 +160,51 @@ describe("raid camera on phones", () => {
     expect(out.zoomX).toBeCloseTo(overview.zoomX, 2);
     expect(out.x).toBeCloseTo(overview.x, 0);
     expect(out.y).toBeCloseTo(overview.y, 0);
-    const back = follow(cam, { x: 300, y: 700 }, { frames: 600 });
+    // (This helper's clock restarts at 0: past the 400 frames' hold.)
+    const back = follow(cam, { x: 300, y: 700 }, { frames: 900 });
     expect(back.zoomX).toBeGreaterThan(overview.zoomX * 1.35);
+  });
+
+  it("holds a framed moment's size between casts instead of zooming in and out", () => {
+    const cam = new RaidCamera();
+    const small = { x0: 500, y0: 250, x1: 1100, y1: 650 };
+    const step = (frame: typeof WHOLE, t: number) =>
+      cam.update(
+        W,
+        H,
+        HUD,
+        true,
+        { x: 800, y: 450, vx: 0, vy: 0 },
+        { x: 800, y: 300 },
+        frame,
+        "room:1:me",
+        16,
+        t,
+        false,
+      );
+    let t = 0,
+      view = step(small, t);
+    for (let i = 0; i < 200; i++) view = step(small, (t += 0.016));
+    const close = view.zoomX;
+    // A court-wide cast: out at once.
+    for (let i = 0; i < 120; i++) view = step(WHOLE, (t += 0.016));
+    const out = view.zoomX;
+    expect(out).toBeLessThan(close * 0.8);
+    // It ends and the small frame comes back: still out for the hold...
+    for (let i = 0; i < 150; i++) view = step(small, (t += 0.016));
+    expect(view.zoomX).toBeCloseTo(out, 3);
+    // ...and a cast within it keeps it out with no pump.
+    let lo = Infinity,
+      hi = 0;
+    for (let i = 0; i < 60; i++) {
+      view = step(WHOLE, (t += 0.016));
+      lo = Math.min(lo, view.zoomX);
+      hi = Math.max(hi, view.zoomX);
+    }
+    expect(hi / lo).toBeLessThan(1.001);
+    // Once nothing has needed it for the hold, it eases back in.
+    for (let i = 0; i < 500; i++) view = step(small, (t += 0.016));
+    expect(view.zoomX).toBeGreaterThan(out * 1.15);
   });
 
   it("stays out between two court-wide casts instead of pumping in and out", () => {

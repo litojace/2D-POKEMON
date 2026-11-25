@@ -42,9 +42,12 @@ export const RAID_WIDE_RADIUS = 400;
 /**
  * Seconds the whole court stays in view after the last court-wide warning:
  * long enough that a boss's next court-wide skill finds the camera still out,
- * instead of it zooming in and straight back out between two casts.
+ * instead of it zooming in and straight back out between two casts. Also how
+ * long a framed moment's box stays as large as it got before it may shrink
+ * (owner, 24 Nov 2026: at 1.5 s the ★★ and ★★★ bosses' casts kept the
+ * camera zooming in and out with no time to breathe).
  */
-export const RAID_WIDE_HOLD = 1.5;
+export const RAID_WIDE_HOLD = 3;
 
 type Point = { x: number; y: number };
 const clamp = (n: number, lo: number, hi: number) =>
@@ -525,12 +528,45 @@ export interface RaidCameraFocus extends Point {
  * marked. Presentation only: combat stays in world coordinates.
  */
 export class RaidCamera {
+  /**
+   * Take a court-wide moment's frame. A frame may grow at once, but shrinks
+   * only after RAID_WIDE_HOLD with nothing needing its size: one cast ending
+   * as the next begins would otherwise zoom the camera in and out again.
+   */
+  private holdFrame(frame: FrameBox, now: number) {
+    const held = this.frame;
+    if (!held || now >= this.frameUntil) {
+      this.frame = frame;
+      this.frameUntil = now + RAID_WIDE_HOLD;
+      return;
+    }
+    const box = {
+      x0: Math.min(held.x0, frame.x0),
+      y0: Math.min(held.y0, frame.y0),
+      x1: Math.max(held.x1, frame.x1),
+      y1: Math.max(held.y1, frame.y1),
+    };
+    // It grew, or the moment still needs about this much room: the hold
+    // starts again.
+    const grew =
+      box.x0 < held.x0 - 1 ||
+      box.y0 < held.y0 - 1 ||
+      box.x1 > held.x1 + 1 ||
+      box.y1 > held.y1 + 1;
+    const needed =
+      frame.x1 - frame.x0 >= (held.x1 - held.x0) * 0.95 &&
+      frame.y1 - frame.y0 >= (held.y1 - held.y0) * 0.95;
+    if (grew || needed) this.frameUntil = now + RAID_WIDE_HOLD;
+    this.frame = { ...box, ...(frame.marks ? { marks: frame.marks } : {}) };
+  }
   private x = 800;
   private y = 450;
   private zoom = 0;
   private identity = "";
   private wideUntil = -Infinity;
   private frame: FrameBox | undefined;
+  /** Until when `frame` keeps its size (it may grow, not shrink, before). */
+  private frameUntil = -Infinity;
   update(
     width: number,
     height: number,
@@ -556,10 +592,12 @@ export class RaidCamera {
     const top = Math.max(0, Math.min(height - 1, hudBottom));
     const overview = raidCameraView(width, height, top);
     const snap = key !== this.identity || this.zoom <= 0;
+    // A new fight starts with no held frame.
+    if (key !== this.identity) this.frameUntil = -Infinity;
     this.identity = key;
     if (frame) {
       this.wideUntil = now + RAID_WIDE_HOLD;
-      this.frame = frame;
+      this.holdFrame(frame, now);
     }
     const close = follow && !reduced && !!focus && now >= this.wideUntil;
     if (!close && (!follow || reduced)) {
