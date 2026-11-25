@@ -39,7 +39,14 @@ import { correctionCause } from "./networking/correction-cause";
 import { PerfOverlay } from "./perf-overlay";
 import { syncPerfHud } from "./perf-hud";
 import { addCanvasTexture } from "./canvas-texture";
-import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
+import {
+  setHudText,
+  setHudAttribute,
+  setHudStyle,
+  setHudHidden,
+  sweepPercent,
+} from "./hud-dom";
+import { viewportHeight, viewportLandscape } from "./viewport-size";
 import { battleCurves } from "./battle-curves";
 import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
@@ -2181,7 +2188,7 @@ function crownLabel(me: Fighter) {
 /** What a watcher sees over the arena: no buttons but "Stop watching". */
 function renderWatchOverlay(overlay: HTMLElement) {
   const banner = $("spectate");
-  banner.hidden = state!.phase !== "playing";
+  setHudHidden(banner, state!.phase !== "playing");
   // Phones have no Esc: the gear (top right) holds "Stop watching".
   const text = `Watching room ${state!.code} · ${touch.enabled ? "⚙ to stop" : "Esc to stop"}`;
   if (banner.textContent !== text) banner.textContent = text;
@@ -3840,7 +3847,7 @@ function renderPvpSpectator() {
   const banner = $("spectate");
   const target = state && pvpSpectator.target(state, myId);
   banner.classList.toggle("pvp-spectator", !!target);
-  banner.hidden = !target;
+  setHudHidden(banner, !target);
   if (!state || !target) {
     spectateShown = "";
     return;
@@ -3897,10 +3904,28 @@ function syncCoach() {
   const g = guide.view();
   if (g.active && !g.done.bot) coach.start();
 }
+/**
+ * What the hub's own bookkeeping (syncHub) last saw from a battle. It runs
+ * with every snapshot, 30 times a second, and nearly always finds nothing
+ * new: it closes the Lobby and the Plaza, places the chat button, repaints
+ * its badge. So in a battle it runs when something it reads changed, and
+ * once a second besides (a setting changed in the battle menu, an account
+ * that finished loading).
+ */
+let battleHubSeen = "";
+function syncHubInBattle() {
+  const s = state;
+  const key = s
+    ? `${s.code}:${s.phase}:${!!s.practice}:${!!s.vsBot}:${s.mode ?? ""}:${s.players.length}:${s.watchers?.length ?? 0}:${s.raid ? s.raid.partySize : "-"}:${myId ?? ""}:${watching ?? ""}:${connected}:${!!party}:${!!accountsUI?.account}:${Math.floor(performance.now() / 1000)}`
+    : "";
+  if (s && key === battleHubSeen) return;
+  battleHubSeen = key;
+  syncHub();
+}
 function renderBattle() {
   document.body.classList.remove("home-active", "lobby-active", "gate-active");
   if (!state?.practice) document.body.classList.remove("practice-active");
-  syncHub();
+  syncHubInBattle();
   if (state) audio.setTheme(battleMusic(state, myId), state.raid?.phase ?? 1);
   if (!document.body.classList.contains("battle-active")) {
     document.body.classList.add("battle-active");
@@ -3927,7 +3952,10 @@ function renderBattle() {
   document.body.classList.toggle("spectating", !myId && !!watching);
   const knockedOut = !state.raid && !state.practice && (me.hp <= 0 || !!me.out);
   document.body.classList.toggle("pvp-knocked-out", knockedOut);
-  if (!knockedOut) $("spectate").classList.remove("pvp-spectator");
+  // (Only when it is there: taking away a class that is not set still
+  // writes the attribute, 30 times a second.)
+  if (!knockedOut && $("spectate").classList.contains("pvp-spectator"))
+    $("spectate").classList.remove("pvp-spectator");
   queueMicrotask(refreshControlLabels);
   const hudOrder = isTeams()
     ? [
@@ -4146,7 +4174,7 @@ function renderBattle() {
         setHudStyle(
           $(`ability-${i}`),
           "--cooldown",
-          `${ready ? 0 : 100 - charge}%`,
+          sweepPercent(ready ? 0 : 100 - charge),
         );
         $(`ability-${i}`).classList.toggle("cooling", !ready);
         $(`ability-${i}`).classList.toggle("ult-ready", ready);
@@ -4177,7 +4205,7 @@ function renderBattle() {
       setHudStyle(
         $(`ability-${i}`),
         "--cooldown",
-        `${Math.min(100, (100 * left) / (a.cooldown * cooldownScale()))}%`,
+        sweepPercent((100 * left) / (a.cooldown * cooldownScale())),
       );
       $(`ability-${i}`).classList.toggle("cooling", left > 0);
     });
@@ -4194,6 +4222,7 @@ function renderBattle() {
         : "READY",
     );
   }
+  touch.downed = !!state.raid && !!myId && me.hp <= 0;
   touch.update(
     state.phase === "playing" && connected && !!myId && !knockedOut,
     CHARACTERS[me.character].skills.map((a) => a.name),
@@ -4248,10 +4277,6 @@ function renderBattle() {
       measuredRaidHud = raidHud;
       battleHudSize.observe(raidHud);
     }
-    if (me.hp <= 0)
-      document
-        .querySelectorAll<HTMLButtonElement>(".touch-buttons button")
-        .forEach((b) => (b.disabled = true));
     const exit = document.getElementById("raid-exit");
     if (exit) exit.onclick = () => void leave();
     return;
@@ -4321,7 +4346,7 @@ function renderBattle() {
     renderPvpSpectator();
     overlay.style.pointerEvents = "none";
   } else {
-    $("spectate").hidden = true;
+    setHudHidden($("spectate"), true);
     overlay.style.pointerEvents = "auto";
     let heading = "",
       details = "",
@@ -6411,6 +6436,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     () => document.getElementById("game")?.parentElement ?? null,
   );
   private enemyBearing = document.createElement("div");
+  /** Its arrow and name, found once (they are written every frame). */
+  private enemyBearingArrow!: HTMLElement;
+  private enemyBearingName!: HTMLElement;
   /** The camera view of the last frame (the target button's on-screen test). */
   private aimView: CameraView | undefined;
   /** Where each fighter's nameplate was drawn last frame (the arrow keeps
@@ -6693,6 +6721,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.enemyBearing.hidden = true;
     this.enemyBearing.innerHTML =
       '<span aria-hidden="true">➜</span><strong></strong>';
+    this.enemyBearingArrow = this.enemyBearing.querySelector("span")!;
+    this.enemyBearingName = this.enemyBearing.querySelector("strong")!;
     $("game").parentElement!.append(this.enemyBearing);
     this.cameras.main.setBackgroundColor("#142746");
     // Effect sprites are painted now, not when they first appear mid-fight
@@ -7350,12 +7380,15 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // shows the whole court large enough.
     // Watching (no seat): always the whole court, never a follow or a zoom.
     const ringside = !myId && !!watching;
+    // Kept, not read from the window each frame (viewport-size.ts): a read
+    // here made the browser restyle the page in the middle of the frame.
+    const landscape = viewportLandscape();
     const raidFollow =
       !ringside &&
       !!state?.raid &&
       touch.enabled &&
-      innerWidth > innerHeight &&
-      innerHeight <= 600 &&
+      landscape &&
+      viewportHeight() <= 600 &&
       !controlPrefs().raidCourt;
     const raidFocus =
       state?.raid && me && state.raid.downed[me.id]
@@ -7411,8 +7444,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             touch.enabled &&
             !state?.raid &&
             document.body.classList.contains("battle-active") &&
-            innerWidth > innerHeight,
-          ((touch.enabled && innerWidth > innerHeight) || !!spectated) &&
+            landscape,
+          ((touch.enabled && landscape) || !!spectated) &&
             follow &&
             presented &&
             !state?.arcade &&
@@ -7433,7 +7466,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           state?.practice ? 1.65 : 1.2,
           !ringside &&
             touch.enabled &&
-            innerWidth > innerHeight &&
+            landscape &&
             this.activeCourt &&
             !this.courtRaid
             ? COURT_APRON
@@ -7460,29 +7493,31 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     );
     const opponent =
       tracked && presented ? nearestEnemy(presented, tracked) : undefined;
-    this.enemyBearing.hidden =
+    setHudHidden(
+      this.enemyBearing,
       !follow ||
-      !opponent ||
-      // A downed raider's phone camera stays on them, not on the partner.
-      (raidFollow && raidFocus !== presented) ||
-      (!outsideView(
-        opponent.x,
-        opponent.y,
-        this.scale.width,
-        this.scale.height,
-        view,
-      ) &&
-        // On a phone raid, a boss under the skill buttons or the joystick
-        // counts as off screen too: the arrow says where it is.
-        !(
-          raidFollow &&
-          raidControlSides &&
-          underControls(
-            (opponent.x - view.x) * view.zoomX + this.scale.width / 2,
-            this.scale.width,
-            raidControlSides,
-          )
-        ));
+        !opponent ||
+        // A downed raider's phone camera stays on them, not on the partner.
+        (raidFollow && raidFocus !== presented) ||
+        (!outsideView(
+          opponent.x,
+          opponent.y,
+          this.scale.width,
+          this.scale.height,
+          view,
+        ) &&
+          // On a phone raid, a boss under the skill buttons or the joystick
+          // counts as off screen too: the arrow says where it is.
+          !(
+            raidFollow &&
+            raidControlSides &&
+            underControls(
+              (opponent.x - view.x) * view.zoomX + this.scale.width / 2,
+              this.scale.width,
+              raidControlSides,
+            )
+          )),
+    );
     // PvP and phone raids: an arrow circling the fighter you follow, in the
     // nearest off-screen opponent's colour (owner, 7 Nov 2026: no chip at
     // the top, where the score badge is; on phones the raid HUD is there).
@@ -7490,12 +7525,16 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const orbit = !state?.raid || raidFollow;
     this.enemyBearing.classList.toggle("is-orbit", orbit);
     if (opponent && presented && !this.enemyBearing.hidden) {
-      this.enemyBearing.querySelector("strong")!.textContent =
+      // Every frame: the same name must not become a new text node
+      // (hud-dom.ts).
+      setHudText(
+        this.enemyBearingName,
         opponent.raidBoss && state?.raid
           ? state.raid.boss === "storm-twins"
             ? opponent.name
             : state.raid.name
-          : CHARACTERS[opponent.character].name;
+          : CHARACTERS[opponent.character].name,
+      );
       const css = this.scale.zoom;
       const from = {
         x: ((presented.x - view.x) * view.zoomX + this.scale.width / 2) * css,
@@ -7514,8 +7553,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             (opponent.y - view.y) * view.zoomY,
             (opponent.x - view.x) * view.zoomX,
           );
-      this.enemyBearing.querySelector<HTMLElement>("span")!.style.transform =
-        `rotate(${angle}rad)`;
+      // A hundredth of a degree: the arrow does not turn for less.
+      setHudStyle(
+        this.enemyBearingArrow,
+        "transform",
+        `rotate(${angle.toFixed(4)}rad)`,
+      );
       const spot = bearingSpot(
         from.x + Math.cos(angle) * BEARING_RADIUS,
         from.y + Math.sin(angle) * BEARING_RADIUS,
@@ -8039,7 +8082,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         serverPlayer.statuses.some((s) => s.kind === "stealth")
       ) {
         const plate = this.labels.get(p.id);
-        if (plate) plate.hidden = true;
+        if (plate) setHudHidden(plate, true);
         this.plates.set(p.id, { x: 0, bottom: 0, w: 0, h: 0 });
         continue;
       }
@@ -8758,7 +8801,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           (s) => s.kind === "stealth" && p.id !== myId,
         ) ||
         shown <= 0;
-      label.hidden = hidden;
+      setHudHidden(label, hidden);
       setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
       label.classList.toggle(
         "team-ally",
