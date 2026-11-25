@@ -6,6 +6,7 @@ import {
   type Economy,
 } from "../../packages/shared/src/shop";
 import type { RaidProgress } from "../../packages/shared/src/raid";
+import { isNewArrival, NEW_DAYS } from "../../apps/client/src/shop-arrivals";
 import {
   SHOP_SECTIONS,
   dropUnownedTryOns,
@@ -16,6 +17,7 @@ import {
   ownedFor,
   pendingChanges,
   purchase,
+  sortSkins,
   stageOutfit,
   type FitData,
   type FitView,
@@ -328,9 +330,10 @@ describe("the Shop's catalogue", () => {
       looks: { voltkit: { skin: "voltkit-midnight", stage: 1 } },
     });
     const view = shop({ section: "skins", ownership: "owned" });
+    // Rarest first: the Rare skin leads the Common one.
     expect(tiles(fittingRoomParts(view, data(e)).body)).toEqual([
-      "voltkit-midnight",
       "voltkit-snowcap",
+      "voltkit-midnight",
     ]);
     expect(
       tiles(fittingRoomParts({ ...view, rarity: "rare" }, data(e)).body),
@@ -798,5 +801,172 @@ describe("ids this build doesn't know", () => {
     expect(html).not.toContain(NEW);
     expect(html).not.toContain("new-aura");
     expect(stageOutfit(wardrobe(), d).skin).toBeNull();
+  });
+});
+
+// The owner's request of 25 Nov 2026: make the Shop's items look better.
+// What a tile, a set's row and the stage say about an item's rarity, and the
+// order the Skins grid shows them in.
+describe("rarity and order in the catalogue", () => {
+  const skinsOf = (c: CharacterId) =>
+    CHAMPION_SKINS.filter((s) => s.champion === c);
+  const RANK = ["mythical", "legendary", "epic", "rare", "common"];
+  it("lists a fighter's skins rarest first, in the catalogue's order within a rarity", () => {
+    const body = fittingRoomParts(shop({ section: "skins" }), data()).body;
+    const ids = tiles(body);
+    expect(ids).toHaveLength(skinsOf("voltkit").length);
+    const ranks = ids.map((id) =>
+      RANK.indexOf(CHAMPION_SKINS.find((s) => s.id === id)!.rarity),
+    );
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+    expect(ids[0]).toBe("voltkit-stormcrown");
+    // Within a rarity nothing moves: the catalogue's order.
+    const legendary = skinsOf("voltkit")
+      .filter((s) => s.rarity === "legendary")
+      .map((s) => s.id);
+    expect(ids.filter((id) => legendary.includes(id))).toEqual(legendary);
+  });
+  it("sorts cheapest first on request, and the button says the order it shows", () => {
+    const rare = fittingRoomParts(shop({ section: "skins" }), data()).body;
+    expect(rare).toMatch(/data-fit-sort="price"[^>]*>.*?Rarest/s);
+    const cheap = fittingRoomParts(
+      shop({ section: "skins", sort: "price" }),
+      data(),
+    ).body;
+    expect(cheap).toMatch(/data-fit-sort="rarity"[^>]*>.*?Cheapest/s);
+    const ids = tiles(cheap);
+    expect(ids.slice(0, 3)).toEqual([
+      "voltkit-midnight",
+      "voltkit-peach-fizz",
+      "voltkit-mint-static",
+    ]);
+    expect(ids.at(-1)).toBe("voltkit-stormcrown");
+    // Today's deal doesn't move a skin: the order is by list price.
+    const e = economy({
+      picks: { day: "2026-10-17", items: [], deal: "voltkit-stormcrown" },
+    });
+    expect(
+      tiles(
+        fittingRoomParts(shop({ section: "skins", sort: "price" }), data(e))
+          .body,
+      ).at(-1),
+    ).toBe("voltkit-stormcrown");
+  });
+  it("puts new arrivals first within their rarity", () => {
+    const skins = skinsOf("voltkit");
+    const sorted = sortSkins(
+      skins,
+      "rarity",
+      (id) => id === "voltkit-stars-stripes",
+    ).map((s) => s.id);
+    const legendary = sorted.filter(
+      (id) => skins.find((s) => s.id === id)!.rarity === "legendary",
+    );
+    expect(legendary[0]).toBe("voltkit-stars-stripes");
+    expect(sorted[0]).toBe("voltkit-stormcrown");
+  });
+  it("marks an item New for two weeks from the day its collection arrived", () => {
+    const day = Date.parse("2026-12-01T00:00:00Z");
+    const arrivals = {
+      "stars-stripes": "2026-12-01",
+      "galaxy-aura": "2026-12-01",
+    };
+    const is = (id: string, at: number) => isNewArrival(id, at, arrivals);
+    expect(is("voltkit-stars-stripes", day)).toBe(true);
+    expect(is("mystowl-stars-stripes", day + 13 * 86_400_000)).toBe(true);
+    expect(is("voltkit-stars-stripes", day + NEW_DAYS * 86_400_000)).toBe(
+      false,
+    );
+    expect(is("voltkit-stars-stripes", day - 3 * 86_400_000)).toBe(false);
+    // One item by its own id; the rest of its collection isn't new.
+    expect(is("galaxy-aura", day)).toBe(true);
+    expect(is("galaxy-frame", day)).toBe(false);
+    expect(is("voltkit-midnight", day)).toBe(false);
+    expect(is("not-an-item", day)).toBe(false);
+    // Nothing is marked until a line is added to SHOP_ARRIVALS.
+    expect(isNewArrival("voltkit-stars-stripes", day)).toBe(false);
+  });
+  it("keeps the skins above the collection rewards, and one filter row on a phone", () => {
+    const body = fittingRoomParts(shop({ section: "skins" }), data()).body;
+    expect(body.indexOf('class="ui-grid')).toBeLessThan(
+      body.indexOf("data-fit-reward"),
+    );
+    expect(body).toContain('data-ui-rarity="rare"');
+    // A phone held sideways: ownership and the order, no rarity chips, and
+    // a rarity chosen on a wider screen doesn't hide skins there.
+    const phone = fittingRoomParts(
+      shop({ section: "skins", rarity: "rare" }),
+      data(economy(), { compact: true }),
+    ).body;
+    expect(phone).not.toContain("data-ui-rarity");
+    expect(phone).toContain("data-fit-sort");
+    expect(tiles(phone)).toHaveLength(skinsOf("voltkit").length);
+  });
+  it("names a skin's collection on its tile, which tells the two Bulldozers apart", () => {
+    const body = fittingRoomParts(
+      fitView("shop", "wombolder", { section: "skins" }),
+      data(),
+    ).body;
+    const sub = (id: string) =>
+      body.match(
+        new RegExp(`data-ui-item="${id}"[\\s\\S]*?ui-tile-sub">([^<]*)<`),
+      )?.[1];
+    expect(sub("wombolder-hero-squad")).toBe("Hero Squad · Wombolder");
+    expect(sub("wombolder-bulldozer")).toBe("Cyber Mecha · Wombolder");
+    expect(sub("wombolder-sandy")).toBe("Wombolder skin");
+  });
+  it("gives a set its rarest piece's rarity, not purple for every set", () => {
+    const body = fittingRoomParts(shop(), data()).body;
+    const rarity = (id: string) =>
+      body.match(
+        new RegExp(`data-ui-item="${id}" data-rarity="([a-z]+)"`),
+      )?.[1];
+    expect(rarity("galaxy-set")).toBe("mythical");
+    expect(rarity("candy-set")).toBe("epic");
+    const sets = fittingRoomParts(
+      shop({ section: "collections" }),
+      data(),
+    ).body;
+    expect(sets).toMatch(
+      /data-ui-item="stars-stripes-skins" data-rarity="legendary"/,
+    );
+    expect(sets).toMatch(/data-ui-item="wayfarer-skins" data-rarity="rare"/);
+  });
+  it("dresses the stage in the rarity of what stands on it", () => {
+    const stage = (view: FitView, d = data()) =>
+      fittingRoomParts(view, d).stage.match(
+        /class="ui-split-stage[^>]*?data-rarity="([a-z]+)"/,
+      )?.[1];
+    // The original look: no rarity.
+    expect(stage(shop())).toBeUndefined();
+    expect(
+      stage(
+        shop({
+          selected: "voltkit-sky-pirates",
+          tryOn: { champion: "voltkit-sky-pirates" },
+        }),
+      ),
+    ).toBe("legendary");
+    // Nothing picked: the skin worn.
+    const worn = economy({
+      owned: ["voltkit-stormcrown"],
+      looks: { voltkit: { skin: "voltkit-stormcrown", stage: 1 } },
+    });
+    expect(stage(shop(), data(worn))).toBe("mythical");
+    // A set has no rarity of its own on the stage.
+    expect(stage(shop({ selected: "candy-set" }))).toBeUndefined();
+    // A Legendary's rays are part of the stage light (they start at the
+    // feet), hidden until the stage's rarity shows them.
+    expect(fittingRoomParts(shop(), data()).stage).toContain(
+      '<path class="stage-light-rays" visibility="hidden"',
+    );
+  });
+  it("shows a frame round your portrait, and a tile with no rarity keeps its row", () => {
+    const d = data(economy({ owned: ["candy-frame"] }), { avatar: null });
+    const body = fittingRoomParts(wardrobe({ slot: "frame" }), d).body;
+    expect(body).toMatch(
+      /data-ui-item="candy-frame"[\s\S]*?ui-tile-art"><span class="raid-cosmetic-preview portrait-frame/,
+    );
+    expect(body).toContain('<span class="ui-rarity is-none"></span>');
   });
 });
