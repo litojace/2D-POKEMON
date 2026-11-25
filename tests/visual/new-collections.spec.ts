@@ -3,6 +3,7 @@ import { openHub, snap } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import { exposeAccount, shopServer } from "./shop-server";
 import { CHARACTERS } from "@arena/shared";
+import { LOOK_ITEMS } from "../../packages/shared/src/shop";
 
 // The collections added from 25 Nov 2026 (docs/shop-new-items.md).
 // Skins: each champion's skin previews on the Shop's stage and can be
@@ -10,7 +11,8 @@ import { CHARACTERS } from "@arena/shared";
 // review sizes. `NEW_COLLECTIONS_ALL=1` runs all eighteen at every size, to
 // look them over (with VISUAL_SHOTS).
 // Look sets: every piece has a drawn tile in Collections, and plays (or, a
-// frame, shows) on the stage when chosen.
+// frame, shows) on the stage when chosen. Singles, the pieces sold outside
+// any set, the same, from their own chip.
 const COLLECTIONS = [
   "starlight-idol",
   "birthstone",
@@ -31,6 +33,7 @@ const SIZES = [
   { name: "1440x900", width: 1440, height: 900, phone: false },
 ];
 const LOOK_SETS = ["seaside", "steamworks", "borealis"];
+const SINGLES = LOOK_ITEMS.filter((i) => i.collection === "singles");
 const ids = Object.keys(CHARACTERS);
 
 for (const collection of COLLECTIONS)
@@ -125,6 +128,63 @@ for (const size of SIZES.filter((s) => s.all || !s.phone))
         await expect(stage).toHaveClass(/is-item/);
         await expect(page.locator(`[data-fit-buy="${frame}"]`)).toBeVisible();
         await snap(page, info, `${frame}-${size.name}`);
+      }
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+for (const size of SIZES.filter(
+  (s) => s.all || !s.phone || process.env.NEW_COLLECTIONS_ALL,
+))
+  test(`the single pieces draw in Collections and play on the stage at ${size.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(240_000);
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      await exposeAccount(page);
+      await shopServer(page, {
+        balance: 90000,
+        cost: 900,
+        cleared: ["voltkit"],
+      });
+      const errors = await openHub(page);
+      if (size.island) await setInsets(page, ISLAND);
+      const stage = page.locator(".fit-stage .shop-live-stage");
+      await page.evaluate(
+        () => void (window as any).__account.showShop("skins"),
+      );
+      await page.click("[data-ui-section=collections]");
+      const chip = page.locator("[data-fit-collection=singles]");
+      await chip.scrollIntoViewIfNeeded();
+      await chip.click();
+      await expect(page.locator(".fit-room")).toContainText(
+        "Pieces sold on their own",
+      );
+      expect(SINGLES).toHaveLength(8);
+      for (const item of SINGLES) {
+        const tile = page.locator(`.fit-room [data-ui-item="${item.id}"]`);
+        await tile.scrollIntoViewIfNeeded();
+        await tile.click();
+        await expect(page.locator(`[data-fit-buy="${item.id}"]`)).toBeVisible();
+        if (item.slot === "frame") {
+          await expect(stage).toHaveClass(/is-item/);
+        } else {
+          await expect(stage).toHaveClass(/is-ready/);
+          // Mid-effect: an entrance or a finale is under way, an aura turns.
+          await page.waitForTimeout(item.slot === "victory" ? 1500 : 450);
+          const a = await stage.screenshot();
+          await page.waitForTimeout(400);
+          expect((await stage.screenshot()).equals(a), item.id).toBe(false);
+        }
+        await snap(page, info, `${item.id}-${size.name}`);
       }
       expect(errors).toEqual([]);
     } finally {

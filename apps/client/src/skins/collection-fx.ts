@@ -250,18 +250,20 @@ export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, n
       return true;
     }
     case "firefly-aura": {
-      // A summer evening: fireflies drift round in a loose ring at three
-      // heights, each blinking at its own pace over a faint warm glow.
-      g.fillStyle(0x3a4a1a, 0.18).fillEllipse(x, y, 104, groundHeight(104));
-      g.lineStyle(1.2, 0xd8ff7a, 0.35).strokeEllipse(x, y, 100, groundHeight(100));
-      ring(7, 46, 19, 7400, (gg, px, py, i, _a, d, f) => {
-        const bob = reduced ? 0 : Math.sin(now / 640 + i * 1.9) * 4;
-        const cy = py - (8 + (i % 3) * 7 + bob) * d;
-        const blink = reduced ? 1 : 0.3 + 0.7 * Math.max(0, Math.sin(now / 380 + i * 2.3)) ** 2;
-        gg.fillStyle(0xd8ff7a, 0.24 * blink * f).fillCircle(px, cy, 7 * d);
-        gg.fillStyle(0xfff3a0, 0.95 * blink * f).fillCircle(px, cy, 2.6 * d);
+      // A summer evening: fireflies drift round you in a loose ring at three
+      // heights, up to your shoulders, each blinking at its own pace over a
+      // faint warm glow on the ground.
+      g.fillStyle(0x3a4a1a, 0.2).fillEllipse(x, y, 104, groundHeight(104));
+      g.lineStyle(1.2, 0xd8ff7a, 0.4).strokeEllipse(x, y, 100, groundHeight(100));
+      ring(8, 66, 20, 7400, (gg, px, py, i, _a, d, f) => {
+        const bob = reduced ? 0 : Math.sin(now / 640 + i * 1.9) * 6;
+        const cy = py - (14 + (i % 3) * 24 + bob) * d;
+        const blink = reduced ? 1 : 0.45 + 0.55 * Math.max(0, Math.sin(now / 380 + i * 2.3)) ** 2;
+        gg.fillStyle(0xe6ff8a, 0.2 * blink * f).fillCircle(px, cy, 10 * d);
+        gg.fillStyle(0xf4ffa8, 0.45 * blink * f).fillCircle(px, cy, 5.6 * d);
+        gg.fillStyle(0xffffe0, blink * f).fillCircle(px, cy, 2.8 * d);
         // The beetle itself: a small dark head ahead of its lit tail.
-        gg.fillStyle(0x3a2a14, 0.9 * f).fillEllipse(px - 3 * d, cy - 1.4 * d, 3.4 * d, 2.4 * d);
+        gg.fillStyle(0x3a2a14, 0.9 * f).fillEllipse(px - 3.8 * d, cy - 1.6 * d, 3.6 * d, 2.6 * d);
       });
       return true;
     }
@@ -790,37 +792,39 @@ function baseVictory(
       return true;
     }
     case "trophy-victory": {
-      // A gold trophy rises behind the fighter on a little plinth, a glint
-      // runs over its cup, and sparkles and confetti burst once it is up.
+      // A gold trophy rises from behind the fighter until its plinth is
+      // clear of the head, a glint runs over its cup, and sparkles and
+      // confetti burst once it is up. Cup, stem and plinth are one piece.
       const rise = Math.min(1, t / 0.6),
         ease = 1 - (1 - rise) ** 3,
         s = sc * (0.7 + 0.3 * ease),
-        base = y - (6 + 30 * ease) * sc;
-      under.fillStyle(0xffe08a, 0.2 * fade * ease).fillCircle(x, base - 34 * s, 48 * s);
-      under.fillStyle(0x6a4a2a, fade).fillRect(x - 16 * s, base, 32 * s, 9 * s);
-      under.fillStyle(0x8a6234, fade).fillRect(x - 12 * s, base - 4 * s, 24 * s, 5 * s);
-      under.fillStyle(0xd9a33a, fade).fillRect(x - 3 * s, base - 16 * s, 6 * s, 12 * s);
-      under.fillStyle(0xe0b048, fade).fillEllipse(x, base - 16 * s, 14 * s, 5 * s);
-      // The cup: two handles, a bowl rounded at the bottom and its rim.
+        base = y - (10 + 60 * ease) * sc;
+      under.fillStyle(0xffe08a, 0.2 * fade * ease).fillCircle(x, base - 28 * s, 44 * s);
+      under.fillStyle(0x6a4a2a, fade).fillRect(x - 14 * s, base, 28 * s, 8 * s);
+      under.fillStyle(0x8a6234, fade).fillRect(x - 10 * s, base - 4 * s, 20 * s, 5 * s);
+      under.fillStyle(0xd9a33a, fade).fillRect(x - 3 * s, base - 16 * s, 6 * s, 13 * s);
+      under.fillStyle(0xe0b048, fade).fillEllipse(x, base - 15 * s, 13 * s, 5 * s);
+      // The cup: two handles, a bowl rounded at the bottom down onto the
+      // stem, and its rim.
       under.lineStyle(3.2 * s, 0xd9a33a, fade);
       for (const d of [-1, 1]) {
         under.beginPath();
-        under.arc(x + d * 19 * s, base - 42 * s, 7 * s, d < 0 ? Math.PI * 0.5 : -Math.PI * 0.5, d < 0 ? Math.PI * 1.5 : Math.PI * 0.5);
+        under.arc(x + d * 19 * s, base - 37 * s, 7 * s, d < 0 ? Math.PI * 0.5 : -Math.PI * 0.5, d < 0 ? Math.PI * 1.5 : Math.PI * 0.5);
         under.strokePath();
       }
-      under.fillStyle(0xf2c14e, fade).fillRect(x - 18 * s, base - 52 * s, 36 * s, 16 * s);
-      under.fillEllipse(x, base - 36 * s, 36 * s, 26 * s);
-      under.fillStyle(0xffe08a, fade).fillEllipse(x, base - 52 * s, 38 * s, 7 * s);
-      under.fillStyle(0x8a5a1a, 0.9 * fade).fillEllipse(x, base - 52 * s, 30 * s, 4 * s);
+      under.fillStyle(0xf2c14e, fade).fillRect(x - 18 * s, base - 46 * s, 36 * s, 16 * s);
+      under.fillEllipse(x, base - 30 * s, 36 * s, 26 * s);
+      under.fillStyle(0xffe08a, fade).fillEllipse(x, base - 46 * s, 38 * s, 7 * s);
+      under.fillStyle(0x8a5a1a, 0.9 * fade).fillEllipse(x, base - 46 * s, 30 * s, 4 * s);
       const g = (t % 1.4) / 1.4;
-      under.fillStyle(0xffffff, 0.55 * fade * Math.sin(g * Math.PI)).fillRect(x - 15 * s + g * 26 * s, base - 49 * s, 3.4 * s, 22 * s);
+      under.fillStyle(0xffffff, 0.55 * fade * Math.sin(g * Math.PI)).fillRect(x - 15 * s + g * 26 * s, base - 43 * s, 3.4 * s, 22 * s);
       if (t >= 0.6 && t - dt < 0.6) {
         for (let i = 0; i < 18; i++) {
           const a = -Math.PI * (0.08 + (i / 17) * 0.84);
-          emit({ x, y: base - 54 * s, vx: Math.cos(a) * rnd(90, 170), vy: Math.sin(a) * rnd(120, 200), life: rnd(0.9, 1.3), size: 2.6 * sc, color: [0xf2c14e, 0xff6f8a, 0x6fd6ff, 0xffffff][i % 4], shape: "confetti", spin: rnd(-10, 10) });
+          emit({ x, y: base - 48 * s, vx: Math.cos(a) * rnd(90, 170), vy: Math.sin(a) * rnd(120, 200), life: rnd(0.9, 1.3), size: 2.6 * sc, color: [0xf2c14e, 0xff6f8a, 0x6fd6ff, 0xffffff][i % 4], shape: "confetti", spin: rnd(-10, 10) });
         }
       } else if (t > 0.6 && chance(7, dt)) {
-        emit({ x: x + rnd(-24, 24) * s, y: base - rnd(30, 60) * s, vx: 0, vy: rnd(-24, -8), life: 0.6, size: rnd(2, 3) * sc, color: 0xfff3c4, shape: "star", fadeIn: 0.2 });
+        emit({ x: x + rnd(-24, 24) * s, y: base - rnd(24, 54) * s, vx: 0, vy: rnd(-24, -8), life: 0.6, size: rnd(2, 3) * sc, color: 0xfff3c4, shape: "star", fadeIn: 0.2 });
       }
       return true;
     }

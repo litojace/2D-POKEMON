@@ -1736,15 +1736,69 @@ const lookRarity = (base: Rarity, slug: string, tier: 0 | 1 | 2): Rarity => {
  * Their collection, "singles", has no champion skins, so
  * arena_collection_bonus never gives its frames away.
  */
-const LOOK_SINGLES: [id: string, slot: RaidSlot, tier: 0 | 1 | 2, name: string, description: string][] = [
-  ["firefly-aura", "aura", 0, "Firefly aura", "Fireflies drift round you, blinking gold"],
-  ["crystal-aura", "aura", 1, "Crystal aura", "Violet crystals orbit you and catch the light"],
-  ["bubble-entrance", "entrance", 0, "Bubble entrance", "Float in inside a bubble that pops"],
-  ["portal-entrance", "entrance", 1, "Portal entrance", "Step out of a swirling portal"],
-  ["laurel-frame", "frame", 0, "Laurel frame", "A wreath of gold laurel leaves"],
-  ["crown-frame", "frame", 1, "Crown frame", "A jewelled ring under a gold crown"],
-  ["trophy-victory", "victory", 0, "Trophy victory", "A gold trophy rises in a shower of sparkles"],
-  ["meteor-victory", "victory", 2, "Meteor victory", "Meteors streak across the sky behind you"],
+const LOOK_SINGLES: [
+  id: string,
+  slot: RaidSlot,
+  tier: 0 | 1 | 2,
+  name: string,
+  description: string,
+][] = [
+  [
+    "firefly-aura",
+    "aura",
+    0,
+    "Firefly aura",
+    "Fireflies drift round you, blinking gold",
+  ],
+  [
+    "crystal-aura",
+    "aura",
+    1,
+    "Crystal aura",
+    "Violet crystals orbit you and catch the light",
+  ],
+  [
+    "bubble-entrance",
+    "entrance",
+    0,
+    "Bubble entrance",
+    "Float in inside a bubble that pops",
+  ],
+  [
+    "portal-entrance",
+    "entrance",
+    1,
+    "Portal entrance",
+    "Step out of a swirling portal",
+  ],
+  [
+    "laurel-frame",
+    "frame",
+    0,
+    "Laurel frame",
+    "A wreath of gold laurel leaves",
+  ],
+  [
+    "crown-frame",
+    "frame",
+    1,
+    "Crown frame",
+    "A jewelled ring under a gold crown",
+  ],
+  [
+    "trophy-victory",
+    "victory",
+    0,
+    "Trophy victory",
+    "A gold trophy rises in a shower of sparkles",
+  ],
+  [
+    "meteor-victory",
+    "victory",
+    2,
+    "Meteor victory",
+    "Meteors streak across the sky behind you",
+  ],
 ];
 const LOOK_SET_ITEMS: LookItem[] = LOOK_SETS.flatMap(([collection, items]) =>
   items.map(([name, description], i) => {

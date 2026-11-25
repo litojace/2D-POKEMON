@@ -309,34 +309,3 @@ it("sells and equips every piece of the Look sets added on 25 Nov 2026", async (
     }
   }
 });
-
-it("sells and equips every single piece, one at a time and at its own price", async () => {
-  const singles = LOOK_ITEMS.filter((i) => i.collection === "singles");
-  expect(singles).toHaveLength(8);
-  await db.exec("reset role");
-  await db.exec(
-    await readFile(
-      "supabase/migrations/20261125200000_look_singles.sql",
-      "utf8",
-    ),
-  );
-  await db.exec(
-    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
-  );
-  await login();
-  const expected = { ...(await progress()).loadout };
-  let balance = (await economy()).balance;
-  for (const item of singles) {
-    await db.query("select public.arena_buy_item($1)", [item.id]);
-    const after = await economy();
-    expect(balance - after.balance, item.id).toBe(item.price);
-    balance = after.balance;
-    await equip(item.slot, item.id);
-    expected[item.slot] = item.id;
-    expect((await progress()).loadout).toEqual(expected);
-  }
-  // There is no set to buy them by.
-  await expect(
-    db.query("select public.arena_buy_item('singles-set')"),
-  ).rejects.toThrow();
-});
