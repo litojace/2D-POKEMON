@@ -282,7 +282,7 @@ test("the Wardrobe: try several things, then Equip once or Revert", async ({
     page.locator('[data-fit-slot][data-changed="true"]'),
   ).toHaveCount(2);
   await page.click("[data-fit-revert]");
-  await expect(page.locator(".ui-panel-foot")).toContainText("no changes");
+  await expect(page.locator(".ui-panel-foot")).toContainText("No changes");
   await expect(page.locator(".fit-stage .shop-live-stage")).toHaveAttribute(
     "data-preview-skin",
     "voltkit-stormcrown",
@@ -306,7 +306,7 @@ test("the Wardrobe: try several things, then Equip once or Revert", async ({
     ["look", { slot: "skin", item: "candy-colours" }],
     ["look", { slot: "aura", item: "galaxy-aura" }],
   ]);
-  await expect(page.locator(".ui-panel-foot")).toContainText("no changes");
+  await expect(page.locator(".ui-panel-foot")).toContainText("No changes");
   await expect(page.locator('[data-fit-slot="aura"]')).toContainText(
     "Nebula aura",
   );

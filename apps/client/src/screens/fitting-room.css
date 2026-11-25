@@ -738,6 +738,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* The Wardrobe's count of changes, above the fighter's name (as the Shop's
+   bar shows the rarity there): gold once there is something to Equip. */
+.fit-foot-count {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-dim);
+  white-space: nowrap;
+}
+.fit-foot-count[data-changes] {
+  color: var(--ui-accent);
+}
 /* One-line names clip their overflow; give Vietnamese marks above and
    below (Liền Chị Quan Họ) room inside the clip without moving the line. */
 .ui-tile-name,
