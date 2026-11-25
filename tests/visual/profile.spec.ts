@@ -1095,6 +1095,30 @@ test("the overview reads in full on a 667 px phone: no cut-off words", async ({
       expect(b.y + b.height, part).toBeLessThanOrEqual(row.y + row.height);
     }
     await snap(page, info, "profile-overview-667x375");
+    // Raid trophies: every boss's name whole ("Crag…", "Storm Twi…" before),
+    // and clear of the count beside it. Here and on a wider phone.
+    await page.click('[data-ui-profile-tab="trophies"]');
+    for (const width of [667, 852]) {
+      await page.setViewportSize({ width, height: width === 667 ? 375 : 393 });
+      // The wider phone with its Dynamic Island: the insets narrow the panel.
+      if (width === 852) await setInsets(page, ISLAND);
+      await expect(panel.locator(".pf-trophy")).toHaveCount(7);
+      const names = await panel.locator(".pf-trophy").evaluateAll((tiles) =>
+        tiles
+          .map((t) => {
+            const name = t.querySelector<HTMLElement>(".pf-trophy-name")!;
+            const count = t.querySelector("b")!.getBoundingClientRect();
+            return {
+              name: name.textContent,
+              cut: name.scrollWidth > name.clientWidth,
+              gap: Math.round(count.left - name.getBoundingClientRect().right),
+            };
+          })
+          .filter((t) => t.cut || t.gap < 0),
+      );
+      expect(names, `${width} px`).toEqual([]);
+    }
+    await snap(page, info, "profile-trophies-852x393");
   } finally {
     await context.close();
   }

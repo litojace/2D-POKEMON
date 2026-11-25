@@ -914,3 +914,17 @@
     line-height: 1.2;
   }
 }
+/* Raid trophies on phones: a boss's name reads in full. Four tiles to a
+   row left it 44 px on a 667 px phone ("Crag…", "Snooz…", "Storm…"): three
+   to a row there. On wider phones the name runs closer to the count (the
+   15 px figure needs less room than the desktop's 20 px one). */
+@media (max-height: 500px) {
+  .pf-trophy-name {
+    right: 24px;
+  }
+}
+@media (max-height: 500px) and (max-width: 740px) {
+  .pf-trophies {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
