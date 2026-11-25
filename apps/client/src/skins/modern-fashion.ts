@@ -11,6 +11,7 @@ import "./modern-viet-legend";
 import "./modern-hero";
 import "./modern-campus";
 import "./modern-stars";
+import "./modern-sun";
 import "./modern-idol";
 import "./modern-rain";
 import "./modern-racing";
@@ -41,7 +42,7 @@ import "./legend-details-stars";
  *    `data-i` giving each light's place in the row;
  *  - twinkle: sparkles that glint at their own moments.
  */
-export type ModernTheme = "campus" | "hero" | "idol" | "rain" | "racing" | "viet" | "stars" | "vietlegend" | "pirates" | "vanguard" | "kit";
+export type ModernTheme = "campus" | "hero" | "idol" | "rain" | "racing" | "viet" | "stars" | "vietlegend" | "pirates" | "vanguard" | "sun" | "kit";
 /** The Epic collections among them, whose cloth is tailored. */
 const EPIC_THEMES = new Set<ModernTheme>(["campus", "hero", "idol", "racing", "kit"]);
 
@@ -49,7 +50,7 @@ const EPIC_THEMES = new Set<ModernTheme>(["campus", "hero", "idol", "racing", "k
  * The Legendary finish: every garment of a Legendary costume is edged in
  * metal, a bright band with a darker bevel inside it, so the costume reads
  * as tailored where an Epic's is plain cloth. Gold for the Sky Pirates,
- * Hồn Việt and Stars & Stripes; Nova Vanguard's edge is its suit's light,
+ * Hồn Việt, Stars & Stripes and Sun Dynasty; Nova Vanguard's edge is its suit's light,
  * breathing with the rest of its glow (a lume layer the suit already has).
  */
 const LEGEND_GOLD = "#f2c14e",
@@ -57,7 +58,7 @@ const LEGEND_GOLD = "#f2c14e",
 const legendTrim = (theme: ModernTheme, id: CharacterId): { band: string; bevel: string; glow: boolean } | null =>
   theme === "vanguard"
     ? { band: VANGUARD_LOOK[id].glow, bevel: VANGUARD_LOOK[id].suit, glow: true }
-    : theme === "pirates" || theme === "vietlegend" || theme === "stars"
+    : theme === "pirates" || theme === "vietlegend" || theme === "stars" || theme === "sun"
       ? { band: LEGEND_GOLD, bevel: LEGEND_BEVEL, glow: false }
       : null;
 
@@ -66,7 +67,8 @@ const legendTrim = (theme: ModernTheme, id: CharacterId): { band: string; bevel:
  * own (a step below a Mythical's rune gorget): Nova's hex gem in the
  * suit's light, the pirates' gold doubloon set with a ruby, Hồn Việt's
  * jade ngọc bội in gold with a red knot, Stars & Stripes' gold star medal
- * on a red, white and blue ribbon. Its gem glints (a lume twinkle).
+ * on a red, white and blue ribbon, Sun Dynasty's gold sun disc with its
+ * rays round a lapis heart. Its gem glints (a lume twinkle).
  */
 type ClaspKit = Pick<Kit, "path" | "circle" | "rect" | "lume">;
 function legendClasp(theme: ModernTheme, x: number, y: number, glow: string, ink: string, k: ClaspKit) {
@@ -82,6 +84,9 @@ function legendClasp(theme: ModernTheme, x: number, y: number, glow: string, ink
     case "stars":
       return k.rect(x - 4, y - 5.5, 8, 3.2, 0.6, "#c8323a", ink, 0.5) + k.rect(x - 1.3, y - 5.5, 2.6, 3.2, 0, "#f7f1e1", "none", 0) +
         k.path(star(x, y + 1.4, 4.2, 5), LEGEND_GOLD, LEGEND_BEVEL, 0.7) + glint(x, y + 0.6, "#fff3c4");
+    case "sun":
+      return k.path(star(x, y, 5.2, 12, 0.7), LEGEND_GOLD, LEGEND_BEVEL, 0.6) + k.circle(x, y, 3, LEGEND_GOLD, LEGEND_BEVEL, 0.6) +
+        k.circle(x, y, 1.7, "#2f5fb8", "none", 0) + glint(x - 0.7, y - 0.8, "#bcd4ff");
     default:
       return "";
   }

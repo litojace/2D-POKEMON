@@ -11,7 +11,13 @@ import { CHARACTERS } from "@arena/shared";
 // look them over (with VISUAL_SHOTS).
 // Look sets: every piece has a drawn tile in Collections, and plays (or, a
 // frame, shows) on the stage when chosen.
-const COLLECTIONS = ["starlight-idol", "birthstone", "rainy-day", "grand-prix"];
+const COLLECTIONS = [
+  "starlight-idol",
+  "birthstone",
+  "rainy-day",
+  "grand-prix",
+  "sun-dynasty",
+];
 const SIZES = [
   { name: "844x390", width: 844, height: 390, phone: true, all: true },
   { name: "667x375", width: 667, height: 375, phone: true },

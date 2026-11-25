@@ -72,7 +72,7 @@ const finite = (commands: unknown[][]) =>
 describe("Legendary signature effects", () => {
   it("gives each Legendary skin its own signature, and Epics only the small glint", () => {
     const legendary = CHAMPION_SKINS.filter((s) => s.rarity === "legendary");
-    expect(legendary).toHaveLength(ids.length * 4);
+    expect(legendary).toHaveLength(ids.length * 5);
     for (const s of legendary) {
       expect(SKIN_ART[s.id].signature, s.id).toBe(s.id);
       expect(EPIC_SIGNATURES[s.id], s.id).toBeDefined();
@@ -90,9 +90,9 @@ describe("Legendary signature effects", () => {
     ))
       expect(SKIN_ART[s.id].detail, s.id).toBe("glint");
     const sigs = Object.values(EPIC_SIGNATURES);
-    expect(sigs).toHaveLength(72);
-    expect(new Set(sigs.map((s) => s.name)).size).toBe(72);
-    expect(new Set(sigs.map((s) => s.draw)).size).toBe(72);
+    expect(sigs).toHaveLength(90);
+    expect(new Set(sigs.map((s) => s.name)).size).toBe(90);
+    expect(new Set(sigs.map((s) => s.draw)).size).toBe(90);
   });
 
   it("gives the new Epics no landing or victory of their own", () => {
@@ -171,8 +171,9 @@ describe("Legendary signature effects", () => {
   it("gives only the Legendary Nova Vanguard suits a hero landing and a victory", () => {
     for (const id of Object.keys(EPIC_SIGNATURES)) {
       const legendary = id.endsWith("-nova-vanguard");
-      // Sky Pirates and Hồn Việt land and win over several frames (tested below).
-      if (id.endsWith("-sky-pirates") || id.endsWith("-hon-viet") || id.endsWith("-stars-stripes")) continue;
+      // Sky Pirates, Hồn Việt, Stars & Stripes and Sun Dynasty land and win
+      // over several frames (tested below).
+      if (id.endsWith("-sky-pirates") || id.endsWith("-hon-viet") || id.endsWith("-stars-stripes") || id.endsWith("-sun-dynasty")) continue;
       const art = { ...SKIN_ART[id], trail: undefined };
       // Ambient off: no idle particles, so every emission is the moment's.
       const land = frame(3000, false, Math.PI / 2, { greeting: true });
@@ -357,6 +358,39 @@ describe("Legendary signature effects", () => {
     }
   });
 
+  it("lands Sun Dynasty on a mosaic sun and wins with a winged sunrise, then clears", () => {
+    for (const id of Object.keys(EPIC_SIGNATURES).filter((k) => k.endsWith("-sun-dynasty"))) {
+      const art = { ...SKIN_ART[id], trail: undefined };
+      for (const [moment, ms] of [
+        ["greeting", 1300],
+        ["celebrating", 1900],
+      ] as const) {
+        const f = frame(1000, false, Math.PI / 2, { [moment]: true });
+        drawSkinFx(f.ctx, art, 1);
+        // Landing throws gold sand behind the feet; neither moment brings
+        // Nova's column of light.
+        const shapes = f.emit.mock.calls.map(([p]) => p.shape);
+        expect(shapes, `${id} ${moment}`).not.toContain("beam");
+        if (moment === "greeting") {
+          expect(shapes.length, id).toBeGreaterThan(0);
+          expect(f.emit.mock.calls.every(([p]) => p.behind), id).toBe(true);
+        }
+        f.commands.length = 0;
+        drawSkinFx({ ...f.ctx, now: 1000 + ms * 0.5, [moment]: false }, art, 1);
+        const mid = f.commands.length;
+        const idle = frame(1000 + ms * 0.5, false);
+        drawSkinFx(idle.ctx, art, 1);
+        expect(mid, `${id} ${moment}`).toBeGreaterThan(idle.commands.length);
+        expect(finite(f.commands), `${id} ${moment}`).toBe(true);
+        f.commands.length = 0;
+        drawSkinFx({ ...f.ctx, now: 1000 + ms + 2000, [moment]: false }, art, 1);
+        const later = frame(1000 + ms + 2000, false);
+        drawSkinFx(later.ctx, art, 1);
+        expect(JSON.stringify(f.commands), `${id} ${moment}`).toBe(JSON.stringify(later.commands));
+      }
+    }
+  });
+
   it("lands Hồn Việt on a Đông Sơn drum and wins with rising lanterns, then clears", () => {
     for (const id of Object.keys(EPIC_SIGNATURES).filter((k) =>
       k.endsWith("-hon-viet"),
@@ -426,7 +460,7 @@ describe("Legendary signature effects", () => {
       const collection = id.slice(id.indexOf("-") + 1);
       marks[collection] ??= JSON.stringify(pts.slice(0, 4));
     }
-    expect(new Set(Object.values(marks)).size).toBe(4);
+    expect(new Set(Object.values(marks)).size).toBe(5);
     // The aura is a function of time only: two fighters at the same moment
     // draw it the same, and it moves.
     const a = frame(1234, true),

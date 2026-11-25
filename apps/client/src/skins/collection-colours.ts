@@ -58,6 +58,32 @@ export const STARS_TINTS: Record<CharacterId, Tint> = {
   mossloth: T(285, 0.45), // Woodstock Folk: tie-dye violet
 };
 
+/**
+ * Sun Dynasty (Legendary): the court of a desert kingdom, each figure in a
+ * colour of its own trade (faience turquoise, saffron, papyrus, red
+ * granite...), every one at least 26 ΔE from the champion's other bodies.
+ */
+export const SUN_TINTS: Record<CharacterId, Tint> = {
+  voltkit: T(175, 0.7, -0.06), // Storm Charioteer: faience turquoise
+  cindrake: T(40, 0.85), // Phoenix Prince: phoenix gold
+  tidefin: T(225, 0.8, -0.06), // River Pilot: river lapis
+  auralynx: T(48, 0.45, 0.02), // Temple Cat: temple sand
+  lumoth: T(210, 0.65, -0.06), // Lamp Keeper: dusk blue
+  mystowl: T(245, 0.7, -0.18), // Royal Astronomer: night indigo
+  terradon: T(24, 0.3, -0.12), // Obelisk Builder: sun-baked brick
+  duskveil: T(265, 0.45, 0.12), // Moon Vizier: moonlit lavender
+  coilemur: T(22, 0.7, -0.12), // Dune Caravaneer: dune copper
+  pyranda: T(45, 0.85), // Spice Healer: saffron
+  glacelle: T(332, 0.6, -0.08), // Mirage Dancer: mirage orchid
+  halcyra: T(195, 0.35, -0.06), // Falcon Herald: falcon sky
+  sunbara: T(359, 0.75, -0.12), // Sun Sovereign: royal carnelian
+  astrabun: T(170, 0.6, -0.16), // Lotus Sceptre: blue lotus
+  wombolder: T(0, 0.3, -0.06), // Sphinx Guardian: red granite
+  shadopus: T(45, 0.7, 0.06), // Royal Scribe: papyrus
+  pangrove: T(110, 0.7, -0.04), // Oasis Keeper: palm green
+  mossloth: T(350, 0.55), // Shade Bearer: desert rose
+};
+
 export const HERO_TINTS: Record<CharacterId, Tint> = {
   voltkit: T(275, 0.6, 0.04), // Volt Streak: electric violet
   cindrake: T(12, 0.25, -0.14), // Blaze Breaker: charcoal ember

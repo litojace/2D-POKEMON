@@ -4,6 +4,7 @@ import { VIET_ART } from "./viet-art";
 import { HERO_ART } from "./hero-art";
 import { CAMPUS_ART } from "./campus-art";
 import { STARS_ART } from "./stars-art";
+import { SUN_ART } from "./sun-art";
 import { IDOL_ART } from "./idol-art";
 import { BIRTHSTONE_ART } from "./birthstone-art";
 import { RAIN_ART } from "./rain-art";
@@ -177,6 +178,7 @@ export const SKIN_ART: Record<string, SkinArt> = {
   ...HERO_ART,
   ...CAMPUS_ART,
   ...STARS_ART,
+  ...SUN_ART,
   ...IDOL_ART,
   ...BIRTHSTONE_ART,
   ...RAIN_ART,

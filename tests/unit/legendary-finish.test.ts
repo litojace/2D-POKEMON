@@ -7,8 +7,8 @@ import { creaturePalette } from "../../apps/client/src/creature-palette";
 import { creatureLayers } from "../../apps/client/src/creature-design";
 
 const ids = Object.keys(CHARACTERS) as CharacterId[];
-const LEGENDARY = ["nova-vanguard", "sky-pirates", "hon-viet", "stars-stripes"] as const;
-const THEME = { "nova-vanguard": "vanguard", "sky-pirates": "pirates", "hon-viet": "vietlegend", "stars-stripes": "stars" } as const;
+const LEGENDARY = ["nova-vanguard", "sky-pirates", "hon-viet", "stars-stripes", "sun-dynasty"] as const;
+const THEME = { "nova-vanguard": "vanguard", "sky-pirates": "pirates", "hon-viet": "vietlegend", "stars-stripes": "stars", "sun-dynasty": "sun" } as const;
 const hsl = (hex: string) => {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
   const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
@@ -67,8 +67,8 @@ describe("the Legendary finish", () => {
     const all = (layers: Record<string, string>) => Object.values(layers).join("");
     const OFF: [string, string][] = [
       ["tidefin", "nova-vanguard"], ["tidefin", "sky-pirates"], ["tidefin", "stars-stripes"],
-      ["pyranda", "nova-vanguard"], ["pyranda", "sky-pirates"], ["pyranda", "stars-stripes"],
-      ["duskveil", "nova-vanguard"], ["duskveil", "sky-pirates"], ["duskveil", "hon-viet"], ["duskveil", "stars-stripes"],
+      ["pyranda", "nova-vanguard"], ["pyranda", "sky-pirates"], ["pyranda", "stars-stripes"], ["pyranda", "sun-dynasty"],
+      ["duskveil", "nova-vanguard"], ["duskveil", "sky-pirates"], ["duskveil", "hon-viet"], ["duskveil", "stars-stripes"], ["duskveil", "sun-dynasty"],
     ];
     for (const id of ["tidefin", "pyranda", "duskveil"] as CharacterId[]) {
       // The champion's own art marks the piece, front and profile.

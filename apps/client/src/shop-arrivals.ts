@@ -23,6 +23,7 @@ export const SHOP_ARRIVALS: Readonly<Record<string, string>> = {
   birthstone: "2026-11-25",
   "rainy-day": "2026-11-25",
   "grand-prix": "2026-11-25",
+  "sun-dynasty": "2026-11-25",
 };
 /** How long an arrival stays "New". */
 export const NEW_DAYS = 14;

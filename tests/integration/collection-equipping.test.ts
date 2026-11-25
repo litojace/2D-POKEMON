@@ -260,6 +260,8 @@ it("keeps every champion skin equippable through its separate champion slot", as
     "20261125160000_rainy_day.sql",
     // Grand Prix (Epic).
     "20261125170000_grand_prix.sql",
+    // Sun Dynasty (Legendary).
+    "20261125180000_sun_dynasty.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   await login(admin);

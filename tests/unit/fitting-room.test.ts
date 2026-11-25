@@ -838,11 +838,16 @@ describe("rarity and order in the catalogue", () => {
     );
     expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
     expect(ids[0]).toBe("voltkit-stormcrown");
-    // Within a rarity nothing moves: the catalogue's order.
+    // Within a rarity new arrivals lead (shop-arrivals.ts, by today's
+    // date); otherwise nothing moves: the catalogue's order.
     const legendary = skinsOf("voltkit")
       .filter((s) => s.rarity === "legendary")
       .map((s) => s.id);
-    expect(ids.filter((id) => legendary.includes(id))).toEqual(legendary);
+    const now = Date.now();
+    expect(ids.filter((id) => legendary.includes(id))).toEqual([
+      ...legendary.filter((id) => isNewArrival(id, now)),
+      ...legendary.filter((id) => !isNewArrival(id, now)),
+    ]);
   });
   it("sorts cheapest first on request, and the switch lights the order it shows", () => {
     const rare = fittingRoomParts(shop({ section: "skins" }), data()).body;

@@ -27,11 +27,13 @@ complete: catalog, art, frame, seed migration, tests, screenshots.
    a collection's frame for free to whoever owns all of that collection's
    champion skins (Winter, Festival...). A new Look set only shares an id
    with a skin collection when that gift is intended.
-4. **The entry script stays under the precache limit** (3 MiB,
-   `apps/client/vite.config.ts`). It was 2,731,389 bytes (86.8%) on 25 Nov.
-   Every pull request states the size before and after; past 2,950,000
-   bytes the skin art is split into a lazily loaded chunk before more is
-   added. The limit is not raised.
+4. **The startup script stays under its limit**: 2,400,000 bytes, which
+   `scripts/verify-pwa.mjs` enforces in CI (#443); code only a battle needs
+   loads through `battle-kit.ts`. Main was 1,609,089 bytes on 25 Nov; with
+   every collection here (#434 to #473) it is 1,685,395 (+76 KB). Every pull
+   request states the size before and after, and a chain of them growing it
+   by more than about 300 KB is talked over with the performance work first.
+   The limit is not raised.
 
 ## Prices
 
@@ -72,7 +74,7 @@ Shipped (none yet in Today's Picks): 1 (migration
 `20261125130000_starlight_idol.sql`); 2–4 (migration
 `20261125140000_seaside_steamworks_borealis.sql`); 5 (migration
 `20261125150000_birthstone.sql`); 6 (migration `20261125160000_rainy_day.sql`); 7 (migration
-`20261125170000_grand_prix.sql`).
+`20261125170000_grand_prix.sql`); 8 (migration `20261125180000_sun_dynasty.sql`).
 
 ![Starlight Idol: the eighteen skins on the Shop's stage](shop-new-items/starlight-idol.jpg)
 
@@ -81,6 +83,19 @@ Shipped (none yet in Today's Picks): 1 (migration
 ![Rainy Day: the eighteen raincoats on the Shop's stage](shop-new-items/rainy-day.jpg)
 
 ![Grand Prix: the eighteen drivers on the Shop's stage](shop-new-items/grand-prix.jpg)
+
+![Sun Dynasty: the eighteen figures of the court on the Shop's stage](shop-new-items/sun-dynasty.jpg)
+
+Sun Dynasty is the fifth Legendary set, built the way the other four are:
+a body in two tones (`SUN_TINTS` and `LEGEND_SECOND`, every body at least
+26 ΔE from the champion's other ones), a costume per champion
+(`modern-sun.ts`: the court's broad bead collar, a pectoral of its trade,
+headwear of its rank) edged in gold with a sun clasp, and a signature table
+(`epic-signature-fx.ts`, `sun`): a motif per champion summoned by the
+ultimate, a gold-sand trail, a sun-mosaic landing and a winged-sunrise
+victory, inside the same drawing budget. The Moon Vizier's lantern becomes
+a brass lamp, the Spice Healer's chestnut a pomegranate and the Lotus
+Sceptre's mallet a gold sceptre crowned with a sun.
 
 ![Seaside, Steamworks and Borealis: each set's five pieces on the Shop's stage](shop-new-items/look-sets.jpg)
 
