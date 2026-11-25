@@ -410,3 +410,54 @@ test("Test skills starts Solo test with that fighter, with EX skills and a damag
   await expect(page.locator("#practice-dealt")).toHaveText("24");
   expect(errors).toEqual([]);
 });
+
+// A small phone held sideways (iPhone SE, 667 x 375) is narrower than the
+// review sizes above: a fighter's page has 351 px for its action bar, and
+// three equal buttons ran Select off the panel's edge (25 Nov 2026).
+test("a fighter's actions all fit the page on a 667 px phone", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 667, height: 375 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await openLobby(page);
+    await page.click('.lobby-rail [data-lobby-action="fighters"]');
+    await page.click("[data-roster-details]");
+    const room = page.locator('.roster-room[data-roster-mode="detail"]');
+    await expect(room).toBeVisible();
+    await room.evaluate((el) =>
+      Promise.all(el.getAnimations().map((a) => a.finished)),
+    );
+    for (const tab of ["overview", "skills", "skins"]) {
+      await page.click(`[data-ui-rtab=${tab}]`);
+      const foot = (await box(page, ".roster-room .ui-panel-foot"))!;
+      const buttons = page.locator(".roster-room .ui-panel-foot .ui-btn");
+      await expect(buttons).toHaveCount(3);
+      let previousRight = foot.x;
+      for (let i = 0; i < 3; i++) {
+        const b = (await buttons.nth(i).boundingBox())!;
+        const name = `${tab}: button ${i + 1}`;
+        // Inside the bar, after the one before it.
+        expect(b.x, name).toBeGreaterThanOrEqual(previousRight);
+        expect(b.x + b.width, name).toBeLessThanOrEqual(
+          foot.x + foot.width - 4,
+        );
+        // Its words whole: nothing cut off inside the button.
+        expect(
+          await buttons
+            .nth(i)
+            .evaluate((el) => el.scrollWidth - el.clientWidth),
+          name,
+        ).toBeLessThanOrEqual(1);
+        previousRight = b.x + b.width;
+      }
+    }
+    await snap(page, info, "roster-detail-667x375");
+  } finally {
+    await context.close();
+  }
+});
