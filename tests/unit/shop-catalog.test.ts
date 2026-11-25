@@ -55,7 +55,8 @@ const migration =
     "supabase/migrations/20261125140000_seaside_steamworks_borealis.sql",
     "utf8",
   ) +
-  readFileSync("supabase/migrations/20261125150000_birthstone.sql", "utf8");
+  readFileSync("supabase/migrations/20261125150000_birthstone.sql", "utf8") +
+  readFileSync("supabase/migrations/20261125160000_rainy_day.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -183,7 +184,7 @@ describe("shop catalog", () => {
       expect(missionMigration, m.metric).toContain(`'${m.metric}'`);
   });
 
-  it("has 20 skins for every champion: 4 Common, 5 Rare, 6 Epic, 4 Legendary, 1 Mythical", () => {
+  it("has 21 skins for every champion: 4 Common, 6 Rare, 6 Epic, 4 Legendary, 1 Mythical", () => {
     for (const id of Object.keys(CHARACTERS)) {
       const mine = CHAMPION_SKINS.filter((s) => s.champion === id);
       const count = (r: string) => mine.filter((s) => s.rarity === r).length;
@@ -197,9 +198,9 @@ describe("shop catalog", () => {
           count("mythical"),
         ],
         id,
-      ).toEqual([20, 4, 5, 6, 4, 1]);
+      ).toEqual([21, 4, 6, 6, 4, 1]);
     }
-    expect(CHAMPION_SKINS).toHaveLength(20 * Object.keys(CHARACTERS).length);
+    expect(CHAMPION_SKINS).toHaveLength(21 * Object.keys(CHARACTERS).length);
     // Each champion has one Cyber Mecha Epic.
     for (const id of Object.keys(CHARACTERS))
       expect(
@@ -243,7 +244,7 @@ describe("shop catalog", () => {
 
   it("sells full-roster skin sets: one design, one rarity, every champion, never a Mythical", () => {
     const champions = Object.keys(CHARACTERS).sort();
-    expect(SKIN_BUNDLES).toHaveLength(13);
+    expect(SKIN_BUNDLES).toHaveLength(14);
     for (const b of SKIN_BUNDLES) {
       const skins = b.items.map((id) =>
         CHAMPION_SKINS.find((s) => s.id === id)!,
