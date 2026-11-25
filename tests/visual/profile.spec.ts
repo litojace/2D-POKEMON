@@ -1047,3 +1047,55 @@ test("the card on the Plaza looks as it does in the Lobby", async ({
   for (const t of TABS)
     expect(plaza[t], `the ${t} tab on the Plaza`).toEqual(lobby[t]);
 });
+
+// A small phone held sideways (iPhone SE, 667 x 375), narrower than the
+// review sizes: the name's rule ended in "…" ("You can change it once
+// ever…") and so did your rating ("Unranked · 1,…") (25 Nov 2026).
+test("the overview reads in full on a 667 px phone: no cut-off words", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 667, height: 375 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await openLobby(page);
+    await page.click("#account-profile");
+    const panel = page.locator(".profile-panel");
+    await expect(panel).toBeVisible();
+    await expect(panel.locator(".pf-mini-row > b").nth(1)).toContainText("·");
+    await panel.evaluate((el) =>
+      Promise.all(el.getAnimations().map((a) => a.finished)),
+    );
+    const cut = await page.evaluate(() =>
+      Array.from(
+        document.querySelectorAll<HTMLElement>(
+          ".profile-panel :is(.pf-name-note, .pf-name-now, .pf-mini-row > *, .pf-tile > *)",
+        ),
+      )
+        .filter(
+          (el) =>
+            el.offsetParent &&
+            // Width for all of them; height too for the rule, which may
+            // wrap (a display font's line box is shorter than its glyphs).
+            (el.scrollWidth > el.clientWidth + 1 ||
+              (el.matches(".pf-name-note") &&
+                el.scrollHeight > el.clientHeight + 1)),
+        )
+        .map((el) => `${el.className}: ${el.textContent}`),
+    );
+    expect(cut).toEqual([]);
+    // The rule and the button still sit inside the name's row.
+    const row = (await panel.locator(".pf-name-row").boundingBox())!;
+    for (const part of [".pf-name-note", ".pf-name-row > .ui-btn"]) {
+      const b = (await panel.locator(part).boundingBox())!;
+      expect(b.y, part).toBeGreaterThanOrEqual(row.y);
+      expect(b.y + b.height, part).toBeLessThanOrEqual(row.y + row.height);
+    }
+    await snap(page, info, "profile-overview-667x375");
+  } finally {
+    await context.close();
+  }
+});
