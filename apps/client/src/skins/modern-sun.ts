@@ -1,7 +1,7 @@
 import type { CharacterId } from "@arena/shared";
 import {
   DESIGNS,
-  backPanel,
+  backUnder,
   onPole,
   torso,
   type Design,
@@ -674,7 +674,7 @@ export const SUN: Record<CharacterId, Design> = {
   // lightning bolt, a gold diadem whose bolt jewel lights.
   voltkit(k) {
     if (k.back)
-      backPanel(
+      backUnder(
         k,
         LAPIS_D,
         scales(k, k.T + 6, k.B - 8, GOLD) +
@@ -719,7 +719,7 @@ export const SUN: Record<CharacterId, Design> = {
       return k.path(d, GOLD, GOLD_D, 0.5);
     };
     if (k.back)
-      backPanel(
+      backUnder(
         k,
         robe,
         hem(k.B - 2) +
@@ -755,7 +755,7 @@ export const SUN: Record<CharacterId, Design> = {
     const waves = (y: number) =>
       k.line(`M${k.L - 2} ${y}q4 -3 8 0t8 0t8 0t8 0t8 0t8 0t8 0`, LAPIS, 1);
     if (k.back)
-      backPanel(
+      backUnder(
         k,
         LINEN,
         waves(k.B - 6) +
@@ -824,7 +824,7 @@ export const SUN: Record<CharacterId, Design> = {
           0.6,
         ) + k.line(`M${k.C} ${k.T + 8}V${k.B + 3}`, GOLD, 1);
     if (k.back)
-      backPanel(
+      backUnder(
         k,
         LINEN,
         k.path(
@@ -879,7 +879,7 @@ export const SUN: Record<CharacterId, Design> = {
   // hip, a lamp pectoral, a hood fringed with gold beads that glint in a run.
   lumoth(k) {
     if (k.back)
-      backPanel(
+      backUnder(
         k,
         LINEN_D,
         k.line(`M${k.C - k.W} ${k.B - 12}H${k.C + k.W}`, "#e8901a", 3),
@@ -942,7 +942,7 @@ export const SUN: Record<CharacterId, Design> = {
         return i % 3 === 0 ? k.lume("twinkle", s, i, GOLD_L) : s;
       }).join("");
     if (k.back)
-      backPanel(
+      backUnder(
         k,
         LAPIS,
         stars(9, k.T + 6, k.B - 2) +
@@ -999,8 +999,17 @@ export const SUN: Record<CharacterId, Design> = {
         "#6e4a24",
         3,
       );
-    if (k.back) backPanel(k, LINEN, harness(k.T + 2) + belt(k, "#6e4a24", 5));
-    else
+    if (k.back) {
+      // The kilt under the shell; the leather harness straps round the shell,
+      // a gold sun boss where they cross.
+      backUnder(k, LINEN, belt(k, "#6e4a24", 5));
+      k.put(
+        "scarf",
+        k.line(`M66 106L134 160M134 106L66 160`, "#6e4a24", 3.4) +
+          k.line(`M66 106L134 160M134 106L66 160`, "#8a5e30", 1.2) +
+          k.lume("pulse", sunDisc(k, 100, 133, 4.6, CARN), 1, GOLD_L),
+      );
+    } else
       k.put(
         "body",
         torso(
@@ -1030,7 +1039,7 @@ export const SUN: Record<CharacterId, Design> = {
           0,
         );
       }).join("");
-    if (k.back) backPanel(k, robe, moons(4, k.T + 12) + moons(4, k.B - 14));
+    if (k.back) backUnder(k, robe, moons(4, k.T + 12) + moons(4, k.B - 14));
     else k.put("body", torso(k, robe, moons(4, k.B - 16) + belt(k, GOLD, 3)));
     collar(k, [GOLD, "#b8c0e0", LAPIS], "#d8dcf0");
     pectoral(k, "moon", "#d8e8ff");
@@ -1064,7 +1073,7 @@ export const SUN: Record<CharacterId, Design> = {
       return k.line(d, "#b8562a", 2.4);
     };
     if (k.back)
-      backPanel(
+      backUnder(
         k,
         "#f0dcb4",
         robeStripes(k.T, k.B + 4) +
@@ -1121,7 +1130,7 @@ export const SUN: Record<CharacterId, Design> = {
           ),
         )
         .join("");
-    if (k.back) backPanel(k, robe, belt(k, GOLD_D, 3));
+    if (k.back) backUnder(k, robe, belt(k, GOLD_D, 3));
     else
       k.put(
         "body",
@@ -1200,7 +1209,7 @@ export const SUN: Record<CharacterId, Design> = {
         0.8,
       );
     if (k.back) {
-      backPanel(k, dress, chain(k.B - 10, 0));
+      backUnder(k, dress, chain(k.B - 10, 0));
       k.put("flame", veil(x) + band(k, y, w));
       collar(k, [GOLD, TURQ, LAPIS]);
       return;
@@ -1233,7 +1242,7 @@ export const SUN: Record<CharacterId, Design> = {
         d += `M${k.L} ${y}L${k.C} ${y + 5}L${k.R} ${y}`;
       return k.line(d, GOLD, 0.9);
     };
-    if (k.back) backPanel(k, LAPIS_D, chevrons(k.T + 6, k.B - 2));
+    if (k.back) backUnder(k, LAPIS_D, chevrons(k.T + 6, k.B - 2));
     else
       k.put(
         "body",
@@ -1290,7 +1299,7 @@ export const SUN: Record<CharacterId, Design> = {
         )
       );
     };
-    if (k.back) backPanel(k, LINEN, belt(k, GOLD, 4));
+    if (k.back) backUnder(k, LINEN, belt(k, GOLD, 4));
     else
       k.put(
         "body",
@@ -1330,7 +1339,7 @@ export const SUN: Record<CharacterId, Design> = {
           0.4,
         );
       }).join("");
-    if (k.back) backPanel(k, LINEN, hem(k.B + 1));
+    if (k.back) backUnder(k, LINEN, hem(k.B + 1));
     else k.put("body", torso(k, LINEN, hem(k.B + 3) + belt(k, GOLD, 3)));
     collar(k, [TURQ, GOLD, "#ff9ac0"]);
     pectoral(k, "lotus", "#ffb3d0");
@@ -1370,8 +1379,22 @@ export const SUN: Record<CharacterId, Design> = {
       for (let x = k.L; x < k.R + 2; x += 5) d += `M${x} ${y0}V${k.B + 4}`;
       return k.line(d, LAPIS, 2);
     };
-    if (k.back) backPanel(k, LINEN, kilt(k.B - 10) + belt(k, GOLD, 3));
-    else
+    if (k.back) {
+      // The kilt under the boulder; a gold band girds the boulder, a sun disc
+      // set into it.
+      backUnder(k, LINEN, kilt(k.B - 10) + belt(k, GOLD, 3));
+      k.put(
+        "scarf",
+        k.path(
+          `M58 128Q100 140 142 128L142 135Q100 147 58 135Z`,
+          GOLD,
+          GOLD_D,
+          0.8,
+        ) +
+          k.line(`M60 131.5Q100 143.5 140 131.5`, LAPIS, 1.4) +
+          k.lume("pulse", sunDisc(k, 100, 138, 5.2, LAPIS), 1, GOLD_L),
+      );
+    } else
       k.put(
         "body",
         torso(k, LINEN, kilt(k.B - 10) + plate(k.T + 6) + belt(k, GOLD, 3)),
@@ -1385,7 +1408,7 @@ export const SUN: Record<CharacterId, Design> = {
   // on the back.
   shadopus(k) {
     if (k.back) {
-      backPanel(
+      backUnder(
         k,
         LINEN,
         k.line(`M${k.C - k.W} ${k.T + 4}L${k.C + k.W} ${k.B - 6}`, LAPIS, 3.4),
@@ -1442,7 +1465,7 @@ export const SUN: Record<CharacterId, Design> = {
       return k.line(d, "#b8945a", 0.6);
     };
     if (k.back)
-      backPanel(
+      backUnder(
         k,
         "#d8b878",
         weave(k.T, k.B + 2) +
@@ -1515,7 +1538,7 @@ export const SUN: Record<CharacterId, Design> = {
         k.line(`M${k.L - 2} ${y}H${k.R + 2}`, GOLD, 1.6) + k.line(d, GOLD, 0.8)
       );
     };
-    if (k.back) backPanel(k, robe, fringe(k.B - 2));
+    if (k.back) backUnder(k, robe, fringe(k.B - 2));
     else
       k.put(
         "body",
