@@ -20,6 +20,7 @@
 import { button, esc } from "./ui/components";
 import { isNativeApp } from "./native";
 import { isIOSDevice } from "./render-budget";
+import { previewWays } from "./share-preview-ways";
 import "./share-preview.css";
 
 export interface PreviewOptions {
@@ -34,26 +35,6 @@ export interface PreviewOptions {
 
 type Nav = Navigator & { canShare?: (data: ShareData) => boolean };
 
-/** What this device can do with the picture. */
-export function previewWays(
-  o: { ios?: boolean; app?: boolean; touch?: boolean; canShare?: boolean } = {},
-) {
-  const ios = o.ios ?? isIOSDevice();
-  const app = o.app ?? isNativeApp();
-  const touch =
-    o.touch ??
-    (typeof matchMedia === "function" &&
-      matchMedia("(pointer: coarse)").matches);
-  const save = !ios && !app;
-  const hint =
-    ios || app
-      ? "Press and hold the picture, then Save to Photos."
-      : touch
-        ? "Or press and hold the picture to download it."
-        : "";
-  return { share: !!o.canShare, save, hint, filesOnly: ios || app };
-}
-
 let open: (() => void) | null = null;
 
 /** Show the picture; resolves when it closes. */
@@ -67,7 +48,12 @@ export function showSharePreview(o: PreviewOptions): Promise<void> {
   } catch {
     canShare = false;
   }
-  const ways = previewWays({ canShare });
+  const ways = previewWays({
+    canShare,
+    ios: isIOSDevice(),
+    app: isNativeApp(),
+    touch: matchMedia("(pointer: coarse)").matches,
+  });
   const url = URL.createObjectURL(o.blob);
   const returnFocus = document.activeElement as HTMLElement | null;
   const wrap = document.createElement("div");
