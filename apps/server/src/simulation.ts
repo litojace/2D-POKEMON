@@ -503,6 +503,7 @@ export class Arena {
   ) {
     this.events.push({
       id: ++this.serial,
+      ...(kind === "hit" ? { at: Math.round(this.time * 1000) / 1000 } : {}),
       kind,
       x: p.x,
       y: p.y,

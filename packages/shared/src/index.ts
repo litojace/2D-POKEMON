@@ -3071,6 +3071,8 @@ export interface Zone extends Vec {
 }
 export interface GameEvent extends Vec {
   id: number;
+  /** Server simulation seconds when a hit occurred; older servers omit it. */
+  at?: number;
   raidRadius?: number;
   kind:
     | "raid-impact"

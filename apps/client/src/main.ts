@@ -29,6 +29,7 @@ import {
   deviceKind,
   deviceModel,
   drawnGap,
+  hitDrawTime,
   loadPhases,
   perfMode,
   setPerfMode,
@@ -537,19 +538,27 @@ const impacts = new ImpactPrediction();
  */
 const drawnSelf: { t: number; x: number; y: number }[] = [];
 /**
- * A hit on you: the server hit you at (event.x, event.y) at about the last
- * snapshot's time, which your screen showed a lead ago (the snapshot's own,
- * un-eased lead: drawnGap). How far from there were you drawn then?
+ * Match the server moment of this hit, including its age within a bundled
+ * snapshot, to the frame you saw then. Older servers lack event.at and use
+ * the snapshot moment; the trace marks those samples as untimed.
  */
-function measureHitGap(event: { x: number; y: number }) {
+function measureHitGap(
+  event: { x: number; y: number; at?: number; miss?: boolean },
+  snapshotTime: number,
+) {
   const now = performance.now();
-  const gap = drawnGap(
-    drawnSelf,
-    now - timeline.estimate(now) * 1000,
-    event.x,
-    event.y,
-  );
-  if (gap !== undefined) netMeter.hitGap(gap);
+  const leadMs = timeline.estimate(now) * 1000;
+  const at = hitDrawTime(now, leadMs, snapshotTime, event);
+  if (at === undefined) return;
+  const gap = drawnGap(drawnSelf, at, event.x, event.y);
+  if (gap !== undefined)
+    netMeter.hitGap(gap, {
+      eventAgeMs: Math.round(
+        Math.max(0, snapshotTime - (event.at ?? snapshotTime)) * 1000,
+      ),
+      leadMs: Math.round(leadMs),
+      timed: event.at !== undefined,
+    });
 }
 /** Script errors during the match, for its battle-perf report. */
 let matchErrors = 0;
@@ -1182,6 +1191,8 @@ const touch: TouchControls = new TouchControls(
             key === "skill" ? `skill${value}` : key,
             stamp,
             handled,
+            performance.timeOrigin,
+            "touch-controls",
           );
     }
   },
@@ -5055,7 +5066,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
         event.target === myId &&
         state.phase === "playing"
       )
-        measureHitGap(event);
+        measureHitGap(event, state.time);
       eventId = Math.max(eventId, event.id);
     }
   if (
@@ -6513,8 +6524,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // used to switch the Lobby and the Plaza to Low for good as well, so a
     // heavy raid on an iPad Pro 13" M4 left it on Low everywhere (owner,
     // 17 Nov 2026); the Plaza measures itself.
-    if (live) battleQuality.frame(now);
-    else battleQuality.pause();
+    if (live) {
+      netMeter.frame(performance.now());
+      battleQuality.frame(now);
+    } else battleQuality.pause();
     const fx = fxFor(this);
     const raid = state?.raid;
     battlePerf.frame(
