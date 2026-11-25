@@ -36,24 +36,8 @@ for (const size of SIZES)
         isMobile: size.phone,
         hasTouch: size.phone,
       });
-      // The cards start face down while the arena loads, so the arena stays
-      // loading until they have been looked at: Phaser (it loads after the
-      // first screen) is held back, as on a slow phone network. The Reveal
-      // draws itself again while the arena loads and turns its cards over
-      // once it is in, snapshot or not (main.ts watchArenaLoad), so on a
-      // slow CI runner the cards had turned and landed before these checks
-      // ran (#462).
-      let release!: () => void;
-      const held = new Promise<void>((r) => (release = r));
       try {
         const page = await context.newPage();
-        await page.route(
-          /\/node_modules\/\.vite\/deps\/phaser\.js/,
-          async (route) => {
-            await held;
-            await route.continue().catch(() => {});
-          },
-        );
         const errors = await openLobby(page);
         await page.evaluate((o) => (window as any).__room("pvp", o), {
           mode: m.mode,
@@ -95,23 +79,34 @@ for (const size of SIZES)
           requestAnimationFrame(tick);
         });
         // The match starts: every pick is sent; the cards start face down.
-        await page.evaluate(() => {
+        // Looked at as the Reveal first shows, in the same step: it draws
+        // itself again while the arena loads and turns its cards over once
+        // the arena is in, snapshot or not (main.ts watchArenaLoad), so on
+        // a slow CI runner they had turned and landed (2.3 s for four)
+        // before later looks (#462).
+        const first = await page.evaluate(() => {
           const w = window as any;
           w.__snap.phase = "briefing";
           w.__push();
+          const c = document.querySelector("#arena-overlay .match-reveal");
+          return {
+            backs: c?.querySelectorAll(".vs-back").length ?? 0,
+            names: [...(c?.querySelectorAll(".vs-back small") ?? [])].map(
+              (e) => e.textContent,
+            ),
+            asks: [...(c?.querySelectorAll(".vs-back .vs-q") ?? [])].map(
+              (e) => e.textContent,
+            ),
+          };
         });
+        expect(first.backs).toBe(m.seats);
+        expect(first.names[0]).toBe("tester");
+        expect(first.names).toHaveLength(m.seats);
+        expect(first.asks).toEqual(Array(m.seats).fill("?"));
         const card = page.locator("#arena-overlay .match-reveal");
         await expect(card.locator("h2")).toHaveText("The Reveal");
         const cards = card.locator(".rv-card");
         await expect(cards).toHaveCount(m.seats);
-        await expect(card.locator(".vs-back")).toHaveCount(m.seats);
-        await expect(card.locator(".rv-card.is-waiting")).toHaveCount(m.seats);
-        await expect(card.locator(".rv-load span")).toContainText(
-          "Loading the arena",
-        );
-        await expect(card.locator(".vs-back small").first()).toHaveText(
-          "tester",
-        );
         await expect(card.locator(".vs-mark")).toHaveCount(m.vs);
         await expect(card.locator(".eyebrow")).toContainText(
           m.mode === "teams"
@@ -124,9 +119,7 @@ for (const size of SIZES)
           await page.screenshot({
             path: `${process.env.VISUAL_SHOTS}/reveal-${m.name}-start-${size.name}.png`,
           });
-        // The arena comes in; snapshots keep coming: every card turns over,
-        // and stays turned.
-        release();
+        // Snapshots keep coming: every card turns over, and stays turned.
         await expect
           .poll(
             async () => {
@@ -248,7 +241,6 @@ for (const size of SIZES)
         await snap(page, info, `reveal-${m.name}-${size.name}`);
         expect(errors).toEqual([]);
       } finally {
-        release();
         await context.close();
       }
     });
