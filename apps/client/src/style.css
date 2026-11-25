@@ -8845,6 +8845,13 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
   line-height: 1.15;
   margin: 0;
 }
+/* A dialog's title is set as a hub panel's is (ui-heading: "MISSIONS",
+   "FRIENDS"): capitals, so "SETTINGS" outranks its own cards' "SOUND" and
+   "DISPLAY" instead of reading smaller than them. */
+.dialog-toolbar h2.dialog-heading {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
 @media (orientation: landscape) and (max-height: 600px) {
   dialog.framed-dialog > .dialog-content {
     padding: 10px 16px 16px;
