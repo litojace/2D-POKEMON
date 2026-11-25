@@ -1386,7 +1386,9 @@
     margin: -2px 0 1px;
     padding: 0 5px;
     border-radius: 0 0 7px 7px;
-    font-size: calc(9px * var(--text-scale, 1));
+    /* 10 px is the floor for any text on a phone (phone-fit.spec.ts). */
+    font-size: calc(10px * var(--text-scale, 1));
+    letter-spacing: 0.05em;
   }
   .ui-tile-name {
     font-size: calc(13px * var(--text-scale, 1));
