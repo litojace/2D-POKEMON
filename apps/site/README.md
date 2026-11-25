@@ -67,4 +67,8 @@ badges only for a live listing), and add the app links to the hero.
 - [ ] **Waiting for the owner:** style (Arena Dusk recommended) and domain
 - [ ] Then: keep one style (drop the other two style blocks and heroes),
       set the canonical URL, open the PR, create the Render Static Site,
-      add the domain, check HTTPS and links, tell the QR-card session the URL
+      add the domain, check HTTPS and links, tell the QR-card session
+      (session_01GGURqPpVwxSv9M2de9odTn) the final URL, and the coordinator
+      (session_01GGURqSvcdeJjPNb1K3n9YJ) the PR
+- [x] Game build unchanged: `npm run build` + `scripts/verify-pwa.mjs` pass,
+      entry 1,686,815 bytes (limit 2,400,000), 56 precache entries, no site files
