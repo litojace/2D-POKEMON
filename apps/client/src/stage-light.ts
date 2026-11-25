@@ -24,7 +24,7 @@ const FEET = { x: 100, y: 172 } as const;
  */
 function rays(id: string) {
   const { x, y } = FEET;
-  const reach = 300,
+  const reach = 640,
     half = (3.4 * Math.PI) / 180;
   const at = (angle: number) =>
     `${(x + reach * Math.sin(angle)).toFixed(1)} ${(y - reach * Math.cos(angle)).toFixed(1)}`;
@@ -34,7 +34,7 @@ function rays(id: string) {
     d += `M${x} ${y}L${at(a - half)}L${at(a + half)}Z`;
   }
   return {
-    def: `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${x}" cy="${y}" r="${reach}"><stop offset="0" stop-color="#ffd978" stop-opacity="0"/><stop offset=".16" stop-color="#ffd978" stop-opacity=".3"/><stop offset=".55" stop-color="#ffd978" stop-opacity=".12"/><stop offset="1" stop-color="#ffd978" stop-opacity="0"/></radialGradient>`,
+    def: `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${x}" cy="${y}" r="${reach}"><stop offset="0" stop-color="#ffd978" stop-opacity="0"/><stop offset=".075" stop-color="#ffd978" stop-opacity=".3"/><stop offset=".26" stop-color="#ffd978" stop-opacity=".14"/><stop offset=".6" stop-color="#ffd978" stop-opacity=".08"/><stop offset="1" stop-color="#ffd978" stop-opacity="0"/></radialGradient>`,
     art: `<path class="stage-light-rays" visibility="hidden" d="${d}" fill="url(#${id})"/>`,
   };
 }
