@@ -152,17 +152,16 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     button.disabled = true;
     try {
       const result = await sharePlayerCard(hooks.data());
+      // The picture opens large to share or save (share-preview.ts).
       view.status =
-        result === "failed"
-          ? "This browser couldn't make the picture."
-          : result === "downloaded"
-            ? "Card saved as a picture; the message is copied."
-            : "";
+        result === "failed" ? "This browser couldn't make the picture." : "";
     } catch {
       view.status = "This browser couldn't make the picture.";
     }
     button.disabled = false;
     render();
+    // Back on Share card once the picture closes (render made it anew).
+    focusOn("[data-profile-share]");
   }
 
   /** Open or close the name form (focus goes where you'd type or were). */
