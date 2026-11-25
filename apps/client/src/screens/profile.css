@@ -842,11 +842,14 @@
 /* Overview: who you are and Delete account sit at the bottom of the
    column, Delete in the corner (owner, 19 Nov); a desktop too,
    now that it shows tabs. */
-.pf-main:has(> .pf-account) {
+/* .has-account is set by profile-view.ts. A `:has(> .pf-account) > *`
+   rule here made Chrome recheck it on every style change in the page,
+   battles included (about 40% of a duel's style recalculation). */
+.pf-main.has-account {
   display: flex;
   flex-direction: column;
 }
-.pf-main:has(> .pf-account) > * {
+.pf-main.has-account > * {
   flex: none;
 }
 .pf-account {
