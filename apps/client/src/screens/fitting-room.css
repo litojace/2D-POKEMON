@@ -1151,3 +1151,143 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* ------------------------------------------------- DEMO: sort layouts
+   Three ways to show the Skins order (owner's pick pending, 25 Nov):
+   window.__fitSortDemo = "a" | "b" | "c" (fitting-room-view.ts, filters). */
+.fit-gem {
+  font-style: normal;
+  color: var(--r-legendary);
+  line-height: 1;
+}
+/* A: a round button with the current order's mark; rarity chips after. */
+.fit-filters.is-demo-a {
+  flex-wrap: nowrap;
+}
+.fit-filters.is-demo-a > .ui-chips {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.fit-filters > .fit-sort-icon {
+  min-width: 0;
+  font-size: 18px;
+}
+.fit-sort-icon .fit-sort-coin {
+  width: 18px;
+  height: 18px;
+}
+.fit-sort-flip {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+}
+.fit-sort-flip svg {
+  width: 11px;
+  height: 11px;
+}
+/* B: a two-way switch beside ownership: the order shows as a lit half. */
+.fit-filters.is-demo-b {
+  flex-wrap: nowrap;
+}
+.fit-filters.is-demo-b > .ui-chips {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.fit-sort-seg > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.fit-sort-seg .ui-coin {
+  width: 14px;
+  height: 14px;
+}
+.fit-sort-seg > button[aria-pressed="true"] .fit-gem {
+  color: var(--ui-accent-ink);
+}
+/* C: the order as two words at the head of the grid, by the count. */
+.fit-grid-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-block: -6px -4px;
+}
+.fit-grid-head > .fit-count {
+  margin-left: 0;
+}
+.fit-sort-tabs {
+  display: flex;
+  gap: 2px;
+}
+.fit-sort-tabs > button {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  font-weight: 700;
+  font-size: var(--fs-small);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui-dim);
+  position: relative;
+}
+.fit-sort-tabs > button[aria-pressed="true"] {
+  color: var(--ui-accent);
+}
+.fit-sort-tabs > button[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 9px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--ui-accent);
+}
+.fit-filters.is-demo-c > .ui-chips {
+  flex: 1 1 0;
+  min-width: 0;
+}
+@media (max-height: 500px) {
+  .fit-filters.is-demo-c {
+    flex-wrap: nowrap;
+  }
+  .fit-filters.is-demo-a > .fit-count,
+  .fit-filters.is-demo-b > .fit-count {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  /* B on a phone: the two marks alone, each a 44 px target. */
+  .fit-sort-seg > button {
+    min-width: 44px;
+    padding: 0 10px;
+  }
+  .fit-sort-seg > button > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .fit-filters > .fit-sort-icon {
+    width: 36px;
+    height: 36px;
+    flex: none;
+  }
+}
+/* B: the coin on the lit (gold) half keeps an edge. */
+.fit-sort-seg > button[aria-pressed="true"] .ui-coin {
+  box-shadow: 0 0 0 1.5px var(--ui-accent-ink);
+}

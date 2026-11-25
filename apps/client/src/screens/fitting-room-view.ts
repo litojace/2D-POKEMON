@@ -892,6 +892,37 @@ function filters(
   noun: string,
   sortable = false,
 ) {
+  // DEMO (owner's pick pending, 25 Nov): three ways to show the order.
+  const demo = sortable ? sortDemo() : "";
+  const gem = '<i class="fit-gem" aria-hidden="true">◆</i>';
+  if (demo === "a") {
+    const icon =
+      view.sort === "price"
+        ? `<i class="ui-coin fit-sort-coin" aria-hidden="true"></i>`
+        : gem;
+    const label =
+      view.sort === "price"
+        ? "Sorted cheapest first. Sort rarest first"
+        : "Sorted rarest first. Sort cheapest first";
+    const sortA = `<button type="button" class="ui-icon-btn fit-sort-icon" data-fit-sort="${view.sort === "price" ? "rarity" : "price"}" aria-label="${label}" title="${view.sort === "price" ? "Cheapest first" : "Rarest first"}">${icon}<i class="fit-sort-flip" aria-hidden="true">${menuIcon("swap")}</i></button>`;
+    return `<div class="fit-filters is-demo-a">${ownSeg(view)}${sortA}${rarity ? rarityChips(view) : ""}<small class="ui-note fit-count" role="status">${count} ${count === 1 ? noun : `${noun}s`}</small></div>`;
+  }
+  const pair = (cls: string, withIcons: boolean) =>
+    `<div class="${cls}" role="group" aria-label="Order">${(
+      [
+        ["rarity", "Rarest", gem],
+        ["price", "Cheapest", '<i class="ui-coin" aria-hidden="true"></i>'],
+      ] as const
+    )
+      .map(
+        ([id, label, icon]) =>
+          `<button type="button" data-fit-sort="${id}" aria-pressed="${view.sort === id}" aria-label="${label} first">${withIcons ? icon : ""}<span>${label}</span></button>`,
+      )
+      .join("")}</div>`;
+  if (demo === "b")
+    return `<div class="fit-filters is-demo-b">${ownSeg(view)}${pair("ui-seg fit-sort-seg", true)}${rarity ? rarityChips(view) : ""}<small class="ui-note fit-count" role="status">${count} ${count === 1 ? noun : `${noun}s`}</small></div>`;
+  if (demo === "c")
+    return `<div class="fit-filters is-demo-c">${ownSeg(view)}${rarity ? rarityChips(view) : ""}</div><div class="fit-grid-head"><small class="ui-note fit-count" role="status">${count} ${count === 1 ? noun : `${noun}s`}</small>${pair("fit-sort-tabs", false)}</div>`;
   // One button that says the order and changes it (two orders: no menu).
   const sort = sortable
     ? button(view.sort === "price" ? "Cheapest" : "Rarest", {
@@ -931,6 +962,32 @@ function filters(
     : "";
   return `<div class="fit-filters${sortable ? " has-sort" : ""}">${own}${sort}${rare}<small class="ui-note fit-count" role="status">${count} ${count === 1 ? noun : `${noun}s`}</small></div>`;
 }
+/** DEMO: which sort layout to draw (window.__fitSortDemo, tests only). */
+export const sortDemo = (): string =>
+  String((globalThis as { __fitSortDemo?: string }).__fitSortDemo ?? "");
+const ownSeg = (view: FitView) =>
+  segmented(
+    (
+      [
+        ["all", "All"],
+        ["owned", "Owned"],
+        ["unowned", "Not owned"],
+      ] as const
+    ).map(([id, label]) => ({ id, label, selected: view.ownership === id })),
+    "Ownership",
+    "own",
+  );
+const rarityChips = (view: FitView) =>
+  chips(
+    [
+      { id: "all", label: "All rarities", selected: view.rarity === "all" },
+      ...(Object.entries(RARITY_NAMES) as [Rarity, string][]).map(
+        ([id, label]) => ({ id, label, selected: view.rarity === id }),
+      ),
+    ],
+    "Rarity",
+    "rarity",
+  );
 const ownershipMatch = (id: string, view: FitView, d: FitData) =>
   view.ownership === "all" ||
   (view.ownership === "owned") === !!d.economy?.owned.includes(id);
@@ -959,7 +1016,8 @@ function skinsBody(view: FitView, d: FitData) {
   // A phone held sideways has one row for the filters: ownership and the
   // order. Sorted rarest first, a fighter's 18 skins already stand grouped
   // by rarity, so the rarity chips are left to wider screens.
-  const rarity = d.compact ? "all" : view.rarity;
+  const phoneRarity = sortDemo() === "a" || sortDemo() === "c";
+  const rarity = d.compact && !phoneRarity ? "all" : view.rarity;
   const skins = sortSkins(
     CHAMPION_SKINS.filter(
       (s) =>
@@ -972,7 +1030,7 @@ function skinsBody(view: FitView, d: FitData) {
   // The skins come first; the collection rewards follow them. (Above the
   // grid they filled a phone's first screen: no skin showed until you
   // scrolled.)
-  return `${fighterRow(view, d, "Fighter")}${filters(view, skins.length, !d.compact, "skin", true)}${
+  return `${fighterRow(view, d, "Fighter")}${filters(view, skins.length, !d.compact || phoneRarity, "skin", true)}${
     skins.length
       ? grid(skins.map((s) => shopTile(s.id, view, d)).join(""))
       : noMatch()
