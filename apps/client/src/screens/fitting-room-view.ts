@@ -479,7 +479,12 @@ function pictureOf(id: string, view: FitView, d: FitData, scope: string) {
   // A frame goes round a portrait: yours, as on the stage and everywhere
   // players see you. (It was an empty ring.)
   if (!skin && fitItem(id)?.slot === "frame")
-    return framePortrait(avatarImage(d.avatar), id, starsOf(id, d));
+    // With its tier in the markup, as cosmeticPicture writes it: the edge
+    // and halo are right from the first frame, before the preview attaches.
+    return framePortrait(avatarImage(d.avatar), id, starsOf(id, d)).replace(
+      /data-frame-stars="(\d+)"/,
+      (all, stars) => `${all} data-tier="${cosmeticTier(id, Number(stars))}"`,
+    );
   return itemPicture(
     id,
     skin?.champion ?? view.champion,
