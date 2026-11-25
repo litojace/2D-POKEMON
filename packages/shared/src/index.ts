@@ -8,6 +8,7 @@ import {
   type SnapshotMeta,
 } from "./snapshot-meta.js";
 export * from "./snapshot-meta.js";
+export * from "./snapshot-delta.js";
 import { inMeters } from "./units.js";
 export * from "./units.js";
 export * from "./pick-rules.js";
@@ -3186,6 +3187,11 @@ export type WireSnapshot = Omit<
   metaRev?: number;
   /** Appearance block, sent when it changes or a socket (re)joins. */
   meta?: SnapshotMeta;
+  /**
+   * The room's count of snapshots, when the server can send deltas
+   * (snapshot-delta.ts): the next delta applies to this one.
+   */
+  n?: number;
 };
 const META_KEY_SET: ReadonlySet<string> = new Set(META_KEYS);
 /** Display-only positions: 0.01 px is far below anything drawn. */
@@ -3303,7 +3309,7 @@ function ownedAbility(s: WireSnapshot, owner: string, id: string): Ability {
  */
 export function unpackSnapshot(s: WireSnapshot, cache?: MetaCache): Snapshot {
   if (s.meta && cache) cache.apply(s.code, s.meta);
-  const { meta: _meta, metaRev: _rev, ...rest } = s;
+  const { meta: _meta, metaRev: _rev, n: _n, ...rest } = s;
   return {
     ...rest,
     players: s.players.map((p) => {
