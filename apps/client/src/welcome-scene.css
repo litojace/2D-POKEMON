@@ -502,3 +502,30 @@
     gap: 8px;
   }
 }
+
+/* Join or watch (the Lobby's mode menu → Join or watch). Join is the
+   drawer's one action, so it is the gold button every screen's main action
+   is (Invite, Start raid, PLAY); it was the dark secondary. Close is the
+   round button the hub panels have; it was a square. */
+.home-play-drawer .join-row > #join {
+  border: 0;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-ink);
+  box-shadow:
+    0 3px 0 var(--ui-accent-deep),
+    inset 0 2px 0 #fff8;
+}
+/* (Two classes on the drawer: `.btn-secondary:not(.leave-button)` sets a
+   square radius later in style.css with the weight of two.) */
+.home-drawer.home-play-drawer .home-panel-close {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+@media (orientation: landscape) and (max-height: 600px), (max-width: 1000px) {
+  .home-drawer.home-play-drawer .home-panel-close {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+}
