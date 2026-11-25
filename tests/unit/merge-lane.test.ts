@@ -34,6 +34,27 @@ describe("mergeLane", () => {
     expect(r).toMatchObject({ lane: "FAST", reasons: [] });
   });
 
+  it("images outside the website still count", () => {
+    const art = Array.from(
+      { length: MAX_FAST_FILES + 1 },
+      (_, i) => `apps/client/public/assets/x${i}.webp`,
+    );
+    expect(mergeLane(art).lane).toBe("FULL");
+    // A path that only looks like the site's does not escape the count.
+    const lookalike = Array.from(
+      { length: MAX_FAST_FILES + 1 },
+      (_, i) => `apps/client/apps/site/img/x${i}.webp`,
+    );
+    expect(mergeLane(lookalike).lane).toBe("FULL");
+  });
+
+  it("the website's HTML, CSS and tools count toward the limit", () => {
+    const code = Array.from({ length: MAX_FAST_FILES + 1 }, (_, i) =>
+      i % 2 ? `apps/site/page-${i}.css` : `apps/site/tools/t${i}.mjs`,
+    );
+    expect(mergeLane(code).lane).toBe("FULL");
+  });
+
   it("the website's pages and code still count", () => {
     const pages = Array.from(
       { length: MAX_FAST_FILES + 1 },
