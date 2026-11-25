@@ -1,4 +1,10 @@
-import { setHudAttribute, setHudStyle } from "./hud-dom";
+import {
+  setHudAttribute,
+  setHudDisabled,
+  setHudStyle,
+  setHudText,
+  sweepPercent,
+} from "./hud-dom";
 import { iconLabel, menuIcon } from "./menu-icons";
 import { lockLandscape } from "./orientation";
 import { stadiumBands } from "./stadium";
@@ -29,6 +35,13 @@ export class TouchControls {
   private stick: HTMLElement;
   private knob: HTMLElement;
   private buttons: HTMLButtonElement[];
+  /**
+   * Down in a raid: the stick still crawls toward an ally, the buttons do
+   * nothing. Set before `update`, which then writes `disabled` once (main.ts
+   * used to switch every button back off after each update, 30 times a
+   * second).
+   */
+  downed = false;
   /** The target button (by Dash): steps through the enemies on screen. */
   private aim: HTMLButtonElement;
   /** Called on a tap of the target button (main.ts cycles the lock). */
@@ -485,6 +498,8 @@ export class TouchControls {
    * screen (`available`), lit while a lock holds (`locked`).
    */
   setTarget(available: boolean, locked: boolean) {
+    // Down in a raid: off, as the other buttons are.
+    if (this.downed) available = locked = false;
     if (this.aim.disabled === available) {
       this.aim.disabled = !available;
       this.aim.setAttribute(
@@ -539,8 +554,10 @@ export class TouchControls {
       // Basic attacks have no cooldown; the server enforces the attack interval.
       // The ultimate button also arms an EX skill once the meter allows one.
       const exReady = isUlt && left > 0 && ult >= exCost;
-      button.disabled =
-        !active || (action !== "attack" && left > 0 && !exReady);
+      setHudDisabled(
+        button,
+        this.downed || !active || (action !== "attack" && left > 0 && !exReady),
+      );
       if (button.dataset.iconName !== name) {
         // The art is the label: skills, the basic attack and the ultimate
         // carry no text over it (1–3 were keyboard keys anyway). Dash and
@@ -564,8 +581,9 @@ export class TouchControls {
               ? "EX ✓"
               : `${Math.floor(ult)}%`
             : left.toFixed(1);
-      const label = button.querySelector(".touch-cooldown")!;
-      if (label.textContent !== text) label.textContent = text;
+      // In place (hud-dom.ts): a new text node for each tenth of a second
+      // restyled every `:has()` rule's reach, on each cooling button.
+      setHudText(button.querySelector<HTMLElement>(".touch-cooldown")!, text);
       const duration = isUlt
         ? 100
         : skill !== undefined
@@ -575,11 +593,7 @@ export class TouchControls {
             : action === "jump"
               ? 2
               : basic.duration;
-      setHudStyle(
-        button,
-        "--cooldown",
-        Math.min(100, (100 * left) / duration) + "%",
-      );
+      setHudStyle(button, "--cooldown", sweepPercent((100 * left) / duration));
       button.classList.toggle("cooling", left > 0);
       const ready = isUlt && left <= 0;
       if (ready && !button.classList.contains("ult-ready")) {

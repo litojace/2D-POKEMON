@@ -993,6 +993,11 @@ dialog::backdrop {
   background: #071225bb;
   backdrop-filter: blur(5px);
 }
+/* Over a battle the dim alone: a blur there is redone for the whole screen
+   each frame the fight behind it draws (battle settings, mid-match). */
+body.battle-active dialog::backdrop {
+  backdrop-filter: none;
+}
 dialog h2 {
   font-size: calc(28px * var(--text-scale, 1));
   margin: 18px 0;
@@ -1766,9 +1771,11 @@ body.battle-active.touch-mode {
   inherits: false;
   initial-value: 0%;
 }
+/* No transition on --cooldown: snapshots come 30 times a second now, and a
+   transition ran on the page's own thread all through every cooldown, a
+   restyle and a repaint of the button each frame (section 20). */
 .touch-buttons button {
   transition:
-    --cooldown 0.07s linear,
     filter 0.12s,
     transform 0.1s;
 }
@@ -10318,9 +10325,15 @@ body.battle-active:not(.touch-mode) .ability .cooldown-fill {
   inset: 2px;
   border-radius: 50%;
   pointer-events: none;
+  /* The control's own cooldown, taken by the ring alone. --cooldown does
+     not inherit (@property), so the icon and the countdown under the same
+     control are not restyled each time it moves: a copy that did inherit
+     (--skill-sweep) restyled every shape of every cooling button's icon,
+     about 110 elements a snapshot (section 20). */
+  --cooldown: inherit;
   background: conic-gradient(
     from -90deg,
-    #ffffff18 var(--skill-sweep, 0%),
+    #ffffff18 var(--cooldown, 0%),
     var(--element, var(--accent)) 0
   );
   mask: radial-gradient(
@@ -10360,7 +10373,7 @@ body.battle-active:not(.touch-mode) .ability .cooldown-fill {
   animation: none;
   background: conic-gradient(
     from -90deg,
-    #ffffff18 var(--skill-sweep, 0%),
+    #ffffff18 var(--cooldown, 0%),
     var(--element, var(--accent)) 0
   );
 }
@@ -10465,11 +10478,6 @@ body.battle-active.touch-mode:not(.battle-raid) #phase-label {
   }
 }
 
-/* Resolve the registered, non-inheriting cooldown on the control itself. */
-.ability,
-.touch-buttons button {
-  --skill-sweep: var(--cooldown, 0%);
-}
 body.battle-active.touch-mode:not(.battle-raid) #round-label {
   width: 100%;
   left: 0;
