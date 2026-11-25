@@ -385,10 +385,31 @@ body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
   margin-right: 10px;
   vertical-align: middle;
 }
+/* The name gives way before its tags do: with a 20-character name the
+   "you" and MVP tags were pushed out of the cell (teams, 667 px). A grid:
+   the name's column may shrink to nothing, the tags' columns never do,
+   and the fighter's name takes the line under them. */
 #arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody th > span {
-  display: inline-block;
+  display: inline-grid;
+  grid-template-columns: minmax(0, auto) auto auto;
+  align-items: baseline;
   max-width: calc(100% - 22px);
   vertical-align: middle;
+  overflow: visible;
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody th > span > b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .recap
+  tbody
+  th
+  > span
+  > small.who {
+  grid-column: 1 / -1;
 }
 #arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody td {
   text-align: right;
@@ -446,7 +467,8 @@ body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
     .recap
     thead
     th:nth-child(n + 2) {
-    width: 72px;
+    width: 66px;
+    padding-left: 0;
   }
   #arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody :is(th, td) {
     padding: 4px 8px;
