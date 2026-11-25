@@ -88,7 +88,8 @@ export class TickClock {
     const late = now - this.due;
     this.due += this.period;
     this.note(now);
-    // A throw ends the process, as it did under setInterval.
+    // The server's step guards each room (server.ts, closeBrokenRoom); a
+    // throw that still gets here ends the process, as under setInterval.
     this.step();
     this.sample(late, this.timers.now() - now);
     this.schedule();

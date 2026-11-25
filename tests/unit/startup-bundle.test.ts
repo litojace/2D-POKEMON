@@ -24,6 +24,43 @@ describe("startup bundle", () => {
       "shop-preview.ts",
     ]);
   });
+  it("reaches the battle kit's modules through the kit, not by importing them", () => {
+    // What a battle draws with loads with Phaser (battle-kit.ts). A value
+    // import of one of its modules in main.ts puts that module, and all it
+    // imports, back into the script the game starts with.
+    const kit = readFileSync(join(SRC, "battle-kit.ts"), "utf8");
+    const modules = [...kit.matchAll(/from\s+"(\.\/[^"]+)"/g)].map((m) => m[1]);
+    expect(modules.length).toBeGreaterThan(30);
+    const main = readFileSync(join(SRC, "main.ts"), "utf8");
+    const direct = [
+      ...main.matchAll(/^import\s+(?!type\b)[^;]*?from\s+"([^"]+)";/gm),
+    ]
+      .map((m) => m[1])
+      .filter((spec) => modules.includes(spec));
+    expect(direct).toEqual([]);
+    // The kit itself is only ever loaded on demand, with Phaser.
+    const importers = files(SRC).filter((f) =>
+      /from\s+"[^"]*\/battle-kit"|import\("[^"]*\/battle-kit"\)/.test(
+        readFileSync(f, "utf8"),
+      ),
+    );
+    expect(importers.map((f) => f.slice(SRC.length + 1))).toEqual([
+      "phaser-runtime.ts",
+    ]);
+    expect(readFileSync(join(SRC, "phaser-runtime.ts"), "utf8")).toContain(
+      'import("./battle-kit")',
+    );
+  });
+  it("loads the Admin panel's code when an admin opens it", () => {
+    // No one else runs it (about 42 kB of the startup script before).
+    const accounts = readFileSync(join(SRC, "accounts.ts"), "utf8");
+    expect(accounts).not.toMatch(
+      /^import\s+(?!type\b)[^;]*from\s+"\.\/admin-panel";/m,
+    );
+    expect(accounts).toContain('import("./admin-panel")');
+    // Its stylesheet stays in the startup one, where its rules always were.
+    expect(accounts).toContain('import "./admin-panel.css";');
+  });
   it("opens the raid screens, the fitting room and the Journey on demand", () => {
     const accounts = readFileSync(join(SRC, "accounts.ts"), "utf8");
     for (const screen of ["raid-hall", "fitting-room", "journey"]) {

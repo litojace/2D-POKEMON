@@ -138,16 +138,18 @@
   gap: 8px;
   min-width: 0;
 }
-.roster-card-foot .ui-tag.is-ok {
+.roster-card-foot .ui-tag:is(.is-ok, .roster-locked) {
   margin-left: auto;
 }
 /* A card narrower than its foot (six to a row on a laptop): the one you
-   play shows Playing in place of its looks count. */
+   play shows Playing in place of its looks count; in a room, Locked (it
+   used to keep the count there, which wrapped to two lines and pushed
+   Locked past the card's edge: "LOCKE"). */
 .roster-card {
   container: roster-card / inline-size;
 }
 @container roster-card (max-width: 215px) {
-  .roster-card-foot:has(.is-ok) .ui-note {
+  .roster-card-foot:has(.is-ok, .roster-locked) .ui-note {
     display: none;
   }
 }
@@ -165,6 +167,20 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Where the action bar is tall (72 px: not a phone held sideways), a
+   fighter's mastery line takes two lines beside three buttons instead of
+   ending in "…" ("Mastery · Gold · Crystal in 29 matc…" at 1440 px). */
+@media (min-height: 501px) {
+  .roster-room[data-roster-mode="detail"] .roster-foot-text .ui-note {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    text-wrap: balance;
+    line-height: 1.25;
+  }
 }
 
 /* ---------------------------------------------------------- detail */
@@ -791,5 +807,29 @@
   }
   .roster-foot-range {
     display: none;
+  }
+}
+
+/* A fighter's page on a small phone (667 px wide: the page's half is
+   351 px). Three equal buttons at the widest label ("Test skills") need
+   386 px there, so Select ran off the panel's edge. The mastery line has
+   no room at this width anyway (ui/phone-fit.css folds it away): drop its
+   slot, let each button take its own label's width, and give what is left
+   to the main action. */
+@media (max-height: 500px) and (max-width: 740px) {
+  .roster-room[data-roster-mode="detail"] .ui-panel-foot > .ui-foot-info {
+    display: none;
+  }
+  .roster-room[data-roster-mode="detail"] .ui-panel-foot > .ui-actions {
+    flex: 1;
+    display: flex;
+    min-width: 0;
+  }
+  .roster-room[data-roster-mode="detail"] .ui-actions > .ui-btn {
+    flex: 0 1 auto;
+    width: auto;
+  }
+  .roster-room[data-roster-mode="detail"] .ui-actions > .ui-btn:last-child {
+    flex: 1 0 auto;
   }
 }

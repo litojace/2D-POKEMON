@@ -1,6 +1,7 @@
 import { appleConfig, exchangeAppleCode, revokeAppleToken } from "./apple.js";
 import type { AnnouncementPush, PushDevice, PushStore } from "./push.js";
 import { clientOrigins } from "./api-cors.js";
+import { ClientAddresses, WindowLimits } from "./abuse-limits.js";
 import type {
   PlazaProgress,
   PlazaRecord,
@@ -559,7 +560,11 @@ export function installAccountRoutes(
     "available" | "reach" | "send"
   > | null = null,
 ) {
-  const requests = new Map<string, { count: number; until: number }>();
+  // 120 requests a minute for each client address (abuse-limits.ts: the
+  // player's own address behind the host's proxies, not the proxy's).
+  const addresses: ClientAddresses = (app.locals.clientAddresses ??=
+    new ClientAddresses());
+  const requests = new WindowLimits(120, 60000);
   app.use("/api", (req, res, next) => {
     if (req.path === "/health") return next();
     const origin = req.get("origin");
@@ -571,14 +576,11 @@ export function installAccountRoutes(
       if (originHost !== req.get("host") && !clientOrigins().includes(origin))
         return res.status(403).json({ error: "This origin is not allowed." });
     }
-    const key = req.ip ?? "unknown",
-      now = Date.now();
-    for (const [id, limit] of requests)
-      if (limit.until < now) requests.delete(id);
-    const limit = requests.get(key) ?? { count: 0, until: now + 60000 };
-    limit.count++;
-    requests.set(key, limit);
-    if (limit.count > 120)
+    const key = addresses.of(
+      req.socket.remoteAddress,
+      req.headers["x-forwarded-for"],
+    );
+    if (!requests.take(key))
       return res
         .status(429)
         .json({ error: "Too many account requests. Try again shortly." });
