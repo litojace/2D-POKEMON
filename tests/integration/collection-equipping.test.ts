@@ -8,6 +8,10 @@ import {
 } from "../../packages/shared/src/shop";
 
 let db: PGlite;
+/** The six Look sets of migration 010, on sale when 018 repaired equipping. */
+const ORIGINAL_SETS = SHOP_BUNDLES.slice(0, 6);
+/** Seaside, Steamworks and Borealis (25 Nov 2026). */
+const NEW_SETS = SHOP_BUNDLES.slice(6);
 const player = "00000000-0000-4000-8000-000000000001";
 const other = "00000000-0000-4000-8000-000000000002";
 const admin = "00000000-0000-4000-8000-000000000003";
@@ -47,7 +51,7 @@ beforeAll(async () => {
     `reset role;insert into public.arena_admins values('${admin}');insert into public.arena_wallets(player_id,balance) values('${player}',100000)`,
   );
   await login();
-  for (const bundle of SHOP_BUNDLES)
+  for (const bundle of ORIGINAL_SETS)
     await db.query("select public.arena_buy_item($1)", [bundle.id]);
 }, 30000);
 afterAll(async () => db.close());
@@ -118,7 +122,7 @@ it("reproduces the old slot error, then repairs all appearance functions without
   });
 });
 
-it.each(SHOP_BUNDLES)(
+it.each(ORIGINAL_SETS)(
   "equips all five $name pieces together and saves each change independently",
   async (bundle) => {
     await login();
@@ -268,3 +272,32 @@ it("keeps every champion skin equippable through its separate champion slot", as
   }
   expect((await economy()).balance).toBe(0);
 }, 60_000);
+
+it("sells and equips every piece of the Look sets added on 25 Nov 2026", async () => {
+  expect(NEW_SETS.map((b) => b.id)).toEqual([
+    "seaside-set",
+    "steamworks-set",
+    "borealis-set",
+  ]);
+  await db.exec("reset role");
+  await db.exec(
+    await readFile(
+      "supabase/migrations/20261125140000_seaside_steamworks_borealis.sql",
+      "utf8",
+    ),
+  );
+  await db.exec(
+    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
+  );
+  await login();
+  for (const bundle of NEW_SETS) {
+    await db.query("select public.arena_buy_item($1)", [bundle.id]);
+    const expected = { ...(await progress()).loadout };
+    for (const id of bundle.items) {
+      const item = LOOK_ITEMS.find((i) => i.id === id)!;
+      await equip(item.slot, item.id);
+      expected[item.slot] = item.id;
+      expect((await progress()).loadout).toEqual(expected);
+    }
+  }
+});

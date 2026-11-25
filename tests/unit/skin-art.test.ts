@@ -326,7 +326,10 @@ describe("champion skin art", () => {
 });
 
 describe("collection pieces", () => {
-  const css = readFileSync("apps/client/src/style.css", "utf8");
+  // The sets added on 25 Nov 2026 keep their portrait CSS with their frames.
+  const css =
+    readFileSync("apps/client/src/style.css", "utf8") +
+    readFileSync("apps/client/src/collection-frames.css", "utf8");
   it("every piece has something to show in play or in portraits", () => {
     for (const item of LOOK_ITEMS) {
       const g = graphics();

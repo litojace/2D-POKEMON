@@ -17,6 +17,9 @@ import { serverNow } from "./server-clock";
  */
 export const SHOP_ARRIVALS: Readonly<Record<string, string>> = {
   "starlight-idol": "2026-11-25",
+  seaside: "2026-11-25",
+  steamworks: "2026-11-25",
+  borealis: "2026-11-25",
 };
 /** How long an arrival stays "New". */
 export const NEW_DAYS = 14;

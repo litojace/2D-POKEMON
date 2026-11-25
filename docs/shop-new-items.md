@@ -60,7 +60,7 @@ Winter, Festival, Garden, Candy, Retro Pixel, Galaxy).
 | --- | ------------------ | ---------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | **Starlight Idol** | 18 skins + set                                 | Epic / 3,500                                | Five designs were already drawn; a stage act per champion (rock, pop, ballad, DJ...), sequins and stage lights are what lume layers do best |
 | 2   | **Seaside**        | Look set (5)                                   | Tier 0: 300 / 900 / 1,000 / 800 / 1,800     | A sunny entry-price set: no summer theme exists yet                                                                                         |
-| 3   | **Clockwork**      | Look set (5)                                   | Tier 1: 480 / 1,440 / 1,600 / 1,280 / 2,880 | Brass gears and steam: a mechanical look that is not sci-fi                                                                                 |
+| 3   | **Steamworks**     | Look set (5)                                   | Tier 1: 480 / 1,440 / 1,600 / 1,280 / 2,880 | Brass gears and steam: a mechanical look that is not sci-fi                                                                                 |
 | 4   | **Borealis**       | Look set (5)                                   | Tier 2: 750 / 2,250 / 2,500 / 2,000 / 4,500 | The second showcase set beside Galaxy: curtains of northern light                                                                           |
 | 5   | **Birthstone**     | 18 skins + set                                 | Common / 500                                | A gem palette per champion: a cheap first purchase for every champion                                                                       |
 | 6   | **Rainy Day**      | 18 skins + set                                 | Rare / 1,500                                | Raincoats, boots and umbrellas: cosy, readable silhouettes, a droplet trail                                                                 |
@@ -68,10 +68,17 @@ Winter, Festival, Garden, Candy, Retro Pixel, Galaxy).
 | 8   | **Sun Dynasty**    | 18 skins + set                                 | Legendary / 5,500                           | A desert kingdom in gold and lapis: gold is the Legendary finish                                                                            |
 | 9   | Single pieces      | Auras, frames, entrances, victories sold alone | By slot and tier                            | Needs a place in the Collections screen (the Shop screens' session)                                                                         |
 
-Shipped: 1 (migration `20261125130000_starlight_idol.sql`; not yet in
-Today's Picks).
+Shipped (none yet in Today's Picks): 1 (migration
+`20261125130000_starlight_idol.sql`); 2–4 (migration
+`20261125140000_seaside_steamworks_borealis.sql`).
 
 ![Starlight Idol: the eighteen skins on the Shop's stage](shop-new-items/starlight-idol.jpg)
+
+![Seaside, Steamworks and Borealis: each set's five pieces on the Shop's stage](shop-new-items/look-sets.jpg)
+
+The three Look sets keep their portrait CSS (frame art, the small pictures of
+the other pieces) in the generated `collection-frames.css`
+(`scripts/frame-art.mjs`), not in `style.css`.
 
 Mythicals stay one per champion (the Void Knights): each has a Mythic Trial
 and three Awakening forms, and a second line would be a design decision of
