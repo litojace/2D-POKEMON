@@ -36,6 +36,7 @@ import {
   type PlazaFightRarity,
 } from "../../../../packages/shared/src/plaza-fight";
 import { fishArt } from "./plaza-fish-art";
+import { buzz } from "../game-feel";
 
 export const FISH_SPOT = PLAZA_SPOTS.find((s) => s.id === "fish")!;
 /**
@@ -188,7 +189,7 @@ export function createFishing(deps: FishingDeps) {
   const lose = (word: string) => {
     note = word;
     set("miss");
-    if (typeof navigator !== "undefined") navigator.vibrate?.([12, 50, 12]);
+    buzz([12, 50, 12]);
   };
 
   function cast() {
@@ -229,7 +230,7 @@ export function createFishing(deps: FishingDeps) {
       owed = 0;
       landing = false;
       fightMood = "ok";
-      if (typeof navigator !== "undefined") navigator.vibrate?.([30, 40, 30]);
+      buzz([30, 40, 30]);
       set("fight");
     });
   }
@@ -248,7 +249,7 @@ export function createFishing(deps: FishingDeps) {
           return lose(r?.why === "snap" ? "The line snapped!" : "It got away");
         leapFish = fish;
         leapNew = deps.isNew(fish);
-        if (typeof navigator !== "undefined") navigator.vibrate?.(30);
+        buzz(30);
         set("leap");
       });
   }
@@ -367,7 +368,7 @@ export function createFishing(deps: FishingDeps) {
     onNote(n: PlazaFishNote) {
       if (!active || !n) return;
       if (n.state === "bite" && (phase === "wait" || phase === "cast")) {
-        if (typeof navigator !== "undefined") navigator.vibrate?.(60);
+        buzz(60);
         set("bite");
       } else if (n.state === "gone" && phase !== "leap" && !landing) {
         if (n.why === "moved") {
@@ -387,8 +388,7 @@ export function createFishing(deps: FishingDeps) {
           owed -= PLAZA_FIGHT.tickMs;
           const was = fight.thrash;
           plazaFightStep(fight, holding);
-          if (fight.thrash && !was && typeof navigator !== "undefined")
-            navigator.vibrate?.(18);
+          if (fight.thrash && !was) buzz(18);
         }
         const mood =
           fight.tension >= 0.93

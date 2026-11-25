@@ -4,6 +4,7 @@ import { box, inside, openHub, snap } from "./helpers";
 const SCREENS = [
   { name: "desktop", viewport: { width: 1440, height: 900 }, touch: false },
   { name: "phone", viewport: { width: 844, height: 390 }, touch: true },
+  { name: "phone-small", viewport: { width: 667, height: 375 }, touch: true },
 ];
 
 for (const s of SCREENS)
@@ -40,7 +41,37 @@ for (const s of SCREENS)
       await expect(dialog.locator('output[data-pref-for="music"]')).toHaveText(
         /^\d+%$/,
       );
+      // Vibration (owner, 25 Nov 2026): on by default, a tap turns it off,
+      // and it stays off when Settings opens again.
+      const vibration = dialog.locator("#settings-vibration");
+      await expect(vibration).toHaveAttribute("aria-checked", "true");
+      expect(inside(await box(page, "#settings-vibration"), screen)).toBe(true);
+      // A finger's 44 px: the 28 px switch takes taps 20 px above and below
+      // its middle (ui/phone-fit.css grows its hit area).
+      if (s.touch)
+        expect(
+          await page.evaluate(() => {
+            const el = document.getElementById("settings-vibration")!;
+            const r = el.getBoundingClientRect(),
+              x = r.x + r.width / 2,
+              y = r.y + r.height / 2;
+            return [y - 20, y + 20].every((ty) =>
+              el.contains(document.elementFromPoint(x, ty)),
+            );
+          }),
+        ).toBe(true);
       await snap(page, info, `settings-${s.name}`);
+      await vibration.click();
+      await expect(vibration).toHaveAttribute("aria-checked", "false");
+      await expect(vibration).toHaveText("Off");
+      expect(
+        await page.evaluate(() => localStorage.getItem("arena-vibration")),
+      ).toBe("off");
+      await snap(page, info, `settings-${s.name}-vibration-off`);
+      await page.keyboard.press("Escape");
+      await expect(dialog.locator(".settings-screen")).toBeHidden();
+      await page.evaluate(() => document.getElementById("settings")!.click());
+      await expect(vibration).toHaveAttribute("aria-checked", "false");
       await dialog.locator("#settings-credits").click();
       await expect(dialog.locator(".credits-screen")).toBeVisible();
       await snap(page, info, `credits-${s.name}`);
