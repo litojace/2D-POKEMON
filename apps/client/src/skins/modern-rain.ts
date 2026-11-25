@@ -1,5 +1,5 @@
 import type { CharacterId } from "@arena/shared";
-import { DESIGNS, backPanel, hatShape, torso, type Design, type Kit } from "./modern-designs";
+import { BACK_TRAIT, DESIGNS, backUnder, hatShape, torso, type Design, type Kit } from "./modern-designs";
 
 /**
  * Rainy Day (Rare): a raincoat for every champion and its own way of keeping
@@ -99,7 +99,23 @@ function design(id: CharacterId): Design {
     const dots = (x0: number, x1: number) =>
       look.dots ? [0, 1, 2, 3, 4, 5, 6, 7].map((i) => k.circle(x0 + 4 + ((i * 9.7) % (x1 - x0 - 8)), k.T + 6 + ((i * 7.3) % 30), 1.5, trim, "none", 0)).join("") : "";
     // The raincoat: a flap down the front with toggles, a pocket, a dry hem.
-    if (k.back) backPanel(k, coat, dots(k.C - k.W, k.C + k.W) + k.path(`M${k.C - 11} ${k.T + 1}Q${k.C} ${k.T + 15} ${k.C + 11} ${k.T + 1}Q${k.C} ${k.T + 6} ${k.C - 11} ${k.T + 1}Z`, coat, k.ink, 0.8) + k.line(`M${k.C - k.W} ${k.B - 2}H${k.C + k.W}`, trim, 1.6));
+    if (k.back) {
+      // The raincoat goes under what the champion carries on its back (a
+      // shell, a boulder, folded wings, moss, leaves): the rain beads on
+      // those instead, one drop catching the light.
+      backUnder(k, coat, dots(k.C - k.W, k.C + k.W) + k.path(`M${k.C - 11} ${k.T + 1}Q${k.C} ${k.T + 15} ${k.C + 11} ${k.T + 1}Q${k.C} ${k.T + 6} ${k.C - 11} ${k.T + 1}Z`, coat, k.ink, 0.8) + k.line(`M${k.C - k.W} ${k.B - 2}H${k.C + k.W}`, trim, 1.6));
+      const trait = BACK_TRAIT[id];
+      if (trait && trait.kind !== "tail") {
+        const [x0, y0, x1, y1] = trait.box;
+        const at = (u: number, v: number) => [x0 + (x1 - x0) * u, y0 + (y1 - y0) * v] as const;
+        const beads = ([[0.3, 0.35, 1.1], [0.62, 0.5, 1.3], [0.45, 0.72, 1]] as const).map(([u, v, sc], i) => {
+          const [x, y] = at(u, v);
+          const d = drop(k, x, y, sc);
+          return i === 1 ? k.lume("twinkle", d + k.circle(x - 0.8, y - 0.6, 0.7, "#ffffff", "none", 0), 0, "#e6f6ff") : d;
+        });
+        k.put("scarf", beads.join(""));
+      }
+    }
     else {
       const c = cx(k);
       k.put("body", torso(k, coat,

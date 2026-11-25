@@ -1,5 +1,5 @@
 import type { CharacterId } from "@arena/shared";
-import { DESIGNS, backPanel, hatShape, torso, type Design, type Kit } from "./modern-designs";
+import { BACK_TRAIT, DESIGNS, backUnder, hatShape, torso, type Design, type Kit } from "./modern-designs";
 
 /**
  * Grand Prix (Epic): one race, a driver of its own for every champion, each
@@ -97,10 +97,18 @@ function design(id: CharacterId): Design {
       digits(k, r.number, x, y, h, r.glow);
     if (k.back) {
       // The back: the stripe, the checkered shoulders and a big number, lit.
-      backPanel(k, r.suit,
+      // The suit goes under what the champion carries on its back; the
+      // number shows over it: bolted to a shell or a boulder like a car's,
+      // and a small bib high between the shoulders above wings, moss,
+      // leaves or a cotton tail.
+      backUnder(k, r.suit,
         k.rect(k.C - 4, k.T - 2, 8, k.B - k.T + 4, 0, r.stripe, "none", 0) +
-          checker(k, k.C - k.W, k.C + k.W, k.T + 1, 2.6) +
-          board(k.C, k.T + 20, 15));
+          checker(k, k.C - k.W, k.C + k.W, k.T + 1, 2.6));
+      const trait = BACK_TRAIT[id];
+      if (trait?.kind === "shell" || trait?.kind === "rock") {
+        const [, y0, , y1] = trait.box;
+        k.put("scarf", k.rect(k.C - 4, y0 + 8, 8, y1 - y0 - 16, 2, r.stripe, k.ink, 0.6) + board(k.C, y0 + (y1 - y0) * 0.45, 13));
+      } else k.put("scarf", trait ? board(k.C, k.T + 9, 10) : board(k.C, k.T + 20, 15));
     } else {
       const c = cx(k);
       k.put("body", torso(k, r.suit,
