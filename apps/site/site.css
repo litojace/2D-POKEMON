@@ -1013,8 +1013,9 @@ body::before {
     }
   }
   /* Revealed on scroll (site.js marks only what starts below the fold). */
+  /* Starts readable (a still frame or a full-page capture still shows it). */
   .js .reveal {
-    opacity: 0;
+    opacity: 0.35;
     transform: translateY(26px);
     transition:
       opacity 0.6s ease var(--d, 0ms),
@@ -1058,6 +1059,13 @@ body::before {
 @media (min-width: 820px) {
   .champ-in {
     grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+  /* The art stays in view while the details scroll beside it. */
+  .champ-in > .champ-stage {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: min(92svh, 900px);
   }
 }
 .champ-x {
@@ -1204,13 +1212,14 @@ body::before {
   text-align: right;
   min-width: 72px;
 }
-.stat .bar {
+.stat .meter {
+  display: block;
   height: 8px;
   border-radius: 99px;
   background: var(--line);
   overflow: hidden;
 }
-.stat .bar::before {
+.stat .meter::before {
   content: "";
   display: block;
   height: 100%;

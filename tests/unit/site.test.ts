@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { CHARACTERS } from "../../packages/shared/src/index";
 import { RAID_BOSSES } from "../../packages/shared/src/raid-roster";
+import { siteChampions } from "../../apps/site/tools/champion-data";
 
 // The website (apps/site/README.md): a static page with no build, so these
 // checks stand in for one. Every file it links exists, it leads into the
@@ -103,5 +104,20 @@ describe("website", () => {
     ])
       expect(html).toMatch(tag);
     expect(existsSync(path.join(SITE, "og.jpg"))).toBe(true);
+  });
+
+  it("its champion data matches the game (npx tsx apps/site/tools/gen-data.ts)", () => {
+    const saved = JSON.parse(
+      readFileSync(path.join(SITE, "data/champions.json"), "utf8"),
+    );
+    expect(saved).toEqual(siteChampions());
+    for (const c of saved) {
+      expect(c.skins.length).toBeGreaterThan(0);
+      for (const s of c.skins)
+        expect(existsSync(path.join(SITE, `img/skins/${s.id}.svg`)), s.id).toBe(
+          true,
+        );
+      expect(html).toContain(`data-champion="${c.id}"`);
+    }
   });
 });

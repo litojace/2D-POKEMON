@@ -23,7 +23,7 @@
     );
     const fold = innerHeight;
     $$(
-      ".head, .roster > li, .modes > li, .bosses > li, .perks > li, .stores > li, .shots > li",
+      ".head, .roster > li, .modes > li, .bosses > li, .perks > li, .stores > li",
     ).forEach((el, i) => {
       if (el.getBoundingClientRect().top < fold) return;
       el.classList.add("reveal");
@@ -145,7 +145,8 @@
     const facts = el("ul", "move-facts");
     if (m.damage) facts.append(el("li", "", `${m.damage} damage`));
     if (m.interval) facts.append(el("li", "", `every ${m.interval}s`));
-    if (m.cooldown) facts.append(el("li", "", `${m.cooldown}s cooldown`));
+    if (m.cooldown && !m.ult)
+      facts.append(el("li", "", `${m.cooldown}s cooldown`));
     if (m.ult) facts.append(el("li", "", "Charges from the ultimate meter"));
     if (m.status && STATUS[m.status])
       facts.append(el("li", "", STATUS[m.status]));
@@ -179,7 +180,7 @@
       const [lo, hi] = range(key);
       const share = 0.18 + (0.82 * (c[key] - lo)) / (hi - lo || 1);
       const row = el("div", "stat");
-      const bar = el("span", "bar");
+      const bar = el("span", "meter");
       bar.style.setProperty("--v", share.toFixed(3));
       bar.setAttribute("aria-hidden", "true");
       row.append(el("dt", "", label), el("dd", "", String(text)), bar);

@@ -20,6 +20,7 @@ const css = readFileSync(path.join(site, "site.css"), "utf8").replace(
   "",
 );
 const body = html.slice(html.indexOf("<body>") + 6, html.indexOf("</body>"));
+const script = readFileSync(path.join(site, "site.js"), "utf8");
 
 const STYLES = [
   ["dusk", "Arena Dusk", "The game's own navy and gold"],
@@ -59,6 +60,9 @@ ${body}
   <span class="demo-label">Demo, pick a style:</span>
   ${STYLES.map(([id, name, hint]) => `<button type="button" data-pick="${id}" title="${hint}" aria-pressed="${id === "dusk"}">${name}</button>`).join("\n  ")}
 </div>
+<script>
+${script}
+</script>
 <script>
 (() => {
   const root = document.documentElement;

@@ -4,8 +4,8 @@ The public front page for the game: what it is, the champions, modes, raid
 bosses, real screenshots, "coming soon" for the apps, and **Play now**
 buttons into the game at `https://parena.litojace.com/`.
 
-It is plain static HTML and CSS with no build step and no JavaScript, kept
-apart from the game: nothing here is imported by `apps/client`, it is not in
+It is static HTML and CSS with one small script (`site.js`, no libraries)
+and no build step on the server, kept apart from the game: nothing here is imported by `apps/client`, it is not in
 the game's build, its precache or its CI build, and the game never loads it.
 
 ```
@@ -18,6 +18,40 @@ apps/site/
   tools/make-images.py   regenerates img/ and the icons from the game's art
   tools/demo.mjs         builds the demo page with the style switcher
 ```
+
+## Champion data comes from the game
+
+`data/champions.json` (stats, basic attack, three skills, the ultimate,
+featured skins), the skin pictures in `img/skins/` and the roster cards in
+`index.html` are written from the game's code:
+
+```bash
+npx tsx apps/site/tools/gen-data.ts && npx prettier --write apps/site/index.html
+```
+
+`tests/unit/site.test.ts` fails when the JSON no longer matches
+`packages/shared` (a balance change, a renamed skill, a new skin), so CI
+says when to run it. The panel's text is the game's own skill descriptions.
+
+## What we took from big games' sites
+
+Patterns (no art, text or branding copied; the live sites could not be opened
+from the build machine, so this is from what they are known to do):
+
+- League of Legends / Overwatch: a filterable portrait grid; a champion
+  view with role, a stat strip and the abilities as a row of tabs (basic,
+  skills, ultimate), the ultimate set apart. Here: element chips, a
+  `<dialog>` panel, Basic / 1 / 2 / 3 / Ult tabs with arrow keys.
+- Valorant: browsing next/previous inside the detail view. Here: ‹ › in
+  the panel, and `#champion-<id>` links that open it directly.
+- League skins strip: thumbnails that swap the big art. Here: four featured
+  skins (rarest first) plus the Wardrobe count.
+- Sticky header with the Play button; Play repeated in the hero, the panel
+  and the apps section.
+- Avoided for speed: autoplay video heroes, preloading every skin or clip,
+  canvas/WebGL scroll engines, framework bundles. Motion here is CSS (hero
+  drift and entrance, card lift, panel float), scroll reveals start
+  readable, and `prefers-reduced-motion` turns all of it off.
 
 ## Images
 
@@ -54,6 +88,24 @@ and Google Play badges linking to the listings (Apple and Google allow their
 badges only for a live listing), and add the app links to the hero.
 
 ## Progress (keep current)
+
+Round 2 (owner, 25 Nov 3:15 PM PT: motion, interactive champions, an account
+area with one-tap Play, QR to the website):
+
+- [x] Research notes (above); data from game code + drift test; element
+      filter; champion panel (stats, skills, ultimate, skins, prev/next,
+      deep links); hero drift, entrance, scroll reveals, reduced motion
+- [x] Account / one-tap Play proposal: `ACCOUNTS.md` (recommends A, same
+      origin). **No sign-in code until the owner approves.**
+- [ ] Not done: animated clips of each champion's real in-game moves (the
+      panel uses the game's vector portraits with CSS motion). Next step
+      after the style choice: capture loops from the visual harness,
+      loaded only when a panel opens.
+- [ ] Waiting for the owner: style, domain/hosting (A or C), Supabase settings
+- [ ] Then: build the chosen option, PR (FULL lane if A), Cloudflare CNAME,
+      HTTPS check, send the QR session the final URL
+
+Round 1:
 
 - [x] Page, styles, fonts, images from the game's art, real gameplay captures
       (scripts/app-store fixed: Create room moved into the mode menu)
