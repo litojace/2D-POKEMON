@@ -11,7 +11,7 @@ import { CHARACTERS } from "@arena/shared";
 // look them over (with VISUAL_SHOTS).
 // Look sets: every piece has a drawn tile in Collections, and plays (or, a
 // frame, shows) on the stage when chosen.
-const COLLECTIONS = ["starlight-idol"];
+const COLLECTIONS = ["starlight-idol", "birthstone"];
 const SIZES = [
   { name: "844x390", width: 844, height: 390, phone: true, all: true },
   { name: "667x375", width: 667, height: 375, phone: true },
@@ -41,7 +41,7 @@ for (const collection of COLLECTIONS)
       try {
         const page = await context.newPage();
         await exposeAccount(page);
-        await shopServer(page, { balance: 90000, cost: 3500 });
+        await shopServer(page, { balance: 90000, cost: 500 });
         const errors = await openHub(page);
         if (size.island) await setInsets(page, ISLAND);
         const stage = page.locator(".fit-stage .shop-live-stage");

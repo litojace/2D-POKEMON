@@ -70,7 +70,8 @@ Winter, Festival, Garden, Candy, Retro Pixel, Galaxy).
 
 Shipped (none yet in Today's Picks): 1 (migration
 `20261125130000_starlight_idol.sql`); 2–4 (migration
-`20261125140000_seaside_steamworks_borealis.sql`).
+`20261125140000_seaside_steamworks_borealis.sql`); 5 (migration
+`20261125150000_birthstone.sql`).
 
 ![Starlight Idol: the eighteen skins on the Shop's stage](shop-new-items/starlight-idol.jpg)
 
