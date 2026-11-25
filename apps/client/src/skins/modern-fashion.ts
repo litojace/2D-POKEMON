@@ -12,6 +12,7 @@ import "./modern-hero";
 import "./modern-campus";
 import "./modern-stars";
 import "./modern-idol";
+import "./modern-rain";
 import "./modern-pirates";
 import "./modern-vanguard";
 import "./modern-kit";
@@ -39,7 +40,7 @@ import "./legend-details-stars";
  *    `data-i` giving each light's place in the row;
  *  - twinkle: sparkles that glint at their own moments.
  */
-export type ModernTheme = "campus" | "hero" | "idol" | "viet" | "stars" | "vietlegend" | "pirates" | "vanguard" | "kit";
+export type ModernTheme = "campus" | "hero" | "idol" | "rain" | "viet" | "stars" | "vietlegend" | "pirates" | "vanguard" | "kit";
 /** The Epic collections among them, whose cloth is tailored. */
 const EPIC_THEMES = new Set<ModernTheme>(["campus", "hero", "idol", "kit"]);
 

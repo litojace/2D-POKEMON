@@ -256,6 +256,8 @@ it("keeps every champion skin equippable through its separate champion slot", as
     "20261125130000_starlight_idol.sql",
     // Birthstone (Common).
     "20261125150000_birthstone.sql",
+    // Rainy Day (Rare).
+    "20261125160000_rainy_day.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   await login(admin);

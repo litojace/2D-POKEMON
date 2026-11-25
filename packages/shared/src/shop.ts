@@ -500,6 +500,42 @@ export const BIRTHSTONE_SKINS: ChampionSkin[] = (
   description: `The colours of ${/^[AEIOU]/.test(BIRTHSTONE_NAMES[champion]) ? "an" : "a"} ${BIRTHSTONE_NAMES[champion].toLowerCase()}`,
 }));
 
+/**
+ * Rainy Day (Rare): a raincoat for every champion and its own way of keeping
+ * dry (a sou'wester, a frog hat, an umbrella, a lotus leaf, a toadstool...).
+ */
+export const RAINY_DAY_NAMES = {
+  voltkit: "Puddle Jumper",
+  cindrake: "Dry Ember",
+  tidefin: "Rain Dancer",
+  auralynx: "Drizzle Duelist",
+  lumoth: "Dewdrop",
+  mystowl: "Storm Watcher",
+  terradon: "Lily Pad",
+  duskveil: "Grey Skies",
+  coilemur: "Puddle Skipper",
+  pyranda: "Rubber Ducky",
+  glacelle: "Mizzle",
+  halcyra: "Squall Rider",
+  sunbara: "Froggy Day",
+  astrabun: "Cloud Hopper",
+  wombolder: "Mudlark",
+  shadopus: "Brolly Top",
+  pangrove: "Toadstool Shelter",
+  mossloth: "Dozy Drizzle",
+} as const satisfies Record<CharacterId, string>;
+export const RAINY_DAY_SKINS: ChampionSkin[] = (
+  Object.keys(RAINY_DAY_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-rainy-day`,
+  champion,
+  name: RAINY_DAY_NAMES[champion],
+  rarity: "rare",
+  collection: "rainy-day",
+  description:
+    "A raincoat and its own way of keeping dry; dashing leaves a trail of raindrops",
+}));
+
 export type Collection =
   | FashionCollection
   | "nova-vanguard"
@@ -510,6 +546,7 @@ export type Collection =
   | "stars-stripes"
   | "starlight-idol"
   | "birthstone"
+  | "rainy-day"
   | "winter"
   | "festival"
   | "garden"
@@ -534,6 +571,7 @@ export const COLLECTION_NAMES: Record<Collection, string> = {
   "stars-stripes": "Stars & Stripes",
   "starlight-idol": "Starlight Idol",
   birthstone: "Birthstone",
+  "rainy-day": "Rainy Day",
   winter: "Winter",
   festival: "Festival",
   garden: "Garden",
@@ -583,6 +621,7 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ...STARS_STRIPES_SKINS,
   ...STARLIGHT_IDOL_SKINS,
   ...BIRTHSTONE_SKINS,
+  ...RAINY_DAY_SKINS,
   skin("voltkit", "midnight", "Midnight", "common", "Navy fur, cyan cheeks"),
   skin("voltkit", "peach-fizz", "Peach Fizz", "common", "Peach and pink"),
   skin("voltkit", "mint-static", "Mint Static", "common", "Mint and white"),
@@ -1580,6 +1619,7 @@ export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
   "stars-stripes": 1,
   "starlight-idol": 1,
   birthstone: 0,
+  "rainy-day": 0,
   wayfarer: 0,
   "moonlit-tea": 0,
   "astral-court": 0,
@@ -1653,6 +1693,7 @@ export const SKIN_SET_COLLECTIONS = [
   "stars-stripes",
   "starlight-idol",
   "birthstone",
+  "rainy-day",
 ] as const satisfies readonly Collection[];
 export const SKIN_BUNDLES: ShopBundle[] = SKIN_SET_COLLECTIONS.map(
   (collection) => ({
