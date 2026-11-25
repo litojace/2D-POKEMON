@@ -5,6 +5,22 @@ const port = Number(process.env.PORT ?? 3001);
 server.http.listen(port, "0.0.0.0", () =>
   console.log(`Element Arena listening on http://localhost:${port}`),
 );
+// A promise nobody awaited that rejected (a save, a push, a lookup) is one
+// failed job, not a broken server: log it and keep the matches running.
+// Node's default ends the process. Exceptions thrown outside a promise
+// still end it: the rooms' tick and the socket handlers catch their own
+// (server.ts).
+process.on("unhandledRejection", (reason) =>
+  console.log(
+    "arena-unhandled-rejection",
+    JSON.stringify({
+      error: (reason instanceof Error
+        ? (reason.stack ?? reason.message)
+        : String(reason)
+      ).slice(0, 1200),
+    }),
+  ),
+);
 /**
  * How long a deploy lets running matches finish (docs/server-updates.md).
  * Keep it under Render's maxShutdownDelaySeconds (render.yaml), which ends

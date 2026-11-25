@@ -35,6 +35,16 @@ for (const boss of ["tidewyrm", "emberwing"])
             .find((n) => n.includes(`/apps/client/src/${file}`))!,
         file,
       );
+    // They come with the battle kit, which a room loads at once
+    // (phaser-runtime.ts, main.ts warmPhaser).
+    await expect
+      .poll(
+        async () =>
+          !!(await client("boss-vector-prewarm.ts")) &&
+          !!(await client("boss-prepaint.ts")),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
     const prepaintUrl = await client("boss-prepaint.ts");
     const prewarmUrl = await client("boss-vector-prewarm.ts");
     expect(prepaintUrl).toBeTruthy();

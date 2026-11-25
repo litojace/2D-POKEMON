@@ -31,6 +31,11 @@ export function io() {
       return s.on(ev, once);
     },
     emit(ev: string, data: unknown, cb?: (r: unknown) => void) {
+      // The client asking for a whole snapshot (rooms.ts sends it next).
+      if (ev === "state-full") {
+        w.__deltaAsked = (w.__deltaAsked ?? 0) + 1;
+        w.__deltaWhole = true;
+      }
       w.__emit?.(ev, data);
       if (typeof cb === "function") cb(answer(ev, data));
       return s;

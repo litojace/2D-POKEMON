@@ -317,6 +317,170 @@ body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
   }
 }
 
+/* ---- PvP results: the recap is a scoreboard card ---- */
+/* The same card as a raid's Team contributions (screens/raid-cards.css,
+   .rc-score): a row per fighter on its own plate, yours with the gold edge,
+   headers in small capitals over right-aligned display figures. It was a
+   bare 520 px table of 13 px text, lost in the middle of a desktop screen.
+   Static styles only: nothing here moves, blurs or casts a shadow. */
+#arena-overlay#arena-overlay.is-sheet .overlay-card .result-score {
+  max-width: 680px;
+  font-size: calc(16px * var(--text-scale, 1));
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .result-score b {
+  font-size: calc(44px * var(--text-scale, 1));
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap {
+  width: min(680px, 100%);
+  margin: 12px auto 8px;
+  padding: 4px 12px 7px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0 5px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--rad-lg);
+  background: var(--fill-card);
+  font-size: calc(14px * var(--text-scale, 1));
+  text-align: left;
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap thead th {
+  padding: 6px 10px 0;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: right;
+  color: var(--ui-faint);
+  white-space: nowrap;
+}
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .recap
+  thead
+  th:nth-child(n + 2) {
+  width: 88px;
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody tr {
+  border-top: 0;
+  background: none;
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody :is(th, td) {
+  padding: 8px 10px;
+  vertical-align: middle;
+  background: var(--fill-card-hi);
+  border-block: 1px solid var(--ui-line);
+}
+/* A real cell (it was a flex box inside one), so its plate is the row's
+   height: the dot and the name sit on one middle line. */
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody th {
+  display: table-cell;
+  border-left: 1px solid var(--ui-line);
+  border-radius: var(--rad-md) 0 0 var(--rad-md);
+  white-space: nowrap;
+  /* (A general `.recap th` rule sets headers and names alike to 11 px.) */
+  font-size: calc(15px * var(--text-scale, 1));
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody th > i {
+  display: inline-block;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+/* The name gives way before its tags do: with a 20-character name the
+   "you" and MVP tags were pushed out of the cell (teams, 667 px). A grid:
+   the name's column may shrink to nothing, the tags' columns never do,
+   and the fighter's name takes the line under them. */
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody th > span {
+  display: inline-grid;
+  grid-template-columns: minmax(0, auto) auto auto;
+  align-items: baseline;
+  max-width: calc(100% - 22px);
+  vertical-align: middle;
+  overflow: visible;
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody th > span > b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .recap
+  tbody
+  th
+  > span
+  > small.who {
+  grid-column: 1 / -1;
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody td {
+  text-align: right;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: calc(20px * var(--text-scale, 1));
+  line-height: 1.1;
+  color: var(--ui-text);
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody td:last-child {
+  border-right: 1px solid var(--ui-line);
+  border-radius: 0 var(--rad-md) var(--rad-md) 0;
+}
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .recap
+  tbody
+  tr.me
+  :is(th, td) {
+  background: color-mix(in srgb, var(--ui-accent) 8%, var(--ui-bg-2));
+  border-color: color-mix(in srgb, var(--ui-accent) 35%, transparent);
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody tr.me th {
+  box-shadow: inset 3px 0 0 var(--ui-accent);
+}
+/* Teams: the first rival's plate has a brighter top edge. */
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .recap
+  tbody
+  tr.split
+  :is(th, td) {
+  border-top-color: #ffffff59;
+}
+/* A phone held sideways: tighter plates, so four fighters and the buttons
+   still fit without scrolling. */
+@container (max-height: 460px) {
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .result-score {
+    font-size: calc(14px * var(--text-scale, 1));
+  }
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .result-score b {
+    font-size: calc(32px * var(--text-scale, 1));
+  }
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .recap {
+    margin: 6px auto 4px;
+    padding: 2px 8px 4px;
+    border-spacing: 0 3px;
+    font-size: calc(13px * var(--text-scale, 1));
+  }
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .recap thead th {
+    padding: 3px 8px 0;
+  }
+  #arena-overlay#arena-overlay.is-sheet
+    .overlay-card
+    .recap
+    thead
+    th:nth-child(n + 2) {
+    width: 66px;
+    padding-left: 0;
+  }
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody :is(th, td) {
+    padding: 4px 8px;
+  }
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody td {
+    font-size: calc(16px * var(--text-scale, 1));
+  }
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody th {
+    font-size: calc(13px * var(--text-scale, 1));
+  }
+}
+
 /* ---- The break between PvP rounds ---- */
 /* Who took the round and the seconds to the next, over the arena like the
    countdown: no card. With rites on offer, the rites screen's even navy
