@@ -35,6 +35,7 @@ import {
   PLAZA_GATE,
   PLAZA_HOUSES,
   PLAZA_HURDLE_SEGMENTS,
+  PLAZA_LAP_RUN,
   PLAZA_LAMPS,
   PLAZA_LEADER,
   PLAZA_LED,
@@ -3293,9 +3294,22 @@ export function openPlaza(options) {
     }
     const t = Math.max(0, (serverNow() - lapState[0]) / 1000);
     el.hidden = false;
+    // Today's lap quest still to do: which lap of the run this is and the
+    // run's time so far, against PLAZA_LAP_RUN (3 in a row in 30 s).
+    const run =
+      lapState.length >= 4 && progress?.quests && !progress.quests.lap?.done
+        ? {
+            lap: lapState[3],
+            t: Math.max(0, (serverNow() - lapState[2]) / 1000),
+          }
+        : null;
+    const over = !!run && run.t * 1000 >= PLAZA_LAP_RUN.ms;
+    el.classList.toggle("over", over);
     setHtml(
       el,
-      `${t.toFixed(2)}<small>${Math.min(3, Math.floor(lapState[1] * 4))}/4${best ? ` · best ${best.toFixed(2)}` : ""}</small>`,
+      run
+        ? `${t.toFixed(2)}<small>lap ${run.lap}/${PLAZA_LAP_RUN.laps} · ${run.t.toFixed(1)}</small>`
+        : `${t.toFixed(2)}<small>${Math.min(3, Math.floor(lapState[1] * 4))}/4${best ? ` · best ${best.toFixed(2)}` : ""}</small>`,
     );
   }
   function updateRunway() {

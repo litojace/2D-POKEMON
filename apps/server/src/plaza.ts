@@ -16,6 +16,7 @@ import {
   PLAZA_GATE,
   PLAZA_GIFT,
   PLAZA_HURDLES,
+  PLAZA_LAP_RUN,
   PLAZA_PAIR,
   PLAZA_PAIR_EMOTES,
   PLAZA_PHOTO,
@@ -108,6 +109,9 @@ interface Visitor {
   /** When this visitor last tossed a gift box (ms). */
   lastTreat: number;
   lap: LapTimer;
+  /** The laps run in a row on the lane (ms each, the newest last), at most
+   * PLAZA_LAP_RUN.laps; leaving the lane or a fresh start clears it. */
+  run: number[];
   /** Runway: seconds until the next cheer, cheers so far, last runway news. */
   cheerIn: number;
   cheers: number;
@@ -271,7 +275,13 @@ interface CopyGift {
 export type PlazaEvent =
   | { type: "orb"; key: string; ref: string }
   | { type: "goal"; key: string }
-  | { type: "lap"; key: string; ms: number }
+  | {
+      type: "lap";
+      key: string;
+      ms: number;
+      /** The last PLAZA_LAP_RUN.laps laps in a row, all told (ms). */
+      run?: number;
+    }
   | { type: "cheers"; key: string; n: number }
   | { type: "fish"; key: string; note: PlazaFishNote }
   | { type: "news"; plaza: number; news: PlazaNews }
@@ -492,6 +502,7 @@ export class PlazaWorld {
       lastAsk: -Infinity,
       lastTreat: -Infinity,
       lap: new LapTimer(),
+      run: [],
       cheerIn: PLAZA_CHEER_SECONDS,
       cheers: 0,
       claps: 0,
@@ -1224,8 +1235,21 @@ export class PlazaWorld {
       }
       this.stepLine(v, now, events);
       const lap = v.lap.update(v.body.x, v.body.y, now);
+      // A fresh start or leaving the lane ends a run of laps in a row.
+      if (lap.cancelled || (lap.started && lap.lapMs === undefined)) v.run = [];
+      if (lap.lapMs !== undefined && lap.lapMs < 1000) v.run = [];
       if (lap.lapMs !== undefined && lap.lapMs >= 1000) {
-        events.push({ type: "lap", key: v.key, ms: lap.lapMs });
+        v.run = [...v.run, lap.lapMs].slice(-PLAZA_LAP_RUN.laps);
+        const run =
+          v.run.length === PLAZA_LAP_RUN.laps
+            ? v.run.reduce((a, b) => a + b, 0)
+            : undefined;
+        events.push({
+          type: "lap",
+          key: v.key,
+          ms: lap.lapMs,
+          ...(run !== undefined ? { run } : {}),
+        });
         events.push({
           type: "news",
           plaza: v.plaza,
@@ -1698,7 +1722,15 @@ export class PlazaWorld {
               lap: [
                 me.lap.startTime,
                 Math.round(me.lap.progress * 100) / 100,
-              ] as [number, number],
+                // The run that counts for the quest: its oldest lap's start
+                // (the laps before this one, the latest ones kept) and
+                // which lap of it this is.
+                me.lap.startTime -
+                  me.run
+                    .slice(-(PLAZA_LAP_RUN.laps - 1))
+                    .reduce((a, b) => a + b, 0),
+                Math.min(PLAZA_LAP_RUN.laps - 1, me.run.length) + 1,
+              ] as [number, number, number, number],
             }
           : {}),
       },
