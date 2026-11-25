@@ -198,6 +198,74 @@ export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, n
       });
       return true;
     }
+    case "seaside-aura": {
+      // A ring of sea foam on the sand, and shells and starfish circling.
+      g.lineStyle(2.4, 0xffffff, 0.55).strokeEllipse(x, y, 100, groundHeight(100));
+      g.lineStyle(1.2, 0x7fe0d8, 0.6).strokeEllipse(x, y, 110, groundHeight(110));
+      ring(6, 47, 19, 5200, (gg, px, py, i, _a, d, f) => {
+        const cy = py - 6 * d;
+        d *= 1.25;
+        if (i % 2) {
+          // A starfish: five arms, turning a little as it goes.
+          const turn = reduced ? 0 : Math.sin(now / 900 + i) * 0.25;
+          gg.fillStyle(0xff8a6a, 0.95 * f);
+          for (let k = 0; k < 5; k++) {
+            const a = -Math.PI / 2 + (k / 5) * TAU + turn;
+            gg.fillTriangle(px + Math.cos(a) * 6.8 * d, cy + Math.sin(a) * 6.8 * d, px + Math.cos(a + 1.9) * 2.4 * d, cy + Math.sin(a + 1.9) * 2.4 * d, px + Math.cos(a - 1.9) * 2.4 * d, cy + Math.sin(a - 1.9) * 2.4 * d);
+          }
+          gg.fillStyle(0xffd1b8, 0.9 * f).fillCircle(px, cy, 1.5 * d);
+        } else {
+          // A scallop shell: a ribbed fan on a small hinge.
+          gg.fillStyle(0xffb7a0, 0.96 * f).fillTriangle(px - 3.2 * d, cy + 3 * d, px + 3.2 * d, cy + 3 * d, px, cy + 6.4 * d);
+          gg.fillStyle(0xffe6d6, 0.96 * f).fillEllipse(px, cy - 1 * d, 12.5 * d, 10 * d);
+          gg.lineStyle(0.9 * d, 0xe88a78, 0.85 * f);
+          for (const u of [-0.72, -0.26, 0.26, 0.72]) gg.lineBetween(px, cy + 3.6 * d, px + u * 6 * d, cy - (5 - Math.abs(u) * 2.4) * d);
+        }
+      });
+      return true;
+    }
+    case "steamworks-aura": {
+      // A clock face on the ground: a brass rim and twelve ticks, the
+      // quarters longer. Gears turn round it, each against its neighbour.
+      g.lineStyle(2.2, 0xe0a23a, 0.8).strokeEllipse(x, y, 104, groundHeight(104));
+      g.lineStyle(1.1, 0xffe6a6, 0.7);
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * TAU,
+          r0 = i % 3 ? 47 : 43;
+        g.lineBetween(x + Math.cos(a) * r0, y + Math.sin(a) * r0 * flat, x + Math.cos(a) * 51, y + Math.sin(a) * 51 * flat);
+      }
+      ring(5, 47, 19, 6400, (gg, px, py, i, _a, d, f) => {
+        const cy = py - 7 * d,
+          r = (i % 2 ? 6 : 7.6) * d,
+          spin = (reduced ? 0 : now / (i % 2 ? -700 : 900)) + i;
+        gg.fillStyle(i % 2 ? 0xc8862a : 0xe0a23a, 0.96 * f);
+        for (let k = 0; k < 8; k++) {
+          const a = spin + (k / 8) * TAU;
+          gg.fillTriangle(px + Math.cos(a - 0.24) * r, cy + Math.sin(a - 0.24) * r, px + Math.cos(a + 0.24) * r, cy + Math.sin(a + 0.24) * r, px + Math.cos(a) * (r + 2.8 * d), cy + Math.sin(a) * (r + 2.8 * d));
+        }
+        gg.fillCircle(px, cy, r);
+        gg.fillStyle(0x4a2f14, 0.9 * f).fillCircle(px, cy, r * 0.36);
+        gg.lineStyle(0.9 * d, 0xffe6a6, 0.8 * f).strokeCircle(px, cy, r * 0.7);
+      });
+      return true;
+    }
+    case "borealis-aura": {
+      // Curtains of light: rays stand round a ring of light on the ice,
+      // each swaying and rising at its own pace, green at the foot and
+      // violet at the crest.
+      const k = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(now / 1100);
+      g.fillStyle(0x0f3a4a, 0.22).fillEllipse(x, y, 108, groundHeight(108));
+      g.lineStyle(1.6, 0x4dffb8, 0.55 + 0.2 * k).strokeEllipse(x, y, 100, groundHeight(100));
+      ring(12, 48, 19, 9000, (gg, px, py, i, _a, d, f) => {
+        const h = (24 + 14 * (reduced ? 0.5 : Math.sin(now / 520 + i * 1.7) * 0.5 + 0.5)) * d,
+          w = 4.6 * d,
+          lean = reduced ? 0 : Math.sin(now / 800 + i) * 2.6 * d;
+        gg.fillStyle(0x4dffb8, 0.42 * f).fillTriangle(px - w, py, px + w, py, px + lean, py - h);
+        gg.fillStyle(0xb48cff, 0.36 * f).fillTriangle(px - w * 0.6 + lean * 0.5, py - h * 0.5, px + w * 0.6 + lean * 0.5, py - h * 0.5, px + lean * 1.4, py - h * 1.5);
+        gg.fillStyle(0xeafff6, 0.8 * f).fillCircle(px, py, 1.1 * d);
+      }, 0);
+      return true;
+    }
     case "winter-aura":
       ring(8, 46, 19, 5200, (gg, px, py, i, _a, d, f) => {
         const s = 4 * d;
@@ -312,6 +380,39 @@ function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) 
       burst(26, (i) => {
         const a = (i / 26) * TAU;
         return { x: x + Math.cos(a) * 34 * sc, y: y + 8 * sc + Math.sin(a) * 12 * sc, vx: Math.cos(a) * rnd(10, 30), vy: -rnd(60, 140), life: rnd(0.6, 1), size: rnd(3, 5) * sc, color: i % 4 ? 0x4a3d72 : 0xffd65b, shape: i % 4 ? "puff" : "spark" };
+      });
+      return true;
+    case "seaside-entrance":
+      // The sandcastle bursts: sand flies, its little flags flutter off,
+      // bubbles rise from the wet sand and a ring of foam spreads.
+      burst(18, (i) => ({ y: y - 4 * sc, vx: rnd(-130, 130), vy: rnd(-230, -90), life: rnd(0.6, 1), size: rnd(2.2, 3.6) * sc, color: [0xf2c98a, 0xe2b06a, 0xfff1c9][i % 3], shape: "pebble", spin: rnd(-8, 8) }));
+      burst(6, (i) => ({ y: y - 30 * sc, vx: (i - 2.5) * 34, vy: -150, life: 1.1, size: 3 * sc, color: i % 2 ? 0xff6a5a : 0x7fe0d8, shape: "confetti", spin: rnd(-10, 10) }));
+      burst(8, (i) => ({ x: x + (i - 3.5) * 9 * sc, y: y + 2 * sc, vx: (i - 3.5) * 16, vy: rnd(-70, -30), life: rnd(0.7, 1.1), size: 3 * sc, color: 0xffffff, shape: "bubble" }));
+      emit({ x, y, vx: 0, vy: 0, life: 0.6, size: 13 * sc, color: 0xffffff, shape: "shock" });
+      return true;
+    case "steamworks-entrance":
+      // A valve opens: steam billows up and out, cogs spin off, sparks
+      // fly and a brass ring rolls out over the ground.
+      // The steam leaves to either side, so the face stays clear.
+      burst(12, (i) => ({ x: x + (i % 2 ? 1 : -1) * rnd(14, 26) * sc, y: y - rnd(0, 14) * sc, vx: (i % 2 ? 1 : -1) * rnd(40, 110), vy: rnd(-110, -40), life: rnd(0.8, 1.3), size: rnd(4, 6) * sc, color: i % 3 ? 0xf4f1e6 : 0xd8d2c0, shape: "puff", grow: 1.8, drag: 1.6, fadeIn: 0.15 }));
+      burst(10, (i) => {
+        const a = (i / 10) * TAU;
+        return { y: y - 18 * sc, vx: Math.cos(a) * 150, vy: Math.sin(a) * 110 - 40, life: 0.8, size: 3.4 * sc, color: i % 2 ? 0xe0a23a : 0xffe6a6, shape: "coin", spin: i % 2 ? 9 : -9 };
+      });
+      burst(8, () => ({ y: y - 10 * sc, vx: rnd(-170, 170), vy: rnd(-200, -60), life: rnd(0.4, 0.7), size: 2.4 * sc, color: 0xffe6a6, shape: "spark" }));
+      emit({ x, y, vx: 0, vy: 0, life: 0.55, size: 12 * sc, color: 0xe0a23a, shape: "shock" });
+      return true;
+    case "borealis-entrance":
+      // Ribbons of light fall from the sky onto the spot, green, ice blue
+      // and violet; a column of light stands where they land and a ring
+      // spreads over the ice, with a drift of stars after it.
+      burst(9, (i) => ({ x: x + (i - 4) * 9 * sc, y: y - 150 * sc, vx: (4 - i) * 4, vy: 330 + (i % 3) * 40, life: 0.42 + (i % 3) * 0.05, size: (6 + (i % 2) * 2) * sc, color: [0x4dffb8, 0x8ff0ff, 0xb48cff][i % 3], shape: "ray" }));
+      emit({ x, y, vx: 0, vy: 0, life: 0.9, size: 16 * sc, color: 0x4dffb8, shape: "beam" });
+      emit({ x, y, vx: 0, vy: 0, life: 0.7, size: 10 * sc, color: 0xb48cff, shape: "beam" });
+      emit({ x, y, vx: 0, vy: 0, life: 0.7, size: 14 * sc, color: 0x8ff0ff, shape: "shock" });
+      burst(14, (i) => {
+        const a = (i / 14) * TAU;
+        return { y: y - 30 * sc, vx: Math.cos(a) * rnd(50, 110), vy: Math.sin(a) * rnd(40, 90) - 30, life: rnd(0.9, 1.4), size: (i % 3 ? 2.6 : 4) * sc, color: [0x4dffb8, 0xb48cff, 0xeafff6][i % 3], shape: "star", spin: i % 2 ? 3 : -3, drag: 1.2 };
       });
       return true;
     case "winter-entrance":
@@ -562,6 +663,102 @@ function baseVictory(
       // The bite that makes it a crescent: the night sky behind it.
       under.fillStyle(0x161a30, fade).fillCircle(mx + mr * 0.5, my - mr * 0.2, mr * 0.85);
       if (chance(10, dt)) emit({ x: x + rnd(-80, 80) * sc, y: y - rnd(70, 140) * sc, vx: 0, vy: rnd(-10, 10), life: rnd(0.8, 1.2), size: 2.4 * sc, color: 0xfff1c2, shape: "star" });
+      return true;
+    }
+    case "seaside-victory": {
+      // The sun sinks behind the fighter, rays fanned over it, and three
+      // lines of waves roll under it.
+      const rise = Math.min(1, t / 0.5);
+      const sy = y - (34 - 14 * Math.min(1, t / 3)) * sc;
+      under.fillStyle(0xff8a4c, 0.22 * fade).fillCircle(x, sy, 58 * sc * rise);
+      under.fillStyle(0xffb347, 0.5 * fade).fillCircle(x, sy, 42 * sc * rise);
+      under.fillStyle(0xffe08a, 0.85 * fade).fillCircle(x, sy, 31 * sc * rise);
+      under.lineStyle(2 * sc, 0xffd36b, 0.5 * fade);
+      for (let i = 0; i < 9; i++) {
+        const a = Math.PI + (i / 8) * Math.PI + Math.sin(t * 0.8) * 0.05,
+          r0 = 46 * sc * rise,
+          r1 = (60 + (i % 2) * 9) * sc * rise;
+        under.lineBetween(x + Math.cos(a) * r0, sy + Math.sin(a) * r0, x + Math.cos(a) * r1, sy + Math.sin(a) * r1);
+      }
+      for (let w = 0; w < 3; w++) {
+        const wy = y + (8 + w * 9) * sc,
+          half = (62 - w * 6) * sc,
+          sway = Math.sin(t * 2.2 + w * 1.3) * 5 * sc;
+        under.fillStyle([0x2f9ec4, 0x4fc3d8, 0x8fe6e8][w], (0.8 - w * 0.1) * fade * rise).fillEllipse(x + sway, wy, half * 2, 10 * sc);
+        under.lineStyle(1.4 * sc, 0xffffff, 0.7 * fade * rise).beginPath();
+        under.arc(x + sway - half * 0.3 + w * 14 * sc, wy - 1 * sc, 9 * sc, Math.PI * 1.15, Math.PI * 1.85);
+        under.strokePath();
+      }
+      if (chance(8, dt)) emit({ x: x + rnd(-50, 50) * sc, y: y + rnd(0, 20) * sc, vx: rnd(-10, 10), vy: rnd(-50, -25), life: rnd(0.8, 1.2), size: 2.6 * sc, color: 0xffffff, shape: "bubble" });
+      return true;
+    }
+    case "steamworks-victory": {
+      // A great clock rises behind the fighter: a toothed brass rim that
+      // turns, a cream face, hands that sweep round to twelve and a chime
+      // of sparks and cogs when they meet.
+      const rise = Math.min(1, t / 0.35),
+        cy = y - 30 * sc,
+        R = 46 * sc * (0.6 + 0.4 * rise);
+      under.fillStyle(0xc8862a, fade);
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * TAU + t * 0.5;
+        under.fillTriangle(x + Math.cos(a - 0.1) * R, cy + Math.sin(a - 0.1) * R, x + Math.cos(a + 0.1) * R, cy + Math.sin(a + 0.1) * R, x + Math.cos(a) * (R + 7 * sc), cy + Math.sin(a) * (R + 7 * sc));
+      }
+      under.fillStyle(0xe0a23a, fade).fillCircle(x, cy, R);
+      under.fillStyle(0xfff6dc, 0.96 * fade).fillCircle(x, cy, R * 0.84);
+      under.lineStyle(1.6 * sc, 0x6a4418, 0.9 * fade);
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * TAU,
+          r0 = R * (i % 3 ? 0.72 : 0.64);
+        under.lineBetween(x + Math.cos(a) * r0, cy + Math.sin(a) * r0, x + Math.cos(a) * R * 0.8, cy + Math.sin(a) * R * 0.8);
+      }
+      const k = Math.min(1, t / 1.1),
+        left = (1 - k) ** 3,
+        minute = -Math.PI / 2 - left * TAU * 2,
+        hour = -Math.PI / 2 - left * TAU * 0.4;
+      under.lineStyle(3.2 * sc, 0x4a2f14, fade).lineBetween(x, cy, x + Math.cos(hour) * R * 0.42, cy + Math.sin(hour) * R * 0.42);
+      under.lineStyle(2.2 * sc, 0x4a2f14, fade).lineBetween(x, cy, x + Math.cos(minute) * R * 0.66, cy + Math.sin(minute) * R * 0.66);
+      under.fillStyle(0xe0a23a, fade).fillCircle(x, cy, 3.4 * sc);
+      if (t >= 1.1 && t - dt < 1.1) {
+        emit({ x, y: cy, vx: 0, vy: 0, life: 0.6, size: 15 * sc, color: 0xffe6a6, shape: "ring" });
+        for (let i = 0; i < 20; i++) {
+          const a = (i / 20) * TAU;
+          emit({ x, y: cy, vx: Math.cos(a) * rnd(110, 190), vy: Math.sin(a) * rnd(110, 190), life: rnd(0.6, 1), size: (i % 2 ? 3.4 : 2.6) * sc, color: i % 2 ? 0xe0a23a : 0xffe6a6, shape: i % 2 ? "coin" : "spark", spin: i % 2 ? 9 : 0, drag: 1.4 });
+        }
+      } else if (t > 1.1 && chance(8, dt)) {
+        const a = rnd(0, TAU);
+        emit({ x: x + Math.cos(a) * R, y: cy + Math.sin(a) * R, vx: Math.cos(a) * 30, vy: Math.sin(a) * 30 - 20, life: 0.5, size: 2.4 * sc, color: 0xffe6a6, shape: "spark" });
+      }
+      return true;
+    }
+    case "borealis-victory": {
+      // Three curtains of light across the sky behind the fighter: each a
+      // row of rays hanging from a line that ripples, brighter where the
+      // ripple passes, with stars coming out between them.
+      const rise = Math.min(1, t / 0.6);
+      const bands = [[0xb48cff, -96, 40, 3.1], [0x4dffb8, -80, 54, 0], [0x8ff0ff, -62, 40, 1.7]] as const;
+      const N = 22;
+      for (const [color, top, h, ph] of bands) {
+        let lx = 0,
+          ly = 0;
+        for (let i = 0; i < N; i++) {
+          const u = i / (N - 1) - 0.5,
+            px = x + u * 164 * sc,
+            py = y + (top + Math.sin(u * 6 + t * 1.6 + ph) * 9 - Math.cos(u * Math.PI) * 16) * sc,
+            len = h * (0.55 + 0.45 * Math.sin(u * 9 + t * 2.3 + ph) ** 2) * sc * rise,
+            edge = 1 - Math.abs(u) * 1.4,
+            a = (0.16 + 0.22 * (0.5 + 0.5 * Math.sin(u * 11 - t * 2 + ph))) * fade * rise * Math.max(0, edge),
+            w = 5.2 * sc;
+          // A ray: full width at the line, thinning to a point below it.
+          under.fillStyle(color, a).fillRect(px - w, py, w * 2, len * 0.35);
+          under.fillTriangle(px - w, py + len * 0.35, px + w, py + len * 0.35, px, py + len);
+          // The line the rays hang from, drawn from ray to ray.
+          if (i) under.lineStyle(2.2 * sc, 0xeafff6, 0.75 * fade * rise * Math.max(0, edge)).lineBetween(lx, ly, px, py);
+          lx = px;
+          ly = py;
+        }
+      }
+      if (chance(12, dt)) emit({ x: x + rnd(-80, 80) * sc, y: y - rnd(40, 110) * sc, vx: 0, vy: rnd(-14, -4), life: rnd(0.6, 1), size: rnd(2, 3.4) * sc, color: [0xeafff6, 0x4dffb8, 0xb48cff][Math.floor(rnd(0, 3))], shape: "star", fadeIn: 0.3 });
       return true;
     }
     case "winter-victory": {

@@ -47,7 +47,14 @@ const migration =
   readFileSync("supabase/migrations/20261118160000_hero_squad.sql", "utf8") +
   readFileSync("supabase/migrations/20261118180000_neon_campus.sql", "utf8") +
   readFileSync("supabase/migrations/20261118190000_stars_stripes.sql", "utf8") +
-  readFileSync("supabase/migrations/20261125130000_starlight_idol.sql", "utf8");
+  readFileSync(
+    "supabase/migrations/20261125130000_starlight_idol.sql",
+    "utf8",
+  ) +
+  readFileSync(
+    "supabase/migrations/20261125140000_seaside_steamworks_borealis.sql",
+    "utf8",
+  );
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -215,8 +222,9 @@ describe("shop catalog", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("has six collections of five pieces, one per appearance slot", () => {
-    expect(LOOK_ITEMS).toHaveLength(30);
+  it("has nine collections of five pieces, one per appearance slot", () => {
+    expect(LOOK_ITEMS).toHaveLength(45);
+    expect(SHOP_BUNDLES).toHaveLength(9);
     for (const b of SHOP_BUNDLES) {
       const slots = b.items
         .map((id) => LOOK_ITEMS.find((i) => i.id === id)!.slot)

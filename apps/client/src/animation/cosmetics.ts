@@ -11,6 +11,9 @@ export type Skin =
   | "festival-colours"
   | "garden-colours"
   | "winter-colours"
+  | "seaside-colours"
+  | "steamworks-colours"
+  | "borealis-colours"
   // Tidewyrm's raid rewards.
   | "seafoam"
   | "pearlscale"
@@ -40,6 +43,9 @@ export const SKINS: Skin[] = [
   "festival-colours",
   "garden-colours",
   "winter-colours",
+  "seaside-colours",
+  "steamworks-colours",
+  "borealis-colours",
   "seafoam",
   "pearlscale",
   "dusk-colors",
@@ -78,6 +84,12 @@ export const TONES: Partial<Record<Skin, { tones: [number, number, number]; keep
   "festival-colours": { tones: [0x5a0d12, 0xd8262a, 0xffd65b], keep: 0.2 },
   "garden-colours": { tones: [0x1f4a1a, 0x6fbf4a, 0xf0ffb0], keep: 0.25 },
   "winter-colours": { tones: [0x2a4a6e, 0x9fcfff, 0xffffff], keep: 0.3 },
+  // Seaside: wet-sand brown up through coral to sunlit sand.
+  "seaside-colours": { tones: [0x7a3f38, 0xff9a76, 0xfff3cf], keep: 0.25 },
+  // Steamworks: dark bronze, polished brass, a pale gold shine.
+  "steamworks-colours": { tones: [0x33200f, 0xb9792e, 0xffe6a6], keep: 0.2 },
+  // Borealis: night ice, the green of the lights, violet at their crest.
+  "borealis-colours": { tones: [0x0a2238, 0x35d6a4, 0xdcc4ff], keep: 0.18 },
   seafoam: { tones: [0x13606b, 0x4fd6c8, 0xe6fbff], keep: 0.25 },
   pearlscale: { tones: [0x1d4f6e, 0x7fd8e6, 0xfff3f8], keep: 0.3 },
   // Twilight violet shading up into lantern gold.

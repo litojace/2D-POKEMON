@@ -810,3 +810,43 @@ it("sells Stars & Stripes as Legendary at 5,500 and its full set at 80%", async 
   await db.exec(sql);
   expect(await economy()).toEqual(bought);
 });
+
+it("sells the Seaside, Steamworks and Borealis Look sets at their tier's prices, and equips their pieces", async () => {
+  const sql = await readFile(
+    "supabase/migrations/20261125140000_seaside_steamworks_borealis.sql",
+    "utf8",
+  );
+  await db.exec("reset role");
+  await db.exec(sql);
+  const rows = await db.query<{ collection: string; total: number; n: number }>(
+    "select collection, sum(price)::int as total, count(*)::int as n from public.arena_shop_items where collection in ('seaside', 'steamworks', 'borealis') and kind = 'look' and not in_picks group by collection order by collection",
+  );
+  expect(rows.rows).toEqual([
+    { collection: "borealis", total: 12000, n: 5 },
+    { collection: "seaside", total: 4800, n: 5 },
+    { collection: "steamworks", total: 7680, n: 5 },
+  ]);
+  await db.exec(
+    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
+  );
+  await login();
+  // One piece on its own, then the rest of its set at 80%.
+  await db.query("select public.arena_buy_item('seaside-aura')");
+  await db.query("select public.arena_buy_item('seaside-set')");
+  await db.query("select public.arena_buy_item('borealis-set')");
+  const bought = await economy();
+  expect(100000 - bought.balance).toBe(900 + (4800 - 900) * 0.8 + 12000 * 0.8);
+  for (const c of ["seaside", "borealis"])
+    expect(
+      bought.owned.filter((id: string) => id.startsWith(c + "-")).sort(),
+    ).toEqual(
+      ["aura", "colours", "entrance", "frame", "victory"].map(
+        (p) => `${c}-${p}`,
+      ),
+    );
+  expect(bought.owned).not.toContain("steamworks-aura");
+  // Running the migration again changes nothing.
+  await db.exec("reset role");
+  await db.exec(sql);
+  expect(await economy()).toEqual(bought);
+});

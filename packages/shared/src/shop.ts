@@ -482,7 +482,10 @@ export type Collection =
   | "cyber"
   | "candy"
   | "galaxy"
-  | "retro";
+  | "retro"
+  | "seaside"
+  | "steamworks"
+  | "borealis";
 export const COLLECTION_NAMES: Record<Collection, string> = {
   ...(Object.fromEntries(
     Object.entries(FASHION_COLLECTIONS).map(([id, c]) => [id, c.name]),
@@ -503,6 +506,9 @@ export const COLLECTION_NAMES: Record<Collection, string> = {
   candy: "Candy",
   galaxy: "Galaxy",
   retro: "Retro Pixel",
+  seaside: "Seaside",
+  steamworks: "Steamworks",
+  borealis: "Borealis",
 };
 
 export interface ChampionSkin {
@@ -1489,11 +1495,42 @@ const LOOK_SETS: [Collection, [string, string][]][] = [
       ["Snow-globe victory", "A snow globe shakes around you"],
     ],
   ],
+  [
+    "seaside",
+    [
+      ["Seaside colors", "Sun-warmed sand and coral"],
+      ["Seashell aura", "Shells and starfish circle on a ring of foam"],
+      ["Sandcastle entrance", "Burst out of a sandcastle"],
+      ["Shell frame", "A rope border of shells and a starfish"],
+      ["Sunset victory", "The sun sets over the waves behind you"],
+    ],
+  ],
+  [
+    "steamworks",
+    [
+      ["Brass colors", "Polished brass and copper"],
+      ["Gear aura", "Brass gears turn round a clock face"],
+      ["Wind-up entrance", "Arrive in a puff of steam and cogs"],
+      ["Cog frame", "A toothed brass border with a wind-up key"],
+      ["Clock-tower victory", "A great clock strikes twelve behind you"],
+    ],
+  ],
+  [
+    "borealis",
+    [
+      ["Borealis colors", "Night ice lit green and violet"],
+      ["Northern-lights aura", "Curtains of light rise around you"],
+      ["Skyfall entrance", "Ribbons of light fall from the sky"],
+      ["Polar-star frame", "A night-sky border under a ribbon of light"],
+      ["Sky-curtain victory", "The whole sky ripples with light behind you"],
+    ],
+  ],
 ];
 /**
- * Collection tiers (migration 031): Candy, Garden and Retro are the standard
- * sets; Winter and Festival are premium (Epic pieces, about 1.6× the price);
- * Galaxy is the showcase set (Mythical pieces, 2.5×). Colours stay one step
+ * Collection tiers (migration 031): Candy, Garden, Retro and Seaside are the
+ * standard sets; Winter, Festival and Steamworks are premium (Epic pieces,
+ * about 1.6× the price); Galaxy and Borealis are the showcase sets (Mythical
+ * pieces, 2.5×). Colours stay one step
  * below the set's other pieces. Pricier, rarer pieces get grander effects.
  */
 export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
@@ -1517,6 +1554,9 @@ export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
   winter: 1,
   festival: 1,
   galaxy: 2,
+  seaside: 0,
+  steamworks: 1,
+  borealis: 2,
 };
 const TIER_PRICE = [1, 1.6, 2.5] as const;
 const lookRarity = (base: Rarity, slug: string, tier: 0 | 1 | 2): Rarity => {
