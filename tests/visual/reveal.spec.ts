@@ -60,10 +60,26 @@ for (const size of SIZES)
           const w = window as any;
           w.__revealShown = false;
           w.__revealBlinks = [] as string[];
+          // The face-down cards as first drawn. They are there only until
+          // the last card turns over (2.3 s for four), and since the Reveal
+          // redraws when the arena has loaded (#456), a slow machine can be
+          // past that before a check made after the heading reads them
+          // (main's full run on 95e4138, 25 Nov: ".vs-back small" not found).
+          w.__revealBacks = null as null | { count: number; names: string[] };
           const tick = () => {
             const c = document.querySelector<HTMLElement>(
               "#arena-overlay .match-reveal",
             );
+            if (c && !w.__revealBacks) {
+              const backs = c.querySelectorAll(".vs-back");
+              if (backs.length)
+                w.__revealBacks = {
+                  count: backs.length,
+                  names: Array.from(backs, (b) =>
+                    (b.querySelector("small")?.textContent ?? "").trim(),
+                  ),
+                };
+            }
             if (c) {
               const o = Number(getComputedStyle(c).opacity);
               const r = c.getBoundingClientRect();
@@ -88,10 +104,15 @@ for (const size of SIZES)
         await expect(card.locator("h2")).toHaveText("The Reveal");
         const cards = card.locator(".rv-card");
         await expect(cards).toHaveCount(m.seats);
-        await expect(card.locator(".vs-back")).toHaveCount(m.seats);
-        await expect(card.locator(".vs-back small").first()).toHaveText(
-          "tester",
-        );
+        // Every card was drawn face down first, each with its player's
+        // name, yours first (read from the first frame that had them).
+        await expect
+          .poll(() => page.evaluate(() => (window as any).__revealBacks))
+          .not.toBeNull();
+        const backs = await page.evaluate(() => (window as any).__revealBacks);
+        expect(backs.count).toBe(m.seats);
+        expect(backs.names[0]).toBe("tester");
+        expect(backs.names.every((n: string) => n.length > 0)).toBe(true);
         await expect(card.locator(".vs-mark")).toHaveCount(m.vs);
         await expect(card.locator(".eyebrow")).toContainText(
           m.mode === "teams"
