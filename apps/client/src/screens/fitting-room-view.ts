@@ -28,8 +28,10 @@ import {
   ALL_BUNDLES,
   isSkinBundle,
   itemListPrice,
+  skinPrice,
   shopPrice,
   type Collection,
+  type ChampionLook,
   type Economy,
   type Rarity,
 } from "../../../../packages/shared/src/shop";
@@ -55,13 +57,14 @@ import {
   TIER_NAMES,
   cosmeticTier,
 } from "../../../../packages/shared/src/cosmetic-tier";
-import { fighterAvatar, scopeIds } from "../fighter-art";
+import { fighterAvatar, fighterPortrait, scopeIds } from "../fighter-art";
 import { creatureSvg, type SkinLook } from "../creature-design";
 import { colourPreview, hasColourPalette } from "../colour-preview";
 import { previewViewBox } from "../shop-preview-layout";
 import { stageLight } from "../stage-light";
 import { avatarImage, framePortrait } from "../portraits";
 import { itemPicture, picksCountdown } from "../shop-ui";
+import { isNewArrival } from "../shop-arrivals";
 import { menuIcon } from "../menu-icons";
 import {
   actionBar,
@@ -129,6 +132,8 @@ export interface FitView {
   /** The animation the stage plays ("ultimate": a Mythical's, at Stage III). */
   action: "idle" | "entrance" | "victory" | "ultimate";
   ownership: "all" | "owned" | "unowned";
+  /** The Skins grid's order: rarest first (the default), or cheapest. */
+  sort: "rarity" | "price";
   rarity: Rarity | "all";
   collection: Collection;
 }
@@ -167,6 +172,7 @@ export function fitView(
     selected: null,
     action: "idle",
     ownership: "all",
+    sort: "rarity",
     rarity: "all",
     collection: SHOP_BUNDLES[0].collection,
     ...extra,
@@ -227,6 +233,24 @@ export function fitItem(id: string): FitItem | undefined {
 }
 const nameOf = (id: string) =>
   fitItem(id)?.name ?? BUNDLE_BY_ID[id]?.name ?? id;
+/**
+ * Does this build know the item? The server's catalogue grows after a build
+ * ships, so ids it sends (Today's picks, what is worn, the raid look) can be
+ * ones this build has no name, picture or price for. Everything that takes
+ * an id from the server asks this first and treats an unknown one as absent
+ * (an unknown pick threw in shopTile and blanked Today,
+ * the tab the Shop opens on).
+ */
+export const knownItem = (id: string | null | undefined): id is string =>
+  !!id && !!fitItem(id);
+/** A fighter's saved skin, if this build knows it (else the original look). */
+export function wornSkin(
+  e: Economy | null,
+  c: CharacterId,
+): ChampionLook | null {
+  const look = e?.looks[c];
+  return look && CHAMPION_SKIN_BY_ID[look.skin] ? look : null;
+}
 
 /**
  * What you own for a slot: bought skins and pieces, and boss rewards you
@@ -270,15 +294,16 @@ export function owns(id: string, d: FitData) {
 }
 /** What a slot holds now (saved), for the fighter on the stage. */
 export function wornIn(slot: FitSlot, view: FitView, d: FitData) {
-  return slot === "champion"
-    ? (d.economy?.looks[view.champion]?.skin ?? null)
-    : (d.look[slot] ?? null);
+  if (slot === "champion")
+    return wornSkin(d.economy, view.champion)?.skin ?? null;
+  const id = d.look[slot];
+  return knownItem(id) ? id : null;
 }
 /** What a slot shows on the stage: the try-on, else what is worn. */
 export function shownIn(slot: FitSlot, view: FitView, d: FitData) {
-  return slot in view.tryOn
-    ? (view.tryOn[slot] ?? null)
-    : wornIn(slot, view, d);
+  if (!(slot in view.tryOn)) return wornIn(slot, view, d);
+  const id = view.tryOn[slot] ?? null;
+  return id && !knownItem(id) ? wornIn(slot, view, d) : id;
 }
 /** The highest Awakening stage you have reached with a Mythical. */
 export function reachedStage(id: string, e: Economy | null) {
@@ -290,7 +315,7 @@ export function reachedStage(id: string, e: Economy | null) {
 function stageOf(id: string, view: FitView, d: FitData) {
   if (CHAMPION_SKIN_BY_ID[id]?.rarity !== "mythical") return 1;
   if (view.stage) return view.stage;
-  const worn = d.economy?.looks[view.champion];
+  const worn = wornSkin(d.economy, view.champion);
   return worn?.skin === id ? worn.stage : reachedStage(id, d.economy);
 }
 /** The whole outfit on the stage: equipped things plus every try-on. */
@@ -299,12 +324,11 @@ export function stageOutfit(view: FitView, d: FitData) {
   const skin: SkinLook | null = skinId
     ? { skin: skinId, stage: stageOf(skinId, view, d) }
     : null;
-  const look: RaidLoadout = { ...d.look };
+  const look: RaidLoadout = {};
   for (const [slot] of FIT_SLOTS) {
-    if (slot === "champion" || !(slot in view.tryOn)) continue;
-    const id = view.tryOn[slot];
+    if (slot === "champion") continue;
+    const id = shownIn(slot, view, d);
     if (id) look[slot] = id as never;
-    else delete look[slot];
   }
   return { skin, look };
 }
@@ -329,9 +353,9 @@ export function pendingChanges(view: FitView, d: FitData): FitChange[] {
     if (!(slot in view.tryOn)) continue;
     const to = view.tryOn[slot] ?? null;
     const from = wornIn(slot, view, d);
-    if (to && !owns(to, d)) continue;
+    if (to && (!owns(to, d) || !knownItem(to))) continue;
     if (slot === "champion") {
-      const worn = d.economy.looks[view.champion];
+      const worn = wornSkin(d.economy, view.champion);
       if (to) {
         // A Mythical can be saved at any stage you have reached.
         const stage = Math.min(
@@ -452,12 +476,22 @@ const starsOf = (id: string, d: FitData) =>
   frameStars(id, bossClears(d.progress));
 function pictureOf(id: string, view: FitView, d: FitData, scope: string) {
   const skin = CHAMPION_SKIN_BY_ID[id];
+  // A frame goes round a portrait: yours, as on the stage and everywhere
+  // players see you. (It was an empty ring.)
+  if (!skin && fitItem(id)?.slot === "frame")
+    // With its tier in the markup, as cosmeticPicture writes it: the edge
+    // and halo are right from the first frame, before the preview attaches.
+    return framePortrait(avatarImage(d.avatar), id, starsOf(id, d)).replace(
+      /data-frame-stars="(\d+)"/,
+      (all, stars) => `${all} data-tier="${cosmeticTier(id, Number(stars))}"`,
+    );
   return itemPicture(
     id,
     skin?.champion ?? view.champion,
     scope,
     skin ? stageOf(id, { ...view, stage: undefined }, d) : 1,
     starsOf(id, d),
+    true,
   );
 }
 /** A still of a fighter in a look, framed like the live rig. */
@@ -492,6 +526,9 @@ function stageMarkup(view: FitView, d: FitData) {
   const e = d.economy;
   const outfit = stageOutfit(view, d);
   const selected = view.selected ? fitItem(view.selected) : undefined;
+  // Something picked that this build doesn't know isn't on the stage.
+  if (view.selected && !selected && !BUNDLE_BY_ID[view.selected])
+    view = { ...view, selected: null };
   const frameView = selected?.slot === "frame";
   const name = CHARACTERS[view.champion].name;
   const palette = outfit.skin ? "" : (outfit.look.skin ?? "");
@@ -607,7 +644,14 @@ function stageMarkup(view: FitView, d: FitData) {
     : (info?.source ?? (outfit.skin ? "" : `${name} · original look`));
   const rarity =
     focus && !set ? rarityTag(rarityOf(focus, starsOf(focus, d))) : "";
-  return `<section class="ui-split-stage fit-stage${frameView ? " is-frame" : ""}" style="--el:${elVar(view.champion)}" aria-label="Try-on stage" data-fit-region="stage">${live}${plays ? `<div class="fit-stage-top">${plays}</div>` : ""}<div class="fit-stage-info"><span class="fit-row">${rarity}<span class="ui-note">${state}</span></span><b class="fit-stage-name">${esc(title)}</b>${sub ? `<small class="ui-note fit-stage-sub">${esc(sub)}</small>` : ""}${extra}${compare || awaken ? `<span class="fit-row fit-stage-tools">${compare}${awaken}</span>` : ""}${awakenNote}</div></section>`;
+  // The stage dresses up with what stands on it: the item in focus, else
+  // the skin worn (fitting-room.css, "the stage by rarity").
+  const stageRarity = set
+    ? ""
+    : focus
+      ? rarityOf(focus, starsOf(focus, d))
+      : "";
+  return `<section class="ui-split-stage fit-stage${frameView ? " is-frame" : ""}" style="--el:${elVar(view.champion)}"${stageRarity ? ` data-rarity="${stageRarity}"` : ""} aria-label="Try-on stage" data-fit-region="stage">${live}${plays ? `<div class="fit-stage-top">${plays}</div>` : ""}<div class="fit-stage-info"><span class="fit-row">${rarity}<span class="ui-note">${state}</span></span><b class="fit-stage-name">${esc(title)}</b>${sub ? `<small class="ui-note fit-stage-sub">${esc(sub)}</small>` : ""}${extra}${compare || awaken ? `<span class="fit-row fit-stage-tools">${compare}${awaken}</span>` : ""}${awakenNote}</div></section>`;
 }
 export function awakeningNote(id: string, e: Economy | null) {
   if (e?.mythicTesting) return "All stages unlocked for testing.";
@@ -652,7 +696,9 @@ function headMarkup(view: FitView, d: FitData) {
 function shopTile(id: string, view: FitView, d: FitData) {
   const e = d.economy!;
   const skin = CHAMPION_SKIN_BY_ID[id];
-  const item = fitItem(id)!;
+  const item = fitItem(id);
+  // An id this build doesn't know (see knownItem): no tile.
+  if (!item) return "";
   const worn = wornFor(id, d);
   let foot: string;
   let footKind: "default" | "ok" | "trial" | "dim" = "default";
@@ -663,26 +709,74 @@ function shopTile(id: string, view: FitView, d: FitData) {
     foot = `Trial ${trialWins(e, skin!.champion)}/${MYTHIC_TRIAL_WINS} wins`;
     footKind = "trial";
   } else {
-    const p = purchase(id, e)!;
-    foot = price(p.price, p.was);
+    // Known but with no price (a reward, never sold): say so, don't throw.
+    const p = purchase(id, e);
+    foot = p ? price(p.price, p.was) : "Not for sale";
+    if (!p) footKind = "dim";
   }
   return itemTile({
     id,
     art: pictureOf(id, view, d, `fit-${id}`),
     name: item.name,
-    sub: skin ? `${CHARACTERS[skin.champion].name} skin` : SLOT_NAME[item.slot],
+    sub: skin ? skinSub(skin) : SLOT_NAME[item.slot],
     rarity: rarityOf(id),
     foot,
     footKind,
-    corner: id === e.picks.deal && !owns(id, d) ? tag("−20%", "sale") : "",
+    corner: owns(id, d)
+      ? ""
+      : id === e.picks.deal
+        ? tag("−20%", "sale")
+        : isNewArrival(id)
+          ? tag("New", "new")
+          : "",
     pressed: view.selected === id,
     attrs: { "data-slot": item.slot },
   });
 }
+/**
+ * A skin's second line: its collection where it has one (two Wombolder
+ * skins are both "Bulldozer": Hero Squad and Cyber Mecha), else whose it is.
+ */
+const skinSub = (skin: (typeof CHAMPION_SKINS)[number]) =>
+  skin.collection
+    ? `${COLLECTION_NAMES[skin.collection]} · ${CHARACTERS[skin.champion].name}`
+    : `${CHARACTERS[skin.champion].name} skin`;
+/** Rarest first: what a Shop leads with. */
+const RARITY_RANK: Record<RarityName, number> = {
+  mythical: 0,
+  mythic: 0,
+  legendary: 1,
+  epic: 2,
+  rare: 3,
+  common: 4,
+};
+/**
+ * The Skins grid's order. Rarest first, new arrivals leading their rarity,
+ * then the catalogue's order (it used to be the catalogue's order alone:
+ * the 500-coin skins sat in the middle of a fighter's page). Or cheapest
+ * first, at the list price: today's deal doesn't move a skin.
+ */
+export function sortSkins<T extends (typeof CHAMPION_SKINS)[number]>(
+  skins: readonly T[],
+  sort: FitView["sort"],
+  isNew: (id: string) => boolean = isNewArrival,
+): T[] {
+  const fresh = new Map(skins.map((s) => [s.id, isNew(s.id)]));
+  return skins
+    .map((s, i) => ({ s, i }))
+    .sort((x, y) =>
+      sort === "price"
+        ? skinPrice(x.s) - skinPrice(y.s) || x.i - y.i
+        : RARITY_RANK[x.s.rarity] - RARITY_RANK[y.s.rarity] ||
+          Number(fresh.get(y.s.id)) - Number(fresh.get(x.s.id)) ||
+          x.i - y.i,
+    )
+    .map(({ s }) => s);
+}
 /** Is this item worn now (on any fighter for a skin)? */
 function wornFor(id: string, d: FitData) {
   const skin = CHAMPION_SKIN_BY_ID[id];
-  if (skin) return d.economy?.looks[skin.champion]?.skin === id;
+  if (skin) return wornSkin(d.economy, skin.champion)?.skin === id;
   const item = fitItem(id);
   return !!item && item.slot !== "champion" && d.look[item.slot] === id;
 }
@@ -702,7 +796,9 @@ function fighterRow(
   return `<div class="ui-chips fit-fighters" role="group" aria-label="${esc(label)}">${FIGHTERS.map(
     (c) => {
       const m = mark?.(c);
-      return `<button type="button" class="fit-fighter" data-fit-fighter="${c}" aria-pressed="${c === view.champion}" aria-label="${esc(CHARACTERS[c].name + (m ? `, ${m.say}` : ""))}" style="--el:${elVar(c)}">${avatar(fighterAvatar(c, `fit-fighter-${c}`, d.economy?.looks[c] ?? null), { element: CHARACTERS[c].element, size: 34 })}${m?.badge ?? ""}<span>${esc(CHARACTERS[c].name)}</span></button>`;
+      // A picture of each fighter, drawn once (fighterPortrait): the row is
+      // rebuilt on every tap, and eighteen inline fighters cost each time.
+      return `<button type="button" class="fit-fighter" data-fit-fighter="${c}" aria-pressed="${c === view.champion}" aria-label="${esc(CHARACTERS[c].name + (m ? `, ${m.say}` : ""))}" style="--el:${elVar(c)}">${avatar(fighterPortrait(c, wornSkin(d.economy, c)), { element: CHARACTERS[c].element, size: 34 })}${m?.badge ?? ""}<span>${esc(CHARACTERS[c].name)}</span></button>`;
     },
   ).join("")}</div>`;
 }
@@ -712,21 +808,25 @@ function fighterRow(
 function todayBody(view: FitView, d: FitData) {
   const e = d.economy!;
   const countdown = picksCountdown();
-  const deal = e.picks.items.find(
+  // Only the picks this build knows (see knownItem).
+  const known = e.picks.items.filter(knownItem);
+  const deal = known.find(
     (id) =>
       id === e.picks.deal && shopPrice(id, e.owned, e.picks.deal) !== null,
   );
+  const dealPrice = deal ? purchase(deal, e) : null;
+  const dealItem = deal ? fitItem(deal) : undefined;
   let featured = "";
-  if (deal) {
-    const p = purchase(deal, e)!;
-    const item = fitItem(deal)!;
+  if (deal && dealPrice && dealItem) {
+    const p = dealPrice;
+    const item = dealItem;
     const cost = p.locked
       ? `<span class="ui-tile-foot is-trial">Trial ${trialWins(e, CHAMPION_SKIN_BY_ID[deal].champion)}/${MYTHIC_TRIAL_WINS} wins</span>`
       : price(p.price, p.was);
     const skin = CHAMPION_SKIN_BY_ID[deal];
     featured = `<button type="button" class="fit-deal" data-ui-item="${esc(deal)}" data-slot="${esc(item.slot)}" data-rarity="${rarityOf(deal)}" aria-pressed="${view.selected === deal}"><span class="fit-deal-art">${pictureOf(deal, view, d, `fit-deal-${deal}`)}</span><span class="fit-deal-text"><span class="fit-row">${rarityTag(rarityOf(deal))}${tag("20% off today", "sale")}<span class="fit-deal-timer">${timer(`Ends in ${countdown}`)}</span></span><b class="fit-deal-name">${esc(item.name)}</b><small class="ui-note">${esc(`${skin ? `${CHARACTERS[skin.champion].name} skin` : item.source} · ${item.description}`)}</small><span class="fit-deal-price">${cost}</span></span></button>`;
   }
-  const picks = e.picks.items.filter((id) => id !== deal);
+  const picks = featured ? known.filter((id) => id !== deal) : known;
   const bundles = ALL_BUNDLES.filter(
     (b) => shopPrice(b.id, e.owned, null) !== null,
   )
@@ -738,11 +838,14 @@ function todayBody(view: FitView, d: FitData) {
     .slice(0, 3);
   const left = missionCoinsLeft(e);
   const earn = `<div class="fit-earn" role="note"><b>Earn coins</b><span>Win against players <b>+${COINS.pvpWin}</b> · loss <b>+${COINS.pvpLoss}</b></span><span>Raid clear <b>+${COINS.raidClear[3]}</b></span><span>Missions <b>+${MISSION_COINS.easy} / ${MISSION_COINS.medium} / ${MISSION_COINS.hard}</b></span><span class="fit-earn-left">Missions left today: ${price(left)}</span></div>`;
-  return `${featured}${section("Daily picks", timer(`New picks in ${countdown}`))}${grid(
-    picks.map((id) => shopTile(id, view, d)).join(""),
-    3,
-    "fit-picks",
-  )}${bundles.length ? `${section("Bundles", '<small class="ui-note">20% off the pieces you don\'t own</small>')}${bundles.map(({ b }) => bundleRow(b.id, view, d)).join("")}` : ""}${earn}`;
+  const daily = picks.length
+    ? `${section("Daily picks", timer(`New picks in ${countdown}`))}${grid(
+        picks.map((id) => shopTile(id, view, d)).join(""),
+        3,
+        "fit-picks",
+      )}`
+    : "";
+  return `${featured}${daily}${bundles.length ? `${section("Bundles", '<small class="ui-note">20% off the pieces you don\'t own</small>')}${bundles.map(({ b }) => bundleRow(b.id, view, d)).join("")}` : ""}${earn}`;
 }
 /** What a set holds, in a few words. */
 export function setNote(id: string) {
@@ -769,7 +872,10 @@ function bundleRow(id: string, view: FitView, d: FitData, card = false) {
   const set = BUNDLE_BY_ID[id];
   const have = set.items.filter((i) => e.owned.includes(i)).length;
   const p = purchase(id, e);
-  const rarity = isSkinBundle(id) ? rarityOf(set.items[0]) : "epic";
+  // A set is as rare as its rarest piece (Look sets were all "epic").
+  const rarity = set.items
+    .map((i) => rarityOf(i))
+    .reduce((a, b) => (RARITY_RANK[b] < RARITY_RANK[a] ? b : a));
   return `<button type="button" class="fit-bundle" data-ui-item="${esc(id)}" data-rarity="${rarity}" aria-pressed="${view.selected === id}"><span class="fit-bundle-art">${setPreview(
     id,
     view.champion,
@@ -779,7 +885,27 @@ function bundleRow(id: string, view: FitView, d: FitData, card = false) {
       "",
     )}</span><span class="fit-bundle-text"><b class="ui-h">${esc(card ? set.name.replace(/ skins$/i, "") : set.name)}</b><small class="ui-note">${card ? `${have}/${set.items.length} owned` : `${esc(setNote(id))} · ${have} owned`}</small></span><span class="fit-bundle-price">${p ? price(p.price, p.was) : `<span class="ui-tag is-ok">${menuIcon("check")}Complete</span>`}</span></button>`;
 }
-function filters(view: FitView, count: number, rarity: boolean, noun: string) {
+function filters(
+  view: FitView,
+  count: number,
+  rarity: boolean,
+  noun: string,
+  sortable = false,
+) {
+  // One button that says the order and changes it (two orders: no menu).
+  const sort = sortable
+    ? button(view.sort === "price" ? "Cheapest" : "Rarest", {
+        size: "s",
+        icon: "swap",
+        attrs: {
+          "data-fit-sort": view.sort === "price" ? "rarity" : "price",
+          "aria-label":
+            view.sort === "price"
+              ? "Sorted cheapest first. Sort rarest first"
+              : "Sorted rarest first. Sort cheapest first",
+        },
+      })
+    : "";
   const own = segmented(
     (
       [
@@ -803,7 +929,7 @@ function filters(view: FitView, count: number, rarity: boolean, noun: string) {
         "rarity",
       )
     : "";
-  return `<div class="fit-filters">${own}${rare}<small class="ui-note fit-count" role="status">${count} ${count === 1 ? noun : `${noun}s`}</small></div>`;
+  return `<div class="fit-filters${sortable ? " has-sort" : ""}">${own}${sort}${rare}<small class="ui-note fit-count" role="status">${count} ${count === 1 ? noun : `${noun}s`}</small></div>`;
 }
 const ownershipMatch = (id: string, view: FitView, d: FitData) =>
   view.ownership === "all" ||
@@ -830,23 +956,33 @@ function skinsBody(view: FitView, d: FitData) {
         attrs: { "data-ui-section": "collections" },
       }),
     )}`;
-  const skins = CHAMPION_SKINS.filter(
-    (s) =>
-      s.champion === view.champion &&
-      ownershipMatch(s.id, view, d) &&
-      (view.rarity === "all" || s.rarity === view.rarity),
+  // A phone held sideways has one row for the filters: ownership and the
+  // order. Sorted rarest first, a fighter's 18 skins already stand grouped
+  // by rarity, so the rarity chips are left to wider screens.
+  const rarity = d.compact ? "all" : view.rarity;
+  const skins = sortSkins(
+    CHAMPION_SKINS.filter(
+      (s) =>
+        s.champion === view.champion &&
+        ownershipMatch(s.id, view, d) &&
+        (rarity === "all" || s.rarity === rarity),
+    ),
+    view.sort,
   );
-  return `${fighterRow(view, d, "Fighter")}${filters(view, skins.length, true, "skin")}${collectionReward("cyber", view, d)}${
+  // The skins come first; the collection rewards follow them. (Above the
+  // grid they filled a phone's first screen: no skin showed until you
+  // scrolled.)
+  return `${fighterRow(view, d, "Fighter")}${filters(view, skins.length, !d.compact, "skin", true)}${
+    skins.length
+      ? grid(skins.map((s) => shopTile(s.id, view, d)).join(""))
+      : noMatch()
+  }${collectionReward("cyber", view, d)}${
     // The Arcade frame, on the fighters with an Arcade skin.
     CHAMPION_SKINS.some(
       (s) => s.champion === view.champion && s.collection === "arcade",
     )
       ? collectionReward("arcade", view, d)
       : ""
-  }${
-    skins.length
-      ? grid(skins.map((s) => shopTile(s.id, view, d)).join(""))
-      : noMatch()
   }`;
 }
 /**
@@ -1087,7 +1223,7 @@ function wardrobeBody(view: FitView, d: FitData) {
   const noSkins =
     view.slot === "champion" &&
     !CHAMPION_SKINS.some((s) => s.champion === view.champion);
-  const more = `<button type="button" class="ui-tile fit-more" data-fit-more="${noSkins ? "skin" : view.slot}"><span class="ui-tile-art">${menuIcon("shop")}</span><span></span><b class="ui-tile-name">More in the Shop</b><small class="ui-tile-sub">${noSkins ? `No ${esc(fighter)} skins yet` : missing ? `${missing} more ${esc(what)}` : "See what's new"}</small><span class="ui-tile-foot is-dim">Open the Shop →</span></button>`;
+  const more = `<button type="button" class="ui-tile fit-more" data-fit-more="${noSkins ? "skin" : view.slot}"><span class="ui-tile-art">${menuIcon("shop")}</span><span class="ui-rarity is-none"></span><b class="ui-tile-name">More in the Shop</b><small class="ui-tile-sub">${noSkins ? `No ${esc(fighter)} skins yet` : missing ? `${missing} more ${esc(what)}` : "See what's new"}</small><span class="ui-tile-foot is-dim">Open the Shop →</span></button>`;
   const heading =
     view.slot === "champion" ? `${fighter} skins` : SLOT_NAME[view.slot];
   return `${fighterRow(view, d, "Fighter")}${slots}${section(heading, `<small class="ui-note">${items.length + (view.slot === "champion" ? 1 : 0)} owned</small>`)}${grid(plain + tiles + more)}${!items.length ? `<p class="ui-note fit-empty-note">${view.slot === "frame" || view.slot === "aura" ? "Buy pieces in the Shop or earn them from raid bosses." : "Buy pieces in the Shop to wear them here."}</p>` : ""}`;
@@ -1133,7 +1269,8 @@ function shopFoot(view: FitView, d: FitData) {
         : actions(button("Complete", { icon: "check", disabled: true })),
     );
   }
-  const item = fitItem(id)!;
+  const item = fitItem(id);
+  if (!item) return shopFoot({ ...view, selected: null }, d);
   const art = footArt(id, view, d);
   const top = rarityTag(rarityOf(id, starsOf(id, d)));
   if (owns(id, d)) {

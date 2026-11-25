@@ -1047,3 +1047,79 @@ test("the card on the Plaza looks as it does in the Lobby", async ({
   for (const t of TABS)
     expect(plaza[t], `the ${t} tab on the Plaza`).toEqual(lobby[t]);
 });
+
+// A small phone held sideways (iPhone SE, 667 x 375), narrower than the
+// review sizes: the name's rule ended in "…" ("You can change it once
+// ever…") and so did your rating ("Unranked · 1,…") (25 Nov 2026).
+test("the overview reads in full on a 667 px phone: no cut-off words", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 667, height: 375 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await openLobby(page);
+    await page.click("#account-profile");
+    const panel = page.locator(".profile-panel");
+    await expect(panel).toBeVisible();
+    await expect(panel.locator(".pf-mini-row > b").nth(1)).toContainText("·");
+    await panel.evaluate((el) =>
+      Promise.all(el.getAnimations().map((a) => a.finished)),
+    );
+    const cut = await page.evaluate(() =>
+      Array.from(
+        document.querySelectorAll<HTMLElement>(
+          ".profile-panel :is(.pf-name-note, .pf-name-now, .pf-mini-row > *, .pf-tile > *)",
+        ),
+      )
+        .filter(
+          (el) =>
+            el.offsetParent &&
+            // Width for all of them; height too for the rule, which may
+            // wrap (a display font's line box is shorter than its glyphs).
+            (el.scrollWidth > el.clientWidth + 1 ||
+              (el.matches(".pf-name-note") &&
+                el.scrollHeight > el.clientHeight + 1)),
+        )
+        .map((el) => `${el.className}: ${el.textContent}`),
+    );
+    expect(cut).toEqual([]);
+    // The rule and the button still sit inside the name's row.
+    const row = (await panel.locator(".pf-name-row").boundingBox())!;
+    for (const part of [".pf-name-note", ".pf-name-row > .ui-btn"]) {
+      const b = (await panel.locator(part).boundingBox())!;
+      expect(b.y, part).toBeGreaterThanOrEqual(row.y);
+      expect(b.y + b.height, part).toBeLessThanOrEqual(row.y + row.height);
+    }
+    await snap(page, info, "profile-overview-667x375");
+    // Raid trophies: every boss's name whole ("Crag…", "Storm Twi…" before),
+    // and clear of the count beside it. Here and on a wider phone.
+    await page.click('[data-ui-profile-tab="trophies"]');
+    for (const width of [667, 852]) {
+      await page.setViewportSize({ width, height: width === 667 ? 375 : 393 });
+      // The wider phone with its Dynamic Island: the insets narrow the panel.
+      if (width === 852) await setInsets(page, ISLAND);
+      await expect(panel.locator(".pf-trophy")).toHaveCount(7);
+      const names = await panel.locator(".pf-trophy").evaluateAll((tiles) =>
+        tiles
+          .map((t) => {
+            const name = t.querySelector<HTMLElement>(".pf-trophy-name")!;
+            const count = t.querySelector("b")!.getBoundingClientRect();
+            return {
+              name: name.textContent,
+              cut: name.scrollWidth > name.clientWidth,
+              gap: Math.round(count.left - name.getBoundingClientRect().right),
+            };
+          })
+          .filter((t) => t.cut || t.gap < 0),
+      );
+      expect(names, `${width} px`).toEqual([]);
+    }
+    await snap(page, info, "profile-trophies-852x393");
+  } finally {
+    await context.close();
+  }
+});

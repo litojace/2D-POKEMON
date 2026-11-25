@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openLobby, snap } from "./helpers";
+import { openLobby, openPlayPanel, snap } from "./helpers";
 import { shopServer } from "./shop-server";
 
 // Hub redesign phase 2: the Lobby is the first screen after login. The UI
@@ -971,7 +971,7 @@ test("the leader removes a member with Kick, and members may invite too", async 
 
 test("Invite a friend says In party and Invited for friends already asked", async ({
   browser,
-}) => {
+}, info) => {
   const context = await browser.newContext({
     viewport: { width: 844, height: 390 },
     isMobile: true,
@@ -1025,6 +1025,50 @@ test("Invite a friend says In party and Invited for friends already asked", asyn
     await expect(row(asked)).toBeDisabled();
     await expect(row(free)).toContainText("Invite");
     await expect(row(free)).toBeEnabled();
+    // Each friend is the Friends list's row: a portrait with its presence
+    // dot, the name, and the gold button on the right, all in one line and
+    // inside the row (25 Nov 2026: it was a bare name and a grey button).
+    const rows = page.locator("#party-invite-list .ui-row");
+    await expect(rows).toHaveCount(3);
+    const problems = await rows.evaluateAll((list) =>
+      list.flatMap((el) => {
+        const out: string[] = [];
+        const r = el.getBoundingClientRect();
+        const name = el.querySelector(".ui-row-main b")!.textContent;
+        const face = el.querySelector(".fr-avatar");
+        const dot = el.querySelector(".fr-avatar > .ui-status");
+        const button = el.querySelector("button.ui-btn.is-primary");
+        if (!face || !dot || !button) return [`${name}: a part is missing`];
+        for (const [what, part] of [
+          ["portrait", face],
+          ["button", button],
+        ] as const) {
+          const b = part.getBoundingClientRect();
+          if (b.left < r.left || b.right > r.right)
+            out.push(`${name}: ${what} outside`);
+          const off = Math.abs(b.top + b.height / 2 - (r.top + r.height / 2));
+          if (off > 2)
+            out.push(`${name}: ${what} ${off.toFixed(1)} px off centre`);
+        }
+        if (el.scrollWidth > el.clientWidth)
+          out.push(`${name}: the row overflows`);
+        return out;
+      }),
+    );
+    expect(problems).toEqual([]);
+    // Invite, Invited and In party are one width, in one column.
+    const widths = await rows.evaluateAll((list) =>
+      list.map((el) =>
+        Math.round(el.querySelector("button")!.getBoundingClientRect().width),
+      ),
+    );
+    expect(new Set(widths).size, `button widths ${widths}`).toBe(1);
+    // The title is set as a hub panel's is.
+    await expect(page.locator("#dialog .dialog-heading")).toHaveCSS(
+      "text-transform",
+      "uppercase",
+    );
+    await snap(page, info, "party-invite-states");
     expect(errors).toEqual([]);
   } finally {
     await context.close();
@@ -1641,4 +1685,59 @@ test("a skin answer held back until after the Lobby is up still dresses the figh
   await page.evaluate(() => (window as any).__shop.release());
   await expect(art).toHaveAttribute("data-preview-item", "voltkit-stormcrown");
   expect(errors).toEqual([]);
+});
+
+// Join or watch (the mode menu's last row): its one action is the gold main
+// button, as on every other screen, and Close is the hub panels' round
+// button (25 Nov 2026: Join was the dark secondary, Close a square).
+test("Join or watch: Join is the main gold button and Close is round", async ({
+  browser,
+}, info) => {
+  for (const size of [
+    { width: 667, height: 375, phone: true },
+    { width: 1440, height: 900, phone: false },
+  ]) {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      await openLobby(page);
+      await openPlayPanel(page);
+      const look = await page.evaluate(() => {
+        const join = document.getElementById("join")!;
+        const close = document.querySelector<HTMLElement>(
+          ".home-play-drawer .home-panel-close",
+        )!;
+        const drawer = document
+          .querySelector(".home-play-drawer")!
+          .getBoundingClientRect();
+        const j = join.getBoundingClientRect();
+        const c = close.getBoundingClientRect();
+        return {
+          joinGold: getComputedStyle(join).backgroundImage.includes("gradient"),
+          joinInside: j.left >= drawer.left && j.right <= drawer.right,
+          joinHeight: Math.round(j.height),
+          closeRound: getComputedStyle(close).borderTopLeftRadius === "50%",
+          closeSquare: Math.round(c.width) === Math.round(c.height),
+          closeSize: Math.round(c.width),
+        };
+      });
+      const where = `${size.width}x${size.height}`;
+      expect(look.joinGold, where).toBe(true);
+      expect(look.joinInside, where).toBe(true);
+      // A thumb tall on a phone (a desktop's is 42 px, for a mouse).
+      expect(look.joinHeight, where).toBeGreaterThanOrEqual(
+        size.phone ? 44 : 40,
+      );
+      expect(look.closeRound, where).toBe(true);
+      expect(look.closeSquare, where).toBe(true);
+      expect(look.closeSize, where).toBeGreaterThanOrEqual(40);
+      await snap(page, info, `join-or-watch-${where}`);
+    } finally {
+      await context.close();
+    }
+  }
 });

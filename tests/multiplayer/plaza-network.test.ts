@@ -299,3 +299,28 @@ it("tosses a gift box for everyone in your Plaza, one at a time, and its orbs ar
   // A fresh id per toss: a retried request can't take two boxes.
   expect(new Set(giftRefs).size).toBe(4);
 }, 20000);
+
+it("jumps and dashes while the stick is being steered", async () => {
+  // A dragged stick sends up to 20 updates a second. Counted with every
+  // other message, they used up the 10 a second a jump or a dash may send:
+  // one pressed after half a second of steering was dropped, the server
+  // left you on the ground, and your phone pulled you back from the jump.
+  const { connect, ticks } = await setup();
+  const ann = await connect();
+  expect(
+    (await emit(ann.socket, "plaza-join", { character: "voltkit" })).ok,
+  ).toBe(true);
+  await ticks(2);
+  for (let i = 0; i < 15; i++)
+    ann.socket.emit("plaza-input", { dx: 1, dy: i / 100 });
+  ann.socket.emit("plaza-jump", {});
+  await ticks(2);
+  const body = server!.plaza.bodyOf(ann.socket.id!)!;
+  expect(body.air).toBeGreaterThan(0);
+  // And a dash, after more steering in the same second.
+  for (let i = 0; i < 15; i++)
+    ann.socket.emit("plaza-input", { dx: 1, dy: -i / 100 });
+  ann.socket.emit("plaza-dash", { dx: 1, dy: 0 });
+  await ticks(1);
+  expect(server!.plaza.bodyOf(ann.socket.id!)!.dash).toBeGreaterThan(0);
+});

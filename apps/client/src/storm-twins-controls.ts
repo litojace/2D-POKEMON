@@ -1,6 +1,7 @@
 import { healthTrail } from "./raid-health-trail";
 import type { Snapshot } from "@arena/shared";
 import { mirrorTwinFor } from "./ascendant-storm-twins-art";
+import { setHudText } from "./hud-dom";
 let targetId: string | undefined;
 /**
  * Is there a pair of twins to aim at? Their raid, and the Spire's floor 70
@@ -67,7 +68,7 @@ export function renderStormTargets(state: Snapshot, frame: HTMLElement) {
     // Mirror Charge: each button carries its twin's charge (written only when it changes).
     const charge = mirror?.twins.find((t) => t.id === id);
     const label = `Target ${index ? "Crackle" : "Fizz"}${charge && charge.hits < charge.need ? (charge.sign > 0 ? " +" : " \u2212") : ""}`;
-    if (b.textContent !== label) b.textContent = label;
+    setHudText(b, label);
   }
 }
 /** Separate bars show each twin's real health and stagger; the shared thin bar retains phase marks. */

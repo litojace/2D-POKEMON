@@ -110,7 +110,40 @@ window.fetch=async(input,init)=>{
         );
         await expect(tile).toHaveCount(1);
         await expect(tile.locator(".raid-cosmetic-preview")).toHaveCount(1);
-        await expect(tile.locator("svg, img")).toHaveCount(0);
+        // The item itself is what shows. An effect is drawn round a dim
+        // figure of the fighter, between its two canvases (25 Nov 2026: a
+        // ring on an empty floor said little); a frame goes round your
+        // portrait. No other fighter picture stands in for the item.
+        await expect(
+          tile.locator("svg, img:not(.fx-subject, .portrait-avatar)"),
+        ).toHaveCount(0);
+        if (suffix === "frame")
+          await expect(
+            tile.locator(".portrait-frame .portrait-avatar"),
+          ).toHaveCount(1);
+        else {
+          const figure = tile.locator(".raid-cosmetic-preview > .fx-subject");
+          await expect(figure).toHaveCount(1);
+          expect(
+            await figure.evaluate((el) => {
+              const s = getComputedStyle(el);
+              const back = el.parentElement!.querySelector(".fx-back")!,
+                front = el.parentElement!.querySelector(".fx-front")!;
+              return (
+                Number(s.opacity) <= 0.6 &&
+                !!(
+                  back.compareDocumentPosition(el) &
+                  Node.DOCUMENT_POSITION_FOLLOWING
+                ) &&
+                !!(
+                  el.compareDocumentPosition(front) &
+                  Node.DOCUMENT_POSITION_FOLLOWING
+                )
+              );
+            }),
+            `${suffix}: a dim figure between the effect's canvases`,
+          ).toBe(true);
+        }
       }
       await page.click('[data-fit-slot="skin"]');
       await expect(

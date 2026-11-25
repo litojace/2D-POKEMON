@@ -836,6 +836,13 @@
   }
   .pf-mini-row > .ui-note {
     white-space: normal;
+    /* Two even lines, not one word left alone on the second. */
+    text-wrap: balance;
+  }
+  /* The value has the line to itself when the note wraps under it:
+     "Unranked · 1,000" was cut to "Unranked · 1,…" at 60% of a 150 px card. */
+  .pf-mini-row > b {
+    max-width: 100%;
   }
 }
 
@@ -896,5 +903,28 @@
   }
   .profile-panel .ui-panel-head [data-ui-profile-tab] {
     padding-inline: 5px;
+  }
+}
+/* The same phone: the name's rule ("You can change it once every 14 days")
+   takes two short lines beside the name instead of ending in "…". */
+@media (max-height: 500px) and (max-width: 740px) {
+  .pf-name-note {
+    white-space: normal;
+    text-wrap: balance;
+    line-height: 1.2;
+  }
+}
+/* Raid trophies on phones: a boss's name reads in full. Four tiles to a
+   row left it 44 px on a 667 px phone ("Crag…", "Snooz…", "Storm…"): three
+   to a row there. On wider phones the name runs closer to the count (the
+   15 px figure needs less room than the desktop's 20 px one). */
+@media (max-height: 500px) {
+  .pf-trophy-name {
+    right: 24px;
+  }
+}
+@media (max-height: 500px) and (max-width: 740px) {
+  .pf-trophies {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
