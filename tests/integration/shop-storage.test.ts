@@ -850,3 +850,30 @@ it("sells the Seaside, Steamworks and Borealis Look sets at their tier's prices,
   await db.exec(sql);
   expect(await economy()).toEqual(bought);
 });
+
+it("sells Birthstone as Common at 500 and its full set at 80%", async () => {
+  const sql = await readFile(
+    "supabase/migrations/20261125150000_birthstone.sql",
+    "utf8",
+  );
+  await db.exec("reset role");
+  await db.exec(sql);
+  const rows = await db.query<{ rarity: string; price: number; n: number }>(
+    "select rarity, price, count(*)::int as n from public.arena_shop_items where collection = 'birthstone' and kind = 'champion' and not in_picks group by rarity, price",
+  );
+  expect(rows.rows).toEqual([{ rarity: "common", price: 500, n: 18 }]);
+  await db.exec(
+    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
+  );
+  await login();
+  await db.query("select public.arena_buy_item('birthstone-skins')");
+  const bought = await economy();
+  expect(100000 - bought.balance).toBe(18 * 500 * 0.8);
+  expect(
+    bought.owned.filter((id: string) => id.endsWith("-birthstone")),
+  ).toHaveLength(18);
+  // Running the migration again changes nothing.
+  await db.exec("reset role");
+  await db.exec(sql);
+  expect(await economy()).toEqual(bought);
+});
