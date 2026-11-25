@@ -5,7 +5,9 @@ import {
   createArenaServer,
 } from "../../apps/server/src/server.js";
 import { SomnaraArena } from "../../apps/server/src/raid-somnara.js";
-import { fakeAccounts } from "../helpers/accounts";
+import { fakeAccounts, fakeSpire } from "../helpers/accounts";
+import { SpireArena } from "../../apps/server/src/spire.js";
+import { SPIRE_PARTY } from "../../packages/shared/src/spire.js";
 import {
   SnapshotDeltaDecoder,
   blankInput,
@@ -58,6 +60,9 @@ async function setup(
     weekly: [],
     bosses: { grumblecrag: { clears: 1, highestPeril: 3 } },
   });
+  accounts.provider.recordRaid = async () => {};
+  accounts.provider.recordActivity = async () => {};
+  fakeSpire(accounts.provider);
   server = createArenaServer({
     autoTick: false,
     reconnectMs: 60_000,
@@ -510,4 +515,133 @@ it("leaving for another room starts that room from a whole snapshot", async () =
   expect(since[0].kind).toBe("whole");
   expect(since.every((s) => s.wire?.code === next.code)).toBe(true);
   expect(since.map((s) => s.kind)).not.toContain("refused");
+});
+
+it("a raid with some raiders on deltas and some on whole snapshots: Snoozaku's dream reaches only the Dreamer, and everyone else sees one raid", async () => {
+  const { connect } = await setup();
+  // Four raiders and two friends watching, every other one an older app.
+  const kinds = [true, false, true, false];
+  const sockets = [];
+  for (const kind of kinds) sockets.push(await connect(kind));
+  const friends = [await connect(false), await connect(true)];
+  const all = [...sockets, ...friends];
+  const takesDeltas = [...kinds, false, true];
+  const followers = all.map(follow);
+  const created = await emit(sockets[0], "create", {
+    name: "Host",
+    mode: "raid",
+    boss: "somnara",
+  });
+  const ids = [created.id!];
+  for (const socket of sockets.slice(1))
+    ids.push(
+      (await emit(socket, "join", { name: "R", code: created.code })).id!,
+    );
+  for (const friend of friends)
+    expect((await emit(friend, "watch", { code: created.code })).ok).toBe(true);
+  const arena = server!.rooms.get(created.code!) as SomnaraArena;
+  arena.start();
+  arena.phase = "playing";
+  const inner = arena as unknown as {
+    started: boolean;
+    nextAttack: number;
+    startAttack(id: string, target: unknown): void;
+  };
+  inner.started = true;
+  inner.nextAttack = Infinity;
+  for (let i = 0; i < 5; i++) server!.step();
+  await wait(80);
+  followers.forEach((f, i) =>
+    expect(f.kinds().at(-1)).toBe(takesDeltas[i] ? "delta" : "whole"),
+  );
+  inner.startAttack("dream-sequence", arena.heroes()[0]);
+  const dream = arena.raid.dream!;
+  const dreamer = ids.indexOf(dream.dreamerId);
+  expect(dreamer).toBeGreaterThanOrEqual(0);
+  const marks = followers.map((f) => f.seen.length);
+  for (let i = 0; i < 6; i++) server!.step();
+  await wait(80);
+  followers.forEach((f, i) => {
+    const during = f.seen.slice(marks[i]);
+    expect(during).toHaveLength(6);
+    for (const s of during) {
+      if (i === dreamer) {
+        expect(s.kind).toBe("whole");
+        expect(s.wire!.raidDream!.runes).toHaveLength(dream.length);
+        expect(s.wire!.n).toBeUndefined();
+      } else {
+        expect(s.kind).toBe(takesDeltas[i] ? "delta" : "whole");
+        expect(JSON.stringify(s.wire)).not.toContain('"runes"');
+      }
+    }
+  });
+  arena.raid.dream = undefined as never;
+  for (let i = 0; i < 6; i++) server!.step();
+  await wait(80);
+  // One raid for everyone: every numbered snapshot two of them both saw is
+  // the same, whichever way it reached them.
+  for (const f of followers) {
+    expect(f.kinds()).not.toContain("refused");
+    expect(f.last().raidDream).toBeUndefined();
+    expect(f.last()).toStrictEqual(followers[0].last());
+    expectSameMatch(followers[1], f, 10);
+  }
+});
+
+it("a Spire climb from the lobby through a cleared floor to the next, as changes", async () => {
+  const { connect } = await setup();
+  const climber = await connect(true);
+  const friend = await connect(false);
+  const fresh = follow(climber),
+    old = follow(friend);
+  const created = await emit(climber, "create", {
+    name: "Climber",
+    mode: "raid",
+    spire: 0,
+  });
+  expect(created.ok).toBe(true);
+  expect((await emit(friend, "watch", { code: created.code })).ok).toBe(true);
+  const a = server!.rooms.get(created.code!) as SpireArena;
+  expect(a).toBeInstanceOf(SpireArena);
+  server!.step();
+  await emit(climber, "ready");
+  await until(() => a.phase === "briefing");
+  await emit(climber, "instructions-ready");
+  for (let i = 0; i < 125 && a.phase !== "playing"; i++) server!.step();
+  expect(a.phase).toBe("playing");
+  // Beat both waves of floor 1 (as spire-network.test.ts does), then on
+  // into floor 2.
+  for (let wave = 0; wave < 2; wave++) {
+    for (let i = 0; i < 40; i++) server!.step();
+    for (const p of a.players) if (p.echo) p.hp = 0;
+    for (const p of a.heroes()) p.hp = 999;
+    for (let i = 0; i < (SPIRE_PARTY.waveGap + 0.3) * 30; i++) server!.step();
+  }
+  for (let i = 0; i < 30 * 30 && a.raid.spire!.floor < 2; i++) {
+    for (const p of a.heroes()) p.hp = 999;
+    server!.step();
+  }
+  expect(a.raid.spire!.floor).toBe(2);
+  for (let i = 0; i < 60; i++) server!.step();
+  await until(
+    () => fresh.last()?.n === old.last()?.n && fresh.last()?.n !== undefined,
+  );
+  // The climber never needed a second whole snapshot: lobby, briefing,
+  // countdown, floor 1, the stairs and floor 2 all came as changes.
+  const kinds = fresh.kinds();
+  expect(kinds).not.toContain("refused");
+  expect(kinds.filter((k) => k === "whole").length).toBeLessThanOrEqual(2);
+  expect(kinds.filter((k) => k === "delta").length).toBeGreaterThan(300);
+  const phases = new Set(fresh.shown().map((w) => w.phase));
+  for (const phase of ["lobby", "briefing", "countdown", "playing"])
+    expect(phases).toContain(phase);
+  const floors = new Set(fresh.shown().map((w) => w.raid?.spire?.floor));
+  expect(floors).toContain(1);
+  expect(floors).toContain(2);
+  // And it is the climb the friend on whole snapshots watched.
+  expectSameMatch(old, fresh, 300);
+  expect(fresh.last()).toStrictEqual(old.last());
+  expect(fresh.events()).toEqual(
+    old.events().filter((id) => fresh.events().includes(id)),
+  );
 });
