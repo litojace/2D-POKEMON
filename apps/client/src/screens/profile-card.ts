@@ -45,25 +45,6 @@ const artSource = (d: ProfileData) => avatarSrc(d.avatar);
 /** Where the card's QR code sits (tests read it back from here). */
 export const CARD_QR = { x: 936, y: 346, size: 224 } as const;
 
-/** The biggest font (from `max` down to `min` px) that fits `text` in
- * `width`; at `min` the words are shortened as a last resort. */
-function fitFont(
-  g: CanvasRenderingContext2D,
-  text: string,
-  width: number,
-  weight: number,
-  max: number,
-  min: number,
-) {
-  let size = max;
-  g.font = `${weight} ${size}px system-ui, sans-serif`;
-  while (size > min && g.measureText(text).width > width) {
-    size -= 2;
-    g.font = `${weight} ${size}px system-ui, sans-serif`;
-  }
-  return fit(g, text, width);
-}
-
 export async function drawPlayerCard(
   canvas: HTMLCanvasElement,
   d: ProfileData,
@@ -132,7 +113,7 @@ export async function drawPlayerCard(
     g.fillText(fitFont(g, d.title, 650, 700, 30, 22), 510, 150);
   }
   g.fillStyle = "#ffffff";
-  g.fillText(fitFont(g, d.name, 650, 800, 72, 40), 510, 225);
+  g.fillText(fitFont(g, d.name, 650, 800, 72, 32), 510, 225);
   const { facts } = cardSummary(d);
   const rank = rankLine(d.progress);
   let x = 510;

@@ -578,15 +578,16 @@ test("titles wear on a tap, a refusal says why; a guest can save their account",
     await panel.locator('.pf-title-chip[data-profile-title=""]').focus();
     await page.keyboard.press("ArrowRight");
     await expect(panel.locator(".pf-title-chip").nth(1)).toBeFocused();
-    // Share card: no share sheet here, so the picture downloads.
-    const download = page.waitForEvent("download");
+    // Share card opens the picture (share-card.spec.ts has the rest); no
+    // share sheet here, so Save image downloads it.
     await panel.locator("[data-profile-share]").click();
+    const download = page.waitForEvent("download");
+    await page.locator("[data-sp-save]").click();
     expect((await download).suggestedFilename()).toBe(
       "element-arena-player-card.png",
     );
-    await expect(panel.locator(".pf-status")).toHaveText(
-      "Card saved as a picture; the message is copied.",
-    );
+    await page.locator("[data-sp-close]").click();
+    await expect(page.locator("[data-share-preview]")).toHaveCount(0);
     // A trophy opens that boss's rewards in Raids.
     await panel.locator('[data-ui-profile-tab="trophies"]').click();
     await panel.locator('[data-profile-boss="emberwing"]').click();

@@ -1,9 +1,8 @@
 /* The picture before it is shared or saved (share-preview.ts). Loaded with
    it, only when a picture is shared. */
 .share-preview {
-  padding: max(8px, env(safe-area-inset-top))
-    max(16px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom))
-    max(16px, env(safe-area-inset-left));
+  padding: max(8px, var(--safe-top)) max(16px, var(--safe-right))
+    max(8px, var(--safe-bottom)) max(16px, var(--safe-left));
 }
 /* As wide as the picture can be with the buttons still on screen: the
    card is 1200×630, the hint and the action bar take about 120 px. */
@@ -13,8 +12,8 @@
     100%,
     calc(
       (
-          100dvh - max(8px, env(safe-area-inset-top)) -
-            max(8px, env(safe-area-inset-bottom)) - 122px
+          100dvh - max(8px, var(--safe-top)) - max(8px, var(--safe-bottom)) -
+            122px
         ) *
         1200 / 630 + 24px
     )
@@ -51,4 +50,10 @@
   padding: var(--sp-2) var(--sp-3);
   border-top: 1px solid var(--ui-line);
   background: var(--fill-bar);
+}
+/* One width for every button in the bar (the shared layout rule), wide
+   enough for the longest label. */
+.sp-actions > .ui-btn {
+  min-width: 8.5em;
+  justify-content: center;
 }

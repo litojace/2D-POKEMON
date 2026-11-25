@@ -142,8 +142,7 @@ export async function drawShareCard(
     }
     g.textAlign = "center";
     g.fillStyle = "#ffffff";
-    g.font = "700 30px system-ui, sans-serif";
-    g.fillText(fit(g, p.name, slot - 30), cx, 440);
+    g.fillText(fitFont(g, p.name, slot - 30, 700, 30, 20), cx, 440);
     g.fillStyle = hex(c.color);
     g.font = "600 20px system-ui, sans-serif";
     g.fillText(c.name.toUpperCase(), cx, 470);
@@ -181,6 +180,25 @@ export function fit(g: CanvasRenderingContext2D, text: string, width: number) {
   return `${t}…`;
 }
 
+/** The biggest font (from `max` down to `min` px) that fits `text` in
+ * `width`; at `min` the words are shortened as a last resort. */
+export function fitFont(
+  g: CanvasRenderingContext2D,
+  text: string,
+  width: number,
+  weight: number,
+  max: number,
+  min: number,
+) {
+  let size = max;
+  g.font = `${weight} ${size}px system-ui, sans-serif`;
+  while (size > min && g.measureText(text).width > width) {
+    size -= 2;
+    g.font = `${weight} ${size}px system-ui, sans-serif`;
+  }
+  return fit(g, text, width);
+}
+
 function toBlob(canvas: HTMLCanvasElement) {
   return new Promise<Blob | null>((resolve) => {
     try {
@@ -206,7 +224,8 @@ export async function sharePicture(
   if (!blob) blob = await toBlob(await draw(false));
   if (!blob) return "failed";
   const { showSharePreview } = await import("./share-preview");
-  void showSharePreview({ ...o, blob });
+  // Resolves once the picture is closed.
+  await showSharePreview({ ...o, blob });
   return "shown";
 }
 

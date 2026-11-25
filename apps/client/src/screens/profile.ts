@@ -160,6 +160,8 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     }
     button.disabled = false;
     render();
+    // Back on Share card once the picture closes (render made it anew).
+    focusOn("[data-profile-share]");
   }
 
   /** Open or close the name form (focus goes where you'd type or were). */
