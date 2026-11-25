@@ -26,6 +26,8 @@ interface Particle {
   vy: number;
   vz: number;
   age: number;
+  /** Keep the first visible frame, including a burst received during a hitch. */
+  fresh: boolean;
   life: number;
   size: number;
   color: number;
@@ -45,6 +47,7 @@ interface Decal {
   r: number;
   color: number;
   age: number;
+  fresh: boolean;
   life: number;
   seed: number;
 }
@@ -154,7 +157,7 @@ const emptyStats = (): FxFrameStats => ({
   softCover: 0,
   shrink: 1,
 });
-/** Longest step effects take in one frame (s): Phaser's 5 fps floor. */
+/** Longest motion integration step (s); expiry uses the full elapsed time. */
 export const FX_MAX_STEP = 0.2;
 /** Decorative glows never shrink below this radius factor. */
 const MIN_SHRINK = 0.5;
@@ -236,6 +239,8 @@ export class Fx {
   private wash?: Phaser.GameObjects.Image;
   private ult = { start: 0, until: 0, color: 0xffffff, dark: false };
   private frame = 0;
+  /** Seconds between rendered frames, before Phaser smooths/clamps delta. */
+  private elapsed = 0;
   private used = 0;
   time = 0;
 
@@ -264,6 +269,9 @@ export class Fx {
   }
 
   private begin(time: number) {
+    const gap = time - this.time;
+    this.elapsed =
+      this.frame > 0 && Number.isFinite(gap) && gap > 0 ? gap / 1000 : 0;
     this.time = time;
     this.frame++;
     this.used = 0;
@@ -325,16 +333,15 @@ export class Fx {
     this.current = band;
   }
 
-  private end(_time: number, delta: number) {
-    // Effects age in real time down to 5 fps (Phaser's own floor). Capped at
-    // 50 ms once, they outlived their design on a phone at 5–20 fps (twice
-    // as long at 10 fps) while new casts kept coming: more on screen, slower
-    // frames, longer lives again.
-    const dt = Math.min(FX_MAX_STEP, delta / 1000);
-    this.step(dt);
+  private end() {
+    // Births/trails follow wall time, so lifetimes must too. Phaser clamps
+    // delta to 16.7 ms during warm-up/blur and replaces >200 ms stalls with
+    // an older delta: using it lets particles pile up even at Low. Only
+    // motion integration is capped; expiry includes the whole elapsed gap.
+    this.step(this.elapsed);
     this.drawParticles();
     this.at(null);
-    this.drawDecals(dt);
+    this.drawDecals(this.elapsed);
     this.drawUltimate();
     for (let i = this.used; i < this.glows.length; i++)
       this.glows[i].setVisible(false);
@@ -342,7 +349,7 @@ export class Fx {
       this.floorGlows[i].setVisible(false);
     for (let i = this.usedSoft; i < this.softs.length; i++)
       this.softs[i].setVisible(false);
-    this.publishStats(delta / 1000);
+    this.publishStats(this.elapsed);
   }
 
   /** Areas so far are world px²: turn them into screens, and set the
@@ -511,6 +518,7 @@ export class Fx {
         vy: Math.sin(a) * s,
         vz: o.up ? rand(o.up[0], o.up[1]) : 0,
         age: 0,
+        fresh: true,
         life: rand(o.life[0], o.life[1]),
         size: rand(o.size[0], o.size[1]),
         color: colors[(Math.random() * colors.length) | 0],
@@ -534,11 +542,18 @@ export class Fx {
     emit();
   }
 
-  private step(dt: number) {
+  private step(elapsed: number) {
+    const dt = Math.min(FX_MAX_STEP, elapsed);
     const ps = this.particles;
     for (let i = ps.length - 1; i >= 0; i--) {
       const p = ps[i];
-      p.age += dt;
+      // An event can arrive just before this frame. Do not charge a new
+      // burst for the preceding hitch and erase it before it is drawn.
+      if (p.fresh) {
+        p.fresh = false;
+        continue;
+      }
+      p.age += elapsed;
       if (p.age >= p.life) {
         ps[i] = ps[ps.length - 1];
         ps.pop();
@@ -685,9 +700,9 @@ export class Fx {
   }
 
   // ─────────────── Ground marks ───────────────
-  decal(d: Omit<Decal, "age" | "seed">) {
+  decal(d: Omit<Decal, "age" | "seed" | "fresh">) {
     if (this.decals.length > 24) this.decals.shift();
-    this.decals.push({ ...d, age: 0, seed: Math.random() * 1000 });
+    this.decals.push({ ...d, age: 0, fresh: true, seed: Math.random() * 1000 });
   }
 
   private drawDecals(dt: number) {
@@ -695,7 +710,8 @@ export class Fx {
     g.clear();
     for (let i = this.decals.length - 1; i >= 0; i--) {
       const d = this.decals[i];
-      d.age += dt;
+      if (d.fresh) d.fresh = false;
+      else d.age += dt;
       if (d.age >= d.life) {
         this.decals.splice(i, 1);
         continue;

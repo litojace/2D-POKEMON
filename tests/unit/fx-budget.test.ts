@@ -1,4 +1,7 @@
+import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
+const require = createRequire(import.meta.url);
+const TimeStep = require("phaser/src/core/TimeStep.js");
 import { Fx } from "../../apps/client/src/fx-engine";
 
 /** A stand-in scene whose frame events the test can fire itself. */
@@ -16,10 +19,12 @@ function scene(width = 1000, height = 500, zoom = 1) {
     cameras: { main: { zoom, shake() {} } },
     scale: { width, height },
   };
-  const frame = (draw: (fx: Fx) => void, fx: Fx, ms = 16) => {
-    handlers.get("preupdate")!(0);
+  let now = 0;
+  const frame = (draw: (fx: Fx) => void, fx: Fx, ms = 16, delta = ms) => {
+    now += ms;
+    handlers.get("preupdate")!(now, delta);
     draw(fx);
-    handlers.get("postupdate")!(0, ms);
+    handlers.get("postupdate")!(now, delta);
   };
   return { s, frame };
 }
@@ -153,5 +158,121 @@ describe("effects on a slow phone", () => {
     // steps capped at 50 ms they lived two seconds: twice as many at once.
     for (let i = 0; i < 11; i++) frame(() => {}, fx, 100);
     expect(fx.stats.particles).toBe(0);
+  });
+});
+
+describe("particle lifetimes with Phaser's real clock", () => {
+  const burst = (fx: Fx) =>
+    fx.burst({
+      x: 0,
+      y: 0,
+      count: 100,
+      kind: "spark",
+      color: 0xffffff,
+      speed: [10, 20],
+      life: [1, 1],
+      size: [1, 1],
+    });
+
+  it.each([true, false])(
+    "expires on time during warm-up even with focus=%s",
+    (focus) => {
+      const { s, frame } = scene(),
+        fx = new Fx(s);
+      const loop = new TimeStep({}, {});
+      loop.inFocus = focus;
+      // Phaser resetDelta() starts this cooldown at boot and on resume.
+      loop._coolDown = loop.panicMax;
+      loop.lastTime = 0;
+      loop.deltaHistory = Array(loop.deltaSmoothingMax).fill(1000 / 60);
+      let previous = 0,
+        frames = 0,
+        animationMs = 0;
+      loop.callback = (time: number, delta: number) => {
+        animationMs += delta;
+        frame(frames++ === 0 ? burst : () => {}, fx, time - previous, delta);
+        previous = time;
+      };
+      for (let i = 1; i <= 36; i++) loop.step(i * (1000 / 30));
+      // Phaser's warm-up/blur branch clamps to its 60 Hz target. The
+      // particle's one second must not turn into two seconds at 30 fps.
+      expect(animationMs).toBeLessThan(700);
+      expect(fx.stats.particles).toBe(0);
+    },
+  );
+
+  it("bounds a Low particle stream during repeated 250 ms render stalls", () => {
+    const { s, frame } = scene(),
+      fx = new Fx(s);
+    fx.density = 0.35;
+    // One burst each rendered frame: 35 particles every 250 ms, life 1 s.
+    // Four intervals alive plus the new burst, rather than filling the cap.
+    for (let i = 0; i < 40; i++) frame(burst, fx, 250, 1000 / 60);
+    expect(fx.stats.particles).toBeLessThanOrEqual(175);
+    expect(fx.stats.particles).toBeGreaterThan(100);
+  });
+
+  it("shows a new burst after a hitch and retires older particles", () => {
+    const { s, frame } = scene(),
+      fx = new Fx(s);
+    frame(burst, fx);
+    frame(burst, fx, 1500, 1000 / 60);
+    expect(fx.stats.particles).toBe(100);
+    frame(() => {}, fx, 1100, 1000 / 60);
+    expect(fx.stats.particles).toBe(0);
+  });
+
+  it("caps motion integration while age includes the whole stall", () => {
+    const { s, frame } = scene(),
+      fx = new Fx(s);
+    frame(
+      (fx) =>
+        fx.burst({
+          x: 0,
+          y: 0,
+          count: 1,
+          kind: "spark",
+          color: 0xffffff,
+          angle: 0,
+          spread: 0,
+          speed: [100, 100],
+          drag: 0,
+          life: [5, 5],
+          size: [1, 1],
+        }),
+      fx,
+    );
+    frame(() => {}, fx, 1000, 1000 / 60);
+    const p = (fx as unknown as { particles: { age: number; x: number }[] })
+      .particles[0];
+    expect(p.age).toBeCloseTo(1);
+    expect(p.x).toBeCloseTo(20);
+  });
+
+  it("retires a ground mark in wall time too", () => {
+    const { s, frame } = scene();
+    let fills = 0;
+    s.add.graphics = () => {
+      const o: any = new Proxy(
+        {},
+        {
+          get: (_target, key) => () => {
+            if (key === "fillEllipse") fills++;
+            return o;
+          },
+        },
+      );
+      return o;
+    };
+    const fx = new Fx(s);
+    frame(
+      (fx) =>
+        fx.decal({ kind: "wet", x: 0, y: 0, r: 20, color: 0xffffff, life: 1 }),
+      fx,
+    );
+    expect(fills).toBeGreaterThan(0);
+    fills = 0;
+    frame(() => {}, fx, 2000, 1000 / 60);
+    expect(fills).toBe(0);
   });
 });

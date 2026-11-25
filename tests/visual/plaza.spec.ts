@@ -231,22 +231,26 @@ test("you walk where the server says, and Volt Boba is free", async ({
       return Math.abs(mine - srv.x);
     })
     .toBeLessThan(40);
-  // Wait until the server has stopped you too. The key-up reaches it with
-  // the next frame, which the CPU-drawn browser can hold back for a second
-  // under load; teleporting before that left the server walking you east,
-  // away from the truck, and the Volt Boba button never came.
-  let was = NaN;
+  // Wait for the released stick to be played, not merely two equal
+  // positions: a stalled simulation or a collision can be still while a
+  // moving stick remains active or queued.
   await expect
     .poll(
-      async () => {
-        const x = (await server()).x,
-          still = x === was;
-        was = x;
-        return still;
-      },
+      () =>
+        page.evaluate(() => {
+          const w = window as any,
+            visitor = w.__plazaWorld.visitors.get("local");
+          return {
+            moving: !!(visitor.dir.x || visitor.dir.y),
+            queuedMove: visitor.queue.some(
+              (m: any) => m.kind === "stick" && (m.x || m.y),
+            ),
+            clientMoving: w.__plaza.P.sp >= 1,
+          };
+        }),
       { timeout: 15_000, intervals: [500] },
     )
-    .toBe(true);
+    .toEqual({ moving: false, queuedMove: false, clientMoving: false });
   // Volt Boba: walk up to the truck, run faster (free).
   await teleport(page, 1745, 520);
   await expect(page.locator("#pz-interact")).toContainText("Volt Boba", {

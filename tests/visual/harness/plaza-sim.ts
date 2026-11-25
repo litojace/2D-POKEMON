@@ -1,5 +1,6 @@
 // The Plaza server, in the page: the real PlazaWorld with the player in it.
 import { PlazaWorld } from "../../../apps/server/src/plaza";
+import { positionPlazaVisitor } from "./plaza-position";
 import {
   PLAZA,
   PLAZA_EMOTES,
@@ -17,18 +18,7 @@ const placeLines: unknown[] = [];
 w.__plazaWorld = world;
 /** Move the player (tests). */
 w.__plazaPosition = (x: number, y: number) => {
-  const b = world.bodyOf(ME);
-  if (!b) return;
-  Object.assign(b, { x, y });
-  // A jump in place is no step: drop the body's history, as Volt Boba does
-  // (PlazaWorld.boost). Otherwise an input that arrives late (a slow CPU
-  // frame) rewinds to a body from before the move and puts you back where
-  // you were (#418: the Volt Boba button never came).
-  const v = (world as any).visitors.get(ME);
-  if (v) {
-    v.past = [];
-    v.played = [];
-  }
+  positionPlazaVisitor(world, ME, x, y);
 };
 /** Today's quests and TOP DASH as the database would send them. */
 w.__plazaProgress = {
