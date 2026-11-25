@@ -77,3 +77,7 @@ badges only for a live listing), and add the app links to the hero.
       files (only `apps/site/` images and fonts, anchored at the repo root;
       tests pin that other images and the site's code still count); and the
       `scripts/app-store/screenshots.spec.ts` fix as a separate item
+- [ ] QR hand-off (PR #478, `SHARE_SITE` in `apps/client/src/share-link.ts`):
+      send that session the final URL and say whether `?ref=card|result` should
+      land on this page or the game (this page is static and ignores `?ref`;
+      the game is where it can be counted)
