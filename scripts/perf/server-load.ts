@@ -5,7 +5,7 @@
  *   npx tsx scripts/perf/server-load.ts --rooms 10 --mix pvp2,pvp4,raid4
  *   npx tsx scripts/perf/server-load.ts --cycles 8 --rooms 6   # memory soak
  *   npx tsx scripts/perf/server-load.ts --profile host       # uncapped, not capacity
- *   npx tsx scripts/perf/server-load.ts --delta on           # snapshots as changes
+ *   npx tsx scripts/perf/server-load.ts --delta off          # whole snapshots, as before deltas
  *
  * Default: Render 1c-2g (1 CPU / 2 GB, Oregon). On Linux, Docker limits
  * only the server; the load generator stays outside. The child verifies
@@ -50,12 +50,13 @@ const OUT = args.get("out");
 const DUMP = args.get("dump");
 const PROFILE = args.get("profile") ?? RENDER_PROFILE;
 /**
- * Snapshots as changes (snapshot-delta.ts): the server's switch is turned
- * on and every simulated player asks for deltas and rebuilds each snapshot
- * from them, as the app does.
+ * Snapshots as changes (snapshot-delta.ts), as in production: every
+ * simulated player asks for deltas and rebuilds each snapshot from them, as
+ * the app does. `--delta off` turns the server's switch off and has the
+ * players ask for nothing, to compare.
  */
-const DELTA = args.get("delta") === "on";
-if (DELTA) process.env.SNAPSHOT_DELTA = "on";
+const DELTA = args.get("delta") !== "off";
+process.env.SNAPSHOT_DELTA = DELTA ? "on" : "off";
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const connections = new Set<Socket>();
 let stopDriving: (() => void) | undefined;
