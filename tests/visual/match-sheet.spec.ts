@@ -147,6 +147,62 @@ function holds(
     );
 }
 
+/**
+ * The PvP recap as a scoreboard card: inside the sheet, a plate per fighter
+ * with every cell one height, each figure ending under its heading, names
+ * whole. Returns what is wrong.
+ */
+const recapProblems = (page: Page) =>
+  page.evaluate(() => {
+    const table = document.querySelector<HTMLElement>("#arena-overlay .recap")!;
+    const box = table.getBoundingClientRect();
+    const sheetBox = table.closest(".overlay-card")!.getBoundingClientRect();
+    const heads = Array.from(table.querySelectorAll("thead th")).map((h) =>
+      h.getBoundingClientRect(),
+    );
+    const problems: string[] = [];
+    if (box.left < sheetBox.left || box.right > sheetBox.right)
+      problems.push("the card leaves the sheet");
+    if (getComputedStyle(table).borderTopWidth === "0px")
+      problems.push("no card edge");
+    for (const row of Array.from(table.querySelectorAll("tbody tr"))) {
+      const cells = Array.from(row.children) as HTMLElement[];
+      const who = cells[0].textContent;
+      const heights = new Set(
+        cells.map((c) => Math.round(c.getBoundingClientRect().height)),
+      );
+      if (heights.size !== 1)
+        problems.push(`${who}: cells of ${[...heights]} px`);
+      cells.forEach((c, i) => {
+        const b = c.getBoundingClientRect();
+        if (b.left < box.left || b.right > box.right)
+          problems.push(`${who}: cell ${i} outside the card`);
+        if (i && Math.abs(b.right - heads[i].right) > 1)
+          problems.push(`${who}: figure ${i} not under its heading`);
+      });
+      // The "you" and MVP tags whole and inside the name's cell, however
+      // long the name is (the name itself may end in an ellipsis).
+      const cell = cells[0].getBoundingClientRect();
+      for (const tag of Array.from(
+        cells[0].querySelectorAll<HTMLElement>("small:not(.who), .mvp"),
+      )) {
+        const t = tag.getBoundingClientRect();
+        if (t.width < 8 || t.left < cell.left || t.right > cell.right - 4)
+          problems.push(`${who}: "${tag.textContent}" tag cut`);
+      }
+      // A name of ordinary letters reads in full where there is room for
+      // it (not twenty capital Ws, the widest a name can be).
+      const name = cells[0].querySelector<HTMLElement>("b")!;
+      if (
+        innerWidth >= 1000 &&
+        !/^W+$/.test(name.textContent ?? "") &&
+        name.scrollWidth > name.clientWidth + 1
+      )
+        problems.push(`${who}: name cut`);
+    }
+    return problems;
+  });
+
 async function start(
   page: Page,
   size: (typeof SIZES)[number],
@@ -253,43 +309,7 @@ for (const size of SIZES) {
         // The recap is a scoreboard card like a raid's (25 Nov 2026): inside
         // the sheet, a plate per fighter with every cell one height, each
         // figure ending under its heading, names whole.
-        const recap = await page.evaluate(() => {
-          const table = document.querySelector<HTMLElement>(
-            "#arena-overlay .recap",
-          )!;
-          const box = table.getBoundingClientRect();
-          const sheetBox = table
-            .closest(".overlay-card")!
-            .getBoundingClientRect();
-          const heads = Array.from(table.querySelectorAll("thead th")).map(
-            (h) => h.getBoundingClientRect(),
-          );
-          const problems: string[] = [];
-          if (box.left < sheetBox.left || box.right > sheetBox.right)
-            problems.push("the card leaves the sheet");
-          if (getComputedStyle(table).borderTopWidth === "0px")
-            problems.push("no card edge");
-          for (const row of Array.from(table.querySelectorAll("tbody tr"))) {
-            const cells = Array.from(row.children) as HTMLElement[];
-            const who = cells[0].textContent;
-            const heights = new Set(
-              cells.map((c) => Math.round(c.getBoundingClientRect().height)),
-            );
-            if (heights.size !== 1)
-              problems.push(`${who}: cells of ${[...heights]} px`);
-            cells.forEach((c, i) => {
-              const b = c.getBoundingClientRect();
-              if (b.left < box.left || b.right > box.right)
-                problems.push(`${who}: cell ${i} outside the card`);
-              if (i && Math.abs(b.right - heads[i].right) > 1)
-                problems.push(`${who}: figure ${i} not under its heading`);
-            });
-            const name = cells[0].querySelector<HTMLElement>("span")!;
-            if (name.scrollWidth > name.clientWidth + 1)
-              problems.push(`${who}: name cut`);
-          }
-          return problems;
-        });
+        const recap = await recapProblems(page);
         expect(recap).toEqual([]);
         await snap(page, info, `pvp-${name}-${label(size)}`);
       }
@@ -301,6 +321,53 @@ for (const size of SIZES) {
       await context.close();
     }
   });
+
+  // Two a side, the longest names the game allows (20 characters) and
+  // four-figure damage: the card still holds every row, and the buttons
+  // stay on screen (the duel above has two short names at zero).
+  if (label(size) === "667x375" || label(size) === "1440x900")
+    test(`PvP teams: four long names and big numbers fit the results at ${label(size)}`, async ({
+      browser,
+    }, info) => {
+      test.setTimeout(120_000);
+      const context = await browser.newContext({
+        viewport: { width: size.width, height: size.height },
+        isMobile: size.phone,
+        hasTouch: size.phone,
+      });
+      try {
+        const page = await context.newPage();
+        const errors = await start(page, size, () =>
+          (window as any).__room("pvp", { mode: "teams", phase: "playing" }),
+        );
+        const overlay = page.locator("#arena-overlay");
+        await push(
+          page,
+          `const names = ["WWWWWWWWWWWWWWWWWWWW", "Maximilian-the-Great", "Bartholomew_Crumpets", "Anastasia Nightshade"];
+           const stats = [[2480, 1975, 6, 4], [1830, 2210, 3, 1], [2764, 1660, 7, 5], [990, 2499, 1, 0]];
+           s.players.forEach((p, i) => { p.name = names[i]; p.team = i % 2; Object.assign(p.stats, { dealt: stats[i][0], received: stats[i][1], kos: stats[i][2], combos: stats[i][3] }); });
+           s.phase = "finished"; s.winner = "me"; s.winnerTeam = 0; s.matchId = "m-teams"; s.teamScores = [3, 2];`,
+        );
+        await expect(overlay).toHaveClass(/\bis-sheet\b/);
+        await expect(overlay.locator(".recap tbody tr")).toHaveCount(4);
+        await expect(overlay.locator(".match-sheet")).toHaveClass(
+          /\bis-victory\b/,
+        );
+        await page.waitForTimeout(300);
+        await snap(page, info, `pvp-teams-${label(size)}`);
+        holds(await sheet(page, ".match-sheet"), size);
+        expect(await recapProblems(page)).toEqual([]);
+        // The content never needs dragging sideways.
+        expect(
+          await overlay
+            .locator(".overlay-card > .panel-scroll")
+            .evaluate((el) => el.scrollWidth - el.clientWidth),
+        ).toBeLessThanOrEqual(0);
+        expect(errors).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
 
   for (const mode of ["raid", "spire"] as const)
     test(`${mode}: the briefing and the results take the whole screen at ${label(size)}`, async ({
