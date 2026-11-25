@@ -20,6 +20,8 @@ export const HALCYRA_BEAKS: Record<string, BeakLook> = {
   "halcyra-hero-squad": { colors: ["#fff8d0", "#f6cf3a", "#8a6a10"] },
   // Archery Ace, green body: warm wood orange.
   "halcyra-neon-campus": { colors: ["#fff1d2", "#ec8f3a", "#7a3a12"] },
+  // Plume Showstar, peacock-teal body under pink plumes: show gold.
+  "halcyra-starlight-idol": { colors: ["#fffbe0", "#ffc94a", "#9a5a12"] },
   // Crow's Nest Ace, indigo body, leather and brass: bone ivory.
   "halcyra-sky-pirates": { colors: ["#ffffff", "#e6d8b8", "#7a6a4a"] },
   // Gale Captain, sky-blue body: icy crystal.

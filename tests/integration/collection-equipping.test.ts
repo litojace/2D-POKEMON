@@ -247,6 +247,9 @@ it("keeps every champion skin equippable through its separate champion slot", as
     "20261118180000_neon_campus.sql",
     // Stars & Stripes (Legendary).
     "20261118190000_stars_stripes.sql",
+    // New items stay out of Today's Picks; Starlight Idol (Epic).
+    "20261125120000_shop_picks_opt_in.sql",
+    "20261125130000_starlight_idol.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   await login(admin);

@@ -11,6 +11,7 @@ import "./modern-viet-legend";
 import "./modern-hero";
 import "./modern-campus";
 import "./modern-stars";
+import "./modern-idol";
 import "./modern-pirates";
 import "./modern-vanguard";
 import "./modern-kit";
@@ -40,7 +41,7 @@ import "./legend-details-stars";
  */
 export type ModernTheme = "campus" | "hero" | "idol" | "viet" | "stars" | "vietlegend" | "pirates" | "vanguard" | "kit";
 /** The Epic collections among them, whose cloth is tailored. */
-const EPIC_THEMES = new Set<ModernTheme>(["campus", "hero", "kit"]);
+const EPIC_THEMES = new Set<ModernTheme>(["campus", "hero", "idol", "kit"]);
 
 /**
  * The Legendary finish: every garment of a Legendary costume is edged in
@@ -185,7 +186,7 @@ export function modernOutfit(
   const epic = EPIC_THEMES.has(theme);
   let tailored = !epic || !back;
   const put = (part: CreaturePart, svg: string, under = false) => {
-    if (!tailored && part === "scarf") {
+    if (!tailored && part === "scarf" && !kit.backTailored) {
       const t = tailorBack(kit, svg);
       if (t !== svg) (tailored = true), (svg = t);
     }
