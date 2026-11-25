@@ -19,6 +19,29 @@ describe("mergeLane", () => {
     expect(r).toMatchObject({ lane: "FAST", reasons: [], docsOnly: false });
   });
 
+  it("the website's images and fonts don't count toward the file limit", () => {
+    const art = Array.from(
+      { length: MAX_FAST_FILES + 10 },
+      (_, i) => `apps/site/img/creatures/c${i}.svg`,
+    );
+    const r = mergeLane([
+      ...art,
+      "apps/site/img/hero-960.avif",
+      "apps/site/fonts/dm-sans-latin-400-normal.woff2",
+      "apps/site/index.html",
+      "apps/site/site.css",
+    ]);
+    expect(r).toMatchObject({ lane: "FAST", reasons: [] });
+  });
+
+  it("the website's pages and code still count", () => {
+    const pages = Array.from(
+      { length: MAX_FAST_FILES + 1 },
+      (_, i) => `apps/site/page-${i}.html`,
+    );
+    expect(mergeLane(pages).lane).toBe("FULL");
+  });
+
   it("docs alone are fast, and say CI runs nothing", () => {
     expect(mergeLane(["docs/a.md", "CLAUDE.md"])).toMatchObject({
       lane: "FAST",

@@ -40,10 +40,13 @@
   --accent: #ffd65b;
   --accent-hi: #ffe58f;
   --accent-ink: #2a1a00;
+  --accent-text: #ffd65b;
   --hero-ink: #ffffff;
   --hero-shade: #0b1020;
   --bar: #0b1020d9;
-  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif-condensed, system-ui, sans-serif;
+  --display:
+    "Barlow Condensed", "Arial Narrow", "Roboto Condensed",
+    sans-serif-condensed, system-ui, sans-serif;
   --body: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --radius: 14px;
   --el-electric: #ffd84a;
@@ -68,19 +71,20 @@
   --dim: #4a5d7e;
   --accent: #ff7a45;
   --accent-hi: #ff9a6b;
-  --accent-ink: #ffffff;
+  --accent-ink: #2a1200;
+  --accent-text: #c2410c;
   --hero-ink: #13223f;
   --hero-shade: #f3f8fd;
   --bar: #f3f8fde6;
-  --el-electric: #c99a00;
-  --el-fire: #e8592a;
-  --el-water: #1e88e5;
-  --el-aura: #1aa7bf;
-  --el-light: #b89600;
-  --el-psychic: #a24fe0;
-  --el-earth: #9a6a31;
-  --el-shadow: #6a4ae0;
-  --el-nature: #3f9a2e;
+  --el-electric: #8a6a00;
+  --el-fire: #c2410c;
+  --el-water: #1565c0;
+  --el-aura: #0e7488;
+  --el-light: #7d6800;
+  --el-psychic: #8a3cc4;
+  --el-earth: #8a5a22;
+  --el-shadow: #5a3ad0;
+  --el-nature: #2f7a22;
   color-scheme: light;
 }
 
@@ -95,6 +99,7 @@
   --accent: #7fe7ff;
   --accent-hi: #b8f3ff;
   --accent-ink: #04161c;
+  --accent-text: #7fe7ff;
   --hero-ink: #ffffff;
   --hero-shade: #07080f;
   --bar: #07080fd9;
@@ -310,6 +315,19 @@ body::before {
   object-position: 50% 40%;
   z-index: -2;
 }
+@media (max-width: 899px) and (orientation: portrait) {
+  .hero-art,
+  .hero-art img {
+    bottom: auto;
+    height: min(75%, 600px);
+    object-position: 46% 50%;
+    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 98%);
+    mask-image: linear-gradient(to bottom, #000 55%, transparent 98%);
+  }
+  .hero {
+    background: var(--hero-shade);
+  }
+}
 .hero::after {
   content: "";
   position: absolute;
@@ -323,13 +341,18 @@ body::before {
       color-mix(in srgb, var(--hero-shade) 10%, transparent) 62%,
       transparent 80%
     ),
-    linear-gradient(to bottom, color-mix(in srgb, var(--hero-shade) 55%, transparent), transparent 22%);
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--hero-shade) 55%, transparent),
+      transparent 22%
+    );
 }
 .hero-in {
   width: 100%;
   max-width: 1180px;
   margin-inline: auto;
-  padding: 0 max(20px, env(safe-area-inset-right, 0px)) 44px max(20px, env(safe-area-inset-left, 0px));
+  padding: 0 max(20px, env(safe-area-inset-right, 0px)) 44px
+    max(20px, env(safe-area-inset-left, 0px));
   display: grid;
   gap: 16px;
   justify-items: start;
@@ -338,7 +361,7 @@ body::before {
   font: 700 0.95rem/1.2 var(--display);
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .hero .eyebrow {
   text-shadow: 0 1px 8px color-mix(in srgb, var(--hero-shade) 80%, transparent);
@@ -409,6 +432,9 @@ body::before {
   .fine {
     display: none;
   }
+  .cta {
+    margin-top: 2px;
+  }
   .hero::after {
     background: linear-gradient(
       to right,
@@ -418,9 +444,25 @@ body::before {
     );
   }
 }
-:root[data-style="raid"] .hero h1 {
-  font-size: clamp(3.2rem, 13vw, 7rem);
-  line-height: 0.92;
+/* The shortest phones sideways (iPhone SE, 375 px tall): title and buttons
+   first, so Play now stays on the first screen. */
+@media (max-height: 420px) and (orientation: landscape) {
+  .hero-in {
+    padding-block: 20px;
+  }
+  .hero h1 {
+    font-size: 2.3rem;
+  }
+  .lede {
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+}
+@media (min-height: 501px) {
+  :root[data-style="raid"] .hero h1 {
+    font-size: clamp(3.2rem, 13vw, 7rem);
+    line-height: 0.92;
+  }
 }
 
 /* ---------- Bands ---------- */
@@ -468,7 +510,7 @@ body::before {
 }
 .facts-row b {
   font: 800 2.6rem/1 var(--display);
-  color: var(--accent);
+  color: var(--accent-text);
   font-variant-numeric: tabular-nums;
 }
 .facts-row span {
@@ -505,7 +547,11 @@ body::before {
   padding: 12px 10px 16px;
   border-radius: var(--radius);
   background:
-    radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--el) 30%, transparent), transparent 62%),
+    radial-gradient(
+      circle at 50% 38%,
+      color-mix(in srgb, var(--el) 30%, transparent),
+      transparent 62%
+    ),
     var(--surface);
   border: 1px solid color-mix(in srgb, var(--el) 30%, var(--line));
 }
@@ -526,7 +572,7 @@ body::before {
   font: 700 0.85rem/1.4 var(--display);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--el);
+  color: color-mix(in srgb, var(--el) 78%, var(--text));
 }
 .role {
   color: var(--dim);
@@ -569,8 +615,8 @@ body::before {
   font: 700 0.95rem/1 var(--display);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  color: var(--accent-text);
+  border: 1px solid color-mix(in srgb, var(--accent-text) 50%, transparent);
   border-radius: 999px;
   padding: 7px 10px 6px;
   white-space: nowrap;
@@ -587,7 +633,8 @@ body::before {
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;
-  padding: 4px max(20px, env(safe-area-inset-right, 0px)) 18px max(20px, env(safe-area-inset-left, 0px));
+  padding: 4px max(20px, env(safe-area-inset-right, 0px)) 18px
+    max(20px, env(safe-area-inset-left, 0px));
   scroll-padding-inline: max(20px, env(safe-area-inset-left, 0px));
   scrollbar-width: thin;
 }
@@ -631,9 +678,28 @@ body::before {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+/* Wide screens: the first boss large (two by two), the other six around it. */
 @media (min-width: 1100px) {
   .bosses {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .boss:first-child {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+  .boss:first-child img {
+    aspect-ratio: auto;
+    height: 100%;
+  }
+  .boss:first-child h3 {
+    font-size: 2.4rem;
+  }
+  .boss:first-child .boss-tx {
+    padding: 80px 20px 20px;
+  }
+  .boss:first-child .epithet,
+  .boss:first-child .trick {
+    font-size: 1rem;
   }
 }
 .boss {
@@ -747,7 +813,11 @@ body::before {
 /* ---------- Mobile apps ---------- */
 .app {
   background:
-    radial-gradient(ellipse at 85% 20%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+    radial-gradient(
+      ellipse at 85% 20%,
+      color-mix(in srgb, var(--accent) 16%, transparent),
+      transparent 60%
+    ),
     var(--bg-alt);
 }
 .stores {
@@ -768,7 +838,7 @@ body::before {
   font: 700 0.85rem/1.2 var(--display);
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .store-n {
   font: 800 2rem/1.1 var(--display);
