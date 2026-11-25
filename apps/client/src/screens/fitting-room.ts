@@ -525,7 +525,8 @@ export function openFittingRoom(
   };
   /** Wear one owned item now (the Shop's Equip). */
   const equip = async (id: string) => {
-    const item = fitItem(id)!;
+    const item = fitItem(id);
+    if (!item) return;
     const skin = CHAMPION_SKIN_BY_ID[id];
     if (skin) {
       const stage =
@@ -543,7 +544,8 @@ export function openFittingRoom(
     }
   };
   const unequip = async (id: string) => {
-    const item = fitItem(id)!;
+    const item = fitItem(id);
+    if (!item) return;
     const skin = CHAMPION_SKIN_BY_ID[id];
     if (skin) {
       await hooks.equipSkin(skin.champion, null);

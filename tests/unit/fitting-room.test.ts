@@ -717,3 +717,86 @@ describe("the stage's animation buttons", () => {
     expect(epic).toMatch(/data-fit-play="victory"[^>]*aria-pressed="true"/);
   });
 });
+
+// A released client keeps running after the catalogue grows: the server can
+// then send ids this build has never heard of (a new skin in Today's picks,
+// worn on a newer device, in the raid look). None of them may throw: Today
+// is the tab the Shop opens on.
+describe("ids this build doesn't know", () => {
+  const NEW = "voltkit-from-the-future";
+  const everyScreen = (d: FitData, extra: Partial<FitView> = {}) => {
+    for (const [section] of SHOP_SECTIONS)
+      fittingRoomMarkup(shop({ section, ...extra }), d);
+    for (const slot of [
+      "champion",
+      "skin",
+      "aura",
+      "entrance",
+      "victory",
+      "frame",
+    ] as const)
+      fittingRoomMarkup(wardrobe({ slot, ...extra }), d);
+  };
+  it("leaves an unknown Today's pick out and keeps the ones it knows", () => {
+    const e = economy({
+      picks: {
+        day: "2026-10-17",
+        items: [NEW, "galaxy-aura", "new-bundle-piece", "mystowl-scholar"],
+        deal: "voltkit-snowcap",
+      },
+    });
+    const body = fittingRoomParts(shop(), data(e)).body;
+    expect(tiles(body)).toEqual(["galaxy-aura", "mystowl-scholar"]);
+    expect(body).not.toContain(NEW);
+  });
+  it("shows no featured deal when the deal is an unknown item", () => {
+    const e = economy({
+      picks: { day: "2026-10-17", items: [NEW, "galaxy-aura"], deal: NEW },
+    });
+    const body = fittingRoomParts(shop(), data(e)).body;
+    expect(body).not.toContain('class="fit-deal"');
+    expect(tiles(body)).toEqual(["galaxy-aura"]);
+    // The known pick keeps its full price: the deal isn't it.
+    expect(purchase("galaxy-aura", e)?.was).toBeUndefined();
+  });
+  it("still draws Today when every pick is unknown", () => {
+    const e = economy({
+      picks: { day: "2026-10-17", items: [NEW, "other-new"], deal: null },
+    });
+    const body = fittingRoomParts(shop(), data(e)).body;
+    expect(tiles(body)).toEqual([]);
+    expect(body).not.toContain("Daily picks");
+    expect(body).toContain("Earn coins");
+  });
+  it("draws every screen with unknown ids owned, worn, awakened and selected", () => {
+    const e = economy({
+      owned: [NEW, "new-aura", "voltkit-snowcap"],
+      picks: { day: "2026-10-17", items: [NEW], deal: NEW },
+      looks: { voltkit: { skin: NEW, stage: 2 } },
+      awakening: { [NEW]: { wins: 3, peril3: false, stage: 2 } },
+    });
+    const d = data(e, {
+      look: { aura: "new-aura", frame: "new-frame" } as never,
+      progress: {
+        cosmetics: ["new-frame"],
+        earned: ["new-aura"],
+      } as unknown as RaidProgress,
+    });
+    expect(() => everyScreen(d)).not.toThrow();
+    expect(() => everyScreen(d, { selected: NEW })).not.toThrow();
+    expect(() =>
+      everyScreen(d, {
+        selected: NEW,
+        tryOn: { champion: NEW, aura: "new-aura" },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      everyScreen({ ...d, low: true }, { selected: NEW }),
+    ).not.toThrow();
+    // An unknown skin worn reads as the original look, never as a raw id.
+    const html = fittingRoomMarkup(wardrobe(), d);
+    expect(html).not.toContain(NEW);
+    expect(html).not.toContain("new-aura");
+    expect(stageOutfit(wardrobe(), d).skin).toBeNull();
+  });
+});
