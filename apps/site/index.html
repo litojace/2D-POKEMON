@@ -63,6 +63,7 @@
       crossorigin
     />
     <link rel="stylesheet" href="site.css" />
+    <script src="site.js" defer></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -160,224 +161,448 @@
               play.
             </p>
           </header>
+          <div class="chips" role="group" aria-label="Filter by element" hidden>
+            <!-- chips:start -->
+            <button
+              type="button"
+              class="chip"
+              data-filter="all"
+              aria-pressed="true"
+            >
+              All
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Electric"
+              aria-pressed="false"
+              style="--el: var(--el-electric)"
+            >
+              <span class="dot" aria-hidden="true"></span>Electric
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Fire"
+              aria-pressed="false"
+              style="--el: var(--el-fire)"
+            >
+              <span class="dot" aria-hidden="true"></span>Fire
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Water"
+              aria-pressed="false"
+              style="--el: var(--el-water)"
+            >
+              <span class="dot" aria-hidden="true"></span>Water
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Aura"
+              aria-pressed="false"
+              style="--el: var(--el-aura)"
+            >
+              <span class="dot" aria-hidden="true"></span>Aura
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Light"
+              aria-pressed="false"
+              style="--el: var(--el-light)"
+            >
+              <span class="dot" aria-hidden="true"></span>Light
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Psychic"
+              aria-pressed="false"
+              style="--el: var(--el-psychic)"
+            >
+              <span class="dot" aria-hidden="true"></span>Psychic
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Earth"
+              aria-pressed="false"
+              style="--el: var(--el-earth)"
+            >
+              <span class="dot" aria-hidden="true"></span>Earth
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Shadow"
+              aria-pressed="false"
+              style="--el: var(--el-shadow)"
+            >
+              <span class="dot" aria-hidden="true"></span>Shadow
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Nature"
+              aria-pressed="false"
+              style="--el: var(--el-nature)"
+            >
+              <span class="dot" aria-hidden="true"></span>Nature
+            </button>
+            <!-- chips:end -->
+          </div>
           <ul class="roster">
-            <li class="mon" style="--el: var(--el-electric)">
-              <img
-                src="img/creatures/voltkit.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Voltkit</h3>
-              <p class="el">Electric</p>
-              <p class="role">Ranged speedster</p>
+            <!-- roster:start -->
+            <li class="mon" data-el="Electric" style="--el: var(--el-electric)">
+              <a
+                class="mon-btn"
+                href="#champion-voltkit"
+                data-champion="voltkit"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/voltkit.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Voltkit</h3>
+                <p class="el">Electric</p>
+                <p class="role">Ranged speedster</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-electric)">
-              <img
-                src="img/creatures/coilemur.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Coilemur</h3>
-              <p class="el">Electric</p>
-              <p class="role">Grappler</p>
+            <li class="mon" data-el="Electric" style="--el: var(--el-electric)">
+              <a
+                class="mon-btn"
+                href="#champion-coilemur"
+                data-champion="coilemur"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/coilemur.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Coilemur</h3>
+                <p class="el">Electric</p>
+                <p class="role">Grappler</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-fire)">
-              <img
-                src="img/creatures/cindrake.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Cindrake</h3>
-              <p class="el">Fire</p>
-              <p class="role">Burst damage</p>
+            <li class="mon" data-el="Fire" style="--el: var(--el-fire)">
+              <a
+                class="mon-btn"
+                href="#champion-cindrake"
+                data-champion="cindrake"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/cindrake.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Cindrake</h3>
+                <p class="el">Fire</p>
+                <p class="role">Burst damage fighter</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-fire)">
-              <img
-                src="img/creatures/pyranda.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Pyranda</h3>
-              <p class="el">Fire</p>
-              <p class="role">Artillery</p>
+            <li class="mon" data-el="Fire" style="--el: var(--el-fire)">
+              <a
+                class="mon-btn"
+                href="#champion-pyranda"
+                data-champion="pyranda"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/pyranda.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Pyranda</h3>
+                <p class="el">Fire</p>
+                <p class="role">Artillery</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-water)">
-              <img
-                src="img/creatures/tidefin.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Tidefin</h3>
-              <p class="el">Water</p>
-              <p class="role">Agile assassin</p>
+            <li class="mon" data-el="Water" style="--el: var(--el-water)">
+              <a
+                class="mon-btn"
+                href="#champion-tidefin"
+                data-champion="tidefin"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/tidefin.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Tidefin</h3>
+                <p class="el">Water</p>
+                <p class="role">Agile assassin</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-water)">
-              <img
-                src="img/creatures/glacelle.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Glacelle</h3>
-              <p class="el">Water</p>
-              <p class="role">Frost controller</p>
+            <li class="mon" data-el="Water" style="--el: var(--el-water)">
+              <a
+                class="mon-btn"
+                href="#champion-glacelle"
+                data-champion="glacelle"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/glacelle.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Glacelle</h3>
+                <p class="el">Water</p>
+                <p class="role">Frost controller</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-aura)">
-              <img
-                src="img/creatures/auralynx.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Auralynx</h3>
-              <p class="el">Aura</p>
-              <p class="role">Counter specialist</p>
+            <li class="mon" data-el="Aura" style="--el: var(--el-aura)">
+              <a
+                class="mon-btn"
+                href="#champion-auralynx"
+                data-champion="auralynx"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/auralynx.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Auralynx</h3>
+                <p class="el">Aura</p>
+                <p class="role">Counter specialist</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-aura)">
-              <img
-                src="img/creatures/halcyra.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Halcyra</h3>
-              <p class="el">Aura</p>
-              <p class="role">Marksman</p>
+            <li class="mon" data-el="Aura" style="--el: var(--el-aura)">
+              <a
+                class="mon-btn"
+                href="#champion-halcyra"
+                data-champion="halcyra"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/halcyra.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Halcyra</h3>
+                <p class="el">Aura</p>
+                <p class="role">Marksman</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-light)">
-              <img
-                src="img/creatures/lumoth.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Lumoth</h3>
-              <p class="el">Light</p>
-              <p class="role">Versatile fighter</p>
+            <li class="mon" data-el="Light" style="--el: var(--el-light)">
+              <a
+                class="mon-btn"
+                href="#champion-lumoth"
+                data-champion="lumoth"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/lumoth.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Lumoth</h3>
+                <p class="el">Light</p>
+                <p class="role">Versatile fighter</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-light)">
-              <img
-                src="img/creatures/sunbara.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Sunbara</h3>
-              <p class="el">Light</p>
-              <p class="role">Support healer</p>
+            <li class="mon" data-el="Light" style="--el: var(--el-light)">
+              <a
+                class="mon-btn"
+                href="#champion-sunbara"
+                data-champion="sunbara"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/sunbara.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Sunbara</h3>
+                <p class="el">Light</p>
+                <p class="role">Support</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-psychic)">
-              <img
-                src="img/creatures/mystowl.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Mystowl</h3>
-              <p class="el">Psychic</p>
-              <p class="role">High-power duelist</p>
+            <li class="mon" data-el="Psychic" style="--el: var(--el-psychic)">
+              <a
+                class="mon-btn"
+                href="#champion-mystowl"
+                data-champion="mystowl"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/mystowl.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Mystowl</h3>
+                <p class="el">Psychic</p>
+                <p class="role">High-power duelist</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-psychic)">
-              <img
-                src="img/creatures/astrabun.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Astrabun</h3>
-              <p class="el">Psychic</p>
-              <p class="role">Blink duelist</p>
+            <li class="mon" data-el="Psychic" style="--el: var(--el-psychic)">
+              <a
+                class="mon-btn"
+                href="#champion-astrabun"
+                data-champion="astrabun"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/astrabun.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Astrabun</h3>
+                <p class="el">Psychic</p>
+                <p class="role">Blink duelist</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-earth)">
-              <img
-                src="img/creatures/terradon.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Terradon</h3>
-              <p class="el">Earth</p>
-              <p class="role">Defensive tank</p>
+            <li class="mon" data-el="Earth" style="--el: var(--el-earth)">
+              <a
+                class="mon-btn"
+                href="#champion-terradon"
+                data-champion="terradon"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/terradon.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Terradon</h3>
+                <p class="el">Earth</p>
+                <p class="role">Defensive tank</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-earth)">
-              <img
-                src="img/creatures/wombolder.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Wombolder</h3>
-              <p class="el">Earth</p>
-              <p class="role">Charger</p>
+            <li class="mon" data-el="Earth" style="--el: var(--el-earth)">
+              <a
+                class="mon-btn"
+                href="#champion-wombolder"
+                data-champion="wombolder"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/wombolder.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Wombolder</h3>
+                <p class="el">Earth</p>
+                <p class="role">Charger</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-shadow)">
-              <img
-                src="img/creatures/duskveil.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Duskveil</h3>
-              <p class="el">Shadow</p>
-              <p class="role">Area control</p>
+            <li class="mon" data-el="Shadow" style="--el: var(--el-shadow)">
+              <a
+                class="mon-btn"
+                href="#champion-duskveil"
+                data-champion="duskveil"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/duskveil.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Duskveil</h3>
+                <p class="el">Shadow</p>
+                <p class="role">Trickster / area control</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-shadow)">
-              <img
-                src="img/creatures/shadopus.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Shadopus</h3>
-              <p class="el">Shadow</p>
-              <p class="role">Stealth assassin</p>
+            <li class="mon" data-el="Shadow" style="--el: var(--el-shadow)">
+              <a
+                class="mon-btn"
+                href="#champion-shadopus"
+                data-champion="shadopus"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/shadopus.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Shadopus</h3>
+                <p class="el">Shadow</p>
+                <p class="role">Stealth assassin</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-nature)">
-              <img
-                src="img/creatures/pangrove.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Pangrove</h3>
-              <p class="el">Nature</p>
-              <p class="role">Armoured burrower</p>
+            <li class="mon" data-el="Nature" style="--el: var(--el-nature)">
+              <a
+                class="mon-btn"
+                href="#champion-pangrove"
+                data-champion="pangrove"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/pangrove.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Pangrove</h3>
+                <p class="el">Nature</p>
+                <p class="role">Armoured burrower</p>
+              </a>
             </li>
-            <li class="mon" style="--el: var(--el-nature)">
-              <img
-                src="img/creatures/mossloth.svg"
-                alt=""
-                width="200"
-                height="202"
-                loading="lazy"
-              />
-              <h3>Mossloth</h3>
-              <p class="el">Nature</p>
-              <p class="role">Time gardener</p>
+            <li class="mon" data-el="Nature" style="--el: var(--el-nature)">
+              <a
+                class="mon-btn"
+                href="#champion-mossloth"
+                data-champion="mossloth"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/mossloth.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Mossloth</h3>
+                <p class="el">Nature</p>
+                <p class="role">Time gardener</p>
+              </a>
             </li>
+            <!-- roster:end -->
           </ul>
+          <p class="hint" hidden>
+            Tap a champion to see their skills, stats and skins.
+          </p>
         </div>
       </section>
 
@@ -774,6 +999,70 @@
         </div>
       </section>
     </main>
+
+    <dialog class="champ" id="champ" aria-labelledby="champ-name">
+      <div class="champ-in">
+        <button type="button" class="champ-x" data-close aria-label="Close">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path
+              d="M6 6l12 12M18 6L6 18"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+        <div class="champ-stage">
+          <div class="champ-ring" aria-hidden="true"></div>
+          <img
+            class="champ-art"
+            id="champ-art"
+            alt=""
+            width="200"
+            height="202"
+          />
+          <div class="champ-nav">
+            <button
+              type="button"
+              class="champ-step"
+              data-step="-1"
+              aria-label="Previous champion"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              class="champ-step"
+              data-step="1"
+              aria-label="Next champion"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+        <div class="champ-info">
+          <p class="champ-el" id="champ-el"></p>
+          <h2 id="champ-name"></h2>
+          <p class="champ-role" id="champ-role"></p>
+          <p class="champ-desc" id="champ-desc"></p>
+          <dl class="stats" id="champ-stats"></dl>
+          <p class="champ-passive" id="champ-passive" hidden></p>
+          <h3 class="champ-h">Skills</h3>
+          <div
+            class="moves"
+            role="tablist"
+            aria-label="Skills"
+            id="champ-tabs"
+          ></div>
+          <div class="move" role="tabpanel" id="champ-move" tabindex="0"></div>
+          <h3 class="champ-h" id="champ-skins-h">Featured skins</h3>
+          <ul class="skins" id="champ-skins"></ul>
+          <a class="btn btn-play champ-play" href="https://parena.litojace.com/"
+            >Play now</a
+          >
+        </div>
+      </div>
+    </dialog>
 
     <footer class="foot">
       <div class="wrap foot-in">

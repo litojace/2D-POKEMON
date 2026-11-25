@@ -81,3 +81,9 @@ badges only for a live listing), and add the app links to the hero.
       send that session the final URL and say whether `?ref=card|result` should
       land on this page or the game (this page is static and ignores `?ref`;
       the game is where it can be counted)
+- DNS (checked read-only via the Cloudflare connector, 25 Nov): litojace.com is a
+  Cloudflare zone. `litojace.com` and `www` point at a Vercel site (also
+  `amatyc`, `pet`); `mathpath` is another Render app; `parena` is a CNAME to
+  element-arena-np34.onrender.com (Render routes it to the static site by host).
+  So the website takes a new subdomain (proposed `arena.litojace.com`), and a
+  cookie on `.litojace.com` would be readable by those other sites.
