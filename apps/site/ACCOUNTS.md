@@ -1,7 +1,27 @@
 # Website accounts and one-tap Play: proposal
 
-Status: **proposal, waiting for the owner.** No sign-in code is written yet
-(CLAUDE.md: accounts and production settings need the owner's go-ahead).
+Status: **decided** (owner, 25 Nov 3:35 PM PT): `elementarenausa.com` is
+bought; the website is at the apex, the game at `play.elementarenausa.com`,
+and one Supabase session cookie on `.elementarenausa.com` gives one-tap Play.
+The code is on branch `site/landing-page`; the production changes wait for
+the owner's approval of the exact list (section "Production changes" in the
+PR).
+
+What was checked:
+
+- `tests/unit/session-cookie.test.ts`: chunking, sign-out clears every
+  chunk, Remember me, torn values, which hosts share.
+- Real Chromium, both hostnames mapped to a local HTTPS server: a session
+  written on `elementarenausa.com` reads back on `play.elementarenausa.com`;
+  signing out on one signs out the other; an unrelated site sees no cookie.
+- supabase-js (auth-js `_autoRefreshTokenTick` → `__loadSession`) reads the
+  session from storage before each refresh, so a website tab and a game tab
+  always refresh with the newest token; two refreshes at the same moment
+  fall inside Supabase's refresh-token reuse interval (10 s by default:
+  keep it).
+- The cookie travels with every request to our hosts. A session is a few
+  KB (2-3 chunks), well under header limits. Never log Cookie headers if an
+  API ever moves under this domain.
 
 The owner asked for: an account area on the website (sign in, change email,
 change password), and a Play button that opens the game already signed in.

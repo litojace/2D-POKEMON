@@ -89,6 +89,23 @@ badges only for a live listing), and add the app links to the hero.
 
 ## Progress (keep current)
 
+Round 3 (owner, 25 Nov 3:35 PM PT: Arena Dusk; bought elementarenausa.com;
+website at the apex, game at play., one session cookie):
+
+- [x] Arena Dusk only; addresses → elementarenausa.com / play.elementarenausa.com
+- [x] Account page `/account/` (sign in, Apple, forgot password, change email,
+      change or set password, sign out; guests told to add an email in game)
+- [x] `packages/shared/src/session-cookie.ts` + `accounts.ts` uses it on
+      elementarenausa.com only; unit tests, real-Chromium cross-host check
+- [x] typecheck, all unit/integration tests, login visual specs (11) pass
+- [ ] Domain session (session_01GGURqQADMUMD98DeB1Czb3) moves the game to
+      play. first; agree who merges first (accounts.ts)
+- [ ] Owner approves the production list (Render site, DNS, Supabase), then
+      create the Static Site, DNS, check HTTPS, sign-in across both hosts
+- [ ] SHARE_SITE → https://elementarenausa.com (small PR; tests in share-qr
+      and share-card.spec)
+- [ ] Later: animated clips of champions' real moves
+
 Round 2 (owner, 25 Nov 3:15 PM PT: motion, interactive champions, an account
 area with one-tap Play, QR to the website):
 
