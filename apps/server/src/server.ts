@@ -2,6 +2,7 @@ import { FighterAppearance, PortraitChoice } from "./fighter-appearance.js";
 import { ServerDiagnostics } from "./diagnostics.js";
 import { PresenceHistory } from "./presence-history.js";
 import { apiClock, apiCors, clientOrigins } from "./api-cors.js";
+import { ClientAddresses, WindowLimits, floodGuard } from "./abuse-limits.js";
 import { ArcadeArena } from "./arcade.js";
 import {
   arcadeWeek,
@@ -319,6 +320,23 @@ export function createArenaServer(
       : null;
   const fighterAppearance = new FighterAppearance(accounts);
   const portraitChoice = new PortraitChoice(accounts);
+  /**
+   * Each client's own address behind the host's proxies, for the limits on
+   * API requests (accounts.ts) and on refused logins below. The log line
+   * shows the proxy chain's shape (how many entries, public or private),
+   * never an address.
+   */
+  const clientAddresses = new ClientAddresses(undefined, (details) =>
+    connectionLog("arena-proxy-chain", details),
+  );
+  app.locals.clientAddresses = clientAddresses;
+  /**
+   * Logins the accounts service refused, per client address: past 20 in a
+   * minute, further tokens from there are refused without asking it, so a
+   * client inventing tokens can't spend the service's allowance for
+   * everyone. A player's renewed login after an expired one is one refusal.
+   */
+  const refusedLogins = new WindowLimits(20, 60000);
   app.use("/api", apiCors(clientOrigins()));
   app.use("/api", apiClock());
   app.use(express.json({ limit: "4kb" }));
@@ -639,7 +657,19 @@ export function createArenaServer(
     try {
       const token = socket.handshake.auth.accessToken;
       if (token) {
-        socket.data.account = await authorize(accounts, token);
+        const from = clientAddresses.ofPublic(
+          socket.handshake.address,
+          socket.handshake.headers["x-forwarded-for"],
+        );
+        if (from && refusedLogins.over(from))
+          throw new AccountError(429, "Too many attempts. Try again shortly.");
+        try {
+          socket.data.account = await authorize(accounts, token);
+        } catch (error) {
+          if (from && error instanceof AccountError && error.status === 401)
+            refusedLogins.take(from);
+          throw error;
+        }
         socket.data.accessToken = token;
       }
       next();
@@ -1579,6 +1609,7 @@ export function createArenaServer(
     } else broadcast(arena);
   }
   io.on("connection", (socket) => {
+    socket.use(floodGuard(() => socket.disconnect(true)));
     claimAccount(socket);
     if (draining || superseded) socket.emit("server-update", updateNotice());
     void loadChatBlocks(socket);
@@ -2399,11 +2430,16 @@ export function createArenaServer(
       leaveQuick("cancel");
       reply(cb, { ok: true });
     });
+    // Each of these asks the accounts service again, so they get a small
+    // allowance of their own (a few menu taps), not the 90 a second of
+    // commands that cost nothing.
+    const practiceChecks = new WindowLimits(10, 10000);
     const withPracticeRoom = async (
       cb: unknown,
       action: (a: Arena, id: string) => void,
     ) => {
-      if (!allowed()) return fail(cb, "Too many requests.");
+      if (!allowed() || !practiceChecks.take(""))
+        return fail(cb, "Too many requests.");
       try {
         socket.data.account = await authorize(
           accounts,
