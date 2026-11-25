@@ -53,9 +53,11 @@ import {
   CHARACTERS,
   blankInput,
   packSnapshot,
+  SnapshotDeltaEncoder,
   MetaTracker,
   type Phase,
   type WireSnapshot,
+  type WireSnapshotDelta,
   practiceOptionsSchema,
   FIGHTER_IDS,
   type Fighter,
@@ -288,6 +290,12 @@ export function createArenaServer(
     supersedeEvery?: number;
     /** How to ask it (fetch); tests pass their own. */
     fetchHealth?: (url: string) => Promise<unknown>;
+    /**
+     * Send battle snapshots as changes to the clients that ask for them
+     * (snapshot-delta.ts). Defaults to the SNAPSHOT_DELTA environment
+     * switch ("on"); off, every client is sent whole snapshots.
+     */
+    snapshotDelta?: boolean;
   } = {},
 ) {
   const connectionLog =
@@ -474,6 +482,33 @@ export function createArenaServer(
   };
   /** What each quiet room was last sent, and at which tick (quietRoom). */
   const idleSent = new WeakMap<Arena, { key: string; tick: number }>();
+  /**
+   * Snapshots as changes (snapshot-delta.ts; network-performance.md section
+   * 21). Per room: its count of snapshots, the last one sent (inside the
+   * encoder), and `synced`, the connections that were sent exactly that one
+   * and so can be sent the next as a delta. Anyone else is sent it whole.
+   */
+  const snapshotDelta =
+    options.snapshotDelta ?? process.env.SNAPSHOT_DELTA === "on";
+  const deltaRooms = new WeakMap<
+    Arena,
+    { n: number; encoder: SnapshotDeltaEncoder; synced: Set<string> }
+  >();
+  const deltaRoom = (arena: Arena) => {
+    let room = deltaRooms.get(arena);
+    if (!room)
+      deltaRooms.set(
+        arena,
+        (room = {
+          n: 0,
+          encoder: new SnapshotDeltaEncoder(),
+          synced: new Set(),
+        }),
+      );
+    return room;
+  };
+  /** Rooms where a client asked for a whole snapshot (`state-full`). */
+  const fullWanted = new WeakSet<Arena>();
   /** Rooms where a socket just joined/resumed/started watching. */
   const metaWanted = new WeakSet<Arena>();
   const metaTracker = (arena: Arena) => {
@@ -485,6 +520,8 @@ export function createArenaServer(
   const joinChannel = (socket: import("socket.io").Socket, arena: Arena) => {
     socket.join(arena.code);
     metaWanted.add(arena);
+    // Whatever it held of this room before, it starts from a whole snapshot.
+    deltaRooms.get(arena)?.synced.delete(socket.id);
   };
   /** Which account plays each fighter (kept after a player leaves). */
   const fighterAccounts = new WeakMap<Arena, Map<string, string>>();
@@ -1521,11 +1558,13 @@ export function createArenaServer(
       metaRev: tracker.rev,
       meta: changed || wanted ? tracker.meta(snapshot.players) : undefined,
     });
+    const resync = fullWanted.delete(arena);
     if (
       quietRoom(arena, wire, periodic) &&
       !snapshot.events.length &&
       !changed &&
-      !wanted
+      !wanted &&
+      !resync
     )
       return;
     // Sampled: measuring every payload would cost as much as sending it.
@@ -1576,6 +1615,12 @@ export function createArenaServer(
     // A PvP lobby hides each side's picks from the others: every side (and
     // the watchers) gets its own copy, built once per side.
     if (picksHidden(arena)) {
+      // Each side's copy differs: nobody holds the room's snapshot.
+      const delta = deltaRooms.get(arena);
+      if (delta) {
+        delta.synced.clear();
+        delta.encoder.reset();
+      }
       const sideOf = (id: string | undefined) => {
         const p = id ? arena.players.find((p) => p.id === id) : undefined;
         return p ? arena.teamOf(p) : -1;
@@ -1605,15 +1650,52 @@ export function createArenaServer(
       diagnostics.broadcast(started);
       return;
     }
-    if (held.size)
-      io.to(arena.code)
-        .except([...held])
-        .emit("state", wire);
+    // Connections that hold the snapshot before this one are sent what
+    // changed; the rest (and every client that never asked for deltas) the
+    // whole snapshot, after which those that asked hold it too.
+    let whole = true;
+    const skipped = [...held];
+    if (snapshotDelta) {
+      const delta = deltaRoom(arena);
+      const members = io.sockets.adapter.rooms.get(arena.code);
+      // Held back, or sent a copy of their own (a catch-up, a dream): they
+      // no longer hold the room's snapshot. Nor does anyone who left.
+      for (const id of delta.synced)
+        if (held.has(id) || !members?.has(id)) delta.synced.delete(id);
+      const joining: string[] = [];
+      let others = 0;
+      for (const id of members ?? [])
+        if (held.has(id) || delta.synced.has(id)) continue;
+        else if (io.sockets.sockets.get(id)?.data.snapshotDelta)
+          joining.push(id);
+        else others++;
+      if (delta.synced.size || joining.length) {
+        wire.n = ++delta.n;
+        const d = delta.encoder.encode(wire);
+        if (!d) delta.synced.clear();
+        else if (delta.synced.size) {
+          const to = [...delta.synced];
+          const message: WireSnapshotDelta = { code: arena.code, n: wire.n, d };
+          // Encoded here, once, before the encoder's snapshot moves on.
+          io.to(to).emit("state-delta", message);
+          skipped.push(...to);
+        }
+        for (const id of joining) delta.synced.add(id);
+      } else delta.encoder.reset();
+      // A whole snapshot nobody is waiting for is not encoded at all.
+      whole = joining.length + others > 0;
+    }
+    if (!whole) {
+      // Everyone here was sent the delta.
+    } else if (skipped.length)
+      io.to(arena.code).except(skipped).emit("state", wire);
     else io.to(arena.code).emit("state", wire);
     for (const { socketId: id, dream } of seats) {
       if (laggingSockets.has(id) && !personal.has(id)) continue;
       io.to(id).emit("state", {
         ...(personal.get(id) ?? wire),
+        // A copy of its own, not the room's numbered snapshot.
+        n: undefined,
         raidDream: dream,
       });
       personal.delete(id);
@@ -1842,6 +1924,11 @@ export function createArenaServer(
   io.on("connection", (socket) => {
     socket.use(floodGuard(() => socket.disconnect(true)));
     guardHandlers(socket);
+    // A client that understands snapshots as changes says so when it
+    // connects; one that does not is sent whole snapshots, as ever.
+    socket.data.snapshotDelta =
+      snapshotDelta &&
+      (socket.handshake.auth as { delta?: unknown } | undefined)?.delta === 1;
     claimAccount(socket);
     if (draining || superseded) socket.emit("server-update", updateNotice());
     void loadChatBlocks(socket);
@@ -2994,6 +3081,20 @@ export function createArenaServer(
         return fail(cb, "Join a room first.");
       const tracker = metaTracker(arena);
       cb({ ok: true, code: arena.code, meta: tracker.meta(arena.players) });
+    });
+    // A client whose delta did not follow what it holds asks for the whole
+    // snapshot; it shows nothing new until then (snapshot-delta.ts).
+    socket.on("state-full", (data: unknown) => {
+      if (!allowed(30)) return;
+      const code =
+        typeof (data as { code?: unknown } | null)?.code === "string"
+          ? (data as { code: string }).code
+          : undefined;
+      const arena = code ? rooms.get(code) : undefined;
+      if (!arena || !socket.rooms.has(arena.code)) return;
+      deltaRooms.get(arena)?.synced.delete(socket.id);
+      // A quiet room sends on its next tick rather than its next beat.
+      fullWanted.add(arena);
     });
     // Round-trip check for the in-battle ping badge: answer at once.
     socket.on("rtt", (_data: unknown, cb: unknown) => {
