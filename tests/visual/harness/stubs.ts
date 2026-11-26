@@ -73,32 +73,38 @@ export function registerSW() {
   return () => {};
 }
 
-/** Always signed in as the harness account. */
-export function createClient() {
+/**
+ * Supabase's sign-in client (supabase-auth.ts makes it with `new`): always
+ * signed in as the harness account.
+ */
+export class AuthClient {
+  constructor() {
+    return fakeAuth();
+  }
+}
+function fakeAuth() {
   const session = {
     access_token: "offline",
     refresh_token: "r",
     user: { id: "11111111-1111-4111-8111-111111111111", is_anonymous: false },
   };
   return {
-    auth: {
-      onAuthStateChange(callback: (event: string, session: unknown) => void) {
-        w.__authChange = callback;
-        return { data: { subscription: { unsubscribe() {} } } };
-      },
-      // A refresh hands out a new token, as Supabase's does (TOKEN_REFRESHED);
-      // window.__refreshes counts them.
-      refreshSession: async () => {
-        w.__refreshes = (w.__refreshes ?? 0) + 1;
-        const fresh = { ...session, access_token: `fresh-${w.__refreshes}` };
-        w.__authChange?.("TOKEN_REFRESHED", fresh);
-        return { data: { session: fresh }, error: null };
-      },
-      getSession: async () => ({ data: { session } }),
-      signOut: async () => ({}),
-      signInWithPassword: async () => ({
-        error: { message: "Offline harness" },
-      }),
+    onAuthStateChange(callback: (event: string, session: unknown) => void) {
+      w.__authChange = callback;
+      return { data: { subscription: { unsubscribe() {} } } };
     },
+    // A refresh hands out a new token, as Supabase's does (TOKEN_REFRESHED);
+    // window.__refreshes counts them.
+    refreshSession: async () => {
+      w.__refreshes = (w.__refreshes ?? 0) + 1;
+      const fresh = { ...session, access_token: `fresh-${w.__refreshes}` };
+      w.__authChange?.("TOKEN_REFRESHED", fresh);
+      return { data: { session: fresh }, error: null };
+    },
+    getSession: async () => ({ data: { session } }),
+    signOut: async () => ({}),
+    signInWithPassword: async () => ({
+      error: { message: "Offline harness" },
+    }),
   };
 }
