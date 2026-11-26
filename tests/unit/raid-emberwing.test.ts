@@ -32,6 +32,7 @@ import {
 import { SKINS, tonePixels } from "../../apps/client/src/animation/cosmetics";
 import {
   drawCollectionAura,
+  drawCollectionEntrance,
   playCollectionEntrance,
   drawCollectionVictory,
 } from "../../apps/client/src/skins/collection-fx";
@@ -466,7 +467,9 @@ it("renders all Emberwing appearance effects and gives both skins distinct palet
   drawCollectionAura(g, "ember-aura", 0, 0, 1800, false);
   expect(JSON.stringify(commands)).not.toBe(before);
   expect(playCollectionEntrance(emit, "firefall", 0, 0, 1)).toBe(true);
-  expect(emit).toHaveBeenCalledTimes(22);
+  expect(emit).toHaveBeenCalledTimes(15);
+  // And it draws over the greeting (a sky lantern drifts down and flares: raid-entrance-fx.ts).
+  expect(drawCollectionEntrance(g, "firefall", 0, 0, 1, 0.6)).toBe(true);
   expect(
     drawCollectionVictory(
       g,

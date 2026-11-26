@@ -181,6 +181,31 @@ Solo Peril 3 clears from before migration 009 (when a self-revive was still poss
 
 Skin, aura, entrance, frame and **victory** are separate slots, equipped independently on a boss's Rewards tab in the Raid Hub, for all fighters. A Victory replaces your champion's own celebration when you win a round or a raid (Rockslide Flex: a pile of rocks rises under you and you flex on top while pebbles bounce away). Every reward is cosmetic: no stat bonuses, so experienced players never make the raid easier. The Bestiary lists every reward with its exact progress.
 
+### The reward entrances (remade 26 Nov)
+
+The owner found the bosses' reward effects outdated (26 Nov), and they were: the
+seven entrances were small particle bursts over the body, over in half a second,
+and several still showed the bosses from before their 14 Nov remake. Each now
+draws over the greeting, behind the fighter, in its boss's look
+(`apps/client/src/skins/raid-entrance-fx.ts`; ids unchanged):
+
+![The seven raid entrances, before and after](raid-entrances.jpg)
+
+| Boss | Entrance | What plays |
+| --- | --- | --- |
+| Storm Twins | Lightning-strike | A gold and an ice-blue bolt strike; the two thunder-jellies bob on their crackling ribbon, then pop |
+| Lumiwick | Firefall | A sky lantern drifts down beside the fighter and flares; two little lanterns float back up |
+| Prismell | Sunburst | A sunbeam through a prism over the head fans into six rainbow beams to the floor |
+| Cragmuff | Mountainborn | The floor cracks with amber light and amber crystals thrust up behind the fighter (with the pebbles) |
+| Tidelotl | Riptide | A wave rears up, curls over and crashes into surf; a pearl floats up in a bubble and pops |
+| Inkpurr | Shadowstep | A drop of ink splats into a pool, a little ink cat with a crescent-moon tail peeks out, two lanterns light |
+| Snoozaku | Dreamdrift | Thought bubbles rise into a dream cloud beside the head (moon, stars, Z's), then it pops |
+
+In a match the fighter's name and health bar sit about 100 to 140 units over the
+floor and 65 either side, and hide what settles there on a phone: what stays (a
+cloud, a lantern, a prism) settles below them or beside the fighter. The auras
+and victories follow in their own passes.
+
 Results show actual boss damage, revive assists, and pillar baits per player, alongside team totals, plus a role for whoever led each: Heavy Hitter, Medic and Bait Master. Everyone who contributed to a completed rescue receives revive credit; solo self-revives appear only in the team total. Damage excludes overkill and phase-gated damage. Pillars credit the marked player whose charge broke them. Contribution counters reset on retry and are not a competitive leaderboard.
 
 After the server confirms reward storage, the result screen fetches the player's saved progress and shows the next milestone. Failed storage never displays invented progress. Run again keeps the party, champions and challenge, skips the already-seen introduction, and opens fresh starting rites after everyone confirms. Changing champion or difficulty returns the party to the lobby.

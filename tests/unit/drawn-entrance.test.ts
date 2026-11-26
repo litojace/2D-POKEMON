@@ -5,6 +5,7 @@ import {
 } from "../../apps/client/src/skins/collection-fx";
 import { canvasGraphics } from "../../apps/client/src/skins/fx-canvas";
 import { LOOK_ITEMS } from "../../packages/shared/src/shop";
+import { RAID_COSMETICS } from "../../packages/shared/src/raid";
 import {
   drawWornBehind,
   greetWearer,
@@ -12,10 +13,11 @@ import {
 } from "../../apps/client/src/plaza/plaza-cosmetics";
 
 /**
- * Entrances that draw over the greeting as well as bursting (Rainbow's arch,
- * owner 26 Nov: "Rainbow entrance chưa đặc biệt lắm"). The same drawing runs
- * in a match (the rig), on the Shop's stage, in every thumbnail (the canvas
- * stand-in) and in the Plaza.
+ * Entrances that draw over the greeting as well as bursting: Rainbow's arch
+ * (owner 26 Nov: "Rainbow entrance chưa đặc biệt lắm") and the seven raid
+ * bosses' entrances (owner 26 Nov: the boss effects were outdated). The
+ * same drawing runs in a match (the rig), on the Shop's and Wardrobe's
+ * stage, in every thumbnail (the canvas stand-in) and in the Plaza.
  */
 
 /** A 2D context that records what is drawn and where. */
@@ -84,11 +86,18 @@ const G = (r: ReturnType<typeof recorder>) =>
   r.g as unknown as Parameters<typeof drawCollectionEntrance>[0];
 
 describe("entrances that draw", () => {
-  it("are Shop entrances, and only they draw", () => {
-    const entrances = LOOK_ITEMS.filter((i) => i.slot === "entrance").map(
-      (i) => i.id,
+  const raid = Object.entries(RAID_COSMETICS)
+    .filter(([, v]) => v.slot === "entrance")
+    .map(([id]) => id);
+  it("are the Rainbow and every raid boss's entrance, and only they draw", () => {
+    const entrances = [
+      ...LOOK_ITEMS.filter((i) => i.slot === "entrance").map((i) => i.id),
+      ...raid,
+    ];
+    expect(raid).toHaveLength(7);
+    expect(Object.keys(DRAWN_ENTRANCES).sort()).toEqual(
+      ["rainbow-entrance", ...raid].sort(),
     );
-    expect(Object.keys(DRAWN_ENTRANCES)).toEqual(["rainbow-entrance"]);
     for (const id of Object.keys(DRAWN_ENTRANCES))
       expect(entrances, id).toContain(id);
     for (const id of entrances) {
@@ -121,6 +130,20 @@ describe("entrances that draw", () => {
     expect(length).toBeLessThan(2.5);
   });
 
+  it("each draws through its greeting, shows at its still, then stops", () => {
+    for (const [id, d] of Object.entries(DRAWN_ENTRANCES)) {
+      expect(d.still, id).toBeLessThan(d.length);
+      expect(d.length, id).toBeLessThanOrEqual(2.2);
+      const painted = (t: number) => {
+        const r = recorder();
+        drawCollectionEntrance(G(r), id, 0, 0, 1, t);
+        return r.calls.filter((c) => c === "fill" || c === "stroke").length;
+      };
+      expect(painted(d.still), id).toBeGreaterThan(5);
+      expect(painted(d.length + 0.01), id).toBe(0);
+    }
+  });
+
   it("fits its thumbnail's frame at every moment", () => {
     for (const [id, d] of Object.entries(DRAWN_ENTRANCES)) {
       const r = recorder();
@@ -132,8 +155,11 @@ describe("entrances that draw", () => {
       expect(b.maxX, id).toBeLessThanOrEqual(d.reach.w / 2);
       expect(b.minY, id).toBeGreaterThanOrEqual(-d.reach.h * d.reach.feet);
       expect(b.maxY, id).toBeLessThanOrEqual(d.reach.h * (1 - d.reach.feet));
-      // And it uses most of it: the tile shows the arch, not a speck.
-      expect(b.maxX - b.minX, id).toBeGreaterThan(d.reach.w * 0.85);
+      // And it uses most of it (the frame is centred on the fighter): the
+      // tile shows the effect, not a speck.
+      expect(2 * Math.max(-b.minX, b.maxX), id).toBeGreaterThan(
+        d.reach.w * 0.85,
+      );
       expect(d.still, id).toBeLessThan(d.length);
     }
   });
