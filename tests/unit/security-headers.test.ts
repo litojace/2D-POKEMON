@@ -1,7 +1,13 @@
-import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
+import {
+  compareHeaders,
+  cspText,
+  expectedHeaders,
+  inlineScripts,
+  scriptHash as sha,
+} from "../../scripts/security-headers.mjs";
 
 // The game's response headers (apps/client/security-headers.json) live in
 // Render's dashboard, where nothing checks them. These tests keep the file
@@ -14,20 +20,6 @@ const config = JSON.parse(read("apps/client/security-headers.json")) as {
   headers: Record<string, string>;
   csp: Record<string, string[]>;
 };
-
-/** The Content-Security-Policy value, as pasted into Render. */
-function cspText(csp: Record<string, string[]>) {
-  return Object.entries(csp)
-    .map(([k, v]) => [k, ...v].join(" "))
-    .join("; ");
-}
-
-const inlineScripts = (html: string) =>
-  [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(
-    (m) => m[1],
-  );
-const sha = (s: string) =>
-  `'sha256-${createHash("sha256").update(s).digest("base64")}'`;
 
 describe("game security headers", () => {
   test("every inline script in the served pages is hashed, and nothing else runs inline", () => {
@@ -117,5 +109,35 @@ describe("game security headers", () => {
     expect(docs).toContain(cspText(config.csp));
     for (const [k, v] of Object.entries(config.headers))
       expect(docs).toContain(`${k}: ${v}`);
+  });
+
+  test("the live check spots drift (scripts/check-live-headers.mjs)", () => {
+    const want = expectedHeaders(config);
+    const served = Object.fromEntries(
+      Object.entries(want).map(([k, v]) => [k.toLowerCase(), v]),
+    );
+    const html = read("apps/client/index.html");
+    expect(compareHeaders(config, served, html)).toEqual([]);
+    // Report-only passes unless enforcing is required.
+    const reportOnly = { ...served };
+    reportOnly["content-security-policy-report-only"] =
+      reportOnly["content-security-policy"];
+    delete reportOnly["content-security-policy"];
+    expect(compareHeaders(config, reportOnly, html)).toEqual([]);
+    expect(
+      compareHeaders(config, reportOnly, html, { requireEnforcing: true }),
+    ).toHaveLength(1);
+    // An inline script edited without updating Render is not allowed.
+    const edited = html.replace("ipad-gate", "ipad-gate-x");
+    expect(
+      compareHeaders(config, served, edited).map((p) => p.header),
+    ).toContain("script-src");
+    // A missing or changed header is named.
+    const noFrame = { ...served };
+    delete noFrame["x-frame-options"];
+    expect(compareHeaders(config, noFrame, html)[0]).toMatchObject({
+      header: "X-Frame-Options",
+      served: null,
+    });
   });
 });
