@@ -13,6 +13,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { siteChampions } from "./champion-data";
 import { creatureSvg } from "../../client/src/creature-design";
+import { MASTERY_TIERS } from "../../../packages/shared/src/accounts";
+import {
+  RAID_BOSSES,
+  RAID_BOSS_ORDER,
+  RAID_REWARDS,
+  type RaidBossId,
+} from "../../../packages/shared/src/raid";
 
 const site = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const champions = siteChampions();
@@ -75,3 +82,99 @@ for (const [name, html] of [
     `$1\n${html}$2`,
   );
 writeFileSync(indexPath, page);
+
+// The raid bosses (index.html, between the raids and bosses markers), in
+// the Raid Hub's order, from the game's roster: every boss can be raided any
+// day; Cragmuff comes first and the other six open after one clear of it
+// (raidUnlocked in apps/client/src/screens/raid-hall-view.ts).
+// How each splash is framed: the side the words sit on (away from the boss),
+// and the picture's alt text.
+const RAID_ART: Record<RaidBossId, { side: "left" | "right"; alt: string }> = {
+  grumblecrag: {
+    side: "right",
+    alt: "Cragmuff, a woolly ram with amber crystal horns, charging through a ruined arena",
+  },
+  tidewyrm: {
+    side: "left",
+    alt: "Tidelotl, a round axolotl with a pearl on its brow, riding a wave over sunken ruins",
+  },
+  gloomshade: {
+    side: "right",
+    alt: "Inkpurr, a cat-eared sprite of living ink, prowling a lantern-lit yard",
+  },
+  somnara: {
+    side: "left",
+    alt: "Snoozaku, a sleepy baku in a starry nightcap, on a cloud floor of glowing runes",
+  },
+  prismatail: {
+    side: "right",
+    alt: "Prismell, a snail with a spiral shell of prism crystal, in a hall of light",
+  },
+  emberwing: {
+    side: "left",
+    alt: "Lumiwick, a smiling sky-lantern spirit floating above three braziers",
+  },
+  "storm-twins": {
+    side: "right",
+    alt: "The Storm Twins, two thunder-jellies tied by a crackling ribbon, in a storm",
+  },
+};
+const lineup = RAID_BOSS_ORDER.map((id) => RAID_BOSSES[id]);
+const rewardsOf = (id: RaidBossId) =>
+  RAID_REWARDS.filter((r) => r.boss === id).length;
+const stars = (n: number) =>
+  `<p class="stars" aria-label="Difficulty ${n} of 3">${"★".repeat(n)}${n < 3 ? `<span>${"★".repeat(3 - n)}</span>` : ""}</p>`;
+const raidPanels = lineup
+  .map(
+    (
+      b,
+      i,
+    ) => `<article class="raid" id="raid-${b.id}" role="tabpanel" aria-labelledby="pick-${b.id}" data-side="${RAID_ART[b.id].side}" style="--el: var(--el-${b.element.toLowerCase()})"${i ? " hidden" : ""}>
+  <picture class="raid-art">
+    <source type="image/avif" srcset="img/raids/${b.id}-768.avif 768w, img/raids/${b.id}-1280.avif 1280w" sizes="(min-width: 1200px) 1168px, 100vw" />
+    <img src="img/raids/${b.id}-1280.webp" srcset="img/raids/${b.id}-768.webp 768w, img/raids/${b.id}-1280.webp 1280w" sizes="(min-width: 1200px) 1168px, 100vw" alt="${esc(RAID_ART[b.id].alt)}" width="1280" height="853" loading="lazy" decoding="async" />
+  </picture>
+  <div class="raid-tx">
+    <p class="raid-when">${i === 0 ? `<span class="start-tag">Start here</span>` : ""}${b.element} · ${rewardsOf(b.id)} rewards</p>
+    ${stars(b.stars)}
+    <h3>${esc(b.name)}</h3>
+    <p class="epithet">${esc(b.epithet)}</p>
+    <p class="blurb">${esc(b.blurb)}</p>
+    <div class="beat"><span>How to beat it</span><p class="trick">${esc(b.signature)}</p></div>
+  </div>
+</article>`,
+  )
+  .join("\n");
+const raidTabs = lineup
+  .map(
+    (
+      b,
+      i,
+    ) => `<button type="button" class="pick" role="tab" id="pick-${b.id}" aria-controls="raid-${b.id}" aria-selected="${i === 0}" tabindex="${i ? -1 : 0}" style="--el: var(--el-${b.element.toLowerCase()})">
+  <img src="img/bosses/${b.id}.webp" alt="" width="400" height="600" loading="lazy" decoding="async" />
+  <span class="s" aria-hidden="true">${"★".repeat(b.stars)}</span><span class="n">${esc(b.name)}</span>
+</button>`,
+  )
+  .join("\n");
+let page2 = readFileSync(indexPath, "utf8");
+for (const [name, html] of [
+  ["raids", raidPanels],
+  ["bosses", raidTabs],
+] as const)
+  page2 = page2.replace(
+    new RegExp(`(<!-- ${name}:start -->)[\\s\\S]*?(\\s*<!-- ${name}:end -->)`),
+    `$1\n${html}$2`,
+  );
+writeFileSync(indexPath, page2);
+
+// The Mastery rings perk: the game's tiers, colours and match counts.
+const rings = MASTERY_TIERS.map(
+  (t) =>
+    `<span class="ring" style="--ring: ${t.color}"><img src="img/creatures/voltkit.svg" alt="" width="200" height="202" loading="lazy" decoding="async" /><b>${t.name}</b><small>${t.matches} matches</small></span>`,
+).join("\n");
+let page3 = readFileSync(indexPath, "utf8");
+page3 = page3.replace(
+  /(<!-- mastery:start -->)[\s\S]*?(\s*<!-- mastery:end -->)/,
+  `$1\n${rings}$2`,
+);
+writeFileSync(indexPath, page3);

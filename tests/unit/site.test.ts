@@ -2,7 +2,11 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { CHARACTERS } from "../../packages/shared/src/index";
-import { RAID_BOSSES } from "../../packages/shared/src/raid-roster";
+import {
+  RAID_BOSSES,
+  RAID_BOSS_ORDER,
+  RAID_REWARDS,
+} from "../../packages/shared/src/raid";
 import { siteChampions } from "../../apps/site/tools/champion-data";
 
 // The website (docs/website.md): a static page with no build, so these
@@ -73,6 +77,32 @@ describe("website", () => {
     }
   });
 
+  it("shows the raid bosses as the game does (npx tsx apps/site/tools/gen-data.ts)", () => {
+    // One panel and one pick per boss, in the Raid Hub's order. The game has
+    // no boss of the day (every boss is open once Cragmuff is cleared), so
+    // the page never names a day.
+    const flat = html.replace(/>\s+/g, ">").replace(/\s+</g, "<");
+    const panels = [
+      ...html.matchAll(/<article class="raid" id="raid-([\w-]+)"/g),
+    ].map((m) => m[1]);
+    expect(panels).toEqual(RAID_BOSS_ORDER);
+    expect(html).not.toMatch(/(Sun|Mon|Tues|Wednes|Thurs|Fri|Satur)days?\b/);
+    for (const id of panels) {
+      const b = RAID_BOSSES[id as keyof typeof RAID_BOSSES];
+      expect(flat).toContain(`<p class="blurb">${b.blurb}</p>`);
+      expect(flat).toContain(
+        `${b.element} · ${RAID_REWARDS.filter((r) => r.boss === id).length} rewards`,
+      );
+      expect(html).toContain(`id="pick-${id}" aria-controls="raid-${id}"`);
+      for (const w of [768, 1280])
+        for (const ext of ["webp", "avif"])
+          expect(
+            existsSync(path.join(SITE, `img/raids/${id}-${w}.${ext}`)),
+            `${id}-${w}.${ext}`,
+          ).toBe(true);
+    }
+  });
+
   it("names one canonical address everywhere", () => {
     const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)![1];
     const own = (s: string) =>
@@ -119,6 +149,17 @@ describe("website", () => {
         );
       expect(html).toContain(`data-champion="${c.id}"`);
     }
+  });
+
+  it("has a skill clip and a still for every champion's five moves (scripts/site-clips)", () => {
+    for (const c of Object.values(CHARACTERS))
+      for (const move of ["basic", "skill1", "skill2", "skill3", "ult"])
+        for (const f of [`${move}.webp`, `${move}-still.webp`]) {
+          const file = path.join(SITE, "clips", c.id, f);
+          expect(existsSync(file), `${c.id}/${f}`).toBe(true);
+          // Light enough for a phone: one clip loads per tab shown.
+          expect(statSync(file).size, `${c.id}/${f}`).toBeLessThan(400_000);
+        }
   });
 
   it("the account page's script is built from its source (node apps/site/tools/build-account.mjs)", async () => {
