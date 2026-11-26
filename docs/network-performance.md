@@ -1163,6 +1163,68 @@ other by more than that. The client's work per snapshot (apply, copy,
 unpack) is a few hundredths of a millisecond, 30 times a second, and
 nothing per frame.
 
+### 22. Tidelotl moves you before your input does (26 Nov 2026)
+
+An iPhone's Tidelotl raid (26 Nov, 172 s, Lagoon) reported 142.5
+corrections a minute, 129.2 of them "other": the prediction disagreed with
+the server for no hit, status or movement skill of yours
+(`networking/correction-cause.ts`). Raids before it never passed 5.3
+"other" a minute. Deltas were ruled out first: a 9,000-tick Tidelotl run
+through all three chapters rebuilds every snapshot exactly
+(`toStrictEqual`), so the prediction is handed the same data either way.
+
+**Reproduced** with a raid mode in `scripts/perf/correction-sim.ts`
+(`RAID=tidewyrm HUMANS=2`, 180 s, 33 ms each way, a third of the run in
+each chapter): about 150 "other" corrections a minute, nearly all in
+chapters 2 and 3. Tagged by what was running (`DIAG=1`): the Undertow
+(about 300 in 180 s), a Bubble Prison (150 to 175) and, in chapter 1, a
+bubble's root (about 20). The server does all three to you every tick,
+before your input moves you (`RaidArena.tick` runs the boss's attacks
+before `Arena.tick`):
+
+- **Undertow**: pulls every raider toward its centre, `min(dist, pull·dt)`
+  a tick (140 px/s; Rip Current 160). Not a status, so the phone never knew.
+- **Bubble Prison**: puts its prisoner on the bubble each tick as it drifts
+  to the boss's mouth, and runs no input of theirs.
+- **Bubble root**: holds a raider still for 0.8 s; it lived in a private
+  map on the server, so the snapshot never showed it.
+
+**The fix**: `packages/shared/src/tidelotl-drift.ts` holds the server's own
+arithmetic (`undertowPull`, `pullIntoUndertow`, `driftPrison`,
+`heldInput`); the server calls it, and so does the phone's
+`stepRaidCarry` (predict-fighter.ts) before each predicted tick, in the
+server's order, from what the snapshot shows (`raid.undertow`,
+`raid.prisons`, `raid.trait`, and the root, now `raid.rooted`). A late
+input for a tick the server held only moves you: that tick's pull is in
+the snapshot already. The server plays exactly as before: four seeded
+raids (normal and ascendant, 2 and 4 raiders, about 24,000 ticks with
+1,300 Undertow and 1,600 prison ticks) hash to the same snapshots, apart
+from the new `rooted` field.
+
+**Measured** (`correction-sim`, 180 s, 33 ms each way;
+`NO_RAID_CARRY=1` for "before"):
+
+| Tidelotl             | Corrections a minute | "Other" a minute | "Other" per chapter (1 / 2 / 3) |
+| -------------------- | -------------------- | ---------------- | ------------------------------- |
+| Normal, 2 raiders    | 175 → 12             | 152.7 → **4.0**  | 10 / 205 / 243 → 0 / 5 / 7      |
+| Normal, 4 raiders    | 206 → 9.7            | 157.3 → **2.3**  | 5 / 192 / 275 → 0 / 2 / 5       |
+| Ascendant, 2 raiders | 176 → 10.3           | 156.3 → **2.0**  | 18 / 198 / 253 → 0 / 3 / 3      |
+| Ascendant, 4 raiders | 143 → 10.3           | 125.0 → **2.7**  | 41 / 116 / 218 → 0 / 5 / 3      |
+
+What is left is one correction as an Undertow or a prison starts, ends or
+is popped (the phone learns of it a round trip late), and the statuses and
+hits it cannot see coming. The other six bosses were already at 0 to 3
+"other" a minute and are unchanged (Lumiwick's few are large, 140 to 220
+px, and are looked at apart). Sure Footing (15-25% further through water)
+is not predicted either; its error stays under the 4 px a correction
+needs, so it is left out.
+
+Tests: `tests/unit/tidelotl-prediction.test.ts` steps a real Tidelotl room
+and the phone's prediction from the same snapshot through the same inputs,
+for the Undertow, Rip Current's pull, a prison, a root and the ascendant
+Undertow: within 0.01 px for ten ticks, and over 15 px apart with the
+prediction left out.
+
 ## Historical results (0.5 CPU / 512 MB, 15 snapshots a second)
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The
