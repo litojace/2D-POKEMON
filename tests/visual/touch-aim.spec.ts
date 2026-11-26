@@ -315,7 +315,7 @@ for (const phone of PHONES)
         ),
       ).toEqual([]);
       await touch("touchEnd", []);
-      await page.waitForTimeout(150);
+      await page.waitForTimeout(700);
       const cast = await page.evaluate(() =>
         (window as any).__inputs.filter((i: any) => i.skill === 0),
       );
@@ -324,13 +324,15 @@ for (const phone of PHONES)
       // the skill's whole range or the court's edge.
       expect(cast[0].aimX).toBeLessThanOrEqual(Math.max(0, me.x - 200));
       expect(Math.abs(cast[0].aimY - me.y)).toBeLessThan(200);
-      // The next inputs keep that aim while a buffered or winding-up cast
-      // could still read it.
+      // The next inputs keep that aim while a buffered cast could still
+      // read it: counted in inputs (the server's ticks), however late a
+      // slow page sends them.
       const kept = await page.evaluate(
         (seq) =>
-          (window as any).__inputs.filter((i: any) => i.seq > seq).slice(0, 3),
+          (window as any).__inputs.filter((i: any) => i.seq > seq).slice(0, 8),
         cast[0].seq,
       );
+      expect(kept).toHaveLength(8);
       for (const i of kept)
         expect(i.aimX).toBeLessThanOrEqual(Math.max(0, me.x - 200));
 

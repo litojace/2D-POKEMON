@@ -42,8 +42,9 @@ and covers about the same share of the screen.
   meter the ultimate button arms EX on the press.
 - The server reads the aim when a cast happens, which can be after the
   180 ms skill buffer, a wind-up, or each wave of a storm. The client keeps
-  sending the dragged aim that long after the finger lifts (`hold`), and a
-  target pick stays on its enemy. The server needs no change: every input
+  sending the dragged aim that long after the finger lifts (`hold`),
+  counted in inputs (the server's ticks) rather than time, so a janky
+  phone's late inputs still carry it; a target pick stays on its enemy. The server needs no change: every input
   already carries the aim.
 
 How each skill kind reads the aim comes from the server's cast code;

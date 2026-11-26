@@ -6388,11 +6388,16 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       (bodies ? bodies[0] : enemies[0]);
     return { enemies, extra, bodies, target };
   }
-  /** The drag being honoured: its aim, until `until` (performance.now). */
+  /** The drag being honoured: its aim, for `steps` more inputs. */
   private dragged?: {
     from: NonNullable<TouchControls["drag"]>;
     dir: { x: number; y: number };
-    until: number;
+    /**
+     * Inputs left that carry it, counted in inputs (the server's ticks),
+     * not time: a janky phone's late inputs are still the ticks a
+     * buffered or winding-up cast reads.
+     */
+    steps: number;
     /** A target skill's pick (its id), chosen at the first input. */
     pick?: string;
   };
@@ -6408,19 +6413,23 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       this.dragged = undefined;
       return undefined;
     }
+    const spec = aimSpecs[drag.slot];
     if (this.dragged?.from !== drag) {
-      const spec = aimSpecs[drag.slot];
       const view = this.aimView;
       this.dragged = {
         from: drag,
         dir: courtDirection(drag.dx, drag.dy, view?.zoomX, view?.zoomY),
-        until: drag.at + (spec?.hold ?? 0) * 1000,
+        // The input that carries the cast, then the hold's ticks. A drag
+        // released long ago (another match) carries nothing.
+        steps:
+          performance.now() - drag.at < 1000
+            ? 1 + Math.ceil((spec?.hold ?? 0) * RULES.tick)
+            : 0,
       };
     }
     const held = this.dragged;
-    const spec = aimSpecs[drag.slot];
-    if (!spec || spec.kind === "self" || performance.now() > held.until)
-      return undefined;
+    if (!spec || spec.kind === "self" || held.steps <= 0) return undefined;
+    held.steps--;
     const point = aimPoint(spec, me, held.dir, drag.t);
     if (spec.kind !== "target") return point;
     held.pick ??= pickNear(candidates, point, me, spec.range)?.id ?? "";
