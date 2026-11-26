@@ -436,15 +436,17 @@ function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) 
           const px = x + side * hw,
             py = top + (bot - top) * f,
             ribbon = k === 3;
-          emit({ x: px, y: py, vx: side * rnd(120, 190), vy: rnd(-90, 10), life: rnd(0.45, 0.65), size: 4.4 * sc, color: ribbon ? 0xffd65b : f < 0.5 ? 0xff8fbe : 0xff6fa8, shape: "pixel", glow: false, drag: 1.4 });
+          // Slow enough that the box still stands at 0.2 s, the moment a
+          // catalogue tile shows (cosmetic-fx-preview.ts FROZEN_AT).
+          emit({ x: px, y: py, vx: side * rnd(55, 90), vy: rnd(-50, 10), life: rnd(0.55, 0.75), size: 4.4 * sc, color: ribbon ? 0xffd65b : f < 0.5 ? 0xff8fbe : 0xff6fa8, shape: "pixel", glow: false, drag: 1.2 });
         }
         const px = x - hw + 2 * hw * f;
-        emit({ x: px, y: bot, vx: (px - x) * 3.2, vy: rnd(-40, -10), life: 0.5, size: 4 * sc, color: k === 3 ? 0xffd65b : 0xff6fa8, shape: "pixel", glow: false, drag: 2 });
+        emit({ x: px, y: bot, vx: (px - x) * 1.8, vy: rnd(-30, -10), life: 0.6, size: 4 * sc, color: k === 3 ? 0xffd65b : 0xff6fa8, shape: "pixel", glow: false, drag: 2 });
       }
       // The lid: a wide band that flips as it flies up, and its bow.
       for (let k = -2; k <= 2; k++)
-        emit({ x: x + k * 8 * sc, y: top, vx: k * 22, vy: -260, life: 0.75, size: 5 * sc, color: k === 0 ? 0xffd65b : 0xff4f9a, shape: "pixel", glow: false, drag: 0.8 });
-      for (const side of [-1, 1]) emit({ x: x + side * 6 * sc, y: top - 8 * sc, vx: side * 40, vy: -300, life: 0.8, size: 6 * sc, color: 0xffd65b, shape: "leaf", spin: side * 6, glow: false });
+        emit({ x: x + k * 8 * sc, y: top, vx: k * 18, vy: -110, life: 0.8, size: 5 * sc, color: k === 0 ? 0xffd65b : 0xff4f9a, shape: "pixel", glow: false, drag: 0.6 });
+      for (const side of [-1, 1]) emit({ x: x + side * 6 * sc, y: top - 8 * sc, vx: side * 30, vy: -130, life: 0.85, size: 6 * sc, color: 0xffd65b, shape: "leaf", spin: side * 6, glow: false });
       emit({ x, y: y - 28 * sc, vx: 0, vy: 0, life: 0.45, size: 16 * sc, color: 0xffd2e4, shape: "shock" });
       // 29 box pieces and a ring so far: 18 confetti keeps it in budget.
       burst(18, (i) => ({ x: x + rnd(-24, 24) * sc, y: top, vx: rnd(-150, 150), vy: rnd(-260, -120), life: rnd(0.9, 1.3), size: 2.6 * sc, color: [0xff6fa8, 0x6fd6ff, 0xffd65b, 0x8fe06a][i % 4], shape: "confetti", spin: rnd(-12, 12) }));
