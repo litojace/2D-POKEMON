@@ -188,3 +188,9 @@ this move doesn't touch how the session is stored.
   `/support.html`, `/email-confirmed`, `/?room=` 200; a missing script 404.
   Step 3: `CLIENT_ORIGIN=https://play.elementarenausa.com,https://parena.litojace.com`
   set on `element-arena`, deploying.
+- 25 Nov, 4:29 PM PT: step 3 done. `element-arena` live with the new
+  `CLIENT_ORIGIN`: an API preflight from `https://play.elementarenausa.com`
+  and from `https://parena.litojace.com` gets 204 with its own
+  `Access-Control-Allow-Origin`; another origin gets 403. The Socket.IO
+  handshake from `play.` answers 200. #481 merged with main, out of draft,
+  waiting for its full run.
