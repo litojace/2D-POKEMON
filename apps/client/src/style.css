@@ -7042,7 +7042,7 @@ button.small .button-icon {
 .coin-chip .button-icon {
   width: 15px;
   height: 15px;
-  color: var(--accent);
+  color: var(--ui-coin);
 }
 .coin-button {
   padding: 4px 6px;
