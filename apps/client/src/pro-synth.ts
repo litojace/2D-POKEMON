@@ -1,9 +1,10 @@
 /**
- * The produced voice set for the hub and PvP themes (pro-score.ts): chip-like
- * waveforms with the production a shipped game's soundtrack has. Wide
- * detuned leads with glides, pads, a punchy bass that ducks under the kick,
- * a plate-like reverb, a ping-pong delay and a gentle mix bus (low cut,
- * presence, air, glue compression). The owner chose it on 26 Nov 2026.
+ * The soundtrack's voices (pro-score.ts): chip-like waveforms with the
+ * production a shipped game's soundtrack has. Wide detuned leads with
+ * glides, pads, a punchy bass that ducks under the kick, a plate-like
+ * reverb, a ping-pong delay and a gentle mix bus (low cut, presence, air,
+ * glue compression). The owner chose it for the hub and PvP on 26 Nov 2026;
+ * the raid, the Spire and the results followed.
  * Where a browser lacks a part (a compressor, a convolver, custom waves),
  * that part is left out rather than the music.
  */

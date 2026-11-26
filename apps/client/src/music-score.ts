@@ -1,11 +1,11 @@
 import { ADVENTURE_LOOP_STEPS } from "./adventure-score";
-import { retroResultStep, retroStep } from "./retro-score";
-import { proStep } from "./pro-score";
+import { proResultStep, proStep } from "./pro-score";
 
 /**
- * The soundtrack is retro: every scene's tune arranged for a console sound
- * chip (retro-score.ts), played by chip voices (chip-synth.ts). No audio
- * files: the music is synthesized as it plays.
+ * The soundtrack is modern retro: every scene's tune arranged as a shipped
+ * game's soundtrack (pro-score.ts) and played by chip-like voices with a
+ * produced mix (pro-synth.ts). No audio files: the music is synthesized as
+ * it plays.
  */
 /** The Lobby's tune plays across the hub, the Plaza included. */
 export type BackgroundTheme = "lobby" | "pvp" | "raid" | "spire";
@@ -20,20 +20,8 @@ export const RESULT_MUSIC_STEPS: Record<ResultTheme, number> = {
   defeat: 48,
   draw: 32,
 };
-/** The retro soundtrack's voices (chip-synth.ts). */
-export type ChipInstrument =
-  | "chip-pulse12"
-  | "chip-pulse25"
-  | "chip-square"
-  | "chip-tri"
-  | "chip-bass"
-  | "chip-arp"
-  | "chip-kick"
-  | "chip-snare"
-  | "chip-hat"
-  | "chip-crash";
-/** The produced voices of the hub and PvP themes (pro-synth.ts). */
-export type ProInstrument =
+/** The voices (pro-synth.ts). */
+export type Instrument =
   | "pro-lead"
   | "pro-lead2"
   | "pro-pad"
@@ -49,24 +37,14 @@ export type ProInstrument =
   | "pro-tom"
   | "pro-crash"
   | "pro-riser";
-export type Instrument = ChipInstrument | ProInstrument;
-/**
- * The themes the produced voices play (the owner chose them for the hub and
- * PvP, 26 Nov 2026); the others stay on the chip voices for now.
- */
-export const PRO_THEMES: ReadonlySet<MusicTheme> = new Set(["lobby", "pvp"]);
 export interface ScoreNote {
   instrument: Instrument;
   note?: string;
   duration: number;
   volume: number;
   pan?: number;
-  /** chip-arp: the chord it cycles through, a step per 1/30 s. */
+  /** pro-arp: the chord it cycles through, a step per 1/30 s. */
   notes?: string[];
-  /** A delayed vibrato on long notes. */
-  vibrato?: boolean;
-  /** Into the theme's echo. */
-  echo?: boolean;
   /** Glide into this note from that one (produced leads). */
   from?: string;
 }
@@ -89,9 +67,6 @@ export function scoreStep(
   step: number,
   phase = 1,
 ): ScoreNote[] {
-  if (isResultTheme(theme))
-    return retroResultStep(theme, step, MUSIC_BPM[theme]);
-  if (theme === "lobby" || theme === "pvp")
-    return proStep(theme, step, MUSIC_BPM[theme]);
-  return retroStep(theme, step, phase, MUSIC_BPM[theme]);
+  if (isResultTheme(theme)) return proResultStep(theme, step, MUSIC_BPM[theme]);
+  return proStep(theme, step, MUSIC_BPM[theme], phase);
 }
