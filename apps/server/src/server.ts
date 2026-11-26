@@ -953,6 +953,21 @@ export function createArenaServer(
       socket.disconnect(true);
     }
   }
+  /**
+   * Who is online, by account, built once per turn of the event loop. The
+   * friends list asks for each friend's presence in one synchronous pass;
+   * built for each friend, it walked and sorted every connection again
+   * each time: friends × connections for one request (performance sweep,
+   * S6). Forgotten as soon as that pass ends, so nothing is ever stale.
+   */
+  let onlineIndex: Map<string, OnlineList["players"][number]> | undefined;
+  const onlineById = () => {
+    if (!onlineIndex) {
+      onlineIndex = new Map(listOnline().players.map((p) => [p.id, p]));
+      queueMicrotask(() => (onlineIndex = undefined));
+    }
+    return onlineIndex;
+  };
   installAccountRoutes(
     app,
     accounts,
@@ -964,7 +979,7 @@ export function createArenaServer(
     listOnline,
     (matchId, accountId) => ledger.forPlayer(matchId, accountId),
     (accountId) => {
-      const me = listOnline().players.find((p) => p.id === accountId);
+      const me = onlineById().get(accountId);
       if (!me)
         return {
           online: false,
