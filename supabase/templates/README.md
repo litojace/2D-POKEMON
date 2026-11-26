@@ -19,7 +19,7 @@ files: paste each one into **Supabase → Authentication → Emails → Template
   Providers → Email), Supabase sends this one to both the old and the new
   address; the change happens only once it is confirmed. It shows
   old → new and tells anyone who didn't ask to change their password.
-- **Reauthentication:** the 6-digit code (`{{ .Token }}`) a player types to
+- **Reauthentication:** the one-time code (`{{ .Token }}`, 8 digits with the project's current Email OTP length) a player types to
   prove it's them, with no link: an Apple account setting its first password,
   or a password change on a session older than 24 hours when **Secure
   password change** is on. It says never to share the code.
