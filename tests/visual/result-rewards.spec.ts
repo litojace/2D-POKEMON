@@ -279,9 +279,13 @@ test("drawn again, the celebration carries on instead of starting over", async (
           .map((a) => Number(a.currentTime) || 0),
       ),
     );
-  await page.waitForTimeout(900);
+  // Well into the celebration, by the animations' own clock: it runs
+  // behind the wall clock on a slow renderer (CI's was at 266 ms after a
+  // 900 ms wait), so the test waits for the animation, not for a time.
+  await expect
+    .poll(time, { timeout: 30_000, intervals: [100] })
+    .toBeGreaterThan(500);
   const before = await time();
-  expect(before).toBeGreaterThan(500);
   // The opponent readies: the sheet's markup changes and is set again.
   await page.evaluate(() => {
     const w = window as any;
