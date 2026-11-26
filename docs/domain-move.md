@@ -161,3 +161,10 @@ this move doesn't touch how the session is stored.
   website session's cookie PR carries a one-time move into the cookie, or
   lands first. Steps 4 (Site URL) and 7 wait too; adding Redirect URLs and
   `CLIENT_ORIGIN` early is harmless.
+- 25 Nov, ~4:10 PM PT: **hold lifted.** The cookie PR (#484) reads the
+  cookie first and falls back to the origin's own local/session storage,
+  then moves the session into the cookie on the next write (checked in
+  `packages/shared/src/session-cookie.ts` on the PR). A session made on
+  `play.` before #484 lands is kept. This holds only while #484 keeps that
+  fallback. Waiting for the owner to confirm in this session (or do steps
+  1–3 by hand).
