@@ -97,10 +97,7 @@ style-src-attr 'unsafe-inline'; script-src
 script, so `script-src 'self'` still allows it).
 
 The canonical URL, Open Graph URLs and sitemap use
-`https://elementarenausa.com/`; Play, Support and Privacy point at
-`https://parena.litojace.com/` until `https://play.elementarenausa.com/`
-serves the game (then switch `index.html` and `GAME` in
-`tests/unit/site.test.ts` back).
+`https://elementarenausa.com/`; Play, Support and Privacy point at `https://play.elementarenausa.com/`.
 
 ## When the apps reach the stores
 
