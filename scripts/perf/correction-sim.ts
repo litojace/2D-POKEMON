@@ -159,6 +159,8 @@ export function simulateCorrections(o: {
   raid?: RaidBossId;
   variant?: RaidVariant;
   humans?: number;
+  /** Raid rites you hold (the boss's own leads every offer). */
+  rites?: string[];
 }) {
   const seconds = o.seconds ?? 120;
   const random = rng(o.seed ?? 11);
@@ -194,6 +196,11 @@ export function simulateCorrections(o: {
   arena.phase = "playing";
   arena.deadline = 1e9;
   const boss = o.raid ? arena.players.find((p) => p.raidBoss) : undefined;
+  // Rites you picked (RITES=footing,...): the server plays them on you.
+  if (o.raid && o.rites?.length)
+    (
+      arena as unknown as { raid: { rites: Record<string, string[]> } }
+    ).raid.rites.me = o.rites;
   const bot = boss ?? others[0];
   const maxHp = boss?.hp ?? 0;
   const up = new Link<Input>(
@@ -303,22 +310,26 @@ export function simulateCorrections(o: {
       if (px <= 4) continue;
       const was = previous?.players.find((p) => p.id === "me");
       // The same reading the game makes on the phone (battle-perf).
-      const u = (state.raid as { undertow?: { until: number } } | undefined)?.undertow;
+      const u = (state.raid as { undertow?: { until: number } } | undefined)
+        ?.undertow;
       const tide = state.raid as Record<string, unknown> | undefined;
       corrections.push({
         px,
         chapter: state.raid?.phase,
         ...(process.env.DIAG
           ? {
-              diag: [
-                u && u.until > state.time ? "undertow" : "",
-                (tide?.waves as unknown[] | undefined)?.length ? "waves" : "",
-                tide?.flood ? "flood" : "",
-                tide?.hightide ? "hightide" : "",
-                (tide?.prisons as unknown[] | undefined)?.length ? "prison" : "",
-              ]
-                .filter(Boolean)
-                .join("+") || "none",
+              diag:
+                [
+                  u && u.until > state.time ? "undertow" : "",
+                  (tide?.waves as unknown[] | undefined)?.length ? "waves" : "",
+                  tide?.flood ? "flood" : "",
+                  tide?.hightide ? "hightide" : "",
+                  (tide?.prisons as unknown[] | undefined)?.length
+                    ? "prison"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join("+") || "none",
             }
           : {}),
         ...correctionCause(server, was, state.events, state.time),
@@ -409,6 +420,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     raid: (process.env.RAID as RaidBossId | undefined) || undefined,
     variant: (process.env.VARIANT as RaidVariant | undefined) || undefined,
     humans: Number(process.env.HUMANS ?? 2),
+    rites: process.env.RITES ? process.env.RITES.split(",") : undefined,
   });
   const by = new Map<string, Correction[]>();
   for (const c of corrections) {
