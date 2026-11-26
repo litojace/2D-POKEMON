@@ -1665,8 +1665,53 @@ body::before {
 .acct-who h2 {
   font-size: 2.2rem;
 }
+/* Sign in with Apple, styled as Apple asks (HIG): the white button on a dark
+   background, the Apple logo, "Sign in with Apple" in the system font and
+   sentence case, not our uppercase display face. Same height as Sign in. */
 .acct-apple {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 26px 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font:
+    600 1.15rem/1 -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "Helvetica Neue",
+    Helvetica,
+    Arial,
+    sans-serif;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.acct-apple[hidden] {
+  display: none;
+}
+.acct-apple:hover {
+  background: #e8e8ed;
+}
+.acct-apple svg {
+  width: 17px;
+  height: 20px;
+  flex: none;
+  margin-top: -2px;
+}
+/* "Signed up with Apple?" (non-Apple devices; src/account.ts): a plain
+   link, not Apple's button. Its own class, so .acct-apple's white pill
+   stays off it. The text lines up with the form's left edge, past the
+   link's 4px padding. */
+.acct-apple-reveal {
+  justify-self: start;
+  margin-left: -4px;
 }
 button.btn-play {
   border: 0;
