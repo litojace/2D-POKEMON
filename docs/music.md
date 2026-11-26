@@ -1,13 +1,13 @@
 # Music
 
-The soundtrack is retro: each scene's original tune, arranged for a console sound chip and synthesized as it plays. There are no audio files, so nothing downloads and the music starts with the first tap (the owner chose this set on 26 Nov 2026, replacing the recorded orchestra).
+The soundtrack is retro: each scene's original tune, arranged for console-style voices and synthesized as it plays. There are no audio files, so nothing downloads and the music starts with the first tap (the owner chose this set on 26 Nov 2026, replacing the recorded orchestra). The hub and PvP themes are produced as a shipped game's soundtrack would be (the owner chose them the same day after a side-by-side listen); the raid, the Spire and the results stay on the plain chip voices for now.
 
-| Scene     | Tune                 | Retro role                                                                                                                           | Tempo   | Loop |
-| --------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------- | ---- |
-| Hub       | Pocket Parade        | A cheerful town: square and pulse take turns, a bouncing octave bass, light hats; a quiet bridge                                     | 112 BPM | 1:43 |
-| PvP       | Hopscotch Heroes     | A fight: a bold square lead, a driving pulse bass, a full kit with fills, arpeggio shimmer                                           | 148 BPM | 1:18 |
-| Boss raid | Big Friendly Trouble | A boss that gets fiercer as it weakens: phase 1 bass and kick, 2 adds snare and alarm arpeggios, 3 adds busy hats, harmony and fills | 132 BPM | 1:27 |
-| Spire     | Skyward Steps        | A climb: a thin pulse line over a rising ostinato, long notes on the triangle, drums with the phase                                  | 132 BPM | 1:27 |
+| Scene     | Tune                 | Retro role                                                                                                                                                                                                     | Tempo   | Loop |
+| --------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---- |
+| Hub       | Pocket Parade        | Produced: a friendly town theme with a wide lead and glides, a counter-line, pad, plucked arpeggios through the delay, a syncopated bass that ducks under the kick, a gentle intro and a riser into the chorus | 112 BPM | 1:43 |
+| PvP       | Hopscotch Heroes     | Produced: a fight with a driving ducked bass, four-on-the-floor in the chorus, a harmony line, chip arpeggio shimmer and tom fills                                                                             | 148 BPM | 1:18 |
+| Boss raid | Big Friendly Trouble | A boss that gets fiercer as it weakens: phase 1 bass and kick, 2 adds snare and alarm arpeggios, 3 adds busy hats, harmony and fills                                                                           | 132 BPM | 1:27 |
+| Spire     | Skyward Steps        | A climb: a thin pulse line over a rising ostinato, long notes on the triangle, drums with the phase                                                                                                            | 132 BPM | 1:27 |
 
 Victory, defeat and draw are chip jingles of their old tunes (a square fanfare, a falling pulse with vibrato, two neutral phrases). The Lobby's tune plays across the hub, the Plaza included, so going between them doesn't restart it (owner, 26 Nov 2026; the Plaza's own Fountain Square was retired). Spire floors play Skyward Steps (`battle-music.ts`).
 
@@ -25,6 +25,13 @@ Victory, defeat and draw are chip jingles of their old tunes (a square fanfare, 
 
 The volume, mute, background-page handling and theme crossfades are as before (`audio.ts`).
 
+### The produced themes (hub and PvP)
+
+- **The voices** (`pro-synth.ts`): leads of two pulse waves a few cents apart and spread left and right, with a filter envelope, delayed vibrato and glides into long notes; a pad of three detuned saws; plucked pulses for arpeggios; a bass of a sub sine and a filtered pulse (bite a phone can play); an FM bell; a synthesized kit (kick, snare, hats, shaker, toms, crash) and a noise riser.
+- **The mix**: a plate-like reverb (a 2.2 s impulse made once per audio context), a dotted-eighth ping-pong delay, the pads and bass ducking under each kick (sidechain), and a bus with a low cut, a presence lift at 3 kHz, air above 8 kHz and gentle glue compression. Where a browser lacks a compressor, a convolver or custom waves, that part is left out, not the music.
+- **The arrangements** (`pro-score.ts`): the same tunes and form, with a counter-line answering in the tune's rests, grooves that change by section, tom fills closing each section, a crash opening the big ones and a riser through the bridge's last bar.
+- **Measured** at the default music level against the chip versions they replace: the hub −29.9 dB (chip −30.5), PvP −30.2 dB (chip −31.9) on average; stereo width up about 9 dB (side against mid); energy 2 to 6 kHz up from 3–7% to 8–11%; no clipping (peaks −4 to −5 dBFS through the music limiter).
+
 ### Levels, measured
 
 Each theme carries a trim (`RETRO_GAIN`) that evens the scenes out (pulse waves are dense), and the triangle bass sits a little under the tune, since phones can't play it and it weighed on headphones. How loud it all plays is set in `audio.ts`; see "Volume" below.
@@ -35,13 +42,13 @@ The music and the effects each have a bus: the Settings slider's level times a g
 
 Until 26 Nov 2026 the defaults were 12% music (at a gain of 0.5) and 30% effects (at 0.26), which put the music near −53 dB: too quiet on a phone even with the slider full (owner, 26 Nov). Measured offline in Chromium, with the limiters, after they settle (a compressor starts with its gain still moving, and Web Audio's adds a little makeup gain under its threshold):
 
-| At the default sliders           | Before (dB) | Now (dB)     |
-| -------------------------------- | ----------- | ------------ |
-| Music, average (Lobby to Spire)  | −52 to −55  | −30.5 to −33 |
-| A basic attack, loudest 50 ms    | −37         | −26          |
-| A skill, loudest 50 ms           | −33         | −21          |
-| An ultimate, loudest 50 ms       | −27         | −16          |
-| A hit (12 damage), loudest 50 ms | −34         | −22.5        |
+| At the default sliders           | Before (dB) | Now (dB)   |
+| -------------------------------- | ----------- | ---------- |
+| Music, average (Lobby to Spire)  | −52 to −55  | −30 to −33 |
+| A basic attack, loudest 50 ms    | −37         | −26        |
+| A skill, loudest 50 ms           | −33         | −21        |
+| An ultimate, loudest 50 ms       | −27         | −16        |
+| A hit (12 damage), loudest 50 ms | −34         | −22.5      |
 
 The music sits under the skills, as it did, but much less far under. The worst case found, a knockout you take every half second over the raid's busiest phase with both sliders full, peaks at −0.5 dBFS; at the default sliders, −2 dBFS.
 
