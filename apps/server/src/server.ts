@@ -177,6 +177,7 @@ import {
   createAccountProvider,
   authorize,
   installAccountRoutes,
+  reportFinishedMatch,
   AccountError,
   type AccountProvider,
 } from "./accounts.js";
@@ -894,14 +895,16 @@ export function createArenaServer(
       socket.disconnect(true);
     }
   }
+  /** Something of a player's changed: their connections load it again. */
+  const playerChanged = (id: string) => {
+    for (const socket of io.sockets.sockets.values())
+      if ((socket.data.account as Account | undefined)?.id === id)
+        void refreshSocket(socket);
+  };
   installAccountRoutes(
     app,
     accounts,
-    (id) => {
-      for (const socket of io.sockets.sockets.values())
-        if ((socket.data.account as Account | undefined)?.id === id)
-          void refreshSocket(socket);
-    },
+    playerChanged,
     listOnline,
     (matchId, accountId) => ledger.forPlayer(matchId, accountId),
     (accountId) => {
@@ -3112,6 +3115,33 @@ export function createArenaServer(
     // Round-trip check for the in-battle ping badge: answer at once.
     socket.on("rtt", (_data: unknown, cb: unknown) => {
       if (typeof cb === "function") cb();
+    });
+    // File a finished match in your records, on the server that ran it
+    // (reportFinishedMatch). Over HTTP the request may reach another server
+    // during a deploy, which never saw the match.
+    socket.on("match-report", async (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(10)) return fail(cb, "Too many requests.");
+      try {
+        const report = await reportFinishedMatch(
+          accounts,
+          socket.data.accessToken,
+          account()!.id,
+          data,
+          (matchId, accountId) => ledger.forPlayer(matchId, accountId),
+          playerChanged,
+        );
+        reply(cb, { ok: true, report });
+      } catch (error) {
+        fail(
+          cb,
+          error instanceof AccountError
+            ? error.message
+            : error instanceof ZodError
+              ? "Invalid match."
+              : "Couldn't save this match to your records.",
+        );
+      }
     });
     socket.on("input", (data: unknown) => {
       if (!allowedStream("input", 90)) return;

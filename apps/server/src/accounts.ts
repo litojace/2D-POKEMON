@@ -532,6 +532,40 @@ export async function authorize(
     throw new AccountError(403, "Admin access is required.");
   return account;
 }
+/**
+ * File a finished match in a player's records: its summary from the server
+ * that ran it (the match ledger), saved with the player's own login. Over
+ * HTTP (POST /api/matches/report) and over the game connection
+ * (server.ts, "match-report"): during a deploy only the connection still
+ * reaches the server that has the summary.
+ */
+export async function reportFinishedMatch(
+  provider: AccountProvider,
+  token: string,
+  accountId: string,
+  body: unknown,
+  finishedMatch: (
+    matchId: string,
+    accountId: string,
+  ) => MatchSummary | undefined,
+  onPlayerChanged: (id: string) => void,
+) {
+  const { matchId } = matchReportSchema.parse(body);
+  const summary = finishedMatch(matchId, accountId);
+  if (!summary)
+    throw new AccountError(404, "That match is no longer available.");
+  const result = await provider.rpc(token, "arena_report_match", {
+    p_match_id: matchId,
+    p_summary: summary,
+  });
+  if (
+    result &&
+    typeof result === "object" &&
+    ((result as { achievements?: unknown[] }).achievements?.length ?? 0) > 0
+  )
+    onPlayerChanged(accountId);
+  return result;
+}
 export function installAccountRoutes(
   app: Express,
   provider: AccountProvider,
@@ -886,21 +920,16 @@ export function installAccountRoutes(
   app.post(
     "/api/matches/report",
     route(false, async (req, res, token, account) => {
-      const { matchId } = matchReportSchema.parse(req.body);
-      const summary = finishedMatch(matchId, account.id);
-      if (!summary)
-        throw new AccountError(404, "That match is no longer available.");
-      const result = await provider.rpc(token, "arena_report_match", {
-        p_match_id: matchId,
-        p_summary: summary,
-      });
-      if (
-        result &&
-        typeof result === "object" &&
-        ((result as { achievements?: unknown[] }).achievements?.length ?? 0) > 0
-      )
-        onPlayerChanged(account.id);
-      res.json(result);
+      res.json(
+        await reportFinishedMatch(
+          provider,
+          token,
+          account.id,
+          req.body,
+          finishedMatch,
+          onPlayerChanged,
+        ),
+      );
     }),
   );
   app.get(

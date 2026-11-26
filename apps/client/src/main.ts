@@ -5120,6 +5120,18 @@ const matchRecords = new Map<string, RecordState>();
  * Save a finished match to your records. A match counts once every player's
  * game has saved it, so if ours was first, check again shortly.
  */
+/**
+ * Ask the server that ran the match to file it. Over the game connection
+ * first: during a deploy it stays with that server until the results are
+ * left, while HTTP already reaches the new one, which never saw the match
+ * ("Couldn't save this match to your records", 25 Nov 2026). HTTP is the
+ * fallback (not connected, or a server without the event).
+ */
+async function sendMatchReport(matchId: string): Promise<unknown> {
+  const reply = await request("match-report", { matchId }, true);
+  if (reply.ok && reply.report !== undefined) return reply.report;
+  return accountsUI.api("/api/matches/report", { matchId });
+}
 async function reportMatch(matchId: string, attempt = 0) {
   if (!accountsUI.account) return;
   if (attempt === 0) {
@@ -5127,9 +5139,7 @@ async function reportMatch(matchId: string, attempt = 0) {
     matchRecords.set(matchId, { status: "pending" });
   }
   try {
-    const reply = matchReportReplySchema.parse(
-      await accountsUI.api("/api/matches/report", { matchId }),
-    );
+    const reply = matchReportReplySchema.parse(await sendMatchReport(matchId));
     const before = matchRecords.get(matchId);
     const seen =
       before?.status === "done" ? before.reply.achievements : ([] as string[]);
