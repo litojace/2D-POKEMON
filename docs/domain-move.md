@@ -180,3 +180,11 @@ this move doesn't touch how the session is stored.
   local/session storage on `play.` into the cookie at startup. `play.` can
   go live before #484. The website (live at `https://elementarenausa.com`)
   points Play at `parena` until then (#485). Waiting for the owner.
+- 25 Nov, 4:25 PM PT: owner confirmed here ("đồng ý"). Step 1 done: Render
+  custom domain `play.elementarenausa.com` added to the Static Site, verified
+  4:26 PM. Step 2 done: Cloudflare `CNAME play → twod-pokemon.onrender.com`,
+  DNS only (record id `2abf1a01…`). `https://play.elementarenausa.com/` serves
+  the same `index.html` as `parena` (200); `/sw.js`, `/privacy.html`,
+  `/support.html`, `/email-confirmed`, `/?room=` 200; a missing script 404.
+  Step 3: `CLIENT_ORIGIN=https://play.elementarenausa.com,https://parena.litojace.com`
+  set on `element-arena`, deploying.
