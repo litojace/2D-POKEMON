@@ -373,6 +373,242 @@ function joystick() {
   return svg(b, "-15 -15 30 30");
 }
 
+// ── Seaside: a twisted rope set with scallop shells and pearls.
+function shellRing() {
+  let b = "";
+  b += `<circle r='55' fill='none' stroke='#8a5a2c' stroke-width='9.8'/>`;
+  b += `<circle r='55' fill='none' stroke='#e9c98f' stroke-width='8.2'/>`;
+  // The rope's strands.
+  for (let a = 0; a < 360; a += 6) {
+    const [x1, y1] = pt(51.4, a);
+    const [x2, y2] = pt(58.6, a + 5);
+    b += `<path d='M${x1} ${y1}L${x2} ${y2}' stroke='#b98a4e' stroke-width='1.1' stroke-linecap='round'/>`;
+  }
+  b += `<circle r='50.6' fill='none' stroke='#fff3d6' stroke-width='1'/>`;
+  b += `<circle r='59.6' fill='none' stroke='#fff3d6' stroke-width='.7' opacity='.7'/>`;
+  // Pearls between the shells.
+  for (const a of [0, 55, 110, 170, 228, 280, 335]) {
+    const [x, y] = pt(55, a);
+    b += `<circle cx='${x}' cy='${y}' r='2.2' fill='#ffffff' stroke='#c9b8a8' stroke-width='.6'/><circle cx='${f(x - 0.6)}' cy='${f(y - 0.6)}' r='.7' fill='#ffffff'/>`;
+  }
+  // Scallop shells set on the rope, their fans turned outward.
+  const shell = (a, s, fill, rib) => {
+    const [x, y] = pt(55.5, a);
+    return (
+      `<g transform='translate(${x} ${y}) rotate(${f(a + 90)}) scale(${s})'>` +
+      `<path d='M0 5 L-3 3 Q-9 -1 -6.5 -6 Q-3.4 -9.4 0 -8.6 Q3.4 -9.4 6.5 -6 Q9 -1 3 3Z' fill='${fill}' stroke='#a8553f' stroke-width='.8' stroke-linejoin='round'/>` +
+      `<path d='M0 4V-8M-1.4 3.6L-4.6 -6.6M1.4 3.6L4.6 -6.6M-2.4 3L-7 -3.4M2.4 3L7 -3.4' fill='none' stroke='${rib}' stroke-width='.7' stroke-linecap='round'/></g>`
+    );
+  };
+  for (const [a, s, c, r] of [
+    [200, 1.15, "#ffd9c8", "#e88a78"],
+    [254, 0.95, "#fff3e6", "#e2b48a"],
+    [308, 1.1, "#ffc2b0", "#d9705e"],
+    [28, 0.95, "#fff3e6", "#e2b48a"],
+    [82, 1.15, "#ffd9c8", "#e88a78"],
+    [140, 0.95, "#ffc2b0", "#d9705e"],
+  ])
+    b += shell(a, s, c, r);
+  return svg(b);
+}
+// Ornament: a coral starfish.
+function starfish() {
+  let d = "";
+  for (let i = 0; i < 10; i++) {
+    const [x, y] = pt(i % 2 ? 5.6 : 13, -90 + i * 36);
+    d += `${i ? "L" : "M"}${x} ${y}`;
+  }
+  let dots = "";
+  for (let i = 0; i < 5; i++)
+    for (const r of [4.5, 8]) {
+      const [x, y] = pt(r, -90 + i * 72);
+      dots += `<circle cx='${x}' cy='${y}' r='.9' fill='#ffe1d2'/>`;
+    }
+  return svg(
+    `<path d='${d}Z' fill='#ff8a6a' stroke='#b8452f' stroke-width='1.3' stroke-linejoin='round'/>${dots}<circle r='1.4' fill='#ffe1d2'/>`,
+    "-15 -15 30 30",
+  );
+}
+
+// ── Steamworks: a brass cog, riveted, with a copper gear set into it.
+function cogRing() {
+  let b = `<defs><linearGradient id='b' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#ffe6a6'/><stop offset='.5' stop-color='#d9982f'/><stop offset='1' stop-color='#8a5a1c'/></linearGradient></defs>`;
+  const teeth = (n, r0, r1, w0, w1, cx = 0, cy = 0, turn = 0) => {
+    let d = "";
+    for (let i = 0; i < n; i++) {
+      const a = turn + (i * 360) / n;
+      const q = [
+        pt(r0, a - w0),
+        pt(r1, a - w1),
+        pt(r1, a + w1),
+        pt(r0, a + w0),
+      ];
+      d += "M" + q.map(([x, y]) => `${f(x + cx)} ${f(y + cy)}`).join("L") + "Z";
+    }
+    return d;
+  };
+  b += `<path d='${teeth(20, 58, 63.6, 3.8, 2.4)}' fill='#c8862a' stroke='#5a3a12' stroke-width='.8' stroke-linejoin='round'/>`;
+  b += `<circle r='55' fill='none' stroke='#5a3a12' stroke-width='10.6'/>`;
+  b += `<circle r='55' fill='none' stroke='url(#b)' stroke-width='9'/>`;
+  b += `<circle r='50.6' fill='none' stroke='#fff1c4' stroke-width='1'/>`;
+  b += `<circle r='59.3' fill='none' stroke='#ffe6a6' stroke-width='.7' opacity='.8'/>`;
+  // An engraved line and rivets round the rim.
+  b += `<circle r='55' fill='none' stroke='#7a4f18' stroke-width='.7' opacity='.7'/>`;
+  for (let i = 0; i < 12; i++) {
+    const [x, y] = pt(55, i * 30 + 15);
+    b += `<circle cx='${x}' cy='${y}' r='1.8' fill='#fff1c4' stroke='#5a3a12' stroke-width='.6'/>`;
+  }
+  // The copper gear, lower left.
+  const [gx, gy] = pt(57, 135);
+  b += `<path d='${teeth(8, 6.4, 9.2, 13, 8, gx, gy, 10)}' fill='#c8683a' stroke='#5a2a12' stroke-width='.7' stroke-linejoin='round'/>`;
+  b += `<circle cx='${gx}' cy='${gy}' r='6.6' fill='#d97a4a' stroke='#5a2a12' stroke-width='.8'/>`;
+  b += `<circle cx='${gx}' cy='${gy}' r='2.4' fill='#3a2410'/>`;
+  b += `<circle cx='${gx}' cy='${gy}' r='4.6' fill='none' stroke='#ffd0b0' stroke-width='.6' opacity='.8'/>`;
+  return svg(b);
+}
+// Ornament: a wind-up key.
+function windKey() {
+  return svg(
+    `<path d='M0 14V2' stroke='#5a3a12' stroke-width='5.4' stroke-linecap='round'/><path d='M0 14V2' stroke='#d9982f' stroke-width='3.2' stroke-linecap='round'/>` +
+      `<path d='M0 2C-4 -6 -14 -8 -14 -2C-14 4 -5 4 0 2Z M0 2C4 -6 14 -8 14 -2C14 4 5 4 0 2Z' fill='#e0a23a' stroke='#5a3a12' stroke-width='1.2' stroke-linejoin='round'/>` +
+      `<ellipse cx='-8.4' cy='-2' rx='2.8' ry='2.2' fill='#3a2410'/><ellipse cx='8.4' cy='-2' rx='2.8' ry='2.2' fill='#3a2410'/>` +
+      `<path d='M-12 -4.6Q-9 -7 -5.6 -5.6M5.6 -5.6Q9 -7 12 -4.6' fill='none' stroke='#fff1c4' stroke-width='.9' stroke-linecap='round'/>` +
+      `<circle cy='2' r='2.5' fill='#fff1c4' stroke='#5a3a12' stroke-width='.8'/>`,
+    "-16 -12 32 28",
+  );
+}
+
+// ── Borealis: a night sky ringed by curtains of northern light, tallest
+// over the top, with a ribbon of light winding through the stars.
+function polarRing() {
+  seed = 61;
+  let b = `<defs><linearGradient id='n' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#1c4580'/><stop offset='1' stop-color='#0c1a40'/></linearGradient><linearGradient id='g' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#4dffb8'/><stop offset='.5' stop-color='#8ff0ff'/><stop offset='1' stop-color='#c9a6ff'/></linearGradient></defs>`;
+  // The curtains: rays standing off the ring, green at the foot, violet at the tip.
+  for (let a = 0; a < 360; a += 9) {
+    const up = Math.max(0, -Math.sin(R(a)));
+    const len =
+      3 +
+      (2.5 + 6.5 * up) * (0.55 + 0.45 * Math.pow(Math.sin(R(a * 5 + 30)), 2));
+    const [x1, y1] = pt(58, a - 3.8);
+    const [x2, y2] = pt(58, a + 3.8);
+    const [tx, ty] = pt(58 + len, a + 1.5);
+    const [m1x, m1y] = pt(58 + len * 0.5, a - 2);
+    const [m2x, m2y] = pt(58 + len * 0.5, a + 3);
+    b += `<path d='M${x1} ${y1}L${tx} ${ty}L${x2} ${y2}Z' fill='#b48cff' opacity='.7'/>`;
+    b += `<path d='M${x1} ${y1}L${m1x} ${m1y}L${m2x} ${m2y}L${x2} ${y2}Z' fill='#4dffb8' opacity='.9'/>`;
+  }
+  b += `<circle r='55' fill='none' stroke='#4dffb8' stroke-width='11.2'/>`;
+  b += `<circle r='55' fill='none' stroke='url(#n)' stroke-width='8.2'/>`;
+  b += `<path d='${pathOf(polar((a) => 55 + 1.5 * Math.sin(R(a * 8)), 0, 358, 2))}' fill='none' stroke='url(#g)' stroke-width='3.6' opacity='.9' stroke-linejoin='round'/>`;
+  // Stars: four-point glints and a scatter of dots.
+  for (let i = 0; i < 9; i++) {
+    const [x, y] = pt(52.6 + rnd() * 4.8, i * 40 + rnd() * 20);
+    const s = 1.5 + rnd() * 1.1;
+    b += `<path d='M${x} ${f(y - s)}L${f(x + s * 0.3)} ${f(y - s * 0.3)}L${f(x + s)} ${y}L${f(x + s * 0.3)} ${f(y + s * 0.3)}L${x} ${f(y + s)}L${f(x - s * 0.3)} ${f(y + s * 0.3)}L${f(x - s)} ${y}L${f(x - s * 0.3)} ${f(y - s * 0.3)}Z' fill='#ffffff'/>`;
+  }
+  for (let i = 0; i < 16; i++) {
+    const [x, y] = pt(51.6 + rnd() * 6.8, rnd() * 360);
+    b += `<circle cx='${x}' cy='${y}' r='${f(0.35 + rnd() * 0.4)}' fill='#ffffff' opacity='${f(0.5 + rnd() * 0.5)}'/>`;
+  }
+  b += `<circle r='50.3' fill='none' stroke='#b7fbe6' stroke-width='1.2'/>`;
+  return svg(b);
+}
+// Ornament: the pole star.
+function polarStar() {
+  const star = (r1, r2, rot) => {
+    let d = "";
+    for (let i = 0; i < 8; i++) {
+      const [x, y] = pt(i % 2 ? r2 : r1, rot + i * 45);
+      d += `${i ? "L" : "M"}${x} ${y}`;
+    }
+    return d + "Z";
+  };
+  return svg(
+    `<circle r='10' fill='#8ff0ff' opacity='.35'/><path d='${star(14, 3, -90)}' fill='#ffffff' stroke='#2fae96' stroke-width='1.1' stroke-linejoin='round'/><path d='${star(7.5, 2.4, -45)}' fill='#b48cff' stroke='#5a3a9a' stroke-width='.6' stroke-linejoin='round'/><circle r='2.4' fill='#ffffff'/>`,
+    "-15 -15 30 30",
+  );
+}
+
+// ── Singles (pieces sold on their own): a gold laurel wreath, open at the
+// top, its stems tied with a red ribbon at the bottom.
+function laurelRing() {
+  let b = `<defs><linearGradient id='l' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#fff1b0'/><stop offset='.55' stop-color='#e2b23a'/><stop offset='1' stop-color='#8a6414'/></linearGradient></defs>`;
+  b += `<circle r='55' fill='none' stroke='#6a4a10' stroke-width='6'/>`;
+  b += `<circle r='55' fill='none' stroke='url(#l)' stroke-width='4.4'/>`;
+  b += `<circle r='51.4' fill='none' stroke='#fff1b0' stroke-width='.9'/>`;
+  const leaf = (a, rot, r, s) => {
+    const [x, y] = pt(r, a);
+    return (
+      `<g transform='translate(${x} ${y}) rotate(${f(rot)}) scale(${s})'>` +
+      `<path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(#l)' stroke='#6a4a10' stroke-width='.75' stroke-linejoin='round'/>` +
+      `<path d='M0 -1.2V-11' stroke='#8a6414' stroke-width='.55'/></g>`
+    );
+  };
+  // Two branches climb from the bottom (90°) up each side, leaves set in
+  // and out in turn, pointing up the branch; the inner ones lean less, so
+  // the portrait stays clear.
+  for (let i = 0; i < 11; i++) {
+    const t = 10 + i * 13.6;
+    const out = i % 2 === 0;
+    const r = out ? 58 : 52.4;
+    const s = 1.3 - i * 0.03;
+    const lean = out ? 34 : 18;
+    b += leaf(90 - t, 90 - t + (out ? lean : -lean), r, s);
+    b += leaf(90 + t, 90 + t + 180 + (out ? -lean : lean), r, s);
+  }
+  // A few gold berries on the branches.
+  for (const a of [28, 152, -16, 196]) {
+    const [x, y] = pt(60.4, a);
+    b += `<circle cx='${x}' cy='${y}' r='1.7' fill='#ffe07a' stroke='#6a4a10' stroke-width='.6'/>`;
+  }
+  return svg(b);
+}
+// Ornament: the red ribbon tying the stems.
+function ribbonBow() {
+  return svg(
+    `<path d='M-3 2L-9 15L-5 13L-3 17L0 4Z M3 2L9 15L5 13L3 17L0 4Z' fill='#c8323a' stroke='#6a1418' stroke-width='.9' stroke-linejoin='round'/>` +
+      `<path d='M0 0C-6 -8 -15 -7 -14 -1C-13 5 -5 4 0 0Z M0 0C6 -8 15 -7 14 -1C13 5 5 4 0 0Z' fill='#e04a52' stroke='#6a1418' stroke-width='1' stroke-linejoin='round'/>` +
+      `<path d='M-11 -2Q-8 -5 -4 -3M4 -3Q8 -5 11 -2' fill='none' stroke='#ffb0b6' stroke-width='.9' stroke-linecap='round'/>` +
+      `<ellipse rx='3.2' ry='3' fill='#c8323a' stroke='#6a1418' stroke-width='.9'/>`,
+    "-16 -10 32 28",
+  );
+}
+// ── A jewelled gold band: rubies, sapphires and emeralds in gold bezels.
+function crownRing() {
+  let b = `<defs><linearGradient id='c' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#fff4c0'/><stop offset='.5' stop-color='#e8b33a'/><stop offset='1' stop-color='#7a5410'/></linearGradient></defs>`;
+  b += `<circle r='55' fill='none' stroke='#5a3c0c' stroke-width='11'/>`;
+  b += `<circle r='55' fill='none' stroke='url(#c)' stroke-width='9.4'/>`;
+  b += `<circle r='50.6' fill='none' stroke='#fff4c0' stroke-width='1'/>`;
+  b += `<circle r='59.6' fill='none' stroke='#fff4c0' stroke-width='.7' opacity='.8'/>`;
+  // Beading along both edges of the band.
+  b += `<circle r='51.8' fill='none' stroke='#a8781c' stroke-width='1' stroke-dasharray='.9 1.9' opacity='.9'/>`;
+  b += `<circle r='58.2' fill='none' stroke='#a8781c' stroke-width='1' stroke-dasharray='.9 1.9' opacity='.9'/>`;
+  const gems = [
+    ["#e0303a", "#7a1018"],
+    ["#3a6ae0", "#14286a"],
+    ["#2ab86a", "#0e5a30"],
+  ];
+  for (let i = 0; i < 12; i++) {
+    const [x, y] = pt(55, i * 30 + 15);
+    const [c, d] = gems[i % 3];
+    b += `<circle cx='${x}' cy='${y}' r='3.7' fill='#fff1b0' stroke='#5a3c0c' stroke-width='.7'/>`;
+    b += `<circle cx='${x}' cy='${y}' r='2.7' fill='${c}' stroke='${d}' stroke-width='.6'/>`;
+    b += `<circle cx='${f(x - 0.8)}' cy='${f(y - 0.9)}' r='.85' fill='#ffffff' opacity='.9'/>`;
+  }
+  return svg(b);
+}
+// Ornament: a gold crown with three points and a row of gems.
+function crown() {
+  return svg(
+    `<path d='M-15 8L-17 -6L-8 1L0 -11L8 1L17 -6L15 8Z' fill='#e8b33a' stroke='#5a3c0c' stroke-width='1.3' stroke-linejoin='round'/>` +
+      `<path d='M-15 8L15 8L14 13L-14 13Z' fill='#c8921e' stroke='#5a3c0c' stroke-width='1.2' stroke-linejoin='round'/>` +
+      `<circle cx='-17' cy='-6' r='2.2' fill='#fff1b0' stroke='#5a3c0c' stroke-width='.8'/><circle cx='17' cy='-6' r='2.2' fill='#fff1b0' stroke='#5a3c0c' stroke-width='.8'/><circle cy='-11' r='2.4' fill='#fff1b0' stroke='#5a3c0c' stroke-width='.8'/>` +
+      `<circle cy='10.5' r='2' fill='#e0303a' stroke='#7a1018' stroke-width='.6'/><circle cx='-8' cy='10.5' r='1.6' fill='#3a6ae0' stroke='#14286a' stroke-width='.5'/><circle cx='8' cy='10.5' r='1.6' fill='#2ab86a' stroke='#0e5a30' stroke-width='.5'/>` +
+      `<path d='M-12 5L-13 -1M12 5L13 -1M-3 3L0 -5' stroke='#fff4c0' stroke-width='.9' stroke-linecap='round' opacity='.85'/>`,
+    "-20 -15 40 30",
+  );
+}
+
 const out = {
   cookie: uri(cookie()),
   bonbon: uri(bonbon()),
@@ -388,11 +624,22 @@ const out = {
   mechaCrest: uri(mechaCrest()),
   neonRing: uri(neonRing()),
   joystick: uri(joystick()),
+  shellRing: uri(shellRing()),
+  starfish: uri(starfish()),
+  cogRing: uri(cogRing()),
+  windKey: uri(windKey()),
+  polarRing: uri(polarRing()),
+  polarStar: uri(polarStar()),
+  laurelRing: uri(laurelRing()),
+  ribbonBow: uri(ribbonBow()),
+  crownRing: uri(crownRing()),
+  crown: uri(crown()),
 };
 
 const a = out;
-const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and the
-   reward frames for owning every Void Knight, Cyber Mecha or Arcade skin).
+const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter, Seaside,
+   Steamworks, Borealis; and the reward frames for owning every Void Knight,
+   Cyber Mecha or Arcade skin).
    Artwork is drawn as scalable SVG so the same frame reads clearly from a
    small identity portrait up to the large fitting-room review. ::before is
    the ring (viewBox -70…70 around a radius-50 portrait, hence inset -20%),
@@ -404,7 +651,12 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
     [data-cosmetic="winter-frame"],
     [data-cosmetic="void-frame"],
     [data-cosmetic="cyber-frame"],
-    [data-cosmetic="arcade-frame"]
+    [data-cosmetic="arcade-frame"],
+    [data-cosmetic="seaside-frame"],
+    [data-cosmetic="steamworks-frame"],
+    [data-cosmetic="borealis-frame"],
+    [data-cosmetic="laurel-frame"],
+    [data-cosmetic="crown-frame"]
   ) {
   box-shadow: none;
 }
@@ -415,7 +667,12 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
     [data-cosmetic="winter-frame"],
     [data-cosmetic="void-frame"],
     [data-cosmetic="cyber-frame"],
-    [data-cosmetic="arcade-frame"]
+    [data-cosmetic="arcade-frame"],
+    [data-cosmetic="seaside-frame"],
+    [data-cosmetic="steamworks-frame"],
+    [data-cosmetic="borealis-frame"],
+    [data-cosmetic="laurel-frame"],
+    [data-cosmetic="crown-frame"]
   )::before {
   content: "";
   position: absolute;
@@ -431,7 +688,12 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
     [data-cosmetic="winter-frame"],
     [data-cosmetic="void-frame"],
     [data-cosmetic="cyber-frame"],
-    [data-cosmetic="arcade-frame"]
+    [data-cosmetic="arcade-frame"],
+    [data-cosmetic="seaside-frame"],
+    [data-cosmetic="steamworks-frame"],
+    [data-cosmetic="borealis-frame"],
+    [data-cosmetic="laurel-frame"],
+    [data-cosmetic="crown-frame"]
   )::after {
   content: "";
   position: absolute;
@@ -623,6 +885,324 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
     #7a2bd6,
     #ff4fd8
   );
+}
+
+/* ---- The Look sets added on 25 Nov 2026 (docs/shop-new-items.md) ----
+   Their frames, and the small pictures of their other pieces, live here
+   rather than in style.css. */
+
+/* Seaside: a twisted rope set with scallop shells and pearls, a starfish. */
+.raid-cosmetic-preview[data-cosmetic="seaside-frame"]::before {
+  background-image: ${a.shellRing};
+}
+.raid-cosmetic-preview[data-cosmetic="seaside-frame"]::after {
+  right: -13%;
+  bottom: -11%;
+  width: 34%;
+  height: 34%;
+  transform: rotate(16deg);
+  background-image: ${a.starfish};
+}
+.raid-cosmetic-preview[data-cosmetic="seaside-frame"] {
+  --frame-glow: #ff9a76aa;
+}
+
+/* Steamworks: a riveted brass cog with a copper gear, a wind-up key on top. */
+.raid-cosmetic-preview[data-cosmetic="steamworks-frame"]::before {
+  background-image: ${a.cogRing};
+}
+.raid-cosmetic-preview[data-cosmetic="steamworks-frame"]::after {
+  top: -33%;
+  left: 50%;
+  width: 34%;
+  height: 30%;
+  transform: translateX(-50%);
+  background-image: ${a.windKey};
+}
+.raid-cosmetic-preview[data-cosmetic="steamworks-frame"] {
+  --frame-glow: #e0a23aaa;
+}
+.raid-cosmetic-preview[data-cosmetic="steamworks-frame"][data-tier="epic"]
+  > .tier-fx {
+  background: conic-gradient(
+    from var(--tier-turn),
+    #e0a23a,
+    #fff1c4,
+    #c8683a,
+    #8a5a1c,
+    #e0a23a
+  );
+}
+
+/* Borealis: a night sky ringed by curtains of northern light, the pole
+   star on top. Mythical, but its halo stays in the lights' green and violet. */
+.raid-cosmetic-preview[data-cosmetic="borealis-frame"]::before {
+  background-image: ${a.polarRing};
+}
+.raid-cosmetic-preview[data-cosmetic="borealis-frame"]::after {
+  top: -34%;
+  left: 50%;
+  width: 40%;
+  height: 40%;
+  transform: translateX(-50%);
+  background-image: ${a.polarStar};
+}
+.raid-cosmetic-preview[data-cosmetic="borealis-frame"] {
+  --frame-glow: #4dffb8aa;
+}
+.raid-cosmetic-preview[data-cosmetic="borealis-frame"][data-tier="mythic"]
+  > .tier-glow {
+  background: conic-gradient(
+    from var(--tier-turn),
+    #4dffb8cc,
+    #8ff0ffcc,
+    #b48cffcc,
+    #14305acc,
+    #4dffb8cc
+  );
+}
+.raid-cosmetic-preview[data-cosmetic="borealis-frame"][data-tier="mythic"]
+  > .tier-fx {
+  background: conic-gradient(
+    from var(--tier-turn),
+    #4dffb8,
+    #14305a,
+    #eafff6,
+    #b48cff,
+    #4dffb8
+  );
+}
+
+/* Small avatars that show no frame art: a ring in the set's colours. */
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar):is(
+  [data-raid-cosmetic~="seaside-frame"],
+  [data-raid-cosmetic~="steamworks-frame"],
+  [data-raid-cosmetic~="borealis-frame"]
+) {
+  position: relative;
+  border-radius: 50%;
+}
+:is(
+  .raid-party-avatar,
+  .raid-score-avatar,
+  .player-avatar
+)[data-raid-cosmetic~="seaside-frame"] {
+  box-shadow:
+    0 0 0 3px #e9c98f,
+    0 0 0 5px #ff9a76;
+}
+:is(
+  .raid-party-avatar,
+  .raid-score-avatar,
+  .player-avatar
+)[data-raid-cosmetic~="steamworks-frame"] {
+  box-shadow:
+    0 0 0 3px #d9982f,
+    0 0 0 5px #5a3a12;
+}
+:is(
+  .raid-party-avatar,
+  .raid-score-avatar,
+  .player-avatar
+)[data-raid-cosmetic~="borealis-frame"] {
+  box-shadow:
+    0 0 0 3px #14305a,
+    0 0 0 4px #4dffb8,
+    0 0 10px 3px #b48cff66;
+}
+
+/* Colours restyle the portrait (in play, the rig recolours the textures). */
+.raid-cosmetic-preview[data-cosmetic="seaside-colours"] > svg,
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="seaside-colours"]
+  > svg {
+  filter: sepia(0.75) hue-rotate(-22deg) saturate(1.9) brightness(1.06);
+}
+.raid-cosmetic-preview[data-cosmetic="steamworks-colours"] > svg,
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="steamworks-colours"]
+  > svg {
+  filter: sepia(0.95) saturate(1.7) brightness(0.92);
+}
+.raid-cosmetic-preview[data-cosmetic="borealis-colours"] > svg,
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="borealis-colours"]
+  > svg {
+  filter: grayscale(0.3) sepia(0.6) hue-rotate(105deg) saturate(2)
+    brightness(0.9);
+}
+
+/* Auras: a ring under the portrait in the set's style. */
+.raid-cosmetic-preview[data-cosmetic="seaside-aura"] {
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 5px #7fe0d888;
+  background: radial-gradient(circle, #14213a 56%, #ff9a7655);
+}
+.raid-cosmetic-preview[data-cosmetic="steamworks-aura"] {
+  box-shadow:
+    0 0 0 2px #e0a23a,
+    0 0 0 4px #5a3a12,
+    0 0 0 5px #ffe6a6;
+  background: radial-gradient(circle, #14213a 56%, #e0a23a44);
+}
+.raid-cosmetic-preview[data-cosmetic="borealis-aura"] {
+  box-shadow:
+    0 0 0 2px #4dffb8,
+    0 0 12px 4px #b48cff88;
+  background: radial-gradient(circle, #14213a 50%, #4dffb844, #b48cff55);
+}
+
+/* Entrances and victories: a hint of the moment behind the preview. */
+.raid-cosmetic-preview[data-cosmetic="seaside-entrance"] {
+  background: linear-gradient(#14213a 58%, #f2c98a 58% 82%, #7fe0d8 82%);
+}
+.raid-cosmetic-preview[data-cosmetic="steamworks-entrance"] {
+  background:
+    radial-gradient(circle at 50% 30%, #f4f1e6aa 0 22%, transparent 40%),
+    linear-gradient(#14213a 78%, #e0a23a 78%);
+}
+.raid-cosmetic-preview[data-cosmetic="borealis-entrance"] {
+  background: linear-gradient(
+    90deg,
+    #14213a 20%,
+    #4dffb888 38%,
+    #8ff0ffaa 50%,
+    #b48cff88 62%,
+    #14213a 80%
+  );
+}
+.raid-cosmetic-preview[data-cosmetic="seaside-victory"] {
+  background:
+    linear-gradient(transparent 68%, #2f9ec4 68% 80%, #8fe6e8 80%),
+    radial-gradient(circle at 50% 68%, #ffe08a 0 26%, #ff8a4c 40%, #14213a 62%);
+}
+.raid-cosmetic-preview[data-cosmetic="steamworks-victory"] {
+  background: radial-gradient(
+    circle,
+    #4a2f14 0 6%,
+    #fff6dc 7% 44%,
+    #e0a23a 45% 54%,
+    #14213a 56%
+  );
+}
+.raid-cosmetic-preview[data-cosmetic="borealis-victory"] {
+  background:
+    linear-gradient(#4dffb866, transparent 46%),
+    linear-gradient(transparent 14%, #b48cff66 34%, transparent 62%), #0a1430;
+}
+
+/* ---- Singles: pieces sold on their own, outside any set ---- */
+
+/* Laurel: a gold laurel wreath, open at the top, tied with a red ribbon. */
+.raid-cosmetic-preview[data-cosmetic="laurel-frame"]::before {
+  background-image: ${a.laurelRing};
+}
+.raid-cosmetic-preview[data-cosmetic="laurel-frame"]::after {
+  bottom: -27%;
+  left: 50%;
+  width: 34%;
+  height: 30%;
+  transform: translateX(-50%);
+  background-image: ${a.ribbonBow};
+}
+.raid-cosmetic-preview[data-cosmetic="laurel-frame"] {
+  --frame-glow: #e2b23aaa;
+}
+
+/* Crown: a jewelled gold band under a three-pointed crown. */
+.raid-cosmetic-preview[data-cosmetic="crown-frame"]::before {
+  background-image: ${a.crownRing};
+}
+.raid-cosmetic-preview[data-cosmetic="crown-frame"]::after {
+  top: -34%;
+  left: 50%;
+  width: 42%;
+  height: 32%;
+  transform: translateX(-50%);
+  background-image: ${a.crown};
+}
+.raid-cosmetic-preview[data-cosmetic="crown-frame"] {
+  --frame-glow: #e8b33aaa;
+}
+
+/* Small avatars: a ring in the frame's colours. */
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar):is(
+  [data-raid-cosmetic~="laurel-frame"],
+  [data-raid-cosmetic~="crown-frame"]
+) {
+  position: relative;
+  border-radius: 50%;
+}
+:is(
+  .raid-party-avatar,
+  .raid-score-avatar,
+  .player-avatar
+)[data-raid-cosmetic~="laurel-frame"] {
+  box-shadow:
+    0 0 0 3px #e2b23a,
+    0 0 0 4px #6a4a10;
+}
+:is(
+  .raid-party-avatar,
+  .raid-score-avatar,
+  .player-avatar
+)[data-raid-cosmetic~="crown-frame"] {
+  box-shadow:
+    0 0 0 3px #e8b33a,
+    0 0 0 5px #5a3c0c,
+    0 0 0 6px #e0303a;
+}
+
+/* Auras, entrances and victories: a hint of the piece behind the preview. */
+.raid-cosmetic-preview[data-cosmetic="firefly-aura"] {
+  box-shadow:
+    0 0 0 2px #d8ff7a,
+    0 0 10px 3px #fff3a066;
+  background:
+    radial-gradient(circle at 24% 70%, #fff3a0 0 3%, transparent 6%),
+    radial-gradient(circle at 76% 34%, #fff3a0 0 3%, transparent 6%),
+    radial-gradient(circle at 64% 80%, #d8ff7a 0 2.4%, transparent 5%),
+    radial-gradient(circle, #14213a 56%, #3a4a1a);
+}
+.raid-cosmetic-preview[data-cosmetic="crystal-aura"] {
+  box-shadow:
+    0 0 0 2px #b48cff,
+    0 0 0 4px #e6dcff88,
+    0 0 0 5px #8ff0ff;
+  background: radial-gradient(circle, #14213a 56%, #b48cff55, #8ff0ff44);
+}
+.raid-cosmetic-preview[data-cosmetic="bubble-entrance"] {
+  background:
+    radial-gradient(circle at 50% 46%, transparent 0 38%, #cff6ffcc 40% 42%, #ffc8f055 44%, transparent 47%),
+    radial-gradient(circle at 34% 30%, #ffffffaa 0 4%, transparent 6%),
+    #14213a;
+}
+.raid-cosmetic-preview[data-cosmetic="portal-entrance"] {
+  background:
+    radial-gradient(ellipse 60% 18% at 50% 82%, #4de8d8 0 30%, #9a5cff 50%, transparent 72%),
+    linear-gradient(transparent 30%, #9a5cff44 80%),
+    #14213a;
+}
+.raid-cosmetic-preview[data-cosmetic="trophy-victory"] {
+  background:
+    radial-gradient(circle at 50% 40%, #ffe08a88 0 26%, transparent 46%),
+    linear-gradient(#14213a 72%, #6a4a2a 72%);
+}
+.raid-cosmetic-preview[data-cosmetic="meteor-victory"] {
+  background:
+    linear-gradient(225deg, transparent 22%, #ffd36bcc 24%, transparent 30%),
+    linear-gradient(225deg, transparent 46%, #9fd8ffaa 47.5%, transparent 52%),
+    radial-gradient(circle at 50% 30%, #3a2a6a, #0e1230 70%);
 }
 `;
 // The gold accent is a design token (ui/tokens.css): write it as one, as

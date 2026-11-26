@@ -14,6 +14,7 @@ import {
   fittingRoomMarkup,
   fittingRoomParts,
   missionCoinsLeft,
+  newInShop,
   ownedFor,
   pendingChanges,
   purchase,
@@ -95,6 +96,15 @@ const tiles = (html: string) =>
   [...html.matchAll(/class="ui-tile[^"]*"[^>]*data-ui-item="([^"]+)"/g)].map(
     (m) => m[1],
   );
+/**
+ * Today's picks alone: the tiles less the "New in the Shop" row's, which
+ * holds whatever shop-arrivals.ts dates in the last 14 days (by today's
+ * clock), so a test of the picks doesn't change when a collection arrives.
+ */
+const pickTiles = (html: string, view: FitView, d: FitData) => {
+  const fresh = new Set(newInShop(view, d));
+  return tiles(html).filter((id) => !fresh.has(id));
+};
 
 describe("prices and the purchase confirmation", () => {
   it("shows the server's price rules: today's 20% off, sets at 80% of what you don't own", () => {
@@ -315,7 +325,10 @@ describe("the Shop's catalogue", () => {
     );
     expect(body).toContain("Ends in");
     expect(body).toContain("New picks in");
-    expect(tiles(body)).toEqual(["galaxy-aura", "mystowl-scholar"]);
+    expect(pickTiles(body, shop(), data(e))).toEqual([
+      "galaxy-aura",
+      "mystowl-scholar",
+    ]);
     // Once bought there is no featured deal.
     expect(
       fittingRoomParts(
@@ -592,7 +605,9 @@ describe("the Wardrobe", () => {
       { slot: "aura", from: "galaxy-aura", to: null },
     ]);
     const foot = fittingRoomParts(view, d).foot;
-    expect(foot).toContain("Voltkit · 2 changes");
+    expect(foot).toContain(
+      `data-changes="true">2 changes</small><b class="ui-h">Voltkit</b>`,
+    );
     expect(foot).toContain("Skin: Storm Revenant → Midnight");
     expect(foot).not.toMatch(
       /data-fit-save[^>]*disabled|disabled[^>]*data-fit-save/,
@@ -749,7 +764,10 @@ describe("ids this build doesn't know", () => {
       },
     });
     const body = fittingRoomParts(shop(), data(e)).body;
-    expect(tiles(body)).toEqual(["galaxy-aura", "mystowl-scholar"]);
+    expect(pickTiles(body, shop(), data(e))).toEqual([
+      "galaxy-aura",
+      "mystowl-scholar",
+    ]);
     expect(body).not.toContain(NEW);
   });
   it("shows no featured deal when the deal is an unknown item", () => {
@@ -758,7 +776,7 @@ describe("ids this build doesn't know", () => {
     });
     const body = fittingRoomParts(shop(), data(e)).body;
     expect(body).not.toContain('class="fit-deal"');
-    expect(tiles(body)).toEqual(["galaxy-aura"]);
+    expect(pickTiles(body, shop(), data(e))).toEqual(["galaxy-aura"]);
     // The known pick keeps its full price: the deal isn't it.
     expect(purchase("galaxy-aura", e)?.was).toBeUndefined();
   });
@@ -767,7 +785,7 @@ describe("ids this build doesn't know", () => {
       picks: { day: "2026-10-17", items: [NEW, "other-new"], deal: null },
     });
     const body = fittingRoomParts(shop(), data(e)).body;
-    expect(tiles(body)).toEqual([]);
+    expect(pickTiles(body, shop(), data(e))).toEqual([]);
     expect(body).not.toContain("Daily picks");
     expect(body).toContain("Earn coins");
   });
@@ -820,26 +838,33 @@ describe("rarity and order in the catalogue", () => {
     );
     expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
     expect(ids[0]).toBe("voltkit-stormcrown");
-    // Within a rarity nothing moves: the catalogue's order.
+    // Within a rarity new arrivals lead (shop-arrivals.ts, by today's
+    // date); otherwise nothing moves: the catalogue's order.
     const legendary = skinsOf("voltkit")
       .filter((s) => s.rarity === "legendary")
       .map((s) => s.id);
-    expect(ids.filter((id) => legendary.includes(id))).toEqual(legendary);
+    const now = Date.now();
+    expect(ids.filter((id) => legendary.includes(id))).toEqual([
+      ...legendary.filter((id) => isNewArrival(id, now)),
+      ...legendary.filter((id) => !isNewArrival(id, now)),
+    ]);
   });
-  it("sorts cheapest first on request, and the button says the order it shows", () => {
+  it("sorts cheapest first on request, and the switch lights the order it shows", () => {
     const rare = fittingRoomParts(shop({ section: "skins" }), data()).body;
-    expect(rare).toMatch(/data-fit-sort="price"[^>]*>.*?Rarest/s);
+    expect(rare).toContain('data-fit-sort="rarity" aria-pressed="true"');
+    expect(rare).toContain('data-fit-sort="price" aria-pressed="false"');
     const cheap = fittingRoomParts(
       shop({ section: "skins", sort: "price" }),
       data(),
     ).body;
-    expect(cheap).toMatch(/data-fit-sort="rarity"[^>]*>.*?Cheapest/s);
+    expect(cheap).toContain('data-fit-sort="price" aria-pressed="true"');
     const ids = tiles(cheap);
-    expect(ids.slice(0, 3)).toEqual([
-      "voltkit-midnight",
-      "voltkit-peach-fizz",
-      "voltkit-mint-static",
-    ]);
+    // Every Common first (500 coins), in the catalogue's order.
+    const commons = skinsOf("voltkit")
+      .filter((s) => s.rarity === "common")
+      .map((s) => s.id);
+    expect(commons).toContain("voltkit-midnight");
+    expect(ids.slice(0, commons.length)).toEqual(commons);
     expect(ids.at(-1)).toBe("voltkit-stormcrown");
     // Today's deal doesn't move a skin: the order is by list price.
     const e = economy({

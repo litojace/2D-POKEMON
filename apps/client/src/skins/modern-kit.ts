@@ -1,5 +1,5 @@
 import type { CharacterId } from "@arena/shared";
-import { DESIGNS, backPanel, hatShape, torso, type Design, type Kit } from "./modern-designs";
+import { DESIGNS, backUnder, hatShape, torso, type Design, type Kit } from "./modern-designs";
 
 /**
  * The champions' own Epics that were a recolour and a pattern alone (Neon
@@ -36,7 +36,7 @@ export const KIT: Partial<Record<CharacterId, Design>> = {
     if (k.back) {
       const y = k.T + 20;
       const sun = `M${k.C - 13} ${y}A13 13 0 0 1 ${k.C + 13} ${y}Z`;
-      backPanel(k, jacket,
+      backUnder(k, jacket,
         k.lume("pulse", k.path(sun, pink, "none", 0) + [3, 7, 10].map((dy) => k.rect(k.C - 14, y - dy, 28, 1.3, 0, jacket, "none", 0)).join(""), 0, pink) +
           k.lume("pulse", k.line(`M${k.C - 16} ${y + 3}H${k.C + 16}M${k.C - 16} ${y + 7}H${k.C + 16}M${k.C - 16} ${y + 12}H${k.C + 16}` + [-12, -6, 0, 6, 12].map((dx) => `M${k.C + dx * 0.6} ${y}L${k.C + dx * 1.4} ${y + 13}`).join(""), cyan, 0.8), 1, cyan) +
           k.rect(k.C - k.W - 2, k.B - 4, 2 * k.W + 4, 5, 0, pink, k.ink, 0.8));
@@ -68,7 +68,7 @@ export const KIT: Partial<Record<CharacterId, Design>> = {
     const facets = (x0: number, y0: number, w: number, h: number) =>
       k.line(`M${x0} ${y0 + h * 0.3}L${x0 + w * 0.35} ${y0 + h * 0.55}L${x0 + w * 0.6} ${y0 + h * 0.2}L${x0 + w} ${y0 + h * 0.5}M${x0 + w * 0.35} ${y0 + h * 0.55}L${x0 + w * 0.3} ${y0 + h}M${x0 + w * 0.6} ${y0 + h * 0.2}L${x0 + w * 0.75} ${y0 + h}`, white, 0.9);
     if (k.back) {
-      backPanel(k, ice, facets(k.C - k.W, k.T + 2, 2 * k.W, k.B - k.T) +
+      backUnder(k, ice, facets(k.C - k.W, k.T + 2, 2 * k.W, k.B - k.T) +
         // A ridge of crystals down the spine.
         [0, 1, 2].map((i) => k.path(shard(k.C, k.T + 12 + i * 10, 4 - i * 0.6, 9 - i * 1.5), i % 2 ? ice : "#e6f6ff", k.ink, 0.8)).join("") +
         k.lume("twinkle", k.path(k.star(k.C, k.T + 4, 2, 4, 0.3), white, "none", 0), 0, white));
@@ -117,7 +117,7 @@ export const KIT: Partial<Record<CharacterId, Design>> = {
       k.circle(x, y, r * 0.28, "#fff6d0", lead, 0.8);
     if (k.back) {
       const top = k.T + 4;
-      backPanel(k, lead, panes(k.C - k.W, top + 8, 2 * k.W, k.B - top - 6, 4, 3) +
+      backUnder(k, lead, panes(k.C - k.W, top + 8, 2 * k.W, k.B - top - 6, 4, 3) +
         // A pointed arch window over them.
         k.path(`M${k.C - 12} ${top + 22}V${top + 10}Q${k.C - 12} ${top} ${k.C} ${top - 3}Q${k.C + 12} ${top} ${k.C + 12} ${top + 10}V${top + 22}Z`, "#f6e6b0", lead, 1.4) +
         k.lume("pulse", rose(k.C, top + 11, 7), 0, "#fff3b0"));
@@ -140,7 +140,7 @@ export const KIT: Partial<Record<CharacterId, Design>> = {
     const curtain = (x0: number, x1: number, y: number, i: number) =>
       k.lume("chase", k.path(`M${x0} ${y}Q${(x0 * 3 + x1) / 4} ${y - 5} ${(x0 + x1) / 2} ${y}T${x1} ${y}`, "none", lights[i % 3], 2), i, lights[i % 3]);
     if (k.back) {
-      backPanel(k, night, [0, 1, 2].map((i) => curtain(k.C - k.W, k.C + k.W, k.T + 9 + i * 7, i)).join("") +
+      backUnder(k, night, [0, 1, 2].map((i) => curtain(k.C - k.W, k.C + k.W, k.T + 9 + i * 7, i)).join("") +
         [0, 1, 2, 3].map((i) => k.lume("twinkle", k.path(k.star(k.C - k.W + 8 + i * (k.W - 6) * 0.65, k.B - 4 - (i % 2) * 4, 1.5, 4, 0.35), "#ffffff", "none", 0), i, "#ffffff")).join(""));
     } else {
       const c = cx(k);
@@ -167,7 +167,7 @@ export const KIT: Partial<Record<CharacterId, Design>> = {
       brass = "#e0b24a",
       shirt = "#f7f1e1";
     if (k.back) {
-      backPanel(k, coat, k.rect(k.C - k.W, k.T + 22, 2 * k.W, 5, 0, "#4a1c24", k.ink, 0.8) +
+      backUnder(k, coat, k.rect(k.C - k.W, k.T + 22, 2 * k.W, 5, 0, "#4a1c24", k.ink, 0.8) +
         k.rect(k.C - 3.5, k.T + 21, 7, 7, 1, brass, k.ink, 0.6) +
         k.path(gearD(k.C, k.T + 11, 6), "#9a3e4a", "#4a1c24", 0.9) + k.circle(k.C, k.T + 11, 2, "#4a1c24", "none", 0));
     } else {
@@ -264,7 +264,7 @@ export const KIT: Partial<Record<CharacterId, Design>> = {
       const x = k.C,
         y0 = k.T - 18,
         y1 = k.T + 22;
-      backPanel(k, metal, k.lume("chase", k.line(`M${k.C - k.W + 4} ${k.B - 4}V${k.B - 12}H${k.C - 8}`, teal, 1), 0, teal) +
+      backUnder(k, metal, k.lume("chase", k.line(`M${k.C - k.W + 4} ${k.B - 4}V${k.B - 12}H${k.C - 8}`, teal, 1), 0, teal) +
         k.lume("chase", k.line(`M${k.C + k.W - 4} ${k.B - 4}V${k.B - 14}H${k.C + 8}`, teal, 1), 1, teal));
       k.put("scarf", k.rect(x - 6, y0, 12, y1 - y0, 2, copper) +
         k.line(Array.from({ length: 9 }, (_, i) => `M${x - 6} ${y0 + 3 + i * 4}H${x + 6}`).join(""), "#8a4a20", 1) +
@@ -363,7 +363,7 @@ export const KIT: Partial<Record<CharacterId, Design>> = {
       k.path(poly([[x, y + 2 * s], [x + 9 * s * f, y - 7 * s], [x + 3 * s * f, y + 3 * s]]), crimson, k.ink, 0.6) +
       k.line(`M${x} ${y + 2 * s}L${x} ${y + 6 * s}M${x - 9 * s * f} ${y - 6 * s}L${x - 3 * s * f} ${y + 1 * s}`, crimson, 0.9);
     if (k.back) {
-      backPanel(k, crimson, k.line(`M${k.C - k.W} ${k.T + 2}L${k.C + k.W} ${k.B}M${k.C + k.W} ${k.T + 2}L${k.C - k.W} ${k.B}`, crease, 1) +
+      backUnder(k, crimson, k.line(`M${k.C - k.W} ${k.T + 2}L${k.C + k.W} ${k.B}M${k.C + k.W} ${k.T + 2}L${k.C - k.W} ${k.B}`, crease, 1) +
         k.rect(k.C - k.W - 2, k.T + 24, 2 * k.W + 4, 6, 0, paper, k.ink, 0.8) +
         k.path(poly([[k.C - 14, k.T + 6], [k.C, k.T + 14], [k.C + 14, k.T + 5], [k.C + 4, k.T + 17], [k.C, k.T + 21], [k.C - 4, k.T + 17]]), paper, k.ink, 0.8) +
         k.line(`M${k.C} ${k.T + 14}V${k.T + 21}`, crimson, 0.9));

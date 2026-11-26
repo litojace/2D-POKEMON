@@ -805,6 +805,57 @@ function fighterRow(
 
 /* --------------------------------------------------------- shop body */
 
+/**
+ * Today's "New in the Shop": recent arrivals (shop-arrivals.ts) you don't
+ * own yet, rarest first. New collections stay out of Today's Picks until
+ * the database opens them (in_picks, migration 20261125120000), so without
+ * this row a new collection only showed to someone who went through Skins
+ * fighter by fighter. One skin per new skin collection: the one for the
+ * fighter you're looking at, else the first you don't own (a collection
+ * dresses all eighteen, and eighteen tiles would bury the rest). Look
+ * pieces one by one. Nothing already shown above it (the deal, the picks).
+ */
+export function newInShop(
+  view: FitView,
+  d: FitData,
+  isNew: (id: string) => boolean = isNewArrival,
+  max = 6,
+) {
+  const e = d.economy;
+  if (!e) return [];
+  const shown = new Set([e.picks.deal, ...e.picks.items]);
+  const fresh = (id: string) => isNew(id) && !owns(id, d) && !shown.has(id);
+  const skins = new Map<string, string>();
+  for (const s of CHAMPION_SKINS) {
+    if (!fresh(s.id)) continue;
+    const key = s.collection ?? s.id;
+    const held = skins.get(key);
+    if (
+      !held ||
+      (s.champion === view.champion &&
+        CHAMPION_SKIN_BY_ID[held].champion !== view.champion)
+    )
+      skins.set(key, s.id);
+  }
+  const pieces = LOOK_ITEMS.filter((i) => fresh(i.id)).map((i) => i.id);
+  return [...skins.values(), ...pieces]
+    .map((id, i) => ({ id, i, rank: RARITY_RANK[rarityOf(id)] }))
+    .sort((x, y) => x.rank - y.rank || x.i - y.i)
+    .slice(0, max)
+    .map(({ id }) => id);
+}
+/** The collections the new items come from, by name (the row's note). */
+function arrivalNames(ids: string[]) {
+  const names = ids
+    .map(
+      (id) =>
+        CHAMPION_SKIN_BY_ID[id]?.collection ?? LOOK_ITEM_BY_ID[id]?.collection,
+    )
+    .filter((c): c is Collection => !!c)
+    .map((c) => COLLECTION_NAMES[c]);
+  return [...new Set(names)].join(" · ");
+}
+
 function todayBody(view: FitView, d: FitData) {
   const e = d.economy!;
   const countdown = picksCountdown();
@@ -838,6 +889,14 @@ function todayBody(view: FitView, d: FitData) {
     .slice(0, 3);
   const left = missionCoinsLeft(e);
   const earn = `<div class="fit-earn" role="note"><b>Earn coins</b><span>Win against players <b>+${COINS.pvpWin}</b> · loss <b>+${COINS.pvpLoss}</b></span><span>Raid clear <b>+${COINS.raidClear[3]}</b></span><span>Missions <b>+${MISSION_COINS.easy} / ${MISSION_COINS.medium} / ${MISSION_COINS.hard}</b></span><span class="fit-earn-left">Missions left today: ${price(left)}</span></div>`;
+  const arrivals = newInShop(view, d);
+  const fresh = arrivals.length
+    ? `${section("New in the Shop", `<small class="ui-note">${esc(arrivalNames(arrivals))}</small>`)}${grid(
+        arrivals.map((id) => shopTile(id, view, d)).join(""),
+        3,
+        "fit-picks fit-new",
+      )}`
+    : "";
   const daily = picks.length
     ? `${section("Daily picks", timer(`New picks in ${countdown}`))}${grid(
         picks.map((id) => shopTile(id, view, d)).join(""),
@@ -845,7 +904,7 @@ function todayBody(view: FitView, d: FitData) {
         "fit-picks",
       )}`
     : "";
-  return `${featured}${daily}${bundles.length ? `${section("Bundles", '<small class="ui-note">20% off the pieces you don\'t own</small>')}${bundles.map(({ b }) => bundleRow(b.id, view, d)).join("")}` : ""}${earn}`;
+  return `${featured}${fresh}${daily}${bundles.length ? `${section("Bundles", '<small class="ui-note">20% off the pieces you don\'t own</small>')}${bundles.map(({ b }) => bundleRow(b.id, view, d)).join("")}` : ""}${earn}`;
 }
 /** What a set holds, in a few words. */
 export function setNote(id: string) {
@@ -892,19 +951,23 @@ function filters(
   noun: string,
   sortable = false,
 ) {
-  // One button that says the order and changes it (two orders: no menu).
+  // The order, as a switch of two halves (owner's pick B, 25 Nov): both
+  // orders in sight, the lit one is the order shown, one tap changes it. A
+  // long toggle button used to fill a phone's row for two choices. The
+  // marks are the tiles' own: the rarity diamond and the coin of a price;
+  // the words show where there is room (fitting-room.css).
   const sort = sortable
-    ? button(view.sort === "price" ? "Cheapest" : "Rarest", {
-        size: "s",
-        icon: "swap",
-        attrs: {
-          "data-fit-sort": view.sort === "price" ? "rarity" : "price",
-          "aria-label":
-            view.sort === "price"
-              ? "Sorted cheapest first. Sort rarest first"
-              : "Sorted rarest first. Sort cheapest first",
-        },
-      })
+    ? `<div class="ui-seg fit-sort" role="group" aria-label="Order">${(
+        [
+          ["rarity", "Rarest", '<i class="fit-gem" aria-hidden="true"></i>'],
+          ["price", "Cheapest", '<i class="ui-coin" aria-hidden="true"></i>'],
+        ] as const
+      )
+        .map(
+          ([id, word, mark]) =>
+            `<button type="button" data-fit-sort="${id}" aria-pressed="${view.sort === id}" aria-label="${word} first" title="${word} first">${mark}<span class="fit-sort-word">${word}</span></button>`,
+        )
+        .join("")}</div>`
     : "";
   const own = segmented(
     (
@@ -1130,19 +1193,33 @@ function mythicTile(id: string, view: FitView, d: FitData) {
     `<small class="ui-tile-sub">${esc(progress)}</small>`,
   );
 }
+/**
+ * Look pieces sold on their own, outside any set (LOOK_SINGLES in shop.ts):
+ * the last chip of the Collections row, with no set row and no bonus.
+ */
+const SINGLES = LOOK_ITEMS.filter((i) => i.collection === "singles").map(
+  (i) => i.id,
+);
 function collectionsBody(view: FitView, d: FitData) {
   const e = d.economy!;
+  const chip = (collection: FitView["collection"], items: string[]) =>
+    `<button type="button" class="ui-chip" data-fit-collection="${collection}" aria-pressed="${collection === view.collection}">${esc(COLLECTION_NAMES[collection])}<span class="ui-tag">${items.filter((i) => e.owned.includes(i)).length}/${items.length}</span></button>`;
   const picker = `<div class="ui-chips fit-collections" role="group" aria-label="Collection">${SHOP_BUNDLES.map(
-    (b) =>
-      `<button type="button" class="ui-chip" data-fit-collection="${b.collection}" aria-pressed="${b.collection === view.collection}">${esc(COLLECTION_NAMES[b.collection])}<span class="ui-tag">${b.items.filter((i) => e.owned.includes(i)).length}/${b.items.length}</span></button>`,
-  ).join("")}</div>`;
+    (b) => chip(b.collection, b.items),
+  ).join("")}${SINGLES.length ? chip("singles", SINGLES) : ""}</div>`;
+  const trying = `trying on ${esc(CHARACTERS[view.champion].name)}`;
+  if (view.collection === "singles")
+    return `<p class="ui-note">Pieces sold on their own, each a theme of its own · ${trying}.</p>${picker}${grid(
+      SINGLES.map((id) => shopTile(id, view, d)).join(""),
+      4,
+    )}${skinSets(view, d)}`;
   const set = SHOP_BUNDLES.find((b) => b.collection === view.collection)!;
   const skins = CHAMPION_SKINS.filter((c) => c.collection === set.collection);
   const have = skins.filter((c) => e.owned.includes(c.id)).length;
   const bonus = skins.length
     ? `<p class="ui-note">Own all ${skins.length} ${esc(COLLECTION_NAMES[set.collection])} fighter skins and the frame is yours free (${have}/${skins.length}).</p>`
     : "";
-  return `<p class="ui-note">Colors and effects for every fighter · trying on ${esc(CHARACTERS[view.champion].name)}.</p>${picker}${bundleRow(set.id, view, d)}${bonus}${grid(
+  return `<p class="ui-note">Colors and effects for every fighter · ${trying}.</p>${picker}${bundleRow(set.id, view, d)}${bonus}${grid(
     set.items.map((id) => shopTile(id, view, d)).join(""),
     5,
   )}${skinSets(view, d)}`;
@@ -1366,8 +1443,15 @@ function wardrobeFoot(view: FitView, d: FitData) {
       : "Try something on, then Equip";
   const outfit = stageOutfit(view, d);
   const art = `<span class="fit-foot-art">${fighterAvatar(view.champion, "fit-foot-fighter", outfit.skin)}</span>`;
+  // How many changes above the fighter's name, as the Shop's bar puts the
+  // rarity above the item's: "Voltkit · no changes" on one line was cut to
+  // "VOLTKI…" on a 667 px phone, where the note under it is hidden.
+  const count = changes.length
+    ? `${changes.length} change${changes.length === 1 ? "" : "s"}`
+    : "No changes";
+  const top = `<small class="fit-foot-count"${changes.length ? ' data-changes="true"' : ""}>${count}</small>`;
   return actionBar(
-    `${art}${footText(`${fighter} · ${changes.length ? `${changes.length} change${changes.length === 1 ? "" : "s"}` : "no changes"}`, esc(note))}${status}`,
+    `${art}${footText(fighter, esc(note), top)}${status}`,
     actions(
       button("Revert", {
         icon: "again",

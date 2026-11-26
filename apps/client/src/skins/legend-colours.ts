@@ -13,7 +13,7 @@ const S = (hue: number, sat: number): Second => ({ hue, sat });
 const FACE_LIGHT: CharacterId[] = ["voltkit", "coilemur", "mossloth", "pangrove", "wombolder"];
 
 const TABLE: Record<
-  "nova-vanguard" | "sky-pirates" | "hon-viet" | "stars-stripes",
+  "nova-vanguard" | "sky-pirates" | "hon-viet" | "stars-stripes" | "sun-dynasty",
   Record<CharacterId, Second>
 > = {
   // Nova Vanguard: markings in a colour of the hero's power.
@@ -99,6 +99,28 @@ const TABLE: Record<
     shadopus: S(185, 0.65), // neon magenta, neon cyan
     pangrove: S(130, 0.4), // ranger khaki, forest green
     mossloth: S(30, 0.6), // tie-dye violet, tie-dye orange
+  },
+  // Sun Dynasty: gold on the blue and red bodies, lapis on the golden ones,
+  // turquoise on the earth.
+  "sun-dynasty": {
+    voltkit: S(45, 0.6), // faience turquoise, chariot gold
+    cindrake: S(12, 0.6), // phoenix gold, flame red
+    tidefin: S(45, 0.55), // river lapis, gold
+    auralynx: S(220, 0.45), // temple sand, lapis
+    lumoth: S(40, 0.6), // dusk blue, lamplight
+    mystowl: S(48, 0.6), // night indigo, star gold
+    terradon: S(175, 0.4), // sun-baked brick, turquoise
+    duskveil: S(210, 0.3), // moonlit lavender, moon silver
+    coilemur: S(175, 0.45), // dune copper, turquoise
+    pyranda: S(220, 0.45), // saffron, lapis
+    glacelle: S(45, 0.5), // mirage orchid, gold
+    halcyra: S(40, 0.55), // falcon sky, gold
+    sunbara: S(48, 0.65), // royal carnelian, gold
+    astrabun: S(330, 0.45), // blue lotus, lotus pink
+    wombolder: S(45, 0.4), // red granite, gold
+    shadopus: S(215, 0.45), // papyrus, ink lapis
+    pangrove: S(40, 0.55), // palm green, date gold
+    mossloth: S(175, 0.4), // desert rose, turquoise
   },
 };
 

@@ -31,7 +31,7 @@ services:
       - key: VITE_SUPABASE_ANON_KEY
         sync: false
       - key: VITE_SITE_URL
-        value: https://parena.litojace.com
+        value: https://play.elementarenausa.com
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION

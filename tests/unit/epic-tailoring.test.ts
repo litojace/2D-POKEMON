@@ -22,9 +22,9 @@ describe("Epic skins (3,500 coins)", () => {
     }
   });
 
-  it("tailor Hero Squad, Neon Campus and the champions' own costumes front and back", () => {
-    const tailored = epics.filter((s) => SKIN_ART[s.id].accessories?.some((a) => a === "modern-hero" || a === "modern-campus" || a === "modern-kit"));
-    expect(tailored.length).toBe(18 * 2 + 11);
+  it("tailor Hero Squad, Neon Campus, Starlight Idol, Grand Prix and the champions' own costumes front and back", () => {
+    const tailored = epics.filter((s) => SKIN_ART[s.id].accessories?.some((a) => a === "modern-hero" || a === "modern-campus" || a === "modern-idol" || a === "modern-racing" || a === "modern-kit"));
+    expect(tailored.length).toBe(18 * 4 + 11);
     // Costumes that are not a garment over the body: a wax capelet, a knitted
     // scarf, a jelly collar and cape, a geode on the shell.
     const pieces = ["duskveil-candlelight", "pyranda-fireside-knit", "glacelle-deep-glow"];

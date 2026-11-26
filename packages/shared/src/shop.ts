@@ -427,6 +427,189 @@ export const STARS_STRIPES_SKINS: ChampionSkin[] = (
     "An American figure in full costume with glowing pieces, a Walk-of-Fame landing and a fireworks victory",
 }));
 
+/**
+ * Starlight Idol (Epic): one show, a stage act for every champion (a rock
+ * frontman, a disco dancer, a crystal soprano, a DJ...), in sequins,
+ * rhinestones and stage lights that glow on the costume. Every name and
+ * act is original.
+ */
+export const STARLIGHT_IDOL_NAMES = {
+  voltkit: "Thunder Riff",
+  cindrake: "Pyro Headliner",
+  tidefin: "Pearl Popstar",
+  auralynx: "Prism Soloist",
+  lumoth: "Disco Flutter",
+  mystowl: "Midnight Enchantress",
+  terradon: "Street Beat",
+  duskveil: "Phantom Crooner",
+  coilemur: "Synth Looper",
+  pyranda: "Chestnut MC",
+  glacelle: "Crystal Soprano",
+  halcyra: "Plume Showstar",
+  sunbara: "Sunflower Sweetheart",
+  astrabun: "Mochi Starlet",
+  wombolder: "Bedrock Drummer",
+  shadopus: "Neon Octave",
+  pangrove: "Island Serenader",
+  mossloth: "Lo-fi Lullaby",
+} as const satisfies Record<CharacterId, string>;
+export const STARLIGHT_IDOL_SKINS: ChampionSkin[] = (
+  Object.keys(STARLIGHT_IDOL_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-starlight-idol`,
+  champion,
+  name: STARLIGHT_IDOL_NAMES[champion],
+  rarity: "epic",
+  collection: "starlight-idol",
+  description:
+    "A stage act of its own in sequins and rhinestones, with stage lights that glow on the costume and a star trail",
+}));
+
+/**
+ * Birthstone (Common): a gemstone for every champion, a new palette in the
+ * gem's colours. The cheapest collection: a first purchase for any champion.
+ */
+export const BIRTHSTONE_NAMES = {
+  voltkit: "Amethyst",
+  cindrake: "Sapphire",
+  tidefin: "Citrine",
+  auralynx: "Emerald",
+  lumoth: "Ruby",
+  mystowl: "Topaz",
+  terradon: "Turquoise",
+  duskveil: "Garnet",
+  coilemur: "Peridot",
+  pyranda: "Aquamarine",
+  glacelle: "Opal",
+  halcyra: "Tourmaline",
+  sunbara: "Lapis",
+  astrabun: "Moonstone",
+  wombolder: "Malachite",
+  shadopus: "Onyx",
+  pangrove: "Tanzanite",
+  mossloth: "Carnelian",
+} as const satisfies Record<CharacterId, string>;
+export const BIRTHSTONE_SKINS: ChampionSkin[] = (
+  Object.keys(BIRTHSTONE_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-birthstone`,
+  champion,
+  name: BIRTHSTONE_NAMES[champion],
+  rarity: "common",
+  collection: "birthstone",
+  description: `The colours of ${/^[AEIOU]/.test(BIRTHSTONE_NAMES[champion]) ? "an" : "a"} ${BIRTHSTONE_NAMES[champion].toLowerCase()}`,
+}));
+
+/**
+ * Rainy Day (Rare): a raincoat for every champion and its own way of keeping
+ * dry (a sou'wester, a frog hat, an umbrella, a lotus leaf, a toadstool...).
+ */
+export const RAINY_DAY_NAMES = {
+  voltkit: "Puddle Jumper",
+  cindrake: "Dry Ember",
+  tidefin: "Rain Dancer",
+  auralynx: "Drizzle Duelist",
+  lumoth: "Dewdrop",
+  mystowl: "Storm Watcher",
+  terradon: "Lily Pad",
+  duskveil: "Grey Skies",
+  coilemur: "Puddle Skipper",
+  pyranda: "Rubber Ducky",
+  glacelle: "Mizzle",
+  halcyra: "Squall Rider",
+  sunbara: "Froggy Day",
+  astrabun: "Cloud Hopper",
+  wombolder: "Mudlark",
+  shadopus: "Brolly Top",
+  pangrove: "Toadstool Shelter",
+  mossloth: "Dozy Drizzle",
+} as const satisfies Record<CharacterId, string>;
+export const RAINY_DAY_SKINS: ChampionSkin[] = (
+  Object.keys(RAINY_DAY_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-rainy-day`,
+  champion,
+  name: RAINY_DAY_NAMES[champion],
+  rarity: "rare",
+  collection: "rainy-day",
+  description:
+    "A raincoat and its own way of keeping dry; dashing leaves a trail of raindrops",
+}));
+
+/**
+ * Grand Prix (Epic): one race, a driver of its own for every champion in
+ * its team's suit, a number board that lights up and its own headwear.
+ */
+export const GRAND_PRIX_NAMES = {
+  voltkit: "Lightning Lap",
+  cindrake: "Turbo Blaze",
+  tidefin: "Slipstream",
+  auralynx: "Pole Position",
+  lumoth: "Night Rally",
+  mystowl: "Rally Navigator",
+  terradon: "Off-Road Tank",
+  duskveil: "Ghost Lap",
+  coilemur: "Drift Spark",
+  pyranda: "Pit Crew Chief",
+  glacelle: "Ice Track",
+  halcyra: "Air Race Ace",
+  sunbara: "Sunrise Rally",
+  astrabun: "Kart Star",
+  wombolder: "Monster Wheel",
+  shadopus: "Pit Wall Strategist",
+  pangrove: "Jungle Rally",
+  mossloth: "Slow Lane",
+} as const satisfies Record<CharacterId, string>;
+export const GRAND_PRIX_SKINS: ChampionSkin[] = (
+  Object.keys(GRAND_PRIX_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-grand-prix`,
+  champion,
+  name: GRAND_PRIX_NAMES[champion],
+  rarity: "epic",
+  collection: "grand-prix",
+  description:
+    "A racing suit in its team's colours, a number board that lights up, its own headwear and a trail of tyre smoke",
+}));
+
+/**
+ * Sun Dynasty (Legendary): a desert kingdom in gold and lapis, a figure of
+ * its court for every champion (the Sun Sovereign, a falcon herald, a royal
+ * astronomer, an obelisk builder, a moon vizier...), with a sun-mosaic
+ * landing, a winged-sunrise victory and a motif of its own.
+ */
+export const SUN_DYNASTY_NAMES = {
+  voltkit: "Storm Charioteer",
+  cindrake: "Phoenix Prince",
+  tidefin: "River Pilot",
+  auralynx: "Temple Cat",
+  lumoth: "Lamp Keeper",
+  mystowl: "Royal Astronomer",
+  terradon: "Obelisk Builder",
+  duskveil: "Moon Vizier",
+  coilemur: "Dune Caravaneer",
+  pyranda: "Spice Healer",
+  glacelle: "Mirage Dancer",
+  halcyra: "Falcon Herald",
+  sunbara: "Sun Sovereign",
+  astrabun: "Lotus Sceptre",
+  wombolder: "Sphinx Guardian",
+  shadopus: "Royal Scribe",
+  pangrove: "Oasis Keeper",
+  mossloth: "Shade Bearer",
+} as const satisfies Record<CharacterId, string>;
+export const SUN_DYNASTY_SKINS: ChampionSkin[] = (
+  Object.keys(SUN_DYNASTY_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-sun-dynasty`,
+  champion,
+  name: SUN_DYNASTY_NAMES[champion],
+  rarity: "legendary",
+  collection: "sun-dynasty",
+  description:
+    "A figure of the desert court in gold and lapis with glowing pieces, a sun-mosaic landing and a winged-sunrise victory",
+}));
+
 export type Collection =
   | FashionCollection
   | "nova-vanguard"
@@ -435,6 +618,11 @@ export type Collection =
   | "hero-squad"
   | "neon-campus"
   | "stars-stripes"
+  | "starlight-idol"
+  | "birthstone"
+  | "rainy-day"
+  | "grand-prix"
+  | "sun-dynasty"
   | "winter"
   | "festival"
   | "garden"
@@ -443,7 +631,11 @@ export type Collection =
   | "cyber"
   | "candy"
   | "galaxy"
-  | "retro";
+  | "retro"
+  | "seaside"
+  | "steamworks"
+  | "borealis"
+  | "singles";
 export const COLLECTION_NAMES: Record<Collection, string> = {
   ...(Object.fromEntries(
     Object.entries(FASHION_COLLECTIONS).map(([id, c]) => [id, c.name]),
@@ -454,6 +646,11 @@ export const COLLECTION_NAMES: Record<Collection, string> = {
   "hero-squad": "Hero Squad",
   "neon-campus": "Neon Campus",
   "stars-stripes": "Stars & Stripes",
+  "starlight-idol": "Starlight Idol",
+  birthstone: "Birthstone",
+  "rainy-day": "Rainy Day",
+  "grand-prix": "Grand Prix",
+  "sun-dynasty": "Sun Dynasty",
   winter: "Winter",
   festival: "Festival",
   garden: "Garden",
@@ -463,6 +660,10 @@ export const COLLECTION_NAMES: Record<Collection, string> = {
   candy: "Candy",
   galaxy: "Galaxy",
   retro: "Retro Pixel",
+  seaside: "Seaside",
+  steamworks: "Steamworks",
+  borealis: "Borealis",
+  singles: "Singles",
 };
 
 export interface ChampionSkin {
@@ -498,6 +699,11 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ...HERO_SQUAD_SKINS,
   ...NEON_CAMPUS_SKINS,
   ...STARS_STRIPES_SKINS,
+  ...STARLIGHT_IDOL_SKINS,
+  ...BIRTHSTONE_SKINS,
+  ...RAINY_DAY_SKINS,
+  ...GRAND_PRIX_SKINS,
+  ...SUN_DYNASTY_SKINS,
   skin("voltkit", "midnight", "Midnight", "common", "Navy fur, cyan cheeks"),
   skin("voltkit", "peach-fizz", "Peach Fizz", "common", "Peach and pink"),
   skin("voltkit", "mint-static", "Mint Static", "common", "Mint and white"),
@@ -1448,11 +1654,42 @@ const LOOK_SETS: [Collection, [string, string][]][] = [
       ["Snow-globe victory", "A snow globe shakes around you"],
     ],
   ],
+  [
+    "seaside",
+    [
+      ["Seaside colors", "Sun-warmed sand and coral"],
+      ["Seashell aura", "Shells and starfish circle on a ring of foam"],
+      ["Sandcastle entrance", "Burst out of a sandcastle"],
+      ["Shell frame", "A rope border of shells and a starfish"],
+      ["Sunset victory", "The sun sets over the waves behind you"],
+    ],
+  ],
+  [
+    "steamworks",
+    [
+      ["Brass colors", "Polished brass and copper"],
+      ["Gear aura", "Brass gears turn round a clock face"],
+      ["Wind-up entrance", "Arrive in a puff of steam and cogs"],
+      ["Cog frame", "A toothed brass border with a wind-up key"],
+      ["Clock-tower victory", "A great clock strikes twelve behind you"],
+    ],
+  ],
+  [
+    "borealis",
+    [
+      ["Borealis colors", "Night ice lit green and violet"],
+      ["Northern-lights aura", "Curtains of light rise around you"],
+      ["Skyfall entrance", "Ribbons of light fall from the sky"],
+      ["Polar-star frame", "A night-sky border under a ribbon of light"],
+      ["Sky-curtain victory", "The whole sky ripples with light behind you"],
+    ],
+  ],
 ];
 /**
- * Collection tiers (migration 031): Candy, Garden and Retro are the standard
- * sets; Winter and Festival are premium (Epic pieces, about 1.6× the price);
- * Galaxy is the showcase set (Mythical pieces, 2.5×). Colours stay one step
+ * Collection tiers (migration 031): Candy, Garden, Retro and Seaside are the
+ * standard sets; Winter, Festival and Steamworks are premium (Epic pieces,
+ * about 1.6× the price); Galaxy and Borealis are the showcase sets (Mythical
+ * pieces, 2.5×). Colours stay one step
  * below the set's other pieces. Pricier, rarer pieces get grander effects.
  */
 export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
@@ -1462,6 +1699,11 @@ export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
   "hero-squad": 1,
   "neon-campus": 1,
   "stars-stripes": 1,
+  "starlight-idol": 1,
+  birthstone: 0,
+  "rainy-day": 0,
+  "grand-prix": 1,
+  "sun-dynasty": 1,
   wayfarer: 0,
   "moonlit-tea": 0,
   "astral-court": 0,
@@ -1475,6 +1717,11 @@ export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
   winter: 1,
   festival: 1,
   galaxy: 2,
+  seaside: 0,
+  steamworks: 1,
+  borealis: 2,
+  // Each single has its own tier (LOOK_SINGLES); this one is never read.
+  singles: 0,
 };
 const TIER_PRICE = [1, 1.6, 2.5] as const;
 const lookRarity = (base: Rarity, slug: string, tier: 0 | 1 | 2): Rarity => {
@@ -1482,7 +1729,78 @@ const lookRarity = (base: Rarity, slug: string, tier: 0 | 1 | 2): Rarity => {
   if (tier === 1) return slug === "colours" ? "rare" : "epic";
   return slug === "colours" ? "epic" : "mythical";
 };
-export const LOOK_ITEMS: LookItem[] = LOOK_SETS.flatMap(([collection, items]) =>
+/**
+ * Look pieces sold on their own, outside any set (docs/shop-new-items.md,
+ * item 9): each has a theme, a slot and a tier of its own, and is priced
+ * like a set's piece of that slot and tier. No set means no 20% bundle.
+ * Their collection, "singles", has no champion skins, so
+ * arena_collection_bonus never gives its frames away.
+ */
+const LOOK_SINGLES: [
+  id: string,
+  slot: RaidSlot,
+  tier: 0 | 1 | 2,
+  name: string,
+  description: string,
+][] = [
+  [
+    "firefly-aura",
+    "aura",
+    0,
+    "Firefly aura",
+    "Fireflies drift round you, blinking gold",
+  ],
+  [
+    "crystal-aura",
+    "aura",
+    1,
+    "Crystal aura",
+    "Violet crystals orbit you and catch the light",
+  ],
+  [
+    "bubble-entrance",
+    "entrance",
+    0,
+    "Bubble entrance",
+    "Float in inside a bubble that pops",
+  ],
+  [
+    "portal-entrance",
+    "entrance",
+    1,
+    "Portal entrance",
+    "Step out of a swirling portal",
+  ],
+  [
+    "laurel-frame",
+    "frame",
+    0,
+    "Laurel frame",
+    "A wreath of gold laurel leaves",
+  ],
+  [
+    "crown-frame",
+    "frame",
+    1,
+    "Crown frame",
+    "A jewelled ring under a gold crown",
+  ],
+  [
+    "trophy-victory",
+    "victory",
+    0,
+    "Trophy victory",
+    "A gold trophy rises in a shower of sparkles",
+  ],
+  [
+    "meteor-victory",
+    "victory",
+    2,
+    "Meteor victory",
+    "Meteors streak across the sky behind you",
+  ],
+];
+const LOOK_SET_ITEMS: LookItem[] = LOOK_SETS.flatMap(([collection, items]) =>
   items.map(([name, description], i) => {
     const [slot, slug, rarity, price] = LOOK_SLOTS[i];
     const tier = COLLECTION_TIER[collection] ?? 0;
@@ -1497,6 +1815,22 @@ export const LOOK_ITEMS: LookItem[] = LOOK_SETS.flatMap(([collection, items]) =>
     };
   }),
 );
+/** Every Look piece on sale: the sets' pieces, then the singles. */
+export const LOOK_ITEMS: LookItem[] = [
+  ...LOOK_SET_ITEMS,
+  ...LOOK_SINGLES.map(([id, slot, tier, name, description]): LookItem => {
+    const [, slug, rarity, price] = LOOK_SLOTS.find(([s]) => s === slot)!;
+    return {
+      id,
+      slot,
+      name,
+      rarity: lookRarity(rarity, slug, tier),
+      collection: "singles",
+      description,
+      price: Math.round((price * TIER_PRICE[tier]) / 10) * 10,
+    };
+  }),
+];
 export interface ShopBundle {
   id: string;
   collection: Collection;
@@ -1530,6 +1864,11 @@ export const SKIN_SET_COLLECTIONS = [
   "hero-squad",
   "neon-campus",
   "stars-stripes",
+  "starlight-idol",
+  "birthstone",
+  "rainy-day",
+  "grand-prix",
+  "sun-dynasty",
 ] as const satisfies readonly Collection[];
 export const SKIN_BUNDLES: ShopBundle[] = SKIN_SET_COLLECTIONS.map(
   (collection) => ({

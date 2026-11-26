@@ -357,6 +357,106 @@ for (const size of SIZES) {
         await snap(page, info, `pvp-teams-${label(size)}`);
         holds(await sheet(page, ".match-sheet"), size);
         expect(await recapProblems(page)).toEqual([]);
+        // Each plate's left edge: yours gold, then your teammate in your
+        // team's blue, then both rivals in red (the room's team colours).
+        const edges = await overlay
+          .locator(".recap tbody th")
+          .evaluateAll((cells) =>
+            cells.map((c) => getComputedStyle(c).boxShadow),
+          );
+        expect(edges).toHaveLength(4);
+        expect(edges[1]).toContain("rgb(124, 196, 255)");
+        expect(edges[2]).toContain("rgb(255, 138, 150)");
+        expect(edges[3]).toContain("rgb(255, 138, 150)");
+        expect(edges[0]).not.toContain("rgb(124, 196, 255)");
+        // The content never needs dragging sideways.
+        expect(
+          await overlay
+            .locator(".overlay-card > .panel-scroll")
+            .evaluate((el) => el.scrollWidth - el.clientWidth),
+        ).toBeLessThanOrEqual(0);
+        expect(errors).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
+
+  // Free-for-all: four long names, you in second. The places sit above the
+  // recap in a card of the same kind, one plate per fighter.
+  if (label(size) === "667x375" || label(size) === "1440x900")
+    test(`PvP free-for-all: the places and the recap fit the results at ${label(size)}`, async ({
+      browser,
+    }, info) => {
+      test.setTimeout(120_000);
+      const context = await browser.newContext({
+        viewport: { width: size.width, height: size.height },
+        isMobile: size.phone,
+        hasTouch: size.phone,
+      });
+      try {
+        const page = await context.newPage();
+        const errors = await start(page, size, () =>
+          (window as any).__room("pvp", { mode: "ffa", phase: "playing" }),
+        );
+        const overlay = page.locator("#arena-overlay");
+        await push(
+          page,
+          `const names = ["WWWWWWWWWWWWWWWWWWWW", "Maximilian-the-Great", "Bartholomew_Crumpets", "Anastasia Nightshade"];
+           const stats = [[2480, 1975, 6, 4], [1830, 2210, 3, 1], [2764, 1660, 7, 5], [990, 2499, 1, 0]];
+           const wins = [2, 1, 3, 0];
+           s.players.forEach((p, i) => { p.name = names[i]; Object.assign(p.stats, { dealt: stats[i][0], received: stats[i][1], kos: stats[i][2], combos: stats[i][3] }); s.scores[p.id] = wins[i]; });
+           s.phase = "finished"; s.winner = s.players[2].id; s.matchId = "m-ffa";`,
+        );
+        await expect(overlay).toHaveClass(/\bis-sheet\b/);
+        await expect(overlay.locator(".standings li")).toHaveCount(4);
+        await page.waitForTimeout(300);
+        await snap(page, info, `pvp-ffa-${label(size)}`);
+        holds(await sheet(page, ".match-sheet"), size);
+        expect(await recapProblems(page)).toEqual([]);
+        // The places, most round wins first: plates of one height, a medal
+        // for the top three, each name starting just after its medal (they
+        // were centred), and your "you" inside your plate beside the
+        // longest name (a long name hid it).
+        const places = await overlay
+          .locator(".standings li")
+          .evaluateAll((items) =>
+            items.map((li) => {
+              const plate = li.getBoundingClientRect(),
+                medal = li.querySelector("span")!,
+                name = li.querySelector("b")!.getBoundingClientRect(),
+                you = li.querySelector("small")?.getBoundingClientRect();
+              return {
+                height: Math.round(plate.height),
+                medal: getComputedStyle(medal).backgroundColor,
+                nameFrom: Math.round(
+                  name.left - medal.getBoundingClientRect().right,
+                ),
+                you: you && {
+                  width: you.width,
+                  inside:
+                    you.right <= name.right + 0.5 && you.right < plate.right,
+                },
+                edge: getComputedStyle(li).boxShadow,
+                text: li.textContent,
+              };
+            }),
+          );
+        expect(places.map((p) => p.text)).toEqual([
+          "1stBartholomew_Crumpets3",
+          "2ndWWWWWWWWWWWWWWWWWWWW you2",
+          "3rdMaximilian-the-Great1",
+          "4thAnastasia Nightshade0",
+        ]);
+        expect(new Set(places.map((p) => p.height)).size).toBe(1);
+        expect(places.slice(0, 3).map((p) => p.medal)).toEqual([
+          "rgb(255, 209, 102)",
+          "rgb(211, 220, 234)",
+          "rgb(227, 166, 115)",
+        ]);
+        for (const p of places) expect(p.nameFrom).toBeLessThanOrEqual(16);
+        expect(places[1].you?.width).toBeGreaterThan(0);
+        expect(places[1].you?.inside).toBe(true);
+        expect(places[1].edge).toContain("rgb(255, 214, 91)");
         // The content never needs dragging sideways.
         expect(
           await overlay

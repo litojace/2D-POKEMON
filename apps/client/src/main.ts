@@ -1,3 +1,5 @@
+// First: before any schema parses (zod-jitless.ts).
+import "./zod-jitless";
 import {
   autoChoosesLow,
   autoLowWhy,
@@ -49,6 +51,7 @@ import {
 import { viewportHeight, viewportLandscape } from "./viewport-size";
 import { RoomInvites } from "./room-invites";
 import { AnnouncementBanner } from "./announcements";
+import { moveNotice, newAddress } from "./domain-move";
 import { serverNow } from "./server-clock";
 import { PvpSpectator } from "./pvp-spectator";
 import {
@@ -2261,6 +2264,15 @@ let watching = "";
 const pvpSpectator = new PvpSpectator();
 /** Announcements from the admins, as a banner (announcements.ts). */
 const announcements = new AnnouncementBanner();
+// On the game's old address: offer the new one (domain-move.ts).
+{
+  const moved = newAddress(location.hostname, import.meta.env.VITE_SITE_URL);
+  if (moved)
+    announcements.notice(moveNotice(moved), {
+      href: `${moved}/`,
+      label: "Open",
+    });
+}
 const roomInvites = new RoomInvites({
   accountId: () => accountsUI?.account?.id,
   canJoin: () => connected && !!accountsUI?.account && !myId,
@@ -4561,19 +4573,11 @@ function renderBattle() {
         });
       $("share-result").onclick = () => {
         if (!state) return;
-        void shareResult(
-          state,
-          myId,
-          import.meta.env.VITE_SITE_URL || location.origin,
-        ).then((how) =>
-          toast(
-            how === "downloaded"
-              ? "Result card saved, and the message copied for pasting."
-              : how === "failed"
-                ? "Couldn’t make the result card on this browser."
-                : "Shared.",
-          ),
-        );
+        // The picture opens large to share or save (share-preview.ts).
+        void shareResult(state, myId).then((how) => {
+          if (how === "failed")
+            toast("Couldn’t make the result card on this browser.");
+        });
       };
       // A bot room has no lobby to return to: go back to the menu.
       $("return").onclick = () =>

@@ -12,18 +12,18 @@ app talks to the same game server on Render and the same Supabase project.
 
 ## What's where
 
-| Path                                        | What it is                                                                                                                  |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `apps/client/capacitor.config.ts`           | App name, bundle ID (`com.litojace.elementarena`), dark background, no page bounce.                                         |
-| `apps/client/ios/`                          | The Xcode project. Commit changes to it; `ios/App/App/public` (the built game) and the generated config copies are ignored. |
-| `apps/client/ios/App/App/AppleSignIn.swift` | Native Sign in with Apple (a small plugin inside the app) and the view controller that registers it.                        |
-| `apps/client/ios/App/App/App.entitlements`  | The Sign in with Apple capability.                                                                                          |
-| `apps/client/ios/App/App/Info.plist`        | Landscape only, full screen on iPad, status bar hidden, "no special encryption" (export compliance).                        |
-| `apps/client/src/native.ts`                 | Everything in the client that knows it's in the app.                                                                        |
-| `apps/server/src/apple.ts`                  | Trading Apple's sign-in code for a refresh token, and revoking it.                                                          |
-| `supabase/migrations/111_apple_tokens.sql`  | Where the server keeps those tokens.                                                                                        |
-| `scripts/check-native-env.mjs`              | Stops the build if the app's settings are missing.                                                                          |
-| `node scripts/generate-icons.mjs`           | Draws the app icon (default, dark and tinted), launch screen and PWA icons from `scripts/app-icon.svg`.                     |
+| Path                                        | What it is                                                                                                                                                                                                             |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/client/capacitor.config.ts`           | App name, bundle ID (`com.litojace.elementarena`), dark background, no page bounce.                                                                                                                                    |
+| `apps/client/ios/`                          | The Xcode project. Commit changes to it; `ios/App/App/public` (the built game) and the generated config copies are ignored.                                                                                            |
+| `apps/client/ios/App/App/AppleSignIn.swift` | Native Sign in with Apple (a small plugin inside the app) and the view controller that registers it.                                                                                                                   |
+| `apps/client/ios/App/App/App.entitlements`  | The Sign in with Apple capability.                                                                                                                                                                                     |
+| `apps/client/ios/App/App/Info.plist`        | Landscape only, full screen on iPad, status bar hidden, "no special encryption" (export compliance), and why it adds to Photos (saving a shared card: without `NSPhotoLibraryAddUsageDescription` iOS closes the app). |
+| `apps/client/src/native.ts`                 | Everything in the client that knows it's in the app.                                                                                                                                                                   |
+| `apps/server/src/apple.ts`                  | Trading Apple's sign-in code for a refresh token, and revoking it.                                                                                                                                                     |
+| `supabase/migrations/111_apple_tokens.sql`  | Where the server keeps those tokens.                                                                                                                                                                                   |
+| `scripts/check-native-env.mjs`              | Stops the build if the app's settings are missing.                                                                                                                                                                     |
+| `node scripts/generate-icons.mjs`           | Draws the app icon (default, dark and tinted), launch screen and PWA icons from `scripts/app-icon.svg`.                                                                                                                |
 
 The app runs on **iPhone and iPad** (`TARGETED_DEVICE_FAMILY = "1,2"` in
 the Xcode project, since 24 Nov 2026). See [iPad](#ipad) below.
@@ -162,7 +162,7 @@ iOS 26 SDK) and Node 22.
 
    ```
    VITE_SERVER_URL=https://element-arena-np34.onrender.com
-   VITE_SITE_URL=https://parena.litojace.com
+   VITE_SITE_URL=https://play.elementarenausa.com
    VITE_SUPABASE_URL=https://YOUR_GAME_PROJECT.supabase.co
    VITE_SUPABASE_ANON_KEY=your anon key
    VITE_APPLE_SIGN_IN=on
@@ -219,7 +219,7 @@ iOS 26 SDK) and Node 22.
    **General** → Identity), even for the same version: App Store Connect
    refuses a build number it has seen.
 3. Fill in the listing:
-   - **Privacy:** the privacy policy URL, `https://parena.litojace.com/privacy.html` (`apps/client/public/privacy.html`; the game links to it from the menu and the sign-in panel), and the privacy
+   - **Privacy:** the privacy policy URL, `https://play.elementarenausa.com/privacy.html` (`apps/client/public/privacy.html`; the game links to it from the menu and the sign-in panel), and the privacy
      answers: email address and user ID (accounts), gameplay content
      (matches, progress), and performance data (`arena-perf` logs frame
      rates, device memory and cores without the account; `arena-load` logs
@@ -242,7 +242,7 @@ iOS 26 SDK) and Node 22.
    - **App Review notes:** a demo account (email and password), and that
      _Battle an AI bot_ plays a full match alone. The game server must be
      awake and healthy while Apple reviews.
-   - **Support URL:** `https://parena.litojace.com/support.html`
+   - **Support URL:** `https://play.elementarenausa.com/support.html`
      (`apps/client/public/support.html`). App Store Connect requires one.
    - **Pricing:** Free. The app has no in-app purchases: selling coins was
      looked at and put off until there are more players

@@ -67,10 +67,11 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
-.announcement-banner .announcement-ok {
+.announcement-banner .announcement-ok,
+.announcement-banner .announcement-go {
   flex: none;
   min-width: 52px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 6px 14px;
   border: 0;
   border-radius: 10px;
@@ -81,6 +82,20 @@
   );
   color: var(--gold-ink, #2a1a00);
   font-weight: 800;
+}
+.announcement-banner .announcement-go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-size: calc(14px * var(--text-scale, 1));
+  text-decoration: none;
+}
+.announcement-banner .announcement-ok.is-quiet {
+  border: 1px solid #8baee566;
+  background: transparent;
+  color: #eef2ff;
+  font-weight: 700;
 }
 @media (prefers-reduced-motion: reduce) {
   .announcement-banner {

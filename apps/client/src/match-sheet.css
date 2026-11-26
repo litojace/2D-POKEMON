@@ -444,6 +444,146 @@ body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
   :is(th, td) {
   border-top-color: #ffffff59;
 }
+/* Teams: each plate carries its team's colour on its left edge, as the
+   room's team headings do (screens/room.css: Blue #7cc4ff, Red #ff8a96),
+   so who played on which side reads at a glance. Yours keeps the gold
+   edge. The teammate is the row after yours on the same side; the rivals
+   are the split row and the rows after it (only teams have a split). */
+#arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody {
+  --team-0: #7cc4ff;
+  --team-1: #ff8a96;
+}
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .recap
+  tbody
+  :is(tr.me.side-0 + tr.side-0, tr.split.side-0, tr.split ~ tr.side-0)
+  th {
+  box-shadow: inset 3px 0 0 var(--team-0);
+}
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .recap
+  tbody
+  :is(tr.me.side-1 + tr.side-1, tr.split.side-1, tr.split ~ tr.side-1)
+  th {
+  box-shadow: inset 3px 0 0 var(--team-1);
+}
+/* ---- PvP results: a free-for-all's places ---- */
+/* The places over the recap, in a card of the same kind: a plate per
+   fighter, yours with the gold edge, a medal for the top three, the name
+   left-aligned and round wins in display figures. They were a bare list of
+   centred names where a long name hid your "you" (match-recap.ts,
+   standingsMarkup). Static styles only. A spectator's card (no sheet)
+   keeps the plain list, without the heading. */
+.standings-card > .standings-head {
+  display: none;
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .standings-card {
+  width: min(680px, 100%);
+  margin: 4px auto 0;
+  padding: 2px 12px 7px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--rad-lg);
+  background: var(--fill-card);
+  text-align: left;
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .standings-head {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 6px 10px 5px;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-faint);
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .standings {
+  width: 100%;
+  margin: 0;
+  gap: 5px;
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .standings li {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 7px 14px 7px 8px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--rad-md);
+  outline: 0;
+  background: var(--fill-card-hi);
+  font-size: calc(15px * var(--text-scale, 1));
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .standings li.me {
+  border-color: color-mix(in srgb, var(--ui-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--ui-accent) 8%, var(--ui-bg-2));
+  box-shadow: inset 3px 0 0 var(--ui-accent);
+}
+/* The place: a medal, gold, silver and bronze for the top three. */
+#arena-overlay#arena-overlay.is-sheet .overlay-card .standings li > span {
+  min-width: 46px;
+  padding: 2px 0;
+  border-radius: 999px;
+  background: #ffffff12;
+  color: var(--ui-dim);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: calc(15px * var(--text-scale, 1));
+  line-height: 1.25;
+  text-align: center;
+}
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .standings
+  li.place-1
+  > span {
+  background: #ffd166;
+  color: #2b1d00;
+}
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .standings
+  li.place-2
+  > span {
+  background: #d3dcea;
+  color: #1a2232;
+}
+#arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .standings
+  li.place-3
+  > span {
+  background: #e3a673;
+  color: #2b1406;
+}
+/* The name gives way before "you" does (as in the recap's plates). */
+#arena-overlay#arena-overlay.is-sheet .overlay-card .standings li > b {
+  display: grid;
+  grid-template-columns: minmax(0, auto) auto;
+  justify-content: start;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  overflow: visible;
+  color: var(--ui-text);
+  font-weight: 700;
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .standings li > b > bdi {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card .standings li > em {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-style: normal;
+  font-size: calc(22px * var(--text-scale, 1));
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  color: var(--ui-text);
+}
+
 /* A phone held sideways: tighter plates, so four fighters and the buttons
    still fit without scrolling. */
 @container (max-height: 460px) {
@@ -478,6 +618,28 @@ body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
   }
   #arena-overlay#arena-overlay.is-sheet .overlay-card .recap tbody th {
     font-size: calc(13px * var(--text-scale, 1));
+  }
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .standings-card {
+    margin-top: 0;
+    padding: 0 8px 4px;
+  }
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .standings-head {
+    padding: 3px 8px 3px;
+  }
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .standings {
+    gap: 3px;
+  }
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .standings li {
+    gap: 10px;
+    padding: 3px 10px 3px 6px;
+    font-size: calc(13px * var(--text-scale, 1));
+  }
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .standings li > span {
+    min-width: 38px;
+    font-size: calc(13px * var(--text-scale, 1));
+  }
+  #arena-overlay#arena-overlay.is-sheet .overlay-card .standings li > em {
+    font-size: calc(17px * var(--text-scale, 1));
   }
 }
 

@@ -97,8 +97,10 @@ describe("Sky Pirates and Nova Vanguard, redrawn per champion", () => {
     const collections = [
       "hon-viet",
       "stars-stripes",
+      "sun-dynasty",
       "hero-squad",
       "neon-campus",
+      "starlight-idol",
       "sky-pirates",
       "nova-vanguard",
     ];
@@ -124,8 +126,10 @@ describe("Sky Pirates and Nova Vanguard, redrawn per champion", () => {
     for (const c of [
       "hon-viet",
       "stars-stripes",
+      "sun-dynasty",
       "hero-squad",
       "neon-campus",
+      "starlight-idol",
       "sky-pirates",
       "nova-vanguard",
     ])
@@ -161,8 +165,10 @@ describe("Sky Pirates and Nova Vanguard, redrawn per champion", () => {
     const collections = [
       "hon-viet",
       "stars-stripes",
+      "sun-dynasty",
       "hero-squad",
       "neon-campus",
+      "starlight-idol",
       "sky-pirates",
       "nova-vanguard",
     ];

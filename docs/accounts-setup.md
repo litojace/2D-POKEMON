@@ -27,7 +27,7 @@ VITE_SUPABASE_ANON_KEY=YOUR_GAME_PUBLIC_ANON_KEY
 In Render Environment, set **all four** settings above, plus:
 
 ```dotenv
-VITE_SITE_URL=https://parena.litojace.com
+VITE_SITE_URL=https://play.elementarenausa.com
 ```
 
 Restart local development after changing env files. Redeploy Render after changing public settings because `VITE_` values are bundled at build time. The Blueprint prompts for these values without committing them. The app uses the public key and a user's token; **no service-role key is required or permitted in browser settings**. Missing configuration keeps gameplay locked rather than creating fake accounts.
@@ -38,9 +38,9 @@ Enable email/password in Supabase Authentication and keep email confirmation ena
 
 Supabase's default email sender only delivers to addresses belonging to your project's team. Use your Supabase team email for the first administrator test. Before inviting other players, configure a custom SMTP provider under Authentication's email/SMTP settings. See [Supabase SMTP setup](https://supabase.com/docs/guides/auth/auth-smtp).
 
-Under Authentication → URL Configuration, set Site URL to `https://parena.litojace.com`.
+Under Authentication → URL Configuration, set Site URL to `https://play.elementarenausa.com`.
 
-Email confirmation, password recovery and Sign in with Apple on the website all return to the **site root** with a marker, for example `https://parena.litojace.com/?auth=email-confirmed` (also `?auth=reset-password` and `?auth=auth-callback`). The root is served by both the Web Service and the Static Site, so a missing rewrite rule can never turn an email link into a "Not Found" page. Supabase always accepts a redirect on the same scheme, host and port as the Site URL, so production needs no extra entry. For local development, allow:
+Email confirmation, password recovery and Sign in with Apple on the website all return to the **site root** with a marker, for example `https://play.elementarenausa.com/?auth=email-confirmed` (also `?auth=reset-password` and `?auth=auth-callback`). The root is served by both the Web Service and the Static Site, so a missing rewrite rule can never turn an email link into a "Not Found" page. Supabase always accepts a redirect on the same scheme, host and port as the Site URL, so production needs no extra entry. For local development, allow:
 
 ```text
 http://localhost:5173/**

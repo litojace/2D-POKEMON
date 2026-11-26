@@ -1355,11 +1355,394 @@ const stars: Record<CharacterId, Signature> = {
   },
 };
 
+// ---- Sun Dynasty: the court of a desert kingdom in gold and lapis. ----
+const SAND = 0xe8d4a0,
+  SUN_GOLD = 0xf2c14e,
+  SUN_LAPIS = 0x2f5fb8;
+const sun: Record<CharacterId, Signature> = {
+  voltkit: {
+    name: "Chariot wheel",
+    c: SUN_GOLD,
+    h: 0x3fe0d0,
+    burst: "spark",
+    draw: (f) => {
+      // A chariot's spoked wheel rolls behind, a spark running on its rim.
+      const x = f.x - 22 * f.s,
+        y = f.body - 6 * f.s,
+        r = 12 * f.s * f.boost,
+        rot = f.t / 300,
+        n = f.full ? 6 : 4;
+      f.under.lineStyle(2.4 * f.s, f.c, 1).strokeCircle(x, y, r);
+      f.under.lineStyle(1.2 * f.s, f.h, 0.9);
+      for (let i = 0; i < n; i++) {
+        const a = rot + (i / n) * TAU;
+        f.under.lineBetween(x, y, x + Math.cos(a) * r, y + Math.sin(a) * r);
+      }
+      f.under.fillStyle(f.h, 1).fillCircle(x, y, 2.2 * f.s);
+      sparkle(f.under, x + Math.cos(rot * 1.7) * r, y + Math.sin(rot * 1.7) * r, 2 * f.s, 0xfff36a);
+    },
+  },
+  cindrake: {
+    name: "Rising phoenix",
+    c: 0xff8a1f,
+    h: 0xffd84a,
+    burst: "spark",
+    draw: (f) => {
+      // A phoenix of flame rises behind the head, beating its wings.
+      const s = f.s * f.boost,
+        x = f.x,
+        y = f.headY - 14 * f.s - wave(f.t / 1600) * 4 * f.s,
+        flap = Math.sin(f.t / 140) * 0.5;
+      for (const side of [-1, 1]) {
+        f.under.fillStyle(f.c, 0.95).fillTriangle(x, y, x + side * 22 * s, y - (8 + flap * 10) * s, x + side * 12 * s, y + 4 * s);
+        f.under.fillStyle(f.h, 0.9).fillTriangle(x, y + s, x + side * 15 * s, y - (3 + flap * 6) * s, x + side * 8 * s, y + 5 * s);
+      }
+      f.under.fillStyle(f.c, 1).fillEllipse(x, y + 2 * s, 5 * s, 9 * s);
+      f.under.fillStyle(f.h, 0.9).fillTriangle(x - 4 * s, y + 6 * s, x + 4 * s, y + 6 * s, x, y + 18 * s);
+      f.under.fillStyle(0xfff3a8, 1).fillCircle(x, y - 5 * s, 2.4 * s);
+    },
+  },
+  tidefin: {
+    name: "River lotus",
+    c: 0xff9ac0,
+    h: 0x8ff0f0,
+    burst: "bubble",
+    draw: (f) => {
+      // Lotus flowers float round the feet on a slow river ripple.
+      const n = f.full ? 4 : 3;
+      f.under.lineStyle(1 * f.s, f.h, 0.6).strokeEllipse(f.x, f.ground, 64 * f.s * f.boost, 20 * f.s * f.boost);
+      for (let i = 0; i < n; i++) {
+        const a = (f.t / 6000) * TAU + (i / n) * TAU;
+        const x = f.x + Math.cos(a) * 30 * f.s * f.boost,
+          y = f.ground + Math.sin(a) * 9 * f.s * f.boost - 2 * f.s - Math.sin(f.t / 400 + i) * f.s;
+        const r = 1.8 * f.s;
+        on(f, Math.sin(a) > 0)
+          .fillStyle(f.c, 1)
+          .fillCircle(x - 2 * f.s, y, r)
+          .fillCircle(x + 2 * f.s, y, r)
+          .fillCircle(x, y - 2 * f.s, r)
+          .fillStyle(0xffd84a, 1)
+          .fillCircle(x, y, r * 0.6);
+      }
+    },
+  },
+  auralynx: {
+    name: "Prism obelisk",
+    c: 0xc9a3ff,
+    h: 0xffffff,
+    burst: "star",
+    draw: (f) => {
+      // A crystal obelisk stands behind, prism lights turning round its tip.
+      const s = f.s * f.boost,
+        x = f.x + 20 * f.s,
+        base = f.body + 4 * f.s,
+        top = base - 40 * s;
+      f.under.fillStyle(f.c, 0.85).fillPoints([
+        { x: x - 5 * s, y: base },
+        { x: x + 5 * s, y: base },
+        { x: x + 3.5 * s, y: top + 6 * s },
+        { x, y: top },
+        { x: x - 3.5 * s, y: top + 6 * s },
+      ], true);
+      f.under.fillStyle(f.h, 0.5).fillTriangle(x - s, base, x + s, base, x, top + 4 * s);
+      const cols = [0xff6a8a, 0xffd84a, 0x7ff0a0, 0x6ab0ff, 0xc9a3ff];
+      for (let i = 0; i < (f.full ? 5 : 3); i++) {
+        const a = f.t / 1400 + (i / 5) * TAU;
+        f.under.fillStyle(cols[i], 0.9).fillCircle(x + Math.cos(a) * 9 * s, top + 10 * s + Math.sin(a) * 4 * s, 1.4 * s);
+      }
+    },
+  },
+  lumoth: {
+    name: "Oil lamps",
+    c: 0xd9a64e,
+    h: 0xffd27a,
+    burst: "dot",
+    draw: (f) => {
+      // Little oil lamps circle the keeper, their flames flickering.
+      const n = f.full ? 3 : 2;
+      for (let i = 0; i < n; i++) {
+        const o = orbit(f, i, n, 5200, 28, 8, -10);
+        const s = f.s * f.boost;
+        on(f, o.front)
+          .fillStyle(f.c, 1)
+          .fillEllipse(o.x, o.y, 9 * s, 4 * s)
+          .fillStyle(f.h, 0.35)
+          .fillCircle(o.x + 3 * s, o.y - 4 * s, 4 * s)
+          .fillStyle(0xfff3c4, 1)
+          .fillEllipse(o.x + 3 * s, o.y - 3.5 * s - Math.sin(f.t / 90 + i) * 0.4 * s, 1.8 * s, 3 * s);
+      }
+    },
+  },
+  mystowl: {
+    name: "Star dial",
+    c: 0x5a7ad8,
+    h: 0xffe08a,
+    burst: "star",
+    draw: (f) => {
+      // A ring of the heavens turns above and behind, its stars in gold.
+      const x = f.x,
+        y = f.headY - 6 * f.s,
+        r = 20 * f.s * f.boost,
+        n = f.full ? 8 : 5;
+      f.under.lineStyle(1.4 * f.s, f.c, 0.8).strokeCircle(x, y, r);
+      f.under.fillStyle(f.h, 1);
+      for (let i = 0; i < n; i++) {
+        const a = (f.t / 5000) * TAU + (i / n) * TAU;
+        f.under.fillPoints(starPts(x + Math.cos(a) * r, y + Math.sin(a) * r, 2.6 * f.s), true);
+      }
+    },
+  },
+  terradon: {
+    name: "Rising obelisk",
+    c: SAND,
+    h: SUN_GOLD,
+    burst: "pebble",
+    draw: (f) => {
+      // A sandstone obelisk stands behind, its gold cap catching the sun.
+      const s = f.s * f.boost,
+        x = f.x - 24 * f.s,
+        base = f.ground - 2 * f.s,
+        h = 44 * s;
+      f.under.fillStyle(f.c, 1).fillPoints([
+        { x: x - 5 * s, y: base },
+        { x: x + 5 * s, y: base },
+        { x: x + 3.5 * s, y: base - h },
+        { x: x - 3.5 * s, y: base - h },
+      ], true);
+      f.under.fillStyle(f.h, 1).fillTriangle(x - 3.5 * s, base - h, x + 3.5 * s, base - h, x, base - h - 6 * s);
+      f.under
+        .lineStyle(0.8 * f.s, 0x8a6446, 0.8)
+        .lineBetween(x - 2 * s, base - 12 * s, x + 2 * s, base - 12 * s)
+        .lineBetween(x - 1.5 * s, base - 24 * s, x + 1.5 * s, base - 24 * s);
+      sparkle(f.under, x, base - h - 6 * s, 2.4 * f.s * (0.6 + 0.4 * wave(f.t / 700)), 0xffffff);
+    },
+  },
+  duskveil: {
+    name: "Crescent barque",
+    c: 0xd8dcf0,
+    h: SUN_GOLD,
+    burst: "star",
+    draw: (f) => {
+      // A crescent-moon boat drifts behind the head under a little sail.
+      const s = f.s * f.boost,
+        x = f.x + Math.sin(f.t / 1500) * 6 * f.s,
+        y = f.headY - 4 * f.s,
+        n = f.full ? 10 : 6;
+      const hull = curve(n, (u) => ({ x: x - 18 * s + u * 36 * s, y: y + Math.sin(u * Math.PI) * 8 * s })).concat(
+        curve(n, (u) => ({ x: x + 18 * s - u * 36 * s, y: y + Math.sin((1 - u) * Math.PI) * 3 * s })),
+      );
+      f.under.fillStyle(f.c, 0.95).fillPoints(hull, true);
+      f.under.lineStyle(1.2 * f.s, f.h, 1).lineBetween(x, y + 2 * s, x, y - 16 * s);
+      f.under.fillStyle(f.h, 0.9).fillTriangle(x + 1 * s, y - 15 * s, x + 1 * s, y, x + 9 * s, y - 2 * s);
+      f.under.fillStyle(0xffffff, 0.9).fillCircle(x - 7 * s, y - 12 * s, 2.4 * s);
+    },
+  },
+  coilemur: {
+    name: "Sand-glass",
+    c: 0xb8562a,
+    h: 0xe8c27a,
+    burst: "dot",
+    draw: (f) => {
+      // An hourglass of the caravans stands beside, its sand running down.
+      const s = f.s * f.boost,
+        x = f.x + 24 * f.s,
+        y = f.chest,
+        k = (f.t / 2400) % 1;
+      f.under.fillStyle(f.c, 1).fillRect(x - 7 * s, y - 13 * s, 14 * s, 2.4 * s).fillRect(x - 7 * s, y + 11 * s, 14 * s, 2.4 * s);
+      f.under.fillStyle(0xe8f8ff, 0.45).fillTriangle(x - 6 * s, y - 11 * s, x + 6 * s, y - 11 * s, x, y).fillTriangle(x - 6 * s, y + 11 * s, x + 6 * s, y + 11 * s, x, y);
+      const top = 1 - k;
+      f.under.fillStyle(f.h, 1).fillTriangle(x - 5 * s * top, y - 9 * s * top, x + 5 * s * top, y - 9 * s * top, x, y);
+      f.under.fillTriangle(x - 5.5 * s, y + 11 * s, x + 5.5 * s, y + 11 * s, x, y + 11 * s - 8 * s * k);
+      f.under.lineStyle(0.8 * f.s, f.h, 1).lineBetween(x, y, x, y + 11 * s);
+    },
+  },
+  pyranda: {
+    name: "Spice swirl",
+    c: 0xffb21f,
+    h: 0xc8402f,
+    burst: "dot",
+    draw: (f) => {
+      // Saffron, chilli, mint and cinnamon swirl up round the healer.
+      const cols = [0xc8402f, 0xffb21f, 0x5aa84a, 0x8a4a24];
+      const n = f.full ? 10 : 6;
+      for (let i = 0; i < n; i++) {
+        const k = (f.t / 2200 + i / n) % 1;
+        const a = k * TAU * 1.5 + i;
+        const r = (26 - 10 * k) * f.s * f.boost;
+        on(f, Math.sin(a) > 0)
+          .fillStyle(cols[i % 4], 1 - k * 0.6)
+          .fillCircle(f.x + Math.cos(a) * r, f.ground - k * 50 * f.s + Math.sin(a) * r * 0.3, (1.6 - k * 0.6) * f.s);
+      }
+    },
+  },
+  glacelle: {
+    name: "Mirage ribbon",
+    c: 0x9af0e8,
+    h: 0xffffff,
+    burst: "ring",
+    draw: (f) => {
+      // A ribbon of heat-haze shimmer winds round the dancer.
+      const pts = curve(f.full ? 16 : 8, (u) => {
+        const a = f.t / 1800 + u * TAU * 0.8;
+        return { x: f.x + Math.cos(a) * 30 * f.s * f.boost, y: f.body - 4 * f.s + Math.sin(a) * 10 * f.s + Math.sin(u * 9 + f.t / 200) * 2 * f.s };
+      });
+      f.under.lineStyle(3 * f.s, f.c, 0.55).strokePoints(pts);
+      f.under.lineStyle(1 * f.s, f.h, 0.8).strokePoints(pts);
+      const end = pts[pts.length - 1];
+      sparkle(f.under, end.x, end.y, 2 * f.s, f.h);
+    },
+  },
+  halcyra: {
+    name: "Winged sun",
+    c: 0xff6a3a,
+    h: SUN_GOLD,
+    burst: "spark",
+    draw: (f) => {
+      // A sun disc spreads gold falcon wings above the head.
+      const s = f.s * f.boost,
+        x = f.x,
+        y = f.headY - 12 * f.s,
+        flap = Math.sin(f.t / 500) * 2 * s;
+      for (const side of [-1, 1]) {
+        f.under.fillStyle(f.h, 1).fillTriangle(x + side * 5 * s, y - 3 * s, x + side * 30 * s, y - 8 * s - flap, x + side * 24 * s, y + 2 * s);
+        f.under.fillStyle(SUN_LAPIS, 1).fillTriangle(x + side * 5 * s, y + s, x + side * 20 * s, y - s - flap * 0.5, x + side * 14 * s, y + 5 * s);
+      }
+      glowDot(f.under, x, y, 5 * s, f.c);
+    },
+  },
+  sunbara: {
+    name: "Sun of the throne",
+    c: 0xffb21f,
+    h: 0xfff36a,
+    burst: "star",
+    draw: (f) => {
+      // The sovereign's sun rises behind it, its rays turning.
+      const s = f.s * f.boost,
+        x = f.x,
+        y = f.chest - 6 * f.s,
+        r = 22 * s,
+        n = f.full ? 12 : 8,
+        rot = (f.t / 4000) * TAU;
+      f.under.fillStyle(f.h, 0.55);
+      for (let i = 0; i < n; i++) {
+        const a = rot + (i / n) * TAU;
+        f.under.fillTriangle(x + Math.cos(a - 0.12) * r, y + Math.sin(a - 0.12) * r, x + Math.cos(a + 0.12) * r, y + Math.sin(a + 0.12) * r, x + Math.cos(a) * (r + 12 * s), y + Math.sin(a) * (r + 12 * s));
+      }
+      f.under.fillStyle(f.c, 0.9).fillCircle(x, y, r);
+    },
+  },
+  astrabun: {
+    name: "Lotus throne",
+    c: 0xff9ac0,
+    h: 0xffd84a,
+    burst: "star",
+    draw: (f) => {
+      // A great lotus opens on the ground under the feet.
+      const n = f.full ? 8 : 6,
+        r = 18 * f.s * f.boost,
+        flat = 0.35,
+        rot = f.t / 9000;
+      f.under.fillStyle(f.c, 0.9);
+      for (let i = 0; i < n; i++) {
+        const a = rot + (i / n) * TAU;
+        f.under.fillTriangle(
+          f.x + Math.cos(a - 0.3) * r * 0.45,
+          f.ground + Math.sin(a - 0.3) * r * 0.45 * flat,
+          f.x + Math.cos(a + 0.3) * r * 0.45,
+          f.ground + Math.sin(a + 0.3) * r * 0.45 * flat,
+          f.x + Math.cos(a) * r,
+          f.ground + Math.sin(a) * r * flat,
+        );
+      }
+      f.under.fillStyle(f.h, 1).fillEllipse(f.x, f.ground, 8 * f.s, 3 * f.s);
+    },
+  },
+  wombolder: {
+    name: "Sandstone gate",
+    c: 0xd8b878,
+    h: SUN_LAPIS,
+    burst: "pebble",
+    draw: (f) => {
+      // The guardian stands in a temple gate: two pillars and a lintel.
+      const s = f.s * f.boost,
+        w = 30 * s,
+        top = f.headY - 6 * f.s;
+      f.under
+        .fillStyle(f.c, 1)
+        .fillRect(f.x - w - 4 * s, top, 8 * s, f.ground - top)
+        .fillRect(f.x + w - 4 * s, top, 8 * s, f.ground - top)
+        .fillRect(f.x - w - 8 * s, top - 6 * s, 2 * w + 16 * s, 6 * s);
+      f.under.fillStyle(f.h, 1).fillRect(f.x - w - 8 * s, top - 2 * s, 2 * w + 16 * s, 1.6 * s);
+      glowDot(f.under, f.x, top - 3 * s, 2.6 * s, 0xffd84a);
+    },
+  },
+  shadopus: {
+    name: "Papyrus scroll",
+    c: 0xf2e2b4,
+    h: SUN_LAPIS,
+    burst: "confetti",
+    draw: (f) => {
+      // A papyrus unrolls beside the scribe, lines of writing on it.
+      const s = f.s * f.boost,
+        x = f.x + 22 * f.s,
+        y = f.chest - 10 * f.s,
+        h = 30 * s * (0.6 + 0.4 * wave(f.t / 1600));
+      f.under.fillStyle(f.c, 1).fillRect(x - 7 * s, y, 14 * s, h);
+      f.under.fillStyle(0x8a5a2a, 1).fillRect(x - 8.5 * s, y - 2 * s, 17 * s, 3.4 * s).fillRect(x - 8.5 * s, y + h - 1.4 * s, 17 * s, 3.4 * s);
+      f.under.fillStyle(f.h, 0.9);
+      for (let i = 0; i < 4; i++) if (4 * s + i * 6 * s < h - 4 * s) f.under.fillRect(x - 5 * s, y + 4 * s + i * 6 * s, (6 + (i % 2) * 3) * s, 1.6 * s);
+    },
+  },
+  pangrove: {
+    name: "Date palm",
+    c: 0x3f9a3a,
+    h: 0xc8702f,
+    burst: "leaf",
+    draw: (f) => {
+      // A date palm grows beside the keeper, its fronds swaying.
+      const s = f.s * f.boost,
+        x = f.x - 24 * f.s,
+        base = f.ground - 2 * f.s,
+        top = base - 40 * s,
+        sway = Math.sin(f.t / 700) * 3 * s;
+      f.under.lineStyle(3 * f.s, 0x8a5a2a, 1).strokePoints(curve(4, (u) => ({ x: x + sway * u * u, y: base - u * (base - top) })));
+      f.under.lineStyle(2.4 * f.s, f.c, 1);
+      for (let i = 0; i < 5; i++) {
+        const a = -Math.PI / 2 + (i - 2) * 0.7;
+        f.under.strokePoints(curve(3, (u) => ({ x: x + sway + Math.cos(a) * 16 * s * u, y: top + Math.sin(a) * 16 * s * u + u * u * 8 * s })));
+      }
+      f.under.fillStyle(f.h, 1).fillCircle(x + sway - 2 * s, top + 3 * s, 1.8 * s).fillCircle(x + sway + 2 * s, top + 3.5 * s, 1.8 * s);
+    },
+  },
+  mossloth: {
+    name: "Feather fan",
+    c: 0xffffff,
+    h: 0x3fc8c0,
+    burst: "leaf",
+    draw: (f) => {
+      // The great feather fan sways behind, giving the bearer its shade.
+      const s = f.s * f.boost,
+        px = f.x + 18 * f.s,
+        py = f.headY + 4 * f.s,
+        sway = Math.sin(f.t / 600) * 0.25,
+        n = f.full ? 7 : 5;
+      f.under.lineStyle(1.6 * f.s, 0xb8823a, 1).lineBetween(f.x + 6 * f.s, f.body, px, py);
+      for (let i = 0; i < n; i++) {
+        const a = -Math.PI / 2 + sway + (i - (n - 1) / 2) * 0.32;
+        f.under
+          .fillStyle(i % 2 ? f.c : f.h, 1)
+          .fillTriangle(px, py, px + Math.cos(a - 0.13) * 18 * s, py + Math.sin(a - 0.13) * 18 * s, px + Math.cos(a + 0.13) * 18 * s, py + Math.sin(a + 0.13) * 18 * s);
+      }
+    },
+  },
+};
+
 const TABLES: [string, Record<CharacterId, Signature>][] = [
   ["nova-vanguard", vanguard],
   ["sky-pirates", pirates],
   ["hon-viet", viet],
   ["stars-stripes", stars],
+  ["sun-dynasty", sun],
 ];
 /** Every signature by skin id. */
 export const EPIC_SIGNATURES: Record<string, Signature> = Object.fromEntries(
@@ -1373,6 +1756,11 @@ const FLOURISHES = new WeakMap<object, number>();
 const isPirate = (skin: string) => skin.endsWith("-sky-pirates");
 const isViet = (skin: string) => skin.endsWith("-hon-viet");
 const isStars = (skin: string) => skin.endsWith("-stars-stripes");
+const isSun = (skin: string) => skin.endsWith("-sun-dynasty");
+/** Sun Dynasty's sun-mosaic landing and winged-sunrise victory, drawn over time. */
+const SUN_MOMENTS = new WeakMap<object, { land?: number; win?: number }>();
+const SUN_LAND_MS = 1300,
+  SUN_WIN_MS = 1900;
 /** Stars & Stripes' Walk-of-Fame landing and fireworks victory, drawn over time. */
 const STARS_MOMENTS = new WeakMap<object, { land?: number; win?: number }>();
 const STARS_LAND_MS = 1300,
@@ -1436,10 +1824,12 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
   const ground = ctx.y + WORLD_ART.fighterFeet * sc;
   const pirate = isPirate(skin),
     vn = isViet(skin),
-    us = isStars(skin);
+    us = isStars(skin),
+    sunCourt = isSun(skin);
   // The motif answers the ultimate; Nova also shows it on landing and win
-  // (the pirates and Hồn Việt have moments of their own there).
-  if (ctx.ultimate || (!pirate && !vn && !us && (ctx.greeting || ctx.celebrating))) FLOURISHES.set(ctx.g, ctx.now);
+  // (Sky Pirates, Hồn Việt, Stars & Stripes and Sun Dynasty have moments
+  // of their own there).
+  if (ctx.ultimate || (!pirate && !vn && !us && !sunCourt && (ctx.greeting || ctx.celebrating))) FLOURISHES.set(ctx.g, ctx.now);
   if (us && (ctx.greeting || ctx.celebrating)) {
     // Stars & Stripes: a star of the Walk of Fame lights up under the feet
     // as spotlights sweep, or fireworks burst behind; drawn over time.
@@ -1447,8 +1837,7 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
     if (!m) STARS_MOMENTS.set(ctx.g, (m = {}));
     if (ctx.greeting) m.land = ctx.now;
     else m.win = ctx.now;
-  }
-  if (vn && (ctx.greeting || ctx.celebrating)) {
+  } else if (vn && (ctx.greeting || ctx.celebrating)) {
     // Hồn Việt: a Đông Sơn drum face lights up under the feet, or lanterns
     // rise behind the champion; drawn over the next frames.
     let m = VIET_MOMENTS.get(ctx.g);
@@ -1459,6 +1848,19 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
       for (let i = 0; i < (ctx.ambient ? 10 : 5); i++) {
         const ang = Math.PI + ((i + 0.5) / (ctx.ambient ? 10 : 5)) * Math.PI;
         ctx.emit({ x: ctx.x, y: ground - 4 * sc, vx: Math.cos(ang) * 120, vy: Math.sin(ang) * 90, life: 1, size: 2 * sc, color: i % 2 ? 0xffd84a : 0xff6a5a, shape: "leaf", spin: 8, behind: true, drag: 2.5, fadeIn: 0.05, sway: 2 });
+      }
+    } else m.win = ctx.now;
+  } else if (sunCourt && (ctx.greeting || ctx.celebrating)) {
+    // Sun Dynasty: a mosaic sun opens on the ground under the feet, or a
+    // winged sun rises behind; drawn over the next frames.
+    let m = SUN_MOMENTS.get(ctx.g);
+    if (!m) SUN_MOMENTS.set(ctx.g, (m = {}));
+    if (ctx.greeting) {
+      m.land = ctx.now;
+      // Gold sand thrown up off the mosaic.
+      for (let i = 0; i < (ctx.ambient ? 10 : 5); i++) {
+        const ang = Math.PI + ((i + 0.5) / (ctx.ambient ? 10 : 5)) * Math.PI;
+        ctx.emit({ x: ctx.x, y: ground - 3 * sc, vx: Math.cos(ang) * 110, vy: Math.sin(ang) * 80, life: 0.8, size: 1.8 * sc, color: i % 2 ? SUN_GOLD : SAND, shape: "dot", behind: true, drag: 3, fadeIn: 0.05 });
       }
     } else m.win = ctx.now;
   } else if (pirate && (ctx.greeting || ctx.celebrating)) {
@@ -1538,10 +1940,11 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
   const summoned = since >= 0 && since < FLOURISH_MS;
   // While the motif is out the aura steps back to its pool and rim, so the
   // ultimate's frames cost no more than before.
-  legendaryAura(frame, pirate ? "sky-pirates" : vn ? "hon-viet" : us ? "stars-stripes" : "nova-vanguard", summoned ? "rim" : ctx.ambient ? "full" : "compact");
+  legendaryAura(frame, pirate ? "sky-pirates" : vn ? "hon-viet" : us ? "stars-stripes" : sunCourt ? "sun-dynasty" : "nova-vanguard", summoned ? "rim" : ctx.ambient ? "full" : "compact");
   if (pirate) pirateSuit(frame);
   else if (vn) vietSuit(frame);
   else if (us) starsSuit(frame);
+  else if (sunCourt) sunSuit(frame);
   else novaSuit(frame);
   // The champion's own motif, summoned: it pops in with a little overshoot
   // as it fades up, holds, then eases back as it fades out.
@@ -1559,6 +1962,7 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
   if (pirate) pirateMoments(frame);
   if (vn) vietMoments(frame);
   if (us) starsMoments(frame);
+  if (sunCourt) sunMoments(frame);
 }
 
 /** Legendary's gold, the tier colour (TIER_COLORS.legendary). */
@@ -1576,6 +1980,8 @@ const AURA_MARKS: Record<string, { n: number; inner: number; colors: number[] | 
   "hon-viet": { n: 8, inner: 0.45, colors: [0xffd84a] },
   // Stars & Stripes: red and blue stars.
   "stars-stripes": { n: 5, inner: 0.45, colors: [0xe8434b, 0x5b8cff] },
+  // Sun Dynasty: twelve-rayed suns in gold and lapis.
+  "sun-dynasty": { n: 12, inner: 0.62, colors: [0xffd84a, 0x3a6ad0] },
 };
 const markPts = (x: number, y: number, r: number, n: number, inner: number, rot: number) =>
   inner >= 1
@@ -1930,6 +2336,91 @@ function starsMoments(f: Frame) {
           }
         }
       }
+    }
+  }
+}
+
+/**
+ * Sun Dynasty: the costume's collar drops, pectoral and jewels glow (lume
+ * layers); the signature adds a soft gold glint at the collar and, when
+ * moving, a trail of gold and lapis sparks off the sand.
+ */
+function sunSuit(f: Frame) {
+  const { ctx, s } = f;
+  f.g.fillStyle(0xfff3a8, 0.25 + 0.25 * wave(f.t / 1500)).fillCircle(f.x, f.body - 5 * s, 1.6 * s);
+  if (ctx.dashing ? ctx.chance(24, ctx.dt) : ctx.moving && ctx.chance(f.full ? 6 : 3, ctx.dt)) {
+    const back = ctx.angle + Math.PI;
+    const color = [SUN_GOLD, SAND, 0x3a6ad0][Math.floor(Math.random() * 3)];
+    ctx.emit({ x: f.x + Math.cos(back) * 8 * s + (Math.random() - 0.5) * 10 * s, y: f.ground - 3 * s, vx: Math.cos(back) * 40 + (Math.random() - 0.5) * 20, vy: -20 - Math.random() * 20, life: 0.7, size: 1.8 * ctx.sc, color, shape: "spark", glow: color !== SAND, behind: true, drag: 2, grow: 0.3 });
+  }
+}
+
+/**
+ * Sun Dynasty's landing and victory. Landing: a mosaic sun of twelve gold
+ * and lapis rays opens on the ground under the feet, a lapis heart in a gold
+ * rim. Victory: a sun rises behind the champion, its rays fanning out as
+ * gold falcon wings unfold either side of it.
+ */
+function sunMoments(f: Frame) {
+  const m = SUN_MOMENTS.get(f.ctx.g);
+  if (!m) return;
+  const { ctx } = f;
+  const s = ctx.sc * 1.35;
+  const flat = ctx.flat ?? WORLD_ART.groundY;
+  if (m.land !== undefined) {
+    const k = (ctx.now - m.land) / SUN_LAND_MS;
+    if (k < 0 || k > 1) m.land = undefined;
+    else {
+      const a = k < 0.7 ? Math.min(1, k / 0.12) : (1 - k) / 0.3;
+      const r = 34 * s * (0.4 + 0.6 * easeOutBack(Math.min(1, k / 0.3)));
+      const rot = k * 0.5;
+      for (const [c, off] of [
+        [SUN_GOLD, 0],
+        [SUN_LAPIS, Math.PI / 12],
+      ] as const) {
+        f.under.fillStyle(c, 0.9 * a);
+        for (let i = 0; i < 6; i++) {
+          const ang = rot + off + (i / 6) * TAU;
+          f.under.fillTriangle(
+            f.x + Math.cos(ang - 0.18) * r * 0.55,
+            f.ground + Math.sin(ang - 0.18) * r * 0.55 * flat,
+            f.x + Math.cos(ang + 0.18) * r * 0.55,
+            f.ground + Math.sin(ang + 0.18) * r * 0.55 * flat,
+            f.x + Math.cos(ang) * r * 1.25,
+            f.ground + Math.sin(ang) * r * 1.25 * flat,
+          );
+        }
+      }
+      f.under.fillStyle(SUN_GOLD, a).fillEllipse(f.x, f.ground, r * 1.2, r * 1.2 * flat);
+      f.under.fillStyle(SUN_LAPIS, a).fillEllipse(f.x, f.ground, r * 0.7, r * 0.7 * flat);
+      f.under.lineStyle(1.4 * s, 0xfff3a8, a).strokeEllipse(f.x, f.ground, r * 1.2, r * 1.2 * flat);
+    }
+  }
+  if (m.win !== undefined) {
+    const k = (ctx.now - m.win) / SUN_WIN_MS;
+    if (k < 0 || k > 1) m.win = undefined;
+    else {
+      const a = k < 0.8 ? Math.min(1, k / 0.1) : (1 - k) / 0.2;
+      const g = faded(f.under, a);
+      const rise = easeOutBack(Math.min(1, k / 0.4));
+      const x = f.x,
+        y = f.body - rise * (f.body - (f.headY - 18 * s));
+      // The rays fan out round it.
+      const n = ctx.ambient ? 12 : 8,
+        reach = (14 + 14 * Math.min(1, k / 0.5)) * s;
+      g.fillStyle(0xffd84a, 0.5);
+      for (let i = 0; i < n; i++) {
+        const ang = (i / n) * TAU + k * 0.6;
+        g.fillTriangle(x + Math.cos(ang - 0.1) * 10 * s, y + Math.sin(ang - 0.1) * 10 * s, x + Math.cos(ang + 0.1) * 10 * s, y + Math.sin(ang + 0.1) * 10 * s, x + Math.cos(ang) * reach, y + Math.sin(ang) * reach);
+      }
+      // Gold falcon wings unfold either side.
+      const open = Math.min(1, Math.max(0, (k - 0.25) / 0.35));
+      for (const side of [-1, 1]) {
+        g.fillStyle(SUN_GOLD, 1).fillTriangle(x + side * 9 * s, y - 2 * s, x + side * (10 + 30 * open) * s, y - (4 + 8 * open) * s, x + side * (10 + 22 * open) * s, y + 5 * s);
+        g.fillStyle(SUN_LAPIS, 1).fillTriangle(x + side * 9 * s, y + 2 * s, x + side * (10 + 18 * open) * s, y - 2 * open * s, x + side * (10 + 12 * open) * s, y + 7 * s);
+      }
+      g.fillStyle(0xff8a1f, 1).fillCircle(x, y, 10 * s);
+      g.fillStyle(0xfff3a8, 0.9).fillCircle(x - 3 * s, y - 3 * s, 3 * s);
     }
   }
 }
