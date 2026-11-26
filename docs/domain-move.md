@@ -149,3 +149,15 @@ this move doesn't touch how the session is stored.
 - 25 Nov, ~4:10 PM PT: no redirect at first (root/coordinator sessions);
   banner on the old address added. Waiting for the owner's go-ahead on the
   production list.
+- 25 Nov, ~3:56 PM PT: the owner approved steps 1–8 (redirect postponed),
+  plus removing `SUPABASE_DB_URL` from the Static Site (its build doesn't
+  use it) and `Cache-Control: no-cache` on `/sw.js`. This session's
+  permission check blocked the first Render write, because the approval was
+  given in the root session; the owner was asked to confirm here or do the
+  steps by hand.
+- 25 Nov, ~4:05 PM PT: **on hold before step 1** (coordinator, from the
+  shared sign-in security review). The cookie storage ignores a session
+  already in localStorage on `play.`, so `play.` goes live only once the
+  website session's cookie PR carries a one-time move into the cookie, or
+  lands first. Steps 4 (Site URL) and 7 wait too; adding Redirect URLs and
+  `CLIENT_ORIGIN` early is harmless.
