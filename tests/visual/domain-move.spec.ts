@@ -62,13 +62,19 @@ for (const view of VIEWS) {
       );
       const text = dialog.locator(".ui-note");
       await expect(text).toContainText("play.elementarenausa.com");
-      // The message reads in full: nothing clamps or scrolls it.
+      // The message reads in full: the dialog (which clips) holds all of
+      // it, and no line runs out sideways. (The title's own box is a pixel
+      // short of its glyphs at line-height 1; nothing clips it.)
       const clipped = await dialog.evaluate(
         (d) =>
           d.scrollHeight > d.clientHeight + 1 ||
           [...d.querySelectorAll<HTMLElement>(".ui-note, .ui-title")].some(
-            (e) => e.scrollHeight > e.clientHeight + 1,
-          ),
+            (e) => e.scrollWidth > e.clientWidth + 1,
+          ) ||
+          (() => {
+            const note = d.querySelector<HTMLElement>(".ui-note")!;
+            return note.scrollHeight > note.clientHeight + 1;
+          })(),
       );
       expect(clipped, "message cut short").toBe(false);
       // Inside the screen, clear of the notch and the home indicator.
@@ -87,9 +93,27 @@ for (const view of VIEWS) {
       await expect(go).toHaveAttribute("href", `${SITE}/`);
       const l = (await later.boundingBox())!,
         g = (await go.boundingBox())!;
-      for (const r of [l, g]) {
-        expect(r.height).toBeGreaterThanOrEqual(44);
-        expect(r.width).toBeGreaterThanOrEqual(44);
+      // A finger is 44 px: phones draw the button 36 px tall and catch
+      // taps 44 px tall (components.css, .ui-btn::after). Tap-test it.
+      for (const sel of [
+        "[data-announcement-later]",
+        "[data-announcement-go]",
+      ]) {
+        const reach = await page.evaluate((sel) => {
+          const el = document.querySelector<HTMLElement>(sel)!;
+          const r = el.getBoundingClientRect();
+          const x = r.x + r.width / 2,
+            y = r.y + r.height / 2;
+          const hits = (dy: number) =>
+            el.contains(document.elementFromPoint(x, y + dy));
+          return { up: hits(-21.5), down: hits(21.5), width: r.width };
+        }, sel);
+        expect(reach, sel).toEqual({
+          up: true,
+          down: true,
+          width: expect.any(Number),
+        });
+        expect(reach.width, sel).toBeGreaterThanOrEqual(44);
       }
       // One row, the same height, Open on the right.
       expect(Math.abs(l.y - g.y)).toBeLessThan(1);
