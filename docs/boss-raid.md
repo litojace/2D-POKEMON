@@ -230,6 +230,36 @@ the old ones painted (`tests/unit/raid-aura.test.ts`). In a match an aura is
 sized to the fighter's shadow, as everywhere, so on a phone it stays small; its
 items are drawn 1.3 to 1.5 times larger than before so they still read.
 
+### The reward victories (remade 26 Nov)
+
+Five of the seven victories were weak or broken in a match: on a phone the
+fighter's name and health bar cover the space over its head, and Crescent
+Bow's moon, Twin Spark's pair and Sweet Dreams' baku sat there; Crescent Bow
+drew its crescent as a gold disc with a dark one over it, a black ball on the
+sand court. Each is now drawn in its boss's look
+(`apps/client/src/skins/raid-victory-fx.ts`; ids and names unchanged, as the
+database seeds the names, and their descriptions still fit), and what stays
+settles below the health bar or beside the fighter. A phone's Wardrobe stage
+is narrow, with a column of buttons over its right side, so each finale's main
+piece (the moon, the wave's curl, the baku) stands on the left:
+
+![The raid victories, before and after, with a match's name and health bar](raid-victories.jpg)
+
+| Boss | Victory | Now |
+| --- | --- | --- |
+| Storm Twins | Twin Spark | The thunder-jellies pop in beside the head and dance on a crackling ribbon, meet behind it in a burst of sparks, and bolts crack down beside the fighter |
+| Lumiwick | Feather Fall | Sky lanterns are let go one by one and float up; feathers of light drift down |
+| Inkpurr | Crescent Bow | Ink pools at the feet, a real crescent (one path, no dark disc) rises on the fighter's left, horns toward it, and two Lantern Yard lanterns light up and bob on its right |
+| Tidelotl | Splashdown | A wave rears up behind, curls over to the left and crashes, and its water runs out across the floor with foam on its edges; the pearl glints in it |
+| Snoozaku | Sweet Dreams | The baku in its nightcap, a little smaller, floats up on the fighter's left, not over its head |
+| Cragmuff | Rockslide Flex | The rig's rock pile and flex as before, and amber crystals burst up either side of it (clear of the pile, which the rig draws first) |
+| Prismell | Rainbow Fan | Kept |
+
+Every Legendary and Mythic victory also had twelve broad wedges of light
+turning behind it (`victoryFlourish` in `tier-fx.ts`), a striped fan that
+looked dated. It is now a ring of light that pulses out once and eight slender
+rays, long and short, painting about a fifth of the old rays' fill.
+
 Results show actual boss damage, revive assists, and pillar baits per player, alongside team totals, plus a role for whoever led each: Heavy Hitter, Medic and Bait Master. Everyone who contributed to a completed rescue receives revive credit; solo self-revives appear only in the team total. Damage excludes overkill and phase-gated damage. Pillars credit the marked player whose charge broke them. Contribution counters reset on retry and are not a competitive leaderboard.
 
 After the server confirms reward storage, the result screen fetches the player's saved progress and shows the next milestone. Failed storage never displays invented progress. Run again keeps the party, champions and challenge, skips the already-seen introduction, and opens fresh starting rites after everyone confirms. Changing champion or difficulty returns the party to the lobby.
