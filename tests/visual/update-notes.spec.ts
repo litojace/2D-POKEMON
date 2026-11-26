@@ -56,11 +56,24 @@ const restartSoon = (page: Page) =>
 
 /** The deploy's last word: a toast that shows in any state. */
 async function aToast(page: Page) {
-  await page.evaluate(() =>
-    (window as any).__sock.fire("server-update", { closing: true }),
+  // Fired, and read where it starts from in the same task: every place sets
+  // the toast from its middle (left, then -50% of its width), so moving
+  // between places (the Reveal to the fight) only animates its rise. Placed
+  // by insets in the fight, its transform went from -50% to none and it slid
+  // across the joystick and the gear, on CI's slow renderer (25 Nov 2026).
+  const sideways = await page.evaluate(() => {
+    (window as any).__sock.fire("server-update", { closing: true });
+    const t = document.getElementById("toast")!;
+    const x = new DOMMatrix(getComputedStyle(t).transform).m41;
+    return Math.abs(x + t.offsetWidth / 2);
+  });
+  expect(sideways, "the toast moves sideways").toBeLessThan(1);
+  const toast = page.locator("#toast");
+  await expect(toast).toHaveClass(/\bshow\b/);
+  // Measured where it comes to rest.
+  await toast.evaluate((t) =>
+    Promise.all(t.getAnimations().map((a) => a.finished)),
   );
-  await expect(page.locator("#toast")).toHaveClass(/\bshow\b/);
-  await page.waitForTimeout(400);
 }
 /** Everything a player can press on a whole-screen sheet. */
 const SHEET_CONTROLS =
