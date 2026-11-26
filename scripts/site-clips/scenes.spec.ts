@@ -113,7 +113,7 @@ async function stage(page: Page, s: Scene) {
       s.fighters.forEach(([name, id], i) =>
         a.add(i ? `p${i + 1}` : "me", name, id),
       );
-      if (s.mode === "raid") a.configure(1, false);
+      if (s.mode === "raid") a.configure(1);
       a.start();
       a.phase = "playing";
     }
