@@ -157,3 +157,23 @@ fighters' teams).
 
 Before this change (production, 26 Nov): 32 accounts; 18 at level 1 (12 of
 them guests), and 16 of those 18 without a finished match.
+
+## The daily gift (from 26 Nov 2026)
+
+How far players get in the calendar (counts only):
+
+```sql
+select day as last_day_taken,
+       weeks as weeks_finished,
+       count(*) as accounts,
+       count(*) filter (where last_claim >= arena_today() - 1) as still_in_a_row,
+       sum(total) as gifts_taken
+from arena_daily_gifts
+where day > 0
+group by 1, 2
+order by 2, 1;
+```
+
+The server logs one `arena-gift` line per claim (`day`, `weeks`, `item`; no
+account). Compare "seen again a day later" in the first query above for
+accounts made before and after the gift shipped.

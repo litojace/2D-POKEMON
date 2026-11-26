@@ -401,6 +401,34 @@ window.fetch = async (input, init) => {
       "Content-Type": "application/json",
     };
     if (w.__serverTime) headers["X-Server-Time"] = String(w.__serverTime);
+    // The daily gift (window.__gift: the calendar as /api/gift gives it; a
+    // claim takes today's and answers with window.__giftGiven). Without
+    // __gift the routes are missing, as on a server before its migration.
+    const g = (window as any).__gift as
+      { claimed: boolean; day: number; weeks: number } | undefined;
+    if (g && url.pathname === "/api/gift")
+      return new Response(JSON.stringify(g), { status: 200, headers });
+    if (g && url.pathname === "/api/gift/claim") {
+      (window as any).__giftClaims = ((window as any).__giftClaims ?? 0) + 1;
+      if (g.claimed)
+        return new Response(
+          JSON.stringify({
+            error: "Today's gift is already yours. Come back tomorrow.",
+          }),
+          { status: 400, headers },
+        );
+      const after = {
+        ...g,
+        claimed: true,
+        weeks: g.weeks + (g.day === 7 ? 1 : 0),
+        ...((window as any).__giftAfter ?? {}),
+      };
+      (window as any).__gift = after;
+      return new Response(
+        JSON.stringify({ ...after, given: (window as any).__giftGiven }),
+        { status: 200, headers },
+      );
+    }
     return new Response(
       JSON.stringify(body ?? { error: "Not in the offline harness." }),
       {
