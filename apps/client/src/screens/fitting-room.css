@@ -17,7 +17,7 @@
    Common     nothing added
    Rare       a blue wash from above
    Epic       purple light from above and both lower corners
-   Legendary  gold rays fanning up from the feet, a warm rim
+   Legendary  a gold halo behind the head, gold at the feet, a warm rim
    Mythical   a prismatic aurora and stars, a prismatic rim */
 .fit-stage[data-rarity]::before {
   content: "";
@@ -62,21 +62,11 @@
     radial-gradient(ellipse 80% 46% at 50% 0%, #ffc44d3d, transparent 72%),
     linear-gradient(180deg, #2b1f0a8c, transparent 70%);
 }
-/* The rays themselves are part of the stage light's picture
-   (stage-light.ts), so they start at the fighter's feet. */
-.fit-stage[data-rarity="legendary"] .stage-light-rays {
+/* The halo is part of the stage light's picture (stage-light.ts), so it
+   sits behind the fighter's head at any stage size: the same light as a
+   Legendary tile's backdrop. It replaced a fan of rays (owner, 26 Nov). */
+.fit-stage[data-rarity="legendary"] .stage-light-halo {
   visibility: visible;
-}
-/* The rays run on past the fighter's frame (an SVG clips at its viewBox,
-   which the camera fits to the host's width) and past the host (which
-   clips too), up to the stage's top edge: the stage clips them at its own
-   rounded corners. */
-.fit-stage[data-rarity="legendary"] > .shop-live-stage {
-  overflow: visible;
-}
-.fit-stage[data-rarity="legendary"] > .shop-live-stage > .stage-light {
-  overflow: visible;
-  mask-image: none;
 }
 .fit-stage[data-rarity="mythical"] {
   border-color: color-mix(in srgb, var(--r-mythic) 60%, transparent);
@@ -128,10 +118,7 @@
 }
 /* The floor fades out above the name instead of ending in an edge. On the
    host's layers, not the host: a mask clips whatever lies outside the box
-   it is on, and a Legendary's rays reach past the host's top to the
-   stage's (on a phone the host is also moved down, fitting-room.css
-   --fit-drop): they stopped in a straight line a quarter of the way down
-   (owner, 25 Nov). */
+   it is on. */
 .fit-stage > .shop-live-stage:not(.is-frame) > * {
   mask-image: linear-gradient(180deg, #000 82%, transparent);
 }
