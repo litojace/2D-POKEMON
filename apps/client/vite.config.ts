@@ -125,8 +125,8 @@ function fighterFileNeeded(url: string) {
 /**
  * What the service worker installs ahead of time: the shell the game needs
  * to start (startup scripts, styles, fonts, icons, the offline page), the
- * artwork above, and the public files that keep their names (music,
- * backgrounds, fonts), which need its revision checks to stay current.
+ * artwork above, and the public files that keep their names
+ * (backgrounds, fonts), which need its revision checks to stay current.
  * Hashed scripts loaded later (the Plaza, the shop preview), the startup
  * paintings and the other raid art (splash pictures, thumbnails, portraits,
  * illustrated arenas) are cached by the service worker when first used
@@ -206,14 +206,13 @@ export default defineConfig({
           "assets/*.{js,css,webp,svg}",
           "assets/fonts/*.woff2",
           "assets/backgrounds/*.webp",
-          "assets/music/*.mp3",
           "assets/fighters/**/*.{svg,png,webp,json}",
         ],
         globIgnores: ["assets/fighters/**/portrait-showcase-v1.webp"],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // Only a name with Vite's content hash needs no revision. The
         // plugin's default is everything under assets/, which also holds
-        // the public files that keep their names (music, backgrounds,
+        // the public files that keep their names (backgrounds,
         // fonts): with no revision, a phone that had one never fetched it
         // again after it changed.
         dontCacheBustURLsMatching: /^assets\/[^/]+-[\w-]{8}\.\w+$/,

@@ -47,6 +47,32 @@ function popOf(card: Element | null | undefined) {
         ENTRY_ANIMATIONS.includes((a as CSSAnimation).animationName),
     );
 }
+/**
+ * The battle overlays that take the whole screen (match-sheet.css), by the
+ * class main.ts and raid-ui.ts mark #arena-overlay with before they write
+ * it: the results (and a raid's or the Spire's briefing), the rites, the
+ * break between rounds and the Reveal. One at a time.
+ */
+const WHOLE_SCREEN = ["sheet", "rites", "break", "reveal"] as const;
+let shownOverlay = "";
+/**
+ * Which one is up, on body as data-battle-overlay="sheet" (and so on), so
+ * CSS can say "over the results" without a :has() rule on body that Chrome
+ * rechecks on every change inside the overlay (CLAUDE.md): the toast and
+ * the update note move off a sheet's buttons (ui/components.css,
+ * style.css), the chat buttons go flat on it (match-sheet.css). Written
+ * only when it changes, never on a write that keeps the same screen.
+ */
+function markWholeScreen(element: HTMLElement, markup: string) {
+  const kind =
+    markup === ""
+      ? ""
+      : (WHOLE_SCREEN.find((k) => element.classList.contains(`is-${k}`)) ?? "");
+  if (kind === shownOverlay) return;
+  shownOverlay = kind;
+  if (kind) document.body.dataset.battleOverlay = kind;
+  else delete document.body.dataset.battleOverlay;
+}
 export function setOverlayMarkup(
   element: HTMLElement,
   markup: string,
@@ -54,6 +80,7 @@ export function setOverlayMarkup(
   /** Same value as last time: the same panel, so it doesn't pop in again. */
   panelKey = scrollKey,
 ) {
+  if (element.id === "arena-overlay") markWholeScreen(element, markup);
   if (markupByElement.get(element) === markup) return false;
   const samePanel =
     panelKey !== undefined && element.dataset?.popKey === panelKey;

@@ -1568,6 +1568,20 @@ body[data-hub-scene="lobby"] #toast {
 @media (max-height: 500px) {
   body[data-hub-scene="lobby"] #toast {
     top: calc(var(--safe-top) + 54px);
+    /* Clear of the Lobby's side columns (lobby.css: the cards are 196 px,
+       178 px under 760 px wide, inside a gutter of max(14 px, safe area)):
+       as wide as the screen, a long notice ran over the Journey card on a
+       667 px phone and at 852 x 393 with the Dynamic Island (25 Nov 2026). */
+    max-width: calc(
+      100vw - 2 * (max(14px, var(--safe-left), var(--safe-right)) + 204px)
+    );
+  }
+}
+@media (max-height: 500px) and (max-width: 760px) {
+  body[data-hub-scene="lobby"] #toast {
+    max-width: calc(
+      100vw - 2 * (max(14px, var(--safe-left), var(--safe-right)) + 186px)
+    );
   }
 }
 /* With a screen open, the toast sits on the HUD row above it, as mobile
@@ -1587,5 +1601,39 @@ body.lobby-active:has(.room-screen .ui-panel) #toast {
   }
 }
 body[data-hub-scene="lobby"] #toast.show {
+  transform: translate(-50%, 0);
+}
+/* A fight on a touch screen: in the gap between the joystick and the
+   skills (touch-controls.ts sets both gutters on body), as the update note
+   is (style.css), and just above that note's row. Centred on the screen, a
+   two-line notice ran over the lowest skill button (25 Nov 2026).
+   Placed like every other toast, from its middle (left, then -50%), so a
+   change of place (the Reveal to the fight) moves it at once: only its
+   rise is animated. Inset from both sides instead, its transform went from
+   -50% to none and it slid across the joystick (CI, 25 Nov 2026). */
+body.battle-active.touch-mode #toast {
+  --toast-l: calc(var(--safe-left) + var(--movement-gutter, 0px) + 8px);
+  --toast-r: calc(var(--safe-right) + var(--combat-gutter, 0px) + 8px);
+  left: calc((var(--toast-l) + 100vw - var(--toast-r)) / 2);
+  bottom: calc(var(--safe-bottom) + 38px);
+  max-width: calc(100vw - var(--toast-l) - var(--toast-r));
+}
+/* A whole-screen sheet (the Reveal, the break, the rites, the results:
+   overlay.ts marks body[data-battle-overlay]) has its buttons along the bottom, where
+   the toast covered Rematch, Change fighter and Share result (play., 844 x
+   390, 25 Nov 2026). Over a sheet it sits at the top middle instead, over
+   the heading, narrow enough to leave the corner buttons (chat, settings)
+   clear. */
+body.battle-active[data-battle-overlay] #toast {
+  top: calc(var(--safe-top) + 8px);
+  bottom: auto;
+  left: 50%;
+  max-width: min(
+    440px,
+    calc(100vw - 2 * max(var(--safe-left), var(--safe-right)) - 144px)
+  );
+  transform: translate(-50%, -12px);
+}
+body.battle-active[data-battle-overlay] #toast.show {
   transform: translate(-50%, 0);
 }

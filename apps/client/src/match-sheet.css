@@ -114,10 +114,13 @@ body.touch-mode.chat-corner
    come up on hover, focus or while the chat is open. The hub's, the
    battle's, the break's and the rites' keep their disc: the world or the
    court shows behind them, where a bare icon reads poorly, and the gear
-   beside them keeps its own. Still 40–44 px to tap. */
+   beside them keeps its own. Still 40–44 px to tap.
+   "Over a sheet" is body[data-battle-overlay] (overlay.ts), not a :has()
+   rule on body; the ids twice keep these rules as strong as the :has()
+   ones they replace (ahead of ui/aero.css's hover border, 2 ids). */
 :root
-  body.battle-active:has(#arena-overlay.is-sheet:not(:empty))
-  :is(#chat-button, #battle-chat) {
+  body.battle-active[data-battle-overlay="sheet"]
+  :is(#chat-button#chat-button, #battle-chat#battle-chat) {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -129,8 +132,8 @@ body.touch-mode.chat-corner
     border-color 0.15s ease;
 }
 :root
-  body.battle-active:has(#arena-overlay.is-sheet:not(:empty))
-  :is(#chat-button, #battle-chat):is(
+  body.battle-active[data-battle-overlay="sheet"]
+  :is(#chat-button#chat-button, #battle-chat#battle-chat):is(
     :hover,
     :focus-visible,
     [aria-expanded="true"]
@@ -141,8 +144,8 @@ body.touch-mode.chat-corner
 /* With no disc round it, the unread count sits on the icon's own top
    right corner (the 22 px icon is centred in the button), as in a room. */
 :root
-  body.battle-active:has(#arena-overlay.is-sheet:not(:empty))
-  #chat-button
+  body.battle-active[data-battle-overlay="sheet"]
+  #chat-button#chat-button
   .chat-unread {
   top: calc(50% - 19px);
   right: auto;
@@ -153,8 +156,16 @@ body.touch-mode.chat-corner
    <body>) show over it; on a desktop #battle is not, and the sheet covered
    both buttons, quick chat's grid and its feed (the rites share its
    z-index, so they are kept under the buttons too). */
-body.battle-active:has(#arena-overlay:is(.is-sheet, .is-rites):not(:empty))
-  :is(#chat-button, #battle-chat, #battle-chat-grid, #battle-chat-feed) {
+body.battle-active:is(
+    [data-battle-overlay="sheet"],
+    [data-battle-overlay="rites"]
+  )
+  :is(
+    #chat-button#chat-button,
+    #battle-chat#battle-chat,
+    #battle-chat-grid#battle-chat-grid,
+    #battle-chat-feed#battle-chat-feed
+  ) {
   z-index: 81;
 }
 
