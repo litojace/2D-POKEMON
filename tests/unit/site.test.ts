@@ -120,4 +120,12 @@ describe("website", () => {
       expect(html).toContain(`data-champion="${c.id}"`);
     }
   });
+
+  it("the account page's script is built from its source (node apps/site/tools/build-account.mjs)", async () => {
+    const { bundleAccount } =
+      await import("../../apps/site/tools/build-account.mjs");
+    expect(readFileSync(path.join(SITE, "account/account.js"), "utf8")).toBe(
+      await bundleAccount(),
+    );
+  });
 });

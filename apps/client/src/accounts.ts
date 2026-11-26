@@ -1,6 +1,11 @@
 import { confirmAge, saidUnderAge } from "./age-gate";
 import { isNativeApp, PRIVACY_URL, signInWithAppleNatively } from "./native";
 import {
+  confirmedRead,
+  sessionCookieStorage,
+  sharesSession,
+} from "../../../packages/shared/src/session-cookie";
+import {
   nameAllowed,
   NAME_NOT_ALLOWED,
 } from "../../../packages/shared/src/name-filter";
@@ -134,7 +139,14 @@ const PRELOAD_GAP_MS = 4000;
  */
 const PROFILE_EXTRAS_MS = 4000;
 const storageKey = "parena-auth";
-const storage = {
+/**
+ * On elementarenausa.com the session lives in a cookie for the whole domain,
+ * shared with the website's account area and its Play button
+ * (packages/shared/src/session-cookie.ts, docs/website-accounts.md). Anywhere
+ * else (other hosts, local dev, the iPhone app) it stays in this origin's
+ * storage as before.
+ */
+const ownStorage = {
   getItem: (key: string) =>
     localStorage.getItem(key) ?? sessionStorage.getItem(key),
   setItem: (key: string, value: string) => {
@@ -148,11 +160,21 @@ const storage = {
     sessionStorage.removeItem(key);
   },
 };
+/** A session too big to share (MAX_SHARED) stays in ownStorage, unshared. */
+const sharedCookie =
+  typeof document !== "undefined" &&
+  !isNativeApp() &&
+  sharesSession(location.hostname)
+    ? sessionCookieStorage(document, ownStorage)
+    : null;
+sharedCookie?.adopt(storageKey);
+const storage = sharedCookie ?? ownStorage;
 function remember(value: boolean) {
-  const token = storage.getItem(storageKey);
-  storage.removeItem(storageKey);
   if (value) localStorage.setItem("parena-remember", "yes");
   else localStorage.removeItem("parena-remember");
+  if (sharedCookie) return sharedCookie.remember(value, storageKey);
+  const token = storage.getItem(storageKey);
+  storage.removeItem(storageKey);
   if (token) storage.setItem(storageKey, token);
 }
 type Hooks = {
@@ -379,6 +401,9 @@ export class AccountUI {
       hooks.onSession(null);
       return;
     }
+    // The website shares this session (syncSharedSession): look every 30 s.
+    if (sharedCookie)
+      setInterval(() => void this.syncSharedSession().catch(() => {}), 30_000);
     this.client.auth.onAuthStateChange((event, session) => {
       setTimeout(() => {
         void this.setSession(session).then(() => {
@@ -644,7 +669,31 @@ export class AccountUI {
   forgetCopies() {
     this.copies.clear();
   }
+  /**
+   * With the shared cookie (elementarenausa.com), the website may refresh
+   * the token or sign out while this tab is open: Supabase announces neither
+   * to this origin. Take whatever the cookie holds now: a fresh token
+   * quietly, another player (or none) as a real change.
+   */
+  async syncSharedSession() {
+    if (!sharedCookie || !this.client || !this.checked) return;
+    const client = this.client;
+    const read = async () => (await client.auth.getSession()).data.session;
+    const who = (s: Session | null) => s?.user.id ?? null;
+    const now = await read();
+    if (who(now) !== who(this.session)) {
+      // Signed out, or someone else: only if a second look agrees.
+      const sure = await confirmedRead(read, (a, b) => who(a) === who(b));
+      if (sure === undefined || who(sure) === who(this.session)) return;
+      return this.setSession(sure);
+    }
+    if (now && now.access_token !== this.session?.access_token) {
+      this.session = now;
+      this.hooks.onToken(now.access_token);
+    }
+  }
   async api(path: string, body?: unknown): Promise<unknown> {
+    await this.syncSharedSession();
     // Something changes on the server: every copy may be old now.
     if (body !== undefined) this.forgetCopies();
     const origin = import.meta.env.VITE_SERVER_URL || location.origin;
@@ -758,6 +807,7 @@ export class AccountUI {
     if (!this.canUsePhoto())
       throw new Error("Make an account to use your own picture.");
     const blob = await preparePhoto(file);
+    await this.syncSharedSession();
     const origin = import.meta.env.VITE_SERVER_URL || location.origin;
     const response = await fetch(new URL("/api/account/avatar-photo", origin), {
       method: "POST",
@@ -1055,8 +1105,9 @@ export class AccountUI {
       ?.addEventListener("click", () => this.showAuth("login"));
     if (mode === "login") {
       element("auth-forgot").onclick = () => this.showAuth("forgot");
-      element<HTMLInputElement>("auth-remember").checked =
-        localStorage.getItem("parena-remember") === "yes";
+      element<HTMLInputElement>("auth-remember").checked = sharedCookie
+        ? sharedCookie.remembered()
+        : localStorage.getItem("parena-remember") === "yes";
     }
     const form = element<HTMLFormElement>("auth-form");
     const message = element("auth-message");

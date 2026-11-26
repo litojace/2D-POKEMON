@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Your account · Element Arena</title>
+    <meta
+      name="description"
+      content="Sign in to change your Element Arena email or password."
+    />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#0b1020" />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/site.css" />
+    <script src="/config.js"></script>
+    <script src="/account/account.js" defer></script>
+  </head>
+  <body class="acct-page">
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="bar">
+      <div class="bar-in">
+        <a class="brand" href="/" aria-label="Element Arena home">
+          <img src="/favicon-32.png" width="32" height="32" alt="" />
+          <span>Element Arena</span>
+        </a>
+        <a
+          class="btn btn-play btn-sm"
+          href="https://play.elementarenausa.com/"
+          data-game
+          >Play now</a
+        >
+      </div>
+    </header>
+
+    <main id="main" class="acct wrap">
+      <h1>Your account</h1>
+      <p class="acct-note" id="acct-note" role="status" hidden></p>
+
+      <section id="acct-loading" class="acct-card">
+        <p>Checking your sign-in…</p>
+      </section>
+
+      <section id="acct-off" class="acct-card" hidden>
+        <p>
+          Accounts aren't available on this copy of the site. Manage your
+          account from your player card in the game.
+        </p>
+        <a
+          class="btn btn-play"
+          href="https://play.elementarenausa.com/"
+          data-game
+          >Open the game</a
+        >
+      </section>
+
+      <section
+        id="acct-signin"
+        class="acct-card"
+        hidden
+        aria-labelledby="signin-title"
+      >
+        <h2 id="signin-title">Sign in</h2>
+        <p class="acct-sub">
+          Use the account you play with. Signing in here signs you in to the
+          game too.
+        </p>
+        <form id="signin-form" class="acct-form" novalidate>
+          <label for="signin-email">Email</label>
+          <input
+            id="signin-email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            required
+          />
+          <label for="signin-password">Password</label>
+          <input
+            id="signin-password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+          <label class="check"
+            ><input id="signin-remember" name="remember" type="checkbox" />
+            Remember me on this device</label
+          >
+          <p class="acct-msg" id="signin-msg" role="alert" hidden></p>
+          <div class="acct-row">
+            <button type="submit" class="btn btn-play">Sign in</button>
+            <button type="button" class="link" id="forgot">
+              Forgot password?
+            </button>
+          </div>
+        </form>
+        <button
+          type="button"
+          class="btn btn-ghost acct-apple"
+          id="apple"
+          hidden
+        >
+          Sign in with Apple
+        </button>
+        <p class="acct-sub">
+          New here?
+          <a href="https://play.elementarenausa.com/" data-game
+            >Create your account in the game</a
+          >, it takes a minute.
+        </p>
+      </section>
+
+      <section
+        id="acct-reset"
+        class="acct-card"
+        hidden
+        aria-labelledby="reset-title"
+      >
+        <h2 id="reset-title">Choose a new password</h2>
+        <form id="reset-form" class="acct-form" novalidate>
+          <label for="reset-new">New password</label>
+          <input
+            id="reset-new"
+            name="reset-new"
+            type="password"
+            autocomplete="new-password"
+            minlength="8"
+            required
+          />
+          <p class="acct-msg" id="reset-msg" role="alert" hidden></p>
+          <button type="submit" class="btn btn-play">Save password</button>
+        </form>
+      </section>
+
+      <section id="acct-on" class="acct-on" hidden>
+        <div class="acct-card acct-who">
+          <p class="eyebrow" id="acct-kind"></p>
+          <h2 id="acct-name"></h2>
+          <p id="acct-email"></p>
+          <p class="acct-sub" id="pending-email" hidden></p>
+          <div class="acct-row">
+            <a
+              class="btn btn-play"
+              href="https://play.elementarenausa.com/"
+              data-game
+              >Play now</a
+            >
+            <button type="button" class="btn btn-ghost" id="signout">
+              Sign out
+            </button>
+          </div>
+        </div>
+        <div class="acct-card" id="acct-guest" hidden>
+          <h2>You're playing as a guest</h2>
+          <p class="acct-sub">
+            Guest progress lives on one device. To keep it and manage it here,
+            open your player card in the game and add an email.
+          </p>
+        </div>
+        <div id="acct-forms" class="acct-forms">
+          <form
+            id="email-form"
+            class="acct-card acct-form"
+            novalidate
+            aria-labelledby="email-title"
+          >
+            <h2 id="email-title">Change email</h2>
+            <label for="new-email">New email</label>
+            <input
+              id="new-email"
+              name="new-email"
+              type="email"
+              autocomplete="email"
+              required
+            />
+            <p class="acct-msg" id="email-msg" role="alert" hidden></p>
+            <button type="submit" class="btn btn-play">
+              Send confirmation
+            </button>
+          </form>
+          <form
+            id="pw-form"
+            class="acct-card acct-form"
+            novalidate
+            aria-labelledby="pw-title"
+          >
+            <h2 id="pw-title">Change password</h2>
+            <div id="pw-current-row" class="acct-field">
+              <label for="pw-current">Current password</label>
+              <input
+                id="pw-current"
+                name="pw-current"
+                type="password"
+                autocomplete="current-password"
+              />
+            </div>
+            <div id="pw-code-row" class="acct-field" hidden>
+              <label for="pw-code">Code from your email</label>
+              <input
+                id="pw-code"
+                name="pw-code"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+              />
+            </div>
+            <label for="pw-new">New password</label>
+            <input
+              id="pw-new"
+              name="pw-new"
+              type="password"
+              autocomplete="new-password"
+              minlength="8"
+              required
+            />
+            <label for="pw-again">New password again</label>
+            <input
+              id="pw-again"
+              name="pw-again"
+              type="password"
+              autocomplete="new-password"
+              minlength="8"
+              required
+            />
+            <p class="acct-msg" id="pw-msg" role="alert" hidden></p>
+            <button type="submit" class="btn btn-play">Save password</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="wrap foot-in">
+        <nav class="foot-nav" aria-label="Footer">
+          <a href="/">Home</a>
+          <a href="https://play.elementarenausa.com/support.html">Support</a>
+          <a href="https://play.elementarenausa.com/privacy.html">Privacy</a>
+        </nav>
+        <p class="copy">
+          To delete your account, use Delete account on your player card in the
+          game.
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

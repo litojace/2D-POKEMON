@@ -181,3 +181,22 @@ For A: It gives one-tap Play and a shared account area with no token moving
 between sites, no new server endpoints and no change to how players' sessions
 are stored. The cost is that the website is served from the game's host (with
 `arena.litojace.com` as its short address) and deploys with the game.
+
+## Security review (25 Nov)
+
+An independent reviewer (a fresh agent given only the code) found no
+high-severity issue (no XSS sink, open redirect or CSRF path) and these,
+all addressed on `site/shared-signin`:
+
+| Finding                                                                                                                                                      | Fix                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Medium: another subdomain could plant a same-named cookie (host-only or narrower path) to fix a session, and sign-out couldn't remove it                     | A second cookie under one of our names is treated as tampering: both copies are cleared and the read is signed out. HSTS with `includeSubDomains` on the apex blocks planting over plain HTTP. Test pins it.         |
+| Medium: an Apple account could set a password with only the session, turning a stolen session into a lasting login; the password check left a second session | Setting a first password needs a code emailed by Supabase (`reauthenticate`); a password change signs out other sessions. Owner setting recommended: Supabase "Secure password change" and "Secure email change" on. |
+| Low/medium: the game kept using its cached token after the website refreshed it, and didn't see a sign-out made on the website                               | The game re-reads the shared session before API calls and every 30 s (`syncSharedSession`).                                                                                                                          |
+| Low: a session over the cookie limit was silently not saved                                                                                                  | Capped at two chunks (~6 KB, so request headers stay far under 16 KB); a bigger session stays in the origin's own storage. Tests for an oversized OAuth session and every cut point near the cap.                    |
+| Low (speculative): a read in the middle of the other site's write                                                                                            | A checksum in the first chunk; a mismatch reads as signed out for that read, without deleting anything.                                                                                                              |
+| Low: implicit-flow login CSRF via `#access_token=` links                                                                                                     | Already true of the game; not changed here. Moving both clients to PKCE breaks email links opened in another browser, so it's a separate decision.                                                                   |
+| Info: iPhone Safari keeps script-set cookies 7 days                                                                                                          | The same limit already applied to the game's storage; refreshes extend it.                                                                                                                                           |
+
+Also from the review: the notes moved out of `apps/site/` (served as is) to
+`docs/`.
