@@ -32,6 +32,34 @@
     );
   }
 
+  /* ---------- The facts count up when they come into view ---------- */
+  const facts = $$(".facts-row b");
+  if (facts.length && !calm.matches && "IntersectionObserver" in window) {
+    const goal = facts.map((b) => Number(b.textContent));
+    const run = () => {
+      const start = performance.now();
+      const step = (now) => {
+        const t = Math.min(1, (now - start) / 1100);
+        const ease = 1 - (1 - t) ** 3;
+        facts.forEach((b, i) => {
+          b.textContent = String(Math.round(goal[i] * ease));
+        });
+        if (t < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+    const seen = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      seen.disconnect();
+      run();
+    });
+    // Counted from zero only if they start out of sight (not under the hero).
+    if (facts[0].getBoundingClientRect().top > innerHeight) {
+      facts.forEach((b) => (b.textContent = "0"));
+      seen.observe($(".facts"));
+    }
+  }
+
   /* ---------- Hero parallax (desktop pointers only) ---------- */
   const art = $(".hero-art img");
   if (
@@ -46,7 +74,7 @@
         raf = 0;
         const x = (e.clientX / innerWidth - 0.5) * -14;
         const y = (e.clientY / innerHeight - 0.5) * -10;
-        art.style.translate = `${x}px ${y}px`;
+        art.style.transform = `translate(${x}px, ${y}px)`;
       });
     });
   }
@@ -113,6 +141,85 @@
       if (to === undefined) return;
       e.preventDefault();
       show(to, true);
+    });
+  }
+
+  /* ---------- The Shop spotlight: pick a piece; it turns on its own ---------- */
+  const shopPicks = $$(".shop-picks .shop-pick");
+  if (shopPicks.length) {
+    const show = $(".shop-show");
+    const spots = shopPicks.map((b) =>
+      $(`#${b.getAttribute("aria-controls")}`),
+    );
+    const TURN = 7000;
+    let at = 0;
+    let timer = 0;
+    let stopped = calm.matches;
+    const pick = (i, focus = false) => {
+      at = (i + spots.length) % spots.length;
+      shopPicks.forEach((b, j) => {
+        b.setAttribute("aria-selected", String(j === at));
+        b.tabIndex = j === at ? 0 : -1;
+        spots[j].hidden = j !== at;
+        spots[j].classList.remove("enter");
+      });
+      if (!calm.matches) {
+        void spots[at].offsetWidth; // restart the entrance
+        spots[at].classList.add("enter");
+      }
+      if (focus) shopPicks[at].focus();
+    };
+    // Turning: the next piece every few seconds while the spotlight is on
+    // screen and the page is in view; for good once the reader picks one.
+    const stop = () => {
+      stopped = true;
+      clearInterval(timer);
+      timer = 0;
+      show.classList.remove("turning");
+    };
+    const turn = (on) => {
+      clearInterval(timer);
+      timer = 0;
+      show.classList.toggle("turning", on && !stopped);
+      if (!on || stopped) return;
+      show.style.setProperty("--turn-ms", `${TURN}ms`);
+      timer = setInterval(() => {
+        pick(at + 1);
+        // Restart the progress bar under the new piece.
+        show.classList.remove("turning");
+        void show.offsetWidth;
+        show.classList.add("turning");
+      }, TURN);
+    };
+    let visible = false;
+    if ("IntersectionObserver" in window)
+      new IntersectionObserver((entries) => {
+        visible = entries.some((e) => e.isIntersecting);
+        turn(visible && !document.hidden);
+      }).observe(show);
+    document.addEventListener("visibilitychange", () =>
+      turn(visible && !document.hidden),
+    );
+    $(".shop-picks").addEventListener("click", (e) => {
+      const b = e.target.closest(".shop-pick");
+      if (!b) return;
+      stop();
+      pick(shopPicks.indexOf(b));
+    });
+    $(".shop-picks").addEventListener("keydown", (e) => {
+      const i = shopPicks.indexOf(document.activeElement);
+      if (i < 0) return;
+      const n = shopPicks.length;
+      const to = {
+        ArrowRight: i + 1,
+        ArrowLeft: i - 1,
+        Home: 0,
+        End: n - 1,
+      }[e.key];
+      if (to === undefined) return;
+      e.preventDefault();
+      stop();
+      pick(to, true);
     });
   }
 

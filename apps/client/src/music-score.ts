@@ -1,5 +1,6 @@
 import { ADVENTURE_LOOP_STEPS } from "./adventure-score";
 import { retroResultStep, retroStep } from "./retro-score";
+import { proStep } from "./pro-score";
 
 /**
  * The soundtrack is retro: every scene's tune arranged for a console sound
@@ -31,7 +32,29 @@ export type ChipInstrument =
   | "chip-snare"
   | "chip-hat"
   | "chip-crash";
-export type Instrument = ChipInstrument;
+/** The produced voices of the hub and PvP themes (pro-synth.ts). */
+export type ProInstrument =
+  | "pro-lead"
+  | "pro-lead2"
+  | "pro-pad"
+  | "pro-pluck"
+  | "pro-bass"
+  | "pro-bell"
+  | "pro-arp"
+  | "pro-kick"
+  | "pro-snare"
+  | "pro-hat"
+  | "pro-ohat"
+  | "pro-shaker"
+  | "pro-tom"
+  | "pro-crash"
+  | "pro-riser";
+export type Instrument = ChipInstrument | ProInstrument;
+/**
+ * The themes the produced voices play (the owner chose them for the hub and
+ * PvP, 26 Nov 2026); the others stay on the chip voices for now.
+ */
+export const PRO_THEMES: ReadonlySet<MusicTheme> = new Set(["lobby", "pvp"]);
 export interface ScoreNote {
   instrument: Instrument;
   note?: string;
@@ -44,6 +67,8 @@ export interface ScoreNote {
   vibrato?: boolean;
   /** Into the theme's echo. */
   echo?: boolean;
+  /** Glide into this note from that one (produced leads). */
+  from?: string;
 }
 /** The fight and the boss run a little quicker than the menus. */
 export const MUSIC_BPM: Record<MusicTheme, number> = {
@@ -66,5 +91,7 @@ export function scoreStep(
 ): ScoreNote[] {
   if (isResultTheme(theme))
     return retroResultStep(theme, step, MUSIC_BPM[theme]);
+  if (theme === "lobby" || theme === "pvp")
+    return proStep(theme, step, MUSIC_BPM[theme]);
   return retroStep(theme, step, phase, MUSIC_BPM[theme]);
 }

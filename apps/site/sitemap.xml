@@ -4,4 +4,12 @@
     <loc>https://elementarenausa.com/</loc>
     <changefreq>weekly</changefreq>
   </url>
+  <url>
+    <loc>https://elementarenausa.com/support/</loc>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://elementarenausa.com/privacy/</loc>
+    <changefreq>monthly</changefreq>
+  </url>
 </urlset>

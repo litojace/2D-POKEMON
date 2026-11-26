@@ -59,16 +59,29 @@ npx playwright test --config scripts/site-clips/playwright.config.ts scripts/sit
 python3 apps/site/tools/make-scenes.py   # -> apps/site/img/modes/, img/shop/
 ```
 
-### The Shop showcase
+### The Shop spotlight
 
 "Make it yours" is the Shop's window (owner, 26 Nov: Shop items and effects
-sell better than raid rewards, mastery and friends): a Legendary, two
-Mythicals, an aura and a victory, each the fitting room's own stage
-(`scripts/site-clips/shop.spec.ts`, cut by `make-scenes.py`). The names,
-rarities and lines are written by `gen-data.ts` from the Shop's catalog
-(`packages/shared/src/shop.ts`); `site.test.ts` fails on a name the Shop
-doesn't sell. Pick other pieces in `SHOWCASE` (gen-data) and `ITEMS`
-(shop.spec), with the same picture names.
+sell better than raid rewards, mastery and friends; then "the Shop looks
+boring"). One piece at a time on a lit stage: a loop of the fitting room
+itself (the idle, the effect blooming), light rays turning behind it in its
+rarity's colour, sparks rising, its name, collection, line and price in
+coins, and "Try it on in the Shop". Six pieces to pick from under it (three
+Legendaries from three collections, two Mythicals, a victory); it turns to
+the next every 7 s while on screen, until the reader picks one.
+
+- The loops: `scripts/site-clips/shop.spec.ts` records each piece's stage
+  through Chrome's screencast (about 17 frames a second, with each frame's
+  time; a screenshot per frame managed three), on a 1600 x 1000 window so
+  the stage is drawn large. `make-shop.py` cuts a square round the fighter
+  and writes `img/shop/<name>.webp` (about 300 to 550 KB, only the piece on
+  show loads) and `<name>-still.webp` (the picks, and reduced motion).
+- The words are written by `gen-data.ts` from the catalog
+  (`packages/shared/src/shop.ts`: names, rarities, collections, lines,
+  `itemListPrice`, `MYTHIC_TRIAL_WINS`); `site.test.ts` fails on a name the
+  Shop doesn't sell, a wrong rarity or price, or a missing loop.
+- To show other pieces: `SHOWCASE` (gen-data), `ITEMS` (shop.spec) and
+  `CROPS` (make-shop), with the same names.
 
 ### Raid bosses
 
@@ -88,6 +101,18 @@ are written by `gen-data.ts` between the `raids` and `bosses` markers, so
 the names, stars, reward counts (as the boss cards count them), signature
 tricks and blurbs come from the game.
 
+## Support and Privacy on the website
+
+`elementarenausa.com/support/` and `/privacy/` are the game's own pages
+(`apps/client/public/support.html`, `privacy.html`), copied by
+`apps/site/tools/legal-pages.mjs` with this site's paths (owner, 26 Nov:
+"put Support and Privacy in the main website"). The game's pages stay the
+source: the app and the store listings link to them on
+play.elementarenausa.com. Edit those, then run the tool;
+`site.test.ts` fails when the copies drift. Both versions have a Home button
+in the bar (back to elementarenausa.com) and "Element Arena website" beside
+"Back to the game" in the footer.
+
 ## What we took from big games' sites
 
 Patterns (no art, text or branding copied; the live sites could not be opened
@@ -103,6 +128,15 @@ from the build machine, so this is from what they are known to do):
   skins (rarest first) plus the Wardrobe count.
 - Sticky header with the Play button; Play repeated in the hero, the panel
   and the apps section.
+- Game sites lean on motion more than any other kind (Muffin Group's
+  survey of gaming sites, 2026), but heavy animation costs phones their
+  load time (Muzli's 2026 landing-page report). So the motion here is CSS
+  and small loops, loaded only when shown: a band of light sweeping the
+  hero, the champion ticker (a tap opens the champion), the facts counting
+  up, mode pictures leaning in, the Shop spotlight.
+- The hero (owner, 26 Nov: "the words cover the art"): the painting is a
+  band of its own, cut to the two fighters and the beam, and the words sit
+  under it, on phones and desktops alike; no word covers a creature.
 - Avoided for speed: autoplay video heroes, preloading every skin or clip,
   canvas/WebGL scroll engines, framework bundles. Motion here is CSS (hero
   drift and entrance, card lift, panel float), scroll reveals start
@@ -203,6 +237,9 @@ that helps the game):
 - [x] Make it yours is now the Shop's window: Legendary and Mythical skins,
       an aura and a victory from the fitting room, names from the catalog
 - [x] Raid stage: splash and words side by side, faces never covered
+- [x] Hero band (words under the painting), Shop spotlight with loops and
+      prices, champion ticker, count-up facts, light sweep; Support and
+      Privacy on the website with Home buttons
 - [x] A sharper hero from the owner's lossless original, upscaled 2x
 - [x] Checked at 390×844, 375×667, 360×800, 667×375, 844×390, 852×393,
       915×412 (phones first, owner 25 Nov) and once at desktop

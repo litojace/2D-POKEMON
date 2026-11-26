@@ -8,7 +8,13 @@ import { expect, it } from "vitest";
  * on Candy's cake did (26 Nov), caught only by the visual specs.
  */
 it("draws Look effects only with calls the thumbnail canvas has", () => {
-  const fx = readFileSync("apps/client/src/skins/collection-fx.ts", "utf8");
+  const fx = [
+    "apps/client/src/skins/collection-fx.ts",
+    "apps/client/src/skins/raid-entrance-fx.ts",
+    "apps/client/src/skins/raid-aura-fx.ts",
+  ]
+    .map((f) => readFileSync(f, "utf8"))
+    .join("\n");
   const canvas = readFileSync("apps/client/src/skins/fx-canvas.ts", "utf8");
   const used = new Set(
     [

@@ -7,11 +7,8 @@
 The combat scenes are frames from scripts/site-clips/scenes.spec.ts (the
 real client and server simulation, every fighter's ultimate going off),
 picked by eye and cropped to the fight. The Plaza is the App Store capture
-(scripts/app-store). Writes apps/site/img/modes/<name>-480/800.webp/avif.
-
-The Shop showcase is the fitting room's stage for each piece
-(scripts/site-clips/shop.spec.ts), cut to 4:5 round the fighter, clear of the
-stage's buttons and its name: apps/site/img/shop/<name>-400/640. Needs Pillow 11+.
+(scripts/app-store). Writes apps/site/img/modes/<name>-480/800.webp/avif. Needs Pillow 11+.
+(The Shop spotlight's loops are make-shop.py's.)
 """
 from pathlib import Path
 import sys
@@ -30,17 +27,6 @@ PICKS = {
     "spire": ("spire", 16, 0.47, 0.61, 0.48),
 }
 PLAZA = ROOT / "app-store-screenshots/raw/iphone-medium/6-plaza.png"
-SHOP = ROOT / "site-clips/shop"
-SHOP_OUT = ROOT / "apps/site/img/shop"
-# name: (capture, centre x, centre y, width), as shares of the stage. An
-# effect is captured ten times as it plays (name-0 .. name-9): the take kept
-# is the one with the effect in full bloom, picked by eye.
-SHOP_PICKS = {
-    "legendary": ("legendary", 0.45, 0.40, 0.70),
-    "hellforge": ("hellforge", 0.45, 0.40, 0.70),
-    "reaver": ("reaver", 0.45, 0.40, 0.70),
-    "victory": ("victory-7", 0.45, 0.36, 0.84),
-}
 
 
 def crop(im: Image.Image, cx: float, cy: float, share: float) -> Image.Image:
@@ -71,22 +57,6 @@ def main():
         save(crop(Image.open(PLAZA).convert("RGB"), 0.5, 0.62, 0.5), "plaza")
     else:
         print(f"kept the Plaza picture: {PLAZA} missing", file=sys.stderr)
-    for name, (take, cx, cy, share) in SHOP_PICKS.items():
-        src = SHOP / f"{take}.png"
-        if not src.exists():
-            print(f"kept the {name} Shop picture: {src} missing", file=sys.stderr)
-            continue
-        im = Image.open(src).convert("RGB")
-        w = share * im.width
-        h = w * 5 / 4
-        x0 = min(max(0, cx * im.width - w / 2), im.width - w)
-        y0 = min(max(0, cy * im.height - h / 2), im.height - h)
-        box = im.crop((round(x0), round(y0), round(x0 + w), round(y0 + h)))
-        SHOP_OUT.mkdir(parents=True, exist_ok=True)
-        for size in (400, 640):
-            small = box.resize((size, round(size * 5 / 4)), Image.LANCZOS)
-            small.save(SHOP_OUT / f"{name}-{size}.webp", "WEBP", quality=80, method=6)
-            small.save(SHOP_OUT / f"{name}-{size}.avif", "AVIF", quality=58)
 
 if __name__ == "__main__":
     main()

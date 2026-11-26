@@ -11,7 +11,7 @@ import { siteChampions } from "../../apps/site/tools/champion-data";
 import {
   CHAMPION_SKINS,
   LOOK_ITEMS,
-  RARITY_NAMES,
+  itemListPrice,
 } from "../../packages/shared/src/shop";
 
 // The website (docs/website.md): a static page with no build, so these
@@ -158,21 +158,30 @@ describe("website", () => {
     }
   });
 
-  it("its Shop showcase names real Shop pieces, as the game names them", () => {
-    const cards = [
+  it("its Shop spotlight shows real Shop pieces, at the Shop's prices (make-shop.py)", () => {
+    const spots = [
       ...flatHtml().matchAll(
-        /<img src="img\/shop\/([\w-]+)-400\.webp"[^>]*><\/picture><div class="show-tx"><p class="show-r">(\w+)<\/p><h3>([^<]+)<\/h3>/g,
+        /<article class="spot r-(\w+)" id="spot-([\w-]+)"[\s\S]*?<h3>([^<]+)<\/h3>[\s\S]*?<b>([\d,]+)<\/b>\s?coins/g,
       ),
     ];
-    expect(cards.length).toBeGreaterThanOrEqual(4);
-    const names = new Map(
-      [...CHAMPION_SKINS, ...LOOK_ITEMS].map((i) => [i.name, i.rarity]),
+    expect(spots.length).toBeGreaterThanOrEqual(4);
+    const byName = new Map(
+      [...CHAMPION_SKINS, ...LOOK_ITEMS].map((i) => [i.name, i]),
     );
-    for (const [, pic, rarity, name] of cards) {
-      expect(names.has(name), name).toBe(true);
-      expect(rarity).toBe(RARITY_NAMES[names.get(name)!]);
-      for (const f of [`${pic}-400.webp`, `${pic}-640.avif`])
-        expect(existsSync(path.join(SITE, "img/shop", f)), f).toBe(true);
+    for (const [, rarity, pic, name, price] of spots) {
+      const item = byName.get(name);
+      expect(item, name).toBeDefined();
+      expect(rarity, name).toBe(item!.rarity);
+      expect(Number(price.replace(/,/g, "")), name).toBe(
+        itemListPrice(item!.id),
+      );
+      // The loop, its still, and a pick for it.
+      for (const f of [`${pic}.webp`, `${pic}-still.webp`]) {
+        const file = path.join(SITE, "img/shop", f);
+        expect(existsSync(file), f).toBe(true);
+        expect(statSync(file).size, f).toBeLessThan(700_000);
+      }
+      expect(html).toContain(`aria-controls="spot-${pic}"`);
     }
   });
 
@@ -196,6 +205,45 @@ describe("website", () => {
       path.join(PUBLIC, "legal.css"),
     ])
       expect(readFileSync(sheet, "utf8"), sheet).toContain(".to-top.is-shown");
+  });
+
+  it("its Support and Privacy pages are the game's, with Home (node apps/site/tools/legal-pages.mjs)", async () => {
+    const { sitePage, siteCss, PAGES } =
+      await import("../../apps/site/tools/legal-pages.mjs");
+    const PUBLIC = path.resolve(__dirname, "../../apps/client/public");
+    expect(readFileSync(path.join(SITE, "legal.css"), "utf8")).toBe(
+      siteCss(readFileSync(path.join(PUBLIC, "legal.css"), "utf8")),
+    );
+    for (const name of PAGES) {
+      const source = readFileSync(path.join(PUBLIC, `${name}.html`), "utf8");
+      const page = readFileSync(path.join(SITE, name, "index.html"), "utf8");
+      expect(page, name).toBe(sitePage(source));
+      // A Home button to the website on both copies.
+      expect(source).toMatch(
+        /<a class="home" href="https:\/\/elementarenausa\.com\/">/,
+      );
+      expect(page).toMatch(/<a class="home" href="\/">/);
+      // Every file the website's copy loads is on the website.
+      for (const [, ref] of page.matchAll(/(?:src|href)="(\/[^"#]*)"/g))
+        expect(
+          existsSync(
+            path.join(
+              SITE,
+              ref.replace(/^\//, ""),
+              ref.endsWith("/") ? "index.html" : "",
+            ),
+          ),
+          `${name}: ${ref}`,
+        ).toBe(true);
+    }
+    for (const [, font] of readFileSync(
+      path.join(SITE, "legal.css"),
+      "utf8",
+    ).matchAll(/url\("\/([^"]+)"\)/g))
+      expect(existsSync(path.join(SITE, font)), font).toBe(true);
+    // The website links its own copies.
+    expect(html).toContain('href="/support/"');
+    expect(html).toContain('href="/privacy/"');
   });
 
   it("the account page's script is built from its source (node apps/site/tools/build-account.mjs)", async () => {

@@ -14,6 +14,13 @@ import {
   type Input,
   dashCooldownOf,
 } from "../../../packages/shared/src/index";
+import type { RaidState } from "../../../packages/shared/src/raid";
+import {
+  driftPrison,
+  heldInput,
+  pullIntoUndertow,
+  undertowPull,
+} from "../../../packages/shared/src/tidelotl-drift";
 import { canCastSkill } from "./cast-prediction";
 
 /**
@@ -136,6 +143,77 @@ export function newestStep(
   const input = pending[pending.length - 1];
   if (!input) return;
   return { input, tick: pending.length - Math.max(0, Math.floor(held)) };
+}
+
+/**
+ * What Tidelotl does to you between snapshots, as the last one showed it:
+ * the Undertow drawing everyone in, the Bubble Prison you are sealed in,
+ * and a bubble's root. The server does all three to you every tick, before
+ * your input moves you (raid-tidewyrm.ts, through tidelotl-drift.ts); the
+ * phone steps them the same way, so a snapshot no longer pulls you back by
+ * what the replay left out (about 150 corrections a minute, 26 Nov 2026).
+ */
+export interface RaidCarry {
+  /** The snapshot's time: the ticks up to it are in it already. */
+  from: number;
+  undertow?: { x: number; y: number; until: number; pull: number };
+  /** The bubble you are sealed in, moved on as the replay steps. */
+  prison?: { x: number; y: number; until: number };
+  /** A bubble rooted you until then. */
+  rootedUntil?: number;
+  boss?: { x: number; y: number };
+}
+export function raidCarry(
+  me: Fighter,
+  raid: RaidState | undefined,
+  boss: Fighter | undefined,
+  snapshotTime: number,
+): RaidCarry | undefined {
+  const u = raid?.undertow;
+  const prison = raid?.prisons?.find((q) => q.playerId === me.id);
+  const rootedUntil = raid?.rooted?.[me.id];
+  if (!u && !prison && rootedUntil === undefined) return;
+  return {
+    from: snapshotTime,
+    undertow: u && {
+      x: u.x,
+      y: u.y,
+      until: u.until,
+      pull: undertowPull(raid?.trait),
+    },
+    prison: prison && { x: prison.x, y: prison.y, until: prison.until },
+    rootedUntil,
+    boss: boss && { x: boss.x, y: boss.y },
+  };
+}
+/**
+ * One predicted tick of it, at the tick's `time` (its end, as
+ * predictFighter takes it), in the server's order: the prison carries you,
+ * or else the Undertow pulls you; then a root or the prison holds your
+ * input. Returns the input the server will run for the tick. A late input
+ * for a tick the server held (serverSteps, at or before the snapshot) only
+ * moves you: that tick's pull and drift are in the snapshot already.
+ */
+export function stepRaidCarry(
+  p: Fighter,
+  carry: RaidCarry | undefined,
+  input: Input,
+  time: number,
+): Input {
+  if (!carry || p.out || p.hp <= 0) return input;
+  const dt = 1 / RULES.tick,
+    start = time - dt,
+    sealed = !!carry.prison;
+  if (time <= carry.from + 1e-6) return sealed ? heldInput(input, true) : input;
+  if (carry.prison) {
+    if (carry.boss) driftPrison(carry.prison, carry.boss, start, dt);
+    p.x = carry.prison.x;
+    p.y = carry.prison.y;
+  } else if (carry.undertow && carry.undertow.until > start)
+    pullIntoUndertow(p, carry.undertow, carry.undertow.pull, dt);
+  return sealed || (carry.rootedUntil ?? 0) > start
+    ? heldInput(input, sealed)
+    : input;
 }
 
 /** Local movement prediction must obey the same knockout rules as the server. */

@@ -2658,6 +2658,11 @@ export interface RaidState {
   }[];
   /** The Undertow's whirlpool, while it pulls. */
   undertow?: { x: number; y: number; until: number; radius: number };
+  /**
+   * Raiders a Bubble Barrage bubble rooted, and until when (Tidelotl). In
+   * the snapshot so the phone holds them still too (tidelotl-drift.ts).
+   */
+  rooted?: Record<string, number>;
   /** Times Tidewyrm has been stranded this run (its feat). */
   strands?: number;
   /** Gloomshade: the Lantern Yard's lanterns. */

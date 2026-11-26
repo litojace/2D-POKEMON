@@ -4,6 +4,8 @@ import type Phaser from "phaser";
 import type { FxParticle } from "./skin-fx";
 import { sparkle } from "./skin-fx";
 import { auraFlourish, entranceFlourish, victoryFlourish } from "./tier-fx";
+import { RAID_DRAWN_ENTRANCES, type DrawnEntrance } from "./raid-entrance-fx";
+import { drawRaidAura } from "./raid-aura-fx";
 
 /**
  * The Shop's all-fighter collection pieces in play: auras under the fighter,
@@ -28,6 +30,8 @@ export const AURA_LIFT = 3;
  */
 /** The piece's own ring and items, without its rarity flourish. */
 export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, now: number, reduced: boolean, front?: G, flat: number = WORLD_ART.groundY, lift = AURA_LIFT) {
+  // The raid bosses' auras, in their bosses' looks (raid-aura-fx.ts).
+  if (drawRaidAura(g, id, x, y, now, reduced, front, flat, lift)) return true;
   const t = reduced ? 0 : now;
   /** Height of a floor ellipse this wide, on the aura's plane. */
   const groundHeight = (w: number) => w * flat;
@@ -154,66 +158,6 @@ export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, n
         gg.fillStyle(i % 2 ? 0xffb3cf : 0xfff0f5, 0.95 * f).fillTriangle(px - dx, py - dy, px + dx, py + dy, px - dy, py + dx * 0.6);
       });
       return true;
-    case "tidal-aura": {
-      // Tidewyrm's reward: a rolling ring of water with foam crests.
-      g.fillStyle(0x1f8fa6, 0.18).fillEllipse(x, y, 104, groundHeight(104));
-      g.lineStyle(3, 0x7fe9ff, 0.8).strokeEllipse(x, y, 96, groundHeight(96));
-      ring(10, 48, 20, 2600, (gg, px, py, i, _a, d, f) =>
-        gg.fillStyle(i % 2 ? 0xffffff : 0xbff6ff, 0.9 * f).fillCircle(px, py - 2 * d, 3.4 * d),
-        0,
-      );
-      return true;
-    }
-    case "spark-aura": {
-      g.lineStyle(1.5,0x9fe4ff,.55).strokeEllipse(x,y,100,groundHeight(100));
-      ring(8,48,19,5200,(gg,px,py,i,_a,d,f)=>{const color=i%2?0x8edfff:0xffe18b;gg.lineStyle(2*d,color,.95*f).lineBetween(px-3*d,py-5*d,px+1*d,py).lineBetween(px+1*d,py,px-2*d,py+5*d);});
-      return true;
-    }
-    case "ember-aura": {
-      g.lineStyle(2,0xffa66c,.8).strokeEllipse(x,y,100,groundHeight(100));
-      g.fillStyle(0xff8558,.1).fillEllipse(x,y,110,groundHeight(110));
-      ring(8,48,19,6200,(gg,px,py,i,_a,d,f)=>{const rise=reduced?0:Math.sin(now/1000+i)*5;gg.fillStyle(i%2?0xffd28b:0xff8765,.85*f).fillEllipse(px,py+(-5+rise)*d,3*d,6*d);});
-      return true;
-    }
-    case "halo-aura": {
-      g.lineStyle(3,0xffe5a0,.85).strokeEllipse(x,y,100,groundHeight(100));
-      g.lineStyle(1,0xfff3cf,.4).strokeEllipse(x,y,112,groundHeight(112));
-      ring(6,50,20,6500,(gg,px,py,i,_a,d,f)=>{ const color=[0xff899e,0xffd778,0x9aefb5,0x80e1ff,0xa5adff,0xe5a0ff][i];gg.fillStyle(color,.9*f).fillTriangle(px,py-6*d,px+4*d,py,px,py+6*d).fillTriangle(px,py-6*d,px-4*d,py,px,py+6*d); });
-      return true;
-    }
-    case "lullaby-aura": {
-      g.fillStyle(0x8977c5, 0.12).fillEllipse(x, y, 102, groundHeight(102));
-      g.lineStyle(1.5, 0xc9a3ff, 0.45).strokeEllipse(x, y, 98, groundHeight(98));
-      ring(6, 46, 19, 6000, (gg, px, py, i, _a, d, f) => {
-        const bob = (reduced ? 0 : Math.sin(now / 750 + i) * 3) * d;
-        const c = i % 2 ? 0xc9a3ff : 0xffdf8d;
-        gg.fillStyle(c, 0.9 * f).fillEllipse(px, py + bob, 5 * d, 3 * d);
-        gg.lineStyle(1.4 * d, c, 0.9 * f).lineBetween(px + 2 * d, py + bob, px + 2 * d, py - 10 * d + bob).lineBetween(px + 2 * d, py - 10 * d + bob, px + 7 * d, py - 7 * d + bob);
-      });
-      return true;
-    }
-    case "nightmote": {
-      // Gloomshade's reward: fireflies of lantern light circling beneath you.
-      g.fillStyle(0x2b2245, 0.22).fillEllipse(x, y, 100, groundHeight(100));
-      ring(7, 46, 19, 4400, (gg, px, py, i, _a, d, f) => {
-        const bob = reduced ? 0 : Math.sin(now / 350 + i * 1.3) * 4;
-        const blink = (reduced ? 1 : 0.55 + 0.45 * Math.abs(Math.sin(now / 500 + i * 2.1))) * f;
-        gg.fillStyle(0xffd27a, 0.25 * blink).fillCircle(px, py + (-6 + bob) * d, 7 * d);
-        gg.fillStyle(0xfff1c2, 0.95 * blink).fillCircle(px, py + (-6 + bob) * d, 2.6 * d);
-      });
-      return true;
-    }
-    case "mountain-aura": {
-      // Grumblecrag's reward: a golden ring of carved stone chips.
-      g.lineStyle(3, 0xffd28c, 0.75).strokeEllipse(x, y, 98, groundHeight(98));
-      g.lineStyle(1, 0xb88a52, 0.5).strokeEllipse(x, y, 110, groundHeight(110));
-      ring(8, 50, 20, 7000, (gg, px, py, i, _a, d, f) => {
-        const s = (i % 2 ? 4.2 : 3.2) * d;
-        gg.fillStyle(i % 2 ? 0x9b8466 : 0xc8a06a, 0.95 * f).fillTriangle(px - s, py, px, py - s * 1.1, px + s, py).fillTriangle(px - s, py, px, py + s * 0.6, px + s, py);
-        gg.fillStyle(0xffd28c, 0.8 * f).fillCircle(px, py - s * 0.3, 1.1 * d);
-      });
-      return true;
-    }
     case "seaside-aura": {
       // A ring of sea foam on the sand, and shells and starfish circling.
       g.lineStyle(2.4, 0xffffff, 0.55).strokeEllipse(x, y, 100, groundHeight(100));
@@ -517,37 +461,47 @@ function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) 
       burst(10, (i) => ({ x: x + rnd(-30, 30) * sc, y: y - rnd(10, 60) * sc, vx: rnd(-40, 40), vy: rnd(-40, 0), life: rnd(1, 1.4), size: 3 * sc, color: i % 2 ? 0xffb3cf : 0xfff0f5, shape: "leaf", spin: rnd(-6, 6) }));
       return true;
     }
-    case "lightning-strike":
-      burst(20,i=>({x:x+(i%2?18:-18)*sc,y:y-rnd(10,80)*sc,vx:rnd(-45,45),vy:rnd(30,100),life:.6,size:3*sc,color:i%2?0x8edfff:0xffe18b,shape:"spark"}));
-      emit({x,y,vx:0,vy:0,life:.7,size:22*sc,color:0x9fe4ff,shape:"ring"});
-      return true;
-    case "firefall":
-      burst(22,i=>({x:x+rnd(-45,45)*sc,y:y-rnd(40,100)*sc,vx:rnd(-30,30),vy:rnd(25,70),life:rnd(.8,1.3),size:3*sc,color:i%2?0xffd28b:0xff8765,shape:"leaf",spin:rnd(-3,3)}));
-      return true;
-    case "sunburst":
-      burst(24,i=>{const a=i/24*TAU;return {x,y:y-20*sc,vx:Math.cos(a)*170,vy:Math.sin(a)*130,life:.75,size:4*sc,color:i%2?0xffe5a0:0xffffff,shape:"spark"};});
-      emit({x,y,vx:0,vy:0,life:.8,size:24*sc,color:0xffd778,shape:"ring"});
-      return true;
-    case "dreamdrift":
-      emit({ x, y, vx: 0, vy: -12, life: 1.2, size: 18 * sc, color: 0xc9a3ff, shape: "ring" });
-      burst(20, i => ({ x: x + rnd(-36, 36) * sc, y: y + rnd(-12, 14) * sc, vx: rnd(-20, 20), vy: rnd(-90, -35), life: rnd(0.8, 1.4), size: (i % 3 ? 3 : 7) * sc, color: i % 2 ? 0xd1b2ff : 0x92efdb, shape: "ring" }));
-      return true;
-    case "riptide":
-      // Tidewyrm's reward: burst up out of a splash.
-      emit({ x, y: y - 6 * sc, vx: 0, vy: 0, life: 0.45, size: 14 * sc, color: 0x7fe9ff, shape: "ring" });
-      burst(30, (i) => {
-        const a = -Math.PI * (0.1 + (i / 30) * 0.8);
-        return { y: y + 10 * sc, vx: Math.cos(a) * rnd(80, 190), vy: Math.sin(a) * rnd(150, 280), life: rnd(0.6, 1), size: rnd(2, 3.4) * sc, color: i % 3 ? 0xe6fbff : 0x7fe9ff, shape: "dot" };
+    // The raid bosses' entrances draw too (raid-entrance-fx.ts); these are
+    // their bursts, on the floor where the feet stand.
+    case "lightning-strike": {
+      const gy = y + WORLD_ART.fighterFeet * sc;
+      emit({ x, y: gy, vx: 0, vy: 0, life: 0.5, size: 8 * sc, color: 0xffe18b, shape: "shock" });
+      burst(12, (i) => {
+        const a = -Math.PI * (0.1 + (i / 11) * 0.8);
+        return { x: x + (i % 2 ? 8 : -8) * sc, y: gy - 4 * sc, vx: Math.cos(a) * rnd(120, 200), vy: Math.sin(a) * rnd(140, 220), life: rnd(0.35, 0.6), size: 3.2 * sc, color: i % 2 ? 0x8edfff : 0xffe18b, shape: "spark", drag: 2 };
       });
       return true;
-    case "shadowstep":
-      // Gloomshade's reward: rise out of a pool of shadow.
-      emit({ x, y: y + 8 * sc, vx: 0, vy: 0, life: 0.6, size: 22 * sc, color: 0x2b2245, shape: "ring" });
-      burst(26, (i) => {
-        const a = (i / 26) * TAU;
-        return { x: x + Math.cos(a) * 34 * sc, y: y + 8 * sc + Math.sin(a) * 12 * sc, vx: Math.cos(a) * rnd(10, 30), vy: -rnd(60, 140), life: rnd(0.6, 1), size: rnd(3, 5) * sc, color: i % 4 ? 0x4a3d72 : 0xffd65b, shape: i % 4 ? "puff" : "spark" };
-      });
+    }
+    case "firefall": {
+      const gy = y + WORLD_ART.fighterFeet * sc;
+      emit({ x, y: gy, vx: 0, vy: 0, life: 0.6, size: 9 * sc, color: 0xffb347, shape: "shock" });
+      burst(14, (i) => ({ x: x + rnd(-40, 40) * sc, y: gy - rnd(0, 30) * sc, vx: rnd(-20, 20), vy: rnd(-90, -40), life: rnd(1, 1.5), size: rnd(1.8, 2.8) * sc, color: i % 3 ? 0xffb347 : 0xfff1c2, shape: "dot", sway: 4, fadeIn: 0.2 }));
       return true;
+    }
+    case "sunburst": {
+      const gy = y + WORLD_ART.fighterFeet * sc;
+      emit({ x, y: gy, vx: 0, vy: 0, life: 0.6, size: 8 * sc, color: 0xffe27a, shape: "shock" });
+      burst(10, (i) => ({ x: x + rnd(-30, 30) * sc, y: gy - rnd(0, 20) * sc, vx: rnd(-30, 30), vy: rnd(-120, -60), life: rnd(0.9, 1.3), size: 2.8 * sc, color: [0xff7d9c, 0xffe27a, 0x8ff0b5, 0x7fd8ff, 0xb59bff][i % 5], shape: "star", drag: 1.2, fadeIn: 0.25 }));
+      return true;
+    }
+    case "dreamdrift": {
+      const gy = y + WORLD_ART.fighterFeet * sc;
+      emit({ x, y: gy, vx: 0, vy: 0, life: 0.8, size: 8 * sc, color: 0xc9a3ff, shape: "shock" });
+      burst(10, (i) => ({ x: x + rnd(-36, 36) * sc, y: gy - rnd(10, 50) * sc, vx: rnd(-15, 15), vy: rnd(-40, -15), life: rnd(1.1, 1.6), size: 2.6 * sc, color: i % 2 ? 0xd1b2ff : 0xffd86b, shape: "star", fadeIn: 0.3, sway: 3 }));
+      return true;
+    }
+    case "riptide": {
+      const gy = y + WORLD_ART.fighterFeet * sc;
+      emit({ x, y: gy, vx: 0, vy: 0, life: 0.6, size: 9 * sc, color: 0x7fe9ff, shape: "shock" });
+      burst(12, (i) => ({ x: x + (i - 5.5) * 12 * sc, y: gy - 4 * sc, vx: rnd(-20, 20), vy: rnd(-110, -50), life: rnd(0.8, 1.2), size: rnd(2, 3.4) * sc, color: 0xe6fbff, shape: "bubble", sway: 3 }));
+      return true;
+    }
+    case "shadowstep": {
+      const gy = y + WORLD_ART.fighterFeet * sc;
+      emit({ x, y: gy, vx: 0, vy: 0, life: 0.6, size: 10 * sc, color: 0x8f7bd8, shape: "shock" });
+      burst(8, (i) => ({ x: x + (i % 2 ? 58 : -58) * sc, y: gy - 92 * sc, vx: rnd(-25, 25), vy: rnd(-60, -20), life: rnd(0.8, 1.2), size: 2.4 * sc, color: 0xffd65b, shape: "spark", fadeIn: 0.45 }));
+      return true;
+    }
     case "seaside-entrance":
       // The sandcastle bursts: sand flies, its little flags flutter off,
       // bubbles rise from the wet sand and a ring of foam spreads.
@@ -1306,8 +1260,9 @@ function drawRainbowArch(g: G, x: number, y0: number, sc: number, t: number) {
  * tall, the effect's origin 0.82 of the way down), and `still` the moment a
  * catalogue tile shows.
  */
-export const DRAWN_ENTRANCES: Record<string, { length: number; reach: { w: number; h: number; feet: number }; still: number; draw: (under: G, x: number, y: number, sc: number, t: number) => void }> = {
+export const DRAWN_ENTRANCES: Record<string, DrawnEntrance> = {
   "rainbow-entrance": { length: ARCH.clouds[1], reach: { w: 256, h: 136, feet: 0.74 }, still: 0.55, draw: drawRainbowArch },
+  ...RAID_DRAWN_ENTRANCES,
 };
 /** Draw an entrance's drawn part. False when it has none or has played. */
 export function drawCollectionEntrance(under: G, id: string, x: number, y: number, sc: number, t: number) {
