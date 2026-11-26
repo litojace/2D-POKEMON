@@ -187,7 +187,7 @@ After the server confirms reward storage, the result screen fetches the player's
 
 The Raid Hub boss page shows boss information, clears, highest Peril, best active-combat time, reward goals and cosmetic equipment. It is available from the home screen, raid lobby, result screen and player profile. Only the server's verified equipped cosmetic is sent to opponents. Cosmetic choices affect appearance, not combat stats.
 
-**Raid of the Day** is optional and replaces Raid of the Week. Each day has a featured boss: Sun Prismatail, Mon Gloomshade, Tue Emberwing, Wed Somnara, Thu Storm Twins, Fri Tidewyrm, Sat Grumblecrag. Until a boss is built, a built boss stands in on its day. The day changes at **midnight Pacific time** (daylight saving included); the server decides the day, so everyone agrees. All rooms that day share the same seed, trait and Peril 2 challenge, and solo, duo, trio and four-player clears have separate daily boards. The host ticks *Raid of the Day* in the lobby (or presses *Raid today's boss* in the Hub). If midnight passes while a party waits in the lobby, the run simply becomes a normal run. Raid wins never enter the PvP match ledger or Elo rating system.
+**No boss of the day.** Raid of the Day (a featured boss for each weekday, with daily boards) was retired by migration 028, as Raid of the Week was before it. No boss has a day of the week: Grumblecrag is open from the start and one clear of it opens the other six (`raidUnlocked()` in `apps/client/src/screens/raid-hall-view.ts`). A run's `day` on the server is the Pacific date it was played, for missions and records, not a boss schedule. Raid wins never enter the PvP match ledger or Elo rating system.
 
 ## Required deployment setup
 

@@ -21,7 +21,7 @@ Audited all 30 daily missions and all four seasonal weekly goals through the tru
 | Finish a raid, win or lose                                   | A regular raid clear or a defeat after 20 seconds                     |
 | Play for 10 minutes; Play for 30 minutes                     | Accumulated combat time across finished games, retaining seconds      |
 | Win 2 matches against players; Win 5 matches against players | Bot-free PvP victories lasting at least 20 seconds                    |
-| Clear today's Raid of the Day                                | A victorious daily raid                                               |
+| Clear a raid as Voltkit or Auralynx                          | A regular raid victory as either fighter (was Raid of the Day; 028)   |
 | Help revive 3 allies in raids                                | Completed ally revives credited to each helper; self-revives excluded |
 | Win as Terradon or Tidefin                                   | A win with either named fighter                                       |
 | Win as Cindrake or Lumoth                                    | A win with either named fighter                                       |

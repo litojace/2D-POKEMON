@@ -1,23 +1,26 @@
 # Raid Roster, Shop & Missions — Design Spec (approved)
 
-Status: **All seven bosses are implemented, including Storm Twins. Apply migration 021_storm_twins.sql after 020_emberwing.sql to enable Storm Twins records and eleven rewards.** The Raid Hub, Raid of the Day, five cosmetic slots, coins, daily missions and Shop are implemented. Balance values still need live play feedback.
+Status: **All seven bosses are implemented, including Storm Twins. Apply migration 021_storm_twins.sql after 020_emberwing.sql to enable Storm Twins records and eleven rewards.** The Raid Hub, five cosmetic slots, coins, daily missions and Shop are implemented. Balance values still need live play feedback.
 
-Somnara's sequence is generated privately on the server, omitted from public and spectator snapshots, and delivered only to the Dreamer (or through Lucid/Mind Maze). Its camera keeps all four pads visible. Tests cover solo/co-op rune entry, backwards dreams, sleep/wake, champion tricks, daily rotation, socket privacy, reward persistence and desktop/mobile controls.
+**No boss of the day.** Raid of the Day was retired by migration 028, and with it the weekday schedule, the week strip, the daily boards and the Grand Tour. No boss has a day of the week (`RaidBossInfo` has no `day` field since 26 Nov): Grumblecrag is open from the start and one clear of it opens the other six. Where this spec describes a featured boss each day, it is the original plan, kept for the record; don't build from it.
 
-Prismatail fights in the Sun Atrium. Light passes through raiders and directional mirror posts; ordinary attacks turn a mirror 45°. Solar Crown requires two team paths within three seconds, or a continuous two-second solo path. The mobile camera keeps the complete relay visible, with compact Look away and Turn mirror controls. Champion tricks, traits, Polished, eleven rewards and Sunday daily rotation are implemented. Lightkeeper credits one relay per participating raider when the shield breaks, never per simulation frame. The two-player final phase uses both beams too; a Radiant Flare carrier can relay both during its four-second effect. Tests cover party sizes 1–4 on all Perils, attack geometry, mirror repair by stand-ins, socket state, database permissions and reward equipping. Balance still needs human play feedback.
+Somnara's sequence is generated privately on the server, omitted from public and spectator snapshots, and delivered only to the Dreamer (or through Lucid/Mind Maze). Its camera keeps all four pads visible. Tests cover solo/co-op rune entry, backwards dreams, sleep/wake, champion tricks, socket privacy, reward persistence and desktop/mobile controls.
+
+Prismatail fights in the Sun Atrium. Light passes through raiders and directional mirror posts; ordinary attacks turn a mirror 45°. Solar Crown requires two team paths within three seconds, or a continuous two-second solo path. The mobile camera keeps the complete relay visible, with compact Look away and Turn mirror controls. Champion tricks, traits, Polished and eleven rewards are implemented. Lightkeeper credits one relay per participating raider when the shield breaks, never per simulation frame. The two-player final phase uses both beams too; a Radiant Flare carrier can relay both during its four-second effect. Tests cover party sizes 1–4 on all Perils, attack geometry, mirror repair by stand-ins, socket state, database permissions and reward equipping. Balance still needs human play feedback.
 
 Emberwing uses the Sky Terrace and three braziers in a triangle. Flying blocks melee and ground-only attacks; ranged damage is halved, except Lumoth’s Wing Dust, Halcyra’s Aura Quill and Focus Shot, and Astrabun’s Full Moon. A grounded window lasts six seconds (eight with Updraft); two groundings in Blazing Sky leave the heart permanently exposed. The compact HUD shows flight and brazier progress. Fireproof, eight champion tricks and eleven rewards are implemented. Stand-ins use separate brazier targets; tests walk slow Terradon parties of 1–4 through the final-phase route on every Peril. Grounding clears dive trails and shrinks growing fire patches. The Flashfire speed title uses the existing four-minute solo Peril 2 target provisionally, pending human clear times.
 
-Storm Twins fight in the Conductor Ring as two independently damageable enemies, Fizz and Crackle. Each has separate health, stagger and exposed windows; the shared health bar retains the two rite thresholds. During Supercell, finishing one starts a 15/12/8-second revival timer (solo adds three seconds; In-sync adds three). The fallen twin revives at 35% unless both fall in time. Opposite Polarity signs cancel within range; a cancelled teammate can help an odd party's remaining raider without repeat credit. Solo (or the last standing co-op raider) gets a reachable opposite-sign floor pad. Six attacks, seven champion tricks, three traits, Grounded, Thursday daily rotation, touch target selection and eleven rewards are implemented. Tests cover all party sizes and Perils, revival and simultaneous finishes, stand-ins, multiplayer startup, persistence, permissions and equipping. Flashpoint uses the existing four-minute solo Peril 2 speed target provisionally, pending human clear times. Cross-boss rewards described later remain planned unless separately marked implemented.
+Storm Twins fight in the Conductor Ring as two independently damageable enemies, Fizz and Crackle. Each has separate health, stagger and exposed windows; the shared health bar retains the two rite thresholds. During Supercell, finishing one starts a 15/12/8-second revival timer (solo adds three seconds; In-sync adds three). The fallen twin revives at 35% unless both fall in time. Opposite Polarity signs cancel within range; a cancelled teammate can help an odd party's remaining raider without repeat credit. Solo (or the last standing co-op raider) gets a reachable opposite-sign floor pad. Six attacks, seven champion tricks, three traits, Grounded, touch target selection and eleven rewards are implemented. Tests cover all party sizes and Perils, revival and simultaneous finishes, stand-ins, multiplayer startup, persistence, permissions and equipping. Flashpoint uses the existing four-minute solo Peril 2 speed target provisionally, pending human clear times. Cross-boss rewards described later remain planned unless separately marked implemented.
 
 Decisions so far (Oct 17):
 
 1. Solo Peril 3 has no self-revive, on every boss including Grumblecrag.
 2. New bosses unlock after clearing Grumblecrag.
 3. Boss names approved.
-4. A featured boss **every day** (Raid of the Day).
+4. A featured boss **every day** (Raid of the Day). _Retired by migration 028._
 5. A fifth cosmetic slot: **Victory**.
-6. **Seven bosses, one for each day of the week.**
+6. **Seven bosses, one for each day of the week.** _The days were retired with
+   Raid of the Day; the seven bosses stay._
 7. A **Shop** that sells cosmetics for coins earned from daily missions and
    boss raids (§10), with **56 champion skins in four rarities**, including
    Mythicals that awaken as you play.
@@ -27,7 +30,8 @@ The full list, with later decisions, is in §12.
 ## 1. Goals
 
 - Turn Boss Raid into a **Raid Hub**: a page of seven bosses, each with its
-  own challenges, rewards and records, and one featured each day.
+  own challenges, rewards and records (and, in the original plan, one
+  featured each day: retired, see the status above).
 - Every boss teaches a **different kind of teamwork**, not a reskin of the
   same fight:
 
@@ -46,7 +50,8 @@ The Difficulty stars are not only a label: they pick each boss's row of
 predictive aim, windows, soft enrage, revives, party pressure). See
 [boss-raid.md, "Difficulty"](boss-raid.md#difficulty-the-star-tiers).
 
-The days follow the old planet names of the week: Sun's day for light,
+The Day column is the retired Raid of the Day schedule (see the status
+above); bosses have no day now. The days followed the old planet names of the week: Sun's day for light,
 Moon's day for shadow, Mars (Tuesday) for fire, Mercury (Wednesday) for the
 mind, Thor's day for thunder, Venus (born of the sea) for water, and Saturn
 for stone.
@@ -67,11 +72,11 @@ going straight to a room.
 
 1. **Header:** rewards earned across all bosses (e.g. "23 / 84 rewards"),
    lifetime clears, and the current Grand Tour progress (§2.1).
-2. **This week strip:** seven small day tiles, Sun → Sat, each with its
+2. **This week strip** (retired with Raid of the Day): seven small day tiles, Sun → Sat, each with its
    boss's crest. Today's tile is large and lit.
    - Past days you cleared get a check mark; missed days are dimmed.
    - Tapping a tile opens that boss.
-3. **Raid of the Day card:** today's boss, its trait, Peril 2, today's board
+3. **Raid of the Day card** (retired): today's boss, its trait, Peril 2, today's board
    (top 10 per party size), a countdown to the next boss, and _Raid today's
    boss_.
 4. **Boss cards** for all seven, in a grid (one column on phones, swipeable
@@ -111,7 +116,9 @@ code_, _Play solo now_.
 - The Bestiary button becomes _Raid Hub_. Profile, results and lobby links
   open the Hub on the relevant boss.
 
-### 2.1 Raid of the Day (replaces Raid of the Week)
+### 2.1 Raid of the Day (replaces Raid of the Week): retired
+
+Retired by migration 028: no boss has a day now. Kept as the original plan.
 
 - **One featured boss per day** on the fixed schedule above. Everyone
   gets the same seed and trait, at Peril 2.
@@ -791,7 +798,8 @@ the streak is a record, not a reward.
 **Shared (`packages/shared`)**
 
 - Add `RaidBossDef` with:
-  - id, name, element, day, stars
+  - id, name, element, stars (the planned `day` was dropped with Raid of
+    the Day)
   - health, Peril damage, cadence, chapters, attacks and their numbers
   - `pattern(phase, peril, party)`
   - traits, themed rite, perks, signals
@@ -799,7 +807,7 @@ the streak is a record, not a reward.
   - cosmetic and title definitions
 - `RAID_BOSSES` registry; `GRUMBLECRAG` becomes its first entry.
 - `raidDay(date)` → { day, boss, seed, trait }, using the Pacific calendar
-  day.
+  day (retired with Raid of the Day).
 - `RaidAttack` becomes a per-boss key union. `RaidState` gets:
   - `boss` (id)
   - `features`: pillars, islands, lanterns, rune pads, mirror posts,
@@ -1629,6 +1637,7 @@ release.
 | Oct 17 | Mythical price confirmed: 8,000 coins + 30-win trial                            |
 | Oct 17 | Opponents see a Mythical's Awakening stage                                      |
 | Oct 17 | Skin names and themes approved                                                  |
+| Nov 26 | Bosses have no day: `day` leaves `RAID_BOSSES` (Raid of the Day retired, 028)   |
 
 ## 13. Open questions
 

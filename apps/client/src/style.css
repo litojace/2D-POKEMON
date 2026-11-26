@@ -6842,7 +6842,7 @@ button.small .button-icon {
 /* Profile title picker: every title drawn as it looks in the arena. */
 
 /* ---------------------------------------------------------------------------
-   Raid Hub: a page of bosses, today's featured raid and each boss's page. */
+   Raid Hub: a page of bosses and each boss's page. */
 .dialog-toolbar {
   display: flex;
   align-items: center;
