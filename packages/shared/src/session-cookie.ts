@@ -171,5 +171,16 @@ export function sessionCookieStorage(jar: CookieJar, local?: LocalStore) {
     else write(jar, REMEMBER, "", 0);
     if (session !== null) setItem(key, session);
   };
-  return { getItem, setItem, removeItem, remembered, remember };
+  /**
+   * Once at start: a session this origin kept before (signed in on this host
+   * before sharing began, or too big to share then) moves into the cookie,
+   * and the local copy goes, so the other site sees it at once and a guest
+   * never loses their account. A session still too big stays local.
+   */
+  const adopt = (key: string) => {
+    if (fromCookies(key) !== null) return;
+    const kept = local?.getItem(key);
+    if (kept) setItem(key, kept);
+  };
+  return { getItem, setItem, removeItem, remembered, remember, adopt };
 }

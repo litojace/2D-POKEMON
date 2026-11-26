@@ -24,6 +24,20 @@ if (
   throw new Error(
     "SITE_SUPABASE_URL should look like https://<project>.supabase.co",
   );
+// Only the public (anon or publishable) key may reach the browser.
+const key = config.supabaseAnonKey;
+const role = (() => {
+  try {
+    return JSON.parse(Buffer.from(key.split(".")[1], "base64url").toString())
+      .role;
+  } catch {
+    return undefined;
+  }
+})();
+if (key && (key.startsWith("sb_secret_") || (role && role !== "anon")))
+  throw new Error(
+    "SITE_SUPABASE_ANON_KEY must be the public anon/publishable key, never a secret or service key",
+  );
 writeFileSync(
   path.join(site, "config.js"),
   `window.EA_CONFIG = ${JSON.stringify(config)};\n`,

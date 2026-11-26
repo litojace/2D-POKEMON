@@ -166,6 +166,7 @@ const sharedCookie =
   sharesSession(location.hostname)
     ? sessionCookieStorage(document, ownStorage)
     : null;
+sharedCookie?.adopt(storageKey);
 const storage = sharedCookie ?? ownStorage;
 function remember(value: boolean) {
   if (value) localStorage.setItem("parena-remember", "yes");

@@ -56,6 +56,7 @@ if (!config.supabaseUrl || !config.supabaseAnonKey) {
   const cookie = sharesSession(location.hostname)
     ? sessionCookieStorage(document, localStorage)
     : null;
+  cookie?.adopt(KEY);
   const client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
     auth: {
       storage: cookie ?? localStorage,

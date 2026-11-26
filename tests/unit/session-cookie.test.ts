@@ -232,4 +232,28 @@ describe("session cookie", () => {
     s.setItem("k", b);
     expect(s.getItem("k")).toBe(b);
   });
+
+  it("a session kept in this origin's storage before sharing moves into the cookie once", () => {
+    const j = jar();
+    const own = store();
+    own.setItem("parena-auth", session); // signed in on play. before this change
+    const s = sessionCookieStorage(j, own);
+    s.adopt("parena-auth");
+    expect(own.m.has("parena-auth")).toBe(false);
+    expect(j.cookies.size).toBe(2);
+    // The website reads it straight away.
+    expect(sessionCookieStorage(j).getItem("parena-auth")).toBe(session);
+    // A cookie session already there wins over a stale local copy.
+    own.setItem("parena-auth", '{"stale":true}');
+    s.adopt("parena-auth");
+    expect(s.getItem("parena-auth")).toBe(session);
+    // Too big to share: it stays local, readable, and no cookie is written.
+    const j2 = jar();
+    const own2 = store();
+    own2.setItem("parena-auth", oauth);
+    const s2 = sessionCookieStorage(j2, own2);
+    s2.adopt("parena-auth");
+    expect(j2.cookies.size).toBe(0);
+    expect(s2.getItem("parena-auth")).toBe(oauth);
+  });
 });
