@@ -491,7 +491,6 @@ function pictureOf(id: string, view: FitView, d: FitData, scope: string) {
     scope,
     skin ? stageOf(id, { ...view, stage: undefined }, d) : 1,
     starsOf(id, d),
-    true,
   );
 }
 /** A still of a fighter in a look, framed like the live rig. */
