@@ -202,31 +202,33 @@ test("the Plaza's busy check runs on a change, not every frame", async ({
   await openPlaza(page);
   await goTo(page, SPOT);
   await expect(page.locator("#pz-interact")).toBeVisible();
+  // Over 10 of the Plaza's own frames that look up the nearest spot (where
+  // the action button is set), however slow the renderer: CI's drew 0 to
+  // 2 frames in 1.5 s.
   const { changes, frames } = await page.evaluate(
     () =>
       new Promise<{ changes: number; frames: number }>((done) => {
-        let changes = 0,
-          frames = 0,
-          stop = false;
+        const spotted = () =>
+          (window as any).__plaza.health().frames.spotted[0] as number;
+        const from = spotted(),
+          until = performance.now() + 60_000;
+        let changes = 0;
         const watch = new MutationObserver(() => changes++);
         watch.observe(document.querySelector(".plaza-layer")!, {
           subtree: true,
           attributes: true,
           attributeFilter: ["hidden"],
         });
-        const frame = () => {
-          frames++;
-          if (!stop) requestAnimationFrame(frame);
-        };
-        requestAnimationFrame(frame);
-        setTimeout(() => {
-          stop = true;
+        const check = () => {
+          if (spotted() < from + 10 && performance.now() < until)
+            return void setTimeout(check, 25);
           watch.disconnect();
-          done({ changes, frames });
-        }, 1500);
+          done({ changes, frames: spotted() - from });
+        };
+        check();
       }),
   );
-  expect(frames).toBeGreaterThan(3);
+  expect(frames).toBeGreaterThanOrEqual(10);
   expect(changes).toBeLessThanOrEqual(2);
 });
 
