@@ -19,7 +19,8 @@ interface SiteConfig {
   gameUrl?: string;
 }
 const config: SiteConfig = (window as any).EA_CONFIG ?? {};
-const GAME = config.gameUrl || "https://play.elementarenausa.com/";
+// parena until play.elementarenausa.com serves (docs/website.md).
+const GAME = config.gameUrl || "https://parena.litojace.com/";
 const HERE = `${location.origin}/account/`;
 const KEY = "parena-auth"; // the game's storage key (apps/client/src/accounts.ts)
 

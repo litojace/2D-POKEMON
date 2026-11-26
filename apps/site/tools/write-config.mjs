@@ -15,7 +15,7 @@ const config = {
   supabaseUrl: process.env.SITE_SUPABASE_URL || "",
   supabaseAnonKey: process.env.SITE_SUPABASE_ANON_KEY || "",
   appleSignIn: process.env.SITE_APPLE_SIGN_IN === "on",
-  gameUrl: process.env.SITE_GAME_URL || "https://play.elementarenausa.com/",
+  gameUrl: process.env.SITE_GAME_URL || "https://parena.litojace.com/",
 };
 if (
   config.supabaseUrl &&
