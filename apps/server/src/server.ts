@@ -455,12 +455,71 @@ export function createArenaServer(
     const previousId = activeAccounts.get(id);
     activeAccounts.set(id, socket.id);
     const previous = previousId && io.sockets.sockets.get(previousId);
+    if (previous && previous !== socket && previous.conn === socket.conn) {
+      retireTwin(previous, socket);
+      return;
+    }
     if (previous && previous !== socket) {
       previous.data.sessionReplaced = true;
       previous.emit("session-replaced");
       // A server disconnect stops Socket.IO's automatic reconnect loop.
       previous.disconnect(true);
     }
+  }
+  /**
+   * The same tab sent its CONNECT twice on one connection: Socket.IO's
+   * client does when `connect()` is called again before the server has
+   * answered (the app does on a sign-in announced twice, as the sign-up
+   * confirmation link does, or the iPhone app coming back while
+   * connecting). The tab now uses the newer socket. The older one was
+   * taken for another device: told "session-replaced", which the one tab
+   * receives, and the shared connection closed, so a new player was told
+   * the game was playing elsewhere (25 Nov 2026). It is dropped quietly
+   * instead: no packet, the connection stays, and nothing sent to it later
+   * reaches the tab twice.
+   */
+  function retireTwin(
+    stale: import("socket.io").Socket,
+    current: import("socket.io").Socket,
+  ) {
+    stale.data.twin = true;
+    // Socket.IO has no public way to forget a socket without telling the
+    // client. Closing it as the server does on a namespace disconnect sends
+    // nothing, but also forgets the connection's socket for the namespace,
+    // which is the current one now: it is put back.
+    //
+    // Fails safe: if an upgrade renames these or they throw, the twin is
+    // left alive (the tab works; something sent to the account may reach it
+    // twice until it reconnects). Never `stale.disconnect()`: its DISCONNECT
+    // packet is for the namespace the tab uses, and the tab would close
+    // with "io server disconnect", which Socket.IO never retries. And never
+    // "session-replaced" on the same connection. A Socket.IO upgrade must
+    // pass tests/multiplayer/same-tab-reconnect.test.ts, which fails when
+    // the twin is not retired.
+    const internal = stale as unknown as {
+      _onclose?: (reason: string) => void;
+    };
+    const client = current.client as unknown as { nsps?: Map<string, unknown> };
+    let retired = false;
+    try {
+      if (
+        typeof internal._onclose === "function" &&
+        client.nsps instanceof Map
+      ) {
+        internal._onclose("server namespace disconnect");
+        retired = true;
+      }
+    } catch {
+      retired = false;
+    } finally {
+      if (client.nsps instanceof Map)
+        client.nsps.set(current.nsp.name, current);
+    }
+    connectionLog("arena-twin-connect", {
+      transport: current.conn.transport.name,
+      msApart: current.handshake.issued - stale.handshake.issued,
+      retired,
+    });
   }
   const grace =
     options.reconnectMs ??
