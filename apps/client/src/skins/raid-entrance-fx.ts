@@ -156,7 +156,7 @@ function stormTwins(g: G, x: number, y: number, sc: number, t: number) {
     [1, 0.42, 0x8edfff],
   ];
   const pos = (side: number) => ({
-    x: x + side * 56 * sc,
+    x: x + side * 46 * sc,
     y: gy - 64 * sc + Math.sin(t * 5 + side) * 5 * sc,
   });
   const gone = span(t, 1.5, 1.72);
@@ -765,34 +765,36 @@ function zee(
 }
 /**
  * Snoozaku (Dreamdrift): little thought bubbles rise from the fighter's
- * head into a dream cloud beside it, a crescent moon and stars inside;
+ * head into a dream cloud beside it (on its left), a moon and stars inside;
  * sleepy Z's drift up, then the dream pops into stardust.
  */
 function snoozaku(g: G, x: number, y: number, sc: number, t: number) {
   const gy = floorOf(y, sc);
-  const cx = x + 70 * sc,
-    cy = gy - 78 * sc;
+  // On the left: the Shop's and Wardrobe's stage keeps its buttons on the
+  // right, and a phone's stage is narrow.
+  const cx = x - 54 * sc,
+    cy = gy - 80 * sc;
   [
-    [22, 70, 3],
-    [32, 76, 4.2],
-    [44, 80, 5.4],
+    [16, 62, 2.6],
+    [24, 69, 3.6],
+    [31, 75, 4.6],
   ].forEach(([dx, up, r], i) => {
     const s = pop(span(t, i * 0.08, i * 0.08 + 0.14)) * (1 - span(t, 1.4, 1.6));
     if (s > 0.02) {
       g.fillStyle(0xe9dcff, 0.95).fillCircle(
-        x + dx * sc,
+        x - dx * sc,
         gy - up * sc,
         r * sc * s,
       );
       g.lineStyle(1.2 * sc, 0xc9a3ff, 0.9).strokeCircle(
-        x + dx * sc,
+        x - dx * sc,
         gy - up * sc,
         r * sc * s,
       );
     }
   });
   const gone = span(t, 1.45, 1.75);
-  const s = sc * 0.85 * pop(span(t, 0.24, 0.5)) * (1 + 0.15 * gone),
+  const s = sc * 0.78 * pop(span(t, 0.24, 0.5)) * (1 + 0.15 * gone),
     a = 1 - gone;
   if (s > 0.02 * sc && a > 0) {
     const puffs: [number, number, number][] = [
@@ -855,7 +857,7 @@ function snoozaku(g: G, x: number, y: number, sc: number, t: number) {
 export const RAID_DRAWN_ENTRANCES: Record<string, DrawnEntrance> = {
   "lightning-strike": {
     length: 1.75,
-    reach: { w: 164, h: 180, feet: 0.778 },
+    reach: { w: 146, h: 180, feet: 0.778 },
     still: 0.62,
     draw: stormTwins,
   },
@@ -891,7 +893,7 @@ export const RAID_DRAWN_ENTRANCES: Record<string, DrawnEntrance> = {
   },
   dreamdrift: {
     length: 1.8,
-    reach: { w: 216, h: 146, feet: 0.767 },
+    reach: { w: 180, h: 148, feet: 0.77 },
     still: 0.95,
     draw: snoozaku,
   },
