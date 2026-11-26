@@ -217,40 +217,31 @@ for (const size of SIZES.filter(
         }
         if (item.id === "rainbow-entrance") {
           // The arch (DRAWN_ENTRANCES): its green band spans the tile's
-          // picture (0.45 of the whole tile). The stage is checked after
-          // the loop (below).
+          // picture (0.45 of the whole tile), and most of the stage (a
+          // phone's narrow stage cuts its feet).
           expect(
             await greenSpan(page, await tile.screenshot()),
           ).toBeGreaterThan(0.35);
+          // The stage shows the arch for only about a second and a half of
+          // its 4.4 s cycle, and its clock runs slower than real time on a
+          // slow renderer (CI's): sampling it at random missed every arch
+          // for 10 s there. So each try replays the entrance (clicking the
+          // tile again restarts the stage at 0) and looks a second in,
+          // when the arch has grown and not yet rolled up (ARCH in
+          // collection-fx.ts: grown by 0.34 s, rolls up from 1.45 s).
+          await expect
+            .poll(
+              async () => {
+                await tile.click();
+                await page.waitForTimeout(1000);
+                return greenSpan(page, await stage.screenshot());
+              },
+              { timeout: 30_000, intervals: [0] },
+            )
+            .toBeGreaterThan(0.6);
         }
         await snap(page, info, `${item.id}-${size.name}`);
       }
-      // The Rainbow's arch spans most of the stage (a phone's narrow stage
-      // cuts its feet). It is on the stage about a third of the time: the
-      // entrance plays for a second and a half, then waits three before it
-      // plays again. Polling screenshots for it missed it on CI (26 Nov
-      // 2026): a stage screenshot takes about three seconds there, so ten
-      // seconds were three or four looks at something that is there a third
-      // of the time. So the page's clock is stepped by hand instead, and
-      // each look is at a moment that waits for it: 20 steps of 300 ms cover
-      // more than one whole play and wait, however slow the runner is. Last
-      // in the test, since the clock stays ours from here on.
-      const rainbow = page.locator(
-        '.fit-room [data-ui-item="rainbow-entrance"]',
-      );
-      await rainbow.scrollIntoViewIfNeeded();
-      await rainbow.click();
-      await expect(stage).toHaveClass(/is-ready/);
-      await page.clock.install();
-      let widest = 0;
-      for (let step = 0; step < 20 && widest <= 0.6; step++) {
-        await page.clock.runFor(300);
-        widest = Math.max(
-          widest,
-          await greenSpan(page, await stage.screenshot()),
-        );
-      }
-      expect(widest, "the arch spans the stage").toBeGreaterThan(0.6);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

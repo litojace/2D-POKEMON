@@ -226,21 +226,30 @@ export function victoryFlourish(
   if (chance(12, dt))
     emit({ x: x + (Math.random() - 0.5) * 140 * sc, y: y - (40 + Math.random() * 90) * sc, vx: 0, vy: 20, life: 0.9, size: 2.6 * sc, color: Math.random() < 0.5 ? main : 0xffffff, shape: "star", behind: true });
   if (!at(tier, "legendary")) return;
-  // Rays of light turn slowly behind the fighter.
+  // A ring of light pulses out once, and a few slender rays, long and
+  // short, turn slowly behind the fighter. (Until 26 Nov, twelve broad
+  // wedges: a striped fan behind every raid finale that looked dated and
+  // painted five times the fill.)
   const cy = y - 40 * sc;
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * TAU + t * 0.5;
-    const w = 0.09;
-    under.fillStyle(i % 2 ? main : accent, 0.16 * fade).fillTriangle(
+  const pulse = Math.max(0, Math.min(1, (t - 0.05) / 0.55));
+  if (pulse > 0 && pulse < 1)
+    under
+      .lineStyle(3 * sc * (1 - pulse) + 0.5 * sc, main, 0.6 * (1 - pulse))
+      .strokeCircle(x, cy, (24 + 72 * (1 - (1 - pulse) ** 2)) * sc);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU + t * 0.3,
+      r = (i % 2 ? 78 : 112) * sc,
+      w = 0.045;
+    under.fillStyle(i % 2 ? accent : main, 0.14 * fade).fillTriangle(
       x,
       cy,
-      x + Math.cos(a - w) * 120 * sc,
-      cy + Math.sin(a - w) * 120 * sc,
-      x + Math.cos(a + w) * 120 * sc,
-      cy + Math.sin(a + w) * 120 * sc,
+      x + Math.cos(a - w) * r,
+      cy + Math.sin(a - w) * r,
+      x + Math.cos(a + w) * r,
+      cy + Math.sin(a + w) * r,
     );
   }
-  under.fillStyle(0xffffff, 0.12 * fade).fillCircle(x, cy, 30 * sc);
+  under.fillStyle(0xffffff, 0.1 * fade).fillCircle(x, cy, 26 * sc);
   if (!at(tier, "mythic")) return;
   // A crown of prismatic light above the head.
   const hy = y - 112 * sc;

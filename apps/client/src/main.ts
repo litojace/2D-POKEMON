@@ -66,6 +66,14 @@ import {
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle, type Targetable } from "./target-lock";
 import {
+  aimPoint,
+  aimSpec,
+  courtDirection,
+  drawAimGuide,
+  pickNear,
+  type AimSpec,
+} from "./touch-aim";
+import {
   CastPredictor,
   canBasic,
   canCastSkill,
@@ -1155,6 +1163,9 @@ function identity(reply: Reply) {
   impacts.clear();
   sessionStorage.setItem("arena-token", reply.token!);
 }
+/** The local fighter's skills' drag-to-aim specs (touch-aim.ts), by slot. */
+let aimSpecs: AimSpec[] = [];
+let aimSpecsKey = "";
 const touch: TouchControls = new TouchControls(
   $("mobile-controls"),
   () => !!scene?.canControl(),
@@ -4399,6 +4410,13 @@ function renderBattle() {
     );
   }
   touch.downed = !!state.raid && !!myId && me.hp <= 0;
+  // How each skill aims on a drag (touch-aim.ts), when the kit changes.
+  const aimKey = `${me.character}|${(me.rites ?? []).join(",")}`;
+  if (aimKey !== aimSpecsKey) {
+    aimSpecsKey = aimKey;
+    aimSpecs = kitOf(me.character, me.rites).skills.map((a) => aimSpec(a));
+    touch.setAims(aimSpecs.map((a) => a.kind));
+  }
   touch.update(
     state.phase === "playing" && connected && !!myId && !knockedOut,
     CHARACTERS[me.character].skills.map((a) => a.name),
@@ -6536,17 +6554,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !$<HTMLDialogElement>("dialog").open &&
       (touch.enabled ? touch.focused : document.hasFocus()) &&
       !document.hidden;
-    const enemies = visibleEnemies(local, local);
-    // Gloomshade's bodies are aimed at alike (real or copy), and its unlit
-    // lanterns can be locked on to (raid-targets.ts).
-    // Tidewyrm's bubbles holding teammates can be locked on to too.
-    const extra = raidTargets(state, local);
-    const found = extra?.filter((t) => t.kind === "shade" || t.kind === "boss");
-    const bodies = found?.length ? found : undefined;
-    // A locked enemy (touch or controller) before the nearest one.
-    const target =
-      targetLock.resolve<Targetable>(extra ?? enemies) ??
-      (bodies ? bodies[0] : enemies[0]);
+    const { enemies, extra, bodies, target } = this.aimTargets(local);
     const combatActive = active && local.hp > 0 && !local.out;
     let skill = combatActive ? this.actions.skill : -1;
     // EX skills: the ultimate button before the meter is full arms an EX
@@ -6587,6 +6595,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     else if (usingPad) aimAt = this.aimPoint;
     else if (controlPrefs().aimAssist && skill < 0)
       aimAt = assistAim(aimAt, bodies ?? enemies);
+    // A skill dragged on a phone aims where it was dragged, for as long as
+    // its cast reads the aim (touch-aim.ts).
+    const dragged = touch.enabled
+      ? this.draggedAim(local, extra ?? enemies)
+      : undefined;
+    if (dragged) aimAt = dragged;
     const stormAim = state ? stormTarget(state, local.id) : undefined;
     if (stormAim) aimAt = stormAim;
     const prismAim = state ? prismatailAim(state, local) : undefined;
@@ -6633,6 +6647,140 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     if (next) predict(local, next.input, state.time + next.tick / RULES.tick);
   }
   actions = { skill: -1, dash: false, jump: false, basic: false };
+  /**
+   * What the automatic aim can pick, and what it picks: a locked enemy
+   * (touch or controller) before the nearest one. Gloomshade's bodies are
+   * aimed at alike (real or copy), and its unlit lanterns and Tidewyrm's
+   * bubbles holding teammates can be locked on to (raid-targets.ts).
+   */
+  private aimTargets(me: Fighter) {
+    const enemies = visibleEnemies(me, me);
+    const extra = state ? raidTargets(state, me) : undefined;
+    const found = extra?.filter((t) => t.kind === "shade" || t.kind === "boss");
+    const bodies = found?.length ? found : undefined;
+    const target =
+      targetLock.resolve<Targetable>(extra ?? enemies) ??
+      (bodies ? bodies[0] : enemies[0]);
+    return { enemies, extra, bodies, target };
+  }
+  /** The drag being honoured: its aim, for `steps` more inputs. */
+  private dragged?: {
+    from: NonNullable<TouchControls["drag"]>;
+    dir: { x: number; y: number };
+    /**
+     * Inputs left that carry it, counted in inputs (the server's ticks),
+     * not time: a janky phone's late inputs are still the ticks a
+     * buffered or winding-up cast reads.
+     */
+    steps: number;
+    /** A target skill's pick (its id), chosen at the first input. */
+    pick?: string;
+  };
+  /**
+   * The aim of a skill dragged on a phone (touch-aim.ts), kept after the
+   * finger lifts for as long as its cast reads the aim: a buffered tap's
+   * wait, a wind-up, a storm's waves. A target skill stays on the enemy the
+   * drag picked. Undefined: the automatic aim.
+   */
+  private draggedAim(me: Fighter, candidates: Targetable[]) {
+    const drag = touch.drag;
+    if (!drag) {
+      this.dragged = undefined;
+      return undefined;
+    }
+    const spec = aimSpecs[drag.slot];
+    if (this.dragged?.from !== drag) {
+      const view = this.aimView;
+      this.dragged = {
+        from: drag,
+        dir: courtDirection(drag.dx, drag.dy, view?.zoomX, view?.zoomY),
+        // The input that carries the cast, then the hold's ticks. A drag
+        // released long ago (another match) carries nothing.
+        steps:
+          performance.now() - drag.at < 1000
+            ? 1 + Math.ceil((spec?.hold ?? 0) * RULES.tick)
+            : 0,
+      };
+    }
+    const held = this.dragged;
+    if (!spec || spec.kind === "self" || held.steps <= 0) return undefined;
+    held.steps--;
+    const point = aimPoint(spec, me, held.dir, drag.t);
+    if (spec.kind !== "target") return point;
+    held.pick ??= pickNear(candidates, point, me, spec.range)?.id ?? "";
+    const picked = candidates.find((c) => c.id === held.pick);
+    return picked ? { x: picked.x, y: picked.y } : point;
+  }
+  /** The guide on the court while a skill is held on a phone (touch-aim.ts). */
+  private drawTouchAim(g: Phaser.GameObjects.Graphics, me: Fighter) {
+    const guide = touch.aimGuide;
+    const spec = guide && aimSpecs[guide.slot];
+    if (!guide || !spec || spec.kind === "self") return;
+    const drawn = this.positions.get(me.id);
+    const from = { x: drawn?.x ?? me.x, y: drawn?.y ?? me.y };
+    const { enemies, extra, target } = this.aimTargets(me);
+    const view = this.aimView;
+    let at: { x: number; y: number };
+    if (guide.firm)
+      at = aimPoint(
+        spec,
+        from,
+        courtDirection(guide.dx, guide.dy, view?.zoomX, view?.zoomY),
+        guide.t,
+      );
+    else if (target) {
+      // Not dragged yet: where a tap would aim (the reach caps a spot).
+      const d = Math.hypot(target.x - from.x, target.y - from.y) || 1;
+      const k = spec.kind === "point" ? Math.min(1, spec.range / d) : 1;
+      at = {
+        x: from.x + (target.x - from.x) * k,
+        y: from.y + (target.y - from.y) * k,
+      };
+    } else
+      at = aimPoint(
+        spec,
+        from,
+        { x: Math.cos(me.angle), y: Math.sin(me.angle) },
+        1,
+      );
+    const picked =
+      spec.kind !== "target"
+        ? undefined
+        : guide.firm
+          ? pickNear<Targetable>(extra ?? enemies, at, from, spec.range)
+          : target;
+    drawAimGuide(g, spec, from, at, {
+      firm: guide.firm,
+      cancel: guide.cancel,
+      pxPerUnit: this.cameras.main.zoomX * this.scale.zoom,
+      picked,
+    });
+  }
+  /** Reused each frame for the enemies' places on the screen (setCovered). */
+  private coverXs: number[] = [];
+  private coverYs: number[] = [];
+  /**
+   * Phones: the buttons an enemy stands behind fade (touch-controls.ts
+   * setCovered). The camera of the last frame, the canvas box Phaser keeps:
+   * no layout read.
+   */
+  private markCovered(me: Fighter | undefined) {
+    if (!touch.enabled) return;
+    let n = 0;
+    if (me && state?.phase === "playing") {
+      const cam = this.cameras.main,
+        box = this.scale.canvasBounds,
+        k = box.width / Math.max(1, this.scale.width);
+      for (const e of visibleEnemies(me, me)) {
+        const at = this.positions.get(e.id) ?? e;
+        // The body, a little above the feet.
+        this.coverXs[n] = box.x + (at.x - cam.worldView.x) * cam.zoomX * k;
+        this.coverYs[n] = box.y + (at.y - 36 - cam.worldView.y) * cam.zoomY * k;
+        n++;
+      }
+    }
+    touch.setCovered(this.coverXs, this.coverYs, n);
+  }
   canControl(): boolean {
     return (
       connected &&
@@ -7821,6 +7969,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       .centerOn(view.x, view.y);
     this.aimView = view;
     this.syncInputClock();
+    this.markCovered(local);
     const aim = screenToWorld(
       this.input.activePointer.x,
       this.input.activePointer.y,
@@ -7997,6 +8146,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const g = this.graphics;
     g.clear();
     this.bossGraphics.clear();
+    // A skill held on a phone: where it will go (touch-aim.ts).
+    if (touch.enabled && local && state.phase === "playing")
+      this.drawTouchAim(g, local);
     kit.retainBossArt(this, state.raid?.boss);
     // In raids the boss and standing scenery sort with the raiders by where they stand.
     const boss = state.raid ? state.players.find((p) => p.raidBoss) : undefined;

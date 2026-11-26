@@ -6,6 +6,7 @@ import { sparkle } from "./skin-fx";
 import { auraFlourish, entranceFlourish, victoryFlourish } from "./tier-fx";
 import { RAID_DRAWN_ENTRANCES, type DrawnEntrance } from "./raid-entrance-fx";
 import { drawRaidAura } from "./raid-aura-fx";
+import { drawRaidVictory, drawRaidVictoryBackdrop } from "./raid-victory-fx";
 
 /**
  * The Shop's all-fighter collection pieces in play: auras under the fighter,
@@ -809,39 +810,6 @@ function baseVictory(
       if (chance(26, dt))
         emit({ x: x + rnd(-80, 80) * sc, y: y - rnd(80, 120) * sc, vx: rnd(-20, 20), vy: rnd(40, 80), life: rnd(1.2, 1.8), size: 3 * sc, color: [0xffb3cf, 0xff6fa0, 0xfff0f5, 0xffd65b][Math.floor(rnd(0, 4))], shape: "leaf", spin: rnd(-6, 6) });
       return true;
-    case "splashdown": {
-      // Tidewyrm's reward: a wave rises behind you and crashes in spray.
-      const rise = Math.min(1, t / 0.5),
-        crash = t > 0.9 ? Math.min(1, (t - 0.9) / 0.4) : 0;
-      const h = 90 * sc * rise * (1 - crash * 0.8);
-      under.fillStyle(0x1f8fa6, 0.7 * fade).fillEllipse(x, y + 10 * sc, 150 * sc, 34 * sc);
-      under.fillStyle(0x3fb3c9, 0.85 * fade).fillTriangle(x - 70 * sc, y + 12 * sc, x + 70 * sc, y + 12 * sc, x + 20 * sc * (1 - crash), y + 12 * sc - h);
-      under.fillStyle(0xe6fbff, 0.9 * fade).fillCircle(x + 20 * sc * (1 - crash), y + 12 * sc - h, 10 * sc);
-      if (t > 0.9 && t - dt <= 0.9)
-        for (let i = 0; i < 34; i++)
-          emit({ x: x + rnd(-40, 40) * sc, y: y - 50 * sc, vx: rnd(-170, 170), vy: rnd(-260, -60), life: rnd(0.7, 1.1), size: rnd(2, 3.5) * sc, color: i % 3 ? 0xe6fbff : 0x7fe9ff, shape: "dot" });
-      return true;
-    }
-    case "twin-spark": {
-      const close=Math.min(1,t/.9),distance=(70-45*close)*sc;
-      for(const side of [-1,1]){
-        const jx=x+side*distance,jy=y-(75+Math.sin(t*2+side)*6)*sc,color=side<0?0xffe18b:0x8edfff;
-        under.fillStyle(color,fade).fillEllipse(jx,jy,40*sc,30*sc);
-        under.fillStyle(0xe7f5ff,fade).fillCircle(jx-10*sc,jy-13*sc,8*sc).fillCircle(jx+3*sc,jy-16*sc,10*sc).fillCircle(jx+13*sc,jy-10*sc,7*sc);
-        for(let j=0;j<3;j++)under.lineStyle(2*sc,color,fade).lineBetween(jx+(j-1)*11*sc,jy+12*sc,jx+(j-1)*11*sc+Math.sin(t*2+j)*4*sc,jy+27*sc);
-      }
-      if(t>.8&&t<1.7&&chance(20,dt))emit({x:x+rnd(-20,20)*sc,y:y-80*sc,vx:rnd(-60,60),vy:rnd(-50,20),life:.6,size:2.5*sc,color:Math.random()<.5?0xffe18b:0x8edfff,shape:"star"});
-      return true;
-    }
-    case "feather-fall": {
-      const spread=Math.min(1,t/.65);
-      for(let i=0;i<9;i++){
-        const a=-Math.PI+i*Math.PI/8,px=x+Math.cos(a)*85*sc*spread,py=y-25*sc+Math.sin(a)*70*sc*spread+Math.max(0,t-.8)*20*sc;
-        under.fillStyle(i%2?0xffd28b:0xe77f5c,fade).fillEllipse(px,py,12*sc,32*sc);
-        under.lineStyle(1.3*sc,0xffe8bc,fade).lineBetween(px,py-12*sc,px,py+14*sc);
-      }
-      return true;
-    }
     case "rainbow-fan": {
       const spread=Math.min(1,t/.7), colors=[0xff899e,0xffd778,0x9aefb5,0x80e1ff,0xa5adff,0xe5a0ff];
       for(let i=0;i<9;i++){
@@ -850,35 +818,6 @@ function baseVictory(
         under.fillStyle(colors[i%6],.8*fade).fillTriangle(px,py-18*sc,px-12*sc,py,px,py+18*sc).fillTriangle(px,py-18*sc,px+12*sc,py,px,py+18*sc);
         under.fillStyle(0xfff9ed,fade).fillCircle(px,py,3*sc);
       }
-      return true;
-    }
-    case "sweet-dreams": {
-      // Snoozaku's reward: a little dream baku in a nightcap drifts up behind you.
-      const rise = Math.min(1, t / 0.8), wx = x + Math.sin(t * 1.8) * 30 * sc, wy = y - (45 + rise * 65) * sc;
-      under.fillStyle(0xc9a3ff, 0.18 * fade).fillEllipse(x, y + 6 * sc, 136 * sc, 34 * sc);
-      under.fillStyle(0x9a91e0, fade).fillEllipse(wx - 6 * sc, wy + 4 * sc, 62 * sc, 36 * sc);
-      under.fillStyle(0xf6e6c8, fade).fillEllipse(wx - 12 * sc, wy + 4 * sc, 20 * sc, 34 * sc);
-      under.fillStyle(0x9a91e0, fade).fillCircle(wx + 20 * sc, wy - 8 * sc, 17 * sc);
-      under.fillStyle(0xfff1dc, fade).fillCircle(wx + 8 * sc, wy - 18 * sc, 6 * sc);
-      under.fillStyle(0x9a91e0, fade).fillCircle(wx + 34 * sc, wy - 2 * sc, 6 * sc).fillCircle(wx + 37 * sc, wy + 5 * sc, 5.5 * sc);
-      under.fillStyle(0xe7b8dc, fade).fillCircle(wx + 38 * sc, wy + 10 * sc, 4.5 * sc);
-      under.fillStyle(0x433d9a, fade).fillTriangle(wx + 6 * sc, wy - 20 * sc, wx + 34 * sc, wy - 22 * sc, wx + 8 * sc, wy - 46 * sc);
-      under.fillStyle(0xfff4dc, fade).fillCircle(wx + 6 * sc, wy - 46 * sc, 4.5 * sc).fillEllipse(wx + 20 * sc, wy - 21 * sc, 30 * sc, 8 * sc);
-      under.lineStyle(1.5 * sc, 0x283452, fade).lineBetween(wx + 20 * sc, wy - 8 * sc, wx + 27 * sc, wy - 7 * sc);
-      if (chance(12, dt)) emit({ x: wx + rnd(-50, 50) * sc, y: wy + rnd(-30, 25) * sc, vx: rnd(-15, 15), vy: rnd(-35, -10), life: 1, size: 2.5 * sc, color: 0xffdf8d, shape: "star" });
-      return true;
-    }
-    case "crescent-bow": {
-      // Gloomshade's reward: a crescent moon rises behind you as you bow.
-      const rise = Math.min(1, t / 0.8);
-      const mx = x + 26 * sc,
-        my = y - (40 + 70 * rise) * sc,
-        mr = 30 * sc;
-      under.fillStyle(0xffd65b, 0.16 * fade).fillCircle(mx, my, mr * 1.8);
-      under.fillStyle(0xffd65b, 0.95 * fade).fillCircle(mx, my, mr);
-      // The bite that makes it a crescent: the night sky behind it.
-      under.fillStyle(0x161a30, fade).fillCircle(mx + mr * 0.5, my - mr * 0.2, mr * 0.85);
-      if (chance(10, dt)) emit({ x: x + rnd(-80, 80) * sc, y: y - rnd(70, 140) * sc, vx: 0, vy: rnd(-10, 10), life: rnd(0.8, 1.2), size: 2.4 * sc, color: 0xfff1c2, shape: "star" });
       return true;
     }
     case "seaside-victory": {
@@ -1292,9 +1231,14 @@ export function drawCollectionVictory(
 ) {
   const emit0 = emit;
   emit = (p) => emit0({ ...p, glow: true, behind: true });
-  const known = baseVictory(under, emit, chance, id, x, y, sc, t, dt, first);
-  // Rig-drawn pieces (Rockslide Flex) still get their flourish.
+  // The raid bosses' finales (raid-victory-fx.ts), then the rest.
+  const known =
+    drawRaidVictory(under, emit, chance, id, x, y, sc, t, dt) ||
+    baseVictory(under, emit, chance, id, x, y, sc, t, dt, first);
+  // Rig-drawn pieces (Rockslide Flex) still get their flourish, and its
+  // crystals behind the pile the rig (or rigVictory) draws.
   if (known || id === "rockslide-flex")
     victoryFlourish(under, emit, chance, id, x, y, sc, t, dt);
+  drawRaidVictoryBackdrop(under, id, x, y, sc, t);
   return known;
 }
