@@ -1,0 +1,71 @@
+# The live game's security headers against apps/client/security-headers.json
+# (docs/static-frontend.md, "Security headers"). Render's dashboard holds the
+# live copy: an inline script in index.html changed without its new hash in
+# Render would be blocked by the CSP for every player. This checks the served
+# headers and the served page's inline scripts after each deploy that can
+# change them, and once a day; a mismatch opens an issue (or adds to the open
+# one), a match closes it. Public pages only: no secrets.
+name: Live headers
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/client/index.html
+      - apps/client/public/**
+      - apps/client/security-headers.json
+      - scripts/security-headers.mjs
+      - scripts/check-live-headers.mjs
+      - .github/workflows/live-headers.yml
+  schedule:
+    - cron: "37 19 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: live-headers
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TITLE: "Live game headers differ from the repo"
+      RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # After a push, Render needs a few minutes to deploy: retry for 20.
+      - id: check
+        continue-on-error: true
+        shell: bash
+        run: |
+          node scripts/check-live-headers.mjs --require-enforcing \
+            --retry-minutes ${{ github.event_name == 'push' && 20 || 0 }} \
+            | tee check.txt
+      - run: |
+          open=$(gh issue list --state open --search "in:title \"$TITLE\"" --json number --jq '.[0].number // empty')
+          if [ "${{ steps.check.outcome }}" = success ]; then
+            if [ -n "$open" ]; then
+              gh issue close "$open" --comment "Matching again on ${SHA:0:7}: $RUN"
+            fi
+            exit 0
+          fi
+          body="On ${SHA:0:7}, https://play.elementarenausa.com serves headers that differ from apps/client/security-headers.json. Run: $RUN
+
+          \`\`\`
+          $(cat check.txt)
+          \`\`\`"
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body "Still different. $body"
+          else
+            gh issue create --title "$TITLE" --body "$body
+
+          Fix: put the headers from apps/client/security-headers.json into Render (Static Site 2D-POKEMON → Redirects/Headers, path /*), or fix the file. If an inline script's hash is listed as not allowed, the CSP is blocking that script for players now (docs/static-frontend.md, \"Security headers\"; rollback: rename the CSP header to Content-Security-Policy-Report-Only)."
+          fi
+          exit 1

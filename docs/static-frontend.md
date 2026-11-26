@@ -50,6 +50,56 @@ checks the copies exist. Do not add a blanket `/*` SPA rewrite: missing JS must
 return 404, not HTML. Verify the three callback paths return the app on the
 final domain.
 
+## Security headers
+
+Since the shared sign-in (#484), the game and the website keep one session
+cookie that scripts can read, so a script injected into the game could reach
+both. The game's Static Site sends these headers on `/*` (Render → Static
+Site → Redirects/Headers). The source of truth is
+`apps/client/security-headers.json`; `tests/unit/security-headers.test.ts`
+fails when an inline script changes without its hash, when the client calls a
+host the policy doesn't allow, or when this list drifts from the file.
+
+```
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Frame-Options: DENY
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=()
+Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-ZUfnpofFS03gzg2lFnuIR/yasY6fcPLurwCbYKKB6Mo=' 'sha256-ypk5TKIXlesdkcgbABUY+mPA5yJZjnntiSzwtP8U6og=' 'sha256-00y+Y3WQbP67KpsHbqQw6oClsDR/TzTa/BTdg1vUNyk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://element-arena-np34.onrender.com; font-src 'self'; connect-src 'self' https://zrmbdtvuriiikvwcvqfj.supabase.co https://element-arena-np34.onrender.com wss://element-arena-np34.onrender.com; media-src 'self' data: blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+```
+
+- **Inline scripts** in `index.html` (three small boot scripts) are allowed
+  by their SHA-256 hash, never by `'unsafe-inline'`. Change one and the test
+  prints the new hash to put in the JSON file and in Render.
+- **Styles** keep `'unsafe-inline'`: the game sets inline styles from code
+  everywhere, and style injection can't run script.
+- **Hosts:** the game server (`VITE_SERVER_URL`, https and wss for the
+  socket, images for portraits and avatar photos) and the Supabase project
+  (https; the client uses no realtime socket). `data:` and `blob:` images are
+  canvas exports, the share card, the QR code and fighter art. No eval, no
+  workers besides the service worker, no WASM.
+- **Rollout (done 25 Nov):** Report-Only from 6:15 PM PT; enforcing
+  `Content-Security-Policy` from 6:43 PM PT, after clean passes (zero
+  violations) through boot, guest sign-in, Shop, share card, Plaza and a bot
+  match on `play.` and on `parena.`. **Rollback:** in Render, rename the
+  header back to `Content-Security-Policy-Report-Only` (same value): the
+  game stops enforcing within seconds and violations still show in the
+  console.
+- The iPhone app loads the game from its own files (`capacitor://localhost`),
+  so these headers don't apply there.
+- **Live check:** `node scripts/check-live-headers.mjs` compares what
+  `https://play.elementarenausa.com` serves (`/` and `/privacy.html`) with
+  the file, and checks that the served page's inline scripts are allowed by
+  the CSP it is served with (`--require-enforcing` refuses Report-Only;
+  `NODE_USE_ENV_PROXY=1` behind a proxy). The **Live headers** workflow runs
+  it after each push to main that can change them (retrying 20 minutes while
+  Render deploys) and every day, and opens the issue "Live game headers
+  differ from the repo" on a mismatch (closed when it matches again).
+- **Changing an inline script in `index.html`** means updating its hash in
+  `security-headers.json` and in Render in the same rollout: put the new
+  `Content-Security-Policy` value in Render before the deploy that ships the
+  script, or the CSP blocks it for players.
+
 ## Startup behavior
 
 The initial `/api/health` probe is shared by authentication and the socket. The

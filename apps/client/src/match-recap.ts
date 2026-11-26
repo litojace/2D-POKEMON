@@ -109,10 +109,13 @@ export function standingsMarkup(state: Snapshot, myId: string) {
       (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0) ||
       Number(b.id === state.winner) - Number(a.id === state.winner),
   );
-  return `<ol class="standings">${order
+  // The name in its own <bdi>, so on the results card (match-sheet.css) a
+  // long one gives way before "you" does; place-N gives the top three
+  // their medal colours there.
+  return `<div class="standings-card"><p class="standings-head" aria-hidden="true"><span>Place</span><span>Round wins</span></p><ol class="standings" aria-label="Places by round wins">${order
     .map(
       (p, i) =>
-        `<li class="${p.id === myId ? "me" : ""}"><span>${places[i] ?? `${i + 1}th`}</span><b>${escape(p.name)}${p.id === myId ? " <small>you</small>" : ""}</b><em>${state.scores[p.id] ?? 0}</em></li>`,
+        `<li class="place-${i + 1}${p.id === myId ? " me" : ""}"><span>${places[i] ?? `${i + 1}th`}</span><b><bdi>${escape(p.name)}</bdi>${p.id === myId ? " <small>you</small>" : ""}</b><em>${state.scores[p.id] ?? 0}</em></li>`,
     )
-    .join("")}</ol>`;
+    .join("")}</ol></div>`;
 }
