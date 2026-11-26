@@ -1,5 +1,6 @@
 import { RaidArena } from "./raid.js";
 import { leadPoint } from "./raid-boss-aim.js";
+import { gustBlow } from "../../../packages/shared/src/raid-volley.js";
 import {
   useObstacles,
   normalize,
@@ -526,12 +527,10 @@ export class EmberwingArena extends RaidArena {
       if (p.hp <= 0) continue;
       if (w.kind === "wing-gust") {
         if (!this.inVolley({ ...w, kind: "volley" }, p)) continue;
-        const dir = normalize(w.tx - w.x, w.ty - w.y),
-          resist =
-            p.dashUntil > this.time &&
-            p.lastInput.dx * dir.x + p.lastInput.dy * dir.y < -0.25;
+        // Shared with the phone's prediction (raid-volley.ts).
+        const blow = gustBlow(p, w, p.lastInput, this.time);
         this.damage(p, E.gust.damage, boss.id);
-        if (!resist) move(p, dir.x * E.gust.push, dir.y * E.gust.push);
+        if (blow) move(p, blow.x, blow.y);
       } else if (
         (w.kind === "heat-mark" || w.kind === "ember-rain") &&
         Math.hypot(p.x - w.x, p.y - w.y) < w.radius + RULES.radius

@@ -60,6 +60,7 @@ import {
 } from "../../../packages/shared/src/raid.js";
 import type { SpireRun } from "./spire.js";
 import { BotBrain } from "./bot.js";
+import { inVolleyCone } from "../../../packages/shared/src/raid-volley.js";
 import {
   RAID_CLUSTER_ATTACKS,
   RAID_DURATION_ATTACKS,
@@ -929,21 +930,8 @@ export class RaidArena extends Arena {
   }
   /** Is a raider inside a volley cone (and not hiding behind a pillar)? */
   protected inVolley(w: RaidWarning, p: Fighter) {
-    const dx = p.x - w.x,
-      dy = p.y - w.y,
-      dist = Math.hypot(dx, dy);
-    if (dist > w.radius + RULES.radius) return false;
-    const aim = Math.atan2(w.ty - w.y, w.tx - w.x);
-    const off = Math.atan2(
-      Math.sin(Math.atan2(dy, dx) - aim),
-      Math.cos(Math.atan2(dy, dx) - aim),
-    );
-    if (
-      Math.abs(off) >
-      (w.spread ?? 0.45) + Math.atan2(RULES.radius, Math.max(dist, 1))
-    )
-      return false;
-    return this.lineClear(w, p);
+    // Shared with the phone's prediction (raid-volley.ts).
+    return inVolleyCone(w, p, (a, b) => this.lineClear(a, b));
   }
   protected cadence() {
     const r = this.raid,

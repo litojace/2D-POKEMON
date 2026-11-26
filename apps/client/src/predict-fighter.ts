@@ -14,13 +14,19 @@ import {
   type Input,
   dashCooldownOf,
 } from "../../../packages/shared/src/index";
-import type { RaidState } from "../../../packages/shared/src/raid";
+import type { RaidState, RaidWarning } from "../../../packages/shared/src/raid";
 import {
   driftPrison,
   heldInput,
   pullIntoUndertow,
   undertowPull,
 } from "../../../packages/shared/src/tidelotl-drift";
+import {
+  galeBlow,
+  gustBlow,
+  inVolleyCone,
+  lumiShapeHits,
+} from "../../../packages/shared/src/raid-volley";
 import { canCastSkill } from "./cast-prediction";
 
 /**
@@ -162,6 +168,16 @@ export interface RaidCarry {
   /** A bubble rooted you until then. */
   rootedUntil?: number;
   boss?: { x: number; y: number };
+  /**
+   * Lumiwick's blows on their way: a Wing Gust blows everyone in its cone
+   * 220 px, the ascendant's Snuffing Gale everyone in its lane outside a
+   * brazier's ring 140 px, in the tick it lands. `landed`: the replay has
+   * stepped it.
+   */
+  gusts?: { w: RaidWarning; landed?: boolean }[];
+  braziers?: { x: number; y: number }[];
+  /** A staggered boss lands nothing until then (RaidArena.attacksStep). */
+  staggerUntil?: number;
 }
 export function raidCarry(
   me: Fighter,
@@ -172,7 +188,10 @@ export function raidCarry(
   const u = raid?.undertow;
   const prison = raid?.prisons?.find((q) => q.playerId === me.id);
   const rootedUntil = raid?.rooted?.[me.id];
-  if (!u && !prison && rootedUntil === undefined) return;
+  const gusts = raid?.warnings
+    ?.filter((w) => w.kind === "wing-gust" || w.kind === "snuff-gale")
+    .map((w) => ({ w: { ...w } }));
+  if (!u && !prison && rootedUntil === undefined && !gusts?.length) return;
   return {
     from: snapshotTime,
     undertow: u && {
@@ -184,13 +203,16 @@ export function raidCarry(
     prison: prison && { x: prison.x, y: prison.y, until: prison.until },
     rootedUntil,
     boss: boss && { x: boss.x, y: boss.y },
+    gusts: gusts?.length ? gusts : undefined,
+    braziers: raid?.braziers?.map((b) => ({ x: b.x, y: b.y })),
+    staggerUntil: raid?.staggerUntil,
   };
 }
 /**
  * One predicted tick of it, at the tick's `time` (its end, as
- * predictFighter takes it), in the server's order: the prison carries you,
- * or else the Undertow pulls you; then a root or the prison holds your
- * input. Returns the input the server will run for the tick. A late input
+ * predictFighter takes it), in the server's order: a Wing Gust that lands
+ * blows you, the prison carries you or else the Undertow pulls you, then a
+ * root or the prison holds your input. Returns the input the server will run for the tick. A late input
  * for a tick the server held (serverSteps, at or before the snapshot) only
  * moves you: that tick's pull and drift are in the snapshot already.
  */
@@ -205,6 +227,23 @@ export function stepRaidCarry(
     start = time - dt,
     sealed = !!carry.prison;
   if (time <= carry.from + 1e-6) return sealed ? heldInput(input, true) : input;
+  // A warning lands in the first tick that starts at or after its time,
+  // unless the boss is staggered (then it waits).
+  if (carry.gusts && !((carry.staggerUntil ?? 0) > start))
+    for (const gust of carry.gusts) {
+      const w = gust.w;
+      if (gust.landed || w.at > start) continue;
+      gust.landed = true;
+      const blow =
+        w.kind === "snuff-gale"
+          ? lumiShapeHits(w, p.x, p.y, carry.braziers ?? [])
+            ? galeBlow(w)
+            : undefined
+          : inVolleyCone(w, p)
+            ? gustBlow(p, w, input, start)
+            : undefined;
+      if (blow) move(p, blow.x, blow.y);
+    }
   if (carry.prison) {
     if (carry.boss) driftPrison(carry.prison, carry.boss, start, dt);
     p.x = carry.prison.x;
