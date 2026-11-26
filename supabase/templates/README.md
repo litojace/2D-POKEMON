@@ -32,16 +32,15 @@ files: paste each one into **Supabase → Authentication → Emails → Template
 - Dark design on purpose, like the game. Mail apps that only recolour light
   backgrounds leave it alone; apps that invert everything flip text and
   background together, so it stays readable.
-- The banner is drawn with the game's own renderers: the Coliseum court
-  (`paintCourtStands` / `paintCourtFloor`) and champions posed by the real
-  animation rig (`FighterRig`), with their Shop skins. To change it:
-  1. Edit `banner/cast.json` (champion, `state` such as `victory`, `hurt`,
-     `skill3`, `phase` 0..1, facing `LEFT`/`RIGHT`/`FRONT`, `skin`).
-  2. Start the visual-test server: `npx vite --config tests/visual/vite.config.ts`.
-  3. `PW_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome node supabase/templates/banner/render.cjs`
-     (drop `PW_CHROMIUM` outside the cloud container).
-  4. Adjust positions in `banner/hero.html`, open it in Chromium at 600x240,
-     screenshot `.b` at 2x and save it as JPEG (about 85 quality) to
-     `apps/client/public/email/hero.jpg`.
-  Arm-raising moves (waves) hide behind the champions' big heads in a still
-  frame, so pick moves that read: victory hops and flips, hurt, skills.
+- The banner is the loading-screen painting **rest-market**
+  (`apps/client/src/art/loading-art/startup-art-rest-market.webp`, chosen by
+  the owner on 25 Nov), cropped to 2.5:1 a little below the middle and saved
+  at 1200x480 (shown at 600x240, sharp on phones) as JPEG, quality 85:
+
+  ```bash
+  python3 -c "from PIL import Image; im=Image.open('apps/client/src/art/loading-art/startup-art-rest-market.webp').convert('RGB'); w,h=im.size; t=int(w/2.5); y=int((h-t)*0.55); im.crop((0,y,w,y+t)).resize((1200,480),Image.LANCZOS).save('apps/client/public/email/hero.jpg',quality=85,optimize=True,progressive=True)"
+  ```
+
+  Any other painting in that folder works the same way. Update the `alt`
+  text in the templates to match. The file keeps its name, so emails
+  already sent show the new picture too.
