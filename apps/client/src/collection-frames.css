@@ -15,7 +15,9 @@
   [data-cosmetic="arcade-frame"],
   [data-cosmetic="seaside-frame"],
   [data-cosmetic="steamworks-frame"],
-  [data-cosmetic="borealis-frame"]
+  [data-cosmetic="borealis-frame"],
+  [data-cosmetic="laurel-frame"],
+  [data-cosmetic="crown-frame"]
 ) {
   box-shadow: none;
 }
@@ -29,7 +31,9 @@
     [data-cosmetic="arcade-frame"],
     [data-cosmetic="seaside-frame"],
     [data-cosmetic="steamworks-frame"],
-    [data-cosmetic="borealis-frame"]
+    [data-cosmetic="borealis-frame"],
+    [data-cosmetic="laurel-frame"],
+    [data-cosmetic="crown-frame"]
   )::before {
   content: "";
   position: absolute;
@@ -48,7 +52,9 @@
     [data-cosmetic="arcade-frame"],
     [data-cosmetic="seaside-frame"],
     [data-cosmetic="steamworks-frame"],
-    [data-cosmetic="borealis-frame"]
+    [data-cosmetic="borealis-frame"],
+    [data-cosmetic="laurel-frame"],
+    [data-cosmetic="crown-frame"]
   )::after {
   content: "";
   position: absolute;
@@ -454,4 +460,117 @@
   background:
     linear-gradient(#4dffb866, transparent 46%),
     linear-gradient(transparent 14%, #b48cff66 34%, transparent 62%), #0a1430;
+}
+
+/* ---- Singles: pieces sold on their own, outside any set ---- */
+
+/* Laurel: a gold laurel wreath, open at the top, tied with a red ribbon. */
+.raid-cosmetic-preview[data-cosmetic="laurel-frame"]::before {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-70 -70 140 140'><defs><linearGradient id='l' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23fff1b0'/><stop offset='.55' stop-color='%23e2b23a'/><stop offset='1' stop-color='%238a6414'/></linearGradient></defs><circle r='55' fill='none' stroke='%236a4a10' stroke-width='6'/><circle r='55' fill='none' stroke='url(%23l)' stroke-width='4.4'/><circle r='51.4' fill='none' stroke='%23fff1b0' stroke-width='.9'/><g transform='translate(10.07 57.12) rotate(114) scale(1.3)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(-10.07 57.12) rotate(246) scale(1.3)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(20.98 48.02) rotate(48.4) scale(1.27)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(-20.98 48.02) rotate(311.6) scale(1.27)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(35.07 46.2) rotate(86.8) scale(1.24)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(-35.07 46.2) rotate(273.2) scale(1.24)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(40.61 33.12) rotate(21.2) scale(1.21)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(-40.61 33.12) rotate(338.8) scale(1.21)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(52.31 25.06) rotate(59.6) scale(1.1800000000000002)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(-52.31 25.06) rotate(300.4) scale(1.1800000000000002)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(51.25 10.89) rotate(-6) scale(1.1500000000000001)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(-51.25 10.89) rotate(366) scale(1.1500000000000001)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(57.98 -1.62) rotate(32.4) scale(1.12)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(-57.98 -1.62) rotate(327.6) scale(1.12)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(50.57 -13.74) rotate(-33.2) scale(1.09)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(-50.57 -13.74) rotate(393.2) scale(1.09)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(50.83 -27.94) rotate(5.2) scale(1.06)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(-50.83 -27.94) rotate(354.8) scale(1.06)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(38.7 -35.33) rotate(-60.4) scale(1.03)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(-38.7 -35.33) rotate(420.4) scale(1.03)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(32.43 -48.08) rotate(-22) scale(1)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><g transform='translate(-32.43 -48.08) rotate(382) scale(1)'><path d='M0 0Q4.4 -5.6 0 -12.8Q-4.4 -5.6 0 0Z' fill='url(%23l)' stroke='%236a4a10' stroke-width='.75' stroke-linejoin='round'/><path d='M0 -1.2V-11' stroke='%238a6414' stroke-width='.55'/></g><circle cx='53.33' cy='28.36' r='1.7' fill='%23ffe07a' stroke='%236a4a10' stroke-width='.6'/><circle cx='-53.33' cy='28.36' r='1.7' fill='%23ffe07a' stroke='%236a4a10' stroke-width='.6'/><circle cx='58.06' cy='-16.65' r='1.7' fill='%23ffe07a' stroke='%236a4a10' stroke-width='.6'/><circle cx='-58.06' cy='-16.65' r='1.7' fill='%23ffe07a' stroke='%236a4a10' stroke-width='.6'/></svg>");
+}
+.raid-cosmetic-preview[data-cosmetic="laurel-frame"]::after {
+  bottom: -27%;
+  left: 50%;
+  width: 34%;
+  height: 30%;
+  transform: translateX(-50%);
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-16 -10 32 28'><path d='M-3 2L-9 15L-5 13L-3 17L0 4Z M3 2L9 15L5 13L3 17L0 4Z' fill='%23c8323a' stroke='%236a1418' stroke-width='.9' stroke-linejoin='round'/><path d='M0 0C-6 -8 -15 -7 -14 -1C-13 5 -5 4 0 0Z M0 0C6 -8 15 -7 14 -1C13 5 5 4 0 0Z' fill='%23e04a52' stroke='%236a1418' stroke-width='1' stroke-linejoin='round'/><path d='M-11 -2Q-8 -5 -4 -3M4 -3Q8 -5 11 -2' fill='none' stroke='%23ffb0b6' stroke-width='.9' stroke-linecap='round'/><ellipse rx='3.2' ry='3' fill='%23c8323a' stroke='%236a1418' stroke-width='.9'/></svg>");
+}
+.raid-cosmetic-preview[data-cosmetic="laurel-frame"] {
+  --frame-glow: #e2b23aaa;
+}
+
+/* Crown: a jewelled gold band under a three-pointed crown. */
+.raid-cosmetic-preview[data-cosmetic="crown-frame"]::before {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-70 -70 140 140'><defs><linearGradient id='c' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23fff4c0'/><stop offset='.5' stop-color='%23e8b33a'/><stop offset='1' stop-color='%237a5410'/></linearGradient></defs><circle r='55' fill='none' stroke='%235a3c0c' stroke-width='11'/><circle r='55' fill='none' stroke='url(%23c)' stroke-width='9.4'/><circle r='50.6' fill='none' stroke='%23fff4c0' stroke-width='1'/><circle r='59.6' fill='none' stroke='%23fff4c0' stroke-width='.7' opacity='.8'/><circle r='51.8' fill='none' stroke='%23a8781c' stroke-width='1' stroke-dasharray='.9 1.9' opacity='.9'/><circle r='58.2' fill='none' stroke='%23a8781c' stroke-width='1' stroke-dasharray='.9 1.9' opacity='.9'/><circle cx='53.13' cy='14.24' r='3.7' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.7'/><circle cx='53.13' cy='14.24' r='2.7' fill='%23e0303a' stroke='%237a1018' stroke-width='.6'/><circle cx='52.33' cy='13.34' r='.85' fill='%23ffffff' opacity='.9'/><circle cx='38.89' cy='38.89' r='3.7' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.7'/><circle cx='38.89' cy='38.89' r='2.7' fill='%233a6ae0' stroke='%2314286a' stroke-width='.6'/><circle cx='38.09' cy='37.99' r='.85' fill='%23ffffff' opacity='.9'/><circle cx='14.24' cy='53.13' r='3.7' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.7'/><circle cx='14.24' cy='53.13' r='2.7' fill='%232ab86a' stroke='%230e5a30' stroke-width='.6'/><circle cx='13.44' cy='52.23' r='.85' fill='%23ffffff' opacity='.9'/><circle cx='-14.24' cy='53.13' r='3.7' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.7'/><circle cx='-14.24' cy='53.13' r='2.7' fill='%23e0303a' stroke='%237a1018' stroke-width='.6'/><circle cx='-15.04' cy='52.23' r='.85' fill='%23ffffff' opacity='.9'/><circle cx='-38.89' cy='38.89' r='3.7' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.7'/><circle cx='-38.89' cy='38.89' r='2.7' fill='%233a6ae0' stroke='%2314286a' stroke-width='.6'/><circle cx='-39.69' cy='37.99' r='.85' fill='%23ffffff' opacity='.9'/><circle cx='-53.13' cy='14.24' r='3.7' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.7'/><circle cx='-53.13' cy='14.24' r='2.7' fill='%232ab86a' stroke='%230e5a30' stroke-width='.6'/><circle cx='-53.93' cy='13.34' r='.85' fill='%23ffffff' opacity='.9'/><circle cx='-53.13' cy='-14.24' r='3.7' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.7'/><circle cx='-53.13' cy='-14.24' r='2.7' fill='%23e0303a' stroke='%237a1018' stroke-width='.6'/><circle cx='-53.93' cy='-15.14' r='.85' fill='%23ffffff' opacity='.9'/><circle cx='-38.89' cy='-38.89' r='3.7' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.7'/><circle cx='-38.89' cy='-38.89' r='2.7' fill='%233a6ae0' stroke='%2314286a' stroke-width='.6'/><circle cx='-39.69' cy='-39.79' r='.85' fill='%23ffffff' opacity='.9'/><circle cx='-14.24' cy='-53.13' r='3.7' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.7'/><circle cx='-14.24' cy='-53.13' r='2.7' fill='%232ab86a' stroke='%230e5a30' stroke-width='.6'/><circle cx='-15.04' cy='-54.03' r='.85' fill='%23ffffff' opacity='.9'/><circle cx='14.24' cy='-53.13' r='3.7' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.7'/><circle cx='14.24' cy='-53.13' r='2.7' fill='%23e0303a' stroke='%237a1018' stroke-width='.6'/><circle cx='13.44' cy='-54.03' r='.85' fill='%23ffffff' opacity='.9'/><circle cx='38.89' cy='-38.89' r='3.7' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.7'/><circle cx='38.89' cy='-38.89' r='2.7' fill='%233a6ae0' stroke='%2314286a' stroke-width='.6'/><circle cx='38.09' cy='-39.79' r='.85' fill='%23ffffff' opacity='.9'/><circle cx='53.13' cy='-14.24' r='3.7' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.7'/><circle cx='53.13' cy='-14.24' r='2.7' fill='%232ab86a' stroke='%230e5a30' stroke-width='.6'/><circle cx='52.33' cy='-15.14' r='.85' fill='%23ffffff' opacity='.9'/></svg>");
+}
+.raid-cosmetic-preview[data-cosmetic="crown-frame"]::after {
+  top: -34%;
+  left: 50%;
+  width: 42%;
+  height: 32%;
+  transform: translateX(-50%);
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-20 -15 40 30'><path d='M-15 8L-17 -6L-8 1L0 -11L8 1L17 -6L15 8Z' fill='%23e8b33a' stroke='%235a3c0c' stroke-width='1.3' stroke-linejoin='round'/><path d='M-15 8L15 8L14 13L-14 13Z' fill='%23c8921e' stroke='%235a3c0c' stroke-width='1.2' stroke-linejoin='round'/><circle cx='-17' cy='-6' r='2.2' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.8'/><circle cx='17' cy='-6' r='2.2' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.8'/><circle cy='-11' r='2.4' fill='%23fff1b0' stroke='%235a3c0c' stroke-width='.8'/><circle cy='10.5' r='2' fill='%23e0303a' stroke='%237a1018' stroke-width='.6'/><circle cx='-8' cy='10.5' r='1.6' fill='%233a6ae0' stroke='%2314286a' stroke-width='.5'/><circle cx='8' cy='10.5' r='1.6' fill='%232ab86a' stroke='%230e5a30' stroke-width='.5'/><path d='M-12 5L-13 -1M12 5L13 -1M-3 3L0 -5' stroke='%23fff4c0' stroke-width='.9' stroke-linecap='round' opacity='.85'/></svg>");
+}
+.raid-cosmetic-preview[data-cosmetic="crown-frame"] {
+  --frame-glow: #e8b33aaa;
+}
+
+/* Small avatars: a ring in the frame's colours. */
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar):is(
+  [data-raid-cosmetic~="laurel-frame"],
+  [data-raid-cosmetic~="crown-frame"]
+) {
+  position: relative;
+  border-radius: 50%;
+}
+:is(
+  .raid-party-avatar,
+  .raid-score-avatar,
+  .player-avatar
+)[data-raid-cosmetic~="laurel-frame"] {
+  box-shadow:
+    0 0 0 3px #e2b23a,
+    0 0 0 4px #6a4a10;
+}
+:is(
+  .raid-party-avatar,
+  .raid-score-avatar,
+  .player-avatar
+)[data-raid-cosmetic~="crown-frame"] {
+  box-shadow:
+    0 0 0 3px #e8b33a,
+    0 0 0 5px #5a3c0c,
+    0 0 0 6px #e0303a;
+}
+
+/* Auras, entrances and victories: a hint of the piece behind the preview. */
+.raid-cosmetic-preview[data-cosmetic="firefly-aura"] {
+  box-shadow:
+    0 0 0 2px #d8ff7a,
+    0 0 10px 3px #fff3a066;
+  background:
+    radial-gradient(circle at 24% 70%, #fff3a0 0 3%, transparent 6%),
+    radial-gradient(circle at 76% 34%, #fff3a0 0 3%, transparent 6%),
+    radial-gradient(circle at 64% 80%, #d8ff7a 0 2.4%, transparent 5%),
+    radial-gradient(circle, #14213a 56%, #3a4a1a);
+}
+.raid-cosmetic-preview[data-cosmetic="crystal-aura"] {
+  box-shadow:
+    0 0 0 2px #b48cff,
+    0 0 0 4px #e6dcff88,
+    0 0 0 5px #8ff0ff;
+  background: radial-gradient(circle, #14213a 56%, #b48cff55, #8ff0ff44);
+}
+.raid-cosmetic-preview[data-cosmetic="bubble-entrance"] {
+  background:
+    radial-gradient(
+      circle at 50% 46%,
+      transparent 0 38%,
+      #cff6ffcc 40% 42%,
+      #ffc8f055 44%,
+      transparent 47%
+    ),
+    radial-gradient(circle at 34% 30%, #ffffffaa 0 4%, transparent 6%), #14213a;
+}
+.raid-cosmetic-preview[data-cosmetic="portal-entrance"] {
+  background:
+    radial-gradient(
+      ellipse 60% 18% at 50% 82%,
+      #4de8d8 0 30%,
+      #9a5cff 50%,
+      transparent 72%
+    ),
+    linear-gradient(transparent 30%, #9a5cff44 80%), #14213a;
+}
+.raid-cosmetic-preview[data-cosmetic="trophy-victory"] {
+  background:
+    radial-gradient(circle at 50% 40%, #ffe08a88 0 26%, transparent 46%),
+    linear-gradient(#14213a 72%, #6a4a2a 72%);
+}
+.raid-cosmetic-preview[data-cosmetic="meteor-victory"] {
+  background:
+    linear-gradient(225deg, transparent 22%, #ffd36bcc 24%, transparent 30%),
+    linear-gradient(225deg, transparent 46%, #9fd8ffaa 47.5%, transparent 52%),
+    radial-gradient(circle at 50% 30%, #3a2a6a, #0e1230 70%);
 }

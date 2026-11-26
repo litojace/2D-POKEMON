@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { missionsSql, shopItemsSql } from "../../scripts/shop-seed.ts";
 import { CHARACTERS } from "@arena/shared";
 import {
+  ALL_BUNDLES,
   AWAKENING,
   CHAMPION_SKINS,
   LOOK_ITEMS,
@@ -58,7 +59,8 @@ const migration =
   readFileSync("supabase/migrations/20261125150000_birthstone.sql", "utf8") +
   readFileSync("supabase/migrations/20261125160000_rainy_day.sql", "utf8") +
   readFileSync("supabase/migrations/20261125170000_grand_prix.sql", "utf8") +
-  readFileSync("supabase/migrations/20261125180000_sun_dynasty.sql", "utf8");
+  readFileSync("supabase/migrations/20261125180000_sun_dynasty.sql", "utf8") +
+  readFileSync("supabase/migrations/20261125200000_look_singles.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -226,9 +228,25 @@ describe("shop catalog", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("has nine collections of five pieces, one per appearance slot", () => {
-    expect(LOOK_ITEMS).toHaveLength(45);
+  it("has nine collections of five pieces, one per appearance slot, and eight singles", () => {
+    expect(LOOK_ITEMS).toHaveLength(45 + 8);
     expect(SHOP_BUNDLES).toHaveLength(9);
+    // The singles: two of each kind but Colors, never in a set, priced like
+    // a set's piece of their slot and tier (LOOK_SLOTS x 1, 1.6 or 2.5).
+    const singles = LOOK_ITEMS.filter((i) => i.collection === "singles");
+    expect(singles.map((i) => [i.id, i.slot, i.rarity, i.price])).toEqual([
+      ["firefly-aura", "aura", "rare", 900],
+      ["crystal-aura", "aura", "epic", 1440],
+      ["bubble-entrance", "entrance", "rare", 1000],
+      ["portal-entrance", "entrance", "epic", 1600],
+      ["laurel-frame", "frame", "rare", 800],
+      ["crown-frame", "frame", "epic", 1280],
+      ["trophy-victory", "victory", "epic", 1800],
+      ["meteor-victory", "victory", "mythical", 4500],
+    ]);
+    for (const b of ALL_BUNDLES)
+      for (const id of singles.map((i) => i.id))
+        expect(b.items, b.id).not.toContain(id);
     for (const b of SHOP_BUNDLES) {
       const slots = b.items
         .map((id) => LOOK_ITEMS.find((i) => i.id === id)!.slot)
