@@ -203,3 +203,42 @@ this move doesn't touch how the session is stored.
   Site `VITE_SITE_URL`, removing `SUPABASE_DB_URL`, the `/sw.js` header)
   was blocked by this session's permission check and waits for the owner,
   as do the Supabase Site URL and pasting the four templates.
+- 25 Nov, 5:36 PM PT: step 5 done with the owner's OK here: Static Site
+  `VITE_SITE_URL=https://play.elementarenausa.com` (redeployed),
+  `SUPABASE_DB_URL` removed from the Static Site, `/sw.js` sends
+  `Cache-Control: no-cache`. Live browser: `parena` shows the move banner
+  (Open → `play.`), `play.` none; the bundle has no `parena` URL.
+- 25 Nov, ~6:00 PM PT: the owner set the Supabase Site URL to `play.`, pasted
+  the four templates and re-added `https://parena.litojace.com/**`.
+  Supabase `verify` redirects: `play.`, the apex and `parena` allowed, other
+  hosts fall back to `play.`. Apple authorize still returns through Supabase.
+- 25 Nov, 5:44 PM PT, live email test with a test account at
+  `mail.litojace.com` (Resend inbound): sign-up email (new template, market
+  banner) → link lands on `play.?auth=email-confirmed` signed in; reset
+  email → link opens "Choose a new password" on `play.`; reauthentication
+  email shows the code (8 digits); change-email email goes to both
+  addresses with old → new. Two subjects were still Supabase's defaults
+  (reauthentication shows the code in the subject); the owner was asked to
+  set them.
+- 25 Nov, ~5:55 PM PT: the owner set the Reauthentication subject to one
+  without the code. The Change email address subject is still Supabase's
+  default ("Confirm your new email address"); ours, "Confirm your new
+  Element Arena email", is optional.
+- 25 Nov, ~6:05 PM PT: the owner asked (via the coordinator) to delete the
+  test account. Deleted through the game's own flow
+  (`POST /api/account/delete`, `{"ok":true}`); its password no longer
+  signs in, and a check finds no row for it in `auth.users`,
+  `auth.identities` or any of the 46 player-keyed `public.arena_*` columns.
+- 25 Nov, ~6:08 PM PT: the owner set the Change email address subject to
+  "Confirm your new Element Arena email". All four templates now carry our
+  subjects.
+- 25 Nov, 6:15 PM PT: with the owner's OK here ("đồng ý header"), the game's
+  Static Site sends on `/*` (both hosts): HSTS
+  `max-age=31536000; includeSubDomains`, `X-Frame-Options: DENY`,
+  `Referrer-Policy: strict-origin-when-cross-origin`, the Permissions-Policy
+  and the CSP from `apps/client/security-headers.json` as
+  `Content-Security-Policy-Report-Only` (PR #494). Live pass on `play.` as a
+  guest (load, guest sign-in, Shop, share card, Plaza, a bot match): the
+  only reports were zod's eval probe and its compiler (vendor chunk), which
+  #494's jitless mode removes. The guest was then deleted through the game's
+  flow (no rows left). Enforcing waits for #494 to deploy and a clean re-run.
