@@ -250,3 +250,25 @@ this move doesn't touch how the session is stored.
   rows left). `node scripts/check-live-headers.mjs --require-enforcing`
   matches on both hosts. On `parena.` the move banner covers the
   Lobby/Plaza tabs until Later or Open is pressed (as designed).
+- 25 Nov, ~6:55 PM PT: signed-in pass on `play.` under the enforcing CSP,
+  with a throwaway email account (API sign-up, confirmed through the real
+  email link): sign-in, profile, friends, chat and a Shop purchase all
+  worked. The Apple button went age question → Supabase
+  `/auth/v1/authorize?provider=apple` → `appleid.apple.com` with
+  `redirect_to` on `play.`. (Apple's page itself doesn't load from the test
+  container, whose network blocks Apple, and CSP doesn't govern top-level
+  navigation.) The game has no Google button. Zero violations, zero page
+  errors. The account was deleted through the game's flow (no rows left in
+  `auth` or `public`). The first landing from the confirm link showed
+  "Playing on another device" with no other tab open; it was not reproduced
+  and is with the session that owns the server's account code.
+- 25 Nov, 7:17 PM PT: the earlier passes' "bot match" only reached the
+  briefing and disconnected about 8 s later. This run was a guest bot match
+  played to the result: briefing, three rounds and the results sheet
+  (03:17:02–03:18:04 UTC, 0–3, about 34 s of fighting, skills cast). Zero
+  violations, no errors, no disconnect. The guest was deleted afterwards
+  (no rows left).
+- 25 Nov, 7:20 PM PT: PR #499 merged. The **Live headers** workflow now
+  compares the served headers and inline-script hashes with
+  `apps/client/security-headers.json` after relevant pushes and daily, and
+  opens "Live game headers differ from the repo" on drift.
