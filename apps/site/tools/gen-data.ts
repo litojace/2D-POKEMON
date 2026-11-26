@@ -13,6 +13,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { siteChampions } from "./champion-data";
 import { creatureSvg } from "../../client/src/creature-design";
+import { MASTERY_TIERS } from "../../../packages/shared/src/accounts";
 import {
   RAID_BOSSES,
   RAID_BOSS_ORDER,
@@ -165,3 +166,15 @@ for (const [name, html] of [
     `$1\n${html}$2`,
   );
 writeFileSync(indexPath, page2);
+
+// The Mastery rings perk: the game's tiers, colours and match counts.
+const rings = MASTERY_TIERS.map(
+  (t) =>
+    `<span class="ring" style="--ring: ${t.color}"><img src="img/creatures/voltkit.svg" alt="" width="200" height="202" loading="lazy" decoding="async" /><b>${t.name}</b><small>${t.matches} matches</small></span>`,
+).join("\n");
+let page3 = readFileSync(indexPath, "utf8");
+page3 = page3.replace(
+  /(<!-- mastery:start -->)[\s\S]*?(\s*<!-- mastery:end -->)/,
+  `$1\n${rings}$2`,
+);
+writeFileSync(indexPath, page3);
