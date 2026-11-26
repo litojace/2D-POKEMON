@@ -75,9 +75,13 @@ export function lobbyRaidBoss(
   return open[((n % open.length) + open.length) % open.length]!;
 }
 
-/** The card's contents (lobby-screen.ts puts them in its button). */
-export function lobbyRaidCard(id: RaidBossId) {
+/**
+ * The card's contents (lobby-screen.ts puts them in its button).
+ * `opensAt`: raids are still locked at your level, and open at this one.
+ */
+export function lobbyRaidCard(id: RaidBossId, opensAt?: number) {
   const boss = RAID_BOSSES[id];
   const [x, y] = FACE[id];
-  return `<img class="lobby-raid-art" src="${ART[id]}" alt="" width="640" height="427" decoding="async" loading="lazy" style="object-position:${Math.round(x * 100)}% ${Math.round(y * 100)}%"><span class="lobby-card-kicker">Raid</span><b>${escape(boss.name)}</b><small>${escape(boss.epithet)}</small>`;
+  const kicker = opensAt ? `Raid · opens at Lv ${opensAt}` : "Raid";
+  return `<img class="lobby-raid-art" src="${ART[id]}" alt="" width="640" height="427" decoding="async" loading="lazy" style="object-position:${Math.round(x * 100)}% ${Math.round(y * 100)}%"><span class="lobby-card-kicker">${kicker}</span><b>${escape(boss.name)}</b><small>${escape(boss.epithet)}</small>`;
 }

@@ -1164,7 +1164,12 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       if (spire) setInner($("lobby-spire-text"), spireCard(spire));
       setInner(
         $("lobby-raid-card"),
-        lobbyRaidCard(lobbyRaidBoss(view.raidClears)),
+        lobbyRaidCard(
+          lobbyRaidBoss(view.raidClears),
+          featureLocked("raids", view.level)
+            ? unlockOf("raids").level
+            : undefined,
+        ),
       );
       fitSoon();
       const raidBadge = layer.querySelector<HTMLElement>(

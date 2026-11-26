@@ -49,6 +49,15 @@ describe("the Lobby's Raid card", () => {
     expect(card).toContain('loading="lazy"');
   });
 
+  it("says when raids open while they are locked at your level", () => {
+    expect(lobbyRaidCard("grumblecrag", 2)).toContain(
+      '<span class="lobby-card-kicker">Raid · opens at Lv 2</span>',
+    );
+    expect(lobbyRaidCard("grumblecrag")).toContain(
+      '<span class="lobby-card-kicker">Raid</span>',
+    );
+  });
+
   it("has a painting and a framing point for every boss", () => {
     for (const id of RAID_BOSS_ORDER) {
       const card = lobbyRaidCard(id);
