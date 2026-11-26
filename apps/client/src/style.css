@@ -13164,6 +13164,10 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
     bottom: calc(
       var(--safe-bottom) + var(--combat-cluster-height, 187px) + 16px
     );
+    /* Left of the target button's column: on a squat screen there is no
+       room between the boss bar and the button (it tops the corner
+       layout over skill 3). */
+    right: calc(var(--safe-right) + 72px);
   }
 }
 body.battle-active.touch-mode .battle-dock .practice-settings > summary {
