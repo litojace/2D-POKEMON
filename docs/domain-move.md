@@ -194,3 +194,12 @@ this move doesn't touch how the session is stored.
   `Access-Control-Allow-Origin`; another origin gets 403. The Socket.IO
   handshake from `play.` answers 200. #481 merged with main, out of draft,
   waiting for its full run.
+- 25 Nov, ~5:00 PM PT: the owner added the Supabase Redirect URLs
+  (`play.` and the apex; `parena` kept) and turned on Secure password change
+  / checked Secure email change. Email templates for change email and
+  reauthentication merged (#487); the new email banner (the rest-market
+  loading painting, the owner's pick) merged (#488).
+- 25 Nov, 5:04 PM PT: #481 merged (FULL lane, all green). Step 5 (Static
+  Site `VITE_SITE_URL`, removing `SUPABASE_DB_URL`, the `/sw.js` header)
+  was blocked by this session's permission check and waits for the owner,
+  as do the Supabase Site URL and pasting the four templates.
