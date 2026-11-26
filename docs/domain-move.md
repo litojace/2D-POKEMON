@@ -175,3 +175,8 @@ this move doesn't touch how the session is stored.
   until both are merged and the Static Site has deployed them. Before
   go-live the owner also turns on Supabase "Secure password change" and
   confirms "Secure email change" (Authentication → Providers → Email).
+- 25 Nov, ~4:15 PM PT: the reviewer dropped the "only with #484" rule
+  (website session): #484's `adopt()` moves a session already in
+  local/session storage on `play.` into the cookie at startup. `play.` can
+  go live before #484. The website (live at `https://elementarenausa.com`)
+  points Play at `parena` until then (#485). Waiting for the owner.
