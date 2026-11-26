@@ -52,6 +52,11 @@
     center 42% / cover no-repeat;
   transform: scale(1.04);
 }
+/* The fighter's name behind the stage: only a look that shows it draws it
+   (themes/poster). */
+.lobby-bigname {
+  display: none;
+}
 .lobby-layer::after {
   content: "";
   position: absolute;

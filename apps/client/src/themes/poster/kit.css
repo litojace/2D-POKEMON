@@ -1,0 +1,252 @@
+/* Poster's shared kit: panels, tabs, buttons, tiles, rows, dialogs, toast.
+   Most of the look comes from the tokens (tokens.css); these rules add what
+   a token can't say: the masthead in the element colour, the skewed blocks,
+   the hard offset shadows. */
+
+/* ── panels: an ink board with a masthead in the element colour ── */
+:root[data-ui="poster"] :is(.ui-panel, .ui-modal, .ui-sheet) {
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.45);
+}
+:root[data-ui="poster"] .ui-panel-head {
+  background: var(--el);
+  color: var(--ink);
+  border-bottom: 0;
+}
+:root[data-ui="poster"] .ui-panel-head :is(h1, h2, h3, .ui-title, .ui-h) {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] .ui-panel-head :is(.ui-kicker, small, p) {
+  color: rgba(13, 13, 15, 0.75);
+}
+
+/* ── tabs: Anton capitals; the chosen one is a skewed ink block ── */
+:root[data-ui="poster"] .ui-tabs {
+  border-bottom: 2px solid var(--ink-3);
+}
+:root[data-ui="poster"] .ui-tabs > button {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-tabs {
+  border-bottom: 0;
+  gap: 2px;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-tabs > button {
+  margin: 8px 0;
+  color: rgba(13, 13, 15, 0.62);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-tabs > button[aria-selected="true"] {
+  color: var(--el);
+  background: var(--ink);
+  transform: skewX(-10deg);
+}
+:root[data-ui="poster"]
+  .ui-panel-head
+  .ui-tabs
+  > button[aria-selected="true"]
+  > * {
+  transform: skewX(10deg);
+}
+:root[data-ui="poster"]
+  .ui-panel-head
+  .ui-tabs
+  > button[aria-selected="true"]::after {
+  display: none;
+}
+
+/* ── what sits on the masthead: ink blocks ── */
+:root[data-ui="poster"] .ui-panel-head .ui-icon-btn {
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-icon-btn svg {
+  color: #fff;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-seg {
+  background: var(--ink);
+  border: 0;
+  padding: 3px;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-seg > button {
+  color: #fff;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-chip {
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-chip svg {
+  color: #fff;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-chip[aria-pressed="true"] {
+  background: #fff;
+  color: var(--ink);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-chip[aria-pressed="true"] svg {
+  color: var(--ink);
+}
+
+/* ── buttons ── */
+:root[data-ui="poster"] .ui-btn {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-3);
+  color: #fff;
+  box-shadow: none;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.07em;
+}
+:root[data-ui="poster"] .ui-btn.is-primary {
+  background: var(--el);
+  color: var(--ink);
+  box-shadow: 4px 4px 0 var(--hot);
+  transform: skewX(-8deg);
+}
+:root[data-ui="poster"] .ui-btn.is-primary > * {
+  transform: skewX(8deg);
+}
+:root[data-ui="poster"] .ui-btn.is-ok {
+  background: #3ee07a;
+  color: var(--ink);
+  box-shadow: 4px 4px 0 #000;
+}
+:root[data-ui="poster"] .ui-btn.is-ghost {
+  background: transparent;
+  color: var(--ui-dim);
+  box-shadow: inset 0 0 0 2px var(--ink-3);
+}
+:root[data-ui="poster"] .ui-btn.is-danger {
+  background: transparent;
+  color: #ff6b80;
+  box-shadow: inset 0 0 0 2px rgba(255, 46, 77, 0.6);
+}
+:root[data-ui="poster"] .ui-icon-btn {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-2);
+  box-shadow: none;
+}
+:root[data-ui="poster"] .ui-seg {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .ui-seg > button {
+  border-radius: 0;
+  font-weight: 700;
+}
+:root[data-ui="poster"] .ui-seg > button[aria-pressed="true"] {
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .ui-chip {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-2);
+  color: var(--ui-dim);
+  font-family: var(--font-body);
+  font-weight: 700;
+}
+:root[data-ui="poster"] .ui-chip[aria-pressed="true"] {
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .ui-chip[aria-pressed="true"] svg {
+  color: var(--ink);
+}
+
+/* ── tiles, rows, tags, bars ── */
+:root[data-ui="poster"] .ui-tile {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-2);
+  box-shadow: none;
+}
+:root[data-ui="poster"]
+  .ui-tile:is([aria-pressed="true"], .is-selected, [aria-current="true"]) {
+  box-shadow:
+    inset 0 0 0 3px var(--el),
+    5px 5px 0 var(--el);
+}
+:root[data-ui="poster"] .ui-tile-art {
+  border-radius: 0;
+}
+:root[data-ui="poster"] :is(.ui-tile-name, .ui-tile-foot b) {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] .ui-row {
+  border: 0;
+  border-left: 4px solid var(--ink-3);
+  border-radius: 0;
+  background: var(--ink-1);
+}
+:root[data-ui="poster"] :is(.ui-tag, .ui-badge) {
+  border-radius: 0;
+  font-family: var(--font-body);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+:root[data-ui="poster"] :is(.ui-bar, progress) {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .ui-panel-foot {
+  background: var(--ink-1);
+  border-top: 0;
+}
+
+/* ── headings and kickers anywhere in a panel ── */
+:root[data-ui="poster"] :is(.ui-panel :is(h2, h3, h4), .ui-h, .ui-title) {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+:root[data-ui="poster"] .ui-kicker {
+  font-family: var(--font-body);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--el);
+}
+
+/* ── toast ── */
+:root[data-ui="poster"] #toast {
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+  border-left: 6px solid var(--el);
+  border-radius: 0;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.35);
+  font-family: var(--font-body);
+  font-weight: 700;
+}
+
+/* Close always sits over a scrolled tab row. */
+:root[data-ui="poster"] .ui-icon-btn.ui-close {
+  z-index: 3;
+}
+
+/* A switch on the masthead (Shop | Wardrobe, Everyone | Friends): a skewed
+   ink block; the chosen half is the element colour. */
+:root[data-ui="poster"] .ui-panel-head .ui-seg {
+  transform: skewX(-10deg);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-seg > button {
+  transform: skewX(10deg);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-seg > button[aria-pressed="true"] {
+  transform: none;
+}
