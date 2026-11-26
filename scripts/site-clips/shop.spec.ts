@@ -1,24 +1,37 @@
 /**
- * The website's Shop showcase (docs/website.md): the game's own Shop, at two
- * device pixels, with a Legendary and Mythical skins, a victory effect and
- * the Shop's front page. Each item is tried on in the fitting room and its
- * stage captured (as tests/visual/shop-spotlight.spec.ts opens it).
- * Writes site-clips/shop/<name>.png; apps/site/tools/make-scenes.py crops them.
+ * The website's Shop spotlight (docs/website.md): the game's own fitting
+ * room, each piece tried on and its stage recorded for a few seconds as it
+ * plays (the idle, the effect blooming), on a large screen. The stage
+ * animates in real time, so each frame's time is written beside it and
+ * apps/site/tools/make-shop.py builds a loop with the real timing.
+ *
+ *   npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/shop.spec.ts
+ *
+ * Writes site-clips/shop/<name>/NNN.jpg (the whole page), times.json and
+ * box.json (the stage's place on the page, in CSS pixels).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { openHub } from "../../tests/visual/helpers";
 import { exposeAccount, shopServer } from "../../tests/visual/shop-server";
 
 const OUT = "site-clips/shop";
-/** name: the fighter, the Shop tab, the item tried on. */
-const ITEMS: [name: string, champion: string, section: string, item: string][] =
-  [
-    ["legendary", "pyranda", "skins", "pyranda-nova-vanguard"],
-    ["hellforge", "cindrake", "skins", "cindrake-sunforged"],
-    ["reaver", "tidefin", "skins", "tidefin-moontide"],
-    ["victory", "voltkit", "collections", "borealis-victory"],
-  ];
+/** How long each piece is recorded, in ms. */
+const SPAN = 3600;
+/** name: the fighter, the Shop tab, the piece tried on (gen-data's SHOWCASE). */
+export const ITEMS: [
+  name: string,
+  champion: string,
+  section: string,
+  item: string,
+][] = [
+  ["cinder-medic", "pyranda", "skins", "pyranda-nova-vanguard"],
+  ["storm-corsair", "voltkit", "skins", "voltkit-sky-pirates"],
+  ["sun-sovereign", "sunbara", "skins", "sunbara-sun-dynasty"],
+  ["hellforge", "cindrake", "skins", "cindrake-sunforged"],
+  ["abyssal-reaver", "tidefin", "skins", "tidefin-moontide"],
+  ["sky-curtain", "voltkit", "collections", "borealis-victory"],
+];
 
 async function open(page: Page, champion: string) {
   await exposeAccount(page);
@@ -36,8 +49,10 @@ async function open(page: Page, champion: string) {
 for (const [name, champion, section, item] of ITEMS)
   test(`shop ${name}`, async ({ browser }) => {
     const context = await browser.newContext({
-      viewport: { width: 1280, height: 800 },
-      deviceScaleFactor: 2,
+      // A large screen at one device pixel: the screencast sends CSS pixels,
+      // so the stage itself is drawn big instead.
+      viewport: { width: 1600, height: 1000 },
+      deviceScaleFactor: 1,
     });
     try {
       const page = await context.newPage();
@@ -46,41 +61,56 @@ for (const [name, champion, section, item] of ITEMS)
         await page.click(`[data-ui-section=${section}]`);
         // A set's pieces show once its collection is picked (galaxy-aura: galaxy).
         await page.click(`[data-fit-collection=${item.split("-")[0]}]`);
+      } else {
+        // The piece's collection may be further along the Skins tab.
+        await page
+          .locator(`.fit-room [data-ui-item="${item}"]`)
+          .scrollIntoViewIfNeeded();
       }
       await page.click(`.fit-room [data-ui-item="${item}"]`);
-      mkdirSync(OUT, { recursive: true });
-      // The picture is the stage alone: no Entrance / Victory / Your look buttons.
+      // The picture is the stage alone: no Entrance / Victory / Your look
+      // buttons, no name or price strip.
       await page.addStyleTag({
-        content: ".fit-plays { visibility: hidden !important; }",
+        content:
+          ".fit-plays, .fit-stage-foot, .fit-stage-info { visibility: hidden !important; }",
       });
-      // Let the try-on settle, then catch its effect over a few seconds
-      // (an effect blooms and fades): make-scenes.py keeps the busiest.
       await page.waitForTimeout(1200);
-      const takes = section === "skins" ? 1 : 10;
-      for (let i = 0; i < takes; i++) {
-        await page.locator(".fit-stage").screenshot({
-          path: `${OUT}/${name}${takes > 1 ? `-${i}` : ""}.png`,
-        });
-        await page.waitForTimeout(350);
-      }
+      const box = (await page.locator(".fit-stage").boundingBox())!;
+      const dir = `${OUT}/${name}`;
+      mkdirSync(dir, { recursive: true });
+      // Chrome's screencast: every frame the page paints, with its time
+      // (a screenshot per frame manages only about three a second).
+      const cdp = await context.newCDPSession(page);
+      const times: number[] = [];
+      let first = 0;
+      let f = 0;
+      cdp.on("Page.screencastFrame", async (e: any) => {
+        const t = e.metadata.timestamp * 1000;
+        if (!first) first = t;
+        if (t - first <= SPAN) {
+          writeFileSync(
+            `${dir}/${String(f++).padStart(3, "0")}.jpg`,
+            Buffer.from(e.data, "base64"),
+          );
+          times.push(Math.round(t - first));
+        }
+        await cdp
+          .send("Page.screencastFrameAck", { sessionId: e.sessionId })
+          .catch(() => {});
+      });
+      await cdp.send("Page.startScreencast", {
+        format: "jpeg",
+        quality: 92,
+        everyNthFrame: 1,
+        // Device pixels, not CSS pixels: a sharp stage.
+        maxWidth: 2560,
+        maxHeight: 1600,
+      });
+      await page.waitForTimeout(SPAN + 600);
+      await cdp.send("Page.stopScreencast");
+      writeFileSync(`${dir}/box.json`, JSON.stringify(box));
+      writeFileSync(`${dir}/times.json`, JSON.stringify(times));
     } finally {
       await context.close();
     }
   });
-
-test("shop front page", async ({ browser }) => {
-  const context = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-    deviceScaleFactor: 2,
-  });
-  try {
-    const page = await context.newPage();
-    await open(page, "cindrake");
-    await page.click("[data-ui-section=today]");
-    await page.waitForTimeout(2500);
-    mkdirSync(OUT, { recursive: true });
-    await page.locator(".fit-room").screenshot({ path: `${OUT}/front.png` });
-  } finally {
-    await context.close();
-  }
-});

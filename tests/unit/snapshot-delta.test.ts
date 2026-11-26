@@ -100,6 +100,32 @@ describe("a delta rebuilds exactly the snapshot it stands for", () => {
     const a = fight(createSpireArena("DELTA3", zone), 1);
     roundTrip(a, 900);
   });
+  it("Tidelotl's bubble roots (raid.rooted) come and go as changes", () => {
+    // The server writes the record in place and drops a root as it
+    // expires (raid-tidewyrm.ts): the delta must carry both.
+    const a = fight(createRaidArena("DELTA5", "tidewyrm"), 2);
+    const encoder = new SnapshotDeltaEncoder();
+    const decoder = new SnapshotDeltaDecoder();
+    const seen = { two: 0, gone: 0 };
+    let tick = 0;
+    for (const wire of wires(a, 150)) {
+      const expected = parsed(wire);
+      const d = encoder.encode(wire);
+      if (!d) decoder.full(sent(wire));
+      else
+        expect(
+          decoder.delta(sent({ code: wire.code, n: wire.n!, d })),
+        ).toStrictEqual(expected);
+      const roots = Object.keys(expected.raid?.rooted ?? {}).length;
+      if (roots === 2) seen.two++;
+      if (seen.two && !expected.raid?.rooted) seen.gone++;
+      tick++;
+      if (tick === 10) (a.raid.rooted ??= {}).p1 = a.time + 0.8;
+      if (tick === 16) (a.raid.rooted ??= {}).p2 = a.time + 0.4;
+    }
+    expect(seen.two).toBeGreaterThan(0);
+    expect(seen.gone).toBeGreaterThan(0);
+  });
   it("a whole match: lobby, countdown, rounds, results", () => {
     const a = new Arena("DELTA4", "duel");
     a.add("p1", "One", "voltkit");
