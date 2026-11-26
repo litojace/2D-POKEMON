@@ -1766,6 +1766,14 @@ body.battle-active.touch-mode {
 .battle-active #pwa-banner button {
   display: none;
 }
+/* Over a whole-screen sheet (the Reveal, the break, the rites, the results;
+   overlay.ts marks body[data-battle-overlay]) the note waits: the sheet's buttons are
+   along the bottom, and the note covered Change fighter and Share result on
+   a phone's results (25 Nov 2026). It says "after this match", and back in
+   the Lobby the update asks in full anyway. */
+body.battle-active[data-battle-overlay] #pwa-banner {
+  display: none;
+}
 @property --cooldown {
   syntax: "<percentage>";
   inherits: false;
