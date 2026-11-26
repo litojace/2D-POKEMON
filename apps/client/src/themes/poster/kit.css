@@ -22,6 +22,14 @@
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
+/* A player's name as a title (the Profile): one line, cut with "…" if it
+   must be, with room above the capitals for Vietnamese marks. */
+:root[data-ui="poster"] .ui-panel-head .ui-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+}
 :root[data-ui="poster"] .ui-panel-head :is(.ui-kicker, small, p) {
   color: rgba(13, 13, 15, 0.75);
 }
@@ -249,4 +257,12 @@
 }
 :root[data-ui="poster"] .ui-panel-head .ui-seg > button[aria-pressed="true"] {
   transform: none;
+}
+
+/* The title keeps its width (up to under half the masthead) and the tabs
+   beside it scroll: Anton sets a name wider than the look underneath does,
+   and a name cut to "NGUYỄN HỒNG …" is worse than a tab to swipe to. */
+:root[data-ui="poster"] .ui-panel-head > .ui-heading {
+  flex: 0 0 auto;
+  max-width: 46%;
 }

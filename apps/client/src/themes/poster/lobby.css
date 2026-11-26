@@ -88,9 +88,12 @@
   color: #fff;
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 19px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  /* Room above the capitals for Vietnamese marks (NGUYỄN, HỒNG): the name
+     is cut to its box, and the margin takes the room back. */
+  padding-top: 0.34em;
+  margin-top: -0.34em;
 }
 :root[data-ui="poster"] body.hub-active .nav-title {
   color: #bbb;
