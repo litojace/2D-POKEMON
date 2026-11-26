@@ -224,3 +224,8 @@ this move doesn't touch how the session is stored.
   without the code. The Change email address subject is still Supabase's
   default ("Confirm your new email address"); ours, "Confirm your new
   Element Arena email", is optional.
+- 25 Nov, ~6:05 PM PT: the owner asked (via the coordinator) to delete the
+  test account. Deleted through the game's own flow
+  (`POST /api/account/delete`, `{"ok":true}`); its password no longer
+  signs in, and a check finds no row for it in `auth.users`,
+  `auth.identities` or any of the 46 player-keyed `public.arena_*` columns.
