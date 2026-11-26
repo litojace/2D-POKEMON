@@ -819,6 +819,27 @@
     bottom: calc(max(14px, var(--safe-bottom, 0px)) + 88px + 10px);
   }
 }
+/* The update ask (pwa.ts: Update now, Later) heads the row under the
+   header, over the event pill. At the bottom, placed beside the Lobby's
+   PLAY, it covered the action button left of Dash and Jump (Fish, Take
+   photo, Volt Boba, the map, the leaderboard) on phones and tablets alike,
+   and the joystick's half of the screen leaves no room beside that button
+   (26 Nov 2026). It asks only with nothing open (pwa.ts) and no lap's
+   timer under the pill (plaza-scene.ts syncBusy), so the pill is all it
+   hides until answered. */
+body.hub-plaza #pwa-banner:has(.pwa-actions:not([hidden])) {
+  top: calc(var(--hub-top, 10px) + var(--hub-card-h, 52px) + 12px);
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+@media (max-height: 500px) {
+  /* The phone row's gap (.plaza-layer.phone --hud-gap). */
+  body.hub-plaza #pwa-banner:has(.pwa-actions:not([hidden])) {
+    top: calc(var(--hub-top, 10px) + var(--hub-card-h, 42px) + 10px);
+  }
+}
 .plaza-layer {
   /* The prototype's colour tokens the Plaza uses that the game doesn't define. */
   --dim: var(--ui-dim);

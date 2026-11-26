@@ -2519,12 +2519,17 @@ export function openPlaza(options) {
   // Any of the Plaza's own screens open (map, album, Fish book, a player's
   // card, the photo, a pair request) or fishing in any phase: the update
   // ask would cover its buttons (a bite you can't reel in), so it waits,
-  // as it does for a Lobby screen. Read from the DOM on a change, never
-  // per frame.
+  // as it does for a Lobby screen. So it does while a lap's timer shows:
+  // the ask heads the row under the header (plaza.css), over the timer.
+  // Read from the DOM on a change, never per frame (so the per-frame
+  // updates write `hidden` only when it changes: each write was a change).
   const BUSY_OPEN =
     "[role=dialog]:not([hidden]), [role=alertdialog]:not([hidden])";
   function syncBusy() {
-    const busy = fishing.active || !!layer.querySelector(BUSY_OPEN);
+    const busy =
+      fishing.active ||
+      !!layer.querySelector(BUSY_OPEN) ||
+      !$("pz-timer").hidden;
     if (layer.hasAttribute(HUB_BUSY_ATTR) === busy) return;
     layer.toggleAttribute(HUB_BUSY_ATTR, busy);
     document.dispatchEvent(new Event(HUB_BUSY_EVENT));
@@ -3311,7 +3316,7 @@ export function openPlaza(options) {
     }
     if (lapState && !inLapLane(P.x, P.y)) lapLeft = lapState[0];
     if (!lapState || lapState[0] === lapLeft) {
-      el.hidden = true;
+      if (!el.hidden) el.hidden = true;
       return;
     }
     const t = Math.max(0, (serverNow() - lapState[0]) / 1000);
@@ -6215,8 +6220,8 @@ export function openPlaza(options) {
           ib.dataset.id = near.id;
           ib.innerHTML = `${I(near.icon)}<span>${near.label}</span><kbd>E</kbd>`;
         }
-        ib.hidden = false;
-      } else {
+        if (ib.hidden) ib.hidden = false;
+      } else if (!ib.hidden) {
         ib.hidden = true;
         ib.dataset.id = "";
       }
