@@ -24,11 +24,24 @@
 :root[data-ui="showcase"] :is(.ui-panel, .ui-modal) {
   box-shadow: var(--shadow-2);
 }
-/* The tokens already say "no blur"; a few older rules name a blur
-   themselves (the purchase scrim's 2 px). */
-:root[data-ui="showcase"] .ui-scrim {
+/* Nothing is blurred in this look. The tokens (--glass-blur, --aero-blur:
+   none) switch off every blur that reads them; these are the ones the
+   default look writes by value. */
+:root[data-ui="showcase"] .ui-scrim,
+:root[data-ui="showcase"] dialog::backdrop,
+:root[data-ui="showcase"] .lobby-layer .lobby-emote-bubble.is-line,
+:root[data-ui="showcase"] .gate-card,
+:root[data-ui="showcase"] body:not(.battle-active) .topbar,
+:root[data-ui="showcase"] body:not(.battle-active)::before {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+/* Unblurred, what was frosted glass turns solid so its words still read. */
+:root[data-ui="showcase"] .lobby-layer .lobby-emote-bubble.is-line,
+:root[data-ui="showcase"] .gate-card,
+:root[data-ui="showcase"] body:not(.battle-active) .topbar,
+:root[data-ui="showcase"] body:not(.battle-active)::before {
+  background: var(--sc-panel);
 }
 :root[data-ui="showcase"] .ui-panel-head:has(.ui-tabs) {
   border-bottom: 0;

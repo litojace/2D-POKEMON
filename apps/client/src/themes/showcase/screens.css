@@ -144,9 +144,19 @@
 }
 
 /* -------------------------------------------------------- fighters */
-:root[data-ui="showcase"] .roster-card-text,
-:root[data-ui="showcase"] .roster-card-text > :is(b, span, strong) {
-  font-weight: 800;
+/* A card's name in title case, never cut: the widest ("Wombolder") is
+   5.7 em in Rubik ExtraBold, so the size is the smaller of the look's own
+   and what the card's width allows (cards are narrowest in a raid's room). */
+:root[data-ui="showcase"] .roster-card-text {
+  container-type: inline-size;
+}
+:root[data-ui="showcase"] .roster-card-name {
+  font-size: min(calc(22px * var(--text-scale, 1)), 16.9cqw);
   letter-spacing: 0;
   text-transform: none;
+}
+@media (max-height: 500px) {
+  :root[data-ui="showcase"] .roster-card-name {
+    font-size: min(calc(15px * var(--text-scale, 1)), 16.9cqw);
+  }
 }
