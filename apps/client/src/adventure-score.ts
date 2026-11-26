@@ -1,8 +1,9 @@
-import type { BackgroundTheme } from "./music-score";
+import type { BackgroundTheme, ResultTheme } from "./music-score";
 
 /**
  * Each scene's tune: its melody (sixteenth-note positions, lengths in
- * beats), chords and form. retro-score.ts arranges them for the chip.
+ * beats), chords and form, and the results' jingles. pro-score.ts arranges
+ * them.
  */
 
 export const ADVENTURE_LOOP_STEPS = 48 * 16;
@@ -218,3 +219,48 @@ export const melodies: Record<BackgroundTheme, MelodyNote[][]> = {
 export const sections = [0, 1, 2, 3, 1, 0];
 export const shift = (note: string, octaves: number) =>
   note.replace(/\d$/, (n) => String(Number(n) + octaves));
+
+// Victory, defeat and draw: four, three and two bars.
+const phrase = (notes: string) =>
+  notes.split(" ").map((n) => (n === "-" ? "" : n));
+/** The results' chords, a bar each. */
+export const resultChords: Record<ResultTheme, string[][]> = {
+  victory: [
+    ["D4", "F#4", "A4"],
+    ["G3", "B3", "D4"],
+    ["A3", "C#4", "E4", "G4"],
+    ["D4", "F#4", "A4", "E5"],
+  ],
+  defeat: [
+    ["B3", "D4", "F#4"],
+    ["E3", "G3", "B3", "D4"],
+    ["B3", "D4", "F#4", "C#5"],
+  ],
+  draw: [
+    ["D4", "A4", "E5"],
+    ["G3", "A3", "D4"],
+  ],
+};
+/** The results' tunes, a sixteenth a slot ("" holds). */
+export const resultMelody: Record<ResultTheme, string[][]> = {
+  victory: [
+    phrase("D5 - F#5 - A5 - - - B5 - A5 - F#5 - E5 -"),
+    phrase("G5 - B5 - D6 - - - B5 - A5 - G5 - - -"),
+    phrase("A5 - - - E5 - F#5 - G5 - E5 - C#5 - E5 -"),
+    phrase("D6 - - - A5 - - - D5 - - - - - - -"),
+  ],
+  defeat: [
+    phrase("F#4 - - - E4 - - - D4 - - - C#4 - - -"),
+    phrase("B3 - - - D4 - - - E4 - - - F#4 - - -"),
+    phrase("D4 - - - C#4 - - - B3 - - - - - - -"),
+  ],
+  draw: [
+    phrase("A4 - - - D5 - - - E5 - - - - - - -"),
+    phrase("D5 - - - A4 - - - - - - - - - - -"),
+  ],
+};
+export const resultBass: Record<ResultTheme, string[]> = {
+  victory: ["D3", "G2", "A2", "D3"],
+  defeat: ["B2", "E2", "B2"],
+  draw: ["D3", "G2"],
+};

@@ -1,13 +1,11 @@
 import {
   MUSIC_BPM,
   MUSIC_LOOP_STEPS,
-  PRO_THEMES,
   scoreStep,
   isResultTheme,
   RESULT_MUSIC_STEPS,
   type MusicTheme,
 } from "./music-score";
-import { MusicSynth } from "./music-synth";
 import { ProSynth } from "./pro-synth";
 import { CourtAmbience } from "./court-ambience";
 import type { CourtId } from "./arena-courts";
@@ -21,8 +19,8 @@ import {
   type SoundCall,
   type SoundView,
 } from "./battle-sounds";
-export { noteHz } from "./music-synth";
-// A retro soundtrack (retro-score.ts) and synthesized combat effects
+export { hz as noteHz } from "./pro-synth";
+// A synthesized soundtrack (pro-score.ts) and combat effects
 // (sfx-recipes.ts): no audio files.
 /**
  * The music bus: the slider's level times this. It was 0.5 with a 12%
@@ -64,14 +62,9 @@ export class AudioManager {
   timer?: ReturnType<typeof setInterval>;
   private musicBus?: GainNode;
   private scoreBus?: GainNode;
-  private synth?: MusicSynth | ProSynth;
-  /** The hub and PvP play the produced voices, the rest the chip's. */
+  private synth?: ProSynth;
   private themeSynth(theme: MusicTheme, bus: GainNode) {
-    const ctx = this.context!,
-      bpm = MUSIC_BPM[theme];
-    return PRO_THEMES.has(theme)
-      ? new ProSynth(ctx, bus, this.noise!, bpm)
-      : new MusicSynth(ctx, bus, this.noise!, bpm);
+    return new ProSynth(this.context!, bus, this.noise!, MUSIC_BPM[theme]);
   }
   private theme: MusicTheme = "lobby";
   private phase = 1;
