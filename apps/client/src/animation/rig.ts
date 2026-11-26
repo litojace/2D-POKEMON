@@ -184,18 +184,32 @@ export class FighterRig {
   /** Height/width of the ground plane skin rings lie on. The fitting room's
    * floor is flatter than the arena's, so its preview sets its own. */
   groundFlat: number = WORLD_ART.groundY;
+  /** The given layers by key, and the suffix of their look. */
+  private layers = new Map<string, RigAsset>();
+  private layersSuffix = "";
+  /**
+   * `assets` may be a Shop skin's set (its keys end in the skin's suffix):
+   * the rig then starts in it, and the battle needn't load the champion's
+   * own look for a fighter who never shows it. A part's joint is the same
+   * in every look; a costume's wider crop moves only its texture's origin,
+   * which the images take from the texture (sizeByResolution).
+   */
   constructor(
     private scene: Phaser.Scene,
     readonly character: CharacterId,
-    private assets: RigAsset[],
+    assets: RigAsset[],
   ) {
+    const body = rigKey(character, "down", "body");
+    this.layersSuffix = this.suffix =
+      assets
+        .find((a) => a.key.startsWith(body) && !a.key.includes("~lume-"))
+        ?.key.slice(body.length) ?? "";
+    for (const a of assets) this.layers.set(a.key, a);
     this.root = scene.add.container(0, 0).setDepth(2);
     this.effects = battleCurves(scene.add.graphics()).setDepth(3);
     this.under = battleCurves(scene.add.graphics()).setDepth(1.9);
     for (const part of partsFor(character)) {
-      const asset = assets.find(
-        (a) => a.key === rigKey(character, "down", part),
-      )!;
+      const asset = this.layer("down", part)!;
       const image = sizeByResolution(
         scene.add.image(asset.x, asset.y, asset.key),
       )
@@ -206,6 +220,12 @@ export class FighterRig {
     }
     this.blinkAt = scene.time.now + 3000 + Math.random() * 4000;
     this.tiltAt = scene.time.now + 4000 + Math.random() * 3000;
+  }
+  /** The layer of a part in a facing, from the set the rig was given. */
+  private layer(dir: Facing, part: Part) {
+    return this.layers.get(
+      rigKey(this.character, dir, part, this.layersSuffix),
+    );
   }
   trigger(
     state: AnimationState,
@@ -336,9 +356,7 @@ export class FighterRig {
         this.root.moveTo(this.images.get(part)!, index),
       );
       for (const [part, image] of this.images) {
-        const asset = this.assets.find(
-          (a) => a.key === rigKey(this.character, dir, part),
-        )!;
+        const asset = this.layer(dir, part)!;
         const key = rigKey(this.character, dir, part, this.suffix);
         // The worn texture's own pivot: a costume's crop can be wider.
         const [ox, oy] = artOrigins.get(key) ?? [asset.originX, asset.originY];
@@ -399,9 +417,7 @@ export class FighterRig {
       scarf = this.images.get("scarf")!;
     this.root.setPosition(x, y).setAlpha(alpha).setAngle(0);
     for (const [part, image] of this.images) {
-      const asset = this.assets.find(
-        (a) => a.key === rigKey(this.character, dir, part),
-      )!;
+      const asset = this.layer(dir, part)!;
       image
         .setPosition(asset.x, asset.y)
         .setRotation(0)
@@ -823,9 +839,7 @@ export class FighterRig {
         this.images.get(part)!.rotation *= -1;
       }
       for (const part of ["armL", "armR"] as Part[]) {
-        const asset = this.assets.find(
-          (a) => a.key === rigKey(this.character, dir, part),
-        )!;
+        const asset = this.layer(dir, part)!;
         const image = this.images.get(part)!;
         image.x = 2 * asset.x - image.x;
       }
@@ -942,7 +956,7 @@ export class FighterRig {
     if (dir === "up" && REAR_ARMS_MIRRORED.has(this.character))
       for (const part of ["armL", "armR"] as const) {
         const image = this.images.get(part);
-        const asset = this.assets.find((a) => a.key === rigKey(this.character, dir, part));
+        const asset = this.layer(dir, part);
         if (!image || !asset) continue;
         image.x = 2 * asset.x - image.x;
         image.rotation = -image.rotation;
@@ -1541,9 +1555,7 @@ export class FighterRig {
       : undefined;
     const sc = this.baseX;
     const screenPoint = (part: Part, p: { x: number; y: number }) => {
-      const asset = this.assets.find(
-        (a) => a.key === rigKey(this.character, dir, part),
-      )!;
+      const asset = this.layer(dir, part)!;
       const image = this.images.get(part)!;
       const dx = ((p.x - asset.x) * image.scaleX) / 0.5,
         dy = ((p.y - asset.y) * image.scaleY) / 0.5;

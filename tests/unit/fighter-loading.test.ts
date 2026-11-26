@@ -1,7 +1,8 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   FighterLoading,
   neededFighters,
+  neededLooks,
 } from "../../apps/client/src/animation/fighter-loading";
 import type { RigAsset } from "../../apps/client/src/animation/assets";
 import type { CharacterId } from "../../packages/shared/src/index";
@@ -129,4 +130,64 @@ it("art that arrives after giving up is used", () => {
   textures.add("voltkit-1");
   expect(loading.hasArt("voltkit")).toBe(true);
   expect(loading.gaveUp("voltkit")).toBe(false);
+});
+
+describe("the looks a battle loads", () => {
+  // Like assets.ts skinSuffix: "" for the champion's own look.
+  const suffix = (_c: CharacterId, look: { skin: string } | null) =>
+    look?.skin.startsWith("no-art") ? "" : look ? `~${look.skin}` : "";
+  const names = (
+    fighters: { character: CharacterId; look: { skin: string } | null }[],
+  ) => [...neededLooks(fighters, suffix).keys()];
+
+  it("loads a fighter in a skin in that skin only, not its champion's own look as well", () => {
+    expect(
+      names([
+        { character: "voltkit", look: { skin: "voltkit-wayfarer" } },
+        { character: "tidefin", look: null },
+      ]),
+    ).toEqual(["voltkit~voltkit-wayfarer", "tidefin"]);
+  });
+
+  it("loads the champion's own look for whoever shows it (a mirror match, a Spire Echo)", () => {
+    expect(
+      names([
+        { character: "voltkit", look: { skin: "voltkit-wayfarer" } },
+        { character: "voltkit", look: null },
+        { character: "voltkit", look: { skin: "voltkit-moonlit-tea" } },
+        { character: "voltkit", look: { skin: "voltkit-wayfarer" } },
+      ]),
+    ).toEqual([
+      "voltkit~voltkit-wayfarer",
+      "voltkit",
+      "voltkit~voltkit-moonlit-tea",
+    ]);
+  });
+
+  it("treats a skin that draws nothing of its own as the champion's look", () => {
+    const looks = neededLooks(
+      [{ character: "voltkit", look: { skin: "no-art" } }],
+      suffix,
+    );
+    expect([...looks]).toEqual([
+      ["voltkit", { character: "voltkit", look: null }],
+    ]);
+  });
+
+  it("keys the loader by look", () => {
+    const textures = new Set<string>();
+    const loading = new FighterLoading<string>({
+      build: (name) => [{ key: `rig-${name}` } as RigAsset],
+      keys: (_name, layers) => layers.map((a) => a.key),
+      exists: (key) => textures.has(key),
+    });
+    expect(loading.toRequest(["voltkit~voltkit-wayfarer", "tidefin"])).toEqual([
+      "voltkit~voltkit-wayfarer",
+      "tidefin",
+    ]);
+    textures.add("rig-voltkit~voltkit-wayfarer");
+    loading.settled();
+    expect(loading.isReady("voltkit~voltkit-wayfarer")).toBe(true);
+    expect(loading.isReady("voltkit")).toBe(false);
+  });
 });
