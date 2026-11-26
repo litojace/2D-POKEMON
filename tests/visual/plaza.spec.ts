@@ -583,7 +583,22 @@ test("a gift box flies, bursts open, and its orbs are for the others", async ({
   // Someone else's box: walk onto an orb and it's yours, counted as an orb.
   // (Out of reach of where it lands, so none is caught before we look.)
   await teleport(page, PLAZA_FOUNTAIN.x + 420, PLAZA_FOUNTAIN.y + 300);
-  await page.evaluate(
+  // An orb leaves its box caught (the server names who caught it) or
+  // faded with the box, PLAZA_GIFT.lastsMs after the toss (nobody, 0).
+  // Count catches from what the server sends, not from the orbs left in the
+  // box: on a slow runner the box faded before the check, and its orbs read
+  // as caught ("Expected 0, Received -2", #477's full run).
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__giftGone = [];
+    w.__sock.on("plaza-gift-gone", (gone: number[][]) =>
+      w.__giftGone.push(...gone),
+    );
+  });
+  const refsBefore = await page.evaluate(
+    () => ((window as any).__plazaOrbRefs ?? []).length as number,
+  );
+  const thrower = await page.evaluate(
     ([x, y]) => (window as any).__plazaOtherGift(x, y),
     [PLAZA_FOUNTAIN.x - 10, PLAZA_FOUNTAIN.y + 300],
   );
@@ -595,15 +610,29 @@ test("a gift box flies, bursts open, and its orbs are for the others", async ({
   const [, tx, ty] = theirs.orbs[0];
   await teleport(page, tx, ty);
   // Caught (that one, and any other within reach), each counted as an orb.
-  const left = async () =>
-    (await list()).find((g) => g.id === theirs.id)?.orbs.length ?? 0;
-  await expect.poll(left).toBeLessThan(theirs.orbs.length);
+  const catches = () =>
+    page.evaluate(
+      ([box, thrower, refsBefore]) => {
+        const w = window as any,
+          gone = (w.__giftGone as number[][]).filter(([id]) => id === box);
+        return {
+          caught: gone.filter(([, , who]) => who && who !== thrower).length,
+          faded: gone.some(([, , who]) => !who),
+          counted: ((w.__plazaOrbRefs ?? []).length as number) - refsBefore,
+        };
+      },
+      [theirs.id, thrower, refsBefore],
+    );
   await expect
     .poll(async () => {
-      const refs = await page.evaluate(
-        () => ((window as any).__plazaOrbRefs ?? []).length,
-      );
-      return refs - (PLAZA_GIFT.orbs - (await left()));
+      const c = await catches();
+      return c.caught ? "caught" : c.faded ? "faded before a catch" : "none";
+    })
+    .toBe("caught");
+  await expect
+    .poll(async () => {
+      const c = await catches();
+      return c.counted - c.caught;
     })
     .toBe(0);
   // A golden box: T tosses it, once the cooldown has passed.
