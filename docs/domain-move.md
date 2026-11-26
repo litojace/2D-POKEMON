@@ -42,9 +42,12 @@ first").
   not the game's domain. No Apple change is needed for the web. Supabase sends
   players back to the `redirectTo` the game asks for, which must be allowed in
   Supabase's Redirect URLs.
-- **Email addresses** (`privacy@litojace.com`, `noreply@mail.litojace.com`)
-  stay: mail runs through Cloudflare Email Routing and Resend on
-  `litojace.com`, which this move doesn't touch.
+- **Email addresses** moved too (owner, 25 Nov): `privacy@elementarenausa.com`
+  (Cloudflare Email Routing on `elementarenausa.com`, forwarding to the
+  owner, as `privacy@` on `litojace.com` did) and
+  `noreply@mail.elementarenausa.com` (Resend, for Supabase's auth emails).
+  The `litojace.com` addresses keep working until they are retired (old
+  iPhone builds and old emails still show them).
 
 ## Order of the move
 
@@ -303,3 +306,14 @@ this move doesn't touch how the session is stored.
   in 14 days, 1 in 3 days; of the 5, 3 with some progress and 1 with real
   progress (7 Shop items). Checks in step 11. #506 (the move dialog) is on
   hold: nobody loads the game on `parena` now.
+- 25 Nov, evening: **the game's email moves to `elementarenausa.com`**, with
+  the owner's OK here ("đồng ý"). Cloudflare Email Routing is on for
+  `elementarenausa.com` (MX, SPF, DKIM added by Cloudflare) with
+  `privacy@elementarenausa.com` forwarding to the owner. Resend has the
+  sending domain `mail.elementarenausa.com` (DKIM, return path `send.mail`,
+  `rsend.mail`), and `_dmarc.elementarenausa.com` is `v=DMARC1; p=none;`.
+  The server's `PUSH_CONTACT` is `mailto:privacy@elementarenausa.com`. The
+  privacy and support pages, the website and the push fallback show the new
+  address. Supabase's SMTP sender changes to
+  `noreply@mail.elementarenausa.com` in the dashboard (owner). Kept for now:
+  `privacy@litojace.com`'s forwarding and the `litojace.com` Resend domains.
