@@ -1,7 +1,7 @@
 # Auth email templates
 
 Branded HTML for the emails Supabase Auth sends (through Resend, from
-`Element Arena <noreply@mail.litojace.com>`). Supabase does not read these
+`Element Arena <noreply@mail.elementarenausa.com>`). Supabase does not read these
 files: paste each one into **Supabase → Authentication → Emails → Templates**.
 
 | Template in Supabase | Subject | File |
