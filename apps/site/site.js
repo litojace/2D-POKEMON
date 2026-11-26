@@ -108,6 +108,7 @@
     };
     const byDay = (n) => days.findIndex((d) => +d.dataset.day === n);
     let today = -1;
+    let picked = false;
     const next = $(".raid-next");
     const tick = () => {
       const t = now();
@@ -120,9 +121,12 @@
         $(".d", days[i]).textContent = "Today";
         if (today >= 0)
           $(".d", days[today]).textContent = WEEK[days[today].dataset.day];
+        // A visitor still on the day the page opened with follows the new one.
+        if (today >= 0 && !picked) show(i);
         today = i;
       }
-      const left = Math.ceil((86400 - t.secs) / 60);
+      // Minutes to midnight (a DST day is an hour off, once or twice a year).
+      const left = Math.max(1, Math.floor((86400 - t.secs) / 60));
       $(".raid-next-name", next).textContent = $(
         ".n",
         days[byDay((t.day + 1) % 7)],
@@ -146,7 +150,9 @@
     }
     $(".raid-days").addEventListener("click", (e) => {
       const d = e.target.closest(".day");
-      if (d) show(days.indexOf(d));
+      if (!d) return;
+      picked = true;
+      show(days.indexOf(d));
     });
     $(".raid-days").addEventListener("keydown", (e) => {
       const i = days.indexOf(document.activeElement);
@@ -159,6 +165,7 @@
       }[e.key];
       if (to === undefined) return;
       e.preventDefault();
+      picked = true;
       show(to, true);
     });
   }
