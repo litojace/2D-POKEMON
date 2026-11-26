@@ -384,6 +384,8 @@ type Emit = (p: FxParticle) => void;
 /** Eclipse finale: when the moon covers the sun (seconds into the finale). */
 export const ECLIPSE_TOTALITY = 1.3;
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
+/** A rainbow's bands, outside in. */
+const RAINBOW = [0xff4f5a, 0xff9f43, 0xffe066, 0x5fdc7a, 0x4fb6ff, 0xa77bff];
 
 /** A one-off burst when the round greeting starts. Returns false if unknown. */
 function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) {
@@ -602,32 +604,18 @@ function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) 
         emit({ x: x + Math.cos(a) * 20 * sc, y: y - 30 * sc + Math.sin(a) * 26 * sc, vx: -Math.sin(a) * 140, vy: Math.cos(a) * 90 - 80, life: rnd(0.8, 1.1), size: 3.6 * sc, color: i % 2 ? 0x5fbf4a : 0x9be07a, shape: "leaf", spin: i % 2 ? 9 : -9, drag: 1.2, glow: false });
       }
       return true;
-    case "rainbow-entrance": {
-      // A ribbon of rainbow swoops down from the sky onto the spot, its six
-      // bands side by side, and sparkles in every colour burst as it lands.
-      // (Within the entrance budget: 24 streaks, a ring and six sparks.)
-      const bands = [0xff4f5a, 0xff9f43, 0xffe066, 0x5fdc7a, 0x4fb6ff, 0xa77bff];
-      const sx = x - 104 * sc,
-        sy = y - 140 * sc,
-        len = Math.hypot(x - sx, y - 12 * sc - sy),
-        ux = (x - sx) / len,
-        uy = (y - 12 * sc - sy) / len,
-        speed = 620;
-      for (let seg = 0; seg < 4; seg++)
-        bands.forEach((c, b) => {
-          const off = (b - 2.5) * 5 * sc,
-            back = seg * 16 * sc,
-            px = sx - ux * back - uy * off,
-            py = sy - uy * back + ux * off;
-          emit({ x: px, y: py, vx: ux * speed, vy: uy * speed, life: (len + back) / speed, size: 7.5 * sc, color: c, shape: "ray", glow: false });
-        });
-      emit({ x, y: y - 4 * sc, vx: 0, vy: 0, life: 0.5, size: 9 * sc, color: 0xffffff, shape: "shock" });
-      for (let i = 0; i < 6; i++) {
-        const a = -Math.PI * (0.15 + (i / 5) * 0.7);
-        emit({ x, y: y - 12 * sc, vx: Math.cos(a) * 110, vy: Math.sin(a) * 120, life: 0.9, size: 3 * sc, color: bands[i], shape: "star", fadeIn: 0.32, drag: 1.4 });
+    case "rainbow-entrance":
+      // The arch itself draws over the greeting (DRAWN_ENTRANCES): this is
+      // the fighter's arrival under it, a rainbow ripple over the floor and
+      // stars in every band's colour fountaining up round the body.
+      emit({ x, y, vx: 0, vy: 0, life: 0.5, size: 5 * sc, color: RAINBOW[0], shape: "shock" });
+      emit({ x, y, vx: 0, vy: 0, life: 0.62, size: 9 * sc, color: RAINBOW[5], shape: "shock" });
+      for (let i = 0; i < 12; i++) {
+        const side = i % 2 ? 1 : -1,
+          a = -Math.PI / 2 + side * (0.35 + (i >> 1) * 0.13);
+        emit({ x: x + side * 14 * sc, y: y - 8 * sc, vx: Math.cos(a) * rnd(120, 170), vy: Math.sin(a) * rnd(150, 210), life: rnd(0.8, 1.05), size: (i % 3 ? 2.6 : 3.6) * sc, color: RAINBOW[i % 6], shape: "star", drag: 1.6, spin: side * 3 });
       }
       return true;
-    }
     case "borealis-entrance":
       // Ribbons of light fall from the sky onto the spot, green, ice blue
       // and violet; a column of light stands where they land and a ring
@@ -1216,6 +1204,117 @@ export function playCollectionEntrance(emit0: Emit, id: string, x: number, y: nu
   if (known) entranceFlourish((p) => extra.push({ glow: true, ...p }), id, x, y, sc);
   for (const p of fitEntrance(own, extra)) emit0(p);
   return known;
+}
+/** Rainbow entrance's arch, in seconds from the greeting. */
+const ARCH = {
+  /** It springs out of the left cloud and lands on the right one. */
+  grow: 0.34,
+  /** A sheen runs along it. */
+  sheen: [0.75, 1.35],
+  /** It rolls up into the right cloud, and the clouds puff away. */
+  roll: [1.45, 1.9],
+  clouds: [1.85, 2.15],
+};
+const clamp01 = (k: number) => Math.max(0, Math.min(1, k));
+const easeOut = (k: number) => 1 - (1 - k) ** 3;
+/** A pop with a little overshoot (0 → 1). */
+const pop = (k: number) => (k >= 1 ? 1 : 1 + 2.7 * (k - 1) ** 3 + 1.7 * (k - 1) ** 2);
+/** A cartoon cloud standing on the floor at (cx, cy), `s` its scale. */
+function cloud(g: G, cx: number, cy: number, s: number, alpha: number) {
+  g.fillStyle(0xbcc9ec, 0.85 * alpha).fillEllipse(cx, cy + 2 * s, 42 * s, 11 * s);
+  g.fillStyle(0xffffff, alpha)
+    .fillCircle(cx - 11 * s, cy - 4 * s, 8 * s)
+    .fillCircle(cx + 1 * s, cy - 10 * s, 11 * s)
+    .fillCircle(cx + 12 * s, cy - 4 * s, 7.5 * s)
+    .fillEllipse(cx, cy - 1 * s, 40 * s, 12 * s);
+}
+/**
+ * Rainbow (Epic entrance): a six-band rainbow springs out of a cloud beside
+ * the fighter, arcs over its head and lands on a cloud on the other side
+ * with a burst of sparkles; a sheen runs along it and stars twinkle on the
+ * bands, then it rolls up into the far cloud and the clouds puff away. All
+ * behind the fighter, which stands framed under the arch.
+ */
+function drawRainbowArch(g: G, x: number, y0: number, sc: number, t: number) {
+  // It stands on the floor, where the fighter's feet are.
+  const y = y0 + WORLD_ART.fighterFeet * sc;
+  const bw = 6 * sc,
+    rOut = 112 * sc,
+    rMid = rOut - 3 * bw;
+  const head = easeOut(clamp01(t / ARCH.grow)),
+    tail = clamp01((t - ARCH.roll[0]) / (ARCH.roll[1] - ARCH.roll[0])) ** 2;
+  const a0 = Math.PI * (1 + tail),
+    a1 = Math.PI * (1 + head);
+  const at = (a: number, r: number) => ({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r });
+  if (a1 - a0 > 0.01) {
+    // The bands, and a bright rim.
+    RAINBOW.forEach((c, i) => {
+      g.lineStyle(bw + 0.8 * sc, c, 0.92).beginPath();
+      g.arc(x, y, rOut - bw * (i + 0.5), a0, a1).strokePath();
+    });
+    g.lineStyle(1.6 * sc, 0xffffff, 0.6).beginPath();
+    g.arc(x, y, rOut, a0, a1).strokePath();
+    // The sheen: a band of light sweeping along the arch.
+    const k = (t - ARCH.sheen[0]) / (ARCH.sheen[1] - ARCH.sheen[0]);
+    if (k > 0 && k < 1) {
+      const a = Math.PI * (1.04 + k * 0.92);
+      g.lineStyle(bw * 6, 0xffffff, 0.42 * Math.sin(k * Math.PI)).beginPath();
+      g.arc(x, y, rMid, Math.max(a0, a - 0.13), Math.min(a1, a + 0.13)).strokePath();
+    }
+    // Stars twinkle on the bands while it stands.
+    if (t > ARCH.grow)
+      for (let i = 0; i < 5; i++) {
+        const a = Math.PI * (1.14 + i * 0.18);
+        const blink = Math.max(0, Math.sin(t * 7 + i * 2.1)) ** 3;
+        if (a > a0 && blink > 0.05) {
+          const p = at(a, rOut - bw * (1 + (i % 3) * 2));
+          sparkle(g, p.x, p.y, 4.5 * sc, 0xffffff, 0.95 * blink);
+        }
+      }
+  }
+  // A star rides the tip as it arcs over.
+  if (t < ARCH.grow + 0.08) {
+    const p = at(a1, rMid),
+      fade = 1 - clamp01((t - ARCH.grow) / 0.08);
+    g.fillStyle(0xffffff, 0.3 * fade).fillCircle(p.x, p.y, 13 * sc);
+    sparkle(g, p.x, p.y, 9 * sc, 0xffffff, fade);
+  }
+  // Where it lands: a ring over the floor and sparkles in every colour.
+  const landed = t - ARCH.grow * 0.92;
+  if (landed > 0 && landed < 0.6) {
+    const k = landed / 0.6,
+      lx = x + rMid;
+    g.lineStyle(2.2 * sc, 0xffffff, 0.7 * (1 - k)).strokeEllipse(lx, y, 40 * sc * (0.4 + k), 12 * sc * (0.4 + k));
+    for (let i = 0; i < 8; i++) {
+      const a = -Math.PI * (0.2 + (i / 7) * 0.6),
+        d = 36 * sc * easeOut(k);
+      sparkle(g, lx + Math.cos(a) * d, y - 8 * sc + Math.sin(a) * d * 0.9, (3.6 - k * 1.6) * sc, RAINBOW[i % 6], 1 - k * k);
+    }
+  }
+  // The clouds: the first pops up at once, the second as the arch lands;
+  // they puff away at the end.
+  const gone = clamp01((t - ARCH.clouds[0]) / (ARCH.clouds[1] - ARCH.clouds[0]));
+  const left = pop(clamp01(t / 0.18)),
+    right = pop(clamp01((t - ARCH.grow * 0.8) / 0.18));
+  if (left > 0) cloud(g, x - rMid, y, sc * left * (1 + gone * 0.3), 1 - gone);
+  if (t > ARCH.grow * 0.8) cloud(g, x + rMid, y, sc * right * (1 + gone * 0.3), 1 - gone);
+}
+/**
+ * Entrances that draw as well as burst (call each frame of the greeting with
+ * t seconds into it), behind the fighter. `reach` is the room the drawing
+ * takes in a thumbnail, in entrance units (its usual frame is 104 wide by 92
+ * tall, the effect's origin 0.82 of the way down), and `still` the moment a
+ * catalogue tile shows.
+ */
+export const DRAWN_ENTRANCES: Record<string, { length: number; reach: { w: number; h: number; feet: number }; still: number; draw: (under: G, x: number, y: number, sc: number, t: number) => void }> = {
+  "rainbow-entrance": { length: ARCH.clouds[1], reach: { w: 256, h: 136, feet: 0.74 }, still: 0.55, draw: drawRainbowArch },
+};
+/** Draw an entrance's drawn part. False when it has none or has played. */
+export function drawCollectionEntrance(under: G, id: string, x: number, y: number, sc: number, t: number) {
+  const drawn = DRAWN_ENTRANCES[id];
+  if (!drawn || t < 0 || t > drawn.length) return false;
+  drawn.draw(under, x, y, sc, t);
+  return true;
 }
 /**
  * Victory finales (t seconds in), plus their rarity flourish. Everything
