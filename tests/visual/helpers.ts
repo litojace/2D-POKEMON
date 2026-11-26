@@ -32,7 +32,12 @@ export async function openHub(page: Page) {
     // loaded late (boss-prepaint.ts) went missing.
     performance.setResourceTimingBufferSize(5000);
   });
-  await page.goto("/");
+  // VISUAL_UI=showcase (or poster): every spec in this run sees the game in
+  // that look (?ui=, ui-theme.ts), to run any spec that way: the budgets, a
+  // screen's own spec. docs/ui-themes.md, "Checks".
+  await page.goto(
+    process.env.VISUAL_UI ? `/?ui=${process.env.VISUAL_UI}` : "/",
+  );
   await page.waitForFunction(() => !!(window as any).__sock);
   // The client listens for "connect" once its account has loaded.
   await expect
