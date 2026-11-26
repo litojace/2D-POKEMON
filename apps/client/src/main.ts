@@ -175,7 +175,12 @@ import {
 } from "./fighter-prepaint";
 import type { ArtNode } from "./rig-health";
 import type { PillarRig } from "./raid-grumble-pillars-rig";
-import { FighterLoading, neededFighters } from "./animation/fighter-loading";
+import {
+  FighterLoading,
+  neededFighters,
+  neededLooks,
+  type FighterLook,
+} from "./animation/fighter-loading";
 import {
   setOverlayMarkup,
   LIVE_SECONDS,
@@ -6367,21 +6372,45 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     super("arena");
   }
   private rigs = new Map<string, FighterVisual>();
-  /** Only the fighters on the court are built and loaded (fighter-loading.ts). */
-  private fighters = new FighterLoading({
-    build: (id) => rigAssets(id),
-    keys: kit.fighterTextureKeys,
+  /**
+   * Only the fighters on the court are built and loaded, each in the look
+   * it wears (fighter-loading.ts), by look name: `looks` has each one's
+   * champion and skin.
+   */
+  private looks = new Map<string, FighterLook>();
+  private fighters = new FighterLoading<string>({
+    build: (name) => {
+      const f = this.looks.get(name)!;
+      return rigAssets(f.character, f.look);
+    },
+    keys: (name, layers) =>
+      kit.fighterTextureKeys(this.looks.get(name)!.character, layers),
     exists: (key) => this.textures.exists(key),
   });
+  /** The looks this snapshot's fighters are drawn in, by name, once each. */
+  private sceneLooks(s: Snapshot) {
+    const looks = neededLooks(sceneLooks(s), skinSuffix);
+    for (const [name, f] of looks) this.looks.set(name, f);
+    return [...looks.keys()];
+  }
+  /** The name of the look a fighter is drawn in (see sceneLooks). */
+  private lookName(p: LookedFighter) {
+    const [[name, f]] = neededLooks(
+      [{ character: p.character, look: lookOf(p) }],
+      skinSuffix,
+    );
+    this.looks.set(name, f);
+    return name;
+  }
   private loadReported = false;
   private perfOverlay?: PerfOverlay;
   /** Every fighter in this snapshot has its textures (or gave up loading). */
   fightersReady(s: Snapshot) {
-    return this.fighters.allReady(sceneFighters(s));
+    return this.fighters.allReady(this.sceneLooks(s));
   }
   /** How many of this snapshot's fighters are ready, of how many. */
   fighterProgress(s: Snapshot) {
-    const ids = sceneFighters(s);
+    const ids = this.sceneLooks(s);
     return {
       ready: ids.filter((id) => this.fighters.isReady(id)).length,
       total: ids.length,
@@ -6391,12 +6420,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   private requestFighters(s: Snapshot) {
     if (this.fightersReady(s)) return;
     // Layers rasterized ahead (fighter-prepaint.ts) are added at once.
-    for (const id of sceneFighters(s))
-      addPrepaintedLayers(this, this.fighters.assetsFor(id));
-    const ids = this.fighters.toRequest(sceneFighters(s));
-    if (!ids.length) return;
-    for (const id of ids)
-      kit.queueFighterAssets(this, id, this.fighters.assetsFor(id));
+    const looks = this.sceneLooks(s);
+    for (const name of looks)
+      addPrepaintedLayers(this, this.fighters.assetsFor(name));
+    const names = this.fighters.toRequest(looks);
+    if (!names.length) return;
+    for (const name of names) this.queueLook(name);
     // Files added mid-load join the running load, whoever started it (a
     // skin, boss art), and settle with its COMPLETE (listener in preload).
     if (!this.load.isLoading()) this.load.start();
@@ -6408,14 +6437,25 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
    * of the battle (other fighters, your controls and input, attack warnings)
    * carries on. A rig of the fighter it was before is removed.
    */
-  private readyRig(id: string, character: CharacterId) {
-    if (this.fighters.hasArt(character)) return this.getRig(id, character);
-    const old = this.rigs.get(id);
+  private readyRig(p: LookedFighter) {
+    // A raid boss's seat is drawn as the boss (its own art), never as a rig.
+    if (p.raidBoss) return undefined;
+    const old = this.rigs.get(p.id);
+    // A rig keeps its look until a new one it is given has loaded
+    // (FighterRig.wear); its art going blank removes it (runArtChecks).
+    if (old?.character === p.character) return old;
+    const name = this.lookName(p);
+    if (this.fighters.hasArt(name)) return this.getRig(p.id, p.character, name);
     if (old) {
       old.destroy();
-      this.rigs.delete(id);
+      this.rigs.delete(p.id);
     }
     return undefined;
+  }
+  /** Queue a look's layers for the loader. */
+  private queueLook(name: string) {
+    const f = this.looks.get(name)!;
+    kit.queueFighterAssets(this, f.character, this.fighters.assetsFor(name));
   }
   private animationLive = false;
   private needsHydration = true;
@@ -6494,7 +6534,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         forgetPrepainted(key);
         if (this.textures.exists(key)) this.textures.remove(key);
       }
-      this.fighters.forget(character);
+      for (const [name, f] of this.looks)
+        if (f.character === character) this.fighters.forget(name);
     }
     if (connected)
       socket.emit("battle-art", {
@@ -6509,7 +6550,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       });
   }
 
-  private getRig(id: string, character: CharacterId) {
+  private getRig(id: string, character: CharacterId, look: string) {
     let rig = this.rigs.get(id);
     if (rig && rig.character !== character) {
       rig.destroy();
@@ -6520,7 +6561,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       rig = kit.createFighterVisual(
         this,
         character,
-        this.fighters.assetsFor(character),
+        this.fighters.assetsFor(look),
       );
       this.rigs.set(id, rig);
     }
@@ -6615,7 +6656,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         this.rigs.delete(id);
       }
     for (const p of next.players) {
-      const rig = this.readyRig(p.id, p.character);
+      const rig = this.readyRig(p);
       if (!rig) continue;
       if (reset) rig.controller.reset();
       const old = previous?.players.find((other) => other.id === p.id);
@@ -6635,24 +6676,16 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // Only the fighters in this room: the rest load if they ever appear.
     // Their layers rasterized ahead (fighter-prepaint.ts) are added now;
     // the loader skips those and loads only what's missing.
-    if (state)
-      for (const id of neededFighters(state.players))
-        addPrepaintedLayers(this, this.fighters.assetsFor(id));
-    if (state)
-      for (const id of this.fighters.toRequest(sceneFighters(state)))
-        kit.queueFighterAssets(this, id, this.fighters.assetsFor(id));
-    // The Shop skins they wear load here too, behind the loading screen: a
-    // rig would otherwise ask for them on its first frame, mid-battle (a
-    // stall while they rasterize, then the skin popping in).
-    if (state)
-      for (const p of state.players) {
-        const look = p.championLooks?.[p.character];
-        if (!p.raidBoss && look && skinSuffix(p.character, look)) {
-          const layers = rigAssets(p.character, look);
-          addPrepaintedLayers(this, layers);
-          kit.loadRigTextures(this, layers);
-        }
-      }
+    // Each in the look it wears: a Shop skin's layers load here, behind the
+    // loading screen (a rig asking for them on its first frame stalled
+    // mid-battle while they rasterized, then the skin popped in), and the
+    // champion's own look only for someone who shows it.
+    if (state) {
+      const looks = this.sceneLooks(state);
+      for (const name of looks)
+        addPrepaintedLayers(this, this.fighters.assetsFor(name));
+      for (const name of this.fighters.toRequest(looks)) this.queueLook(name);
+    }
     // Every load that finishes (this one, and later ones started for a new
     // fighter, a skin or boss art) settles what was requested: art still
     // missing may be asked for again. The scene's loader drops its
@@ -6816,7 +6849,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (castPredictor.waiting(action, now)) {
         // Already shown; the server has it.
       } else if (canCastSkill(local, input.skill, time, free)) {
-        this.readyRig(local.id, local.character)?.trigger(
+        this.readyRig(local)?.trigger(
           windUp > 0 ? "skill3" : (action as "skill0"),
           this.feelClock,
           windUp > 0 ? windUp * 1000 : castDuration(c, input.skill),
@@ -6842,7 +6875,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !castPredictor.waiting("basic", now) &&
       canBasic(local, time)
     ) {
-      this.readyRig(local.id, local.character)?.trigger(
+      this.readyRig(local)?.trigger(
         "basic",
         this.feelClock,
         castDuration(c, -1),
@@ -6966,7 +6999,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         const c = CHARACTERS[p.character];
         const slot = c.skills.findIndex((a) => a.id === event.abilityId);
         if (slot >= 0 || event.abilityId === c.basic.id)
-          this.readyRig(p.id, p.character)?.trigger(
+          this.readyRig(p)?.trigger(
             slot >= 0
               ? (`skill${slot}` as "skill0" | "skill1" | "skill2" | "skill3")
               : "basic",
@@ -6983,7 +7016,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     ) {
       const p = state?.players.find((p) => p.id === event.owner);
       if (p)
-        this.readyRig(p.id, p.character)?.trigger(
+        this.readyRig(p)?.trigger(
           event.kind,
           this.feelClock,
           event.kind === "dash"
@@ -7474,9 +7507,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
                 ...follow,
                 x: presented.x,
                 y: presented.y,
-                attacking: attacking(
-                  this.readyRig(follow.id, follow.character),
-                ),
+                attacking: attacking(this.readyRig(follow)),
               }
             : undefined,
           `${state?.code ?? "menu"}:${state?.round ?? 0}:${myId ?? ""}`,
@@ -7659,7 +7690,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     if (refused.length && local)
       for (const action of refused)
         if (action !== "dash" && action !== "charge")
-          this.readyRig(local.id, local.character)?.controller.cancel(action);
+          this.readyRig(local)?.controller.cancel(action);
     if (!state || state.phase === "lobby") {
       this.rigs.forEach((rig) => rig.setVisible(false));
       this.labels.forEach((label) => (label.hidden = true));
@@ -8173,7 +8204,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
                   : null) === p.id,
       };
       const clone =
-        serverPlayer.clone && this.readyRig(`${p.id}:clone`, p.character);
+        serverPlayer.clone && this.readyRig({ ...p, id: `${p.id}:clone` });
       if (serverPlayer.clone && clone) {
         clone.root.setScale(view.fighterX * 0.7, view.fighterY * 0.7);
         clone.setVisible(true);
@@ -8285,7 +8316,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           38,
         );
       }
-      const rig = shown > 0 ? this.readyRig(p.id, p.character) : undefined;
+      const rig = shown > 0 ? this.readyRig(p) : undefined;
       if (rig) {
         // The rig keeps this as its base scale (squash and stretch multiply it).
         rig.root.setScale(
@@ -8872,6 +8903,33 @@ function sceneFighters(s: Snapshot) {
     ...s.players,
     ...(s.raid?.spire?.roster ?? []).map((character) => ({ character })),
   ]);
+}
+/** A fighter whose rig the battle draws. */
+type LookedFighter = Pick<
+  Fighter,
+  "id" | "character" | "championLooks" | "raidBoss"
+>;
+/** The Shop skin a fighter's rig wears (as its pose does), or none. */
+function lookOf(p: Pick<Fighter, "character" | "championLooks">) {
+  return p.championLooks?.[p.character] ?? null;
+}
+/**
+ * The looks a battle draws: sceneFighters, each in its skin. Not a raid
+ * boss's seat: the boss is drawn from its own art (a seat on "terradon",
+ * apps/server/src/raid.ts), and its rig was 68 textures, 4.2 MB, in every
+ * raid that nothing showed (26 Nov 2026).
+ */
+function sceneLooks(s: Snapshot): FighterLook[] {
+  return [
+    ...s.players
+      .filter((p) => !p.raidBoss)
+      .map((p) => ({ character: p.character, look: lookOf(p) })),
+    // A Spire climb's Echoes appear mid-fight, in the champion's own look.
+    ...(s.raid?.spire?.roster ?? []).map((character) => ({
+      character,
+      look: null,
+    })),
+  ];
 }
 /** A fighter's skill colour: a worn skin's, or the Echoes' violet. */
 function skillColorOf(p: Fighter) {

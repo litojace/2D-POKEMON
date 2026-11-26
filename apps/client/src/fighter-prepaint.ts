@@ -47,8 +47,9 @@ const fighterKey = (f: WantedFighter) =>
 
 /**
  * Rasterize these fighters' rig layers in quiet moments and drop any other
- * fighter's. The base look is always wanted for a fighter (a battle loads it
- * even when a skin is worn); a worn skin's layers are wanted too.
+ * fighter's. Each is wanted in the look it wears, as the battle loads it
+ * (fighter-loading.ts neededLooks): a fighter in a Shop skin needs only the
+ * skin's layers, not the champion's own look as well.
  */
 export function syncFighterPrepaint(fighters: readonly WantedFighter[]) {
   if (paused) {
@@ -56,10 +57,13 @@ export function syncFighterPrepaint(fighters: readonly WantedFighter[]) {
     wantedSignature = "";
   }
   const sets = new Map<string, WantedFighter>();
-  for (const f of fighters) {
-    sets.set(f.character, { character: f.character });
-    if (f.look && skinSuffix(f.character, f.look)) sets.set(fighterKey(f), f);
-  }
+  for (const f of fighters)
+    sets.set(
+      fighterKey(f),
+      f.look && skinSuffix(f.character, f.look)
+        ? f
+        : { character: f.character },
+    );
   const signature = [...sets.keys()].sort().join(",");
   if (signature === wantedSignature) return;
   wantedSignature = signature;
