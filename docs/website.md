@@ -36,7 +36,7 @@ npx tsx apps/site/tools/gen-data.ts && npx prettier --write apps/site/index.html
 `packages/shared` (a balance change, a renamed skill, a new skin), so CI
 says when to run it. The panel's text is the game's own skill descriptions.
 
-## Skill clips and the raid week
+## Skill clips and the raid bosses
 
 Each champion panel shows the chosen move in the real game: a looping clip
 (about 1.5 s, 3 s for the ultimate) loaded only when that tab is shown, or
@@ -55,14 +55,18 @@ on the cloud container (18 champions, 5 moves each, at two device pixels).
 Run it again after a skill's look changes; `tests/unit/site.test.ts` fails
 when a champion or move has no clip.
 
-The raid section is the game's week: one boss a day
-(`packages/shared/src/raid-roster.ts`), Sunday first. `site.js` opens
-today's boss on Pacific time (the game turns the day over at midnight
-there), marks the day tab "Today" and counts down to the next boss. Only the
-boss on show downloads its splash (`img/raids/`, from the game's raid
-splash art by `make-images.py`). The panels and day tabs are written by
-`gen-data.ts` between the `raids` and `days` markers, so the names, days,
-stars, signature tricks and blurbs come from the game.
+The raid section is a stage with one boss at a time and a picker of all
+seven, in the Raid Hub's order (`RAID_BOSS_ORDER`). It says what the game
+does: every boss can be raided any day, Cragmuff first, and one Cragmuff
+clear opens the other six (`raidUnlocked` in
+`apps/client/src/screens/raid-hall-view.ts`). There is no boss of the day:
+`RaidBossInfo.day` in `raid-roster.ts` is left over from an older design and
+nothing reads it, so the page must not use it (`site.test.ts` fails on a
+weekday name). Only the boss on show downloads its splash (`img/raids/`,
+from the game's raid splash art by `make-images.py`). The panels and picks
+are written by `gen-data.ts` between the `raids` and `bosses` markers, so
+the names, stars, reward counts (as the boss cards count them), signature
+tricks and blurbs come from the game.
 
 ## What we took from big games' sites
 
@@ -155,8 +159,12 @@ website at the apex, game at play., one session cookie):
 Round 4 (owner, 26 Nov: skill clips, a more creative raid section, anything
 that helps the game):
 
-- [x] Raid week: today's boss (Pacific), day picker, countdown, cinematic
-      entrance (the splash settles, a wind-up ring, the name wipes in)
+- [x] Raid bosses: a stage and a picker in the game's order, cinematic
+      entrance (the splash settles, a wind-up ring, the name wipes in).
+      A first version showed a "boss of the day" from the unused `day` field;
+      the owner caught it (26 Nov): the game has no daily boss, so it was
+      dropped. The live page's old line "one is featured each day of the
+      week" is gone with it.
 - [x] Skill clips for 18 champions × 5 moves (`scripts/site-clips`)
 
 Round 2 (owner, 25 Nov 3:15 PM PT: motion, interactive champions, an account

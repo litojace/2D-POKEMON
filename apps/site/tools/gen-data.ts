@@ -16,8 +16,9 @@ import { creatureSvg } from "../../client/src/creature-design";
 import {
   RAID_BOSSES,
   RAID_BOSS_ORDER,
+  RAID_REWARDS,
   type RaidBossId,
-} from "../../../packages/shared/src/raid-roster";
+} from "../../../packages/shared/src/raid";
 
 const site = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const champions = siteChampions();
@@ -81,17 +82,10 @@ for (const [name, html] of [
   );
 writeFileSync(indexPath, page);
 
-// The raid week (index.html, between the raids markers): one boss a day,
-// Sunday first, from the game's raid roster. site.js opens today's (Pacific).
-const DAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
+// The raid bosses (index.html, between the raids and bosses markers), in
+// the Raid Hub's order, from the game's roster: every boss can be raided any
+// day; Cragmuff comes first and the other six open after one clear of it
+// (raidUnlocked in apps/client/src/screens/raid-hall-view.ts).
 // How each splash is framed: the side the words sit on (away from the boss),
 // and the picture's alt text.
 const RAID_ART: Record<RaidBossId, { side: "left" | "right"; alt: string }> = {
@@ -124,23 +118,23 @@ const RAID_ART: Record<RaidBossId, { side: "left" | "right"; alt: string }> = {
     alt: "The Storm Twins, two thunder-jellies tied by a crackling ribbon, in a storm",
   },
 };
-const week = RAID_BOSS_ORDER.map((id) => RAID_BOSSES[id]).sort(
-  (a, b) => a.day - b.day,
-);
+const lineup = RAID_BOSS_ORDER.map((id) => RAID_BOSSES[id]);
+const rewardsOf = (id: RaidBossId) =>
+  RAID_REWARDS.filter((r) => r.boss === id).length;
 const stars = (n: number) =>
   `<p class="stars" aria-label="Difficulty ${n} of 3">${"★".repeat(n)}${n < 3 ? `<span>${"★".repeat(3 - n)}</span>` : ""}</p>`;
-const raidPanels = week
+const raidPanels = lineup
   .map(
     (
       b,
       i,
-    ) => `<article class="raid" id="raid-${b.id}" role="tabpanel" aria-labelledby="day-${b.id}" data-day="${b.day}" data-side="${RAID_ART[b.id].side}" style="--el: var(--el-${b.element.toLowerCase()})"${i ? " hidden" : ""}>
+    ) => `<article class="raid" id="raid-${b.id}" role="tabpanel" aria-labelledby="pick-${b.id}" data-side="${RAID_ART[b.id].side}" style="--el: var(--el-${b.element.toLowerCase()})"${i ? " hidden" : ""}>
   <picture class="raid-art">
     <source type="image/avif" srcset="img/raids/${b.id}-768.avif 768w, img/raids/${b.id}-1280.avif 1280w" sizes="(min-width: 1200px) 1168px, 100vw" />
     <img src="img/raids/${b.id}-1280.webp" srcset="img/raids/${b.id}-768.webp 768w, img/raids/${b.id}-1280.webp 1280w" sizes="(min-width: 1200px) 1168px, 100vw" alt="${esc(RAID_ART[b.id].alt)}" width="1280" height="853" loading="lazy" decoding="async" />
   </picture>
   <div class="raid-tx">
-    <p class="raid-when"><span class="today-tag">Today</span>${DAYS[b.day]}s · ${b.element}</p>
+    <p class="raid-when">${i === 0 ? `<span class="start-tag">Start here</span>` : ""}${b.element} · ${rewardsOf(b.id)} rewards</p>
     ${stars(b.stars)}
     <h3>${esc(b.name)}</h3>
     <p class="epithet">${esc(b.epithet)}</p>
@@ -150,21 +144,21 @@ const raidPanels = week
 </article>`,
   )
   .join("\n");
-const raidTabs = week
+const raidTabs = lineup
   .map(
     (
       b,
       i,
-    ) => `<button type="button" class="day" role="tab" id="day-${b.id}" aria-controls="raid-${b.id}" aria-selected="${i === 0}" tabindex="${i ? -1 : 0}" data-day="${b.day}" style="--el: var(--el-${b.element.toLowerCase()})">
+    ) => `<button type="button" class="pick" role="tab" id="pick-${b.id}" aria-controls="raid-${b.id}" aria-selected="${i === 0}" tabindex="${i ? -1 : 0}" style="--el: var(--el-${b.element.toLowerCase()})">
   <img src="img/bosses/${b.id}.webp" alt="" width="400" height="600" loading="lazy" decoding="async" />
-  <span class="d">${DAYS[b.day].slice(0, 3)}</span><span class="n">${esc(b.name)}</span>
+  <span class="s" aria-hidden="true">${"★".repeat(b.stars)}</span><span class="n">${esc(b.name)}</span>
 </button>`,
   )
   .join("\n");
 let page2 = readFileSync(indexPath, "utf8");
 for (const [name, html] of [
   ["raids", raidPanels],
-  ["days", raidTabs],
+  ["bosses", raidTabs],
 ] as const)
   page2 = page2.replace(
     new RegExp(`(<!-- ${name}:start -->)[\\s\\S]*?(\\s*<!-- ${name}:end -->)`),

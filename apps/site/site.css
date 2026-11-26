@@ -634,9 +634,9 @@ body::before {
   text-transform: uppercase;
 }
 
-/* ---------- Raid week: one boss a day ---------- */
+/* ---------- Raid bosses: a stage and a picker ---------- */
 /* A stage shows one boss's splash at a time (only its picture downloads);
-   the seven days under it pick the boss. site.js opens today's (Pacific). */
+   the seven bosses under it, in the Raid Hub's order, pick which. */
 .raid-week {
   display: grid;
   gap: 12px;
@@ -697,15 +697,12 @@ body::before {
   text-transform: uppercase;
   color: #d9e0f2;
 }
-.today-tag {
-  display: none;
+.start-tag {
+  display: inline-block;
   padding: 4px 8px 3px;
   border-radius: 999px;
   background: var(--accent);
   color: var(--accent-ink);
-}
-.raid.is-today .today-tag {
-  display: inline-block;
 }
 .stars {
   color: var(--el);
@@ -796,12 +793,12 @@ body::before {
   }
 }
 
-.raid-days {
+.raid-picks {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
 }
-.day {
+.pick {
   position: relative;
   display: grid;
   justify-items: center;
@@ -820,9 +817,9 @@ body::before {
     background-color 0.2s,
     color 0.2s;
 }
-.day img {
-  width: 40px;
-  height: 40px;
+.pick img {
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   object-fit: cover;
   object-position: 50% 24%;
@@ -830,13 +827,13 @@ body::before {
   filter: saturate(0.6) brightness(0.8);
   transition: filter 0.2s;
 }
-.day .d {
-  font: 700 0.9rem/1 var(--display);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.pick .s {
+  color: var(--el);
+  font-size: 0.68rem;
+  line-height: 1;
 }
 /* Read out on phones too (the tab's name), but shown from 760px. */
-.day .n {
+.pick .n {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -847,34 +844,31 @@ body::before {
   line-height: 1.2;
   text-align: center;
 }
-.day:hover img,
-.day[aria-selected="true"] img {
+.pick:hover img,
+.pick[aria-selected="true"] img {
   filter: none;
 }
-.day[aria-selected="true"] {
+.pick[aria-selected="true"] {
   border-color: var(--el);
   background: color-mix(in srgb, var(--el) 16%, var(--surface));
   color: var(--text);
 }
-.day[aria-selected="true"] img {
+.pick[aria-selected="true"] img {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--el) 35%, transparent);
 }
-.day.is-today .d {
-  color: var(--accent-text);
-}
-.day:focus-visible {
+.pick:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
 @media (min-width: 760px) {
-  .day {
+  .pick {
     padding: 10px 6px;
   }
-  .day img {
+  .pick img {
     width: 52px;
     height: 52px;
   }
-  .day .n {
+  .pick .n {
     position: static;
     width: auto;
     height: auto;
@@ -882,20 +876,6 @@ body::before {
     clip-path: none;
     white-space: normal;
   }
-}
-.raid-next {
-  justify-self: center;
-  text-align: center;
-  color: var(--dim);
-  font-size: 0.95rem;
-}
-.raid-next b {
-  color: var(--text);
-}
-.raid-next time {
-  color: var(--accent-text);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Make it yours ---------- */

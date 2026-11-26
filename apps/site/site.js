@@ -69,103 +69,49 @@
     });
   }
 
-  /* ---------- Raid week: today's boss, a day picker, a countdown ---------- */
-  // The game features one boss a day and turns the day over at midnight
-  // Pacific time (packages/shared/src/raid-roster.ts), so the page does too.
-  const days = $$(".raid-days .day");
-  if (days.length) {
-    const panels = days.map((d) => $(`#${d.getAttribute("aria-controls")}`));
-    const pacific = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Los_Angeles",
-      weekday: "short",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      hourCycle: "h23",
-    });
-    const WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const now = () => {
-      const p = Object.fromEntries(
-        pacific.formatToParts(new Date()).map((x) => [x.type, x.value]),
-      );
-      return {
-        day: WEEK.indexOf(p.weekday),
-        secs: +p.hour * 3600 + +p.minute * 60 + +p.second,
-      };
-    };
-    const show = (i, focus = false, animate = true) => {
-      days.forEach((d, j) => {
+  /* ---------- Raid bosses: pick one for the stage ---------- */
+  const picks = $$(".raid-picks .pick");
+  if (picks.length) {
+    const panels = picks.map((d) => $(`#${d.getAttribute("aria-controls")}`));
+    const show = (i, focus = false) => {
+      picks.forEach((d, j) => {
         d.setAttribute("aria-selected", String(i === j));
         d.tabIndex = i === j ? 0 : -1;
         panels[j].hidden = i !== j;
         panels[j].classList.remove("enter");
       });
-      if (animate && !calm.matches) {
+      if (!calm.matches) {
         void panels[i].offsetWidth; // restart the entrance
         panels[i].classList.add("enter");
       }
-      if (focus) days[i].focus();
+      if (focus) picks[i].focus();
     };
-    const byDay = (n) => days.findIndex((d) => +d.dataset.day === n);
-    let today = -1;
-    let picked = false;
-    const next = $(".raid-next");
-    const tick = () => {
-      const t = now();
-      const i = byDay(t.day);
-      if (i !== today) {
-        if (today >= 0) days[today].classList.remove("is-today");
-        if (today >= 0) panels[today].classList.remove("is-today");
-        days[i].classList.add("is-today");
-        panels[i].classList.add("is-today");
-        $(".d", days[i]).textContent = "Today";
-        if (today >= 0)
-          $(".d", days[today]).textContent = WEEK[days[today].dataset.day];
-        // A visitor still on the day the page opened with follows the new one.
-        if (today >= 0 && !picked) show(i);
-        today = i;
-      }
-      // Minutes to midnight (a DST day is an hour off, once or twice a year).
-      const left = Math.max(1, Math.floor((86400 - t.secs) / 60));
-      $(".raid-next-name", next).textContent = $(
-        ".n",
-        days[byDay((t.day + 1) % 7)],
-      ).textContent;
-      $(".raid-next-in", next).textContent =
-        left >= 60 ? `${Math.floor(left / 60)}h ${left % 60}m` : `${left}m`;
-      next.hidden = false;
-    };
-    tick();
-    setInterval(tick, 30000);
-    show(today, false, false);
-    // The entrance plays when the stage first scrolls into view.
+    const current = () => picks.findIndex((d) => d.tabIndex === 0);
+    // The first boss makes its entrance when the stage scrolls into view.
     if (!calm.matches && "IntersectionObserver" in window) {
       const seen = new IntersectionObserver((entries) => {
         if (!entries.some((e) => e.isIntersecting)) return;
         seen.disconnect();
-        const i = days.findIndex((d) => d.tabIndex === 0);
-        show(i);
+        show(current());
       });
       seen.observe($(".raid-stage"));
     }
-    $(".raid-days").addEventListener("click", (e) => {
-      const d = e.target.closest(".day");
-      if (!d) return;
-      picked = true;
-      show(days.indexOf(d));
+    $(".raid-picks").addEventListener("click", (e) => {
+      const d = e.target.closest(".pick");
+      if (d) show(picks.indexOf(d));
     });
-    $(".raid-days").addEventListener("keydown", (e) => {
-      const i = days.indexOf(document.activeElement);
+    $(".raid-picks").addEventListener("keydown", (e) => {
+      const i = picks.indexOf(document.activeElement);
       if (i < 0) return;
+      const n = picks.length;
       const to = {
-        ArrowRight: (i + 1) % 7,
-        ArrowLeft: (i + 6) % 7,
+        ArrowRight: (i + 1) % n,
+        ArrowLeft: (i + n - 1) % n,
         Home: 0,
-        End: 6,
+        End: n - 1,
       }[e.key];
       if (to === undefined) return;
       e.preventDefault();
-      picked = true;
       show(to, true);
     });
   }

@@ -798,10 +798,10 @@
         <div class="wrap">
           <header class="head">
             <p class="eyebrow">Raid bosses</p>
-            <h2 id="raids-title">A new boss every day</h2>
+            <h2 id="raids-title">Seven bosses, seven puzzles</h2>
             <p class="sub">
-              Seven bosses, seven puzzles. Each one has a trick to learn: solve
-              it with up to three friends before the day turns over.
+              Every boss has one trick to learn. Solve it with up to three
+              friends. Start with Cragmuff: one clear opens the other six.
             </p>
           </header>
           <div class="raid-week">
@@ -809,30 +809,29 @@
               <!-- raids:start -->
               <article
                 class="raid"
-                id="raid-prismatail"
+                id="raid-grumblecrag"
                 role="tabpanel"
-                aria-labelledby="day-prismatail"
-                data-day="0"
+                aria-labelledby="pick-grumblecrag"
                 data-side="right"
-                style="--el: var(--el-light)"
+                style="--el: var(--el-earth)"
               >
                 <picture class="raid-art">
                   <source
                     type="image/avif"
                     srcset="
-                      img/raids/prismatail-768.avif   768w,
-                      img/raids/prismatail-1280.avif 1280w
+                      img/raids/grumblecrag-768.avif   768w,
+                      img/raids/grumblecrag-1280.avif 1280w
                     "
                     sizes="(min-width: 1200px) 1168px, 100vw"
                   />
                   <img
-                    src="img/raids/prismatail-1280.webp"
+                    src="img/raids/grumblecrag-1280.webp"
                     srcset="
-                      img/raids/prismatail-768.webp   768w,
-                      img/raids/prismatail-1280.webp 1280w
+                      img/raids/grumblecrag-768.webp   768w,
+                      img/raids/grumblecrag-1280.webp 1280w
                     "
                     sizes="(min-width: 1200px) 1168px, 100vw"
-                    alt="Prismell, a snail with a spiral shell of prism crystal, in a hall of light"
+                    alt="Cragmuff, a woolly ram with amber crystal horns, charging through a ruined arena"
                     width="1280"
                     height="853"
                     loading="lazy"
@@ -841,227 +840,22 @@
                 </picture>
                 <div class="raid-tx">
                   <p class="raid-when">
-                    <span class="today-tag">Today</span>Sundays · Light
+                    <span class="start-tag">Start here</span>Earth · 13 rewards
                   </p>
-                  <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
-                  <h3>Prismell</h3>
-                  <p class="epithet">The prism-shelled snail</p>
+                  <p class="stars" aria-label="Difficulty 1 of 3">
+                    ★<span>★★</span>
+                  </p>
+                  <h3>Cragmuff</h3>
+                  <p class="epithet">The crystal-horned ram</p>
                   <p class="blurb">
-                    A proud, sparkly snail in a spiral shell of prism crystal
-                    that splits the light into rainbows. Its heart glows in the
-                    coil behind a shield: pass the sunbeam raider to raider
-                    until it reaches the heart and shatters the shield.
+                    A grumpy, stubborn mountain ram in a coat of mossy stone
+                    wool, with curled horns of glowing amber crystal. Lead its
+                    charges into pillars to knock it dizzy and strike the
+                    crystal core on its chest.
                   </p>
                   <div class="beat">
                     <span>How to beat it</span>
-                    <p class="trick">Relay the sunbeam to its heart</p>
-                  </div>
-                </div>
-              </article>
-              <article
-                class="raid"
-                id="raid-gloomshade"
-                role="tabpanel"
-                aria-labelledby="day-gloomshade"
-                data-day="1"
-                data-side="right"
-                style="--el: var(--el-shadow)"
-                hidden
-              >
-                <picture class="raid-art">
-                  <source
-                    type="image/avif"
-                    srcset="
-                      img/raids/gloomshade-768.avif   768w,
-                      img/raids/gloomshade-1280.avif 1280w
-                    "
-                    sizes="(min-width: 1200px) 1168px, 100vw"
-                  />
-                  <img
-                    src="img/raids/gloomshade-1280.webp"
-                    srcset="
-                      img/raids/gloomshade-768.webp   768w,
-                      img/raids/gloomshade-1280.webp 1280w
-                    "
-                    sizes="(min-width: 1200px) 1168px, 100vw"
-                    alt="Inkpurr, a cat-eared sprite of living ink, prowling a lantern-lit yard"
-                    width="1280"
-                    height="853"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </picture>
-                <div class="raid-tx">
-                  <p class="raid-when">
-                    <span class="today-tag">Today</span>Mondays · Shadow
-                  </p>
-                  <p class="stars" aria-label="Difficulty 2 of 3">
-                    ★★<span>★</span>
-                  </p>
-                  <h3>Inkpurr</h3>
-                  <p class="epithet">Lights out</p>
-                  <p class="blurb">
-                    A round, cat-eared sprite of living ink with a crescent-moon
-                    tail. Keep the lanterns lit, find the real one among its
-                    copies, and spread out when the curse creeps.
-                  </p>
-                  <div class="beat">
-                    <span>How to beat it</span>
-                    <p class="trick">Find the one that casts a shadow</p>
-                  </div>
-                </div>
-              </article>
-              <article
-                class="raid"
-                id="raid-emberwing"
-                role="tabpanel"
-                aria-labelledby="day-emberwing"
-                data-day="2"
-                data-side="left"
-                style="--el: var(--el-fire)"
-                hidden
-              >
-                <picture class="raid-art">
-                  <source
-                    type="image/avif"
-                    srcset="
-                      img/raids/emberwing-768.avif   768w,
-                      img/raids/emberwing-1280.avif 1280w
-                    "
-                    sizes="(min-width: 1200px) 1168px, 100vw"
-                  />
-                  <img
-                    src="img/raids/emberwing-1280.webp"
-                    srcset="
-                      img/raids/emberwing-768.webp   768w,
-                      img/raids/emberwing-1280.webp 1280w
-                    "
-                    sizes="(min-width: 1200px) 1168px, 100vw"
-                    alt="Lumiwick, a smiling sky-lantern spirit floating above three braziers"
-                    width="1280"
-                    height="853"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </picture>
-                <div class="raid-tx">
-                  <p class="raid-when">
-                    <span class="today-tag">Today</span>Tuesdays · Fire
-                  </p>
-                  <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
-                  <h3>Lumiwick</h3>
-                  <p class="epithet">Ground the sky</p>
-                  <p class="blurb">
-                    A smug sky-lantern spirit that refuses to come down. Light
-                    all three braziers together to pull it out of the sky.
-                  </p>
-                  <div class="beat">
-                    <span>How to beat it</span>
-                    <p class="trick">Light three braziers at once</p>
-                  </div>
-                </div>
-              </article>
-              <article
-                class="raid"
-                id="raid-somnara"
-                role="tabpanel"
-                aria-labelledby="day-somnara"
-                data-day="3"
-                data-side="left"
-                style="--el: var(--el-psychic)"
-                hidden
-              >
-                <picture class="raid-art">
-                  <source
-                    type="image/avif"
-                    srcset="
-                      img/raids/somnara-768.avif   768w,
-                      img/raids/somnara-1280.avif 1280w
-                    "
-                    sizes="(min-width: 1200px) 1168px, 100vw"
-                  />
-                  <img
-                    src="img/raids/somnara-1280.webp"
-                    srcset="
-                      img/raids/somnara-768.webp   768w,
-                      img/raids/somnara-1280.webp 1280w
-                    "
-                    sizes="(min-width: 1200px) 1168px, 100vw"
-                    alt="Snoozaku, a sleepy baku in a starry nightcap, on a cloud floor of glowing runes"
-                    width="1280"
-                    height="853"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </picture>
-                <div class="raid-tx">
-                  <p class="raid-when">
-                    <span class="today-tag">Today</span>Wednesdays · Psychic
-                  </p>
-                  <p class="stars" aria-label="Difficulty 2 of 3">
-                    ★★<span>★</span>
-                  </p>
-                  <h3>Snoozaku</h3>
-                  <p class="epithet">The dream-eating baku</p>
-                  <p class="blurb">
-                    A chubby, sleepy baku in a starry nightcap that snacks on
-                    dreams. One raider sees its dream; the team must step the
-                    runes in order to wake it.
-                  </p>
-                  <div class="beat">
-                    <span>How to beat it</span>
-                    <p class="trick">Step the runes only the Dreamer sees</p>
-                  </div>
-                </div>
-              </article>
-              <article
-                class="raid"
-                id="raid-storm-twins"
-                role="tabpanel"
-                aria-labelledby="day-storm-twins"
-                data-day="4"
-                data-side="right"
-                style="--el: var(--el-electric)"
-                hidden
-              >
-                <picture class="raid-art">
-                  <source
-                    type="image/avif"
-                    srcset="
-                      img/raids/storm-twins-768.avif   768w,
-                      img/raids/storm-twins-1280.avif 1280w
-                    "
-                    sizes="(min-width: 1200px) 1168px, 100vw"
-                  />
-                  <img
-                    src="img/raids/storm-twins-1280.webp"
-                    srcset="
-                      img/raids/storm-twins-768.webp   768w,
-                      img/raids/storm-twins-1280.webp 1280w
-                    "
-                    sizes="(min-width: 1200px) 1168px, 100vw"
-                    alt="The Storm Twins, two thunder-jellies tied by a crackling ribbon, in a storm"
-                    width="1280"
-                    height="853"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </picture>
-                <div class="raid-tx">
-                  <p class="raid-when">
-                    <span class="today-tag">Today</span>Thursdays · Electric
-                  </p>
-                  <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
-                  <h3>Storm Twins</h3>
-                  <p class="epithet">Fizz &amp; Crackle</p>
-                  <p class="blurb">
-                    Two floating thunder-jellies tied by a crackling ribbon.
-                    Pair up with opposite charges and bring both down before
-                    either can revive the other.
-                  </p>
-                  <div class="beat">
-                    <span>How to beat it</span>
-                    <p class="trick">Beat both twins together</p>
+                    <p class="trick">Bait its charge into a pillar</p>
                   </div>
                 </div>
               </article>
@@ -1069,8 +863,7 @@
                 class="raid"
                 id="raid-tidewyrm"
                 role="tabpanel"
-                aria-labelledby="day-tidewyrm"
-                data-day="5"
+                aria-labelledby="pick-tidewyrm"
                 data-side="left"
                 style="--el: var(--el-water)"
                 hidden
@@ -1099,9 +892,7 @@
                   />
                 </picture>
                 <div class="raid-tx">
-                  <p class="raid-when">
-                    <span class="today-tag">Today</span>Fridays · Water
-                  </p>
+                  <p class="raid-when">Water · 11 rewards</p>
                   <p class="stars" aria-label="Difficulty 2 of 3">
                     ★★<span>★</span>
                   </p>
@@ -1121,31 +912,30 @@
               </article>
               <article
                 class="raid"
-                id="raid-grumblecrag"
+                id="raid-gloomshade"
                 role="tabpanel"
-                aria-labelledby="day-grumblecrag"
-                data-day="6"
+                aria-labelledby="pick-gloomshade"
                 data-side="right"
-                style="--el: var(--el-earth)"
+                style="--el: var(--el-shadow)"
                 hidden
               >
                 <picture class="raid-art">
                   <source
                     type="image/avif"
                     srcset="
-                      img/raids/grumblecrag-768.avif   768w,
-                      img/raids/grumblecrag-1280.avif 1280w
+                      img/raids/gloomshade-768.avif   768w,
+                      img/raids/gloomshade-1280.avif 1280w
                     "
                     sizes="(min-width: 1200px) 1168px, 100vw"
                   />
                   <img
-                    src="img/raids/grumblecrag-1280.webp"
+                    src="img/raids/gloomshade-1280.webp"
                     srcset="
-                      img/raids/grumblecrag-768.webp   768w,
-                      img/raids/grumblecrag-1280.webp 1280w
+                      img/raids/gloomshade-768.webp   768w,
+                      img/raids/gloomshade-1280.webp 1280w
                     "
                     sizes="(min-width: 1200px) 1168px, 100vw"
-                    alt="Cragmuff, a woolly ram with amber crystal horns, charging through a ruined arena"
+                    alt="Inkpurr, a cat-eared sprite of living ink, prowling a lantern-lit yard"
                     width="1280"
                     height="853"
                     loading="lazy"
@@ -1153,169 +943,229 @@
                   />
                 </picture>
                 <div class="raid-tx">
-                  <p class="raid-when">
-                    <span class="today-tag">Today</span>Saturdays · Earth
+                  <p class="raid-when">Shadow · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 2 of 3">
+                    ★★<span>★</span>
                   </p>
-                  <p class="stars" aria-label="Difficulty 1 of 3">
-                    ★<span>★★</span>
-                  </p>
-                  <h3>Cragmuff</h3>
-                  <p class="epithet">The crystal-horned ram</p>
+                  <h3>Inkpurr</h3>
+                  <p class="epithet">Lights out</p>
                   <p class="blurb">
-                    A grumpy, stubborn mountain ram in a coat of mossy stone
-                    wool, with curled horns of glowing amber crystal. Lead its
-                    charges into pillars to knock it dizzy and strike the
-                    crystal core on its chest.
+                    A round, cat-eared sprite of living ink with a crescent-moon
+                    tail. Keep the lanterns lit, find the real one among its
+                    copies, and spread out when the curse creeps.
                   </p>
                   <div class="beat">
                     <span>How to beat it</span>
-                    <p class="trick">Bait its charge into a pillar</p>
+                    <p class="trick">Find the one that casts a shadow</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-somnara"
+                role="tabpanel"
+                aria-labelledby="pick-somnara"
+                data-side="left"
+                style="--el: var(--el-psychic)"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/somnara-768.avif   768w,
+                      img/raids/somnara-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/somnara-1280.webp"
+                    srcset="
+                      img/raids/somnara-768.webp   768w,
+                      img/raids/somnara-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Snoozaku, a sleepy baku in a starry nightcap, on a cloud floor of glowing runes"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Psychic · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 2 of 3">
+                    ★★<span>★</span>
+                  </p>
+                  <h3>Snoozaku</h3>
+                  <p class="epithet">The dream-eating baku</p>
+                  <p class="blurb">
+                    A chubby, sleepy baku in a starry nightcap that snacks on
+                    dreams. One raider sees its dream; the team must step the
+                    runes in order to wake it.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Step the runes only the Dreamer sees</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-prismatail"
+                role="tabpanel"
+                aria-labelledby="pick-prismatail"
+                data-side="right"
+                style="--el: var(--el-light)"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/prismatail-768.avif   768w,
+                      img/raids/prismatail-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/prismatail-1280.webp"
+                    srcset="
+                      img/raids/prismatail-768.webp   768w,
+                      img/raids/prismatail-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Prismell, a snail with a spiral shell of prism crystal, in a hall of light"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Light · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
+                  <h3>Prismell</h3>
+                  <p class="epithet">The prism-shelled snail</p>
+                  <p class="blurb">
+                    A proud, sparkly snail in a spiral shell of prism crystal
+                    that splits the light into rainbows. Its heart glows in the
+                    coil behind a shield: pass the sunbeam raider to raider
+                    until it reaches the heart and shatters the shield.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Relay the sunbeam to its heart</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-emberwing"
+                role="tabpanel"
+                aria-labelledby="pick-emberwing"
+                data-side="left"
+                style="--el: var(--el-fire)"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/emberwing-768.avif   768w,
+                      img/raids/emberwing-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/emberwing-1280.webp"
+                    srcset="
+                      img/raids/emberwing-768.webp   768w,
+                      img/raids/emberwing-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Lumiwick, a smiling sky-lantern spirit floating above three braziers"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Fire · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
+                  <h3>Lumiwick</h3>
+                  <p class="epithet">Ground the sky</p>
+                  <p class="blurb">
+                    A smug sky-lantern spirit that refuses to come down. Light
+                    all three braziers together to pull it out of the sky.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Light three braziers at once</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-storm-twins"
+                role="tabpanel"
+                aria-labelledby="pick-storm-twins"
+                data-side="right"
+                style="--el: var(--el-electric)"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/storm-twins-768.avif   768w,
+                      img/raids/storm-twins-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/storm-twins-1280.webp"
+                    srcset="
+                      img/raids/storm-twins-768.webp   768w,
+                      img/raids/storm-twins-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="The Storm Twins, two thunder-jellies tied by a crackling ribbon, in a storm"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Electric · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
+                  <h3>Storm Twins</h3>
+                  <p class="epithet">Fizz &amp; Crackle</p>
+                  <p class="blurb">
+                    Two floating thunder-jellies tied by a crackling ribbon.
+                    Pair up with opposite charges and bring both down before
+                    either can revive the other.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Beat both twins together</p>
                   </div>
                 </div>
               </article>
               <!-- raids:end -->
             </div>
-            <div
-              class="raid-days"
-              role="tablist"
-              aria-label="This week's raid bosses"
-            >
-              <!-- days:start -->
+            <div class="raid-picks" role="tablist" aria-label="Raid bosses">
+              <!-- bosses:start -->
               <button
                 type="button"
-                class="day"
+                class="pick"
                 role="tab"
-                id="day-prismatail"
-                aria-controls="raid-prismatail"
+                id="pick-grumblecrag"
+                aria-controls="raid-grumblecrag"
                 aria-selected="true"
                 tabindex="0"
-                data-day="0"
-                style="--el: var(--el-light)"
-              >
-                <img
-                  src="img/bosses/prismatail.webp"
-                  alt=""
-                  width="400"
-                  height="600"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <span class="d">Sun</span><span class="n">Prismell</span>
-              </button>
-              <button
-                type="button"
-                class="day"
-                role="tab"
-                id="day-gloomshade"
-                aria-controls="raid-gloomshade"
-                aria-selected="false"
-                tabindex="-1"
-                data-day="1"
-                style="--el: var(--el-shadow)"
-              >
-                <img
-                  src="img/bosses/gloomshade.webp"
-                  alt=""
-                  width="400"
-                  height="600"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <span class="d">Mon</span><span class="n">Inkpurr</span>
-              </button>
-              <button
-                type="button"
-                class="day"
-                role="tab"
-                id="day-emberwing"
-                aria-controls="raid-emberwing"
-                aria-selected="false"
-                tabindex="-1"
-                data-day="2"
-                style="--el: var(--el-fire)"
-              >
-                <img
-                  src="img/bosses/emberwing.webp"
-                  alt=""
-                  width="400"
-                  height="600"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <span class="d">Tue</span><span class="n">Lumiwick</span>
-              </button>
-              <button
-                type="button"
-                class="day"
-                role="tab"
-                id="day-somnara"
-                aria-controls="raid-somnara"
-                aria-selected="false"
-                tabindex="-1"
-                data-day="3"
-                style="--el: var(--el-psychic)"
-              >
-                <img
-                  src="img/bosses/somnara.webp"
-                  alt=""
-                  width="400"
-                  height="600"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <span class="d">Wed</span><span class="n">Snoozaku</span>
-              </button>
-              <button
-                type="button"
-                class="day"
-                role="tab"
-                id="day-storm-twins"
-                aria-controls="raid-storm-twins"
-                aria-selected="false"
-                tabindex="-1"
-                data-day="4"
-                style="--el: var(--el-electric)"
-              >
-                <img
-                  src="img/bosses/storm-twins.webp"
-                  alt=""
-                  width="400"
-                  height="600"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <span class="d">Thu</span><span class="n">Storm Twins</span>
-              </button>
-              <button
-                type="button"
-                class="day"
-                role="tab"
-                id="day-tidewyrm"
-                aria-controls="raid-tidewyrm"
-                aria-selected="false"
-                tabindex="-1"
-                data-day="5"
-                style="--el: var(--el-water)"
-              >
-                <img
-                  src="img/bosses/tidewyrm.webp"
-                  alt=""
-                  width="400"
-                  height="600"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <span class="d">Fri</span><span class="n">Tidelotl</span>
-              </button>
-              <button
-                type="button"
-                class="day"
-                role="tab"
-                id="day-grumblecrag"
-                aria-controls="raid-grumblecrag"
-                aria-selected="false"
-                tabindex="-1"
-                data-day="6"
                 style="--el: var(--el-earth)"
               >
                 <img
@@ -1326,14 +1176,137 @@
                   loading="lazy"
                   decoding="async"
                 />
-                <span class="d">Sat</span><span class="n">Cragmuff</span>
+                <span class="s" aria-hidden="true">★</span
+                ><span class="n">Cragmuff</span>
               </button>
-              <!-- days:end -->
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-tidewyrm"
+                aria-controls="raid-tidewyrm"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-water)"
+              >
+                <img
+                  src="img/bosses/tidewyrm.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★</span
+                ><span class="n">Tidelotl</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-gloomshade"
+                aria-controls="raid-gloomshade"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-shadow)"
+              >
+                <img
+                  src="img/bosses/gloomshade.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★</span
+                ><span class="n">Inkpurr</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-somnara"
+                aria-controls="raid-somnara"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-psychic)"
+              >
+                <img
+                  src="img/bosses/somnara.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★</span
+                ><span class="n">Snoozaku</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-prismatail"
+                aria-controls="raid-prismatail"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-light)"
+              >
+                <img
+                  src="img/bosses/prismatail.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★★</span
+                ><span class="n">Prismell</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-emberwing"
+                aria-controls="raid-emberwing"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-fire)"
+              >
+                <img
+                  src="img/bosses/emberwing.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★★</span
+                ><span class="n">Lumiwick</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-storm-twins"
+                aria-controls="raid-storm-twins"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-electric)"
+              >
+                <img
+                  src="img/bosses/storm-twins.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★★</span
+                ><span class="n">Storm Twins</span>
+              </button>
+              <!-- bosses:end -->
             </div>
-            <p class="raid-next" hidden>
-              Next up: <b class="raid-next-name"></b> in
-              <time class="raid-next-in"></time> <span>(Pacific time)</span>
-            </p>
           </div>
         </div>
       </section>
