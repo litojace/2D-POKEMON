@@ -125,7 +125,6 @@ import {
   isRaider,
   raidBossName,
 } from "../../../packages/shared/src/raid";
-import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { stormTarget } from "./storm-twins-controls";
 import { raidTargets } from "./raid-targets";
@@ -400,6 +399,14 @@ import {
   standingsMarkup,
   type RecordState,
 } from "./match-recap";
+import {
+  confettiMarkup,
+  fighterHop,
+  rewardsMarkup,
+  syncRewardMotion,
+} from "./result-rewards";
+import { fighterPortrait } from "./fighter-art";
+import { avatar } from "./ui/components";
 import {
   matchReportReplySchema,
   partyRoomSchema,
@@ -3947,6 +3954,42 @@ const coach = createCoach({
     rounds: roundsNeeded(state?.mutators, state?.introRounds),
   }),
 });
+/**
+ * Your coins as a match began, to show what it paid on the result sheet
+ * (result-rewards.ts): the balance moves once the server has saved the
+ * match, its missions and any level it reached.
+ */
+let coinsAtStart: { key: string; balance: number } | undefined;
+/** Counts results shown: each one's celebration is timed from its own start. */
+let resultSerial = 0;
+let resultShowing = false;
+function markMatchStart() {
+  if (!state || !myId) return;
+  const finished = state.phase === "finished";
+  if (finished && !resultShowing) resultSerial++;
+  resultShowing = finished;
+  // Once per match, while it is being played (a rematch is a new one).
+  const balance = accountsUI.economy?.balance,
+    key = `${state.code}:${resultSerial}`;
+  if (
+    !finished &&
+    state.phase !== "lobby" &&
+    balance !== undefined &&
+    coinsAtStart?.key !== key
+  )
+    coinsAtStart = { key, balance };
+}
+/** Coins the match just finished in this room has paid (undefined: not known). */
+function matchCoins() {
+  const balance = accountsUI.economy?.balance;
+  if (
+    !state ||
+    balance === undefined ||
+    coinsAtStart?.key !== `${state.code}:${resultSerial - 1}`
+  )
+    return undefined;
+  return Math.max(0, balance - coinsAtStart.balance);
+}
 /** The room the coach was last decided for (once per room). */
 let coachRoom = "";
 /**
@@ -4010,6 +4053,7 @@ function renderBattle() {
     (watching && state?.code === watching ? state.players[0] : undefined);
   if (!state || !me) return;
   syncCoach();
+  markMatchStart();
   setHudStyle(
     document.body,
     "--element",
@@ -4423,6 +4467,8 @@ function renderBattle() {
       details = "",
       actions = "",
       eyebrow = "Element Arena",
+      // A result's confetti: first in the card, outside what scrolls.
+      flourish = "",
       reveal = false;
     if (state.phase === "briefing") {
       // The Reveal (docs/hidden-picks.md, "The Reveal"): the picks were
@@ -4553,8 +4599,10 @@ function renderBattle() {
           ? `${escape(state.players.find((p) => p.id === state!.winner)?.name ?? "A rival")} takes the free-for-all`
           : "A worthy fight.";
       // Scoreline: your side on the left, always.
+      // No motion on Low graphics or with reduced motion: the end state.
+      const still = reducedMotion || lowGraphics();
       const score = (left: string, a: number, b: number, right: string) =>
-        `<div class="result-score"><span>${left}</span><b>${a}</b><i>–</i><b>${b}</b><span>${right}</span></div>`;
+        `<div class="result-score"><span class="rw-side">${fighterHop(avatar(fighterPortrait(me.character), { element: CHARACTERS[me.character].element }), won, still)}<span>${left}</span></span><b>${a}</b><i>–</i><b>${b}</b><span>${right}</span></div>`;
       const rival = state.players.find((p) => p.id !== myId);
       details = isFfa()
         ? standingsMarkup(state, myId)
@@ -4571,20 +4619,46 @@ function renderBattle() {
               rival ? (state.scores[rival.id] ?? 0) : 0,
               escape(rival?.name ?? "Opponent"),
             );
-      details +=
+      const record =
+        state.matchId && !state.arcade
+          ? matchRecords.get(state.matchId)
+          : undefined;
+      const saved = record?.status === "done" ? record.reply : undefined;
+      // What the match gave you, before its numbers (result-rewards.ts):
+      // the rank shows there, so the records line below leaves it out.
+      const rated = saved?.rating?.before !== undefined;
+      // One opponent you could add: the button sits beside Rematch.
+      const stranger =
+        !isTeams() && !isFfa() && saved?.records.length === 1
+          ? saved.records.find((r) => !friendIds.has(r.id))
+          : undefined;
+      // Over the sheet's head, outside the part that scrolls.
+      flourish = won && !still ? confettiMarkup() : "";
+      details =
+        details +
+        rewardsMarkup({
+          won,
+          still,
+          journey: accountsUI.economy?.journey,
+          ref: state.matchId ? `match:${state.matchId}` : undefined,
+          status: state.activityStatus,
+          eligible: state.activityEligible?.includes(myId) ?? true,
+          rating: rated ? saved!.rating : undefined,
+          // Once your records have this match (the count includes it).
+          mastery:
+            saved?.confirmed && masteryCounts === state.matchId
+              ? {
+                  fighter: CHARACTERS[me.character].name,
+                  matches: masteryMatches(me.character),
+                }
+              : undefined,
+          coins: matchCoins(),
+        }) +
         recapMarkup(state, myId) +
-        recordsMarkup(
-          state.matchId && !state.arcade
-            ? matchRecords.get(state.matchId)
-            : undefined,
-          friendIds,
-        );
-      details += resultXp(
-        accountsUI.economy?.journey,
-        state.matchId ? `match:${state.matchId}` : undefined,
-        state.activityStatus,
-        state.activityEligible?.includes(myId) ?? true,
-      );
+        recordsMarkup(record, friendIds, {
+          rating: !rated,
+          addFriend: !stranger,
+        });
       if (state.arcade)
         details +=
           '<p class="arcade-rating-note">Weekly arcade · XP and mission progress · PvP rating stays separate.</p>';
@@ -4616,7 +4690,10 @@ function renderBattle() {
       // Against a bot, the rematch can bring another fighter (not in PvP,
       // where picks stay secret until a match starts, nor the arcade).
       const canSwap = !!state.vsBot && !state.arcade && !me.ready;
-      actions = `<p class="sheet-note">${next}</p><div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button>${canSwap ? `<button class="secondary btn-secondary" id="change-fighter">${iconLabel("swap", "Change fighter")}</button>` : ""}<button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
+      const addFriend = stranger
+        ? `<button class="secondary btn-secondary" data-add-friend="${escape(stranger.id)}" aria-label="Add ${escape(stranger.name)} as a friend">${iconLabel("add-friend", "Add friend")}</button>`
+        : "";
+      actions = `<p class="sheet-note">${next}</p><div class="result-actions"><button class="primary btn-primary result-again" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", state.vsBot ? "Play again" : "Rematch")}</button>${addFriend}${canSwap ? `<button class="secondary btn-secondary" id="change-fighter">${iconLabel("swap", "Change fighter")}</button>` : ""}<button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
     const finished = state.phase === "finished";
     const won =
@@ -4627,7 +4704,7 @@ function renderBattle() {
       : state.phase === "intermission"
         ? ` round-break${actions ? " has-rites" : ""}`
         : "";
-    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}${sheet}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
+    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}${sheet}">${flourish}<span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
     // Preserve the pressed button and native scrolling between snapshots.
     // The arena finishing loading starts the Reveal's scroll afresh, but it
     // is the same panel: it must not pop in again (it blinked out, the whole
@@ -4635,13 +4712,17 @@ function renderBattle() {
     const panelKey = actions
       ? `${state.code}:${state.matchId ?? ""}:${state.phase}`
       : undefined;
-    setOverlayMarkup(
+    const redrawn = setOverlayMarkup(
       overlay,
       markup,
       panelKey &&
         `${panelKey}${state.phase === "briefing" && arenaLoading(state) ? ":loading" : ""}`,
       panelKey,
     );
+    // The result's celebration carries on from where it was (drawn again
+    // as the XP, the rank and a rematch's "ready" arrive).
+    if (redrawn && finished)
+      syncRewardMotion(overlay, `${state.code}:${resultSerial}`);
     fillLiveSeconds(
       overlay,
       state.phase === "paused" ? state.pauseRemaining : state.remaining,
@@ -5203,6 +5284,12 @@ let friendIds = new Set<string>();
 let masteryFor = "";
 /** Matches this account has finished (undefined until its records load). */
 let matchesFinished: number | undefined;
+/**
+ * The match your records were last read for, and the one they now count
+ * (the result's mastery tile shows the count with that match in it).
+ */
+let masteryWaits: string | undefined;
+let masteryCounts: string | undefined;
 function loadMastery(force = false) {
   const id = accountsUI?.account?.id ?? "";
   if (!id) {
@@ -5219,11 +5306,13 @@ function loadMastery(force = false) {
       if (list) friendIds = new Set(list.friends.map((f) => f.id));
     });
   masteryFor = id;
+  const waited = masteryWaits;
   void accountsUI
     .api("/api/progress")
     .then((value) => {
       const progress = progressSchema.parse(value);
       setMastery(progress.fighters);
+      if (waited) masteryCounts = waited;
       // A new player's short first matches (INTRO_ROUNDS): the Lobby says so.
       if (matchesFinished !== progress.matches) {
         matchesFinished = progress.matches;
@@ -5235,7 +5324,7 @@ function loadMastery(force = false) {
       if (!state || state.phase === "lobby") {
         screen = "";
         renderMenu();
-      }
+      } else if (state.phase === "finished") renderBattle();
     })
     .catch(() => {
       // Records not set up yet (migration 004): no badges.
@@ -5274,8 +5363,12 @@ async function reportMatch(matchId: string, attempt = 0) {
     if (
       reply.confirmed &&
       !(before?.status === "done" && before.reply.confirmed)
-    )
+    ) {
+      // Your records now have this match: the result's mastery tile shows
+      // once they are read again (result-rewards.ts).
+      masteryWaits = matchId;
       loadMastery(true);
+    }
     for (const name of reply.achievements)
       if (!seen.includes(name))
         toast(`Achievement unlocked: ${name}. Its title is yours to wear.`);

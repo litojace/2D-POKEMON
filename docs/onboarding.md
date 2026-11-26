@@ -136,6 +136,48 @@ Tests: `tests/unit/intro-rounds.test.ts`, `tests/unit/feature-unlocks.test.ts`,
 `tests/integration/intro-match.test.ts`, `tests/integration/first-win-xp.test.ts`,
 `tests/visual/feature-unlocks.spec.ts`.
 
+## The result sheet celebrates what a match gave (26 Nov 2026)
+
+A player should feel what they just earned before the button asks for
+another match. A PvP or bot match's result sheet used to say "Victory",
+the score and "+125 XP" in one line of text. Now
+(`apps/client/src/result-rewards.ts`):
+
+1. On a win your fighter's portrait hops beside the score and confetti
+   falls over the sheet's head.
+2. Tiles appear one after another, each with a bar that runs from where
+   you were to where you are:
+   - **XP**: the level bar; when it fills, LEVEL UP, and a line under the
+     tiles says the level, its coins, a milestone's title or cosmetic and
+     the feature it opened ("Unlocked: Boss Raids").
+   - **Rank** (rated matches): the rating change in green or red and your
+     place between this rank and the next; RANK UP on a promotion.
+   - **Season**: the tier bar; TIER UP.
+   - **Mastery**: your matches with this fighter toward its next tier.
+   - **Coins**: what the match, its missions and a level paid.
+3. **Rematch** (Play again against a bot) is the widest button; **Add
+   friend** sits beside it after a 1v1 with someone who isn't a friend yet.
+
+Rules kept:
+
+- Every number comes from what the server already sends: the journey's
+  recent XP rows (`xpAward`), the match report's rating, your records, and
+  the coin balance before and after. Nothing is counted on the client that
+  the server didn't save.
+- The sheet is drawn again whenever its markup changes (the XP arriving,
+  the opponent ready), which would start every animation over:
+  `syncRewardMotion` puts each tile's animations back where they were.
+- Transform and opacity only, no layout read, the same markup for the same
+  facts. Reduced motion and Low graphics show the end state at once, with
+  no confetti. `tests/visual/battle-style-budget.spec.ts` and
+  `match-flow-budget.spec.ts` cover it like any battle UI.
+- Tile rows always fill the width (three a row; five tiles are three and
+  two; four are two and two), so no row ends in an empty box.
+- Raids and the Spire keep their own result cards (`resultXp`).
+
+Tests: `tests/unit/result-rewards.test.ts`,
+`tests/visual/result-rewards.spec.ts`.
+
 ## Next steps worth considering
 
 - A short first-visit tip for screens that have none (Wardrobe, Ranks,
