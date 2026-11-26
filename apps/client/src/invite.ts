@@ -1,5 +1,5 @@
 /**
- * Invite links: `https://parena.litojace.com/?room=ABC123` opens the game and
+ * Invite links: `https://play.elementarenausa.com/?room=ABC123` opens the game and
  * joins that room as soon as the player is signed in and connected. The code
  * survives a login detour (sessionStorage) and is removed from the address
  * bar so a refresh doesn't re-join.
