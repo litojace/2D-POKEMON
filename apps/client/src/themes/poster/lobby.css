@@ -371,6 +371,13 @@
   :root[data-ui="poster"] .lobby-layer .lobby-card small {
     letter-spacing: -0.01em;
   }
+  /* A kicker's second half ("· Ember Festival", "Daily"): in Archivo's
+     capitals it doesn't fit a phone's card, and the card's own line says
+     it. (The spans arrive with the Lobby's Raid card; until then this
+     matches nothing.) */
+  :root[data-ui="poster"] .lobby-layer .lobby-kicker-more {
+    display: none;
+  }
   :root[data-ui="poster"] .lobby-layer .lobby-mode-text b {
     letter-spacing: 0.03em;
   }
