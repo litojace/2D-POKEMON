@@ -4,7 +4,7 @@ Owner's decision (25 Nov 2026): the game moves from `parena.litojace.com` to
 **`play.elementarenausa.com`**. The introduction website takes the apex
 `elementarenausa.com` (`www` redirects there; the website session builds it
 from `apps/site`). The old address keeps serving the same game during the
-move, with a banner offering the new one; a redirect (keeping the path and
+move, with a notice offering the new one; a redirect (keeping the path and
 query, so `?room=`, `?auth=` and old QR codes still work) comes later, when
 the owner decides.
 
@@ -91,10 +91,12 @@ Each step can be undone on its own; "Undo" says how.
    iPhone Add to Home Screen), privacy and support pages.
 9. **The old address keeps serving the same game** (root and coordinator
    sessions, 25 Nov): installs on `parena.litojace.com` keep their sign-in,
-   settings and push. From step 7's build, the game shows a light banner
-   there (`domain-move.ts`, through `announcements.ts`): "Element Arena moved
-   to play.elementarenausa.com…" with **Open** and **Later**; never in a
-   battle, and back every three days until they move. Old links, email links
+   settings and push. From step 7's build, the game shows a notice there
+   (`domain-move.ts`, through `announcements.ts`): "Element Arena has moved",
+   with the new address, the Home Screen step and the guests' email step, and
+   **Later** and **Open**; never in a battle, and back every three days until
+   they move. Since #506 it is a dialog: as a banner it covered the top bar
+   and the sign-in tabs on phones in landscape. Old links, email links
    and QR codes keep working because the old address is still live.
    Optionally, set the `parena` record's target to `twod-pokemon.onrender.com`
    (DNS only), the Static Site's own name, as the documented target.
@@ -130,9 +132,9 @@ Each step can be undone on its own; "Undo" says how.
   address keeps serving). A new address has empty storage, so the saved
   session (`parena-auth`) stays behind on the old address. Guests on the
   web start over unless they added an email (a guest's progress is tied to the
-  device's anonymous account). The banner on the old address says so.
+  device's anonymous account). The notice on the old address says so.
 - **Home screen icons:** the old icon keeps opening the game on the old
-  address, with the banner. Add the game to the home screen again from the
+  address, with the notice. Add the game to the home screen again from the
   new address. (After the redirect in step 11, the old icon opens the new
   address in the browser.)
 - **iPhone app players:** nothing changes (the app has its own storage).
@@ -272,3 +274,14 @@ this move doesn't touch how the session is stored.
   compares the served headers and inline-script hashes with
   `apps/client/security-headers.json` after relevant pushes and daily, and
   opens "Live game headers differ from the repo" on drift.
+- 25 Nov, ~7:25 PM PT: the owner asked for mobile first ("Ưu tiên làm trên
+  giao diện mobile nha quên desktop đi"). On an Android phone emulation of
+  `parena.` (667×375, 844×390, 852×393 with the island insets) the move
+  banner covered the gate's Log in / Create account tabs and the hub's top
+  bar until answered. PR #506 makes it a dialog (Later / Open, the whole
+  message, 44 px taps). The same evening a touch-controlled guest bot match
+  on `play.` (844×390, joystick and buttons) played to the result with zero
+  violations. A deploy (#503's, live 03:32:03 UTC) landed mid-match, and the
+  result sheet said "Couldn't save this match to your records":
+  `/api/matches/report` answered 404 from the new instance. Reported to the
+  sessions that own the server's routes.
