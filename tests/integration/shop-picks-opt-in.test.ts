@@ -138,8 +138,8 @@ it("has every catalog item on sale under its own kind: no reward or retired row 
   expect(raid.filter((id) => sold.has(id))).toEqual([]);
 });
 
-it("opens the eight collections of 25 Nov to Today's Picks, sets excepted, and runs again safely", async () => {
-  // 20261125190000_open_new_picks.sql ran with every other migration.
+it("opens the collections of 25 Nov to Today's Picks, sets excepted, and runs again safely", async () => {
+  // 20261126004500_open_new_picks.sql ran with every other migration.
   const OPENED = [
     "starlight-idol",
     "seaside",
@@ -149,6 +149,7 @@ it("opens the eight collections of 25 Nov to Today's Picks, sets excepted, and r
     "rainy-day",
     "grand-prix",
     "sun-dynasty",
+    "singles",
   ];
   await db.exec("reset role");
   const counts = async () =>
@@ -170,22 +171,27 @@ it("opens the eight collections of 25 Nov to Today's Picks, sets excepted, and r
     expect(r, `${r.collection} ${r.kind}`).toMatchObject(
       r.kind === "bundle" ? { opened: 0 } : { held: 0 },
     );
-  // 18 skins each in the five skin collections, 5 pieces in each Look set.
+  // 18 skins each in the five skin collections, 5 pieces in each Look set,
+  // and the 8 singles.
   const items = rows.filter((r) => r.kind !== "bundle");
-  expect(items.reduce((n, r) => n + r.opened, 0)).toBe(5 * 18 + 3 * 5);
+  expect(items.reduce((n, r) => n + r.opened, 0)).toBe(5 * 18 + 3 * 5 + 8);
   // Over 400 days the picks reach them.
   const ids = await picked();
   expect(
     ids.filter((id) => id.endsWith("-sun-dynasty")).length,
   ).toBeGreaterThan(0);
   expect(ids).toContain("seaside-aura");
+  const singles = LOOK_ITEMS.filter((i) => i.collection === "singles").map(
+    (i) => i.id,
+  );
+  expect(ids.some((id) => singles.includes(id))).toBe(true);
   // Running it again changes nothing, and a new item stays held back.
   await db.exec(
     `insert into public.arena_shop_items(id, kind, slot, name, rarity, collection, price) values ('testing-banner', 'look', 'frame', 'Test', 'rare', 'testing', 800)`,
   );
   await db.exec(
     await readFile(
-      "supabase/migrations/20261125190000_open_new_picks.sql",
+      "supabase/migrations/20261126004500_open_new_picks.sql",
       "utf8",
     ),
   );

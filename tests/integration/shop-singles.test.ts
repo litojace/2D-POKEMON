@@ -42,7 +42,7 @@ beforeAll(async () => {
 }, 60000);
 afterAll(async () => db.close());
 
-it("seeds the eight singles as the catalogue has them, held out of Today's Picks", async () => {
+it("seeds the eight singles as the catalogue has them, opened to Today's Picks", async () => {
   expect(singles).toHaveLength(8);
   await db.exec("reset role");
   const rows = (
@@ -62,7 +62,8 @@ it("seeds the eight singles as the catalogue has them, held out of Today's Picks
         rarity: i.rarity,
         price: i.price,
         items: null,
-        in_picks: false,
+        // Opened by 20261126004500_open_new_picks.sql (owner, 25 Nov).
+        in_picks: true,
         active: true,
       })),
   );
