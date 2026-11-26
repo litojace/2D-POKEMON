@@ -12,15 +12,17 @@ import { playChip, ARP_STEP } from "../../apps/client/src/chip-synth";
 import { noteHz } from "../../apps/client/src/audio";
 
 const SCENES: BackgroundTheme[] = ["lobby", "pvp", "raid", "spire"];
+/** The hub and PvP play the produced voices (pro-score.test.ts). */
+const CHIP_SCENES: BackgroundTheme[] = ["raid", "spire"];
 const loop = (theme: BackgroundTheme, phase = 1) =>
   Array.from({ length: MUSIC_LOOP_STEPS }, (_, s) =>
     scoreStep(theme, s, phase),
   ).flat();
 
 describe("the retro soundtrack", () => {
-  it("plays only chip voices, with real pitches, for every scene and result", () => {
+  it("plays chip voices, with real pitches, for the raid, the Spire and the results", () => {
     const notes: ScoreNote[] = [
-      ...SCENES.flatMap((t) => [...loop(t, 1), ...loop(t, 3)]),
+      ...CHIP_SCENES.flatMap((t) => [...loop(t, 1), ...loop(t, 3)]),
       ...(["victory", "defeat", "draw"] as const).flatMap((t) =>
         Array.from({ length: RESULT_MUSIC_STEPS[t] }, (_, s) =>
           scoreStep(t, s),
@@ -38,14 +40,12 @@ describe("the retro soundtrack", () => {
     }
   });
   it("gives each scene its own role", () => {
-    const count = (t: BackgroundTheme, i: string, phase = 1) =>
-      loop(t, phase).filter((n) => n.instrument === i).length;
-    // A fight has the busiest kit.
-    expect(count("pvp", "chip-kick")).toBeGreaterThan(
-      count("lobby", "chip-kick"),
-    );
-    expect(count("pvp", "chip-snare")).toBeGreaterThan(
-      count("lobby", "chip-snare"),
+    const count = (t: BackgroundTheme, kind: string, phase = 1) =>
+      loop(t, phase).filter((n) => n.instrument.endsWith(kind)).length;
+    // A fight has a busier kit than the hub; the boss gets busier by phase.
+    expect(count("pvp", "-kick")).toBeGreaterThan(count("lobby", "-kick"));
+    expect(count("raid", "-kick", 3)).toBeGreaterThan(
+      count("raid", "-kick", 1),
     );
     // The fight and the boss run quicker than the menus.
     expect(MUSIC_BPM.pvp).toBeGreaterThan(MUSIC_BPM.lobby);
