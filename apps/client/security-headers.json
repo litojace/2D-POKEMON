@@ -1,0 +1,40 @@
+{
+  "_comment": "Response headers for the game's Render Static Site (2D-POKEMON), path /*. Render's dashboard holds the live copy; this file is the source of truth and tests/unit/security-headers.test.ts checks it against the code. docs/static-frontend.md, 'Security headers'.",
+  "headers": {
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=()"
+  },
+  "csp": {
+    "default-src": ["'self'"],
+    "script-src": [
+      "'self'",
+      "'sha256-ZUfnpofFS03gzg2lFnuIR/yasY6fcPLurwCbYKKB6Mo='",
+      "'sha256-ypk5TKIXlesdkcgbABUY+mPA5yJZjnntiSzwtP8U6og='",
+      "'sha256-00y+Y3WQbP67KpsHbqQw6oClsDR/TzTa/BTdg1vUNyk='"
+    ],
+    "style-src": ["'self'", "'unsafe-inline'"],
+    "img-src": [
+      "'self'",
+      "data:",
+      "blob:",
+      "https://element-arena-np34.onrender.com"
+    ],
+    "font-src": ["'self'"],
+    "connect-src": [
+      "'self'",
+      "https://zrmbdtvuriiikvwcvqfj.supabase.co",
+      "https://element-arena-np34.onrender.com",
+      "wss://element-arena-np34.onrender.com"
+    ],
+    "media-src": ["'self'", "data:", "blob:"],
+    "worker-src": ["'self'"],
+    "manifest-src": ["'self'"],
+    "object-src": ["'none'"],
+    "base-uri": ["'self'"],
+    "form-action": ["'self'"],
+    "frame-ancestors": ["'none'"],
+    "upgrade-insecure-requests": []
+  }
+}

@@ -50,6 +50,41 @@ checks the copies exist. Do not add a blanket `/*` SPA rewrite: missing JS must
 return 404, not HTML. Verify the three callback paths return the app on the
 final domain.
 
+## Security headers
+
+Since the shared sign-in (#484), the game and the website keep one session
+cookie that scripts can read, so a script injected into the game could reach
+both. The game's Static Site sends these headers on `/*` (Render → Static
+Site → Redirects/Headers). The source of truth is
+`apps/client/security-headers.json`; `tests/unit/security-headers.test.ts`
+fails when an inline script changes without its hash, when the client calls a
+host the policy doesn't allow, or when this list drifts from the file.
+
+```
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Frame-Options: DENY
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=()
+Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-ZUfnpofFS03gzg2lFnuIR/yasY6fcPLurwCbYKKB6Mo=' 'sha256-ypk5TKIXlesdkcgbABUY+mPA5yJZjnntiSzwtP8U6og=' 'sha256-00y+Y3WQbP67KpsHbqQw6oClsDR/TzTa/BTdg1vUNyk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://element-arena-np34.onrender.com; font-src 'self'; connect-src 'self' https://zrmbdtvuriiikvwcvqfj.supabase.co https://element-arena-np34.onrender.com wss://element-arena-np34.onrender.com; media-src 'self' data: blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+```
+
+- **Inline scripts** in `index.html` (three small boot scripts) are allowed
+  by their SHA-256 hash, never by `'unsafe-inline'`. Change one and the test
+  prints the new hash to put in the JSON file and in Render.
+- **Styles** keep `'unsafe-inline'`: the game sets inline styles from code
+  everywhere, and style injection can't run script.
+- **Hosts:** the game server (`VITE_SERVER_URL`, https and wss for the
+  socket, images for portraits and avatar photos) and the Supabase project
+  (https; the client uses no realtime socket). `data:` and `blob:` images are
+  canvas exports, the share card, the QR code and fighter art. No eval, no
+  workers besides the service worker, no WASM.
+- **Rollout:** first as `Content-Security-Policy-Report-Only` (violations
+  show in the browser console, nothing is blocked), then enforcing after a
+  clean pass through boot, sign-in, guest play, a bot match, the Plaza, the
+  Shop and a share card. Rollback: remove the CSP header in Render.
+- The iPhone app loads the game from its own files (`capacitor://localhost`),
+  so these headers don't apply there.
+
 ## Startup behavior
 
 The initial `/api/health` probe is shared by authentication and the socket. The
