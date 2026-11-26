@@ -1,0 +1,114 @@
+/* Showcase: what the tokens and the kit don't reach on the hub's screens:
+   the older dialogs (Settings, Help, sign-in, invites), the buttons and
+   text fields drawn before the kit, and a few screens' own pieces. */
+
+/* --------------------------------------------------------- dialogs */
+:root[data-ui="showcase"] dialog[open] {
+  border-radius: var(--rad-xl);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+:root[data-ui="showcase"] dialog[open] .dialog-toolbar {
+  background: transparent;
+}
+:root[data-ui="showcase"]
+  dialog[open]
+  :is(.dialog-heading, .dialog-toolbar h2) {
+  color: var(--sc-text);
+  font-weight: 900;
+  font-size: var(--fs-h3);
+  letter-spacing: 0;
+  text-transform: none;
+}
+:root[data-ui="showcase"] dialog[open] .dialog-toolbar .close {
+  border-color: transparent;
+  border-radius: var(--rad-sm);
+  background: var(--sc-tile);
+  color: var(--sc-text);
+  box-shadow: none;
+}
+:root[data-ui="showcase"] dialog[open] :is(.prefs-card, .st-card) {
+  border-color: transparent;
+  border-radius: var(--rad-lg);
+  background: var(--sc-tile);
+  box-shadow: none;
+}
+:root[data-ui="showcase"] dialog[open] :is(.prefs-card, .st-card) h3 {
+  color: var(--sc-text);
+  font-weight: 800;
+  font-size: var(--fs-lead);
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+/* ------------------------------------ buttons drawn before the kit */
+:root[data-ui="showcase"]
+  button:is(.btn-primary, .primary):not(.lobby-play-button),
+:root[data-ui="showcase"] button:is(.btn-secondary, .secondary) {
+  border: 0;
+  border-radius: var(--rad-md);
+  box-shadow: none;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+:root[data-ui="showcase"]
+  button:is(.btn-primary, .primary):not(.lobby-play-button) {
+  background: var(--sc-cta);
+  color: var(--sc-ink);
+  box-shadow: 0 0 0 3px var(--sc-cta-ring);
+}
+:root[data-ui="showcase"]
+  button:is(.btn-secondary, .secondary):not(.leave-button) {
+  background: var(--sc-tile-2);
+  color: var(--sc-text);
+}
+:root[data-ui="showcase"] button.leave-button {
+  background: color-mix(in srgb, var(--ui-danger) 8%, transparent);
+  color: #ff8a97;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--ui-danger) 45%, transparent);
+}
+:root[data-ui="showcase"]
+  button:is(.btn-primary, .primary, .btn-secondary, .secondary)
+  svg {
+  color: currentColor;
+}
+
+/* ----------------------------------------------------- text fields */
+:root[data-ui="showcase"]
+  :is(input:is([type="text"], [type="search"], :not([type])), textarea) {
+  border: 1px solid var(--sc-line);
+  border-radius: var(--rad-sm);
+  background: var(--sc-bg);
+  color: var(--sc-text);
+  box-shadow: none;
+}
+:root[data-ui="showcase"]
+  :is(input:is([type="text"], [type="search"], :not([type])), textarea):focus {
+  border-color: var(--sc-el);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-el) 20%, transparent);
+}
+
+/* ----------------------------------------------------------- ranks */
+:root[data-ui="showcase"] .rk-board {
+  border-color: transparent;
+  border-radius: var(--rad-lg);
+  background: var(--sc-tile);
+}
+:root[data-ui="showcase"] .rk-head {
+  background: var(--sc-tile-2);
+  font-weight: 800;
+}
+:root[data-ui="showcase"] .rk-pin > .rk-row {
+  border-top: 2px solid var(--sc-el);
+  background: color-mix(in srgb, var(--sc-el) 16%, var(--sc-tile-2));
+}
+
+/* -------------------------------------------------------- fighters */
+:root[data-ui="showcase"] .roster-card-text,
+:root[data-ui="showcase"] .roster-card-text > :is(b, span, strong) {
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
