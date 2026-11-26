@@ -242,3 +242,11 @@ this move doesn't touch how the session is stored.
   only reports were zod's eval probe and its compiler (vendor chunk), which
   #494's jitless mode removes. The guest was then deleted through the game's
   flow (no rows left). Enforcing waits for #494 to deploy and a clean re-run.
+- 25 Nov, 6:43 PM PT: with the owner's OK here ("bật CSP"), the enforcing
+  `Content-Security-Policy` is live on both hosts (value byte-identical to
+  the Report-Only one, which was then removed). Guest passes under
+  enforcement on `play.` and `parena.` (load, guest, Shop, share card,
+  Plaza, bot match): zero violations; the guests were deleted afterwards (no
+  rows left). `node scripts/check-live-headers.mjs --require-enforcing`
+  matches on both hosts. On `parena.` the move banner covers the
+  Lobby/Plaza tabs until Later or Open is pressed (as designed).
