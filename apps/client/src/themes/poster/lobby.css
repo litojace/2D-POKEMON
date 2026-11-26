@@ -3,7 +3,6 @@
    huge and outlined behind it, the cards are white clippings. */
 :root[data-ui="poster"] .lobby-layer {
   --lobby-rail: 132px;
-  --lobby-cards: 214px;
   background: var(--el);
   font-family: var(--font-body);
   color: var(--ink);
@@ -190,7 +189,8 @@
   transform: rotate(-4deg);
   color: var(--ink);
   box-shadow: none;
-  background: rgba(255, 255, 255, 0.35);
+  /* Solid, so a seat that reaches the slab still reads as one card. */
+  background: color-mix(in srgb, var(--el) 65%, #fff);
 }
 :root[data-ui="poster"] .lobby-layer .lobby-slot small {
   font: 800 11px/1 var(--font-body);
@@ -256,7 +256,9 @@
 }
 :root[data-ui="poster"] .lobby-layer .lobby-card b {
   color: var(--ink);
-  font: 400 20px/1.05 var(--font-display);
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.05;
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
@@ -297,7 +299,9 @@
 }
 :root[data-ui="poster"] .lobby-layer .lobby-mode-text b {
   color: var(--ink);
-  font: 400 17px/1 var(--font-display);
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -352,4 +356,41 @@
   button[aria-current="page"]
   :is(span, svg) {
   color: var(--ink);
+}
+
+/* Phones held sideways: the cards are narrower (the Lobby's own widths, which
+   the toast above them counts on), so their words are set tighter to read
+   in full. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .lobby-layer .lobby-card-kicker {
+    letter-spacing: 0;
+    padding: 2px 4px;
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-card small {
+    letter-spacing: -0.01em;
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-mode-text b {
+    letter-spacing: 0.03em;
+  }
+}
+/* The narrowest phones (667 px): the mode's hint takes two lines there, so
+   the box gives its 3 px frame back to the words; a card's count and its
+   timer stack when they don't fit side by side. */
+@media (max-width: 760px) and (max-height: 500px) {
+  :root[data-ui="poster"] .lobby-layer .lobby-mode {
+    border-width: 2px;
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-mode-text {
+    gap: 1px;
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-mode-text b {
+    font-size: calc(13px * var(--text-scale, 1));
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-mode-text small {
+    line-height: 1.1;
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-card-row {
+    flex-wrap: wrap;
+    gap: 0 8px;
+  }
 }
