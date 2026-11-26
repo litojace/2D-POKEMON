@@ -54,6 +54,12 @@
   letter-spacing: 0;
   text-transform: none;
 }
+/* Room for the marks of a Vietnamese name above the line (the name's box
+   cuts what overflows), taken back from the margin so nothing moves. */
+:root[data-ui="showcase"] body.hub-active #account-profile .account-name {
+  padding-top: 0.3em;
+  margin-top: -0.3em;
+}
 :root[data-ui="showcase"] body.hub-active .nav-title {
   font-weight: 500;
 }

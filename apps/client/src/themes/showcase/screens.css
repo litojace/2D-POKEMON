@@ -133,6 +133,41 @@
   text-transform: none;
 }
 
+/* --------------------------------------------------------- profile */
+/* A name with stacked marks ("Nguyễn Hồng Ánh") keeps them: the card cuts
+   what overflows and its line is 1.05 tall, which shaved the marks off
+   capitals. Room above the line, taken back from the margin, so nothing
+   moves. */
+:root[data-ui="showcase"] .pf-card-name {
+  padding-top: 0.34em;
+  margin-top: -0.34em;
+  line-height: 1.2;
+}
+/* The panel's title is the player's name: one line beside the pill tabs,
+   never wrapped under itself. */
+:root[data-ui="showcase"] .profile-panel .ui-panel-head .ui-title {
+  max-width: 14em;
+  padding-top: 0.3em;
+  margin-top: -0.3em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+/* On a narrow phone the name, its rule and Change name don't share one
+   line (the rule was squeezed to a word a line): the rule goes under. */
+@media (max-height: 500px) and (max-width: 760px) {
+  :root[data-ui="showcase"] .pf-name-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  :root[data-ui="showcase"] .pf-name-row > .pf-name-note {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    text-align: left;
+  }
+}
+
 /* ----------------------------------------------------------- ranks */
 :root[data-ui="showcase"] .rk-board {
   border-color: transparent;
