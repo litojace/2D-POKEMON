@@ -23,15 +23,15 @@
 }
 
 /* ------------------------------------- sheets: briefing and results */
-:root[data-ui="showcase"] body.battle-active #arena-overlay.is-sheet {
+:root[data-ui="showcase"] body.battle-active #arena-overlay#arena-overlay.is-sheet {
   background: var(--sc-bg);
 }
 /* A glow in the fighter's colour at the top; red on a defeat. */
 :root[data-ui="showcase"]
   body.battle-active
   #battle
-  #arena-overlay.is-sheet
-  > :is(.rc-card, .overlay-card) {
+  #arena-overlay#arena-overlay.is-sheet
+  > :is(.rc-card, .overlay-card):is(*, .is-victory) {
   background:
     radial-gradient(
       46% 70% at 50% -8%,
@@ -48,8 +48,8 @@
 :root[data-ui="showcase"]
   body.battle-active
   #battle
-  #arena-overlay.is-sheet
-  > :is(.rc-card, .overlay-card).is-defeat {
+  #arena-overlay#arena-overlay.is-sheet
+  > :is(.rc-card, .overlay-card).is-defeat.is-defeat {
   background:
     radial-gradient(
       46% 70% at 50% -8%,
@@ -59,83 +59,93 @@
     var(--sc-stage);
 }
 :root[data-ui="showcase"]
-  #arena-overlay.is-sheet
+  #arena-overlay#arena-overlay.is-sheet
   :is(.overlay-card > h2, .rc-head .ui-title) {
-  color: var(--sc-text);
   font-weight: 900;
   font-size: calc(32px * var(--text-scale, 1));
   letter-spacing: 0.01em;
-  text-transform: uppercase;
-  text-shadow: 0 0 26px color-mix(in srgb, var(--sc-el) 45%, transparent);
 }
 :root[data-ui="showcase"]
-  #arena-overlay.is-sheet
+  #arena-overlay#arena-overlay.is-sheet
   :is(.overlay-card > .eyebrow, .rc-head .ui-kicker) {
-  color: var(--sc-el);
-  font-weight: 800;
   letter-spacing: 0.12em;
 }
-:root[data-ui="showcase"] #arena-overlay.is-sheet .result-score * {
+/* The kicker and the title's glow take the fighter's colour; a defeat
+   keeps the default look's red (match-sheet.css). */
+:root[data-ui="showcase"]
+  #arena-overlay#arena-overlay.is-sheet
+  :is(.rc-card, .overlay-card):not(.is-defeat)
+  :is(.eyebrow, .rc-head .ui-kicker) {
+  color: var(--sc-el);
+}
+:root[data-ui="showcase"]
+  #arena-overlay#arena-overlay.is-sheet
+  :is(.rc-card, .overlay-card):not(.is-defeat)
+  :is(h2, .rc-head .ui-title) {
+  color: var(--sc-text);
+  text-shadow: 0 0 26px color-mix(in srgb, var(--sc-el) 45%, transparent);
+}
+:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet .result-score * {
   font-weight: 900;
 }
-:root[data-ui="showcase"] #arena-overlay.is-sheet table.recap {
+:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet table.recap {
   border-color: transparent;
   border-radius: var(--rad-lg);
   background: var(--sc-tile);
   box-shadow: none;
 }
-:root[data-ui="showcase"] #arena-overlay.is-sheet table.recap td {
+:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet table.recap td {
   font-weight: 800;
 }
-:root[data-ui="showcase"] #arena-overlay.is-sheet table.recap thead th {
+:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet table.recap thead th {
   color: var(--sc-dim);
   font-weight: 700;
   letter-spacing: 0.06em;
 }
-:root[data-ui="showcase"] #arena-overlay.is-sheet table.recap tr {
+:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet table.recap tr {
   background: transparent;
   box-shadow: none;
 }
-:root[data-ui="showcase"] #arena-overlay.is-sheet table.recap tr.me {
+:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet table.recap tr.me {
   background: var(--sc-tile-2);
 }
-:root[data-ui="showcase"] #arena-overlay.is-sheet .journey-result-xp {
+:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet .journey-result-xp {
   border-color: transparent;
   border-radius: var(--rad-lg);
   background: var(--sc-tile);
   box-shadow: none;
 }
 :root[data-ui="showcase"]
-  #arena-overlay.is-sheet
+  #arena-overlay#arena-overlay.is-sheet
   .journey-result-xp
   > strong {
   color: var(--sc-el);
   font-weight: 900;
 }
-:root[data-ui="showcase"] #arena-overlay.is-sheet .journey-level-up {
+:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet .journey-level-up {
   border-color: transparent;
   border-radius: var(--rad-md);
   background: var(--sc-tile-2);
 }
 :root[data-ui="showcase"]
-  #arena-overlay.is-sheet
+  #arena-overlay#arena-overlay.is-sheet
   :is(.panel-actions, .rc-foot) {
   border-top: 1px solid var(--sc-line);
   background: transparent;
 }
 :root[data-ui="showcase"]
-  #arena-overlay.is-sheet
+  #arena-overlay#arena-overlay.is-sheet
   :is(.rc-goal, .rc-steps > *, .rc-score, .rc-summary, .rc-roles > *, .rc-extra) {
   border-color: transparent;
   border-radius: var(--rad-lg);
   background: var(--sc-tile);
   box-shadow: none;
 }
-:root[data-ui="showcase"] #arena-overlay.is-sheet .rc-stat {
+:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet .rc-stat {
   background: transparent;
   box-shadow: none;
 }
-:root[data-ui="showcase"] #arena-overlay.is-sheet .rc-step-n {
+:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet .rc-step-n {
   border-radius: var(--rad-pill);
   background: var(--sc-el);
   color: var(--sc-ink);
