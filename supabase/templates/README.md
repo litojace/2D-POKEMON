@@ -8,9 +8,24 @@ files: paste each one into **Supabase → Authentication → Emails → Template
 |---|---|---|
 | Confirm signup | `Confirm your Element Arena account` | `confirm-signup.html` |
 | Reset password | `Reset your Element Arena password` | `reset-password.html` |
+| Change email address | `Confirm your new Element Arena email` | `change-email.html` |
+| Reauthentication | `Your Element Arena verification code` | `reauthentication.html` |
 
 - `{{ .ConfirmationURL }}` and `{{ .Email }}` are Supabase template variables;
-  keep them as they are.
+  keep them as they are. `change-email.html` also uses `{{ .NewEmail }}`, and
+  `reauthentication.html` uses `{{ .Token }}`. No variable goes into an image
+  URL or a query string we write.
+- **Change email address:** with **Secure email change** on (Authentication →
+  Providers → Email), Supabase sends this one to both the old and the new
+  address; the change happens only once it is confirmed. It shows
+  old → new and tells anyone who didn't ask to change their password.
+- **Reauthentication:** the 6-digit code (`{{ .Token }}`) a player types to
+  prove it's them, with no link: an Apple account setting its first password,
+  or a password change on a session older than 24 hours when **Secure
+  password change** is on. It says never to share the code.
+  Replace Supabase's default subject (`{{ .Token }} is your verification
+  code`) with the one in the table: a code in the subject shows on lock
+  screens and in notification previews.
 - Images load from the live site: `/icons/arena-192.png` and
   `/email/hero.jpg` (in `apps/client/public`). **Deploy them before pasting
   the templates**, or the banner shows as a broken image.
