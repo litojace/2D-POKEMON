@@ -48,11 +48,9 @@ export function itemPicture(
   scope: string,
   stage = 1,
   stars = 0,
-  /** An effect drawn round a figure of the fighter (cosmetic-picture.ts). */
-  withFigure = false,
 ) {
   const skin = CHAMPION_SKIN_BY_ID[id];
   if (skin)
     return skinThumbnail(id, skin.champion, stage, thumbSlot(scope, id));
-  return cosmeticPicture(id, champion, scope, stars, withFigure);
+  return cosmeticPicture(id, champion, scope, stars);
 }
