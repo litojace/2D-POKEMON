@@ -16,9 +16,7 @@ const html = readFileSync(path.join(SITE, "index.html"), "utf8")
   .replace(/> </g, "><")
   .replace(/" \/>/g, '"/>');
 const css = readFileSync(path.join(SITE, "site.css"), "utf8");
-// The game's address while play.elementarenausa.com isn't serving yet
-// (docs/website.md); switch back to it when it is.
-const GAME = "https://parena.litojace.com/";
+const GAME = "https://play.elementarenausa.com/";
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {
