@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { box, inside, openLobby, openWardrobe, settle, snap } from "./helpers";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
 import { exposeAccount, shopServer } from "./shop-server";
+import { SHOP_ARRIVALS } from "../../apps/client/src/shop-arrivals";
 
 // UI remodel step 2 (docs/ui-remodel/PLAN.md): the fitting room, the Shop and
 // the Wardrobe in one screen inside the Lobby. Measured at the four review
@@ -801,6 +802,56 @@ for (const size of [
       ).toHaveText(/common/i);
       for (const half of await look()) expect(half.inRow).toBe(true);
       await snap(page, info, `fitting-room-sort-cheapest-${size.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+// Today's "New in the Shop" follows the fighter you chose, not the one a
+// tapped tile puts on the stage (owner, 26 Nov: tapping a Daily pick of
+// another fighter changed the row's skins under the finger).
+for (const size of [SIZES[2], SIZES[0]])
+  test(`a Daily pick of another fighter leaves "New in the Shop" as it was (${size.name})`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      // A day after the newest arrival, so the row has something to show
+      // whatever today's date is.
+      const newest = Math.max(
+        ...Object.values(SHOP_ARRIVALS).map((d) =>
+          Date.parse(`${d}T12:00:00Z`),
+        ),
+      );
+      await page.clock.setFixedTime(newest + 86_400_000);
+      await shopServer(page);
+      const errors = await openLobby(page);
+      await page.click('.lobby-rail [data-lobby-action="shop"]');
+      const row = page.locator(".fit-new [data-ui-item]");
+      await expect(row.first()).toBeVisible();
+      const ids = () =>
+        row.evaluateAll((els) =>
+          els.map((e) => e.getAttribute("data-ui-item")),
+        );
+      const before = await ids();
+      // Voltkit is the fighter you came with: the row offers Voltkit's skins.
+      expect(before.some((id) => id!.startsWith("voltkit-"))).toBe(true);
+      // A Daily pick of Mystowl's puts Mystowl on the stage...
+      await page.click(
+        '.fit-picks:not(.fit-new) [data-ui-item="mystowl-scholar"]',
+      );
+      await expect(page.locator(".fit-stage .shop-live-stage")).toHaveAttribute(
+        "data-preview-champion",
+        "mystowl",
+      );
+      // ...and the row stays as it was.
+      expect(await ids()).toEqual(before);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

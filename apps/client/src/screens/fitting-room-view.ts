@@ -118,6 +118,13 @@ export interface FitView {
   /** The fighter on the stage. */
   champion: CharacterId;
   /**
+   * The fighter you chose: the one the screen opened with, or one picked in
+   * a fighter row. Trying on another fighter's skin puts that fighter on the
+   * stage (champion) but doesn't change this one, so what Today's "New in
+   * the Shop" offers stays put while you tap through the tiles.
+   */
+  fighter?: CharacterId;
+  /**
    * What is being tried on, per slot: an item id, or null for "none" (the
    * original look for the skin slot). A slot that isn't here shows what is
    * equipped. Nothing here is saved until Equip.
@@ -168,6 +175,7 @@ export function fitView(
     section: "today",
     slot: "champion",
     champion,
+    fighter: champion,
     tryOn: {},
     selected: null,
     action: "idle",
@@ -810,9 +818,12 @@ function fighterRow(
  * the database opens them (in_picks, migration 20261125120000), so without
  * this row a new collection only showed to someone who went through Skins
  * fighter by fighter. One skin per new skin collection: the one for the
- * fighter you're looking at, else the first you don't own (a collection
- * dresses all eighteen, and eighteen tiles would bury the rest). Look
- * pieces one by one. Nothing already shown above it (the deal, the picks).
+ * fighter you chose (view.fighter), else the first you don't own (a
+ * collection dresses all eighteen, and eighteen tiles would bury the rest).
+ * Not the fighter on the stage: tapping a Daily pick of another fighter put
+ * that fighter on, and the row's skins changed under your finger (owner,
+ * 26 Nov). Look pieces one by one. Nothing already shown above it (the
+ * deal, the picks).
  */
 export function newInShop(
   view: FitView,
@@ -824,6 +835,7 @@ export function newInShop(
   if (!e) return [];
   const shown = new Set([e.picks.deal, ...e.picks.items]);
   const fresh = (id: string) => isNew(id) && !owns(id, d) && !shown.has(id);
+  const mine = view.fighter ?? view.champion;
   const skins = new Map<string, string>();
   for (const s of CHAMPION_SKINS) {
     if (!fresh(s.id)) continue;
@@ -831,8 +843,7 @@ export function newInShop(
     const held = skins.get(key);
     if (
       !held ||
-      (s.champion === view.champion &&
-        CHAMPION_SKIN_BY_ID[held].champion !== view.champion)
+      (s.champion === mine && CHAMPION_SKIN_BY_ID[held].champion !== mine)
     )
       skins.set(key, s.id);
   }
