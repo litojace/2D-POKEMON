@@ -86,6 +86,13 @@
   font-size: calc(13px * var(--text-scale, 1));
   letter-spacing: 0.04em;
 }
+/* Phones: the two words share about 150 px. */
+@media (max-height: 500px) {
+  :root[data-ui="showcase"] .hub-scenes button {
+    font-size: calc(11.5px * var(--text-scale, 1));
+    letter-spacing: 0.02em;
+  }
+}
 :root[data-ui="showcase"] .hub-scenes button[aria-pressed="true"] {
   background: var(--sc-text);
   color: var(--sc-bg);

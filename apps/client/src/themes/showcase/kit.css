@@ -66,9 +66,15 @@
 @media (max-height: 500px) {
   :root[data-ui="showcase"] .ui-tabs > button {
     margin: 5px 0;
-    padding: 0 9px;
+    padding: 0 8px;
     min-height: 28px;
-    font-size: calc(12.5px * var(--text-scale, 1));
+    font-size: calc(12px * var(--text-scale, 1));
+    letter-spacing: 0;
+  }
+  /* A title beside pill tabs (the Profile's name): the chosen pill is a
+     white block, so it needs air where an underlined word did not. */
+  :root[data-ui="showcase"] .ui-panel-head > .ui-tabs {
+    margin-left: 2px;
   }
 }
 

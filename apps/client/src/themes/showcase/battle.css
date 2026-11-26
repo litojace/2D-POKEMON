@@ -184,3 +184,9 @@
 :root[data-ui="showcase"] .room-banner img {
   border-radius: 16px;
 }
+/* "Raid party" stays on one line beside its note (Rubik is wider than the
+   condensed capitals the 70 px it had were sized for). */
+:root[data-ui="showcase"] .room-head .ui-h {
+  flex: none;
+  white-space: nowrap;
+}
