@@ -15,8 +15,8 @@ const require = createRequire(import.meta.url);
 const JSQR = require.resolve("jsqr/dist/jsQR.js");
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 /** The harness has no VITE_SITE_URL: the code falls back to the game. */
-const CARD_LINK = "https://play.elementarenausa.com/?ref=card";
-const RESULT_LINK = "https://play.elementarenausa.com/?ref=result";
+const CARD_LINK = "https://elementarenausa.com/?ref=card";
+const RESULT_LINK = "https://elementarenausa.com/?ref=result";
 
 const SIZES = [
   { name: "667x375", width: 667, height: 375, phone: true },
@@ -401,7 +401,7 @@ test("every card variant carries a readable code", async ({
           await card.drawPlayerCard(
             c,
             d,
-            "https://play.elementarenausa.com",
+            "https://elementarenausa.com",
             name !== "card-no-title-no-art",
           );
           out[name] = { data: read(c), png: c.toDataURL("image/png") };
@@ -428,7 +428,7 @@ test("every card variant carries a readable code", async ({
           c,
           state,
           "p0",
-          "https://play.elementarenausa.com",
+          "https://elementarenausa.com",
         );
         out["result-2v2"] = { data: read(c), png: c.toDataURL("image/png") };
         return out;
