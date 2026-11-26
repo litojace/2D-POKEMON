@@ -683,6 +683,35 @@ for (const size of [SIZES[1], SIZES[4]])
               )
             ).map((b) => `${boss}: ${b}`),
           );
+          // Every reward's name whole on its closed card, on two lines where
+          // one is too short: a phone's title cards are a third of the row,
+          // and 12 of the 79 names ended in "…" at 852 x 393 with the island
+          // (25 Nov 2026). The text's own width, not scrollWidth: a name
+          // running into the 18 px kept for the earned tick didn't show
+          // there.
+          bad.push(
+            ...(
+              await room
+                .locator(".rh-reward:not(.is-open) .rh-reward-text b")
+                .evaluateAll((names) =>
+                  names.flatMap((b) => {
+                    const cs = getComputedStyle(b);
+                    const right =
+                      b.getBoundingClientRect().right -
+                      parseFloat(cs.paddingRight) -
+                      parseFloat(cs.borderRightWidth);
+                    const range = document.createRange();
+                    range.selectNodeContents(b);
+                    const wide = [...range.getClientRects()].some(
+                      (r) => r.right > right + 0.5,
+                    );
+                    return wide || b.scrollHeight > b.clientHeight + 1
+                      ? [`name cut: ${b.textContent}`]
+                      : [];
+                  }),
+                )
+            ).map((b) => `${boss}: ${b}`),
+          );
           await room.locator("[data-raid-back]").click();
           await expect(room).toHaveAttribute("data-raid-mode", "hall");
         }
