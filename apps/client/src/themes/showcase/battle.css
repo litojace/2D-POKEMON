@@ -23,7 +23,9 @@
 }
 
 /* ------------------------------------- sheets: briefing and results */
-:root[data-ui="showcase"] body.battle-active #arena-overlay#arena-overlay.is-sheet {
+:root[data-ui="showcase"]
+  body.battle-active
+  #arena-overlay#arena-overlay.is-sheet {
   background: var(--sc-bg);
 }
 /* A glow in the fighter's colour at the top; red on a defeat. */
@@ -85,7 +87,10 @@
   color: var(--sc-text);
   text-shadow: 0 0 26px color-mix(in srgb, var(--sc-el) 45%, transparent);
 }
-:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet .result-score * {
+:root[data-ui="showcase"]
+  #arena-overlay#arena-overlay.is-sheet
+  .result-score
+  * {
   font-weight: 900;
 }
 :root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet table.recap {
@@ -97,7 +102,11 @@
 :root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet table.recap td {
   font-weight: 800;
 }
-:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet table.recap thead th {
+:root[data-ui="showcase"]
+  #arena-overlay#arena-overlay.is-sheet
+  table.recap
+  thead
+  th {
   color: var(--sc-dim);
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -106,10 +115,15 @@
   background: transparent;
   box-shadow: none;
 }
-:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet table.recap tr.me {
+:root[data-ui="showcase"]
+  #arena-overlay#arena-overlay.is-sheet
+  table.recap
+  tr.me {
   background: var(--sc-tile-2);
 }
-:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet .journey-result-xp {
+:root[data-ui="showcase"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-result-xp {
   border-color: transparent;
   border-radius: var(--rad-lg);
   background: var(--sc-tile);
@@ -122,7 +136,9 @@
   color: var(--sc-el);
   font-weight: 900;
 }
-:root[data-ui="showcase"] #arena-overlay#arena-overlay.is-sheet .journey-level-up {
+:root[data-ui="showcase"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-level-up {
   border-color: transparent;
   border-radius: var(--rad-md);
   background: var(--sc-tile-2);
@@ -135,7 +151,14 @@
 }
 :root[data-ui="showcase"]
   #arena-overlay#arena-overlay.is-sheet
-  :is(.rc-goal, .rc-steps > *, .rc-score, .rc-summary, .rc-roles > *, .rc-extra) {
+  :is(
+    .rc-goal,
+    .rc-steps > *,
+    .rc-score,
+    .rc-summary,
+    .rc-roles > *,
+    .rc-extra
+  ) {
   border-color: transparent;
   border-radius: var(--rad-lg);
   background: var(--sc-tile);

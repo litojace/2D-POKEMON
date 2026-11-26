@@ -125,10 +125,7 @@
   font-weight: 700;
 }
 /* The open screen's button: tinted and ringed in the fighter's colour. */
-:root[data-ui="showcase"]
-  .lobby-layer
-  .lobby-rail
-  button[aria-current="page"] {
+:root[data-ui="showcase"] .lobby-layer .lobby-rail button[aria-current="page"] {
   background: color-mix(in srgb, var(--sc-el) 22%, var(--sc-tile));
   box-shadow: inset 0 0 0 2px var(--sc-el);
 }
@@ -164,9 +161,7 @@
   background: rgba(255, 255, 255, 0.03);
   color: var(--sc-dim);
 }
-:root[data-ui="showcase"]
-  .lobby-layer
-  .lobby-slot:is(:hover, :focus-visible) {
+:root[data-ui="showcase"] .lobby-layer .lobby-slot:is(:hover, :focus-visible) {
   border-color: var(--sc-el);
   color: var(--sc-text);
 }
@@ -214,9 +209,7 @@
   border-radius: 16px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
-:root[data-ui="showcase"]
-  .lobby-layer
-  .lobby-card:is(:hover, :focus-visible) {
+:root[data-ui="showcase"] .lobby-layer .lobby-card:is(:hover, :focus-visible) {
   box-shadow: inset 0 0 0 2px var(--sc-el);
 }
 :root[data-ui="showcase"] .lobby-layer .lobby-card-kicker {
@@ -289,6 +282,9 @@
 
 /* The Raid card: the boss's own splash painting, its name over a dark
    fade on the left so the words always read. */
+:root[data-ui="showcase"] .lobby-layer .lobby-raid-card:not(.is-squeezed) {
+  display: grid;
+}
 :root[data-ui="showcase"] .lobby-layer .lobby-raid-card {
   position: relative;
   align-content: end;
