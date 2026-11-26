@@ -1,12 +1,14 @@
 import {
   MUSIC_BPM,
   MUSIC_LOOP_STEPS,
+  PRO_THEMES,
   scoreStep,
   isResultTheme,
   RESULT_MUSIC_STEPS,
   type MusicTheme,
 } from "./music-score";
 import { MusicSynth } from "./music-synth";
+import { ProSynth } from "./pro-synth";
 import { CourtAmbience } from "./court-ambience";
 import type { CourtId } from "./arena-courts";
 import type { GameEvent } from "@arena/shared";
@@ -62,7 +64,15 @@ export class AudioManager {
   timer?: ReturnType<typeof setInterval>;
   private musicBus?: GainNode;
   private scoreBus?: GainNode;
-  private synth?: MusicSynth;
+  private synth?: MusicSynth | ProSynth;
+  /** The hub and PvP play the produced voices, the rest the chip's. */
+  private themeSynth(theme: MusicTheme, bus: GainNode) {
+    const ctx = this.context!,
+      bpm = MUSIC_BPM[theme];
+    return PRO_THEMES.has(theme)
+      ? new ProSynth(ctx, bus, this.noise!, bpm)
+      : new MusicSynth(ctx, bus, this.noise!, bpm);
+  }
   private theme: MusicTheme = "lobby";
   private phase = 1;
   private autoStarted = false;
@@ -136,12 +146,7 @@ export class AudioManager {
       t + (isResultTheme(theme) ? 0.12 : 1.1),
     );
     this.scoreBus.connect(this.musicBus);
-    this.synth = new MusicSynth(
-      this.context,
-      this.scoreBus,
-      this.noise!,
-      MUSIC_BPM[theme],
-    );
+    this.synth = this.themeSynth(theme, this.scoreBus);
     if (previous) {
       previous.gain.cancelScheduledValues(t);
       previous.gain.setTargetAtTime(0, t, isResultTheme(theme) ? 0.08 : 0.25);
@@ -184,12 +189,7 @@ export class AudioManager {
       );
       const data = this.noise.getChannelData(0);
       for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
-      this.synth = new MusicSynth(
-        this.context,
-        this.scoreBus,
-        this.noise,
-        MUSIC_BPM[this.theme],
-      );
+      this.synth = this.themeSynth(this.theme, this.scoreBus);
     }
     this.updateMusicGain();
     if (this.wantAmbience && this.ambience?.id !== this.wantAmbience)
