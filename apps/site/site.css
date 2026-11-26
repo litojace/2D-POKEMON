@@ -608,47 +608,6 @@ body::before {
   color: var(--dim);
 }
 
-/* ---------- Screenshots: a sideways strip that snaps ---------- */
-.shots {
-  display: flex;
-  gap: 14px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  overscroll-behavior-x: contain;
-  padding: 4px max(20px, env(safe-area-inset-right, 0px)) 18px
-    max(20px, env(safe-area-inset-left, 0px));
-  scroll-padding-inline: max(20px, env(safe-area-inset-left, 0px));
-  scrollbar-width: thin;
-}
-@media (min-width: 1220px) {
-  .shots {
-    padding-inline: calc((100vw - 1140px) / 2);
-    scroll-padding-inline: calc((100vw - 1140px) / 2);
-  }
-}
-.shots li {
-  flex: 0 0 min(86vw, 640px);
-  scroll-snap-align: start;
-}
-.shots figure {
-  margin: 0;
-  display: grid;
-  gap: 10px;
-}
-.shots img {
-  width: 100%;
-  aspect-ratio: 1280 / 589;
-  object-fit: cover;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: var(--surface);
-}
-.shots figcaption {
-  font: 700 1.2rem/1.2 var(--display);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 /* ---------- Raid bosses: a stage and a picker ---------- */
 /* A stage shows one boss's splash at a time (only its picture downloads);
    the seven bosses under it, in the Raid Hub's order, pick which. */
@@ -761,45 +720,57 @@ body::before {
   font-weight: 700;
   color: #ffffff;
 }
-/* Wider screens: the words over the splash, on the side away from the boss. */
+/* Wider screens: the splash and the words side by side, never on top of each
+   other, so no word covers a boss's face. The picture fades into the words'
+   panel; --fx keeps the boss's face in view where the picture is cut. */
 @media (min-width: 600px) {
   .raid {
     height: clamp(300px, 46vw, 540px);
     max-height: max(300px, 100svh - 110px);
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 38%);
+    background:
+      radial-gradient(
+        120% 90% at 100% 50%,
+        color-mix(in srgb, var(--el) 20%, transparent),
+        transparent 70%
+      ),
+      #0a0f1f;
+  }
+  .raid[data-side="left"] {
+    grid-template-columns: minmax(250px, 38%) minmax(0, 1fr);
+    background:
+      radial-gradient(
+        120% 90% at 0% 50%,
+        color-mix(in srgb, var(--el) 20%, transparent),
+        transparent 70%
+      ),
+      #0a0f1f;
+  }
+  .raid-art {
+    grid-area: 1 / 1;
+  }
+  .raid[data-side="left"] .raid-art {
+    grid-area: 1 / 2;
   }
   .raid-art img {
     aspect-ratio: auto;
+    object-position: var(--fx, 50%) 50%;
+    -webkit-mask-image: linear-gradient(to left, transparent 0, #000 64px);
+    mask-image: linear-gradient(to left, transparent 0, #000 64px);
   }
-  .raid::before {
-    content: "";
-    grid-area: 1 / 1;
-    z-index: 1;
-    background: linear-gradient(
-      to right,
-      #05070fe6 0%,
-      #05070fb3 34%,
-      transparent 62%
-    );
-    pointer-events: none;
-  }
-  .raid[data-side="right"]::before {
-    background: linear-gradient(
-      to left,
-      #05070fe6 0%,
-      #05070fb3 34%,
-      transparent 62%
-    );
+  .raid[data-side="left"] .raid-art img {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 64px);
+    mask-image: linear-gradient(to right, transparent 0, #000 64px);
   }
   .raid-tx {
-    grid-area: 1 / 1;
-    z-index: 2;
-    width: min(46%, 460px);
+    grid-area: 1 / 2;
     align-self: center;
-    padding: 24px clamp(20px, 3vw, 40px);
+    padding: 20px clamp(16px, 2.6vw, 36px) 20px clamp(8px, 1.4vw, 16px);
     background: none;
   }
-  .raid[data-side="right"] .raid-tx {
-    justify-self: end;
+  .raid[data-side="left"] .raid-tx {
+    grid-area: 1 / 1;
+    padding: 20px clamp(8px, 1.4vw, 16px) 20px clamp(16px, 2.6vw, 36px);
   }
 }
 @media (min-width: 1000px) {
@@ -904,102 +875,73 @@ body::before {
     align-items: start;
   }
 }
-.perks {
+/* The Shop's showcase: tall cards, each the fitting room's stage for one
+   piece, its rarity in the game's rarity colours. */
+.showcase {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-@media (min-width: 560px) {
-  .perks {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (min-width: 760px) {
+  .showcase {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
-.perks li {
-  padding: 18px 20px 20px;
-  border-top: 3px solid var(--accent);
+.show {
+  --r: #8fb3ff;
+  position: relative;
+  display: grid;
+  border-radius: var(--radius);
+  overflow: hidden;
   background: var(--surface);
-  border-radius: 0 0 var(--radius) var(--radius);
-  display: grid;
-  gap: 6px;
-  align-content: start;
+  border: 1px solid color-mix(in srgb, var(--r) 45%, var(--line));
+  box-shadow: 0 0 24px color-mix(in srgb, var(--r) 14%, transparent);
+  grid-template-rows: auto 1fr;
 }
-.perks h3 {
-  font-size: 1.5rem;
-  text-transform: uppercase;
+.show.r-legendary {
+  --r: #ffc94d;
 }
-.perks p {
-  color: var(--dim);
+.show.r-mythical {
+  --r: #ff7ad9;
 }
-/* A picture for each perk: real skins, raid bosses, the mastery rings, a
-   day out with friends. All the same height so the cards line up. */
-.perk-art {
-  height: 96px;
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.show.r-epic {
+  --r: #c08cff;
 }
-.perk-skins img {
-  width: 64px;
-  height: 64px;
-  flex: 0 0 auto;
-  padding: 4px;
-  border-radius: 12px;
-  background: radial-gradient(circle at 50% 40%, #c9d6f5 0%, #7f93c4 70%);
-}
-.perk-bosses img {
-  width: 64px;
-  height: 96px;
-  object-fit: cover;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-}
-.perk-rings {
-  gap: 4px;
-  justify-content: space-between;
-}
-.ring {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  flex: 1 1 0;
-  min-width: 0;
-}
-.ring img {
-  width: 48px;
-  height: 48px;
-  padding: 3px;
-  border-radius: 50%;
-  border: 3px solid var(--ring);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--ring) 45%, transparent);
-  background: var(--bg-alt);
-}
-.ring b {
-  font: 700 0.85rem/1 var(--display);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ring);
-}
-.ring small {
-  font-size: 0.72rem;
-  line-height: 1;
-  color: var(--dim);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.perk-photo {
-  display: block;
-  margin: -18px -20px 6px;
-  height: auto;
-}
-/* As tall as the other perks' pictures plus the card's top padding, so the
-   headings line up across a row. */
-.perk-photo img {
+.show picture,
+.show img {
   display: block;
   width: 100%;
-  height: 114px;
+}
+.show img {
+  aspect-ratio: 4 / 5;
   object-fit: cover;
-  object-position: 50% 50%;
+}
+.show-tx {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 10px 12px 14px;
+}
+.show-r {
+  font: 700 0.78rem/1 var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--r);
+}
+.show h3 {
+  font-size: 1.35rem;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+.show-k {
+  font-size: 0.85rem;
+  color: var(--dim);
+}
+.show-d {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: var(--text);
 }
 
 /* ---------- Mobile apps ---------- */
@@ -1226,7 +1168,7 @@ body::before {
   .raid.enter .raid-art::after {
     content: "";
     position: absolute;
-    left: var(--ring-x, 66%);
+    left: var(--fx, 50%);
     top: 54%;
     width: min(40%, 420px);
     aspect-ratio: 1;
@@ -1238,9 +1180,6 @@ body::before {
     translate: -50% -50%;
     pointer-events: none;
     animation: raid-ring 1.1s ease-out 0.15s 2 both;
-  }
-  .raid[data-side="right"] {
-    --ring-x: 34%;
   }
   .raid.enter h3 {
     animation: raid-wipe 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s both;
@@ -1551,35 +1490,6 @@ body::before {
   border: 1px solid var(--line);
   min-height: 150px;
   align-content: start;
-}
-/* At most its own size (480 px), and about half a short screen's height, so
-   on a phone held sideways the move's name stays in view under it. */
-.move-clip {
-  position: relative;
-  width: min(100% + 8px, 480px, 98vh);
-  margin: -4px -4px 6px;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #05070f;
-  aspect-ratio: 16 / 9;
-}
-.move-clip img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.move-clip figcaption {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  padding: 4px 8px 3px;
-  border-radius: 999px;
-  background: #05070fcc;
-  color: #ffffff;
-  font: 700 0.75rem/1 var(--display);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 .move-slot {
   font: 700 0.85rem/1 var(--display);

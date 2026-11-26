@@ -31,8 +31,9 @@ HEROES = {
     "hero-dusk": Path(HERO_MASTER) if HERO_MASTER else ART / "loading-art/startup-art-duel-skyline-lance.webp"
 }
 BOSSES = ["grumblecrag", "tidewyrm", "gloomshade", "somnara", "prismatail", "emberwing", "storm-twins"]
-# Real gameplay captures (docs/app-store-screenshots.md), in page order.
-SCREENS = ["1-raid", "2-duel", "3-roster", "4-teams", "5-ffa", "6-plaza"]
+# Real gameplay captures (docs/app-store-screenshots.md): the Mobile
+# section's phone shows the duel.
+SCREENS = ["2-duel"]
 
 
 def save(im: Image.Image, path: Path, webp_q=78, avif_q=55):
