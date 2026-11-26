@@ -141,17 +141,15 @@ for (const size of [
   });
 }
 
-// A Legendary's gold rays reach the stage's top edge. They used to stop in a
-// straight line a quarter of the way down (owner, 25 Nov, an iPhone): the
-// light's SVG clipped them at its viewBox and the host's floor fade (a mask)
-// clipped them at the host's top, which a phone also moves down. The strip
-// just under the stage's top, above the fighter, must change when the rays
-// are hidden.
+// A Legendary stands in a gold halo, the same light as a Legendary tile's
+// backdrop: it replaced a fan of rays that looked busy (owner, 26 Nov). The
+// halo sits behind the head, centred and above the feet, whole inside the
+// stage, and lights it: the stage looks different with the halo hidden.
 for (const size of [
   { width: 844, height: 390 },
   { width: 1440, height: 900 },
 ])
-  test(`a Legendary's rays reach the top of the stage (${size.width}x${size.height})`, async ({
+  test(`a Legendary stands in a gold halo (${size.width}x${size.height})`, async ({
     browser,
   }, info) => {
     const phone = size.width < 1000;
@@ -173,24 +171,28 @@ for (const size of [
       const stage = page.locator(".fit-stage");
       await expect(stage).toHaveAttribute("data-rarity", "legendary");
       await expect(stage.locator(".shop-live-stage")).toHaveClass(/is-ready/);
+      await expect(stage.locator(".stage-light-rays")).toHaveCount(0);
+      const halo = stage.locator(".stage-light-halo circle");
+      await expect(halo).toBeVisible();
       const b = (await stage.boundingBox())!;
-      // Centred: the middle ray points straight up. 6 px below the border.
-      const clip = {
-        x: b.x + b.width / 2 - 8,
-        y: b.y + 6,
-        width: 16,
-        height: 10,
-      };
-      const shot = () => page.screenshot({ clip, animations: "disabled" });
+      const h = (await halo.boundingBox())!;
+      const ring = (await stage.locator(".stage-light-ring").boundingBox())!;
+      // Centred on the fighter, above the feet, whole inside the stage.
+      expect(
+        Math.abs(h.x + h.width / 2 - (ring.x + ring.width / 2)),
+      ).toBeLessThan(2);
+      expect(h.y + h.height / 2).toBeLessThan(ring.y);
+      expect(h.y).toBeGreaterThanOrEqual(b.y);
+      expect(h.x).toBeGreaterThanOrEqual(b.x);
+      expect(h.x + h.width).toBeLessThanOrEqual(b.x + b.width);
+      const shot = () => page.screenshot({ clip: h, animations: "disabled" });
       const lit = await shot();
-      await snap(page, info, `legendary-rays-${size.width}`);
+      await snap(page, info, `legendary-halo-${size.width}`);
       await page.addStyleTag({
-        content: ".stage-light-rays{visibility:hidden!important}",
+        content: ".stage-light-halo{visibility:hidden!important}",
       });
       const dark = await shot();
-      expect(lit.equals(dark), "the rays light the stage's top edge").toBe(
-        false,
-      );
+      expect(lit.equals(dark), "the halo lights the stage").toBe(false);
       expect(errors).toEqual([]);
     } finally {
       await context.close();
