@@ -70,9 +70,7 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
 }
 #hud.hud-badge .hud-fighter strong[id^="score-"] {
   flex: none;
-  font:
-    700 calc(15px * var(--text-scale, 1)) "Barlow Condensed",
-    sans-serif;
+  font: 700 calc(15px * var(--text-scale, 1)) var(--font-display);
   color: var(--element);
   margin: 0;
 }
@@ -141,9 +139,7 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
 }
 #hud.hud-badge #timer {
   margin: 0;
-  font:
-    700 calc(18px * var(--text-scale, 1)) "Barlow Condensed",
-    sans-serif;
+  font: 700 calc(18px * var(--text-scale, 1)) var(--font-display);
   line-height: 1;
 }
 /* The clock first, the round under it. */

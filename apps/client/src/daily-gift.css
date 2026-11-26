@@ -30,9 +30,7 @@
   text-align: center;
 }
 .gift-day small {
-  font:
-    700 calc(10px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 700 calc(10px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ui-dim);
@@ -50,9 +48,7 @@
   height: 22px;
 }
 .gift-day b {
-  font:
-    800 calc(13px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(13px * var(--text-scale, 1))/1 var(--font-display);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
   white-space: nowrap;
