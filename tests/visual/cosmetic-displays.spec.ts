@@ -42,6 +42,10 @@ window.fetch=async(input,init)=>{
  const body=await response.json();
  body.owned.push('galaxy-aura','galaxy-entrance','galaxy-victory','galaxy-frame','galaxy-colours','tidefin-moontide','cindrake-sunforged');
  body.mythicTesting=true;
+ // Today's deal is an effect here (the shared fake's is a skin), so the
+ // deal card shows the tile the owner asked about (26 Nov 2026).
+ body.picks.items.push('borealis-victory');
+ body.picks.deal='borealis-victory';
  return Response.json(body);
 };`,
         });
@@ -110,6 +114,21 @@ window.fetch=async(input,init)=>{
           '.fit-room [data-ui-item="galaxy-frame"] .portrait-avatar',
         ),
       ).toHaveCount(1);
+      // Today's deal card, when the deal is an effect: the effect alone.
+      await page.click("[data-ui-section=today]");
+      const deal = page.locator(
+        '.fit-room .fit-deal[data-ui-item="borealis-victory"] .fit-deal-art',
+      );
+      await expect(deal.locator(".raid-cosmetic-preview")).toHaveCount(1);
+      await expect(deal.locator("img, svg")).toHaveCount(0);
+      await expect(
+        deal.locator(".raid-cosmetic-preview > canvas.fx-back"),
+      ).toHaveCount(1);
+      await expect(
+        deal.locator(".raid-cosmetic-preview > canvas.fx-front"),
+      ).toHaveCount(1);
+      await snap(page, info, `deal-effect-${size.width}`);
+      await page.click("[data-ui-section=collections]");
       await page.click(".fit-room [data-ui-item=galaxy-colours]");
       await expect(stage).toHaveClass(/is-ready/);
       await expect(stage).not.toHaveClass(/is-item/);
