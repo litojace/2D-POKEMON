@@ -1423,6 +1423,11 @@ body::before {
 .acct-apple {
   justify-self: start;
 }
+/* "Signed up with Apple?" (non-Apple devices): its text lines up with the
+   form's left edge, past the link's 4px padding. */
+.link.acct-apple {
+  margin-left: -4px;
+}
 button.btn-play {
   border: 0;
   cursor: pointer;
