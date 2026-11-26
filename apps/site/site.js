@@ -22,14 +22,14 @@
       { rootMargin: "0px 0px -8% 0px" },
     );
     const fold = innerHeight;
-    $$(
-      ".head, .roster > li, .modes > li, .bosses > li, .perks > li, .stores > li",
-    ).forEach((el, i) => {
-      if (el.getBoundingClientRect().top < fold) return;
-      el.classList.add("reveal");
-      el.style.setProperty("--d", `${(i % 6) * 60}ms`);
-      io.observe(el);
-    });
+    $$(".head, .roster > li, .modes > li, .perks > li, .stores > li").forEach(
+      (el, i) => {
+        if (el.getBoundingClientRect().top < fold) return;
+        el.classList.add("reveal");
+        el.style.setProperty("--d", `${(i % 6) * 60}ms`);
+        io.observe(el);
+      },
+    );
   }
 
   /* ---------- Hero parallax (desktop pointers only) ---------- */
@@ -66,6 +66,100 @@
         c.setAttribute("aria-pressed", String(c === chip));
       for (const card of cards)
         card.hidden = f !== "all" && card.dataset.el !== f;
+    });
+  }
+
+  /* ---------- Raid week: today's boss, a day picker, a countdown ---------- */
+  // The game features one boss a day and turns the day over at midnight
+  // Pacific time (packages/shared/src/raid-roster.ts), so the page does too.
+  const days = $$(".raid-days .day");
+  if (days.length) {
+    const panels = days.map((d) => $(`#${d.getAttribute("aria-controls")}`));
+    const pacific = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Los_Angeles",
+      weekday: "short",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      hourCycle: "h23",
+    });
+    const WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const now = () => {
+      const p = Object.fromEntries(
+        pacific.formatToParts(new Date()).map((x) => [x.type, x.value]),
+      );
+      return {
+        day: WEEK.indexOf(p.weekday),
+        secs: +p.hour * 3600 + +p.minute * 60 + +p.second,
+      };
+    };
+    const show = (i, focus = false, animate = true) => {
+      days.forEach((d, j) => {
+        d.setAttribute("aria-selected", String(i === j));
+        d.tabIndex = i === j ? 0 : -1;
+        panels[j].hidden = i !== j;
+        panels[j].classList.remove("enter");
+      });
+      if (animate && !calm.matches) {
+        void panels[i].offsetWidth; // restart the entrance
+        panels[i].classList.add("enter");
+      }
+      if (focus) days[i].focus();
+    };
+    const byDay = (n) => days.findIndex((d) => +d.dataset.day === n);
+    let today = -1;
+    const next = $(".raid-next");
+    const tick = () => {
+      const t = now();
+      const i = byDay(t.day);
+      if (i !== today) {
+        if (today >= 0) days[today].classList.remove("is-today");
+        if (today >= 0) panels[today].classList.remove("is-today");
+        days[i].classList.add("is-today");
+        panels[i].classList.add("is-today");
+        $(".d", days[i]).textContent = "Today";
+        if (today >= 0)
+          $(".d", days[today]).textContent = WEEK[days[today].dataset.day];
+        today = i;
+      }
+      const left = Math.ceil((86400 - t.secs) / 60);
+      $(".raid-next-name", next).textContent = $(
+        ".n",
+        days[byDay((t.day + 1) % 7)],
+      ).textContent;
+      $(".raid-next-in", next).textContent =
+        left >= 60 ? `${Math.floor(left / 60)}h ${left % 60}m` : `${left}m`;
+      next.hidden = false;
+    };
+    tick();
+    setInterval(tick, 30000);
+    show(today, false, false);
+    // The entrance plays when the stage first scrolls into view.
+    if (!calm.matches && "IntersectionObserver" in window) {
+      const seen = new IntersectionObserver((entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        seen.disconnect();
+        const i = days.findIndex((d) => d.tabIndex === 0);
+        show(i);
+      });
+      seen.observe($(".raid-stage"));
+    }
+    $(".raid-days").addEventListener("click", (e) => {
+      const d = e.target.closest(".day");
+      if (d) show(days.indexOf(d));
+    });
+    $(".raid-days").addEventListener("keydown", (e) => {
+      const i = days.indexOf(document.activeElement);
+      if (i < 0) return;
+      const to = {
+        ArrowRight: (i + 1) % 7,
+        ArrowLeft: (i + 6) % 7,
+        Home: 0,
+        End: 6,
+      }[e.key];
+      if (to === undefined) return;
+      e.preventDefault();
+      show(to, true);
     });
   }
 
@@ -126,6 +220,7 @@
     ];
   }
 
+  const CLIP = ["basic", "skill1", "skill2", "skill3", "ult"];
   function showMove(c, i) {
     tab = i;
     const list = moves(c);
@@ -137,7 +232,20 @@
     const box = $("#champ-move");
     box.replaceChildren();
     box.setAttribute("aria-labelledby", `champ-tab-${i}`);
+    // The move in the real game (clips/, made by scripts/site-clips): a
+    // looping clip, or one still frame when the player asks for less motion.
+    const clip = el("figure", "move-clip");
+    const shot = Object.assign(new Image(), {
+      src: `clips/${c.id}/${CLIP[i]}${calm.matches ? "-still" : ""}.webp`,
+      alt: `${c.name} using ${m.name} in a match`,
+      width: 480,
+      height: 270,
+      decoding: "async",
+    });
+    shot.addEventListener("error", () => clip.remove());
+    clip.append(shot, el("figcaption", "", "In game"));
     box.append(
+      clip,
       el("p", "move-slot", m.slot),
       el("h4", "move-name", m.name),
       el("p", "move-desc", m.description),

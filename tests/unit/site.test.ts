@@ -73,6 +73,30 @@ describe("website", () => {
     }
   });
 
+  it("its raid week matches the game's roster (npx tsx apps/site/tools/gen-data.ts)", () => {
+    // One panel and one day tab per boss, on the game's day, in day order.
+    const flat = html.replace(/>\s+/g, ">").replace(/\s+</g, "<");
+    const panels = [
+      ...html.matchAll(
+        /<article class="raid" id="raid-([\w-]+)"[^>]*data-day="(\d)"/g,
+      ),
+    ];
+    expect(panels.map((m) => Number(m[2]))).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    for (const [, id, day] of panels) {
+      const b = RAID_BOSSES[id as keyof typeof RAID_BOSSES];
+      expect(b, id).toBeDefined();
+      expect(Number(day), id).toBe(b.day);
+      expect(flat).toContain(`<p class="blurb">${b.blurb}</p>`);
+      expect(html).toContain(`id="day-${id}" aria-controls="raid-${id}"`);
+      for (const w of [768, 1280])
+        for (const ext of ["webp", "avif"])
+          expect(
+            existsSync(path.join(SITE, `img/raids/${id}-${w}.${ext}`)),
+            `${id}-${w}.${ext}`,
+          ).toBe(true);
+    }
+  });
+
   it("names one canonical address everywhere", () => {
     const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)![1];
     const own = (s: string) =>

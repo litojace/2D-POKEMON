@@ -36,6 +36,34 @@ npx tsx apps/site/tools/gen-data.ts && npx prettier --write apps/site/index.html
 `packages/shared` (a balance change, a renamed skill, a new skin), so CI
 says when to run it. The panel's text is the game's own skill descriptions.
 
+## Skill clips and the raid week
+
+Each champion panel shows the chosen move in the real game: a looping clip
+(about 1.5 s, 3 s for the ultimate) loaded only when that tab is shown, or
+one still frame under `prefers-reduced-motion`. The clips are the real
+client drawing the real server simulation, stepped tick by tick with
+scripted inputs, so a run draws the same frames:
+
+```bash
+PW_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome \
+  npx playwright test --config scripts/site-clips/playwright.config.ts --trace off --workers=3
+python3 apps/site/tools/make-clips.py   # site-clips/ -> apps/site/clips/<id>/<move>.webp
+```
+
+`CHAMPIONS=voltkit,pyranda` captures a few. A full run takes about an hour
+on the cloud container (18 champions, 5 moves each, at two device pixels).
+Run it again after a skill's look changes; `tests/unit/site.test.ts` fails
+when a champion or move has no clip.
+
+The raid section is the game's week: one boss a day
+(`packages/shared/src/raid-roster.ts`), Sunday first. `site.js` opens
+today's boss on Pacific time (the game turns the day over at midnight
+there), marks the day tab "Today" and counts down to the next boss. Only the
+boss on show downloads its splash (`img/raids/`, from the game's raid
+splash art by `make-images.py`). The panels and day tabs are written by
+`gen-data.ts` between the `raids` and `days` markers, so the names, days,
+stars, signature tricks and blurbs come from the game.
+
 ## What we took from big games' sites
 
 Patterns (no art, text or branding copied; the live sites could not be opened
@@ -122,7 +150,14 @@ website at the apex, game at play., one session cookie):
       create the Static Site, DNS, check HTTPS, sign-in across both hosts
 - [ ] SHARE_SITE → https://elementarenausa.com (small PR; tests in share-qr
       and share-card.spec)
-- [ ] Later: animated clips of champions' real moves
+- [x] Animated clips of every champion's five moves in the panel (round 4)
+
+Round 4 (owner, 26 Nov: skill clips, a more creative raid section, anything
+that helps the game):
+
+- [x] Raid week: today's boss (Pacific), day picker, countdown, cinematic
+      entrance (the splash settles, a wind-up ring, the name wipes in)
+- [x] Skill clips for 18 champions × 5 moves (`scripts/site-clips`)
 
 Round 2 (owner, 25 Nov 3:15 PM PT: motion, interactive champions, an account
 area with one-tap Play, QR to the website):

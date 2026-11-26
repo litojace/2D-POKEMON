@@ -49,6 +49,10 @@ def main():
         im = im.resize((400, 600), Image.LANCZOS)
         (OUT / "bosses").mkdir(parents=True, exist_ok=True)
         im.save(OUT / f"bosses/{boss}.webp", "WEBP", quality=74, method=6)
+        # The raid week's wide splash: only the boss on show is downloaded.
+        wide = Image.open(ART / f"raid-splash/{boss}-lower.webp").convert("RGB")
+        for w in (768, 1280):
+            save(fit_width(wide, w), OUT / f"raids/{boss}-{w}", webp_q=72, avif_q=50)
 
     creatures = OUT / "creatures"
     creatures.mkdir(parents=True, exist_ok=True)
