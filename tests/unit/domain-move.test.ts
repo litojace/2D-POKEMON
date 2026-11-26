@@ -1,6 +1,10 @@
 import { expect, test } from "vitest";
 import { announcementSchema } from "../../packages/shared/src/accounts";
-import { moveNotice, newAddress } from "../../apps/client/src/domain-move";
+import {
+  moveLink,
+  moveNotice,
+  newAddress,
+} from "../../apps/client/src/domain-move";
 
 const SITE = "https://play.elementarenausa.com";
 
@@ -32,4 +36,17 @@ test("the notice is a valid announcement that comes back every few days", () => 
   expect(moveNotice(SITE, now + day).id).toBeLessThanOrEqual(a.id + 1);
   expect(moveNotice(SITE, now + 3 * day).id).toBe(a.id + 1);
   expect(Date.parse(a.endsAt)).toBeGreaterThan(now);
+});
+
+test("the notice opens the new address and tells guests to keep their account", () => {
+  expect(moveLink(SITE)).toEqual({
+    href: `${SITE}/`,
+    label: "Open",
+    title: "Element Arena has moved",
+  });
+  const { message } = moveNotice(SITE);
+  // A guest's account lives on this address only: an email keeps it.
+  expect(message).toMatch(/guest/i);
+  expect(message).toMatch(/email/i);
+  expect(message).toMatch(/Home Screen/);
 });

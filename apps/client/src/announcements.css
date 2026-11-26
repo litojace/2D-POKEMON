@@ -67,8 +67,7 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
-.announcement-banner .announcement-ok,
-.announcement-banner .announcement-go {
+.announcement-banner .announcement-ok {
   flex: none;
   min-width: 52px;
   min-height: 44px;
@@ -83,19 +82,17 @@
   color: var(--gold-ink, #2a1a00);
   font-weight: 800;
 }
-.announcement-banner .announcement-go {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  font-size: calc(14px * var(--text-scale, 1));
-  text-decoration: none;
+/* A game notice with a link (domain-move.ts): the shared dialog, its link
+   drawn as a button. Above the HUD and any open panel (.ui-scrim). */
+.announcement-dialog .ui-note {
+  margin: 0;
+  color: var(--ui-text);
+  font-size: var(--fs-body);
+  line-height: 1.4;
 }
-.announcement-banner .announcement-ok.is-quiet {
-  border: 1px solid #8baee566;
-  background: transparent;
-  color: #eef2ff;
-  font-weight: 700;
+.announcement-dialog a.ui-btn {
+  box-sizing: border-box;
+  text-decoration: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .announcement-banner {
