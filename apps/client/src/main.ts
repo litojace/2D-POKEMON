@@ -1,3 +1,5 @@
+// First: before any schema parses (zod-jitless.ts).
+import "./zod-jitless";
 import {
   autoChoosesLow,
   autoLowWhy,
