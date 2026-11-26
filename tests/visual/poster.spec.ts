@@ -91,14 +91,13 @@ for (const size of SIZES) {
       const [big, plate, shown] = await names();
       expect(big).toBe(plate);
       expect(shown).toBe("block");
-      // The Lobby's words read in full (the Journey card's kicker is not in
-      // this list yet: it needs the shorter kicker a later change brings).
+      // The Lobby's words read in full.
       expect(
         await cutOff(page, [
           ".lobby-rail span",
           ".lobby-name h2",
           ".lobby-card b",
-          ".lobby-missions-card .lobby-card-kicker",
+          ".lobby-card-kicker",
           ".lobby-mode-text b",
           ".lobby-mode-text small",
           ".lobby-slot small",
