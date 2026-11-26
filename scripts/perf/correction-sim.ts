@@ -18,6 +18,17 @@
  * and SERVER_HZ=<rate> runs the server's ticks at that real rate while the
  * phone keeps its exact 30 (docs/network-performance.md, section 15).
  *
+ * RAID=<boss id> (VARIANT=ascendant, HUMANS=2, RITES=footing,...) is a raid
+ * instead: you and HUMANS-1 raiders standing by, against the boss's own
+ * attacks, a third of the run in each chapter, the corrections counted per
+ * chapter. NO_RAID_CARRY=1 replays without stepRaidCarry (Tidelotl's
+ * Undertow, Bubble Prison and bubble roots left out of the prediction, as
+ * before 26 Nov 2026). DIAG=1 tags each "other" correction with the
+ * Tidelotl mechanic active at the time; DIAG=2 lists them one by one.
+ * Measured 26 Nov 2026 (180 s, 33 ms each way): Tidelotl went from about
+ * 150 "other" corrections a minute to 2-4; the other six bosses 0-2
+ * (network-performance.md, section 22).
+ *
  * Measured 11 Nov 2026 (120 s, 33 ms each way, as an iPhone on school
  * Wi-Fi with a 67 ms ping): 30-50 corrections a minute, every one a
  * knockback or a status that landed (the phone cannot know a hit is coming).
