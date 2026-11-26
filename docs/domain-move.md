@@ -232,3 +232,13 @@ this move doesn't touch how the session is stored.
 - 25 Nov, ~6:08 PM PT: the owner set the Change email address subject to
   "Confirm your new Element Arena email". All four templates now carry our
   subjects.
+- 25 Nov, 6:15 PM PT: with the owner's OK here ("đồng ý header"), the game's
+  Static Site sends on `/*` (both hosts): HSTS
+  `max-age=31536000; includeSubDomains`, `X-Frame-Options: DENY`,
+  `Referrer-Policy: strict-origin-when-cross-origin`, the Permissions-Policy
+  and the CSP from `apps/client/security-headers.json` as
+  `Content-Security-Policy-Report-Only` (PR #494). Live pass on `play.` as a
+  guest (load, guest sign-in, Shop, share card, Plaza, a bot match): the
+  only reports were zod's eval probe and its compiler (vendor chunk), which
+  #494's jitless mode removes. The guest was then deleted through the game's
+  flow (no rows left). Enforcing waits for #494 to deploy and a clean re-run.
