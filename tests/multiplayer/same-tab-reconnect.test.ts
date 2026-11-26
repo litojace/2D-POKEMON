@@ -1,5 +1,6 @@
 import { afterEach, expect, it } from "vitest";
 import { io, type Socket } from "socket.io-client";
+import { Socket as ServerSocket } from "socket.io";
 import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts } from "../helpers/accounts";
 
@@ -87,8 +88,38 @@ for (const transports of [undefined, ["websocket"]])
       socket.timeout(1000).emitWithAck("rtt", {}),
     ).resolves.toBeUndefined();
     // Logged once, so production shows how often it happens.
-    expect(log.filter((l) => l.event === "arena-twin-connect")).toHaveLength(1);
+    const twins = log.filter((l) => l.event === "arena-twin-connect");
+    expect(twins.map((l) => l.details.retired)).toEqual([true]);
   });
+
+it("if Socket.IO's internals fail, the tab still works and is never told it was replaced", async () => {
+  // An upgrade that renames or breaks what retireTwin uses: it must not
+  // fall back to anything the tab would receive.
+  const proto = ServerSocket.prototype as unknown as {
+    _onclose: (...args: unknown[]) => unknown;
+  };
+  const original = proto._onclose;
+  let calls = 0;
+  proto._onclose = function (this: unknown, ...args: unknown[]) {
+    if (calls++ === 0) throw new Error("renamed in an upgrade");
+    return original.apply(this, args);
+  };
+  const { open, log } = await setup(100);
+  const { socket, heard } = open(["websocket"]);
+  try {
+    await connectTwice(socket);
+  } finally {
+    proto._onclose = original;
+  }
+  expect(calls).toBeGreaterThan(0);
+  expect(heard).toEqual([]);
+  expect(socket.connected).toBe(true);
+  await expect(
+    socket.timeout(1000).emitWithAck("rtt", {}),
+  ).resolves.toBeUndefined();
+  const twins = log.filter((l) => l.event === "arena-twin-connect");
+  expect(twins.map((l) => l.details.retired)).toEqual([false]);
+});
 
 it("a second device still takes the account over", async () => {
   const { open } = await setup();

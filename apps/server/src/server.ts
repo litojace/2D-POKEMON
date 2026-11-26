@@ -474,27 +474,43 @@ export function createArenaServer(
     current: import("socket.io").Socket,
   ) {
     stale.data.twin = true;
-    connectionLog("arena-twin-connect", {
-      transport: current.conn.transport.name,
-      msApart: current.handshake.issued - stale.handshake.issued,
-    });
     // Socket.IO has no public way to forget a socket without telling the
     // client. Closing it as the server does on a namespace disconnect sends
     // nothing, but also forgets the connection's socket for the namespace,
-    // which is the current one now: it is put back. Guarded, so an upgrade
-    // that renames these leaves the twin alive rather than breaking the tab
-    // (tests/multiplayer/same-tab-reconnect.test.ts fails then).
+    // which is the current one now: it is put back.
+    //
+    // Fails safe: if an upgrade renames these or they throw, the twin is
+    // left alive (the tab works; something sent to the account may reach it
+    // twice until it reconnects). Never `stale.disconnect()`: its DISCONNECT
+    // packet is for the namespace the tab uses, and the tab would close
+    // with "io server disconnect", which Socket.IO never retries. And never
+    // "session-replaced" on the same connection. A Socket.IO upgrade must
+    // pass tests/multiplayer/same-tab-reconnect.test.ts, which fails when
+    // the twin is not retired.
     const internal = stale as unknown as {
       _onclose?: (reason: string) => void;
     };
     const client = current.client as unknown as { nsps?: Map<string, unknown> };
-    if (
-      typeof internal._onclose !== "function" ||
-      !(client.nsps instanceof Map)
-    )
-      return;
-    internal._onclose("server namespace disconnect");
-    client.nsps.set(current.nsp.name, current);
+    let retired = false;
+    try {
+      if (
+        typeof internal._onclose === "function" &&
+        client.nsps instanceof Map
+      ) {
+        internal._onclose("server namespace disconnect");
+        retired = true;
+      }
+    } catch {
+      retired = false;
+    } finally {
+      if (client.nsps instanceof Map)
+        client.nsps.set(current.nsp.name, current);
+    }
+    connectionLog("arena-twin-connect", {
+      transport: current.conn.transport.name,
+      msApart: current.handshake.issued - stale.handshake.issued,
+      retired,
+    });
   }
   const grace =
     options.reconnectMs ??
