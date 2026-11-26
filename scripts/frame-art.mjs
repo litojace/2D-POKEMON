@@ -1,6 +1,8 @@
 import { writeFileSync } from "node:fs";
+import { frameFiles } from "./frame-files.mjs";
 // Generates apps/client/src/collection-frames.css: the Candy, Garden,
-// Festival and Winter portrait frames drawn as SVG data URIs.
+// Festival and Winter portrait frames, drawn as SVG files in
+// apps/client/src/frames/ (frame-files.mjs).
 // Run: node scripts/frame-art.mjs && npx prettier --write apps/client/src/collection-frames.css
 // Frame art: viewBox -70 -70 140 140, the portrait disc is r = 50.
 const R = (d) => (d * Math.PI) / 180;
@@ -20,8 +22,8 @@ const circle = (r) => pathOf(polar(() => r, 0, 358, 2));
 
 const svg = (body, vb = "-70 -70 140 140") =>
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='${vb}'>${body}</svg>`;
-const uri = (s) =>
-  `url("data:image/svg+xml,${s.replace(/#/g, "%23").replace(/"/g, "'").replace(/\s+/g, " ")}")`;
+// The pictures are files (frame-files.mjs): frames/collection-<name>.svg.
+const pictures = frameFiles("collection");
 
 // ── Candy: a chocolate-chip cookie ring with dripping pink icing and sprinkles.
 function cookie() {
@@ -610,30 +612,30 @@ function crown() {
 }
 
 const out = {
-  cookie: uri(cookie()),
-  bonbon: uri(bonbon()),
-  vine: uri(vine()),
-  blossom: uri(blossom()),
-  tassel: uri(tassel()),
-  knot: uri(knot()),
-  icicle: uri(icicle()),
-  snowflake: uri(snowflake()),
-  voidRing: uri(voidRing()),
-  voidCrest: uri(voidCrest()),
-  mechaRing: uri(mechaRing()),
-  mechaCrest: uri(mechaCrest()),
-  neonRing: uri(neonRing()),
-  joystick: uri(joystick()),
-  shellRing: uri(shellRing()),
-  starfish: uri(starfish()),
-  cogRing: uri(cogRing()),
-  windKey: uri(windKey()),
-  polarRing: uri(polarRing()),
-  polarStar: uri(polarStar()),
-  laurelRing: uri(laurelRing()),
-  ribbonBow: uri(ribbonBow()),
-  crownRing: uri(crownRing()),
-  crown: uri(crown()),
+  cookie: pictures.url("cookie", cookie()),
+  bonbon: pictures.url("bonbon", bonbon()),
+  vine: pictures.url("vine", vine()),
+  blossom: pictures.url("blossom", blossom()),
+  tassel: pictures.url("tassel", tassel()),
+  knot: pictures.url("knot", knot()),
+  icicle: pictures.url("icicle", icicle()),
+  snowflake: pictures.url("snowflake", snowflake()),
+  voidRing: pictures.url("void-ring", voidRing()),
+  voidCrest: pictures.url("void-crest", voidCrest()),
+  mechaRing: pictures.url("mecha-ring", mechaRing()),
+  mechaCrest: pictures.url("mecha-crest", mechaCrest()),
+  neonRing: pictures.url("neon-ring", neonRing()),
+  joystick: pictures.url("joystick", joystick()),
+  shellRing: pictures.url("shell-ring", shellRing()),
+  starfish: pictures.url("starfish", starfish()),
+  cogRing: pictures.url("cog-ring", cogRing()),
+  windKey: pictures.url("wind-key", windKey()),
+  polarRing: pictures.url("polar-ring", polarRing()),
+  polarStar: pictures.url("polar-star", polarStar()),
+  laurelRing: pictures.url("laurel-ring", laurelRing()),
+  ribbonBow: pictures.url("ribbon-bow", ribbonBow()),
+  crownRing: pictures.url("crown-ring", crownRing()),
+  crown: pictures.url("crown", crown()),
 };
 
 const a = out;
@@ -1249,7 +1251,7 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter, Sea
 }
 `;
 // The gold accent is a design token (ui/tokens.css): write it as one, as
-// the stylesheet does. Art inside data URIs spells # as %23, so stays as is.
+// the stylesheet does (the pictures, in their own files, keep their colours).
 const tokens = (text) =>
   text
     .replace(
@@ -1269,3 +1271,4 @@ writeFileSync(
   new URL("../apps/client/src/collection-frames.css", import.meta.url),
   tokens(css),
 );
+pictures.done();

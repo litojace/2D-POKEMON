@@ -25,6 +25,17 @@ with a snow cap, icicles and a snowflake crest. Festival and Winter are both Epi
 so their turning edge and gems use each set's own colours (red/gold versus
 ice blue) rather than the shared purple.
 
+Every generated frame picture (collection, boss, signature and Journey frames)
+is a file in `apps/client/src/frames/`, which its stylesheet names with
+`url("./frames/…")`; the generators write the files and the CSS together
+(`scripts/frame-files.mjs`) and remove pictures they no longer draw. They used
+to be data URIs inside the CSS, 365 kB of the stylesheet every start downloads
+before it can draw anything (26 Nov 2026). Vite inlines the pictures under
+4 kB again; the rest are hashed files the service worker installs with the
+game (`vite.config.ts`, checked by `scripts/verify-pwa.mjs`).
+`tests/unit/frame-art.test.ts` fails if frame art goes back inline or a
+picture is missing or left over.
+
 The account header and own lobby portrait update immediately from the saved
 Wardrobe. Peers use server-authenticated appearance reads in `FighterAppearance`.
 Raid reward saves refresh these portraits immediately, including a newly earned

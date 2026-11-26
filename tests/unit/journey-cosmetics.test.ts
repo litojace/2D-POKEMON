@@ -332,7 +332,7 @@ it("frames the portrait with each new frame's own artwork", () => {
     for (const part of ["::before", "::after"])
       expect(css).toMatch(
         new RegExp(
-          `\\[data-cosmetic="${id}"\\]${part} \\{[^}]*data:image/svg\\+xml`,
+          `\\[data-cosmetic="${id}"\\]${part} \\{[^}]*url\\("\\./frames/journey-[\\w-]+\\.svg"\\)`,
         ),
       );
   }
