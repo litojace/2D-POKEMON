@@ -203,3 +203,20 @@ this move doesn't touch how the session is stored.
   Site `VITE_SITE_URL`, removing `SUPABASE_DB_URL`, the `/sw.js` header)
   was blocked by this session's permission check and waits for the owner,
   as do the Supabase Site URL and pasting the four templates.
+- 25 Nov, 5:36 PM PT: step 5 done with the owner's OK here: Static Site
+  `VITE_SITE_URL=https://play.elementarenausa.com` (redeployed),
+  `SUPABASE_DB_URL` removed from the Static Site, `/sw.js` sends
+  `Cache-Control: no-cache`. Live browser: `parena` shows the move banner
+  (Open → `play.`), `play.` none; the bundle has no `parena` URL.
+- 25 Nov, ~6:00 PM PT: the owner set the Supabase Site URL to `play.`, pasted
+  the four templates and re-added `https://parena.litojace.com/**`.
+  Supabase `verify` redirects: `play.`, the apex and `parena` allowed, other
+  hosts fall back to `play.`. Apple authorize still returns through Supabase.
+- 25 Nov, 5:44 PM PT, live email test with a test account at
+  `mail.litojace.com` (Resend inbound): sign-up email (new template, market
+  banner) → link lands on `play.?auth=email-confirmed` signed in; reset
+  email → link opens "Choose a new password" on `play.`; reauthentication
+  email shows the code (8 digits); change-email email goes to both
+  addresses with old → new. Two subjects were still Supabase's defaults
+  (reauthentication shows the code in the subject); the owner was asked to
+  set them.
