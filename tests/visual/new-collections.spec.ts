@@ -222,11 +222,22 @@ for (const size of SIZES.filter(
           expect(
             await greenSpan(page, await tile.screenshot()),
           ).toBeGreaterThan(0.35);
+          // The stage shows the arch for only about a second and a half of
+          // its 4.4 s cycle, and its clock runs slower than real time on a
+          // slow renderer (CI's): sampling it at random missed every arch
+          // for 10 s there. So each try replays the entrance (clicking the
+          // tile again restarts the stage at 0) and looks a second in,
+          // when the arch has grown and not yet rolled up (ARCH in
+          // collection-fx.ts: grown by 0.34 s, rolls up from 1.45 s).
           await expect
-            .poll(async () => greenSpan(page, await stage.screenshot()), {
-              timeout: 10_000,
-              intervals: [150],
-            })
+            .poll(
+              async () => {
+                await tile.click();
+                await page.waitForTimeout(1000);
+                return greenSpan(page, await stage.screenshot());
+              },
+              { timeout: 30_000, intervals: [0] },
+            )
             .toBeGreaterThan(0.6);
         }
         await snap(page, info, `${item.id}-${size.name}`);
