@@ -29,9 +29,39 @@ files: paste each one into **Supabase → Authentication → Emails → Template
 - Images load from the live site: `/icons/arena-192.png` and
   `/email/hero.jpg` (in `apps/client/public`). **Deploy them before pasting
   the templates**, or the banner shows as a broken image.
-- Dark design on purpose, like the game. Mail apps that only recolour light
-  backgrounds leave it alone; apps that invert everything flip text and
-  background together, so it stays readable.
+- **Always dark, like the game** (owner, 25 Nov), also in mail apps that
+  recolour emails in dark mode. Gmail on iPhone inverts the whole email,
+  dark backgrounds included (a dark email turned light lavender with olive
+  text), and ignores `color-scheme`. So:
+  - Every coloured surface has its colour three times: `bgcolor`, inline
+    `background-color`, and a `bg-*` class in `<style>` that paints the same
+    colour as `linear-gradient(c, c)`. Gmail inverts colours but not
+    background images. The class is in `<style>`, not inline: Gmail on
+    Android breaks an inline `background-image` gradient
+    ([email-bugs #135](https://github.com/hteumeuleu/email-bugs/issues/135)).
+  - Every coloured text has a `t-*` class. Only in Gmail (`u + .body`, the
+    `<u>` Gmail puts before the body, hence `<body class="body">`), it paints
+    the text with a gradient of its own colour clipped to the letters
+    (`background-clip: text; color: transparent`), so gold stays gold and
+    white stays white after the inversion. This is the coloured-text
+    variant of Rémi Parmentier's Gmail fix
+    ([email-darkmode](https://github.com/matthieuSolente/email-darkmode),
+    from email-bugs #68). Gmail keeps `<style>` only for Gmail and Google
+    Workspace accounts; with another account in the Gmail app it may still
+    invert.
+  - No borders: lines and frames (the card's edge, dividers, the code box)
+    are 1–2 px of a `bg-*` background around the content.
+  - `color-scheme: dark` (meta and CSS) tells Apple Mail and other apps that
+    read it not to recolour. Outlook's apps recolour and mark what they
+    changed (`data-ogsc`, `data-ogsb`); `<style>` sets the gold button and
+    its dark text back.
+  - Support data: [caniemail](https://www.caniemail.com/) (linear-gradient,
+    background-clip, color-scheme, prefers-color-scheme rows).
+  - `tests/unit/email-templates.test.ts` checks each colour has its class.
+    A new colour needs both a `bg-*`/`t-*` rule in every template's
+    `<style>` and the class on the element.
+  - Contrast (WCAG AA): body text `#a9b4c9` on the card 8.3:1, footer
+    `#8a95ad` on the page 6.3:1, dark text on the gold button 13.5:1.
 - The banner is the loading-screen painting **rest-market**
   (`apps/client/src/art/loading-art/startup-art-rest-market.webp`, chosen by
   the owner on 25 Nov), cropped to 2.5:1 a little below the middle and saved
