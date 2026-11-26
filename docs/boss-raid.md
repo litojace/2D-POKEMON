@@ -203,8 +203,32 @@ draws over the greeting, behind the fighter, in its boss's look
 
 In a match the fighter's name and health bar sit about 100 to 140 units over the
 floor and 65 either side, and hide what settles there on a phone: what stays (a
-cloud, a lantern, a prism) settles below them or beside the fighter. The auras
-and victories follow in their own passes.
+cloud, a lantern, a prism) settles below them or beside the fighter. The victories
+follow in their own pass.
+
+### The reward auras (remade 26 Nov)
+
+The seven auras had become the same thin dotted ring under the Legendary
+flourish. Each now shows its boss (`apps/client/src/skins/raid-aura-fx.ts`;
+ids unchanged), its items circling in front of and behind the fighter:
+
+![The seven raid auras, before and after, and close up](raid-auras.jpg)
+
+| Boss | Aura | What circles |
+| --- | --- | --- |
+| Storm Twins | Spark | The two thunder-jellies, opposite each other, a crackle flickering between them behind the fighter |
+| Lumiwick | Ember | Three sky lanterns, bobbing, embers rising from a warm ring |
+| Prismell | Halo | Six prism crystals over rainbow rings; the light runs from crystal to crystal |
+| Cragmuff | Mountain | Amber crystals turning and glinting, over a ring of mossy stones |
+| Tidelotl | Tidal | Its pearl, over a ring of rolling water with bubbles rising |
+| Inkpurr | Nightmote | Lantern Yard lanterns and its crescent moon, over a ring of ink rimmed with violet |
+| Snoozaku | Lullaby | Stars and z's, over the Dreamer's runes lighting up in order, as in its raid |
+
+An aura plays all match long, so these stay light: no large glows (the
+Legendary flourish already pools a soft light), and less than half the fill
+the old ones painted (`tests/unit/raid-aura.test.ts`). In a match an aura is
+sized to the fighter's shadow, as everywhere, so on a phone it stays small; its
+items are drawn 1.3 to 1.5 times larger than before so they still read.
 
 Results show actual boss damage, revive assists, and pillar baits per player, alongside team totals, plus a role for whoever led each: Heavy Hitter, Medic and Bait Master. Everyone who contributed to a completed rescue receives revive credit; solo self-revives appear only in the team total. Damage excludes overkill and phase-gated damage. Pillars credit the marked player whose charge broke them. Contribution counters reset on retry and are not a competitive leaderboard.
 
