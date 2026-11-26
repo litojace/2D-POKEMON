@@ -58,7 +58,6 @@ for (const size of SIZES) {
               `${value}px`,
             );
         }, size.inset);
-      await page.clock.install();
       await lonelyQueue(page);
 
       // The mode menu lists both for a lone player, and says bots fill in.
@@ -80,15 +79,27 @@ for (const size of SIZES) {
         "Bots fill in · best of five",
       );
 
-      // PLAY: the search, with your fighter.
+      // PLAY: the search, with your fighter. From here the page's clock is
+      // ours and stands still between steps, so the countdown reads the
+      // same however slow the runner is (running beside real time it read
+      // "5" where "9" was expected on CI, 26 Nov 2026). The long steps jump
+      // (fastForward: due timers fire once) rather than run every frame of
+      // the Lobby on the way, which takes minutes on a slow renderer.
+      await page.clock.install();
+      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 60_000));
       await page.click("#lobby-play");
       const sheet = page.locator("#quick-search");
-      await expect(sheet).toBeVisible();
+      // The queue's answer comes on a timer: step until the sheet is up.
+      await expect(async () => {
+        await page.clock.runFor(20);
+        await expect(sheet).toBeVisible({ timeout: 250 });
+      }).toPass({ timeout: 30_000 });
       await expect(sheet.locator(".ui-kicker")).toHaveText("2v2 Teams");
       await expect(sheet).toContainText("Searching for players");
       await expect(sheet).toContainText("1 other player online");
+      // A step or two of the clock may have passed since it opened.
       await expect(sheet.locator(".quick-fill")).toHaveText(
-        "Bots take the empty seats in 15 s. They are labelled (Bot).",
+        /^Bots take the empty seats in 1[45] s\. They are labelled \(Bot\)\.$/,
       );
       expect((await sent(page, "quick-join"))[0].data).toMatchObject({
         mode: "teams",
@@ -118,8 +129,13 @@ for (const size of SIZES) {
 
       // It counts down in place...
       const width = (await sheet.locator(".quick-fill").boundingBox())!.width;
+      const shown = Number(
+        await sheet.locator("[data-quick-count]").textContent(),
+      );
       await page.clock.fastForward(6_000);
-      await expect(sheet.locator("[data-quick-count]")).toHaveText("9");
+      await expect(sheet.locator("[data-quick-count]")).toHaveText(
+        String(shown - 6),
+      );
       expect(
         Math.abs(
           (await sheet.locator(".quick-fill").boundingBox())!.width - width,
