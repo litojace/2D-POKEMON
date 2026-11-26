@@ -1,0 +1,139 @@
+/* Direction 2 — "Poster": graphic, high contrast, editorial. The screen takes
+   the fighter's element colour; black slanted blocks, condensed poster type
+   (Anton) and a giant name behind the fighter. */
+:root { --ink: #0d0d0f; }
+html body .lobby-layer {
+  --lobby-rail: 132px;
+  --lobby-cards: 214px;
+  background: var(--el);
+  font-family: "Archivo", sans-serif;
+  color: var(--ink);
+}
+html body .lobby-layer .lobby-backdrop {
+  inset: 0 !important; transform: none !important; overflow: hidden;
+  background:
+    radial-gradient(circle, rgba(0,0,0,.16) 1.4px, transparent 1.8px) 0 0 / 9px 9px,
+    var(--el) !important;
+  -webkit-mask: none;
+}
+html body .lobby-layer .lobby-backdrop::before {
+  /* fade the halftone toward the centre */
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(48% 60% at 52% 58%, var(--el) 30%, transparent 75%);
+}
+.d2-slab {
+  position: absolute; inset: 0;
+  background: var(--ink);
+  clip-path: polygon(0 0, calc(var(--slab-x, 0px) + 196px) 0, calc(var(--slab-x, 0px) + 150px) 100%, 0 100%);
+}
+.d2-stripe {
+  position: absolute; inset: 0;
+  background: #fff;
+  clip-path: polygon(calc(var(--slab-x, 0px) + 201px) 0, calc(var(--slab-x, 0px) + 208px) 0, calc(var(--slab-x, 0px) + 162px) 100%, calc(var(--slab-x, 0px) + 155px) 100%);
+}
+.d2-bigname {
+  position: absolute; left: 47%; top: 47%;
+  transform: translate(-50%, -50%) rotate(-7deg);
+  font: 400 178px/0.8 "Anton", sans-serif; letter-spacing: .01em; text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(255,255,255,.42); -webkit-text-stroke: 2px rgba(13,13,15,.55);
+}
+.d2-tag {
+  position: absolute; right: 236px; top: 74px;
+  font: 800 12px/1 "Archivo"; letter-spacing: .18em; text-transform: uppercase;
+  background: var(--ink); color: var(--el); padding: 6px 10px; transform: rotate(-7deg);
+}
+html body .lobby-layer::after { background: none !important; }
+
+/* header */
+:root body.hub-active #account-profile,
+:root body.hub-active #account-coins > *,
+:root body.hub-active .header-menu > summary,
+:root .hub-scenes,
+:root body.hub-active .chat-button {
+  background: var(--ink) !important; border: 0 !important; border-radius: 4px !important;
+  box-shadow: 5px 5px 0 rgba(0,0,0,.25) !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important; color: #fff !important;
+}
+:root body.hub-active .account-name { color: #fff !important; font-family: "Anton"; font-weight: 400; font-size: 19px !important; letter-spacing: .02em; text-transform: uppercase; }
+:root body.hub-active .nav-title { color: #bbb !important; font-family: "Archivo"; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+:root body.hub-active .nav-level { background: #ff2e4d !important; color: #fff !important; border: 0 !important; border-radius: 2px !important; font-family: "Anton"; font-weight: 400; transform: rotate(-6deg); }
+:root body.hub-active .nav-xp { background: #333 !important; border-radius: 0 !important; }
+:root body.hub-active .coin-chip b { color: #fff !important; font-family: "Anton"; font-weight: 400; letter-spacing: .03em; }
+:root body.hub-active .header-menu > summary svg, :root body.hub-active .chat-button svg { color: #fff !important; }
+:root .hub-scenes { padding: 4px !important; transform: skewX(-10deg); }
+:root .hub-scenes > button {
+  font-family: "Anton" !important; font-weight: 400 !important; font-size: 16px !important; letter-spacing: .06em !important;
+  color: #fff !important; border-radius: 2px !important; text-transform: uppercase;
+}
+:root .hub-scenes > button[aria-pressed="true"] { background: var(--el) !important; color: var(--ink) !important; }
+
+/* rail: text menu on the black slab */
+html body .lobby-layer .lobby-rail {
+  background: none !important; border: 0 !important; backdrop-filter: none !important; padding: 0 !important; gap: 2px;
+  width: 132px;
+}
+html body .lobby-layer .lobby-rail button {
+  display: flex !important; justify-content: flex-start; gap: 10px; padding: 0 10px !important;
+  border-radius: 0 !important; background: none !important; flex-basis: 44px;
+}
+html body .lobby-layer .lobby-rail svg { color: #fff !important; width: 20px; height: 20px; }
+html body .lobby-layer .lobby-rail span { color: #fff !important; font: 400 18px/1 "Anton", sans-serif !important; letter-spacing: .04em !important; text-transform: uppercase; overflow: visible !important; text-overflow: clip !important; }
+
+/* stage */
+html body .lobby-layer .lobby-fighter::before { background: none !important; }
+html body .lobby-layer .lobby-floor { background: radial-gradient(closest-side, rgba(0,0,0,.38), transparent) !important; border: 0 !important; box-shadow: none !important; }
+html body .lobby-layer .lobby-podium { background: radial-gradient(closest-side, rgba(0,0,0,.22), transparent) !important; border: 0 !important; box-shadow: none !important; }
+html body .lobby-layer .lobby-slot {
+  background: transparent !important; border: 3px solid var(--ink) !important; border-radius: 4px !important;
+  transform: rotate(-4deg); color: var(--ink) !important; box-shadow: none !important; background: rgba(255,255,255,.35) !important;
+}
+html body .lobby-layer .lobby-slot small { font: 800 11px/1 "Archivo" !important; letter-spacing: .06em; text-transform: uppercase; color: var(--ink) !important; }
+html body .lobby-layer .lobby-slot span { color: var(--ink) !important; }
+html body .lobby-layer .lobby-name h2 {
+  font: 400 28px/1 "Anton", sans-serif !important; letter-spacing: .06em !important; color: var(--el) !important;
+  background: var(--ink); padding: 4px 14px 5px; transform: skewX(-10deg); text-shadow: none !important;
+}
+html body .lobby-layer .lobby-name .element-pill { background: #fff !important; color: var(--ink) !important; border-radius: 0 !important; font-family: "Archivo" !important; font-weight: 800 !important; letter-spacing: .16em !important; }
+html body .lobby-layer .lobby-name .element-pill svg { color: var(--ink) !important; }
+html body .lobby-layer .lobby-step { background: var(--ink) !important; color: #fff !important; border: 0 !important; border-radius: 2px !important; transform: skewX(-10deg); }
+
+/* cards: white clippings */
+html body .lobby-layer .lobby-cards { gap: 12px !important; }
+html body .lobby-layer .lobby-card {
+  background: #fff !important; border: 3px solid var(--ink) !important; border-radius: 0 !important;
+  box-shadow: 6px 6px 0 var(--ink) !important; backdrop-filter: none !important;
+}
+html body .lobby-layer .lobby-cards { right: calc(var(--lobby-gutter-r) + 6px) !important; }
+html body .lobby-layer .lobby-card:nth-child(3) { transform: rotate(-1.5deg); }
+html body .lobby-layer .lobby-card-kicker {
+  justify-self: start; max-width: 100%;
+  background: var(--ink); color: #fff !important; padding: 2px 6px; font-family: "Archivo" !important; font-weight: 800 !important; letter-spacing: .04em !important;
+}
+html body .lobby-layer .lobby-card b { color: var(--ink) !important; font: 400 20px/1.05 "Anton", sans-serif !important; letter-spacing: .03em; text-transform: uppercase; }
+html body .lobby-layer .lobby-card small { color: #333 !important; font-family: "Archivo" !important; font-weight: 600 !important; }
+html body .lobby-layer .lobby-card progress::-webkit-progress-bar { background: #e5e5e5 !important; border-radius: 0; }
+html body .lobby-layer .lobby-card progress::-webkit-progress-value { background: #ff2e4d !important; border-radius: 0; }
+
+/* mode + play */
+html body .lobby-layer .lobby-mode {
+  width: calc(100% - 6px);
+  background: #fff !important; border: 3px solid var(--ink) !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important;
+}
+html body .lobby-layer .lobby-mode-icon { background: var(--ink) !important; border-radius: 0 !important; border: 0 !important; }
+html body .lobby-layer .lobby-mode-icon svg { color: var(--el) !important; }
+html body .lobby-layer .lobby-mode-text b { color: var(--ink) !important; font: 400 17px/1 "Anton", sans-serif !important; letter-spacing: .05em !important; text-transform: uppercase; }
+html body .lobby-layer .lobby-mode-text small { color: #333 !important; font-family: "Archivo" !important; font-weight: 600 !important; }
+html body .lobby-layer .lobby-mode-caret { color: var(--ink) !important; }
+html body .lobby-layer .lobby-play::before, html body .lobby-layer .lobby-play-button::after { display: none !important; }
+html body .lobby-layer .lobby-play-button {
+  background: var(--ink) !important; color: var(--el) !important; border: 0 !important; border-radius: 0 !important;
+  transform: skewX(-10deg); box-shadow: 6px 6px 0 #ff2e4d !important; overflow: visible !important;
+  width: calc(100% - 14px); margin-left: 4px;
+}
+html body .lobby-layer .lobby-play-button span { font: 400 44px/1 "Anton", sans-serif !important; letter-spacing: .1em !important; transform: skewX(10deg); }
+html body .lobby-layer .lobby-play-button svg { fill: var(--el) !important; transform: skewX(10deg); }
+:root body #account-profile .account-name { font-family: "Anton", sans-serif !important; font-weight: 400 !important; }
+html body .lobby-layer .lobby-name .element-pill { box-shadow: none !important; }
+
+:root { --slab-x: max(0px, calc(var(--safe-left, 0px) - 14px)); }

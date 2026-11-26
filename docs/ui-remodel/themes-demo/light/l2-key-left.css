@@ -1,0 +1,11 @@
+html body .lobby-layer .lobby-backdrop { background:
+  radial-gradient(22% 9% at 45% 77%, color-mix(in srgb, var(--el) 46%, transparent), transparent 72%),
+  radial-gradient(60% 90% at 0% 0%, color-mix(in srgb, var(--el) 14%, transparent), transparent 70%),
+  linear-gradient(180deg, #13121a, #09080d) !important; }
+.d4-glow { left: 0; top: 0; width: 100%; height: 100%; transform: none; clip-path: none; opacity: 1;
+  background: conic-gradient(from 112deg at 2% -14%, transparent 0deg, color-mix(in srgb, var(--el) 30%, transparent) 11deg, color-mix(in srgb, var(--el) 30%, transparent) 22deg, transparent 33deg, transparent 360deg);
+  -webkit-mask-image: linear-gradient(180deg, #000 0 62%, transparent 82%); mask-image: linear-gradient(180deg, #000 0 62%, transparent 82%); }
+html body .lobby-layer .lobby-fighter::before { background: none !important; }
+html body .lobby-layer #lobby-fighter-art { filter: drop-shadow(-5px -5px 6px color-mix(in srgb, var(--el) 70%, #fff)); }
+html body .lobby-layer .lobby-fighter::after { content: ""; position: absolute; left: 52%; top: 84%; width: 62%; height: 12%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0,0,0,.6), transparent); transform: skewX(-38deg); }

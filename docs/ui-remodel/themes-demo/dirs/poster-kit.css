@@ -1,0 +1,108 @@
+/* ── POSTER: tokens ───────────────────────────────────────────────────── */
+:root {
+  --el: #ffd65b;
+  --ink: #0d0d0f;
+  --ink-1: #151518;
+  --ink-2: #1e1e22;
+  --ink-3: #2a2a30;
+  --hot: #ff2e4d;
+  font-synthesis: none;
+  --font-display: "Anton", "Arial Narrow", sans-serif;
+  --font-body: "Archivo", system-ui, sans-serif;
+  --ui-bg-0: var(--ink); --ui-bg-1: var(--ink-1); --ui-bg-2: var(--ink-2); --ui-bg-3: var(--ink-3);
+  --ui-glass: var(--ink); --ui-line: rgba(255,255,255,.12); --ui-line-2: rgba(255,255,255,.24);
+  --ui-text: #ffffff; --ui-dim: #b8b8c0; --ui-faint: #7d7d86;
+  --ui-accent: var(--el); --ui-accent-hi: var(--el); --ui-accent-lo: var(--el);
+  --ui-accent-deep: var(--ink); --ui-accent-ink: var(--ink);
+  --rad-xs: 0px; --rad-sm: 0px; --rad-md: 0px; --rad-lg: 0px; --rad-xl: 0px; --rad-pill: 2px;
+  --radius-sm: 0px; --radius-lg: 0px;
+  --glass-thin: var(--ink); --glass-regular: var(--ink); --glass-thick: var(--ink); --glass-solid: var(--ink); --glass-opaque: var(--ink);
+  --glass-blur: none; --glass-blur-panel: none; --glass-rim: transparent; --glass-rim-on: var(--el);
+  --aero-tint: var(--ink); --aero-tint-solid: var(--ink); --aero-rim: transparent; --aero-rim-on: var(--el); --aero-blur: none;
+  --fill-well: #070708; --fill-card: var(--ink-2); --fill-card-hi: var(--ink-3); --fill-bar: #070708;
+  --scrim: rgba(0,0,0,.55);
+  --btn-primary-bg: var(--el); --btn-primary-ink: var(--ink); --cta-bg: var(--el);
+  --icon-btn-bg: var(--ink); --icon-btn-line: transparent;
+  --shadow-1: 5px 5px 0 rgba(0,0,0,.35); --shadow-2: 8px 8px 0 rgba(0,0,0,.4);
+  --topbar-bg: var(--ink); --panel-top: var(--ink-1); --panel-bottom: var(--ink-1); --panel-line: transparent;
+  --gold-top: var(--el); --gold-bottom: var(--el); --gold-edge: var(--ink);
+  --scroll-track: var(--ink); --scroll-thumb: var(--el); --scroll-thumb-light: var(--el);
+  --lobby-glass: var(--ink); --lobby-line: transparent;
+}
+
+/* ── panels: an ink board with an element-coloured masthead ──────────── */
+:root .ui-panel, :root .ui-modal, :root .ui-sheet {
+  background: var(--ink) !important; border: 0 !important; border-radius: 0 !important;
+  box-shadow: 8px 8px 0 rgba(0,0,0,.45) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+}
+:root .ui-panel-head {
+  background: var(--el); color: var(--ink); border-bottom: 0 !important;
+}
+:root .ui-panel-head :is(h1, h2, h3, .ui-title, .ui-h) {
+  color: var(--ink) !important; font-family: "Anton", sans-serif !important; font-weight: 400 !important;
+  letter-spacing: .03em !important; text-transform: uppercase;
+}
+:root .ui-panel-head :is(.ui-kicker, small, p) { color: rgba(13,13,15,.75) !important; }
+:root .ui-panel-head .ui-tabs > button { color: rgba(13,13,15,.62) !important; font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .06em !important; }
+:root .ui-panel-head .ui-tabs > button[aria-selected="true"] { color: var(--el) !important; background: var(--ink); transform: skewX(-10deg); }
+:root .ui-panel-head .ui-tabs > button[aria-selected="true"] > * { transform: skewX(10deg); }
+:root .ui-panel-head .ui-tabs > button[aria-selected="true"]::after { display: none !important; }
+:root .ui-panel-head .ui-tabs { gap: 2px; }
+:root .ui-panel-head .ui-tabs > button { margin: 8px 0; }
+:root .ui-panel-head .ui-icon-btn, :root .ui-panel-head .ui-icon-btn.ui-close {
+  background: var(--ink) !important; color: #fff !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+}
+:root .ui-panel-head .ui-icon-btn svg { color: #fff !important; }
+:root .ui-panel-head .ui-seg { background: var(--ink) !important; border: 0 !important; transform: skewX(-10deg); padding: 3px !important; }
+:root .ui-panel-head .ui-seg > button { transform: skewX(10deg); }
+:root .ui-panel-head .ui-seg > button[aria-pressed="true"] { background: var(--el) !important; color: var(--ink) !important; transform: none; }
+:root .ui-panel-head .ui-seg > button:not([aria-pressed="true"]) { color: #fff !important; }
+:root .ui-panel-head .ui-chip { background: var(--ink) !important; color: #fff !important; border: 0 !important; }
+:root .ui-panel-head .ui-chip[aria-pressed="true"] { background: #fff !important; color: var(--ink) !important; }
+
+/* tabs not in a masthead */
+:root .ui-tabs { border-bottom: 2px solid var(--ink-3) !important; }
+:root .ui-panel-head .ui-tabs { border-bottom: 0 !important; }
+:root .ui-tabs > button { font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .06em !important; }
+
+/* ── buttons ── */
+:root .ui-btn {
+  border-radius: 0 !important; font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .07em !important;
+  background: var(--ink-3) !important; border: 0 !important; color: #fff !important; box-shadow: none !important;
+}
+:root .ui-btn.is-primary {
+  background: var(--el) !important; color: var(--ink) !important; box-shadow: 4px 4px 0 var(--hot) !important; transform: skewX(-8deg);
+}
+:root .ui-btn.is-primary > * { transform: skewX(8deg); }
+:root .ui-btn.is-ok { background: #3ee07a !important; color: var(--ink) !important; box-shadow: 4px 4px 0 #000 !important; }
+:root .ui-btn.is-ghost { background: transparent !important; color: var(--ui-dim) !important; box-shadow: inset 0 0 0 2px var(--ink-3) !important; }
+:root .ui-btn.is-danger { background: transparent !important; color: #ff6b80 !important; box-shadow: inset 0 0 0 2px rgba(255,46,77,.6) !important; }
+:root .ui-icon-btn { border-radius: 0 !important; background: var(--ink-2) !important; border: 0 !important; box-shadow: none !important; }
+:root .ui-seg { border-radius: 0 !important; background: var(--ink-2) !important; border: 0 !important; }
+:root .ui-seg > button { border-radius: 0 !important; font-weight: 700; }
+:root .ui-seg > button[aria-pressed="true"] { background: var(--el) !important; color: var(--ink) !important; }
+:root .ui-chip { border-radius: 0 !important; background: var(--ink-2) !important; border: 0 !important; color: var(--ui-dim) !important; font-family: "Archivo"; font-weight: 700; }
+:root .ui-chip[aria-pressed="true"] { background: var(--el) !important; color: var(--ink) !important; }
+:root .ui-chip[aria-pressed="true"] svg { color: var(--ink) !important; }
+
+/* ── cards, tiles, rows ── */
+:root .ui-tile { border-radius: 0 !important; background: var(--ink-2) !important; border: 0 !important; box-shadow: none !important; }
+:root .ui-tile[aria-pressed="true"], :root .ui-tile.is-selected, :root .ui-tile[aria-current="true"] { box-shadow: inset 0 0 0 3px var(--el), 5px 5px 0 var(--el) !important; }
+:root .ui-tile-art { border-radius: 0 !important; }
+:root .ui-tile-name, :root .ui-tile-foot b { font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .04em; text-transform: uppercase; }
+:root .ui-row { border-radius: 0 !important; background: var(--ink-1) !important; border: 0 !important; border-left: 4px solid var(--ink-3) !important; }
+:root .ui-tag, :root .ui-badge { border-radius: 0 !important; font-family: "Archivo"; font-weight: 800; letter-spacing: .08em; }
+:root .ui-bar, :root progress { border-radius: 0 !important; }
+:root .ui-panel-foot, :root .rc-foot { background: var(--ink-1) !important; border-top: 0 !important; }
+:root .ui-scrim { background: rgba(0,0,0,.55) !important; backdrop-filter: none !important; }
+
+/* headings anywhere in a panel */
+:root .ui-panel :is(h2, h3, h4), :root .ui-h, :root .ui-title { font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .03em; }
+:root .ui-kicker { font-family: "Archivo" !important; font-weight: 800 !important; letter-spacing: .14em !important; color: var(--el) !important; }
+
+/* toast */
+:root #toast { background: var(--ink) !important; color: #fff !important; border: 0 !important; border-radius: 0 !important; box-shadow: 5px 5px 0 rgba(0,0,0,.35) !important; border-left: 6px solid var(--el) !important; backdrop-filter: none !important; font-family: "Archivo"; font-weight: 700; }
+
+/* rail: the open screen's button */
+html body .lobby-layer .lobby-rail button[aria-current="page"] { background: var(--el) !important; transform: skewX(-10deg); }
+html body .lobby-layer .lobby-rail button[aria-current="page"] :is(span, svg) { color: var(--ink) !important; }

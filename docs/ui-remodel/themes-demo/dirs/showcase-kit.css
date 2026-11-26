@@ -1,0 +1,82 @@
+/* ── SHOWCASE: tokens ─────────────────────────────────────────────────── */
+:root {
+  --el: #ffd65b;
+  --s-bg: #0c0b11; --s-panel: #121118; --s-tile: #1b1a24; --s-tile-2: #252331;
+  --s-line: rgba(255,255,255,.07); --s-text: #f4f3f8; --s-dim: #a3a1b5; --s-cta: #b8ff3c; --s-ink: #0c0b11;
+  font-synthesis: none;
+  --font-display: "Rubik", system-ui, sans-serif;
+  --font-body: "Rubik", system-ui, sans-serif;
+  --ui-bg-0: var(--s-bg); --ui-bg-1: var(--s-panel); --ui-bg-2: var(--s-tile); --ui-bg-3: var(--s-tile-2);
+  --ui-glass: var(--s-panel); --ui-line: var(--s-line); --ui-line-2: rgba(255,255,255,.14);
+  --ui-text: var(--s-text); --ui-dim: var(--s-dim); --ui-faint: #6e6c80;
+  --ui-accent: var(--el); --ui-accent-hi: var(--el); --ui-accent-lo: var(--el);
+  --ui-accent-deep: color-mix(in srgb, var(--el) 55%, #000); --ui-accent-ink: var(--s-ink);
+  --rad-xs: 8px; --rad-sm: 12px; --rad-md: 14px; --rad-lg: 18px; --rad-xl: 22px;
+  --glass-thin: var(--s-panel); --glass-regular: var(--s-panel); --glass-thick: var(--s-panel); --glass-solid: var(--s-panel); --glass-opaque: var(--s-panel);
+  --glass-blur: none; --glass-blur-panel: none; --glass-rim: var(--s-line); --glass-rim-on: var(--el);
+  --aero-tint: var(--s-tile); --aero-tint-solid: var(--s-tile); --aero-rim: transparent; --aero-rim-on: var(--el); --aero-blur: none;
+  --fill-well: var(--s-bg); --fill-card: var(--s-tile); --fill-card-hi: var(--s-tile-2); --fill-bar: #0f0e14;
+  --scrim: rgba(5,4,8,.6);
+  --btn-primary-bg: var(--s-cta); --btn-primary-ink: var(--s-ink); --cta-bg: var(--s-cta);
+  --icon-btn-bg: var(--s-tile); --icon-btn-line: transparent;
+  --shadow-1: 0 8px 24px rgba(0,0,0,.45); --shadow-2: 0 20px 50px rgba(0,0,0,.55);
+  --topbar-bg: var(--s-panel); --panel-top: var(--s-panel); --panel-bottom: var(--s-panel); --panel-line: var(--s-line);
+  --gold-top: var(--el); --gold-bottom: var(--el); --gold-edge: var(--ui-accent-deep);
+  --scroll-track: var(--s-bg); --scroll-thumb: var(--s-tile-2); --scroll-thumb-light: var(--s-dim);
+  --lobby-glass: var(--s-tile); --lobby-line: transparent;
+}
+
+/* ── panels: dark rounded boards, no blur ── */
+:root .ui-panel, :root .ui-modal, :root .ui-sheet {
+  background: var(--s-panel) !important; border: 1px solid var(--s-line) !important; border-radius: 22px !important;
+  box-shadow: 0 20px 50px rgba(0,0,0,.55) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+}
+:root .ui-panel-head { background: transparent !important; border-bottom: 0 !important; }
+:root .ui-panel :is(h2, h3, h4), :root .ui-h, :root .ui-title { font-family: "Rubik", sans-serif !important; font-weight: 900 !important; letter-spacing: 0 !important; text-transform: none !important; }
+:root .ui-panel-head :is(h1, h2, .ui-title) { font-size: 22px !important; }
+:root .ui-kicker { font-family: "Rubik" !important; font-weight: 800 !important; letter-spacing: .08em !important; color: var(--el) !important; }
+
+/* tabs: pills */
+:root .ui-tabs { border-bottom: 0 !important; gap: 4px !important; }
+:root .ui-tabs > button {
+  font-family: "Rubik", sans-serif !important; font-weight: 800 !important; letter-spacing: .03em !important; font-size: 13px !important;
+  color: var(--s-dim) !important; border-radius: 999px !important; margin: 7px 0; border-bottom: 0 !important;
+}
+:root .ui-tabs > button[aria-selected="true"] { color: var(--s-ink) !important; background: var(--s-text) !important; }
+:root .ui-tabs > button[aria-selected="true"]::after { display: none !important; }
+:root .ui-tabs > button[aria-selected="true"] :is(small, span, b, i) { color: inherit !important; }
+
+/* buttons */
+:root .ui-btn {
+  border-radius: 14px !important; font-family: "Rubik", sans-serif !important; font-weight: 800 !important; letter-spacing: .02em !important;
+  background: var(--s-tile-2) !important; border: 0 !important; color: var(--s-text) !important; box-shadow: none !important; text-transform: none !important;
+}
+:root .ui-btn.is-primary { background: var(--s-cta) !important; color: var(--s-ink) !important; box-shadow: 0 0 0 3px rgba(184,255,60,.12) !important; }
+:root .ui-btn.is-ok { background: var(--s-cta) !important; color: var(--s-ink) !important; }
+:root .ui-btn.is-ghost { background: transparent !important; color: var(--s-dim) !important; box-shadow: inset 0 0 0 1px var(--s-line) !important; }
+:root .ui-btn.is-danger { background: rgba(255,77,96,.08) !important; color: #ff8a97 !important; box-shadow: inset 0 0 0 1px rgba(255,77,96,.4) !important; }
+:root .ui-icon-btn { border-radius: 12px !important; background: var(--s-tile) !important; border: 0 !important; box-shadow: none !important; }
+:root .ui-seg { border-radius: 999px !important; background: var(--s-bg) !important; border: 1px solid var(--s-line) !important; }
+:root .ui-seg > button { border-radius: 999px !important; font-family: "Rubik" !important; font-weight: 800 !important; text-transform: none !important; letter-spacing: .02em !important; }
+:root .ui-seg > button[aria-pressed="true"] { background: var(--s-text) !important; color: var(--s-ink) !important; }
+:root .ui-chip { border-radius: 999px !important; background: var(--s-tile) !important; border: 0 !important; color: var(--s-dim) !important; font-family: "Rubik"; font-weight: 700; }
+:root .ui-chip[aria-pressed="true"] { background: var(--s-text) !important; color: var(--s-ink) !important; }
+:root .ui-chip[aria-pressed="true"] svg { color: var(--s-ink) !important; }
+
+/* cards, tiles, rows */
+:root .ui-tile { border-radius: 16px !important; background: var(--s-tile) !important; border: 0 !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.05) !important; overflow: hidden; }
+:root .ui-tile[aria-pressed="true"], :root .ui-tile.is-selected, :root .ui-tile[aria-current="true"] { box-shadow: inset 0 0 0 2px var(--el), 0 0 18px color-mix(in srgb, var(--el) 30%, transparent) !important; }
+:root .ui-tile-art { border-radius: 12px !important; }
+:root .ui-tile-name, :root .ui-tile-foot b { font-family: "Rubik", sans-serif !important; font-weight: 800 !important; letter-spacing: 0 !important; text-transform: none !important; }
+:root .ui-row { border-radius: 14px !important; background: var(--s-tile) !important; border: 0 !important; }
+:root .ui-tag, :root .ui-badge { font-family: "Rubik"; font-weight: 800; letter-spacing: .04em; }
+:root .ui-panel-foot, :root .rc-foot { background: transparent !important; border-top: 1px solid var(--s-line) !important; }
+:root .ui-scrim { background: rgba(5,4,8,.6) !important; backdrop-filter: none !important; }
+
+/* toast */
+:root #toast { background: var(--s-tile-2) !important; color: var(--s-text) !important; border: 0 !important; border-radius: 14px !important; box-shadow: 0 10px 30px rgba(0,0,0,.45) !important; backdrop-filter: none !important; font-family: "Rubik"; font-weight: 600; }
+
+/* lobby rail: the open screen's button */
+html body .lobby-layer .lobby-rail button[aria-current="page"] { background: color-mix(in srgb, var(--el) 22%, var(--s-tile)) !important; box-shadow: inset 0 0 0 2px var(--el) !important; }
+html body .lobby-layer .lobby-rail button[aria-current="page"] :is(span, svg) { color: var(--s-text) !important; }
+:root body.hub-active .nav-xp > *, :root body.hub-active .nav-xp::before, :root body.hub-active .nav-xp::after { background: var(--el) !important; }

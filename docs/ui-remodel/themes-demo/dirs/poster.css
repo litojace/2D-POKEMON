@@ -1,0 +1,428 @@
+/* Direction 2 — "Poster": graphic, high contrast, editorial. The screen takes
+   the fighter's element colour; black slanted blocks, condensed poster type
+   (Anton) and a giant name behind the fighter. */
+:root { --ink: #0d0d0f; }
+html body .lobby-layer {
+  --lobby-rail: 132px;
+  --lobby-cards: 214px;
+  background: var(--el);
+  font-family: "Archivo", sans-serif;
+  color: var(--ink);
+}
+html body .lobby-layer .lobby-backdrop {
+  inset: 0 !important; transform: none !important; overflow: hidden;
+  background:
+    radial-gradient(circle, rgba(0,0,0,.16) 1.4px, transparent 1.8px) 0 0 / 9px 9px,
+    var(--el) !important;
+  -webkit-mask: none;
+}
+html body .lobby-layer .lobby-backdrop::before {
+  /* fade the halftone toward the centre */
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(48% 60% at 52% 58%, var(--el) 30%, transparent 75%);
+}
+.d2-slab {
+  position: absolute; inset: 0;
+  background: var(--ink);
+  clip-path: polygon(0 0, calc(var(--slab-x, 0px) + 196px) 0, calc(var(--slab-x, 0px) + 150px) 100%, 0 100%);
+}
+.d2-stripe {
+  position: absolute; inset: 0;
+  background: #fff;
+  clip-path: polygon(calc(var(--slab-x, 0px) + 201px) 0, calc(var(--slab-x, 0px) + 208px) 0, calc(var(--slab-x, 0px) + 162px) 100%, calc(var(--slab-x, 0px) + 155px) 100%);
+}
+.d2-bigname {
+  position: absolute; left: 47%; top: 47%;
+  transform: translate(-50%, -50%) rotate(-7deg);
+  font: 400 178px/0.8 "Anton", sans-serif; letter-spacing: .01em; text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(255,255,255,.42); -webkit-text-stroke: 2px rgba(13,13,15,.55);
+}
+.d2-tag {
+  position: absolute; right: 236px; top: 74px;
+  font: 800 12px/1 "Archivo"; letter-spacing: .18em; text-transform: uppercase;
+  background: var(--ink); color: var(--el); padding: 6px 10px; transform: rotate(-7deg);
+}
+html body .lobby-layer::after { background: none !important; }
+
+/* header */
+:root body.hub-active #account-profile,
+:root body.hub-active #account-coins > *,
+:root body.hub-active .header-menu > summary,
+:root .hub-scenes,
+:root body.hub-active .chat-button {
+  background: var(--ink) !important; border: 0 !important; border-radius: 4px !important;
+  box-shadow: 5px 5px 0 rgba(0,0,0,.25) !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important; color: #fff !important;
+}
+:root body.hub-active .account-name { color: #fff !important; font-family: "Anton"; font-weight: 400; font-size: 19px !important; letter-spacing: .02em; text-transform: uppercase; }
+:root body.hub-active .nav-title { color: #bbb !important; font-family: "Archivo"; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+:root body.hub-active .nav-level { background: #ff2e4d !important; color: #fff !important; border: 0 !important; border-radius: 2px !important; font-family: "Anton"; font-weight: 400; transform: rotate(-6deg); }
+:root body.hub-active .nav-xp { background: #333 !important; border-radius: 0 !important; }
+:root body.hub-active .coin-chip b { color: #fff !important; font-family: "Anton"; font-weight: 400; letter-spacing: .03em; }
+:root body.hub-active .header-menu > summary svg, :root body.hub-active .chat-button svg { color: #fff !important; }
+:root .hub-scenes { padding: 4px !important; transform: skewX(-10deg); }
+:root .hub-scenes > button {
+  font-family: "Anton" !important; font-weight: 400 !important; font-size: 16px !important; letter-spacing: .06em !important;
+  color: #fff !important; border-radius: 2px !important; text-transform: uppercase;
+}
+:root .hub-scenes > button[aria-pressed="true"] { background: var(--el) !important; color: var(--ink) !important; }
+
+/* rail: text menu on the black slab */
+html body .lobby-layer .lobby-rail {
+  background: none !important; border: 0 !important; backdrop-filter: none !important; padding: 0 !important; gap: 2px;
+  width: 132px;
+}
+html body .lobby-layer .lobby-rail button {
+  display: flex !important; justify-content: flex-start; gap: 10px; padding: 0 10px !important;
+  border-radius: 0 !important; background: none !important; flex-basis: 44px;
+}
+html body .lobby-layer .lobby-rail svg { color: #fff !important; width: 20px; height: 20px; }
+html body .lobby-layer .lobby-rail span { color: #fff !important; font: 400 18px/1 "Anton", sans-serif !important; letter-spacing: .04em !important; text-transform: uppercase; overflow: visible !important; text-overflow: clip !important; }
+
+/* stage */
+html body .lobby-layer .lobby-fighter::before { background: none !important; }
+html body .lobby-layer .lobby-floor { background: radial-gradient(closest-side, rgba(0,0,0,.38), transparent) !important; border: 0 !important; box-shadow: none !important; }
+html body .lobby-layer .lobby-podium { background: radial-gradient(closest-side, rgba(0,0,0,.22), transparent) !important; border: 0 !important; box-shadow: none !important; }
+html body .lobby-layer .lobby-slot {
+  background: transparent !important; border: 3px solid var(--ink) !important; border-radius: 4px !important;
+  transform: rotate(-4deg); color: var(--ink) !important; box-shadow: none !important; background: rgba(255,255,255,.35) !important;
+}
+html body .lobby-layer .lobby-slot small { font: 800 11px/1 "Archivo" !important; letter-spacing: .06em; text-transform: uppercase; color: var(--ink) !important; }
+html body .lobby-layer .lobby-slot span { color: var(--ink) !important; }
+html body .lobby-layer .lobby-name h2 {
+  font: 400 28px/1 "Anton", sans-serif !important; letter-spacing: .06em !important; color: var(--el) !important;
+  background: var(--ink); padding: 4px 14px 5px; transform: skewX(-10deg); text-shadow: none !important;
+}
+html body .lobby-layer .lobby-name .element-pill { background: #fff !important; color: var(--ink) !important; border-radius: 0 !important; font-family: "Archivo" !important; font-weight: 800 !important; letter-spacing: .16em !important; }
+html body .lobby-layer .lobby-name .element-pill svg { color: var(--ink) !important; }
+html body .lobby-layer .lobby-step { background: var(--ink) !important; color: #fff !important; border: 0 !important; border-radius: 2px !important; transform: skewX(-10deg); }
+
+/* cards: white clippings */
+html body .lobby-layer .lobby-cards { gap: 12px !important; }
+html body .lobby-layer .lobby-card {
+  background: #fff !important; border: 3px solid var(--ink) !important; border-radius: 0 !important;
+  box-shadow: 6px 6px 0 var(--ink) !important; backdrop-filter: none !important;
+}
+html body .lobby-layer .lobby-cards { right: calc(var(--lobby-gutter-r) + 6px) !important; }
+html body .lobby-layer .lobby-card:nth-child(3) { transform: rotate(-1.5deg); }
+html body .lobby-layer .lobby-card-kicker {
+  justify-self: start; max-width: 100%;
+  background: var(--ink); color: #fff !important; padding: 2px 6px; font-family: "Archivo" !important; font-weight: 800 !important; letter-spacing: .04em !important;
+}
+html body .lobby-layer .lobby-card b { color: var(--ink) !important; font: 400 20px/1.05 "Anton", sans-serif !important; letter-spacing: .03em; text-transform: uppercase; }
+html body .lobby-layer .lobby-card small { color: #333 !important; font-family: "Archivo" !important; font-weight: 600 !important; }
+html body .lobby-layer .lobby-card progress::-webkit-progress-bar { background: #e5e5e5 !important; border-radius: 0; }
+html body .lobby-layer .lobby-card progress::-webkit-progress-value { background: #ff2e4d !important; border-radius: 0; }
+
+/* mode + play */
+html body .lobby-layer .lobby-mode {
+  width: calc(100% - 6px);
+  background: #fff !important; border: 3px solid var(--ink) !important; border-radius: 0 !important; box-shadow: none !important; backdrop-filter: none !important;
+}
+html body .lobby-layer .lobby-mode-icon { background: var(--ink) !important; border-radius: 0 !important; border: 0 !important; }
+html body .lobby-layer .lobby-mode-icon svg { color: var(--el) !important; }
+html body .lobby-layer .lobby-mode-text b { color: var(--ink) !important; font: 400 17px/1 "Anton", sans-serif !important; letter-spacing: .05em !important; text-transform: uppercase; }
+html body .lobby-layer .lobby-mode-text small { color: #333 !important; font-family: "Archivo" !important; font-weight: 600 !important; }
+html body .lobby-layer .lobby-mode-caret { color: var(--ink) !important; }
+html body .lobby-layer .lobby-play::before, html body .lobby-layer .lobby-play-button::after { display: none !important; }
+html body .lobby-layer .lobby-play-button {
+  background: var(--ink) !important; color: var(--el) !important; border: 0 !important; border-radius: 0 !important;
+  transform: skewX(-10deg); box-shadow: 6px 6px 0 #ff2e4d !important; overflow: visible !important;
+  width: calc(100% - 14px); margin-left: 4px;
+}
+html body .lobby-layer .lobby-play-button span { font: 400 44px/1 "Anton", sans-serif !important; letter-spacing: .1em !important; transform: skewX(10deg); }
+html body .lobby-layer .lobby-play-button svg { fill: var(--el) !important; transform: skewX(10deg); }
+:root body #account-profile .account-name { font-family: "Anton", sans-serif !important; font-weight: 400 !important; }
+html body .lobby-layer .lobby-name .element-pill { box-shadow: none !important; }
+
+:root { --slab-x: max(0px, calc(var(--safe-left, 0px) - 14px)); }
+/* ── POSTER: tokens ───────────────────────────────────────────────────── */
+:root {
+  --el: #ffd65b;
+  --ink: #0d0d0f;
+  --ink-1: #151518;
+  --ink-2: #1e1e22;
+  --ink-3: #2a2a30;
+  --hot: #ff2e4d;
+  font-synthesis: none;
+  --font-display: "Anton", "Arial Narrow", sans-serif;
+  --font-body: "Archivo", system-ui, sans-serif;
+  --ui-bg-0: var(--ink); --ui-bg-1: var(--ink-1); --ui-bg-2: var(--ink-2); --ui-bg-3: var(--ink-3);
+  --ui-glass: var(--ink); --ui-line: rgba(255,255,255,.12); --ui-line-2: rgba(255,255,255,.24);
+  --ui-text: #ffffff; --ui-dim: #b8b8c0; --ui-faint: #7d7d86;
+  --ui-accent: var(--el); --ui-accent-hi: var(--el); --ui-accent-lo: var(--el);
+  --ui-accent-deep: var(--ink); --ui-accent-ink: var(--ink);
+  --rad-xs: 0px; --rad-sm: 0px; --rad-md: 0px; --rad-lg: 0px; --rad-xl: 0px; --rad-pill: 2px;
+  --radius-sm: 0px; --radius-lg: 0px;
+  --glass-thin: var(--ink); --glass-regular: var(--ink); --glass-thick: var(--ink); --glass-solid: var(--ink); --glass-opaque: var(--ink);
+  --glass-blur: none; --glass-blur-panel: none; --glass-rim: transparent; --glass-rim-on: var(--el);
+  --aero-tint: var(--ink); --aero-tint-solid: var(--ink); --aero-rim: transparent; --aero-rim-on: var(--el); --aero-blur: none;
+  --fill-well: #070708; --fill-card: var(--ink-2); --fill-card-hi: var(--ink-3); --fill-bar: #070708;
+  --scrim: rgba(0,0,0,.55);
+  --btn-primary-bg: var(--el); --btn-primary-ink: var(--ink); --cta-bg: var(--el);
+  --icon-btn-bg: var(--ink); --icon-btn-line: transparent;
+  --shadow-1: 5px 5px 0 rgba(0,0,0,.35); --shadow-2: 8px 8px 0 rgba(0,0,0,.4);
+  --topbar-bg: var(--ink); --panel-top: var(--ink-1); --panel-bottom: var(--ink-1); --panel-line: transparent;
+  --gold-top: var(--el); --gold-bottom: var(--el); --gold-edge: var(--ink);
+  --scroll-track: var(--ink); --scroll-thumb: var(--el); --scroll-thumb-light: var(--el);
+  --lobby-glass: var(--ink); --lobby-line: transparent;
+}
+
+/* ── panels: an ink board with an element-coloured masthead ──────────── */
+:root .ui-panel, :root .ui-modal, :root .ui-sheet {
+  background: var(--ink) !important; border: 0 !important; border-radius: 0 !important;
+  box-shadow: 8px 8px 0 rgba(0,0,0,.45) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+}
+:root .ui-panel-head {
+  background: var(--el); color: var(--ink); border-bottom: 0 !important;
+}
+:root .ui-panel-head :is(h1, h2, h3, .ui-title, .ui-h) {
+  color: var(--ink) !important; font-family: "Anton", sans-serif !important; font-weight: 400 !important;
+  letter-spacing: .03em !important; text-transform: uppercase;
+}
+:root .ui-panel-head :is(.ui-kicker, small, p) { color: rgba(13,13,15,.75) !important; }
+:root .ui-panel-head .ui-tabs > button { color: rgba(13,13,15,.62) !important; font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .06em !important; }
+:root .ui-panel-head .ui-tabs > button[aria-selected="true"] { color: var(--el) !important; background: var(--ink); transform: skewX(-10deg); }
+:root .ui-panel-head .ui-tabs > button[aria-selected="true"] > * { transform: skewX(10deg); }
+:root .ui-panel-head .ui-tabs > button[aria-selected="true"]::after { display: none !important; }
+:root .ui-panel-head .ui-tabs { gap: 2px; }
+:root .ui-panel-head .ui-tabs > button { margin: 8px 0; }
+:root .ui-panel-head .ui-icon-btn, :root .ui-panel-head .ui-icon-btn.ui-close {
+  background: var(--ink) !important; color: #fff !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+}
+:root .ui-panel-head .ui-icon-btn svg { color: #fff !important; }
+:root .ui-panel-head .ui-seg { background: var(--ink) !important; border: 0 !important; transform: skewX(-10deg); padding: 3px !important; }
+:root .ui-panel-head .ui-seg > button { transform: skewX(10deg); }
+:root .ui-panel-head .ui-seg > button[aria-pressed="true"] { background: var(--el) !important; color: var(--ink) !important; transform: none; }
+:root .ui-panel-head .ui-seg > button:not([aria-pressed="true"]) { color: #fff !important; }
+:root .ui-panel-head .ui-chip { background: var(--ink) !important; color: #fff !important; border: 0 !important; }
+:root .ui-panel-head .ui-chip[aria-pressed="true"] { background: #fff !important; color: var(--ink) !important; }
+
+/* tabs not in a masthead */
+:root .ui-tabs { border-bottom: 2px solid var(--ink-3) !important; }
+:root .ui-panel-head .ui-tabs { border-bottom: 0 !important; }
+:root .ui-tabs > button { font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .06em !important; }
+
+/* ── buttons ── */
+:root .ui-btn {
+  border-radius: 0 !important; font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .07em !important;
+  background: var(--ink-3) !important; border: 0 !important; color: #fff !important; box-shadow: none !important;
+}
+:root .ui-btn.is-primary {
+  background: var(--el) !important; color: var(--ink) !important; box-shadow: 4px 4px 0 var(--hot) !important; transform: skewX(-8deg);
+}
+:root .ui-btn.is-primary > * { transform: skewX(8deg); }
+:root .ui-btn.is-ok { background: #3ee07a !important; color: var(--ink) !important; box-shadow: 4px 4px 0 #000 !important; }
+:root .ui-btn.is-ghost { background: transparent !important; color: var(--ui-dim) !important; box-shadow: inset 0 0 0 2px var(--ink-3) !important; }
+:root .ui-btn.is-danger { background: transparent !important; color: #ff6b80 !important; box-shadow: inset 0 0 0 2px rgba(255,46,77,.6) !important; }
+:root .ui-icon-btn { border-radius: 0 !important; background: var(--ink-2) !important; border: 0 !important; box-shadow: none !important; }
+:root .ui-seg { border-radius: 0 !important; background: var(--ink-2) !important; border: 0 !important; }
+:root .ui-seg > button { border-radius: 0 !important; font-weight: 700; }
+:root .ui-seg > button[aria-pressed="true"] { background: var(--el) !important; color: var(--ink) !important; }
+:root .ui-chip { border-radius: 0 !important; background: var(--ink-2) !important; border: 0 !important; color: var(--ui-dim) !important; font-family: "Archivo"; font-weight: 700; }
+:root .ui-chip[aria-pressed="true"] { background: var(--el) !important; color: var(--ink) !important; }
+:root .ui-chip[aria-pressed="true"] svg { color: var(--ink) !important; }
+
+/* ── cards, tiles, rows ── */
+:root .ui-tile { border-radius: 0 !important; background: var(--ink-2) !important; border: 0 !important; box-shadow: none !important; }
+:root .ui-tile[aria-pressed="true"], :root .ui-tile.is-selected, :root .ui-tile[aria-current="true"] { box-shadow: inset 0 0 0 3px var(--el), 5px 5px 0 var(--el) !important; }
+:root .ui-tile-art { border-radius: 0 !important; }
+:root .ui-tile-name, :root .ui-tile-foot b { font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .04em; text-transform: uppercase; }
+:root .ui-row { border-radius: 0 !important; background: var(--ink-1) !important; border: 0 !important; border-left: 4px solid var(--ink-3) !important; }
+:root .ui-tag, :root .ui-badge { border-radius: 0 !important; font-family: "Archivo"; font-weight: 800; letter-spacing: .08em; }
+:root .ui-bar, :root progress { border-radius: 0 !important; }
+:root .ui-panel-foot, :root .rc-foot { background: var(--ink-1) !important; border-top: 0 !important; }
+:root .ui-scrim { background: rgba(0,0,0,.55) !important; backdrop-filter: none !important; }
+
+/* headings anywhere in a panel */
+:root .ui-panel :is(h2, h3, h4), :root .ui-h, :root .ui-title { font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .03em; }
+:root .ui-kicker { font-family: "Archivo" !important; font-weight: 800 !important; letter-spacing: .14em !important; color: var(--el) !important; }
+
+/* toast */
+:root #toast { background: var(--ink) !important; color: #fff !important; border: 0 !important; border-radius: 0 !important; box-shadow: 5px 5px 0 rgba(0,0,0,.35) !important; border-left: 6px solid var(--el) !important; backdrop-filter: none !important; font-family: "Archivo"; font-weight: 700; }
+
+/* rail: the open screen's button */
+html body .lobby-layer .lobby-rail button[aria-current="page"] { background: var(--el) !important; transform: skewX(-10deg); }
+html body .lobby-layer .lobby-rail button[aria-current="page"] :is(span, svg) { color: var(--ink) !important; }
+/* ── POSTER: screen by screen ─────────────────────────────────────────── */
+:root .ui-panel-head { background: var(--el) !important; }
+:root .ui-panel-head .ui-chip:not([aria-pressed="true"]) svg { color: #fff !important; }
+
+/* lobby mode menu */
+html body .lobby-layer .lobby-mode-menu { background: var(--ink) !important; border: 0 !important; border-radius: 0 !important; box-shadow: 6px 6px 0 rgba(0,0,0,.35) !important; }
+html body .lobby-layer .lobby-mode-menu button { border-radius: 0 !important; background: transparent !important; color: #fff !important; }
+html body .lobby-layer .lobby-mode-menu b { font: 400 15px/1.1 "Anton", sans-serif !important; letter-spacing: .05em !important; text-transform: uppercase; color: #fff !important; }
+html body .lobby-layer .lobby-mode-menu small { font-family: "Archivo" !important; color: #b8b8c0 !important; }
+html body .lobby-layer .lobby-mode-menu svg { color: var(--el) !important; }
+html body .lobby-layer .lobby-mode-menu [aria-checked="true"] { background: var(--el) !important; }
+html body .lobby-layer .lobby-mode-menu [aria-checked="true"] :is(b, small, svg) { color: var(--ink) !important; }
+
+/* dialogs (settings, invites, confirmations) */
+:root dialog#dialog, :root .framed-dialog, :root dialog.card {
+  background: var(--ink) !important; border: 0 !important; border-radius: 0 !important; box-shadow: 10px 10px 0 rgba(0,0,0,.5) !important;
+  backdrop-filter: none !important;
+}
+:root dialog::backdrop { background: rgba(0,0,0,.55); }
+:root .dialog-toolbar { background: var(--el) !important; border: 0 !important; }
+:root .dialog-heading, :root .dialog-toolbar h2 { color: var(--ink) !important; font: 400 22px/1 "Anton", sans-serif !important; letter-spacing: .04em !important; text-transform: uppercase; }
+:root .dialog-toolbar .close, :root #close-dialog { background: var(--ink) !important; color: #fff !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+:root .dialog-toolbar .close svg, :root #close-dialog svg { color: #fff !important; }
+:root .dialog-footer { background: var(--ink-1) !important; border-top: 0 !important; }
+:root :is(.prefs-card, .st-card) { background: var(--ink-2) !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+:root :is(.prefs-card, .st-card) h3 { font: 400 17px/1 "Anton", sans-serif !important; letter-spacing: .05em !important; text-transform: uppercase; color: var(--el) !important; }
+:root :is(.prefs-card, .st-card) h3 svg { color: var(--el) !important; }
+
+/* buttons outside the kit */
+:root button:is(.btn-primary, .primary):not(.lobby-play-button) {
+  background: var(--el) !important; color: var(--ink) !important; border: 0 !important; border-radius: 0 !important;
+  box-shadow: 4px 4px 0 var(--hot) !important; font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .07em !important;
+}
+:root button:is(.btn-secondary, .secondary) {
+  background: var(--ink-3) !important; color: #fff !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .07em !important;
+}
+:root button.leave-button { background: transparent !important; color: #ff6b80 !important; box-shadow: inset 0 0 0 2px rgba(255,46,77,.7) !important; }
+:root button:is(.btn-primary, .primary, .btn-secondary, .secondary) svg { color: currentColor !important; }
+
+/* text fields */
+:root input:is([type="text"], [type="search"], :not([type])), :root textarea {
+  background: var(--ink-2) !important; color: #fff !important; border: 2px solid var(--ink-3) !important; border-radius: 0 !important; box-shadow: none !important;
+  font-family: "Archivo" !important;
+}
+:root input:is([type="text"], [type="search"], :not([type])):focus { border-color: var(--el) !important; outline: none !important; }
+
+/* play drawer */
+:root :is(.play-drawer, .home-screen .play-panel, #play-panel) { background: var(--ink) !important; border: 0 !important; border-radius: 0 !important; }
+
+/* ── battle HUD ── */
+:root #hud.hud { background: var(--ink) !important; border: 0 !important; border-radius: 0 !important; transform: skewX(-10deg); box-shadow: 5px 5px 0 rgba(0,0,0,.3) !important; backdrop-filter: none !important; }
+:root #hud.hud > * { transform: skewX(10deg); }
+:root #hud #timer { font-family: "Anton", sans-serif !important; font-weight: 400 !important; color: var(--el) !important; letter-spacing: .04em; }
+:root #hud .timer-wrap small, :root #hud .timer-wrap span { font-family: "Archivo" !important; font-weight: 800 !important; letter-spacing: .12em; }
+:root #hud :is(#score-0, #score-1) { font-family: "Anton", sans-serif !important; font-weight: 400 !important; }
+:root #hud .hud-fighter { font-family: "Archivo" !important; font-weight: 800 !important; }
+:root body.battle-active #battle-menu, :root body.battle-active .chat-button { border-radius: 0 !important; background: var(--ink) !important; border: 0 !important; }
+:root .touch-buttons > button { box-shadow: 0 0 0 3px var(--ink), 4px 5px 0 3px rgba(0,0,0,.35) !important; }
+
+/* ── full-screen sheets: results, briefings ── */
+:root body.battle-active #battle #arena-overlay#arena-overlay.is-sheet > :is(.rc-card, .overlay-card),
+:root body.battle-active #battle #arena-overlay#arena-overlay.is-sheet > :is(.rc-card, .overlay-card).is-victory {
+  background:
+    linear-gradient(100deg, transparent 0 63%, rgba(13,13,15,.0) 63%),
+    radial-gradient(circle, rgba(0,0,0,.14) 1.4px, transparent 1.8px) 0 0 / 9px 9px,
+    var(--el) !important;
+  color: var(--ink) !important;
+}
+:root body.battle-active #battle #arena-overlay#arena-overlay.is-sheet > :is(.rc-card, .overlay-card).is-defeat {
+  background: radial-gradient(circle, rgba(255,255,255,.08) 1.4px, transparent 1.8px) 0 0 / 9px 9px, var(--ink) !important; color: #fff !important;
+}
+:root body.battle-active #arena-overlay#arena-overlay.is-sheet { background: var(--el) !important; }
+#arena-overlay#arena-overlay.is-sheet .overlay-card > h2,
+#arena-overlay#arena-overlay.is-sheet .rc-head .ui-title,
+#arena-overlay#arena-overlay.is-sheet .overlay-card.is-victory > h2,
+#arena-overlay#arena-overlay.is-sheet .is-victory .rc-head .ui-title {
+  color: var(--ink) !important; text-shadow: none !important; font: 400 34px/1 "Anton", sans-serif !important; letter-spacing: .02em !important; text-transform: uppercase;
+}
+#arena-overlay#arena-overlay.is-sheet .overlay-card > .eyebrow,
+#arena-overlay#arena-overlay.is-sheet .rc-head .ui-kicker,
+#arena-overlay#arena-overlay.is-sheet .is-victory .rc-head .ui-kicker,
+#arena-overlay#arena-overlay.is-sheet .overlay-card.is-victory > .eyebrow {
+  color: var(--ink) !important; font-family: "Archivo" !important; font-weight: 800 !important; letter-spacing: .16em !important;
+}
+#arena-overlay#arena-overlay.is-sheet .result-score { color: var(--ink) !important; font-family: "Anton", sans-serif; }
+#arena-overlay#arena-overlay.is-sheet .result-score * { color: var(--ink) !important; font-family: "Anton", sans-serif !important; font-weight: 400 !important; }
+#arena-overlay#arena-overlay.is-sheet table.recap { background: var(--ink) !important; border: 0 !important; border-radius: 0 !important; box-shadow: 6px 6px 0 rgba(0,0,0,.3) !important; color: #fff !important; }
+#arena-overlay#arena-overlay.is-sheet table.recap :is(th, td) { color: #fff !important; }
+#arena-overlay#arena-overlay.is-sheet table.recap td { font-family: "Anton", sans-serif !important; font-weight: 400 !important; font-size: 18px !important; }
+#arena-overlay#arena-overlay.is-sheet table.recap thead th { color: #b8b8c0 !important; font-family: "Archivo" !important; font-weight: 800 !important; letter-spacing: .12em; }
+#arena-overlay#arena-overlay.is-sheet table.recap tr { background: transparent !important; border-radius: 0 !important; box-shadow: none !important; }
+#arena-overlay#arena-overlay.is-sheet table.recap tr.me { background: var(--ink-3) !important; }
+#arena-overlay#arena-overlay.is-sheet table.recap tr.me th:first-child, #arena-overlay#arena-overlay.is-sheet table.recap tr.me td { border-color: transparent !important; }
+#arena-overlay#arena-overlay.is-sheet .journey-result-xp { background: var(--ink) !important; border: 0 !important; border-radius: 0 !important; box-shadow: 6px 6px 0 rgba(0,0,0,.3) !important; color: #fff !important; }
+#arena-overlay#arena-overlay.is-sheet .journey-result-xp > strong { color: var(--el) !important; font: 400 24px/1 "Anton", sans-serif !important; letter-spacing: .04em; }
+#arena-overlay#arena-overlay.is-sheet .journey-result-xp :is(p, div, small, span, b) { color: #fff; }
+#arena-overlay#arena-overlay.is-sheet .journey-level-up { background: var(--ink-2) !important; border: 0 !important; border-radius: 0 !important; }
+#arena-overlay#arena-overlay.is-sheet :is(.panel-actions, .rc-foot) { border-top: 3px solid var(--ink) !important; background: transparent !important; }
+#arena-overlay#arena-overlay.is-sheet :is(.panel-actions, .rc-foot) > :is(p, span, small) { color: var(--ink) !important; font-weight: 700; }
+#arena-overlay#arena-overlay.is-sheet button:is(.btn-primary, .primary) { background: var(--ink) !important; color: var(--el) !important; box-shadow: 5px 5px 0 var(--hot) !important; transform: skewX(-8deg); }
+#arena-overlay#arena-overlay.is-sheet button:is(.btn-secondary, .secondary) { background: #fff !important; color: var(--ink) !important; box-shadow: none !important; }
+#arena-overlay#arena-overlay.is-sheet button.leave-button { background: #fff !important; color: #d01836 !important; box-shadow: inset 0 0 0 2px #d01836 !important; }
+#arena-overlay#arena-overlay.is-sheet .ui-btn.is-primary { background: var(--ink) !important; color: var(--el) !important; }
+#arena-overlay#arena-overlay.is-sheet .ui-btn:not(.is-primary) { background: #fff !important; color: var(--ink) !important; }
+#arena-overlay#arena-overlay.is-sheet .ui-btn.is-danger { color: #d01836 !important; box-shadow: inset 0 0 0 2px #d01836 !important; }
+/* raid briefing / results cards on the poster */
+#arena-overlay#arena-overlay.is-sheet :is(.rc-goal, .rc-steps > *, .rc-stat, .rc-score, .rc-summary, .rc-roles > *, .rc-player, .rc-extra) {
+  background: var(--ink) !important; color: #fff !important; border: 0 !important; border-radius: 0 !important; box-shadow: 5px 5px 0 rgba(0,0,0,.28) !important;
+}
+#arena-overlay#arena-overlay.is-sheet .rc-step-n { background: var(--el) !important; color: var(--ink) !important; border-radius: 0 !important; font-family: "Anton" !important; font-weight: 400 !important; }
+#arena-overlay#arena-overlay.is-sheet :is(.rc-step-head, .rc-goal b, .rc-goal strong) { font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .04em; }
+#arena-overlay#arena-overlay.is-sheet .rc-tip, #arena-overlay#arena-overlay.is-sheet .rc-step-cue { color: var(--el) !important; }
+
+/* ── raid room ── */
+:root .room-seats { background: var(--ink) !important; border: 0 !important; border-radius: 0 !important; box-shadow: 8px 8px 0 rgba(0,0,0,.4) !important; backdrop-filter: none !important; }
+:root .room-seat { background: var(--ink-2) !important; border: 0 !important; border-radius: 0 !important; }
+:root .room-seat.is-me { box-shadow: inset 0 0 0 3px var(--el) !important; }
+:root .room-seat.is-open { background: transparent !important; box-shadow: inset 0 0 0 2px var(--ink-3) !important; }
+:root .room-banner, :root .room-banner img { border-radius: 0 !important; }
+:root .room-head .ui-h { color: var(--el) !important; }
+:root body.lobby-active .room-screen { background: transparent; }
+/* friends on phones: the tab row is the masthead */
+:root .friends-sheet > .ui-tabs { background: var(--el) !important; border-bottom: 0 !important; }
+:root .friends-sheet > .ui-tabs > button { color: rgba(13,13,15,.62) !important; margin: 7px 0; }
+:root .friends-sheet > .ui-tabs > button[aria-selected="true"] { color: var(--el) !important; background: var(--ink); transform: skewX(-10deg); }
+:root .friends-sheet > .ui-tabs > button[aria-selected="true"] > * { transform: skewX(10deg); }
+:root .friends-sheet > .ui-tabs > button[aria-selected="true"]::after { display: none !important; }
+:root .friends-sheet .ui-panel-head .ui-icon-btn { background: var(--ink) !important; }
+:root .friends-sheet .ui-panel-head .ui-icon-btn svg { color: #fff !important; }
+/* raid results: one board, no nested cards */
+#arena-overlay#arena-overlay.is-sheet .rc-player { background: transparent !important; box-shadow: none !important; }
+#arena-overlay#arena-overlay.is-sheet .rc-stat { box-shadow: none !important; }
+#arena-overlay#arena-overlay.is-sheet :is(.rc-score, .rc-summary) :is(h3, h4, .ui-h) { color: #fff !important; }
+#arena-overlay#arena-overlay.is-sheet :is(h3, h4).ui-h, #arena-overlay#arena-overlay.is-sheet .rc-card h3 { color: #fff !important; font-family: "Anton", sans-serif !important; font-weight: 400 !important; letter-spacing: .05em; }
+:root body.hub-active .nav-xp > *, :root body.hub-active .nav-xp::before, :root body.hub-active .nav-xp::after { background: var(--el) !important; }
+/* split screens (fighter details, boss page): the head row is the masthead */
+:root .ui-split-main { background: linear-gradient(var(--el) 0 44px, var(--ink) 44px) !important; }
+:root .ui-split-main > .ui-tabs { border-bottom: 0 !important; }
+:root .ui-split-main > .ui-tabs > button { color: rgba(13,13,15,.62) !important; margin: 7px 0; }
+:root .ui-split-main > .ui-tabs > button[aria-selected="true"] { color: var(--el) !important; background: var(--ink); transform: skewX(-10deg); }
+:root .ui-split-main > .ui-tabs > button[aria-selected="true"] > * { transform: skewX(10deg); }
+:root .ui-split-main > .ui-tabs > button[aria-selected="true"]::after { display: none !important; }
+:root .ui-split-main .ui-panel-head :is(.ui-btn, .ui-icon-btn) { background: var(--ink) !important; color: #fff !important; }
+:root .ui-split-main .ui-panel-head :is(.ui-btn, .ui-icon-btn) svg { color: #fff !important; }
+:root .ui-split-main > .ui-tabs > button > :is(small, .ui-count, span + span) { color: inherit !important; }
+/* ranks ladder */
+:root :is(.rk-board, .rk-ladder, .rk-list) { background: var(--ink-1) !important; border: 0 !important; border-radius: 0 !important; }
+:root .rk-head { background: var(--ink-2) !important; font-family: "Archivo" !important; font-weight: 800 !important; }
+:root .rk-pin > .rk-row { background: var(--el) !important; color: var(--ink) !important; border-top: 0 !important; }
+:root .rk-pin > .rk-row * { color: var(--ink) !important; }
+:root .rk-pin .rk-place { color: var(--ink) !important; }
+/* settings controls */
+:root .settings-screen :is(button, [role="switch"], .seg, .st-seg, input[type="range"]) { border-radius: 0 !important; }
+/* wardrobe slots */
+:root :is(.fit-slot, .fit-slots > *) { border-radius: 0 !important; }
+/* raid room backdrop: the poster */
+:root body.lobby-active .room-screen { background: radial-gradient(circle, rgba(0,0,0,.14) 1.4px, transparent 1.8px) 0 0 / 9px 9px, var(--el) !important; }
+/* narrow phones (667–800 px): the rail folds to icons with small labels */
+@media (max-width: 800px) {
+  html body .lobby-layer { --lobby-rail: 64px; }
+  html body .lobby-layer .lobby-rail { width: 64px; }
+  html body .lobby-layer .lobby-rail button { flex-direction: column !important; justify-content: center !important; gap: 3px !important; padding: 0 !important; }
+  html body .lobby-layer .lobby-rail span { font: 700 11px/1 "Archivo", sans-serif !important; letter-spacing: 0 !important; text-transform: none !important; }
+  .d2-slab { clip-path: polygon(0 0, calc(var(--slab-x, 0px) + 118px) 0, calc(var(--slab-x, 0px) + 88px) 100%, 0 100%); }
+  .d2-stripe { clip-path: polygon(calc(var(--slab-x, 0px) + 123px) 0, calc(var(--slab-x, 0px) + 129px) 0, calc(var(--slab-x, 0px) + 99px) 100%, calc(var(--slab-x, 0px) + 93px) 100%); }
+  html body .lobby-layer .lobby-slot small { font-size: 11px !important; letter-spacing: 0 !important; }
+  :root .ui-btn { letter-spacing: .04em !important; }
+}
+@media (max-width: 800px) {
+  :root .ui-tabs > button { letter-spacing: .02em !important; padding-left: 7px !important; padding-right: 7px !important; }
+}
+@media (max-height: 500px) {
+  :root :is(.ui-panel-head, .ui-split-main, .friends-sheet) .ui-tabs > button { letter-spacing: .03em !important; padding-left: 8px !important; padding-right: 8px !important; }
+}
+/* Close always sits over a scrolled tab row */
+:root .ui-icon-btn.ui-close { z-index: 3; }
+/* coins stay gold whatever the fighter's colour */
+:root { --gold-top: #ffe58f; --gold-bottom: #f2b93b; }
+:root .ui-coin { background: radial-gradient(circle at 35% 30%, #fff6cf, #ffd65b 55%, #b8860b) !important; }
+:root .coin-chip .button-icon, :root .coin-chip .button-icon svg { color: #ffd65b !important; }

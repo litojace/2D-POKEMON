@@ -1,0 +1,8 @@
+html body .lobby-layer .lobby-backdrop { background:
+  radial-gradient(21% 1.6% at 42% 50%, color-mix(in srgb, var(--el) 70%, #fff 20%), transparent 100%),
+  radial-gradient(circle at 42% 50%, color-mix(in srgb, var(--el) 70%, transparent) 0, color-mix(in srgb, var(--el) 44%, transparent) 8%, color-mix(in srgb, var(--el) 20%, transparent) 17%, color-mix(in srgb, var(--el) 7%, transparent) 27%, transparent 38%),
+  radial-gradient(30% 14% at 42% 84%, color-mix(in srgb, var(--el) 30%, transparent), transparent 72%),
+  linear-gradient(180deg, #100f16, #07060a) !important; }
+.d4-glow { display: none; }
+html body .lobby-layer .lobby-fighter::before { background: none !important; }
+html body .lobby-layer #lobby-fighter-art { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--el) 80%, #fff)); }

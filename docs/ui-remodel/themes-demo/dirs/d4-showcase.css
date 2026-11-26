@@ -1,0 +1,99 @@
+/* Direction 4 — "Showcase": dark and art-forward. Near-black stage, the
+   fighter lit in its element colour, the right side as picture cards (the
+   game's own boss painting), chunky type (Rubik) and one loud flat CTA. */
+:root { --s-bg: #0c0b11; --s-tile: #191823; --s-tile-2: #23212f; --s-text: #f4f3f8; --s-dim: #a3a1b5; --s-cta: #b8ff3c; }
+html body .lobby-layer { --lobby-rail: 62px; background: var(--s-bg); color: var(--s-text); font-family: "Rubik", sans-serif; }
+html body .lobby-layer .lobby-backdrop {
+  inset: 0 !important; transform: none !important; overflow: hidden;
+  background:
+    radial-gradient(38% 62% at 44% 58%, color-mix(in srgb, var(--el) 34%, transparent), transparent 72%),
+    radial-gradient(70% 50% at 44% 110%, color-mix(in srgb, var(--el) 18%, transparent), transparent 70%),
+    linear-gradient(180deg, #13121a, #09080d) !important;
+}
+.d4-glow { position: absolute; left: 44%; top: 0; width: 46%; height: 100%; transform: translateX(-50%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--el) 16%, transparent), transparent 60%);
+  clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); opacity: .7; }
+.d4-floorline { position: absolute; left: 0; right: 0; top: 80%; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.08) 30%, rgba(255,255,255,.08) 70%, transparent); }
+html body .lobby-layer::after { background: none !important; }
+
+/* header */
+:root body.hub-active #account-profile,
+:root body.hub-active #account-coins > *,
+:root body.hub-active .header-menu > summary,
+:root .hub-scenes,
+:root body.hub-active .chat-button {
+  background: var(--s-tile) !important; border: 0 !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.06) !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important; color: var(--s-text) !important; border-radius: 14px !important;
+}
+:root body #account-profile .account-name { font-family: "Rubik", sans-serif !important; font-weight: 800 !important; text-transform: none !important; letter-spacing: 0 !important; }
+:root body #account-profile .nav-title { font-family: "Rubik", sans-serif !important; font-weight: 500 !important; color: var(--s-dim) !important; }
+:root body.hub-active .nav-level { background: var(--s-tile-2) !important; border: 0 !important; color: var(--el) !important; font-family: "Rubik"; font-weight: 800; }
+:root body.hub-active .nav-xp { background: #2c2a38 !important; }
+:root body.hub-active .coin-chip b { font-family: "Rubik"; font-weight: 800; color: var(--s-text) !important; }
+:root body.hub-active .header-menu > summary svg, :root body.hub-active .chat-button svg { color: var(--s-text) !important; }
+:root .hub-scenes { padding: 4px !important; }
+:root .hub-scenes > button { font-family: "Rubik" !important; font-weight: 800 !important; font-size: 13px !important; letter-spacing: .04em !important; color: var(--s-dim) !important; border-radius: 10px !important; text-transform: uppercase; }
+:root .hub-scenes > button[aria-pressed="true"] { background: var(--s-text) !important; color: var(--s-bg) !important; }
+
+/* rail: dark tiles */
+html body .lobby-layer .lobby-rail { background: none !important; border: 0 !important; backdrop-filter: none !important; padding: 0 !important; gap: 6px; width: 62px; }
+html body .lobby-layer .lobby-rail button { background: var(--s-tile) !important; border-radius: 14px !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
+html body .lobby-layer .lobby-rail svg { color: var(--s-text) !important; }
+html body .lobby-layer .lobby-rail span { color: var(--s-dim) !important; font: 700 10px/1 "Rubik", sans-serif !important; letter-spacing: .02em !important; }
+
+/* stage */
+html body .lobby-layer .lobby-fighter::before { background: radial-gradient(closest-side, color-mix(in srgb, var(--el) 30%, transparent), transparent) !important; }
+html body .lobby-layer .lobby-floor {
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--el) 30%, transparent), transparent 70%) !important;
+  border: 2px solid color-mix(in srgb, var(--el) 80%, transparent) !important; border-radius: 50% !important;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--el) 45%, transparent) !important;
+}
+html body .lobby-layer .lobby-podium { background: radial-gradient(closest-side, rgba(255,255,255,.06), transparent) !important; border: 1px solid rgba(255,255,255,.14) !important; border-radius: 50% !important; box-shadow: none !important; }
+html body .lobby-layer .lobby-slot { background: rgba(255,255,255,.03) !important; border: 2px dashed rgba(255,255,255,.18) !important; color: var(--s-dim) !important; box-shadow: none !important; }
+html body .lobby-layer .lobby-slot small { font: 700 11px/1 "Rubik" !important; color: var(--s-dim) !important; }
+html body .lobby-layer .lobby-name h2 { font: 900 32px/1 "Rubik", sans-serif !important; letter-spacing: .02em !important; color: var(--s-text) !important; text-shadow: 0 0 22px color-mix(in srgb, var(--el) 40%, transparent) !important; }
+html body .lobby-layer .lobby-name .element-pill { background: color-mix(in srgb, var(--el) 16%, transparent) !important; color: var(--el) !important; box-shadow: none !important; border: 0 !important; font-family: "Rubik" !important; font-weight: 800 !important; }
+html body .lobby-layer .lobby-step { background: var(--s-tile) !important; border: 0 !important; color: var(--s-text) !important; border-radius: 14px !important; }
+
+/* cards: a picture card + two tiles */
+html body .lobby-layer .lobby-cards { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px !important; }
+html body .lobby-layer .lobby-card { background: var(--s-tile) !important; border: 0 !important; border-radius: 16px !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.06) !important; backdrop-filter: none !important; padding: 9px 10px !important; align-content: start; }
+html body .lobby-layer .lobby-card.d4-raid { grid-column: 1 / -1; position: relative; overflow: hidden; min-height: 96px; align-content: end; padding: 10px 12px !important; }
+.d4-raid-art { position: absolute; inset: 0; background: url("/demo-art/src/art/raid-splash/grumblecrag.webp") 85% 36% / 120% auto no-repeat; }
+.d4-raid-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(12,11,17,.95) 0%, rgba(12,11,17,.7) 50%, rgba(12,11,17,0) 85%); }
+html body .lobby-layer .d4-raid > :not(.d4-raid-art) { position: relative; }
+html body .lobby-layer .lobby-card-kicker { color: var(--s-dim) !important; font: 700 10.5px/1.15 "Rubik" !important; letter-spacing: .08em !important; white-space: normal !important; }
+html body .lobby-layer .d4-raid .lobby-card-kicker { color: #ffb36b !important; }
+html body .lobby-layer .lobby-card b { color: var(--s-text) !important; font: 900 17px/1.05 "Rubik", sans-serif !important; }
+html body .lobby-layer .d4-raid b { font-size: 22px !important; }
+html body .lobby-layer .lobby-card small { color: var(--s-dim) !important; font: 500 11px/1.25 "Rubik" !important; }
+html body .lobby-layer #lobby-journey-card > small, html body .lobby-layer #lobby-journey-card .lobby-card-row small { display: none; }
+html body .lobby-layer #lobby-missions-card > small { display: none; }
+html body .lobby-layer .lobby-card-row { display: block !important; }
+html body .lobby-layer #lobby-journey-card .lobby-card-kicker { font-size: 0 !important; }
+html body .lobby-layer #lobby-journey-card .lobby-card-kicker::before { content: "JOURNEY"; font-size: 10.5px; }
+html body .lobby-layer #lobby-missions-card .lobby-card-kicker { font-size: 0 !important; }
+html body .lobby-layer #lobby-missions-card .lobby-card-kicker::before { content: "MISSIONS"; font-size: 10.5px; }
+html body .lobby-layer .lobby-card progress { height: 6px !important; }
+html body .lobby-layer .lobby-card progress::-webkit-progress-bar { background: #2c2a38 !important; border-radius: 6px; }
+html body .lobby-layer .lobby-card progress::-webkit-progress-value { background: var(--el) !important; border-radius: 6px; }
+
+/* mode + play */
+html body .lobby-layer .lobby-mode { background: var(--s-tile) !important; border: 0 !important; border-radius: 16px !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.06) !important; backdrop-filter: none !important; }
+html body .lobby-layer .lobby-mode-icon { background: var(--s-tile-2) !important; border: 0 !important; border-radius: 10px !important; }
+html body .lobby-layer .lobby-mode-icon svg { color: var(--s-cta) !important; }
+html body .lobby-layer .lobby-mode-text b { color: var(--s-text) !important; font: 800 14px/1.1 "Rubik" !important; letter-spacing: 0 !important; text-transform: none !important; }
+html body .lobby-layer .lobby-mode-text small { color: var(--s-dim) !important; font: 500 11.5px/1.2 "Rubik" !important; }
+html body .lobby-layer .lobby-mode-caret { color: var(--s-dim) !important; }
+html body .lobby-layer .lobby-play::before, html body .lobby-layer .lobby-play-button::after { display: none !important; }
+html body .lobby-layer .lobby-play-button { background: var(--s-cta) !important; color: #0c0b11 !important; border: 0 !important; border-radius: 18px !important; box-shadow: 0 0 0 4px rgba(184,255,60,.12) !important; }
+html body .lobby-layer .lobby-play-button span { font: 900 36px/1 "Rubik", sans-serif !important; letter-spacing: .06em !important; }
+html body .lobby-layer .lobby-play-button svg { fill: #0c0b11 !important; }
+/* rows instead of squares */
+html body .lobby-layer .lobby-cards { grid-template-columns: 1fr !important; }
+html body .lobby-layer .lobby-card.d4-raid { min-height: 88px; }
+html body .lobby-layer .lobby-card:not(.d4-raid) { grid-template-columns: 1fr auto; align-items: center; row-gap: 7px !important; padding: 10px 12px !important; }
+html body .lobby-layer .lobby-card:not(.d4-raid) .lobby-card-row { display: contents !important; }
+html body .lobby-layer .lobby-card:not(.d4-raid) b { font-size: 15px !important; text-align: right; white-space: nowrap; }
+html body .lobby-layer .lobby-card:not(.d4-raid) progress { grid-column: 1 / -1; width: 100%; }
+html body .lobby-layer .lobby-name h2 { text-shadow: none !important; }

@@ -1,0 +1,31 @@
+@font-face{font-family:"Nunito";font-weight:600;font-style:normal;font-display:block;src:url("/demo-fonts/nunito/files/nunito-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Nunito";font-weight:700;font-style:normal;font-display:block;src:url("/demo-fonts/nunito/files/nunito-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Nunito";font-weight:800;font-style:normal;font-display:block;src:url("/demo-fonts/nunito/files/nunito-latin-800-normal.woff2") format("woff2")}
+@font-face{font-family:"Nunito";font-weight:900;font-style:normal;font-display:block;src:url("/demo-fonts/nunito/files/nunito-latin-900-normal.woff2") format("woff2")}
+@font-face{font-family:"Fredoka";font-weight:500;font-style:normal;font-display:block;src:url("/demo-fonts/fredoka/files/fredoka-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Fredoka";font-weight:600;font-style:normal;font-display:block;src:url("/demo-fonts/fredoka/files/fredoka-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Fredoka";font-weight:700;font-style:normal;font-display:block;src:url("/demo-fonts/fredoka/files/fredoka-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Anton";font-weight:400;font-style:normal;font-display:block;src:url("/demo-fonts/anton/files/anton-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"Archivo";font-weight:500;font-style:normal;font-display:block;src:url("/demo-fonts/archivo/files/archivo-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Archivo";font-weight:600;font-style:normal;font-display:block;src:url("/demo-fonts/archivo/files/archivo-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Archivo";font-weight:700;font-style:normal;font-display:block;src:url("/demo-fonts/archivo/files/archivo-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Archivo";font-weight:800;font-style:normal;font-display:block;src:url("/demo-fonts/archivo/files/archivo-latin-800-normal.woff2") format("woff2")}
+@font-face{font-family:"Archivo";font-weight:900;font-style:normal;font-display:block;src:url("/demo-fonts/archivo/files/archivo-latin-900-normal.woff2") format("woff2")}
+@font-face{font-family:"Jost";font-weight:300;font-style:normal;font-display:block;src:url("/demo-fonts/jost/files/jost-latin-300-normal.woff2") format("woff2")}
+@font-face{font-family:"Jost";font-weight:400;font-style:normal;font-display:block;src:url("/demo-fonts/jost/files/jost-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"Jost";font-weight:500;font-style:normal;font-display:block;src:url("/demo-fonts/jost/files/jost-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Jost";font-weight:600;font-style:normal;font-display:block;src:url("/demo-fonts/jost/files/jost-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Cormorant Garamond";font-weight:500;font-style:normal;font-display:block;src:url("/demo-fonts/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Cormorant Garamond";font-weight:600;font-style:normal;font-display:block;src:url("/demo-fonts/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Cormorant Garamond";font-weight:700;font-style:normal;font-display:block;src:url("/demo-fonts/cormorant-garamond/files/cormorant-garamond-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Rubik";font-weight:500;font-style:normal;font-display:block;src:url("/demo-fonts/rubik/files/rubik-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Rubik";font-weight:600;font-style:normal;font-display:block;src:url("/demo-fonts/rubik/files/rubik-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Rubik";font-weight:700;font-style:normal;font-display:block;src:url("/demo-fonts/rubik/files/rubik-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Rubik";font-weight:800;font-style:normal;font-display:block;src:url("/demo-fonts/rubik/files/rubik-latin-800-normal.woff2") format("woff2")}
+@font-face{font-family:"Rubik";font-weight:900;font-style:normal;font-display:block;src:url("/demo-fonts/rubik/files/rubik-latin-900-normal.woff2") format("woff2")}
+@font-face{font-family:"Space Grotesk";font-weight:500;font-style:normal;font-display:block;src:url("/demo-fonts/space-grotesk/files/space-grotesk-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Space Grotesk";font-weight:600;font-style:normal;font-display:block;src:url("/demo-fonts/space-grotesk/files/space-grotesk-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Space Grotesk";font-weight:700;font-style:normal;font-display:block;src:url("/demo-fonts/space-grotesk/files/space-grotesk-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Cormorant Garamond";font-weight:500;font-style:italic;font-display:block;src:url("/demo-fonts/cormorant-garamond/files/cormorant-garamond-latin-500-italic.woff2") format("woff2")}
+@font-face{font-family:"Cormorant Garamond";font-weight:600;font-style:italic;font-display:block;src:url("/demo-fonts/cormorant-garamond/files/cormorant-garamond-latin-600-italic.woff2") format("woff2")}
+@font-face{font-family:"Rubik";font-weight:400;font-style:normal;font-display:block;src:url("/demo-fonts/rubik/files/rubik-latin-400-normal.woff2") format("woff2")}
