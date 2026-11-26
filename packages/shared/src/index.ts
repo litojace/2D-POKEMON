@@ -3339,6 +3339,8 @@ export function unpackSnapshot(s: WireSnapshot, cache?: MetaCache): Snapshot {
 export interface Reply {
   ok: boolean;
   error?: string;
+  /** "match-report": what filing the match returned (as over HTTP). */
+  report?: unknown;
   token?: string;
   id?: string;
   code?: string;

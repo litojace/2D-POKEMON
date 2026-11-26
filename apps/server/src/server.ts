@@ -177,6 +177,7 @@ import {
   createAccountProvider,
   authorize,
   installAccountRoutes,
+  reportFinishedMatch,
   AccountError,
   type AccountProvider,
 } from "./accounts.js";
@@ -248,6 +249,12 @@ const ROOM_FAULT_MESSAGE =
   "This match hit a server error and was closed. No result was recorded.";
 /** What a command gets back when its handler failed. */
 const HANDLER_FAULT_MESSAGE = "Something went wrong. Please try again.";
+/**
+ * How long a server being replaced waits for a finished match's players to
+ * file it (drain). Their game does so as soon as the results reach it, so
+ * this covers a slow network, not a player who has left.
+ */
+const REPORT_GRACE_MS = 10_000;
 export function createArenaServer(
   options: {
     reconnectMs?: number;
@@ -296,6 +303,8 @@ export function createArenaServer(
      * says "off"; off, every client is sent whole snapshots.
      */
     snapshotDelta?: boolean;
+    /** How long a drain waits for a finished match to be filed (10 s). */
+    reportGraceMs?: number;
   } = {},
 ) {
   const connectionLog =
@@ -585,6 +594,16 @@ export function createArenaServer(
   /** Which account plays each fighter (kept after a player leaves). */
   const fighterAccounts = new WeakMap<Arena, Map<string, string>>();
   const ledger = new MatchLedger();
+  const reportGraceMs = options.reportGraceMs ?? REPORT_GRACE_MS;
+  /**
+   * A finished match's summary, for its player to file. From then on its
+   * save is a write the drain waits for, not a report it waits for.
+   */
+  const fileMatch = (matchId: string, accountId: string) => {
+    const summary = ledger.forPlayer(matchId, accountId);
+    if (summary) ledger.filed(matchId, accountId);
+    return summary;
+  };
   /** The Plaza (hub redesign phase 3): movement, the pitch, orbs, laps. */
   const plaza = new PlazaWorld();
   const plazaAppearance = new PlazaAppearance(plaza, accounts);
@@ -953,6 +972,12 @@ export function createArenaServer(
       socket.disconnect(true);
     }
   }
+  /** Something of a player's changed: their connections load it again. */
+  const playerChanged = (id: string) => {
+    for (const socket of io.sockets.sockets.values())
+      if ((socket.data.account as Account | undefined)?.id === id)
+        void refreshSocket(socket);
+  };
   /**
    * Who is online, by account, built once per turn of the event loop. The
    * friends list asks for each friend's presence in one synchronous pass;
@@ -971,13 +996,9 @@ export function createArenaServer(
   installAccountRoutes(
     app,
     accounts,
-    (id) => {
-      for (const socket of io.sockets.sockets.values())
-        if ((socket.data.account as Account | undefined)?.id === id)
-          void refreshSocket(socket);
-    },
+    playerChanged,
     listOnline,
-    (matchId, accountId) => ledger.forPlayer(matchId, accountId),
+    fileMatch,
     (accountId) => {
       const me = onlineById().get(accountId);
       if (!me)
@@ -3189,6 +3210,33 @@ export function createArenaServer(
     socket.on("rtt", (_data: unknown, cb: unknown) => {
       if (typeof cb === "function") cb();
     });
+    // File a finished match in your records, on the server that ran it
+    // (reportFinishedMatch). Over HTTP the request may reach another server
+    // during a deploy, which never saw the match.
+    socket.on("match-report", async (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(10)) return fail(cb, "Too many requests.");
+      try {
+        const report = await reportFinishedMatch(
+          accounts,
+          socket.data.accessToken,
+          account()!.id,
+          data,
+          fileMatch,
+          playerChanged,
+        );
+        reply(cb, { ok: true, report });
+      } catch (error) {
+        fail(
+          cb,
+          error instanceof AccountError
+            ? error.message
+            : error instanceof ZodError
+              ? "Invalid match."
+              : "Couldn't save this match to your records.",
+        );
+      }
+    });
     socket.on("input", (data: unknown) => {
       if (!allowedStream("input", 90)) return;
       withRoom(
@@ -4360,8 +4408,16 @@ export function createArenaServer(
         drainDeadline = deadline;
         io.emit("server-update", updateNotice());
       }
-      const busy = () => [...rooms.values()].filter(busyRoom).length;
-      connectionLog("arena-drain", { busy: busy(), saving: inflight.size });
+      // A live match, or one that just ended and isn't filed yet: its
+      // summary is in this process only, so the new server can't file it.
+      const busy = () =>
+        [...rooms.values()].filter(busyRoom).length +
+        ledger.unfiled(reportGraceMs);
+      connectionLog("arena-drain", {
+        busy: busy(),
+        saving: inflight.size,
+        unfiled: ledger.unfiled(reportGraceMs),
+      });
       const result = await waitForDrain({ busy, inflight, deadline, every });
       connectionLog("arena-drain-done", result);
       return result;

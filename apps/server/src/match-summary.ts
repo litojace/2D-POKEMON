@@ -36,12 +36,27 @@ export function matchSummary(
 export class MatchLedger {
   private entries = new Map<
     string,
-    { summary: MatchSummary; expires: number }
+    {
+      summary: MatchSummary;
+      expires: number;
+      /** When the match ended (epoch ms). */
+      ended: number;
+      /** Its players who haven't filed it yet. */
+      unfiled: Set<string>;
+    }
   >();
   constructor(private ttlMs = 60 * 60 * 1000) {}
-  add(id: string, summary: MatchSummary) {
+  add(id: string, summary: MatchSummary, now = Date.now()) {
     this.prune();
-    this.entries.set(id, { summary, expires: Date.now() + this.ttlMs });
+    const unfiled = new Set(
+      summary.players.flatMap((p) => (p.account ? [p.account] : [])),
+    );
+    this.entries.set(id, {
+      summary,
+      expires: now + this.ttlMs,
+      ended: now,
+      unfiled,
+    });
   }
   /** The summary, if `accountId` played in the match. */
   forPlayer(id: string, accountId: string) {
@@ -50,6 +65,21 @@ export class MatchLedger {
     return entry.summary.players.some((p) => p.account === accountId)
       ? entry.summary
       : undefined;
+  }
+  /** `accountId`'s game has sent the match to be saved. */
+  filed(id: string, accountId: string) {
+    this.entries.get(id)?.unfiled.delete(accountId);
+  }
+  /**
+   * Players who haven't filed a match that ended less than `graceMs` ago. A
+   * server being replaced waits for them (drain, server.ts): the summary
+   * lives only in this process, and the new server can't file it.
+   */
+  unfiled(graceMs: number, now = Date.now()) {
+    let count = 0;
+    for (const entry of this.entries.values())
+      if (now - entry.ended < graceMs) count += entry.unfiled.size;
+    return count;
   }
   prune() {
     const now = Date.now();

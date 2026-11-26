@@ -132,6 +132,19 @@ it("waits for the rewards of a match that just ended to save", async () => {
   await new Promise((r) => setTimeout(r, 30));
   expect(drained).toBe(false);
   save();
+  // Its rewards are saved; its record waits for the player's game to file
+  // it (match-report-deploy.test.ts), then nothing keeps the server.
+  await new Promise((r) => setTimeout(r, 30));
+  expect(drained).toBe(false);
+  accounts.provider.rpc = async () => ({
+    confirmed: true,
+    achievements: [],
+    rating: null,
+  });
+  const filed = await emit(fighter, "match-report", {
+    matchId: arena.matchId,
+  });
+  expect(filed.ok).toBe(true);
   expect(await drain).toEqual({ finished: true, busy: 0, saving: 0 });
 });
 
