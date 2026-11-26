@@ -634,7 +634,8 @@ export type Collection =
   | "retro"
   | "seaside"
   | "steamworks"
-  | "borealis";
+  | "borealis"
+  | "singles";
 export const COLLECTION_NAMES: Record<Collection, string> = {
   ...(Object.fromEntries(
     Object.entries(FASHION_COLLECTIONS).map(([id, c]) => [id, c.name]),
@@ -662,6 +663,7 @@ export const COLLECTION_NAMES: Record<Collection, string> = {
   seaside: "Seaside",
   steamworks: "Steamworks",
   borealis: "Borealis",
+  singles: "Singles",
 };
 
 export interface ChampionSkin {
@@ -1718,6 +1720,8 @@ export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
   seaside: 0,
   steamworks: 1,
   borealis: 2,
+  // Each single has its own tier (LOOK_SINGLES); this one is never read.
+  singles: 0,
 };
 const TIER_PRICE = [1, 1.6, 2.5] as const;
 const lookRarity = (base: Rarity, slug: string, tier: 0 | 1 | 2): Rarity => {
@@ -1725,7 +1729,78 @@ const lookRarity = (base: Rarity, slug: string, tier: 0 | 1 | 2): Rarity => {
   if (tier === 1) return slug === "colours" ? "rare" : "epic";
   return slug === "colours" ? "epic" : "mythical";
 };
-export const LOOK_ITEMS: LookItem[] = LOOK_SETS.flatMap(([collection, items]) =>
+/**
+ * Look pieces sold on their own, outside any set (docs/shop-new-items.md,
+ * item 9): each has a theme, a slot and a tier of its own, and is priced
+ * like a set's piece of that slot and tier. No set means no 20% bundle.
+ * Their collection, "singles", has no champion skins, so
+ * arena_collection_bonus never gives its frames away.
+ */
+const LOOK_SINGLES: [
+  id: string,
+  slot: RaidSlot,
+  tier: 0 | 1 | 2,
+  name: string,
+  description: string,
+][] = [
+  [
+    "firefly-aura",
+    "aura",
+    0,
+    "Firefly aura",
+    "Fireflies drift round you, blinking gold",
+  ],
+  [
+    "crystal-aura",
+    "aura",
+    1,
+    "Crystal aura",
+    "Violet crystals orbit you and catch the light",
+  ],
+  [
+    "bubble-entrance",
+    "entrance",
+    0,
+    "Bubble entrance",
+    "Float in inside a bubble that pops",
+  ],
+  [
+    "portal-entrance",
+    "entrance",
+    1,
+    "Portal entrance",
+    "Step out of a swirling portal",
+  ],
+  [
+    "laurel-frame",
+    "frame",
+    0,
+    "Laurel frame",
+    "A wreath of gold laurel leaves",
+  ],
+  [
+    "crown-frame",
+    "frame",
+    1,
+    "Crown frame",
+    "A jewelled ring under a gold crown",
+  ],
+  [
+    "trophy-victory",
+    "victory",
+    0,
+    "Trophy victory",
+    "A gold trophy rises in a shower of sparkles",
+  ],
+  [
+    "meteor-victory",
+    "victory",
+    2,
+    "Meteor victory",
+    "Meteors streak across the sky behind you",
+  ],
+];
+const LOOK_SET_ITEMS: LookItem[] = LOOK_SETS.flatMap(([collection, items]) =>
   items.map(([name, description], i) => {
     const [slot, slug, rarity, price] = LOOK_SLOTS[i];
     const tier = COLLECTION_TIER[collection] ?? 0;
@@ -1740,6 +1815,22 @@ export const LOOK_ITEMS: LookItem[] = LOOK_SETS.flatMap(([collection, items]) =>
     };
   }),
 );
+/** Every Look piece on sale: the sets' pieces, then the singles. */
+export const LOOK_ITEMS: LookItem[] = [
+  ...LOOK_SET_ITEMS,
+  ...LOOK_SINGLES.map(([id, slot, tier, name, description]): LookItem => {
+    const [, slug, rarity, price] = LOOK_SLOTS.find(([s]) => s === slot)!;
+    return {
+      id,
+      slot,
+      name,
+      rarity: lookRarity(rarity, slug, tier),
+      collection: "singles",
+      description,
+      price: Math.round((price * TIER_PRICE[tier]) / 10) * 10,
+    };
+  }),
+];
 export interface ShopBundle {
   id: string;
   collection: Collection;
