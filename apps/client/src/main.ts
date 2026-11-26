@@ -58,7 +58,10 @@ import {
   carryCurrent,
   newestStep,
   predictFighter,
+  raidCarry,
   serverSteps,
+  stepRaidCarry,
+  type RaidCarry,
 } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle, type Targetable } from "./target-lock";
@@ -5045,6 +5048,14 @@ followSnapshots(socket, (snapshot: WireSnapshot) => {
   local = structuredClone(me);
   prepareBattlePrediction();
   carryCurrent(local, state.time);
+  // Tidelotl's Undertow, Bubble Prison and roots move you before your input
+  // does: predicted from this snapshot on (stepRaidCarry in predict()).
+  raidCarryNow = raidCarry(
+    me,
+    state.raid,
+    state.players.find((p) => p.raidBoss),
+    state.time,
+  );
   for (const { input, tick } of steps)
     predict(local, input, state.time + tick / RULES.tick);
   if (predicted)
@@ -5205,8 +5216,11 @@ async function reportMatch(matchId: string, attempt = 0) {
   }
   if (state?.phase === "finished") renderBattle();
 }
+/** What Tidelotl does to your fighter between snapshots (predict-fighter.ts). */
+let raidCarryNow: RaidCarry | undefined;
 function predict(p: Fighter, input: Input, time: number) {
-  predictFighter(p, input, time, !!state?.raid);
+  const run = p === local ? stepRaidCarry(p, raidCarryNow, input, time) : input;
+  predictFighter(p, run, time, !!state?.raid);
 }
 
 function dialog(html: string) {
