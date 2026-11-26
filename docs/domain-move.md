@@ -220,3 +220,7 @@ this move doesn't touch how the session is stored.
   addresses with old → new. Two subjects were still Supabase's defaults
   (reauthentication shows the code in the subject); the owner was asked to
   set them.
+- 25 Nov, ~5:55 PM PT: the owner set the Reauthentication subject to one
+  without the code. The Change email address subject is still Supabase's
+  default ("Confirm your new email address"); ours, "Confirm your new
+  Element Arena email", is optional.
