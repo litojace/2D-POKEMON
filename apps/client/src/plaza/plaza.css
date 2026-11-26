@@ -1168,7 +1168,7 @@ body.hub-plaza #pwa-banner:has(.pwa-actions:not([hidden])) {
   padding: 0 8px;
   border: 0;
   border-radius: 10px;
-  font-family: var(--body, "DM Sans", sans-serif);
+  font-family: var(--body, var(--font-body));
   font-size: calc(14px * var(--text-scale, 1));
   font-weight: 800;
   line-height: 40px;
@@ -2519,9 +2519,7 @@ body.hub-plaza #pwa-banner:has(.pwa-actions:not([hidden])) {
   border-radius: 999px;
   background: linear-gradient(180deg, #78aaff, #3f7ef2 55%, #2c5fd4);
   color: #fff;
-  font:
-    800 calc(11px * var(--text-scale, 1)) / 1 "DM Sans",
-    sans-serif;
+  font: 800 calc(11px * var(--text-scale, 1)) / 1 var(--font-body);
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
   box-shadow:

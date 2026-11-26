@@ -30,9 +30,7 @@
   color: #edf3ff;
   background: #14213a;
   box-shadow: 0 12px 40px #0008;
-  font:
-    400 calc(14px * var(--text-scale, 1))/1.4 "DM Sans",
-    sans-serif;
+  font: 400 calc(14px * var(--text-scale, 1))/1.4 var(--font-body);
 }
 .room-invite-heading {
   display: flex;

@@ -237,7 +237,7 @@ main {
 }
 h1 {
   font:
-    800 clamp(52px, 5.5vw, 84px)/0.94 "Barlow Condensed",
+    800 clamp(52px, 5.5vw, 84px)/0.94 var(--font-display),
     Impact,
     sans-serif;
   letter-spacing: -1px;
@@ -310,9 +310,7 @@ h2 {
   }
 }
 kbd {
-  font:
-    600 calc(10px * var(--text-scale, 1)) "DM Sans",
-    sans-serif;
+  font: 600 calc(10px * var(--text-scale, 1)) var(--font-body);
   background: #ffffff0a;
   border: 1px solid #ffffff20;
   border-bottom-width: 3px;
@@ -339,7 +337,7 @@ kbd {
 }
 .room-panel h2 {
   font:
-    700 calc(28px * var(--text-scale, 1))/1.15 "Barlow Condensed",
+    700 calc(28px * var(--text-scale, 1))/1.15 var(--font-display),
     Impact,
     sans-serif;
   margin-top: 16px;
@@ -559,7 +557,7 @@ input::placeholder {
 .timer-wrap strong {
   display: block;
   font:
-    700 calc(38px * var(--text-scale, 1)) "Barlow Condensed",
+    700 calc(38px * var(--text-scale, 1)) var(--font-display),
     monospace;
   color: #eef4e9;
 }
@@ -736,9 +734,7 @@ body.is-blinded #game::after {
   justify-content: center;
 }
 .overlay-card h2 {
-  font:
-    700 calc(44px * var(--text-scale, 1)) "Barlow Condensed",
-    sans-serif;
+  font: 700 calc(44px * var(--text-scale, 1)) var(--font-display);
   margin: 12px 0;
 }
 .overlay-card > div {
@@ -1789,9 +1785,7 @@ body.battle-active.touch-mode {
 #pwa-takeover h2 {
   margin: 0;
   color: #fff;
-  font:
-    800 clamp(56px, 24vh, 150px) / 0.95 "Barlow Condensed",
-    sans-serif;
+  font: 800 clamp(56px, 24vh, 150px) / 0.95 var(--font-display);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   text-shadow:
@@ -3851,9 +3845,7 @@ dialog label.choice.assist {
   text-transform: uppercase;
 }
 button.binding {
-  font:
-    600 calc(11px * var(--text-scale, 1)) "DM Sans",
-    sans-serif;
+  font: 600 calc(11px * var(--text-scale, 1)) var(--font-body);
   color: #dce5f6;
   background: #ffffff0a;
   border: 1px solid #ffffff20;
@@ -9254,9 +9246,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   letter-spacing: 0.15em;
 }
 .journey-level-badge b {
-  font:
-    700 calc(30px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 700 calc(30px * var(--text-scale, 1))/1 var(--font-display);
 }
 .journey-level-line {
   display: flex;
@@ -9318,9 +9308,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
 .journey-result-xp > strong {
   display: block;
   color: #a8efd8;
-  font:
-    700 calc(22px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 700 calc(22px * var(--text-scale, 1))/1 var(--font-display);
   margin-bottom: 12px;
   animation: xp-arrive 0.35s ease-out;
 }
@@ -9408,16 +9396,12 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   border-radius: 10px;
   background: #ffe09b0a;
   color: #ffe09b;
-  font:
-    700 calc(17px * var(--text-scale, 1))/1.3 "Barlow Condensed",
-    sans-serif;
+  font: 700 calc(17px * var(--text-scale, 1))/1.3 var(--font-display);
 }
 .journey-level-up small {
   display: block;
   margin-top: 5px;
-  font:
-    400 calc(10px * var(--text-scale, 1))/1.5 "DM Sans",
-    sans-serif;
+  font: 400 calc(10px * var(--text-scale, 1))/1.5 var(--font-body);
   color: #dce8e0;
 }
 .journey-xp-breakdown {
@@ -9701,9 +9685,7 @@ body.home-active .header-menu summary > span {
   height: 44px;
   flex: none;
   padding: 0;
-  font:
-    400 calc(26px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 400 calc(26px * var(--text-scale, 1))/1 var(--font-body);
 }
 .home-drawer-scroll {
   overflow: hidden auto;
@@ -10631,9 +10613,7 @@ body.battle-active .ability.ult-ready,
   max-width: 29ch;
   margin: 0 auto;
   color: var(--text-dim);
-  font:
-    400 calc(15px * var(--text-scale, 1))/1.5 "DM Sans",
-    sans-serif;
+  font: 400 calc(15px * var(--text-scale, 1))/1.5 var(--font-body);
   text-align: center;
 }
 #arena-overlay .raid-draft .raid-choice-timer {
@@ -11228,9 +11208,7 @@ body.hub-screen #account-profile .account-avatar {
 body.lobby-active #account-profile .account-name,
 body.hub-screen #account-profile .account-name {
   grid-area: name;
-  font:
-    800 calc(17px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(17px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.02em;
 }
 body.lobby-active #account-profile .nav-level,
@@ -11259,9 +11237,7 @@ body.lobby-active .nav-title,
 body.hub-screen .nav-title {
   display: block;
   grid-area: title;
-  font:
-    700 calc(11px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(11px * var(--text-scale, 1))/1 var(--font-body);
 }
 /* Coins: pushed to the right, a glass pill. */
 body.lobby-active #account-coins,
@@ -11385,9 +11361,7 @@ body.hub-screen .menu-gear svg {
    instead of a solid gold fill. */
 .play-start h3 {
   margin: 0 0 4px;
-  font:
-    700 calc(13px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(13px * var(--text-scale, 1))/1 var(--font-body);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-dim, var(--ui-dim));
@@ -11433,18 +11407,14 @@ body.hub-screen .menu-gear svg {
 }
 .play-start .mode-card b {
   overflow: hidden;
-  font:
-    600 calc(15px * var(--text-scale, 1))/1.2 "DM Sans",
-    sans-serif;
+  font: 600 calc(15px * var(--text-scale, 1))/1.2 var(--font-body);
   letter-spacing: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .play-start .mode-card small {
   overflow: hidden;
-  font:
-    400 calc(12px * var(--text-scale, 1))/1.3 "DM Sans",
-    sans-serif;
+  font: 400 calc(12px * var(--text-scale, 1))/1.3 var(--font-body);
   color: #93a4c0;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -11564,17 +11534,13 @@ body.gate-active main {
 }
 .gate-kicker {
   color: #f2c25b;
-  font:
-    700 calc(12px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(12px * var(--text-scale, 1))/1 var(--font-body);
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 .gate-intro h1 {
   margin: 0;
-  font:
-    800 clamp(48px, 7vw, 92px) / 0.9 "Barlow Condensed",
-    sans-serif;
+  font: 800 clamp(48px, 7vw, 92px) / 0.9 var(--font-display);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   text-shadow:
@@ -11590,9 +11556,7 @@ body.gate-active main {
   margin: 4px 0 6px;
   max-width: 460px;
   color: #d6def0;
-  font:
-    400 calc(17px * var(--text-scale, 1))/1.5 "DM Sans",
-    sans-serif;
+  font: 400 calc(17px * var(--text-scale, 1))/1.5 var(--font-body);
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
 }
 .gate-invite b {
@@ -11691,9 +11655,7 @@ dialog .auth-panel {
   height: 100%;
 }
 .auth-title {
-  font:
-    700 calc(24px * var(--text-scale, 1))/1.15 "DM Sans",
-    sans-serif;
+  font: 700 calc(24px * var(--text-scale, 1))/1.15 var(--font-body);
   letter-spacing: -0.01em;
 }
 .auth-head p {
@@ -11715,9 +11677,7 @@ dialog .auth-panel {
   border-radius: 9px;
   background: none;
   color: #9fb0cc;
-  font:
-    600 calc(14px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 600 calc(14px * var(--text-scale, 1))/1 var(--font-body);
   cursor: pointer;
 }
 .auth-tabs button[aria-selected="true"] {
@@ -11738,9 +11698,7 @@ dialog .auth-panel {
 }
 .auth-field > span:first-child {
   color: #c9d4e8;
-  font:
-    600 calc(13px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 600 calc(13px * var(--text-scale, 1))/1 var(--font-body);
 }
 /* Matches the global input rule's specificity plus the panel class, so it wins. */
 .auth-panel
@@ -11755,9 +11713,7 @@ dialog .auth-panel {
   border-radius: 11px;
   background: rgba(5, 10, 22, 0.6);
   color: #fff;
-  font:
-    400 calc(15px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 400 calc(15px * var(--text-scale, 1))/1 var(--font-body);
   transition:
     border-color 0.15s,
     box-shadow 0.15s;
@@ -11831,9 +11787,7 @@ dialog .auth-panel {
   border: 0;
   background: none;
   color: #f2c25b;
-  font:
-    600 calc(13px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 600 calc(13px * var(--text-scale, 1))/1 var(--font-body);
   cursor: pointer;
 }
 .auth-link:hover {
@@ -11850,9 +11804,7 @@ dialog .auth-panel {
   border-radius: 12px;
   background: var(--btn-primary-bg);
   color: var(--ui-accent-ink);
-  font:
-    700 calc(15px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(15px * var(--text-scale, 1))/1 var(--font-body);
   box-shadow: 0 8px 24px rgba(242, 185, 59, 0.28);
   cursor: pointer;
   transition:
@@ -11880,9 +11832,7 @@ dialog .auth-panel {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--ui-text);
-  font:
-    600 calc(14px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 600 calc(14px * var(--text-scale, 1))/1 var(--font-body);
   cursor: pointer;
 }
 .auth-secondary:hover {
@@ -12734,17 +12684,13 @@ body.battle-active.court-view #game canvas {
 }
 .spectator-copy small {
   color: #a6bad4;
-  font:
-    500 calc(10px * var(--text-scale, 1))/1.2 "DM Sans",
-    sans-serif;
+  font: 500 calc(10px * var(--text-scale, 1))/1.2 var(--font-body);
 }
 .spectator-copy b {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font:
-    700 calc(14px * var(--text-scale, 1))/1.3 "DM Sans",
-    sans-serif;
+  font: 700 calc(14px * var(--text-scale, 1))/1.3 var(--font-body);
 }
 body.pvp-knocked-out #mobile-controls .joystick-area,
 body.pvp-knocked-out #mobile-controls .touch-buttons,
@@ -14166,9 +14112,7 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   border-radius: 999px;
   background: #0b1222e6;
   color: #d6deec;
-  font:
-    700 calc(10px * var(--text-scale, 1))/14px "DM Sans",
-    sans-serif;
+  font: 700 calc(10px * var(--text-scale, 1))/14px var(--font-body);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
   white-space: nowrap;
@@ -14628,9 +14572,7 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
 }
 #arena-overlay .overlay-card.match-reveal > h2 {
   margin: 2px 0 10px;
-  font:
-    800 calc(38px * var(--text-scale, 1)) / 1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(38px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -14648,9 +14590,7 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
 }
 .match-reveal .vs-mark {
   flex: none;
-  font:
-    800 calc(var(--rv-vs) * var(--text-scale, 1)) / 1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(var(--rv-vs) * var(--text-scale, 1)) / 1 var(--font-display);
   color: #f7d780;
   letter-spacing: 0.02em;
   text-shadow:
@@ -14704,9 +14644,8 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
   margin-top: 4px;
   overflow: hidden;
   color: #fff;
-  font:
-    800 calc(var(--rv-name) * var(--text-scale, 1)) / 1.05 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(var(--rv-name) * var(--text-scale, 1)) / 1.05
+    var(--font-display);
   letter-spacing: 0.03em;
   text-overflow: ellipsis;
   text-transform: uppercase;
@@ -14960,9 +14899,7 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
 }
 .vs-back .vs-q {
   color: #8fa0c8;
-  font:
-    800 calc(var(--rv-art, 90px) * 0.6) / 1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(var(--rv-art, 90px) * 0.6) / 1 var(--font-display);
 }
 .vs-back small {
   display: -webkit-box;
@@ -15068,9 +15005,7 @@ body.battle-active #arena-overlay#arena-overlay.is-countdown:not(:empty) {
 #arena-overlay.is-countdown .countdown-card > h2 {
   margin: 0;
   color: #fff;
-  font:
-    800 clamp(110px, 40vh, 240px) / 0.95 "Barlow Condensed",
-    sans-serif;
+  font: 800 clamp(110px, 40vh, 240px) / 0.95 var(--font-display);
   letter-spacing: 0.02em;
   text-shadow:
     0 0 32px color-mix(in srgb, var(--element, #f7d780) 55%, transparent),
@@ -15226,9 +15161,7 @@ body.battle-active.touch-mode.battle-raid
   left: 50%;
   transform: translateX(-50%);
   color: #fff4cf;
-  font:
-    700 calc(9px * var(--text-scale, 1)) / 1 "DM Sans",
-    sans-serif;
+  font: 700 calc(9px * var(--text-scale, 1)) / 1 var(--font-body);
   white-space: nowrap;
   text-shadow: 0 1px 2px #000;
 }

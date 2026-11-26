@@ -189,9 +189,7 @@ body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
   justify-content: center;
   margin: 0;
   color: #f7d780;
-  font:
-    800 calc(12px * var(--text-scale, 1)) / 1.2 "DM Sans",
-    sans-serif;
+  font: 800 calc(12px * var(--text-scale, 1)) / 1.2 var(--font-body);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -199,9 +197,7 @@ body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
   :is(.rc-head .ui-title, .overlay-card > h2) {
   margin: 2px 0 10px;
   color: #fff;
-  font:
-    800 calc(38px * var(--text-scale, 1)) / 1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(38px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -706,18 +702,14 @@ body.battle-active #arena-overlay#arena-overlay.is-break:has(> .has-rites) {
   justify-content: center;
   margin: 0;
   color: #f7d780;
-  font:
-    800 calc(12px * var(--text-scale, 1)) / 1.2 "DM Sans",
-    sans-serif;
+  font: 800 calc(12px * var(--text-scale, 1)) / 1.2 var(--font-body);
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 #arena-overlay#arena-overlay.is-break .round-break > h2 {
   margin: 0;
   color: #fff;
-  font:
-    800 clamp(28px, 9vh, 64px) / 0.95 "Barlow Condensed",
-    sans-serif;
+  font: 800 clamp(28px, 9vh, 64px) / 0.95 var(--font-display);
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }

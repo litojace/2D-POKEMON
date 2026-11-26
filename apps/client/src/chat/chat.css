@@ -68,7 +68,7 @@
   background: linear-gradient(180deg, #ff7486, var(--ui-danger) 55%, #d33a4e);
   color: #fff;
   font:
-    800 calc(11px * var(--text-scale, 1))/18px "DM Sans",
+    800 calc(11px * var(--text-scale, 1))/18px var(--font-body),
     system-ui,
     sans-serif;
   font-variant-numeric: tabular-nums;
@@ -165,9 +165,7 @@
   border-radius: 999px;
   background: none;
   color: var(--ui-dim);
-  font:
-    800 calc(14px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(14px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
@@ -540,9 +538,7 @@ button.chat-say:focus-visible {
   border-radius: 12px;
   background: var(--ui-accent);
   color: var(--ui-accent-ink);
-  font:
-    800 calc(14px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(14px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;

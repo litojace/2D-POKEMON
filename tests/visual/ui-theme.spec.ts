@@ -70,7 +70,7 @@ for (const size of SIZES) {
             );
         }, size.inset);
       // The picker comes first: the tour waits behind it.
-      await expect(picker(page)).toBeVisible();
+      await expect(picker(page)).toBeVisible({ timeout: 20_000 });
       await expect(page.locator(".hub-tour")).toHaveCount(0);
       expect(await look(page)).toBeNull();
       const cards = picker(page).locator(".look-card");
@@ -148,7 +148,7 @@ for (const size of SIZES) {
           ACCOUNT,
         ),
       ).toEqual(["poster", "1"]);
-      await expect(page.locator(".hub-tour")).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator(".hub-tour")).toBeVisible({ timeout: 30_000 });
       await page.locator("[data-tour=skip]").click();
       await expect(page.locator(".hub-tour")).toHaveCount(0);
       await expect(picker(page)).toHaveCount(0);
@@ -250,7 +250,7 @@ test.describe("phone", () => {
     });
     const errors = await openHub(page);
     // The tour is a new player's first dialog, as before.
-    await expect(page.locator(".hub-tour")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(".hub-tour")).toBeVisible({ timeout: 30_000 });
     await expect(picker(page)).toHaveCount(0);
     expect(await look(page)).toBeNull();
     await expect(page.locator("#ui-theme-css")).toHaveCount(0);

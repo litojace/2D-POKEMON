@@ -8,7 +8,7 @@ body {
   inset: 0;
   overflow: hidden;
   color: #f2f5ff;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-body);
   background: #040d1e var(--bg, none) center / cover no-repeat;
   padding: max(14px, env(safe-area-inset-top))
     max(28px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom))
@@ -29,7 +29,7 @@ body {
 .lp-title {
   margin: 0;
   font:
-    600 clamp(20px, 5.4vh, 44px) / 0.96 "Barlow Condensed",
+    600 clamp(20px, 5.4vh, 44px) / 0.96 var(--font-display),
     Impact,
     sans-serif;
   text-transform: uppercase;
@@ -61,9 +61,7 @@ body {
   gap: 4px;
 }
 .lp-name b {
-  font:
-    700 clamp(20px, 6vh, 40px) / 1 "Barlow Condensed",
-    sans-serif;
+  font: 700 clamp(20px, 6vh, 40px) / 1 var(--font-display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -386,7 +384,7 @@ body:has(.lp-refs) {
   inset: 0;
   overflow: hidden;
   color: #f2f5ff;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-body);
   background: #040d1e var(--painting) center / cover no-repeat;
 }
 .lp-x::after {
