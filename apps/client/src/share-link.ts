@@ -3,18 +3,19 @@
  * the player card and the match result card (share-card.ts,
  * screens/profile-card.ts).
  *
- * SHARE_SITE is the one place to change it. For now it is the game itself
- * (VITE_SITE_URL); when the game's own introduction website is ready, put
- * its address here. It never falls back to the page's own origin: inside
- * the iPhone app that is capacitor://localhost, which no camera can open.
+ * SHARE_SITE is the one place to change it: the game's introduction website
+ * (apps/site, docs/website.md), where a newcomer sees the game and taps Play
+ * (owner, 25 Nov). VITE_SHARE_SITE can point a test build elsewhere. It
+ * never falls back to the page's own origin: inside the iPhone app that is
+ * capacitor://localhost, which no camera can open.
  */
 export const SHARE_SITE = (
-  import.meta.env.VITE_SITE_URL || "https://play.elementarenausa.com"
+  import.meta.env.VITE_SHARE_SITE || "https://elementarenausa.com"
 ).replace(/\/+$/, "");
 
-/** Which picture a visit came from, as `?ref=` (nothing reads it in the
- * game; the server's request log can count it). It leaves invites
- * (`?room=`, invite.ts) and sign-in links alone. */
+/** Which picture a visit came from, as `?ref=` (the website ignores it;
+ * the host's request log can count it). It leaves invites (`?room=`,
+ * invite.ts) and sign-in links alone. */
 export type ShareSource = "card" | "result";
 
 /** The address the QR code holds. */
