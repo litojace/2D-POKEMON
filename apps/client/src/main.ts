@@ -69,7 +69,7 @@ import {
   canDash,
   type CastAction,
 } from "./cast-prediction";
-import { memoryConstrained, rendererDensity } from "./render-budget";
+import { memoryShortInBattle, rendererDensity } from "./render-budget";
 import {
   groundHeight,
   WORLD_ART,
@@ -9198,12 +9198,15 @@ function reportBattleLoad(fighters: number) {
   });
 }
 /**
- * Opening a battle on an iPhone (or a phone with little memory): forget the
- * Plaza's baked sprites first. The scene is closed by now, and the cache
- * (~45 MB of canvases once the Plaza was visited) would otherwise sit beside the battle's floor and textures until iOS ends the page.
+ * Opening a battle on an iPhone or a phone with 4 GB or less: forget the
+ * Plaza's baked sprites first. The Plaza has closed by now, but its sprite
+ * cache lives on (~37 MB of canvases once the Plaza was visited) and would
+ * sit beside the battle's floor and textures until the phone ends the page.
+ * The sprites are painted again on the next visit (the ground is painted
+ * again after a battle on every phone anyway).
  */
 function releaseHubArt() {
-  if (!memoryConstrained()) return;
+  if (!memoryShortInBattle()) return;
   // If the Plaza has not loaded this session the cache holds nothing.
   worlds.loaded("plaza")?.hubGfx.release();
 }

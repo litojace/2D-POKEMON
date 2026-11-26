@@ -31,6 +31,27 @@ export function memoryConstrained(
   return ios || (typeof memory === "number" && memory > 0 && memory <= 3);
 }
 /**
+ * A device that should give the hub's memory back when a battle opens:
+ * every memoryConstrained one, and one reporting 4 GB too (a budget Android
+ * phone; Chrome reports the nearest power of two). The Plaza's sprite cache
+ * (~37 MB once visited) outlives the Plaza, and a battle on top of it
+ * (Phaser, textures) is where such a phone runs short. Unlike
+ * memoryConstrained, the hub keeps its canvases between its own scenes, so
+ * going back and forth from the Lobby stays instant (a repaint there took
+ * 2 s on a CPU slowed 4×).
+ */
+export function memoryShortInBattle(
+  ios = isIOSDevice(),
+  memory = typeof navigator === "undefined"
+    ? undefined
+    : (navigator as Navigator & { deviceMemory?: number }).deviceMemory,
+) {
+  return (
+    memoryConstrained(ios, memory) ||
+    (typeof memory === "number" && memory > 0 && memory <= 4)
+  );
+}
+/**
  * An iPad with a large screen (its long side 1180 points or more): iPad
  * Air 4 and later, iPad 10th generation, every iPad Pro 11", 12.9" and 13".
  * They all have 4 GB of memory or more (an iPad Pro M4 8–16 GB), so they

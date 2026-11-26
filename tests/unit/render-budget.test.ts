@@ -4,6 +4,7 @@ import {
   isIOSWebApp,
   largeIPad,
   memoryConstrained,
+  memoryShortInBattle,
   previewDensity,
   rendererDensity,
   sceneDensity,
@@ -37,6 +38,16 @@ it("gives memory back eagerly on iOS and on phones with little memory", () => {
   expect(memoryConstrained(false, 4)).toBe(false);
   // Most browsers don't say: only iOS counts then.
   expect(memoryConstrained(false, undefined)).toBe(false);
+});
+
+it("gives the hub's memory back for a battle on 4 GB phones too", () => {
+  expect(memoryShortInBattle(true, undefined)).toBe(true);
+  expect(memoryShortInBattle(false, 2)).toBe(true);
+  expect(memoryShortInBattle(false, 4)).toBe(true);
+  expect(memoryShortInBattle(false, 8)).toBe(false);
+  expect(memoryShortInBattle(false, 16)).toBe(false);
+  expect(memoryShortInBattle(false, undefined)).toBe(false);
+  expect(memoryShortInBattle(false, 0)).toBe(false);
 });
 
 it("keeps the Plaza canvas within the pixel budget on iOS", () => {
