@@ -605,19 +605,19 @@ function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) 
       // bands side by side, and sparkles in every colour burst as it lands.
       // (Within the entrance budget: 24 streaks, a ring and six sparks.)
       const bands = [0xff4f5a, 0xff9f43, 0xffe066, 0x5fdc7a, 0x4fb6ff, 0xa77bff];
-      const sx = x - 120 * sc,
-        sy = y - 160 * sc,
+      const sx = x - 104 * sc,
+        sy = y - 140 * sc,
         len = Math.hypot(x - sx, y - 12 * sc - sy),
         ux = (x - sx) / len,
         uy = (y - 12 * sc - sy) / len,
         speed = 620;
       for (let seg = 0; seg < 4; seg++)
         bands.forEach((c, b) => {
-          const off = (b - 2.5) * 4 * sc,
+          const off = (b - 2.5) * 5 * sc,
             back = seg * 16 * sc,
             px = sx - ux * back - uy * off,
             py = sy - uy * back + ux * off;
-          emit({ x: px, y: py, vx: ux * speed, vy: uy * speed, life: (len + back) / speed, size: 6 * sc, color: c, shape: "ray", glow: false });
+          emit({ x: px, y: py, vx: ux * speed, vy: uy * speed, life: (len + back) / speed, size: 7.5 * sc, color: c, shape: "ray", glow: false });
         });
       emit({ x, y: y - 4 * sc, vx: 0, vy: 0, life: 0.5, size: 9 * sc, color: 0xffffff, shape: "shock" });
       for (let i = 0; i < 6; i++) {
@@ -1070,7 +1070,8 @@ function baseVictory(
         const t0 = i * 0.28,
           age = t - t0;
         if (age <= 0) continue;
-        const side = ((i * 37) % 9) / 8 - 0.5,
+        // Left and right in turn (the old formula sent the first five left).
+        const side = [-0.4, 0.38, -0.12, 0.5, 0.08, -0.32, 0.24, -0.5, 0.14][i],
           bx = x + side * 80 * sc + Math.sin(age * 2.2 + i) * 6 * sc,
           by = y - (20 + age * (46 + (i % 3) * 12)) * sc;
         if (by < y - 190 * sc) continue;
