@@ -70,6 +70,8 @@ Each step can be undone on its own; "Undo" says how.
      `https://elementarenausa.com/**` (the website's account area, later), and
      keep `https://parena.litojace.com/**` for 30 days so links already sent
      still pass.
+   - Authentication → Providers → Email: turn on **Secure password change**
+     and check **Secure email change** is on (shared sign-in review).
    - Authentication → Emails → Templates: paste the updated
      `supabase/templates/confirm-signup.html` and `reset-password.html` (their
      logo, banner and footer links now use the new address).
@@ -168,3 +170,8 @@ this move doesn't touch how the session is stored.
   `play.` before #484 lands is kept. This holds only while #484 keeps that
   fallback. Waiting for the owner to confirm in this session (or do steps
   1–3 by hand).
+- 25 Nov, ~4:15 PM PT: go-live rule from the shared sign-in review: **`play.`
+  serves only builds that include #484** (and #482). So steps 1–2 wait
+  until both are merged and the Static Site has deployed them. Before
+  go-live the owner also turns on Supabase "Secure password change" and
+  confirms "Secure email change" (Authentication → Providers → Email).
