@@ -10,7 +10,7 @@
  *   CHAMPIONS=voltkit,pyranda ... (a subset)
  */
 import { test, type Page } from "@playwright/test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { CHARACTERS, FIGHTER_IDS } from "../../packages/shared/src/index";
 import {
   createRoom,
@@ -130,34 +130,37 @@ async function frames(page: Page, n: number, dir: string) {
 }
 
 const only = process.env.CHAMPIONS?.split(",");
+const done = (dir: string, n: number) =>
+  existsSync(dir) &&
+  readdirSync(dir).filter((f) => f.endsWith(".png")).length >= n;
+// One test per champion and move, so a slow machine never runs one out of
+// time, and a rerun skips the clips already captured (delete site-clips/ to
+// capture everything again).
 for (const id of FIGHTER_IDS.filter((c) => !only || only.includes(c)))
-  test(`clips ${id}`, async ({ browser }) => {
-    // A phone held sideways: the follow camera frames the fighters up close.
-    const context = await browser.newContext({
-      viewport: { width: 874, height: 402 },
-      deviceScaleFactor: 2,
-      isMobile: true,
-      hasTouch: true,
-    });
-    try {
-      const page = await context.newPage();
-      await battle(page);
-      for (const move of MOVES) {
+  for (const move of MOVES)
+    test(`clip ${id} ${move}`, async ({ browser }) => {
+      const n = move === "ult" ? FRAMES.ult : FRAMES.move;
+      const dir = `${OUT}/${id}/${move}`;
+      test.skip(done(dir, n), "already captured");
+      // A phone held sideways: the follow camera frames the fighters up close.
+      const context = await browser.newContext({
+        viewport: { width: 874, height: 402 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
+      });
+      try {
+        const page = await context.newPage();
+        await battle(page);
         await stage(page, id, move);
         // Let the art settle: a few quiet ticks before the cast.
         await page.evaluate(() => {
-          const w = window as any;
-          w.__shot.tick = -20;
+          (window as any).__shot.tick = -20;
         });
-        await frames(page, 10, `${OUT}/.warmup`);
+        await frames(page, 10, `${OUT}/.warmup-${id}-${move}`);
         await page.evaluate(() => ((window as any).__shot.tick = 0));
-        await frames(
-          page,
-          move === "ult" ? FRAMES.ult : FRAMES.move,
-          `${OUT}/${id}/${move}`,
-        );
+        await frames(page, n, dir);
+      } finally {
+        await context.close();
       }
-    } finally {
-      await context.close();
-    }
-  });
+    });
