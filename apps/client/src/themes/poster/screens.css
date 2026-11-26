@@ -1,0 +1,714 @@
+/* ── POSTER: screen by screen ─────────────────────────────────────────── */
+:root[data-ui="poster"] .ui-panel-head {
+  background: var(--el);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-chip:not([aria-pressed="true"]) svg {
+  color: #fff;
+}
+/* lobby mode menu */
+:root[data-ui="poster"] .lobby-layer .lobby-mode-menu {
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-mode-menu button {
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-mode-menu b {
+  font: 400 15px/1.1 var(--font-display);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #fff;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-mode-menu small {
+  font-family: var(--font-body);
+  color: #b8b8c0;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-mode-menu svg {
+  color: var(--el);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-mode-menu [aria-checked="true"] {
+  background: var(--el);
+}
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-mode-menu
+  [aria-checked="true"]
+  :is(b, small, svg) {
+  color: var(--ink);
+}
+/* dialogs (settings, invites, confirmations) */
+:root[data-ui="poster"] dialog#dialog,
+:root[data-ui="poster"] .framed-dialog,
+:root[data-ui="poster"] dialog.card {
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.5);
+}
+:root[data-ui="poster"] dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+:root[data-ui="poster"] .dialog-toolbar {
+  background: var(--el);
+  border: 0;
+}
+:root[data-ui="poster"] .dialog-heading,
+:root[data-ui="poster"] .dialog-toolbar h2 {
+  color: var(--ink);
+  font: 400 22px/1 var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] .dialog-toolbar .close,
+:root[data-ui="poster"] #close-dialog {
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-ui="poster"] .dialog-toolbar .close svg,
+:root[data-ui="poster"] #close-dialog svg {
+  color: #fff;
+}
+:root[data-ui="poster"] .dialog-footer {
+  background: var(--ink-1);
+  border-top: 0;
+}
+:root[data-ui="poster"] :is(.prefs-card, .st-card) {
+  background: var(--ink-2);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-ui="poster"] :is(.prefs-card, .st-card) h3 {
+  font: 400 17px/1 var(--font-display);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--el);
+}
+:root[data-ui="poster"] :is(.prefs-card, .st-card) h3 svg {
+  color: var(--el);
+}
+/* buttons outside the kit */
+:root[data-ui="poster"]
+  button:is(.btn-primary, .primary):not(.lobby-play-button) {
+  background: var(--el);
+  color: var(--ink);
+  border: 0;
+  border-radius: 0;
+  box-shadow: 4px 4px 0 var(--hot);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.07em;
+}
+:root[data-ui="poster"] button:is(.btn-secondary, .secondary) {
+  background: var(--ink-3);
+  color: #fff;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.07em;
+}
+:root[data-ui="poster"] button.leave-button {
+  background: transparent;
+  color: #ff6b80;
+  box-shadow: inset 0 0 0 2px rgba(255, 46, 77, 0.7);
+}
+:root[data-ui="poster"]
+  button:is(.btn-primary, .primary, .btn-secondary, .secondary)
+  svg {
+  color: currentColor;
+}
+/* text fields */
+:root[data-ui="poster"]
+  input:is(
+    [type="text"],
+    :root[data-ui="poster"] [type="search"],
+    :root[data-ui="poster"] :not([type])
+  ),
+:root[data-ui="poster"] textarea {
+  background: var(--ink-2);
+  color: #fff;
+  border: 2px solid var(--ink-3);
+  border-radius: 0;
+  box-shadow: none;
+  font-family: var(--font-body);
+}
+:root[data-ui="poster"]
+  input:is(
+    [type="text"],
+    :root[data-ui="poster"] [type="search"],
+    :root[data-ui="poster"] :not([type])
+  ):focus {
+  border-color: var(--el);
+  outline: none;
+}
+/* play drawer */
+:root[data-ui="poster"]
+  :is(.play-drawer, .home-screen .play-panel, #play-panel) {
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+}
+/* ── battle HUD ── */
+:root[data-ui="poster"] body.battle-active #battle #hud.hud {
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  transform: skewX(-10deg);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
+}
+:root[data-ui="poster"] body.battle-active #battle #hud.hud > * {
+  transform: skewX(10deg);
+}
+:root[data-ui="poster"] body.battle-active #battle #hud #timer {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--el);
+  letter-spacing: 0.04em;
+}
+:root[data-ui="poster"] body.battle-active #battle #hud .timer-wrap small,
+:root[data-ui="poster"] body.battle-active #battle #hud .timer-wrap span {
+  font-family: var(--font-body);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+:root[data-ui="poster"]
+  body.battle-active
+  #battle
+  #hud
+  :is(#score-0, #score-1) {
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+:root[data-ui="poster"] body.battle-active #battle #hud .hud-fighter {
+  font-family: var(--font-body);
+  font-weight: 800;
+}
+:root[data-ui="poster"] body.battle-active #battle-menu,
+:root[data-ui="poster"] body.battle-active #battle-chat,
+:root[data-ui="poster"] body.battle-active .chat-button {
+  border-radius: 0;
+  background: var(--ink);
+  border: 0;
+}
+:root[data-ui="poster"] .touch-buttons > button {
+  box-shadow:
+    0 0 0 3px var(--ink),
+    4px 5px 0 3px rgba(0, 0, 0, 0.35);
+}
+/* ── full-screen sheets: results, briefings ── */
+:root[data-ui="poster"]
+  .battle-active
+  #battle
+  #arena-overlay#arena-overlay.is-sheet
+  > :is(.rc-card, .overlay-card),
+:root[data-ui="poster"]
+  .battle-active
+  #battle
+  #arena-overlay#arena-overlay.is-sheet
+  > :is(.rc-card, .overlay-card).is-victory {
+  background:
+    linear-gradient(100deg, transparent 0 63%, rgba(13, 13, 15, 0) 63%),
+    radial-gradient(circle, rgba(0, 0, 0, 0.14) 1.4px, transparent 1.8px) 0 0 /
+      9px 9px,
+    var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"]
+  .battle-active
+  #battle
+  #arena-overlay#arena-overlay.is-sheet
+  > :is(.rc-card, .overlay-card).is-defeat {
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.08) 1.4px, transparent 1.8px)
+      0 0 / 9px 9px,
+    var(--ink);
+  color: #fff;
+}
+:root[data-ui="poster"]
+  body.battle-active
+  #arena-overlay#arena-overlay.is-sheet {
+  background: var(--el);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  > h2,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .rc-head
+  .ui-title,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card.is-victory
+  > h2,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-victory
+  .rc-head
+  .ui-title {
+  color: var(--ink);
+  text-shadow: none;
+  font: 400 34px/1 var(--font-display);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  > .eyebrow,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .rc-head
+  .ui-kicker,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-victory
+  .rc-head
+  .ui-kicker,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card.is-victory
+  > .eyebrow {
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .result-score {
+  color: var(--ink);
+  font-family: var(--font-display);
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .result-score * {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet table.recap {
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.3);
+  color: #fff;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  table.recap
+  :is(th, td) {
+  color: #fff;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet table.recap td {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 18px;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  table.recap
+  thead
+  th {
+  color: #b8b8c0;
+  font-family: var(--font-body);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet table.recap tr {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  table.recap
+  tr.me {
+  background: var(--ink-3);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  table.recap
+  tr.me
+  th:first-child,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  table.recap
+  tr.me
+  td {
+  border-color: transparent;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-result-xp {
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.3);
+  color: #fff;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-result-xp
+  > strong {
+  color: var(--el);
+  font: 400 24px/1 var(--font-display);
+  letter-spacing: 0.04em;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-result-xp
+  :is(p, div, small, span, b) {
+  color: #fff;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-level-up {
+  background: var(--ink-2);
+  border: 0;
+  border-radius: 0;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  :is(.panel-actions, .rc-foot) {
+  border-top: 3px solid var(--ink);
+  background: transparent;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  :is(.panel-actions, .rc-foot)
+  > :is(p, span, small) {
+  color: var(--ink);
+  font-weight: 700;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  button:is(.btn-primary, .primary) {
+  background: var(--ink);
+  color: var(--el);
+  box-shadow: 5px 5px 0 var(--hot);
+  transform: skewX(-8deg);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  button:is(.btn-secondary, .secondary) {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: none;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  button.leave-button {
+  background: #fff;
+  color: #d01836;
+  box-shadow: inset 0 0 0 2px #d01836;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .ui-btn.is-primary {
+  background: var(--ink);
+  color: var(--el);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .ui-btn:not(.is-primary) {
+  background: #fff;
+  color: var(--ink);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .ui-btn.is-danger {
+  color: #d01836;
+  box-shadow: inset 0 0 0 2px #d01836;
+}
+/* raid briefing / results cards on the poster */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  :is(
+    .rc-goal,
+    .rc-steps > *,
+    .rc-stat,
+    .rc-score,
+    .rc-summary,
+    .rc-roles > *,
+    .rc-player,
+    .rc-extra
+  ) {
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+  border-radius: 0;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.28);
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-step-n {
+  background: var(--el);
+  color: var(--ink);
+  border-radius: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  :is(.rc-step-head, .rc-goal b, .rc-goal strong) {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-tip,
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-step-cue {
+  color: var(--el);
+}
+/* ── raid room ── */
+:root[data-ui="poster"] .room-seats {
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.4);
+}
+:root[data-ui="poster"] .room-seat {
+  background: var(--ink-2);
+  border: 0;
+  border-radius: 0;
+}
+:root[data-ui="poster"] .room-seat.is-me {
+  box-shadow: inset 0 0 0 3px var(--el);
+}
+:root[data-ui="poster"] .room-seat.is-open {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--ink-3);
+}
+:root[data-ui="poster"] .room-banner,
+:root[data-ui="poster"] .room-banner img {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .room-head .ui-h {
+  color: var(--el);
+}
+:root[data-ui="poster"] body.lobby-active .room-screen {
+  background: transparent;
+}
+/* friends on phones: the tab row is the masthead */
+:root[data-ui="poster"] .friends-sheet > .ui-tabs {
+  background: var(--el);
+  border-bottom: 0;
+}
+:root[data-ui="poster"] .friends-sheet > .ui-tabs > button {
+  color: rgba(13, 13, 15, 0.62);
+  margin: 7px 0;
+}
+:root[data-ui="poster"]
+  .friends-sheet
+  > .ui-tabs
+  > button[aria-selected="true"] {
+  color: var(--el);
+  background: var(--ink);
+  transform: skewX(-10deg);
+}
+:root[data-ui="poster"]
+  .friends-sheet
+  > .ui-tabs
+  > button[aria-selected="true"]
+  > * {
+  transform: skewX(10deg);
+}
+:root[data-ui="poster"]
+  .friends-sheet
+  > .ui-tabs
+  > button[aria-selected="true"]::after {
+  display: none;
+}
+:root[data-ui="poster"] .friends-sheet .ui-panel-head .ui-icon-btn {
+  background: var(--ink);
+}
+:root[data-ui="poster"] .friends-sheet .ui-panel-head .ui-icon-btn svg {
+  color: #fff;
+}
+/* raid results: one board, no nested cards */
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-player {
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-stat {
+  box-shadow: none;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  :is(.rc-score, .rc-summary)
+  :is(h3, h4, .ui-h) {
+  color: #fff;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet :is(h3, h4).ui-h,
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-card h3 {
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+:root[data-ui="poster"] body.hub-active .nav-xp > *,
+:root[data-ui="poster"] body.hub-active .nav-xp::before,
+:root[data-ui="poster"] body.hub-active .nav-xp::after {
+  background: var(--el);
+}
+/* split screens (fighter details, boss page): the head row is the masthead */
+:root[data-ui="poster"] .ui-split-main {
+  background: linear-gradient(var(--el) 0 44px, var(--ink) 44px);
+}
+:root[data-ui="poster"] .ui-split-main > .ui-tabs {
+  border-bottom: 0;
+}
+:root[data-ui="poster"] .ui-split-main > .ui-tabs > button {
+  color: rgba(13, 13, 15, 0.62);
+  margin: 7px 0;
+}
+:root[data-ui="poster"]
+  .ui-split-main
+  > .ui-tabs
+  > button[aria-selected="true"] {
+  color: var(--el);
+  background: var(--ink);
+  transform: skewX(-10deg);
+}
+:root[data-ui="poster"]
+  .ui-split-main
+  > .ui-tabs
+  > button[aria-selected="true"]
+  > * {
+  transform: skewX(10deg);
+}
+:root[data-ui="poster"]
+  .ui-split-main
+  > .ui-tabs
+  > button[aria-selected="true"]::after {
+  display: none;
+}
+:root[data-ui="poster"]
+  .ui-split-main
+  .ui-panel-head
+  :is(.ui-btn, .ui-icon-btn) {
+  background: var(--ink);
+  color: #fff;
+}
+:root[data-ui="poster"]
+  .ui-split-main
+  .ui-panel-head
+  :is(.ui-btn, .ui-icon-btn)
+  svg {
+  color: #fff;
+}
+:root[data-ui="poster"]
+  .ui-split-main
+  > .ui-tabs
+  > button
+  > :is(small, .ui-count, span + span) {
+  color: inherit;
+}
+/* ranks ladder */
+:root[data-ui="poster"] :is(.rk-board, .rk-ladder, .rk-list) {
+  background: var(--ink-1);
+  border: 0;
+  border-radius: 0;
+}
+:root[data-ui="poster"] .rk-head {
+  background: var(--ink-2);
+  font-family: var(--font-body);
+  font-weight: 800;
+}
+:root[data-ui="poster"] .rk-pin > .rk-row {
+  background: var(--el);
+  color: var(--ink);
+  border-top: 0;
+}
+:root[data-ui="poster"] .rk-pin > .rk-row * {
+  /* The rank's name carries its colour inline; on the element-coloured row
+     it has to be ink to read. */
+  color: var(--ink) !important;
+}
+:root[data-ui="poster"] .rk-pin .rk-place {
+  color: var(--ink);
+}
+/* settings controls */
+:root[data-ui="poster"]
+  .settings-screen
+  :is(button, [role="switch"], .seg, .st-seg, input[type="range"]) {
+  border-radius: 0;
+}
+/* wardrobe slots */
+:root[data-ui="poster"] :is(.fit-slot, .fit-slots > *) {
+  border-radius: 0;
+}
+/* raid room backdrop: the poster */
+:root[data-ui="poster"] body.lobby-active .room-screen {
+  background:
+    radial-gradient(circle, rgba(0, 0, 0, 0.14) 1.4px, transparent 1.8px) 0 0 /
+      9px 9px,
+    var(--el);
+}
+/* narrow phones (667–800 px): the rail folds to icons with small labels */
+@media (max-width: 800px) {
+  :root[data-ui="poster"] .lobby-layer {
+    --lobby-rail: 64px;
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-rail {
+    width: 64px;
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-rail button {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 0;
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-rail span {
+    font: 700 11px/1 var(--font-body);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  :root[data-ui="poster"] {
+    --slab-top: 118px;
+    --slab-bottom: 88px;
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-slot small {
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+  :root[data-ui="poster"] .ui-btn {
+    letter-spacing: 0.04em;
+  }
+}
+@media (max-width: 800px) {
+  :root[data-ui="poster"] .ui-tabs > button {
+    letter-spacing: 0.02em;
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+}
+@media (max-height: 500px) {
+  :root[data-ui="poster"]
+    :is(.ui-panel-head, .ui-split-main, .friends-sheet)
+    .ui-tabs
+    > button {
+    letter-spacing: 0.03em;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+/* Close always sits over a scrolled tab row */
+:root[data-ui="poster"] .ui-icon-btn.ui-close {
+  z-index: 3;
+}
+/* coins stay gold whatever the fighter's colour */
+:root[data-ui="poster"] {
+  --gold-top: #ffe58f;
+  --gold-bottom: #f2b93b;
+}
+:root[data-ui="poster"] .ui-coin {
+  background: radial-gradient(circle at 35% 30%, #fff6cf, #ffd65b 55%, #b8860b);
+}
+:root[data-ui="poster"] .coin-chip .button-icon,
+:root[data-ui="poster"] .coin-chip .button-icon svg {
+  color: #ffd65b;
+}

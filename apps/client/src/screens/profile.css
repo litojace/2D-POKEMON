@@ -85,6 +85,11 @@
   line-height: 1.05;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  /* Room above the capitals for stacked marks: "NGUYỄN HỒNG ÁNH" lost
+     its tildes and hooks to this box's clip (26 Nov 2026). The margin takes
+     the room back, so nothing moves. */
+  padding-top: 0.34em;
+  margin-top: -0.34em;
 }
 .pf-card-tags {
   display: flex;

@@ -1,0 +1,234 @@
+import { expect, test, type Page } from "@playwright/test";
+import { box, hubMenu, inside, openHub, skipTour, snap } from "./helpers";
+
+// The Poster look (apps/client/src/themes/poster): one sweep of the Lobby,
+// the hub's screens and Settings with the look on, at the sizes the game is
+// checked at. It is shown through `?ui=poster`, as a look that is not ready
+// yet is; the rest of the visual suite runs the look underneath.
+const withPoster = (page: Page) =>
+  page.addInitScript(() => {
+    if (!location.search) history.replaceState(null, "", "/?ui=poster");
+  });
+/** Elements (by selector) whose words are cut short ("…"). */
+const cutOff = (page: Page, selectors: string[]) =>
+  page.evaluate(
+    (sels) =>
+      sels.flatMap((sel) =>
+        [...document.querySelectorAll<HTMLElement>(sel)]
+          .filter(
+            (el) =>
+              el.offsetParent !== null &&
+              // Across only: Anton's letters stand taller than a line of
+              // their size, which reads as "taller than the box" though
+              // nothing is cut.
+              el.scrollWidth > el.clientWidth + 1,
+          )
+          .map((el) => `${sel}: "${el.textContent?.trim()}"`),
+      ),
+    selectors,
+  );
+
+const SIZES = [
+  { width: 667, height: 375, phone: true },
+  { width: 844, height: 390, phone: true },
+  {
+    width: 852,
+    height: 393,
+    phone: true,
+    inset: { left: 59, right: 59, bottom: 21, top: 0 },
+  },
+  { width: 1440, height: 900, phone: false },
+];
+for (const size of SIZES) {
+  const name = `${size.width}x${size.height}${size.inset ? "-notch" : ""}`;
+  test(`Poster: the Lobby and the hub's screens (${name})`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(180_000);
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      await skipTour(page);
+      await withPoster(page);
+      const errors = await openHub(page);
+      if (size.inset)
+        await page.evaluate((inset) => {
+          for (const [key, value] of Object.entries(inset))
+            document.documentElement.style.setProperty(
+              `--safe-${key}`,
+              `${value}px`,
+            );
+        }, size.inset);
+      // The look is on, alone, with its own type.
+      expect(
+        await page.evaluate(() => document.documentElement.dataset.ui),
+      ).toBe("poster");
+      await expect(page.locator("#ui-theme-css")).toHaveCount(1);
+      await page.evaluate(() => document.fonts.ready);
+      expect(
+        await page.evaluate(() => [
+          document.fonts.check('20px "Anton"'),
+          document.fonts.check('600 14px "Archivo"'),
+          getComputedStyle(
+            document.getElementById("lobby-fighter-name")!,
+          ).fontFamily.includes("Anton"),
+        ]),
+      ).toEqual([true, true, true]);
+      await snap(page, info, `poster-lobby-${name}`);
+
+      // The fighter's name stands behind the stage, the same name as the
+      // nameplate's, and follows the fighter.
+      const names = () =>
+        page.evaluate(() => [
+          document.getElementById("lobby-bigname")!.textContent,
+          document.getElementById("lobby-fighter-name")!.textContent,
+          getComputedStyle(document.getElementById("lobby-bigname")!).display,
+        ]);
+      const [big, plate, shown] = await names();
+      expect(big).toBe(plate);
+      expect(shown).toBe("block");
+      // The Lobby's words read in full (the Journey card's kicker is not in
+      // this list yet: it needs the shorter kicker a later change brings).
+      expect(
+        await cutOff(page, [
+          ".lobby-rail span",
+          ".lobby-name h2",
+          ".lobby-card b",
+          ".lobby-missions-card .lobby-card-kicker",
+          ".lobby-mode-text b",
+          ".lobby-mode-text small",
+          ".lobby-slot small",
+          ".account-name",
+        ]),
+      ).toEqual([]);
+      // PLAY, the mode and every rail button are whole and a finger tall.
+      const screen = {
+        x: size.inset?.left ?? 0,
+        y: 0,
+        width: size.width - (size.inset?.left ?? 0) - (size.inset?.right ?? 0),
+        height: size.height - (size.inset?.bottom ?? 0),
+      };
+      for (const sel of ["#lobby-play", "#lobby-mode", ".lobby-rail"]) {
+        const b = await box(page, sel);
+        expect(inside(b, screen), sel).toBe(true);
+      }
+      const rail = await page.locator(".lobby-rail button").evaluateAll((els) =>
+        els.map((el) => {
+          const r = el.getBoundingClientRect();
+          return { w: r.width, h: r.height };
+        }),
+      );
+      expect(rail).toHaveLength(6);
+      for (const r of rail)
+        expect(Math.min(r.w, r.h)).toBeGreaterThanOrEqual(44);
+      // The cards don't run under the notice above the stage.
+      const cards = await box(page, ".lobby-cards");
+      const play = await box(page, ".lobby-play");
+      expect(cards.x + cards.width).toBeLessThanOrEqual(
+        size.width - (size.inset?.right ?? 0) + 0.5,
+      );
+      expect(cards.y + cards.height).toBeLessThanOrEqual(play.y + 0.5);
+
+      // Each screen: an ink board whose masthead carries the element colour,
+      // Close a finger wide and on screen, the chosen tab readable.
+      const el = await page.evaluate(() =>
+        getComputedStyle(document.documentElement)
+          .getPropertyValue("--el")
+          .trim(),
+      );
+      for (const action of [
+        "fighters",
+        "shop",
+        "missions",
+        "ranks",
+        "friends",
+      ]) {
+        await hubMenu(page, action);
+        const panel = page
+          .locator(
+            ".ui-panel-host:not([data-ui-parked]) > .ui-panel:not([data-ui-leaving])",
+          )
+          .last();
+        await expect(panel).toBeVisible();
+        await expect(
+          page.locator(`.lobby-rail [data-lobby-action="${action}"]`),
+        ).toHaveAttribute("aria-current", "page");
+        await snap(page, info, `poster-${action}-${name}`);
+        const look = await panel.evaluate((p) => {
+          const rgb = (c: string) => {
+            const d = document.createElement("i");
+            d.style.color = c;
+            document.body.append(d);
+            const v = getComputedStyle(d).color;
+            d.remove();
+            return v;
+          };
+          const head = p.querySelector<HTMLElement>(".ui-panel-head");
+          const close = p.querySelector<HTMLElement>(".ui-close");
+          const c = close?.getBoundingClientRect();
+          return {
+            radius: getComputedStyle(p).borderTopLeftRadius,
+            head: head ? getComputedStyle(head).backgroundColor : null,
+            el: rgb(
+              getComputedStyle(document.documentElement)
+                .getPropertyValue("--el")
+                .trim(),
+            ),
+            close: c
+              ? {
+                  x: c.x,
+                  y: c.y,
+                  width: c.width,
+                  height: c.height,
+                  // A finger's 44 px, with the room around it that taps too.
+                  hit: [-20, 20].every((d) =>
+                    close!.contains(
+                      document.elementFromPoint(
+                        c.x + c.width / 2 + d,
+                        c.y + c.height / 2,
+                      ),
+                    ),
+                  ),
+                }
+              : null,
+          };
+        });
+        expect(look.radius, action).toBe("0px");
+        if (look.head) expect(look.head, action).toBe(look.el);
+        expect(look.close, action).not.toBeNull();
+        expect(
+          inside(look.close!, { x: 0, y: 0, ...size }),
+          `${action} close`,
+        ).toBe(true);
+        if (size.phone) expect(look.close!.hit, `${action} close`).toBe(true);
+        // Close puts the Lobby back, and the rail's block goes.
+        await panel.locator(".ui-close").click();
+        await expect(
+          page.locator(`.lobby-rail [data-lobby-action="${action}"]`),
+        ).not.toHaveAttribute("aria-current", "page");
+        await expect(panel).toBeHidden();
+      }
+      expect(el).toMatch(/^#[0-9a-f]{6}$/i);
+
+      // Settings, with the look on.
+      await page.evaluate(() => document.getElementById("settings")!.click());
+      const dialog = page.locator("#dialog");
+      await expect(dialog.locator(".settings-screen")).toBeVisible();
+      await snap(page, info, `poster-settings-${name}`);
+      expect(inside(await box(page, "#dialog"), { x: 0, y: 0, ...size })).toBe(
+        true,
+      );
+      const scroll = await dialog
+        .locator(".dialog-content")
+        .evaluate((d) => d.scrollHeight - d.clientHeight);
+      expect(scroll).toBeLessThanOrEqual(1);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}

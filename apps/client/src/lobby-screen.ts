@@ -470,7 +470,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   /** Each seat's live rig, and what it shows. */
   const seatRigs: (ShopPreviewHandle | undefined)[] = [];
   const seatKeys: (string | undefined)[] = [];
-  layer.innerHTML = `<div class="lobby-backdrop" aria-hidden="true"></div>
+  layer.innerHTML = `<div class="lobby-backdrop" aria-hidden="true"><div class="lobby-bigname" id="lobby-bigname"></div></div>
 <nav class="lobby-rail" aria-label="Main menu">${RAIL.map(
     ([id, label, icon]) =>
       `<button type="button" data-lobby-action="${id}" title="${label}" aria-label="${label}"><i class="lobby-rail-icon">${menuIcon(icon)}<i class="lobby-badge" data-badge-for="${id}" hidden></i></i><span>${label}</span></button>`,
@@ -1051,6 +1051,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         $("lobby-fighter").style.setProperty("--element", hex(fighter.color));
         // Both looks draw with it, on every screen (ui-theme.ts).
         setUiElementColour(hex(fighter.color));
+        // The name behind the fighter, for a look that shows it (Poster).
+        $("lobby-bigname").textContent = fighter.name;
         art.innerHTML = fighterStageArt(
           character,
           "lobby",
