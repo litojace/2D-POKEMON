@@ -27,6 +27,9 @@
  */
 import { Arena } from "../../apps/server/src/simulation.js";
 import { BotBrain, type BotDifficulty } from "../../apps/server/src/bot.js";
+import { createRaidArena } from "../../apps/server/src/raid-bosses.js";
+import type { RaidBossId } from "../../packages/shared/src/raid-roster.js";
+import type { RaidVariant } from "../../packages/shared/src/raid-ascendant.js";
 import {
   CHARACTERS,
   RULES,
@@ -97,6 +100,8 @@ class Link<T> {
 
 export interface Correction extends CorrectionReason {
   px: number;
+  /** A raid's chapter (1-3) when the snapshot arrived. */
+  chapter?: number;
 }
 /**
  * A hit on you, measured as the phone measures it (battle-perf hitsFar:
@@ -146,28 +151,51 @@ export function simulateCorrections(o: {
    * reading before 20 Nov 2026).
    */
   hitLead?: "estimate" | "lead";
+  /**
+   * A raid on this boss instead of a duel: you and `humans - 1` more
+   * raiders (they stand still) against the boss's own attacks. The boss is
+   * held in each chapter for a third of the run, then taken to the next.
+   */
+  raid?: RaidBossId;
+  variant?: RaidVariant;
+  humans?: number;
 }) {
   const seconds = o.seconds ?? 120;
   const random = rng(o.seed ?? 11);
-  const arena = new Arena("CORSIM", o.mode ?? "duel");
+  const arena = o.raid
+    ? createRaidArena("CORSIM", o.raid, { variant: o.variant })
+    : new Arena("CORSIM", o.mode ?? "duel");
   const me = arena.add("me", "Me", o.me ?? "tidefin");
-  const others = Array.from({ length: Math.max(1, o.bots ?? 1) }, (_, i) => {
-    const id = i ? `bot${i}` : "bot";
-    const pick = i
-      ? (Object.keys(CHARACTERS) as CharacterId[])[
-          (i * 7) % Object.keys(CHARACTERS).length
-        ]
-      : (o.bot ?? "cindrake");
-    const f = arena.add(id, `Bot ${i}`, pick);
-    if (!o.noBot)
-      arena.bots.set(id, new BotBrain(id, o.level ?? "normal", 4242 + i));
-    return f;
-  });
-  const bot = others[0];
+  const raiders = o.raid
+    ? Array.from({ length: Math.max(0, (o.humans ?? 2) - 1) }, (_, i) =>
+        arena.add(
+          `raider${i + 1}`,
+          `Raider ${i + 1}`,
+          (Object.keys(CHARACTERS) as CharacterId[])[(i * 5 + 3) % 18],
+        ),
+      )
+    : [];
+  const others = o.raid
+    ? []
+    : Array.from({ length: Math.max(1, o.bots ?? 1) }, (_, i) => {
+        const id = i ? `bot${i}` : "bot";
+        const pick = i
+          ? (Object.keys(CHARACTERS) as CharacterId[])[
+              (i * 7) % Object.keys(CHARACTERS).length
+            ]
+          : (o.bot ?? "cindrake");
+        const f = arena.add(id, `Bot ${i}`, pick);
+        if (!o.noBot)
+          arena.bots.set(id, new BotBrain(id, o.level ?? "normal", 4242 + i));
+        return f;
+      });
   if (o.arena) arena.arenaId = o.arena;
   arena.start();
   arena.phase = "playing";
   arena.deadline = 1e9;
+  const boss = o.raid ? arena.players.find((p) => p.raidBoss) : undefined;
+  const bot = boss ?? others[0];
+  const maxHp = boss?.hp ?? 0;
   const up = new Link<Input>(
     o.latency ?? 33,
     o.jitter ?? 4,
@@ -215,6 +243,20 @@ export function simulateCorrections(o: {
       // (A knockout would end the round and reset both to their spawns.)
       me.hp = 100_000;
       for (const f of others) f.hp = 100_000;
+      for (const f of raiders) f.hp = 100_000;
+      if (boss) {
+        // A third of the run in each chapter: above 67%, above 33%, then low.
+        const part = Math.min(
+          2,
+          Math.floor((3 * serverClock) / (seconds * 1000)),
+        );
+        const [floor, ceiling] = [
+          [0.75, 1],
+          [0.4, 0.6],
+          [0.1, 0.3],
+        ][part];
+        boss.hp = Math.min(Math.max(boss.hp, maxHp * floor), maxHp * ceiling);
+      }
       if (o.fullUlt) bot.ult = RULES.ultMax;
       arena.tick();
       for (const e of arena.events)
@@ -261,8 +303,24 @@ export function simulateCorrections(o: {
       if (px <= 4) continue;
       const was = previous?.players.find((p) => p.id === "me");
       // The same reading the game makes on the phone (battle-perf).
+      const u = (state.raid as { undertow?: { until: number } } | undefined)?.undertow;
+      const tide = state.raid as Record<string, unknown> | undefined;
       corrections.push({
         px,
+        chapter: state.raid?.phase,
+        ...(process.env.DIAG
+          ? {
+              diag: [
+                u && u.until > state.time ? "undertow" : "",
+                (tide?.waves as unknown[] | undefined)?.length ? "waves" : "",
+                tide?.flood ? "flood" : "",
+                tide?.hightide ? "hightide" : "",
+                (tide?.prisons as unknown[] | undefined)?.length ? "prison" : "",
+              ]
+                .filter(Boolean)
+                .join("+") || "none",
+            }
+          : {}),
         ...correctionCause(server, was, state.events, state.time),
       });
     }
@@ -279,7 +337,7 @@ export function simulateCorrections(o: {
         dx = random() < 0.15 ? 0 : Math.cos(a);
         dy = dx === 0 ? 0 : Math.sin(a);
       }
-      const target = state.players.find((p) => p.id === "bot")!;
+      const target = state.players.find((p) => p.id === bot.id)!;
       // A player presses a skill now and then, and the basic often.
       const skill =
         !o.noSkill && random() < 0.03 ? Math.floor(random() * 3) : -1;
@@ -348,6 +406,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     arena: (process.env.ARENA as ArenaId | undefined) || undefined,
     serverHz: Number(process.env.SERVER_HZ ?? RULES.tick),
     hitLead: process.env.HIT_LEAD === "lead" ? "lead" : "estimate",
+    raid: (process.env.RAID as RaidBossId | undefined) || undefined,
+    variant: (process.env.VARIANT as RaidVariant | undefined) || undefined,
+    humans: Number(process.env.HUMANS ?? 2),
   });
   const by = new Map<string, Correction[]>();
   for (const c of corrections) {
@@ -364,6 +425,21 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       `${String(list.length).padStart(5)}  median ${px[Math.floor(px.length / 2)].toFixed(0)} px, max ${px.at(-1)!.toFixed(0)} px  ${key}`,
     );
   }
+  if (process.env.DIAG) {
+    const tally = new Map<string, number>();
+    for (const c of corrections as (Correction & { diag?: string })[])
+      if (c.cause === "other")
+        tally.set(c.diag ?? "?", (tally.get(c.diag ?? "?") ?? 0) + 1);
+    console.log("other, by what was active:", Object.fromEntries(tally));
+  }
+  if (corrections.some((c) => c.chapter !== undefined))
+    for (const chapter of [1, 2, 3]) {
+      const list = corrections.filter((c) => c.chapter === chapter);
+      const causes = ["hit", "status", "move", "other"].map(
+        (k) => `${k} ${list.filter((c) => c.cause === k).length}`,
+      );
+      console.log(`chapter ${chapter}: ${list.length} (${causes.join(", ")})`);
+    }
   const far = (k: "gap" | "aligned") =>
     hits.filter((h) => h[k] > HIT_GAP_PX).length;
   console.log(
