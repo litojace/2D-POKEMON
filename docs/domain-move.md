@@ -286,6 +286,17 @@ this move doesn't touch how the session is stored.
   compares the served headers and inline-script hashes with
   `apps/client/security-headers.json` after relevant pushes and daily, and
   opens "Live game headers differ from the repo" on drift.
+- 25 Nov, ~7:25 PM PT: the owner asked for mobile first ("Ưu tiên làm trên
+  giao diện mobile nha quên desktop đi"). On an Android phone emulation of
+  `parena.` (667×375, 844×390, 852×393 with the island insets) the move
+  banner covered the gate's Log in / Create account tabs and the hub's top
+  bar until answered; PR #506 makes it a dialog. A touch-controlled guest
+  bot match on `play.` (844×390, joystick and buttons) played to the result
+  with zero violations. #503's deploy went live mid-match (03:32:03 UTC) and
+  the result sheet said "Couldn't save this match to your records":
+  `/api/matches/report` answered 404 from the new instance (fixed in #508,
+  by B). The "new version, moving you…" toast covers the result sheet's
+  buttons on a phone (reported).
 - 25 Nov, 8:05 PM PT: **`parena` redirects to `play.`** (step 11), with the
   owner's OK here. The cost laid out first, as counts only: 17 email/Apple
   accounts (keep everything, sign in once on `play.`); 15 guests, 5 active
