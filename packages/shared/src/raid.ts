@@ -2618,8 +2618,6 @@ export interface RaidState {
   wards: { x: number; y: number; until: number }[];
   rites: Record<string, RaidRite[]>;
   offers: Record<string, RaidRite[]>;
-  /** Legacy receipt compatibility; new runs are always ordinary raids. */
-  daily: boolean;
   /** Pacific calendar date (YYYY-MM-DD) the run counts for. */
   day: string;
   seed: number;
@@ -2817,10 +2815,17 @@ export interface RaidReceipt {
   peril: number;
   trait: RaidTrait;
   gilded: boolean;
-  /** Kept false for databases that only have migration 008. */
-  weekly: boolean;
+  /**
+   * The database's raid function still reads these four and stores them on
+   * the run (supabase/migrations/021, behind 028's guard), so the server
+   * keeps sending them. They are not raid modes: `weekly` and `daily` are
+   * always false (Raid of the Week and Raid of the Day are retired, and 028
+   * refuses a daily receipt), `day` is the run's Pacific date and `week` the
+   * Monday of that date (`raidWeek`). Dropping them needs a migration.
+   */
+  weekly: false;
   week: string;
-  daily?: boolean;
+  daily?: false;
   day?: string;
   /** The boss's feat was achieved in this run (e.g. every charge baited). */
   feat?: boolean;
@@ -2849,12 +2854,6 @@ export interface RaidBossProgress {
   bestSeconds: number | null;
   runs: number;
 }
-export interface RaidBoardRow {
-  partySize: number;
-  seconds: number;
-  names: string[];
-  peril: number;
-}
 export interface RaidProgress {
   /** Before migration 008: one cosmetic for everything. */
   equipped?: "cragbound" | "mountain-aura" | null;
@@ -2869,8 +2868,6 @@ export interface RaidProgress {
   bestSeconds: number | null;
   titles: string[];
   cosmetics: string[];
-  /** Pre-009 weekly board (empty from migration 009). */
-  weekly: RaidBoardRow[];
   /** Per-boss records and earned rewards. */
   bosses?: Partial<Record<RaidBossId, RaidBossProgress>>;
   earned?: string[];
@@ -2879,6 +2876,7 @@ export interface RaidProgress {
   >;
   totalClears?: number;
 }
+/** The Monday (YYYY-MM-DD) of a date's week: a raid receipt's `week`. */
 export function raidWeek(date = new Date()) {
   const start = new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),

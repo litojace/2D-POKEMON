@@ -75,7 +75,7 @@ const arena = (
   const variant = form === "raid" ? undefined : form;
   const a = createRaidArena("ASC", "somnara", { variant }) as Inner;
   TEAM.slice(0, size).forEach((c, i) => a.add("p" + i, "P" + i, c));
-  a.configure(3, false);
+  a.configure(3);
   a.start();
   a.phase = "playing";
   a.deadline = a.time + 600;
@@ -347,7 +347,7 @@ describe("the layer acts only for Snoozaku's Ascendant form", () => {
     const Layered = AscendantSnoozakuRules(SomnaraArena);
     const a = new Layered("L", "somnara") as unknown as Inner;
     a.add("p0", "P0", "voltkit");
-    a.configure(3, false);
+    a.configure(3);
     a.start();
     expect(a.raid.variant).toBeUndefined();
     expect(a.snoozeAscendant()).toBe(false);
@@ -359,7 +359,7 @@ describe("the layer acts only for Snoozaku's Ascendant form", () => {
     const Layered = AscendantSnoozakuRules(SomnaraArena);
     const a = new Layered("L", "grumblecrag") as unknown as Inner;
     a.add("p0", "P0", "voltkit");
-    a.configure(3, false);
+    a.configure(3);
     a.start();
     a.raid.variant = "ascendant";
     expect(isAscendant(a.raid, "somnara")).toBe(false);
@@ -1054,7 +1054,7 @@ describe("it reads the fight", () => {
       variant: "ascendant",
     }) as Inner;
     TEAM.forEach((c, i) => a.add("p" + i, "P" + i, c));
-    a.configure(3, false);
+    a.configure(3);
     a.start();
     a.phase = "playing";
     a.deadline = a.time + 600;
@@ -1080,7 +1080,7 @@ describe("Ascendant Snoozaku keeps the honesty rules through a raid", () => {
         variant: "ascendant",
       }) as Inner;
       TEAM.slice(0, size).forEach((c, i) => a.add("p" + i, "P" + i, c));
-      a.configure(3, false);
+      a.configure(3);
       a.start();
       a.phase = "playing";
       a.deadline = a.time + 600;

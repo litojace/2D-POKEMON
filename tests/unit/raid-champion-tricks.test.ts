@@ -34,7 +34,7 @@ const arena = <A extends RaidArena = RaidArena>(
 ) => {
   const a = createRaidArena("TRICKS", boss) as A;
   characters.forEach((c, i) => a.add("p" + i, "Player " + i, c));
-  a.configure(1, false);
+  a.configure(1);
   a.start();
   a.phase = "playing";
   a.deadline = 480;

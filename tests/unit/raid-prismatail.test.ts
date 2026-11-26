@@ -46,7 +46,7 @@ const setup = (
   const a = createRaidArena("PRISMS", "prismatail") as PrismatailArena;
   for (let i = 0; i < size; i++)
     a.add(`p${i}`, `Raider ${i}`, chars[i % chars.length]);
-  a.configure(peril, false);
+  a.configure(peril);
   a.start();
   a.phase = "playing";
   a.raid.phase = phase;

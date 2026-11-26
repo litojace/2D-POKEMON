@@ -27,7 +27,6 @@ for (const viewport of [
                 bestSeconds: 60,
                 titles: [],
                 cosmetics: [],
-                weekly: [],
                 earned: [],
                 // Old stored fields must not revive removed UI.
                 today: { day: "2026-10-28", cleared: true, board: [] },

@@ -1153,7 +1153,6 @@ for (const view of [
           bestSeconds: null,
           titles: [],
           cosmetics: ["conductor-frame"],
-          weekly: [],
         };
       });
       const errors = await openLobby(page);
@@ -1239,6 +1238,78 @@ test("a sheet on a 667x375 phone keeps the fighter on screen", async ({
   }
 });
 
+// The 178 px side column of a phone held sideways (667x375): the chosen
+// mode's hint and the cards' own lines read in full, on two lines at most,
+// for every mode ("1v1 · a player, or a …" and "Next: Ember Festival frame
+// at tie…" before). The mode button is a finger tall and holds both lines.
+test("on a 667x375 phone the chosen mode's hint and the cards' lines read in full", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 667, height: 375 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    const cut = () =>
+      page.evaluate(() =>
+        [
+          document.querySelector<HTMLElement>(
+            "#lobby-mode .lobby-mode-text small",
+          )!,
+          ...document.querySelectorAll<HTMLElement>(
+            ".lobby-cards > .lobby-card > small",
+          ),
+        ]
+          .filter((e) => e.offsetParent)
+          .filter(
+            (e) =>
+              e.scrollWidth > e.clientWidth + 1 ||
+              e.scrollHeight > e.clientHeight + 1,
+          )
+          .map((e) => e.textContent),
+      );
+    const modes = await page
+      .locator("#lobby-mode-menu [data-lobby-mode]")
+      .evaluateAll((buttons) =>
+        buttons
+          .filter((b) => !(b as HTMLElement).hidden)
+          .map((b) => (b as HTMLElement).dataset.lobbyMode!),
+      );
+    expect(modes.length).toBeGreaterThanOrEqual(5);
+    for (const mode of modes) {
+      await page.click("#lobby-mode");
+      await page.click(`[data-lobby-mode="${mode}"]`);
+      await expect(page.locator("#lobby-mode-menu")).toBeHidden();
+      expect(await cut(), mode).toEqual([]);
+      const fit = await page.evaluate(() => {
+        const button = document
+            .querySelector("#lobby-mode")!
+            .getBoundingClientRect(),
+          text = document
+            .querySelector("#lobby-mode .lobby-mode-text")!
+            .getBoundingClientRect();
+        return {
+          height: Math.round(button.height),
+          inside: text.top >= button.top && text.bottom <= button.bottom,
+        };
+      });
+      // A finger tall, with both lines inside it.
+      expect(fit.height, mode).toBeGreaterThanOrEqual(44);
+      expect(fit.inside, mode).toBe(true);
+    }
+    await page.click("#lobby-mode");
+    await page.click('[data-lobby-mode="quick"]');
+    await expect(page.locator("#lobby-mode-menu")).toBeHidden();
+    await snap(page, info, "lobby-667x375-mode-hint");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
 // A tap on the Lobby's background, outside the open screen, closes it, as
 // the lit rail button does. A tap in the screen, a drag out of it, or a
 // tap on another control (the mode button) doesn't.
@@ -1308,7 +1379,6 @@ const SPIRE_OPEN = {
     bestSeconds: 200,
     titles: [],
     cosmetics: [],
-    weekly: [],
     earned: [],
     bosses: {
       grumblecrag: { clears: 1, highestPeril: 1, bestSeconds: 200, runs: 1 },

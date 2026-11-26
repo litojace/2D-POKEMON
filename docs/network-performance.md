@@ -630,7 +630,9 @@ then by rule, most of it was one Profile-screen rule, though that screen is
 closed in battle: `.pf-main:has(> .pf-account) > *`. It is
 `.pf-main.has-account` now, set by `profile-view.ts`: 3.8 s → 2.2–2.3 s in
 two runs. `tests/unit/css-has-rules.test.ts` fails on `:has(...) > *` or
-`:has(...) *` anywhere in the client CSS. The other ~1.2 s is spread over
+`:has(...) *` anywhere in the client CSS, and (26 Nov) on any new `:has()`
+whose subject is `body`, `html`, `:root` or a `dialog`; the 32 already in
+the CSS are listed in it and may only be removed. The other ~1.2 s is spread over
 many rules: removing any one stylesheet's `:has()` rules made no
 measurable difference, only removing all of them did.
 

@@ -75,6 +75,13 @@ To have the text selected as well, pass `{ selectAll: true }`; it then
 selects only where there is a mouse, not on a touch screen.
 `tests/unit/screen-pin.test.ts` fails on either pattern in client code.
 
+**Inline scripts in `apps/client/index.html` are allowed by hash** in the
+game's Content-Security-Policy (`apps/client/security-headers.json`,
+`docs/static-frontend.md` "Security headers"). Changing one means a new hash
+in that file and in Render's headers in the same rollout, Render first, or
+the CSP blocks the script for every player. `tests/unit/security-headers.test.ts`
+prints the new hash; the Live headers workflow opens an issue on drift.
+
 ## Raid boss ids are the old names
 
 The seven raid bosses got new identities (14 Nov), but their ids stayed,
@@ -222,7 +229,9 @@ must stay within what we already ship. Details and measurements:
   screen's markup sets instead (`profile-view.ts`, `has-account`). Such
   rules twice made battle style work several times heavier (15 Nov; 25 Nov,
   a Pixel 8a at 23–29 fps: `docs/network-performance.md` section 14).
-  `tests/unit/css-has-rules.test.ts` catches the `> *` form. After changing
+  `tests/unit/css-has-rules.test.ts` catches the `> *` form and any new
+  `:has()` on `body`, `html`, `:root` or a `dialog` (the older ones are
+  listed there, `KNOWN_PAGE_HAS`: that list may only shrink). After changing
   CSS or battle UI, run `tests/visual/battle-style-budget.spec.ts` (about
   30 s): it counts the elements restyled per recalculation in a real duel.
 - **Test scenarios that swap in a new arena** in the same page must carry on

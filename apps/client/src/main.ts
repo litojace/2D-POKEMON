@@ -1543,7 +1543,8 @@ void setupNativeShell(() => {
   backgroundExit.back();
   scene?.syncInputClock();
   const token = (socket.auth as { accessToken?: string | null }).accessToken;
-  if (token && !replacedAccount && !socket.connected) socket.connect();
+  // Not while still connecting (`active`): see onSession.
+  if (token && !replacedAccount && !socket.active) socket.connect();
 });
 watchCosmeticPreviews();
 // Remember a room from an invite link (?room=ABC123) before the first render.
@@ -9476,7 +9477,12 @@ accountsUI = new AccountUI({
     )?.accessToken;
     socket.auth = { accessToken: token, ...SNAPSHOT_AUTH };
     if (replacedAccount) return;
-    if (previous === token && socket.connected) return;
+    // Already connecting or connected with this login: nothing to do. A
+    // second connect() while the first waits for the server sends the
+    // CONNECT again on the same connection, which the server once took for
+    // another device ("Playing on another device" on the sign-up
+    // confirmation link, which announces the login twice; 25 Nov 2026).
+    if (previous === token && socket.active) return;
     if (previous !== token) socket.disconnect();
     void waitForServer()
       .then(() => {

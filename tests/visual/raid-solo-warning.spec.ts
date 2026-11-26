@@ -18,7 +18,6 @@ const RAIDS = {
   titles: [],
   cosmetics: [],
   earned: [],
-  weekly: [],
   loadout: {},
 };
 

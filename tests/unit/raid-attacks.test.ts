@@ -12,7 +12,7 @@ import {
 const raid = (characters: CharacterId[] = ["voltkit"], peril = 1) => {
   const a = new RaidArena("ATTACKS");
   characters.forEach((c, i) => a.add("p" + i, "Player " + i, c));
-  a.configure(peril, false);
+  a.configure(peril);
   a.start();
   a.phase = "playing";
   a.deadline = 480;

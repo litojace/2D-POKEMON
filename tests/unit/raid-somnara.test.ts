@@ -33,7 +33,7 @@ const setup = (
 ) => {
   const a = createRaidArena("DREAM", "somnara") as SomnaraArena;
   chars.forEach((c, i) => a.add(`p${i}`, `Player ${i}`, c));
-  a.configure(peril, false);
+  a.configure(peril);
   // start() rolls the seed and a 1-in-20 Gilded chance, and bakes Gilded
   // into maxHp. Clearing raid.gilded afterwards would leave a Gilded health
   // pool behind, so pin both rolls instead (20 % 20 === 0 is Gilded).
@@ -494,7 +494,7 @@ describe("Somnara stand-ins and a full raid", () => {
       ["voltkit", "cindrake", "tidefin", "mystowl"] as CharacterId[]
     ).entries())
       a.add(`b${i}`, `Bot ${i}`, c);
-    a.configure(3, false);
+    a.configure(3);
     a.start();
     a.raid.trait = "starry-night";
     a.heroes().forEach((p) => a.standIn(p.id));

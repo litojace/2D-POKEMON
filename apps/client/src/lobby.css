@@ -1514,6 +1514,29 @@
     --lobby-cards: 178px;
   }
 }
+/* That 178 px column on a phone held sideways (667 px): the chosen mode's
+   hint ("1v1 · a player, or a bot") and a card's own line ("Next: Ember
+   Festival frame at tier 5") were cut to "…". They take up to two lines
+   here instead. The mode button grows from 42 to 46 px to hold two lines
+   of the 11 px floor (ui/phone-fit.css), a finger tall as well. Where that
+   would cost a card (the Spire card shown, a shorter phone), fitCards in
+   lobby-screen.ts sets .lobby-cards-tight and they keep one line. */
+@media (max-width: 760px) and (max-height: 500px) {
+  .lobby-layer:not(.lobby-cards-tight)
+    :is(.lobby-mode-text small, .lobby-card > small) {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    line-height: 1.15;
+    /* Two even lines, not "… at tier" over a lone "5". */
+    text-wrap: balance;
+  }
+  .lobby-layer:not(.lobby-cards-tight) .lobby-mode {
+    height: 46px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .lobby-play-button::after {
     animation: none;

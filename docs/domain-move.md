@@ -104,25 +104,40 @@ Each step can be undone on its own; "Undo" says how.
     and support links and email links point at `parena…`, which redirects.
     App Store Connect: privacy policy URL and support URL to the new address
     (store listing, owner).
-11. **Later, when the owner decides (for example before the App Store
-    launch): redirect the old address.** Players on it are signed out once
-    there, so it waits until most have moved.
-    - Set the `parena` record to **Proxied** (orange), target
-      `twod-pokemon.onrender.com`.
-    - Cloudflare Single Redirect in the `litojace.com` zone: Request URL
-      `http*://parena.litojace.com/*` → `https://play.elementarenausa.com/${2}`,
-      preserve query string **on**, **302** for the first week, then **301**
-      (browsers keep a 301, so it waits until we're sure).
-    - Check: `curl -I "https://parena.litojace.com/?room=AB12CD"` → `302`,
-      `location: https://play.elementarenausa.com/?room=AB12CD`; the same for
-      `/?auth=reset-password`, `/email-confirmed`, `/privacy.html`.
-    - Undo: turn the rule off and set `parena` back to DNS only. Render keeps
-      the custom domain, so the old address serves the game again.
+11. **Redirect the old address: live since 25 Nov, 8:05 PM PT** (owner's OK
+    typed in the domain-move session, "Đồng ý chuyển hướng", after the cost
+    was laid out: guests who never added an email lose their progress; old
+    icons open the new address in the browser).
+    - Cloudflare, zone `litojace.com`, Single Redirect (phase
+      `http_request_dynamic_redirect`, ruleset `6417be6a…`, rule
+      `30f75514…`): `http.host eq "parena.litojace.com" and not
+starts_with(http.request.uri.path, "/.well-known/acme-challenge/")` →
+      **302** to `concat("https://play.elementarenausa.com",
+http.request.uri.path)`, preserve query string on. The ACME path stays
+      on Render so it can renew `parena`'s certificate (needed to undo).
+    - The `parena` CNAME (target `element-arena-np34.onrender.com`, unchanged:
+      Render routes by host name) is **Proxied** (orange). The universal
+      certificate covers `*.litojace.com` (until 6 Jan 2027).
+    - **301 on 2 Dec** if nothing goes wrong, with the owner's OK then
+      (browsers keep a 301).
+    - Checked at 8:06 PM PT: `/?room=TEST` → `302` to
+      `play…/?room=TEST`; `http://…/privacy.html?x=1` → `https://play…/privacy.html?x=1`;
+      a `#access_token=…` fragment arrives on `play.`; an old Supabase email
+      link aimed at `parena` (bad token on purpose) lands on
+      `play.…/?auth=email-confirmed` with its error, and the game says the
+      link expired; `/.well-known/acme-challenge/…` reaches Render (404).
+    - Installed icons: the service worker sends navigations to the network
+      (`sw.ts`, `NavigationRoute`), so the old icon gets the redirect, not a
+      cached old game. It opens `play.` in the in-app browser bar.
+    - Undo: set `parena` back to DNS only (and turn the rule off). Render
+      keeps the custom domain, so the old address serves the game again
+      within about 5 minutes.
     - Render's own redirect rules can't do this (they match the path, not
       the host, and never apply where a file exists, like `/`).
       Keep the redirect and the `parena` record for good afterwards (old QR
       codes live on in saved pictures). Supabase's `parena` Redirect URL and
-      `CLIENT_ORIGIN`'s `parena` entry go 30 days after the redirect starts.
+      `CLIENT_ORIGIN`'s `parena` entry go 30 days after the redirect starts
+      (about 25 Dec, with the owner's OK).
 
 ## What players notice
 
@@ -131,10 +146,9 @@ Each step can be undone on its own; "Undo" says how.
   session (`parena-auth`) stays behind on the old address. Guests on the
   web start over unless they added an email (a guest's progress is tied to the
   device's anonymous account). The banner on the old address says so.
-- **Home screen icons:** the old icon keeps opening the game on the old
-  address, with the banner. Add the game to the home screen again from the
-  new address. (After the redirect in step 11, the old icon opens the new
-  address in the browser.)
+- **Home screen icons:** since the redirect (step 11) the old icon opens the
+  new address in the browser. Add the game to the home screen again from the
+  new address.
 - **iPhone app players:** nothing changes (the app has its own storage).
 
 ## Shared sign-in with the website (later, the website session)
@@ -242,3 +256,50 @@ this move doesn't touch how the session is stored.
   only reports were zod's eval probe and its compiler (vendor chunk), which
   #494's jitless mode removes. The guest was then deleted through the game's
   flow (no rows left). Enforcing waits for #494 to deploy and a clean re-run.
+- 25 Nov, 6:43 PM PT: with the owner's OK here ("bật CSP"), the enforcing
+  `Content-Security-Policy` is live on both hosts (value byte-identical to
+  the Report-Only one, which was then removed). Guest passes under
+  enforcement on `play.` and `parena.` (load, guest, Shop, share card,
+  Plaza, bot match): zero violations; the guests were deleted afterwards (no
+  rows left). `node scripts/check-live-headers.mjs --require-enforcing`
+  matches on both hosts. On `parena.` the move banner covers the
+  Lobby/Plaza tabs until Later or Open is pressed (as designed).
+- 25 Nov, ~6:55 PM PT: signed-in pass on `play.` under the enforcing CSP,
+  with a throwaway email account (API sign-up, confirmed through the real
+  email link): sign-in, profile, friends, chat and a Shop purchase all
+  worked. The Apple button went age question → Supabase
+  `/auth/v1/authorize?provider=apple` → `appleid.apple.com` with
+  `redirect_to` on `play.`. (Apple's page itself doesn't load from the test
+  container, whose network blocks Apple, and CSP doesn't govern top-level
+  navigation.) The game has no Google button. Zero violations, zero page
+  errors. The account was deleted through the game's flow (no rows left in
+  `auth` or `public`). The first landing from the confirm link showed
+  "Playing on another device" with no other tab open; it was not reproduced
+  and is with the session that owns the server's account code.
+- 25 Nov, 7:17 PM PT: the earlier passes' "bot match" only reached the
+  briefing and disconnected about 8 s later. This run was a guest bot match
+  played to the result: briefing, three rounds and the results sheet
+  (03:17:02–03:18:04 UTC, 0–3, about 34 s of fighting, skills cast). Zero
+  violations, no errors, no disconnect. The guest was deleted afterwards
+  (no rows left).
+- 25 Nov, 7:20 PM PT: PR #499 merged. The **Live headers** workflow now
+  compares the served headers and inline-script hashes with
+  `apps/client/security-headers.json` after relevant pushes and daily, and
+  opens "Live game headers differ from the repo" on drift.
+- 25 Nov, ~7:25 PM PT: the owner asked for mobile first ("Ưu tiên làm trên
+  giao diện mobile nha quên desktop đi"). On an Android phone emulation of
+  `parena.` (667×375, 844×390, 852×393 with the island insets) the move
+  banner covered the gate's Log in / Create account tabs and the hub's top
+  bar until answered; PR #506 makes it a dialog. A touch-controlled guest
+  bot match on `play.` (844×390, joystick and buttons) played to the result
+  with zero violations. #503's deploy went live mid-match (03:32:03 UTC) and
+  the result sheet said "Couldn't save this match to your records":
+  `/api/matches/report` answered 404 from the new instance (fixed in #508,
+  by B). The "new version, moving you…" toast covers the result sheet's
+  buttons on a phone (reported).
+- 25 Nov, 8:05 PM PT: **`parena` redirects to `play.`** (step 11), with the
+  owner's OK here. The cost laid out first, as counts only: 17 email/Apple
+  accounts (keep everything, sign in once on `play.`); 15 guests, 5 active
+  in 14 days, 1 in 3 days; of the 5, 3 with some progress and 1 with real
+  progress (7 Shop items). Checks in step 11. #506 (the move dialog) is on
+  hold: nobody loads the game on `parena` now.

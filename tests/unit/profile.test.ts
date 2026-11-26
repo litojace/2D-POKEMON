@@ -79,7 +79,6 @@ const raids = {
   bestSeconds: null,
   titles: [],
   cosmetics: [],
-  weekly: [],
   bosses: {
     grumblecrag: { clears: 4, highestPeril: 3, bestSeconds: 90, runs: 6 },
     emberwing: { clears: 1, highestPeril: 3, bestSeconds: 200, runs: 2 },

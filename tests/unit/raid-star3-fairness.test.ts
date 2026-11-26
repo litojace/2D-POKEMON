@@ -273,7 +273,7 @@ function arena(
   const a = createRaidArena("FAIR", boss, { variant });
   for (let i = 0; i < size; i++)
     a.add(`p${i}`, `Raider ${i}`, chars[i % chars.length]);
-  a.configure(3, false);
+  a.configure(3);
   a.start();
   a.phase = "playing";
   a.raid.phase = phase;

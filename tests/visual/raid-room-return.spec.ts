@@ -79,7 +79,6 @@ for (const viewport of [
                   titles: [],
                   cosmetics: [],
                   earned: [],
-                  weekly: [],
                   loadout: {},
                 }),
               )

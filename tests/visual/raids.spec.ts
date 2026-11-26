@@ -45,7 +45,6 @@ export const RAIDS = {
   titles: ["Cragbreaker"],
   cosmetics: ["mountainborn"],
   earned: ["cragbreaker", "mountainborn"],
-  weekly: [],
   loadout: {},
 };
 export const FRIENDS = {

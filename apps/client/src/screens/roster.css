@@ -494,8 +494,11 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--sp-3);
 }
+/* The art, the name, then Owned / In the Shop pinned to the bottom, so the
+   cards of a row line up when one name takes two lines. */
 .roster-look {
   display: grid;
+  grid-template-rows: auto 1fr auto;
   gap: 2px;
   padding: 8px;
   border-radius: var(--rad-md);
@@ -522,12 +525,19 @@
   width: 88%;
   height: 88%;
 }
+/* The whole name, on two even lines where one is too short. On a 667 px
+   phone one line held 61 px, and 127 of the 432 skin names ended in "…"
+   ("Amber Path…", "Storm Astro…"). */
 .roster-look b {
   font-family: var(--font-display);
   font-size: calc(16px * var(--text-scale, 1));
-  white-space: nowrap;
+  line-height: 1.15;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-wrap: balance;
 }
 .roster-look small {
   font-size: var(--fs-micro);
@@ -690,6 +700,18 @@
   }
   .roster-look b {
     font-size: calc(12px * var(--text-scale, 1));
+  }
+}
+/* Phones: a word too long for a card's 61 px line on a 667 px phone
+   ("Chrysanthemum", 72 px at 12 px) is set at the phone text floor, a touch
+   tighter, and may use 2 px of the card's padding on each side, so it reads
+   in full. The art keeps its size (skin-thumbnails.spec.ts matches its
+   bitmap to the drawing at that size). */
+@media (max-height: 500px) {
+  .roster-look.has-long-word b {
+    margin-inline: -2px;
+    font-size: var(--fs-micro);
+    letter-spacing: -0.02em;
   }
 }
 /* Phones: six small cards to a row where they fit (three where not). */
