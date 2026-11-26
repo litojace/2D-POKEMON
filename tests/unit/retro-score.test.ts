@@ -11,7 +11,7 @@ import { below, RETRO_GAIN } from "../../apps/client/src/retro-score";
 import { playChip, ARP_STEP } from "../../apps/client/src/chip-synth";
 import { noteHz } from "../../apps/client/src/audio";
 
-const SCENES: BackgroundTheme[] = ["lobby", "plaza", "pvp", "raid", "spire"];
+const SCENES: BackgroundTheme[] = ["lobby", "pvp", "raid", "spire"];
 const loop = (theme: BackgroundTheme, phase = 1) =>
   Array.from({ length: MUSIC_LOOP_STEPS }, (_, s) =>
     scoreStep(theme, s, phase),
@@ -40,17 +40,16 @@ describe("the retro soundtrack", () => {
   it("gives each scene its own role", () => {
     const count = (t: BackgroundTheme, i: string, phase = 1) =>
       loop(t, phase).filter((n) => n.instrument === i).length;
-    // A fight has the busiest kit; the Plaza strolls with none.
+    // A fight has the busiest kit.
     expect(count("pvp", "chip-kick")).toBeGreaterThan(
       count("lobby", "chip-kick"),
     );
     expect(count("pvp", "chip-snare")).toBeGreaterThan(
       count("lobby", "chip-snare"),
     );
-    expect(count("plaza", "chip-kick") + count("plaza", "chip-snare")).toBe(0);
     // The fight and the boss run quicker than the menus.
     expect(MUSIC_BPM.pvp).toBeGreaterThan(MUSIC_BPM.lobby);
-    expect(MUSIC_BPM.raid).toBeGreaterThan(MUSIC_BPM.plaza);
+    expect(MUSIC_BPM.raid).toBeGreaterThan(MUSIC_BPM.lobby);
     // Every scene sounds different.
     const sigs = SCENES.map((t) => JSON.stringify(loop(t).slice(0, 200)));
     expect(new Set(sigs).size).toBe(SCENES.length);

@@ -176,6 +176,28 @@ describe("website", () => {
     }
   });
 
+  it("every long page of the game has the back-to-top button (to-top.js)", () => {
+    const PUBLIC = path.resolve(__dirname, "../../apps/client/public");
+    // One script, the same on both sites.
+    expect(readFileSync(path.join(PUBLIC, "to-top.js"), "utf8")).toBe(
+      readFileSync(path.join(SITE, "to-top.js"), "utf8"),
+    );
+    for (const page of [
+      path.join(SITE, "index.html"),
+      path.join(SITE, "account/index.html"),
+      path.join(PUBLIC, "privacy.html"),
+      path.join(PUBLIC, "support.html"),
+    ])
+      expect(readFileSync(page, "utf8"), page).toMatch(
+        /<script src="\/?to-top\.js" defer><\/script>/,
+      );
+    for (const sheet of [
+      path.join(SITE, "site.css"),
+      path.join(PUBLIC, "legal.css"),
+    ])
+      expect(readFileSync(sheet, "utf8"), sheet).toContain(".to-top.is-shown");
+  });
+
   it("the account page's script is built from its source (node apps/site/tools/build-account.mjs)", async () => {
     const { bundleAccount } =
       await import("../../apps/site/tools/build-account.mjs");

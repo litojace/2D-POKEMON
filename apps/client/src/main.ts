@@ -2870,14 +2870,9 @@ function hubOpen() {
     !titleWanted()
   );
 }
-/** The menus' music: the Plaza has its own tune, every other menu the Lobby's. */
-function menuMusic(hub = hubOpen()) {
-  return hub && hubScene === "plaza" ? "plaza" : "lobby";
-}
 function syncHub() {
   syncUiEffects();
   const hub = hubOpen();
-  if (hub) audio.setTheme(menuMusic(hub));
   syncHubScenes(hub);
   // Which hub scene is showing (styles such as the toast's place follow it).
   if (hub) document.body.dataset.hubScene = hubScene;
@@ -3513,7 +3508,9 @@ function renderMenu(revealSelection = false) {
   if (phaser()) kit.syncBossPrepaint(state);
   syncFighterArt();
   document.body.classList.remove("practice-active");
-  audio.setTheme(menuMusic());
+  // One tune for the whole hub: going between the Lobby and the Plaza
+  // doesn't restart it (owner, 26 Nov 2026).
+  audio.setTheme("lobby");
   pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;

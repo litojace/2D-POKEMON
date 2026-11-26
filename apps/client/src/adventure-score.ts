@@ -124,43 +124,6 @@ const trouble = lines([
   "0:D6:1 6:A5:.5 8:F#5:1.25",
 ]);
 
-// Fountain Square — F major. A strolling tune over ripples like the
-// fountain's, for the Plaza's easy pace.
-const fountain = lines([
-  "0:C5:.75 3:A4:.25 4:F4:.5 6:A4:.5 8:C5:1 12:D5:.5 14:C5:.5",
-  "0:A4:.75 3:F4:.25 4:D4:.5 6:F4:.5 8:A4:1.5",
-  "0:A#4:.75 3:A4:.25 4:G4:.5 6:A#4:.5 8:D5:1 12:C5:.5 14:A#4:.5",
-  "0:A#4:.5 2:G4:.5 4:E4:.5 6:G4:.5 8:C5:1.5",
-  "0:C5:.75 3:A4:.25 4:F4:.5 6:A4:.5 8:C5:1 12:F5:.5 14:E5:.5",
-  "0:E5:.75 3:C5:.25 4:A4:.5 6:C5:.5 8:E5:1 12:D5:.5 14:C5:.5",
-  "0:D5:.5 2:C5:.5 4:A#4:.5 6:A4:.5 8:G4:1 12:A4:.5 14:A#4:.5",
-  "0:A#4:.5 2:A4:.5 4:G4:.5 6:A4:.5 8:E5:1.25",
-  "0:D5:.75 3:C5:.25 4:A#4:.5 6:D5:.5 8:F5:1 12:D5:.5 14:F5:.5",
-  "0:A5:.75 3:G5:.25 4:F5:.5 6:C5:.5 8:A4:1.5",
-  "0:G4:.5 2:A#4:.5 4:D5:.5 6:G5:.5 8:F5:.5 10:D5:.5 12:A#4:.75",
-  "0:C5:.75 3:D5:.25 4:E5:.5 6:G5:.5 8:C6:1.5",
-  "0:C6:.75 3:A5:.25 4:E5:.5 6:A5:.5 8:G5:1 12:E5:.5 14:C5:.5",
-  "0:D5:.75 3:F5:.25 4:A5:.5 6:F5:.5 8:D5:1.5",
-  "0:A#4:.5 2:D5:.5 4:G5:.5 6:F5:.5 8:D5:.5 10:A#4:.5 12:C5:.75",
-  "0:E5:1 4:G5:.5 6:E5:.5 8:C5:1 12:A#4:.5 14:G4:.5",
-  "0:F5:1 4:E5:.5 6:D5:.5 8:A4:1.5",
-  "0:C5:1 4:E5:.5 6:A5:.5 8:G5:1.5",
-  "0:F5:1 4:D5:.5 6:A#4:.5 8:D5:1.5",
-  "0:C5:1 4:A4:.5 6:F4:.5 8:A4:1.5",
-  "0:D5:1 4:F5:.5 6:A5:.5 8:D6:1.5",
-  "0:C6:1 4:A5:.5 6:E5:.5 8:A5:1.5",
-  "0:A#5:1 4:F5:.5 6:D5:.5 8:F5:1",
-  "0:E5:1 4:G5:.5 6:C6:.5 8:E5:1 14:C5:.5",
-  "0:F5:.75 3:A5:.25 4:C6:.5 6:A5:.5 8:F5:1 12:G5:.5 14:A5:.5",
-  "0:E6:.75 3:C6:.25 4:A5:.5 6:C6:.5 8:E6:1 12:D6:.5 14:C6:.5",
-  "0:D6:.75 3:C6:.25 4:A#5:.5 6:F5:.5 8:D6:1 12:C6:.5 14:A#5:.5",
-  "0:A5:.75 3:G5:.25 4:F5:.5 6:A5:.5 8:C6:1.5",
-  "0:D6:.5 2:C6:.5 4:A5:.5 6:F5:.5 8:A5:1 12:D6:.5 14:F6:.5",
-  "0:D6:.75 3:A#5:.25 4:G5:.5 6:A#5:.5 8:D6:1 12:C6:.5 14:A#5:.5",
-  "0:A#5:.5 2:G5:.5 4:E5:.5 6:G5:.5 8:A#5:.5 10:G5:.5 12:E5:.75",
-  "0:F5:1 6:C5:.5 8:A4:1.25",
-]);
-
 // Skyward Steps — E major, lifted by a Lydian F# major. Every phrase climbs,
 // as the Spire does.
 const skyward = lines([
@@ -220,10 +183,6 @@ export const voicings: Record<string, Harmony> = {
   A: harmony("A3 C#4 E4 F#4", "A2"),
   A7: harmony("A3 C#4 E4 G4", "A2"),
   Bm: harmony("B3 D4 F#4 A4", "B2"),
-  // The Plaza's F major.
-  Bb: harmony("A#2 D3 F3 A3", "A#1"),
-  Gm: harmony("G3 A#3 D4 F4", "G2"),
-  C7: harmony("C3 E3 G3 A#3", "C2"),
   // The Spire's E major and its Lydian F# major (with A, and D for the summit).
   E: harmony("E3 G#3 B3 C#4", "E2"),
   B: harmony("B2 D#3 F#3 G#3", "B1"),
@@ -244,10 +203,6 @@ export const progressions: Record<BackgroundTheme, string[]> = {
   raid: "D G D A7 Bm G Em A7 D G D A7 Bm G A7 D G D Bm A7 Em G D A7 D G D A7 Bm G A7 D".split(
     " ",
   ),
-  plaza:
-    "F Dm Gm C7 F Am Bb C7 Bb F Gm C Am Dm Gm C7 Dm Am Bb F Dm Am Bb C F Am Bb F Dm Gm C7 F".split(
-      " ",
-    ),
   spire:
     "E F# E B C#m A F# B7 A E F#m B G#m C#m A B7 C#m A E B C#m A F# B E D A E C#m F# B7 E".split(
       " ",
@@ -257,7 +212,6 @@ export const melodies: Record<BackgroundTheme, MelodyNote[][]> = {
   lobby: parade,
   pvp: hopscotch,
   raid: trouble,
-  plaza: fountain,
   spire: skyward,
 };
 // Introduce the hook, answer, take a breath, celebrate, vary, then come home.

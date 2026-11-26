@@ -22,17 +22,43 @@ import {
 export { noteHz } from "./music-synth";
 // A retro soundtrack (retro-score.ts) and synthesized combat effects
 // (sfx-recipes.ts): no audio files.
-const MIX = 0.5;
+/**
+ * The music bus: the slider's level times this. It was 0.5 with a 12%
+ * default, which put the music near -53 dB, too quiet on a phone even at
+ * full slider (owner, 26 Nov 2026). A limiter now keeps a full slider clean.
+ */
+const MIX = 1;
 /** The effects bus: a recipe peaking near 1 plays at this times the volume. */
-const SFX_GAIN = 0.26;
+const SFX_GAIN = 0.52;
+/**
+ * Raid boss cues go through the effects bus (its level and limiter): this
+ * makes them 2.5 times what they were, as the other effects (26 Nov).
+ */
+const RAID_CUE = 2.5 / SFX_GAIN;
+/**
+ * A safety limiter at `threshold` dB: a full slider or many sounds at once
+ * stay clean. Absent where a browser (or a test) has no compressor.
+ */
+function limiter(ctx: AudioContext, threshold: number) {
+  const node = ctx.createDynamicsCompressor?.();
+  if (!node) return undefined;
+  node.threshold.value = threshold;
+  node.knee.value = 6;
+  node.ratio.value = 12;
+  node.attack.value = 0.001;
+  node.release.value = 0.2;
+  node.connect(ctx.destination);
+  return node;
+}
 /** Sounds at once: yours always up to the first, others' up to the second. */
 const SFX_VOICES = 14;
 const SFX_VOICES_OTHERS = 9;
 export class AudioManager {
   private lastRaidSound = new Map<string, number>();
   context?: AudioContext;
-  music = Number(localStorage.getItem("arena-music") ?? 0.12);
-  effects = Number(localStorage.getItem("arena-effects") ?? 0.3);
+  /** Defaults for a player who never moved the sliders (Settings, Sound). */
+  music = Number(localStorage.getItem("arena-music") ?? 0.35);
+  effects = Number(localStorage.getItem("arena-effects") ?? 0.6);
   timer?: ReturnType<typeof setInterval>;
   private musicBus?: GainNode;
   private scoreBus?: GainNode;
@@ -145,7 +171,9 @@ export class AudioManager {
     if (!this.musicBus) {
       this.musicBus = this.context.createGain();
       this.musicBus.gain.value = this.music * MIX;
-      this.musicBus.connect(this.context.destination);
+      this.musicBus.connect(
+        limiter(this.context, -14) ?? this.context.destination,
+      );
       this.scoreBus = this.context.createGain();
       this.scoreBus.connect(this.musicBus);
       const length = Math.floor(this.context.sampleRate);
@@ -206,15 +234,7 @@ export class AudioManager {
       this.sfxBus = ctx.createGain();
       this.sfxBus.gain.value = this.effects * SFX_GAIN;
       // Many sounds at once (a free-for-all) stay clear of clipping.
-      const limiter = ctx.createDynamicsCompressor?.();
-      if (limiter) {
-        limiter.threshold.value = -14;
-        limiter.knee.value = 10;
-        limiter.ratio.value = 6;
-        limiter.attack.value = 0.003;
-        limiter.release.value = 0.18;
-        this.sfxBus.connect(limiter).connect(ctx.destination);
-      } else this.sfxBus.connect(ctx.destination);
+      this.sfxBus.connect(limiter(ctx, -10) ?? ctx.destination);
     }
     return this.sfxBus;
   }
@@ -319,9 +339,10 @@ export class AudioManager {
       t + duration,
     );
     gain.gain.setValueAtTime(0.001, t);
-    gain.gain.linearRampToValueAtTime(this.effects * volume, t + 0.025);
+    gain.gain.linearRampToValueAtTime(volume * RAID_CUE, t + 0.025);
     gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-    osc.connect(filter).connect(gain).connect(ctx.destination);
+    const bus = this.effectsBus()!;
+    osc.connect(filter).connect(gain).connect(bus);
     osc.start(t);
     osc.stop(t + duration + 0.02);
     osc.onended = () => {
@@ -339,9 +360,9 @@ export class AudioManager {
       grit.frequency.setValueAtTime(cutoff, t);
       grit.Q.value = 0.7;
       mix.gain.setValueAtTime(0.001, t);
-      mix.gain.linearRampToValueAtTime(this.effects * texture, t + 0.02);
+      mix.gain.linearRampToValueAtTime(texture * RAID_CUE, t + 0.02);
       mix.gain.exponentialRampToValueAtTime(0.001, t + duration);
-      src.connect(grit).connect(mix).connect(ctx.destination);
+      src.connect(grit).connect(mix).connect(bus);
       src.start(t);
       src.stop(t + duration + 0.02);
       src.onended = () => {
