@@ -20,8 +20,13 @@ import {
 } from "../../tests/visual/helpers";
 
 export const OUT = "site-clips";
-/** Frames per clip, one every other tick (the client draws every other tick). */
-const FRAMES = { move: 22, ult: 40 };
+/**
+ * Frames captured per clip: the first FINE one tick apart (33 ms, so a fast
+ * bolt shows in flight), the rest two ticks apart. make-clips.py reads the
+ * spacing from steps.json and trims the still tail.
+ */
+const FINE = 24;
+const FRAMES = { move: FINE + 14, ult: FINE + 32 };
 const MOVES = ["basic", "skill1", "skill2", "skill3", "ult"] as const;
 
 /** The court only: no HUD, buttons or labels over the fighters. */
@@ -85,7 +90,7 @@ async function stage(page: Page, id: string, move: string) {
         inputs(p: any, i: number, tick: number) {
           if (i !== 0) return null; // the target stands still
           const aim = { aimX: foe.x, aimY: foe.y };
-          if (slot < 0) return { ...aim, basic: tick < 30 };
+          if (slot < 0) return { ...aim, basic: tick > 0 && tick < 36 };
           return { ...aim, skill: tick === 2 ? slot : -1 };
         },
       };
@@ -99,14 +104,17 @@ async function stage(page: Page, id: string, move: string) {
   );
 }
 
-async function frames(page: Page, n: number, dir: string) {
+async function frames(page: Page, n: number, dir: string, fine = 0) {
   mkdirSync(dir, { recursive: true });
   const court = page.locator("#game canvas").first();
+  const steps: number[] = [];
   for (let f = 0; f < n; f++) {
-    await page.evaluate(async () => {
+    const step = f < fine ? 1 : 2;
+    steps.push(step);
+    await page.evaluate(async (step) => {
       const w = window as any;
       const { a, m, inputs } = w.__shot;
-      for (let t = 0; t < 2; t++) {
+      for (let t = 0; t < step; t++) {
         w.__shot.tick++;
         for (const [i, p] of a.players.entries()) {
           const input = inputs(p, i, w.__shot.tick);
@@ -121,17 +129,18 @@ async function frames(page: Page, n: number, dir: string) {
       await new Promise((r) =>
         requestAnimationFrame(() => requestAnimationFrame(r)),
       );
-    });
+    }, step);
     writeFileSync(
       `${dir}/${String(f).padStart(3, "0")}.png`,
       await court.screenshot(),
     );
   }
+  writeFileSync(`${dir}/steps.json`, JSON.stringify(steps));
 }
 
 const only = process.env.CHAMPIONS?.split(",");
 const done = (dir: string, n: number) =>
-  existsSync(dir) &&
+  existsSync(`${dir}/steps.json`) &&
   readdirSync(dir).filter((f) => f.endsWith(".png")).length >= n;
 // One test per champion and move, so a slow machine never runs one out of
 // time, and a rerun skips the clips already captured (delete site-clips/ to
@@ -158,8 +167,10 @@ for (const id of FIGHTER_IDS.filter((c) => !only || only.includes(c)))
           (window as any).__shot.tick = -20;
         });
         await frames(page, 10, `${OUT}/.warmup-${id}-${move}`);
-        await page.evaluate(() => ((window as any).__shot.tick = 0));
-        await frames(page, n, dir);
+        // A few still frames, then the cast (tick 2): the wind-up shows, and
+        // make-clips.py trims what is left once the effects are over.
+        await page.evaluate(() => ((window as any).__shot.tick = -8));
+        await frames(page, n, dir, FINE);
       } finally {
         await context.close();
       }

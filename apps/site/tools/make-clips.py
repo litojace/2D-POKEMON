@@ -9,18 +9,32 @@ scaled down, saved as a looping animated WebP in apps/site/clips/<id>/<move>.web
 plus a still poster (its middle frame) for reduced motion. Needs Pillow 11+.
 """
 from pathlib import Path
+import json
 import sys
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageStat
 
 ROOT = Path(__file__).resolve().parents[3]
 FRAMES = ROOT / "site-clips"
 OUT = ROOT / "apps/site/clips"
 # The crop in CSS pixels of the 874 x 402 phone view (the follow camera keeps
 # the caster in the same place), scaled by the capture's pixel ratio.
-CROP_CSS = (311, 150, 695, 366)  # 384 x 216, 16:9
+CROP_CSS = (327, 156, 679, 354)  # 352 x 198, 16:9: both fighters, names to floor
 SIZE = (480, 270)
-MS_PER_FRAME = 66  # two ticks at 30 Hz
+MS_PER_TICK = 33  # the game runs at 30 Hz; steps.json says how many ticks each frame is
+
+
+def still(a: Image.Image, b: Image.Image) -> bool:
+    """Two frames that look the same (the idle bob and a health bar aside)."""
+    return max(ImageStat.Stat(ImageChops.difference(a, b)).mean) < 1.2
+
+
+def trim(frames: list[Image.Image], keep=3, least=12) -> list[Image.Image]:
+    """Drop the still tail once the move's effects are over (keep a beat)."""
+    end = len(frames)
+    while end > least and still(frames[end - 1], frames[end - 2]):
+        end -= 1
+    return frames[: min(len(frames), end + keep)]
 
 
 def main():
@@ -39,6 +53,9 @@ def main():
                 Image.open(f).convert("RGB").crop(box).resize(SIZE, Image.LANCZOS)
                 for f in files
             ]
+            steps = json.loads((move / "steps.json").read_text())
+            frames = trim(frames)
+            durations = [MS_PER_TICK * s for s in steps[: len(frames)]]
             dest = OUT / champ.name
             dest.mkdir(parents=True, exist_ok=True)
             out = dest / f"{move.name}.webp"
@@ -47,7 +64,7 @@ def main():
                 "WEBP",
                 save_all=True,
                 append_images=frames[1:],
-                duration=MS_PER_FRAME,
+                duration=durations,
                 loop=0,
                 quality=60,
                 method=6,
