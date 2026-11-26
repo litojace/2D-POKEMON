@@ -1,40 +1,46 @@
 # Music
 
-The soundtrack is retro: each scene's original tune, arranged for console-style voices and synthesized as it plays. There are no audio files, so nothing downloads and the music starts with the first tap (the owner chose this set on 26 Nov 2026, replacing the recorded orchestra). The hub and PvP themes are produced as a shipped game's soundtrack would be (the owner chose them the same day after a side-by-side listen); the raid, the Spire and the results stay on the plain chip voices for now.
+The soundtrack is modern retro: each scene's original tune, played by chip-like voices with the mix a shipped game's soundtrack has, and synthesized as it plays. There are no audio files, so nothing downloads and the music starts with the first tap. The owner chose the retro set on 26 Nov 2026 (replacing the recorded orchestra), then the produced hub and PvP themes the same day after a side-by-side listen; the raid, the Spire and the results followed in the same style, which retired the plain chip voices.
 
-| Scene     | Tune                 | Retro role                                                                                                                                                                                                     | Tempo   | Loop |
-| --------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---- |
-| Hub       | Pocket Parade        | Produced: a friendly town theme with a wide lead and glides, a counter-line, pad, plucked arpeggios through the delay, a syncopated bass that ducks under the kick, a gentle intro and a riser into the chorus | 112 BPM | 1:43 |
-| PvP       | Hopscotch Heroes     | Produced: a fight with a driving ducked bass, four-on-the-floor in the chorus, a harmony line, chip arpeggio shimmer and tom fills                                                                             | 148 BPM | 1:18 |
-| Boss raid | Big Friendly Trouble | A boss that gets fiercer as it weakens: phase 1 bass and kick, 2 adds snare and alarm arpeggios, 3 adds busy hats, harmony and fills                                                                           | 132 BPM | 1:27 |
-| Spire     | Skyward Steps        | A climb: a thin pulse line over a rising ostinato, long notes on the triangle, drums with the phase                                                                                                            | 132 BPM | 1:27 |
+| Scene     | Tune                 | Arrangement                                                                                                                                                                                                                                      | Tempo   | Loop |
+| --------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ---- |
+| Hub       | Pocket Parade        | A friendly town theme with a wide lead and glides, a counter-line, pad, plucked arpeggios through the delay, a syncopated bass that ducks under the kick, a gentle intro and a riser into the chorus                                             | 112 BPM | 1:43 |
+| PvP       | Hopscotch Heroes     | A fight with a driving ducked bass, four-on-the-floor in the chorus, a harmony line, arpeggio shimmer and tom fills                                                                                                                              | 148 BPM | 1:18 |
+| Boss raid | Big Friendly Trouble | A boss that gets fiercer as it weakens: phase 1 is bass and kick, 2 adds the snare, an alarm of plucked sixteenths and a chord stab, 3 a four-on-the-floor kick, sixteenth hats, a harmony line, a bell an octave up and a riser every four bars | 132 BPM | 1:27 |
+| Spire     | Skyward Steps        | A climb: plucked eighths rising up the chord and over the top through the delay, a bell in the bridge, drums and a shaker that grow with the phase                                                                                               | 132 BPM | 1:27 |
 
-Victory, defeat and draw are chip jingles of their old tunes (a square fanfare, a falling pulse with vibrato, two neutral phrases). The Lobby's tune plays across the hub, the Plaza included, so going between them doesn't restart it (owner, 26 Nov 2026; the Plaza's own Fountain Square was retired). Spire floors play Skyward Steps (`battle-music.ts`).
+Victory, defeat and draw keep their tunes (`adventure-score.ts`): a fanfare with drums, a crash and a tom fill; a falling farewell with no drums; two short phrases and a bell. The Lobby's tune plays across the hub, the Plaza included, so going between them doesn't restart it (owner, 26 Nov 2026; the Plaza's own Fountain Square was retired). Spire floors play Skyward Steps (`battle-music.ts`).
 
 ## How it is made
 
-- **The tunes** (`adventure-score.ts`): 32 bars of melody and chords per scene, played in the form statement, answer, quieter bridge, celebratory chorus, varied answer and homecoming (48 bars).
-- **The arrangements** (`retro-score.ts`): each scene's role above, a harmony line of chord tones a third to a sixth under the tune in the big sections (`below()`), and the result jingles.
-- **The voices** (`chip-synth.ts`), after the sound chips of old consoles:
-  - pulse waves at 12.5%, 25% and 50% duty (band-limited, from a Fourier series);
-  - a triangle that holds its level, as the chip's had no volume control;
-  - a pulse bass under a lowpass;
-  - a rapid chord arpeggio, one note every two 60 Hz frames;
-  - drums from noise held in steps of four samples for a chip's grit, and a kick that drops fast in pitch with a click a phone can hear.
-- **Details:** long notes get a delayed vibrato, and the leads send to a soft echo of three-quarters of a beat (`music-synth.ts`). Each note is one oscillator or noise source with a short envelope, released when it ends.
+- **The tunes** (`adventure-score.ts`): 32 bars of melody and chords per scene, played in the form statement, answer, quieter bridge, celebratory chorus, varied answer and homecoming (48 bars); and the results' jingles.
+- **The arrangements** (`pro-score.ts`): each scene's role above, a harmony line of chord tones a third to a sixth under the tune in the big sections (`below()`), a counter-line answering in the tune's rests, grooves that change by section (and in the raid and the Spire by phase), tom fills closing each section, a crash opening the big ones and a riser through the bridge's last bar.
+- **The voices** (`pro-synth.ts`): leads of two pulse waves a few cents apart and spread left and right, with a filter envelope, delayed vibrato and glides into long notes; a pad of three detuned saws; plucked pulses for arpeggios; a bass of a sub sine and a filtered pulse (bite a phone can play); an FM bell; a synthesized kit (kick, snare, hats, shaker, toms, crash) and a noise riser.
+- **The mix**: a plate-like reverb (a 2.2 s impulse made once per audio context), a dotted-eighth ping-pong delay, the pads and bass ducking under each kick (sidechain), and a bus with a low cut, a presence lift at 3 kHz, air above 8 kHz and gentle glue compression. Where a browser lacks a compressor, a convolver or custom waves, that part is left out, not the music (pulse voices fall back to squares).
 
 The volume, mute, background-page handling and theme crossfades are as before (`audio.ts`).
 
-### The produced themes (hub and PvP)
-
-- **The voices** (`pro-synth.ts`): leads of two pulse waves a few cents apart and spread left and right, with a filter envelope, delayed vibrato and glides into long notes; a pad of three detuned saws; plucked pulses for arpeggios; a bass of a sub sine and a filtered pulse (bite a phone can play); an FM bell; a synthesized kit (kick, snare, hats, shaker, toms, crash) and a noise riser.
-- **The mix**: a plate-like reverb (a 2.2 s impulse made once per audio context), a dotted-eighth ping-pong delay, the pads and bass ducking under each kick (sidechain), and a bus with a low cut, a presence lift at 3 kHz, air above 8 kHz and gentle glue compression. Where a browser lacks a compressor, a convolver or custom waves, that part is left out, not the music.
-- **The arrangements** (`pro-score.ts`): the same tunes and form, with a counter-line answering in the tune's rests, grooves that change by section, tom fills closing each section, a crash opening the big ones and a riser through the bridge's last bar.
-- **Measured** at the default music level against the chip versions they replace: the hub −29.9 dB (chip −30.5), PvP −30.2 dB (chip −31.9) on average; stereo width up about 9 dB (side against mid); energy 2 to 6 kHz up from 3–7% to 8–11%; no clipping (peaks −4 to −5 dBFS through the music limiter).
-
 ### Levels, measured
 
-Each theme carries a trim (`RETRO_GAIN`) that evens the scenes out (pulse waves are dense), and the triangle bass sits a little under the tune, since phones can't play it and it weighed on headphones. How loud it all plays is set in `audio.ts`; see "Volume" below.
+Each theme carries a trim (`PRO_GAIN`), set by rendering it offline in Chromium through the game's music bus and limiter at the default slider and measuring it through a phone speaker's range (300 Hz to 9 kHz). The backgrounds are measured over a minute once the limiter has settled, the results over the whole jingle. Each sits within about 1 dB of the chip version it replaced, so no scene got noticeably louder or quieter on a phone:
+
+| Theme          | Phone range (dB) | Chip it replaced (dB) | Peak (dBFS) |
+| -------------- | ---------------- | --------------------- | ----------- |
+| Hub            | −33.2            | −34.3                 | −3.8        |
+| PvP            | −34.2            | −33.8                 | −4.5        |
+| Raid, phase 1  | −35.2            | −35.1                 | −5.5        |
+| Raid, phase 3  | −33.9            | −34.4                 | −4.0        |
+| Spire, phase 1 | −34.6            | −35.2                 | −6.5        |
+| Spire, phase 3 | −34.4            | not measured          | −4.3        |
+| Victory        | −33.7            | −34.3                 | −13.3       |
+| Defeat         | −37.3            | −37.2                 | −17.4       |
+| Draw           | −37.0            | −36.9                 | −15.7       |
+
+Against the chip versions the stereo width is up 6 to 11 dB (side against mid), and the energy from 2 to 6 kHz is up from 3–7% to 8–18% in the backgrounds and the victory; the defeat and the draw stay soft (about 2%). How loud it all plays is set in `audio.ts`; see "Volume" below.
+
+### Keeping it light on older phones
+
+The music shares the phone with the battle. Each note is a handful of Web Audio nodes, released when it ends; the reverb, delay and bus are made once per theme. Counted over each loop: the hub creates about 130 nodes a second, PvP 180 (its busiest bar 290), the raid's phases 1, 2 and 3 about 105, 180 and 240 (busiest bar 270) and the Spire 130 to 180. The raid's third phase moves its plucks from sixteenths to eighths, where the hats already carry the sixteenths, so the busiest phase stays within what the PvP chorus already asks.
 
 ## Volume
 
