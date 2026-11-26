@@ -67,6 +67,8 @@ import {
   pickTakenBy,
   pickClashes,
   veilPlayers,
+  INTRO_ROUNDS,
+  introRounds,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
 import { DRAIN_MESSAGE, busyRoom, trackWrites, waitForDrain } from "./drain.js";
@@ -170,6 +172,11 @@ const BOT_NAMES = [
   "Echo",
   "Taro",
 ];
+/**
+ * How long a bot match waits to learn whether its player is new (their
+ * finished matches, for INTRO_ROUNDS) before it starts at full length.
+ */
+const INTRO_CHECK_MS = 1500;
 /** Six-character room codes: no 0/O or 1/I, so a code read aloud works. */
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const BOT_COLORS = { easy: "#65d38a", normal: "#7ff3ff", hard: "#ff697f" };
@@ -663,6 +670,8 @@ export function createArenaServer(
       bots: arena.bots.size,
       botLevel: [...arena.bots.values()][0]?.difficulty ?? null,
       quick: quickRooms.get(arena) ?? null,
+      // A new player's short match (1 or 2 round wins), or null.
+      intro: arena.introRounds ?? null,
       fighters: arena.players.map((p) => ({
         character: p.character,
         team: arena.teamOf(p),
@@ -1610,6 +1619,7 @@ export function createArenaServer(
             vsPeople,
             botLevel,
             quick: quickRooms.get(arena) ?? null,
+            intro: arena.introRounds ?? null,
             mode: arena.mode,
             knockedOut: (p.stats.knocked ?? 0) > 0,
             skillUses: p.stats.skills,
@@ -2751,14 +2761,52 @@ export function createArenaServer(
       a.resetPractice();
       broadcast(a);
     });
+    /**
+     * The matches this account has finished, for a new player's short first
+     * matches (INTRO_ROUNDS), or undefined: not known in time, or already
+     * past them (remembered for this connection, so only a new player's
+     * bot matches ask the database). Unknown always means a full match.
+     */
+    const matchesFinished = async (): Promise<number | undefined> => {
+      if (socket.data.introOver) return undefined;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const progress = progressSchema.parse(
+          await Promise.race([
+            accounts.rpc(socket.data.accessToken, "arena_my_progress", {}),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(
+                () => reject(new Error("Progress took too long")),
+                INTRO_CHECK_MS,
+              );
+            }),
+          ]),
+        );
+        if (progress.matches >= INTRO_ROUNDS.length)
+          socket.data.introOver = true;
+        return progress.matches;
+      } catch {
+        return undefined;
+      } finally {
+        clearTimeout(timer);
+      }
+    };
     // Solo vs an AI bot: a private room nobody else can join, straight to the briefing.
-    socket.on("bot-match", (data: unknown, cb: unknown) => {
+    socket.on("bot-match", async (data: unknown, cb: unknown) => {
       stopWatching();
       if (!requirePlayer(cb)) return;
       if (!allowed(15)) return fail(cb, "Too many requests.");
       const result = botMatchSchema.safeParse(data);
       if (!result.success)
         return fail(cb, "Choose a fighter, a display name and a difficulty.");
+      if (getSession(socket.id))
+        return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
+      // A new player's first matches are short. The weekly arcade keeps its
+      // own rules. Everything below is checked after the answer, as before.
+      const played = result.data.arcade ? undefined : await matchesFinished();
+      if (!socket.connected || !ownsConnection(socket) || !requirePlayer(cb))
+        return;
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
       if (updating(cb)) return;
@@ -2781,6 +2829,7 @@ export function createArenaServer(
         ? new ArcadeArena(code, result.data.arcade, weekly.week)
         : new Arena(code);
       a.rotateArenas = true;
+      if (introRounds(played) !== undefined) a.introPlayed = played;
       rooms.set(code, a);
       if (result.data.quick) {
         leaveQuick("bot");
@@ -3302,7 +3351,11 @@ export function createArenaServer(
           p.character = fighter;
         }
         p.ready = true;
-        if (a.players.every((p) => p.ready)) a.start();
+        if (a.players.every((p) => p.ready)) {
+          // A new player's rematch is their next match: two rounds, then full.
+          a.nextIntro();
+          a.start();
+        }
         reply(cb, { ok: true });
         broadcast(a);
       }),

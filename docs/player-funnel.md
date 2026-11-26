@@ -104,3 +104,56 @@ What changed after this run:
   when the player does it, with their own keys or the touch buttons.
 
 Compare the guest rows on the next run.
+
+## 26 Nov 2026: a short first match and features by level
+
+What changed (`docs/onboarding.md`): a new account's first bot match is one
+round and its second first to two; the first win reaches level 2; the side
+systems open one a level, levels 2 to 6.
+
+Compare with the 16 Nov run, for accounts made from 27 Nov on: the share
+that **played a match or raid**, and the share **seen again a day later**
+(the first query above, with `and p.created_at >= '2026-11-27'` in `p`).
+
+How far new accounts get, by level and matches finished (counts only):
+
+```sql
+with p as (
+  select pr.id, coalesce(pr.guest, false) as guest,
+         public.arena_level_for(coalesce(x.xp, 0)) as level,
+         (select count(*) from arena_match_players m where m.player_id = pr.id) as matches,
+         pr.last_online_at >= pr.created_at + interval '20 hours' as came_back
+  from arena_profiles pr
+  left join arena_player_xp x on x.player_id = pr.id
+  where not coalesce(pr.suspended, false)
+    and pr.created_at >= '2026-11-27'
+)
+select least(level, 7) as level_capped_at_7,
+       least(matches, 3) as matches_capped_at_3,
+       count(*) as accounts,
+       count(*) filter (where guest) as guests,
+       count(*) filter (where came_back) as seen_again_a_day_later
+from p
+group by 1, 2
+order by 1, 2;
+```
+
+How many got the First Win XP, and how soon after signing up:
+
+```sql
+select count(*) as first_wins,
+       percentile_cont(0.5) within group (
+         order by extract(epoch from l.created_at - p.created_at) / 60
+       ) as median_minutes_from_signup
+from arena_xp_ledger l
+join arena_profiles p on p.id = l.player_id
+where l.source = 'first-win';
+```
+
+The server's `arena-match` log line has `"intro": 1` or `2` for a short
+match (null otherwise), with its length in `seconds`: how long a first
+match really takes, and how many are won (`winnerTeam` against the
+fighters' teams).
+
+Before this change (production, 26 Nov): 32 accounts; 18 at level 1 (12 of
+them guests), and 16 of those 18 without a finished match.

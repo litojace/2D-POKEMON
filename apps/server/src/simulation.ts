@@ -35,6 +35,7 @@ import {
   ELEMENT_GIFTS,
   MUTATOR_RULES,
   roundsNeeded,
+  introRounds,
   type MutatorId,
   RING,
   ringRadius,
@@ -374,9 +375,27 @@ export class Arena {
   rule(m: MutatorId) {
     return this.mutators.has(m);
   }
-  /** Round wins needed (best of five, or best of three with Quick match). */
+  /**
+   * A new player's short match against a bot (INTRO_ROUNDS): the matches
+   * their account had finished when this one started, or undefined in every
+   * other room. A rematch counts on from it (nextIntro).
+   */
+  introPlayed?: number;
+  get introRounds() {
+    return introRounds(this.introPlayed);
+  }
+  /** A rematch in this room: the next match is the next step, or full length. */
+  nextIntro() {
+    if (this.introPlayed === undefined) return;
+    this.introPlayed++;
+    if (this.introRounds === undefined) this.introPlayed = undefined;
+  }
+  /**
+   * Round wins needed: best of five, best of three with Quick match, or a
+   * new player's short match.
+   */
   get roundsToWin() {
-    return roundsNeeded([...this.mutators]);
+    return roundsNeeded([...this.mutators], this.introRounds);
   }
   /** Seconds between orbs (Orb rain halves it). */
   get orbInterval() {
@@ -4229,6 +4248,7 @@ export class Arena {
       pauseRemaining,
       overtime: this.overtime,
       mutators: [...this.mutators],
+      introRounds: this.introRounds,
       crown: this.rule("crown") ? this.crown : undefined,
       gems: this.rule("rush") ? this.gems : undefined,
       banked: this.rule("rush") ? this.banked : undefined,

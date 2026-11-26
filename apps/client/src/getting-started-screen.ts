@@ -17,6 +17,7 @@ import {
   type GuideStep,
   type GuideView,
 } from "./getting-started";
+import type { Feature } from "./feature-unlocks";
 
 export interface GuideHooks {
   account(): string | undefined;
@@ -26,6 +27,8 @@ export interface GuideHooks {
   /** The Lobby card follows. */
   changed(): void;
   toast(text: string): void;
+  /** Steps whose feature is still locked at the player's level. */
+  locks?(): Partial<Record<GuideStep, Feature>>;
 }
 
 export function createGuide(hooks: GuideHooks) {
@@ -47,7 +50,7 @@ export function createGuide(hooks: GuideHooks) {
           ? "Getting started complete. You're all set!"
           : `Getting started · ${after.count} of ${GUIDE_STEPS.length} done`,
       );
-    panel?.update(guideMarkup(after));
+    panel?.update(guideMarkup(after, hooks.locks?.()));
   };
   /** The current view, after the account's facts. */
   const view = (): GuideView => {
@@ -85,7 +88,7 @@ export function createGuide(hooks: GuideHooks) {
   };
   const open = () => {
     panel?.close();
-    const p = openHubPanel(guideMarkup(view()), {
+    const p = openHubPanel(guideMarkup(view(), hooks.locks?.()), {
       onClose: () => {
         if (panel === p) panel = undefined;
       },

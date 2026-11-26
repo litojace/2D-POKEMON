@@ -32,7 +32,11 @@ export function resultXp(
   eligible = true,
 ) {
   if (!j || !ref) return "";
-  const award = j.recent.find((r) => r.ref === ref);
+  // The run's own rows: its XP and, for a new player's first win, the First
+  // Win XP that tops them up to level 2 (migration 20261126120000). A first
+  // win quicker than 20 seconds has only the second.
+  const own = j.recent.filter((r) => r.ref === ref && r.source !== "spark");
+  const award = own[0];
   if (!award)
     return `<p class="journey-xp-pending" role="status">${status === "saved" && !eligible ? "No XP earned · finish at least 20 seconds of active play to qualify." : status === "unavailable" ? "XP could not be saved. Check your connection and database update." : "Updating your XP…"}</p>`;
   const batch = j.recent.filter(
@@ -44,12 +48,12 @@ export function resultXp(
       r.source === "spark" &&
       batch.some((b) => r.ref === `${b.source}:${b.ref}`),
   );
-  const missions = batch.reduce(
-      (n, r) => n + (r.ref === ref ? 0 : r.amount),
-      0,
-    ),
-    bonus = spark.reduce((n, r) => n + r.amount, 0),
-    gained = award.amount + missions + bonus;
+  const sum = (rows: typeof own) => rows.reduce((n, r) => n + r.amount, 0);
+  const firstWin = sum(own.filter((r) => r.source === "first-win")),
+    run = sum(own) - firstWin,
+    missions = sum(batch.filter((r) => r.ref !== ref)),
+    bonus = sum(spark),
+    gained = run + firstWin + missions + bonus;
   const later = j.recent
     .filter((r) => Date.parse(r.at) > Date.parse(award.at))
     .reduce((n, r) => n + r.amount, 0);
@@ -59,7 +63,8 @@ export function resultXp(
     (m) => m.level > before && m.level <= after,
   ).flatMap(milestoneNames);
   const parts = [
-    missions || bonus ? `${award.amount} from this run` : "",
+    run && (missions || bonus || firstWin) ? `${run} from this run` : "",
+    firstWin ? `${firstWin} First Win bonus` : "",
     missions ? `${missions} from daily missions` : "",
     bonus ? `${bonus} Daily Spark bonus` : "",
   ].filter(Boolean);
