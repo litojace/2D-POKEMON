@@ -854,11 +854,17 @@
     top: 42px;
   }
   /* Entrance and Victory stand in the stage's top-right corner, over the
-     fighter's ears and crest: the fighter is drawn lower (the host moves
-     down whole, so the fighter keeps its size), into the room above Hold
-     to compare. */
+     fighter's ears and crest: the fighter is drawn lower, into the room
+     above Hold to compare, keeping its size. The canvas still covers the
+     stage from its top edge (the camera leaves a --fit-drop band above the
+     fighter: shop-preview-layout.ts shopPreviewCamera), so an entrance or a
+     victory reaches the top instead of stopping in a straight line 34 px
+     down, where the host used to start (owner, 26 Nov). */
+  .fit-stage {
+    --fit-drop: 34px;
+  }
   .fit-stage > .shop-live-stage:not(.is-frame) {
-    transform: translate(-50%, var(--fit-drop, 34px));
+    bottom: calc(var(--fit-info-h) - var(--fit-drop));
   }
   /* Small buttons on a phone stay 8 px from the stage's edge, so each
      still catches a 44 px finger. */

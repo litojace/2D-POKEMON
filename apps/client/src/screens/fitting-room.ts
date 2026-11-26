@@ -14,7 +14,7 @@ import { itemPicture } from "../shop-ui";
 import { askConfirm, openHubPanel, type HubPanel } from "../ui/hub-panel";
 import { price, rarityTag } from "../ui/components";
 import { parse, patch } from "../ui/patch";
-import { previewViewBox, SHOP_PREVIEW } from "../shop-preview-layout";
+import { fitDrop, previewViewBox, SHOP_PREVIEW } from "../shop-preview-layout";
 import {
   dropUnownedTryOns,
   fitItem,
@@ -320,9 +320,12 @@ export function openFittingRoom(
     if (!host) return;
     const { width, height } = host.getBoundingClientRect();
     if (width <= 0 || height <= 0) return;
+    // A phone's band for Entrance and Victory (--fit-drop), as the rig reads it.
+    const band = fitDrop(host);
     const box = previewViewBox(
       host.dataset.previewAction ?? "idle",
       Math.max(1, Math.round((SHOP_PREVIEW.width * height) / width)),
+      (band * SHOP_PREVIEW.width) / width,
     );
     host
       .querySelectorAll(":scope > .stage-light, .shop-preview-fallback > svg")
