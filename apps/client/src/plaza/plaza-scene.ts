@@ -139,6 +139,7 @@ import {
   drawFlash,
   stepConfetti,
 } from "./plaza-gifts";
+import { HUB_BUSY_ATTR, HUB_BUSY_EVENT } from "../pwa-policy";
 import {
   FIGHT_IN_SECONDS,
   fishingFrame,
@@ -213,7 +214,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
       <button type="button" class="pz-act" id="pz-dash">Dash<small>Shift</small></button>
       <button type="button" class="pz-act big" id="pz-jump">Jump<small>Space</small></button>
     </div>
-    <div class="pz-photo" id="pz-photo" hidden></div>
+    <div class="pz-photo" id="pz-photo" role="dialog" aria-modal="true" aria-label="Photo" hidden></div>
     <div class="pz-album" id="pz-album" role="dialog" aria-modal="true" aria-label="Photo album" hidden>
       <section class="pz-album-panel" id="pz-album-panel">
         <header><b>${I("album")}<span>Album</span></b><span class="pz-album-count" id="pz-album-count" aria-live="polite">0 / ${ALBUM_LIMIT}</span>${iconButton("cancel", "Close the album", { class: "x", "data-al": "close" })}</header>
@@ -2514,9 +2515,30 @@ export function openPlaza(options) {
     fishing.exit();
     screen.focus({ preventScroll: true });
   }
+  /* ---------- busy: the update ask waits (pwa.ts) ---------- */
+  // Any of the Plaza's own screens open (map, album, Fish book, a player's
+  // card, the photo, a pair request) or fishing in any phase: the update
+  // ask would cover its buttons (a bite you can't reel in), so it waits,
+  // as it does for a Lobby screen. Read from the DOM on a change, never
+  // per frame.
+  const BUSY_OPEN =
+    "[role=dialog]:not([hidden]), [role=alertdialog]:not([hidden])";
+  function syncBusy() {
+    const busy = fishing.active || !!layer.querySelector(BUSY_OPEN);
+    if (layer.hasAttribute(HUB_BUSY_ATTR) === busy) return;
+    layer.toggleAttribute(HUB_BUSY_ATTR, busy);
+    document.dispatchEvent(new Event(HUB_BUSY_EVENT));
+  }
+  const busyWatch = new MutationObserver(syncBusy);
+  busyWatch.observe(layer, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["hidden"],
+  });
   /** The fishing HUD, from the mode's phase (only when it changes). */
   function renderFishHud() {
     const on = fishing.active;
+    syncBusy();
     layer.classList.toggle("fishing", on);
     $("pz-fishhud").hidden = !on;
     if (!on) return;
@@ -6510,7 +6532,9 @@ export function openPlaza(options) {
       document.removeEventListener("visibilitychange", onHidden);
       hideAlbum();
       album.close();
+      busyWatch.disconnect();
       layer.remove();
+      document.dispatchEvent(new Event(HUB_BUSY_EVENT));
       syncHubGraphics();
     },
     _dbg: {
