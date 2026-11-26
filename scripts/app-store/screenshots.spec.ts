@@ -13,6 +13,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
 import {
+  createRoom,
   openHub,
   openLobby,
   openPlaza,
@@ -80,7 +81,9 @@ async function startMatch(
 ) {
   await page.evaluate((args) => (window as any).__room(...args), room);
   await openPlayPanel(page);
-  await page.click("#play-create");
+  // Create room lives in the Lobby's mode menu now; its drawer button stays
+  // hidden and is pressed directly, as the visual tests do (helpers.ts).
+  await createRoom(page);
   await pushUntilBattle(page);
 }
 async function play(page: Page, ticks: number) {
