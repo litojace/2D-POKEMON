@@ -315,5 +315,12 @@ this move doesn't touch how the session is stored.
   The server's `PUSH_CONTACT` is `mailto:privacy@elementarenausa.com`. The
   privacy and support pages, the website and the push fallback show the new
   address. Supabase's SMTP sender changes to
-  `noreply@mail.elementarenausa.com` in the dashboard (owner). Kept for now:
+  `noreply@mail.elementarenausa.com` in the dashboard (owner), with a new
+  Resend key allowed to send from `mail.elementarenausa.com` (the old one was
+  limited to `mail.litojace.com`: "550 This API key is not authorized"). A
+  throwaway sign-up then got its confirmation from the new sender, and was
+  deleted (no rows left). `noreply@mail.elementarenausa.com` also forwards to
+  the owner (Cloudflare Email Routing on the `mail.` subdomain: its MX and
+  SPF), so a Google account on that address can carry the game's avatar in
+  Gmail. Replies to the account emails land there too. Kept for now:
   `privacy@litojace.com`'s forwarding and the `litojace.com` Resend domains.
