@@ -74,7 +74,8 @@ describe("raid auras", () => {
         calls += r.calls.length;
         frames++;
       }
-      expect(area / frames, id).toBeLessThan(1200);
+      // Well under half the old ones' 4,200.
+      expect(area / frames, id).toBeLessThan(1600);
       expect(calls / frames, id).toBeLessThan(60);
     }
   });

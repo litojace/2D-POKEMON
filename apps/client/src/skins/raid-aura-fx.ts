@@ -82,6 +82,7 @@ function stormTwins(c: Ctx) {
   g.lineStyle(1, 0xffe18b, 0.45).strokeEllipse(x, y, 88, 88 * flat);
   const at: Pt[] = [];
   orbit(c, 2, 50, 5200, 16, (gg, px, py, i, _a, d, f) => {
+    d *= 1.5; // Big enough to read at a fighter's feet on a phone.
     const bob = c.reduced ? 0 : Math.sin(t / 300 + i * 2) * 2.5;
     at.push({ x: px, y: py + bob * d });
     const color = i ? 0x8edfff : 0xffe18b;
@@ -135,7 +136,7 @@ function lantern(
   frame: number,
   flicker: number,
 ) {
-  gg.fillStyle(0xffc46b, 0.18 * f).fillCircle(px, py, 8 * d);
+  gg.fillStyle(0xffc46b, 0.18 * f).fillCircle(px, py, 6.5 * d);
   gg.fillStyle(paper, 0.95 * f).fillEllipse(px, py, 7 * d, 9 * d);
   gg.fillStyle(0xfff1c2, (0.7 + 0.3 * flicker) * f).fillEllipse(
     px,
@@ -156,6 +157,7 @@ function lumiwick(c: Ctx) {
   g.lineStyle(2, 0xffa66c, 0.7).strokeEllipse(x, y, 100, 100 * flat);
   const flicker = c.reduced ? 1 : hash(Math.floor(t / 90));
   orbit(c, 3, 50, 9000, 20, (gg, px, py, i, _a, d, f) => {
+    d *= 1.45; // Big enough to read at a fighter's feet on a phone.
     const bob = c.reduced ? 0 : Math.sin(t / 700 + i * 2.1) * 3;
     lantern(gg, px, py + bob * d, d, f, 0xff8a4f, 0x8a3b1f, flicker);
   });
@@ -189,6 +191,7 @@ function prismell(c: Ctx) {
   }
   const lit = c.reduced ? 0 : Math.floor(t / 260) % 6;
   orbit(c, 6, 50, 6500, 10, (gg, px, py, i, _a, d, f) => {
+    d *= 1.3; // Big enough to read at a fighter's feet on a phone.
     const h = 7 * d,
       w = 4 * d;
     gg.fillStyle(0xf4fbff, 0.95 * f).fillTriangle(
@@ -235,6 +238,7 @@ function cragmuff(c: Ctx) {
   g.fillStyle(0x7fae5a, 0.9);
   for (const p of stones) g.fillEllipse(p.x - 0.6, p.y - 1.2, 5, 2);
   orbit(c, 5, 50, 12000, 6, (gg, px, py, i, _a, d, f) => {
+    d *= 1.4; // Big enough to read at a fighter's feet on a phone.
     const tall = (i % 2 ? 9 : 12) * d,
       w = (i % 2 ? 2.6 : 3.2) * d;
     const body: Pt[] = [
@@ -289,6 +293,7 @@ function tidelotl(c: Ctx) {
     );
   }
   orbit(c, 1, 52, 5000, 8, (gg, px, py, _i, _a, d, f) => {
+    d *= 1.5; // Big enough to read at a fighter's feet on a phone.
     gg.fillStyle(0x7fe9ff, 0.2 * f).fillCircle(px, py, 6.5 * d);
     gg.fillStyle(0xfff1f6, f).fillCircle(px, py, 3.4 * d);
     gg.fillStyle(0xffffff, 0.95 * f).fillCircle(
@@ -336,6 +341,7 @@ function inkpurr(c: Ctx) {
   }
   const flicker = c.reduced ? 1 : hash(Math.floor(t / 110));
   orbit(c, 4, 48, 7000, 18, (gg, px, py, i, _a, d, f) => {
+    d *= 1.4; // Big enough to read at a fighter's feet on a phone.
     const bob = c.reduced ? 0 : Math.sin(t / 600 + i * 1.7) * 2.5;
     if (i === 3) crescent(gg, px, py + bob * d, 5 * d, 0xffd65b, f);
     else
@@ -401,17 +407,21 @@ function snoozaku(c: Ctx) {
   const turn = c.reduced ? 0 : t / 14000;
   RUNES.forEach((rune, i) => {
     const p = onGround(c, turn + (i / RUNES.length) * TAU, 48);
-    const on = i === lit;
-    g.lineStyle(on ? 1.9 : 1.4, on ? 0xfff1c2 : 0xb48cff, on ? 1 : 0.8);
+    const on = i === lit,
+      k = 1.7; // Big enough to read at a fighter's feet on a phone.
+    if (on)
+      g.fillStyle(0xfff1c2, 0.22).fillEllipse(p.x, p.y, 16, 16 * flat * 1.6);
+    g.lineStyle(on ? 2.4 : 1.8, on ? 0xfff1c2 : 0xb48cff, on ? 1 : 0.85);
     for (const [x0, y0, x1, y1] of rune)
       g.lineBetween(
-        p.x + x0,
-        p.y + y0 * flat * 1.6,
-        p.x + x1,
-        p.y + y1 * flat * 1.6,
+        p.x + x0 * k,
+        p.y + y0 * k * flat * 1.6,
+        p.x + x1 * k,
+        p.y + y1 * k * flat * 1.6,
       );
   });
   orbit(c, 3, 44, 6000, 22, (gg, px, py, i, _a, d, f) => {
+    d *= 1.35; // Big enough to read at a fighter's feet on a phone.
     const tw = c.reduced ? 1 : 0.6 + 0.4 * Math.sin(t / 300 + i * 2);
     sparkle(gg, px, py, 3 * d * tw, i % 2 ? 0xffd86b : 0xc9a3ff, 0.95 * f);
   });
