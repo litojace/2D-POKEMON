@@ -1,5 +1,5 @@
 /**
- * One Supabase session for the website and the game (apps/site/ACCOUNTS.md).
+ * One Supabase session for the website and the game (docs/website-accounts.md).
  *
  * On elementarenausa.com the website (the apex) and the game
  * (play.elementarenausa.com) are two origins, so localStorage can't be

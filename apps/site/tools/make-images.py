@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Make the landing page's images from the game's own art (apps/site/README.md).
+"""Make the landing page's images from the game's own art (docs/website.md).
 
     python3 apps/site/tools/make-images.py            # from the repo root
 

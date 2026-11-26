@@ -141,7 +141,7 @@ const storageKey = "parena-auth";
 /**
  * On elementarenausa.com the session lives in a cookie for the whole domain,
  * shared with the website's account area and its Play button
- * (packages/shared/src/session-cookie.ts, apps/site/ACCOUNTS.md). Anywhere
+ * (packages/shared/src/session-cookie.ts, docs/website-accounts.md). Anywhere
  * else (other hosts, local dev, the iPhone app) it stays in this origin's
  * storage as before.
  */

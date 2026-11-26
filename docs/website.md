@@ -1,4 +1,7 @@
-# Element Arena website (landing page)
+# Element Arena website (`apps/site`)
+
+These notes live in `docs/` rather than in `apps/site/`, because everything
+in `apps/site/` is served to the public as it is.
 
 The public front page for the game: what it is, the champions, modes, raid
 bosses, real screenshots, "coming soon" for the apps, and **Play now**
@@ -76,16 +79,16 @@ npx serve apps/site      # or: python3 -m http.server -d apps/site 8080
 
 A Render Static Site of its own (pending the owner's approval):
 
-| Setting             | Value                                                                                                                                             |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repository / branch | this repo, `main`                                                                                                                                 |
-| Root directory      | `apps/site`                                                                                                                                       |
-| Build command       | `node tools/write-config.mjs` (plain Node, no install)                                                                                            |
-| Publish directory   | `.`                                                                                                                                               |
-| Build filter        | include `apps/site/**` only                                                                                                                       |
-| Env                 | `SITE_SUPABASE_URL`, `SITE_SUPABASE_ANON_KEY` (the game's public values), `SITE_APPLE_SIGN_IN=on` if the game has it                              |
-| Headers `/*`        | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Content-Security-Policy` (below) |
-| Custom domains      | `elementarenausa.com`, `www.elementarenausa.com` (Render redirects www to the apex)                                                               |
+| Setting             | Value                                                                                                                                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository / branch | this repo, `main`                                                                                                                                                                                                   |
+| Root directory      | `apps/site`                                                                                                                                                                                                         |
+| Build command       | `node tools/write-config.mjs` (plain Node, no install)                                                                                                                                                              |
+| Publish directory   | `.`                                                                                                                                                                                                                 |
+| Env                 | `SITE_SUPABASE_URL`, `SITE_SUPABASE_ANON_KEY` (the game's public values), `SITE_APPLE_SIGN_IN=on` if the game has it                                                                                                |
+| Build filter        | include `apps/site/**` only                                                                                                                                                                                         |
+| Headers `/*`        | `Strict-Transport-Security: max-age=31536000; includeSubDomains`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Content-Security-Policy` (below) |
+| Custom domains      | `elementarenausa.com`, `www.elementarenausa.com` (Render redirects www to the apex)                                                                                                                                 |
 
 CSP: `default-src 'self'; img-src 'self' data:; style-src 'self';
 style-src-attr 'unsafe-inline'; script-src
@@ -128,7 +131,7 @@ area with one-tap Play, QR to the website):
 - [x] Research notes (above); data from game code + drift test; element
       filter; champion panel (stats, skills, ultimate, skins, prev/next,
       deep links); hero drift, entrance, scroll reveals, reduced motion
-- [x] Account / one-tap Play proposal: `ACCOUNTS.md` (recommends A, same
+- [x] Account / one-tap Play proposal: `docs/website-accounts.md` (recommends A, same
       origin). **No sign-in code until the owner approves.**
 - [ ] Not done: animated clips of each champion's real in-game moves (the
       panel uses the game's vector portraits with CSS motion). Next step
