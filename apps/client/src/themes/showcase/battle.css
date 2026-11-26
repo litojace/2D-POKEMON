@@ -213,3 +213,16 @@
   flex: none;
   white-space: nowrap;
 }
+
+/* ---------------------------------- what the match gave (result-rewards) */
+/* A tile's value in one line ("Specialist 1,020"): Rubik is wider than the
+   condensed face the tiles were sized for, so no letter-spacing, and a
+   size down on phones. */
+:root[data-ui="showcase"] #arena-overlay#arena-overlay .rw-value {
+  letter-spacing: 0;
+}
+@media (max-height: 500px) {
+  :root[data-ui="showcase"] #arena-overlay#arena-overlay .rw-value {
+    font-size: calc(14px * var(--text-scale, 1));
+  }
+}
