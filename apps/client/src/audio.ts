@@ -7,7 +7,6 @@ import {
   type MusicTheme,
 } from "./music-score";
 import { MusicSynth } from "./music-synth";
-import { MusicSampleBank } from "./music-samples";
 import { CourtAmbience } from "./court-ambience";
 import type { CourtId } from "./arena-courts";
 import type { GameEvent } from "@arena/shared";
@@ -21,7 +20,8 @@ import {
   type SoundView,
 } from "./battle-sounds";
 export { noteHz } from "./music-synth";
-// Original adaptive scores plus synthesized combat effects (sfx-recipes.ts).
+// A retro soundtrack (retro-score.ts) and synthesized combat effects
+// (sfx-recipes.ts): no audio files.
 const MIX = 0.5;
 /** The effects bus: a recipe peaking near 1 plays at this times the volume. */
 const SFX_GAIN = 0.26;
@@ -37,7 +37,6 @@ export class AudioManager {
   private musicBus?: GainNode;
   private scoreBus?: GainNode;
   private synth?: MusicSynth;
-  private samples?: MusicSampleBank;
   private theme: MusicTheme = "lobby";
   private phase = 1;
   private autoStarted = false;
@@ -116,7 +115,6 @@ export class AudioManager {
       this.scoreBus,
       this.noise!,
       MUSIC_BPM[theme],
-      this.samples,
     );
     if (previous) {
       previous.gain.cancelScheduledValues(t);
@@ -158,18 +156,11 @@ export class AudioManager {
       );
       const data = this.noise.getChannelData(0);
       for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
-      if (typeof window.fetch === "function") {
-        this.samples = new MusicSampleBank(this.context);
-        void this.samples
-          .load(window.fetch.bind(window))
-          .then(() => this.schedule());
-      }
       this.synth = new MusicSynth(
         this.context,
         this.scoreBus,
         this.noise,
         MUSIC_BPM[this.theme],
-        this.samples,
       );
     }
     this.updateMusicGain();
@@ -182,8 +173,6 @@ export class AudioManager {
   private schedule() {
     const ctx = this.context;
     if (!ctx || ctx.state !== "running" || !this.musicBus) return;
-    if (!isResultTheme(this.theme) && this.samples && !this.samples.complete)
-      return;
     if (document.hidden || this.music <= 0) {
       this.nextTime = ctx.currentTime + 0.05;
       return;

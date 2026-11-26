@@ -88,15 +88,11 @@ assert(
   !urls.some((url) => /^assets\/town-/.test(url)),
   "The old town's art must not be precached",
 );
-const music = JSON.parse(
-  readFileSync("apps/client/public/assets/music/sources.json", "utf8"),
+// The soundtrack is synthesized (retro-score.ts): no instrument recordings.
+assert(
+  !urls.some((url) => url.startsWith("assets/music/")),
+  "The retired instrument samples must not be precached",
 );
-for (const sample of music) {
-  assert(
-    urls.includes(`assets/music/${sample.file}`),
-    `Missing offline instrument: ${sample.file}`,
-  );
-}
 assert(
   !urls.includes("index.html"),
   "Game entry navigation must remain network-only",

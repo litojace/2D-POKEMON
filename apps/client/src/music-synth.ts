@@ -1,9 +1,5 @@
 import type { ScoreNote } from "./music-score";
-import {
-  isSampleInstrument,
-  MusicSampleBank,
-  playSample,
-} from "./music-samples";
+import { playChip } from "./chip-synth";
 const NOTE: Record<string, number> = {
   C: 0,
   D: 2,
@@ -21,17 +17,19 @@ export function noteHz(name: string) {
   return 440 * 2 ** (semis / 12);
 }
 
-/** Recorded instruments and result synthesis share the theme's crossfade/volume bus. */
+/**
+ * One theme's player: chip voices (chip-synth.ts) on the theme's
+ * crossfade/volume bus, with a soft echo of three-quarters of a beat that
+ * the leads send to, as the consoles' composers faked with a second voice.
+ */
 export class MusicSynth {
   private echo: DelayNode;
   private echoNodes: AudioNode[];
-  private room: BiquadFilterNode;
   constructor(
     private ctx: BaseAudioContext,
     private output: AudioNode,
     private noise: AudioBuffer,
     bpm: number,
-    private samples?: MusicSampleBank,
   ) {
     this.echo = ctx.createDelay(1);
     this.echo.delayTime.value = (60 / bpm) * 0.75;
@@ -47,228 +45,20 @@ export class MusicSynth {
     this.echo.connect(filter).connect(feedback).connect(this.echo);
     filter.connect(wet).connect(stereo).connect(output);
     this.echoNodes = [this.echo, filter, feedback, wet, stereo];
-    // Short, quiet room reflections soften the recorded ensemble without
-    // obscuring rhythmic attacks or adding a long tail over combat sounds.
-    this.room = ctx.createBiquadFilter();
-    this.room.type = "lowpass";
-    this.room.frequency.value = 3600;
-    this.echoNodes.push(this.room);
-    for (const [seconds, level, pan] of [
-      [0.037, 0.11, -0.45],
-      [0.061, 0.08, 0.45],
-      [0.097, 0.05, -0.25],
-      [0.139, 0.03, 0.25],
-    ]) {
-      const delay = ctx.createDelay(0.2),
-        gain = ctx.createGain(),
-        position = ctx.createStereoPanner();
-      delay.delayTime.value = seconds;
-      gain.gain.value = level;
-      position.pan.value = pan;
-      this.room.connect(delay).connect(gain).connect(position).connect(output);
-      this.echoNodes.push(delay, gain, position);
-    }
   }
   disconnect() {
     this.echoNodes.forEach((node) => node.disconnect());
   }
   play(note: ScoreNote, t: number) {
-    const { instrument, volume, duration } = note;
-    if (isSampleInstrument(instrument)) {
-      if (
-        this.samples &&
-        playSample(
-          this.ctx,
-          this.output,
-          this.samples,
-          note,
-          note.note ? noteHz(note.note) : 0,
-          t,
-          this.room,
-        )
-      )
-        return;
-      // A failed download should leave music playable, including offline first visits.
-      const fallback = {
-        piano: "bell",
-        harp: "pluck",
-        flute: "arp",
-        strings: "pad",
-        spiccato: "pluck",
-        cello: "bass",
-        horn: "pad",
-        "concert-bass": "kick",
-        "concert-snare": "snare",
-        timpani: "tom",
-        "concert-cymbal": "crash",
-      } as const;
-      this.play({ ...note, instrument: fallback[instrument] }, t);
-      return;
-    }
-    if (instrument === "kick" || instrument === "tom") {
-      this.drum(
-        t,
-        volume,
-        instrument === "kick" ? 0.24 : duration,
-        instrument === "kick" ? 155 : 145,
-        instrument === "kick" ? 42 : 62,
-        note.pan ?? 0,
-      );
-    } else if (["snare", "hat", "openhat", "crash"].includes(instrument)) {
-      const cutoff =
-        instrument === "snare" ? 1400 : instrument === "crash" ? 3200 : 6500;
-      this.noiseHit(t, volume, duration, cutoff, note.pan ?? 0);
-      if (instrument === "snare")
-        this.drum(t, volume * 0.45, 0.11, 190, 125, 0);
-    } else if (note.note) this.voice(note, t);
-  }
-  private voice(note: ScoreNote, t: number) {
-    const ctx = this.ctx,
-      hz = noteHz(note.note!);
-    const instrument = note.instrument,
-      pad = instrument === "pad",
-      bass = instrument === "bass",
-      bell = instrument === "bell";
-    const duration = Math.max(0.04, note.duration),
-      attack = Math.min(duration * 0.2, pad ? 0.26 : 0.012);
-    const filter = ctx.createBiquadFilter(),
-      envelope = ctx.createGain(),
-      stereo = ctx.createStereoPanner();
-    filter.type = "lowpass";
-    const cutoff = bass
-      ? Math.min(950, hz * 6)
-      : pad
-        ? 1800
-        : bell
-          ? 8500
-          : Math.min(4400, hz * 5);
-    filter.frequency.setValueAtTime(cutoff, t);
-    filter.frequency.exponentialRampToValueAtTime(
-      bass ? 150 : Math.max(400, cutoff * 0.42),
-      t + duration,
+    playChip(
+      this.ctx,
+      this.output,
+      this.echo,
+      this.noise,
+      note,
+      note.note ? noteHz(note.note) : 0,
+      note.notes?.map(noteHz) ?? [],
+      t,
     );
-    filter.Q.value = bass ? 1.1 : 0.6;
-    envelope.gain.setValueAtTime(0.0001, t);
-    envelope.gain.exponentialRampToValueAtTime(note.volume, t + attack);
-    envelope.gain.exponentialRampToValueAtTime(
-      note.volume * (pad ? 0.78 : 0.45),
-      t + Math.max(attack + 0.001, duration * 0.42),
-    );
-    envelope.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-    stereo.pan.value = note.pan ?? 0;
-    filter.connect(envelope).connect(stereo).connect(this.output);
-    const echo = ["lead", "pluck", "arp", "bell"].includes(instrument);
-    if (echo) stereo.connect(this.echo);
-    const layers: [OscillatorType, number, number, number][] = bass
-      ? [
-          ["triangle", 1, 0.8, 0],
-          ["sawtooth", 1, 0.2, 0],
-        ]
-      : bell
-        ? [
-            ["sine", 1, 0.75, 0],
-            ["sine", 2.01, 0.2, 0],
-            ["sine", 3.99, 0.05, 0],
-          ]
-        : pad
-          ? [
-              ["sawtooth", 1, 0.5, -7],
-              ["sawtooth", 1, 0.5, 7],
-            ]
-          : instrument === "lead"
-            ? [
-                ["sawtooth", 1, 0.58, -5],
-                ["triangle", 1, 0.42, 5],
-              ]
-            : instrument === "stab"
-              ? [
-                  ["sawtooth", 1, 0.7, 0],
-                  ["triangle", 2, 0.3, 0],
-                ]
-              : [
-                  ["triangle", 1, 0.72, 0],
-                  ["sine", 2, 0.28, 0],
-                ];
-    let remaining = layers.length;
-    for (const [type, multiple, level, detune] of layers) {
-      const osc = ctx.createOscillator(),
-        mix = ctx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(hz * multiple, t);
-      osc.detune.value = detune;
-      mix.gain.value = level;
-      osc.connect(mix).connect(filter);
-      osc.start(t);
-      osc.stop(t + duration + 0.015);
-      osc.onended = () => {
-        osc.disconnect();
-        mix.disconnect();
-        if (--remaining === 0) {
-          filter.disconnect();
-          envelope.disconnect();
-          stereo.disconnect();
-        }
-      };
-    }
-  }
-  private drum(
-    t: number,
-    volume: number,
-    duration: number,
-    from: number,
-    to: number,
-    pan: number,
-  ) {
-    const osc = this.ctx.createOscillator(),
-      envelope = this.ctx.createGain(),
-      stereo = this.ctx.createStereoPanner();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(from, t);
-    osc.frequency.exponentialRampToValueAtTime(
-      to,
-      t + Math.min(0.12, duration),
-    );
-    envelope.gain.setValueAtTime(0.0001, t);
-    envelope.gain.exponentialRampToValueAtTime(volume, t + 0.003);
-    envelope.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-    stereo.pan.value = pan;
-    osc.connect(envelope).connect(stereo).connect(this.output);
-    osc.start(t);
-    osc.stop(t + duration + 0.015);
-    osc.onended = () => {
-      osc.disconnect();
-      envelope.disconnect();
-      stereo.disconnect();
-    };
-  }
-  private noiseHit(
-    t: number,
-    volume: number,
-    duration: number,
-    cutoff: number,
-    pan: number,
-  ) {
-    const src = this.ctx.createBufferSource(),
-      filter = this.ctx.createBiquadFilter(),
-      envelope = this.ctx.createGain(),
-      stereo = this.ctx.createStereoPanner();
-    src.buffer = this.noise;
-    src.loop = true;
-    filter.type = "highpass";
-    filter.frequency.value = cutoff;
-    filter.Q.value = 0.6;
-    envelope.gain.setValueAtTime(0.0001, t);
-    envelope.gain.exponentialRampToValueAtTime(volume, t + 0.002);
-    envelope.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-    stereo.pan.value = pan;
-    src.connect(filter).connect(envelope).connect(stereo).connect(this.output);
-    src.start(t);
-    src.stop(t + duration + 0.015);
-    src.onended = () => {
-      src.disconnect();
-      filter.disconnect();
-      envelope.disconnect();
-      stereo.disconnect();
-    };
   }
 }

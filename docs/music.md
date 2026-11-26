@@ -1,33 +1,47 @@
-# Adventure music
+# Music
 
-The five background scores are original 48-bar compositions scheduled with Web Audio:
+The soundtrack is retro: each scene's original tune, arranged for a console sound chip and synthesized as it plays. There are no audio files, so nothing downloads and the music starts with the first tap (the owner chose this set on 26 Nov 2026, replacing the recorded orchestra).
 
-| Scene     | Track                | Character                                                               | Tempo   | Loop |
-| --------- | -------------------- | ----------------------------------------------------------------------- | ------- | ---- |
-| Lobby     | Pocket Parade        | Skipping G major piano, answering flute and playful harp                | 112 BPM | 1:43 |
-| Plaza     | Fountain Square      | A strolling F major flute over harp ripples and plucked cello, no drums | 96 BPM  | 2:00 |
-| PvP       | Hopscotch Heroes     | Bright C major hooks, bouncy bass and light offbeat piano               | 144 BPM | 1:20 |
-| Boss raid | Big Friendly Trouble | Mischievous D major brass calls, flute choruses and lively drums        | 124 BPM | 1:33 |
-| Spire     | Skyward Steps        | Climbing E major strings, horn calls and a flute summit, Lydian lift    | 132 BPM | 1:27 |
+| Scene     | Tune                 | Retro role                                                                                                                           | Tempo   | Loop |
+| --------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------- | ---- |
+| Lobby     | Pocket Parade        | A cheerful town: square and pulse take turns, a bouncing octave bass, light hats; a quiet bridge                                     | 112 BPM | 1:43 |
+| Plaza     | Fountain Square      | A stroll: a soft pulse with vibrato over plucked chord ripples, no drums; a triangle bridge                                          | 96 BPM  | 2:00 |
+| PvP       | Hopscotch Heroes     | A fight: a bold square lead, a driving pulse bass, a full kit with fills, arpeggio shimmer                                           | 148 BPM | 1:18 |
+| Boss raid | Big Friendly Trouble | A boss that gets fiercer as it weakens: phase 1 bass and kick, 2 adds snare and alarm arpeggios, 3 adds busy hats, harmony and fills | 132 BPM | 1:27 |
+| Spire     | Skyward Steps        | A climb: a thin pulse line over a rising ostinato, long notes on the triangle, drums with the phase                                  | 132 BPM | 1:27 |
 
-The Plaza plays its own tune whenever the hub shows it (`menuMusic()` in `main.ts`); every other menu plays the Lobby's. Spire floors play Skyward Steps (`battle-music.ts`), and like the raid it adds percussion with the fight's phase; its results use the raid's victory and defeat themes.
+Victory, defeat and draw are chip jingles of their old tunes (a square fanfare, a falling pulse with vibrato, two neutral phrases). The Plaza plays its own tune whenever the hub shows it (`menuMusic()` in `main.ts`), every other menu the Lobby's, and Spire floors play Skyward Steps (`battle-music.ts`).
 
-Each track is a new melody and arrangement with a statement, answer, quieter bridge, celebratory chorus, varied answer and homecoming. Major keys, added-sixth chords, short articulated notes and clear rests give the soundtrack a cheerful adventure feel. Piano and flute trade the tune, harp fills the gaps, and light spiccato chords supply the bounce. The lobby has no drums; PvP uses a restrained backbeat; raid phases gradually add percussion and upper strings without restarting the song. Closing phrases leave a breath and lead smoothly back to the opening key.
+## How it is made
 
-Recorded instruments retain the same short stereo room reflections. Victory, defeat and draw keep their finite result themes. Music respects the existing volume, mute, background-page handling and theme crossfades.
+- **The tunes** (`adventure-score.ts`): 32 bars of melody and chords per scene, played in the form statement, answer, quieter bridge, celebratory chorus, varied answer and homecoming (48 bars).
+- **The arrangements** (`retro-score.ts`): each scene's role above, a harmony line of chord tones a third to a sixth under the tune in the big sections (`below()`), and the result jingles.
+- **The voices** (`chip-synth.ts`), after the sound chips of old consoles:
+  - pulse waves at 12.5%, 25% and 50% duty (band-limited, from a Fourier series);
+  - a triangle that holds its level, as the chip's had no volume control;
+  - a pulse bass under a lowpass;
+  - a rapid chord arpeggio, one note every two 60 Hz frames;
+  - drums from noise held in steps of four samples for a chip's grit, and a kick that drops fast in pitch with a click a phone can hear.
+- **Details:** long notes get a delayed vibrato, and the leads send to a soft echo of three-quarters of a beat (`music-synth.ts`). Each note is one oscillator or noise source with a short envelope, released when it ends.
 
-## Recorded instruments
+The volume, mute, background-page handling and theme crossfades are as before (`audio.ts`).
 
-The bank uses CC0 public-domain recordings from Samuel Gossner / Versilian Studios:
+### Levels, measured
 
-- [Versilian Community Sample Library](https://github.com/sgossner/VCSL), revision `c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e`: Kawai grand piano, concert harp, bass drum, rope-tension snare, timpani and suspended cymbal.
-- [VSCO 2 Community Edition](https://github.com/sgossner/VSCO-2-CE), revision `440300901dfe9275fd84e0b7763af1f8443ae62e`: flute, violin section, cello section and French horn.
+Every theme was rendered whole offline in Chromium, at the default music volume, and measured over the full range and through a phone speaker's range (300 Hz to 9 kHz). Pulse waves are dense, so each theme carries a trim (`RETRO_GAIN`) that puts it where the recorded track it replaced sat. The triangle bass sits a little under the tune, since phones can't play it and it weighed on headphones.
 
-`apps/client/public/assets/music/sources.json` records each original URL, source SHA-256, processed SHA-256 and sounding root frequency. The CC0 license is alongside the files. Compositions and game code retain the repository's licensing.
+| Theme           | Retro, full / phone (dB) | Recorded, full / phone (dB) |
+| --------------- | ------------------------ | --------------------------- |
+| Lobby           | −52.4 / −52.6            | −52.9 / −51.3               |
+| Plaza           | −53.2 / −53.2            | −54.5 / −52.6               |
+| PvP             | −53.8 / −53.4            | −53.9 / −53.2               |
+| Raid (phase 1)  | −54.5 / −54.6            | −54.5 / −53.7               |
+| Spire (phase 1) | −55.0 / −55.2            | −54.9 / −54.3               |
+| Victory         | −52.9 / −53.2            | −52.0 / −52.9               |
+| Defeat          | −52.4 / −55.2            | −53.0 / −54.3               |
+| Draw            | −53.5 / −54.7            | −53.7 / −54.6               |
 
-Recordings are converted with FFmpeg to mono 32 kHz / 80 kbps MP3, normalized to a peak of 0.85 and trimmed to 1.2–7 seconds with a 150 ms tail fade. Root frequencies account for the libraries' differing octave conventions. Playback chooses the closest recorded pitch and applies short gain envelopes to prevent clicks.
-
-Samples ship locally and are included in the installed app's static precache. The bank loads once per audio context; background music waits for loading while result themes can play immediately. If individual samples cannot load, those instruments use synthesis as a fallback. No runtime music service or external downloads are required.
+No theme clips: the loudest peak is −26.6 dB at the music bus.
 
 ## Sound effects
 
