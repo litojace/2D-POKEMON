@@ -195,9 +195,19 @@ Ghi chú:
     `serverHz` 30 ở mọi trận; một tick chỉ thành tick bù khi trễ hơn một
     chu kỳ (33 ms). Có delta (#460) thì một lần gửi bù chỉ là một delta
     nhỏ, còn bỏ nó thì client thiếu mẫu nội suy.
-- **Chưa làm:** cache `authenticate` 30–60 s (làm chậm việc khoá tài khoản
-  đúng bằng thời gian cache, và nằm cạnh giới hạn của S1/S9: chủ game
-  quyết). S1/S9 đã làm ở #436; S7 là đợt E.
+- **Cache `authenticate`: không làm** (chủ game quyết, 25/11 12:12 PT).
+  - Chưa cần [đo trên log Render 18–25/11]: 0 dòng
+    `arena-account-check-failed`, 2 dòng `arena-auth-refused`, khoảng 12
+    trận một ngày; S3 đã rải việc kiểm tra tài khoản theo từng kết nối trong
+    30 s, nên không còn đợt dồn cùng một giây.
+  - Có giá: với cache, một tài khoản bị khoá, bị xoá hay đã đăng xuất vẫn
+    dùng được thêm đúng bằng thời gian cache.
+  - Xem lại khi log có `arena-account-check-failed` với 503 hay 429, khi
+    Supabase gần chạm giới hạn, hoặc khi menu chậm vì chờ kiểm tra đăng
+    nhập. Khi đó làm bản nhẹ: chỉ cache lần hợp lệ, tối đa 30 s, xoá ngay
+    khi tài khoản bị khoá hay xoá, không cache lần bị từ chối (để `io.use`
+    vẫn đếm đăng nhập sai, như S1/S9); hoặc xác minh JWT ngay trên server.
+- S1/S9 đã làm ở #436; S7 là đợt E.
 
 **S7 đã đo (25/11)** [đo]: theo từng trường 47–62% byte lặp lại, delta bớt
 68–78% byte mỗi người (FFA 139 → 44 KB/s); hiện không có nén WebSocket, và
