@@ -10,6 +10,11 @@ import {
   sessionCookieStorage,
   sharesSession,
 } from "../../../packages/shared/src/session-cookie";
+import {
+  browserDeviceHints,
+  rememberAppleChoice,
+  showAppleSignInAtOnce,
+} from "../../../packages/shared/src/apple-device";
 
 /** Written at deploy by tools/write-config.mjs from the Static Site's env. */
 interface SiteConfig {
@@ -159,8 +164,20 @@ if (!config.supabaseUrl || !config.supabaseAnonKey) {
       );
   });
 
+  // Apple devices show the Apple button; others keep it behind a small
+  // link (packages/shared/src/apple-device.ts), for players who made their
+  // account on an iPhone.
   const apple = $<HTMLButtonElement>("apple");
-  apple.hidden = !config.appleSignIn;
+  const appleReveal = $<HTMLButtonElement>("apple-reveal");
+  const appleAtOnce = showAppleSignInAtOnce(browserDeviceHints());
+  apple.hidden = !config.appleSignIn || !appleAtOnce;
+  appleReveal.hidden = !config.appleSignIn || appleAtOnce;
+  appleReveal.addEventListener("click", () => {
+    rememberAppleChoice();
+    apple.hidden = false;
+    appleReveal.remove();
+    apple.focus();
+  });
   apple.addEventListener("click", () => {
     const remember = ($("signin-remember") as HTMLInputElement).checked;
     if (cookie) cookie.remember(remember, KEY);
