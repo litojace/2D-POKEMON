@@ -5,6 +5,7 @@ import type { FxParticle } from "./skin-fx";
 import { sparkle } from "./skin-fx";
 import { auraFlourish, entranceFlourish, victoryFlourish } from "./tier-fx";
 import { RAID_DRAWN_ENTRANCES, type DrawnEntrance } from "./raid-entrance-fx";
+import { drawRaidAura } from "./raid-aura-fx";
 
 /**
  * The Shop's all-fighter collection pieces in play: auras under the fighter,
@@ -29,6 +30,8 @@ export const AURA_LIFT = 3;
  */
 /** The piece's own ring and items, without its rarity flourish. */
 export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, now: number, reduced: boolean, front?: G, flat: number = WORLD_ART.groundY, lift = AURA_LIFT) {
+  // The raid bosses' auras, in their bosses' looks (raid-aura-fx.ts).
+  if (drawRaidAura(g, id, x, y, now, reduced, front, flat, lift)) return true;
   const t = reduced ? 0 : now;
   /** Height of a floor ellipse this wide, on the aura's plane. */
   const groundHeight = (w: number) => w * flat;
@@ -155,66 +158,6 @@ export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, n
         gg.fillStyle(i % 2 ? 0xffb3cf : 0xfff0f5, 0.95 * f).fillTriangle(px - dx, py - dy, px + dx, py + dy, px - dy, py + dx * 0.6);
       });
       return true;
-    case "tidal-aura": {
-      // Tidewyrm's reward: a rolling ring of water with foam crests.
-      g.fillStyle(0x1f8fa6, 0.18).fillEllipse(x, y, 104, groundHeight(104));
-      g.lineStyle(3, 0x7fe9ff, 0.8).strokeEllipse(x, y, 96, groundHeight(96));
-      ring(10, 48, 20, 2600, (gg, px, py, i, _a, d, f) =>
-        gg.fillStyle(i % 2 ? 0xffffff : 0xbff6ff, 0.9 * f).fillCircle(px, py - 2 * d, 3.4 * d),
-        0,
-      );
-      return true;
-    }
-    case "spark-aura": {
-      g.lineStyle(1.5,0x9fe4ff,.55).strokeEllipse(x,y,100,groundHeight(100));
-      ring(8,48,19,5200,(gg,px,py,i,_a,d,f)=>{const color=i%2?0x8edfff:0xffe18b;gg.lineStyle(2*d,color,.95*f).lineBetween(px-3*d,py-5*d,px+1*d,py).lineBetween(px+1*d,py,px-2*d,py+5*d);});
-      return true;
-    }
-    case "ember-aura": {
-      g.lineStyle(2,0xffa66c,.8).strokeEllipse(x,y,100,groundHeight(100));
-      g.fillStyle(0xff8558,.1).fillEllipse(x,y,110,groundHeight(110));
-      ring(8,48,19,6200,(gg,px,py,i,_a,d,f)=>{const rise=reduced?0:Math.sin(now/1000+i)*5;gg.fillStyle(i%2?0xffd28b:0xff8765,.85*f).fillEllipse(px,py+(-5+rise)*d,3*d,6*d);});
-      return true;
-    }
-    case "halo-aura": {
-      g.lineStyle(3,0xffe5a0,.85).strokeEllipse(x,y,100,groundHeight(100));
-      g.lineStyle(1,0xfff3cf,.4).strokeEllipse(x,y,112,groundHeight(112));
-      ring(6,50,20,6500,(gg,px,py,i,_a,d,f)=>{ const color=[0xff899e,0xffd778,0x9aefb5,0x80e1ff,0xa5adff,0xe5a0ff][i];gg.fillStyle(color,.9*f).fillTriangle(px,py-6*d,px+4*d,py,px,py+6*d).fillTriangle(px,py-6*d,px-4*d,py,px,py+6*d); });
-      return true;
-    }
-    case "lullaby-aura": {
-      g.fillStyle(0x8977c5, 0.12).fillEllipse(x, y, 102, groundHeight(102));
-      g.lineStyle(1.5, 0xc9a3ff, 0.45).strokeEllipse(x, y, 98, groundHeight(98));
-      ring(6, 46, 19, 6000, (gg, px, py, i, _a, d, f) => {
-        const bob = (reduced ? 0 : Math.sin(now / 750 + i) * 3) * d;
-        const c = i % 2 ? 0xc9a3ff : 0xffdf8d;
-        gg.fillStyle(c, 0.9 * f).fillEllipse(px, py + bob, 5 * d, 3 * d);
-        gg.lineStyle(1.4 * d, c, 0.9 * f).lineBetween(px + 2 * d, py + bob, px + 2 * d, py - 10 * d + bob).lineBetween(px + 2 * d, py - 10 * d + bob, px + 7 * d, py - 7 * d + bob);
-      });
-      return true;
-    }
-    case "nightmote": {
-      // Gloomshade's reward: fireflies of lantern light circling beneath you.
-      g.fillStyle(0x2b2245, 0.22).fillEllipse(x, y, 100, groundHeight(100));
-      ring(7, 46, 19, 4400, (gg, px, py, i, _a, d, f) => {
-        const bob = reduced ? 0 : Math.sin(now / 350 + i * 1.3) * 4;
-        const blink = (reduced ? 1 : 0.55 + 0.45 * Math.abs(Math.sin(now / 500 + i * 2.1))) * f;
-        gg.fillStyle(0xffd27a, 0.25 * blink).fillCircle(px, py + (-6 + bob) * d, 7 * d);
-        gg.fillStyle(0xfff1c2, 0.95 * blink).fillCircle(px, py + (-6 + bob) * d, 2.6 * d);
-      });
-      return true;
-    }
-    case "mountain-aura": {
-      // Grumblecrag's reward: a golden ring of carved stone chips.
-      g.lineStyle(3, 0xffd28c, 0.75).strokeEllipse(x, y, 98, groundHeight(98));
-      g.lineStyle(1, 0xb88a52, 0.5).strokeEllipse(x, y, 110, groundHeight(110));
-      ring(8, 50, 20, 7000, (gg, px, py, i, _a, d, f) => {
-        const s = (i % 2 ? 4.2 : 3.2) * d;
-        gg.fillStyle(i % 2 ? 0x9b8466 : 0xc8a06a, 0.95 * f).fillTriangle(px - s, py, px, py - s * 1.1, px + s, py).fillTriangle(px - s, py, px, py + s * 0.6, px + s, py);
-        gg.fillStyle(0xffd28c, 0.8 * f).fillCircle(px, py - s * 0.3, 1.1 * d);
-      });
-      return true;
-    }
     case "seaside-aura": {
       // A ring of sea foam on the sand, and shells and starfish circling.
       g.lineStyle(2.4, 0xffffff, 0.55).strokeEllipse(x, y, 100, groundHeight(100));
