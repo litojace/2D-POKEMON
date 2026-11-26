@@ -1,7 +1,13 @@
 import { PwaAutoUpdate } from "./pwa-auto-update";
 import { lockLandscape } from "./orientation";
 import { registerSW } from "virtual:pwa-register";
-import { safeToUpdate, peerMatchActive } from "./pwa-policy";
+import {
+  safeToUpdate,
+  peerMatchActive,
+  HUB_BUSY_ATTR,
+  HUB_BUSY_EVENT,
+  typingIn,
+} from "./pwa-policy";
 import { fullscreenHelp, fullscreenPlatform } from "./fullscreen-help";
 import { isNativeApp } from "./native";
 interface InstallPrompt extends Event {
@@ -56,12 +62,18 @@ export function setupPWA(
     }
     return peerMatchActive(records, Date.now());
   };
+  // Busy in a hub scene itself (the Plaza's map, album, a player's card,
+  // fishing: HUB_BUSY_ATTR), or typing in a field (chat): the ask waits,
+  // and so does the quiet note, which would cover Reel! or the keyboard.
+  const sceneBusy = () =>
+    !!document.querySelector(`[${HUB_BUSY_ATTR}]`) ||
+    typingIn(document.activeElement as HTMLInputElement | null);
   // A dialog, or a hub screen opened inside the Lobby (ui/hub-panel.ts);
   // not one parked for its next open (the Shop, closed but kept).
   const menuOpen = () =>
     !!document.querySelector(
       "dialog[open], .ui-panel-host:not([data-ui-parked])",
-    );
+    ) || sceneBusy();
   const idle = () =>
     safeToUpdate(getPhase(), menuOpen()) &&
     !peers() &&
@@ -103,7 +115,10 @@ export function setupPWA(
     }
     // "Later" hides it until the snooze ends; a match only gets a quiet note.
     banner.hidden =
-      full || !automatic.pending || (safe && !asking && !automatic.accepted);
+      full ||
+      !automatic.pending ||
+      (safe && !asking && !automatic.accepted) ||
+      (!safe && sceneBusy());
     actions.hidden = !asking;
     if (!banner.hidden) {
       const text = automatic.accepted
@@ -199,6 +214,10 @@ export function setupPWA(
       attributeFilter: ["open"],
     });
   document.addEventListener("ui-panel-change", heartbeat);
+  document.addEventListener(HUB_BUSY_EVENT, heartbeat);
+  // Focus has moved by the time a task runs (during focusout it has not).
+  document.addEventListener("focusin", () => setTimeout(heartbeat));
+  document.addEventListener("focusout", () => setTimeout(heartbeat));
   setInterval(heartbeat, 10000);
   window.addEventListener("storage", paint);
   setInterval(() => void checkForUpdate(), 60000);
