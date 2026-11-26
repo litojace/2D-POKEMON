@@ -229,3 +229,6 @@ this move doesn't touch how the session is stored.
   (`POST /api/account/delete`, `{"ok":true}`); its password no longer
   signs in, and a check finds no row for it in `auth.users`,
   `auth.identities` or any of the 46 player-keyed `public.arena_*` columns.
+- 25 Nov, ~6:08 PM PT: the owner set the Change email address subject to
+  "Confirm your new Element Arena email". All four templates now carry our
+  subjects.
