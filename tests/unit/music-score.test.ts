@@ -31,7 +31,9 @@ it("intensifies the final raid and Spire phases with additional percussion", () 
       Array.from({ length: 16 }, (_, s) => scoreStep(theme, s, phase))
         .flat()
         .filter((n) =>
-          ["chip-kick", "chip-snare", "chip-hat"].includes(n.instrument),
+          ["pro-kick", "pro-snare", "pro-hat", "pro-ohat"].includes(
+            n.instrument,
+          ),
         ).length;
     expect(count(3), theme).toBeGreaterThan(count(2));
     expect(count(2), theme).toBeGreaterThan(count(1));

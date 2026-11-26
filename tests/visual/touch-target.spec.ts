@@ -9,8 +9,9 @@ import {
 } from "./helpers";
 
 /**
- * The target button on phones (touch-controls.ts, mobile-input.ts): over
- * Dash, where the right thumb reaches from the skills. A tap locks the
+ * The target button on phones (touch-controls.ts, mobile-input.ts): at the
+ * cluster's right edge over the basic attack, where the right thumb reaches
+ * from the skills (it turns into the cancel spot while a skill is dragged). A tap locks the
  * nearest enemy on screen, the next tap the next one, and past the last one
  * it lets go; it is off while no enemy is on screen (owner, 18 Nov 2026).
  */
@@ -127,16 +128,16 @@ for (const phone of PHONES)
       expect(clash).toEqual([]);
       const box = (await aim.boundingBox())!;
       expect(box.width).toBeGreaterThanOrEqual(44);
-      // Near the right thumb: over Dash, at the cluster's right edge
-      // (a few pixels right of Dash's centre, to clear the ultimate).
-      const dash = (await page
-        .locator('.touch-buttons [data-action="dash"]')
+      // Near the right thumb: the cluster's right edge, over the basic
+      // attack in the corner (the corner layout, 26 Nov 2026).
+      const basic = (await page
+        .locator('.touch-buttons [data-action="attack"]')
         .boundingBox())!;
       if (!phone.name.includes("compact")) {
         expect(
-          Math.abs(box.x + box.width / 2 - (dash.x + dash.width / 2)),
-        ).toBeLessThan(12);
-        expect(box.y + box.height).toBeLessThan(dash.y);
+          Math.abs(box.x + box.width - (basic.x + basic.width)),
+        ).toBeLessThan(2);
+        expect(box.y + box.height).toBeLessThan(basic.y);
       }
       await snap(page, info, `touch-target-${phone.name}`);
 

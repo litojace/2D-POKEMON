@@ -88,7 +88,7 @@ assert(
   !urls.some((url) => /^assets\/town-/.test(url)),
   "The old town's art must not be precached",
 );
-// The soundtrack is synthesized (retro-score.ts): no instrument recordings.
+// The soundtrack is synthesized (pro-score.ts): no instrument recordings.
 assert(
   !urls.some((url) => url.startsWith("assets/music/")),
   "The retired instrument samples must not be precached",

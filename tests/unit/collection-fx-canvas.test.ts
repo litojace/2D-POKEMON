@@ -11,6 +11,7 @@ it("draws Look effects only with calls the thumbnail canvas has", () => {
   const fx = [
     "apps/client/src/skins/collection-fx.ts",
     "apps/client/src/skins/raid-entrance-fx.ts",
+    "apps/client/src/skins/raid-aura-fx.ts",
   ]
     .map((f) => readFileSync(f, "utf8"))
     .join("\n");
