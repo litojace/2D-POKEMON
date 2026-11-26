@@ -24,7 +24,6 @@ const progress = (clears: number): RaidProgress => ({
   bestSeconds: 0,
   titles: [],
   cosmetics: [],
-  weekly: [],
   bosses: clears
     ? {
         grumblecrag: {

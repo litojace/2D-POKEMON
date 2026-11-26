@@ -1443,9 +1443,10 @@ export function createArenaServer(
         peril: r.peril,
         trait: r.trait,
         gilded: r.gilded,
+        // Still read by the database (RaidReceipt): not raid modes.
         weekly: false,
         week: raidWeek(new Date(`${r.day}T12:00:00Z`)),
-        daily: r.daily,
+        daily: false,
         day: r.day,
         feat: arena.feat(),
         seed: r.seed,
@@ -1485,7 +1486,7 @@ export function createArenaServer(
                 skin: lookFor(p),
                 raid: {
                   cleared: r.result === "victory",
-                  daily: r.daily,
+                  daily: false,
                   peril: r.peril,
                   flawless: r.downs === 0,
                   feat: arena.feat(),
@@ -2958,7 +2959,8 @@ export function createArenaServer(
           cb,
           "Only the raid host can change the challenge in the lobby.",
         );
-      // Raids have one difficulty now (Peril 3); old clients may still ask.
+      // Raids have one difficulty now (Peril 3); old clients may still ask,
+      // and send `daily: false` (Raid of the Day is retired: true is refused).
       const result = z
         .object({
           peril: z.number().int().min(1).max(3),

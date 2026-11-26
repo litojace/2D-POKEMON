@@ -172,7 +172,7 @@ async function startFight(page: Page, scenario: Scenario) {
           a.add(i ? `p${i + 1}` : "me", `Player ${i + 1}`, c),
         );
         a.players.forEach((p: any, i: number) => m.dressUp(p, i));
-        if (scenario === "raid4") a.configure(1, false);
+        if (scenario === "raid4") a.configure(1);
         a.start();
         a.phase = "playing";
         a.deadline = a.time + 1e6;

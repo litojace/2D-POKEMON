@@ -63,7 +63,7 @@ const arena = (
   const a = createRaidArena("ASC", "grumblecrag", { variant }) as Inner;
   const team: CharacterId[] = ["voltkit", "terradon", "lumoth", "cindrake"];
   team.slice(0, size).forEach((c, i) => a.add("p" + i, "P" + i, c));
-  a.configure(3, false);
+  a.configure(3);
   a.start();
   a.phase = "playing";
   a.deadline = a.time + 600;
@@ -134,7 +134,7 @@ describe("the Ascendant tier", () => {
     }
     const a = new Tuned("T") as unknown as Inner;
     a.add("p0", "P", "voltkit");
-    a.configure(3, false);
+    a.configure(3);
     a.start();
     expect(a.telegraph("charge", 1.6)).toBe(RAID_TELEGRAPH_FLOOR);
     expect(a.telegraph("debris", 2.4)).toBeCloseTo(1.2);

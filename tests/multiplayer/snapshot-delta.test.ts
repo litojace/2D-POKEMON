@@ -71,7 +71,6 @@ async function setup(
     clears: 1,
     highestPeril: 3,
     cosmetics: [],
-    weekly: [],
     bosses: { grumblecrag: { clears: 1, highestPeril: 3 } },
   });
   accounts.provider.recordRaid = async () => {};

@@ -1153,7 +1153,6 @@ for (const view of [
           bestSeconds: null,
           titles: [],
           cosmetics: ["conductor-frame"],
-          weekly: [],
         };
       });
       const errors = await openLobby(page);
@@ -1380,7 +1379,6 @@ const SPIRE_OPEN = {
     bestSeconds: 200,
     titles: [],
     cosmetics: [],
-    weekly: [],
     earned: [],
     bosses: {
       grumblecrag: { clears: 1, highestPeril: 1, bestSeconds: 200, runs: 1 },
