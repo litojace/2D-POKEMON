@@ -73,6 +73,15 @@ export const FULL_RULES = [
 const docsOnly = (f) => /^docs\//.test(f) || /\.md$/i.test(f);
 
 /**
+ * The website's images and fonts (apps/site, a static page apart from the
+ * game): nothing in the game, its build or its tests reads them, and a
+ * page refresh adds dozens at once, so they don't count toward
+ * MAX_FAST_FILES. The site's HTML, CSS and tools still do.
+ */
+const siteAsset = (f) =>
+  /^apps\/site\/(.*\.(webp|avif|png|jpe?g|svg|ico)|fonts\/.*)$/i.test(f);
+
+/**
  * The lane for these changed files: FAST, or FULL with every reason found
  * (one line per rule, naming the first file that matched it).
  */
@@ -84,9 +93,10 @@ export function mergeLane(files) {
     const hit = checked.find((f) => rule.test(f));
     if (hit) reasons.push(`${why} (${hit})`);
   }
-  if (checked.length > MAX_FAST_FILES)
+  const counted = checked.filter((f) => !siteAsset(f));
+  if (counted.length > MAX_FAST_FILES)
     reasons.push(
-      `${checked.length} files change (more than ${MAX_FAST_FILES} to check by hand)`,
+      `${counted.length} files change (more than ${MAX_FAST_FILES} to check by hand)`,
     );
   return {
     lane: reasons.length ? "FULL" : "FAST",

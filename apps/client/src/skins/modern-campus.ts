@@ -1,5 +1,5 @@
 import type { CharacterId } from "@arena/shared";
-import { DESIGNS, backPanel, hatShape, headStrap, onPole, torso, type Design, type Kit } from "./modern-designs";
+import { DESIGNS, backUnder, hatShape, headStrap, onPole, torso, type Design, type Kit } from "./modern-designs";
 
 /**
  * Neon Campus for the rest of the roster: every champion belongs to its own
@@ -22,7 +22,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
   // something bubbling and glowing in the pocket; its own flame kept.
   cindrake(k) {
     const coat = "#f4f4f8";
-    if (k.back) backPanel(k, coat, k.line(`M${k.C} ${k.T + 4}V${k.B}`, "#d8d8e0", 1));
+    if (k.back) backUnder(k, coat, k.line(`M${k.C} ${k.T + 4}V${k.B}`, "#d8d8e0", 1));
     else {
       const c = cx(k);
       const px = c + (k.side ? k.side * 6 : 10);
@@ -44,7 +44,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
   // council badge, and a neat ribbon between the ears.
   auralynx(k) {
     const blazer = "#2f3f8c";
-    if (k.back) backPanel(k, blazer);
+    if (k.back) backUnder(k, blazer);
     else {
       const c = cx(k);
       k.put("body", torso(k, blazer, collar(k, c, "#c8323a", true) +
@@ -61,7 +61,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
   // light blinks, and a press-pass lanyard.
   lumoth(k) {
     const knit = "#c9b07a";
-    if (k.back) backPanel(k, knit, k.line(`M${k.C - k.W} ${k.T + 2}L${k.C + k.W} ${k.B - 4}`, "#3a3a48", 1.6));
+    if (k.back) backUnder(k, knit, k.line(`M${k.C - k.W} ${k.T + 2}L${k.C + k.W} ${k.B - 4}`, "#3a3a48", 1.6));
     else {
       const c = cx(k);
       k.put("body", torso(k, knit, collar(k, c, "#2f6b4f", true) + [0, 1, 2].map((i) => k.circle(c, k.T + 11 + i * 5, 0.9, "#7a5a2c", "none", 0)).join("")));
@@ -83,7 +83,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
       gold = "#f2c14e";
     const masks = (x: number, y: number) =>
       k.path(`M${x - 6} ${y - 4}q3 -2 6 0v4q-3 4 -6 0Z`, "#fff3c4", k.ink, 0.5) + k.path(`M${x} ${y - 2}q3 -2 6 0v4q-3 4 -6 0Z`, "#c9a3e7", k.ink, 0.5);
-    if (k.back) backPanel(k, velvet, k.line(`M${k.C - k.W} ${k.B - 3}H${k.C + k.W}`, gold, 1.6));
+    if (k.back) backUnder(k, velvet, k.line(`M${k.C - k.W} ${k.B - 3}H${k.C + k.W}`, gold, 1.6));
     else {
       const c = cx(k);
       k.put("body", torso(k, velvet, k.line(`M${k.L} ${k.B - 3}H${k.R}`, gold, 1.6)) + k.lume("pulse", masks(c, k.T + 12), 0, "#ffd27a"));
@@ -112,7 +112,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
   // blink, and an antenna headband with a light on top.
   coilemur(k) {
     const denim = "#3a5a8c";
-    if (k.back) backPanel(k, denim, k.rect(k.C - k.W - 2, k.B - 10, 2 * k.W + 4, 4, 0, "#7a5a3a"));
+    if (k.back) backUnder(k, denim, k.rect(k.C - k.W - 2, k.B - 10, 2 * k.W + 4, 4, 0, "#7a5a3a"));
     else {
       const c = cx(k);
       k.put("body", torso(k, denim, k.rect(c - 9, k.T, 18, 14, 2, "#4a6aa0", k.ink, 0.6) + k.rect(k.L - 2, k.B - 10, k.R - k.L + 4, 4, 0, "#7a5a3a") +
@@ -129,7 +129,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
   // candle held at the pocket.
   pyranda(k) {
     const apron = "#fff3e6";
-    if (k.back) backPanel(k, "#d9572b", k.path(`M${k.C - 6} ${k.T + 14}l6 4l6 -4l-2 6h-8Z`, apron, k.ink, 0.6));
+    if (k.back) backUnder(k, "#d9572b", k.path(`M${k.C - 6} ${k.T + 14}l6 4l6 -4l-2 6h-8Z`, apron, k.ink, 0.6));
     else {
       const c = cx(k);
       k.put("body", torso(k, "#d9572b", k.path(`M${c - 12} ${k.T + 2}H${c + 12}L${c + 14} ${k.B + 4}H${c - 14}Z`, apron, k.ink, 0.8) + k.rect(c - 6, k.T + 16, 12, 7, 1, "#f2dcc8", k.ink, 0.5)));
@@ -150,7 +150,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
     const robe = "#2c5f8c",
       stole = "#ffd84a";
     const note = (x: number, y: number, i: number) => k.lume("twinkle", k.circle(x, y, 1.6, "#ffffff", "none", 0) + k.line(`M${x + 1.5} ${y}v-6l3 1`, "#ffffff", 0.8), i, "#ffffff");
-    if (k.back) backPanel(k, robe, k.path(`M${k.C - 10} ${k.T - 1}L${k.C} ${k.T + 12}L${k.C + 10} ${k.T - 1}`, "none", stole, 3));
+    if (k.back) backUnder(k, robe, k.path(`M${k.C - 10} ${k.T - 1}L${k.C} ${k.T + 12}L${k.C + 10} ${k.T - 1}`, "none", stole, 3));
     else {
       const c = cx(k);
       k.put("body", torso(k, robe, k.path(`M${c - 12} ${k.T - 2}L${c - 6} ${k.B + 4}M${c + 12} ${k.T - 2}L${c + 6} ${k.B + 4}`, "none", stole, 4) +
@@ -161,7 +161,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
   // and a sweatband.
   halcyra(k) {
     const shirt = "#f4f1ea";
-    if (k.back) backPanel(k, shirt);
+    if (k.back) backUnder(k, shirt);
     else {
       const c = cx(k);
       k.put("body", torso(k, shirt, k.path(`M${c - 12} ${k.T + 2}L${c + 4} ${k.T + 2}L${c + 2} ${k.B - 6}L${c - 12} ${k.B - 4}Z`, "#3a3a48", k.ink, 0.7) + k.line(`M${k.L} ${k.T + 2}L${k.R} ${k.B - 4}`, "#7a4a24", 2)));
@@ -177,7 +177,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
     const navy = "#2a2f6e";
     const pins = (x0: number, y0: number) => [[0, 0], [5, 3], [9, -1], [13, 4]].map(([dx, dy], i) => k.lume("chase", k.circle(x0 + dx, y0 + dy, 1.1, "#fff3a8", "none", 0), i, "#fff3a8")).join("") +
       k.line(`M${x0} ${y0}L${x0 + 5} ${y0 + 3}L${x0 + 9} ${y0 - 1}L${x0 + 13} ${y0 + 4}`, "#fff3a855", 0.6);
-    if (k.back) backPanel(k, navy, pins(k.C - 6, k.T + 12));
+    if (k.back) backUnder(k, navy, pins(k.C - 6, k.T + 12));
     else {
       const c = cx(k);
       k.put("body", torso(k, navy, collar(k, c, "#ffd84a", true) + pins(c - 12, k.T + 16)));
@@ -187,7 +187,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
   // first leaves glow.
   wombolder(k) {
     const denim = "#5a7a3a";
-    if (k.back) backPanel(k, denim);
+    if (k.back) backUnder(k, denim);
     else {
       const c = cx(k);
       k.put("body", torso(k, "#f4ead0", k.path(`M${c - 12} ${k.T + 6}H${c + 12}V${k.B + 4}H${c - 12}Z`, denim, k.ink, 0.7) + k.line(`M${c - 10} ${k.T}V${k.T + 6}M${c + 10} ${k.T}V${k.T + 6}`, denim, 2.4) +
@@ -205,7 +205,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
   // whose lens catches the light.
   shadopus(k) {
     const tweed = "#7a6a4a";
-    if (k.back) backPanel(k, tweed);
+    if (k.back) backUnder(k, tweed);
     else {
       const c = cx(k);
       k.put("body", torso(k, tweed, collar(k, c, "#2a2a36") + k.path(`M${k.L - 2} ${k.T}L${c - 6} ${k.T + 14}L${k.L - 2} ${k.T + 20}Z M${k.R + 2} ${k.T}L${c + 6} ${k.T + 14}L${k.R + 2} ${k.T + 20}Z`, "#6a5a3a", k.ink, 0.7)));
@@ -226,7 +226,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
   // lights run round.
   pangrove(k) {
     const jacket = "#c8323a";
-    if (k.back) backPanel(k, jacket, k.line(`M${k.C - k.W} ${k.T + 2}L${k.C + k.W} ${k.B - 4}M${k.C + k.W} ${k.T + 2}L${k.C - k.W} ${k.B - 4}`, "#ffffff", 1.6));
+    if (k.back) backUnder(k, jacket, k.line(`M${k.C - k.W} ${k.T + 2}L${k.C + k.W} ${k.B - 4}M${k.C + k.W} ${k.T + 2}L${k.C - k.W} ${k.B - 4}`, "#ffffff", 1.6));
     else {
       const c = cx(k);
       k.put("body", torso(k, jacket, k.line(`M${k.L} ${k.T + 2}L${c} ${k.T + 14}L${k.R} ${k.T + 2}`, "#ffffff", 1.6) + [0, 1, 2].map((i) => k.circle(c, k.T + 16 + i * 5, 1, "#ffd84a", "none", 0)).join("")));
@@ -246,7 +246,7 @@ export const CAMPUS: Partial<Record<CharacterId, Design>> = {
   mossloth(k) {
     const pj = "#9ab8e8";
     const dots = (x0: number, y0: number, w: number, h: number) => [0, 1, 2, 3, 4, 5].map((i) => k.circle(x0 + ((i * 0.41) % 1) * w, y0 + ((i * 0.67) % 1) * h, 1.2, "#ffffff", "none", 0)).join("");
-    if (k.back) backPanel(k, pj, dots(k.C - k.W + 2, k.T + 4, 2 * k.W - 4, k.B - k.T - 8));
+    if (k.back) backUnder(k, pj, dots(k.C - k.W + 2, k.T + 4, 2 * k.W - 4, k.B - k.T - 8));
     else {
       const c = cx(k);
       k.put("body", torso(k, pj, dots(k.L + 2, k.T + 4, k.R - k.L - 4, k.B - k.T - 8) + k.line(`M${c} ${k.T + 2}V${k.B}`, "#7a98c8", 1) + collar(k, c, "#7a98c8", true)));

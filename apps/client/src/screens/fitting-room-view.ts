@@ -1193,19 +1193,33 @@ function mythicTile(id: string, view: FitView, d: FitData) {
     `<small class="ui-tile-sub">${esc(progress)}</small>`,
   );
 }
+/**
+ * Look pieces sold on their own, outside any set (LOOK_SINGLES in shop.ts):
+ * the last chip of the Collections row, with no set row and no bonus.
+ */
+const SINGLES = LOOK_ITEMS.filter((i) => i.collection === "singles").map(
+  (i) => i.id,
+);
 function collectionsBody(view: FitView, d: FitData) {
   const e = d.economy!;
+  const chip = (collection: FitView["collection"], items: string[]) =>
+    `<button type="button" class="ui-chip" data-fit-collection="${collection}" aria-pressed="${collection === view.collection}">${esc(COLLECTION_NAMES[collection])}<span class="ui-tag">${items.filter((i) => e.owned.includes(i)).length}/${items.length}</span></button>`;
   const picker = `<div class="ui-chips fit-collections" role="group" aria-label="Collection">${SHOP_BUNDLES.map(
-    (b) =>
-      `<button type="button" class="ui-chip" data-fit-collection="${b.collection}" aria-pressed="${b.collection === view.collection}">${esc(COLLECTION_NAMES[b.collection])}<span class="ui-tag">${b.items.filter((i) => e.owned.includes(i)).length}/${b.items.length}</span></button>`,
-  ).join("")}</div>`;
+    (b) => chip(b.collection, b.items),
+  ).join("")}${SINGLES.length ? chip("singles", SINGLES) : ""}</div>`;
+  const trying = `trying on ${esc(CHARACTERS[view.champion].name)}`;
+  if (view.collection === "singles")
+    return `<p class="ui-note">Pieces sold on their own, each a theme of its own · ${trying}.</p>${picker}${grid(
+      SINGLES.map((id) => shopTile(id, view, d)).join(""),
+      4,
+    )}${skinSets(view, d)}`;
   const set = SHOP_BUNDLES.find((b) => b.collection === view.collection)!;
   const skins = CHAMPION_SKINS.filter((c) => c.collection === set.collection);
   const have = skins.filter((c) => e.owned.includes(c.id)).length;
   const bonus = skins.length
     ? `<p class="ui-note">Own all ${skins.length} ${esc(COLLECTION_NAMES[set.collection])} fighter skins and the frame is yours free (${have}/${skins.length}).</p>`
     : "";
-  return `<p class="ui-note">Colors and effects for every fighter · trying on ${esc(CHARACTERS[view.champion].name)}.</p>${picker}${bundleRow(set.id, view, d)}${bonus}${grid(
+  return `<p class="ui-note">Colors and effects for every fighter · ${trying}.</p>${picker}${bundleRow(set.id, view, d)}${bonus}${grid(
     set.items.map((id) => shopTile(id, view, d)).join(""),
     5,
   )}${skinSets(view, d)}`;

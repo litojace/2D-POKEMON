@@ -1,0 +1,59 @@
+/* The picture before it is shared or saved (share-preview.ts). Loaded with
+   it, only when a picture is shared. */
+.share-preview {
+  padding: max(8px, var(--safe-top)) max(16px, var(--safe-right))
+    max(8px, var(--safe-bottom)) max(16px, var(--safe-left));
+}
+/* As wide as the picture can be with the buttons still on screen: the
+   card is 1200×630, the hint and the action bar take about 120 px. */
+.sp-modal {
+  width: min(
+    760px,
+    100%,
+    calc(
+      (
+          100dvh - max(8px, var(--safe-top)) - max(8px, var(--safe-bottom)) -
+            122px
+        ) *
+        1200 / 630 + 24px
+    )
+  );
+}
+.sp-body {
+  display: grid;
+  gap: 8px;
+  padding: 12px 12px 8px;
+}
+.sp-picture {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1200 / 630;
+  border-radius: var(--rad-md);
+  box-shadow: var(--shadow-1);
+  /* The one picture whose system menu stays (Save to Photos, Download
+     image); touch-hold.ts lets its long press through as well. */
+  -webkit-touch-callout: default;
+}
+.sp-hint {
+  margin: 0;
+  min-height: 1.3em;
+  text-align: center;
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.sp-hint[hidden] {
+  display: none;
+}
+.sp-modal > .sp-actions {
+  justify-content: end;
+  padding: var(--sp-2) var(--sp-3);
+  border-top: 1px solid var(--ui-line);
+  background: var(--fill-bar);
+}
+/* One width for every button in the bar (the shared layout rule), wide
+   enough for the longest label. */
+.sp-actions > .ui-btn {
+  min-width: 8.5em;
+  justify-content: center;
+}

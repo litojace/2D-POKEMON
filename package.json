@@ -28,6 +28,7 @@
     "@playwright/test": "^1.56.0",
     "concurrently": "^9.2.0",
     "fake-indexeddb": "6.2.5",
+    "jsqr": "1.4.0",
     "pg": "8.23.1",
     "prettier": "^3.9.10",
     "typescript": "^5.9.0",
