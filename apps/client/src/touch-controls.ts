@@ -175,7 +175,7 @@ export class TouchControls {
         .join("") +
       `<button type="button" class="touch-target" data-aim disabled aria-label="Target: no enemy on screen">${AIM_ICON}</button>` +
       '<div class="touch-aim-wheel" aria-hidden="true"><span></span></div>' +
-      `<div class="touch-cancel" aria-hidden="true">${CANCEL_ICON}<small>CANCEL</small></div>` +
+      `<div class="touch-cancel" aria-hidden="true">${CANCEL_ICON}</div>` +
       "</div></div>";
     this.wheel = root.querySelector<HTMLElement>(".touch-aim-wheel")!;
     this.wheelKnob = this.wheel.querySelector<HTMLElement>("span")!;

@@ -35,7 +35,8 @@ and covers about the same share of the screen.
 - Dragging picks the direction; for spots and enemy picks, how far the
   finger goes into the drag circle picks how far.
 - Back at the middle of the drag, or over the cancel spot (the target
-  button turns into a ✕ while a skill is dragged), lifting cancels.
+  button turns into a red ✕ while a skill is dragged, with no word under
+  it: the gap to skill 3 has no room for one), lifting cancels.
 - Skills that never read the aim (novas, buffs, shields, decoys, and a
   zone that follows the caster) still fire on the press, and below a full
   meter the ultimate button arms EX on the press.

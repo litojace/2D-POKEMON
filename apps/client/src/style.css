@@ -1415,16 +1415,6 @@ dialog input[type="range"] {
   width: 44%;
   height: 44%;
 }
-.touch-cancel small {
-  position: absolute;
-  top: 100%;
-  margin-top: 3px;
-  font: 800 calc(10px * var(--text-scale, 1)) / 1 var(--font-display);
-  letter-spacing: 0.08em;
-  color: #ffd0d5;
-  text-shadow: 0 1px 3px #000;
-  white-space: nowrap;
-}
 .touch-buttons .touch-target.is-under-cancel {
   visibility: hidden;
 }
