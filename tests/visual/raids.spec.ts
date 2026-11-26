@@ -705,7 +705,11 @@ for (const size of [SIZES[1], SIZES[4]])
                     const wide = [...range.getClientRects()].some(
                       (r) => r.right > right + 0.5,
                     );
-                    return wide || b.scrollHeight > b.clientHeight + 1
+                    // Nor cut by the card's two-line text area (titles).
+                    const below =
+                      b.getBoundingClientRect().bottom >
+                      b.parentElement!.getBoundingClientRect().bottom + 0.5;
+                    return wide || below || b.scrollHeight > b.clientHeight + 1
                       ? [`name cut: ${b.textContent}`]
                       : [];
                   }),

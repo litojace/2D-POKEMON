@@ -1038,6 +1038,18 @@ button.rh-reward:focus-visible {
   .rh-rewards.is-all > .rh-reward:not(.is-open) .rh-reward-text {
     gap: 1px;
   }
+  /* A closed title card keeps two lines of text, as before names could
+     wrap: a name on one line and its rule under it, or a name on two
+     lines (2 x 1.4em: 33.6 px; one line and the rule are 33.2 px) and the
+     rule, cut short anyway, then under the fold until a tap opens the card.
+     So whole names cost the titles' rows no height (glass.spec.ts, "less
+     scrolling"). The bar is placed on the card, so it isn't clipped. */
+  .rh-rewards.is-all
+    > .rh-reward[data-reward-kind="title"]:not(.is-open)
+    .rh-reward-text {
+    max-height: 2.8em;
+    overflow: hidden;
+  }
   .rh-rewards.is-all > .rh-reward:not(.is-open) .rh-reward-text > .ui-bar {
     position: absolute;
     left: 6px;
