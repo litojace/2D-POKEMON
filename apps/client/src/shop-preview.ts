@@ -25,7 +25,8 @@ import {
   SELECTION_PREVIEW,
   SHOP_PREVIEW,
   previewZoom,
-  shopPreviewZoom,
+  shopPreviewCamera,
+  fitDrop,
   previewViewBox,
   previewAuraScale,
   SHOP_SHADOW,
@@ -158,8 +159,14 @@ export function mountShopPreview(
     // A little stretch (the Shop's 1.05 at 1×) isn't worth more memory.
     return wanted <= 1.25 ? 1 : Math.min(4, Math.ceil(wanted * 2) / 2);
   };
-  const cameraZoom = () =>
-    selection ? previewZoom(action) : shopPreviewZoom(action, viewportHeight);
+  /** The band at the canvas's top the fighter keeps clear of, in viewport
+   *  units (the stage's --fit-drop: a phone's Entrance and Victory buttons;
+   *  shop-preview-layout.ts shopPreviewCamera). Measured on resize. */
+  let topBand = 0;
+  const camera = () =>
+    selection
+      ? { zoom: previewZoom(action), centerY: framing.cameraY }
+      : shopPreviewCamera(action, viewportHeight, topBand);
   /** Moved into a new panel (updatePanel's keepPose): drawing waits for
    *  its first paint, and Phaser re-reads its parent at the first measure. */
   let settling = false,
@@ -187,6 +194,7 @@ export function mountShopPreview(
     const nextHeight = selection
       ? framing.height
       : Math.max(1, Math.round((framing.width * height) / width));
+    if (!selection) topBand = (fitDrop(host) * framing.width) / width;
     const nextResolution = resolutionFor(nextHeight);
     if (
       viewportHeight !== nextHeight ||
@@ -209,7 +217,10 @@ export function mountShopPreview(
       ])
         host
           .querySelector(part)
-          ?.setAttribute("viewBox", previewViewBox(action, viewportHeight));
+          ?.setAttribute(
+            "viewBox",
+            previewViewBox(action, viewportHeight, topBand),
+          );
     scene.paintFloor();
     dirty = true;
     syncLoop();
@@ -654,9 +665,10 @@ export function mountShopPreview(
         greet: action === "entrance" && t < 3.5,
         victory: action === "victory" && t < 3.5,
       };
+      const view = camera();
       this.cameras.main
-        .setZoom(cameraZoom() * resolution)
-        .centerOn(framing.x, framing.cameraY);
+        .setZoom(view.zoom * resolution)
+        .centerOn(framing.x, view.centerY);
       this.aura.clear();
       this.auraFront.clear();
       const auraId = look.aura;
