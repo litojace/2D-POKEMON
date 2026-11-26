@@ -102,3 +102,24 @@ Lobby.
 Checks for each theme: the screens at 667×375, 844×390, 852×393 with the
 island inset and desktop, looked at box by box; `battle-style-budget` and
 `panel-open-budget` with the theme on; one sweep spec per theme.
+
+## Poster (`themes/poster/`)
+
+Ink black and the Lobby fighter's element colour, nothing rounded, hard
+offset shadows; Anton capitals and Archivo text. Files: `fonts.css` (and
+`fonts/`, with the two OFL licences), `tokens.css` (the shared tokens
+re-pointed: most of the look), `kit.css` (panels, tabs, buttons, tiles,
+rows, toast), `lobby.css` (the Lobby and the hub's top bar), `screens.css`
+(what single screens, the battle HUD, the result and raid sheets and the
+raid room need). Sweep: `tests/visual/poster.spec.ts`.
+
+- The Lobby's ink slab and its white stripe are pseudo-elements; the only
+  markup the look adds is `.lobby-bigname` in the Lobby's backdrop (the
+  fighter's name, hidden in the look underneath).
+- The Lobby's cards keep the look underneath's widths on phones: the notice
+  above the stage is sized to clear them.
+- Three `!important`s, each with its reason beside it: PLAY's colour and
+  font (the Lobby sets them so) and the rank's name on your own row of the
+  ladder (its colour is inline).
+- Inside a Fighters card `--el` is that card's element colour
+  (`roster-view.ts` sets it), not the Lobby fighter's.
