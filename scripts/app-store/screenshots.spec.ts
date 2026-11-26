@@ -133,7 +133,7 @@ export const SCENES: Scene[] = [
         a.add("p2", "Frost", "glacelle");
         a.add("p3", "Moss", "pangrove");
         a.add("p4", "Hoot", "mystowl");
-        a.configure(1, false);
+        a.configure(1);
         a.start();
         a.phase = "playing";
         a.raid.gilded = false;

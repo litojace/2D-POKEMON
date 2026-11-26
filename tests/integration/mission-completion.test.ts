@@ -85,6 +85,7 @@ const raidFields = (
     ...changes,
   },
 });
+/** What the server sends, or (cast) a retired receipt an old server sent. */
 const record = async (p: ActivityReceipt) => {
   await db.exec("reset role;set role service_role");
   await db.query("select public.arena_record_activity($1::jsonb)", [
@@ -213,14 +214,16 @@ it("carries leftover seconds across short bot matches and raids", async () => {
 
 it("rejects retired activity modes before crediting missions or writing a receipt", async () => {
   await give(["skills-30", "ults-8", "raid-p3"]);
-  const p = await receipt("expedition", {
+  // A Boss Rush receipt, as servers sent before migration 028 retired it.
+  const p = (await receipt("match", {
     mode: "raid",
     botLevel: null,
     skillUses: 30,
     ults: 8,
     activeSeconds: 120,
     expedition: { completed: 3 },
-  });
+  } as Partial<ActivityPlayer>)) as unknown as ActivityReceipt;
+  (p as { kind: string }).kind = "expedition";
   await db.exec("savepoint retired_activity");
   await expect(record(p)).rejects.toThrow("retired");
   await db.exec("rollback to savepoint retired_activity;reset role");
@@ -276,7 +279,11 @@ it("keeps earned mission progress and coins when retirement is applied again", a
 });
 
 it("rejects daily raid activity before any reward or mission changes", async () => {
-  const p = await receipt("raid", raidFields({ daily: true }));
+  // A Raid of the Day receipt, as servers sent before migration 028.
+  const p = await receipt(
+    "raid",
+    raidFields({ daily: true } as unknown as { daily: false }),
+  );
   await db.exec("savepoint retired_daily");
   await expect(record(p)).rejects.toThrow("retired");
   await db.exec("rollback to savepoint retired_daily;reset role");

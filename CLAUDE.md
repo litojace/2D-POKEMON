@@ -229,7 +229,9 @@ must stay within what we already ship. Details and measurements:
   screen's markup sets instead (`profile-view.ts`, `has-account`). Such
   rules twice made battle style work several times heavier (15 Nov; 25 Nov,
   a Pixel 8a at 23–29 fps: `docs/network-performance.md` section 14).
-  `tests/unit/css-has-rules.test.ts` catches the `> *` form. After changing
+  `tests/unit/css-has-rules.test.ts` catches the `> *` form and any new
+  `:has()` on `body`, `html`, `:root` or a `dialog` (the older ones are
+  listed there, `KNOWN_PAGE_HAS`: that list may only shrink). After changing
   CSS or battle UI, run `tests/visual/battle-style-budget.spec.ts` (about
   30 s): it counts the elements restyled per recalculation in a real duel.
 - **Test scenarios that swap in a new arena** in the same page must carry on

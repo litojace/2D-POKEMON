@@ -88,7 +88,7 @@ const raid = (key: Boss, size: number) => {
   const [boss, variant] = key.split(":") as [RaidBossId, RaidVariant?];
   const a = createRaidArena("FAIR", boss, { variant }) as Inner;
   TEAM.slice(0, size).forEach((c, i) => a.add("p" + i, "P" + i, c));
-  a.configure(3, false);
+  a.configure(3);
   a.start();
   a.phase = "playing";
   a.deadline = a.time + 600;

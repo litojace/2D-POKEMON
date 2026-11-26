@@ -34,7 +34,6 @@ const setup = async () => {
           highestPeril: 3,
           bosses: { grumblecrag: { clears: 1, highestPeril: 3 } },
           cosmetics: [],
-          weekly: [],
         }
       : null;
   server = createArenaServer({ accounts: accounts.provider, autoTick: false });

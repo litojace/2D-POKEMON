@@ -223,7 +223,7 @@ function room(kind: "practice" | "raid" | "pvp" | "spire", o: RoomOptions) {
     const a: any = createRaidArena("RAID42", o.boss ?? "grumblecrag");
     a.add("me", "tester", "voltkit");
     a.add("p2", "Kai", "cindrake");
-    a.configure(1, false);
+    a.configure(1);
     a.start();
     a.phase = "playing";
     for (const i of o.broken ?? [])

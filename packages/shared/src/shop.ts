@@ -2130,12 +2130,13 @@ export interface ActivityPlayer {
   participated?: boolean;
   abandoned?: boolean;
   arcade?: string;
-  expedition?: { completed: number };
   /** Equipped champion skin (for Awakening). */
   skin?: string | null;
   raid?: {
     cleared: boolean;
-    daily: boolean;
+    /** Always false: Raid of the Day is retired and the database refuses
+     * true (migration 028). Still sent because its functions read it. */
+    daily: false;
     peril: number;
     flawless: boolean;
     feat: boolean;
@@ -2145,7 +2146,8 @@ export interface ActivityPlayer {
 }
 export interface ActivityReceipt {
   id: string;
-  kind: "match" | "raid" | "expedition";
+  /** Boss Rush ("expedition") is retired: the database refuses it (028). */
+  kind: "match" | "raid";
   /** Pacific calendar day (YYYY-MM-DD). */
   day: string;
   players: ActivityPlayer[];

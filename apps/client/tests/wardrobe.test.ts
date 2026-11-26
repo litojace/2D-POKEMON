@@ -34,7 +34,6 @@ const progress = (): RaidProgress => ({
   titles: [],
   cosmetics: ["cragbound", "mountain-aura"],
   earned: ["mountainborn", "stormsplitter"],
-  weekly: [],
 });
 const view = (extra: Partial<WardrobeView> = {}): WardrobeView => ({
   champion: "voltkit",

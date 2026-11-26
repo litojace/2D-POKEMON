@@ -39,7 +39,6 @@ const RECORDS = {
     bestSeconds: 200,
     titles: [],
     cosmetics: [],
-    weekly: [],
     earned: [],
     bosses: {
       grumblecrag: { clears: 2, highestPeril: 3, bestSeconds: 200, runs: 3 },

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { box, inside, openLobby, openWardrobe, snap } from "./helpers";
+import { box, inside, openLobby, openWardrobe, settle, snap } from "./helpers";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
 import { exposeAccount, shopServer } from "./shop-server";
 
@@ -723,6 +723,7 @@ test("a Shop reopened while the last one is leaving is the only Shop left", asyn
 for (const size of [
   { name: "667x375", width: 667, height: 375, phone: true },
   SIZES[2],
+  SIZES[3],
   SIZES[0],
 ])
   test(`the Skins order is a two-half switch that fits the row (${size.name})`, async ({
@@ -737,6 +738,7 @@ for (const size of [
       const page = await context.newPage();
       await shopServer(page);
       const errors = await openLobby(page);
+      if ("island" in size && size.island) await setInsets(page, ISLAND);
       await page.click('.lobby-rail [data-lobby-action="shop"]');
       await page.click('[data-ui-section="skins"]');
       const rarest = page.locator('.fit-sort [data-fit-sort="rarity"]');
@@ -745,8 +747,16 @@ for (const size of [
       await expect(cheapest).toHaveAttribute("aria-pressed", "false");
       await expect(rarest).toHaveAccessibleName("Rarest first");
       await expect(cheapest).toHaveAccessibleName("Cheapest first");
-      const look = () =>
-        page.evaluate(() => {
+      // Measured where the screen settles: it opens with a slight zoom
+      // (ui/hub-panel.ts, scale .985) and its parts arrive one by one, and
+      // CI's slow renderer measured a 44 px half mid-way (43.34, 43.99 px).
+      // Every finite animation is finished in the same step as the
+      // measuring, so none can start in between.
+      const look = async () => {
+        await settle(page);
+        return page.evaluate(() => {
+          for (const a of document.getAnimations())
+            if (a.effect?.getTiming().iterations !== Infinity) a.finish();
           const row = document
             .querySelector(".fit-filters")!
             .getBoundingClientRect();
@@ -771,6 +781,7 @@ for (const size of [
             },
           );
         });
+      };
       for (const half of await look()) {
         expect(half.inRow).toBe(true);
         expect(half.wordInside).toBe(true);

@@ -15,7 +15,7 @@ import {
 const tide = (characters: CharacterId[] = ["voltkit"], peril = 1) => {
   const a = createRaidArena("TIDE", "tidewyrm") as TidewyrmArena;
   characters.forEach((c, i) => a.add("p" + i, "Player " + i, c));
-  a.configure(peril, false);
+  a.configure(peril);
   a.start();
   a.phase = "playing";
   a.deadline = 480;
@@ -408,7 +408,7 @@ describe("a whole run", () => {
       ["voltkit", "tidefin", "terradon"] as CharacterId[]
     ).entries())
       a.add("b" + i, "Bot " + i, c);
-    a.configure(3, false);
+    a.configure(3);
     a.start();
     for (const p of a.heroes()) a.standIn(p.id);
     a.phase = "playing";
