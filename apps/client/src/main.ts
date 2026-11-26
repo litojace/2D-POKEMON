@@ -6424,6 +6424,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
    * carries on. A rig of the fighter it was before is removed.
    */
   private readyRig(p: LookedFighter) {
+    // A raid boss's seat is drawn as the boss (its own art), never as a rig.
+    if (p.raidBoss) return undefined;
     const old = this.rigs.get(p.id);
     // A rig keeps its look until a new one it is given has loaded
     // (FighterRig.wear); its art going blank removes it (runArtChecks).
@@ -8901,13 +8903,20 @@ type LookedFighter = Pick<
   "id" | "character" | "championLooks" | "raidBoss"
 >;
 /** The Shop skin a fighter's rig wears (as its pose does), or none. */
-function lookOf(p: Pick<Fighter, "character" | "championLooks" | "raidBoss">) {
-  return (!p.raidBoss && p.championLooks?.[p.character]) || null;
+function lookOf(p: Pick<Fighter, "character" | "championLooks">) {
+  return p.championLooks?.[p.character] ?? null;
 }
-/** The looks a battle draws: sceneFighters, each in its skin. */
+/**
+ * The looks a battle draws: sceneFighters, each in its skin. Not a raid
+ * boss's seat: the boss is drawn from its own art (a seat on "terradon",
+ * apps/server/src/raid.ts), and its rig was 68 textures, 4.2 MB, in every
+ * raid that nothing showed (26 Nov 2026).
+ */
 function sceneLooks(s: Snapshot): FighterLook[] {
   return [
-    ...s.players.map((p) => ({ character: p.character, look: lookOf(p) })),
+    ...s.players
+      .filter((p) => !p.raidBoss)
+      .map((p) => ({ character: p.character, look: lookOf(p) })),
     // A Spire climb's Echoes appear mid-fight, in the champion's own look.
     ...(s.raid?.spire?.roster ?? []).map((character) => ({
       character,
