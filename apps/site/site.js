@@ -173,7 +173,6 @@
     ];
   }
 
-  const CLIP = ["basic", "skill1", "skill2", "skill3", "ult"];
   function showMove(c, i) {
     tab = i;
     const list = moves(c);
@@ -185,20 +184,7 @@
     const box = $("#champ-move");
     box.replaceChildren();
     box.setAttribute("aria-labelledby", `champ-tab-${i}`);
-    // The move in the real game (clips/, made by scripts/site-clips): a
-    // looping clip, or one still frame when the player asks for less motion.
-    const clip = el("figure", "move-clip");
-    const shot = Object.assign(new Image(), {
-      src: `clips/${c.id}/${CLIP[i]}${calm.matches ? "-still" : ""}.webp`,
-      alt: `${c.name} using ${m.name} in a match`,
-      width: 480,
-      height: 270,
-      decoding: "async",
-    });
-    shot.addEventListener("error", () => clip.remove());
-    clip.append(shot, el("figcaption", "", "In game"));
     box.append(
-      clip,
       el("p", "move-slot", m.slot),
       el("h4", "move-name", m.name),
       el("p", "move-desc", m.description),

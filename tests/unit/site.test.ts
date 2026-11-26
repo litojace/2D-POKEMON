@@ -8,6 +8,11 @@ import {
   RAID_REWARDS,
 } from "../../packages/shared/src/raid";
 import { siteChampions } from "../../apps/site/tools/champion-data";
+import {
+  CHAMPION_SKINS,
+  LOOK_ITEMS,
+  RARITY_NAMES,
+} from "../../packages/shared/src/shop";
 
 // The website (docs/website.md): a static page with no build, so these
 // checks stand in for one. Every file it links exists, it leads into the
@@ -21,6 +26,8 @@ const html = readFileSync(path.join(SITE, "index.html"), "utf8")
   .replace(/" \/>/g, '"/>');
 const css = readFileSync(path.join(SITE, "site.css"), "utf8");
 const GAME = "https://play.elementarenausa.com/";
+
+const flatHtml = () => html.replace(/>\s+/g, ">").replace(/\s+</g, "<");
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {
@@ -151,15 +158,22 @@ describe("website", () => {
     }
   });
 
-  it("has a skill clip and a still for every champion's five moves (scripts/site-clips)", () => {
-    for (const c of Object.values(CHARACTERS))
-      for (const move of ["basic", "skill1", "skill2", "skill3", "ult"])
-        for (const f of [`${move}.webp`, `${move}-still.webp`]) {
-          const file = path.join(SITE, "clips", c.id, f);
-          expect(existsSync(file), `${c.id}/${f}`).toBe(true);
-          // Light enough for a phone: one clip loads per tab shown.
-          expect(statSync(file).size, `${c.id}/${f}`).toBeLessThan(400_000);
-        }
+  it("its Shop showcase names real Shop pieces, as the game names them", () => {
+    const cards = [
+      ...flatHtml().matchAll(
+        /<img src="img\/shop\/([\w-]+)-400\.webp"[^>]*><\/picture><div class="show-tx"><p class="show-r">(\w+)<\/p><h3>([^<]+)<\/h3>/g,
+      ),
+    ];
+    expect(cards.length).toBeGreaterThanOrEqual(4);
+    const names = new Map(
+      [...CHAMPION_SKINS, ...LOOK_ITEMS].map((i) => [i.name, i.rarity]),
+    );
+    for (const [, pic, rarity, name] of cards) {
+      expect(names.has(name), name).toBe(true);
+      expect(rarity).toBe(RARITY_NAMES[names.get(name)!]);
+      for (const f of [`${pic}-400.webp`, `${pic}-640.avif`])
+        expect(existsSync(path.join(SITE, "img/shop", f)), f).toBe(true);
+    }
   });
 
   it("the account page's script is built from its source (node apps/site/tools/build-account.mjs)", async () => {
