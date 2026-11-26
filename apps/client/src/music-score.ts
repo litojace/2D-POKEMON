@@ -1,6 +1,6 @@
 import { adventureStep, ADVENTURE_LOOP_STEPS } from "./adventure-score";
 import type { SampleInstrument } from "./music-samples";
-export type BackgroundTheme = "lobby" | "pvp" | "raid";
+export type BackgroundTheme = "lobby" | "pvp" | "raid" | "plaza" | "spire";
 export type ResultTheme = "victory" | "defeat" | "draw";
 export type MusicTheme = BackgroundTheme | ResultTheme;
 export function isResultTheme(theme: MusicTheme): theme is ResultTheme {
@@ -38,6 +38,8 @@ export const MUSIC_BPM: Record<MusicTheme, number> = {
   lobby: 112,
   pvp: 144,
   raid: 124,
+  plaza: 96,
+  spire: 132,
   victory: 124,
   defeat: 82,
   draw: 96,

@@ -6,7 +6,8 @@ import {
 } from "../../apps/client/src/music-score";
 import { noteHz } from "../../apps/client/src/audio";
 it("provides distinct complete original scores with valid pitches and envelopes", () => {
-  const scores = (["lobby", "pvp", "raid"] as MusicTheme[]).map((theme) =>
+  const themes: MusicTheme[] = ["lobby", "pvp", "raid", "plaza", "spire"];
+  const scores = themes.map((theme) =>
     Array.from({ length: MUSIC_LOOP_STEPS }, (_, s) =>
       scoreStep(theme, s),
     ).flat(),
@@ -19,23 +20,45 @@ it("provides distinct complete original scores with valid pitches and envelopes"
       if (n.note) expect(noteHz(n.note)).toBeGreaterThan(0);
     }
   }
-  expect(scores[0]).not.toEqual(scores[1]);
-  expect(scores[1]).not.toEqual(scores[2]);
+  for (let i = 0; i < scores.length; i++)
+    for (let j = i + 1; j < scores.length; j++)
+      expect(scores[i], `${themes[i]} vs ${themes[j]}`).not.toEqual(scores[j]);
   expect(noteHz("A4")).toBe(440);
 });
-it("intensifies the final raid phase with additional percussion", () => {
-  const count = (phase: number) =>
-    Array.from({ length: 16 }, (_, s) => scoreStep("raid", s, phase))
-      .flat()
-      .filter((n) =>
-        ["concert-bass", "concert-snare", "timpani"].includes(n.instrument),
-      ).length;
-  expect(count(3)).toBeGreaterThan(count(2));
-  expect(count(2)).toBeGreaterThan(count(1));
+it("intensifies the final raid and Spire phases with additional percussion", () => {
+  for (const theme of ["raid", "spire"] as MusicTheme[]) {
+    const count = (phase: number) =>
+      Array.from({ length: 16 }, (_, s) => scoreStep(theme, s, phase))
+        .flat()
+        .filter((n) =>
+          ["concert-bass", "concert-snare", "timpani"].includes(n.instrument),
+        ).length;
+    expect(count(3), theme).toBeGreaterThan(count(2));
+    expect(count(2), theme).toBeGreaterThan(count(1));
+  }
+});
+
+it("keeps the Plaza's stroll free of drums", () => {
+  const plaza = Array.from({ length: MUSIC_LOOP_STEPS }, (_, s) =>
+    scoreStep("plaza", s, 3),
+  ).flat();
+  expect(
+    plaza.filter((n) =>
+      ["concert-bass", "concert-snare", "timpani", "kick", "snare"].includes(
+        n.instrument,
+      ),
+    ),
+  ).toEqual([]);
 });
 
 it("plays a longer arrangement with a quieter breakdown and a return to the groove", () => {
-  for (const theme of ["lobby", "pvp", "raid"] as MusicTheme[]) {
+  for (const theme of [
+    "lobby",
+    "pvp",
+    "raid",
+    "plaza",
+    "spire",
+  ] as MusicTheme[]) {
     const density = (bar: number) =>
       Array.from({ length: 64 }, (_, s) =>
         scoreStep(theme, bar * 16 + s),

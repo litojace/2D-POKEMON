@@ -10,9 +10,24 @@ import { MusicSynth } from "./music-synth";
 import { MusicSampleBank } from "./music-samples";
 import { CourtAmbience } from "./court-ambience";
 import type { CourtId } from "./arena-courts";
+import type { GameEvent } from "@arena/shared";
+import { playRecipe } from "./sfx";
+import type { CueId } from "./sfx-recipes";
+import {
+  cueCall,
+  eventSound,
+  ownCastCall,
+  type SoundCall,
+  type SoundView,
+} from "./battle-sounds";
 export { noteHz } from "./music-synth";
-// Original adaptive lobby, PvP and raid scores plus synthesized combat effects.
+// Original adaptive scores plus synthesized combat effects (sfx-recipes.ts).
 const MIX = 0.5;
+/** The effects bus: a recipe peaking near 1 plays at this times the volume. */
+const SFX_GAIN = 0.26;
+/** Sounds at once: yours always up to the first, others' up to the second. */
+const SFX_VOICES = 14;
+const SFX_VOICES_OTHERS = 9;
 export class AudioManager {
   private lastRaidSound = new Map<string, number>();
   context?: AudioContext;
@@ -191,50 +206,82 @@ export class AudioManager {
     for (const note of scoreStep(this.theme, step, this.phase))
       this.synth?.play(note, t);
   }
-  tone(
-    hz: number,
-    duration: number,
-    volume: number,
-    type: OscillatorType = "triangle",
-  ) {
-    if (!this.context || this.context.state !== "running" || !volume) return;
-    const o = this.context.createOscillator(),
-      g = this.context.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(hz, this.context.currentTime);
-    o.frequency.exponentialRampToValueAtTime(
-      hz * 0.55,
-      this.context.currentTime + duration,
-    );
-    g.gain.setValueAtTime(volume, this.context.currentTime);
-    g.gain.exponentialRampToValueAtTime(
-      0.001,
-      this.context.currentTime + duration,
-    );
-    o.connect(g).connect(this.context.destination);
-    o.start();
-    o.stop(this.context.currentTime + duration);
+  /** Sound effects: one bus on the effects volume, with a limiter. */
+  private sfxBus?: GainNode;
+  private sfxVoices = 0;
+  private sfxLast = new Map<string, number>();
+  private effectsBus() {
+    const ctx = this.context;
+    if (!ctx) return undefined;
+    if (!this.sfxBus) {
+      this.sfxBus = ctx.createGain();
+      this.sfxBus.gain.value = this.effects * SFX_GAIN;
+      // Many sounds at once (a free-for-all) stay clear of clipping.
+      const limiter = ctx.createDynamicsCompressor?.();
+      if (limiter) {
+        limiter.threshold.value = -14;
+        limiter.knee.value = 10;
+        limiter.ratio.value = 6;
+        limiter.attack.value = 0.003;
+        limiter.release.value = 0.18;
+        this.sfxBus.connect(limiter).connect(ctx.destination);
+      } else this.sfxBus.connect(ctx.destination);
+    }
+    return this.sfxBus;
   }
-  play(kind: string) {
-    const hz: Record<string, number> = {
-      cast: 660,
-      hit: 160,
-      dash: 360,
-      jump: 480,
-      land: 140,
-      round: 880,
-      ui: 520,
-      victory: 1040,
-      heal: 760,
-      orb: 620,
-      defeat: 180,
-    };
-    this.tone(
-      hz[kind] ?? 440,
-      kind === "round" ? 0.5 : 0.12,
-      this.effects * 0.15,
-      kind === "hit" ? "sawtooth" : "triangle",
+  /** Play one sound effect (battle-sounds.ts decides which, how loud, where). */
+  sfx(call: SoundCall | null) {
+    const ctx = this.context;
+    if (!call || !ctx || ctx.state !== "running") return;
+    if (this.effects <= 0 || document.hidden) return;
+    const t = ctx.currentTime;
+    if (t - (this.sfxLast.get(call.key) ?? -10) < call.gap) return;
+    // Past a few at once, other players' sounds give way to yours.
+    if (
+      this.sfxVoices >= (call.priority === 2 ? SFX_VOICES : SFX_VOICES_OTHERS)
+    )
+      return;
+    const bus = this.effectsBus();
+    if (!bus) return;
+    this.sfxLast.set(call.key, t);
+    const end = playRecipe(
+      ctx,
+      bus,
+      this.noise,
+      call.recipe,
+      t + 0.005,
+      {
+        volume: call.volume,
+        pan: call.pan,
+        pitch: call.vary ? 0.97 + Math.random() * 0.06 : 1,
+      },
+      () => this.sfxVoices--,
     );
+    if (end) this.sfxVoices++;
+  }
+  /** A sound that is not a skill or a hit (dash, ult ready, a button). */
+  cue(id: CueId) {
+    this.sfx(cueCall(id));
+  }
+  /** Your own cast, on the key press. */
+  cast(abilityId: string, me: string) {
+    this.sfx(ownCastCall(abilityId, me));
+  }
+  /** A battle event's sound (cast, hit, knockout, orb, hazard...). */
+  event(event: GameEvent, view: SoundView) {
+    this.sfx(eventSound(event, view));
+  }
+  private countdownSecond = 0;
+  /** A tick on each second of the countdown, and "Fight" when it ends. */
+  countdown(phase: string, remaining: number) {
+    if (phase === "countdown") {
+      const second = Math.max(1, Math.ceil(remaining));
+      if (second !== this.countdownSecond) this.cue("count");
+      this.countdownSecond = second;
+      return;
+    }
+    if (this.countdownSecond !== 0 && phase === "playing") this.cue("go");
+    this.countdownSecond = 0;
   }
   /** Original low, filtered rock/roar cues routed through the effects volume. */
   playRaid(kind: import("./raid-boss-motion").RaidBossCue) {
@@ -319,6 +366,14 @@ export class AudioManager {
     this[kind] = value;
     localStorage.setItem(`arena-${kind}`, String(value));
     if (kind === "music") this.updateMusicGain();
-    else this.ambience?.setLevel(this.ambienceLevel());
+    else {
+      this.ambience?.setLevel(this.ambienceLevel());
+      if (this.sfxBus && this.context)
+        this.sfxBus.gain.setTargetAtTime(
+          value * SFX_GAIN,
+          this.context.currentTime,
+          0.02,
+        );
+    }
   }
 }

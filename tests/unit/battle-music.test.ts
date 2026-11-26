@@ -43,6 +43,18 @@ it("uses the raid's shared result, even when another raider is named as winner",
   a.raid.result = "defeat";
   expect(battleMusic(a.snapshot(), "p1")).toBe("defeat");
 });
+it("climbs the Spire to its own tune, and ends it with the raid's results", () => {
+  const a = new RaidArena("SPIRE");
+  a.add("p0", "Climber");
+  a.start();
+  const s = a.snapshot();
+  expect(battleMusic(s, "p0")).toBe("raid");
+  s.raid!.spire = { floor: 3 } as NonNullable<typeof s.raid>["spire"];
+  expect(battleMusic(s, "p0")).toBe("spire");
+  s.phase = "finished";
+  s.raid!.result = "victory";
+  expect(battleMusic(s, "p0")).toBe("victory");
+});
 it("keeps rounds and training on battle music, and gives draws and spectators a neutral ending", () => {
   const s = match();
   s.winner = null;

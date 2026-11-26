@@ -1022,9 +1022,11 @@ document.addEventListener(
 );
 
 document.addEventListener("pointerdown", (event) => {
-  if ((event.target as Element).closest("button")) {
+  const button = (event.target as Element).closest("button");
+  if (button) {
     audio.unlock();
-    audio.play("ui");
+    // A skill, dash or jump button sounds as its cast, not as a click.
+    if (!button.closest(".touch-buttons")) audio.cue("ui");
   }
 });
 /**
@@ -2850,9 +2852,8 @@ let wantedPlazaClosed = false;
  * The hub (Lobby, Plaza): open whenever a signed-in, connected player
  * is not in a room (and not about to resume or join one); closed otherwise.
  */
-function syncHub() {
-  syncUiEffects();
-  const hub =
+function hubOpen() {
+  return (
     !!accountsUI?.account &&
     connected &&
     !myId &&
@@ -2861,7 +2862,17 @@ function syncHub() {
     !sessionStorage.getItem("arena-token") &&
     !pendingInvite() &&
     // The title screen first, once per launch (title-screen.ts).
-    !titleWanted();
+    !titleWanted()
+  );
+}
+/** The menus' music: the Plaza has its own tune, every other menu the Lobby's. */
+function menuMusic(hub = hubOpen()) {
+  return hub && hubScene === "plaza" ? "plaza" : "lobby";
+}
+function syncHub() {
+  syncUiEffects();
+  const hub = hubOpen();
+  if (hub) audio.setTheme(menuMusic(hub));
   syncHubScenes(hub);
   // Which hub scene is showing (styles such as the toast's place follow it).
   if (hub) document.body.dataset.hubScene = hubScene;
@@ -3497,7 +3508,7 @@ function renderMenu(revealSelection = false) {
   if (phaser()) kit.syncBossPrepaint(state);
   syncFighterArt();
   document.body.classList.remove("practice-active");
-  audio.setTheme("lobby");
+  audio.setTheme(menuMusic());
   pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
@@ -3888,7 +3899,10 @@ function renderBattle() {
   document.body.classList.remove("home-active", "lobby-active", "gate-active");
   if (!state?.practice) document.body.classList.remove("practice-active");
   syncHubInBattle();
-  if (state) audio.setTheme(battleMusic(state, myId), state.raid?.phase ?? 1);
+  if (state) {
+    audio.setTheme(battleMusic(state, myId), state.raid?.phase ?? 1);
+    audio.countdown(state.phase, state.remaining);
+  }
   if (!document.body.classList.contains("battle-active")) {
     document.body.classList.add("battle-active");
     // The battle screen fits the window; drop any scroll left over from the menu.
@@ -4091,7 +4105,7 @@ function renderBattle() {
   // desktop button's decoration is omitted on touch screens.
   const fullMeter = (me.ult ?? 0) >= RULES.ultMax;
   if (fullMeter && !ultWasReady && state.phase === "playing" && myId) {
-    audio.play("orb");
+    audio.cue("ult-ready");
     if (!touch.enabled) {
       const button = $(`ability-${ULT_SLOT}`);
       button.classList.add("ult-burst");
@@ -6257,7 +6271,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         exArmedUntil = exArmedUntil
           ? 0
           : performance.now() + EX.armSeconds * 1000;
-        if (exArmedUntil) audio.play("orb");
+        if (exArmedUntil) audio.cue("ex-armed");
       }
       skill = -1;
     } else if (skill >= 0 && skill < ULT_SLOT && exArmedUntil) {
@@ -6808,7 +6822,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           windUp > 0 ? windUp * 1000 : castDuration(c, input.skill),
         );
         if (windUp <= 0) {
-          audio.play("cast");
+          audio.cast(c.skills[input.skill].id, local.id);
           this.predictCastEffect(local, c.skills[input.skill], input);
         }
         castPredictor.predict(action, now);
@@ -6833,7 +6847,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         this.feelClock,
         castDuration(c, -1),
       );
-      audio.play("cast");
+      audio.cast(c.basic.id, local.id);
       this.predictCastEffect(local, c.basic, input);
       castPredictor.predict("basic", now);
     }
@@ -6842,7 +6856,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !castPredictor.waiting("dash", now) &&
       canDash(local, time)
     ) {
-      audio.play("dash");
+      audio.cue("dash");
       castPredictor.predict("dash", now);
     }
   }
@@ -6937,15 +6951,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // Your own cast or dash that was already shown on the key press (a
     // predicted cast) is not played a second time when the server confirms.
     const echo = event.owner === myId && this.predictedEcho(event);
-    if (
-      ((event.owner === myId &&
-        event.kind !== "impact" &&
-        event.kind !== "raid-impact") ||
-        event.kind === "hit" ||
-        event.kind === "round") &&
-      !echo
-    )
-      audio.play(event.kind);
+    // Which sound, how loud and where: battle-sounds.ts.
+    const listener = state?.players.find((p) => p.id === myId);
+    audio.event(event, { me: myId, x: listener?.x, y: listener?.y, echo });
     if (
       this.animationLive &&
       event.kind === "cast" &&
@@ -7216,7 +7224,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       (h) => Math.hypot(h.x - event.x, h.y - event.y) < 2,
     );
     const radius = hazard?.radius ?? 90;
-    audio.play("hit");
     if (reducedMotion) return;
     const ring = this.add
       .circle(event.x, event.y, radius * 0.4, event.color, 0.35)
