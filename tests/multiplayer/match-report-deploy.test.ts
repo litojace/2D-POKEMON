@@ -28,7 +28,7 @@ const emit = (s: Socket, event: string, data: unknown = {}) =>
         e ? reject(e) : resolve(r),
       ),
   );
-async function setup() {
+async function setup(serverOptions: { reportGraceMs?: number } = {}) {
   const accounts = fakeAccounts();
   const reports: { token: string; matchId: unknown; summary: unknown }[] = [];
   accounts.provider.recordActivity = vi.fn(async () => {});
@@ -42,6 +42,7 @@ async function setup() {
     const server = createArenaServer({
       accounts: accounts.provider,
       autoTick: false,
+      ...serverOptions,
     });
     servers.push(server);
     await new Promise<void>((r) => server.http.listen(0, "127.0.0.1", r));
@@ -62,8 +63,11 @@ async function setup() {
     socket.once("connect", r);
     socket.once("connect_error", j);
   });
-  /** A bot match, played to its end on the old server. */
-  const play = async () => {
+  /**
+   * A bot match, played to its end on the old server; `beforeEnd` runs just
+   * before its last moment (a deploy's SIGTERM, say).
+   */
+  const play = async (beforeEnd?: () => void) => {
     const r = await emit(socket, "bot-match", {
       name: "Player",
       character: "voltkit",
@@ -77,6 +81,7 @@ async function setup() {
     socket.emit("input", { ...blankInput(), seq: 1, dx: 1 });
     await vi.waitFor(() => expect(a.engaged.has(r.id!)).toBe(true));
     a.playTime = 30;
+    beforeEnd?.();
     a.forfeit(r.id!);
     for (let i = 0; i < 4; i++) old.server.step();
     expect(a.matchId).toBeTruthy();
@@ -129,4 +134,39 @@ it("refuses a match it does not have, and anything that is not a match id", asyn
   const bad = await emit(socket, "match-report", { matchId: 42 });
   expect(bad.ok).toBe(false);
   expect(reports).toHaveLength(0);
+});
+
+it("a server being replaced stays up until the match that just ended is filed", async () => {
+  const { old, socket, reports, play } = await setup();
+  let drained = false;
+  // Render sends SIGTERM during the match: it plays on to its end.
+  const matchId = await play(() => {
+    void old.server.drain(Date.now() + 60_000, 5).then(() => (drained = true));
+  });
+  // Over, and its coins saved, but the player's game hasn't filed it yet:
+  // the results reach the phone a moment after the server ends the match.
+  // Leaving now would lose the record (its summary is in this process).
+  await new Promise((r) => setTimeout(r, 150));
+  expect(drained).toBe(false);
+  const reply = await emit(socket, "match-report", { matchId });
+  expect(reply.ok).toBe(true);
+  expect(reports).toHaveLength(1);
+  // Filed: nothing else keeps the old server.
+  await vi.waitFor(() => expect(drained).toBe(true));
+});
+
+it("a server being replaced waits for a match's report only a short while", async () => {
+  const { old, play } = await setup({ reportGraceMs: 300 });
+  let drained = 0;
+  const started = Date.now();
+  await play(() => {
+    void old.server
+      .drain(Date.now() + 60_000, 5)
+      .then(() => (drained = Date.now()));
+  });
+  // The player left without filing (closed the app): the server goes anyway.
+  await vi.waitFor(() => expect(drained).toBeGreaterThan(0), {
+    timeout: 3000,
+  });
+  expect(drained - started).toBeLessThan(2500);
 });

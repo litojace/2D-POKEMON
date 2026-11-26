@@ -5174,6 +5174,10 @@ async function reportMatch(matchId: string, attempt = 0) {
         3000 + attempt * 3000,
       );
   } catch (error) {
+    // A later check (has the other player filed it too?) that failed: the
+    // match is saved, so keep what the first report said. After a deploy the
+    // server that ran it may be gone, and the new one never saw it.
+    if (attempt > 0 && matchRecords.get(matchId)?.status === "done") return;
     matchRecords.set(matchId, {
       status: "unavailable",
       message:
