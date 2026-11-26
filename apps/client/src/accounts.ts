@@ -1,6 +1,7 @@
 import { confirmAge, saidUnderAge } from "./age-gate";
 import { isNativeApp, PRIVACY_URL, signInWithAppleNatively } from "./native";
 import {
+  confirmedRead,
   sessionCookieStorage,
   sharesSession,
 } from "../../../packages/shared/src/session-cookie";
@@ -676,11 +677,17 @@ export class AccountUI {
    */
   async syncSharedSession() {
     if (!sharedCookie || !this.client || !this.checked) return;
-    const { data } = await this.client.auth.getSession();
-    const now = data.session;
-    if ((now?.user.id ?? null) !== (this.session?.user.id ?? null))
-      await this.setSession(now);
-    else if (now && now.access_token !== this.session?.access_token) {
+    const client = this.client;
+    const read = async () => (await client.auth.getSession()).data.session;
+    const who = (s: Session | null) => s?.user.id ?? null;
+    const now = await read();
+    if (who(now) !== who(this.session)) {
+      // Signed out, or someone else: only if a second look agrees.
+      const sure = await confirmedRead(read, (a, b) => who(a) === who(b));
+      if (sure === undefined || who(sure) === who(this.session)) return;
+      return this.setSession(sure);
+    }
+    if (now && now.access_token !== this.session?.access_token) {
       this.session = now;
       this.hooks.onToken(now.access_token);
     }

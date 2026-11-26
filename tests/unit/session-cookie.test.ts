@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  confirmedRead,
   CHUNK,
   MAX_SHARED,
   sessionCookieStorage,
@@ -255,5 +256,19 @@ describe("session cookie", () => {
     s2.adopt("parena-auth");
     expect(j2.cookies.size).toBe(0);
     expect(s2.getItem("parena-auth")).toBe(oauth);
+  });
+
+  it("a change is believed only when a second read agrees", async () => {
+    const reads = (...values: (string | null)[]) => {
+      let i = 0;
+      return async () => values[Math.min(i++, values.length - 1)];
+    };
+    const same = (a: string | null, b: string | null) => a === b;
+    // A torn read (null once, the session again): nothing to act on.
+    expect(await confirmedRead(reads(null, "u1"), same, 1)).toBeUndefined();
+    // Really signed out on the other site: both reads agree.
+    expect(await confirmedRead(reads(null, null), same, 1)).toBeNull();
+    // Another player signed in there.
+    expect(await confirmedRead(reads("u2", "u2"), same, 1)).toBe("u2");
   });
 });

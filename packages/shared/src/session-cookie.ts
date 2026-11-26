@@ -184,3 +184,22 @@ export function sessionCookieStorage(jar: CookieJar, local?: LocalStore) {
   };
   return { getItem, setItem, removeItem, remembered, remember, adopt };
 }
+
+/**
+ * A change read from the shared cookie (signed out, or another player) is
+ * believed only when a second read `delay` ms later agrees: one read can
+ * land in the other site's write (between chunks, or between a chunk and
+ * the checksum), and acting on it would sign a player out mid-match.
+ * Returns the confirmed value, or `undefined` when the reads disagree
+ * (nothing to do: the next look decides).
+ */
+export async function confirmedRead<T>(
+  read: () => Promise<T>,
+  same: (a: T, b: T) => boolean,
+  delay = 200,
+): Promise<T | undefined> {
+  const first = await read();
+  await new Promise((r) => setTimeout(r, delay));
+  const second = await read();
+  return same(first, second) ? second : undefined;
+}
