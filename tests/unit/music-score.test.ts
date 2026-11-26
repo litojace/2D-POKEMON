@@ -6,7 +6,7 @@ import {
 } from "../../apps/client/src/music-score";
 import { noteHz } from "../../apps/client/src/audio";
 it("provides distinct complete original scores with valid pitches and envelopes", () => {
-  const themes: MusicTheme[] = ["lobby", "pvp", "raid", "plaza", "spire"];
+  const themes: MusicTheme[] = ["lobby", "pvp", "raid", "spire"];
   const scores = themes.map((theme) =>
     Array.from({ length: MUSIC_LOOP_STEPS }, (_, s) =>
       scoreStep(theme, s),
@@ -38,27 +38,8 @@ it("intensifies the final raid and Spire phases with additional percussion", () 
   }
 });
 
-it("keeps the Plaza's stroll free of drums", () => {
-  const plaza = Array.from({ length: MUSIC_LOOP_STEPS }, (_, s) =>
-    scoreStep("plaza", s, 3),
-  ).flat();
-  expect(
-    plaza.filter((n) =>
-      ["chip-kick", "chip-snare", "chip-hat", "chip-crash"].includes(
-        n.instrument,
-      ),
-    ),
-  ).toEqual([]);
-});
-
 it("plays a longer arrangement with a quieter breakdown and a return to the groove", () => {
-  for (const theme of [
-    "lobby",
-    "pvp",
-    "raid",
-    "plaza",
-    "spire",
-  ] as MusicTheme[]) {
+  for (const theme of ["lobby", "pvp", "raid", "spire"] as MusicTheme[]) {
     const density = (bar: number) =>
       Array.from({ length: 64 }, (_, s) =>
         scoreStep(theme, bar * 16 + s),

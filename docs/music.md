@@ -4,13 +4,12 @@ The soundtrack is retro: each scene's original tune, arranged for a console soun
 
 | Scene     | Tune                 | Retro role                                                                                                                           | Tempo   | Loop |
 | --------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------- | ---- |
-| Lobby     | Pocket Parade        | A cheerful town: square and pulse take turns, a bouncing octave bass, light hats; a quiet bridge                                     | 112 BPM | 1:43 |
-| Plaza     | Fountain Square      | A stroll: a soft pulse with vibrato over plucked chord ripples, no drums; a triangle bridge                                          | 96 BPM  | 2:00 |
+| Hub       | Pocket Parade        | A cheerful town: square and pulse take turns, a bouncing octave bass, light hats; a quiet bridge                                     | 112 BPM | 1:43 |
 | PvP       | Hopscotch Heroes     | A fight: a bold square lead, a driving pulse bass, a full kit with fills, arpeggio shimmer                                           | 148 BPM | 1:18 |
 | Boss raid | Big Friendly Trouble | A boss that gets fiercer as it weakens: phase 1 bass and kick, 2 adds snare and alarm arpeggios, 3 adds busy hats, harmony and fills | 132 BPM | 1:27 |
 | Spire     | Skyward Steps        | A climb: a thin pulse line over a rising ostinato, long notes on the triangle, drums with the phase                                  | 132 BPM | 1:27 |
 
-Victory, defeat and draw are chip jingles of their old tunes (a square fanfare, a falling pulse with vibrato, two neutral phrases). The Plaza plays its own tune whenever the hub shows it (`menuMusic()` in `main.ts`), every other menu the Lobby's, and Spire floors play Skyward Steps (`battle-music.ts`).
+Victory, defeat and draw are chip jingles of their old tunes (a square fanfare, a falling pulse with vibrato, two neutral phrases). The Lobby's tune plays across the hub, the Plaza included, so going between them doesn't restart it (owner, 26 Nov 2026; the Plaza's own Fountain Square was retired). Spire floors play Skyward Steps (`battle-music.ts`).
 
 ## How it is made
 
@@ -28,20 +27,23 @@ The volume, mute, background-page handling and theme crossfades are as before (`
 
 ### Levels, measured
 
-Every theme was rendered whole offline in Chromium, at the default music volume, and measured over the full range and through a phone speaker's range (300 Hz to 9 kHz). Pulse waves are dense, so each theme carries a trim (`RETRO_GAIN`) that puts it where the recorded track it replaced sat. The triangle bass sits a little under the tune, since phones can't play it and it weighed on headphones.
+Each theme carries a trim (`RETRO_GAIN`) that evens the scenes out (pulse waves are dense), and the triangle bass sits a little under the tune, since phones can't play it and it weighed on headphones. How loud it all plays is set in `audio.ts`; see "Volume" below.
 
-| Theme           | Retro, full / phone (dB) | Recorded, full / phone (dB) |
-| --------------- | ------------------------ | --------------------------- |
-| Lobby           | −52.4 / −52.6            | −52.9 / −51.3               |
-| Plaza           | −53.2 / −53.2            | −54.5 / −52.6               |
-| PvP             | −53.8 / −53.4            | −53.9 / −53.2               |
-| Raid (phase 1)  | −54.5 / −54.6            | −54.5 / −53.7               |
-| Spire (phase 1) | −55.0 / −55.2            | −54.9 / −54.3               |
-| Victory         | −52.9 / −53.2            | −52.0 / −52.9               |
-| Defeat          | −52.4 / −55.2            | −53.0 / −54.3               |
-| Draw            | −53.5 / −54.7            | −53.7 / −54.6               |
+## Volume
 
-No theme clips: the loudest peak is −26.6 dB at the music bus.
+The music and the effects each have a bus: the Settings slider's level times a gain (`MIX` 1 for music, `SFX_GAIN` 0.52 for effects), then a safety limiter (a compressor at −14 dB for music, −10 dB for effects, ratio 12, 1 ms attack). A player who never moved the sliders hears 35% music and 60% effects. Raid boss cues go through the effects bus too.
+
+Until 26 Nov 2026 the defaults were 12% music (at a gain of 0.5) and 30% effects (at 0.26), which put the music near −53 dB: too quiet on a phone even with the slider full (owner, 26 Nov). Measured offline in Chromium, with the limiters, after they settle (a compressor starts with its gain still moving, and Web Audio's adds a little makeup gain under its threshold):
+
+| At the default sliders           | Before (dB) | Now (dB)     |
+| -------------------------------- | ----------- | ------------ |
+| Music, average (Lobby to Spire)  | −52 to −55  | −30.5 to −33 |
+| A basic attack, loudest 50 ms    | −37         | −26          |
+| A skill, loudest 50 ms           | −33         | −21          |
+| An ultimate, loudest 50 ms       | −27         | −16          |
+| A hit (12 damage), loudest 50 ms | −34         | −22.5        |
+
+The music sits under the skills, as it did, but much less far under. The worst case found, a knockout you take every half second over the raid's busiest phase with both sliders full, peaks at −0.5 dBFS; at the default sliders, −2 dBFS.
 
 ## Sound effects
 
@@ -59,17 +61,17 @@ Hits tell yours (a crisp confirm), the ones you take (duller) and others' apart,
 
 ### Loudness, measured
 
-Every recipe was rendered offline in Chromium and measured: peak, the loudest 50 ms, and the loudest 50 ms through a phone speaker's range (300 Hz to 9 kHz, where small speakers play). Each element and gesture carries a trim in dB (`gain`), fitted to those measurements, so a shot and a field, or Earth and Light, sit at one level on a phone. The old single beep measured about −25 dB through a phone's range at full effects volume. Now, at full volume:
+Every recipe was rendered offline in Chromium and measured: peak, the loudest 50 ms, and the loudest 50 ms through a phone speaker's range (300 Hz to 9 kHz, where small speakers play). Each element and gesture carries a trim in dB (`gain`), fitted to those measurements, so a shot and a field, or Earth and Light, sit at one level on a phone. Against each other, through a phone's range:
 
-| Sound                         | Phone range (dB) | Note                                        |
-| ----------------------------- | ---------------- | ------------------------------------------- |
-| Basic attacks                 | about −30        | Repeated all match: quieter                 |
-| Skills                        | about −26        | Each between −30 and −22                    |
-| Ultimates                     | about −22        |                                             |
-| Hits (8 / 25 damage)          | −30 / −25        | Taken a little duller; knockouts −21 to −23 |
-| Burn ticks, misses            | about −41        |                                             |
-| Dash, orb, countdown, EX      | −31 to −33       |                                             |
-| Ult ready, "Fight", round end | −25 to −27       |                                             |
-| Button tap                    | about −38        | The quietest: it is on every tap            |
+| Sound                         | Against a skill | Note                             |
+| ----------------------------- | --------------- | -------------------------------- |
+| Basic attacks                 | about −4 dB     | Repeated all match: quieter      |
+| Skills                        | 0               | Each within about ±4 dB          |
+| Ultimates                     | about +4 dB     |                                  |
+| Hits (8 / 25 damage)          | −4 / +1 dB      | Knockouts +3 to +5 dB            |
+| Burn ticks, misses            | about −15 dB    |                                  |
+| Dash, orb, countdown, EX      | −5 to −7 dB     |                                  |
+| Ult ready, "Fight", round end | +1 to −1 dB     |                                  |
+| Button tap                    | about −12 dB    | The quietest: it is on every tap |
 
-The loudest peak of any single sound is −5 dBFS at full volume (a knockout you take), and the limiter handles many sounds together. Low thuds start high and drop fast, as a drum's do, so a phone still plays the start while headphones get the rest.
+How loud they play is under "Volume" above. Low thuds start high and drop fast, as a drum's do, so a phone still plays the start while headphones get the rest.

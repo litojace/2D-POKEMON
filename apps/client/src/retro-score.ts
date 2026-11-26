@@ -16,7 +16,7 @@ import type {
 /**
  * The retro soundtrack: each scene's own tune, arranged for a console sound
  * chip (chip-synth.ts). The scene sets the role: a cheerful town for the
- * Lobby, a quiet stroll for the Plaza, a fight for PvP, a boss that gets
+ * hub (the Lobby and the Plaza), a fight for PvP, a boss that gets
  * fiercer as it weakens for raids, a climb for the Spire.
  */
 const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -53,7 +53,6 @@ interface LeadOptions {
  */
 export const RETRO_GAIN: Record<BackgroundTheme | ResultTheme, number> = {
   lobby: 0.7,
-  plaza: 0.6,
   pvp: 0.67,
   raid: 0.68,
   spire: 0.52,
@@ -166,31 +165,6 @@ export function retroStep(
       if (s % 2 === 0) hat(s % 4 === 2 ? 0.028 : 0.018);
     } else if (!bridge && s % 4 === 2) hat(0.02);
     if (climax && s === 0 && bar % 8 === 0) crash();
-  } else if (theme === "plaza") {
-    // A stroll: a soft pulse with vibrato, plucked chord ripples, no drums.
-    const flute = section === 0 || section === 3 || section === 5;
-    lead(
-      bridge ? "chip-tri" : flute ? "chip-pulse12" : "chip-pulse25",
-      bridge ? 0.2 : 0.1,
-      {
-        echo: true,
-        vibrato: true,
-        harmony: climax
-          ? { instrument: "chip-pulse25", volume: 0.04 }
-          : undefined,
-      },
-    );
-    if (!bridge && s % 2 === 0)
-      add(
-        "chip-pulse12",
-        s === 8 ? shift(chord[1], 1) : chord[[0, 1, 2, 3, 1, 2, 3, 2][s / 2]],
-        0.4,
-        s === 0 ? 0.04 : 0.03,
-        0.3,
-      );
-    if (bridge && s === 0) arp(3.8, 0.028);
-    if (s === 0) add("chip-tri", root, bridge ? 3.6 : 1.6, 0.15 * BASS);
-    if (!bridge && s === 8) add("chip-tri", shift(fifth, -1), 1.2, 0.13 * BASS);
   } else if (theme === "pvp") {
     // A fight: a bold square lead, driving pulse bass, a full kit.
     lead(

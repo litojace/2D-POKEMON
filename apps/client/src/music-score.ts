@@ -6,7 +6,8 @@ import { retroResultStep, retroStep } from "./retro-score";
  * chip (retro-score.ts), played by chip voices (chip-synth.ts). No audio
  * files: the music is synthesized as it plays.
  */
-export type BackgroundTheme = "lobby" | "pvp" | "raid" | "plaza" | "spire";
+/** The Lobby's tune plays across the hub, the Plaza included. */
+export type BackgroundTheme = "lobby" | "pvp" | "raid" | "spire";
 export type ResultTheme = "victory" | "defeat" | "draw";
 export type MusicTheme = BackgroundTheme | ResultTheme;
 export function isResultTheme(theme: MusicTheme): theme is ResultTheme {
@@ -47,7 +48,6 @@ export interface ScoreNote {
 /** The fight and the boss run a little quicker than the menus. */
 export const MUSIC_BPM: Record<MusicTheme, number> = {
   lobby: 112,
-  plaza: 96,
   pvp: 148,
   raid: 132,
   spire: 132,
