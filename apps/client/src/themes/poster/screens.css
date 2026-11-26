@@ -712,3 +712,20 @@
 :root[data-ui="poster"] .coin-chip .button-icon svg {
   color: #ffd65b;
 }
+
+/* The result sheet's level-up line (result-rewards.ts): an ink strip on the
+   element-coloured sheet, where its own pale text could not be read. */
+:root[data-ui="poster"] #arena-overlay#arena-overlay .rw-levelup {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  color: #fff;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay .rw-levelup b {
+  color: var(--el);
+  font-weight: 400;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay .rw-gift {
+  color: var(--ink);
+  font-weight: 700;
+}
