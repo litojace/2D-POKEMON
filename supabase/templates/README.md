@@ -23,6 +23,9 @@ files: paste each one into **Supabase → Authentication → Emails → Template
   prove it's them, with no link: an Apple account setting its first password,
   or a password change on a session older than 24 hours when **Secure
   password change** is on. It says never to share the code.
+  Replace Supabase's default subject (`{{ .Token }} is your verification
+  code`) with the one in the table: a code in the subject shows on lock
+  screens and in notification previews.
 - Images load from the live site: `/icons/arena-192.png` and
   `/email/hero.jpg` (in `apps/client/public`). **Deploy them before pasting
   the templates**, or the banner shows as a broken image.
