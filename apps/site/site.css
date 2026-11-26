@@ -266,17 +266,32 @@ body::before {
   object-position: 50% 40%;
   z-index: -2;
 }
+/* Phones held upright: the whole painting across the top (both fighters and
+   the beam, no crop), the words under it. */
 @media (max-width: 899px) and (orientation: portrait) {
-  .hero-art,
-  .hero-art img {
-    bottom: auto;
-    height: min(75%, 600px);
-    object-position: 46% 50%;
-    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 98%);
-    mask-image: linear-gradient(to bottom, #000 55%, transparent 98%);
-  }
   .hero {
+    display: block;
+    min-height: 0;
+    padding-top: 60px;
     background: var(--hero-shade);
+  }
+  .hero-art {
+    position: relative;
+    display: block;
+    height: auto;
+    aspect-ratio: 1.8;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent);
+    mask-image: linear-gradient(to bottom, #000 80%, transparent);
+  }
+  .hero-art img {
+    object-position: 50% 38%;
+  }
+  .hero-in {
+    padding-block: 6px 36px;
+  }
+  .hero::after {
+    display: none;
   }
 }
 .hero::after {
@@ -337,76 +352,103 @@ body::before {
   font-size: 0.9rem;
   opacity: 0.85;
 }
-@media (min-width: 900px) {
+/* Wide screens: the painting is a band of its own across the top, cut to
+   its two fighters and the beam (14% to 72% of its height), and the words
+   sit under it, centred, so no word ever covers a creature (owner, 26 Nov).
+   The band is as tall as the screen leaves room for under the words; on a
+   short screen it is narrower than the window, its sides fading out. */
+@media (min-width: 900px) and (min-height: 501px) {
   .hero {
-    align-items: center;
+    display: block;
+    min-height: 0;
+    padding-top: 60px;
+    background: var(--hero-shade);
+  }
+  .hero-art {
+    position: relative;
+    display: block;
+    height: clamp(300px, calc(100svh - 60px - 300px), 38.7vw);
+    overflow: hidden;
+  }
+  .hero-art img {
+    left: 50%;
+    right: auto;
+    width: auto;
+    max-width: none;
+    aspect-ratio: 2.585;
+    translate: -50% 0;
+    object-position: 50% 33%;
+    -webkit-mask-image:
+      linear-gradient(to bottom, #000 80%, transparent),
+      linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to bottom, #000 80%, transparent),
+      linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+    mask-composite: intersect;
   }
   .hero::after {
-    background:
-      linear-gradient(
-        to right,
-        color-mix(in srgb, var(--hero-shade) 92%, transparent) 0%,
-        color-mix(in srgb, var(--hero-shade) 70%, transparent) 34%,
-        transparent 62%
-      ),
-      linear-gradient(to top, var(--hero-shade), transparent 22%);
+    display: none;
   }
   .hero-in {
-    padding-block: 80px;
-  }
-  .hero-in > * {
-    max-width: 560px;
+    justify-items: center;
+    text-align: center;
+    gap: 12px;
+    padding-block: 8px 44px;
   }
   .hero h1 {
-    max-width: none;
+    font-size: clamp(2.6rem, 4.3vw, 4.4rem);
+  }
+  .hero h1 br {
+    display: none;
+  }
+  .lede {
+    max-width: 44em;
+  }
+  .cta {
+    justify-content: center;
   }
 }
-/* Phones held sideways: the art stays, the copy stays compact. */
+/* Phones held sideways: the painting is a band of its own across the top,
+   the words under it; nothing on top of the fighters. */
 @media (max-height: 500px) and (orientation: landscape) {
   .hero {
+    display: block;
     min-height: 0;
-    align-items: center;
+    padding-top: 0;
+    background: var(--hero-shade);
+  }
+  .hero-art {
+    position: relative;
+    display: block;
+    height: auto;
+    aspect-ratio: 21 / 9;
+    max-height: calc(100svh - 60px);
+    margin-top: 56px;
+    -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent);
+    mask-image: linear-gradient(to bottom, #000 78%, transparent);
+  }
+  .hero-art img {
+    object-position: 50% 32%;
+  }
+  .hero::after {
+    display: none;
   }
   .hero-in {
-    padding-block: 28px;
+    padding-block: 4px 28px;
     gap: 10px;
   }
-  .hero-in > * {
-    max-width: 58%;
-  }
   .hero h1 {
-    font-size: 2.6rem;
+    font-size: 2.4rem;
+  }
+  .hero h1 br {
+    display: none;
   }
   .lede {
     font-size: 1rem;
   }
   .fine {
     display: none;
-  }
-  .cta {
-    margin-top: 2px;
-  }
-  .hero::after {
-    background: linear-gradient(
-      to right,
-      color-mix(in srgb, var(--hero-shade) 92%, transparent) 0%,
-      color-mix(in srgb, var(--hero-shade) 72%, transparent) 45%,
-      transparent 75%
-    );
-  }
-}
-/* The shortest phones sideways (iPhone SE, 375 px tall): title and buttons
-   first, so Play now stays on the first screen. */
-@media (max-height: 420px) and (orientation: landscape) {
-  .hero-in {
-    padding-block: 20px;
-  }
-  .hero h1 {
-    font-size: 2.3rem;
-  }
-  .lede {
-    font-size: 0.95rem;
-    line-height: 1.45;
   }
 }
 
@@ -545,6 +587,66 @@ body::before {
   color: var(--dim);
   font-size: 0.92rem;
   line-height: 1.35;
+}
+
+/* The champion ticker: the roster drifting across under the facts. */
+.ticker {
+  margin-top: 26px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 8%,
+    #000 92%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 8%,
+    #000 92%,
+    transparent
+  );
+}
+.ticker-run {
+  display: flex;
+  gap: 10px;
+  width: max-content;
+}
+.tick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 6px 14px 6px 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--el) 40%, var(--line));
+  background: color-mix(in srgb, var(--el) 8%, var(--surface));
+  color: var(--text);
+  text-decoration: none;
+  font: 700 1rem/1 var(--display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tick img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--el) 22%, var(--bg-alt));
+}
+.tick:hover,
+.tick:focus-visible {
+  border-color: var(--el);
+  background: color-mix(in srgb, var(--el) 20%, var(--surface));
+}
+/* Without motion the ticker is a row to scroll by hand. */
+@media (prefers-reduced-motion: reduce) {
+  .ticker {
+    overflow-x: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
 }
 
 /* ---------- Modes ---------- */
@@ -875,73 +977,247 @@ body::before {
     align-items: start;
   }
 }
-/* The Shop's showcase: tall cards, each the fitting room's stage for one
-   piece, its rarity in the game's rarity colours. */
-.showcase {
+/* ---------- The Shop spotlight ---------- */
+/* One piece at a time on a lit stage: the fitting room's own loop, light
+   rays turning behind it in its rarity's colour, sparks rising, its price;
+   six pieces to pick from under it. site.js turns it every few seconds
+   until the reader picks one. */
+.shop-show {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
-@media (min-width: 760px) {
-  .showcase {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+.spot {
+  --r: #ffc94d;
+  --r2: #ff8a3d;
+  display: grid;
+  gap: 0;
+  border-radius: calc(var(--radius) + 6px);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--r) 55%, transparent);
+  background:
+    radial-gradient(
+      120% 80% at 30% 40%,
+      color-mix(in srgb, var(--r) 18%, transparent),
+      transparent 65%
+    ),
+    #0a0f1f;
+  box-shadow:
+    0 0 0 1px #ffffff0d inset,
+    0 24px 60px -30px color-mix(in srgb, var(--r) 70%, transparent);
+}
+.spot.r-mythical {
+  --r: #ff7ad9;
+  --r2: #8a6bff;
+}
+@media (min-width: 640px) {
+  .spot {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    align-items: center;
   }
 }
-.show {
-  --r: #8fb3ff;
+.spot-stage {
   position: relative;
-  display: grid;
-  border-radius: var(--radius);
+  isolation: isolate;
   overflow: hidden;
-  background: var(--surface);
-  border: 1px solid color-mix(in srgb, var(--r) 45%, var(--line));
-  box-shadow: 0 0 24px color-mix(in srgb, var(--r) 14%, transparent);
-  grid-template-rows: auto 1fr;
-}
-.show.r-legendary {
-  --r: #ffc94d;
-}
-.show.r-mythical {
-  --r: #ff7ad9;
-}
-.show.r-epic {
-  --r: #c08cff;
-}
-.show picture,
-.show img {
-  display: block;
+  aspect-ratio: 1;
+  max-height: min(78svh, 520px);
+  justify-self: center;
   width: 100%;
 }
-.show img {
-  aspect-ratio: 4 / 5;
+.spot-stage picture,
+.spot-stage img {
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
-.show-tx {
-  display: grid;
-  align-content: start;
-  gap: 2px;
-  padding: 10px 12px 14px;
+.spot-stage img {
+  -webkit-mask-image: radial-gradient(closest-side, #000 72%, transparent);
+  mask-image: radial-gradient(closest-side, #000 72%, transparent);
 }
-.show-r {
-  font: 700 0.78rem/1 var(--display);
-  letter-spacing: 0.12em;
+/* Rays: a turning fan of the rarity's light behind the piece. */
+.spot-rays {
+  position: absolute;
+  inset: -30%;
+  z-index: -1;
+  background: repeating-conic-gradient(
+    from 0deg,
+    color-mix(in srgb, var(--r) 38%, transparent) 0deg 9deg,
+    transparent 9deg 24deg
+  );
+  -webkit-mask-image: radial-gradient(closest-side, #000 20%, transparent 70%);
+  mask-image: radial-gradient(closest-side, #000 20%, transparent 70%);
+  opacity: 0.55;
+}
+.spot.r-mythical .spot-rays {
+  background: repeating-conic-gradient(
+    from 0deg,
+    color-mix(in srgb, var(--r) 40%, transparent) 0deg 8deg,
+    transparent 8deg 16deg,
+    color-mix(in srgb, var(--r2) 40%, transparent) 16deg 24deg,
+    transparent 24deg 34deg
+  );
+}
+/* Sparks rising through the stage: three layers of dots on tiles of
+   unrelated sizes (so they never line up into a grid), drifting up at
+   different speeds, fading out towards the stage's edge. */
+.spot-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 23% 61%, #fff 0 1.2px, transparent 2px),
+    radial-gradient(
+      circle at 71% 18%,
+      color-mix(in srgb, var(--r) 90%, #fff) 0 1.8px,
+      transparent 2.8px
+    ),
+    radial-gradient(
+      circle at 44% 83%,
+      color-mix(in srgb, var(--r2) 80%, #fff) 0 1.4px,
+      transparent 2.4px
+    );
+  background-size:
+    97px 131px,
+    163px 149px,
+    211px 233px;
+  -webkit-mask-image: radial-gradient(closest-side, #000 35%, transparent);
+  mask-image: radial-gradient(closest-side, #000 35%, transparent);
+  opacity: 0.6;
+}
+.spot-tx {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  padding: 18px 20px 22px;
+}
+@media (min-width: 640px) {
+  .spot-tx {
+    padding: 24px clamp(18px, 3vw, 40px) 24px 8px;
+  }
+}
+.spot-r {
+  font: 700 0.85rem/1 var(--display);
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--r);
 }
-.show h3 {
-  font-size: 1.35rem;
-  line-height: 1.05;
+.spot h3 {
+  font-size: clamp(2.1rem, 5.5vw, 3.6rem);
+  line-height: 0.95;
   text-transform: uppercase;
+  background: linear-gradient(
+    100deg,
+    #fff 30%,
+    color-mix(in srgb, var(--r) 70%, #fff) 50%,
+    #fff 70%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
-.show-k {
-  font-size: 0.85rem;
+.spot-k {
+  color: var(--dim);
+  font-weight: 600;
+}
+.spot-d {
+  max-width: 44ch;
+}
+.spot-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+  margin-top: 6px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 999px;
+  background: #ffd65b1f;
+  border: 1px solid #ffd65b59;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.spot-price b {
+  font: 800 1.35rem/1 var(--display);
+  color: var(--accent-text);
+}
+.spot-note {
+  font-size: 0.88rem;
   color: var(--dim);
 }
-.show-d {
-  margin-top: 4px;
-  font-size: 0.85rem;
-  line-height: 1.35;
+.spot-go {
+  justify-self: start;
+  margin-top: 8px;
+}
+
+.shop-picks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (min-width: 640px) {
+  .shop-picks {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+.shop-pick {
+  --r: #ffc94d;
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 6px 4px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--dim);
+  font: 600 0.8rem/1.2 var(--body);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    transform 0.2s,
+    color 0.2s;
+}
+.shop-pick.r-mythical {
+  --r: #ff7ad9;
+}
+.shop-pick img {
+  width: 100%;
+  max-width: 96px;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  object-fit: cover;
+}
+.shop-pick[aria-selected="true"] {
   color: var(--text);
+  border-color: var(--r);
+  background: color-mix(in srgb, var(--r) 14%, var(--surface));
+  box-shadow: 0 0 18px -4px color-mix(in srgb, var(--r) 70%, transparent);
+}
+.shop-pick:hover {
+  color: var(--text);
+  transform: translateY(-2px);
+}
+.shop-pick:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+/* A thin bar fills under the piece on show while the spotlight turns. */
+.shop-pick[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--r);
+  transform-origin: left;
+  transform: scaleX(var(--turn, 1));
 }
 
 /* ---------- Mobile apps ---------- */
@@ -1091,6 +1367,126 @@ body::before {
 
 /* ---------- Motion: the hero's slow drift and entrance ---------- */
 @media (prefers-reduced-motion: no-preference) {
+  /* The champion ticker drifts; a pointer on it stops it. */
+  .ticker-run {
+    animation: ticker 70s linear infinite;
+  }
+  .ticker:hover .ticker-run,
+  .ticker:focus-within .ticker-run {
+    animation-play-state: paused;
+  }
+  @keyframes ticker {
+    to {
+      transform: translateX(calc(-50% - 5px));
+    }
+  }
+  /* The hero's painting catches the light: a band of it sweeps across now
+     and then. */
+  .hero-art::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(
+      105deg,
+      transparent 38%,
+      #ffffff1f 47%,
+      #fff3 50%,
+      #ffffff1f 53%,
+      transparent 62%
+    );
+    background-size: 300% 100%;
+    mix-blend-mode: screen;
+    animation: hero-sweep 9s ease-in-out 1.5s infinite;
+  }
+  @keyframes hero-sweep {
+    0% {
+      background-position: 120% 0;
+    }
+    45%,
+    100% {
+      background-position: -20% 0;
+    }
+  }
+  /* A mode's picture leans in under the pointer. */
+  .mode-art img {
+    transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .modes li:hover .mode-art img {
+    transform: scale(1.07);
+  }
+  .spot-rays {
+    animation: spot-turn 28s linear infinite;
+  }
+  .spot-stage::after {
+    animation: spot-sparks 9s linear infinite;
+  }
+  .spot h3 {
+    animation: spot-sheen 5s ease-in-out infinite;
+  }
+  .spot.enter .spot-stage img {
+    animation: spot-pop 0.6s cubic-bezier(0.2, 0.9, 0.25, 1.2) both;
+  }
+  .spot.enter .spot-tx > * {
+    animation: raid-up 0.5s ease both;
+  }
+  .spot.enter .spot-tx > :nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .spot.enter .spot-tx > :nth-child(n + 3) {
+    animation-delay: 120ms;
+  }
+  .shop-show.turning .shop-pick[aria-selected="true"]::after {
+    animation: spot-bar var(--turn-ms, 7000ms) linear both;
+  }
+  @keyframes spot-turn {
+    to {
+      rotate: 360deg;
+    }
+  }
+  @keyframes spot-sparks {
+    from {
+      background-position:
+        0 0,
+        0 0,
+        0 0;
+    }
+    to {
+      background-position:
+        6px -524px,
+        -8px -298px,
+        4px -233px;
+    }
+  }
+  @keyframes spot-sheen {
+    0%,
+    40% {
+      background-position: 100% 0;
+    }
+    70%,
+    100% {
+      background-position: 0 0;
+    }
+  }
+  @keyframes spot-pop {
+    from {
+      opacity: 0;
+      scale: 0.85;
+    }
+    to {
+      opacity: 1;
+      scale: 1;
+    }
+  }
+  @keyframes spot-bar {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
   .hero-art img {
     animation: drift 26s ease-in-out infinite alternate;
     transition: translate 0.6s ease-out;
