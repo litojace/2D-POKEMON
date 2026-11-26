@@ -1,6 +1,7 @@
 import { RAID } from "../../packages/shared/src/raid";
 import {
   drawCollectionAura,
+  drawCollectionEntrance,
   playCollectionEntrance,
   drawCollectionVictory,
 } from "../../apps/client/src/skins/collection-fx";
@@ -688,7 +689,9 @@ it("renders every Prismatail appearance reward, with distinct palettes and anima
   drawCollectionAura(g, "halo-aura", 0, 0, 2000, false);
   expect(JSON.stringify(commands)).not.toBe(first);
   expect(playCollectionEntrance(emit, "sunburst", 0, 0, 1)).toBe(true);
-  expect(emit).toHaveBeenCalledTimes(25);
+  expect(emit).toHaveBeenCalledTimes(11);
+  // And it draws over the greeting (a sunbeam through a prism fans into rainbow beams: raid-entrance-fx.ts).
+  expect(drawCollectionEntrance(g, "sunburst", 0, 0, 1, 0.6)).toBe(true);
   expect(
     drawCollectionVictory(
       g,
