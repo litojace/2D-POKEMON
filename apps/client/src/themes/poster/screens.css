@@ -193,6 +193,7 @@
   font-weight: 800;
 }
 :root[data-ui="poster"] body.battle-active #battle-menu,
+:root[data-ui="poster"] body.battle-active #battle-chat,
 :root[data-ui="poster"] body.battle-active .chat-button {
   border-radius: 0;
   background: var(--ink);

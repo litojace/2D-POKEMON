@@ -63,7 +63,8 @@
   left: 47%;
   top: 47%;
   transform: translate(-50%, -50%) rotate(-7deg);
-  font: 400 178px/0.8 var(--font-display);
+  /* As wide as the stage allows: 177 px on an 844 px phone, more on a desk. */
+  font: 400 clamp(150px, 21vw, 420px) / 0.8 var(--font-display);
   letter-spacing: 0.01em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -149,7 +150,8 @@
 :root[data-ui="poster"] .lobby-layer .lobby-rail button {
   display: flex;
   justify-content: flex-start;
-  gap: 10px;
+  /* Room for a count on the icon's corner before the label starts. */
+  gap: 16px;
   padding: 0 10px;
   border-radius: 0;
   background: none;
