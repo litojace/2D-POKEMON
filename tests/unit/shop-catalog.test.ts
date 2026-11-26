@@ -60,7 +60,8 @@ const migration =
   readFileSync("supabase/migrations/20261125160000_rainy_day.sql", "utf8") +
   readFileSync("supabase/migrations/20261125170000_grand_prix.sql", "utf8") +
   readFileSync("supabase/migrations/20261125180000_sun_dynasty.sql", "utf8") +
-  readFileSync("supabase/migrations/20261125200000_look_singles.sql", "utf8");
+  readFileSync("supabase/migrations/20261125200000_look_singles.sql", "utf8") +
+  readFileSync("supabase/migrations/20261126023000_more_singles.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -228,8 +229,8 @@ describe("shop catalog", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("has nine collections of five pieces, one per appearance slot, and eight singles", () => {
-    expect(LOOK_ITEMS).toHaveLength(45 + 8);
+  it("has nine collections of five pieces, one per appearance slot, and fourteen singles", () => {
+    expect(LOOK_ITEMS).toHaveLength(45 + 14);
     expect(SHOP_BUNDLES).toHaveLength(9);
     // The singles: two of each kind but Colors, never in a set, priced like
     // a set's piece of their slot and tier (LOOK_SLOTS x 1, 1.6 or 2.5).
@@ -243,6 +244,12 @@ describe("shop catalog", () => {
       ["crown-frame", "frame", "epic", 1280],
       ["trophy-victory", "victory", "epic", 1800],
       ["meteor-victory", "victory", "mythical", 4500],
+      ["music-aura", "aura", "rare", 900],
+      ["rune-aura", "aura", "epic", 1440],
+      ["smoke-entrance", "entrance", "rare", 1000],
+      ["rainbow-entrance", "entrance", "epic", 1600],
+      ["balloon-victory", "victory", "epic", 1800],
+      ["disco-victory", "victory", "epic", 2880],
     ]);
     for (const b of ALL_BUNDLES)
       for (const id of singles.map((i) => i.id))

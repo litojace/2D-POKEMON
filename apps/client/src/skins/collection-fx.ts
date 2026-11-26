@@ -108,10 +108,26 @@ export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, n
       return true;
     }
     case "galaxy-aura": {
+      // A nebula on the ground, its violet and pink clouds turning slowly;
+      // stars circle on it, and two small worlds orbit with them, a ringed
+      // one and a blue one, passing in front of the fighter and behind.
       const k = reduced ? 0.5 : 0.5 + Math.sin(now / 900) * 0.5;
-      g.fillStyle(0x4a3a9a, 0.16 + k * 0.08).fillEllipse(x, y, 104, groundHeight(104));
-      g.fillStyle(0xc86bff, 0.12).fillEllipse(x + Math.cos(t / 1800) * 10, y, 70, groundHeight(70));
+      g.fillStyle(0x4a3a9a, 0.2 + k * 0.08).fillEllipse(x, y, 108, groundHeight(108));
+      g.fillStyle(0xc86bff, 0.16).fillEllipse(x + Math.cos(t / 1800) * 12, y, 72, groundHeight(72));
+      g.fillStyle(0xff7fd0, 0.12).fillEllipse(x - Math.cos(t / 2300) * 14, y, 54, groundHeight(54));
+      g.lineStyle(1.4, 0x9fd8ff, 0.45 + 0.2 * k).strokeEllipse(x, y, 100, groundHeight(100));
       ring(6, 48, 19, 5000, (gg, px, py, _i, _a, d, f) => sparkle(gg, px, py, 2.4 * d, 0xffffff, 0.85 * f));
+      ring(2, 48, 19, 7000, (gg, px, py, i, _a, d, f) => {
+        // On the ring's plane, like the stars: in front on the near half.
+        const cy = py;
+        if (i === 0) {
+          gg.fillStyle(0xffc46b, 0.95 * f).fillCircle(px, cy, 4.6 * d);
+          gg.lineStyle(1.3 * d, 0xffe7a3, 0.9 * f).strokeEllipse(px, cy, 15 * d, 4.4 * d);
+        } else {
+          gg.fillStyle(0x6fb6ff, 0.95 * f).fillCircle(px, cy, 3.8 * d);
+          gg.fillStyle(0xeafcff, 0.7 * f).fillCircle(px - 1.2 * d, cy - 1.2 * d, 1.2 * d);
+        }
+      });
       return true;
     }
     case "retro-aura":
@@ -287,6 +303,51 @@ export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, n
       });
       return true;
     }
+    case "music-aura": {
+      // Music notes bob round you to a beat: eighth notes in pink, ice blue
+      // and gold hop on each beat over a ring of staff lines.
+      g.lineStyle(1, 0xffffff, 0.35).strokeEllipse(x, y, 96, groundHeight(96));
+      g.lineStyle(1, 0xffffff, 0.25).strokeEllipse(x, y, 106, groundHeight(106));
+      const beat = reduced ? 0 : Math.abs(Math.sin((now / 500) * Math.PI));
+      const notes = [0xff6fa8, 0x6fd6ff, 0xffd65b];
+      ring(6, 52, 20, 6400, (gg, px, py, i, _a, d, f) => {
+        const hop = (i % 2 ? beat : 1 - beat) * 6 * d,
+          hy = py - hop,
+          c = notes[i % 3];
+        gg.fillStyle(c, 0.95 * f).fillEllipse(px, hy, 6 * d, 4.6 * d);
+        gg.lineStyle(1.4 * d, c, 0.95 * f).lineBetween(px + 2.6 * d, hy, px + 2.6 * d, hy - 12 * d);
+        gg.fillStyle(c, 0.95 * f).fillTriangle(px + 2.6 * d, hy - 12 * d, px + 7 * d, hy - 8 * d, px + 2.6 * d, hy - 8 * d);
+      });
+      return true;
+    }
+    case "rune-aura": {
+      // A magic circle on the ground: two gold rings with runes between
+      // them, turning slowly, and four violet sparks circling above it.
+      const turn = t / 9000;
+      const k = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(now / 700);
+      g.fillStyle(0x6a3aff, 0.2 + 0.08 * k).fillEllipse(x, y, 108, groundHeight(108));
+      g.lineStyle(2.4, 0xffd36b, 0.95).strokeEllipse(x, y, 108, groundHeight(108));
+      g.lineStyle(1.6, 0xffd36b, 0.85).strokeEllipse(x, y, 80, groundHeight(80));
+      g.lineStyle(1.8, 0xe6d6ff, 0.75 + 0.25 * k);
+      for (let i = 0; i < 10; i++) {
+        const a = turn * TAU + (i / 10) * TAU,
+          cx = x + Math.cos(a) * 46,
+          cy = y + Math.sin(a) * 46 * flat,
+          u = 4,
+          v = 4 * flat * 2.4;
+        // Each rune: a stroke and one of three marks across it.
+        g.lineBetween(cx, cy - v, cx, cy + v);
+        if (i % 3 === 0) g.lineBetween(cx - u, cy - v * 0.4, cx + u, cy + v * 0.4);
+        else if (i % 3 === 1) g.lineBetween(cx, cy - v, cx + u, cy).lineBetween(cx + u, cy, cx, cy + v * 0.3);
+        else g.lineBetween(cx - u, cy, cx + u, cy).lineBetween(cx - u, cy - v * 0.6, cx - u, cy + v * 0.6);
+      }
+      ring(4, 50, 20, 4200, (gg, px, py, i, _a, d, f) => {
+        const cy = py - (reduced ? 0 : Math.sin(now / 380 + i * 1.6) * 3) * d;
+        gg.fillStyle(0xb48cff, 0.28 * f).fillCircle(px, cy, 7 * d);
+        gg.fillStyle(0xf0e6ff, 0.95 * f).fillCircle(px, cy, 2.4 * d);
+      });
+      return true;
+    }
     case "borealis-aura": {
       // Curtains of light: rays stand round a ring of light on the ice,
       // each swaying and rising at its own pace, green at the foot and
@@ -295,11 +356,13 @@ export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, n
       g.fillStyle(0x0f3a4a, 0.22).fillEllipse(x, y, 108, groundHeight(108));
       g.lineStyle(1.6, 0x4dffb8, 0.55 + 0.2 * k).strokeEllipse(x, y, 100, groundHeight(100));
       ring(12, 48, 19, 9000, (gg, px, py, i, _a, d, f) => {
-        const h = (24 + 14 * (reduced ? 0.5 : Math.sin(now / 520 + i * 1.7) * 0.5 + 0.5)) * d,
-          w = 4.6 * d,
+        // Tall behind and beside the fighter; short on the near half, which
+        // draws in front, so the light never veils its body.
+        const h = (34 + 20 * (reduced ? 0.5 : Math.sin(now / 520 + i * 1.7) * 0.5 + 0.5)) * d * (d > 1.04 ? 0.55 : 1),
+          w = 5 * d,
           lean = reduced ? 0 : Math.sin(now / 800 + i) * 2.6 * d;
-        gg.fillStyle(0x4dffb8, 0.42 * f).fillTriangle(px - w, py, px + w, py, px + lean, py - h);
-        gg.fillStyle(0xb48cff, 0.36 * f).fillTriangle(px - w * 0.6 + lean * 0.5, py - h * 0.5, px + w * 0.6 + lean * 0.5, py - h * 0.5, px + lean * 1.4, py - h * 1.5);
+        gg.fillStyle(0x4dffb8, 0.5 * f).fillTriangle(px - w, py, px + w, py, px + lean, py - h);
+        gg.fillStyle(0xb48cff, 0.42 * f).fillTriangle(px - w * 0.6 + lean * 0.5, py - h * 0.5, px + w * 0.6 + lean * 0.5, py - h * 0.5, px + lean * 1.4, py - h * 1.5);
         gg.fillStyle(0xeafff6, 0.8 * f).fillCircle(px, py, 1.1 * d);
       }, 0);
       return true;
@@ -360,9 +423,33 @@ function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) 
   }
   switch (id) {
     case "candy-entrance": {
-      // The gift box bursts open: its lid flies off in a shower of confetti.
-      burst(4, (i) => ({ y: y + 4 * sc, vx: (i - 1.5) * 60, vy: -120, life: 0.7, size: 7 * sc, color: i % 2 ? 0xff6fa8 : 0x6fd6ff, shape: "pixel" }));
-      burst(26, (i) => ({ y: y - 6 * sc, vx: rnd(-140, 140), vy: rnd(-220, -80), life: rnd(0.8, 1.2), size: 2.6 * sc, color: [0xff6fa8, 0x6fd6ff, 0xffd65b, 0x8fe06a][i % 4], shape: "confetti", spin: rnd(-12, 12) }));
+      // A pink gift box round the fighter bursts open: its walls, tied with
+      // a gold ribbon, fly apart from where they stood, the lid and its bow
+      // pop up, and confetti showers from the top. The pieces start on the
+      // box's outline, not over the face, and carry no halo.
+      const hw = 30 * sc,
+        top = y - 58 * sc,
+        bot = y + 2 * sc;
+      for (let k = 0; k <= 6; k++) {
+        const f = k / 6;
+        for (const side of [-1, 1]) {
+          const px = x + side * hw,
+            py = top + (bot - top) * f,
+            ribbon = k === 3;
+          // Slow enough that the box still stands at 0.2 s, the moment a
+          // catalogue tile shows (cosmetic-fx-preview.ts FROZEN_AT).
+          emit({ x: px, y: py, vx: side * rnd(55, 90), vy: rnd(-50, 10), life: rnd(0.55, 0.75), size: 4.4 * sc, color: ribbon ? 0xffd65b : f < 0.5 ? 0xff8fbe : 0xff6fa8, shape: "pixel", glow: false, drag: 1.2 });
+        }
+        const px = x - hw + 2 * hw * f;
+        emit({ x: px, y: bot, vx: (px - x) * 1.8, vy: rnd(-30, -10), life: 0.6, size: 4 * sc, color: k === 3 ? 0xffd65b : 0xff6fa8, shape: "pixel", glow: false, drag: 2 });
+      }
+      // The lid: a wide band that flips as it flies up, and its bow.
+      for (let k = -2; k <= 2; k++)
+        emit({ x: x + k * 8 * sc, y: top, vx: k * 18, vy: -110, life: 0.8, size: 5 * sc, color: k === 0 ? 0xffd65b : 0xff4f9a, shape: "pixel", glow: false, drag: 0.6 });
+      for (const side of [-1, 1]) emit({ x: x + side * 6 * sc, y: top - 8 * sc, vx: side * 30, vy: -130, life: 0.85, size: 6 * sc, color: 0xffd65b, shape: "leaf", spin: side * 6, glow: false });
+      emit({ x, y: y - 28 * sc, vx: 0, vy: 0, life: 0.45, size: 16 * sc, color: 0xffd2e4, shape: "shock" });
+      // 29 box pieces and a ring so far: 18 confetti keeps it in budget.
+      burst(18, (i) => ({ x: x + rnd(-24, 24) * sc, y: top, vx: rnd(-150, 150), vy: rnd(-260, -120), life: rnd(0.9, 1.3), size: 2.6 * sc, color: [0xff6fa8, 0x6fd6ff, 0xffd65b, 0x8fe06a][i % 4], shape: "confetti", spin: rnd(-12, 12) }));
       return true;
     }
     case "galaxy-entrance":
@@ -373,22 +460,61 @@ function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) 
         return { x: x + Math.cos(a) * 60 * sc, y: y - 10 * sc + Math.sin(a) * 30 * sc, vx: -Math.cos(a) * 150, vy: -Math.sin(a) * 75, life: 0.4, size: 2.4 * sc, color: 0xffffff, shape: "star" };
       });
       return true;
-    case "retro-entrance":
-      burst(30, (i) => ({ x: x + rnd(-24, 24) * sc, y: y + rnd(-50, 10) * sc, vx: 0, vy: rnd(-20, 20), life: rnd(0.3, 0.7), size: 3 * sc, color: [0x2ff3ff, 0xff4fd8, 0xffffff, 0x8fe06a][i % 4], shape: "pixel" }));
+    case "retro-entrance": {
+      // Player One spawns: a column of pixels drops onto the spot as a
+      // blocky beam, a ring of pixels skids out over the ground and a few
+      // bright blocks blink round the fighter's outline.
+      const cols = [0x2ff3ff, 0xff4fd8, 0xffffff, 0x8fe06a];
+      for (let k = 0; k < 14; k++)
+        emit({ x: x + ((k % 7) - 3) * 7 * sc, y: y - (120 + Math.floor(k / 7) * 26) * sc, vx: 0, vy: 520, life: 0.24 + Math.floor(k / 7) * 0.05, size: 3.4 * sc, color: cols[k % 4], shape: "pixel", glow: false });
+      emit({ x, y, vx: 0, vy: 0, life: 0.5, size: 8 * sc, color: 0x2ff3ff, shape: "beam" });
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * TAU;
+        emit({ x: x + Math.cos(a) * 18 * sc, y: y + Math.sin(a) * 7 * sc, vx: Math.cos(a) * 170, vy: Math.sin(a) * 66, life: 0.55, size: 3 * sc, color: cols[i % 4], shape: "pixel", drag: 2.2, glow: false });
+      }
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * TAU;
+        emit({ x: x + Math.cos(a) * 36 * sc, y: y - 32 * sc + Math.sin(a) * 40 * sc, vx: Math.cos(a) * 30, vy: Math.sin(a) * 30, life: rnd(0.4, 0.8), size: 2.6 * sc, color: cols[(i + 1) % 4], shape: "pixel" });
+      }
       return true;
-    case "festival-entrance":
-      burst(14, () => ({ y: y + 10 * sc, vx: rnd(-80, 80), vy: rnd(-60, -10), life: 0.6, size: 4 * sc, color: 0xdddddd, shape: "puff" }));
-      burst(22, (i) => {
-        const a = rnd(0, TAU);
-        return { y: y - 6 * sc, vx: Math.cos(a) * rnd(100, 200), vy: Math.sin(a) * rnd(100, 200), life: 0.5, size: 5 * sc, color: i % 2 ? 0xffd65b : 0xff4f4f, shape: "spark" };
+    }
+    case "festival-entrance": {
+      // Firecrackers pop in a ring round the fighter, each a small flash
+      // with sparks; red paper scraps flutter down and a little smoke
+      // drifts off low at either side, clear of the face.
+      // Five pops of six particles and two puffs: 32, with the Epic
+      // flourish's 13 inside the entrance budget.
+      const spots = [[-42, -8], [42, -8], [-46, -44], [46, -44], [0, -82]] as const;
+      spots.forEach(([dx, dy], k) => {
+        const px = x + dx * sc,
+          py = y + dy * sc;
+        emit({ x: px, y: py, vx: 0, vy: 0, life: 0.3, size: 4 * sc, color: k % 2 ? 0xffd65b : 0xff4f4f, shape: "shock" });
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * TAU + k + 0.4;
+          emit({ x: px, y: py, vx: Math.cos(a) * rnd(110, 170), vy: Math.sin(a) * rnd(110, 170), life: 0.35, size: 4 * sc, color: i % 2 ? 0xffd65b : 0xff6a3a, shape: "spark" });
+        }
+        emit({ x: px, y: py, vx: rnd(-40, 40), vy: rnd(-90, -30), life: rnd(0.9, 1.3), size: 2.6 * sc, color: 0xd8262a, shape: "confetti", spin: rnd(-10, 10), glow: false });
       });
+      burst(2, (i) => ({ x: x + (i % 2 ? 1 : -1) * rnd(40, 52) * sc, y: y + 2 * sc, vx: (i % 2 ? 1 : -1) * rnd(30, 60), vy: rnd(-30, -10), life: rnd(0.6, 0.8), size: 2.6 * sc, color: 0xd9d4cc, shape: "puff", grow: 1.3, fadeIn: 0.2, glow: false }));
       return true;
-    case "garden-entrance":
-      burst(24, (i) => {
-        const a = (i / 24) * TAU;
-        return { y: y + 4 * sc, vx: Math.cos(a) * rnd(60, 120), vy: Math.sin(a) * rnd(30, 60) - 70, life: rnd(0.8, 1.2), size: 3 * sc, color: [0xffb3cf, 0xff6fa0, 0xfff0f5, 0x8fe06a][i % 4], shape: "leaf", spin: rnd(-8, 8) };
-      });
+    }
+    case "garden-entrance": {
+      // A flower opens round the fighter's feet: two rings of big petals
+      // spread out from under it and settle, a green ring of leaves lies
+      // round them, and pollen rises from the heart of the flower.
+      for (let ring = 0; ring < 2; ring++)
+        for (let i = 0; i < 8; i++) {
+          const a = ((i + ring * 0.5) / 8) * TAU;
+          emit({ x: x + Math.cos(a) * 10 * sc, y: y + Math.sin(a) * 4 * sc, vx: Math.cos(a) * (ring ? 150 : 110), vy: Math.sin(a) * (ring ? 56 : 42) - 20, life: ring ? 0.85 : 1, size: (ring ? 6.5 : 8) * sc, color: ring ? 0xffd0e2 : 0xff7fae, shape: "leaf", spin: 0, drag: 3.2, glow: false });
+        }
+      for (let i = 0; i < 6; i++) {
+        const a = ((i + 0.25) / 6) * TAU;
+        emit({ x, y, vx: Math.cos(a) * 190, vy: Math.sin(a) * 70, life: 0.8, size: 5 * sc, color: 0x6fcf5a, shape: "leaf", drag: 3.6, glow: false });
+      }
+      burst(14, () => ({ x: x + rnd(-10, 10) * sc, y: y - rnd(0, 8) * sc, vx: rnd(-30, 30), vy: rnd(-150, -70), life: rnd(0.8, 1.2), size: 1.8 * sc, color: 0xffe066, shape: "dot", drag: 1.2 }));
+      burst(10, (i) => ({ x: x + rnd(-30, 30) * sc, y: y - rnd(10, 60) * sc, vx: rnd(-40, 40), vy: rnd(-40, 0), life: rnd(1, 1.4), size: 3 * sc, color: i % 2 ? 0xffb3cf : 0xfff0f5, shape: "leaf", spin: rnd(-6, 6) }));
       return true;
+    }
     case "lightning-strike":
       burst(20,i=>({x:x+(i%2?18:-18)*sc,y:y-rnd(10,80)*sc,vx:rnd(-45,45),vy:rnd(30,100),life:.6,size:3*sc,color:i%2?0x8edfff:0xffe18b,shape:"spark"}));
       emit({x,y,vx:0,vy:0,life:.7,size:22*sc,color:0x9fe4ff,shape:"ring"});
@@ -432,7 +558,7 @@ function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) 
       // A valve opens: steam billows up and out, cogs spin off, sparks
       // fly and a brass ring rolls out over the ground.
       // The steam leaves to either side, so the face stays clear.
-      burst(12, (i) => ({ x: x + (i % 2 ? 1 : -1) * rnd(14, 26) * sc, y: y - rnd(0, 14) * sc, vx: (i % 2 ? 1 : -1) * rnd(40, 110), vy: rnd(-110, -40), life: rnd(0.8, 1.3), size: rnd(4, 6) * sc, color: i % 3 ? 0xf4f1e6 : 0xd8d2c0, shape: "puff", grow: 1.8, drag: 1.6, fadeIn: 0.15 }));
+      burst(12, (i) => ({ x: x + (i % 2 ? 1 : -1) * rnd(34, 46) * sc, y: y - rnd(-2, 12) * sc, vx: (i % 2 ? 1 : -1) * rnd(80, 150), vy: rnd(-70, -20), life: rnd(0.7, 1), size: rnd(3.4, 5) * sc, color: i % 3 ? 0xf4f1e6 : 0xd8d2c0, shape: "puff", grow: 1.5, drag: 1.4, fadeIn: 0.15, glow: false }));
       burst(10, (i) => {
         const a = (i / 10) * TAU;
         return { y: y - 18 * sc, vx: Math.cos(a) * 150, vy: Math.sin(a) * 110 - 40, life: 0.8, size: 3.4 * sc, color: i % 2 ? 0xe0a23a : 0xffe6a6, shape: "coin", spin: i % 2 ? 9 : -9 };
@@ -462,6 +588,46 @@ function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) 
         return { x: x + Math.cos(a) * 30 * sc, y: y + Math.sin(a) * 10 * sc, vx: -Math.sin(a) * 150 + Math.cos(a) * 40, vy: (Math.cos(a) * 150 + Math.sin(a) * 40) * 0.35 - 90, life: rnd(0.5, 0.8), size: (i % 3 ? 2.6 : 3.6) * sc, color: [0x9a5cff, 0x4de8d8, 0xf0e6ff][i % 3], shape: i % 3 ? "spark" : "star", drag: 1.2 };
       });
       return true;
+    case "smoke-entrance":
+      // A smoke bomb: a flash at the feet, a ring of smoke rolls out low
+      // and fast so the fighter shows through at once, and green leaves
+      // whirl up and away as it clears.
+      emit({ x, y, vx: 0, vy: 0, life: 0.3, size: 10 * sc, color: 0xffffff, shape: "shock" });
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * TAU;
+        emit({ x: x + Math.cos(a) * 26 * sc, y: y - 6 * sc + Math.sin(a) * 10 * sc, vx: Math.cos(a) * rnd(130, 190), vy: Math.sin(a) * rnd(40, 70) - 20, life: rnd(0.55, 0.8), size: rnd(3.6, 5) * sc, color: i % 3 ? 0x8a93a6 : 0xb7bfcc, shape: "puff", grow: 1.6, drag: 2.4, glow: false });
+      }
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU;
+        emit({ x: x + Math.cos(a) * 20 * sc, y: y - 30 * sc + Math.sin(a) * 26 * sc, vx: -Math.sin(a) * 140, vy: Math.cos(a) * 90 - 80, life: rnd(0.8, 1.1), size: 3.6 * sc, color: i % 2 ? 0x5fbf4a : 0x9be07a, shape: "leaf", spin: i % 2 ? 9 : -9, drag: 1.2, glow: false });
+      }
+      return true;
+    case "rainbow-entrance": {
+      // A ribbon of rainbow swoops down from the sky onto the spot, its six
+      // bands side by side, and sparkles in every colour burst as it lands.
+      // (Within the entrance budget: 24 streaks, a ring and six sparks.)
+      const bands = [0xff4f5a, 0xff9f43, 0xffe066, 0x5fdc7a, 0x4fb6ff, 0xa77bff];
+      const sx = x - 104 * sc,
+        sy = y - 140 * sc,
+        len = Math.hypot(x - sx, y - 12 * sc - sy),
+        ux = (x - sx) / len,
+        uy = (y - 12 * sc - sy) / len,
+        speed = 620;
+      for (let seg = 0; seg < 4; seg++)
+        bands.forEach((c, b) => {
+          const off = (b - 2.5) * 5 * sc,
+            back = seg * 16 * sc,
+            px = sx - ux * back - uy * off,
+            py = sy - uy * back + ux * off;
+          emit({ x: px, y: py, vx: ux * speed, vy: uy * speed, life: (len + back) / speed, size: 7.5 * sc, color: c, shape: "ray", glow: false });
+        });
+      emit({ x, y: y - 4 * sc, vx: 0, vy: 0, life: 0.5, size: 9 * sc, color: 0xffffff, shape: "shock" });
+      for (let i = 0; i < 6; i++) {
+        const a = -Math.PI * (0.15 + (i / 5) * 0.7);
+        emit({ x, y: y - 12 * sc, vx: Math.cos(a) * 110, vy: Math.sin(a) * 120, life: 0.9, size: 3 * sc, color: bands[i], shape: "star", fadeIn: 0.32, drag: 1.4 });
+      }
+      return true;
+    }
     case "borealis-entrance":
       // Ribbons of light fall from the sky onto the spot, green, ice blue
       // and violet; a column of light stands where they land and a ring
@@ -602,32 +768,80 @@ function baseVictory(
   }
   switch (id) {
     case "candy-victory": {
-      // A layered cake rises behind, then bursts into confetti.
-      const rise = Math.min(1, t / 0.4);
-      const bx = x,
-        by = y + 20 * sc;
-      const layers = [[40, 0xffd2e4], [30, 0xfff0f8], [20, 0xff9ec8]] as const;
-      layers.forEach(([w, c], i) => {
-        const h = 14 * sc * rise;
-        under.fillStyle(c, fade).fillRoundedRect(bx - w * sc, by - (i + 1) * h - i * sc, w * 2 * sc, h, 3 * sc);
+      // A three-tier party cake rises up behind the fighter, its base
+      // hidden behind the feet: frosting drips over each tier, sprinkles
+      // dot it, and its candles light above the head, then confetti bursts
+      // from the top. (The old cake stood below the feet, like a pink step.)
+      const rise = Math.min(1, t / 0.45),
+        ease = 1 - (1 - rise) ** 3;
+      const tiers = [[52, 26, 0xff9ec8, 0xffe1ee], [41, 24, 0xfff0f8, 0xff9ec8], [30, 22, 0xffc2dc, 0xffffff]] as const;
+      let cy = y - 4 * sc;
+      tiers.forEach(([hw, h, body, icing], i) => {
+        const th = h * sc * ease,
+          w = hw * sc;
+        const r = Math.min(4 * sc, th / 2);
+        under.fillStyle(body, fade).fillRoundedRect(x - w, cy - th, w * 2, th, r);
+        // Its edges: the sides and a shadow at its foot (lines and rects only:
+        // the Shop's canvas previews draw these too, with no rounded stroke).
+        under.lineStyle(1.6 * sc, 0xd85a90, 0.8 * fade).lineBetween(x - w, cy - th + r, x - w, cy - r).lineBetween(x + w, cy - th + r, x + w, cy - r);
+        under.fillStyle(0xd85a90, 0.55 * fade).fillRect(x - w + r, cy - 2 * sc, w * 2 - r * 2, 2 * sc);
+        if (ease > 0.6) {
+          // Icing along the top, dripping down in round drops.
+          under.fillStyle(icing, fade).fillRect(x - w, cy - th, w * 2, 5 * sc);
+          for (let k = 0; k < Math.round(hw / 6); k++) {
+            const dx = x - w + (k + 0.5) * ((w * 2) / Math.round(hw / 6));
+            under.fillCircle(dx, cy - th + 5 * sc, (k % 2 ? 3 : 4.2) * sc);
+          }
+          const sprinkles = [0xff6fa8, 0x6fd6ff, 0xffd65b, 0x8fe06a];
+          for (let k = 0; k < 6; k++) under.fillStyle(sprinkles[(k + i) % 4], fade).fillRect(x - w * 0.8 + k * w * 0.32, cy - th * 0.45 + ((k % 2) - 0.5) * 4 * sc, 3 * sc, 1.4 * sc);
+        }
+        cy -= th;
       });
-      under.fillStyle(0xffd65b, fade).fillRect(bx - 1 * sc, by - 50 * sc * rise, 2 * sc, 8 * sc);
-      if (first || (t > 0.4 && t - dt <= 0.4))
-        for (let i = 0; i < 28; i++)
-          emit({ x: bx, y: by - 48 * sc, vx: rnd(-150, 150), vy: rnd(-260, -80), life: rnd(0.9, 1.4), size: 2.6 * sc, color: [0xff6fa8, 0x6fd6ff, 0xffd65b, 0x8fe06a][i % 4], shape: "confetti", spin: rnd(-12, 12) });
+      if (ease >= 1) {
+        // Five candles, their flames flickering.
+        for (let k = -2; k <= 2; k++) {
+          const cx = x + k * 11 * sc,
+            flick = Math.sin(t * 18 + k * 1.7) * 0.8 * sc;
+          under.fillStyle([0x6fd6ff, 0xffd65b, 0xff6fa8][(k + 3) % 3], fade).fillRect(cx - 1.6 * sc, cy - 12 * sc, 3.2 * sc, 12 * sc);
+          under.fillStyle(0xffb347, 0.35 * fade).fillCircle(cx + flick, cy - 16 * sc, 5 * sc);
+          under.fillStyle(0xfff3a0, fade).fillEllipse(cx + flick, cy - 16 * sc, 3.6 * sc, 6 * sc);
+        }
+      }
+      if (t >= 0.5 && t - dt < 0.5) {
+        emit({ x, y: cy - 10 * sc, vx: 0, vy: 0, life: 0.5, size: 12 * sc, color: 0xffd2e4, shape: "ring" });
+        for (let i = 0; i < 30; i++)
+          emit({ x: x + rnd(-20, 20) * sc, y: cy - 14 * sc, vx: rnd(-170, 170), vy: rnd(-280, -110), life: rnd(1, 1.5), size: 2.6 * sc, color: [0xff6fa8, 0x6fd6ff, 0xffd65b, 0x8fe06a][i % 4], shape: "confetti", spin: rnd(-12, 12) });
+      } else if (t > 0.6 && chance(5, dt)) {
+        emit({ x: x + rnd(-50, 50) * sc, y: cy - rnd(0, 40) * sc, vx: 0, vy: -12, life: 0.6, size: 2.2 * sc, color: 0xffffff, shape: "star", fadeIn: 0.2 });
+      }
       return true;
     }
     case "galaxy-victory": {
-      // A supernova blooms behind the fighter.
-      const k = Math.min(1, t / 0.8);
-      under.fillStyle(0xc86bff, 0.25 * fade).fillCircle(x, y - 14 * sc, (20 + k * 36) * sc);
-      under.fillStyle(0x9fd8ff, 0.3 * fade).fillCircle(x, y - 14 * sc, (12 + k * 30) * sc);
-      under.fillStyle(0xffffff, 0.5 * fade * (1 - k * 0.6)).fillCircle(x, y - 14 * sc, (6 + k * 12) * sc);
-      for (let i = 0; i < 12; i++) {
-        const a = (i / 12) * TAU + t * 0.4;
-        under.lineStyle(2 * sc, 0xffffff, 0.5 * fade).lineBetween(x + Math.cos(a) * 20 * sc * k, y - 14 * sc + Math.sin(a) * 20 * sc * k, x + Math.cos(a) * 52 * sc * k, y - 14 * sc + Math.sin(a) * 52 * sc * k);
+      // A supernova behind the fighter, centred above its head so the bloom
+      // frames it rather than tinting it: a white-gold core flashes, a
+      // shell of gas in violet, pink and ice blue swells round it, a bright
+      // shock ring races out and star-streaks fly off.
+      const k = Math.min(1, t / 0.8),
+        ease = 1 - (1 - k) ** 2,
+        cx = x,
+        cy = y - 64 * sc;
+      const shell = [[0x5a2a9a, 74, 0.32], [0xc86bff, 58, 0.3], [0xff7fd0, 44, 0.22], [0x9fd8ff, 30, 0.3]] as const;
+      for (const [c, r, a] of shell) under.fillStyle(c, a * fade).fillCircle(cx, cy, r * sc * (0.35 + 0.65 * ease));
+      const flash = t < 0.35 ? 1 - t / 0.35 : 0;
+      under.fillStyle(0xfff3c4, (0.55 + 0.4 * flash) * fade).fillCircle(cx, cy, (10 + 8 * flash) * sc);
+      under.fillStyle(0xffffff, (0.7 + 0.3 * flash) * fade).fillCircle(cx, cy, 5 * sc);
+      if (t < 1.2) under.lineStyle(3 * sc, 0xffe7a3, 0.8 * (1 - t / 1.2) * fade).strokeCircle(cx, cy, (16 + t * 90) * sc);
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * TAU + t * 0.3,
+          r0 = 18 * sc * ease,
+          r1 = (40 + (i % 2) * 18) * sc * ease;
+        under.lineStyle(1.8 * sc, i % 2 ? 0xffe7a3 : 0xffffff, 0.6 * fade).lineBetween(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0, cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
       }
-      if (chance(10, dt)) emit({ x: x + rnd(-60, 60) * sc, y: y + rnd(-70, 10) * sc, vx: 0, vy: -10, life: 0.6, size: 2.4 * sc, color: 0xffffff, shape: "star" });
+      if (first) for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * TAU;
+        emit({ x: cx, y: cy, vx: Math.cos(a) * rnd(160, 240), vy: Math.sin(a) * rnd(160, 240), life: 0.7, size: 4.6 * sc, color: [0xffe7a3, 0xc86bff, 0x9fd8ff][i % 3], shape: "ray", drag: 1.2 });
+      }
+      if (chance(10, dt)) emit({ x: x + rnd(-70, 70) * sc, y: cy + rnd(-50, 50) * sc, vx: 0, vy: -10, life: 0.6, size: 2.4 * sc, color: 0xffffff, shape: "star" });
       return true;
     }
     case "retro-victory": {
@@ -850,6 +1064,66 @@ function baseVictory(
       }
       return true;
     }
+    case "balloon-victory": {
+      // Balloons rise from behind the fighter, one after another, swaying
+      // on their strings; a little confetti pops as the first goes up.
+      const cols = [0xff4f6a, 0xffd65b, 0x4fb6ff, 0x7ee06a, 0xff8fd0, 0xa77bff, 0xff9f43];
+      for (let i = 0; i < 9; i++) {
+        const t0 = i * 0.28,
+          age = t - t0;
+        if (age <= 0) continue;
+        // Left and right in turn (the old formula sent the first five left).
+        const side = [-0.4, 0.38, -0.12, 0.5, 0.08, -0.32, 0.24, -0.5, 0.14][i],
+          bx = x + side * 80 * sc + Math.sin(age * 2.2 + i) * 6 * sc,
+          by = y - (20 + age * (46 + (i % 3) * 12)) * sc;
+        if (by < y - 190 * sc) continue;
+        const c = cols[i % cols.length],
+          r = (9 + (i % 2) * 2) * sc;
+        under.lineStyle(1 * sc, 0xffffff, 0.55 * fade).lineBetween(bx, by + r * 1.15, bx - side * 6 * sc, by + r * 1.15 + 22 * sc);
+        under.fillStyle(c, fade).fillEllipse(bx, by, r * 1.7, r * 2.1);
+        under.fillTriangle(bx - 2 * sc, by + r * 1.15, bx + 2 * sc, by + r * 1.15, bx, by + r * 0.95);
+        under.fillStyle(0xffffff, 0.55 * fade).fillEllipse(bx - r * 0.3, by - r * 0.4, r * 0.4, r * 0.6);
+      }
+      if (t >= 0.3 && t - dt < 0.3)
+        for (let i = 0; i < 20; i++) emit({ x: x + rnd(-30, 30) * sc, y: y - 60 * sc, vx: rnd(-130, 130), vy: rnd(-200, -80), life: rnd(0.9, 1.3), size: 2.4 * sc, color: cols[i % cols.length], shape: "confetti", spin: rnd(-12, 12) });
+      return true;
+    }
+    case "disco-victory": {
+      // A disco ball drops in above the fighter on its cord and spins:
+      // its mirror tiles glint, coloured beams sweep down to the floor and
+      // spots of light chase round it.
+      const drop = Math.min(1, t / 0.4),
+        ease = 1 - (1 - drop) ** 3,
+        bx = x,
+        by = y - (150 - 66 * ease) * sc,
+        r = 15 * sc,
+        spin = t * 2.4;
+      const beams = [0xff4fd8, 0x4fb6ff, 0xffe066, 0x5fdc7a];
+      if (ease >= 1)
+        beams.forEach((c, i) => {
+          const a = spin * 0.8 + (i / 4) * TAU,
+            fx = x + Math.cos(a) * 64 * sc,
+            fy = y + 6 * sc + Math.sin(a) * 14 * sc;
+          under.fillStyle(c, 0.16 * fade).fillTriangle(bx, by, fx - 10 * sc, fy, fx + 10 * sc, fy);
+          under.fillStyle(c, 0.4 * fade).fillEllipse(fx, fy, 22 * sc, 7 * sc);
+        });
+      under.lineStyle(1.2 * sc, 0xd9d9e6, 0.8 * fade).lineBetween(bx, by - r, bx, y - 190 * sc);
+      under.fillStyle(0x9aa3b8, fade).fillCircle(bx, by, r);
+      // Mirror tiles: rows of small squares whose brightness turns with it.
+      for (let row = -2; row <= 2; row++) {
+        const ry = by + row * r * 0.36,
+          half = Math.sqrt(1 - (row * 0.36) ** 2) * r;
+        for (let col = 0; col < 6; col++) {
+          const u = ((col + spin * 1.6) % 6) / 6,
+            tx = bx - half + u * half * 2,
+            lit = Math.sin(u * Math.PI);
+          under.fillStyle(lit > 0.8 ? 0xffffff : 0xc9d1e6, (0.4 + 0.6 * lit) * fade).fillRect(tx - 1.6 * sc, ry - 1.6 * sc, 3.2 * sc, 3.2 * sc);
+        }
+      }
+      under.fillStyle(0xffffff, 0.6 * fade).fillCircle(bx - r * 0.35, by - r * 0.4, r * 0.25);
+      if (ease >= 1 && chance(8, dt)) emit({ x: bx + rnd(-r, r), y: by + rnd(-r, r), vx: rnd(-60, 60), vy: rnd(-30, 30), life: 0.5, size: 2.6 * sc, color: 0xffffff, shape: "star" });
+      return true;
+    }
     case "borealis-victory": {
       // Three curtains of light across the sky behind the fighter: each a
       // row of rays hanging from a line that ripples, brighter where the
@@ -908,11 +1182,39 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
   auraFlourish(g, id, x, y, now, reduced, flat, front);
   return true;
 }
+/**
+ * How many particles one entrance may emit: the fighter's rig keeps 48 and
+ * drops the oldest for each new one (rig.ts MAX_PARTICLES). Emitting more
+ * lost the piece's own burst, which goes first: a Mythical entrance's
+ * flourish alone is 50, so Galaxy's star tunnel and Borealis's ribbons
+ * never showed, and both looked the same.
+ */
+export const ENTRANCE_BUDGET = 48;
+const STRUCTURAL = new Set(["shock", "beam", "ring"]);
+/** Every n-th of a list, evenly spread, so rings of particles stay rings. */
+const spread = <T,>(a: T[], n: number) => (n >= a.length ? a : Array.from({ length: n }, (_, i) => a[Math.floor((i * a.length) / n)]));
+/**
+ * Fit a burst into the budget: shockwaves, pillars and rings always stay;
+ * the rest is thinned evenly, the piece's own burst ahead of its flourish.
+ */
+export function fitEntrance(own: FxParticle[], extra: FxParticle[], budget = ENTRANCE_BUDGET): FxParticle[] {
+  if (own.length + extra.length <= budget) return [...own, ...extra];
+  const keep = (a: FxParticle[]) => a.filter((p) => STRUCTURAL.has(p.shape));
+  const rest = (a: FxParticle[]) => a.filter((p) => !STRUCTURAL.has(p.shape));
+  const [keepO, keepE, restO, restE] = [keep(own), keep(extra), rest(own), rest(extra)];
+  const room = Math.max(0, budget - keepO.length - keepE.length);
+  const nO = Math.min(restO.length, Math.max(Math.ceil(room * 0.6), room - restE.length));
+  return [...keepO, ...spread(restO, nO), ...keepE, ...spread(restE, Math.min(restE.length, room - nO))];
+}
 /** A one-off burst when the round greeting starts, plus its rarity flourish. */
 export function playCollectionEntrance(emit0: Emit, id: string, x: number, y: number, sc: number, flourishOnly = false) {
-  const emit: Emit = (p) => emit0({ ...p, glow: true });
-  const known = flourishOnly || baseEntrance(emit, id, x, y, sc);
-  if (known) entranceFlourish(emit, id, x, y, sc);
+  // A soft halo under each particle, unless it says otherwise (big pieces
+  // such as a gift box's walls would turn into a blur).
+  const own: FxParticle[] = [],
+    extra: FxParticle[] = [];
+  const known = flourishOnly || baseEntrance((p) => own.push({ glow: true, ...p }), id, x, y, sc);
+  if (known) entranceFlourish((p) => extra.push({ glow: true, ...p }), id, x, y, sc);
+  for (const p of fitEntrance(own, extra)) emit0(p);
   return known;
 }
 /**

@@ -42,8 +42,9 @@ beforeAll(async () => {
 }, 60000);
 afterAll(async () => db.close());
 
-it("seeds the eight singles as the catalogue has them, opened to Today's Picks", async () => {
-  expect(singles).toHaveLength(8);
+it("seeds every single as the catalogue has them, opened to Today's Picks", async () => {
+  // The 8 of 25 Nov and the 6 of 26 Nov.
+  expect(singles).toHaveLength(14);
   await db.exec("reset role");
   const rows = (
     await db.query<any>(
@@ -62,7 +63,8 @@ it("seeds the eight singles as the catalogue has them, opened to Today's Picks",
         rarity: i.rarity,
         price: i.price,
         items: null,
-        // Opened by 20261126004500_open_new_picks.sql (owner, 25 Nov).
+        // Opened by 20261126004500_open_new_picks.sql, or seeded open by
+        // 20261126023000_more_singles.sql (owner, 25 Nov).
         in_picks: true,
         active: true,
       })),
