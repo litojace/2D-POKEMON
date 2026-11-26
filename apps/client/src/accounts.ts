@@ -61,7 +61,8 @@ import {
   readProfileCopy,
   type ProfileCopy,
 } from "./profile-copy";
-import { createClient, type Session } from "@supabase/supabase-js";
+import type { Session } from "@supabase/supabase-js";
+import { supabaseAuth } from "./supabase-auth";
 import {
   accountSchema,
   REPORT_CATEGORIES,
@@ -180,6 +181,7 @@ const sharedCookie =
     : null;
 sharedCookie?.adopt(storageKey);
 const storage = sharedCookie ?? ownStorage;
+
 function remember(value: boolean) {
   if (value) localStorage.setItem("parena-remember", "yes");
   else localStorage.removeItem("parena-remember");
@@ -389,22 +391,12 @@ export class AccountUI {
   generation = 0;
   private sessionLoad:
     { accountId: string | null; promise: Promise<void> } | undefined;
-  client =
-    import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
-      ? createClient(
-          import.meta.env.VITE_SUPABASE_URL,
-          import.meta.env.VITE_SUPABASE_ANON_KEY,
-          {
-            auth: {
-              storage,
-              storageKey,
-              persistSession: true,
-              autoRefreshToken: true,
-              detectSessionInUrl: true,
-            },
-          },
-        )
-      : null;
+  client = supabaseAuth(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY,
+    storage,
+    storageKey,
+  );
   constructor(private hooks: Hooks) {
     this.renderNav();
     if (!this.client) {
