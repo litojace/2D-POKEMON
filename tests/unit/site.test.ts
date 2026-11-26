@@ -5,7 +5,7 @@ import { CHARACTERS } from "../../packages/shared/src/index";
 import { RAID_BOSSES } from "../../packages/shared/src/raid-roster";
 import { siteChampions } from "../../apps/site/tools/champion-data";
 
-// The website (apps/site/README.md): a static page with no build, so these
+// The website (docs/website.md): a static page with no build, so these
 // checks stand in for one. Every file it links exists, it leads into the
 // game, it uses only the game's own names, and its facts match the game.
 const SITE = path.resolve(__dirname, "../../apps/site");

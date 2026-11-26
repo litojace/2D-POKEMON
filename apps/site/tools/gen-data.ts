@@ -1,5 +1,5 @@
 // The website's champion data, from the game's own code, so the site never
-// says something the game doesn't (apps/site/README.md):
+// says something the game doesn't (docs/website.md):
 //
 //   npx tsx apps/site/tools/gen-data.ts
 //
