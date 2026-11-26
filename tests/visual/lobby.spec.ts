@@ -399,9 +399,10 @@ test("PLAY creates a private room in the chosen mode", async ({ browser }) => {
       };
     });
     await page.click("#lobby-mode");
-    // On your own, rooms you can't fill aren't listed (modeListed).
-    await expect(page.locator('[data-lobby-mode="teams"]')).toBeHidden();
-    await expect(page.locator('[data-lobby-mode="ffa"]')).toBeHidden();
+    // On your own, 2v2 and Free-for-all are searches that bots fill
+    // (tests/visual/fill-match.spec.ts); a 1v1 Duel is still a private room.
+    await expect(page.locator('[data-lobby-mode="teams"]')).toBeVisible();
+    await expect(page.locator('[data-lobby-mode="ffa"]')).toBeVisible();
     await page.click('[data-lobby-mode="duel"]');
     await page.click("#lobby-play");
     await expect(page.locator(".lobby-layer")).toHaveCount(0);

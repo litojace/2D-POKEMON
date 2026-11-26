@@ -44,7 +44,8 @@ were found for any of these games, so none are quoted here.
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
 | First Lobby (level ≤ 5) | **Lobby tour**: 6 spotlights (PLAY, rail, cards, fighter, Lobby/Plaza, Menu). Skip on every step, no confirmation. Esc skips, → is Next. | `hub-tour.ts`        |
 | Lobby                   | **Getting started**: 3 steps (bot match, Cragmuff, wear the reward)                                                                      | `getting-started.ts` |
-| First bot match         | **Coach**: move, attack, skill, dash, goal, one line at a time                                                                           | `battle-coach.ts`    |
+| First bot match         | **Coach**: move, attack, skill, dash, goal, one line at a time. The match is one round (below)                                           | `battle-coach.ts`    |
+| Levels 2 to 6           | **Unlocked** dialog: the side system that level opened (Boss Raids, Missions, the Plaza, the Shop, Ranks)                                | `feature-unlocks.ts` |
 | First visit             | Feature tips already in place: Plaza help (desktop), Spire guide, mission "how to complete"                                              | each screen          |
 | Any time                | **How to play**: Basics, Battle, Controls, Modes, Progress, Plaza & friends; Go buttons open the feature; "Replay the Lobby tour"        | `how-to-play.ts`     |
 
@@ -69,6 +70,113 @@ Rules kept:
   row is the per-account record the funnel query reads
   (`docs/player-funnel.md`). A replay that ends differently replaces the
   row.
+
+## A short first match, and features that open by level (26 Nov 2026)
+
+Apple's guide (above, 2): let people play at once, teach in steps, bring in
+side systems afterwards. Two changes follow it.
+
+**The first matches are short.** A new account's first match against a bot
+is one round; the second is first to two; from the third on a match is the
+usual first to three (`INTRO_ROUNDS` in `packages/shared/src/index.ts`).
+
+- Only a solo match against a bot (PLAY's default for a new player, the bot
+  levels, Quick Match's fallback bot). A match between players always has
+  its full length, so nobody's rating rides on one round; the weekly arcade
+  keeps its own rules.
+- The server decides: when a bot match starts it reads the account's
+  finished matches (`arena_my_progress`, 1.5 s at most; no answer means a
+  full match) and remembers for the connection once an account is past its
+  first two. A rematch in the same room counts on: one round, two, full.
+- The room's snapshot carries `introRounds`; the briefing ("One round: win
+  it to take the match"), the HUD's "BO1", the coach's goal line and the
+  Lobby's mode hint ("Learning · one round") read it. An older app version
+  shows "BO5" and the match still ends when the server says so.
+- "Flawless" (win without dropping a round) can now be earned in that first
+  round. It could already be earned 3–0 against an Easy bot.
+
+**The first win reaches level 2.** A bot match pays 25 XP (50 with the Daily
+Spark) and level 2 needs 100. The day's missions often add the rest, but not
+every day's six do. So a won short match tops an account that is still
+under level 2 up to it: the First Win XP (migration
+`20261126120000_first_win_xp.sql`), what is missing and no more, at most
+199 XP with the Spark, so it never skips level 3 by itself. The result
+card lists it ("75 First Win bonus").
+
+**Side systems open by level** (`apps/client/src/feature-unlocks.ts`):
+
+| Level | Opens          | Where its padlock shows                           |
+| ----- | -------------- | ------------------------------------------------- |
+| 2     | Boss Raids     | Rail, the mode menu's Boss Raid, the guide's step |
+| 3     | Daily Missions | Rail, the Missions card                           |
+| 4     | The Plaza      | The Lobby / Plaza switch                          |
+| 5     | The Shop       | Rail                                              |
+| 6     | Ranks          | Rail, the Menu's Leaderboard                      |
+
+- A locked button stays where it is with a pill, "Lv 3"; a tap says "Daily
+  Missions open at Lv 3". A level that opens something shows the
+  **Unlocked** dialog once on the Lobby (level, the feature in one line,
+  what opens next, Open / Later). Several levels at once share one dialog.
+- Never locked: PLAY and every mode but the raid, Fighters, Friends, the
+  party, room codes and invites, Settings, the Wardrobe (a reward's "Wear
+  it now"). Anything a friend invites you to opens whatever your level.
+- It is pacing, not permission: the server allows everything at any level.
+  The client alone hides nothing and refuses nothing a link or an invite
+  opens.
+- The first time a browser sees an account it only remembers its level
+  (`arena-unlocks:<account>`): no dialogs for features an account already
+  had, or on a second device.
+- Who this touched when it shipped (production, 26 Nov): 32 accounts; of
+  the 9 seen in the week before, 6 were level 7 or above (no padlocks), 2
+  level 1 and 1 level 3.
+- To move a feature, change its level in `FEATURE_UNLOCKS`; the padlocks,
+  the messages, the dialog and the tests' table follow.
+
+Tests: `tests/unit/intro-rounds.test.ts`, `tests/unit/feature-unlocks.test.ts`,
+`tests/integration/intro-match.test.ts`, `tests/integration/first-win-xp.test.ts`,
+`tests/visual/feature-unlocks.spec.ts`.
+
+## The result sheet celebrates what a match gave (26 Nov 2026)
+
+A player should feel what they just earned before the button asks for
+another match. A PvP or bot match's result sheet used to say "Victory",
+the score and "+125 XP" in one line of text. Now
+(`apps/client/src/result-rewards.ts`):
+
+1. On a win your fighter's portrait hops beside the score and confetti
+   falls over the sheet's head.
+2. Tiles appear one after another, each with a bar that runs from where
+   you were to where you are:
+   - **XP**: the level bar; when it fills, LEVEL UP, and a line under the
+     tiles says the level, its coins, a milestone's title or cosmetic and
+     the feature it opened ("Unlocked: Boss Raids").
+   - **Rank** (rated matches): the rating change in green or red and your
+     place between this rank and the next; RANK UP on a promotion.
+   - **Season**: the tier bar; TIER UP.
+   - **Mastery**: your matches with this fighter toward its next tier.
+   - **Coins**: what the match, its missions and a level paid.
+3. **Rematch** (Play again against a bot) is the widest button; **Add
+   friend** sits beside it after a 1v1 with someone who isn't a friend yet.
+
+Rules kept:
+
+- Every number comes from what the server already sends: the journey's
+  recent XP rows (`xpAward`), the match report's rating, your records, and
+  the coin balance before and after. Nothing is counted on the client that
+  the server didn't save.
+- The sheet is drawn again whenever its markup changes (the XP arriving,
+  the opponent ready), which would start every animation over:
+  `syncRewardMotion` puts each tile's animations back where they were.
+- Transform and opacity only, no layout read, the same markup for the same
+  facts. Reduced motion and Low graphics show the end state at once, with
+  no confetti. `tests/visual/battle-style-budget.spec.ts` and
+  `match-flow-budget.spec.ts` cover it like any battle UI.
+- Tile rows always fill the width (three a row; five tiles are three and
+  two; four are two and two), so no row ends in an empty box.
+- Raids and the Spire keep their own result cards (`resultXp`).
+
+Tests: `tests/unit/result-rewards.test.ts`,
+`tests/visual/result-rewards.spec.ts`.
 
 ## Next steps worth considering
 

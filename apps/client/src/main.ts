@@ -106,7 +106,17 @@ import {
   AI_LEVELS,
   aiLevelMark,
   type AiLevel,
+  ACTION_FEATURE,
 } from "./lobby-screen";
+import {
+  featureLocked,
+  loadSeenLevel,
+  lockedMessage,
+  saveSeenLevel,
+  unlockDialog,
+  unlocksDue,
+  type Feature,
+} from "./feature-unlocks";
 // The Plaza loads when first wanted (hub-worlds.ts).
 import { worldLoader, type World } from "./hub-worlds";
 import {
@@ -123,7 +133,6 @@ import {
   isRaider,
   raidBossName,
 } from "../../../packages/shared/src/raid";
-import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { stormTarget } from "./storm-twins-controls";
 import { raidTargets } from "./raid-targets";
@@ -251,6 +260,7 @@ import {
   MUTATORS,
   MUTATOR_RULES,
   roundsNeeded,
+  introRounds,
   RULES,
   STATUS_RULES,
   ULT_SLOT,
@@ -281,6 +291,7 @@ import {
   type Fighter,
   type Input,
   type Reply,
+  type FillMode,
   type Snapshot,
   type Zone,
   maxHealth,
@@ -343,7 +354,11 @@ import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { askConfirm, openHubPanelNow, PANEL_EVENT } from "./ui/hub-panel";
 import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { createGuide } from "./getting-started-screen";
-import { openQuickSearch, type QuickSearchHandle } from "./quick-match";
+import {
+  openFillSearch,
+  openQuickSearch,
+  type QuickSearchHandle,
+} from "./quick-match";
 import {
   LOSS_STREAK_HINT,
   easierBot,
@@ -397,6 +412,14 @@ import {
   standingsMarkup,
   type RecordState,
 } from "./match-recap";
+import {
+  confettiMarkup,
+  fighterHop,
+  rewardsMarkup,
+  syncRewardMotion,
+} from "./result-rewards";
+import { fighterPortrait } from "./fighter-art";
+import { avatar } from "./ui/components";
 import {
   matchReportReplySchema,
   partyRoomSchema,
@@ -1618,7 +1641,7 @@ function roomData(watch: boolean): RoomData {
     spire: s.raid?.spire
       ? { problem: s.raid.spire.problem, zone: s.raid.spire.zone }
       : undefined,
-    rounds: roundsNeeded(s.mutators),
+    rounds: roundsNeeded(s.mutators, s.introRounds),
     seats: players.map((p, i) => {
       const character = p.id === myId ? selected : p.character;
       const scope = `room-${watch ? "watch" : "seat"}-${i}`;
@@ -2576,7 +2599,7 @@ function cooldownScale() {
 }
 /** "two" / "three": round wins needed under this room's rules (arcade). */
 function roundWord() {
-  const n = roundsNeeded(state?.mutators);
+  const n = roundsNeeded(state?.mutators, state?.introRounds);
   return ["zero", "one", "two", "three", "four"][n] ?? String(n);
 }
 /** An arcade week's rules on the briefing card, if any. */
@@ -2887,6 +2910,11 @@ function hubOpen() {
 function syncHub() {
   syncUiEffects();
   const hub = hubOpen();
+  // The Plaza this device was last on, at a level it isn't open at yet.
+  if (hub && hubScene === "plaza" && featureLocked("plaza", levelNow())) {
+    hubScene = "lobby";
+    saveHubScene("lobby");
+  }
   syncHubScenes(hub);
   // Which hub scene is showing (styles such as the toast's place follow it).
   if (hub) document.body.dataset.hubScene = hubScene;
@@ -3117,7 +3145,7 @@ function syncHubScenes(hub: boolean) {
   nav.hidden = !hub;
   document.body.classList.toggle("hub-active", hub);
   if (!hub) return;
-  const markup = sceneSwitchMarkup(hubScene);
+  const markup = sceneSwitchMarkup(hubScene, levelNow());
   if (nav.innerHTML !== markup) nav.innerHTML = markup;
   // Centred, or between the player card and the pills on narrow phones.
   placeSceneSwitch ??= watchSceneSwitch(nav);
@@ -3126,6 +3154,7 @@ function syncHubScenes(hub: boolean) {
 let placeSceneSwitch: (() => void) | undefined;
 function setHubScene(scene: HubScene) {
   if (scene === hubScene) return;
+  if (scene === "plaza" && tellLocked("plaza")) return;
   hubScene = scene;
   saveHubScene(scene);
   homeNavigation.close();
@@ -3199,7 +3228,67 @@ function lobbyView() {
     friendsOnline: lobbyFriends.online,
     guide: guide.view(),
     spire: lobbySpire(),
+    level: levelNow(),
+    introRounds: introRounds(matchesFinished),
   };
+}
+/** Your level, or undefined while the account loads. */
+function levelNow() {
+  const journey = accountsUI?.economy?.journey;
+  return journey ? playerLevel(journey.xp).level : undefined;
+}
+/**
+ * A feature that opens by level (feature-unlocks.ts) and is still locked at
+ * yours: says when it opens, and returns true (the caller stops).
+ */
+function tellLocked(feature: Feature | undefined) {
+  if (!feature || !featureLocked(feature, levelNow())) return false;
+  toast(lockedMessage(feature));
+  return true;
+}
+/** Where a feature lives, for the "Unlocked" sheet's Open. */
+function openFeature(feature: Feature) {
+  if (feature === "plaza") return setHubScene("plaza");
+  if (hubScene !== "lobby") setHubScene("lobby");
+  lobbyAction(feature);
+}
+/** The "Unlocked" dialog is up (one at a time). */
+let unlockShowing = false;
+/**
+ * A level that opened something since this browser last looked: the
+ * "Unlocked" dialog, once, on the Lobby, when nothing else is in front (the
+ * tour, a dialog, another screen, a reward being revealed). Otherwise it
+ * waits for the next time the Lobby is free.
+ */
+function maybeShowUnlocks() {
+  const account = accountsUI?.account?.id,
+    level = levelNow();
+  if (!account || level === undefined || !lobby || myId || unlockShowing)
+    return;
+  const seen = loadSeenLevel(account);
+  const due = unlocksDue(seen, level);
+  if (!due.show.length) {
+    if (seen !== due.seen) saveSeenLevel(account, due.seen);
+    return;
+  }
+  if (
+    tour?.open ||
+    tourTimer !== undefined ||
+    $<HTMLDialogElement>("dialog").open ||
+    document.querySelector(".ui-panel-host .ui-panel") ||
+    document.querySelector("[data-ui-confirm]") ||
+    document.getElementById("reward-reveal") ||
+    accountsUI?.guestWarningPending
+  )
+    return;
+  saveSeenLevel(account, due.seen);
+  unlockShowing = true;
+  const first = due.show[0].id;
+  void askConfirm(unlockDialog(level, due.show)).then((open) => {
+    unlockShowing = false;
+    // Still on the hub (a room invite may have been taken meanwhile).
+    if (open && !myId && hubOpen()) openFeature(first);
+  });
 }
 /** The Lobby's Spire card, and the Raids dot while it's new (spire-nudge.ts). */
 function lobbySpire() {
@@ -3226,11 +3315,14 @@ const guide = createGuide({
   },
   go: (step) => {
     if (step === "bot") void lobbyPlay("bot-easy");
-    else if (step === "raid") void accountsUI.showRaids("grumblecrag", "party");
-    else void accountsUI.showWardrobe();
+    else if (step === "raid") {
+      if (!tellLocked("raids"))
+        void accountsUI.showRaids("grumblecrag", "party");
+    } else void accountsUI.showWardrobe();
   },
   changed: () => syncLobby(!!lobby),
   toast: (text) => toast(text),
+  locks: () => (featureLocked("raids", levelNow()) ? { raid: "raids" } : {}),
 });
 function syncLobby(want: boolean, park = false) {
   if (!want) {
@@ -3255,6 +3347,7 @@ function syncLobby(want: boolean, park = false) {
       onPlay: (mode) => void lobbyPlay(mode),
       onStep: stepHomeFighter,
       onKick: (id) => void kickFromParty(id),
+      onLocked: (feature) => void tellLocked(feature),
       firstMatchDone: (() => {
         const g = guide.view();
         return !(g.active && !g.done.bot);
@@ -3265,6 +3358,7 @@ function syncLobby(want: boolean, park = false) {
   }
   lobby.update(lobbyView());
   maybeStartTour();
+  maybeShowUnlocks();
 }
 /** The roster (UI remodel step 3): every fighter, and a fighter's detail. */
 let rosterScreen: RosterScreen | undefined;
@@ -3310,6 +3404,7 @@ function openRosterScreen() {
 /** Menu, cards and party slots on the Lobby. */
 function lobbyAction(action: LobbyAction) {
   audio.unlock();
+  if (tellLocked(ACTION_FEATURE[action])) return;
   // A screen opened from the rail replaces the one that is open (the Shop
   // and the Wardrobe are one screen and switch in place).
   if (action !== "shop" && action !== "wardrobe") openHubPanelNow()?.close();
@@ -3378,6 +3473,62 @@ async function quickMatch() {
     },
   });
 }
+/**
+ * 2v2 or Free-for-all on your own (docs/pvp-plan.md, "Bots fill in"):
+ * search for players; after QUICK_FILL_MS, or at Start, bots take the
+ * empty seats. The room arrives as "quick-found" either way.
+ */
+async function fillMatch(mode: FillMode) {
+  if (quickSearch?.open) return;
+  const name =
+    document.querySelector<HTMLInputElement>("#name")?.value.trim() ||
+    accountsUI.account?.displayName ||
+    "Trainer";
+  // Listening before asking: when this search completes a group of four,
+  // the room follows the reply at once.
+  let arrived = false;
+  socket.off("quick-found");
+  socket.once("quick-found", (found: Reply) => {
+    arrived = true;
+    quickSearch?.close();
+    quickSearch = undefined;
+    if (!found.ok) return;
+    identity(found);
+    // A room with other players: your pick, shown to you only.
+    if (!found.started) void request("browse", selected);
+  });
+  const reply = await request("quick-join", {
+    name,
+    character: selected,
+    mode,
+  });
+  if (!reply.ok) return void socket.off("quick-found");
+  if (arrived) return;
+  quickSearch = openFillSearch({
+    mode,
+    online: reply.online ?? 0,
+    onCancel: () => {
+      socket.off("quick-found");
+      quickSearch = undefined;
+      void request("quick-leave", {}, true);
+    },
+    onFill: async () => {
+      const filled = await request(
+        "quick-fill",
+        { difficulty: suggestedBotLevel() },
+        true,
+      );
+      // A full group formed at the same moment: its room is on the way.
+      if (!filled.ok && quickSearch?.open) {
+        socket.off("quick-found");
+        quickSearch.close();
+        quickSearch = undefined;
+        void request("quick-leave", {}, true);
+        toast(filled.error ?? "Try again.");
+      }
+    },
+  });
+}
 /** PLAY: the remembered mode, through the same controls as the Play panel. */
 async function lobbyPlay(chosen: LobbyMode) {
   audio.unlock();
@@ -3401,8 +3552,14 @@ async function lobbyPlay(chosen: LobbyMode) {
         `Your party has ${size} players: choose 2v2 Teams, Free-for-all or Boss Raid.`,
       );
   }
-  if (mode === "raid") return void accountsUI.showRaids();
+  if (mode === "raid") {
+    if (tellLocked("raids")) return;
+    return void accountsUI.showRaids();
+  }
   if (mode === "quick") return void quickMatch();
+  // Alone, 2v2 and Free-for-all are searches bots fill; a party makes a room.
+  if ((mode === "teams" || mode === "ffa") && size < 2)
+    return void fillMatch(mode);
   if (mode === "practice") return document.getElementById("practice")?.click();
   if (mode.startsWith("bot-")) {
     document
@@ -3869,8 +4026,45 @@ const coach = createCoach({
     basic: keyText("basic"),
     skills: skillsText(),
     dash: keyText("dash"),
+    rounds: roundsNeeded(state?.mutators, state?.introRounds),
   }),
 });
+/**
+ * Your coins as a match began, to show what it paid on the result sheet
+ * (result-rewards.ts): the balance moves once the server has saved the
+ * match, its missions and any level it reached.
+ */
+let coinsAtStart: { key: string; balance: number } | undefined;
+/** Counts results shown: each one's celebration is timed from its own start. */
+let resultSerial = 0;
+let resultShowing = false;
+function markMatchStart() {
+  if (!state || !myId) return;
+  const finished = state.phase === "finished";
+  if (finished && !resultShowing) resultSerial++;
+  resultShowing = finished;
+  // Once per match, while it is being played (a rematch is a new one).
+  const balance = accountsUI.economy?.balance,
+    key = `${state.code}:${resultSerial}`;
+  if (
+    !finished &&
+    state.phase !== "lobby" &&
+    balance !== undefined &&
+    coinsAtStart?.key !== key
+  )
+    coinsAtStart = { key, balance };
+}
+/** Coins the match just finished in this room has paid (undefined: not known). */
+function matchCoins() {
+  const balance = accountsUI.economy?.balance;
+  if (
+    !state ||
+    balance === undefined ||
+    coinsAtStart?.key !== `${state.code}:${resultSerial - 1}`
+  )
+    return undefined;
+  return Math.max(0, balance - coinsAtStart.balance);
+}
 /** The room the coach was last decided for (once per room). */
 let coachRoom = "";
 /**
@@ -3934,6 +4128,7 @@ function renderBattle() {
     (watching && state?.code === watching ? state.players[0] : undefined);
   if (!state || !me) return;
   syncCoach();
+  markMatchStart();
   setHudStyle(
     document.body,
     "--element",
@@ -4075,7 +4270,7 @@ function renderBattle() {
     $("round-label"),
     state.practice
       ? "FREE PRACTICE"
-      : `R${state.round} · BO${roundsNeeded(state.mutators) * 2 - 1}`,
+      : `R${state.round} · BO${roundsNeeded(state.mutators, state.introRounds) * 2 - 1}`,
   );
   setHudText(
     $("network"),
@@ -4354,6 +4549,8 @@ function renderBattle() {
       details = "",
       actions = "",
       eyebrow = "Element Arena",
+      // A result's confetti: first in the card, outside what scrolls.
+      flourish = "",
       reveal = false;
     if (state.phase === "briefing") {
       // The Reveal (docs/hidden-picks.md, "The Reveal"): the picks were
@@ -4409,12 +4606,14 @@ function renderBattle() {
       // panels hold the rest.
       const arena = ARENAS[state.arena ?? "classic"];
       const event = state.arcade ? ARCADE_EVENTS[state.arcade.id] : undefined;
-      const rounds = roundsNeeded(state.mutators);
+      const rounds = roundsNeeded(state.mutators, state.introRounds);
       const goal = isTeams()
         ? `Stay side by side: +${Math.round((TEAMUP.damage - 1) * 100)}% damage · First team to ${rounds} rounds`
         : isFfa()
           ? `Last one standing takes the round · First to ${rounds}`
-          : `First to win ${rounds} rounds`;
+          : rounds === 1
+            ? "One round: win it to take the match"
+            : `First to win ${rounds} rounds`;
       eyebrow = `${isTeams() ? "2v2 Teams" : isFfa() ? `Free-for-all · ${state.players.length} players` : state.vsBot ? "1v1 vs Bot" : "1v1 Duel"} · ${escape(event?.name ?? arena.name)}`;
       const place = event
         ? `<p class="brief-arena">${escape(event.tip)} · No rating change</p>`
@@ -4482,8 +4681,10 @@ function renderBattle() {
           ? `${escape(state.players.find((p) => p.id === state!.winner)?.name ?? "A rival")} takes the free-for-all`
           : "A worthy fight.";
       // Scoreline: your side on the left, always.
+      // No motion on Low graphics or with reduced motion: the end state.
+      const still = reducedMotion || lowGraphics();
       const score = (left: string, a: number, b: number, right: string) =>
-        `<div class="result-score"><span>${left}</span><b>${a}</b><i>–</i><b>${b}</b><span>${right}</span></div>`;
+        `<div class="result-score"><span class="rw-side">${fighterHop(avatar(fighterPortrait(me.character), { element: CHARACTERS[me.character].element }), won, still)}<span>${left}</span></span><b>${a}</b><i>–</i><b>${b}</b><span>${right}</span></div>`;
       const rival = state.players.find((p) => p.id !== myId);
       details = isFfa()
         ? standingsMarkup(state, myId)
@@ -4500,20 +4701,46 @@ function renderBattle() {
               rival ? (state.scores[rival.id] ?? 0) : 0,
               escape(rival?.name ?? "Opponent"),
             );
-      details +=
+      const record =
+        state.matchId && !state.arcade
+          ? matchRecords.get(state.matchId)
+          : undefined;
+      const saved = record?.status === "done" ? record.reply : undefined;
+      // What the match gave you, before its numbers (result-rewards.ts):
+      // the rank shows there, so the records line below leaves it out.
+      const rated = saved?.rating?.before !== undefined;
+      // One opponent you could add: the button sits beside Rematch.
+      const stranger =
+        !isTeams() && !isFfa() && saved?.records.length === 1
+          ? saved.records.find((r) => !friendIds.has(r.id))
+          : undefined;
+      // Over the sheet's head, outside the part that scrolls.
+      flourish = won && !still ? confettiMarkup() : "";
+      details =
+        details +
+        rewardsMarkup({
+          won,
+          still,
+          journey: accountsUI.economy?.journey,
+          ref: state.matchId ? `match:${state.matchId}` : undefined,
+          status: state.activityStatus,
+          eligible: state.activityEligible?.includes(myId) ?? true,
+          rating: rated ? saved!.rating : undefined,
+          // Once your records have this match (the count includes it).
+          mastery:
+            saved?.confirmed && masteryCounts === state.matchId
+              ? {
+                  fighter: CHARACTERS[me.character].name,
+                  matches: masteryMatches(me.character),
+                }
+              : undefined,
+          coins: matchCoins(),
+        }) +
         recapMarkup(state, myId) +
-        recordsMarkup(
-          state.matchId && !state.arcade
-            ? matchRecords.get(state.matchId)
-            : undefined,
-          friendIds,
-        );
-      details += resultXp(
-        accountsUI.economy?.journey,
-        state.matchId ? `match:${state.matchId}` : undefined,
-        state.activityStatus,
-        state.activityEligible?.includes(myId) ?? true,
-      );
+        recordsMarkup(record, friendIds, {
+          rating: !rated,
+          addFriend: !stranger,
+        });
       if (state.arcade)
         details +=
           '<p class="arcade-rating-note">Weekly arcade · XP and mission progress · PvP rating stays separate.</p>';
@@ -4545,7 +4772,10 @@ function renderBattle() {
       // Against a bot, the rematch can bring another fighter (not in PvP,
       // where picks stay secret until a match starts, nor the arcade).
       const canSwap = !!state.vsBot && !state.arcade && !me.ready;
-      actions = `<p class="sheet-note">${next}</p><div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button>${canSwap ? `<button class="secondary btn-secondary" id="change-fighter">${iconLabel("swap", "Change fighter")}</button>` : ""}<button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
+      const addFriend = stranger
+        ? `<button class="secondary btn-secondary" data-add-friend="${escape(stranger.id)}" aria-label="Add ${escape(stranger.name)} as a friend">${iconLabel("add-friend", "Add friend")}</button>`
+        : "";
+      actions = `<p class="sheet-note">${next}</p><div class="result-actions"><button class="primary btn-primary result-again" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", state.vsBot ? "Play again" : "Rematch")}</button>${addFriend}${canSwap ? `<button class="secondary btn-secondary" id="change-fighter">${iconLabel("swap", "Change fighter")}</button>` : ""}<button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
     const finished = state.phase === "finished";
     const won =
@@ -4556,7 +4786,7 @@ function renderBattle() {
       : state.phase === "intermission"
         ? ` round-break${actions ? " has-rites" : ""}`
         : "";
-    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}${sheet}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
+    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}${sheet}">${flourish}<span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
     // Preserve the pressed button and native scrolling between snapshots.
     // The arena finishing loading starts the Reveal's scroll afresh, but it
     // is the same panel: it must not pop in again (it blinked out, the whole
@@ -4564,13 +4794,17 @@ function renderBattle() {
     const panelKey = actions
       ? `${state.code}:${state.matchId ?? ""}:${state.phase}`
       : undefined;
-    setOverlayMarkup(
+    const redrawn = setOverlayMarkup(
       overlay,
       markup,
       panelKey &&
         `${panelKey}${state.phase === "briefing" && arenaLoading(state) ? ":loading" : ""}`,
       panelKey,
     );
+    // The result's celebration carries on from where it was (drawn again
+    // as the XP, the rank and a rematch's "ready" arrive).
+    if (redrawn && finished)
+      syncRewardMotion(overlay, `${state.code}:${resultSerial}`);
     fillLiveSeconds(
       overlay,
       state.phase === "paused" ? state.pauseRemaining : state.remaining,
@@ -5130,31 +5364,49 @@ function syncFlair(me: Fighter) {
 let friendIds = new Set<string>();
 /** Fighter mastery badges on the roster: matches you've played with each. */
 let masteryFor = "";
+/** Matches this account has finished (undefined until its records load). */
+let matchesFinished: number | undefined;
+/**
+ * The match your records were last read for, and the one they now count
+ * (the result's mastery tile shows the count with that match in it).
+ */
+let masteryWaits: string | undefined;
+let masteryCounts: string | undefined;
 function loadMastery(force = false) {
   const id = accountsUI?.account?.id ?? "";
   if (!id) {
     if (masteryFor) setMastery({});
     masteryFor = "";
+    matchesFinished = undefined;
     return;
   }
   if (id === masteryFor && !force) return;
   // First load for this account: mention any waiting friend requests.
+  if (id !== masteryFor) matchesFinished = undefined;
   if (id !== masteryFor)
     void accountsUI.checkFriendRequests().then((list) => {
       if (list) friendIds = new Set(list.friends.map((f) => f.id));
     });
   masteryFor = id;
+  const waited = masteryWaits;
   void accountsUI
     .api("/api/progress")
     .then((value) => {
-      setMastery(progressSchema.parse(value).fighters);
+      const progress = progressSchema.parse(value);
+      setMastery(progress.fighters);
+      if (waited) masteryCounts = waited;
+      // A new player's short first matches (INTRO_ROUNDS): the Lobby says so.
+      if (matchesFinished !== progress.matches) {
+        matchesFinished = progress.matches;
+        syncLobby(!!lobby);
+      }
       rosterScreen?.refresh();
       const me = state?.players.find((p) => p.id === myId);
       if (me && state?.phase === "lobby") syncFlair(me);
       if (!state || state.phase === "lobby") {
         screen = "";
         renderMenu();
-      }
+      } else if (state.phase === "finished") renderBattle();
     })
     .catch(() => {
       // Records not set up yet (migration 004): no badges.
@@ -5193,8 +5445,12 @@ async function reportMatch(matchId: string, attempt = 0) {
     if (
       reply.confirmed &&
       !(before?.status === "done" && before.reply.confirmed)
-    )
+    ) {
+      // Your records now have this match: the result's mastery tile shows
+      // once they are read again (result-rewards.ts).
+      masteryWaits = matchId;
       loadMastery(true);
+    }
     for (const name of reply.achievements)
       if (!seen.includes(name))
         toast(`Achievement unlocked: ${name}. Its title is yours to wear.`);
@@ -5570,7 +5826,9 @@ $("privacy-policy").onclick = () => {
   headerMenu.open = false;
   window.open(PRIVACY_URL, "_blank", "noopener");
 };
-$("leaderboard").onclick = () => void accountsUI.showLeaderboard();
+$("leaderboard").onclick = () => {
+  if (!tellLocked("ranks")) void accountsUI.showLeaderboard();
+};
 // In the hub the header's log-out button is folded into this menu.
 $("menu-logout").onclick = () => {
   headerMenu.open = false;
@@ -5732,7 +5990,10 @@ function startTour(replay = false) {
 window.addEventListener("guest-warning-done", () => maybeStartTour());
 // Save account opens the player card first: the tour once it closes.
 document.addEventListener(PANEL_EVENT, () => {
-  if (hubScene === "lobby" && !myId) maybeStartTour();
+  if (hubScene === "lobby" && !myId) {
+    maybeStartTour();
+    maybeShowUnlocks();
+  }
 });
 /** A new account's first Lobby: the tour, once. */
 function maybeStartTour() {

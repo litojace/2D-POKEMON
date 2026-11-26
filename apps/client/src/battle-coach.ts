@@ -28,7 +28,14 @@ export interface CoachKeys {
   basic: string;
   skills: string;
   dash: string;
+  /** Round wins this match needs (a new player's first is one round). */
+  rounds?: number;
 }
+/** The goal, for the round wins this match needs. */
+export const coachGoal = (rounds = 3) =>
+  rounds === 1
+    ? "Win this round to take the match!"
+    : `Win ${rounds} rounds to take the match!`;
 
 /** What the player did that moves a step on (null: still on it). */
 export function coachAdvance(step: CoachStep, input: Input): CoachStep | null {
@@ -59,7 +66,7 @@ export function coachLine(step: CoachStep, k: CoachKeys) {
         ? { key: "DASH", text: "Tap Dash to dodge an attack" }
         : { key: k.dash, text: "Dash to dodge an attack" };
     case "goal":
-      return { key: "GOAL", text: "Win 3 rounds to take the match!" };
+      return { key: "GOAL", text: coachGoal(k.rounds) };
   }
 }
 

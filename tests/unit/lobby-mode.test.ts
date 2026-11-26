@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  LOBBY_MODES,
   chosenLobbyMode,
+  modeHint,
   modeListed,
   partyLobbyMode,
   savedLobbyMode,
@@ -49,7 +51,13 @@ describe("PLAY's mode", () => {
     expect(partyLobbyMode("bot-hard", 2)).toBe("bot-hard");
   });
   it("lists only rooms the party can fill, and always the current mode", () => {
-    expect(modeListed("teams", 0, "quick")).toBe(false);
+    // Alone, 2v2 and Free-for-all are searches bots fill: always listed.
+    expect(modeListed("teams", 0, "quick")).toBe(true);
+    expect(modeListed("teams", 1, "quick")).toBe(true);
+    expect(modeListed("ffa", 0, "quick")).toBe(true);
+    // A party needs its own full room.
+    expect(modeListed("teams", 2, "duel")).toBe(false);
+    expect(modeListed("teams", 3, "duel")).toBe(false);
     expect(modeListed("ffa", 2, "duel")).toBe(false);
     expect(modeListed("ffa", 3, "duel")).toBe(true);
     expect(modeListed("teams", 4, "duel")).toBe(true);
@@ -57,5 +65,15 @@ describe("PLAY's mode", () => {
     expect(modeListed("quick", 0, "duel")).toBe(true);
     expect(modeListed("teams", 1, "teams")).toBe(true);
     expect(modeListed("duel", 1, "quick")).toBe(true);
+  });
+  it("says bots fill in for a player alone, and a private room for a party", () => {
+    const teams = LOBBY_MODES.find((m) => m.id === "teams")!,
+      ffa = LOBBY_MODES.find((m) => m.id === "ffa")!,
+      duel = LOBBY_MODES.find((m) => m.id === "duel")!;
+    expect(modeHint(teams)).toBe("Bots fill in · best of five");
+    expect(modeHint(ffa, undefined, 1)).toBe("Bots fill in · 4 fighters");
+    expect(modeHint(teams, undefined, 4)).toBe(teams.hint);
+    expect(modeHint(ffa, undefined, 3)).toBe(ffa.hint);
+    expect(modeHint(duel)).toBe(duel.hint);
   });
 });

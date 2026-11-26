@@ -4,13 +4,15 @@ import { openHub, skipTour, snap } from "./helpers";
 // Getting started (getting-started.ts): a new account's Lobby shows the
 // guide in the Journey card's place; the sheet lists the steps; Go does a
 // step; Hide puts the Journey back; the Menu brings the guide back.
+// At level 2, as after a first win: the boss step is open (at level 1 it
+// wears its padlock: tests/visual/feature-unlocks.spec.ts).
 async function newPlayer(page: Page) {
   await skipTour(page);
   await page.addInitScript(() => {
     const w = window as any;
     w.__economyPatch = {
       journey: {
-        xp: 0,
+        xp: 100,
         recent: [],
         season: {
           id: "2026-10",

@@ -14,6 +14,7 @@
  */
 import { esc, panel, button, tag, actionBar, actions } from "./ui/components";
 import { menuIcon, type IconName } from "./menu-icons";
+import { lockBadge, unlockOf, type Feature } from "./feature-unlocks";
 import "./getting-started.css";
 
 export type GuideStep = "bot" | "raid" | "wear";
@@ -26,7 +27,7 @@ export const GUIDE_STEPS: {
   {
     id: "bot",
     title: "Play your first match",
-    hint: "Best of five against an Easy bot. Move, dodge and use your skills.",
+    hint: "A short match against an Easy bot. Move, dodge and use your skills.",
     icon: "bot",
   },
   {
@@ -147,22 +148,32 @@ export function guideCard(v: GuideView) {
   return `<span class="lobby-card-kicker">Getting started · ${v.count} of ${GUIDE_STEPS.length}</span><b>${esc(next?.title ?? "All done")}</b>${progressDots(v)}`;
 }
 
-/** The sheet: every step, the next one first to act on, and Hide. */
-export function guideMarkup(v: GuideView) {
+/**
+ * The sheet: every step, the next one first to act on, and Hide. A step
+ * whose feature is still locked at the player's level (`locks`: the boss,
+ * until the first win's level) shows the padlock in Go's place.
+ */
+export function guideMarkup(
+  v: GuideView,
+  locks: Partial<Record<GuideStep, Feature>> = {},
+) {
   const rows = GUIDE_STEPS.map((s, i) => {
     const done = v.done[s.id],
-      next = s.id === v.next;
+      next = s.id === v.next,
+      lock = locks[s.id];
     const action = done
       ? tag("Done", "ok")
-      : button("Go", {
-          icon: "enter",
-          size: "s",
-          kind: next ? "primary" : "default",
-          attrs: {
-            "data-guide-go": s.id,
-            "aria-label": `${s.title}: go`,
-          },
-        });
+      : lock
+        ? `<span role="img" aria-label="Opens at level ${unlockOf(lock).level}">${lockBadge(lock)}</span>`
+        : button("Go", {
+            icon: "enter",
+            size: "s",
+            kind: next ? "primary" : "default",
+            attrs: {
+              "data-guide-go": s.id,
+              "aria-label": `${s.title}: go`,
+            },
+          });
     return `<li class="guide-step${done ? " is-done" : ""}${next ? " is-next" : ""}"><span class="guide-step-mark" aria-hidden="true">${done ? menuIcon("check") : i + 1}</span><span class="guide-step-icon" aria-hidden="true">${menuIcon(s.icon)}</span><span class="guide-step-text"><b>${esc(s.title)}</b><small>${esc(s.hint)}</small></span><span class="guide-step-act">${action}</span></li>`;
   }).join("");
   const body =

@@ -27,6 +27,13 @@ import { guideCard, type GuideView } from "./getting-started";
 import { spireLobbyIcon } from "./spire-art";
 import type { SpireLobbyCard } from "./spire-nudge";
 import { setPerfSource } from "./perf-hud";
+import {
+  featureLocked,
+  lockBadge,
+  lockedLabel,
+  unlockOf,
+  type Feature,
+} from "./feature-unlocks";
 
 /**
  * The Lobby: the one-screen hub after login (hub redesign phase 2). Your
@@ -189,8 +196,10 @@ export function modeListed(
 ): boolean {
   if (mode === current) return true;
   const size = Math.max(1, partySize);
-  if (mode === "teams") return size >= 4;
-  if (mode === "ffa") return size >= 3;
+  // Alone, 2v2 and Free-for-all are searches bots fill (docs/pvp-plan.md,
+  // "Bots fill in"); a party needs its own full room.
+  if (mode === "teams") return size < 2 || size >= 4;
+  if (mode === "ffa") return size < 2 || size >= 3;
   if (mode === "quick") return size < 2;
   return true;
 }
@@ -222,6 +231,33 @@ const RAIL: [LobbyAction, string, Parameters<typeof menuIcon>[0]][] = [
   ["ranks", "Ranks", "leaderboard"],
   ["friends", "Friends", "friends"],
 ];
+
+/** The rail buttons, cards and modes that open by level (feature-unlocks.ts). */
+export const ACTION_FEATURE: Partial<Record<LobbyAction, Feature>> = {
+  raids: "raids",
+  missions: "missions",
+  shop: "shop",
+  ranks: "ranks",
+};
+const MODE_FEATURE: Partial<Record<LobbyMode, Feature>> = { raid: "raids" };
+/**
+ * A bot mode's hint for a new player's short first matches (INTRO_ROUNDS):
+ * "one round", then "best of three", in "best of five"'s place.
+ */
+export function modeHint(
+  m: (typeof LOBBY_MODES)[number],
+  introRounds?: number,
+  partySize = 0,
+) {
+  // Alone, 2v2 and Free-for-all search for players and bots fill the rest.
+  if (partySize < 2 && m.id === "teams") return "Bots fill in · best of five";
+  if (partySize < 2 && m.id === "ffa") return "Bots fill in · 4 fighters";
+  if (!m.ai || !introRounds) return m.hint;
+  return m.hint.replace(
+    "best of five",
+    introRounds === 1 ? "one round" : `best of ${introRounds * 2 - 1}`,
+  );
+}
 
 /** Another party member, as they stand on your Lobby stage. */
 export interface LobbyPartyMember {
@@ -269,6 +305,13 @@ export interface LobbyView {
   guide?: GuideView;
   /** The Spire's card once it is open, and a dot on Raids while it's new (spire-nudge.ts). */
   spire?: SpireLobbyCard | null;
+  /**
+   * Your level, for the features that open by level (feature-unlocks.ts);
+   * undefined while the account loads: nothing shows locked meanwhile.
+   */
+  level?: number;
+  /** A new player's next bot match is this short (INTRO_ROUNDS), if it is. */
+  introRounds?: number;
 }
 export interface LobbyOptions {
   onAction(action: LobbyAction): void;
@@ -277,6 +320,8 @@ export interface LobbyOptions {
   onStep(direction: -1 | 1): void;
   /** The leader confirmed Kick on a member's seat. */
   onKick?(id: string): void;
+  /** A tap on something still locked at your level: say when it opens. */
+  onLocked?(feature: Feature): void;
   reduced: boolean;
   /** The coached first bot match is done: PLAY defaults to Quick Match. */
   firstMatchDone?: boolean;
@@ -317,9 +362,9 @@ const hex = (color: number) => `#${color.toString(16).padStart(6, "0")}`;
 const modeLabel = (m: (typeof LOBBY_MODES)[number]) =>
   m.ai ? `Vs AI · ${aiLevelMark(m.ai)}` : m.label;
 
-function modeButton(mode: LobbyMode) {
+function modeButton(mode: LobbyMode, introRounds?: number, partySize = 0) {
   const m = LOBBY_MODES.find((x) => x.id === mode)!;
-  return `<span class="lobby-mode-icon">${menuIcon(m.icon)}</span><span class="lobby-mode-text"><b>${modeLabel(m)}</b><small>${m.hint}</small></span><span class="lobby-mode-caret" aria-hidden="true">▴</span>`;
+  return `<span class="lobby-mode-icon">${menuIcon(m.icon)}</span><span class="lobby-mode-text"><b>${modeLabel(m)}</b><small>${modeHint(m, introRounds, partySize)}</small></span><span class="lobby-mode-caret" aria-hidden="true">▴</span>`;
 }
 
 const lookData = (look: RaidLoadout | undefined) =>
@@ -364,7 +409,10 @@ export function spireCard(n: Pick<SpireLobbyCard, "title" | "note">) {
   return `<span class="lobby-card-kicker">The Spire</span><b>${escape(n.title)}</b><small>${escape(n.note)}</small>`;
 }
 /** The Missions card: how many are done and when new ones arrive. */
-export function missionsCard(e: Economy | undefined) {
+export function missionsCard(e: Economy | undefined, level?: number) {
+  // Still locked at this level: when it opens, in the card's own place.
+  if (featureLocked("missions", level))
+    return `<span class="lobby-card-kicker">Daily missions</span><b>${menuIcon("lock")}Opens at Lv ${unlockOf("missions").level}</b><small>Play matches to level up</small>`;
   if (!e || !e.missions.length)
     return `<span class="lobby-card-kicker">Daily missions</span><b>Six a day</b><small>Open to see today's missions</small>`;
   const done = e.missions.filter((m) => m.done).length,
@@ -388,6 +436,17 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   );
   let mode = savedLobbyMode(options.firstMatchDone);
   let partySize = 0;
+  /** Your level and short first matches, as the last update had them. */
+  let level: number | undefined;
+  let introRounds: number | undefined;
+  const lockedAction = (action: LobbyAction | undefined) => {
+    const feature = action && ACTION_FEATURE[action];
+    return feature && featureLocked(feature, level) ? feature : undefined;
+  };
+  const lockedMode = (m: LobbyMode | undefined) => {
+    const feature = m && MODE_FEATURE[m];
+    return feature && featureLocked(feature, level) ? feature : undefined;
+  };
   /** Show only the modes this party can play (modeListed). */
   const listModes = () =>
     layer
@@ -582,9 +641,15 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     // watch", which opens the play drawer over it.
     if (!target.closest("#lobby-mode-menu") || action) setMenu(false);
     if (pick) {
+      // A mode still locked at your level stays unpicked: when it opens.
+      const locked = lockedMode(pick);
+      if (locked) {
+        setMenu(false);
+        return options.onLocked?.(locked);
+      }
       mode = pick;
       saveLobbyMode(mode);
-      modeToggle.innerHTML = modeButton(mode);
+      modeToggle.innerHTML = modeButton(mode, introRounds, partySize);
       menu
         .querySelectorAll<HTMLElement>("[data-lobby-mode]")
         .forEach((b) =>
@@ -616,7 +681,12 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     disarm();
     if (target.closest("#lobby-fighter-tap")) return poke();
     if (step) return options.onStep(step === "-1" ? -1 : 1);
-    if (target.closest("#lobby-play")) return options.onPlay(mode);
+    if (target.closest("#lobby-play")) {
+      const locked = lockedMode(mode);
+      return locked ? options.onLocked?.(locked) : options.onPlay(mode);
+    }
+    const lockedBy = lockedAction(action);
+    if (lockedBy) return options.onLocked?.(lockedBy);
     // The rail button of the screen that is open (lit, aria-current) closes
     // it: a second tap on the same icon. Only the rail: a card that opens a
     // screen never closes one.
@@ -874,6 +944,66 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     );
   };
   setPerfSource("lobby", perfSource);
+  /**
+   * The padlocks (feature-unlocks.ts): a rail button or a mode still locked
+   * at your level wears a pill with the level that opens it, and says so to
+   * a screen reader. Written only when the level (or the short first
+   * matches) changed: the Lobby updates often.
+   */
+  let lockKey = "";
+  const syncLocks = (view: LobbyView) => {
+    const key = `${view.level}|${view.introRounds}|${view.partySize}`;
+    if (key === lockKey) return;
+    lockKey = key;
+    level = view.level;
+    introRounds = view.introRounds;
+    const mark = (
+      b: HTMLElement,
+      feature: Feature,
+      label: string,
+      pillHost: HTMLElement,
+    ) => {
+      const locked = featureLocked(feature, level);
+      b.classList.toggle("is-locked", locked);
+      const name = locked ? lockedLabel(label, feature) : label;
+      b.setAttribute("aria-label", name);
+      if (b.title) b.title = name;
+      const pill = pillHost.querySelector(":scope > .feature-lock");
+      if (locked && !pill)
+        pillHost.insertAdjacentHTML("beforeend", lockBadge(feature));
+      else if (!locked) pill?.remove();
+    };
+    for (const [id, label] of RAIL) {
+      const feature = ACTION_FEATURE[id];
+      const b = layer.querySelector<HTMLElement>(
+        `.lobby-rail [data-lobby-action="${id}"]`,
+      );
+      if (feature && b)
+        mark(
+          b,
+          feature,
+          label,
+          b.querySelector<HTMLElement>(".lobby-rail-icon")!,
+        );
+    }
+    for (const m of LOBBY_MODES) {
+      const b = menu.querySelector<HTMLElement>(`[data-lobby-mode="${m.id}"]`);
+      if (!b) continue;
+      const small = b.querySelector("small");
+      const hint = modeHint(m, introRounds, partySize);
+      if (small && small.textContent !== hint) small.textContent = hint;
+      const feature = MODE_FEATURE[m.id];
+      // Under the mode's name, where its hint was: the row keeps its height.
+      if (feature)
+        mark(
+          b,
+          feature,
+          m.label,
+          b.querySelector<HTMLElement>(":scope > span")!,
+        );
+    }
+    modeToggle.innerHTML = modeButton(mode, introRounds, partySize);
+  };
   return {
     update(view) {
       partySize = view.partySize;
@@ -979,7 +1109,15 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         first,
         guide ? guideCard(guide) : journeyCard(view.economy?.journey),
       );
-      setInner($("lobby-missions-card"), missionsCard(view.economy));
+      setInner(
+        $("lobby-missions-card"),
+        missionsCard(view.economy, view.level),
+      );
+      $("lobby-missions-card").classList.toggle(
+        "is-locked",
+        featureLocked("missions", view.level),
+      );
+      syncLocks(view);
       $("lobby-friends-online").textContent =
         view.friendsOnline === null
           ? "Friends online"
@@ -996,7 +1134,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       )!;
       // A plain red dot, no count: missions come back every day, so a
       // number would sit there all day and teach players to skip red.
-      missionBadge.hidden = !missions.length || !left;
+      missionBadge.hidden =
+        !missions.length || !left || featureLocked("missions", view.level);
       missionBadge.classList.add("is-dot");
       // The Spire, once open: its card above Missions (a shortcut past the
       // Raid Hub), glowing with a dot on Raids while something is new.
@@ -1010,7 +1149,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       const raidBadge = layer.querySelector<HTMLElement>(
         '[data-badge-for="raids"]',
       )!;
-      raidBadge.hidden = !spire?.fresh;
+      raidBadge.hidden = !spire?.fresh || featureLocked("raids", view.level);
       raidBadge.classList.add("is-new");
     },
     close(options = {}) {

@@ -2164,6 +2164,12 @@ export interface ActivityPlayer {
   botLevel: string | null;
   /** Quick Match made the room: two searchers, or the fallback bot. */
   quick?: "human" | "bot" | null;
+  /**
+   * A new player's short match against a bot: the round wins it needed
+   * (INTRO_ROUNDS). The first such win pays the First Win XP (migration
+   * 20261126120000).
+   */
+  intro?: number | null;
   mode: string;
   knockedOut: boolean;
   skillUses: number;

@@ -3,6 +3,8 @@
  * screen, PLAY) and the Plaza (the walkable world). The choice is remembered
  * on this device.
  */
+import { featureLocked, lockBadge, lockedLabel } from "./feature-unlocks";
+
 export type HubScene = "lobby" | "plaza";
 const KEY = "ea-hub-scene";
 export const HUB_SCENES: readonly { id: HubScene; label: string }[] = [
@@ -26,10 +28,13 @@ export function saveHubScene(scene: HubScene) {
     /* Optional preference. */
   }
 }
-/** The segmented scene switch for the top bar. */
-export function sceneSwitchMarkup(scene: HubScene) {
-  return HUB_SCENES.map(
-    (s) =>
-      `<button type="button" data-hub-scene="${s.id}" aria-pressed="${s.id === scene}">${s.label}</button>`,
-  ).join("");
+/**
+ * The segmented scene switch for the top bar. The Plaza opens by level
+ * (feature-unlocks.ts): until then its tab wears the padlock.
+ */
+export function sceneSwitchMarkup(scene: HubScene, level?: number) {
+  return HUB_SCENES.map((s) => {
+    const locked = s.id === "plaza" && featureLocked("plaza", level);
+    return `<button type="button" data-hub-scene="${s.id}" aria-pressed="${s.id === scene}"${locked ? ` class="is-locked" aria-label="${lockedLabel(s.label, "plaza")}"` : ""}>${s.label}${locked ? lockBadge("plaza") : ""}</button>`;
+  }).join("");
 }

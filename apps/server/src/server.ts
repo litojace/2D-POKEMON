@@ -67,6 +67,12 @@ import {
   pickTakenBy,
   pickClashes,
   veilPlayers,
+  INTRO_ROUNDS,
+  introRounds,
+  FILL_MODES,
+  MODE_SIZE,
+  type CharacterId,
+  type FillMode,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
 import { DRAIN_MESSAGE, busyRoom, trackWrites, waitForDrain } from "./drain.js";
@@ -110,7 +116,12 @@ import {
 } from "./chat.js";
 import { PlazaAppearance } from "./plaza-appearance.js";
 import { MatchLedger, matchSummary } from "./match-summary.js";
-import { QuickQueue, type QueueEntry, type QueueLeave } from "./matchmaking.js";
+import {
+  GroupQueue,
+  QuickQueue,
+  type QueueEntry,
+  type QueueLeave,
+} from "./matchmaking.js";
 import {
   BotBrain,
   BOT_DIFFICULTIES,
@@ -131,7 +142,15 @@ const botMatchSchema = identitySchema
   })
   .strict();
 const quickSchema = identitySchema
-  .extend({ character: characterSchema })
+  .extend({
+    character: characterSchema,
+    /** 2v2 or Free-for-all: a search bots can fill (default: the 1v1 queue). */
+    mode: z.enum(FILL_MODES).optional(),
+  })
+  .strict();
+/** "Start now": bots take the seats nobody else is searching for. */
+const quickFillSchema = z
+  .object({ difficulty: z.enum(BOT_DIFFICULTIES) })
   .strict();
 const createSchema = identitySchema
   .extend({
@@ -170,6 +189,11 @@ const BOT_NAMES = [
   "Echo",
   "Taro",
 ];
+/**
+ * How long a bot match waits to learn whether its player is new (their
+ * finished matches, for INTRO_ROUNDS) before it starts at full length.
+ */
+const INTRO_CHECK_MS = 1500;
 /** Six-character room codes: no 0/O or 1/I, so a code read aloud works. */
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const BOT_COLORS = { easy: "#65d38a", normal: "#7ff3ff", hard: "#ff697f" };
@@ -639,8 +663,139 @@ export function createArenaServer(
   const quickQueue = new QuickQueue<
     QueueEntry & { name: string; matched: (arena: Arena) => void }
   >((a, b) => !chat.blocks(a, b));
+  /**
+   * 2v2 and Free-for-all searches (matchmaking.ts GroupQueue): a full group
+   * plays at once; a player who won't wait longer plays with whoever is
+   * searching and bots in the empty seats.
+   */
+  type FillEntry = QueueEntry & {
+    name: string;
+    character: CharacterId;
+    /** Seat this socket in the room and tell it ("quick-found"). */
+    matched: (arena: Arena, alone: boolean) => void;
+  };
+  const fillQueues: Record<FillMode, GroupQueue<FillEntry>> = {
+    teams: new GroupQueue<FillEntry>(
+      MODE_SIZE.teams,
+      (a, b) => !chat.blocks(a, b),
+    ),
+    ffa: new GroupQueue<FillEntry>(MODE_SIZE.ffa, (a, b) => !chat.blocks(a, b)),
+  };
   /** Rooms Quick Match made: "human" (two searchers) or "bot" (fallback). */
   const quickRooms = new WeakMap<Arena, "human" | "bot">();
+  /** A searched room's bot level, for the seats bots take (seatBots). */
+  const fillLevels = new WeakMap<Arena, BotDifficulty>();
+  /**
+   * Bots in every empty seat of a searched 2v2 or Free-for-all room,
+   * labelled as bots, ready and locked in. Called as the room opens, and
+   * again at Ready in its lobby: a player who left it would otherwise leave
+   * the others a seat nobody can take.
+   */
+  function seatBots(arena: Arena) {
+    const difficulty = fillLevels.get(arena);
+    if (!difficulty || arena.mode === "raid" || arena.mode === "duel") return;
+    const mode = arena.mode;
+    const names = [...BOT_NAMES]
+      .filter((n) => !arena.players.some((p) => p.name === `${n} (Bot)`))
+      .sort(() => randomInt(3) - 1);
+    for (let i = 0; arena.players.length < MODE_SIZE[mode]; i++) {
+      let botId: string;
+      do {
+        botId = `bot-${randomBytes(6).toString("hex")}`;
+      } while (arena.players.some((p) => p.id === botId));
+      const bot = arena.add(
+        botId,
+        `${names[i % Math.max(1, names.length)] ?? "Pip"} (Bot)`,
+      );
+      // One of each fighter a team (pick-rules.ts), and not the fighter a
+      // player on its side has on show.
+      const mates = arena.players.filter(
+        (p) =>
+          p !== bot &&
+          (mode === "ffa" || arena.teamOf(p) === arena.teamOf(bot)),
+      );
+      const free = FIGHTER_IDS.filter(
+        (f) => !mates.some((p) => (p.browse ?? p.character) === f),
+      );
+      bot.character = free[randomInt(free.length)] ?? "voltkit";
+      Object.assign(bot, {
+        title: `AI · ${BOT_LABELS[difficulty]}`,
+        titleColor: BOT_COLORS[difficulty],
+        ready: true,
+        locked: true,
+      });
+      arena.bots.set(
+        botId,
+        new BotBrain(botId, difficulty, randomInt(1, 2 ** 31)),
+      );
+    }
+  }
+  /**
+   * After teams change in a room with bots (a shuffle, a player moving
+   * over): the bots stay ready and locked in, as they sat down, and a bot
+   * that now shares a fighter with someone on its side takes another. A
+   * bot that stopped being ready would never be ready again, and the room
+   * could not start.
+   */
+  function settleBots(arena: Arena) {
+    if (!arena.bots.size || arena.phase !== "lobby") return;
+    for (const bot of arena.players) {
+      if (!arena.bots.has(bot.id)) continue;
+      const mates = arena.players.filter(
+        (p) =>
+          p !== bot &&
+          (arena.mode === "ffa" || arena.teamOf(p) === arena.teamOf(bot)),
+      );
+      const shown = (p: Fighter) => p.browse ?? p.character;
+      if (mates.some((p) => shown(p) === bot.character)) {
+        const free = FIGHTER_IDS.filter(
+          (f) => !mates.some((p) => shown(p) === f),
+        );
+        bot.character = free[randomInt(free.length)] ?? bot.character;
+      }
+      bot.ready = true;
+      bot.locked = true;
+    }
+  }
+  /**
+   * A searched 2v2 or Free-for-all room: its players seated in the order
+   * they searched (so two strangers land on opposite teams), bots in the
+   * seats left, labelled as bots. One player alone with bots starts at
+   * once, with the fighter they searched with; two or more players get the
+   * room first, as in any PvP room (hidden picks, one of each fighter a
+   * team, Ready), with the bots seated and ready.
+   */
+  function openFilledRoom(
+    mode: FillMode,
+    group: FillEntry[],
+    difficulty: BotDifficulty,
+  ) {
+    let code: string;
+    do {
+      code = randomBytes(12).toString("hex");
+    } while (rooms.has(code));
+    const arena = new Arena(code, mode);
+    arena.rotateArenas = true;
+    rooms.set(code, arena);
+    const alone = group.length === 1;
+    const seats = MODE_SIZE[mode] - group.length;
+    quickRooms.set(arena, seats > 0 ? "bot" : "human");
+    for (const entry of group) {
+      logQueue(entry, seats > 0 ? "bot" : "human");
+      entry.matched(arena, alone);
+    }
+    // Whoever couldn't be seated (their connection went as they were
+    // paired) leaves a seat for a bot.
+    fillLevels.set(arena, difficulty);
+    seatBots(arena);
+    if (!arena.players.some((p) => !arena.bots.has(p.id))) {
+      // Nobody could be seated after all.
+      rooms.delete(code);
+      return;
+    }
+    if (alone) arena.start();
+    broadcast(arena);
+  }
   /** Players connected with an account, for "N online" while searching. */
   const onlineCount = () =>
     new Set(
@@ -663,6 +818,8 @@ export function createArenaServer(
       bots: arena.bots.size,
       botLevel: [...arena.bots.values()][0]?.difficulty ?? null,
       quick: quickRooms.get(arena) ?? null,
+      // A new player's short match (1 or 2 round wins), or null.
+      intro: arena.introRounds ?? null,
       fighters: arena.players.map((p) => ({
         character: p.character,
         team: arena.teamOf(p),
@@ -1610,6 +1767,7 @@ export function createArenaServer(
             vsPeople,
             botLevel,
             quick: quickRooms.get(arena) ?? null,
+            intro: arena.introRounds ?? null,
             mode: arena.mode,
             knockedOut: (p.stats.knocked ?? 0) > 0,
             skillUses: p.stats.skills,
@@ -2150,7 +2308,10 @@ export function createArenaServer(
     };
     /** Stop searching for a Quick Match, logging why. */
     const leaveQuick = (why: QueueLeave) => {
-      const entry = quickQueue.leave(socket.id);
+      const entry =
+        quickQueue.leave(socket.id) ??
+        fillQueues.teams.leave(socket.id) ??
+        fillQueues.ffa.leave(socket.id);
       if (entry) logQueue(entry, why);
       return !!entry;
     };
@@ -2751,14 +2912,52 @@ export function createArenaServer(
       a.resetPractice();
       broadcast(a);
     });
+    /**
+     * The matches this account has finished, for a new player's short first
+     * matches (INTRO_ROUNDS), or undefined: not known in time, or already
+     * past them (remembered for this connection, so only a new player's
+     * bot matches ask the database). Unknown always means a full match.
+     */
+    const matchesFinished = async (): Promise<number | undefined> => {
+      if (socket.data.introOver) return undefined;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const progress = progressSchema.parse(
+          await Promise.race([
+            accounts.rpc(socket.data.accessToken, "arena_my_progress", {}),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(
+                () => reject(new Error("Progress took too long")),
+                INTRO_CHECK_MS,
+              );
+            }),
+          ]),
+        );
+        if (progress.matches >= INTRO_ROUNDS.length)
+          socket.data.introOver = true;
+        return progress.matches;
+      } catch {
+        return undefined;
+      } finally {
+        clearTimeout(timer);
+      }
+    };
     // Solo vs an AI bot: a private room nobody else can join, straight to the briefing.
-    socket.on("bot-match", (data: unknown, cb: unknown) => {
+    socket.on("bot-match", async (data: unknown, cb: unknown) => {
       stopWatching();
       if (!requirePlayer(cb)) return;
       if (!allowed(15)) return fail(cb, "Too many requests.");
       const result = botMatchSchema.safeParse(data);
       if (!result.success)
         return fail(cb, "Choose a fighter, a display name and a difficulty.");
+      if (getSession(socket.id))
+        return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
+      // A new player's first matches are short. The weekly arcade keeps its
+      // own rules. Everything below is checked after the answer, as before.
+      const played = result.data.arcade ? undefined : await matchesFinished();
+      if (!socket.connected || !ownsConnection(socket) || !requirePlayer(cb))
+        return;
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
       if (updating(cb)) return;
@@ -2781,6 +2980,7 @@ export function createArenaServer(
         ? new ArcadeArena(code, result.data.arcade, weekly.week)
         : new Arena(code);
       a.rotateArenas = true;
+      if (introRounds(played) !== undefined) a.introPlayed = played;
       rooms.set(code, a);
       if (result.data.quick) {
         leaveQuick("bot");
@@ -2834,6 +3034,38 @@ export function createArenaServer(
         return fail(cb, "The arena is busy. Please try again later.");
       const name = result.data.name;
       const character = result.data.character;
+      // 2v2 or Free-for-all: gather with the others searching it; a full
+      // group plays now, and "quick-fill" plays with bots (below).
+      const fill = result.data.mode;
+      if (fill) {
+        const group = fillQueues[fill].join({
+          socketId: socket.id,
+          accountId: account()!.id,
+          since: Date.now(),
+          name,
+          character,
+          matched: (arena, alone) => {
+            // The connection may have gone as the group formed.
+            if (!socket.connected || !ownsConnection(socket) || !account())
+              return;
+            if (getSession(socket.id)) return;
+            attach(
+              arena,
+              name,
+              (r: Reply) =>
+                socket.emit("quick-found", { ...r, started: alone }),
+              false,
+            );
+            const me = arena.players.at(-1)!;
+            if (alone) me.character = character;
+            else me.browse = character;
+          },
+        });
+        reply(cb, { ok: true, queued: true, online: onlineCount() - 1 });
+        // After the reply, so "queued" reaches this socket before its room.
+        if (group) openFilledRoom(fill, group, "normal");
+        return;
+      }
       // Joins this socket to a room Quick Match made, as if it had created
       // or joined it, with its pick shown to itself only (a PvP lobby).
       const enter = (arena: Arena, done: (r: Reply) => void) => {
@@ -2875,6 +3107,28 @@ export function createArenaServer(
     socket.on("quick-leave", (_data: unknown, cb: unknown) => {
       leaveQuick("cancel");
       reply(cb, { ok: true });
+    });
+    /**
+     * A 2v2 or Free-for-all search that won't wait longer (the client asks
+     * after QUICK_FILL_MS, or when the player presses Start): play now with
+     * whoever else is searching, and bots in the seats left. Each player is
+     * told by "quick-found", as when a full group forms.
+     */
+    socket.on("quick-fill", (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(15)) return fail(cb, "Too many requests.");
+      const result = quickFillSchema.safeParse(data);
+      if (!result.success) return fail(cb, "Choose a bot difficulty.");
+      if (getSession(socket.id))
+        return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
+      const mode = FILL_MODES.find((m) => fillQueues[m].has(socket.id));
+      if (!mode) return fail(cb, "Search for a match first.");
+      if (rooms.size >= 500)
+        return fail(cb, "The arena is busy. Please try again later.");
+      const group = fillQueues[mode].fill(socket.id);
+      reply(cb, { ok: true });
+      openFilledRoom(mode, group, result.data.difficulty);
     });
     // Each of these asks the accounts service again, so they get a small
     // allowance of their own (a few menu taps), not the 90 a second of
@@ -3082,6 +3336,12 @@ export function createArenaServer(
           p.locked = false;
           a.lockOrder.delete(p.id);
         }
+        // A searched room a player left: bots take the empty seats, and
+        // it is a bot match from then on.
+        if (p.ready && fillLevels.has(a)) {
+          seatBots(a);
+          if (a.bots.size) quickRooms.set(a, "bot");
+        }
         const half = a.size / 2;
         if (
           a.players.length >= a.minPlayers &&
@@ -3108,6 +3368,7 @@ export function createArenaServer(
         p.team = team;
         for (const o of a.players) o.ready = false;
         unlockClashes(a);
+        settleBots(a);
         // A new side must not read the old one's plans.
         dropTeamChat(a.code);
         reply(cb, { ok: true });
@@ -3126,6 +3387,7 @@ export function createArenaServer(
         order.forEach(({ p }, i) => (p.team = i % 2 === 0 ? 0 : 1));
         for (const o of a.players) o.ready = false;
         unlockClashes(a);
+        settleBots(a);
         dropTeamChat(a.code);
         reply(cb, { ok: true });
         broadcast(a);
@@ -3302,7 +3564,11 @@ export function createArenaServer(
           p.character = fighter;
         }
         p.ready = true;
-        if (a.players.every((p) => p.ready)) a.start();
+        if (a.players.every((p) => p.ready)) {
+          // A new player's rematch is their next match: two rounds, then full.
+          a.nextIntro();
+          a.start();
+        }
         reply(cb, { ok: true });
         broadcast(a);
       }),

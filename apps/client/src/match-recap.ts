@@ -64,6 +64,12 @@ export type RecordState =
 export function recordsMarkup(
   record: RecordState | undefined,
   friendIds?: Set<string>,
+  /**
+   * What the result sheet already shows elsewhere and leaves out here: the
+   * rating (its rank tile, result-rewards.ts) and Add friend (the button
+   * beside Rematch, for a single opponent).
+   */
+  show: { rating?: boolean; addFriend?: boolean } = {},
 ) {
   if (!record) return "";
   if (record.status === "pending")
@@ -78,14 +84,14 @@ export function recordsMarkup(
   });
   // Your rating change from this match (once it's confirmed).
   const rating = reply.rating;
-  if (rating && rating.before !== undefined) {
+  if (show.rating !== false && rating && rating.before !== undefined) {
     const delta = rating.rating - rating.before;
     lines.unshift(
       `<span class="rating-change">Rating <b>${rating.rating}</b> <em class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "+" : "−"}${Math.abs(delta)}</em> · <i style="color:${rankColor(rating.rank)}">${escape(rating.rank)}</i>${rating.placementLeft ? ` · ${rating.placementLeft} placement left` : ""}</span>`,
     );
   }
   // Add the people you just played as friends (it's fine if you already are).
-  const add = reply.records
+  const add = (show.addFriend === false ? [] : reply.records)
     .filter((r) => !friendIds?.has(r.id))
     .map(
       (r) =>

@@ -70,6 +70,13 @@ describe("the first match's coach", () => {
     expect(coachLine("skill", keys).key).toBe("1 2 3 4");
     expect(coachLine("move", { ...keys, touch: true }).text).toContain("Drag");
     expect(coachLine("goal", keys).text).toContain("Win 3 rounds");
+    // A new player's first match is one round, the second first to two.
+    expect(coachLine("goal", { ...keys, rounds: 1 }).text).toBe(
+      "Win this round to take the match!",
+    );
+    expect(coachLine("goal", { ...keys, rounds: 2 }).text).toContain(
+      "Win 2 rounds",
+    );
     // Key labels are escaped.
     expect(coachMarkup("move", { ...keys, move: "<b>" })).toContain(
       "&lt;b&gt;",

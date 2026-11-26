@@ -20,6 +20,14 @@ export * from "./avatars.js";
  */
 export const QUICK_MATCH_FALLBACK_MS = 20_000;
 export const QUICK_MATCH_OFFER_MS = 6_000;
+/**
+ * 2v2 and Free-for-all: how long a search waits for players before bots
+ * take the empty seats (the client asks then; a player can ask sooner).
+ */
+export const QUICK_FILL_MS = 15_000;
+/** The modes a lone player can search, with bots for the empty seats. */
+export const FILL_MODES = ["teams", "ffa"] as const;
+export type FillMode = (typeof FILL_MODES)[number];
 export const RULES = {
   width: 1600,
   height: 900,
@@ -3021,11 +3029,36 @@ export const MUTATOR_RULES = {
   speed: 1.6,
   giants: 1.45,
 };
-/** Round wins needed with these party rules. */
-export function roundsNeeded(mutators: readonly string[] = []) {
-  return mutators.includes("quick")
+/**
+ * A new player's first matches against a bot are short (owner, 26 Nov 2026):
+ * the first is one round, the second is first to two, and from the third on
+ * a match is the usual first to three. Indexed by the matches the account
+ * has finished. Only a solo match against a bot: a match between players
+ * always has its full length, so nobody's rating rides on one round.
+ */
+export const INTRO_ROUNDS: readonly number[] = [1, 2];
+/** Round wins a new player's bot match needs, or undefined for the usual. */
+export function introRounds(matchesFinished: number | undefined) {
+  if (
+    matchesFinished === undefined ||
+    !Number.isInteger(matchesFinished) ||
+    matchesFinished < 0
+  )
+    return undefined;
+  return INTRO_ROUNDS[matchesFinished];
+}
+/**
+ * Round wins needed with these party rules; `intro` is a new player's short
+ * match (Snapshot.introRounds), which only ever shortens one.
+ */
+export function roundsNeeded(
+  mutators: readonly string[] = [],
+  intro?: number | null,
+) {
+  const usual = mutators.includes("quick")
     ? MUTATOR_RULES.quickRounds
     : RULES.roundsToWin;
+  return intro && intro >= 1 ? Math.min(usual, Math.floor(intro)) : usual;
 }
 /**
  * The closing ring: in a round's last minute the safe circle shrinks from the
@@ -3161,6 +3194,11 @@ export interface Snapshot {
   matchId?: string | null;
   /** Party rules switched on for this room. */
   mutators?: MutatorId[];
+  /**
+   * A new player's short match against a bot: the round wins it needs (1,
+   * then 2: INTRO_ROUNDS). Absent in every other match.
+   */
+  introRounds?: number;
   /** Crown Hill: seconds each side has held the circle this round. */
   crown?: number[];
   /** Names of friends watching this room. */
@@ -3357,6 +3395,11 @@ export interface Reply {
   queued?: boolean;
   /** Quick Match: other players connected right now (not counting you). */
   online?: number;
+  /**
+   * A searched 2v2 or Free-for-all room ("quick-found"): the match began
+   * at once (you alone with bots), so there is no room to pick in.
+   */
+  started?: boolean;
 }
 export const normalize = (x: number, y: number): Vec => {
   const length = Math.hypot(x, y);

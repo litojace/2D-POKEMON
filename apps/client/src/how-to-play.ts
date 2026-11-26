@@ -156,7 +156,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       {
         title: "Vs AI",
         icon: "bot",
-        text: "Easy, Normal or Hard bots, best of five. Bot matches never change your rank.",
+        text: "Easy, Normal or Hard bots, best of five. Your first two are shorter: one round, then first to two. Bot matches never change your rank.",
         go: { to: "play", label: "Choose a mode" },
       },
       {

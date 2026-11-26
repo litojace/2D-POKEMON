@@ -34,7 +34,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: "rail",
     targets: [".lobby-rail"],
     title: "Everything else is here",
-    text: "Fighters (every kit and skin), Shop, Raids, daily Missions, Ranks and Friends.",
+    text: "Fighters (every kit and skin), Shop, Raids, daily Missions, Ranks and Friends. A padlock opens as you level up.",
   },
   {
     id: "cards",
