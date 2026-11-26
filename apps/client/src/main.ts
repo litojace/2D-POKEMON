@@ -3314,6 +3314,7 @@ function maybeAskLook(settled = false) {
     lookShowing = false;
     maybeStartTour();
     maybeShowUnlocks();
+    maybeShowGift();
   });
 }
 /** The "Unlocked" dialog is up (one at a time). */
@@ -3436,6 +3437,7 @@ function maybeShowGift() {
   const account = accountsUI?.account?.id,
     level = levelNow();
   if (!account || !lobby || myId || giftDialog?.open || unlockShowing) return;
+  if (lookPending()) return;
   if (gift?.account !== account || gift.state.claimed) return;
   if (level === undefined || !((matchesFinished ?? 0) >= 1 || level >= 2))
     return;
