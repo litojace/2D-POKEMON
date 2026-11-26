@@ -1,5 +1,16 @@
 import { confirmAge, saidUnderAge } from "./age-gate";
-import { isNativeApp, PRIVACY_URL, signInWithAppleNatively } from "./native";
+import {
+  isNativeApp,
+  nativePlatform,
+  PRIVACY_URL,
+  signInWithAppleNatively,
+} from "./native";
+import {
+  browserDeviceHints,
+  rememberAppleChoice,
+  showAppleSignInAtOnce,
+} from "../../../packages/shared/src/apple-device";
+import "./apple-sign-in.css";
 import {
   confirmedRead,
   sessionCookieStorage,
@@ -1089,7 +1100,18 @@ export class AccountUI {
       mode === "forgot" || mode === "reset"
         ? '<button type="button" class="auth-link auth-back" id="auth-switch">← Back to log in</button>'
         : "";
-    const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${APPLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-apple" class="auth-secondary auth-apple" type="button" ${!this.client ? "disabled" : ""}>${APPLE_LOGO}<span>Continue with Apple</span></button>` : ""}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}<p class="auth-legal"><a href="${PRIVACY_URL}" target="_blank" rel="noopener">Privacy policy</a></p></section>`;
+    // Apple devices show the Apple button; others keep it behind a small
+    // link (packages/shared/src/apple-device.ts), for players who made their
+    // account on an iPhone.
+    const appleOffered =
+      APPLE_SIGN_IN && (mode === "login" || mode === "signup");
+    const appleAtOnce =
+      appleOffered &&
+      showAppleSignInAtOnce(browserDeviceHints(nativePlatform()));
+    const appleMarkup = appleOffered
+      ? `${appleAtOnce ? "" : '<button id="auth-apple-reveal" class="auth-link auth-apple-reveal" type="button" aria-controls="auth-apple" aria-expanded="false">Signed up with Apple?</button>'}<button id="auth-apple" class="auth-secondary auth-apple" type="button" ${appleAtOnce ? "" : "hidden"} ${!this.client ? "disabled" : ""}>${APPLE_LOGO}<span>Continue with Apple</span></button>`
+      : "";
+    const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${appleMarkup}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}<p class="auth-legal"><a href="${PRIVACY_URL}" target="_blank" rel="noopener">Privacy policy</a></p></section>`;
     // On the welcome screen the panel sits in the page; elsewhere in a dialog.
     const host = document.getElementById("gate-auth");
     if (host) host.innerHTML = html;
@@ -1146,11 +1168,21 @@ export class AccountUI {
       });
       if (error) message.textContent = error.message;
     };
-    if (APPLE_SIGN_IN && (mode === "login" || mode === "signup"))
-      element("auth-apple").onclick = () =>
+    if (appleOffered) {
+      const appleButton = element<HTMLButtonElement>("auth-apple");
+      appleButton.onclick = () =>
         void (isNativeApp()
           ? this.signInWithAppleApp(message)
           : signInWithApple());
+      const reveal = document.getElementById("auth-apple-reveal");
+      if (reveal)
+        reveal.onclick = () => {
+          rememberAppleChoice();
+          appleButton.hidden = false;
+          reveal.remove();
+          appleButton.focus();
+        };
+    }
     const guestForm = element<HTMLFormElement>("guest-form");
     if (guestForm)
       guestForm.onsubmit = async (event) => {

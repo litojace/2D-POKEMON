@@ -1,0 +1,13 @@
+/* "Signed up with Apple?" on devices that aren't Apple's (accounts.ts,
+   packages/shared/src/apple-device.ts): a small link that brings out the
+   Apple button. A full 44 px to tap, pulled into the form's gap so it reads
+   as a line of text rather than a third button. */
+.auth-apple-reveal {
+  justify-self: center;
+  min-height: 44px;
+  margin-block: -8px;
+  padding: 0 12px;
+}
+.auth-apple[hidden] {
+  display: none;
+}
