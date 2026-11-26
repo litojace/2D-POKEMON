@@ -54,7 +54,7 @@ if (!config.supabaseUrl || !config.supabaseAnonKey) {
   show("acct-off");
 } else {
   const cookie = sharesSession(location.hostname)
-    ? sessionCookieStorage(document)
+    ? sessionCookieStorage(document, localStorage)
     : null;
   const client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
     auth: {
@@ -161,6 +161,8 @@ if (!config.supabaseUrl || !config.supabaseAnonKey) {
   const apple = $<HTMLButtonElement>("apple");
   apple.hidden = !config.appleSignIn;
   apple.addEventListener("click", () => {
+    const remember = ($("signin-remember") as HTMLInputElement).checked;
+    if (cookie) cookie.remember(remember, KEY);
     void client.auth.signInWithOAuth({
       provider: "apple",
       options: { redirectTo: HERE },
@@ -193,7 +195,7 @@ if (!config.supabaseUrl || !config.supabaseAnonKey) {
     e.preventDefault();
     const form = e.currentTarget as HTMLFormElement;
     const field = (n: string) =>
-      (form.elements.namedItem(n) as HTMLInputElement).value;
+      (form.elements.namedItem(n) as HTMLInputElement).value.trim();
     void busy(form.querySelector("button")!, async () => {
       if (field("pw-new").length < 8)
         return say("pw-msg", "Use at least 8 characters.");
@@ -202,21 +204,41 @@ if (!config.supabaseUrl || !config.supabaseAnonKey) {
       const { data } = await client.auth.getUser();
       const user = data.user;
       if (!user) return render(null);
-      // Someone at an unlocked computer can't change it without the old one.
+      let nonce: string | undefined;
       if (kind(user) === "email") {
+        // Someone at an unlocked computer can't change it without the old one.
         const check = await client.auth.signInWithPassword({
           email: user.email!,
           password: field("pw-current"),
         });
         if (check.error)
           return say("pw-msg", "Your current password isn't right.");
+      } else {
+        // No password yet (Apple): a code sent to the account's email proves
+        // it's the owner, so a stolen session can't become a lasting login.
+        nonce = field("pw-code") || undefined;
+        if (!nonce) {
+          const sent = await client.auth.reauthenticate();
+          if (sent.error) return say("pw-msg", sent.error.message);
+          $("pw-code-row").hidden = false;
+          return say(
+            "pw-msg",
+            `We emailed a code to ${user.email}. Type it above and save again.`,
+            true,
+          );
+        }
       }
       const { error } = await client.auth.updateUser({
         password: field("pw-new"),
+        ...(nonce ? { nonce } : {}),
       });
       if (error) return say("pw-msg", error.message);
+      // Sessions elsewhere (another device, and the check above) end here.
+      await client.auth.signOut({ scope: "others" });
       form.reset();
-      say("pw-msg", "Password changed.", true);
+      $("pw-code-row").hidden = true;
+      say("pw-msg", "Password saved. Other devices are signed out.", true);
+      render((await client.auth.getSession()).data.session);
     });
   });
 

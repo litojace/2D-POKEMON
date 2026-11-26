@@ -145,13 +145,7 @@ const storageKey = "parena-auth";
  * else (other hosts, local dev, the iPhone app) it stays in this origin's
  * storage as before.
  */
-const sharedCookie =
-  typeof document !== "undefined" &&
-  !isNativeApp() &&
-  sharesSession(location.hostname)
-    ? sessionCookieStorage(document)
-    : null;
-const storage = sharedCookie ?? {
+const ownStorage = {
   getItem: (key: string) =>
     localStorage.getItem(key) ?? sessionStorage.getItem(key),
   setItem: (key: string, value: string) => {
@@ -165,6 +159,14 @@ const storage = sharedCookie ?? {
     sessionStorage.removeItem(key);
   },
 };
+/** A session too big to share (MAX_SHARED) stays in ownStorage, unshared. */
+const sharedCookie =
+  typeof document !== "undefined" &&
+  !isNativeApp() &&
+  sharesSession(location.hostname)
+    ? sessionCookieStorage(document, ownStorage)
+    : null;
+const storage = sharedCookie ?? ownStorage;
 function remember(value: boolean) {
   if (value) localStorage.setItem("parena-remember", "yes");
   else localStorage.removeItem("parena-remember");
@@ -397,6 +399,9 @@ export class AccountUI {
       hooks.onSession(null);
       return;
     }
+    // The website shares this session (syncSharedSession): look every 30 s.
+    if (sharedCookie)
+      setInterval(() => void this.syncSharedSession().catch(() => {}), 30_000);
     this.client.auth.onAuthStateChange((event, session) => {
       setTimeout(() => {
         void this.setSession(session).then(() => {
@@ -662,7 +667,25 @@ export class AccountUI {
   forgetCopies() {
     this.copies.clear();
   }
+  /**
+   * With the shared cookie (elementarenausa.com), the website may refresh
+   * the token or sign out while this tab is open: Supabase announces neither
+   * to this origin. Take whatever the cookie holds now: a fresh token
+   * quietly, another player (or none) as a real change.
+   */
+  async syncSharedSession() {
+    if (!sharedCookie || !this.client || !this.checked) return;
+    const { data } = await this.client.auth.getSession();
+    const now = data.session;
+    if ((now?.user.id ?? null) !== (this.session?.user.id ?? null))
+      await this.setSession(now);
+    else if (now && now.access_token !== this.session?.access_token) {
+      this.session = now;
+      this.hooks.onToken(now.access_token);
+    }
+  }
   async api(path: string, body?: unknown): Promise<unknown> {
+    await this.syncSharedSession();
     // Something changes on the server: every copy may be old now.
     if (body !== undefined) this.forgetCopies();
     const origin = import.meta.env.VITE_SERVER_URL || location.origin;
@@ -776,6 +799,7 @@ export class AccountUI {
     if (!this.canUsePhoto())
       throw new Error("Make an account to use your own picture.");
     const blob = await preparePhoto(file);
+    await this.syncSharedSession();
     const origin = import.meta.env.VITE_SERVER_URL || location.origin;
     const response = await fetch(new URL("/api/account/avatar-photo", origin), {
       method: "POST",
@@ -1073,8 +1097,9 @@ export class AccountUI {
       ?.addEventListener("click", () => this.showAuth("login"));
     if (mode === "login") {
       element("auth-forgot").onclick = () => this.showAuth("forgot");
-      element<HTMLInputElement>("auth-remember").checked =
-        localStorage.getItem("parena-remember") === "yes";
+      element<HTMLInputElement>("auth-remember").checked = sharedCookie
+        ? sharedCookie.remembered()
+        : localStorage.getItem("parena-remember") === "yes";
     }
     const form = element<HTMLFormElement>("auth-form");
     const message = element("auth-message");
