@@ -43,6 +43,8 @@
       </array>
     </dict>
 	</dict>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save your player card and match results to Photos.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

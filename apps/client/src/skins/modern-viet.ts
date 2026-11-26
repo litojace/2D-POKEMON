@@ -1,5 +1,5 @@
 import type { CharacterId } from "@arena/shared";
-import { DESIGNS, backPanel, onPole, torso, type Design, type Kit } from "./modern-designs";
+import { DESIGNS, backUnder, onPole, putUnder, torso, type Design, type Kit } from "./modern-designs";
 
 /**
  * Hồn Việt for the rest of the roster: each champion is a figure of
@@ -18,7 +18,7 @@ const panel = (k: Kit, c: number, silk: string, extra = "") =>
   k.put("body", k.path(`M${c - 8} ${k.B - 6}L${c + 8} ${k.B - 6}L${c + 7} ${k.B + 16}Q${c} ${k.B + 19} ${c - 7} ${k.B + 16}Z`, silk, k.ink, 0.9) + extra, true);
 /** An áo dài's back with its long panel. */
 const aoDaiBack = (k: Kit, silk: string, extra = "") =>
-  k.put("scarf", k.path(`M${k.C - k.W - 1} ${k.T + 1}Q${k.C} ${k.T - 4} ${k.C + k.W + 1} ${k.T + 1}L${k.C + k.W + 1} ${k.B - 2}L${k.C + 6} ${k.B + 16}L${k.C - 6} ${k.B + 16}L${k.C - k.W - 1} ${k.B - 2}Z`, silk) + extra);
+  putUnder(k, k.path(`M${k.C - k.W - 1} ${k.T + 1}Q${k.C} ${k.T - 4} ${k.C + k.W + 1} ${k.T + 1}L${k.C + k.W + 1} ${k.B - 2}L${k.C + 6} ${k.B + 16}L${k.C - 6} ${k.B + 16}L${k.C - k.W - 1} ${k.B - 2}Z`, silk) + extra);
 /** The side closure from the collar to the arm, with gold buttons. */
 const closure = (k: Kit, c: number) =>
   k.line(`M${c + 2} ${k.T + 2}Q${c + 8} ${k.T + 5} ${c + 12} ${k.T + 11}`, GOLD_DARK, 1) +
@@ -37,7 +37,7 @@ export const VIET: Partial<Record<CharacterId, Design>> = {
     const iron = "#4a4f5c",
       plate = "#6a7080";
     const scales = (c: number) => [0, 1, 2].flatMap((r) => [-2, -1, 0, 1, 2].map((q) => k.path(`M${c + q * 6 - 3 + (r % 2) * 3} ${k.T + 6 + r * 6}q3 5 6 0`, "none", plate, 1.2))).join("");
-    if (k.back) backPanel(k, iron, scales(k.C));
+    if (k.back) backUnder(k, iron, scales(k.C));
     else {
       const c = cx(k);
       k.put("body", torso(k, iron, scales(c) + k.rect(k.L - 2, k.B - 10, k.R - k.L + 4, 5, 0, "#c8323a")) +
@@ -54,7 +54,7 @@ export const VIET: Partial<Record<CharacterId, Design>> = {
   // glow, and a red headband.
   auralynx(k) {
     const gi = "#2f5fb0";
-    if (k.back) backPanel(k, gi, k.rect(k.C - k.W - 2, k.B - 12, 2 * k.W + 4, 5, 0, "#f2c14e"));
+    if (k.back) backUnder(k, gi, k.rect(k.C - k.W - 2, k.B - 12, 2 * k.W + 4, 5, 0, "#f2c14e"));
     else {
       const c = cx(k);
       k.put("body", torso(k, gi,
@@ -93,7 +93,7 @@ export const VIET: Partial<Record<CharacterId, Design>> = {
   // revolving lantern at the chest, its paper figures lit one after another.
   duskveil(k) {
     const gauze = "#2a2244";
-    if (k.back) backPanel(k, gauze, k.line(`M${k.C - k.W} ${k.B - 3}H${k.C + k.W}`, GOLD, 1.4));
+    if (k.back) backUnder(k, gauze, k.line(`M${k.C - k.W} ${k.B - 3}H${k.C + k.W}`, GOLD, 1.4));
     else {
       const c = cx(k);
       k.put("body", torso(k, gauze, k.line(`M${k.L} ${k.B - 3}H${k.R}`, GOLD, 1.4) + k.line(`M${c} ${k.T + 2}V${k.B}`, "#3a3060", 1)));
@@ -117,7 +117,7 @@ export const VIET: Partial<Record<CharacterId, Design>> = {
   // its metal string humming with light.
   coilemur(k) {
     const tunic = "#7a4a2c";
-    if (k.back) backPanel(k, tunic);
+    if (k.back) backUnder(k, tunic);
     else {
       const c = cx(k);
       k.put("body", torso(k, tunic, closure(k, c) + k.rect(k.L - 2, k.B - 10, k.R - k.L + 4, 4, 0, "#c8323a")) + collar(k, c, tunic));
@@ -135,7 +135,7 @@ export const VIET: Partial<Record<CharacterId, Design>> = {
   // baskets of roasting chestnuts that glow like embers.
   pyranda(k) {
     const shirt = "#d8c8a8";
-    if (k.back) backPanel(k, shirt);
+    if (k.back) backUnder(k, shirt);
     else {
       const c = cx(k);
       k.put("body", torso(k, shirt, k.path(`M${c - 9} ${k.T - 1}Q${c} ${k.T + 6} ${c + 9} ${k.T - 1}`, "none", k.ink, 0.9) + [0, 1, 2].map((i) => k.circle(c, k.T + 9 + i * 7, 1, "#8a6a3a", k.ink, 0.3)).join("")));
@@ -162,7 +162,7 @@ export const VIET: Partial<Record<CharacterId, Design>> = {
     const indigo = "#2a3a6e";
     const bands = (x0: number, x1: number, y: number) => [0, 1, 2].map((i) => k.line(`M${x0} ${y + i * 3}H${x1}`, ["#e8322a", "#ffd84a", "#3fa04f"][i], 1.6)).join("") +
       k.line(`M${x0} ${y + 1.5}H${x1}`, "#ffffff", 0.4).replace("<path", '<path stroke-dasharray="1.5 2"');
-    if (k.back) backPanel(k, indigo, bands(k.C - k.W, k.C + k.W, k.B - 10));
+    if (k.back) backUnder(k, indigo, bands(k.C - k.W, k.C + k.W, k.B - 10));
     else {
       const c = cx(k);
       k.put("body", torso(k, indigo, bands(k.L, k.R, k.T + 8)));
@@ -182,7 +182,7 @@ export const VIET: Partial<Record<CharacterId, Design>> = {
     const bronze = "#9a6a2c";
     const sun = (c: number, y: number, r: number) => k.circle(c, y, r, "#b8823a", "#6a4a1c", 0.8) + k.lume("pulse", k.path(starPts(c, y, r * 0.75, 12), GOLD, "none"), 0, GOLD) +
       `<circle cx="${c}" cy="${y}" r="${r * 0.9}" fill="none" stroke="#6a4a1c" stroke-width="0.5" stroke-dasharray="1 1"/>`;
-    if (k.back) backPanel(k, "#6a4a2c", sun(k.C, k.T + 15, 7));
+    if (k.back) backUnder(k, "#6a4a2c", sun(k.C, k.T + 15, 7));
     else {
       const c = cx(k);
       k.put("body", torso(k, "#6a4a2c", k.line(`M${k.L} ${k.T + 2}H${k.R}`, bronze, 3)) + sun(c, k.T + 15, 7));
@@ -232,7 +232,7 @@ export const VIET: Partial<Record<CharacterId, Design>> = {
   // twinkling gold, and a straw head cloth.
   wombolder(k) {
     const brown = "#6a4a2c";
-    if (k.back) backPanel(k, brown);
+    if (k.back) backUnder(k, brown);
     else {
       const c = cx(k);
       k.put("body", torso(k, brown, k.path(`M${c - 9} ${k.T - 1}Q${c} ${k.T + 6} ${c + 9} ${k.T - 1}`, "none", k.ink, 0.9) + k.rect(k.L - 2, k.B - 10, k.R - k.L + 4, 4, 0, "#a8823a")));
@@ -251,7 +251,7 @@ export const VIET: Partial<Record<CharacterId, Design>> = {
   // head and four command flags (cờ lệnh) on the back with lit borders.
   shadopus(k) {
     const robe = "#7a1f2c";
-    if (k.back) backPanel(k, robe, k.line(`M${k.C - k.W} ${k.T + 3}H${k.C + k.W}`, GOLD, 1.6));
+    if (k.back) backUnder(k, robe, k.line(`M${k.C - k.W} ${k.T + 3}H${k.C + k.W}`, GOLD, 1.6));
     else {
       const c = cx(k);
       k.put("body", torso(k, robe, k.line(`M${k.L} ${k.T + 3}H${k.R}`, GOLD, 1.6) +
@@ -284,7 +284,7 @@ export const VIET: Partial<Record<CharacterId, Design>> = {
   // a lotus bud on top that glows, as country children wear them.
   pangrove(k) {
     const shirt = "#f2a8c0";
-    if (k.back) backPanel(k, shirt);
+    if (k.back) backUnder(k, shirt);
     else {
       const c = cx(k);
       k.put("body", torso(k, shirt, k.path(`M${c - 9} ${k.T - 1}Q${c} ${k.T + 6} ${c + 9} ${k.T - 1}`, "none", k.ink, 0.9) +
@@ -302,7 +302,7 @@ export const VIET: Partial<Record<CharacterId, Design>> = {
   // the back whose ink glows, as at the Tết calligraphy stalls.
   mossloth(k) {
     const the = "#2a2a32";
-    if (k.back) backPanel(k, the);
+    if (k.back) backUnder(k, the);
     else {
       const c = cx(k);
       k.put("body", torso(k, the, closure(k, c)) + collar(k, c, the));

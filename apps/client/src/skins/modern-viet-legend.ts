@@ -74,8 +74,9 @@ export const VIET_LEGEND: Partial<Record<CharacterId, Design>> = {
         });
         return k.lume(i % 2 ? "chase" : "pulse", k.path(`M${pts.join("L")}Z`, "#e6c46a", "#a8823a", 1), i, GOLD);
       }).join("");
-    // Over the costume's back, where the shell shows.
-    if (k.back) k.put("scarf", plates(100, 130, 1.2));
+    // On the shell itself, which the costume's back now sits under
+    // (backUnder): the plates cover its plated part, clear of the moss.
+    if (k.back) k.put("scarf", plates(100, 136, 1.55));
     else if (k.side) k.put("scarf", plates(k.side > 0 ? 66 : 134, 126, 0.85));
   },
   // Hoa Đăng: the fin-blade becomes a lotus lamp held up, its flame glowing.
