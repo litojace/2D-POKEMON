@@ -70,11 +70,15 @@ Winter, Festival, Garden, Candy, Retro Pixel, Galaxy).
 | 8   | **Sun Dynasty**    | 18 skins + set   | Legendary / 5,500                           | A desert kingdom in gold and lapis: gold is the Legendary finish                                                                            |
 | 9   | **Singles**        | 8 pieces, no set | Tier 0–2: 800 to 4,500                      | A theme of its own each, priced like a set's piece of its slot and tier; a Singles chip after the sets in Collections                       |
 
-Shipped (none yet in Today's Picks): 1 (migration
+Shipped, all merged on 25 Nov: 1 (migration
 `20261125130000_starlight_idol.sql`); 2–4 (migration
 `20261125140000_seaside_steamworks_borealis.sql`); 5 (migration
 `20261125150000_birthstone.sql`); 6 (migration `20261125160000_rainy_day.sql`); 7 (migration
 `20261125170000_grand_prix.sql`); 8 (migration `20261125180000_sun_dynasty.sql`).
+All eight collections and Singles (9) were opened to Today's Picks by
+`20261126004500_open_new_picks.sql`, since #435 was live on the web and no App
+Store build existed yet; the owner asked for Singles at once too, since nobody
+plays yet. Their set bundles stay out, as every bundle does.
 
 ![Starlight Idol: the eighteen skins on the Shop's stage](shop-new-items/starlight-idol.jpg)
 
@@ -110,9 +114,9 @@ its own, not catalog growth.
 ### Singles (9)
 
 Eight Look pieces sold one at a time, outside any set: collection `singles`,
-no bundle (migration `20261125200000_look_singles.sql`, held out of Today's
-Picks like every new item). Each is priced like a set's piece of the same slot
-and tier, so a single never undercuts a set:
+no bundle (migration `20261125200000_look_singles.sql`, seeded out of Today's
+Picks like every new item and opened with the sets). Each is priced like a
+set's piece of the same slot and tier, so a single never undercuts a set:
 
 | Piece           | Slot     | Tier | Rarity   | Price | What it does                                  |
 | --------------- | -------- | ---- | -------- | ----- | --------------------------------------------- |
