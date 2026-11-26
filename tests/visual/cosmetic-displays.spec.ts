@@ -43,7 +43,7 @@ window.fetch=async(input,init)=>{
  body.owned.push('galaxy-aura','galaxy-entrance','galaxy-victory','galaxy-frame','galaxy-colours','tidefin-moontide','cindrake-sunforged');
  body.mythicTesting=true;
  // Today's deal is an effect here (the shared fake's is a skin), so the
- // deal card shows the tile the owner asked about (26 Nov 2026).
+ // deal card shows the tile the owner asked about (25 Nov 2026).
  body.picks.items.push('borealis-victory');
  body.picks.deal='borealis-victory';
  return Response.json(body);
@@ -100,7 +100,7 @@ window.fetch=async(input,init)=>{
       await page.click(".fit-room [data-ui-item=galaxy-aura]");
       await snap(page, info, `item-only-shop-${size.width}`);
       // The Shop's tiles that sell an effect show the effect alone, no
-      // fighter inside (the owner, 26 Nov 2026); the stage above tries it
+      // fighter inside (the owner, 25 Nov 2026); the stage above tries it
       // on yours. A frame's tile keeps your portrait.
       for (const suffix of ["aura", "entrance", "victory"]) {
         const art = page.locator(
@@ -145,7 +145,7 @@ window.fetch=async(input,init)=>{
         await expect(tile).toHaveCount(1);
         await expect(tile.locator(".raid-cosmetic-preview")).toHaveCount(1);
         // The item itself is what shows: an effect alone, filling its
-        // tile (the owner, 26 Nov 2026: no fighter inside the tiles that
+        // tile (the owner, 25 Nov 2026: no fighter inside the tiles that
         // sell effects; the stage tries it on yours); a frame goes round
         // your portrait. No fighter picture stands in for the item.
         await expect(

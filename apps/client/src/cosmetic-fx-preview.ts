@@ -136,7 +136,7 @@ function draw(live: Live, now: number, paint = true) {
     front.clearRect(0, 0, w, h);
     // World units around the fighter's feet, fitted to the thumbnail: an
     // effect alone fills it (the Shop's tiles drew it round a figure of the
-    // fighter at the fighter's scale until 26 Nov 2026).
+    // fighter at the fighter's scale until 25 Nov 2026).
     const scale =
       live.kind === "aura"
         ? Math.min((w * 0.86) / 128, h / 110)

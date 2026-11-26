@@ -10,7 +10,7 @@ import { cosmeticTier } from "../../../packages/shared/src/cosmetic-tier";
  * Colors are shown on the fighter. An aura, entrance or victory shows its
  * own effect alone, filling the picture (cosmetic-fx-preview.ts): the Shop's
  * tiles drew a dim figure of the fighter inside it, and the owner asked for
- * the effect on its own (26 Nov 2026); the try-on stage shows it on your
+ * the effect on its own (25 Nov 2026); the try-on stage shows it on your
  * fighter.
  */
 export function cosmeticPicture(
