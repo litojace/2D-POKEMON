@@ -117,7 +117,6 @@ it("uses saved reward counts and handles unavailable progress without inventing 
     bestSeconds: 250,
     titles: [],
     cosmetics: [],
-    weekly: [],
   };
   expect(raidRewardProgress(p)).toContain("4/5 clears");
   expect(raidRewardProgress({ ...p, clears: 5 })).toContain("Cragstone skin");

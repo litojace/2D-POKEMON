@@ -503,7 +503,7 @@ describe("in raids", () => {
   it("Sloth Time slows a boss like any slow, not to a crawl", () => {
     const a = createRaidArena("NATURE", "grumblecrag");
     a.add("me", "Me", "mossloth");
-    a.configure(1, false);
+    a.configure(1);
     a.start();
     a.phase = "playing";
     const me = a.players.find((p) => !p.raidBoss)!,

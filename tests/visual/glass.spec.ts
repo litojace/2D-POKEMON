@@ -314,7 +314,6 @@ test.describe("phone: less scrolling", () => {
         titles: [],
         cosmetics: [],
         earned: [],
-        weekly: [],
         loadout: {},
       };
       let cur = window.fetch;

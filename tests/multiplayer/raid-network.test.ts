@@ -34,7 +34,7 @@ const setup = async () => {
   accounts.provider.recordRaid = recordRaid;
   accounts.provider.rpc = async (_token, name) =>
     name === "arena_raid_progress"
-      ? { highestPeril: 0, clears: 0, cosmetics: [], weekly: [] }
+      ? { highestPeril: 0, clears: 0, cosmetics: [] }
       : null;
   server = createArenaServer({ accounts: accounts.provider, autoTick: false });
   await new Promise<void>((r) => server!.http.listen(0, "127.0.0.1", r));
@@ -130,7 +130,6 @@ it("rejects retired daily mode; raids stay at the one difficulty", async () => {
     highestPeril: 0,
     clears: 1,
     cosmetics: [],
-    weekly: [],
   });
   const created = await emit(host, "create", {
     name: "Raider",
@@ -142,7 +141,9 @@ it("rejects retired daily mode; raids stay at the one difficulty", async () => {
     false,
   );
   expect((await emit(host, "raid-config", { peril: 1 })).ok).toBe(true);
-  expect(a.raid.daily).toBe(false);
+  expect((await emit(host, "raid-config", { peril: 1, daily: false })).ok).toBe(
+    true,
+  );
   expect(a.raid.peril).toBe(3);
 });
 
@@ -195,7 +196,6 @@ it("broadcasts an equipped cosmetic and its removal to an existing room immediat
       highestPeril: 3,
       clears: 5,
       cosmetics: ["cragbound", "mountain-aura"],
-      weekly: [],
       equipped,
     };
   };
@@ -274,7 +274,6 @@ it("only reports an equipped slot after the database really kept it", async () =
       highestPeril: 3,
       clears: 5,
       cosmetics: ["cragbound", "mountain-aura"],
-      weekly: [],
       ...(upToDate ? { loadout: stored } : { equipped: null }),
     };
   };
@@ -340,7 +339,6 @@ it("sends Somnara's dream only to its authenticated Dreamer, with Lucid/reveal e
     clears: 1,
     highestPeril: 3,
     cosmetics: [],
-    weekly: [],
     bosses: { grumblecrag: { clears: 1, highestPeril: 3 } },
   });
   const host = await connect(),
@@ -448,7 +446,6 @@ it("opens Prismatail for a co-op party and broadcasts the relay state", async ()
     clears: 1,
     highestPeril: 3,
     cosmetics: [],
-    weekly: [],
     bosses: { grumblecrag: { clears: 1, highestPeril: 3 } },
   });
   const host = await connect(),
@@ -501,7 +498,6 @@ it("creates Emberwing in the Sky Terrace and sends airborne brazier state", asyn
     clears: 1,
     highestPeril: 3,
     cosmetics: [],
-    weekly: [],
     bosses: { grumblecrag: { clears: 1, highestPeril: 3 } },
   });
   const host = await connect(),
@@ -550,7 +546,6 @@ it("starts Storm Twins with both NPCs acknowledged, broadcasts separate health, 
     clears: 1,
     highestPeril: 3,
     cosmetics: [],
-    weekly: [],
     bosses: { grumblecrag: { clears: 1, highestPeril: 3 } },
   });
   const host = await connect(),

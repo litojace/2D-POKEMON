@@ -17,7 +17,7 @@ import {
 const gloom = (characters: CharacterId[] = ["voltkit"], peril = 1) => {
   const a = createRaidArena("GLUM", "gloomshade") as GloomshadeArena;
   characters.forEach((c, i) => a.add("p" + i, "Player " + i, c));
-  a.configure(peril, false);
+  a.configure(peril);
   a.start();
   a.phase = "playing";
   a.deadline = 480;
@@ -434,7 +434,7 @@ describe("a whole run", () => {
       ["voltkit", "lumoth", "terradon"] as CharacterId[]
     ).entries())
       a.add("b" + i, "Bot " + i, c);
-    a.configure(3, false);
+    a.configure(3);
     a.start();
     // One fight every run: the raid's seed picks the boss's attacks and the
     // stand-ins' choices. With a fresh random seed each start, about one run

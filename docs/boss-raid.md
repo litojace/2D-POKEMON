@@ -187,7 +187,7 @@ After the server confirms reward storage, the result screen fetches the player's
 
 The Raid Hub boss page shows boss information, clears, highest Peril, best active-combat time, reward goals and cosmetic equipment. It is available from the home screen, raid lobby, result screen and player profile. Only the server's verified equipped cosmetic is sent to opponents. Cosmetic choices affect appearance, not combat stats.
 
-**No boss of the day.** Raid of the Day (a featured boss for each weekday, with daily boards) was retired by migration 028, as Raid of the Week was before it. No boss has a day of the week: Grumblecrag is open from the start and one clear of it opens the other six (`raidUnlocked()` in `apps/client/src/screens/raid-hall-view.ts`). A run's `day` on the server is the Pacific date it was played, for missions and records, not a boss schedule. Raid wins never enter the PvP match ledger or Elo rating system.
+No boss has a day of the week: every boss is open after one Grumblecrag clear (`raidUnlocked()` in `apps/client/src/screens/raid-hall-view.ts`). A run's `day` on the server is the Pacific date it was played, for missions and records. Raid wins never enter the PvP match ledger or Elo rating system.
 
 ## Required deployment setup
 
@@ -197,7 +197,7 @@ The Raid Hub boss page shows boss information, clears, highest Peril, best activ
 
 Core Peril 1 raids work without reward storage, but clears cannot be persisted or higher Perils unlocked until the migration and server credential are configured. The result screen explicitly reports storage failures. A server restart before saving an unavailable reward is not a durable queue; do the setup before inviting players to earn rewards.
 
-Migration 008 also saves real attempts that were lost (20 seconds or more of combat), with the chapter reached, per-player stats and which attacks downed people. Losses never count as clears or reach the weekly board. To see it, run this in Supabase's SQL Editor:
+Migration 008 also saves real attempts that were lost (20 seconds or more of combat), with the chapter reached, per-player stats and which attacks downed people. Losses never count as clears. To see it, run this in Supabase's SQL Editor:
 
 ```sql
 -- How far runs get, by Peril and party size.

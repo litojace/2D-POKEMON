@@ -121,11 +121,6 @@ body.lobby-active #account-profile:has(.portrait-frame) {
   font-size: calc(7px * var(--text-scale, 1));
   letter-spacing: 0.2px;
 }
-/* Extra room below the circle keeps badges/stars away from the next row. */
-.raid-party-member:has(.frame-stars),
-.raid-score-row:has(.frame-stars) {
-  min-height: 58px;
-}
 
 /* A library avatar (avatars.ts) filling the disc: transparent outside its
    own circle, so the disc's colour never shows at its edge. */

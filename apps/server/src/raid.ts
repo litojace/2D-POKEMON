@@ -240,7 +240,6 @@ export class RaidArena extends Arena {
       wards: [],
       rites: {},
       offers: {},
-      daily: false,
       day: pacificDate(),
       seed: randomInt(1 << 30),
       partySize: 1,
@@ -268,9 +267,8 @@ export class RaidArena extends Arena {
   }
   /** Raids have one difficulty now: always Peril 3 (the argument is kept
    * for tests and the engine's Peril-based rules). */
-  configure(peril: number = RAID.maxPeril, _legacyDaily = false) {
+  configure(peril: number = RAID.maxPeril) {
     this.raid.peril = peril;
-    this.raid.daily = false;
   }
   /** The boss's feat for this run (Grumblecrag: every charge hit a pillar). */
   feat() {
@@ -289,7 +287,6 @@ export class RaidArena extends Arena {
     r.rewardStatus = undefined;
     r.elapsed = 0;
     r.partySize = this.players.length;
-    r.daily = false;
     r.day = pacificDate();
     r.seed = randomInt(1 << 30);
     r.trait = raidTraitFor(r.boss, r.seed);

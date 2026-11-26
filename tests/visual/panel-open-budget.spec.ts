@@ -449,7 +449,6 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
         bestSeconds: 300,
         titles: [],
         cosmetics: [],
-        weekly: [],
       };
       w.__spire = { best: 3, zones: [] };
     });
