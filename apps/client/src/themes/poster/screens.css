@@ -158,38 +158,42 @@
   border-radius: 0;
 }
 /* ── battle HUD ── */
-:root[data-ui="poster"] #hud.hud {
+:root[data-ui="poster"] body.battle-active #battle #hud.hud {
   background: var(--ink);
   border: 0;
   border-radius: 0;
   transform: skewX(-10deg);
   box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
 }
-:root[data-ui="poster"] #hud.hud > * {
+:root[data-ui="poster"] body.battle-active #battle #hud.hud > * {
   transform: skewX(10deg);
 }
-:root[data-ui="poster"] #hud #timer {
+:root[data-ui="poster"] body.battle-active #battle #hud #timer {
   font-family: var(--font-display);
   font-weight: 400;
   color: var(--el);
   letter-spacing: 0.04em;
 }
-:root[data-ui="poster"] #hud .timer-wrap small,
-:root[data-ui="poster"] #hud .timer-wrap span {
+:root[data-ui="poster"] body.battle-active #battle #hud .timer-wrap small,
+:root[data-ui="poster"] body.battle-active #battle #hud .timer-wrap span {
   font-family: var(--font-body);
   font-weight: 800;
   letter-spacing: 0.12em;
 }
-:root[data-ui="poster"] #hud :is(#score-0, #score-1) {
+:root[data-ui="poster"]
+  body.battle-active
+  #battle
+  #hud
+  :is(#score-0, #score-1) {
   font-family: var(--font-display);
   font-weight: 400;
 }
-:root[data-ui="poster"] #hud .hud-fighter {
+:root[data-ui="poster"] body.battle-active #battle #hud .hud-fighter {
   font-family: var(--font-body);
   font-weight: 800;
 }
-:root[data-ui="poster"] .battle-active #battle-menu,
-:root[data-ui="poster"] .battle-active .chat-button {
+:root[data-ui="poster"] body.battle-active #battle-menu,
+:root[data-ui="poster"] body.battle-active .chat-button {
   border-radius: 0;
   background: var(--ink);
   border: 0;
@@ -228,7 +232,9 @@
     var(--ink);
   color: #fff;
 }
-:root[data-ui="poster"] .battle-active #arena-overlay#arena-overlay.is-sheet {
+:root[data-ui="poster"]
+  body.battle-active
+  #arena-overlay#arena-overlay.is-sheet {
   background: var(--el);
 }
 :root[data-ui="poster"]
@@ -482,7 +488,7 @@
 :root[data-ui="poster"] .room-head .ui-h {
   color: var(--el);
 }
-:root[data-ui="poster"] .lobby-active .room-screen {
+:root[data-ui="poster"] body.lobby-active .room-screen {
   background: transparent;
 }
 /* friends on phones: the tab row is the masthead */
@@ -542,9 +548,9 @@
   font-weight: 400;
   letter-spacing: 0.05em;
 }
-:root[data-ui="poster"] .hub-active .nav-xp > *,
-:root[data-ui="poster"] .hub-active .nav-xp::before,
-:root[data-ui="poster"] .hub-active .nav-xp::after {
+:root[data-ui="poster"] body.hub-active .nav-xp > *,
+:root[data-ui="poster"] body.hub-active .nav-xp::before,
+:root[data-ui="poster"] body.hub-active .nav-xp::after {
   background: var(--el);
 }
 /* split screens (fighter details, boss page): the head row is the masthead */
@@ -617,7 +623,9 @@
   border-top: 0;
 }
 :root[data-ui="poster"] .rk-pin > .rk-row * {
-  color: var(--ink);
+  /* The rank's name carries its colour inline; on the element-coloured row
+     it has to be ink to read. */
+  color: var(--ink) !important;
 }
 :root[data-ui="poster"] .rk-pin .rk-place {
   color: var(--ink);
@@ -633,7 +641,7 @@
   border-radius: 0;
 }
 /* raid room backdrop: the poster */
-:root[data-ui="poster"] .lobby-active .room-screen {
+:root[data-ui="poster"] body.lobby-active .room-screen {
   background:
     radial-gradient(circle, rgba(0, 0, 0, 0.14) 1.4px, transparent 1.8px) 0 0 /
       9px 9px,

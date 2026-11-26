@@ -238,3 +238,15 @@
 :root[data-ui="poster"] .ui-icon-btn.ui-close {
   z-index: 3;
 }
+
+/* A switch on the masthead (Shop | Wardrobe, Everyone | Friends): a skewed
+   ink block; the chosen half is the element colour. */
+:root[data-ui="poster"] .ui-panel-head .ui-seg {
+  transform: skewX(-10deg);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-seg > button {
+  transform: skewX(10deg);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-seg > button[aria-pressed="true"] {
+  transform: none;
+}
