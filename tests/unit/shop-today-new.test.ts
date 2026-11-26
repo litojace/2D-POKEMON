@@ -86,6 +86,23 @@ describe("Today's New in the Shop", () => {
     expect(newInShop(shop(), data(economy({ owned: all })))).toEqual([]);
   });
 
+  it("keeps the fighter you chose while a tapped tile puts another on the stage", () => {
+    // Owner, 26 Nov: tapping a Daily pick of another fighter changed the
+    // skins in "New in the Shop" under your finger. The stage follows the
+    // tile; the row follows the fighter you chose.
+    fresh.collections.add("stars-stripes");
+    const view = shop();
+    const before = newInShop(view, data());
+    expect(before).toEqual(["voltkit-stars-stripes"]);
+    view.champion = "mystowl"; // a Daily pick of Mystowl's, on the stage
+    expect(newInShop(view, data())).toEqual(before);
+    const body = fittingRoomParts(view, data()).body;
+    expect(newTiles(body)).toEqual(before);
+    // A fighter you pick yourself (a fighter row) is the one it follows.
+    view.fighter = "mystowl";
+    expect(newInShop(view, data())).toEqual(["mystowl-stars-stripes"]);
+  });
+
   it("lists new Look pieces one by one, rarest first, at most six", () => {
     fresh.collections.add("galaxy");
     fresh.collections.add("stars-stripes");

@@ -466,7 +466,10 @@ export function openFittingRoom(
     if (mode !== "wardrobe") return;
     // A Shop skin of another fighter brought that fighter on: your own
     // fighter comes back with your look.
-    if (dropUnownedTryOns(view, data())) setChampion(options.champion);
+    if (dropUnownedTryOns(view, data())) {
+      setChampion(options.champion);
+      view.fighter = options.champion;
+    }
     if (view.slot === "frame") pickFrame();
   };
 
@@ -595,8 +598,12 @@ export function openFittingRoom(
     } else if (d.uiItem) {
       tryOn(d.uiItem);
       if (view.action !== "idle") preview?.replay();
-    } else if (d.fitFighter) setChampion(d.fitFighter as CharacterId);
-    else if (d.fitSlot) {
+    } else if (d.fitFighter) {
+      // A fighter picked in a fighter row is the one you chose (view.fighter);
+      // a tile that brings another fighter on only changes the stage.
+      setChampion(d.fitFighter as CharacterId);
+      view.fighter = d.fitFighter as CharacterId;
+    } else if (d.fitSlot) {
       if (view.mode !== "wardrobe") {
         setMode("wardrobe");
         scroll = true;
@@ -641,7 +648,10 @@ export function openFittingRoom(
     } else if (d.fitRevert !== undefined) {
       // Back to what you wear. In the Shop a skin of another fighter took
       // the stage with it: back to your own fighter too.
-      if (view.mode === "shop") setChampion(options.champion);
+      if (view.mode === "shop") {
+        setChampion(options.champion);
+        view.fighter = options.champion;
+      }
       view.tryOn = {};
       view.stage = undefined;
       view.frameStars = undefined;
