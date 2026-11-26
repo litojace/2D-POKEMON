@@ -79,6 +79,7 @@ import {
 } from "../../../packages/shared/src/index.js";
 import { chooseRite, type BotBrain } from "./bot.js";
 import { projectileContact } from "./projectile-collision.js";
+import { segmentClear } from "../../../packages/shared/src/raid-volley.js";
 /** Free-for-all starting corners (seat order), opposite corners first. */
 const FFA_SPAWNS = [
   { x: 260, y: 250 },
@@ -3345,17 +3346,8 @@ export class Arena {
   }
   lineClear(a: { x: number; y: number }, b: { x: number; y: number }) {
     this.walls();
-    const steps = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 10);
-    for (let i = 1; i < steps; i++)
-      if (
-        blocked(
-          a.x + ((b.x - a.x) * i) / steps,
-          a.y + ((b.y - a.y) * i) / steps,
-          2,
-        )
-      )
-        return false;
-    return true;
+    // Shared with the phone's prediction (raid-volley.ts).
+    return segmentClear(a, b);
   }
   tick(dt = 1 / RULES.tick) {
     if (this.phase !== "playing") this.clearBufferedSkills();

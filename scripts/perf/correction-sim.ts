@@ -26,8 +26,10 @@
  * before 26 Nov 2026). DIAG=1 tags each "other" correction with the
  * Tidelotl mechanic active at the time; DIAG=2 lists them one by one.
  * Measured 26 Nov 2026 (180 s, 33 ms each way): Tidelotl went from about
- * 150 "other" corrections a minute to 2-4; the other six bosses 0-2
- * (network-performance.md, section 22).
+ * 150 "other" corrections a minute to 2-4, and Lumiwick's 1-3 (each a
+ * 140-220 px Wing Gust or Snuffing Gale) to 0; the other five bosses 0-0.3
+ * (network-performance.md, section 22). NO_RAID_CARRY=1 also leaves out
+ * Lumiwick's blows.
  *
  * Measured 11 Nov 2026 (120 s, 33 ms each way, as an iPhone on school
  * Wi-Fi with a 67 ms ping): 30-50 corrections a minute, every one a

@@ -1215,7 +1215,7 @@ What is left is one correction as an Undertow or a prison starts, ends or
 is popped (the phone learns of it a round trip late), and the statuses and
 hits it cannot see coming. The other six bosses were already at 0 to 3
 "other" a minute and are unchanged (Lumiwick's few are large, 140 to 220
-px, and are looked at apart). Sure Footing (15-25% further through water)
+px: see below). Sure Footing (15-25% further through water)
 is not predicted either; its error stays under the 4 px a correction
 needs, so it is left out.
 
@@ -1224,6 +1224,30 @@ and the phone's prediction from the same snapshot through the same inputs,
 for the Undertow, Rip Current's pull, a prison, a root and the ascendant
 Undertow: within 0.01 px for ten ticks, and over 15 px apart with the
 prediction left out.
+
+**Lumiwick's blows, the same way (26 Nov 2026).** Its Wing Gust blows
+everyone in its cone 220 px in the tick the warning lands, and the
+ascendant's Snuffing Gale everyone in its lane outside a brazier's ring
+140 px. Both are telegraphed (1.1 s and 1.9 s), and the snapshot carries
+the warning, its aim (fixed when it is warned) and its time (the telegraph
+floor is settled once, as it is made). The phone left them out, so the
+snapshot after the blow jumped you: 1 to 3 times a minute, each 140 to 220
+px. `packages/shared/src/raid-volley.ts` now holds the volley cone and line
+test (the server's `inVolley` and `lineClear`), Lumiwick's lane and ring
+tests and both blows; the server calls them, and `stepRaidCarry` lands each
+blow in the first tick that starts at or after its time, unless the boss is
+staggered, before Tidelotl's carry and the hold. Seeded raids for all seven
+bosses, normal and ascendant, hash to the same snapshots as before.
+
+| Lumiwick  | "Other" a minute, 2 raiders | 4 raiders   |
+| --------- | --------------------------- | ----------- |
+| Normal    | 0.7 → **0**                 | 1.7 → **0** |
+| Ascendant | 2.7 → **0**                 | 3.0 → **0** |
+
+Tests: `tests/unit/lumiwick-prediction.test.ts` (a gust down its cone, a
+dash into the wind, outside the cone, a staggered boss, a Gale down its
+lane, a brazier's shelter): within 0.01 px for ten ticks, and over 100 px
+apart with the prediction left out.
 
 ## Historical results (0.5 CPU / 512 MB, 15 snapshots a second)
 
