@@ -90,8 +90,8 @@ const SCENES: Scene[] = [
     room: ["spire", { stage: "playing", floor: 9, seats: 2 }],
     mode: "spire",
     fighters: [
-      ["tester", "voltkit", 560, 430],
-      ["Kai", "cindrake", 600, 600],
+      ["Blaze", "voltkit", 380, 420],
+      ["Kai", "cindrake", 420, 680],
     ],
   },
 ];
@@ -122,11 +122,15 @@ async function stage(page: Page, s: Scene) {
       ? a.players.filter((e: any) => e.echo && e.hp > 0)
       : [];
     const echoSpots = [
-      [800, 420],
-      [840, 560],
-      [780, 690],
+      [900, 330],
+      [1000, 540],
+      [880, 760],
     ];
-    if (spire) heroes = a.heroes();
+    if (spire) {
+      heroes = a.heroes();
+      // The harness's account is "tester": the same player name as the other scenes.
+      heroes[0].name = s.fighters[0][0];
+    }
     if (s.mode === "raid") {
       a.raid.gilded = false;
       a.nextAttack = 1e6;

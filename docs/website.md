@@ -5,7 +5,8 @@ in `apps/site/` is served to the public as it is.
 
 The public front page for the game: what it is, the champions, modes, raid
 bosses, real screenshots, "coming soon" for the apps, and **Play now**
-buttons into the game at `https://parena.litojace.com/`.
+buttons into the game at `https://play.elementarenausa.com/`. Phones come
+first (owner, 25 Nov): check portrait and landscape phone sizes before desktop.
 
 It is static HTML and CSS with one small script (`site.js`, no libraries)
 and no build step on the server, kept apart from the game: nothing here is imported by `apps/client`, it is not in
@@ -39,21 +40,44 @@ says when to run it. The panel's text is the game's own skill descriptions.
 ## Skill clips and the raid bosses
 
 Each champion panel shows the chosen move in the real game: a looping clip
-(about 1.5 s, 3 s for the ultimate) loaded only when that tab is shown, or
-one still frame under `prefers-reduced-motion`. The clips are the real
-client drawing the real server simulation, stepped tick by tick with
-scripted inputs, so a run draws the same frames:
+loaded only when that tab is shown, or one still frame under
+`prefers-reduced-motion`. The clips are the real client drawing the real
+server simulation, stepped tick by tick with scripted inputs, so a run draws
+the same frames. A few still frames come before the cast, frames are one
+tick (33 ms) apart around it so a fast bolt shows in flight, then two ticks
+apart; `make-clips.py` reads the spacing from `steps.json` and trims the
+still tail once the effects are over.
 
 ```bash
 PW_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome \
-  npx playwright test --config scripts/site-clips/playwright.config.ts --trace off --workers=3
+  npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/clips.spec.ts --trace off --workers=3
 python3 apps/site/tools/make-clips.py   # site-clips/ -> apps/site/clips/<id>/<move>.webp
 ```
 
-`CHAMPIONS=voltkit,pyranda` captures a few. A full run takes about an hour
-on the cloud container (18 champions, 5 moves each, at two device pixels).
-Run it again after a skill's look changes; `tests/unit/site.test.ts` fails
-when a champion or move has no clip.
+One test per champion and move, and a rerun skips what is captured (delete
+`site-clips/` to start over); `CHAMPIONS=voltkit,pyranda` captures a few. A
+full run takes about two hours on the cloud container with three workers:
+start it in the background with a long timeout. The 90 clips come to about
+10 MB (median about 100 KB, the largest ultimate about 330 KB), and
+`tests/unit/site.test.ts` fails when a champion or move has no clip or one
+grows past 400 KB.
+
+### Ways to play: real fights, not paintings
+
+The mode cards and the Friends perk show the game itself (owner, 26 Nov: the
+painted loading art is decoration, and a feature should show the feature in
+play, with skills going off). `scripts/site-clips/scenes.spec.ts` stages each
+mode in the real client and simulation (a duel, 2v2, free-for-all, a raid on
+Lumiwick, a Spire floor) with every fighter firing its ultimate a tick or two
+apart, and writes a frame per tick at three device pixels;
+`scripts/site-clips/friends.spec.ts` captures the Friends list. The Plaza is
+the App Store capture. `make-scenes.py` holds the chosen frame and crop for
+each, picked by eye:
+
+```bash
+npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/scenes.spec.ts scripts/site-clips/friends.spec.ts
+python3 apps/site/tools/make-scenes.py   # -> apps/site/img/modes/
+```
 
 The raid section is a stage with one boss at a time and a picker of all
 seven, in the Raid Hub's order (`RAID_BOSS_ORDER`). It says what the game
@@ -100,6 +124,16 @@ refresh them:
 npx playwright test --config scripts/app-store/playwright.config.ts   # real captures
 python3 apps/site/tools/make-images.py                                # needs Pillow 11+
 ```
+
+The hero is the duel painting (Halcyra's Skyline Lance). The game's copy is a
+1536 px lossy WebP, soft on a 3x phone, where the picture is cut to cover and
+drawn about 2.5 times its size. The owner sent the lossless original (26 Nov,
+`ultimate-halcyra-skyline-lance.png`, also 1536 x 1024), upscaled 2x with
+OpenCV's EDSR model to 3072 x 2048; the site's 960 to 2560 px copies come
+from that master (`HERO_MASTER=<png> python3 apps/site/tools/make-images.py`,
+which skips the larger widths without it). The master is not in the repo
+(about 10 MB). Held upright, the hero's `sizes` asks for about 1.1 screen
+heights, so a phone picks a copy wide enough for the crop.
 
 ## Preview locally
 
@@ -165,7 +199,15 @@ that helps the game):
       the owner caught it (26 Nov): the game has no daily boss, so it was
       dropped. The live page's old line "one is featured each day of the
       week" is gone with it.
-- [x] Skill clips for 18 champions × 5 moves (`scripts/site-clips`)
+- [x] Skill clips for 18 champions × 5 moves (`scripts/site-clips`), the
+      cast's wind-up and a fast bolt's flight included, trimmed tails
+- [x] Ways to play and Make it yours with pictures: real fights with every
+      ultimate going off (owner, 26 Nov: not the painted art), real skins, the
+      mastery rings from MASTERY_TIERS, the game's Friends list; a phone
+      held sideways playing a real duel in the Mobile section
+- [x] A sharper hero from the owner's lossless original, upscaled 2x
+- [x] Checked at 390×844, 375×667, 360×800, 667×375, 844×390, 852×393,
+      915×412 (phones first, owner 25 Nov) and once at desktop
 
 Round 2 (owner, 25 Nov 3:15 PM PT: motion, interactive champions, an account
 area with one-tap Play, QR to the website):

@@ -51,8 +51,8 @@
       rel="preload"
       as="image"
       type="image/avif"
-      imagesrcset="img/hero-dusk-960.avif 960w, img/hero-dusk-1536.avif 1536w"
-      imagesizes="100vw"
+      imagesrcset="img/hero-dusk-960.avif 960w, img/hero-dusk-1536.avif 1536w, img/hero-dusk-2048.avif 2048w, img/hero-dusk-2560.avif 2560w"
+      imagesizes="(orientation: portrait) 112vh, 100vw"
       fetchpriority="high"
     />
     <link
@@ -107,13 +107,23 @@
         <picture class="hero-art">
           <source
             type="image/avif"
-            srcset="img/hero-dusk-960.avif 960w, img/hero-dusk-1536.avif 1536w"
-            sizes="100vw"
+            srcset="
+              img/hero-dusk-960.avif   960w,
+              img/hero-dusk-1536.avif 1536w,
+              img/hero-dusk-2048.avif 2048w,
+              img/hero-dusk-2560.avif 2560w
+            "
+            sizes="(orientation: portrait) 112vh, 100vw"
           />
           <img
             src="img/hero-dusk-960.webp"
-            srcset="img/hero-dusk-960.webp 960w, img/hero-dusk-1536.webp 1536w"
-            sizes="100vw"
+            srcset="
+              img/hero-dusk-960.webp   960w,
+              img/hero-dusk-1536.webp 1536w,
+              img/hero-dusk-2048.webp 2048w,
+              img/hero-dusk-2560.webp 2560w
+            "
+            sizes="(orientation: portrait) 112vh, 100vw"
             width="1536"
             height="1024"
             alt="Coilemur dodges a beam of light from Halcyra in a coliseum at sunset"
@@ -631,7 +641,7 @@
                     img/modes/duels-800.webp 800w
                   "
                   sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
-                  alt="Two creatures trade water and lightning in a coliseum at dusk"
+                  alt="A duel in the game: Halcyra's Skyline Lance beam and a storm of lightning hit Coilemur"
                   width="800"
                   height="450"
                   loading="lazy"
@@ -662,7 +672,7 @@
                     img/modes/teams-800.webp 800w
                   "
                   sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
-                  alt="Four creatures clash in sunlit ruins"
+                  alt="A 2v2 match in the game: four fighters' ultimates go off at once in the ruins"
                   width="800"
                   height="450"
                   loading="lazy"
@@ -693,7 +703,7 @@
                     img/modes/ffa-800.webp 800w
                   "
                   sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
-                  alt="Four creatures battle across a fiery forge"
+                  alt="A free-for-all in the game: four fighters trade skills in the Ember Forge"
                   width="800"
                   height="450"
                   loading="lazy"
@@ -724,7 +734,7 @@
                     img/modes/raids-800.webp 800w
                   "
                   sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
-                  alt="The Storm Twins, two thunder-jellies, crackle over a flooded arena"
+                  alt="A raid in the game: four players hit Lumiwick with their ultimates as it dives"
                   width="800"
                   height="450"
                   loading="lazy"
@@ -755,7 +765,7 @@
                     img/modes/spire-800.webp 800w
                   "
                   sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
-                  alt="A glowing tower rising through the clouds"
+                  alt="A Spire floor in the game: two climbers fire their ultimates at the floor's Echoes"
                   width="800"
                   height="450"
                   loading="lazy"
@@ -786,7 +796,7 @@
                     img/modes/plaza-800.webp 800w
                   "
                   sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
-                  alt="Creatures chatting at a fruit stall in a sunny market"
+                  alt="The Plaza in the game: players meeting by the fountain"
                   width="800"
                   height="450"
                   loading="lazy"
@@ -1578,12 +1588,24 @@
             </li>
             <li>
               <picture class="perk-art perk-photo">
-                <source type="image/avif" srcset="img/modes/friends-480.avif" />
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/friends-480.avif 480w,
+                    img/modes/friends-800.avif 800w
+                  "
+                  sizes="(min-width: 560px) 50vw, 100vw"
+                />
                 <img
                   src="img/modes/friends-480.webp"
-                  alt="Two creatures playing ring toss at a seaside fair"
-                  width="480"
-                  height="270"
+                  srcset="
+                    img/modes/friends-480.webp 480w,
+                    img/modes/friends-800.webp 800w
+                  "
+                  sizes="(min-width: 560px) 50vw, 100vw"
+                  alt="The game's Friends list: invite a friend from the Lobby or watch their match"
+                  width="800"
+                  height="247"
                   loading="lazy"
                   decoding="async"
                 />

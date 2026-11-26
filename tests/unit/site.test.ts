@@ -151,6 +151,17 @@ describe("website", () => {
     }
   });
 
+  it("has a skill clip and a still for every champion's five moves (scripts/site-clips)", () => {
+    for (const c of Object.values(CHARACTERS))
+      for (const move of ["basic", "skill1", "skill2", "skill3", "ult"])
+        for (const f of [`${move}.webp`, `${move}-still.webp`]) {
+          const file = path.join(SITE, "clips", c.id, f);
+          expect(existsSync(file), `${c.id}/${f}`).toBe(true);
+          // Light enough for a phone: one clip loads per tab shown.
+          expect(statSync(file).size, `${c.id}/${f}`).toBeLessThan(400_000);
+        }
+  });
+
   it("the account page's script is built from its source (node apps/site/tools/build-account.mjs)", async () => {
     const { bundleAccount } =
       await import("../../apps/site/tools/build-account.mjs");

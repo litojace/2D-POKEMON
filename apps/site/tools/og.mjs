@@ -28,7 +28,7 @@ h1 { margin: 0; font: 800 92px/.95 B; text-transform: uppercase; max-width: 600p
 p { margin: 0; font: 600 28px/1.3 D; color: #dfe6f7; max-width: 560px; }
 .play { align-self: flex-start; margin-top: 8px; background: #ffd65b; color: #2a1a00; font: 800 34px/1 B; text-transform: uppercase; letter-spacing: .04em; padding: 16px 32px; border-radius: 999px; }
 </style>
-<img class="art" src="${url("img/hero-dusk-1536.webp")}"><div class="shade"></div>
+<img class="art" src="${url("img/hero-dusk-2048.webp")}"><div class="shade"></div>
 <div class="tx"><div class="logo"><img src="${url("icon-192.png")}">Element Arena</div>
 <h1>Real-time creature battles</h1><p>18 creatures, 9 elements. Duels, teams and raid bosses.</p>
 <div class="play">Play free in your browser</div></div>`;

@@ -44,7 +44,8 @@ def main():
     for champ in sorted(p for p in FRAMES.iterdir() if p.is_dir() and not p.name.startswith(".")):
         for move in sorted(p for p in champ.iterdir() if p.is_dir()):
             files = sorted(move.glob("*.png"))
-            if not files:
+            # (scenes/ holds the combat stills, make-scenes.py's: no steps.json)
+            if not files or not (move / "steps.json").exists():
                 continue
             first = Image.open(files[0])
             ratio = first.width / 874

@@ -999,7 +999,7 @@ body::before {
   width: 100%;
   height: 114px;
   object-fit: cover;
-  object-position: 50% 60%;
+  object-position: 50% 50%;
 }
 
 /* ---------- Mobile apps ---------- */
@@ -1552,8 +1552,11 @@ body::before {
   min-height: 150px;
   align-content: start;
 }
+/* At most its own size (480 px), and about half a short screen's height, so
+   on a phone held sideways the move's name stays in view under it. */
 .move-clip {
   position: relative;
+  width: min(100% + 8px, 480px, 98vh);
   margin: -4px -4px 6px;
   border-radius: 10px;
   overflow: hidden;
