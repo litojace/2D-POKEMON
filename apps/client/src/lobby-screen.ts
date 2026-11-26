@@ -27,6 +27,7 @@ import { guideCard, type GuideView } from "./getting-started";
 import { spireLobbyIcon } from "./spire-art";
 import type { SpireLobbyCard } from "./spire-nudge";
 import { setPerfSource } from "./perf-hud";
+import { setUiElementColour } from "./ui-theme";
 import {
   featureLocked,
   lockBadge,
@@ -1048,6 +1049,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         const fighter = CHARACTERS[character];
         const art = $("lobby-fighter-art");
         $("lobby-fighter").style.setProperty("--element", hex(fighter.color));
+        // Both looks draw with it, on every screen (ui-theme.ts).
+        setUiElementColour(hex(fighter.color));
         art.innerHTML = fighterStageArt(
           character,
           "lobby",

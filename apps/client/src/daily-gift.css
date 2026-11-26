@@ -1,0 +1,125 @@
+/* The daily gift's dialog (daily-gift.ts): seven days in a row. */
+.ui-modal.gift-modal {
+  width: min(560px, 100% - 32px);
+}
+.gift-modal .gift-sub {
+  color: var(--ui-dim);
+}
+.gift-modal.is-claimed .gift-sub {
+  color: var(--ui-accent-hi);
+  font-weight: 700;
+}
+.gift-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin: 10px 0 6px;
+  padding: 0;
+  list-style: none;
+}
+.gift-day {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  padding: 7px 2px 8px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--rad-md);
+  background: var(--fill-well);
+  text-align: center;
+}
+.gift-day small {
+  font: 700 calc(10px * var(--text-scale, 1))/1 var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-dim);
+  white-space: nowrap;
+}
+.gift-day-art {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: var(--ui-accent-hi);
+}
+.gift-day-art svg {
+  width: 22px;
+  height: 22px;
+}
+.gift-day b {
+  font: 800 calc(13px * var(--text-scale, 1))/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--ui-text);
+}
+.gift-day.is-item {
+  border-color: color-mix(in srgb, var(--ui-accent) 45%, transparent);
+}
+.gift-day.is-today {
+  border-color: var(--ui-accent);
+  background: #ffd65b1f;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--ui-accent) 35%, transparent);
+}
+.gift-day.is-taken {
+  opacity: 0.62;
+}
+.gift-day.is-taken .gift-day-art {
+  color: var(--ui-ok);
+}
+/* Just taken: today's tile stays bright and its tick pops in. */
+.gift-day.is-taken.is-today {
+  opacity: 1;
+}
+.gift-day.is-fresh .gift-day-art {
+  animation: gift-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.5) both;
+}
+@keyframes gift-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gift-day.is-fresh .gift-day-art {
+    animation: none;
+  }
+}
+/* A finger tall on every screen (the shared modal's buttons are 36 px). */
+.gift-modal > .ui-actions .ui-btn {
+  min-height: 44px;
+  min-width: 112px;
+}
+.gift-rule {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+  line-height: 1.35;
+}
+.gift-problem {
+  margin: 0;
+  color: var(--ui-danger);
+  font-size: var(--fs-small);
+}
+@media (max-height: 500px) {
+  .gift-days {
+    margin: 6px 0 4px;
+    gap: 4px;
+  }
+  .gift-day {
+    padding: 5px 1px 6px;
+    gap: 2px;
+  }
+  .gift-day-art {
+    width: 22px;
+    height: 22px;
+  }
+  .gift-day-art svg {
+    width: 18px;
+    height: 18px;
+  }
+}

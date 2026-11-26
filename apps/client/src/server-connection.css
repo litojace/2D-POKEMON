@@ -55,7 +55,7 @@
   margin: 0;
   color: #f2f5ff;
   font:
-    600 clamp(27px, 7.2vh, 60px) / 0.96 "Barlow Condensed",
+    600 clamp(27px, 7.2vh, 60px) / 0.96 var(--font-display),
     Impact,
     sans-serif;
   text-transform: uppercase;
@@ -211,9 +211,7 @@
 .server-startup-loading h2 {
   margin: 0;
   color: #f1f4fc;
-  font:
-    500 clamp(14px, 2.1vh, 18px) / 1.3 "DM Sans",
-    sans-serif;
+  font: 500 clamp(14px, 2.1vh, 18px) / 1.3 var(--font-body);
   letter-spacing: 0.02em;
   text-shadow: 0 1px 10px #020714;
 }
@@ -222,9 +220,7 @@
   min-height: 2.8em;
   max-width: 500px;
   color: #acbed6;
-  font:
-    400 clamp(11px, 1.6vh, 13px) / 1.4 "DM Sans",
-    sans-serif;
+  font: 400 clamp(11px, 1.6vh, 13px) / 1.4 var(--font-body);
   text-wrap: balance;
   text-shadow: 0 1px 8px #020714;
 }
@@ -458,9 +454,7 @@
   background: #030a18b8;
   color: #dbe5f5;
   text-align: left;
-  font:
-    400 clamp(12px, 1.9vh, 15px) / 1.4 "DM Sans",
-    sans-serif;
+  font: 400 clamp(12px, 1.9vh, 15px) / 1.4 var(--font-body);
 }
 .server-startup-tip.is-new {
   animation: server-tip-in 420ms ease-out;
@@ -612,9 +606,7 @@
   height: 1.4em;
   max-width: none;
   color: #f2f5ff;
-  font:
-    500 clamp(13px, 3.4vh, 17px) / 1.4 "DM Sans",
-    sans-serif;
+  font: 500 clamp(13px, 3.4vh, 17px) / 1.4 var(--font-body);
   text-align: left;
   white-space: nowrap;
   text-shadow: 0 1px 8px #000;

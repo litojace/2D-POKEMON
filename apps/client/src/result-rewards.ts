@@ -53,6 +53,8 @@ export interface RewardFacts {
   coins?: number;
   /** No motion: reduced motion or Low graphics. */
   still?: boolean;
+  /** The daily gift, in a line: tomorrow's, or today's still waiting. */
+  gift?: string;
 }
 
 const num = (n: number) => n.toLocaleString("en-US");
@@ -286,7 +288,7 @@ export function rewardsMarkup(f: RewardFacts) {
   const pending = a
     ? ""
     : `<p class="rw-pending" role="status">${f.status === "saved" && !f.eligible ? "No XP earned · finish at least 20 seconds of active play to qualify." : f.status === "unavailable" ? "XP could not be saved. Check your connection and database update." : "Updating your XP…"}</p>`;
-  return `<section class="rw${f.still ? " is-still" : ""}" aria-label="What this match earned">${tiles.length ? `<ul class="rw-tiles" data-count="${tiles.length}">${tiles.map(tile).join("")}</ul>` : ""}${a ? levelUpLine(a) : ""}${pending}</section>`;
+  return `<section class="rw${f.still ? " is-still" : ""}" aria-label="What this match earned">${tiles.length ? `<ul class="rw-tiles" data-count="${tiles.length}">${tiles.map(tile).join("")}</ul>` : ""}${a ? levelUpLine(a) : ""}${pending}${f.gift ? `<p class="rw-gift">${menuIcon("star")}<span>${esc(f.gift)}</span></p>` : ""}</section>`;
 }
 
 /**

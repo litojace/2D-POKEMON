@@ -57,9 +57,7 @@
   place-items: center;
   background: var(--ui-bg-0);
   border: 1px solid var(--ui-line-2);
-  font:
-    800 12px/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 12px/1 var(--font-display);
 }
 .guide-step.is-done .guide-step-mark {
   background: var(--ui-ok);

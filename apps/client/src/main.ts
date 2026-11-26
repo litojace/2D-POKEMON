@@ -109,6 +109,18 @@ import {
   ACTION_FEATURE,
 } from "./lobby-screen";
 import {
+  openGiftDialog,
+  tomorrowGift,
+  giftLabel,
+  type GiftDialog,
+} from "./daily-gift";
+import {
+  dailyGiftClaimSchema,
+  dailyGiftStateSchema,
+  giftOn,
+  type DailyGiftState,
+} from "../../../packages/shared/src/daily-gifts";
+import {
   featureLocked,
   loadSeenLevel,
   lockedMessage,
@@ -496,6 +508,10 @@ import "./settings-screen.css";
 import { fighterPickerMarkup } from "./fighter-picker";
 import "./result-extras.css";
 import { partyInviteRow } from "./screens/friends-view";
+import { applyUiTheme, lookPickerDue } from "./ui-theme";
+import { askLook, bindLookRow, lookRow } from "./ui-theme-picker";
+// The player's look (ui-theme.ts), before anything is drawn.
+void applyUiTheme();
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(
@@ -895,7 +911,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="guide-open">${menuIcon("sparkle")}<span>Getting started</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="privacy-policy">${menuIcon("help")}<span>Privacy policy</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="guide-open">${menuIcon("sparkle")}<span>Getting started</span></button><button class="quiet" id="daily-gift">${menuIcon("star")}<span>Daily gift</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="privacy-policy">${menuIcon("help")}<span>Privacy policy</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 // Measure wrapped HUDs for phone spacing and desktop boss-specific controls.
 let measuredRaidHud: HTMLElement | null = null;
 let battleLayoutFrame = 0;
@@ -3252,6 +3268,55 @@ function openFeature(feature: Feature) {
   if (hubScene !== "lobby") setHubScene("lobby");
   lobbyAction(feature);
 }
+/** The look picker is up (ui-theme-picker.ts). */
+let lookShowing = false;
+let lookRetry: ReturnType<typeof setTimeout> | undefined;
+/** The look picker is owed or showing: the tour and "Unlocked" wait for it. */
+const lookPending = () => lookShowing || lookPickerDue(accountsUI?.account?.id);
+/**
+ * Which look? (ui-theme.ts) Asked once per account on this device, on the
+ * Lobby, as soon as nothing else is in front: after a new guest's warning
+ * and before the Lobby tour, so the tour and the first match are already in
+ * the look they chose, at the cost of one tap. An account that was here
+ * before the looks is asked the same way, the next time its Lobby is free.
+ * Shows nothing until two looks are ready.
+ */
+function maybeAskLook(settled = false) {
+  const account = accountsUI?.account?.id;
+  if (!account || lookShowing || !lookPickerDue(account)) return;
+  if (
+    // Never on the first call: the Lobby glides in, and a new guest's
+    // warning is raised a moment after the log-in.
+    !settled ||
+    !lobby ||
+    myId ||
+    hubScene !== "lobby" ||
+    curtainCovers() ||
+    tour?.open ||
+    tourTimer !== undefined ||
+    unlockShowing ||
+    $<HTMLDialogElement>("dialog").open ||
+    document.querySelector(".ui-panel-host .ui-panel") ||
+    document.querySelector("[data-ui-confirm]") ||
+    document.getElementById("reward-reveal") ||
+    accountsUI?.guestWarningPending
+  ) {
+    // Something is in front: look again shortly, while the Lobby is open.
+    if (lobby && lookRetry === undefined)
+      lookRetry = setTimeout(() => {
+        lookRetry = undefined;
+        maybeAskLook(true);
+      }, 500);
+    return;
+  }
+  lookShowing = true;
+  void askLook(account).then(() => {
+    lookShowing = false;
+    maybeStartTour();
+    maybeShowUnlocks();
+    maybeShowGift();
+  });
+}
 /** The "Unlocked" dialog is up (one at a time). */
 let unlockShowing = false;
 /**
@@ -3265,6 +3330,7 @@ function maybeShowUnlocks() {
     level = levelNow();
   if (!account || level === undefined || !lobby || myId || unlockShowing)
     return;
+  if (lookPending()) return;
   const seen = loadSeenLevel(account);
   const due = unlocksDue(seen, level);
   if (!due.show.length) {
@@ -3288,7 +3354,119 @@ function maybeShowUnlocks() {
     unlockShowing = false;
     // Still on the hub (a room invite may have been taken meanwhile).
     if (open && !myId && hubOpen()) openFeature(first);
+    else maybeShowGift();
   });
+}
+/**
+ * The daily gift (daily-gift.ts): where this account is in its calendar,
+ * read when the Lobby opens (again on a new Pacific day).
+ */
+let gift: { account: string; state: DailyGiftState } | undefined;
+let giftLoading = "";
+let giftDialog: GiftDialog | undefined;
+const giftLaterKey = (account: string) => `arena-gift-later:${account}`;
+function loadGift() {
+  const account = accountsUI?.account?.id;
+  if (!account) return;
+  if (gift?.account === account && gift.state.today === pacificDate()) return;
+  const key = `${account}:${pacificDate()}`;
+  if (giftLoading === key) return;
+  giftLoading = key;
+  accountsUI
+    .api("/api/gift")
+    .then((value) => {
+      if (accountsUI.account?.id !== account) return;
+      gift = { account, state: dailyGiftStateSchema.parse(value) };
+      maybeShowGift();
+      if (state?.phase === "finished") renderBattle();
+    })
+    .catch(() => {
+      // Not set up yet (migration 20261126150000), or offline: no gift
+      // dialog; the next Lobby asks again.
+      giftLoading = "";
+    });
+}
+/** Open the calendar: to claim, or to look at it (the Menu's Daily gift). */
+function showGift() {
+  const account = accountsUI?.account?.id;
+  if (!account || giftDialog?.open) return;
+  if (gift?.account !== account) {
+    loadGift();
+    return toast("Your daily gift is loading. Try again in a moment.");
+  }
+  giftDialog = openGiftDialog({
+    state: gift.state,
+    claim: async () => {
+      try {
+        const claim = dailyGiftClaimSchema.parse(
+          await accountsUI.api("/api/gift/claim", {}),
+        );
+        gift = { account, state: claim };
+        // Coins, XP and the cosmetic are in the account now.
+        void accountsUI.loadEconomy();
+        return claim;
+      } catch (error) {
+        // Taken on another device meanwhile: show the calendar as it is.
+        giftLoading = "";
+        gift = undefined;
+        loadGift();
+        return error instanceof Error
+          ? error.message
+          : "Couldn't take the gift. Try again.";
+      }
+    },
+    onClose: (after) => {
+      giftDialog = undefined;
+      // Later: not again this visit (the Menu still opens it).
+      if (!after.claimed)
+        try {
+          sessionStorage.setItem(giftLaterKey(account), after.today);
+        } catch {
+          /* No storage: it may show once more. */
+        }
+      maybeShowUnlocks();
+    },
+  });
+}
+/**
+ * Today's gift, waiting: its dialog on the Lobby, when nothing else is in
+ * front. A brand-new player plays first (docs/onboarding.md): the gift
+ * shows once they have finished a match or reached level 2.
+ */
+function maybeShowGift() {
+  const account = accountsUI?.account?.id,
+    level = levelNow();
+  if (!account || !lobby || myId || giftDialog?.open || unlockShowing) return;
+  if (lookPending()) return;
+  if (gift?.account !== account || gift.state.claimed) return;
+  if (level === undefined || !((matchesFinished ?? 0) >= 1 || level >= 2))
+    return;
+  try {
+    if (sessionStorage.getItem(giftLaterKey(account)) === gift.state.today)
+      return;
+  } catch {
+    /* No storage. */
+  }
+  if (
+    tour?.open ||
+    tourTimer !== undefined ||
+    $<HTMLDialogElement>("dialog").open ||
+    document.querySelector(".ui-panel-host .ui-panel") ||
+    document.querySelector("[data-ui-confirm]") ||
+    document.getElementById("reward-reveal") ||
+    accountsUI?.guestWarningPending
+  )
+    return;
+  showGift();
+}
+/** What the result sheet says about the gift (result-rewards.ts). */
+function giftNote() {
+  const account = accountsUI?.account?.id;
+  if (!account || gift?.account !== account) return undefined;
+  const s = gift.state;
+  return s.claimed
+    ? `Tomorrow's gift: ${giftLabel(tomorrowGift(s))}`
+    : `Today's gift is waiting in the Lobby: ${giftLabel(giftOn(s.day, s))}`;
 }
 /** The Lobby's Spire card, and the Raids dot while it's new (spire-nudge.ts). */
 function lobbySpire() {
@@ -3357,8 +3535,11 @@ function syncLobby(want: boolean, park = false) {
     lobbyFriendsTimer = setInterval(() => void refreshLobbyFriends(), 60000);
   }
   lobby.update(lobbyView());
+  maybeAskLook();
   maybeStartTour();
   maybeShowUnlocks();
+  loadGift();
+  maybeShowGift();
 }
 /** The roster (UI remodel step 3): every fighter, and a fighter's detail. */
 let rosterScreen: RosterScreen | undefined;
@@ -4735,6 +4916,7 @@ function renderBattle() {
                 }
               : undefined,
           coins: matchCoins(),
+          gift: giftNote(),
         }) +
         recapMarkup(state, myId) +
         recordsMarkup(record, friendIds, {
@@ -5665,7 +5847,7 @@ function settingsMarkup(reduced: boolean) {
       : "";
     side = `<section class="prefs-card st-card" aria-labelledby="prefs-match"><h3 id="prefs-match">${menuIcon("battle")}This match</h3>${note}${practiceTools}${skills}${motion}</section>`;
   } else
-    side = `<section class="prefs-card st-card" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3>${graphicsRow()}${isNativeApp() ? "" : fullscreenRow()}${motion}</section>`;
+    side = `<section class="prefs-card st-card" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3>${lookRow()}${graphicsRow()}${isNativeApp() ? "" : fullscreenRow()}${motion}</section>`;
   const appIcon = !state && isNativeApp() ? appIconCardHTML() : "";
   const leave = myId
     ? leaveButton()
@@ -5700,6 +5882,7 @@ function showSettings() {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   dialog(settingsMarkup(reduced));
   bindGraphicsCard();
+  bindLookRow($<HTMLDialogElement>("dialog"));
   void bindAppIconCard(toast);
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
@@ -5942,6 +6125,7 @@ function helpGo(to: HelpGo) {
   lobbyAction(to);
 }
 $("help").onclick = () => showHowToPlay();
+$("daily-gift").onclick = () => showGift();
 /** Start it now (replay), or when it is due for a new account. */
 function startTour(replay = false) {
   const account = accountsUI?.account?.id;
@@ -5993,12 +6177,14 @@ document.addEventListener(PANEL_EVENT, () => {
   if (hubScene === "lobby" && !myId) {
     maybeStartTour();
     maybeShowUnlocks();
+    maybeShowGift();
   }
 });
 /** A new account's first Lobby: the tour, once. */
 function maybeStartTour() {
   const account = accountsUI?.account?.id;
   if (!account || tour?.open || tourTimer !== undefined) return;
+  if (lookPending()) return;
   const journey = accountsUI.economy?.journey;
   const level = journey ? playerLevel(journey.xp).level : undefined;
   if (!tourDue(loadTour(account), level)) return;

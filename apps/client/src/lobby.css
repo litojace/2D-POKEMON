@@ -124,9 +124,7 @@
   color: var(--ui-accent-hi);
 }
 .lobby-rail span {
-  font:
-    700 calc(10px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(10px * var(--text-scale, 1))/1 var(--font-body);
   letter-spacing: 0.02em;
   color: #c9d6ee;
 }
@@ -154,9 +152,7 @@
      and the 2 px ring heavy). Red still means someone waits on you. */
   background: linear-gradient(180deg, #ff7486, var(--ui-danger) 55%, #d33a4e);
   color: #fff;
-  font:
-    800 calc(11px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 800 calc(11px * var(--text-scale, 1))/1 var(--font-body);
   font-style: normal;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
@@ -440,9 +436,7 @@
   border-radius: 18px;
   background: #fff;
   color: #1a2547;
-  font:
-    800 calc(26px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(26px * var(--text-scale, 1))/1 var(--font-display);
   transform: translateX(-50%);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
@@ -472,9 +466,7 @@
   -webkit-backdrop-filter: blur(10px) saturate(1.3);
   backdrop-filter: blur(10px) saturate(1.3);
   color: #f4f7ff;
-  font:
-    700 calc(15px * var(--text-scale, 1))/1.2 "DM Sans",
-    sans-serif;
+  font: 700 calc(15px * var(--text-scale, 1))/1.2 var(--font-body);
   text-align: center;
   text-wrap: balance;
   overflow-wrap: anywhere;
@@ -579,14 +571,10 @@
   color: var(--ui-accent);
 }
 .lobby-slot span {
-  font:
-    400 clamp(18px, calc(var(--seat) * 0.2), 34px) / 1 "DM Sans",
-    sans-serif;
+  font: 400 clamp(18px, calc(var(--seat) * 0.2), 34px) / 1 var(--font-body);
 }
 .lobby-slot small {
-  font:
-    700 clamp(9px, calc(var(--seat) * 0.075), 14px) / 1 "DM Sans",
-    sans-serif;
+  font: 700 clamp(9px, calc(var(--seat) * 0.075), 14px) / 1 var(--font-body);
 }
 .lobby-nameplate {
   display: grid;
@@ -603,9 +591,7 @@
   border: 1px solid var(--lobby-line);
   border-radius: 50%;
   background: var(--lobby-glass);
-  font:
-    700 calc(24px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(24px * var(--text-scale, 1))/1 var(--font-body);
 }
 .lobby-name {
   display: grid;
@@ -619,9 +605,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font:
-    800 calc(34px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(34px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
@@ -635,9 +619,7 @@
   border-radius: 999px;
   background: var(--lobby-glass);
   color: var(--element, var(--ui-accent));
-  font:
-    800 calc(11px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 800 calc(11px * var(--text-scale, 1))/1 var(--font-body);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -691,9 +673,7 @@
   overflow: hidden;
   border-radius: 999px;
   background: var(--lobby-glass);
-  font:
-    700 clamp(9px, calc(var(--seat) * 0.06), 12px) / 1.3 "DM Sans",
-    sans-serif;
+  font: 700 clamp(9px, calc(var(--seat) * 0.06), 12px) / 1.3 var(--font-body);
   text-overflow: ellipsis;
   white-space: nowrap;
   transform: translateX(-50%);
@@ -718,9 +698,7 @@
   border: 1px solid var(--lobby-line);
   border-radius: 999px;
   background: var(--lobby-glass);
-  font:
-    700 calc(12px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(12px * var(--text-scale, 1))/1 var(--font-body);
   pointer-events: auto;
 }
 .lobby-party-bar[hidden] {
@@ -733,9 +711,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--ui-danger) 20%, transparent);
   color: #ffb3bb;
-  font:
-    700 calc(11px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(11px * var(--text-scale, 1))/1 var(--font-body);
 }
 
 /* In someone else's party the leader stands in the middle (lobby-screen.ts):
@@ -761,9 +737,7 @@
   border-radius: 999px;
   background: var(--lobby-glass);
   color: var(--ui-accent);
-  font:
-    700 calc(12px * var(--text-scale, 1)) / 1.2 "DM Sans",
-    sans-serif;
+  font: 700 calc(12px * var(--text-scale, 1)) / 1.2 var(--font-body);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -799,9 +773,7 @@
   border-radius: 999px;
   background: var(--ui-danger, #e5484d);
   color: #fff;
-  font:
-    700 calc(11px * var(--text-scale, 1)) / 1 "DM Sans",
-    sans-serif;
+  font: 700 calc(11px * var(--text-scale, 1)) / 1 var(--font-body);
   transform: translateX(-50%);
   pointer-events: auto;
 }
@@ -878,16 +850,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ui-accent);
-  font:
-    800 calc(11px * var(--text-scale, 1))/1.1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(11px * var(--text-scale, 1))/1.1 var(--font-display);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .lobby-card b {
-  font:
-    800 calc(19px * var(--text-scale, 1))/1.1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(19px * var(--text-scale, 1))/1.1 var(--font-display);
   letter-spacing: 0.02em;
 }
 .lobby-card small {
@@ -1110,9 +1078,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font:
-    800 calc(18px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(18px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -1149,9 +1115,7 @@
     0 6px 0 #b8781a,
     0 14px 26px rgba(0, 0, 0, 0.4);
   color: var(--ui-accent-ink) !important;
-  font:
-    800 calc(40px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif !important;
+  font: 800 calc(40px * var(--text-scale, 1))/1 var(--font-display) !important;
   letter-spacing: 0.1em;
 }
 /* PLAY stands out: a soft golden glow breathes behind it and a band of
@@ -1302,9 +1266,7 @@
   gap: 2px;
 }
 .lobby-mode-menu b {
-  font:
-    800 calc(15px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(15px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -1590,9 +1552,7 @@
   border-radius: 999px;
   background: none;
   color: var(--ui-dim);
-  font:
-    800 calc(16px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(16px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
@@ -1659,9 +1619,7 @@
   display: block;
   grid-area: title;
   height: var(--hub-card-title);
-  font:
-    700 var(--hub-card-title) / 1 "DM Sans",
-    sans-serif;
+  font: 700 var(--hub-card-title) / 1 var(--font-body);
   letter-spacing: 0.02em;
 }
 :root body.hub-active #account-profile .account-avatar {
@@ -1691,9 +1649,7 @@ body.hub-active #account-profile .nav-level {
   border-radius: 8px;
   background: color-mix(in srgb, var(--ui-accent) 14%, transparent);
   color: var(--ui-accent);
-  font:
-    800 calc(13px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(13px * var(--text-scale, 1))/1 var(--font-display);
   font-variant-numeric: tabular-nums;
 }
 body.hub-active .nav-xp {

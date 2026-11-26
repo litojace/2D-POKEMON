@@ -35,9 +35,7 @@ body.battle-active.battle-raid.touch-mode #raid-party:not([hidden]) {
 #raid-party .rp-ally > b {
   overflow: hidden;
   color: #f1f5ff;
-  font:
-    700 calc(11px * var(--text-scale, 1)) / 1.15 "DM Sans",
-    sans-serif;
+  font: 700 calc(11px * var(--text-scale, 1)) / 1.15 var(--font-body);
   white-space: nowrap;
   text-overflow: ellipsis;
   text-shadow:
