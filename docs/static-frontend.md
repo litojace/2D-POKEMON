@@ -84,6 +84,18 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-ZUfnpofFS
   Shop and a share card. Rollback: remove the CSP header in Render.
 - The iPhone app loads the game from its own files (`capacitor://localhost`),
   so these headers don't apply there.
+- **Live check:** `node scripts/check-live-headers.mjs` compares what
+  `https://play.elementarenausa.com` serves (`/` and `/privacy.html`) with
+  the file, and checks that the served page's inline scripts are allowed by
+  the CSP it is served with (`--require-enforcing` refuses Report-Only;
+  `NODE_USE_ENV_PROXY=1` behind a proxy). The **Live headers** workflow runs
+  it after each push to main that can change them (retrying 20 minutes while
+  Render deploys) and every day, and opens the issue "Live game headers
+  differ from the repo" on a mismatch (closed when it matches again).
+- **Changing an inline script in `index.html`** means updating its hash in
+  `security-headers.json` and in Render in the same rollout: put the new
+  `Content-Security-Policy` value in Render before the deploy that ships the
+  script, or the CSP blocks it for players.
 
 ## Startup behavior
 
