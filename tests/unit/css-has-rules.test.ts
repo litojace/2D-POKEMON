@@ -132,10 +132,6 @@ function clientSelectors() {
 const KNOWN_PAGE_HAS = [
   "apps/client/src/loading-preview.css  html:has(.lp-refs)",
   "apps/client/src/loading-preview.css  body:has(.lp-refs)",
-  "apps/client/src/match-sheet.css  :root body.battle-active:has(#arena-overlay.is-sheet:not(:empty)) :is(#chat-button, #battle-chat)",
-  'apps/client/src/match-sheet.css  :root body.battle-active:has(#arena-overlay.is-sheet:not(:empty)) :is(#chat-button, #battle-chat):is( :hover, :focus-visible, [aria-expanded="true"] )',
-  "apps/client/src/match-sheet.css  :root body.battle-active:has(#arena-overlay.is-sheet:not(:empty)) #chat-button .chat-unread",
-  "apps/client/src/match-sheet.css  body.battle-active:has(#arena-overlay:is(.is-sheet, .is-rites):not(:empty)) :is(#chat-button, #battle-chat, #battle-chat-grid, #battle-chat-feed)",
   "apps/client/src/screens/raid-rites.css  body:has(.battle-chat:not([hidden])) #arena-overlay#arena-overlay.is-rites .rites-screen",
   "apps/client/src/screens/room.css  body:has(#menu > .room-screen)",
   "apps/client/src/screens/room.css  body:has(#menu > .room-screen) .topbar",
