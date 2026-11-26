@@ -748,11 +748,15 @@ for (const size of [
       await expect(rarest).toHaveAccessibleName("Rarest first");
       await expect(cheapest).toHaveAccessibleName("Cheapest first");
       // Measured where the screen settles: it opens with a slight zoom
-      // (ui/hub-panel.ts, scale .985), and CI's slow renderer measured a
-      // 44 px half mid-way at 43.34 px.
+      // (ui/hub-panel.ts, scale .985) and its parts arrive one by one, and
+      // CI's slow renderer measured a 44 px half mid-way (43.34, 43.99 px).
+      // Every finite animation is finished in the same step as the
+      // measuring, so none can start in between.
       const look = async () => {
         await settle(page);
         return page.evaluate(() => {
+          for (const a of document.getAnimations())
+            if (a.effect?.getTiming().iterations !== Infinity) a.finish();
           const row = document
             .querySelector(".fit-filters")!
             .getBoundingClientRect();
