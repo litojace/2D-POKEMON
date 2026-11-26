@@ -12,6 +12,8 @@ const parameter = () => ({
   cancelScheduledValues: vi.fn(),
 });
 let started: { onended: (() => void) | null }[];
+/** Every node something was connected to. */
+let connectedTo: unknown[];
 const node = () => {
   const n = {
     gain: parameter(),
@@ -20,7 +22,10 @@ const node = () => {
     delayTime: parameter(),
     pan: parameter(),
     Q: parameter(),
-    connect: vi.fn((target: unknown) => target),
+    connect: vi.fn((target: unknown) => {
+      connectedTo.push(target);
+      return target;
+    }),
     disconnect: vi.fn(),
     start: vi.fn(() => started.push(n)),
     stop: vi.fn(),
@@ -50,6 +55,7 @@ let page: EventTarget & { hidden: boolean };
 beforeEach(() => {
   vi.useFakeTimers();
   started = [];
+  connectedTo = [];
   page = Object.assign(new EventTarget(), { hidden: false });
   vi.stubGlobal("document", page);
   vi.stubGlobal("window", new EventTarget());
@@ -145,4 +151,24 @@ it("ticks each second of the countdown once, then calls the fight", () => {
     counts.push(started.length - before > 0 ? 1 : 0);
   }
   expect(counts).toEqual([1, 0, 1, 1, 0, 1, 0]);
+});
+
+it("starts at the louder defaults for a player who never moved the sliders", () => {
+  const audio = new AudioManager();
+  // 35% music and 60% effects for a player who never moved the sliders
+  // (they were 12% and 30%, too quiet on a phone).
+  expect(audio.music).toBe(0.35);
+  expect(audio.effects).toBe(0.6);
+});
+
+it("plays raid boss cues through the effects bus, so its limiter guards them", () => {
+  const audio = manager();
+  const bus = (audio as unknown as { effectsBus(): unknown }).effectsBus();
+  started.length = 0;
+  connectedTo.length = 0;
+  audio.playRaid("roar");
+  expect(started.length).toBeGreaterThan(0);
+  // The cue's last nodes connect to the effects bus, not the speakers.
+  expect(connectedTo.includes(bus)).toBe(true);
+  expect(connectedTo).not.toContain(audio.context!.destination);
 });

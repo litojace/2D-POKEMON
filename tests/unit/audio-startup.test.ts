@@ -132,7 +132,7 @@ it("respects a saved mute and silences sustained music when the app is hidden", 
   page.hidden = false;
   page.dispatchEvent(new Event("visibilitychange"));
   expect(contexts[0].gains[0].gain.setTargetAtTime).toHaveBeenLastCalledWith(
-    0.2,
+    0.4,
     0,
     0.08,
   );
