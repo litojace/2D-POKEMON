@@ -48,6 +48,7 @@ import {
   type FxShape,
 } from "../skins/skin-fx";
 import {
+  drawCollectionEntrance,
   drawCollectionVictory,
   playCollectionEntrance,
 } from "../skins/collection-fx";
@@ -1769,6 +1770,9 @@ export class FighterRig {
         // The rig bursts Mountainborn's pebbles itself; add only its flourish.
         pose.look.entrance === "mountainborn",
       );
+    // An entrance that draws as well (Rainbow's arch), behind the fighter.
+    if (state === "wave" && pose.look?.entrance)
+      drawCollectionEntrance(this.under, pose.look.entrance, x, y, sc, t);
     if (state === "victory" && pose.look?.victory)
       drawCollectionVictory(
         g,

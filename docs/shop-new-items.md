@@ -133,7 +133,7 @@ tier, so a single never undercuts a set:
 | Music aura          | aura     | 0    | Rare     | 900   | Music notes bob round you to the beat          |
 | Rune aura           | aura     | 1    | Epic     | 1,440 | A circle of glowing runes turns beneath you    |
 | Smoke-bomb entrance | entrance | 0    | Rare     | 1,000 | Ninja smoke rolls out low, leaves whirl up     |
-| Rainbow entrance    | entrance | 1    | Epic     | 1,600 | A rainbow ribbon swoops down onto the spot     |
+| Rainbow entrance    | entrance | 1    | Epic     | 1,600 | A rainbow arches over you from cloud to cloud  |
 | Balloon victory     | victory  | 0    | Epic     | 1,800 | Balloons float up behind you                   |
 | Disco victory       | victory  | 1    | Epic     | 2,880 | A disco ball spins, its lights sweep the floor |
 
@@ -185,3 +185,35 @@ frame by frame (80 ms to 2.3 s) and compared. Fixed:
   gains nebula clouds and two small worlds in orbit.
 - **Borealis's aura**: its curtains stand taller beside and behind the
   fighter, and short on the near half so the light never veils its body.
+
+## Rainbow entrance (26 Nov)
+
+![Before: a ribbon of streaks for a moment. After: the arch springs out of a cloud, stands over the fighter with a sheen and twinkles, then rolls up; in a match on a phone; the Shop tile](shop-new-items/rainbow-entrance.jpg)
+
+The owner found the Rainbow entrance plain ("chưa đặc biệt lắm"): a ribbon of
+streaks that crossed the fighter in about 0.2 s. Particles alone cannot draw
+an arch (each one flies in a straight line, and an entrance gets 48), so the
+Rainbow now draws as well as bursting, as finales do:
+
+- a six-band rainbow springs out of a cloud beside the fighter, arcs over
+  its head and lands on a second cloud with a ring and sparkles in every
+  colour;
+- it stands for a second with a sheen running along it and stars
+  twinkling on the bands, then rolls up into the far cloud and the clouds
+  puff away (2.15 s in all);
+- the burst under it is a rainbow ripple at the feet and stars in the
+  bands' colours fountaining up round the body.
+
+Everything stands on the floor and draws behind the fighter. Entrances that
+draw are listed in `DRAWN_ENTRANCES` (`collection-fx.ts`): how long they
+draw, the room a thumbnail gives them (the arch is wider than the usual
+entrance frame) and the moment a catalogue tile shows. The rig draws them
+while the fighter greets, the Shop's stage and thumbnails through the same
+code, and the Plaza for you and the nearest players, like a finale.
+
+On a phone's Shop stage (667 to 852 wide) the stage is narrower than the
+arch, so its feet and clouds are cut at the sides; the tile, a match and a
+desktop stage show all of it. `tests/unit/drawn-entrance.test.ts` checks
+the arch's timing, that it fits its tile and that the Plaza draws and stops
+it; `new-collections` checks that the green band spans the tile and the
+stage at every review size.

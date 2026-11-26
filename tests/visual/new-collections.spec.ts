@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { openHub, snap } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import { exposeAccount, shopServer } from "./shop-server";
@@ -35,6 +35,37 @@ const SIZES = [
 const LOOK_SETS = ["seaside", "steamworks", "borealis"];
 const SINGLES = LOOK_ITEMS.filter((i) => i.collection === "singles");
 const ids = Object.keys(CHARACTERS);
+/**
+ * How wide the Rainbow's green band (0x5fdc7a) spreads across a picture, as
+ * a share of its width: an arch spans it, a stray green speck doesn't.
+ */
+const greenSpan = (page: Page, png: Buffer) =>
+  page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext("2d")!;
+    ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    let min = Infinity,
+      max = -Infinity;
+    for (let i = 0; i < d.length; i += 4) {
+      const [r, g, b] = [d[i], d[i + 1], d[i + 2]];
+      if (
+        Math.abs(r - 95) < 40 &&
+        Math.abs(g - 220) < 40 &&
+        Math.abs(b - 122) < 45
+      ) {
+        const x = (i / 4) % c.width;
+        min = Math.min(min, x);
+        max = Math.max(max, x);
+      }
+    }
+    return max > min ? (max - min) / c.width : 0;
+  }, png.toString("base64"));
 
 for (const collection of COLLECTIONS)
   for (const size of SIZES)
@@ -183,6 +214,20 @@ for (const size of SIZES.filter(
           const a = await stage.screenshot();
           await page.waitForTimeout(400);
           expect((await stage.screenshot()).equals(a), item.id).toBe(false);
+        }
+        if (item.id === "rainbow-entrance") {
+          // The arch (DRAWN_ENTRANCES): its green band spans the tile's
+          // picture (0.45 of the whole tile), and most of the stage (a
+          // phone's narrow stage cuts its feet).
+          expect(
+            await greenSpan(page, await tile.screenshot()),
+          ).toBeGreaterThan(0.35);
+          await expect
+            .poll(async () => greenSpan(page, await stage.screenshot()), {
+              timeout: 10_000,
+              intervals: [150],
+            })
+            .toBeGreaterThan(0.6);
         }
         await snap(page, info, `${item.id}-${size.name}`);
       }

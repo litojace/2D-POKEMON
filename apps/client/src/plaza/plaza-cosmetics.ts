@@ -42,6 +42,7 @@ import {
   type FxParticle,
 } from "../skins/skin-fx";
 import {
+  drawCollectionEntrance,
   drawCollectionVictory,
   playCollectionEntrance,
 } from "../skins/collection-fx";
@@ -270,6 +271,8 @@ export interface SkinFxState {
   at: number;
   /** An entrance to play on the next frame. */
   greet: boolean;
+  /** When an entrance that draws (Rainbow's arch) started (ms). */
+  greetAt: number | null;
   /** When the victory started (ms), and whether its first frame is next. */
   cheerAt: number | null;
   cheerFirst: boolean;
@@ -284,6 +287,7 @@ const state = (g: Ctx, b: Wearer, now: number) => {
       particles: [],
       at: now,
       greet: false,
+      greetAt: null,
       cheerAt: null,
       cheerFirst: false,
     };
@@ -302,6 +306,7 @@ const pending = (b: Wearer) =>
     particles: [],
     at: 0,
     greet: false,
+    greetAt: null,
     cheerAt: null,
     cheerFirst: false,
   });
@@ -339,6 +344,7 @@ function skinFx(g: Ctx, b: Wearer, o: WornOptions) {
   if (o.reduced) {
     s.particles.length = 0;
     s.greet = false;
+    s.greetAt = null;
     s.cheerAt = null;
     s.at = o.now;
     return;
@@ -407,7 +413,26 @@ function skinFx(g: Ctx, b: Wearer, o: WornOptions) {
   if (greeting && b.entrance) {
     const rig = rigEntrance(emit, b.entrance, x, ground, sc);
     playCollectionEntrance(emit, b.entrance, x, y, sc, rig);
+    s.greetAt = o.now;
   }
+  // An entrance that draws (Rainbow's arch), behind the fighter: like a
+  // finale, only for you and the nearest few.
+  if (
+    s.greetAt != null &&
+    !(
+      b.entrance &&
+      o.full &&
+      drawCollectionEntrance(
+        s.back,
+        b.entrance,
+        x,
+        y,
+        sc,
+        (o.now - s.greetAt) / 1000,
+      )
+    )
+  )
+    s.greetAt = null;
   // A finale is the heaviest effect: twenty dancing at once halved the
   // Plaza's frame rate (a CPU-drawn canvas, 20 Nov 2026), so only you and
   // the nearest few play it; the rest keep their skin's celebration.
