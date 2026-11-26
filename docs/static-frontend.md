@@ -78,12 +78,27 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-ZUfnpofFS
   (https; the client uses no realtime socket). `data:` and `blob:` images are
   canvas exports, the share card, the QR code and fighter art. No eval, no
   workers besides the service worker, no WASM.
-- **Rollout:** first as `Content-Security-Policy-Report-Only` (violations
-  show in the browser console, nothing is blocked), then enforcing after a
-  clean pass through boot, sign-in, guest play, a bot match, the Plaza, the
-  Shop and a share card. Rollback: remove the CSP header in Render.
+- **Rollout (done 25 Nov):** Report-Only from 6:15 PM PT; enforcing
+  `Content-Security-Policy` from 6:43 PM PT, after clean passes (zero
+  violations) through boot, guest sign-in, Shop, share card, Plaza and a bot
+  match on `play.` and on `parena.`. **Rollback:** in Render, rename the
+  header back to `Content-Security-Policy-Report-Only` (same value): the
+  game stops enforcing within seconds and violations still show in the
+  console.
 - The iPhone app loads the game from its own files (`capacitor://localhost`),
   so these headers don't apply there.
+- **Live check:** `node scripts/check-live-headers.mjs` compares what
+  `https://play.elementarenausa.com` serves (`/` and `/privacy.html`) with
+  the file, and checks that the served page's inline scripts are allowed by
+  the CSP it is served with (`--require-enforcing` refuses Report-Only;
+  `NODE_USE_ENV_PROXY=1` behind a proxy). The **Live headers** workflow runs
+  it after each push to main that can change them (retrying 20 minutes while
+  Render deploys) and every day, and opens the issue "Live game headers
+  differ from the repo" on a mismatch (closed when it matches again).
+- **Changing an inline script in `index.html`** means updating its hash in
+  `security-headers.json` and in Render in the same rollout: put the new
+  `Content-Security-Policy` value in Render before the deploy that ships the
+  script, or the CSP blocks it for players.
 
 ## Startup behavior
 

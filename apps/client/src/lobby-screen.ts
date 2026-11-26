@@ -802,6 +802,9 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
    * counts them). Where only one card fits, a new zone keeps the Spire card
    * over the Journey or guide card; otherwise the Journey stays (the Spire
    * is still a tap away on Raids).
+   * On a narrow phone the cards' lines and the mode's hint take two lines
+   * (lobby.css); before any card steps aside they go back to one, cut
+   * with "…" (lobby-cards-tight): a whole line is worth less than Missions.
    * Measured once after an update or a resize, never per frame.
    */
   let fitFrame = 0;
@@ -826,7 +829,9 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       spireCardEl,
     ])
       card.classList.remove("is-squeezed");
-    const limit =
+    layer.classList.remove("lobby-cards-tight");
+    // The mode button's height moves PLAY's block, so read it each time.
+    const limit = () =>
       layer.querySelector(".lobby-play")!.getBoundingClientRect().top - 8;
     const bottom = () =>
       Math.max(
@@ -836,8 +841,9 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
           (c) => c.getBoundingClientRect().bottom,
         ),
       );
+    if (bottom() > limit()) layer.classList.add("lobby-cards-tight");
     for (const card of order) {
-      if (bottom() <= limit) break;
+      if (bottom() <= limit()) break;
       card.classList.add("is-squeezed");
     }
   };

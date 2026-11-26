@@ -75,6 +75,13 @@ To have the text selected as well, pass `{ selectAll: true }`; it then
 selects only where there is a mouse, not on a touch screen.
 `tests/unit/screen-pin.test.ts` fails on either pattern in client code.
 
+**Inline scripts in `apps/client/index.html` are allowed by hash** in the
+game's Content-Security-Policy (`apps/client/security-headers.json`,
+`docs/static-frontend.md` "Security headers"). Changing one means a new hash
+in that file and in Render's headers in the same rollout, Render first, or
+the CSP blocks the script for every player. `tests/unit/security-headers.test.ts`
+prints the new hash; the Live headers workflow opens an issue on drift.
+
 ## Raid boss ids are the old names
 
 The seven raid bosses got new identities (14 Nov), but their ids stayed,
