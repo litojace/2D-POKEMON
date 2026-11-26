@@ -1163,6 +1163,57 @@ other by more than that. The client's work per snapshot (apply, copy,
 unpack) is a few hundredths of a millisecond, 30 times a second, and
 nothing per frame.
 
+**In production, the first day.** #460 went live at 10:27 AM PT on 25 Nov
+with `SNAPSHOT_DELTA` on. The numbers below come from the `arena-perf` lines
+in Render's log up to 10:30 AM PT on 26 Nov. Our own headless test runs
+(4 cores, 16 GB, density 1) are left out. The "before" set is the 41
+matches logged before #460.
+
+Few players played. On delta builds there were 10 matches: 9 duels against
+bots, on two Android phones, and 1 Tidelotl raid on an iPhone. Before #460
+there were 41 matches, 28 of them duels. Over the day `errors` was 0 in every
+match, and the log shows no server faults. The download per player is not
+in `arena-perf`; the −72% above comes from the load test.
+
+Duels only, medians (the raid is another load):
+
+|                            | Before, 28 duels | Deltas, 9 duels |
+| -------------------------- | ---------------- | --------------- |
+| Gap between snapshots, p95 | 56.5 ms          | 53.0 ms         |
+| Press to confirmed, p95    | 166.5 ms (n=16)  | 133.0 ms        |
+| Round trip, p50            | 60 ms            | 77 ms           |
+| Corrections per minute     | 26.1             | 28.4            |
+| … from movement            | 0                | 0               |
+| … from hits                | 19.5             | 25.8            |
+
+Read this as "nothing got worse", not as a gain from deltas. The two sets
+come from different phones and networks: before is mostly an iPhone (21 of
+the 28 duels), after only two Android phones. Hit corrections depend on the bot
+and the fight.
+
+A phone with the same profile (Android, 9 cores, 8 GB) played on both
+sides, 6 duels before and 6 after:
+
+- Gap between snapshots, p95: 66 → 53 ms.
+- Press to confirmed, p95: 176.5 → 139.5 ms.
+- Round trip: 118.5 → 78.5 ms.
+- Frame rate: 30.6 → 57.8 fps.
+
+The frame rate rose with other changes shipped in those days (a delta
+costs the phone a few hundredths of a millisecond a snapshot), and the
+round trip moved with the network. None of these four numbers can be
+put down to deltas.
+
+What the day does show is this. Snapshots arrive at least as evenly as
+before, and corrections from movement stay at zero. Movement is where a
+wrongly applied delta would show first.
+
+The one outlier was the iPhone's Tidelotl raid: 129 "other" corrections a
+minute. Deltas did not cause it. Replaying Tidelotl offline (normal and
+ascendant, 2 and 4 seats, all three chapters), every decoded delta equals
+its whole snapshot. The cause was a gap in the phone's prediction, closed in
+section 22 (#534). The switch stays on.
+
 ### 22. Tidelotl moves you before your input does (26 Nov 2026)
 
 An iPhone's Tidelotl raid (26 Nov, 172 s, Lagoon) reported 142.5
