@@ -49,7 +49,10 @@ import {
   carryCurrent,
   newestStep,
   predictFighter,
+  raidCarry,
   serverSteps,
+  stepRaidCarry,
+  type RaidCarry,
 } from "../../apps/client/src/predict-fighter.js";
 import {
   correctionCause,
@@ -102,6 +105,8 @@ export interface Correction extends CorrectionReason {
   px: number;
   /** A raid's chapter (1-3) when the snapshot arrived. */
   chapter?: number;
+  /** DIAG=2: your fighter's state on the server then. */
+  note?: string;
 }
 /**
  * A hit on you, measured as the phone measures it (battle-perf hitsFar:
@@ -161,6 +166,8 @@ export function simulateCorrections(o: {
   humans?: number;
   /** Raid rites you hold (the boss's own leads every offer). */
   rites?: string[];
+  /** Replay without stepRaidCarry (the Undertow and Bubble Prison left out, before 26 Nov 2026). */
+  noRaidCarry?: boolean;
 }) {
   const seconds = o.seconds ?? 120;
   const random = rng(o.seed ?? 11);
@@ -227,6 +234,16 @@ export function simulateCorrections(o: {
     dx = 0,
     dy = 0;
   const corrections: Correction[] = [];
+  let carry: RaidCarry | undefined;
+  const isRaid = !!o.raid;
+  // main.ts predict(): what Tidelotl does to you, then your input.
+  const step = (input: Input, time: number) =>
+    predictFighter(
+      local!,
+      o.noRaidCarry ? input : stepRaidCarry(local!, carry, input, time),
+      time,
+      isRaid,
+    );
   let snapshots = 0,
     pendingSum = 0;
   // The hit-gap reading (main.ts measureHitGap): your fighter as drawn
@@ -288,10 +305,16 @@ export function simulateCorrections(o: {
       pendingSum += pending.length;
       local = structuredClone(server);
       if (!o.noCarry) carryCurrent(local, state.time);
+      carry = raidCarry(
+        server,
+        state.raid,
+        state.players.find((p) => p.raidBoss),
+        state.time,
+      );
       held = server.held ?? 0;
       timeline.snapshot(Math.max(0, pending.length - held), now);
       for (const { input, tick } of serverSteps(pending, held))
-        predictFighter(local, input, state.time + tick / RULES.tick, false);
+        step(input, state.time + tick / RULES.tick);
       for (const e of state.events) {
         if (e.kind !== "hit" || e.target !== "me") continue;
         const lead =
@@ -316,13 +339,22 @@ export function simulateCorrections(o: {
       corrections.push({
         px,
         chapter: state.raid?.phase,
+        note:
+          process.env.DIAG === "2"
+            ? `at ${server.x.toFixed(0)},${server.y.toFixed(0)} statuses [${server.statuses.map((x) => x.kind).join(",")}] jump ${server.jumpUntil > state.time} dash ${server.dashUntil > state.time} vx ${server.vx.toFixed(0)} vy ${server.vy.toFixed(0)} events [${[...new Set(state.events.map((e) => e.kind))].join(",")}]`
+            : undefined,
         ...(process.env.DIAG
           ? {
               diag:
                 [
                   u && u.until > state.time ? "undertow" : "",
                   (tide?.waves as unknown[] | undefined)?.length ? "waves" : "",
-                  tide?.flood ? "flood" : "",
+                  ((tide?.floodUntil as number | undefined) ?? 0 > state.time)
+                    ? "flood"
+                    : "",
+                  (tide?.bubbles as unknown[] | undefined)?.length
+                    ? "bubbles"
+                    : "",
                   tide?.hightide ? "hightide" : "",
                   (tide?.prisons as unknown[] | undefined)?.length
                     ? "prison"
@@ -367,13 +399,7 @@ export function simulateCorrections(o: {
       pending.push(input);
       if (pending.length > 90) pending.shift();
       const next = newestStep(pending, held);
-      if (next)
-        predictFighter(
-          local,
-          next.input,
-          state.time + next.tick / RULES.tick,
-          false,
-        );
+      if (next) step(next.input, state.time + next.tick / RULES.tick);
     }
     // The scene eases your drawn fighter onto the prediction (main.ts).
     drawn ??= { x: local.x, y: local.y };
@@ -421,6 +447,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     variant: (process.env.VARIANT as RaidVariant | undefined) || undefined,
     humans: Number(process.env.HUMANS ?? 2),
     rites: process.env.RITES ? process.env.RITES.split(",") : undefined,
+    noRaidCarry: process.env.NO_RAID_CARRY === "1",
   });
   const by = new Map<string, Correction[]>();
   for (const c of corrections) {
@@ -443,6 +470,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       if (c.cause === "other")
         tally.set(c.diag ?? "?", (tally.get(c.diag ?? "?") ?? 0) + 1);
     console.log("other, by what was active:", Object.fromEntries(tally));
+    if (process.env.DIAG === "2")
+      for (const c of corrections as (Correction & { diag?: string })[])
+        if (c.cause === "other")
+          console.log(
+            `  other ${c.px.toFixed(1)} px, chapter ${c.chapter}, ${c.diag}${c.detail ? `, hits ${c.detail}` : ""}${c.note ? `, ${c.note}` : ""}`,
+          );
   }
   if (corrections.some((c) => c.chapter !== undefined))
     for (const chapter of [1, 2, 3]) {

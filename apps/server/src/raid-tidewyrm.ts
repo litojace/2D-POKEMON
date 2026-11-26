@@ -17,6 +17,12 @@ import {
   riteValue,
 } from "../../../packages/shared/src/raid.js";
 import { RaidArena, type RaidBossNumbers } from "./raid.js";
+import {
+  driftPrison,
+  heldInput,
+  pullIntoUndertow,
+  undertowPull,
+} from "../../../packages/shared/src/tidelotl-drift.js";
 
 const T = TIDEWYRM;
 const W = RULES.width,
@@ -45,7 +51,6 @@ export class TidewyrmArena extends RaidArena {
   /** Waves: who each one has already hit. */
   protected waveHits = new Map<number, Set<string>>();
   private undertowHit = new Set<string>();
-  private rootedUntil = new Map<string, number>();
   /** Bubble Prison: who popped whose bubble recently, and mash state. */
   private popAt = new Map<string, number>();
   private countedShots = new Set<number>();
@@ -94,7 +99,7 @@ export class TidewyrmArena extends RaidArena {
     this.swept = false;
     this.waveHits.clear();
     this.undertowHit.clear();
-    this.rootedUntil.clear();
+    this.raid.rooted = undefined;
     this.popAt.clear();
     this.countedShots.clear();
     this.lastBasic.clear();
@@ -141,7 +146,7 @@ export class TidewyrmArena extends RaidArena {
     for (const p of r.prisons ?? []) this.freeFromPrison(p.playerId, false);
     r.prisons = [];
     this.waveHits.clear();
-    this.rootedUntil.clear();
+    r.rooted = undefined;
   }
   protected override canStartAttack() {
     const r = this.raid;
@@ -638,21 +643,18 @@ export class TidewyrmArena extends RaidArena {
     this.stepFlood(dt, boss);
     this.stepSinking();
     // Roots and prisons hold raiders in place (before movement this tick).
+    // The phone holds you the same way (tidelotl-drift.ts heldInput).
     for (const p of this.heroes()) {
-      const sealed = r.prisons?.some((q) => q.playerId === p.id);
-      if (sealed || (this.rootedUntil.get(p.id) ?? 0) > this.time) {
-        p.lastInput = {
-          ...p.lastInput,
-          dx: 0,
-          dy: 0,
-          dash: false,
-          jump: false,
-        };
-        if (sealed) {
-          this.clearBufferedSkills(p.id);
-          p.lastInput = { ...p.lastInput, basic: false, skill: -1 };
-        }
+      const sealed = !!r.prisons?.some((q) => q.playerId === p.id);
+      if (sealed || (r.rooted?.[p.id] ?? 0) > this.time) {
+        p.lastInput = heldInput(p.lastInput, sealed);
+        if (sealed) this.clearBufferedSkills(p.id);
       }
+    }
+    if (r.rooted) {
+      for (const [id, until] of Object.entries(r.rooted))
+        if (until <= this.time) delete r.rooted[id];
+      if (!Object.keys(r.rooted).length) r.rooted = undefined;
     }
   }
   private goHome() {
@@ -755,7 +757,7 @@ export class TidewyrmArena extends RaidArena {
       this.damage(victim, T.bubbles.damage, boss.id, this.splash());
       this.hitBy = undefined;
       if (!this.hasRite(victim, "footing"))
-        this.rootedUntil.set(victim.id, this.time + T.bubbles.root);
+        (r.rooted ??= {})[victim.id] = this.time + T.bubbles.root;
     }
     r.bubbles = left;
   }
@@ -769,13 +771,9 @@ export class TidewyrmArena extends RaidArena {
         this.freeFromPrison(prison.playerId, false);
         continue;
       }
-      // Drift to the boss's mouth, arriving as time runs out.
-      const left = Math.max(0.05, prison.until - this.time);
-      const d = normalize(boss.x - prison.x, boss.y - prison.y),
-        dist = Math.hypot(boss.x - prison.x, boss.y - prison.y);
-      const step = Math.min(dist, (dist / left) * dt);
-      prison.x += d.x * step;
-      prison.y += d.y * step;
+      // Drift to the boss's mouth, arriving as time runs out (shared: the
+      // phone predicts the same drift, tidelotl-drift.ts).
+      driftPrison(prison, boss, this.time, dt);
       p.x = prison.x;
       p.y = prison.y;
 
@@ -865,19 +863,11 @@ export class TidewyrmArena extends RaidArena {
       r.undertow = undefined;
       return;
     }
-    const pull =
-      r.trait === "rip-current" ? T.undertow.ripPull : T.undertow.pull;
+    // Shared with the phone's prediction (tidelotl-drift.ts).
+    const pull = undertowPull(r.trait);
     for (const p of this.heroes()) {
       if (p.hp <= 0 || r.prisons?.some((q) => q.playerId === p.id)) continue;
-      const dist = Math.hypot(u.x - p.x, u.y - p.y);
-      if (dist > 4) {
-        const d = normalize(u.x - p.x, u.y - p.y);
-        move(
-          p,
-          d.x * Math.min(dist, pull * dt),
-          d.y * Math.min(dist, pull * dt),
-        );
-      }
+      const dist = pullIntoUndertow(p, u, pull, dt);
       if (dist < u.radius + RULES.radius && !this.undertowHit.has(p.id)) {
         this.undertowHit.add(p.id);
         this.hitBy = "undertow";
