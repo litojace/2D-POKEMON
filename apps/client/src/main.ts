@@ -283,6 +283,7 @@ import {
   type Fighter,
   type Input,
   type Reply,
+  type FillMode,
   type Snapshot,
   type Zone,
   maxHealth,
@@ -345,7 +346,11 @@ import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { askConfirm, openHubPanelNow, PANEL_EVENT } from "./ui/hub-panel";
 import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { createGuide } from "./getting-started-screen";
-import { openQuickSearch, type QuickSearchHandle } from "./quick-match";
+import {
+  openFillSearch,
+  openQuickSearch,
+  type QuickSearchHandle,
+} from "./quick-match";
 import {
   LOSS_STREAK_HINT,
   easierBot,
@@ -3457,6 +3462,62 @@ async function quickMatch() {
     },
   });
 }
+/**
+ * 2v2 or Free-for-all on your own (docs/pvp-plan.md, "Bots fill in"):
+ * search for players; after QUICK_FILL_MS, or at Start, bots take the
+ * empty seats. The room arrives as "quick-found" either way.
+ */
+async function fillMatch(mode: FillMode) {
+  if (quickSearch?.open) return;
+  const name =
+    document.querySelector<HTMLInputElement>("#name")?.value.trim() ||
+    accountsUI.account?.displayName ||
+    "Trainer";
+  // Listening before asking: when this search completes a group of four,
+  // the room follows the reply at once.
+  let arrived = false;
+  socket.off("quick-found");
+  socket.once("quick-found", (found: Reply) => {
+    arrived = true;
+    quickSearch?.close();
+    quickSearch = undefined;
+    if (!found.ok) return;
+    identity(found);
+    // A room with other players: your pick, shown to you only.
+    if (!found.started) void request("browse", selected);
+  });
+  const reply = await request("quick-join", {
+    name,
+    character: selected,
+    mode,
+  });
+  if (!reply.ok) return void socket.off("quick-found");
+  if (arrived) return;
+  quickSearch = openFillSearch({
+    mode,
+    online: reply.online ?? 0,
+    onCancel: () => {
+      socket.off("quick-found");
+      quickSearch = undefined;
+      void request("quick-leave", {}, true);
+    },
+    onFill: async () => {
+      const filled = await request(
+        "quick-fill",
+        { difficulty: suggestedBotLevel() },
+        true,
+      );
+      // A full group formed at the same moment: its room is on the way.
+      if (!filled.ok && quickSearch?.open) {
+        socket.off("quick-found");
+        quickSearch.close();
+        quickSearch = undefined;
+        void request("quick-leave", {}, true);
+        toast(filled.error ?? "Try again.");
+      }
+    },
+  });
+}
 /** PLAY: the remembered mode, through the same controls as the Play panel. */
 async function lobbyPlay(chosen: LobbyMode) {
   audio.unlock();
@@ -3485,6 +3546,9 @@ async function lobbyPlay(chosen: LobbyMode) {
     return void accountsUI.showRaids();
   }
   if (mode === "quick") return void quickMatch();
+  // Alone, 2v2 and Free-for-all are searches bots fill; a party makes a room.
+  if ((mode === "teams" || mode === "ffa") && size < 2)
+    return void fillMatch(mode);
   if (mode === "practice") return document.getElementById("practice")?.click();
   if (mode.startsWith("bot-")) {
     document

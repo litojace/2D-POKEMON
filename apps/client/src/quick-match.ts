@@ -7,7 +7,12 @@
  *
  * No layout reads: the timer only changes text once a second.
  */
-import { QUICK_MATCH_FALLBACK_MS, QUICK_MATCH_OFFER_MS } from "@arena/shared";
+import {
+  QUICK_FILL_MS,
+  QUICK_MATCH_FALLBACK_MS,
+  QUICK_MATCH_OFFER_MS,
+  type FillMode,
+} from "@arena/shared";
 import "./quick-match.css";
 
 export interface QuickSearchOptions {
@@ -35,6 +40,81 @@ const onlineText = (n: number) =>
   n <= 0
     ? "No one else is online right now"
     : `${n} other player${n === 1 ? "" : "s"} online`;
+
+/** What a 2v2 or Free-for-all search says (docs/pvp-plan.md, "Bots fill in"). */
+export const FILL_SEARCH: Record<FillMode, { kicker: string; label: string }> =
+  {
+    teams: { kicker: "2v2 Teams", label: "2v2 Teams search" },
+    ffa: { kicker: "Free-for-all", label: "Free-for-all search" },
+  };
+export interface FillSearchOptions {
+  mode: FillMode;
+  online: number;
+  onCancel(): void;
+  /** Start with bots in the empty seats (pressed, or the wait ran out). */
+  onFill(): void;
+  /** For tests: the wait, in ms. */
+  fillMs?: number;
+}
+/**
+ * The search sheet for 2v2 and Free-for-all: it says from the start that
+ * bots take the empty seats, counts down to it, and lets the player start
+ * at once. No offer to answer (the 1v1 sheet's): the mode's card already
+ * said bots fill in. The timer only changes text, four times a second.
+ */
+export function openFillSearch(o: FillSearchOptions): QuickSearchHandle {
+  const fillMs = o.fillMs ?? QUICK_FILL_MS;
+  const words = FILL_SEARCH[o.mode];
+  const sheet = document.createElement("div");
+  sheet.className = "quick-search";
+  sheet.id = "quick-search";
+  sheet.dataset.state = "searching";
+  sheet.dataset.mode = o.mode;
+  sheet.setAttribute("role", "dialog");
+  sheet.setAttribute("aria-live", "polite");
+  sheet.setAttribute("aria-label", words.label);
+  const left = (ms: number) => Math.max(0, Math.ceil(ms / 1000));
+  sheet.innerHTML = `<span class="ui-kicker">${words.kicker}</span><b class="quick-title">Searching for players</b><small class="quick-online">${onlineText(o.online)}</small><small class="quick-fill">Bots take the empty seats in <b data-quick-count>${left(fillMs)}</b> s. They are labelled (Bot).</small><div class="quick-actions"><button type="button" class="primary" data-quick-fill>Start with bots</button><button type="button" class="secondary btn-secondary" data-quick-cancel>Cancel</button></div>`;
+  document.body.append(sheet);
+  let open = true;
+  const started = Date.now();
+  const close = () => {
+    if (!open) return;
+    open = false;
+    clearInterval(timer);
+    sheet.remove();
+  };
+  const fill = () => {
+    if (!open) return;
+    // The room arrives next ("quick-found"); the sheet waits for it.
+    clearInterval(timer);
+    sheet.dataset.state = "starting";
+    sheet.querySelector(".quick-title")!.textContent = "Starting your match";
+    sheet
+      .querySelectorAll<HTMLButtonElement>("button")
+      .forEach((b) => (b.disabled = true));
+    o.onFill();
+  };
+  sheet.querySelector<HTMLButtonElement>("[data-quick-fill]")!.onclick = fill;
+  sheet.querySelector<HTMLButtonElement>("[data-quick-cancel]")!.onclick =
+    () => {
+      close();
+      o.onCancel();
+    };
+  const timer = window.setInterval(() => {
+    const rest = fillMs - (Date.now() - started);
+    if (rest <= 0) return fill();
+    const count = sheet.querySelector("[data-quick-count]");
+    const text = String(left(rest));
+    if (count && count.textContent !== text) count.textContent = text;
+  }, 250);
+  return {
+    close,
+    get open() {
+      return open;
+    },
+  };
+}
 
 export function openQuickSearch(o: QuickSearchOptions): QuickSearchHandle {
   const fallbackMs = o.fallbackMs ?? QUICK_MATCH_FALLBACK_MS;

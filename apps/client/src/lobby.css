@@ -1330,8 +1330,6 @@
 /* Medium heights (small laptops, tablets): tighter rail, fewer cards. */
 @media (max-height: 760px) {
   .lobby-layer {
-    /* Mode 42px, gap 6px, PLAY 50px. */
-    --lobby-play-h: 98px;
     --lobby-rail-btn: 48px;
   }
 }
@@ -1346,6 +1344,12 @@
 /* Phones in landscape (and short windows): compact everything. */
 @media (max-height: 500px) {
   .lobby-layer {
+    /* Mode 42px, gap 6px, PLAY 50px: only here, where PLAY is 50px (below).
+       This was set from 760px down, where the block is still 140px, so
+       the mode menu's most height was 42px too much and a long list rose
+       over the header at 501-760px (found with ten modes listed, 26 Nov
+       2026). */
+    --lobby-play-h: 98px;
     /* 12px under the player card (42px from max(10px, safe area)), clear
        of a frame's star row hanging below it. */
     --lobby-top: calc(var(--hub-card-h) + 22px + var(--hub-drop, 0px));

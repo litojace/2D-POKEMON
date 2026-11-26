@@ -196,8 +196,10 @@ export function modeListed(
 ): boolean {
   if (mode === current) return true;
   const size = Math.max(1, partySize);
-  if (mode === "teams") return size >= 4;
-  if (mode === "ffa") return size >= 3;
+  // Alone, 2v2 and Free-for-all are searches bots fill (docs/pvp-plan.md,
+  // "Bots fill in"); a party needs its own full room.
+  if (mode === "teams") return size < 2 || size >= 4;
+  if (mode === "ffa") return size < 2 || size >= 3;
   if (mode === "quick") return size < 2;
   return true;
 }
@@ -245,7 +247,11 @@ const MODE_FEATURE: Partial<Record<LobbyMode, Feature>> = { raid: "raids" };
 export function modeHint(
   m: (typeof LOBBY_MODES)[number],
   introRounds?: number,
+  partySize = 0,
 ) {
+  // Alone, 2v2 and Free-for-all search for players and bots fill the rest.
+  if (partySize < 2 && m.id === "teams") return "Bots fill in · best of five";
+  if (partySize < 2 && m.id === "ffa") return "Bots fill in · 4 fighters";
   if (!m.ai || !introRounds) return m.hint;
   return m.hint.replace(
     "best of five",
@@ -356,9 +362,9 @@ const hex = (color: number) => `#${color.toString(16).padStart(6, "0")}`;
 const modeLabel = (m: (typeof LOBBY_MODES)[number]) =>
   m.ai ? `Vs AI · ${aiLevelMark(m.ai)}` : m.label;
 
-function modeButton(mode: LobbyMode, introRounds?: number) {
+function modeButton(mode: LobbyMode, introRounds?: number, partySize = 0) {
   const m = LOBBY_MODES.find((x) => x.id === mode)!;
-  return `<span class="lobby-mode-icon">${menuIcon(m.icon)}</span><span class="lobby-mode-text"><b>${modeLabel(m)}</b><small>${modeHint(m, introRounds)}</small></span><span class="lobby-mode-caret" aria-hidden="true">▴</span>`;
+  return `<span class="lobby-mode-icon">${menuIcon(m.icon)}</span><span class="lobby-mode-text"><b>${modeLabel(m)}</b><small>${modeHint(m, introRounds, partySize)}</small></span><span class="lobby-mode-caret" aria-hidden="true">▴</span>`;
 }
 
 const lookData = (look: RaidLoadout | undefined) =>
@@ -643,7 +649,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       }
       mode = pick;
       saveLobbyMode(mode);
-      modeToggle.innerHTML = modeButton(mode, introRounds);
+      modeToggle.innerHTML = modeButton(mode, introRounds, partySize);
       menu
         .querySelectorAll<HTMLElement>("[data-lobby-mode]")
         .forEach((b) =>
@@ -946,7 +952,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
    */
   let lockKey = "";
   const syncLocks = (view: LobbyView) => {
-    const key = `${view.level}|${view.introRounds}`;
+    const key = `${view.level}|${view.introRounds}|${view.partySize}`;
     if (key === lockKey) return;
     lockKey = key;
     level = view.level;
@@ -984,7 +990,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       const b = menu.querySelector<HTMLElement>(`[data-lobby-mode="${m.id}"]`);
       if (!b) continue;
       const small = b.querySelector("small");
-      const hint = modeHint(m, introRounds);
+      const hint = modeHint(m, introRounds, partySize);
       if (small && small.textContent !== hint) small.textContent = hint;
       const feature = MODE_FEATURE[m.id];
       // Under the mode's name, where its hint was: the row keeps its height.
@@ -996,7 +1002,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
           b.querySelector<HTMLElement>(":scope > span")!,
         );
     }
-    modeToggle.innerHTML = modeButton(mode, introRounds);
+    modeToggle.innerHTML = modeButton(mode, introRounds, partySize);
   };
   return {
     update(view) {

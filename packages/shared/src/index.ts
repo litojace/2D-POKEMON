@@ -20,6 +20,14 @@ export * from "./avatars.js";
  */
 export const QUICK_MATCH_FALLBACK_MS = 20_000;
 export const QUICK_MATCH_OFFER_MS = 6_000;
+/**
+ * 2v2 and Free-for-all: how long a search waits for players before bots
+ * take the empty seats (the client asks then; a player can ask sooner).
+ */
+export const QUICK_FILL_MS = 15_000;
+/** The modes a lone player can search, with bots for the empty seats. */
+export const FILL_MODES = ["teams", "ffa"] as const;
+export type FillMode = (typeof FILL_MODES)[number];
 export const RULES = {
   width: 1600,
   height: 900,
@@ -3387,6 +3395,11 @@ export interface Reply {
   queued?: boolean;
   /** Quick Match: other players connected right now (not counting you). */
   online?: number;
+  /**
+   * A searched 2v2 or Free-for-all room ("quick-found"): the match began
+   * at once (you alone with bots), so there is no room to pick in.
+   */
+  started?: boolean;
 }
 export const normalize = (x: number, y: number): Vec => {
   const length = Math.hypot(x, y);
