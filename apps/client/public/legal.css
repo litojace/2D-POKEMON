@@ -200,6 +200,14 @@ strong {
   color: var(--text);
   background: var(--line);
 }
+/* Home: back to the website's front page (elementarenausa.com). */
+.nav .home {
+  gap: 6px;
+  color: var(--text);
+}
+.nav .home svg {
+  flex: none;
+}
 .nav .play {
   margin-left: 6px;
   color: var(--accent-ink);
@@ -215,6 +223,9 @@ strong {
 @media (max-width: 520px) {
   .brand span {
     display: none;
+  }
+  .nav a {
+    padding-inline: 9px;
   }
 }
 /* Phones held sideways: the bar scrolls away to leave room to read. */

@@ -15,8 +15,11 @@ import { siteChampions } from "./champion-data";
 import { creatureSvg } from "../../client/src/creature-design";
 import {
   CHAMPION_SKIN_BY_ID,
+  COLLECTION_NAMES,
   LOOK_ITEM_BY_ID,
+  MYTHIC_TRIAL_WINS,
   RARITY_NAMES,
+  itemListPrice,
 } from "../../../packages/shared/src/shop";
 import { CHARACTERS } from "../../../packages/shared/src/index";
 import {
@@ -77,10 +80,20 @@ const chips = [
   ),
 ].join("\n");
 const indexPath = path.join(site, "index.html");
+// The champion ticker (index.html, between the ticker markers): every
+// champion, twice over so the strip loops without a seam; the second copy is
+// hidden from screen readers and the keyboard. A tap opens the champion.
+const tickerItem = (c: (typeof champions)[number], copy: boolean) =>
+  `<a class="tick" href="#champion-${c.id}" data-champion="${c.id}" style="--el: var(--el-${c.element.toLowerCase()})"${copy ? ' aria-hidden="true" tabindex="-1"' : ""}><img src="img/creatures/${c.id}.svg" alt="" width="200" height="202" loading="lazy" decoding="async" /><span>${esc(c.name)}</span></a>`;
+const ticker = [
+  ...champions.map((c) => tickerItem(c, false)),
+  ...champions.map((c) => tickerItem(c, true)),
+].join("\n");
 let page = readFileSync(indexPath, "utf8");
 for (const [name, html] of [
   ["roster", cards],
   ["chips", chips],
+  ["ticker", ticker],
 ] as const)
   page = page.replace(
     new RegExp(`(<!-- ${name}:start -->)[\\s\\S]*?(\\s*<!-- ${name}:end -->)`),
@@ -182,14 +195,17 @@ for (const [name, html] of [
   );
 writeFileSync(indexPath, page2);
 
-// The Shop showcase (index.html, between the showcase markers): names,
-// rarities and lines from the Shop's catalog; the pictures are the fitting
-// room's own stage (scripts/site-clips/shop.spec.ts, make-scenes.py).
+// The Shop spotlight (index.html, between the spotlight and picks markers):
+// six pieces from the Shop's catalog (names, rarities, lines, coin prices),
+// each a loop of the fitting room's own stage (scripts/site-clips/shop.spec.ts,
+// make-shop.py). The first is shown before any script runs.
 const SHOWCASE: [picture: string, item: string][] = [
-  ["legendary", "pyranda-nova-vanguard"],
+  ["cinder-medic", "pyranda-nova-vanguard"],
+  ["storm-corsair", "voltkit-sky-pirates"],
+  ["sun-sovereign", "sunbara-sun-dynasty"],
   ["hellforge", "cindrake-sunforged"],
-  ["reaver", "tidefin-moontide"],
-  ["victory", "borealis-victory"],
+  ["abyssal-reaver", "tidefin-moontide"],
+  ["sky-curtain", "borealis-victory"],
 ];
 const SLOT_NAMES: Record<string, string> = {
   aura: "Aura for every fighter",
@@ -198,7 +214,8 @@ const SLOT_NAMES: Record<string, string> = {
   frame: "Portrait frame",
   colours: "Colours for every fighter",
 };
-const showcase = SHOWCASE.map(([pic, id]) => {
+const COIN = `<svg class="coin" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffd65b"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#b9861a" stroke-width="2"/><path d="M12 8.5v7" stroke="#b9861a" stroke-width="2" stroke-linecap="round"/></svg>`;
+const pieces = SHOWCASE.map(([pic, id]) => {
   const skin = CHAMPION_SKIN_BY_ID[id];
   const look = LOOK_ITEM_BY_ID[id];
   const item = skin ?? look;
@@ -206,22 +223,61 @@ const showcase = SHOWCASE.map(([pic, id]) => {
   const kind = skin
     ? `${CHARACTERS[skin.champion].name} skin`
     : (SLOT_NAMES[look.slot] ?? look.slot);
-  return `<li class="show r-${item.rarity}">
-  <picture>
-    <source type="image/avif" srcset="img/shop/${pic}-400.avif 400w, img/shop/${pic}-640.avif 640w" sizes="(min-width: 1200px) 290px, (min-width: 760px) 25vw, 50vw" />
-    <img src="img/shop/${pic}-400.webp" srcset="img/shop/${pic}-400.webp 400w, img/shop/${pic}-640.webp 640w" sizes="(min-width: 1200px) 290px, (min-width: 760px) 25vw, 50vw" alt="${esc(item.name)} in the game's Shop" width="640" height="800" loading="lazy" decoding="async" />
-  </picture>
-  <div class="show-tx">
-    <p class="show-r">${RARITY_NAMES[item.rarity]}</p>
-    <h3>${esc(item.name)}</h3>
-    <p class="show-k">${esc(kind)}</p>
-    <p class="show-d">${esc(item.description)}</p>
+  const set =
+    item.collection && item.collection in COLLECTION_NAMES
+      ? COLLECTION_NAMES[item.collection as keyof typeof COLLECTION_NAMES]
+      : null;
+  const note =
+    skin && item.rarity === "mythical"
+      ? `Unlocks after ${MYTHIC_TRIAL_WINS} wins with ${CHARACTERS[skin.champion].name}, then awakens as you keep winning.`
+      : item.rarity === "legendary" && skin
+        ? "Comes with its own entrance and victory."
+        : "Every fighter can wear it.";
+  return { pic, id, item, kind, set, note, price: itemListPrice(id) };
+});
+const spotlight = pieces
+  .map(
+    (
+      x,
+      i,
+    ) => `<article class="spot r-${x.item.rarity}" id="spot-${x.pic}" role="tabpanel" aria-labelledby="pick-shop-${x.pic}"${i ? " hidden" : ""}>
+  <div class="spot-stage">
+    <span class="spot-rays" aria-hidden="true"></span>
+    <picture>
+      <source media="(prefers-reduced-motion: reduce)" srcset="img/shop/${x.pic}-still.webp" />
+      <img src="img/shop/${x.pic}.webp" alt="${esc(x.item.name)} in the game's Shop, trying it on" width="400" height="400" loading="lazy" decoding="async" />
+    </picture>
   </div>
-</li>`;
-}).join("\n");
+  <div class="spot-tx">
+    <p class="spot-r">${RARITY_NAMES[x.item.rarity]}${x.set ? ` · ${esc(x.set)}` : ""}</p>
+    <h3>${esc(x.item.name)}</h3>
+    <p class="spot-k">${esc(x.kind)}</p>
+    <p class="spot-d">${esc(x.item.description)}</p>
+    <p class="spot-price">${COIN}<b>${x.price.toLocaleString("en-US")}</b> coins</p>
+    <p class="spot-note">${esc(x.note)}</p>
+    <a class="btn btn-play spot-go" href="https://play.elementarenausa.com/">Try it on in the Shop</a>
+  </div>
+</article>`,
+  )
+  .join("\n");
+const picks = pieces
+  .map(
+    (
+      x,
+      i,
+    ) => `<button type="button" class="shop-pick r-${x.item.rarity}" role="tab" id="pick-shop-${x.pic}" aria-controls="spot-${x.pic}" aria-selected="${i === 0}" tabindex="${i ? -1 : 0}">
+  <img src="img/shop/${x.pic}-still.webp" alt="" width="400" height="400" loading="lazy" decoding="async" />
+  <span>${esc(x.item.name)}</span>
+</button>`,
+  )
+  .join("\n");
 let page3 = readFileSync(indexPath, "utf8");
-page3 = page3.replace(
-  /(<!-- showcase:start -->)[\s\S]*?(\s*<!-- showcase:end -->)/,
-  `$1\n${showcase}$2`,
-);
+for (const [name, markup] of [
+  ["spotlight", spotlight],
+  ["picks", picks],
+] as const)
+  page3 = page3.replace(
+    new RegExp(`(<!-- ${name}:start -->)[\\s\\S]*?(\\s*<!-- ${name}:end -->)`),
+    `$1\n${markup}$2`,
+  );
 writeFileSync(indexPath, page3);
