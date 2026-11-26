@@ -89,7 +89,7 @@ Lobby.
 - `index.ts` exports `css`, the whole stylesheet as text
   (`import css from "./theme.css?inline"`). More files: `@import` them from
   `theme.css`.
-- Every selector sits under `:root[data-ui="<id>"]`; no `backdrop-filter`
+- Every selector sits under `:root[data-ui="<id>"]`; no `backdrop-filter` but `none`
   and no animation that runs for ever (`tests/unit/ui-theme.test.ts` checks
   all three).
 - `preview.webp`: the Lobby in this look, for the picker (560 px wide; today

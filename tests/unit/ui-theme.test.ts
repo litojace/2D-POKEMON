@@ -185,8 +185,9 @@ describe("the looks as shipped", () => {
       for (const file of cssFiles(t.id)) {
         const css = readFileSync(new URL(file, dir(t.id)), "utf8");
         // No rule that runs for ever or blurs what is behind it (the
-        // reference's rules for both looks).
-        expect(css, file).not.toMatch(/backdrop-filter/);
+        // reference's rules for both looks). `none` is allowed: a look
+        // turns off the blurs the look underneath writes by value.
+        expect(css, file).not.toMatch(/backdrop-filter\s*:\s*(?!none\b)/);
         expect(css, file).not.toMatch(/\binfinite\b/);
         for (const rule of selectors(css))
           for (const one of rule.split(/,(?![^()]*\))/))
