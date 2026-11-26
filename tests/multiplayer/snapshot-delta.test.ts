@@ -34,6 +34,20 @@ async function until(condition: () => boolean, timeout = 3000) {
     await wait(5);
   }
 }
+/**
+ * Everything the server has sent every connected client so far has arrived
+ * and been handled, and the server has handled everything they sent.
+ * Socket.IO keeps a connection's messages in order, so the answer to an emit
+ * made now comes after all of them. A wait for a fixed time, or a poll on
+ * what has arrived, depends on how fast the machine is: on a slow CI runner
+ * the Spire climb below once counted 208 of its 373 changes (#507).
+ */
+const delivered = () =>
+  Promise.all(
+    clients
+      .filter((c) => c.connected)
+      .map((c) => c.timeout(5000).emitWithAck("rtt", {})),
+  );
 const emit = (socket: Socket, event: string, data: unknown = {}) =>
   new Promise<Reply>((resolve, reject) =>
     socket
@@ -161,10 +175,10 @@ async function play(
         aimY: 450,
       }),
     );
-    await wait(3);
+    await delivered();
     server!.step();
   }
-  await wait();
+  await delivered();
 }
 async function duel(
   connect: (delta: boolean) => Promise<Socket>,
@@ -189,7 +203,7 @@ it("an older client is sent whole snapshots, a newer one changes, and both see t
   const { connect } = await setup();
   const { one, two, a: old, b: fresh, arena, start } = await duel(connect);
   server!.step();
-  await wait();
+  await delivered();
   start();
   await play([one, two], arena, 150);
   // The older client never hears of deltas.
@@ -356,25 +370,26 @@ it("in a quiet room, the whole snapshot a client asks for comes on the next tick
   expect(created.ok).toBe(true);
   // A raid's lobby is one snapshot for everyone, sent when it changes.
   for (let i = 0; i < 4; i++) server!.step();
-  await wait();
+  await delivered();
   const before = host.seen.length;
   expect(host.last().phase).toBe("lobby");
   for (let i = 0; i < 4; i++) server!.step();
-  await wait();
+  await delivered();
   expect(host.seen.length).toBe(before);
   one.emit("state-full", { code: created.code });
-  await wait();
+  await delivered();
   server!.step();
-  await until(() => host.seen.length > before);
+  await delivered();
+  expect(host.seen.length).toBe(before + 1);
   expect(host.seen[before].kind).toBe("whole");
   // Asking about a room you are not in changes nothing.
   one.emit("state-full", { code: "NOPE00" });
   one.emit("state-full", null);
   one.emit("state-full", { code: 7 });
-  await wait();
+  await delivered();
   server!.step();
   server!.step();
-  await wait();
+  await delivered();
   expect(host.seen.length).toBe(before + 1);
 });
 
@@ -448,7 +463,7 @@ it("Snoozaku's dream stays private: the Dreamer gets copies of its own, the othe
   inner.started = true;
   inner.nextAttack = Infinity;
   for (let i = 0; i < 5; i++) server!.step();
-  await wait(80);
+  await delivered();
   for (const f of followers) expect(f.kinds().at(-1)).toBe("delta");
   inner.startAttack("dream-sequence", arena.heroes()[0]);
   const dream = arena.raid.dream!;
@@ -456,7 +471,7 @@ it("Snoozaku's dream stays private: the Dreamer gets copies of its own, the othe
   expect(ids.filter((id) => arena.dreamFor(id))).toEqual([dream.dreamerId]);
   const marks = followers.map((f) => f.seen.length);
   for (let i = 0; i < 6; i++) server!.step();
-  await wait(80);
+  await delivered();
   followers.forEach((f, i) => {
     const during = f.seen.slice(marks[i]);
     expect(during).toHaveLength(6);
@@ -480,7 +495,7 @@ it("Snoozaku's dream stays private: the Dreamer gets copies of its own, the othe
     arena.raid.dream = undefined as never;
   }
   for (let i = 0; i < 6; i++) server!.step();
-  await wait(80);
+  await delivered();
   const after = followers[dreamer].seen.slice(marks[dreamer] + 6);
   expect(after.map((s) => s.kind)).toEqual([
     "whole",
@@ -502,13 +517,13 @@ it("leaving for another room starts that room from a whole snapshot", async () =
   await play([one, two], arena, 10);
   expect(fresh.kinds().at(-1)).toBe("delta");
   await emit(two, "leave");
-  await wait();
+  await delivered();
   const mark = fresh.seen.length;
   const next = await emit(two, "create", { name: "Two", mode: "raid" });
   expect(next.ok).toBe(true);
   expect(next.code).not.toBe(code);
   for (let i = 0; i < 20; i++) server!.step();
-  await wait();
+  await delivered();
   // The old room goes on without it; nothing of it reaches this client.
   const since = fresh.seen.slice(mark);
   expect(since.length).toBeGreaterThan(0);
@@ -550,7 +565,7 @@ it("a raid with some raiders on deltas and some on whole snapshots: Snoozaku's d
   inner.started = true;
   inner.nextAttack = Infinity;
   for (let i = 0; i < 5; i++) server!.step();
-  await wait(80);
+  await delivered();
   followers.forEach((f, i) =>
     expect(f.kinds().at(-1)).toBe(takesDeltas[i] ? "delta" : "whole"),
   );
@@ -560,7 +575,7 @@ it("a raid with some raiders on deltas and some on whole snapshots: Snoozaku's d
   expect(dreamer).toBeGreaterThanOrEqual(0);
   const marks = followers.map((f) => f.seen.length);
   for (let i = 0; i < 6; i++) server!.step();
-  await wait(80);
+  await delivered();
   followers.forEach((f, i) => {
     const during = f.seen.slice(marks[i]);
     expect(during).toHaveLength(6);
@@ -577,7 +592,7 @@ it("a raid with some raiders on deltas and some on whole snapshots: Snoozaku's d
   });
   arena.raid.dream = undefined as never;
   for (let i = 0; i < 6; i++) server!.step();
-  await wait(80);
+  await delivered();
   // One raid for everyone: every numbered snapshot two of them both saw is
   // the same, whichever way it reached them.
   for (const f of followers) {
@@ -623,23 +638,31 @@ it("a Spire climb from the lobby through a cleared floor to the next, as changes
   }
   expect(a.raid.spire!.floor).toBe(2);
   for (let i = 0; i < 60; i++) server!.step();
-  await until(
-    () => fresh.last()?.n === old.last()?.n && fresh.last()?.n !== undefined,
-  );
+  await delivered();
+  expect(fresh.last().n).toBeDefined();
+  expect(fresh.last().n).toBe(old.last().n);
   // The climber never needed a second whole snapshot: lobby, briefing,
-  // countdown, floor 1, the stairs and floor 2 all came as changes.
+  // countdown, floor 1, the stairs and floor 2 all came as changes. Every
+  // snapshot the room sent reached it, numbered one after another from its
+  // first, and every one after that first whole one was a change.
   const kinds = fresh.kinds();
   expect(kinds).not.toContain("refused");
-  expect(kinds.filter((k) => k === "whole").length).toBeLessThanOrEqual(2);
-  expect(kinds.filter((k) => k === "delta").length).toBeGreaterThan(300);
+  expect(kinds[0]).toBe("whole");
+  expect(kinds.slice(1).every((k) => k === "delta")).toBe(true);
+  const numbers = fresh.shown().map((w) => w.n!);
+  expect(numbers).toEqual(numbers.map((_, i) => numbers[0] + i));
   const phases = new Set(fresh.shown().map((w) => w.phase));
   for (const phase of ["lobby", "briefing", "countdown", "playing"])
     expect(phases).toContain(phase);
   const floors = new Set(fresh.shown().map((w) => w.raid?.spire?.floor));
   expect(floors).toContain(1);
   expect(floors).toContain(2);
-  // And it is the climb the friend on whole snapshots watched.
-  expectSameMatch(old, fresh, 300);
+  // And it is the climb the friend on whole snapshots watched: every
+  // snapshot it was sent, the climber was sent as the same snapshot.
+  expectSameMatch(old, fresh, old.byNumber().size);
+  const watched = new Set(old.shown().map((w) => w.raid?.spire?.floor));
+  expect(watched).toContain(1);
+  expect(watched).toContain(2);
   expect(fresh.last()).toStrictEqual(old.last());
   expect(fresh.events()).toEqual(
     old.events().filter((id) => fresh.events().includes(id)),
