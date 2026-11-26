@@ -121,6 +121,26 @@ for (const chunk of [
     urls.some((url) => new RegExp(`^assets/${chunk}-[\\w-]+\\.js$`).test(url)),
     `${chunk} must stay available offline`,
   );
+// The portrait frames' pictures (src/frames/, named by url() in the frame
+// stylesheets instead of inline in the CSS that blocks the first paint) are
+// installed with the game: frames still show offline.
+const framePictures = new Set(
+  urls
+    .filter((url) => /^assets\/[^/]+\.css$/.test(url))
+    .flatMap((file) =>
+      [
+        ...readFileSync(root + file, "utf8").matchAll(
+          /url\(["']?\/?(assets\/[\w.-]+\.svg)["']?\)/g,
+        ),
+      ].map((match) => match[1]),
+    ),
+);
+assert(
+  framePictures.size >= 20,
+  "The frame stylesheets name their pictures as files",
+);
+for (const picture of framePictures)
+  assert(urls.includes(picture), `${picture} must stay available offline`);
 // Every script a precached script imports is precached too: an installed
 // game must not open a panel or a battle offline and miss half of it.
 const scriptImports = (file) =>

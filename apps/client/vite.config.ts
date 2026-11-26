@@ -200,7 +200,10 @@ export default defineConfig({
       ],
       injectManifest: {
         globPatterns: [
-          "assets/*.{js,css,webp}",
+          // svg: the portrait frames' pictures (src/frames/, from the frame
+          // stylesheets' url()s). They were inline in the CSS that blocks
+          // the first paint; installed here, they still show offline.
+          "assets/*.{js,css,webp,svg}",
           "assets/fonts/*.woff2",
           "assets/backgrounds/*.webp",
           "assets/fighters/**/*.{svg,png,webp,json}",

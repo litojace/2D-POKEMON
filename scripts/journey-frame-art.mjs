@@ -1,7 +1,9 @@
 import { writeFileSync } from "node:fs";
+import { frameFiles } from "./frame-files.mjs";
 // Generates apps/client/src/journey-frames.css: the Journey's Lv 55–100
 // portrait frames (Prism frame, Prismatic laurel, Element Master frame),
-// drawn as SVG data URIs like the Shop's collection frames (frame-art.mjs).
+// drawn as SVG files (apps/client/src/frames/, frame-files.mjs) like the
+// Shop's collection frames (frame-art.mjs).
 // Run: node scripts/journey-frame-art.mjs && npx prettier --write apps/client/src/journey-frames.css
 // Frame art: viewBox -70 -70 140 140, the portrait disc is r = 50.
 const R = (d) => (d * Math.PI) / 180;
@@ -10,8 +12,8 @@ const pt = (r, a) => [f(Math.cos(R(a)) * r), f(Math.sin(R(a)) * r)];
 const P = (...pts) => pts.map((p) => p.join(" ")).join(" ");
 const svg = (body, vb = "-70 -70 140 140") =>
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='${vb}'>${body}</svg>`;
-const uri = (s) =>
-  `url("data:image/svg+xml,${s.replace(/#/g, "%23").replace(/"/g, "'").replace(/\s+/g, " ")}")`;
+// The pictures are files (frame-files.mjs): frames/journey-<name>.svg.
+const pictures = frameFiles("journey");
 /** A colour at an angle round the spectrum (0° = red). */
 const hue = (deg, s = 85, l = 70) =>
   `hsl(${f(((deg % 360) + 360) % 360)},${s}%,${l}%)`;
@@ -227,12 +229,12 @@ function masterCrown() {
 }
 
 const a = {
-  prism: uri(prismRing()),
-  prismCrest: uri(prismCrest()),
-  laurel: uri(laurelRing()),
-  laurelCrest: uri(laurelCrest()),
-  master: uri(masterRing()),
-  crown: uri(masterCrown()),
+  prism: pictures.url("prism", prismRing()),
+  prismCrest: pictures.url("prism-crest", prismCrest()),
+  laurel: pictures.url("laurel", laurelRing()),
+  laurelCrest: pictures.url("laurel-crest", laurelCrest()),
+  master: pictures.url("master", masterRing()),
+  crown: pictures.url("crown", masterCrown()),
 };
 const ids = ["prism-frame", "prismatic-laurel", "element-master-frame"];
 const any = ids.map((id) => `[data-cosmetic="${id}"]`).join(",\n  ");
@@ -322,23 +324,12 @@ const css = `/* The Journey's Lv 55–100 portrait frames: Prism frame, Prismati
    short phone stage doesn't clip the crest. */
 :is(.wardrobe-frame-avatar, .portrait-review-avatar):has(
     > :is([data-portrait-frame="prism-frame"], [data-portrait-frame="element-master-frame"])
-  ),
-.journey-preview .raid-cosmetic-preview:is([data-cosmetic="prism-frame"], [data-cosmetic="element-master-frame"]) {
-  transform: translateY(5%);
-}
-/* The Journey dialog's preview box is 80–180px tall: size the portrait
-   from it so the ring and crest (about 1.5 portraits tall) always fit. */
-.journey-preview .shop-live-stage.is-frame {
-  container-type: size;
-}
-.journey-preview .shop-live-stage.is-frame .raid-cosmetic-preview:is(
-    ${any}
   ) {
-  width: min(100px, 64cqh);
-  height: min(100px, 64cqh);
+  transform: translateY(5%);
 }
 `;
 writeFileSync(
   new URL("../apps/client/src/journey-frames.css", import.meta.url),
   css,
 );
+pictures.done();

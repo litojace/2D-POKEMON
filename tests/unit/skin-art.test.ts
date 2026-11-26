@@ -407,11 +407,12 @@ describe("raid cosmetics", () => {
           ),
           r.id,
         ).toBe(true);
-      // Boss frames are drawn as their own SVG ring and ornament.
+      // Boss frames are drawn as their own SVG ring and ornament (picture
+      // files in src/frames/, scripts/frame-files.mjs).
       if (r.slot === "frame") {
         expect(bossFrames, r.id).toMatch(
           new RegExp(
-            `\\[data-cosmetic="${r.id}"\\]::before \\{\\s*background-image: url\\("data:image/svg`,
+            `\\[data-cosmetic="${r.id}"\\]::before \\{\\s*background-image: url\\("\\./frames/boss-${r.id}-ring\\.svg"\\)`,
           ),
         );
         expect(bossFrames, r.id).toContain(`[data-cosmetic="${r.id}"]::after`);
@@ -428,18 +429,20 @@ describe("see-through champions under dark skins", () => {
   const parts = ["head", "body", "armL", "armR"] as const;
   const seeThrough = (skin: string | null) =>
     DIRS.flatMap((dir) =>
-      parts.filter((part) =>
-        /fill-opacity="\.\d+"/.test(
-          creatureSvg(
-            "glacelle",
-            dir,
-            part,
-            undefined,
-            "normal",
-            skin ? { skin, stage: 3 } : null,
+      parts
+        .filter((part) =>
+          /fill-opacity="\.\d+"/.test(
+            creatureSvg(
+              "glacelle",
+              dir,
+              part,
+              undefined,
+              "normal",
+              skin ? { skin, stage: 3 } : null,
+            ),
           ),
-        ),
-      ).map((part) => `${dir} ${part}`),
+        )
+        .map((part) => `${dir} ${part}`),
     );
 
   it("dark and armoured Glacelle skins are drawn solid", () => {

@@ -183,14 +183,29 @@ for (const size of SIZES) {
           const frame = stage.locator(`[data-portrait-frame="${item.id}"]`);
           await expect(frame).toHaveAttribute("data-tier", "mythic");
           // Its own ring and crest (journey-frames.css), on top of the
-          // Mythical edge.
-          for (const pseudo of ["::before", "::after"])
+          // Mythical edge: a picture file in frames/ (a build inlines the
+          // small ones again), and it loads.
+          for (const pseudo of ["::before", "::after"]) {
+            const art = await frame.evaluate(
+              (el, p) => getComputedStyle(el, p).backgroundImage,
+              pseudo,
+            );
+            expect(art).toMatch(
+              /url\("(?:data:image\/svg\+xml|[^"]*\/frames\/journey-[\w-]+\.svg")/,
+            );
             expect(
-              await frame.evaluate(
-                (el, p) => getComputedStyle(el, p).backgroundImage,
-                pseudo,
+              await page.evaluate(
+                (url) =>
+                  new Promise<number>((done) => {
+                    const image = new Image();
+                    image.onload = () => done(image.naturalWidth);
+                    image.onerror = () => done(0);
+                    image.src = url;
+                  }),
+                art.match(/url\("([^"]+)"\)/)![1],
               ),
-            ).toContain("data:image/svg+xml");
+            ).toBeGreaterThan(0);
+          }
           // The whole artwork shows: nothing is clipped by the stage.
           const art = frameArt(item.id, (await frame.boundingBox()) as Box);
           const room = await box(page, ".fit-stage");
