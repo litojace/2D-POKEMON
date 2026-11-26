@@ -22,14 +22,14 @@
       { rootMargin: "0px 0px -8% 0px" },
     );
     const fold = innerHeight;
-    $$(
-      ".head, .roster > li, .modes > li, .bosses > li, .perks > li, .stores > li",
-    ).forEach((el, i) => {
-      if (el.getBoundingClientRect().top < fold) return;
-      el.classList.add("reveal");
-      el.style.setProperty("--d", `${(i % 6) * 60}ms`);
-      io.observe(el);
-    });
+    $$(".head, .roster > li, .modes > li, .perks > li, .stores > li").forEach(
+      (el, i) => {
+        if (el.getBoundingClientRect().top < fold) return;
+        el.classList.add("reveal");
+        el.style.setProperty("--d", `${(i % 6) * 60}ms`);
+        io.observe(el);
+      },
+    );
   }
 
   /* ---------- Hero parallax (desktop pointers only) ---------- */
@@ -66,6 +66,53 @@
         c.setAttribute("aria-pressed", String(c === chip));
       for (const card of cards)
         card.hidden = f !== "all" && card.dataset.el !== f;
+    });
+  }
+
+  /* ---------- Raid bosses: pick one for the stage ---------- */
+  const picks = $$(".raid-picks .pick");
+  if (picks.length) {
+    const panels = picks.map((d) => $(`#${d.getAttribute("aria-controls")}`));
+    const show = (i, focus = false) => {
+      picks.forEach((d, j) => {
+        d.setAttribute("aria-selected", String(i === j));
+        d.tabIndex = i === j ? 0 : -1;
+        panels[j].hidden = i !== j;
+        panels[j].classList.remove("enter");
+      });
+      if (!calm.matches) {
+        void panels[i].offsetWidth; // restart the entrance
+        panels[i].classList.add("enter");
+      }
+      if (focus) picks[i].focus();
+    };
+    const current = () => picks.findIndex((d) => d.tabIndex === 0);
+    // The first boss makes its entrance when the stage scrolls into view.
+    if (!calm.matches && "IntersectionObserver" in window) {
+      const seen = new IntersectionObserver((entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        seen.disconnect();
+        show(current());
+      });
+      seen.observe($(".raid-stage"));
+    }
+    $(".raid-picks").addEventListener("click", (e) => {
+      const d = e.target.closest(".pick");
+      if (d) show(picks.indexOf(d));
+    });
+    $(".raid-picks").addEventListener("keydown", (e) => {
+      const i = picks.indexOf(document.activeElement);
+      if (i < 0) return;
+      const n = picks.length;
+      const to = {
+        ArrowRight: (i + 1) % n,
+        ArrowLeft: (i + n - 1) % n,
+        Home: 0,
+        End: n - 1,
+      }[e.key];
+      if (to === undefined) return;
+      e.preventDefault();
+      show(to, true);
     });
   }
 

@@ -32,7 +32,6 @@ const progress = (extra: Partial<RaidProgress> = {}): RaidProgress => ({
   bestSeconds: 0,
   titles: [],
   cosmetics: [],
-  weekly: [],
   ...extra,
 });
 const data = (extra: Partial<RaidData> = {}): RaidData => ({

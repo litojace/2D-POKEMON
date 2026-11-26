@@ -568,10 +568,25 @@ body::before {
   grid-template-columns: 1fr auto;
   align-content: start;
   gap: 8px 12px;
-  padding: 20px 20px 22px;
+  padding: 0 18px 20px;
   border-radius: var(--radius);
   background: var(--surface);
   border: 1px solid var(--line);
+  overflow: hidden;
+}
+/* Each mode's picture runs edge to edge across the top of its card. */
+.mode-art {
+  grid-column: 1 / -1;
+  display: block;
+  margin: 0 -18px 6px;
+  aspect-ratio: 16 / 9;
+  background: var(--bg-alt);
+}
+.mode-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .modes h3 {
   font-size: 1.8rem;
@@ -593,149 +608,259 @@ body::before {
   color: var(--dim);
 }
 
-/* ---------- Screenshots: a sideways strip that snaps ---------- */
-.shots {
-  display: flex;
-  gap: 14px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  overscroll-behavior-x: contain;
-  padding: 4px max(20px, env(safe-area-inset-right, 0px)) 18px
-    max(20px, env(safe-area-inset-left, 0px));
-  scroll-padding-inline: max(20px, env(safe-area-inset-left, 0px));
-  scrollbar-width: thin;
-}
-@media (min-width: 1220px) {
-  .shots {
-    padding-inline: calc((100vw - 1140px) / 2);
-    scroll-padding-inline: calc((100vw - 1140px) / 2);
-  }
-}
-.shots li {
-  flex: 0 0 min(86vw, 640px);
-  scroll-snap-align: start;
-}
-.shots figure {
-  margin: 0;
-  display: grid;
-  gap: 10px;
-}
-.shots img {
-  width: 100%;
-  aspect-ratio: 1280 / 589;
-  object-fit: cover;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: var(--surface);
-}
-.shots figcaption {
-  font: 700 1.2rem/1.2 var(--display);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-/* ---------- Raid bosses ---------- */
-.bosses {
+/* ---------- Raid bosses: a stage and a picker ---------- */
+/* A stage shows one boss's splash at a time (only its picture downloads);
+   the seven bosses under it, in the Raid Hub's order, pick which. */
+.raid-week {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-@media (min-width: 760px) {
-  .bosses {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-/* Wide screens: the first boss large (two by two), the other six around it. */
-@media (min-width: 1100px) {
-  .bosses {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-  .boss:first-child {
-    grid-column: span 2;
-    grid-row: span 2;
-  }
-  .boss:first-child img {
-    aspect-ratio: auto;
-    height: 100%;
-  }
-  .boss:first-child h3 {
-    font-size: 2.4rem;
-  }
-  .boss:first-child .boss-tx {
-    padding: 80px 20px 20px;
-  }
-  .boss:first-child .epithet,
-  .boss:first-child .trick {
-    font-size: 1rem;
-  }
-}
-.boss {
-  position: relative;
-  border-radius: var(--radius);
+.raid-stage {
+  border-radius: calc(var(--radius) + 4px);
   overflow: hidden;
+  background: #05070f;
   isolation: isolate;
-  background: var(--surface);
-  border: 1px solid color-mix(in srgb, var(--el) 40%, var(--line));
-  display: grid;
 }
-.boss img {
+.raid {
+  position: relative;
+  display: grid;
+  border: 1px solid color-mix(in srgb, var(--el) 45%, var(--line));
+  border-radius: inherit;
+  overflow: hidden;
+}
+.raid-art {
+  position: relative;
   grid-area: 1 / 1;
+  display: block;
+  overflow: hidden;
+}
+.raid-art img {
+  display: block;
   width: 100%;
-  aspect-ratio: 2 / 3;
+  height: 100%;
+  aspect-ratio: 3 / 2;
   object-fit: cover;
-  z-index: -1;
 }
-.boss-tx {
-  grid-area: 1 / 1;
-  align-self: end;
+.raid-tx {
+  grid-area: 2 / 1;
   display: grid;
-  gap: 3px;
-  padding: 44px 12px 14px;
+  gap: 6px;
+  align-content: end;
+  padding: 16px 16px 18px;
   color: #ffffff;
-  background: linear-gradient(to top, #05070fe6 0%, #05070fb3 55%, transparent);
+  background:
+    radial-gradient(
+      120% 90% at 50% 0%,
+      color-mix(in srgb, var(--el) 22%, transparent),
+      transparent 70%
+    ),
+    #0a0f1f;
 }
-.boss h3 {
-  font-size: 1.55rem;
+.raid h3 {
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  line-height: 0.95;
   text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+.raid-when {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 700 0.85rem/1 var(--display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d9e0f2;
+}
+.start-tag {
+  display: inline-block;
+  padding: 4px 8px 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 .stars {
   color: var(--el);
   letter-spacing: 0.1em;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   line-height: 1;
 }
 .stars span {
   opacity: 0.3;
 }
 .epithet {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: #d9e0f2;
   line-height: 1.3;
 }
+.blurb {
+  display: none;
+  margin-top: 6px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #dfe6f7;
+}
+.beat {
+  margin-top: 10px;
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border-left: 3px solid var(--el);
+  background: color-mix(in srgb, var(--el) 14%, #05070fb3);
+}
+.beat span {
+  font: 700 0.75rem/1 var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--el) 75%, #ffffff);
+}
 .trick {
-  font-size: 0.85rem;
+  font-size: 1rem;
   line-height: 1.3;
-  color: color-mix(in srgb, var(--el) 70%, #ffffff);
-  font-weight: 600;
+  font-weight: 700;
+  color: #ffffff;
 }
-/* An odd seventh card on two columns: let it span and show the art wide. */
-@media (max-width: 759px) {
-  .boss:last-child {
-    grid-column: 1 / -1;
+/* Wider screens: the splash and the words side by side, never on top of each
+   other, so no word covers a boss's face. The picture fades into the words'
+   panel; --fx keeps the boss's face in view where the picture is cut. */
+@media (min-width: 600px) {
+  .raid {
+    height: clamp(300px, 46vw, 540px);
+    max-height: max(300px, 100svh - 110px);
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 38%);
+    background:
+      radial-gradient(
+        120% 90% at 100% 50%,
+        color-mix(in srgb, var(--el) 20%, transparent),
+        transparent 70%
+      ),
+      #0a0f1f;
   }
-  .boss:last-child img {
-    aspect-ratio: 16 / 10;
-    object-position: 50% 30%;
+  .raid[data-side="left"] {
+    grid-template-columns: minmax(250px, 38%) minmax(0, 1fr);
+    background:
+      radial-gradient(
+        120% 90% at 0% 50%,
+        color-mix(in srgb, var(--el) 20%, transparent),
+        transparent 70%
+      ),
+      #0a0f1f;
   }
-}
-@media (min-width: 760px) and (max-width: 1099px) {
-  .boss:last-child {
-    grid-column: span 2;
+  .raid-art {
+    grid-area: 1 / 1;
   }
-  .boss:last-child img {
+  .raid[data-side="left"] .raid-art {
+    grid-area: 1 / 2;
+  }
+  .raid-art img {
     aspect-ratio: auto;
-    height: 100%;
-    object-position: 50% 30%;
+    object-position: var(--fx, 50%) 50%;
+    -webkit-mask-image: linear-gradient(to left, transparent 0, #000 64px);
+    mask-image: linear-gradient(to left, transparent 0, #000 64px);
+  }
+  .raid[data-side="left"] .raid-art img {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 64px);
+    mask-image: linear-gradient(to right, transparent 0, #000 64px);
+  }
+  .raid-tx {
+    grid-area: 1 / 2;
+    align-self: center;
+    padding: 20px clamp(16px, 2.6vw, 36px) 20px clamp(8px, 1.4vw, 16px);
+    background: none;
+  }
+  .raid[data-side="left"] .raid-tx {
+    grid-area: 1 / 1;
+    padding: 20px clamp(8px, 1.4vw, 16px) 20px clamp(16px, 2.6vw, 36px);
+  }
+}
+@media (min-width: 1000px) {
+  .blurb {
+    display: block;
+  }
+}
+
+.raid-picks {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.pick {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  min-height: 64px;
+  padding: 8px 2px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--dim);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s,
+    color 0.2s;
+}
+.pick img {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: 50% 24%;
+  border: 2px solid color-mix(in srgb, var(--el) 70%, transparent);
+  filter: saturate(0.6) brightness(0.8);
+  transition: filter 0.2s;
+}
+.pick .s {
+  color: var(--el);
+  font-size: 0.68rem;
+  line-height: 1;
+}
+/* Read out on phones too (the tab's name), but shown from 760px. */
+.pick .n {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  text-align: center;
+}
+.pick:hover img,
+.pick[aria-selected="true"] img {
+  filter: none;
+}
+.pick[aria-selected="true"] {
+  border-color: var(--el);
+  background: color-mix(in srgb, var(--el) 16%, var(--surface));
+  color: var(--text);
+}
+.pick[aria-selected="true"] img {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--el) 35%, transparent);
+}
+.pick:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (min-width: 760px) {
+  .pick {
+    padding: 10px 6px;
+  }
+  .pick img {
+    width: 52px;
+    height: 52px;
+  }
+  .pick .n {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
   }
 }
 
@@ -750,31 +875,73 @@ body::before {
     align-items: start;
   }
 }
-.perks {
+/* The Shop's showcase: tall cards, each the fitting room's stage for one
+   piece, its rarity in the game's rarity colours. */
+.showcase {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-@media (min-width: 560px) {
-  .perks {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (min-width: 760px) {
+  .showcase {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
-.perks li {
-  padding: 18px 20px 20px;
-  border-top: 3px solid var(--accent);
-  background: var(--surface);
-  border-radius: 0 0 var(--radius) var(--radius);
+.show {
+  --r: #8fb3ff;
+  position: relative;
   display: grid;
-  gap: 6px;
-  align-content: start;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--r) 45%, var(--line));
+  box-shadow: 0 0 24px color-mix(in srgb, var(--r) 14%, transparent);
+  grid-template-rows: auto 1fr;
 }
-.perks h3 {
-  font-size: 1.5rem;
+.show.r-legendary {
+  --r: #ffc94d;
+}
+.show.r-mythical {
+  --r: #ff7ad9;
+}
+.show.r-epic {
+  --r: #c08cff;
+}
+.show picture,
+.show img {
+  display: block;
+  width: 100%;
+}
+.show img {
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+.show-tx {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 10px 12px 14px;
+}
+.show-r {
+  font: 700 0.78rem/1 var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--r);
+}
+.show h3 {
+  font-size: 1.35rem;
+  line-height: 1.05;
   text-transform: uppercase;
 }
-.perks p {
+.show-k {
+  font-size: 0.85rem;
   color: var(--dim);
+}
+.show-d {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: var(--text);
 }
 
 /* ---------- Mobile apps ---------- */
@@ -786,6 +953,29 @@ body::before {
       transparent 60%
     ),
     var(--bg-alt);
+}
+.app-side {
+  display: grid;
+  gap: 16px;
+  align-self: center;
+}
+/* A phone held sideways, playing a real match (img/shots, from the game). */
+.phone {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 28px;
+  background: #05070f;
+  border: 2px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+  box-shadow:
+    0 18px 50px #0008,
+    inset 0 0 0 1px #ffffff14;
+  transform: rotate(-2deg);
+}
+.phone img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
 }
 .stores {
   display: grid;
@@ -970,11 +1160,88 @@ body::before {
     opacity: 1;
     transform: none;
   }
-  .boss img {
-    transition: transform 0.5s ease;
+  /* A boss entering the stage: the splash settles, a warning ring pulses
+     where the boss stands (the game's wind-up telegraph), the name wipes in. */
+  .raid.enter .raid-art img {
+    animation: raid-settle 1.6s cubic-bezier(0.16, 0.8, 0.24, 1) both;
   }
-  .boss:hover img {
-    transform: scale(1.06);
+  .raid.enter .raid-art::after {
+    content: "";
+    position: absolute;
+    left: var(--fx, 50%);
+    top: 54%;
+    width: min(40%, 420px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 3px solid var(--el);
+    box-shadow:
+      0 0 24px color-mix(in srgb, var(--el) 60%, transparent),
+      inset 0 0 24px color-mix(in srgb, var(--el) 40%, transparent);
+    translate: -50% -50%;
+    pointer-events: none;
+    animation: raid-ring 1.1s ease-out 0.15s 2 both;
+  }
+  .raid.enter h3 {
+    animation: raid-wipe 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s both;
+  }
+  .raid.enter .raid-tx > :not(h3) {
+    animation: raid-up 0.6s ease both;
+    animation-delay: calc(0.25s + var(--i, 0) * 70ms);
+  }
+  .raid-tx > :nth-child(1) {
+    --i: 0;
+  }
+  .raid-tx > :nth-child(2) {
+    --i: 1;
+  }
+  .raid-tx > :nth-child(4) {
+    --i: 3;
+  }
+  .raid-tx > :nth-child(5) {
+    --i: 4;
+  }
+  .raid-tx > :nth-child(6) {
+    --i: 5;
+  }
+  @keyframes raid-settle {
+    from {
+      transform: scale(1.14);
+      filter: brightness(1.6) saturate(1.3);
+    }
+    to {
+      transform: none;
+      filter: none;
+    }
+  }
+  @keyframes raid-ring {
+    from {
+      opacity: 0.9;
+      scale: 0.25;
+    }
+    to {
+      opacity: 0;
+      scale: 1.3;
+    }
+  }
+  @keyframes raid-wipe {
+    from {
+      clip-path: inset(0 100% 0 0);
+      translate: -12px 0;
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+      translate: 0 0;
+    }
+  }
+  @keyframes raid-up {
+    from {
+      opacity: 0;
+      translate: 0 12px;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
   }
 }
 

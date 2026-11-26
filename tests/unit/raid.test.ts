@@ -181,19 +181,18 @@ it("rate limits crawling by simulation time and rejects downed attack packets", 
   expect(p.x - x).toBeLessThan(2);
   expect(p.stats.skills).toBe(0);
 });
-it("uses ordinary Peril rules even if an internal legacy caller requests daily mode", () => {
+it("plays the Peril a test configures", () => {
   const a = createRaidArena("AAA", "grumblecrag");
   a.add("a", "A");
-  a.configure(1, true);
+  a.configure(1);
   a.start();
-  expect(a.raid.daily).toBe(false);
   expect(a.raid.peril).toBe(1);
   expect(a.raid.phase).toBe(1);
 });
 
 it("solo raiders keep one self-revive against ★ and ★★ bosses, none against ★★★", () => {
   const a = raid();
-  a.configure(3, false);
+  a.configure(3);
   fight(a);
   const [p] = a.heroes();
   a.damage(p, 999, a.boss()!.id);
@@ -205,7 +204,7 @@ it("solo raiders keep one self-revive against ★ and ★★ bosses, none agains
   expect(raidSoloRevive("storm-twins")).toBeUndefined();
   const hard = createRaidArena("HARD", "prismatail");
   hard.add("p0", "Solo");
-  hard.configure(3, false);
+  hard.configure(3);
   hard.start();
   fight(hard);
   const [q] = hard.heroes();
@@ -233,7 +232,7 @@ it("the feat needs every charge (at least three) to hit a pillar", () => {
 
 it("raid rites protect allies, share energy and heal without leaking into PvP kits", () => {
   const a = raid(2);
-  a.configure(1, false); // plain boss damage, to read the rite's share
+  a.configure(1); // plain boss damage, to read the rite's share
   fight(a);
   const [p, q] = a.heroes();
   a.raid.rites[p.id] = ["shelter", "sharing", "mending"];

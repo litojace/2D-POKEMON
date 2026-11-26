@@ -51,8 +51,8 @@
       rel="preload"
       as="image"
       type="image/avif"
-      imagesrcset="img/hero-dusk-960.avif 960w, img/hero-dusk-1536.avif 1536w"
-      imagesizes="100vw"
+      imagesrcset="img/hero-dusk-960.avif 960w, img/hero-dusk-1536.avif 1536w, img/hero-dusk-2048.avif 2048w, img/hero-dusk-2560.avif 2560w"
+      imagesizes="(orientation: portrait) 112vh, 100vw"
       fetchpriority="high"
     />
     <link
@@ -107,13 +107,23 @@
         <picture class="hero-art">
           <source
             type="image/avif"
-            srcset="img/hero-dusk-960.avif 960w, img/hero-dusk-1536.avif 1536w"
-            sizes="100vw"
+            srcset="
+              img/hero-dusk-960.avif   960w,
+              img/hero-dusk-1536.avif 1536w,
+              img/hero-dusk-2048.avif 2048w,
+              img/hero-dusk-2560.avif 2560w
+            "
+            sizes="(orientation: portrait) 112vh, 100vw"
           />
           <img
             src="img/hero-dusk-960.webp"
-            srcset="img/hero-dusk-960.webp 960w, img/hero-dusk-1536.webp 1536w"
-            sizes="100vw"
+            srcset="
+              img/hero-dusk-960.webp   960w,
+              img/hero-dusk-1536.webp 1536w,
+              img/hero-dusk-2048.webp 2048w,
+              img/hero-dusk-2560.webp 2560w
+            "
+            sizes="(orientation: portrait) 112vh, 100vw"
             width="1536"
             height="1024"
             alt="Coilemur dodges a beam of light from Halcyra in a coliseum at sunset"
@@ -615,6 +625,29 @@
           </header>
           <ul class="modes">
             <li>
+              <picture class="mode-art">
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/duels-480.avif 480w,
+                    img/modes/duels-800.avif 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src="img/modes/duels-480.webp"
+                  srcset="
+                    img/modes/duels-480.webp 480w,
+                    img/modes/duels-800.webp 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                  alt="A duel in the game: Halcyra's Skyline Lance beam and a storm of lightning hit Coilemur"
+                  width="800"
+                  height="450"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
               <h3>Duels</h3>
               <p class="count">1 v 1</p>
               <p>
@@ -623,6 +656,29 @@
               </p>
             </li>
             <li>
+              <picture class="mode-art">
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/teams-480.avif 480w,
+                    img/modes/teams-800.avif 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src="img/modes/teams-480.webp"
+                  srcset="
+                    img/modes/teams-480.webp 480w,
+                    img/modes/teams-800.webp 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                  alt="A 2v2 match in the game: four fighters' ultimates go off at once in the ruins"
+                  width="800"
+                  height="450"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
               <h3>2v2 Teams</h3>
               <p class="count">2 v 2</p>
               <p>
@@ -631,6 +687,29 @@
               </p>
             </li>
             <li>
+              <picture class="mode-art">
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/ffa-480.avif 480w,
+                    img/modes/ffa-800.avif 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src="img/modes/ffa-480.webp"
+                  srcset="
+                    img/modes/ffa-480.webp 480w,
+                    img/modes/ffa-800.webp 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                  alt="A free-for-all in the game: four fighters trade skills in the Ember Forge"
+                  width="800"
+                  height="450"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
               <h3>Free-for-all</h3>
               <p class="count">3–4 players</p>
               <p>
@@ -639,6 +718,29 @@
               </p>
             </li>
             <li>
+              <picture class="mode-art">
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/raids-480.avif 480w,
+                    img/modes/raids-800.avif 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src="img/modes/raids-480.webp"
+                  srcset="
+                    img/modes/raids-480.webp 480w,
+                    img/modes/raids-800.webp 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                  alt="A raid in the game: four players hit Lumiwick with their ultimates as it dives"
+                  width="800"
+                  height="450"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
               <h3>Raids</h3>
               <p class="count">1–4 players</p>
               <p>
@@ -647,6 +749,29 @@
               </p>
             </li>
             <li>
+              <picture class="mode-art">
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/spire-480.avif 480w,
+                    img/modes/spire-800.avif 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src="img/modes/spire-480.webp"
+                  srcset="
+                    img/modes/spire-480.webp 480w,
+                    img/modes/spire-800.webp 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                  alt="A Spire floor in the game: two climbers fire their ultimates at the floor's Echoes"
+                  width="800"
+                  height="450"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
               <h3>The Spire</h3>
               <p class="count">70 floors</p>
               <p>
@@ -655,6 +780,29 @@
               </p>
             </li>
             <li>
+              <picture class="mode-art">
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/plaza-480.avif 480w,
+                    img/modes/plaza-800.avif 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src="img/modes/plaza-480.webp"
+                  srcset="
+                    img/modes/plaza-480.webp 480w,
+                    img/modes/plaza-800.webp 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                  alt="The Plaza in the game: players meeting by the fountain"
+                  width="800"
+                  height="450"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
               <h3>The Plaza</h3>
               <p class="count">Hang out</p>
               <p>
@@ -671,299 +819,670 @@
         </div>
       </section>
 
-      <section class="band" id="screens" aria-labelledby="screens-title">
-        <div class="wrap">
-          <header class="head">
-            <p class="eyebrow">Straight from the game</p>
-            <h2 id="screens-title">See it in action</h2>
-          </header>
-        </div>
-        <ul
-          class="shots"
-          tabindex="0"
-          aria-label="Screenshots, scroll sideways for more"
-        >
-          <li>
-            <figure>
-              <img
-                src="img/shots/2-duel-720.webp"
-                srcset="
-                  img/shots/2-duel-720.webp   720w,
-                  img/shots/2-duel-1280.webp 1280w
-                "
-                sizes="(min-width: 900px) 640px, 86vw"
-                width="1280"
-                height="589"
-                alt="Pyranda and Glacelle mid-cast in a duel at Tide Pools"
-                loading="lazy"
-                decoding="async"
-              />
-              <figcaption>Real-time duels</figcaption>
-            </figure>
-          </li>
-          <li>
-            <figure>
-              <img
-                src="img/shots/1-raid-720.webp"
-                srcset="
-                  img/shots/1-raid-720.webp   720w,
-                  img/shots/1-raid-1280.webp 1280w
-                "
-                sizes="(min-width: 900px) 640px, 86vw"
-                width="1280"
-                height="589"
-                alt="Four players fight Lumiwick, its attack warnings glowing on the floor"
-                loading="lazy"
-                decoding="async"
-              />
-              <figcaption>Raid bosses, together</figcaption>
-            </figure>
-          </li>
-          <li>
-            <figure>
-              <img
-                src="img/shots/4-teams-720.webp"
-                srcset="
-                  img/shots/4-teams-720.webp   720w,
-                  img/shots/4-teams-1280.webp 1280w
-                "
-                sizes="(min-width: 900px) 640px, 86vw"
-                width="1280"
-                height="589"
-                alt="A 2v2 team battle in Shifting Ruins as Pyranda's ultimate lands"
-                loading="lazy"
-                decoding="async"
-              />
-              <figcaption>2v2 team battles</figcaption>
-            </figure>
-          </li>
-          <li>
-            <figure>
-              <img
-                src="img/shots/5-ffa-720.webp"
-                srcset="
-                  img/shots/5-ffa-720.webp   720w,
-                  img/shots/5-ffa-1280.webp 1280w
-                "
-                sizes="(min-width: 900px) 640px, 86vw"
-                width="1280"
-                height="589"
-                alt="Four fighters in a free-for-all in Ember Forge"
-                loading="lazy"
-                decoding="async"
-              />
-              <figcaption>Four-way free-for-all</figcaption>
-            </figure>
-          </li>
-          <li>
-            <figure>
-              <img
-                src="img/shots/3-roster-720.webp"
-                srcset="
-                  img/shots/3-roster-720.webp   720w,
-                  img/shots/3-roster-1280.webp 1280w
-                "
-                sizes="(min-width: 900px) 640px, 86vw"
-                width="1280"
-                height="589"
-                alt="The Fighters screen, choosing a champion"
-                loading="lazy"
-                decoding="async"
-              />
-              <figcaption>Pick your champion</figcaption>
-            </figure>
-          </li>
-          <li>
-            <figure>
-              <img
-                src="img/shots/6-plaza-720.webp"
-                srcset="
-                  img/shots/6-plaza-720.webp   720w,
-                  img/shots/6-plaza-1280.webp 1280w
-                "
-                sizes="(min-width: 900px) 640px, 86vw"
-                width="1280"
-                height="589"
-                alt="Players hanging out in the Plaza at midday"
-                loading="lazy"
-                decoding="async"
-              />
-              <figcaption>Hang out in the Plaza</figcaption>
-            </figure>
-          </li>
-        </ul>
-      </section>
-
       <section class="band alt" id="raids" aria-labelledby="raids-title">
         <div class="wrap">
           <header class="head">
             <p class="eyebrow">Raid bosses</p>
             <h2 id="raids-title">Seven bosses, seven puzzles</h2>
             <p class="sub">
-              Every boss has one trick to learn. Solve it with up to three
-              friends, and one is featured each day of the week.
+              Every boss has one trick to learn. Solve it solo or with up to
+              three friends. Start with Cragmuff: one clear opens the other six.
             </p>
           </header>
-          <ul class="bosses">
-            <li class="boss" style="--el: var(--el-earth)">
-              <img
-                src="img/bosses/grumblecrag.webp"
-                alt="Cragmuff, a woolly ram with amber crystal horns"
-                width="400"
-                height="600"
-                loading="lazy"
-                decoding="async"
-              />
-              <div class="boss-tx">
-                <p class="stars" aria-label="Difficulty 1 of 3">
-                  ★<span>★★</span>
-                </p>
-                <h3>Cragmuff</h3>
-                <p class="epithet">The crystal-horned ram</p>
-                <p class="trick">Bait its charge into a pillar</p>
-              </div>
-            </li>
-            <li class="boss" style="--el: var(--el-water)">
-              <img
-                src="img/bosses/tidewyrm.webp"
-                alt="Tidelotl, a round axolotl riding a wave"
-                width="400"
-                height="600"
-                loading="lazy"
-                decoding="async"
-              />
-              <div class="boss-tx">
-                <p class="stars" aria-label="Difficulty 2 of 3">
-                  ★★<span>★</span>
-                </p>
-                <h3>Tidelotl</h3>
-                <p class="epithet">The rising tide</p>
-                <p class="trick">Strand it on an island</p>
-              </div>
-            </li>
-            <li class="boss" style="--el: var(--el-shadow)">
-              <img
-                src="img/bosses/gloomshade.webp"
-                alt="Inkpurr, a cat-eared sprite of living ink"
-                width="400"
-                height="600"
-                loading="lazy"
-                decoding="async"
-              />
-              <div class="boss-tx">
-                <p class="stars" aria-label="Difficulty 2 of 3">
-                  ★★<span>★</span>
-                </p>
-                <h3>Inkpurr</h3>
-                <p class="epithet">Lights out</p>
-                <p class="trick">Find the one that casts a shadow</p>
-              </div>
-            </li>
-            <li class="boss" style="--el: var(--el-psychic)">
-              <img
-                src="img/bosses/somnara.webp"
-                alt="Snoozaku, a sleepy purple baku in a starry nightcap"
-                width="400"
-                height="600"
-                loading="lazy"
-                decoding="async"
-              />
-              <div class="boss-tx">
-                <p class="stars" aria-label="Difficulty 2 of 3">
-                  ★★<span>★</span>
-                </p>
-                <h3>Snoozaku</h3>
-                <p class="epithet">The dream-eating baku</p>
-                <p class="trick">Step the runes only the Dreamer sees</p>
-              </div>
-            </li>
-            <li class="boss" style="--el: var(--el-light)">
-              <img
-                src="img/bosses/prismatail.webp"
-                alt="Prismell, a snail with a shell of prism crystal"
-                width="400"
-                height="600"
-                loading="lazy"
-                decoding="async"
-              />
-              <div class="boss-tx">
-                <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
-                <h3>Prismell</h3>
-                <p class="epithet">The prism-shelled snail</p>
-                <p class="trick">Relay the sunbeam to its heart</p>
-              </div>
-            </li>
-            <li class="boss" style="--el: var(--el-fire)">
-              <img
-                src="img/bosses/emberwing.webp"
-                alt="Lumiwick, a smiling sky-lantern spirit over lava"
-                width="400"
-                height="600"
-                loading="lazy"
-                decoding="async"
-              />
-              <div class="boss-tx">
-                <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
-                <h3>Lumiwick</h3>
-                <p class="epithet">Ground the sky</p>
-                <p class="trick">Light three braziers at once</p>
-              </div>
-            </li>
-            <li class="boss" style="--el: var(--el-electric)">
-              <img
-                src="img/bosses/storm-twins.webp"
-                alt="The Storm Twins, two thunder-jellies tied by lightning"
-                width="400"
-                height="600"
-                loading="lazy"
-                decoding="async"
-              />
-              <div class="boss-tx">
-                <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
-                <h3>Storm Twins</h3>
-                <p class="epithet">Fizz &amp; Crackle</p>
-                <p class="trick">Beat both twins together</p>
-              </div>
-            </li>
-          </ul>
+          <div class="raid-week">
+            <div class="raid-stage">
+              <!-- raids:start -->
+              <article
+                class="raid"
+                id="raid-grumblecrag"
+                role="tabpanel"
+                aria-labelledby="pick-grumblecrag"
+                data-side="right"
+                style="--el: var(--el-earth); --fx: 47%"
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/grumblecrag-768.avif   768w,
+                      img/raids/grumblecrag-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/grumblecrag-1280.webp"
+                    srcset="
+                      img/raids/grumblecrag-768.webp   768w,
+                      img/raids/grumblecrag-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Cragmuff, a woolly ram with amber crystal horns, charging through a ruined arena"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">
+                    <span class="start-tag">Start here</span>Earth · 13 rewards
+                  </p>
+                  <p class="stars" aria-label="Difficulty 1 of 3">
+                    ★<span>★★</span>
+                  </p>
+                  <h3>Cragmuff</h3>
+                  <p class="epithet">The crystal-horned ram</p>
+                  <p class="blurb">
+                    A grumpy, stubborn mountain ram in a coat of mossy stone
+                    wool, with curled horns of glowing amber crystal. Lead its
+                    charges into pillars to knock it dizzy and strike the
+                    crystal core on its chest.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Bait its charge into a pillar</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-tidewyrm"
+                role="tabpanel"
+                aria-labelledby="pick-tidewyrm"
+                data-side="left"
+                style="--el: var(--el-water); --fx: 60%"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/tidewyrm-768.avif   768w,
+                      img/raids/tidewyrm-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/tidewyrm-1280.webp"
+                    srcset="
+                      img/raids/tidewyrm-768.webp   768w,
+                      img/raids/tidewyrm-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Tidelotl, a round axolotl with a pearl on its brow, riding a wave over sunken ruins"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Water · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 2 of 3">
+                    ★★<span>★</span>
+                  </p>
+                  <h3>Tidelotl</h3>
+                  <p class="epithet">The rising tide</p>
+                  <p class="blurb">
+                    A mischievous axolotl who calls itself lord of the tides,
+                    with a pearl on its brow. Lure its dive onto dry land, share
+                    the islands when the tide rises, and pop your friends out of
+                    bubbles.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Strand it on an island</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-gloomshade"
+                role="tabpanel"
+                aria-labelledby="pick-gloomshade"
+                data-side="right"
+                style="--el: var(--el-shadow); --fx: 52%"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/gloomshade-768.avif   768w,
+                      img/raids/gloomshade-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/gloomshade-1280.webp"
+                    srcset="
+                      img/raids/gloomshade-768.webp   768w,
+                      img/raids/gloomshade-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Inkpurr, a cat-eared sprite of living ink, prowling a lantern-lit yard"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Shadow · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 2 of 3">
+                    ★★<span>★</span>
+                  </p>
+                  <h3>Inkpurr</h3>
+                  <p class="epithet">Lights out</p>
+                  <p class="blurb">
+                    A round, cat-eared sprite of living ink with a crescent-moon
+                    tail. Keep the lanterns lit, find the real one among its
+                    copies, and spread out when the curse creeps.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Find the one that casts a shadow</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-somnara"
+                role="tabpanel"
+                aria-labelledby="pick-somnara"
+                data-side="left"
+                style="--el: var(--el-psychic); --fx: 62%"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/somnara-768.avif   768w,
+                      img/raids/somnara-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/somnara-1280.webp"
+                    srcset="
+                      img/raids/somnara-768.webp   768w,
+                      img/raids/somnara-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Snoozaku, a sleepy baku in a starry nightcap, on a cloud floor of glowing runes"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Psychic · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 2 of 3">
+                    ★★<span>★</span>
+                  </p>
+                  <h3>Snoozaku</h3>
+                  <p class="epithet">The dream-eating baku</p>
+                  <p class="blurb">
+                    A chubby, sleepy baku in a starry nightcap that snacks on
+                    dreams. One raider sees its dream; the team must step the
+                    runes in order to wake it.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Step the runes only the Dreamer sees</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-prismatail"
+                role="tabpanel"
+                aria-labelledby="pick-prismatail"
+                data-side="right"
+                style="--el: var(--el-light); --fx: 64%"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/prismatail-768.avif   768w,
+                      img/raids/prismatail-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/prismatail-1280.webp"
+                    srcset="
+                      img/raids/prismatail-768.webp   768w,
+                      img/raids/prismatail-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Prismell, a snail with a spiral shell of prism crystal, in a hall of light"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Light · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
+                  <h3>Prismell</h3>
+                  <p class="epithet">The prism-shelled snail</p>
+                  <p class="blurb">
+                    A proud, sparkly snail in a spiral shell of prism crystal
+                    that splits the light into rainbows. Its heart glows in the
+                    coil behind a shield: pass the sunbeam raider to raider
+                    until it reaches the heart and shatters the shield.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Relay the sunbeam to its heart</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-emberwing"
+                role="tabpanel"
+                aria-labelledby="pick-emberwing"
+                data-side="left"
+                style="--el: var(--el-fire); --fx: 60%"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/emberwing-768.avif   768w,
+                      img/raids/emberwing-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/emberwing-1280.webp"
+                    srcset="
+                      img/raids/emberwing-768.webp   768w,
+                      img/raids/emberwing-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Lumiwick, a smiling sky-lantern spirit floating above three braziers"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Fire · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
+                  <h3>Lumiwick</h3>
+                  <p class="epithet">Ground the sky</p>
+                  <p class="blurb">
+                    A smug sky-lantern spirit that refuses to come down. Light
+                    all three braziers together to pull it out of the sky.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Light three braziers at once</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-storm-twins"
+                role="tabpanel"
+                aria-labelledby="pick-storm-twins"
+                data-side="right"
+                style="--el: var(--el-electric); --fx: 58%"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/storm-twins-768.avif   768w,
+                      img/raids/storm-twins-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/storm-twins-1280.webp"
+                    srcset="
+                      img/raids/storm-twins-768.webp   768w,
+                      img/raids/storm-twins-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="The Storm Twins, two thunder-jellies tied by a crackling ribbon, in a storm"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Electric · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
+                  <h3>Storm Twins</h3>
+                  <p class="epithet">Fizz &amp; Crackle</p>
+                  <p class="blurb">
+                    Two floating thunder-jellies tied by a crackling ribbon.
+                    Pair up with opposite charges and bring both down before
+                    either can revive the other.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Beat both twins together</p>
+                  </div>
+                </div>
+              </article>
+              <!-- raids:end -->
+            </div>
+            <div class="raid-picks" role="tablist" aria-label="Raid bosses">
+              <!-- bosses:start -->
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-grumblecrag"
+                aria-controls="raid-grumblecrag"
+                aria-selected="true"
+                tabindex="0"
+                style="--el: var(--el-earth)"
+              >
+                <img
+                  src="img/bosses/grumblecrag.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★</span
+                ><span class="n">Cragmuff</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-tidewyrm"
+                aria-controls="raid-tidewyrm"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-water)"
+              >
+                <img
+                  src="img/bosses/tidewyrm.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★</span
+                ><span class="n">Tidelotl</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-gloomshade"
+                aria-controls="raid-gloomshade"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-shadow)"
+              >
+                <img
+                  src="img/bosses/gloomshade.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★</span
+                ><span class="n">Inkpurr</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-somnara"
+                aria-controls="raid-somnara"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-psychic)"
+              >
+                <img
+                  src="img/bosses/somnara.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★</span
+                ><span class="n">Snoozaku</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-prismatail"
+                aria-controls="raid-prismatail"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-light)"
+              >
+                <img
+                  src="img/bosses/prismatail.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★★</span
+                ><span class="n">Prismell</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-emberwing"
+                aria-controls="raid-emberwing"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-fire)"
+              >
+                <img
+                  src="img/bosses/emberwing.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★★</span
+                ><span class="n">Lumiwick</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-storm-twins"
+                aria-controls="raid-storm-twins"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-electric)"
+              >
+                <img
+                  src="img/bosses/storm-twins.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★★</span
+                ><span class="n">Storm Twins</span>
+              </button>
+              <!-- bosses:end -->
+            </div>
+          </div>
         </div>
       </section>
 
       <section class="band" id="style" aria-labelledby="style-title">
-        <div class="wrap split">
+        <div class="wrap">
           <header class="head">
-            <p class="eyebrow">Make it yours</p>
-            <h2 id="style-title">Outfits, auras and bragging rights</h2>
+            <p class="eyebrow">The Shop</p>
+            <h2 id="style-title">Skins and showstoppers</h2>
+            <p class="sub">
+              Legendary costumes with their own entrance and victory, Mythicals
+              that awaken as you win, and effects for every fighter. Try
+              anything on before you buy. All cosmetic, never stronger.
+            </p>
           </header>
-          <ul class="perks">
-            <li>
-              <h3>The Wardrobe</h3>
-              <p>
-                Dress every champion from themed collections, from raincoats to
-                racing suits.
-              </p>
+          <ul class="showcase">
+            <!-- showcase:start -->
+            <li class="show r-legendary">
+              <picture>
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/shop/legendary-400.avif 400w,
+                    img/shop/legendary-640.avif 640w
+                  "
+                  sizes="(min-width: 1200px) 290px, (min-width: 760px) 25vw, 50vw"
+                />
+                <img
+                  src="img/shop/legendary-400.webp"
+                  srcset="
+                    img/shop/legendary-400.webp 400w,
+                    img/shop/legendary-640.webp 640w
+                  "
+                  sizes="(min-width: 1200px) 290px, (min-width: 760px) 25vw, 50vw"
+                  alt="Cinder Medic in the game's Shop"
+                  width="640"
+                  height="800"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+              <div class="show-tx">
+                <p class="show-r">Legendary</p>
+                <h3>Cinder Medic</h3>
+                <p class="show-k">Pyranda skin</p>
+                <p class="show-d">
+                  Original hero suit and equipment, a signature effect, and its
+                  own hero landing and victory
+                </p>
+              </div>
             </li>
-            <li>
-              <h3>Raid rewards</h3>
-              <p>
-                Skins, auras, entrances, portrait frames and victory poses that
-                only raid clears unlock. All cosmetic, never stronger.
-              </p>
+            <li class="show r-mythical">
+              <picture>
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/shop/hellforge-400.avif 400w,
+                    img/shop/hellforge-640.avif 640w
+                  "
+                  sizes="(min-width: 1200px) 290px, (min-width: 760px) 25vw, 50vw"
+                />
+                <img
+                  src="img/shop/hellforge-400.webp"
+                  srcset="
+                    img/shop/hellforge-400.webp 400w,
+                    img/shop/hellforge-640.webp 640w
+                  "
+                  sizes="(min-width: 1200px) 290px, (min-width: 760px) 25vw, 50vw"
+                  alt="Hellforge in the game's Shop"
+                  width="640"
+                  height="800"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+              <div class="show-tx">
+                <p class="show-r">Mythical</p>
+                <h3>Hellforge</h3>
+                <p class="show-k">Cindrake skin</p>
+                <p class="show-d">
+                  Black-iron horns and a crest of black hellfire
+                </p>
+              </div>
             </li>
-            <li>
-              <h3>Mastery rings</h3>
-              <p>
-                Play a champion enough and a Bronze, Silver, Gold or Crystal
-                ring shows under them in every match.
-              </p>
+            <li class="show r-mythical">
+              <picture>
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/shop/reaver-400.avif 400w,
+                    img/shop/reaver-640.avif 640w
+                  "
+                  sizes="(min-width: 1200px) 290px, (min-width: 760px) 25vw, 50vw"
+                />
+                <img
+                  src="img/shop/reaver-400.webp"
+                  srcset="
+                    img/shop/reaver-400.webp 400w,
+                    img/shop/reaver-640.webp 640w
+                  "
+                  sizes="(min-width: 1200px) 290px, (min-width: 760px) 25vw, 50vw"
+                  alt="Abyssal Reaver in the game's Shop"
+                  width="640"
+                  height="800"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+              <div class="show-tx">
+                <p class="show-r">Mythical</p>
+                <h3>Abyssal Reaver</h3>
+                <p class="show-k">Tidefin skin</p>
+                <p class="show-d">
+                  Deep-sea armour with a steel dorsal fin and tide-green runes
+                </p>
+              </div>
             </li>
-            <li>
-              <h3>Friends</h3>
-              <p>
-                Add friends by code, see who's online, join their lobby or watch
-                their match live.
-              </p>
+            <li class="show r-mythical">
+              <picture>
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/shop/victory-400.avif 400w,
+                    img/shop/victory-640.avif 640w
+                  "
+                  sizes="(min-width: 1200px) 290px, (min-width: 760px) 25vw, 50vw"
+                />
+                <img
+                  src="img/shop/victory-400.webp"
+                  srcset="
+                    img/shop/victory-400.webp 400w,
+                    img/shop/victory-640.webp 640w
+                  "
+                  sizes="(min-width: 1200px) 290px, (min-width: 760px) 25vw, 50vw"
+                  alt="Sky-curtain victory in the game's Shop"
+                  width="640"
+                  height="800"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+              <div class="show-tx">
+                <p class="show-r">Mythical</p>
+                <h3>Sky-curtain victory</h3>
+                <p class="show-k">Victory for every fighter</p>
+                <p class="show-d">
+                  The whole sky ripples with light behind you
+                </p>
+              </div>
             </li>
+            <!-- showcase:end -->
           </ul>
         </div>
       </section>
@@ -984,19 +1503,38 @@
               >
             </div>
           </header>
-          <ul class="stores" aria-label="App stores">
-            <!-- Swap these for the official badges once the apps are live (Apple and Google only allow their badges on a live listing). -->
-            <li class="store">
-              <span class="store-k">Coming soon</span
-              ><span class="store-n">App Store</span
-              ><span class="store-d">iPhone and iPad</span>
-            </li>
-            <li class="store">
-              <span class="store-k">Coming soon</span
-              ><span class="store-n">Google Play</span
-              ><span class="store-d">Android phones and tablets</span>
-            </li>
-          </ul>
+          <div class="app-side">
+            <figure class="phone">
+              <picture>
+                <img
+                  src="img/shots/2-duel-720.webp"
+                  srcset="
+                    img/shots/2-duel-720.webp   720w,
+                    img/shots/2-duel-1280.webp 1280w
+                  "
+                  sizes="(min-width: 900px) 560px, 92vw"
+                  alt="A duel on a phone held sideways, with the touch controls under the thumbs"
+                  width="1280"
+                  height="589"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+            </figure>
+            <ul class="stores" aria-label="App stores">
+              <!-- Swap these for the official badges once the apps are live (Apple and Google only allow their badges on a live listing). -->
+              <li class="store">
+                <span class="store-k">Coming soon</span
+                ><span class="store-n">App Store</span
+                ><span class="store-d">iPhone and iPad</span>
+              </li>
+              <li class="store">
+                <span class="store-k">Coming soon</span
+                ><span class="store-n">Google Play</span
+                ><span class="store-d">Android phones and tablets</span>
+              </li>
+            </ul>
+          </div>
         </div>
       </section>
     </main>
@@ -1083,7 +1621,9 @@
           <a href="/account/">Account</a>
           <a href="https://play.elementarenausa.com/support.html">Support</a>
           <a href="https://play.elementarenausa.com/privacy.html">Privacy</a>
-          <a href="mailto:privacy@litojace.com">privacy@litojace.com</a>
+          <a href="mailto:privacy@elementarenausa.com"
+            >privacy@elementarenausa.com</a
+          >
         </nav>
         <p class="copy">
           © 2026 Element Arena. All creatures, art and names are original to the

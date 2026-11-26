@@ -42,9 +42,12 @@ first").
   not the game's domain. No Apple change is needed for the web. Supabase sends
   players back to the `redirectTo` the game asks for, which must be allowed in
   Supabase's Redirect URLs.
-- **Email addresses** (`privacy@litojace.com`, `noreply@mail.litojace.com`)
-  stay: mail runs through Cloudflare Email Routing and Resend on
-  `litojace.com`, which this move doesn't touch.
+- **Email addresses** moved too (owner, 25 Nov): `privacy@elementarenausa.com`
+  (Cloudflare Email Routing on `elementarenausa.com`, forwarding to the
+  owner, as `privacy@` on `litojace.com` did) and
+  `noreply@mail.elementarenausa.com` (Resend, for Supabase's auth emails).
+  The `litojace.com` addresses keep working until they are retired (old
+  iPhone builds and old emails still show them).
 
 ## Order of the move
 
@@ -104,25 +107,40 @@ Each step can be undone on its own; "Undo" says how.
     and support links and email links point at `parena…`, which redirects.
     App Store Connect: privacy policy URL and support URL to the new address
     (store listing, owner).
-11. **Later, when the owner decides (for example before the App Store
-    launch): redirect the old address.** Players on it are signed out once
-    there, so it waits until most have moved.
-    - Set the `parena` record to **Proxied** (orange), target
-      `twod-pokemon.onrender.com`.
-    - Cloudflare Single Redirect in the `litojace.com` zone: Request URL
-      `http*://parena.litojace.com/*` → `https://play.elementarenausa.com/${2}`,
-      preserve query string **on**, **302** for the first week, then **301**
-      (browsers keep a 301, so it waits until we're sure).
-    - Check: `curl -I "https://parena.litojace.com/?room=AB12CD"` → `302`,
-      `location: https://play.elementarenausa.com/?room=AB12CD`; the same for
-      `/?auth=reset-password`, `/email-confirmed`, `/privacy.html`.
-    - Undo: turn the rule off and set `parena` back to DNS only. Render keeps
-      the custom domain, so the old address serves the game again.
+11. **Redirect the old address: live since 25 Nov, 8:05 PM PT** (owner's OK
+    typed in the domain-move session, "Đồng ý chuyển hướng", after the cost
+    was laid out: guests who never added an email lose their progress; old
+    icons open the new address in the browser).
+    - Cloudflare, zone `litojace.com`, Single Redirect (phase
+      `http_request_dynamic_redirect`, ruleset `6417be6a…`, rule
+      `30f75514…`): `http.host eq "parena.litojace.com" and not
+starts_with(http.request.uri.path, "/.well-known/acme-challenge/")` →
+      **302** to `concat("https://play.elementarenausa.com",
+http.request.uri.path)`, preserve query string on. The ACME path stays
+      on Render so it can renew `parena`'s certificate (needed to undo).
+    - The `parena` CNAME (target `element-arena-np34.onrender.com`, unchanged:
+      Render routes by host name) is **Proxied** (orange). The universal
+      certificate covers `*.litojace.com` (until 6 Jan 2027).
+    - **301 on 2 Dec** if nothing goes wrong, with the owner's OK then
+      (browsers keep a 301).
+    - Checked at 8:06 PM PT: `/?room=TEST` → `302` to
+      `play…/?room=TEST`; `http://…/privacy.html?x=1` → `https://play…/privacy.html?x=1`;
+      a `#access_token=…` fragment arrives on `play.`; an old Supabase email
+      link aimed at `parena` (bad token on purpose) lands on
+      `play.…/?auth=email-confirmed` with its error, and the game says the
+      link expired; `/.well-known/acme-challenge/…` reaches Render (404).
+    - Installed icons: the service worker sends navigations to the network
+      (`sw.ts`, `NavigationRoute`), so the old icon gets the redirect, not a
+      cached old game. It opens `play.` in the in-app browser bar.
+    - Undo: set `parena` back to DNS only (and turn the rule off). Render
+      keeps the custom domain, so the old address serves the game again
+      within about 5 minutes.
     - Render's own redirect rules can't do this (they match the path, not
       the host, and never apply where a file exists, like `/`).
       Keep the redirect and the `parena` record for good afterwards (old QR
       codes live on in saved pictures). Supabase's `parena` Redirect URL and
-      `CLIENT_ORIGIN`'s `parena` entry go 30 days after the redirect starts.
+      `CLIENT_ORIGIN`'s `parena` entry go 30 days after the redirect starts
+      (about 25 Dec, with the owner's OK).
 
 ## What players notice
 
@@ -131,10 +149,9 @@ Each step can be undone on its own; "Undo" says how.
   session (`parena-auth`) stays behind on the old address. Guests on the
   web start over unless they added an email (a guest's progress is tied to the
   device's anonymous account). The banner on the old address says so.
-- **Home screen icons:** the old icon keeps opening the game on the old
-  address, with the banner. Add the game to the home screen again from the
-  new address. (After the redirect in step 11, the old icon opens the new
-  address in the browser.)
+- **Home screen icons:** since the redirect (step 11) the old icon opens the
+  new address in the browser. Add the game to the home screen again from the
+  new address.
 - **iPhone app players:** nothing changes (the app has its own storage).
 
 ## Shared sign-in with the website (later, the website session)
@@ -272,3 +289,38 @@ this move doesn't touch how the session is stored.
   compares the served headers and inline-script hashes with
   `apps/client/security-headers.json` after relevant pushes and daily, and
   opens "Live game headers differ from the repo" on drift.
+- 25 Nov, ~7:25 PM PT: the owner asked for mobile first ("Ưu tiên làm trên
+  giao diện mobile nha quên desktop đi"). On an Android phone emulation of
+  `parena.` (667×375, 844×390, 852×393 with the island insets) the move
+  banner covered the gate's Log in / Create account tabs and the hub's top
+  bar until answered; PR #506 makes it a dialog. A touch-controlled guest
+  bot match on `play.` (844×390, joystick and buttons) played to the result
+  with zero violations. #503's deploy went live mid-match (03:32:03 UTC) and
+  the result sheet said "Couldn't save this match to your records":
+  `/api/matches/report` answered 404 from the new instance (fixed in #508,
+  by B). The "new version, moving you…" toast covers the result sheet's
+  buttons on a phone (reported).
+- 25 Nov, 8:05 PM PT: **`parena` redirects to `play.`** (step 11), with the
+  owner's OK here. The cost laid out first, as counts only: 17 email/Apple
+  accounts (keep everything, sign in once on `play.`); 15 guests, 5 active
+  in 14 days, 1 in 3 days; of the 5, 3 with some progress and 1 with real
+  progress (7 Shop items). Checks in step 11. #506 (the move dialog) is on
+  hold: nobody loads the game on `parena` now.
+- 25 Nov, evening: **the game's email moves to `elementarenausa.com`**, with
+  the owner's OK here ("đồng ý"). Cloudflare Email Routing is on for
+  `elementarenausa.com` (MX, SPF, DKIM added by Cloudflare) with
+  `privacy@elementarenausa.com` forwarding to the owner. Resend has the
+  sending domain `mail.elementarenausa.com` (DKIM, return path `send.mail`,
+  `rsend.mail`), and `_dmarc.elementarenausa.com` is `v=DMARC1; p=none;`.
+  The server's `PUSH_CONTACT` is `mailto:privacy@elementarenausa.com`. The
+  privacy and support pages, the website and the push fallback show the new
+  address. Supabase's SMTP sender changes to
+  `noreply@mail.elementarenausa.com` in the dashboard (owner), with a new
+  Resend key allowed to send from `mail.elementarenausa.com` (the old one was
+  limited to `mail.litojace.com`: "550 This API key is not authorized"). A
+  throwaway sign-up then got its confirmation from the new sender, and was
+  deleted (no rows left). `noreply@mail.elementarenausa.com` also forwards to
+  the owner (Cloudflare Email Routing on the `mail.` subdomain: its MX and
+  SPF), so a Google account on that address can carry the game's avatar in
+  Gmail. Replies to the account emails land there too. Kept for now:
+  `privacy@litojace.com`'s forwarding and the `litojace.com` Resend domains.

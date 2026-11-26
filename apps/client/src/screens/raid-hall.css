@@ -515,6 +515,11 @@ button.rh-reward:focus-visible {
   white-space: normal;
   overflow: visible;
 }
+.rh-reward.is-open .rh-reward-text b {
+  display: block;
+  -webkit-line-clamp: none;
+  line-clamp: none;
+}
 .rh-reward.is-open .rh-reward-line {
   flex-wrap: wrap;
 }
@@ -584,14 +589,24 @@ button.rh-reward:focus-visible {
   gap: 3px;
   min-width: 0;
 }
-.rh-reward-text b,
 .rh-reward-text small {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* The whole name, on two even lines where one is too short: on a phone a
+   title's card is a third of the row, and "Mountain Conqueror title" ended
+   in "…" (3 of 79 names at 844 x 390, 11 at 852 x 393 with the Dynamic
+   Island; 25 Nov 2026). The bar sits along the card's foot there, so the
+   bars of a row stay level. Open, it wraps freely (below). */
 .rh-reward-text b {
   padding-right: 18px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  text-wrap: balance;
 }
 .rh-reward-line {
   display: flex;
@@ -1022,6 +1037,18 @@ button.rh-reward:focus-visible {
   }
   .rh-rewards.is-all > .rh-reward:not(.is-open) .rh-reward-text {
     gap: 1px;
+  }
+  /* A closed title card keeps two lines of text, as before names could
+     wrap: a name on one line and its rule under it, or a name on two
+     lines (2 x 1.4em: 33.6 px; one line and the rule are 33.2 px) and the
+     rule, cut short anyway, then under the fold until a tap opens the card.
+     So whole names cost the titles' rows no height (glass.spec.ts, "less
+     scrolling"). The bar is placed on the card, so it isn't clipped. */
+  .rh-rewards.is-all
+    > .rh-reward[data-reward-kind="title"]:not(.is-open)
+    .rh-reward-text {
+    max-height: 2.8em;
+    overflow: hidden;
   }
   .rh-rewards.is-all > .rh-reward:not(.is-open) .rh-reward-text > .ui-bar {
     position: absolute;

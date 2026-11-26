@@ -160,7 +160,8 @@ export function webPushSender(
   const publicKey = env.PUSH_VAPID_PUBLIC_KEY?.trim(),
     privateKey = env.PUSH_VAPID_PRIVATE_KEY?.trim();
   if (!publicKey || !privateKey) return null;
-  const subject = env.PUSH_CONTACT?.trim() || "mailto:privacy@litojace.com";
+  const subject =
+    env.PUSH_CONTACT?.trim() || "mailto:privacy@elementarenausa.com";
   try {
     webpush.setVapidDetails(subject, publicKey, privateKey);
   } catch (error) {

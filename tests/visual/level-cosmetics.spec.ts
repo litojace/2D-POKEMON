@@ -72,7 +72,7 @@ async function fixtures(page: Page, loadout: Record<string, string> = {}) {
       "aura",
     ],
     // Served as plain JavaScript (Vite strips the types).
-    ["const emit = (p) => emit0({ ...p, glow: true });", "entrance"],
+    ["for (const p of fitEntrance(own, extra)) emit0(p);", "entrance"],
     ["const emit0 = emit;", "victory"],
   ]);
   await instrument(/\/skins\/colors-fx\.ts(?:\?|$)/, [

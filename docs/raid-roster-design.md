@@ -1,24 +1,25 @@
 # Raid Roster, Shop & Missions — Design Spec (approved)
 
-Status: **All seven bosses are implemented, including Storm Twins. Apply migration 021_storm_twins.sql after 020_emberwing.sql to enable Storm Twins records and eleven rewards.** The Raid Hub, Raid of the Day, five cosmetic slots, coins, daily missions and Shop are implemented. Balance values still need live play feedback.
+Status: **All seven bosses are implemented, including Storm Twins. Apply migration 021_storm_twins.sql after 020_emberwing.sql to enable Storm Twins records and eleven rewards.** The Raid Hub, five cosmetic slots, coins, daily missions and Shop are implemented. Balance values still need live play feedback.
 
-Somnara's sequence is generated privately on the server, omitted from public and spectator snapshots, and delivered only to the Dreamer (or through Lucid/Mind Maze). Its camera keeps all four pads visible. Tests cover solo/co-op rune entry, backwards dreams, sleep/wake, champion tricks, daily rotation, socket privacy, reward persistence and desktop/mobile controls.
+**No boss of the day.** Raid of the Day (a featured boss each weekday), its week strip, daily boards and the Grand Tour were retired by migration 028 and are no longer part of this spec. No boss has a day of the week: Grumblecrag is open from the start and one clear of it opens the other six.
 
-Prismatail fights in the Sun Atrium. Light passes through raiders and directional mirror posts; ordinary attacks turn a mirror 45°. Solar Crown requires two team paths within three seconds, or a continuous two-second solo path. The mobile camera keeps the complete relay visible, with compact Look away and Turn mirror controls. Champion tricks, traits, Polished, eleven rewards and Sunday daily rotation are implemented. Lightkeeper credits one relay per participating raider when the shield breaks, never per simulation frame. The two-player final phase uses both beams too; a Radiant Flare carrier can relay both during its four-second effect. Tests cover party sizes 1–4 on all Perils, attack geometry, mirror repair by stand-ins, socket state, database permissions and reward equipping. Balance still needs human play feedback.
+Somnara's sequence is generated privately on the server, omitted from public and spectator snapshots, and delivered only to the Dreamer (or through Lucid/Mind Maze). Its camera keeps all four pads visible. Tests cover solo/co-op rune entry, backwards dreams, sleep/wake, champion tricks, socket privacy, reward persistence and desktop/mobile controls.
+
+Prismatail fights in the Sun Atrium. Light passes through raiders and directional mirror posts; ordinary attacks turn a mirror 45°. Solar Crown requires two team paths within three seconds, or a continuous two-second solo path. The mobile camera keeps the complete relay visible, with compact Look away and Turn mirror controls. Champion tricks, traits, Polished and eleven rewards are implemented. Lightkeeper credits one relay per participating raider when the shield breaks, never per simulation frame. The two-player final phase uses both beams too; a Radiant Flare carrier can relay both during its four-second effect. Tests cover party sizes 1–4 on all Perils, attack geometry, mirror repair by stand-ins, socket state, database permissions and reward equipping. Balance still needs human play feedback.
 
 Emberwing uses the Sky Terrace and three braziers in a triangle. Flying blocks melee and ground-only attacks; ranged damage is halved, except Lumoth’s Wing Dust, Halcyra’s Aura Quill and Focus Shot, and Astrabun’s Full Moon. A grounded window lasts six seconds (eight with Updraft); two groundings in Blazing Sky leave the heart permanently exposed. The compact HUD shows flight and brazier progress. Fireproof, eight champion tricks and eleven rewards are implemented. Stand-ins use separate brazier targets; tests walk slow Terradon parties of 1–4 through the final-phase route on every Peril. Grounding clears dive trails and shrinks growing fire patches. The Flashfire speed title uses the existing four-minute solo Peril 2 target provisionally, pending human clear times.
 
-Storm Twins fight in the Conductor Ring as two independently damageable enemies, Fizz and Crackle. Each has separate health, stagger and exposed windows; the shared health bar retains the two rite thresholds. During Supercell, finishing one starts a 15/12/8-second revival timer (solo adds three seconds; In-sync adds three). The fallen twin revives at 35% unless both fall in time. Opposite Polarity signs cancel within range; a cancelled teammate can help an odd party's remaining raider without repeat credit. Solo (or the last standing co-op raider) gets a reachable opposite-sign floor pad. Six attacks, seven champion tricks, three traits, Grounded, Thursday daily rotation, touch target selection and eleven rewards are implemented. Tests cover all party sizes and Perils, revival and simultaneous finishes, stand-ins, multiplayer startup, persistence, permissions and equipping. Flashpoint uses the existing four-minute solo Peril 2 speed target provisionally, pending human clear times. Cross-boss rewards described later remain planned unless separately marked implemented.
+Storm Twins fight in the Conductor Ring as two independently damageable enemies, Fizz and Crackle. Each has separate health, stagger and exposed windows; the shared health bar retains the two rite thresholds. During Supercell, finishing one starts a 15/12/8-second revival timer (solo adds three seconds; In-sync adds three). The fallen twin revives at 35% unless both fall in time. Opposite Polarity signs cancel within range; a cancelled teammate can help an odd party's remaining raider without repeat credit. Solo (or the last standing co-op raider) gets a reachable opposite-sign floor pad. Six attacks, seven champion tricks, three traits, Grounded, touch target selection and eleven rewards are implemented. Tests cover all party sizes and Perils, revival and simultaneous finishes, stand-ins, multiplayer startup, persistence, permissions and equipping. Flashpoint uses the existing four-minute solo Peril 2 speed target provisionally, pending human clear times. Cross-boss rewards described later remain planned unless separately marked implemented.
 
 Decisions so far (Oct 17):
 
 1. Solo Peril 3 has no self-revive, on every boss including Grumblecrag.
 2. New bosses unlock after clearing Grumblecrag.
 3. Boss names approved.
-4. A featured boss **every day** (Raid of the Day).
-5. A fifth cosmetic slot: **Victory**.
-6. **Seven bosses, one for each day of the week.**
-7. A **Shop** that sells cosmetics for coins earned from daily missions and
+4. A fifth cosmetic slot: **Victory**.
+5. **Seven bosses.**
+6. A **Shop** that sells cosmetics for coins earned from daily missions and
    boss raids (§10), with **56 champion skins in four rarities**, including
    Mythicals that awaken as you play.
 
@@ -27,29 +28,24 @@ The full list, with later decisions, is in §12.
 ## 1. Goals
 
 - Turn Boss Raid into a **Raid Hub**: a page of seven bosses, each with its
-  own challenges, rewards and records, and one featured each day.
+  own challenges, rewards and records.
 - Every boss teaches a **different kind of teamwork**, not a reskin of the
   same fight:
 
-| Day | Boss                   | Element  | Teamwork it asks for                         | Difficulty |
-| --- | ---------------------- | -------- | -------------------------------------------- | ---------- |
-| Sat | Grumblecrag (existing) | Earth    | Baiting and stacking                         | ★          |
-| Fri | Tidewyrm               | Water    | Sharing safe ground, rescuing a trapped ally | ★★         |
-| Mon | Gloomshade             | Shadow   | Reading tells, spreading out                 | ★★         |
-| Wed | Somnara                | Psychic  | Calling out what only one of you can see     | ★★         |
-| Sun | Prismatail             | Light    | Forming a relay chain                        | ★★★        |
-| Tue | Emberwing              | Fire     | Being in several places at once              | ★★★        |
-| Thu | Storm Twins            | Electric | Pairing up, timing two kills                 | ★★★        |
+| Boss                   | Element  | Teamwork it asks for                         | Difficulty |
+| ---------------------- | -------- | -------------------------------------------- | ---------- |
+| Grumblecrag (existing) | Earth    | Baiting and stacking                         | ★          |
+| Tidewyrm               | Water    | Sharing safe ground, rescuing a trapped ally | ★★         |
+| Gloomshade             | Shadow   | Reading tells, spreading out                 | ★★         |
+| Somnara                | Psychic  | Calling out what only one of you can see     | ★★         |
+| Prismatail             | Light    | Forming a relay chain                        | ★★★        |
+| Emberwing              | Fire     | Being in several places at once              | ★★★        |
+| Storm Twins            | Electric | Pairing up, timing two kills                 | ★★★        |
 
 The Difficulty stars are not only a label: they pick each boss's row of
 `RAID_TIERS` (health, damage, rhythm, overlapping attacks, telegraphs,
 predictive aim, windows, soft enrage, revives, party pressure). See
 [boss-raid.md, "Difficulty"](boss-raid.md#difficulty-the-star-tiers).
-
-The days follow the old planet names of the week: Sun's day for light,
-Moon's day for shadow, Mars (Tuesday) for fire, Mercury (Wednesday) for the
-mind, Thor's day for thunder, Venus (born of the sea) for water, and Saturn
-for stone.
 
 - Rewards stay **cosmetic only** (no stat bonuses), so veterans never make
   the raid easier for others.
@@ -65,18 +61,11 @@ going straight to a room.
 
 **Hub page, top to bottom**
 
-1. **Header:** rewards earned across all bosses (e.g. "23 / 84 rewards"),
-   lifetime clears, and the current Grand Tour progress (§2.1).
-2. **This week strip:** seven small day tiles, Sun → Sat, each with its
-   boss's crest. Today's tile is large and lit.
-   - Past days you cleared get a check mark; missed days are dimmed.
-   - Tapping a tile opens that boss.
-3. **Raid of the Day card:** today's boss, its trait, Peril 2, today's board
-   (top 10 per party size), a countdown to the next boss, and _Raid today's
-   boss_.
-4. **Boss cards** for all seven, in a grid (one column on phones, swipeable
+1. **Header:** rewards earned across all bosses (e.g. "23 / 83 rewards")
+   and lifetime clears.
+2. **Boss cards** for all seven, in a grid (one column on phones, swipeable
    like the champion roster). Each card shows:
-   - Boss art (idle animation), element chip and its day.
+   - Boss art (idle animation) and element chip.
    - Difficulty stars.
    - The signature mechanic in one line ("Strand it on an island").
    - Your best Peril cleared (P1/P2/P3, with a no-downs mark).
@@ -99,8 +88,7 @@ going straight to a room.
    shape and the dodge), what it does and a tip.
 3. **Rewards:** the full ladder with exact progress, equip buttons, and a
    preview of each cosmetic on your current champion.
-4. **Records:** best time per party size, clears per Peril, today's board
-   (if it's that boss's day), and recent runs.
+4. **Records:** best time per party size, clears per Peril and recent runs.
 
 **Actions:** _Create raid room_ (boss and Peril chosen here), _Join with
 code_, _Play solo now_.
@@ -110,24 +98,6 @@ code_, _Play solo now_.
   everyone, like party rules do now.
 - The Bestiary button becomes _Raid Hub_. Profile, results and lobby links
   open the Hub on the relevant boss.
-
-### 2.1 Raid of the Day (replaces Raid of the Week)
-
-- **One featured boss per day** on the fixed schedule above. Everyone
-  gets the same seed and trait, at Peril 2.
-- **The day changes at midnight Pacific time.** That's where the group
-  plays, and it avoids a 5 pm switch in the middle of an evening. The
-  server decides the day, so everyone agrees.
-- **Today's board:** top 10 per party size (solo, duo, trio, four). It
-  resets daily; past days are kept in history.
-- Open to anyone who has cleared Grumblecrag, even without that boss's
-  Peril 2 unlock (like the weekly works now). Saturday (Grumblecrag) is
-  open to everyone.
-- **Grand Tour:** clear each day's boss _on its day_, all seven within one
-  Sunday–Saturday week. The reward is the _Seven Suns_ victory (§7). The
-  Hub shows the tour as seven checks.
-- **Until all seven bosses exist:** the days of unbuilt bosses feature the
-  built ones in turn, and the Grand Tour starts once all seven are out.
 
 ## 3. Solo rules (decided)
 
@@ -764,18 +734,14 @@ equip it. Titles keep using the profile title picker.
 Each speed target is set after the first week of real clear times. A
 guessed number would be either trivial or impossible.
 
-### 7.3 Cross-boss and daily rewards
+### 7.3 Cross-boss rewards
 
-| Goal                                                          | Reward                                              |
-| ------------------------------------------------------------- | --------------------------------------------------- |
-| Clear all 7 bosses (any Peril)                                | **Raid Veteran** title                              |
-| Clear all 7 on Peril 3                                        | **Hall of Bosses** frame (cycles each boss's crest) |
-| Peril 3 no-downs on all 7                                     | **Unbroken** aura (prismatic)                       |
-| 100 total raid clears                                         | **Boss Hunter** title                               |
-| **Grand Tour**: each day's boss on its day, all 7 in one week | **Seven Suns** victory (seven elemental orbs)       |
-
-Days with a Raid of the Day clear are shown as a streak on your profile;
-the streak is a record, not a reward.
+| Goal                           | Reward                                              |
+| ------------------------------ | --------------------------------------------------- |
+| Clear all 7 bosses (any Peril) | **Raid Veteran** title                              |
+| Clear all 7 on Peril 3         | **Hall of Bosses** frame (cycles each boss's crest) |
+| Peril 3 no-downs on all 7      | **Unbroken** aura (prismatic)                       |
+| 100 total raid clears          | **Boss Hunter** title                               |
 
 **Totals**
 
@@ -783,23 +749,21 @@ the streak is a record, not a reward.
 | ------------------------------ | ------ |
 | 6 new bosses × 11              | 66     |
 | Grumblecrag (10 today + 3 new) | 13     |
-| Cross-boss and Grand Tour      | 5      |
-| **Total**                      | **84** |
+| Cross-boss                     | 4      |
+| **Total**                      | **83** |
 
 ## 8. Engineering plan
 
 **Shared (`packages/shared`)**
 
 - Add `RaidBossDef` with:
-  - id, name, element, day, stars
+  - id, name, element, stars
   - health, Peril damage, cadence, chapters, attacks and their numbers
   - `pattern(phase, peril, party)`
   - traits, themed rite, perks, signals
   - arena features
   - cosmetic and title definitions
 - `RAID_BOSSES` registry; `GRUMBLECRAG` becomes its first entry.
-- `raidDay(date)` → { day, boss, seed, trait }, using the Pacific calendar
-  day.
 - `RaidAttack` becomes a per-boss key union. `RaidState` gets:
   - `boss` (id)
   - `features`: pillars, islands, lanterns, rune pads, mirror posts,
@@ -830,8 +794,7 @@ the streak is a record, not a reward.
   and the cross-boss items.
 - **Victory slot:** a short rig animation plus a particle burst, played at
   round wins, raid wins and on the results card.
-- **Hub and boss pages** (with tabs) in a new `raid-hub.ts`, including the
-  week strip.
+- **Hub and boss pages** (with tabs) in a new `raid-hub.ts`.
 
 **Database (migration 009)**
 
@@ -845,7 +808,6 @@ name, description)` lists every reward and its rule. Rule kinds:
   - `feat`
   - `lifetime stat`
   - `cross-boss`
-  - `grand tour`
 
   Progress and unlocks are computed from this table, so each new boss
   needs **rows, not new SQL functions**.
@@ -853,11 +815,10 @@ name, description)` lists every reward and its rule. Rule kinds:
 - `arena_raid_players.feats jsonb` stores per-boss stats such as strands,
   lanterns, runes, relays, braziers and pairs.
 - `arena_raid_runs` gains `daily boolean` and `day date`. The server
-  supplies the day, and the daily board reads from them. The old weekly
-  columns stay for history.
+  supplies the day (the run's Pacific date); `daily` is always false since
+  migration 028. The old weekly columns stay for history.
 - `arena_record_raid` accepts any boss listed in the rewards table.
-- `arena_raid_progress()` returns per-boss progress, cross-boss totals,
-  today's board and Grand Tour state.
+- `arena_raid_progress()` returns per-boss progress and cross-boss totals.
 - **Loadouts:** a `victory` column; the hard-coded check constraint is
   replaced by a lookup in the rewards table.
 - Existing Grumblecrag rows keep working.
@@ -874,19 +835,18 @@ name, description)` lists every reward and its rule. Rule kinds:
 
 ## 9. Build order and size
 
-| Step | What                                                                                                                                              | Size    |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| 1    | Raid Hub, week strip, Raid of the Day, boss registry refactor, Victory slot, migration 009, Grumblecrag's new rewards and the Peril 3 solo change | Large   |
-| 2    | **Tidewyrm**: reuses the bait-to-a-feature idea, the gentlest new boss                                                                            | Large   |
-| 3    | **Gloomshade**: reveal and curse systems, no engine changes                                                                                       | Large   |
-| 4    | **Somnara**: private Dreamer info, Drowsy, rune pads                                                                                              | Large   |
-| 5    | **Prismatail**: relay beams, facing check                                                                                                         | Large   |
-| 6    | **Emberwing**: the airborne state                                                                                                                 | Large   |
-| 7    | **Storm Twins**: two boss entities                                                                                                                | Largest |
+| Step | What                                                                                                                 | Size    |
+| ---- | -------------------------------------------------------------------------------------------------------------------- | ------- |
+| 1    | Raid Hub, boss registry refactor, Victory slot, migration 009, Grumblecrag's new rewards and the Peril 3 solo change | Large   |
+| 2    | **Tidewyrm**: reuses the bait-to-a-feature idea, the gentlest new boss                                               | Large   |
+| 3    | **Gloomshade**: reveal and curse systems, no engine changes                                                          | Large   |
+| 4    | **Somnara**: private Dreamer info, Drowsy, rune pads                                                                 | Large   |
+| 5    | **Prismatail**: relay beams, facing check                                                                            | Large   |
+| 6    | **Emberwing**: the airborne state                                                                                    | Large   |
+| 7    | **Storm Twins**: two boss entities                                                                                   | Largest |
 
 Each step is played with friends before the next starts; the balance data
-(clears, time, downs by attack) decides the tuning. Until all seven exist,
-the Raid of the Day rotates through the bosses that are built.
+(clears, time, downs by attack) decides the tuning.
 
 ## 10. Shop, coins and daily missions
 
@@ -907,7 +867,6 @@ the Raid of the Day rotates through the bosses that are built.
 | Each daily mission (3 per day)                 | 40 / 70 / 120 (easy / medium / hard)        |
 | All 3 daily missions done                      | +50 bonus                                   |
 | Raid clear                                     | 30 at Peril 1, 45 at Peril 2, 60 at Peril 3 |
-| Raid of the Day, first clear today             | +50                                         |
 | First raid reward of a new kind (title, skin…) | +25                                         |
 | PvP match                                      | 15 for a win, 6 for a loss                  |
 | Quick Match sparring bot (nobody free), win    | 5                                           |
@@ -928,13 +887,13 @@ the Raid of the Day rotates through the bosses that are built.
   - Practice pays nothing.
 - **Mostly-idle matches** (under 20 s of active play) pay nothing.
 
-Rough pace: a typical evening earns about **500 coins**:
+Rough pace: a typical evening earns about **450 coins**:
 
-| Source                                        | Coins |
-| --------------------------------------------- | ----- |
-| 3 missions (40 + 70 + 120) + 50 bonus         | ~280  |
-| 3 Peril 2 raid clears + Raid of the Day bonus | ~185  |
-| 4 PvP matches                                 | ~40   |
+| Source                                | Coins |
+| ------------------------------------- | ----- |
+| 3 missions (40 + 70 + 120) + 50 bonus | ~280  |
+| 3 Peril 2 raid clears                 | ~135  |
+| 4 PvP matches                         | ~40   |
 
 At the prices below (§10.5.1), that works out to:
 
@@ -947,7 +906,7 @@ At the prices below (§10.5.1), that works out to:
 ### 10.4 Daily missions
 
 - **Three missions** each day: one easy, one medium, one hard. They
-  refresh at the same Pacific midnight as the Raid of the Day.
+  refresh at midnight Pacific time.
 - Picked from a pool by a daily seed, so friends get the **same three**
   and can do them together.
 - **One free re-roll per day** for a mission you can't do (e.g. it needs a
@@ -957,7 +916,6 @@ At the prices below (§10.5.1), that works out to:
     "Use your ultimate 3 times".
   - **Medium:**
     - "Win 2 PvP matches"
-    - "Clear today's boss"
     - "Revive 3 allies"
     - "Win a match as an Earth or Water champion"
     - "Beat a Hard bot"
@@ -1443,10 +1401,7 @@ To keep this motivating rather than a grind, harder play pays more:
 
 - **Peril 3 clears** pay double.
 - **The hard daily mission** pays 120 (up from 80).
-- **Grand Tour** completion pays **+600**.
 - **A 7-day mission streak** pays **+300**.
-- **A missed day** can be made up once a week (decided). The make-up clear
-  counts for the Grand Tour but not for the daily board.
 
 ### 10.9 Engineering
 
@@ -1524,7 +1479,7 @@ and coin grants ride on the same receipts.
 
 | Step | What                                                                                                                                                                                                                                               |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Raid Hub + Raid of the Day + Victory slot + migration 009 (§9 step 1)                                                                                                                                                                              |
+| 1    | Raid Hub + Victory slot + migration 009 (§9 step 1)                                                                                                                                                                                                |
 | 2    | **Coins, daily missions and the Shop** (migration 010) with the **whole catalog at once** (decided): all 56 champion skins, the Mythic Hall with Awakening, and the six collections. Coins start flowing from the raids and PvP that already exist |
 | 3–8  | The six new bosses, in the §9 order, each adding its rewards                                                                                                                                                                                       |
 
@@ -1617,18 +1572,17 @@ release.
 | Oct 17 | No self-revive at Peril 3 solo (all bosses)                                     |
 | Oct 17 | New bosses unlock after a Grumblecrag clear                                     |
 | Oct 17 | Boss names approved                                                             |
-| Oct 17 | Seven bosses, one per day; Raid of the Day                                      |
+| Oct 17 | Seven bosses                                                                    |
 | Oct 17 | Fifth slot: Victory                                                             |
 | Oct 17 | Shop with coins from daily missions and raids                                   |
 | Oct 17 | Daily changeover at midnight Pacific                                            |
-| Oct 17 | Grand Tour bosses must be cleared on their own day                              |
-| Oct 17 | One make-up clear per week for a missed day                                     |
 | Oct 17 | Rarity tiers (Common / Rare / Epic / Mythical) with Mythic Trials and Awakening |
 | Oct 17 | PvP coins only from matches against people                                      |
 | Oct 17 | All champion skins and collections ship together                                |
 | Oct 17 | Mythical price confirmed: 8,000 coins + 30-win trial                            |
 | Oct 17 | Opponents see a Mythical's Awakening stage                                      |
 | Oct 17 | Skin names and themes approved                                                  |
+| Nov 26 | Raid of the Day, boss days and the Grand Tour removed (retired by 028)          |
 
 ## 13. Open questions
 

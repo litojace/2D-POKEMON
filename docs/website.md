@@ -5,7 +5,8 @@ in `apps/site/` is served to the public as it is.
 
 The public front page for the game: what it is, the champions, modes, raid
 bosses, real screenshots, "coming soon" for the apps, and **Play now**
-buttons into the game at `https://parena.litojace.com/`.
+buttons into the game at `https://play.elementarenausa.com/`. Phones come
+first (owner, 25 Nov): check portrait and landscape phone sizes before desktop.
 
 It is static HTML and CSS with one small script (`site.js`, no libraries)
 and no build step on the server, kept apart from the game: nothing here is imported by `apps/client`, it is not in
@@ -35,6 +36,57 @@ npx tsx apps/site/tools/gen-data.ts && npx prettier --write apps/site/index.html
 `tests/unit/site.test.ts` fails when the JSON no longer matches
 `packages/shared` (a balance change, a renamed skill, a new skin), so CI
 says when to run it. The panel's text is the game's own skill descriptions.
+
+## Ways to play, the raid bosses and the Shop
+
+Skill clips in the champion panel and the "Straight from the game"
+screenshot strip were tried and taken out (owner, 26 Nov: they looked too
+much like Ways to play). The panel shows the game's own skill text.
+
+### Ways to play: real fights, not paintings
+
+The mode cards show the game itself (owner, 26 Nov: the
+painted loading art is decoration, and a feature should show the feature in
+play, with skills going off). `scripts/site-clips/scenes.spec.ts` stages each
+mode in the real client and simulation (a duel, 2v2, free-for-all, a raid on
+Lumiwick, a Spire floor) with every fighter firing its ultimate a tick or two
+apart, and writes a frame per tick at three device pixels;
+The Plaza is the App Store capture. `make-scenes.py` holds the chosen frame and crop for
+each, picked by eye:
+
+```bash
+npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/scenes.spec.ts scripts/site-clips/shop.spec.ts
+python3 apps/site/tools/make-scenes.py   # -> apps/site/img/modes/, img/shop/
+```
+
+### The Shop showcase
+
+"Make it yours" is the Shop's window (owner, 26 Nov: Shop items and effects
+sell better than raid rewards, mastery and friends): a Legendary, two
+Mythicals, an aura and a victory, each the fitting room's own stage
+(`scripts/site-clips/shop.spec.ts`, cut by `make-scenes.py`). The names,
+rarities and lines are written by `gen-data.ts` from the Shop's catalog
+(`packages/shared/src/shop.ts`); `site.test.ts` fails on a name the Shop
+doesn't sell. Pick other pieces in `SHOWCASE` (gen-data) and `ITEMS`
+(shop.spec), with the same picture names.
+
+### Raid bosses
+
+The raid section is a stage with one boss at a time and a picker of all
+seven, in the Raid Hub's order (`RAID_BOSS_ORDER`). It says what the game
+does: every boss can be raided any day, Cragmuff first, and one Cragmuff
+clear opens the other six (`raidUnlocked` in
+`apps/client/src/screens/raid-hall-view.ts`). There is no boss of the day:
+`RaidBossInfo.day` in `raid-roster.ts` is left over from an older design and
+nothing reads it, so the page must not use it (`site.test.ts` fails on a
+weekday name). From 600 px wide the splash and its words sit side by side, never on top
+of each other, so no word covers a boss's face (owner, 26 Nov); each boss's
+`face` in gen-data keeps its face in view where the picture is cut. Only
+the boss on show downloads its splash (`img/raids/`,
+from the game's raid splash art by `make-images.py`). The panels and picks
+are written by `gen-data.ts` between the `raids` and `bosses` markers, so
+the names, stars, reward counts (as the boss cards count them), signature
+tricks and blurbs come from the game.
 
 ## What we took from big games' sites
 
@@ -68,6 +120,16 @@ refresh them:
 npx playwright test --config scripts/app-store/playwright.config.ts   # real captures
 python3 apps/site/tools/make-images.py                                # needs Pillow 11+
 ```
+
+The hero is the duel painting (Halcyra's Skyline Lance). The game's copy is a
+1536 px lossy WebP, soft on a 3x phone, where the picture is cut to cover and
+drawn about 2.5 times its size. The owner sent the lossless original (26 Nov,
+`ultimate-halcyra-skyline-lance.png`, also 1536 x 1024), upscaled 2x with
+OpenCV's EDSR model to 3072 x 2048; the site's 960 to 2560 px copies come
+from that master (`HERO_MASTER=<png> python3 apps/site/tools/make-images.py`,
+which skips the larger widths without it). The master is not in the repo
+(about 10 MB). Held upright, the hero's `sizes` asks for about 1.1 screen
+heights, so a phone picks a copy wide enough for the crop.
 
 ## Preview locally
 
@@ -122,7 +184,28 @@ website at the apex, game at play., one session cookie):
       create the Static Site, DNS, check HTTPS, sign-in across both hosts
 - [ ] SHARE_SITE → https://elementarenausa.com (small PR; tests in share-qr
       and share-card.spec)
-- [ ] Later: animated clips of champions' real moves
+- [x] Animated clips of every champion's moves (round 4; later taken out)
+
+Round 4 (owner, 26 Nov: skill clips, a more creative raid section, anything
+that helps the game):
+
+- [x] Raid bosses: a stage and a picker in the game's order, cinematic
+      entrance (the splash settles, a wind-up ring, the name wipes in).
+      A first version showed a "boss of the day" from the unused `day` field;
+      the owner caught it (26 Nov): the game has no daily boss, so it was
+      dropped. The live page's old line "one is featured each day of the
+      week" is gone with it.
+- [x] Skill clips (18 × 5) shipped in #518, then taken out with the
+      screenshot strip (owner: too close to Ways to play)
+- [x] Ways to play with real fights, every ultimate going off (owner,
+      26 Nov: not the painted art); a phone held sideways playing a real duel
+      in the Mobile section
+- [x] Make it yours is now the Shop's window: Legendary and Mythical skins,
+      an aura and a victory from the fitting room, names from the catalog
+- [x] Raid stage: splash and words side by side, faces never covered
+- [x] A sharper hero from the owner's lossless original, upscaled 2x
+- [x] Checked at 390×844, 375×667, 360×800, 667×375, 844×390, 852×393,
+      915×412 (phones first, owner 25 Nov) and once at desktop
 
 Round 2 (owner, 25 Nov 3:15 PM PT: motion, interactive champions, an account
 area with one-tap Play, QR to the website):

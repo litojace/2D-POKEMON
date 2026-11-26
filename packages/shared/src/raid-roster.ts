@@ -1,5 +1,8 @@
 /**
- * The Raid Hub's roster: seven bosses, one featured each day of the week.
+ * The Raid Hub's roster: the seven raid bosses. No boss has a day of the
+ * week: Cragmuff (`grumblecrag`) is open from the start and one clear of it
+ * opens the other six (`raidUnlocked()` in the Raid Hall). Raid of the Day
+ * was retired by migration 028.
  * Only bosses marked `playable` can be raided; the rest are shown as
  * "coming soon" until they are built (see docs/raid-roster-design.md).
  */
@@ -19,8 +22,6 @@ export interface RaidBossInfo {
   element: string;
   /** CSS colour for crests and accents. */
   color: string;
-  /** Day of the week it is featured: 0 = Sunday … 6 = Saturday. */
-  day: number;
   stars: 1 | 2 | 3;
   /** The signature mechanic in one line. */
   signature: string;
@@ -35,7 +36,6 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     epithet: "The crystal-horned ram",
     element: "Earth",
     color: "#d9a35b",
-    day: 6,
     stars: 1,
     signature: "Bait its charge into a pillar",
     blurb:
@@ -48,7 +48,6 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     epithet: "The rising tide",
     element: "Water",
     color: "#4fd6c8",
-    day: 5,
     stars: 2,
     signature: "Strand it on an island",
     blurb:
@@ -62,7 +61,6 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     epithet: "Lights out",
     element: "Shadow",
     color: "#9c7bff",
-    day: 1,
     stars: 2,
     signature: "Find the one that casts a shadow",
     blurb:
@@ -75,7 +73,6 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     epithet: "The dream-eating baku",
     element: "Psychic",
     color: "#c9a3ff",
-    day: 3,
     stars: 2,
     signature: "Step the runes only the Dreamer sees",
     blurb:
@@ -88,7 +85,6 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     epithet: "The prism-shelled snail",
     element: "Light",
     color: "#ffe27a",
-    day: 0,
     stars: 3,
     signature: "Relay the sunbeam to its heart",
     blurb:
@@ -101,7 +97,6 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     epithet: "Ground the sky",
     element: "Fire",
     color: "#ff8a4f",
-    day: 2,
     stars: 3,
     signature: "Light three braziers at once",
     blurb:
@@ -114,7 +109,6 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     epithet: "Fizz & Crackle",
     element: "Electric",
     color: "#ffd65b",
-    day: 4,
     stars: 3,
     signature: "Beat both twins together",
     blurb:

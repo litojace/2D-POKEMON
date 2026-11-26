@@ -1041,15 +1041,21 @@
       var(--ui-bg-0)
     );
 }
+/* Legendary: a halo behind the fighter's head and a little gold at the
+   feet. Soft light like Epic's and Mythical's, but a different shape (the
+   light sits behind the head, not at the floor), so the tier still reads
+   above Epic. It had a fan of rays, which looked busy in a grid of
+   Legendaries side by side (owner, 26 Nov 2026, option B). */
 [data-rarity="legendary"] {
   --r: var(--r-legendary);
   --r-backdrop:
-    radial-gradient(ellipse at 50% 100%, #ffc44dcc, transparent 58%),
-    repeating-conic-gradient(
-      from -8deg at 50% 100%,
-      #ffd9782e 0 8deg,
-      transparent 8deg 24deg
+    radial-gradient(
+      circle at 50% 40%,
+      #ffe08a8c 0,
+      #ffbf3c47 24%,
+      transparent 46%
     ),
+    radial-gradient(ellipse at 50% 100%, #ffbf3c66, transparent 52%),
     linear-gradient(180deg, #2b1f0a, #120c05);
 }
 [data-rarity="mythical"],
@@ -1159,7 +1165,7 @@
    Common     a quiet grey band, the plain card
    Rare       a solid blue band, a blue edge, a blue-lit backdrop
    Epic       a purple band and edge, a two-light backdrop, a tinted card
-   Legendary  a gold band and a gold-leaf edge, rays behind the picture
+   Legendary  a gold band and a gold-leaf edge, a halo behind the head
    Mythical   a prismatic band and edge, an aurora with stars behind
    Everything is a still gradient: nothing animates, blurs or filters, so a
    grid of tiles costs the same on Low graphics as on High. */
@@ -1334,7 +1340,7 @@
   );
   color: var(--ui-bg-0);
 }
-/* Legendary: gold leaf round the card, rays rising behind the picture. */
+/* Legendary: gold leaf round the card, a halo behind the picture. */
 .ui-tile[data-rarity="legendary"] {
   border: 2px solid transparent;
   background:

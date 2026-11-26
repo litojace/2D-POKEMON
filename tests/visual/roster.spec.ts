@@ -461,3 +461,83 @@ test("a fighter's actions all fit the page on a 667 px phone", async ({
     await context.close();
   }
 });
+
+// A skin's name on a fighter's Skins tab reads in full on a small phone: on
+// two lines where one is too short, a word too long even for that a size
+// smaller. On a 667 px phone one line held 61 px and 127 of the 432 names
+// ended in "…" ("Amber Path…"; 25 Nov 2026). Every fighter, every look.
+for (const size of [
+  { name: "667x375", width: 667, height: 375, island: false },
+  { name: "852x393-island", width: 852, height: 393, island: true },
+])
+  test(`every skin's name reads in full on the Skins tab at ${size.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      if (size.island) await setInsets(page, ISLAND);
+      await page.click('.lobby-rail [data-lobby-action="fighters"]');
+      await page.click("[data-roster-details]");
+      await expect(
+        page.locator('.roster-room[data-roster-mode="detail"]'),
+      ).toBeVisible();
+      await page.click("[data-ui-rtab=skins]");
+      const seen = new Set<string>();
+      let looks = 0;
+      for (let i = 0; i < 40 && seen.size < 18; i++) {
+        const fighter = (await page
+          .locator(".roster-stage-name")
+          .textContent())!;
+        if (seen.has(fighter)) break;
+        seen.add(fighter);
+        const cards = await page.locator(".roster-look").evaluateAll((els) =>
+          els.map((el) => {
+            const name = el.querySelector("b")!;
+            return {
+              name: name.textContent,
+              cutSideways: name.scrollWidth - name.clientWidth,
+              cutBelow: name.scrollHeight - name.clientHeight,
+              top: Math.round(el.getBoundingClientRect().top),
+              label: Math.round(
+                el.querySelector("small")!.getBoundingClientRect().top,
+              ),
+            };
+          }),
+        );
+        looks += cards.length;
+        for (const c of cards) {
+          expect(c.cutSideways, `${fighter}: ${c.name}`).toBeLessThanOrEqual(1);
+          expect(c.cutBelow, `${fighter}: ${c.name}`).toBeLessThanOrEqual(1);
+        }
+        // Owned / In the Shop sits at one height across a row of cards.
+        const rows = new Map<number, Set<number>>();
+        for (const c of cards)
+          rows.set(c.top, (rows.get(c.top) ?? new Set()).add(c.label));
+        for (const [top, labels] of rows)
+          expect(labels.size, `${fighter}: row at ${top}`).toBe(1);
+        if (fighter.trim() === "Mossloth") {
+          await page
+            .locator(".roster-look.has-long-word")
+            .first()
+            .scrollIntoViewIfNeeded();
+          await snap(page, info, `roster-skins-long-word-${size.name}`);
+        }
+        await page.click(".roster-next");
+        await expect(page.locator(".roster-stage-name")).not.toHaveText(
+          fighter,
+        );
+      }
+      expect(seen.size).toBe(18);
+      expect(looks).toBeGreaterThan(400);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

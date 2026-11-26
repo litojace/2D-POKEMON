@@ -2,8 +2,17 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { CHARACTERS } from "../../packages/shared/src/index";
-import { RAID_BOSSES } from "../../packages/shared/src/raid-roster";
+import {
+  RAID_BOSSES,
+  RAID_BOSS_ORDER,
+  RAID_REWARDS,
+} from "../../packages/shared/src/raid";
 import { siteChampions } from "../../apps/site/tools/champion-data";
+import {
+  CHAMPION_SKINS,
+  LOOK_ITEMS,
+  RARITY_NAMES,
+} from "../../packages/shared/src/shop";
 
 // The website (docs/website.md): a static page with no build, so these
 // checks stand in for one. Every file it links exists, it leads into the
@@ -17,6 +26,8 @@ const html = readFileSync(path.join(SITE, "index.html"), "utf8")
   .replace(/" \/>/g, '"/>');
 const css = readFileSync(path.join(SITE, "site.css"), "utf8");
 const GAME = "https://play.elementarenausa.com/";
+
+const flatHtml = () => html.replace(/>\s+/g, ">").replace(/\s+</g, "<");
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {
@@ -73,6 +84,32 @@ describe("website", () => {
     }
   });
 
+  it("shows the raid bosses as the game does (npx tsx apps/site/tools/gen-data.ts)", () => {
+    // One panel and one pick per boss, in the Raid Hub's order. The game has
+    // no boss of the day (every boss is open once Cragmuff is cleared), so
+    // the page never names a day.
+    const flat = html.replace(/>\s+/g, ">").replace(/\s+</g, "<");
+    const panels = [
+      ...html.matchAll(/<article class="raid" id="raid-([\w-]+)"/g),
+    ].map((m) => m[1]);
+    expect(panels).toEqual(RAID_BOSS_ORDER);
+    expect(html).not.toMatch(/(Sun|Mon|Tues|Wednes|Thurs|Fri|Satur)days?\b/);
+    for (const id of panels) {
+      const b = RAID_BOSSES[id as keyof typeof RAID_BOSSES];
+      expect(flat).toContain(`<p class="blurb">${b.blurb}</p>`);
+      expect(flat).toContain(
+        `${b.element} · ${RAID_REWARDS.filter((r) => r.boss === id).length} rewards`,
+      );
+      expect(html).toContain(`id="pick-${id}" aria-controls="raid-${id}"`);
+      for (const w of [768, 1280])
+        for (const ext of ["webp", "avif"])
+          expect(
+            existsSync(path.join(SITE, `img/raids/${id}-${w}.${ext}`)),
+            `${id}-${w}.${ext}`,
+          ).toBe(true);
+    }
+  });
+
   it("names one canonical address everywhere", () => {
     const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)![1];
     const own = (s: string) =>
@@ -118,6 +155,24 @@ describe("website", () => {
           true,
         );
       expect(html).toContain(`data-champion="${c.id}"`);
+    }
+  });
+
+  it("its Shop showcase names real Shop pieces, as the game names them", () => {
+    const cards = [
+      ...flatHtml().matchAll(
+        /<img src="img\/shop\/([\w-]+)-400\.webp"[^>]*><\/picture><div class="show-tx"><p class="show-r">(\w+)<\/p><h3>([^<]+)<\/h3>/g,
+      ),
+    ];
+    expect(cards.length).toBeGreaterThanOrEqual(4);
+    const names = new Map(
+      [...CHAMPION_SKINS, ...LOOK_ITEMS].map((i) => [i.name, i.rarity]),
+    );
+    for (const [, pic, rarity, name] of cards) {
+      expect(names.has(name), name).toBe(true);
+      expect(rarity).toBe(RARITY_NAMES[names.get(name)!]);
+      for (const f of [`${pic}-400.webp`, `${pic}-640.avif`])
+        expect(existsSync(path.join(SITE, "img/shop", f)), f).toBe(true);
     }
   });
 

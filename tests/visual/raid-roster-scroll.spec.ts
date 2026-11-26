@@ -49,7 +49,6 @@ for (const viewport of [
                   ),
                   titles: [],
                   cosmetics: [],
-                  weekly: [],
                   earned: [],
                   loadout: {},
                 }),

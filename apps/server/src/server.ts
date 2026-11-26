@@ -978,6 +978,21 @@ export function createArenaServer(
       if ((socket.data.account as Account | undefined)?.id === id)
         void refreshSocket(socket);
   };
+  /**
+   * Who is online, by account, built once per turn of the event loop. The
+   * friends list asks for each friend's presence in one synchronous pass;
+   * built for each friend, it walked and sorted every connection again
+   * each time: friends × connections for one request (performance sweep,
+   * S6). Forgotten as soon as that pass ends, so nothing is ever stale.
+   */
+  let onlineIndex: Map<string, OnlineList["players"][number]> | undefined;
+  const onlineById = () => {
+    if (!onlineIndex) {
+      onlineIndex = new Map(listOnline().players.map((p) => [p.id, p]));
+      queueMicrotask(() => (onlineIndex = undefined));
+    }
+    return onlineIndex;
+  };
   installAccountRoutes(
     app,
     accounts,
@@ -985,7 +1000,7 @@ export function createArenaServer(
     listOnline,
     fileMatch,
     (accountId) => {
-      const me = listOnline().players.find((p) => p.id === accountId);
+      const me = onlineById().get(accountId);
       if (!me)
         return {
           online: false,
@@ -1464,9 +1479,10 @@ export function createArenaServer(
         peril: r.peril,
         trait: r.trait,
         gilded: r.gilded,
+        // Still read by the database (RaidReceipt): not raid modes.
         weekly: false,
         week: raidWeek(new Date(`${r.day}T12:00:00Z`)),
-        daily: r.daily,
+        daily: false,
         day: r.day,
         feat: arena.feat(),
         seed: r.seed,
@@ -1506,7 +1522,7 @@ export function createArenaServer(
                 skin: lookFor(p),
                 raid: {
                   cleared: r.result === "victory",
-                  daily: r.daily,
+                  daily: false,
                   peril: r.peril,
                   flawless: r.downs === 0,
                   feat: arena.feat(),
@@ -2979,7 +2995,8 @@ export function createArenaServer(
           cb,
           "Only the raid host can change the challenge in the lobby.",
         );
-      // Raids have one difficulty now (Peril 3); old clients may still ask.
+      // Raids have one difficulty now (Peril 3); old clients may still ask,
+      // and send `daily: false` (Raid of the Day is retired: true is refused).
       const result = z
         .object({
           peril: z.number().int().min(1).max(3),

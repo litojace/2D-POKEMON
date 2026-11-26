@@ -19,7 +19,6 @@ test("the hub comes back after leaving a raid and closing Raids", async ({ page 
               titles: [],
               cosmetics: [],
               earned: [],
-              weekly: [],
               loadout: {},
             }),
           )

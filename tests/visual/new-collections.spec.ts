@@ -168,7 +168,7 @@ for (const size of SIZES.filter(
       await expect(page.locator(".fit-room")).toContainText(
         "Pieces sold on their own",
       );
-      expect(SINGLES).toHaveLength(8);
+      expect(SINGLES).toHaveLength(14);
       for (const item of SINGLES) {
         const tile = page.locator(`.fit-room [data-ui-item="${item.id}"]`);
         await tile.scrollIntoViewIfNeeded();

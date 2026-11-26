@@ -113,23 +113,33 @@ its own, not catalog growth.
 
 ### Singles (9)
 
-Eight Look pieces sold one at a time, outside any set: collection `singles`,
-no bundle (migration `20261125200000_look_singles.sql`, seeded out of Today's
-Picks like every new item and opened with the sets). Each is priced like a
-set's piece of the same slot and tier, so a single never undercuts a set:
+Look pieces sold one at a time, outside any set: collection `singles`, no
+bundle. The first eight (migration `20261125200000_look_singles.sql`) were
+seeded out of Today's Picks and opened with the sets; the six of 26 Nov
+(`20261126023000_more_singles.sql`) went straight in, as the owner asked while
+nobody plays yet. Each is priced like a set's piece of the same slot and
+tier, so a single never undercuts a set:
 
-| Piece           | Slot     | Tier | Rarity   | Price | What it does                                  |
-| --------------- | -------- | ---- | -------- | ----- | --------------------------------------------- |
-| Firefly aura    | aura     | 0    | Rare     | 900   | Fireflies drift round you, blinking gold      |
-| Crystal aura    | aura     | 1    | Epic     | 1,440 | Violet crystals orbit you and catch the light |
-| Bubble entrance | entrance | 0    | Rare     | 1,000 | Float in inside a bubble that pops            |
-| Portal entrance | entrance | 1    | Epic     | 1,600 | Step out of a swirling portal                 |
-| Laurel frame    | frame    | 0    | Rare     | 800   | A wreath of gold laurel leaves                |
-| Crown frame     | frame    | 1    | Epic     | 1,280 | A jewelled ring under a gold crown            |
-| Trophy victory  | victory  | 0    | Epic     | 1,800 | A gold trophy rises in a shower of sparkles   |
-| Meteor victory  | victory  | 2    | Mythical | 4,500 | Meteors streak across the sky behind you      |
+| Piece               | Slot     | Tier | Rarity   | Price | What it does                                   |
+| ------------------- | -------- | ---- | -------- | ----- | ---------------------------------------------- |
+| Firefly aura        | aura     | 0    | Rare     | 900   | Fireflies drift round you, blinking gold       |
+| Crystal aura        | aura     | 1    | Epic     | 1,440 | Violet crystals orbit you and catch the light  |
+| Bubble entrance     | entrance | 0    | Rare     | 1,000 | Float in inside a bubble that pops             |
+| Portal entrance     | entrance | 1    | Epic     | 1,600 | Step out of a swirling portal                  |
+| Laurel frame        | frame    | 0    | Rare     | 800   | A wreath of gold laurel leaves                 |
+| Crown frame         | frame    | 1    | Epic     | 1,280 | A jewelled ring under a gold crown             |
+| Trophy victory      | victory  | 0    | Epic     | 1,800 | A gold trophy rises in a shower of sparkles    |
+| Meteor victory      | victory  | 2    | Mythical | 4,500 | Meteors streak across the sky behind you       |
+| Music aura          | aura     | 0    | Rare     | 900   | Music notes bob round you to the beat          |
+| Rune aura           | aura     | 1    | Epic     | 1,440 | A circle of glowing runes turns beneath you    |
+| Smoke-bomb entrance | entrance | 0    | Rare     | 1,000 | Ninja smoke rolls out low, leaves whirl up     |
+| Rainbow entrance    | entrance | 1    | Epic     | 1,600 | A rainbow ribbon swoops down onto the spot     |
+| Balloon victory     | victory  | 0    | Epic     | 1,800 | Balloons float up behind you                   |
+| Disco victory       | victory  | 1    | Epic     | 2,880 | A disco ball spins, its lights sweep the floor |
 
 ![The eight singles on the Shop's stage](shop-new-items/singles.jpg)
+
+![The six singles of 26 Nov on the Shop's stage](shop-new-items/singles-26-nov.jpg)
 
 The themes stay clear of the sets and of reward pieces (the journey's comet
 arrival is why the portal is not a comet). `arena_collection_bonus` gives a
@@ -140,3 +150,38 @@ A Mythical Look piece is a rarity by price, not a Mythical skin: the Mythic
 Trial (30 wins with the champion) is for Void Knight skins only
 (`20261125193000_mythical_look_pieces.sql`; before it, Galaxy's and
 Borealis's Mythical pieces could not be bought on their own).
+
+## Effects review (26 Nov)
+
+![Before and after: Cake victory, Gift-box entrance, the Galaxy and Borealis entrances, Supernova victory](shop-new-items/effects-review.jpg)
+
+Every aura, entrance and victory on sale was played on the Shop's stage
+frame by frame (80 ms to 2.3 s) and compared. Fixed:
+
+- **Entrances kept within the rig's particles.** A fighter's rig keeps 48
+  particles and drops the oldest for each new one (`rig.ts`
+  `MAX_PARTICLES`). A Mythical entrance's rarity flourish alone is 50, and it
+  comes after the piece's own burst, so Galaxy's star tunnel and Borealis's
+  light ribbons never showed and the two looked the same; Candy's gift box
+  and Festival's firecrackers lost their first pieces too.
+  `playCollectionEntrance` now fits each burst into `ENTRANCE_BUDGET` (48):
+  shockwaves, pillars and rings always stay, the rest is thinned evenly, the
+  piece's own burst ahead of its flourish (`tests/unit/entrance-budget.test.ts`
+  replays the rig's queue). New entrances are drawn within the budget.
+- **Candy's cake** stood below the fighter's feet and read as a pink step in
+  front of it: now a three-tier cake behind the fighter, its base hidden by
+  the feet, its candles lit above the head.
+- **Entrances that read as a blur over the body** now show their theme: a
+  pink gift box tied in gold bursting apart (Candy), pixels dropping into a
+  blocky beam (Retro), firecrackers popping in a ring round the fighter
+  (Festival), a flower opening at the feet (Garden). Particles start on the
+  outline or around the fighter, not over the face, and big pieces carry no
+  halo (`glow: false`).
+- **Steamworks' steam** starts beside the fighter and rolls outward, so the
+  body stays clear.
+- **Galaxy**: the supernova sits above the head, with a white-gold core
+  flash, a shell of violet, pink and ice blue, a shock ring and streaks (it
+  used to tint the fighter the same violet as Galaxy colours); its aura
+  gains nebula clouds and two small worlds in orbit.
+- **Borealis's aura**: its curtains stand taller beside and behind the
+  fighter, and short on the near half so the light never veils its body.
