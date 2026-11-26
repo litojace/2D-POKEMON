@@ -171,6 +171,14 @@ describe("the looks as shipped", () => {
     expect(depth).toBe(0);
     return out;
   };
+  /** A blur behind a surface: any backdrop-filter but `none`. */
+  const BLURS = /backdrop-filter\s*:(?!\s*none\b)/;
+  it("a look may switch a blur off, never on", () => {
+    expect("backdrop-filter: none;").not.toMatch(BLURS);
+    expect("-webkit-backdrop-filter:none").not.toMatch(BLURS);
+    expect("backdrop-filter: blur(2px)").toMatch(BLURS);
+    expect("backdrop-filter:var(--x)").toMatch(BLURS);
+  });
   it("the selector reader finds rules inside and outside media queries", () => {
     expect(
       selectors(
@@ -187,7 +195,7 @@ describe("the looks as shipped", () => {
         // No rule that runs for ever or blurs what is behind it (the
         // reference's rules for both looks). `none` is allowed: a look
         // turns off the blurs the look underneath writes by value.
-        expect(css, file).not.toMatch(/backdrop-filter\s*:\s*(?!none\b)/);
+        expect(css, file).not.toMatch(BLURS);
         expect(css, file).not.toMatch(/\binfinite\b/);
         for (const rule of selectors(css))
           for (const one of rule.split(/,(?![^()]*\))/))
