@@ -230,6 +230,47 @@ Build `0909e29`: entry JS 2.731 kB (914 kB gzip), Phaser 1.482 kB, CSS
 | L7  | Plaza giữ ~75 MB canvas trên Android 4 GB, không thu nhỏ khi đóng                                                                                    | `width = height = 0`                       |
 | L8  | Admin + 5 màn hub + supabase-js đầy đủ nằm trong entry                                                                                               | −250 kB                                    |
 
+### Đợt C — tải về, khởi động, bộ nhớ: đã làm (25–26/11/2026, PT)
+
+Mỗi mục được đo trước khi sửa, trên profile điện thoại khi có thể (844×390,
+cảm ứng, CPU chậm 4×), có số trước/sau trong PR; lane FULL, merge khi
+verify và 30 shard xanh.
+
+| #   | PR         | Trước                                                                                | Sau                                                                                   |
+| --- | ---------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| L1  | #443       | Code chỉ dùng trong trận nằm trong entry                                             | Chunk "battle kit" tải cùng Phaser                                                    |
+| L2  | #446       | Mã commit trong script: mỗi deploy đổi tên mọi chunk                                 | Build id trong `<meta>` của trang                                                     |
+| L3  | #450       | Precache cài file game không bao giờ tải                                             | Chỉ cài file được dùng                                                                |
+| L4  | (theo L1)  | Entry ở 87% trần precache                                                            | Entry 1,71 MB trên trần 2,4 MB (`verify-pwa`)                                         |
+| L5  | #525       | CSS chặn first paint 182,6 kB gzip, 52 SVG inline (365 kB)                           | 118,2 kB gzip; ảnh khung là file, cài sẵn; FCP (4× CPU, Slow 4G) 2.760 → 2.108 ms     |
+| L6  | #523       | Raid 4 người mặc skin: texture gốc 19,7 MB (+ bản GPU), tải trận 56,4 s              | 0 MB; tải trận 16,8 s (cùng profile, harness)                                         |
+| L7  | #513       | Máy 4 GB mang ~37 MB sprite Plaza vào trận                                           | Thả như iPhone: canvas trong trận 55,2 → 17,8 MB                                      |
+| L8  | #452, #515 | Admin trong entry; supabase-js đầy đủ (realtime, storage, postgrest…) trong `vendor` | Admin tải khi mở; chỉ client đăng nhập: `vendor` 105,6 → 72,0 kB gzip (−120,7 kB thô) |
+
+Ghi chú:
+
+- **L6, thêm ngoài kế hoạch:** ghế boss của raid (một người chơi
+  `raidBoss` trên `terradon`) chưa bao giờ được vẽ bằng rig nhưng vẫn tải
+  68 texture (4,2 MB) mỗi raid; giờ không tải. `rigAssets` có memo bằng
+  `WeakRef` theo look, nên trận dùng lại bộ prepaint đã dựng.
+- **L7, khác đề xuất:** `width = height = 0` khi đóng không cần (production
+  đã thu Plaza đã đóng; con số ~75 MB một phần do handle `window.__plaza`
+  chỉ có ở dev). Không đổi `memoryConstrained()`: thả nền Plaza mỗi lần
+  sang Lobby làm lần quay lại tốn một task 2.043 ms ở CPU 4×.
+- **L8, phần màn hub: đo rồi, không làm.** Đưa Profile, Ranks, Missions,
+  Fighters và friend card ra khỏi entry chỉ bớt JS −9,5 kB gzip, CSS
+  −7,4 kB gzip; DCL/FCP ở CPU 4× không đổi (773→783 / 220→196 ms, dao
+  động ±150 ms). Rủi ro: mở màn hình thành bất đồng bộ, bảng chọn fighter
+  trong phòng phải chờ tải, CSS dùng chéo (danh sách "Invite a friend" của
+  Lobby dùng `.fr-avatar` trong `friends.css`, nên màn Friends phải ở lại).
+- **L8, supabase:** cùng request tới `/auth/v1` như `createClient` (đã so
+  với một server auth giả: làm mới phiên đã lưu, quay về từ OAuth, không
+  phiên), trừ header `x-client-info`; production đã có phiên được khôi
+  phục và đấu trọn trận trên Android (log Render, 26/11).
+- **Guard đi kèm:** `tests/unit/css-has-rules.test.ts` chặn `:has()` mới
+  trên `body`, `html`, `:root` hay `dialog` (#509); danh sách cũ chỉ được
+  ngắn đi.
+
 ## 6. Còn lại — trong trận, GPU/JS [đọc]
 
 - Vật thể tạo theo từng đòn ngoài fx engine: `court-surface-fx.ts`
@@ -273,7 +314,8 @@ Build `0909e29`: entry JS 2.731 kB (914 kB gzip), Phaser 1.482 kB, CSS
    `work` kỳ vọng giảm rõ; nếu raid vẫn < 50 FPS thì làm mục 6 theo trace.
 3. **Đợt B — server:** S2, S3, S4, S5. S1/S9 làm riêng ở #436.
 4. **Đợt C — tải về:** L2, L3 (rủi ro thấp), rồi L1 (trước khi entry chạm
-   trần L4).
+   trần L4). Đã làm hết L1–L8 (26/11, PT; phần màn hub của L8 đo rồi bỏ):
+   kết quả ở mục 5, "Đợt C … đã làm".
 5. **Đợt D — trong trận:** lỗi gục raid, `surfaceBurst`/`shot` qua fx
    engine, tessellation, danh hiệu tĩnh trong trận.
 6. **Đợt E:** giao thức delta (S7) — lớn nhất, làm sau cùng.
