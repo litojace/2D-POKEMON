@@ -357,7 +357,8 @@ export function mobileLayout(
     return dx < clear ? t.y - Math.sqrt(clear ** 2 - dx ** 2) : Infinity;
   };
   const dash = targets.find((t) => t.action === "dash")!;
-  const aimY =
+  const clusterHeight = ring.height + 2 * margin;
+  let aimY =
     style === "corner"
       ? // Corner: over the basic attack and skill 3, lifted clear of every
         // button (Dash sits up and to the left).
@@ -369,8 +370,15 @@ export function mobileLayout(
           dash.y - dash.size / 2 - gap - aimSize / 2,
           over(targets.find((t) => t.action === "3")!),
         );
+  if (style === "corner")
+    // Never into the HUD's allowance over the cluster (a squat screen's
+    // boss bar and clock): lower it to there, giving up at most 60% of its
+    // gap to the buttons below.
+    aimY = Math.max(
+      aimY,
+      Math.min(clusterHeight - height + aimSize / 2, aimY + gap * 0.6),
+    );
   const aim = { x: aimX, y: aimY, size: aimSize };
-  const clusterHeight = ring.height + 2 * margin;
   return {
     compact: false,
     joystick,

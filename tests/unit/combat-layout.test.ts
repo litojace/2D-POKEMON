@@ -106,6 +106,23 @@ describe("the corner combat layout (owner, 26 Nov 2026)", () => {
           ).toBeGreaterThan(g - 0.01);
         expect(aim.size).toBeGreaterThanOrEqual(44);
       });
+  it("keeps the target button out of a squat screen's HUD band", () => {
+    // 844x280 (a short visible viewport): the boss bar and clock sit just
+    // over the cluster. The button stops at the HUD's allowance, still
+    // clear of the buttons, and boss actions beside it stay level with it.
+    const v = safeViewport(844, 280, { left: 0, right: 0, top: 0, bottom: 0 });
+    const height = Math.max(180, v.height - 64);
+    const layout = mobileLayout(v.width, height, undefined, "corner");
+    const aim = layout.aim;
+    expect(aim.y - aim.size / 2).toBeGreaterThanOrEqual(
+      layout.height - height - 0.01,
+    );
+    for (const t of layout.targets)
+      expect(
+        Math.hypot(aim.x - t.x, aim.y - t.y) - aim.size / 2 - t.size / 2,
+      ).toBeGreaterThan(3);
+    expect(layout.context.y).toBeCloseTo(aim.y, 6);
+  });
   it("keeps the ring layout one constant away", () => {
     const ring = layoutAt(844, 390, 47, 21, "ring");
     const at = Object.fromEntries(ring.targets.map((t) => [t.action, t]));

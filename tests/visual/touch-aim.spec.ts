@@ -142,11 +142,26 @@ test("a skill held to aim casts on lifting, where it was dragged, and can be can
   expect((await fired(page)).length).toBe(2);
   await expect(page.locator(".touch-aim-wheel")).not.toHaveClass(/is-on/);
 
+  // WebKit may report the last touchend before the pointerup: the held
+  // skill casts then, with its drag, and the late pointerup adds nothing.
+  at = await press(page, skill, 37);
+  await dragTo(page, 37, at, { x: at.x, y: at.y - 45 });
+  await page.evaluate(() => {
+    const end = new Event("touchend", { bubbles: true });
+    Object.defineProperty(end, "touches", { value: [] });
+    window.dispatchEvent(end);
+  });
+  expect((await fired(page)).length).toBe(3);
+  expect((await drag(page)).dy).toBeCloseTo(-1, 3);
+  await pointer(page, "pointerup", 37, { x: at.x, y: at.y - 45 });
+  expect((await fired(page)).length).toBe(3);
+  await expect(page.locator(".touch-aim-wheel")).not.toHaveClass(/is-on/);
+
   // A skill on itself fires on the press, before the finger lifts.
   at = await press(page, '[data-skill="2"]', 36);
   expect((await fired(page)).at(-1)).toEqual({ skill: 2 });
   await pointer(page, "pointerup", 36, at);
-  expect((await fired(page)).length).toBe(3);
+  expect((await fired(page)).length).toBe(4);
   expect(errors).toEqual([]);
 });
 

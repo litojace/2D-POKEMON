@@ -44,6 +44,8 @@ interface AimGesture {
   radius: number;
   /** It has moved past the dead zone: it aims by hand. */
   manual: boolean;
+  /** A finger (not a mouse or pen): a last touchend lifts it. */
+  touch: boolean;
   /** Lifting now cancels: back at the middle, or over the cancel spot. */
   cancel: boolean;
   /** The cancel spot (the target button's place), measured once the drag starts. */
@@ -353,7 +355,15 @@ export class TouchControls {
       window.addEventListener(
         type,
         (event) => {
-          if (!(event as TouchEvent).touches.length) this.reset(true);
+          if ((event as TouchEvent).touches.length) return;
+          // Every finger is up. A skill still held to aim was lifted too,
+          // if this came before its pointerup (WebKit's order may differ
+          // from Chromium's): cast it as that lift would. A cancelled touch
+          // casts nothing.
+          if (type === "touchend")
+            for (const [id, held] of [...this.aiming])
+              if (held.touch) this.release(id, true, event.timeStamp);
+          this.reset(true);
         },
         { capture: true, passive: true },
       );
@@ -632,6 +642,7 @@ export class TouchControls {
       radius,
       manual: false,
       cancel: false,
+      touch: event.pointerType === "touch",
     });
     if (box)
       Object.assign(this.wheel.style, {
