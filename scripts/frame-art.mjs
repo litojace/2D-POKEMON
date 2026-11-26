@@ -1204,6 +1204,49 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter, Sea
     linear-gradient(225deg, transparent 46%, #9fd8ffaa 47.5%, transparent 52%),
     radial-gradient(circle at 50% 30%, #3a2a6a, #0e1230 70%);
 }
+.raid-cosmetic-preview[data-cosmetic="music-aura"] {
+  box-shadow:
+    0 0 0 2px #ff6fa8,
+    0 0 0 4px #6fd6ff88;
+  background:
+    radial-gradient(circle at 26% 30%, #ff6fa8 0 3.4%, transparent 5%),
+    radial-gradient(circle at 74% 26%, #6fd6ff 0 3.4%, transparent 5%),
+    radial-gradient(circle at 70% 76%, #ffd65b 0 3%, transparent 4.6%),
+    radial-gradient(circle, #14213a 56%, #3a2a5a);
+}
+.raid-cosmetic-preview[data-cosmetic="rune-aura"] {
+  box-shadow:
+    0 0 0 2px #ffd36b,
+    0 0 0 4px #6a3aff66,
+    0 0 0 5px #ffd36b;
+  background: radial-gradient(circle, #14213a 54%, #6a3aff55 70%, #ffd36b33);
+}
+.raid-cosmetic-preview[data-cosmetic="smoke-entrance"] {
+  background:
+    radial-gradient(circle at 22% 78%, #b7bfcc88 0 12%, transparent 20%),
+    radial-gradient(circle at 78% 78%, #8a93a688 0 12%, transparent 20%),
+    radial-gradient(circle at 30% 26%, #9be07a 0 2.6%, transparent 4%),
+    #14213a;
+}
+.raid-cosmetic-preview[data-cosmetic="rainbow-entrance"] {
+  background:
+    radial-gradient(circle at 50% 96%, transparent 0 40%, #a77bff99 41% 44%, #4fb6ff99 44% 47%, #5fdc7a99 47% 50%, #ffe06699 50% 53%, #ff9f4399 53% 56%, #ff4f5a99 56% 59%, transparent 60%),
+    #14213a;
+}
+.raid-cosmetic-preview[data-cosmetic="balloon-victory"] {
+  background:
+    radial-gradient(ellipse 9% 11% at 22% 30%, #ff4f6a 0 90%, transparent 100%),
+    radial-gradient(ellipse 9% 11% at 78% 24%, #4fb6ff 0 90%, transparent 100%),
+    radial-gradient(ellipse 8% 10% at 66% 62%, #ffd65b 0 90%, transparent 100%),
+    #14213a;
+}
+.raid-cosmetic-preview[data-cosmetic="disco-victory"] {
+  background:
+    linear-gradient(200deg, transparent 30%, #ff4fd844 34%, transparent 46%),
+    linear-gradient(160deg, transparent 30%, #4fb6ff44 34%, transparent 46%),
+    radial-gradient(circle at 50% 18%, #e6ebf7 0 9%, #9aa3b8 10%, transparent 12%),
+    #14213a;
+}
 `;
 // The gold accent is a design token (ui/tokens.css): write it as one, as
 // the stylesheet does. Art inside data URIs spells # as %23, so stays as is.

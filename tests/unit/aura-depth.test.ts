@@ -58,8 +58,9 @@ describe("aura items circle in front of and behind the fighter", () => {
       0,
     );
     const items = [...back.ys, ...front.ys].filter((y) => y !== 0);
-    // Six sparkles of four triangles each.
-    expect(items.length).toBe(24);
+    // Six sparkles of four triangles each, and two small worlds (one fill
+    // for the ringed one, two for the blue one and its shine).
+    expect(items.length).toBe(24 + 3);
     // Ring half-height 18, plus a sparkle's own half-size (2.4 × 1.16 × 0.35).
     for (const y of items) expect(Math.abs(y)).toBeLessThanOrEqual(18 + 1);
     expect(front.ys.filter((y) => y !== 0).every((y) => y > 0)).toBe(true);

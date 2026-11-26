@@ -172,9 +172,15 @@ it("opens the collections of 25 Nov to Today's Picks, sets excepted, and runs ag
       r.kind === "bundle" ? { opened: 0 } : { held: 0 },
     );
   // 18 skins each in the five skin collections, 5 pieces in each Look set,
-  // and the 8 singles.
+  // and every single (8 opened by it; the 6 of 26 Nov were seeded open).
   const items = rows.filter((r) => r.kind !== "bundle");
-  expect(items.reduce((n, r) => n + r.opened, 0)).toBe(5 * 18 + 3 * 5 + 8);
+  const singleCount = LOOK_ITEMS.filter(
+    (i) => i.collection === "singles",
+  ).length;
+  expect(singleCount).toBe(14);
+  expect(items.reduce((n, r) => n + r.opened, 0)).toBe(
+    5 * 18 + 3 * 5 + singleCount,
+  );
   // Over 400 days the picks reach them.
   const ids = await picked();
   expect(

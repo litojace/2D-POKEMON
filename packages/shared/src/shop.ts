@@ -1798,6 +1798,48 @@ const LOOK_SINGLES: [
     2,
     "Meteor victory",
     "Meteors streak across the sky behind you",
+  ], // 26 Nov: six more, each a theme of its own.
+  [
+    "music-aura",
+    "aura",
+    0,
+    "Music aura",
+    "Music notes bob round you to the beat",
+  ],
+  [
+    "rune-aura",
+    "aura",
+    1,
+    "Rune aura",
+    "A circle of glowing runes turns beneath you",
+  ],
+  [
+    "smoke-entrance",
+    "entrance",
+    0,
+    "Smoke-bomb entrance",
+    "Appear in a puff of ninja smoke and whirling leaves",
+  ],
+  [
+    "rainbow-entrance",
+    "entrance",
+    1,
+    "Rainbow entrance",
+    "Land at the foot of a rainbow",
+  ],
+  [
+    "balloon-victory",
+    "victory",
+    0,
+    "Balloon victory",
+    "Balloons float up behind you",
+  ],
+  [
+    "disco-victory",
+    "victory",
+    1,
+    "Disco victory",
+    "A disco ball spins and lights sweep the floor",
   ],
 ];
 const LOOK_SET_ITEMS: LookItem[] = LOOK_SETS.flatMap(([collection, items]) =>
