@@ -30,6 +30,10 @@ import {
 } from "../../../packages/shared/src/shop.js";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey.js";
 import {
+  dailyGiftClaimSchema,
+  dailyGiftStateSchema,
+} from "../../../packages/shared/src/daily-gifts.js";
+import {
   avatarSchema,
   isAvatar,
   photoIdOf,
@@ -705,6 +709,37 @@ export function installAccountRoutes(
       // account: the database row is the per-account record.
       log("arena-tour", end);
       res.json({ ok: true });
+    }),
+  );
+  // The daily gift (packages/shared/src/daily-gifts.ts; migration
+  // 20261126150000): where you are in the calendar, and taking today's.
+  // The database decides the day and what it gives, and refuses a second
+  // claim; the answer is checked before it goes to the client.
+  app.get(
+    "/api/gift",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(
+        dailyGiftStateSchema.parse(
+          await provider.rpc(token, "arena_daily_gift", {}),
+        ),
+      );
+    }),
+  );
+  app.post(
+    "/api/gift/claim",
+    route(false, async (_req, res, token) => {
+      const claim = dailyGiftClaimSchema.parse(
+        await provider.rpc(token, "arena_daily_gift_claim", {}),
+      );
+      // How far players get in the calendar (docs/player-funnel.md). No
+      // account: the database row is the per-account record.
+      log("arena-gift", {
+        day: claim.given.day,
+        weeks: claim.weeks,
+        item: claim.given.item !== null,
+      });
+      res.json(claim);
     }),
   );
   // Your avatar from the library (packages/shared/src/avatars.ts; migration

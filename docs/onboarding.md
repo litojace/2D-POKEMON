@@ -178,6 +178,54 @@ Rules kept:
 Tests: `tests/unit/result-rewards.test.ts`,
 `tests/visual/result-rewards.spec.ts`.
 
+## The daily gift (26 Nov 2026)
+
+No guest came back after their first day (`docs/player-funnel.md`, 16 Nov).
+The mission streak's 300 coins need all six missions seven days running,
+which only the keenest players reach; nothing rewarded simply showing up.
+Apple's guide: show players what coming back regularly gives, with rewards
+that grow with the days in a row.
+
+| Day | Gift                                                              |
+| --- | ----------------------------------------------------------------- |
+| 1   | 50 coins                                                          |
+| 2   | 100 XP                                                            |
+| 3   | 75 coins                                                          |
+| 4   | 150 XP                                                            |
+| 5   | 100 coins                                                         |
+| 6   | 200 XP                                                            |
+| 7   | The Firefly aura in a player's first week; 200 coins from then on |
+
+- **One a Pacific day** (the missions' day). The next day in a row is the
+  next gift; after day 7 comes day 1 of the next week.
+- **A missed day is forgiven once in a row:** two days after the last gift
+  the row still goes on. Three or more days away, it starts again at day 1.
+- **The cosmetic is the first week's only** (or its coins, for a player who
+  owns it), so the Shop's prices keep their meaning: a week of gifts is 225
+  coins, 425 from the second week, against about 300 to 400 a day from
+  missions.
+- **Where it shows:** the dialog opens on the Lobby while today's gift
+  waits, with seven days, today's lit, and Claim. Once taken it says what
+  it gave and what tomorrow's is. Later puts it away for this visit; the
+  Menu's _Daily gift_ opens it at any time. A match's result sheet says
+  "Tomorrow's gift: 150 XP" in a line.
+- **A brand-new player plays first:** the dialog waits until they have
+  finished a match or reached level 2, and for the Lobby tour and the
+  Unlocked dialog.
+- **The database gives the gifts** (migration `20261126150000_daily_gift.sql`):
+  `arena_daily_gift_claim()` locks the player's row, checks the day, and
+  pays coins and XP as ledger rows keyed by the day, so a second claim
+  (a double tap, two devices) pays nothing. The client's table
+  (`packages/shared/src/daily-gifts.ts`) is only what it shows;
+  `tests/integration/daily-gift.test.ts` holds the two together.
+- XP from a gift is ordinary XP (the Daily Spark doubles it, the season
+  counts it).
+
+Code: `packages/shared/src/daily-gifts.ts`, `apps/client/src/daily-gift.ts`,
+`GET /api/gift` and `POST /api/gift/claim` in `apps/server/src/accounts.ts`.
+Tests: `tests/unit/daily-gift.test.ts`, `tests/integration/daily-gift.test.ts`,
+`tests/integration/daily-gift-routes.test.ts`, `tests/visual/daily-gift.spec.ts`.
+
 ## Next steps worth considering
 
 - A short first-visit tip for screens that have none (Wardrobe, Ranks,
