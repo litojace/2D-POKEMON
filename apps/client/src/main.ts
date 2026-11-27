@@ -514,8 +514,7 @@ import "./settings-screen.css";
 import { fighterPickerMarkup } from "./fighter-picker";
 import "./result-extras.css";
 import { partyInviteRow } from "./screens/friends-view";
-import { applyUiTheme, lookPickerDue } from "./ui-theme";
-import { askLook, bindLookRow, lookRow } from "./ui-theme-picker";
+import { applyUiTheme } from "./ui-theme";
 // The player's look (ui-theme.ts), before anything is drawn.
 void applyUiTheme();
 const audio = new AudioManager();
@@ -3253,7 +3252,6 @@ function lobbyView() {
     level: levelNow(),
     introRounds: introRounds(matchesFinished),
     rank: rankChip(myRating, featureLocked("ranks", levelNow())),
-    raidClears: accountsUI.raidClears,
   };
 }
 /** Your level, or undefined while the account loads. */
@@ -3276,19 +3274,6 @@ function openFeature(feature: Feature) {
   if (hubScene !== "lobby") setHubScene("lobby");
   lobbyAction(feature);
 }
-/** The look picker is up (ui-theme-picker.ts). */
-let lookShowing = false;
-let lookRetry: ReturnType<typeof setTimeout> | undefined;
-/** The look picker is owed or showing: the tour and "Unlocked" wait for it. */
-const lookPending = () => lookShowing || lookPickerDue(accountsUI?.account?.id);
-/**
- * Which look? (ui-theme.ts) Asked once per account on this device, on the
- * Lobby, as soon as nothing else is in front: after a new guest's warning
- * and before the Lobby tour, so the tour and the first match are already in
- * the look they chose, at the cost of one tap. An account that was here
- * before the looks is asked the same way, the next time its Lobby is free.
- * Shows nothing until two looks are ready.
- */
 /**
  * A hub screen in front of the Lobby: open, or still leaving. Not one kept
  * hidden for its next open (ui/hub-panel.ts park: the Shop, the Fighters),
@@ -3297,42 +3282,6 @@ const lookPending = () => lookShowing || lookPickerDue(accountsUI?.account?.id);
  */
 function screenInFront() {
   return document.querySelector(`.ui-panel-host:not([${PARKED}]) .ui-panel`);
-}
-function maybeAskLook(settled = false) {
-  const account = accountsUI?.account?.id;
-  if (!account || lookShowing || !lookPickerDue(account)) return;
-  if (
-    // Never on the first call: the Lobby glides in, and a new guest's
-    // warning is raised a moment after the log-in.
-    !settled ||
-    !lobby ||
-    myId ||
-    hubScene !== "lobby" ||
-    curtainCovers() ||
-    tour?.open ||
-    tourTimer !== undefined ||
-    unlockShowing ||
-    $<HTMLDialogElement>("dialog").open ||
-    screenInFront() ||
-    document.querySelector("[data-ui-confirm]") ||
-    document.getElementById("reward-reveal") ||
-    accountsUI?.guestWarningPending
-  ) {
-    // Something is in front: look again shortly, while the Lobby is open.
-    if (lobby && lookRetry === undefined)
-      lookRetry = setTimeout(() => {
-        lookRetry = undefined;
-        maybeAskLook(true);
-      }, 500);
-    return;
-  }
-  lookShowing = true;
-  void askLook(account).then(() => {
-    lookShowing = false;
-    maybeStartTour();
-    maybeShowUnlocks();
-    maybeShowGift();
-  });
 }
 /** The "Unlocked" dialog is up (one at a time). */
 let unlockShowing = false;
@@ -3347,7 +3296,6 @@ function maybeShowUnlocks() {
     level = levelNow();
   if (!account || level === undefined || !lobby || myId || unlockShowing)
     return;
-  if (lookPending()) return;
   const seen = loadSeenLevel(account);
   const due = unlocksDue(seen, level);
   if (!due.show.length) {
@@ -3454,7 +3402,6 @@ function maybeShowGift() {
   const account = accountsUI?.account?.id,
     level = levelNow();
   if (!account || !lobby || myId || giftDialog?.open || unlockShowing) return;
-  if (lookPending()) return;
   if (gift?.account !== account || gift.state.claimed) return;
   if (level === undefined || !((matchesFinished ?? 0) >= 1 || level >= 2))
     return;
@@ -3552,7 +3499,6 @@ function syncLobby(want: boolean, park = false) {
     lobbyFriendsTimer = setInterval(() => void refreshLobbyFriends(), 60000);
   }
   lobby.update(lobbyView());
-  maybeAskLook();
   maybeStartTour();
   maybeShowUnlocks();
   loadGift();
@@ -5870,7 +5816,7 @@ function settingsMarkup(reduced: boolean) {
       : "";
     side = `<section class="prefs-card st-card" aria-labelledby="prefs-match"><h3 id="prefs-match">${menuIcon("battle")}This match</h3>${note}${practiceTools}${skills}${motion}</section>`;
   } else
-    side = `<section class="prefs-card st-card" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3>${lookRow()}${graphicsRow()}${isNativeApp() ? "" : fullscreenRow()}${motion}</section>`;
+    side = `<section class="prefs-card st-card" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3>${graphicsRow()}${isNativeApp() ? "" : fullscreenRow()}${motion}</section>`;
   const appIcon = !state && isNativeApp() ? appIconCardHTML() : "";
   const leave = myId
     ? leaveButton()
@@ -5905,7 +5851,6 @@ function showSettings() {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   dialog(settingsMarkup(reduced));
   bindGraphicsCard();
-  bindLookRow($<HTMLDialogElement>("dialog"));
   void bindAppIconCard(toast);
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
@@ -6207,7 +6152,6 @@ document.addEventListener(PANEL_EVENT, () => {
 function maybeStartTour() {
   const account = accountsUI?.account?.id;
   if (!account || tour?.open || tourTimer !== undefined) return;
-  if (lookPending()) return;
   const journey = accountsUI.economy?.journey;
   const level = journey ? playerLevel(journey.xp).level : undefined;
   if (!tourDue(loadTour(account), level)) return;
