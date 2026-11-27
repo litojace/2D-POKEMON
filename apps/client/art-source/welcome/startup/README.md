@@ -1,29 +1,27 @@
-# Starforged Sigil loading screen
+# Startup screen artwork
 
-Approved concept: option **H** from the loading-screen comparison in this task.
-The production scene uses two independent image-generated plates: a dark blue
-floating-rock starfield and a transparent gold eight-point compass with a cyan
-crystal. All typography and loading controls are real HTML, not baked into art.
+Since 27 Nov 2026 the startup screens have **no artwork of their own**
+(the owner's call). The boot screen (`apps/client/index.html`) and the
+startup curtain (`src/server-connection.css`) are drawn in the Poster look:
+ink, gold, Anton capitals and a square bar, on the gold cover in halftone.
+The one picture on them is the runner: the player's fighter in the game's
+own side view (`src/startup-runner.ts`, drawn by `creatureSvg`), so nothing
+is downloaded for it.
 
-Runtime derivatives preserve the generated dimensions and transparency:
+Later starts show a painting behind the curtain, chosen and downloaded by
+the start before. Those are `src/art/startup-art-*.webp`, listed with who is
+in them in `src/loading-art.ts`; how they were made is in
+`docs/loading-art-prompts.md`.
 
-- `src/art/startup-starfield.webp`: landscape backdrop, WebP quality 88.
-- `src/art/startup-sigil.webp`: transparent crest, WebP quality 90, alpha quality 100.
+## What was here before
 
-Original PNGs are preserved in the task's generated-image artifacts:
-`exec-f9c9e715-117f-4358-abc9-dc094314d2c1.png` (background),
-`exec-aa20913a-d2ee-40b9-896f-722cea544969.png` (crest).
-The runtime files are imported by Vite for content-hashed URLs and PWA precaching.
+Concept H, "Starforged Sigil" (shipped until 27 Nov 2026): a navy
+floating-rock starfield (`src/art/startup-starfield.webp`) and a transparent
+gold compass crest with a cyan crystal (`src/art/startup-sigil.webp`), with
+three SVG orbits, an aura and six sparks floating around it. Both pictures
+and their code were removed; they are in git history before that date if
+ever wanted again. The original PNGs were never in the repository (they were
+in the generating task's image artifacts).
 
-The logo has two optically centered lines with equal tracking. The crest and
-three SVG orbit paths float together by four pixels. All paths share the
-crystal's center, with different tilts matching H, and use no nonuniform CSS
-scaling or downward offset. Unbroken paths pulse softly; the aura
-and six small particles provide restrained motion.
-The background stays still. Reduced-motion preferences disable all motion.
-
-The screen adapts its middle art area to the remaining height between the logo
-and loading controls, including short landscape phones and safe-area insets.
-Images are only requested if the startup overlay actually appears, and image
-failure cannot block health checks, retries or entry into the game. The previous
-one-minute connection-bar pacing remains unchanged.
+See `docs/loading-screens.md`, "How the startup screens look", for the
+current design.

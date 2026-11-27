@@ -155,15 +155,13 @@ servers. Offline status recovers automatically during the wait. The motion is
 disabled under `prefers-reduced-motion`. Profiles and socket connections wait for
 readiness; authenticated mutations are never automatically replayed.
 
-The loading screen uses approved concept H, **Starforged Sigil**: a still navy
-starfield, a transparent gold-and-cyan compass crest, a gently floating emblem,
-soft aura/orbit light and six drifting sparks. Three smooth, differently tilted
-SVG orbits stay centered on the crystal and float with it; their unbroken paths
-pulse softly without flattening or shifting the loops. The stacked ELEMENT / ARENA logo
-is real centered text with balanced tracking. The crest fits between the logo
-and footer at each viewport height; short phones also have a compact retry row.
-Both WebP plates use content-hashed Vite URLs and are included in PWA precaching.
-Unavailable artwork does not block the connection or hide the retry controls.
+The loading screen has no artwork of its own since 27 Nov 2026 (it was
+concept H, "Starforged Sigil": a starfield and a floating crest): the gold
+Poster cover, the stacked ELEMENT / ARENA name in an ink block, a square bar
+and the player's fighter running on it
+([loading-screens.md](loading-screens.md), "How the startup screens look").
+Short phones also have a compact retry row. Missing fonts do not block the
+connection or hide the retry controls.
 
 The gold connection bar is an estimate, since Render does not expose boot
 percentages. It advances steadily from 8% to 92% over one minute of active waiting,

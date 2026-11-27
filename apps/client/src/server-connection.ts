@@ -1,18 +1,12 @@
 import { ServerStartup, type StartupStatus } from "./server-startup";
-import starfield from "./art/startup-starfield.webp";
-import sigil from "./art/startup-sigil.webp";
 import "./server-connection.css";
+import type { CharacterId } from "@arena/shared";
+import type { SkinLook } from "./creature-design";
 import type { LoadingArt } from "./loading-art";
+import { runnerKey, runnerMarkup } from "./startup-runner";
 
-/** Centered paths keep their shape while the crest floats and their light pulses. */
-const orbitPaths = [
-  { rx: 185, ry: 48, angle: -18 },
-  { rx: 171, ry: 65, angle: 24 },
-  { rx: 110, ry: 140, angle: 14 },
-];
-const orbits = `<svg class="server-startup-orbits" viewBox="0 0 320 320" aria-hidden="true" focusable="false">${orbitPaths.map(({ rx, ry, angle }, index) => `<g transform="rotate(${angle} 160 160)" style="--orbit-duration:${6 + index * 2}s;--orbit-delay:${-index * 2}s"><ellipse class="server-startup-orbit" cx="160" cy="160" rx="${rx}" ry="${ry}"/></g>`).join("")}</svg>`;
-
-/** The game's gold star (the front door's and the top bar's), by the title. */
+/** The game's gold star (the front door's and the top bar's), by the title
+ *  over a painting. */
 const crest = `<svg class="server-startup-crest" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><defs><linearGradient id="startup-crest-gold" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#startup-crest-gold)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg>`;
 
 let retry: (() => void) | undefined;
@@ -36,6 +30,46 @@ let shownProgress = 0;
 let leaving: ReturnType<typeof setTimeout> | undefined;
 /** Held again over a screen already showing: the curtain fades in. */
 let entering = false;
+
+/**
+ * The runner on the bar (startup-runner.ts): the player's fighter stands at
+ * the end of the fill and runs while the bar moves. `runnerAt` is the
+ * furthest the bar has been, so only a real advance sets it running; it
+ * stands again RUNNER_REST_MS after the last one (the fill's own glide,
+ * server-connection.css, is 600 ms).
+ */
+const RUNNER_REST_MS = 700;
+let runner: { id: CharacterId; look?: SkinLook | null } = { id: "voltkit" };
+let runnerAt = 0;
+let runnerRest: ReturnType<typeof setTimeout> | undefined;
+function drawRunner() {
+  const box = panel?.querySelector<HTMLElement>(".server-startup-runner");
+  if (!box) return;
+  const key = runnerKey(runner.id, runner.look);
+  if (box.dataset.runner === key) return;
+  box.dataset.runner = key;
+  box.innerHTML = runnerMarkup(runner.id, runner.look);
+}
+function runnerMoved(amount: number) {
+  if (amount <= runnerAt + 0.0005) return;
+  runnerAt = amount;
+  const box = panel?.querySelector<HTMLElement>(".server-startup-runner");
+  if (!box) return;
+  box.classList.add("is-running");
+  clearTimeout(runnerRest);
+  runnerRest = setTimeout(
+    () => box.classList.remove("is-running"),
+    RUNNER_REST_MS,
+  );
+}
+/**
+ * Who runs on the bar: the fighter this device showed last, in the skin it
+ * wears (startup-curtain.ts tells it again once the profile is in).
+ */
+export function setCurtainRunner(id: CharacterId, look?: SkinLook | null) {
+  runner = { id, look };
+  drawRunner();
+}
 
 /**
  * The status line: each new status replaces the last with a short
@@ -102,6 +136,7 @@ function updateProgress() {
       );
   if (held) shownProgress = amount;
   meter.style.setProperty("--startup-progress", String(amount));
+  runnerMoved(amount);
   // The percentage beside the status (the owner, 20 Nov), once the server
   // has answered: while it wakes up the bar is only an estimate, and the
   // status says so instead. Read out by the bar itself, not the line.
@@ -187,31 +222,11 @@ function renderStatus() {
     panel.id = "server-startup";
     panel.className = "server-startup";
     panel.setAttribute("aria-label", "Connecting to Element Arena");
-    panel.style.setProperty("--startup-backdrop", `url("${starfield}")`);
-    panel.innerHTML = `<img class="server-startup-painting" alt="" decoding="async" draggable="false" hidden><div class="server-startup-card"><header class="server-startup-brand">${crest}<h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span>${orbits}<img src="${sigil}" width="960" height="960" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"><b class="server-startup-percent" aria-hidden="true"></b></p><div class="server-startup-tip" hidden></div><button type="button" hidden>Try again</button></div></div>`;
-    const emblem = panel.querySelector<HTMLImageElement>(
-      ".server-startup-art img",
-    )!;
-    const shell = panel;
-    emblem.addEventListener(
-      "error",
-      () => {
-        emblem.hidden = true;
-      },
-      { once: true },
-    );
-    // The crest and the starfield fade in once decoded instead of popping
-    // in (or painting in strips) over the first frames.
-    void emblem
-      .decode()
-      .then(() => shell.classList.add("has-sigil"))
-      .catch(() => {});
-    const backdrop = new Image();
-    backdrop.src = starfield;
-    void backdrop
-      .decode()
-      .then(() => shell.classList.add("has-backdrop"))
-      .catch(() => shell.classList.add("has-backdrop"));
+    // The bar carries the runner; the status line follows it (under the
+    // bar over a painting, server-connection.css).
+    panel.innerHTML = `<img class="server-startup-painting" alt="" decoding="async" draggable="false" hidden><div class="server-startup-card"><header class="server-startup-brand">${crest}<h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1></header><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i><span class="server-startup-runner" aria-hidden="true"></span></div><p role="status" aria-live="polite"><b class="server-startup-percent" aria-hidden="true"></b></p><button type="button" hidden>Try again</button></div></div>`;
+    runnerAt = 0;
+    drawRunner();
     panel.querySelector("button")!.onclick = () => retry?.();
     if (entering) panel.classList.add("is-entering");
     entering = false;
@@ -258,24 +273,12 @@ export function curtainStep(floor: number, message: string) {
   if (currentStatus === "ready") renderStatus();
   else updateProgress();
 }
-/** A tip under the bar while the curtain is held (null: none). */
-export function setCurtainTip(markup: string | null) {
-  const box = panel?.querySelector<HTMLElement>(".server-startup-tip");
-  if (!box) return;
-  box.hidden = !markup;
-  if (markup && box.innerHTML !== markup) {
-    box.innerHTML = markup;
-    // Each new tip fades in (server-connection.css).
-    box.classList.remove("is-new");
-    void box.offsetWidth;
-    box.classList.add("is-new");
-  }
-}
 /**
  * A painting behind the curtain (loading-art.ts): the curtain takes its
- * painting layout (the owner's style K: the gold star and title top right,
- * the tip bottom right above a full-width bar and one status line) and the
- * painting fades in over the starfield once decoded. null: the starfield.
+ * painting layout (the star and title top right; along the bottom a
+ * full-width bar with the runner on it and one status line under it, so the
+ * painting stays clear) and the painting fades in once decoded. null: the
+ * plain cover.
  */
 export function setCurtainArt(art: LoadingArt | null) {
   const picture = panel?.querySelector<HTMLImageElement>(
@@ -293,7 +296,7 @@ export function setCurtainArt(art: LoadingArt | null) {
     .decode()
     .then(() => shell.classList.add("has-painting"))
     .catch(() => {
-      // Missing or broken: the starfield stays behind the same layout.
+      // Missing or broken: the ink stays behind the same layout.
       picture.hidden = true;
     });
 }

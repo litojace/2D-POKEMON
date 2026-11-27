@@ -366,21 +366,25 @@ body:has(.battle-chat:not([hidden]))
   white-space: nowrap;
 }
 
-/* Picked: checked, dimmed in place. Locked (all picks made): the rest grey. */
+/* Picked: checked, dimmed in place. Locked (all picks made): the rest grey.
+   Only the tile's content dims, never the tile: style.css fades every
+   disabled button to half, which let the arena show through the tile. The
+   Spire's badge sits beside its copy, not in it, so it dims with it. */
 #arena-overlay#arena-overlay.is-rites .raid-rite-options > button:disabled {
   cursor: default;
+  opacity: 1;
 }
 #arena-overlay#arena-overlay.is-rites
   .raid-rite-options
   > button:disabled
-  > .raid-rite-copy {
+  > :is(.raid-rite-copy, .raid-rite-icon) {
   filter: grayscale(1);
   opacity: 0.35;
 }
 #arena-overlay#arena-overlay.is-rites
   .raid-rite-options
   > button.is-picked
-  > .raid-rite-copy {
+  > :is(.raid-rite-copy, .raid-rite-icon) {
   filter: none;
   opacity: 0.6;
 }
