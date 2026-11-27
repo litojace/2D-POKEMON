@@ -87,6 +87,7 @@ const thumbs = (page: Page) =>
     ),
   );
 
+// On a computer (a mouse): phones keep the SVG (the last test below).
 for (const dpr of [2, 3])
   test(`Roster skins become bitmaps that look the same at ${dpr}×`, async ({
     browser,
@@ -94,8 +95,6 @@ for (const dpr of [2, 3])
     test.setTimeout(180_000);
     const context = await browser.newContext({
       viewport: { width: 844, height: 390 },
-      isMobile: true,
-      hasTouch: true,
       deviceScaleFactor: dpr,
     });
     try {
@@ -219,3 +218,73 @@ for (const dpr of [2, 3])
       await context.close();
     }
   });
+
+// A phone (a touch screen) keeps every picture as its SVG, which the browser
+// paints on its own threads: drawing a bitmap rasterized it on the page's
+// own thread, one frame of 650–830 ms per thumbnail on a 3× phone at 4× CPU,
+// to save 15–30 ms when a screen was built again (Nov 2026).
+test("a phone keeps its skin pictures as SVG: none drawn into bitmaps", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({
+    viewport: { width: 956, height: 440 },
+    deviceScaleFactor: 3,
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await page.addInitScript(() => {
+      const w = window as any;
+      w.__painter = [];
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries() as any[])
+          for (const s of e.scripts ?? [])
+            if (/skin-thumbnails|svg-raster/.test(String(s.sourceURL ?? "")))
+              w.__painter.push(`${s.invoker} ${Math.round(s.duration)} ms`);
+      }).observe({ type: "long-animation-frame" });
+    });
+    const errors = await openLobby(page);
+    const pictures = () =>
+      page.evaluate(() =>
+        Array.from(
+          document.querySelectorAll<Element>(
+            "img.skin-thumb, .roster-look-art > svg",
+          ),
+          (el) =>
+            el instanceof HTMLImageElement
+              ? `${el.getAttribute("src")!.slice(0, 5)}${el.complete && el.naturalWidth ? "" : " not shown"}`
+              : `inline:${el.childElementCount > 0} ${(el as SVGElement).style.backgroundImage || "no background"}`,
+        ),
+      );
+    // The Shop's catalogue, then the Roster's looks: given the time a
+    // computer takes to paint them (8 s each, at full speed).
+    await page.click('.lobby-rail [data-lobby-action="shop"]');
+    await page.click('[data-ui-section="skins"]');
+    await expect(page.locator("img.skin-thumb").first()).toBeVisible();
+    await page.waitForTimeout(8000);
+    const shop = await pictures();
+    expect(shop.length).toBeGreaterThan(5);
+    expect(new Set(shop)).toEqual(new Set(["data:"]));
+    await page
+      .locator(".ui-panel-host:not([data-ui-parked]) [data-ui-close]")
+      .first()
+      .click();
+    await page.click('.lobby-rail [data-lobby-action="fighters"]');
+    await page.click('[data-roster-card="cindrake"]');
+    await page.click("[data-roster-details]");
+    await page.click('[data-ui-rtab="skins"]');
+    await expect(page.locator(".roster-looks")).toBeVisible();
+    await page.waitForTimeout(8000);
+    const roster = await pictures();
+    expect(roster.length).toBeGreaterThan(5);
+    expect(new Set(roster)).toEqual(
+      new Set(["data:", "inline:true no background"]),
+    );
+    expect(await page.evaluate(() => (window as any).__painter)).toEqual([]);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
