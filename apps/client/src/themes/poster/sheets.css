@@ -584,3 +584,31 @@
   background: var(--ink);
   color: #fff;
 }
+
+/* A briefing's Champion tricks (raid-ui.ts perkLines, inside "Your
+   fighter, team & modifiers"): an ink plate with the element colour's
+   edge and an Anton heading, its lines clear of the plate's left edge
+   (audit C41: a see-through rounded brown box with a thin gold rim). */
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .raid-perks {
+  border: 0;
+  border-left: 4px solid var(--el);
+  border-radius: 0;
+  background: var(--ink-2);
+  color: #fff;
+  padding: 8px 12px 8px 14px;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .raid-perks h3 {
+  color: var(--el);
+  font: 400 calc(14px * var(--text-scale, 1)) / 1.2 var(--font-display);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .raid-perks ul {
+  padding-left: 16px;
+  color: #d6d5dc;
+}
+/* Its block's lines (the summary, the variant, the team signals) clear of
+   the ink plate's left edge, as every other plate's (C41). */
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-extra {
+  padding: 8px 14px;
+}
