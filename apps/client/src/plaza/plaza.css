@@ -142,6 +142,28 @@
 .plaza-layer.phone .pz-timer {
   top: calc(var(--hud-row2) + 38px + var(--hud-gap));
 }
+/* ── a phone's HUD has one place in the middle of its second row ──
+   (UI audit, 27 Nov 2026.) The event chip has it; three things used to
+   land on the chip or under it. plaza-scene.ts marks the layer. Layout, so the same in either look. */
+/* A lap being timed: its time takes the chip's place. Under the chip it
+   stood on the player and their name, whom the camera keeps in the middle
+   of a phone's screen. The chip is back when the lap ends. */
+.plaza-layer.phone.lap-timing .pz-event {
+  display: none;
+}
+.plaza-layer.phone.lap-timing .pz-timer {
+  top: var(--hud-row2);
+}
+/* The event's headline ("ORB SHOWER!") says it for a moment, where the
+   chip sat on top of it: the chip waits for the headline to go. */
+.plaza-layer.phone .pz-banner.on ~ .pz-event {
+  visibility: hidden;
+}
+/* Plaza Today open: its list runs under the chip's left half ("…er in
+   7:48"). The chip waits for the list to close. */
+.plaza-layer.phone.quests-open .pz-event {
+  display: none;
+}
 /* The lap quest's run is past 30 s (PLAZA_LAP_RUN): its time turns red. */
 .plaza-layer .pz-timer.over small {
   color: #ff8a8a;
