@@ -670,7 +670,9 @@
     height: 12px;
   }
   .rk-board {
-    --rk-cols: 40px 30px minmax(0, 1fr) 46px 52px;
+    /* W–L: 70 px, a five-figure record at this size ("9999–10000"); at
+       52 px it read "9999–1…" (UI audit, 27 Nov 2026). */
+    --rk-cols: 40px 30px minmax(0, 1fr) 46px 70px;
   }
 
   .rk-head,
