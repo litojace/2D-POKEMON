@@ -686,28 +686,40 @@
 :root[data-ui="poster"] .ui-split-main > .ui-tabs {
   border-bottom: 0;
 }
+/* Above a phone's height the tab row sits under the head, not in it: it
+   is its own 44 px band in the element colour, as the head row is on a
+   phone. Without it the row shrank to its words (22 px, the tabs 15 px:
+   calc(100% - 7px) of nothing), and the unchosen tabs' dim ink read on the
+   page's ink, invisible (a fighter's Skills and Skins, a boss page's tabs,
+   the Spire's: spire-safe-area at 1180x820). */
+@media (min-height: 501px) {
+  :root[data-ui="poster"] .ui-split-main > .ui-tabs {
+    height: 44px;
+    background: var(--el);
+  }
+}
+/* Each tab is the row's full height, so its own box is the 44 px a finger
+   needs, centred on what it shows; what it shows is the block under the
+   row's top 7 px (the chosen one's ink, painted from 7 px down), its label
+   in the middle of that block. (A 37 px button with a strip above it as its
+   reach left a tap just under the tab hitting nothing: spire-safe-area.) */
 :root[data-ui="poster"] .ui-split-main > .ui-tabs > button {
   position: relative;
-  align-self: flex-end;
-  height: calc(100% - 7px);
+  align-self: stretch;
+  height: auto;
   min-height: 0;
   color: var(--on-el-dim);
   margin: 0;
-  padding-top: 0;
+  padding-top: 7px;
   padding-bottom: 0;
   border-bottom: 0;
-}
-:root[data-ui="poster"] .ui-split-main > .ui-tabs > button::before {
-  content: "";
-  position: absolute;
-  inset: -7px 0 100%;
 }
 :root[data-ui="poster"]
   .ui-split-main
   > .ui-tabs
   > button[aria-selected="true"] {
   color: var(--el);
-  background: var(--ink);
+  background: linear-gradient(transparent 7px, var(--ink) 7px);
   transform: skewX(-10deg);
 }
 :root[data-ui="poster"]
