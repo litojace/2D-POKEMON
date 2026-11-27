@@ -616,14 +616,16 @@ export class AccountUI {
    * The Raids, Shop and Journey code and styles load on demand, not with the
    * game (it starts sooner). Loaded in quiet moments after sign-in, the
    * first open of each is as quick as the next: on a 4× slowed CPU the first
-   * Raids open took about twice as long as the next (Nov 2026).
+   * Raids open took about twice as long as the next (Nov 2026). Raids and
+   * the Shop keep what loaded, so their first open is in the tap's moment
+   * too (see loadShop).
    */
   private preloadScreens() {
     if (this.preloaded) return;
     this.preloaded = true;
     const loads: (() => Promise<unknown>)[] = [
-      () => import("./screens/raid-hall"),
-      () => import("./screens/fitting-room"),
+      () => this.loadRaids(),
+      () => this.loadShop(),
       () => import("./screens/journey"),
     ];
     const next = () => {
@@ -1490,6 +1492,20 @@ export class AccountUI {
     this.fittingRoom?.close();
   }
   /**
+   * The Shop's code, once loaded (ahead, or by its first open). Awaiting
+   * `import()` of code already loaded still waited several tasks: 330-380 ms
+   * in the visual harness, 1.5-1.75 s at 4× CPU, so the Shop opened that
+   * long after the tap (Nov 2026, #582). As Raids does, an open with it
+   * here runs in the tap's own moment.
+   */
+  private shopCode?: typeof import("./screens/fitting-room");
+  private loadShop() {
+    return import("./screens/fitting-room").then((module) => {
+      this.shopCode = module;
+      return module;
+    });
+  }
+  /**
    * The fitting room opens inside the Lobby at once with what is known, then
    * shows the server's fresh copy of your coins, items and raid rewards.
    */
@@ -1503,7 +1519,7 @@ export class AccountUI {
     this.toLobbyScreen();
     // Its code and styles load the first time it opens, not with the game.
     const accountId = this.account?.id;
-    const { openFittingRoom } = await import("./screens/fitting-room");
+    const { openFittingRoom } = this.shopCode ?? (await this.loadShop());
     if (this.account?.id !== accountId) return;
     if (this.fittingRoom?.isOpen) this.fittingRoom.show(mode, section);
     else {
