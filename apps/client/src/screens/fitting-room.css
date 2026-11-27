@@ -729,12 +729,18 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+/* What a slot holds may take two lines, on every screen: "Star-tunnel
+   ent…", "Supernova vict…" in a desktop's six slots (audit B09). */
 .fit-slot b {
   font-size: calc(12px * var(--text-scale, 1));
   max-width: 100%;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: center;
+  line-height: 1.15;
 }
 .fit-slot b.is-none {
   color: var(--ui-dim);

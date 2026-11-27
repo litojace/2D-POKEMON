@@ -515,7 +515,8 @@ button.rh-reward:focus-visible {
   white-space: normal;
   overflow: visible;
 }
-.rh-reward.is-open .rh-reward-text b {
+.rh-reward.is-open .rh-reward-text b,
+.rh-reward.is-open .rh-reward-text small {
   display: block;
   -webkit-line-clamp: none;
   line-clamp: none;
@@ -589,10 +590,15 @@ button.rh-reward:focus-visible {
   gap: 3px;
   min-width: 0;
 }
+/* The goal beside the rarity takes up to two lines: one line cut every
+   feat ("Feat: every charge in a…", audit B13); open, it reads in full. */
 .rh-reward-text small {
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
 }
 /* The whole name, on two even lines where one is too short: on a phone a
    title's card is a third of the row, and "Mountain Conqueror title" ended
