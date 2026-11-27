@@ -792,12 +792,20 @@ for (const [width, height] of [
       expect(s0.l - row.l + (row.r - s1.r)).toBeGreaterThan(0);
       // Every member's name reads on its pill (WCAG AA, 4.5:1).
       const names = await page.evaluate(() => {
+        // Any CSS colour (rgb(), oklch(), …) as [r, g, b, alpha 0–1], drawn on a
+        // canvas: computed styles keep oklch() as oklch().
+        const rgba = (c: string) => {
+          const cx = document.createElement("canvas").getContext("2d")!;
+          cx.fillStyle = c;
+          cx.fillRect(0, 0, 1, 1);
+          const d = cx.getImageData(0, 0, 1, 1).data;
+          return [d[0], d[1], d[2], d[3] / 255];
+        };
         const rgb = (c: string) =>
-          c
-            .match(/[\d.]+/g)!
+          rgba(c)
             .slice(0, 3)
             .map((v) => {
-              const x = Number(v) / 255;
+              const x = v / 255;
               return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
             });
         const lum = (c: string) => {
@@ -1565,9 +1573,16 @@ for (const viewport of SPIRE_VIEWPORTS)
         // the stage shows through its words.
         expect(
           await card.evaluate((c) => {
-            const bg = getComputedStyle(c).backgroundColor;
-            const alpha = bg.match(/rgba?\(([^)]+)\)/)?.[1].split(",")[3];
-            return alpha === undefined ? 1 : Number(alpha);
+            // Any CSS colour (rgb(), oklch(), …) as [r, g, b, alpha 0–1], drawn on a
+            // canvas: computed styles keep oklch() as oklch().
+            const rgba = (c: string) => {
+              const cx = document.createElement("canvas").getContext("2d")!;
+              cx.fillStyle = c;
+              cx.fillRect(0, 0, 1, 1);
+              const d = cx.getImageData(0, 0, 1, 1).data;
+              return [d[0], d[1], d[2], d[3] / 255];
+            };
+            return rgba(getComputedStyle(c).backgroundColor)[3];
           }),
           "the Spire card is opaque",
         ).toBe(1);
@@ -1863,10 +1878,16 @@ test("Join or watch: Join is the filled main button and Close is a square", asyn
           .getBoundingClientRect();
         const j = join.getBoundingClientRect();
         const c = close.getBoundingClientRect();
-        const opaque = (c: string) => {
-          const a = c.match(/rgba?\(([^)]+)\)/)?.[1].split(",")[3];
-          return a === undefined || Number(a) === 1;
+        // Any CSS colour (rgb(), oklch(), …) as [r, g, b, alpha 0–1], drawn on a
+        // canvas: computed styles keep oklch() as oklch().
+        const rgba = (c: string) => {
+          const cx = document.createElement("canvas").getContext("2d")!;
+          cx.fillStyle = c;
+          cx.fillRect(0, 0, 1, 1);
+          const d = cx.getImageData(0, 0, 1, 1).data;
+          return [d[0], d[1], d[2], d[3] / 255];
         };
+        const opaque = (c: string) => rgba(c)[3] === 1;
         const fill = getComputedStyle(join).backgroundColor;
         return {
           // Filled in the element colour, apart from the drawer behind it.
