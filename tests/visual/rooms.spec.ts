@@ -1,6 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
-  asRgb,
   box,
   inside,
   openHub,
@@ -15,6 +14,10 @@ import {
   layoutProblems,
   setInsets,
 } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // UI remodel step 5 (docs/ui-remodel/PLAN.md): the raid room and the PvP
 // rooms in one frame, as the owner approved (images/mockups/room-*.webp).
@@ -141,19 +144,34 @@ for (const size of SIZES)
           "aria-label",
           "Leave the room",
         );
-        // Leaving is red (owner, 6 Nov): the icon and its outline.
+        // Leaving is red (owner, 6 Nov): the icon and its outline (a border,
+        // or in Poster a ring drawn inside the masthead's ink block). Red by
+        // its hue: the old look's pink and Poster's red both are; white or
+        // the element colour are not.
         expect(
-          await picker
-            .locator("#leave")
-            .evaluate((el) => {
-              const cs = getComputedStyle(el);
-              return [
-                getComputedStyle(el.querySelector("svg")!).color,
-                cs.borderTopColor,
-              ];
-            })
-            .then((c) => c.map(asRgb)),
-        ).toEqual(["rgb(255, 138, 151)", "rgba(239, 79, 97, 0.533)"]);
+          await picker.locator("#leave").evaluate((el) => {
+            const rgb = (c: string) => {
+              const cx = document.createElement("canvas").getContext("2d")!;
+              cx.fillStyle = c;
+              cx.fillRect(0, 0, 1, 1);
+              return [...cx.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+            };
+            const red = (c: string) => {
+              const [r, g, b] = rgb(c);
+              return r >= 200 && r - g >= 80 && r - b >= 60;
+            };
+            const cs = getComputedStyle(el);
+            const outline =
+              parseFloat(cs.borderTopWidth) > 0
+                ? cs.borderTopColor
+                : (cs.boxShadow.match(/(rgba?|oklch|color)\([^)]*\)/)?.[0] ??
+                  "transparent");
+            return {
+              icon: red(getComputedStyle(el.querySelector("svg")!).color),
+              outline: red(outline),
+            };
+          }),
+        ).toEqual({ icon: true, outline: true });
         await page.evaluate(() => document.fonts.ready);
         await page.waitForTimeout(500);
         expect(await closeSpot(page)).toEqual([

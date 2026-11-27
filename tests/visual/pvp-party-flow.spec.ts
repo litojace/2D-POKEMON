@@ -9,6 +9,10 @@ import {
   hubMenu,
   createRoom,
 } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 const pal = "22222222-2222-4222-8222-222222222222";
 test("raid room invites open Friends instead of displaying a room code", async ({
   browser,
@@ -394,9 +398,17 @@ for (const size of [
           Math.abs(arrow.y + arrow.height / 2 - (button.y + button.height / 2)),
         ).toBeLessThan(1.5);
       }
+      // The watching bar is a solid dark bar its white words read on (the
+      // old look's navy, Poster's ink), not see-through over the fight.
       expect(
-        await spectator.evaluate((el) => getComputedStyle(el).backgroundColor),
-      ).toBe("rgb(12, 18, 34)");
+        await spectator.evaluate((el) => {
+          const cx = document.createElement("canvas").getContext("2d")!;
+          cx.fillStyle = getComputedStyle(el).backgroundColor;
+          cx.fillRect(0, 0, 1, 1);
+          const [r, g, b, a] = cx.getImageData(0, 0, 1, 1).data;
+          return { opaque: a === 255, dark: Math.max(r, g, b) <= 40 };
+        }),
+      ).toEqual({ opaque: true, dark: true });
       const watchingBox = await box(page, "#spectate");
       expect(watchingBox.y).toBeGreaterThan(size.height * 0.65);
       expect(watchingBox.x + watchingBox.width).toBeLessThanOrEqual(

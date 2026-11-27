@@ -59,7 +59,8 @@ the daily gift, dialogs, the startup curtain and recovery, the Journey, the
 Lobby and its safe areas, poster), moved in #569; slice 2, the hub screens
 (the Shop and fitting room, the roster, raids, Ranks and Friends, the
 Profile, Missions, Match history, panel-scroll, phone-fit, text-collisions),
-in #581. `ui-theme.spec.ts` sets
+in #581; slice 3, the match screens (the results sheets, the battle badge,
+rooms, the party flow, the Reveal), in #601. `ui-theme.spec.ts` sets
 its look itself and tests the pin; it moves with the PR that removes it.
 
 **The budgets measure Poster** (27 Nov 2026): `battle-style-budget`,

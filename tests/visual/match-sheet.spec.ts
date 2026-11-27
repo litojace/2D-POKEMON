@@ -8,6 +8,10 @@ import {
   snap,
 } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Every mode opens and ends in the PvP Reveal's style (match-sheet.css,
 // owner 22 Nov 2026): the raid and Spire briefings ("I'm ready"), the break
@@ -58,6 +62,43 @@ async function sheet(page: Page, card: string) {
                 parseFloat(noteStyle.fontSize) * 1.3),
           )
         : 0;
+    // The kicker's colour by what it means (a green win, a red loss), and
+    // its contrast against what is behind it: its own block, or the first
+    // opaque fill further out (the sheet). Colours go through a canvas:
+    // Poster's compute as oklch().
+    const rgba = (css: string) => {
+      const cx = document.createElement("canvas").getContext("2d")!;
+      cx.fillStyle = css;
+      cx.fillRect(0, 0, 1, 1);
+      return [...cx.getImageData(0, 0, 1, 1).data];
+    };
+    const ink = rgba(getComputedStyle(kicker).color);
+    let back = [0, 0, 0, 255];
+    for (let e: Element | null = kicker; e; e = e.parentElement) {
+      const f = rgba(getComputedStyle(e).backgroundColor);
+      if (f[3] === 255) {
+        back = f;
+        break;
+      }
+    }
+    const lum = ([r, g, b]: number[]) =>
+      [r, g, b]
+        .map((v) => {
+          const x = v / 255;
+          return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+        })
+        .reduce((n, v, i) => n + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const [hi, lo] = [lum(ink), lum(back)].sort((a, b) => b - a);
+    // What it reads as: its own block where it has one (Poster's win is a
+    // green block with ink words), its words' colour otherwise.
+    const own = rgba(getComputedStyle(kicker).backgroundColor);
+    const [kr, kg, kb] = own[3] === 255 ? own : ink;
+    const kickerHue =
+      kg - kr >= 40 && kg - kb >= 20
+        ? "green"
+        : kr - kg >= 80 && kr - kb >= 60
+          ? "red"
+          : "other";
     // The title's own text, centred: measure its text, not its box.
     const range = document.createRange();
     range.selectNodeContents(title);
@@ -73,6 +114,8 @@ async function sheet(page: Page, card: string) {
       buttons,
       icons,
       kicker: getComputedStyle(kicker).color,
+      kickerHue,
+      kickerContrast: Math.round(((hi + 0.05) / (lo + 0.05)) * 10) / 10,
       noteLines,
     };
   }, card);
@@ -163,7 +206,22 @@ const recapProblems = (page: Page) =>
     const problems: string[] = [];
     if (box.left < sheetBox.left || box.right > sheetBox.right)
       problems.push("the card leaves the sheet");
-    if (getComputedStyle(table).borderTopWidth === "0px")
+    // The card stands apart from the sheet: an edge (the old look's border)
+    // or a fill of its own (Poster's ink block on the sheet's colour).
+    const rgba = (c: string) => {
+      const cx = document.createElement("canvas").getContext("2d")!;
+      cx.fillStyle = c;
+      cx.fillRect(0, 0, 1, 1);
+      return [...cx.getImageData(0, 0, 1, 1).data];
+    };
+    const fill = rgba(getComputedStyle(table).backgroundColor);
+    const under = rgba(
+      getComputedStyle(table.closest(".overlay-card")!).backgroundColor,
+    );
+    if (
+      getComputedStyle(table).borderTopWidth === "0px" &&
+      !(fill[3] === 255 && fill.join() !== under.join())
+    )
       problems.push("no card edge");
     for (const row of Array.from(table.querySelectorAll("tbody tr"))) {
       const cells = Array.from(row.children) as HTMLElement[];
@@ -296,10 +354,14 @@ for (const size of SIZES) {
         await page.waitForTimeout(300);
         const look = await sheet(page, ".match-sheet");
         holds(look, size);
-        // Results: a green win, a red loss (owner, 22 Nov 2026), every
-        // button with its icon.
-        expect(look.kicker).toBe(
-          name === "win" ? "rgb(111, 227, 161)" : "rgb(255, 138, 149)",
+        // Results: a green win, a red loss (owner, 22 Nov 2026), by hue in
+        // any look and readable on its sheet (AA), every button with its
+        // icon.
+        expect(look.kickerHue, `${name}'s kicker ${look.kicker}`).toBe(
+          name === "win" ? "green" : "red",
+        );
+        expect(look.kickerContrast, `${name}'s kicker`).toBeGreaterThanOrEqual(
+          4.5,
         );
         expect(look.icons.every(Boolean)).toBe(true);
         const tall = await tallKeepsTitle(page, ".match-sheet");
@@ -436,7 +498,18 @@ for (const size of SIZES) {
                   inside:
                     you.right <= name.right + 0.5 && you.right < plate.right,
                 },
-                edge: getComputedStyle(li).boxShadow,
+                // The edge's colour as rgb: since #568 Poster's computes
+                // as oklch(), which a canvas turns back into rgb.
+                edge: (() => {
+                  const c = getComputedStyle(li).boxShadow.match(
+                    /(rgba?|oklch|color)\([^)]*\)/,
+                  )?.[0];
+                  if (!c) return null;
+                  const cx = document.createElement("canvas").getContext("2d")!;
+                  cx.fillStyle = c;
+                  cx.fillRect(0, 0, 1, 1);
+                  return [...cx.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+                })(),
                 text: li.textContent,
               };
             }),
@@ -456,7 +529,11 @@ for (const size of SIZES) {
         for (const p of places) expect(p.nameFrom).toBeLessThanOrEqual(16);
         expect(places[1].you?.width).toBeGreaterThan(0);
         expect(places[1].you?.inside).toBe(true);
-        expect(places[1].edge).toContain("rgb(255, 214, 91)");
+        // Your plate's edge is gold (rgb 255, 214, 91, within a step).
+        expect(places[1].edge).not.toBeNull();
+        places[1].edge!.forEach((v, i) =>
+          expect(Math.abs(v - [255, 214, 91][i])).toBeLessThanOrEqual(6),
+        );
         // The content never needs dragging sideways.
         expect(
           await overlay
@@ -522,7 +599,10 @@ for (const size of SIZES) {
         expect(tall.scrolls).toBe(true);
         // A loss in red, every button with its icon (they were hidden on
         // short phones, where PvP's showed).
-        expect(lost.kicker).toBe("rgb(255, 138, 149)");
+        expect(lost.kickerHue, `the loss's kicker ${lost.kicker}`).toBe("red");
+        expect(lost.kickerContrast, "the loss's kicker").toBeGreaterThanOrEqual(
+          4.5,
+        );
         expect(lost.icons).toEqual([true, true, true]);
         await snap(page, info, `${mode}-results-${label(size)}`);
         if (mode === "raid") {
@@ -532,7 +612,13 @@ for (const size of SIZES) {
           await page.waitForTimeout(3200);
           const won = await sheet(page, ".rc-card");
           holds(won, size);
-          expect(won.kicker).toBe("rgb(111, 227, 161)");
+          expect(won.kickerHue, `the clear's kicker ${won.kicker}`).toBe(
+            "green",
+          );
+          expect(
+            won.kickerContrast,
+            "the clear's kicker",
+          ).toBeGreaterThanOrEqual(4.5);
           expect(won.icons).toEqual([true, true, true]);
           await snap(page, info, `raid-victory-${label(size)}`);
         }

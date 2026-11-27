@@ -376,6 +376,15 @@
   box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.3);
   color: #fff;
 }
+/* On a defeat's ink sheet the ink card had no edge at all: it ran into the
+   sheet, while the places card above it has its line (match-sheet.spec,
+   "no card edge"). A line round it there too. */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-defeat
+  table.recap {
+  border: 1px solid var(--ui-line-2);
+}
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
   table.recap
