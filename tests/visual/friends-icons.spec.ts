@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { openLobby, hubMenu } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Friends on phones: every row and options button shows its icon beside
 // its label (owner, 19 Nov), and no label is cut on the 76 px buttons;

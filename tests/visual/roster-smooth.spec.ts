@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { openHub, snap, hubMenu } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The roster's fighter (on the detail's stage, UI remodel step 3) keeps
 // animating at the display's pace. (The Plaza resting behind panels is in

@@ -1,5 +1,9 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { openLobby } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The Shop's fighter row scrolls sideways on a phone. Picking a fighter far
 // along it must leave it where it is: it went back to the first fighter

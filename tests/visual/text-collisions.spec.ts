@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { hubMenu, openLobby, openPlayPanel } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Every Lobby screen and each of its tabs, at three phones held sideways
 // and a small desktop: no text runs into other text, no icon covers text,

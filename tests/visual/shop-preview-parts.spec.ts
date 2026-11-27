@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub, snap } from "./helpers";
 import { exposeAccount, shopServer } from "./shop-server";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Owner's report (iPhone, 956×440 at 3×, Shop → Skins → Legendary): in the
 // big fitting-room preview, Tidefin's Tide Admiral wore its bicorne floating

@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { openHub, snap, hubMenu } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The illustrated skill icons sit inside their rows and the large skill card
 // at every size (they once spilled out of the shorter phone tiles). The

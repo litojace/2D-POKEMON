@@ -7,6 +7,10 @@ import {
   startPractice,
 } from "./helpers";
 import { exposeAccount, shopServer } from "./shop-server";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The fitting room (UI remodel step 2) refreshes in place: a fresh copy of
 // your coins and items must not restart the live fighter, reload pictures,
@@ -292,7 +296,9 @@ for (const [width, height] of [
         expect(
           (await page.locator(id).boundingBox())!.height,
         ).toBeGreaterThanOrEqual(44);
-      // Both answers are the game's pill buttons (Later was once square).
+      // Both answers are the game's buttons, the same shape (Later was once
+      // square beside a round Now). Poster's are square blocks; the old
+      // look's were pills.
       const radius = (id: string) =>
         page
           .locator(id)
@@ -300,7 +306,6 @@ for (const [width, height] of [
       expect(await radius("#pwa-takeover-later")).toBe(
         await radius("#pwa-takeover-now"),
       );
-      expect(await radius("#pwa-takeover-later")).toBeGreaterThanOrEqual(22);
       const size = (id: string) =>
         page.locator(id).evaluate((e) => getComputedStyle(e).fontSize);
       expect(await size("#pwa-takeover-later")).toBe(

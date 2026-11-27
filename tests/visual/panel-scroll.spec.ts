@@ -9,6 +9,10 @@ import {
 } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import { fingerWorks, scrollSweep } from "./scroll-sweep";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Every panel across the game: when its content is longer than the panel,
 // a finger can scroll to the end of it, and nothing is cut off by a box

@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, settle } from "./helpers";
 import { shopServer } from "./shop-server";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The Shop's and Wardrobe's pictures, measured (fixes for "the preview is
 // blurry and squashed; items, frames above all, lose their corners"):

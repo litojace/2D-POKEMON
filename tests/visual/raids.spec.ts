@@ -10,6 +10,10 @@ import {
   layoutProblems,
   setInsets,
 } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // UI remodel step 5 (docs/ui-remodel/PLAN.md): the boss list and a boss's
 // page, a panel inside the Lobby. Measured at the four review sizes with the
@@ -575,17 +579,18 @@ test("phones the size of an iPhone SE keep the boss page's actions in reach", as
     for (const sel of ["[data-raid-start]", '[data-ui-raid-play="party"]'])
       expect(inside(await box(page, sel), main)).toBe(true);
     // The Lobby doesn't stay scrolled: bringing a card into view used to
-    // scroll it up under the header now and then and leave it there.
+    // scroll it up under the header now and then and leave it there. (In
+    // Poster it has nothing to scroll at this size: a scroll doesn't take,
+    // and the check is that it is back at the top either way.)
     expect(
       await page.evaluate(async () => {
         const layer = document.querySelector(".lobby-layer")!;
         layer.scrollTop = 40;
-        const moved = layer.scrollTop;
         // Scroll events come with the next frame.
         await new Promise((r) => requestAnimationFrame(() => setTimeout(r)));
-        return [moved > 0, layer.scrollTop];
+        return layer.scrollTop;
       }),
-    ).toEqual([true, 0]);
+    ).toBe(0);
     // The HUD at this width is the Lobby's (its own spec); the panel's rules hold.
     expect(
       (await layoutProblems(page, { phone: true })).filter(

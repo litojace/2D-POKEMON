@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { box, openLobby, snap } from "./helpers";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // UI remodel step 4 (docs/ui-remodel/PLAN.md): Missions, the hub's first
 // sheet. The Lobby beside it stays live: the fighter keeps moving, PLAY
@@ -145,7 +149,11 @@ for (const size of SIZES)
       expect(fighter.x + fighter.width).toBeLessThanOrEqual(
         size.width - (inset?.right ?? 0),
       );
-      expect(fighter.width).toBeGreaterThanOrEqual(size.phone ? 120 : 200);
+      // A fighter you can still see whole. On a desktop it was 200 px in the
+      // old look; Poster's text rail is 132 px (the old one's icons took
+      // less), so at 1280x720 the stage between the sheet and the cards is
+      // about 370 px and the fighter 178 px, whole and clear of PLAY.
+      expect(fighter.width).toBeGreaterThanOrEqual(size.phone ? 120 : 170);
       // The fighter never stands on PLAY.
       expect(
         fighter.y + fighter.height <= play.y + 1 ||

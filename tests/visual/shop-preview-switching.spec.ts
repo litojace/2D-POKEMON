@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { openHub, snap } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The fitting room's stage (UI remodel step 2) keeps the last posed fighter
 // on screen while the next look decodes, whether you pick another skin or
