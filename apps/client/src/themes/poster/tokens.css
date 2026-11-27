@@ -8,6 +8,15 @@
   --ink-2: #1e1e22;
   --ink-3: #2a2a30;
   --hot: #ff2e4d;
+  /* Contrast (WCAG AA, measured for every element, boss and Spire colour:
+     tests/visual/poster-contrast.spec.ts). Every --el is light, so what is
+     drawn on --el is ink, never white (ink on the darkest, Shadow's
+     #8a6bff, is 5.2:1), and --el on ink reads at 5.2:1 or more.
+     --hot-fill is the red behind white words (4.85:1; --hot itself is
+     3.65:1, so it stays for shadows and lines). --on-el-dim is the quieter
+     ink on --el: 4.6:1 on Shadow. */
+  --hot-fill: #e0143a;
+  --on-el-dim: rgba(13, 13, 15, 0.88);
   /* Anton has one weight: never let the browser fake a bold of it. */
   font-synthesis: none;
   --font-display: "Anton", "Arial Narrow", sans-serif;
@@ -21,10 +30,15 @@
   --ui-line-2: rgba(255, 255, 255, 0.24);
   --ui-text: #ffffff;
   --ui-dim: #b8b8c0;
-  --ui-faint: #7d7d86;
-  --ui-accent: var(--el);
-  --ui-accent-hi: var(--el);
-  --ui-accent-lo: var(--el);
+  --ui-faint: #92929b;
+  /* Words in the element colour on ink panels: --el, lifted to at least
+     OKLCH lightness 0.72 where it is darker (Shadow, Inkpurr), so it reads
+     at 4.5:1 on the lightest panel ink (--ink-3); lighter colours are
+     unchanged. Older browsers keep --el (below). */
+  --el-text: var(--el);
+  --ui-accent: var(--el-text);
+  --ui-accent-hi: var(--el-text);
+  --ui-accent-lo: var(--el-text);
   --ui-accent-deep: var(--ink);
   --ui-accent-ink: var(--ink);
   --rad-xs: 0px;
@@ -64,4 +78,9 @@
   --scroll-track: var(--ink);
   --scroll-thumb: var(--el);
   --scroll-thumb-light: var(--el);
+}
+@supports (color: oklch(from red l c h)) {
+  :root[data-ui="poster"] {
+    --el-text: oklch(from var(--el) max(l, 0.72) c h);
+  }
 }

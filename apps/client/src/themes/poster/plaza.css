@@ -159,11 +159,11 @@
 }
 :root[data-ui="poster"] .chat-friend em {
   border-radius: 0;
-  background: var(--hot);
+  background: var(--hot-fill);
 }
 :root[data-ui="poster"] .chat-unread {
   border-radius: 0;
-  background: var(--hot);
+  background: var(--hot-fill);
 }
 
 /* ── chat in battle: the quick-chat grid and the feed ── */

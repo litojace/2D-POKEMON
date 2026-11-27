@@ -33,7 +33,7 @@
   line-height: 1.35;
 }
 :root[data-ui="poster"] .ui-panel-head :is(.ui-kicker, small, p) {
-  color: rgba(13, 13, 15, 0.75);
+  color: var(--on-el-dim);
 }
 
 /* ── tabs: Anton capitals; the chosen one is a skewed ink block ── */
@@ -63,7 +63,7 @@
   padding-top: 0;
   padding-bottom: 0;
   border-bottom: 0;
-  color: rgba(13, 13, 15, 0.62);
+  color: var(--on-el-dim);
 }
 :root[data-ui="poster"] .ui-panel-head .ui-tabs > button::before {
   content: "";
@@ -163,6 +163,26 @@
   background: var(--el);
   box-shadow: 4px 4px 0 var(--hot);
   transform: skewX(-8deg);
+}
+/* A primary that can't be pressed now ("Playing", a price you can't pay
+   yet) is a grey block with readable words, not the whole button at half
+   strength: at 50% its ink sat on a muddied --el at about 2:1. */
+:root[data-ui="poster"] .ui-btn.is-primary:disabled {
+  opacity: 1;
+  color: var(--ui-dim);
+}
+:root[data-ui="poster"] .ui-btn.is-primary:disabled::before {
+  background: var(--ink-3);
+  box-shadow: none;
+}
+/* A toggle that is on (a Mythical's stage, the stage's Entrance) is an
+   element block with ink words, as a segment that is on. */
+:root[data-ui="poster"] .ui-btn[aria-pressed="true"]:not(.is-primary) {
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .ui-tag.is-sale {
+  background: var(--hot-fill);
 }
 :root[data-ui="poster"] .ui-btn.is-ok {
   background: #3ee07a;
