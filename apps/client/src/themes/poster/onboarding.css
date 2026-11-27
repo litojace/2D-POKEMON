@@ -150,12 +150,12 @@
 }
 :root[data-ui="poster"] .welcome-gate .gate-backdrop {
   inset: 0;
+  /* The star (a picture of its own later: change this only). Every quote,
+     space and bracket in the address is %-encoded: welcome.spec reads the
+     address out of the computed style up to the first one. */
+  --cover-star-art: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2072%2072%27%3E%3Cpath%20transform=%27translate%288%208%29%27%20fill=%27%23ff2e4d%27%20fill-rule=%27evenodd%27%20d=%27M32%202%2042%2021%2062%2032%2043%2043%2032%2062%2021%2043%202%2032%2021%2021Zm0%2014L16%2032l16%2016%2016-16Z%27/%3E%3Cpath%20fill=%27%230d0d0f%27%20fill-rule=%27evenodd%27%20d=%27M32%202%2042%2021%2062%2032%2043%2043%2032%2062%2021%2043%202%2032%2021%2021Zm0%2014L16%2032l16%2016%2016-16Z%27/%3E%3C/svg%3E");
   background:
-    /* The star (a picture of its own later: change this layer only). Every
-       quote, space and bracket in the address is %-encoded: welcome.spec
-       reads the address out of the computed style up to the first one. */
-    url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2072%2072%27%3E%3Cpath%20transform=%27translate%288%208%29%27%20fill=%27%23ff2e4d%27%20fill-rule=%27evenodd%27%20d=%27M32%202%2042%2021%2062%2032%2043%2043%2032%2062%2021%2043%202%2032%2021%2021Zm0%2014L16%2032l16%2016%2016-16Z%27/%3E%3Cpath%20fill=%27%230d0d0f%27%20fill-rule=%27evenodd%27%20d=%27M32%202%2042%2021%2062%2032%2043%2043%2032%2062%2021%2043%202%2032%2021%2021Zm0%2014L16%2032l16%2016%2016-16Z%27/%3E%3C/svg%3E")
-      calc(var(--cover-x) * 100vw - var(--cover-star) / 2)
+    var(--cover-star-art) calc(var(--cover-x) * 100vw - var(--cover-star) / 2)
       calc(var(--cover-y) * 100vh - var(--cover-star) / 2) / var(--cover-star)
       var(--cover-star) no-repeat,
     radial-gradient(circle, rgba(0, 0, 0, 0.16) 1.4px, transparent 1.8px) 0 0 /
@@ -166,6 +166,13 @@
       transparent 7.5deg 15deg
     ),
     var(--el, #ffd65b);
+}
+
+/* On the sign-in side the form stands where the rays meet: the star would
+   only show as a black corner beside it (a wide screen), so it stays off
+   and the sunburst alone carries the cover. */
+:root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-backdrop {
+  --cover-star-art: none;
 }
 
 /* ── The sign-in side: the title's ink slab and white stripe, the name in
