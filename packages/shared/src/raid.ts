@@ -2821,17 +2821,13 @@ export interface RaidReceipt {
   trait: RaidTrait;
   gilded: boolean;
   /**
-   * The database's raid function still reads these four and stores them on
-   * the run (supabase/migrations/021, behind 028's guard), so the server
-   * keeps sending them. They are not raid modes: `weekly` and `daily` are
-   * always false (Raid of the Week and Raid of the Day are retired, and 028
-   * refuses a daily receipt), `day` is the run's Pacific date and `week` the
-   * Monday of that date (`raidWeek`). Dropping them needs a migration.
+   * The run's Pacific date, stored on the run. The legacy solo rewards read
+   * it (arena_raid_earned, migration 030). Raid of the Week's `weekly` and
+   * `week` and Raid of the Day's `daily` went with their columns (migration
+   * 20261127200000). Each run's stored receipt still has them, and the
+   * database ignores them when an older server sends them.
    */
-  weekly: false;
-  week: string;
-  daily?: false;
-  day?: string;
+  day: string;
   /** The boss's feat was achieved in this run (e.g. every charge baited). */
   feat?: boolean;
   seed: number;
@@ -2881,15 +2877,6 @@ export interface RaidProgress {
   >;
   totalClears?: number;
 }
-/** The Monday (YYYY-MM-DD) of a date's week: a raid receipt's `week`. */
-export function raidWeek(date = new Date()) {
-  const start = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  );
-  start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
-  return start.toISOString().slice(0, 10);
-}
-
 /** The equipped look from saved progress (also reads the pre-008 format). */
 export function raidLookOf(
   progress: Pick<RaidProgress, "loadout" | "equipped"> | null | undefined,

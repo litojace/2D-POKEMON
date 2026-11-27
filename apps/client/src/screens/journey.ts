@@ -9,6 +9,7 @@ import {
   type JourneyView,
 } from "./journey-view";
 import "./journey.css";
+import { reducedMotion } from "../reduced-motion";
 
 /**
  * The Journey's behaviour (UI remodel step 4). Markup comes from
@@ -81,10 +82,7 @@ export function openJourney(
       (road.clientWidth - tile.offsetWidth) / 2;
     road.scrollTo({
       left: Math.max(0, left),
-      behavior:
-        smooth && !matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "smooth"
-          : "auto",
+      behavior: smooth && !reducedMotion() ? "smooth" : "auto",
     });
   }
   function render(newTab = false) {

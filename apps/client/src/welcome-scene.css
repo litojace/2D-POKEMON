@@ -262,10 +262,8 @@
     opacity: 0.55;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .title-prompt {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .title-prompt {
+  animation: none;
 }
 .title-hint {
   color: #cfe0ee;

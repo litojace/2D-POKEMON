@@ -398,14 +398,12 @@
 .ui-panel[data-graphics="low"] > .ui-split-main {
   background: var(--glass-solid);
 }
-@media (prefers-reduced-motion: reduce) {
-  .ui-panel,
-  .ui-panel *,
-  .ui-scrim,
-  .ui-scrim * {
-    animation: none !important;
-    transition: none !important;
-  }
+:where(:root[data-motion="reduced"]) .ui-panel,
+:where(:root[data-motion="reduced"]) .ui-panel *,
+:where(:root[data-motion="reduced"]) .ui-scrim,
+:where(:root[data-motion="reduced"]) .ui-scrim * {
+  animation: none !important;
+  transition: none !important;
 }
 
 /* ------------------------------------------------------------- modal */

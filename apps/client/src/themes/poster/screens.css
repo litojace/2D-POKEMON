@@ -775,6 +775,23 @@
   }
 }
 /* ranks: the board and the rank road */
+/* Three labels in the middle of their boxes, where Poster's type sat a
+   pixel high or left of it (1-1.5 px; 1.5 on CI's renderer, past the
+   suite's 1 px): Anton's capitals stand high in their line, and a tag's
+   letter-spacing leaves its space after the last letter. Each nudged where
+   it was measured (ranks-friends, raids); a type-wide fix (trimming the
+   line box to the capitals) is with the UI-overhaul session. */
+:root[data-ui="poster"] .rk-rules > summary {
+  padding-top: 2px;
+}
+:root[data-ui="poster"] .ui-btn[data-friend-pin] {
+  padding: 2px 10px 0 12px;
+}
+@media (min-width: 1000px) {
+  :root[data-ui="poster"] [data-raid-card] .ui-tag {
+    padding-left: calc(6px + 0.16em);
+  }
+}
 :root[data-ui="poster"] :is(.rk-board, .rk-road, .rk-list) {
   background: var(--ink-1);
   border: 0;
@@ -1136,10 +1153,8 @@
   color: #fff;
   text-shadow: none;
 }
-@media (prefers-reduced-motion: reduce) {
-  :root[data-ui="poster"] .title-prompt {
-    animation: none;
-  }
+:root[data-ui="poster"]:where([data-motion="reduced"]) .title-prompt {
+  animation: none;
 }
 
 /* ── The countdown: a huge Anton number with a hard ink shadow, its kicker
@@ -1193,4 +1208,48 @@
    3:1 shape on the banner. */
 :root[data-ui="poster"] :is(.room-stars, .rh-stars) i {
   color: rgba(255, 255, 255, 0.45);
+}
+
+/* The Shop's head on a tablet (an iPad held sideways, 1024-1200 px wide):
+   Shop | Wardrobe, four Anton tabs and the close button do not fit one
+   row, and Collections sat hidden under the close button. The tabs take a
+   44 px row of their own under Shop | Wardrobe, still on the masthead. */
+@media (max-width: 1200px) and (min-height: 501px) {
+  :root[data-ui="poster"] .fit-room[data-fit-mode="shop"] .fit-head {
+    display: grid;
+    grid-template-columns: max-content;
+    grid-template-rows: var(--head-h) 44px;
+    align-items: center;
+    height: auto;
+    row-gap: 0;
+  }
+  :root[data-ui="poster"] .fit-room[data-fit-mode="shop"] .fit-head .ui-tabs {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    align-self: stretch;
+    height: 44px;
+    margin-left: 0;
+  }
+  /* With a row to themselves the tabs have room for a finger each. */
+  :root[data-ui="poster"]
+    .fit-room[data-fit-mode="shop"]
+    .fit-head
+    .ui-tabs
+    > button[role="tab"] {
+    min-width: 44px;
+    padding-inline: 12px;
+  }
+  /* Shop | Wardrobe alone on the top row: each a 44 px target. */
+  :root[data-ui="poster"]
+    .fit-room[data-fit-mode="shop"]
+    .fit-head
+    .ui-seg
+    > button {
+    height: 44px;
+  }
+}
+/* The Wardrobe's hint sits on the masthead: ink, not the pale grey of the
+   look underneath (2:1 on the element colour). */
+:root[data-ui="poster"] .fit-head .fit-hint {
+  color: var(--on-el-dim);
 }

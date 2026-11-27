@@ -85,10 +85,8 @@ dialog.framed-dialog .adm-tabs > .admin-tab {
   box-shadow: 0 0 0 3px #3ccf7a33;
   animation: online-pulse 1.6s ease-in-out infinite;
 }
-@media (prefers-reduced-motion: reduce) {
-  .adm-live {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .adm-live {
+  animation: none;
 }
 
 /* ---- Buttons ---- */
@@ -1105,10 +1103,8 @@ dialog.framed-dialog .adm-tabs > .admin-tab {
     background-position: -150% 0;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .adm-loading span {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .adm-loading span {
+  animation: none;
 }
 .adm-toast {
   position: sticky;

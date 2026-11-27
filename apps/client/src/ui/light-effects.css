@@ -65,19 +65,20 @@
   animation: none !important;
   opacity: 0;
 }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion="reduced"])
   body:not(.battle-active)
-    :is(
-      .lobby-fighter-art,
-      .lobby-member-art,
-      .lobby-play::before,
-      .raid-cosmetic-preview[data-cosmetic]::after,
-      .server-startup-runner *
-    ) {
-    animation: none !important;
-  }
-  body:not(.battle-active) .lobby-play-button::after {
-    animation: none !important;
-    opacity: 0;
-  }
+  :is(
+    .lobby-fighter-art,
+    .lobby-member-art,
+    .lobby-play::before,
+    .raid-cosmetic-preview[data-cosmetic]::after,
+    .server-startup-runner *
+  ) {
+  animation: none !important;
+}
+:where(:root[data-motion="reduced"])
+  body:not(.battle-active)
+  .lobby-play-button::after {
+  animation: none !important;
+  opacity: 0;
 }

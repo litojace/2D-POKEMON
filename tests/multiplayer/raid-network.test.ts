@@ -110,10 +110,12 @@ it("starts a regular-player solo raid at the one difficulty and records a verifi
     boss: "grumblecrag",
     partySize: 1,
     peril: 3,
-    daily: false,
-    weekly: false,
     feat: false,
   });
+  // Raid of the Week and Raid of the Day's keys went with their columns
+  // (migration 20261127200000).
+  for (const retired of ["weekly", "week", "daily"])
+    expect(recordRaid.mock.calls[0][0]).not.toHaveProperty(retired);
   // The day a run counts for is a real calendar date.
   expect(recordRaid.mock.calls[0][0].day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   expect(a.matchId).toBeNull();

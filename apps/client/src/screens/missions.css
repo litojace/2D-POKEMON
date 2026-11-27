@@ -186,10 +186,8 @@
 .missions-status:empty {
   display: none;
 }
-@media (prefers-reduced-motion: reduce) {
-  .missions-change[aria-busy="true"] svg {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .missions-change[aria-busy="true"] svg {
+  animation: none;
 }
 
 /* Phones in landscape: one size smaller. */

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub } from "./helpers";
+import { askReducedMotion, openHub } from "./helpers";
 
 // Tab switches in hub screens (ui/motion.ts, playTabSwitch, wired once in
 // ui/hub-panel.ts for every screen): like big games' menus, the head and the
@@ -123,13 +123,13 @@ test("a tab switch glides the underline and slides the new tab in; the head, tab
     expect(line).toEqual({ transform: "none", height: "3px" });
 
     // No motion with reduced motion, or on Low graphics; the tab still switches.
-    await page.emulateMedia({ reducedMotion: "reduce" });
+    await askReducedMotion(page, true);
     expect(await clickAndLook(page, '[data-ui-raid-tab="guide"]')).toEqual([]);
     await expect(room.locator('[data-ui-raid-tab="guide"]')).toHaveAttribute(
       "aria-selected",
       "true",
     );
-    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await askReducedMotion(page, false);
     await page.evaluate(() => localStorage.setItem("ea-graphics", "low"));
     expect(await clickAndLook(page, '[data-ui-raid-tab="rewards"]')).toEqual(
       [],

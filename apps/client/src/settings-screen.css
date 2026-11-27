@@ -58,18 +58,6 @@
 .framed-dialog .st-graphics .prefs-choice > button {
   min-height: 32px;
 }
-.st-badge {
-  padding: 4px 12px;
-  border: 1px solid var(--ui-line-2);
-  border-radius: var(--rad-pill);
-  font: 700 var(--fs-small) / 1.2 var(--font-body);
-  color: var(--ui-dim);
-  background: #ffffff0a;
-}
-.st-badge.is-on {
-  color: var(--ui-ok);
-  border-color: color-mix(in srgb, var(--ui-ok) 45%, transparent);
-}
 .st-note {
   margin: 0 0 4px;
   color: var(--ui-dim);
@@ -116,9 +104,6 @@
   }
   .prefs-switch {
     height: 28px;
-  }
-  .st-badge {
-    padding: 3px 10px;
   }
   .st-row > #settings-practice,
   .st-row > #settings-skills {
@@ -182,10 +167,8 @@ dialog .controls-touch label.choice.assist {
 .controls-more > .controls-layout {
   padding: 0 14px 12px;
 }
-@media (prefers-reduced-motion: reduce) {
-  .controls-more > summary::after {
-    transition: none;
-  }
+:where(:root[data-motion="reduced"]) .controls-more > summary::after {
+  transition: none;
 }
 
 /* Settings → Your skills (showSkills in main.ts): a row per skill, its

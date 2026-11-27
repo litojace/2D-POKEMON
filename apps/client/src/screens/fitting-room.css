@@ -219,6 +219,19 @@
   min-width: var(--ctl-s);
   padding: 0 8px;
 }
+/* Tablets (a touch screen taller than a phone: an iPad): the stage's
+   buttons are 32 px, under a 44 px finger, and the phone hit areas
+   (ui/phone-fit.css) stop at 500 px tall. The stage has the room, so the
+   buttons themselves grow: Entrance / Victory / Your look, Hold to compare
+   and the Awakening stages. */
+@media (pointer: coarse) and (min-height: 501px) {
+  :is(.fit-plays, .fit-stage-tools) .ui-btn.is-s {
+    --h: 44px;
+  }
+  .fit-awaken .ui-btn.is-s {
+    min-width: 44px;
+  }
+}
 :is(.fit-awaken, .fit-stars) .ui-btn[aria-pressed="true"] {
   border-color: var(--ui-accent);
   color: var(--ui-accent);
@@ -429,7 +442,9 @@
   justify-items: center;
   gap: 2px;
   width: 64px;
-  padding: 4px 2px 5px;
+  /* No side padding: "Wombolder" is 60 px at 11 px and was cut to
+     "Wombol…" in the 58 px the 2 px a side left. */
+  padding: 4px 0 5px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
   background: var(--fill-card);
@@ -756,6 +771,10 @@
 }
 .fit-foot-text {
   display: grid;
+  /* A column that shrinks: an auto one grew to the name's full width and
+     the name ran under Revert (VOLTKIT at 1024x768) instead of ending in
+     "…". */
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
   min-width: 0;
 }
@@ -1047,6 +1066,15 @@
   }
   .fit-slot b {
     font-size: var(--fs-micro);
+    /* What a slot holds may take two lines: a skin's name ("Storm
+       Revenant", 84 px) read "Storm Reve…" in a 75 px slot at 844x390. */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.15;
   }
   /* A slot's name and what it holds stay inside it: they get its width,
      and end in an ellipsis rather than run into the next slot. */
@@ -1194,6 +1222,23 @@
 @media (max-height: 500px) and (max-width: 720px) {
   .fit-room[data-fit-mode="wardrobe"] .fit-foot-art {
     display: none;
+  }
+}
+/* The same on a small tablet held sideways (an iPad at 1024x768): the panel
+   is as narrow as a phone's, and the text had 24 px beside Revert and
+   Equip. */
+@media (min-height: 501px) and (max-width: 1100px) {
+  .fit-room[data-fit-mode="wardrobe"] .fit-foot-art {
+    display: none;
+  }
+}
+/* A tablet held sideways (1024-1200 px): six slots a row left 53-79 px
+   each, too narrow for "ENTRANCE" beside "VICTORY" or a skin's name
+   ("Storm Revenant" read "Storm …"): three a row, as on the narrowest
+   phones. */
+@media (min-height: 501px) and (max-width: 1200px) {
+  .fit-slots {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

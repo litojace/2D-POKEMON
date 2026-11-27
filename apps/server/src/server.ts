@@ -30,7 +30,6 @@ import {
   raidLookOf,
   type RaidAttack,
   pacificDate,
-  raidWeek,
   RAID,
   RAID_BOSSES,
   RAID_BOSS_ORDER,
@@ -1636,10 +1635,6 @@ export function createArenaServer(
         peril: r.peril,
         trait: r.trait,
         gilded: r.gilded,
-        // Still read by the database (RaidReceipt): not raid modes.
-        weekly: false,
-        week: raidWeek(new Date(`${r.day}T12:00:00Z`)),
-        daily: false,
         day: r.day,
         feat: arena.feat(),
         seed: r.seed,

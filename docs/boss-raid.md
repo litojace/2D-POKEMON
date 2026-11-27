@@ -132,9 +132,9 @@ Each run rolls a visible trait with a benefit and a drawback:
 - Fractured adds falling debris but armor breaks last longer.
 - Ancient has slower charges and wider shockwaves.
 
-Live raids always run at Peril 3, tuned per boss by the star tiers ("Difficulty" above); the rest of this paragraph describes the legacy Peril steps that tests still use. Peril 1 teaches the encounter. Clearing it unlocks Peril 2: extra debris, longer eruption chains, volley-into-eruption combinations and 10% more boss damage. Peril 3 adds eruptions to chapter one, gradually closes a safe circle in the final chapter and deals 20% more damage. The boss health bar is the same at every Peril. A rare non-weekly run rolls Gilded: golden appearance, 12% more health and a bonus title. Guaranteed cosmetics never require a rare encounter.
+Live raids always run at Peril 3, tuned per boss by the star tiers ("Difficulty" above); the rest of this paragraph describes the legacy Peril steps that tests still use. Peril 1 teaches the encounter. Clearing it unlocks Peril 2: extra debris, longer eruption chains, volley-into-eruption combinations and 10% more boss damage. Peril 3 adds eruptions to chapter one, gradually closes a safe circle in the final chapter and deals 20% more damage. The boss health bar is the same at every Peril. A rare run rolls Gilded: golden appearance, 12% more health and a bonus title. Guaranteed cosmetics never require a rare encounter.
 
-Six raid-only rites offer dash wards, shared ultimate energy, extra exposed-core damage, faster revives, low-health damage and ultimate-triggered healing. All champions can contribute; no dedicated healer is required. Offers vary by party seat, remain deterministic for weekly runs, and exclude owned rites. The upgrade panel shows everyone’s current build. These upgrades disappear after the run and do not change PvP loadouts.
+Six raid-only rites offer dash wards, shared ultimate energy, extra exposed-core damage, faster revives, low-health damage and ultimate-triggered healing. All champions can contribute; no dedicated healer is required. Offers vary by party seat and exclude owned rites. The upgrade panel shows everyone’s current build. These upgrades disappear after the run and do not change PvP loadouts.
 
 ## Champion tricks
 
@@ -266,7 +266,7 @@ After the server confirms reward storage, the result screen fetches the player's
 
 The Raid Hub boss page shows boss information, clears, highest Peril, best active-combat time, reward goals and cosmetic equipment. It is available from the home screen, raid lobby, result screen and player profile. Only the server's verified equipped cosmetic is sent to opponents. Cosmetic choices affect appearance, not combat stats.
 
-No boss has a day of the week: every boss is open after one Grumblecrag clear (`raidUnlocked()` in `apps/client/src/screens/raid-hall-view.ts`). A run's `day` on the server is the Pacific date it was played, for missions and records. Raid wins never enter the PvP match ledger or Elo rating system.
+No boss has a day of the week: every boss is open after one Grumblecrag clear (`raidUnlocked()` in `apps/client/src/screens/raid-hall-view.ts`). A run's `day` on the server is the Pacific date it was played, for missions and records; it is stored on the run, and the legacy solo rewards read it (`arena_raid_earned`, migration 030). Raid of the Week's `weekly` and `week` columns and Raid of the Day's `daily` were dropped in migration `20261127200000_drop_raid_mode_columns.sql`. Each run's stored `receipt` still holds them, and the raid function ignores them when an older server sends them. Raid wins never enter the PvP match ledger or Elo rating system.
 
 ## Required deployment setup
 
@@ -295,6 +295,6 @@ Tables have RLS and no direct player write access. Only the service role can sub
 
 `/raid-preview.html` is a local Vite playtest using the actual simulation, boss renderer, UI, floor and champion rig. It has phase/down test buttons and makes no account changes. Like other preview pages, it is not included in the production build or PWA precache.
 
-Run `npm test`, `npm run typecheck`, `npm run build`, and `node scripts/verify-pwa.mjs`. Tests cover solo/four-player sessions, HP phase gates, friendly fire, pillar collision and exposure, stagger, revives and interruption, packet-spam crawling, raid rites, weekly seeds, Peril unlock enforcement, disconnect behavior, verified reward writes, ownership, idempotency and Elo isolation.
+Run `npm test`, `npm run typecheck`, `npm run build`, and `node scripts/verify-pwa.mjs`. Tests cover solo/four-player sessions, HP phase gates, friendly fire, pillar collision and exposure, stagger, revives and interruption, packet-spam crawling, raid rites, Peril unlock enforcement, disconnect behavior, verified reward writes, ownership, idempotency and Elo isolation.
 
 The first release deliberately has one boss with procedural artwork. Additional boss artwork, enemy families, optional AI partners and further Peril tiers are future expansions. This is not a claim of tested competitive balance or of finished animated cinematic artwork.
