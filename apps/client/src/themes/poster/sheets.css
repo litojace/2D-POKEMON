@@ -1,0 +1,223 @@
+/* Poster on the match's whole-screen moments beyond the approved set:
+   the defeat sheets (PvP, raid, Spire), the Reveal before a match, and the
+   rite and blessing cards between rounds. Loaded after screens.css, whose
+   sheet rules these build on. */
+
+/* ── defeat: an ink sheet, so its words are white ──
+   screens.css draws every sheet's title, kicker, score and foot in ink for
+   the element-colour sheet of a win; on a defeat's ink sheet that left the
+   title, the score and "Play again" invisible. One class stronger here. */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card.is-defeat
+  > h2,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-defeat
+  .rc-head
+  .ui-title {
+  color: #fff;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card.is-defeat
+  > .eyebrow,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-defeat
+  .rc-head
+  .ui-kicker {
+  color: var(--hot);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-defeat
+  :is(.result-score, .result-score *) {
+  color: #fff;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-defeat
+  :is(.panel-actions, .rc-foot) {
+  border-top-color: var(--ink-3);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-defeat
+  :is(.panel-actions, .rc-foot)
+  > :is(p, span, small) {
+  color: var(--ui-dim);
+}
+/* The main action keeps its weight on ink: the element colour, ink type. */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-defeat
+  :is(button.btn-primary, button.primary, .ui-btn.is-primary) {
+  background: var(--el);
+  color: var(--ink);
+}
+
+/* ── the Reveal: ink and halftone, the fighters as poster cards ── */
+:root[data-ui="poster"]
+  body.battle-active:not(.battle-raid)
+  #arena-overlay.is-reveal:not(:empty) {
+  background: var(--ink);
+}
+:root[data-ui="poster"]
+  body.battle-active
+  #battle
+  #arena-overlay#arena-overlay
+  .overlay-card.match-reveal.match-reveal.match-reveal {
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.07) 1.4px, transparent 1.8px)
+      0 0 / 9px 9px,
+    linear-gradient(100deg, transparent 0 58%, var(--ink-1) 58%),
+    var(--ink);
+}
+:root[data-ui="poster"] .match-reveal > h2 {
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+:root[data-ui="poster"] .match-reveal > .eyebrow {
+  color: var(--el);
+  font-family: var(--font-body);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+/* Each fighter: an ink card with a hard shadow in its own element colour;
+   yours is ringed in white. */
+:root[data-ui="poster"] .rv-card {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-1);
+  box-shadow: 6px 6px 0 var(--element);
+}
+:root[data-ui="poster"] .rv-card.me {
+  box-shadow:
+    inset 0 0 0 3px #fff,
+    6px 6px 0 var(--element);
+}
+:root[data-ui="poster"] .rv-face {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--element) 38%, var(--ink-1)),
+    var(--ink-1) 78%
+  );
+}
+:root[data-ui="poster"] .rv-name {
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+:root[data-ui="poster"] .rv-role {
+  color: var(--ui-dim);
+}
+:root[data-ui="poster"] .rv-player {
+  border-top: 2px solid var(--ink-3);
+  color: #fff;
+}
+:root[data-ui="poster"] .rv-you {
+  border-radius: 0;
+  background: var(--hot);
+  color: #fff;
+}
+:root[data-ui="poster"] .vs-back {
+  border: 0;
+  border-radius: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--ink-2) 0 8px,
+    var(--ink-1) 8px 16px
+  );
+}
+:root[data-ui="poster"] .rv-card.me .vs-back {
+  box-shadow: inset 0 0 0 3px #fff;
+}
+:root[data-ui="poster"] .vs-back .vs-q {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+:root[data-ui="poster"] .vs-mark {
+  color: var(--hot);
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+
+/* ── rite cards between rounds (PvP) ── */
+:root[data-ui="poster"] .overlay-card .rite-card {
+  border: 0;
+  border-left: 4px solid var(--ink-3);
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.4);
+  color: #fff;
+}
+:root[data-ui="poster"] .overlay-card .rite-card.major {
+  border-left-color: var(--el);
+  background: var(--ink);
+}
+:root[data-ui="poster"] .overlay-card .rite-card:is(:hover, :focus-visible) {
+  background: var(--ink-1);
+  box-shadow:
+    inset 0 0 0 2px var(--el),
+    5px 5px 0 rgba(0, 0, 0, 0.4);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-break
+  .round-break
+  .rite-card {
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.4);
+}
+:root[data-ui="poster"] .rite-card b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] .rite-card small {
+  color: var(--ui-dim);
+}
+:root[data-ui="poster"] .rite-card kbd {
+  border-radius: 0;
+}
+
+/* ── raid rites and Spire blessings: ink tiles, the rite's colour along
+   the foot ── */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-rites
+  .raid-rite-options
+  > button {
+  border-radius: 0;
+  border-bottom-width: 4px;
+  background:
+    linear-gradient(
+      to top,
+      color-mix(in srgb, var(--rite-color) 16%, transparent),
+      transparent 60%
+    ),
+    var(--ink);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.4);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-rites
+  .raid-rite-options
+  > button.is-picked {
+  background: var(--ink);
+  box-shadow:
+    inset 0 0 0 3px #3ee07a,
+    5px 5px 0 rgba(0, 0, 0, 0.4);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-rites
+  .raid-rite-heading
+  > b,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-rites
+  .spire-blessings
+  .raid-rite-copy
+  > b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}

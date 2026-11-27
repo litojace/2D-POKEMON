@@ -1,0 +1,186 @@
+/* Poster on the Plaza's chrome and on the chat. The Plaza's own round
+   controls (Map, Gifts, Album, Today, Dash, Jump, the stick, the emote
+   wheel) stay round: they are the game's touch controls, as in battle.
+   Everything that is a label, a card or a panel becomes an ink block. */
+
+/* ── Plaza: pills and labels over the scene ── */
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(
+    .pz-banner span,
+    .pz-event,
+    .pz-clock,
+    .pz-timer,
+    .pz-feed div,
+    .pz-fish-hint,
+    .pz-fish-exit,
+    .pz-album-count,
+    .pz-fishbook-count
+  ) {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .plaza-layer .pz-event.soon {
+  border: 0;
+  border-left: 4px solid var(--el);
+  background: var(--ink);
+}
+:root[data-ui="poster"] .plaza-layer .pz-feed div {
+  border: 0;
+  background: color-mix(in srgb, var(--ink) 88%, transparent);
+}
+
+/* ── Plaza: cards and panels ── */
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(
+    .pz-card,
+    .pz-ask,
+    .pz-start,
+    .pz-runcard,
+    .pz-album-panel,
+    .pz-fishbook-panel,
+    .pz-map-panel,
+    .pz-catch-card,
+    .pz-album-empty
+  ) {
+  border-radius: 0;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.4);
+}
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(.pz-album-panel, .pz-fishbook-panel, .pz-map-panel, .pz-start) {
+  border: 0;
+  background: var(--ink);
+}
+:root[data-ui="poster"] .plaza-layer .pz-catch-card {
+  border: 0;
+  border-top: 4px solid var(--rar);
+  background: var(--ink);
+}
+/* A player's card: its actions as ink blocks; Invite to party is the
+   element colour, as every main action. */
+:root[data-ui="poster"] .plaza-layer .pz-card .pc-acts button,
+:root[data-ui="poster"] .plaza-layer .pz-ask button {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .plaza-layer .pz-card .pc-acts button {
+  background: var(--ink-3);
+}
+:root[data-ui="poster"] .plaza-layer .pz-card .pc-acts button[data-pc="party"],
+:root[data-ui="poster"] .plaza-layer .pz-ask button[data-pa="yes"] {
+  background: var(--el);
+  color: var(--ink);
+  box-shadow: 3px 3px 0 var(--hot);
+}
+:root[data-ui="poster"] .plaza-layer .pz-card .pc-h img {
+  border-radius: 0;
+}
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(
+    .pz-fish,
+    .pz-album-grid .slot,
+    .pz-catch-card .badge,
+    .pz-catch-card em
+  ) {
+  border-radius: 0;
+}
+
+/* ── chat: the drawer's tabs, settings, quick reactions and send ── */
+:root[data-ui="poster"] .chat-tab {
+  border-color: var(--ink-3);
+  border-radius: 0;
+  font-weight: 400;
+}
+:root[data-ui="poster"] .chat-tab[aria-selected="true"] {
+  border-color: var(--el);
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"]
+  :is(
+    .chat-prefs,
+    .chat-modes button,
+    .chat-news-toggle,
+    .chat-menu,
+    .chat-menu button
+  ) {
+  border-radius: 0;
+}
+:root[data-ui="poster"] :is(.chat-prefs, .chat-news-toggle, .chat-menu) {
+  background: var(--ink-1);
+}
+:root[data-ui="poster"] .chat-modes button[aria-checked="true"] {
+  background: var(--el);
+  color: var(--ink);
+}
+/* The switch keeps its shape: a square track, a square knob. */
+:root[data-ui="poster"] .chat-news-toggle::before {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .chat-chip {
+  border-radius: 0;
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .chat-chip:is(:hover, :focus-visible) {
+  background: var(--ink-3);
+}
+:root[data-ui="poster"] .chat-input {
+  border: 2px solid var(--ink-3);
+  border-radius: 0;
+  background: var(--fill-well);
+}
+:root[data-ui="poster"] .chat-input:focus-visible {
+  border-color: var(--el);
+  outline: none;
+}
+:root[data-ui="poster"] .chat-send {
+  border-radius: 0;
+  font-weight: 400;
+  box-shadow: 3px 3px 0 var(--hot);
+}
+:root[data-ui="poster"] :is(.chat-close, .chat-back) {
+  border-radius: 0;
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .chat-friend button {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .chat-friend em {
+  border-radius: 0;
+  background: var(--hot);
+}
+:root[data-ui="poster"] .chat-unread {
+  border-radius: 0;
+  background: var(--hot);
+}
+
+/* ── chat in battle: the quick-chat grid and the feed ── */
+:root[data-ui="poster"] .battle-chat-grid {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.45);
+}
+:root[data-ui="poster"] .battle-chat-grid button {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-2);
+  font-family: var(--font-body);
+  font-weight: 800;
+}
+:root[data-ui="poster"] .battle-chat-grid button:is(:hover, :focus-visible) {
+  background: var(--ink-3);
+}
+:root[data-ui="poster"] .battle-chat-feed li {
+  border-radius: 0;
+  border-left: 3px solid var(--el);
+  background: color-mix(in srgb, var(--ink) 85%, transparent);
+}
+:root[data-ui="poster"] .battle-chat-to {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .battle-nameplate > .chat-bubble {
+  border-radius: 0;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
+}
