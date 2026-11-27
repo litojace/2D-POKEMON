@@ -1212,15 +1212,19 @@
   letter-spacing: 0.04em;
 }
 /* The quick buttons (Settings, Help, Support, Repair), here and on the
-   sign-in screen, stay round: one shape on both screens (owner;
-   title-screen.spec.ts). Poster's ink and hard shadow, no blur. */
+   sign-in screen: square ink tiles, as every other control in Poster
+   (owner, 27 Nov 2026: option C of three; until then they were the one
+   round shape left on these two screens). On the title they stand on the
+   cover: plain ink, their labels ink with no outline. On the sign-in
+   screen's slab a tile is the lighter ink with the cover's colour along
+   its bottom edge (onboarding.css). 44 px, a finger wide. */
 :root[data-ui="poster"] .title-quick-icon {
   border: 0;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--ink);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+  box-shadow: none;
 }
 :root[data-ui="poster"] .title-quick-btn:hover .title-quick-icon {
   background: var(--ink-2);
@@ -1229,20 +1233,28 @@
   color: var(--el);
 }
 :root[data-ui="poster"] .title-quick-btn {
+  color: #fff;
   font: 400 calc(11px * var(--text-scale, 1)) / 1.1 var(--font-display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  text-shadow:
-    0 1px 0 var(--ink),
-    1px 0 0 var(--ink),
-    -1px 0 0 var(--ink),
-    0 -1px 0 var(--ink);
+  text-shadow: none;
+}
+:root[data-ui="poster"] .welcome-gate.is-title .title-quick-btn {
+  color: var(--ink);
 }
 :root[data-ui="poster"] :is(.title-status, .title-build) {
   padding: 4px 8px;
   background: var(--ink);
   color: #fff;
   text-shadow: none;
+}
+/* The version: quiet words in the body face, here and under the sign-in
+   screen's quick buttons (it was Anton, as loud as a label). */
+:root[data-ui="poster"] :is(.title-build, .gate-build) {
+  font-family: var(--font-body);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ui-faint);
 }
 :root[data-ui="poster"]:where([data-motion="reduced"]) .title-prompt {
   animation: none;
