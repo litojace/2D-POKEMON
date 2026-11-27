@@ -175,16 +175,34 @@ for (const size of SIZES)
       await expect(
         page.locator('.lobby-rail [data-lobby-action="ranks"]'),
       ).toHaveAttribute("aria-current", "page");
+      // It opens on the rank road (rank-road.spec.ts measures it): seven
+      // tiers, yours lit once the board has loaded.
+      await expect(panel.locator(".rk-tier")).toHaveCount(7);
+      await expect(panel.locator(".rk-tier.is-cur .rk-tier-name b")).toHaveText(
+        "Flare",
+      );
+      await expect(panel.locator(".rk-line")).toHaveText(
+        "30 more for Flare II · best 1,140",
+      );
+      await settled(page, ".ranks-panel");
+      expect(
+        await layoutProblems(page, {
+          inset: size.island ? ISLAND : undefined,
+          phone: size.phone,
+        }),
+      ).toEqual([]);
+      expect(await spills(page, ".ranks-panel")).toEqual([]);
+      await centred(page, '[data-ui-scope="road"]', "Road (on)");
+      await snap(page, info, `ranks-road-${size.name}`);
+
+      // Everyone: the top 20 and your row pinned under it.
+      await page.click('[data-ui-scope="everyone"]');
       await expect(panel.locator(".rk-list .rk-row")).toHaveCount(20);
       await expect(panel.locator(".rk-medal")).toHaveCount(3);
       const pinned = panel.locator(".rk-pin .rk-row");
       await expect(pinned.locator(".rk-place")).toHaveText("23");
       await expect(pinned.locator(".rk-name b")).toHaveText("tester");
-      await expect(pinned).toContainText("Expert");
-      await expect(panel.locator(".rk-ladder li.is-cur")).toHaveText(/Expert/);
-      await expect(panel.locator(".rk-line")).toHaveText(
-        "40 more for Candidate Master · best 1,140",
-      );
+      await expect(pinned).toContainText("Flare III");
       if (!size.phone)
         await expect(panel.locator(".ui-kicker")).toHaveText(
           /^Season · November 2026 · ends in \d+ d \d+ h$/,
@@ -203,9 +221,10 @@ for (const size of SIZES)
       ).toEqual([]);
       expect(await spills(page, ".ranks-panel")).toEqual([]);
 
-      // Centred labels: Everyone / Friends, the medals, a place number, the
+      // Centred labels: Road / Everyone / Friends, the medals, a place number, the
       // monograms, the You tag, the rules button; the rank's name and
       // rating in the middle of their card.
+      await centred(page, '[data-ui-scope="road"]', "Road");
       await centred(page, '[data-ui-scope="everyone"]', "Everyone");
       await centred(page, '[data-ui-scope="friends"]', "Friends");
       for (const n of [1, 2, 3])
@@ -295,7 +314,7 @@ const BIG = {
     title: null,
     titleColor: null,
     rating: 9999 - i,
-    rankName: "International Grandmaster",
+    rankName: "Legend I",
     wins: 9999,
     matches: 19999,
     me: false,
@@ -306,9 +325,9 @@ const BIG = {
     rating: 9999,
     matches: 2468,
     peak: 9999,
-    rank: "International Grandmaster",
+    rank: "Legend I",
     placementLeft: 0,
-    next: { name: "Legendary Grandmaster", at: 1550 },
+    next: null,
   },
 };
 const PLACING = {
@@ -322,7 +341,7 @@ const PLACING = {
     peak: 1012,
     rank: "Unranked",
     placementLeft: 3,
-    next: { name: "Specialist", at: 1000 },
+    next: { name: "Spark II", at: 1035 },
   },
 };
 const IN_TOP = {
@@ -333,7 +352,7 @@ const IN_TOP = {
     title: null,
     titleColor: null,
     rating: 1300 - i * 50,
-    rankName: "Master",
+    rankName: ["Tempest I", "Tempest II", "Flare I"][i],
     wins: 10,
     matches: 15,
     me: name === "tester",
@@ -344,9 +363,9 @@ const IN_TOP = {
     rating: 1250,
     matches: 30,
     peak: 1250,
-    rank: "Master",
+    rank: "Tempest II",
     placementLeft: 0,
-    next: { name: "International Master", at: 1300 },
+    next: { name: "Tempest I", at: 1290 },
   },
 };
 for (const size of [SIZES[1], SIZES[4]])
@@ -368,14 +387,19 @@ for (const size of [SIZES[1], SIZES[4]])
         const page = await context.newPage();
         const errors = await open(page, size, { board });
         await page.click('.lobby-rail [data-lobby-action="ranks"]');
+        // The road first: a placing player stands nowhere on it yet.
+        await expect(page.locator(".rk-tier")).toHaveCount(7);
+        await expect(page.locator(".rk-line")).not.toHaveText("");
+        await expect(page.locator(".rk-tier.is-cur")).toHaveCount(
+          name === "placing" ? 0 : 1,
+        );
+        await page.click('[data-ui-scope="everyone"]');
         const pinned = page.locator(".rk-pin .rk-row");
         await expect(pinned).toBeVisible();
         if (name === "big") {
           await expect(pinned.locator(".rk-place")).toHaveText("12,345");
           await expect(pinned.locator(".rk-rating-cell")).toHaveText("9,999");
-          await expect(page.locator(".rk-line")).toHaveText(
-            "Reach #1 to become Legendary Grandmaster",
-          );
+          await expect(page.locator(".rk-line")).toHaveText("Top of the road");
         } else if (name === "placing") {
           await expect(pinned.locator(".rk-place")).toHaveText("—");
           await expect(pinned).toContainText("Placing · 3 to go");
@@ -383,7 +407,6 @@ for (const size of [SIZES[1], SIZES[4]])
           await expect(page.locator(".rk-line")).toHaveText(
             "3 placement matches to go",
           );
-          await expect(page.locator(".rk-ladder li.is-cur")).toHaveCount(0);
           await expect(page.locator(".rk-list .ui-empty")).toContainText(
             "Nobody is ranked yet",
           );

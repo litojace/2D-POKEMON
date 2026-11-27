@@ -551,6 +551,41 @@ test("a gift box flies, bursts open, and its orbs are for the others", async ({
   const errors = await openPlaza(page);
   const list = () =>
     page.evaluate(() => (window as any).__plaza.gifts() as any[]);
+  // The server's side (the harness runs the real PlazaWorld in the page):
+  // its clock, your profile id, and a box's toss time by id.
+  const server = (id = -1) =>
+    page.evaluate((id) => {
+      const w = (window as any).__plazaWorld;
+      const gift = [...w.copies.values()]
+        .map((c: any) => c.gifts.get(id))
+        .find(Boolean);
+      return {
+        clock: w.clock as number,
+        me: w.visitors.get("local").profile.id as number,
+        at: gift?.gift.at as number | undefined,
+        orbs: gift ? (gift.orbs.size as number) : undefined,
+      };
+    }, id);
+  // An orb leaves its box caught (the server names who caught it) or
+  // faded with the box, PLAZA_GIFT.lastsMs after the toss (nobody, 0).
+  // Everything the server sends, from before the first toss, so no catch
+  // slips by between two looks.
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__giftGone = [];
+    w.__sock.on("plaza-gift-gone", (gone: number[][]) =>
+      w.__giftGone.push(...gone),
+    );
+  });
+  const goneOf = (box: number) =>
+    page.evaluate(
+      (box) =>
+        ((window as any).__giftGone as number[][]).filter(([id]) => id === box),
+      box,
+    );
+  // Orbs come out PLAZA_GIFT.flightMs + openMs + 350 ms after the toss
+  // (PlazaWorld.stepGifts); before that nobody can catch one.
+  const catchFrom = PLAZA_GIFT.flightMs + PLAZA_GIFT.openMs + 350;
   // The count is today's progress (the database's): 3 to start.
   await expect(page.locator("#pz-treats")).toHaveText("3");
   await expect(page.locator("#pz-treat")).toHaveAttribute(
@@ -562,66 +597,84 @@ test("a gift box flies, bursts open, and its orbs are for the others", async ({
   await page.click("#pz-treat");
   await expect(page.locator("#toast")).toContainText("Gift box tossed!");
   await expect(page.locator("#pz-treats")).toHaveText("2");
-  // In the air first, then landed and open.
+  // In the air first, then landed and open. Its orbs come with the toss.
+  // Read them now: a box lasts PLAZA_GIFT.lastsMs on the client too, and a
+  // slow runner's screenshots can use that up (an empty list at "mine",
+  // main's full run 45983545991).
   await expect.poll(async () => (await list()).length).toBe(1);
-  const flying = (await list())[0];
-  expect(flying.opened).toBe(false);
+  const mine = (await list())[0];
+  expect(mine.opened).toBe(false);
+  expect(mine.orbs.length).toBe(PLAZA_GIFT.orbs);
   await snap(page, info, "plaza-gift-flying");
-  await expect.poll(async () => (await list())[0]?.opened).toBe(true);
+  await expect
+    .poll(async () => (await list()).find((g) => g.id === mine.id)?.opened)
+    .toBe(true);
   // The burst: confetti in the air, the box's orbs out.
   expect(
     await page.evaluate(() => (window as any).__plaza.confetti()),
   ).toBeGreaterThan(10);
   await snap(page, info, "plaza-gift-open");
-  const mine = (await list())[0];
-  expect(mine.orbs.length).toBe(4);
   // Your own box's orbs aren't for you: standing on one catches nothing.
+  // Stand there until the server has stepped well past the moment its orbs
+  // can be caught, then look at what it said about them.
+  const { me, at: mineAt } = await server(mine.id);
   const [, ox, oy] = mine.orbs[0];
   await teleport(page, ox, oy);
-  await page.waitForTimeout(1200);
-  expect((await list())[0].orbs.length).toBe(4);
+  if (mineAt !== undefined)
+    await expect
+      .poll(async () => (await server()).clock - mineAt, { timeout: 20_000 })
+      .toBeGreaterThan(catchFrom + 800);
+  expect((await goneOf(mine.id)).filter(([, , who]) => who)).toEqual([]);
+  // Still lying there, unless the box has already faded (all with nobody).
+  const left = (await server(mine.id)).orbs;
+  if (left !== undefined) expect(left).toBe(PLAZA_GIFT.orbs);
   // Someone else's box: walk onto an orb and it's yours, counted as an orb.
   // (Out of reach of where it lands, so none is caught before we look.)
   await teleport(page, PLAZA_FOUNTAIN.x + 420, PLAZA_FOUNTAIN.y + 300);
-  // An orb leaves its box caught (the server names who caught it) or
-  // faded with the box, PLAZA_GIFT.lastsMs after the toss (nobody, 0).
-  // Count catches from what the server sends, not from the orbs left in the
-  // box: on a slow runner the box faded before the check, and its orbs read
-  // as caught ("Expected 0, Received -2", #477's full run).
-  await page.evaluate(() => {
-    const w = window as any;
-    w.__giftGone = [];
-    w.__sock.on("plaza-gift-gone", (gone: number[][]) =>
-      w.__giftGone.push(...gone),
-    );
-  });
   const refsBefore = await page.evaluate(
     () => ((window as any).__plazaOrbRefs ?? []).length as number,
   );
-  const thrower = await page.evaluate(
+  await page.evaluate(
     ([x, y]) => (window as any).__plazaOtherGift(x, y),
     [PLAZA_FOUNTAIN.x - 10, PLAZA_FOUNTAIN.y + 300],
   );
   await expect
-    .poll(async () => (await list()).find((g) => g.id !== mine.id)?.opened)
+    .poll(async () => (await list()).some((g) => g.id !== mine.id))
     .toBe(true);
   const theirs = (await list()).find((g) => g.id !== mine.id)!;
   expect(theirs.orbs.length).toBe(PLAZA_GIFT.orbs);
+  // Its orbs' refs (PlazaWorld.stepGifts: "<toss second>-<box id><orb>").
+  // Count only these: an Orb Shower (a minute every quarter hour, UTC)
+  // also records refs, for you and for the thrower standing in the square,
+  // and the harness keeps everyone's (main's full run 45983545991 ran
+  // 11:00:28-11:01:08 UTC: "Expected 0, Received 2").
+  const theirsAt = (await server(theirs.id)).at!;
+  const refs = theirs.orbs.map(
+    ([orb]: number[]) =>
+      `${Math.floor(theirsAt / 1000)}-${theirs.id * 10 + orb}`,
+  );
+  // Stand on an orb now, while it is still in the air: the server catches
+  // it the moment it lands, however slow this machine is to look.
   const [, tx, ty] = theirs.orbs[0];
   await teleport(page, tx, ty);
+  await expect
+    .poll(async () => (await list()).find((g) => g.id === theirs.id)?.opened)
+    .toBe(true);
   // Caught (that one, and any other within reach), each counted as an orb.
   const catches = () =>
     page.evaluate(
-      ([box, thrower, refsBefore]) => {
+      ([before, refs, box, me]) => {
         const w = window as any,
           gone = (w.__giftGone as number[][]).filter(([id]) => id === box);
         return {
-          caught: gone.filter(([, , who]) => who && who !== thrower).length,
+          caught: gone.filter(([, , who]) => who === me).length,
           faded: gone.some(([, , who]) => !who),
-          counted: ((w.__plazaOrbRefs ?? []).length as number) - refsBefore,
+          counted: ((w.__plazaOrbRefs ?? []) as string[])
+            .slice(before)
+            .filter((r) => refs.includes(r)).length,
         };
       },
-      [theirs.id, thrower, refsBefore],
+      [refsBefore, refs, theirs.id, me] as const,
     );
   await expect
     .poll(async () => {
@@ -635,21 +688,40 @@ test("a gift box flies, bursts open, and its orbs are for the others", async ({
       return c.counted - c.caught;
     })
     .toBe(0);
-  // A golden box: T tosses it, once the cooldown has passed.
-  await page.waitForTimeout(1600);
+  // A golden box: T tosses it, once the cooldown has passed (the server's,
+  // PLAZA_GIFT.throwSeconds after your last toss).
+  const cooledDown = () =>
+    expect
+      .poll(() =>
+        page.evaluate(
+          (ms) =>
+            Date.now() -
+              (window as any).__plazaWorld.visitors.get("local").lastTreat >
+            ms + 50,
+          PLAZA_GIFT.throwSeconds * 1000,
+        ),
+      )
+      .toBe(true);
+  await cooledDown();
   await page.evaluate(() => ((window as any).__plazaGolden = true));
   await page.locator(".plaza-layer").focus();
   await page.keyboard.press("t");
   await expect(page.locator("#toast")).toContainText("golden gift box");
   await expect(page.locator("#pz-treats")).toHaveText("1");
+  // Its orbs come with the toss: count them before they land, where the
+  // other player may be standing to catch some.
   await expect
-    .poll(async () => (await list()).find((g) => g.golden)?.opened)
+    .poll(async () => (await list()).some((g) => g.golden))
     .toBe(true);
-  expect((await list()).find((g) => g.golden)!.orbs.length).toBe(8);
+  const golden = (await list()).find((g) => g.golden)!;
+  expect(golden.orbs.length).toBe(PLAZA_GIFT.goldenOrbs);
+  await expect
+    .poll(async () => (await list()).find((g) => g.id === golden.id)?.opened)
+    .toBe(true);
   await snap(page, info, "plaza-gift-golden");
   // None left: the button dims and says where more come from.
   await page.evaluate(() => ((window as any).__plazaGifts = 0));
-  await page.waitForTimeout(1600);
+  await cooledDown();
   await page.click("#pz-treat");
   await expect(page.locator("#toast")).toContainText("No gift boxes left");
   await expect(page.locator("#pz-treats")).toHaveText("0");

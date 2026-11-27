@@ -80,47 +80,29 @@
 .rk-line {
   max-width: 100%;
 }
-.rk-ladder {
-  list-style: none;
-  margin: var(--sp-2) 0 0;
-  padding: 0;
-  width: 100%;
-  display: grid;
-  gap: 2px;
+/* Your shield, when you hold one: a small tag in your rank's colour. */
+.rk-shield {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 24px;
+  margin: 2px 0 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--rank) 50%, transparent);
+  background: color-mix(in srgb, var(--rank) 14%, transparent);
+  color: var(--ui-text);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  line-height: 1.2;
   text-align: left;
 }
-.rk-ladder li {
-  display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 8px;
-  border-radius: 7px;
-  font-size: var(--fs-small);
-  color: var(--ui-dim);
-}
-.rk-ladder li > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.rk-ladder li > i {
-  width: 8px;
-  height: 8px;
-  margin-left: 1px;
-  transform: rotate(45deg);
-  background: var(--rank);
-}
-.rk-ladder li > small {
-  font-size: var(--fs-small);
-  text-align: right;
-}
-.rk-ladder li.is-cur {
-  background: color-mix(in srgb, var(--rank) 20%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rank) 55%, transparent);
-  color: var(--ui-text);
-  font-weight: 700;
+.rk-shield-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--rank);
 }
 /* The rules sit at the card's foot: spare height goes above them. */
 .rk-rules {
@@ -160,6 +142,202 @@
   padding-left: 18px;
   display: grid;
   gap: 6px;
+}
+
+/* ------------------------------------------------------- the rank road */
+/* Seven tiers, the highest on top, a gem each on one rail: the tier's
+   name, its three steps with the rating each starts at, its reward, and a
+   tick once it is yours. Rows share the height, so the whole road shows. */
+.rk-road {
+  --rk-road-cols: 16px 150px minmax(0, 1fr) 150px 22px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  border-radius: var(--rad-lg);
+  border: 1px solid var(--ui-line);
+  background: #0b1020a0;
+  overflow: hidden;
+}
+.rk-road-head,
+.rk-tier {
+  display: grid;
+  grid-template-columns: var(--rk-road-cols);
+  gap: 14px;
+  align-items: center;
+  padding: 0 16px;
+}
+.rk-road-head {
+  height: 34px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-small);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ui-dim);
+  background: var(--fill-card);
+}
+.rk-road-head > .rk-from,
+.rk-road-head > .rk-head-reward {
+  text-align: right;
+}
+.rk-road-head > .rk-head-steps {
+  text-align: center;
+}
+/* A wide screen writes each step's rating in the step: no "From" column. */
+.rk-road .rk-from {
+  display: none;
+}
+.rk-road-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-auto-rows: minmax(44px, 1fr);
+  min-height: 0;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+}
+.rk-tier {
+  position: relative;
+  border-top: 1px solid var(--ui-line);
+  color: var(--ui-dim);
+}
+.rk-tier.is-earned {
+  color: var(--ui-text);
+}
+.rk-tier.is-cur {
+  background: color-mix(in srgb, var(--rank) 13%, transparent);
+  box-shadow: inset 3px 0 0 var(--rank);
+}
+/* The rail: a line through every gem, from the first tier to the last. */
+.rk-tier::before {
+  content: "";
+  position: absolute;
+  left: 23px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--ui-line-2);
+}
+.rk-tier:first-child::before {
+  top: 50%;
+}
+.rk-tier:last-child::before {
+  bottom: 50%;
+}
+.rk-gem {
+  position: relative;
+  justify-self: center;
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+  border: 2px solid var(--rank);
+  border-radius: 2px;
+  background: var(--ui-bg-1);
+}
+.rk-tier.is-earned .rk-gem {
+  background: var(--rank);
+}
+.rk-tier-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+/* Every name takes the longest one's room ("Tempest"), in whole pixels: the
+   You tag then starts at one place whatever the tier, on a pixel's edge. */
+.rk-tier-name > b {
+  flex: none;
+  min-width: 72px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h4);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--rank);
+  white-space: nowrap;
+}
+.rk-from {
+  text-align: right;
+  font-size: var(--fs-body);
+  color: inherit;
+}
+.rk-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.rk-steps > i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 30px;
+  padding-bottom: 2px;
+  border-radius: 8px;
+  border: 1px solid var(--ui-line-2);
+  font-style: normal;
+  line-height: 1;
+  color: var(--ui-dim);
+}
+/* The numeral and the rating in one face, so both sit on one line. */
+.rk-steps > i > b,
+.rk-steps > i > small {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-body);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+.rk-steps > i > small {
+  font-weight: 700;
+}
+.rk-steps > i.is-on {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--rank) 30%, transparent);
+  color: var(--ui-text);
+}
+.rk-steps > i.is-you {
+  background: var(--rank);
+  color: #10162b;
+}
+.rk-reward {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--fs-body);
+}
+.rk-reward-title {
+  font-size: var(--fs-micro);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-dim);
+  white-space: nowrap;
+}
+/* Every coin amount takes the widest one's room, so the titles line up. */
+.rk-reward > .ui-price {
+  justify-content: flex-end;
+  min-width: 62px;
+  gap: 5px;
+}
+.rk-got {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+.rk-tier.is-earned .rk-got {
+  background: color-mix(in srgb, var(--ui-ok) 18%, transparent);
+  color: var(--ui-ok);
+}
+.rk-got > svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* ---------------------------------------------------------- the board */
@@ -356,9 +534,6 @@
   .rk-rating b {
     font-size: calc(28px * var(--text-scale, 1));
   }
-  .rk-ladder li {
-    min-height: 22px;
-  }
 }
 /* A tall window: the card grows into its height (badge, rating, ladder),
    so the room isn't left empty under the ladder. */
@@ -379,20 +554,6 @@
   }
   .rk-line {
     font-size: var(--fs-body);
-  }
-  .rk-ladder {
-    gap: 4px;
-  }
-  .rk-ladder li {
-    min-height: 40px;
-    font-size: var(--fs-body);
-  }
-  .rk-ladder li > small {
-    font-size: var(--fs-body);
-  }
-  .rk-ladder li > i {
-    width: 10px;
-    height: 10px;
   }
   .rk-row {
     height: 56px;
@@ -415,8 +576,11 @@
     padding: var(--sp-2);
   }
   .rk-badge {
-    width: 52px;
-    height: 58px;
+    width: 40px;
+    height: 44px;
+  }
+  .rk-rules {
+    padding-top: var(--sp-1);
   }
   .rk-rank {
     font-size: var(--fs-h4);
@@ -424,18 +588,91 @@
   .rk-rating b {
     font-size: calc(20px * var(--text-scale, 1));
   }
-  .rk-ladder li {
-    min-height: 22px;
-    padding: 0 6px;
-    gap: 6px;
+  .rk-shield {
+    min-height: 20px;
+    margin: 0;
+    padding: 2px 8px;
     font-size: var(--fs-micro);
   }
-  .rk-ladder li > small {
+  .rk-shield-more {
+    display: none;
+  }
+  .rk-shield-icon {
+    width: 12px;
+    height: 12px;
+  }
+  /* A phone's road: the steps as three small marks, the rating a tier
+     starts at in its own column, and the coins alone (every tier gives its
+     title; the first, which pays no coins, says so). */
+  .rk-road {
+    --rk-road-cols: 14px minmax(0, 1fr) 40px 72px 54px 18px;
+  }
+  .rk-road .rk-from {
+    display: block;
+  }
+  .rk-road-head,
+  .rk-tier {
+    gap: 8px;
+    padding: 0 10px;
+  }
+  .rk-road-head {
+    height: 24px;
     font-size: var(--fs-micro);
+  }
+  .rk-road-list {
+    grid-auto-rows: minmax(30px, 1fr);
+  }
+  .rk-tier::before {
+    left: 16px;
+  }
+  .rk-gem {
+    width: 10px;
+    height: 10px;
+  }
+  .rk-tier-name {
+    gap: 6px;
+  }
+  .rk-tier-name > b {
+    min-width: 48px;
+    font-size: var(--fs-body);
+  }
+  .rk-from,
+  .rk-reward {
+    font-size: var(--fs-small);
+  }
+  .rk-steps {
+    gap: 3px;
+  }
+  .rk-steps > i {
+    height: 18px;
+    padding-bottom: 0;
+    border-radius: 5px;
+  }
+  .rk-steps > i > b {
+    font-size: var(--fs-micro);
+  }
+  .rk-steps > i > small {
+    display: none;
+  }
+  .rk-reward.has-coins > .rk-reward-title {
+    display: none;
+  }
+  .rk-reward > .ui-price {
+    min-width: 0;
+    gap: 4px;
+  }
+  .rk-got {
+    width: 18px;
+    height: 18px;
+  }
+  .rk-got > svg {
+    width: 12px;
+    height: 12px;
   }
   .rk-board {
     --rk-cols: 40px 30px minmax(0, 1fr) 46px 52px;
   }
+
   .rk-head,
   .rk-row {
     gap: 6px;
@@ -475,16 +712,6 @@
   }
   .rk-wl.is-long {
     font-size: var(--fs-micro);
-  }
-}
-
-/* Phones: the card's ladder shows your rank and the ranks either side of
-   it (the one below, the one to reach next), so the card fits its column
-   instead of scrolling. Desktop and an unranked player see every rank. */
-@media (max-height: 500px) {
-  .rk-ladder:has(> .is-cur)
-    > li:not(.is-cur):not(:has(+ .is-cur)):not(.is-cur + li) {
-    display: none;
   }
 }
 

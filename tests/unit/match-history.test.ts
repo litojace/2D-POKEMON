@@ -232,7 +232,7 @@ describe("buildMatchHistory", () => {
         more: true,
         people,
         totals: { matches: 2, wins: 0, fighters: {} },
-        rating: { rating: 988, matches: 7, rank: "Pupil" },
+        rating: { rating: 988, matches: 7, rank: "Sprout I" },
       },
       ben,
     );
@@ -240,7 +240,7 @@ describe("buildMatchHistory", () => {
       at: "2026-11-20T09:00:00.000001+00:00",
       id: "match-0002",
     });
-    expect(page.rating?.rank).toBe("Pupil");
+    expect(page.rating?.rank).toBe("Sprout I");
     expect(matchHistorySchema.parse(page)).toEqual(page);
   });
 

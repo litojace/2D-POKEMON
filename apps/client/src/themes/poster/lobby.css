@@ -226,6 +226,12 @@
 :root[data-ui="poster"] .lobby-layer .lobby-name .element-pill svg {
   color: var(--ink);
 }
+/* Your rank beside it (rank-chip.ts): an ink block in the tier's colour. */
+:root[data-ui="poster"] .lobby-layer .lobby-rank-chip {
+  background: var(--ink);
+  border-radius: 0;
+  box-shadow: none;
+}
 :root[data-ui="poster"] .lobby-layer .lobby-step {
   background: var(--ink);
   color: #fff;

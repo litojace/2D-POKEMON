@@ -1,3 +1,4 @@
+import { rankChipKey, rankChipMarkup, type RankChip } from "./rank-chip";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import {
   JOURNEY_ITEM_BY_ID,
@@ -313,6 +314,8 @@ export interface LobbyView {
   level?: number;
   /** A new player's next bot match is this short (INTRO_ROUNDS), if it is. */
   introRounds?: number;
+  /** Your rank, beside the element pill (rank-chip.ts); null: none yet. */
+  rank?: RankChip | null;
 }
 export interface LobbyOptions {
   onAction(action: LobbyAction): void;
@@ -461,6 +464,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       });
   /** Fighter + worn skin + stage now drawn on the stage. */
   let artKey: string | undefined;
+  /** The rank chip as drawn (rankChipKey). */
+  let rankKey = "";
   // The selected fighter moves with the same live rig as the Fighters roster
   // (shop-preview.ts, "selection" framing) over its still artwork. Low
   // graphics keeps the still artwork, as in the Plaza.
@@ -485,7 +490,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   </div>
   <div class="lobby-nameplate">
     <button type="button" class="lobby-step" data-lobby-step="-1" aria-label="Previous fighter">‹</button>
-    <div class="lobby-name"><h2 id="lobby-fighter-name"></h2><span class="element-pill" id="lobby-fighter-element"></span><small class="lobby-host-name" id="lobby-host-name"></small></div>
+    <div class="lobby-name"><h2 id="lobby-fighter-name"></h2><span class="lobby-name-tags"><span class="element-pill" id="lobby-fighter-element"></span><small class="lobby-host-name" id="lobby-host-name"></small><span class="lobby-rank-chip" id="lobby-rank-chip" role="img" hidden></span></span></div>
     <button type="button" class="lobby-step" data-lobby-step="1" aria-label="Next fighter">›</button>
   </div>
 </section>
@@ -1034,6 +1039,18 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       // You lead: the same crown under your own fighter, "♛ You".
       const crown = host ? host.name : view.leading ? "You" : "";
       $("lobby-host-name").textContent = crown ? `♛ ${crown}` : "";
+      // Your rank: not under a leader's fighter, where it would read as theirs.
+      const rank = host ? null : (view.rank ?? null);
+      const chipKey = rankChipKey(rank);
+      if (chipKey !== rankKey) {
+        rankKey = chipKey;
+        const chip = $("lobby-rank-chip");
+        chip.hidden = !rank;
+        chip.innerHTML = rank ? rankChipMarkup(rank) : "";
+        chip.style.setProperty("--rank", rank?.color ?? "");
+        if (rank) chip.setAttribute("aria-label", rank.label);
+        else chip.removeAttribute("aria-label");
+      }
       layer.querySelector(".lobby-name")!.classList.toggle("is-host", !!crown);
       $("lobby-fighter").classList.toggle("is-host", !!host);
       $("lobby-fighter").classList.toggle("is-away", !!host?.away);

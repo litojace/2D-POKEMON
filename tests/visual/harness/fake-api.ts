@@ -1,4 +1,5 @@
 // Canned answers for the account REST API (see apps/server/src/accounts.ts).
+import { rankAt } from "../../../packages/shared/src/accounts";
 const U = "11111111-1111-4111-8111-111111111111";
 const today = new Date().toISOString().slice(0, 10);
 const title = (n: number, name: string, color: string) => ({
@@ -63,9 +64,10 @@ const API: Record<string, unknown> = {
       rating: 1000,
       matches: 0,
       peak: 1000,
-      rank: "Pupil",
+      rank: "Unranked",
       placementLeft: 5,
-      next: { name: "Specialist", at: 1050 },
+      next: { name: "Spark II", at: 1035 },
+      shield: false,
     },
   },
   "/api/friends": { code: "a1b2c3d4", friends: [], incoming: [], outgoing: [] },
@@ -99,16 +101,7 @@ const API: Record<string, unknown> = {
       title: null,
       titleColor: null,
       rating: 1620 - i * 18,
-      rankName:
-        i < 1
-          ? "Legendary Grandmaster"
-          : i < 4
-            ? "International Grandmaster"
-            : i < 8
-              ? "Grandmaster"
-              : i < 12
-                ? "International Master"
-                : "Master",
+      rankName: rankAt(1620 - i * 18).name,
       wins: 60 - i * 2,
       matches: 80 - i * 2,
       me: false,
@@ -119,9 +112,10 @@ const API: Record<string, unknown> = {
       rating: 1110,
       matches: 62,
       peak: 1140,
-      rank: "Expert",
+      rank: "Flare III",
       placementLeft: 0,
-      next: { name: "Candidate Master", at: 1150 },
+      next: { name: "Flare II", at: 1140 },
+      shield: false,
     },
   },
   "/api/leaderboard/friends": {
@@ -132,7 +126,7 @@ const API: Record<string, unknown> = {
         place: 1,
         name: "Kai",
         rating: 1388,
-        rankName: "Grandmaster",
+        rankName: "Prism II",
         placementLeft: 0,
         wins: 14,
         matches: 22,
@@ -143,7 +137,7 @@ const API: Record<string, unknown> = {
         place: 2,
         name: "tester",
         rating: 1110,
-        rankName: "Expert",
+        rankName: "Flare III",
         placementLeft: 0,
         wins: 36,
         matches: 62,
@@ -154,7 +148,7 @@ const API: Record<string, unknown> = {
         place: 3,
         name: "Mina",
         rating: 1046,
-        rankName: "Specialist",
+        rankName: "Spark II",
         placementLeft: 0,
         wins: 8,
         matches: 15,
@@ -176,9 +170,10 @@ const API: Record<string, unknown> = {
       rating: 1110,
       matches: 62,
       peak: 1140,
-      rank: "Expert",
+      rank: "Flare III",
       placementLeft: 0,
-      next: { name: "Candidate Master", at: 1150 },
+      next: { name: "Flare II", at: 1140 },
+      shield: false,
     },
   },
   // Your name: never changed, so it can change now (migration 066).

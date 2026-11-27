@@ -323,6 +323,7 @@ import {
   type ShotTarget,
   zoneClock,
 } from "./networking/timeline-lead";
+import { rankChip, rankChipKey, rankNews } from "./rank-chip";
 import { AccountUI } from "./accounts";
 import {
   avatarOfPlayer,
@@ -416,7 +417,7 @@ import {
   MASTERY_TIERS,
   masteryTier,
   progressSchema,
-  RANKS,
+  type Rating,
 } from "../../../packages/shared/src/accounts";
 import {
   recapMarkup,
@@ -3245,6 +3246,7 @@ function lobbyView() {
     spire: lobbySpire(),
     level: levelNow(),
     introRounds: introRounds(matchesFinished),
+    rank: rankChip(myRating, featureLocked("ranks", levelNow())),
   };
 }
 /** Your level, or undefined while the account loads. */
@@ -5496,6 +5498,11 @@ let masteryFor = "";
 /** Matches this account has finished (undefined until its records load). */
 let matchesFinished: number | undefined;
 /**
+ * Your rating and rank, for the Lobby's rank chip (rank-chip.ts): from your
+ * records, then from each match's report.
+ */
+let myRating: Rating | undefined;
+/**
  * The match your records were last read for, and the one they now count
  * (the result's mastery tile shows the count with that match in it).
  */
@@ -5507,11 +5514,13 @@ function loadMastery(force = false) {
     if (masteryFor) setMastery({});
     masteryFor = "";
     matchesFinished = undefined;
+    myRating = undefined;
     return;
   }
   if (id === masteryFor && !force) return;
   // First load for this account: mention any waiting friend requests.
   if (id !== masteryFor) matchesFinished = undefined;
+  if (id !== masteryFor) myRating = undefined;
   if (id !== masteryFor)
     void accountsUI.checkFriendRequests().then((list) => {
       if (list) friendIds = new Set(list.friends.map((f) => f.id));
@@ -5525,7 +5534,11 @@ function loadMastery(force = false) {
       setMastery(progress.fighters);
       if (waited) masteryCounts = waited;
       // A new player's short first matches (INTRO_ROUNDS): the Lobby says so.
-      if (matchesFinished !== progress.matches) {
+      const rankMoved =
+        rankChipKey(rankChip(progress.rating, false)) !==
+        rankChipKey(rankChip(myRating, false));
+      myRating = progress.rating;
+      if (matchesFinished !== progress.matches || rankMoved) {
         matchesFinished = progress.matches;
         syncLobby(!!lobby);
       }
@@ -5587,15 +5600,10 @@ async function reportMatch(matchId: string, attempt = 0) {
     const rating = reply.rating;
     const wasRated =
       before?.status === "done" && before.reply.rating?.before !== undefined;
-    if (
-      rating?.before !== undefined &&
-      !wasRated &&
-      rating.rank !== "Unranked" &&
-      rating.previousRank !== rating.rank &&
-      RANKS.findIndex((r) => r.name === rating.rank) >
-        RANKS.findIndex((r) => r.name === rating.previousRank)
-    )
-      toast(`Rank up! You're now ${rating.rank}. The title is yours to keep.`);
+    if (rating) myRating = rating;
+    const news =
+      rating?.before !== undefined && !wasRated ? rankNews(rating) : "";
+    if (news) toast(news);
     if (!reply.confirmed && attempt < 3)
       setTimeout(
         () => {

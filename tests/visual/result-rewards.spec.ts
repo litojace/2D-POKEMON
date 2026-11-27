@@ -69,7 +69,7 @@ async function prepare(page: Page, o: { xp?: number } = {}) {
 /** A duel that just ended (the harness's practice room, made a match). */
 async function finish(
   page: Page,
-  o: { won: boolean; bot?: boolean; rated?: boolean },
+  o: { won: boolean; bot?: boolean; rated?: boolean; rating?: object },
 ) {
   await page.evaluate(() => (window as any).__room("practice"));
   await openPlayPanel(page);
@@ -89,15 +89,18 @@ async function finish(
                 ? []
                 : [{ id: "kai-id", name: "Kai", wins: 2, losses: 1 }],
               achievements: [],
-              rating: o.rated
-                ? {
-                    rating: o.won ? 1020 : 1004,
-                    before: 1012,
-                    matches: 9,
-                    rank: "Specialist",
-                    next: { name: "Expert", at: 1075 },
-                  }
-                : undefined,
+              rating: o.rating
+                ? o.rating
+                : o.rated
+                  ? {
+                      rating: o.won ? 1020 : 1004,
+                      before: 1012,
+                      matches: 9,
+                      rank: "Spark III",
+                      previousRank: "Spark III",
+                      next: { name: "Spark II", at: 1035 },
+                    }
+                  : undefined,
             },
           }
         : reply(ev, data);
@@ -170,7 +173,7 @@ for (const size of SIZES) {
       await expect(tiles.nth(0)).toContainText("+250 XP");
       await expect(tiles.nth(0)).toContainText("Lv 3");
       await expect(tiles.nth(0).locator(".rw-burst")).toHaveText("Level up");
-      await expect(tiles.nth(1)).toContainText("Specialist");
+      await expect(tiles.nth(1)).toContainText("Spark III");
       await expect(tiles.nth(1)).toContainText("+8");
       await expect(tiles.nth(2)).toContainText("Tier 1");
       await expect(tiles.nth(2).locator(".rw-burst")).toHaveText("Tier up");
@@ -355,6 +358,80 @@ test("a loss against a bot: no confetti, no rank, Play again", async ({
     await context.close();
   }
 });
+
+// The rank road (docs/rank-road.md): what a rated match did to your rank
+// is said once, in the Rank tile and in a toast.
+for (const [name, won, rating, burst, note, toast] of [
+  [
+    "shield",
+    false,
+    {
+      rating: 1105,
+      before: 1108,
+      matches: 30,
+      rank: "Flare III",
+      previousRank: "Flare III",
+      next: { name: "Flare II", at: 1140 },
+      shield: false,
+      shielded: true,
+    },
+    "Shield",
+    "Your shield held",
+    "Your shield held: you stay in Flare.",
+  ],
+  [
+    "new-tier",
+    true,
+    {
+      rating: 1112,
+      before: 1098,
+      matches: 30,
+      rank: "Flare III",
+      previousRank: "Spark I",
+      next: { name: "Flare II", at: 1140 },
+      shield: true,
+    },
+    "New tier",
+    "Flare II at 1,140",
+    "New tier: Flare! Its title, 150 coins and a shield are yours.",
+  ],
+] as const)
+  test(`a rated match's rank news: ${name}`, async ({ browser }, info) => {
+    const context = await browser.newContext({
+      viewport: { width: 667, height: 375 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      await prepare(page);
+      const errors = await openHub(page);
+      await finish(page, { won, rated: true, rating });
+      await saved(page);
+      const tile = page.locator('.rw-tile[data-rw="rank"]');
+      await expect(tile).toContainText("Flare III");
+      await expect(tile.locator(".rw-burst")).toHaveText(burst);
+      await expect(tile.locator(".rw-note")).toHaveText(note);
+      await expect(tile.locator(".rw-gain")).toHaveText(won ? "+14" : "−3");
+      await expect(page.locator("#toast")).toHaveText(toast);
+      await page.evaluate(() => {
+        for (const a of document.getAnimations())
+          if (a.effect?.getTiming().iterations !== Infinity) a.finish();
+      });
+      // The tile's words read in full on the smallest phone.
+      expect(
+        await tile.evaluate((t) =>
+          Array.from(t.querySelectorAll<HTMLElement>(".rw-value, .rw-note"))
+            .filter((e) => e.scrollWidth > e.clientWidth + 1)
+            .map((e) => e.textContent),
+        ),
+      ).toEqual([]);
+      await snap(page, info, `rewards-rank-${name}-667x375`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
 
 test("reduced motion shows the end state at once", async ({ browser }) => {
   const context = await browser.newContext({

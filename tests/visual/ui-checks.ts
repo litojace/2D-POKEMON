@@ -131,10 +131,11 @@ export async function spills(page: Page, root: string) {
         !el.offsetParent
       )
         continue;
-      // A portrait frame's ornaments sit past the portrait on purpose (portraits.ts).
+      // A portrait frame's ornaments sit past the portrait on purpose (portraits.ts);
+      // text for a screen reader alone (.sr-only) is a 1 px box by design.
       if (
         el.matches(
-          "svg, svg *, input, .ui-panel-body, [data-friends-list], .rk-list, .rk-card, .portrait-frame, .portrait-frame *, .fr-avatar:has(.portrait-frame), .ui-tabs",
+          "svg, svg *, input, .sr-only, .ui-panel-body, [data-friends-list], .rk-list, .rk-card, .portrait-frame, .portrait-frame *, .fr-avatar:has(.portrait-frame), .ui-tabs",
         )
       )
         continue;

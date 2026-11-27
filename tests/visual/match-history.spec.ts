@@ -28,9 +28,9 @@ async function open(page: Page, size: Size) {
       w.__historyRating = {
         rating: 1180,
         matches: 40,
-        rank: "Expert",
+        rank: "Flare I",
         placementLeft: 0,
-        next: { name: "Candidate Master", at: 1250 },
+        next: { name: "Tempest III", at: 1210 },
       };
       w.__friends = {
         code: "ABCDEF12",
@@ -180,7 +180,7 @@ for (const size of SIZES)
       await expect(card).toBeVisible();
       await expect(card.locator(".pf-card-name")).toHaveText("Kai");
       await expect(card.locator(".mh-row").first()).toBeVisible();
-      await expect(card.locator(".pf-card-tags")).toContainText("Expert");
+      await expect(card.locator(".pf-card-tags")).toContainText("Flare I");
       await settled(page, ".friend-card-panel");
       expect(
         await layoutProblems(page, {
