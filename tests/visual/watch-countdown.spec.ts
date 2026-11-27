@@ -76,6 +76,11 @@ async function watch(page: Page, mode: Mode) {
       { timeout: 60_000, intervals: [400] },
     )
     .toBe(true);
+  // A few more frames so the court and the fighters are drawn.
+  for (let i = 0; i < 6; i++) {
+    await page.evaluate(() => (window as any).__push());
+    await page.waitForTimeout(300);
+  }
   return { errors, code };
 }
 
@@ -157,6 +162,29 @@ for (const size of SIZES)
         );
         expect(look.alphas.length).toBeGreaterThan(0);
         expect(Math.max(...look.alphas)).toBeLessThanOrEqual(0.65);
+        // A watcher who comes in on the countdown also gets the "Watching
+        // room" toast (main.ts watchRoom): it may sit under the countdown,
+        // never over its number or its line.
+        const clash = await page.evaluate(() => {
+          const t = document.getElementById("toast")!;
+          if (!t.classList.contains("show")) return null;
+          const tb = t.getBoundingClientRect();
+          const c = document.querySelector("#arena-overlay .countdown-card")!;
+          return [...c.children].some((el) => {
+            const b = el.getBoundingClientRect();
+            return (
+              b.left < tb.right &&
+              tb.left < b.right &&
+              b.top < tb.bottom &&
+              tb.top < b.bottom
+            );
+          });
+        });
+        expect(clash).not.toBe(true);
+        // The countdown as a watcher sees it once the toast has gone.
+        await expect(page.locator("#toast")).not.toHaveClass(/\bshow\b/, {
+          timeout: 10_000,
+        });
         await snap(page, info, `watch-${mode}-countdown-${size.name}`);
 
         // The fight: nothing over the arena, and the mark is gone.
