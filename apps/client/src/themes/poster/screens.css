@@ -754,6 +754,23 @@
   }
 }
 /* ranks: the board and the rank road */
+/* Three labels in the middle of their boxes, where Poster's type sat a
+   pixel high or left of it (1-1.5 px; 1.5 on CI's renderer, past the
+   suite's 1 px): Anton's capitals stand high in their line, and a tag's
+   letter-spacing leaves its space after the last letter. Each nudged where
+   it was measured (ranks-friends, raids); a type-wide fix (trimming the
+   line box to the capitals) is with the UI-overhaul session. */
+:root[data-ui="poster"] .rk-rules > summary {
+  padding-top: 2px;
+}
+:root[data-ui="poster"] .ui-btn[data-friend-pin] {
+  padding: 2px 10px 0 12px;
+}
+@media (min-width: 1000px) {
+  :root[data-ui="poster"] [data-raid-card] .ui-tag {
+    padding-left: calc(6px + 0.16em);
+  }
+}
 :root[data-ui="poster"] :is(.rk-board, .rk-road, .rk-list) {
   background: var(--ink-1);
   border: 0;
