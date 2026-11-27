@@ -10,6 +10,10 @@ import {
   openPlayPanel,
   createRoom,
 } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 /** Peril · NAME · Phase in one centred row, the bar below, the callout under it. */
 async function expectBossFrame(page: Page, boss: string) {

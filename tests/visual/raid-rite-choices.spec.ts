@@ -10,6 +10,10 @@ import {
   createRoom,
 } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 const buffValues: Record<string, string[]> = {
   shelter: ["−25%"],

@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub } from "./helpers";
 import { setInsets, ISLAND } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Every raid window that holds more than fits must scroll under a finger
 // (on a phone first) (owner's report, 5 Nov). The swipe is real touch input (CDP

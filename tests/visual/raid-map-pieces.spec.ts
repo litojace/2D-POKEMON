@@ -6,6 +6,10 @@ import {
   openPlayPanel,
   createRoom,
 } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Tidewyrm's Lagoon Court and Somnara's Cloud Deck draw their arena pieces
 // (islands, flood, rune pads, Quiet Zone, bubbles, markers...) from one atlas
