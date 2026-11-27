@@ -410,8 +410,10 @@ const quiet = async (page: Page) => {
     .toBeGreaterThan(1500);
   // Nor the skin pictures' painter at work: 3 s past its last long frame,
   // as it pauses longer than 1.5 s between pictures. Its queue from a
-  // screen's first open still painting took a 712-939 ms frame of the
-  // Shop's repeat open when that came 4-5 s after (27 Nov 2026).
+  // screen's first open, still painting, took a 712-939 ms frame of the
+  // Shop's repeat open when that came 4-5 s after (2 of 5 runs here, 27 Nov
+  // 2026). This hides the painter from this spec: its own fix is to run it
+  // where it costs a phone nothing.
   await page
     .waitForFunction(
       () => {
