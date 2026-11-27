@@ -46,7 +46,7 @@ frames. The browser emulates each iPhone: its size in points at 3x, touch,
 and the safe-area insets around the Dynamic Island. Each capture is then
 framed under its caption in the game's Barlow Condensed.
 
-To change a shot, edit its scene in `SCENES` (its caption sits beside it).
+To change a shot, edit its scene in `SCENES` in `scripts/app-store/scenes.ts` (its caption sits beside it). The README's pictures use the same scenes (`scripts/readme/`, [development](development.md#readme-pictures)).
 `SCENES=duel,ffa` renders only those; `RAID_BOSS` and `RAID_ATTACK` try
 another boss.
 

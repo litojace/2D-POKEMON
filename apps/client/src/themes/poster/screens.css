@@ -885,10 +885,11 @@
 }
 /* Phones: Archivo's capitals are wider than the old look's, so "RATING"
    (51 px) spilled its 46 px column. The column takes 8 px more from the
-   name's; the letters sit a little closer. */
+   name's; the letters sit a little closer. W–L takes 70 px, a five-figure
+   record ("9999–10000"): at 52 px it read "9999–1…" (UI audit, 27 Nov). */
 @media (max-height: 500px) {
   :root[data-ui="poster"] .rk-board {
-    --rk-cols: 40px 30px minmax(0, 1fr) 54px 52px;
+    --rk-cols: 40px 30px minmax(0, 1fr) 54px 70px;
   }
   :root[data-ui="poster"] .rk-head {
     letter-spacing: 0.06em;
