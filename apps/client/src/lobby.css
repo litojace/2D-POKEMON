@@ -581,9 +581,11 @@
 .lobby-slot small {
   font: 700 clamp(9px, calc(var(--seat) * 0.075), 14px) / 1 var(--font-body);
 }
+/* The middle holds the element pill and the rank chip side by side
+   ("Electric" and "Tempest III", the widest of each). */
 .lobby-nameplate {
   display: grid;
-  grid-template-columns: 44px 220px 44px;
+  grid-template-columns: 44px 252px 44px;
   align-items: center;
   gap: 10px;
 }
@@ -631,6 +633,46 @@
 .lobby-name .element-pill svg {
   width: 13px;
   height: 13px;
+}
+/* The element pill and your rank chip share a row under the name. */
+.lobby-name-tags {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: max-content;
+}
+/* Your rank (rank-chip.ts): the pill's size and glass, in the tier's
+   colour, a gem (or your shield) before it. */
+.lobby-rank-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  color: var(--rank, var(--ui-dim));
+  font: 800 calc(11px * var(--text-scale, 1))/1 var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.lobby-rank-chip[hidden] {
+  display: none;
+}
+.rank-chip-gem {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+.rank-chip-shield {
+  flex: none;
+  width: 12px;
+  height: 12px;
 }
 
 /* Party: members stand beside you; the bar above says how many. */
@@ -1364,7 +1406,7 @@
     --lobby-bar-room: 40px;
   }
   .lobby-nameplate {
-    grid-template-columns: 32px 150px 32px;
+    grid-template-columns: 32px 196px 32px;
     gap: 6px;
   }
   .lobby-step {
@@ -1379,6 +1421,28 @@
   .lobby-name .element-pill {
     height: 18px;
     font-size: calc(9px * var(--text-scale, 1));
+  }
+  .lobby-name-tags {
+    gap: 4px;
+  }
+  .lobby-rank-chip {
+    gap: 4px;
+    height: 18px;
+    padding: 0 8px;
+    font-size: calc(9px * var(--text-scale, 1));
+  }
+  .rank-chip-gem {
+    width: 6px;
+    height: 6px;
+  }
+  .rank-chip-shield {
+    width: 10px;
+    height: 10px;
+  }
+  /* Beside an open sheet the name stands alone in 150 px
+     (ui/components.css): the chip comes back when the sheet closes. */
+  .lobby-layer[data-ui-sheet] .lobby-rank-chip {
+    display: none;
   }
   .lobby-party {
     row-gap: 4px;

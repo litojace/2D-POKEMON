@@ -306,6 +306,11 @@ test("the bubble sits above each fighter's head, under the top bar", async ({
     const page = await context.newPage();
     const errors = await openLobby(page);
     await setInsets(page, ISLAND);
+    // The fighter breathes, so its head moves a few pixels: the page's clock
+    // stands still from measuring the head to placing the bubble, and both
+    // read the same frame. (Measured a moment apart, this failed about one
+    // run in eight on main, 27 Nov.)
+    await page.clock.install();
     for (const champion of ["voltkit", "cindrake", "tidefin", "auralynx"]) {
       for (let i = 0; i < 20; i++) {
         if (
@@ -324,6 +329,7 @@ test("the bubble sits above each fighter's head, under the top bar", async ({
         timeout: 30_000,
       });
       await page.waitForTimeout(1500);
+      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100));
       const fig = (await page.locator("#lobby-fighter").boundingBox())!;
       // The head, in the middle third the game reads (shop-preview.ts).
       const head = await fighterInkTop(
@@ -333,7 +339,16 @@ test("the bubble sits above each fighter's head, under the top bar", async ({
       );
       await page.locator(tap).tap();
       await expect(page.locator(bubble)).toBeVisible();
-      await settle(page);
+      // The bubble's pop, finished (settle() waits on a timer, which the
+      // stopped clock never fires).
+      await page.evaluate(() => {
+        for (const a of document.getAnimations())
+          if (
+            a.effect?.getTiming().iterations !== Infinity &&
+            a.playState !== "finished"
+          )
+            a.finish();
+      });
       const at = await page.evaluate((s) => {
         const b = document.querySelector(s)!.getBoundingClientRect();
         let limit = 6;
@@ -359,6 +374,7 @@ test("the bubble sits above each fighter's head, under the top bar", async ({
       if (!underBar) expect(head - tailTip, champion).toBeLessThanOrEqual(12);
       await snap(page, info, `lobby-quip-head-${champion}`);
       // Wait for the bubble to go before the next fighter.
+      await page.clock.resume();
       await expect(page.locator(bubble)).toBeHidden({ timeout: 15_000 });
     }
     expect(errors).toEqual([]);

@@ -11,14 +11,16 @@ import "./ranks.css";
 
 /**
  * The Ranks panel's behaviour (UI remodel step 6). Markup comes from
- * ranks-view.ts. Everyone / Friends switches the board (Friends loads the
- * first time it is picked); the season's countdown is redrawn every 30 s
- * on the server's clock.
+ * ranks-view.ts. Road / Everyone / Friends switches what the right side
+ * shows (Friends loads the first time it is picked); the season's countdown
+ * is redrawn every 30 s on the server's clock.
  */
+/** The two boards the server answers (the road needs neither). */
+export type BoardScope = Exclude<RanksScope, "road">;
 export interface RanksHooks {
   data(): RanksData;
   /** Load (or reload) a board; resolves once data() has it. */
-  load(scope: RanksScope): Promise<void>;
+  load(scope: BoardScope): Promise<void>;
   friends(): void;
   /** Report another player's own picture (asks first). */
   reportPhoto?(photo: string, name: string): void;
@@ -46,7 +48,7 @@ export function openRanks(hooks: RanksHooks): RanksScreen {
     patch(root(), template, next);
     template = next;
   }
-  async function load(scope: RanksScope) {
+  async function load(scope: BoardScope) {
     await hooks.load(scope);
     render();
   }
@@ -55,7 +57,7 @@ export function openRanks(hooks: RanksHooks): RanksScreen {
     view.scope = scope;
     render();
     root()
-      .querySelector<HTMLElement>("[data-ranks-list]")
+      .querySelector<HTMLElement>("[data-ranks-list], [data-ranks-road]")
       ?.scrollTo({ top: 0 });
     if (scope === "friends" && !hooks.data().friends) void load("friends");
   }
@@ -65,7 +67,8 @@ export function openRanks(hooks: RanksHooks): RanksScreen {
     if (!t || !root().contains(t) || t.disabled) return;
     const d = t.dataset;
     if (d.uiScope) pick(d.uiScope as RanksScope);
-    else if (d.ranksRetry !== undefined) void load(view.scope);
+    else if (d.ranksRetry !== undefined)
+      void load(view.scope === "friends" ? "friends" : "everyone");
     else if (d.ranksReportPhoto)
       hooks.reportPhoto?.(d.ranksReportPhoto, d.ranksReportName ?? "");
     else if (d.ranksFriends !== undefined) {
@@ -73,7 +76,7 @@ export function openRanks(hooks: RanksHooks): RanksScreen {
       hooks.friends();
     }
   };
-  // Left / right move along Everyone / Friends and pick.
+  // Left / right move along Road / Everyone / Friends and pick.
   const onKey = (event: KeyboardEvent) => {
     const t = event.target as HTMLElement;
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;

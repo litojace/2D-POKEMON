@@ -67,9 +67,9 @@ const progress: Progress = {
     rating: 1110,
     matches: 62,
     peak: 1140,
-    rank: "Expert",
+    rank: "Flare III",
     placementLeft: 0,
-    next: { name: "Candidate Master", at: 1150 },
+    next: { name: "Flare II", at: 1140 },
   },
 };
 const raids = {
@@ -145,7 +145,7 @@ describe("the numbers", () => {
         fighters: { voltkit: { matches: 2, wins: 0 } },
       }),
     ).toBeNull();
-    expect(rankLine(progress)).toMatchObject({ text: "Expert · 1,110" });
+    expect(rankLine(progress)).toMatchObject({ text: "Flare III · 1,110" });
     expect(
       rankLine({
         ...progress,
@@ -168,12 +168,12 @@ describe("the card", () => {
     expect(page).toContain(">Mountain Conqueror</small>");
     expect(page).toContain('<b class="pf-card-name">tester</b>');
     expect(page).toContain(">Lv 12<");
-    expect(page).toContain("Expert · 1,110");
+    expect(page).toContain("Flare III · 1,110");
     expect(page).toContain(">Gold Voltkit<");
   });
   it("words the share message", () => {
     expect(cardSummary(data()).text).toBe(
-      "tester, Mountain Conqueror · Level 12 · Expert · 1,110 · Gold Voltkit in Element Arena.",
+      "tester, Mountain Conqueror · Level 12 · Flare III · 1,110 · Gold Voltkit in Element Arena.",
     );
     expect(
       cardSummary(data({ title: null, progress: null, journey: undefined }))
@@ -227,7 +227,7 @@ describe("the rest of the profile", () => {
     expect(page).toContain("Voltkit: Gold mastery, 31 played, 20 won");
     expect(page).toContain('data-profile-go="journey"');
     expect(page).toContain("Tier ");
-    expect(page).toContain("40 more for Candidate Master");
+    expect(page).toContain("30 more for Flare II");
     expect(page.match(/data-profile-boss=/g)).toHaveLength(7);
     expect(page).toContain("Cragmuff: 4 clears");
     expect(page).toContain("Lumiwick: 1 clear.");

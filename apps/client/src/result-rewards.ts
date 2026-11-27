@@ -135,6 +135,8 @@ export function rankTile(r: Rating): Tile | null {
     now = at(r.rating);
   const promoted = now.i > was.i,
     demoted = now.i < was.i;
+  // A new tier (its title, coins and a shield) reads louder than a step.
+  const tierUp = promoted && RANKS[now.i].tier > RANKS[was.i].tier;
   return {
     id: "rank",
     icon: "leaderboard",
@@ -152,10 +154,24 @@ export function rankTile(r: Rating): Tile | null {
         ? `${num(r.rating)} rating, ${esc(r.next.name)} at ${num(r.next.at)}`
         : `${num(r.rating)} rating`,
     ),
-    note: r.next
-      ? `${esc(r.next.name)} at ${num(r.next.at)}`
-      : "The highest rank",
-    burst: promoted ? "Rank up" : undefined,
+    // The shield that held this loss says so; else what comes next.
+    note: r.shielded
+      ? "Your shield held"
+      : r.next
+        ? `${esc(r.next.name)} at ${num(r.next.at)}`
+        : "The highest rank",
+    // Placement has no rank to rise in; the match that ends it gives one.
+    burst: r.placementLeft
+      ? undefined
+      : r.shielded
+        ? "Shield"
+        : r.previousRank === "Unranked"
+          ? "Ranked"
+          : tierUp
+            ? "New tier"
+            : promoted
+              ? "Rank up"
+              : undefined,
     tone: delta >= 0 ? "up" : "down",
   };
 }

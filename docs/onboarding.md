@@ -226,6 +226,13 @@ Code: `packages/shared/src/daily-gifts.ts`, `apps/client/src/daily-gift.ts`,
 Tests: `tests/unit/daily-gift.test.ts`, `tests/integration/daily-gift.test.ts`,
 `tests/integration/daily-gift-routes.test.ts`, `tests/visual/daily-gift.spec.ts`.
 
+## The rank road
+
+The fifth piece of the same plan (27 Nov 2026): the ten chess-title ranks
+became seven tiers of three steps, each tier with a title and coins, a
+shield after a promotion, and the player's rank always on the Lobby.
+[rank-road.md](rank-road.md) has the table, the rules and the code.
+
 ## Next steps worth considering
 
 - A short first-visit tip for screens that have none (Wardrobe, Ranks,
