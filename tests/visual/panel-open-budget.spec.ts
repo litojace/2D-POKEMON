@@ -29,6 +29,12 @@ import { openHub } from "./helpers";
  * Until then the limit counted a frame's length over the page's steady
  * frame, which the waiting made fail by chance (#559) or count the open as
  * its own steady frame (the Spire's 889 ms, judged 0 over).
+ * What it does not cover: putting the frame on screen (rasterizing it,
+ * compositing, the GPU), what the page waits for here and on CI. A
+ * screen that got costly that way (a full-screen blur, backdrop-filter, big
+ * shadows) passes it, as it passed the check before: a full-screen layer
+ * of text was not a long frame here at all, even at 4×. Each open still
+ * logs its longest frame (`worst`), so a jump there shows in the log.
  * Frames are taken by when they started, after the tap: on a busy page the
  * browser reports a long frame up to seconds later, so taking those reported
  * while an open was measured counted the Lobby's frames from before the tap
@@ -274,6 +280,7 @@ function instrument() {
     return el;
   } as typeof Document.prototype.createElement;
   (c as any).lastLong = 0;
+  (c as any).lastPaint = 0;
   // The last long frames and what ran in them, for a failure to name
   // (and the ones of a measured open, for its longest-frame check).
   (c as any).longs = [] as string[];
@@ -291,6 +298,15 @@ function instrument() {
         );
         if (own >= 30 || !("scripts" in e))
           (c as any).lastLong = e.startTime + e.duration;
+        // The skin pictures' painter (skin-thumbnails.ts, svg-raster.ts):
+        // a long frame per picture, with up to a second or more between
+        // them while it waits for an idle moment and a decode.
+        if (
+          ((e as any).scripts ?? []).some((s: any) =>
+            /skin-thumbnails|svg-raster/.test(String(s.sourceURL ?? "")),
+          )
+        )
+          (c as any).lastPaint = e.startTime + e.duration;
         const scripts = ((e as any).scripts ?? []).slice(0, 3).map(
           (s: any) =>
             `${s.invoker} ${String(s.sourceURL ?? "")
@@ -389,9 +405,17 @@ const quiet = async (page: Page) => {
   await expect
     .poll(() => Date.now() - pictures.last, { timeout: 120_000 })
     .toBeGreaterThan(1500);
+  // Nor the skin pictures' painter at work: 3 s past its last long frame,
+  // as it pauses longer than 1.5 s between pictures. Its queue from a
+  // screen's first open still painting took a 712-939 ms frame of the
+  // Shop's repeat open when that came 4-5 s after (27 Nov 2026).
   await page
     .waitForFunction(
-      () => performance.now() - (window as any).__count.lastLong > 1500,
+      () => {
+        const c = (window as any).__count;
+        const now = performance.now();
+        return now - c.lastLong > 1500 && now - c.lastPaint > 3000;
+      },
       undefined,
       { timeout: 60_000, polling: 250 },
     )
@@ -522,23 +546,57 @@ test("an open is judged by its own work, not by how long its frames last", () =>
 });
 
 /**
- * A check of the check: PANEL_OPEN_HEAVY=<screen> (spire, shop…) gives that
- * screen's repeat open HEAVY_MS of extra script on its tap, as a screen
- * that started doing too much again would. The test must then fail on it.
+ * A check of the check: PANEL_OPEN_HEAVY=<screen>:<kind>[,…] (for example
+ * spire:script,raids:layout) makes that screen's repeat open do too much,
+ * as a screen that started doing too much again would. The test must then
+ * fail on it.
+ * - script: HEAVY_MS of the page's script on the tap;
+ * - layout: HEAVY_ROWS rows of text added as the next frame is drawn
+ *   (requestAnimationFrame), which it must style and lay out: work in
+ *   drawing the frame, not in script.
  */
-const HEAVY = process.env.PANEL_OPEN_HEAVY;
+const HEAVY = new Map<string, string>(
+  (process.env.PANEL_OPEN_HEAVY ?? "")
+    .split(",")
+    .filter(Boolean)
+    .map((h): [string, string] => {
+      const [screen, kind = "script"] = h.split(":");
+      return [screen, kind];
+    }),
+);
 const HEAVY_MS = LONG_FRAME_MS;
-const slowNextOpen = (page: Page) =>
-  page.evaluate((ms) => {
-    document.addEventListener(
-      "click",
-      () => {
-        const t = performance.now();
-        while (performance.now() - t < ms);
-      },
-      { capture: true, once: true },
-    );
-  }, HEAVY_MS);
+const HEAVY_ROWS = 8000;
+const slowNextOpen = (page: Page, kind: string) =>
+  page.evaluate(
+    ({ kind, ms, rows }) => {
+      document.addEventListener(
+        "click",
+        () => {
+          if (kind === "layout") {
+            // In the frame's drawing, not the tap's script: the open's own
+            // script reads layout, which would do this work there instead.
+            requestAnimationFrame(() => {
+              const heavy = document.createElement("div");
+              heavy.id = "heavy-open";
+              heavy.style.cssText =
+                "position:fixed;inset:0;overflow:hidden;pointer-events:none;opacity:0.01;display:flex;flex-wrap:wrap;gap:2px;font:12px/1.2 system-ui";
+              heavy.innerHTML = Array.from(
+                { length: rows },
+                (_, i) =>
+                  `<span style="padding:1px 3px;border:1px solid #888;border-radius:3px">row ${i}</span>`,
+              ).join("");
+              document.body.append(heavy);
+            });
+            return;
+          }
+          const t = performance.now();
+          while (performance.now() - t < ms);
+        },
+        { capture: true, once: true },
+      );
+    },
+    { kind, ms: HEAVY_MS, rows: HEAVY_ROWS },
+  );
 
 test("a screen opened again shows what it had: no new requests, no rebuild, no long frame", async ({
   browser,
@@ -607,11 +665,19 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
         ).toContain(path);
       // …and again, on a phone-speed CPU.
       await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-      if (panel.name === HEAVY) await slowNextOpen(page);
+      if (HEAVY.has(panel.name))
+        await slowNextOpen(page, HEAVY.get(panel.name)!);
       const again = await measure(page, cdp, panel);
+      await page.evaluate(() =>
+        document.getElementById("heavy-open")?.remove(),
+      );
       await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
-      results[panel.name] = { first, again };
-      console.log(panel.name, JSON.stringify({ first, again }));
+      // A runner slower than the one LONG_FRAME_MS was set on gets as much
+      // more time (PROBE_REF_MS); a faster one is held to LONG_FRAME_MS.
+      const slower = Math.max(1, again.probe / PROBE_REF_MS);
+      const limit = Math.round(LONG_FRAME_MS * slower);
+      results[panel.name] = { first, again, slower, limit };
+      console.log(panel.name, JSON.stringify({ first, again, slower, limit }));
       // (The Lobby's own minute-long friends poll may land in the window.)
       expect(
         again.asks.filter((a) =>
@@ -640,14 +706,13 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
         `${panel.name}: layout reads on a repeat open`,
       ).toBeLessThanOrEqual(MAX_LAYOUT_READS);
       expect(again.tapped, `${panel.name}: the open's tap was seen`).toBe(true);
-      // A runner slower than the one LONG_FRAME_MS was set on gets as much
-      // more time (PROBE_REF_MS); a faster one is held to LONG_FRAME_MS.
-      const slower = Math.max(1, again.probe / PROBE_REF_MS);
-      const limit = Math.round(LONG_FRAME_MS * slower);
-      expect(
-        again.work,
-        `${panel.name}: work in one frame of a repeat open (ms; the longest frame ${again.worst} ms, the steady frame ${again.steady} ms), ${again.openAt - first.closedAt} ms after the first closed, limit ${limit} ms (runner probe ${again.probe} ms, ${slower.toFixed(2)}× the reference): ${again.longs.join("; ")}`,
-      ).toBeLessThanOrEqual(limit);
+      // Soft: every screen over its limit is named, not the first alone.
+      expect
+        .soft(
+          again.work,
+          `${panel.name}: work in one frame of a repeat open (ms; the longest frame ${again.worst} ms, the steady frame ${again.steady} ms), ${again.openAt - first.closedAt} ms after the first closed, limit ${limit} ms (runner probe ${again.probe} ms, ${slower.toFixed(2)}× the reference): ${again.longs.join("; ")}`,
+        )
+        .toBeLessThanOrEqual(limit);
     }
     console.log(JSON.stringify(results));
     expect(errors).toEqual([]);
