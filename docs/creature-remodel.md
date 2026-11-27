@@ -1,26 +1,8 @@
 # Creature remodel of the original eight
 
-The first eight kits were built when the roster was Pikachu, Charizard,
-Greninja, Lucario, Eevee, Mewtwo, Snorlax and Gengar. The art has been
-original for a while, but several kits still played like those Pokémon. This
-pass rebuilds the kits around each creature's real animal and tests them,
-including against the eight new champions being designed.
-
-## Where the old kits came from
-
-| Fighter  | Echoed    | Old skills that gave it away                                                                                |
-| -------- | --------- | ----------------------------------------------------------------------------------------------------------- |
-| Terradon | Snorlax   | Shell Slam (Body Slam), Hibernate (Rest), Dust Cloud's Drowsy combo (Yawn), Tremor (Earthquake)             |
-| Duskveil | Gengar    | Curse Mark (Hex: double damage on any status), Ghostfire (Will-O-Wisp)                                      |
-| Tidefin  | Greninja  | Ripple Stars ("water shurikens", Water Shuriken), Whirlpool (an exact move name), Mirror Mist (Double Team) |
-| Auralynx | Lucario   | Prism Shot ("aura projectile", Aura Sphere), Shatter Palm (Force Palm), Mirror Guard (Counter)              |
-| Mystowl  | Mewtwo    | Thoughtstrike (Future Sight), Ward (Barrier)                                                                |
-| Voltkit  | Pikachu   | Static Lance (paralysing bolt), Ball Lightning (Electro Ball), Overcharge (Discharge); mild and generic     |
-| Lumoth   | Eevee     | Dust Strike ("a powerful bite", on a moth), Starfall Spray (Swift)                                          |
-| Cindrake | Charizard | Ember Gust (two move names, Ember + Gust), Blaze Whirl (Fire Spin); otherwise a generic fire kit            |
-
-Names were checked against the full Pokémon move list (PokéAPI, 937 moves):
-only Whirlpool was an exact move name. The new names match none.
+This pass rebuilds the original eight kits around each creature's real
+animal and tests them, including against the eight new champions being
+designed.
 
 ## The new kits
 
@@ -41,7 +23,7 @@ only Whirlpool was an exact move name. The new names match none.
   Static Lance thrown within 2.5 s stuns. Replaces Storm Grid.
 - **Shell Up** (Terradon, a tortoise): 2.5 s in the shell, unable to move or
   act, taking 45% less damage and regrowing 25 HP. Replaces Hibernate (sleep
-  to heal, taking more damage), the clearest Pokémon tell in the game.
+  to heal, taking more damage).
 - **Tide Double** (Tidefin, an axolotl): the decoy and speed burst as before,
   plus 4 HP of regrowth (axolotls famously regenerate).
 - **Eyespot Flash** (Lumoth, a moth): 12 damage, a 0.4 s stun and a push in a
@@ -49,7 +31,7 @@ only Whirlpool was an exact move name. The new names match none.
   the bite.
 - **Haunted Lantern** (Duskveil, a lantern wisp): hung at the aim point, it
   shoots a wisp (4 damage) at the nearest enemy within 330 px every 1.3 s for
-  4 s. Replaces Curse Mark (Hex).
+  4 s. Replaces Curse Mark.
 - **Sunfire Pillar** and **Silent Swoop** land sooner (0.4 s and 0.55 s): the
   slower versions were worth little against the new champions, because targets
   walked out before they hit.
