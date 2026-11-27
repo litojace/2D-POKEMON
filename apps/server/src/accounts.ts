@@ -416,7 +416,11 @@ export function createAccountProvider(): AccountProvider {
         p_receipt: receipt,
       });
       if (result.error)
-        throw new AccountError(503, "Raid rewards could not be stored.");
+        throw new AccountError(
+          503,
+          "Raid rewards could not be stored.",
+          result.error.message,
+        );
     },
     async recordSpireFloor(receipt) {
       const r = await admin().rpc("arena_record_spire_floor", { p: receipt });
