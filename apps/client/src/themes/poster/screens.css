@@ -526,7 +526,8 @@
     .rc-summary,
     .rc-roles > *,
     .rc-player,
-    .rc-extra
+    .rc-extra,
+    .rc-safety
   ) {
   background: var(--ink);
   color: #fff;
@@ -551,6 +552,28 @@
 :root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-tip,
 :root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-step-cue {
   color: var(--el);
+}
+/* The briefing's "Stay alive" line: an ink block like the steps above it
+   (its peach and grey sat straight on the element colour, unreadable). */
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-safety > b {
+  color: var(--el);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-safety > p {
+  color: #d6d5dc;
+}
+/* Chat over a whole-screen sheet: the old look's bare gold icon sat on the
+   element colour and vanished (a raid briefing). An ink square, as in the
+   battle, reads on every sheet. */
+:root[data-ui="poster"]
+  body.battle-active[data-battle-overlay="sheet"]
+  :is(#chat-button#chat-button, #battle-chat#battle-chat) {
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--el-text);
 }
 /* ── raid room ── */
 /* The column keeps its 1 px frame, unseen: the room's chat button is placed

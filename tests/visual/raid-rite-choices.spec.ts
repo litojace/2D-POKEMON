@@ -274,6 +274,18 @@ for (const size of [
         expect(
           await page.evaluate(() => (window as any).__riteRequests),
         ).toEqual([]);
+        // On Poster the sheet is solid ink: the tiles, title and timer
+        // behind it showed through the old look's 95% navy (audit A04).
+        if (
+          await page.evaluate(
+            () => document.documentElement.dataset.ui === "poster",
+          )
+        )
+          expect(
+            await page
+              .locator(".raid-rite-reference")
+              .evaluate((e) => getComputedStyle(e).backgroundColor),
+          ).toBe("rgb(13, 13, 15)");
         const reference = await box(page, ".raid-rite-reference"),
           close = await box(page, ".raid-rite-more > summary");
         expect(reference.y + reference.height).toBeLessThanOrEqual(close.y);

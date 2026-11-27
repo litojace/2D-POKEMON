@@ -92,6 +92,54 @@ const contrast = (a: number[], b: number[]) => {
 /** Green: the green channel leads the other two. */
 const green = (c: number[]) => c[1] > c[0] + 40 && c[1] > c[2] + 40;
 
+/** Each element's text colour against the colour it sits on: its own
+ *  background, else the nearest painted ancestor's (the sheet itself is
+ *  the element colour). Audit A01-A03: words and icons that vanished. */
+const reads = (page: Page, selectors: string[]) =>
+  page.evaluate((selectors) => {
+    const paint = document.createElement("canvas").getContext("2d", {
+      willReadFrequently: true,
+    })!;
+    paint.canvas.width = paint.canvas.height = 1;
+    const rgba = (c: string) => {
+      paint.clearRect(0, 0, 1, 1);
+      paint.fillStyle = "#000";
+      paint.fillStyle = c;
+      paint.fillRect(0, 0, 1, 1);
+      return Array.from(paint.getImageData(0, 0, 1, 1).data);
+    };
+    const el = getComputedStyle(document.documentElement)
+      .getPropertyValue("--el")
+      .trim();
+    return selectors.map((sel) => {
+      const n = document.querySelector<HTMLElement>(sel);
+      if (!n) return { sel, missing: true, fg: [0, 0, 0], bg: [0, 0, 0] };
+      let bg: number[] | null = null;
+      for (let e: HTMLElement | null = n; e && !bg; e = e.parentElement) {
+        const c = getComputedStyle(e).backgroundColor;
+        const v = rgba(c);
+        if (c !== "rgba(0, 0, 0, 0)" && c !== "transparent" && v[3] > 230)
+          bg = v.slice(0, 3);
+        if (e.classList.contains("rc-card")) bg ??= rgba(el).slice(0, 3);
+      }
+      return {
+        sel,
+        missing: false,
+        fg: rgba(getComputedStyle(n).color).slice(0, 3),
+        bg: bg ?? rgba(el).slice(0, 3),
+      };
+    });
+  }, selectors);
+async function readable(page: Page, selectors: string[], what: string) {
+  for (const r of await reads(page, selectors)) {
+    expect(r.missing, `${what}: ${r.sel} shown`).toBe(false);
+    expect(
+      contrast(r.fg, r.bg),
+      `${what}: ${r.sel} ${r.fg} on ${r.bg}`,
+    ).toBeGreaterThanOrEqual(4.5);
+  }
+}
+
 async function check(page: Page, win: boolean, what: string) {
   const c = await colours(page);
   expect(
@@ -173,6 +221,12 @@ for (const mode of ["raid", "spire"] as const)
       await expect(page.locator("#raid-instructions")).toBeEnabled({
         timeout: 45_000,
       });
+      if (mode === "raid")
+        await readable(
+          page,
+          [".rc-safety > b", ".rc-safety > p", "#battle-chat"],
+          "raid briefing",
+        );
       if (mode === "raid") await push(page, `s.phase = "finished";`);
       else
         await page.evaluate(() => {
@@ -188,6 +242,20 @@ for (const mode of ["raid", "spire"] as const)
         await expect(overlay.locator(".rc-card.is-victory")).toBeVisible();
         await page.waitForTimeout(3200);
         await check(page, true, "raid clear");
+      } else {
+        await push(page, `s.raid.result = "victory";`);
+        await expect(overlay.locator(".rc-card.is-victory")).toBeVisible();
+        await page.waitForTimeout(3200);
+        await readable(
+          page,
+          [
+            ".spire-held > .ui-kicker",
+            ".spire-held",
+            ".spire-rewards .ui-price",
+            ".spire-rewards > .ui-kicker",
+          ],
+          "spire floor cleared",
+        );
       }
       expect(errors).toEqual([]);
     } finally {
