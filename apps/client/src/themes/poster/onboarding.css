@@ -1,7 +1,8 @@
-/* Poster before the Lobby: the welcome screen's sign-up / log-in card, the
-   same form wherever it opens (Save account, Log in), and the title
-   screen's corner buttons. The default look's blue frosted glass becomes an
-   ink board with a hard shadow; nothing blurred, nothing rounded. */
+/* Poster before the Lobby: the welcome screen's sign-up / log-in card and
+   the same form wherever it opens (Save account, Log in). The default
+   look's blue frosted glass becomes an ink board with a hard shadow;
+   nothing blurred, nothing rounded. The quick buttons in the corner are
+   the title screen's, round (screens.css). */
 
 /* ── the card ── */
 :root[data-ui="poster"] .welcome-gate .gate-card {
@@ -132,34 +133,15 @@
 :root[data-ui="poster"] .auth-legal a {
   color: var(--ui-dim);
 }
-
-/* ── the corner buttons (Settings, Help, Support, Repair) ── */
-:root[data-ui="poster"] .title-quick-icon {
-  border: 0;
-  border-radius: 0;
-  background: var(--ink);
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-:root[data-ui="poster"] .title-quick-icon .menu-option-icon {
-  color: var(--el);
-}
-:root[data-ui="poster"] .title-quick-btn:hover .title-quick-icon {
-  background: var(--ink-2);
-}
-:root[data-ui="poster"] .title-quick-btn {
-  font-weight: 700;
-}
-
 /* ── the startup curtain: the boot screen's own fonts ──
    The boot screen (index.html, drawn before any of the game's CSS) sets its
    title in Barlow Condensed and its status in DM Sans. The curtain that
    takes its place draws the same words through --font-display and
    --font-body, which Poster makes Anton and Archivo: the title and the line
    under it changed font, and moved, at the handover
-   (startup-curtain.spec, "hands over without moving"). The curtain keeps
-   the boot screen's fonts; it is gone before the Lobby shows. */
+   (startup-curtain.spec, "hands over without moving"). Until the boot
+   screen gets Poster's own design, the curtain keeps the boot screen's
+   fonts; that change moves both to Anton and Archivo and drops this pin. */
 :root[data-ui="poster"] #server-startup {
   --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --font-body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;

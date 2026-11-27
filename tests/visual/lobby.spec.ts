@@ -1472,12 +1472,14 @@ const SPIRE_VIEWPORTS: {
     height: 390,
     inset: NOTCH,
     label: "notch",
-    expect: ["journey", "spire", "missions"],
+    expect: ["journey", "spire"],
   },
-  { width: 844, height: 390, expect: ["journey", "spire", "missions"] },
-  { width: 700, height: 390, expect: ["journey", "spire", "missions"] },
+  // Poster's cards are taller than the old look's: a 390 px phone has room
+  // for two (Missions stays one tap away on the rail), a 320 px one for one.
+  { width: 844, height: 390, expect: ["journey", "spire"] },
+  { width: 700, height: 390, expect: ["journey", "spire"] },
   { width: 667, height: 375, expect: ["journey", "spire"] },
-  { width: 568, height: 320, expect: ["journey", "spire"] },
+  { width: 568, height: 320, expect: ["spire"], seen: ["journey"] },
   { width: 844, height: 280, expect: ["spire"], seen: ["journey"] },
   { width: 1280, height: 800, expect: ALL_CARDS },
   { width: 1180, height: 820, expect: ALL_CARDS },
