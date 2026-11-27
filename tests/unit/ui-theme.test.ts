@@ -1,28 +1,18 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import {
   DEFAULT_UI_THEME,
   UI_THEMES,
   getUiTheme,
-  lookPickerDue,
-  markLookAsked,
-  offeredThemes,
   readUiQuery,
   resetUiThemeForTests,
   resolveUiTheme,
-  setUiTheme,
-  uiThemeChoice,
-  type UiTheme,
 } from "../../apps/client/src/ui-theme";
-import {
-  lookPickerMarkup,
-  lookRow,
-} from "../../apps/client/src/ui-theme-picker";
 import { PLAYERS_LOOK } from "../visual/players-look";
 
-// The game's looks (ui-theme.ts): which one a device shows, when a player
-// is offered the choice, and the rules each theme's folder keeps. The picker
-// and Settings in the page: tests/visual/ui-theme.spec.ts.
+// The game's look (ui-theme.ts): Poster for every player, the look
+// underneath kept for the visual tests, and the rules a theme's folder
+// keeps. In the page: tests/visual/ui-theme.spec.ts.
 const store = new Map<string, string>();
 (globalThis as { localStorage?: unknown }).localStorage = {
   getItem: (k: string) => store.get(k) ?? null,
@@ -34,101 +24,58 @@ afterEach(() => {
   resetUiThemeForTests();
 });
 
-const theme = (id: UiTheme["id"], ready: boolean): UiTheme => ({
-  id,
-  name: id,
-  blurb: "",
-  ready,
-  preview: "",
-  load: async () => ({ css: "" }),
-});
-const NONE = [theme("poster", false), theme("showcase", false)];
-const ONE = [theme("poster", true), theme("showcase", false)];
-const BOTH = [theme("poster", true), theme("showcase", true)];
 const plain = readUiQuery("");
 
 describe("the address", () => {
-  it("reads ?ui= and ?ui-preview", () => {
-    expect(readUiQuery("?ui=poster")).toEqual({ ui: "poster", preview: false });
+  it("reads ?ui=", () => {
+    expect(readUiQuery("?ui=poster")).toEqual({ ui: "poster" });
     expect(readUiQuery("?ui=classic").ui).toBe("classic");
+    expect(readUiQuery("?ui=showcase").ui).toBeUndefined();
     expect(readUiQuery("?ui=nonsense").ui).toBeUndefined();
-    expect(readUiQuery("?ui-preview=1").preview).toBe(true);
-    expect(readUiQuery("?ui-preview=0").preview).toBe(false);
-    expect(readUiQuery("?x=1")).toEqual({ ui: undefined, preview: false });
+    expect(readUiQuery("?x=1")).toEqual({ ui: undefined });
   });
 });
 
 describe("which look shows", () => {
-  it("is the look underneath when nothing is chosen and there is no default", () => {
-    expect(resolveUiTheme(null, plain, BOTH, null)).toBeNull();
-  });
-  it("is the default look when nothing is chosen, once that look is ready", () => {
-    expect(resolveUiTheme(null, plain, ONE, "poster")).toBe("poster");
-    expect(resolveUiTheme(null, plain, NONE, "poster")).toBeNull();
-    // A saved look that isn't ready falls to the default, not to nothing.
-    expect(resolveUiTheme("showcase", plain, ONE, "poster")).toBe("poster");
+  it("is Poster with nothing saved, and the look underneath when there is no default", () => {
+    expect(resolveUiTheme(null, plain)).toBe("poster");
+    expect(resolveUiTheme(null, plain, UI_THEMES, null)).toBeNull();
   });
   it('a saved "classic" keeps the look underneath (the visual tests pin it)', () => {
-    expect(resolveUiTheme("classic", plain, ONE, "poster")).toBeNull();
+    expect(resolveUiTheme("classic", plain)).toBeNull();
+    expect(resolveUiTheme("classic", readUiQuery("?ui=poster"))).toBe("poster");
+  });
+  it("a saved look that is gone (a tester's Showcase) gets Poster", () => {
+    expect(resolveUiTheme("showcase", plain)).toBe("poster");
+    expect(resolveUiTheme("old-name", plain)).toBe("poster");
+  });
+  it("the address wins for a page load", () => {
+    expect(resolveUiTheme("poster", readUiQuery("?ui=classic"))).toBeNull();
     expect(
-      resolveUiTheme("classic", readUiQuery("?ui=poster"), ONE, "poster"),
+      resolveUiTheme(null, readUiQuery("?ui=poster"), UI_THEMES, null),
     ).toBe("poster");
   });
-  it("is the saved one once it is ready", () => {
-    expect(resolveUiTheme("showcase", plain, BOTH)).toBe("showcase");
-  });
-  it("ignores a saved look that is not ready, or not a look", () => {
-    expect(resolveUiTheme("showcase", plain, ONE, null)).toBeNull();
-    expect(resolveUiTheme("old-name", plain, BOTH, null)).toBeNull();
-  });
-  it("the address wins for a page load, ready or not", () => {
-    expect(resolveUiTheme("showcase", readUiQuery("?ui=poster"), NONE)).toBe(
-      "poster",
-    );
-    expect(resolveUiTheme("showcase", readUiQuery("?ui=classic"), BOTH)).toBe(
-      null,
-    );
-  });
-  it("?ui-preview offers unfinished looks", () => {
-    expect(resolveUiTheme("showcase", readUiQuery("?ui-preview=1"), NONE)).toBe(
-      "showcase",
-    );
-  });
 });
 
-describe("when a player is offered the choice", () => {
-  it("only while two looks are ready", () => {
-    expect(uiThemeChoice(NONE, plain)).toBe(false);
-    expect(uiThemeChoice(ONE, plain)).toBe(false);
-    expect(uiThemeChoice(BOTH, plain)).toBe(true);
-    expect(uiThemeChoice(NONE, readUiQuery("?ui-preview=1"))).toBe(true);
-    expect(offeredThemes(ONE, plain).map((t) => t.id)).toEqual(["poster"]);
-  });
-  it("the picker is owed once per account, and never while the address forces a look", () => {
-    resetUiThemeForTests("?ui-preview=1");
-    expect(lookPickerDue(undefined)).toBe(false);
-    expect(lookPickerDue("a")).toBe(true);
-    markLookAsked("a");
-    expect(lookPickerDue("a")).toBe(false);
-    expect(lookPickerDue("b")).toBe(true);
-    resetUiThemeForTests("?ui-preview=1&ui=poster");
-    expect(lookPickerDue("b")).toBe(false);
-  });
-});
-
-describe("the looks as shipped", () => {
-  // The owner turns a look on after seeing the whole set of screenshots.
-  // Turning one on: change this list in the same pull request.
-  const READY: string[] = ["poster"];
-  it("are ready only when the owner has said so", () => {
-    expect(UI_THEMES.filter((t) => t.ready).map((t) => t.id)).toEqual(READY);
+describe("the look as shipped", () => {
+  it("is Poster alone: Showcase and the picker are gone", () => {
+    expect(UI_THEMES.map((t) => t.id)).toEqual(["poster"]);
+    for (const gone of [
+      "themes/showcase/index.ts",
+      "ui-theme-picker.ts",
+      "lobby-raid.ts",
+    ])
+      expect(
+        existsSync(new URL(`../../apps/client/src/${gone}`, import.meta.url)),
+        gone,
+      ).toBe(false);
   });
   it("every player gets Poster, with nothing saved and nothing in the address", () => {
     resetUiThemeForTests("");
     expect(DEFAULT_UI_THEME).toBe("poster");
     expect(getUiTheme()).toBe("poster");
     // It ships in the game's own script: no chunk to wait for at startup.
-    expect(typeof UI_THEMES.find((t) => t.id === "poster")!.css).toBe("string");
+    expect(typeof UI_THEMES[0].css).toBe("string");
     store.set("ea-ui", "showcase");
     expect(getUiTheme()).toBe("poster");
     store.set("ea-ui", "classic");
@@ -140,34 +87,6 @@ describe("the looks as shipped", () => {
     // underneath) means changing PLAYERS_LOOK in the same pull request, or
     // the budgets would go on measuring a look players no longer have.
     expect(PLAYERS_LOOK).toBe(DEFAULT_UI_THEME ?? "classic");
-  });
-  it("show nothing to choose while fewer than two are ready", () => {
-    resetUiThemeForTests("");
-    if (READY.length >= 2) return;
-    expect(lookPickerDue("a")).toBe(false);
-    expect(lookRow()).toBe("");
-    store.set("ea-ui", "poster");
-    expect(getUiTheme()).toBe(READY.includes("poster") ? "poster" : null);
-  });
-  it("a choice is kept on the device", async () => {
-    resetUiThemeForTests("?ui-preview=1");
-    await setUiTheme("showcase");
-    expect(store.get("ea-ui")).toBe("showcase");
-    expect(getUiTheme()).toBe("showcase");
-    await setUiTheme(null);
-    expect(store.has("ea-ui")).toBe(false);
-  });
-  it("the picker and Settings name every look on offer", () => {
-    resetUiThemeForTests("?ui-preview=1");
-    const picker = lookPickerMarkup();
-    const row = lookRow();
-    for (const t of UI_THEMES) {
-      expect(picker).toContain(`data-look="${t.id}"`);
-      expect(picker).toContain(t.name);
-      expect(row).toContain(`data-look-set="${t.id}"`);
-    }
-    // One tap chooses: the picker has no other button.
-    expect(picker.match(/<button/g)?.length).toBe(UI_THEMES.length);
   });
 
   const dir = (id: string) =>

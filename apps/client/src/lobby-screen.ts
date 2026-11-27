@@ -1,7 +1,5 @@
 import { rankChipKey, rankChipMarkup, type RankChip } from "./rank-chip";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
-import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
-import { lobbyRaidBoss, lobbyRaidCard } from "./lobby-raid";
 import {
   JOURNEY_ITEM_BY_ID,
   SEASON_THEMES,
@@ -318,11 +316,6 @@ export interface LobbyView {
   introRounds?: number;
   /** Your rank, beside the element pill (rank-chip.ts); null: none yet. */
   rank?: RankChip | null;
-  /**
-   * Your saved clears per raid boss: the Raid card shows the next boss you
-   * have not cleared (lobby-raid.ts). Only a look that shows the card uses it.
-   */
-  raidClears?: Partial<Record<RaidBossId, number>>;
 }
 export interface LobbyOptions {
   onAction(action: LobbyAction): void;
@@ -502,7 +495,6 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   </div>
 </section>
 <aside class="lobby-cards" aria-label="Today">
-  <button type="button" class="lobby-card lobby-raid-card" data-lobby-action="raids" id="lobby-raid-card"></button>
   <button type="button" class="lobby-card" data-lobby-action="journey" id="lobby-journey-card"></button>
   <button type="button" class="lobby-card lobby-spire-card" data-lobby-action="spire" id="lobby-spire-card" hidden><span class="lobby-spire-art" aria-hidden="true">${spireLobbyIcon()}</span><span class="lobby-spire-text" id="lobby-spire-text"></span></button>
   <button type="button" class="lobby-card lobby-missions-card" data-lobby-action="missions" id="lobby-missions-card"></button>
@@ -905,16 +897,12 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
           ? [$("lobby-journey-card")]
           : [spireCardEl]
         : []),
-      // The Raid card (a look's picture card) goes last: the rail's Raids
-      // button opens the same screen.
-      $("lobby-raid-card"),
     ];
     for (const card of [
       $("lobby-friends-card"),
       $("lobby-missions-card"),
       $("lobby-journey-card"),
       spireCardEl,
-      $("lobby-raid-card"),
     ])
       card.classList.remove("is-squeezed");
     layer.classList.remove("lobby-cards-tight");
@@ -1181,15 +1169,6 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       spireCardEl.classList.toggle("is-new", !!spire?.fresh);
       layer.classList.toggle("has-spire", !!spire);
       if (spire) setInner($("lobby-spire-text"), spireCard(spire));
-      setInner(
-        $("lobby-raid-card"),
-        lobbyRaidCard(
-          lobbyRaidBoss(view.raidClears),
-          featureLocked("raids", view.level)
-            ? unlockOf("raids").level
-            : undefined,
-        ),
-      );
       fitSoon();
       const raidBadge = layer.querySelector<HTMLElement>(
         '[data-badge-for="raids"]',

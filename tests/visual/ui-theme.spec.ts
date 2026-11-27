@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub, skipTour } from "./helpers";
 
-// The game's look (ui-theme.ts). Since 27 Nov 2026 every player gets Poster:
-// nothing to choose, so no picker and no Look row in Settings. The rest of
+// The game's look (ui-theme.ts). Since 27 Nov 2026 every player gets Poster;
+// Showcase, the picker and Settings' Look row are gone from the code (the
+// checks for them below guard against their return). The rest of
 // the suite runs on the look underneath, which the harness pins
 // (harness/look-asked.ts); these tests undo that with `__lookDefault` to see
 // what a player sees. Poster itself: poster.spec.ts.
