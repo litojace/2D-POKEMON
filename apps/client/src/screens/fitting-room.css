@@ -928,7 +928,14 @@
   }
   /* Awakening stages: a column at the stage's right edge, beside the
      fighter, so the stage never changes size for a Mythical. One group of
-     three, 6px apart (16px spread them over half the stage). */
+     three, 6px apart (16px spread them over half the stage). Each is 40 px
+     square, the size of the round buttons above it, so with half of each
+     gap (ui/phone-fit.css, ::after) every stage catches a 44 px finger;
+     at 28 px the middle one caught 34. */
+  .fit-awaken .ui-btn.is-s {
+    --h: 40px;
+    min-width: 40px;
+  }
   .fit-awaken {
     position: absolute;
     right: 0;

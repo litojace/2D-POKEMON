@@ -636,6 +636,33 @@ for (const size of [SIZES[0], SIZES[2]])
         expect(gap, "between two stages").toBeLessThanOrEqual(8);
       }
       if (size.phone) {
+        // Each stage catches a 44 px finger, down and across, without
+        // taking taps from its neighbours (they were 28 px with 34 px hit
+        // areas). Probed through elementFromPoint, so the ::after counts.
+        const reach = await page
+          .locator(".fit-awaken .ui-btn")
+          .evaluateAll((els) =>
+            els.map((b) => {
+              const r = b.getBoundingClientRect(),
+                cx = r.left + r.width / 2,
+                cy = r.top + r.height / 2;
+              const hits = (x: number, y: number) => {
+                const e = document.elementFromPoint(x, y);
+                return e === b || b.contains(e);
+              };
+              let down = 0,
+                across = 0;
+              for (let y = r.top - 20; y < r.bottom + 20; y++)
+                if (hits(cx, y)) down++;
+              for (let x = r.left - 20; x < r.right + 20; x++)
+                if (hits(x, cy)) across++;
+              return { down, across };
+            }),
+          );
+        for (const r of reach) {
+          expect(r.down, "stage hit area down").toBeGreaterThanOrEqual(44);
+          expect(r.across, "stage hit area across").toBeGreaterThanOrEqual(44);
+        }
         // Round icon buttons: each icon in the middle of its circle (the
         // -3px nudge for an icon beside a label pulled them 1.5px left).
         const centres = await page
