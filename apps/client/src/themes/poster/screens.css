@@ -197,11 +197,18 @@
   transform: skewX(-10deg);
   pointer-events: none;
 }
+/* The clock changes every second: Archivo's tabular figures, heaviest, so
+   its digits don't jump (Anton's 1 is narrower: kit.css, "numbers"). */
 :root[data-ui="poster"] body.battle-active #battle #hud #timer {
-  font-family: var(--font-display);
-  font-weight: 400;
+  font-family: var(--font-body);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
   color: var(--el);
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
+  /* Archivo's figures sit lower in the line than Anton's: back on the
+     badge's middle line (match-badge.spec). */
+  position: relative;
+  top: -0.05em;
 }
 :root[data-ui="poster"] body.battle-active #battle #hud .timer-wrap small,
 :root[data-ui="poster"] body.battle-active #battle #hud .timer-wrap span {

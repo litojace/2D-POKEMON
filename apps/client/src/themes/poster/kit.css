@@ -325,3 +325,16 @@
   flex: 0 0 auto;
   max-width: 46%;
 }
+
+/* ── numbers: figures that line up ──
+   Anton has no tabular figures: its 1 is a third narrower than its other
+   digits, with or without tabular-nums, so a column of Anton numbers
+   doesn't line up and a count that changes in place jumps. Numbers in
+   columns or that change (coins, prices, ratings, W–L, places, timers) take
+   Archivo's tabular figures, heavy; Anton stays for words. */
+:root[data-ui="poster"] :is(.ui-num, .ui-price) {
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
