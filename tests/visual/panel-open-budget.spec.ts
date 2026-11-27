@@ -559,7 +559,7 @@ test("an open is judged by its own work, not by how long its frames last", () =>
  *   drawing the frame, not in script.
  */
 const HEAVY = new Map<string, string>(
-  (process.env.PANEL_OPEN_HEAVY ?? "")
+  (process.env.PANEL_OPEN_HEAVY ?? "spire:script,ranks:layout")
     .split(",")
     .filter(Boolean)
     .map((h): [string, string] => {
