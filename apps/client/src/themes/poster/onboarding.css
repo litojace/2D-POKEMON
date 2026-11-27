@@ -107,6 +107,18 @@
   color: #fff;
   font-weight: 700;
 }
+/* The guest button is the game's own, so it speaks as its other buttons do
+   (Apple's keeps Apple's lettering). Anton is narrower than the body face:
+   the nickname box beside it gets the room its placeholder needs on a small
+   phone. */
+:root[data-ui="poster"] .auth-guest .auth-secondary {
+  padding-inline: 12px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: calc(15px * var(--text-scale, 1));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 :root[data-ui="poster"] .auth-secondary:hover {
   background: color-mix(in srgb, var(--ink-3) 80%, #fff);
 }

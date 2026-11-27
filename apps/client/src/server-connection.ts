@@ -242,6 +242,16 @@ function renderStatus() {
       "Connection is taking longer than expected. Check your connection and try again.",
   };
   setStatusText(panel.querySelector("p")!, copy[status]);
+  // The heading says what is true: "Opening the arena…" over a connection
+  // that gave up read as if the game were still on its way in.
+  const heading =
+    status === "failed"
+      ? "Connection paused"
+      : status === "offline"
+        ? "You’re offline"
+        : "Opening the arena…";
+  const title = panel.querySelector("h2")!;
+  if (title.textContent !== heading) title.textContent = heading;
   panel.querySelector("button")!.hidden = status !== "failed";
   // "loading": the server answered and the game is still getting ready (the
   // bar keeps its sheen, unlike a finished "ready").

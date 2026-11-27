@@ -344,6 +344,10 @@ test("the short phone retry layout fits without covering the logo or progress", 
     ])
       expect(inside(rect, { x: 0, y: 0, ...size })).toBe(true);
     expect(logo.y + logo.height).toBeLessThan(footer.y);
+    // The heading owns up to it; "Opening the arena…" would not be true.
+    await expect(page.locator("#server-startup h2")).toHaveText(
+      "Connection paused",
+    );
     await snap(page, info, "server-starforged-retry-844x280");
   } finally {
     await context.close();
