@@ -4643,15 +4643,16 @@ function renderBattle() {
   // the overlay itself, in the same step as its markup: a rule asking the
   // overlay whether it holds the Reveal (:has) could take effect a frame
   // late in Safari, showing the arena before the Reveal (owner's iPhone).
+  // The countdown is the same for players and watchers, in every mode a
+  // watcher reaches here (PvP, raids, the Spire): renderWatchOverlay draws
+  // the same .countdown-card, so the full-screen rules apply to both. The
+  // Reveal is the players' briefing; watchers have their own.
   const player = !!myId || !watching;
   overlay.classList.toggle(
     "is-reveal",
     player && state.phase === "briefing" && !state.practice,
   );
-  overlay.classList.toggle(
-    "is-countdown",
-    player && state.phase === "countdown",
-  );
+  overlay.classList.toggle("is-countdown", state.phase === "countdown");
   // The break between rounds and the results take the whole screen too,
   // as the Reveal and the countdown do (match-sheet.css): the match opens
   // and ends in the same style (owner, 22 Nov 2026).
