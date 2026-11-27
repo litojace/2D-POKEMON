@@ -1,0 +1,54 @@
+/* Poster on the Spire's battle sheets (spire-battle.css, spire-ui.ts): the
+   floor briefing's waves and new attacks, its rules, and the results.
+   The briefing is the element-colour sheet: its rows were the Spire's
+   translucent violet, read as brown with grey words on it; they become ink
+   blocks with white words. The results of a failed climb are the ink
+   sheet (sheets.css gives it its white title). */
+:root[data-ui="poster"] #arena-overlay .spire-waves li {
+  border: 0;
+  border-left: 4px solid var(--ink-3);
+  border-radius: 0;
+  background: var(--ink);
+  color: #fff;
+}
+:root[data-ui="poster"] #arena-overlay .spire-waves b {
+  color: var(--el);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+:root[data-ui="poster"] #arena-overlay .spire-waves small {
+  color: var(--ui-dim);
+}
+/* The lead and the rules sit straight on the sheet: ink, as its title. */
+:root[data-ui="poster"]
+  #arena-overlay.is-sheet
+  .rc-card:not(.is-defeat)
+  :is(.spire-lead, .spire-rules li) {
+  color: var(--ink);
+}
+:root[data-ui="poster"]
+  #arena-overlay.is-sheet
+  .rc-card:not(.is-defeat)
+  :is(.spire-rules svg, .spire-plan-line) {
+  color: var(--ink);
+}
+:root[data-ui="poster"]
+  #arena-overlay.is-sheet
+  .rc-card:not(.is-defeat)
+  .spire-briefing
+  > .ui-kicker {
+  color: var(--ink);
+}
+/* Results: the first-clear coins and blessings as an ink strip. */
+:root[data-ui="poster"] #arena-overlay .spire-rewards {
+  border: 0;
+  border-left: 4px solid var(--el);
+  border-radius: 0;
+  background: var(--ink-1);
+}
+:root[data-ui="poster"] #arena-overlay .spire-stack {
+  border-radius: 0;
+  background: var(--ink-3);
+  color: #fff;
+}
