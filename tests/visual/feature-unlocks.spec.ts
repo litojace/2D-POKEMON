@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub, skipTour, snap } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Features that open by level (feature-unlocks.ts): a new player's Lobby
 // shows every button, the side systems with a padlock and the level that

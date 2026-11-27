@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, openPlayPanel, snap } from "./helpers";
 import { shopServer } from "./shop-server";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Hub redesign phase 2: the Lobby is the first screen after login. The UI
 // rules from the handoff: HUD boxes keep a fixed size, text is centred in its

@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { snap } from "./helpers";
 import { layoutProblems } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // A new guest pass is said plainly once, when it's made (accounts.ts,
 // warnNewGuest): it lives on this device only and can't be recovered; Save

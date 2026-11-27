@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub, skipTour, snap } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The daily gift (daily-gift.ts): its dialog opens on the Lobby while
 // today's gift waits, shows seven days with today's lit, Claim takes it and

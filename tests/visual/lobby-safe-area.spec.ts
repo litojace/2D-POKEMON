@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, snap } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 type Box = { name: string; x: number; y: number; w: number; h: number };
 /** The Lobby's boxes, as in lobby.spec.ts. */

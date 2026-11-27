@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub, snap } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The Lobby tour (hub-tour.ts) and How to play (how-to-play.ts): a new
 // account gets a short spotlight tour of the Lobby, with Skip on every step;

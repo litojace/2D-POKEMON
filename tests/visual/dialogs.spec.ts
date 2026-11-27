@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { box, inside, openHub, snap } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 const SCREENS = [
   { name: "desktop", viewport: { width: 1440, height: 900 }, touch: false },
