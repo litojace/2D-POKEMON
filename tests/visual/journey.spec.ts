@@ -240,6 +240,28 @@ for (const size of SIZES)
         }),
       );
       expect(stacked).toEqual([]);
+      // A milestone's name reads whole (two lines on a phone when it needs
+      // them: "Wayfarer fra…", "Trailblazer a…"), and on a phone the road's
+      // first row stands whole above the bar under it (the rules above the
+      // road left it 80 px: UI audit, 27 Nov 2026).
+      const road = await room.evaluate((r) => {
+        const cards = Array.from(r.querySelectorAll(".journey-prize"));
+        const first = cards[0].getBoundingClientRect();
+        const foot = r.querySelector(".ui-panel-foot")?.getBoundingClientRect();
+        return {
+          cut: cards
+            .map((card) => card.querySelector("b")!)
+            .filter(
+              (name) =>
+                name.scrollWidth > name.clientWidth + 1 ||
+                name.scrollHeight > name.clientHeight + 1,
+            )
+            .map((name) => name.textContent),
+          firstRowBelowFoot: foot ? first.bottom - foot.top : 0,
+        };
+      });
+      expect(road.cut).toEqual([]);
+      if (size.phone) expect(road.firstRowBelowFoot).toBeLessThanOrEqual(0);
       await snap(page, info, `journey-levels-${size.name}`);
       const last = room.locator('[data-journey-item="element-master-frame"]');
       await last.scrollIntoViewIfNeeded();

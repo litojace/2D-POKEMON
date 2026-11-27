@@ -591,13 +591,36 @@ button.journey-prize {
   .journey-levelroad {
     padding: 8px 10px;
   }
+  /* The Levels tab on a phone: the road's first row stands whole above the
+     bar under it, and a milestone's name takes two lines when it needs
+     them ("Wayfarer fra…", "Trailblazer a…", "Arena Vangu…" in 112 px
+     columns: UI audit, 27 Nov 2026). 106 px lie between the road's heading
+     and the bar at 852 x 393, so a row is 104 px: a 36 px picture, the
+     level, two lines of name and the state; the tab's rows sit 6 px apart. */
+  .journey-room[data-journey-tab="levels"] > .ui-panel-body {
+    padding-block: 6px;
+    gap: 6px;
+  }
   .journey-prizes {
     grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-    grid-auto-rows: 112px;
+    grid-auto-rows: 104px;
+  }
+  .journey-prize {
+    gap: 1px;
+    padding: 6px;
+  }
+  .journey-prize b {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    line-height: 1.15;
+    text-wrap: balance;
   }
   .journey-prize-art {
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
   }
   .journey-arcade {
     grid-template-columns: minmax(0, 1fr) 150px;
