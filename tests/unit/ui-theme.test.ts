@@ -8,6 +8,7 @@ import {
   resetUiThemeForTests,
   resolveUiTheme,
 } from "../../apps/client/src/ui-theme";
+import { PLAYERS_LOOK } from "../visual/players-look";
 
 // The game's look (ui-theme.ts): Poster for every player, the look
 // underneath kept for the visual tests, and the rules a theme's folder
@@ -79,6 +80,13 @@ describe("the look as shipped", () => {
     expect(getUiTheme()).toBe("poster");
     store.set("ea-ui", "classic");
     expect(getUiTheme()).toBeNull();
+  });
+  it("the budget specs measure the look every player gets", () => {
+    // tests/visual/players-look.ts: the battle and panel budgets run in
+    // this look. Changing the default (or reverting it to null, the look
+    // underneath) means changing PLAYERS_LOOK in the same pull request, or
+    // the budgets would go on measuring a look players no longer have.
+    expect(PLAYERS_LOOK).toBe(DEFAULT_UI_THEME ?? "classic");
   });
 
   const dir = (id: string) =>

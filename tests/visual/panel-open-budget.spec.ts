@@ -1,5 +1,6 @@
 import { expect, test, type CDPSession, type Page } from "@playwright/test";
 import { openHub } from "./helpers";
+import { lookAsked, lookShown, playersLook } from "./players-look";
 
 /**
  * Opening a screen again must not start it from scratch (the owner's
@@ -16,7 +17,9 @@ import { openHub } from "./helpers";
  * - and on a 4× slowed CPU no frame takes longer than LONG_FRAME_MS (more
  *   than the page's steady frame, where every frame was already long).
  *
- * A phone held sideways (956×440, an iPhone's landscape screen), touch.
+ * A phone held sideways (956×440, an iPhone's landscape screen), touch,
+ * in the look players have (players-look.ts): its panels are the ones
+ * their phones build and lay out.
  * Mostly counted, not timed: this machine draws on the CPU. The timed limit
  * is loose; what it guards against took two to three times as long.
  * On CI's runner every Lobby frame at 4× was a long one, 250-380 ms, before
@@ -453,7 +456,10 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
       w.__spire = { best: 3, zones: [] };
     });
     await page.addInitScript(instrument);
+    await playersLook(page);
     const errors = await openHub(page);
+    const look = await lookShown(page);
+    expect(look, "the look measured").toBe(lookAsked());
     await watchRequests(page);
     // Code the hub loads once in quiet moments after it opens (the other
     // worlds, the screens' own code): loaded before measuring, so a load
@@ -527,7 +533,7 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
         `${panel.name}: longest frame on a repeat open (ms) over the steady ${again.steady} ms, ${again.openAt - first.closedAt} ms after the first closed, limit ${limit} ms (runner probe ${again.probe} ms, ${slower.toFixed(2)}× the reference): ${again.longs.join("; ")}`,
       ).toBeLessThanOrEqual(limit);
     }
-    console.log(JSON.stringify(results));
+    console.log(JSON.stringify({ look, ...results }));
     expect(errors).toEqual([]);
   } finally {
     await context.close();

@@ -8,6 +8,20 @@ services:
     plan: 1c-2g
     numInstances: 1
     buildCommand: npm ci --include=dev && npm run build
+    # A commit that changes only these files is not built or deployed
+    # (Render: "commit ignored"), so it costs no build minutes and doesn't
+    # restart the server. Nothing the build or the server reads is in them
+    # (tests/unit/render-build-filter.test.ts). The game's Static Site
+    # (2D-POKEMON) is not in this file: the same list is set on it in
+    # Render's settings (docs/static-frontend.md, "Build filter"). Keep this
+    # field: a Blueprint sync without it removes the filter.
+    buildFilter:
+      ignoredPaths:
+        - docs/**
+        - tests/**
+        - apps/site/**
+        - .github/**
+        - "**/*.md"
     startCommand: npm run start
     # New migrations reach the database before the new server goes live
     # (docs/auto-migrations.md). Needs SUPABASE_DB_URL below; without it,
