@@ -1,5 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
-import { box, inside, openLobby, pushUntilBattle, snap } from "./helpers";
+import {
+  box,
+  createRoom,
+  inside,
+  openLobby,
+  pickRoomMode,
+  pushUntilBattle,
+  skipTour,
+  snap,
+} from "./helpers";
+import { shopServer } from "./shop-server";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
 import { onPlayersLook } from "./players-look";
 
@@ -21,6 +31,11 @@ const SIZES = [
     island: true,
   },
 ];
+/** The roster on screen: one closed on its grid stays in the page, hidden
+ * (data-ui-parked), for the next open (roster.ts). */
+const SHOWN = ".ui-panel-host:not([data-ui-parked]) .roster-room";
+const KEPT = ".ui-panel-host[data-ui-parked] .roster-room";
+
 async function measured(
   page: Page,
   size: (typeof SIZES)[number],
@@ -48,7 +63,7 @@ for (const size of SIZES)
       const errors = await openLobby(page);
       if (size.island) await setInsets(page, ISLAND);
       await page.click('.lobby-rail [data-lobby-action="fighters"]');
-      const room = page.locator(".roster-room");
+      const room = page.locator(SHOWN);
       await expect(room).toHaveAttribute("data-roster-mode", "grid");
       await expect(
         page.locator('.lobby-rail [data-lobby-action="fighters"]'),
@@ -180,7 +195,7 @@ test("Select makes the fighter your Lobby fighter", async ({ page }) => {
   await page.click('.lobby-rail [data-lobby-action="fighters"]');
   await page.click('[data-roster-card="tidefin"]');
   await page.click("[data-roster-select]");
-  await expect(page.locator(".roster-room")).toHaveCount(0);
+  await expect(page.locator(SHOWN)).toHaveCount(0);
   await expect(page.locator("#lobby-fighter-name")).toHaveText(/Tidefin/i);
   // Reopened, Tidefin is the one playing.
   await page.click('.lobby-rail [data-lobby-action="fighters"]');
@@ -200,7 +215,7 @@ test("Try skins opens the Shop on that fighter's skins", async ({ page }) => {
   await page.click('[data-roster-card="mystowl"]');
   await page.click("[data-roster-details]");
   await page.click("[data-roster-skins]");
-  await expect(page.locator(".roster-room")).toHaveCount(0);
+  await expect(page.locator(SHOWN)).toHaveCount(0);
   await expect(page.locator(".fit-room")).toHaveAttribute(
     "data-fit-mode",
     "shop",
@@ -261,7 +276,7 @@ test("keyboard: arrows move through the grid, Enter opens the detail, [ ] step f
     "true",
   );
   await page.keyboard.press("Escape");
-  await expect(page.locator(".roster-room")).toHaveCount(0);
+  await expect(page.locator(SHOWN)).toHaveCount(0);
   await expect(rail).toBeFocused();
   expect(errors).toEqual([]);
 });
@@ -374,7 +389,7 @@ test("Test skills starts Solo test with that fighter, with EX skills and a damag
   await page.click('[data-roster-card="mystowl"]');
   await page.click("[data-roster-details]");
   await page.click("[data-roster-try]");
-  await expect(page.locator(".roster-room")).toHaveCount(0);
+  await expect(page.locator(SHOWN)).toHaveCount(0);
   // Solo test is asked for with the fighter shown, which is now yours.
   await expect
     .poll(() =>
@@ -545,3 +560,257 @@ for (const size of [
       await context.close();
     }
   });
+
+/** What a roster shows, card by card, and its markup without the styles
+ * other code sets (pictures painted, animations), attributes in name order
+ * (a patched one is added last): to compare a kept screen with a new one. */
+const shows = (page: Page) =>
+  page.locator(SHOWN).evaluate((root) => {
+    const copy = root.cloneNode(true) as HTMLElement;
+    for (const el of [copy, ...copy.querySelectorAll("*")]) {
+      const own = Array.from(el.attributes)
+        .filter((a) => !["style", "tabindex", "data-graphics"].includes(a.name))
+        .map((a) => [a.name, a.value])
+        .sort(([a], [b]) => (a < b ? -1 : 1));
+      for (const a of Array.from(el.attributes)) el.removeAttribute(a.name);
+      for (const [name, value] of own) el.setAttribute(name, value);
+    }
+    return {
+      cards: Array.from(
+        root.querySelectorAll<HTMLElement>("[data-roster-card]"),
+        (c) => [
+          c.dataset.rosterCard,
+          c.getAttribute("aria-pressed"),
+          c.getAttribute("aria-label"),
+          c.querySelector(".roster-card-foot")?.textContent,
+          c.querySelector("[data-picture]")?.getAttribute("data-picture"),
+        ],
+      ),
+      top: root.querySelector("[data-roster-region=body]")!.scrollTop,
+      focused: document.activeElement?.getAttribute("data-roster-card"),
+      markup: copy.outerHTML,
+    };
+  });
+
+// The Fighters screen is kept between opens (roster.ts): building its 921
+// elements again was a long task on every open. What it shows must still
+// be what a new screen would. Here, while it is kept: a skin bought and
+// worn, another skin taken off, new matches (the grid's order) and another
+// fighter playing; the filter and scroll of the last open are reset. Signing
+// out takes the whole Lobby away, the kept screen with it: another account
+// always gets a new one.
+test("a Fighters screen kept between opens shows what a new one would", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await shopServer(page);
+  // The account, a fighter picker and the mastery reload (shop-server.ts's
+  // exposeAccount, plus loadMastery).
+  await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    const marker = 'window.dispatchEvent(new Event("arena:ready"));';
+    if (!body.includes(marker))
+      throw new Error("main.ts changed: no ready marker");
+    await route.fulfill({
+      response,
+      body: body.replace(
+        marker,
+        "window.__account=accountsUI;window.__choose=(id)=>{selected=id;syncHomePresentation();};window.__mastery=()=>loadMastery(true);" +
+          marker,
+      ),
+    });
+  });
+  const errors = await openLobby(page);
+  const open = async () => {
+    await page.click('.lobby-rail [data-lobby-action="fighters"]');
+    await expect(page.locator(SHOWN)).toBeVisible();
+  };
+  const close = async () => {
+    await page.locator(`${SHOWN} [data-ui-close]`).click();
+    await expect(page.locator(SHOWN)).toHaveCount(0);
+  };
+  const mark = () =>
+    page.locator(SHOWN).evaluate((el) => ((el as any).__marked = true));
+  const marked = () =>
+    page.locator(SHOWN).evaluate((el) => !!(el as any).__marked);
+  const looksOf = (cards: (string | null | undefined)[][], c: string) =>
+    Number(cards.find((x) => x[0] === c)![3]!.match(/(\d+)\/\d+ looks/)![1]);
+
+  await open();
+  const first = await shows(page);
+  expect(first.cards[0]?.[0]).toBe("voltkit");
+  await page
+    .locator(`${SHOWN} [data-roster-region=body]`)
+    .evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+  await page.click('[data-roster-element="Water"]');
+  await mark();
+  await close();
+  // Kept, out of sight.
+  await expect(page.locator(KEPT)).toHaveCount(1);
+  await expect(page.locator(KEPT)).toBeHidden();
+
+  // While it is kept: Tidefin bought and worn, Voltkit's skin off, 90
+  // matches with Tidefin, and Tidefin playing.
+  await page.evaluate(async () => {
+    const w = window as any;
+    const progress = await (await fetch("/api/progress")).json();
+    w.__progress = {
+      ...progress,
+      fighters: { ...progress.fighters, tidefin: { matches: 90, wins: 50 } },
+    };
+    w.__shop.owned.push("tidefin-sky-pirates");
+    w.__shop.looks.tidefin = { skin: "tidefin-sky-pirates", stage: 1 };
+    w.__shop.cleared.push("voltkit");
+    w.__account.forgetCopies();
+    await w.__account.loadEconomy();
+    w.__mastery();
+    w.__choose("tidefin");
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as any).__account.economy?.looks?.tidefin),
+    )
+    .toEqual({ skin: "tidefin-sky-pirates", stage: 1 });
+
+  await open();
+  expect(await marked()).toBe(true);
+  // Its matches have loaded: most played first.
+  await expect
+    .poll(async () => (await shows(page)).cards[0]?.[0], { timeout: 15_000 })
+    .toBe("tidefin");
+  const kept = await shows(page);
+  const tidefin = kept.cards.find((c) => c[0] === "tidefin")!;
+  expect(tidefin[1]).toBe("true");
+  expect(tidefin[3]).toMatch(/Playing$/);
+  expect(looksOf(kept.cards, "tidefin")).toBe(
+    looksOf(first.cards, "tidefin") + 1,
+  );
+  expect(tidefin[4]).toContain("tidefin-sky-pirates");
+  expect(first.cards.find((c) => c[0] === "voltkit")![4]).toContain(
+    "stormcrown",
+  );
+  expect(kept.cards.find((c) => c[0] === "voltkit")![4]).not.toContain(
+    "stormcrown",
+  );
+  expect(kept.top).toBe(0);
+  await expect(page.locator('[data-roster-element="All"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  // The same as a new screen: the kept one goes when a battle starts.
+  await close();
+  await expect(page.locator(KEPT)).toHaveCount(1);
+  await page.evaluate(() => document.body.classList.add("battle-active"));
+  await expect(page.locator(KEPT)).toHaveCount(0);
+  await page.evaluate(() => document.body.classList.remove("battle-active"));
+  await open();
+  expect(await marked()).toBe(false);
+  expect(await shows(page)).toEqual(kept);
+
+  // Another account: the Lobby is built again, and so is the roster.
+  await mark();
+  await close();
+  await expect(page.locator(KEPT)).toHaveCount(1);
+  await page.evaluate(async () => {
+    const w = window as any,
+      account = w.__account,
+      session = account.session;
+    await account.setSession(null);
+    w.__accountPatch = {
+      id: "22222222-2222-4222-8222-222222222222",
+      displayName: "second",
+    };
+    w.__progress = undefined;
+    await account.setSession(session);
+  });
+  await expect(page.locator(KEPT)).toHaveCount(0);
+  await open();
+  expect(await marked()).toBe(false);
+
+  // A room's picker takes no kept screen: one roster in the page.
+  await close();
+  await expect(page.locator(KEPT)).toHaveCount(1);
+  await page.evaluate(() =>
+    (window as any).__room("pvp", { mode: "duel", phase: "lobby" }),
+  );
+  await page.click("#lobby-mode");
+  await page.click('#lobby-mode-menu [data-lobby-action="more-play"]');
+  await pickRoomMode(page, "duel");
+  await createRoom(page);
+  await expect
+    .poll(async () => {
+      await page.evaluate(() => (window as any).__push());
+      return page.locator(".room-screen .roster-room").count();
+    })
+    .toBe(1);
+  await expect(page.locator(".roster-room")).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+// A kept screen is out of sight: what waits for the screens to close (the
+// unlock sheet, today's gift, the tour) doesn't wait for it. It held them
+// back as an open one does, until it went (main.ts).
+test("a kept Fighters screen holds nothing back: a new level's unlock shows on the Lobby", async ({
+  page,
+}) => {
+  await skipTour(page);
+  // Level 1, last seen at level 1 (feature-unlocks.spec.ts): nothing to
+  // show yet.
+  await page.addInitScript(() => {
+    const w = window as any;
+    w.__economyPatch = {
+      journey: {
+        xp: 0,
+        recent: [],
+        season: {
+          id: "2026-10",
+          xp: 0,
+          week: "2026-W43",
+          goals: {},
+          completed: [],
+        },
+        unlocked: [],
+      },
+    };
+    try {
+      localStorage.setItem(
+        "arena-unlocks:11111111-1111-4111-8111-111111111111",
+        "1",
+      );
+    } catch {
+      /* No storage. */
+    }
+  });
+  await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    const marker = 'window.dispatchEvent(new Event("arena:ready"));';
+    if (!body.includes(marker))
+      throw new Error("main.ts changed: no ready marker");
+    await route.fulfill({
+      response,
+      body: body.replace(marker, "window.__account=accountsUI;" + marker),
+    });
+  });
+  const errors = await openLobby(page);
+  const sheet = page.locator("[data-ui-confirm] .ui-modal");
+  await page.click('.lobby-rail [data-lobby-action="fighters"]');
+  await expect(page.locator(SHOWN)).toBeVisible();
+  await page.locator(`${SHOWN} [data-ui-close]`).click();
+  await expect(page.locator(KEPT)).toHaveCount(1);
+  await expect(sheet).toHaveCount(0);
+  // Level 2 while it is kept (a match's XP, as the server reports it).
+  await page.evaluate(async () => {
+    const w = window as any;
+    w.__economyPatch.journey.xp = 100;
+    w.__account.forgetCopies();
+    await w.__account.loadEconomy();
+  });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.locator(".ui-kicker")).toHaveText("Level 2");
+  // Still kept, behind it.
+  await expect(page.locator(KEPT)).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
