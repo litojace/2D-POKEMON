@@ -6,7 +6,7 @@ choice; the same evening they chose Poster alone, for good: "Thôi bỏ
 showcase đi, đổi vĩnh viễn qua poster luôn" (drop Showcase, switch
 permanently to Poster), then "xóa showcase ra khỏi code, chỉ giữ lại
 poster". Showcase, the look picker, Settings' Look row and the "asked" flags
-are gone from the code. The approved screenshots and the demo CSS are on the
+are gone from the code (pull request #564; Poster went live with #553). The approved screenshots and the demo CSS are on the
 branch `claude/ecstatic-shannon-3ieyzd`, `docs/ui-remodel/themes-demo/`.
 
 Code: `apps/client/src/ui-theme.ts`, `themes/poster/`. Tests:
