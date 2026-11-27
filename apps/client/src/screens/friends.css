@@ -358,6 +358,13 @@
   .fr-opts {
     padding: 4px 6px;
   }
+  /* A phone's button catches a 44 px finger 8 px above its box
+     (ui/components.css), which reached the line of text above the buttons:
+     a tap on "Keep them near the top" landed on the button under it and
+     closed the options. The line keeps clear of that reach. */
+  .fr-opts-text {
+    margin-bottom: 6px;
+  }
   .fr-code {
     padding: 4px 8px;
   }
