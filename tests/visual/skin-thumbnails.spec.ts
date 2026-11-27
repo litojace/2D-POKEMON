@@ -235,14 +235,20 @@ test("a phone keeps its skin pictures as SVG: none drawn into bitmaps", async ({
   });
   try {
     const page = await context.newPage();
+    // The painter's work in a long frame: its own file's (the bitmap drawn
+    // once the SVG decoded, its size observer). Not svg-raster.ts's: its
+    // idle() wakes the screens' preload and the fighters' prepaint too, and
+    // on CI those land in long frames (#591's first run).
     await page.addInitScript(() => {
       const w = window as any;
       w.__painter = [];
       new PerformanceObserver((list) => {
         for (const e of list.getEntries() as any[])
           for (const s of e.scripts ?? [])
-            if (/skin-thumbnails|svg-raster/.test(String(s.sourceURL ?? "")))
-              w.__painter.push(`${s.invoker} ${Math.round(s.duration)} ms`);
+            if (/skin-thumbnails/.test(String(s.sourceURL ?? "")))
+              w.__painter.push(
+                `${s.invoker} ${s.sourceFunctionName} ${Math.round(s.duration)} ms`,
+              );
       }).observe({ type: "long-animation-frame" });
     });
     const errors = await openLobby(page);
