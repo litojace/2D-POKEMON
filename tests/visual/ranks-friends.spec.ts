@@ -427,6 +427,17 @@ for (const size of [SIZES[1], SIZES[4]])
         const pinned = page.locator(".rk-pin .rk-row");
         await expect(pinned).toBeVisible();
         if (name === "big") {
+          // Four-figure records read whole in the W–L column ("9999–1…" on
+          // a phone: UI audit, 27 Nov 2026).
+          expect(
+            await page
+              .locator(".rk-wl")
+              .evaluateAll((cells) =>
+                cells
+                  .filter((cell) => cell.scrollWidth > cell.clientWidth)
+                  .map((cell) => cell.textContent),
+              ),
+          ).toEqual([]);
           await expect(pinned.locator(".rk-place")).toHaveText("12,345");
           await expect(pinned.locator(".rk-rating-cell")).toHaveText("9,999");
           await expect(page.locator(".rk-line")).toHaveText("Top of the road");
@@ -702,7 +713,18 @@ for (const size of SIZES)
       ).toEqual([]);
       expect(await spills(page, ".friends-sheet")).toEqual([]);
       await centred(page, ".fr-row.is-recent .fr-in-party", "Friend pill");
-      await centred(page, "[data-friend-add-id]", "Add friend");
+      await centred(page, "[data-friend-add-id]", "Add");
+      // Each row's line reads whole beside its button ("5 h ago · Teammate ·
+      // 1 …" was cut by ADD FRIEND: UI audit, 27 Nov 2026).
+      expect(
+        await sheet
+          .locator(".fr-row.is-recent .ui-row-main small")
+          .evaluateAll((lines) =>
+            lines
+              .filter((line) => line.scrollWidth > line.clientWidth)
+              .map((line) => line.textContent),
+          ),
+      ).toEqual([]);
       await snap(page, info, `friends-recent-${size.name}`);
 
       // The add-by-code row.

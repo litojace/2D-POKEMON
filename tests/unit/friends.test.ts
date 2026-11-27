@@ -325,7 +325,7 @@ describe("recent players", () => {
   it("says when you played, your record or that you were teammates, and what you can do", () => {
     const html = markup(view({ tab: "recent" }), data({ recent }));
     expect(html).toContain("2 h ago · You 2–1");
-    expect(html).toContain("Yesterday · Teammate · 1 match");
+    expect(html).toContain("Yesterday · Teammate ×1");
     expect(html).toContain(">Friend<");
     expect(html).toContain('data-friend-add-id="b"');
     expect(html).toContain('data-friend-accept="c"');

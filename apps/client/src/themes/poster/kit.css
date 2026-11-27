@@ -338,6 +338,41 @@
   bottom: calc(var(--safe-bottom) + 34px);
 }
 
+/* ── the update ask (pwa.ts): the banner, and the first ask over the whole
+   screen. They were the look underneath's: a rounded teal card the Plaza's
+   event chip showed through, a navy shade, a glowing title and a navy
+   "Later" (UI audit, 27 Nov 2026). The banner is the toast's ink block;
+   the first ask keeps the hub dimly in view behind an ink shade (the
+   owner's option B, 20 Nov), its title flat. ── */
+:root[data-ui="poster"] #pwa-banner {
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+  border-left: 6px solid var(--el);
+  border-radius: 0;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.35);
+  font-family: var(--font-body);
+  font-weight: 700;
+}
+:root[data-ui="poster"] #pwa-takeover {
+  background: rgba(13, 13, 15, 0.84);
+}
+:root[data-ui="poster"] #pwa-takeover .eyebrow {
+  color: var(--el);
+  text-shadow: none;
+}
+:root[data-ui="poster"] #pwa-takeover h2 {
+  font-weight: 400;
+  text-shadow: none;
+}
+:root[data-ui="poster"] #pwa-takeover p {
+  text-shadow: none;
+}
+:root[data-ui="poster"] #pwa-takeover .pwa-takeover-later,
+:root[data-ui="poster"] #pwa-takeover .pwa-takeover-later:hover:not(:disabled) {
+  background: var(--ink-3);
+}
+
 /* Close always sits over a scrolled tab row. */
 :root[data-ui="poster"] .ui-icon-btn.ui-close {
   z-index: 3;
@@ -385,10 +420,16 @@
   clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
 }
 
-/* The title keeps its width (up to under half the masthead) and the tabs
-   beside it scroll: Anton sets a name wider than the look underneath does,
-   and a name cut to "NGUYỄN HỒNG …" is worse than a tab to swipe to. */
+/* Beside tabs, the title keeps its width (up to under half the masthead)
+   and the tabs scroll: Anton sets a name wider than the look underneath
+   does, and a name cut to "NGUYỄN HỒNG …" is worse than a tab to swipe to.
+   With no tabs beside it the title has the masthead to itself: under the
+   same cap a sheet read "GETTING STAR…" with 220 px free (UI audit, 27 Nov
+   2026). The :has() looks only along the masthead's own children. */
 :root[data-ui="poster"] .ui-panel-head > .ui-heading {
+  flex: 0 1 auto;
+}
+:root[data-ui="poster"] .ui-panel-head > .ui-heading:has(~ .ui-tabs) {
   flex: 0 0 auto;
   max-width: 46%;
 }
