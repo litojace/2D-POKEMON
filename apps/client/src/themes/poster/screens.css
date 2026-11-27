@@ -846,3 +846,12 @@
   color: var(--ink);
   font-weight: 700;
 }
+/* The narrowest phones (667 px): a masthead's tabs take 6 px a side, not 8,
+   so a row of six (the profile's) ends before Share instead of 1 px under
+   it. The old look sets them 5 px there. */
+@media (max-width: 760px) and (max-height: 500px) {
+  :root[data-ui="poster"] .ui-panel-head .ui-tabs > button {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
