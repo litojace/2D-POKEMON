@@ -136,9 +136,13 @@
 :root[data-ui="poster"] textarea {
   background: var(--ink-2);
   color: #fff;
-  border: 2px solid var(--ink-3);
+  /* The frame is the field's own border, recoloured, thickened inside by
+     a shadow: a 2 px border made fields taller than the screens they sit in
+     were laid out for (Friends' add-by-code row pushed its list 2 px down,
+     and the last row's buttons lost part of their reach). */
+  border-color: var(--ink-3);
   border-radius: 0;
-  box-shadow: none;
+  box-shadow: inset 0 0 0 1px var(--ink-3);
   font-family: var(--font-body);
 }
 :root[data-ui="poster"]
@@ -148,6 +152,7 @@
     :root[data-ui="poster"] :not([type])
   ):focus {
   border-color: var(--el);
+  box-shadow: inset 0 0 0 1px var(--el);
   outline: none;
 }
 /* play drawer */
@@ -535,6 +540,14 @@
 :root[data-ui="poster"] body.lobby-active .room-screen {
   background: transparent;
 }
+/* Anton's capitals sit high in their line: a friend's "FRIEND" / "IN PARTY"
+   pill read 1.5 px above its middle on a desktop (a phone's smaller type
+   sits in the middle already). */
+@media (min-height: 501px) {
+  :root[data-ui="poster"] .fr-in-party {
+    padding-top: 3px;
+  }
+}
 /* friends on phones: the tab row is the masthead */
 :root[data-ui="poster"] .friends-sheet > .ui-tabs {
   background: var(--el);
@@ -766,7 +779,7 @@
     letter-spacing: 0;
   }
   :root[data-ui="poster"] .ui-btn {
-    letter-spacing: 0.04em;
+    --btn-tracking: 0.04em;
   }
 }
 @media (max-width: 800px), (max-height: 500px) {

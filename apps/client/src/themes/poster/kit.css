@@ -124,7 +124,14 @@
   box-shadow: none;
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: 0.07em;
+  --btn-tracking: 0.07em;
+  letter-spacing: var(--btn-tracking);
+}
+/* Letter spacing follows every letter, the last one too: the label's ink
+   sat half a space left of the button's middle (1.5 px on a desktop's
+   "PIN" with its star). The label gives that last space back. */
+:root[data-ui="poster"] .ui-btn > span {
+  margin-right: calc(-1 * var(--btn-tracking));
 }
 /* The primary button: a slanted block in the element colour with a hot-red
    offset shadow. The slant is drawn behind the button (::before); the
