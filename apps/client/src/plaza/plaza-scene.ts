@@ -1589,6 +1589,9 @@ export function openPlaza(options) {
     );
     const todo = total - done;
     box.classList.toggle("open", questsOpen);
+    // For the HUD's middle (themes/poster/plaza.css): on a phone the open
+    // list runs under where the event chip is.
+    layer.classList.toggle("quests-open", questsOpen);
     const rows = PLAZA_QUESTS.map((x) => {
       const n = Math.min(q?.[x.id]?.n ?? 0, x.max),
         paid = !!q?.[x.id]?.done,
@@ -2526,6 +2529,10 @@ export function openPlaza(options) {
   const BUSY_OPEN =
     "[role=dialog]:not([hidden]), [role=alertdialog]:not([hidden])";
   function syncBusy() {
+    // A lap being timed (on a phone its time takes the event chip's place:
+    // themes/poster/plaza.css). Here, because this runs on each change of
+    // a `hidden` in the layer, not per frame.
+    layer.classList.toggle("lap-timing", !$("pz-timer").hidden);
     const busy =
       fishing.active ||
       !!layer.querySelector(BUSY_OPEN) ||
