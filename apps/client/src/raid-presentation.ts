@@ -563,14 +563,22 @@ function earnedReward(p: RaidProgress, reward: RaidReward, computed: boolean) {
     (reward.slot === "title" && p.titles.includes(reward.name))
   );
 }
+/** A saved count, or 0 when the record has none: a boss record from an
+ *  older save can lack a field, and "NaN/5 clears" was printed for it. */
+const count = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) ? v : 0;
 /** One reward's exact progress from saved records (never invented). */
 export function raidGoal(p: RaidProgress, reward: RaidReward): RaidGoal {
   const boss = reward.boss ?? "grumblecrag";
-  const record =
+  const saved =
     p.bosses?.[boss] ??
     (boss === "grumblecrag"
       ? { clears: p.clears, highestPeril: p.highestPeril }
       : { clears: 0, highestPeril: 0 });
+  const record = {
+    clears: count(saved?.clears),
+    highestPeril: count(saved?.highestPeril),
+  };
   const rule = reward.rule;
   const label = reward.slot === "title" ? `${reward.name} title` : reward.name;
   const goal = (value: number, max: number, text: string) => {
@@ -601,9 +609,10 @@ export function raidGoal(p: RaidProgress, reward: RaidReward): RaidGoal {
       const known =
         stats !== undefined ||
         (boss === "grumblecrag" && p.pillars !== undefined);
-      const have =
+      const have = count(
         stats?.[rule.stat] ??
-        (boss === "grumblecrag" ? (p[rule.stat] ?? 0) : 0);
+          (boss === "grumblecrag" ? (p[rule.stat] ?? 0) : 0),
+      );
       return goal(
         have,
         rule.n,
@@ -613,7 +622,7 @@ export function raidGoal(p: RaidProgress, reward: RaidReward): RaidGoal {
       );
     }
     case "total-clears": {
-      const total = p.totalClears ?? p.clears;
+      const total = count(p.totalClears ?? p.clears);
       return goal(
         total,
         rule.n,
