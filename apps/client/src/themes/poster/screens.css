@@ -79,6 +79,21 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+/* Skills and Credits open inside Settings: their way back lies on the
+   masthead, so it is ink there (the look underneath's pale blue-grey was
+   near invisible on the element colour), and their titles are capitals as
+   every other dialog's. */
+:root[data-ui="poster"] :is(#skills-back, #credits-back),
+:root[data-ui="poster"] :is(#skills-back, #credits-back) svg {
+  color: var(--ink);
+}
+:root[data-ui="poster"] :is(#skills-back, #credits-back) {
+  font-weight: 700;
+}
+:root[data-ui="poster"] :is(.skills-screen, .credits-screen) > h2 {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 :root[data-ui="poster"] .dialog-toolbar .close,
 :root[data-ui="poster"] #close-dialog {
   background: var(--ink);
@@ -649,6 +664,39 @@
   > .ui-tabs
   > button[aria-selected="true"]::after {
   display: none;
+}
+/* Above a phone's height the row sits under the head, where nothing gave
+   it a height: its tabs' "all but 7 px" came to 22 px, and the row cut the
+   lower half of FRIENDS / REQUESTS / RECENT (UI audit, 27 Nov 2026). */
+@media (min-height: 501px) {
+  :root[data-ui="poster"] .friends-sheet > .ui-tabs {
+    height: 44px;
+    align-items: stretch;
+  }
+}
+/* Anton's capitals sit high in their line: 1.5 px on a desktop's DECLINE,
+   which the 22 px tab row's stray half pixel had been hiding from the
+   centring check. The label's box is its capitals alone, so the button
+   centres what the eye reads. A browser without text-box (before Chrome
+   133 and Safari 18.2) keeps the label where it was. */
+:root[data-ui="poster"] .friends-sheet .ui-btn > span {
+  text-box: trim-both cap alphabetic;
+}
+/* A tab's count: an ink chip with the element colour's words on the
+   masthead (white on a white wash did not read there); the chosen tab's
+   ink block keeps its element-colour chip. */
+:root[data-ui="poster"]
+  .friends-sheet
+  .ui-tabs
+  > button:not([aria-selected="true"])
+  .ui-tag {
+  background: var(--ink);
+  color: var(--el);
+}
+/* "10 online · party 1 / 4" is wider than the title under it: on one line,
+   not broken after the slash. */
+:root[data-ui="poster"] .friends-sheet .ui-panel-head .ui-kicker {
+  white-space: nowrap;
 }
 :root[data-ui="poster"] .friends-sheet .ui-panel-head .ui-icon-btn {
   background: var(--ink);
