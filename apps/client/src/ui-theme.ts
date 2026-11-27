@@ -1,5 +1,11 @@
 /**
- * The game's look: which one this device shows, and switching it live
+ * The game's look. Since 27 Nov 2026 it is Poster for every player (the
+ * owner dropped Showcase and the choice between the two: DEFAULT_UI_THEME);
+ * what follows is how a look is put on the page, which Poster still uses,
+ * and the choosing (picker, Settings row), which sleeps while only one look
+ * is ready.
+ *
+ * Which look this device shows, and switching it live
  * (owner, 26 Nov 2026: two looks, Poster and Showcase; a player picks one in
  * a dialog after creating an account and can change it in Settings).
  *
@@ -23,6 +29,7 @@
  *
  * The dialog and the Settings row: ui-theme-picker.ts.
  */
+import { css as posterCss } from "./themes/poster/index";
 import posterPreview from "./themes/poster/preview.webp";
 import showcasePreview from "./themes/showcase/preview.webp";
 
@@ -39,7 +46,19 @@ export interface UiTheme {
   preview: string;
   /** The theme's stylesheet, loaded when it is chosen. */
   load: () => Promise<{ css: string }>;
+  /** The stylesheet itself, for a look that ships with the game's own
+   *  script: it is on the page before the first frame, with no wait. */
+  css?: string;
 }
+
+/**
+ * The look every player gets when nothing else says otherwise. Poster, for
+ * good (owner, 27 Nov 2026: "drop Showcase, switch permanently to Poster").
+ * With one look there is nothing to choose: the picker and Settings' Look
+ * row need two ready looks and stay away. `null` here is the revert: every
+ * player back on the look underneath.
+ */
+export const DEFAULT_UI_THEME: UiThemeId | null = "poster";
 
 export const UI_THEMES: readonly UiTheme[] = [
   {
@@ -49,14 +68,18 @@ export const UI_THEMES: readonly UiTheme[] = [
     // On since 27 Nov 2026: the owner saw the full set from the real build.
     ready: true,
     preview: posterPreview,
-    load: () => import("./themes/poster/index"),
+    // The default look ships in the game's own script (no flash of the
+    // look underneath while a chunk loads).
+    css: posterCss,
+    load: async () => ({ css: posterCss }),
   },
   {
     id: "showcase",
     name: "Showcase",
     blurb: "A dark stage with your fighter in the light.",
-    // On since 27 Nov 2026, with Poster: the owner saw both sets.
-    ready: true,
+    // Dropped by the owner (27 Nov 2026) in favour of Poster alone; its
+    // folder goes in a pull request of its own.
+    ready: false,
     preview: showcasePreview,
     load: () => import("./themes/showcase/index"),
   },
@@ -127,16 +150,25 @@ export function uiThemeChoice(
 
 /**
  * The look to show: the address's (ready or not), else the saved one if it
- * is offered, else none (the look underneath).
+ * is offered ("classic" saved: the look underneath, which the visual tests
+ * pin), else the default look if it is ready, else none (the look
+ * underneath).
  */
 export function resolveUiTheme(
   stored: string | null,
   q: UiQuery,
   themes: readonly UiTheme[] = UI_THEMES,
+  fallback: UiThemeId | null = DEFAULT_UI_THEME,
 ): UiThemeId | null {
   if (q.ui === "classic") return null;
   if (q.ui) return q.ui;
-  return offeredThemes(themes, q).find((t) => t.id === stored)?.id ?? null;
+  if (stored === "classic") return null;
+  const offered = offeredThemes(themes, q);
+  return (
+    offered.find((t) => t.id === stored)?.id ??
+    offered.find((t) => t.id === fallback)?.id ??
+    null
+  );
 }
 export function getUiTheme(): UiThemeId | null {
   return resolveUiTheme(read(KEY), pageQuery());
@@ -162,9 +194,14 @@ export async function applyUiTheme(): Promise<boolean> {
   const id = getUiTheme();
   const root = document.documentElement;
   let css = "";
-  if (id) {
+  const theme = themeById(id);
+  if (theme?.css !== undefined)
+    // Already here: applied before this function first gives way, so a
+    // call at startup puts the look on the page before anything is drawn.
+    css = theme.css;
+  else if (theme) {
     try {
-      css = (await themeById(id)!.load()).css;
+      css = (await theme.load()).css;
     } catch {
       return false;
     }

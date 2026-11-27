@@ -82,12 +82,30 @@ The visual harness marks its account as asked
 the picker doesn't open over every spec's Lobby, whichever way a spec gets
 there; a test about the picker sets `window.__lookAsk` before the page loads.
 
-**Both looks are ready** (27 Nov 2026: the owner saw both full sets from the
-real build and said to turn them on). The picker is live: a new account
-meets it on its first Lobby, an account that was here before meets it once
-on its next one, and Settings → Display → Look changes the answer. Turning
-either `ready` back off hides the picker and the Look row again and puts
-every player back on the look underneath: that is the revert.
+**Poster is the game's look** (27 Nov 2026). The owner first said to turn
+both looks on, then, the same evening, to drop Showcase and switch to Poster
+for good. So:
+
+- `DEFAULT_UI_THEME` is `"poster"`: every player gets it, with nothing saved
+  and nobody asked. It ships in the game's own script and is on the page
+  before the first frame.
+- Showcase's `ready` is off and its folder is being removed. With one ready
+  look the picker and Settings' Look row stay away; their code sleeps until
+  it is removed with Showcase.
+- The look underneath is still in the page under Poster. Deleting it is a
+  job of its own, after the visual suite has moved (below).
+- **The revert** is one line: `DEFAULT_UI_THEME = null` puts every player
+  back on the look underneath.
+
+**The visual suite still measures the look underneath.** Its 200 files were
+written against that look's sizes and places, so the harness saves
+`ea-ui=classic` for its page (`harness/look-asked.ts`) and they run as
+before. What checks Poster today: `poster.spec.ts` (the Lobby, five screens,
+Settings, a new player's locks, at four sizes), `ui-theme.spec.ts` (the
+default, from the first frame), and any spec run with `VISUAL_UI=poster`
+(`helpers.ts`), which is how the budgets and `panel-scroll` were run before
+the switch. Moving the suite to Poster, spec by spec, is the next job; a
+spec that has moved drops the pin by setting `window.__lookDefault`.
 
 ## A theme's folder
 
