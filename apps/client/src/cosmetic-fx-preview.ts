@@ -10,6 +10,7 @@ import {
   playCollectionEntrance,
 } from "./skins/collection-fx";
 import { canvasGraphics } from "./skins/fx-canvas";
+import { reducedMotionQuery } from "./reduced-motion";
 import { drawColorsFx, isColors } from "./skins/colors-fx";
 import "./cosmetic-fx.css";
 import {
@@ -92,7 +93,8 @@ const slotOf = (id: string) =>
 
 const lives = new Map<HTMLElement, Live>();
 const visible = new Set<Live>();
-const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+// Settings → Reduce motion (reduced-motion.ts), not the device's setting.
+const reduced = reducedMotionQuery;
 let frame = 0;
 let lastTick = 0;
 

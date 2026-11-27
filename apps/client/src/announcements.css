@@ -97,8 +97,6 @@
   color: #eef2ff;
   font-weight: 700;
 }
-@media (prefers-reduced-motion: reduce) {
-  .announcement-banner {
-    transition: none;
-  }
+:where(:root[data-motion="reduced"]) .announcement-banner {
+  transition: none;
 }

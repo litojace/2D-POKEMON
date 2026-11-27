@@ -1127,10 +1127,8 @@
   color: #fff;
   text-shadow: none;
 }
-@media (prefers-reduced-motion: reduce) {
-  :root[data-ui="poster"] .title-prompt {
-    animation: none;
-  }
+:root[data-ui="poster"]:where([data-motion="reduced"]) .title-prompt {
+  animation: none;
 }
 
 /* ── The countdown: a huge Anton number with a hard ink shadow, its kicker

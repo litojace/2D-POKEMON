@@ -81,6 +81,19 @@ To have the text selected as well, pass `{ selectAll: true }`; it then
 selects only where there is a mouse, not on a touch screen.
 `tests/unit/screen-pin.test.ts` fails on either pattern in client code.
 
+**Less motion is the player's switch, never the device's** (owner, 27 Nov):
+Settings → Reduce motion, off by default
+(`apps/client/src/reduced-motion.ts`). The game used to follow the phone's
+accessibility setting, and an iPhone with Reduce Motion on got a much stiller
+game without being told. In code read `reducedMotion()`; in CSS write the
+rule under `:where(:root[data-motion="reduced"])` (in a theme,
+`:root[data-ui="poster"]:where([data-motion="reduced"])`), which weighs what
+the rule weighed in its media query. Never `@media (prefers-reduced-motion)`
+or a `matchMedia` of it: `tests/unit/reduced-motion.test.ts` fails on either.
+Visual specs keep asking the browser (`emulateMedia({ reducedMotion:
+"reduce" })`); the harness passes that to the switch
+(`tests/visual/harness/motion-asked.ts`).
+
 **Inline scripts in `apps/client/index.html` are allowed by hash** in the
 game's Content-Security-Policy (`apps/client/security-headers.json`,
 `docs/static-frontend.md` "Security headers"). Changing one means a new hash

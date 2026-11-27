@@ -763,13 +763,14 @@ body.battle-active #arena-overlay#arena-overlay.is-break:has(> .has-rites) {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion="reduced"])
   body.battle-active
-    #arena-overlay#arena-overlay.is-sheet
-    > :is(.rc-card, .overlay-card),
-  #arena-overlay#arena-overlay.is-break > .overlay-card.round-break {
-    animation: none;
-  }
+  #arena-overlay#arena-overlay.is-sheet
+  > :is(.rc-card, .overlay-card),
+:where(:root[data-motion="reduced"])
+  #arena-overlay#arena-overlay.is-break
+  > .overlay-card.round-break {
+  animation: none;
 }
 
 /* ---- Win green, loss red (owner, 22 Nov 2026) ---- */

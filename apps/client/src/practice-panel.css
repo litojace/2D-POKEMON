@@ -253,9 +253,10 @@ body.battle-active.touch-mode #practice-controls .practice-panel.pp {
     min-height: 38px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  #practice-controls .pp-toggle input,
-  #practice-controls .pp-toggle input::after {
-    transition: none;
-  }
+:where(:root[data-motion="reduced"]) #practice-controls .pp-toggle input,
+:where(:root[data-motion="reduced"])
+  #practice-controls
+  .pp-toggle
+  input::after {
+  transition: none;
 }

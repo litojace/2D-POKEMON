@@ -79,10 +79,10 @@ body:has(.battle-chat:not([hidden]))
     opacity: 0;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  #arena-overlay#arena-overlay.is-rites .rites-screen {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"])
+  #arena-overlay#arena-overlay.is-rites
+  .rites-screen {
+  animation: none;
 }
 
 /* ---- The heading: kicker, title with a pip per pick, big number ---- */

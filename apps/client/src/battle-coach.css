@@ -67,8 +67,6 @@
     transform: translate(-50%, -6px);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .battle-coach {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .battle-coach {
+  animation: none;
 }

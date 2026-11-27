@@ -17,6 +17,7 @@ import { drawCollectionAura } from "./skins/collection-fx";
 import { auraScale as auraSizeFor } from "./aura-size";
 import { menuShadow } from "./fighter-art";
 import { lowGraphics } from "./graphics-quality";
+import { reducedMotionQuery } from "./reduced-motion";
 import { previewDensity } from "./render-budget";
 import { PreviewPerf, type PreviewPerfStats } from "./preview-perf";
 import type { AnimationPose, AnimationState } from "./animation/controller";
@@ -87,7 +88,8 @@ export function mountShopPreview(
   let originalLabel: string;
   let compare: HTMLButtonElement | null;
   let layers: RigAsset[] = [];
-  const motion = matchMedia("(prefers-reduced-motion: reduce)");
+  // Settings → Reduce motion (reduced-motion.ts), not the device's setting.
+  const motion = reducedMotionQuery;
   const portraitCover = matchMedia(
     "(orientation: portrait) and (pointer: coarse) and (hover: none)",
   );

@@ -274,8 +274,6 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
     transform: scale(1.25);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .ally-bearing.is-downed b {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .ally-bearing.is-downed b {
+  animation: none;
 }
