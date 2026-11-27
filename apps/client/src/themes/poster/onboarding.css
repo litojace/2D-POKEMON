@@ -151,3 +151,16 @@
 :root[data-ui="poster"] .title-quick-btn {
   font-weight: 700;
 }
+
+/* ── the startup curtain: the boot screen's own fonts ──
+   The boot screen (index.html, drawn before any of the game's CSS) sets its
+   title in Barlow Condensed and its status in DM Sans. The curtain that
+   takes its place draws the same words through --font-display and
+   --font-body, which Poster makes Anton and Archivo: the title and the line
+   under it changed font, and moved, at the handover
+   (startup-curtain.spec, "hands over without moving"). The curtain keeps
+   the boot screen's fonts; it is gone before the Lobby shows. */
+:root[data-ui="poster"] #server-startup {
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}

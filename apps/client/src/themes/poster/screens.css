@@ -7,6 +7,10 @@
 }
 /* lobby mode menu */
 :root[data-ui="poster"] .lobby-layer .lobby-mode-menu {
+  /* As wide as the mode button under it (lobby.css: 6 px short of the
+     column, for its hard shadow), edge on edge. */
+  right: 6px;
+  width: calc(100% - 6px);
   background: var(--ink);
   border: 0;
   border-radius: 0;

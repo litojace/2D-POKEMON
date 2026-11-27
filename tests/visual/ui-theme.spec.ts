@@ -1,9 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub, skipTour } from "./helpers";
-import { onPlayersLook } from "./players-look";
-
-// In the look players have (players-look.ts).
-onPlayersLook();
 
 // The game's look (ui-theme.ts). Since 27 Nov 2026 every player gets Poster;
 // Showcase, the picker and Settings' Look row are gone from the code (the

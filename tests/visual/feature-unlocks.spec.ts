@@ -113,16 +113,45 @@ for (const size of SIZES) {
           "aria-label",
           new RegExp(`opens at level ${level}$`),
         );
-        // The pill sits inside its button, centred over the name.
+        // The pill sits inside its button, where the icon was: on a phone's
+        // rail (icons over names) centred over the name; on the desktop's
+        // text rail centred on the icons' column, clear of the name, which
+        // starts where every other name does.
         const b = (await rail(action).boundingBox())!,
-          pill = (await rail(action).locator(".feature-lock").boundingBox())!;
+          pill = (await rail(action).locator(".feature-lock").boundingBox())!,
+          name = (await rail(action).locator(":scope > span").boundingBox())!,
+          icon = (await rail("fighters")
+            .locator(".lobby-rail-icon")
+            .boundingBox())!,
+          names = (await rail("fighters")
+            .locator(":scope > span")
+            .boundingBox())!;
         expect(within(pill, b), `${action}'s pill inside its button`).toBe(
           true,
         );
-        expect(
-          Math.abs(pill.x + pill.width / 2 - (b.x + b.width / 2)),
-          `${action}'s pill centred`,
-        ).toBeLessThanOrEqual(1);
+        if (size.phone)
+          expect(
+            Math.abs(pill.x + pill.width / 2 - (b.x + b.width / 2)),
+            `${action}'s pill centred`,
+          ).toBeLessThanOrEqual(1);
+        else {
+          expect(
+            Math.abs(pill.x + pill.width / 2 - (icon.x + icon.width / 2)),
+            `${action}'s pill centred on the icons' column`,
+          ).toBeLessThanOrEqual(1);
+          expect(
+            name.x - (pill.x + pill.width),
+            `${action}'s pill clear of its name`,
+          ).toBeGreaterThanOrEqual(4);
+          expect(
+            Math.abs(name.x - names.x),
+            `${action}'s name starts where the others do`,
+          ).toBeLessThanOrEqual(1);
+          expect(
+            name.x + name.width,
+            `${action}'s name inside its button`,
+          ).toBeLessThanOrEqual(b.x + b.width + 0.5);
+        }
         // Still a finger tall.
         expect(b.height).toBeGreaterThanOrEqual(size.height < 380 ? 40 : 44);
       }

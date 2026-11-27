@@ -127,7 +127,10 @@
 }
 :root[data-ui="poster"] .hub-scenes {
   padding: 4px;
-  transform: skewX(-10deg);
+  /* The switch is placed by its middle (lobby.css: left at the spot, then
+     back by half its width); the slant goes on top of that, or the switch
+     stood half its width right of the middle (lobby-safe-area.spec). */
+  transform: translateX(-50%) skewX(-10deg);
 }
 :root[data-ui="poster"] .hub-scenes > button {
   font-family: var(--font-display);
@@ -172,6 +175,34 @@
   text-transform: uppercase;
   overflow: visible;
   text-overflow: clip;
+}
+/* A locked button on the text rail: its pill ("Lv 3") stands in the icon's
+   place, centred on it, and small enough to leave the name where the other
+   names start. The old look's pill (padlock, level, 56 px) pushed a locked
+   name 36 px right of the rest, and "MISSIONS" out past its button
+   (feature-unlocks.spec). Phones fold the rail to icons over names
+   (screens.css), where the pill sits over the name as before. */
+@media (min-width: 801px) and (min-height: 501px) {
+  :root[data-ui="poster"]
+    .lobby-layer
+    .lobby-rail
+    button.is-locked
+    .lobby-rail-icon {
+    display: flex;
+    flex: none;
+    justify-content: center;
+    width: 20px;
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-rail .feature-lock {
+    gap: 2px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: calc(9px * var(--text-scale, 1));
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-rail .feature-lock svg {
+    width: 8px;
+    height: 8px;
+  }
 }
 /* stage */
 :root[data-ui="poster"] .lobby-layer .lobby-fighter::before {
