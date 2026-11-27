@@ -8,6 +8,7 @@ import {
   snap,
   createRoom,
 } from "./helpers";
+import { lookAsked, lookShown, playersLook } from "./players-look";
 
 /**
  * A match in its real order — dressed fighters from the first snapshot, the
@@ -22,6 +23,9 @@ import {
  * - the page and the scene do not keep growing during the fight;
  * - when the match ends, one performance report goes to the server
  *   ("battle-perf", battle-perf.ts), and it is valid.
+ *
+ * In the look players have (players-look.ts): its HUD is the one their
+ * phones lay out and read.
  *
  * Counted, not timed: this machine draws on the CPU. A scenario that
  * swaps fighters in mid-fight would load art mid-fight by design, so the
@@ -125,7 +129,10 @@ for (const quality of ["high", "low"] as const)
         (q) => localStorage.setItem("ea-graphics", q),
         quality,
       );
+      await playersLook(page);
       const errors = await openHub(page);
+      const look = await lookShown(page);
+      expect(look, "the look measured").toBe(lookAsked());
       // A dressed four-player match, in its briefing from the first snapshot.
       // The four kits with the most glow light (effect-budget.spec.ts: each
       // one's heaviest cast 0.36-0.47 screens), so the fight is as crowded
@@ -333,7 +340,7 @@ for (const quality of ["high", "low"] as const)
       );
       console.log(
         "MATCH_FLOW",
-        JSON.stringify({ before, after, settled, layout, glow, report }),
+        JSON.stringify({ look, before, after, settled, layout, glow, report }),
       );
       expect(after.rigTextures, "no fighter art loads mid-fight").toBe(
         before.rigTextures,

@@ -18,6 +18,7 @@ import {
   lookPickerMarkup,
   lookRow,
 } from "../../apps/client/src/ui-theme-picker";
+import { PLAYERS_LOOK } from "../visual/players-look";
 
 // The game's looks (ui-theme.ts): which one a device shows, when a player
 // is offered the choice, and the rules each theme's folder keeps. The picker
@@ -132,6 +133,13 @@ describe("the looks as shipped", () => {
     expect(getUiTheme()).toBe("poster");
     store.set("ea-ui", "classic");
     expect(getUiTheme()).toBeNull();
+  });
+  it("the budget specs measure the look every player gets", () => {
+    // tests/visual/players-look.ts: the battle and panel budgets run in
+    // this look. Changing the default (or reverting it to null, the look
+    // underneath) means changing PLAYERS_LOOK in the same pull request, or
+    // the budgets would go on measuring a look players no longer have.
+    expect(PLAYERS_LOOK).toBe(DEFAULT_UI_THEME ?? "classic");
   });
   it("show nothing to choose while fewer than two are ready", () => {
     resetUiThemeForTests("");
