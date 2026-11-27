@@ -19,7 +19,14 @@
 // from the left and right edges of a feed post; a story keeps its words out
 // of the top 250 px and bottom 320 px, where Instagram draws its own bars.
 import { chromium } from "@playwright/test";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,6 +35,8 @@ const ROOT = path.resolve(
   "../..",
 );
 const OUT = path.join(ROOT, "instagram");
+// A file page, so it may load the repo's files (setContent's blank page may not).
+const TMP = mkdtempSync(path.join(tmpdir(), "instagram-"));
 const at = (p) => path.join(ROOT, p);
 const url = (p) => "file://" + at(p);
 
@@ -376,7 +385,7 @@ async function avatar(page) {
 }
 
 async function shoot(page, html, [w, h], file, type = "jpeg") {
-  const sheet = path.join(OUT, ".page.html");
+  const sheet = path.join(TMP, "page.html");
   writeFileSync(sheet, `<!doctype html><meta charset="utf-8">${html}`);
   await page.setViewportSize({ width: w, height: h });
   await page.goto("file://" + sheet, { waitUntil: "load" });
