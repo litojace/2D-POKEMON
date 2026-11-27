@@ -546,11 +546,12 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     bubble.textContent = text;
     bubble.classList.add("is-line");
     bubble.hidden = false;
+    // Measured at its full size: a pop still playing scales it down.
+    bubble.classList.remove("is-popping");
     const spot = linePlace(bubble);
     bubble.style.top = `${spot.top}px`;
     bubble.style.left = `${spot.left}px`;
     bubble.style.setProperty("--tail", `${spot.tail}px`);
-    bubble.classList.remove("is-popping");
     void bubble.offsetWidth;
     bubble.classList.add("is-popping");
     clearTimeout(bubbleTimer);
@@ -570,13 +571,21 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     const row = layer.querySelector(".lobby-party")!.getBoundingClientRect();
     const tail = 8;
     const head = rig?.inkTop() ?? figure.top;
-    const width = bubble.offsetWidth,
+    // Its exact width, not offsetWidth's whole pixels, and the left edge it
+    // gets from the rounded `left` below: a bubble a fraction of a pixel
+    // into the column of a top-bar box goes under that box, as it shows
+    // (#584: 0.2 px over the profile's edge, it sat 2 px under it, not 6).
+    const { width } = bubble.getBoundingClientRect(),
       height = bubble.offsetHeight;
     const middle = figure.left + figure.width / 2;
-    const centre = Math.min(
-      Math.max(middle, row.left + width / 2 + 4),
-      row.right - width / 2 - 4,
-    );
+    const centre =
+      figure.left +
+      Math.round(
+        Math.min(
+          Math.max(middle, row.left + width / 2 + 4),
+          row.right - width / 2 - 4,
+        ) - figure.left,
+      );
     const left = centre - width / 2;
     let limit =
       (parseFloat(
