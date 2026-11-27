@@ -35,6 +35,22 @@
 :root[data-ui="poster"] .ui-panel-head :is(.ui-kicker, small, p) {
   color: var(--on-el-dim);
 }
+/* The masthead's other quiet words, on the element colour too: a raid
+   boss's line beside All bosses and the Fighters' "Sort" label were the
+   old look's pale grey on yellow, about 1.5:1 (audit A22). */
+:root[data-ui="poster"] .ui-panel-head > span.ui-note,
+:root[data-ui="poster"] .ui-panel-head .roster-sort > span {
+  color: var(--on-el-dim);
+}
+/* The Fighters' order: a square ink box like the masthead's switches, not
+   the old look's rounded grey field (audit C36). */
+:root[data-ui="poster"] .roster-sort select {
+  border: 0;
+  border-radius: 0;
+  background-color: var(--ink);
+  color: #fff;
+  font-weight: 700;
+}
 
 /* ── tabs: Anton capitals; the chosen one is a skewed ink block ── */
 :root[data-ui="poster"] .ui-tabs {

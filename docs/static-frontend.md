@@ -22,8 +22,9 @@ The frontend only uses the public Supabase URL/anon key.
 
 On the **Web Service**, set `CLIENT_ORIGIN` to the exact frontend origin:
 `https://twod-pokemon.onrender.com` for testing, then
-`https://play.elementarenausa.com` (plus `https://parena.litojace.com` while it
-still redirects: `CLIENT_ORIGIN` takes a comma-separated list). No trailing slash.
+`https://play.elementarenausa.com`, the only entry since 27 Nov 2026
+(`parena.litojace.com` answers a 301 to `play.` and is no longer an allowed
+origin; `CLIENT_ORIGIN` still takes a comma-separated list). No trailing slash.
 The game's address moved on 25 Nov 2026: [domain-move.md](domain-move.md).
 API CORS and Socket.IO use this origin; authenticated requests still require the
 user's bearer token. Same-origin requests to the existing server continue working.

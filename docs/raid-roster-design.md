@@ -52,7 +52,7 @@ predictive aim, windows, soft enrage, revives, party pressure). See
 - Rewards take **weeks, not one evening**: per-boss ladders, skill feats,
   daily play and cross-boss goals.
 - Every boss supports **1–4 players**, solo at every Peril (see §3).
-- All designs are original: cute but menacing, no Pokémon likenesses.
+- All designs are original: cute but menacing, no likenesses of another game's creatures.
 
 ## 2. The Raid Hub
 

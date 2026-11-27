@@ -236,6 +236,46 @@ body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
   > :last-child {
   margin-bottom: auto;
 }
+/* When the middle scrolls, its edge fades where more is hidden past it, as
+   a sideways row's does (ui/components.css, .has-more-right): on a phone
+   the results are taller than the screen, and a line cut in half by the
+   foot (the level-up line, a table's next row) or by the title (the
+   recap's headings) read as broken, not as more to scroll to (audit A06,
+   A07, A08; 27 Nov 2026). sheet-scroll.ts marks the edges as the middle
+   scrolls; nothing is masked while all of it shows. */
+#arena-overlay#arena-overlay.is-sheet .has-more-below {
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 40px), #0000);
+  mask-image: linear-gradient(#000 calc(100% - 40px), #0000);
+}
+#arena-overlay#arena-overlay.is-sheet .has-more-above {
+  -webkit-mask-image: linear-gradient(#0000, #000 40px);
+  mask-image: linear-gradient(#0000, #000 40px);
+}
+#arena-overlay#arena-overlay.is-sheet .has-more-above.has-more-below {
+  -webkit-mask-image: linear-gradient(
+    #0000,
+    #000 40px,
+    #000 calc(100% - 40px),
+    #0000
+  );
+  mask-image: linear-gradient(#0000, #000 40px, #000 calc(100% - 40px), #0000);
+}
+
+/* A notice over a whole-screen sheet ("New tier: Flare!…", Getting
+   started) sits just above the foot, clear of its buttons (48 px, 44 px on
+   a phone held sideways, and the foot's padding), over the end of the
+   scrolling middle. At the top (ui/components.css, still the place over
+   the break, the rites and the Reveal) it covered the sheet's title and
+   the score (audit A05, 27 Nov 2026). */
+body.battle-active[data-battle-overlay="sheet"] #toast#toast {
+  top: auto;
+  bottom: calc(max(10px, var(--safe-bottom, 0px)) + 72px);
+  transform: translate(-50%, 12px);
+}
+body.battle-active[data-battle-overlay="sheet"] #toast#toast.show {
+  transform: translate(-50%, 0);
+}
+
 /* PvP's results are laid out centred (the score, the recap table). */
 #arena-overlay#arena-overlay.is-sheet > .overlay-card > .panel-scroll {
   gap: 8px;
@@ -303,8 +343,13 @@ body.battle-active #arena-overlay#arena-overlay.is-sheet > .overlay-card {
     :is(.rc-foot, .overlay-card > .panel-actions) {
     padding-top: 6px;
   }
+  /* Wide enough for two lines: beside four buttons at 852 x 393 "0/2
+     ready for a rematch" took three, and the taller foot left the table
+     one row (audit B20). */
   #arena-overlay#arena-overlay.is-sheet :is(.rc-meta, .sheet-note) {
+    min-width: 9em;
     font-size: calc(12px * var(--text-scale, 1));
+    line-height: 1.35;
   }
   #arena-overlay#arena-overlay.is-sheet .rc-foot .ui-btn,
   #arena-overlay#arena-overlay.is-sheet .panel-actions button {

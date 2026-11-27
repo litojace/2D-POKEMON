@@ -629,6 +629,25 @@ for (const size of [
         expect(b.x + b.width).toBeLessThanOrEqual(size.width - inset.right);
         expect(b.y + b.height).toBeLessThanOrEqual(size.height - inset.bottom);
       }
+      // Each tile's picture and figures stay inside it: on a 667 px phone
+      // Helping Paws's two figures ran to its edge and pushed the picture
+      // out past the other (audit B17).
+      const spill = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>("[data-raid-rite]")].flatMap(
+          (tile) => {
+            const t = tile.getBoundingClientRect();
+            return [
+              ...tile.querySelectorAll(
+                ".raid-rite-icon > svg, .raid-rite-buff-stat",
+              ),
+            ]
+              .map((e) => e.getBoundingClientRect())
+              .filter((b) => b.left < t.left - 0.5 || b.right > t.right + 0.5)
+              .map(() => tile.dataset.raidRite);
+          },
+        ),
+      );
+      expect(spill, "pictures or figures past their tile").toEqual([]);
       await snap(page, info, `rites-whole-screen-${size.width}x${size.height}`);
       // Rite details: the six in columns, not long lines across the screen.
       await page.locator(".raid-rite-more > summary").click();

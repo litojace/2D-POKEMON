@@ -76,7 +76,8 @@ at `/home/`, `arena.litojace.com` redirecting there).
   iPhone app's native token); guests (Supabase anonymous users), who can add
   an email later from their player card.
 - Email links (confirm, reset password, email change) come back to
-  `VITE_SITE_URL` (`https://parena.litojace.com`) through `/?auth=…`.
+  `VITE_SITE_URL` (`https://play.elementarenausa.com` since the domain move of
+  25 Nov 2026) through `/?auth=…`.
 - The game server's API takes the login token in a header and uses no
   cookies (`apps/server/src/api-cors.ts`); its CORS list is `CLIENT_ORIGIN`.
   The server already reads `SUPABASE_SERVICE_ROLE_KEY` (raid rewards).

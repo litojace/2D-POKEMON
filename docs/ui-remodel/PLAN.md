@@ -35,7 +35,7 @@ owner's go.
 
 ## Facts found while mapping (3 Nov 2026)
 
-- **The creature remodel is on `main`** ([litojace/2d-pokemon#13](https://github.com/litojace/2d-pokemon/pull/13), merge `6116a87`). The roster
+- **The creature remodel is on `main`** ([litojace/element-arena#13](https://github.com/litojace/element-arena/pull/13), merge `6116a87`). The roster
   and mockups show those skills (Crest Flare, Magma Bomb, Heat Cracks,
   Sunfire Pillar, Cinder Snap for Cindrake, and so on).
 - **Every fighter is free.** There is no fighter ownership in the game, so
