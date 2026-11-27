@@ -48,6 +48,17 @@ launch: verify small phones and safe-area insets before desktop polish.
 Keep new content driven by shared data rather than floor/boss-specific UI
 branches. For Spire updates, follow [the content guide](docs/spire-content-guide.md).
 
+**One look: Poster** (owner, 27 Nov). Every player gets Poster
+([docs/ui-themes.md](docs/ui-themes.md)), so new or changed UI is styled in
+`apps/client/src/themes/poster/`, every selector under
+`:root[data-ui="poster"]`, and judged in Poster. The look the game had before
+stays underneath until the visual suite has moved to Poster; ask the owner
+before removing it. Specs moved so far call `onPlayersLook()`
+(`tests/visual/players-look.ts`); the harness pins the rest to the old look,
+so take your screenshots in Poster (`VISUAL_UI=poster`, or
+`VITE_VISUAL_LOOK=poster` for a whole run). Poster's computed colours can
+come back as `oklch(…)`: resolve them through a canvas before comparing RGB.
+
 **Look at every UI change before calling it done** (owner, 22 Nov): take
 screenshots (`VISUAL_SHOTS=<folder>`, or a page.screenshot) at a small
 phone in landscape (667×375 and 844×390, plus 852×393 with the Dynamic
