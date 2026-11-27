@@ -18,7 +18,7 @@
   color: #fff;
 }
 :root[data-ui="poster"] .lobby-layer .lobby-mode-menu b {
-  font: 400 15px/1.1 var(--font-display);
+  font: 400 calc(15px * var(--text-scale, 1)) / 1.1 var(--font-display);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #fff;
@@ -59,7 +59,7 @@
 :root[data-ui="poster"] .dialog-heading,
 :root[data-ui="poster"] .dialog-toolbar h2 {
   color: var(--ink);
-  font: 400 22px/1 var(--font-display);
+  font: 400 calc(22px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -86,7 +86,7 @@
   box-shadow: none;
 }
 :root[data-ui="poster"] :is(.prefs-card, .st-card) h3 {
-  font: 400 17px/1 var(--font-display);
+  font: 400 calc(17px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--el);
@@ -257,7 +257,7 @@
   .ui-title {
   color: var(--ink);
   text-shadow: none;
-  font: 400 34px/1 var(--font-display);
+  font: 400 calc(34px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
@@ -308,7 +308,7 @@
 :root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet table.recap td {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
 }
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
@@ -357,7 +357,7 @@
   .journey-result-xp
   > strong {
   color: var(--el);
-  font: 400 24px/1 var(--font-display);
+  font: 400 calc(24px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.04em;
 }
 :root[data-ui="poster"]
@@ -389,8 +389,23 @@
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
   button:is(.btn-primary, .primary) {
-  background: var(--ink);
-  color: var(--el);
+  /* As the kit's primary: the slant is drawn behind, the box stays square.
+     --sheet-cta / --sheet-cta-ink let a sheet's own state (a defeat)
+     recolour it without redrawing it. */
+  position: relative;
+  isolation: isolate;
+  background: none;
+  color: var(--sheet-cta-ink, var(--el));
+  box-shadow: none;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  button:is(.btn-primary, .primary)::before {
+  content: "";
+  position: absolute;
+  inset: 0 9px 5px 4px;
+  z-index: -1;
+  background: var(--sheet-cta, var(--ink));
   box-shadow: 5px 5px 0 var(--hot);
   transform: skewX(-8deg);
 }
@@ -663,7 +678,7 @@
     padding: 0;
   }
   :root[data-ui="poster"] .lobby-layer .lobby-rail span {
-    font: 700 11px/1 var(--font-body);
+    font: 700 calc(11px * var(--text-scale, 1)) / 1 var(--font-body);
     letter-spacing: 0;
     text-transform: none;
   }
@@ -672,7 +687,7 @@
     --slab-bottom: 88px;
   }
   :root[data-ui="poster"] .lobby-layer .lobby-slot small {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     letter-spacing: 0;
   }
   :root[data-ui="poster"] .ui-btn {

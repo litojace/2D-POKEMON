@@ -6,7 +6,9 @@
 /* ── panels: an ink board with a masthead in the element colour ── */
 :root[data-ui="poster"] :is(.ui-panel, .ui-modal, .ui-sheet) {
   background: var(--ink);
-  border: 0;
+  /* The 1 px frame stays, unseen (its colour token is transparent): what
+     is placed against a panel's edge keeps its place to the pixel. */
+  border-color: transparent;
   border-radius: 0;
   box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.45);
 }
@@ -116,14 +118,27 @@
   font-weight: 400;
   letter-spacing: 0.07em;
 }
+/* The primary button: a slanted block in the element colour with a hot-red
+   offset shadow. The slant is drawn behind the button (::before); the
+   button's own box stays square, so it measures the same as the buttons
+   beside it and its label isn't slanted. */
 :root[data-ui="poster"] .ui-btn.is-primary {
-  background: var(--el);
+  position: relative;
+  isolation: isolate;
+  background: none;
   color: var(--ink);
+  box-shadow: none;
+}
+:root[data-ui="poster"] .ui-btn.is-primary::before {
+  content: "";
+  position: absolute;
+  /* Inside the button's box, slant and shadow included: nothing of it
+     counts as overflow (a button "wider than its label's room"). */
+  inset: 0 8px 4px 4px;
+  z-index: -1;
+  background: var(--el);
   box-shadow: 4px 4px 0 var(--hot);
   transform: skewX(-8deg);
-}
-:root[data-ui="poster"] .ui-btn.is-primary > * {
-  transform: skewX(8deg);
 }
 :root[data-ui="poster"] .ui-btn.is-ok {
   background: #3ee07a;
