@@ -165,6 +165,12 @@
   transform: skewX(-10deg);
   box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
 }
+/* The score badge is centred by its own transform (match-badge.css:
+   left 50%, translateX(-50%)); the slant joins it instead of replacing it,
+   or the badge sat half its width right of the middle. */
+:root[data-ui="poster"] body.battle-active #battle #hud.hud.hud-badge {
+  transform: translateX(-50%) skewX(-10deg);
+}
 :root[data-ui="poster"] body.battle-active #battle #hud.hud > * {
   transform: skewX(10deg);
 }
