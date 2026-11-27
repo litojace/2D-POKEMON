@@ -306,11 +306,6 @@ test("the bubble sits above each fighter's head, under the top bar", async ({
     const page = await context.newPage();
     const errors = await openLobby(page);
     await setInsets(page, ISLAND);
-    // The fighter breathes, so its head moves a few pixels: the page's clock
-    // stands still from measuring the head to placing the bubble, and both
-    // read the same frame. (Measured a moment apart, this failed about one
-    // run in eight on main, 27 Nov.)
-    await page.clock.install();
     for (const champion of ["voltkit", "cindrake", "tidefin", "auralynx"]) {
       for (let i = 0; i < 20; i++) {
         if (
@@ -329,7 +324,18 @@ test("the bubble sits above each fighter's head, under the top bar", async ({
         timeout: 30_000,
       });
       await page.waitForTimeout(1500);
-      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100));
+      // The fighter breathes, so its head moves a few pixels: it holds still
+      // (the game's reduced motion: one still frame, then the rig sleeps)
+      // from measuring the head to placing the bubble, so both read the same
+      // frame. (Measured a moment apart, this failed about one run in eight
+      // on main, 27 Nov.) Not page.clock: it fakes requestAnimationFrame too,
+      // and on a slow runner the rig's frames held the page's time to a
+      // quarter of real time or less, so the bubble outlived any wait (#584).
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await expect(page.locator(art)).toHaveAttribute(
+        "data-rendering",
+        "false",
+      );
       const fig = (await page.locator("#lobby-fighter").boundingBox())!;
       // The head, in the middle third the game reads (shop-preview.ts).
       const head = await fighterInkTop(
@@ -337,18 +343,38 @@ test("the bubble sits above each fighter's head, under the top bar", async ({
         fig.x + fig.width * 0.3,
         fig.x + fig.width * 0.7,
       );
+      // Cindrake says the line that once slipped under the top bar (#584):
+      // 250.4 px wide, its left edge 0.2 px into the profile's column, which
+      // whole-pixel widths missed. Math.random pinned for the tap's click:
+      // under 2/3 (its own lines), on that line's place among them.
+      const line =
+        champion === "cindrake" ? "Magma bomb incoming! Duck!" : undefined;
+      if (line) {
+        const said = await page.locator(bubble).textContent();
+        const left = CHAMPION_QUIPS.cindrake
+          .map((q) => q.text)
+          .filter((t) => t !== said);
+        const pinned = (left.indexOf(line) + 0.5) / left.length;
+        expect(pinned).toBeLessThan(2 / 3);
+        await page.evaluate(
+          ({ s, pinned }) => {
+            document.querySelector(s)!.addEventListener(
+              "click",
+              () => {
+                const random = Math.random;
+                Math.random = () => pinned;
+                setTimeout(() => (Math.random = random));
+              },
+              { capture: true, once: true },
+            );
+          },
+          { s: tap, pinned },
+        );
+      }
       await page.locator(tap).tap();
       await expect(page.locator(bubble)).toBeVisible();
-      // The bubble's pop, finished (settle() waits on a timer, which the
-      // stopped clock never fires).
-      await page.evaluate(() => {
-        for (const a of document.getAnimations())
-          if (
-            a.effect?.getTiming().iterations !== Infinity &&
-            a.playState !== "finished"
-          )
-            a.finish();
-      });
+      if (line) await expect(page.locator(bubble)).toHaveText(line);
+      await settle(page);
       const at = await page.evaluate((s) => {
         const b = document.querySelector(s)!.getBoundingClientRect();
         let limit = 6;
@@ -373,8 +399,8 @@ test("the bubble sits above each fighter's head, under the top bar", async ({
       // Close to the head when there is room: no more than 12 px above it.
       if (!underBar) expect(head - tailTip, champion).toBeLessThanOrEqual(12);
       await snap(page, info, `lobby-quip-head-${champion}`);
-      // Wait for the bubble to go before the next fighter.
-      await page.clock.resume();
+      // The fighter moves again; wait for the bubble to go before the next.
+      await page.emulateMedia({ reducedMotion: "no-preference" });
       await expect(page.locator(bubble)).toBeHidden({ timeout: 15_000 });
     }
     expect(errors).toEqual([]);
