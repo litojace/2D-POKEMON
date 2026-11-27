@@ -50,6 +50,48 @@ checks the copies exist. Do not add a blanket `/*` SPA rewrite: missing JS must
 return 404, not HTML. Verify the three callback paths return the app on the
 final domain.
 
+## Build filter
+
+A commit to `main` that changes only docs, tests, the website or CI is not
+built or deployed: it saves Render's build minutes and doesn't restart the
+server (players would be disconnected and reconnect). Both services that build
+the game skip these paths:
+
+```
+docs/**
+tests/**
+apps/site/**
+.github/**
+**/*.md
+```
+
+Nothing the build or the running game reads is in them: a build with all of
+them deleted is byte for byte the same (checked 27 Nov 2026), and
+`tests/unit/render-build-filter.test.ts` fails if build or server code starts
+pointing at one. A commit that also changes any other file deploys as before.
+A skipped commit shows in the service's Events as "commit ignored", and the
+live page's `<meta name="arena-build">` keeps the last commit that deployed. So
+anything that compares the live build with `main` (a script, a test, a
+check by hand) compares it with the newest commit on `main` that changes a
+path outside this list, not with `main`'s HEAD.
+
+Where each filter lives:
+
+- **Server (`element-arena`)**: `buildFilter` in `render.yaml`, applied by the
+  Blueprint's sync. Keep the field there: a sync without it removes the filter.
+- **Game Static Site (`2D-POKEMON`)**: it is not in `render.yaml`, so its
+  filter is in Render's settings: Dashboard → 2D-POKEMON → Settings → Build &
+  Deploy → Build Filters → Ignored Paths. Or by API: read it with
+  `GET https://api.render.com/v1/services/srv-dbhs7suc6qcc73eprc0g`
+  (`buildFilter`), change it with `PATCH` on the same URL and the body
+  `{"buildFilter": {"paths": [], "ignoredPaths": [...]}}`.
+- The website (`element-arena-site`) needs none: its root directory
+  `apps/site` already limits it.
+
+Change the two lists together, and the test's list with them. Never add a
+path the build reads (the code, `scripts/`, `supabase/`, `package*.json`):
+its change would then never reach players.
+
 ## Security headers
 
 Since the shared sign-in (#484), the game and the website keep one session
