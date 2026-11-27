@@ -1,4 +1,10 @@
-import { expect, test, type CDPSession, type Page } from "@playwright/test";
+import {
+  expect,
+  test,
+  type Browser,
+  type CDPSession,
+  type Page,
+} from "@playwright/test";
 import { openHub } from "./helpers";
 import { lookAsked, lookShown, playersLook } from "./players-look";
 
@@ -431,13 +437,163 @@ const quiet = async (page: Page) => {
       );
     });
 };
+// TEMPORARY (profiling the Shop's repeat open on CI; dropped before any
+// merge): a CPU profile and a timeline trace of one open, printed.
+const fileOf = (url: unknown) =>
+  String(url ?? "")
+    .split("/")
+    .pop()!
+    .split("?")[0];
+function cpuReport(p: any): string[] {
+  const byId = new Map<number, any>(p.nodes.map((n: any) => [n.id, n]));
+  const self = new Map<number, number>();
+  const samples: number[] = p.samples ?? [];
+  const deltas: number[] = p.timeDeltas ?? [];
+  for (let i = 0; i < samples.length; i++) {
+    const d = (deltas[i + 1] ?? deltas[i] ?? 0) / 1000;
+    self.set(samples[i], (self.get(samples[i]) ?? 0) + d);
+  }
+  const total = new Map<number, number>();
+  const tot = (id: number): number => {
+    const known = total.get(id);
+    if (known !== undefined) return known;
+    let t = self.get(id) ?? 0;
+    for (const c of byId.get(id)!.children ?? []) t += tot(c);
+    total.set(id, t);
+    return t;
+  };
+  const root = p.nodes[0].id;
+  tot(root);
+  const name = (n: any) => {
+    const f = n.callFrame;
+    const file = fileOf(f.url);
+    return `${f.functionName || "(anonymous)"}${file ? ` ${file}:${f.lineNumber + 1}` : ""}`;
+  };
+  const out = [
+    `cpu profile: ${((p.endTime - p.startTime) / 1000).toFixed(0)} ms, ${samples.length} samples; call tree of nodes >= 4 ms (total, self):`,
+  ];
+  const walk = (id: number, depth: number) => {
+    const n = byId.get(id)!;
+    const t = total.get(id)!;
+    if (t < 4 || out.length > 220) return;
+    out.push(
+      `${"  ".repeat(depth)}${t.toFixed(1)} (${(self.get(id) ?? 0).toFixed(1)}) ${name(n)}`,
+    );
+    for (const c of [...(n.children ?? [])].sort(
+      (a: number, b: number) => total.get(b)! - total.get(a)!,
+    ))
+      walk(c, depth + 1);
+  };
+  for (const c of [...(byId.get(root)!.children ?? [])].sort(
+    (a: number, b: number) => total.get(b)! - total.get(a)!,
+  ))
+    walk(c, 0);
+  // The open itself, to half a millisecond: the Shop's continuation after
+  // its code loaded (accounts.ts showFittingRoom → openFittingRoom).
+  const parent = new Map<number, number>();
+  for (const n of p.nodes)
+    for (const c of n.children ?? []) parent.set(c, n.id);
+  // The outermost of these (the click's own part, and the continuation
+  // once the code has loaded, whatever V8 names its resumed frame).
+  const named = new Set(["showFittingRoom", "openFittingRoom"]);
+  const isOpen = (id: number) =>
+    named.has(byId.get(id)!.callFrame.functionName);
+  const focus = p.nodes.filter((n: any) => {
+    if (!isOpen(n.id)) return false;
+    for (let id = parent.get(n.id); id !== undefined; id = parent.get(id))
+      if (isOpen(id)) return false;
+    return true;
+  });
+  const fine = (id: number, depth: number) => {
+    const n = byId.get(id)!;
+    const t = total.get(id)!;
+    if (t < 0.3 || out.length > 420) return;
+    out.push(
+      `${"  ".repeat(depth)}${t.toFixed(1)} (${(self.get(id) ?? 0).toFixed(1)}) ${name(n)}`,
+    );
+    for (const c of [...(n.children ?? [])].sort(
+      (a: number, b: number) => total.get(b)! - total.get(a)!,
+    ))
+      fine(c, depth + 1);
+  };
+  for (const n of focus) {
+    const path: string[] = [];
+    for (let id = parent.get(n.id); id !== undefined; id = parent.get(id))
+      path.unshift(name(byId.get(id)!));
+    out.push(
+      `the open, ${total.get(n.id)!.toFixed(1)} ms, under: ${path.join(" > ")}`,
+    );
+    fine(n.id, 1);
+  }
+  if (!focus.length)
+    out.push("the open: no showFittingRoom or openFittingRoom sampled");
+  const agg = new Map<string, number>();
+  for (const [id, s] of self) {
+    const k = name(byId.get(id)!);
+    agg.set(k, (agg.get(k) ?? 0) + s);
+  }
+  out.push("self time by function (ms):");
+  for (const [k, s] of [...agg].sort((a, b) => b[1] - a[1]).slice(0, 30))
+    if (s >= 1.5) out.push(`  ${s.toFixed(1)} ${k}`);
+  return out;
+}
+function traceReport(t: { traceEvents: any[] }): string[] {
+  const ev = t.traceEvents;
+  const key = (e: any) => `${e.pid}:${e.tid}`;
+  const names = new Map<string, string>();
+  for (const e of ev)
+    if (e.ph === "M" && e.name === "thread_name")
+      names.set(key(e), e.args?.name);
+  const busy = new Map<string, number>();
+  for (const e of ev)
+    if (e.ph === "X" && names.get(key(e)) === "CrRendererMain")
+      busy.set(key(e), (busy.get(key(e)) ?? 0) + (e.dur ?? 0));
+  const main = [...busy].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const xs = ev
+    .filter((e) => key(e) === main && e.ph === "X" && (e.dur ?? 0) >= 2500)
+    .sort((a, b) => a.ts - b.ts || b.dur - a.dur);
+  const t0 = xs[0]?.ts ?? 0;
+  const out = ["trace, the page's main thread, events of 2.5 ms or more:"];
+  const open: any[] = [];
+  for (const e of xs) {
+    while (
+      open.length &&
+      open[open.length - 1].ts + open[open.length - 1].dur <= e.ts
+    )
+      open.pop();
+    const a = e.args ?? {};
+    const d = a.data ?? a.beginData ?? {};
+    const top = d.stackTrace?.[0] ?? a.data?.stackTrace?.[0];
+    const extra = [
+      a.elementCount !== undefined ? `elements ${a.elementCount}` : "",
+      d.dirtyObjects !== undefined
+        ? `dirty ${d.dirtyObjects}/${d.totalObjects}`
+        : "",
+      d.functionName || d.url
+        ? `${d.functionName ?? ""} ${fileOf(d.url)}:${(d.lineNumber ?? -1) + 1}`
+        : "",
+      d.type ? `type ${d.type}` : "",
+      top
+        ? `from ${top.functionName} ${fileOf(top.url)}:${top.lineNumber + 1}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
+    if (out.length < 200)
+      out.push(
+        `${"  ".repeat(open.length)}+${((e.ts - t0) / 1000).toFixed(0)} ${e.name} ${(e.dur / 1000).toFixed(1)} ms${extra ? ` (${extra})` : ""}`,
+      );
+    open.push(e);
+  }
+  return out;
+}
 /** When the page last loaded a picture. */
 const pictures = { last: 0 };
 async function measure(
   page: Page,
   cdp: CDPSession,
   panel: Panel,
-  o: { changed?: boolean } = {},
+  o: { changed?: boolean; profile?: Browser } = {},
 ) {
   // The runner's speed now, before the wait for a quiet page (the probe is
   // a long frame of its own, which the wait then lets pass).
@@ -478,8 +634,26 @@ async function measure(
     document.addEventListener("pointerdown", at, true);
     document.addEventListener("click", at, true);
   });
+  if (o.profile) {
+    await cdp.send("Profiler.enable");
+    await cdp.send("Profiler.setSamplingInterval", { interval: 200 });
+    await o.profile.startTracing(page, {
+      categories: [
+        "devtools.timeline",
+        "disabled-by-default-devtools.timeline.stack",
+        "v8.execute",
+      ],
+    });
+    await cdp.send("Profiler.start");
+  }
   await panel.open(page);
   await page.waitForTimeout(SETTLE_MS);
+  if (o.profile) {
+    const { profile } = await cdp.send("Profiler.stop");
+    const trace = JSON.parse((await o.profile.stopTracing()).toString());
+    for (const line of [...cpuReport(profile), ...traceReport(trace)])
+      console.log(`PROFILE ${panel.name} ${line}`);
+  }
   const laidOut = (await layouts(cdp)) - before;
   const counted = await page.evaluate((stills) => {
     const c = (window as any).__count;
@@ -675,7 +849,13 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
       await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
       if (HEAVY.has(panel.name))
         await slowNextOpen(page, HEAVY.get(panel.name)!);
-      const again = await measure(page, cdp, panel);
+      const again = await measure(page, cdp, panel, {
+        profile: (process.env.PANEL_OPEN_PROFILE ?? "shop")
+          .split(",")
+          .includes(panel.name)
+          ? browser
+          : undefined,
+      });
       await page.evaluate(() =>
         document.getElementById("heavy-open")?.remove(),
       );
