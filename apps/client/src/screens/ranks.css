@@ -244,7 +244,11 @@
   gap: 8px;
   min-width: 0;
 }
+/* Every name takes the longest one's room ("Tempest"), in whole pixels: the
+   You tag then starts at one place whatever the tier, on a pixel's edge. */
 .rk-tier-name > b {
+  flex: none;
+  min-width: 72px;
   font-family: var(--font-display);
   font-weight: 800;
   font-size: var(--fs-h4);
@@ -629,6 +633,7 @@
     gap: 6px;
   }
   .rk-tier-name > b {
+    min-width: 48px;
     font-size: var(--fs-body);
   }
   .rk-from,
