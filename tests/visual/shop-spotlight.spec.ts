@@ -2,6 +2,10 @@ import { expect, test } from "@playwright/test";
 import { openHub, settle, snap } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import { exposeAccount, shopServer } from "./shop-server";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 for (const size of [
   { width: 1440, height: 900 },
   { width: 844, height: 390 },

@@ -9,6 +9,10 @@ import {
   spills,
 } from "./ui-checks";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // UI remodel step 7 (docs/ui-remodel/PLAN.md): the player card and profile,
 // a panel inside the Lobby. Measured at the five review sizes with the

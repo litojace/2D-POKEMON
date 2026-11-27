@@ -3,6 +3,10 @@ import { openLobby, snap } from "./helpers";
 import { settled, spills } from "./ui-checks";
 import { ISLAND, layoutProblems, setInsets } from "./ui-measure";
 import { KAI, KAI_FRIEND, kaiHistory, myHistory } from "./history-fixture";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Match history (docs/match-history.md): the Matches tab of your player
 // card, and a friend's card opened from Friends. Mobile landscape first.

@@ -8,6 +8,10 @@ import {
   pickRoomMode,
   createRoom,
 } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 /**
  * Phones in landscape, screen by screen (mobile UI audit, Nov 2026):

@@ -11,6 +11,10 @@ import {
 } from "./helpers";
 import { shopServer } from "./shop-server";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // UI remodel step 3 (docs/ui-remodel/PLAN.md): the roster and the fighter
 // detail inside the Lobby, measured at the four review sizes with the shared

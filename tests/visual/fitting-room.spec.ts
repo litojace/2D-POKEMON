@@ -3,6 +3,10 @@ import { box, inside, openLobby, openWardrobe, settle, snap } from "./helpers";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
 import { exposeAccount, shopServer } from "./shop-server";
 import { SHOP_ARRIVALS } from "../../apps/client/src/shop-arrivals";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // UI remodel step 2 (docs/ui-remodel/PLAN.md): the fitting room, the Shop and
 // the Wardrobe in one screen inside the Lobby. Measured at the four review
@@ -570,11 +574,19 @@ test("the open screen's rail icon lights up, and a second tap on it closes the s
 }) => {
   await shopServer(page);
   const errors = await openLobby(page);
-  // The open screen's button is solid gold in the rail's glass capsule.
+  // The open screen's button is a solid block in the element colour (gold
+  // for Voltkit): Poster draws it behind the button (its ::before, a
+  // slanted block inside the button's box), so read whichever is painted.
   const rim = (action: string) =>
     page
       .locator(`.lobby-rail [data-lobby-action="${action}"]`)
-      .evaluate((b) => getComputedStyle(b).backgroundColor);
+      .evaluate((b) => {
+        const block = getComputedStyle(b, "::before");
+        return block.content !== "none" &&
+          block.backgroundColor !== "rgba(0, 0, 0, 0)"
+          ? block.backgroundColor
+          : getComputedStyle(b).backgroundColor;
+      });
   const shop = page.locator('.lobby-rail [data-lobby-action="shop"]');
   await shop.click();
   await expect(page.locator(".fit-room")).toBeVisible();
