@@ -607,8 +607,8 @@
   > :is(small, .ui-count, span + span) {
   color: inherit;
 }
-/* ranks ladder */
-:root[data-ui="poster"] :is(.rk-board, .rk-ladder, .rk-list) {
+/* ranks: the board and the rank road */
+:root[data-ui="poster"] :is(.rk-board, .rk-road, .rk-list) {
   background: var(--ink-1);
   border: 0;
   border-radius: 0;
