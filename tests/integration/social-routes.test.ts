@@ -109,7 +109,7 @@ it("ranks you with your friends", async () => {
     ["Player 1", null, true],
   ]);
   expect(board.rows[0]).toMatchObject({
-    rankName: "Candidate Master",
+    rankName: "Flare I",
     wins: 1,
     matches: 1,
   });

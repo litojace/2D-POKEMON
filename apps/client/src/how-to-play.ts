@@ -204,7 +204,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       {
         title: "Ranks",
         art: "ranks",
-        text: "Matches against other players change your rating. Climb from Newbie to Legendary and keep the titles you reach.",
+        text: "Matches against other players change your rating. Climb the rank road from Sprout to Legend: each tier's title is yours to keep.",
         go: { to: "ranks", label: "Open Ranks" },
       },
       {

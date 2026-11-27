@@ -108,9 +108,9 @@ const PROGRESS = {
     rating: 1110,
     matches: 62,
     peak: 1140,
-    rank: "Expert",
+    rank: "Flare III",
     placementLeft: 0,
-    next: { name: "Candidate Master", at: 1150 },
+    next: { name: "Flare II", at: 1140 },
   },
 };
 const TITLES = [
@@ -300,7 +300,7 @@ for (const size of SIZES)
       await expect(card.locator(".pf-card-name")).toHaveText("tester");
       await expect(card.locator(".pf-card-tags")).toContainText("Lv 12");
       await expect(card.locator(".pf-card-tags")).toContainText(
-        "Expert · 1,110",
+        "Flare III · 1,110",
       );
       await expect(card.locator(".pf-card-tags")).toContainText(
         "Crystal Voltkit",

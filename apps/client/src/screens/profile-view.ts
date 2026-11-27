@@ -200,7 +200,7 @@ export function bestMastery(p: Progress | null) {
     ? { id: best.id, text: `${tier.name} ${CHARACTERS[best.id].name}` }
     : null;
 }
-/** "Pupil · 1,000", or Unranked with placement matches left. */
+/** "Spark II · 1,040", or Unranked with placement matches left. */
 export function rankLine(p: Progress | null) {
   const r = p?.rating;
   if (!r) return null;
@@ -213,10 +213,8 @@ export function rankLine(p: Progress | null) {
     note: placing
       ? `${r.placementLeft} placement ${r.placementLeft === 1 ? "match" : "matches"} left`
       : r.next
-        ? r.next.name === "Legendary Grandmaster" && r.rating >= r.next.at
-          ? "Reach #1 for Legendary Grandmaster"
-          : `${num(r.next.at - r.rating)} more for ${r.next.name}`
-        : "Top of the ladder",
+        ? `${num(r.next.at - r.rating)} more for ${r.next.name}`
+        : "Top of the road",
   };
 }
 

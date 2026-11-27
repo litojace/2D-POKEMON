@@ -11,17 +11,17 @@ import { RANKS } from "../../packages/shared/src/accounts";
 
 const me = { id: "me", name: "Tess" };
 
-describe("rank names (as arena_rank_name in migration 006)", () => {
-  it("is Unranked during placement and follows the ladder after", () => {
+describe("rank names (as arena_rank_name, migration 20261127090000)", () => {
+  it("is Unranked during placement and follows the road after", () => {
     expect(rankName(1300, 4, false)).toBe("Unranked");
-    expect(rankName(900, 5, false)).toBe("Newbie");
-    for (const r of RANKS.slice(0, -1))
-      expect(rankName(r.min, 5, false)).toBe(r.name);
+    expect(rankName(900, 5, false)).toBe("Sprout II");
+    expect(rankName(100, 5, false)).toBe("Sprout III");
+    for (const r of RANKS) expect(rankName(r.min, 5, false)).toBe(r.name);
   });
-  it("needs the #1 spot for Legendary Grandmaster", () => {
-    expect(rankName(1600, 9, false)).toBe("International Grandmaster");
-    expect(rankName(1600, 9, true)).toBe("Legendary Grandmaster");
-    expect(rankName(1400, 9, true)).toBe("Grandmaster");
+  it("gives the top tier by rating, whoever is #1", () => {
+    expect(rankName(1600, 9, false)).toBe("Legend III");
+    expect(rankName(1600, 9, true)).toBe("Legend III");
+    expect(rankName(1400, 9, true)).toBe("Prism II");
   });
 });
 
@@ -77,14 +77,14 @@ describe("friends' board", () => {
     const rows = board().rows;
     const by = (n: string) => rows.find((r) => r.name === n)!;
     expect(by("Aria")).toMatchObject({
-      rankName: "Legendary Grandmaster",
+      rankName: "Legend III",
       wins: 1,
       matches: 1,
       title: "Flawless",
       me: false,
     });
     expect(by("Tess")).toMatchObject({
-      rankName: "Expert",
+      rankName: "Flare III",
       wins: 2,
       matches: 3,
       me: true,
@@ -103,9 +103,9 @@ describe("friends' board", () => {
       matches: 0,
     });
   });
-  it("keeps Legendary for the global #1 only", () => {
+  it("ranks by rating alone: the global #1 changes no name", () => {
     const rows = board({ top: "someone-else" }).rows;
-    expect(rows[0].rankName).toBe("International Grandmaster");
+    expect(rows[0].rankName).toBe("Legend III");
   });
   it("always has your row, even with no friends", () => {
     const rows = board({ friends: [], ratings: [] }).rows;

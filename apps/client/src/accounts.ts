@@ -2283,6 +2283,8 @@ export class AccountUI {
           me: {
             name: this.account?.displayName ?? "You",
             avatar: this.avatar,
+            // A tier reached once stays ticked on the road.
+            titles: (this.account?.ownedTitles ?? []).map((t) => t.name),
           },
         }),
         load: (scope) => this.loadRanks(scope, accountId),

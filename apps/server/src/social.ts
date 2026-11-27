@@ -12,7 +12,7 @@
 import { createClient } from "@supabase/supabase-js";
 import {
   PLACEMENT_MATCHES,
-  RANKS,
+  rankAt,
   type Friend,
   type FriendList,
   type FriendsBoard,
@@ -69,11 +69,10 @@ export interface SocialStore {
 /** The rank for a rating, as `arena_rank_name` (migration 006) names it. */
 export function rankName(rating: number, matches: number, top: boolean) {
   if (matches < PLACEMENT_MATCHES) return "Unranked";
-  let name: string = RANKS[0].name;
-  for (const r of RANKS)
-    if (rating >= r.min && (r.name !== "Legendary Grandmaster" || top))
-      name = r.name;
-  return name;
+  // (`top` is the leaderboard's first place: the first ladder's highest
+  // rank needed it; the rank road's ranks are by rating alone.)
+  void top;
+  return rankAt(rating).name;
 }
 
 /** "2026-11" for a time, in UTC (the season the database uses). */

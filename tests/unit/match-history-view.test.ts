@@ -235,10 +235,10 @@ describe("a friend's card", () => {
       wins: 11,
       fighters: { cindrake: { matches: 20, wins: 11 } },
     };
-    s.rating = { rating: 1180, matches: 20, rank: "Expert", placementLeft: 0 };
+    s.rating = { rating: 1180, matches: 20, rank: "Flare I", placementLeft: 0 };
     const d = friendCardData(kai, s);
     expect(d.progress?.matches).toBe(20);
-    expect(d.progress?.rating?.rank).toBe("Expert");
+    expect(d.progress?.rating?.rank).toBe("Flare I");
     expect(d.fighter).toBe("cindrake");
     const html = friendCardMarkup(kai, s, { back: true, now: NOW });
     expect(html).toContain('aria-label="Kai&#39;s player card"');

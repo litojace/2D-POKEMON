@@ -1,14 +1,15 @@
-export const TITLE_PRESETS = [
-  { name: "Newbie", color: "#a9b4c9" },
-  { name: "Pupil", color: "#65d38a" },
-  { name: "Specialist", color: "#50dbe9" },
-  { name: "Expert", color: "#719aff" },
-  { name: "Candidate Master", color: "#c68bff" },
-  { name: "Master", color: "#ffbc65" },
-  { name: "International Master", color: "#ffd29a" },
-  { name: "Grandmaster", color: "#ff697f" },
-  { name: "International Grandmaster", color: "#ff465f" },
-  { name: "Legendary Grandmaster", color: "#ffd65b" },
+import {
+  LEGACY_RANKS,
+  RANK_TIERS,
+} from "../../../packages/shared/src/accounts";
+
+/**
+ * The rank titles, lowest first: the first ladder's (still worn by those
+ * who earned them), then the rank road's tiers.
+ */
+export const TITLE_PRESETS: { name: string; color: string }[] = [
+  ...LEGACY_RANKS,
+  ...RANK_TIERS.map((t) => ({ name: t.name, color: t.color })),
 ];
 /**
  * Display order for titles: custom titles first (newest first when the
@@ -35,11 +36,12 @@ export function sortTitles<
   });
 }
 export function titleTreatment(title: string) {
-  return /legendary/i.test(title)
+  // The rank road's top three tiers shine as the first ladder's top ranks did.
+  return /legendary|^legend$/i.test(title)
     ? "legendary"
-    : /grandmaster/i.test(title)
+    : /grandmaster|^nova$/i.test(title)
       ? "grandmaster"
-      : /master/i.test(title)
+      : /master|^prism$/i.test(title)
         ? "master"
         : "glow";
 }
