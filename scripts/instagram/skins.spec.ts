@@ -14,6 +14,10 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { openHub } from "../../tests/visual/helpers";
 import { exposeAccount, shopServer } from "../../tests/visual/shop-server";
+import { lookShown, onPlayersLook } from "../../tests/visual/players-look";
+
+// The look players have (Poster), not the one the harness pins for older specs.
+onPlayersLook();
 
 const OUT = "instagram-clips";
 const FPS = 30;
@@ -46,6 +50,7 @@ async function open(page: Page, champion: string) {
   await expect(page.locator(".fit-stage .shop-live-stage")).toHaveClass(
     /is-ready/,
   );
+  expect(await lookShown(page)).toBe("poster");
 }
 
 for (const [skin, champion] of SKINS)

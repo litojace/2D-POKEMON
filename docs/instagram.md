@@ -1,7 +1,8 @@
 # Instagram starter pack
 
 The game's first Instagram account, free: a handle, a bio, the profile
-picture, nine posts with captions, and three weeks of posting. The owner
+picture, nine posts with captions (one of them a Reel), and three weeks of
+posting. The owner
 creates the account (password, verification codes, CAPTCHA) and approves
 every post before it goes out.
 
@@ -11,23 +12,32 @@ game or company, and never use their names or hashtags.
 
 ## Make the pictures
 
-The posts are built from the game's painted art, real captures of the game
-and the game's fonts, so they can be made again when the game changes:
+Everything is in the game's look, **Poster** (docs/ui-themes.md, owner,
+27 Nov): the fighter's element colour with its halftone, ink slabs with the
+white stripe, white clippings with hard offset shadows, skewed ink plates,
+the red bar under PLAY, Anton capitals and Archivo text. It is built from
+the game itself, never from the website (apps/site), which is redone apart:
+its rules and skin names (packages/shared), its fonts
+(apps/client/public/assets/fonts), the fighters' drawings
+(apps/client/public/assets/fighters), its painted art and real captures.
 
 ```bash
-npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/scenes.spec.ts
+VISUAL_UI=poster npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/scenes.spec.ts
 npx playwright test --config scripts/instagram/playwright.config.ts
 python3 scripts/instagram/make-reel.py
-node scripts/instagram/make-posts.mjs
+npx tsx scripts/instagram/make-posts.mjs
 ```
 
-The first command records the real battles (the same captures as the
-website's "Ways to play", about 7 minutes). The second records the three
-Mythical skins in the game's fitting room at Stage III, frame by frame on
-the page's own clock (about 6 minutes): standing, then each one's Entrance,
-Victory and Ultimate with their effects as the game draws them.
-`make-reel.py` cuts those into the skins Reel and picks each skin's still at
-its Ultimate's peak; `make-posts.mjs` puts the stills on post 8.
+The first command records the real battles in Poster (the same scenes as
+the website's "Ways to play", about 7 minutes; the court is drawn by the
+game's canvas, so the look doesn't change it). The second records the
+three Mythical skins in the game's fitting room at Stage III, in Poster
+(the spec calls `onPlayersLook()`), frame by frame on the page's own clock
+(about 6 minutes): standing, then each one's Entrance, Victory and
+Ultimate with their effects as the game draws them. `make-reel.py` cuts
+those into the skins Reel and picks each skin's still at its Ultimate's
+peak; `make-posts.mjs` (run with tsx, as it reads packages/shared) puts the
+stills on post 8.
 
 The pictures land in `instagram/` (not committed): `profile-picture.png`,
 each post as `NN-name-feed.jpg` (1080 × 1350, 4:5), `-square.jpg`
@@ -38,8 +48,8 @@ cover `08-skins-reel-cover.jpg`. Post the **feed** version; use the
 so every word sits 84 px or more from the left and right edges.
 
 To change a post, edit its entry in `POSTS` in
-`scripts/instagram/make-posts.mjs`; `POSTS=6 node scripts/instagram/make-posts.mjs`
-makes only that one.
+`scripts/instagram/make-posts.mjs`;
+`POSTS=6 npx tsx scripts/instagram/make-posts.mjs` makes only that one.
 
 ## The profile
 

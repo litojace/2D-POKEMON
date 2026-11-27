@@ -1,34 +1,37 @@
 // The Instagram starter pack (docs/instagram.md): the profile picture and
-// the first nine posts, each at the three sizes Instagram shows, built from
-// the game's own art, real captures of the game and the game's fonts.
+// the first nine posts, each at the three sizes Instagram shows, in the
+// game's look, Poster (docs/ui-themes.md): the fighter's element colour with
+// its halftone, ink slabs and a white stripe, white clippings with hard
+// offset shadows, Anton capitals and Archivo text. Everything comes from the
+// game itself: its rules (packages/shared), fonts, fighters' drawings,
+// painted art and real captures.
 //
-//   npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/scenes.spec.ts
-//   npx playwright test --config scripts/app-store/playwright.config.ts
-//   node scripts/instagram/make-posts.mjs            # -> instagram/
+//   VISUAL_UI=poster npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/scenes.spec.ts
+//   npx playwright test --config scripts/instagram/playwright.config.ts
+//   python3 scripts/instagram/make-reel.py
+//   npx tsx scripts/instagram/make-posts.mjs            # -> instagram/
 //
-// The first two commands render the real battles and the Plaza (the same
-// captures as the website's "Ways to play"); a post whose capture is missing
-// is skipped with a note. POSTS=1,4 renders only those. PW_CHROMIUM points
-// at a Chromium already on the machine, as in tests/visual.
+// The first command records the real battles in Poster (the same scenes as
+// the website's "Ways to play"); the next two record the Mythical skins and
+// cut their stills (post 8). A post whose capture is missing is skipped with
+// a note. POSTS=1,4 renders only those. PW_CHROMIUM points at a Chromium
+// already on the machine, as in tests/visual. Run with tsx: the champions'
+// data is read from packages/shared.
 //
 // Sizes (1080 px wide, Instagram's upload width):
 //   feed   1080 x 1350 (4:5, the tallest a feed post shows)
 //   square 1080 x 1080 (1:1)
 //   story  1080 x 1920 (9:16, Stories and Reels covers)
-// The profile grid crops posts to 3:4, so every word keeps 80 px or more
-// from the left and right edges of a feed post; a story keeps its words out
-// of the top 250 px and bottom 320 px, where Instagram draws its own bars.
+// The profile grid crops posts to 3:4, so every word keeps 84 px from the
+// left and right edges of a feed post; a story keeps its words out of the
+// top 260 px and bottom 330 px, where Instagram draws its own bars.
 import { chromium } from "@playwright/test";
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { CHARACTERS } from "../../packages/shared/src/index";
+import { CHAMPION_SKINS } from "../../packages/shared/src/shop";
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -40,15 +43,28 @@ const TMP = mkdtempSync(path.join(tmpdir(), "instagram-"));
 const at = (p) => path.join(ROOT, p);
 const url = (p) => "file://" + at(p);
 
-const champions = JSON.parse(
-  readFileSync(at("apps/site/data/champions.json"), "utf8"),
-);
-const champ = (id) => champions.find((c) => c.id === id);
-
 const SIZES = {
   feed: [1080, 1350],
   square: [1080, 1080],
   story: [1080, 1920],
+};
+
+/** A champion as the posts need it; `el` is its colour, as the Lobby's --el. */
+const champ = (id) => {
+  const c = CHARACTERS[id];
+  return { ...c, el: "#" + c.color.toString(16).padStart(6, "0") };
+};
+/** The game's element colours (apps/client/src/ui/tokens.css, --el-*). */
+const EL = {
+  electric: "#ffd84a",
+  fire: "#ff7a45",
+  water: "#4fb3ff",
+  aura: "#7fe7ff",
+  light: "#fff1a8",
+  psychic: "#c47dff",
+  earth: "#c8955a",
+  shadow: "#8a6bff",
+  nature: "#7fcf6a",
 };
 
 /** A real capture of the game (2622 x 1206), cropped to 16:9 like make-scenes.py. */
@@ -60,15 +76,19 @@ const painting = (file, x = 50, y = 50) => ({ painting: file, x, y });
 
 /**
  * The nine posts, in posting order. `kind` picks the layout:
- * - "art": a painting full bleed, words over its lower part,
- * - "shot": a real capture of the game as a card, words above and below,
- * - "roster", "champion", "skins": drawn from the fighters' own SVGs.
+ * - "art": a painting full bleed above an ink slab that carries the words,
+ * - "shot": a real capture of the game as a white clipping on the element
+ *   colour, the mode's name huge behind it,
+ * - "roster", "champion", "skins": the fighters themselves.
+ * `el` is the post's colour (what the Lobby's --el would be); a champion's
+ * post takes the champion's.
  */
 const POSTS = [
   {
     id: 1,
     name: "welcome",
     kind: "art",
+    el: EL.electric,
     art: painting(
       "apps/client/src/art/loading-art/startup-art-duel-skyline-lance.webp",
       52,
@@ -82,6 +102,8 @@ const POSTS = [
     id: 2,
     name: "duels",
     kind: "shot",
+    el: EL.water,
+    big: "Duel",
     art: capture(`${SCENES}/duels/014.png`, 0.53, 0.47, 0.42),
     eyebrow: "1v1 duels",
     title: "Dodge. Dash. Land the big one.",
@@ -91,14 +113,17 @@ const POSTS = [
     id: 3,
     name: "roster",
     kind: "roster",
+    el: EL.electric,
     eyebrow: "Meet the champions",
-    title: "18 creatures. 9 elements.",
+    title: "18 creatures.",
+    accent: "9 elements.",
     line: "Who are you picking first?",
   },
   {
     id: 4,
     name: "raid-lumiwick",
     kind: "art",
+    el: EL.fire,
     art: painting("apps/client/src/art/raid-splash/emberwing.webp", 50, 40),
     eyebrow: "Raid boss · Lumiwick",
     title: "Seven bosses, seven puzzles.",
@@ -108,6 +133,8 @@ const POSTS = [
     id: 5,
     name: "teams",
     kind: "shot",
+    el: EL.nature,
+    big: "2v2",
     art: capture(`${SCENES}/teams/014.png`, 0.5, 0.36, 0.56),
     eyebrow: "2v2 team battles",
     title: "Better with a friend.",
@@ -119,7 +146,7 @@ const POSTS = [
     kind: "champion",
     champion: "pyranda",
     eyebrow: "Champion spotlight",
-    // The skills, said short; the full text is the game's (champions.json).
+    // The skills, said short; the full text is the game's (packages/shared).
     moves: [
       ["Chestnut Mortar", "Lobs a burning chestnut over walls."],
       ["Hot Coals", "A patch of coals that burns anyone in it."],
@@ -131,6 +158,8 @@ const POSTS = [
     id: 7,
     name: "free-for-all",
     kind: "shot",
+    el: EL.psychic,
+    big: "FFA",
     art: capture(`${SCENES}/ffa/016.png`, 0.57, 0.4, 0.46),
     eyebrow: "Free-for-all",
     title: "Four fighters. One winner.",
@@ -140,6 +169,8 @@ const POSTS = [
     id: 8,
     name: "skins",
     kind: "skins",
+    el: EL.light,
+    // The stills make-reel.py cut from the fitting room at Stage III.
     skins: ["pyranda-harvest-moon", "tidefin-moontide", "cindrake-sunforged"],
     eyebrow: "The Shop · Mythical skins",
     title: "Walk in a legend.",
@@ -149,6 +180,8 @@ const POSTS = [
     id: 9,
     name: "spire",
     kind: "shot",
+    el: EL.aura,
+    big: "Spire",
     art: capture(`${SCENES}/spire/016.png`, 0.47, 0.61, 0.48),
     eyebrow: "The Spire",
     title: "70 floors. How high can you climb?",
@@ -156,50 +189,91 @@ const POSTS = [
   },
 ];
 
-/** The words every post shares: the game's name, and where to play. */
-const LOGO = `<div class="logo"><img src="${url("apps/client/public/icons/arena-512.png")}">Element Arena</div>`;
-const PLAY = `<div class="play">Play free · link in bio</div>`;
+const ICON = url("apps/client/public/icons/arena-512.png");
+/** The game's name: a skewed ink block, as the Lobby's LOBBY / PLAZA tab. */
+const LOGO = `<div class="logo"><span><img src="${ICON}">Element Arena</span></div>`;
+/** Where to play: the Lobby's PLAY, an ink block with the red bar under it. */
+const PLAY = `<div class="play"><span>Play free · link in bio</span></div>`;
 
 const BASE = `
-@font-face { font-family: B; font-weight: 800; src: url(${url("apps/site/fonts/barlow-condensed-latin-800-normal.woff2")}); }
-@font-face { font-family: B; font-weight: 700; src: url(${url("apps/site/fonts/barlow-condensed-latin-700-normal.woff2")}); }
-@font-face { font-family: D; font-weight: 600; src: url(${url("apps/site/fonts/dm-sans-latin-600-normal.woff2")}); }
-@font-face { font-family: D; font-weight: 400; src: url(${url("apps/site/fonts/dm-sans-latin-400-normal.woff2")}); }
+@font-face { font-family: Anton; font-weight: 400; src: url(${url("apps/client/public/assets/fonts/anton-latin-400-normal.woff2")}); }
+@font-face { font-family: Archivo; font-weight: 100 900; src: url(${url("apps/client/public/assets/fonts/archivo-latin-wght-normal.woff2")}); }
 * { box-sizing: border-box; }
-html, body { margin: 0; overflow: hidden; background: #0b1020; color: #fff; }
-.page { position: relative; width: var(--w); height: var(--h); overflow: hidden; }
-.logo { display: flex; align-items: center; gap: 18px; font: 800 46px/1 B; text-transform: uppercase; letter-spacing: .03em; }
-.logo img { width: 72px; height: 72px; border-radius: 16px; box-shadow: 0 4px 18px #0008; }
-.eyebrow { font: 700 34px/1 B; text-transform: uppercase; letter-spacing: .12em; color: #ffd65b; }
-h1 { margin: 0; font: 800 100px/.94 B; text-transform: uppercase; text-wrap: balance; }
-p { margin: 0; font: 600 34px/1.32 D; color: #dfe6f7; text-wrap: pretty; }
-.play { align-self: flex-start; background: #ffd65b; color: #2a1a00; font: 800 38px/1 B; text-transform: uppercase; letter-spacing: .05em; padding: 20px 36px; border-radius: 999px; }
-.pad { position: absolute; left: 84px; right: 84px; display: flex; flex-direction: column; gap: 22px; }
+:root { --ink: #0d0d0f; --hot: #ff2e4d; font-synthesis: none; }
+html, body { margin: 0; overflow: hidden; background: var(--ink); color: var(--ink); }
+.page { position: relative; width: var(--w); height: var(--h); overflow: hidden; background: var(--el); }
+/* The Lobby's halftone (lobby.css), at this canvas's scale. */
+.halftone { position: absolute; inset: 0; background: radial-gradient(circle, rgba(0,0,0,.16) 2.8px, transparent 3.6px) 0 0 / 18px 18px, var(--el); }
+.halftone::after { content: ""; position: absolute; inset: 0; background: radial-gradient(55% 45% at 50% 52%, var(--el) 25%, transparent 75%); }
+.logo { align-self: flex-start; display: inline-block; background: var(--ink); padding: 10px 26px 10px 14px; transform: skewX(-10deg); box-shadow: 8px 8px 0 rgba(0,0,0,.35); }
+.logo span { display: flex; align-items: center; gap: 16px; transform: skewX(10deg); font: 400 44px/1 Anton; text-transform: uppercase; letter-spacing: .02em; color: #fff; }
+.logo img { width: 60px; height: 60px; border: 3px solid #fff; }
+.chip { align-self: flex-start; background: var(--ink); color: #fff; font: 800 28px/1 Archivo; text-transform: uppercase; letter-spacing: .06em; padding: 10px 16px; }
+h1 { margin: 0; font: 400 124px/.92 Anton; text-transform: uppercase; color: var(--ink); text-wrap: balance; }
+p { margin: 0; font: 600 34px/1.3 Archivo; color: var(--ink); text-wrap: pretty; }
+.play { align-self: flex-start; background: var(--ink); padding: 18px 40px; transform: skewX(-10deg); box-shadow: 12px 10px 0 var(--hot); }
+.play span { display: block; transform: skewX(10deg); font: 400 46px/1 Anton; text-transform: uppercase; letter-spacing: .02em; color: var(--el); white-space: nowrap; }
+/* A word huge and outlined behind the picture, as the Lobby's fighter name. */
+.big { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-7deg); font: 400 var(--big, 420px)/.8 Anton; text-transform: uppercase; white-space: nowrap; color: rgba(255,255,255,.42); -webkit-text-stroke: 4px rgba(13,13,15,.55); }
+/* A white clipping: the Lobby's cards. */
+.clip { position: relative; background: #fff; border: 5px solid var(--ink); box-shadow: 14px 14px 0 rgba(0,0,0,.35); }
 `;
 
-/** Where the words go on each size: [top block's top, bottom block's bottom]. */
+/** Where the words go on each size: the flow's top and bottom. */
 const SAFE = {
   feed: { top: 72, bottom: 72 },
-  square: { top: 64, bottom: 64 },
+  square: { top: 60, bottom: 60 },
   story: { top: 260, bottom: 330 },
 };
+/** Smaller type for the square, where the words have less room. */
+const SQUARE = `h1 { font-size: 96px; } p { font-size: 28px; } .chip { font-size: 23px; }
+.play { padding: 14px 30px; } .play span { font-size: 36px; } .logo span { font-size: 34px; } .logo img { width: 46px; height: 46px; }`;
 
-function artPost(post, size) {
+/**
+ * The page as a column inside the safe area: the words on top, the picture
+ * in the middle taking what room is left, the words at the bottom. Nothing
+ * can overlap, whatever a title wraps to.
+ */
+function flow(size, head, middle, foot, css = "") {
   const { top, bottom } = SAFE[size];
-  const small = size === "square";
   return `
 <style>
-img.art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: ${post.art.x}% ${post.art.y}%; }
-.shade { position: absolute; inset: 0; background:
-  linear-gradient(to bottom, #0b1020d0 0%, #0b102000 ${small ? 24 : 18}%),
-  linear-gradient(to top, #0b1020f5 0%, #0b1020c8 ${small ? 34 : 30}%, #0b102000 ${small ? 62 : 55}%); }
-${small ? "h1 { font-size: 84px; } p { font-size: 30px; }" : ""}
+.flow { position: absolute; left: 84px; right: 84px; top: ${top}px; bottom: ${bottom}px; display: flex; flex-direction: column; gap: ${size === "story" ? 44 : size === "square" ? 20 : 30}px; }
+.head, .foot { display: flex; flex-direction: column; gap: ${size === "square" ? 14 : 20}px; }
+.head .logo { margin-bottom: ${size === "story" ? 30 : size === "square" ? 4 : 12}px; }
+.mid { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+${size === "square" ? SQUARE : ""}
+${css}
 </style>
-<img class="art" src="${url(post.art.painting)}"><div class="shade"></div>
-<div class="pad" style="top:${top}px">${LOGO}</div>
-<div class="pad" style="bottom:${bottom}px">
-  <div class="eyebrow">${post.eyebrow}</div><h1>${post.title}</h1><p>${post.line}</p>${PLAY}
-</div>`;
+<div class="flow"><div class="head">${LOGO}${head}</div><div class="mid">${middle}</div><div class="foot">${foot}</div></div>`;
+}
+
+/**
+ * A painting full bleed, an ink slab with a slanted top edge and the white
+ * stripe along it (the Lobby's slab, turned to run across), the words on it.
+ */
+function artPost(post, size) {
+  const { top, bottom } = SAFE[size];
+  // Where the slab's top edge meets the left and right sides.
+  const slab = { feed: [700, 610], square: [560, 480], story: [1080, 990] }[
+    size
+  ];
+  return `
+<style>
+img.art { position: absolute; left: 0; top: 0; width: 100%; height: ${slab[0] + 40}px; object-fit: cover; object-position: ${post.art.x}% ${post.art.y}%; }
+.slab { position: absolute; inset: 0; background: var(--ink); clip-path: polygon(0 ${slab[0]}px, 100% ${slab[1]}px, 100% 100%, 0 100%); }
+.stripe { position: absolute; inset: 0; background: #fff; clip-path: polygon(0 ${slab[0] - 16}px, 100% ${slab[1] - 16}px, 100% ${slab[1] - 6}px, 0 ${slab[0] - 6}px); }
+.words { position: absolute; left: 84px; right: 84px; bottom: ${bottom}px; display: flex; flex-direction: column; gap: ${size === "square" ? 14 : 22}px; }
+.words .chip { background: var(--el); color: var(--ink); }
+.words h1 { color: #fff; font-size: ${size === "square" ? 84 : size === "story" ? 116 : 100}px; }
+.words p { color: #d8d8de; font-size: ${size === "square" ? 28 : 32}px; }
+.words .play { background: var(--el); margin-top: 6px; }
+.words .play span { color: var(--ink); }
+${size === "square" ? SQUARE.replace(/h1 \{[^}]*\}/, "") : ""}
+</style>
+<img class="art" src="${url(post.art.painting)}"><div class="slab"></div><div class="stripe"></div>
+<div style="position:absolute;left:84px;top:${top}px">${LOGO}</div>
+<div class="words"><div class="chip">${post.eyebrow}</div><h1>${post.title}</h1><p>${post.line}</p>${PLAY}</div>`;
 }
 
 /** The 16:9 crop of a capture as CSS for an <img> inside a box `w` wide. */
@@ -213,160 +287,154 @@ function cropStyle({ cx, cy, share }, w) {
   return `width:${iw * k}px;height:${ih * k}px;left:${-x0 * k}px;top:${-y0 * k}px`;
 }
 
-/** Smaller type for the square, where the words have less room. */
-const SQUARE = `h1 { font-size: 74px; } p { font-size: 28px; } .eyebrow { font-size: 28px; }
-.play { font-size: 30px; padding: 15px 28px; } .logo { font-size: 36px; } .logo img { width: 56px; height: 56px; }`;
-
-/**
- * The page as a column inside the safe area: the words on top, the picture
- * in the middle taking what room is left, the words at the bottom. Nothing
- * can overlap, whatever a title wraps to.
- */
-function flow(size, head, middle, foot, css = "") {
-  const { top, bottom } = SAFE[size];
-  return `
-<style>
-.flow { position: absolute; left: 84px; right: 84px; top: ${top}px; bottom: ${bottom}px; display: flex; flex-direction: column; gap: ${size === "story" ? 44 : size === "square" ? 22 : 30}px; }
-.head, .foot { display: flex; flex-direction: column; gap: ${size === "square" ? 14 : 20}px; }
-.head .logo { margin-bottom: ${size === "story" ? 34 : size === "square" ? 4 : 10}px; }
-.mid { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
-${size === "square" ? SQUARE : ""}
-${css}
-</style>
-<div class="flow"><div class="head">${LOGO}${head}</div><div class="mid">${middle}</div><div class="foot">${foot}</div></div>`;
-}
-
 function shotPost(post, size) {
-  const cardW = size === "square" ? 700 : 912;
+  const cardW = size === "square" ? 700 : 880;
   return (
-    `<div class="blur"></div>` +
+    `<div class="halftone"></div><div class="big" style="--big:${size === "story" ? 560 : 440}px">${post.big}</div>` +
     flow(
       size,
-      `<div class="eyebrow">${post.eyebrow}</div><h1>${post.title}</h1>`,
-      `<div class="card"><img src="${url(post.art.file)}" style="${cropStyle(post.art, cardW)}"></div>`,
+      `<div class="chip">${post.eyebrow}</div><h1>${post.title}</h1>`,
+      `<div class="clip shot"><div class="window"><img src="${url(post.art.file)}" style="${cropStyle(post.art, cardW)}"></div></div>`,
       `<p>${post.line}</p>${PLAY}`,
-      `.blur { position: absolute; inset: -60px; background: url(${url(post.art.file)}) center/cover; filter: blur(42px) saturate(1.2) brightness(.42); }
-.card { position: relative; flex: none; width: ${cardW}px; height: ${(cardW * 9) / 16}px; overflow: hidden; border-radius: 28px; box-shadow: 0 0 0 4px #ffd65b, 0 24px 60px #000a; }
-.card img { position: absolute; }`,
+      `.shot { flex: none; padding: 10px; transform: rotate(-1.5deg); }
+.window { position: relative; width: ${cardW}px; height: ${(cardW * 9) / 16}px; overflow: hidden; }
+.window img { position: absolute; }`,
     )
   );
 }
 
-/** The fighters' own drawings (the website's copies, written from the game's). */
-const creature = (id) => url(`apps/site/img/creatures/${id}.svg`);
-const skinArt = (id) => url(`apps/site/img/skins/${id}.svg`);
+/** A fighter's full drawing (the game's own, as on the selection screen). */
+const drawing = (id) =>
+  url(`apps/client/public/assets/fighters/${id}/selection.svg`);
 
+/** The roster: ink, every fighter on a tile in its element's colour. */
 function rosterPost(post, size) {
-  const story = size === "story";
   const small = size === "square";
-  const cols = 6;
-  const cell = story ? 142 : small ? 118 : 138;
-  const cells = champions
-    .map(
-      (c) =>
-        `<figure style="--c:${c.color}"><img src="${creature(c.id)}"><figcaption>${c.name}<small>${c.element}</small></figcaption></figure>`,
+  const story = size === "story";
+  const cell = story ? 140 : small ? 112 : 136;
+  // Two per element, in the game's element order (as the Fighters screen).
+  const order = Object.keys(EL);
+  const cells = Object.keys(CHARACTERS)
+    .sort(
+      (a, b) =>
+        order.indexOf(CHARACTERS[a].element.toLowerCase()) -
+        order.indexOf(CHARACTERS[b].element.toLowerCase()),
     )
+    .map((id) => {
+      const c = champ(id);
+      const el = EL[c.element.toLowerCase()];
+      return `<figure style="--tile:${el}"><span class="tile"><img src="${drawing(id)}"></span><figcaption>${c.name}<small>${c.element}</small></figcaption></figure>`;
+    })
     .join("");
   return (
-    `<div class="bg"></div>` +
+    `<div class="ink"></div>` +
     flow(
       size,
-      `<div class="eyebrow">${post.eyebrow}</div><h1>${post.title}</h1>`,
+      `<div class="chip">${post.eyebrow}</div><h1>${post.title} <em>${post.accent}</em></h1>`,
       `<div class="grid">${cells}</div>`,
       `<div class="row"><p>${post.line}</p>${PLAY}</div>`,
-      `.bg { position: absolute; inset: 0; background: radial-gradient(120% 80% at 50% 45%, #1d2a55 0%, #0b1020 70%); }
-.grid { display: grid; grid-template-columns: repeat(${cols}, ${cell}px); gap: ${story ? "30px 12px" : small ? "2px 18px" : "14px 12px"}; }
-figure { margin: 0; display: flex; flex-direction: column; align-items: center; }
-figure img { width: ${cell}px; height: ${cell}px; object-fit: contain; filter: drop-shadow(0 6px 10px #0009); }
-figcaption { margin-top: -4px; font: 800 ${small ? 22 : 26}px/1 B; text-transform: uppercase; text-align: center; }
-figcaption small { display: block; margin-top: 4px; font: 700 ${small ? 16 : 18}px/1 B; letter-spacing: .1em; color: var(--c); }
-.row { display: flex; ${story ? "flex-direction: column; gap: 20px;" : "align-items: center; justify-content: space-between; gap: 24px;"} }`,
+      `.ink { position: absolute; inset: 0; background: radial-gradient(circle, rgba(255,255,255,.06) 2.8px, transparent 3.6px) 0 0 / 18px 18px, var(--ink); }
+.chip { background: var(--el); color: var(--ink); }
+.logo { box-shadow: 8px 8px 0 var(--hot); }
+h1 { color: #fff; } h1 em { font-style: normal; color: var(--el); }
+p { color: #d8d8de; }
+.play { background: var(--el); } .play span { color: var(--ink); }
+.grid { display: grid; grid-template-columns: repeat(6, ${cell}px); gap: ${story ? "26px 12px" : small ? "4px 18px" : "16px 12px"}; }
+figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.tile { display: block; width: ${cell}px; height: ${cell}px; background: radial-gradient(circle, rgba(0,0,0,.16) 1.6px, transparent 2.2px) 0 0 / 10px 10px, var(--tile); border: 3px solid #fff; box-shadow: 6px 6px 0 rgba(255,255,255,.12); }
+.tile img { width: 100%; height: 100%; object-fit: contain; }
+figcaption { font: 400 ${small ? 21 : 26}px/1 Anton; text-transform: uppercase; color: #fff; text-align: center; }
+figcaption small { display: block; margin-top: 4px; font: 800 ${small ? 13 : 16}px/1 Archivo; text-transform: uppercase; letter-spacing: .08em; color: var(--tile); }
+.row { display: flex; ${story ? "flex-direction: column; gap: 22px;" : "align-items: center; justify-content: space-between; gap: 24px;"} }`,
     )
   );
 }
 
+/** A champion as the Lobby shows one: its name huge behind it, its kit below. */
 function championPost(post, size) {
   const c = champ(post.champion);
   const small = size === "square";
-  const story = size === "story";
   const moves = post.moves
     .map(
       ([name, text], i) =>
         `<li class="${i === post.moves.length - 1 ? "ult" : ""}"><b>${name}</b><span>${text}</span></li>`,
     )
     .join("");
-  const head = `<div class="eyebrow">${post.eyebrow}</div><div class="name">${c.name}</div><div class="tag">${c.element} · ${c.role}</div>`;
-  const css = `.bg { position: absolute; inset: 0; background: radial-gradient(70% 45% at ${small ? "74% 50%" : "50% 40%"}, ${c.color}88 0%, #2a1530 45%, #0b1020 80%); }
-.mid { position: relative; }
-.hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 16px 30px #000b); }
-.name { font: 800 ${small ? 92 : 120}px/.9 B; text-transform: uppercase; }
-.tag { font: 700 ${small ? 30 : 36}px/1 B; text-transform: uppercase; letter-spacing: .1em; color: ${c.color}; }
-ul { list-style: none; margin: 0; padding: 0; display: grid; gap: ${small ? 10 : 14}px; }
-li { display: grid; gap: 4px; padding: ${small ? "10px 16px" : "14px 22px"}; border-radius: 18px; background: #0b1020c0; border: 2px solid #ffffff1f; }
-li b { font: 800 ${small ? 28 : 36}px/1 B; text-transform: uppercase; letter-spacing: .02em; }
-li span { font: 400 ${small ? 22 : 27}px/1.25 D; color: #dfe6f7; }
-li.ult { border-color: #ffd65b; } li.ult b { color: #ffd65b; }`;
-  if (small) {
+  const head = `<div class="chip">${post.eyebrow}</div><div class="plate"><span>${c.name}</span></div><div class="tags"><span class="tag">${c.element}</span><span class="tag ink">${c.role}</span></div>`;
+  const css = `.plate { align-self: flex-start; background: var(--ink); padding: 8px 34px; transform: skewX(-10deg); box-shadow: 10px 10px 0 rgba(0,0,0,.35); }
+.plate span { display: block; transform: skewX(10deg); font: 400 ${small ? 88 : 112}px/1 Anton; text-transform: uppercase; color: var(--el); }
+.tags { display: flex; gap: 10px; }
+.tag { background: #fff; color: var(--ink); font: 800 ${small ? 20 : 24}px/1 Archivo; text-transform: uppercase; letter-spacing: .12em; padding: 10px 16px; }
+.tag.ink { background: var(--ink); color: #fff; }
+.hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+ul { list-style: none; margin: 0; padding: 0; display: grid; gap: ${small ? 10 : 12}px; }
+li { display: grid; gap: 2px; padding: ${small ? "10px 16px" : "10px 20px"}; background: #fff; border: 4px solid var(--ink); box-shadow: 8px 8px 0 rgba(0,0,0,.3); }
+li b { font: 400 ${small ? 28 : 32}px/1 Anton; text-transform: uppercase; color: var(--ink); }
+li span { font: 600 ${small ? 20 : 24}px/1.25 Archivo; color: #2a2a30; }
+li.ult { background: var(--ink); box-shadow: 8px 8px 0 var(--hot); }
+li.ult b { color: var(--el); } li.ult span { color: #fff; }`;
+  const back = `<div class="halftone"></div><div class="big" style="--big:${small ? 300 : 380}px">${c.name}</div>`;
+  if (small)
     // Square: the drawing on the right, the words in a column on the left.
     return (
-      `<div class="bg"></div>` +
+      back +
       flow(
         size,
         head,
         ``,
-        `<ul style="width:540px">${moves}</ul>`,
+        `<ul style="width:560px">${moves}</ul>`,
         css +
-          `.hero { inset: auto; right: 30px; top: 200px; width: 470px; height: 470px; }`,
+          `.hero { inset: auto; right: 20px; top: 200px; width: 470px; height: 470px; }`,
       ) +
-      `<img class="hero" src="${creature(c.id)}">`
+      `<img class="hero" src="${drawing(c.id)}">`
     );
-  }
   return (
-    `<div class="bg"></div>` +
+    back +
     flow(
       size,
       head,
-      `<img class="hero" src="${creature(c.id)}">`,
+      `<img class="hero" src="${drawing(c.id)}">`,
       `<ul>${moves}</ul>`,
       css,
     )
   );
 }
 
+/** The Mythicals at their Stage III ultimate, as white clippings. */
 function skinsPost(post, size) {
   const small = size === "square";
   const story = size === "story";
-  const all = champions.flatMap((c) =>
-    c.skins.map((s) => ({ ...s, champ: c })),
+  const missing = post.skins.find(
+    (id) => !existsSync(at(`instagram-clips/${id}/still.jpg`)),
   );
+  if (missing)
+    throw new Error(
+      `instagram-clips/${missing}/still.jpg missing: run skins.spec.ts and make-reel.py first`,
+    );
   const cards = post.skins
-    .map((id) => {
-      const s = all.find((x) => x.id === id);
-      // The skin at its Stage III ultimate, as the fitting room draws it
-      // (make-reel.py), else its drawing alone.
+    .map((id, i) => {
+      const s = CHAMPION_SKINS.find((x) => x.id === id);
+      const c = champ(s.champion);
       const still = `instagram-clips/${id}/still.jpg`;
-      const art = existsSync(at(still))
-        ? `<img class="still" style="--c:${s.champ.color}" src="${url(still)}">`
-        : `<img src="${skinArt(id)}">`;
-      return `<figure>${art}<figcaption>${s.name}<small>${s.champ.name} · Stage III</small></figcaption></figure>`;
+      return `<figure style="--c:${c.el}; --tilt:${[-2, 1.5, -1][i]}deg"><div class="clip"><img src="${url(still)}"></div><figcaption><span class="name"><span>${s.name}</span></span><small>${c.name} · Stage III</small></figcaption></figure>`;
     })
     .join("");
-  const cardW = story ? 912 : small ? 260 : 296;
+  const cardW = story ? 230 : small ? 236 : 262;
   return (
-    `<div class="bg"></div>` +
+    `<div class="halftone"></div><div class="big" style="--big:${story ? 420 : 340}px">Mythical</div>` +
     flow(
       size,
-      `<div class="eyebrow">${post.eyebrow}</div><h1>${post.title}</h1>`,
+      `<div class="chip">${post.eyebrow}</div><h1>${post.title}</h1>`,
       `<div class="row">${cards}</div>`,
       `<p>${post.line}</p>${PLAY}`,
-      `.bg { position: absolute; inset: 0; background: radial-gradient(90% 55% at 50% 50%, #3b2a12 0%, #160f22 55%, #0b1020 85%); }
-.row { display: flex; ${story ? "flex-direction: column; gap: 22px;" : "gap: 12px;"} }
-figure { margin: 0; width: ${cardW}px; display: flex; ${story ? "flex-direction: row; align-items: center; gap: 24px;" : "flex-direction: column; align-items: center;"} }
-figure img { width: ${story ? 236 : cardW}px; height: ${story ? 236 : small ? 250 : cardW + 40}px; object-fit: contain; filter: drop-shadow(0 0 26px #ffd65b55) drop-shadow(0 10px 16px #000a); }
-figure img.still { height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 22px; filter: none; box-shadow: 0 0 0 3px var(--c), 0 0 40px color-mix(in srgb, var(--c) 45%, transparent), 0 14px 30px #000a; }
-figure:has(.still) figcaption { margin-top: ${story ? 0 : 18}px; }
-figcaption { font: 800 ${small ? 32 : story ? 52 : 40}px/1 B; text-transform: uppercase; text-align: ${story ? "left" : "center"}; }
-figcaption small { display: block; margin-top: 8px; font: 700 ${small ? 18 : story ? 28 : 22}px/1 B; letter-spacing: .1em; color: #ffd65b; }`,
+      `.row { display: flex; ${story ? "flex-direction: column; gap: 26px;" : `gap: ${small ? 22 : 26}px;`} }
+figure { margin: 0; display: flex; ${story ? "flex-direction: row; align-items: center; gap: 30px;" : "flex-direction: column; align-items: center; gap: 22px;"} }
+figure .clip { padding: 8px; transform: rotate(var(--tilt)); }
+figure img { display: block; width: ${cardW}px; height: ${cardW}px; object-fit: cover; }
+figcaption { display: flex; flex-direction: column; align-items: ${story ? "flex-start" : "center"}; gap: 8px; }
+.name { background: var(--ink); padding: 6px 16px; transform: skewX(-10deg); }
+.name span { display: block; transform: skewX(10deg); font: 400 ${small ? 26 : story ? 46 : 32}px/1 Anton; text-transform: uppercase; color: var(--c); white-space: nowrap; }
+figcaption small { font: 800 ${small ? 15 : story ? 22 : 17}px/1 Archivo; text-transform: uppercase; letter-spacing: .1em; color: var(--ink); }`,
     )
   );
 }
@@ -382,7 +450,7 @@ const LAYOUTS = {
 /** The profile picture: the app icon's circle-safe (maskable) drawing. */
 async function avatar(page) {
   const src = at("apps/client/public/icons/arena-maskable-512.png");
-  const html = `<style>html,body{margin:0;background:#0b1020}img{width:1080px;height:1080px;display:block}</style><img src="file://${src}">`;
+  const html = `<style>html,body{margin:0;background:#0d0d0f}img{width:1080px;height:1080px;display:block}</style><img src="file://${src}">`;
   await shoot(
     page,
     html,
@@ -419,9 +487,10 @@ for (const post of POSTS) {
     console.warn(`skipped post ${post.id} (${post.name}): ${needs} missing`);
     continue;
   }
+  const el = post.el ?? champ(post.champion).el;
   for (const [size, dims] of Object.entries(SIZES)) {
     const body = LAYOUTS[post.kind](post, size);
-    const html = `<style>${BASE} :root { --w: ${dims[0]}px; --h: ${dims[1]}px; }</style><div class="page">${body}</div>`;
+    const html = `<style>${BASE} :root { --w: ${dims[0]}px; --h: ${dims[1]}px; }</style><div class="page" style="--el:${el}">${body}</div>`;
     const file = path.join(
       OUT,
       `${String(post.id).padStart(2, "0")}-${post.name}-${size}.jpg`,
