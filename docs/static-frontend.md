@@ -70,7 +70,10 @@ them deleted is byte for byte the same (checked 27 Nov 2026), and
 `tests/unit/render-build-filter.test.ts` fails if build or server code starts
 pointing at one. A commit that also changes any other file deploys as before.
 A skipped commit shows in the service's Events as "commit ignored", and the
-live page's `<meta name="arena-build">` keeps the last commit that deployed.
+live page's `<meta name="arena-build">` keeps the last commit that deployed. So
+anything that compares the live build with `main` (a script, a test, a
+check by hand) compares it with the newest commit on `main` that changes a
+path outside this list, not with `main`'s HEAD.
 
 Where each filter lives:
 
