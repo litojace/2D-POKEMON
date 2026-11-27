@@ -855,3 +855,9 @@
     padding-right: 6px;
   }
 }
+/* The Plaza map's places: a quest's reward line carries a coin 1.35em tall,
+   which in Archivo made its row 2.5 px taller than the rest. Every line is
+   as tall as the coin's. */
+:root[data-ui="poster"] .plaza-layer .pz-map-list small {
+  line-height: 1.4;
+}
