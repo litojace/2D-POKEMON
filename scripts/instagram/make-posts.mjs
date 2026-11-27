@@ -78,7 +78,7 @@ const painting = (file, x = 50, y = 50) => ({ painting: file, x, y });
  * The nine posts, in posting order. `kind` picks the layout:
  * - "art": a painting full bleed above an ink slab that carries the words,
  * - "shot": a real capture of the game as a white clipping on the element
- *   colour, the mode's name huge behind it,
+ *   colour,
  * - "roster", "champion", "skins": the fighters themselves.
  * `el` is the post's colour (what the Lobby's --el would be); a champion's
  * post takes the champion's.
@@ -103,7 +103,6 @@ const POSTS = [
     name: "duels",
     kind: "shot",
     el: EL.water,
-    big: "Duel",
     art: capture(`${SCENES}/duels/014.png`, 0.53, 0.47, 0.42),
     eyebrow: "1v1 duels",
     title: "Dodge. Dash. Land the big one.",
@@ -134,7 +133,6 @@ const POSTS = [
     name: "teams",
     kind: "shot",
     el: EL.nature,
-    big: "2v2",
     art: capture(`${SCENES}/teams/014.png`, 0.5, 0.36, 0.56),
     eyebrow: "2v2 team battles",
     title: "Better with a friend.",
@@ -159,7 +157,6 @@ const POSTS = [
     name: "free-for-all",
     kind: "shot",
     el: EL.psychic,
-    big: "FFA",
     art: capture(`${SCENES}/ffa/016.png`, 0.57, 0.4, 0.46),
     eyebrow: "Free-for-all",
     title: "Four fighters. One winner.",
@@ -181,7 +178,6 @@ const POSTS = [
     name: "spire",
     kind: "shot",
     el: EL.aura,
-    big: "Spire",
     art: capture(`${SCENES}/spire/016.png`, 0.47, 0.61, 0.48),
     eyebrow: "The Spire",
     title: "70 floors. How high can you climb?",
@@ -276,29 +272,37 @@ ${size === "square" ? SQUARE.replace(/h1 \{[^}]*\}/, "") : ""}
 <div class="words"><div class="chip">${post.eyebrow}</div><h1>${post.title}</h1><p>${post.line}</p>${PLAY}</div>`;
 }
 
-/** The 16:9 crop of a capture as CSS for an <img> inside a box `w` wide. */
-function cropStyle({ cx, cy, share }, w) {
+/**
+ * The 16:9 crop of a capture as CSS for an <img> in a 16:9 window, in
+ * shares of the window, so the window can take whatever size fits.
+ */
+function cropStyle({ cx, cy, share }) {
   const [iw, ih] = [2622, 1206];
   const cw = share * iw;
   const ch = (cw * 9) / 16;
   const x0 = Math.min(Math.max(0, cx * iw - cw / 2), iw - cw);
   const y0 = Math.min(Math.max(0, cy * ih - ch / 2), ih - ch);
-  const k = w / cw;
-  return `width:${iw * k}px;height:${ih * k}px;left:${-x0 * k}px;top:${-y0 * k}px`;
+  const pc = (v) => `${(v * 100).toFixed(3)}%`;
+  return `width:${pc(iw / cw)};left:${pc(-x0 / cw)};top:${pc(-y0 / ch)}`;
 }
 
+/**
+ * A capture as a white clipping on the element colour. The clipping takes
+ * the room the words leave, up to its full width, so a title that wraps to
+ * three lines shrinks the picture instead of running into it.
+ */
 function shotPost(post, size) {
   const cardW = size === "square" ? 700 : 880;
   return (
-    `<div class="halftone"></div><div class="big" style="--big:${size === "story" ? 560 : 440}px">${post.big}</div>` +
+    `<div class="halftone"></div>` +
     flow(
       size,
       `<div class="chip">${post.eyebrow}</div><h1>${post.title}</h1>`,
-      `<div class="clip shot"><div class="window"><img src="${url(post.art.file)}" style="${cropStyle(post.art, cardW)}"></div></div>`,
+      `<div class="clip shot"><div class="window"><img src="${url(post.art.file)}" style="${cropStyle(post.art)}"></div></div>`,
       `<p>${post.line}</p>${PLAY}`,
-      `.shot { flex: none; padding: 10px; transform: rotate(-1.5deg); }
-.window { position: relative; width: ${cardW}px; height: ${(cardW * 9) / 16}px; overflow: hidden; }
-.window img { position: absolute; }`,
+      `.shot { flex: none; padding: 10px; height: min(100%, ${(cardW * 9) / 16 + 30}px); transform: rotate(-1.5deg); }
+.window { position: relative; height: 100%; aspect-ratio: 16 / 9; overflow: hidden; }
+.window img { position: absolute; height: auto; }`,
     )
   );
 }
