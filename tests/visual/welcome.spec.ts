@@ -211,3 +211,78 @@ for (const size of [
     expect(errors).toEqual([]);
   });
 }
+
+// The form's two columns leave a field about 89 px of room on an iPhone SE,
+// 55 px beside a password's eye. "Your player name", "you@example.com",
+// "8+ characters" and "Nickname (optional)" were cut there ("Your player r",
+// "you@examp", "8+ char", "Nicknan": UI audit, 27 Nov 2026).
+for (const size of [
+  { width: 568, height: 320 },
+  { width: 667, height: 375 },
+  { width: 844, height: 390 },
+  { width: 1280, height: 720 },
+]) {
+  test(`every field's hint reads in full at ${size.width}×${size.height}`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize(size);
+    await page.route("**/stubs.ts*", async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({
+        response,
+        body: (await response.text()).replace(
+          "getSession: async () => ({ data: { session } })",
+          "getSession: async () => ({ data: { session: null } })",
+        ),
+      });
+    });
+    await page.goto("/");
+    await expect(page.locator(".auth-panel")).toBeVisible();
+    await expect(page.locator("#server-startup")).toHaveCount(0);
+    for (const mode of ["login", "signup"]) {
+      await page.locator(`[data-auth-tab="${mode}"]`).click();
+      await expect(page.locator(`[data-auth-tab="${mode}"]`)).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      await page.evaluate(() => document.fonts.ready);
+      const cut = await page.evaluate(() =>
+        [
+          ...document.querySelectorAll<HTMLInputElement>(
+            ".auth-panel input[placeholder]",
+          ),
+        ]
+          .filter((field) => field.placeholder)
+          .map((field) => {
+            const style = getComputedStyle(field);
+            const hint = getComputedStyle(field, "::placeholder");
+            const probe = document.createElement("span");
+            probe.textContent = field.placeholder;
+            probe.style.cssText = `position:absolute;visibility:hidden;white-space:pre;font:${hint.font};letter-spacing:${hint.letterSpacing}`;
+            document.body.append(probe);
+            const text = probe.getBoundingClientRect().width;
+            probe.remove();
+            const room =
+              field.getBoundingClientRect().width -
+              parseFloat(style.borderLeftWidth) -
+              parseFloat(style.borderRightWidth) -
+              parseFloat(style.paddingLeft) -
+              parseFloat(style.paddingRight);
+            return { name: field.name, hint: field.placeholder, text, room };
+          })
+          .filter((field) => field.text > field.room),
+      );
+      expect(cut, `${mode}: hints wider than their fields`).toEqual([]);
+      await snap(
+        page,
+        info,
+        `welcome-${mode}-hints-${size.width}x${size.height}`,
+      );
+    }
+    // The guest button speaks as the game's other buttons do.
+    const guest = page.locator(".auth-guest .auth-secondary");
+    expect(
+      await guest.evaluate((button) => getComputedStyle(button).fontFamily),
+    ).toContain("Anton");
+  });
+}

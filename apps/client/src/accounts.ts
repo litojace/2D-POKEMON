@@ -1052,27 +1052,27 @@ export class AccountUI {
       mode === "signup"
         ? field(
             "Display name",
-            '<input name="displayName" maxlength="20" required autocomplete="nickname" placeholder="Your player name">',
+            '<input name="displayName" maxlength="20" required autocomplete="nickname" placeholder="Your name">',
           )
         : "",
       mode !== "reset"
         ? field(
             "Email",
-            '<input name="email" type="email" required autocomplete="email" placeholder="you@example.com">',
+            '<input name="email" type="email" required autocomplete="email" placeholder="Your email">',
           )
         : "",
       mode !== "forgot"
         ? passwordField(
             mode === "reset" ? "New password" : "Password",
             "password",
-            `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}" placeholder="${mode === "login" ? "Your password" : "8+ characters"}"`,
+            `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}" placeholder="${mode === "login" ? "" : "Min. 8"}"`,
           )
         : "",
       mode === "signup" || mode === "reset"
         ? passwordField(
             "Confirm password",
             "confirmPassword",
-            'minlength="8" maxlength="128" required autocomplete="new-password" placeholder="Type it again"',
+            'minlength="8" maxlength="128" required autocomplete="new-password" placeholder="Again"',
           )
         : "",
     ].join("");
@@ -1088,7 +1088,7 @@ export class AccountUI {
     }[mode];
     const guest =
       (mode === "login" || mode === "signup") && this.client
-        ? `<div class="auth-divider"><span>or</span></div><form id="guest-form" class="auth-guest"><input name="nickname" maxlength="20" placeholder="Nickname (optional)" autocomplete="nickname" aria-label="Guest nickname"><button class="auth-secondary" type="submit">${iconLabel("user", "Play as a guest")}</button></form><p class="auth-note">No email needed. Save your account later from your profile to keep your progress.</p>`
+        ? `<div class="auth-divider"><span>or</span></div><form id="guest-form" class="auth-guest"><input name="nickname" maxlength="20" placeholder="Nickname" autocomplete="nickname" aria-label="Guest nickname (optional)"><button class="auth-secondary" type="submit">Play as a guest</button></form><p class="auth-note">No email needed. Save your account later from your profile to keep your progress.</p>`
         : "";
     const back =
       mode === "forgot" || mode === "reset"
