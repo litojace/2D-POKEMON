@@ -6,6 +6,7 @@ import {
   openLobby,
   pickRoomMode,
   pushUntilBattle,
+  skipTour,
   snap,
 } from "./helpers";
 import { shopServer } from "./shop-server";
@@ -741,5 +742,71 @@ test("a Fighters screen kept between opens shows what a new one would", async ({
     })
     .toBe(1);
   await expect(page.locator(".roster-room")).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+// A kept screen is out of sight: what waits for the screens to close (the
+// unlock sheet, today's gift, the tour) doesn't wait for it. It held them
+// back as an open one does, until it went (main.ts).
+test("a kept Fighters screen holds nothing back: a new level's unlock shows on the Lobby", async ({
+  page,
+}) => {
+  await skipTour(page);
+  // Level 1, last seen at level 1 (feature-unlocks.spec.ts): nothing to
+  // show yet.
+  await page.addInitScript(() => {
+    const w = window as any;
+    w.__economyPatch = {
+      journey: {
+        xp: 0,
+        recent: [],
+        season: {
+          id: "2026-10",
+          xp: 0,
+          week: "2026-W43",
+          goals: {},
+          completed: [],
+        },
+        unlocked: [],
+      },
+    };
+    try {
+      localStorage.setItem(
+        "arena-unlocks:11111111-1111-4111-8111-111111111111",
+        "1",
+      );
+    } catch {
+      /* No storage. */
+    }
+  });
+  await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    const marker = 'window.dispatchEvent(new Event("arena:ready"));';
+    if (!body.includes(marker))
+      throw new Error("main.ts changed: no ready marker");
+    await route.fulfill({
+      response,
+      body: body.replace(marker, "window.__account=accountsUI;" + marker),
+    });
+  });
+  const errors = await openLobby(page);
+  const sheet = page.locator("[data-ui-confirm] .ui-modal");
+  await page.click('.lobby-rail [data-lobby-action="fighters"]');
+  await expect(page.locator(SHOWN)).toBeVisible();
+  await page.locator(`${SHOWN} [data-ui-close]`).click();
+  await expect(page.locator(KEPT)).toHaveCount(1);
+  await expect(sheet).toHaveCount(0);
+  // Level 2 while it is kept (a match's XP, as the server reports it).
+  await page.evaluate(async () => {
+    const w = window as any;
+    w.__economyPatch.journey.xp = 100;
+    w.__account.forgetCopies();
+    await w.__account.loadEconomy();
+  });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.locator(".ui-kicker")).toHaveText("Level 2");
+  // Still kept, behind it.
+  await expect(page.locator(KEPT)).toHaveCount(1);
   expect(errors).toEqual([]);
 });
