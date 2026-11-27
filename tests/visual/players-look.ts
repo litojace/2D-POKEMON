@@ -1,4 +1,9 @@
-import type { Page } from "@playwright/test";
+import {
+  test,
+  type Browser,
+  type BrowserContext,
+  type Page,
+} from "@playwright/test";
 
 /**
  * The look players have, for the specs that measure what their phones pay
@@ -25,10 +30,37 @@ import type { Page } from "@playwright/test";
 export const PLAYERS_LOOK: string = "poster";
 
 /** Before the page loads: no look pinned by the harness, as on a player's device. */
-export const playersLook = (page: Page) =>
+export const playersLook = (page: Page | BrowserContext) =>
   page.addInitScript(() => {
     (window as { __lookDefault?: boolean }).__lookDefault = true;
   });
+
+/**
+ * A spec moved to the look players have: call once at the top of the file.
+ * Every page its tests open sees that look, the `page` fixture's and those
+ * of contexts a test makes itself (`browser.newContext()`), so no test in
+ * the file can measure the look underneath by being missed. The pin stays
+ * for the specs not moved yet (harness/look-asked.ts); this file is not the
+ * shared harness, so moving a spec keeps its pull request in the fast lane.
+ */
+export function onPlayersLook() {
+  let restore: (() => void) | null = null;
+  test.beforeEach(async ({ context, browser }) => {
+    await playersLook(context);
+    const b = browser as Browser & { newContext: Browser["newContext"] };
+    const made = b.newContext;
+    b.newContext = async (...args: Parameters<Browser["newContext"]>) => {
+      const c = await made.apply(b, args);
+      await playersLook(c);
+      return c;
+    };
+    restore = () => (b.newContext = made);
+  });
+  test.afterEach(() => {
+    restore?.();
+    restore = null;
+  });
+}
 
 /** The look this run is meant to measure. */
 export const lookAsked = () => process.env.VISUAL_UI || PLAYERS_LOOK;

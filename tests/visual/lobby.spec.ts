@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, openPlayPanel, snap } from "./helpers";
 import { shopServer } from "./shop-server";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Hub redesign phase 2: the Lobby is the first screen after login. The UI
 // rules from the handoff: HUD boxes keep a fixed size, text is centred in its
@@ -108,7 +112,10 @@ for (const viewport of VIEWPORTS) {
       );
       expect(clashes).toEqual([]);
 
-      // Buttons line up: the rail is one column, PLAY and the mode share edges.
+      // Buttons line up: the rail is one column, PLAY stands under the mode
+      // in its column: the same middle, and its slanted corners (Poster
+      // leans PLAY 10°, which widens its box by tan 10° of half its height
+      // a side) no further out than the slant.
       const lines = await page.evaluate(() => {
         const rail = [...document.querySelectorAll(".lobby-rail button")].map(
           (b) => b.getBoundingClientRect(),
@@ -122,13 +129,26 @@ for (const viewport of VIEWPORTS) {
         return {
           railLefts: new Set(rail.map((r) => Math.round(r.left))).size,
           railWidths: new Set(rail.map((r) => Math.round(r.width))).size,
-          playEdges: [
-            Math.round(mode.left - play.left),
-            Math.round(mode.right - play.right),
-          ],
+          playMiddle: Math.abs(
+            Math.round(
+              (mode.left + mode.right) / 2 - (play.left + play.right) / 2,
+            ),
+          ),
+          playPastSlant: Math.max(
+            0,
+            Math.round(
+              Math.max(mode.left - play.left, play.right - mode.right) -
+                Math.tan((10 * Math.PI) / 180) * (play.height / 2),
+            ),
+          ),
         };
       });
-      expect(lines).toEqual({ railLefts: 1, railWidths: 1, playEdges: [0, 0] });
+      expect(lines).toEqual({
+        railLefts: 1,
+        railWidths: 1,
+        playMiddle: 0,
+        playPastSlant: 0,
+      });
 
       // Text sits in the middle of its box.
       const offsets = await page.evaluate(() =>
@@ -755,7 +775,11 @@ for (const [width, height] of [
       const apart = (a: typeof bar, b: typeof bar) =>
         a.r <= b.l + 1 || b.r <= a.l + 1 || a.b <= b.t + 1 || b.b <= a.t + 1;
       // The seats grew past 36% of the fighter, but stay under 46% of it.
-      expect(s0.w).toBeGreaterThan(fighter.w * 0.36 + 2);
+      // A 568x320 phone has no room to grow into: Poster's name plate
+      // (TIDEFIN in its display type) is taller than the old look's, so the
+      // fighter stands at its 120 px floor and the seats at theirs (36%).
+      if (width > 568) expect(s0.w).toBeGreaterThan(fighter.w * 0.36 + 2);
+      else expect(s0.w).toBeGreaterThanOrEqual(fighter.w * 0.36 - 0.5);
       expect(s0.w).toBeLessThanOrEqual(fighter.w * 0.451);
       // Nothing overlaps: the bar, the seats and the fighter beside them.
       for (const seat of [s0, s1, s2]) {
@@ -770,6 +794,47 @@ for (const [width, height] of [
       expect(fighter.b).toBeLessThanOrEqual(row.b + 1);
       // The Plaza still shows: the stage leaves room on both sides.
       expect(s0.l - row.l + (row.r - s1.r)).toBeGreaterThan(0);
+      // Every member's name reads on its pill (WCAG AA, 4.5:1).
+      const names = await page.evaluate(() => {
+        // Any CSS colour (rgb(), oklch(), …) as [r, g, b, alpha 0–1], drawn on a
+        // canvas: computed styles keep oklch() as oklch().
+        const rgba = (c: string) => {
+          const cx = document.createElement("canvas").getContext("2d")!;
+          cx.fillStyle = c;
+          cx.fillRect(0, 0, 1, 1);
+          const d = cx.getImageData(0, 0, 1, 1).data;
+          return [d[0], d[1], d[2], d[3] / 255];
+        };
+        const rgb = (c: string) =>
+          rgba(c)
+            .slice(0, 3)
+            .map((v) => {
+              const x = v / 255;
+              return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+            });
+        const lum = (c: string) => {
+          const [r, g, b] = rgb(c);
+          return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        };
+        return [...document.querySelectorAll(".lobby-member figcaption")].map(
+          (f) => {
+            const cs = getComputedStyle(f);
+            const [a, b] = [lum(cs.color), lum(cs.backgroundColor)].sort(
+              (x, y) => y - x,
+            );
+            return {
+              name: f.textContent!.trim(),
+              contrast: Math.round(((a + 0.05) / (b + 0.05)) * 10) / 10,
+            };
+          },
+        );
+      });
+      expect(names.length).toBe(3);
+      for (const n of names)
+        expect(
+          n.contrast,
+          `${n.name}'s name on its pill`,
+        ).toBeGreaterThanOrEqual(4.5);
       if (width === 844) await snap(page, info, "lobby-party-grown-844x390");
       expect(errors.filter((e) => !/Room not found/.test(e))).toEqual([]);
     } finally {
@@ -1080,7 +1145,11 @@ test("Invite a friend says In party and Invited for friends already asked", asyn
   }
 });
 
-test("PLAY has a drawn icon (no emoji), a glow, and a light sweep that rests when asked", async ({
+// Poster's PLAY is a slanted ink block with a hard red shadow: it stands
+// out by its shape, so the old look's glow behind it and the light sweeping
+// across it are off (themes/poster/lobby.css). Nothing on it moves, in any
+// setting: reduced motion and Low graphics have nothing to stop.
+test("PLAY has a drawn icon (no emoji), stands out by its shadow, and nothing on it moves", async ({
   browser,
 }) => {
   test.setTimeout(120_000);
@@ -1089,46 +1158,48 @@ test("PLAY has a drawn icon (no emoji), a glow, and a light sweep that rests whe
       const play = document.getElementById("lobby-play")!;
       const sweep = getComputedStyle(play, "::after"),
         glow = getComputedStyle(play.parentElement!, "::before");
+      const drawn = (s: CSSStyleDeclaration) =>
+        s.content !== "none" && s.display !== "none";
       return {
         text: play.textContent!.trim(),
         icon: !!play.querySelector("svg path"),
-        sweep: sweep.animationName,
-        glow: glow.animationName,
-        glowShown: glow.content !== "none" && glow.display !== "none",
+        sweepShown: drawn(sweep) && sweep.animationName !== "none",
+        glowShown: drawn(glow) && glow.animationName !== "none",
+        moving: play
+          .getAnimations({ subtree: true })
+          .filter((a) => a.playState === "running").length,
+        shadow: getComputedStyle(play).boxShadow,
         scrollX: document.documentElement.scrollWidth - innerWidth,
       };
     });
-  for (const [name, options, sweep, glow] of [
-    ["normal", {}, "lobby-play-sweep", "lobby-play-glow"],
-    ["reduced motion", { reducedMotion: "reduce" as const }, "none", "none"],
+  for (const [name, options, viewport, graphics] of [
+    ["normal", {}, { width: 844, height: 390 }, "high"],
+    [
+      "reduced motion",
+      { reducedMotion: "reduce" as const },
+      { width: 844, height: 390 },
+      "high",
+    ],
+    ["low graphics", {}, { width: 1440, height: 900 }, "low"],
   ] as const) {
-    const context = await browser.newContext({
-      viewport: { width: 844, height: 390 },
-      ...options,
-    });
+    const context = await browser.newContext({ viewport, ...options });
     const page = await context.newPage();
+    await page.addInitScript(
+      (g) => localStorage.setItem("ea-graphics", g),
+      graphics,
+    );
     const errors = await openLobby(page);
     const s = await state(page);
     expect(s.text, name).toBe("PLAY");
     expect(s.icon, name).toBe(true);
-    expect(s.sweep, name).toBe(sweep);
-    expect(s.glow, name).toBe(glow);
-    expect(s.glowShown, name).toBe(true);
+    expect(s.sweepShown, name).toBe(false);
+    expect(s.glowShown, name).toBe(false);
+    expect(s.moving, name).toBe(0);
+    expect(s.shadow, name).not.toBe("none");
     expect(s.scrollX, name).toBeLessThanOrEqual(0);
     expect(errors).toEqual([]);
     await context.close();
   }
-  // Low graphics: the glow stays still, the sweep stops.
-  const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
-  });
-  const page = await context.newPage();
-  await page.addInitScript(() => localStorage.setItem("ea-graphics", "low"));
-  await openLobby(page);
-  const low = await state(page);
-  expect(low.sweep).toBe("none");
-  expect(low.glow).toBe("none");
-  await context.close();
 });
 
 // A portrait frame on the player card: portrait-frames.css gives a framed
@@ -1177,7 +1248,12 @@ for (const view of [
           bottom: card.bottom - xp.bottom,
         };
       });
-      expect(rows.top, "name inside the card's top").toBeGreaterThanOrEqual(2);
+      // Poster sets the name in Anton, whose line box is as tall as the
+      // card's top band: the box may meet the card's edge (its capitals
+      // stand 6 px inside, as the screenshots show), never cross it.
+      expect(rows.top, "name inside the card's top").toBeGreaterThanOrEqual(
+        -0.5,
+      );
       expect(rows.order, "name, title, bar in order, apart").toBe(true);
       expect(
         rows.bottom,
@@ -1441,12 +1517,14 @@ const SPIRE_VIEWPORTS: {
     height: 390,
     inset: NOTCH,
     label: "notch",
-    expect: ["journey", "spire", "missions"],
+    expect: ["journey", "spire"],
   },
-  { width: 844, height: 390, expect: ["journey", "spire", "missions"] },
-  { width: 700, height: 390, expect: ["journey", "spire", "missions"] },
+  // Poster's cards are taller than the old look's: a 390 px phone has room
+  // for two (Missions stays one tap away on the rail), a 320 px one for one.
+  { width: 844, height: 390, expect: ["journey", "spire"] },
+  { width: 700, height: 390, expect: ["journey", "spire"] },
   { width: 667, height: 375, expect: ["journey", "spire"] },
-  { width: 568, height: 320, expect: ["journey", "spire"] },
+  { width: 568, height: 320, expect: ["spire"], seen: ["journey"] },
   { width: 844, height: 280, expect: ["spire"], seen: ["journey"] },
   { width: 1280, height: 800, expect: ALL_CARDS },
   { width: 1180, height: 820, expect: ALL_CARDS },
@@ -1495,10 +1573,23 @@ for (const viewport of SPIRE_VIEWPORTS)
           await expect(card).not.toHaveClass(/is-new/);
           await expect(badge).toBeHidden();
         }
-        // Violet glass, over the theme's tint.
+        // A solid card like the others (Poster has no glass): nothing of
+        // the stage shows through its words.
         expect(
-          await card.evaluate((c) => getComputedStyle(c).backgroundImage),
-        ).toContain("gradient");
+          await card.evaluate((c) => {
+            // Any CSS colour (rgb(), oklch(), …) as [r, g, b, alpha 0–1], drawn on a
+            // canvas: computed styles keep oklch() as oklch().
+            const rgba = (c: string) => {
+              const cx = document.createElement("canvas").getContext("2d")!;
+              cx.fillStyle = c;
+              cx.fillRect(0, 0, 1, 1);
+              const d = cx.getImageData(0, 0, 1, 1).data;
+              return [d[0], d[1], d[2], d[3] / 255];
+            };
+            return rgba(getComputedStyle(c).backgroundColor)[3];
+          }),
+          "the Spire card is opaque",
+        ).toBe(1);
         await page.waitForTimeout(100);
         await snap(page, info, `lobby-spire-${fresh ? "new" : "seen"}-${size}`);
         const shown = await page.evaluate(() =>
@@ -1762,10 +1853,10 @@ test("a skin answer held back until after the Lobby is up still dresses the figh
   expect(errors).toEqual([]);
 });
 
-// Join or watch (the mode menu's last row): its one action is the gold main
-// button, as on every other screen, and Close is the hub panels' round
-// button (25 Nov 2026: Join was the dark secondary, Close a square).
-test("Join or watch: Join is the main gold button and Close is round", async ({
+// Join or watch (the mode menu's last row): its one action is the filled
+// main button, as on every other screen (25 Nov 2026: Join was the dark
+// secondary), and Close is the hub panels' Close: in Poster a square block.
+test("Join or watch: Join is the filled main button and Close is a square", async ({
   browser,
 }, info) => {
   for (const size of [
@@ -1791,23 +1882,37 @@ test("Join or watch: Join is the main gold button and Close is round", async ({
           .getBoundingClientRect();
         const j = join.getBoundingClientRect();
         const c = close.getBoundingClientRect();
+        // Any CSS colour (rgb(), oklch(), …) as [r, g, b, alpha 0–1], drawn on a
+        // canvas: computed styles keep oklch() as oklch().
+        const rgba = (c: string) => {
+          const cx = document.createElement("canvas").getContext("2d")!;
+          cx.fillStyle = c;
+          cx.fillRect(0, 0, 1, 1);
+          const d = cx.getImageData(0, 0, 1, 1).data;
+          return [d[0], d[1], d[2], d[3] / 255];
+        };
+        const opaque = (c: string) => rgba(c)[3] === 1;
+        const fill = getComputedStyle(join).backgroundColor;
         return {
-          joinGold: getComputedStyle(join).backgroundImage.includes("gradient"),
+          // Filled in the element colour, apart from the drawer behind it.
+          joinFilled:
+            opaque(fill) &&
+            fill !==
+              getComputedStyle(document.querySelector(".home-play-drawer")!)
+                .backgroundColor,
           joinInside: j.left >= drawer.left && j.right <= drawer.right,
           joinHeight: Math.round(j.height),
-          closeRound: getComputedStyle(close).borderTopLeftRadius === "50%",
           closeSquare: Math.round(c.width) === Math.round(c.height),
           closeSize: Math.round(c.width),
         };
       });
       const where = `${size.width}x${size.height}`;
-      expect(look.joinGold, where).toBe(true);
+      expect(look.joinFilled, where).toBe(true);
       expect(look.joinInside, where).toBe(true);
       // A thumb tall on a phone (a desktop's is 42 px, for a mouse).
       expect(look.joinHeight, where).toBeGreaterThanOrEqual(
         size.phone ? 44 : 40,
       );
-      expect(look.closeRound, where).toBe(true);
       expect(look.closeSquare, where).toBe(true);
       expect(look.closeSize, where).toBeGreaterThanOrEqual(40);
       await snap(page, info, `join-or-watch-${where}`);

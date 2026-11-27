@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { box, hubMenu, inside, openHub, skipTour, snap } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The Poster look (apps/client/src/themes/poster): one sweep of the Lobby,
 // the hub's screens and Settings with the look on, at the sizes the game is

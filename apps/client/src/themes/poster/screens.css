@@ -7,6 +7,10 @@
 }
 /* lobby mode menu */
 :root[data-ui="poster"] .lobby-layer .lobby-mode-menu {
+  /* As wide as the mode button under it (lobby.css: 6 px short of the
+     column, for its hard shadow), edge on edge. */
+  right: 6px;
+  width: calc(100% - 6px);
   background: var(--ink);
   border: 0;
   border-radius: 0;
@@ -167,6 +171,14 @@
   border-color: var(--el);
   box-shadow: inset 0 0 0 1px var(--el);
   outline: none;
+}
+/* Join or watch on a phone: the room code and Join a thumb tall. Poster's
+   field is 1 px shorter than the old look's, and Join, beside it in the
+   row, stood 43 px tall on a 667x375 phone (lobby.spec, "Join or watch"). */
+@media (orientation: landscape) and (max-height: 600px), (max-width: 1000px) {
+  :root[data-ui="poster"] .home-play-drawer .join-row > :is(input, #join) {
+    min-height: 44px;
+  }
 }
 /* play drawer */
 :root[data-ui="poster"]
