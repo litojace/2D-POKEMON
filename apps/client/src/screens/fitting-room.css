@@ -419,6 +419,19 @@
 .fit-count {
   margin-left: auto;
 }
+/* Above a phone's height the rarity chips take a row of their own under
+   ownership, the order and the count. Sharing the row, they were squeezed
+   to "All rarities · Common · Rar…" with "23 skins" over the cut edge
+   (audit A23, 1440 x 900). Phones keep one row (below). */
+@media (min-height: 501px) {
+  .fit-filters > .fit-count {
+    order: 1;
+  }
+  .fit-filters > .ui-chips {
+    order: 2;
+    flex: 1 1 100%;
+  }
+}
 /* Wide enough to keep the row short, tall enough for a whole fighter. */
 .fit-picks .ui-tile-art {
   aspect-ratio: 1.35;
