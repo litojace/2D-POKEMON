@@ -49,6 +49,69 @@ export interface RosterScreen {
   readonly view: RosterView;
 }
 
+/**
+ * The last closed Fighters screen, for the next open (ui/hub-panel.ts park),
+ * as the Shop keeps its own (fitting-room.ts). Building its 921 elements
+ * again on every open was a long task each time: 184-315 ms of script at
+ * 4× here, a 262-431 ms frame on CI's runner (panel-open-budget.spec.ts,
+ * 27 Nov 2026). The next open patches the kept screen to its own markup
+ * while it is still hidden, so only what changed is built, and it is styled
+ * and laid out once, as it appears. Only the grid is kept: a screen closed
+ * on a fighter's detail lets go of its live rig, and the next open starts
+ * on the grid anyway. Dropped after ROSTER_PARKED_MS, when a battle starts,
+ * when the app goes to the background, and when a roster opens that doesn't
+ * take it over (a room's picker), so the page never holds two rosters.
+ */
+interface Parked {
+  /** The parked screen's host, and the markup it shows. */
+  wrap: HTMLElement;
+  template: HTMLElement;
+  timer: number;
+  watch: MutationObserver;
+}
+let parked: Parked | undefined;
+export const ROSTER_PARKED_MS = 60_000;
+/**
+ * Rosters open now. One closed and opened again before it had finished
+ * leaving gets a new screen; the old one must not then be parked as well.
+ */
+let openRosters = 0;
+function park(wrap: HTMLElement, template: HTMLElement) {
+  unpark()?.wrap.remove();
+  const watch = new MutationObserver(() => {
+    if (document.body.classList.contains("battle-active"))
+      unpark()?.wrap.remove();
+  });
+  watch.observe(document.body, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+  parked = {
+    wrap,
+    template,
+    timer: window.setTimeout(() => unpark()?.wrap.remove(), ROSTER_PARKED_MS),
+    watch,
+  };
+}
+/** Take the last screen kept, if any (the caller removes it if unused). */
+function unpark(): Pick<Parked, "wrap" | "template"> | undefined {
+  if (!parked) return undefined;
+  clearTimeout(parked.timer);
+  parked.watch.disconnect();
+  const { wrap, template } = parked;
+  parked = undefined;
+  return { wrap, template };
+}
+if (typeof document !== "undefined")
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) unpark()?.wrap.remove();
+  });
+
+/** Swapped whole when their markup changes: the rig stage holds the
+ * preview's canvas (re-attached by afterRender). */
+const KEEP_WHOLE =
+  ".shop-live-stage, .raid-cosmetic-preview, .fighter-rig-stage";
+
 const FOCUS_KEYS = [
   "data-roster-card",
   "data-roster-element",
@@ -115,12 +178,7 @@ export function openRoster(
     } else
       // The rig stage holds the preview's canvas: swap it whole when its
       // fighter changes, so the preview is re-attached (afterRender).
-      patch(
-        root(),
-        template,
-        next,
-        ".shop-live-stage, .raid-cosmetic-preview, .fighter-rig-stage",
-      );
+      patch(root(), template, next, KEEP_WHOLE);
     template = next;
     // The Original look is inline SVG, painted once when it has shown.
     watchPictures(root());
@@ -303,9 +361,28 @@ export function openRoster(
 
   const html = rosterMarkup(view, data());
   template = parse(html);
+  // The last Fighters screen, if the browser kept it: it takes this
+  // roster's markup while still hidden (only what changed is built).
+  const kept = unpark();
+  const keptRoot =
+    !o.room &&
+    kept?.wrap.isConnected &&
+    kept.template.dataset.rosterMode === template.dataset.rosterMode
+      ? (kept.wrap.firstElementChild as HTMLElement | null)
+      : null;
+  if (keptRoot && kept) patch(keptRoot, kept.template, template, KEEP_WHOLE);
+  else kept?.wrap.remove();
+  const listeners = [
+    ["click", onClick],
+    ["change", onChange],
+    ["keydown", onKeyCard],
+    ["keydown", onKey],
+  ] as const;
+  openRosters++;
   panel = openHubPanel(html, {
     rail: o.room ? undefined : "fighters",
     host: o.room?.host,
+    reuse: keptRoot ? kept?.wrap : undefined,
     // In a room, Escape goes back from a fighter's detail to the grid; the
     // picker itself stays (leaving the room is the corner button).
     escape: o.room
@@ -320,15 +397,37 @@ export function openRoster(
       : undefined,
     onClose: () => {
       closed = true;
+      openRosters--;
+      // (Its screen may be taken over by the next roster: let go of it.)
+      for (const [type, fn] of listeners)
+        root().removeEventListener(type, fn as EventListener);
       preview?.();
       preview = undefined;
       hooks.onClose?.();
     },
+    // Once it has left, the hub's grid is kept for the next open. Not a
+    // room's picker, not a fighter's detail, not once the Lobby is leaving
+    // or a battle has started, nor when a roster has opened meanwhile (it
+    // has its own screen).
+    park: o.room
+      ? undefined
+      : (wrap) => {
+          if (openRosters > 0 || parked) return false;
+          if (template.dataset.rosterMode !== "grid") return false;
+          if (!document.querySelector(".lobby-layer")?.isConnected)
+            return false;
+          if (document.body.classList.contains("battle-active")) return false;
+          // The next open starts at the top, as a new screen does.
+          const body = wrap.querySelector("[data-roster-region=body]");
+          if (body?.scrollTop) body.scrollTop = 0;
+          park(wrap, template);
+          return true;
+        },
   });
-  root().addEventListener("click", onClick);
-  root().addEventListener("change", onChange);
-  root().addEventListener("keydown", onKeyCard);
-  root().addEventListener("keydown", onKey);
+  // (Not taken back after all, the Lobby having been rebuilt: let it go.)
+  if (keptRoot && root() !== keptRoot) kept?.wrap.remove();
+  for (const [type, fn] of listeners)
+    root().addEventListener(type, fn as EventListener);
   afterRender();
   // Keep the picked card in view (a filter or sort can move it).
   q<HTMLElement>(`[data-roster-card="${view.focus}"]`)?.focus({

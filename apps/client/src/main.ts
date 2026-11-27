@@ -364,7 +364,12 @@ import { watchNotchInsets } from "./notch-insets";
 import { watchScrollRows } from "./ui/scroll-rows";
 import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
-import { askConfirm, openHubPanelNow, PANEL_EVENT } from "./ui/hub-panel";
+import {
+  askConfirm,
+  openHubPanelNow,
+  PANEL_EVENT,
+  PARKED,
+} from "./ui/hub-panel";
 import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { createGuide } from "./getting-started-screen";
 import {
@@ -3269,6 +3274,15 @@ function openFeature(feature: Feature) {
   if (hubScene !== "lobby") setHubScene("lobby");
   lobbyAction(feature);
 }
+/**
+ * A hub screen in front of the Lobby: open, or still leaving. Not one kept
+ * hidden for its next open (ui/hub-panel.ts park: the Shop, the Fighters),
+ * which held back the unlock sheet, today's gift and the tour for as long
+ * as it was kept, up to a minute after it closed.
+ */
+function screenInFront() {
+  return document.querySelector(`.ui-panel-host:not([${PARKED}]) .ui-panel`);
+}
 /** The "Unlocked" dialog is up (one at a time). */
 let unlockShowing = false;
 /**
@@ -3292,7 +3306,7 @@ function maybeShowUnlocks() {
     tour?.open ||
     tourTimer !== undefined ||
     $<HTMLDialogElement>("dialog").open ||
-    document.querySelector(".ui-panel-host .ui-panel") ||
+    screenInFront() ||
     document.querySelector("[data-ui-confirm]") ||
     document.getElementById("reward-reveal") ||
     accountsUI?.guestWarningPending
@@ -3401,7 +3415,7 @@ function maybeShowGift() {
     tour?.open ||
     tourTimer !== undefined ||
     $<HTMLDialogElement>("dialog").open ||
-    document.querySelector(".ui-panel-host .ui-panel") ||
+    screenInFront() ||
     document.querySelector("[data-ui-confirm]") ||
     document.getElementById("reward-reveal") ||
     accountsUI?.guestWarningPending
@@ -6096,7 +6110,7 @@ function startTour(replay = false) {
         !lobby ||
         myId ||
         $<HTMLDialogElement>("dialog").open ||
-        document.querySelector(".ui-panel-host .ui-panel") ||
+        screenInFront() ||
         document.querySelector("[data-ui-confirm]") ||
         accountsUI?.guestWarningPending
       )
