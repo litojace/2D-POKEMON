@@ -9,7 +9,7 @@ scripts/instagram/skins.spec.ts records each Mythical at Stage III in the
 game's fitting room, in Poster, 30 frames a second: standing, then its
 Entrance, Victory and Ultimate. This cuts each play to its effect, frames it
 in Poster's look (docs/ui-themes.md: the fighter's colour with its
-halftone, the name huge and outlined behind, ink plates, a white clipping
+halftone, ink plates, a white clipping
 with a hard shadow, Anton and Archivo), adds an end card, and writes:
 
 - instagram/08-skins-reel.mp4: 1080 x 1920, 30 fps, H.264 (Instagram's
@@ -128,22 +128,10 @@ def logo(img, x, y, size=58, text_size=44):
     d.text((ix + size + 16 - l, y + (h - (b - t)) / 2 - t), "ELEMENT ARENA", font=fnt, fill=WHITE)
 
 
-def big_word(img, text, size, centre, angle=7):
-    """A word huge and outlined behind everything (the Lobby's fighter name)."""
-    fnt = anton(size)
-    probe = ImageDraw.Draw(img)
-    l, t, r, b = probe.textbbox((0, 0), text, font=fnt, stroke_width=4)
-    layer = Image.new("RGBA", (r - l + 40, b - t + 40), (0, 0, 0, 0))
-    ImageDraw.Draw(layer).text((20 - l, 20 - t), text, font=fnt, fill=(255, 255, 255, 107), stroke_width=4, stroke_fill=(13, 13, 15, 140))
-    layer = layer.rotate(angle, expand=True, resample=Image.BICUBIC)
-    img.paste(layer, (int(centre[0] - layer.width / 2), int(centre[1] - layer.height / 2)), layer)
-
-
 def card(skin) -> Image.Image:
     """The Reel's frame for one skin, in the fighter's colour."""
     _, name, fighter, colour = skin
     img = halftone(colour)
-    big_word(img, "MYTHICAL", 300, (W / 2, 1130))
     logo(img, 84, 250)
     chip(img, 84, 362, "THE SHOP · MYTHICAL SKIN", archivo(28), INK, WHITE)
     _, bottom = plate(img, 84, 428, name.upper(), anton(92), INK, colour, pad=(30, 14), shadow=((10, 10), (0, 0, 0, 90)))
@@ -201,7 +189,6 @@ def end_card() -> Image.Image:
     # A slab in the colour across the top, its slanted edge and white stripe.
     d.polygon([(0, 0), (W, 0), (W, 1060), (0, 1160)], fill=gold)
     d.polygon([(0, 1170), (W, 1070), (W, 1084), (0, 1184)], fill=WHITE)
-    big_word(img, "LEGEND", 330, (W / 2, 760))
     logo(img, 84, 300, size=70, text_size=54)
     y = 470
     for line in ("WALK IN", "A LEGEND."):

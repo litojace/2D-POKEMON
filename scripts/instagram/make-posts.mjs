@@ -269,7 +269,7 @@ img.art { position: absolute; left: 0; top: 0; width: 100%; height: ${slab[0] + 
 .stripe { position: absolute; inset: 0; background: #fff; clip-path: polygon(0 ${slab[0] - 16}px, 100% ${slab[1] - 16}px, 100% ${slab[1] - 6}px, 0 ${slab[0] - 6}px); }
 .words { position: absolute; left: 84px; right: 84px; bottom: ${bottom}px; display: flex; flex-direction: column; gap: ${size === "square" ? 14 : 22}px; }
 .words .chip { background: var(--el); color: var(--ink); }
-.words h1 { color: #fff; font-size: ${size === "square" ? 84 : size === "story" ? 116 : 100}px; }
+.words h1 { color: #fff; font-size: ${size === "square" ? 84 : 100}px; }
 .words p { color: #d8d8de; font-size: ${size === "square" ? 28 : 32}px; }
 .words .play { background: var(--el); margin-top: 6px; }
 .words .play span { color: var(--ink); }
@@ -415,7 +415,6 @@ li.ult b { color: var(--el); } li.ult span { color: #fff; }`;
 /** The Mythicals at their Stage III ultimate, as white clippings. */
 function skinsPost(post, size) {
   const small = size === "square";
-  const story = size === "story";
   const missing = post.skins.find(
     (id) => !existsSync(at(`instagram-clips/${id}/still.jpg`)),
   );
@@ -431,22 +430,23 @@ function skinsPost(post, size) {
       return `<figure style="--c:${c.el}; --tilt:${[-2, 1.5, -1][i]}deg"><div class="clip"><img src="${url(still)}"></div><figcaption><span class="name"><span>${s.name}</span></span><small>${c.name} · Stage III</small></figcaption></figure>`;
     })
     .join("");
-  const cardW = story ? 230 : small ? 236 : 262;
+  // One row at every size: a story has the height, and its width is the feed's.
+  const cardW = small ? 236 : 262;
   return (
-    `<div class="halftone"></div><div class="big" style="--big:${story ? 420 : 340}px">Mythical</div>` +
+    `<div class="halftone"></div>` +
     flow(
       size,
       `<div class="chip">${post.eyebrow}</div><h1>${post.title}</h1>`,
       `<div class="row">${cards}</div>`,
       `<p>${post.line}</p>${PLAY}`,
-      `.row { display: flex; ${story ? "flex-direction: column; gap: 26px;" : `gap: ${small ? 22 : 26}px;`} }
-figure { margin: 0; display: flex; ${story ? "flex-direction: row; align-items: center; gap: 30px;" : "flex-direction: column; align-items: center; gap: 22px;"} }
+      `.row { display: flex; gap: ${small ? 22 : 26}px; }
+figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 22px; }
 figure .clip { padding: 8px; transform: rotate(var(--tilt)); }
 figure img { display: block; width: ${cardW}px; height: ${cardW}px; object-fit: cover; }
-figcaption { display: flex; flex-direction: column; align-items: ${story ? "flex-start" : "center"}; gap: 8px; }
+figcaption { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .name { background: var(--ink); padding: 6px 16px; transform: skewX(-10deg); }
-.name span { display: block; transform: skewX(10deg); font: 400 ${small ? 26 : story ? 46 : 32}px/1 Anton; text-transform: uppercase; color: var(--c); white-space: nowrap; }
-figcaption small { font: 800 ${small ? 15 : story ? 22 : 17}px/1 Archivo; text-transform: uppercase; letter-spacing: .1em; color: var(--ink); }`,
+.name span { display: block; transform: skewX(10deg); font: 400 ${small ? 26 : 32}px/1 Anton; text-transform: uppercase; color: var(--c); white-space: nowrap; }
+figcaption small { font: 800 ${small ? 15 : 17}px/1 Archivo; text-transform: uppercase; letter-spacing: .1em; color: var(--ink); }`,
     )
   );
 }
