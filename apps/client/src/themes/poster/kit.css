@@ -408,10 +408,16 @@
   clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
 }
 
-/* The title keeps its width (up to under half the masthead) and the tabs
-   beside it scroll: Anton sets a name wider than the look underneath does,
-   and a name cut to "NGUYỄN HỒNG …" is worse than a tab to swipe to. */
+/* Beside tabs, the title keeps its width (up to under half the masthead)
+   and the tabs scroll: Anton sets a name wider than the look underneath
+   does, and a name cut to "NGUYỄN HỒNG …" is worse than a tab to swipe to.
+   With no tabs beside it the title has the masthead to itself: under the
+   same cap a sheet read "GETTING STAR…" with 220 px free (UI audit, 27 Nov
+   2026). The :has() looks only along the masthead's own children. */
 :root[data-ui="poster"] .ui-panel-head > .ui-heading {
+  flex: 0 1 auto;
+}
+:root[data-ui="poster"] .ui-panel-head > .ui-heading:has(~ .ui-tabs) {
   flex: 0 0 auto;
   max-width: 46%;
 }
