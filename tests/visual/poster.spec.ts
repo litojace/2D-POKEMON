@@ -231,3 +231,105 @@ for (const size of SIZES) {
     }
   });
 }
+
+// A new player's Lobby in Poster: the side systems are locked by level
+// (feature-unlocks.ts). At 800 px and wider Poster's rail is a text menu, so
+// the "Lv 5" pill stands where the icon was, before the label; under that
+// the rail folds to icons and the pill sits over the label, as in the look
+// underneath.
+for (const size of [
+  { width: 667, height: 375 },
+  { width: 844, height: 390 },
+]) {
+  test(`Poster: a new player's Lobby shows its locks whole (${size.width}x${size.height})`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: size,
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      await skipTour(page);
+      await page.addInitScript(() => {
+        const w = window as any;
+        w.__economyPatch = {
+          journey: {
+            xp: 0,
+            recent: [],
+            season: {
+              id: "2026-10",
+              xp: 0,
+              week: "2026-W43",
+              goals: {},
+              completed: [],
+            },
+            unlocked: [],
+          },
+        };
+        w.__accountPatch = { title: null, titleColor: null };
+      });
+      await withPoster(page);
+      const errors = await openHub(page);
+      await page.evaluate(() => document.fonts.ready);
+      await snap(page, info, `poster-locks-${size.width}x${size.height}`);
+      const rail = await page
+        .locator(".lobby-rail button")
+        .evaluateAll((buttons) =>
+          buttons.map((b) => {
+            const r = b.getBoundingClientRect();
+            const pill = b.querySelector<HTMLElement>(".feature-lock");
+            const label = b.querySelector<HTMLElement>(":scope > span")!;
+            const p = pill?.getBoundingClientRect();
+            const l = label.getBoundingClientRect();
+            return {
+              action: b.dataset.lobbyAction,
+              w: r.width,
+              h: r.height,
+              // The pill and the label are whole, inside the button, and
+              // don't sit on each other.
+              pill: p
+                ? {
+                    inside:
+                      p.left >= r.left - 0.5 &&
+                      p.right <= r.right + 0.5 &&
+                      p.top >= r.top - 0.5 &&
+                      p.bottom <= r.bottom + 0.5,
+                    clear:
+                      p.right <= l.left + 0.5 ||
+                      p.bottom <= l.top + 0.5 ||
+                      l.right <= p.left + 0.5 ||
+                      l.bottom <= p.top + 0.5,
+                    cut: pill!.scrollWidth > pill!.clientWidth + 1,
+                  }
+                : null,
+              labelCut: label.scrollWidth > label.clientWidth + 1,
+            };
+          }),
+        );
+      expect(rail).toHaveLength(6);
+      // Shop, Raids, Missions and Ranks open by level; Fighters and Friends
+      // never lock.
+      expect(rail.filter((b) => b.pill).map((b) => b.action)).toEqual([
+        "shop",
+        "raids",
+        "missions",
+        "ranks",
+      ]);
+      for (const b of rail) {
+        expect(Math.min(b.w, b.h), b.action).toBeGreaterThanOrEqual(40);
+        expect(b.labelCut, b.action).toBe(false);
+        if (b.pill)
+          expect(b.pill, b.action).toEqual({
+            inside: true,
+            clear: true,
+            cut: false,
+          });
+      }
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}

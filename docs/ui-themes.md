@@ -77,10 +77,51 @@ The picker comes **after the guest warning and before the Lobby tour**:
   device (`ea-ui-asked:<account>`); a second account on the same device is
   asked too, with the device's current look marked.
 
-When the looks are turned on, the visual harness needs a default
-(`tests/visual/helpers.ts`, `openHub`: mark the harness's account as asked,
-as it pins the graphics setting), or the picker opens over every spec's
-Lobby.
+The visual harness marks its account as asked
+(`tests/visual/harness/look-asked.ts`, the first thing its page loads), so
+the picker doesn't open over every spec's Lobby, whichever way a spec gets
+there; a test about the picker sets `window.__lookAsk` before the page loads.
+
+**Poster is the game's look** (27 Nov 2026). The owner first said to turn
+both looks on, then, the same evening, to drop Showcase and switch to Poster
+for good. So:
+
+- `DEFAULT_UI_THEME` is `"poster"`: every player gets it, with nothing saved
+  and nobody asked. It ships in the game's own script and is on the page
+  before the first frame.
+- Showcase's `ready` is off and its folder is being removed. With one ready
+  look the picker and Settings' Look row stay away; their code sleeps until
+  it is removed with Showcase.
+- The look underneath is still in the page under Poster. Deleting it is a
+  job of its own, after the visual suite has moved (below).
+- **The revert** is one line: `DEFAULT_UI_THEME = null` puts every player
+  back on the look underneath.
+
+**The visual suite still measures the look underneath.** Its 200 files were
+written against that look's sizes and places, so the harness saves
+`ea-ui=classic` for its page (`harness/look-asked.ts`) and they run as
+before. What checks Poster today: `poster.spec.ts` (the Lobby, five screens,
+Settings, a new player's locks, at four sizes), `ui-theme.spec.ts` (the
+default, from the first frame), and any spec run with `VISUAL_UI=poster`
+(`helpers.ts`), which is how the budgets and `panel-scroll` were run before
+the switch. Moving the suite to Poster, spec by spec, is the next job; a
+spec that has moved drops the pin by setting `window.__lookDefault`.
+
+**The budgets measure Poster** (27 Nov 2026): `battle-style-budget`,
+`match-flow-budget` and `panel-open-budget` call `playersLook(page)`
+(`tests/visual/players-look.ts`) and fail if the page shows another look, so
+CI counts what players' phones pay for. `PLAYERS_LOOK` there follows
+`DEFAULT_UI_THEME` (`tests/unit/ui-theme.test.ts` holds them together: the
+revert changes both). `VISUAL_UI=classic` still measures the look
+underneath, to compare. Measured side by side before the switch, on the
+cloud container: a duel restyles 4 elements per recalculation at the
+median, 16 at p90 and 59 at most in Poster (three runs), 4 / 16 / 59 to 61
+underneath; a match reads the layout 0 times per frame in both; a repeat
+open of a panel lays the page out 0 to 6 times in Poster, 0 to 5
+underneath (the limit is 12). The numbers are on pull request #553. Not
+moved: `effect-budget` (it counts the effects engine's own work in the
+battle canvas, which no look touches) and the frame-rate profiles
+(`battle-performance`, `pvp-performance`, `lobby-perf`).
 
 ## A theme's folder
 

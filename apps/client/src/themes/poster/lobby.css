@@ -132,7 +132,7 @@
 :root[data-ui="poster"] .hub-scenes > button {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   letter-spacing: 0.06em;
   color: #fff;
   border-radius: 2px;
@@ -167,7 +167,7 @@
 }
 :root[data-ui="poster"] .lobby-layer .lobby-rail span {
   color: #fff;
-  font: 400 18px/1 var(--font-display);
+  font: 400 calc(18px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   overflow: visible;
@@ -198,7 +198,7 @@
   background: color-mix(in srgb, var(--el) 65%, #fff);
 }
 :root[data-ui="poster"] .lobby-layer .lobby-slot small {
-  font: 800 11px/1 var(--font-body);
+  font: 800 calc(11px * var(--text-scale, 1)) / 1 var(--font-body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink);
@@ -207,7 +207,7 @@
   color: var(--ink);
 }
 :root[data-ui="poster"] .lobby-layer .lobby-name h2 {
-  font: 400 28px/1 var(--font-display);
+  font: 400 calc(28px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.06em;
   color: var(--el);
   background: var(--ink);
@@ -356,10 +356,26 @@
   box-shadow: none;
 }
 
-/* The rail button of the open screen: a skewed block in the element colour. */
+/* The rail button of the open screen: a skewed block in the element colour,
+   drawn behind the button and inside its box. Skewing the button itself
+   pushed its corner 4 px past its box: on an 844 px iPhone, into the notch's
+   safe area (phone-fit.spec). */
 :root[data-ui="poster"] .lobby-layer .lobby-rail button[aria-current="page"] {
+  position: relative;
+  isolation: isolate;
+  background: none;
+}
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-rail
+  button[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 4px;
+  z-index: -1;
   background: var(--el);
   transform: skewX(-10deg);
+  pointer-events: none;
 }
 :root[data-ui="poster"]
   .lobby-layer

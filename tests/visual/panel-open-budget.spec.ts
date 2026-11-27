@@ -1,5 +1,6 @@
 import { expect, test, type CDPSession, type Page } from "@playwright/test";
 import { openHub } from "./helpers";
+import { lookAsked, lookShown, playersLook } from "./players-look";
 
 /**
  * Opening a screen again must not start it from scratch (the owner's
@@ -17,7 +18,9 @@ import { openHub } from "./helpers";
  *   LONG_FRAME_MS of the page's own work: its script, and drawing the frame
  *   (see openFrames).
  *
- * A phone held sideways (956×440, an iPhone's landscape screen), touch.
+ * A phone held sideways (956×440, an iPhone's landscape screen), touch,
+ * in the look players have (players-look.ts): its panels are the ones
+ * their phones build and lay out.
  * Mostly counted, not timed: this machine draws on the CPU. The timed limit
  * is loose; what it guards against took two to three times as long.
  * It times work, not how long a frame lasts. On CI's runner every Lobby
@@ -632,7 +635,10 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
       w.__spire = { best: 3, zones: [] };
     });
     await page.addInitScript(instrument);
+    await playersLook(page);
     const errors = await openHub(page);
+    const look = await lookShown(page);
+    expect(look, "the look measured").toBe(lookAsked());
     await watchRequests(page);
     // Code the hub loads once in quiet moments after it opens (the other
     // worlds, the screens' own code): loaded before measuring, so a load
@@ -714,7 +720,7 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
         )
         .toBeLessThanOrEqual(limit);
     }
-    console.log(JSON.stringify(results));
+    console.log(JSON.stringify({ look, ...results }));
     expect(errors).toEqual([]);
   } finally {
     await context.close();

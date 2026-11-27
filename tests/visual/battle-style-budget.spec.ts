@@ -1,6 +1,7 @@
 import { expect, test, type Browser } from "@playwright/test";
 import { RULES } from "../../packages/shared/src/index";
 import { openHub, openPlayPanel, pushUntilBattle, createRoom } from "./helpers";
+import { lookAsked, lookShown, playersLook } from "./players-look";
 
 /**
  * How much of the page the browser restyles while two players fight.
@@ -22,6 +23,9 @@ import { openHub, openPlayPanel, pushUntilBattle, createRoom } from "./helpers";
  * write that makes a new node each time (`textContent =`), or a rule that
  * widens what each change restyles, fails here.
  * Elements per second is printed, not judged: it follows the frame rate.
+ * Measured in the look players have (players-look.ts), Poster since 27 Nov
+ * 2026: median 4, p90 16, the largest 59 in three runs out of three, and the
+ * same in the look underneath (VISUAL_UI=classic: 4, 16, 59 to 61).
  * STYLE_BUDGET_MEASURE=1 prints the numbers without judging.
  */
 const LIMITS = {
@@ -53,7 +57,9 @@ async function measureDuel(browser: Browser) {
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
       };
     });
+    await playersLook(page);
     const errors = await openHub(page);
+    const look = await lookShown(page);
     await page.evaluate(async () => {
       const w = window as any;
       w.__room("pvp", { mode: "duel", phase: "briefing" });
@@ -136,6 +142,7 @@ async function measureDuel(browser: Browser) {
     const sorted = counts.slice().sort((x, y) => x - y);
     const total = counts.reduce((s, n) => s + n, 0);
     return {
+      look,
       recalcs: counts.length,
       perRecalcMedian: sorted[sorted.length >> 1] ?? 0,
       perRecalcP90: sorted[Math.floor(sorted.length * 0.9)] ?? 0,
@@ -156,6 +163,7 @@ test("a duel restyles only the elements that change", async ({
   test.setTimeout(150_000);
   const r = await measureDuel(browser);
   console.log("STYLE_BUDGET", JSON.stringify({ ...r, errors: undefined }));
+  expect(r.look, "the look measured").toBe(lookAsked());
   expect(r.recalcs, "style recalculations traced").toBeGreaterThan(20);
   if (MEASURE) return;
   expect(
