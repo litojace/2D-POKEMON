@@ -579,21 +579,30 @@
   background: var(--el);
   border-bottom: 0;
 }
-/* As on a panel's masthead (kit.css): the tab fills the row; the chosen
-   one's block starts 7 px down. */
+/* As on a panel's masthead (kit.css): the tab is the block under the
+   row's top 7 px, and the strip above it still catches a finger. */
 :root[data-ui="poster"] .friends-sheet > .ui-tabs > button {
+  position: relative;
+  align-self: flex-end;
+  height: calc(100% - 7px);
+  min-height: 0;
   color: rgba(13, 13, 15, 0.62);
   margin: 0;
-  padding-top: 7px;
+  padding-top: 0;
   padding-bottom: 0;
   border-bottom: 0;
+}
+:root[data-ui="poster"] .friends-sheet > .ui-tabs > button::before {
+  content: "";
+  position: absolute;
+  inset: -7px 0 100%;
 }
 :root[data-ui="poster"]
   .friends-sheet
   > .ui-tabs
   > button[aria-selected="true"] {
   color: var(--el);
-  background: linear-gradient(transparent 7px, var(--ink) 7px);
+  background: var(--ink);
   transform: skewX(-10deg);
 }
 :root[data-ui="poster"]
@@ -649,18 +658,27 @@
   border-bottom: 0;
 }
 :root[data-ui="poster"] .ui-split-main > .ui-tabs > button {
+  position: relative;
+  align-self: flex-end;
+  height: calc(100% - 7px);
+  min-height: 0;
   color: rgba(13, 13, 15, 0.62);
   margin: 0;
-  padding-top: 7px;
+  padding-top: 0;
   padding-bottom: 0;
   border-bottom: 0;
+}
+:root[data-ui="poster"] .ui-split-main > .ui-tabs > button::before {
+  content: "";
+  position: absolute;
+  inset: -7px 0 100%;
 }
 :root[data-ui="poster"]
   .ui-split-main
   > .ui-tabs
   > button[aria-selected="true"] {
   color: var(--el);
-  background: linear-gradient(transparent 7px, var(--ink) 7px);
+  background: var(--ink);
   transform: skewX(-10deg);
 }
 :root[data-ui="poster"]

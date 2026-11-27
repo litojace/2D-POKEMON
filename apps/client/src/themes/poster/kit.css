@@ -49,21 +49,30 @@
   border-bottom: 0;
   gap: 2px;
 }
-/* A masthead tab fills its row, so nothing of it is cut and it keeps a
-   44 px target. The chosen one's ink block starts 8 px down and runs into
-   the page below; the label is centred in that block. (A margin moved the
-   whole button down instead: its last 8 px were cut by the row and its
-   label sat 6 px low.) */
+/* A masthead tab is the block under its row's top 8 px: the chosen one's
+   ink block, which runs into the page below, with its label in the middle.
+   The strip above it (::before) still catches a finger, so the tab keeps a
+   44 px target. (A margin moved the whole 44 px button down instead: the
+   row cut its last 8 px and its label sat 6 px low.) */
 :root[data-ui="poster"] .ui-panel-head .ui-tabs > button {
+  position: relative;
+  align-self: flex-end;
+  height: calc(100% - 8px);
+  min-height: 0;
   margin: 0;
-  padding-top: 8px;
+  padding-top: 0;
   padding-bottom: 0;
   border-bottom: 0;
   color: rgba(13, 13, 15, 0.62);
 }
+:root[data-ui="poster"] .ui-panel-head .ui-tabs > button::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0 100%;
+}
 :root[data-ui="poster"] .ui-panel-head .ui-tabs > button[aria-selected="true"] {
   color: var(--el);
-  background: linear-gradient(transparent 8px, var(--ink) 8px);
+  background: var(--ink);
   transform: skewX(-10deg);
 }
 :root[data-ui="poster"]
