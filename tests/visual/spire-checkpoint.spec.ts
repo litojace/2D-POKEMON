@@ -239,6 +239,26 @@ for (const s of SIZES)
       await expect(page.locator(".rites-screen .rites-foot")).toContainText(
         "Blessing locked in",
       );
+      // Locked in, every tile disabled: each stays opaque (the arena never
+      // shows through it) and only its badge and words dim.
+      const tiles = page.locator(".rites-screen [data-raid-rite]");
+      await expect(
+        page.locator(".rites-screen [data-raid-rite]:enabled"),
+      ).toHaveCount(0);
+      expect(
+        await tiles.evaluateAll((els) =>
+          els.map((e) => Number(getComputedStyle(e).opacity)),
+        ),
+      ).toEqual([1, 1, 1]);
+      for (const part of [".raid-rite-icon", ".raid-rite-copy"])
+        for (const o of await tiles.evaluateAll(
+          (els, part) =>
+            els.map((e) =>
+              Number(getComputedStyle(e.querySelector(part)!).opacity),
+            ),
+          part,
+        ))
+          expect(o, `${part} dimmed`).toBeLessThan(0.7);
       await snap(page, info, `spire-checkpoint-chosen-${s.name}`);
       await step(page, 1.2);
       await expect(page.locator(".rites-screen .rites-kicker")).toHaveText(
