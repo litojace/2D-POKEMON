@@ -1,7 +1,8 @@
-/* Poster before the Lobby: the welcome screen's sign-up / log-in card, the
-   same form wherever it opens (Save account, Log in), and the title
-   screen's corner buttons. The default look's blue frosted glass becomes an
-   ink board with a hard shadow; nothing blurred, nothing rounded. */
+/* Poster before the Lobby: the welcome screen's sign-up / log-in card and
+   the same form wherever it opens (Save account, Log in). The default
+   look's blue frosted glass becomes an ink board with a hard shadow;
+   nothing blurred, nothing rounded. The quick buttons in the corner are
+   the title screen's, round (screens.css). */
 
 /* ── the card ── */
 :root[data-ui="poster"] .welcome-gate .gate-card {
@@ -131,23 +132,4 @@
 }
 :root[data-ui="poster"] .auth-legal a {
   color: var(--ui-dim);
-}
-
-/* ── the corner buttons (Settings, Help, Support, Repair) ── */
-:root[data-ui="poster"] .title-quick-icon {
-  border: 0;
-  border-radius: 0;
-  background: var(--ink);
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-:root[data-ui="poster"] .title-quick-icon .menu-option-icon {
-  color: var(--el);
-}
-:root[data-ui="poster"] .title-quick-btn:hover .title-quick-icon {
-  background: var(--ink-2);
-}
-:root[data-ui="poster"] .title-quick-btn {
-  font-weight: 700;
 }

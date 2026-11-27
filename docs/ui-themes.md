@@ -106,3 +106,10 @@ raid room need). Sweep: `tests/visual/poster.spec.ts`.
   ladder (its colour is inline).
 - Inside a Fighters card `--el` is that card's element colour
   (`roster-view.ts` sets it), not the Lobby fighter's.
+- One screen, one file: `screens.css` has the title screen, the countdown
+  and the round break; `sheets.css` the Reveal, the rite cards and the raid
+  rites; `onboarding.css` the sign-in card; `plaza.css` the Plaza and the
+  chat. They load in that order (`theme.css`), so a rule for a screen
+  another file already styles goes beside that file's rules: a later file
+  wins a tie. Pull request #567 merged a block written apart from #555 and
+  #557, and those three had styled the same screens twice.
