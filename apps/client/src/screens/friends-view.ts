@@ -463,7 +463,9 @@ function recentRow(p: RecentPlayer, view: FriendsView, now: number) {
   const when = ago.charAt(0).toUpperCase() + ago.slice(1);
   const meet =
     p.together === p.matches
-      ? `Teammate · ${p.matches} ${p.matches === 1 ? "match" : "matches"}`
+      ? // Short: the line has 130 px beside its two buttons on a phone, and
+        // "5 h ago · Teammate · 1 match" was cut after "1".
+        `Teammate ×${p.matches}`
       : `You ${p.wins}–${p.losses}`;
   const act =
     p.relation === "friend"
@@ -481,7 +483,9 @@ function recentRow(p: RecentPlayer, view: FriendsView, now: number) {
                 "aria-label": `Accept ${p.name}`,
               },
             })
-          : button("Add friend", {
+          : // One word, as Invite, Join and Watch are: "Add friend" took the
+            // room the line beside it needs ("5 h ago · Teammate · 1 …").
+            button("Add", {
               icon: "add-friend",
               size: "s",
               disabled: busy,
