@@ -15,18 +15,42 @@ the game's build, its precache or its CI build, and the game never loads it.
 ```
 apps/site/
   index.html          the page (all copy lives here)
-  site.css            styles; the game's tokens (navy, gold, Barlow Condensed, DM Sans)
-  fonts/              the game's own woff2 files (OFL licences beside them)
-  img/                images made from the game's art by tools/make-images.py
+  site.css            styles: Poster, the game's look (ink, element colours, Anton, Archivo)
+  site.js             the pause switch, skin loops, pickers, champion panel, transitions
+  fonts/              the game's own woff2 files (OFL licences beside them); Barlow
+                      Condensed and DM Sans stay for the Support and Privacy copies
+  img/                images made from the game's art by tools/make-images.py;
+                      img/skins/ the skin loops' posters and thumbnails
+  media/skins/        the skin loops (MP4, 60 frames a second), tools/make-skin-clips.py
   robots.txt, sitemap.xml, favicon.ico, favicon-32.png, icon-192.png, apple-touch-icon.png
   tools/make-images.py   regenerates img/ and the icons from the game's art
-  tools/demo.mjs         builds the demo page with the style switcher
+  tools/demo.mjs         builds a one-page preview for a claude.ai Artifact
 ```
+
+## The look: Poster (owner, 27 Nov)
+
+The game moved to Poster for every player (docs/ui-themes.md), so the
+website did too, "in a professional style with today's panel transitions".
+The tokens are Poster's (`apps/client/src/themes/poster/tokens.css`): ink
+`#0d0d0f` and its three lifts, white words, `--dim` greys, the hot red for
+stickers and offset shadows, and the game's element colours; nothing is
+rounded (the phone mock-up and Apple's sign-in button are the exceptions,
+as real objects); shadows are hard offsets, never blur or glass; Anton
+capitals for titles, labels and buttons, Archivo for text and numbers that
+line up (Anton has no tabular figures). The page's own colour is Electric's
+yellow, as the game's gold before a fighter is chosen; a champion card, a
+boss or a Shop piece brings its own colour (`--el`). Words on a colour are
+ink, as in the game. Pieces taken from the game's screens: the Lobby's
+halftone and its huge outlined name (the hero, the champion panel, the
+footer), slanted tabs (the nav, the element filter), the red rotated badge
+(section stickers, "Free to play"), cards that lift on a hard shadow in
+their element's colour, and slanted slab edges (the raid panel, the roster
+cards' art).
 
 ## Champion data comes from the game
 
 `data/champions.json` (stats, basic attack, three skills, the ultimate,
-featured skins), the skin pictures in `img/skins/` and the roster cards in
+featured skins), the roster cards, the raid panels and the Shop spotlight in
 `index.html` are written from the game's code:
 
 ```bash
@@ -63,25 +87,132 @@ python3 apps/site/tools/make-scenes.py   # -> apps/site/img/modes/, img/shop/
 
 "Make it yours" is the Shop's window (owner, 26 Nov: Shop items and effects
 sell better than raid rewards, mastery and friends; then "the Shop looks
-boring"). One piece at a time on a lit stage: a loop of the fitting room
-itself (the idle, the effect blooming), light rays turning behind it in its
-rarity's colour, sparks rising, its name, collection, line and price in
-coins, and "Try it on in the Shop". Six pieces to pick from under it (three
+boring"). One piece at a time on a lit stage: its loop from the fitting
+room at 60 frames a second (below), light rays turning behind it in its
+rarity's colour, sparks rising, its name, collection, kind and line, and
+"Try it on in the Shop". Six pieces to pick from under it (three
 Legendaries from three collections, two Mythicals, a victory); it turns to
-the next every 7 s while on screen, until the reader picks one.
+the next every 7 s while on screen and motion is on, until the reader picks
+one.
 
-- The loops: `scripts/site-clips/shop.spec.ts` records each piece's stage
-  through Chrome's screencast (about 17 frames a second, with each frame's
-  time; a screenshot per frame managed three), on a 1600 x 1000 window so
-  the stage is drawn large. `make-shop.py` cuts a square round the fighter
-  and writes `img/shop/<name>.webp` (about 300 to 550 KB, only the piece on
-  show loads) and `<name>-still.webp` (the picks, and reduced motion).
+- **No prices, and no word of the game's money** (owner, 27 Nov: "tránh
+  nhắc đến số tiền trong game"). The page says what a piece is and that
+  every piece is cosmetic, never what it costs; the coin icon and the
+  "spend a coin" line are gone. `site.test.ts` ("never names an amount of
+  the game's money") fails on "coin" or "gem" in the page's words, on any
+  Shop price of 1,000 or more written either way, or on a price in
+  `data/champions.json`.
 - The words are written by `gen-data.ts` from the catalog
   (`packages/shared/src/shop.ts`: names, rarities, collections, lines,
-  `itemListPrice`, `MYTHIC_TRIAL_WINS`); `site.test.ts` fails on a name the
-  Shop doesn't sell, a wrong rarity or price, or a missing loop.
-- To show other pieces: `SHOWCASE` (gen-data), `ITEMS` (shop.spec) and
-  `CROPS` (make-shop), with the same names.
+  `MYTHIC_TRIAL_WINS`); `site.test.ts` fails on a name the Shop doesn't
+  sell, a wrong rarity, or a missing loop, poster or thumbnail.
+- To show other pieces: `SHOWCASE` (gen-data); a piece that is not a
+  featured skin also goes in `SPOTLIGHT_EXTRA` (skins.spec.ts).
+
+### Skins with their effects, at 60 frames a second (owner, 27 Nov)
+
+"Skin tướng nên có đủ hiệu ứng full … tăng số khung hình lên luôn cho
+mượt": every look the champion panel shows (the Classic look and the four
+featured skins of each champion, 90 loops) and the spotlight's pieces play
+as the fitting room plays them, at 60 frames a second. The panel and the
+spotlight used still SVGs and 17-frame-a-second WebP loops before.
+
+```bash
+npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/skins.spec.ts --workers=4
+python3 apps/site/tools/make-skin-clips.py        # -> media/skins/, img/skins/
+```
+
+- **What each loop plays** is the fitting room's own showcase cycle
+  (4.4 s, `shop-preview.ts`): a Mythical casts its ultimate at Stage III
+  (the "Ultimate" button), a Legendary plays its victory, a victory item
+  plays on Voltkit, and the Classic look stands in its idle. The recording
+  starts where the stage's clock (`data-animation-time`) crosses a cycle,
+  so the loop is one whole cycle; the idle has no cycle, so
+  `make-skin-clips.py` takes the stretch that comes back closest to its
+  first frame. Eight frames past the end are blended into the start, so
+  nothing jumps where the loop wraps.
+- **How 60 frames a second come off a machine that draws a few:** the
+  stage runs on Playwright's clock. Time is paused and moved on 16 ms
+  between screenshots, so a frame takes as long as the CPU renderer needs
+  and every frame is in its place. Steps of 1000/60 ms let two animation
+  frames through on every 25th step (Playwright's clock runs them every
+  16 ms): the loop jumped 2.5 times a second. With 16 ms steps encoded at
+  60 frames a second the loop plays 4% slower than the game, which no one
+  can see.
+- **One file per loop, H.264 MP4**, 720 x 720, CRF 28 tuned for animation,
+  fast start, no sound: about 90 to 190 KB for an idle, 200 to 230 KB for a
+  Legendary, about 300 KB for a Mythical; about 20 MB for all 92. VP9 and
+  AV1 (WebM) came out larger than H.264 on these stages, and older iPhones
+  play no AV1, so there is no WebM. (Playwright's own Chromium has no H.264;
+  the cloud container's Chrome for Testing plays it.)
+- **Posters and thumbnails:** `img/skins/<name>.webp` is a frame with the
+  effect in full (shown until the loop plays, in Low Power Mode, and while
+  motion is paused); `<name>-thumb.webp` (192 px, cut closer) is the skin
+  strip's and the spotlight picks' picture.
+- **Loading:** only a loop on screen plays (IntersectionObserver), the
+  spotlight's loops wait with `preload="none"`, and the panel loads the
+  look picked. `site.test.ts` checks every look has its loop (under 900 KB),
+  poster and thumbnail. The loops and posters don't count toward the fast
+  lane's file limit (`scripts/merge-lane.mjs`, `siteAsset`).
+
+### The champion panel
+
+A `<dialog>` in Poster: the champion's colour with halftone and its name
+huge and outlined behind a framed stage (the loop of the look on show, its
+name in a tag across the frame's corner, the pause switch), the skin strip
+(Classic, then the featured skins, rarest first), previous / count / next
+under it; the details in an ink column (element tag, name, role, stats as
+slanted bars, the Basic / 1 / 2 / 3 / Ult tabs, Play). Two columns on a
+wide screen and on a phone held sideways (from 600 px wide when 500 px tall
+or less); one column on a phone held upright, the stage under the close
+button. It keeps clear of the Dynamic Island (`env(safe-area-inset-*)` in
+its width). Under 480 px the skill tabs show their key only (the name is
+read out and shown in full below), so no name breaks mid-word.
+
+### Panel transitions
+
+`site.js` wraps each switch in `document.startViewTransition` where the
+browser has it (Chrome and Edge 111, Safari 18, Firefox 144; Baseline since
+October 2025) and sets `html[data-vt]` so `site.css` picks the animation:
+
+| `data-vt`       | What moves                                                                                                      |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| `open`, `close` | the card's portrait grows into the stage and back; the panel wipes in on a slant, the details slide in after it |
+| `next`, `prev`  | the details slide out and the next champion's slide in, as whole panels; the stage cuts over                    |
+| `look`          | a new skin cuts in on a slant over the old one, then an element-coloured slash crosses the stage                |
+| `cut`           | a raid boss or Shop piece cuts in the same way                                                                  |
+| `filter`        | the roster's cards move to their new places                                                                     |
+
+The pairs that cut over each other blend normally (not the cross-fade's
+plus-lighter, which added the two pictures' colours), the old picture stays
+whole under the new one, and the details are clipped to their own column.
+Elements that take part in one kind only are named for it alone (a name on
+them always would capture them in every transition), and the fixed bar is
+named for the page's own transitions so a moving panel stays under it.
+Without view transitions a switch is instant, with small CSS entrances.
+Checked by slowing every animation to a quarter (CDP
+`Animation.setPlaybackRate`) and screenshotting each kind mid-way.
+
+Scroll reveals use CSS scroll-driven animations (`animation-timeline:
+view()`, Chrome 115, Safari 26, Firefox 159) on transform and opacity, so
+they run on the compositor at the screen's rate; `site.js`'s
+IntersectionObserver does it elsewhere. They fill forwards only: an element
+below the screen keeps its own look (a full-page capture or a search engine
+sees it whole) and takes the first frame as it starts to enter, where no one
+sees the change.
+
+### Motion and the pause switch
+
+Every loop, the ticker, the rays and the turning spotlight stop with one
+switch, shown on each stage (WCAG 2.2.2). The page starts paused on a
+device set to Reduce Motion, showing each look's poster, and the switch
+plays the loops for a reader who wants them; the choice is kept on the
+device (`ea-site-motion`). This differs from the game, where less motion is
+the player's switch and never the device's (CLAUDE.md): the game has a
+Settings screen to turn it on; the website's first visit has none, so it
+follows the device until the reader presses play. `tests/unit/reduced-motion.test.ts`
+covers `apps/client` only. When Low Power Mode refuses to start a loop
+(`NotAllowedError`), the switch shows play, and a tap starts it.
 
 ### Raid bosses
 
@@ -138,9 +269,37 @@ from the build machine, so this is from what they are known to do):
   band of its own, cut to the two fighters and the beam, and the words sit
   under it, on phones and desktops alike; no word covers a creature.
 - Avoided for speed: autoplay video heroes, preloading every skin or clip,
-  canvas/WebGL scroll engines, framework bundles. Motion here is CSS (hero
-  drift and entrance, card lift, panel float), scroll reveals start
-  readable, and `prefers-reduced-motion` turns all of it off.
+  canvas/WebGL scroll engines, framework bundles. Motion here moves
+  transform and opacity only, scroll reveals start readable, and the pause
+  switch (or the device's Reduce Motion, until the reader presses play)
+  stops all of it.
+
+Round 5 (27 Nov, Poster). Searched, not opened: the build machine's network
+blocked the live sites and web.dev, so this is from search results and
+write-ups; marked where it is memory rather than a source.
+
+- Character-select switching is the pattern every big game site shares: a
+  strip of portraits swaps one large panel with a slide or cut (Valorant's
+  agents, League's champions, Honkai: Star Rail; from memory). Here: the
+  roster opens a panel whose portrait grows into the stage, and next /
+  previous slide the details as whole panels.
+- Skins are shown in motion with short muted loops beside a thumbnail strip
+  (League's skin pages and its client's hover videos; Riot moved its client
+  to video previews, players having asked to see a skin before buying).
+  Here: each look's own fitting-room loop, at 60 frames a second.
+- Poster's references (Persona 5's red, black and white boxes, Valorant's
+  near-square corners and condensed capitals): one accent on ink, hard
+  edges, huge type, a single contrasting colour for the selected item
+  (mechanicsofmagic.com on Persona 5; a third-party breakdown of Valorant's
+  site). Marvel Rivals' comic gallery was made plainer after players found
+  it hard to use (PC Gamer): flourish never at the cost of reading.
+- Video, not GIF or animated WebP, for loops (web.dev: a 3.7 MB GIF was a
+  551 KB MP4); `muted loop playsinline`, a poster for Low Power Mode, and one
+  pause control for everything that moves (WCAG 2.2.2).
+- View transitions and scroll-driven animations are where today's sites
+  make panels move without a framework; Chrome's case studies are shops
+  (Tokopedia), not games. Clip-path is kept to the few panels, transforms
+  for the many.
 
 ## Images
 
@@ -202,6 +361,23 @@ and Google Play badges linking to the listings (Apple and Google allow their
 badges only for a live listing), and add the app links to the hero.
 
 ## Progress (keep current)
+
+Round 5 (owner, 27 Nov: the website in Poster, professional, today's panel
+transitions; no amounts of the game's money; skins with their full effects
+at a higher frame rate; study famous games' sites):
+
+- [x] Poster across the page and the Account page (tokens, Anton and
+      Archivo, halftone, slabs, stickers, hard shadows)
+- [x] Every look in the champion panel and every spotlight piece plays its
+      fitting-room loop at 60 frames a second (92 MP4 loops, ~20 MB)
+- [x] No prices or coin words anywhere; a test keeps it so
+- [x] View transitions for the panel, skins, next / previous, raids, the
+      spotlight and the filter; scroll-driven reveals; one pause switch
+- [x] Checked at 390×844, 375×667, 667×375, 844×390, 852×393 with the
+      island inset and 1440×900, and each transition mid-way
+- [ ] Support and Privacy keep the game's own look (they are the game's
+      pages, copied): restyle them with the game's `legal.css` when the
+      game's pages move to Poster
 
 Round 3 (owner, 25 Nov 3:35 PM PT: Arena Dusk; bought elementarenausa.com;
 website at the apex, game at play., one session cookie):
