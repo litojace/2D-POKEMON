@@ -352,3 +352,10 @@ this move doesn't touch how the session is stored.
   the three `http://localhost:5173` ones (same paths),
   `https://play.elementarenausa.com/**` and `https://elementarenausa.com/**`;
   Site URL stays `https://play.elementarenausa.com`.
+- 27 Nov, 10:44 AM PT: the old Resend key "Element Arena" (12 Oct, limited
+  to `mail.litojace.com`) is deleted, with the owner's OK here. Nothing used
+  it: Supabase's SMTP has the key "Element Arena (elementarenausa)" since
+  25 Nov (3 account emails since, no send errors), and neither the repo nor
+  Render holds a Resend key. A throwaway sign-up then got its confirmation
+  from `noreply@mail.elementarenausa.com` within 2 s, and was deleted (no
+  rows left).
