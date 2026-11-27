@@ -87,12 +87,19 @@ for (const size of SIZES) {
       const tap = await box(page, "#title-start");
       expect(Math.abs(tap.width - size.width)).toBeLessThanOrEqual(1);
       expect(Math.abs(tap.height - size.height)).toBeLessThanOrEqual(1);
-      // The prompt sits centred under the name, and they don't touch.
+      // The prompt sits under the name, and they don't touch: centred on
+      // the screen, or in Poster (its cover) lined up with the name on the
+      // ink slab at the left.
       const prompt = await box(page, ".title-prompt");
-      expect(
-        Math.abs(prompt.x + prompt.width / 2 - size.width / 2),
-      ).toBeLessThanOrEqual(2);
       const brand = await box(page, ".title-brand");
+      const poster = await page.evaluate(
+        () => document.documentElement.dataset.ui === "poster",
+      );
+      expect(
+        poster
+          ? Math.abs(prompt.x - brand.x)
+          : Math.abs(prompt.x + prompt.width / 2 - size.width / 2),
+      ).toBeLessThanOrEqual(2);
       expect(brand.y + brand.height).toBeLessThan(prompt.y);
       // The corners: inside the safe areas, clear of each other and the name.
       const who = await box(page, "#title-switch");
