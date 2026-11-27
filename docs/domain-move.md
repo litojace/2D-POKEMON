@@ -145,9 +145,9 @@ http.request.uri.path)`, preserve query string on. The ACME path stays
       Keep the redirect and the `parena` record for good afterwards (old QR
       codes live on in saved pictures). `CLIENT_ORIGIN` is
       `https://play.elementarenausa.com` alone since 27 Nov, and Supabase's
-      `https://parena.litojace.com/**` Redirect URL comes out the same day
-      (owner, in the dashboard): early, not after 30 days, because nobody
-      was still using `parena`.
+      four `parena` Redirect URLs came out the same day (owner, in the
+      dashboard): early, not after 30 days, because nobody was still using
+      `parena`.
 
 ## What players notice
 
@@ -343,5 +343,9 @@ this move doesn't touch how the session is stored.
   monitor every 6 h, bots, our probes). A page on `parena` can't run the
   game any more (its scripts redirect to `play.` and fail CORS), and deploys
   tell open tabs to reload, so no client still needed `parena` in
-  `CLIENT_ORIGIN`. The iPhone app is `capacitor://localhost`. The owner
-  removes `https://parena.litojace.com/**` from Supabase's Redirect URLs.
+  `CLIENT_ORIGIN`. The iPhone app is `capacitor://localhost`. About 10:30
+  AM PT the owner deleted all four `parena` Redirect URLs in Supabase
+  (`/email-confirmed`, `/auth/callback`, `/reset-password`, `/**`). Left:
+  the three `http://localhost:5173` ones (same paths),
+  `https://play.elementarenausa.com/**` and `https://elementarenausa.com/**`;
+  Site URL stays `https://play.elementarenausa.com`.
