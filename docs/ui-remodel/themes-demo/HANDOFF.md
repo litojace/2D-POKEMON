@@ -59,13 +59,17 @@ touch controls stay round; whether today's look is deleted for good (see
   friend's name doesn't open its options; Shop tiles of two sizes in Skins
   and Mythic. The session was stopped for over three hours by the account's
   usage limit (weekly limit in warning).
-- **#555** (other session): Poster's defeat sheets (title, score and primary
-  button were ink on ink: launch-blocking), the reward Reveal, rite cards,
-  Spire briefings.
+- **#557** (other session, FAST; reported, not checked by me): Poster on the
+  welcome sign-up and log-in card, chat, the Plaza's chrome and the admin
+  panel.
+
+Merged after these notes were first written: **#555** (main c85bb96, checked
+with git): Poster's defeat sheets, whose title, score and primary button were
+ink on ink, plus the reward Reveal, rite cards and Spire briefings.
 
 ## Order of what is left
 
-1. #555: the defeat-sheet fix.
+1. Done: #555, the defeat-sheet fix.
 2. Finish the full-suite run on Poster, fix list (a), then merge #553 on a
    green full run with main not red. Watch main and the deploy. The revert is
    one line (the default look back to none).
