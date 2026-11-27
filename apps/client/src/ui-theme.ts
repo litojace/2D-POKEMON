@@ -55,7 +55,8 @@ export const UI_THEMES: readonly UiTheme[] = [
     id: "showcase",
     name: "Showcase",
     blurb: "A dark stage with your fighter in the light.",
-    ready: false,
+    // On since 27 Nov 2026, with Poster: the owner saw both sets.
+    ready: true,
     preview: showcasePreview,
     load: () => import("./themes/showcase/index"),
   },

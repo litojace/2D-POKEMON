@@ -23,14 +23,6 @@ export async function openHub(page: Page) {
         localStorage.setItem("ea-graphics", "high");
       if (localStorage.getItem("ea-hub-scene") === null)
         localStorage.setItem("ea-hub-scene", "lobby");
-      // Once two looks are ready the look picker opens on a Lobby that
-      // hasn't been asked (ui-theme.ts): the harness's account has been,
-      // unless a test is about the picker (__lookAsk).
-      if (!(window as any).__lookAsk)
-        localStorage.setItem(
-          "ea-ui-asked:11111111-1111-4111-8111-111111111111",
-          "1",
-        );
     } catch {
       /* No storage: Auto. */
     }

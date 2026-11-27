@@ -77,13 +77,17 @@ The picker comes **after the guest warning and before the Lobby tour**:
   device (`ea-ui-asked:<account>`); a second account on the same device is
   asked too, with the device's current look marked.
 
-The visual harness marks its account as asked (`tests/visual/helpers.ts`,
-`openHub`, as it pins the graphics setting), so the picker doesn't open over
-every spec's Lobby; a test about the picker sets `window.__lookAsk` first.
+The visual harness marks its account as asked
+(`tests/visual/harness/look-asked.ts`, the first thing its page loads), so
+the picker doesn't open over every spec's Lobby, whichever way a spec gets
+there; a test about the picker sets `window.__lookAsk` before the page loads.
 
-**Poster is ready** (27 Nov 2026: the owner saw the full set from the real
-build and said to turn it on). Showcase is not yet, so players still see no
-choice: the picker and the Look row wait for the second look.
+**Both looks are ready** (27 Nov 2026: the owner saw both full sets from the
+real build and said to turn them on). The picker is live: a new account
+meets it on its first Lobby, an account that was here before meets it once
+on its next one, and Settings → Display → Look changes the answer. Turning
+either `ready` back off hides the picker and the Look row again and puts
+every player back on the look underneath: that is the revert.
 
 ## A theme's folder
 

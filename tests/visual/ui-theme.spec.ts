@@ -3,8 +3,9 @@ import { box, inside, openHub, skipTour, snap } from "./helpers";
 
 // Choosing the game's look (ui-theme.ts, ui-theme-picker.ts): the dialog a
 // player meets once on the Lobby, before the Lobby tour, and Settings →
-// Display → Look. Both stay dark until two looks are ready; `?ui-preview=1`
-// offers the looks in hand, which is how these tests see them.
+// Display → Look. Both looks are ready since 27 Nov 2026, so the picker is
+// live. The harness marks its account as already asked (harness/look-asked.ts);
+// these tests undo that with `__lookAsk`.
 const ACCOUNT = "11111111-1111-4111-8111-111111111111";
 /** The page's address gains a query before the game reads it. */
 const withQuery = (page: Page, query: string) =>
@@ -241,31 +242,145 @@ test.describe("phone", () => {
     isMobile: true,
   });
 
-  test("until two looks are ready nobody is asked, Settings has no Look row and a saved look is ignored", async ({
+  test("a new player is asked on their first Lobby, before the tour, with nothing in the address", async ({
     page,
-  }) => {
+  }, info) => {
     await newPlayer(page);
     await notAsked(page);
-    // Showcase is the look not yet ready (Poster is, since 27 Nov 2026).
-    await page.addInitScript(() => {
-      try {
-        localStorage.setItem("ea-ui", "showcase");
-      } catch {
-        /* No storage. */
-      }
-    });
     const errors = await openHub(page);
-    // The tour is a new player's first dialog, as before.
+    await expect(picker(page)).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator(".hub-tour")).toHaveCount(0);
+    expect(await look(page)).toBeNull();
+    await snap(page, info, "look-first-lobby");
+    await picker(page).locator('[data-look="showcase"]').click();
+    await expect(picker(page)).toHaveCount(0);
+    await expect.poll(() => look(page)).toBe("showcase");
     await expect(page.locator(".hub-tour")).toBeVisible({ timeout: 30_000 });
+    expect(errors).toEqual([]);
+  });
+
+  test("an account that was here before the looks is asked once, then never, and changes its mind in Settings", async ({
+    page,
+  }) => {
+    await skipTour(page);
+    await notAsked(page);
+    const errors = await openHub(page);
+    await expect(picker(page)).toBeVisible({ timeout: 20_000 });
+    await picker(page).locator('[data-look="poster"]').click();
+    await expect.poll(() => look(page)).toBe("poster");
+    // Back and forth in Settings, live.
+    await page.evaluate(() => document.getElementById("settings")!.click());
+    const row = page.locator("#dialog .st-look");
+    await expect(row).toBeVisible();
+    await row.locator('[data-look-set="showcase"]').click();
+    await expect.poll(() => look(page)).toBe("showcase");
+    await row.locator('[data-look-set="poster"]').click();
+    await expect.poll(() => look(page)).toBe("poster");
+    await expect(page.locator("#ui-theme-css")).toHaveCount(1);
+    await expect(row.locator('[data-look-set="poster"]')).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    // The next visit: Poster, and no question.
+    await page.reload();
+    await page.waitForFunction(() => !!(window as any).__sock);
+    await expect
+      .poll(
+        async () => {
+          await page.evaluate(() => (window as any).__sock.fire("connect"));
+          return page.locator("#lobby-play").isVisible();
+        },
+        { timeout: 30_000, intervals: [500, 1000] },
+      )
+      .toBe(true);
+    await expect(page.locator("#server-startup")).toHaveCount(0, {
+      timeout: 60_000,
+    });
+    expect(await look(page)).toBe("poster");
+    await page.waitForTimeout(1500);
+    await expect(picker(page)).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test("the harness's account has been asked: no picker, today's look, and Settings offers both", async ({
+    page,
+  }) => {
+    await skipTour(page);
+    const errors = await openHub(page);
+    await page.waitForTimeout(1500);
     await expect(picker(page)).toHaveCount(0);
     expect(await look(page)).toBeNull();
     await expect(page.locator("#ui-theme-css")).toHaveCount(0);
-    await page.locator("[data-tour=skip]").click();
     await page.evaluate(() => document.getElementById("settings")!.click());
-    await expect(page.locator("#dialog .settings-screen")).toBeVisible();
-    await expect(page.locator("#dialog .st-look")).toHaveCount(0);
+    const row = page.locator("#dialog .st-look");
+    await expect(row.locator("[data-look-set]")).toHaveCount(2);
+    // Nothing chosen yet: neither is marked.
+    await expect(row.locator('[aria-checked="true"]')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
+
+  for (const id of ["poster", "showcase"] as const)
+    test(`the picker drawn in ${id}: a second account on a device that has that look`, async ({
+      page,
+    }, info) => {
+      await skipTour(page);
+      await notAsked(page);
+      await page.addInitScript((look) => {
+        try {
+          localStorage.setItem("ea-ui", look);
+        } catch {
+          /* No storage. */
+        }
+      }, id);
+      const errors = await openHub(page);
+      expect(await look(page)).toBe(id);
+      await expect(picker(page)).toBeVisible({ timeout: 20_000 });
+      await expect
+        .poll(() =>
+          picker(page)
+            .locator("img")
+            .evaluateAll((imgs) =>
+              imgs.every(
+                (i) =>
+                  (i as HTMLImageElement).complete &&
+                  (i as HTMLImageElement).naturalWidth > 0,
+              ),
+            ),
+        )
+        .toBe(true);
+      await snap(page, info, `look-picker-in-${id}`);
+      // The device's look is the one marked; both cards are whole.
+      await expect(picker(page).locator(`[data-look="${id}"]`)).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      const screen = { x: 0, y: 0, width: 844, height: 390 };
+      expect(inside(await box(page, ".look-modal"), screen)).toBe(true);
+      const cards = await picker(page)
+        .locator(".look-card")
+        .evaluateAll((els) =>
+          els.map((el) => {
+            const r = el.getBoundingClientRect();
+            const text = el.querySelector(".look-card-text")!;
+            return {
+              x: r.x,
+              y: r.y,
+              width: r.width,
+              height: r.height,
+              cut: [...text.children].some(
+                (c) => c.scrollWidth > c.clientWidth + 1,
+              ),
+            };
+          }),
+        );
+      expect(cards).toHaveLength(2);
+      for (const c of cards) {
+        expect(inside(c, await box(page, ".look-modal"))).toBe(true);
+        expect(c.cut).toBe(false);
+      }
+      expect(Math.abs(cards[0].width - cards[1].width)).toBeLessThan(1.5);
+      expect(errors).toEqual([]);
+    });
 
   test("?ui= shows a look for one page load without asking, and ?ui=classic the look underneath", async ({
     page,
