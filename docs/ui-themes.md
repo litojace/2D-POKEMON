@@ -77,10 +77,13 @@ The picker comes **after the guest warning and before the Lobby tour**:
   device (`ea-ui-asked:<account>`); a second account on the same device is
   asked too, with the device's current look marked.
 
-When the looks are turned on, the visual harness needs a default
-(`tests/visual/helpers.ts`, `openHub`: mark the harness's account as asked,
-as it pins the graphics setting), or the picker opens over every spec's
-Lobby.
+The visual harness marks its account as asked (`tests/visual/helpers.ts`,
+`openHub`, as it pins the graphics setting), so the picker doesn't open over
+every spec's Lobby; a test about the picker sets `window.__lookAsk` first.
+
+**Poster is ready** (27 Nov 2026: the owner saw the full set from the real
+build and said to turn it on). Showcase is not yet, so players still see no
+choice: the picker and the Look row wait for the second look.
 
 ## A theme's folder
 
