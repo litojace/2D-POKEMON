@@ -35,15 +35,17 @@ game's canvas, so the look doesn't change it). The second records the
 three Mythical skins in the game's fitting room at Stage III, in Poster
 (the spec calls `onPlayersLook()`), frame by frame on the page's own clock
 (about 6 minutes): standing, then each one's Entrance, Victory and
-Ultimate with their effects as the game draws them. `make-reel.py` cuts
-those into the skins Reel and picks each skin's still at its Ultimate's
-peak; `make-posts.mjs` (run with tsx, as it reads packages/shared) puts the
+Ultimate with their effects as the game draws them; the same config's
+`music.spec.ts` renders the game's own hub music (the tune the Shop plays)
+through the game's synth into `instagram-clips/music.wav`. `make-reel.py`
+cuts the recordings into the skins Reel, puts the music under it (faded,
+levelled to -14 LUFS) and picks each skin's still at its Ultimate's peak; `make-posts.mjs` (run with tsx, as it reads packages/shared) puts the
 stills on post 8.
 
 The pictures land in `instagram/` (not committed): `profile-picture.png`,
 each post as `NN-name-feed.jpg` (1080 × 1350, 4:5), `-square.jpg`
 (1080 × 1080) and `-story.jpg` (1080 × 1920), and the Reel,
-`08-skins-reel.mp4` (1080 × 1920, 30 fps, H.264, 27 s, no sound) with its
+`08-skins-reel.mp4` (1080 × 1920, 30 fps, H.264, 27 s, AAC sound) with its
 cover `08-skins-reel-cover.jpg`. Post the **feed** version; use the
 **story** version for Stories. The profile grid shows posts cropped to 3:4,
 so every word sits 84 px or more from the left and right edges.
@@ -174,11 +176,10 @@ Play free, link in bio.
 
 Post `08-skins-reel.mp4` as a **Reel**, with `08-skins-reel-cover.jpg` as
 its cover: the three skins' Entrance, Victory and Ultimate with their full
-effects. The file has no sound yet, and Reels without sound reach fewer
-people. Posted by hand, add a track from Instagram's audio library (a
-Business account gets its commercially licensed part). Posted through the
-API, which can't add library music, the Reel needs its own sound: render
-the game's own music into it first. `08-skins-feed.jpg` (the three at their
+effects, to the game's own hub music. The API can't add Instagram's music
+library, so the Reel carries its own sound; posted by hand, a track from
+the library may replace it (a Business account gets its commercially
+licensed part). `08-skins-feed.jpg` (the three at their
 Ultimate's peak) is the still version, for a later post or Story.
 
 ```
@@ -282,5 +283,5 @@ cloud environment's secure credential form, never into a chat or the repo.
 The API publishes photos, carousels, Reels and Stories (Stories only from a
 Business account) and reads, answers and hides comments. It can't add
 Instagram's music library, link or poll stickers, or answer DMs, so a Reel
-carries its own sound (the game's own music can be rendered into it) and
+carries its own sound (the game's own music, `music.spec.ts`) and
 links stay in the bio. Pictures are fetched by Meta from a public address.

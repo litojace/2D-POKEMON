@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The skins Reel and post 8's stills, from the fitting room recordings.
 
-    npx playwright test --config scripts/instagram/playwright.config.ts
+    npx playwright test --config scripts/instagram/playwright.config.ts   # skins and music
     python3 scripts/instagram/make-reel.py          # from the repo root
     npx tsx scripts/instagram/make-posts.mjs        # post 8 uses the stills
 
@@ -13,7 +13,8 @@ halftone, ink plates, a white clipping
 with a hard shadow, Anton and Archivo), adds an end card, and writes:
 
 - instagram/08-skins-reel.mp4: 1080 x 1920, 30 fps, H.264 (Instagram's
-  Reel format), no sound: add a track from Instagram's library when posting.
+  Reel format), with the game's own hub music (music.spec.ts renders it to
+  instagram-clips/music.wav; without it the Reel is silent).
 - instagram/08-skins-reel-cover.jpg: the Reel's cover (the Ultimate's peak).
 - instagram-clips/<skin>/still.jpg: each skin at its Ultimate's peak, the
   pictures on post 8 (make-posts.mjs).
@@ -242,10 +243,26 @@ def main():
         end.save(work / f"{n:04d}.jpg", quality=93)
         n += 1
     (cover or end).save(OUT / "08-skins-reel-cover.jpg", quality=92)
+    # The game's own music under it (music.spec.ts), when it was rendered:
+    # faded in and out, levelled to -14 LUFS, as social video plays.
+    seconds = n / FPS
+    music = CLIPS / "music.wav"
+    sound = (
+        [
+            "-i", str(music),
+            "-af", f"afade=t=in:d=0.3,afade=t=out:st={seconds - 2:.2f}:d=2,loudnorm=I=-14:TP=-1.5:LRA=11",
+            "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-shortest",
+        ]
+        if music.exists()
+        else []
+    )
+    if not sound:
+        print("no instagram-clips/music.wav: the Reel is silent (run music.spec.ts)", file=sys.stderr)
     subprocess.run(
         [
             "ffmpeg", "-y", "-loglevel", "error", "-framerate", str(FPS),
             "-i", str(work / "%04d.jpg"),
+            *sound,
             "-c:v", "libx264", "-preset", "slow", "-crf", "18",
             "-pix_fmt", "yuv420p", "-profile:v", "high", "-movflags", "+faststart",
             str(OUT / "08-skins-reel.mp4"),
