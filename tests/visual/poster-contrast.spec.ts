@@ -36,6 +36,17 @@ type Word = {
 const words = (page: Page) =>
   page.evaluate(() => {
     const out: Word[] = [];
+    const paint = document.createElement("canvas").getContext("2d", {
+      willReadFrequently: true,
+    })!;
+    paint.canvas.width = paint.canvas.height = 1;
+    const toRgba = (c: string) => {
+      paint.clearRect(0, 0, 1, 1);
+      paint.fillStyle = c;
+      paint.fillRect(0, 0, 1, 1);
+      const d = paint.getImageData(0, 0, 1, 1).data;
+      return [d[0], d[1], d[2], d[3] / 255];
+    };
     const walker = document.createTreeWalker(
       document.body,
       NodeFilter.SHOW_TEXT,
@@ -71,12 +82,9 @@ const words = (page: Page) =>
         r.y + r.height / 2,
       );
       if (!hit || !(el.contains(hit) || hit.contains(el))) continue;
-      const m = cs.color.match(/rgba?\(([^)]+)\)/);
-      if (!m) continue;
-      const p = m[1]
-        .split(/[ ,/]+/)
-        .filter(Boolean)
-        .map(Number);
+      // Any colour syntax (since --el-text, accents compute as oklch()):
+      // paint one pixel with it and read the pixel back.
+      const p = toRgba(cs.color);
       const size = parseFloat(cs.fontSize);
       const bold =
         Number(cs.fontWeight) >= 700 || cs.fontFamily.includes("Anton");
