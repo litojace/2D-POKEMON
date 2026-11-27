@@ -1637,11 +1637,11 @@ body.hub-plaza #pwa-banner:has(.pwa-actions:not([hidden])) {
     opacity: 0;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .plaza-layer .pz-interact[data-id="fish"],
-  .plaza-layer .pz-interact[data-id="fish"]::after {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .plaza-layer .pz-interact[data-id="fish"],
+:where(:root[data-motion="reduced"])
+  .plaza-layer
+  .pz-interact[data-id="fish"]::after {
+  animation: none;
 }
 .plaza-layer .pz-interact[data-id="fish"] .ico {
   width: 1.7em;
@@ -2036,13 +2036,13 @@ body.hub-plaza #pwa-banner:has(.pwa-actions:not([hidden])) {
 .plaza-layer.phone .pz-catch-card b {
   font-size: calc(17px * var(--text-scale, 1));
 }
-@media (prefers-reduced-motion: reduce) {
-  .plaza-layer .pz-catch,
-  .plaza-layer .pz-catch-card .rays,
-  .plaza-layer .pz-catch-card svg,
-  .plaza-layer .pz-fish-act[data-kind="bite"] {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .plaza-layer .pz-catch,
+:where(:root[data-motion="reduced"]) .plaza-layer .pz-catch-card .rays,
+:where(:root[data-motion="reduced"]) .plaza-layer .pz-catch-card svg,
+:where(:root[data-motion="reduced"])
+  .plaza-layer
+  .pz-fish-act[data-kind="bite"] {
+  animation: none;
 }
 /* In fishing mode the camera is in close and the angler stands near the
    middle: the catch card waits at the right, under the clock, fish beside
@@ -2574,10 +2574,8 @@ body.hub-plaza #pwa-banner:has(.pwa-actions:not([hidden])) {
     scale: 0.6;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .plaza-layer .pz-qpanel {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .plaza-layer .pz-qpanel {
+  animation: none;
 }
 .plaza-layer .pz-qpanel header {
   flex: none;

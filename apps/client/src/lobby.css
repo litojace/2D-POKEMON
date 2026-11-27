@@ -1070,10 +1070,8 @@
     transform: scale(2.4);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .lobby-badge::after {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .lobby-badge::after {
+  animation: none;
 }
 .lobby-spark {
   color: #ffe39d !important;
@@ -1572,22 +1570,20 @@
     height: 46px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .lobby-play-button::after {
-    animation: none;
-    opacity: 0;
-  }
-  .lobby-play::before {
-    animation: none;
-  }
-  .lobby-fighter-art,
-  .lobby-member-art {
-    animation: none;
-  }
-  .lobby-emote-bubble.is-popping,
-  .lobby-fighter-art.is-hopping {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .lobby-play-button::after {
+  animation: none;
+  opacity: 0;
+}
+:where(:root[data-motion="reduced"]) .lobby-play::before {
+  animation: none;
+}
+:where(:root[data-motion="reduced"]) .lobby-fighter-art,
+:where(:root[data-motion="reduced"]) .lobby-member-art {
+  animation: none;
+}
+:where(:root[data-motion="reduced"]) .lobby-emote-bubble.is-popping,
+:where(:root[data-motion="reduced"]) .lobby-fighter-art.is-hopping {
+  animation: none;
 }
 
 /* ── Hub top bar: the scene switch and fixed-size boxes ─────────────────── */

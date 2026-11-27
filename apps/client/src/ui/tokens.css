@@ -260,10 +260,8 @@
     --split-main: clamp(760px, 58vw, 920px);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --dur-1: 0ms;
-    --dur-2: 0ms;
-    --dur-3: 0ms;
-  }
+:root:where([data-motion="reduced"]) {
+  --dur-1: 0ms;
+  --dur-2: 0ms;
+  --dur-3: 0ms;
 }

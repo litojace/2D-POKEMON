@@ -1118,10 +1118,8 @@ dialog input[type="range"] {
     display: none;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
-  }
+:where(:root[data-motion="reduced"]) * {
+  transition: none !important;
 }
 /* Selection portraits share the battle artwork, with a playful idle rig. */
 @keyframes fighter-look {
@@ -1462,10 +1460,8 @@ dialog input[type="range"] {
   opacity: calc(var(--hud-opacity, 0.85) * 0.47);
 }
 /* Back from its cooldown: one flash. */
-@media (prefers-reduced-motion: no-preference) {
-  .touch-buttons button.skill-ready {
-    animation: skill-ready 0.5s ease-out;
-  }
+:where(:root:not([data-motion="reduced"])) .touch-buttons button.skill-ready {
+  animation: skill-ready 0.5s ease-out;
 }
 @keyframes skill-ready {
   0% {
@@ -1680,10 +1676,8 @@ body.battle-active.touch-mode {
     font-size: calc(11px * var(--text-scale, 1));
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .touch-buttons button {
-    transition: none;
-  }
+:where(:root[data-motion="reduced"]) .touch-buttons button {
+  transition: none;
 }
 #pwa-banner {
   position: fixed;
@@ -1817,10 +1811,8 @@ body.battle-active.touch-mode {
 #pwa-takeover .pwa-takeover-later:hover:not(:disabled) {
   background: #1d3050;
 }
-@media (prefers-reduced-motion: reduce) {
-  #pwa-takeover {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) #pwa-takeover {
+  animation: none;
 }
 /* In a battle: a short pill at the bottom middle, between the joystick and
    the skill buttons, clear of the score at the top (owner, 21 Nov 2026: at
@@ -2289,10 +2281,8 @@ dialog {
     bottom: calc(var(--safe-bottom) + var(--stadium-bottom, 44px) + 6px);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .spectator {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .spectator {
+  animation: none;
 }
 /* Battle quality Low: the stands' crowd stands still (decoration only). */
 body.battle-still .spectator {
@@ -2521,12 +2511,10 @@ body.battle-still .spectator {
     letter-spacing: 1px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .selected-art .fighter-ears,
-  .selected-art .fighter-armR,
-  .selected-art .fighter-torso {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .selected-art .fighter-ears,
+:where(:root[data-motion="reduced"]) .selected-art .fighter-armR,
+:where(:root[data-motion="reduced"]) .selected-art .fighter-torso {
+  animation: none;
 }
 .selected-art .creature-portrait {
   width: 190px;
@@ -2579,10 +2567,8 @@ body.battle-still .spectator {
     transform: scale(1.015, 1.035);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .selected-art .creature-portrait {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .selected-art .creature-portrait {
+  animation: none;
 }
 .selected-art {
   position: relative;
@@ -2785,12 +2771,10 @@ body.battle-still .spectator {
 .player-title.steady::after {
   animation: none;
 }
-@media (prefers-reduced-motion: reduce) {
-  .player-title,
-  .player-title::before,
-  .player-title::after {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .player-title,
+:where(:root[data-motion="reduced"]) .player-title::before,
+:where(:root[data-motion="reduced"]) .player-title::after {
+  animation: none;
 }
 /* Alive selection artwork uses the same independent parts as the Phaser rig. */
 .selected-art .fighter-face {
@@ -2836,10 +2820,8 @@ body.battle-still .spectator {
     transform: rotate(8deg);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .selected-art svg g {
-    animation: none !important;
-  }
+:where(:root[data-motion="reduced"]) .selected-art svg g {
+  animation: none !important;
 }
 
 /* Ground contact is separate from the creature group. */
@@ -3295,10 +3277,8 @@ dialog.has-dialog-tabs {
     box-shadow: 0 0 0 6px #3ccf7a00;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .online-dot.match {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .online-dot.match {
+  animation: none;
 }
 .online-state {
   padding: 2px 8px;
@@ -3608,11 +3588,9 @@ body::before {
     transform: rotate(0deg);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .rotate-hint .rotate-phone {
-    animation: none;
-    transform: rotate(-90deg);
-  }
+:where(:root[data-motion="reduced"]) .rotate-hint .rotate-phone {
+  animation: none;
+  transform: rotate(-90deg);
 }
 
 /* ---- Desktop battle: one fixed screen, no page scrolling ----
@@ -3872,10 +3850,8 @@ button.binding.listening {
     background: color-mix(in srgb, var(--ui-accent) 3.1%, transparent);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  button.binding.listening {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) button.binding.listening {
+  animation: none;
 }
 .binding-note {
   min-height: 2.8em;
@@ -3991,59 +3967,61 @@ html.zoom-locked dialog :is(input, textarea) {
 
 /* ---- Smooth transitions across the site ----
    Everything here is skipped for players who ask for reduced motion. */
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes ea-rise {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
+@keyframes ea-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  @keyframes ea-fade {
-    from {
-      opacity: 0;
-    }
+}
+@keyframes ea-fade {
+  from {
+    opacity: 0;
   }
-  @keyframes ea-pop {
-    from {
-      opacity: 0;
-      transform: translateY(8px) scale(0.97);
-    }
+}
+@keyframes ea-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
   }
-  /* Screens: menu, room and battle fade up as they appear. */
-  #menu:not([hidden]),
-  #battle:not([hidden]) {
-    animation: ea-fade 0.28s ease-out;
-  }
-  #menu.screen-enter .room-panel {
-    animation: ea-rise 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  }
-  #menu.screen-enter .room-panel {
-    animation-delay: 0.1s;
-  }
-  /* The fighter panel slides open under the chosen card. */
-  /* Cards respond to hover and taps. */
-  /* Menu buttons press in slightly (touch battle buttons have their own). */
+}
+/* Screens: menu, room and battle fade up as they appear. */
+:where(:root:not([data-motion="reduced"])) #menu:not([hidden]),
+:where(:root:not([data-motion="reduced"])) #battle:not([hidden]) {
+  animation: ea-fade 0.28s ease-out;
+}
+:where(:root:not([data-motion="reduced"])) #menu.screen-enter .room-panel {
+  animation: ea-rise 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+:where(:root:not([data-motion="reduced"])) #menu.screen-enter .room-panel {
+  animation-delay: 0.1s;
+}
+/* The fighter panel slides open under the chosen card. */
+/* Cards respond to hover and taps. */
+/* Menu buttons press in slightly (touch battle buttons have their own). */
+:where(:root:not([data-motion="reduced"]))
   :is(.primary, .secondary, .quiet, .bot-level):not(:disabled):active {
-    transform: scale(0.97);
-  }
-  /* Dialogs and their backdrop ease in. */
-  dialog[open] {
-    animation: ea-pop 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-  dialog[open]::backdrop {
-    animation: ea-fade 0.24s ease-out;
-  }
-  /* The countdown card updates every second, so it stays still. The Reveal
+  transform: scale(0.97);
+}
+/* Dialogs and their backdrop ease in. */
+:where(:root:not([data-motion="reduced"])) dialog[open] {
+  animation: ea-pop 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+:where(:root:not([data-motion="reduced"])) dialog[open]::backdrop {
+  animation: ea-fade 0.24s ease-out;
+}
+/* The countdown card updates every second, so it stays still. The Reveal
      is a whole-screen loading screen: there from its first frame, opaque,
      never fading in over the arena (owner, 20 Nov 2026: the arena and both
      fighters showed for a second or two before it on an iPhone). */
+:where(:root:not([data-motion="reduced"]))
   .overlay-card:not(:empty):not(.countdown-card):not(.match-reveal) {
-    animation: ea-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-  /* Room list rows and the header menu panel. */
-  .header-menu[open] .header-menu-panel {
-    animation: ea-pop 0.18s ease-out;
-  }
+  animation: ea-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Room list rows and the header menu panel. */
+:where(:root:not([data-motion="reduced"]))
+  .header-menu[open]
+  .header-menu-panel {
+  animation: ea-pop 0.18s ease-out;
 }
 /* Dialogs scroll on their own; reaching their end never scrolls the page. */
 dialog {
@@ -4093,15 +4071,13 @@ html.scroll-locked {
   color: var(--lime);
   font-weight: 800;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .ability.ult-ready,
-  .touch-buttons button.ult-ready {
-    animation: ult-pulse 1.1s ease-in-out infinite;
-  }
-  @keyframes ult-pulse {
-    50% {
-      box-shadow: 0 0 32px color-mix(in srgb, var(--ui-accent) 80%, transparent);
-    }
+:where(:root:not([data-motion="reduced"])) .ability.ult-ready,
+:where(:root:not([data-motion="reduced"])) .touch-buttons button.ult-ready {
+  animation: ult-pulse 1.1s ease-in-out infinite;
+}
+@keyframes ult-pulse {
+  50% {
+    box-shadow: 0 0 32px color-mix(in srgb, var(--ui-accent) 80%, transparent);
   }
 }
 /* ---- Post-match recap ---- */
@@ -4523,68 +4499,73 @@ button.small {
     0 0 6px color-mix(in srgb, var(--ui-accent) 80%, transparent)
   );
 }
-@media (prefers-reduced-motion: no-preference) {
-  .ability.ult-ready::before,
-  .touch-buttons button.ult-ready::before {
-    animation: ult-spin 1.6s linear infinite;
+:where(:root:not([data-motion="reduced"])) .ability.ult-ready::before,
+:where(:root:not([data-motion="reduced"]))
+  .touch-buttons
+  button.ult-ready::before {
+  animation: ult-spin 1.6s linear infinite;
+}
+:where(:root:not([data-motion="reduced"])) .ability.ult-ready::after,
+:where(:root:not([data-motion="reduced"]))
+  .touch-buttons
+  button.ult-ready::after {
+  animation: ult-sweep 2.4s ease-in-out infinite;
+}
+:where(:root:not([data-motion="reduced"])) .ability.ult-ready .skill-icon,
+:where(:root:not([data-motion="reduced"]))
+  .touch-buttons
+  button.ult-ready
+  .skill-icon {
+  animation: ult-bob 1.2s ease-in-out infinite;
+}
+/* The moment it fills: a quick pop and flash. */
+:where(:root:not([data-motion="reduced"])) .ability.ult-burst,
+:where(:root:not([data-motion="reduced"])) .touch-buttons button.ult-burst {
+  animation:
+    ult-pop 0.55s cubic-bezier(0.2, 1.6, 0.4, 1),
+    ult-pulse 1.1s ease-in-out 0.55s infinite;
+}
+@keyframes ult-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0turn);
   }
-  .ability.ult-ready::after,
-  .touch-buttons button.ult-ready::after {
-    animation: ult-sweep 2.4s ease-in-out infinite;
+  to {
+    transform: translate(-50%, -50%) rotate(1turn);
   }
-  .ability.ult-ready .skill-icon,
-  .touch-buttons button.ult-ready .skill-icon {
-    animation: ult-bob 1.2s ease-in-out infinite;
+}
+@keyframes ult-sweep {
+  0%,
+  55% {
+    background-position:
+      -160% 0,
+      0 0,
+      0 0;
   }
-  /* The moment it fills: a quick pop and flash. */
-  .ability.ult-burst,
-  .touch-buttons button.ult-burst {
-    animation:
-      ult-pop 0.55s cubic-bezier(0.2, 1.6, 0.4, 1),
-      ult-pulse 1.1s ease-in-out 0.55s infinite;
+  100% {
+    background-position:
+      260% 0,
+      0 0,
+      0 0;
   }
-  @keyframes ult-spin {
-    from {
-      transform: translate(-50%, -50%) rotate(0turn);
-    }
-    to {
-      transform: translate(-50%, -50%) rotate(1turn);
-    }
+}
+@keyframes ult-bob {
+  50% {
+    transform: translateY(-2px) scale(1.08);
+    filter: drop-shadow(0 0 10px #fff2b0);
   }
-  @keyframes ult-sweep {
-    0%,
-    55% {
-      background-position:
-        -160% 0,
-        0 0,
-        0 0;
-    }
-    100% {
-      background-position:
-        260% 0,
-        0 0,
-        0 0;
-    }
+}
+@keyframes ult-pop {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
   }
-  @keyframes ult-bob {
-    50% {
-      transform: translateY(-2px) scale(1.08);
-      filter: drop-shadow(0 0 10px #fff2b0);
-    }
+  35% {
+    transform: scale(1.14);
+    filter: brightness(1.9);
   }
-  @keyframes ult-pop {
-    0% {
-      transform: scale(1);
-      filter: brightness(1);
-    }
-    35% {
-      transform: scale(1.14);
-      filter: brightness(1.9);
-    }
-    100% {
-      transform: scale(1);
-      filter: brightness(1);
-    }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
   }
 }
 /* ---- Rite icons: the skill it changes + a badge for the kind of change ---- */
@@ -5734,10 +5715,8 @@ body.battle-raid:not(.touch-mode) #battle {
     visibility: visible;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  #arena-overlay.raid-victory-reveal {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) #arena-overlay.raid-victory-reveal {
+  animation: none;
 }
 
 /* Raid brief: miniature combat diagrams, with short captions. */
@@ -5870,13 +5849,11 @@ body.battle-raid:not(.touch-mode) #battle {
     font-size: calc(11px * var(--text-scale, 1));
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .raid-guide-scene * {
-    animation: none !important;
-  }
-  .raid-guide-revive {
-    stroke-dashoffset: 0;
-  }
+:where(:root[data-motion="reduced"]) .raid-guide-scene * {
+  animation: none !important;
+}
+:where(:root[data-motion="reduced"]) .raid-guide-revive {
+  stroke-dashoffset: 0;
 }
 /* Raid lobby: room, party, challenge and actions each have a consistent track. */
 .raid-lobby {
@@ -8191,11 +8168,9 @@ dialog::backdrop {
     transform: rotate(0deg);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .rotate-gate-phone {
-    animation: none;
-    transform: rotate(-90deg);
-  }
+:where(:root[data-motion="reduced"]) .rotate-gate-phone {
+  animation: none;
+  transform: rotate(-90deg);
 }
 /* :has(#admin-message) keeps this rule's ID weight (it was
    :has(#leaderboard-body), then :has(#profile-progress)); the admin screen
@@ -8734,11 +8709,12 @@ dialog.framed-dialog > .dialog-content:focus-visible {
     transform: rotate(360deg);
   }
 }
-@media (prefers-reduced-motion: no-preference) {
-  :is(.player-avatar, .vs-fighter) svg[data-fighter="auralynx"] .fighter-wings {
-    transform-origin: 100px 122.98px;
-    animation: fighter-aura-ring 8.8s linear infinite;
-  }
+:where(:root:not([data-motion="reduced"]))
+  :is(.player-avatar, .vs-fighter)
+  svg[data-fighter="auralynx"]
+  .fighter-wings {
+  transform-origin: 100px 122.98px;
+  animation: fighter-aura-ring 8.8s linear infinite;
 }
 
 /* Prismatail: compact controls leave the relay lanes clear on short screens. */
@@ -9361,13 +9337,13 @@ dialog.framed-dialog > .dialog-content:focus-visible {
     flex-direction: row;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .journey-result-xp > strong {
-    animation: none;
-  }
-  .journey-result-xp progress::-webkit-progress-value {
-    transition: none;
-  }
+:where(:root[data-motion="reduced"]) .journey-result-xp > strong {
+  animation: none;
+}
+:where(:root[data-motion="reduced"])
+  .journey-result-xp
+  progress::-webkit-progress-value {
+  transition: none;
 }
 /* The player level bar (match results and the profile). */
 .journey-level progress {
@@ -9462,15 +9438,13 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
 }
-@media (prefers-reduced-motion: reduce) {
-  .btn-primary,
-  .btn-secondary {
-    transition: none;
-  }
-  .btn-primary:active:not(:disabled),
-  .btn-secondary:active:not(:disabled) {
-    transform: none;
-  }
+:where(:root[data-motion="reduced"]) .btn-primary,
+:where(:root[data-motion="reduced"]) .btn-secondary {
+  transition: none;
+}
+:where(:root[data-motion="reduced"]) .btn-primary:active:not(:disabled),
+:where(:root[data-motion="reduced"]) .btn-secondary:active:not(:disabled) {
+  transform: none;
 }
 
 /* Phase 2: the scene uses real content rows, so its fighter, text and actions
@@ -9845,14 +9819,12 @@ body.home-active .header-menu summary > span {
     --home-top: calc(44px + var(--safe-top));
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .home-screen *,
-  .home-screen *::before,
-  .home-screen *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
+:where(:root[data-motion="reduced"]) .home-screen *,
+:where(:root[data-motion="reduced"]) .home-screen *::before,
+:where(:root[data-motion="reduced"]) .home-screen *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
 }
 
 /* Phase 3: portrait roster, persistent preview and anchored room actions. */
@@ -10106,17 +10078,15 @@ body.battle-active.touch-mode .timer-wrap > span {
   font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0;
 }
-@media (prefers-reduced-motion: reduce) {
-  .ability,
-  .ability *,
-  .ability::before,
-  .ability::after,
-  .touch-buttons button,
-  .touch-buttons button::before,
-  .touch-buttons button::after {
-    animation: none !important;
-    transition: none !important;
-  }
+:where(:root[data-motion="reduced"]) .ability,
+:where(:root[data-motion="reduced"]) .ability *,
+:where(:root[data-motion="reduced"]) .ability::before,
+:where(:root[data-motion="reduced"]) .ability::after,
+:where(:root[data-motion="reduced"]) .touch-buttons button,
+:where(:root[data-motion="reduced"]) .touch-buttons button::before,
+:where(:root[data-motion="reduced"]) .touch-buttons button::after {
+  animation: none !important;
+  transition: none !important;
 }
 /* The canvas is sized by its frame; its previous pixel height must not enlarge it. */
 body.battle-active:not(.touch-mode) .arena-frame {
@@ -10397,15 +10367,19 @@ body.battle-active .ability.ult-ready,
   height: 52%;
   margin-bottom: 8px;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .ability.ult-ready .skill-cooldown-ring,
-  .touch-buttons button.ult-ready::before {
-    animation: ultimate-energy-orbit 3.6s linear infinite;
-  }
-  .ability.ult-ready::after,
-  .touch-buttons button.ult-ready::after {
-    animation: ultimate-energy-breathe 2.4s ease-in-out infinite;
-  }
+:where(:root:not([data-motion="reduced"]))
+  .ability.ult-ready
+  .skill-cooldown-ring,
+:where(:root:not([data-motion="reduced"]))
+  .touch-buttons
+  button.ult-ready::before {
+  animation: ultimate-energy-orbit 3.6s linear infinite;
+}
+:where(:root:not([data-motion="reduced"])) .ability.ult-ready::after,
+:where(:root:not([data-motion="reduced"]))
+  .touch-buttons
+  button.ult-ready::after {
+  animation: ultimate-energy-breathe 2.4s ease-in-out infinite;
 }
 @keyframes ultimate-energy-orbit {
   to {
@@ -10794,10 +10768,13 @@ body.battle-active .ability.ult-ready,
     line-height: 1.35;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  #arena-overlay .raid-draft .panel-actions .raid-rite-options > button {
-    transition: none;
-  }
+:where(:root[data-motion="reduced"])
+  #arena-overlay
+  .raid-draft
+  .panel-actions
+  .raid-rite-options
+  > button {
+  transition: none;
 }
 
 /* Compact currency, retaining the header button's full touch target. */
@@ -14092,11 +14069,9 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   animation: skill-press-denied 0.2s ease-in-out;
   box-shadow: inset 0 0 0 2px #ff5d6c99;
 }
-@media (prefers-reduced-motion: reduce) {
-  .press-ok,
-  .press-denied {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .press-ok,
+:where(:root[data-motion="reduced"]) .press-denied {
+  animation: none;
 }
 
 /* Ping badge: a small pill just left of the battle gear. */
@@ -14401,10 +14376,8 @@ body.battle-active:not(.touch-mode)
     transform: rotate(360deg);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .hub-world-spinner {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .hub-world-spinner {
+  animation: none;
 }
 
 /* Solo against a ★★★ boss: no self-revive (raid-solo.ts). */
@@ -14943,13 +14916,11 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
   animation-play-state: paused;
   animation-delay: 0ms;
 }
-@media (prefers-reduced-motion: reduce) {
-  .vs-back {
-    display: none;
-  }
-  .vs-flip > :not(.vs-back) {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .vs-back {
+  display: none;
+}
+:where(:root[data-motion="reduced"]) .vs-flip > :not(.vs-back) {
+  animation: none;
 }
 
 /* The countdown (3, 2, 1) before each round: the whole screen, edge to edge
@@ -15210,13 +15181,12 @@ body.battle-active.touch-mode.battle-raid
     #000 calc(100% - 3px)
   );
 }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion="reduced"])
   body.battle-active.touch-mode.battle-raid
-    .touch-context
-    #raid-prism-controls.is-context
-    button[data-ready] {
-    animation: none;
-  }
+  .touch-context
+  #raid-prism-controls.is-context
+  button[data-ready] {
+  animation: none;
 }
 
 /* Phones in a raid: the quick-chat button in the top-left corner, matching

@@ -85,10 +85,8 @@
     transform: none;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .gift-day.is-fresh .gift-day-art {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .gift-day.is-fresh .gift-day-art {
+  animation: none;
 }
 /* A finger tall on every screen (the shared modal's buttons are 36 px). */
 .gift-modal > .ui-actions .ui-btn {

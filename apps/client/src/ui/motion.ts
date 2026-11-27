@@ -1,4 +1,5 @@
 import { lowGraphics } from "../graphics-quality";
+import { reducedMotion } from "../reduced-motion";
 
 /**
  * UI motion for the hub (the UI remodel's polish pass): screens slide in
@@ -10,14 +11,12 @@ import { lowGraphics } from "../graphics-quality";
  * - Only `transform` and `opacity` move (the compositor's work, cheap on
  *   phones). Nothing waits on an animation: every change is applied at
  *   once, and the animation only plays from where things were.
- * - Off with the device's reduced-motion setting and on Low graphics.
+ * - Off with Settings → Reduce motion (reduced-motion.ts) and on Low
+ *   graphics.
  * - Web Animations (not CSS keyframes), so the Lobby's "pause under a
  *   screen" rule can't freeze a screen half-way in.
  */
-export const uiMotion = () =>
-  typeof matchMedia !== "undefined" &&
-  !matchMedia("(prefers-reduced-motion: reduce)").matches &&
-  !lowGraphics();
+export const uiMotion = () => !reducedMotion() && !lowGraphics();
 
 /** Quick start, soft landing (ease-out quint), and its mirror for exits. */
 export const EASE_OUT = "cubic-bezier(.22,1,.36,1)";

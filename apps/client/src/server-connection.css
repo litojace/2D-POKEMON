@@ -478,12 +478,10 @@
     --art-bottom: max(10px, env(safe-area-inset-bottom));
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .server-startup,
-  .server-startup *,
-  .server-startup *::before,
-  .server-startup *::after {
-    animation: none !important;
-    transition: none !important;
-  }
+:where(:root[data-motion="reduced"]) .server-startup,
+:where(:root[data-motion="reduced"]) .server-startup *,
+:where(:root[data-motion="reduced"]) .server-startup *::before,
+:where(:root[data-motion="reduced"]) .server-startup *::after {
+  animation: none !important;
+  transition: none !important;
 }

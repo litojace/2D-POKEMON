@@ -158,12 +158,10 @@
   color: #8fa3c2;
   font-size: calc(12px * var(--text-scale, 1));
 }
-@media (prefers-reduced-motion: reduce) {
-  .reveal-face {
-    transition: none;
-  }
-  .reveal-card.is-flipped::after,
-  #reward-reveal {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .reveal-face {
+  transition: none;
+}
+:where(:root[data-motion="reduced"]) .reveal-card.is-flipped::after,
+:where(:root[data-motion="reduced"]) #reward-reveal {
+  animation: none;
 }

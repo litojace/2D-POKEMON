@@ -188,18 +188,17 @@
     translate: 4% -6%;
   }
 }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion="reduced"])
   .raid-cosmetic-preview:is(
-      [data-cosmetic="conductor-frame"],
-      [data-cosmetic="brazier-frame"],
-      [data-cosmetic="conqueror"],
-      [data-cosmetic="reef"],
-      [data-cosmetic="crescent"],
-      [data-cosmetic="moonglass"],
-      [data-cosmetic="stained-glass"]
-    )::after {
-    animation: none !important;
-  }
+    [data-cosmetic="conductor-frame"],
+    [data-cosmetic="brazier-frame"],
+    [data-cosmetic="conqueror"],
+    [data-cosmetic="reef"],
+    [data-cosmetic="crescent"],
+    [data-cosmetic="moonglass"],
+    [data-cosmetic="stained-glass"]
+  )::after {
+  animation: none !important;
 }
 
 /* Conductor (Storm Twins): copper coil, yellow + and blue − charges, crackling bolts and lightning rods; a Tesla orb charges on the crown. */
