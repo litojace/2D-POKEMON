@@ -202,6 +202,62 @@ for (const size of SIZES) {
         });
         expect(look.radius, action).toBe("0px");
         if (look.head) expect(look.head, action).toBe(look.el);
+        // A tab reads whole: its words lie inside the tab row (above a
+        // phone's height the Friends row came to 22 px and cut them in
+        // half), and a count on a tab stands out from its chip (it was
+        // white on a white wash over the element colour).
+        const tabs = await panel.evaluate((p) => {
+          // Painted once to read any colour (oklch too) as sRGB bytes.
+          const ink = document
+            .createElement("canvas")
+            .getContext("2d", { willReadFrequently: true })!;
+          const lum = (c: string) => {
+            ink.clearRect(0, 0, 1, 1);
+            ink.fillStyle = c;
+            ink.fillRect(0, 0, 1, 1);
+            const [r, g, b] = [...ink.getImageData(0, 0, 1, 1).data]
+              .slice(0, 3)
+              .map((v) => {
+                v /= 255;
+                return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+              });
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          };
+          const row = p.querySelector<HTMLElement>(".ui-tabs");
+          if (!row) return null;
+          const r = row.getBoundingClientRect();
+          return {
+            height: r.height,
+            cut: [...row.querySelectorAll<HTMLElement>(":scope > button")]
+              .filter((tab) => {
+                if (!tab.getBoundingClientRect().width) return false;
+                const range = document.createRange();
+                range.selectNodeContents(tab);
+                const t = range.getBoundingClientRect();
+                return t.top < r.top - 0.5 || t.bottom > r.bottom + 0.5;
+              })
+              .map((tab) => tab.textContent),
+            counts: [...row.querySelectorAll<HTMLElement>(".ui-tag")].map(
+              (tag) => {
+                const style = getComputedStyle(tag);
+                const a = lum(style.color);
+                const b = lum(style.backgroundColor);
+                return {
+                  text: tag.textContent,
+                  ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05),
+                };
+              },
+            ),
+          };
+        });
+        if (tabs) {
+          expect(tabs.cut, `${action} tabs`).toEqual([]);
+          for (const count of tabs.counts)
+            expect(
+              count.ratio,
+              `${action} count ${count.text}`,
+            ).toBeGreaterThanOrEqual(4.5);
+        }
         expect(look.close, action).not.toBeNull();
         expect(
           inside(look.close!, { x: 0, y: 0, ...size }),
