@@ -16,6 +16,10 @@ import { ASCENDANT_SNOOZAKU } from "../../packages/shared/src/raid-ascendant";
 import { PRISMATAIL } from "../../packages/shared/src/raid-prismatail";
 import { EMBERWING } from "../../packages/shared/src/raid-emberwing";
 import { STORM_TWINS } from "../../packages/shared/src/raid-storm-twins";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The Spire's court (apps/client/src/spire-court-rig.ts): floors 1–9 on the
 // stone platform at the top of the tower, their cover where the server's
