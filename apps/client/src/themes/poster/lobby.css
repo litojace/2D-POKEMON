@@ -103,7 +103,7 @@
   text-transform: uppercase;
 }
 :root[data-ui="poster"] body.hub-active #account-profile .nav-level {
-  background: #ff2e4d;
+  background: var(--hot-fill);
   color: #fff;
   border: 0;
   border-radius: 2px;

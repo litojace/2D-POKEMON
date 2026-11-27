@@ -112,6 +112,14 @@ raid room need). Sweep: `tests/visual/poster.spec.ts`.
 - Three `!important`s, each with its reason beside it: PLAY's colour and
   font (the Lobby sets them so) and the rank's name on your own row of the
   ladder (its colour is inline).
+- **Contrast** (`tokens.css`): every element, boss and Spire colour is
+  light, so words on `--el` are ink, never white. `--on-el-dim` is the
+  quieter ink on `--el`, `--hot-fill` the red behind white words (`--hot`
+  stays for shadows and lines), and `--el-text` (behind `--ui-accent`) is
+  `--el` lifted to OKLCH lightness 0.72 for words on the panels' greys.
+  `tests/visual/poster-contrast.spec.ts` measures every word on the Lobby,
+  the hub's screens and Settings in each element colour, against the pixels
+  really under it.
 - Inside a Fighters card `--el` is that card's element colour
   (`roster-view.ts` sets it), not the Lobby fighter's.
 - One screen, one file: `screens.css` has the title screen, the countdown

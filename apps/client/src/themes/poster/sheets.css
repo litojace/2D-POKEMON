@@ -48,13 +48,14 @@
   > :is(p, span, small) {
   color: var(--ui-dim);
 }
-/* The main action keeps its weight on ink: the element colour, ink type. */
-:root[data-ui="poster"]
-  #arena-overlay#arena-overlay.is-sheet
-  .is-defeat
-  :is(button.btn-primary, button.primary, .ui-btn.is-primary) {
-  background: var(--el);
-  color: var(--ink);
+/* The main action keeps its weight on ink: the element colour, ink type,
+   through the sheet's CTA colours (screens.css), so it stays the slanted
+   block with its red shadow. (Painting the button's own background had
+   drawn a square in front of the slant.) The kit's .ui-btn.is-primary is
+   already that block. */
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .is-defeat {
+  --sheet-cta: var(--el);
+  --sheet-cta-ink: var(--ink);
 }
 
 /* ── the Reveal: ink and halftone, the fighters as poster cards ── */
@@ -122,7 +123,7 @@
 }
 :root[data-ui="poster"] .rv-you {
   border-radius: 0;
-  background: var(--hot);
+  background: var(--hot-fill);
   color: #fff;
 }
 :root[data-ui="poster"] .vs-back {
