@@ -333,7 +333,10 @@ this move doesn't touch how the session is stored.
   `privacy@litojace.com`'s forwarding and the `litojace.com` Resend domains.
 - 27 Nov, 10:26 AM PT: **`parena` redirects with 301** and the game server
   stops accepting `parena` (`CLIENT_ORIGIN=https://play.elementarenausa.com`,
-  redeployed on the live commit `b4120f3`), with the owner's OK here. First
+  redeployed on the live commit `b4120f3`, live 10:28 AM PT), with the
+  owner's OK here. After: `parena…/?room=TEST` → `301` to `play…/?room=TEST`;
+  an API preflight from `play.` → 204 with its origin allowed, from `parena`
+  → 403; a Socket.IO handshake from `play.` → 200. First
   checked, in Cloudflare's analytics for the `parena` host since the
   redirect: about 100 requests, every browser one a 302. That was ~40 page
   loads (curl, test browsers, a few desktop and phone visits), 7 `sw.js`
