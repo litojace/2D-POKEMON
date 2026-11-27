@@ -56,3 +56,15 @@ Development-only previews:
 ## Limits
 
 Balance is provisional. Physical iPhone/Android frame-rate, install/update behavior, and authenticated two-device visual PvP need real-device testing. Current directional art reuses some articulated limb shapes. Production sprite frames, expressions and tightly packed atlases remain artwork requirements. Concealment is a gameplay presentation status; current snapshots still include positions and are not an anti-cheat visibility system.
+
+## README pictures
+
+The README's screenshots (`docs/readme/*.webp`) are real screens of the game in Poster, the look players have, on a notched phone in landscape (844×390 at 2x). CLAUDE.md asks for them to be retaken whenever a change alters what they show. They come from the same staged scenes as the App Store screenshots (`scripts/app-store/scenes.ts`), plus the Lobby:
+
+```bash
+npx playwright test --config scripts/readme/playwright.config.ts   # all five: lobby, duel, teams, raid, plaza
+SCENES=lobby,plaza npx playwright test --config scripts/readme/playwright.config.ts
+python3 scripts/readme/to-webp.py lobby plaza   # readme-shots/*.png to docs/readme/*.webp, 150 KB or less
+```
+
+In the cloud container, set `PW_CHROMIUM` as CLAUDE.md says. Look at each picture before committing it (no "…", no test overlays, only the harness's made-up names), and keep the README's alt text in step with what the picture shows.
