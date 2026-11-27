@@ -89,7 +89,10 @@ async function sheet(page: Page, card: string) {
         })
         .reduce((n, v, i) => n + v * [0.2126, 0.7152, 0.0722][i], 0);
     const [hi, lo] = [lum(ink), lum(back)].sort((a, b) => b - a);
-    const [kr, kg, kb] = ink;
+    // What it reads as: its own block where it has one (Poster's win is a
+    // green block with ink words), its words' colour otherwise.
+    const own = rgba(getComputedStyle(kicker).backgroundColor);
+    const [kr, kg, kb] = own[3] === 255 ? own : ink;
     const kickerHue =
       kg - kr >= 40 && kg - kb >= 20
         ? "green"
