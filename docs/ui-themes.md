@@ -113,3 +113,9 @@ raid room need). Sweep: `tests/visual/poster.spec.ts`.
   another file already styles goes beside that file's rules: a later file
   wins a tie. Pull request #567 merged a block written apart from #555 and
   #557, and those three had styled the same screens twice.
+- **Numbers that line up:** Anton has no tabular figures (its 1 is about a
+  third narrower than its other digits, with or without `tabular-nums`). So
+  numbers in columns or that change in place (`.ui-num`, `.ui-price`, the
+  header's coins, the battle clock) take Archivo's tabular figures, heavy;
+  Anton stays for words and labels ("Lv 12", "Tier 0 / 20", the medals).
+  `tests/visual/poster-numbers.spec.ts` checks the Ranks road's column.
