@@ -3246,6 +3246,7 @@ function lobbyView() {
     spire: lobbySpire(),
     level: levelNow(),
     introRounds: introRounds(matchesFinished),
+    raidClears: accountsUI.raidClears,
   };
 }
 /** Your level, or undefined while the account loads. */

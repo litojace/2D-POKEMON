@@ -1,4 +1,6 @@
 import { CHARACTERS, type CharacterId } from "@arena/shared";
+import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
+import { lobbyRaidBoss, lobbyRaidCard } from "./lobby-raid";
 import {
   JOURNEY_ITEM_BY_ID,
   SEASON_THEMES,
@@ -313,6 +315,11 @@ export interface LobbyView {
   level?: number;
   /** A new player's next bot match is this short (INTRO_ROUNDS), if it is. */
   introRounds?: number;
+  /**
+   * Your saved clears per raid boss: the Raid card shows the next boss you
+   * have not cleared (lobby-raid.ts). Only a look that shows the card uses it.
+   */
+  raidClears?: Partial<Record<RaidBossId, number>>;
 }
 export interface LobbyOptions {
   onAction(action: LobbyAction): void;
@@ -403,7 +410,7 @@ export function journeyCard(j: Journey | undefined) {
     next = rules.itemTiers.find((t) => t > tier),
     item = next ? seasonReward(next, sid, rules).item : null,
     spark = sparkLeft(j);
-  return `<span class="lobby-card-kicker">Journey · ${escape(theme.name)}</span><span class="lobby-card-row"><b>Tier ${tier} / ${rules.tiers}</b><small>Lv ${playerLevel(j.xp).level}</small></span><progress max="${rules.tierXp}" value="${into}" aria-label="Season tier progress"></progress><small>${item ? `Next: ${escape(JOURNEY_ITEM_BY_ID[item]?.name ?? "reward")} at tier ${next}` : "Every season cosmetic earned"}</small>${j.spark ? `<small class="lobby-spark${spark ? "" : " is-spent"}">Daily Spark · ${spark ? `${spark} XP left at ×2` : "used up today"}</small>` : ""}`;
+  return `<span class="lobby-card-kicker">Journey<span class="lobby-kicker-more"> · ${escape(theme.name)}</span></span><span class="lobby-card-row"><b>Tier ${tier} / ${rules.tiers}</b><small>Lv ${playerLevel(j.xp).level}</small></span><progress max="${rules.tierXp}" value="${into}" aria-label="Season tier progress"></progress><small>${item ? `Next: ${escape(JOURNEY_ITEM_BY_ID[item]?.name ?? "reward")} at tier ${next}` : "Every season cosmetic earned"}</small>${j.spark ? `<small class="lobby-spark${spark ? "" : " is-spent"}">Daily Spark · ${spark ? `${spark} XP left at ×2` : "used up today"}</small>` : ""}`;
 }
 /** The Spire card's words (its tower art stays as it is). */
 export function spireCard(n: Pick<SpireLobbyCard, "title" | "note">) {
@@ -413,12 +420,12 @@ export function spireCard(n: Pick<SpireLobbyCard, "title" | "note">) {
 export function missionsCard(e: Economy | undefined, level?: number) {
   // Still locked at this level: when it opens, in the card's own place.
   if (featureLocked("missions", level))
-    return `<span class="lobby-card-kicker">Daily missions</span><b>${menuIcon("lock")}Opens at Lv ${unlockOf("missions").level}</b><small>Play matches to level up</small>`;
+    return `<span class="lobby-card-kicker"><span class="lobby-kicker-more">Daily </span>missions</span><b>${menuIcon("lock")}Opens at Lv ${unlockOf("missions").level}</b><small>Play matches to level up</small>`;
   if (!e || !e.missions.length)
-    return `<span class="lobby-card-kicker">Daily missions</span><b>Six a day</b><small>Open to see today's missions</small>`;
+    return `<span class="lobby-card-kicker"><span class="lobby-kicker-more">Daily </span>missions</span><b>Six a day</b><small>Open to see today's missions</small>`;
   const done = e.missions.filter((m) => m.done).length,
     total = e.missions.length;
-  return `<span class="lobby-card-kicker">Daily missions</span><span class="lobby-card-row"><b>${done} / ${total} done</b><small>New in ${picksCountdown()}</small></span><progress max="${Math.max(1, total)}" value="${done}" aria-label="Missions done today"></progress>`;
+  return `<span class="lobby-card-kicker"><span class="lobby-kicker-more">Daily </span>missions</span><span class="lobby-card-row"><b>${done} / ${total} done</b><small>New in ${picksCountdown()}</small></span><progress max="${Math.max(1, total)}" value="${done}" aria-label="Missions done today"></progress>`;
 }
 
 export function openLobby(options: LobbyOptions): LobbyHandle {
@@ -490,6 +497,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   </div>
 </section>
 <aside class="lobby-cards" aria-label="Today">
+  <button type="button" class="lobby-card lobby-raid-card" data-lobby-action="raids" id="lobby-raid-card"></button>
   <button type="button" class="lobby-card" data-lobby-action="journey" id="lobby-journey-card"></button>
   <button type="button" class="lobby-card lobby-spire-card" data-lobby-action="spire" id="lobby-spire-card" hidden><span class="lobby-spire-art" aria-hidden="true">${spireLobbyIcon()}</span><span class="lobby-spire-text" id="lobby-spire-text"></span></button>
   <button type="button" class="lobby-card lobby-missions-card" data-lobby-action="missions" id="lobby-missions-card"></button>
@@ -892,12 +900,16 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
           ? [$("lobby-journey-card")]
           : [spireCardEl]
         : []),
+      // The Raid card (a look's picture card) goes last: the rail's Raids
+      // button opens the same screen.
+      $("lobby-raid-card"),
     ];
     for (const card of [
       $("lobby-friends-card"),
       $("lobby-missions-card"),
       $("lobby-journey-card"),
       spireCardEl,
+      $("lobby-raid-card"),
     ])
       card.classList.remove("is-squeezed");
     layer.classList.remove("lobby-cards-tight");
@@ -922,8 +934,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     if (!fitFrame) fitFrame = requestAnimationFrame(fitCards);
   };
   addEventListener("resize", fitSoon);
-  // A look's stylesheet changes the cards' heights (it can arrive after the
-  // Lobby has been built).
+  // A look may show or hide cards (the Raid card) and change their heights.
   document.addEventListener(UI_THEME_EVENT, fitSoon);
   void document.fonts?.ready.then(fitSoon);
   const coverWatch = new MutationObserver(syncCovered);
@@ -1153,6 +1164,15 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       spireCardEl.classList.toggle("is-new", !!spire?.fresh);
       layer.classList.toggle("has-spire", !!spire);
       if (spire) setInner($("lobby-spire-text"), spireCard(spire));
+      setInner(
+        $("lobby-raid-card"),
+        lobbyRaidCard(
+          lobbyRaidBoss(view.raidClears),
+          featureLocked("raids", view.level)
+            ? unlockOf("raids").level
+            : undefined,
+        ),
+      );
       fitSoon();
       const raidBadge = layer.querySelector<HTMLElement>(
         '[data-badge-for="raids"]',
