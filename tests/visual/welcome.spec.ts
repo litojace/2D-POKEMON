@@ -37,12 +37,16 @@ for (const size of [
     await expect(page.locator("#server-startup")).toHaveCount(0);
     const backdrop = page.locator(".gate-backdrop");
     await backdrop.evaluate(async (element) => {
+      // Its picture, when it has one (Poster's sign-in cover is drawn by
+      // the browser alone: themes/poster/onboarding.css, "The cover").
       const url = getComputedStyle(element).backgroundImage.match(
         /url\(["']?([^"')]+)["']?\)/,
-      )![1];
-      const image = new Image();
-      image.src = url;
-      await image.decode();
+      )?.[1];
+      if (url) {
+        const image = new Image();
+        image.src = url;
+        await image.decode();
+      }
       await document.fonts.ready;
       // The menu has a short, one-off entrance fade. Measure the painting
       // after that UI transition, rather than during changing page opacity.

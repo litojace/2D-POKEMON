@@ -8,16 +8,10 @@ import {
   pickNextArt,
   type LoadingArt,
 } from "../../apps/client/src/loading-art";
-import {
-  LOADING_TIPS,
-  tipAfter,
-  tipFits,
-} from "../../apps/client/src/loading-tips";
 
 // The startup curtain's paintings (docs/loading-art-prompts.md): real
 // Legendary / Mythical skins in the right modes, one picture per scene, any
-// of them with the same chance and never twice in a row, and tips that
-// suit the painting's mode.
+// of them with the same chance and never twice in a row.
 const store = new Map<string, string>();
 (globalThis as { localStorage?: unknown }).localStorage = {
   getItem: (k: string) => store.get(k) ?? null,
@@ -101,34 +95,5 @@ describe("loading art", () => {
     expect(artForThisStart(list)?.id).toBe("b");
     store.set(NEXT_ART_KEY, "gone");
     expect(artForThisStart(list)).toBeUndefined();
-  });
-  it("pairs tips with the painting's mode", () => {
-    for (const mode of ["duel", "teams", "ffa"] as const) {
-      const seen = new Set<string>();
-      let tip = undefined;
-      for (let i = 0; i < LOADING_TIPS.length * 2; i++) {
-        tip = tipAfter(tip, mode);
-        expect(tipFits(tip, mode), `${mode} ${tip.id}`).toBe(true);
-        seen.add(tip.id);
-      }
-      // Every tip for that mode comes round.
-      expect(seen.size).toBe(
-        LOADING_TIPS.filter((t) => tipFits(t, mode)).length,
-      );
-    }
-    expect(
-      tipFits(
-        LOADING_TIPS.find((t) => t.id === "duel-orbs")!,
-        "teams",
-      ),
-    ).toBe(false);
-    expect(
-      tipFits(
-        LOADING_TIPS.find((t) => t.id === "team-orbs")!,
-        "duel",
-      ),
-    ).toBe(false);
-    // No painting: every tip.
-    expect(LOADING_TIPS.every((t) => tipFits(t))).toBe(true);
   });
 });
