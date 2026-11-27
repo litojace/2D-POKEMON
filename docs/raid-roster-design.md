@@ -815,8 +815,8 @@ name, description)` lists every reward and its rule. Rule kinds:
 - `arena_raid_players.feats jsonb` stores per-boss stats such as strands,
   lanterns, runes, relays, braziers and pairs.
 - `arena_raid_runs` gains `daily boolean` and `day date`. The server
-  supplies the day (the run's Pacific date); `daily` is always false since
-  migration 028. The old weekly columns stay for history.
+  supplies the day (the run's Pacific date). `daily` and the old weekly
+  columns were dropped in migration 20261127200000; `day` stays.
 - `arena_record_raid` accepts any boss listed in the rewards table.
 - `arena_raid_progress()` returns per-boss progress and cross-boss totals.
 - **Loadouts:** a `victory` column; the hard-coded check constraint is
