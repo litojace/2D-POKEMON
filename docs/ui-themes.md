@@ -107,6 +107,22 @@ default, from the first frame), and any spec run with `VISUAL_UI=poster`
 the switch. Moving the suite to Poster, spec by spec, is the next job; a
 spec that has moved drops the pin by setting `window.__lookDefault`.
 
+**The budgets measure Poster** (27 Nov 2026): `battle-style-budget`,
+`match-flow-budget` and `panel-open-budget` call `playersLook(page)`
+(`tests/visual/players-look.ts`) and fail if the page shows another look, so
+CI counts what players' phones pay for. `PLAYERS_LOOK` there follows
+`DEFAULT_UI_THEME` (`tests/unit/ui-theme.test.ts` holds them together: the
+revert changes both). `VISUAL_UI=classic` still measures the look
+underneath, to compare. Measured side by side before the switch, on the
+cloud container: a duel restyles 4 elements per recalculation at the
+median, 16 at p90 and 59 at most in Poster (three runs), 4 / 16 / 59 to 61
+underneath; a match reads the layout 0 times per frame in both; a repeat
+open of a panel lays the page out 0 to 6 times in Poster, 0 to 5
+underneath (the limit is 12). The numbers are on pull request #553. Not
+moved: `effect-budget` (it counts the effects engine's own work in the
+battle canvas, which no look touches) and the frame-rate profiles
+(`battle-performance`, `pvp-performance`, `lobby-perf`).
+
 ## A theme's folder
 
 `apps/client/src/themes/<id>/`:
