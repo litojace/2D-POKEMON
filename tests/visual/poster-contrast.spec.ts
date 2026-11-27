@@ -7,6 +7,9 @@ import { hubMenu, openHub, skipTour } from "./helpers";
 // every element colour: the page is shot once with its words hidden, and
 // each word's colour is compared with the middle of the pixels under it.
 // So slabs drawn with pseudo-elements, gradients and art all count.
+// Not covered yet: the battle, the result and the raid screens. Words
+// whose own element or a parent is aria-hidden, and SVG text, are skipped:
+// they are decoration or have a label.
 const COLOURS: Record<string, string> = {
   electric: "#ffd84a",
   fire: "#ff7a45",
