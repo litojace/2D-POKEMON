@@ -1,3 +1,5 @@
+import { watchSheetScroll } from "./sheet-scroll";
+
 const markupByElement = new WeakMap<HTMLElement, string>();
 /** Countdown values are filled separately so timer ticks preserve focused cards. */
 export const LIVE_SECONDS = '<span class="live-seconds"></span>';
@@ -105,6 +107,7 @@ export function setOverlayMarkup(
     if (pop && typeof previousPop === "number") pop.currentTime = previousPop;
     else pop?.finish();
   }
+  if (element.id === "arena-overlay") watchSheetScroll(element);
   if (scrollKey) {
     element.dataset.panelKey = scrollKey;
     const scroller = element.querySelector<HTMLElement>(".panel-scroll");
