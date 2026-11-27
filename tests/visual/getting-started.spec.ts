@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub, skipTour, snap } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Getting started (getting-started.ts): a new account's Lobby shows the
 // guide in the Journey card's place; the sheet lists the steps; Go does a

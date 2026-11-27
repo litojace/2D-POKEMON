@@ -315,7 +315,20 @@
    drawn about 1 px off its box (ranks-friends.spec, "Road (on)",
    "Friends (on)"). 6 px over the 36 px switch, 5 px over its 30-34 px
    buttons: about 10°. */
+/* The switch's ink is drawn behind it and cut there, not the switch
+   itself: a clip-path on the switch also cut its buttons' 44 px hit areas
+   (ui/phone-fit.css, ::after), leaving taps of 32-36 px (phone-fit.spec). */
 :root[data-ui="poster"] .ui-panel-head .ui-seg {
+  position: relative;
+  isolation: isolate;
+  background: none;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-seg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--ink);
   clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
 }
 :root[data-ui="poster"] .ui-panel-head .ui-seg > button[aria-pressed="true"] {

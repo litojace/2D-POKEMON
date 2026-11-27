@@ -23,6 +23,12 @@ decides, merges and coordinates on its own, without waiting to be asked:
 - **Keep the owner informed** rather than asking: a short summary in your
   session and in the PR (what changed, the lane, what you checked, what you
   left out).
+- **When the owner must answer, say where** (owner, 27 Nov: they can't tell
+  which session is asking). Ask in your own session, and also tell the
+  session that started yours, or the coordinator, with your session's link
+  (`https://claude.ai/code/session_…`). A summary of several sessions ends
+  with "Needs you": each open question, with a link to the session that
+  asked it.
 - **Still ask the owner first** for what can't be taken back or reaches
   outside the game: real-money prices and in-app purchases, store listings
   and legal text, deleting or exposing player data, secrets and accounts,

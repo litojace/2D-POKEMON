@@ -129,7 +129,10 @@
 }
 :root[data-ui="poster"] .hub-scenes {
   padding: 4px;
-  transform: skewX(-10deg);
+  /* The switch is placed by its middle (lobby.css: left at the spot, then
+     back by half its width); the slant goes on top of that, or the switch
+     stood half its width right of the middle (lobby-safe-area.spec). */
+  transform: translateX(-50%) skewX(-10deg);
 }
 :root[data-ui="poster"] .hub-scenes > button {
   font-family: var(--font-display);
@@ -175,6 +178,34 @@
   overflow: visible;
   text-overflow: clip;
 }
+/* A locked button on the text rail: its pill ("Lv 3") stands in the icon's
+   place, centred on it, and small enough to leave the name where the other
+   names start. The old look's pill (padlock, level, 56 px) pushed a locked
+   name 36 px right of the rest, and "MISSIONS" out past its button
+   (feature-unlocks.spec). Phones fold the rail to icons over names
+   (screens.css), where the pill sits over the name as before. */
+@media (min-width: 801px) and (min-height: 501px) {
+  :root[data-ui="poster"]
+    .lobby-layer
+    .lobby-rail
+    button.is-locked
+    .lobby-rail-icon {
+    display: flex;
+    flex: none;
+    justify-content: center;
+    width: 20px;
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-rail .feature-lock {
+    gap: 2px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: calc(9px * var(--text-scale, 1));
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-rail .feature-lock svg {
+    width: 8px;
+    height: 8px;
+  }
+}
 /* stage */
 :root[data-ui="poster"] .lobby-layer .lobby-fighter::before {
   background: none;
@@ -208,6 +239,11 @@
 :root[data-ui="poster"] .lobby-layer .lobby-slot span {
   color: var(--ink);
 }
+/* A party member's name under their fighter: white on its ink pill (it
+   took the seat's ink and could not be read; yours keeps its colour). */
+:root[data-ui="poster"] .lobby-layer .lobby-member:not(.is-you) figcaption {
+  color: #fff;
+}
 :root[data-ui="poster"] .lobby-layer .lobby-name h2 {
   font: 400 calc(28px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.06em;
@@ -216,6 +252,16 @@
   padding: 4px 14px 5px;
   transform: skewX(-10deg);
   text-shadow: none;
+}
+/* The shortest windows (320 px): a smaller plate, as the old look's 22 px
+   name there, so the stage has the height its fighter needs. At 28 px a
+   party's bar covered the top of a 568x320 phone's fighter, which stood at
+   its 120 px floor (lobby.spec, "the party stage grows…"). */
+@media (max-height: 340px) {
+  :root[data-ui="poster"] .lobby-layer .lobby-name h2 {
+    font-size: calc(22px * var(--text-scale, 1));
+    padding: 2px 10px 3px;
+  }
 }
 :root[data-ui="poster"] .lobby-layer .lobby-name .element-pill {
   background: #fff;

@@ -277,7 +277,7 @@
   "lobby-safe-area.spec.ts › the scene switch stays in the middle of a wide screen": 6.3,
   "lobby.spec.ts › Invite a friend says In party and Invited for friends already asked": 4.5,
   "lobby.spec.ts › PLAY creates a private room in the chosen mode": 5.5,
-  "lobby.spec.ts › PLAY has a drawn icon (no emoji), a glow, and a light sweep that rests when asked": 12,
+  "lobby.spec.ts › PLAY has a drawn icon (no emoji), stands out by its shadow, and nothing on it moves": 12,
   "lobby.spec.ts › a member's stage wears everyone's own skin, Awakening stage and look": 6.8,
   "lobby.spec.ts › a party shows friends beside you, and a party invitation joins it": 9.2,
   "lobby.spec.ts › a sheet on a 667x375 phone keeps the fighter on screen": 5.1,

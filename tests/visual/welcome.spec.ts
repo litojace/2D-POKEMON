@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { box, inside, snap } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 for (const size of [
   { width: 1440, height: 900 },

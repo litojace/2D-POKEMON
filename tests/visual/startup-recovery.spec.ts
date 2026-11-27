@@ -1,4 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 for (const resource of ["main.ts", "style.css"]) {
   test(`failed ${resource} shows recovery instead of a bare white rotate page`, async ({
@@ -43,7 +47,9 @@ test("an interrupted entry module automatically recovers without clearing stored
     route.fulfill({ contentType: "text/html", body: "<body></body>" }),
   );
   await page.goto("/recovery-seed");
-  await page.evaluate(() => localStorage.setItem("arena-recovery-check", "kept"));
+  await page.evaluate(() =>
+    localStorage.setItem("arena-recovery-check", "kept"),
+  );
   await page.route("**/apps/client/src/main.ts*", (route) =>
     ++requests === 1 ? route.abort("failed") : route.continue(),
   );
