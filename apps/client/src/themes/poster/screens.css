@@ -658,6 +658,24 @@
   > :is(small, .ui-count, span + span) {
   color: inherit;
 }
+/* Phones: Anton sets a skin's name wider than the old look's display font,
+   so on a 667 px phone's 61 px cards some were cut: a long word
+   ("Chrysanthemum", "Cartographer") past the edge, a third line ("Roasted /
+   Chestnut / Tea") under the two the card shows. A card's name is set a
+   size smaller and a touch tighter there; a long word also takes one more
+   pixel of the card's padding. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .roster-look b {
+    font-size: calc(11px * var(--text-scale, 1));
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+  :root[data-ui="poster"] .roster-look.has-long-word b {
+    margin-inline: -3px;
+    font-size: var(--fs-micro);
+    letter-spacing: -0.05em;
+  }
+}
 /* ranks ladder */
 :root[data-ui="poster"] :is(.rk-board, .rk-ladder, .rk-list) {
   background: var(--ink-1);
