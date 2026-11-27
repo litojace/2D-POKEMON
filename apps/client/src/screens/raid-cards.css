@@ -94,9 +94,16 @@ body.touch-mode.chat-corner #arena-overlay > .rc-card {
   padding: 0;
   list-style: none;
 }
+/* Each step is four rows shared with its neighbours (subgrid): its title,
+   picture, action and cue line up across the steps even when one title
+   takes two lines ("Help each other survive" pushed its picture and words
+   below steps 1 and 2: audit D03). */
 .rc-steps > li {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-row: span 4;
+  grid-template-rows: subgrid;
+  row-gap: 0;
+  align-content: start;
   min-width: 0;
   padding: 12px;
   border-radius: var(--rad-md);
