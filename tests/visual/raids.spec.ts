@@ -341,16 +341,26 @@ for (const size of SIZES)
       await snap(page, info, `raid-rewards-${size.name}`);
       // A reward whose rule is cut short opens to the whole rule and what
       // the item is; another tap closes it (owner's question, 9 Nov).
-      const cut = await room.locator(".rh-reward").evaluateAll((cards) =>
-        cards
-          .filter((c) => {
-            const t = c.querySelector(".rh-reward-line small")!;
-            return t.scrollWidth > t.clientWidth + 1;
-          })
-          .map((c) => (c as HTMLElement).dataset.raidReward!),
-      );
-      // The longest rule is cut on every size.
-      expect(cut.length).toBeGreaterThan(0);
+      // The line takes two lines (audit B13), so a desktop may show every
+      // rule whole: then the longest one opens.
+      const cut = await room.locator(".rh-reward").evaluateAll((cards) => {
+        const rule = (c: Element) => c.querySelector(".rh-reward-line small")!;
+        const short = cards.filter((c) => {
+          const t = rule(c);
+          return (
+            t.scrollWidth > t.clientWidth + 1 ||
+            t.scrollHeight > t.clientHeight + 1
+          );
+        });
+        const longest = [...cards].sort(
+          (a, b) =>
+            (b.getAttribute("title") ?? "").length -
+            (a.getAttribute("title") ?? "").length,
+        );
+        return [...short, ...longest].map(
+          (c) => (c as HTMLElement).dataset.raidReward!,
+        );
+      });
       const id = cut[0];
       const reward = RAID_REWARDS.find((r) => r.id === id)!;
       const card = room.locator(`[data-raid-reward="${id}"]`);
@@ -367,7 +377,11 @@ for (const size of SIZES)
               ".rh-reward-text b, .rh-reward-text small, .rh-reward-more span",
             ),
           )
-            .filter((t) => t.scrollWidth > t.clientWidth + 1)
+            .filter(
+              (t) =>
+                t.scrollWidth > t.clientWidth + 1 ||
+                t.scrollHeight > t.clientHeight + 1,
+            )
             .map((t) => t.textContent),
         ),
       ).toEqual([]);
