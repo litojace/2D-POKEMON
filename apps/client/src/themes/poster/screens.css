@@ -23,6 +23,18 @@
   text-transform: uppercase;
   color: #fff;
 }
+/* A locked mode shows its lock pill where the others have a line of small
+   text. Poster's names are taller (16.5 px), so with the old look's 16 px
+   pill the locked row stood 4 px taller than the rest: the pill is 13 px
+   here, and its "Lv 2" keeps the pill's own type, not a mode name's. */
+:root[data-ui="poster"] .lobby-layer .lobby-mode-menu .feature-lock {
+  height: 13px;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-mode-menu .feature-lock b {
+  font: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+}
 :root[data-ui="poster"] .lobby-layer .lobby-mode-menu small {
   font-family: var(--font-body);
   color: #b8b8c0;
