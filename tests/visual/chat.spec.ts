@@ -353,6 +353,29 @@ for (const size of SIZES)
       await expect(drawer.locator(".chat-empty")).toContainText(
         "Only your team reads this",
       );
+      // Four tabs in a room: each one whole, clear of the settings gear
+      // (the fourth read "FRIEN" under it at 844 x 390 and was gone at
+      // 667: UI audit, 27 Nov 2026).
+      const tabRow = await page.evaluate(() => {
+        const tabs = document.querySelector("#chat-drawer .chat-tabs")!;
+        const gear = document
+          .querySelector("#chat-drawer .chat-gear")!
+          .getBoundingClientRect();
+        const row = tabs.getBoundingClientRect();
+        return {
+          count: tabs.children.length,
+          overflow: tabs.scrollWidth - tabs.clientWidth,
+          gap: gear.left - tabs.lastElementChild!.getBoundingClientRect().right,
+          cut: [...tabs.children].filter((tab) => {
+            const r = tab.getBoundingClientRect();
+            return r.left < row.left - 0.5 || r.right > row.right + 0.5;
+          }).length,
+        };
+      });
+      expect(tabRow.count).toBe(4);
+      expect(tabRow.overflow).toBeLessThanOrEqual(0);
+      expect(tabRow.cut).toBe(0);
+      expect(tabRow.gap).toBeGreaterThanOrEqual(4);
       await snap(page, info, `chat-room-${size.name}`);
       expect(errors).toEqual([]);
     } finally {

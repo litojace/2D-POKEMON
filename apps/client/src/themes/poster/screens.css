@@ -766,8 +766,16 @@
 :root[data-ui="poster"] .ui-split-main {
   background: linear-gradient(var(--el) 0 44px, var(--ink) 44px);
 }
+/* The tab row is part of the masthead wherever it sits. Above a phone's
+   height it takes a row of its own under the head, below the 44 px band,
+   and its unchosen tabs were the masthead's ink on the page's ink: on a
+   boss page only REWARDS showed, on a fighter's only SKILLS (1440 x 900,
+   27 Nov 2026). There it is as tall as a masthead tab row (44 px): at
+   its own 29 px the tabs' Anton capitals were cut along their foot. */
 :root[data-ui="poster"] .ui-split-main > .ui-tabs {
+  min-height: 44px;
   border-bottom: 0;
+  background: var(--el);
 }
 :root[data-ui="poster"] .ui-split-main > .ui-tabs > button {
   position: relative;
@@ -977,6 +985,15 @@
     letter-spacing: 0.03em;
     padding-left: 8px;
     padding-right: 8px;
+  }
+}
+/* A 667 px phone: the fighter's three tabs and the Skins count ran 17 px
+   under Close, and "3/24" sat against its edge (audit B12). Tighter tabs
+   fit beside ‹ Roster with room before Close (after the rule above, which
+   it narrows). */
+@media (max-height: 500px) and (max-width: 700px) {
+  :root[data-ui="poster"] .ui-split-main > .ui-tabs > button {
+    padding-inline: 4px;
   }
 }
 /* Close always sits over a scrolled tab row */

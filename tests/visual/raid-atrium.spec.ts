@@ -86,6 +86,12 @@ async function battle(page: Page) {
   await openPlayPanel(page);
   await createRoom(page);
   await pushUntilBattle(page);
+  // The battle opens while the arena scene may still be loading its last
+  // textures; read nothing from it until it has been created (the hook in
+  // create() above sets this, true or false).
+  await page.waitForFunction(
+    () => (window as any).__atriumAtCreate !== undefined,
+  );
   return { errors, consoleErrors };
 }
 async function setState(page: Page, s: State) {

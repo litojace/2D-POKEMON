@@ -180,6 +180,10 @@ for (const viewport of [
         }),
       );
       expect(lines).toEqual(PLAZA_QUESTS.map(() => 1));
+      // On a phone the open list runs under where the event chip is ("…er in
+      // 7:48" showed past its edge): the chip waits for the list to close.
+      const phoneHud = (await page.locator(".plaza-layer.phone").count()) > 0;
+      if (phoneHud) await expect(page.locator("#pz-event")).toBeHidden();
       await snap(
         page,
         info,
@@ -187,6 +191,7 @@ for (const viewport of [
       );
       await page.click("#pz-quests [data-qclose]");
       await expect(panel).toBeHidden();
+      if (phoneHud) await expect(page.locator("#pz-event")).toBeVisible();
       const clashes = all.flatMap((a, i) =>
         all
           .slice(i + 1)
@@ -1922,6 +1927,19 @@ for (const viewport of [
           );
         });
       expect(await fits()).toBe(true);
+      // On a phone the time takes the event chip's place on the HUD's second
+      // row (the clock's row): under the chip it stood on the player and
+      // their name, in the middle of the screen (UI audit, 27 Nov 2026).
+      if (await page.locator(".plaza-layer.phone").count()) {
+        await expect(page.locator("#pz-event")).toBeHidden();
+        const tops = await page.evaluate(() => ({
+          timer: document.getElementById("pz-timer")!.getBoundingClientRect()
+            .top,
+          clock: document.getElementById("pz-clock")!.getBoundingClientRect()
+            .top,
+        }));
+        expect(Math.abs(tops.timer - tops.clock)).toBeLessThanOrEqual(4);
+      }
       await snap(
         page,
         info,
