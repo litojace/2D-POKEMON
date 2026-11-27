@@ -14,7 +14,8 @@ import { canvasPng, idle, sizedSvg } from "./svg-raster";
  * 17 ms (Nov 2026). So once a thumbnail has shown, it is
  * drawn into a bitmap in a quiet moment (svg-raster.ts), and from then on
  * the screen shows that bitmap; a screen built again (a tab switch, a patch)
- * takes it straight away.
+ * takes it straight away. Not on phones (keepsSvg): there, drawing a bitmap
+ * cost far more than it saved.
  *
  * Looking the same:
  * - A skin's bitmap keeps the frame's exact shape (212:216, a whole number
@@ -217,13 +218,26 @@ export function originalLook(champion: CharacterId, slot: string) {
     : markup;
 }
 
+/**
+ * Phones keep their pictures as SVG, painted by the browser on its own
+ * threads. A bitmap is the SVG rasterized on the page's own thread, in one
+ * piece that can't be split: on a 3× phone at 4× CPU, one frame of 650–830 ms
+ * per thumbnail (636×648 px, however it was drawn and encoded; 270–370 ms
+ * without the oversampling). What it saved was 15–30 ms of work each time
+ * Shop → Skins or Roster → Skins was built again (Nov 2026). A mouse-driven
+ * computer, faster, keeps painting.
+ */
+let coarse: MediaQueryList | undefined;
+const keepsSvg = () => (coarse ??= matchMedia("(pointer: coarse)")).matches;
+
 let observer: ResizeObserver | undefined;
 /** Watch every picture that loads: its size is what its bitmap needs. */
 function watch() {
   if (
     observer ||
     typeof ResizeObserver === "undefined" ||
-    typeof URL.createObjectURL !== "function"
+    typeof URL.createObjectURL !== "function" ||
+    keepsSvg()
   )
     return;
   observer = new ResizeObserver(sized);
