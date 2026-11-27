@@ -59,7 +59,7 @@ for (const size of SIZES)
       const errors = await openLobby(page);
       if (size.island) await setInsets(page, ISLAND);
       await page.click('.lobby-rail [data-lobby-action="fighters"]');
-      const room = page.locator(".roster-room");
+      const room = page.locator(SHOWN);
       await expect(room).toHaveAttribute("data-roster-mode", "grid");
       await expect(
         page.locator('.lobby-rail [data-lobby-action="fighters"]'),
