@@ -3,8 +3,9 @@
 The game's first Instagram account, free: a handle, a bio, the profile
 picture, nine posts with captions (one of them a Reel), and three weeks of
 posting. The owner
-creates the account (password, verification codes, CAPTCHA) and approves
-every post before it goes out.
+creates the account (password, verification codes, CAPTCHA); a Claude
+session runs it through Meta's API (owner, 27 Nov: "Running the account"
+below).
 
 Rules for everything posted (owner, 27 Nov): only the name Element Arena
 and the game's own art and characters. Never compare the game with another
@@ -69,9 +70,11 @@ To change a post, edit its entry in `POSTS` in
 - **Profile picture**: `instagram/profile-picture.png`, the app icon's
   circle-safe drawing (Instagram shows it in a circle).
 
-Switch the account to a **professional account** (Settings and activity → Account type
-and tools → Switch to professional account, free; pick Creator or Business,
-category Video Game). That unlocks insights and post scheduling.
+Switch the account to a **professional account**, type **Business**
+(Settings and activity → Account type and tools → Switch to professional
+account, free; category Video Game). Business, not Creator: only a Business
+account can publish Stories through the API (below). It also unlocks
+insights and scheduling.
 
 ## The nine posts
 
@@ -171,11 +174,12 @@ Play free, link in bio.
 
 Post `08-skins-reel.mp4` as a **Reel**, with `08-skins-reel-cover.jpg` as
 its cover: the three skins' Entrance, Victory and Ultimate with their full
-effects. Add a track from Instagram's audio library when posting (the file
-has no sound; Reels without sound reach fewer people). A Business account
-only gets the commercially licensed part of the library; a Creator account
-gets more. `08-skins-feed.jpg` (the three at their Ultimate's peak) is the
-still version, for a later post or Story.
+effects. The file has no sound yet, and Reels without sound reach fewer
+people. Posted by hand, add a track from Instagram's audio library (a
+Business account gets its commercially licensed part). Posted through the
+API, which can't add library music, the Reel needs its own sound: render
+the game's own music into it first. `08-skins-feed.jpg` (the three at their
+Ultimate's peak) is the still version, for a later post or Story.
 
 ```
 Walk in a legend. ✨
@@ -239,3 +243,44 @@ the first short Reels from the battle captures.
 
 Reply to every comment in the first hour after a post; on a new account
 that does more for reach than anything else in the plan.
+
+## Running the account (owner, 27 Nov)
+
+The owner is busy and handed the posting to Claude sessions: "có chứ"
+(yes, post it yourself), and both ways of approving, "phòng hờ t quên"
+(in case they forget):
+
+- **(a) A plan every two weeks.** The session sends the next two weeks'
+  posts (pictures, captions, dates in PT) to the owner, in its own session,
+  with that session's link. Once approved, they go out as scheduled.
+- **(b) Silence is a yes after 24 hours.** If the owner hasn't answered a
+  plan within 24 hours of it being sent, the session posts it as planned.
+- **Always the owner's yes first, never by silence:** anything about money
+  (prices, coins for real money, in-app purchases), launch or release
+  dates, giveaways and contests, partnerships and press, other people's
+  pictures or names, and anything legal or about security. Nothing that
+  breaks the rules at the top of this page goes out at all.
+- **"Dừng" (stop)** from the owner stops all posting and replies at once.
+
+Comments, checked three times a day: thank people, answer the usual
+questions (where to play: the link in bio; free: yes, in the browser; the
+phone apps: coming soon), and hide spam, scams and abuse. Never promise a
+date, a prize or a feature. Complaints, bugs, payments, accounts or
+personal data, anyone who seems to be a child sharing personal details,
+press and business: no reply from the session; it tells the owner the same
+day. Every Sunday the session sends a short report: reach, the best post,
+new followers, and what needs the owner.
+
+How it works: Meta's **Instagram API with Instagram login**, the official
+and free route (never a password: logging in as a person from a server
+breaks Instagram's terms and gets accounts locked). The owner makes a Meta
+app at developers.facebook.com, adds the game's account under Instagram →
+API setup with Instagram business login, and generates its token (60 days,
+renewed by the session with `refresh_access_token` before it lapses; a
+lapsed one needs the owner to generate it again). The token goes into the
+cloud environment's secure credential form, never into a chat or the repo.
+The API publishes photos, carousels, Reels and Stories (Stories only from a
+Business account) and reads, answers and hides comments. It can't add
+Instagram's music library, link or poll stickers, or answer DMs, so a Reel
+carries its own sound (the game's own music can be rendered into it) and
+links stay in the bio. Pictures are fetched by Meta from a public address.
