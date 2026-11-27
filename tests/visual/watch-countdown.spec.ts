@@ -133,6 +133,12 @@ for (const size of SIZES)
             numberMid: [(h2.left + h2.right) / 2, (h2.top + h2.bottom) / 2],
             kickerMid: (k.left + k.right) / 2,
             kickerInk: getComputedStyle(kicker).backgroundColor,
+            // Poster's number (themes/poster/screens.css): the display face
+            // with a hard ink shadow, as the players' countdown has.
+            poster: (() => {
+              const n = getComputedStyle(c.querySelector(".live-countdown")!);
+              return [n.fontFamily, n.textShadow];
+            })(),
             line: [line.textContent!.trim(), l.width, line.scrollWidth],
             lineMid: (l.left + l.right) / 2,
             // The shade is see-through: its darkest stop lets the arena show.
@@ -155,6 +161,8 @@ for (const size of SIZES)
         expect(Math.abs(look.lineMid - size.width / 2)).toBeLessThan(3);
         // Poster's kicker: an ink label, not bare text.
         expect(look.kickerInk).not.toBe("rgba(0, 0, 0, 0)");
+        expect(look.poster[0]).toMatch(/Anton/i);
+        expect(look.poster[1]).toMatch(/8px 8px 0px/);
         // The line reads in full, on one line's width.
         expect(look.line[0]).toBe("Here we go.");
         expect(look.line[2]).toBeLessThanOrEqual(
