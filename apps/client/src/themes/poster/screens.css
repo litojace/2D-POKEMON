@@ -652,6 +652,13 @@
   :is(button, [role="switch"], .seg, .st-seg, input[type="range"]) {
   border-radius: 0;
 }
+/* Tiles in a grid share one size: Poster's names are capitals, so more of
+   them take two lines ("STORM CHARIOTEER" on a phone, "FALLEN LIGHTBRINGER"
+   on a desktop), and a row of those stood taller than the rest. Every row
+   takes the tallest row's height; the price keeps to each tile's foot. */
+:root[data-ui="poster"] .fit-grid {
+  grid-auto-rows: 1fr;
+}
 /* wardrobe slots */
 :root[data-ui="poster"] :is(.fit-slot, .fit-slots > *) {
   border-radius: 0;
@@ -663,8 +670,11 @@
       9px 9px,
     var(--el);
 }
-/* narrow phones (667–800 px): the rail folds to icons with small labels */
-@media (max-width: 800px) {
+/* Phones (667–800 px wide, and any phone held sideways): the rail folds to
+   icons with small labels. The text rail is 132 px; on an 844 or 852 px
+   phone it took 68 px from every screen beside it, so tab rows ran under
+   Close ("GUIDE", "MYTHIC HALL") and the Shop's tabs scrolled. */
+@media (max-width: 800px), (max-height: 500px) {
   :root[data-ui="poster"] .lobby-layer {
     --lobby-rail: 64px;
   }
@@ -694,7 +704,7 @@
     letter-spacing: 0.04em;
   }
 }
-@media (max-width: 800px) {
+@media (max-width: 800px), (max-height: 500px) {
   :root[data-ui="poster"] .ui-tabs > button {
     letter-spacing: 0.02em;
     padding-left: 7px;
