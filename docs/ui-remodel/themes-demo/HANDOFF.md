@@ -59,13 +59,16 @@ touch controls stay round; whether today's look is deleted for good (see
   friend's name doesn't open its options; Shop tiles of two sizes in Skins
   and Mythic. The session was stopped for over three hours by the account's
   usage limit (weekly limit in warning).
-- **#557** (other session, FAST; reported, not checked by me): Poster on the
-  welcome sign-up and log-in card, chat, the Plaza's chrome and the admin
-  panel.
+  Merged after these notes were first written: **#555** (main c85bb96, checked
+  with git): Poster's defeat sheets, whose title, score and primary button were
+  ink on ink, plus the reward Reveal, rite cards and Spire briefings.
 
-Merged after these notes were first written: **#555** (main c85bb96, checked
-with git): Poster's defeat sheets, whose title, score and primary button were
-ink on ink, plus the reward Reveal, rite cards and Spire briefings.
+Also merged since: **#557** (main 722ae58, checked with git): Poster on the
+welcome sign-up and log-in card, chat, the Plaza's chrome and the admin panel.
+
+The other session's own handoff (the Showcase removal plan, which art is safe
+to delete, phone measurements not yet fixed) is a comment on #553:
+https://github.com/litojace/2D-POKEMON/pull/553#issuecomment-7212569719
 
 ## Order of what is left
 
