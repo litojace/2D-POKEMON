@@ -883,3 +883,17 @@
 :root[data-ui="poster"] .plaza-layer .pz-map-list small {
   line-height: 1.4;
 }
+/* Missions' masthead: its kicker ("Daily · new in 3 h 10 min") on one line
+   above the title. The sheet has no tabs, so its heading may take the
+   masthead's width (the kit caps it at 46% to leave tabs room); capped,
+   the kicker wrapped and pushed "MISSIONS" past the masthead's top. From
+   the UI-overhaul session's block (session_01GGURqQZFSzog8RyuAkr7TD). */
+:root[data-ui="poster"] .missions-sheet .ui-panel-head > .ui-heading {
+  flex: 1 1 auto;
+  max-width: none;
+  min-width: 0;
+}
+:root[data-ui="poster"] .missions-sheet .ui-panel-head .ui-kicker {
+  display: block;
+  white-space: nowrap;
+}
