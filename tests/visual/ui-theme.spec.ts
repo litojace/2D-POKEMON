@@ -11,6 +11,9 @@ const withQuery = (page: Page, query: string) =>
   page.addInitScript((q) => {
     if (!location.search) history.replaceState(null, "", `/${q}`);
   }, query);
+/** The harness marks its account as asked (helpers.ts); these tests don't. */
+const notAsked = (page: Page) =>
+  page.addInitScript(() => ((window as any).__lookAsk = true));
 async function newPlayer(page: Page) {
   await page.addInitScript(() => {
     const w = window as any;
@@ -59,6 +62,7 @@ for (const size of SIZES) {
     try {
       const page = await context.newPage();
       await newPlayer(page);
+      await notAsked(page);
       await withQuery(page, "?ui-preview=1");
       const errors = await openHub(page);
       if (size.inset)
@@ -241,9 +245,11 @@ test.describe("phone", () => {
     page,
   }) => {
     await newPlayer(page);
+    await notAsked(page);
+    // Showcase is the look not yet ready (Poster is, since 27 Nov 2026).
     await page.addInitScript(() => {
       try {
-        localStorage.setItem("ea-ui", "poster");
+        localStorage.setItem("ea-ui", "showcase");
       } catch {
         /* No storage. */
       }

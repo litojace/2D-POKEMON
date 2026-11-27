@@ -105,7 +105,7 @@ describe("when a player is offered the choice", () => {
 describe("the looks as shipped", () => {
   // The owner turns a look on after seeing the whole set of screenshots.
   // Turning one on: change this list in the same pull request.
-  const READY: string[] = [];
+  const READY: string[] = ["poster"];
   it("are ready only when the owner has said so", () => {
     expect(UI_THEMES.filter((t) => t.ready).map((t) => t.id)).toEqual(READY);
   });

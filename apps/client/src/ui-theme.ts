@@ -46,7 +46,8 @@ export const UI_THEMES: readonly UiTheme[] = [
     id: "poster",
     name: "Poster",
     blurb: "Bold ink and your fighter's colour.",
-    ready: false,
+    // On since 27 Nov 2026: the owner saw the full set from the real build.
+    ready: true,
     preview: posterPreview,
     load: () => import("./themes/poster/index"),
   },
