@@ -16,5 +16,9 @@ app-store-screenshots/
 /site-clips/
 __pycache__/
 
+# Instagram posts (scripts/instagram): rendered on demand.
+/instagram/
+/instagram-clips/
+
 # README pictures before WebP (scripts/readme): rendered on demand.
 /readme-shots/
