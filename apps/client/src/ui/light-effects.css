@@ -24,9 +24,12 @@
   --glass-thick: var(--glass-opaque);
   --shadow-2: 0 6px 14px #000a;
 }
-:root[data-ui-effects="light"]
-  body:not(.battle-active)
-  :is(*, *::before, *::after) {
+/* (Pseudo-elements are listed on their own: inside :is() they are not
+   valid and are dropped without a word. tests/unit/css-pseudo-in-is.test.ts
+   keeps them out.) */
+:root[data-ui-effects="light"] body:not(.battle-active) *,
+:root[data-ui-effects="light"] body:not(.battle-active) *::before,
+:root[data-ui-effects="light"] body:not(.battle-active) *::after {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
@@ -50,13 +53,11 @@
 /* Decorative loops. */
 :root[data-ui-effects="light"]
   body:not(.battle-active)
-  :is(
-    .lobby-fighter-art,
-    .lobby-member-art,
-    .lobby-play::before,
-    .raid-cosmetic-preview[data-cosmetic]::after,
-    .server-startup-runner *
-  ) {
+  :is(.lobby-fighter-art, .lobby-member-art, .server-startup-runner *),
+:root[data-ui-effects="light"] body:not(.battle-active) .lobby-play::before,
+:root[data-ui-effects="light"]
+  body:not(.battle-active)
+  .raid-cosmetic-preview[data-cosmetic]::after {
   animation: none !important;
 }
 :root[data-ui-effects="light"]
@@ -67,13 +68,13 @@
 }
 :where(:root[data-motion="reduced"])
   body:not(.battle-active)
-  :is(
-    .lobby-fighter-art,
-    .lobby-member-art,
-    .lobby-play::before,
-    .raid-cosmetic-preview[data-cosmetic]::after,
-    .server-startup-runner *
-  ) {
+  :is(.lobby-fighter-art, .lobby-member-art, .server-startup-runner *),
+:where(:root[data-motion="reduced"])
+  body:not(.battle-active)
+  .lobby-play::before,
+:where(:root[data-motion="reduced"])
+  body:not(.battle-active)
+  .raid-cosmetic-preview[data-cosmetic]::after {
   animation: none !important;
 }
 :where(:root[data-motion="reduced"])
