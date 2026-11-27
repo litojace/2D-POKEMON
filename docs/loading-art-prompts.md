@@ -39,7 +39,7 @@ Paste this to start:
 
 ```text
 Read docs/loading-art-prompts.md in my GitHub repository
-litojace/2D-POKEMON (branch main). It is the brief for the loading-screen
+litojace/element-arena (branch main). It is the brief for the loading-screen
 paintings of my game Element Arena: the style block, the composition rules
 and one line per scene. Follow the style block for every picture.
 
