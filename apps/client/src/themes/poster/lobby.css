@@ -237,6 +237,11 @@
 :root[data-ui="poster"] .lobby-layer .lobby-slot span {
   color: var(--ink);
 }
+/* A party member's name under their fighter: white on its ink pill (it
+   took the seat's ink and could not be read; yours keeps its colour). */
+:root[data-ui="poster"] .lobby-layer .lobby-member:not(.is-you) figcaption {
+  color: #fff;
+}
 :root[data-ui="poster"] .lobby-layer .lobby-name h2 {
   font: 400 calc(28px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.06em;

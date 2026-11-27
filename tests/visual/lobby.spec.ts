@@ -790,6 +790,39 @@ for (const [width, height] of [
       expect(fighter.b).toBeLessThanOrEqual(row.b + 1);
       // The Plaza still shows: the stage leaves room on both sides.
       expect(s0.l - row.l + (row.r - s1.r)).toBeGreaterThan(0);
+      // Every member's name reads on its pill (WCAG AA, 4.5:1).
+      const names = await page.evaluate(() => {
+        const rgb = (c: string) =>
+          c
+            .match(/[\d.]+/g)!
+            .slice(0, 3)
+            .map((v) => {
+              const x = Number(v) / 255;
+              return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+            });
+        const lum = (c: string) => {
+          const [r, g, b] = rgb(c);
+          return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        };
+        return [...document.querySelectorAll(".lobby-member figcaption")].map(
+          (f) => {
+            const cs = getComputedStyle(f);
+            const [a, b] = [lum(cs.color), lum(cs.backgroundColor)].sort(
+              (x, y) => y - x,
+            );
+            return {
+              name: f.textContent!.trim(),
+              contrast: Math.round(((a + 0.05) / (b + 0.05)) * 10) / 10,
+            };
+          },
+        );
+      });
+      expect(names.length).toBe(3);
+      for (const n of names)
+        expect(
+          n.contrast,
+          `${n.name}'s name on its pill`,
+        ).toBeGreaterThanOrEqual(4.5);
       if (width === 844) await snap(page, info, "lobby-party-grown-844x390");
       expect(errors.filter((e) => !/Room not found/.test(e))).toEqual([]);
     } finally {
