@@ -345,7 +345,11 @@ test("the mode menu picks and remembers a mode, and the scene switch opens the P
     // The rail's Fighters opens the roster inside the Lobby (UI remodel
     // step 3).
     await page.click('[data-lobby-action="fighters"]');
-    const drawer = page.locator(".roster-room");
+    // (On screen: closed on its grid, it stays in the page, hidden, for
+    // the next open: roster.ts.)
+    const drawer = page.locator(
+      ".ui-panel-host:not([data-ui-parked]) .roster-room",
+    );
     await expect(drawer).toBeVisible();
     expect(
       await drawer.evaluate((el) => {

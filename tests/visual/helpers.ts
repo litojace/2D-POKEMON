@@ -32,7 +32,7 @@ export async function openHub(page: Page) {
     // loaded late (boss-prepaint.ts) went missing.
     performance.setResourceTimingBufferSize(5000);
   });
-  // VISUAL_UI=showcase (or poster): every spec in this run sees the game in
+  // VISUAL_UI=poster (or classic): every spec in this run sees the game in
   // that look (?ui=, ui-theme.ts), to run any spec that way: the budgets, a
   // screen's own spec. docs/ui-themes.md, "Checks".
   await page.goto(

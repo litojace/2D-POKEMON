@@ -24,6 +24,15 @@
   border-left: 4px solid var(--el);
   background: var(--ink);
 }
+/* The event and the clock cast a hard shadow, not a glow; the time to the
+   next event reads in the element colour (the UI-overhaul session's
+   block). A live event keeps its own colours. */
+:root[data-ui="poster"] .plaza-layer :is(.pz-event, .pz-clock) {
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+}
+:root[data-ui="poster"] .plaza-layer .pz-event.soon b {
+  color: var(--el);
+}
 :root[data-ui="poster"] .plaza-layer .pz-feed div {
   border: 0;
   background: color-mix(in srgb, var(--ink) 88%, transparent);
@@ -86,7 +95,9 @@
   border-radius: 0;
 }
 
-/* ── chat: the drawer's tabs, settings, quick reactions and send ── */
+/* ── chat: the drawer's tabs, settings, quick reactions and send ──
+   The settings gear is a square block like Close beside it (the
+   UI-overhaul session's block). */
 :root[data-ui="poster"] .chat-tab {
   border-color: var(--ink-3);
   border-radius: 0;
@@ -139,7 +150,7 @@
   font-weight: 400;
   box-shadow: 3px 3px 0 var(--hot);
 }
-:root[data-ui="poster"] :is(.chat-close, .chat-back) {
+:root[data-ui="poster"] :is(.chat-gear, .chat-close, .chat-back) {
   border-radius: 0;
   background: var(--ink-2);
 }
@@ -148,11 +159,11 @@
 }
 :root[data-ui="poster"] .chat-friend em {
   border-radius: 0;
-  background: var(--hot);
+  background: var(--hot-fill);
 }
 :root[data-ui="poster"] .chat-unread {
   border-radius: 0;
-  background: var(--hot);
+  background: var(--hot-fill);
 }
 
 /* ── chat in battle: the quick-chat grid and the feed ── */

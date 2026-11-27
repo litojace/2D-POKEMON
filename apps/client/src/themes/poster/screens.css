@@ -101,10 +101,11 @@
   font: 400 calc(17px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--el);
+  /* On --ink-2: the lifted element colour (tokens.css). */
+  color: var(--el-text);
 }
 :root[data-ui="poster"] :is(.prefs-card, .st-card) h3 svg {
-  color: var(--el);
+  color: var(--el-text);
 }
 /* buttons outside the kit */
 :root[data-ui="poster"]
@@ -196,11 +197,18 @@
   transform: skewX(-10deg);
   pointer-events: none;
 }
+/* The clock changes every second: Archivo's tabular figures, heaviest, so
+   its digits don't jump (Anton's 1 is narrower: kit.css, "numbers"). */
 :root[data-ui="poster"] body.battle-active #battle #hud #timer {
-  font-family: var(--font-display);
-  font-weight: 400;
+  font-family: var(--font-body);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
   color: var(--el);
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
+  /* Archivo's figures sit lower in the line than Anton's: back on the
+     badge's middle line (match-badge.spec). */
+  position: relative;
+  top: -0.05em;
 }
 :root[data-ui="poster"] body.battle-active #battle #hud .timer-wrap small,
 :root[data-ui="poster"] body.battle-active #battle #hud .timer-wrap span {
@@ -586,7 +594,7 @@
   align-self: flex-end;
   height: calc(100% - 7px);
   min-height: 0;
-  color: rgba(13, 13, 15, 0.62);
+  color: var(--on-el-dim);
   margin: 0;
   padding-top: 0;
   padding-bottom: 0;
@@ -662,7 +670,7 @@
   align-self: flex-end;
   height: calc(100% - 7px);
   min-height: 0;
-  color: rgba(13, 13, 15, 0.62);
+  color: var(--on-el-dim);
   margin: 0;
   padding-top: 0;
   padding-bottom: 0;
@@ -914,4 +922,247 @@
 :root[data-ui="poster"] .missions-sheet .ui-panel-head .ui-kicker {
   display: block;
   white-space: nowrap;
+}
+
+/* ==========================================================================
+   The title screen, the countdown and the round break: the UI-overhaul
+   session's block (session_01GGURqQZFSzog8RyuAkr7TD, 27 Nov 2026; its
+   Missions masthead is the rule above). The same block's Reveal, rite and
+   raid-rite rules are in sheets.css, its chat and Plaza ones in plaza.css,
+   beside the rules #555 and #557 wrote for those screens meanwhile.
+   ========================================================================== */
+
+/* ── Title screen: the cover. An ink slab on the left with the title, the
+      painting on the right behind a white stripe (the Lobby's slab). ── */
+:root[data-ui="poster"] .welcome-gate.is-title {
+  color: #fff;
+  font-family: var(--font-body);
+}
+:root[data-ui="poster"] .welcome-gate.is-title::before {
+  z-index: 0;
+  background: var(--ink);
+  clip-path: polygon(0 0, 54% 0, 44% 100%, 0 100%);
+}
+:root[data-ui="poster"] .welcome-gate.is-title::after {
+  inset: 0;
+  block-size: auto;
+  z-index: 0;
+  background: #fff;
+  clip-path: polygon(
+    calc(54% + 6px) 0,
+    calc(54% + 14px) 0,
+    calc(44% + 14px) 100%,
+    calc(44% + 6px) 100%
+  );
+}
+/* The painting sits right of the slab, its left edge first, so Voltkit on
+   the hill stays in view beside the stripe instead of under the ink. */
+:root[data-ui="poster"] .welcome-gate.is-title .gate-backdrop {
+  inset: 0 0 0 40%;
+  background-position: left center;
+}
+:root[data-ui="poster"] .title-brand {
+  left: max(28px, calc(var(--safe-left, 0px) + 18px));
+  top: 50%;
+  transform: translateY(-58%);
+  justify-items: start;
+  text-align: left;
+}
+/* The kicker grows with the screen a little (11 px on phones, 15 px on a
+   1440 px desktop), so it keeps its place over a 128 px title. */
+:root[data-ui="poster"] .title-brand .gate-kicker {
+  display: inline-block;
+  color: var(--el);
+  font: 700 calc(clamp(11px, 1.05vw, 16px) * var(--text-scale, 1)) / 1
+    var(--font-body);
+  letter-spacing: 0.22em;
+  text-shadow: none;
+}
+:root[data-ui="poster"] .title-brand h1 {
+  font: 400 calc(clamp(58px, 9.6vw, 128px) * var(--text-scale, 1)) / 0.86
+    var(--font-display);
+  letter-spacing: 0.01em;
+  text-shadow: none;
+}
+:root[data-ui="poster"] .title-brand h1 span {
+  color: var(--el);
+}
+/* The prompt lines up with the name on the slab (title-screen.spec.ts). */
+:root[data-ui="poster"] .title-tap {
+  align-items: flex-start;
+  padding-left: max(28px, calc(var(--safe-left, 0px) + 18px));
+}
+/* A slanted block in the element colour. As the kit's primary button, the
+   slant is drawn behind it (::before) and its own box stays square, so the
+   keyboard's focus ring round it isn't cut off. The right padding gives
+   back the last letter's tracking, so the words sit in the block's middle.
+   Four breaths, then still (no animation that runs for ever); none while
+   it waits for the server, as in the look underneath. */
+:root[data-ui="poster"] .title-prompt {
+  position: relative;
+  isolation: isolate;
+  padding: 10px calc(30px - 0.12em) 9px 30px;
+  color: var(--ink);
+  font: 400 calc(clamp(20px, 2.8vw, 32px) * var(--text-scale, 1)) / 1
+    var(--font-display);
+  letter-spacing: 0.12em;
+  text-shadow: none;
+  animation: poster-breathe 1.6s ease-in-out 4;
+}
+:root[data-ui="poster"] .title-prompt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--el);
+  clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+}
+@keyframes poster-breathe {
+  50% {
+    transform: scale(1.05);
+  }
+}
+:root[data-ui="poster"] .title-tap:disabled .title-prompt {
+  color: #fff;
+  animation: none;
+}
+:root[data-ui="poster"] .title-tap:disabled .title-prompt::before {
+  background: var(--ink-3);
+}
+:root[data-ui="poster"] .title-tap:focus-visible .title-prompt {
+  outline-color: #fff;
+  border-radius: 0;
+}
+:root[data-ui="poster"] .title-hint {
+  color: #b8b8c0;
+  text-shadow: none;
+}
+:root[data-ui="poster"] .title-who {
+  border: 0;
+  border-left: 4px solid var(--el, #ffc83d);
+  border-radius: 0;
+  background: var(--ink-2);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.35);
+  padding: 6px 16px 6px 6px;
+}
+/* The portrait stays round, as on Poster's Lobby card: no square box
+   around a round picture (title-screen.spec.ts). Its element-colour ring
+   is the picture's own (.portrait-disc), not the box's: a worn frame
+   draws its own ring round the picture, and the box steps aside for it
+   (welcome-scene.css), so a framed portrait gets no second ring. */
+:root[data-ui="poster"] .title-avatar {
+  border-color: transparent;
+  border-radius: 50%;
+  background: transparent;
+}
+:root[data-ui="poster"] .title-avatar > .portrait-disc {
+  border: 3px solid var(--el);
+}
+:root[data-ui="poster"] .title-name {
+  font: 400 calc(20px * var(--text-scale, 1)) / 1.2 var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] .title-id small {
+  color: #b8b8c0;
+}
+:root[data-ui="poster"] .title-level {
+  padding: 1px 5px;
+  background: var(--hot-fill);
+  color: #fff;
+  font: 400 calc(12px * var(--text-scale, 1)) / 1.2 var(--font-display);
+  letter-spacing: 0.04em;
+}
+/* The quick buttons (Settings, Help, Support, Repair), here and on the
+   sign-in screen, stay round: one shape on both screens (owner;
+   title-screen.spec.ts). Poster's ink and hard shadow, no blur. */
+:root[data-ui="poster"] .title-quick-icon {
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+}
+:root[data-ui="poster"] .title-quick-btn:hover .title-quick-icon {
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .title-quick-icon .menu-option-icon {
+  color: var(--el);
+}
+:root[data-ui="poster"] .title-quick-btn {
+  font: 400 calc(11px * var(--text-scale, 1)) / 1.1 var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow:
+    0 1px 0 var(--ink),
+    1px 0 0 var(--ink),
+    -1px 0 0 var(--ink),
+    0 -1px 0 var(--ink);
+}
+:root[data-ui="poster"] :is(.title-status, .title-build) {
+  padding: 4px 8px;
+  background: var(--ink);
+  color: #fff;
+  text-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ui="poster"] .title-prompt {
+    animation: none;
+  }
+}
+
+/* ── The countdown: a huge Anton number with a hard ink shadow, its kicker
+      an ink label in the element colour (the diamond kept, as every
+      kicker's). The shade over the arena is the look underneath's. ── */
+:root[data-ui="poster"] #arena-overlay.is-countdown .live-countdown {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: #fff;
+  text-shadow: 8px 8px 0 var(--ink);
+}
+:root[data-ui="poster"] #arena-overlay.is-countdown .countdown-card > .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-self: center;
+  padding: 3px 10px;
+  background: var(--ink);
+  color: var(--el);
+}
+:root[data-ui="poster"] #arena-overlay.is-countdown .countdown-card > div {
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 var(--ink);
+}
+
+/* ── The round break: Anton at its one weight (the look underneath asks
+      800, which the browser fakes by smearing it) and the element colour
+      where that look has gold. Its upgrade cards are sheets.css's; the
+      shade over the arena stays the countdown's (owner). The look
+      underneath's rules here are #arena-overlay#arena-overlay.is-break. ── */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-break
+  .round-break
+  > h2 {
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-break
+  .round-break
+  > .eyebrow,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-break
+  .round-break
+  .live-seconds {
+  color: var(--el);
+}
+
+/* The stars a boss doesn't have, after the ones it has: dim, but still a
+   3:1 shape on the banner. */
+:root[data-ui="poster"] :is(.room-stars, .rh-stars) i {
+  color: rgba(255, 255, 255, 0.45);
 }

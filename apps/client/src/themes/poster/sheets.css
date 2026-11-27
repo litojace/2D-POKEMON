@@ -48,13 +48,14 @@
   > :is(p, span, small) {
   color: var(--ui-dim);
 }
-/* The main action keeps its weight on ink: the element colour, ink type. */
-:root[data-ui="poster"]
-  #arena-overlay#arena-overlay.is-sheet
-  .is-defeat
-  :is(button.btn-primary, button.primary, .ui-btn.is-primary) {
-  background: var(--el);
-  color: var(--ink);
+/* The main action keeps its weight on ink: the element colour, ink type,
+   through the sheet's CTA colours (screens.css), so it stays the slanted
+   block with its red shadow. (Painting the button's own background had
+   drawn a square in front of the slant.) The kit's .ui-btn.is-primary is
+   already that block. */
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .is-defeat {
+  --sheet-cta: var(--el);
+  --sheet-cta-ink: var(--ink);
 }
 
 /* ── the Reveal: ink and halftone, the fighters as poster cards ── */
@@ -74,13 +75,16 @@
     linear-gradient(100deg, transparent 0 58%, var(--ink-1) 58%),
     var(--ink);
 }
-:root[data-ui="poster"] .match-reveal > h2 {
+/* The heading and its kicker go one step past the look underneath's
+   (#arena-overlay .overlay-card.match-reveal > ...), which had kept the
+   kicker gold and the heading at 800, a weight Anton doesn't have. */
+:root[data-ui="poster"] #arena-overlay .overlay-card.match-reveal > h2 {
   color: #fff;
   font-family: var(--font-display);
   font-weight: 400;
   letter-spacing: 0.03em;
 }
-:root[data-ui="poster"] .match-reveal > .eyebrow {
+:root[data-ui="poster"] #arena-overlay .overlay-card.match-reveal > .eyebrow {
   color: var(--el);
   font-family: var(--font-body);
   font-weight: 800;
@@ -119,7 +123,7 @@
 }
 :root[data-ui="poster"] .rv-you {
   border-radius: 0;
-  background: var(--hot);
+  background: var(--hot-fill);
   color: #fff;
 }
 :root[data-ui="poster"] .vs-back {
@@ -142,6 +146,15 @@
   color: var(--hot);
   font-family: var(--font-display);
   font-weight: 400;
+}
+/* The loading bar: square, filled in the element colour (the look
+   underneath's is a gold pill). From the UI-overhaul session's block. */
+:root[data-ui="poster"] #arena-overlay .rv-load > i,
+:root[data-ui="poster"] #arena-overlay .rv-load > i > b {
+  border-radius: 0;
+}
+:root[data-ui="poster"] #arena-overlay .rv-load > i > b {
+  background: var(--el);
 }
 
 /* ── rite cards between rounds (PvP) ── */
@@ -178,19 +191,31 @@
 :root[data-ui="poster"] .rite-card small {
   color: var(--ui-dim);
 }
-:root[data-ui="poster"] .rite-card kbd {
+:root[data-ui="poster"] .rite-card :is(kbd, .rite-icon) {
   border-radius: 0;
+}
+/* The rite's name a size up, as the block's poster cards have it. */
+:root[data-ui="poster"] #arena-overlay .rite-card > b {
+  font-size: calc(17px * var(--text-scale, 1));
+  line-height: 1;
 }
 
 /* ── raid rites and Spire blessings: ink tiles, the rite's colour along
-   the foot ── */
+   the foot ──
+   The foot is painted, not a border: a 4 px border lifted the tile's
+   content 2 px above its middle (raid-layout.spec). */
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-rites
   .raid-rite-options
   > button {
   border-radius: 0;
-  border-bottom-width: 4px;
+  border-bottom: 0;
   background:
+    linear-gradient(
+        color-mix(in srgb, var(--rite-color) 85%, transparent),
+        color-mix(in srgb, var(--rite-color) 85%, transparent)
+      )
+      bottom / 100% 4px no-repeat,
     linear-gradient(
       to top,
       color-mix(in srgb, var(--rite-color) 16%, transparent),
@@ -203,7 +228,13 @@
   #arena-overlay#arena-overlay.is-rites
   .raid-rite-options
   > button.is-picked {
-  background: var(--ink);
+  background:
+    linear-gradient(
+        color-mix(in srgb, var(--rite-color) 85%, transparent),
+        color-mix(in srgb, var(--rite-color) 85%, transparent)
+      )
+      bottom / 100% 4px no-repeat,
+    var(--ink);
   box-shadow:
     inset 0 0 0 3px #3ee07a,
     5px 5px 0 rgba(0, 0, 0, 0.4);
@@ -220,4 +251,41 @@
   font-family: var(--font-display);
   font-weight: 400;
   letter-spacing: 0.04em;
+}
+/* The rest of the rites sheet, from the UI-overhaul session's block: the
+   heading at Anton's one weight, the kicker in the element colour, the
+   timer and the boxes as square ink blocks. The shade over the arena stays
+   the countdown's even 65% (owner, 19-20 Nov; raid-rite-choices.spec). */
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-rites .rites-title {
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-rites .rites-kicker {
+  color: var(--el);
+  font-weight: 800;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-rites .rites-objective {
+  border-radius: 0;
+  background: var(--ink);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-rites
+  .raid-choice-timer {
+  padding: 2px 8px;
+  background: var(--ink);
+  box-shadow: 4px 4px 0 var(--el);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-rites
+  .raid-rite-buff-stat {
+  border-radius: 0;
+  background: var(--ink);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-rites
+  :is(.raid-rite-more, .raid-team-summary)
+  > summary {
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
 }

@@ -103,7 +103,7 @@
   text-transform: uppercase;
 }
 :root[data-ui="poster"] body.hub-active #account-profile .nav-level {
-  background: #ff2e4d;
+  background: var(--hot-fill);
   color: #fff;
   border: 0;
   border-radius: 2px;
@@ -115,11 +115,13 @@
   background: #333;
   border-radius: 0;
 }
+/* The balance changes in place: tabular figures (kit.css, "numbers"). */
 :root[data-ui="poster"] body.hub-active .coin-chip b {
   color: #fff;
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: 0.03em;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
 }
 :root[data-ui="poster"] body.hub-active .header-menu > summary svg,
 :root[data-ui="poster"] body.hub-active .chat-button svg {
