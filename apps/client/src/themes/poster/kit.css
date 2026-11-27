@@ -6,7 +6,9 @@
 /* ── panels: an ink board with a masthead in the element colour ── */
 :root[data-ui="poster"] :is(.ui-panel, .ui-modal, .ui-sheet) {
   background: var(--ink);
-  border: 0;
+  /* The 1 px frame stays, unseen (its colour token is transparent): what
+     is placed against a panel's edge keeps its place to the pixel. */
+  border-color: transparent;
   border-radius: 0;
   box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.45);
 }
@@ -47,9 +49,26 @@
   border-bottom: 0;
   gap: 2px;
 }
+/* A masthead tab is the block under its row's top 8 px: the chosen one's
+   ink block, which runs into the page below, with its label in the middle.
+   The strip above it (::before) still catches a finger, so the tab keeps a
+   44 px target. (A margin moved the whole 44 px button down instead: the
+   row cut its last 8 px and its label sat 6 px low.) */
 :root[data-ui="poster"] .ui-panel-head .ui-tabs > button {
-  margin: 8px 0;
+  position: relative;
+  align-self: flex-end;
+  height: calc(100% - 8px);
+  min-height: 0;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
   color: rgba(13, 13, 15, 0.62);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-tabs > button::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0 100%;
 }
 :root[data-ui="poster"] .ui-panel-head .ui-tabs > button[aria-selected="true"] {
   color: var(--el);
@@ -114,16 +133,36 @@
   box-shadow: none;
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: 0.07em;
+  --btn-tracking: 0.07em;
+  letter-spacing: var(--btn-tracking);
 }
+/* Letter spacing follows every letter, the last one too: the label's ink
+   sat half a space left of the button's middle (1.5 px on a desktop's
+   "PIN" with its star). The label gives that last space back. */
+:root[data-ui="poster"] .ui-btn > span {
+  margin-right: calc(-1 * var(--btn-tracking));
+}
+/* The primary button: a slanted block in the element colour with a hot-red
+   offset shadow. The slant is drawn behind the button (::before); the
+   button's own box stays square, so it measures the same as the buttons
+   beside it and its label isn't slanted. */
 :root[data-ui="poster"] .ui-btn.is-primary {
-  background: var(--el);
+  position: relative;
+  isolation: isolate;
+  background: none;
   color: var(--ink);
+  box-shadow: none;
+}
+:root[data-ui="poster"] .ui-btn.is-primary::before {
+  content: "";
+  position: absolute;
+  /* Inside the button's box, slant and shadow included: nothing of it
+     counts as overflow (a button "wider than its label's room"). */
+  inset: 0 8px 4px 4px;
+  z-index: -1;
+  background: var(--el);
   box-shadow: 4px 4px 0 var(--hot);
   transform: skewX(-8deg);
-}
-:root[data-ui="poster"] .ui-btn.is-primary > * {
-  transform: skewX(8deg);
 }
 :root[data-ui="poster"] .ui-btn.is-ok {
   background: #3ee07a;

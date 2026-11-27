@@ -18,10 +18,22 @@
   color: #fff;
 }
 :root[data-ui="poster"] .lobby-layer .lobby-mode-menu b {
-  font: 400 15px/1.1 var(--font-display);
+  font: 400 calc(15px * var(--text-scale, 1)) / 1.1 var(--font-display);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #fff;
+}
+/* A locked mode shows its lock pill where the others have a line of small
+   text. Poster's names are taller (16.5 px), so with the old look's 16 px
+   pill the locked row stood 4 px taller than the rest: the pill is 13 px
+   here, and its "Lv 2" keeps the pill's own type, not a mode name's. */
+:root[data-ui="poster"] .lobby-layer .lobby-mode-menu .feature-lock {
+  height: 13px;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-mode-menu .feature-lock b {
+  font: inherit;
+  letter-spacing: 0;
+  text-transform: none;
 }
 :root[data-ui="poster"] .lobby-layer .lobby-mode-menu small {
   font-family: var(--font-body);
@@ -59,7 +71,7 @@
 :root[data-ui="poster"] .dialog-heading,
 :root[data-ui="poster"] .dialog-toolbar h2 {
   color: var(--ink);
-  font: 400 22px/1 var(--font-display);
+  font: 400 calc(22px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -86,7 +98,7 @@
   box-shadow: none;
 }
 :root[data-ui="poster"] :is(.prefs-card, .st-card) h3 {
-  font: 400 17px/1 var(--font-display);
+  font: 400 calc(17px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--el);
@@ -136,9 +148,13 @@
 :root[data-ui="poster"] textarea {
   background: var(--ink-2);
   color: #fff;
-  border: 2px solid var(--ink-3);
+  /* The frame is the field's own border, recoloured, thickened inside by
+     a shadow: a 2 px border made fields taller than the screens they sit in
+     were laid out for (Friends' add-by-code row pushed its list 2 px down,
+     and the last row's buttons lost part of their reach). */
+  border-color: var(--ink-3);
   border-radius: 0;
-  box-shadow: none;
+  box-shadow: inset 0 0 0 1px var(--ink-3);
   font-family: var(--font-body);
 }
 :root[data-ui="poster"]
@@ -148,6 +164,7 @@
     :root[data-ui="poster"] :not([type])
   ):focus {
   border-color: var(--el);
+  box-shadow: inset 0 0 0 1px var(--el);
   outline: none;
 }
 /* play drawer */
@@ -158,15 +175,26 @@
   border-radius: 0;
 }
 /* ── battle HUD ── */
+/* The score badge: a slanted ink block, drawn behind it (::before). The
+   badge keeps its own transform, which centres it (left: 50% and
+   translateX(-50%)); a skew on the badge itself replaced that and put the
+   badge's left edge at the middle of the screen, 93 px right of centre. */
 :root[data-ui="poster"] body.battle-active #battle #hud.hud {
-  background: var(--ink);
+  background: none;
   border: 0;
   border-radius: 0;
-  transform: skewX(-10deg);
-  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
+  box-shadow: none;
+  isolation: isolate;
 }
-:root[data-ui="poster"] body.battle-active #battle #hud.hud > * {
-  transform: skewX(10deg);
+:root[data-ui="poster"] body.battle-active #battle #hud.hud::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--ink);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
+  transform: skewX(-10deg);
+  pointer-events: none;
 }
 :root[data-ui="poster"] body.battle-active #battle #hud #timer {
   font-family: var(--font-display);
@@ -187,6 +215,20 @@
   :is(#score-0, #score-1) {
   font-family: var(--font-display);
   font-weight: 400;
+}
+/* On a phone a name's ink sat 2 px under the badge's middle beside its
+   score's taller digits, on the same baseline: the row rises half a pixel
+   more than the badge's own -1 px (one of the phone's pixels), so both sit
+   within 1.5 px of it. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"] #hud.hud-badge .hud-fighter {
+    top: -1.5px;
+  }
+}
+/* The clock and round in Anton sit higher than in the old look's font: the
+   badge's nudge (-1 px) becomes +1 px to put their ink on the middle. */
+:root[data-ui="poster"] #hud.hud-badge .timer-wrap {
+  top: 1px;
 }
 :root[data-ui="poster"] body.battle-active #battle #hud .hud-fighter {
   font-family: var(--font-body);
@@ -257,7 +299,7 @@
   .ui-title {
   color: var(--ink);
   text-shadow: none;
-  font: 400 34px/1 var(--font-display);
+  font: 400 calc(34px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
@@ -308,7 +350,7 @@
 :root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet table.recap td {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
 }
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
@@ -357,7 +399,7 @@
   .journey-result-xp
   > strong {
   color: var(--el);
-  font: 400 24px/1 var(--font-display);
+  font: 400 calc(24px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.04em;
 }
 :root[data-ui="poster"]
@@ -389,8 +431,23 @@
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
   button:is(.btn-primary, .primary) {
-  background: var(--ink);
-  color: var(--el);
+  /* As the kit's primary: the slant is drawn behind, the box stays square.
+     --sheet-cta / --sheet-cta-ink let a sheet's own state (a defeat)
+     recolour it without redrawing it. */
+  position: relative;
+  isolation: isolate;
+  background: none;
+  color: var(--sheet-cta-ink, var(--el));
+  box-shadow: none;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  button:is(.btn-primary, .primary)::before {
+  content: "";
+  position: absolute;
+  inset: 0 9px 5px 4px;
+  z-index: -1;
+  background: var(--sheet-cta, var(--ink));
   box-shadow: 5px 5px 0 var(--hot);
   transform: skewX(-8deg);
 }
@@ -464,11 +521,28 @@
   color: var(--el);
 }
 /* ── raid room ── */
+/* The column keeps its 1 px frame, unseen: the room's chat button is placed
+   for the banner inside it, so without the frame the banner moved 1 px and
+   chat and ⋯ no longer sat level (room-alignment.spec). */
 :root[data-ui="poster"] .room-seats {
   background: var(--ink);
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 0;
   box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.4);
+}
+/* A hidden pick's "?" in Anton sits higher in its box than the old look's
+   display font did: 2 px at 20 px (room-alignment.spec measures its ink). */
+:root[data-ui="poster"] .room-pick.is-hidden > b {
+  transform: translateY(0.06em);
+}
+/* Phones: a seat's state tag ("CHOOSING") is 72 px; Poster's tag spacing
+   (0.08em) ran its word past the tag's padding. Set as close as the old
+   look sets it there. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .room-seat.has-pick .ui-tag {
+    letter-spacing: 0;
+    padding: 0 3px;
+  }
 }
 :root[data-ui="poster"] .room-seat {
   background: var(--ink-2);
@@ -492,14 +566,36 @@
 :root[data-ui="poster"] body.lobby-active .room-screen {
   background: transparent;
 }
+/* Anton's capitals sit high in their line: a friend's "FRIEND" / "IN PARTY"
+   pill read 1.5 px above its middle on a desktop (a phone's smaller type
+   sits in the middle already). */
+@media (min-height: 501px) {
+  :root[data-ui="poster"] .fr-in-party {
+    padding-top: 3px;
+  }
+}
 /* friends on phones: the tab row is the masthead */
 :root[data-ui="poster"] .friends-sheet > .ui-tabs {
   background: var(--el);
   border-bottom: 0;
 }
+/* As on a panel's masthead (kit.css): the tab is the block under the
+   row's top 7 px, and the strip above it still catches a finger. */
 :root[data-ui="poster"] .friends-sheet > .ui-tabs > button {
+  position: relative;
+  align-self: flex-end;
+  height: calc(100% - 7px);
+  min-height: 0;
   color: rgba(13, 13, 15, 0.62);
-  margin: 7px 0;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+:root[data-ui="poster"] .friends-sheet > .ui-tabs > button::before {
+  content: "";
+  position: absolute;
+  inset: -7px 0 100%;
 }
 :root[data-ui="poster"]
   .friends-sheet
@@ -562,8 +658,20 @@
   border-bottom: 0;
 }
 :root[data-ui="poster"] .ui-split-main > .ui-tabs > button {
+  position: relative;
+  align-self: flex-end;
+  height: calc(100% - 7px);
+  min-height: 0;
   color: rgba(13, 13, 15, 0.62);
-  margin: 7px 0;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+:root[data-ui="poster"] .ui-split-main > .ui-tabs > button::before {
+  content: "";
+  position: absolute;
+  inset: -7px 0 100%;
 }
 :root[data-ui="poster"]
   .ui-split-main
@@ -607,6 +715,24 @@
   > :is(small, .ui-count, span + span) {
   color: inherit;
 }
+/* Phones: Anton sets a skin's name wider than the old look's display font,
+   so on a 667 px phone's 61 px cards some were cut: a long word
+   ("Chrysanthemum", "Cartographer") past the edge, a third line ("Roasted /
+   Chestnut / Tea") under the two the card shows. A card's name is set a
+   size smaller and a touch tighter there; a long word also takes one more
+   pixel of the card's padding. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .roster-look b {
+    font-size: calc(11px * var(--text-scale, 1));
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+  :root[data-ui="poster"] .roster-look.has-long-word b {
+    margin-inline: -3px;
+    font-size: var(--fs-micro);
+    letter-spacing: -0.05em;
+  }
+}
 /* ranks: the board and the rank road */
 :root[data-ui="poster"] :is(.rk-board, .rk-road, .rk-list) {
   background: var(--ink-1);
@@ -617,6 +743,17 @@
   background: var(--ink-2);
   font-family: var(--font-body);
   font-weight: 800;
+}
+/* Phones: Archivo's capitals are wider than the old look's, so "RATING"
+   (51 px) spilled its 46 px column. The column takes 8 px more from the
+   name's; the letters sit a little closer. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .rk-board {
+    --rk-cols: 40px 30px minmax(0, 1fr) 54px 52px;
+  }
+  :root[data-ui="poster"] .rk-head {
+    letter-spacing: 0.06em;
+  }
 }
 :root[data-ui="poster"] .rk-pin > .rk-row {
   background: var(--el);
@@ -637,6 +774,18 @@
   :is(button, [role="switch"], .seg, .st-seg, input[type="range"]) {
   border-radius: 0;
 }
+/* Tiles in a grid share one size: Poster's names are capitals, so more of
+   them take two lines ("STORM CHARIOTEER" on a phone, "FALLEN LIGHTBRINGER"
+   on a desktop), and a row of those stood taller than the rest. Every row
+   takes the tallest row's height; the price keeps to each tile's foot. */
+:root[data-ui="poster"] .fit-grid {
+  grid-auto-rows: 1fr;
+}
+/* An empty Wardrobe slot's dash: Archivo's em dash at the look underneath's
+   28 px was wider than the slot's picture box, which cut its ends. */
+:root[data-ui="poster"] :is(.fit-slot-art i, .fit-none) {
+  font-size: calc(20px * var(--text-scale, 1));
+}
 /* wardrobe slots */
 :root[data-ui="poster"] :is(.fit-slot, .fit-slots > *) {
   border-radius: 0;
@@ -648,8 +797,11 @@
       9px 9px,
     var(--el);
 }
-/* narrow phones (667–800 px): the rail folds to icons with small labels */
-@media (max-width: 800px) {
+/* Phones (667–800 px wide, and any phone held sideways): the rail folds to
+   icons with small labels. The text rail is 132 px; on an 844 or 852 px
+   phone it took 68 px from every screen beside it, so tab rows ran under
+   Close ("GUIDE", "MYTHIC HALL") and the Shop's tabs scrolled. */
+@media (max-width: 800px), (max-height: 500px) {
   :root[data-ui="poster"] .lobby-layer {
     --lobby-rail: 64px;
   }
@@ -663,7 +815,7 @@
     padding: 0;
   }
   :root[data-ui="poster"] .lobby-layer .lobby-rail span {
-    font: 700 11px/1 var(--font-body);
+    font: 700 calc(11px * var(--text-scale, 1)) / 1 var(--font-body);
     letter-spacing: 0;
     text-transform: none;
   }
@@ -672,14 +824,14 @@
     --slab-bottom: 88px;
   }
   :root[data-ui="poster"] .lobby-layer .lobby-slot small {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     letter-spacing: 0;
   }
   :root[data-ui="poster"] .ui-btn {
-    letter-spacing: 0.04em;
+    --btn-tracking: 0.04em;
   }
 }
-@media (max-width: 800px) {
+@media (max-width: 800px), (max-height: 500px) {
   :root[data-ui="poster"] .ui-tabs > button {
     letter-spacing: 0.02em;
     padding-left: 7px;
@@ -728,4 +880,38 @@
 :root[data-ui="poster"] #arena-overlay#arena-overlay .rw-gift {
   color: var(--ink);
   font-weight: 700;
+}
+/* The narrowest phones (667 px): a masthead's tabs take 6 px a side, not 8,
+   so a row of six (the profile's) ends before Share instead of 1 px under
+   it. The old look sets them 5 px there. They touch, with no 2 px gap: a
+   tab narrower than a finger (SKINS) then has its neighbour beside it, not
+   a strip that catches nothing (phone-fit.spec). */
+@media (max-width: 760px) and (max-height: 500px) {
+  :root[data-ui="poster"] .ui-panel-head .ui-tabs {
+    gap: 0;
+  }
+  :root[data-ui="poster"] .ui-panel-head .ui-tabs > button {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
+/* The Plaza map's places: a quest's reward line carries a coin 1.35em tall,
+   which in Archivo made its row 2.5 px taller than the rest. Every line is
+   as tall as the coin's. */
+:root[data-ui="poster"] .plaza-layer .pz-map-list small {
+  line-height: 1.4;
+}
+/* Missions' masthead: its kicker ("Daily · new in 3 h 10 min") on one line
+   above the title. The sheet has no tabs, so its heading may take the
+   masthead's width (the kit caps it at 46% to leave tabs room); capped,
+   the kicker wrapped and pushed "MISSIONS" past the masthead's top. From
+   the UI-overhaul session's block (session_01GGURqQZFSzog8RyuAkr7TD). */
+:root[data-ui="poster"] .missions-sheet .ui-panel-head > .ui-heading {
+  flex: 1 1 auto;
+  max-width: none;
+  min-width: 0;
+}
+:root[data-ui="poster"] .missions-sheet .ui-panel-head .ui-kicker {
+  display: block;
+  white-space: nowrap;
 }

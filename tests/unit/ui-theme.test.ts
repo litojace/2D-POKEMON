@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import {
+  DEFAULT_UI_THEME,
   UI_THEMES,
   getUiTheme,
   lookPickerDue,
@@ -17,6 +18,7 @@ import {
   lookPickerMarkup,
   lookRow,
 } from "../../apps/client/src/ui-theme-picker";
+import { PLAYERS_LOOK } from "../visual/players-look";
 
 // The game's looks (ui-theme.ts): which one a device shows, when a player
 // is offered the choice, and the rules each theme's folder keeps. The picker
@@ -57,15 +59,27 @@ describe("the address", () => {
 });
 
 describe("which look shows", () => {
-  it("is the look underneath when nothing is chosen", () => {
-    expect(resolveUiTheme(null, plain, BOTH)).toBeNull();
+  it("is the look underneath when nothing is chosen and there is no default", () => {
+    expect(resolveUiTheme(null, plain, BOTH, null)).toBeNull();
+  });
+  it("is the default look when nothing is chosen, once that look is ready", () => {
+    expect(resolveUiTheme(null, plain, ONE, "poster")).toBe("poster");
+    expect(resolveUiTheme(null, plain, NONE, "poster")).toBeNull();
+    // A saved look that isn't ready falls to the default, not to nothing.
+    expect(resolveUiTheme("showcase", plain, ONE, "poster")).toBe("poster");
+  });
+  it('a saved "classic" keeps the look underneath (the visual tests pin it)', () => {
+    expect(resolveUiTheme("classic", plain, ONE, "poster")).toBeNull();
+    expect(
+      resolveUiTheme("classic", readUiQuery("?ui=poster"), ONE, "poster"),
+    ).toBe("poster");
   });
   it("is the saved one once it is ready", () => {
     expect(resolveUiTheme("showcase", plain, BOTH)).toBe("showcase");
   });
   it("ignores a saved look that is not ready, or not a look", () => {
-    expect(resolveUiTheme("showcase", plain, ONE)).toBeNull();
-    expect(resolveUiTheme("old-name", plain, BOTH)).toBeNull();
+    expect(resolveUiTheme("showcase", plain, ONE, null)).toBeNull();
+    expect(resolveUiTheme("old-name", plain, BOTH, null)).toBeNull();
   });
   it("the address wins for a page load, ready or not", () => {
     expect(resolveUiTheme("showcase", readUiQuery("?ui=poster"), NONE)).toBe(
@@ -105,9 +119,27 @@ describe("when a player is offered the choice", () => {
 describe("the looks as shipped", () => {
   // The owner turns a look on after seeing the whole set of screenshots.
   // Turning one on: change this list in the same pull request.
-  const READY: string[] = [];
+  const READY: string[] = ["poster"];
   it("are ready only when the owner has said so", () => {
     expect(UI_THEMES.filter((t) => t.ready).map((t) => t.id)).toEqual(READY);
+  });
+  it("every player gets Poster, with nothing saved and nothing in the address", () => {
+    resetUiThemeForTests("");
+    expect(DEFAULT_UI_THEME).toBe("poster");
+    expect(getUiTheme()).toBe("poster");
+    // It ships in the game's own script: no chunk to wait for at startup.
+    expect(typeof UI_THEMES.find((t) => t.id === "poster")!.css).toBe("string");
+    store.set("ea-ui", "showcase");
+    expect(getUiTheme()).toBe("poster");
+    store.set("ea-ui", "classic");
+    expect(getUiTheme()).toBeNull();
+  });
+  it("the budget specs measure the look every player gets", () => {
+    // tests/visual/players-look.ts: the battle and panel budgets run in
+    // this look. Changing the default (or reverting it to null, the look
+    // underneath) means changing PLAYERS_LOOK in the same pull request, or
+    // the budgets would go on measuring a look players no longer have.
+    expect(PLAYERS_LOOK).toBe(DEFAULT_UI_THEME ?? "classic");
   });
   it("show nothing to choose while fewer than two are ready", () => {
     resetUiThemeForTests("");
