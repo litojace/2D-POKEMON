@@ -204,6 +204,20 @@
   font-family: var(--font-display);
   font-weight: 400;
 }
+/* On a phone a name's ink sat 2 px under the badge's middle beside its
+   score's taller digits, on the same baseline: the row rises half a pixel
+   more than the badge's own -1 px (one of the phone's pixels), so both sit
+   within 1.5 px of it. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"] #hud.hud-badge .hud-fighter {
+    top: -1.5px;
+  }
+}
+/* The clock and round in Anton sit higher than in the old look's font: the
+   badge's nudge (-1 px) becomes +1 px to put their ink on the middle. */
+:root[data-ui="poster"] #hud.hud-badge .timer-wrap {
+  top: 1px;
+}
 :root[data-ui="poster"] body.battle-active #battle #hud .hud-fighter {
   font-family: var(--font-body);
   font-weight: 800;
