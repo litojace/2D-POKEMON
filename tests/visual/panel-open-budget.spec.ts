@@ -477,6 +477,23 @@ async function measure(
     };
     document.addEventListener("pointerdown", at, true);
     document.addEventListener("click", at, true);
+    // Its screen, in the page once the tap's task is over (its microtasks
+    // included): a message posted as the click starts runs right after.
+    // (On the window, capturing: before any handler can stop the click.)
+    c.inPage = undefined;
+    window.addEventListener(
+      "click",
+      () => {
+        const hop = new MessageChannel();
+        hop.port1.onmessage = () => {
+          c.inPage = document.querySelectorAll(
+            ".ui-panel-host:not([data-ui-parked]):not([data-ui-leaving])",
+          ).length;
+        };
+        hop.port2.postMessage(0);
+      },
+      { capture: true, once: true },
+    );
   });
   await panel.open(page);
   await page.waitForTimeout(SETTLE_MS);
@@ -489,6 +506,7 @@ async function measure(
       nodes: c.nodes as number,
       late: c.late as number,
       reads: c.reads as number,
+      inPage: (c.inPage ?? 0) as number,
       // Canvases made during this open that the screen shows (not the
       // background painting of fighter textures, nor one moved back in).
       canvases: Array.from(
@@ -714,6 +732,17 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
         `${panel.name}: layout reads on a repeat open`,
       ).toBeLessThanOrEqual(MAX_LAYOUT_READS);
       expect(again.tapped, `${panel.name}: the open's tap was seen`).toBe(true);
+      // Its code loaded, a screen opened again is in the page as the tap's
+      // task ends, and so in the frame measured below. The Shop waited for
+      // `import()` of code it had loaded: 330-380 ms here, 1.5-1.75 s at
+      // 4x, so its open fell after the settle and this spec measured none
+      // of it (27 Nov 2026, #582). Raids keeps its code (accounts.ts).
+      expect
+        .soft(
+          again.inPage,
+          `${panel.name}: its screen in the page by the end of the tap's task, on a repeat open`,
+        )
+        .toBeGreaterThan(0);
       // Soft: every screen over its limit is named, not the first alone.
       expect
         .soft(
