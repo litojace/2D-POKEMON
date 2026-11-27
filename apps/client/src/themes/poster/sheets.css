@@ -418,3 +418,36 @@
 :root[data-ui="poster"] .reveal-actions button {
   text-transform: uppercase;
 }
+
+/* ── Briefing and results details (audit D10, D12, D13; 27 Nov 2026) ── */
+/* A briefing step's title and a Spire wave's label in Anton capitals, as
+   every other Poster heading ("Bait a pillar crash", "Wave 1" were Anton
+   in lower case: D12). */
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-step-head h3,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .spire-waves
+  > li
+  > b {
+  text-transform: uppercase;
+}
+/* The countdown's kicker clear of the number: Anton's figures rise to the
+   top of their 0.95 line, and "BOSS RAID · CO-OP" sat on the numeral's
+   top (D13). */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-countdown
+  .countdown-card
+  > .eyebrow {
+  margin-bottom: 0.9em;
+}
+/* One way out of a match's results, one look: PvP's Return to lobby wore
+   the plain white of the other buttons while a bot match's Back to menu
+   and a raid's Return to menu wore the leave button's red edge (D10). */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .result-actions
+  button#return {
+  background: #fff;
+  color: #d01836;
+  box-shadow: inset 0 0 0 2px #d01836;
+}
