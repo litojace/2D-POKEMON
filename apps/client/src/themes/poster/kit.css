@@ -355,3 +355,24 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
+/* A price on a button ("Buy · 1,200") is part of its label, not a column
+   or a counter: it stays in Anton, as narrow as the label, so a dialog's
+   buttons keep one width (fitting-room.spec, the purchase confirmation:
+   Archivo's figures had made "Buy" 1.8 px wider than "Cancel"). */
+:root[data-ui="poster"] .ui-btn .ui-price {
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+/* A skin set's card is narrow: a sale's struck-out price goes on its own
+   small line above the price you pay, which fits whole beside its coin
+   (text-collisions.spec: "79,200" ran out of the card at 667 and 844). */
+:root[data-ui="poster"] .fit-skin-sets .fit-bundle-price .ui-price {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+:root[data-ui="poster"] .fit-skin-sets .fit-bundle-price .ui-price s {
+  order: -1;
+  flex-basis: 100%;
+  font-size: 0.75em;
+  line-height: 1.1;
+}
