@@ -26,6 +26,13 @@ the old `*farm*` and `*bistro*` migrations, and
 section marked removed, retired or old. What the game has today is what the
 code on `origin/main` runs.
 
+**Also gone (27 Nov 2026):** the Showcase look and the look picker (Poster is
+the only look, `docs/ui-themes.md`); the loading tips on the startup screens;
+Raid of the Week, Raid of the Day and Boss Rush (retired earlier, their
+leftovers cleaned up in #500 and #587). The game's address is
+`https://play.elementarenausa.com`: `parena.litojace.com` only redirects there
+(301), and the game server no longer accepts it as an origin.
+
 ## What is different for you
 
 - **Merging.** Merge your own PRs by lane, exactly as CLAUDE.md's "Merging
