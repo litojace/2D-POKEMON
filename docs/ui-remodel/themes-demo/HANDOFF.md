@@ -70,6 +70,17 @@ The other session's own handoff (the Showcase removal plan, which art is safe
 to delete, phone measurements not yet fixed) is a comment on #553:
 https://github.com/litojace/2D-POKEMON/pull/553#issuecomment-7212569719
 
+**Update, 27 Nov 01:15 PT (reported by the Poster session, not checked by
+me):** the whole suite has run on Poster: 1,092 pass, 192 fail of 1,284, most
+of the failures specs that measure today's look. Both lists are on #553:
+https://github.com/litojace/2D-POKEMON/pull/553#issuecomment-7214457982
+Real bugs, most serious first: Friends, Profile and a fighter's detail don't
+scroll to their end on phones; the boss page's actions are out of reach at
+iPhone SE size; the room's seat states are cut; tab rows under Close; cut
+labels; a friend's name not opening its options; the boot screen moving 1 to
+3 px at handover. #553's own full run is green, but it tests today's look:
+**#553 is not to merge until that list is fixed or the owner accepts it.**
+
 ## Order of what is left
 
 1. Done: #555, the defeat-sheet fix.
