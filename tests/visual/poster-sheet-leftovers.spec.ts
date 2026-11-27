@@ -44,6 +44,7 @@ test("Poster's sheets: reward news, the XP block, the places and the solo warnin
         <section class="journey-result-xp"><strong>+150 XP</strong><p class="journey-level-up">LEVEL UP · 11 → 12<small>+30 coins</small></p>
           <div class="journey-level is-compact"><span class="journey-level-badge"><small>LEVEL</small><b>12</b></span><div><progress max="100" value="40"></progress></div></div></section>
         <div class="standings-card"><ol class="standings"><li class="place-1 me"><span>1st</span><b><bdi>Kai</bdi></b><em>3</em></li></ol></div>
+        <details class="rc-extra" open><summary>Your fighter</summary><div class="raid-perks"><h3>Champion tricks</h3><ul><li><b>You · Voltkit</b> — Spark: a trick.</li></ul></div></details>
       </div><div class="panel-actions"><p class="raid-solo-warning">No revive solo at ★★★ · one knockout ends the run</p></div></div>`;
       const cs = (s: string, pseudo?: string) =>
         getComputedStyle(ov.querySelector(s)!, pseudo);
@@ -56,6 +57,8 @@ test("Poster's sheets: reward news, the XP block, the places and the solo warnin
         (t) => getComputedStyle(t).borderTopColor,
       );
       const warn = cs(".raid-solo-warning");
+      const perks = cs(".raid-perks");
+      const extra = cs(".rc-extra");
       return {
         burst: [cs(".rw-burst").borderTopLeftRadius, cs(".rw-burst").boxShadow],
         tileEdges: tiles,
@@ -69,6 +72,14 @@ test("Poster's sheets: reward news, the XP block, the places and the solo warnin
           cs(".standings li").borderTopLeftRadius,
           cs(".standings li > span").borderTopLeftRadius,
         ],
+        extraPad: parseFloat(extra.paddingLeft),
+        perks: {
+          radius: perks.borderTopLeftRadius,
+          top: perks.borderTopStyle,
+          fg: rgb(perks.color),
+          bg: rgb(perks.backgroundColor),
+          alpha: perks.backgroundColor,
+        },
         warn: {
           fg: rgb(warn.color),
           bg: rgb(warn.backgroundColor),
@@ -84,6 +95,15 @@ test("Poster's sheets: reward news, the XP block, the places and the solo warnin
     expect(look.levelUp).toBeGreaterThanOrEqual(14);
     // C10: the places' card, plates and medals square.
     expect(look.places).toEqual(["0px", "0px", "0px"]);
+    // C41: the Champion tricks a solid square plate, its words readable.
+    expect(look.perks.radius).toBe("0px");
+    expect(look.perks.top, "no thin rim").toBe("none");
+    expect(look.perks.alpha, "solid, not see-through").toMatch(/^rgb\(/);
+    expect(contrast(look.perks.fg, look.perks.bg)).toBeGreaterThanOrEqual(4.5);
+    expect(
+      look.extraPad,
+      "the block's lines off its left edge",
+    ).toBeGreaterThanOrEqual(8);
     // C41: the warning square, its words readable on its block.
     expect(look.warn.radius).toBe("0px");
     expect(contrast(look.warn.fg, look.warn.bg)).toBeGreaterThanOrEqual(4.5);
