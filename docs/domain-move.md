@@ -115,14 +115,17 @@ Each step can be undone on its own; "Undo" says how.
       `http_request_dynamic_redirect`, ruleset `6417be6a…`, rule
       `30f75514…`): `http.host eq "parena.litojace.com" and not
 starts_with(http.request.uri.path, "/.well-known/acme-challenge/")` →
-      **302** to `concat("https://play.elementarenausa.com",
+      **301** (since 27 Nov, 10:26 AM PT; 302 before) to
+      `concat("https://play.elementarenausa.com",
 http.request.uri.path)`, preserve query string on. The ACME path stays
       on Render so it can renew `parena`'s certificate (needed to undo).
     - The `parena` CNAME (target `element-arena-np34.onrender.com`, unchanged:
       Render routes by host name) is **Proxied** (orange). The universal
       certificate covers `*.litojace.com` (until 6 Jan 2027).
-    - **301 on 2 Dec** if nothing goes wrong, with the owner's OK then
-      (browsers keep a 301).
+    - **301 since 27 Nov, 10:26 AM PT**, earlier than the planned 2 Dec,
+      with the owner's OK here ("đồng ý 301 và gỡ parena"): nobody was
+      still playing on `parena` (below). Browsers keep a 301, so undoing it
+      now only helps browsers that haven't cached it.
     - Checked at 8:06 PM PT: `/?room=TEST` → `302` to
       `play…/?room=TEST`; `http://…/privacy.html?x=1` → `https://play…/privacy.html?x=1`;
       a `#access_token=…` fragment arrives on `play.`; an old Supabase email
@@ -134,13 +137,17 @@ http.request.uri.path)`, preserve query string on. The ACME path stays
       cached old game. It opens `play.` in the in-app browser bar.
     - Undo: set `parena` back to DNS only (and turn the rule off). Render
       keeps the custom domain, so the old address serves the game again
-      within about 5 minutes.
+      within about 5 minutes, except in browsers that cached the 301; and
+      since 27 Nov the game server no longer accepts calls from `parena`
+      (`CLIENT_ORIGIN`), so put it back there too.
     - Render's own redirect rules can't do this (they match the path, not
       the host, and never apply where a file exists, like `/`).
       Keep the redirect and the `parena` record for good afterwards (old QR
-      codes live on in saved pictures). Supabase's `parena` Redirect URL and
-      `CLIENT_ORIGIN`'s `parena` entry go 30 days after the redirect starts
-      (about 25 Dec, with the owner's OK).
+      codes live on in saved pictures). `CLIENT_ORIGIN` is
+      `https://play.elementarenausa.com` alone since 27 Nov, and Supabase's
+      `https://parena.litojace.com/**` Redirect URL comes out the same day
+      (owner, in the dashboard): early, not after 30 days, because nobody
+      was still using `parena`.
 
 ## What players notice
 
@@ -324,3 +331,17 @@ this move doesn't touch how the session is stored.
   SPF), so a Google account on that address can carry the game's avatar in
   Gmail. Replies to the account emails land there too. Kept for now:
   `privacy@litojace.com`'s forwarding and the `litojace.com` Resend domains.
+- 27 Nov, 10:26 AM PT: **`parena` redirects with 301** and the game server
+  stops accepting `parena` (`CLIENT_ORIGIN=https://play.elementarenausa.com`,
+  redeployed on the live commit `b4120f3`), with the owner's OK here. First
+  checked, in Cloudflare's analytics for the `parena` host since the
+  redirect: about 100 requests, every browser one a 302. That was ~40 page
+  loads (curl, test browsers, a few desktop and phone visits), 7 `sw.js`
+  update checks from installed icons (2 Android, 1 Windows), and one iPhone
+  loading the old icon at 10:35 PM PT on 25 Nov (probably the owner). About
+  18 answered 504 with no protocol, no browser and no origin contact (a
+  monitor every 6 h, bots, our probes). A page on `parena` can't run the
+  game any more (its scripts redirect to `play.` and fail CORS), and deploys
+  tell open tabs to reload, so no client still needed `parena` in
+  `CLIENT_ORIGIN`. The iPhone app is `capacitor://localhost`. The owner
+  removes `https://parena.litojace.com/**` from Supabase's Redirect URLs.
