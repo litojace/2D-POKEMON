@@ -53,6 +53,24 @@ for (const size of SIZES)
     try {
       const page = await context.newPage();
       await newPlayer(page);
+      // Every animation the tour starts, as it starts: its fades last
+      // 160-220 ms, so on a busy machine they could be over by the time the
+      // page was asked after the click (none running, 1 run in 12 here).
+      await page.addInitScript(() => {
+        const seen: string[][] = ((window as any).__tourFades = []);
+        const animate = Element.prototype.animate;
+        Element.prototype.animate = function (keyframes, options) {
+          if (this.closest?.(".hub-tour") && Array.isArray(keyframes))
+            seen.push(
+              keyframes.flatMap((k) =>
+                Object.keys(k).filter(
+                  (p) => !["offset", "easing", "composite"].includes(p),
+                ),
+              ),
+            );
+          return animate.call(this, keyframes, options);
+        };
+      });
       const errors = await openHub(page);
       await expect(tour(page)).toBeVisible({ timeout: 15_000 });
       let steps = 0;
@@ -104,6 +122,7 @@ for (const size of SIZES)
         await snap(page, info, `tour-${steps}-${size.width}x${size.height}`);
         steps++;
         if (steps === 3) break;
+        await page.evaluate(() => ((window as any).__tourFades.length = 0));
         await page.click("[data-tour=next]");
         // Between steps the dim stays still: only the spotlight and bubble
         // fade. (A spotlight that glided across the screen carried the dim
@@ -113,7 +132,6 @@ for (const size of SIZES)
           const dim = root.querySelector(".tour-dim")!.getBoundingClientRect();
           return {
             dim: [dim.x, dim.y, dim.width, dim.height],
-            fades: root.getAnimations({ subtree: true }).length,
             props: root
               .getAnimations({ subtree: true })
               .flatMap((a) =>
@@ -136,8 +154,15 @@ for (const size of SIZES)
           };
         });
         expect(moving.dim).toEqual([0, 0, size.width, size.height]);
-        expect(moving.fades).toBeGreaterThan(0);
-        expect([...new Set(moving.props)]).toEqual(["opacity"]);
+        // The step faded in (counted as each fade started), and whatever
+        // still runs, a fade or a transition, moves opacity alone.
+        const started = await page.evaluate(
+          () => (window as any).__tourFades as string[][],
+        );
+        expect(started.length).toBeGreaterThan(0);
+        expect([...new Set([...started.flat(), ...moving.props])]).toEqual([
+          "opacity",
+        ]);
       }
       expect(steps).toBe(3);
       // The Lobby behind waits while the tour runs.
