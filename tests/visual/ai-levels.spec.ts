@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { openLobby, snap } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts): the mode box is white there,
+// and the levels' colours have to read on it.
+onPlayersLook();
 
 // The bot's levels in the Lobby's mode menu (lobby-screen.ts AI_LEVELS):
 // each level's name in its colour (green, amber, red) with 1 to 3 pips, so
@@ -71,6 +76,41 @@ for (const size of SIZES)
         page.locator('#lobby-mode .ai-level[data-ai-level="normal"]'),
       ).toHaveText("Normal");
       await snap(page, info, `ai-levels-picked-${size.name}`);
+      // On the mode box each level's name reads against the box: light
+      // green on white was 1.9:1 (UI audit, 27 Nov 2026). Text needs 4.5:1.
+      for (const level of ["easy", "normal", "hard"]) {
+        await page.click("#lobby-mode");
+        await menu.locator(`[data-lobby-mode="bot-${level}"]`).click();
+        await expect(menu).toBeHidden();
+        const ratio = await page
+          .locator(`#lobby-mode .ai-level[data-ai-level="${level}"]`)
+          .evaluate((mark) => {
+            // Painted once to read any colour as sRGB bytes.
+            const ink = document
+              .createElement("canvas")
+              .getContext("2d", { willReadFrequently: true })!;
+            const lum = (c: string) => {
+              ink.fillStyle = "#fff";
+              ink.fillRect(0, 0, 1, 1);
+              ink.fillStyle = c;
+              ink.fillRect(0, 0, 1, 1);
+              const [r, g, b] = [...ink.getImageData(0, 0, 1, 1).data]
+                .slice(0, 3)
+                .map((v) => {
+                  v /= 255;
+                  return v <= 0.03928
+                    ? v / 12.92
+                    : ((v + 0.055) / 1.055) ** 2.4;
+                });
+              return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            };
+            const box = mark.closest("#lobby-mode")!;
+            const a = lum(getComputedStyle(mark).color);
+            const b = lum(getComputedStyle(box).backgroundColor);
+            return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+          });
+        expect(ratio, `${level} on the mode box`).toBeGreaterThanOrEqual(4.5);
+      }
       expect(errors).toEqual([]);
     } finally {
       await context.close();
