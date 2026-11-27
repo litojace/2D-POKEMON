@@ -49,9 +49,9 @@ export type GateStatus =
   | "unavailable"
   | "session-replaced";
 /**
- * The front door, over a single still painting of the plaza: the game's pitch on
- * the left, and on the right the sign-up / log-in panel (filled in by
- * AccountUI.showAuth) or the current status.
+ * The front door: the pitch on the left and the account panel on the right.
+ * Poster places still, decorative cutouts around the panel's outer stage,
+ * keeping them outside its scrolling form (AccountUI.showAuth).
  */
 export function welcomeGate(
   status: GateStatus,
@@ -73,7 +73,7 @@ export function welcomeGate(
             : status === "unavailable"
               ? `<div class="gate-wait" role="status"><p>Sign-in isn't available right now. Please try again later.</p></div>`
               : "";
-  return `<section class="welcome-gate" aria-labelledby="gate-title"><div class="gate-backdrop" aria-hidden="true"></div><div class="gate-layout"><div class="gate-intro"><div class="gate-heading"><span class="gate-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><span class="gate-kicker">Real-time creature duels</span><h1 id="gate-title">Element<span>Arena</span></h1>${invite ? `<p class="gate-invite">You've been invited to room <b>${invite}</b>. Log in or create an account to join.</p>` : `<p class="gate-lead">Eighteen elemental fighters. One living Plaza. Your next rival is already here.</p>`}</div>${parts.quick ?? ""}</div><div class="gate-card" id="gate-auth">${panel}</div></div></section>`;
+  return `<section class="welcome-gate" aria-labelledby="gate-title"><div class="gate-backdrop" aria-hidden="true"></div><div class="gate-layout"><div class="gate-intro"><div class="gate-heading"><span class="gate-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><span class="gate-kicker">Real-time creature duels</span><h1 id="gate-title">Element<span>Arena</span></h1>${invite ? `<p class="gate-invite">You've been invited to room <b>${invite}</b>. Log in or create an account to join.</p>` : `<p class="gate-lead">Eighteen elemental fighters. One living Plaza. Your next rival is already here.</p>`}</div>${parts.quick ?? ""}</div><div class="gate-account-stage"><div class="gate-peek gate-peek-voltkit" aria-hidden="true"></div><div class="gate-peek gate-peek-pyranda" aria-hidden="true"></div><div class="gate-peek gate-peek-terradon" aria-hidden="true"></div><div class="gate-card" id="gate-auth">${panel}</div></div></div></section>`;
 }
 
 /** Start a room: the mode choice and Create button, for the hub's Play panel. */

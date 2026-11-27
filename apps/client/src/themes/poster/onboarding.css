@@ -145,31 +145,15 @@
 :root[data-ui="poster"] .auth-legal a {
   color: var(--ui-dim);
 }
-/* ==========================================================================
-   The cover: what stands behind the title screen and the sign-in screen
-   (owner, 27 Nov 2026: the painted valley looked out of place in Poster;
-   no fighters here; "the sunburst and the star, the star will be something
-   else later"). The element colour in halftone, a sunburst, and the game's
-   four-point star in ink where the rays meet. One still picture, drawn by
-   the browser: no painting is downloaded.
-   ========================================================================== */
+/* The cover keeps Poster's halftone sunburst behind still character cutouts. */
 :root[data-ui="poster"] .welcome-gate {
   /* Where the rays meet, as a share of the screen. */
   --cover-x: 0.74;
   --cover-y: 0.54;
-  /* The star: 62% of the screen's height, never wider than its half. */
-  --cover-star: min(62vh, 46vw);
 }
 :root[data-ui="poster"] .welcome-gate .gate-backdrop {
   inset: 0;
-  /* The star (a picture of its own later: change this only). Every quote,
-     space and bracket in the address is %-encoded: welcome.spec reads the
-     address out of the computed style up to the first one. */
-  --cover-star-art: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2072%2072%27%3E%3Cpath%20transform=%27translate%288%208%29%27%20fill=%27%23ff2e4d%27%20fill-rule=%27evenodd%27%20d=%27M32%202%2042%2021%2062%2032%2043%2043%2032%2062%2021%2043%202%2032%2021%2021Zm0%2014L16%2032l16%2016%2016-16Z%27/%3E%3Cpath%20fill=%27%230d0d0f%27%20fill-rule=%27evenodd%27%20d=%27M32%202%2042%2021%2062%2032%2043%2043%2032%2062%2021%2043%202%2032%2021%2021Zm0%2014L16%2032l16%2016%2016-16Z%27/%3E%3C/svg%3E");
   background:
-    var(--cover-star-art) calc(var(--cover-x) * 100vw - var(--cover-star) / 2)
-      calc(var(--cover-y) * 100vh - var(--cover-star) / 2) / var(--cover-star)
-      var(--cover-star) no-repeat,
     radial-gradient(circle, rgba(0, 0, 0, 0.16) 1.4px, transparent 1.8px) 0 0 /
       9px 9px,
     repeating-conic-gradient(
@@ -178,13 +162,6 @@
       transparent 7.5deg 15deg
     ),
     var(--el, #ffd65b);
-}
-
-/* On the sign-in side the form stands where the rays meet: the star would
-   only show as a black corner beside it (a wide screen), so it stays off
-   and the sunburst alone carries the cover. */
-:root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-backdrop {
-  --cover-star-art: none;
 }
 
 /* ── The sign-in side: the title's ink slab and white stripe, the name in
@@ -237,4 +214,182 @@
 :root[data-ui="poster"] .welcome-gate .gate-quick .title-quick-icon {
   background: var(--ink-2);
   box-shadow: none;
+}
+
+/* Demo art direction A + C: independent cutouts, never baked-in controls.
+   Their stage stays outside the card's scrollport and ignores all input. */
+:root[data-ui="poster"] .title-illustration {
+  display: block;
+  position: absolute;
+  z-index: 1;
+  inset: max(84px, 12dvh) max(24px, var(--safe-right, 0px))
+    max(36px, calc(var(--safe-bottom, 0px) + 24px)) 45%;
+  background: url("/assets/welcome/title-high-five.webp") center / contain
+    no-repeat;
+  pointer-events: none;
+}
+:root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-layout {
+  padding-right: max(120px, calc(var(--safe-right, 0px) + 8vw));
+}
+:root[data-ui="poster"] .gate-account-stage {
+  position: relative;
+  min-inline-size: 0;
+  margin-block: 100px 36px;
+}
+:root[data-ui="poster"] .gate-account-stage .gate-card {
+  position: relative;
+  z-index: 1;
+  /* Leave room for the top cutout, stage margins and viewport padding. */
+  max-block-size: calc(100dvh - 184px);
+}
+:root[data-ui="poster"] .gate-peek {
+  display: block;
+  position: absolute;
+  z-index: 2;
+  background: center / contain no-repeat;
+  pointer-events: none;
+}
+:root[data-ui="poster"] .gate-peek-voltkit {
+  inline-size: clamp(120px, 18dvh, 160px);
+  block-size: clamp(120px, 18dvh, 160px);
+  inset: auto auto calc(100% - 20px) 12px;
+  background-image: url("/assets/welcome/peek-voltkit.webp");
+}
+:root[data-ui="poster"] .gate-peek-pyranda {
+  inline-size: 130px;
+  block-size: 195px;
+  inset: 18% auto auto calc(100% - 12px);
+  background-image: url("/assets/welcome/peek-pyranda.webp");
+}
+:root[data-ui="poster"] .gate-peek-terradon {
+  inline-size: 170px;
+  block-size: 116px;
+  inset: auto calc(100% - 14px) -12px auto;
+  background-image: url("/assets/welcome/peek-terradon.webp");
+}
+@media (max-height: 700px) and (orientation: landscape) {
+  :root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-layout {
+    padding-right: max(30px, calc(var(--safe-right, 0px) + 14px));
+  }
+  :root[data-ui="poster"] .gate-account-stage {
+    margin-block: 0;
+  }
+  :root[data-ui="poster"] .gate-account-stage .gate-card {
+    max-block-size: calc(100dvh - 24px);
+  }
+  :root[data-ui="poster"] .gate-peek-voltkit {
+    inline-size: clamp(90px, 15vw, 140px);
+    block-size: clamp(90px, 15vw, 140px);
+    inset: 6px calc(100% + 4px) auto auto;
+  }
+  :root[data-ui="poster"] .gate-peek-pyranda {
+    inline-size: 84px;
+    block-size: 126px;
+    inset: auto calc(100% - 8px) 8px auto;
+  }
+  :root[data-ui="poster"] .gate-peek-terradon {
+    display: none;
+  }
+}
+@media (max-width: 640px) and (orientation: portrait) {
+  :root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-layout {
+    grid-template-columns: minmax(0, 1fr);
+    block-size: auto;
+    gap: 0;
+    padding: max(24px, var(--safe-top, 0px)) 24px
+      max(28px, var(--safe-bottom, 0px));
+  }
+  :root[data-ui="poster"] .welcome-gate:not(.is-title)::before {
+    clip-path: polygon(0 0, 100% 0, 100% 160px, 0 200px);
+  }
+  :root[data-ui="poster"] .welcome-gate:not(.is-title)::after {
+    display: none;
+  }
+  :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
+    font-size: 48px;
+  }
+  :root[data-ui="poster"]
+    .welcome-gate
+    .gate-intro
+    :is(.gate-mark, .gate-lead, .gate-build) {
+    display: none;
+  }
+  :root[data-ui="poster"] .gate-account-stage {
+    margin-block: 130px 12px;
+  }
+  :root[data-ui="poster"] .gate-account-stage .gate-card {
+    max-block-size: none;
+    padding: 22px;
+  }
+  :root[data-ui="poster"] .gate-peek-voltkit {
+    inline-size: 145px;
+    block-size: 145px;
+    left: 0;
+  }
+  :root[data-ui="poster"] .gate-peek-pyranda {
+    inline-size: 95px;
+    block-size: 143px;
+    inset: auto 8px calc(100% - 22px) auto;
+    transform: rotate(-10deg);
+  }
+  :root[data-ui="poster"] .gate-peek-terradon {
+    display: none;
+  }
+  :root[data-ui="poster"] .title-brand {
+    left: 24px;
+    top: 180px;
+    transform: none;
+  }
+  :root[data-ui="poster"] .title-brand h1 {
+    font-size: clamp(44px, 12vw, 64px);
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title::before {
+    clip-path: polygon(0 0, 100% 0, 100% 250px, 0 300px);
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title::after {
+    display: none;
+  }
+  :root[data-ui="poster"] .title-illustration {
+    inset: 300px 12px 110px;
+  }
+  :root[data-ui="poster"] .title-tap {
+    padding-left: 24px;
+  }
+  :root[data-ui="poster"] .title-prompt {
+    color: var(--el);
+  }
+  :root[data-ui="poster"] .title-prompt::before {
+    background: var(--ink);
+  }
+  :root[data-ui="poster"] .title-hint {
+    color: var(--ink);
+    text-shadow: none;
+  }
+}
+
+/* Accounts can be read upright; the playfield still asks for landscape. */
+:root[data-ui="poster"] body.gate-active #rotate-gate {
+  display: none;
+}
+@media (orientation: portrait) {
+  :root[data-ui="poster"] body.gate-active {
+    overflow-y: auto;
+  }
+  :root[data-ui="poster"] body.gate-active dialog[open] {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  :root[data-ui="poster"] body.gate-active dialog::backdrop {
+    background: #0009;
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  :root[data-ui="poster"] .welcome-gate.is-title .title-quick {
+    top: 82px;
+    left: 24px;
+    right: 24px;
+    justify-content: flex-start;
+  }
 }
