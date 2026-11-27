@@ -289,3 +289,52 @@
   background: var(--ink);
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
 }
+
+/* ── a win's element-colour sheet: its small words are ink ──
+   The notes under the score and the table ("Updating your XP…",
+   "Couldn't save this match to your records") and the records line kept
+   the look underneath's pale grey and white, near invisible on the
+   element colour. --on-el-dim passes AA on every element colour
+   (tokens.css). */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-victory
+  :is(
+    .rw-pending,
+    .journey-xp-pending,
+    .records,
+    .records .muted,
+    .arcade-rating-note
+  ) {
+  color: var(--on-el-dim);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-victory
+  .records
+  b {
+  color: var(--ink);
+}
+/* A win's kicker is green, a loss's red (owner, 22 Nov 2026): on the
+   element-colour sheet the green is a slanted block with ink words, so it
+   reads on every element colour (green text would not on Shadow's
+   purple). A loss's kicker stays --hot on its ink sheet (above). */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card.is-victory
+  > .eyebrow,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-victory
+  .rc-head
+  .ui-kicker {
+  display: inline-block;
+  justify-self: center;
+  align-self: center;
+  width: fit-content;
+  margin-inline: auto;
+  padding: 3px 12px;
+  background: #3ee07a;
+  color: var(--ink);
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+}
