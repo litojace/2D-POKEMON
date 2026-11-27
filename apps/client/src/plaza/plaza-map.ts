@@ -152,7 +152,7 @@ export function mapPinsHtml(
   return places
     .map((p) => {
       const { fx, fy } = mapFrac(p.x, p.y);
-      return `<button type="button" class="pz-pin${questHere(p) ? " quest" : ""}${p.label ? ` ${p.label}` : ""}" data-place="${p.id}" style="left:${(fx * 100).toFixed(2)}%;top:${(fy * 100).toFixed(2)}%" aria-label="Go to ${p.name}">${icon(p.icon)}<span>${p.name}</span></button>`;
+      return `<button type="button" class="pz-pin${questHere(p) ? " quest" : ""}${p.label ? ` ${p.label}` : ""}" data-place="${p.id}" style="left:${(fx * 100).toFixed(2)}%;top:${(fy * 100).toFixed(2)}%" aria-label="Go to ${p.name}">${icon(p.icon)}<span>${p.pin ?? p.name}</span></button>`;
     })
     .join("");
 }
