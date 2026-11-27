@@ -105,3 +105,66 @@ for (const size of SIZES)
       await context.close();
     }
   });
+
+// The Wardrobe, on a tablet and a phone: the bar's fighter name ends before
+// Revert (VOLTKIT ran under it at 1024x768), and the slot and fighter labels
+// read in full ("Storm …", "Wombol…", ENTRANCE touching VICTORY).
+for (const size of [
+  { width: 1024, height: 768, phone: false },
+  { width: 1180, height: 820, phone: false },
+  { width: 844, height: 390, phone: true },
+])
+  test(`the Wardrobe's labels read in full and its bar's name clears Revert at ${size.width}x${size.height}`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openShop(page);
+      await page.click(".fit-head .ui-seg button:nth-child(2)");
+      await expect(
+        page.locator(".fit-room[data-fit-mode='wardrobe']"),
+      ).toBeVisible();
+      await page.waitForTimeout(600);
+      const report = await page.evaluate(() => {
+        const name = document
+          .querySelector(".fit-foot-text .ui-h")!
+          .getBoundingClientRect();
+        const revert = document
+          .querySelector("[data-fit-revert]")!
+          .getBoundingClientRect();
+        const cut = [
+          ...document.querySelectorAll<HTMLElement>(
+            ".fit-fighter > span:last-child, .fit-slot small, .fit-slot b, .fit-foot-text .ui-h",
+          ),
+        ]
+          .filter(
+            (e) =>
+              e.scrollWidth > e.clientWidth + 0.5 ||
+              e.scrollHeight > e.clientHeight + 1,
+          )
+          .map((e) => e.textContent!.trim());
+        const slots = [
+          ...document.querySelectorAll<HTMLElement>(".fit-slot small"),
+        ].map((e) => e.getBoundingClientRect());
+        let overlaps = 0;
+        for (let i = 1; i < slots.length; i++) {
+          const a = slots[i - 1],
+            b = slots[i];
+          if (Math.abs(a.top - b.top) < 2 && a.right > b.left) overlaps++;
+        }
+        return { gap: revert.left - name.right, cut, overlaps };
+      });
+      expect(report.gap, "the name ends before Revert").toBeGreaterThan(0);
+      expect(report.cut, "labels cut short").toEqual([]);
+      expect(report.overlaps, "slot labels touching").toBe(0);
+      await snap(page, info, `poster-wardrobe-${size.width}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
