@@ -364,7 +364,12 @@ import { watchNotchInsets } from "./notch-insets";
 import { watchScrollRows } from "./ui/scroll-rows";
 import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
-import { askConfirm, openHubPanelNow, PANEL_EVENT } from "./ui/hub-panel";
+import {
+  askConfirm,
+  openHubPanelNow,
+  PANEL_EVENT,
+  PARKED,
+} from "./ui/hub-panel";
 import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { createGuide } from "./getting-started-screen";
 import {
@@ -3284,6 +3289,15 @@ const lookPending = () => lookShowing || lookPickerDue(accountsUI?.account?.id);
  * before the looks is asked the same way, the next time its Lobby is free.
  * Shows nothing until two looks are ready.
  */
+/**
+ * A hub screen in front of the Lobby: open, or still leaving. Not one kept
+ * hidden for its next open (ui/hub-panel.ts park: the Shop, the Fighters),
+ * which held back the unlock sheet, today's gift and the tour for as long
+ * as it was kept, up to a minute after it closed.
+ */
+function screenInFront() {
+  return document.querySelector(`.ui-panel-host:not([${PARKED}]) .ui-panel`);
+}
 function maybeAskLook(settled = false) {
   const account = accountsUI?.account?.id;
   if (!account || lookShowing || !lookPickerDue(account)) return;
@@ -3299,7 +3313,7 @@ function maybeAskLook(settled = false) {
     tourTimer !== undefined ||
     unlockShowing ||
     $<HTMLDialogElement>("dialog").open ||
-    document.querySelector(".ui-panel-host .ui-panel") ||
+    screenInFront() ||
     document.querySelector("[data-ui-confirm]") ||
     document.getElementById("reward-reveal") ||
     accountsUI?.guestWarningPending
@@ -3344,7 +3358,7 @@ function maybeShowUnlocks() {
     tour?.open ||
     tourTimer !== undefined ||
     $<HTMLDialogElement>("dialog").open ||
-    document.querySelector(".ui-panel-host .ui-panel") ||
+    screenInFront() ||
     document.querySelector("[data-ui-confirm]") ||
     document.getElementById("reward-reveal") ||
     accountsUI?.guestWarningPending
@@ -3454,7 +3468,7 @@ function maybeShowGift() {
     tour?.open ||
     tourTimer !== undefined ||
     $<HTMLDialogElement>("dialog").open ||
-    document.querySelector(".ui-panel-host .ui-panel") ||
+    screenInFront() ||
     document.querySelector("[data-ui-confirm]") ||
     document.getElementById("reward-reveal") ||
     accountsUI?.guestWarningPending
@@ -6151,7 +6165,7 @@ function startTour(replay = false) {
         !lobby ||
         myId ||
         $<HTMLDialogElement>("dialog").open ||
-        document.querySelector(".ui-panel-host .ui-panel") ||
+        screenInFront() ||
         document.querySelector("[data-ui-confirm]") ||
         accountsUI?.guestWarningPending
       )
