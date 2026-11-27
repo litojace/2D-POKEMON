@@ -104,8 +104,28 @@ const words = (page: Page) =>
     return out;
   });
 
+/**
+ * Wait for every animation and transition that ends to have ended: words
+ * fade and slide in, and a slow runner (CI) measured them half-way, at a
+ * third of their colour.
+ */
+const settle = (page: Page) =>
+  page.waitForFunction(
+    () =>
+      document
+        .getAnimations()
+        .every(
+          (a) =>
+            a.playState !== "running" ||
+            a.effect?.getComputedTiming().endTime === Infinity,
+        ),
+    null,
+    { timeout: 20_000, polling: 100 },
+  );
+
 /** Words whose contrast is under what they need, with the measure. */
 async function measure(page: Page, where: string) {
+  await settle(page);
   const list = await words(page);
   const hide = await page.addStyleTag({
     content:
