@@ -350,10 +350,26 @@
   box-shadow: none;
 }
 
-/* The rail button of the open screen: a skewed block in the element colour. */
+/* The rail button of the open screen: a skewed block in the element colour,
+   drawn behind the button and inside its box. Skewing the button itself
+   pushed its corner 4 px past its box: on an 844 px iPhone, into the notch's
+   safe area (phone-fit.spec). */
 :root[data-ui="poster"] .lobby-layer .lobby-rail button[aria-current="page"] {
+  position: relative;
+  isolation: isolate;
+  background: none;
+}
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-rail
+  button[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 4px;
+  z-index: -1;
   background: var(--el);
   transform: skewX(-10deg);
+  pointer-events: none;
 }
 :root[data-ui="poster"]
   .lobby-layer
