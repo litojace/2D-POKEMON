@@ -490,11 +490,28 @@
   color: var(--el);
 }
 /* ── raid room ── */
+/* The column keeps its 1 px frame, unseen: the room's chat button is placed
+   for the banner inside it, so without the frame the banner moved 1 px and
+   chat and ⋯ no longer sat level (room-alignment.spec). */
 :root[data-ui="poster"] .room-seats {
   background: var(--ink);
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 0;
   box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.4);
+}
+/* A hidden pick's "?" in Anton sits higher in its box than the old look's
+   display font did: 2 px at 20 px (room-alignment.spec measures its ink). */
+:root[data-ui="poster"] .room-pick.is-hidden > b {
+  transform: translateY(0.06em);
+}
+/* Phones: a seat's state tag ("CHOOSING") is 72 px; Poster's tag spacing
+   (0.08em) ran its word past the tag's padding. Set as close as the old
+   look sets it there. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .room-seat.has-pick .ui-tag {
+    letter-spacing: 0;
+    padding: 0 3px;
+  }
 }
 :root[data-ui="poster"] .room-seat {
   background: var(--ink-2);
