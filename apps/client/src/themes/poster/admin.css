@@ -29,7 +29,7 @@
 }
 :root[data-ui="poster"] .admin-count {
   border-radius: 0;
-  background: var(--hot);
+  background: var(--hot-fill);
   color: #fff;
 }
 :root[data-ui="poster"] .admin-tab.active .admin-count {
