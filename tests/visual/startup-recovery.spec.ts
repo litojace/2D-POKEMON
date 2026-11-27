@@ -25,7 +25,7 @@ for (const resource of ["main.ts", "style.css"]) {
       await page
         .locator("#app-boot")
         .evaluate((el) => getComputedStyle(el).backgroundColor),
-    ).toBe("rgb(11, 16, 32)");
+    ).toBe("rgb(255, 214, 91)"); // the startup screen's gold cover
     await page.unroute(pattern);
     await page.locator("#app-boot button").click();
     await page.waitForFunction(() => !!(window as any).__sock);

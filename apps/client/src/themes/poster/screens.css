@@ -945,7 +945,8 @@
    ========================================================================== */
 
 /* ── Title screen: the cover. An ink slab on the left with the title, the
-      painting on the right behind a white stripe (the Lobby's slab). ── */
+      cover's picture on the right behind a white stripe (the Lobby's slab).
+      The picture itself is onboarding.css's ("The cover"). ── */
 :root[data-ui="poster"] .welcome-gate.is-title {
   color: #fff;
   font-family: var(--font-body);
@@ -966,12 +967,6 @@
     calc(44% + 14px) 100%,
     calc(44% + 6px) 100%
   );
-}
-/* The painting sits right of the slab, its left edge first, so Voltkit on
-   the hill stays in view beside the stripe instead of under the ink. */
-:root[data-ui="poster"] .welcome-gate.is-title .gate-backdrop {
-  inset: 0 0 0 40%;
-  background-position: left center;
 }
 :root[data-ui="poster"] .title-brand {
   left: max(28px, calc(var(--safe-left, 0px) + 18px));

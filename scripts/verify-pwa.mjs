@@ -37,8 +37,6 @@ assert(
 );
 assert(urls.includes("offline.html"));
 for (const art of [
-  "startup-starfield",
-  "startup-sigil",
   // Every raid boss is vector art, drawn by the client: no boss atlases.
   "raid-spell-flipbook",
 ])

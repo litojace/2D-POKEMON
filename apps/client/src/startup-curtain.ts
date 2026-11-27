@@ -5,19 +5,12 @@ import {
   releaseStartupCurtain,
   serverReady,
   setCurtainArt,
-  setCurtainTip,
+  setCurtainRunner,
 } from "./server-connection";
 import { artForThisStart, prepareNextArt } from "./loading-art";
-import {
-  nextTip,
-  noteTipShown,
-  tipAfter,
-  tipMarkup,
-  tipReadMs,
-  tipsEnabled,
-  type LoadingTip,
-} from "./loading-tips";
 import { lowGraphics } from "./graphics-quality";
+import { lastHomeFighter } from "./home-screen";
+import { wornSkin } from "./fighter-selection";
 
 /**
  * Where startup has got to, as main.ts sees it:
@@ -46,8 +39,6 @@ export const CURTAIN_CAP_MS = 12_000;
  * shows, and only what changed on another device updates after.
  */
 export const COPY_GRACE_MS = 800;
-/** A long load moves on to the next tip this long after the last was read. */
-export const TIP_LINGER_MS = 2_500;
 /** The longest the drawn scene may take to finish its artwork. */
 export const SCENE_SETTLE_MS = 2_500;
 
@@ -122,20 +113,21 @@ export function startStartupCurtain(
   startedOnce = true;
   holdStartupCurtain(undefined, again);
   // The painting the last start chose and downloaded (none on a first start:
-  // the starfield), and a tip that suits its mode.
-  const art = artForThisStart();
-  setCurtainArt(art ?? null);
-  // A gameplay tip while it loads. The curtain doesn't wait for it: the game
-  // opens as soon as its first screen is complete (the owner, 20 Nov: no
-  // "Tap to enter", no reading time). A long load moves on to the next tip.
+  // the plain cover). The curtain waits for nothing but the game: it opens
+  // as soon as the first screen is complete (the owner, 20 Nov: no "Tap to
+  // enter", no reading time). No gameplay tips on it since 27 Nov (the
+  // owner: they and the status line covered the painting).
   // (Since 22 Nov a launch lifts it onto the title screen, title-screen.ts,
   // whose Start is the one tap; the curtain itself still never waits.)
-  let tip: LoadingTip | undefined = tipsEnabled()
-    ? nextTip(art?.mode)
-    : undefined;
-  let tipSince = performance.now();
-  setCurtainTip(tip ? tipMarkup(tip) : null);
-  const readUntil = () => (tip ? tipSince + tipReadMs(tip) : 0);
+  const art = artForThisStart();
+  setCurtainArt(art ?? null);
+  // The runner on the bar: the fighter this device showed last, and its
+  // skin as soon as the profile (or this device's copy of it) names one.
+  const runner = () => {
+    const id = lastHomeFighter();
+    setCurtainRunner(id, wornSkin(id) ?? null);
+  };
+  runner();
   /** When the scene was first drawn, and what its settling was for. */
   let sceneSince: number | undefined;
   let settledFor: StartupStage | undefined;
@@ -151,13 +143,7 @@ export function startStartupCurtain(
   };
   const tick = () => {
     if (!curtainHeld()) return clearInterval(poll);
-    // A long load: the next tip, once this one has been read.
-    if (tip && performance.now() > readUntil() + TIP_LINGER_MS) {
-      tip = tipAfter(tip, art?.mode);
-      noteTipShown(tip);
-      tipSince = performance.now();
-      setCurtainTip(tipMarkup(tip));
-    }
+    runner();
     if (serverReady()) readySince ??= performance.now();
     else readySince = undefined;
     if (

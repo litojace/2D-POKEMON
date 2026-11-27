@@ -6,8 +6,8 @@
    - Low graphics (`:root[data-ui-effects="light"]`): no backdrop blur (the
      glass gets its deeper solid tint), smaller soft shadows, and no
      decorative loops: the Lobby fighter's idle bob, PLAY's sweep and glow,
-     cosmetic rarity sheens, orbits and rays, frame ornaments, the startup
-     sigil's float.
+     cosmetic rarity sheens, orbits and rays, frame ornaments, the run of
+     the fighter on the startup bar (it still glides along with the fill).
      Loops that say something (an order ready, a loading spinner) stay.
    - Reduced motion: the same loops stop; the look is otherwise kept.
 
@@ -55,10 +55,7 @@
     .lobby-member-art,
     .lobby-play::before,
     .raid-cosmetic-preview[data-cosmetic]::after,
-    .server-startup-art,
-    .server-startup-aura,
-    .server-startup-orbit,
-    .server-startup-art > i
+    .server-startup-runner *
   ) {
   animation: none !important;
 }
@@ -75,10 +72,7 @@
       .lobby-member-art,
       .lobby-play::before,
       .raid-cosmetic-preview[data-cosmetic]::after,
-      .server-startup-art,
-      .server-startup-aura,
-      .server-startup-orbit,
-      .server-startup-art > i
+      .server-startup-runner *
     ) {
     animation: none !important;
   }

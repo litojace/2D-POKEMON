@@ -84,8 +84,8 @@ function startupScriptList(): Plugin {
 }
 /**
  * Hashed artwork installed ahead of time (scripts/verify-pwa.mjs checks it):
- * the startup screen's starfield and sigil, and the bosses' spell flipbook,
- * so a raid starts without downloading it.
+ * the bosses' spell flipbook, so a raid starts without downloading it. (The
+ * startup screen has no artwork of its own since 27 Nov 2026.)
  *
  * Not the paintings behind the startup curtain (startup-art-*, 3 MB for
  * thirteen): a start shows one, which the start before chose and downloaded
@@ -93,7 +93,7 @@ function startupScriptList(): Plugin {
  * Installing all of them competed with the first Lobby for the connection.
  */
 const PRECACHED_ART =
-  /^assets\/(startup-starfield-|startup-sigil-|raid-whole-|raid-directions-|raid-spell-flipbook-)/;
+  /^assets\/(raid-whole-|raid-directions-|raid-spell-flipbook-)/;
 /**
  * A fighter's files in public/assets/fighters/<id>/ are downloaded only for
  * a pack of frames, a sheet or an atlas (animation/pipeline.ts

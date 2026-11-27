@@ -309,7 +309,7 @@ for (const size of [
   { width: 844, height: 280 },
   { width: 1440, height: 900 },
 ]) {
-  test(`a tip shows while it loads and never holds the game, fits ${size.width}x${size.height}`, async ({
+  test(`the curtain never waits for a tap, and fits ${size.width}x${size.height}`, async ({
     browser,
   }, info) => {
     const context = await browser.newContext({
@@ -320,18 +320,9 @@ for (const size of [
     try {
       const page = await context.newPage();
       await page.addInitScript(() => {
-        localStorage.setItem("ea-loading-tips", "on");
         localStorage.setItem("ea-hub-scene", "lobby");
-      });
-      // A tip that would take a minute to read: the curtain mustn't wait.
-      await page.route(/\/loading-tips\.ts(?:\?|$)/, async (route) => {
-        const response = await route.fetch();
-        const body = await response.text();
-        expect(body).toMatch(/return Math\.min\([^;]+;/);
-        await route.fulfill({
-          response,
-          body: body.replace(/return Math\.min\([^;]+;/, "return 60000;"),
-        });
+        // The fighter this device showed last runs on the bar.
+        localStorage.setItem("arena-featured-fighter", "pyranda");
       });
       // Every status the curtain shows.
       await page.addInitScript(() => {
@@ -347,15 +338,21 @@ for (const size of [
         });
       });
       await page.goto("/");
-      const tip = page.locator("#server-startup .server-startup-tip");
-      // A first start begins with where the orbs appear.
-      await expect(tip).toBeVisible();
-      await expect(tip).toContainText("healing orb spawns top centre");
+      const curtain = page.locator("#server-startup");
+      await expect(curtain).toBeVisible();
+      // No gameplay tips on the curtain (the owner, 27 Nov 2026).
+      await expect(curtain.locator(".server-startup-tip")).toHaveCount(0);
+      await expect(curtain).not.toContainText("TIP");
+      // The runner: this device's fighter, in the game's side view.
+      const runner = curtain.locator(".server-startup-runner");
+      await expect(runner).toHaveAttribute("data-runner", /^pyranda:/);
+      await expect(runner.locator("svg .fighter-character")).toHaveCount(1);
       await page.evaluate(() => document.fonts.ready);
       for (const part of [
         ".server-startup-brand",
         ".server-startup-progress",
-        ".server-startup-tip",
+        ".server-startup-runner",
+        ".server-startup-loading",
       ]) {
         const r = (await page.locator(part).boundingBox())!;
         expect(r.x, part).toBeGreaterThanOrEqual(0);
@@ -363,14 +360,20 @@ for (const size of [
         expect(r.x + r.width, part).toBeLessThanOrEqual(size.width);
         expect(r.y + r.height, part).toBeLessThanOrEqual(size.height);
       }
-      const art = (await page.locator(".server-startup-art").boundingBox())!;
-      const loading = (await page
-        .locator(".server-startup-loading")
-        .boundingBox())!;
-      expect(art.y + art.height).toBeLessThanOrEqual(loading.y + 1);
-      await snap(page, info, `startup-tip-${size.width}x${size.height}`);
-      // Loaded long before the tip could be read: the game opens anyway,
-      // with no "Tap to enter".
+      // The name, "Opening the arena…", the runner, the bar: one under the
+      // other, none over another.
+      const top = async (s: string) => (await page.locator(s).boundingBox())!;
+      const [brand, line, run, bar] = [
+        await top("#server-startup .server-startup-brand"),
+        await top("#server-startup .server-startup-loading h2"),
+        await top("#server-startup .server-startup-runner"),
+        await top("#server-startup .server-startup-progress"),
+      ];
+      expect(brand.y + brand.height).toBeLessThanOrEqual(line.y);
+      expect(line.y + line.height).toBeLessThanOrEqual(run.y + 1);
+      expect(run.y + run.height * 0.915).toBeLessThanOrEqual(bar.y + 3);
+      await snap(page, info, `startup-runner-${size.width}x${size.height}`);
+      // The game opens as soon as it is ready, with no "Tap to enter".
       await page.evaluate(() => (window as any).__sock?.fire("connect"));
       const connected = Date.now();
       await connectUntilUncovered(page);
@@ -379,10 +382,6 @@ for (const size of [
         () => (window as any).__statuses,
       )) as string[];
       expect(statuses.join(" | ")).not.toMatch(/tap/i);
-      // The next start shows the next tip.
-      await page.reload();
-      await expect(tip).toBeVisible();
-      await expect(tip).not.toContainText("healing orb spawns top centre");
     } finally {
       await context.close();
     }
@@ -417,29 +416,21 @@ async function withPaintings(page: Page, ids: string[]) {
 }
 
 // index.html's boot screen is laid out as the curtain that replaces it: the
-// title, its divider and "Opening the arena…" stay exactly where they are,
-// with or without a painting.
-for (const [tips, art] of [
-  ["on", ""],
-  ["off", ""],
-  ["on", "duel-storm-vs-forge"],
-] as const)
+// name, "Opening the arena…" and the bar stay exactly where they are, with
+// or without a painting (where the one line sits under the bar).
+for (const art of ["", "duel-storm-vs-forge"] as const)
   for (const size of [
     { width: 844, height: 390 },
     { width: 844, height: 280 },
     { width: 1920, height: 1200 },
   ])
-    test(`the boot screen hands over without moving, tips ${tips}${art ? ", painting" : ""}, ${size.width}x${size.height}`, async ({
+    test(`the boot screen hands over without moving${art ? ", painting" : ""}, ${size.width}x${size.height}`, async ({
       page,
     }) => {
       await page.setViewportSize(size);
-      await page.addInitScript(
-        ([t, a]) => {
-          localStorage.setItem("ea-loading-tips", t);
-          if (a) localStorage.setItem("ea-next-art", a);
-        },
-        [tips, art],
-      );
+      await page.addInitScript((a) => {
+        if (a) localStorage.setItem("ea-next-art", a);
+      }, art);
       if (art) await withPaintings(page, [art]);
       // Hold the game's code back to measure the boot screen alone.
       let release!: () => void;
@@ -459,19 +450,22 @@ for (const [tips, art] of [
           const r = document.querySelector(s)!.getBoundingClientRect();
           return [r.x, r.y, r.width, r.height].map((v) => Math.round(v));
         }, selector);
-      // The starfield: title, divider, "Opening the arena…". A painting
-      // (style K): title, gold star, the status line and the bar.
+      // The cover: the name's block and the name, "Opening the arena…",
+      // the bar. A painting: the name's block, the star, the bar and the
+      // one line under it.
       const boot = art
         ? [
+            await at("#app-boot .boot-brand"),
             await at("#app-boot h1"),
             await at("#app-boot .boot-crest"),
-            await at("#app-boot p"),
             await at("#app-boot .boot-progress"),
+            (await at("#app-boot p")).slice(0, 2),
           ]
         : [
+            await at("#app-boot .boot-brand"),
             await at("#app-boot h1"),
-            await at("#app-boot .boot-divider"),
             await at("#app-boot p"),
+            await at("#app-boot .boot-progress"),
           ];
       release();
       await page.waitForSelector(
@@ -481,15 +475,22 @@ for (const [tips, art] of [
       expect(
         art
           ? [
+              await at("#server-startup .server-startup-brand"),
               await at("#server-startup h1"),
               await at("#server-startup .server-startup-crest"),
-              await at("#server-startup .server-startup-loading p"),
               await at("#server-startup .server-startup-progress"),
+              // The line's place (each new status slides in over 300 ms,
+              // so the line is measured, not the words in it).
+              (await at("#server-startup .server-startup-loading p")).slice(
+                0,
+                2,
+              ),
             ]
           : [
+              await at("#server-startup .server-startup-brand"),
               await at("#server-startup h1"),
-              await at("#server-startup .server-startup-divider"),
               await at("#server-startup .server-startup-loading h2"),
+              await at("#server-startup .server-startup-progress"),
             ],
       ).toEqual(boot);
     });
@@ -499,7 +500,7 @@ for (const size of [
   { width: 568, height: 320 },
   { width: 1440, height: 900 },
 ])
-  test(`a painting behind the curtain in style K, ${size.width}x${size.height}`, async ({
+  test(`a painting behind the curtain stays clear, ${size.width}x${size.height}`, async ({
     browser,
   }, info) => {
     const context = await browser.newContext({
@@ -510,7 +511,6 @@ for (const size of [
     try {
       const page = await context.newPage();
       await page.addInitScript(() => {
-        localStorage.setItem("ea-loading-tips", "on");
         localStorage.setItem("ea-next-art", "teams-hon-viet");
       });
       await withPaintings(page, ["teams-hon-viet"]);
@@ -522,31 +522,32 @@ for (const size of [
         "src",
         /elemental-horizon/,
       );
-      // A 2v2 painting: a tip for 2v2 (or every mode), never the 1v1 one.
-      const tip = curtain.locator(".server-startup-tip");
-      await expect(tip).toBeVisible();
-      await expect(tip).not.toContainText("1v1");
+      // Nothing over the painting but the name, the bar and its runner:
+      // no tip (the owner, 27 Nov 2026).
+      await expect(curtain.locator(".server-startup-tip")).toHaveCount(0);
       await page.evaluate(() => document.fonts.ready);
       // One status at a time once the cross-fade is over.
       await expect(
         curtain.locator(".server-startup-loading p > span:not([aria-hidden])"),
       ).toHaveCount(1);
       const box = async (s: string) => (await page.locator(s).boundingBox())!;
-      const [crest, title, tipBox, line, bar] = [
+      const [brand, crest, title, line, bar, runner] = [
+        await box("#server-startup .server-startup-brand"),
         await box("#server-startup .server-startup-crest"),
         await box("#server-startup h1"),
-        await tip.boundingBox().then((b) => b!),
         await box(
           "#server-startup .server-startup-loading p > span:not([aria-hidden])",
         ),
         await box("#server-startup .server-startup-progress"),
+        await box("#server-startup .server-startup-runner"),
       ];
       for (const [name, r] of Object.entries({
+        brand,
         crest,
         title,
-        tipBox,
         line,
         bar,
+        runner,
       })) {
         expect(r.x, name).toBeGreaterThanOrEqual(0);
         expect(r.x + r.width, name).toBeLessThanOrEqual(size.width);
@@ -554,17 +555,18 @@ for (const size of [
       }
       // The star and title top right, the star on the title's left.
       expect(title.x + title.width).toBeGreaterThan(size.width * 0.85);
-      expect(title.y).toBeLessThan(size.height * 0.1);
+      expect(brand.y).toBeLessThan(size.height * 0.1);
       expect(crest.x + crest.width).toBeLessThanOrEqual(title.x);
-      // The bar across the whole width, the status line on its left end,
-      // the tip on the right above both.
+      // The bar across the whole width near the bottom, the one status
+      // line UNDER it at its left end, the runner standing on it; the top
+      // three quarters of the painting carry nothing but the name's block.
       expect(bar.width).toBeGreaterThan(size.width * 0.85);
-      expect(bar.y + bar.height).toBeGreaterThan(size.height * 0.9);
+      expect(bar.y).toBeGreaterThan(size.height * 0.8);
       expect(line.x).toBeLessThan(size.width * 0.1);
-      expect(line.y + line.height).toBeLessThanOrEqual(bar.y);
-      expect(tipBox.x + tipBox.width).toBeGreaterThan(size.width * 0.9);
-      expect(tipBox.y + tipBox.height).toBeLessThanOrEqual(line.y);
-      expect(tipBox.y).toBeGreaterThan(title.y + title.height);
+      expect(line.y).toBeGreaterThanOrEqual(bar.y + bar.height);
+      expect(runner.y + runner.height * 0.915).toBeLessThanOrEqual(bar.y + 3);
+      expect(runner.y).toBeGreaterThan(size.height * 0.55);
+      expect(runner.y).toBeGreaterThan(brand.y + brand.height);
       await snap(page, info, `startup-painting-${size.width}x${size.height}`);
     } finally {
       await context.close();
@@ -605,7 +607,7 @@ test("the next start's painting is chosen and downloaded once the game is up", a
   );
 });
 
-test("a first start (no painting chosen yet) shows the starfield", async ({
+test("a first start (no painting chosen yet) shows the plain cover", async ({
   page,
 }) => {
   await withPaintings(page, ["duel-eclipse"]);
