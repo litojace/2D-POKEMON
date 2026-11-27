@@ -91,15 +91,19 @@ for (const phone of [
     }
   });
 
-// Over the whole-screen briefing and results the chat buttons are the room
-// banner's bare gold icon, no disc (match-sheet.css; owner, 24 Nov 2026),
-// and they sit on top of the sheet: on a desktop the sheet used to cover
-// them (#battle is no stacking context there, as it is on a phone).
+// Over the whole-screen briefing and results the chat buttons read on the
+// card and sit on top of it: on a desktop the sheet used to cover them
+// (#battle is no stacking context there, as it is on a phone). The old look
+// draws the room banner's bare gold icon, no disc (match-sheet.css; owner,
+// 24 Nov 2026); on Poster's element-colour sheet a gold icon vanished, so
+// Poster draws it on an ink square (themes/poster/screens.css). Either way
+// the icon stands at 3:1 against what is behind it (WCAG's for graphics),
+// with no outline.
 for (const device of [
   { name: "phone", width: 667, height: 375, touch: true },
   { name: "desktop", width: 1280, height: 720, touch: false },
 ])
-  test(`the chat buttons over the raid cards are a bare gold icon, on top (${device.name})`, async ({
+  test(`the chat buttons over the raid cards read on the card, on top (${device.name})`, async ({
     browser,
   }, info) => {
     test.setTimeout(120_000);
@@ -138,18 +142,48 @@ for (const device of [
                 r.x + r.width / 2,
                 r.y + r.height / 2,
               );
-              const s = getComputedStyle(b);
+              // Colours through a canvas (Poster's compute as oklch()).
+              const rgba = (c: string) => {
+                const cx = document.createElement("canvas").getContext("2d")!;
+                cx.fillStyle = c;
+                cx.fillRect(0, 0, 1, 1);
+                return [...cx.getImageData(0, 0, 1, 1).data];
+              };
+              const lum = ([r, g, bl]: number[]) =>
+                [r, g, bl]
+                  .map((v) => {
+                    const x = v / 255;
+                    return x <= 0.03928
+                      ? x / 12.92
+                      : ((x + 0.055) / 1.055) ** 2.4;
+                  })
+                  .reduce((n, v, i) => n + v * [0.2126, 0.7152, 0.0722][i], 0);
+              // The icon against what is behind it: the button's own fill
+              // where it has one (Poster's ink square), the sheet's
+              // otherwise (the old look's bare icon).
+              const own = rgba(getComputedStyle(b).backgroundColor);
+              const card = document.querySelector("#arena-overlay > .rc-card");
+              const back =
+                own[3] === 255
+                  ? own
+                  : rgba(
+                      card ? getComputedStyle(card).backgroundColor : "#000",
+                    );
+              const icon = rgba(
+                getComputedStyle(b.querySelector("svg") ?? b).color,
+              );
+              const [hi, lo] = [lum(icon), lum(back)].sort((x, y) => y - x);
               return {
                 onTop: !!top && b.contains(top),
-                background: s.backgroundColor,
-                border: s.borderTopColor,
+                border: getComputedStyle(b).borderTopColor,
+                iconContrast: (hi + 0.05) / (lo + 0.05) >= 3,
               };
             }, button),
           )
           .toMatchObject({
             onTop: true,
-            background: "rgba(0, 0, 0, 0)",
             border: "rgba(0, 0, 0, 0)",
+            iconContrast: true,
           });
         await snap(page, info, `raid-card-chat-icon-${device.name}-${phase}`);
       }
