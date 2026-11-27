@@ -8,6 +8,10 @@ import {
   snap,
 } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The countdown (3, 2, 1) in raids and the Spire is the PvP one
 // (reveal.spec.ts): the whole screen edge to edge past the notch, a light

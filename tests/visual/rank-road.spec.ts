@@ -2,6 +2,10 @@ import { expect, test, type Page } from "@playwright/test";
 import { openLobby, skipTour, snap } from "./helpers";
 import { centred, rowsEven, settled, spills } from "./ui-checks";
 import { ISLAND, layoutProblems, setInsets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The rank road (docs/rank-road.md): Ranks opens on the road (seven tiers
 // of three steps, each tier's reward, yours lit), and your rank is always

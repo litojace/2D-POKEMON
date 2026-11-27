@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { openHub } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 test("raid navigation reverses motion, restores the gallery and respects motion settings", async ({
   browser,

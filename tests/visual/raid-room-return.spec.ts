@@ -8,6 +8,10 @@ import {
   pickRoomMode,
   createRoom,
 } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 async function prepareRaid(page: Page, lobby = false) {
   await page.evaluate(

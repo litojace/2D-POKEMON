@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { openHub, snap, hubMenu } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The boss list (UI remodel step 5) replaced the Raid Hub's boss rail: a
 // lower boss opens from its card, and "‹ All bosses" comes back to that card,

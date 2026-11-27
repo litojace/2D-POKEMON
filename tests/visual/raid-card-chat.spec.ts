@@ -6,6 +6,10 @@ import {
   pushUntilBattle,
   snap,
 } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // On a phone, a chat button sits in the screen's top-left corner while the
 // raid's cards are up: the battle's quick chat over the briefing, the room's

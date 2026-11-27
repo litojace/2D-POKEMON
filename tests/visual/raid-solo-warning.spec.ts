@@ -7,6 +7,10 @@ import {
   snap,
   createRoom,
 } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Solo raiders get one self-revive, except against ★★★ bosses (raid-solo.ts):
 // the boss list, the room and the briefing say so before the fight.

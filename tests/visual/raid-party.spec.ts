@@ -9,6 +9,10 @@ import {
   snap,
 } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The party's health in a raid (raid-party.ts, owner, 20 Nov 2026): each
 // ally's name over a plain bar, top left, so a party sees who needs help
@@ -90,6 +94,16 @@ const read = (page: Page) =>
         : null,
       chatBlur: getComputedStyle(document.querySelector("#battle-chat")!)
         .backdropFilter,
+      // Its fill's opacity, through a canvas (Poster's colours compute as
+      // oklch()).
+      chatOpaque: (() => {
+        const cx = document.createElement("canvas").getContext("2d")!;
+        cx.fillStyle = getComputedStyle(
+          document.querySelector("#battle-chat")!,
+        ).backgroundColor;
+        cx.fillRect(0, 0, 1, 1);
+        return cx.getImageData(0, 0, 1, 1).data[3] === 255;
+      })(),
       others: [".joystick-area", "#battle-menu", ".raid-elapsed"]
         .map((q) => document.querySelector(q))
         .filter(visible)
@@ -148,8 +162,14 @@ for (const size of [
         : { left: 0, top: 0, right: 0, bottom: 0 };
       expect(box.left).toBeGreaterThanOrEqual(inset.left);
       expect(box.top).toBeGreaterThanOrEqual(inset.top);
-      // The quick-chat button is glass, as in the Lobby (High graphics).
-      if (look.chat) expect(look.chatBlur).toContain("blur");
+      // The quick-chat button reads over the fight, as in the Lobby: glass
+      // in the old look (a blur, on High graphics), a solid ink block in
+      // Poster's.
+      if (look.chat)
+        expect(
+          look.chatBlur.includes("blur") || look.chatOpaque,
+          `chat button: ${look.chatBlur}, opaque ${look.chatOpaque}`,
+        ).toBe(true);
       await snap(
         page,
         info,

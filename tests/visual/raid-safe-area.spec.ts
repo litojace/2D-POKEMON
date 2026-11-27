@@ -11,6 +11,10 @@ import {
   openPlayPanel,
   createRoom,
 } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 const bosses = [
   "grumblecrag",
   "tidewyrm",

@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub, openPlayPanel, pushUntilBattle, createRoom } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Prismatail's Sun Atrium (raid-prismatail-atrium.ts): its mirrors,
 // skylights, light-relay beams, Sun Pillars and Blinded marker are images

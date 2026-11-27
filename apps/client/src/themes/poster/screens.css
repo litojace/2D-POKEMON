@@ -763,6 +763,13 @@
   }
 }
 /* ranks: the board and the rank road */
+/* A rank step's numeral and rating in the middle of the step: the old
+   look lifts them 2 px for its own type (ranks.css, padding-bottom), which
+   left Poster's 2 px high on a desktop (rank-road.spec, "your step");
+   Poster's figures sit high in their line, so they come down 1 px instead. */
+:root[data-ui="poster"] .rk-steps > i {
+  padding: 1px 0 0;
+}
 :root[data-ui="poster"] :is(.rk-board, .rk-road, .rk-list) {
   background: var(--ink-1);
   border: 0;

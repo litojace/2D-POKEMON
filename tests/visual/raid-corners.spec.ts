@@ -3,6 +3,10 @@ import { expect, test, type Page } from "@playwright/test";
 import { RAID_BOSS_ORDER } from "../../packages/shared/src/raid-roster";
 import { createRoom, openHub, openPlayPanel, pushUntilBattle } from "./helpers";
 import { ISLAND, setInsets, type Insets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 /**
  * Every raid and the Spire share one phone layout at the top (owner, 21 Nov
