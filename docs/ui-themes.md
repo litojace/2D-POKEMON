@@ -92,8 +92,9 @@ Lobby.
 - Every selector sits under `:root[data-ui="<id>"]`; no `backdrop-filter` but `none`
   and no animation that runs for ever (`tests/unit/ui-theme.test.ts` checks
   all three).
-- `preview.webp`: the Lobby in this look, for the picker (560 px wide; today
-  the approved mock-up's, to be replaced by the real build's).
+- `preview.webp`: the Lobby in this look, for the picker (560 px wide, cut
+  from a screenshot of the real build with the look on; Poster's is, since
+  27 Nov).
 - Fonts are self-hosted woff2 (latin and Vietnamese subsets) with their OFL
   licence files, inside the folder (`font-src 'self'` is already allowed).
 - Markup a theme needs that the look underneath doesn't goes into the shared
