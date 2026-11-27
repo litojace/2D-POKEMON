@@ -823,8 +823,10 @@
 :root[data-ui="poster"] .rk-rules > summary {
   padding-top: 2px;
 }
+/* PIN: across only. Its height is the Friends sheet's rule now (the label
+   is boxed to its capitals, above); 2 px more on top would set it low. */
 :root[data-ui="poster"] .ui-btn[data-friend-pin] {
-  padding: 2px 10px 0 12px;
+  padding: 0 10px 0 12px;
 }
 @media (min-width: 1000px) {
   :root[data-ui="poster"] [data-raid-card] .ui-tag {
