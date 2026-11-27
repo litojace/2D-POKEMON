@@ -219,6 +219,19 @@
   min-width: var(--ctl-s);
   padding: 0 8px;
 }
+/* Tablets (a touch screen taller than a phone: an iPad): the stage's
+   buttons are 32 px, under a 44 px finger, and the phone hit areas
+   (ui/phone-fit.css) stop at 500 px tall. The stage has the room, so the
+   buttons themselves grow: Entrance / Victory / Your look, Hold to compare
+   and the Awakening stages. */
+@media (pointer: coarse) and (min-height: 501px) {
+  :is(.fit-plays, .fit-stage-tools) .ui-btn.is-s {
+    --h: 44px;
+  }
+  .fit-awaken .ui-btn.is-s {
+    min-width: 44px;
+  }
+}
 :is(.fit-awaken, .fit-stars) .ui-btn[aria-pressed="true"] {
   border-color: var(--ui-accent);
   color: var(--ui-accent);

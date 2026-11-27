@@ -1183,3 +1183,47 @@
 :root[data-ui="poster"] :is(.room-stars, .rh-stars) i {
   color: rgba(255, 255, 255, 0.45);
 }
+
+/* The Shop's head on a tablet (an iPad held sideways, 1024-1200 px wide):
+   Shop | Wardrobe, four Anton tabs and the close button do not fit one
+   row, and Collections sat hidden under the close button. The tabs take a
+   44 px row of their own under Shop | Wardrobe, still on the masthead. */
+@media (max-width: 1200px) and (min-height: 501px) {
+  :root[data-ui="poster"] .fit-room[data-fit-mode="shop"] .fit-head {
+    display: grid;
+    grid-template-columns: max-content;
+    grid-template-rows: var(--head-h) 44px;
+    align-items: center;
+    height: auto;
+    row-gap: 0;
+  }
+  :root[data-ui="poster"] .fit-room[data-fit-mode="shop"] .fit-head .ui-tabs {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    align-self: stretch;
+    height: 44px;
+    margin-left: 0;
+  }
+  /* With a row to themselves the tabs have room for a finger each. */
+  :root[data-ui="poster"]
+    .fit-room[data-fit-mode="shop"]
+    .fit-head
+    .ui-tabs
+    > button[role="tab"] {
+    min-width: 44px;
+    padding-inline: 12px;
+  }
+  /* Shop | Wardrobe alone on the top row: each a 44 px target. */
+  :root[data-ui="poster"]
+    .fit-room[data-fit-mode="shop"]
+    .fit-head
+    .ui-seg
+    > button {
+    height: 44px;
+  }
+}
+/* The Wardrobe's hint sits on the masthead: ink, not the pale grey of the
+   look underneath (2:1 on the element colour). */
+:root[data-ui="poster"] .fit-head .fit-hint {
+  color: var(--on-el-dim);
+}
