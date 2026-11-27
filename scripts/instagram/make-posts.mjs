@@ -67,7 +67,15 @@ const EL = {
   nature: "#7fcf6a",
 };
 
-/** A real capture of the game (2622 x 1206), cropped to 16:9 like make-scenes.py. */
+/**
+ * A real capture of the game (2622 x 1206), cropped to 16:9 like make-scenes.py.
+ * Each post's frame is picked by eye from the scene's 37 (owner, 27 Nov): a
+ * big move going off, with every fighter still in sight, never one buried
+ * under a flash. Duels 8 (the charged beam into the lightning field; from 14
+ * on the flash hides Frost), teams 8 (from 9 the pillar's glow hides Blaze),
+ * free-for-all 11 (the chestnut storm, Sunny's orb and Ink's tendrils, all
+ * four in sight), Spire 15 (the beam beside Echo Wombolder, not on it).
+ */
 const capture = (file, cx, cy, share) => ({ file, cx, cy, share });
 const SCENES = "site-clips/scenes";
 
@@ -103,7 +111,7 @@ const POSTS = [
     name: "duels",
     kind: "shot",
     el: EL.water,
-    art: capture(`${SCENES}/duels/014.png`, 0.53, 0.47, 0.42),
+    art: capture(`${SCENES}/duels/008.png`, 0.53, 0.47, 0.42),
     eyebrow: "1v1 duels",
     title: "Dodge. Dash. Land the big one.",
     line: "Every fight is live: aim your skills, read your rival, time your ultimate.",
@@ -133,7 +141,7 @@ const POSTS = [
     name: "teams",
     kind: "shot",
     el: EL.nature,
-    art: capture(`${SCENES}/teams/014.png`, 0.5, 0.36, 0.56),
+    art: capture(`${SCENES}/teams/008.png`, 0.5, 0.36, 0.56),
     eyebrow: "2v2 team battles",
     title: "Better with a friend.",
     line: "Team up, stack your skills and wipe the other side.",
@@ -157,7 +165,7 @@ const POSTS = [
     name: "free-for-all",
     kind: "shot",
     el: EL.psychic,
-    art: capture(`${SCENES}/ffa/016.png`, 0.57, 0.4, 0.46),
+    art: capture(`${SCENES}/ffa/011.png`, 0.57, 0.4, 0.46),
     eyebrow: "Free-for-all",
     title: "Four fighters. One winner.",
     line: "Everyone against everyone in the Ember Forge.",
@@ -178,7 +186,7 @@ const POSTS = [
     name: "spire",
     kind: "shot",
     el: EL.aura,
-    art: capture(`${SCENES}/spire/016.png`, 0.47, 0.61, 0.48),
+    art: capture(`${SCENES}/spire/015.png`, 0.47, 0.61, 0.48),
     eyebrow: "The Spire",
     title: "70 floors. How high can you climb?",
     line: "Seven zones of ten floors, an elite halfway up and a boss at the top of each.",
